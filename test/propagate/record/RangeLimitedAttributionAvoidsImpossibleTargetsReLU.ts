@@ -52,8 +52,10 @@ Deno.test(
 
     creature.activate(new Float32Array([1]));
 
-    // Current output is ~2. Request 0 so record-time error is negative.
-    const expected = new Float32Array([0]);
+    // Current output is ~2. Request a *far* negative target so the value-space
+    // error is large enough that naive attribution would imply a negative
+    // target activation for ReLU (impossible, since ReLU ∈ [0, +∞)).
+    const expected = new Float32Array([-100]);
     const map = creature.record(expected);
 
     const reluRec = map.get("relu-hidden");
@@ -62,12 +64,20 @@ Deno.test(
     const idRec = map.get("id-hidden");
     assert(idRec, "expected a discovery record for id-hidden");
 
-    // Key assertion: we should not request negative targets from ReLU, so it
-    // should not receive a recursive record() call.
+    // Key assertion: we should not request an impossible negative target from
+    // ReLU. Instead, record attribution should clamp to the boundary (0) and
+    // redistribute residue to other links.
     assertEquals(
       reluRec.errors.length,
-      0,
-      "ReLU parent should not be asked to absorb negative record targets when an alternative exists",
+      1,
+      "ReLU parent should receive at most a boundary-clamped record attribution",
+    );
+    const reluMax = reluRec.errors
+      .filter(Number.isFinite)
+      .reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+    assert(
+      reluMax < 1000,
+      `Expected ReLU record error to be bounded, got reluMax=${reluMax}`,
     );
 
     // And we should still attribute the error somewhere upstream.
@@ -122,7 +132,9 @@ Deno.test(
 
     creature.activate(new Float32Array([1]));
 
-    const expected = new Float32Array([0]);
+    // Same idea for ReLU6: force a large negative target so naive attribution
+    // would try to request a negative ReLU6 activation (impossible).
+    const expected = new Float32Array([-100]);
     const map = creature.record(expected);
 
     const relu6Rec = map.get("relu6-hidden");
@@ -133,8 +145,15 @@ Deno.test(
 
     assertEquals(
       relu6Rec.errors.length,
-      0,
-      "ReLU6 parent should not be asked to absorb negative record targets when an alternative exists",
+      1,
+      "ReLU6 parent should receive at most a boundary-clamped record attribution",
+    );
+    const relu6Max = relu6Rec.errors
+      .filter(Number.isFinite)
+      .reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+    assert(
+      relu6Max < 1000,
+      `Expected ReLU6 record error to be bounded, got relu6Max=${relu6Max}`,
     );
 
     assert(

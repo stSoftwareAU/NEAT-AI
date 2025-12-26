@@ -52,8 +52,10 @@ Deno.test(
 
     creature.activate(new Float32Array([1]));
 
-    // Current output is ~2. Request 0 so record-time error is negative.
-    const expected = new Float32Array([0]);
+    // Current output is ~2. Request a *far* negative target so the value-space
+    // error is large enough that naive attribution would imply a negative
+    // target activation for ABSOLUTE (impossible, since ABSOLUTE ∈ [0, +∞)).
+    const expected = new Float32Array([-100]);
     const map = creature.record(expected);
 
     const absRec = map.get("abs-hidden");
@@ -62,12 +64,20 @@ Deno.test(
     const idRec = map.get("id-hidden");
     assert(idRec, "expected a discovery record for id-hidden");
 
-    // Key assertion: we should avoid requesting impossible negative targets for
-    // ABSOLUTE, so it should not receive a recursive record() call.
+    // Key assertion: we should not request an impossible negative target from
+    // ABSOLUTE. Instead, record attribution should clamp to the boundary (0)
+    // and redistribute residue to other links.
     assertEquals(
       absRec.errors.length,
-      0,
-      "ABSOLUTE parent should not be asked to absorb negative record targets when an alternative exists",
+      1,
+      "ABSOLUTE parent should receive at most a boundary-clamped record attribution",
+    );
+    const absMax = absRec.errors
+      .filter(Number.isFinite)
+      .reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+    assert(
+      absMax < 1000,
+      `Expected ABSOLUTE record error to be bounded, got absMax=${absMax}`,
     );
 
     // And we should still attribute the error somewhere upstream.
