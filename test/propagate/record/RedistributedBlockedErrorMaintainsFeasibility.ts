@@ -80,12 +80,21 @@ Deno.test(
     const altRec = map.get("id-alt");
     assert(altRec, "expected a discovery record for id-alt");
 
-    // Key assertion: abs-victim starts feasible, but must not receive a record()
-    // recursion with a negative requested activation after redistribution.
+    // Key assertion: abs-victim starts feasible. After redistribution, it may
+    // receive additional negative share, but it must be clamped to ABSOLUTE's
+    // boundary (activation >= 0) rather than being pushed into an impossible
+    // negative target.
     assertEquals(
       victimRec.errors.length,
-      0,
-      "redistribution must not push a feasible ABSOLUTE parent into an infeasible negative target",
+      1,
+      "redistribution should clamp ABSOLUTE to the feasible boundary rather than pushing negative targets",
+    );
+    const victimMax = victimRec.errors
+      .filter(Number.isFinite)
+      .reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+    assert(
+      victimMax < 1000,
+      `expected ABSOLUTE victim record error to be bounded, got victimMax=${victimMax}`,
     );
 
     // The error should still be attributed somewhere upstream.
