@@ -55,9 +55,10 @@ function validateThreeX(creature: Creature): void {
  * For 4.x, forward-only is a hard invariant: any recurrent connection is an error,
  * regardless of whether the `forwardOnly` flag is set.
  *
- * If validation fails, this is a BUG in our breeding/mutation/discovery logic
- * that must be fixed at the source. We do NOT silently repair or downgrade 4.x
- * creatures - we write diagnostics and hard fail so the bug can be identified.
+ * If validation fails, this indicates a BUG in our breeding/mutation/discovery logic.
+ * We attempt to repair the creature first (removing recurrent connections), and if
+ * successful, log a warning and continue. This allows production workflows to continue
+ * while still flagging the underlying bug for investigation.
  *
  * See https://github.com/stSoftwareAU/NEAT-AI/issues/956
  */
@@ -69,9 +70,57 @@ function validateFourX(creature: Creature): void {
   } catch (e) {
     const error = e as Error;
 
-    // 4.x forward-only is a hard invariant. Any failure here indicates a bug
-    // in our breeding/mutation/discovery logic. We write diagnostics so the
-    // offending creature can be analysed, then rethrow.
+    // Check if this is a forward-only violation that we can attempt to repair.
+    if (error.name === "SELF_CONNECTION" || error.name === "RECURSIVE_SYNAPSE") {
+      console.warn(
+        `[upgrade] WARNING: 4.x creature (UUID: ${
+          creature.uuid ?? "unknown"
+        }) failed forward-only validation: ` +
+          `${error.name} - ${error.message}. ` +
+          `This indicates a bug in our code. Attempting repair...`,
+      );
+
+      writeDiagnostics({
+        error,
+        prefix: "upgrade-4x-repair",
+        creature: creature.exportJSON(),
+        context: {
+          semanticVersion: creature.semanticVersion,
+          uuid: creature.uuid,
+          forwardOnly: creature.forwardOnly,
+          neuronCount: creature.neurons.length,
+          synapseCount: creature.synapses.length,
+        },
+      });
+
+      // Attempt to repair the creature by removing recurrent connections.
+      try {
+        creature.fix({ forwardOnly: true });
+        creatureValidate(creature, { forwardOnly: true });
+        creature.forwardOnly = true;
+
+        console.warn(
+          `[upgrade] Successfully repaired 4.x creature (UUID: ${
+            creature.uuid ?? "unknown"
+          }). ` +
+            `Please investigate the source of the recurrent connection.`,
+        );
+        return;
+      } catch (fixError) {
+        // Repair failed - fall through to throw the original error.
+        console.error(
+          `[upgrade] CRITICAL: Failed to repair 4.x creature (UUID: ${
+            creature.uuid ?? "unknown"
+          }). ` +
+            `Fix error: ${
+              fixError instanceof Error ? fixError.message : fixError
+            }`,
+        );
+      }
+    }
+
+    // 4.x forward-only is a hard invariant. Any failure that cannot be repaired
+    // indicates a serious bug that must be investigated.
     console.error(
       `[upgrade] CRITICAL: 4.x creature (UUID: ${
         creature.uuid ?? "unknown"
