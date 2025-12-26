@@ -32,6 +32,7 @@ import { CRISPR, type CrisprInterface } from "../reconstruct/CRISPR.ts";
 import { simplify } from "../optimize/Simplify.ts";
 import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { validateAfterDiscoveryOrThrow } from "../discovery/DiscoveryPostValidate.ts";
 
 /**
  * NEAT (NeuroEvolution of Augmenting Topologies) implementation.
@@ -863,6 +864,13 @@ export class Neat {
         r.discover.addHelpfulSynapses,
       );
       if (addedSynapseCreature) {
+        validateAfterDiscoveryOrThrow({
+          baseCreature: fittest,
+          discoveredCreature: addedSynapseCreature,
+          discoveryID: r.discover.ID,
+          operation: "addHelpfulSynapses",
+          feedbackLoop: this.config.feedbackLoop,
+        });
         trainedPopulation.push(addedSynapseCreature);
       }
 
@@ -872,6 +880,13 @@ export class Neat {
         r.discover.removeHarmfulSynapse,
       );
       if (removedSynapseCreature) {
+        validateAfterDiscoveryOrThrow({
+          baseCreature: fittest,
+          discoveredCreature: removedSynapseCreature,
+          discoveryID: r.discover.ID,
+          operation: "removeSynapse",
+          feedbackLoop: this.config.feedbackLoop,
+        });
         trainedPopulation.push(removedSynapseCreature);
 
         if (addedSynapseCreature) {
@@ -882,6 +897,13 @@ export class Neat {
           );
 
           if (combinedSynapseCreature) {
+            validateAfterDiscoveryOrThrow({
+              baseCreature: fittest,
+              discoveredCreature: combinedSynapseCreature,
+              discoveryID: r.discover.ID,
+              operation: "removeSynapse+addHelpfulSynapses",
+              feedbackLoop: this.config.feedbackLoop,
+            });
             trainedPopulation.push(combinedSynapseCreature);
           }
         }
@@ -893,6 +915,13 @@ export class Neat {
         r.discover.candidateSquashes,
       );
       if (changedSquashCreature) {
+        validateAfterDiscoveryOrThrow({
+          baseCreature: fittest,
+          discoveredCreature: changedSquashCreature,
+          discoveryID: r.discover.ID,
+          operation: "changeSquash",
+          feedbackLoop: this.config.feedbackLoop,
+        });
         trainedPopulation.push(changedSquashCreature);
 
         if (addedSynapseCreature) {
@@ -903,6 +932,13 @@ export class Neat {
           );
 
           if (combinedSynapseCreature) {
+            validateAfterDiscoveryOrThrow({
+              baseCreature: fittest,
+              discoveredCreature: combinedSynapseCreature,
+              discoveryID: r.discover.ID,
+              operation: "addHelpfulSynapses+changeSquash",
+              feedbackLoop: this.config.feedbackLoop,
+            });
             trainedPopulation.push(combinedSynapseCreature);
           }
         }

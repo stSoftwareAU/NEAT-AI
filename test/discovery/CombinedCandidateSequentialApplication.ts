@@ -260,6 +260,183 @@ Deno.test(
 );
 
 Deno.test(
+  "buildCombinedFromSuccessful: forward-only (4.x) combinations must not introduce recurrent synapses",
+  () => {
+    // Arrange: a forward-only (feed-forward) base creature.
+    const base = makeTestCreature();
+    base.forwardOnly = true;
+    base.semanticVersion = "4.0.0";
+    base.validate({ forwardOnly: true });
+
+    const baseJSON = base.exportJSON();
+
+    // Candidate A: adds a *back* connection (hidden-C -> hidden-A). This is illegal in forward-only mode.
+    // This simulates a Rust hint that is fine in recurrent mode, but must be rejected/filtered in 4.x.
+    const addBackSynapseJSON = structuredClone(baseJSON);
+    addBackSynapseJSON.synapses.push({
+      fromUUID: "hidden-C",
+      toUUID: "hidden-A",
+      weight: 0.123,
+    });
+    const addBackSynapseCreature = Creature.fromJSON(addBackSynapseJSON);
+    delete addBackSynapseCreature.uuid;
+    CreatureUtil.makeUUID(addBackSynapseCreature);
+
+    const addBackSynapseCandidate: DiscoveryCandidate = {
+      creature: addBackSynapseCreature,
+      change: {
+        type: "add-synapses",
+        description:
+          "Adds back connection hidden-C -> hidden-A (should be rejected in forward-only)",
+      },
+    };
+
+    // Candidate B: a second change so buildCombinedFromSuccessful produces a combination.
+    const removeSynapseJSON = structuredClone(baseJSON);
+    removeSynapseJSON.synapses = removeSynapseJSON.synapses.filter(
+      (s) => !(s.fromUUID === "hidden-B" && s.toUUID === "hidden-C"),
+    );
+    removeSynapseJSON.synapses.push({
+      fromUUID: "hidden-B",
+      toUUID: "output-0",
+      weight: 0.25,
+    });
+    const removeSynapseCreature = Creature.fromJSON(removeSynapseJSON);
+    delete removeSynapseCreature.uuid;
+    removeSynapseCreature.fix();
+    CreatureUtil.makeUUID(removeSynapseCreature);
+
+    const removeSynapseCandidate: DiscoveryCandidate = {
+      creature: removeSynapseCreature,
+      change: {
+        type: "remove-synapse",
+        description: "Removed hidden-B -> hidden-C synapse",
+        synapseDetails: {
+          fromNeuronUUID: "hidden-B",
+          toNeuronUUID: "hidden-C",
+        },
+      },
+    };
+
+    // Act: combine successful candidates.
+    const combined = buildCombinedFromSuccessful(
+      base,
+      "TEST_DISCOVERY",
+      [addBackSynapseCandidate, removeSynapseCandidate],
+    );
+    // Assert: either no combination is produced (because the illegal synapse is rejected),
+    // or any produced combination must still be forward-only valid.
+    for (const candidate of combined) {
+      candidate.creature.validate({ forwardOnly: true });
+    }
+  },
+);
+
+Deno.test(
+  "buildCombinedFromSuccessful: add-neurons (forward-only 4.x) filters recurrent synapses instead of relying on fix()",
+  () => {
+    // Arrange: forward-only base creature.
+    const base = makeTestCreature();
+    base.forwardOnly = true;
+    base.semanticVersion = "4.0.0";
+    base.validate({ forwardOnly: true });
+
+    const baseJSON = base.exportJSON();
+
+    // Candidate A: add a new neuron, but also (incorrectly) includes a back connection
+    // involving that new neuron. In forward-only mode this must be filtered out
+    // *before* validation, otherwise DiscoveryCandidates falls back to fix().
+    const addNeuronsJSON = structuredClone(baseJSON);
+    addNeuronsJSON.neurons.splice(0, 0, {
+      type: "hidden",
+      uuid: "hidden-D",
+      squash: "TANH",
+      bias: 0.15,
+    });
+    addNeuronsJSON.synapses.push(
+      { fromUUID: "input-0", toUUID: "hidden-D", weight: 0.4 },
+      { fromUUID: "hidden-D", toUUID: "output-0", weight: 0.4 },
+      // Illegal in forward-only: hidden-C is after hidden-D in the neurone list,
+      // so this becomes a back connection (from > to) once indices are rebuilt.
+      { fromUUID: "hidden-C", toUUID: "hidden-D", weight: 0.123 },
+    );
+
+    const addNeuronsCreature = Creature.fromJSON(addNeuronsJSON);
+    delete addNeuronsCreature.uuid;
+    addNeuronsCreature.validate(); // Recurrent is allowed in general mode.
+    CreatureUtil.makeUUID(addNeuronsCreature);
+
+    const addNeuronsCandidate: DiscoveryCandidate = {
+      creature: addNeuronsCreature,
+      change: {
+        type: "add-neurons",
+        description:
+          "Adds hidden-D but includes an illegal back connection hidden-C -> hidden-D",
+      },
+    };
+
+    // Candidate B: ensure we actually build a combination.
+    const removeSynapseJSON = structuredClone(baseJSON);
+    removeSynapseJSON.synapses = removeSynapseJSON.synapses.filter(
+      (s) => !(s.fromUUID === "hidden-A" && s.toUUID === "hidden-C"),
+    );
+    removeSynapseJSON.synapses.push({
+      fromUUID: "hidden-A",
+      toUUID: "output-0",
+      weight: 0.25,
+    });
+    const removeSynapseCreature = Creature.fromJSON(removeSynapseJSON);
+    delete removeSynapseCreature.uuid;
+    removeSynapseCreature.fix();
+    CreatureUtil.makeUUID(removeSynapseCreature);
+
+    const removeSynapseCandidate: DiscoveryCandidate = {
+      creature: removeSynapseCreature,
+      change: {
+        type: "remove-synapse",
+        description: "Removed hidden-A -> hidden-C synapse",
+        synapseDetails: {
+          fromNeuronUUID: "hidden-A",
+          toNeuronUUID: "hidden-C",
+        },
+      },
+    };
+
+    // Act: capture warnings so we can detect if DiscoveryCandidates had to fall back to fix().
+    const originalWarn = console.warn;
+    const warnings: unknown[][] = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args);
+    };
+
+    try {
+      const combined = buildCombinedFromSuccessful(
+        base,
+        "TEST_DISCOVERY",
+        [addNeuronsCandidate, removeSynapseCandidate],
+      );
+
+      // Assert: we should not need to call fix() in the forward-only path.
+      // If a recurrent synapse slips through, validation fails and we warn before fixing.
+      assertEquals(
+        warnings.length,
+        0,
+        `Expected no warnings (no fix() fallback), got ${warnings.length}: ${
+          warnings.map((w) => w.join(" ")).join(" | ")
+        }`,
+      );
+
+      // Sanity: any produced combination remains forward-only valid.
+      for (const candidate of combined) {
+        candidate.creature.validate({ forwardOnly: true });
+      }
+    } finally {
+      console.warn = originalWarn;
+    }
+  },
+);
+
+Deno.test(
   "buildCombinedFromSuccessful: add-neurons chain keeps new neurons in candidate order (new -> new -> existing)",
   () => {
     const base = makeTestCreature();

@@ -17,6 +17,7 @@ import { Synapse } from "../../src/architecture/Synapse.ts";
 Deno.test("AddConnection: forward-only throws if the creature already contains a recurrent synapse", () => {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
   creature.forwardOnly = true;
+  creature.semanticVersion = "4.0.0";
 
   const hiddenIndex = creature.input;
   const outputIndex = creature.neurons.length - 1;
@@ -33,7 +34,11 @@ Deno.test("AddConnection: forward-only throws if the creature already contains a
   creature.disconnect(0, hiddenIndex);
 
   const add = new AddConnection(creature);
-  assertThrows(() => add.mutate());
+  assertThrows(
+    () => add.mutate(),
+    Error,
+    "CRITICAL",
+  );
 
   // Sanity: the creature is indeed invalid forward-only due to the injected synapse.
   assertEquals(creature.getSynapse(outputIndex, hiddenIndex) !== null, true);

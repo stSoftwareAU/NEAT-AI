@@ -2,6 +2,7 @@
   "version": "0.2",
   "language": "en-GB",
   "words": [
+    "AJSON",
     "mkdirp",
     "tsmerge",
     "githubusercontent",
@@ -143,6 +144,7 @@
     "fallbacks",
     "Δerr",
     "Δscore",
-    "knowably"
+    "knowably",
+    "BJSON"
   ]
 }

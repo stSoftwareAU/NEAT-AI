@@ -337,7 +337,7 @@ export class Mutator {
             // Forward-only 4.x is a hard guarantee. We must crash fast (even on
             // unattended machines) so we can locate the logic that introduced a
             // recurrent connection into a supposedly forward-only creature.
-            if (creature.forwardOnly === true && major >= 4) {
+            if (major >= 4) {
               throw new Error(
                 `[Mutator] CRITICAL: forward-only 4.x creature became invalid after '${method.name}': ` +
                   `${error.name} - ${error.message}. ` +
@@ -347,6 +347,39 @@ export class Mutator {
             }
 
             creature.fix({ forwardOnly: true });
+
+            // Re-validate after fix() so we don't carry a corrupted creature forward.
+            // Once validated in a forward-only run, mark + upgrade to 4.x.
+            try {
+              creature.validate({ forwardOnly: true });
+            } catch (_stillInvalid) {
+              // Defensive fallback: if fix() did not fully remove recurrent links,
+              // explicitly filter self/back connections and re-validate.
+              //
+              // Australian English: this is intentionally redundant because this path
+              // can run unattended and we prefer deterministic recovery for pre-4.x
+              // creatures rather than flaky test failures.
+              creature.synapses = creature.synapses.filter((s) =>
+                s.from !== s.to && s.from < s.to
+              );
+              creature.synapses.sort((a, b) =>
+                a.from === b.from ? a.to - b.to : a.from - b.from
+              );
+              creature.clearCache();
+              // After filtering recurrent synapses, run a forward-only fix pass again.
+              //
+              // Rationale (Australian English): filtering can remove a required IF
+              // connection (or other structural invariant). Running fix() here is
+              // acceptable because this is *repair*, not candidate generation.
+              creature.fix({ forwardOnly: true });
+              creature.validate({ forwardOnly: true });
+            }
+            if (this.config.feedbackLoop !== true) {
+              creature.forwardOnly = true;
+            }
+            if (creature.forwardOnly === true) {
+              upgradeSemanticVersionIfForwardOnlyConfirmed(creature);
+            }
           } else {
             // Keep behaviour consistent with Offspring.breed(): only forward-only
             // violations are repaired here; all other validation failures must surface.
