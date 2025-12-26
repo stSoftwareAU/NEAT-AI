@@ -4,6 +4,24 @@ import { Neuron } from "../architecture/Neuron.ts";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil, Upgrade } from "../../mod.ts";
 
+function getMajorVersion(version: string | undefined): number {
+  if (!version) return 0;
+  const major = Number.parseInt(version.split(".")[0], 10);
+  return Number.isNaN(major) ? 0 : major;
+}
+
+function upgradeSemanticVersionIfForwardOnlyConfirmed(creature: Creature) {
+  // Once forward-only is confirmed, bump 2.x.x/3.x.x → 4.0.0.
+  // Backwards compatibility: never downgrade (e.g. 4.1.2 stays 4.1.2).
+  const version = creature.semanticVersion;
+  const match = version ? /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(version) : null;
+  if (!match) return;
+  const major = Number.parseInt(match[1], 10);
+  if (major === 2 || major === 3) {
+    creature.semanticVersion = "4.0.0";
+  }
+}
+
 /**
  * Interface representing the structure of the CRISPR modification data.
  */
@@ -401,6 +419,8 @@ export class CRISPR {
     let alreadyProcessed = false;
 
     const uuid = CreatureUtil.makeUUID(this.creature);
+    const enforceForwardOnly = this.creature.forwardOnly === true ||
+      getMajorVersion(this.creature.semanticVersion) >= 4;
     this.creature.neurons.forEach((neuron) => {
       assert(neuron.uuid !== undefined, "missing uuid");
 
@@ -435,7 +455,16 @@ export class CRISPR {
     delete modifiedCreature.memetic;
 
     try {
-      modifiedCreature.validate();
+      if (enforceForwardOnly) {
+        // Forward-only is a hard invariant for semanticVersion 4.x (and for any
+        // creature explicitly marked as forward-only). CRISPR must never be able
+        // to introduce recurrent connections into such creatures.
+        modifiedCreature.validate({ forwardOnly: true });
+        modifiedCreature.forwardOnly = true;
+        upgradeSemanticVersionIfForwardOnlyConfirmed(modifiedCreature);
+      } else {
+        modifiedCreature.validate();
+      }
     } catch (e) {
       const name = `.CRISPR-ERROR-${dna.id}.json`;
       Deno.writeTextFileSync(

@@ -1,11 +1,11 @@
+import type { CrisprInterface } from "../../mod.ts";
 import type {
   CreatureExport,
   CreatureInternal,
 } from "../architecture/CreatureInterfaces.ts";
 import type { CostName } from "../Costs.ts";
-import type { MutationInterface } from "../NEAT/MutationInterface.ts";
 import type { SelectionInterface } from "../methods/Selection.ts";
-import type { CrisprInterface } from "../../mod.ts";
+import type { MutationInterface } from "../NEAT/MutationInterface.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 
 /**
