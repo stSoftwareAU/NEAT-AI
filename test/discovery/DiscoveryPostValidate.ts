@@ -89,7 +89,7 @@ Deno.test(
     base.validate({ forwardOnly: true });
 
     // Simulate a discovered creature that lost its semanticVersion during
-    // export/import (Australian English: this happens in distributed workflows).
+    // export/import (: this happens in distributed workflows).
     const discovered = Creature.fromJSON(base.exportJSON());
     discovered.forwardOnly = true;
     discovered.semanticVersion = "2.0.0";

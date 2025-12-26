@@ -294,7 +294,7 @@ export class Mutator {
       // Forward-only mode: if the creature is marked forward-only or the run is not using
       // feedback loops, ensure mutations can't accidentally keep recurrent connections.
       //
-      // Important: semanticVersion 4.x is a hard forward-only
+      // Important (Australian English): semanticVersion 4.x is a hard forward-only
       // invariant, even if `creature.forwardOnly` is missing (legacy state/export).
       const enforceForwardOnly = this.config.feedbackLoop !== true ||
         creature.forwardOnly === true ||
@@ -362,7 +362,7 @@ export class Mutator {
               // Defensive fallback: if fix() did not fully remove recurrent links,
               // explicitly filter self/back connections and re-validate.
               //
-              // Australian English: this is intentionally redundant because this path
+              // : this is intentionally redundant because this path
               // can run unattended and we prefer deterministic recovery for pre-4.x
               // creatures rather than flaky test failures.
               creature.synapses = creature.synapses.filter((s) =>
@@ -374,7 +374,7 @@ export class Mutator {
               creature.clearCache();
               // After filtering recurrent synapses, run a forward-only fix pass again.
               //
-              // Rationale:filtering can remove a required IF
+              // Rationale (Australian English): filtering can remove a required IF
               // connection (or other structural invariant). Running fix() here is
               // acceptable because this is *repair*, not candidate generation.
               creature.fix({ forwardOnly: true });
