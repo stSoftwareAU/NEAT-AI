@@ -1642,13 +1642,24 @@ function applyChangeToCreature(
           updatedNeurons.add(`input-${i}`);
         }
 
+        const uuidToIndexAfterInsertion = enforceForwardOnly
+          ? buildUuidToIndexMap(creatureJSON)
+          : undefined;
+
         // Find synapses connected to these new neurons
         // Only include synapses where BOTH endpoints exist in current creature
         const newSynapses = candidateJSON.synapses.filter(
           (s) =>
             (newNeuronUUIDs.has(s.fromUUID) || newNeuronUUIDs.has(s.toUUID)) &&
             updatedNeurons.has(s.fromUUID) &&
-            updatedNeurons.has(s.toUUID),
+            updatedNeurons.has(s.toUUID) &&
+            (!enforceForwardOnly ||
+              (() => {
+                const from = uuidToIndexAfterInsertion?.get(s.fromUUID);
+                const to = uuidToIndexAfterInsertion?.get(s.toUUID);
+                // Forward-only: reject self-loops and back connections.
+                return from !== undefined && to !== undefined && from < to;
+              })()),
         );
         creatureJSON.synapses.push(...newSynapses);
 

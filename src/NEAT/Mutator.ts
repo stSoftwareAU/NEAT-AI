@@ -358,7 +358,7 @@ export class Mutator {
               //
               // Australian English: this is intentionally redundant because this path
               // can run unattended and we prefer deterministic recovery for pre-4.x
-              // creatures rather than flakey test failures.
+              // creatures rather than flaky test failures.
               creature.synapses = creature.synapses.filter((s) =>
                 s.from !== s.to && s.from < s.to
               );
