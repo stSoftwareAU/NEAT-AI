@@ -55,6 +55,7 @@ export function validateAfterDiscoveryOrThrow(args: {
     if (isHardForwardOnlyInvariant) {
       creatureValidate(discoveredCreature, { forwardOnly: true });
       discoveredCreature.forwardOnly = true;
+      bumpToFourIfForwardOnlyConfirmed(discoveredCreature);
       return;
     }
 

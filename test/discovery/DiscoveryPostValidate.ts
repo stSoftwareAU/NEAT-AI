@@ -81,6 +81,38 @@ Deno.test(
 );
 
 Deno.test(
+  "validateAfterDiscoveryOrThrow: hard invariant bumps discovered (2.x/3.x) to 4.x when base is 4.x",
+  () => {
+    const base = new Creature(2, 1, { layers: [{ count: 1 }] });
+    base.forwardOnly = true;
+    base.semanticVersion = "4.0.0";
+    base.validate({ forwardOnly: true });
+
+    // Simulate a discovered creature that lost its semanticVersion during
+    // export/import (Australian English: this happens in distributed workflows).
+    const discovered = Creature.fromJSON(base.exportJSON());
+    discovered.forwardOnly = true;
+    discovered.semanticVersion = "2.0.0";
+
+    validateAfterDiscoveryOrThrow({
+      baseCreature: base,
+      discoveredCreature: discovered,
+      discoveryID: "TESTDISC",
+      operation: "unit-test",
+      feedbackLoop: false,
+    });
+
+    // With a 4.x base, forward-only is a hard invariant; any validated result
+    // should be marked + upgraded to 4.x for consistency.
+    if (!discovered.semanticVersion.startsWith("4.")) {
+      throw new Error(
+        `Expected semanticVersion to be bumped to 4.x, got ${discovered.semanticVersion}`,
+      );
+    }
+  },
+);
+
+Deno.test(
   "validateAfterDiscoveryOrThrow: does not throw when feedbackLoop is enabled and base is not forward-only",
   () => {
     const base = new Creature(2, 1, { layers: [{ count: 1 }] });
