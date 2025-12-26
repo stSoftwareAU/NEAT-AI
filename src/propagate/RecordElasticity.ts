@@ -54,7 +54,7 @@ const HARD_RANGE_SQUASHES = new Set<string>([
 // During record-time attribution (Explorer/discovery analysis), we prefer to
 // avoid pushing these squashes negative when there is an alternative synapse.
 //
-// Rationale (Australian English): while some of these can technically output
+// Rationale:while some of these can technically output
 // negative values, pushing them negative during attribution can create large,
 // misleading neuron-level errors that then get redistributed elsewhere.
 const NEGATIVE_RESIST_SQUASHES = new Set<string>([
