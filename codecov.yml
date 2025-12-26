@@ -18,6 +18,9 @@ coverage:
 # Ignore files that require external dependencies (Rust discovery library)
 # These files have low coverage in CI because the Rust extension isn't available
 ignore:
+  # Docs/config-only changes are not exercised by runtime coverage instrumentation.
+  # Keep them out of patch coverage to avoid failing PRs that only adjust tooling.
+  - "docs/cspell.json"
   - "src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts"
   - "src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts"
   - "src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts"
