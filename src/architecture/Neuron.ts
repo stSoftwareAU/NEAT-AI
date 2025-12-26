@@ -347,7 +347,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     // Forward-only safety: never create a self-loop as a "last resort" outward
     // connection when the creature is explicitly marked as forward-only.
     //
-    // Rationale (Australian English): self-loops are valid in recurrent/memory
+    // Rationale:self-loops are valid in recurrent/memory
     // mode, but they must not be introduced during `fix()` for forward-only
     // creatures.
     const isForwardOnly = this.creature.forwardOnly === true;

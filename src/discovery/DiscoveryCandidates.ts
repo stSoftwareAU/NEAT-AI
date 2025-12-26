@@ -64,7 +64,7 @@ function getMajorVersion(version: string | undefined): number {
 /**
  * Upgrade 2.x/3.x creatures to 4.x once forward-only validity is confirmed.
  *
- * Rationale (Australian English): forward-only became a hard invariant in 4.x.
+ * Rationale:forward-only became a hard invariant in 4.x.
  * We should mark a creature as 4.x whenever we have just validated it as
  * forward-only, even if no repair was needed, so downstream logic treats
  * structurally identical creatures consistently.

@@ -3,7 +3,7 @@ import type { DataRecordInterface } from "../DataSet.ts";
 /**
  * Submits a buffered discovery recording batch in a non-destructive way.
  *
- * Why (Australian English): The directory recorder buffers samples and then
+ * Why:The directory recorder buffers samples and then
  * submits them to `DiscoverStructure.record()`. Under tight deadlines, a timeout
  * race can cause `record()` to return false even after the caller has decided to
  * flush. If we clear buffers before knowing `record()` accepted the data, we can

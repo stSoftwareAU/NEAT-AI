@@ -73,7 +73,7 @@ export class AddConnection implements RadioactiveInterface {
 
       // Forward-only invariant: neuron indices must be consistent.
       //
-      // Rationale (Australian English): if `neuron.index` does not match its
+      // Rationale:if `neuron.index` does not match its
       // position in the `creature.neurons[]` array, the creature is corrupted.
       // In forward-only mode we must fail fast rather than attempting to
       // continue in a partially-valid state.
