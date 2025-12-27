@@ -1,50 +1,32 @@
+import { assert } from "@std/assert";
 import { removeTag } from "@stsoftware/tags/mod";
 import { Creature, CreatureUtil, Mutation } from "../../mod.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { discover } from "../blackbox/Discover.ts";
 import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
-import type { RadioactiveInterface } from "../mutate/RadioactiveInterface.ts";
-import { AddNeuron } from "../mutate/AddNeuron.ts";
-import { SubNeuron } from "../mutate/SubNeuron.ts";
-import { AddConnection } from "../mutate/AddConnection.ts";
-import { SubConnection } from "../mutate/SubConnection.ts";
-import { ModWeight } from "../mutate/ModWeight.ts";
-import { ModBias } from "../mutate/ModBias.ts";
-import { assert } from "@std/assert";
-import { ModActivation as ModSquash } from "../mutate/ModSquash.ts";
-import { AddSelfCon } from "../mutate/AddSelfCon.ts";
-import { SubSelfCon } from "../mutate/SubSelfCon.ts";
 import { AddBackCon } from "../mutate/AddBackCon.ts";
+import { AddConnection } from "../mutate/AddConnection.ts";
+import { AddNeuron } from "../mutate/AddNeuron.ts";
+import { AddSelfCon } from "../mutate/AddSelfCon.ts";
+import { ModBias } from "../mutate/ModBias.ts";
+import { ModActivation as ModSquash } from "../mutate/ModSquash.ts";
+import { ModWeight } from "../mutate/ModWeight.ts";
+import type { RadioactiveInterface } from "../mutate/RadioactiveInterface.ts";
 import { SubBackCon } from "../mutate/SubBackCon.ts";
+import { SubConnection } from "../mutate/SubConnection.ts";
+import { SubNeuron } from "../mutate/SubNeuron.ts";
+import { SubSelfCon } from "../mutate/SubSelfCon.ts";
 import { SwapNeurons } from "../mutate/SwapNeurons.ts";
-
-function upgradeSemanticVersionIfForwardOnlyConfirmed(creature: Creature) {
-  // Once forward-only is confirmed, bump 2.x.x/3.x.x → 4.0.0.
-  // Backwards compatibility: never downgrade (e.g. 4.1.2 stays 4.1.2).
-  const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(creature.semanticVersion);
-  if (!match) return;
-  const major = Number.parseInt(match[1], 10);
-  if (major === 2 || major === 3) {
-    creature.semanticVersion = "4.0.0";
-  }
-}
+import {
+  getMajorVersion,
+  upgradeSemanticVersionIfForwardOnlyConfirmed,
+} from "../upgrade/Upgrade.ts";
 
 export class Mutator {
   private config: NeatConfig;
   constructor(config: NeatConfig) {
     this.config = config;
-  }
-
-  /**
-   * Extracts the major version number from a semantic version string.
-   * @param version - Semantic version string (e.g. "4.0.0")
-   * @returns The major version number, or 0 if invalid/undefined
-   */
-  private getMajorVersion(version: string | undefined): number {
-    if (!version) return 0;
-    const major = parseInt(version.split(".")[0], 10);
-    return Number.isNaN(major) ? 0 : major;
   }
 
   /**
@@ -139,7 +121,7 @@ export class Mutator {
       .mutation;
 
     const feedbackLoop = this.config.feedbackLoop;
-    const majorVersion = this.getMajorVersion(creature.semanticVersion);
+    const majorVersion = getMajorVersion(creature.semanticVersion);
     const forwardOnly = majorVersion >= 4 || creature.forwardOnly === true;
 
     // Avoid infinite loops: pre-filter for methods that can actually run under
@@ -220,7 +202,7 @@ export class Mutator {
     // Clear the flag so subsequent mutation/breeding can introduce memory connections.
     // However, semanticVersion 4.x is a hard forward-only invariant and must never
     // be cleared/relaxed.
-    const majorVersion = this.getMajorVersion(creature.semanticVersion);
+    const majorVersion = getMajorVersion(creature.semanticVersion);
     if (
       this.config.feedbackLoop === true &&
       creature.forwardOnly === true &&

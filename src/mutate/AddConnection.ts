@@ -4,12 +4,7 @@ import type { Creature } from "../Creature.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
 import { Synapse } from "../architecture/Synapse.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
-
-function getMajorVersion(version: string | undefined): number {
-  if (!version) return 0;
-  const major = Number.parseInt(version.split(".")[0], 10);
-  return Number.isNaN(major) ? 0 : major;
-}
+import { getMajorVersion } from "../upgrade/Upgrade.ts";
 
 function bumpToFourIfForwardOnlyConfirmed(creature: Creature): void {
   const major = getMajorVersion(creature.semanticVersion);
