@@ -19,10 +19,28 @@ export const SEMANTIC_MAJOR_VERSION = 4;
  * @param version - Semantic version string (e.g., "3.1.0", "2.0.0")
  * @returns The major version number, or 0 if invalid
  */
-function getMajorVersion(version: string | undefined): number {
+export function getMajorVersion(version: string | undefined): number {
   if (!version) return 0;
   const major = parseInt(version.split(".")[0], 10);
   return Number.isNaN(major) ? 0 : major;
+}
+
+/**
+ * Once forward-only has been confirmed by the caller, bump legacy 2.x.x/3.x.x
+ * creatures to 4.0.0.
+ *
+ * Backwards compatibility: never downgrade (e.g. 4.1.2 stays 4.1.2).
+ */
+export function upgradeSemanticVersionIfForwardOnlyConfirmed(
+  creature: { semanticVersion?: string },
+): void {
+  const version = creature.semanticVersion;
+  const match = version ? /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(version) : null;
+  if (!match) return;
+  const major = Number.parseInt(match[1], 10);
+  if (major === 2 || major === 3) {
+    creature.semanticVersion = "4.0.0";
+  }
 }
 
 /**

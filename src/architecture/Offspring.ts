@@ -4,34 +4,16 @@ import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
 import { editParentByIndex } from "../breed/EditParentByIndex.ts";
 import { geneticCompatibility } from "../breed/GeneticCompatibility.ts";
 import { Creature } from "../Creature.ts";
-import { upgrade } from "../upgrade/Upgrade.ts";
+import {
+  getMajorVersion,
+  upgrade,
+  upgradeSemanticVersionIfForwardOnlyConfirmed,
+} from "../upgrade/Upgrade.ts";
 import { writeDiagnostics } from "../utils/Diagnostics.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { Neuron } from "./Neuron.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
-
-function upgradeSemanticVersionIfForwardOnlyConfirmed(creature: Creature) {
-  // Once forward-only is confirmed, bump 2.x.x/3.x.x → 4.0.0.
-  // Backwards compatibility: never downgrade (e.g. 4.1.2 stays 4.1.2).
-  const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(creature.semanticVersion);
-  if (!match) return;
-  const major = Number.parseInt(match[1], 10);
-  if (major === 2 || major === 3) {
-    creature.semanticVersion = "4.0.0";
-  }
-}
-
-/**
- * Extracts the major version number from a semantic version string.
- * @param version - Semantic version string (e.g., "3.1.0", "2.0.0")
- * @returns The major version number, or 0 if invalid/undefined
- */
-function getMajorVersion(version: string | undefined): number {
-  if (!version) return 0;
-  const major = parseInt(version.split(".")[0], 10);
-  return Number.isNaN(major) ? 0 : major;
-}
 
 class OffspringError extends Error {
   constructor(message: string) {

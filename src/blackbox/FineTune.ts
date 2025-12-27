@@ -50,7 +50,28 @@ export function quantumAdjust(
   return { value: currentBest, changed: false };
 }
 
-function addMissingSynapses(from: CreatureExport, to: CreatureExport) {
+function addMissingSynapses(
+  from: CreatureExport,
+  to: CreatureExport,
+  options: { forwardOnly: boolean },
+) {
+  const forwardOnly = options.forwardOnly === true;
+
+  // In forward-only mode, a synapse is valid only when its source neuron appears
+  // earlier than its destination neuron in the *target* creature's ordering.
+  //
+  // Important (Australian English): neuron UUIDs do not encode ordering; two valid
+  // forward-only creatures can share the same neurons but have different index
+  // orders. Copying a synapse by UUID across those orderings can create a
+  // recurrent/backward connection in the target, corrupting the creature.
+  const toIndexByUUID = new Map<string, number>();
+  for (let i = 0; i < to.input; i++) {
+    toIndexByUUID.set(`input-${i}`, i);
+  }
+  for (let i = 0; i < to.neurons.length; i++) {
+    toIndexByUUID.set(to.neurons[i].uuid, to.input + i);
+  }
+
   const toNeuronsMap = new Map<
     string,
     { type: string; squash?: string } | null
@@ -76,6 +97,14 @@ function addMissingSynapses(from: CreatureExport, to: CreatureExport) {
 
   from.synapses.forEach((s) => {
     if (toNeuronsMap.has(s.fromUUID) && toNeuronsMap.has(s.toUUID)) {
+      if (forwardOnly) {
+        const fromIndex = toIndexByUUID.get(s.fromUUID);
+        const toIndex = toIndexByUUID.get(s.toUUID);
+        // If we cannot resolve indices, do not attempt to add the synapse.
+        if (fromIndex === undefined || toIndex === undefined) return;
+        // Reject self-loops and backward/recurrent connections in forward-only mode.
+        if (fromIndex >= toIndex) return;
+      }
       if (!synapsesSet.has(`${s.fromUUID}->${s.toUUID}`)) {
         const toSynapse: SynapseExport = JSON.parse(JSON.stringify(s));
         toSynapse.weight = 0;
@@ -117,8 +146,8 @@ function tuneRandomize(
     };
   }
 
-  addMissingSynapses(fittestJSON, previousJSON);
-  addMissingSynapses(previousJSON, fittestJSON);
+  addMissingSynapses(fittestJSON, previousJSON, { forwardOnly });
+  addMissingSynapses(previousJSON, fittestJSON, { forwardOnly });
 
   const uuidNodeMap = new Map<string, NeuronExport>();
 
@@ -265,7 +294,13 @@ export function fineTuneImprovement(
     }
   }
 
-  const resultSame = tuneRandomize(fittest, previousFittest, false, backtrack);
+  const forwardOnly = feedbackLoop !== true;
+  const resultSame = tuneRandomize(
+    fittest,
+    previousFittest,
+    forwardOnly,
+    backtrack,
+  );
   if (resultSame.tuned) {
     const randomUUID = CreatureUtil.makeUUID(resultSame.tuned);
     if (!UUIDs.has(randomUUID)) {
@@ -282,7 +317,7 @@ export function fineTuneImprovement(
     const resultRandomize = tuneRandomize(
       fittest,
       previousFittest,
-      false,
+      forwardOnly,
       backtrack,
     );
     if (resultRandomize.tuned) {

@@ -1,5 +1,6 @@
 import type { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import { getMajorVersion } from "../upgrade/Upgrade.ts";
 
 /**
  * Validate a creature immediately after applying discovery changes.
@@ -104,12 +105,6 @@ export function validateAfterDiscoveryOrThrow(args: {
         `Error=${error.name}: ${error.message}.${detail}`,
     );
   }
-}
-
-function getMajorVersion(version: string | undefined): number {
-  if (!version) return 0;
-  const major = Number.parseInt(version.split(".")[0], 10);
-  return Number.isNaN(major) ? 0 : major;
 }
 
 function bumpToFourIfForwardOnlyConfirmed(creature: Creature): void {

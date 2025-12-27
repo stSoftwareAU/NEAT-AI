@@ -49,17 +49,7 @@ import {
 } from "../compact/CompactUtils.ts";
 import { Creature } from "../Creature.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
-
-/**
- * Extract the major version from a semantic version string.
- *
- * Invalid/undefined versions are treated as 0.
- */
-function getMajorVersion(version: string | undefined): number {
-  if (!version) return 0;
-  const major = Number.parseInt(version.split(".")[0], 10);
-  return Number.isNaN(major) ? 0 : major;
-}
+import { getMajorVersion } from "../upgrade/Upgrade.ts";
 
 /**
  * Upgrade 2.x/3.x creatures to 4.x once forward-only validity is confirmed.
