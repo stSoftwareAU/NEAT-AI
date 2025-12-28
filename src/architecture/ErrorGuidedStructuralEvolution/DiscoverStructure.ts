@@ -416,6 +416,21 @@ export class DiscoverStructure {
     includeNeuron: boolean;
     result: RustAnalyzeAllResult;
   };
+  /**
+   * Lightweight fallback cache for focus selection.
+   *
+   * In rare cases the Rust focus ranking can return an empty list even when
+   * discovery recording succeeded (typically under very tight CI timing or
+   * when the Rust analyser declines to emit focus scores).
+   *
+   * We keep a per-neuron running total of absolute error observed during
+   * `record()` so `listViableNeurons()` can still return a non-empty list.
+   *
+   * Note: this is not a replacement for Rust analysis; it only prevents the
+   * selection pipeline from collapsing to "no candidates" due to an empty
+   * ranking response.
+   */
+  private recordedNeuronTotalAbsError = new Map<string, number>();
   private analysisTimeoutGuardEnabled = true;
   private disableCleanup = false;
   private skipRecordPhase = false;
@@ -921,6 +936,23 @@ export class DiscoverStructure {
         this.rustAccumulatedData.push(record);
         this.rustAccumulatedNeuronData.push(discoverMap);
         this.rustAccumulatedEstimatedBytes += this.rustEstimatedBytesPerSample;
+
+        // Maintain a lightweight per-neuron error aggregate as a fallback focus ranking.
+        for (const [uuid, rec] of discoverMap) {
+          let sumAbs = 0;
+          for (const err of rec.errors) {
+            if (Number.isFinite(err)) {
+              sumAbs += Math.abs(err);
+            }
+          }
+          if (sumAbs > 0) {
+            const prev = this.recordedNeuronTotalAbsError.get(uuid) ?? 0;
+            this.recordedNeuronTotalAbsError.set(uuid, prev + sumAbs);
+          } else if (!this.recordedNeuronTotalAbsError.has(uuid)) {
+            // Ensure the neuron appears in fallback ranking even if the error is zero.
+            this.recordedNeuronTotalAbsError.set(uuid, 0);
+          }
+        }
       } catch (error) {
         // If we hit the excessive record() calls error, add context about which sample
         if (
@@ -3093,8 +3125,25 @@ export class DiscoverStructure {
     }
 
     const rustResult = this.tryRustFocusRanking(targetCount);
-    if (rustResult) {
+    if (rustResult && rustResult.length > 0) {
       return rustResult;
+    }
+    if (
+      rustResult && rustResult.length === 0 &&
+      this.recordedNeuronTotalAbsError.size > 0
+    ) {
+      this.log(
+        "warn",
+        "Rust focus ranking returned 0 neuron(s). Falling back to local recorded error aggregation for focus selection.",
+      );
+      return this.fallbackViableNeuronsFromRecordedErrors(targetCount);
+    }
+    if (!rustResult && this.recordedNeuronTotalAbsError.size > 0) {
+      this.log(
+        "warn",
+        "Rust focus ranking unavailable. Falling back to local recorded error aggregation for focus selection.",
+      );
+      return this.fallbackViableNeuronsFromRecordedErrors(targetCount);
     }
 
     // Rust discovery is required - no fallback
@@ -3105,6 +3154,29 @@ export class DiscoverStructure {
       `   Ensure NEAT-AI-Discovery Rust library is properly built and available.`,
     );
     return [];
+  }
+
+  private fallbackViableNeuronsFromRecordedErrors(
+    targetCount?: number,
+  ): NeuronErrorInfo[] {
+    const results: NeuronErrorInfo[] = [];
+    for (const neuron of this.creature.neurons) {
+      if (!this.isSelectableNeuron(neuron as { type: string })) {
+        continue;
+      }
+      const totalError = this.recordedNeuronTotalAbsError.get(neuron.uuid) ?? 0;
+      const impact = this.calculateNeuronImpact(neuron.uuid);
+      results.push({
+        uuid: neuron.uuid,
+        totalError: Number.isFinite(totalError) ? totalError : 0,
+        impact: Number.isFinite(impact) ? impact : 0,
+      });
+    }
+    results.sort((a, b) => b.totalError - a.totalError);
+    if (targetCount && results.length > targetCount) {
+      return results.slice(0, targetCount);
+    }
+    return results;
   }
 
   private tryRustFocusRanking(

@@ -186,6 +186,11 @@ export function createNeatConfig(options: NeatOptions): NeatConfig {
     discoveryBaseDirectory: options.discoveryBaseDirectory,
     discoverySkipRecordPhase: options.discoverySkipRecordPhase ?? false,
     discoveryFailureCacheDir: options.discoveryFailureCacheDir,
+    discoverySuccessCacheDir: options.discoverySuccessCacheDir,
+    discoveryReplayMaxSingles: options.discoveryReplayMaxSingles ??
+      Math.max(2 * (options.threads ?? 1), 10),
+    discoveryReplayMaxPairwise: options.discoveryReplayMaxPairwise ?? 10,
+    discoveryReplayMaxTriples: options.discoveryReplayMaxTriples ?? 8,
     discoveryMinCandidatesPerCategory: {
       ...DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY,
       ...options.discoveryMinCandidatesPerCategory,
