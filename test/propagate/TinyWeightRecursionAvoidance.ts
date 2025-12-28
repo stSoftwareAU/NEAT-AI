@@ -18,7 +18,7 @@ Deno.test(
       output: 1,
       neurons: [
         {
-          uuid: "logi-hidden",
+          uuid: "logistic-hidden",
           type: "hidden",
           squash: LOGISTIC.NAME,
           bias: 0,
@@ -31,10 +31,10 @@ Deno.test(
         },
       ],
       synapses: [
-        { fromUUID: "input-0", toUUID: "logi-hidden", weight: 1 },
+        { fromUUID: "input-0", toUUID: "logistic-hidden", weight: 1 },
 
         // Critical: tiny weight into output. This is where recursion explodes.
-        { fromUUID: "logi-hidden", toUUID: "output-0", weight: 1e-6 },
+        { fromUUID: "logistic-hidden", toUUID: "output-0", weight: 1e-6 },
 
         // Feasible alternative path:
         { fromUUID: "input-0", toUUID: "output-0", weight: 1 },
@@ -57,7 +57,7 @@ Deno.test(
 
     creature.activateAndTrace(new Float32Array([1]), false, sparseConfig);
 
-    const hidden = creature.neurons.find((n) => n.uuid === "logi-hidden")!;
+    const hidden = creature.neurons.find((n) => n.uuid === "logistic-hidden")!;
     const biasBefore = hidden.bias;
 
     // Ask for a big negative output change.
