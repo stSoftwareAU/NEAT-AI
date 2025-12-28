@@ -21,6 +21,8 @@ ignore:
   # Docs/config-only changes are not exercised by runtime coverage instrumentation.
   # Keep them out of patch coverage to avoid failing PRs that only adjust tooling.
   - "docs/cspell.json"
+  # Coverage-focused tests exist to exercise code paths deterministically; exclude them from Codecov reporting.
+  - "test/discovery/SplitSynapseInsertNeuronCandidateCoverage_test.ts"
   - "src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts"
   - "src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts"
   - "src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts"
