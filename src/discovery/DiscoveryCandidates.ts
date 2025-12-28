@@ -223,6 +223,9 @@ export function buildDiscoveryCandidates(
   const getExpectedSquash = (candidate: CandidateSquash) =>
     candidate.expectedCreatureScoreGain;
 
+  const getExpectedSplit = (candidate: SplitSynapseInsertNeuronCandidate) =>
+    candidate.expectedCreatureScoreGain;
+
   const getExpectedRemoval = (candidate?: CandidateSynapse) => {
     if (!candidate) return undefined;
     const value = candidate.expectedCreatureScoreGain;
@@ -241,6 +244,8 @@ export function buildDiscoveryCandidates(
   const helpfulNeuronCandidates = discovery.addHelpfulNeurons;
   const splitSynapseInsertNeuronCandidates =
     discovery.splitSynapseInsertNeuronCandidates;
+  const successfulSplitSynapseInsertNeuronCandidates:
+    SplitSynapseInsertNeuronCandidate[] = [];
   const addedNeuronCreature = helpfulNeuronCandidates &&
       helpfulNeuronCandidates.length > 0
     ? DiscoverStructure.addHelpfulNeurons(
@@ -299,6 +304,7 @@ export function buildDiscoveryCandidates(
           baseCreature,
           split,
         );
+        successfulSplitSynapseInsertNeuronCandidates.push(split);
         candidates.push({
           creature: splitCreature,
           change: {
@@ -700,6 +706,10 @@ export function buildDiscoveryCandidates(
         addHelpfulSynapses: addedSynapseCreature
           ? addHelpfulSynapses
           : undefined,
+        splitSynapseInsertNeuronCandidates:
+          successfulSplitSynapseInsertNeuronCandidates.length > 0
+            ? successfulSplitSynapseInsertNeuronCandidates
+            : undefined,
         removeHarmfulSynapse: removedSynapseCreature
           ? removeHarmfulSynapse
           : undefined,
@@ -720,11 +730,18 @@ export function buildDiscoveryCandidates(
 
     const bestOfCategoryCandidate = buildBestOfCategoryCandidate(
       baseCreature,
-      discovery,
+      {
+        ...discovery,
+        splitSynapseInsertNeuronCandidates:
+          successfulSplitSynapseInsertNeuronCandidates.length > 0
+            ? successfulSplitSynapseInsertNeuronCandidates
+            : undefined,
+      },
       {
         synapse: getExpectedSynapse,
         neuron: getExpectedNeuron,
         squash: getExpectedSquash,
+        split: getExpectedSplit,
       },
       discoveryFailureCacheDir,
     );
@@ -1020,6 +1037,7 @@ export function shortID(id: string): string {
 interface CombinedSelection {
   addHelpfulSynapses?: CandidateSynapse[];
   addHelpfulNeurons?: CandidateNeuron[];
+  splitSynapseInsertNeuronCandidates?: SplitSynapseInsertNeuronCandidate[];
   removeHarmfulSynapse?: CandidateSynapse;
   removeHarmfulNeurons?: CandidateHarmfulNeuron[];
   candidateSquashes?: CandidateSquash[];
@@ -1038,6 +1056,7 @@ interface ScalingFunctions {
   synapse: (synapse: CandidateSynapse) => number | undefined;
   neuron: (neuron: CandidateNeuron) => number | undefined;
   squash: (squash: CandidateSquash) => number | undefined;
+  split: (candidate: SplitSynapseInsertNeuronCandidate) => number | undefined;
 }
 
 function buildCombinedCandidate(
@@ -1055,6 +1074,7 @@ function buildCombinedCandidate(
   const requestedCategories = [
     Boolean(selection.addHelpfulNeurons?.length),
     Boolean(selection.addHelpfulSynapses?.length),
+    Boolean(selection.splitSynapseInsertNeuronCandidates?.length),
     Boolean(selection.removeHarmfulSynapse),
     Boolean(selection.removeHarmfulNeurons?.length),
     Boolean(selection.candidateSquashes?.length),
@@ -1101,6 +1121,30 @@ function buildCombinedCandidate(
           selection.addHelpfulSynapses,
           discoveryFailureCacheDir,
         )
+      : undefined,
+  );
+
+  applyChange(
+    `split-synapse-insert-neuron: ${
+      selection.splitSynapseInsertNeuronCandidates?.length ?? 0
+    }`,
+    selection.splitSynapseInsertNeuronCandidates &&
+      selection.splitSynapseInsertNeuronCandidates.length > 0
+      ? () => {
+        let current = combinedCreature;
+        let appliedCount = 0;
+        for (const split of selection.splitSynapseInsertNeuronCandidates!) {
+          try {
+            current = applySplitSynapseInsertNeuronCandidate(current, split);
+            appliedCount++;
+          } catch {
+            // Best-effort: split candidates are emitted against the base
+            // creature, so some may become invalid after earlier structural
+            // edits in the combo pipeline.
+          }
+        }
+        return appliedCount > 0 ? current : undefined;
+      }
       : undefined,
   );
 
@@ -1223,6 +1267,10 @@ function buildBestOfCategoryCandidate(
     addHelpfulNeurons: wrapBestCandidate(
       discovery.addHelpfulNeurons,
       scaleFns.neuron,
+    ),
+    splitSynapseInsertNeuronCandidates: wrapBestCandidate(
+      discovery.splitSynapseInsertNeuronCandidates,
+      scaleFns.split,
     ),
     candidateSquashes: wrapBestCandidate(
       discovery.candidateSquashes,
