@@ -1092,9 +1092,9 @@ export function filterCandidatesForEvaluation(
       const aScore = Number.isFinite(aExpected) ? (aExpected ?? 0) : 0;
       const bScore = Number.isFinite(bExpected) ? (bExpected ?? 0) : 0;
       if (aScore !== bScore) return bScore - aScore;
-      const aDesc = a.change.description ?? "";
-      const bDesc = b.change.description ?? "";
-      return aDesc.localeCompare(bDesc);
+      // Keep insertion order stable for ties (important for deterministic behaviour in tests
+      // and for preferring the "combined" candidate that is built before its per-item variants).
+      return 0;
     });
   }
 
