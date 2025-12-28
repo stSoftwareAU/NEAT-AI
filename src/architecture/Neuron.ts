@@ -595,6 +595,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         const fromActivationCache = new Array<number>(listLength);
         const fromWeightCache = new Array<number>(listLength);
         const fromValueCache = new Array<number>(listLength);
+        const safeZoneFactorCache = new Array<number>(listLength);
         const provisionalErrorPerLink = error / listLength;
 
         for (let indx = 0; indx < listLength; indx++) {
@@ -642,11 +643,42 @@ export class Neuron implements TagsInterface, NeuronInternal {
             activation: fromActivation,
             safeZoneFactor: safeZoneAdj,
           };
+          safeZoneFactorCache[indx] = safeZoneAdj;
         }
 
-        const perLinkError = distributeElasticError(error, linkMeta, {
-          plankConstant: config.plankConstant,
-        });
+        // If every upstream link is blocked by safe-zone (eg. parents are deep in
+        // saturation), the standard elastic denominator can collapse to ~0.
+        //
+        // Historically we fell back to an equal split in `distributeElasticError`,
+        // which reintroduced “forced” upstream activation targets when recursion
+        // was enabled. For training, we still want learning to progress, but we
+        // prefer the minimum-change *weight* solution rather than an equal split.
+        //
+        // So: if safe-zone blocks everything, ignore safe-zone for distribution
+        // (use activation² only), while the recursion guard below prevents trying
+        // to push saturated parents via activation targets.
+        let perLinkError: number[];
+        let hasUsableSafeZone = false;
+        for (let i = 0; i < listLength; i++) {
+          const safe = safeZoneFactorCache[i] ?? 1;
+          if (Number.isFinite(safe) && safe > config.plankConstant) {
+            hasUsableSafeZone = true;
+            break;
+          }
+        }
+        if (hasUsableSafeZone) {
+          perLinkError = distributeElasticError(error, linkMeta, {
+            plankConstant: config.plankConstant,
+          });
+        } else {
+          const fallbackMeta = linkMeta.map((m) => ({
+            activation: m.activation,
+            safeZoneFactor: 1,
+          }));
+          perLinkError = distributeElasticError(error, fallbackMeta, {
+            plankConstant: config.plankConstant,
+          });
+        }
 
         for (let indx = 0; indx < listLength; indx++) {
           const c = inwardList[indx];
@@ -674,11 +706,29 @@ export class Neuron implements TagsInterface, NeuronInternal {
             Math.abs(targetFromValue - fromValue) > config.plankConstant
           ) {
             const targetFromActivation = targetFromValue / fromWeight;
-            improvedFromActivation = fromNeuron.propagate(
-              targetFromActivation,
-              config,
-              sparseConfig,
-            );
+            // Training-time constraint:
+            // Avoid recursing into parents when the implied activation target is
+            // infeasible for their squash range (common when this link's weight
+            // is tiny: (fromValue + share) / weight explodes).
+            //
+            // In this situation, the best minimum-change action is usually to
+            // adjust the *current* neuron's inbound weights/biases rather than
+            // forcing an upstream neuron to chase an impossible activation.
+            const safeZoneFactor = safeZoneFactorCache[indx] ?? 1;
+            if (Number.isFinite(safeZoneFactor) && safeZoneFactor > 0) {
+              const fromSquash = fromNeuron.findSquash();
+              const range = fromSquash.range;
+              const eps = 1e-9;
+              const outOfRange = targetFromActivation < range.low - eps ||
+                targetFromActivation > range.high + eps;
+              if (!outOfRange && Number.isFinite(targetFromActivation)) {
+                improvedFromActivation = fromNeuron.propagate(
+                  targetFromActivation,
+                  config,
+                  sparseConfig,
+                );
+              }
+            }
           }
 
           if (
