@@ -39,6 +39,10 @@ import {
   type CandidateSynapse,
   DiscoverStructure,
 } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import {
+  applySplitSynapseInsertNeuronCandidate,
+  type SplitSynapseInsertNeuronCandidate,
+} from "../architecture/ErrorGuidedStructuralEvolution/SplitSynapseInsertNeuronCandidate.ts";
 import type {
   DiscoverResult,
   RemovalCandidate,
@@ -103,6 +107,7 @@ function buildUuidToIndexMap(
 export type DiscoveryChangeType =
   | "add-synapses"
   | "add-neurons"
+  | "split-synapse-insert-neuron"
   | "remove-synapse"
   | "remove-neuron"
   | "remove-low-impact"
@@ -146,6 +151,8 @@ interface DiscoveryCandidateChange {
   sampleSize?: number;
   /** Details of discovered neurons (for single neuron candidates). */
   neuronDetails?: DiscoveredNeuronDetails;
+  /** Original Rust split-synapse candidate response (for split-synapse candidates). */
+  splitSynapseInsertNeuronCandidate?: SplitSynapseInsertNeuronCandidate;
   /** Details of synapse removal (for synapse removal candidates). */
   synapseDetails?: SynapseRemovalDetails;
   /** Original Rust synapse candidate response (for add-synapses candidates). */
@@ -232,6 +239,8 @@ export function buildDiscoveryCandidates(
   } = discovery;
 
   const helpfulNeuronCandidates = discovery.addHelpfulNeurons;
+  const splitSynapseInsertNeuronCandidates =
+    discovery.splitSynapseInsertNeuronCandidates;
   const addedNeuronCreature = helpfulNeuronCandidates &&
       helpfulNeuronCandidates.length > 0
     ? DiscoverStructure.addHelpfulNeurons(
@@ -278,6 +287,47 @@ export function buildDiscoveryCandidates(
       discoveryFailureCacheDir,
     ),
   );
+
+  if (
+    splitSynapseInsertNeuronCandidates &&
+    splitSynapseInsertNeuronCandidates.length > 0
+  ) {
+    let skippedCount = 0;
+    for (const split of splitSynapseInsertNeuronCandidates) {
+      try {
+        const splitCreature = applySplitSynapseInsertNeuronCandidate(
+          baseCreature,
+          split,
+        );
+        candidates.push({
+          creature: splitCreature,
+          change: {
+            type: "split-synapse-insert-neuron",
+            description: `➗ Split synapse ${
+              shortID(split.fromNeuronUuid)
+            } -> ${shortID(split.toNeuronUuid)} (insert ${
+              shortID(split.newNeuron.uuid)
+            })`,
+            expectedErrorReduction: split.expectedCreatureScoreGain,
+            splitSynapseInsertNeuronCandidate: split,
+          },
+        });
+      } catch (error) {
+        skippedCount++;
+        console.info(
+          `[DiscoveryCandidates] Skipped split-synapse candidate ${split.fromNeuronUuid} -> ${split.toNeuronUuid}:`,
+          error,
+        );
+      }
+    }
+    if (skippedCount > 0) {
+      console.info(
+        `[DiscoveryCandidates] Skipped ${skippedCount}/${splitSynapseInsertNeuronCandidates.length} split-synapse candidate${
+          skippedCount === 1 ? "" : "s"
+        } (apply failed)`,
+      );
+    }
+  }
 
   const addedSynapseCreature = DiscoverStructure.addHelpfulSynapses(
     discovery.ID,
@@ -1519,6 +1569,15 @@ function applyChangeToCreature(
 
   try {
     switch (changeType) {
+      case "split-synapse-insert-neuron": {
+        const spec = candidate.change.splitSynapseInsertNeuronCandidate;
+        if (!spec) {
+          return undefined;
+        }
+        const result = applySplitSynapseInsertNeuronCandidate(creature, spec);
+        return result;
+      }
+
       case "add-synapses": {
         // Find synapses in candidate that don't exist in creature
         const existingSynapses = new Set(

@@ -12,6 +12,9 @@ import {
   type DiscoverStructureOptions,
 } from "./DiscoverStructure.ts";
 import type {
+  SplitSynapseInsertNeuronCandidate,
+} from "./SplitSynapseInsertNeuronCandidate.ts";
+import type {
   CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
@@ -300,6 +303,7 @@ class DataRecorder {
         ID: this.ID,
         addHelpfulSynapses: undefined,
         addHelpfulNeurons: undefined,
+        splitSynapseInsertNeuronCandidates: undefined,
         removeHarmfulSynapse: undefined,
         removeHarmfulNeurons: undefined,
         removalCandidates: undefined,
@@ -734,6 +738,7 @@ class DataRecorder {
             ID: this.ID,
             addHelpfulSynapses: undefined,
             addHelpfulNeurons: undefined,
+            splitSynapseInsertNeuronCandidates: undefined,
             removeHarmfulSynapse: undefined,
             removeHarmfulNeurons: undefined,
             removalCandidates: undefined,
@@ -774,6 +779,7 @@ class DataRecorder {
         ID: this.ID,
         addHelpfulSynapses: undefined,
         addHelpfulNeurons: undefined,
+        splitSynapseInsertNeuronCandidates: undefined,
         removeHarmfulSynapse: undefined,
         removeHarmfulNeurons: undefined,
         removalCandidates: undefined,
@@ -860,6 +866,9 @@ class DataRecorder {
 
         phaseDiagnostics.enterPhase("analysis_parallel");
         let addHelpfulNeurons: CandidateNeuron[] | undefined;
+        let splitSynapseInsertNeuronCandidates:
+          | SplitSynapseInsertNeuronCandidate[]
+          | undefined;
         let addHelpfulSynapse: CandidateSynapse[] | undefined;
         let removeHarmfulSynapse: CandidateSynapse | undefined;
         let removeHarmfulNeurons: CandidateHarmfulNeuron[] | undefined;
@@ -877,18 +886,21 @@ class DataRecorder {
           addHelpfulSynapse = candidateBundle.helpfulSynapses;
           removeHarmfulSynapse = candidateBundle.harmfulSynapse;
           addHelpfulNeurons = candidateBundle.helpfulNeurons;
+          splitSynapseInsertNeuronCandidates =
+            candidateBundle.splitSynapseInsertNeuronCandidates;
           this.refreshAnalysisTimeout(discoverStructure);
 
           if (shouldLogDiscovery(config)) {
             const helpfulSynapseCount = addHelpfulSynapse?.length ?? 0;
             const helpfulNeuronCount = addHelpfulNeurons?.length ?? 0;
+            const splitCount = splitSynapseInsertNeuronCandidates?.length ?? 0;
             const harmfulCount = removeHarmfulSynapse ? 1 : 0;
             console.log(
               `Discovery ${blue(this.ID)} candidate collection ${
                 yellow(format(candidateCollectionTime, {
                   ignoreZero: true,
                 }))
-              } synapse candidates: ${helpfulSynapseCount}, neuron candidates: ${helpfulNeuronCount}, harmful removals: ${harmfulCount}`,
+              } synapse candidates: ${helpfulSynapseCount}, neuron candidates: ${helpfulNeuronCount}, split candidates: ${splitCount}, harmful removals: ${harmfulCount}`,
             );
           }
 
@@ -1095,6 +1107,15 @@ class DataRecorder {
           ];
           perfStats.helpfulNeuronRawCount += addHelpfulNeurons.length;
         }
+        if (
+          splitSynapseInsertNeuronCandidates &&
+          splitSynapseInsertNeuronCandidates.length > 0
+        ) {
+          discoverResult.splitSynapseInsertNeuronCandidates = [
+            ...(discoverResult.splitSynapseInsertNeuronCandidates ?? []),
+            ...splitSynapseInsertNeuronCandidates,
+          ];
+        }
         if (addHelpfulSynapse && addHelpfulSynapse.length > 0) {
           discoverResult.addHelpfulSynapses = [
             ...(discoverResult.addHelpfulSynapses ?? []),
@@ -1125,6 +1146,7 @@ class DataRecorder {
         const foundCandidates = Boolean(
           discoverResult.addHelpfulSynapses ||
             discoverResult.addHelpfulNeurons ||
+            discoverResult.splitSynapseInsertNeuronCandidates ||
             discoverResult.removeHarmfulSynapse ||
             discoverResult.removeHarmfulNeurons ||
             discoverResult.candidateSquashes,
