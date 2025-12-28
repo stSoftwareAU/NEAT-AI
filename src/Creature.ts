@@ -49,6 +49,11 @@ import {
   DiscoveryRunner,
   type DiscoveryRunnerLike,
 } from "./discovery/DiscoveryRunner.ts";
+import {
+  type DiscoveryReplayDirResult,
+  DiscoveryReplayRunner,
+  type DiscoveryReplayRunnerLike,
+} from "./discovery/DiscoveryReplayRunner.ts";
 
 interface CreatureOptions {
   semanticVersion?: string;
@@ -863,7 +868,7 @@ export class Creature implements CreatureInternal {
         assert(error >= 0, "Error is negative");
         assert(
           fittestScore - 1 <= error * -1,
-          "Score (absolute) less than error",
+          `Score (absolute) less than error (score=${fittestScore}, error=${error})`,
         );
         bestScore = fittestScore;
         bestCreature = Creature.fromJSON(fittest.exportJSON());
@@ -1012,6 +1017,33 @@ export class Creature implements CreatureInternal {
     const runner = deps?.runner ?? new DiscoveryRunner();
 
     return await runner.discoverDir({
+      creature: this,
+      dataDir,
+      options,
+    });
+  }
+
+  /**
+   * Replay cached discovery successes against this creature using a dataset directory.
+   *
+   * This is designed for long-running workflows where discovery results may be
+   * overtaken by normal evolution before they are reintroduced into the
+   * population. Replay lets you re-apply previously successful candidates to the
+   * current fittest creature and prune stale cache entries when they no longer
+   * improve score.
+   *
+   * @param dataDir Directory containing the dataset subset used for replay scoring.
+   * @param options NEAT configuration options controlling replay behaviour.
+   * @param deps Optional overrides, primarily for testing.
+   */
+  async discoveryReplayDir(
+    dataDir: string,
+    options: NeatOptions,
+    deps?: { runner?: DiscoveryReplayRunnerLike },
+  ): Promise<DiscoveryReplayDirResult> {
+    const runner = deps?.runner ?? new DiscoveryReplayRunner();
+
+    return await runner.replayDir({
       creature: this,
       dataDir,
       options,

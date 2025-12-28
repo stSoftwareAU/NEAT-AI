@@ -272,6 +272,38 @@ export interface NeatArguments {
   discoveryFailureCacheDir?: string;
 
   /**
+   * Directory path to cache discovery successes.
+   *
+   * When provided, discovery candidates that improve the creature's score are
+   * cached so they can be replayed later against a newer fittest creature.
+   *
+   * Delete this directory when the training dataset changes to avoid replaying
+   * stale signals.
+   */
+  discoverySuccessCacheDir?: string;
+
+  /**
+   * Maximum number of cached successful candidates to re-score during replay.
+   *
+   * Defaults are applied in createNeatConfig().
+   */
+  discoveryReplayMaxSingles: number;
+
+  /**
+   * Maximum number of candidates to consider for pairwise replay combinations.
+   *
+   * Defaults are applied in createNeatConfig().
+   */
+  discoveryReplayMaxPairwise: number;
+
+  /**
+   * Maximum number of candidates to consider for triple replay combinations.
+   *
+   * Defaults are applied in createNeatConfig().
+   */
+  discoveryReplayMaxTriples: number;
+
+  /**
    * Minimum candidates to evaluate per discovery category.
    */
   discoveryMinCandidatesPerCategory: Required<

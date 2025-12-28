@@ -287,6 +287,60 @@ add-neurons, `synapseCandidate` for add-synapses, `squashCandidate` for
 change-squash, `removalCandidate` for remove-low-impact). This allows comparison
 between what Rust suggested and what actually happened during evaluation.
 
+### Discovery Success Cache + Replay
+
+Discovery runs can take a long time (often tens of minutes). In that time, the
+normal evolution loop may advance the population so far that a successful
+discovery result is no longer competitive by the time you reinsert it.
+
+To prevent successful discoveries being lost, you can enable a **success cache**
+and periodically **replay** cached successes against the _current_ fittest
+creature.
+
+**Enable success caching during discovery:**
+
+```typescript
+const result = await creature.discoveryDir(dataDir, {
+  discoveryFailureCacheDir: ".discovery/failure-cache",
+  discoverySuccessCacheDir: ".discovery/success-cache",
+  // ... other options
+});
+```
+
+When `discoverySuccessCacheDir` is set, every single-step candidate that
+improves score is persisted so it can be replayed later. The cache stores the
+candidate details (and diagnostic metadata), not a full creature export.
+(Combination candidates are not stored; replay will try combinations on demand.)
+
+**Replay cached successes against the current fittest creature:**
+
+```typescript
+const replay = await creature.discoveryReplayDir(dataDir, {
+  discoverySuccessCacheDir: ".discovery/success-cache",
+  // Optional tuning knobs (defaults are usually fine)
+  discoveryReplayMaxSingles: 20,
+  discoveryReplayMaxPairwise: 10,
+  discoveryReplayMaxTriples: 8,
+});
+
+if (replay.improvement) {
+  console.log(replay.improvement.message);
+  // Reinsert replay.improvement.creature into your population and re-evaluate.
+}
+```
+
+**Replay behaviour:**
+
+1. Skips cached candidates that already appear to be applied to the current
+   creature
+2. Re-scores the remaining candidates against the current creature
+3. Deletes cache entries that no longer improve score (stale successes)
+4. Tries combinations of still-successful candidates (pairs/triples/all) and
+   returns the best improvement
+
+As with the failure cache, delete the success cache directory when your training
+dataset changes materially.
+
 ### Discovery Candidate Category Limits
 
 You can control the minimum number of candidates evaluated per category. This is

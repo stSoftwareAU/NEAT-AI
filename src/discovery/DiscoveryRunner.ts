@@ -22,6 +22,7 @@ import {
   shortID,
 } from "./DiscoveryCandidates.ts";
 import { isCandidateCachedSync, recordFailureSync } from "./FailureCache.ts";
+import { recordSuccessSync } from "./SuccessCache.ts";
 
 export interface DiscoveryRunnerWorker {
   discover(
@@ -413,6 +414,40 @@ export class DiscoveryRunner {
         .filter((result) => result.kind === "candidate")
         .filter((result) => result.score > original.score)
         .sort((a, b) => b.score - a.score)[0];
+
+      // Cache successful candidates if success cache is enabled
+      const successCacheDir = config.discoverySuccessCacheDir;
+      if (successCacheDir) {
+        const successfulCandidates = evaluationResults
+          .filter((result) => result.kind === "candidate")
+          .filter((result) => result.score > original.score)
+          // Only cache single-step candidate types. Replay builds combinations on demand.
+          .filter((result) =>
+            !(result.candidate?.change.type?.startsWith("combo-"))
+          )
+          .filter((result) => result.candidate !== undefined);
+
+        let cachedSuccessesCount = 0;
+        for (const successful of successfulCandidates) {
+          if (!successful.candidate) continue;
+          recordSuccessSync(successCacheDir, successful.candidate, {
+            originalScore: original.score,
+            candidateScore: successful.score,
+            scoreDelta: successful.score - original.score,
+            originalError: original.error,
+            error: successful.error,
+          }, creature);
+          cachedSuccessesCount++;
+        }
+
+        if (cachedSuccessesCount > 0 && verboseLogging) {
+          verboseLog(
+            `Cached ${cachedSuccessesCount} successful candidate${
+              cachedSuccessesCount === 1 ? "" : "s"
+            } to success cache.`,
+          );
+        }
+      }
 
       // Cache failed candidates if failure cache is enabled
       if (failureCacheDir) {
