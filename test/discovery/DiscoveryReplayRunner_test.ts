@@ -34,7 +34,6 @@ function makeEntry(overrides: Partial<SuccessCacheEntry>): SuccessCacheEntry {
     originalError: overrides.originalError ?? 0.5,
     timestamp: overrides.timestamp ?? new Date().toISOString(),
     rustRequest: overrides.rustRequest,
-    candidateCreatureExport: overrides.candidateCreatureExport,
     actualCreatureChange: overrides.actualCreatureChange,
     discoveryVersion: overrides.discoveryVersion,
   };

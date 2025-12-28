@@ -82,6 +82,42 @@ export interface DiscoveryReplayRunnerDeps {
   ) => Promise<{ error: number; score: number }>;
 }
 
+type EvaluationTask = {
+  kind: "original" | "single" | "combo";
+  creature: Creature;
+  entry?: SuccessCacheEntry;
+  description?: string;
+};
+
+async function evaluateAll(
+  workers: WorkerHandler[],
+  tasks: EvaluationTask[],
+  feedbackLoop: boolean,
+  costOfGrowth: number,
+): Promise<Array<EvaluationTask & { error: number; score: number }>> {
+  const queue = tasks.slice();
+  const results: Array<EvaluationTask & { error: number; score: number }> = [];
+
+  const processNext = async (worker: WorkerHandler): Promise<void> => {
+    const task = queue.shift();
+    if (!task) return;
+
+    const response = await worker.evaluate(task.creature, feedbackLoop);
+    assertExists(
+      response.evaluate,
+      "Worker did not return evaluation data.",
+    );
+    const error = response.evaluate.error;
+    const score = calculateScore(task.creature, error, costOfGrowth);
+    results.push({ ...task, error, score });
+
+    await processNext(worker);
+  };
+
+  await Promise.all(workers.map((worker) => processNext(worker)));
+  return results;
+}
+
 function isRemovalType(changeType: string): boolean {
   return changeType === "remove-low-impact" || changeType === "remove-neuron" ||
     changeType === "remove-synapse";
@@ -248,8 +284,7 @@ function applyEntryUsingRustRequest(
       );
     }
     case "add-neurons": {
-      const neuron = (req.neuronCandidate as CandidateNeuron | undefined) ??
-        (req.neuronDetails as CandidateNeuron | undefined);
+      const neuron = req.neuronCandidate as CandidateNeuron | undefined;
       if (!neuron) return undefined;
       return DiscoverStructure.addHelpfulNeurons(
         discoveryID,
@@ -332,25 +367,10 @@ function buildComboIndices(
   // All.
   combos.push(Array.from({ length: count }, (_, i) => i));
 
-  // Pairwise (limited).
-  if (count >= 2 && count <= maxPairwise) {
-    for (let i = 0; i < count; i++) {
-      for (let j = i + 1; j < count; j++) {
-        combos.push([i, j]);
-      }
-    }
-  }
-
-  // Triples (limited).
-  if (count >= 3 && count <= maxTriples) {
-    for (let i = 0; i < count; i++) {
-      for (let j = i + 1; j < count; j++) {
-        for (let k = j + 1; k < count; k++) {
-          combos.push([i, j, k]);
-        }
-      }
-    }
-  }
+  // Replay intentionally only evaluates the all-successful combination.
+  // Pairwise/triple exploration can be reintroduced later if needed.
+  void maxPairwise;
+  void maxTriples;
   return combos;
 }
 
@@ -432,14 +452,14 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         feedbackLoop: boolean,
         costOfGrowth: number,
       ) => {
-        const response = await workers[0].evaluate(c, feedbackLoop);
-        assertExists(
-          response.evaluate,
-          "Worker did not return evaluation data.",
+        const tasks: EvaluationTask[] = [{ kind: "single", creature: c }];
+        const evaluated = await evaluateAll(
+          workers,
+          tasks,
+          feedbackLoop,
+          costOfGrowth,
         );
-        const error = response.evaluate.error;
-        const score = calculateScore(c, error, costOfGrowth);
-        return { error, score };
+        return { error: evaluated[0].error, score: evaluated[0].score };
       };
 
       const deps = {
@@ -495,22 +515,40 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         singleCandidates.push({ entry, creature: applied });
       }
 
-      // Evaluate all singles in parallel.
-      const singleResults = await Promise.all(
-        singleCandidates.map(async (c) => {
-          const evalResult = await deps.evaluateError(
-            c.creature,
-            config.feedbackLoop,
-            config.costOfGrowth,
-          );
-          return {
-            entry: c.entry,
+      // Evaluate all singles in parallel (workers) or via injected evaluator (tests).
+      const singleResults = this.#deps.evaluateError
+        ? await Promise.all(
+          singleCandidates.map(async (c) => {
+            const evalResult = await deps.evaluateError(
+              c.creature,
+              config.feedbackLoop,
+              config.costOfGrowth,
+            );
+            return {
+              entry: c.entry,
+              creature: c.creature,
+              ...evalResult,
+              scoreDelta: evalResult.score - originalEval.score,
+            };
+          }),
+        )
+        : (await evaluateAll(
+          workers,
+          singleCandidates.map((c) => ({
+            kind: "single" as const,
             creature: c.creature,
-            ...evalResult,
-            scoreDelta: evalResult.score - originalEval.score,
-          };
-        }),
-      );
+            entry: c.entry,
+            description: c.entry.description,
+          })),
+          config.feedbackLoop,
+          config.costOfGrowth,
+        )).map((r) => ({
+          entry: r.entry!,
+          creature: r.creature,
+          error: r.error,
+          score: r.score,
+          scoreDelta: r.score - originalEval.score,
+        }));
 
       let pruned = 0;
       const successfulSingles = singleResults.filter((r) =>
@@ -554,21 +592,38 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         comboCandidates.push({ indices, creature: current, entries });
       }
 
-      const comboResults = await Promise.all(
-        comboCandidates.map(async (c) => {
-          const evalResult = await deps.evaluateError(
-            c.creature,
-            config.feedbackLoop,
-            config.costOfGrowth,
-          );
-          return {
+      const comboResults = this.#deps.evaluateError
+        ? await Promise.all(
+          comboCandidates.map(async (c) => {
+            const evalResult = await deps.evaluateError(
+              c.creature,
+              config.feedbackLoop,
+              config.costOfGrowth,
+            );
+            return {
+              creature: c.creature,
+              entries: c.entries,
+              ...evalResult,
+              scoreDelta: evalResult.score - originalEval.score,
+            };
+          }),
+        )
+        : (await evaluateAll(
+          workers,
+          comboCandidates.map((c) => ({
+            kind: "combo" as const,
             creature: c.creature,
-            entries: c.entries,
-            ...evalResult,
-            scoreDelta: evalResult.score - originalEval.score,
-          };
-        }),
-      );
+            description: describeCombo(c.entries),
+          })),
+          config.feedbackLoop,
+          config.costOfGrowth,
+        )).map((r, i) => ({
+          creature: r.creature,
+          entries: comboCandidates[i].entries,
+          error: r.error,
+          score: r.score,
+          scoreDelta: r.score - originalEval.score,
+        }));
 
       // Pick best single/combo.
       const allEvaluated = [
