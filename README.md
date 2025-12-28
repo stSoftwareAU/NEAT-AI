@@ -294,7 +294,7 @@ normal evolution loop may advance the population so far that a successful
 discovery result is no longer competitive by the time you reinsert it.
 
 To prevent successful discoveries being lost, you can enable a **success cache**
-and periodically **replay** cached successes against the *current* fittest
+and periodically **replay** cached successes against the _current_ fittest
 creature.
 
 **Enable success caching during discovery:**
@@ -307,10 +307,10 @@ const result = await creature.discoveryDir(dataDir, {
 });
 ```
 
-When `discoverySuccessCacheDir` is set, every single-step candidate that improves
-score is persisted so it can be replayed later. The cache stores the candidate
-details (and diagnostic metadata), not a full creature export. (Combination
-candidates are not stored; replay will try combinations on demand.)
+When `discoverySuccessCacheDir` is set, every single-step candidate that
+improves score is persisted so it can be replayed later. The cache stores the
+candidate details (and diagnostic metadata), not a full creature export.
+(Combination candidates are not stored; replay will try combinations on demand.)
 
 **Replay cached successes against the current fittest creature:**
 
