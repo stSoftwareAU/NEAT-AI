@@ -174,6 +174,25 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
 
   // Handle different candidate types
   switch (candidate.change.type) {
+    case "split-synapse-insert-neuron": {
+      const split = candidate.change.splitSynapseInsertNeuronCandidate;
+      if (split) {
+        const [s0, s1] = split.newSynapses;
+        parts.push(
+          split.fromNeuronUuid,
+          split.toNeuronUuid,
+          split.newNeuron.squash,
+          formatWeight(split.oldWeight),
+          formatWeight(s0.weight),
+          formatWeight(s1.weight),
+          formatWeight(split.newNeuron.bias),
+        );
+      } else {
+        parts.push(buildStructuralSignature(candidate));
+      }
+      break;
+    }
+
     case "add-neurons": {
       // For add-neurons, use neuronDetails if available
       const details = candidate.change.neuronDetails;
@@ -650,6 +669,15 @@ export async function recordFailure(
       };
     }
 
+    // Include original Rust split-synapse candidate (for split-synapse-insert-neuron candidates)
+    if (candidate.change.splitSynapseInsertNeuronCandidate) {
+      cacheEntry.rustRequest = {
+        ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
+        splitSynapseInsertNeuronCandidate:
+          candidate.change.splitSynapseInsertNeuronCandidate,
+      };
+    }
+
     // Include original Rust synapse candidate (for add-synapses candidates)
     if (candidate.change.synapseCandidate) {
       cacheEntry.rustRequest = {
@@ -809,6 +837,15 @@ export function recordFailureSync(
       cacheEntry.rustRequest = {
         ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
         neuronCandidate: candidate.change.neuronCandidate,
+      };
+    }
+
+    // Include original Rust split-synapse candidate (for split-synapse-insert-neuron candidates)
+    if (candidate.change.splitSynapseInsertNeuronCandidate) {
+      cacheEntry.rustRequest = {
+        ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
+        splitSynapseInsertNeuronCandidate:
+          candidate.change.splitSynapseInsertNeuronCandidate,
       };
     }
 

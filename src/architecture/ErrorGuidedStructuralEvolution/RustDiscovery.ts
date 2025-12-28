@@ -141,6 +141,34 @@ export interface RustCandidateNeuron {
 }
 
 /**
+ * Structural candidate emitted by the Rust discovery engine: split an existing
+ * synapse by inserting a new hidden neuron between the source and target.
+ *
+ * Note: This shape is intentionally aligned with the JSON payload emitted by
+ * NEAT-AI-Discovery so TypeScript can consume it without lossy re-mapping.
+ */
+export interface RustSplitSynapseInsertNeuronCandidate {
+  type: "split_synapse_insert_neuron";
+  fromNeuronUuid: string;
+  toNeuronUuid: string;
+  oldWeight: number;
+  newNeuron: { uuid: string; type: "hidden"; squash: string; bias: number };
+  newSynapses: Array<{
+    from_uuid: string;
+    to_uuid: string;
+    weight: number;
+    type?: string;
+  }>;
+  expectedCreatureScoreGain: number;
+  comment?: string;
+  fromNeuronIndex?: number;
+  toNeuronIndex?: number;
+  targetNeuronImpact?: number;
+}
+
+export type RustStructuralCandidate = RustSplitSynapseInsertNeuronCandidate;
+
+/**
  * Encapsulates the synapse-centric branch of a parallel analysis run, including
  * whether the GPU path was used and any helpful or harmful synapse candidates.
  */
@@ -161,6 +189,12 @@ export interface RustAnalyzeNeuronsResult {
   success: boolean;
   gpuUsed?: boolean;
   helpfulNeurons?: RustCandidateNeuron[];
+  /**
+   * Optional structural candidates emitted as tagged variants.
+   * This allows NEAT-AI-Discovery to evolve additional candidate types without
+   * breaking older TypeScript consumers.
+   */
+  structuralCandidates?: RustStructuralCandidate[];
   diagnostics?: RustNeuronDiagnostic[];
   error?: string;
 }
@@ -214,6 +248,11 @@ export interface RustParallelAnalysisResult {
   synapseDiagnostics?: RustSynapseDiagnostic[];
   synapseGpuUsed?: boolean;
   helpfulNeurons?: RustCandidateNeuron[];
+  /**
+   * Optional structural candidates emitted as tagged variants.
+   * Supported variants are modelled by {@link RustStructuralCandidate}.
+   */
+  structuralCandidates?: RustStructuralCandidate[];
   neuronDiagnostics?: RustNeuronDiagnostic[];
   neuronGpuUsed?: boolean;
   error?: string;

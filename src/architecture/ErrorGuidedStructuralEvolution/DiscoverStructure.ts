@@ -14,6 +14,9 @@ import { Activations } from "../../methods/activations/Activations.ts";
 import { CreatureErrorImpactEstimator } from "../../discovery/NeuronErrorImpactEstimator.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 import { fromRustRemovalCandidate } from "./DiscoverResult.ts";
+import type {
+  SplitSynapseInsertNeuronCandidate,
+} from "./SplitSynapseInsertNeuronCandidate.ts";
 import {
   analyzeParallel,
   creatureToRustFormat,
@@ -34,6 +37,7 @@ import {
   type RustParallelAnalysisResult,
   type RustRecordBatchStats,
   type RustRecordInput,
+  type RustStructuralCandidate,
   type RustSynapseDiagnostic,
   type RustSynapseDiagnosticDetail,
 } from "./RustDiscovery.ts";
@@ -243,6 +247,7 @@ interface CandidateAnalysisBundle {
   helpfulSynapses?: CandidateSynapse[];
   harmfulSynapse?: CandidateSynapse;
   helpfulNeurons?: CandidateNeuron[];
+  splitSynapseInsertNeuronCandidates?: SplitSynapseInsertNeuronCandidate[];
 }
 
 type FocusSelectionMode = "weighted" | "forced" | "all" | "random";
@@ -1752,6 +1757,69 @@ export class DiscoverStructure {
     return candidates;
   }
 
+  private tryRustSplitSynapseInsertNeuronCandidates(
+    focusList: string[],
+  ): SplitSynapseInsertNeuronCandidate[] | undefined {
+    const rustResult = this.readRustCombinedAnalysis(
+      focusList,
+      false,
+      true,
+    )?.neuron;
+    if (!rustResult) {
+      return undefined;
+    }
+
+    const structural = rustResult.structuralCandidates ?? [];
+    if (structural.length === 0) {
+      this.logRustNoImprovement("neuron", focusList, rustResult.diagnostics);
+      return [];
+    }
+
+    const out: SplitSynapseInsertNeuronCandidate[] = [];
+    let skippedWrongType = 0;
+    let skippedBadSynapseCount = 0;
+    for (const candidate of structural) {
+      const typed = candidate as RustStructuralCandidate;
+      if (typed?.type !== "split_synapse_insert_neuron") {
+        skippedWrongType++;
+        continue;
+      }
+
+      // Enforce the Rust contract: exactly two synapses.
+      if (!Array.isArray(typed.newSynapses) || typed.newSynapses.length !== 2) {
+        skippedBadSynapseCount++;
+        this.log(
+          "warn",
+          `Skipping split-synapse candidate due to invalid newSynapses length (expected 2, got ${
+            typed.newSynapses?.length ?? "unknown"
+          })`,
+        );
+        continue;
+      }
+
+      out.push({
+        ...typed,
+        newSynapses: [
+          typed.newSynapses[0],
+          typed.newSynapses[1],
+        ],
+      });
+    }
+
+    if (out.length === 0) {
+      if (skippedWrongType > 0 || skippedBadSynapseCount > 0) {
+        this.log(
+          "warn",
+          `Rust neuron analysis returned ${structural.length} structural candidate(s) but none were usable after validation (skipped wrong-type=${skippedWrongType}, bad-synapse-count=${skippedBadSynapseCount}).`,
+        );
+      }
+      this.logRustNoImprovement("neuron", focusList, rustResult.diagnostics);
+      return [];
+    }
+
+    return out;
+  }
+
   private tryRustHelpfulSynapses(
     focusList: string[],
   ): CandidateSynapse[] | undefined {
@@ -1846,6 +1914,13 @@ export class DiscoverStructure {
     const helpfulNeurons = this.tryRustHelpfulNeurons(focusList);
     if (helpfulNeurons && helpfulNeurons.length > 0) {
       bundle.helpfulNeurons = helpfulNeurons;
+    }
+
+    const splitCandidates = this.tryRustSplitSynapseInsertNeuronCandidates(
+      focusList,
+    );
+    if (splitCandidates && splitCandidates.length > 0) {
+      bundle.splitSynapseInsertNeuronCandidates = splitCandidates;
     }
 
     return bundle;
@@ -2329,6 +2404,9 @@ export class DiscoverStructure {
   private convertParallelAnalysisResult(
     parallel: RustParallelAnalysisResult,
   ): RustAnalyzeAllResult {
+    const structuralCandidates = parallel.structuralCandidates ??
+      (parallel as unknown as { candidates?: RustStructuralCandidate[] })
+        .candidates;
     const hasSynapsePayload = Boolean(
       parallel.helpfulSynapses?.length ||
         parallel.harmfulSynapses?.length ||
@@ -2336,6 +2414,7 @@ export class DiscoverStructure {
     );
     const hasNeuronPayload = Boolean(
       parallel.helpfulNeurons?.length ||
+        structuralCandidates?.length ||
         parallel.neuronDiagnostics?.length,
     );
 
@@ -2354,6 +2433,7 @@ export class DiscoverStructure {
         success: true,
         gpuUsed: parallel.neuronGpuUsed,
         helpfulNeurons: parallel.helpfulNeurons,
+        structuralCandidates,
         diagnostics: parallel.neuronDiagnostics,
       }
       : undefined;

@@ -4,6 +4,9 @@ import type {
   CandidateSquash,
   CandidateSynapse,
 } from "./DiscoverStructure.ts";
+import type {
+  SplitSynapseInsertNeuronCandidate,
+} from "./SplitSynapseInsertNeuronCandidate.ts";
 import type { RustRemovalCandidate } from "./RustDiscovery.ts";
 
 /**
@@ -49,6 +52,14 @@ export interface DiscoverResult {
   ID: string;
   addHelpfulSynapses: CandidateSynapse[] | undefined;
   addHelpfulNeurons: CandidateNeuron[] | undefined;
+  /**
+   * Optional split-synapse candidates emitted by NEAT-AI-Discovery.
+   *
+   * Kept optional for backwards compatibility with older Rust library versions.
+   */
+  splitSynapseInsertNeuronCandidates?:
+    | SplitSynapseInsertNeuronCandidate[]
+    | undefined;
   removeHarmfulSynapse: CandidateSynapse | undefined;
   removeHarmfulNeurons: CandidateHarmfulNeuron[] | undefined;
   /** Low-impact neurons flagged for removal (from Rust focus ranking). */
