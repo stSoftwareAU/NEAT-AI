@@ -607,6 +607,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
             fromActivationCache[indx] = 0;
             fromWeightCache[indx] = 0;
             fromValueCache[indx] = 0;
+            safeZoneFactorCache[indx] = 0;
             continue;
           }
 
