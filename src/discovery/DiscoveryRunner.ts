@@ -882,209 +882,322 @@ export class DiscoveryRunner {
       expected?: number;
     }>;
   } {
-    // Group candidates by category for diversity selection
-    const byCategory = new Map<string, DiscoveryCandidate[]>();
-    const removalCandidates: DiscoveryCandidate[] = [];
-    const skipped: Array<{
-      changeType?: DiscoveryChangeType;
-      expected?: number;
-    }> = [];
-
-    // Track failure cache statistics (single pass)
-    const cacheStats = {
-      totalRemoval: 0,
-      cachedRemoval: 0,
-      totalOther: 0,
-      cachedOther: 0,
-      /** Track cached candidate types for better diagnostics */
-      cachedTypes: new Map<string, number>(),
-    };
-
+    // Ensure candidate creatures have UUIDs before we do any failure-cache lookups.
+    // This keeps cache keys stable and prevents subtle mis-matches.
     for (const candidate of candidates) {
       CreatureUtil.makeUUID(candidate.creature);
-      const changeType = candidate.change.type;
-
-      // Identify removal candidates (handled separately for slot allocation)
-      const isRemovalCandidate = changeType === "remove-low-impact" ||
-        changeType === "remove-neuron" ||
-        changeType === "remove-synapse";
-
-      // Check failure cache (single pass for all candidates)
-      const isCached = failureCacheDir
-        ? isCandidateCachedSync(failureCacheDir, candidate)
-        : false;
-
-      // Removal candidates are handled separately - they improve score, not error
-      if (isRemovalCandidate) {
-        cacheStats.totalRemoval++;
-        if (isCached) {
-          cacheStats.cachedRemoval++;
-          continue; // Skip cached candidates - don't let them consume slots
-        }
-        removalCandidates.push(candidate);
-        continue;
-      }
-
-      cacheStats.totalOther++;
-      if (isCached) {
-        cacheStats.cachedOther++;
-        cacheStats.cachedTypes.set(
-          changeType,
-          (cacheStats.cachedTypes.get(changeType) ?? 0) + 1,
-        );
-        continue; // Skip cached candidates - don't let them consume slots
-      }
-
-      // Group by category for diversity selection
-      // NOTE: No threshold filtering - Rust is single source of truth
-      if (!byCategory.has(changeType)) {
-        byCategory.set(changeType, []);
-      }
-      byCategory.get(changeType)!.push(candidate);
     }
 
-    // Log failure cache statistics (single pass complete)
-    if (failureCacheDir) {
-      const totalCached = cacheStats.cachedRemoval + cacheStats.cachedOther;
-      if (totalCached > 0) {
+    const result = filterCandidatesForEvaluation(
+      candidates,
+      threadCount,
+      config,
+      {
+        failureCacheDir,
+        isCandidateCached: isCandidateCachedSync,
+        random: Math.random,
+      },
+    );
+
+    // Log failure cache statistics (cached candidates never consume slots).
+    if (result.diagnostics?.cache && failureCacheDir) {
+      const cache = result.diagnostics.cache;
+      if (cache.totalCached > 0) {
         const parts: string[] = [];
-        if (cacheStats.cachedRemoval > 0) {
-          parts.push(
-            `${cacheStats.cachedRemoval} removal`,
-          );
+        if (cache.cachedRemoval > 0) {
+          parts.push(`${cache.cachedRemoval} removal`);
         }
-        // Include cached types breakdown for non-removal candidates
-        if (cacheStats.cachedOther > 0) {
-          const typeBreakdown = Array.from(cacheStats.cachedTypes.entries())
+        if (cache.cachedOther > 0) {
+          const typeBreakdown = Array.from(cache.cachedOtherByType.entries())
             .map(([type, count]) => `${count} ${type}`)
             .join(", ");
-          parts.push(typeBreakdown || `${cacheStats.cachedOther} other`);
+          parts.push(typeBreakdown || `${cache.cachedOther} other`);
         }
         console.info(
-          `[DiscoveryRunner] ⏭️ Skipped ${totalCached} candidate${
-            totalCached === 1 ? "" : "s"
+          `[DiscoveryRunner] ⏭️ Skipped ${cache.totalCached} candidate${
+            cache.totalCached === 1 ? "" : "s"
           } due to previous failure: ${parts.join(", ")}`,
         );
       }
     }
 
-    // Sort each category by expected improvement (descending)
-    for (const [_type, categoryCandidates] of byCategory) {
-      categoryCandidates.sort((a, b) => {
-        const aExpected = a.change.expectedErrorReduction;
-        const bExpected = b.change.expectedErrorReduction;
-        if (aExpected !== undefined && bExpected !== undefined) {
-          return bExpected - aExpected;
-        }
-        if (aExpected !== undefined) return -1;
-        if (bExpected !== undefined) return 1;
-        return 0;
-      });
+    // Log diversity selection summary for non-removal categories.
+    if (result.diagnostics?.categoryDiversity) {
+      const diversitySummary = Array.from(
+        result.diagnostics.categoryDiversity.entries(),
+      )
+        .map(([type, counts]) => `${type}: ${counts.selected}/${counts.total}`)
+        .join(", ");
+      if (diversitySummary.length > 0) {
+        console.info(
+          `[DiscoveryRunner] Category diversity: ${diversitySummary}`,
+        );
+      }
     }
 
-    // Calculate maxCandidates: ensure we have enough slots for diversity (one per category)
-    // while also scaling with CPU count on larger machines
-    const maxCandidates = Math.max(2 * threadCount, byCategory.size);
-
-    // PHASE 1: Select minimum from each category (ensuring diversity)
-    const selected: DiscoveryCandidate[] = [];
-    const usedFromCategory = new Map<string, number>();
-
-    // Get configured minimums per category
-    const minPerCategory = config.discoveryMinCandidatesPerCategory;
-    const getCategoryMin = (type: string): number => {
-      switch (type) {
-        case "add-neurons":
-          return minPerCategory.addNeurons;
-        case "add-synapses":
-          return minPerCategory.addSynapses;
-        case "change-squash":
-          return minPerCategory.changeSquash;
-        default:
-          return 1; // Default for unknown categories
+    // Log removal selection diagnostics (lowest-impact pool + chosen impacts).
+    if (result.diagnostics?.removalSelection) {
+      const removal = result.diagnostics.removalSelection;
+      if (removal.poolImpacts.length > 0) {
+        console.info(
+          `[DiscoveryRunner] Top ${removal.poolImpacts.length} lowest-impact removal candidates pool: [${
+            removal.poolImpacts.join(", ")
+          }]`,
+        );
       }
+      if (removal.selectedImpacts.length > 0) {
+        console.info(
+          `[DiscoveryRunner] ✓ Selected ${removal.selectedImpacts.length} removal from top ${removal.poolImpacts.length}: [${
+            removal.selectedImpacts.join(", ")
+          }]`,
+        );
+      }
+    }
+
+    return { filtered: result.filtered, skipped: result.skipped };
+  }
+}
+
+export interface FilterCandidatesForEvaluationDeps {
+  /**
+   * Optional discovery failure cache directory.
+   * When provided, cached candidates are filtered out *before* slot allocation.
+   */
+  failureCacheDir?: string;
+  /**
+   * Dependency-injected cache checker (defaults to `isCandidateCachedSync`).
+   * Inject a stub in tests for determinism and to avoid filesystem access.
+   */
+  isCandidateCached?: (dir: string, candidate: DiscoveryCandidate) => boolean;
+  /**
+   * Deterministic RNG injection point (defaults to `Math.random`).
+   * Used for weighted sampling and removal shuffling.
+   */
+  random?: () => number;
+}
+
+export interface FilterCandidatesForEvaluationDiagnostics {
+  cache?: {
+    totalRemoval: number;
+    cachedRemoval: number;
+    totalOther: number;
+    cachedOther: number;
+    totalCached: number;
+    cachedOtherByType: Map<string, number>;
+  };
+  categoryDiversity?: Map<string, { selected: number; total: number }>;
+  removalSelection?: {
+    poolImpacts: string[];
+    selectedImpacts: string[];
+  };
+}
+
+/**
+ * Filters discovery candidates for evaluation.
+ *
+ * Goals:
+ * - Filter out failure-cached candidates *before* slot allocation, across all types.
+ * - Ensure category coverage (add-neurons, add-synapses, change-squash) based on config minimums.
+ * - Fill remaining slots using weighted random sampling (expected score improvement), preserving exploration.
+ * - Keep removal candidates in their own pool (added on top), using deterministic RNG injection for tests.
+ *
+ * Note: Rust remains the single source of truth for candidate generation and cost-of-growth gating.
+ * TypeScript selection only handles caching, diversity, and evaluation slot allocation.
+ */
+export function filterCandidatesForEvaluation(
+  candidates: DiscoveryCandidate[],
+  threadCount: number,
+  config: NeatConfig,
+  deps: FilterCandidatesForEvaluationDeps = {},
+): {
+  filtered: DiscoveryCandidate[];
+  skipped: Array<{ changeType?: DiscoveryChangeType; expected?: number }>;
+  diagnostics?: FilterCandidatesForEvaluationDiagnostics;
+} {
+  const random = deps.random ?? Math.random;
+  const failureCacheDir = deps.failureCacheDir;
+  const isCandidateCached = deps.isCandidateCached ?? isCandidateCachedSync;
+
+  const skipped: Array<
+    { changeType?: DiscoveryChangeType; expected?: number }
+  > = [];
+  const diagnostics: FilterCandidatesForEvaluationDiagnostics = {};
+
+  const cacheStats = {
+    totalRemoval: 0,
+    cachedRemoval: 0,
+    totalOther: 0,
+    cachedOther: 0,
+    cachedOtherByType: new Map<string, number>(),
+  };
+
+  const isRemovalType = (type: DiscoveryChangeType): boolean =>
+    type === "remove-low-impact" || type === "remove-neuron" ||
+    type === "remove-synapse";
+
+  // Filter cached candidates first so they never consume slots.
+  const nonRemovalCandidates: DiscoveryCandidate[] = [];
+  const removalCandidates: DiscoveryCandidate[] = [];
+
+  for (const candidate of candidates) {
+    const changeType = candidate.change.type;
+    const cached = failureCacheDir
+      ? isCandidateCached(failureCacheDir, candidate)
+      : false;
+
+    if (isRemovalType(changeType)) {
+      cacheStats.totalRemoval++;
+      if (cached) {
+        cacheStats.cachedRemoval++;
+        continue;
+      }
+      removalCandidates.push(candidate);
+      continue;
+    }
+
+    cacheStats.totalOther++;
+    if (cached) {
+      cacheStats.cachedOther++;
+      cacheStats.cachedOtherByType.set(
+        changeType,
+        (cacheStats.cachedOtherByType.get(changeType) ?? 0) + 1,
+      );
+      continue;
+    }
+    nonRemovalCandidates.push(candidate);
+  }
+
+  if (failureCacheDir) {
+    const totalCached = cacheStats.cachedRemoval + cacheStats.cachedOther;
+    diagnostics.cache = {
+      ...cacheStats,
+      totalCached,
     };
+  }
 
-    // Take the configured minimum from each non-removal category first
-    for (const [type, categoryCandidates] of byCategory) {
-      const minRequired = getCategoryMin(type);
-      const toTake = Math.min(minRequired, categoryCandidates.length);
-      for (let i = 0; i < toTake; i++) {
-        selected.push(categoryCandidates[i]);
-      }
-      usedFromCategory.set(type, toTake);
-    }
+  // Group non-removal candidates by change type.
+  const byCategory = new Map<DiscoveryChangeType, DiscoveryCandidate[]>();
+  for (const candidate of nonRemovalCandidates) {
+    const type = candidate.change.type;
+    const list = byCategory.get(type) ?? [];
+    list.push(candidate);
+    byCategory.set(type, list);
+  }
 
-    // PHASE 2: Fill remaining slots with best overall candidates
-    // Always collect remaining candidates to ensure complete skipped tracking
-    const remaining: Array<{
-      candidate: DiscoveryCandidate;
-      expected: number | undefined;
-    }> = [];
-
-    for (const [type, categoryCandidates] of byCategory) {
-      const usedCount = usedFromCategory.get(type) ?? 0;
-      for (let i = usedCount; i < categoryCandidates.length; i++) {
-        remaining.push({
-          candidate: categoryCandidates[i],
-          expected: categoryCandidates[i].change.expectedErrorReduction,
-        });
-      }
-    }
-
-    // Sort by expected improvement (descending)
-    remaining.sort((a, b) => {
-      if (a.expected !== undefined && b.expected !== undefined) {
-        return b.expected - a.expected;
-      }
-      if (a.expected !== undefined) return -1;
-      if (b.expected !== undefined) return 1;
+  // Sort candidates within each category by expected score gain (descending).
+  for (const [_type, list] of byCategory) {
+    list.sort((a, b) => {
+      const aExpected = a.change.expectedErrorReduction;
+      const bExpected = b.change.expectedErrorReduction;
+      const aScore = Number.isFinite(aExpected) ? (aExpected ?? 0) : 0;
+      const bScore = Number.isFinite(bExpected) ? (bExpected ?? 0) : 0;
+      if (aScore !== bScore) return bScore - aScore;
+      // Keep insertion order stable for ties (important for deterministic behaviour in tests
+      // and for preferring the "combined" candidate that is built before its per-item variants).
       return 0;
     });
+  }
 
-    // Calculate available slots (may be 0 or negative if categories exceed maxCandidates)
-    const remainingSlots = Math.max(0, maxCandidates - selected.length);
+  // Calculate maxCandidates: scale with CPU, but never below category count so we can keep diversity.
+  const maxCandidates = Math.max(2 * threadCount, byCategory.size);
 
-    // Take the best remaining candidates up to available slots
-    const additionalCount = Math.min(remainingSlots, remaining.length);
-    for (let i = 0; i < additionalCount; i++) {
-      selected.push(remaining[i].candidate);
+  const minPerCategory = config.discoveryMinCandidatesPerCategory;
+  const getCategoryMin = (type: DiscoveryChangeType): number => {
+    switch (type) {
+      case "add-neurons":
+        return minPerCategory.addNeurons;
+      case "add-synapses":
+        return minPerCategory.addSynapses;
+      case "change-squash":
+        return minPerCategory.changeSquash;
+      default:
+        // For combo/other categories we do not force selection; they will be considered by weighting.
+        return 0;
     }
+  };
 
-    // Mark the rest as skipped (always executed, even when remainingSlots <= 0)
-    for (let i = additionalCount; i < remaining.length; i++) {
+  // Phase 1: take minimum from each category.
+  const selectedNonRemoval: DiscoveryCandidate[] = [];
+  const usedFromCategory = new Map<DiscoveryChangeType, number>();
+  for (const [type, list] of byCategory) {
+    const minRequired = getCategoryMin(type);
+    const toTake = Math.min(minRequired, list.length);
+    for (let i = 0; i < toTake; i++) {
+      selectedNonRemoval.push(list[i]);
+    }
+    usedFromCategory.set(type, toTake);
+  }
+
+  // Build remaining pool across categories.
+  const remainingPool: DiscoveryCandidate[] = [];
+  for (const [type, list] of byCategory) {
+    const used = usedFromCategory.get(type) ?? 0;
+    for (let i = used; i < list.length; i++) {
+      remainingPool.push(list[i]);
+    }
+  }
+
+  const remainingSlots = Math.max(0, maxCandidates - selectedNonRemoval.length);
+
+  // Phase 2: fill remaining slots using weighted sampling (expected improvement).
+  const weightOf = (candidate: DiscoveryCandidate): number => {
+    const value = candidate.change.expectedErrorReduction;
+    if (!Number.isFinite(value)) return 0;
+    return value! > 0 ? value! : 0;
+  };
+
+  const hasPositiveWeights = remainingPool.some((c) => weightOf(c) > 0);
+  const weightedPool = hasPositiveWeights
+    ? [...remainingPool].sort((a, b) => weightOf(b) - weightOf(a))
+    : remainingPool;
+
+  const sampled = weightedSampleWithoutReplacement(
+    weightedPool,
+    remainingSlots,
+    weightOf,
+    random,
+  );
+  selectedNonRemoval.push(...sampled);
+
+  // Track which remaining were not selected due to slot limits.
+  const selectedSet = new Set(selectedNonRemoval);
+  for (const candidate of remainingPool) {
+    if (!selectedSet.has(candidate)) {
       skipped.push({
-        changeType: remaining[i].candidate.change.type,
-        expected: remaining[i].expected,
+        changeType: candidate.change.type,
+        expected: candidate.change.expectedErrorReduction,
       });
     }
+  }
 
-    // Log diversity selection summary
-    const diversitySummary = Array.from(byCategory.keys())
-      .map((type) => {
-        const total = byCategory.get(type)!.length;
-        const selectedCount = selected.filter((c) => c.change.type === type)
-          .length;
-        return `${type}: ${selectedCount}/${total}`;
-      })
-      .join(", ");
-    if (byCategory.size > 0) {
-      console.info(
-        `[DiscoveryRunner] Category diversity: ${diversitySummary}`,
-      );
-    }
+  // Category diversity diagnostics (non-removal only).
+  const categoryDiversity = new Map<
+    string,
+    { selected: number; total: number }
+  >();
+  for (const [type, list] of byCategory) {
+    const selectedCount = selectedNonRemoval.filter((c) =>
+      c.change.type === type
+    )
+      .length;
+    categoryDiversity.set(type, {
+      selected: selectedCount,
+      total: list.length,
+    });
+  }
+  diagnostics.categoryDiversity = categoryDiversity;
 
-    // PHASE 3: Select removal candidates (separately, added on top)
-    const removalSampleSize = Math.min(
-      removalCandidates.length,
-      minPerCategory.removeLowImpact,
-    );
-    let selectedRemovalCandidates: DiscoveryCandidate[];
+  // Phase 3: select removal candidates from a lowest-impact pool, using injectable RNG.
+  const removalSampleSize = Math.min(
+    removalCandidates.length,
+    minPerCategory.removeLowImpact,
+  );
 
+  let selectedRemovalCandidates: DiscoveryCandidate[] = [];
+  if (removalSampleSize > 0) {
     if (removalCandidates.length <= removalSampleSize) {
       selectedRemovalCandidates = removalCandidates;
     } else {
-      // Extract impact values from candidate descriptions (format: "impact: X.XXe-XX")
       const candidatesWithImpact = removalCandidates.map((candidate) => {
         const impactMatch = candidate.change.description?.match(
           /impact:\s*([\d.e+-]+)/i,
@@ -1093,45 +1206,33 @@ export class DiscoveryRunner {
         return { candidate, impact };
       });
 
-      // Sort by impact ascending (lowest = safest to remove)
       candidatesWithImpact.sort((a, b) => a.impact - b.impact);
 
-      // Take the top N lowest-impact candidates as the pool to select from
-      // Scale the pool size based on the configured removal sample size
       const TOP_N = Math.max(10, removalSampleSize * 3);
       const topCandidates = candidatesWithImpact.slice(0, TOP_N);
 
-      // Log the top 10 pool before selection
-      const topPoolDetails = topCandidates
-        .map((c) => `${c.impact.toExponential(2)}`)
-        .join(", ");
-      console.info(
-        `[DiscoveryRunner] Top ${topCandidates.length} lowest-impact removal candidates pool: [${topPoolDetails}]`,
-      );
+      const poolImpacts = topCandidates.map((c) => c.impact.toExponential(2));
 
-      // Fisher-Yates shuffle on the top candidates and take first N
+      // Fisher-Yates shuffle on the pool and take the first N.
       for (let i = topCandidates.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = Math.floor(random() * (i + 1));
         [topCandidates[i], topCandidates[j]] = [
           topCandidates[j],
           topCandidates[i],
         ];
       }
+
       const selectedTop = topCandidates.slice(0, removalSampleSize);
       selectedRemovalCandidates = selectedTop.map((s) => s.candidate);
 
-      // Log which ones were chosen with their impact values
-      const selectedDetails = selectedTop
-        .map((s) => `${s.impact.toExponential(2)}`)
-        .join(", ");
-      console.info(
-        `[DiscoveryRunner] ✓ Selected ${removalSampleSize} removal from top ${topCandidates.length}: [${selectedDetails}]`,
-      );
+      diagnostics.removalSelection = {
+        poolImpacts,
+        selectedImpacts: selectedTop.map((s) => s.impact.toExponential(2)),
+      };
 
-      // Mark remaining candidates as skipped
-      const selectedSet = new Set(selectedRemovalCandidates);
+      const selectedRemovalSet = new Set(selectedRemovalCandidates);
       for (const item of candidatesWithImpact) {
-        if (!selectedSet.has(item.candidate)) {
+        if (!selectedRemovalSet.has(item.candidate)) {
           skipped.push({
             changeType: item.candidate.change.type,
             expected: item.candidate.change.expectedErrorReduction,
@@ -1139,12 +1240,78 @@ export class DiscoveryRunner {
         }
       }
     }
-
-    // Combine: other candidates first, then removal candidates (added on top)
-    const filtered = [...selected, ...selectedRemovalCandidates];
-
-    return { filtered, skipped };
   }
+
+  const filtered = [...selectedNonRemoval, ...selectedRemovalCandidates];
+  return { filtered, skipped, diagnostics };
+}
+
+/**
+ * Weighted roulette-wheel sampling without replacement.
+ *
+ * If all weights are non-finite or <= 0, falls back to uniform random selection.
+ */
+export function weightedSampleWithoutReplacement<T>(
+  items: readonly T[],
+  sampleSize: number,
+  weightOf: (item: T) => number,
+  random: () => number = Math.random,
+): T[] {
+  const selected: T[] = [];
+  if (sampleSize <= 0 || items.length === 0) return selected;
+
+  const pool: T[] = [...items];
+  const takeCount = Math.min(sampleSize, pool.length);
+
+  for (let pick = 0; pick < takeCount; pick++) {
+    const weights = pool.map((item) => {
+      const w = weightOf(item);
+      return Number.isFinite(w) && w > 0 ? w : 0;
+    });
+
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+    if (totalWeight <= 0) {
+      // Uniform fallback (stable with deterministic RNG).
+      const index = Math.floor(random() * pool.length);
+      selected.push(pool[index]);
+      pool.splice(index, 1);
+      continue;
+    }
+
+    const r = random() * totalWeight;
+    let running = 0;
+    let chosenIndex = -1;
+    for (let i = 0; i < pool.length; i++) {
+      const w = weights[i];
+      if (w <= 0) continue;
+      running += w;
+      if (r <= running) {
+        chosenIndex = i;
+        break;
+      }
+    }
+
+    if (chosenIndex < 0) {
+      // Numerical edge case: select the last positive-weight item.
+      for (let i = pool.length - 1; i >= 0; i--) {
+        if (weights[i] > 0) {
+          chosenIndex = i;
+          break;
+        }
+      }
+    }
+
+    if (chosenIndex < 0) {
+      // Should never happen, but keep behaviour safe.
+      chosenIndex = pool.length - 1;
+    }
+
+    selected.push(pool[chosenIndex]);
+    pool.splice(chosenIndex, 1);
+  }
+
+  return selected;
 }
 
 function sanitizeSegment(value: string): string {
