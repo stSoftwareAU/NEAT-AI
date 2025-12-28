@@ -3,6 +3,7 @@ import type { NeuronExport } from "../NeuronInterfaces.ts";
 import type { SynapseExport } from "../SynapseInterfaces.ts";
 import { CreatureUtil } from "../CreatureUtils.ts";
 import { Creature } from "../../Creature.ts";
+import { cleanupMemeticForRemovedSynapse } from "../../compact/CompactUtils.ts";
 
 export interface SplitSynapseInsertNeuronCandidateSynapse {
   "from_uuid": string;
@@ -241,6 +242,13 @@ export function applySplitSynapseInsertNeuronCandidate(
       `${s.fromUUID}->${s.toUUID}` !== originalKey
     ),
   };
+
+  // Clean up memetic data if it referenced the removed synapse.
+  cleanupMemeticForRemovedSynapse(
+    next,
+    candidate.fromNeuronUuid,
+    candidate.toNeuronUuid,
+  );
 
   // Insert neuron immediately before the original target neuron.
   const insertAt = toIndex - inputCount;

@@ -1771,18 +1771,23 @@ export class DiscoverStructure {
 
     const structural = rustResult.structuralCandidates ?? [];
     if (structural.length === 0) {
+      this.logRustNoImprovement("neuron", focusList, rustResult.diagnostics);
       return [];
     }
 
     const out: SplitSynapseInsertNeuronCandidate[] = [];
+    let skippedWrongType = 0;
+    let skippedBadSynapseCount = 0;
     for (const candidate of structural) {
       const typed = candidate as RustStructuralCandidate;
       if (typed?.type !== "split_synapse_insert_neuron") {
+        skippedWrongType++;
         continue;
       }
 
       // Enforce the Rust contract: exactly two synapses.
       if (!Array.isArray(typed.newSynapses) || typed.newSynapses.length !== 2) {
+        skippedBadSynapseCount++;
         this.log(
           "warn",
           `Skipping split-synapse candidate due to invalid newSynapses length (expected 2, got ${
@@ -1799,6 +1804,17 @@ export class DiscoverStructure {
           typed.newSynapses[1],
         ],
       });
+    }
+
+    if (out.length === 0) {
+      if (skippedWrongType > 0 || skippedBadSynapseCount > 0) {
+        this.log(
+          "warn",
+          `Rust neuron analysis returned ${structural.length} structural candidate(s) but none were usable after validation (skipped wrong-type=${skippedWrongType}, bad-synapse-count=${skippedBadSynapseCount}).`,
+        );
+      }
+      this.logRustNoImprovement("neuron", focusList, rustResult.diagnostics);
+      return [];
     }
 
     return out;
