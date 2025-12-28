@@ -89,7 +89,12 @@ type EvaluationTask = {
   description?: string;
 };
 
-async function evaluateAll(
+/**
+ * Evaluate a batch of replay tasks across a set of workers.
+ *
+ * @internal
+ */
+export async function evaluateAll(
   workers: WorkerHandler[],
   tasks: EvaluationTask[],
   feedbackLoop: boolean,
