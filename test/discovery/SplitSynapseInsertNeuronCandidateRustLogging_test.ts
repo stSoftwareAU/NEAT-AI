@@ -58,13 +58,17 @@ Deno.test(
       });
 
     const warns = withCapturedWarns(() => {
-      (ds as unknown as { tryRustSplitSynapseInsertNeuronCandidates: (f: string[]) => unknown })
+      (ds as unknown as {
+        tryRustSplitSynapseInsertNeuronCandidates: (f: string[]) => unknown;
+      })
         .tryRustSplitSynapseInsertNeuronCandidates(["output-0"]);
     });
 
     assert(
-      warns.some((m) => m.includes("Rust neuron analysis evaluated") &&
-        m.includes("found no improvements")),
+      warns.some((m) =>
+        m.includes("Rust neuron analysis evaluated") &&
+        m.includes("found no improvements")
+      ),
       `Expected a no-improvement warning, got:\n${warns.join("\n")}`,
     );
   },
@@ -87,16 +91,18 @@ Deno.test(
       });
 
     const warns = withCapturedWarns(() => {
-      (ds as unknown as { tryRustSplitSynapseInsertNeuronCandidates: (f: string[]) => unknown })
+      (ds as unknown as {
+        tryRustSplitSynapseInsertNeuronCandidates: (f: string[]) => unknown;
+      })
         .tryRustSplitSynapseInsertNeuronCandidates(["output-0"]);
     });
 
     assert(
-      warns.some((m) => m.includes("Rust neuron analysis evaluated") &&
-        m.includes("found no improvements")),
+      warns.some((m) =>
+        m.includes("Rust neuron analysis evaluated") &&
+        m.includes("found no improvements")
+      ),
       `Expected a no-improvement warning, got:\n${warns.join("\n")}`,
     );
   },
 );
-
-
