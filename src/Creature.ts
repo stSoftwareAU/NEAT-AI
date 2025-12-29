@@ -1396,9 +1396,13 @@ export class Creature implements CreatureInternal {
     const maxTo = this.neurons.length - 1;
     const minTo = this.input;
 
-    const tmpSynapses: Synapse[] = [];
-    let lastFrom = -1;
-    let lastTo = -1;
+    // Merge duplicate synapses (same from/to/type) by summing weights.
+    // 29-Dec-2025: This is behaviour-preserving and fixes a long-standing issue
+    // where duplicates were silently dropped, changing forward-pass behaviour.
+    // See https://github.com/stSoftwareAU/NEAT-AI/issues/976
+    const merged = new Map<string, Synapse>();
+    const inboundCountsByTo = new Map<number, number>();
+
     this.synapses.forEach((synapse) => {
       if (removeSelfConnections && synapse.from === synapse.to) {
         return;
@@ -1406,28 +1410,54 @@ export class Creature implements CreatureInternal {
       if (removeBackConnections && synapse.from > synapse.to) {
         return;
       }
-      if (synapse.from === lastFrom && synapse.to === lastTo) {
-        console.warn("duplicate synapse " + synapse.from + "->" + synapse.to);
-      } else {
-        lastFrom = synapse.from;
-        lastTo = synapse.to;
-        if (synapse.to > maxTo) {
-          console.debug("Ignoring connection to above max", maxTo, synapse);
-        } else if (synapse.to < minTo) {
-          console.debug("Ignoring connection to below min", minTo, synapse);
-        } else if (synapse.weight && Number.isFinite(synapse.weight)) {
-          /** Zero weight may as well be removed */
-          tmpSynapses.push(synapse as Synapse);
-        } else {
-          if (this.neurons[synapse.to].type === "output") {
-            /** Don't remove the last one for an output neuron */
-            if (this.inwardConnections(synapse.to).length === 1) {
-              tmpSynapses.push(synapse as Synapse);
-            }
-          }
+
+      if (synapse.to > maxTo) {
+        console.debug("Ignoring connection to above max", maxTo, synapse);
+        return;
+      }
+      if (synapse.to < minTo) {
+        console.debug("Ignoring connection to below min", minTo, synapse);
+        return;
+      }
+
+      const typeKey = synapse.type ?? "";
+      const key = `${synapse.from}->${synapse.to}:${typeKey}`;
+
+      const existing = merged.get(key);
+      if (existing) {
+        existing.weight += synapse.weight;
+        // Merge tags conservatively (best-effort). If tags are present on either,
+        // keep a de-duplicated union.
+        if (synapse.tags?.length) {
+          const old = existing.tags ?? [];
+          existing.tags = [...new Set([...old, ...synapse.tags])];
+        }
+        return;
+      }
+
+      merged.set(key, synapse as Synapse);
+      inboundCountsByTo.set(
+        synapse.to,
+        (inboundCountsByTo.get(synapse.to) ?? 0) + 1,
+      );
+    });
+
+    const tmpSynapses: Synapse[] = [];
+    for (const synapse of merged.values()) {
+      if (synapse.weight !== 0 && Number.isFinite(synapse.weight)) {
+        tmpSynapses.push(synapse);
+        continue;
+      }
+
+      // Zero weight may as well be removed, except for the last inward connection
+      // to an output neuron (we keep one to preserve structural validity).
+      if (this.neurons[synapse.to].type === "output") {
+        const inbound = inboundCountsByTo.get(synapse.to) ?? 0;
+        if (inbound === 1) {
+          tmpSynapses.push(synapse);
         }
       }
-    });
+    }
 
     this.synapses = tmpSynapses;
 

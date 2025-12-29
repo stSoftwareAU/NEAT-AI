@@ -365,9 +365,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
       }
     }
 
+    // Only consider a self-loop as a true "last resort".
+    //
+    // This avoids introducing self connections into otherwise feed-forward
+    // creatures (which can later be marked `forwardOnly=true` and validated).
     if (
       allowSelfTargets &&
       isForwardOnly === false &&
+      candidates.length === 0 &&
       !this.creature.getSynapse(this.index, this.index)
     ) {
       candidates.push(this.index);
