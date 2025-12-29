@@ -864,8 +864,27 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
       let error = 0;
       if (Math.abs(targetActivation - currentActivation) > 1e-8) {
-        const targetValue = toValue(this, targetActivation, currentValue);
-        error = targetValue - currentValue!;
+        // Prefer activation-specific error semantics when available.
+        //
+        // Rationale: some discrete squashes (eg. STEP/BIPOLAR) intentionally clamp
+        // error in value-space (via `ErrorHelper`) to prevent extreme raw values
+        // from poisoning discovery statistics.
+        //
+        // Fallback: if the squash does not implement `calculateError()`, compute a
+        // generic value-space delta using `toValue()`.
+        const calculateError = (squashMethod as ActivationInterface)
+          .calculateError;
+        if (calculateError !== undefined) {
+          error = calculateError.call(
+            squashMethod,
+            currentActivation,
+            targetActivation,
+            currentValue!,
+          );
+        } else {
+          const targetValue = toValue(this, targetActivation, currentValue);
+          error = targetValue - currentValue!;
+        }
       }
 
       // CRITICAL FIX: Track if this is the first visit to this neuron
