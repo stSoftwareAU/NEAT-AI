@@ -191,6 +191,24 @@ export function createNeatConfig(options: NeatOptions): NeatConfig {
       Math.max(2 * (options.threads ?? 1), 10),
     discoveryReplayMaxPairwise: options.discoveryReplayMaxPairwise ?? 10,
     discoveryReplayMaxTriples: options.discoveryReplayMaxTriples ?? 8,
+    discoveryReplayVerifyScores: options.discoveryReplayVerifyScores ?? false,
+    discoveryReplayConcurrency: (() => {
+      const verify = options.discoveryReplayVerifyScores ?? false;
+      const availableCores = Math.max(1, navigator.hardwareConcurrency ?? 1);
+      const defaultWhenVerify = Math.max(availableCores, 8);
+      const user = options.discoveryReplayConcurrency;
+      if (typeof user === "number" && Number.isFinite(user)) {
+        return Math.max(1, Math.floor(user));
+      }
+      return verify ? defaultWhenVerify : (options.threads ??
+        Math.max(1, navigator.hardwareConcurrency ?? 1));
+    })(),
+    discoveryReplayRescoreBaseline: (() => {
+      const verify = options.discoveryReplayVerifyScores ?? false;
+      const user = options.discoveryReplayRescoreBaseline;
+      if (typeof user === "boolean") return user;
+      return verify ? true : false;
+    })(),
     discoveryMinCandidatesPerCategory: {
       ...DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY,
       ...options.discoveryMinCandidatesPerCategory,
@@ -218,6 +236,15 @@ function validate(config: NeatArguments) {
   if (Number.isInteger(config.threads) === false || config.threads < 1) {
     throw new Error(
       `Threads must be more than zero was: ${config.threads}`,
+    );
+  }
+
+  if (
+    Number.isInteger(config.discoveryReplayConcurrency) === false ||
+    config.discoveryReplayConcurrency < 1
+  ) {
+    throw new Error(
+      `Discovery Replay Concurrency must be an integer greater than 0 was: ${config.discoveryReplayConcurrency}`,
     );
   }
 

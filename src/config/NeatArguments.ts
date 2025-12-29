@@ -304,6 +304,30 @@ export interface NeatArguments {
   discoveryReplayMaxTriples: number;
 
   /**
+   * When true, replay will explicitly verify baseline/candidate scores against the
+   * provided dataset directory (dataDir) and only report improvements that are
+   * confirmed on the current data.
+   *
+   * Defaults to false to preserve legacy performance/behaviour.
+   */
+  discoveryReplayVerifyScores: boolean;
+
+  /**
+   * Bounded concurrency for replay scoring when score verification is enabled.
+   *
+   * Defaults to max(availableCores, 8) when verification is enabled.
+   */
+  discoveryReplayConcurrency: number;
+
+  /**
+   * When score verification is enabled, controls whether replay should report
+   * baseline score drift (claimed vs actual) in the result payload.
+   *
+   * Defaults to true when verification is enabled.
+   */
+  discoveryReplayRescoreBaseline: boolean;
+
+  /**
    * Minimum candidates to evaluate per discovery category.
    */
   discoveryMinCandidatesPerCategory: Required<
