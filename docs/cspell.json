@@ -96,6 +96,8 @@
     "extern",
     "overfitting",
     "unscored",
+    "rescoring",
+    "teardown",
     "Millis",
     "wgpu",
     "WGSL",

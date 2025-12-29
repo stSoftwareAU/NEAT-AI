@@ -78,6 +78,38 @@ Deno.test("DiscoveryReplayRunner: detects baseline score drift when verification
   assert(result.baselineRescore.reason.length > 0);
 });
 
+Deno.test("DiscoveryReplayRunner: baselineRescore includes a helpful reason when no claimed score tag exists", async () => {
+  const base = makeBaseCreature();
+  base.uuid = "base";
+  base.tags = [{ name: "error", value: "0.2" }];
+
+  const runner = new DiscoveryReplayRunner({
+    listEntries: (_dir) => [],
+    evaluateError: (c) => {
+      assertEquals(c.uuid, "base");
+      return Promise.resolve({ error: 0.2, score: 0.5 });
+    },
+  });
+
+  const result = await runner.replayDir({
+    creature: base,
+    dataDir: "/tmp/does-not-matter",
+    options: {
+      discoverySuccessCacheDir: "/tmp/does-not-matter",
+      costOfGrowth: 0,
+      threads: 1,
+      discoveryReplayVerifyScores: true,
+    },
+  });
+
+  assertExists(result.baselineRescore);
+  assertEquals(result.baselineRescore.claimedScore, undefined);
+  assertEquals(result.baselineRescore.actualScore, 0.5);
+  assertEquals(result.baselineRescore.actualError, 0.2);
+  assertEquals(result.baselineRescore.changed, false);
+  assert(result.baselineRescore.reason.startsWith("🦘 "));
+});
+
 Deno.test("DiscoveryReplayRunner: rejects stale 'better by cache metadata' candidates when verification enabled", async () => {
   const base = makeBaseCreature();
   base.uuid = "base";
@@ -129,6 +161,91 @@ Deno.test("DiscoveryReplayRunner: rejects stale 'better by cache metadata' candi
   assertEquals(deleted, [{ key: "stale", changeType: "add-synapses" }]);
   assertEquals(result.improvement, undefined);
   assertEquals(result.verifiedImprovement, undefined);
+});
+
+Deno.test("DiscoveryReplayRunner: considers all-removals combo as a separate outcome", async () => {
+  const base = makeBaseCreature();
+  base.uuid = "base";
+  base.tags = [
+    { name: "score", value: "1" },
+    { name: "error", value: "0.1" },
+  ];
+
+  const remove1 = makeEntry({
+    key: "r1",
+    changeType: "remove-synapse",
+    scoreDelta: 0.05,
+  });
+  const remove2 = makeEntry({
+    key: "r2",
+    changeType: "remove-neuron",
+    scoreDelta: 0.04,
+  });
+  const add1 = makeEntry({
+    key: "a1",
+    changeType: "add-synapses",
+    scoreDelta: 0.03,
+  });
+
+  const runner = new DiscoveryReplayRunner({
+    listEntries: (_dir) => [remove1, remove2, add1],
+    applyEntry: (current, entry) => {
+      const clone = Creature.fromJSON(current.exportJSON());
+      clone.uuid = `${current.uuid}-${entry.key}`;
+      return clone;
+    },
+    evaluateError: (c) => {
+      const id = c.uuid ?? "";
+      if (id === "base") return Promise.resolve({ error: 0.1, score: 1.0 });
+
+      // Singles: all succeed.
+      if (id.endsWith("-r1")) {
+        return Promise.resolve({ error: 0.1, score: 1.05 });
+      }
+      if (id.endsWith("-r2")) {
+        return Promise.resolve({ error: 0.1, score: 1.04 });
+      }
+      if (id.endsWith("-a1")) {
+        return Promise.resolve({ error: 0.1, score: 1.03 });
+      }
+
+      // Combos:
+      // - removals-only combo best
+      if (id.includes("-r1") && id.includes("-r2") && !id.includes("-a1")) {
+        return Promise.resolve({ error: 0.1, score: 1.06 });
+      }
+      // - all-successful combo slightly worse
+      if (id.includes("-r1") && id.includes("-r2") && id.includes("-a1")) {
+        return Promise.resolve({ error: 0.1, score: 1.055 });
+      }
+
+      return Promise.resolve({ error: 0.1, score: 1.0 });
+    },
+  });
+
+  const result = await runner.replayDir({
+    creature: base,
+    dataDir: "/tmp/does-not-matter",
+    options: {
+      discoverySuccessCacheDir: "/tmp/does-not-matter",
+      costOfGrowth: 0,
+      threads: 1,
+      discoveryReplayVerifyScores: true,
+      discoveryReplayMaxSingles: 10,
+      discoveryReplayMaxPairwise: 10,
+      discoveryReplayMaxTriples: 10,
+    },
+  });
+
+  // We expect two combo evaluations:
+  // - all-successful combo (r1+r2+a1)
+  // - removals-only combo (r1+r2)
+  assertEquals(result.evaluatedCombos, 2);
+  assertExists(result.evaluations);
+  const comboDescriptions = result.evaluations
+    .filter((e) => e.kind === "combo")
+    .map((e) => e.description ?? "");
+  assert(comboDescriptions.some((d) => d.includes("cached pruning")));
 });
 
 Deno.test("DiscoveryReplayRunner: concurrency does not change which verified improvement is selected", async () => {
@@ -202,4 +319,40 @@ Deno.test("DiscoveryReplayRunner: concurrency does not change which verified imp
     r1.verifiedImprovement.creature.tags?.[0]?.value,
     r2.verifiedImprovement.creature.tags?.[0]?.value,
   );
+});
+
+Deno.test("DiscoveryReplayRunner: returns timing diagnostics when enabled", async () => {
+  const base = makeBaseCreature();
+  base.uuid = "base";
+  base.tags = [{ name: "score", value: "0.5" }];
+
+  const runner = new DiscoveryReplayRunner({
+    listEntries: (_dir) => [],
+    evaluateError: (c) => {
+      assertEquals(c.uuid, "base");
+      return Promise.resolve({ error: 0.2, score: 0.5 });
+    },
+  });
+
+  const result = await runner.replayDir({
+    creature: base,
+    dataDir: "/tmp/does-not-matter",
+    options: {
+      discoverySuccessCacheDir: "/tmp/does-not-matter",
+      costOfGrowth: 0,
+      threads: 1,
+      discoveryReplayVerifyScores: true,
+      discoveryReplayDiagnostics: true,
+    },
+  });
+
+  assertExists(result.diagnostics);
+  assertExists(result.diagnostics.timingsMS.total);
+  assertExists(result.diagnostics.timingsMS.listEntries);
+  assertExists(result.diagnostics.timingsMS.sortEntries);
+  assertExists(result.diagnostics.timingsMS.applySingles);
+  assertExists(result.diagnostics.timingsMS.evaluateBaselineAndSingles);
+  assertExists(result.diagnostics.timingsMS.selectBest);
+  assertEquals(result.diagnostics.counts.entriesLoaded, 0);
+  assertEquals(result.diagnostics.counts.singlesEvaluated, 0);
 });

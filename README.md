@@ -328,6 +328,8 @@ const replay = await creature.discoveryReplayDir(dataDir, {
   discoveryReplayConcurrency: 8,
   // When verification is enabled, include claimed vs actual baseline drift details
   discoveryReplayRescoreBaseline: true,
+  // Optional: return timing diagnostics for visibility into where replay time is spent.
+  discoveryReplayDiagnostics: true,
 });
 
 if (replay.improvement) {
@@ -343,6 +345,9 @@ if (replay.baselineRescore?.changed) {
 }
 if (replay.verifiedImprovement?.improved) {
   console.log(replay.verifiedImprovement.message);
+}
+if (replay.diagnostics) {
+  console.log(replay.diagnostics.timingsMS);
 }
 ```
 
