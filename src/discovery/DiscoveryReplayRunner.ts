@@ -1,5 +1,6 @@
 import { assertExists } from "@std/assert";
 import type { CostName } from "../Costs.ts";
+import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import type {
   CandidateHarmfulNeuron,
@@ -47,6 +48,13 @@ export interface DiscoveryReplayDirResult {
     error: number;
     score: number;
   };
+  baselineRescore?: {
+    claimedScore?: number;
+    actualScore: number;
+    actualError: number;
+    changed: boolean;
+    reason: string;
+  };
   improvement?: {
     key?: string;
     changeType: string;
@@ -55,6 +63,14 @@ export interface DiscoveryReplayDirResult {
     scoreDelta: number;
     message: string;
     creature: unknown;
+  };
+  verifiedImprovement?: {
+    score: number;
+    error: number;
+    scoreDelta: number;
+    improved: boolean;
+    message: string;
+    creature: CreatureExport;
   };
   evaluatedSingles: number;
   evaluatedCombos: number;
@@ -100,12 +116,15 @@ export async function evaluateAll(
   feedbackLoop: boolean,
   costOfGrowth: number,
 ): Promise<Array<EvaluationTask & { error: number; score: number }>> {
-  const queue = tasks.slice();
-  const results: Array<EvaluationTask & { error: number; score: number }> = [];
+  const queue = tasks.map((task, index) => ({ task, index }));
+  const results: Array<
+    (EvaluationTask & { error: number; score: number }) | undefined
+  > = new Array(tasks.length);
 
   const processNext = async (worker: WorkerHandler): Promise<void> => {
-    const task = queue.shift();
-    if (!task) return;
+    const next = queue.shift();
+    if (!next) return;
+    const { task, index } = next;
 
     const response = await worker.evaluate(task.creature, feedbackLoop);
     assertExists(
@@ -114,13 +133,13 @@ export async function evaluateAll(
     );
     const error = response.evaluate.error;
     const score = calculateScore(task.creature, error, costOfGrowth);
-    results.push({ ...task, error, score });
+    results[index] = { ...task, error, score };
 
     await processNext(worker);
   };
 
   await Promise.all(workers.map((worker) => processNext(worker)));
-  return results;
+  return results.filter((r) => r !== undefined);
 }
 
 function isRemovalType(changeType: string): boolean {
@@ -132,6 +151,59 @@ function safeNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : undefined;
+}
+
+function parseClaimedTagNumber(
+  tags: Array<{ name: string; value?: string }> | undefined,
+  key: "score" | "error",
+): number | undefined {
+  if (!tags || tags.length === 0) return undefined;
+  for (const tag of tags) {
+    if (!tag?.name) continue;
+    if (tag.name.toLowerCase() !== key) continue;
+    const raw = tag.value ?? "";
+    const parsed = Number.parseFloat(raw);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+function scoreMeaningfullyDifferent(
+  claimed: number | undefined,
+  actual: number,
+): boolean {
+  if (claimed === undefined) return false;
+  if (!Number.isFinite(actual)) return true;
+  const absDiff = Math.abs(claimed - actual);
+  if (absDiff <= 1e-12) return false;
+  const denom = Math.max(1, Math.abs(claimed), Math.abs(actual));
+  return absDiff / denom > 1e-9;
+}
+
+async function mapConcurrent<TIn, TOut>(
+  inputs: readonly TIn[],
+  concurrency: number,
+  fn: (value: TIn, index: number) => Promise<TOut>,
+): Promise<TOut[]> {
+  const limit = Math.max(1, Math.floor(concurrency));
+  const results: TOut[] = new Array(inputs.length);
+  let nextIndex = 0;
+
+  const runOne = async (): Promise<void> => {
+    while (true) {
+      const i = nextIndex++;
+      if (i >= inputs.length) return;
+      // deno-lint-ignore no-await-in-loop -- This loop is the concurrency limiter; awaiting here is intentional.
+      results[i] = await fn(inputs[i], i);
+    }
+  };
+
+  const runners = Array.from(
+    { length: Math.min(limit, inputs.length) },
+    () => runOne(),
+  );
+  await Promise.all(runners);
+  return results;
 }
 
 function getRustRequest(entry: SuccessCacheEntry): Record<string, unknown> {
@@ -362,15 +434,24 @@ function applyEntryUsingRustRequest(
 }
 
 function buildComboIndices(
-  count: number,
+  successfulSingles: Array<{ entry: SuccessCacheEntry }>,
   maxPairwise: number,
   maxTriples: number,
 ): number[][] {
   const combos: number[][] = [];
+  const count = successfulSingles.length;
   if (count < 2) return combos;
 
   // All.
   combos.push(Array.from({ length: count }, (_, i) => i));
+
+  // All removals as a separate candidate outcome (when there are 2+ removals).
+  const removalOnly = successfulSingles
+    .map((s, i) => (isRemovalType(s.entry.changeType) ? i : -1))
+    .filter((i) => i >= 0);
+  if (removalOnly.length >= 2 && removalOnly.length < count) {
+    combos.push(removalOnly);
+  }
 
   // Replay intentionally only evaluates the all-successful combination.
   // Pairwise/triple exploration can be reintroduced later if needed.
@@ -423,6 +504,10 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
   ): Promise<DiscoveryReplayDirResult> {
     const { creature, dataDir, options } = input;
     const config = createNeatConfig(options);
+    const verifyScores = config.discoveryReplayVerifyScores;
+    const replayConcurrency = verifyScores
+      ? config.discoveryReplayConcurrency
+      : config.threads;
 
     const successCacheDir = config.discoverySuccessCacheDir;
     if (!successCacheDir) {
@@ -439,7 +524,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
 
     try {
       if (!this.#deps.evaluateError) {
-        const workerCount = config.threads;
+        const workerCount = replayConcurrency;
         for (let i = 0; i < workerCount; i++) {
           workers.push(
             new WorkerHandler(
@@ -452,32 +537,34 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         }
       }
 
-      const evaluateViaWorkers = async (
-        c: Creature,
-        feedbackLoop: boolean,
-        costOfGrowth: number,
-      ) => {
-        const tasks: EvaluationTask[] = [{ kind: "single", creature: c }];
-        const evaluated = await evaluateAll(
-          workers,
-          tasks,
-          feedbackLoop,
-          costOfGrowth,
-        );
-        return { error: evaluated[0].error, score: evaluated[0].score };
-      };
-
       const deps = {
         ...this.#deps,
-        evaluateError: this.#deps.evaluateError ?? evaluateViaWorkers,
       };
 
-      // Evaluate original first.
-      const originalEval = await deps.evaluateError(
-        creature,
-        config.feedbackLoop,
-        config.costOfGrowth,
-      );
+      const evaluateTasks = async (
+        tasks: EvaluationTask[],
+      ): Promise<Array<EvaluationTask & { error: number; score: number }>> => {
+        if (this.#deps.evaluateError) {
+          return await mapConcurrent(
+            tasks,
+            replayConcurrency,
+            async (task) => {
+              const evalResult = await this.#deps.evaluateError!(
+                task.creature,
+                config.feedbackLoop,
+                config.costOfGrowth,
+              );
+              return { ...task, ...evalResult };
+            },
+          );
+        }
+        return await evaluateAll(
+          workers,
+          tasks,
+          config.feedbackLoop,
+          config.costOfGrowth,
+        );
+      };
 
       // Load cache entries and prioritise by historical delta.
       const allEntries = deps.listEntries(successCacheDir)
@@ -520,40 +607,32 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         singleCandidates.push({ entry, creature: applied });
       }
 
-      // Evaluate all singles in parallel (workers) or via injected evaluator (tests).
-      const singleResults = this.#deps.evaluateError
-        ? await Promise.all(
-          singleCandidates.map(async (c) => {
-            const evalResult = await deps.evaluateError(
-              c.creature,
-              config.feedbackLoop,
-              config.costOfGrowth,
-            );
-            return {
-              entry: c.entry,
-              creature: c.creature,
-              ...evalResult,
-              scoreDelta: evalResult.score - originalEval.score,
-            };
-          }),
-        )
-        : (await evaluateAll(
-          workers,
-          singleCandidates.map((c) => ({
-            kind: "single" as const,
-            creature: c.creature,
-            entry: c.entry,
-            description: c.entry.description,
-          })),
-          config.feedbackLoop,
-          config.costOfGrowth,
-        )).map((r) => ({
-          entry: r.entry!,
-          creature: r.creature,
-          error: r.error,
-          score: r.score,
-          scoreDelta: r.score - originalEval.score,
-        }));
+      const tasksBaselineAndSingles: EvaluationTask[] = [
+        { kind: "original", creature },
+        ...singleCandidates.map((c) => ({
+          kind: "single" as const,
+          creature: c.creature,
+          entry: c.entry,
+          description: c.entry.description,
+        })),
+      ];
+
+      const evaluatedBaselineAndSingles = await evaluateTasks(
+        tasksBaselineAndSingles,
+      );
+
+      const originalEval = {
+        error: evaluatedBaselineAndSingles[0].error,
+        score: evaluatedBaselineAndSingles[0].score,
+      };
+
+      const singleResults = evaluatedBaselineAndSingles.slice(1).map((r) => ({
+        entry: r.entry!,
+        creature: r.creature,
+        error: r.error,
+        score: r.score,
+        scoreDelta: r.score - originalEval.score,
+      }));
 
       let pruned = 0;
       const successfulSingles = singleResults.filter((r) =>
@@ -569,7 +648,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
 
       // Build combos from still-successful singles.
       const combosToTry = buildComboIndices(
-        successfulSingles.length,
+        successfulSingles,
         config.discoveryReplayMaxPairwise,
         config.discoveryReplayMaxTriples,
       );
@@ -597,38 +676,21 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         comboCandidates.push({ indices, creature: current, entries });
       }
 
-      const comboResults = this.#deps.evaluateError
-        ? await Promise.all(
-          comboCandidates.map(async (c) => {
-            const evalResult = await deps.evaluateError(
-              c.creature,
-              config.feedbackLoop,
-              config.costOfGrowth,
-            );
-            return {
-              creature: c.creature,
-              entries: c.entries,
-              ...evalResult,
-              scoreDelta: evalResult.score - originalEval.score,
-            };
-          }),
-        )
-        : (await evaluateAll(
-          workers,
-          comboCandidates.map((c) => ({
-            kind: "combo" as const,
-            creature: c.creature,
-            description: describeCombo(c.entries),
-          })),
-          config.feedbackLoop,
-          config.costOfGrowth,
-        )).map((r, i) => ({
-          creature: r.creature,
-          entries: comboCandidates[i].entries,
-          error: r.error,
-          score: r.score,
-          scoreDelta: r.score - originalEval.score,
-        }));
+      const comboTasks: EvaluationTask[] = comboCandidates.map((c) => ({
+        kind: "combo" as const,
+        creature: c.creature,
+        description: describeCombo(c.entries),
+      }));
+
+      const evaluatedCombos = await evaluateTasks(comboTasks);
+
+      const comboResults = evaluatedCombos.map((r, i) => ({
+        creature: r.creature,
+        entries: comboCandidates[i].entries,
+        error: r.error,
+        score: r.score,
+        scoreDelta: r.score - originalEval.score,
+      }));
 
       // Pick best single/combo.
       const allEvaluated = [
@@ -654,7 +716,21 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         })),
       ];
 
-      allEvaluated.sort((a, b) => (b.scoreDelta ?? 0) - (a.scoreDelta ?? 0));
+      allEvaluated.sort((a, b) => {
+        const delta = (b.scoreDelta ?? 0) - (a.scoreDelta ?? 0);
+        if (delta !== 0) return delta;
+        const score = b.score - a.score;
+        if (score !== 0) return score;
+        const err = a.error - b.error;
+        if (err !== 0) return err;
+        const aKey = `${a.kind}:${a.changeType}:${a.key ?? ""}:${
+          a.description ?? ""
+        }`;
+        const bKey = `${b.kind}:${b.changeType}:${b.key ?? ""}:${
+          b.description ?? ""
+        }`;
+        return aKey.localeCompare(bKey);
+      });
       const best = allEvaluated[0];
 
       const evaluations: DiscoveryReplayEvaluationSummary[] = [
@@ -695,6 +771,31 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         evaluations,
       };
 
+      if (verifyScores && config.discoveryReplayRescoreBaseline) {
+        const claimedScore = parseClaimedTagNumber(creature.tags, "score");
+        const claimedError = parseClaimedTagNumber(creature.tags, "error");
+        const changed = scoreMeaningfullyDifferent(
+          claimedScore,
+          originalEval.score,
+        );
+        const prefix = "🦘";
+        const reason = claimedScore === undefined
+          ? `${prefix} Baseline rescore: no claimed score tag found, so I rescored on the current dataset (score=${originalEval.score}, error=${originalEval.error}).`
+          : `${prefix} Score drift check: claimed score ${claimedScore} (error ${
+            claimedError ?? "?"
+          }) vs actual score ${originalEval.score} (error ${originalEval.error}) on the current dataset.`;
+
+        void claimedError; // Claimed error is optional; callers can re-tag using actualError.
+
+        result.baselineRescore = {
+          claimedScore,
+          actualScore: originalEval.score,
+          actualError: originalEval.error,
+          changed,
+          reason,
+        };
+      }
+
       if (best && best.score > originalEval.score) {
         const scoreDelta = best.score - originalEval.score;
         const message = `${best.description ?? best.changeType}: Score +${
@@ -709,6 +810,16 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
           message,
           creature: best.creature.exportJSON(),
         };
+        if (verifyScores) {
+          result.verifiedImprovement = {
+            score: best.score,
+            error: best.error,
+            scoreDelta,
+            improved: scoreDelta > 0,
+            message: `Verified improvement on current dataset: ${message}`,
+            creature: best.creature.exportJSON(),
+          };
+        }
       }
 
       return result;

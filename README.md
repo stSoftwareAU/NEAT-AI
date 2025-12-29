@@ -321,11 +321,28 @@ const replay = await creature.discoveryReplayDir(dataDir, {
   discoveryReplayMaxSingles: 20,
   discoveryReplayMaxPairwise: 10,
   discoveryReplayMaxTriples: 8,
+  // Optional (off by default): verify scores against the current dataset to
+  // detect drift and avoid accepting stale improvements.
+  discoveryReplayVerifyScores: true,
+  // Bounded concurrency used during verification (defaults to max(availableCores, 8))
+  discoveryReplayConcurrency: 8,
+  // When verification is enabled, include claimed vs actual baseline drift details
+  discoveryReplayRescoreBaseline: true,
 });
 
 if (replay.improvement) {
   console.log(replay.improvement.message);
   // Reinsert replay.improvement.creature into your population and re-evaluate.
+}
+
+// When discoveryReplayVerifyScores is enabled, replay also reports:
+// - baselineRescore: claimed vs actual baseline score on the current dataset
+// - verifiedImprovement: the selected best outcome, gated by baseline actual score
+if (replay.baselineRescore?.changed) {
+  console.log(replay.baselineRescore.reason);
+}
+if (replay.verifiedImprovement?.improved) {
+  console.log(replay.verifiedImprovement.message);
 }
 ```
 
