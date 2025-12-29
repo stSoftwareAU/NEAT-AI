@@ -3,21 +3,24 @@ import { type CreatureExport, CreatureUtil } from "../../mod.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { Creature } from "../Creature.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import { Activations } from "../methods/activations/Activations.ts";
 import { HYPOT } from "../deprecated/HYPOT.ts";
 import { HYPOTv2 } from "../deprecated/HYPOTv2.ts";
+import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import { Activations } from "../methods/activations/Activations.ts";
 import { IF } from "../methods/activations/aggregate/IF.ts";
 import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
 import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
 import { ABSOLUTE } from "../methods/activations/types/ABSOLUTE.ts";
+import { COMPLEMENT } from "../methods/activations/types/COMPLEMENT.ts";
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 import { ReLU } from "../methods/activations/types/ReLU.ts";
 import type { SimplifyBiasInterface } from "./SimplifyBiasInterface.ts";
 
 export function simplify(creature: Creature): Creature | undefined {
   const complexUUID = CreatureUtil.makeUUID(creature);
-  const exported = creature.exportJSON();
+  let exported = creature.exportJSON();
+
+  exported = simplifyComplementToIdentity(exported);
   const neuronsMap = new Map<string, NeuronExport>();
   exported.neurons.forEach((neuron) => {
     neuronsMap.set(neuron.uuid, neuron);
@@ -93,6 +96,28 @@ export function simplify(creature: Creature): Creature | undefined {
   delete simplifiedCreature.memetic;
 
   return simplifiedCreature;
+}
+
+function simplifyComplementToIdentity(
+  exported: CreatureExport,
+): CreatureExport {
+  // 29-Dec-2025: COMPLEMENT (1 - x) is a simple affine transform, so it can be
+  // represented exactly as IDENTITY by negating inbound weights and adjusting
+  // bias: 1 - (Σ(wᵢaᵢ) + b) = Σ((-wᵢ)aᵢ) + (1 - b).
+  for (const neuron of exported.neurons) {
+    if (neuron.squash !== COMPLEMENT.NAME) continue;
+
+    neuron.squash = IDENTITY.NAME;
+    neuron.bias = 1 - neuron.bias;
+
+    for (const synapse of exported.synapses) {
+      if (synapse.toUUID === neuron.uuid) {
+        synapse.weight = -synapse.weight;
+      }
+    }
+  }
+
+  return exported;
 }
 
 export function removeKnownSign(exported: CreatureExport) {
