@@ -43,11 +43,42 @@ export interface DiscoveryReplayEvaluationSummary {
   improved: boolean;
 }
 
+export interface DiscoveryReplayDiagnostics {
+  /**
+   * Timing breakdown in milliseconds. Values are best-effort and intended for
+   * visibility (where time is being spent), not micro-benchmarking.
+   */
+  timingsMS: {
+    total?: number;
+    setupWorkers?: number;
+    listEntries?: number;
+    sortEntries?: number;
+    applySingles?: number;
+    evaluateBaselineAndSingles?: number;
+    buildCombos?: number;
+    evaluateCombos?: number;
+    selectBest?: number;
+    teardownWorkers?: number;
+  };
+  counts: {
+    workerCount: number;
+    entriesLoaded: number;
+    singlesApplied: number;
+    singlesEvaluated: number;
+    combosBuilt: number;
+    combosEvaluated: number;
+    pruned: number;
+    skippedAlreadyApplied: number;
+    skippedNotApplicable: number;
+  };
+}
+
 export interface DiscoveryReplayDirResult {
   original: {
     error: number;
     score: number;
   };
+  diagnostics?: DiscoveryReplayDiagnostics;
   baselineRescore?: {
     claimedScore?: number;
     actualScore: number;
@@ -508,6 +539,13 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
     const replayConcurrency = verifyScores
       ? config.discoveryReplayConcurrency
       : config.threads;
+    const diagnosticsEnabled =
+      (config as unknown as { discoveryReplayDiagnostics?: boolean })
+        .discoveryReplayDiagnostics ?? false;
+    const totalStart = diagnosticsEnabled ? performance.now() : 0;
+    const timingsMS: DiscoveryReplayDiagnostics["timingsMS"] | undefined =
+      diagnosticsEnabled ? {} : undefined;
+    let resultToReturn: DiscoveryReplayDirResult | undefined;
 
     const successCacheDir = config.discoverySuccessCacheDir;
     if (!successCacheDir) {
@@ -525,6 +563,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
     try {
       if (!this.#deps.evaluateError) {
         const workerCount = replayConcurrency;
+        const setupStart = diagnosticsEnabled ? performance.now() : 0;
         for (let i = 0; i < workerCount; i++) {
           workers.push(
             new WorkerHandler(
@@ -535,6 +574,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
             ),
           );
         }
+        if (timingsMS) timingsMS.setupWorkers = performance.now() - setupStart;
       }
 
       const deps = {
@@ -567,18 +607,22 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
       };
 
       // Load cache entries and prioritise by historical delta.
+      const listStart = diagnosticsEnabled ? performance.now() : 0;
       const allEntries = deps.listEntries(successCacheDir)
         .filter((e) =>
           typeof e.key === "string" && typeof e.changeType === "string"
         )
         // Do not persist combo entries; replay builds combos on demand from singles.
         .filter((e) => !e.changeType.startsWith("combo-"));
+      if (timingsMS) timingsMS.listEntries = performance.now() - listStart;
 
+      const sortStart = diagnosticsEnabled ? performance.now() : 0;
       allEntries.sort((a, b) => {
         const aDelta = safeNumber(a.scoreDelta) ?? 0;
         const bDelta = safeNumber(b.scoreDelta) ?? 0;
         return bDelta - aDelta;
       });
+      if (timingsMS) timingsMS.sortEntries = performance.now() - sortStart;
 
       const selectedEntries = allEntries.slice(
         0,
@@ -589,6 +633,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
       let skippedNotApplicable = 0;
 
       // Apply all singles we can.
+      const applySinglesStart = diagnosticsEnabled ? performance.now() : 0;
       const singleCandidates: Array<{
         entry: SuccessCacheEntry;
         creature: Creature;
@@ -606,6 +651,9 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         CreatureUtil.makeUUID(applied);
         singleCandidates.push({ entry, creature: applied });
       }
+      if (timingsMS) {
+        timingsMS.applySingles = performance.now() - applySinglesStart;
+      }
 
       const tasksBaselineAndSingles: EvaluationTask[] = [
         { kind: "original", creature },
@@ -617,9 +665,16 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         })),
       ];
 
+      const evalBaselineAndSinglesStart = diagnosticsEnabled
+        ? performance.now()
+        : 0;
       const evaluatedBaselineAndSingles = await evaluateTasks(
         tasksBaselineAndSingles,
       );
+      if (timingsMS) {
+        timingsMS.evaluateBaselineAndSingles = performance.now() -
+          evalBaselineAndSinglesStart;
+      }
 
       const originalEval = {
         error: evaluatedBaselineAndSingles[0].error,
@@ -647,6 +702,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
       }
 
       // Build combos from still-successful singles.
+      const buildCombosStart = diagnosticsEnabled ? performance.now() : 0;
       const combosToTry = buildComboIndices(
         successfulSingles,
         config.discoveryReplayMaxPairwise,
@@ -675,6 +731,9 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         CreatureUtil.makeUUID(current);
         comboCandidates.push({ indices, creature: current, entries });
       }
+      if (timingsMS) {
+        timingsMS.buildCombos = performance.now() - buildCombosStart;
+      }
 
       const comboTasks: EvaluationTask[] = comboCandidates.map((c) => ({
         kind: "combo" as const,
@@ -682,7 +741,11 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         description: describeCombo(c.entries),
       }));
 
+      const evaluateCombosStart = diagnosticsEnabled ? performance.now() : 0;
       const evaluatedCombos = await evaluateTasks(comboTasks);
+      if (timingsMS) {
+        timingsMS.evaluateCombos = performance.now() - evaluateCombosStart;
+      }
 
       const comboResults = evaluatedCombos.map((r, i) => ({
         creature: r.creature,
@@ -716,6 +779,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         })),
       ];
 
+      const selectBestStart = diagnosticsEnabled ? performance.now() : 0;
       allEvaluated.sort((a, b) => {
         const delta = (b.scoreDelta ?? 0) - (a.scoreDelta ?? 0);
         if (delta !== 0) return delta;
@@ -732,6 +796,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         return aKey.localeCompare(bKey);
       });
       const best = allEvaluated[0];
+      if (timingsMS) timingsMS.selectBest = performance.now() - selectBestStart;
 
       const evaluations: DiscoveryReplayEvaluationSummary[] = [
         {
@@ -770,6 +835,23 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         skippedNotApplicable,
         evaluations,
       };
+
+      if (diagnosticsEnabled) {
+        result.diagnostics = {
+          timingsMS: timingsMS ?? {},
+          counts: {
+            workerCount: workers.length,
+            entriesLoaded: allEntries.length,
+            singlesApplied: singleCandidates.length,
+            singlesEvaluated: singleResults.length,
+            combosBuilt: comboCandidates.length,
+            combosEvaluated: comboResults.length,
+            pruned,
+            skippedAlreadyApplied,
+            skippedNotApplicable,
+          },
+        };
+      }
 
       if (verifyScores && config.discoveryReplayRescoreBaseline) {
         const claimedScore = parseClaimedTagNumber(creature.tags, "score");
@@ -822,14 +904,23 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         }
       }
 
+      resultToReturn = result;
       return result;
     } finally {
+      const teardownStart = diagnosticsEnabled ? performance.now() : 0;
       for (const worker of workers) {
         try {
           worker.terminate();
         } catch {
           // Ignore termination errors.
         }
+      }
+      if (resultToReturn?.diagnostics?.timingsMS) {
+        resultToReturn.diagnostics.timingsMS.teardownWorkers =
+          diagnosticsEnabled ? performance.now() - teardownStart : undefined;
+        resultToReturn.diagnostics.timingsMS.total = diagnosticsEnabled
+          ? performance.now() - totalStart
+          : undefined;
       }
     }
   }

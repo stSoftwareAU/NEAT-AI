@@ -209,6 +209,7 @@ export function createNeatConfig(options: NeatOptions): NeatConfig {
       if (typeof user === "boolean") return user;
       return verify ? true : false;
     })(),
+    discoveryReplayDiagnostics: options.discoveryReplayDiagnostics ?? false,
     discoveryMinCandidatesPerCategory: {
       ...DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY,
       ...options.discoveryMinCandidatesPerCategory,
