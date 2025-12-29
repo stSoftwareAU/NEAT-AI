@@ -27,8 +27,6 @@ import { submitDiscoveryRecordBatch } from "./SubmitDiscoveryRecordBatch.ts";
 const shouldLogDiscovery = (config: NeatConfig): boolean =>
   config.verbose || config.log > 0;
 
-const DEFAULT_DISCOVERY_MIN_IMPROVEMENT = 0.01; // 1% (29-Dec-2025)
-
 /**
  * Calculates the candidate counts that should be reported in the worker
  * "Candidates Found" summary.
@@ -269,8 +267,6 @@ class DataRecorder {
       disableCleanup: config.discoveryDisableCleanup,
       skipRecordPhase: config.discoverySkipRecordPhase,
       rustFlushBytesThreshold: config.discoveryRustFlushBytes,
-      improvementThreshold: config.discoveryMinImprovementPercentage ??
-        DEFAULT_DISCOVERY_MIN_IMPROVEMENT,
     };
   }
 
@@ -565,11 +561,8 @@ class DataRecorder {
       );
     }
 
-    const improvementThreshold = config.discoveryMinImprovementPercentage ??
-      DEFAULT_DISCOVERY_MIN_IMPROVEMENT;
-
     const classifyCandidateTag = (
-      gain: number,
+      _gain: number,
       comment?: string,
     ): "CANDIDATE" | "FALLBACK" | "SPLIT-ERROR" => {
       const normalised = typeof comment === "string"
@@ -577,7 +570,6 @@ class DataRecorder {
         : "";
       if (normalised.includes("split-error")) return "SPLIT-ERROR";
       if (normalised.includes("fallback")) return "FALLBACK";
-      if (gain > 0 && gain < improvementThreshold) return "FALLBACK";
       return "CANDIDATE";
     };
 

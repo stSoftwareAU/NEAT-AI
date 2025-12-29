@@ -230,8 +230,6 @@ export interface RustParallelAnalysisInput {
   parquetFile: string;
   creature: RustRecordInput["creature"];
   focusNeurons: string[];
-  improvementThreshold?: number;
-  harmfulThreshold?: number;
   maxSynapseCandidates?: number;
   maxNeuronCandidates?: number;
   requireGpu?: boolean;

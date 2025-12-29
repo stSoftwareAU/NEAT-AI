@@ -99,20 +99,6 @@ export interface DiscoverStructureOptions {
    * Primarily for testing and production tuning; defaults to ~50 MiB.
    */
   rustFlushBytesThreshold?: number;
-
-  /**
-   * Optional improvement threshold forwarded to NEAT-AI-Discovery's parallel analyser.
-   *
-   * Note (29-Dec-2025): The Rust engine may still return "fallback" candidates
-   * with expectedCreatureScoreGain > 0 but below this threshold. Consumers should
-   * treat those as intentionally-returned fallback candidates, not errors.
-   */
-  improvementThreshold?: number;
-
-  /**
-   * Optional harmful threshold forwarded to NEAT-AI-Discovery's parallel analyser.
-   */
-  harmfulThreshold?: number;
 }
 
 const OUTPUT_ERROR_CACHE_TTL_MS = 30_000;
@@ -458,8 +444,6 @@ export class DiscoverStructure {
   private analysisTimeoutGuardEnabled = true;
   private disableCleanup = false;
   private skipRecordPhase = false;
-  private improvementThreshold?: number;
-  private harmfulThreshold?: number;
   constructor(
     creature: Creature,
     timeoutSeconds: number,
@@ -515,8 +499,6 @@ export class DiscoverStructure {
     this.deps = { ...DEFAULT_DISCOVER_STRUCTURE_DEPS, ...deps };
     this.disableCleanup = options.disableCleanup ?? false;
     this.skipRecordPhase = options.skipRecordPhase ?? false;
-    this.improvementThreshold = options.improvementThreshold;
-    this.harmfulThreshold = options.harmfulThreshold;
 
     // Rough estimate per sample for JSON payload sizing:
     // - ~200 bytes per neuron record (uuid + activation + errors metadata)
@@ -2412,8 +2394,6 @@ export class DiscoverStructure {
       parquetFile: this.parquetFilePath,
       creature: rustCreature,
       focusNeurons: focusList,
-      improvementThreshold: this.improvementThreshold,
-      harmfulThreshold: this.harmfulThreshold,
       maxSynapseCandidates: includeSynapse
         ? Math.max(50, focusList.length * 10)
         : undefined,

@@ -157,14 +157,6 @@ export interface NeatArguments {
   discoverySampleRate: number;
 
   /**
-   * Minimum expected improvement (0..1) that a discovery candidate must
-   * achieve in order to be considered helpful. Defaults to 0.01 (1%).
-   *
-   * @see docs/DISCOVERY_GUIDE.md for the distributed discovery model
-   */
-  discoveryMinImprovementPercentage?: number;
-
-  /**
    * Minimum multiplier of costOfGrowth that a discovery candidate's expected
    * improvement must exceed before evaluation. Defaults to 2.0.
    *
