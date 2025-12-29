@@ -8,6 +8,7 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
+import { BIPOLAR } from "../../src/methods/activations/types/BIPOLAR.ts";
 import { STEP } from "../../src/methods/activations/types/STEP.ts";
 
 // =============================================================================
@@ -341,14 +342,10 @@ Deno.test("STEP recording: at threshold (x=0)", () => {
 });
 
 // =============================================================================
-// Extreme Value Tests (NOT Clamped in Recording)
+// Extreme Value Tests (Clamped via calculateError)
 // =============================================================================
 
-Deno.test("STEP recording: extreme values preserve actual magnitude", () => {
-  // NOTE: Unlike calculateError() which clamps to ±100, the recording flow
-  // preserves actual error magnitudes for discovery analysis. This is intentional
-  // as discovery needs accurate error information to select focus neurons.
-
+Deno.test("STEP recording: extreme values are clamped (prevents exploding discovery errors)", () => {
   const creatureJSON: CreatureExport = {
     input: 1,
     output: 1,
@@ -367,9 +364,11 @@ Deno.test("STEP recording: extreme values preserve actual magnitude", () => {
 
   const creature = Creature.fromJSON(creatureJSON);
 
+  // Regression: extreme values should not explode recorded error statistics.
+  //
   // Input -1000 -> STEP outputs 0
-  // Request output of 1 -> error = 1 - (-1000) = 1001
-  // Recording does NOT clamp - preserves actual magnitude
+  // Request output of 1 -> raw value-space error = 1 - (-1000) = 1001
+  // With activation.calculateError() semantics, this must be clamped to +100.
   const input = new Float32Array([-1000]);
   creature.activate(input);
 
@@ -382,14 +381,60 @@ Deno.test("STEP recording: extreme values preserve actual magnitude", () => {
   assert(record.errors.length > 0, "should have at least one error");
   assertAlmostEquals(
     record.errors[0],
-    1001,
+    100,
     1e-6,
-    "recording preserves actual error magnitude (1001 = 1 - (-1000))",
+    "recording clamps extreme STEP value errors to +100",
   );
 
   // Verify error is finite and has correct sign
   assert(Number.isFinite(record.errors[0]), "error should be finite");
   assert(record.errors[0] > 0, "error should be positive (pushing toward 1)");
+});
+
+// =============================================================================
+// BIPOLAR Clamp Regression
+// =============================================================================
+
+Deno.test("BIPOLAR recording: extreme values are clamped (prevents exploding discovery errors)", () => {
+  const creatureJSON: CreatureExport = {
+    input: 1,
+    output: 1,
+    neurons: [
+      {
+        uuid: "output-0",
+        type: "output",
+        squash: BIPOLAR.NAME,
+        bias: 0,
+      },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "output-0", weight: 1 },
+    ],
+  };
+
+  const creature = Creature.fromJSON(creatureJSON);
+
+  // Input +1e10 -> BIPOLAR outputs +1
+  // Request output -1 -> raw value-space error ≈ -1 - 1e10
+  // With activation.calculateError() semantics, this must be clamped to -100.
+  const input = new Float32Array([1e10]);
+  creature.activate(input);
+
+  const expected = new Float32Array([-1]);
+  const discoverMap = creature.record(expected);
+
+  const record = discoverMap.get("output-0");
+  assert(record, "expected a discovery record for output-0");
+
+  assert(record.errors.length > 0, "should have at least one error");
+  assertAlmostEquals(
+    record.errors[0],
+    -100,
+    1e-6,
+    "recording clamps extreme BIPOLAR value errors to -100",
+  );
+  assert(Number.isFinite(record.errors[0]), "error should be finite");
+  assert(record.errors[0] < 0, "error should be negative (pushing toward -1)");
 });
 
 // =============================================================================
