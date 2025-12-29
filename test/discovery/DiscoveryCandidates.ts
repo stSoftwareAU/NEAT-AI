@@ -13,6 +13,7 @@ import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralE
 import {
   buildDiscoveryCandidates,
   type DiscoveryCandidate,
+  pruneSuccessfulCandidatesForCombos,
 } from "../../src/discovery/DiscoveryCandidates.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
@@ -492,6 +493,117 @@ Deno.test("buildDiscoveryCandidates includes helpful neuron suggestions", () => 
     "Expected discovered neuron to include incoming and outgoing synapses.",
   );
 });
+
+Deno.test(
+  "pruneSuccessfulCandidatesForCombos keeps best add-neurons per from→to slot",
+  () => {
+    const base = makeBaselineCreature();
+    const discovery: DiscoverResult = {
+      ID: "PRUNE-ADD-NEURONS",
+      addHelpfulSynapses: undefined,
+      removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
+      removeHarmfulSynapse: undefined,
+      candidateSquashes: undefined,
+      addHelpfulNeurons: [
+        // Same from→to slot, two variants.
+        {
+          fromNeuronUUID: "input-0",
+          toNeuronUUID: "hidden-1",
+          incomingWeight: 0.42,
+          outgoingWeight: -0.27,
+          squash: TANH.NAME,
+          bias: 0.11,
+          targetNeuronImpact: 1.0,
+          expectedCreatureErrorReduction: 0,
+          expectedCreatureScoreGain: 0.25,
+          improvedCount: 8,
+          totalCount: 10,
+        },
+        {
+          fromNeuronUUID: "input-0",
+          toNeuronUUID: "hidden-1",
+          incomingWeight: 4.2,
+          outgoingWeight: -2.7,
+          squash: Mish.NAME,
+          bias: 1.1,
+          targetNeuronImpact: 1.0,
+          expectedCreatureErrorReduction: 0,
+          expectedCreatureScoreGain: 0.24,
+          improvedCount: 8,
+          totalCount: 10,
+        },
+        // Different slot.
+        {
+          fromNeuronUUID: "input-1",
+          toNeuronUUID: "hidden-2",
+          incomingWeight: 0.33,
+          outgoingWeight: -0.22,
+          squash: TANH.NAME,
+          bias: 0.07,
+          targetNeuronImpact: 1.0,
+          expectedCreatureErrorReduction: 0,
+          expectedCreatureScoreGain: 0.18,
+          improvedCount: 6,
+          totalCount: 8,
+        },
+      ],
+    };
+
+    const candidates = buildDiscoveryCandidates(base, discovery);
+    // buildDiscoveryCandidates may also emit a combined add-neurons candidate; for this
+    // test we only care about the dedicated single-step add-neuron candidates (which
+    // include neuronDetails).
+    const addNeuronCandidates = candidates.filter((c) =>
+      c.change.type === "add-neurons" && c.change.neuronDetails !== undefined
+    );
+    assertEquals(
+      addNeuronCandidates.length,
+      3,
+      "Precondition: expected 3 add-neurons candidates",
+    );
+
+    const slotA = addNeuronCandidates.filter((c) =>
+      c.change.neuronDetails?.fromNeuronUUID === "input-0" &&
+      c.change.neuronDetails?.toNeuronUUID === "hidden-1"
+    );
+    assertEquals(
+      slotA.length,
+      2,
+      "Precondition: expected 2 candidates for same slot",
+    );
+
+    // Give the second slotA candidate the larger measured gain.
+    const pruned = pruneSuccessfulCandidatesForCombos([
+      { candidate: slotA[0], scoreDelta: 0.001 },
+      { candidate: slotA[1], scoreDelta: 0.002 },
+      {
+        candidate: addNeuronCandidates.find((c) =>
+          c.change.neuronDetails?.fromNeuronUUID === "input-1" &&
+          c.change.neuronDetails?.toNeuronUUID === "hidden-2"
+        )!,
+        scoreDelta: 0.0005,
+      },
+    ]);
+
+    assertEquals(
+      pruned.length,
+      2,
+      "Should keep best candidate per from→to slot",
+    );
+    const keptSlotA = pruned.find((c) =>
+      c.change.type === "add-neurons" &&
+      c.change.neuronDetails?.fromNeuronUUID === "input-0" &&
+      c.change.neuronDetails?.toNeuronUUID === "hidden-1"
+    );
+    assert(keptSlotA, "Expected the input-0→hidden-1 slot to be kept");
+    assertEquals(
+      keptSlotA.change.neuronDetails?.squash,
+      slotA[1].change.neuronDetails?.squash,
+      "Should keep the best-scoring variant for the slot",
+    );
+  },
+);
 
 Deno.test(
   "buildDiscoveryCandidates synthesises combined candidate across categories",

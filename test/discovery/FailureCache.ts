@@ -5,7 +5,9 @@ import {
   extractTargetNeuronInfo,
   formatWeight,
   isCandidateCached,
+  isCandidateCachedSync,
   recordFailure,
+  recordFailureSync,
 } from "../../src/discovery/FailureCache.ts";
 import { shortID } from "../../src/discovery/DiscoveryCandidates.ts";
 import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
@@ -437,6 +439,54 @@ Deno.test("recordFailure and isCandidateCached work together", async () => {
       cachedAfter,
       true,
       "Candidate should be cached after recording failure",
+    );
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+    closeRustLibrary();
+  }
+});
+
+Deno.test("combo-* failures are not cached (combos are always re-scored)", async () => {
+  const tempDir = await Deno.makeTempDir();
+
+  try {
+    const creature = makeSimpleCreature();
+    const candidate = makeCandidate(
+      "combo-successful",
+      "🏗️ Combined successful changes",
+      creature,
+    );
+
+    // Recording a failure for a combo candidate should be a no-op.
+    await recordFailure(tempDir, candidate, {
+      originalScore: 0.5,
+      candidateScore: 0.49,
+      scoreDelta: -0.01,
+      error: 0.6,
+      originalError: 0.59,
+    });
+
+    const cachedAsync = await isCandidateCached(tempDir, candidate);
+    assertEquals(
+      cachedAsync,
+      false,
+      "Combo candidates should not be treated as cached failures (async)",
+    );
+
+    // Same behaviour for the sync API.
+    recordFailureSync(tempDir, candidate, {
+      originalScore: 0.5,
+      candidateScore: 0.49,
+      scoreDelta: -0.01,
+      error: 0.6,
+      originalError: 0.59,
+    });
+
+    const cachedSync = isCandidateCachedSync(tempDir, candidate);
+    assertEquals(
+      cachedSync,
+      false,
+      "Combo candidates should not be treated as cached failures (sync)",
     );
   } finally {
     await Deno.remove(tempDir, { recursive: true });
