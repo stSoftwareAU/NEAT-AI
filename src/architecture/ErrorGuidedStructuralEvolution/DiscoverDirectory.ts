@@ -28,6 +28,40 @@ const shouldLogDiscovery = (config: NeatConfig): boolean =>
   config.verbose || config.log > 0;
 
 /**
+ * Calculates the candidate counts that should be reported in the worker
+ * "Candidates Found" summary.
+ *
+ * Note (29-Dec-2025): This summary intentionally reports *raw* Rust counts only.
+ * Combination candidates are built later by `DiscoveryRunner` **only after**
+ * single candidates have been scored and proven to improve. Counting combos here
+ * is misleading because it implies extra candidates exist before evaluation.
+ */
+export function calculateDiscoveryCandidateSummaryCounts(counts: {
+  helpfulSynapseRawCount: number;
+  helpfulNeuronRawCount: number;
+  harmfulSynapseCandidates: number;
+  harmfulNeuronCandidates: number;
+  squashRawCount: number;
+  removalRawCount: number;
+}): {
+  helpfulSynapses: number;
+  helpfulNeurons: number;
+  harmfulSynapses: number;
+  harmfulNeurons: number;
+  squashChanges: number;
+  removalCandidates: number;
+} {
+  return {
+    helpfulSynapses: counts.helpfulSynapseRawCount,
+    helpfulNeurons: counts.helpfulNeuronRawCount,
+    harmfulSynapses: counts.harmfulSynapseCandidates,
+    harmfulNeurons: counts.harmfulNeuronCandidates,
+    squashChanges: counts.squashRawCount,
+    removalCandidates: counts.removalRawCount,
+  };
+}
+
+/**
  * Tracks performance statistics throughout the discovery process.
  */
 class DiscoveryPerformanceStats {
@@ -129,32 +163,24 @@ class DiscoveryPerformanceStats {
         }`,
     );
 
-    // Candidate summary
-    // Calculate expected candidate counts that will be built:
-    // - Neurons: 1 combined + N individual = 1 + N (if any neurons exist)
-    // - Synapses: 1 combined + N individual = 1 + N (if any synapses exist)
-    // - Squashes: 1 combined + N individual = 1 + N (if any squashes exist)
-    // - Removals: N individual + 1 combined (if N >= 2) = N + (N >= 2 ? 1 : 0)
-    const expectedNeuronCandidates = this.helpfulNeuronRawCount > 0
-      ? 1 + this.helpfulNeuronRawCount
-      : 0;
-    const expectedSynapseCandidates = this.helpfulSynapseRawCount > 0
-      ? 1 + this.helpfulSynapseRawCount
-      : 0;
-    const expectedSquashCandidates = this.squashRawCount > 0
-      ? 1 + this.squashRawCount
-      : 0;
-    const expectedRemovalCandidates = this.removalRawCount +
-      (this.removalRawCount >= 2 ? 1 : 0);
+    // Candidate summary (raw Rust counts only; combos are built later after scoring).
+    const summaryCounts = calculateDiscoveryCandidateSummaryCounts({
+      helpfulSynapseRawCount: this.helpfulSynapseRawCount,
+      helpfulNeuronRawCount: this.helpfulNeuronRawCount,
+      harmfulSynapseCandidates: this.harmfulSynapseCandidates,
+      harmfulNeuronCandidates: this.harmfulNeuronCandidates,
+      squashRawCount: this.squashRawCount,
+      removalRawCount: this.removalRawCount,
+    });
 
     console.log(
       `\n🎯 ${yellow("Candidates Found")}:\n` +
-        `  Helpful synapses: ${formatCount(expectedSynapseCandidates)}\n` +
-        `  Helpful neurons: ${formatCount(expectedNeuronCandidates)}\n` +
-        `  Harmful synapses: ${formatCount(this.harmfulSynapseCandidates)}\n` +
-        `  Harmful neurons: ${formatCount(this.harmfulNeuronCandidates)}\n` +
-        `  Squash changes: ${formatCount(expectedSquashCandidates)}\n` +
-        `  Removal candidates: ${formatCount(expectedRemovalCandidates)}`,
+        `  Helpful synapses: ${formatCount(summaryCounts.helpfulSynapses)}\n` +
+        `  Helpful neurons: ${formatCount(summaryCounts.helpfulNeurons)}\n` +
+        `  Harmful synapses: ${formatCount(summaryCounts.harmfulSynapses)}\n` +
+        `  Harmful neurons: ${formatCount(summaryCounts.harmfulNeurons)}\n` +
+        `  Squash changes: ${formatCount(summaryCounts.squashChanges)}\n` +
+        `  Removal candidates: ${formatCount(summaryCounts.removalCandidates)}`,
     );
 
     // Overall summary
