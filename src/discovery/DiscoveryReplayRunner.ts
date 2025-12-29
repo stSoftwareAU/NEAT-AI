@@ -853,6 +853,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         };
       }
 
+      const prefix = "🦘";
       if (verifyScores && config.discoveryReplayRescoreBaseline) {
         const claimedScore = parseClaimedTagNumber(creature.tags, "score");
         const claimedError = parseClaimedTagNumber(creature.tags, "error");
@@ -860,7 +861,6 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
           claimedScore,
           originalEval.score,
         );
-        const prefix = "🦘";
         const reason = claimedScore === undefined
           ? `${prefix} Baseline rescore: no claimed score tag found, so I rescored on the current dataset (score=${originalEval.score}, error=${originalEval.error}).`
           : `${prefix} Score drift check: claimed score ${claimedScore} (error ${
@@ -898,7 +898,8 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
             error: best.error,
             scoreDelta,
             improved: scoreDelta > 0,
-            message: `Verified improvement on current dataset: ${message}`,
+            message:
+              `${prefix} Verified improvement on current dataset: ${message}`,
             creature: best.creature.exportJSON(),
           };
         }
