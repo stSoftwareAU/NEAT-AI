@@ -99,9 +99,6 @@ const options: NeatOptions = {
   // Analysis phase (10 minutes for thorough analysis)
   discoveryAnalysisTimeoutMinutes: 10,
 
-  // Accept 1%+ improvements (realistic threshold for noise filtering)
-  discoveryMinImprovementPercentage: 0.01,
-
   // Cost of growth penalty (each synapse/neuron must earn back this cost)
   costOfGrowth: 0.001, // Default: candidates must reduce error > 0.001 per synapse
 
@@ -115,9 +112,9 @@ const options: NeatOptions = {
 
 ### Selection Strategy: Cost-Benefit Analysis
 
-Discovery uses a two-stage filter:
+Discovery uses a single acceptance rule:
 
-**Stage 1: Cost of Growth Gate**
+**Cost of Growth Gate**
 
 Each candidate that adds structural complexity must satisfy:
 `Error Reduction > Cost of Growth`
@@ -133,18 +130,11 @@ Each candidate that adds structural complexity must satisfy:
   They improve score by reducing complexity, not by reducing error. Removing
   elements that return a similar score will improve the creature's score
 
-**Stage 2: Minimum Improvement Threshold**
+**Take the Best**
 
-Among profitable candidates, only accept if improvement > 1%:
+If multiple candidates are profitable:
 
-- Filters random noise (< 1% is statistical variation)
-- Previous 10% threshold was unrealistic and rejected valid 1.58% improvements
-
-**Stage 3: Take the Best**
-
-If multiple candidates pass both filters:
-
-- ✅ **Select the candidate with the largest improvement**
+- ✅ **Select the candidate with the largest net improvement**
 - This maximizes progress per iteration
 
 Example:
@@ -162,7 +152,7 @@ Example:
 // Candidate D: Change squash, 0.1% improvement, cost = 0 (no structural growth)
 // Error reduction: 0.001, Cost: 0 → Profit: 0.001 ✅ (not filtered by cost-of-growth)
 
-// Result: Choose Candidate A (largest improvement at 1.2%)
+// Result: Choose the candidate with the largest net improvement
 ```
 
 ## Example: Distributed Discovery Script
@@ -311,7 +301,6 @@ if (import.meta.main) {
   const options: NeatOptions = {
     discoveryRecordTimeOutMinutes: 1,
     discoveryAnalysisTimeoutMinutes: 10,
-    discoveryMinImprovementPercentage: 0.01, // Accept 1%+ improvements
     discoveryMaxNeurons: 6,
     discoverySampleRate: 0.05,
   };

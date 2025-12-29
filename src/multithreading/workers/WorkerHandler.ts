@@ -32,6 +32,15 @@ export interface RequestData {
     costName: CostName;
     /** Serialized custom cost function data (if using custom cost) */
     customCostData?: string;
+    /**
+     * When true, enables verbose NEAT-AI-Discovery logging inside the worker
+     * by exporting `NEAT_AI_DISCOVERY_VERBOSE=1` before any discovery calls.
+     *
+     * Note (29-Dec-2025): This is only best-effort - it requires env permissions
+     * in the worker runtime. When unavailable, discovery still runs, just without
+     * Rust verbose logs.
+     */
+    discoveryVerbose?: boolean;
   };
   /** Creature evaluation request */
   evaluate?: {
@@ -225,12 +234,25 @@ export class WorkerHandler {
       });
     }
 
+    const discoveryVerbose = (() => {
+      try {
+        const value = Deno.env.get("NEAT_AI_DISCOVERY_VERBOSE");
+        if (!value) return false;
+        const normalised = value.trim().toLowerCase();
+        return normalised === "1" || normalised === "true" ||
+          normalised === "yes";
+      } catch {
+        return false;
+      }
+    })();
+
     const data: RequestData = {
       taskID: this.taskID++,
       initialize: {
         dataSetDir: dataSetDir,
         costName: costName,
         customCostData,
+        discoveryVerbose,
       },
     };
 

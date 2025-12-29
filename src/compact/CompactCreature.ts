@@ -13,7 +13,11 @@ import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
 import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
 import { HYPOT } from "../deprecated/HYPOT.ts";
 import { HYPOTv2 } from "../deprecated/HYPOTv2.ts";
-import { cleanupOrphanedNeurons } from "./CompactUtils.ts";
+import {
+  cleanupOrphanedNeurons,
+  pruneDeadSubgraphs,
+  pruneZeroWeightSynapses,
+} from "./CompactUtils.ts";
 
 /**
  * Compacts a creature by removing redundant neurons and connections.
@@ -288,6 +292,13 @@ export function compactCreature(
     }
   }
 
+  // 29-Dec-2025: Behaviour-preserving pruning of zero-weight synapses.
+  // See https://github.com/stSoftwareAU/NEAT-AI/issues/977
+  const zeroResult = pruneZeroWeightSynapses(compactCreature);
+  if (zeroResult.removedSynapses > 0) {
+    didCompact = true;
+  }
+
   /**
    * Clean up orphaned neurons using the robust iterative utility.
    *
@@ -299,6 +310,12 @@ export function compactCreature(
    */
   const orphanResult = cleanupOrphanedNeurons(compactCreature);
   if (orphanResult.removed > 0 || orphanResult.converted > 0) {
+    didCompact = true;
+  }
+
+  // Prune dead subgraphs (neurons/synapses that cannot influence any output).
+  const deadResult = pruneDeadSubgraphs(compactCreature);
+  if (deadResult.removedNeurons > 0 || deadResult.removedSynapses > 0) {
     didCompact = true;
   }
 

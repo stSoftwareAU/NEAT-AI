@@ -183,7 +183,6 @@ improvements (0.5-3%), which accumulate over time through repeated iterations.
 const result = await creature.discoveryDir(dataDir, {
   discoveryRecordTimeOutMinutes: 1,
   discoveryAnalysisTimeoutMinutes: 10,
-  discoveryMinImprovementPercentage: 0.01, // Accept 1%+ improvements
 });
 
 if (result.improvement) {

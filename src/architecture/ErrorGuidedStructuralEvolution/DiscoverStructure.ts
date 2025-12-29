@@ -248,6 +248,16 @@ interface CandidateAnalysisBundle {
   harmfulSynapse?: CandidateSynapse;
   helpfulNeurons?: CandidateNeuron[];
   splitSynapseInsertNeuronCandidates?: SplitSynapseInsertNeuronCandidate[];
+  /**
+   * Optional metadata returned by NEAT-AI-Discovery for the synapse analysis path.
+   * Used for logging only.
+   */
+  synapseMetadata?: { candidatesFound: number; candidatesReturned: number };
+  /**
+   * Optional metadata returned by NEAT-AI-Discovery for the neuron analysis path.
+   * Used for logging only.
+   */
+  neuronMetadata?: { candidatesFound: number; candidatesReturned: number };
 }
 
 type FocusSelectionMode = "weighted" | "forced" | "all" | "random";
@@ -1932,6 +1942,12 @@ export class DiscoverStructure {
     }
 
     const bundle: CandidateAnalysisBundle = {};
+    if (combinedResult.synapse?.metadata) {
+      bundle.synapseMetadata = combinedResult.synapse.metadata;
+    }
+    if (combinedResult.neuron?.metadata) {
+      bundle.neuronMetadata = combinedResult.neuron.metadata;
+    }
 
     const helpfulSynapses = this.tryRustHelpfulSynapses(focusList);
     if (helpfulSynapses && helpfulSynapses.length > 0) {
@@ -2455,6 +2471,7 @@ export class DiscoverStructure {
         ? {
           success: true,
           gpuUsed: parallel.synapseGpuUsed,
+          metadata: parallel.synapseMetadata,
           helpfulSynapses: parallel.helpfulSynapses,
           harmfulSynapses: parallel.harmfulSynapses,
           diagnostics: parallel.synapseDiagnostics,
@@ -2464,6 +2481,7 @@ export class DiscoverStructure {
       ? {
         success: true,
         gpuUsed: parallel.neuronGpuUsed,
+        metadata: parallel.neuronMetadata,
         helpfulNeurons: parallel.helpfulNeurons,
         structuralCandidates,
         diagnostics: parallel.neuronDiagnostics,
