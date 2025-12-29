@@ -103,7 +103,7 @@ function simplifyComplementToIdentity(
 ): CreatureExport {
   // 29-Dec-2025: COMPLEMENT (1 - x) is a simple affine transform, so it can be
   // represented exactly as IDENTITY by negating inbound weights and adjusting
-  // bias: 1 - (Σ(wᵢaᵢ) + b) = Σ((-wᵢ)aᵢ) + (1 - b).
+  // bias: 1 - (Σ(wi * ai) + b) = Σ((-wi) * ai) + (1 - b).
   for (const neuron of exported.neurons) {
     if (neuron.squash !== COMPLEMENT.NAME) continue;
 
