@@ -1511,6 +1511,107 @@ export function buildCombinedFromSuccessful(
   return combinedCandidates;
 }
 
+export interface ScoredDiscoveryCandidate {
+  candidate: DiscoveryCandidate;
+  /** Measured score delta (candidateScore - originalScore) from Phase 1. */
+  scoreDelta: number;
+}
+
+/**
+ * Reduce a set of successful single-step candidates into a sensible, non-conflicting
+ * subset before building combination candidates.
+ *
+ * Rationale (production): discovery can surface multiple successful "alternatives"
+ * for the same structural slot (eg multiple add-neurons from the same source to
+ * the same target). Combining these alternatives is usually wasteful and can
+ * suppress better cross-slot combinations. Instead, we keep the best candidate
+ * per slot and allow combinations across different slots.
+ */
+export function pruneSuccessfulCandidatesForCombos(
+  successfulCandidates: ScoredDiscoveryCandidate[],
+): DiscoveryCandidate[] {
+  if (successfulCandidates.length === 0) return [];
+
+  const bestBySlot = new Map<string, ScoredDiscoveryCandidate>();
+  const unkeyed: ScoredDiscoveryCandidate[] = [];
+
+  for (const entry of successfulCandidates) {
+    const slotKey = getComboSlotKey(entry.candidate);
+    if (!slotKey) {
+      unkeyed.push(entry);
+      continue;
+    }
+    const current = bestBySlot.get(slotKey);
+    if (!current || entry.scoreDelta > current.scoreDelta) {
+      bestBySlot.set(slotKey, entry);
+    }
+  }
+
+  const pruned = [...bestBySlot.values(), ...unkeyed]
+    .sort((a, b) => {
+      if (a.scoreDelta !== b.scoreDelta) return b.scoreDelta - a.scoreDelta;
+      // Stable-ish tie-breaks for determinism.
+      const typeA = a.candidate.change.type;
+      const typeB = b.candidate.change.type;
+      if (typeA !== typeB) return typeA.localeCompare(typeB);
+      const descA = a.candidate.change.description ?? "";
+      const descB = b.candidate.change.description ?? "";
+      return descA.localeCompare(descB);
+    })
+    .map((e) => e.candidate);
+
+  return pruned;
+}
+
+function getComboSlotKey(candidate: DiscoveryCandidate): string | undefined {
+  const change = candidate.change;
+  switch (change.type) {
+    case "add-neurons": {
+      const from = change.neuronDetails?.fromNeuronUUID ??
+        change.neuronCandidate?.fromNeuronUUID;
+      const to = change.neuronDetails?.toNeuronUUID ??
+        change.neuronCandidate?.toNeuronUUID;
+      if (!from || !to) return undefined;
+      return `add-neurons:${from}->${to}`;
+    }
+    case "add-synapses": {
+      const from = change.synapseCandidate?.fromNeuronUUID;
+      const to = change.synapseCandidate?.toNeuronUUID;
+      if (!from || !to) return undefined;
+      return `add-synapses:${from}->${to}`;
+    }
+    case "remove-synapse": {
+      const details = change.synapseDetails;
+      if (!details) return undefined;
+      return `remove-synapse:${details.fromNeuronUUID}->${details.toNeuronUUID}`;
+    }
+    case "remove-low-impact": {
+      const uuid = change.removalCandidate?.neuronUUID ??
+        change.description?.match(/neuron\s+([a-zA-Z0-9_-]+)/i)?.[1];
+      if (!uuid) return undefined;
+      return `remove-neuron:${uuid}`;
+    }
+    case "remove-neuron": {
+      const uuid = change.harmfulNeuronCandidate?.neuronUUID ??
+        change.description?.match(/neuron\s+([a-zA-Z0-9_-]+)/i)?.[1];
+      if (!uuid) return undefined;
+      return `remove-neuron:${uuid}`;
+    }
+    case "change-squash": {
+      const uuid = change.squashCandidate?.neuronUUID;
+      if (!uuid) return undefined;
+      return `change-squash:${uuid}`;
+    }
+    case "split-synapse-insert-neuron": {
+      const spec = change.splitSynapseInsertNeuronCandidate;
+      if (!spec) return undefined;
+      return `split-synapse-insert-neuron:${spec.fromNeuronUuid}->${spec.toNeuronUuid}`;
+    }
+    default:
+      return undefined;
+  }
+}
+
 /**
  * Safely validates a creature and handles validation errors.
  *

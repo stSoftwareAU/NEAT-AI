@@ -19,6 +19,7 @@ import {
   type BuildDiscoveryCandidatesOptions,
   type DiscoveredNeuronDetails,
   type DiscoveryChangeType,
+  pruneSuccessfulCandidatesForCombos,
   shortID,
 } from "./DiscoveryCandidates.ts";
 import { isCandidateCachedSync, recordFailureSync } from "./FailureCache.ts";
@@ -351,10 +352,22 @@ export class DiscoveryRunner {
       if (successfulSingles.length >= 2) {
         const phase2Start = performance.now();
 
-        // Extract successful candidates for combination
-        const successfulCandidates = successfulSingles
-          .map((result) => result.candidate)
-          .filter((c): c is DiscoveryCandidate => c !== undefined);
+        // Extract successful candidates for combination and prune to a sensible
+        // best-per-slot set (eg. avoid combining multiple alternatives that target
+        // the same from→to add-neuron slot).
+        const scoredSuccessfulCandidates = successfulSingles
+          .map((result) => ({
+            candidate: result.candidate,
+            scoreDelta: result.score - original.score,
+          }))
+          .filter((entry): entry is {
+            candidate: DiscoveryCandidate;
+            scoreDelta: number;
+          } => entry.candidate !== undefined);
+
+        const successfulCandidates = pruneSuccessfulCandidatesForCombos(
+          scoredSuccessfulCandidates,
+        );
 
         // Build combined candidates from successful singles only
         const combinedCandidates = buildCombinedFromSuccessful(

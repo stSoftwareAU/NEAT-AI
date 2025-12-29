@@ -122,6 +122,33 @@ export function recordSuccessSync(
 
   Deno.mkdirSync(dir, { recursive: true });
 
+  // De-duplicate by coarse key (exponent-bucketing) so parallel discovery across
+  // machines doesn't explode the replay workload. When we see a collision,
+  // keep the best-scoring entry.
+  try {
+    const existingRaw = Deno.readTextFileSync(filePath);
+    const existing = JSON.parse(existingRaw) as SuccessCacheEntry;
+    const existingDelta = typeof existing?.scoreDelta === "number"
+      ? existing.scoreDelta
+      : Number.NEGATIVE_INFINITY;
+    const existingScore = typeof existing?.candidateScore === "number"
+      ? existing.candidateScore
+      : Number.NEGATIVE_INFINITY;
+
+    const shouldReplace = metadata.scoreDelta > existingDelta ||
+      (metadata.scoreDelta === existingDelta &&
+        metadata.candidateScore > existingScore);
+    if (!shouldReplace) {
+      return;
+    }
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      // No existing entry: proceed with write.
+    } else {
+      // Corrupt/unreadable entry: overwrite best-effort.
+    }
+  }
+
   const discoveryVersion = getDiscoveryVersion();
   const cacheEntry: SuccessCacheEntry = {
     key: buildCacheKey(candidate),
@@ -143,7 +170,22 @@ export function recordSuccessSync(
     }
   }
 
-  Deno.writeTextFileSync(filePath, JSON.stringify(cacheEntry, null, 2));
+  // Best-effort atomic replace: write to a temp file then rename.
+  const tmpPath = join(
+    dir,
+    `${sanitiseForFilename(cacheEntry.key)}.tmp-${Date.now()}.json`,
+  );
+  Deno.writeTextFileSync(tmpPath, JSON.stringify(cacheEntry, null, 2));
+  try {
+    Deno.renameSync(tmpPath, filePath);
+  } catch {
+    Deno.writeTextFileSync(filePath, JSON.stringify(cacheEntry, null, 2));
+    try {
+      Deno.removeSync(tmpPath);
+    } catch {
+      // Ignore cleanup failure.
+    }
+  }
 }
 
 /**

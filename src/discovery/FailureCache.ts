@@ -571,6 +571,14 @@ export async function isCandidateCached(
   cacheDir: string,
   candidate: DiscoveryCandidate,
 ): Promise<boolean> {
+  // Combo candidates are derived from previously successful singles and are
+  // highly dependent on the *current* base creature. Caching them as failures
+  // can permanently suppress sensible re-tries as the creature evolves.
+  //
+  // We intentionally never treat combo-* candidates as failure-cacheable.
+  if (candidate.change.type.startsWith("combo-")) {
+    return false;
+  }
   try {
     const filePath = getCacheFilePath(cacheDir, candidate);
     const stat = await Deno.stat(filePath);
@@ -598,6 +606,10 @@ export function isCandidateCachedSync(
   cacheDir: string,
   candidate: DiscoveryCandidate,
 ): boolean {
+  // See async variant for rationale.
+  if (candidate.change.type.startsWith("combo-")) {
+    return false;
+  }
   try {
     const filePath = getCacheFilePath(cacheDir, candidate);
     const stat = Deno.statSync(filePath);
@@ -632,6 +644,10 @@ export async function recordFailure(
   metadata: FailureMetadata,
   baseCreature?: Creature,
 ): Promise<void> {
+  // Combo failures are not cached (see isCandidateCached for rationale).
+  if (candidate.change.type.startsWith("combo-")) {
+    return;
+  }
   try {
     const filePath = getCacheFilePath(cacheDir, candidate);
     const dir = dirname(filePath);
@@ -803,6 +819,10 @@ export function recordFailureSync(
   metadata: FailureMetadata,
   baseCreature?: Creature,
 ): void {
+  // Combo failures are not cached (see isCandidateCached for rationale).
+  if (candidate.change.type.startsWith("combo-")) {
+    return;
+  }
   try {
     const filePath = getCacheFilePath(cacheDir, candidate);
     const dir = dirname(filePath);
