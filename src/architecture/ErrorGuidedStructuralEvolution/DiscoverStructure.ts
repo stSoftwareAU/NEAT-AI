@@ -99,6 +99,20 @@ export interface DiscoverStructureOptions {
    * Primarily for testing and production tuning; defaults to ~50 MiB.
    */
   rustFlushBytesThreshold?: number;
+
+  /**
+   * Optional improvement threshold forwarded to NEAT-AI-Discovery's parallel analyser.
+   *
+   * Note (29-Dec-2025): The Rust engine may still return "fallback" candidates
+   * with expectedCreatureScoreGain > 0 but below this threshold. Consumers should
+   * treat those as intentionally-returned fallback candidates, not errors.
+   */
+  improvementThreshold?: number;
+
+  /**
+   * Optional harmful threshold forwarded to NEAT-AI-Discovery's parallel analyser.
+   */
+  harmfulThreshold?: number;
 }
 
 const OUTPUT_ERROR_CACHE_TTL_MS = 30_000;
@@ -248,6 +262,16 @@ interface CandidateAnalysisBundle {
   harmfulSynapse?: CandidateSynapse;
   helpfulNeurons?: CandidateNeuron[];
   splitSynapseInsertNeuronCandidates?: SplitSynapseInsertNeuronCandidate[];
+  /**
+   * Optional metadata returned by NEAT-AI-Discovery for the synapse analysis path.
+   * Used for logging only.
+   */
+  synapseMetadata?: { candidatesFound: number; candidatesReturned: number };
+  /**
+   * Optional metadata returned by NEAT-AI-Discovery for the neuron analysis path.
+   * Used for logging only.
+   */
+  neuronMetadata?: { candidatesFound: number; candidatesReturned: number };
 }
 
 type FocusSelectionMode = "weighted" | "forced" | "all" | "random";
@@ -434,6 +458,8 @@ export class DiscoverStructure {
   private analysisTimeoutGuardEnabled = true;
   private disableCleanup = false;
   private skipRecordPhase = false;
+  private improvementThreshold?: number;
+  private harmfulThreshold?: number;
   constructor(
     creature: Creature,
     timeoutSeconds: number,
@@ -489,6 +515,8 @@ export class DiscoverStructure {
     this.deps = { ...DEFAULT_DISCOVER_STRUCTURE_DEPS, ...deps };
     this.disableCleanup = options.disableCleanup ?? false;
     this.skipRecordPhase = options.skipRecordPhase ?? false;
+    this.improvementThreshold = options.improvementThreshold;
+    this.harmfulThreshold = options.harmfulThreshold;
 
     // Rough estimate per sample for JSON payload sizing:
     // - ~200 bytes per neuron record (uuid + activation + errors metadata)
@@ -1932,6 +1960,12 @@ export class DiscoverStructure {
     }
 
     const bundle: CandidateAnalysisBundle = {};
+    if (combinedResult.synapse?.metadata) {
+      bundle.synapseMetadata = combinedResult.synapse.metadata;
+    }
+    if (combinedResult.neuron?.metadata) {
+      bundle.neuronMetadata = combinedResult.neuron.metadata;
+    }
 
     const helpfulSynapses = this.tryRustHelpfulSynapses(focusList);
     if (helpfulSynapses && helpfulSynapses.length > 0) {
@@ -2378,6 +2412,8 @@ export class DiscoverStructure {
       parquetFile: this.parquetFilePath,
       creature: rustCreature,
       focusNeurons: focusList,
+      improvementThreshold: this.improvementThreshold,
+      harmfulThreshold: this.harmfulThreshold,
       maxSynapseCandidates: includeSynapse
         ? Math.max(50, focusList.length * 10)
         : undefined,
@@ -2455,6 +2491,7 @@ export class DiscoverStructure {
         ? {
           success: true,
           gpuUsed: parallel.synapseGpuUsed,
+          metadata: parallel.synapseMetadata,
           helpfulSynapses: parallel.helpfulSynapses,
           harmfulSynapses: parallel.harmfulSynapses,
           diagnostics: parallel.synapseDiagnostics,
@@ -2464,6 +2501,7 @@ export class DiscoverStructure {
       ? {
         success: true,
         gpuUsed: parallel.neuronGpuUsed,
+        metadata: parallel.neuronMetadata,
         helpfulNeurons: parallel.helpfulNeurons,
         structuralCandidates,
         diagnostics: parallel.neuronDiagnostics,

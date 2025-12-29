@@ -6,6 +6,7 @@ import type { Synapse } from "../architecture/Synapse.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
+import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
 
 /**
  * Result of cleaning up orphaned neurons.
@@ -312,10 +313,10 @@ export function mergeDuplicateSynapses(
 
     // Best-effort tag merge.
     if (synapse.tags?.length) {
-      const old = mergedSynapses[existingIndex].tags ?? [];
-      mergedSynapses[existingIndex].tags = [
-        ...new Set([...old, ...synapse.tags]),
-      ];
+      mergedSynapses[existingIndex].tags = mergeTagsByNameValue(
+        mergedSynapses[existingIndex].tags,
+        synapse.tags,
+      );
     }
   }
 
@@ -343,17 +344,21 @@ export function pruneZeroWeightSynapses(
   // (condition/positive/negative). Even if a weight is zero, dropping a typed
   // synapse can invalidate the structure and break activation semantics.
   const ifNeuronUUIDs = new Set<string>();
+  const outputNeuronUUIDs = new Set<string>();
   for (const neuron of creatureExport.neurons) {
     // Note: CreatureExport.neurons does not include input neurons (they are implicit),
     // so `neuron.type` cannot be "input" here.
     if (neuron.squash === "IF") {
       ifNeuronUUIDs.add(neuron.uuid);
     }
+    if (neuron.type === "output") {
+      outputNeuronUUIDs.add(neuron.uuid);
+    }
   }
 
   const before = creatureExport.synapses.length;
-  creatureExport.synapses = creatureExport.synapses.filter((s) => {
-    if (!Number.isFinite(s.weight)) return false;
+  const inboundKeptCountsByTo = new Map<string, number>();
+  const shouldAlwaysKeep = (s: typeof creatureExport.synapses[number]) => {
     if (s.weight !== 0) return true;
 
     // Preserve typed synapses (eg IF condition/positive/negative).
@@ -361,6 +366,41 @@ export function pruneZeroWeightSynapses(
 
     // Extra safety: never prune a zero-weight synapse that targets an IF neuron.
     if (ifNeuronUUIDs.has(s.toUUID)) return true;
+
+    return false;
+  };
+
+  // First pass: count inbound connections that will remain after pruning.
+  for (const s of creatureExport.synapses) {
+    if (!Number.isFinite(s.weight)) continue;
+    if (!shouldAlwaysKeep(s)) continue;
+    inboundKeptCountsByTo.set(
+      s.toUUID,
+      (inboundKeptCountsByTo.get(s.toUUID) ?? 0) + 1,
+    );
+  }
+
+  // Second pass: filter, preserving the last inbound connection to outputs for
+  // structural validity (mirrors Creature.fix() behaviour).
+  const preservedZeroInboundForOutput = new Set<string>();
+  creatureExport.synapses = creatureExport.synapses.filter((s) => {
+    if (!Number.isFinite(s.weight)) return false;
+    if (shouldAlwaysKeep(s)) return true;
+
+    // At this point, the synapse is:
+    // - finite
+    // - weight === 0
+    // - untyped
+    // - not targeting an IF neuron
+    //
+    // Prune it, unless it's the last inbound connection to an output neuron.
+    if (outputNeuronUUIDs.has(s.toUUID)) {
+      const inboundKept = inboundKeptCountsByTo.get(s.toUUID) ?? 0;
+      if (inboundKept === 0 && !preservedZeroInboundForOutput.has(s.toUUID)) {
+        preservedZeroInboundForOutput.add(s.toUUID);
+        return true;
+      }
+    }
 
     return false;
   });

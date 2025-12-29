@@ -175,6 +175,12 @@ export type RustStructuralCandidate = RustSplitSynapseInsertNeuronCandidate;
 export interface RustAnalyzeSynapsesResult {
   success: boolean;
   gpuUsed?: boolean;
+  /**
+   * Optional candidate metadata emitted by NEAT-AI-Discovery (when available).
+   *
+   * Note (29-Dec-2025): Older library versions will omit this field.
+   */
+  metadata?: RustCandidateMetadata;
   helpfulSynapses?: RustCandidateSynapse[];
   harmfulSynapses?: RustCandidateSynapse[];
   diagnostics?: RustSynapseDiagnostic[];
@@ -188,6 +194,12 @@ export interface RustAnalyzeSynapsesResult {
 export interface RustAnalyzeNeuronsResult {
   success: boolean;
   gpuUsed?: boolean;
+  /**
+   * Optional candidate metadata emitted by NEAT-AI-Discovery (when available).
+   *
+   * Note (29-Dec-2025): Older library versions will omit this field.
+   */
+  metadata?: RustCandidateMetadata;
   helpfulNeurons?: RustCandidateNeuron[];
   /**
    * Optional structural candidates emitted as tagged variants.
@@ -245,9 +257,21 @@ export interface RustParallelAnalysisResult {
   success: boolean;
   helpfulSynapses?: RustCandidateSynapse[];
   harmfulSynapses?: RustCandidateSynapse[];
+  /**
+   * Optional metadata describing synapse candidate discovery.
+   * - candidatesFound: how many candidates were considered/found before truncation
+   * - candidatesReturned: how many candidates were returned in `helpfulSynapses`
+   */
+  synapseMetadata?: RustCandidateMetadata;
   synapseDiagnostics?: RustSynapseDiagnostic[];
   synapseGpuUsed?: boolean;
   helpfulNeurons?: RustCandidateNeuron[];
+  /**
+   * Optional metadata describing neuron candidate discovery.
+   * - candidatesFound: how many candidates were considered/found before truncation
+   * - candidatesReturned: how many candidates were returned in `helpfulNeurons`
+   */
+  neuronMetadata?: RustCandidateMetadata;
   /**
    * Optional structural candidates emitted as tagged variants.
    * Supported variants are modelled by {@link RustStructuralCandidate}.
@@ -371,6 +395,16 @@ export interface RustSynapseDiagnostic {
   candidatesWithSamples: number;
   targetRecordCount: number;
   detail?: RustSynapseDiagnosticDetail;
+}
+
+/**
+ * Optional metadata emitted by NEAT-AI-Discovery describing candidate selection.
+ *
+ * This is used for logging/telemetry only and must not influence ranking logic.
+ */
+export interface RustCandidateMetadata {
+  candidatesFound: number;
+  candidatesReturned: number;
 }
 
 export type RustNeuronDiagnosticReason =

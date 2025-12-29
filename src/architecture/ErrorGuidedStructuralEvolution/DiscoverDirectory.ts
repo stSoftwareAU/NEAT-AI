@@ -27,6 +27,8 @@ import { submitDiscoveryRecordBatch } from "./SubmitDiscoveryRecordBatch.ts";
 const shouldLogDiscovery = (config: NeatConfig): boolean =>
   config.verbose || config.log > 0;
 
+const DEFAULT_DISCOVERY_MIN_IMPROVEMENT = 0.01; // 1% (29-Dec-2025)
+
 /**
  * Calculates the candidate counts that should be reported in the worker
  * "Candidates Found" summary.
@@ -85,13 +87,15 @@ class DiscoveryPerformanceStats {
   harmfulNeuronAnalysisTime = 0;
   squashAnalysisTime = 0;
 
-  // Raw discovery result counts (what Rust found)
-  helpfulSynapseRawCount = 0;
-  helpfulNeuronRawCount = 0;
-  harmfulSynapseCandidates = 0;
-  harmfulNeuronCandidates = 0;
-  squashRawCount = 0;
-  removalRawCount = 0;
+  // Candidate counts (final arrays returned to the caller).
+  // Note (29-Dec-2025): Counts are taken from the result arrays (not per-retry
+  // accumulation) so logs match what downstream consumers will actually see.
+  helpfulSynapseCount = 0;
+  helpfulNeuronCount = 0;
+  harmfulSynapseCount = 0;
+  harmfulNeuronCount = 0;
+  squashCount = 0;
+  removalCount = 0;
 
   // Other phases
   cleanupTime = 0;
@@ -163,15 +167,15 @@ class DiscoveryPerformanceStats {
         }`,
     );
 
-    // Candidate summary (raw Rust counts only; combos are built later after scoring).
-    const summaryCounts = calculateDiscoveryCandidateSummaryCounts({
-      helpfulSynapseRawCount: this.helpfulSynapseRawCount,
-      helpfulNeuronRawCount: this.helpfulNeuronRawCount,
-      harmfulSynapseCandidates: this.harmfulSynapseCandidates,
-      harmfulNeuronCandidates: this.harmfulNeuronCandidates,
-      squashRawCount: this.squashRawCount,
-      removalRawCount: this.removalRawCount,
-    });
+    // Candidate summary (counts match the arrays returned from recordDirectory()).
+    const summaryCounts = {
+      helpfulSynapses: this.helpfulSynapseCount,
+      helpfulNeurons: this.helpfulNeuronCount,
+      harmfulSynapses: this.harmfulSynapseCount,
+      harmfulNeurons: this.harmfulNeuronCount,
+      squashChanges: this.squashCount,
+      removalCandidates: this.removalCount,
+    };
 
     console.log(
       `\n🎯 ${yellow("Candidates Found")}:\n` +
@@ -265,6 +269,8 @@ class DataRecorder {
       disableCleanup: config.discoveryDisableCleanup,
       skipRecordPhase: config.discoverySkipRecordPhase,
       rustFlushBytesThreshold: config.discoveryRustFlushBytes,
+      improvementThreshold: config.discoveryMinImprovementPercentage ??
+        DEFAULT_DISCOVERY_MIN_IMPROVEMENT,
     };
   }
 
@@ -558,6 +564,56 @@ class DataRecorder {
         }`,
       );
     }
+
+    const improvementThreshold = config.discoveryMinImprovementPercentage ??
+      DEFAULT_DISCOVERY_MIN_IMPROVEMENT;
+
+    const classifyCandidateTag = (
+      gain: number,
+      comment?: string,
+    ): "CANDIDATE" | "FALLBACK" | "SPLIT-ERROR" => {
+      const normalised = typeof comment === "string"
+        ? comment.trim().toLowerCase()
+        : "";
+      if (normalised.includes("split-error")) return "SPLIT-ERROR";
+      if (normalised.includes("fallback")) return "FALLBACK";
+      if (gain > 0 && gain < improvementThreshold) return "FALLBACK";
+      return "CANDIDATE";
+    };
+
+    const formatGainPct = (gain: number): string => {
+      const pct = gain * 100;
+      const sign = pct >= 0 ? "+" : "";
+      return `${sign}${pct.toFixed(4)}%`;
+    };
+
+    const logCandidate = (
+      scope: "SYNAPSE" | "NEURON" | "HARMFUL-SYNAPSE" | "HARMFUL-NEURON",
+      from: string,
+      to: string,
+      gain: number,
+      improved: number,
+      total: number,
+      comment?: string,
+    ): void => {
+      const tag = classifyCandidateTag(gain, comment);
+      const commentText = comment ? ` comment=${JSON.stringify(comment)}` : "";
+      console.log(
+        `Discovery ${blue(this.ID)} ${scope} ${tag} ${from} -> ${to} expected=${
+          formatGainPct(gain)
+        } improved=${improved}/${total}${commentText}`,
+      );
+    };
+
+    const countFallbackCandidates = <
+      T extends { expectedCreatureScoreGain: number; comment?: string },
+    >(
+      candidates: T[] | undefined,
+    ): number =>
+      (candidates ?? []).filter((c) =>
+        classifyCandidateTag(c.expectedCreatureScoreGain, c.comment) ===
+          "FALLBACK"
+      ).length;
 
     const discoverStructure = new DiscoverStructure(
       creature,
@@ -919,15 +975,62 @@ class DataRecorder {
           if (shouldLogDiscovery(config)) {
             const helpfulSynapseCount = addHelpfulSynapse?.length ?? 0;
             const helpfulNeuronCount = addHelpfulNeurons?.length ?? 0;
-            const splitCount = splitSynapseInsertNeuronCandidates?.length ?? 0;
-            const harmfulCount = removeHarmfulSynapse ? 1 : 0;
+            const splitInsertCount =
+              splitSynapseInsertNeuronCandidates?.length ?? 0;
+            const harmfulSynapseCount = removeHarmfulSynapse ? 1 : 0;
+            const fallbackSynapses = countFallbackCandidates(addHelpfulSynapse);
+            const fallbackNeurons = countFallbackCandidates(addHelpfulNeurons);
+
+            const synapseMeta = candidateBundle.synapseMetadata;
+            const neuronMeta = candidateBundle.neuronMetadata;
+            const synapseMetaText = synapseMeta
+              ? `, synapse meta: found=${synapseMeta.candidatesFound} returned=${synapseMeta.candidatesReturned}`
+              : "";
+            const neuronMetaText = neuronMeta
+              ? `, neuron meta: found=${neuronMeta.candidatesFound} returned=${neuronMeta.candidatesReturned}`
+              : "";
+
             console.log(
               `Discovery ${blue(this.ID)} candidate collection ${
                 yellow(format(candidateCollectionTime, {
                   ignoreZero: true,
                 }))
-              } synapse candidates: ${helpfulSynapseCount}, neuron candidates: ${helpfulNeuronCount}, split candidates: ${splitCount}, harmful removals: ${harmfulCount}`,
+              } helpful synapses: ${helpfulSynapseCount} (fallback ${fallbackSynapses}), helpful neurons: ${helpfulNeuronCount} (fallback ${fallbackNeurons}), split-synapse-insert-neuron: ${splitInsertCount}, harmful synapse removals: ${harmfulSynapseCount}${synapseMetaText}${neuronMetaText}`,
             );
+
+            for (const candidate of addHelpfulSynapse ?? []) {
+              logCandidate(
+                "SYNAPSE",
+                candidate.fromNeuronUUID,
+                candidate.toNeuronUUID,
+                candidate.expectedCreatureScoreGain,
+                candidate.improvedCount,
+                candidate.totalCount,
+                candidate.comment,
+              );
+            }
+            for (const candidate of addHelpfulNeurons ?? []) {
+              logCandidate(
+                "NEURON",
+                candidate.fromNeuronUUID,
+                candidate.toNeuronUUID,
+                candidate.expectedCreatureScoreGain,
+                candidate.improvedCount,
+                candidate.totalCount,
+                candidate.comment,
+              );
+            }
+            if (removeHarmfulSynapse) {
+              logCandidate(
+                "HARMFUL-SYNAPSE",
+                removeHarmfulSynapse.fromNeuronUUID,
+                removeHarmfulSynapse.toNeuronUUID,
+                removeHarmfulSynapse.expectedCreatureScoreGain,
+                removeHarmfulSynapse.improvedCount,
+                removeHarmfulSynapse.totalCount,
+                removeHarmfulSynapse.comment,
+              );
+            }
           }
 
           const squashStartTime = Date.now();
@@ -1124,6 +1227,53 @@ class DataRecorder {
             candidateSquashes,
             removeHarmfulNeurons,
           ] = analysisResults;
+
+          if (shouldLogDiscovery(config)) {
+            for (const candidate of addHelpfulSynapse ?? []) {
+              logCandidate(
+                "SYNAPSE",
+                candidate.fromNeuronUUID,
+                candidate.toNeuronUUID,
+                candidate.expectedCreatureScoreGain,
+                candidate.improvedCount,
+                candidate.totalCount,
+                candidate.comment,
+              );
+            }
+            for (const candidate of addHelpfulNeurons ?? []) {
+              logCandidate(
+                "NEURON",
+                candidate.fromNeuronUUID,
+                candidate.toNeuronUUID,
+                candidate.expectedCreatureScoreGain,
+                candidate.improvedCount,
+                candidate.totalCount,
+                candidate.comment,
+              );
+            }
+            if (removeHarmfulSynapse) {
+              logCandidate(
+                "HARMFUL-SYNAPSE",
+                removeHarmfulSynapse.fromNeuronUUID,
+                removeHarmfulSynapse.toNeuronUUID,
+                removeHarmfulSynapse.expectedCreatureScoreGain,
+                removeHarmfulSynapse.improvedCount,
+                removeHarmfulSynapse.totalCount,
+                removeHarmfulSynapse.comment,
+              );
+            }
+            for (const candidate of removeHarmfulNeurons ?? []) {
+              logCandidate(
+                "HARMFUL-NEURON",
+                candidate.neuronUUID,
+                candidate.neuronUUID,
+                candidate.expectedCreatureScoreGain,
+                candidate.sampleCount,
+                candidate.sampleCount,
+                candidate.comment,
+              );
+            }
+          }
         }
 
         if (addHelpfulNeurons && addHelpfulNeurons.length > 0) {
@@ -1131,7 +1281,6 @@ class DataRecorder {
             ...(discoverResult.addHelpfulNeurons ?? []),
             ...addHelpfulNeurons,
           ];
-          perfStats.helpfulNeuronRawCount += addHelpfulNeurons.length;
         }
         if (
           splitSynapseInsertNeuronCandidates &&
@@ -1147,25 +1296,21 @@ class DataRecorder {
             ...(discoverResult.addHelpfulSynapses ?? []),
             ...addHelpfulSynapse,
           ];
-          perfStats.helpfulSynapseRawCount += addHelpfulSynapse.length;
         }
         if (removeHarmfulSynapse && !discoverResult.removeHarmfulSynapse) {
           discoverResult.removeHarmfulSynapse = removeHarmfulSynapse;
-          perfStats.harmfulSynapseCandidates = 1;
         }
         if (candidateSquashes && candidateSquashes.length > 0) {
           discoverResult.candidateSquashes = [
             ...(discoverResult.candidateSquashes ?? []),
             ...candidateSquashes,
           ];
-          perfStats.squashRawCount += candidateSquashes.length;
         }
         if (removeHarmfulNeurons && removeHarmfulNeurons.length > 0) {
           discoverResult.removeHarmfulNeurons = [
             ...(discoverResult.removeHarmfulNeurons ?? []),
             ...removeHarmfulNeurons,
           ];
-          perfStats.harmfulNeuronCandidates += removeHarmfulNeurons.length;
         }
 
         // Check if we found any candidates
@@ -1213,7 +1358,6 @@ class DataRecorder {
       const removalCandidates = discoverStructure.getRemovalCandidates();
       if (removalCandidates && removalCandidates.length > 0) {
         discoverResult.removalCandidates = removalCandidates;
-        perfStats.removalRawCount = removalCandidates.length;
         if (shouldLogDiscovery(config)) {
           console.log(
             `Discovery ${blue(this.ID)} found ${
@@ -1282,6 +1426,20 @@ class DataRecorder {
 
       // Calculate total time after conditional await to include cleanup when awaited
       perfStats.totalTime = Date.now() - startTime;
+
+      // Candidate counts must reflect what we actually return, not per-retry accumulation.
+      perfStats.helpfulSynapseCount =
+        discoverResult.addHelpfulSynapses?.length ??
+          0;
+      perfStats.helpfulNeuronCount = discoverResult.addHelpfulNeurons?.length ??
+        0;
+      perfStats.harmfulSynapseCount = discoverResult.removeHarmfulSynapse
+        ? 1
+        : 0;
+      perfStats.harmfulNeuronCount =
+        discoverResult.removeHarmfulNeurons?.length ?? 0;
+      perfStats.squashCount = discoverResult.candidateSquashes?.length ?? 0;
+      perfStats.removalCount = discoverResult.removalCandidates?.length ?? 0;
 
       // Note: reScoringTime is not included in the performance summary as it happens
       // after recordDirectory returns. It is logged separately in DiscoveryRunner

@@ -60,6 +60,13 @@ export class WorkerProcessor {
   async process(data: RequestData): Promise<ResponseData> {
     const start = Date.now();
     if (data.initialize) {
+      if (data.initialize.discoveryVerbose) {
+        try {
+          Deno.env.set("NEAT_AI_DISCOVERY_VERBOSE", "1");
+        } catch {
+          // Best-effort: worker may not have --allow-env.
+        }
+      }
       // Handle custom cost function if provided
       if (data.initialize.customCostData) {
         const customCostInfo = JSON.parse(data.initialize.customCostData);

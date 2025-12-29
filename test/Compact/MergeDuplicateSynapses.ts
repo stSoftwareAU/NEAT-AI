@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertAlmostEquals, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { mergeDuplicateSynapses } from "../../src/compact/CompactUtils.ts";
 
@@ -58,7 +58,7 @@ Deno.test("mergeDuplicateSynapses: merges same from/to/type (sums weights), pres
     s.fromUUID === "input-0" && s.toUUID === "hidden-0" &&
     s.type === "condition"
   );
-  assertEquals(condition?.weight, 0.3);
+  assertAlmostEquals(condition?.weight ?? 0, 0.3);
   const tagValues = new Set((condition?.tags ?? []).map((t) => t.value));
   assertEquals(tagValues, new Set(["a", "b"]));
 

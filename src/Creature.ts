@@ -44,6 +44,7 @@ import {
 import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 import { upgradeOne } from "./upgrade/UpgradeOne.ts";
 import { CreatureExportBuilder } from "./utils/CreatureExportBuilder.ts";
+import { mergeTagsByNameValue } from "./utils/TagUtils.ts";
 import {
   type DiscoveryDirResult,
   DiscoveryRunner,
@@ -1427,10 +1428,9 @@ export class Creature implements CreatureInternal {
       if (existing) {
         existing.weight += synapse.weight;
         // Merge tags conservatively (best-effort). If tags are present on either,
-        // keep a de-duplicated union.
+        // keep a de-duplicated union by `{name, value}`.
         if (synapse.tags?.length) {
-          const old = existing.tags ?? [];
-          existing.tags = [...new Set([...old, ...synapse.tags])];
+          existing.tags = mergeTagsByNameValue(existing.tags, synapse.tags);
         }
         return;
       }
