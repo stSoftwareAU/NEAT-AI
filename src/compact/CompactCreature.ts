@@ -7,6 +7,12 @@ import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
+import { COMPLEMENT } from "../methods/activations/types/COMPLEMENT.ts";
+import { IF } from "../methods/activations/aggregate/IF.ts";
+import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
+import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
+import { HYPOT } from "../deprecated/HYPOT.ts";
+import { HYPOTv2 } from "../deprecated/HYPOTv2.ts";
 import { cleanupOrphanedNeurons } from "./CompactUtils.ts";
 
 /**
@@ -49,6 +55,128 @@ export function compactCreature(
   });
 
   let didCompact = false;
+
+  // 29-Dec-2025: Safe algebraic bypass for COMPLEMENT neurons.
+  //
+  // When a COMPLEMENT neuron A (1 - x) has one or more outbound links to neuron(s) B,
+  // and each B is not an aggregation squash (MAXIMUM/MINIMUM/IF/HYPOT), we can remove
+  // A completely by folding its affine transform into each downstream neuron:
+  //
+  //   A = 1 - (Σ(wi * xi) + bA)
+  //   contribution into B = wAB * A
+  //                       = Σ((-wAB*wi) * xi) + wAB*(1 - bA)
+  //
+  // This is behaviour-preserving for summed pre-activation squashes (the default),
+  // but it is NOT safe for aggregation squashes because they treat each inbound
+  // value specially (eg MAXIMUM uses Math.max over inbound values).
+  for (let i = 0; i < compactCreature.neurons.length; i++) {
+    const neuron = compactCreature.neurons[i];
+    if (neuron.type !== "hidden") continue;
+    if (neuron.squash !== COMPLEMENT.NAME) continue;
+
+    const indexByUUID = new Map<string, number>();
+    for (let j = 0; j < compactCreature.neurons.length; j++) {
+      indexByUUID.set(compactCreature.neurons[j].uuid, j);
+    }
+
+    const inConns = inwardConnections.get(neuron.uuid) || [];
+    const outConns = outwardConnections.get(neuron.uuid) || [];
+    if (inConns.length === 0) continue;
+    if (outConns.length === 0) continue;
+
+    // Conservative: only bypass when *all* downstream neurons are non-aggregate.
+    // (We could partially bypass some outbounds while keeping the neuron for
+    // aggregate consumers, but that is more complex and not required here.)
+    const toNeurons = outConns.map((c) => neuronMap.get(c.toUUID));
+    if (toNeurons.some((n) => !n)) continue;
+    if (toNeurons.some((n) => isAggregationSquashName(n!.squash))) continue;
+
+    // Avoid introducing self-loops or invalid forward-only edges via bypass.
+    let unsafe = false;
+    for (const outConn of outConns) {
+      if (outConn.toUUID === neuron.uuid) {
+        unsafe = true;
+        break;
+      }
+
+      for (const inConn of inConns) {
+        if (
+          inConn.fromUUID === outConn.toUUID || inConn.fromUUID === neuron.uuid
+        ) {
+          unsafe = true;
+          break;
+        }
+
+        // If this creature is forward-only and feedbackLoop=false, avoid creating
+        // any backward synapses during bypass.
+        if (!feedbackLoop && creature.forwardOnly === true) {
+          const fromIndex = indexByUUID.get(inConn.fromUUID);
+          const toIndex = indexByUUID.get(outConn.toUUID);
+          if (
+            fromIndex !== undefined && toIndex !== undefined &&
+            fromIndex > toIndex
+          ) {
+            unsafe = true;
+            break;
+          }
+        }
+      }
+
+      if (unsafe) break;
+    }
+    if (unsafe) continue;
+
+    for (const outConn of outConns) {
+      const toNeuron = neuronMap.get(outConn.toUUID)!;
+
+      // Bias fold into downstream: bB += wAB*(1 - bA)
+      toNeuron.bias += outConn.weight * (1 - neuron.bias);
+
+      // Redirect each inbound connection directly into this downstream.
+      for (const inConn of inConns) {
+        const newWeight = (-outConn.weight) * inConn.weight;
+
+        const existing = compactCreature.synapses.find((s) =>
+          s.fromUUID === inConn.fromUUID && s.toUUID === outConn.toUUID
+        );
+        if (existing) {
+          existing.weight += newWeight;
+        } else {
+          compactCreature.synapses.push({
+            fromUUID: inConn.fromUUID,
+            toUUID: outConn.toUUID,
+            weight: newWeight,
+          });
+        }
+      }
+    }
+
+    // Remove the COMPLEMENT neuron and all of its incident synapses.
+    compactCreature.synapses = compactCreature.synapses.filter((s) =>
+      s.fromUUID !== neuron.uuid && s.toUUID !== neuron.uuid
+    );
+    compactCreature.neurons = compactCreature.neurons.filter((n) =>
+      n.uuid !== neuron.uuid
+    );
+    neuronMap.delete(neuron.uuid);
+
+    // Rebuild inward/outward maps after changes.
+    inwardConnections.clear();
+    outwardConnections.clear();
+    compactCreature.synapses.forEach((synapse) => {
+      outwardConnections.set(
+        synapse.fromUUID,
+        (outwardConnections.get(synapse.fromUUID) || []).concat(synapse),
+      );
+      inwardConnections.set(
+        synapse.toUUID,
+        (inwardConnections.get(synapse.toUUID) || []).concat(synapse),
+      );
+    });
+
+    didCompact = true;
+    break; // One safe bypass per compaction call.
+  }
 
   for (const neuron of compactCreature.neurons) {
     if (neuron.type !== "hidden") continue;
@@ -201,4 +329,17 @@ export function compactCreature(
   }
 
   return undefined;
+}
+
+function isAggregationSquashName(name?: string): boolean {
+  switch (name) {
+    case MAXIMUM.NAME:
+    case MINIMUM.NAME:
+    case IF.NAME:
+    case HYPOT.NAME:
+    case HYPOTv2.NAME:
+      return true;
+    default:
+      return false;
+  }
 }
