@@ -339,10 +339,31 @@ export function mergeDuplicateSynapses(
 export function pruneZeroWeightSynapses(
   creatureExport: CreatureExport,
 ): PruneZeroWeightSynapsesResult {
+  // IF neurons require at least 3 inward connections with specific typed roles
+  // (condition/positive/negative). Even if a weight is zero, dropping a typed
+  // synapse can invalidate the structure and break activation semantics.
+  const ifNeuronUUIDs = new Set<string>();
+  for (const neuron of creatureExport.neurons) {
+    // Note: CreatureExport.neurons does not include input neurons (they are implicit),
+    // so `neuron.type` cannot be "input" here.
+    if (neuron.squash === "IF") {
+      ifNeuronUUIDs.add(neuron.uuid);
+    }
+  }
+
   const before = creatureExport.synapses.length;
-  creatureExport.synapses = creatureExport.synapses.filter((s) =>
-    Number.isFinite(s.weight) && s.weight !== 0
-  );
+  creatureExport.synapses = creatureExport.synapses.filter((s) => {
+    if (!Number.isFinite(s.weight)) return false;
+    if (s.weight !== 0) return true;
+
+    // Preserve typed synapses (eg IF condition/positive/negative).
+    if (s.type) return true;
+
+    // Extra safety: never prune a zero-weight synapse that targets an IF neuron.
+    if (ifNeuronUUIDs.has(s.toUUID)) return true;
+
+    return false;
+  });
 
   const removed = before - creatureExport.synapses.length;
   if (removed > 0) {
