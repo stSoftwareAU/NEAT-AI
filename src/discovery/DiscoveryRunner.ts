@@ -959,7 +959,9 @@ export class DiscoveryRunner {
         }
         if (cache.cachedOther > 0) {
           const typeBreakdown = Array.from(cache.cachedOtherByType.entries())
-            .map(([type, count]) => `${count} ${type}`)
+            .map(([type, count]) =>
+              `${count} ${type} candidate${count === 1 ? "" : "s"}`
+            )
             .join(", ");
           parts.push(typeBreakdown || `${cache.cachedOther} other`);
         }

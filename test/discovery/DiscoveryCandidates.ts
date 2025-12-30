@@ -1313,3 +1313,131 @@ Deno.test(
     );
   },
 );
+
+Deno.test(
+  "buildDiscoveryCandidates (skipCombinedCandidates) emits only single-step candidates for add-neurons/add-synapses/change-squash",
+  () => {
+    const base = makeBaselineCreature();
+    const discovery: DiscoverResult = {
+      ID: "PHASE1-SINGLES-ONLY",
+      addHelpfulSynapses: [{
+        fromNeuronUUID: "input-2",
+        toNeuronUUID: "hidden-1",
+        weight: 0.99,
+        targetNeuronImpact: 1.0,
+        expectedCreatureErrorReduction: 0,
+        expectedCreatureScoreGain: 0.25,
+        improvedCount: 5,
+        totalCount: 6,
+      }, {
+        fromNeuronUUID: "input-3",
+        toNeuronUUID: "hidden-2",
+        weight: -0.55,
+        targetNeuronImpact: 1.0,
+        expectedCreatureErrorReduction: 0,
+        expectedCreatureScoreGain: 0.3,
+        improvedCount: 6,
+        totalCount: 7,
+      }],
+      addHelpfulNeurons: [{
+        fromNeuronUUID: "input-2",
+        toNeuronUUID: "hidden-1",
+        incomingWeight: 0.45,
+        outgoingWeight: -0.12,
+        squash: TANH.NAME,
+        bias: 0.1,
+        targetNeuronImpact: 1.0,
+        expectedCreatureErrorReduction: 0,
+        expectedCreatureScoreGain: 0.1,
+        improvedCount: 5,
+        totalCount: 6,
+      }, {
+        fromNeuronUUID: "input-3",
+        toNeuronUUID: "hidden-2",
+        incomingWeight: -0.38,
+        outgoingWeight: 0.22,
+        squash: Mish.NAME,
+        bias: -0.05,
+        targetNeuronImpact: 1.0,
+        expectedCreatureErrorReduction: 0,
+        expectedCreatureScoreGain: 0.45,
+        improvedCount: 7,
+        totalCount: 8,
+      }],
+      removeHarmfulSynapse: undefined,
+      removeHarmfulNeurons: undefined,
+      removalCandidates: undefined,
+      candidateSquashes: [{
+        neuronUUID: "hidden-1",
+        previousSquash: IDENTITY.NAME,
+        squash: TANH.NAME,
+        expectedCreatureScoreGain: 0.4,
+        improvedError: 0.1,
+        currentError: 0.2,
+      }, {
+        neuronUUID: "hidden-2",
+        previousSquash: IDENTITY.NAME,
+        squash: Mish.NAME,
+        expectedCreatureScoreGain: 0.3,
+        improvedError: 0.2,
+        currentError: 0.4,
+      }],
+    };
+
+    const candidates = buildDiscoveryCandidates(base, discovery, {
+      skipCombinedCandidates: true,
+    });
+
+    // Phase-1 requirement: only dedicated single-step candidates should exist for these types.
+    const addNeuronCandidates = candidates.filter((c) =>
+      c.change.type === "add-neurons"
+    );
+    assertEquals(
+      addNeuronCandidates.length,
+      discovery.addHelpfulNeurons!.length,
+      "Expected exactly one add-neurons candidate per suggestion when skipCombinedCandidates is true",
+    );
+    assertEquals(
+      addNeuronCandidates.every((c) => c.change.neuronDetails !== undefined),
+      true,
+      "Expected add-neurons candidates to carry neuronDetails (single-step)",
+    );
+
+    const addSynapseCandidates = candidates.filter((c) =>
+      c.change.type === "add-synapses"
+    );
+    assertEquals(
+      addSynapseCandidates.length,
+      discovery.addHelpfulSynapses!.length,
+      "Expected exactly one add-synapses candidate per suggestion when skipCombinedCandidates is true",
+    );
+    assertEquals(
+      addSynapseCandidates.every((c) =>
+        c.change.synapseCandidate !== undefined
+      ),
+      true,
+      "Expected add-synapses candidates to carry synapseCandidate (single-step)",
+    );
+
+    const squashCandidates = candidates.filter((c) =>
+      c.change.type === "change-squash"
+    );
+    assertEquals(
+      squashCandidates.length,
+      discovery.candidateSquashes!.length,
+      "Expected exactly one change-squash candidate per suggestion when skipCombinedCandidates is true",
+    );
+    assertEquals(
+      squashCandidates.every((c) => c.change.squashCandidate !== undefined),
+      true,
+      "Expected change-squash candidates to carry squashCandidate (single-step)",
+    );
+
+    // Defensive: no combo-* should ever appear when skipCombinedCandidates is true.
+    assertEquals(
+      candidates.some((c) => c.change.type.startsWith("combo-")),
+      false,
+      "Expected no combo-* candidates when skipCombinedCandidates is true",
+    );
+  },
+);

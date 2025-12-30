@@ -205,6 +205,13 @@ export function buildDiscoveryCandidates(
   discovery: DiscoverResult,
   options?: BuildDiscoveryCandidatesOptions,
 ): DiscoveryCandidate[] {
+  // When true, this function must only emit single-step candidates (phase 1).
+  // That means:
+  // - No multi-suggestion "combined" candidates within a category (eg apply 30 add-neurons at once)
+  // - No cross-category combo-* candidates
+  //
+  // Phase 2 combinations are built exclusively from successful singles via
+  // `buildCombinedFromSuccessful()`.
   const skipCombos = options?.skipCombinedCandidates ?? false;
   const discoveryFailureCacheDir = options?.discoveryFailureCacheDir;
   // Ensure the base creature has a UUID so discovery helpers function correctly.
@@ -246,7 +253,7 @@ export function buildDiscoveryCandidates(
     discovery.splitSynapseInsertNeuronCandidates;
   const successfulSplitSynapseInsertNeuronCandidates:
     SplitSynapseInsertNeuronCandidate[] = [];
-  const addedNeuronCreature = helpfulNeuronCandidates &&
+  const addedNeuronCreature = !skipCombos && helpfulNeuronCandidates &&
       helpfulNeuronCandidates.length > 0
     ? DiscoverStructure.addHelpfulNeurons(
       discovery.ID,
@@ -255,7 +262,7 @@ export function buildDiscoveryCandidates(
       discoveryFailureCacheDir,
     )
     : undefined;
-  if (addedNeuronCreature && helpfulNeuronCandidates) {
+  if (!skipCombos && addedNeuronCreature && helpfulNeuronCandidates) {
     const neuronSummary = summariseExpectedImprovement(
       mapScaledSummaryEntries(
         helpfulNeuronCandidates,
@@ -275,7 +282,9 @@ export function buildDiscoveryCandidates(
         sampleSize: neuronSummary.sampleSize,
       },
     });
-  } else if (helpfulNeuronCandidates && helpfulNeuronCandidates.length > 0) {
+  } else if (
+    !skipCombos && helpfulNeuronCandidates && helpfulNeuronCandidates.length > 0
+  ) {
     console.info(
       `[DiscoveryCandidates] Combined add-neurons candidate not created (${helpfulNeuronCandidates.length} neuron${
         helpfulNeuronCandidates.length === 1 ? "" : "s"
@@ -335,13 +344,15 @@ export function buildDiscoveryCandidates(
     }
   }
 
-  const addedSynapseCreature = DiscoverStructure.addHelpfulSynapses(
-    discovery.ID,
-    baseCreature,
-    addHelpfulSynapses,
-    discoveryFailureCacheDir,
-  );
-  if (addedSynapseCreature) {
+  const addedSynapseCreature = !skipCombos
+    ? DiscoverStructure.addHelpfulSynapses(
+      discovery.ID,
+      baseCreature,
+      addHelpfulSynapses,
+      discoveryFailureCacheDir,
+    )
+    : undefined;
+  if (!skipCombos && addedSynapseCreature) {
     const synapseSummary = summariseExpectedImprovement(
       mapScaledSummaryEntries(
         addHelpfulSynapses,
@@ -360,7 +371,9 @@ export function buildDiscoveryCandidates(
         sampleSize: synapseSummary.sampleSize,
       },
     });
-  } else if (addHelpfulSynapses && addHelpfulSynapses.length > 0) {
+  } else if (
+    !skipCombos && addHelpfulSynapses && addHelpfulSynapses.length > 0
+  ) {
     console.info(
       `[DiscoveryCandidates] Combined add-synapses candidate not created (${addHelpfulSynapses.length} synapse${
         addHelpfulSynapses.length === 1 ? "" : "s"
@@ -482,13 +495,15 @@ export function buildDiscoveryCandidates(
     }
   }
 
-  const changedSquashCreature = DiscoverStructure.changeSquash(
-    discovery.ID,
-    baseCreature,
-    candidateSquashes,
-    discoveryFailureCacheDir,
-  );
-  if (changedSquashCreature) {
+  const changedSquashCreature = !skipCombos
+    ? DiscoverStructure.changeSquash(
+      discovery.ID,
+      baseCreature,
+      candidateSquashes,
+      discoveryFailureCacheDir,
+    )
+    : undefined;
+  if (!skipCombos && changedSquashCreature) {
     const changes = (candidateSquashes || []).map((c) => {
       const neuron = baseCreature.neurons.find((n) => n.uuid === c.neuronUUID);
       const oldSquash = neuron?.squash;
@@ -542,7 +557,7 @@ export function buildDiscoveryCandidates(
         });
       }
     }
-  } else if (candidateSquashes && candidateSquashes.length > 0) {
+  } else if (!skipCombos && candidateSquashes && candidateSquashes.length > 0) {
     console.info(
       `[DiscoveryCandidates] Combined change-squash candidate not created (${candidateSquashes.length} squash${
         candidateSquashes.length === 1 ? "" : "es"
@@ -1886,19 +1901,44 @@ function applyChangeToCreature(
       }
 
       case "change-squash": {
-        // Copy squash changes from candidate
-        const candidateNeuronMap = new Map(
-          candidateJSON.neurons.map((n) => [n.uuid, n]),
-        );
-        let changed = false;
-        for (const neuron of creatureJSON.neurons) {
-          const candidateNeuron = candidateNeuronMap.get(neuron.uuid);
-          if (candidateNeuron && candidateNeuron.squash !== neuron.squash) {
-            neuron.squash = candidateNeuron.squash;
-            changed = true;
+        // Apply ONLY the intended squash change for this candidate.
+        //
+        // Why: candidate creature JSON contains a full snapshot of all neuron squashes
+        // (mostly unchanged). If we naively copy all squashes from the candidate we
+        // can accidentally revert earlier combo steps (eg change hidden-1 to TANH,
+        // then apply an output-0 LOGISTIC candidate that still has hidden-1=IDENTITY).
+        //
+        // In phase 2, combo candidates are built from successful single-step
+        // candidates, so we must apply their delta precisely.
+        const targetUUID = candidate.change.squashCandidate?.neuronUUID;
+        const targetSquash = candidate.change.squashCandidate?.squash;
+        if (targetUUID && targetSquash) {
+          let changed = false;
+          for (const neuron of creatureJSON.neurons) {
+            if (neuron.uuid !== targetUUID) continue;
+            if (neuron.squash !== targetSquash) {
+              neuron.squash = targetSquash;
+              changed = true;
+            }
+            break;
           }
+          if (!changed) return creature;
+        } else {
+          // Fallback (older candidates): apply by diffing candidate vs current, but only
+          // for neurons that differ AND are present in the current creature.
+          const candidateNeuronMap = new Map(
+            candidateJSON.neurons.map((n) => [n.uuid, n]),
+          );
+          let changed = false;
+          for (const neuron of creatureJSON.neurons) {
+            const candidateNeuron = candidateNeuronMap.get(neuron.uuid);
+            if (candidateNeuron && candidateNeuron.squash !== neuron.squash) {
+              neuron.squash = candidateNeuron.squash;
+              changed = true;
+            }
+          }
+          if (!changed) return creature;
         }
-        if (!changed) return creature;
 
         const result = Creature.fromJSON(creatureJSON);
         delete result.uuid;

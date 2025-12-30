@@ -4453,7 +4453,12 @@ export class DiscoverStructure {
         weight: bestCandidate.weight,
       };
 
+      // Tag the new synapse so it can be identified later and survives export/import.
+      // This mirrors neuron tagging (see addHelpfulNeurons) and helps debug why
+      // add-synapses candidates are (or are not) appearing in logs.
+      addTag(addSynapse as TagsInterface, "discovered", "synapse");
       addTag(addSynapse as TagsInterface, "discovery", "beneficial");
+      addTag(addSynapse as TagsInterface, "discoveryID", ID);
       if (bestCandidate.comment) {
         addTag(
           addSynapse as TagsInterface,
@@ -4690,6 +4695,7 @@ export class DiscoverStructure {
         toUUID: newNeuronUUID,
         weight: candidate.incomingWeight,
       };
+      addTag(incomingSynapse as TagsInterface, "discoveryID", ID);
       addTag(incomingSynapse as TagsInterface, "discovery", "beneficial");
       if (candidate.comment) {
         addTag(
@@ -4705,6 +4711,7 @@ export class DiscoverStructure {
         toUUID: candidate.toNeuronUUID,
         weight: candidate.outgoingWeight,
       };
+      addTag(outgoingSynapse as TagsInterface, "discoveryID", ID);
       addTag(outgoingSynapse as TagsInterface, "discovery", "beneficial");
       if (candidate.comment) {
         addTag(
