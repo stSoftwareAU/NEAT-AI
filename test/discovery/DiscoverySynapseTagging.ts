@@ -53,7 +53,7 @@ Deno.test("Discovery addHelpfulSynapses tags new synapses and tags survive expor
   assertEquals(getTag(added, "discoveryID"), discoveryID);
   assertEquals(getTag(added, "discovery-comment"), "test-candidate");
 
-  // Roundtrip import/export preserves tags.
+  // Round-trip import/export preserves tags.
   const roundTripped = Creature.fromJSON(exported, true).exportJSON();
   const added2 = roundTripped.synapses.find((s) =>
     s.fromUUID === "input-1" && s.toUUID === "output-0"
