@@ -105,96 +105,186 @@ class DiscoveryPerformanceStats {
   logSummary(discoveryID: string, config: NeatConfig): void {
     if (!shouldLogDiscovery(config)) return;
 
-    const formatTime = (ms: number) => format(ms, { ignoreZero: true });
-    const formatCount = (count: number) =>
-      yellow(count.toLocaleString("en-AU"));
-
     console.log(
-      `\n${blue("=".repeat(60))}\n` +
-        `${blue("Discovery Performance Summary")} ${blue(discoveryID)}\n` +
-        `${blue("=".repeat(60))}`,
-    );
+      formatDiscoveryPerformanceSummary(
+        discoveryID,
+        {
+          // Record phase
+          recordsProcessed: this.recordsProcessed,
+          filesProcessed: this.filesProcessed,
+          recordPhaseTime: this.recordPhaseTime,
+          initializationTime: this.initializationTime,
+          fileProcessingTime: this.fileProcessingTime,
+          promiseWaitTime: this.promiseWaitTime,
 
-    // Record phase summary
-    console.log(
-      `\n📊 ${yellow("Record Phase")}:\n` +
-        `  Records processed: ${formatCount(this.recordsProcessed)}\n` +
-        `  Files processed: ${formatCount(this.filesProcessed)}\n` +
-        `  Initialization: ${formatTime(this.initializationTime)}\n` +
-        `  File processing: ${formatTime(this.fileProcessingTime)}\n` +
-        `  Promise wait: ${formatTime(this.promiseWaitTime)}\n` +
-        `  Total record phase: ${formatTime(this.recordPhaseTime)}\n` +
-        `  Records/sec: ${
-          this.recordPhaseTime > 0
-            ? formatCount(
-              Math.round(
-                (this.recordsProcessed / this.recordPhaseTime) * 1000,
-              ),
-            )
-            : "n/a"
-        }`,
-    );
+          // Analysis phase
+          neuronsAnalyzed: this.neuronsAnalyzed,
+          retryAttempts: this.retryAttempts,
+          analysisPhaseTime: this.analysisPhaseTime,
+          focusSelectionTime: this.focusSelectionTime,
+          rustCombinedAnalysisTime: this.rustCombinedAnalysisTime,
+          neuronAnalysisTime: this.neuronAnalysisTime,
+          synapseAnalysisTime: this.synapseAnalysisTime,
+          harmfulSynapseAnalysisTime: this.harmfulSynapseAnalysisTime,
+          harmfulNeuronAnalysisTime: this.harmfulNeuronAnalysisTime,
+          squashAnalysisTime: this.squashAnalysisTime,
 
-    // Analysis phase summary
-    console.log(
-      `\n🔍 ${yellow("Analysis Phase")}:\n` +
-        `  Neurons analyzed: ${formatCount(this.neuronsAnalyzed)}\n` +
-        `  Retry attempts: ${formatCount(this.retryAttempts)}\n` +
-        `  Focus selection: ${formatTime(this.focusSelectionTime)}\n` +
-        `  Rust combined analysis: ${
-          formatTime(this.rustCombinedAnalysisTime)
-        }\n` +
-        `  Neuron analysis: ${formatTime(this.neuronAnalysisTime)}\n` +
-        `  Synapse analysis: ${formatTime(this.synapseAnalysisTime)}\n` +
-        `  Harmful synapse analysis: ${
-          formatTime(this.harmfulSynapseAnalysisTime)
-        }\n` +
-        `  Harmful neuron analysis: ${
-          formatTime(this.harmfulNeuronAnalysisTime)
-        }\n` +
-        `  Squash analysis: ${formatTime(this.squashAnalysisTime)}\n` +
-        `  Total analysis phase: ${formatTime(this.analysisPhaseTime)}\n` +
-        `  Neurons/sec: ${
-          this.analysisPhaseTime > 0
-            ? formatCount(
-              Math.round(
-                (this.neuronsAnalyzed / this.analysisPhaseTime) * 1000,
-              ),
-            )
-            : "n/a"
-        }`,
-    );
+          // Candidate counts (counts match the arrays returned from recordDirectory()).
+          helpfulSynapseCount: this.helpfulSynapseCount,
+          helpfulNeuronCount: this.helpfulNeuronCount,
+          harmfulSynapseCount: this.harmfulSynapseCount,
+          harmfulNeuronCount: this.harmfulNeuronCount,
+          squashCount: this.squashCount,
+          removalCount: this.removalCount,
 
-    // Candidate summary (counts match the arrays returned from recordDirectory()).
-    const summaryCounts = {
-      helpfulSynapses: this.helpfulSynapseCount,
-      helpfulNeurons: this.helpfulNeuronCount,
-      harmfulSynapses: this.harmfulSynapseCount,
-      harmfulNeurons: this.harmfulNeuronCount,
-      squashChanges: this.squashCount,
-      removalCandidates: this.removalCount,
-    };
-
-    console.log(
-      `\n🎯 ${yellow("Candidates Found")}:\n` +
-        `  Helpful synapses: ${formatCount(summaryCounts.helpfulSynapses)}\n` +
-        `  Helpful neurons: ${formatCount(summaryCounts.helpfulNeurons)}\n` +
-        `  Harmful synapses: ${formatCount(summaryCounts.harmfulSynapses)}\n` +
-        `  Harmful neurons: ${formatCount(summaryCounts.harmfulNeurons)}\n` +
-        `  Squash changes: ${formatCount(summaryCounts.squashChanges)}\n` +
-        `  Removal candidates: ${formatCount(summaryCounts.removalCandidates)}`,
-    );
-
-    // Overall summary
-    // Note: Re-scoring time is not included here as it happens after recordDirectory returns
-    // It is logged separately in DiscoveryRunner after re-scoring completes
-    console.log(
-      `\n⏱️  ${yellow("Overall")}:\n` +
-        `  Cleanup: ${formatTime(this.cleanupTime)}\n` +
-        `  Total time: ${formatTime(this.totalTime)}\n` +
-        `${blue("=".repeat(60))}\n`,
+          // Other phases
+          cleanupTime: this.cleanupTime,
+          totalTime: this.totalTime,
+        },
+        { colour: true },
+      ),
     );
   }
+}
+
+export interface DiscoveryPerformanceSummarySnapshot {
+  // Record phase stats
+  recordsProcessed: number;
+  filesProcessed: number;
+  recordPhaseTime: number;
+  initializationTime: number;
+  fileProcessingTime: number;
+  promiseWaitTime: number;
+
+  // Analysis phase stats
+  neuronsAnalyzed: number;
+  retryAttempts: number;
+  analysisPhaseTime: number;
+  focusSelectionTime: number;
+  rustCombinedAnalysisTime: number;
+  neuronAnalysisTime: number;
+  synapseAnalysisTime: number;
+  harmfulSynapseAnalysisTime: number;
+  harmfulNeuronAnalysisTime: number;
+  squashAnalysisTime: number;
+
+  // Candidate counts (final arrays returned to the caller)
+  helpfulSynapseCount: number;
+  helpfulNeuronCount: number;
+  harmfulSynapseCount: number;
+  harmfulNeuronCount: number;
+  squashCount: number;
+  removalCount: number;
+
+  // Other phases
+  cleanupTime: number;
+  totalTime: number;
+}
+
+export function formatDiscoveryPerformanceSummary(
+  discoveryID: string,
+  stats: DiscoveryPerformanceSummarySnapshot,
+  options: { colour: boolean },
+): string {
+  const maybeBlue = (text: string) => options.colour ? blue(text) : text;
+  const maybeYellow = (text: string) => options.colour ? yellow(text) : text;
+
+  const formatCount = (count: number) =>
+    maybeYellow(count.toLocaleString("en-AU"));
+
+  const formatTotalTime = (ms: number): string =>
+    format(msOrZero(ms), { ignoreZero: false });
+
+  // Important: `format(ms, { ignoreZero: true })` returns an empty string for 0ms.
+  // We treat that as "not recorded" and omit the line entirely to avoid confusing blank output.
+  const formatNonZeroTimeLine = (
+    label: string,
+    ms: number,
+  ): string | undefined => {
+    const rendered = format(ms, { ignoreZero: true });
+    if (!rendered) return undefined;
+    return `  ${label}: ${rendered}`;
+  };
+
+  const recordLines: string[] = [
+    `  Records processed: ${formatCount(stats.recordsProcessed)}`,
+    `  Files processed: ${formatCount(stats.filesProcessed)}`,
+    formatNonZeroTimeLine("Initialization", stats.initializationTime),
+    formatNonZeroTimeLine("File processing", stats.fileProcessingTime),
+    formatNonZeroTimeLine("Promise wait", stats.promiseWaitTime),
+    `  Total record phase: ${formatTotalTime(stats.recordPhaseTime)}`,
+    `  Records/sec: ${
+      stats.recordPhaseTime > 0
+        ? formatCount(
+          Math.round((stats.recordsProcessed / stats.recordPhaseTime) * 1000),
+        )
+        : "n/a"
+    }`,
+  ].filter((line): line is string => Boolean(line));
+
+  const analysisLines: string[] = [
+    `  Neurons analyzed: ${formatCount(stats.neuronsAnalyzed)}`,
+    `  Retry attempts: ${formatCount(stats.retryAttempts)}`,
+    formatNonZeroTimeLine("Focus selection", stats.focusSelectionTime),
+    formatNonZeroTimeLine(
+      "Rust combined analysis",
+      stats.rustCombinedAnalysisTime,
+    ),
+    formatNonZeroTimeLine("Neuron analysis", stats.neuronAnalysisTime),
+    formatNonZeroTimeLine("Synapse analysis", stats.synapseAnalysisTime),
+    formatNonZeroTimeLine(
+      "Harmful synapse analysis",
+      stats.harmfulSynapseAnalysisTime,
+    ),
+    formatNonZeroTimeLine(
+      "Harmful neuron analysis",
+      stats.harmfulNeuronAnalysisTime,
+    ),
+    formatNonZeroTimeLine("Squash analysis", stats.squashAnalysisTime),
+    `  Total analysis phase: ${formatTotalTime(stats.analysisPhaseTime)}`,
+    `  Neurons/sec: ${
+      stats.analysisPhaseTime > 0
+        ? formatCount(
+          Math.round((stats.neuronsAnalyzed / stats.analysisPhaseTime) * 1000),
+        )
+        : "n/a"
+    }`,
+  ].filter((line): line is string => Boolean(line));
+
+  const candidateLines: string[] = [
+    `  Helpful synapses: ${formatCount(stats.helpfulSynapseCount)}`,
+    `  Helpful neurons: ${formatCount(stats.helpfulNeuronCount)}`,
+    `  Harmful synapses: ${formatCount(stats.harmfulSynapseCount)}`,
+    `  Harmful neurons: ${formatCount(stats.harmfulNeuronCount)}`,
+    `  Squash changes: ${formatCount(stats.squashCount)}`,
+    `  Removal candidates: ${formatCount(stats.removalCount)}`,
+  ];
+
+  const overallLines: string[] = [
+    formatNonZeroTimeLine("Cleanup", stats.cleanupTime),
+    `  Total time: ${formatTotalTime(stats.totalTime)}`,
+  ].filter((line): line is string => Boolean(line));
+
+  return (
+    `\n${maybeBlue("=".repeat(60))}\n` +
+    `${maybeBlue("Discovery Performance Summary")} ${
+      maybeBlue(discoveryID)
+    }\n` +
+    `${maybeBlue("=".repeat(60))}` +
+    `\n\n📊 ${maybeYellow("Record Phase")}:\n` +
+    `${recordLines.join("\n")}` +
+    `\n\n🔍 ${maybeYellow("Analysis Phase")}:\n` +
+    `${analysisLines.join("\n")}` +
+    `\n\n🎯 ${maybeYellow("Candidates Found")}:\n` +
+    `${candidateLines.join("\n")}` +
+    `\n\n⏱️  ${maybeYellow("Overall")}:\n` +
+    `${overallLines.join("\n")}\n` +
+    `${maybeBlue("=".repeat(60))}\n`
+  );
+}
+
+function msOrZero(ms: number): number {
+  return Number.isFinite(ms) ? ms : 0;
 }
 
 export async function recordDirectory(

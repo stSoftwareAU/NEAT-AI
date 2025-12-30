@@ -575,8 +575,17 @@ export async function isCandidateCached(
   // highly dependent on the *current* base creature. Caching them as failures
   // can permanently suppress sensible re-tries as the creature evolves.
   //
-  // We intentionally never treat combo-* candidates as failure-cacheable.
-  if (candidate.change.type.startsWith("combo-")) {
+  // Exception (30-Dec-2025): `combo-successful` is generated in phase 2 from
+  // the set of successful single-step candidates. It is still keyed by the
+  // resulting creature structure (see buildCacheKey fallback), so it will only
+  // be considered cached when the exact same combined outcome is re-proposed.
+  //
+  // This keeps the failure cache useful for repeated discovery runs on a stable
+  // creature while avoiding broad caching of other combo-* types.
+  if (
+    candidate.change.type.startsWith("combo-") &&
+    candidate.change.type !== "combo-successful"
+  ) {
     return false;
   }
   try {
@@ -607,7 +616,10 @@ export function isCandidateCachedSync(
   candidate: DiscoveryCandidate,
 ): boolean {
   // See async variant for rationale.
-  if (candidate.change.type.startsWith("combo-")) {
+  if (
+    candidate.change.type.startsWith("combo-") &&
+    candidate.change.type !== "combo-successful"
+  ) {
     return false;
   }
   try {
@@ -644,8 +656,11 @@ export async function recordFailure(
   metadata: FailureMetadata,
   baseCreature?: Creature,
 ): Promise<void> {
-  // Combo failures are not cached (see isCandidateCached for rationale).
-  if (candidate.change.type.startsWith("combo-")) {
+  // Combo failures are mostly not cached (see isCandidateCached for rationale).
+  if (
+    candidate.change.type.startsWith("combo-") &&
+    candidate.change.type !== "combo-successful"
+  ) {
     return;
   }
   try {
@@ -819,8 +834,11 @@ export function recordFailureSync(
   metadata: FailureMetadata,
   baseCreature?: Creature,
 ): void {
-  // Combo failures are not cached (see isCandidateCached for rationale).
-  if (candidate.change.type.startsWith("combo-")) {
+  // Combo failures are mostly not cached (see isCandidateCached for rationale).
+  if (
+    candidate.change.type.startsWith("combo-") &&
+    candidate.change.type !== "combo-successful"
+  ) {
     return;
   }
   try {

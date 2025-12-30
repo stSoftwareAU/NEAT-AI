@@ -446,14 +446,14 @@ Deno.test("recordFailure and isCandidateCached work together", async () => {
   }
 });
 
-Deno.test("combo-* failures are not cached (combos are always re-scored)", async () => {
+Deno.test("combo-* failures are not cached (except combo-successful)", async () => {
   const tempDir = await Deno.makeTempDir();
 
   try {
     const creature = makeSimpleCreature();
     const candidate = makeCandidate(
-      "combo-successful",
-      "🏗️ Combined successful changes",
+      "combo-all",
+      "🏗️ Combined all changes",
       creature,
     );
 
@@ -487,6 +487,50 @@ Deno.test("combo-* failures are not cached (combos are always re-scored)", async
       cachedSync,
       false,
       "Combo candidates should not be treated as cached failures (sync)",
+    );
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+    closeRustLibrary();
+  }
+});
+
+Deno.test("combo-successful failures are cached (phase 2 cache)", async () => {
+  const tempDir = await Deno.makeTempDir();
+
+  try {
+    const creature = makeSimpleCreature();
+    const candidate = makeCandidate(
+      "combo-successful",
+      "🏗️ Combined successful changes",
+      creature,
+    );
+
+    // Initially should not be cached
+    assertEquals(
+      await isCandidateCached(tempDir, candidate),
+      false,
+      "Precondition: combo-successful should not be cached initially",
+    );
+
+    await recordFailure(tempDir, candidate, {
+      originalScore: 0.5,
+      candidateScore: 0.49,
+      scoreDelta: -0.01,
+      error: 0.6,
+      originalError: 0.59,
+    });
+
+    assertEquals(
+      await isCandidateCached(tempDir, candidate),
+      true,
+      "combo-successful should be cached after recording failure (async)",
+    );
+
+    // Sync API should match.
+    assertEquals(
+      isCandidateCachedSync(tempDir, candidate),
+      true,
+      "combo-successful should be cached after recording failure (sync)",
     );
   } finally {
     await Deno.remove(tempDir, { recursive: true });
