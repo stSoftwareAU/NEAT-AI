@@ -854,6 +854,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
       }
 
       const prefix = "🦘";
+      const shortID = (creature.uuid ?? "Unknown").slice(-8);
       if (verifyScores && config.discoveryReplayRescoreBaseline) {
         const claimedScore = parseClaimedTagNumber(creature.tags, "score");
         const claimedError = parseClaimedTagNumber(creature.tags, "error");
@@ -862,10 +863,10 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
           originalEval.score,
         );
         const reason = claimedScore === undefined
-          ? `${prefix} Baseline rescore: no claimed score tag found, so I rescored on the current dataset (score=${originalEval.score}, error=${originalEval.error}).`
+          ? `${prefix} Baseline rescore: no claimed score tag found, so I rescored for ${shortID} (score=${originalEval.score}, error=${originalEval.error}).`
           : `${prefix} Score drift check: claimed score ${claimedScore} (error ${
             claimedError ?? "?"
-          }) vs actual score ${originalEval.score} (error ${originalEval.error}) on the current dataset.`;
+          }) vs actual score ${originalEval.score} (error ${originalEval.error}) for ${shortID}.`;
 
         void claimedError; // Claimed error is optional; callers can re-tag using actualError.
 
@@ -899,7 +900,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
             scoreDelta,
             improved: scoreDelta > 0,
             message:
-              `${prefix} Verified improvement on current dataset: ${message}`,
+              `${prefix} Verified improvement for ${shortID}: ${message}`,
             creature: best.creature.exportJSON(),
           };
         }
