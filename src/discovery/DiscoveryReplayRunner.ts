@@ -854,7 +854,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
       }
 
       const prefix = "🦘";
-      const shortID = creature.uuid ?? "Unknown".slice(-8);
+      const shortID = (creature.uuid ?? "Unknown").slice(-8);
       if (verifyScores && config.discoveryReplayRescoreBaseline) {
         const claimedScore = parseClaimedTagNumber(creature.tags, "score");
         const claimedError = parseClaimedTagNumber(creature.tags, "error");
