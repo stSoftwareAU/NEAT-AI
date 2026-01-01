@@ -71,12 +71,12 @@ Deno.test("DiscoveryReplayRunner prunes stale successes and prefers best combo",
     },
   });
 
-  const deleted: Array<{ key: string; changeType: string }> = [];
+  const archived: Array<{ key: string; changeType: string }> = [];
 
   const runner = new DiscoveryReplayRunner({
     listEntries: (_dir) => [e1, e2, e3, alreadyApplied],
-    deleteEntry: (_dir, entry) =>
-      deleted.push({ key: entry.key, changeType: entry.changeType }),
+    archiveEntry: (_dir, entry) =>
+      archived.push({ key: entry.key, changeType: entry.changeType }),
     applyEntry: (current, entry) => {
       const clone = Creature.fromJSON(current.exportJSON());
       clone.uuid = `${current.uuid ?? "base"}-${entry.key}`;
@@ -114,7 +114,7 @@ Deno.test("DiscoveryReplayRunner prunes stale successes and prefers best combo",
 
   assertEquals(result.evaluatedSingles, 3); // k1,k2,k3 (k4 is already-applied)
   assertEquals(result.pruned, 1);
-  assertEquals(deleted, [{ key: "k3", changeType: "remove-synapse" }]);
+  assertEquals(archived, [{ key: "k3", changeType: "remove-synapse" }]);
   assertEquals(result.skippedAlreadyApplied, 1);
 
   assertExists(result.improvement);

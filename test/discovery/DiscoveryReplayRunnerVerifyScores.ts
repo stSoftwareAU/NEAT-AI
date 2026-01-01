@@ -125,12 +125,12 @@ Deno.test("DiscoveryReplayRunner: rejects stale 'better by cache metadata' candi
     scoreDelta: 999,
   });
 
-  const deleted: Array<{ key: string; changeType: string }> = [];
+  const archived: Array<{ key: string; changeType: string }> = [];
 
   const runner = new DiscoveryReplayRunner({
     listEntries: (_dir) => [stale],
-    deleteEntry: (_dir, entry) =>
-      deleted.push({ key: entry.key, changeType: entry.changeType }),
+    archiveEntry: (_dir, entry) =>
+      archived.push({ key: entry.key, changeType: entry.changeType }),
     applyEntry: (current, entry) => {
       const clone = Creature.fromJSON(current.exportJSON());
       clone.uuid = `${current.uuid}-${entry.key}`;
@@ -158,7 +158,7 @@ Deno.test("DiscoveryReplayRunner: rejects stale 'better by cache metadata' candi
   });
 
   assertEquals(result.pruned, 1);
-  assertEquals(deleted, [{ key: "stale", changeType: "add-synapses" }]);
+  assertEquals(archived, [{ key: "stale", changeType: "add-synapses" }]);
   assertEquals(result.improvement, undefined);
   assertEquals(result.verifiedImprovement, undefined);
 });

@@ -355,12 +355,23 @@ if (replay.diagnostics) {
 1. Skips cached candidates that already appear to be applied to the current
    creature
 2. Re-scores the remaining candidates against the current creature
-3. Deletes cache entries that no longer improve score (stale successes)
+3. Archives cache entries that no longer improve score (obsolete successes) to
+   an `obsolete` directory at the same level as the success cache directory
 4. Tries combinations of still-successful candidates (pairs/triples/all) and
    returns the best improvement
 
-As with the failure cache, delete the success cache directory when your training
-dataset changes materially.
+**Obsolete entries archive:**
+
+When a cached success entry no longer results in an improvement (e.g., due to
+training data drift), it is moved to an `obsolete` directory rather than being
+deleted. This preserves the history of candidates that once resulted in
+improvements:
+
+- Success cache: `.discovery/success-cache/{changeType}/{key}.json`
+- Obsolete archive: `.discovery/obsolete/{changeType}/{key}.json`
+
+As with the failure cache, delete the success cache and obsolete directories
+when your training dataset changes materially.
 
 ### Discovery Candidate Category Limits
 

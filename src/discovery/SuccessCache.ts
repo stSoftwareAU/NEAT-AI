@@ -233,6 +233,73 @@ export function deleteSuccessByKeySync(
 }
 
 /**
+ * Computes the obsolete directory path for a given success cache directory.
+ *
+ * If the success cache is at `discovery/success-cache`, the obsolete directory
+ * will be at `discovery/obsolete`.
+ */
+export function getObsoleteDir(successCacheDir: string): string {
+  const parent = dirname(successCacheDir);
+  return join(parent, "obsolete");
+}
+
+/**
+ * Archives a cached success entry by moving it to the obsolete directory.
+ *
+ * This preserves the history of candidates that once resulted in improvements
+ * but no longer do (e.g., due to training data drift).
+ *
+ * The obsolete directory structure mirrors the success directory structure:
+ * - Success:  `discovery/success-cache/{changeType}/{key}.json`
+ * - Obsolete: `discovery/obsolete/{changeType}/{key}.json`
+ *
+ * @param cacheDir - The success cache directory path
+ * @param changeType - The type of change (e.g., "add-synapses", "remove-neuron")
+ * @param key - The cache key for the entry
+ */
+export function archiveSuccessByKeySync(
+  cacheDir: string,
+  changeType: string,
+  key: string,
+): void {
+  const sanitisedType = sanitiseForFilename(changeType);
+  const sanitisedKey = sanitiseForFilename(key);
+  const fileName = `${sanitisedKey}.json`;
+
+  const sourcePath = join(cacheDir, sanitisedType, fileName);
+  const obsoleteDir = getObsoleteDir(cacheDir);
+  const targetDir = join(obsoleteDir, sanitisedType);
+  const targetPath = join(targetDir, fileName);
+
+  try {
+    // Check if source file exists
+    Deno.statSync(sourcePath);
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      // Source file doesn't exist; nothing to archive
+      return;
+    }
+    throw error;
+  }
+
+  // Create the obsolete directory structure if it doesn't exist
+  Deno.mkdirSync(targetDir, { recursive: true });
+
+  try {
+    // Move the file using rename (atomic on same filesystem)
+    Deno.renameSync(sourcePath, targetPath);
+  } catch {
+    // Fallback: copy then delete (for cross-filesystem moves)
+    Deno.copyFileSync(sourcePath, targetPath);
+    try {
+      Deno.removeSync(sourcePath);
+    } catch {
+      // Ignore cleanup failure; the file has been archived
+    }
+  }
+}
+
+/**
  * Lists all cached success entries under a cache directory.
  *
  * Best-effort: corrupt files are skipped with a warning.
