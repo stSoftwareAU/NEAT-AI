@@ -76,10 +76,10 @@ Deno.test("DiscoveryReplayRunner: default applyEntry replays singles, then all-s
     squashCandidate: changeSquash,
   });
 
-  const deleted: string[] = [];
+  const archived: string[] = [];
   const runner = new DiscoveryReplayRunner({
     listEntries: () => [eAdd, eSquash],
-    deleteEntry: (_dir, entry) => deleted.push(entry.key),
+    archiveEntry: (_dir, entry) => archived.push(entry.key),
     // Use the default applyEntryUsingRustRequest by not overriding applyEntry.
     evaluateError: (c) => {
       const exported = c.exportJSON();
@@ -119,7 +119,7 @@ Deno.test("DiscoveryReplayRunner: default applyEntry replays singles, then all-s
 
   assertEquals(result.evaluatedSingles, 2);
   assertEquals(result.pruned, 0);
-  assertEquals(deleted.length, 0);
+  assertEquals(archived.length, 0);
 
   assertExists(result.improvement);
   assertEquals(result.improvement.changeType, "combo-successful");
@@ -214,10 +214,10 @@ Deno.test("DiscoveryReplayRunner: prunes stale candidates (remove-low-impact + r
     synapseDetails: removeSynapseDetails,
   });
 
-  const deleted: string[] = [];
+  const archived: string[] = [];
   const runner = new DiscoveryReplayRunner({
     listEntries: () => [eRemoval, eRemoveSyn],
-    deleteEntry: (_dir, entry) => deleted.push(entry.key),
+    archiveEntry: (_dir, entry) => archived.push(entry.key),
     evaluateError: (c) => {
       // If we removed neuron-X or removed neuron-T->output-0, call it worse.
       const exported = c.exportJSON();
@@ -241,7 +241,7 @@ Deno.test("DiscoveryReplayRunner: prunes stale candidates (remove-low-impact + r
   });
 
   assertEquals(result.pruned, 2);
-  assertEquals(deleted.sort(), ["low-impact", "rm-syn"].sort());
+  assertEquals(archived.sort(), ["low-impact", "rm-syn"].sort());
   assertEquals(result.improvement, undefined);
 });
 

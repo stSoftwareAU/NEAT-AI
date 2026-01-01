@@ -21,7 +21,7 @@ import type { Creature } from "../Creature.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { formatWeight } from "./FailureCache.ts";
 import {
-  deleteSuccessByKeySync,
+  archiveSuccessByKeySync,
   listSuccessEntriesSync,
   type SuccessCacheEntry,
 } from "./SuccessCache.ts";
@@ -117,7 +117,11 @@ export interface DiscoveryReplayRunnerLike {
 
 export interface DiscoveryReplayRunnerDeps {
   listEntries?: (dir: string) => SuccessCacheEntry[];
-  deleteEntry?: (dir: string, entry: SuccessCacheEntry) => void;
+  /**
+   * Archive an obsolete success cache entry instead of deleting it.
+   * This preserves history of candidates that once improved but no longer do.
+   */
+  archiveEntry?: (dir: string, entry: SuccessCacheEntry) => void;
   applyEntry?: (
     baseCreature: Creature,
     entry: SuccessCacheEntry,
@@ -507,7 +511,7 @@ function describeCombo(entries: SuccessCacheEntry[]): string {
 export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
   #deps: {
     listEntries: (dir: string) => SuccessCacheEntry[];
-    deleteEntry: (dir: string, entry: SuccessCacheEntry) => void;
+    archiveEntry: (dir: string, entry: SuccessCacheEntry) => void;
     applyEntry: (
       baseCreature: Creature,
       entry: SuccessCacheEntry,
@@ -522,9 +526,9 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
   constructor(deps: DiscoveryReplayRunnerDeps = {}) {
     this.#deps = {
       listEntries: deps.listEntries ?? listSuccessEntriesSync,
-      deleteEntry: deps.deleteEntry ??
+      archiveEntry: deps.archiveEntry ??
         ((dir, entry) =>
-          deleteSuccessByKeySync(dir, entry.changeType, entry.key)),
+          archiveSuccessByKeySync(dir, entry.changeType, entry.key)),
       applyEntry: deps.applyEntry ?? applyEntryUsingRustRequest,
       evaluateError: deps.evaluateError,
     };
@@ -697,7 +701,8 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         r.score <= originalEval.score
       );
       for (const failed of failedSingles) {
-        deps.deleteEntry(successCacheDir, failed.entry);
+        // Archive obsolete entries instead of deleting them to preserve history
+        deps.archiveEntry(successCacheDir, failed.entry);
         pruned++;
       }
 
