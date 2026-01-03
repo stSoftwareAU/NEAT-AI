@@ -23,6 +23,7 @@ import type {
   CandidateHarmfulNeuron,
   CandidateSynapse,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { CoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 
 function makeSimpleCreature(): Creature {
   const creature = Creature.fromJSON({
@@ -209,6 +210,76 @@ Deno.test("buildCacheKey creates same keys for similar weights", () => {
     key2,
     "Cache keys should be same for weights with same order of magnitude",
   );
+});
+
+Deno.test("buildCacheKey: coordinated-structural key is stable and order-sensitive (hash of ordered operations)", () => {
+  const creature = makeSimpleCreature();
+
+  const specA: CoordinatedStructuralCandidate = {
+    type: "coordinated_structural",
+    expectedCreatureScoreGain: 0.01,
+    operations: [
+      {
+        type: "removeSynapse",
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-1",
+      },
+      {
+        type: "addSynapse",
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-1",
+        weight: 0.9,
+      },
+    ],
+  };
+  const specB: CoordinatedStructuralCandidate = {
+    type: "coordinated_structural",
+    expectedCreatureScoreGain: 0.01,
+    operations: [
+      // Same ops but different order.
+      {
+        type: "addSynapse",
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-1",
+        weight: 0.9,
+      },
+      {
+        type: "removeSynapse",
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-1",
+      },
+    ],
+  };
+
+  const candidateA: DiscoveryCandidate = {
+    creature,
+    change: {
+      type: "coordinated-structural",
+      coordinatedStructuralCandidate: specA,
+    },
+  };
+  const candidateA2: DiscoveryCandidate = {
+    creature,
+    change: {
+      type: "coordinated-structural",
+      coordinatedStructuralCandidate: specA,
+    },
+  };
+  const candidateB: DiscoveryCandidate = {
+    creature,
+    change: {
+      type: "coordinated-structural",
+      coordinatedStructuralCandidate: specB,
+    },
+  };
+
+  const keyA = buildCacheKey(candidateA);
+  const keyA2 = buildCacheKey(candidateA2);
+  const keyB = buildCacheKey(candidateB);
+
+  assertEquals(keyA, keyA2);
+  assert(keyA !== keyB);
+  assert(keyA.includes("coordinated-structural"));
 });
 
 Deno.test("buildCacheKey includes neuron details for add-neurons candidates", () => {

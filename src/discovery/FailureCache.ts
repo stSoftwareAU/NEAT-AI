@@ -19,6 +19,7 @@
 
 import { dirname } from "@std/path/dirname";
 import { join } from "@std/path/join";
+import { crypto as stdCrypto } from "@std/crypto";
 import { getDiscoveryVersion } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type { Creature } from "../Creature.ts";
@@ -174,19 +175,12 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
 
   // Handle different candidate types
   switch (candidate.change.type) {
-    case "split-synapse-insert-neuron": {
-      const split = candidate.change.splitSynapseInsertNeuronCandidate;
-      if (split) {
-        const [s0, s1] = split.newSynapses;
-        parts.push(
-          split.fromNeuronUuid,
-          split.toNeuronUuid,
-          split.newNeuron.squash,
-          formatWeight(split.oldWeight),
-          formatWeight(s0.weight),
-          formatWeight(s1.weight),
-          formatWeight(split.newNeuron.bias),
-        );
+    case "coordinated-structural": {
+      const spec = candidate.change.coordinatedStructuralCandidate;
+      if (spec?.operations && Array.isArray(spec.operations)) {
+        const opKey = `coordinated:` +
+          spec.operations.map((op) => JSON.stringify(op)).join("|");
+        parts.push(stableShortHash(opKey));
       } else {
         parts.push(buildStructuralSignature(candidate));
       }
@@ -260,6 +254,13 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
 
   // Create a safe filename from the key parts
   return sanitiseForFilename(parts.join("_"));
+}
+
+function stableShortHash(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  const buffer = stdCrypto.subtle.digestSync("SHA-1", bytes);
+  const hashBytes = new Uint8Array(buffer);
+  return [...hashBytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /**
@@ -700,12 +701,12 @@ export async function recordFailure(
       };
     }
 
-    // Include original Rust split-synapse candidate (for split-synapse-insert-neuron candidates)
-    if (candidate.change.splitSynapseInsertNeuronCandidate) {
+    // Include original Rust coordinated-structural candidate (epistatic group).
+    if (candidate.change.coordinatedStructuralCandidate) {
       cacheEntry.rustRequest = {
         ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
-        splitSynapseInsertNeuronCandidate:
-          candidate.change.splitSynapseInsertNeuronCandidate,
+        coordinatedStructuralCandidate:
+          candidate.change.coordinatedStructuralCandidate,
       };
     }
 
@@ -878,12 +879,12 @@ export function recordFailureSync(
       };
     }
 
-    // Include original Rust split-synapse candidate (for split-synapse-insert-neuron candidates)
-    if (candidate.change.splitSynapseInsertNeuronCandidate) {
+    // Include original Rust coordinated-structural candidate (epistatic group).
+    if (candidate.change.coordinatedStructuralCandidate) {
       cacheEntry.rustRequest = {
         ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
-        splitSynapseInsertNeuronCandidate:
-          candidate.change.splitSynapseInsertNeuronCandidate,
+        coordinatedStructuralCandidate:
+          candidate.change.coordinatedStructuralCandidate,
       };
     }
 

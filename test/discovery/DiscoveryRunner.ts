@@ -2,10 +2,12 @@ import {
   assert,
   assertAlmostEquals,
   assertEquals,
+  assertExists,
   assertRejects,
 } from "@std/assert";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type { CoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import { Creature } from "../../src/Creature.ts";
 import type { DiscoveryRunnerWorker } from "../../src/discovery/DiscoveryRunner.ts";
@@ -155,6 +157,7 @@ Deno.test("DiscoveryRunner enables verbose discovery logging when verbose option
     ID: "VERBOSE",
     addHelpfulSynapses: undefined,
     addHelpfulNeurons: undefined,
+    coordinatedStructuralCandidates: undefined,
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
     removalCandidates: undefined,
@@ -199,6 +202,7 @@ Deno.test("DiscoveryRunner returns best improvement with informative message", a
       improvedCount: 5,
       totalCount: 7,
     }],
+    coordinatedStructuralCandidates: undefined,
     removeHarmfulSynapse: {
       fromNeuronUUID: "input-1",
       toNeuronUUID: "output-0",
@@ -295,6 +299,68 @@ Deno.test("DiscoveryRunner returns best improvement with informative message", a
   } finally {
     // nothing
   }
+});
+
+Deno.test("DiscoveryRunner evaluates coordinated-structural candidates as a single unit", async () => {
+  const base = makeBaseCreature();
+
+  const coordinated: CoordinatedStructuralCandidate = {
+    type: "coordinated_structural",
+    expectedCreatureScoreGain: 0.5,
+    operations: [
+      {
+        type: "removeSynapse",
+        fromNeuronUuid: "input-1",
+        toNeuronUuid: "output-0",
+      },
+      {
+        type: "addSynapse",
+        fromNeuronUuid: "input-1",
+        toNeuronUuid: "output-0",
+        weight: 0.75,
+      },
+    ],
+  };
+
+  const discoveryResult: DiscoverResult = {
+    ID: "COORDINATED",
+    addHelpfulSynapses: undefined,
+    addHelpfulNeurons: undefined,
+    coordinatedStructuralCandidates: [coordinated],
+    removeHarmfulSynapse: undefined,
+    removeHarmfulNeurons: undefined,
+    removalCandidates: undefined,
+    candidateSquashes: undefined,
+  };
+
+  let sawCoordinatedEvaluation = false;
+  const worker = new FakeWorker(discoveryResult, (creature) => {
+    const exported = creature.exportJSON();
+    const syn = exported.synapses.find((s) =>
+      s.fromUUID === "input-1" && s.toUUID === "output-0"
+    );
+
+    if (syn && Math.abs(syn.weight - 0.75) < 1e-12) {
+      sawCoordinatedEvaluation = true;
+      return 0.1;
+    }
+    return 1.0;
+  });
+
+  const runner = new DiscoveryRunner({
+    rustDiscoveryEnabled: () => true,
+    workerFactory: () => worker,
+  });
+
+  const result = await runner.discoverDir({
+    creature: base,
+    dataDir: "/tmp/data",
+    options: makeOptions(),
+  });
+
+  assert(sawCoordinatedEvaluation);
+  assertExists(result.improvement);
+  assertEquals(result.improvement.changeType, "coordinated-structural");
 });
 
 Deno.test(

@@ -77,9 +77,9 @@ function buildRustRequest(
   if (candidate.change.neuronCandidate) {
     request.neuronCandidate = candidate.change.neuronCandidate;
   }
-  if (candidate.change.splitSynapseInsertNeuronCandidate) {
-    request.splitSynapseInsertNeuronCandidate =
-      candidate.change.splitSynapseInsertNeuronCandidate;
+  if (candidate.change.coordinatedStructuralCandidate) {
+    request.coordinatedStructuralCandidate =
+      candidate.change.coordinatedStructuralCandidate;
   }
   if (candidate.change.synapseCandidate) {
     request.synapseCandidate = candidate.change.synapseCandidate;

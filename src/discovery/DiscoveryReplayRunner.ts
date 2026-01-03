@@ -10,10 +10,12 @@ import type {
 } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { RemovalCandidate } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type {
+  CoordinatedStructuralCandidate,
+} from "../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import {
-  applySplitSynapseInsertNeuronCandidate,
-  type SplitSynapseInsertNeuronCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/SplitSynapseInsertNeuronCandidate.ts";
+  applyCoordinatedStructuralCandidate,
+} from "../architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
 import { calculate as calculateScore } from "../architecture/Score.ts";
 import { createNeatConfig } from "../config/NeatConfig.ts";
 import type { NeatOptions } from "../config/NeatOptions.ts";
@@ -308,12 +310,11 @@ function isAlreadyApplied(
     return neuron?.squash === c.squash;
   }
 
-  if (type === "split-synapse-insert-neuron") {
-    const c = req.splitSynapseInsertNeuronCandidate as
-      | SplitSynapseInsertNeuronCandidate
-      | undefined;
-    if (!c?.newNeuron?.uuid) return false;
-    return isNeuronPresent(creature, c.newNeuron.uuid);
+  // Coordinated structural candidates are multi-op groups and may not be
+  // trivially “already applied” (eg remove/remove/add sequences).
+  // We conservatively re-evaluate them when present in the cache.
+  if (type === "coordinated-structural") {
+    return false;
   }
 
   if (type === "add-neurons") {
@@ -379,12 +380,12 @@ function applyEntryUsingRustRequest(
   const discoveryID = entry.key || "replay";
 
   switch (entry.changeType) {
-    case "split-synapse-insert-neuron": {
-      const split = req.splitSynapseInsertNeuronCandidate as
-        | SplitSynapseInsertNeuronCandidate
+    case "coordinated-structural": {
+      const coordinated = req.coordinatedStructuralCandidate as
+        | CoordinatedStructuralCandidate
         | undefined;
-      if (!split) return undefined;
-      return applySplitSynapseInsertNeuronCandidate(baseCreature, split);
+      if (!coordinated) return undefined;
+      return applyCoordinatedStructuralCandidate(baseCreature, coordinated);
     }
     case "add-synapses": {
       const synapse = req.synapseCandidate as CandidateSynapse | undefined;

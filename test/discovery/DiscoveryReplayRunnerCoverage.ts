@@ -6,7 +6,7 @@ import type {
   CandidateSynapse,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { RemovalCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import type { SplitSynapseInsertNeuronCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/SplitSynapseInsertNeuronCandidate.ts";
+import type { CoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 import { DiscoveryReplayRunner } from "../../src/discovery/DiscoveryReplayRunner.ts";
@@ -308,7 +308,7 @@ Deno.test("DiscoveryReplayRunner: add-neurons already-applied detection matches 
   assertEquals(result.evaluatedSingles, 0);
 });
 
-Deno.test("DiscoveryReplayRunner: split-synapse candidate can be replayed", async () => {
+Deno.test("DiscoveryReplayRunner: coordinated-structural candidate can be replayed", async () => {
   const creature = Creature.fromJSON({
     input: 1,
     output: 1,
@@ -324,33 +324,39 @@ Deno.test("DiscoveryReplayRunner: split-synapse candidate can be replayed", asyn
   });
   creature.uuid = "base";
 
-  const split: SplitSynapseInsertNeuronCandidate = {
-    type: "split_synapse_insert_neuron",
-    fromNeuronUuid: "hidden-0",
-    toNeuronUuid: "output-0",
-    oldWeight: 0.25,
-    newNeuron: {
-      uuid: "hidden-split-0",
-      type: "hidden",
-      squash: IDENTITY.NAME,
-      bias: 0,
-    },
-    newSynapses: [
-      { from_uuid: "hidden-0", to_uuid: "hidden-split-0", weight: 0.6 },
-      { from_uuid: "hidden-split-0", to_uuid: "output-0", weight: 0.7 },
-    ],
+  const coordinated: CoordinatedStructuralCandidate = {
+    type: "coordinated_structural",
     expectedCreatureScoreGain: 0.01,
+    operations: [
+      {
+        type: "removeSynapse",
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
+      },
+      {
+        type: "addSynapse",
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
+        weight: 0.9,
+      },
+    ],
   };
 
-  const entry = makeEntry("split", "split-synapse-insert-neuron", {
-    splitSynapseInsertNeuronCandidate: split,
+  const entry = makeEntry("coordinated", "coordinated-structural", {
+    coordinatedStructuralCandidate: coordinated,
   });
 
   const runner = new DiscoveryReplayRunner({
     listEntries: () => [entry],
     evaluateError: (c) => {
-      const hasSplit = c.neurons.some((n) => n.uuid === "hidden-split-0");
-      return Promise.resolve({ error: 0, score: hasSplit ? 0.6 : 0.5 });
+      const exported = c.exportJSON();
+      const updated = exported.synapses.find((s) =>
+        s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+      );
+      const score = updated && Math.abs(updated.weight - 0.9) < 1e-12
+        ? 0.6
+        : 0.5;
+      return Promise.resolve({ error: 0, score });
     },
   });
 
@@ -365,5 +371,5 @@ Deno.test("DiscoveryReplayRunner: split-synapse candidate can be replayed", asyn
   });
 
   assertExists(result.improvement);
-  assertEquals(result.improvement.changeType, "split-synapse-insert-neuron");
+  assertEquals(result.improvement.changeType, "coordinated-structural");
 });

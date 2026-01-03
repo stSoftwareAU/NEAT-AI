@@ -12,9 +12,6 @@ import {
   type DiscoverStructureOptions,
 } from "./DiscoverStructure.ts";
 import type {
-  SplitSynapseInsertNeuronCandidate,
-} from "./SplitSynapseInsertNeuronCandidate.ts";
-import type {
   CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
@@ -421,7 +418,7 @@ class DataRecorder {
         ID: this.ID,
         addHelpfulSynapses: undefined,
         addHelpfulNeurons: undefined,
-        splitSynapseInsertNeuronCandidates: undefined,
+        coordinatedStructuralCandidates: undefined,
         removeHarmfulSynapse: undefined,
         removeHarmfulNeurons: undefined,
         removalCandidates: undefined,
@@ -902,7 +899,7 @@ class DataRecorder {
             ID: this.ID,
             addHelpfulSynapses: undefined,
             addHelpfulNeurons: undefined,
-            splitSynapseInsertNeuronCandidates: undefined,
+            coordinatedStructuralCandidates: undefined,
             removeHarmfulSynapse: undefined,
             removeHarmfulNeurons: undefined,
             removalCandidates: undefined,
@@ -943,7 +940,7 @@ class DataRecorder {
         ID: this.ID,
         addHelpfulSynapses: undefined,
         addHelpfulNeurons: undefined,
-        splitSynapseInsertNeuronCandidates: undefined,
+        coordinatedStructuralCandidates: undefined,
         removeHarmfulSynapse: undefined,
         removeHarmfulNeurons: undefined,
         removalCandidates: undefined,
@@ -1030,8 +1027,8 @@ class DataRecorder {
 
         phaseDiagnostics.enterPhase("analysis_parallel");
         let addHelpfulNeurons: CandidateNeuron[] | undefined;
-        let splitSynapseInsertNeuronCandidates:
-          | SplitSynapseInsertNeuronCandidate[]
+        let coordinatedStructuralCandidates:
+          | import("./CoordinatedStructuralCandidate.ts").CoordinatedStructuralCandidate[]
           | undefined;
         let addHelpfulSynapse: CandidateSynapse[] | undefined;
         let removeHarmfulSynapse: CandidateSynapse | undefined;
@@ -1050,15 +1047,15 @@ class DataRecorder {
           addHelpfulSynapse = candidateBundle.helpfulSynapses;
           removeHarmfulSynapse = candidateBundle.harmfulSynapse;
           addHelpfulNeurons = candidateBundle.helpfulNeurons;
-          splitSynapseInsertNeuronCandidates =
-            candidateBundle.splitSynapseInsertNeuronCandidates;
+          coordinatedStructuralCandidates =
+            candidateBundle.coordinatedStructuralCandidates;
           this.refreshAnalysisTimeout(discoverStructure);
 
           if (shouldLogDiscovery(config)) {
             const helpfulSynapseCount = addHelpfulSynapse?.length ?? 0;
             const helpfulNeuronCount = addHelpfulNeurons?.length ?? 0;
-            const splitInsertCount =
-              splitSynapseInsertNeuronCandidates?.length ?? 0;
+            const coordinatedCount = coordinatedStructuralCandidates?.length ??
+              0;
             const harmfulSynapseCount = removeHarmfulSynapse ? 1 : 0;
             const fallbackSynapses = countFallbackCandidates(addHelpfulSynapse);
             const fallbackNeurons = countFallbackCandidates(addHelpfulNeurons);
@@ -1077,7 +1074,7 @@ class DataRecorder {
                 yellow(format(candidateCollectionTime, {
                   ignoreZero: true,
                 }))
-              } helpful synapses: ${helpfulSynapseCount} (fallback ${fallbackSynapses}), helpful neurons: ${helpfulNeuronCount} (fallback ${fallbackNeurons}), split-synapse-insert-neuron: ${splitInsertCount}, harmful synapse removals: ${harmfulSynapseCount}${synapseMetaText}${neuronMetaText}`,
+              } helpful synapses: ${helpfulSynapseCount} (fallback ${fallbackSynapses}), helpful neurons: ${helpfulNeuronCount} (fallback ${fallbackNeurons}), coordinated-structural: ${coordinatedCount}, harmful synapse removals: ${harmfulSynapseCount}${synapseMetaText}${neuronMetaText}`,
             );
 
             for (const candidate of addHelpfulSynapse ?? []) {
@@ -1365,12 +1362,12 @@ class DataRecorder {
           ];
         }
         if (
-          splitSynapseInsertNeuronCandidates &&
-          splitSynapseInsertNeuronCandidates.length > 0
+          coordinatedStructuralCandidates &&
+          coordinatedStructuralCandidates.length > 0
         ) {
-          discoverResult.splitSynapseInsertNeuronCandidates = [
-            ...(discoverResult.splitSynapseInsertNeuronCandidates ?? []),
-            ...splitSynapseInsertNeuronCandidates,
+          discoverResult.coordinatedStructuralCandidates = [
+            ...(discoverResult.coordinatedStructuralCandidates ?? []),
+            ...coordinatedStructuralCandidates,
           ];
         }
         if (addHelpfulSynapse && addHelpfulSynapse.length > 0) {
@@ -1399,7 +1396,7 @@ class DataRecorder {
         const foundCandidates = Boolean(
           discoverResult.addHelpfulSynapses ||
             discoverResult.addHelpfulNeurons ||
-            discoverResult.splitSynapseInsertNeuronCandidates ||
+            discoverResult.coordinatedStructuralCandidates ||
             discoverResult.removeHarmfulSynapse ||
             discoverResult.removeHarmfulNeurons ||
             discoverResult.candidateSquashes,
