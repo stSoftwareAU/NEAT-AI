@@ -2439,7 +2439,6 @@ export class DiscoverStructure {
         helpfulNeurons: parallel.helpfulNeurons,
         coordinatedStructuralCandidates:
           parallel.coordinatedStructuralCandidates,
-        synapseWeightUpdates: parallel.synapseWeightUpdates,
         diagnostics: parallel.neuronDiagnostics,
       }
       : undefined;

@@ -148,22 +148,11 @@ export interface RustCandidateNeuron {
  * NEAT-AI-Discovery so TypeScript can consume it without lossy re-mapping.
  */
 /**
- * Atomic “update existing synapse weight” candidate emitted by Rust.
+ * Coordinated structural operation emitted by Rust.
  */
-export interface RustSynapseWeightUpdateCandidate {
-  type: "synapse_weight_update";
-  fromNeuronUuid: string;
-  toNeuronUuid: string;
-  oldWeight: number;
-  newWeight: number;
-  expectedCreatureScoreGain: number;
-  comment?: string;
-}
-
 export type RustCoordinatedStructuralOperation =
   | RustCoordinatedRemoveSynapseOperation
-  | RustCoordinatedAddSynapseOperation
-  | RustCoordinatedSetSynapseWeightOperation;
+  | RustCoordinatedAddSynapseOperation;
 
 export interface RustCoordinatedRemoveSynapseOperation {
   type: "removeSynapse";
@@ -176,14 +165,6 @@ export interface RustCoordinatedAddSynapseOperation {
   fromNeuronUuid: string;
   toNeuronUuid: string;
   weight: number;
-}
-
-export interface RustCoordinatedSetSynapseWeightOperation {
-  type: "setSynapseWeight";
-  fromNeuronUuid: string;
-  toNeuronUuid: string;
-  oldWeight?: number;
-  newWeight: number;
 }
 
 /**
@@ -238,12 +219,6 @@ export interface RustAnalyzeNeuronsResult {
    * `analyze_parallel` and is plumbed through via `convertParallelAnalysisResult()`.
    */
   coordinatedStructuralCandidates?: RustCoordinatedStructuralCandidate[];
-  /**
-   * Atomic synapse weight update candidates emitted by Rust.
-   *
-   * Note: This is also carried on the combined `analyze_parallel` output.
-   */
-  synapseWeightUpdates?: RustSynapseWeightUpdateCandidate[];
   diagnostics?: RustNeuronDiagnostic[];
   error?: string;
 }
@@ -307,8 +282,6 @@ export interface RustParallelAnalysisResult {
    * - candidatesReturned: how many candidates were returned in `helpfulNeurons`
    */
   neuronMetadata?: RustCandidateMetadata;
-  /** Atomic “update existing synapse weight” candidates. */
-  synapseWeightUpdates?: RustSynapseWeightUpdateCandidate[];
   /** Ordered grouped structural candidates (epistatic groups). */
   coordinatedStructuralCandidates?: RustCoordinatedStructuralCandidate[];
   neuronDiagnostics?: RustNeuronDiagnostic[];

@@ -170,7 +170,14 @@ export class Creature implements CreatureInternal {
     this.tags = undefined;
     this.score = undefined;
     this.semanticVersion = options.semanticVersion ?? "0.0.1";
-    this.forwardOnly = undefined;
+    // Forward-only is a hard invariant for 4.x+ creatures.
+    // Setting this before `initialize()` prevents `fix()` from introducing
+    // recurrent connections (eg self-loops) during construction.
+    const major = Number.parseInt(
+      this.semanticVersion.split(".")[0] ?? "0",
+      10,
+    );
+    this.forwardOnly = Number.isFinite(major) && major >= 4 ? true : undefined;
 
     if (!options.lazyInitialization) {
       this.initialize(options);

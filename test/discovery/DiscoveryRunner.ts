@@ -157,7 +157,6 @@ Deno.test("DiscoveryRunner enables verbose discovery logging when verbose option
     ID: "VERBOSE",
     addHelpfulSynapses: undefined,
     addHelpfulNeurons: undefined,
-    synapseWeightUpdates: undefined,
     coordinatedStructuralCandidates: undefined,
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
@@ -203,7 +202,6 @@ Deno.test("DiscoveryRunner returns best improvement with informative message", a
       improvedCount: 5,
       totalCount: 7,
     }],
-    synapseWeightUpdates: undefined,
     coordinatedStructuralCandidates: undefined,
     removeHarmfulSynapse: {
       fromNeuronUUID: "input-1",
@@ -328,7 +326,6 @@ Deno.test("DiscoveryRunner evaluates coordinated-structural candidates as a sing
     ID: "COORDINATED",
     addHelpfulSynapses: undefined,
     addHelpfulNeurons: undefined,
-    synapseWeightUpdates: undefined,
     coordinatedStructuralCandidates: [coordinated],
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,

@@ -7,7 +7,6 @@ import type {
 import type { RustRemovalCandidate } from "./RustDiscovery.ts";
 import type {
   CoordinatedStructuralCandidate,
-  SynapseWeightUpdateCandidate,
 } from "./CoordinatedStructuralCandidate.ts";
 
 /**
@@ -53,8 +52,6 @@ export interface DiscoverResult {
   ID: string;
   addHelpfulSynapses: CandidateSynapse[] | undefined;
   addHelpfulNeurons: CandidateNeuron[] | undefined;
-  /** Atomic “update existing synapse weight” candidates (delta-based). */
-  synapseWeightUpdates?: SynapseWeightUpdateCandidate[] | undefined;
   /** Grouped candidates with an ordered `operations[]` list. */
   coordinatedStructuralCandidates?:
     | CoordinatedStructuralCandidate[]
