@@ -88,17 +88,18 @@ Deno.test("SuccessCache: recordSuccessSync captures rustRequest fields for many 
           improvedCount: 1,
           totalCount: 1,
         },
-        splitSynapseInsertNeuronCandidate: {
-          type: "split_synapse_insert_neuron",
-          fromNeuronUuid: "a",
-          toNeuronUuid: "b",
-          oldWeight: 0.1,
-          newNeuron: { uuid: "c", type: "hidden", squash: "IDENTITY", bias: 0 },
-          newSynapses: [
-            { from_uuid: "a", to_uuid: "c", weight: 0.2 },
-            { from_uuid: "c", to_uuid: "b", weight: 0.3 },
-          ],
+        coordinatedStructuralCandidate: {
+          type: "coordinated_structural",
           expectedCreatureScoreGain: 0.01,
+          operations: [
+            { type: "removeSynapse", fromNeuronUuid: "a", toNeuronUuid: "b" },
+            {
+              type: "addSynapse",
+              fromNeuronUuid: "a",
+              toNeuronUuid: "b",
+              weight: 0.2,
+            },
+          ],
         },
         synapseCandidate: {
           fromNeuronUUID: "input-0",
@@ -163,7 +164,7 @@ Deno.test("SuccessCache: recordSuccessSync captures rustRequest fields for many 
     const rr = entries[0].rustRequest as Record<string, unknown>;
     assertEquals(typeof rr.neuronDetails, "object");
     assertEquals(typeof rr.neuronCandidate, "object");
-    assertEquals(typeof rr.splitSynapseInsertNeuronCandidate, "object");
+    assertEquals(typeof rr.coordinatedStructuralCandidate, "object");
     assertEquals(typeof rr.synapseCandidate, "object");
     assertEquals(typeof rr.squashCandidate, "object");
     assertEquals(typeof rr.removalCandidate, "object");

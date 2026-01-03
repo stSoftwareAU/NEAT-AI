@@ -213,8 +213,9 @@ export class DiscoveryRunner {
         ID: rawDiscover.ID,
         addHelpfulSynapses: rawDiscover.addHelpfulSynapses ?? undefined,
         addHelpfulNeurons: rawDiscover.addHelpfulNeurons ?? undefined,
-        splitSynapseInsertNeuronCandidates:
-          rawDiscover.splitSynapseInsertNeuronCandidates ?? undefined,
+        synapseWeightUpdates: rawDiscover.synapseWeightUpdates ?? undefined,
+        coordinatedStructuralCandidates:
+          rawDiscover.coordinatedStructuralCandidates ?? undefined,
         removeHarmfulSynapse: rawDiscover.removeHarmfulSynapse ?? undefined,
         removeHarmfulNeurons: rawDiscover.removeHarmfulNeurons ?? undefined,
         removalCandidates: rawDiscover.removalCandidates ?? undefined,

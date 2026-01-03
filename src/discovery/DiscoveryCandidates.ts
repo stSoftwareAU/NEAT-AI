@@ -39,14 +39,16 @@ import {
   type CandidateSynapse,
   DiscoverStructure,
 } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import {
-  applySplitSynapseInsertNeuronCandidate,
-  type SplitSynapseInsertNeuronCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/SplitSynapseInsertNeuronCandidate.ts";
 import type {
   DiscoverResult,
   RemovalCandidate,
 } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type {
+  CoordinatedStructuralCandidate,
+} from "../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+import {
+  applyCoordinatedStructuralCandidate,
+} from "../architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
 import {
   cleanupMemeticForRemovedNeuron,
   cleanupMemeticForRemovedSynapse,
@@ -107,7 +109,7 @@ function buildUuidToIndexMap(
 export type DiscoveryChangeType =
   | "add-synapses"
   | "add-neurons"
-  | "split-synapse-insert-neuron"
+  | "coordinated-structural"
   | "remove-synapse"
   | "remove-neuron"
   | "remove-low-impact"
@@ -151,8 +153,8 @@ interface DiscoveryCandidateChange {
   sampleSize?: number;
   /** Details of discovered neurons (for single neuron candidates). */
   neuronDetails?: DiscoveredNeuronDetails;
-  /** Original Rust split-synapse candidate response (for split-synapse candidates). */
-  splitSynapseInsertNeuronCandidate?: SplitSynapseInsertNeuronCandidate;
+  /** Original Rust coordinated structural candidate response (for coordinated-structural candidates). */
+  coordinatedStructuralCandidate?: CoordinatedStructuralCandidate;
   /** Details of synapse removal (for synapse removal candidates). */
   synapseDetails?: SynapseRemovalDetails;
   /** Original Rust synapse candidate response (for add-synapses candidates). */
@@ -230,8 +232,9 @@ export function buildDiscoveryCandidates(
   const getExpectedSquash = (candidate: CandidateSquash) =>
     candidate.expectedCreatureScoreGain;
 
-  const getExpectedSplit = (candidate: SplitSynapseInsertNeuronCandidate) =>
-    candidate.expectedCreatureScoreGain;
+  const getExpectedCoordinated = (
+    candidate: CoordinatedStructuralCandidate,
+  ) => candidate.expectedCreatureScoreGain;
 
   const getExpectedRemoval = (candidate?: CandidateSynapse) => {
     if (!candidate) return undefined;
@@ -249,10 +252,8 @@ export function buildDiscoveryCandidates(
   } = discovery;
 
   const helpfulNeuronCandidates = discovery.addHelpfulNeurons;
-  const splitSynapseInsertNeuronCandidates =
-    discovery.splitSynapseInsertNeuronCandidates;
-  const successfulSplitSynapseInsertNeuronCandidates:
-    SplitSynapseInsertNeuronCandidate[] = [];
+  const coordinatedStructuralCandidates =
+    discovery.coordinatedStructuralCandidates;
   const addedNeuronCreature = !skipCombos && helpfulNeuronCandidates &&
       helpfulNeuronCandidates.length > 0
     ? DiscoverStructure.addHelpfulNeurons(
@@ -303,41 +304,39 @@ export function buildDiscoveryCandidates(
   );
 
   if (
-    splitSynapseInsertNeuronCandidates &&
-    splitSynapseInsertNeuronCandidates.length > 0
+    coordinatedStructuralCandidates &&
+    coordinatedStructuralCandidates.length > 0
   ) {
     let skippedCount = 0;
-    for (const split of splitSynapseInsertNeuronCandidates) {
+    for (const coordinated of coordinatedStructuralCandidates) {
       try {
-        const splitCreature = applySplitSynapseInsertNeuronCandidate(
+        const next = applyCoordinatedStructuralCandidate(
           baseCreature,
-          split,
+          coordinated,
         );
-        successfulSplitSynapseInsertNeuronCandidates.push(split);
         candidates.push({
-          creature: splitCreature,
+          creature: next,
           change: {
-            type: "split-synapse-insert-neuron",
-            description: `➗ Split synapse ${
-              shortID(split.fromNeuronUuid)
-            } -> ${shortID(split.toNeuronUuid)} (insert ${
-              shortID(split.newNeuron.uuid)
-            })`,
-            expectedErrorReduction: split.expectedCreatureScoreGain,
-            splitSynapseInsertNeuronCandidate: split,
+            type: "coordinated-structural",
+            description:
+              `🧩 Coordinated structural (${coordinated.operations.length} op${
+                coordinated.operations.length === 1 ? "" : "s"
+              })`,
+            expectedErrorReduction: getExpectedCoordinated(coordinated),
+            coordinatedStructuralCandidate: coordinated,
           },
         });
       } catch (error) {
         skippedCount++;
         console.info(
-          `[DiscoveryCandidates] Skipped split-synapse candidate ${split.fromNeuronUuid} -> ${split.toNeuronUuid}:`,
+          `[DiscoveryCandidates] Skipped coordinated-structural candidate (apply failed):`,
           error,
         );
       }
     }
     if (skippedCount > 0) {
       console.info(
-        `[DiscoveryCandidates] Skipped ${skippedCount}/${splitSynapseInsertNeuronCandidates.length} split-synapse candidate${
+        `[DiscoveryCandidates] Skipped ${skippedCount}/${coordinatedStructuralCandidates.length} coordinated-structural candidate${
           skippedCount === 1 ? "" : "s"
         } (apply failed)`,
       );
@@ -721,10 +720,6 @@ export function buildDiscoveryCandidates(
         addHelpfulSynapses: addedSynapseCreature
           ? addHelpfulSynapses
           : undefined,
-        splitSynapseInsertNeuronCandidates:
-          successfulSplitSynapseInsertNeuronCandidates.length > 0
-            ? successfulSplitSynapseInsertNeuronCandidates
-            : undefined,
         removeHarmfulSynapse: removedSynapseCreature
           ? removeHarmfulSynapse
           : undefined,
@@ -745,18 +740,11 @@ export function buildDiscoveryCandidates(
 
     const bestOfCategoryCandidate = buildBestOfCategoryCandidate(
       baseCreature,
-      {
-        ...discovery,
-        splitSynapseInsertNeuronCandidates:
-          successfulSplitSynapseInsertNeuronCandidates.length > 0
-            ? successfulSplitSynapseInsertNeuronCandidates
-            : undefined,
-      },
+      discovery,
       {
         synapse: getExpectedSynapse,
         neuron: getExpectedNeuron,
         squash: getExpectedSquash,
-        split: getExpectedSplit,
       },
       discoveryFailureCacheDir,
     );
@@ -1052,7 +1040,6 @@ export function shortID(id: string): string {
 interface CombinedSelection {
   addHelpfulSynapses?: CandidateSynapse[];
   addHelpfulNeurons?: CandidateNeuron[];
-  splitSynapseInsertNeuronCandidates?: SplitSynapseInsertNeuronCandidate[];
   removeHarmfulSynapse?: CandidateSynapse;
   removeHarmfulNeurons?: CandidateHarmfulNeuron[];
   candidateSquashes?: CandidateSquash[];
@@ -1071,7 +1058,6 @@ interface ScalingFunctions {
   synapse: (synapse: CandidateSynapse) => number | undefined;
   neuron: (neuron: CandidateNeuron) => number | undefined;
   squash: (squash: CandidateSquash) => number | undefined;
-  split: (candidate: SplitSynapseInsertNeuronCandidate) => number | undefined;
 }
 
 function buildCombinedCandidate(
@@ -1089,7 +1075,6 @@ function buildCombinedCandidate(
   const requestedCategories = [
     Boolean(selection.addHelpfulNeurons?.length),
     Boolean(selection.addHelpfulSynapses?.length),
-    Boolean(selection.splitSynapseInsertNeuronCandidates?.length),
     Boolean(selection.removeHarmfulSynapse),
     Boolean(selection.removeHarmfulNeurons?.length),
     Boolean(selection.candidateSquashes?.length),
@@ -1136,30 +1121,6 @@ function buildCombinedCandidate(
           selection.addHelpfulSynapses,
           discoveryFailureCacheDir,
         )
-      : undefined,
-  );
-
-  applyChange(
-    `split-synapse-insert-neuron: ${
-      selection.splitSynapseInsertNeuronCandidates?.length ?? 0
-    }`,
-    selection.splitSynapseInsertNeuronCandidates &&
-      selection.splitSynapseInsertNeuronCandidates.length > 0
-      ? () => {
-        let current = combinedCreature;
-        let appliedCount = 0;
-        for (const split of selection.splitSynapseInsertNeuronCandidates!) {
-          try {
-            current = applySplitSynapseInsertNeuronCandidate(current, split);
-            appliedCount++;
-          } catch {
-            // Best-effort: split candidates are emitted against the base
-            // creature, so some may become invalid after earlier structural
-            // edits in the combo pipeline.
-          }
-        }
-        return appliedCount > 0 ? current : undefined;
-      }
       : undefined,
   );
 
@@ -1283,10 +1244,6 @@ function buildBestOfCategoryCandidate(
       discovery.addHelpfulNeurons,
       scaleFns.neuron,
     ),
-    splitSynapseInsertNeuronCandidates: wrapBestCandidate(
-      discovery.splitSynapseInsertNeuronCandidates,
-      scaleFns.split,
-    ),
     candidateSquashes: wrapBestCandidate(
       discovery.candidateSquashes,
       scaleFns.squash,
@@ -1359,6 +1316,13 @@ export function buildCombinedFromSuccessful(
   _discoveryID: string,
   successfulCandidates: DiscoveryCandidate[],
 ): DiscoveryCandidate[] {
+  // Coordinated structural candidates are already multi-step epistatic groups.
+  // We intentionally do NOT combine them with other candidates in phase 2.
+  // If we want cross-group combinations later, they should be introduced as a
+  // separate, explicit strategy with its own caching semantics.
+  successfulCandidates = successfulCandidates.filter((c) =>
+    c.change.type !== "coordinated-structural"
+  );
   if (successfulCandidates.length < 2) {
     return [];
   }
@@ -1617,11 +1581,6 @@ function getComboSlotKey(candidate: DiscoveryCandidate): string | undefined {
       if (!uuid) return undefined;
       return `change-squash:${uuid}`;
     }
-    case "split-synapse-insert-neuron": {
-      const spec = change.splitSynapseInsertNeuronCandidate;
-      if (!spec) return undefined;
-      return `split-synapse-insert-neuron:${spec.fromNeuronUuid}->${spec.toNeuronUuid}`;
-    }
     default:
       return undefined;
   }
@@ -1733,13 +1692,10 @@ function applyChangeToCreature(
 
   try {
     switch (changeType) {
-      case "split-synapse-insert-neuron": {
-        const spec = candidate.change.splitSynapseInsertNeuronCandidate;
-        if (!spec) {
-          return undefined;
-        }
-        const result = applySplitSynapseInsertNeuronCandidate(creature, spec);
-        return result;
+      case "coordinated-structural": {
+        const spec = candidate.change.coordinatedStructuralCandidate;
+        if (!spec) return undefined;
+        return applyCoordinatedStructuralCandidate(creature, spec);
       }
 
       case "add-synapses": {

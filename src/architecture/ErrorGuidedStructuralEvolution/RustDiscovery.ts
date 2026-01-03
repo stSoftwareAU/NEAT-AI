@@ -147,26 +147,56 @@ export interface RustCandidateNeuron {
  * Note: This shape is intentionally aligned with the JSON payload emitted by
  * NEAT-AI-Discovery so TypeScript can consume it without lossy re-mapping.
  */
-export interface RustSplitSynapseInsertNeuronCandidate {
-  type: "split_synapse_insert_neuron";
+/**
+ * Atomic “update existing synapse weight” candidate emitted by Rust.
+ */
+export interface RustSynapseWeightUpdateCandidate {
+  type: "synapse_weight_update";
   fromNeuronUuid: string;
   toNeuronUuid: string;
   oldWeight: number;
-  newNeuron: { uuid: string; type: "hidden"; squash: string; bias: number };
-  newSynapses: Array<{
-    from_uuid: string;
-    to_uuid: string;
-    weight: number;
-    type?: string;
-  }>;
+  newWeight: number;
   expectedCreatureScoreGain: number;
   comment?: string;
-  fromNeuronIndex?: number;
-  toNeuronIndex?: number;
-  targetNeuronImpact?: number;
 }
 
-export type RustStructuralCandidate = RustSplitSynapseInsertNeuronCandidate;
+export type RustCoordinatedStructuralOperation =
+  | RustCoordinatedRemoveSynapseOperation
+  | RustCoordinatedAddSynapseOperation
+  | RustCoordinatedSetSynapseWeightOperation;
+
+export interface RustCoordinatedRemoveSynapseOperation {
+  type: "removeSynapse";
+  fromNeuronUuid: string;
+  toNeuronUuid: string;
+}
+
+export interface RustCoordinatedAddSynapseOperation {
+  type: "addSynapse";
+  fromNeuronUuid: string;
+  toNeuronUuid: string;
+  weight: number;
+}
+
+export interface RustCoordinatedSetSynapseWeightOperation {
+  type: "setSynapseWeight";
+  fromNeuronUuid: string;
+  toNeuronUuid: string;
+  oldWeight?: number;
+  newWeight: number;
+}
+
+/**
+ * Ordered grouped structural candidate emitted by Rust.
+ */
+export interface RustCoordinatedStructuralCandidate {
+  type: "coordinated_structural";
+  operations: RustCoordinatedStructuralOperation[];
+  expectedCreatureScoreGain: number;
+  comment?: string;
+}
+
+export type RustStructuralCandidate = never;
 
 /**
  * Encapsulates the synapse-centric branch of a parallel analysis run, including
@@ -202,11 +232,18 @@ export interface RustAnalyzeNeuronsResult {
   metadata?: RustCandidateMetadata;
   helpfulNeurons?: RustCandidateNeuron[];
   /**
-   * Optional structural candidates emitted as tagged variants.
-   * This allows NEAT-AI-Discovery to evolve additional candidate types without
-   * breaking older TypeScript consumers.
+   * Coordinated structural candidates emitted by Rust.
+   *
+   * Note: This field is carried on the combined result produced by
+   * `analyze_parallel` and is plumbed through via `convertParallelAnalysisResult()`.
    */
-  structuralCandidates?: RustStructuralCandidate[];
+  coordinatedStructuralCandidates?: RustCoordinatedStructuralCandidate[];
+  /**
+   * Atomic synapse weight update candidates emitted by Rust.
+   *
+   * Note: This is also carried on the combined `analyze_parallel` output.
+   */
+  synapseWeightUpdates?: RustSynapseWeightUpdateCandidate[];
   diagnostics?: RustNeuronDiagnostic[];
   error?: string;
 }
@@ -270,11 +307,10 @@ export interface RustParallelAnalysisResult {
    * - candidatesReturned: how many candidates were returned in `helpfulNeurons`
    */
   neuronMetadata?: RustCandidateMetadata;
-  /**
-   * Optional structural candidates emitted as tagged variants.
-   * Supported variants are modelled by {@link RustStructuralCandidate}.
-   */
-  structuralCandidates?: RustStructuralCandidate[];
+  /** Atomic “update existing synapse weight” candidates. */
+  synapseWeightUpdates?: RustSynapseWeightUpdateCandidate[];
+  /** Ordered grouped structural candidates (epistatic groups). */
+  coordinatedStructuralCandidates?: RustCoordinatedStructuralCandidate[];
   neuronDiagnostics?: RustNeuronDiagnostic[];
   neuronGpuUsed?: boolean;
   error?: string;
