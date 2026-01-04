@@ -30,6 +30,7 @@ Deno.test("Discovery performance summary omits unrecorded (zero) phase timings",
       // Candidate counts
       helpfulSynapseCount: 1,
       helpfulNeuronCount: 30,
+      coordinatedStructuralCount: 0,
       harmfulSynapseCount: 0,
       harmfulNeuronCount: 0,
       squashCount: 1,

@@ -7,6 +7,7 @@ Deno.test("Discovery candidate summary reports raw Rust counts (no implied combo
   const counts = calculateDiscoveryCandidateSummaryCounts({
     helpfulSynapseRawCount: 2,
     helpfulNeuronRawCount: 31,
+    coordinatedStructuralRawCount: 4,
     harmfulSynapseCandidates: 0,
     harmfulNeuronCandidates: 0,
     squashRawCount: 2,
@@ -16,6 +17,7 @@ Deno.test("Discovery candidate summary reports raw Rust counts (no implied combo
   assertEquals(counts, {
     helpfulSynapses: 2,
     helpfulNeurons: 31,
+    coordinatedStructural: 4,
     harmfulSynapses: 0,
     harmfulNeurons: 0,
     squashChanges: 2,
@@ -28,6 +30,7 @@ Deno.test("Discovery candidate summary does not inflate removal counts when mult
     const counts = calculateDiscoveryCandidateSummaryCounts({
       helpfulSynapseRawCount: 0,
       helpfulNeuronRawCount: 0,
+      coordinatedStructuralRawCount: 0,
       harmfulSynapseCandidates: 0,
       harmfulNeuronCandidates: 0,
       squashRawCount: 0,
