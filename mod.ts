@@ -150,3 +150,43 @@ export {
  * @see {@link module:src/discovery/DiscoveryRunner}
  */
 export type { DiscoveryEvaluationSummary } from "./src/discovery/DiscoveryRunner.ts";
+
+/**
+ * Intelligent Design Module
+ *
+ * This module provides utilities for optimising neural network creatures by
+ * systematically testing different squash (activation) functions for each neuron
+ * and applying tacit knowledge (learned neuron-to-squash mappings).
+ *
+ * @see {@link module:src/intelligentDesign/mod}
+ */
+export {
+  alternativeSquashes,
+  applyNeuronChanges,
+  cleanKnowledge,
+  combineImprovements,
+  combineKnowledge,
+  getNeuronsToTest,
+  getValidNeuronSquashes,
+  makeModifiedCreature,
+  makeModifiedCreatureWithPrevious,
+  safeWriteJson,
+  safeWriteJsonSync,
+  safeWriteText,
+  safeWriteTextSync,
+  scanForSquashImprovements,
+  shuffle,
+  WorkerHandler as IntelligentDesignWorkerHandler,
+  WorkerProcessor as IntelligentDesignWorkerProcessor,
+} from "./src/intelligentDesign/mod.ts";
+export type {
+  ApplyTacitKnowledgeOptions,
+  BestNeuronSquash,
+  ImproveSquashOptions,
+  ImproveSquashResult,
+  RequestData as IntelligentDesignRequestData,
+  ResponseData as IntelligentDesignResponseData,
+  TacitKnowledgeMap,
+  TacitKnowledgeResult,
+  WorkerInterface as IntelligentDesignWorkerInterface,
+} from "./src/intelligentDesign/mod.ts";

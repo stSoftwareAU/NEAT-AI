@@ -1,0 +1,464 @@
+/**
+ * Squash improvement scanning for Intelligent Design.
+ *
+ * This module provides utilities for scanning neurons and finding better
+ * squash (activation) functions to improve creature scores.
+ *
+ * @module
+ */
+
+import { assert } from "@std/assert";
+import { addTag } from "@stsoftware/tags/mod";
+import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
+import type { NeatOptions } from "../config/NeatOptions.ts";
+import { Creature } from "../Creature.ts";
+import { alternativeSquashes } from "./AlternativeSquashes.ts";
+import type { BestNeuronSquash } from "./BestNeuronSquash.ts";
+import { WorkerHandler } from "./workers/WorkerHandler.ts";
+
+/**
+ * Options for squash improvement scanning.
+ */
+export interface ImproveSquashOptions {
+  /** The creature export to improve */
+  creature: CreatureExport;
+  /** The target squash function to try substituting */
+  targetSquash: string;
+  /** Directory to write improved creatures to */
+  outputDir: string;
+  /** Directory containing scoring data */
+  dataDir: string;
+  /** The current best score of the creature */
+  bestScore: number;
+  /** NEAT options for scoring (can include customCost) */
+  options?: NeatOptions;
+  /** Maximum number of improvements to find before stopping (default: 12) */
+  maxImprovements?: number;
+  /** Maximum pending tasks per worker (default: auto-calculated) */
+  maxPending?: number;
+  /** Timeout in milliseconds (default: 60 minutes) */
+  timeoutMs?: number;
+  /** Epsilon for score comparison (default: 1e-8) */
+  epsilon?: number;
+  /** Callback for progress updates */
+  onProgress?: (completed: number, total: number) => void;
+}
+
+/**
+ * Result from a squash improvement scan.
+ */
+export interface ImproveSquashResult {
+  /** Map of neuron UUID to best squash info */
+  improvements: Map<string, BestNeuronSquash>;
+  /** Number of neurons tested */
+  tested: number;
+  /** Number of neurons that showed improvement */
+  improved: number;
+  /** Total time taken in milliseconds */
+  duration: number;
+  /** Whether the scan was terminated early due to timeout */
+  timedOut: boolean;
+}
+
+/**
+ * Creates a modified creature with a neuron's squash function changed.
+ *
+ * @param neuronUUID - The UUID of the neuron to modify
+ * @param creatureExport - The creature export to modify
+ * @param nextSquash - The new squash function to apply
+ * @returns Object containing the modified creature and the previous squash
+ */
+export function makeModifiedCreatureWithPrevious(
+  neuronUUID: string,
+  creatureExport: CreatureExport,
+  nextSquash: string,
+): { creature: Creature; previousSquash: string } {
+  const tmpJson = Creature.fromJSON(creatureExport).exportJSON();
+  const neuronData = tmpJson.neurons.find((n: NeuronExport) =>
+    n.uuid === neuronUUID
+  );
+  assert(neuronData, "Neuron not found in the creature JSON");
+  const previousSquash = neuronData.squash;
+  assert(previousSquash, "Previous squash should be defined");
+
+  if (neuronData.squash === nextSquash) {
+    console.warn(
+      `${neuronData.uuid} Squash should be different from ${nextSquash}`,
+    );
+  }
+
+  neuronData.squash = nextSquash;
+  addTag(
+    neuronData,
+    "intelligentDesign",
+    `${previousSquash} -> ${nextSquash}`,
+  );
+
+  return {
+    creature: Creature.fromJSON(tmpJson),
+    previousSquash,
+  };
+}
+
+/**
+ * Shuffles an array in place using Fisher-Yates algorithm.
+ *
+ * @param array - The array to shuffle
+ * @returns The shuffled array
+ */
+export function shuffle<T>(array: T[]): T[] {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+/**
+ * Scans neurons and finds better squash functions to improve the creature's score.
+ *
+ * This function:
+ * 1. Gets all hidden neurons that don't already have the target squash
+ * 2. Shuffles them for random exploration
+ * 3. Tries replacing each neuron's squash with the target squash
+ * 4. For neurons that improve, also tries alternative squashes
+ * 5. Returns the best improvements found
+ *
+ * @param options - Configuration options for the scan
+ * @returns Promise resolving to the scan result
+ */
+export async function scanForSquashImprovements(
+  options: ImproveSquashOptions,
+): Promise<ImproveSquashResult> {
+  const {
+    creature,
+    targetSquash,
+    outputDir,
+    dataDir,
+    bestScore,
+    options: neatOptions = {},
+    maxImprovements = 12,
+    timeoutMs = 60 * 60 * 1000,
+    epsilon = 1e-8,
+    onProgress,
+  } = options;
+
+  const start = Date.now();
+
+  // Get neurons to test
+  const neuronList: NeuronExport[] = creature.neurons.filter(
+    (n: NeuronExport) => n.type === "hidden" && n.squash !== targetSquash,
+  );
+
+  shuffle(neuronList);
+
+  const CPU_COUNT = navigator.hardwareConcurrency || 4;
+  const workers: WorkerHandler[] = Array.from(
+    { length: CPU_COUNT },
+    () => new WorkerHandler(),
+  );
+
+  const maxPending = options.maxPending ??
+    Math.min(maxImprovements, CPU_COUNT) * 2;
+
+  let taskCount = 0;
+  let completed = 0;
+  let expectedTotal = neuronList.length;
+
+  const bestNeuronSquashMap = new Map<string, BestNeuronSquash>();
+  const workerTasksSet = new Set<Promise<unknown>>();
+  const alternativeTaskSet = new Set<Promise<void>>();
+
+  let lastThrottleTime = 0;
+  let timedOut = false;
+
+  for (const neuron of neuronList) {
+    // Check timeout
+    const now = Date.now();
+    if (now - start > timeoutMs) {
+      console.warn(`Timeout after: ${now - start}ms`);
+      timedOut = true;
+      break;
+    }
+
+    // Check if we've found enough improvements
+    if (bestNeuronSquashMap.size >= maxImprovements) break;
+
+    // Throttle if too many pending tasks
+    while (
+      workerTasksSet.size + alternativeTaskSet.size >= maxPending &&
+      bestNeuronSquashMap.size < maxImprovements
+    ) {
+      const pendingCount = workerTasksSet.size + alternativeTaskSet.size;
+      const throttleNow = Date.now();
+
+      if (throttleNow - lastThrottleTime > 60_000) {
+        console.log(
+          `Throttling: waiting for tasks to complete... pending: ${pendingCount}, max: ${maxPending}, found: ${bestNeuronSquashMap.size}`,
+        );
+        lastThrottleTime = throttleNow;
+      }
+
+      if (workerTasksSet.size > 0) {
+        // deno-lint-ignore no-await-in-loop -- Intentional throttling: wait for one task to complete before adding more
+        await Promise.race(workerTasksSet);
+      } else {
+        // deno-lint-ignore no-await-in-loop -- Intentional throttling: wait for one task to complete before adding more
+        await Promise.race(alternativeTaskSet);
+      }
+    }
+
+    // Skip if neuron already has target squash
+    if (targetSquash === neuron.squash) {
+      console.log(
+        `Neuron ${
+          neuron.uuid?.slice(-8)
+        } already has squash ${targetSquash}, skipping.`,
+      );
+      continue;
+    }
+
+    const p = (async () => {
+      if (bestNeuronSquashMap.size >= maxImprovements) return;
+
+      const neuronUUID = neuron.uuid;
+      assert(neuronUUID, "Neuron UUID should be defined");
+
+      const { creature: modifiedCreature, previousSquash } =
+        makeModifiedCreatureWithPrevious(
+          neuronUUID,
+          creature,
+          targetSquash,
+        );
+
+      const worker = workers[taskCount % CPU_COUNT];
+      taskCount++;
+
+      const res = await worker.score(
+        modifiedCreature,
+        neuronUUID,
+        dataDir,
+        neatOptions,
+      );
+      completed++;
+
+      if (onProgress) {
+        onProgress(completed, expectedTotal);
+      }
+
+      if (res?.score) {
+        if (res.score.score - bestScore > epsilon) {
+          const shortId = res.score.uuid.slice(-8);
+          const lastMessage =
+            `Neuron ${shortId} ${previousSquash} -> ${targetSquash}, score: ${
+              res.score.score.toPrecision(6)
+            } improved by ${(res.score.score - bestScore).toPrecision(3)}`;
+          console.log(lastMessage);
+
+          const path = `${outputDir}/${targetSquash}_${shortId}.json`;
+
+          await Deno.writeTextFile(path, res.score.creature);
+          bestNeuronSquashMap.set(res.score.uuid, {
+            squash: targetSquash,
+            score: res.score.score,
+            path: path,
+            message: lastMessage,
+          });
+
+          // Try alternative squashes for this neuron
+          for (const altSquash of alternativeSquashes) {
+            if (
+              altSquash !== targetSquash &&
+              altSquash !== neuron.squash &&
+              alternativeTaskSet.size < 90
+            ) {
+              assert(res.score, "Score should be defined");
+              assert(res.score.creature, "Creature should be defined");
+
+              const altCreatureExport = Creature.fromJSON(
+                JSON.parse(res.score.creature),
+              ).exportJSON();
+              const { creature: altCreature } =
+                makeModifiedCreatureWithPrevious(
+                  neuronUUID,
+                  altCreatureExport,
+                  altSquash,
+                );
+
+              const altWorker = workers[taskCount % CPU_COUNT];
+              taskCount++;
+              expectedTotal++;
+
+              const alternativeTask = altWorker.score(
+                altCreature,
+                neuronUUID,
+                dataDir,
+                neatOptions,
+              ).then((alternativeRes) => {
+                completed++;
+                if (alternativeRes?.score) {
+                  const currentNeuronBest = bestNeuronSquashMap.get(
+                    neuronUUID,
+                  );
+                  assert(
+                    currentNeuronBest,
+                    "Current neuron best should be defined",
+                  );
+
+                  if (
+                    alternativeRes.score.score - currentNeuronBest.score >
+                      epsilon
+                  ) {
+                    const alternativeMessage =
+                      `Neuron ${shortId} ${previousSquash} -> ${altSquash}, score: ${
+                        alternativeRes.score.score.toPrecision(6)
+                      } improved by ${
+                        (alternativeRes.score.score - bestScore).toPrecision(3)
+                      }`;
+                    console.log(alternativeMessage);
+
+                    const altPath = `${outputDir}/${altSquash}_${shortId}.json`;
+
+                    Deno.writeTextFileSync(
+                      altPath,
+                      alternativeRes.score.creature,
+                    );
+                    bestNeuronSquashMap.set(alternativeRes.score.uuid, {
+                      squash: altSquash,
+                      score: alternativeRes.score.score,
+                      path: altPath,
+                      message: alternativeMessage,
+                    });
+
+                    // Remove the previous best file
+                    Deno.removeSync(currentNeuronBest.path);
+                  }
+                }
+              });
+
+              alternativeTaskSet.add(alternativeTask);
+              alternativeTask.finally(() =>
+                alternativeTaskSet.delete(alternativeTask)
+              );
+            }
+          }
+        }
+      }
+    })();
+
+    workerTasksSet.add(p);
+    p.finally(() => workerTasksSet.delete(p));
+  }
+
+  // Wait for all tasks to complete
+  await Promise.all(workerTasksSet);
+  await Promise.all(alternativeTaskSet);
+
+  // Terminate workers
+  workers.forEach((worker) => worker.terminate());
+
+  return {
+    improvements: bestNeuronSquashMap,
+    tested: completed,
+    improved: bestNeuronSquashMap.size,
+    duration: Date.now() - start,
+    timedOut,
+  };
+}
+
+/**
+ * Combines multiple neuron improvements into a single creature and scores it.
+ *
+ * If the combined creature scores better than the best individual improvement,
+ * returns the combined creature. Otherwise, returns the best individual.
+ *
+ * @param originalCreature - The original creature export
+ * @param improvements - Map of neuron improvements
+ * @param dataDir - Directory containing scoring data
+ * @param bestScore - The original best score
+ * @param options - NEAT options for scoring
+ * @returns The best creature export with appropriate tags
+ */
+export function combineImprovements(
+  originalCreature: CreatureExport,
+  improvements: Map<string, BestNeuronSquash>,
+  dataDir: string,
+  bestScore: number,
+  options: NeatOptions = {},
+): { creature: CreatureExport; message: string } {
+  if (improvements.size === 0) {
+    return {
+      creature: originalCreature,
+      message: "No improvements found.",
+    };
+  }
+
+  if (improvements.size === 1) {
+    const improvement = improvements.values().next().value;
+    assert(improvement, "Should have one improvement");
+    const json = JSON.parse(Deno.readTextFileSync(improvement.path));
+    return {
+      creature: json,
+      message: improvement.message,
+    };
+  }
+
+  // Find the best individual improvement
+  let bestIndividualScore = -Infinity;
+  let bestIndividual: BestNeuronSquash | undefined;
+
+  for (const improvement of improvements.values()) {
+    if (improvement.score > bestIndividualScore) {
+      bestIndividualScore = improvement.score;
+      bestIndividual = improvement;
+    }
+  }
+
+  // Try combining all improvements
+  const finalJson = Creature.fromJSON(originalCreature).exportJSON();
+
+  for (const [uuid, improvement] of improvements) {
+    const neuron = finalJson.neurons.find((n: NeuronExport) => n.uuid === uuid);
+    assert(neuron, "Neuron not found in the final JSON");
+    const previousSquash = neuron.squash;
+    neuron.squash = improvement.squash;
+    addTag(
+      neuron,
+      "intelligentDesign",
+      `${previousSquash} -> ${improvement.squash}`,
+    );
+  }
+
+  const finalCreature = Creature.fromJSON(finalJson);
+  finalCreature.fix();
+  const result = finalCreature.scoreDir(dataDir, options);
+
+  if (result.score > bestIndividualScore) {
+    const message = `Combined ${improvements.size} neurons, score: ${
+      result.score.toPrecision(6)
+    } improved by ${(result.score - bestScore).toPrecision(3)}`;
+
+    const exported = finalCreature.exportJSON();
+    addTag(exported, "score", `${result.score}`);
+    addTag(exported, "error", `${result.error}`);
+    addTag(exported, "intelligentDesign", message);
+
+    return {
+      creature: exported,
+      message,
+    };
+  }
+
+  // Return the best individual improvement
+  assert(bestIndividual, "Best individual should be defined");
+  const json = JSON.parse(Deno.readTextFileSync(bestIndividual.path));
+  const message =
+    `Marriage failed, using best individual: ${bestIndividual.message}`;
+  addTag(json, "intelligentDesign", message);
+
+  return {
+    creature: json,
+    message,
+  };
+}
