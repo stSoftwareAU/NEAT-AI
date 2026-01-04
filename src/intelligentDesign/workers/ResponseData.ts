@@ -12,6 +12,19 @@ export interface ResponseData {
   taskID: number;
   /** Duration of the operation in milliseconds */
   duration: number;
+  /**
+   * Error details when the worker failed to process the request.
+   *
+   * When present, `score` will be undefined.
+   */
+  error?: {
+    /** Error name (when available) */
+    name?: string;
+    /** Error message */
+    message: string;
+    /** Stack trace (when available) */
+    stack?: string;
+  };
   /** Scoring result (present when a score request was made) */
   score?: {
     /** UUID of the neuron being tested */

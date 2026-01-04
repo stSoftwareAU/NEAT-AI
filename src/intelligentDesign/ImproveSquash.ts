@@ -15,7 +15,39 @@ import type { NeatOptions } from "../config/NeatOptions.ts";
 import { Creature } from "../Creature.ts";
 import { alternativeSquashes } from "./AlternativeSquashes.ts";
 import type { BestNeuronSquash } from "./BestNeuronSquash.ts";
+import { safeWriteText, safeWriteTextSync } from "./SafeWrite.ts";
 import { WorkerHandler } from "./workers/WorkerHandler.ts";
+
+function remainingTimeMs(deadlineMs: number): number {
+  return Math.max(0, deadlineMs - Date.now());
+}
+
+async function waitForAllSettledOrTimeout(
+  tasks: Set<Promise<unknown>>,
+  deadlineMs: number,
+): Promise<boolean> {
+  if (tasks.size === 0) return false;
+
+  const remainingMs = remainingTimeMs(deadlineMs);
+  if (remainingMs === 0) return true;
+
+  let timeoutID: number | undefined;
+  const timeout = new Promise<"timeout">((resolve) => {
+    timeoutID = setTimeout(() => resolve("timeout"), remainingMs);
+  });
+
+  const settled = Promise.allSettled(Array.from(tasks)).then(() =>
+    "settled" as const
+  );
+
+  const result = await Promise.race([settled, timeout]);
+
+  if (timeoutID !== undefined) {
+    clearTimeout(timeoutID);
+  }
+
+  return result === "timeout";
+}
 
 /**
  * Options for squash improvement scanning.
@@ -43,6 +75,39 @@ export interface ImproveSquashOptions {
   epsilon?: number;
   /** Callback for progress updates */
   onProgress?: (completed: number, total: number) => void;
+
+  /**
+   * Optional override for the alternative squashes list.
+   *
+   * This is primarily intended for deterministic tests and specialised runners.
+   */
+  alternativeSquashes?: readonly string[];
+
+  /**
+   * Optional override for CPU worker count.
+   *
+   * This is primarily intended for deterministic tests and specialised runners.
+   */
+  cpuCount?: number;
+
+  /**
+   * Optional worker factory.
+   *
+   * This is primarily intended for tests (to avoid spawning actual workers).
+   */
+  createWorker?: () => Pick<WorkerHandler, "score" | "terminate">;
+
+  /**
+   * Optional file writer overrides.
+   *
+   * By default, Intelligent Design uses `safeWriteText` / `safeWriteTextSync` to
+   * guarantee atomic writes (write temp file then rename). Overrides are mainly
+   * intended for tests.
+   */
+  writeText?: (filePath: string, content: string) => Promise<void>;
+  writeTextSync?: (filePath: string, content: string) => void;
+  remove?: (path: string) => Promise<void>;
+  removeSync?: (path: string) => void;
 }
 
 /**
@@ -142,9 +207,17 @@ export async function scanForSquashImprovements(
     timeoutMs = 60 * 60 * 1000,
     epsilon = 1e-8,
     onProgress,
+    alternativeSquashes: alternativeSquashesOverride,
+    cpuCount,
+    createWorker,
+    writeText,
+    writeTextSync,
+    remove,
+    removeSync,
   } = options;
 
   const start = Date.now();
+  const deadlineMs = start + timeoutMs;
 
   // Get neurons to test
   const neuronList: NeuronExport[] = creature.neurons.filter(
@@ -153,10 +226,21 @@ export async function scanForSquashImprovements(
 
   shuffle(neuronList);
 
-  const CPU_COUNT = navigator.hardwareConcurrency || 4;
-  const workers: WorkerHandler[] = Array.from(
+  const altSquashes = alternativeSquashesOverride ?? alternativeSquashes;
+  const CPU_COUNT = cpuCount ?? (navigator.hardwareConcurrency || 4);
+  const makeWorker = createWorker ?? (() => new WorkerHandler());
+  const writeTextFile = writeText ?? safeWriteText;
+  const writeTextFileSync = writeTextSync ?? safeWriteTextSync;
+  const removeFile = remove ?? (removeSync
+    ? (path: string) => {
+      removeSync(path);
+      return Promise.resolve();
+    }
+    : (path: string) => Deno.remove(path));
+
+  const workers: Array<Pick<WorkerHandler, "score" | "terminate">> = Array.from(
     { length: CPU_COUNT },
-    () => new WorkerHandler(),
+    () => makeWorker(),
   );
 
   const maxPending = options.maxPending ??
@@ -173,198 +257,217 @@ export async function scanForSquashImprovements(
   let lastThrottleTime = 0;
   let timedOut = false;
 
-  for (const neuron of neuronList) {
-    // Check timeout
-    const now = Date.now();
-    if (now - start > timeoutMs) {
-      console.warn(`Timeout after: ${now - start}ms`);
-      timedOut = true;
-      break;
-    }
+  try {
+    for (const neuron of neuronList) {
+      // Check timeout
+      const now = Date.now();
+      if (now - start > timeoutMs) {
+        console.warn(`Timeout after: ${now - start}ms`);
+        timedOut = true;
+        break;
+      }
 
-    // Check if we've found enough improvements
-    if (bestNeuronSquashMap.size >= maxImprovements) break;
+      // Check if we've found enough improvements
+      if (bestNeuronSquashMap.size >= maxImprovements) break;
 
-    // Throttle if too many pending tasks
-    while (
-      workerTasksSet.size + alternativeTaskSet.size >= maxPending &&
-      bestNeuronSquashMap.size < maxImprovements
-    ) {
-      const pendingCount = workerTasksSet.size + alternativeTaskSet.size;
-      const throttleNow = Date.now();
+      // Throttle if too many pending tasks.
+      //
+      // Important: `Promise.race(...)` can throw if a task rejects (e.g. file write
+      // failure). We still must terminate worker threads in that case, hence the
+      // `try/finally` wrapper around the whole scan.
+      while (
+        workerTasksSet.size + alternativeTaskSet.size >= maxPending &&
+        bestNeuronSquashMap.size < maxImprovements
+      ) {
+        const pendingCount = workerTasksSet.size + alternativeTaskSet.size;
+        const throttleNow = Date.now();
 
-      if (throttleNow - lastThrottleTime > 60_000) {
+        if (throttleNow - lastThrottleTime > 60_000) {
+          console.log(
+            `Throttling: waiting for tasks to complete... pending: ${pendingCount}, max: ${maxPending}, found: ${bestNeuronSquashMap.size}`,
+          );
+          lastThrottleTime = throttleNow;
+        }
+
+        if (workerTasksSet.size > 0) {
+          // deno-lint-ignore no-await-in-loop -- Intentional throttling: wait for one task to complete before adding more
+          await Promise.race(workerTasksSet);
+        } else {
+          // deno-lint-ignore no-await-in-loop -- Intentional throttling: wait for one task to complete before adding more
+          await Promise.race(alternativeTaskSet);
+        }
+      }
+
+      // Skip if neuron already has target squash
+      if (targetSquash === neuron.squash) {
         console.log(
-          `Throttling: waiting for tasks to complete... pending: ${pendingCount}, max: ${maxPending}, found: ${bestNeuronSquashMap.size}`,
+          `Neuron ${
+            neuron.uuid?.slice(-8)
+          } already has squash ${targetSquash}, skipping.`,
         );
-        lastThrottleTime = throttleNow;
+        continue;
       }
 
-      if (workerTasksSet.size > 0) {
-        // deno-lint-ignore no-await-in-loop -- Intentional throttling: wait for one task to complete before adding more
-        await Promise.race(workerTasksSet);
-      } else {
-        // deno-lint-ignore no-await-in-loop -- Intentional throttling: wait for one task to complete before adding more
-        await Promise.race(alternativeTaskSet);
-      }
-    }
+      const p = (async () => {
+        if (bestNeuronSquashMap.size >= maxImprovements) return;
 
-    // Skip if neuron already has target squash
-    if (targetSquash === neuron.squash) {
-      console.log(
-        `Neuron ${
-          neuron.uuid?.slice(-8)
-        } already has squash ${targetSquash}, skipping.`,
-      );
-      continue;
-    }
+        const neuronUUID = neuron.uuid;
+        assert(neuronUUID, "Neuron UUID should be defined");
 
-    const p = (async () => {
-      if (bestNeuronSquashMap.size >= maxImprovements) return;
+        const { creature: modifiedCreature, previousSquash } =
+          makeModifiedCreatureWithPrevious(
+            neuronUUID,
+            creature,
+            targetSquash,
+          );
 
-      const neuronUUID = neuron.uuid;
-      assert(neuronUUID, "Neuron UUID should be defined");
+        const worker = workers[taskCount % CPU_COUNT];
+        taskCount++;
 
-      const { creature: modifiedCreature, previousSquash } =
-        makeModifiedCreatureWithPrevious(
+        const res = await worker.score(
+          modifiedCreature,
           neuronUUID,
-          creature,
-          targetSquash,
+          dataDir,
+          neatOptions,
         );
+        completed++;
 
-      const worker = workers[taskCount % CPU_COUNT];
-      taskCount++;
+        if (onProgress) {
+          onProgress(completed, expectedTotal);
+        }
 
-      const res = await worker.score(
-        modifiedCreature,
-        neuronUUID,
-        dataDir,
-        neatOptions,
-      );
-      completed++;
+        if (res?.score) {
+          if (res.score.score - bestScore > epsilon) {
+            const shortId = res.score.uuid.slice(-8);
+            const lastMessage =
+              `Neuron ${shortId} ${previousSquash} -> ${targetSquash}, score: ${
+                res.score.score.toPrecision(6)
+              } improved by ${(res.score.score - bestScore).toPrecision(3)}`;
+            console.log(lastMessage);
 
-      if (onProgress) {
-        onProgress(completed, expectedTotal);
-      }
+            const path = `${outputDir}/${targetSquash}_${shortId}.json`;
 
-      if (res?.score) {
-        if (res.score.score - bestScore > epsilon) {
-          const shortId = res.score.uuid.slice(-8);
-          const lastMessage =
-            `Neuron ${shortId} ${previousSquash} -> ${targetSquash}, score: ${
-              res.score.score.toPrecision(6)
-            } improved by ${(res.score.score - bestScore).toPrecision(3)}`;
-          console.log(lastMessage);
+            await writeTextFile(path, res.score.creature);
+            bestNeuronSquashMap.set(res.score.uuid, {
+              squash: targetSquash,
+              score: res.score.score,
+              path: path,
+              message: lastMessage,
+            });
 
-          const path = `${outputDir}/${targetSquash}_${shortId}.json`;
+            // Try alternative squashes for this neuron
+            for (const altSquash of altSquashes) {
+              if (
+                altSquash !== targetSquash &&
+                altSquash !== neuron.squash &&
+                alternativeTaskSet.size < 90
+              ) {
+                assert(res.score, "Score should be defined");
+                assert(res.score.creature, "Creature should be defined");
 
-          await Deno.writeTextFile(path, res.score.creature);
-          bestNeuronSquashMap.set(res.score.uuid, {
-            squash: targetSquash,
-            score: res.score.score,
-            path: path,
-            message: lastMessage,
-          });
-
-          // Try alternative squashes for this neuron
-          for (const altSquash of alternativeSquashes) {
-            if (
-              altSquash !== targetSquash &&
-              altSquash !== neuron.squash &&
-              alternativeTaskSet.size < 90
-            ) {
-              assert(res.score, "Score should be defined");
-              assert(res.score.creature, "Creature should be defined");
-
-              const altCreatureExport = Creature.fromJSON(
-                JSON.parse(res.score.creature),
-              ).exportJSON();
-              const { creature: altCreature } =
-                makeModifiedCreatureWithPrevious(
-                  neuronUUID,
-                  altCreatureExport,
-                  altSquash,
-                );
-
-              const altWorker = workers[taskCount % CPU_COUNT];
-              taskCount++;
-              expectedTotal++;
-
-              const alternativeTask = altWorker.score(
-                altCreature,
-                neuronUUID,
-                dataDir,
-                neatOptions,
-              ).then((alternativeRes) => {
-                completed++;
-                if (alternativeRes?.score) {
-                  const currentNeuronBest = bestNeuronSquashMap.get(
+                const altCreatureExport = Creature.fromJSON(
+                  JSON.parse(res.score.creature),
+                ).exportJSON();
+                const { creature: altCreature } =
+                  makeModifiedCreatureWithPrevious(
                     neuronUUID,
-                  );
-                  assert(
-                    currentNeuronBest,
-                    "Current neuron best should be defined",
+                    altCreatureExport,
+                    altSquash,
                   );
 
-                  if (
-                    alternativeRes.score.score - currentNeuronBest.score >
-                      epsilon
-                  ) {
-                    const alternativeMessage =
-                      `Neuron ${shortId} ${previousSquash} -> ${altSquash}, score: ${
-                        alternativeRes.score.score.toPrecision(6)
-                      } improved by ${
-                        (alternativeRes.score.score - bestScore).toPrecision(3)
-                      }`;
-                    console.log(alternativeMessage);
+                const altWorker = workers[taskCount % CPU_COUNT];
+                taskCount++;
+                expectedTotal++;
 
-                    const altPath = `${outputDir}/${altSquash}_${shortId}.json`;
-
-                    Deno.writeTextFileSync(
-                      altPath,
-                      alternativeRes.score.creature,
+                const alternativeTask = altWorker.score(
+                  altCreature,
+                  neuronUUID,
+                  dataDir,
+                  neatOptions,
+                ).then(async (alternativeRes) => {
+                  completed++;
+                  if (alternativeRes?.score) {
+                    const currentNeuronBest = bestNeuronSquashMap.get(
+                      neuronUUID,
                     );
-                    bestNeuronSquashMap.set(alternativeRes.score.uuid, {
-                      squash: altSquash,
-                      score: alternativeRes.score.score,
-                      path: altPath,
-                      message: alternativeMessage,
-                    });
+                    assert(
+                      currentNeuronBest,
+                      "Current neuron best should be defined",
+                    );
 
-                    // Remove the previous best file
-                    Deno.removeSync(currentNeuronBest.path);
+                    if (
+                      alternativeRes.score.score - currentNeuronBest.score >
+                        epsilon
+                    ) {
+                      const alternativeMessage =
+                        `Neuron ${shortId} ${previousSquash} -> ${altSquash}, score: ${
+                          alternativeRes.score.score.toPrecision(6)
+                        } improved by ${
+                          (alternativeRes.score.score - bestScore).toPrecision(
+                            3,
+                          )
+                        }`;
+                      console.log(alternativeMessage);
+
+                      const altPath =
+                        `${outputDir}/${altSquash}_${shortId}.json`;
+
+                      writeTextFileSync(
+                        altPath,
+                        alternativeRes.score.creature,
+                      );
+                      bestNeuronSquashMap.set(alternativeRes.score.uuid, {
+                        squash: altSquash,
+                        score: alternativeRes.score.score,
+                        path: altPath,
+                        message: alternativeMessage,
+                      });
+
+                      // Remove the previous best file
+                      await removeFile(currentNeuronBest.path);
+                    }
                   }
-                }
-              });
+                });
 
-              alternativeTaskSet.add(alternativeTask);
-              alternativeTask.finally(() =>
-                alternativeTaskSet.delete(alternativeTask)
-              );
+                alternativeTaskSet.add(alternativeTask);
+                alternativeTask.finally(() =>
+                  alternativeTaskSet.delete(alternativeTask)
+                );
+              }
             }
           }
         }
+      })();
+
+      workerTasksSet.add(p);
+      p.finally(() => workerTasksSet.delete(p));
+    }
+
+    // Wait for all tasks to complete, but never block past the overall timeout.
+    // This prevents a permanently hung scan if a worker task never settles.
+    timedOut = timedOut ||
+      (await waitForAllSettledOrTimeout(workerTasksSet, deadlineMs));
+    timedOut = timedOut ||
+      (await waitForAllSettledOrTimeout(alternativeTaskSet, deadlineMs));
+
+    return {
+      improvements: bestNeuronSquashMap,
+      tested: completed,
+      improved: bestNeuronSquashMap.size,
+      duration: Date.now() - start,
+      timedOut,
+    };
+  } finally {
+    // Always terminate workers, even if the scan fails midway (e.g. file write
+    // failure causes a task rejection that bubbles out during throttling).
+    for (const worker of workers) {
+      try {
+        worker.terminate();
+      } catch (error) {
+        console.error("Failed to terminate Intelligent Design worker:", error);
       }
-    })();
-
-    workerTasksSet.add(p);
-    p.finally(() => workerTasksSet.delete(p));
+    }
   }
-
-  // Wait for all tasks to complete
-  await Promise.all(workerTasksSet);
-  await Promise.all(alternativeTaskSet);
-
-  // Terminate workers
-  workers.forEach((worker) => worker.terminate());
-
-  return {
-    improvements: bestNeuronSquashMap,
-    tested: completed,
-    improved: bestNeuronSquashMap.size,
-    duration: Date.now() - start,
-    timedOut,
-  };
 }
 
 /**
