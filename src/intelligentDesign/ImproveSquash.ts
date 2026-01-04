@@ -410,7 +410,7 @@ export async function scanForSquashImprovements(
                         epsilon
                     ) {
                       const alternativeMessage =
-                        `Neuron ${shortId} ${previousSquash} -> ${altSquash}, score: ${
+                        `Neuron ${shortId} ${targetSquash} -> ${altSquash}, score: ${
                           alternativeRes.score.score.toPrecision(6)
                         } improved by ${
                           (alternativeRes.score.score - bestScore).toPrecision(
