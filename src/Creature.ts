@@ -1337,14 +1337,14 @@ export class Creature implements CreatureInternal {
     assert(toType !== "input", "Can't connect to input");
     assert(toType !== "constant", "Can't connect to constant");
 
-    const forwardOnly = this.forwardOnly === true;
-
     for (let attempts = 0; attempts < 12; attempts++) {
       const from = Math.min(
         this.neurons.length - this.output - 1,
-        forwardOnly
-          ? Math.floor(Math.random() * indx) // 0..(indx-1)
-          : Math.floor(Math.random() * indx + 1), // 0..indx (includes self)
+        // Even when recurrent connections are allowed, `makeRandomConnection()`
+        // is used as a repair step for disconnected neurons. A self-loop does
+        // not introduce any upstream signal, so it does not "fix" connectivity.
+        // We therefore never generate self-loops here.
+        Math.floor(Math.random() * indx), // 0..(indx-1)
       );
       const c = this.getSynapse(from, indx);
       if (c === null) {
@@ -1356,9 +1356,8 @@ export class Creature implements CreatureInternal {
       }
     }
     const firstOutputIndex = this.neurons.length - this.output;
-    for (let from = 0; from <= indx; from++) {
-      if (forwardOnly && from === indx) continue; // No self-loops in forward-only mode.
-      if (from >= firstOutputIndex && from !== indx) continue;
+    for (let from = 0; from < indx; from++) {
+      if (from >= firstOutputIndex) continue;
       const c = this.getSynapse(from, indx);
       if (c === null) {
         return this.connect(
