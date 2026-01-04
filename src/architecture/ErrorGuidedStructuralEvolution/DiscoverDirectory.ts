@@ -257,7 +257,9 @@ export function formatDiscoveryPerformanceSummary(
   const candidateLines: string[] = [
     `  Helpful synapses: ${formatCount(stats.helpfulSynapseCount)}`,
     `  Helpful neurons: ${formatCount(stats.helpfulNeuronCount)}`,
-    `  Coordinated structural: ${formatCount(stats.coordinatedStructuralCount)}`,
+    `  Coordinated structural: ${
+      formatCount(stats.coordinatedStructuralCount)
+    }`,
     `  Harmful synapses: ${formatCount(stats.harmfulSynapseCount)}`,
     `  Harmful neurons: ${formatCount(stats.harmfulNeuronCount)}`,
     `  Squash changes: ${formatCount(stats.squashCount)}`,

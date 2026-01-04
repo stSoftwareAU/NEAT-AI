@@ -46,5 +46,3 @@ Deno.test("formatDiscoveryPerformanceSummary includes coordinated structural can
     `expected coordinated structural count to be rendered, got:\n${rendered}`,
   );
 });
-
-
