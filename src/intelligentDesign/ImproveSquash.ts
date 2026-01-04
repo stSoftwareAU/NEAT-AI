@@ -139,7 +139,16 @@ export function makeModifiedCreatureWithPrevious(
   creatureExport: CreatureExport,
   nextSquash: string,
 ): { creature: Creature; previousSquash: string } {
-  const tmpJson = Creature.fromJSON(creatureExport).exportJSON();
+  // Important: operate on a deep clone of the supplied export rather than
+  // round-tripping through `Creature.fromJSON(...).exportJSON()`.
+  //
+  // The round-trip can normalise/upgrade JSON (or reorder/omit fields) which
+  // makes UUID-based lookups brittle in callers that hold UUIDs from the
+  // original export (e.g. tests and Intelligent Design improvement maps).
+  const tmpJson: CreatureExport = typeof structuredClone === "function"
+    ? structuredClone(creatureExport)
+    : JSON.parse(JSON.stringify(creatureExport));
+
   const neuronData = tmpJson.neurons.find((n: NeuronExport) =>
     n.uuid === neuronUUID
   );
@@ -256,6 +265,7 @@ export async function scanForSquashImprovements(
 
   let lastThrottleTime = 0;
   let timedOut = false;
+  let firstError: unknown | undefined;
 
   try {
     for (const neuron of neuronList) {
@@ -427,20 +437,30 @@ export async function scanForSquashImprovements(
                       await removeFile(currentNeuronBest.path);
                     }
                   }
+                }).catch((error) => {
+                  if (firstError === undefined) firstError = error;
+                  throw error;
                 });
 
                 alternativeTaskSet.add(alternativeTask);
                 alternativeTask.finally(() =>
                   alternativeTaskSet.delete(alternativeTask)
-                );
+                ).catch(() => {
+                  // Avoid unhandled rejections from the `finally()` chain when the task fails.
+                });
               }
             }
           }
         }
-      })();
+      })().catch((error) => {
+        if (firstError === undefined) firstError = error;
+        throw error;
+      });
 
       workerTasksSet.add(p);
-      p.finally(() => workerTasksSet.delete(p));
+      p.finally(() => workerTasksSet.delete(p)).catch(() => {
+        // Avoid unhandled rejections from the `finally()` chain when the task fails.
+      });
     }
 
     // Wait for all tasks to complete, but never block past the overall timeout.
@@ -449,6 +469,13 @@ export async function scanForSquashImprovements(
       (await waitForAllSettledOrTimeout(workerTasksSet, deadlineMs));
     timedOut = timedOut ||
       (await waitForAllSettledOrTimeout(alternativeTaskSet, deadlineMs));
+
+    if (firstError !== undefined) {
+      const err = firstError instanceof Error
+        ? firstError
+        : new Error(String(firstError));
+      throw err;
+    }
 
     return {
       improvements: bestNeuronSquashMap,
@@ -519,7 +546,12 @@ export function combineImprovements(
   }
 
   // Try combining all improvements
-  const finalJson = Creature.fromJSON(originalCreature).exportJSON();
+  // As with `makeModifiedCreatureWithPrevious()`, avoid round-tripping through
+  // `Creature.fromJSON(...).exportJSON()` before applying UUID-based edits.
+  // Deep clone the export and apply changes directly, then score via fromJSON.
+  const finalJson: CreatureExport = typeof structuredClone === "function"
+    ? structuredClone(originalCreature)
+    : JSON.parse(JSON.stringify(originalCreature));
 
   for (const [uuid, improvement] of improvements) {
     const neuron = finalJson.neurons.find((n: NeuronExport) => n.uuid === uuid);

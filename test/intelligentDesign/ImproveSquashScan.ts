@@ -18,11 +18,20 @@ import type { ResponseData } from "../../src/intelligentDesign/workers/ResponseD
 function makeDeterministicCreatureExport() {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
   const exported = creature.exportJSON();
-  const hidden = exported.neurons.find((n) => n.type === "hidden");
-  assertExists(hidden?.uuid);
-  // Ensure the hidden neuron starts as TANH so it will be scanned.
-  hidden.squash = "TANH";
-  return { exported, hiddenUUID: hidden.uuid };
+  const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
+  assertEquals(hiddenNeurons.length > 0, true);
+
+  // Ensure we only scan a single neuron for deterministic test counts:
+  // - one hidden neuron starts as TANH (to be scanned)
+  // - all other hidden neurons are already GELU (filtered out)
+  const first = hiddenNeurons[0];
+  assertExists(first.uuid);
+  for (const n of hiddenNeurons) {
+    n.squash = "GELU";
+  }
+  first.squash = "TANH";
+
+  return { exported, hiddenUUID: first.uuid };
 }
 
 Deno.test("scanForSquashImprovements records improvement then upgrades via alternative squash", async () => {

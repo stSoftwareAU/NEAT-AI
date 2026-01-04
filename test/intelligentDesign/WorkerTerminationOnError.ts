@@ -106,7 +106,7 @@ Deno.test("scanForSquashImprovements: terminates workers when throttling surface
         alternativeSquashes: [],
       }),
     Error,
-    "Expected scan to reject when writeText fails",
+    "simulated write failure",
   );
 
   assertEquals(workers.length, 1);

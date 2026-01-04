@@ -69,10 +69,14 @@ Deno.test("combineImprovements returns combined creature when combined score bea
 
     Deno.mkdirSync(TEST_DIR, { recursive: true });
 
-    const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
+    const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const exported = creature.exportJSON();
-    const hidden = exported.neurons.find((n) => n.type === "hidden");
-    assertExists(hidden?.uuid);
+    const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
+    assertEquals(hiddenNeurons.length > 1, true);
+    const firstHidden = hiddenNeurons[0];
+    const secondHidden = hiddenNeurons[1];
+    assertExists(firstHidden.uuid);
+    assertExists(secondHidden.uuid);
 
     const pathA = `${TEST_DIR}/a.json`;
     const pathB = `${TEST_DIR}/b.json`;
@@ -83,14 +87,14 @@ Deno.test("combineImprovements returns combined creature when combined score bea
       string,
       { squash: string; score: number; path: string; message: string }
     >();
-    improvements.set(hidden.uuid, {
+    improvements.set(firstHidden.uuid, {
       squash: "GELU",
       score: 3,
       path: pathA,
       message: "A",
     });
-    // Use a second key to force the "combine" path (size > 1).
-    improvements.set(`${hidden.uuid}-2`, {
+    // Use a second neuron UUID to force the "combine" path (size > 1).
+    improvements.set(secondHidden.uuid, {
       squash: "Swish",
       score: 4,
       path: pathB,
@@ -125,8 +129,14 @@ Deno.test("combineImprovements falls back to best individual when marriage fails
 
     Deno.mkdirSync(TEST_DIR, { recursive: true });
 
-    const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
+    const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const exported = creature.exportJSON();
+    const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
+    assertEquals(hiddenNeurons.length > 1, true);
+    const firstHidden = hiddenNeurons[0];
+    const secondHidden = hiddenNeurons[1];
+    assertExists(firstHidden.uuid);
+    assertExists(secondHidden.uuid);
 
     const pathA = `${TEST_DIR}/best.json`;
     const pathB = `${TEST_DIR}/worst.json`;
@@ -137,13 +147,13 @@ Deno.test("combineImprovements falls back to best individual when marriage fails
       string,
       { squash: string; score: number; path: string; message: string }
     >();
-    improvements.set("a", {
+    improvements.set(firstHidden.uuid, {
       squash: "GELU",
       score: 6,
       path: pathA,
       message: "best",
     });
-    improvements.set("b", {
+    improvements.set(secondHidden.uuid, {
       squash: "Swish",
       score: 5,
       path: pathB,
