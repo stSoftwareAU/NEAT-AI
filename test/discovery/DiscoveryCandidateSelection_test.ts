@@ -141,3 +141,39 @@ Deno.test("filterCandidatesForEvaluation: no-positive-weights falls back to stab
     ["a", "b"],
   );
 });
+
+Deno.test("filterCandidatesForEvaluation: coordinated-structural candidates are not starved by per-category minimums", () => {
+  const config = makeConfig({
+    discoveryMinCandidatesPerCategory: {
+      addNeurons: 2,
+      addSynapses: 2,
+      changeSquash: 0,
+      removeLowImpact: 0,
+    },
+  });
+
+  const candidates: DiscoveryCandidate[] = [
+    // add-neurons pool
+    makeCandidate("add-neurons", 0.2, "n1"),
+    makeCandidate("add-neurons", 0.19, "n2"),
+    makeCandidate("add-neurons", 0.18, "n3"),
+    // add-synapses pool
+    makeCandidate("add-synapses", 0.2, "s1"),
+    makeCandidate("add-synapses", 0.19, "s2"),
+    makeCandidate("add-synapses", 0.18, "s3"),
+    // coordinated structural pool (Issue #165)
+    makeCandidate("coordinated-structural", 0.9, "csd-1"),
+  ];
+
+  // threadCount=1 => maxCandidates=max(2*1, categories=3)=3, but minimums above
+  // will exceed the nominal budget. The key requirement is that coordinated-structural
+  // does not get starved when present.
+  const { filtered } = filterCandidatesForEvaluation(candidates, 1, config, {
+    random: () => 0,
+  });
+
+  assert(
+    filtered.some((c) => c.change.type === "coordinated-structural"),
+    "expected at least one coordinated-structural candidate to be selected",
+  );
+});

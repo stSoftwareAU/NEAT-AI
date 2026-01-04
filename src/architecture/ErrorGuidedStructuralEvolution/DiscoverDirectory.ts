@@ -36,6 +36,7 @@ const shouldLogDiscovery = (config: NeatConfig): boolean =>
 export function calculateDiscoveryCandidateSummaryCounts(counts: {
   helpfulSynapseRawCount: number;
   helpfulNeuronRawCount: number;
+  coordinatedStructuralRawCount: number;
   harmfulSynapseCandidates: number;
   harmfulNeuronCandidates: number;
   squashRawCount: number;
@@ -43,6 +44,7 @@ export function calculateDiscoveryCandidateSummaryCounts(counts: {
 }): {
   helpfulSynapses: number;
   helpfulNeurons: number;
+  coordinatedStructural: number;
   harmfulSynapses: number;
   harmfulNeurons: number;
   squashChanges: number;
@@ -51,6 +53,7 @@ export function calculateDiscoveryCandidateSummaryCounts(counts: {
   return {
     helpfulSynapses: counts.helpfulSynapseRawCount,
     helpfulNeurons: counts.helpfulNeuronRawCount,
+    coordinatedStructural: counts.coordinatedStructuralRawCount,
     harmfulSynapses: counts.harmfulSynapseCandidates,
     harmfulNeurons: counts.harmfulNeuronCandidates,
     squashChanges: counts.squashRawCount,
@@ -87,6 +90,7 @@ class DiscoveryPerformanceStats {
   // accumulation) so logs match what downstream consumers will actually see.
   helpfulSynapseCount = 0;
   helpfulNeuronCount = 0;
+  coordinatedStructuralCount = 0;
   harmfulSynapseCount = 0;
   harmfulNeuronCount = 0;
   squashCount = 0;
@@ -129,6 +133,7 @@ class DiscoveryPerformanceStats {
           // Candidate counts (counts match the arrays returned from recordDirectory()).
           helpfulSynapseCount: this.helpfulSynapseCount,
           helpfulNeuronCount: this.helpfulNeuronCount,
+          coordinatedStructuralCount: this.coordinatedStructuralCount,
           harmfulSynapseCount: this.harmfulSynapseCount,
           harmfulNeuronCount: this.harmfulNeuronCount,
           squashCount: this.squashCount,
@@ -168,6 +173,7 @@ export interface DiscoveryPerformanceSummarySnapshot {
   // Candidate counts (final arrays returned to the caller)
   helpfulSynapseCount: number;
   helpfulNeuronCount: number;
+  coordinatedStructuralCount: number;
   harmfulSynapseCount: number;
   harmfulNeuronCount: number;
   squashCount: number;
@@ -251,6 +257,7 @@ export function formatDiscoveryPerformanceSummary(
   const candidateLines: string[] = [
     `  Helpful synapses: ${formatCount(stats.helpfulSynapseCount)}`,
     `  Helpful neurons: ${formatCount(stats.helpfulNeuronCount)}`,
+    `  Coordinated structural: ${formatCount(stats.coordinatedStructuralCount)}`,
     `  Harmful synapses: ${formatCount(stats.harmfulSynapseCount)}`,
     `  Harmful neurons: ${formatCount(stats.harmfulNeuronCount)}`,
     `  Squash changes: ${formatCount(stats.squashCount)}`,
@@ -1512,6 +1519,8 @@ class DataRecorder {
           0;
       perfStats.helpfulNeuronCount = discoverResult.addHelpfulNeurons?.length ??
         0;
+      perfStats.coordinatedStructuralCount =
+        discoverResult.coordinatedStructuralCandidates?.length ?? 0;
       perfStats.harmfulSynapseCount = discoverResult.removeHarmfulSynapse
         ? 1
         : 0;

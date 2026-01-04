@@ -1162,6 +1162,14 @@ export function filterCandidatesForEvaluation(
         return minPerCategory.addSynapses;
       case "change-squash":
         return minPerCategory.changeSquash;
+      case "coordinated-structural":
+        // Coordinated structural candidates (Issue #165) are epistatic groups: no
+        // single edit improves fitness in isolation, but the group can.
+        //
+        // These candidates are rare and high signal, so we always reserve at
+        // least one evaluation slot when present to avoid starving them under
+        // strict per-category minimums.
+        return 1;
       default:
         // For combo/other categories we do not force selection; they will be considered by weighting.
         return 0;
