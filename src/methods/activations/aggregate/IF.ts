@@ -236,7 +236,11 @@ export class IF
       // intentionally avoids connecting from outputs, so a final output neuron may
       // never reach 3 inbound links. Rather than throwing (flaky initialisation),
       // deterministically downgrade to a standard squash.
-      neuron.squash = neuron.type === "output" ? "IDENTITY" : "TANH";
+      if (neuron.type === "output") {
+        neuron.squash = "IDENTITY";
+      } else {
+        neuron.squash = "TANH";
+      }
       return;
     }
 
