@@ -2,7 +2,7 @@ import { assert } from "@std/assert";
 import { blue, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
-import { Costs } from "../Costs.ts";
+import type { CostInterface } from "../costs/CostInterface.ts";
 import { Creature } from "../Creature.ts";
 import { compactUnused } from "../compact/CompactUnused.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
@@ -77,8 +77,7 @@ export function dataFiles(dataDir: string, options: TrainOptions = {}) {
  * const result = trainDir(creature, "./training-data", {
  *   iterations: 10,
  *   targetError: 0.01,
- *   cost: "MSE"
- * });
+ * }, Costs.find("MSE"));
  * console.log(`Training completed with error: ${result.error}`);
  * ```
  */
@@ -86,6 +85,7 @@ export function trainDir(
   creature: Creature,
   dataDir: string,
   options: TrainOptions,
+  cost: CostInterface,
 ) {
   const dataResult = dataFiles(dataDir, options);
 
@@ -94,7 +94,7 @@ export function trainDir(
     "No binary files found in the data directory",
   );
 
-  return trainDirBinary(creature, dataResult.files, options);
+  return trainDirBinary(creature, dataResult.files, options, cost);
 }
 
 function fp(percentage: number) {
@@ -116,14 +116,13 @@ function trainDirBinary(
   creature: Creature,
   binaryFiles: string[],
   options: TrainOptions,
+  cost: CostInterface,
 ): TrainingResult {
   const backPropConfig = createBackPropagationConfig(options);
-
-  const cost = Costs.find(options.cost ?? "MSE");
   const feedbackLoop = options.feedbackLoop ?? false;
   const targetError =
     options.targetError !== undefined && Number.isFinite(options.targetError)
-      ? Math.max(options.targetError, 0.000_001)
+      ? Math.max(options.targetError, 0.000_000_1)
       : 0.05;
 
   const iterations = Math.max(options.iterations ? options.iterations : 2, 1);

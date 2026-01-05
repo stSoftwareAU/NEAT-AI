@@ -131,12 +131,14 @@ export class WorkerProcessor {
         data.train.creature = "";
 
         assert(this.dataSetDir, "No data dir");
+        assert(this.cost, "No cost");
 
         creatureValidate(creature);
         const result = trainDir(
           creature,
           this.dataSetDir,
           data.train.options,
+          this.cost,
         );
         creatureValidate(creature);
         const json = JSON.stringify(creature.exportJSON());
