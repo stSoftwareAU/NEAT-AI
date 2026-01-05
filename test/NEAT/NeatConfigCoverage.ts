@@ -38,7 +38,9 @@ Deno.test("NEAT/NeatConfigCoverage - discoveryMinCandidatesPerCategory validatio
 Deno.test("NEAT/NeatConfigCoverage - discoveryRustFlushRecords validation (non-positive throws)", () => {
   try {
     createNeatConfig({ discoveryRustFlushRecords: 0 });
-    fail("Expected createNeatConfig() to throw for non-positive discoveryRustFlushRecords");
+    fail(
+      "Expected createNeatConfig() to throw for non-positive discoveryRustFlushRecords",
+    );
   } catch (e) {
     assertEquals(
       (e as Error).message.includes("Discovery Rust Flush Records"),
@@ -53,7 +55,9 @@ Deno.test("NEAT/NeatConfigCoverage - discoveryFocusNeuronUUIDs must be an array"
     createNeatConfig({
       discoveryFocusNeuronUUIDs: (123 as unknown as string[]),
     });
-    fail("Expected createNeatConfig() to throw for non-array discoveryFocusNeuronUUIDs");
+    fail(
+      "Expected createNeatConfig() to throw for non-array discoveryFocusNeuronUUIDs",
+    );
   } catch (e) {
     assertEquals(
       // The failure can occur during defaulting (spread) before validation,
@@ -70,7 +74,9 @@ Deno.test("NEAT/NeatConfigCoverage - discoveryFocusNeuronUUIDs entries must be n
     createNeatConfig({
       discoveryFocusNeuronUUIDs: [""],
     });
-    fail("Expected createNeatConfig() to throw for empty discoveryFocusNeuronUUIDs entry");
+    fail(
+      "Expected createNeatConfig() to throw for empty discoveryFocusNeuronUUIDs entry",
+    );
   } catch (e) {
     assertEquals(
       (e as Error).message.includes("non-empty strings"),
@@ -93,5 +99,3 @@ Deno.test("NEAT/NeatConfigCoverage - discoveryReplayConcurrency default path whe
   assertEquals(config.discoveryReplayVerifyScores, true);
   assertEquals(config.discoveryReplayConcurrency >= 1, true);
 });
-
-

@@ -32,5 +32,3 @@ Deno.test("fix/IFDowngradeDuringFix - IF.fix should downgrade when 3rd inbound c
   assertEquals(target.squash, "IDENTITY");
   creature.validate();
 });
-
-
