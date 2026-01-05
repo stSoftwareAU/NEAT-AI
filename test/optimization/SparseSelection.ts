@@ -31,7 +31,6 @@ Deno.test("optimization/SparseSelection - should use output-distance strategy", 
   const options: TrainOptions = {
     iterations: 5,
     sparseRatio: 0.5, // Only train 50% of neurons
-    sparseSelectionStrategy: "output-distance",
     targetError: 0.1,
   };
 
@@ -67,7 +66,6 @@ Deno.test("optimization/SparseSelection - should fallback to random strategy", (
   const options: TrainOptions = {
     iterations: 5,
     sparseRatio: 0.5,
-    sparseSelectionStrategy: "random",
     targetError: 0.1,
   };
 

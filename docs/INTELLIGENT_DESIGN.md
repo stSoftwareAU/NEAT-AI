@@ -176,6 +176,24 @@ Intelligent Design is designed to work with external orchestration scripts:
 This separation allows the core logic to remain generic while domain-specific
 concerns (training data preparation, repository layout) are handled externally.
 
+### Data Flow
+
+```mermaid
+flowchart TD
+  runner["Runner Script"] --> cli["Intelligent Design CLI"]
+  cli --> readModel["Read model JSON"]
+  cli --> readHive["Read hive knowledge"]
+  cli --> scoreCall["scoreDir with NeatOptions"]
+  readModel --> neatId["NEAT-AI intelligentDesign core"]
+  readHive --> neatId
+  scoreCall --> neatId
+  neatId --> writeModel["Write improved model"]
+  neatId --> writeHive["Write updated knowledge"]
+  runner --> checkin["Check-in Script"]
+  writeModel --> checkin
+  writeHive --> checkin
+```
+
 ## Best Practices
 
 1. **Start with high-tier squashes**: GELU, Swish, and LeakyReLU typically

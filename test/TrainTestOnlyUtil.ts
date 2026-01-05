@@ -4,6 +4,8 @@ import {
   makeDataDir,
 } from "../src/architecture/DataSet.ts";
 import { trainDir } from "../src/architecture/Training.ts";
+import { Costs } from "../src/Costs.ts";
+import type { CostInterface } from "../src/costs/CostInterface.ts";
 import type { TrainOptions } from "../src/config/TrainOptions.ts";
 import type { Creature } from "../src/Creature.ts";
 
@@ -14,6 +16,7 @@ export function train(
   creature: Creature,
   dataSet: DataRecordInterface[],
   options: TrainOptions,
+  cost: CostInterface = Costs.find("MSE"),
 ) {
   assert(dataSet.length > 0, "No data set provided");
   assert(dataSet[0].input.length > 0, "No input data in the data set");
@@ -24,7 +27,7 @@ export function train(
     output: creature.output,
   });
   try {
-    const result = trainDir(creature, dataSetDir, options);
+    const result = trainDir(creature, dataSetDir, options, cost);
     return result;
   } finally {
     Deno.removeSync(dataSetDir, { recursive: true });

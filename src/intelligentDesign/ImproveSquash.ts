@@ -116,8 +116,40 @@ export interface ImproveSquashOptions {
 export interface ImproveSquashResult {
   /** Map of neuron UUID to best squash info */
   improvements: Map<string, BestNeuronSquash>;
-  /** Number of neurons tested */
+  /**
+   * Number of successful scoring operations.
+   *
+   * This counts only worker responses that included a `score` payload.
+   * Failed worker responses (where `error` is set and `score` is undefined) are
+   * not included.
+   */
   tested: number;
+  /**
+   * Number of scoring operations attempted (successful + failed).
+   *
+   * This includes primary scans and alternative squash follow-ups.
+   */
+  attempted: number;
+  /** Number of failed scoring operations (worker response returned `error` or no score). */
+  failed: number;
+  /**
+   * Sample of worker failures encountered during the scan (capped).
+   *
+   * This exists to avoid silent failure when scoring cannot run (e.g. missing
+   * data files, invalid dataset, or `scoreDir()` throws).
+   */
+  errors: Array<{
+    /** Neuron UUID being evaluated (when available). */
+    uuid?: string;
+    /** Squash being evaluated (when available). */
+    squash?: string;
+    /** Whether this was a primary target-squash test or an alternative follow-up. */
+    stage: "target" | "alternative";
+    /** Error message. */
+    message: string;
+    /** Error name (when available). */
+    name?: string;
+  }>;
   /** Number of neurons that showed improvement */
   improved: number;
   /** Total time taken in milliseconds */
@@ -256,8 +288,13 @@ export async function scanForSquashImprovements(
     Math.min(maxImprovements, CPU_COUNT) * 2;
 
   let taskCount = 0;
-  let completed = 0;
-  let expectedTotal = neuronList.length;
+  let attempted = 0;
+  let tested = 0;
+  let failed = 0;
+  let completedPrimary = 0;
+  const primaryTotal = neuronList.length;
+  const errorSamples: ImproveSquashResult["errors"] = [];
+  const maxErrorSamples = 25;
 
   const bestNeuronSquashMap = new Map<string, BestNeuronSquash>();
   const workerTasksSet = new Set<Promise<unknown>>();
@@ -340,13 +377,15 @@ export async function scanForSquashImprovements(
           dataDir,
           neatOptions,
         );
-        completed++;
+        attempted++;
+        completedPrimary++;
 
         if (onProgress) {
-          onProgress(completed, expectedTotal);
+          onProgress(completedPrimary, primaryTotal);
         }
 
         if (res?.score) {
+          tested++;
           if (res.score.score - bestScore > epsilon) {
             const shortId = res.score.uuid.slice(-8);
             const lastMessage =
@@ -387,7 +426,6 @@ export async function scanForSquashImprovements(
 
                 const altWorker = workers[taskCount % CPU_COUNT];
                 taskCount++;
-                expectedTotal++;
 
                 const alternativeTask = altWorker.score(
                   altCreature,
@@ -395,8 +433,9 @@ export async function scanForSquashImprovements(
                   dataDir,
                   neatOptions,
                 ).then(async (alternativeRes) => {
-                  completed++;
+                  attempted++;
                   if (alternativeRes?.score) {
+                    tested++;
                     const currentNeuronBest = bestNeuronSquashMap.get(
                       neuronUUID,
                     );
@@ -436,6 +475,25 @@ export async function scanForSquashImprovements(
                       // Remove the previous best file
                       await removeFile(currentNeuronBest.path);
                     }
+                  } else {
+                    failed++;
+                    const err = (alternativeRes &&
+                        typeof alternativeRes === "object" &&
+                        "error" in alternativeRes)
+                      ? (alternativeRes as {
+                        error?: { message: string; name?: string };
+                      }).error
+                      : undefined;
+                    if (errorSamples.length < maxErrorSamples) {
+                      errorSamples.push({
+                        uuid: neuronUUID,
+                        squash: altSquash,
+                        stage: "alternative",
+                        message: err?.message ??
+                          "Worker returned no score (alternative squash) and no error message",
+                        name: err?.name,
+                      });
+                    }
                   }
                 }).catch((error) => {
                   if (firstError === undefined) firstError = error;
@@ -450,6 +508,21 @@ export async function scanForSquashImprovements(
                 });
               }
             }
+          }
+        } else {
+          failed++;
+          const err = (res && typeof res === "object" && "error" in res)
+            ? (res as { error?: { message: string; name?: string } }).error
+            : undefined;
+          if (errorSamples.length < maxErrorSamples) {
+            errorSamples.push({
+              uuid: neuronUUID,
+              squash: targetSquash,
+              stage: "target",
+              message: err?.message ??
+                "Worker returned no score (target squash) and no error message",
+              name: err?.name,
+            });
           }
         }
       })().catch((error) => {
@@ -479,7 +552,10 @@ export async function scanForSquashImprovements(
 
     return {
       improvements: bestNeuronSquashMap,
-      tested: completed,
+      tested,
+      attempted,
+      failed,
+      errors: errorSamples,
       improved: bestNeuronSquashMap.size,
       duration: Date.now() - start,
       timedOut,

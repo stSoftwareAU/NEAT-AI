@@ -448,7 +448,6 @@ export class Neat {
     }
 
     const trainOptions: TrainOptions = {
-      cost: this.config.costName,
       log: this.config.log,
       traceStore: this.config.traceStore,
       iterations: 1,

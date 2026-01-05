@@ -231,9 +231,13 @@ export class IF
     const toList2 = neuron.creature.inwardConnections(neuron.index);
 
     if (toList2.length < 3 && neuron.index > 2) {
-      throw new Error(
-        "Should have 3 or more connections was: " + toList2.length,
-      );
+      // This topology cannot satisfy IF's three inbound requirements
+      // (condition/positive/negative). In small networks, `makeRandomConnection()`
+      // intentionally avoids connecting from outputs, so a final output neuron may
+      // never reach 3 inbound links. Rather than throwing (flaky initialisation),
+      // deterministically downgrade to a standard squash.
+      neuron.squash = neuron.type === "output" ? "IDENTITY" : "TANH";
+      return;
     }
 
     if (!foundCondition || !foundNegative || !foundPositive) {

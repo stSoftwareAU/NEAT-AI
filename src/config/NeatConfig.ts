@@ -178,8 +178,6 @@ export function createNeatConfig(options: NeatOptions): NeatConfig {
       : [],
     discoveryDisableEvaluationSummaryLogging:
       options.discoveryDisableEvaluationSummaryLogging ?? false,
-    discoveryMinImprovementVsCostOfGrowthMultiplier:
-      options.discoveryMinImprovementVsCostOfGrowthMultiplier ?? 2.0,
     customCost: options.customCost,
     checkpointEveryGeneration: options.checkpointEveryGeneration ?? false,
     discoveryDisableCleanup: options.discoveryDisableCleanup ?? false,
@@ -416,16 +414,6 @@ function validate(config: NeatArguments) {
       );
     }
   }
-  if (
-    Number.isFinite(config.discoveryMinImprovementVsCostOfGrowthMultiplier) ===
-      false ||
-    config.discoveryMinImprovementVsCostOfGrowthMultiplier < 0
-  ) {
-    throw new Error(
-      `Discovery Min Improvement vs Cost of Growth Multiplier must be zero or more was: ${config.discoveryMinImprovementVsCostOfGrowthMultiplier}`,
-    );
-  }
-
   // Validate discoveryMinCandidatesPerCategory
   const minCandidates = config.discoveryMinCandidatesPerCategory;
   if (minCandidates) {
