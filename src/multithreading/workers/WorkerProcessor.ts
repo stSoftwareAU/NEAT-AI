@@ -1,12 +1,51 @@
 import { assert } from "@std/assert";
 import { creatureValidate } from "../../architecture/CreatureValidate.ts";
 import { recordDirectory } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
+import type {
+  DiscoverResult,
+} from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import { trainDir } from "../../architecture/Training.ts";
 import { Costs } from "../../Costs.ts";
 import type { CostInterface } from "../../costs/CostInterface.ts";
 import { Creature } from "../../Creature.ts";
 import { writeDiagnostics } from "../../utils/Diagnostics.ts";
 import type { RequestData, ResponseData } from "./WorkerHandler.ts";
+
+type DiscoverResponsePayload = NonNullable<ResponseData["discover"]>;
+
+/**
+ * Converts a `DiscoverResult` into the wire-safe payload returned to the parent
+ * thread.
+ *
+ * Note (6-Jan-2026): This mapping must include all candidate groups we want the
+ * parent `DiscoveryRunner` to evaluate and record in caches.
+ */
+export function buildDiscoverResponsePayload(
+  result: DiscoverResult,
+): DiscoverResponsePayload {
+  return {
+    ID: result.ID,
+    addHelpfulSynapses: result.addHelpfulSynapses
+      ? [...result.addHelpfulSynapses]
+      : undefined,
+    addHelpfulNeurons: result.addHelpfulNeurons
+      ? [...result.addHelpfulNeurons]
+      : undefined,
+    coordinatedStructuralCandidates: result.coordinatedStructuralCandidates
+      ? [...result.coordinatedStructuralCandidates]
+      : undefined,
+    removeHarmfulSynapse: result.removeHarmfulSynapse,
+    removeHarmfulNeurons: result.removeHarmfulNeurons
+      ? [...result.removeHarmfulNeurons]
+      : undefined,
+    removalCandidates: result.removalCandidates
+      ? [...result.removalCandidates]
+      : undefined,
+    candidateSquashes: result.candidateSquashes
+      ? [...result.candidateSquashes]
+      : undefined,
+  };
+}
 
 export class WorkerProcessor {
   private dataSetDir: string | null = null;
@@ -216,25 +255,7 @@ export class WorkerProcessor {
         const response = {
           taskID: data.taskID,
           duration: Date.now() - start,
-          discover: {
-            ID: result.ID,
-            addHelpfulSynapses: result.addHelpfulSynapses
-              ? [...result.addHelpfulSynapses]
-              : undefined,
-            addHelpfulNeurons: result.addHelpfulNeurons
-              ? [...result.addHelpfulNeurons]
-              : undefined,
-            removeHarmfulSynapse: result.removeHarmfulSynapse,
-            removeHarmfulNeurons: result.removeHarmfulNeurons
-              ? [...result.removeHarmfulNeurons]
-              : undefined,
-            removalCandidates: result.removalCandidates
-              ? [...result.removalCandidates]
-              : undefined,
-            candidateSquashes: result.candidateSquashes
-              ? [...result.candidateSquashes]
-              : undefined,
-          },
+          discover: buildDiscoverResponsePayload(result),
         };
 
         // Immediately clear large objects to help GC
@@ -245,6 +266,10 @@ export class WorkerProcessor {
         if (result.addHelpfulNeurons) {
           // @ts-ignore - clearing to help GC
           result.addHelpfulNeurons = null;
+        }
+        if (result.coordinatedStructuralCandidates) {
+          // @ts-ignore - clearing to help GC
+          result.coordinatedStructuralCandidates = null;
         }
         if (result.removeHarmfulNeurons) {
           // @ts-ignore - clearing to help GC
