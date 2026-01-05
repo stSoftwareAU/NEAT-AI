@@ -1,32 +1,20 @@
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { IF } from "../../src/methods/activations/aggregate/IF.ts";
 
 Deno.test("fix/IFDowngradeDuringFix - IF.fix should downgrade when 3rd inbound cannot be created", () => {
-  // Arrange: create a valid tiny creature, then force an output neuron squash to IF
-  // so `Creature.fix()` must run IF.fix(). With output=2, makeRandomConnection()
-  // cannot source from other outputs, so only two inputs are eligible and the 3rd
-  // inbound link is impossible.
-  const json: CreatureExport = {
-    neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
-      { type: "output", uuid: "output-1", squash: "IDENTITY", bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "output-1", weight: 0.5 },
-      { fromUUID: "input-1", toUUID: "output-1", weight: -0.25 },
-    ],
-    input: 2,
-    output: 2,
-  };
-
-  const creature = Creature.fromJSON(json);
+  // Arrange: in a tiny 2->2 creature, each output has exactly 2 inbound connections
+  // (from the 2 inputs). IF requires 3 (condition/positive/negative), but
+  // `makeRandomConnection()` intentionally avoids sourcing from outputs, so a 3rd
+  // inbound connection for an output neuron is impossible here.
+  const creature = new Creature(2, 2);
   const target = creature.neurons.find((n) => n.uuid === "output-1");
-  if (!target) throw new Error("Expected output-1 neuron to exist");
+  assert(target, "Expected output-1 neuron to exist");
+  assertEquals(creature.inwardConnections(target.index).length, 2);
 
-  // Force the problematic squash, then repair.
+  // Force the problematic squash, then run the IF repair directly.
   target.squash = "IF";
-  creature.fix();
+  new IF().fix(target);
 
   // Assert: IF should be downgraded deterministically for outputs.
   assertEquals(target.squash, "IDENTITY");
