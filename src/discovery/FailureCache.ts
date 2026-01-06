@@ -178,8 +178,38 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
     case "coordinated-structural": {
       const spec = candidate.change.coordinatedStructuralCandidate;
       if (spec?.operations && Array.isArray(spec.operations)) {
-        const opKey = `coordinated:` +
-          spec.operations.map((op) => JSON.stringify(op)).join("|");
+        // Coordinated structural candidates frequently represent "adjust weight"
+        // operations as remove+add on the same synapse. We intentionally bucket
+        // addSynapse weights by exponent so keys remain stable under normal
+        // evolutionary weight drift and do not explode the cache with near
+        // duplicates.
+        const opKey = `coordinated:` + spec.operations.map((op) => {
+          if (!op || typeof op !== "object") return JSON.stringify(op);
+          const t = (op as { type?: string }).type;
+          if (t === "removeSynapse") {
+            const o = op as {
+              fromNeuronUuid?: string;
+              toNeuronUuid?: string;
+            };
+            return `removeSynapse:${o.fromNeuronUuid ?? "?"}->${
+              o.toNeuronUuid ?? "?"
+            }`;
+          }
+          if (t === "addSynapse") {
+            const o = op as {
+              fromNeuronUuid?: string;
+              toNeuronUuid?: string;
+              weight?: number;
+            };
+            const w = typeof o.weight === "number"
+              ? formatWeight(o.weight)
+              : "?";
+            return `addSynapse:${o.fromNeuronUuid ?? "?"}->${
+              o.toNeuronUuid ?? "?"
+            }:w${w}`;
+          }
+          return JSON.stringify(op);
+        }).join("|");
         parts.push(stableShortHash(opKey));
       } else {
         parts.push(buildStructuralSignature(candidate));
