@@ -152,6 +152,7 @@
     "rescored",
     "BJSON",
     "parameterised",
-    "checkin"
+    "checkin",
+    "replayable"
   ]
 }

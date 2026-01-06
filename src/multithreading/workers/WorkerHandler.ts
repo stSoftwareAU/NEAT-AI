@@ -9,6 +9,9 @@ import type {
   CandidateSquash,
   CandidateSynapse,
 } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type {
+  CoordinatedStructuralCandidate,
+} from "../../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import type { NeatConfig } from "../../config/NeatConfig.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
@@ -125,6 +128,14 @@ export interface ResponseData {
     addHelpfulSynapses?: CandidateSynapse[];
     /** Optional helpful neurons to add */
     addHelpfulNeurons?: CandidateNeuron[];
+    /**
+     * Optional coordinated structural candidates (epistatic groups).
+     *
+     * These are ordered multi-op candidates emitted by the Rust discovery
+     * engine. They must be applied together to have a chance of improving
+     * fitness.
+     */
+    coordinatedStructuralCandidates?: CoordinatedStructuralCandidate[];
     /** Optional harmful synapse to remove */
     removeHarmfulSynapse?: CandidateSynapse;
     /** Optional harmful neurons to remove */
