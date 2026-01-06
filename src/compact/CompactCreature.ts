@@ -346,8 +346,8 @@ export function compactCreature(
     delete compactCreature.memetic;
     removeTag(compactCreature, "approach-logged");
 
-    const oldNeurons = startExport.neurons.length -
-      startExport.input - startExport.output;
+    /** CreatureExport.neurons excludes inputs as the export does not include them.*/
+    const oldNeurons = startExport.neurons.length - startExport.output;
     addTag(compactCreature, "old-neurons", oldNeurons.toString());
 
     // Preserve forwardOnly semantics from source creature

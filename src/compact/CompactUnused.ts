@@ -100,6 +100,8 @@ export function compactUnused(
     addTag(compacted, "approach", "compact" as Approach);
     delete compacted.memetic;
     removeTag(compacted, "approach-logged");
+
+    /** Creature DOES have inputs, so we need to subtract them. */
     const oldNeurons = clean.neurons.length - clean.input - clean.output;
     addTag(compacted, "old-neurons", oldNeurons.toString());
     addTag(
