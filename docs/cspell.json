@@ -153,6 +153,7 @@
     "BJSON",
     "parameterised",
     "checkin",
-    "replayable"
+    "replayable",
+    "nulled"
   ]
 }
