@@ -63,10 +63,34 @@ export function applyCoordinatedStructuralCandidate(
     return creature;
   }
 
+  // Track removed synapses so a later addSynapse can preserve metadata (type/tags)
+  // when a Rust candidate performs a weight adjustment via remove+add.
+  const removedSynapseMeta = new Map<
+    string,
+    {
+      type?: "positive" | "negative" | "condition";
+      tags?: Array<{ name: string; value: string }>;
+    }
+  >();
+
+  const edgeKey = (fromUUID: string, toUUID: string): string =>
+    `${fromUUID}→${toUUID}`;
+
   for (const op of ops) {
     if (!op || typeof op.type !== "string") continue;
 
     if (op.type === "removeSynapse") {
+      const existing = next.synapses.find((s) =>
+        s.fromUUID === op.fromNeuronUuid && s.toUUID === op.toNeuronUuid
+      );
+      if (existing) {
+        removedSynapseMeta.set(edgeKey(op.fromNeuronUuid, op.toNeuronUuid), {
+          type: existing.type,
+          tags: existing.tags
+            ? existing.tags.map((t) => ({ ...t }))
+            : undefined,
+        });
+      }
       const before = next.synapses.length;
       next.synapses = next.synapses.filter((s) =>
         !(s.fromUUID === op.fromNeuronUuid && s.toUUID === op.toNeuronUuid)
@@ -106,10 +130,15 @@ export function applyCoordinatedStructuralCandidate(
       if (existing) {
         existing.weight = op.weight;
       } else {
+        const meta = removedSynapseMeta.get(
+          edgeKey(op.fromNeuronUuid, op.toNeuronUuid),
+        );
         next.synapses.push({
           fromUUID: op.fromNeuronUuid,
           toUUID: op.toNeuronUuid,
           weight: op.weight,
+          type: meta?.type,
+          tags: meta?.tags ? meta.tags.map((t) => ({ ...t })) : undefined,
         });
       }
       continue;

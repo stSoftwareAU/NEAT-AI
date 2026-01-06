@@ -262,6 +262,15 @@ function isSynapsePresent(
   );
 }
 
+function nearlyEqual(a: number, b: number): boolean {
+  if (a === b) return true;
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  const diff = Math.abs(a - b);
+  if (diff <= 1e-12) return true;
+  const scale = Math.max(1, Math.abs(a), Math.abs(b));
+  return diff <= 1e-7 * scale;
+}
+
 function isAlreadyApplied(
   creature: Creature,
   entry: SuccessCacheEntry,
@@ -312,9 +321,61 @@ function isAlreadyApplied(
 
   // Coordinated structural candidates are multi-op groups and may not be
   // trivially “already applied” (eg remove/remove/add sequences).
-  // We conservatively re-evaluate them when present in the cache.
+  // We treat them as already applied only when we can verify every operation.
   if (type === "coordinated-structural") {
-    return false;
+    const spec = req.coordinatedStructuralCandidate as
+      | CoordinatedStructuralCandidate
+      | undefined;
+    const ops = spec?.operations;
+    if (!Array.isArray(ops) || ops.length === 0) return false;
+
+    // Reduce the ordered operation list into a final expected state per edge.
+    // This handles weight adjustments that Rust expresses as remove+add on the
+    // same synapse: the last op wins.
+    const expectedByEdge = new Map<
+      string,
+      { present: boolean; weight?: number }
+    >();
+    const edgeKey = (fromUUID: string, toUUID: string): string =>
+      `${fromUUID}\0${toUUID}`;
+
+    for (const op of ops) {
+      if (!op || typeof op.type !== "string") return false;
+      if (op.type === "removeSynapse") {
+        expectedByEdge.set(edgeKey(op.fromNeuronUuid, op.toNeuronUuid), {
+          present: false,
+        });
+        continue;
+      }
+      if (op.type === "addSynapse") {
+        expectedByEdge.set(edgeKey(op.fromNeuronUuid, op.toNeuronUuid), {
+          present: true,
+          weight: op.weight,
+        });
+        continue;
+      }
+      // Unknown op: do not assume applied.
+      return false;
+    }
+
+    const exported = creature.exportJSON();
+    for (const [key, expected] of expectedByEdge.entries()) {
+      const [fromUUID, toUUID] = key.split("\0");
+      const synapse = exported.synapses.find((s) =>
+        s.fromUUID === fromUUID && s.toUUID === toUUID
+      );
+
+      if (!expected.present) {
+        if (synapse) return false;
+        continue;
+      }
+
+      if (!synapse) return false;
+      if (expected.weight === undefined) return false;
+      if (!nearlyEqual(synapse.weight, expected.weight)) return false;
+    }
+
+    return true;
   }
 
   if (type === "add-neurons") {
