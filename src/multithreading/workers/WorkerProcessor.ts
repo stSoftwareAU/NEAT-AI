@@ -47,6 +47,39 @@ export function buildDiscoverResponsePayload(
   };
 }
 
+/**
+ * Clears large result arrays after building the worker response payload.
+ *
+ * Note (6-Jan-2026): We aggressively drop these references to help V8 GC in
+ * long-running discovery workers.
+ */
+export function clearDiscoverResultForGC(result: DiscoverResult): void {
+  if (result.addHelpfulSynapses) {
+    // @ts-ignore - clearing to help GC
+    result.addHelpfulSynapses = null;
+  }
+  if (result.addHelpfulNeurons) {
+    // @ts-ignore - clearing to help GC
+    result.addHelpfulNeurons = null;
+  }
+  if (result.coordinatedStructuralCandidates) {
+    // @ts-ignore - clearing to help GC
+    result.coordinatedStructuralCandidates = null;
+  }
+  if (result.removeHarmfulNeurons) {
+    // @ts-ignore - clearing to help GC
+    result.removeHarmfulNeurons = null;
+  }
+  if (result.removalCandidates) {
+    // @ts-ignore - clearing to help GC
+    result.removalCandidates = null;
+  }
+  if (result.candidateSquashes) {
+    // @ts-ignore - clearing to help GC
+    result.candidateSquashes = null;
+  }
+}
+
 export class WorkerProcessor {
   private dataSetDir: string | null = null;
 
@@ -258,31 +291,7 @@ export class WorkerProcessor {
           discover: buildDiscoverResponsePayload(result),
         };
 
-        // Immediately clear large objects to help GC
-        if (result.addHelpfulSynapses) {
-          // @ts-ignore - clearing to help GC
-          result.addHelpfulSynapses = null;
-        }
-        if (result.addHelpfulNeurons) {
-          // @ts-ignore - clearing to help GC
-          result.addHelpfulNeurons = null;
-        }
-        if (result.coordinatedStructuralCandidates) {
-          // @ts-ignore - clearing to help GC
-          result.coordinatedStructuralCandidates = null;
-        }
-        if (result.removeHarmfulNeurons) {
-          // @ts-ignore - clearing to help GC
-          result.removeHarmfulNeurons = null;
-        }
-        if (result.removalCandidates) {
-          // @ts-ignore - clearing to help GC
-          result.removalCandidates = null;
-        }
-        if (result.candidateSquashes) {
-          // @ts-ignore - clearing to help GC
-          result.candidateSquashes = null;
-        }
+        clearDiscoverResultForGC(result);
 
         if (data.discover!.config.log) {
           console.log(
