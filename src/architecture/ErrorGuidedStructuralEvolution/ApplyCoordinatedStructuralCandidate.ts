@@ -111,6 +111,13 @@ export function applyCoordinatedStructuralCandidate(
           next.neurons.splice(beforeIdx, 0, newNeuron);
           continue;
         }
+
+        // `insertBeforeNeuronUuid` is an explicit ordering intent. If the target
+        // neuron is missing and this creature is forward-only, appending would
+        // violate layer ordering (hidden after output). Treat as a no-op instead.
+        if (next.forwardOnly === true) {
+          continue;
+        }
       }
 
       // Default: append at the end (safe for non-forward-only creatures).
