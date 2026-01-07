@@ -79,6 +79,82 @@ export function applyCoordinatedStructuralCandidate(
   for (const op of ops) {
     if (!op || typeof op.type !== "string") continue;
 
+    if (op.type === "addNeuron") {
+      // Ensure deterministic idempotency: if neuron already exists, update fields.
+      const existingIndex = next.neurons.findIndex((n) =>
+        n.uuid === op.neuronUuid
+      );
+      if (existingIndex >= 0) {
+        // Some exports treat neuron entries as readonly, so replace the object.
+        next.neurons[existingIndex] = {
+          ...next.neurons[existingIndex],
+          uuid: op.neuronUuid,
+          type: op.neuronType,
+          squash: op.squash,
+          bias: op.bias,
+        };
+        continue;
+      }
+
+      const newNeuron = {
+        uuid: op.neuronUuid,
+        type: op.neuronType,
+        squash: op.squash,
+        bias: op.bias,
+      };
+
+      if (typeof op.insertBeforeNeuronUuid === "string") {
+        const beforeIdx = next.neurons.findIndex((n) =>
+          n.uuid === op.insertBeforeNeuronUuid
+        );
+        if (beforeIdx >= 0) {
+          next.neurons.splice(beforeIdx, 0, newNeuron);
+          continue;
+        }
+      }
+
+      // Default: append at the end (safe for non-forward-only creatures).
+      next.neurons.push(newNeuron);
+      continue;
+    }
+
+    if (op.type === "removeNeuron") {
+      const uuid = op.neuronUuid;
+      const beforeNeuronCount = next.neurons.length;
+      next.neurons = next.neurons.filter((n) => n.uuid !== uuid);
+      if (next.neurons.length === beforeNeuronCount) {
+        // No-op if neuron didn't exist (idempotent).
+        continue;
+      }
+
+      // Remove any synapses that reference the neuron, and clean up memetic state.
+      const removedEdges: Array<{ fromUUID: string; toUUID: string }> = [];
+      for (const s of next.synapses) {
+        if (s.fromUUID === uuid || s.toUUID === uuid) {
+          removedEdges.push({ fromUUID: s.fromUUID, toUUID: s.toUUID });
+        }
+      }
+      next.synapses = next.synapses.filter((s) =>
+        !(s.fromUUID === uuid || s.toUUID === uuid)
+      );
+      for (const e of removedEdges) {
+        cleanupMemeticForRemovedSynapse(next, e.fromUUID, e.toUUID);
+      }
+      continue;
+    }
+
+    if (op.type === "changeSquash") {
+      const n = next.neurons.find((x) => x.uuid === op.neuronUuid);
+      if (n) n.squash = op.squash;
+      continue;
+    }
+
+    if (op.type === "setBias") {
+      const n = next.neurons.find((x) => x.uuid === op.neuronUuid);
+      if (n) n.bias = op.bias;
+      continue;
+    }
+
     if (op.type === "removeSynapse") {
       const existing = next.synapses.find((s) =>
         s.fromUUID === op.fromNeuronUuid && s.toUUID === op.toNeuronUuid
