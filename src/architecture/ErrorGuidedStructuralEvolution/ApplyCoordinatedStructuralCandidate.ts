@@ -4,11 +4,43 @@ import { Creature } from "../../Creature.ts";
 import {
   cleanupMemeticForRemovedNeuron,
   cleanupMemeticForRemovedSynapse,
+  cleanupOrphanedNeurons,
 } from "../../compact/CompactUtils.ts";
 import type {
   CoordinatedStructuralCandidate,
   CoordinatedStructuralOperation,
 } from "./CoordinatedStructuralCandidate.ts";
+
+// Local operation shapes (kept small and structural so the editor stays happy even
+// if its module graph gets temporarily out-of-date). Deno `check` remains the
+// source-of-truth for type safety.
+type AddNeuronOp = {
+  type: "addNeuron";
+  neuronUuid: string;
+  neuronType: "hidden" | "output";
+  squash: string;
+  bias: number;
+  insertBeforeNeuronUuid?: string;
+};
+
+type RemoveNeuronOp = { type: "removeNeuron"; neuronUuid: string };
+type ChangeSquashOp = {
+  type: "changeSquash";
+  neuronUuid: string;
+  squash: string;
+};
+type SetBiasOp = { type: "setBias"; neuronUuid: string; bias: number };
+type RemoveSynapseOp = {
+  type: "removeSynapse";
+  fromNeuronUuid: string;
+  toNeuronUuid: string;
+};
+type AddSynapseOp = {
+  type: "addSynapse";
+  fromNeuronUuid: string;
+  toNeuronUuid: string;
+  weight: number;
+};
 
 function buildUuidToIndexMap(creature: CreatureExport): Map<string, number> {
   const uuidToIndex = new Map<string, number>();
@@ -82,33 +114,34 @@ export function applyCoordinatedStructuralCandidate(
   for (const op of ops) {
     if (!op || typeof op.type !== "string") continue;
 
-    if (op.type === "addNeuron") {
+    if ((op.type as string) === "addNeuron") {
+      const add = op as unknown as AddNeuronOp;
       // Ensure deterministic idempotency: if neuron already exists, update fields.
       const existingIndex = next.neurons.findIndex((n) =>
-        n.uuid === op.neuronUuid
+        n.uuid === add.neuronUuid
       );
       if (existingIndex >= 0) {
         // Some exports treat neuron entries as readonly, so replace the object.
         next.neurons[existingIndex] = {
           ...next.neurons[existingIndex],
-          uuid: op.neuronUuid,
-          type: op.neuronType,
-          squash: op.squash,
-          bias: op.bias,
+          uuid: add.neuronUuid,
+          type: add.neuronType,
+          squash: add.squash,
+          bias: add.bias,
         };
         continue;
       }
 
       const newNeuron = {
-        uuid: op.neuronUuid,
-        type: op.neuronType,
-        squash: op.squash,
-        bias: op.bias,
+        uuid: add.neuronUuid,
+        type: add.neuronType,
+        squash: add.squash,
+        bias: add.bias,
       };
 
-      if (typeof op.insertBeforeNeuronUuid === "string") {
+      if (typeof add.insertBeforeNeuronUuid === "string") {
         const beforeIdx = next.neurons.findIndex((n) =>
-          n.uuid === op.insertBeforeNeuronUuid
+          n.uuid === add.insertBeforeNeuronUuid
         );
         if (beforeIdx >= 0) {
           next.neurons.splice(beforeIdx, 0, newNeuron);
@@ -125,7 +158,7 @@ export function applyCoordinatedStructuralCandidate(
 
       // Default placement must preserve the invariant that hidden neurons appear
       // before output neurons (even when recurrent connections are allowed).
-      if (op.neuronType === "hidden") {
+      if (add.neuronType === "hidden") {
         const firstOutputIdx = next.neurons.findIndex((n) =>
           n.type === "output"
         );
@@ -140,8 +173,9 @@ export function applyCoordinatedStructuralCandidate(
       continue;
     }
 
-    if (op.type === "removeNeuron") {
-      const uuid = op.neuronUuid;
+    if ((op.type as string) === "removeNeuron") {
+      const remove = op as unknown as RemoveNeuronOp;
+      const uuid = remove.neuronUuid;
       const beforeNeuronCount = next.neurons.length;
       next.neurons = next.neurons.filter((n) => n.uuid !== uuid);
       if (next.neurons.length === beforeNeuronCount) {
@@ -166,45 +200,55 @@ export function applyCoordinatedStructuralCandidate(
       continue;
     }
 
-    if (op.type === "changeSquash") {
-      const n = next.neurons.find((x) => x.uuid === op.neuronUuid);
-      if (n) n.squash = op.squash;
+    if ((op.type as string) === "changeSquash") {
+      const change = op as unknown as ChangeSquashOp;
+      const n = next.neurons.find((x) => x.uuid === change.neuronUuid);
+      if (n) n.squash = change.squash;
       continue;
     }
 
-    if (op.type === "setBias") {
-      const n = next.neurons.find((x) => x.uuid === op.neuronUuid);
-      if (n) n.bias = op.bias;
+    if ((op.type as string) === "setBias") {
+      const set = op as unknown as SetBiasOp;
+      const n = next.neurons.find((x) => x.uuid === set.neuronUuid);
+      if (n) n.bias = set.bias;
       continue;
     }
 
-    if (op.type === "removeSynapse") {
+    if ((op.type as string) === "removeSynapse") {
+      const remove = op as unknown as RemoveSynapseOp;
       const existing = next.synapses.find((s) =>
-        s.fromUUID === op.fromNeuronUuid && s.toUUID === op.toNeuronUuid
+        s.fromUUID === remove.fromNeuronUuid && s.toUUID === remove.toNeuronUuid
       );
       if (existing) {
-        removedSynapseMeta.set(edgeKey(op.fromNeuronUuid, op.toNeuronUuid), {
-          type: existing.type,
-          tags: existing.tags
-            ? existing.tags.map((t) => ({ ...t }))
-            : undefined,
-        });
+        removedSynapseMeta.set(
+          edgeKey(remove.fromNeuronUuid, remove.toNeuronUuid),
+          {
+            type: existing.type,
+            tags: existing.tags
+              ? existing.tags.map((t) => ({ ...t }))
+              : undefined,
+          },
+        );
       }
       const before = next.synapses.length;
       next.synapses = next.synapses.filter((s) =>
-        !(s.fromUUID === op.fromNeuronUuid && s.toUUID === op.toNeuronUuid)
+        !(
+          s.fromUUID === remove.fromNeuronUuid &&
+          s.toUUID === remove.toNeuronUuid
+        )
       );
       if (next.synapses.length !== before) {
         cleanupMemeticForRemovedSynapse(
           next,
-          op.fromNeuronUuid,
-          op.toNeuronUuid,
+          remove.fromNeuronUuid,
+          remove.toNeuronUuid,
         );
       }
       continue;
     }
 
-    if (op.type === "addSynapse") {
+    if ((op.type as string) === "addSynapse") {
+      const add = op as unknown as AddSynapseOp;
       // Ensure both endpoints exist; avoid crashing on stale ops.
       const existingNeuronUUIDs = new Set<string>();
       const inputCount = next.input ?? 0;
@@ -213,29 +257,31 @@ export function applyCoordinatedStructuralCandidate(
       }
       for (const n of next.neurons) existingNeuronUUIDs.add(n.uuid);
       if (
-        !existingNeuronUUIDs.has(op.fromNeuronUuid) ||
-        !existingNeuronUUIDs.has(op.toNeuronUuid)
+        !existingNeuronUUIDs.has(add.fromNeuronUuid) ||
+        !existingNeuronUUIDs.has(add.toNeuronUuid)
       ) {
         continue;
       }
 
-      if (!canAddForwardOnlySynapse(next, op.fromNeuronUuid, op.toNeuronUuid)) {
+      if (
+        !canAddForwardOnlySynapse(next, add.fromNeuronUuid, add.toNeuronUuid)
+      ) {
         continue;
       }
 
       const existing = next.synapses.find((s) =>
-        s.fromUUID === op.fromNeuronUuid && s.toUUID === op.toNeuronUuid
+        s.fromUUID === add.fromNeuronUuid && s.toUUID === add.toNeuronUuid
       );
       if (existing) {
-        existing.weight = op.weight;
+        existing.weight = add.weight;
       } else {
         const meta = removedSynapseMeta.get(
-          edgeKey(op.fromNeuronUuid, op.toNeuronUuid),
+          edgeKey(add.fromNeuronUuid, add.toNeuronUuid),
         );
         next.synapses.push({
-          fromUUID: op.fromNeuronUuid,
-          toUUID: op.toNeuronUuid,
-          weight: op.weight,
+          fromUUID: add.fromNeuronUuid,
+          toUUID: add.toNeuronUuid,
+          weight: add.weight,
           type: meta?.type,
           tags: meta?.tags ? meta.tags.map((t) => ({ ...t })) : undefined,
         });
@@ -243,6 +289,11 @@ export function applyCoordinatedStructuralCandidate(
       continue;
     }
   }
+
+  // Clean up any neurons that have become orphaned after the coordinated edits.
+  // This prevents validation failures (eg. NO_OUTWARD_CONNECTIONS) from triggering
+  // fix() as a side effect, which can bump semanticVersion for forward-only creatures.
+  cleanupOrphanedNeurons(next);
 
   const updated = Creature.fromJSON(next);
   delete updated.uuid;
