@@ -1,7 +1,10 @@
 import type { CreatureExport } from "../CreatureInterfaces.ts";
 import { CreatureUtil } from "../CreatureUtils.ts";
 import { Creature } from "../../Creature.ts";
-import { cleanupMemeticForRemovedSynapse } from "../../compact/CompactUtils.ts";
+import {
+  cleanupMemeticForRemovedNeuron,
+  cleanupMemeticForRemovedSynapse,
+} from "../../compact/CompactUtils.ts";
 import type {
   CoordinatedStructuralCandidate,
   CoordinatedStructuralOperation,
@@ -78,6 +81,102 @@ export function applyCoordinatedStructuralCandidate(
 
   for (const op of ops) {
     if (!op || typeof op.type !== "string") continue;
+
+    if (op.type === "addNeuron") {
+      // Ensure deterministic idempotency: if neuron already exists, update fields.
+      const existingIndex = next.neurons.findIndex((n) =>
+        n.uuid === op.neuronUuid
+      );
+      if (existingIndex >= 0) {
+        // Some exports treat neuron entries as readonly, so replace the object.
+        next.neurons[existingIndex] = {
+          ...next.neurons[existingIndex],
+          uuid: op.neuronUuid,
+          type: op.neuronType,
+          squash: op.squash,
+          bias: op.bias,
+        };
+        continue;
+      }
+
+      const newNeuron = {
+        uuid: op.neuronUuid,
+        type: op.neuronType,
+        squash: op.squash,
+        bias: op.bias,
+      };
+
+      if (typeof op.insertBeforeNeuronUuid === "string") {
+        const beforeIdx = next.neurons.findIndex((n) =>
+          n.uuid === op.insertBeforeNeuronUuid
+        );
+        if (beforeIdx >= 0) {
+          next.neurons.splice(beforeIdx, 0, newNeuron);
+          continue;
+        }
+
+        // `insertBeforeNeuronUuid` is an explicit ordering intent. If the target
+        // neuron is missing and this creature is forward-only, appending would
+        // violate layer ordering (hidden after output). Treat as a no-op instead.
+        if (next.forwardOnly === true) {
+          continue;
+        }
+      }
+
+      // Default placement must preserve the invariant that hidden neurons appear
+      // before output neurons (even when recurrent connections are allowed).
+      if (op.neuronType === "hidden") {
+        const firstOutputIdx = next.neurons.findIndex((n) =>
+          n.type === "output"
+        );
+        if (firstOutputIdx >= 0) {
+          next.neurons.splice(firstOutputIdx, 0, newNeuron);
+        } else {
+          next.neurons.push(newNeuron);
+        }
+      } else {
+        next.neurons.push(newNeuron);
+      }
+      continue;
+    }
+
+    if (op.type === "removeNeuron") {
+      const uuid = op.neuronUuid;
+      const beforeNeuronCount = next.neurons.length;
+      next.neurons = next.neurons.filter((n) => n.uuid !== uuid);
+      if (next.neurons.length === beforeNeuronCount) {
+        // No-op if neuron didn't exist (idempotent).
+        continue;
+      }
+
+      // Remove any synapses that reference the neuron, and clean up memetic state.
+      const removedEdges: Array<{ fromUUID: string; toUUID: string }> = [];
+      for (const s of next.synapses) {
+        if (s.fromUUID === uuid || s.toUUID === uuid) {
+          removedEdges.push({ fromUUID: s.fromUUID, toUUID: s.toUUID });
+        }
+      }
+      next.synapses = next.synapses.filter((s) =>
+        !(s.fromUUID === uuid || s.toUUID === uuid)
+      );
+      for (const e of removedEdges) {
+        cleanupMemeticForRemovedSynapse(next, e.fromUUID, e.toUUID);
+      }
+      cleanupMemeticForRemovedNeuron(next, uuid);
+      continue;
+    }
+
+    if (op.type === "changeSquash") {
+      const n = next.neurons.find((x) => x.uuid === op.neuronUuid);
+      if (n) n.squash = op.squash;
+      continue;
+    }
+
+    if (op.type === "setBias") {
+      const n = next.neurons.find((x) => x.uuid === op.neuronUuid);
+      if (n) n.bias = op.bias;
+      continue;
+    }
 
     if (op.type === "removeSynapse") {
       const existing = next.synapses.find((s) =>

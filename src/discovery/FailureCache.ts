@@ -208,6 +208,34 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
               o.toNeuronUuid ?? "?"
             }:w${w}`;
           }
+          if (t === "addNeuron") {
+            const o = op as {
+              neuronUuid?: string;
+              neuronType?: string;
+              squash?: string;
+              bias?: number;
+              insertBeforeNeuronUuid?: string;
+            };
+            const b = typeof o.bias === "number" ? formatWeight(o.bias) : "?";
+            return `addNeuron:${o.neuronUuid ?? "?"}:type${
+              o.neuronType ?? "?"
+            }:s${o.squash ?? "?"}:b${b}:before${
+              o.insertBeforeNeuronUuid ?? "-"
+            }`;
+          }
+          if (t === "removeNeuron") {
+            const o = op as { neuronUuid?: string };
+            return `removeNeuron:${o.neuronUuid ?? "?"}`;
+          }
+          if (t === "changeSquash") {
+            const o = op as { neuronUuid?: string; squash?: string };
+            return `changeSquash:${o.neuronUuid ?? "?"}:s${o.squash ?? "?"}`;
+          }
+          if (t === "setBias") {
+            const o = op as { neuronUuid?: string; bias?: number };
+            const b = typeof o.bias === "number" ? formatWeight(o.bias) : "?";
+            return `setBias:${o.neuronUuid ?? "?"}:b${b}`;
+          }
           return JSON.stringify(op);
         }).join("|");
         parts.push(stableShortHash(opKey));
