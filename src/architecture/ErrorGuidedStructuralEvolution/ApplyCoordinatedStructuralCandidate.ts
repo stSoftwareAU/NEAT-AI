@@ -1,7 +1,10 @@
 import type { CreatureExport } from "../CreatureInterfaces.ts";
 import { CreatureUtil } from "../CreatureUtils.ts";
 import { Creature } from "../../Creature.ts";
-import { cleanupMemeticForRemovedSynapse } from "../../compact/CompactUtils.ts";
+import {
+  cleanupMemeticForRemovedNeuron,
+  cleanupMemeticForRemovedSynapse,
+} from "../../compact/CompactUtils.ts";
 import type {
   CoordinatedStructuralCandidate,
   CoordinatedStructuralOperation,
@@ -120,8 +123,20 @@ export function applyCoordinatedStructuralCandidate(
         }
       }
 
-      // Default: append at the end (safe for non-forward-only creatures).
-      next.neurons.push(newNeuron);
+      // Default placement must preserve the invariant that hidden neurons appear
+      // before output neurons (even when recurrent connections are allowed).
+      if (op.neuronType === "hidden") {
+        const firstOutputIdx = next.neurons.findIndex((n) =>
+          n.type === "output"
+        );
+        if (firstOutputIdx >= 0) {
+          next.neurons.splice(firstOutputIdx, 0, newNeuron);
+        } else {
+          next.neurons.push(newNeuron);
+        }
+      } else {
+        next.neurons.push(newNeuron);
+      }
       continue;
     }
 
@@ -147,6 +162,7 @@ export function applyCoordinatedStructuralCandidate(
       for (const e of removedEdges) {
         cleanupMemeticForRemovedSynapse(next, e.fromUUID, e.toUUID);
       }
+      cleanupMemeticForRemovedNeuron(next, uuid);
       continue;
     }
 
