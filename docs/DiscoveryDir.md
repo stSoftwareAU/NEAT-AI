@@ -37,6 +37,36 @@ standard squashes including ReLU, GELU, ELU, SELU, Softplus, LOGISTIC (sigmoid),
 and TANH. There is no TypeScript fallback path; without the Rust module the
 discovery phase is skipped.
 
+## Coordinated-structural candidates (7-Jan-2026)
+
+Some structural improvements are **epistatic**: no single edit helps in
+isolation, but a _group_ of edits helps when applied together. These are
+returned as **coordinated-structural** candidates, which must be applied as a
+single ordered ablation then re-scored once on the full training set.
+
+NEAT-AI intentionally treats this as a **stable contract**: as NEAT-AI-Discovery
+(Rust) adds more sophisticated discoveries over time, TypeScript should not need
+new “discovery types”. It should only need to support the evolving **operation
+vocabulary** and apply the ordered list atomically.
+
+### Supported operation vocabulary
+
+- `removeSynapse(fromNeuronUuid,toNeuronUuid)`
+- `addSynapse(fromNeuronUuid,toNeuronUuid,weight)` (idempotent: updates weight
+  if the synapse already exists)
+- `addNeuron(neuronUuid,neuronType,squash,bias,insertBeforeNeuronUuid?)`
+- `removeNeuron(neuronUuid)` (also removes attached synapses)
+- `changeSquash(neuronUuid,squash)`
+- `setBias(neuronUuid,bias)`
+
+### Forward-only note
+
+For forward-only creatures, `addNeuron.insertBeforeNeuronUuid` allows Rust to
+specify neuron placement so subsequent `addSynapse(newNeuron -> target)`
+respects forward-only ordering. If placement is omitted, NEAT-AI appends the
+neuron, which is safe for recurrent creatures but may be rejected for
+forward-only.
+
 ## Data Layout Expectations
 
 Discovery operates on two directories that can be shared across nodes:
