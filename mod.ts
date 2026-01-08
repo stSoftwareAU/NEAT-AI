@@ -190,3 +190,19 @@ export type {
   TacitKnowledgeResult,
   WorkerInterface as IntelligentDesignWorkerInterface,
 } from "./src/intelligentDesign/mod.ts";
+
+/**
+ * WGPU Acceleration Module
+ *
+ * This module provides GPU-accelerated batched activation for creatures using WebGPU.
+ * It generates WGSL compute shaders from the creature's neural network topology
+ * and executes them on the GPU for parallel processing of multiple input records.
+ *
+ * Requires Deno with --unstable-webgpu flag.
+ *
+ * @see {@link module:src/wgpu/WGPUActivation}
+ */
+export { WGPUActivation } from "./src/wgpu/WGPUActivation.ts";
+export type { WGPUActivationConfig } from "./src/wgpu/WGPUActivation.ts";
+export { makeWGSLShader } from "./src/wgpu/MakeWGSLShader.ts";
+export type { WGSLShaderResult } from "./src/wgpu/MakeWGSLShader.ts";
