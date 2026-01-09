@@ -30,7 +30,7 @@ async function canUseWGPUForDatasetToleranceMSE(
     interleaved: Float32Array,
     recordCount: number,
     valuesCount: number,
-  ) => Promise<Float32Array>,
+  ) => Promise<number>,
   tolerance: number,
 ): Promise<boolean> {
   if (!hasWebGPU()) return false;
@@ -69,9 +69,7 @@ async function canUseWGPUForDatasetToleranceMSE(
     const cpuAvg = cpuSum / recordsRead;
 
     // GPU MSE on sample
-    const per = await evaluateMSE(f32, recordsRead, valuesCount);
-    let gpuSum = 0;
-    for (let i = 0; i < per.length; i++) gpuSum += per[i];
+    const gpuSum = await evaluateMSE(f32, recordsRead, valuesCount);
     const gpuAvg = gpuSum / recordsRead;
 
     return Math.abs(gpuAvg - cpuAvg) <= tolerance;
@@ -156,7 +154,7 @@ export async function evaluateDirMaybeWGPU(
     | {
       type: "evaluate-mse-result";
       requestId: number;
-      perRecordMSE: ArrayBuffer;
+      totalError: number;
     }
     | { type: "error"; requestId: number; message: string };
 
@@ -219,7 +217,7 @@ export async function evaluateDirMaybeWGPU(
     interleaved: Float32Array,
     recordCount: number,
     valuesCount: number,
-  ): Promise<Float32Array> => {
+  ): Promise<number> => {
     const bytes = recordCount * valuesCount * 4;
     const buf = interleaved.buffer.slice(
       interleaved.byteOffset,
@@ -238,7 +236,7 @@ export async function evaluateDirMaybeWGPU(
         if (m.type !== "evaluate-mse-result") {
           throw new Error(`Unexpected broker response: ${m.type}`);
         }
-        return new Float32Array(m.perRecordMSE);
+        return m.totalError;
       },
     );
   };
@@ -301,14 +299,11 @@ export async function evaluateDirMaybeWGPU(
           // Fast path: MSE directly on GPU using the interleaved record buffer.
           if (cost.getName() === MSE.NAME) {
             // deno-lint-ignore no-await-in-loop -- GPU batches must be processed sequentially.
-            const perRecord = await evaluateMSE(
+            batchErr = await evaluateMSE(
               batchArray,
               recordsRead,
               valuesCount,
             );
-            for (let i = 0; i < perRecord.length; i++) {
-              batchErr += perRecord[i];
-            }
           } else {
             // Fallback: GPU activation + CPU cost.
             const batchInputs = new Float32Array(recordsRead * creature.input);

@@ -153,13 +153,16 @@ function buildProgram(
 export class WGPUInterleavedMSE {
   private device: GPUDevice;
   private pipeline: GPUComputePipeline;
+  private reductionPipeline: GPUComputePipeline;
   private bindGroupLayout: GPUBindGroupLayout;
+  private reductionBindGroupLayout: GPUBindGroupLayout;
   private paramsBuffer: GPUBuffer;
   private neuronsBuffer: GPUBuffer;
   private edgesBuffer: GPUBuffer;
 
   private recordsBuffer: GPUBuffer | null = null;
   private mseBuffer: GPUBuffer | null = null;
+  private finalSumBuffer: GPUBuffer | null = null;
   private stagingBuffer: GPUBuffer | null = null;
   private currentMaxRecords = 0;
 
@@ -172,7 +175,9 @@ export class WGPUInterleavedMSE {
   private constructor(
     device: GPUDevice,
     pipeline: GPUComputePipeline,
+    reductionPipeline: GPUComputePipeline,
     bindGroupLayout: GPUBindGroupLayout,
+    reductionBindGroupLayout: GPUBindGroupLayout,
     paramsBuffer: GPUBuffer,
     neuronsBuffer: GPUBuffer,
     edgesBuffer: GPUBuffer,
@@ -186,7 +191,9 @@ export class WGPUInterleavedMSE {
   ) {
     this.device = device;
     this.pipeline = pipeline;
+    this.reductionPipeline = reductionPipeline;
     this.bindGroupLayout = bindGroupLayout;
+    this.reductionBindGroupLayout = reductionBindGroupLayout;
     this.paramsBuffer = paramsBuffer;
     this.neuronsBuffer = neuronsBuffer;
     this.edgesBuffer = edgesBuffer;
@@ -209,15 +216,27 @@ export class WGPUInterleavedMSE {
     if (!adapter) throw new Error("No WebGPU adapter found");
     const device = await adapter.requestDevice();
 
-    const { shaderCode } = makeWGSLInterleavedMSEShader(creature, {
-      workgroupSize: fullConfig.workgroupSize,
-    });
+    const { shaderCode, reductionShaderCode } = makeWGSLInterleavedMSEShader(
+      creature,
+      {
+        workgroupSize: fullConfig.workgroupSize,
+      },
+    );
     const shaderModule = device.createShaderModule({ code: shaderCode });
     const pipeline = device.createComputePipeline({
       layout: "auto",
       compute: { module: shaderModule, entryPoint: "main" },
     });
     const bindGroupLayout = pipeline.getBindGroupLayout(0);
+
+    const reductionShaderModule = device.createShaderModule({
+      code: reductionShaderCode,
+    });
+    const reductionPipeline = device.createComputePipeline({
+      layout: "auto",
+      compute: { module: reductionShaderModule, entryPoint: "reduce" },
+    });
+    const reductionBindGroupLayout = reductionPipeline.getBindGroupLayout(0);
 
     const { neurons, edges } = buildProgram(creature);
     const paramsBuffer = device.createBuffer({
@@ -272,7 +291,9 @@ export class WGPUInterleavedMSE {
     return new WGPUInterleavedMSE(
       device,
       pipeline,
+      reductionPipeline,
       bindGroupLayout,
+      reductionBindGroupLayout,
       paramsBuffer,
       neuronsBuffer,
       edgesBuffer,
@@ -290,6 +311,7 @@ export class WGPUInterleavedMSE {
     try {
       this.recordsBuffer?.destroy();
       this.mseBuffer?.destroy();
+      this.finalSumBuffer?.destroy();
       this.stagingBuffer?.destroy();
       this.paramsBuffer.destroy();
       this.neuronsBuffer.destroy();
@@ -299,6 +321,7 @@ export class WGPUInterleavedMSE {
     }
     this.recordsBuffer = null;
     this.mseBuffer = null;
+    this.finalSumBuffer = null;
     this.stagingBuffer = null;
     // @ts-ignore - help GC
     this.device = null;
@@ -308,21 +331,33 @@ export class WGPUInterleavedMSE {
     if (maxRecords <= this.currentMaxRecords) return;
     this.recordsBuffer?.destroy();
     this.mseBuffer?.destroy();
+    this.finalSumBuffer?.destroy();
     this.stagingBuffer?.destroy();
 
     const recordsBytes = maxRecords * valuesCount * 4;
-    const mseBytes = maxRecords * 4;
+    const maxWorkgroups = Math.ceil(maxRecords / this.config.workgroupSize);
+    const workgroupSumsBytes = maxWorkgroups * 4;
 
     this.recordsBuffer = this.device.createBuffer({
       size: recordsBytes,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
     this.mseBuffer = this.device.createBuffer({
-      size: mseBytes,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+      size: workgroupSumsBytes,
+      usage: GPUBufferUsage.STORAGE,
     });
+    this.finalSumBuffer = this.device.createBuffer({
+      size: 4,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+      mappedAtCreation: true,
+    });
+    {
+      const view = new Float32Array(this.finalSumBuffer.getMappedRange());
+      view[0] = 0;
+      this.finalSumBuffer.unmap();
+    }
     this.stagingBuffer = this.device.createBuffer({
-      size: mseBytes,
+      size: 4,
       usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
     });
 
@@ -333,8 +368,8 @@ export class WGPUInterleavedMSE {
     interleaved: Float32Array,
     recordCount: number,
     valuesCount: number,
-  ): Promise<Float32Array> {
-    if (recordCount === 0) return new Float32Array(0);
+  ): Promise<number> {
+    if (recordCount === 0) return 0;
     if (recordCount > this.config.maxRecords) {
       throw new Error(
         `recordCount ${recordCount} exceeds maxRecords ${this.config.maxRecords}`,
@@ -388,6 +423,8 @@ export class WGPUInterleavedMSE {
     });
 
     const encoder = this.device.createCommandEncoder();
+
+    // Main pass: forward + per-record MSE → workgroup sums
     const pass = encoder.beginComputePass();
     pass.setPipeline(this.pipeline);
     pass.setBindGroup(0, bindGroup);
@@ -395,22 +432,60 @@ export class WGPUInterleavedMSE {
     pass.dispatchWorkgroups(workgroups);
     pass.end();
 
+    // Reduction pass: workgroup sums → single sum (tree reduction)
+    if (workgroups > 1) {
+      const countBuffer = this.device.createBuffer({
+        size: 4,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        mappedAtCreation: true,
+      });
+      {
+        const view = new Uint32Array(countBuffer.getMappedRange());
+        view[0] = workgroups;
+        countBuffer.unmap();
+      }
+      const reductionBindGroup = this.device.createBindGroup({
+        layout: this.reductionBindGroupLayout,
+        entries: [
+          { binding: 0, resource: { buffer: countBuffer } },
+          { binding: 1, resource: { buffer: this.mseBuffer! } },
+          { binding: 2, resource: { buffer: this.finalSumBuffer! } },
+        ],
+      });
+      const reductionPass = encoder.beginComputePass();
+      reductionPass.setPipeline(this.reductionPipeline);
+      reductionPass.setBindGroup(0, reductionBindGroup);
+      reductionPass.dispatchWorkgroups(1);
+      reductionPass.end();
+    } else {
+      // Single workgroup: just copy directly
+      encoder.copyBufferToBuffer(
+        this.mseBuffer!,
+        0,
+        this.finalSumBuffer!,
+        0,
+        4,
+      );
+    }
+
+    // Copy final sum to staging
     encoder.copyBufferToBuffer(
-      this.mseBuffer!,
+      this.finalSumBuffer!,
       0,
       this.stagingBuffer!,
       0,
-      recordCount * 4,
+      4,
     );
 
     this.device.queue.submit([encoder.finish()]);
     await this.device.queue.onSubmittedWorkDone();
 
     await this.stagingBuffer!.mapAsync(GPUMapMode.READ);
-    const out = new Float32Array(
-      this.stagingBuffer!.getMappedRange(0, recordCount * 4).slice(0),
-    );
+    const total = new Float32Array(
+      this.stagingBuffer!.getMappedRange(0, 4).slice(0),
+    )[0];
     this.stagingBuffer!.unmap();
-    return out;
+
+    return total;
   }
 }

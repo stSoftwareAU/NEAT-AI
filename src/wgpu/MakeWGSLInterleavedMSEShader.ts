@@ -13,11 +13,49 @@ import type { Creature } from "../Creature.ts";
 export function makeWGSLInterleavedMSEShader(
   creature: Creature,
   opts: { workgroupSize?: number } = {},
-): { shaderCode: string; workgroupSize: number } {
+): { shaderCode: string; reductionShaderCode: string; workgroupSize: number } {
   const workgroupSize = opts.workgroupSize ?? 64;
   const inputCount = creature.input;
   const outputCount = creature.output;
   const neuronCount = creature.neurons.length;
+
+  const reductionShaderCode =
+    `// Second pass: reduce workgroup sums to a single total using tree reduction
+@group(0) @binding(0) var<uniform> count: u32;
+@group(0) @binding(1) var<storage, read> workgroupSums: array<f32>;
+@group(0) @binding(2) var<storage, read_write> reduced: array<f32>;
+
+var<workgroup> wgSum: array<f32, 64>;
+
+@compute @workgroup_size(64)
+fn reduce(@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(local_invocation_id) local_id: vec3<u32>) {
+  let idx = global_id.x;
+  let lid = local_id.x;
+  
+  wgSum[lid] = 0.0;
+  if (idx < count) {
+    wgSum[lid] = workgroupSums[idx];
+  }
+  
+  workgroupBarrier();
+  
+  // Tree reduction within workgroup
+  var offset = 32u;
+  loop {
+    if (offset == 0u) { break; }
+    if (lid < offset && lid + offset < count) {
+      wgSum[lid] = wgSum[lid] + wgSum[lid + offset];
+    }
+    workgroupBarrier();
+    offset = offset / 2u;
+  }
+  
+  // First thread writes result
+  if (lid == 0u) {
+    reduced[0] = wgSum[0];
+  }
+}
+`;
 
   return {
     workgroupSize,
@@ -58,7 +96,9 @@ struct Edge {
 @group(0) @binding(1) var<storage, read> neurons: array<Neuron>;
 @group(0) @binding(2) var<storage, read> edges: array<Edge>;
 @group(0) @binding(3) var<storage, read> records: array<f32>;
-@group(0) @binding(4) var<storage, read_write> perRecordMSE: array<f32>;
+@group(0) @binding(4) var<storage, read_write> workgroupSums: array<f32>;
+
+var<workgroup> wgSum: array<f32, ${workgroupSize}>;
 
 fn sanitise_clamp(x: f32, low: f32, high: f32, fallback: f32) -> f32 {
   let y = clamp(x, low, high);
@@ -250,9 +290,22 @@ fn apply_squash(kind: u32, x: f32) -> f32 {
 }
 
 @compute @workgroup_size(${workgroupSize})
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(local_invocation_id) local_id: vec3<u32>) {
   let idx = global_id.x;
-  if (idx >= params.record_count) { return; }
+  let lid = local_id.x;
+  
+  // Initialize workgroup sum accumulator
+  wgSum[lid] = 0.0;
+  
+  if (idx >= params.record_count) {
+    // Barrier so all threads participate in reduction even if some are out of bounds
+    workgroupBarrier();
+    if (lid == 0u) {
+      let wgIdx = global_id.x / ${workgroupSize}u;
+      workgroupSums[wgIdx] = 0.0;
+    }
+    return;
+  }
 
   var a: array<f32, ${neuronCount}>;
   for (var z: u32 = 0u; z < params.neuron_count; z = z + 1u) { a[z] = 0.0; }
@@ -323,8 +376,27 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let d = tgt - outv;
     err = err + d * d;
   }
-  perRecordMSE[idx] = err * inv;
+  wgSum[lid] = err * inv;
+  
+  // Reduce workgroup sum: tree reduction
+  workgroupBarrier();
+  var offset = ${workgroupSize}u / 2u;
+  loop {
+    if (offset == 0u) { break; }
+    if (lid < offset) {
+      wgSum[lid] = wgSum[lid] + wgSum[lid + offset];
+    }
+    workgroupBarrier();
+    offset = offset / 2u;
+  }
+  
+  // First thread writes workgroup sum
+  if (lid == 0u) {
+    let wgIdx = global_id.x / ${workgroupSize}u;
+    workgroupSums[wgIdx] = wgSum[0];
+  }
 }
 `,
+    reductionShaderCode,
   };
 }

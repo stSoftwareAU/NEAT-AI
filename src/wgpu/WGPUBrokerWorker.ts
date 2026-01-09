@@ -39,7 +39,7 @@ type ActivateResultMsg = {
 type EvaluateMSEResultMsg = {
   type: "evaluate-mse-result";
   requestId: number;
-  perRecordMSE: ArrayBuffer;
+  totalError: number;
 };
 type ErrorMsg = { type: "error"; requestId: number; message: string };
 
@@ -96,7 +96,7 @@ function reply(
   if (msg.type === "activate-result") {
     port.postMessage(msg, { transfer: [msg.outputs] });
   } else if (msg.type === "evaluate-mse-result") {
-    port.postMessage(msg, { transfer: [msg.perRecordMSE] });
+    port.postMessage(msg);
   } else {
     port.postMessage(msg);
   }
@@ -133,7 +133,7 @@ async function handleClientMessage(port: MessagePort, msg: ClientMsg) {
   }
 
   if (msg.type === "evaluate-mse") {
-    const perRecordMSE = await enqueue(async () => {
+    const totalError = await enqueue(async () => {
       const entry = cache.get(msg.creatureKey);
       if (!entry) {
         throw new Error(
@@ -141,18 +141,17 @@ async function handleClientMessage(port: MessagePort, msg: ClientMsg) {
         );
       }
       const records = new Float32Array(msg.records);
-      const out = await entry.mse.evaluateInterleaved(
+      return await entry.mse.evaluateInterleaved(
         records,
         msg.recordCount,
         msg.valuesCount,
       );
-      return out.slice().buffer;
     });
 
     reply(port, {
       type: "evaluate-mse-result",
       requestId: msg.requestId,
-      perRecordMSE,
+      totalError,
     });
     return;
   }
