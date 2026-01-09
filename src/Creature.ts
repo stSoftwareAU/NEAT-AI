@@ -1168,7 +1168,10 @@ export class Creature implements CreatureInternal {
     cost: CostInterface,
     feedbackLoop: boolean,
   ): { error: number } {
-    const dataResult = dataFiles(dataDir);
+    // Deterministic evaluation ordering: we sort input files so that repeated
+    // evaluations return stable floating-point sums (important for CPU vs GPU
+    // comparisons and production reproducibility).
+    const dataResult = dataFiles(dataDir, { disableRandomSamples: true });
     assert(dataResult.files.length > 0, "No data files found");
 
     let error = 0;

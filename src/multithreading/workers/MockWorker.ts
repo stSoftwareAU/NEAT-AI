@@ -18,7 +18,10 @@ export class MockWorker implements WorkerInterface {
   }
 
   private processor = new WorkerProcessor();
-  postMessage(data: RequestData) {
+  postMessage(
+    data: RequestData,
+    _transferOrOptions?: Transferable[] | StructuredSerializeOptions,
+  ) {
     this.processor.process(data).then((result) => {
       type MockEvent = Event & { data: ResponseData };
       const me = new Event("mock") as MockEvent;

@@ -9,6 +9,7 @@ import { Costs } from "../../Costs.ts";
 import type { CostInterface } from "../../costs/CostInterface.ts";
 import { Creature } from "../../Creature.ts";
 import { writeDiagnostics } from "../../utils/Diagnostics.ts";
+import { evaluateDirMaybeWGPU } from "../../wgpu/EvaluateDirWGPU.ts";
 import type { RequestData, ResponseData } from "./WorkerHandler.ts";
 
 type DiscoverResponsePayload = NonNullable<ResponseData["discover"]>;
@@ -85,6 +86,9 @@ export class WorkerProcessor {
 
   private cost?: CostInterface;
 
+  // Optional port to the shared WebGPU broker (supplied by WorkerHandler on init).
+  private wgpuBrokerPort: MessagePort | null = null;
+
   /**
    * Loads a custom cost function from a file path using dynamic import.
    * This allows external programs to provide custom cost functions without
@@ -148,6 +152,13 @@ export class WorkerProcessor {
       }
 
       this.dataSetDir = data.initialize.dataSetDir;
+      this.wgpuBrokerPort = data.initialize.wgpuBrokerPort ?? null;
+      try {
+        // Required in some runtimes for MessagePort to start delivering messages.
+        this.wgpuBrokerPort?.start?.();
+      } catch {
+        // ignore
+      }
       return {
         taskID: data.taskID,
         duration: Date.now() - start,
@@ -164,10 +175,12 @@ export class WorkerProcessor {
         creature = Creature.fromJSON(JSON.parse(data.evaluate.creature));
         /* release some memory*/
         data.evaluate.creature = "";
-        const result = creature.evaluateDir(
+        const result = await evaluateDirMaybeWGPU(
+          creature,
           this.dataSetDir,
           this.cost,
           data.evaluate.feedbackLoop,
+          this.wgpuBrokerPort ?? undefined,
         );
 
         return {

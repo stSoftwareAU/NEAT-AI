@@ -84,6 +84,24 @@ export class WGPUActivation {
     creature: Creature,
     config: WGPUActivationConfig = {},
   ): Promise<WGPUActivation> {
+    const WGPU_CREATE_TIMEOUT_MS = 10_000;
+    const withTimeout = async <T>(promise: Promise<T>, label: string) => {
+      let timer: number | undefined;
+      try {
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error(label)),
+            WGPU_CREATE_TIMEOUT_MS,
+          );
+        });
+        return await Promise.race([promise, timeoutPromise]);
+      } finally {
+        if (timer !== undefined) {
+          clearTimeout(timer);
+        }
+      }
+    };
+
     const fullConfig: Required<WGPUActivationConfig> = {
       maxBatchSize: config.maxBatchSize ?? 4096,
       workgroupSize: config.workgroupSize ?? 64,
@@ -98,55 +116,103 @@ export class WGPUActivation {
     }
 
     // Request adapter and device
-    const adapter = await navigator.gpu.requestAdapter();
+    const adapter = await withTimeout(
+      navigator.gpu.requestAdapter(),
+      "WebGPU adapter request timed out",
+    );
     if (!adapter) {
       throw new Error("Failed to get WebGPU adapter");
     }
 
-    const device = await adapter.requestDevice();
+    const device = await withTimeout(
+      adapter.requestDevice(),
+      "WebGPU device request timed out",
+    );
+
+    if (
+      !Number.isInteger(fullConfig.workgroupSize) ||
+      fullConfig.workgroupSize <= 0
+    ) {
+      throw new Error(
+        `Invalid workgroupSize ${fullConfig.workgroupSize}. Expected a positive integer.`,
+      );
+    }
+
+    const maxInvocations = device.limits.maxComputeInvocationsPerWorkgroup;
+    const maxX = device.limits.maxComputeWorkgroupSizeX;
+    if (
+      fullConfig.workgroupSize > maxInvocations ||
+      fullConfig.workgroupSize > maxX
+    ) {
+      throw new Error(
+        `workgroupSize ${fullConfig.workgroupSize} exceeds device limits (maxInvocations=${maxInvocations}, maxWorkgroupSizeX=${maxX})`,
+      );
+    }
 
     // Generate shader code
-    const shaderResult = makeWGSLShader(creature);
+    const shaderResult = makeWGSLShader(creature, {
+      workgroupSize: fullConfig.workgroupSize,
+    });
+
+    // Guardrail: fully-unrolled shaders grow with synapse count and can become
+    // too large for reliable compilation/execution on some drivers.
+    // When this happens we've observed all-NaN outputs rather than a clean error.
+    //
+    // Keep this threshold conservative; callers should fall back to CPU when hit.
+    if (shaderResult.shaderCode.length > 750_000) {
+      throw new Error(
+        `WGSL shader is too large (${shaderResult.shaderCode.length} chars). ` +
+          "This creature is too dense for the current unrolled WebGPU path. " +
+          "Reduce network density/size or use CPU activation for this creature.",
+      );
+    }
 
     // Create shader module
     const shaderModule = device.createShaderModule({
       code: shaderResult.shaderCode,
     });
 
-    // Create bind group layout
-    const bindGroupLayout = device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "uniform" },
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "read-only-storage" },
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "storage" },
-        },
-      ],
-    });
+    // Fail fast on shader compilation errors (avoids silent NaN outputs).
+    try {
+      const compilationInfo = await withTimeout(
+        shaderModule.getCompilationInfo(),
+        "WGSL compilation info timed out",
+      );
+      const errors = compilationInfo.messages.filter((m) => m.type === "error");
+      if (errors.length) {
+        const detail = errors.slice(0, 3).map((e) =>
+          `${e.lineNum}:${e.linePos} ${e.message}`
+        ).join("; ");
+        throw new Error(`WGSL shader compilation failed: ${detail}`);
+      }
+    } catch (e) {
+      // If compilation info isn't supported, we still proceed.
+      // The size guard above catches the most common failure mode.
+      if (
+        e instanceof Error &&
+        e.message.startsWith("WGSL shader compilation failed")
+      ) {
+        throw e;
+      }
+    }
 
-    // Create pipeline layout
-    const pipelineLayout = device.createPipelineLayout({
-      bindGroupLayouts: [bindGroupLayout],
-    });
-
-    // Create compute pipeline
-    const pipeline = device.createComputePipeline({
-      layout: pipelineLayout,
+    // Create compute pipeline.
+    //
+    // Note: In Deno's current WebGPU implementation, `createComputePipelineAsync`
+    // is not reliably available/usable across environments. We therefore use the
+    // synchronous API here.
+    //
+    // Quality gate: our `quality.sh` runs WebGPU tests in a separate process with
+    // a watchdog timeout, so a driver stall here cannot hang the entire suite.
+    const pipelineDescriptor: GPUComputePipelineDescriptor = {
+      layout: "auto",
       compute: {
         module: shaderModule,
         entryPoint: "main",
       },
-    });
+    };
+    const pipeline = device.createComputePipeline(pipelineDescriptor);
+    const bindGroupLayout = pipeline.getBindGroupLayout(0);
 
     // Create params uniform buffer
     const paramsBuffer = device.createBuffer({
@@ -229,6 +295,11 @@ export class WGPUActivation {
       );
     }
 
+    if (batchSize === 0) {
+      // Empty batch is valid: return an empty output array and avoid touching GPU buffers.
+      return new Float32Array(0);
+    }
+
     if (batchSize > this.config.maxBatchSize) {
       throw new Error(
         `Batch size ${batchSize} exceeds maximum ${this.config.maxBatchSize}`,
@@ -293,10 +364,62 @@ export class WGPUActivation {
     );
 
     // Submit commands
-    this.device.queue.submit([commandEncoder.finish()]);
+    this.device.pushErrorScope("validation");
+    let errorScopePopped = false;
+    const WGPU_TIMEOUT_MS = 30_000;
+    const withTimeout = async <T>(
+      promise: Promise<T>,
+      label: string,
+    ): Promise<T> => {
+      let timer: number | undefined;
+      try {
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(label)), WGPU_TIMEOUT_MS);
+        });
+        return await Promise.race([promise, timeoutPromise]);
+      } finally {
+        if (timer !== undefined) {
+          clearTimeout(timer);
+        }
+      }
+    };
+
+    try {
+      this.device.queue.submit([commandEncoder.finish()]);
+
+      await withTimeout(
+        this.device.queue.onSubmittedWorkDone(),
+        "WebGPU queue submission timed out",
+      );
+
+      const validationError = await withTimeout(
+        this.device.popErrorScope(),
+        "WebGPU validation error scope timed out",
+      );
+      errorScopePopped = true;
+
+      if (validationError) {
+        throw new Error(`WebGPU validation error: ${validationError.message}`);
+      }
+    } finally {
+      // Best-effort: keep the device error scope stack balanced even when a timeout happens.
+      if (!errorScopePopped) {
+        try {
+          await withTimeout(
+            this.device.popErrorScope(),
+            "WebGPU validation error scope cleanup timed out",
+          );
+        } catch {
+          // ignore
+        }
+      }
+    }
 
     // Read back results
-    await this.stagingBuffer!.mapAsync(GPUMapMode.READ);
+    await withTimeout(
+      this.stagingBuffer!.mapAsync(GPUMapMode.READ),
+      "WebGPU mapAsync timed out",
+    );
     const outputData = new Float32Array(
       this.stagingBuffer!.getMappedRange(0, outputSize).slice(0),
     );
@@ -333,6 +456,28 @@ export class WGPUActivation {
     const inputCount = this.shaderResult.inputCount;
     const outputCount = this.shaderResult.outputCount;
     const batchSize = Math.floor(inputs.length / inputCount);
+
+    if (inputs.length !== batchSize * inputCount) {
+      throw new Error(
+        `Inputs length ${inputs.length} is not divisible by input count ${inputCount}`,
+      );
+    }
+
+    if (batchSize === 0) {
+      if (targets.length !== 0) {
+        throw new Error(
+          `Targets length ${targets.length} does not match expected 0 for empty inputs`,
+        );
+      }
+      return 0;
+    }
+
+    const expectedTargets = batchSize * outputCount;
+    if (targets.length !== expectedTargets) {
+      throw new Error(
+        `Targets length ${targets.length} does not match expected ${expectedTargets} (batchSize=${batchSize}, outputCount=${outputCount})`,
+      );
+    }
 
     // Activate all inputs
     const outputs = await this.activateBatch(inputs);
@@ -372,7 +517,32 @@ export class WGPUActivation {
   ): Promise<number> {
     const inputCount = this.shaderResult.inputCount;
     const outputCount = this.shaderResult.outputCount;
-    const totalSamples = Math.floor(inputs.length / inputCount);
+
+    if (inputs.length === 0) {
+      // No samples: return a sensible result rather than NaN.
+      return 0;
+    }
+
+    if (inputs.length < inputCount) {
+      throw new Error(
+        `Inputs length ${inputs.length} is smaller than input count ${inputCount}`,
+      );
+    }
+
+    if (inputs.length % inputCount !== 0) {
+      throw new Error(
+        `Inputs length ${inputs.length} is not divisible by input count ${inputCount}`,
+      );
+    }
+
+    const totalSamples = inputs.length / inputCount;
+    const expectedTargets = totalSamples * outputCount;
+    if (targets.length !== expectedTargets) {
+      throw new Error(
+        `Targets length ${targets.length} does not match expected ${expectedTargets} (samples=${totalSamples}, outputCount=${outputCount})`,
+      );
+    }
+
     const chunkSize = batchSize ?? this.config.maxBatchSize;
 
     let totalError = 0;
@@ -397,6 +567,11 @@ export class WGPUActivation {
       );
       totalError += batchError * currentBatchSize;
       processedSamples += currentBatchSize;
+    }
+
+    if (processedSamples === 0) {
+      // Defensive guard: callers should never get NaN due to a 0/0.
+      return 0;
     }
 
     return totalError / processedSamples;

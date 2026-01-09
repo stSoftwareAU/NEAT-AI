@@ -44,6 +44,14 @@ export interface RequestData {
      * Rust verbose logs.
      */
     discoveryVerbose?: boolean;
+    /**
+     * Optional MessagePort connected to the shared WebGPU broker.
+     *
+     * Note (8-Jan-2026): This is transferred (not cloned) at worker initialisation.
+     * It allows many workers to share a single GPU device/pipeline cache to avoid
+     * per-worker WebGPU initialisation lockups.
+     */
+    wgpuBrokerPort?: MessagePort;
   };
   /** Creature evaluation request */
   evaluate?: {
@@ -178,7 +186,10 @@ export interface WorkerInterface {
    *
    * @param data - Data to send to the worker
    */
-  postMessage(data: RequestData): void;
+  postMessage(
+    data: RequestData,
+    transferOrOptions?: Transferable[] | StructuredSerializeOptions,
+  ): void;
 
   /**
    * Terminates the worker.
@@ -210,6 +221,15 @@ let globalWorkerID = 0;
  * ```
  */
 export class WorkerHandler {
+  /**
+   * Shared WebGPU broker worker (one per process).
+   *
+   * We intentionally centralise WebGPU initialisation and pipeline compilation
+   * to avoid per-worker WebGPU initialisation lockups/panics under high worker
+   * counts (eg. 30+ concurrent workers).
+   */
+  private static wgpuBroker: Worker | null = null;
+
   /** The underlying worker implementation */
   private worker: WorkerInterface;
 
@@ -290,7 +310,34 @@ export class WorkerHandler {
 
       this.callback(me.data as ResponseData);
     });
-    this.makePromise(data);
+
+    // Best-effort: connect this worker to the shared WebGPU broker.
+    // If this fails (missing MessageChannel support, etc), we keep CPU behaviour.
+    let transferOrOptions:
+      | Transferable[]
+      | StructuredSerializeOptions
+      | undefined;
+    try {
+      if (!direct) {
+        if (!WorkerHandler.wgpuBroker) {
+          WorkerHandler.wgpuBroker = new Worker(
+            new URL("../../wgpu/WGPUBrokerWorker.ts", import.meta.url).href,
+            { type: "module", name: "wgpu-broker" },
+          );
+        }
+        const channel = new MessageChannel();
+        WorkerHandler.wgpuBroker.postMessage(
+          { type: "connect", port: channel.port1 },
+          { transfer: [channel.port1] },
+        );
+        data.initialize!.wgpuBrokerPort = channel.port2;
+        transferOrOptions = { transfer: [channel.port2] };
+      }
+    } catch {
+      // ignore
+    }
+
+    this.makePromise(data, transferOrOptions);
   }
 
   /**
@@ -326,7 +373,10 @@ export class WorkerHandler {
     this.callbacks.delete(data.taskID);
   }
 
-  private makePromise(data: RequestData) {
+  private makePromise(
+    data: RequestData,
+    transferOrOptions?: Transferable[] | StructuredSerializeOptions,
+  ) {
     this.busyCount++;
     const p = new Promise<ResponseData>((resolve) => {
       const call = (result: ResponseData) => {
@@ -349,7 +399,7 @@ export class WorkerHandler {
       );
     }
 
-    this.worker.postMessage(data);
+    this.worker.postMessage(data, transferOrOptions);
 
     return p;
   }
