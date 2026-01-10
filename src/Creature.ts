@@ -66,6 +66,17 @@ interface CreatureOptions {
 }
 
 /**
+ * Cached score components to avoid recalculating on every score calculation.
+ * Issue #1023: Performance optimization for large creatures.
+ */
+export interface CachedScoreComponents {
+  /** Number of hidden neurons (neurons.length - input - output) */
+  hiddenNeuronCount: number;
+  /** Total complexity penalty from squash functions */
+  squashComplexityPenalty: number;
+}
+
+/**
  * Creature Class
  *
  * The Creature class represents an AI entity within the NEAT (NeuroEvolution of Augmenting Topologies) framework.
@@ -143,6 +154,13 @@ export class Creature implements CreatureInternal {
   public forwardOnly?: boolean;
 
   /**
+   * Cached score components to avoid recalculating structure-dependent values
+   * on every score calculation. Invalidated when structure changes.
+   * Issue #1023: Performance optimization for large creatures.
+   */
+  public cachedScoreComponents?: CachedScoreComponents;
+
+  /**
    * Debug mode flag.
    * @type {boolean}
    */
@@ -215,6 +233,17 @@ export class Creature implements CreatureInternal {
       this.cacheSelf.delete(from);
     }
     this.cacheFocus.clear();
+    this.invalidateScoreCache();
+  }
+
+  /**
+   * Invalidate the cached score components.
+   * Should be called whenever structure changes (neurons/synapses added/removed,
+   * squash functions changed).
+   * Issue #1023: Performance optimization for large creatures.
+   */
+  public invalidateScoreCache() {
+    this.cachedScoreComponents = undefined;
   }
 
   private initialize(options: {
@@ -634,6 +663,7 @@ export class Creature implements CreatureInternal {
     }
 
     this.clearCache(from, to);
+    this.invalidateScoreCache();
 
     return connection;
   }
@@ -652,6 +682,7 @@ export class Creature implements CreatureInternal {
       if (connection.from === from && connection.to === to) {
         connections.splice(i, 1);
         this.clearCache(from, to);
+        this.invalidateScoreCache();
 
         break;
       }
