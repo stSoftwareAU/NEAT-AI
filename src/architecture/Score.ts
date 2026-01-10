@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import type { Creature } from "../Creature.ts";
+import type { CachedScoreComponents, Creature } from "../Creature.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { SEMANTIC_MAJOR_VERSION } from "../upgrade/Upgrade.ts";
 
@@ -149,21 +149,30 @@ function calculatePenalty(max: number, avg: number): number {
   return penalty;
 }
 
-function calculateScore(
-  error: number,
+/**
+ * Computes and caches structure-dependent score components.
+ * Issue #1023: Performance optimization for large creatures.
+ *
+ * @param creature - The creature to compute components for
+ * @returns Cached score components
+ */
+function computeAndCacheScoreComponents(
   creature: Creature,
-  penalty: number,
-  growthCost: number,
-): number {
+): CachedScoreComponents {
+  // Check if cache is valid
+  if (creature.cachedScoreComponents) {
+    return creature.cachedScoreComponents;
+  }
+
+  // Compute structure-dependent values
+  let squashComplexityPenalty = 0;
   const endIndex = creature.neurons.length;
   for (let indx = creature.input; indx < endIndex; indx++) {
     const neuron = creature.neurons[indx];
     if (neuron.squash) {
-      const squashFunction = Activations.find(
-        neuron.squash,
-      );
+      const squashFunction = Activations.find(neuron.squash);
       if (squashFunction.complexityPenalty) {
-        penalty += squashFunction.complexityPenalty;
+        squashComplexityPenalty += squashFunction.complexityPenalty;
       }
     }
   }
@@ -171,8 +180,31 @@ function calculateScore(
   const hiddenNeuronCount = creature.neurons.length - creature.input -
     creature.output;
 
-  const complexityPenalty = hiddenNeuronCount * growthCost +
-    creature.synapses.length * growthCost / 10 + penalty * growthCost / 100;
+  // Cache the computed values
+  const cached: CachedScoreComponents = {
+    hiddenNeuronCount,
+    squashComplexityPenalty,
+  };
+  creature.cachedScoreComponents = cached;
+
+  return cached;
+}
+
+function calculateScore(
+  error: number,
+  creature: Creature,
+  penalty: number,
+  growthCost: number,
+): number {
+  // Get or compute cached structure-dependent values
+  const cached = computeAndCacheScoreComponents(creature);
+
+  // Add squash complexity penalty to the weight/bias penalty
+  const totalPenalty = penalty + cached.squashComplexityPenalty;
+
+  const complexityPenalty = cached.hiddenNeuronCount * growthCost +
+    creature.synapses.length * growthCost / 10 +
+    totalPenalty * growthCost / 100;
   let versionPenalty = 0;
   if (
     !creature.semanticVersion ||
