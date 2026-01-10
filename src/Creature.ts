@@ -386,6 +386,39 @@ export class Creature implements CreatureInternal {
   }
 
   /**
+   * Returns whether this creature's activation function has been prepared.
+   * Preparation compiles the activation function and sets up neurons for
+   * efficient forward pass computation.
+   *
+   * Issue #1021: Performance - Lazy creature activation preparation.
+   * This getter allows checking if a creature needs preparation without
+   * triggering the preparation itself, enabling selective preparation
+   * for creatures that will actually be evaluated.
+   *
+   * @returns {boolean} True if the creature has been prepared, false otherwise.
+   */
+  get isPrepared(): boolean {
+    return this.state.preparedNeurons;
+  }
+
+  /**
+   * Explicitly prepares this creature for activation.
+   * Compiles the activation function and sets up all neurons for efficient
+   * forward pass computation.
+   *
+   * Issue #1021: Performance - Lazy creature activation preparation.
+   * This method allows explicit preparation of creatures that are known
+   * to need activation, separate from the implicit preparation that occurs
+   * during activate() or activateAndTrace() calls.
+   *
+   * Calling this method multiple times is safe - subsequent calls are no-ops
+   * if the creature is already prepared.
+   */
+  prepare(): void {
+    this.prepareNeurons();
+  }
+
+  /**
    * Activates the creature and traces the activity.
    *
    * @param {Float32Array} input - The input values for the creature.
