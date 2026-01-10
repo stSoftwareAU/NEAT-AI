@@ -55,6 +55,18 @@ export class Offspring {
       fixAliases = true;
     }
 
+    // Pre-build Maps for O(1) neuron lookup by UUID.
+    // This replaces O(n) linear .find() searches, improving breeding performance
+    // from O(n²) to O(n) for creatures with many neurons. (Issue #1024)
+    const motherNeuronMap = new Map<string, Neuron>();
+    for (const neuron of mother.neurons) {
+      motherNeuronMap.set(neuron.uuid, neuron);
+    }
+    const fatherNeuronMap = new Map<string, Neuron>();
+    for (const neuron of father.neurons) {
+      fatherNeuronMap.set(neuron.uuid, neuron);
+    }
+
     // Determine offspring semantic version based on BOTH parents.
     // Only start at 4.x if BOTH parents are 4.x (forward-only guaranteed).
     // Otherwise start at the lower version - validation will upgrade if appropriate.
@@ -125,15 +137,12 @@ export class Offspring {
           for (const connection of connections) {
             let fromNeuron = neuronMap.get(connection.fromUUID);
             if (!fromNeuron) {
-              const motherNeuron = mother.neurons.find((neuron) =>
-                neuron.uuid === connection.fromUUID
-              );
+              // Use pre-built Maps for O(1) lookup instead of O(n) .find()
+              const motherNeuron = motherNeuronMap.get(connection.fromUUID);
               fromNeuron = motherNeuron;
               let parent = mother;
               if (!fromNeuron || Math.random() >= 0.5) {
-                const fatherNeuron = father.neurons.find((neuron) =>
-                  neuron.uuid === connection.fromUUID
-                );
+                const fatherNeuron = fatherNeuronMap.get(connection.fromUUID);
                 if (fatherNeuron) {
                   fromNeuron = fatherNeuron;
                   parent = father;
