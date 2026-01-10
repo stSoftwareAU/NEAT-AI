@@ -1,11 +1,11 @@
 import { assert } from "@std/assert";
-import { getTag } from "@stsoftware/tags/mod";
 import { Creature, type NeatOptions, Selection } from "../../mod.ts";
 import { Offspring } from "../architecture/Offspring.ts";
 import { discover } from "../blackbox/Discover.ts";
 import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
 import type { Genus } from "../NEAT/Genus.ts";
 import { createCompatibleFather } from "./Father.ts";
+import { FitnessRanking } from "./FitnessRanking.ts";
 
 /**
  * Handles breeding operations between creatures in a NEAT population.
@@ -53,12 +53,20 @@ export class Breed {
    * fitness scores and genetic compatibility, then creates an offspring
    * through crossover and mutation. The population must be sorted by fitness.
    *
+   * Uses pre-computed FitnessRanking for efficient parent selection,
+   * computing fitness metrics once per breeding call instead of on every
+   * parent selection.
+   *
    * @returns A new offspring creature, or undefined if breeding fails
    * @throws {Error} When mother selection fails or father compatibility issues occur
    */
   breed(): Creature | undefined {
     const config = createNeatConfig(this.options);
-    const mum = this.getParent(this.genus.population, config);
+
+    // Pre-compute fitness ranking once for the entire population
+    const populationRanking = new FitnessRanking(this.genus.population);
+
+    const mum = this.selectParent(populationRanking, config);
 
     assert(mum, "Mother is undefined");
 
@@ -87,7 +95,20 @@ export class Breed {
     return child;
   }
 
-  private getDad(mum: Creature, config: NeatConfig): Creature | undefined {
+  /**
+   * Selects a father for breeding with the given mother.
+   *
+   * Creates a FitnessRanking for the filtered father population to enable
+   * efficient parent selection.
+   *
+   * @param mum - The mother creature
+   * @param config - NEAT configuration
+   * @returns A compatible father creature, or undefined if none found
+   */
+  private getDad(
+    mum: Creature,
+    config: NeatConfig,
+  ): Creature | undefined {
     assert(mum.uuid, "Mother UUID is undefined");
 
     let possibleFathers: Creature[] = [];
@@ -122,7 +143,10 @@ export class Breed {
     if (possibleFathers.length === 0) {
       return undefined;
     }
-    const father = this.getParent(possibleFathers, config);
+
+    // Create a new FitnessRanking for the filtered father population
+    const fatherRanking = new FitnessRanking(possibleFathers);
+    const father = this.selectParent(fatherRanking, config);
     assert(father !== undefined, "Father is undefined");
 
     const fatherExport = createCompatibleFather(
@@ -154,90 +178,23 @@ export class Breed {
   }
 
   /**
-   * Gets a parent based on the selection function
-   * @return {Creature} parent
+   * Selects a parent from a pre-computed fitness ranking based on the selection strategy.
+   *
+   * Uses the pre-computed FitnessRanking for O(1) or O(k) selection instead of
+   * recalculating fitness metrics on every selection.
+   *
+   * @param ranking - Pre-computed fitness ranking
+   * @param config - NEAT configuration
+   * @returns The selected parent creature
+   * @throws {Error} When selection fails or unknown selection strategy
    */
-  private getParent(population: Creature[], config: NeatConfig): Creature {
-    // Assert all creatures have valid fitness scores
-    const claimedScores = new Map<string, number>();
-    let lastScore = Number.POSITIVE_INFINITY;
-    let sorted = true;
-    population.forEach((creature) => {
-      assert(creature.uuid, "Creature UUID is undefined");
-
-      if (Number.isFinite(creature.score)) {
-        if (lastScore < creature.score!) {
-          sorted = false;
-        }
-        lastScore = creature.score!;
-        claimedScores.set(creature.uuid, creature.score!);
-      } else {
-        const scoreTxt = getTag(creature, "score");
-        if (scoreTxt) {
-          const score = parseFloat(scoreTxt);
-
-          if (Number.isFinite(score)) {
-            if (lastScore < score) {
-              sorted = false;
-            }
-
-            lastScore = score;
-            claimedScores.set(creature.uuid, score);
-          } else {
-            lastScore = Number.NEGATIVE_INFINITY;
-            claimedScores.set(creature.uuid, Number.NEGATIVE_INFINITY);
-          }
-        } else {
-          lastScore = Number.NEGATIVE_INFINITY;
-          claimedScores.set(creature.uuid, Number.NEGATIVE_INFINITY);
-        }
-      }
-    });
-
-    const sortedPopulation = sorted
-      ? population
-      : population.slice().sort((a, b) => {
-        return claimedScores.get(b.uuid!)! - claimedScores.get(a.uuid!)!;
-      });
-
+  private selectParent(ranking: FitnessRanking, config: NeatConfig): Creature {
     switch (config.selection) {
       case Selection.POWER: {
-        const r = Math.random();
-        const index = Math.floor(
-          Math.pow(r, Selection.POWER.power) *
-            sortedPopulation.length,
-        );
-
-        return sortedPopulation[index];
+        return ranking.selectPower(Selection.POWER.power);
       }
       case Selection.FITNESS_PROPORTIONATE: {
-        let totalFitness = 0;
-        let minimalFitness = 0;
-
-        for (let i = sortedPopulation.length; i--;) {
-          const score = claimedScores.get(sortedPopulation[i].uuid!)!;
-          minimalFitness = score < minimalFitness ? score : minimalFitness;
-          totalFitness += score;
-        }
-
-        const adjustFitness = Math.abs(minimalFitness);
-        totalFitness += adjustFitness * sortedPopulation.length;
-
-        const random = Math.random() * totalFitness;
-        let value = 0;
-
-        for (let i = 0; i < sortedPopulation.length; i++) {
-          const genome = sortedPopulation[i];
-          value += claimedScores.get(genome.uuid!)! + adjustFitness;
-          if (random < value) {
-            return genome;
-          }
-        }
-
-        /* If all scores equal, return random genome */
-        return sortedPopulation[
-          Math.floor(Math.random() * sortedPopulation.length)
-        ];
+        return ranking.selectFitnessProportionate();
       }
       case Selection.TOURNAMENT: {
         assert(
@@ -245,30 +202,10 @@ export class Breed {
           "Your tournament size should be lower than the population size, please change Selection.TOURNAMENT.size",
         );
 
-        // Create a tournament
-        const individuals = new Array(Selection.TOURNAMENT.size);
-        for (let i = 0; i < Selection.TOURNAMENT.size; i++) {
-          const random = sortedPopulation[
-            Math.floor(Math.random() * sortedPopulation.length)
-          ];
-          individuals[i] = random;
-        }
-
-        // Sort the tournament individuals by score
-        individuals.sort(function (a, b) {
-          return claimedScores.get(b.uuid)! - claimedScores.get(a.uuid)!;
-        });
-
-        // Select an individual
-        for (let i = 0; i < Selection.TOURNAMENT.size; i++) {
-          if (
-            Math.random() < Selection.TOURNAMENT.probability ||
-            i === Selection.TOURNAMENT.size - 1
-          ) {
-            return individuals[i];
-          }
-        }
-        throw new Error(`No parent found in tournament`);
+        return ranking.selectTournament(
+          Selection.TOURNAMENT.size,
+          Selection.TOURNAMENT.probability,
+        );
       }
       default: {
         throw new Error(`Unknown selection: ${config.selection}`);
