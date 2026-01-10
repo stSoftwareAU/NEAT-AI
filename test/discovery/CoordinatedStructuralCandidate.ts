@@ -338,3 +338,199 @@ Deno.test("applyCoordinatedStructuralCandidate: removeNeuron deletes neuron and 
     false,
   );
 });
+
+Deno.test("applyCoordinatedStructuralCandidate: setWeight updates existing synapse weight", () => {
+  const base: CreatureExport = {
+    input: 1,
+    output: 1,
+    forwardOnly: true,
+    neurons: [
+      { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
+      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: -0.001 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
+    ],
+  };
+  const creature = Creature.fromJSON(base);
+
+  const candidate: CoordinatedStructuralCandidate = {
+    type: "coordinated_structural",
+    expectedCreatureScoreGain: 0.123,
+    operations: [
+      {
+        type: "setWeight",
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
+        weight: 0.006,
+      },
+    ],
+    comment: "Adjust synapse weight: old=-0.001, new=0.006, delta=0.007",
+  };
+
+  const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
+  const exported = mutated.exportJSON();
+
+  const updated = exported.synapses.find((s) =>
+    s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+  );
+  assertExists(updated);
+  assertEquals(updated.weight, 0.006);
+
+  // Other synapse should be unchanged.
+  const unchanged = exported.synapses.find((s) =>
+    s.fromUUID === "hidden-0" && s.toUUID === "output-0"
+  );
+  assertExists(unchanged);
+  assertEquals(unchanged.weight, 0.25);
+});
+
+Deno.test("applyCoordinatedStructuralCandidate: setWeight is idempotent (applying twice is safe)", () => {
+  const base: CreatureExport = {
+    input: 1,
+    output: 1,
+    forwardOnly: true,
+    neurons: [
+      { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
+      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.2 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
+    ],
+  };
+  const creature = Creature.fromJSON(base);
+
+  const candidate: CoordinatedStructuralCandidate = {
+    type: "coordinated_structural",
+    expectedCreatureScoreGain: 0.123,
+    operations: [
+      {
+        type: "setWeight",
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
+        weight: 0.9,
+      },
+    ],
+  };
+
+  const once = applyCoordinatedStructuralCandidate(creature, candidate);
+  const twice = applyCoordinatedStructuralCandidate(once, candidate);
+
+  const syn1 = once.exportJSON().synapses.find((s) =>
+    s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+  );
+  const syn2 = twice.exportJSON().synapses.find((s) =>
+    s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+  );
+
+  assertExists(syn1);
+  assertExists(syn2);
+  assertEquals(syn1.weight, 0.9);
+  assertEquals(syn2.weight, 0.9);
+});
+
+Deno.test("applyCoordinatedStructuralCandidate: setWeight is no-op if synapse doesn't exist", () => {
+  const base: CreatureExport = {
+    input: 1,
+    output: 1,
+    forwardOnly: true,
+    neurons: [
+      { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
+      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.2 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
+    ],
+  };
+  const creature = Creature.fromJSON(base);
+
+  const candidate: CoordinatedStructuralCandidate = {
+    type: "coordinated_structural",
+    expectedCreatureScoreGain: 0.123,
+    operations: [
+      {
+        type: "setWeight",
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "output-0",
+        weight: 0.9,
+      },
+    ],
+  };
+
+  const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
+  const exported = mutated.exportJSON();
+
+  // Synapse should not exist (wasn't in original).
+  assertEquals(
+    exported.synapses.some((s) =>
+      s.fromUUID === "input-0" && s.toUUID === "output-0"
+    ),
+    false,
+  );
+
+  // Existing synapses should be unchanged.
+  const unchanged1 = exported.synapses.find((s) =>
+    s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+  );
+  assertExists(unchanged1);
+  assertEquals(unchanged1.weight, 0.2);
+
+  const unchanged2 = exported.synapses.find((s) =>
+    s.fromUUID === "hidden-0" && s.toUUID === "output-0"
+  );
+  assertExists(unchanged2);
+  assertEquals(unchanged2.weight, 0.25);
+});
+
+Deno.test("applyCoordinatedStructuralCandidate: setWeight preserves synapse metadata (type/tags)", () => {
+  const base: CreatureExport = {
+    input: 1,
+    output: 1,
+    forwardOnly: true,
+    neurons: [
+      { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
+      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
+    ],
+    synapses: [
+      {
+        fromUUID: "input-0",
+        toUUID: "hidden-0",
+        weight: 0.2,
+        type: "positive",
+        tags: [{ name: "discovered", value: "true" }],
+      },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
+    ],
+  };
+  const creature = Creature.fromJSON(base);
+
+  const candidate: CoordinatedStructuralCandidate = {
+    type: "coordinated_structural",
+    expectedCreatureScoreGain: 0.123,
+    operations: [
+      {
+        type: "setWeight",
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
+        weight: 0.9,
+      },
+    ],
+  };
+
+  const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
+  const exported = mutated.exportJSON();
+
+  const updated = exported.synapses.find((s) =>
+    s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+  );
+  assertExists(updated);
+  assertEquals(updated.weight, 0.9);
+  assertEquals(updated.type, "positive");
+  assertExists(updated.tags);
+  assertEquals(updated.tags.length, 1);
+  assertEquals(updated.tags[0].name, "discovered");
+  assertEquals(updated.tags[0].value, "true");
+});

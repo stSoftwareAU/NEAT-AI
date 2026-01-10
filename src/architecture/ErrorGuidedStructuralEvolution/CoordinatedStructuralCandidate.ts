@@ -14,6 +14,7 @@
 export type CoordinatedStructuralOperation =
   | CoordinatedRemoveSynapseOperation
   | CoordinatedAddSynapseOperation
+  | CoordinatedSetWeightOperation
   | CoordinatedAddNeuronOperation
   | CoordinatedRemoveNeuronOperation
   | CoordinatedChangeSquashOperation
@@ -27,6 +28,13 @@ export interface CoordinatedRemoveSynapseOperation {
 
 export interface CoordinatedAddSynapseOperation {
   type: "addSynapse";
+  fromNeuronUuid: string;
+  toNeuronUuid: string;
+  weight: number;
+}
+
+export interface CoordinatedSetWeightOperation {
+  type: "setWeight";
   fromNeuronUuid: string;
   toNeuronUuid: string;
   weight: number;

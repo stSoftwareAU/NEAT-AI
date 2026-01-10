@@ -354,6 +354,13 @@ function isAlreadyApplied(
         });
         continue;
       }
+      if (op.type === "setWeight") {
+        expectedByEdge.set(edgeKey(op.fromNeuronUuid, op.toNeuronUuid), {
+          present: true,
+          weight: op.weight,
+        });
+        continue;
+      }
       // Unknown op: do not assume applied.
       return false;
     }
