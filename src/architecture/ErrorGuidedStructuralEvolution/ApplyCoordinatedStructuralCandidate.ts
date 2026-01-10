@@ -41,6 +41,12 @@ type AddSynapseOp = {
   toNeuronUuid: string;
   weight: number;
 };
+type SetWeightOp = {
+  type: "setWeight";
+  fromNeuronUuid: string;
+  toNeuronUuid: string;
+  weight: number;
+};
 
 function buildUuidToIndexMap(creature: CreatureExport): Map<string, number> {
   const uuidToIndex = new Map<string, number>();
@@ -79,6 +85,7 @@ function canAddForwardOnlySynapse(
  * - Applies all operations in-order
  * - `removeSynapse`: removes matching (from,to) if present (no-op if missing)
  * - `addSynapse`: adds if absent; if present, updates weight (idempotent)
+ * - `setWeight`: updates weight of existing synapse (no-op if synapse missing)
  *
  * Notes:
  * - This function is intentionally conservative for forward-only creatures: it
@@ -286,6 +293,18 @@ export function applyCoordinatedStructuralCandidate(
           tags: meta?.tags ? meta.tags.map((t) => ({ ...t })) : undefined,
         });
       }
+      continue;
+    }
+
+    if ((op.type as string) === "setWeight") {
+      const set = op as unknown as SetWeightOp;
+      const existing = next.synapses.find((s) =>
+        s.fromUUID === set.fromNeuronUuid && s.toUUID === set.toNeuronUuid
+      );
+      if (existing) {
+        existing.weight = set.weight;
+      }
+      // No-op if synapse doesn't exist (idempotent).
       continue;
     }
   }

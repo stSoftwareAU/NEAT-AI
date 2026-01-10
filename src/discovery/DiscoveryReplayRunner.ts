@@ -271,6 +271,13 @@ function nearlyEqual(a: number, b: number): boolean {
   return diff <= 1e-7 * scale;
 }
 
+type SetWeightOp = {
+  type: "setWeight";
+  fromNeuronUuid: string;
+  toNeuronUuid: string;
+  weight: number;
+};
+
 function isAlreadyApplied(
   creature: Creature,
   entry: SuccessCacheEntry,
@@ -351,6 +358,23 @@ function isAlreadyApplied(
         expectedByEdge.set(edgeKey(op.fromNeuronUuid, op.toNeuronUuid), {
           present: true,
           weight: op.weight,
+        });
+        continue;
+      }
+      if ((op.type as string) === "setWeight") {
+        const set = op as unknown as SetWeightOp;
+        const key = edgeKey(set.fromNeuronUuid, set.toNeuronUuid);
+        const existing = expectedByEdge.get(key);
+        // setWeight is a no-op if the synapse doesn't exist. If the edge is
+        // already marked as absent (from a prior removeSynapse), leave it absent.
+        if (existing?.present === false) {
+          // No-op: leave the edge as absent.
+          continue;
+        }
+        // Otherwise, update the weight (synapse must be present).
+        expectedByEdge.set(key, {
+          present: true,
+          weight: set.weight,
         });
         continue;
       }

@@ -154,6 +154,7 @@
     "parameterised",
     "checkin",
     "replayable",
-    "nulled"
+    "nulled",
+    "setweight"
   ]
 }
