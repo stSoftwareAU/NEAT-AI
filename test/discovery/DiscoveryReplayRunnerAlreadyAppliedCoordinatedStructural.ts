@@ -166,3 +166,88 @@ Deno.test(
     assertEquals(result.evaluatedSingles, 0);
   },
 );
+
+Deno.test(
+  "DiscoveryReplayRunner skips coordinated-structural entries with removeSynapse followed by setWeight that already appear applied",
+  async () => {
+    const baseExport: CreatureExport = {
+      input: 1,
+      output: 1,
+      forwardOnly: true,
+      neurons: [
+        { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
+        { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
+      ],
+      synapses: [
+        // Synapse is absent (removed), which matches the final state after removeSynapse + setWeight
+        // (setWeight is a no-op when synapse doesn't exist)
+        { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
+      ],
+    };
+    const base = Creature.fromJSON(baseExport);
+    base.uuid = "base";
+
+    const coordinatedEntry: SuccessCacheEntry = {
+      key: "coordinated-structural_remove_setweight",
+      changeType: "coordinated-structural",
+      originalScore: 0.5,
+      candidateScore: 0.6,
+      scoreDelta: 0.1,
+      error: 0.4,
+      originalError: 0.5,
+      timestamp: new Date().toISOString(),
+      rustRequest: {
+        coordinatedStructuralCandidate: {
+          operations: [
+            {
+              type: "removeSynapse",
+              fromNeuronUuid: "input-0",
+              toNeuronUuid: "hidden-0",
+            },
+            {
+              type: "setWeight",
+              fromNeuronUuid: "input-0",
+              toNeuronUuid: "hidden-0",
+              weight: 0.006,
+            },
+          ],
+          expectedCreatureScoreGain: 0.001,
+          comment: "Remove synapse then try to set weight (no-op)",
+        },
+      },
+    };
+
+    const runner = new DiscoveryReplayRunner({
+      listEntries: (_dir) => [coordinatedEntry],
+      // Fail fast if we accidentally try to apply/evaluate.
+      applyEntry: () => {
+        throw new Error("applyEntry should not be called for already-applied");
+      },
+      evaluateError: (creature) => {
+        // Replay always evaluates the baseline creature once.
+        if (creature.uuid === "base") {
+          return Promise.resolve({ error: 0, score: 0.5 });
+        }
+        throw new Error(
+          "evaluateError should not be called for already-applied candidate creatures",
+        );
+      },
+    });
+
+    const result = await runner.replayDir({
+      creature: base,
+      dataDir: "/tmp/does-not-matter",
+      options: {
+        discoverySuccessCacheDir: "/tmp/does-not-matter",
+        costOfGrowth: 0,
+        discoveryReplayMaxSingles: 10,
+        discoveryReplayMaxPairwise: 10,
+        discoveryReplayMaxTriples: 10,
+        threads: 1,
+      },
+    });
+
+    assertEquals(result.skippedAlreadyApplied, 1);
+    assertEquals(result.evaluatedSingles, 0);
+  },
+);
