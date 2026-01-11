@@ -198,7 +198,7 @@ Deno.test("FitnessRanking - handles all equal scores", () => {
   assert(selected !== undefined);
 });
 
-Deno.test("FitnessRanking - fitness proportionate favors higher scores", () => {
+Deno.test("FitnessRanking - fitness proportionate favours higher scores", () => {
   const population: CreatureInternal[] = [
     { input: 1, output: 1, score: 100, neurons: [], synapses: [] },
     { input: 1, output: 1, score: 1, neurons: [], synapses: [] },
@@ -226,7 +226,7 @@ Deno.test("FitnessRanking - fitness proportionate favors higher scores", () => {
   );
 });
 
-Deno.test("FitnessRanking - power selection favors better ranked", () => {
+Deno.test("FitnessRanking - power selection favours better ranked", () => {
   const population: CreatureInternal[] = [];
   for (let i = 10; i >= 1; i--) {
     population.push({
