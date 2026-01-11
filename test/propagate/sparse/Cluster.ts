@@ -111,6 +111,7 @@ function makeCreature(): Creature {
 }
 
 // Helper function to find clustered neighbours within two steps for testing purposes.
+// Uses index pointer instead of Array.shift() for O(1) dequeue operations.
 function getClusteredNeighbours(
   neuronUUID: string,
   creature: CreatureExport,
@@ -131,9 +132,10 @@ function getClusteredNeighbours(
   // Perform BFS to find neighbours within two steps.
   const visited = new Set<string>();
   const queue = [{ neuronUUID, depth: 0 }];
+  let front = 0;
 
-  while (queue.length > 0) {
-    const { neuronUUID: current, depth } = queue.shift()!;
+  while (front < queue.length) {
+    const { neuronUUID: current, depth } = queue[front++];
     if (depth >= 2) continue;
 
     const neighbours = synapseMap.get(current)!;
