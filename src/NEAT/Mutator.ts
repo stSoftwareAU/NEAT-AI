@@ -23,10 +23,37 @@ import {
   upgradeSemanticVersionIfForwardOnlyConfirmed,
 } from "../upgrade/Upgrade.ts";
 
+/**
+ * Cache entry for valid mutation candidates.
+ * Stores both the filtered candidates and pre-computed weight/bias count.
+ */
+interface MutationCacheEntry {
+  /** Filtered mutation methods that are valid for this creature state. */
+  candidates: ReadonlyArray<{ name: string }>;
+  /** Count of weight/bias mutations in candidates (for weighted selection). */
+  weightBiasCount: number;
+}
+
 export class Mutator {
   private config: NeatConfig;
+
+  /**
+   * Cache for valid mutation candidates.
+   * Key format: "neurons|synapses|input|output|forwardOnly"
+   * Issue #1028: Avoid repeated filtering in selectMutationMethod().
+   */
+  private mutationCache: Map<string, MutationCacheEntry> = new Map();
+
   constructor(config: NeatConfig) {
     this.config = config;
+  }
+
+  /**
+   * Clears the mutation candidates cache.
+   * Call this if the config changes (though config is typically immutable).
+   */
+  public clearMutationCache(): void {
+    this.mutationCache.clear();
   }
 
   /**
@@ -114,15 +141,33 @@ export class Mutator {
   }
 
   /**
-   * Selects a random mutation method for a genome according to the parameters
+   * Generates a cache key for mutation candidates based on creature state.
+   * Issue #1028: Cache valid mutations between selection calls.
    */
-  public selectMutationMethod(creature: Creature) {
-    const mutationMethods = this.config
-      .mutation;
+  private getMutationCacheKey(
+    creature: Creature,
+    forwardOnly: boolean,
+  ): string {
+    return `${creature.neurons.length}|${creature.synapses.length}|${creature.input}|${creature.output}|${forwardOnly}`;
+  }
 
+  /**
+   * Computes the filtered mutation candidates and weight/bias count.
+   * Issue #1028: Separated from selectMutationMethod for caching.
+   */
+  private computeMutationCandidates(
+    creature: Creature,
+    forwardOnly: boolean,
+  ): MutationCacheEntry {
+    const mutationMethods = this.config.mutation;
     const feedbackLoop = this.config.feedbackLoop;
-    const majorVersion = getMajorVersion(creature.semanticVersion);
-    const forwardOnly = majorVersion >= 4 || creature.forwardOnly === true;
+
+    // Pre-compute max synapses once for ADD_CONN check
+    const maxSynapses = this.calculateMaxSynapses(
+      creature.input,
+      creature.neurons.length - creature.input - creature.output,
+      creature.output,
+    );
 
     // Avoid infinite loops: pre-filter for methods that can actually run under
     // the current constraints.
@@ -131,13 +176,10 @@ export class Mutator {
         case Mutation.ADD_NODE.name:
           return creature.neurons.length < this.config.maximumNumberOfNodes;
         case Mutation.ADD_CONN.name:
-          return !(creature.synapses.length >= this.config.maxConns ||
-            creature.synapses.length >=
-              this.calculateMaxSynapses(
-                creature.input,
-                creature.neurons.length - creature.input - creature.output,
-                creature.output,
-              ));
+          return !(
+            creature.synapses.length >= this.config.maxConns ||
+            creature.synapses.length >= maxSynapses
+          );
         case Mutation.SUB_NODE.name:
           return creature.neurons.length > creature.input + creature.output;
         case Mutation.SWAP_NODES.name:
@@ -154,6 +196,41 @@ export class Mutator {
       }
     });
 
+    // Pre-compute weight/bias count for weighted selection (Issue #1009)
+    let weightBiasCount = 0;
+    for (let i = 0; i < candidates.length; i++) {
+      const name = candidates[i].name;
+      if (
+        name === Mutation.MOD_BIAS.name ||
+        name === Mutation.MOD_WEIGHT.name
+      ) {
+        weightBiasCount++;
+      }
+    }
+
+    return { candidates, weightBiasCount };
+  }
+
+  /**
+   * Selects a random mutation method for a genome according to the parameters.
+   * Issue #1028: Uses caching to avoid repeated filtering.
+   */
+  public selectMutationMethod(creature: Creature) {
+    const majorVersion = getMajorVersion(creature.semanticVersion);
+    const forwardOnly = majorVersion >= 4 || creature.forwardOnly === true;
+
+    // Check cache for pre-filtered candidates (Issue #1028)
+    const cacheKey = this.getMutationCacheKey(creature, forwardOnly);
+    let cacheEntry = this.mutationCache.get(cacheKey);
+
+    if (!cacheEntry) {
+      // Cache miss: compute and store candidates
+      cacheEntry = this.computeMutationCandidates(creature, forwardOnly);
+      this.mutationCache.set(cacheKey, cacheEntry);
+    }
+
+    const { candidates, weightBiasCount } = cacheEntry;
+
     if (candidates.length === 0) {
       throw new Error(
         `No valid mutation methods available for creature (semanticVersion=${creature.semanticVersion}, forwardOnly=${forwardOnly}) ` +
@@ -164,32 +241,20 @@ export class Mutator {
     // Optimized weighted selection (Issue #1009).
     // Prefer weight/bias mutations 75% of the time for faster convergence.
     // This replaces the rejection sampling loop that could iterate up to 10,000 times.
-    if (Math.random() < 0.75) {
-      // Try to select a weight/bias mutation
-      let weightBiasCount = 0;
+    if (Math.random() < 0.75 && weightBiasCount > 0) {
+      // Select uniformly from weight/bias mutations
+      const targetIndex = Math.floor(Math.random() * weightBiasCount);
+      let found = 0;
       for (let i = 0; i < candidates.length; i++) {
         const name = candidates[i].name;
         if (
-          name === Mutation.MOD_BIAS.name || name === Mutation.MOD_WEIGHT.name
+          name === Mutation.MOD_BIAS.name ||
+          name === Mutation.MOD_WEIGHT.name
         ) {
-          weightBiasCount++;
-        }
-      }
-
-      if (weightBiasCount > 0) {
-        // Select uniformly from weight/bias mutations
-        const targetIndex = Math.floor(Math.random() * weightBiasCount);
-        let found = 0;
-        for (let i = 0; i < candidates.length; i++) {
-          const name = candidates[i].name;
-          if (
-            name === Mutation.MOD_BIAS.name || name === Mutation.MOD_WEIGHT.name
-          ) {
-            if (found === targetIndex) {
-              return candidates[i];
-            }
-            found++;
+          if (found === targetIndex) {
+            return candidates[i];
           }
+          found++;
         }
       }
     }
