@@ -161,25 +161,42 @@ export class Mutator {
       );
     }
 
-    for (let attempts = 0; attempts < 10_000; attempts++) {
-      const mutationMethod = candidates[
-        Math.floor(Math.random() * candidates.length)
-      ];
-
-      if (Math.random() < 0.25) {
+    // Optimized weighted selection (Issue #1009).
+    // Prefer weight/bias mutations 75% of the time for faster convergence.
+    // This replaces the rejection sampling loop that could iterate up to 10,000 times.
+    if (Math.random() < 0.75) {
+      // Try to select a weight/bias mutation
+      let weightBiasCount = 0;
+      for (let i = 0; i < candidates.length; i++) {
+        const name = candidates[i].name;
         if (
-          mutationMethod.name !== Mutation.MOD_BIAS.name &&
-          mutationMethod.name !== Mutation.MOD_WEIGHT.name
+          name === Mutation.MOD_BIAS.name || name === Mutation.MOD_WEIGHT.name
         ) {
-          continue;
+          weightBiasCount++;
         }
       }
-      return mutationMethod;
+
+      if (weightBiasCount > 0) {
+        // Select uniformly from weight/bias mutations
+        const targetIndex = Math.floor(Math.random() * weightBiasCount);
+        let found = 0;
+        for (let i = 0; i < candidates.length; i++) {
+          const name = candidates[i].name;
+          if (
+            name === Mutation.MOD_BIAS.name || name === Mutation.MOD_WEIGHT.name
+          ) {
+            if (found === targetIndex) {
+              return candidates[i];
+            }
+            found++;
+          }
+        }
+      }
     }
 
-    // Extremely unlikely fallback: candidates exist but we keep skipping due to the
-    // 25% "bias/weight only" gate.
-    return candidates[0];
+    // 25% of the time, or when no weight/bias mutations available,
+    // select uniformly from all candidates
+    return candidates[Math.floor(Math.random() * candidates.length)];
   }
 
   /**
