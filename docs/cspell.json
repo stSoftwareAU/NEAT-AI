@@ -156,6 +156,7 @@
     "checkin",
     "replayable",
     "nulled",
-    "setweight"
+    "setweight",
+    "deque"
   ]
 }
