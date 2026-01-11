@@ -1,5 +1,9 @@
 #!/bin/bash
 set -e
+
+# Ensure deno is in PATH (common install locations)
+export PATH="$HOME/.deno/bin:$PATH"
+
 deno outdated --update --latest
 deno fmt src test bench mod.ts docs
 deno lint --fix src test bench mod.ts
