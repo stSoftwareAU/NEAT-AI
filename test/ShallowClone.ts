@@ -468,3 +468,189 @@ Deno.test("shallowClone - structural equivalence with fromJSON", () => {
     );
   }
 });
+
+/**
+ * Test suite for ensuring breeding/mutation processes cannot modify the fittest creature.
+ *
+ * The reviewer's concern: "Please make sure that later mutating/breeding processes
+ * can never modify the 'fittest' creature. The 'fittest' creature should be frozen
+ * logically if not actually. Breeding/Mutating leads to a new creature, never
+ * modifies in any way the fittest creature."
+ *
+ * These tests verify that once a shallow clone is made (as used in Neat.evolve()),
+ * the original creature remains completely unchanged regardless of what operations
+ * are performed on the clone.
+ */
+Deno.test("shallowClone - fittest creature protection: mutation cannot affect original", async (t) => {
+  const original = new Creature(3, 2, {
+    layers: [{ count: 4 }],
+  });
+  original.uuid = "fittest-creature-uuid";
+  original.score = 0.95;
+  creatureValidate(original);
+
+  // Record original state
+  const originalJSON = JSON.stringify(original.exportJSON());
+  const originalBiases = original.neurons.map((n) => n.bias);
+  const originalWeights = original.synapses.map((s) => s.weight);
+
+  // Create a clone (simulating what happens in Neat.evolve())
+  const clone = original.shallowClone();
+
+  await t.step("heavy mutation of clone preserves original", () => {
+    // Heavily mutate the clone
+    for (let i = original.input; i < clone.neurons.length; i++) {
+      clone.neurons[i].bias = Math.random() * 100 - 50;
+      clone.neurons[i].squash = "RELU";
+    }
+    for (const synapse of clone.synapses) {
+      synapse.weight = Math.random() * 100 - 50;
+    }
+    clone.uuid = "mutated-clone-uuid";
+    clone.score = 0.01;
+    clone.fix();
+
+    // Verify original is unchanged
+    assertEquals(
+      original.uuid,
+      "fittest-creature-uuid",
+      "Original UUID was modified",
+    );
+    assertEquals(original.score, 0.95, "Original score was modified");
+
+    for (let i = 0; i < original.neurons.length; i++) {
+      assertEquals(
+        original.neurons[i].bias,
+        originalBiases[i],
+        `Original neuron ${i} bias was modified`,
+      );
+    }
+
+    for (let i = 0; i < original.synapses.length; i++) {
+      assertEquals(
+        original.synapses[i].weight,
+        originalWeights[i],
+        `Original synapse ${i} weight was modified`,
+      );
+    }
+
+    // Verify original export hasn't changed
+    assertEquals(
+      JSON.stringify(original.exportJSON()),
+      originalJSON,
+      "Original export JSON was modified",
+    );
+  });
+
+  await t.step("structural changes to clone preserve original", () => {
+    // Add neurons and synapses to clone
+    const newClone = original.shallowClone();
+    newClone.neurons.push(newClone.neurons[newClone.neurons.length - 1]);
+    newClone.synapses.push(newClone.synapses[newClone.synapses.length - 1]);
+
+    // Verify original structure unchanged
+    assertEquals(
+      JSON.stringify(original.exportJSON()),
+      originalJSON,
+      "Original structure was modified when clone structure changed",
+    );
+  });
+});
+
+Deno.test("shallowClone - fittest creature protection: breeding produces new creature", () => {
+  const fittest = new Creature(3, 2, {
+    layers: [{ count: 4 }],
+  });
+  fittest.uuid = "fittest-uuid";
+  fittest.score = 0.95;
+  creatureValidate(fittest);
+
+  const otherCreature = new Creature(3, 2, {
+    layers: [{ count: 4 }],
+  });
+  otherCreature.uuid = "other-uuid";
+  otherCreature.score = 0.85;
+  creatureValidate(otherCreature);
+
+  // Record fittest state
+  const fittestJSON = JSON.stringify(fittest.exportJSON());
+  const fittestBiases = fittest.neurons.map((n) => n.bias);
+  const fittestWeights = fittest.synapses.map((s) => s.weight);
+
+  // Simulate breeding: create clones and combine them
+  const fittestClone = fittest.shallowClone();
+  const otherClone = otherCreature.shallowClone();
+
+  // "Breed" by averaging weights (simplified simulation)
+  for (let i = 0; i < fittestClone.synapses.length; i++) {
+    if (i < otherClone.synapses.length) {
+      fittestClone.synapses[i].weight =
+        (fittestClone.synapses[i].weight + otherClone.synapses[i].weight) / 2;
+    }
+  }
+  fittestClone.uuid = undefined;
+  fittestClone.score = undefined;
+  fittestClone.fix();
+
+  // Verify fittest is unchanged
+  assertEquals(
+    fittest.uuid,
+    "fittest-uuid",
+    "Fittest UUID was modified during breeding",
+  );
+  assertEquals(
+    fittest.score,
+    0.95,
+    "Fittest score was modified during breeding",
+  );
+
+  for (let i = 0; i < fittest.neurons.length; i++) {
+    assertEquals(
+      fittest.neurons[i].bias,
+      fittestBiases[i],
+      `Fittest neuron ${i} bias was modified during breeding`,
+    );
+  }
+
+  for (let i = 0; i < fittest.synapses.length; i++) {
+    assertEquals(
+      fittest.synapses[i].weight,
+      fittestWeights[i],
+      `Fittest synapse ${i} weight was modified during breeding`,
+    );
+  }
+
+  assertEquals(
+    JSON.stringify(fittest.exportJSON()),
+    fittestJSON,
+    "Fittest export JSON was modified during breeding",
+  );
+});
+
+Deno.test("shallowClone - fittest creature protection: compact operation preserves original", () => {
+  const fittest = new Creature(3, 2, {
+    layers: [{ count: 4 }],
+  });
+  fittest.uuid = "fittest-compact-test";
+  fittest.score = 0.95;
+  creatureValidate(fittest);
+
+  // Record fittest state
+  const fittestJSON = JSON.stringify(fittest.exportJSON());
+
+  // Create clone and run compact on it (simulating what fineTuneImprovement does)
+  const clone = fittest.shallowClone();
+  const compacted = clone.compact(false);
+
+  // Verify fittest is unchanged regardless of compact result
+  assertEquals(
+    JSON.stringify(fittest.exportJSON()),
+    fittestJSON,
+    "Fittest was modified by compact operation on clone",
+  );
+
+  // Also verify the clone can be compacted independently
+  if (compacted) {
+    creatureValidate(compacted);
+  }
+});
