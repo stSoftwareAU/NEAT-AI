@@ -4,7 +4,7 @@ import { Offspring } from "../architecture/Offspring.ts";
 import { discover } from "../blackbox/Discover.ts";
 import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
 import type { Genus } from "../NEAT/Genus.ts";
-import { createCompatibleFather } from "./Father.ts";
+import { createCompatibleFatherFromCreatures } from "./Father.ts";
 import { FitnessRanking } from "./FitnessRanking.ts";
 
 /**
@@ -149,10 +149,9 @@ export class Breed {
     const father = this.selectParent(fatherRanking, config);
     assert(father !== undefined, "Father is undefined");
 
-    const fatherExport = createCompatibleFather(
-      mum.exportJSON(),
-      father.exportJSON(),
-    );
+    // Issue #1034: Avoid JSON exports in parent selection compatibility check.
+    // Uses optimised function that works directly with Creature objects.
+    const fatherExport = createCompatibleFatherFromCreatures(mum, father);
     try {
       const compatibleFather = Creature.fromJSON(
         fatherExport,
