@@ -16,6 +16,7 @@ import { calculate as calculateScore } from "../architecture/Score.ts";
 import { fineTuneImprovement } from "../blackbox/FineTune.ts";
 import { FindTunePopulation } from "../blackbox/FineTunePopulation.ts";
 import { Breed } from "../breed/Breed.ts";
+import { ParallelBreeding } from "../breed/ParallelBreeding.ts";
 import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
 import type { NeatOptions } from "../config/NeatOptions.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
@@ -765,19 +766,18 @@ export class Neat {
       fineTunedPopulation.length - 1 -
       newPopulation.length;
 
-    const breed = new Breed(genus, this.config);
-    // Breed the next individuals
-    for (
-      let i = 0;
-      i < newPopSize;
-      i++
-    ) {
-      const child = breed.breed();
-      if (child) {
-        newPopulation.push(child);
-      }
-    }
+    // Issue #1026: Use parallel breeding for improved performance
+    // Pass workers for true parallelism across multiple CPU cores
+    const parallelBreeding = new ParallelBreeding(
+      genus,
+      this.config,
+      this.workers,
+    );
+    const offspringBatch = await parallelBreeding.breedBatch(newPopSize);
+    newPopulation.push(...offspringBatch);
 
+    // Keep breed instance for DeDuplicator usage later
+    const breed = new Breed(genus, this.config);
     const mutator = new Mutator(this.config);
     // Replace the old population with the new population
     mutator.mutate(newPopulation);

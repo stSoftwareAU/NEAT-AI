@@ -73,6 +73,17 @@ export interface RequestData {
     /** NEAT configuration (frozen, concrete values) */
     config: NeatConfig;
   };
+  /** Creature breeding request (Issue #1026) */
+  breed?: {
+    /** JSON string representation of the mother creature */
+    mother: string;
+    /** JSON string representation of the father creature */
+    father: string;
+    /** Genetic compatibility threshold for crossover */
+    geneticCompatibilityThreshold: number;
+    /** Whether to create forward-only offspring */
+    forwardOnly: boolean;
+  };
 }
 
 /**
@@ -146,6 +157,13 @@ export interface ResponseData {
     candidateSquashes?: CandidateSquash[];
     /** Time spent re-scoring candidates (ms) - set by DiscoveryRunner after evaluation */
     reScoringTime?: number;
+  };
+  /** Breeding response (Issue #1026) */
+  breed?: {
+    /** JSON string representation of the offspring creature (undefined if breeding failed) */
+    offspring?: string;
+    /** Whether breeding succeeded */
+    success: boolean;
   };
 }
 
@@ -436,6 +454,49 @@ export class WorkerHandler {
     json.neurons = null;
     // @ts-ignore - clearing to help GC
     json.synapses = null;
+
+    return this.makePromise(data);
+  }
+
+  /**
+   * Breeds two creatures to produce offspring.
+   *
+   * Issue #1026: Parallelise breeding loop using worker pool.
+   *
+   * @param mother - The mother creature
+   * @param father - The father creature
+   * @param geneticCompatibilityThreshold - Threshold for genetic compatibility
+   * @param forwardOnly - Whether to create forward-only offspring
+   * @returns Promise resolving to the response data
+   */
+  breed(
+    mother: Creature,
+    father: Creature,
+    geneticCompatibilityThreshold: number,
+    forwardOnly: boolean,
+  ) {
+    const motherJson = mother.exportJSON();
+    const fatherJson = father.exportJSON();
+
+    const data: RequestData = {
+      taskID: this.taskID++,
+      breed: {
+        mother: JSON.stringify(motherJson),
+        father: JSON.stringify(fatherJson),
+        geneticCompatibilityThreshold,
+        forwardOnly,
+      },
+    };
+
+    // Immediately clear large JSON objects to help GC
+    // @ts-ignore - clearing to help GC
+    motherJson.neurons = null;
+    // @ts-ignore - clearing to help GC
+    motherJson.synapses = null;
+    // @ts-ignore - clearing to help GC
+    fatherJson.neurons = null;
+    // @ts-ignore - clearing to help GC
+    fatherJson.synapses = null;
 
     return this.makePromise(data);
   }
