@@ -306,6 +306,56 @@ export class WorkerProcessor {
           creature.dispose();
         }
       }
+    } else if (data.breed) {
+      // Issue #1026: Parallelise breeding loop using worker pool
+      let mother: Creature | null = null;
+      let father: Creature | null = null;
+      let offspring: Creature | undefined = undefined;
+
+      try {
+        mother = Creature.fromJSON(JSON.parse(data.breed.mother), data.debug);
+        father = Creature.fromJSON(JSON.parse(data.breed.father), data.debug);
+
+        // Release memory from request data
+        data.breed.mother = "";
+        data.breed.father = "";
+
+        // Import Offspring dynamically to avoid circular dependencies
+        const { Offspring } = await import(
+          "../../architecture/Offspring.ts"
+        );
+
+        offspring = Offspring.breed(mother, father, {
+          geneticCompatibilityThreshold:
+            data.breed.geneticCompatibilityThreshold,
+          forwardOnly: data.breed.forwardOnly,
+        });
+
+        if (offspring) {
+          const offspringJson = JSON.stringify(offspring.exportJSON());
+          return {
+            taskID: data.taskID,
+            duration: Date.now() - start,
+            breed: {
+              offspring: offspringJson,
+              success: true,
+            },
+          };
+        } else {
+          return {
+            taskID: data.taskID,
+            duration: Date.now() - start,
+            breed: {
+              success: false,
+            },
+          };
+        }
+      } finally {
+        // Ensure creatures are disposed even if an error occurs
+        if (mother) mother.dispose();
+        if (father) father.dispose();
+        if (offspring) offspring.dispose();
+      }
     } else {
       throw new Error("unknown message");
     }

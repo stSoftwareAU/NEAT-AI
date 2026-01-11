@@ -44,6 +44,11 @@ workerHandler.onmessage = async function (message: { data: RequestData }) {
       errorResponse.initialize = {
         status: "ERROR",
       };
+    } else if (message.data.breed) {
+      // Issue #1026: Handle breeding errors
+      errorResponse.breed = {
+        success: false,
+      };
     }
 
     workerHandler.postMessage(errorResponse);

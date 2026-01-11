@@ -58,6 +58,11 @@ export class MockWorker implements WorkerInterface {
         errorResponse.initialize = {
           status: "ERROR",
         };
+      } else if (data.breed) {
+        // Issue #1026: Handle breeding errors
+        errorResponse.breed = {
+          success: false,
+        };
       }
 
       if (this.callBack) {
