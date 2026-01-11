@@ -644,11 +644,9 @@ export class Neat {
       }
     }
 
-    const fittest = Creature.fromJSON(
-      tmpFittest.exportJSON(),
-      this.config.debug,
-    ); // Make a copy so it's not mutated.
-    fittest.uuid = tmpFittest.uuid;
+    // Issue #1025: Use shallowClone() instead of fromJSON(exportJSON())
+    // for significant performance improvement (3-4x faster for large creatures).
+    const fittest = tmpFittest.shallowClone(); // Make a copy so it's not mutated.
 
     fittest.score = tmpFittest.score;
     assert(fittest.score, "No fittest score found");
