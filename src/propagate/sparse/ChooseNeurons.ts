@@ -114,6 +114,8 @@ function buildSynapseMap(creature: CreatureExport): Map<string, Set<string>> {
 }
 
 // Retrieve neurons connected by one or two steps from the given neuron.
+// Uses index pointer instead of Array.shift() for O(1) dequeue operations.
+// See issue #1030 for performance analysis.
 function getConnectedNeurons(
   neuronUUID: string,
   synapseMap: Map<string, Set<string>>,
@@ -121,9 +123,10 @@ function getConnectedNeurons(
 ): Set<string> {
   const connectedNeurons = new Set<string>();
   const queue = [{ neuronUUID, depth: 0 }];
+  let front = 0;
 
-  while (queue.length > 0) {
-    const { neuronUUID: current, depth } = queue.shift()!;
+  while (front < queue.length) {
+    const { neuronUUID: current, depth } = queue[front++];
 
     // Stop expanding once we reach the specified depth.
     if (depth >= steps) continue;
