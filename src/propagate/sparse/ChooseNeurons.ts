@@ -82,34 +82,38 @@ function fisherYatesShuffle<T>(array: T[]): void {
 }
 
 // Build a map from each neuron to the synapses connected to it.
+// Single-pass optimisation: combines both fromUUID and toUUID processing.
+// See issue #1029 for performance analysis.
 function buildSynapseMap(creature: CreatureExport): Map<string, Set<string>> {
   const validNeurons = new Set<string>();
-  creature.neurons.filter((neuron) => {
+  creature.neurons.forEach((neuron) => {
     if (neuron.type === "hidden" || neuron.type === "output") {
       validNeurons.add(neuron.uuid);
     }
   });
+
   const synapseMap = new Map<string, Set<string>>();
-  creature.synapses.forEach((synapse) => {
-    if (!validNeurons.has(synapse.fromUUID)) return;
-    if (!validNeurons.has(synapse.fromUUID)) return;
-
-    if (!synapseMap.has(synapse.fromUUID)) {
-      synapseMap.set(synapse.fromUUID, new Set());
-    }
-
-    synapseMap.get(synapse.fromUUID)!.add(synapse.toUUID);
-  });
 
   creature.synapses.forEach((synapse) => {
-    if (!validNeurons.has(synapse.toUUID)) return;
-    if (!validNeurons.has(synapse.fromUUID)) return;
-    if (!synapseMap.has(synapse.toUUID)) {
-      synapseMap.set(synapse.toUUID, new Set());
-    }
+    const fromValid = validNeurons.has(synapse.fromUUID);
+    const toValid = validNeurons.has(synapse.toUUID);
 
-    synapseMap.get(synapse.toUUID)!.add(synapse.fromUUID);
+    // Only process synapses where both endpoints are valid neurons
+    if (fromValid && toValid) {
+      // Add fromUUID -> toUUID connection
+      if (!synapseMap.has(synapse.fromUUID)) {
+        synapseMap.set(synapse.fromUUID, new Set());
+      }
+      synapseMap.get(synapse.fromUUID)!.add(synapse.toUUID);
+
+      // Add toUUID -> fromUUID connection (bidirectional for neighbour lookup)
+      if (!synapseMap.has(synapse.toUUID)) {
+        synapseMap.set(synapse.toUUID, new Set());
+      }
+      synapseMap.get(synapse.toUUID)!.add(synapse.fromUUID);
+    }
   });
+
   return synapseMap;
 }
 
