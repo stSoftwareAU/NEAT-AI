@@ -147,6 +147,13 @@ export class Creature implements CreatureInternal {
    */
   private synapsesIndexedByTo: Synapse[] | null = null;
 
+  /**
+   * Cached Set of existing connections as "from-to" strings.
+   * Enables O(1) lookup for connection existence checks.
+   * Issue #1036: Performance optimisation for ADD_CONNECTION mutation.
+   */
+  private connectionSet: Set<string> | null = null;
+
   /** The version of this creature */
   public semanticVersion: string;
 
@@ -237,6 +244,8 @@ export class Creature implements CreatureInternal {
       // Invalidate secondary index on full cache clear
       this.synapsesIndexedByTo = null;
       this.inwardCacheMissCount = 0;
+      // Invalidate connection set on full cache clear
+      this.connectionSet = null;
     } else {
       this.cacheTo.delete(to);
       this.cacheFrom.delete(from);
@@ -244,6 +253,8 @@ export class Creature implements CreatureInternal {
       // Invalidate secondary index on partial clear (structure changed)
       this.synapsesIndexedByTo = null;
       this.inwardCacheMissCount = 0;
+      // Invalidate connection set on partial clear (structure changed)
+      this.connectionSet = null;
     }
     this.cacheFocus.clear();
     this.invalidateScoreCache();
@@ -667,6 +678,77 @@ export class Creature implements CreatureInternal {
         tmpResults.push(synapse);
       }
     }
+  }
+
+  /**
+   * Builds and returns a Set of existing connections as "from-to" strings.
+   * Enables O(1) lookup for connection existence checks.
+   * Issue #1036: Performance optimisation for ADD_CONNECTION mutation.
+   *
+   * @returns {Set<string>} Set of connection keys in "from-to" format
+   */
+  public getConnectionSet(): Set<string> {
+    if (this.connectionSet === null) {
+      this.connectionSet = new Set<string>();
+      for (let i = 0, len = this.synapses.length; i < len; i++) {
+        const synapse = this.synapses[i];
+        this.connectionSet.add(`${synapse.from}-${synapse.to}`);
+      }
+    }
+    return this.connectionSet;
+  }
+
+  /**
+   * Checks if a connection exists between two neurons in O(1) time.
+   * Issue #1036: Performance optimisation for ADD_CONNECTION mutation.
+   *
+   * @param {number} from - The index of the source neuron.
+   * @param {number} to - The index of the target neuron.
+   * @returns {boolean} True if the connection exists, false otherwise.
+   */
+  public hasConnection(from: number, to: number): boolean {
+    return this.getConnectionSet().has(`${from}-${to}`);
+  }
+
+  /**
+   * Returns a list of available forward-only connection slots (from, to pairs).
+   * This method efficiently finds all valid connection pairs where:
+   * - from < to (forward-only)
+   * - to >= input (cannot connect to input neurons)
+   * - target neuron is not a constant
+   * - connection doesn't already exist
+   *
+   * Issue #1036: Performance optimisation for ADD_CONNECTION mutation.
+   *
+   * @returns {[number, number][]} Array of [from, to] tuples representing available connections.
+   */
+  public getAvailableConnections(): [number, number][] {
+    const connectionSet = this.getConnectionSet();
+    const available: [number, number][] = [];
+    const neurons = this.neurons;
+    const neuronCount = neurons.length;
+    const inputCount = this.input;
+
+    for (let fromIndx = 0; fromIndx < neuronCount; fromIndx++) {
+      // Start toIndx at max(fromIndx + 1, input) to ensure forward-only connections
+      // and that we don't connect to input neurons
+      const startTo = Math.max(fromIndx + 1, inputCount);
+
+      for (let toIndx = startTo; toIndx < neuronCount; toIndx++) {
+        const neuronTo = neurons[toIndx];
+
+        // Skip constant neurons
+        if (neuronTo.type === "constant") continue;
+
+        // Check if connection already exists using O(1) Set lookup
+        const key = `${fromIndx}-${toIndx}`;
+        if (!connectionSet.has(key)) {
+          available.push([fromIndx, toIndx]);
+        }
+      }
+    }
+
+    return available;
   }
 
   /**
