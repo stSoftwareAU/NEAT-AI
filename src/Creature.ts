@@ -1819,4 +1819,108 @@ export class Creature implements CreatureInternal {
 
     return creature;
   }
+
+  /**
+   * Creates a shallow clone of this creature.
+   *
+   * This method is significantly faster than using fromJSON(exportJSON())
+   * because it avoids JSON serialisation/deserialisation overhead.
+   *
+   * The clone:
+   * - Has its own independent arrays for neurons and synapses
+   * - Copies mutable state (uuid, score, memetic, tags)
+   * - Produces identical activation outputs as the original
+   * - Can be safely modified without affecting the original
+   *
+   * Issue #1025: Performance optimisation for fittest creature tracking.
+   *
+   * @returns A new Creature instance that is a shallow clone of this creature
+   */
+  shallowClone(): Creature {
+    const clone = new Creature(this.input, this.output, {
+      lazyInitialization: true,
+      semanticVersion: this.semanticVersion,
+    });
+
+    // Copy basic properties
+    clone.uuid = this.uuid;
+    clone.score = this.score;
+    clone.forwardOnly = this.forwardOnly;
+    clone.DEBUG = this.DEBUG;
+
+    // Copy memetic (shallow copy is sufficient as it's treated as immutable)
+    if (this.memetic) {
+      clone.memetic = { ...this.memetic };
+    }
+
+    // Copy tags (shallow copy of array, each tag is immutable)
+    if (this.tags) {
+      clone.tags = [...this.tags];
+    }
+
+    // Copy cached score components
+    if (this.cachedScoreComponents) {
+      clone.cachedScoreComponents = { ...this.cachedScoreComponents };
+    }
+
+    // Copy neurons - create new Neuron instances to ensure independence
+    const neuronCount = this.neurons.length;
+    clone.neurons = new Array(neuronCount);
+
+    for (let i = 0; i < this.input; i++) {
+      const original = this.neurons[i];
+      const neuron = new Neuron(original.uuid, "input", 0, clone);
+      neuron.index = i;
+      // Neuron.tags has type 'undefined' but can hold TagInterface[] at runtime
+      // via TagsInterface. We copy the array if present.
+      const originalTags = original.tags as TagInterface[] | undefined;
+      if (originalTags) {
+        (neuron as { tags: TagInterface[] | undefined }).tags = [
+          ...originalTags,
+        ];
+      }
+      clone.neurons[i] = neuron;
+    }
+
+    for (let i = this.input; i < neuronCount; i++) {
+      const original = this.neurons[i];
+      const neuron = new Neuron(
+        original.uuid,
+        original.type,
+        original.bias,
+        clone,
+        original.squash,
+      );
+      neuron.index = i;
+      // Neuron.tags has type 'undefined' but can hold TagInterface[] at runtime
+      // via TagsInterface. We copy the array if present.
+      const originalTags = original.tags as TagInterface[] | undefined;
+      if (originalTags) {
+        (neuron as { tags: TagInterface[] | undefined }).tags = [
+          ...originalTags,
+        ];
+      }
+      clone.neurons[i] = neuron;
+    }
+
+    // Copy synapses - create new Synapse instances to ensure independence
+    const synapseCount = this.synapses.length;
+    clone.synapses = new Array(synapseCount);
+
+    for (let i = 0; i < synapseCount; i++) {
+      const original = this.synapses[i];
+      const synapse = new Synapse(
+        original.from,
+        original.to,
+        original.weight,
+        original.type,
+      );
+      if (original.tags) {
+        synapse.tags = [...original.tags];
+      }
+      clone.synapses[i] = synapse;
+    }
+
+    return clone;
+  }
 }

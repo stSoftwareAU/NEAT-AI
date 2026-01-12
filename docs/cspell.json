@@ -157,6 +157,7 @@
     "replayable",
     "nulled",
     "setweight",
-    "deque"
+    "deque",
+    "deserialisation"
   ]
 }
