@@ -1,5 +1,6 @@
 import { assert } from "@std/assert";
 import { addTag, removeTag } from "@stsoftware/tags/mod";
+import type { TagInterface } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
@@ -25,6 +26,70 @@ import {
 } from "./CompactUtils.ts";
 
 /**
+ * Creates a shallow clone of a CreatureExport, copying neurons and synapses
+ * as new objects to avoid mutation of the original.
+ *
+ * Issue #1015: This replaces the expensive JSON.parse(JSON.stringify())
+ * pattern with direct property copy, which is significantly faster for
+ * large networks (500KB+ with 619 neurons + 17,935 synapses).
+ *
+ * @param source - The CreatureExport to clone
+ * @returns A new CreatureExport with independently copied neurons and synapses
+ */
+function cloneCreatureExport(source: CreatureExport): CreatureExport {
+  // Clone neurons with shallow copy of each neuron object
+  const neurons: NeuronExport[] = source.neurons.map((n) => {
+    const cloned: NeuronExport = {
+      type: n.type,
+      uuid: n.uuid,
+      bias: n.bias,
+    };
+    if (n.squash !== undefined) cloned.squash = n.squash;
+    if (n.tags !== undefined) {
+      cloned.tags = [...n.tags] as TagInterface[];
+    }
+    return cloned;
+  });
+
+  // Clone synapses with shallow copy of each synapse object
+  const synapses: SynapseExport[] = source.synapses.map((s) => {
+    const cloned: SynapseExport = {
+      fromUUID: s.fromUUID,
+      toUUID: s.toUUID,
+      weight: s.weight,
+    };
+    if (s.type !== undefined) cloned.type = s.type;
+    if (s.tags !== undefined) {
+      cloned.tags = [...s.tags] as TagInterface[];
+    }
+    return cloned;
+  });
+
+  // Build the cloned creature export
+  const cloned: CreatureExport = {
+    input: source.input,
+    output: source.output,
+    neurons,
+    synapses,
+  };
+
+  // Copy optional top-level properties
+  if (source.forwardOnly !== undefined) cloned.forwardOnly = source.forwardOnly;
+  if (source.semanticVersion !== undefined) {
+    cloned.semanticVersion = source.semanticVersion;
+  }
+  if (source.memetic !== undefined) {
+    // Shallow copy of memetic - the nested structures are treated as immutable
+    cloned.memetic = { ...source.memetic };
+  }
+  if (source.tags !== undefined) {
+    cloned.tags = [...source.tags] as TagInterface[];
+  }
+
+  return cloned;
+}
+
+/**
  * Compacts a creature by removing redundant neurons and connections.
  *
  * @param creature - The creature to compact
@@ -40,28 +105,34 @@ export function compactCreature(
   const startExport = creature.exportJSON();
   creature.DEBUG = holdDebug;
 
-  const compactCreature = JSON.parse(
-    JSON.stringify(startExport),
-  ) as CreatureExport;
+  // Issue #1015: Use direct property copy instead of JSON.parse(JSON.stringify())
+  // for better performance with large networks.
+  const compactCreature = cloneCreatureExport(startExport);
 
-  const neuronMap = new Map<string, NeuronExport>();
-  compactCreature.neurons.forEach((neuron) =>
-    neuronMap.set(neuron.uuid, neuron)
+  // Pre-allocate neuronMap with expected size for better performance
+  const neuronMap = new Map<string, NeuronExport>(
+    compactCreature.neurons.map((neuron) => [neuron.uuid, neuron]),
   );
 
+  // Pre-allocate connection maps and build in a single pass
   const inwardConnections = new Map<string, SynapseExport[]>();
   const outwardConnections = new Map<string, SynapseExport[]>();
 
-  compactCreature.synapses.forEach((synapse) => {
-    outwardConnections.set(
-      synapse.fromUUID,
-      (outwardConnections.get(synapse.fromUUID) || []).concat(synapse),
-    );
-    inwardConnections.set(
-      synapse.toUUID,
-      (inwardConnections.get(synapse.toUUID) || []).concat(synapse),
-    );
-  });
+  for (const synapse of compactCreature.synapses) {
+    const outList = outwardConnections.get(synapse.fromUUID);
+    if (outList) {
+      outList.push(synapse);
+    } else {
+      outwardConnections.set(synapse.fromUUID, [synapse]);
+    }
+
+    const inList = inwardConnections.get(synapse.toUUID);
+    if (inList) {
+      inList.push(synapse);
+    } else {
+      inwardConnections.set(synapse.toUUID, [synapse]);
+    }
+  }
 
   let didCompact = false;
 
