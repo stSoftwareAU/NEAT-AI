@@ -5,6 +5,10 @@ import {
 } from "../architecture/ErrorGuidedStructuralEvolution/constants.ts";
 import { Selection, type SelectionInterface } from "../methods/Selection.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
+import {
+  DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS,
+  type RequiredAdaptiveMutationThresholds,
+} from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
 
@@ -212,6 +216,10 @@ export function createNeatConfig(options: NeatOptions): NeatConfig {
       ...DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY,
       ...options.discoveryMinCandidatesPerCategory,
     } as Required<DiscoveryMinCandidatesPerCategory>,
+    adaptiveMutationThresholds: {
+      ...DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS,
+      ...options.adaptiveMutationThresholds,
+    } as RequiredAdaptiveMutationThresholds,
   };
   validate(config);
   return Object.freeze(config);
@@ -447,6 +455,41 @@ function validate(config: NeatArguments) {
     ) {
       throw new Error(
         `Discovery min candidates for removeLowImpact must be a non-negative integer, was: ${minCandidates.removeLowImpact}`,
+      );
+    }
+  }
+  // Validate adaptiveMutationThresholds (Issue #1037)
+  const adaptiveThresholds = config.adaptiveMutationThresholds;
+  if (adaptiveThresholds) {
+    if (
+      !Number.isInteger(adaptiveThresholds.medium) ||
+      adaptiveThresholds.medium < 1
+    ) {
+      throw new Error(
+        `Adaptive mutation medium threshold must be a positive integer, was: ${adaptiveThresholds.medium}`,
+      );
+    }
+    if (
+      !Number.isInteger(adaptiveThresholds.large) ||
+      adaptiveThresholds.large < 1
+    ) {
+      throw new Error(
+        `Adaptive mutation large threshold must be a positive integer, was: ${adaptiveThresholds.large}`,
+      );
+    }
+    if (adaptiveThresholds.large <= adaptiveThresholds.medium) {
+      throw new Error(
+        `Adaptive mutation large threshold must be greater than medium threshold. ` +
+          `Large: ${adaptiveThresholds.large}, Medium: ${adaptiveThresholds.medium}`,
+      );
+    }
+    if (
+      !Number.isFinite(adaptiveThresholds.largeTopologyWeight) ||
+      adaptiveThresholds.largeTopologyWeight < 0 ||
+      adaptiveThresholds.largeTopologyWeight > 1
+    ) {
+      throw new Error(
+        `Adaptive mutation largeTopologyWeight must be between 0 and 1, was: ${adaptiveThresholds.largeTopologyWeight}`,
       );
     }
   }

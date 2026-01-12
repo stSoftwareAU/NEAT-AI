@@ -129,10 +129,37 @@ dependence), so the default configuration is feed-forward/forward-only.
     skipped wholesale; there is no TypeScript fallback.
 
 11. **[Visualization](https://stsoftwareau.github.io/NEAT-AI/index.html)**
+
 12. **Discovery Integration Guide**: Step-by-step instructions for running
     discovery via `Creature.discoveryDir()` are available in the
     [DiscoveryDir guide](./docs/DiscoveryDir.md).
-13. **Continuous Incremental Discovery**: For distributed, multi-machine
+
+13. **Adaptive Mutation Rate**: Large creatures (619 neurons, 17,935 synapses)
+    have a massive search space. Adding more structure (ADD_NODE,
+    ADD_CONNECTION) makes the search space exponentially larger while rarely
+    improving fitness. The adaptive mutation rate feature automatically adjusts
+    mutation strategy based on creature size:
+    - **Small creatures** (< 100 neurons): Normal topology mutation rates
+    - **Medium creatures** (100-300 neurons): Gradually reduced topology
+      expansion
+    - **Large creatures** (> 300 neurons): Focus primarily on MOD_WEIGHT,
+      MOD_BIAS
+
+    Configuration example:
+    ```typescript
+    const options: NeatOptions = {
+      adaptiveMutationThresholds: {
+        medium: 100, // neurons threshold for medium creatures
+        large: 300, // neurons threshold for large creatures
+        largeTopologyWeight: 0.1, // 10% chance of topology mutation for large
+      },
+    };
+    ```
+
+    This leads to faster convergence for large creatures while preventing
+    unnecessary structural growth that rarely improves fitness.
+
+14. **Continuous Incremental Discovery**: For distributed, multi-machine
     discovery workflows that accumulate small improvements over time, see the
     [Discovery Guide](./docs/DISCOVERY_GUIDE.md).
 
