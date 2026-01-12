@@ -6,6 +6,7 @@ import type {
 import type { CostName } from "../Costs.ts";
 import type { SelectionInterface } from "../methods/Selection.ts";
 import type { MutationInterface } from "../NEAT/MutationInterface.ts";
+import type { RequiredAdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 
 /**
@@ -318,4 +319,19 @@ export interface NeatArguments {
   discoveryMinCandidatesPerCategory: Required<
     DiscoveryMinCandidatesPerCategory
   >;
+
+  /**
+   * Adaptive mutation rate thresholds based on creature size.
+   *
+   * Issue #1037: Large creatures have a massive search space. Adding more
+   * structure (ADD_NODE, ADD_CONNECTION) makes the search space exponentially
+   * larger while rarely improving fitness.
+   *
+   * This configuration allows the mutation strategy to adapt based on
+   * creature size:
+   * - Small creatures (< medium threshold): Normal topology mutation rates
+   * - Medium creatures (>= medium, < large): Reduced topology expansion
+   * - Large creatures (>= large threshold): Focus on MOD_WEIGHT, MOD_BIAS
+   */
+  adaptiveMutationThresholds: RequiredAdaptiveMutationThresholds;
 }

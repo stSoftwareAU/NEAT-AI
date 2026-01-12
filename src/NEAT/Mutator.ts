@@ -212,8 +212,17 @@ export class Mutator {
   }
 
   /**
+   * Determines if a mutation is a topology expansion mutation.
+   * These mutations increase structural complexity (ADD_NODE, ADD_CONN).
+   */
+  private isTopologyExpansionMutation(name: string): boolean {
+    return name === Mutation.ADD_NODE.name || name === Mutation.ADD_CONN.name;
+  }
+
+  /**
    * Selects a random mutation method for a genome according to the parameters.
    * Issue #1028: Uses caching to avoid repeated filtering.
+   * Issue #1037: Implements adaptive mutation rate based on creature size.
    */
   public selectMutationMethod(creature: Creature) {
     const majorVersion = getMajorVersion(creature.semanticVersion);
@@ -238,10 +247,35 @@ export class Mutator {
       );
     }
 
+    // Issue #1037: Adaptive mutation rate based on creature size.
+    // Large creatures benefit more from weight/bias tuning than topology expansion.
+    const neuronCount = creature.neurons.length;
+    const thresholds = this.config.adaptiveMutationThresholds;
+    const { medium, large, largeTopologyWeight } = thresholds;
+
+    // Determine weight/bias preference based on creature size
+    let weightBiasPreference: number;
+    if (neuronCount >= large) {
+      // Large creatures: heavily favour weight/bias mutations
+      // Only allow topology expansion with probability largeTopologyWeight
+      weightBiasPreference = 1.0 - largeTopologyWeight;
+    } else if (neuronCount >= medium) {
+      // Medium creatures: interpolate between standard (0.75) and large preference
+      // Linear interpolation from medium threshold to large threshold
+      const t = (neuronCount - medium) / (large - medium);
+      const standardPreference = 0.75;
+      const largePreference = 1.0 - largeTopologyWeight;
+      weightBiasPreference = standardPreference +
+        t * (largePreference - standardPreference);
+    } else {
+      // Small creatures: use standard 75% weight/bias preference
+      weightBiasPreference = 0.75;
+    }
+
     // Optimized weighted selection (Issue #1009).
-    // Prefer weight/bias mutations 75% of the time for faster convergence.
+    // Prefer weight/bias mutations based on creature size for faster convergence.
     // This replaces the rejection sampling loop that could iterate up to 10,000 times.
-    if (Math.random() < 0.75 && weightBiasCount > 0) {
+    if (Math.random() < weightBiasPreference && weightBiasCount > 0) {
       // Select uniformly from weight/bias mutations
       const targetIndex = Math.floor(Math.random() * weightBiasCount);
       let found = 0;
@@ -259,8 +293,21 @@ export class Mutator {
       }
     }
 
-    // 25% of the time, or when no weight/bias mutations available,
-    // select uniformly from all candidates
+    // For large creatures, further filter to exclude topology expansion mutations
+    // unless we explicitly pass the topology weight check above
+    if (neuronCount >= large && largeTopologyWeight < 1.0) {
+      // Build list of non-expansion candidates
+      const nonExpansionCandidates = candidates.filter((c) =>
+        !this.isTopologyExpansionMutation(c.name)
+      );
+      if (nonExpansionCandidates.length > 0) {
+        return nonExpansionCandidates[
+          Math.floor(Math.random() * nonExpansionCandidates.length)
+        ];
+      }
+    }
+
+    // Fallback: select uniformly from all candidates
     return candidates[Math.floor(Math.random() * candidates.length)];
   }
 
