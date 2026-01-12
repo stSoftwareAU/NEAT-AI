@@ -135,22 +135,24 @@ dependence), so the default configuration is feed-forward/forward-only.
     [DiscoveryDir guide](./docs/DiscoveryDir.md).
 
 13. **Adaptive Mutation Rate**: Large creatures (619 neurons, 17,935 synapses)
-    have a massive search space. Adding more structure (ADD_NODE, ADD_CONNECTION)
-    makes the search space exponentially larger while rarely improving fitness.
-    The adaptive mutation rate feature automatically adjusts mutation strategy
-    based on creature size:
+    have a massive search space. Adding more structure (ADD_NODE,
+    ADD_CONNECTION) makes the search space exponentially larger while rarely
+    improving fitness. The adaptive mutation rate feature automatically adjusts
+    mutation strategy based on creature size:
     - **Small creatures** (< 100 neurons): Normal topology mutation rates
-    - **Medium creatures** (100-300 neurons): Gradually reduced topology expansion
-    - **Large creatures** (> 300 neurons): Focus primarily on MOD_WEIGHT, MOD_BIAS
+    - **Medium creatures** (100-300 neurons): Gradually reduced topology
+      expansion
+    - **Large creatures** (> 300 neurons): Focus primarily on MOD_WEIGHT,
+      MOD_BIAS
 
     Configuration example:
     ```typescript
     const options: NeatOptions = {
       adaptiveMutationThresholds: {
-        medium: 100,  // neurons threshold for medium creatures
-        large: 300,   // neurons threshold for large creatures
-        largeTopologyWeight: 0.1  // 10% chance of topology mutation for large
-      }
+        medium: 100, // neurons threshold for medium creatures
+        large: 300, // neurons threshold for large creatures
+        largeTopologyWeight: 0.1, // 10% chance of topology mutation for large
+      },
     };
     ```
 
