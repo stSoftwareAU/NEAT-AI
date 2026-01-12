@@ -140,6 +140,13 @@ export class Creature implements CreatureInternal {
   private cacheSelf = new Map<number, Synapse[]>();
   private cacheFocus: Map<number, boolean> = new Map();
 
+  /**
+   * Secondary index of synapses sorted by `to` field.
+   * Enables O(log n) binary search for inward connections instead of O(n) linear scan.
+   * Issue #1010: Performance optimisation for large creatures.
+   */
+  private synapsesIndexedByTo: Synapse[] | null = null;
+
   /** The version of this creature */
   public semanticVersion: string;
 
@@ -227,10 +234,16 @@ export class Creature implements CreatureInternal {
       this.cacheTo.clear();
       this.cacheFrom.clear();
       this.cacheSelf.clear();
+      // Invalidate secondary index on full cache clear
+      this.synapsesIndexedByTo = null;
+      this.inwardCacheMissCount = 0;
     } else {
       this.cacheTo.delete(to);
       this.cacheFrom.delete(from);
       this.cacheSelf.delete(from);
+      // Invalidate secondary index on partial clear (structure changed)
+      this.synapsesIndexedByTo = null;
+      this.inwardCacheMissCount = 0;
     }
     this.cacheFocus.clear();
     this.invalidateScoreCache();
@@ -498,6 +511,8 @@ export class Creature implements CreatureInternal {
 
   /**
    * Get the inward connections (afferent) for the neuron at the given index.
+   * Uses a secondary index sorted by `to` field for O(log n) binary search lookup.
+   * Issue #1010: Performance optimisation for large creatures.
    *
    * @param {number} toIndx - The index of the target neuron.
    * @returns {Synapse[]} The list of inward connections.
@@ -505,35 +520,153 @@ export class Creature implements CreatureInternal {
   inwardConnections(toIndx: number): Synapse[] {
     let results = this.cacheTo.get(toIndx);
     if (results === undefined) {
-      results = this.bulkLoadInwardConnections(toIndx);
+      results = this.lookupInwardConnections(toIndx);
+      this.cacheTo.set(toIndx, results);
     }
     return results;
   }
 
   /**
-   * Precompiles all inward connections and caches them for fast lookup.
+   * Builds the secondary index of synapses sorted by `to` field.
+   * Called lazily when first needed for inward connection lookups.
+   * Issue #1010: Performance optimisation for large creatures.
    */
-  private bulkLoadInwardConnections(toIndx: number): Synapse[] {
-    const cacheTo = this.cacheTo;
-    cacheTo.clear();
-    assert(this.neurons.length > 0, "Neurons length is zero");
-    assert(toIndx < this.neurons.length, "toIndx is out of bounds");
-    assert(toIndx >= 0, "toIndx must be positive");
-    for (let indx = 0, len = this.neurons.length; indx < len; indx++) {
-      cacheTo.set(indx, []);
-    }
-    // Group synapses by their 'to' index
-    for (let i = 0, len = this.synapses.length; i < len; i++) {
-      const synapse = this.synapses[i];
-      const to = synapse.to;
-      const tmpResults = cacheTo.get(to);
-      assert(tmpResults, "tmpResults is undefined");
-      tmpResults.push(synapse);
+  private buildSynapsesIndexedByTo(): Synapse[] {
+    // Create a copy of synapses sorted by 'to' field, then by 'from' for stability
+    const indexed = this.synapses.slice().sort((a, b) => {
+      if (a.to !== b.to) return a.to - b.to;
+      return a.from - b.from;
+    });
+    return indexed;
+  }
+
+  /**
+   * Binary search for the start index in the secondary (to-sorted) index.
+   * Issue #1010: Performance optimisation for large creatures.
+   */
+  private binarySearchForToStartIndex(
+    index: Synapse[],
+    toIndx: number,
+  ): number {
+    let low = 0;
+    let high = index.length - 1;
+    let result = -1;
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const midValue = index[mid];
+
+      if (midValue.to < toIndx) {
+        low = mid + 1;
+      } else if (midValue.to > toIndx) {
+        high = mid - 1;
+      } else {
+        result = mid; // Found a matching 'to', but need the first occurrence
+        high = mid - 1; // Look left to find the first match
+      }
     }
 
-    const results = cacheTo.get(toIndx);
-    assert(results, "results is undefined");
-    return results!;
+    return result;
+  }
+
+  /**
+   * Threshold for switching from linear scan to building the secondary index.
+   * If we've done this many cache misses, it's worth building the sorted index.
+   * Issue #1010: Performance optimisation for large creatures.
+   */
+  private inwardCacheMissCount = 0;
+  private static readonly INWARD_INDEX_BUILD_THRESHOLD = 3;
+
+  /**
+   * Looks up inward connections using binary search on the secondary index.
+   * Falls back to linear scan if index is not built.
+   * Automatically builds the index after a few cache misses.
+   * Issue #1010: Performance optimisation for large creatures.
+   */
+  private lookupInwardConnections(toIndx: number): Synapse[] {
+    // If we have the secondary index, use binary search
+    if (this.synapsesIndexedByTo !== null) {
+      const index = this.synapsesIndexedByTo;
+      const startIndex = this.binarySearchForToStartIndex(index, toIndx);
+
+      if (startIndex === -1) {
+        return []; // No inward connections found
+      }
+
+      // Collect all synapses with matching 'to' index
+      const results: Synapse[] = [];
+      for (let i = startIndex; i < index.length; i++) {
+        const synapse = index[i];
+        if (synapse.to === toIndx) {
+          results.push(synapse);
+        } else {
+          break; // Since it's sorted, no need to continue once 'to' changes
+        }
+      }
+
+      return results;
+    }
+
+    // Track cache misses - if we're doing many lookups, build the index
+    this.inwardCacheMissCount++;
+    if (this.inwardCacheMissCount >= Creature.INWARD_INDEX_BUILD_THRESHOLD) {
+      // Build the index and use binary search for this and future lookups
+      this.synapsesIndexedByTo = this.buildSynapsesIndexedByTo();
+      return this.lookupInwardConnections(toIndx); // Recurse with index now built
+    }
+
+    // Fallback: linear scan for sparse lookups (O(n) but no sorting overhead)
+    const results: Synapse[] = [];
+    for (let i = 0, len = this.synapses.length; i < len; i++) {
+      const synapse = this.synapses[i];
+      if (synapse.to === toIndx) {
+        results.push(synapse);
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Pre-builds the secondary index for inward connections.
+   * Call this after loading a creature or after a batch of mutations
+   * to optimise subsequent lookups.
+   * Issue #1010: Performance optimisation for large creatures.
+   */
+  public prebuildInwardIndex(): void {
+    if (this.synapsesIndexedByTo === null) {
+      this.synapsesIndexedByTo = this.buildSynapsesIndexedByTo();
+    }
+  }
+
+  /**
+   * Bulk loads all inward connections into the cache.
+   * Use this when you know you'll need to look up many neurons.
+   * Issue #1010: Performance optimisation for large creatures.
+   */
+  public bulkLoadInwardConnections(): void {
+    // Build secondary index if not already built
+    if (this.synapsesIndexedByTo === null) {
+      this.synapsesIndexedByTo = this.buildSynapsesIndexedByTo();
+    }
+
+    // Pre-populate cache for all neurons
+    const cacheTo = this.cacheTo;
+    for (let indx = 0, len = this.neurons.length; indx < len; indx++) {
+      if (!cacheTo.has(indx)) {
+        cacheTo.set(indx, []);
+      }
+    }
+
+    // Group synapses by their 'to' index using the sorted index
+    const index = this.synapsesIndexedByTo;
+    for (let i = 0, len = index.length; i < len; i++) {
+      const synapse = index[i];
+      const to = synapse.to;
+      const tmpResults = cacheTo.get(to);
+      if (tmpResults) {
+        tmpResults.push(synapse);
+      }
+    }
   }
 
   /**
