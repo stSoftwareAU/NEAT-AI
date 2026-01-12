@@ -82,25 +82,31 @@ export class AddConnection implements RadioactiveInterface {
       }
     }
 
-    for (
-      let fromIndx = 0;
-      fromIndx < this.creature.neurons.length;
-      fromIndx++
-    ) {
-      const neuronFrom = this.creature.neurons[fromIndx];
+    // Issue #1036: Use Set-based O(1) connection lookup instead of O(k) isProjectingTo.
+    // This changes complexity from O(n² * k) to O(n² + m) where m = number of connections.
+    const connectionSet = this.creature.getConnectionSet();
+    const neurons = this.creature.neurons;
+    const neuronCount = neurons.length;
+    const inputCount = this.creature.input;
 
+    for (let fromIndx = 0; fromIndx < neuronCount; fromIndx++) {
+      const neuronFrom = neurons[fromIndx];
       const fromInFocus = this.creature.inFocus(fromIndx, focusList);
-      for (
-        let toIndx = Math.max(fromIndx + 1, this.creature.input);
-        toIndx < this.creature.neurons.length;
-        toIndx++
-      ) {
+
+      // Start toIndx at max(fromIndx + 1, input) to ensure forward-only connections
+      // and that we don't connect to input neurons
+      const startTo = Math.max(fromIndx + 1, inputCount);
+
+      for (let toIndx = startTo; toIndx < neuronCount; toIndx++) {
         if (!fromInFocus && !this.creature.inFocus(toIndx, focusList)) continue;
-        const neuronTo = this.creature.neurons[toIndx];
+
+        const neuronTo = neurons[toIndx];
 
         if (neuronTo.type === "constant") continue;
 
-        if (!neuronFrom.isProjectingTo(neuronTo)) {
+        // O(1) connection existence check using Set instead of O(k) isProjectingTo
+        const key = `${fromIndx}-${toIndx}`;
+        if (!connectionSet.has(key)) {
           // `fromIndx`/`toIndx` are the canonical neuron indices. Do not use
           // `neuron.index` here - it can be corrupted in bad exports and would
           // allow accidental backward connections.
