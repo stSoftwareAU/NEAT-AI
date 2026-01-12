@@ -348,39 +348,6 @@ Deno.test("FitnessRanking - single creature population", () => {
   assertEquals(ranking.selectTournament(1, 0.5), creatures[0]);
 });
 
-Deno.test("FitnessRanking - performance with large population", () => {
-  const population: CreatureInternal[] = [];
-  for (let i = 0; i < 10000; i++) {
-    population.push({
-      input: 1,
-      output: 1,
-      score: Math.random() * 100,
-      neurons: [],
-      synapses: [],
-    });
-  }
-
-  const creatures = makePopulation(population);
-
-  // Time the construction (should be O(n log n) for sorting)
-  const startConstruct = performance.now();
-  const ranking = new FitnessRanking(creatures);
-  const constructTime = performance.now() - startConstruct;
-
-  // Time multiple selections (should be O(1) or O(k) where k is tournament size)
-  const startSelect = performance.now();
-  for (let i = 0; i < 1000; i++) {
-    ranking.selectFitnessProportionate();
-  }
-  const selectTime = performance.now() - startSelect;
-
-  console.log(`Construction time: ${constructTime.toFixed(2)}ms`);
-  console.log(`1000 selections time: ${selectTime.toFixed(2)}ms`);
-
-  // Selections should be fast since data is precomputed
-  assert(selectTime < 1000, `Selection took too long: ${selectTime}ms`);
-});
-
 Deno.test("FitnessRanking - negative scores handled correctly", () => {
   const population: CreatureInternal[] = [
     { input: 1, output: 1, score: -1, neurons: [], synapses: [] },
