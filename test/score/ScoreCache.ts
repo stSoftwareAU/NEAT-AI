@@ -171,28 +171,46 @@ Deno.test("ScoreCache: cache should be invalidated when synapse is removed", () 
 });
 
 Deno.test("ScoreCache: cache should be invalidated when squash function changes", () => {
-  const creature = createSimpleCreature();
+  // Create a creature with an IF neuron that has complexity penalty of 3
+  // IF requires 3 inward connections (condition, positive, negative)
+  const creature = new Creature(4, 1, {
+    layers: [{ count: 1, squash: IF.NAME }],
+    outputLayer: { squash: IDENTITY.NAME },
+  });
 
-  // Calculate initial score
+  // Calculate initial score - IF should add complexity penalty of 3
   calculate(creature, 0.1, 0.0001);
   const initialComplexityPenalty =
     creature.cachedScoreComponents!.squashComplexityPenalty;
 
-  // Change squash to IF which has complexityPenalty = 3
-  const hiddenNeuron = creature.neurons[creature.input];
-  hiddenNeuron.squash = IF.NAME;
+  // Verify IF's penalty was captured
+  assertEquals(
+    initialComplexityPenalty,
+    3,
+    "IF neuron should have complexity penalty of 3",
+  );
 
-  // Invalidate cache
-  creature.invalidateScoreCache();
+  // Change squash to IDENTITY which has no complexity penalty
+  // Issue #1043: Use setSquash() to properly invalidate both neuron-level
+  // and creature-level caches
+  const hiddenNeuron = creature.neurons[creature.input];
+  hiddenNeuron.setSquash(IDENTITY.NAME);
+
+  // setSquash() should have already invalidated the cache
+  assertEquals(
+    creature.cachedScoreComponents,
+    undefined,
+    "Cache should be invalidated by setSquash()",
+  );
 
   // Recalculate score
   calculate(creature, 0.1, 0.0001);
 
-  // Complexity penalty should be different now
-  assertNotEquals(
+  // Complexity penalty should now be 0 (IDENTITY has no penalty)
+  assertEquals(
     creature.cachedScoreComponents!.squashComplexityPenalty,
-    initialComplexityPenalty,
-    "Squash complexity penalty should change when squash function changes",
+    0,
+    "Squash complexity penalty should be 0 after changing to IDENTITY",
   );
 });
 
