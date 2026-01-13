@@ -77,6 +77,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
     | NeuronActivationInterface
     | ActivationInterface;
 
+  /**
+   * Cached complexity penalty for score calculation.
+   * Issue #1043: Cache Activations.find() lookups in score calculation.
+   * Invalidated when squash function changes via setSquash().
+   */
+  private complexityPenaltyCache?: number;
+
   /** Index position of the neuron in the creature's neuron array */
   public index: number;
   /** Tags for storing metadata about the neuron */
@@ -256,8 +263,41 @@ export class Neuron implements TagsInterface, NeuronInternal {
   ): void {
     if (name !== this.squash) {
       delete this.squashMethodCache;
+      delete this.complexityPenaltyCache;
       this.squash = name;
+      // Invalidate creature's score cache since complexity penalty may have changed
+      // Issue #1043: Cache Activations.find() lookups in score calculation
+      this.creature.invalidateScoreCache();
     }
+  }
+
+  /**
+   * Gets the complexity penalty for this neuron's activation function.
+   * The value is cached for performance to avoid repeated Activations.find() calls.
+   * Issue #1043: Cache Activations.find() lookups in score calculation.
+   *
+   * @returns The complexity penalty (0 for input/constant neurons or neurons without a penalty)
+   */
+  getComplexityPenalty(): number {
+    // Input and constant neurons have no squash function, so no penalty
+    if (this.type === "input" || this.type === "constant") {
+      return 0;
+    }
+
+    // Return cached value if available
+    if (this.complexityPenaltyCache !== undefined) {
+      return this.complexityPenaltyCache;
+    }
+
+    // Compute and cache the penalty
+    if (this.squash) {
+      const squashFunction = this.findSquash();
+      this.complexityPenaltyCache = squashFunction.complexityPenalty ?? 0;
+    } else {
+      this.complexityPenaltyCache = 0;
+    }
+
+    return this.complexityPenaltyCache;
   }
 
   findSquash():

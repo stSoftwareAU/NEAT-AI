@@ -1,6 +1,5 @@
 import { assert } from "@std/assert";
 import type { CachedScoreComponents, Creature } from "../Creature.ts";
-import { Activations } from "../methods/activations/Activations.ts";
 import { SEMANTIC_MAJOR_VERSION } from "../upgrade/Upgrade.ts";
 
 /**
@@ -152,6 +151,7 @@ function calculatePenalty(max: number, avg: number): number {
 /**
  * Computes and caches structure-dependent score components.
  * Issue #1023: Performance optimization for large creatures.
+ * Issue #1043: Uses Neuron.getComplexityPenalty() to leverage per-neuron caching.
  *
  * @param creature - The creature to compute components for
  * @returns Cached score components
@@ -165,16 +165,14 @@ function computeAndCacheScoreComponents(
   }
 
   // Compute structure-dependent values
+  // Issue #1043: Use neuron's cached complexity penalty instead of calling
+  // Activations.find() directly. The neuron caches the penalty and clears it
+  // when setSquash() is called.
   let squashComplexityPenalty = 0;
   const endIndex = creature.neurons.length;
   for (let indx = creature.input; indx < endIndex; indx++) {
     const neuron = creature.neurons[indx];
-    if (neuron.squash) {
-      const squashFunction = Activations.find(neuron.squash);
-      if (squashFunction.complexityPenalty) {
-        squashComplexityPenalty += squashFunction.complexityPenalty;
-      }
-    }
+    squashComplexityPenalty += neuron.getComplexityPenalty();
   }
 
   const hiddenNeuronCount = creature.neurons.length - creature.input -
