@@ -243,10 +243,12 @@ jobs:
           check_run_annotations_branch: ${{ github.head_ref || github.ref_name }}
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() && (steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success') }}
-        uses: codecov/test-results-action@v1
+        if: ${{ !cancelled() && (steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success') && steps.check_junit.outputs.junit_exists == 'true' }}
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: junit.xml
+          report_type: test_results
 
       - name: Fail Build if Tests Failed
         if: ${{ steps.create_coverage_files.outputs.test_failed == 'true' || steps.create_coverage_files_fallback.outputs.test_failed == 'true' }}
