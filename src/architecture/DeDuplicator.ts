@@ -19,7 +19,7 @@ export class DeDuplicator {
     let previousExperimentMS = 0;
     this.logPopulationSize(creatures);
 
-    creatures.map((creature) => {
+    creatures.forEach((creature) => {
       CreatureUtil.makeUUID(creature);
 
       this.breed.genus.addCreature(creature);
