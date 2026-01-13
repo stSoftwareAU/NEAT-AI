@@ -730,8 +730,13 @@ export class Neat {
       elitists.length > 0
     ) {
       const n = elitists[0];
-      const creativeThinking = Creature.fromJSON(n.exportJSON());
+      // Issue #1040: Use shallowClone() instead of fromJSON(exportJSON())
+      // for better performance - avoids expensive JSON serialisation/deserialisation
+      const creativeThinking = n.shallowClone();
       delete creativeThinking.memetic;
+      // Clear score to match behaviour of previous JSON clone approach
+      // (exportJSON doesn't export score, so fromJSON wouldn't have it)
+      delete creativeThinking.score;
       const weightScale = 1 / Math.max(creativeThinking.synapses.length, 1);
       const addConnection = new AddConnection(creativeThinking);
       for (let i = 0; i < this.config.creativeThinkingConnectionCount; i++) {
