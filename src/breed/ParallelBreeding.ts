@@ -5,6 +5,7 @@ import { discover } from "../blackbox/Discover.ts";
 import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
 import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import type { Genus } from "../NEAT/Genus.ts";
+import { calculateAdaptiveTournamentSize } from "./AdaptiveTournamentSize.ts";
 import { createCompatibleFatherFromCreatures } from "./Father.ts";
 import { FitnessRanking } from "./FitnessRanking.ts";
 
@@ -312,13 +313,15 @@ export class ParallelBreeding {
         return ranking.selectFitnessProportionate();
       }
       case Selection.TOURNAMENT: {
-        assert(
-          Selection.TOURNAMENT.size <= config.populationSize,
-          "Your tournament size should be lower than the population size, please change Selection.TOURNAMENT.size",
+        // Issue #1019: Use adaptive tournament size that scales with population
+        // instead of fixed size of 5. This improves selection pressure for
+        // large populations and reduces variance for small populations.
+        const adaptiveSize = calculateAdaptiveTournamentSize(
+          ranking.sortedPopulation.length,
         );
 
         return ranking.selectTournament(
-          Selection.TOURNAMENT.size,
+          adaptiveSize,
           Selection.TOURNAMENT.probability,
         );
       }
