@@ -34,6 +34,7 @@ import { simplify } from "../optimize/Simplify.ts";
 import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { validateAfterDiscoveryOrThrow } from "../discovery/DiscoveryPostValidate.ts";
+import { PlateauDetector } from "./PlateauDetector.ts";
 
 /**
  * NEAT (NeuroEvolution of Augmenting Topologies) implementation.
@@ -73,6 +74,8 @@ export class Neat {
   population: Creature[];
   /** Available CRISPR modifications for targeted evolution */
   CRISPRs: CrisprInterface[];
+  /** Plateau detector for fitness stagnation detection (Issue #1039) */
+  readonly plateauDetector: PlateauDetector;
 
   /**
    * Creates a new NEAT instance for evolving neural networks.
@@ -115,6 +118,9 @@ export class Neat {
       ? Date.now() + Math.max(1, options.timeoutMinutes) * 60_000
       : 0;
     this.CRISPRs = Neat.deepCloneAndShuffle(this.config.CRISPRs);
+
+    // Initialize plateau detector (Issue #1039)
+    this.plateauDetector = new PlateauDetector(this.config.plateauDetection);
   }
 
   /**
@@ -572,11 +578,23 @@ export class Neat {
   }
 
   /**
-   * Evaluates, selects, breeds and mutates population
+   * Evaluates, selects, breeds and mutates population.
+   *
+   * @param previousFittest - The fittest creature from the previous generation
+   * @returns Evolution results including fittest creature, average score, and plateau status
    */
   async evolve(
     previousFittest?: Creature,
-  ): Promise<{ fittest: Creature; averageScore: number }> {
+  ): Promise<{
+    fittest: Creature;
+    averageScore: number;
+    plateau: {
+      onPlateau: boolean;
+      generationsOnPlateau: number;
+      improvementRate: number | null;
+      mutationMultiplier: number;
+    };
+  }> {
     this.additionalGenerationCount--;
 
     await this.fitness.calculate(this.population);
@@ -650,6 +668,9 @@ export class Neat {
 
     fittest.score = tmpFittest.score;
     assert(fittest.score, "No fittest score found");
+
+    // Issue #1039: Record fitness for plateau detection
+    this.plateauDetector.recordFitness(fittest.score);
 
     addTag(fittest, "score", fittest.score.toString());
 
@@ -781,7 +802,31 @@ export class Neat {
 
     // Keep breed instance for DeDuplicator usage later
     const breed = new Breed(genus, this.config);
-    const mutator = new Mutator(this.config);
+
+    // Issue #1039: Apply plateau stagnation response - increase mutation rate
+    const mutationMultiplier = this.plateauDetector.getMutationMultiplier();
+    let mutatorConfig = this.config;
+    if (mutationMultiplier > 1.0) {
+      // Create a modified config with increased mutation rate
+      const adjustedMutationRate = Math.min(
+        this.config.mutationRate * mutationMultiplier,
+        1.0, // Cap at 100%
+      );
+      mutatorConfig = createNeatConfig({
+        ...this.config,
+        mutationRate: adjustedMutationRate,
+      });
+      if (this.config.verbose) {
+        console.info(
+          `[Plateau] Stagnation detected - mutation rate increased from ` +
+            `${(this.config.mutationRate * 100).toFixed(1)}% to ` +
+            `${(adjustedMutationRate * 100).toFixed(1)}% ` +
+            `(${this.plateauDetector.getGenerationsOnPlateau()} generations on plateau)`,
+        );
+      }
+    }
+
+    const mutator = new Mutator(mutatorConfig);
     // Replace the old population with the new population
     mutator.mutate(newPopulation);
 
@@ -983,6 +1028,13 @@ export class Neat {
     return {
       fittest: fittest,
       averageScore: results.averageScore,
+      // Issue #1039: Include plateau detection status in evolution results
+      plateau: {
+        onPlateau: this.plateauDetector.isOnPlateau(),
+        generationsOnPlateau: this.plateauDetector.getGenerationsOnPlateau(),
+        improvementRate: this.plateauDetector.getImprovementRate(),
+        mutationMultiplier: this.plateauDetector.getMutationMultiplier(),
+      },
     };
   }
 

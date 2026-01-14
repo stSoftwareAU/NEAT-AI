@@ -190,3 +190,22 @@ export type {
   TacitKnowledgeResult,
   WorkerInterface as IntelligentDesignWorkerInterface,
 } from "./src/intelligentDesign/mod.ts";
+
+/**
+ * Plateau Detection Module
+ *
+ * Issue #1039: Fitness plateau detection with stagnation response.
+ * Detects when evolution stagnates and automatically increases mutation
+ * rate to help escape local optima.
+ *
+ * @see {@link module:src/NEAT/PlateauDetector}
+ */
+export {
+  DEFAULT_PLATEAU_DETECTION,
+  detectPlateau,
+  PlateauDetector,
+} from "./src/NEAT/PlateauDetector.ts";
+export type {
+  PlateauDetectionConfig,
+  RequiredPlateauDetectionConfig,
+} from "./src/NEAT/PlateauDetector.ts";

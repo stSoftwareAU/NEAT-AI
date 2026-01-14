@@ -6,6 +6,7 @@ import type {
 import type { CostName } from "../Costs.ts";
 import type { SelectionInterface } from "../methods/Selection.ts";
 import type { MutationInterface } from "../NEAT/MutationInterface.ts";
+import type { RequiredPlateauDetectionConfig } from "../NEAT/PlateauDetector.ts";
 import type { RequiredAdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 
@@ -334,4 +335,24 @@ export interface NeatArguments {
    * - Large creatures (>= large threshold): Focus on MOD_WEIGHT, MOD_BIAS
    */
   adaptiveMutationThresholds: RequiredAdaptiveMutationThresholds;
+
+  /**
+   * Fitness plateau detection configuration.
+   *
+   * Issue #1039: Evolution can stagnate when the population gets stuck in a
+   * local optimum. Plateau detection monitors fitness improvement over a
+   * sliding window and applies stagnation responses when improvement falls
+   * below a threshold.
+   *
+   * Stagnation responses include:
+   * - Increased mutation rate (via responseMutationMultiplier)
+   * - Encouraging more diverse crossover (between different species)
+   *
+   * Configuration options:
+   * - windowSize: Number of generations to consider (default: 10)
+   * - minImprovementRate: Minimum required improvement rate (default: 0.001 = 0.1%)
+   * - responseMutationMultiplier: Mutation rate multiplier on plateau (default: 2.0)
+   * - enabled: Whether plateau detection is active (default: false)
+   */
+  plateauDetection: RequiredPlateauDetectionConfig;
 }

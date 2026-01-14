@@ -6,6 +6,10 @@ import {
 import { Selection, type SelectionInterface } from "../methods/Selection.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
 import {
+  DEFAULT_PLATEAU_DETECTION,
+  type RequiredPlateauDetectionConfig,
+} from "../NEAT/PlateauDetector.ts";
+import {
   DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS,
   type RequiredAdaptiveMutationThresholds,
 } from "./AdaptiveMutationThresholds.ts";
@@ -220,6 +224,10 @@ export function createNeatConfig(options: NeatOptions): NeatConfig {
       ...DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS,
       ...options.adaptiveMutationThresholds,
     } as RequiredAdaptiveMutationThresholds,
+    plateauDetection: {
+      ...DEFAULT_PLATEAU_DETECTION,
+      ...options.plateauDetection,
+    } as RequiredPlateauDetectionConfig,
   };
   validate(config);
   return Object.freeze(config);
@@ -490,6 +498,35 @@ function validate(config: NeatArguments) {
     ) {
       throw new Error(
         `Adaptive mutation largeTopologyWeight must be between 0 and 1, was: ${adaptiveThresholds.largeTopologyWeight}`,
+      );
+    }
+  }
+  // Validate plateauDetection (Issue #1039)
+  const plateauDetection = config.plateauDetection;
+  if (plateauDetection) {
+    if (
+      !Number.isInteger(plateauDetection.windowSize) ||
+      plateauDetection.windowSize < 1
+    ) {
+      throw new Error(
+        `Plateau detection windowSize must be a positive integer, was: ${plateauDetection.windowSize}`,
+      );
+    }
+    if (
+      !Number.isFinite(plateauDetection.minImprovementRate) ||
+      plateauDetection.minImprovementRate < 0 ||
+      plateauDetection.minImprovementRate > 1
+    ) {
+      throw new Error(
+        `Plateau detection minImprovementRate must be between 0 and 1, was: ${plateauDetection.minImprovementRate}`,
+      );
+    }
+    if (
+      !Number.isFinite(plateauDetection.responseMutationMultiplier) ||
+      plateauDetection.responseMutationMultiplier < 1
+    ) {
+      throw new Error(
+        `Plateau detection responseMutationMultiplier must be >= 1, was: ${plateauDetection.responseMutationMultiplier}`,
       );
     }
   }
