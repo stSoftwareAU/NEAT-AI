@@ -159,14 +159,14 @@ dependence), so the default configuration is feed-forward/forward-only.
     This leads to faster convergence for large creatures while preventing
     unnecessary structural growth that rarely improves fitness.
 
-14. **Adaptive Mutation Rate Based on Fitness Progress**: The mutation rate
-    is automatically adjusted based on whether evolution is improving,
-    stagnating, or stable. This is a well-established technique in evolutionary
-    computation literature that helps balance exploration and exploitation:
-    - **During stagnation/plateaus**: Mutation rate is increased (default 2x)
-      to help escape local optima
-    - **During rapid improvement**: Mutation rate is reduced (default 0.8x)
-      to exploit promising solutions
+14. **Adaptive Mutation Rate Based on Fitness Progress**: The mutation rate is
+    automatically adjusted based on whether evolution is improving, stagnating,
+    or stable. This is a well-established technique in evolutionary computation
+    literature that helps balance exploration and exploitation:
+    - **During stagnation/plateaus**: Mutation rate is increased (default 2x) to
+      help escape local optima
+    - **During rapid improvement**: Mutation rate is reduced (default 0.8x) to
+      exploit promising solutions
     - **During stable progress**: Normal mutation rate is used
 
     Configuration example:
@@ -183,8 +183,8 @@ dependence), so the default configuration is feed-forward/forward-only.
     };
     ```
 
-    This leads to faster convergence (5-15% fewer generations needed) and
-    better escape from local optima while exploiting promising solutions.
+    This leads to faster convergence (5-15% fewer generations needed) and better
+    escape from local optima while exploiting promising solutions.
 
 15. **Continuous Incremental Discovery**: For distributed, multi-machine
     discovery workflows that accumulate small improvements over time, see the
