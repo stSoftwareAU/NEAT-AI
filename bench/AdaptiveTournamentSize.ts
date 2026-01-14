@@ -135,7 +135,11 @@ for (
     FIXED_TOURNAMENT_SIZE,
     1000,
   );
-  const adaptivePressure = measureSelectionPressure(ranking, adaptiveSize, 1000);
+  const adaptivePressure = measureSelectionPressure(
+    ranking,
+    adaptiveSize,
+    1000,
+  );
 
   const improvement = (
     (1 - adaptivePressure.avgRank / fixedPressure.avgRank) * 100
@@ -143,9 +147,7 @@ for (
   console.log(
     `${name.padEnd(10)} | ${fixedPressure.avgRank.toFixed(1).padStart(14)} | ${
       adaptivePressure.avgRank.toFixed(1).padStart(17)
-    } | ${
-      improvement.padStart(10)
-    }% better`,
+    } | ${improvement.padStart(10)}% better`,
   );
 }
 
