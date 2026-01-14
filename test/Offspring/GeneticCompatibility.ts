@@ -155,3 +155,217 @@ Deno.test("Genetic Compatibly 100 percent", () => {
     `Genetic compatibility should be 1 was: ${compatibly}`,
   );
 });
+
+/**
+ * Issue #1033: Test partial overlap scenario for Set intersection optimisation.
+ * This test ensures the optimised direct iteration approach produces the same
+ * result as the original spread + filter approach.
+ */
+Deno.test("Genetic Compatibility 50 percent overlap", () => {
+  // Create creature A with shared + unique neurons
+  const sharedNeurons = [];
+  const synapsesA = [];
+
+  // 5 shared hidden neurons
+  for (let i = 0; i < 5; i++) {
+    sharedNeurons.push({
+      type: "hidden" as const,
+      uuid: `shared-${i}`,
+      bias: 0.1,
+      squash: "TANH" as const,
+    });
+  }
+
+  // 5 unique neurons for creature A
+  const uniqueNeuronsA = [];
+  for (let i = 0; i < 5; i++) {
+    uniqueNeuronsA.push({
+      type: "hidden" as const,
+      uuid: `unique-a-${i}`,
+      bias: 0.1,
+      squash: "TANH" as const,
+    });
+  }
+
+  // Connect inputs to first shared neuron
+  synapsesA.push({ fromUUID: "input-0", toUUID: "shared-0", weight: 0.5 });
+
+  // Chain shared neurons
+  for (let i = 0; i < 4; i++) {
+    synapsesA.push({
+      fromUUID: `shared-${i}`,
+      toUUID: `shared-${i + 1}`,
+      weight: 0.5,
+    });
+  }
+
+  // Connect to unique neurons
+  synapsesA.push({
+    fromUUID: "shared-4",
+    toUUID: "unique-a-0",
+    weight: 0.5,
+  });
+
+  for (let i = 0; i < 4; i++) {
+    synapsesA.push({
+      fromUUID: `unique-a-${i}`,
+      toUUID: `unique-a-${i + 1}`,
+      weight: 0.5,
+    });
+  }
+
+  // Connect to output
+  synapsesA.push({
+    fromUUID: "unique-a-4",
+    toUUID: "output-0",
+    weight: 0.5,
+  });
+
+  const creatureA = Creature.fromJSON({
+    neurons: [
+      ...sharedNeurons,
+      ...uniqueNeuronsA,
+      { type: "output", uuid: "output-0", bias: 0, squash: "IDENTITY" },
+    ],
+    synapses: synapsesA,
+    input: 3,
+    output: 1,
+  });
+  creatureA.validate();
+
+  // Create creature B with same shared neurons but different unique neurons
+  const uniqueNeuronsB = [];
+  for (let i = 0; i < 5; i++) {
+    uniqueNeuronsB.push({
+      type: "hidden" as const,
+      uuid: `unique-b-${i}`,
+      bias: 0.1,
+      squash: "TANH" as const,
+    });
+  }
+
+  const synapsesB = [];
+  synapsesB.push({ fromUUID: "input-0", toUUID: "shared-0", weight: 0.5 });
+
+  for (let i = 0; i < 4; i++) {
+    synapsesB.push({
+      fromUUID: `shared-${i}`,
+      toUUID: `shared-${i + 1}`,
+      weight: 0.5,
+    });
+  }
+
+  synapsesB.push({
+    fromUUID: "shared-4",
+    toUUID: "unique-b-0",
+    weight: 0.5,
+  });
+
+  for (let i = 0; i < 4; i++) {
+    synapsesB.push({
+      fromUUID: `unique-b-${i}`,
+      toUUID: `unique-b-${i + 1}`,
+      weight: 0.5,
+    });
+  }
+
+  synapsesB.push({
+    fromUUID: "unique-b-4",
+    toUUID: "output-0",
+    weight: 0.5,
+  });
+
+  const creatureB = Creature.fromJSON({
+    neurons: [
+      ...sharedNeurons,
+      ...uniqueNeuronsB,
+      { type: "output", uuid: "output-0", bias: 0, squash: "IDENTITY" },
+    ],
+    synapses: synapsesB,
+    input: 3,
+    output: 1,
+  });
+  creatureB.validate();
+
+  // Both creatures have 10 hidden neurons each, 5 are shared
+  // Compatibility should be 5/10 = 0.5
+  const compatibility = geneticCompatibility(creatureA, creatureB);
+  assertAlmostEquals(
+    compatibility,
+    0.5,
+    0.0001,
+    `Genetic compatibility should be 0.5 (50% overlap), was: ${compatibility}`,
+  );
+});
+
+/**
+ * Issue #1033: Test asymmetric set sizes for Set intersection optimisation.
+ * Ensures correct behaviour when one creature has more hidden neurons than the other.
+ */
+Deno.test("Genetic Compatibility asymmetric sizes", () => {
+  // Create small creature with 3 hidden neurons
+  const smallCreature = Creature.fromJSON({
+    neurons: [
+      { type: "hidden", uuid: "shared-0", bias: 0.1, squash: "TANH" },
+      { type: "hidden", uuid: "shared-1", bias: 0.1, squash: "TANH" },
+      { type: "hidden", uuid: "unique-small-0", bias: 0.1, squash: "TANH" },
+      { type: "output", uuid: "output-0", bias: 0, squash: "IDENTITY" },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "shared-0", weight: 0.5 },
+      { fromUUID: "shared-0", toUUID: "shared-1", weight: 0.5 },
+      { fromUUID: "shared-1", toUUID: "unique-small-0", weight: 0.5 },
+      { fromUUID: "unique-small-0", toUUID: "output-0", weight: 0.5 },
+    ],
+    input: 2,
+    output: 1,
+  });
+  smallCreature.validate();
+
+  // Create large creature with 6 hidden neurons (including the 2 shared)
+  const largeCreature = Creature.fromJSON({
+    neurons: [
+      { type: "hidden", uuid: "shared-0", bias: 0.1, squash: "TANH" },
+      { type: "hidden", uuid: "shared-1", bias: 0.1, squash: "TANH" },
+      { type: "hidden", uuid: "unique-large-0", bias: 0.1, squash: "TANH" },
+      { type: "hidden", uuid: "unique-large-1", bias: 0.1, squash: "TANH" },
+      { type: "hidden", uuid: "unique-large-2", bias: 0.1, squash: "TANH" },
+      { type: "hidden", uuid: "unique-large-3", bias: 0.1, squash: "TANH" },
+      { type: "output", uuid: "output-0", bias: 0, squash: "IDENTITY" },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "shared-0", weight: 0.5 },
+      { fromUUID: "shared-0", toUUID: "shared-1", weight: 0.5 },
+      { fromUUID: "shared-1", toUUID: "unique-large-0", weight: 0.5 },
+      { fromUUID: "unique-large-0", toUUID: "unique-large-1", weight: 0.5 },
+      { fromUUID: "unique-large-1", toUUID: "unique-large-2", weight: 0.5 },
+      { fromUUID: "unique-large-2", toUUID: "unique-large-3", weight: 0.5 },
+      { fromUUID: "unique-large-3", toUUID: "output-0", weight: 0.5 },
+    ],
+    input: 2,
+    output: 1,
+  });
+  largeCreature.validate();
+
+  // Small creature has 3 hidden neurons, 2 are shared with large creature
+  // Compatibility = 2/3 ≈ 0.667
+  const compatibility = geneticCompatibility(smallCreature, largeCreature);
+  assertAlmostEquals(
+    compatibility,
+    2 / 3,
+    0.0001,
+    `Genetic compatibility should be 2/3 (asymmetric sizes), was: ${compatibility}`,
+  );
+
+  // Test in reverse order - should give same result
+  const compatibilityReverse = geneticCompatibility(
+    largeCreature,
+    smallCreature,
+  );
+  assertAlmostEquals(
+    compatibilityReverse,
+    2 / 3,
+    0.0001,
+    `Genetic compatibility should be same regardless of order, was: ${compatibilityReverse}`,
+  );
+});
