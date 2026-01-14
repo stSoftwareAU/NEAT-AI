@@ -501,7 +501,7 @@ function validate(config: NeatArguments) {
       );
     }
   }
-  // Validate plateauDetection (Issue #1039)
+  // Validate plateauDetection (Issue #1039 and Issue #1012)
   const plateauDetection = config.plateauDetection;
   if (plateauDetection) {
     if (
@@ -527,6 +527,36 @@ function validate(config: NeatArguments) {
     ) {
       throw new Error(
         `Plateau detection responseMutationMultiplier must be >= 1, was: ${plateauDetection.responseMutationMultiplier}`,
+      );
+    }
+    // Issue #1012: Validate responseImprovementMultiplier
+    if (
+      !Number.isFinite(plateauDetection.responseImprovementMultiplier) ||
+      plateauDetection.responseImprovementMultiplier < 0 ||
+      plateauDetection.responseImprovementMultiplier > 1
+    ) {
+      throw new Error(
+        `Plateau detection responseImprovementMultiplier must be between 0 and 1, was: ${plateauDetection.responseImprovementMultiplier}`,
+      );
+    }
+    // Issue #1012: Validate rapidImprovementRate
+    if (
+      !Number.isFinite(plateauDetection.rapidImprovementRate) ||
+      plateauDetection.rapidImprovementRate < 0 ||
+      plateauDetection.rapidImprovementRate > 1
+    ) {
+      throw new Error(
+        `Plateau detection rapidImprovementRate must be between 0 and 1, was: ${plateauDetection.rapidImprovementRate}`,
+      );
+    }
+    // Issue #1012: Validate rapidImprovementRate > minImprovementRate
+    if (
+      plateauDetection.rapidImprovementRate <=
+        plateauDetection.minImprovementRate
+    ) {
+      throw new Error(
+        `Plateau detection rapidImprovementRate must be greater than minImprovementRate. ` +
+          `rapidImprovementRate: ${plateauDetection.rapidImprovementRate}, minImprovementRate: ${plateauDetection.minImprovementRate}`,
       );
     }
   }

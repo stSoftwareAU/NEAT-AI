@@ -10,6 +10,9 @@
 
 /**
  * Configuration for plateau detection behaviour.
+ *
+ * Issue #1039: Plateau detection with stagnation response.
+ * Issue #1012: Adaptive mutation rate based on fitness progress.
  */
 export interface PlateauDetectionConfig {
   /**
@@ -27,11 +30,32 @@ export interface PlateauDetectionConfig {
   minImprovementRate?: number;
 
   /**
+   * Threshold improvement rate (as a fraction) above which evolution is considered
+   * to be "rapidly improving". When improvement rate exceeds this threshold,
+   * the mutation rate is reduced to exploit good solutions.
+   * Must be greater than minImprovementRate.
+   * Default: 0.01 (1%)
+   *
+   * Issue #1012: Adaptive mutation rate based on fitness progress.
+   */
+  rapidImprovementRate?: number;
+
+  /**
    * Multiplier to apply to mutation rate when on a plateau.
    * Higher values cause more aggressive mutations to escape local optima.
    * Default: 2.0
    */
   responseMutationMultiplier?: number;
+
+  /**
+   * Multiplier to apply to mutation rate when rapidly improving.
+   * Lower values reduce mutations to exploit good solutions.
+   * Must be between 0 and 1.
+   * Default: 0.8 (20% reduction)
+   *
+   * Issue #1012: Adaptive mutation rate based on fitness progress.
+   */
+  responseImprovementMultiplier?: number;
 
   /**
    * Whether plateau detection is enabled.
@@ -49,11 +73,16 @@ export type RequiredPlateauDetectionConfig = Required<PlateauDetectionConfig>;
 
 /**
  * Default values for plateau detection configuration.
+ *
+ * Issue #1039: Plateau detection with stagnation response.
+ * Issue #1012: Adaptive mutation rate based on fitness progress.
  */
 export const DEFAULT_PLATEAU_DETECTION: RequiredPlateauDetectionConfig = {
   windowSize: 10,
   minImprovementRate: 0.001, // 0.1% improvement required
+  rapidImprovementRate: 0.01, // 1% improvement threshold for "rapid" improvement
   responseMutationMultiplier: 2.0,
+  responseImprovementMultiplier: 0.8, // 20% reduction during rapid improvement
   enabled: false, // Off by default to maintain backwards compatibility
 };
 
@@ -138,6 +167,41 @@ export class PlateauDetector {
   }
 
   /**
+   * Checks if evolution is currently improving rapidly.
+   *
+   * Rapid improvement is detected when the improvement rate exceeds
+   * the configured rapidImprovementRate threshold.
+   *
+   * Issue #1012: Adaptive mutation rate based on fitness progress.
+   *
+   * @returns true if rapidly improving, false otherwise
+   */
+  isImproving(): boolean {
+    if (!this.config.enabled) {
+      return false;
+    }
+    return this.checkImproving();
+  }
+
+  /**
+   * Internal method to check rapid improvement status.
+   *
+   * Issue #1012: Adaptive mutation rate based on fitness progress.
+   */
+  private checkImproving(): boolean {
+    if (this.fitnessHistory.length < this.config.windowSize) {
+      return false;
+    }
+
+    const rate = this.calculateImprovementRate();
+    if (rate === null) {
+      return false;
+    }
+
+    return rate >= this.config.rapidImprovementRate;
+  }
+
+  /**
    * Internal method to check plateau status.
    */
   private checkPlateau(): boolean {
@@ -193,13 +257,23 @@ export class PlateauDetector {
   }
 
   /**
-   * Gets the mutation multiplier to apply based on plateau status.
+   * Gets the mutation multiplier to apply based on fitness progress status.
    *
-   * @returns The configured multiplier if on a plateau, 1.0 otherwise
+   * Returns:
+   * - responseMutationMultiplier (> 1) if on a plateau (stagnation)
+   * - responseImprovementMultiplier (< 1) if rapidly improving
+   * - 1.0 for stable progress (between plateau and rapid improvement)
+   *
+   * Issue #1012: Adaptive mutation rate based on fitness progress.
+   *
+   * @returns The appropriate multiplier based on current evolution state
    */
   getMutationMultiplier(): number {
     if (this.isOnPlateau()) {
       return this.config.responseMutationMultiplier;
+    }
+    if (this.isImproving()) {
+      return this.config.responseImprovementMultiplier;
     }
     return 1.0;
   }
