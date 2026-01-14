@@ -172,6 +172,7 @@ Deno.test("PlateauDetection - validation: responseMutationMultiplier must be >= 
 
 Deno.test("PlateauDetector - no plateau when insufficient history", () => {
   const detector = new PlateauDetector({
+    ...DEFAULT_PLATEAU_DETECTION,
     windowSize: 10,
     minImprovementRate: 0.001,
     responseMutationMultiplier: 2.0,
@@ -188,6 +189,7 @@ Deno.test("PlateauDetector - no plateau when insufficient history", () => {
 
 Deno.test("PlateauDetector - no plateau when fitness is improving", () => {
   const detector = new PlateauDetector({
+    ...DEFAULT_PLATEAU_DETECTION,
     windowSize: 10,
     minImprovementRate: 0.001,
     responseMutationMultiplier: 2.0,
@@ -205,6 +207,7 @@ Deno.test("PlateauDetector - no plateau when fitness is improving", () => {
 
 Deno.test("PlateauDetector - detects plateau when fitness stagnates", () => {
   const detector = new PlateauDetector({
+    ...DEFAULT_PLATEAU_DETECTION,
     windowSize: 10,
     minImprovementRate: 0.001, // 0.1% minimum improvement
     responseMutationMultiplier: 2.0,
@@ -222,8 +225,10 @@ Deno.test("PlateauDetector - detects plateau when fitness stagnates", () => {
 
 Deno.test("PlateauDetector - detects plateau when improvement is below threshold", () => {
   const detector = new PlateauDetector({
+    ...DEFAULT_PLATEAU_DETECTION,
     windowSize: 10,
-    minImprovementRate: 0.01, // 1% minimum improvement
+    minImprovementRate: 0.001, // 0.1% minimum improvement - use default to stay below rapidImprovementRate
+    rapidImprovementRate: 0.01, // 1% for rapid improvement
     responseMutationMultiplier: 2.0,
     enabled: true,
   });
@@ -241,6 +246,7 @@ Deno.test("PlateauDetector - detects plateau when improvement is below threshold
 
 Deno.test("PlateauDetector - exits plateau when improvement resumes", () => {
   const detector = new PlateauDetector({
+    ...DEFAULT_PLATEAU_DETECTION,
     windowSize: 5,
     minImprovementRate: 0.001,
     responseMutationMultiplier: 2.0,
@@ -262,6 +268,7 @@ Deno.test("PlateauDetector - exits plateau when improvement resumes", () => {
 
 Deno.test("PlateauDetector - disabled detector never reports plateau", () => {
   const detector = new PlateauDetector({
+    ...DEFAULT_PLATEAU_DETECTION,
     windowSize: 10,
     minImprovementRate: 0.001,
     responseMutationMultiplier: 2.0,
@@ -278,9 +285,11 @@ Deno.test("PlateauDetector - disabled detector never reports plateau", () => {
 
 Deno.test("PlateauDetector - getMutationMultiplier returns 1.0 when not on plateau", () => {
   const detector = new PlateauDetector({
+    ...DEFAULT_PLATEAU_DETECTION,
     windowSize: 10,
     minImprovementRate: 0.001,
     responseMutationMultiplier: 2.0,
+    responseImprovementMultiplier: 1.0, // Set to 1.0 to avoid improvement multiplier affecting this test
     enabled: true,
   });
 
@@ -296,6 +305,7 @@ Deno.test("PlateauDetector - getMutationMultiplier returns 1.0 when not on plate
 
 Deno.test("PlateauDetector - getMutationMultiplier returns configured value on plateau", () => {
   const detector = new PlateauDetector({
+    ...DEFAULT_PLATEAU_DETECTION,
     windowSize: 5,
     minImprovementRate: 0.001,
     responseMutationMultiplier: 2.5,
@@ -312,6 +322,7 @@ Deno.test("PlateauDetector - getMutationMultiplier returns configured value on p
 
 Deno.test("PlateauDetector - getImprovementRate calculates correctly", () => {
   const detector = new PlateauDetector({
+    ...DEFAULT_PLATEAU_DETECTION,
     windowSize: 5,
     minImprovementRate: 0.001,
     responseMutationMultiplier: 2.0,
@@ -334,6 +345,7 @@ Deno.test("PlateauDetector - getImprovementRate calculates correctly", () => {
 
 Deno.test("PlateauDetector - reset clears history", () => {
   const detector = new PlateauDetector({
+    ...DEFAULT_PLATEAU_DETECTION,
     windowSize: 5,
     minImprovementRate: 0.001,
     responseMutationMultiplier: 2.0,
@@ -388,6 +400,7 @@ Deno.test("detectPlateau - handles edge cases", () => {
 
 Deno.test("PlateauDetector - handles negative fitness values correctly", () => {
   const detector = new PlateauDetector({
+    ...DEFAULT_PLATEAU_DETECTION,
     windowSize: 5,
     minImprovementRate: 0.001,
     responseMutationMultiplier: 2.0,
@@ -409,6 +422,7 @@ Deno.test("PlateauDetector - handles negative fitness values correctly", () => {
 
 Deno.test("PlateauDetector - handles zero fitness values", () => {
   const detector = new PlateauDetector({
+    ...DEFAULT_PLATEAU_DETECTION,
     windowSize: 5,
     minImprovementRate: 0.001,
     responseMutationMultiplier: 2.0,
@@ -425,6 +439,7 @@ Deno.test("PlateauDetector - handles zero fitness values", () => {
 
 Deno.test("PlateauDetector - handles fitness approaching zero", () => {
   const detector = new PlateauDetector({
+    ...DEFAULT_PLATEAU_DETECTION,
     windowSize: 5,
     minImprovementRate: 0.001,
     responseMutationMultiplier: 2.0,
@@ -443,6 +458,7 @@ Deno.test("PlateauDetector - handles fitness approaching zero", () => {
 
 Deno.test("PlateauDetector - getGenerationsOnPlateau returns correct count", () => {
   const detector = new PlateauDetector({
+    ...DEFAULT_PLATEAU_DETECTION,
     windowSize: 5,
     minImprovementRate: 0.001,
     responseMutationMultiplier: 2.0,
