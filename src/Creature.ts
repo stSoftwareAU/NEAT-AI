@@ -154,6 +154,13 @@ export class Creature implements CreatureInternal {
    */
   private connectionSet: Set<string> | null = null;
 
+  /**
+   * Cached Set of hidden neuron UUIDs.
+   * Enables O(1) lookup for genetic compatibility checks.
+   * Issue #1032: Performance optimisation for genetic compatibility checks.
+   */
+  private hiddenNeuronUUIDs: Set<string> | null = null;
+
   /** The version of this creature */
   public semanticVersion: string;
 
@@ -246,6 +253,9 @@ export class Creature implements CreatureInternal {
       this.inwardCacheMissCount = 0;
       // Invalidate connection set on full cache clear
       this.connectionSet = null;
+      // Invalidate hidden neuron UUIDs cache on full cache clear
+      // Issue #1032: Performance optimisation for genetic compatibility checks
+      this.hiddenNeuronUUIDs = null;
     } else {
       this.cacheTo.delete(to);
       this.cacheFrom.delete(from);
@@ -255,6 +265,9 @@ export class Creature implements CreatureInternal {
       this.inwardCacheMissCount = 0;
       // Invalidate connection set on partial clear (structure changed)
       this.connectionSet = null;
+      // Invalidate hidden neuron UUIDs cache on partial clear (structure changed)
+      // Issue #1032: Performance optimisation for genetic compatibility checks
+      this.hiddenNeuronUUIDs = null;
     }
     this.cacheFocus.clear();
     this.invalidateScoreCache();
@@ -708,6 +721,26 @@ export class Creature implements CreatureInternal {
    */
   public hasConnection(from: number, to: number): boolean {
     return this.getConnectionSet().has(`${from}-${to}`);
+  }
+
+  /**
+   * Builds and returns a cached Set of hidden neuron UUIDs.
+   * Enables O(1) lookup for genetic compatibility checks.
+   * Issue #1032: Performance optimisation for genetic compatibility checks.
+   *
+   * @returns {Set<string>} Set of hidden neuron UUIDs
+   */
+  public getHiddenNeuronUUIDs(): Set<string> {
+    if (this.hiddenNeuronUUIDs === null) {
+      this.hiddenNeuronUUIDs = new Set<string>();
+      for (let i = this.input, len = this.neurons.length; i < len; i++) {
+        const neuron = this.neurons[i];
+        if (neuron.type === "hidden") {
+          this.hiddenNeuronUUIDs.add(neuron.uuid);
+        }
+      }
+    }
+    return this.hiddenNeuronUUIDs;
   }
 
   /**
