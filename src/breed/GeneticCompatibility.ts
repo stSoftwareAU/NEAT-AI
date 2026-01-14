@@ -12,6 +12,8 @@ import type { Creature } from "../../mod.ts";
  * The compatibility is calculated as the ratio of matching hidden neurons to the
  * total number of hidden neurons in the smaller creature.
  *
+ * Issue #1032: Uses cached hidden neuron UUIDs for improved performance.
+ *
  * @param father - The first creature for compatibility calculation
  * @param mother - The second creature for compatibility calculation
  * @returns A compatibility score between 0 and 1, where higher values indicate better compatibility
@@ -28,12 +30,9 @@ export function geneticCompatibility(
   father: Creature,
   mother: Creature,
 ): number {
-  const fatherNeurons = new Set(
-    father.neurons.filter((n) => n.type === "hidden").map((n) => n.uuid),
-  );
-  const motherNeurons = new Set(
-    mother.neurons.filter((n) => n.type === "hidden").map((n) => n.uuid),
-  );
+  // Use cached hidden neuron UUIDs for improved performance (Issue #1032)
+  const fatherNeurons = father.getHiddenNeuronUUIDs();
+  const motherNeurons = mother.getHiddenNeuronUUIDs();
 
   const smallestNeuronSet = fatherNeurons.size < motherNeurons.size
     ? fatherNeurons
