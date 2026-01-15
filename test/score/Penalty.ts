@@ -59,6 +59,11 @@ Deno.test("Score: Weight change should affect score", () => {
     }
   });
 
+  // Invalidate cached score components after direct weight modification
+  // Issue #1011: Score components are now cached, so direct modifications
+  // require explicit cache invalidation
+  creature.invalidateScoreCache();
+
   const newScore = calculate(creature, 0.603, 0.000_000_1);
   assert(
     newScore > initialScore,

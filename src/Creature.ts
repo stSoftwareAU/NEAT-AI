@@ -67,13 +67,18 @@ interface CreatureOptions {
 
 /**
  * Cached score components to avoid recalculating on every score calculation.
- * Issue #1023: Performance optimization for large creatures.
+ * Issue #1023: Performance optimisation for large creatures.
+ * Issue #1011: Cache weight/bias statistics incrementally.
  */
 export interface CachedScoreComponents {
   /** Number of hidden neurons (neurons.length - input - output) */
   hiddenNeuronCount: number;
   /** Total complexity penalty from squash functions */
   squashComplexityPenalty: number;
+  /** Maximum absolute value among all weights and biases */
+  maxWeightBias: number;
+  /** Average absolute value among all weights and biases */
+  avgWeightBias: number;
 }
 
 /**

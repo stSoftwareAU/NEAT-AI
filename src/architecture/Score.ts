@@ -9,6 +9,9 @@ import { SEMANTIC_MAJOR_VERSION } from "../upgrade/Upgrade.ts";
  * where complexityPenalty accounts for the number of hidden neurons, synapses,
  * and activation function complexity.
  *
+ * Issue #1011: Weight/bias statistics are now cached to avoid redundant iterations
+ * over synapses and neurons on every score calculation.
+ *
  * @param creature - The creature to score
  * @param error - The error value from fitness evaluation
  * @param growthCost - The cost factor for network complexity
@@ -29,7 +32,12 @@ export function calculate(
   assert(!Number.isNaN(error), `Error is NaN`);
   assert(Number.isFinite(error), `Error is not finite`);
   assert(error >= 0, `Error: ${error} is negative`);
-  const { max, avg } = calculateMaxOutOfBounds(creature);
+
+  // Get cached weight/bias statistics (Issue #1011)
+  const cached = computeAndCacheScoreComponents(creature);
+  const max = cached.maxWeightBias;
+  const avg = cached.avgWeightBias;
+
   assert(Number.isFinite(max), `Max: ${max} is not finite`);
   assert(Number.isFinite(avg), `Avg: ${avg} is not finite`);
   const penalty = calculatePenalty(max, avg);
@@ -38,55 +46,6 @@ export function calculate(
 
   assert(Number.isFinite(score), `Score: ${score} is not finite`);
   return score;
-}
-
-function calculateMaxOutOfBounds(
-  creature: Creature,
-): { max: number; avg: number } {
-  let max = 0;
-  let total = 0;
-  let count = 0;
-
-  for (const synapse of creature.synapses) {
-    assert(
-      Number.isFinite(synapse.weight),
-      `Weight: ${synapse.weight} is not finite`,
-    );
-    const w = Math.abs(synapse.weight);
-    max = Math.max(max, w);
-    total += w;
-    count++;
-  }
-
-  for (const node of creature.neurons) {
-    if (
-      node.type !== "input"
-    ) {
-      assert(Number.isFinite(node.bias), `Bias: ${node.bias} is not finite`);
-      const b = Math.abs(node.bias!);
-      max = Math.max(max, b);
-      total += b;
-      count++;
-    }
-  }
-
-  assert(count > 0, "Count is 0");
-
-  if (max > Number.MAX_SAFE_INTEGER) {
-    console.log("Max is too large", max);
-  }
-  if (total > Number.MAX_SAFE_INTEGER) {
-    console.log("Total is too large", total);
-  }
-  if (max > Number.MAX_SAFE_INTEGER) max = Number.MAX_SAFE_INTEGER;
-  if (total > Number.MAX_SAFE_INTEGER) total = Number.MAX_SAFE_INTEGER;
-
-  assert(max >= 0, `Max: ${max} is negative`);
-  assert(total >= 0, `Total: ${total} is negative`);
-
-  const avg = count > 0 ? total / count : 0;
-
-  return { max, avg };
 }
 
 /**
@@ -150,8 +109,10 @@ function calculatePenalty(max: number, avg: number): number {
 
 /**
  * Computes and caches structure-dependent score components.
- * Issue #1023: Performance optimization for large creatures.
+ * Issue #1023: Performance optimisation for large creatures.
  * Issue #1043: Uses Neuron.getComplexityPenalty() to leverage per-neuron caching.
+ * Issue #1011: Also caches max/avg weight/bias statistics to avoid redundant
+ * iterations over synapses and neurons.
  *
  * @param creature - The creature to compute components for
  * @returns Cached score components
@@ -169,19 +130,68 @@ function computeAndCacheScoreComponents(
   // Activations.find() directly. The neuron caches the penalty and clears it
   // when setSquash() is called.
   let squashComplexityPenalty = 0;
-  const endIndex = creature.neurons.length;
-  for (let indx = creature.input; indx < endIndex; indx++) {
-    const neuron = creature.neurons[indx];
-    squashComplexityPenalty += neuron.getComplexityPenalty();
+
+  // Issue #1011: Calculate max/avg weight/bias in the same pass as complexity penalty
+  // This avoids a separate full iteration over synapses and neurons.
+  let maxWeightBias = 0;
+  let totalWeightBias = 0;
+  let countWeightBias = 0;
+
+  // Iterate over synapses to gather weight statistics
+  const synapses = creature.synapses;
+  for (let i = 0, len = synapses.length; i < len; i++) {
+    const synapse = synapses[i];
+    assert(
+      Number.isFinite(synapse.weight),
+      `Weight: ${synapse.weight} is not finite`,
+    );
+    const w = Math.abs(synapse.weight);
+    if (w > maxWeightBias) maxWeightBias = w;
+    totalWeightBias += w;
+    countWeightBias++;
   }
 
-  const hiddenNeuronCount = creature.neurons.length - creature.input -
-    creature.output;
+  // Iterate over non-input neurons to gather bias statistics and complexity penalty
+  const neurons = creature.neurons;
+  const endIndex = neurons.length;
+  for (let indx = creature.input; indx < endIndex; indx++) {
+    const neuron = neurons[indx];
+    squashComplexityPenalty += neuron.getComplexityPenalty();
+
+    assert(Number.isFinite(neuron.bias), `Bias: ${neuron.bias} is not finite`);
+    const b = Math.abs(neuron.bias);
+    if (b > maxWeightBias) maxWeightBias = b;
+    totalWeightBias += b;
+    countWeightBias++;
+  }
+
+  assert(countWeightBias > 0, "Count is 0");
+
+  // Handle overflow protection
+  if (maxWeightBias > Number.MAX_SAFE_INTEGER) {
+    console.log("Max is too large", maxWeightBias);
+    maxWeightBias = Number.MAX_SAFE_INTEGER;
+  }
+  if (totalWeightBias > Number.MAX_SAFE_INTEGER) {
+    console.log("Total is too large", totalWeightBias);
+    totalWeightBias = Number.MAX_SAFE_INTEGER;
+  }
+
+  assert(maxWeightBias >= 0, `Max: ${maxWeightBias} is negative`);
+  assert(totalWeightBias >= 0, `Total: ${totalWeightBias} is negative`);
+
+  const avgWeightBias = countWeightBias > 0
+    ? totalWeightBias / countWeightBias
+    : 0;
+
+  const hiddenNeuronCount = neurons.length - creature.input - creature.output;
 
   // Cache the computed values
   const cached: CachedScoreComponents = {
     hiddenNeuronCount,
     squashComplexityPenalty,
+    maxWeightBias,
+    avgWeightBias,
   };
   creature.cachedScoreComponents = cached;
 
