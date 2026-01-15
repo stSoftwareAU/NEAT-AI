@@ -376,6 +376,36 @@ export class Neat {
         );
       }
 
+      // Issue #1020: Build the improved creature from the original creature.
+      // This ensures we apply discovery results to the creature that was analysed,
+      // not the current fittest (which may have evolved during discovery).
+      // We build ONE improved creature and add it directly to the population.
+      const improvedCreature = DiscoverStructure.addHelpfulSynapses(
+        uuid,
+        creature,
+        r.discover.addHelpfulSynapses,
+        this.config.discoveryFailureCacheDir,
+      );
+
+      if (improvedCreature) {
+        // Tag the improved creature to indicate it came from discovery
+        addTag(improvedCreature, "approach", "discovered");
+        addTag(improvedCreature, "discoveryID", uuid);
+
+        // Store the improved creature JSON in the response for direct population addition
+        r.discover.improvedCreature = improvedCreature.exportJSON();
+
+        if (this.config.verbose) {
+          console.info(
+            `[Neat] Built improved creature from discovery ${
+              blue(uuid.substring(Math.max(0, uuid.length - 8)))
+            } with ${
+              r.discover.addHelpfulSynapses?.length ?? 0
+            } synapses added`,
+          );
+        }
+      }
+
       this.discoveryComplete.push(r);
 
       this.discoveryInProgress.delete(uuid);
@@ -907,93 +937,44 @@ export class Neat {
     }
     this.trainingComplete.length = 0;
 
+    // Issue #1020: Process discovery results by adding discovered creatures directly.
+    // The improved creature was already built from the original creature in scheduleDiscovery(),
+    // so we just add it to the population without applying changes to the current fittest.
+    // This ensures evolution continues without being blocked by discovery results.
     for (let i = this.discoveryComplete.length; i--;) {
       const r = this.discoveryComplete[i];
       assert(r.discover, "No discovery found");
 
-      const addedSynapseCreature = DiscoverStructure.addHelpfulSynapses(
-        r.discover.ID,
-        fittest,
-        r.discover.addHelpfulSynapses,
-      );
-      if (addedSynapseCreature) {
+      // Issue #1020: Add the pre-built improved creature directly to the population.
+      // The creature was built in scheduleDiscovery() from the original creature,
+      // not the current fittest. This allows discoveries to be applied without
+      // blocking evolution or racing with population changes.
+      if (r.discover.improvedCreature) {
+        const discoveredCreature = Creature.fromJSON(
+          r.discover.improvedCreature,
+        );
+        CreatureUtil.makeUUID(discoveredCreature);
+
         validateAfterDiscoveryOrThrow({
           baseCreature: fittest,
-          discoveredCreature: addedSynapseCreature,
+          discoveredCreature: discoveredCreature,
           discoveryID: r.discover.ID,
-          operation: "addHelpfulSynapses",
+          operation: "discovered-creature-addition",
           feedbackLoop: this.config.feedbackLoop,
         });
-        trainedPopulation.push(addedSynapseCreature);
-      }
 
-      const removedSynapseCreature = DiscoverStructure.removeSynapse(
-        r.discover.ID,
-        fittest,
-        r.discover.removeHarmfulSynapse,
-      );
-      if (removedSynapseCreature) {
-        validateAfterDiscoveryOrThrow({
-          baseCreature: fittest,
-          discoveredCreature: removedSynapseCreature,
-          discoveryID: r.discover.ID,
-          operation: "removeSynapse",
-          feedbackLoop: this.config.feedbackLoop,
-        });
-        trainedPopulation.push(removedSynapseCreature);
+        trainedPopulation.push(discoveredCreature);
 
-        if (addedSynapseCreature) {
-          const combinedSynapseCreature = DiscoverStructure.addHelpfulSynapses(
-            r.discover.ID,
-            removedSynapseCreature,
-            r.discover.addHelpfulSynapses,
+        if (this.config.verbose) {
+          console.info(
+            `[Neat] Added discovered creature ${
+              blue(discoveredCreature.uuid?.substring(0, 8) ?? "unknown")
+            } to population (from discovery ${
+              blue(
+                r.discover.ID.substring(Math.max(0, r.discover.ID.length - 8)),
+              )
+            })`,
           );
-
-          if (combinedSynapseCreature) {
-            validateAfterDiscoveryOrThrow({
-              baseCreature: fittest,
-              discoveredCreature: combinedSynapseCreature,
-              discoveryID: r.discover.ID,
-              operation: "removeSynapse+addHelpfulSynapses",
-              feedbackLoop: this.config.feedbackLoop,
-            });
-            trainedPopulation.push(combinedSynapseCreature);
-          }
-        }
-      }
-
-      const changedSquashCreature = DiscoverStructure.changeSquash(
-        r.discover.ID,
-        fittest,
-        r.discover.candidateSquashes,
-      );
-      if (changedSquashCreature) {
-        validateAfterDiscoveryOrThrow({
-          baseCreature: fittest,
-          discoveredCreature: changedSquashCreature,
-          discoveryID: r.discover.ID,
-          operation: "changeSquash",
-          feedbackLoop: this.config.feedbackLoop,
-        });
-        trainedPopulation.push(changedSquashCreature);
-
-        if (addedSynapseCreature) {
-          const combinedSynapseCreature = DiscoverStructure.changeSquash(
-            r.discover.ID,
-            addedSynapseCreature,
-            r.discover.candidateSquashes,
-          );
-
-          if (combinedSynapseCreature) {
-            validateAfterDiscoveryOrThrow({
-              baseCreature: fittest,
-              discoveredCreature: combinedSynapseCreature,
-              discoveryID: r.discover.ID,
-              operation: "addHelpfulSynapses+changeSquash",
-              feedbackLoop: this.config.feedbackLoop,
-            });
-            trainedPopulation.push(combinedSynapseCreature);
-          }
         }
       }
 
@@ -1004,6 +985,8 @@ export class Neat {
       r.discover.removeHarmfulSynapse = null;
       // @ts-ignore - clearing to help GC
       r.discover.candidateSquashes = null;
+      // @ts-ignore - clearing to help GC
+      r.discover.improvedCreature = null;
     }
     this.discoveryComplete.length = 0;
 
