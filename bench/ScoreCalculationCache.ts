@@ -38,7 +38,7 @@ function formatDuration(ms: number): string {
   }
 }
 
-async function runBenchmark() {
+function runBenchmark() {
   console.log("=".repeat(60));
   console.log("Score Calculation Cache Benchmark (Issue #1011)");
   console.log("=".repeat(60));
@@ -48,7 +48,11 @@ async function runBenchmark() {
   console.log(`Creature stats:`);
   console.log(`  Neurons: ${creature.neurons.length}`);
   console.log(`  Synapses: ${creature.synapses.length}`);
-  console.log(`  Hidden neurons: ${creature.neurons.length - creature.input - creature.output}`);
+  console.log(
+    `  Hidden neurons: ${
+      creature.neurons.length - creature.input - creature.output
+    }`,
+  );
   console.log();
 
   const iterations = 1000;
@@ -110,7 +114,9 @@ async function runBenchmark() {
   console.log();
 
   // Benchmark 3: Realistic fitness evaluation scenario
-  console.log(`Benchmark 3: Realistic fitness evaluation (50 creatures, same structure)`);
+  console.log(
+    `Benchmark 3: Realistic fitness evaluation (50 creatures, same structure)`,
+  );
   const populationSize = 50;
   const creatures: Creature[] = [];
 
@@ -138,7 +144,11 @@ async function runBenchmark() {
   console.log(`  Population size: ${populationSize}`);
   console.log(`  Generations: ${generations}`);
   console.log(`  Average time per generation: ${formatDuration(avgGenTime)}`);
-  console.log(`  Average time per creature: ${formatDuration(avgGenTime / populationSize)}`);
+  console.log(
+    `  Average time per creature: ${
+      formatDuration(avgGenTime / populationSize)
+    }`,
+  );
   console.log();
 
   // Output JSON summary for CI/CD integration
@@ -177,4 +187,4 @@ async function runBenchmark() {
 }
 
 // Run the benchmark
-await runBenchmark();
+runBenchmark();

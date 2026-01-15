@@ -1,29 +1,42 @@
 ## Summary
 
-This PR implements caching for weight/bias statistics in the score calculation function, addressing GitHub issue #1011.
+This PR implements caching for weight/bias statistics in the score calculation
+function, addressing GitHub issue #1011.
 
 ### Problem
 
-The `calculate()` function in `src/architecture/Score.ts` was performing full passes over all synapses and neurons on every fitness evaluation to compute max/avg weight/bias values. For large creatures (e.g., 619 neurons + 17,935 synapses = ~18,554 iterations), this was being repeated 50+ times per generation despite the structure not changing between evaluations.
+The `calculate()` function in `src/architecture/Score.ts` was performing full
+passes over all synapses and neurons on every fitness evaluation to compute
+max/avg weight/bias values. For large creatures (e.g., 619 neurons + 17,935
+synapses = ~18,554 iterations), this was being repeated 50+ times per generation
+despite the structure not changing between evaluations.
 
 ### Solution
 
 Extended the existing `CachedScoreComponents` interface to include:
+
 - `maxWeightBias`: Maximum absolute value among all weights and biases
 - `avgWeightBias`: Average absolute value among all weights and biases
 
-These values are now computed once and cached alongside the existing `hiddenNeuronCount` and `squashComplexityPenalty`. The cache is invalidated when structure changes occur (via `invalidateScoreCache()`).
+These values are now computed once and cached alongside the existing
+`hiddenNeuronCount` and `squashComplexityPenalty`. The cache is invalidated when
+structure changes occur (via `invalidateScoreCache()`).
 
 ### Changes
 
-1. **`src/Creature.ts`**: Extended `CachedScoreComponents` interface with `maxWeightBias` and `avgWeightBias` properties
+1. **`src/Creature.ts`**: Extended `CachedScoreComponents` interface with
+   `maxWeightBias` and `avgWeightBias` properties
 2. **`src/architecture/Score.ts`**:
    - Removed separate `calculateMaxOutOfBounds()` function
-   - Integrated weight/bias statistics calculation into `computeAndCacheScoreComponents()`
+   - Integrated weight/bias statistics calculation into
+     `computeAndCacheScoreComponents()`
    - `calculate()` now uses cached values instead of recomputing on every call
-3. **`test/score/ScoreCacheWeightBias.ts`**: New test file with 12 tests verifying caching behaviour
-4. **`test/score/Penalty.ts`**: Updated test to invalidate cache after direct weight modification
-5. **`bench/ScoreCalculationCache.ts`**: New benchmark for measuring performance improvement
+3. **`test/score/ScoreCacheWeightBias.ts`**: New test file with 12 tests
+   verifying caching behaviour
+4. **`test/score/Penalty.ts`**: Updated test to invalidate cache after direct
+   weight modification
+5. **`bench/ScoreCalculationCache.ts`**: New benchmark for measuring performance
+   improvement
 
 ## Evidence
 
@@ -65,17 +78,22 @@ Benchmark 3: Realistic fitness evaluation (50 creatures, same structure)
 ```
 
 **Key metrics:**
+
 - **Speedup**: 1734x faster when cache is reused
 - **Performance improvement**: 99.9%
-- **Realistic scenario**: Evaluating 50 creatures takes ~1.3ms per generation with caching
+- **Realistic scenario**: Evaluating 50 creatures takes ~1.3ms per generation
+  with caching
 
 ### Why the improvement is so significant
 
 Without caching, every call to `calculate()` iterates over:
+
 - All 11,375 synapses to compute weight statistics
 - All 230 neurons to compute bias statistics and complexity penalty
 
-With caching, these values are computed once and reused for subsequent calls within the same generation (since creature structure doesn't change during fitness evaluation).
+With caching, these values are computed once and reused for subsequent calls
+within the same generation (since creature structure doesn't change during
+fitness evaluation).
 
 ## Test Plan
 
