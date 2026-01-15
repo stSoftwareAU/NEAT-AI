@@ -2,6 +2,7 @@ import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { CostName } from "../../Costs.ts";
 import type { Creature } from "../../Creature.ts";
+import type { CreatureExport } from "../../architecture/CreatureInterfaces.ts";
 import type { RemovalCandidate } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CandidateHarmfulNeuron,
@@ -157,6 +158,14 @@ export interface ResponseData {
     candidateSquashes?: CandidateSquash[];
     /** Time spent re-scoring candidates (ms) - set by DiscoveryRunner after evaluation */
     reScoringTime?: number;
+    /**
+     * Issue #1020: Improved creature JSON for direct addition to population.
+     *
+     * When discovery finds an improvement, the improved creature is included here
+     * so it can be added directly to the population without applying changes to
+     * the current fittest (which may have evolved during the discovery process).
+     */
+    improvedCreature?: CreatureExport;
   };
   /** Breeding response (Issue #1026) */
   breed?: {
