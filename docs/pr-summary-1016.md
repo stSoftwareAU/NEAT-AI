@@ -1,12 +1,16 @@
 ## Summary
 
-Implements creature topology hashing and fitness evaluation deduplication to prevent redundant fitness evaluations when identical creatures appear in the population.
+Implements creature topology hashing and fitness evaluation deduplication to
+prevent redundant fitness evaluations when identical creatures appear in the
+population.
 
 **Key Changes:**
 
 1. **Topology Hash Function** (`src/architecture/CreatureUtils.ts`):
-   - Added `getTopologyHash()` method that generates a hash based on network structure only (neurons, types, squash functions, connection patterns)
-   - Excludes weights and biases, enabling identification of structurally identical creatures
+   - Added `getTopologyHash()` method that generates a hash based on network
+     structure only (neurons, types, squash functions, connection patterns)
+   - Excludes weights and biases, enabling identification of structurally
+     identical creatures
    - Uses V5 UUID generation with a dedicated namespace for topology hashes
    - Cached on the creature for performance
 
@@ -24,7 +28,8 @@ Implements creature topology hashing and fitness evaluation deduplication to pre
 
 ### Performance Benchmark Results
 
-The fitness deduplication benchmark (`test/FitnessDeduplicationBenchmark.ts`) demonstrates the improvement:
+The fitness deduplication benchmark (`test/FitnessDeduplicationBenchmark.ts`)
+demonstrates the improvement:
 
 ```
 --- Fitness Deduplication Benchmark Results ---
@@ -36,15 +41,19 @@ Savings: 97.0%
 ------------------------------------------------
 ```
 
-In scenarios where crossover produces many similar offspring (common in NEAT evolution), this optimisation can significantly reduce evaluation time. The savings scale with the degree of duplication in the population.
+In scenarios where crossover produces many similar offspring (common in NEAT
+evolution), this optimisation can significantly reduce evaluation time. The
+savings scale with the degree of duplication in the population.
 
-**Note**: Actual savings in production depend on the population's diversity. More duplicates = more savings.
+**Note**: Actual savings in production depend on the population's diversity.
+More duplicates = more savings.
 
 ## Test Plan
 
 Added comprehensive test coverage:
 
 ### Topology Hash Tests (`test/TopologyHash.ts`)
+
 - Basic hash generation
 - Same topology with different weights produces same hash
 - Different topologies produce different hashes
@@ -54,12 +63,14 @@ Added comprehensive test coverage:
 - Different squash functions produce different hashes
 
 ### Fitness Deduplication Tests (`test/FitnessDeduplication.ts`)
+
 - Deduplicates identical creatures by UUID
 - Different creatures are evaluated separately
 - Skips creatures that already have scores
 - Mixed population with duplicates and uniques
 
 ### Benchmark Test (`test/FitnessDeduplicationBenchmark.ts`)
+
 - Measures evaluation savings with a population containing many duplicates
 - Verifies at least 90% savings in high-duplication scenarios
 
@@ -67,4 +78,5 @@ All 1353 existing tests continue to pass.
 
 ## Related Issue
 
-Fixes #1016 - Performance: Implement creature topology hashing for evaluation deduplication
+Fixes #1016 - Performance: Implement creature topology hashing for evaluation
+deduplication
