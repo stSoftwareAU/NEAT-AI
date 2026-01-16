@@ -35,6 +35,7 @@ import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolutio
 import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { validateAfterDiscoveryOrThrow } from "../discovery/DiscoveryPostValidate.ts";
 import { PlateauDetector } from "./PlateauDetector.ts";
+import { DiscoveryReplayQueue } from "./DiscoveryReplayQueue.ts";
 
 /**
  * NEAT (NeuroEvolution of Augmenting Topologies) implementation.
@@ -76,6 +77,15 @@ export class Neat {
   CRISPRs: CrisprInterface[];
   /** Plateau detector for fitness stagnation detection (Issue #1039) */
   readonly plateauDetector: PlateauDetector;
+
+  /**
+   * Discovery replay queue for non-blocking background replay of cached
+   * discoveries against new fittest creatures (Issue #997).
+   */
+  readonly discoveryReplayQueue: DiscoveryReplayQueue;
+
+  /** Data directory for discovery replay (Issue #997) */
+  private dataDir?: string;
 
   /**
    * Creates a new NEAT instance for evolving neural networks.
@@ -121,6 +131,20 @@ export class Neat {
 
     // Initialize plateau detector (Issue #1039)
     this.plateauDetector = new PlateauDetector(this.config.plateauDetection);
+
+    // Initialize discovery replay queue (Issue #997)
+    this.discoveryReplayQueue = new DiscoveryReplayQueue();
+  }
+
+  /**
+   * Set the data directory for discovery replay (Issue #997).
+   * This is needed because the Neat class doesn't have direct access to the
+   * data directory - it's typically passed to evolveDir in Creature.
+   *
+   * @param dataDir The data directory containing training data
+   */
+  setDataDir(dataDir: string): void {
+    this.dataDir = dataDir;
   }
 
   /**
@@ -739,6 +763,17 @@ export class Neat {
           }
         }
       }
+
+      // Issue #997: Schedule background replay of cached discoveries against the new fittest.
+      // This allows learnings from previous discovery runs to be applied when evolution
+      // progresses. The replay runs in a non-blocking manner, one at a time.
+      if (this.dataDir && this.config.discoveryCacheDir) {
+        this.discoveryReplayQueue.scheduleReplay(
+          fittest,
+          this.dataDir,
+          this.config,
+        );
+      }
     }
 
     if (trainingTimeOutMinutes !== -1) { // If not timed out already
@@ -989,6 +1024,47 @@ export class Neat {
       r.discover.improvedCreature = null;
     }
     this.discoveryComplete.length = 0;
+
+    // Issue #997: Process completed background replay results and add improved
+    // creatures to the population. These are creatures that have had cached
+    // discovery improvements re-applied from previous evolution runs.
+    const replayResults = this.discoveryReplayQueue.getCompletedResults();
+    for (const result of replayResults) {
+      if (result.improvement?.creature) {
+        // The creature field is typed as `unknown` in DiscoveryReplayDirResult
+        // but is actually a CreatureExport from exportJSON()
+        const replayedCreature = Creature.fromJSON(
+          result.improvement.creature as Parameters<
+            typeof Creature.fromJSON
+          >[0],
+        );
+        CreatureUtil.makeUUID(replayedCreature);
+
+        // Tag the creature to indicate it came from discovery replay
+        addTag(replayedCreature, "approach", "discovery-replay" as Approach);
+
+        validateAfterDiscoveryOrThrow({
+          baseCreature: fittest,
+          discoveredCreature: replayedCreature,
+          discoveryID: result.improvement.key ?? "replay",
+          operation: "discovery-replay-addition",
+          feedbackLoop: this.config.feedbackLoop,
+        });
+
+        trainedPopulation.push(replayedCreature);
+
+        if (this.config.verbose) {
+          console.info(
+            `[Neat] Added replayed creature ${
+              blue(replayedCreature.uuid?.substring(0, 8) ?? "unknown")
+            } to population (score improvement: ${
+              result.improvement.scoreDelta?.toFixed(4) ?? "N/A"
+            })`,
+          );
+        }
+      }
+    }
+    this.discoveryReplayQueue.clearCompletedResults();
 
     /** make sure we do at least one more loop */
     if (trainedPopulation.length > 0 && this.additionalGenerationCount <= 0) {

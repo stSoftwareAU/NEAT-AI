@@ -191,8 +191,27 @@ export function createNeatConfig(options: NeatOptions): NeatConfig {
     discoveryDisableCleanup: options.discoveryDisableCleanup ?? false,
     discoveryBaseDirectory: options.discoveryBaseDirectory,
     discoverySkipRecordPhase: options.discoverySkipRecordPhase ?? false,
-    discoveryFailureCacheDir: options.discoveryFailureCacheDir,
-    discoverySuccessCacheDir: options.discoverySuccessCacheDir,
+    // Issue #997: discoveryCacheDir provides a base directory for discovery caching.
+    // Empty strings are treated as undefined (not provided).
+    discoveryCacheDir:
+      options.discoveryCacheDir && options.discoveryCacheDir.trim()
+        ? options.discoveryCacheDir.trim()
+        : undefined,
+    // Issue #997: Derive failure/success cache dirs from discoveryCacheDir if not explicitly set.
+    discoveryFailureCacheDir: (() => {
+      if (options.discoveryFailureCacheDir) {
+        return options.discoveryFailureCacheDir;
+      }
+      const base = options.discoveryCacheDir?.trim();
+      return base ? `${base}/failure` : undefined;
+    })(),
+    discoverySuccessCacheDir: (() => {
+      if (options.discoverySuccessCacheDir) {
+        return options.discoverySuccessCacheDir;
+      }
+      const base = options.discoveryCacheDir?.trim();
+      return base ? `${base}/success` : undefined;
+    })(),
     discoveryReplayMaxSingles: options.discoveryReplayMaxSingles ??
       Math.max(2 * (options.threads ?? 1), 10),
     discoveryReplayMaxPairwise: options.discoveryReplayMaxPairwise ?? 10,
