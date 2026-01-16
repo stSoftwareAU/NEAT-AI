@@ -163,8 +163,12 @@ function printResults(results: BenchmarkResult[]): void {
   console.log("DenseNumberMap vs Map<number, number> Benchmark Results");
   console.log("========================================\n");
 
-  console.log("| Neurons | Operation | Map (ms) | DenseNumberMap (ms) | Speedup |");
-  console.log("|---------|-----------|----------|---------------------|---------|");
+  console.log(
+    "| Neurons | Operation | Map (ms) | DenseNumberMap (ms) | Speedup |",
+  );
+  console.log(
+    "|---------|-----------|----------|---------------------|---------|",
+  );
 
   for (const result of results) {
     const setSpeedup = (result.mapSetMs / result.denseSetMs).toFixed(2);
@@ -175,22 +179,30 @@ function printResults(results: BenchmarkResult[]): void {
     console.log(
       `| ${result.neuronCount.toString().padStart(7)} | set       | ${
         result.mapSetMs.toFixed(2).padStart(8)
-      } | ${result.denseSetMs.toFixed(2).padStart(19)} | ${setSpeedup.padStart(7)}x |`,
+      } | ${result.denseSetMs.toFixed(2).padStart(19)} | ${
+        setSpeedup.padStart(7)
+      }x |`,
     );
     console.log(
       `| ${" ".repeat(7)} | get       | ${
         result.mapGetMs.toFixed(2).padStart(8)
-      } | ${result.denseGetMs.toFixed(2).padStart(19)} | ${getSpeedup.padStart(7)}x |`,
+      } | ${result.denseGetMs.toFixed(2).padStart(19)} | ${
+        getSpeedup.padStart(7)
+      }x |`,
     );
     console.log(
       `| ${" ".repeat(7)} | has       | ${
         result.mapHasMs.toFixed(2).padStart(8)
-      } | ${result.denseHasMs.toFixed(2).padStart(19)} | ${hasSpeedup.padStart(7)}x |`,
+      } | ${result.denseHasMs.toFixed(2).padStart(19)} | ${
+        hasSpeedup.padStart(7)
+      }x |`,
     );
     console.log(
       `| ${" ".repeat(7)} | clear     | ${
         result.mapClearMs.toFixed(2).padStart(8)
-      } | ${result.denseClearMs.toFixed(2).padStart(19)} | ${clearSpeedup.padStart(7)}x |`,
+      } | ${result.denseClearMs.toFixed(2).padStart(19)} | ${
+        clearSpeedup.padStart(7)
+      }x |`,
     );
   }
 
