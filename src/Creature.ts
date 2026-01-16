@@ -69,6 +69,7 @@ interface CreatureOptions {
  * Cached score components to avoid recalculating on every score calculation.
  * Issue #1023: Performance optimisation for large creatures.
  * Issue #1011: Cache weight/bias statistics incrementally.
+ * Issue #1045: Added totalWeightBias and countWeightBias for incremental updates.
  */
 export interface CachedScoreComponents {
   /** Number of hidden neurons (neurons.length - input - output) */
@@ -79,6 +80,16 @@ export interface CachedScoreComponents {
   maxWeightBias: number;
   /** Average absolute value among all weights and biases */
   avgWeightBias: number;
+  /**
+   * Sum of absolute values of all weights and biases.
+   * Issue #1045: Required for incremental updates.
+   */
+  totalWeightBias: number;
+  /**
+   * Count of weights and biases (synapses.length + non-input neurons).
+   * Issue #1045: Required for incremental updates.
+   */
+  countWeightBias: number;
 }
 
 /**

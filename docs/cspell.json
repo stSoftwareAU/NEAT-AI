@@ -159,6 +159,7 @@
     "setweight",
     "deque",
     "deserialisation",
-    "gens"
+    "gens",
+    "recalc"
   ]
 }
