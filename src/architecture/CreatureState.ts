@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
 import { SynapseState } from "../propagate/SynapseState.ts";
+import { DenseNumberMap } from "./DenseNumberMap.ts";
 
 export interface NeuronStateInterface {
   count: number;
@@ -62,14 +63,23 @@ export class CreatureState {
   private connectionMap;
   private creature;
   public activations: Float32Array = new Float32Array(0);
-  readonly cacheAdjustedActivation: Map<number, number>;
+  /**
+   * Cache for adjusted activation values per neuron index.
+   * Uses TypedArray-backed storage for better cache locality with dense indices.
+   * Issue #1041: Use TypedArray for dense neuron state storage.
+   */
+  readonly cacheAdjustedActivation: DenseNumberMap;
   public preparedNeurons = false;
 
   constructor(creature: Creature) {
     this.creature = creature;
     this.nodeMap = new Map<number, NeuronState>();
     this.connectionMap = new Map<number, Map<number, SynapseState>>();
-    this.cacheAdjustedActivation = new Map<number, number>();
+    // Start with a reasonable default size that will auto-resize if needed.
+    // The creature's neurons array may not be populated yet at construction time
+    // (class properties are initialised before the constructor runs).
+    const initialCapacity = creature.neurons?.length ?? 16;
+    this.cacheAdjustedActivation = new DenseNumberMap(initialCapacity);
   }
 
   connection(from: number, to: number): SynapseState {
