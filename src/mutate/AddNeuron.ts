@@ -68,40 +68,21 @@ export class AddNeuron implements RadioactiveInterface {
     neuron.index = indx;
     this.insertNeuron(neuron);
 
-    let tmpFocusList = focusList;
-    let fromIndex = -1;
-    let toIndex = -1;
+    // Issue #1018: Optimise focus selection using direct candidate filtering
+    // instead of rejection-based sampling with up to 12 retry attempts.
+    // This provides O(n) candidate filtering instead of potentially O(12*n)
+    // rejection loops when focus list is small relative to network size.
 
-    for (let attempts = 0; attempts < 12; attempts++) {
-      if (attempts >= 9) {
-        /* Should work first time once we remove the "focus" */
-        tmpFocusList = undefined;
-      }
-      if (fromIndex === -1) {
-        const pos = Math.floor(
-          Math.random() * neuron.index,
-        );
-
-        assert(neuron.index > pos, "From should be less than neuron index");
-        assert(pos >= 0, "Position should be non-negative");
-
-        if (creature.inFocus(pos, tmpFocusList)) {
-          fromIndex = pos;
-        }
-      } else if (toIndex === -1) {
-        const pos = Math.floor(
-          Math.random() * (creature.neurons.length - neuron.index),
-        ) + neuron.index;
-
-        assert(neuron.index <= pos, "Index should not be less than position");
-
-        if (creature.inFocus(pos, tmpFocusList)) {
-          toIndex = pos;
-        }
-      } else {
-        break;
-      }
-    }
+    const fromIndex = this.selectSourceCandidate(
+      creature,
+      neuron.index,
+      focusList,
+    );
+    const toIndex = this.selectTargetCandidate(
+      creature,
+      neuron.index,
+      focusList,
+    );
 
     // Create inward connection (from source to new neuron)
     // If fromIndex wasn't found, fix() will handle it
@@ -316,5 +297,98 @@ export class AddNeuron implements RadioactiveInterface {
 
     // Clear cache to force rebuild with updated indices
     this.creature.clearCache();
+  }
+
+  /**
+   * Select a source candidate for the inward connection using direct filtering.
+   *
+   * Issue #1018: Replaces rejection-based sampling with O(n) candidate filtering.
+   * Pre-filters valid source candidates based on focus list and selects randomly.
+   *
+   * @param creature The creature being mutated
+   * @param neuronIndex The index of the newly inserted neuron
+   * @param focusList Optional list of focus indices
+   * @returns The selected source index, or -1 if no valid source found
+   */
+  private selectSourceCandidate(
+    creature: Creature,
+    neuronIndex: number,
+    focusList?: number[],
+  ): number {
+    // Source candidates must have index < neuronIndex (to connect TO the new neuron)
+    // Build list of candidates that are in focus
+    let sourceCandidates: number[] = [];
+
+    if (focusList && focusList.length > 0) {
+      // Filter to neurons that are in focus and have index < neuronIndex
+      for (let i = 0; i < neuronIndex; i++) {
+        if (creature.inFocus(i, focusList)) {
+          sourceCandidates.push(i);
+        }
+      }
+
+      // Fall back to all neurons if focus list is too restrictive
+      if (sourceCandidates.length === 0) {
+        sourceCandidates = Array.from({ length: neuronIndex }, (_, i) => i);
+      }
+    } else {
+      // No focus list - all neurons with index < neuronIndex are valid
+      sourceCandidates = Array.from({ length: neuronIndex }, (_, i) => i);
+    }
+
+    if (sourceCandidates.length === 0) {
+      return -1;
+    }
+
+    // Direct random selection from valid candidates
+    return sourceCandidates[
+      Math.floor(Math.random() * sourceCandidates.length)
+    ];
+  }
+
+  /**
+   * Select a target candidate for the outward connection using direct filtering.
+   *
+   * Issue #1018: Replaces rejection-based sampling with O(n) candidate filtering.
+   * Pre-filters valid target candidates based on focus list and selects randomly.
+   *
+   * @param creature The creature being mutated
+   * @param neuronIndex The index of the newly inserted neuron
+   * @param focusList Optional list of focus indices
+   * @returns The selected target index, or -1 if no valid target found
+   */
+  private selectTargetCandidate(
+    creature: Creature,
+    neuronIndex: number,
+    focusList?: number[],
+  ): number {
+    // Target candidates must have index >= neuronIndex (to connect FROM the new neuron)
+    // Build list of candidates that are in focus
+    const targetCandidates: number[] = [];
+
+    if (focusList && focusList.length > 0) {
+      // Filter to neurons that are in focus and have index >= neuronIndex
+      for (let i = neuronIndex; i < creature.neurons.length; i++) {
+        if (creature.inFocus(i, focusList)) {
+          targetCandidates.push(i);
+        }
+      }
+    }
+
+    // Fall back to all neurons if focus list is too restrictive or not provided
+    if (targetCandidates.length === 0) {
+      for (let i = neuronIndex; i < creature.neurons.length; i++) {
+        targetCandidates.push(i);
+      }
+    }
+
+    if (targetCandidates.length === 0) {
+      return -1;
+    }
+
+    // Direct random selection from valid candidates
+    return targetCandidates[
+      Math.floor(Math.random() * targetCandidates.length)
+    ];
   }
 }
