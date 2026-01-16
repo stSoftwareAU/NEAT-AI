@@ -2,20 +2,29 @@
 
 ## Summary
 
-This PR implements incremental score updates for weight-only and bias-only mutations (Issue #1045). Instead of invalidating the entire score cache and recalculating all weight/bias statistics when a MOD_WEIGHT or MOD_BIAS mutation occurs, we now update only the affected components incrementally.
+This PR implements incremental score updates for weight-only and bias-only
+mutations (Issue #1045). Instead of invalidating the entire score cache and
+recalculating all weight/bias statistics when a MOD_WEIGHT or MOD_BIAS mutation
+occurs, we now update only the affected components incrementally.
 
 ### Changes Made
 
 1. **Extended `CachedScoreComponents` interface** (`src/Creature.ts`):
-   - Added `totalWeightBias` and `countWeightBias` fields to enable incremental updates
+   - Added `totalWeightBias` and `countWeightBias` fields to enable incremental
+     updates
 
 2. **Added incremental update functions** (`src/architecture/Score.ts`):
-   - `updateScoreForWeightChange()`: Incrementally updates score after a weight change
-   - `updateScoreForBiasChange()`: Incrementally updates score after a bias change
-   - Helper functions `findNewMaxWeightBias()` and `findNewMaxWeightBiasForBias()` for rare cases where the changed value was the previous maximum
+   - `updateScoreForWeightChange()`: Incrementally updates score after a weight
+     change
+   - `updateScoreForBiasChange()`: Incrementally updates score after a bias
+     change
+   - Helper functions `findNewMaxWeightBias()` and
+     `findNewMaxWeightBiasForBias()` for rare cases where the changed value was
+     the previous maximum
 
 3. **Tests** (`test/score/IncrementalScoreUpdate.ts`):
-   - 11 comprehensive tests verifying correctness and performance of incremental updates
+   - 11 comprehensive tests verifying correctness and performance of incremental
+     updates
 
 4. **Benchmark** (`bench/IncrementalScoreUpdate.ts`):
    - Detailed benchmark comparing incremental vs full recalculation performance
@@ -82,17 +91,20 @@ Target (30-50% faster): ✅ MET
 ```
 
 The implementation far exceeds the issue's target of 30-50% faster scoring:
+
 - **Large creatures (230 neurons, 11K synapses)**: ~1000x faster
 - **Very large creatures (610 neurons, 70K synapses)**: ~15,000-20,000x faster
 
 ### Why the Improvement is So Large
 
 The incremental update avoids:
+
 1. Iterating over all synapses (O(n) where n = synapse count)
 2. Iterating over all neurons (O(m) where m = neuron count)
 3. Recalculating complexity penalty for each neuron
 
 Instead, it performs O(1) arithmetic operations to update:
+
 - Total weight/bias sum (subtract old, add new)
 - Average (recalculate from new total)
 - Maximum (only full scan if the changed value was the previous max)
@@ -117,6 +129,7 @@ Instead, it performs O(1) arithmetic operations to update:
 ### Existing Tests Verified
 
 All 1370 existing tests continue to pass, including:
+
 - `test/score/ScoreCache.ts` - 11 tests
 - `test/score/ScoreCacheWeightBias.ts` - 12 tests
 - `test/score/NeuronComplexityPenaltyCache.ts` - 9 tests
@@ -126,25 +139,44 @@ All 1370 existing tests continue to pass, including:
 The new functions can be used when performing weight or bias mutations:
 
 ```typescript
-import { updateScoreForWeightChange, updateScoreForBiasChange } from "./src/architecture/Score.ts";
+import {
+  updateScoreForBiasChange,
+  updateScoreForWeightChange,
+} from "./src/architecture/Score.ts";
 
 // For weight mutations
 const oldWeight = synapse.weight;
 synapse.weight = newWeight;
-const score = updateScoreForWeightChange(creature, error, growthCost, oldWeight, newWeight);
+const score = updateScoreForWeightChange(
+  creature,
+  error,
+  growthCost,
+  oldWeight,
+  newWeight,
+);
 
 // For bias mutations
 const oldBias = neuron.bias;
 neuron.bias = newBias;
-const score = updateScoreForBiasChange(creature, error, growthCost, oldBias, newBias);
+const score = updateScoreForBiasChange(
+  creature,
+  error,
+  growthCost,
+  oldBias,
+  newBias,
+);
 ```
 
 ## Notes
 
-- The incremental update functions are exported from `src/architecture/Score.ts` for use by mutation code
-- The functions preserve the existing cache when possible, only updating the weight/bias-related fields
-- Structure-dependent fields (hiddenNeuronCount, squashComplexityPenalty, synapse count) remain unchanged for weight-only/bias-only mutations
-- If the cache is empty when an incremental update is requested, it builds the cache first
+- The incremental update functions are exported from `src/architecture/Score.ts`
+  for use by mutation code
+- The functions preserve the existing cache when possible, only updating the
+  weight/bias-related fields
+- Structure-dependent fields (hiddenNeuronCount, squashComplexityPenalty,
+  synapse count) remain unchanged for weight-only/bias-only mutations
+- If the cache is empty when an incremental update is requested, it builds the
+  cache first
 
 ## Related Issue
 
