@@ -43,7 +43,7 @@ export function inlineActivation(neuron: Neuron): string {
   }
 
   if (isNeuronActivationInterface(squash)) {
-    return `a[${neuron.index}] = ${neuron.squash}(neurons[${neuron.index}]);\n`;
+    return `a[${neuron.index}] = squash["${neuron.squash}"](neurons[${neuron.index}]);\n`;
   }
 
   const inwardList = neuron.creature.inwardConnections(neuron.index);
@@ -77,7 +77,8 @@ export function inlineActivation(neuron: Neuron): string {
     return `a[${neuron.index}]= ${squash.inlineSquash(valueLine)};\n`;
   }
 
-  const functionBody = `a[${neuron.index}]= ${neuron.squash}(${valueLine});\n`;
+  const functionBody =
+    `a[${neuron.index}]= squash["${neuron.squash}"](${valueLine});\n`;
 
   return functionBody;
 }
