@@ -1150,6 +1150,9 @@ export class Creature implements CreatureInternal {
       workers,
     );
 
+    // Issue #997: Pass the data directory to enable discovery replay
+    neat.setDataDir(dataSetDir);
+
     neat.populatePopulation(this);
 
     let error = Infinity;

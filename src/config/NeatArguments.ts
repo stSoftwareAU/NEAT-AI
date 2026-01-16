@@ -239,6 +239,25 @@ export interface NeatArguments {
   discoverySkipRecordPhase: boolean;
 
   /**
+   * Base directory for discovery caching (Issue #997).
+   *
+   * When provided, this serves as the base directory for discovery cache operations:
+   * - Success cache is stored in `{discoveryCacheDir}/success/`
+   * - Failure cache is stored in `{discoveryCacheDir}/failure/`
+   *
+   * Additionally, when a new "fittest" creature is found during evolution,
+   * the cached discoveries are replayed against it in a non-blocking manner.
+   * This allows learnings from previous discovery runs to be applied when
+   * evolution restarts.
+   *
+   * The explicit `discoverySuccessCacheDir` and `discoveryFailureCacheDir`
+   * options take precedence over paths derived from this base directory.
+   *
+   * Delete this directory when the training dataset changes materially.
+   */
+  discoveryCacheDir?: string;
+
+  /**
    * Directory path to cache discovery failures.
    * When provided, discovery candidates that fail to improve the score are cached.
    * Subsequent discovery runs will skip candidates that match cached failures.
