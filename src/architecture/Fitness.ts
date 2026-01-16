@@ -1,16 +1,32 @@
-import { addTag } from "@stsoftware/tags/mod";
+import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
 import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
+import { CreatureUtil } from "./CreatureUtils.ts";
 import { calculate as calculateScore } from "./Score.ts";
 
 type PromiseFunction = (v: unknown) => void;
 
-let calculationData: {
+/**
+ * Data structure for tracking calculation state across async operations.
+ * Issue #1016: Added duplicates map for evaluation deduplication.
+ */
+interface CalculationData {
+  /** Queue of unique creatures to be evaluated */
   queue: Creature[];
+  /** Promise resolver function */
   resolve: PromiseFunction;
+  /** Promise reject function */
   reject: PromiseFunction;
+  /** Reference to the Fitness instance */
   that: Fitness;
-} | null = null;
+  /**
+   * Map from UUID to arrays of creatures with that UUID.
+   * Issue #1016: Enables copying scores from evaluated creature to duplicates.
+   */
+  duplicates: Map<string, Creature[]>;
+}
+
+let calculationData: CalculationData | null = null;
 
 export class Fitness {
   private workers: WorkerHandler[];
@@ -46,6 +62,29 @@ export class Fitness {
     creature.score = calculateScore(creature, error, this.growth);
 
     addTag(creature, "score", creature.score.toString());
+
+    // Issue #1016: Copy score and tags to duplicate creatures
+    if (calculationData) {
+      const uuid = creature.uuid;
+      if (uuid) {
+        const duplicates = calculationData.duplicates.get(uuid);
+        if (duplicates) {
+          const errorTag = getTag(creature, "error");
+          const scoreTag = getTag(creature, "score");
+          for (const duplicate of duplicates) {
+            if (duplicate !== creature) {
+              duplicate.score = creature.score;
+              if (errorTag) {
+                addTag(duplicate, "error", errorTag);
+              }
+              if (scoreTag) {
+                addTag(duplicate, "score", scoreTag);
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   private async schedule() {
@@ -76,13 +115,45 @@ export class Fitness {
     }
   }
 
+  /**
+   * Calculate fitness scores for a population of creatures.
+   *
+   * Issue #1016: Now deduplicates creatures by UUID before evaluation.
+   * Creatures with identical UUIDs (same structure and weights) will only
+   * be evaluated once, and the score will be copied to all duplicates.
+   *
+   * @param population - Array of creatures to evaluate
+   * @returns Promise that resolves when all evaluations are complete
+   */
   calculate(population: Creature[]) {
     return new Promise((resolve, reject) => {
+      // Filter creatures that need evaluation (score is undefined)
+      const needsEvaluation = population.filter((c) => c.score === undefined);
+
+      // Issue #1016: Deduplicate by UUID to avoid redundant evaluations
+      const duplicates = new Map<string, Creature[]>();
+      const uniqueQueue: Creature[] = [];
+
+      for (const creature of needsEvaluation) {
+        // Ensure creature has a UUID for deduplication
+        const uuid = CreatureUtil.makeUUID(creature);
+
+        if (!duplicates.has(uuid)) {
+          // First time seeing this UUID - add to unique queue
+          duplicates.set(uuid, [creature]);
+          uniqueQueue.push(creature);
+        } else {
+          // Duplicate UUID - just add to duplicates map
+          duplicates.get(uuid)!.push(creature);
+        }
+      }
+
       calculationData = {
-        queue: population.filter((c) => c.score === undefined),
+        queue: uniqueQueue,
         resolve: resolve,
         reject: reject,
         that: this,
+        duplicates: duplicates,
       };
 
       this.schedule();

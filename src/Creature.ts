@@ -187,6 +187,14 @@ export class Creature implements CreatureInternal {
   public cachedScoreComponents?: CachedScoreComponents;
 
   /**
+   * Cached topology hash for this creature.
+   * The topology hash identifies creatures with identical network structure
+   * (neurons and connections) regardless of weights and biases.
+   * Issue #1016: Performance optimisation for evaluation deduplication.
+   */
+  public topologyHash?: string;
+
+  /**
    * Debug mode flag.
    * @type {boolean}
    */
