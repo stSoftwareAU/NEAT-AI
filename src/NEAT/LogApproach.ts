@@ -11,7 +11,8 @@ export type Approach =
   | "compact"
   | "backtrack"
   | "retry"
-  | "discovery";
+  | "discovery"
+  | "discovered";
 
 export function logApproach(fittest: Creature, previous: Creature) {
   const fScoreTxt = getTag(fittest, "score");
@@ -87,7 +88,8 @@ export function logApproach(fittest: Creature, previous: Creature) {
           );
           break;
         }
-        case "discovery": {
+        case "discovery":
+        case "discovered": {
           const discoveryID = getTag(fittest, "discoveryID");
           const evaluation = getTag(fittest, "Discovery") ??
             getTag(fittest, "discovery");
