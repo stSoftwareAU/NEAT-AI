@@ -187,11 +187,14 @@ function computeAndCacheScoreComponents(
   const hiddenNeuronCount = neurons.length - creature.input - creature.output;
 
   // Cache the computed values
+  // Issue #1045: Also cache total and count for incremental updates
   const cached: CachedScoreComponents = {
     hiddenNeuronCount,
     squashComplexityPenalty,
     maxWeightBias,
     avgWeightBias,
+    totalWeightBias,
+    countWeightBias,
   };
   creature.cachedScoreComponents = cached;
 
@@ -224,4 +227,212 @@ function calculateScore(
   assert(score <= 1, `Score: ${score} is greater than 1`);
 
   return score;
+}
+
+/**
+ * Incrementally updates the score after a single weight change.
+ * Issue #1045: Avoid full recalculation for weight-only mutations.
+ *
+ * This function updates the cached weight/bias statistics incrementally
+ * instead of iterating over all synapses and neurons.
+ *
+ * @param creature - The creature to score
+ * @param error - The error value from fitness evaluation
+ * @param growthCost - The cost factor for network complexity
+ * @param oldWeight - The previous weight value
+ * @param newWeight - The new weight value
+ * @returns The updated score
+ */
+export function updateScoreForWeightChange(
+  creature: Creature,
+  error: number,
+  growthCost: number,
+  oldWeight: number,
+  newWeight: number,
+): number {
+  assert(!Number.isNaN(error), `Error is NaN`);
+  assert(Number.isFinite(error), `Error is not finite`);
+  assert(error >= 0, `Error: ${error} is negative`);
+  assert(Number.isFinite(oldWeight), `Old weight is not finite`);
+  assert(Number.isFinite(newWeight), `New weight is not finite`);
+
+  // Ensure we have cached values; if not, compute them
+  if (!creature.cachedScoreComponents) {
+    computeAndCacheScoreComponents(creature);
+  }
+
+  const cached = creature.cachedScoreComponents!;
+
+  // Calculate the change in total weight/bias
+  const oldAbs = Math.abs(oldWeight);
+  const newAbs = Math.abs(newWeight);
+  const newTotal = cached.totalWeightBias - oldAbs + newAbs;
+
+  // Update the average
+  const newAvg = newTotal / cached.countWeightBias;
+
+  // Update the max - this requires more care
+  // If newAbs is greater than current max, use newAbs
+  // If oldAbs was the max and newAbs is smaller, we need to recalculate
+  let newMax = cached.maxWeightBias;
+  if (newAbs > newMax) {
+    newMax = newAbs;
+  } else if (oldAbs === cached.maxWeightBias && newAbs < oldAbs) {
+    // The old value was the max and is now smaller, need to find new max
+    // This is the slow path, but it's rare
+    newMax = findNewMaxWeightBias(creature, oldWeight, newWeight);
+  }
+
+  // Update the cache with new values
+  creature.cachedScoreComponents = {
+    ...cached,
+    maxWeightBias: newMax,
+    avgWeightBias: newAvg,
+    totalWeightBias: newTotal,
+  };
+
+  // Calculate penalty with new values
+  const penalty = calculatePenalty(newMax, newAvg);
+  return calculateScore(error, creature, penalty, growthCost);
+}
+
+/**
+ * Incrementally updates the score after a single bias change.
+ * Issue #1045: Avoid full recalculation for bias-only mutations.
+ *
+ * This function updates the cached weight/bias statistics incrementally
+ * instead of iterating over all synapses and neurons.
+ *
+ * @param creature - The creature to score
+ * @param error - The error value from fitness evaluation
+ * @param growthCost - The cost factor for network complexity
+ * @param oldBias - The previous bias value
+ * @param newBias - The new bias value
+ * @returns The updated score
+ */
+export function updateScoreForBiasChange(
+  creature: Creature,
+  error: number,
+  growthCost: number,
+  oldBias: number,
+  newBias: number,
+): number {
+  assert(!Number.isNaN(error), `Error is NaN`);
+  assert(Number.isFinite(error), `Error is not finite`);
+  assert(error >= 0, `Error: ${error} is negative`);
+  assert(Number.isFinite(oldBias), `Old bias is not finite`);
+  assert(Number.isFinite(newBias), `New bias is not finite`);
+
+  // Ensure we have cached values; if not, compute them
+  if (!creature.cachedScoreComponents) {
+    computeAndCacheScoreComponents(creature);
+  }
+
+  const cached = creature.cachedScoreComponents!;
+
+  // Calculate the change in total weight/bias
+  const oldAbs = Math.abs(oldBias);
+  const newAbs = Math.abs(newBias);
+  const newTotal = cached.totalWeightBias - oldAbs + newAbs;
+
+  // Update the average
+  const newAvg = newTotal / cached.countWeightBias;
+
+  // Update the max - this requires more care
+  // If newAbs is greater than current max, use newAbs
+  // If oldAbs was the max and newAbs is smaller, we need to recalculate
+  let newMax = cached.maxWeightBias;
+  if (newAbs > newMax) {
+    newMax = newAbs;
+  } else if (oldAbs === cached.maxWeightBias && newAbs < oldAbs) {
+    // The old value was the max and is now smaller, need to find new max
+    // This is the slow path, but it's rare
+    newMax = findNewMaxWeightBiasForBias(creature, oldBias, newBias);
+  }
+
+  // Update the cache with new values
+  creature.cachedScoreComponents = {
+    ...cached,
+    maxWeightBias: newMax,
+    avgWeightBias: newAvg,
+    totalWeightBias: newTotal,
+  };
+
+  // Calculate penalty with new values
+  const penalty = calculatePenalty(newMax, newAvg);
+  return calculateScore(error, creature, penalty, growthCost);
+}
+
+/**
+ * Finds the new maximum weight/bias after a weight change when the old value
+ * was the previous maximum.
+ * Issue #1045: Helper for incremental updates.
+ *
+ * @param creature - The creature
+ * @param oldWeight - The previous weight (being replaced)
+ * @param newWeight - The new weight
+ * @returns The new maximum
+ */
+function findNewMaxWeightBias(
+  creature: Creature,
+  oldWeight: number,
+  newWeight: number,
+): number {
+  let newMax = Math.abs(newWeight);
+
+  // Check all synapses
+  const synapses = creature.synapses;
+  for (let i = 0, len = synapses.length; i < len; i++) {
+    const w = synapses[i].weight;
+    // Skip the synapse with the old weight (it's being replaced)
+    if (w === oldWeight) continue;
+    const absW = Math.abs(w);
+    if (absW > newMax) newMax = absW;
+  }
+
+  // Check all non-input neuron biases
+  const neurons = creature.neurons;
+  for (let i = creature.input, len = neurons.length; i < len; i++) {
+    const absB = Math.abs(neurons[i].bias);
+    if (absB > newMax) newMax = absB;
+  }
+
+  return newMax;
+}
+
+/**
+ * Finds the new maximum weight/bias after a bias change when the old value
+ * was the previous maximum.
+ * Issue #1045: Helper for incremental updates.
+ *
+ * @param creature - The creature
+ * @param oldBias - The previous bias (being replaced)
+ * @param newBias - The new bias
+ * @returns The new maximum
+ */
+function findNewMaxWeightBiasForBias(
+  creature: Creature,
+  oldBias: number,
+  newBias: number,
+): number {
+  let newMax = Math.abs(newBias);
+
+  // Check all synapses
+  const synapses = creature.synapses;
+  for (let i = 0, len = synapses.length; i < len; i++) {
+    const absW = Math.abs(synapses[i].weight);
+    if (absW > newMax) newMax = absW;
+  }
+
+  // Check all non-input neuron biases
+  const neurons = creature.neurons;
+  for (let i = creature.input, len = neurons.length; i < len; i++) {
+    const b = neurons[i].bias;
+    // Skip the neuron with the old bias (it's being replaced)
+    if (b === oldBias) continue;
+    const absB = Math.abs(b);
+    if (absB > newMax) newMax = absB;
+  }
+
+  return newMax;
 }
