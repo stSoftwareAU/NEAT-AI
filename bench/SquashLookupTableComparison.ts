@@ -332,11 +332,17 @@ for (let i = 0; i < 100; i++) {
 
 // Warm up
 for (let i = 0; i < 10; i++) {
-  tracedCreature.state.makeActivation(tracedInputs[i % tracedInputs.length], false);
+  tracedCreature.state.makeActivation(
+    tracedInputs[i % tracedInputs.length],
+    false,
+  );
   oldTracedResult.inlineFunction();
 }
 for (let i = 0; i < 10; i++) {
-  tracedCreature.state.makeActivation(tracedInputs[i % tracedInputs.length], false);
+  tracedCreature.state.makeActivation(
+    tracedInputs[i % tracedInputs.length],
+    false,
+  );
   newTracedResult.inlineFunction();
 }
 
