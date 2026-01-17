@@ -82,37 +82,20 @@ export class AddConnection implements RadioactiveInterface {
       }
     }
 
-    // Issue #1036: Use Set-based O(1) connection lookup instead of O(k) isProjectingTo.
-    // This changes complexity from O(n² * k) to O(n² + m) where m = number of connections.
-    const connectionSet = this.creature.getConnectionSet();
+    // Issue #1098: Use cached available connections to avoid O(n²) iteration.
+    // The cache is invalidated when structure changes (connect/disconnect/fix).
+    // Issue #1036: getAvailableConnections uses Set-based O(1) connection lookup.
     const neurons = this.creature.neurons;
-    const neuronCount = neurons.length;
-    const inputCount = this.creature.input;
+    const availablePairs = this.creature.getAvailableConnections(focusList);
 
-    for (let fromIndx = 0; fromIndx < neuronCount; fromIndx++) {
+    for (let i = 0; i < availablePairs.length; i++) {
+      const [fromIndx, toIndx] = availablePairs[i];
       const neuronFrom = neurons[fromIndx];
-      const fromInFocus = this.creature.inFocus(fromIndx, focusList);
-
-      // Start toIndx at max(fromIndx + 1, input) to ensure forward-only connections
-      // and that we don't connect to input neurons
-      const startTo = Math.max(fromIndx + 1, inputCount);
-
-      for (let toIndx = startTo; toIndx < neuronCount; toIndx++) {
-        if (!fromInFocus && !this.creature.inFocus(toIndx, focusList)) continue;
-
-        const neuronTo = neurons[toIndx];
-
-        if (neuronTo.type === "constant") continue;
-
-        // O(1) connection existence check using Set instead of O(k) isProjectingTo
-        const key = `${fromIndx}-${toIndx}`;
-        if (!connectionSet.has(key)) {
-          // `fromIndx`/`toIndx` are the canonical neuron indices. Do not use
-          // `neuron.index` here - it can be corrupted in bad exports and would
-          // allow accidental backward connections.
-          available.push([fromIndx, toIndx, neuronFrom, neuronTo]);
-        }
-      }
+      const neuronTo = neurons[toIndx];
+      // `fromIndx`/`toIndx` are the canonical neuron indices from the cache.
+      // Do not use `neuron.index` here - it can be corrupted in bad exports and
+      // would allow accidental backward connections.
+      available.push([fromIndx, toIndx, neuronFrom, neuronTo]);
     }
 
     if (available.length === 0) {

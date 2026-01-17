@@ -160,6 +160,9 @@
     "deque",
     "deserialisation",
     "gens",
-    "recalc"
+    "recalc",
+    "recomputation",
+    "gdate",
+    "popover"
   ]
 }
