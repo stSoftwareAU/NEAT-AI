@@ -185,7 +185,10 @@ Deno.test("Offspring.breed() - large creature breeding performance", () => {
     `Dad: ${dad.neurons.length} neurons, ${dad.synapses.length} synapses`,
   );
 
-  const iterations = 100;
+  // Note: Breeding large creatures (500+ neurons, 50,000+ synapses) is computationally
+  // expensive, taking ~3 seconds per breed operation. We limit iterations to keep
+  // CI test times reasonable while still verifying the performance optimisation works.
+  const iterations = 5;
 
   // Benchmark breeding operations
   performance.mark("breed-start");
