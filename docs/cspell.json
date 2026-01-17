@@ -160,6 +160,7 @@
     "deque",
     "deserialisation",
     "gens",
-    "recalc"
+    "recalc",
+    "recomputation"
   ]
 }
