@@ -285,6 +285,11 @@ export class Offspring {
       }
     });
 
+    // Issue #1097: Prebuild inward index for large offspring.
+    // This optimises subsequent inward connection lookups during validation
+    // and memetic updates by avoiding linear scans.
+    offspring.prebuildInwardIndexIfLarge();
+
     offspring.clearState();
 
     delete offspring.uuid;

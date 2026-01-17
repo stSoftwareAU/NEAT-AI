@@ -683,6 +683,13 @@ export class Creature implements CreatureInternal {
   private static readonly INWARD_INDEX_BUILD_THRESHOLD = 3;
 
   /**
+   * Minimum number of synapses to trigger proactive index prebuilding.
+   * Only prebuild for large creatures where the upfront cost is worthwhile.
+   * Issue #1097: Performance - Prebuild inward synapse index after breed/mutation batch.
+   */
+  public static readonly PREBUILD_SYNAPSE_THRESHOLD = 1000;
+
+  /**
    * Looks up inward connections using binary search on the secondary index.
    * Falls back to linear scan if index is not built.
    * Automatically builds the index after a few cache misses.
@@ -740,6 +747,28 @@ export class Creature implements CreatureInternal {
   public prebuildInwardIndex(): void {
     if (this.synapsesIndexedByTo === null) {
       this.synapsesIndexedByTo = this.buildSynapsesIndexedByTo();
+    }
+  }
+
+  /**
+   * Checks if the inward synapse index has been built.
+   * This is primarily used for testing the prebuild optimisation.
+   * Issue #1097: Performance - Prebuild inward synapse index after breed/mutation batch.
+   *
+   * @returns {boolean} True if the index has been built, false otherwise.
+   */
+  public isInwardIndexBuilt(): boolean {
+    return this.synapsesIndexedByTo !== null;
+  }
+
+  /**
+   * Conditionally prebuilds the inward index for large creatures.
+   * Only prebuilds if the creature has many synapses (>= PREBUILD_SYNAPSE_THRESHOLD).
+   * Issue #1097: Performance - Prebuild inward synapse index after breed/mutation batch.
+   */
+  public prebuildInwardIndexIfLarge(): void {
+    if (this.synapses.length >= Creature.PREBUILD_SYNAPSE_THRESHOLD) {
+      this.prebuildInwardIndex();
     }
   }
 
@@ -2109,6 +2138,11 @@ export class Creature implements CreatureInternal {
         return a.to - b.to;
       });
     }
+
+    // Issue #1097: Prebuild inward index for large creatures after loading.
+    // This optimises subsequent inward connection lookups by avoiding
+    // linear scans before the lazy index build threshold is reached.
+    this.prebuildInwardIndexIfLarge();
 
     if (validate) {
       creatureValidate(this);
