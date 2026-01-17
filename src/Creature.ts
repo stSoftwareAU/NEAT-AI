@@ -279,6 +279,7 @@ export class Creature implements CreatureInternal {
   public dispose() {
     this.clearState();
     this.clearCache();
+    this.clearFocusCache();
     this.synapses.length = 0;
     this.neurons.length = 0;
   }
