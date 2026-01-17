@@ -157,6 +157,13 @@ export class Creature implements CreatureInternal {
   private cacheFocus: Map<number, boolean> = new Map();
 
   /**
+   * The focus list that the focus cache was built for.
+   * Issue #1100: Track focus list to detect when cache should be invalidated.
+   * If undefined, no focus cache has been built yet.
+   */
+  private cacheFocusList: number[] | undefined = undefined;
+
+  /**
    * Secondary index of synapses sorted by `to` field.
    * Enables O(log n) binary search for inward connections instead of O(n) linear scan.
    * Issue #1010: Performance optimisation for large creatures.
@@ -314,8 +321,31 @@ export class Creature implements CreatureInternal {
       // Issue #1098: Performance optimisation for AddConnection mutation
       this.availableConnectionsCache = null;
     }
-    this.cacheFocus.clear();
+    // Issue #1100: Do NOT clear focus cache on structural changes.
+    // Focus cache validity depends on the focus list, not on structure.
+    // This allows focus cache to be reused across mutation batches when
+    // the focus list remains constant.
     this.invalidateScoreCache();
+  }
+
+  /**
+   * Clear the focus cache.
+   *
+   * Issue #1100: Separate focus cache clearing from structural cache clearing.
+   * The focus cache maps neuron indices to focus status (true/false).
+   * It should be cleared when the focus list changes, not when structure changes.
+   *
+   * Call this method when:
+   * - The focus list changes between mutations
+   * - You want to force recalculation of focus status
+   *
+   * Do NOT call this method:
+   * - On structural changes (neurons/synapses added/removed)
+   * - Between mutations in the same batch with constant focus list
+   */
+  public clearFocusCache(): void {
+    this.cacheFocus.clear();
+    this.cacheFocusList = undefined;
   }
 
   /**
@@ -1719,6 +1749,15 @@ export class Creature implements CreatureInternal {
       return true;
     }
 
+    // Issue #1100: Check if the focus list matches the cached focus list.
+    // If the focus list is different, clear the cache and update the tracked list.
+    // This ensures the cache is only used when the focus list is the same.
+    if (!this.isFocusListMatch(focusList)) {
+      this.cacheFocus.clear();
+      // Store a copy of the focus list to avoid reference issues
+      this.cacheFocusList = [...focusList];
+    }
+
     // Check the cache first if there is a focus list
     if (this.cacheFocus.has(index)) {
       return this.cacheFocus.get(index) as boolean;
@@ -1757,6 +1796,30 @@ export class Creature implements CreatureInternal {
 
     this.cacheFocus.set(index, false);
     return false;
+  }
+
+  /**
+   * Check if the given focus list matches the cached focus list.
+   *
+   * Issue #1100: Used to detect when the focus cache should be invalidated.
+   *
+   * @param focusList - The focus list to check
+   * @returns true if the focus list matches the cached list
+   */
+  private isFocusListMatch(focusList: number[]): boolean {
+    const cached = this.cacheFocusList;
+    if (!cached) {
+      return false;
+    }
+    if (cached.length !== focusList.length) {
+      return false;
+    }
+    for (let i = 0; i < cached.length; i++) {
+      if (cached[i] !== focusList[i]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**

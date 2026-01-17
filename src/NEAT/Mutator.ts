@@ -69,15 +69,30 @@ export class Mutator {
           original.score = creature.score;
         }
         let changed = false;
+
+        // Issue #1100: Track focus list across mutations to preserve focus cache.
+        // Only clear focus cache when the focus list changes between mutations.
+        let lastFocusList: number[] | undefined;
+
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
+
+          const currentFocusList = Math.random() < this.config.focusRate
+            ? this.config.focusList
+            : undefined;
+
+          // Issue #1100: Clear focus cache only when focus list changes.
+          // This preserves focus cache across mutations with constant focus list,
+          // avoiding expensive recalculation of focus status.
+          if (!this.arrayEquals(currentFocusList, lastFocusList)) {
+            creature.clearFocusCache();
+            lastFocusList = currentFocusList;
+          }
 
           const flag = this.mutateCreature(
             creature,
             mutationMethod,
-            Math.random() < this.config.focusRate
-              ? this.config.focusList
-              : undefined,
+            currentFocusList,
           );
           if (flag) {
             changed = true;
@@ -222,6 +237,41 @@ export class Mutator {
    */
   private isTopologyExpansionMutation(name: string): boolean {
     return name === Mutation.ADD_NODE.name || name === Mutation.ADD_CONN.name;
+  }
+
+  /**
+   * Compare two focus lists for equality.
+   *
+   * Issue #1100: Used to determine if focus cache should be cleared.
+   * Returns true if both arrays contain the same elements in the same order,
+   * or if both are undefined/empty.
+   *
+   * @param a - First focus list (or undefined)
+   * @param b - Second focus list (or undefined)
+   * @returns true if the lists are equal
+   */
+  private arrayEquals(
+    a: number[] | undefined,
+    b: number[] | undefined,
+  ): boolean {
+    // Both undefined or empty - equal
+    if (!a || a.length === 0) {
+      return !b || b.length === 0;
+    }
+    if (!b || b.length === 0) {
+      return false;
+    }
+    // Different lengths - not equal
+    if (a.length !== b.length) {
+      return false;
+    }
+    // Compare elements
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
