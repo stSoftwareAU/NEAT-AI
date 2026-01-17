@@ -84,6 +84,11 @@ export class Mutator {
           }
         }
 
+        // Issue #1097: Prebuild inward index for large creatures after mutation batch.
+        // This optimises subsequent inward connection lookups by avoiding
+        // linear scans before the lazy index build threshold is reached.
+        creature.prebuildInwardIndexIfLarge();
+
         if (this.config.debug) {
           creatureValidate(creature);
         }
