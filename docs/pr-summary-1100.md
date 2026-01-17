@@ -1,14 +1,22 @@
 ## Summary
 
-This PR implements focus cache preservation across mutation batches (Issue #1100). The `inFocus()` method in `Creature.ts` uses a cache (`cacheFocus`) to avoid expensive recursive calculations. Previously, this cache was cleared on every structural change via `clearCache()`, causing redundant recalculations during mutation batches where the focus list remained constant.
+This PR implements focus cache preservation across mutation batches (Issue
+#1100). The `inFocus()` method in `Creature.ts` uses a cache (`cacheFocus`) to
+avoid expensive recursive calculations. Previously, this cache was cleared on
+every structural change via `clearCache()`, causing redundant recalculations
+during mutation batches where the focus list remained constant.
 
 ### Changes Made
 
 1. **Separated focus cache from structural cache** (`src/Creature.ts`):
-   - Added `cacheFocusList` field to track which focus list the cache was built for
-   - Added `clearFocusCache()` method to explicitly clear focus cache when needed
-   - Modified `clearCache()` to NOT clear focus cache (focus validity depends on focus list, not structure)
-   - Updated `inFocus()` to automatically detect focus list changes and invalidate cache when needed
+   - Added `cacheFocusList` field to track which focus list the cache was built
+     for
+   - Added `clearFocusCache()` method to explicitly clear focus cache when
+     needed
+   - Modified `clearCache()` to NOT clear focus cache (focus validity depends on
+     focus list, not structure)
+   - Updated `inFocus()` to automatically detect focus list changes and
+     invalidate cache when needed
    - Added `isFocusListMatch()` private method for focus list comparison
 
 2. **Updated Mutator to track focus list changes** (`src/NEAT/Mutator.ts`):
@@ -70,7 +78,8 @@ Mutation batch (very large ~620 neurons):
   Summary: Cached is 1.04x faster
 ```
 
-The benchmark shows **2.5x to 4.2x improvement** in `inFocus()` call performance when caching is used across mutations with constant focus list.
+The benchmark shows **2.5x to 4.2x improvement** in `inFocus()` call performance
+when caching is used across mutations with constant focus list.
 
 ## Test Plan
 
