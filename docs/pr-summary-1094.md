@@ -1,14 +1,22 @@
 ## Summary
 
-Implemented buffer reuse optimisation for `activate()` and `activateAndTrace()` methods in `src/Creature.ts` to reduce GC pressure during evolution. The optimisation adds a new optional `reuseBuffer` parameter that allows callers to reuse a cached `Float32Array` instead of creating a new one on each call.
+Implemented buffer reuse optimisation for `activate()` and `activateAndTrace()`
+methods in `src/Creature.ts` to reduce GC pressure during evolution. The
+optimisation adds a new optional `reuseBuffer` parameter that allows callers to
+reuse a cached `Float32Array` instead of creating a new one on each call.
 
 ### Changes Made
 
-1. **Added `cachedOutputBuffer` property** to the `Creature` class to store a reusable output buffer
-2. **Updated `activate()` method** to accept a new `reuseBuffer` parameter (default: `false`)
-3. **Updated `activateAndTrace()` method** to accept a new `reuseBuffer` parameter (default: `false`)
-4. **Added `extractOutputs()` private method** to handle the buffer reuse logic in a single place
-5. **Updated `clearState()` method** to clear the cached output buffer when state is reset
+1. **Added `cachedOutputBuffer` property** to the `Creature` class to store a
+   reusable output buffer
+2. **Updated `activate()` method** to accept a new `reuseBuffer` parameter
+   (default: `false`)
+3. **Updated `activateAndTrace()` method** to accept a new `reuseBuffer`
+   parameter (default: `false`)
+4. **Added `extractOutputs()` private method** to handle the buffer reuse logic
+   in a single place
+5. **Updated `clearState()` method** to clear the cached output buffer when
+   state is reset
 
 ### API Changes
 
@@ -24,7 +32,9 @@ activate(input: Float32Array, feedbackLoop?: boolean, reuseBuffer?: boolean): Fl
 activateAndTrace(input: Float32Array, feedbackLoop: boolean, sparseConfig: SparseConfig, reuseBuffer?: boolean): Float32Array
 ```
 
-**Backward Compatibility**: The default behaviour (`reuseBuffer=false`) creates a new `Float32Array` on each call, maintaining full backward compatibility. The new parameter is opt-in only.
+**Backward Compatibility**: The default behaviour (`reuseBuffer=false`) creates
+a new `Float32Array` on each call, maintaining full backward compatibility. The
+new parameter is opt-in only.
 
 ## Evidence
 
@@ -32,21 +42,27 @@ activateAndTrace(input: Float32Array, feedbackLoop: boolean, sparseConfig: Spars
 
 The benchmark tests demonstrate significant performance improvements:
 
-| Test Scenario | Baseline | With Buffer Reuse | Improvement |
-|---------------|----------|-------------------|-------------|
-| 10,000 activations (100 outputs) | 9.92ms | 6.83ms | **31.1%** |
-| Large creature (500+ neurons) | 90.15ms | 89.66ms | 0.5% |
-| Output scaling (200 outputs) | 0.98μs/call | 0.45μs/call | **53.7%** |
-| Memory stress test (50,000 iter) | 43.90ms | 36.31ms | **17.3%** |
-| Fitness evaluation simulation | 7.32ms | 4.26ms | **41.7%** |
+| Test Scenario                    | Baseline    | With Buffer Reuse | Improvement |
+| -------------------------------- | ----------- | ----------------- | ----------- |
+| 10,000 activations (100 outputs) | 9.92ms      | 6.83ms            | **31.1%**   |
+| Large creature (500+ neurons)    | 90.15ms     | 89.66ms           | 0.5%        |
+| Output scaling (200 outputs)     | 0.98μs/call | 0.45μs/call       | **53.7%**   |
+| Memory stress test (50,000 iter) | 43.90ms     | 36.31ms           | **17.3%**   |
+| Fitness evaluation simulation    | 7.32ms      | 4.26ms            | **41.7%**   |
 
 **Key Findings**:
-- **31-54% improvement** for repeated activations depending on output count
-- **Greater benefit with more outputs** - scaling test shows improvement increases from 31.7% (10 outputs) to 53.7% (200 outputs)
-- **Fitness evaluation shows 41.7% improvement** - significant for evolution loops with population sizes of 100+
-- **Large creatures show minimal improvement** because activation time is dominated by neuron computation, not array allocation
 
-The benchmark exceeds the expected 5-15% improvement mentioned in the issue, achieving 31-54% improvement for the primary use case (repeated activations with many outputs).
+- **31-54% improvement** for repeated activations depending on output count
+- **Greater benefit with more outputs** - scaling test shows improvement
+  increases from 31.7% (10 outputs) to 53.7% (200 outputs)
+- **Fitness evaluation shows 41.7% improvement** - significant for evolution
+  loops with population sizes of 100+
+- **Large creatures show minimal improvement** because activation time is
+  dominated by neuron computation, not array allocation
+
+The benchmark exceeds the expected 5-15% improvement mentioned in the issue,
+achieving 31-54% improvement for the primary use case (repeated activations with
+many outputs).
 
 ## Test Plan
 
