@@ -6,7 +6,7 @@ import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 /**
- * Test suite for Offspring.breed() performance improvements.
+ * Test suite for Offspring.breed() functionality after shallowClone optimisation.
  *
  * Issue #1095: Performance - Avoid JSON clone in Offspring.breed() parent preparation
  *
@@ -20,6 +20,9 @@ import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
  * - Creates a new Creature with copied neuron/synapse arrays
  * - Avoids JSON string creation and parsing
  * - Is 3-4x faster than JSON serialisation/deserialisation
+ *
+ * These tests verify functional correctness. Performance benchmarking is done
+ * in bench/BreedPerformance.ts.
  */
 
 Deno.test("Offspring.breed() - breeding output equivalence after shallowClone optimisation", () => {
@@ -159,7 +162,7 @@ Deno.test("Offspring.breed() - parent creatures are not modified during breeding
   );
 });
 
-Deno.test("Offspring.breed() - large creature breeding performance", () => {
+Deno.test("Offspring.breed() - large creature breeding functionality", () => {
   // Create large parent creatures matching issue requirements (500+ neurons)
   const mum = new Creature(50, 20, {
     layers: [
@@ -169,9 +172,6 @@ Deno.test("Offspring.breed() - large creature breeding performance", () => {
     ],
   });
   creatureValidate(mum);
-  console.info(
-    `Mum: ${mum.neurons.length} neurons, ${mum.synapses.length} synapses`,
-  );
 
   const dad = new Creature(50, 20, {
     layers: [
@@ -181,40 +181,19 @@ Deno.test("Offspring.breed() - large creature breeding performance", () => {
     ],
   });
   creatureValidate(dad);
-  console.info(
-    `Dad: ${dad.neurons.length} neurons, ${dad.synapses.length} synapses`,
-  );
 
-  // Note: Breeding large creatures (500+ neurons, 50,000+ synapses) is computationally
-  // expensive, taking ~3 seconds per breed operation. We limit iterations to keep
-  // CI test times reasonable while still verifying the performance optimisation works.
-  const iterations = 5;
-
-  // Benchmark breeding operations
-  performance.mark("breed-start");
+  // Verify breeding works for large creatures
+  // Performance benchmarking is done in bench/BreedPerformance.ts
   let successCount = 0;
-  for (let i = 0; i < iterations; i++) {
+  for (let i = 0; i < 3; i++) {
     const offspring = Offspring.breed(mum, dad);
     if (offspring) {
+      creatureValidate(offspring);
+      assertEquals(offspring.input, mum.input, "Offspring input mismatch");
+      assertEquals(offspring.output, mum.output, "Offspring output mismatch");
       successCount++;
     }
   }
-  performance.mark("breed-end");
-  const breedDuration = performance.measure(
-    "breed",
-    "breed-start",
-    "breed-end",
-  ).duration;
-
-  const avgBreedTime = breedDuration / iterations;
-  console.info(
-    `Breeding performance: ${iterations} iterations in ${
-      breedDuration.toFixed(2)
-    }ms, ` +
-      `avg ${
-        avgBreedTime.toFixed(2)
-      }ms per breed, ${successCount} successful offspring`,
-  );
 
   // At least some breeding should succeed
   assert(successCount > 0, "No offspring were successfully bred");
