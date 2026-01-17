@@ -206,6 +206,14 @@ export class Creature implements CreatureInternal {
   public topologyHash?: string;
 
   /**
+   * Cached output buffer for activate() and activateAndTrace() methods.
+   * When reuseBuffer=true is passed to these methods, this buffer is reused
+   * instead of creating a new Float32Array on each call.
+   * Issue #1094: Performance optimisation to reduce GC pressure during evolution.
+   */
+  private cachedOutputBuffer?: Float32Array;
+
+  /**
    * Debug mode flag.
    * @type {boolean}
    */
@@ -424,6 +432,9 @@ export class Creature implements CreatureInternal {
     delete this.score;
     this.state.clear();
     delete this.creatureActivationResult;
+    // Clear cached output buffer to ensure fresh buffer on next activation
+    // Issue #1094: Performance optimisation for buffer reuse
+    delete this.cachedOutputBuffer;
   }
 
   private creatureActivationFunction?: () => undefined;
@@ -451,12 +462,18 @@ export class Creature implements CreatureInternal {
    *
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
+   * @param {SparseConfig} sparseConfig - The sparse configuration for tracing.
+   * @param {boolean} [reuseBuffer=false] - When true, reuses a cached output buffer
+   *   to avoid allocating a new Float32Array on each call. This reduces GC pressure
+   *   but callers must not mutate the returned array as it may be overwritten.
+   *   Issue #1094: Performance optimisation for repeated activations.
    * @returns {Float32Array} The output values after activation.
    */
   activateAndTrace(
     input: Float32Array,
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
+    reuseBuffer: boolean = false,
   ): Float32Array {
     this.prepareNeurons();
     const activations = this.state.makeActivation(input, feedbackLoop);
@@ -480,7 +497,7 @@ export class Creature implements CreatureInternal {
     }
 
     const lastHiddenNode = len - this.output;
-    return new Float32Array(activations.subarray(lastHiddenNode));
+    return this.extractOutputs(activations, lastHiddenNode, reuseBuffer);
   }
 
   /**
@@ -488,9 +505,17 @@ export class Creature implements CreatureInternal {
    *
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
+   * @param {boolean} [reuseBuffer=false] - When true, reuses a cached output buffer
+   *   to avoid allocating a new Float32Array on each call. This reduces GC pressure
+   *   but callers must not mutate the returned array as it may be overwritten.
+   *   Issue #1094: Performance optimisation for repeated activations.
    * @returns {Float32Array} The output values after activation.
    */
-  activate(input: Float32Array, feedbackLoop: boolean = false): Float32Array {
+  activate(
+    input: Float32Array,
+    feedbackLoop: boolean = false,
+    reuseBuffer: boolean = false,
+  ): Float32Array {
     this.prepareNeurons();
     const activations = this.state.makeActivation(input, feedbackLoop);
 
@@ -505,7 +530,39 @@ export class Creature implements CreatureInternal {
     }
 
     const lastHiddenNode = this.neurons.length - this.output;
-    return new Float32Array(activations.subarray(lastHiddenNode));
+    return this.extractOutputs(activations, lastHiddenNode, reuseBuffer);
+  }
+
+  /**
+   * Extracts output values from the activations array.
+   * When reuseBuffer is true, reuses a cached buffer to avoid allocations.
+   * Issue #1094: Performance optimisation to reduce GC pressure during evolution.
+   *
+   * @param {Float32Array} activations - The full activations array.
+   * @param {number} lastHiddenNode - The index of the first output neuron.
+   * @param {boolean} reuseBuffer - Whether to reuse the cached buffer.
+   * @returns {Float32Array} The output values.
+   */
+  private extractOutputs(
+    activations: Float32Array,
+    lastHiddenNode: number,
+    reuseBuffer: boolean,
+  ): Float32Array {
+    if (reuseBuffer) {
+      // Reuse cached buffer if dimensions match, otherwise create a new one
+      if (
+        !this.cachedOutputBuffer ||
+        this.cachedOutputBuffer.length !== this.output
+      ) {
+        this.cachedOutputBuffer = new Float32Array(this.output);
+      }
+      // Copy output values from activations to cached buffer
+      this.cachedOutputBuffer.set(activations.subarray(lastHiddenNode));
+      return this.cachedOutputBuffer;
+    } else {
+      // Default behaviour: create a new Float32Array (maintains backward compatibility)
+      return new Float32Array(activations.subarray(lastHiddenNode));
+    }
   }
 
   /**
