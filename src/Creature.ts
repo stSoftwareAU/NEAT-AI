@@ -926,10 +926,9 @@ export class Creature implements CreatureInternal {
       }
     }
     if (location !== -1 && location < this.synapses.length) {
-      const left = this.synapses.slice(0, location);
-      const right = this.synapses.slice(location);
-
-      this.synapses = [...left, connection, ...right];
+      // Use splice() for in-place insertion - Issue #1093
+      // This reduces memory allocations from 3 to 0 compared to slice/spread
+      this.synapses.splice(location, 0, connection);
     } else {
       this.synapses.push(connection);
     }
