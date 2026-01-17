@@ -1,5 +1,6 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
+import type { Synapse } from "../architecture/Synapse.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
 export class ModWeight implements RadioactiveInterface {
@@ -8,16 +9,32 @@ export class ModWeight implements RadioactiveInterface {
     this.creature = creature;
   }
   mutate(focusList?: number[]): boolean {
-    const allConnections = this.creature.synapses.filter(
-      (c) => {
-        return this.creature.inFocus(c.from, focusList) ||
-          this.creature.inFocus(c.to, focusList);
-      },
-    );
+    let relevantConnections: Synapse[];
+
+    if (!focusList || focusList.length === 0) {
+      // No focus - use all connections
+      relevantConnections = this.creature.synapses;
+    } else {
+      // Collect synapses connected to focused neurons using indexed lookups
+      // This is O(focusList.length * (log n + k)) instead of O(synapses * focusList)
+      const seen = new Set<Synapse>();
+      for (const focusIndex of focusList) {
+        // Get outward connections from focus neuron
+        for (const syn of this.creature.outwardConnections(focusIndex)) {
+          seen.add(syn);
+        }
+        // Get inward connections to focus neuron
+        for (const syn of this.creature.inwardConnections(focusIndex)) {
+          seen.add(syn);
+        }
+      }
+      relevantConnections = Array.from(seen);
+    }
+
     let changed = false;
-    if (allConnections.length > 0) {
-      const indx = Math.floor(Math.random() * allConnections.length);
-      const connection = allConnections[indx];
+    if (relevantConnections.length > 0) {
+      const indx = Math.floor(Math.random() * relevantConnections.length);
+      const connection = relevantConnections[indx];
 
       // Calculate the quantum based on the current weight
       const weightMagnitude = Math.abs(connection.weight);
