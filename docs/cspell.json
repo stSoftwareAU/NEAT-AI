@@ -161,6 +161,8 @@
     "deserialisation",
     "gens",
     "recalc",
-    "recomputation"
+    "recomputation",
+    "gdate",
+    "popover"
   ]
 }
