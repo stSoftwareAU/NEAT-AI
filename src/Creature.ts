@@ -171,6 +171,13 @@ export class Creature implements CreatureInternal {
   private connectionSet: Set<string> | null = null;
 
   /**
+   * Cached array of available connection pairs [from, to].
+   * Enables O(1) retrieval of available connections after first computation.
+   * Issue #1098: Performance optimisation for AddConnection mutation.
+   */
+  private availableConnectionsCache: [number, number][] | null = null;
+
+  /**
    * Cached Set of hidden neuron UUIDs.
    * Enables O(1) lookup for genetic compatibility checks.
    * Issue #1032: Performance optimisation for genetic compatibility checks.
@@ -288,6 +295,9 @@ export class Creature implements CreatureInternal {
       // Invalidate hidden neuron UUIDs cache on full cache clear
       // Issue #1032: Performance optimisation for genetic compatibility checks
       this.hiddenNeuronUUIDs = null;
+      // Invalidate available connections cache on full cache clear
+      // Issue #1098: Performance optimisation for AddConnection mutation
+      this.availableConnectionsCache = null;
     } else {
       this.cacheTo.delete(to);
       this.cacheFrom.delete(from);
@@ -300,6 +310,9 @@ export class Creature implements CreatureInternal {
       // Invalidate hidden neuron UUIDs cache on partial clear (structure changed)
       // Issue #1032: Performance optimisation for genetic compatibility checks
       this.hiddenNeuronUUIDs = null;
+      // Invalidate available connections cache on partial clear (structure changed)
+      // Issue #1098: Performance optimisation for AddConnection mutation
+      this.availableConnectionsCache = null;
     }
     this.cacheFocus.clear();
     this.invalidateScoreCache();
@@ -862,10 +875,37 @@ export class Creature implements CreatureInternal {
    * - connection doesn't already exist
    *
    * Issue #1036: Performance optimisation for ADD_CONNECTION mutation.
+   * Issue #1098: Results are cached and invalidated on structure changes.
    *
+   * @param {number[]} [focusList] - Optional list of neuron indices to focus on.
+   *   When provided, returns only connections involving focused neurons or their paths.
    * @returns {[number, number][]} Array of [from, to] tuples representing available connections.
    */
-  public getAvailableConnections(): [number, number][] {
+  public getAvailableConnections(focusList?: number[]): [number, number][] {
+    // Build and cache all available connections if not already cached
+    if (this.availableConnectionsCache === null) {
+      this.availableConnectionsCache = this.computeAvailableConnections();
+    }
+
+    // If no focus list provided, return the cached array directly
+    if (!focusList || focusList.length === 0) {
+      return this.availableConnectionsCache;
+    }
+
+    // Filter cached connections based on focus list
+    return this.availableConnectionsCache.filter(([from, to]) => {
+      return this.inFocus(from, focusList) || this.inFocus(to, focusList);
+    });
+  }
+
+  /**
+   * Computes all available forward-only connection slots.
+   * This is called internally to build the cache.
+   * Issue #1098: Extracted to support caching.
+   *
+   * @returns {[number, number][]} Array of [from, to] tuples.
+   */
+  private computeAvailableConnections(): [number, number][] {
     const connectionSet = this.getConnectionSet();
     const available: [number, number][] = [];
     const neurons = this.neurons;
@@ -892,6 +932,17 @@ export class Creature implements CreatureInternal {
     }
 
     return available;
+  }
+
+  /**
+   * Checks if the available connections cache has been built.
+   * This is primarily used for testing the cache optimisation.
+   * Issue #1098: Performance - Cache available connection pairs.
+   *
+   * @returns {boolean} True if the cache has been built, false otherwise.
+   */
+  public isAvailableConnectionsCacheBuilt(): boolean {
+    return this.availableConnectionsCache !== null;
   }
 
   /**
