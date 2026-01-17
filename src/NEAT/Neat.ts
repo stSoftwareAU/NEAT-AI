@@ -895,11 +895,12 @@ export class Neat {
     // Replace the old population with the new population
     mutator.mutate(newPopulation);
 
-    // Issue #1014: De-duplicate newPopulation immediately after breeding/mutation
-    // This prevents duplicates from going through expensive fitness evaluation
-    // in the next generation
+    // Issue #1099: Single-pass de-duplication - create DeDuplicator but defer perform()
+    // until after all population sources are combined. This reduces overhead from
+    // running de-duplication twice (after breeding and again after combining sources).
+    // The previous two-pass approach (Issue #1014) caught duplicates early but
+    // redundantly checked newPopulation creatures again in the final pass.
     const deDuplicator = new DeDuplicator(breed, mutator);
-    deDuplicator.perform(newPopulation);
 
     const trainedPopulation: Creature[] = [];
 
@@ -1079,9 +1080,11 @@ export class Neat {
       ...dnaPopulation,
     ]; // Keep pseudo sorted.
 
-    // Final de-duplication pass on the combined population
-    // This catches duplicates between different population sources
-    // (elitists, trainedPopulation, fineTunedPopulation, dnaPopulation)
+    // Issue #1099: Single-pass de-duplication on the combined population
+    // This catches duplicates both within each source and between different
+    // population sources (elitists, trainedPopulation, fineTunedPopulation,
+    // newPopulation, dnaPopulation) in a single operation, reducing overhead
+    // compared to the previous two-pass approach.
     deDuplicator.perform(this.population);
 
     return {
