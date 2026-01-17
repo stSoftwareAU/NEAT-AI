@@ -34,9 +34,13 @@ export class Offspring {
       forwardOnly?: boolean;
     } = {},
   ): Creature | undefined {
-    const mother = upgrade(Creature.fromJSON(mum.exportJSON()));
+    // Issue #1095: Use shallowClone() instead of JSON serialisation/deserialisation
+    // for parent preparation. shallowClone() is 3-4x faster as it:
+    // - Creates new Creature with copied neuron/synapse arrays
+    // - Avoids JSON string creation and parsing overhead
+    const mother = upgrade(mum.shallowClone());
     CreatureUtil.makeUUID(mother);
-    let father = upgrade(Creature.fromJSON(dad.exportJSON()));
+    let father = upgrade(dad.shallowClone());
     CreatureUtil.makeUUID(father);
     assert(
       mother.input === father.input && mother.output === father.output,
