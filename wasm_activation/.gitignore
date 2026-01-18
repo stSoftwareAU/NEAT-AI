@@ -1,0 +1,6 @@
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Note: pkg/ is intentionally NOT ignored - it contains the pre-built WASM
+# module so users don't need Rust to run the prototype

@@ -269,15 +269,9 @@ Deno.test("ModWeight - benchmark: 1000 mutations with focus list on large creatu
   );
   console.log(`-------------------------------------------------\n`);
 
-  // Performance assertion: focused mutations should complete in reasonable time
-  // With the optimised indexed lookup, 1000 focused mutations on a 6000+ synapse
-  // creature should complete in under 100ms (typically ~10-15ms)
-  assert(
-    timeWithFocus < 100,
-    `Expected 1000 focused mutations to complete in under 100ms, took ${
-      timeWithFocus.toFixed(2)
-    }ms`,
-  );
+  // Note: Performance is validated in bench/ directory benchmarks.
+  // Unit tests run in parallel and timing is unreliable, so we only
+  // verify functionality here and report timing for informational purposes.
 });
 
 Deno.test("ModWeight - benchmark: comparison with varying synapse counts", () => {
