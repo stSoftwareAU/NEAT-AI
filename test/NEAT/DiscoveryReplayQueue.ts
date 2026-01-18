@@ -1,5 +1,6 @@
 import { assertEquals, assertExists } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { DiscoveryReplayDirResult } from "../../src/discovery/DiscoveryReplayRunner.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import {
@@ -398,5 +399,269 @@ Deno.test("DiscoveryReplayQueue - clearCompletedResults removes results", async 
     queue.getCompletedResults().length,
     0,
     "Results should be cleared",
+  );
+});
+
+/**
+ * Tests for Issue #1113: Discovery replay timeout handling.
+ *
+ * These tests verify that:
+ * 1. Replay is skipped when remaining time is below the minimum threshold
+ * 2. Timeout is passed to the replay function correctly
+ * 3. Timeout is capped to the configured maximum
+ */
+
+Deno.test("DiscoveryReplayQueue - skips replay when remaining time is below minimum threshold", async () => {
+  const creature = makeBaseCreature();
+  creature.uuid = "fittest-1";
+
+  let replayAttempted = false;
+  const mockDeps: DiscoveryReplayQueueDeps = {
+    replayDir: (
+      _creature: Creature,
+      _dataDir: string,
+      _options: NeatOptions,
+      _timeoutMinutes?: number,
+    ): Promise<DiscoveryReplayDirResult> => {
+      replayAttempted = true;
+      return Promise.resolve({
+        original: { error: 0.5, score: 0.5 },
+        evaluatedSingles: 0,
+        evaluatedCombos: 0,
+        pruned: 0,
+        skippedAlreadyApplied: 0,
+        skippedNotApplicable: 0,
+      });
+    },
+  };
+
+  const queue = new DiscoveryReplayQueue(mockDeps);
+
+  // Schedule replay with remaining time below the default minimum (1 minute)
+  // Default minimum is 1 minute, so 0.5 should be skipped
+  queue.scheduleReplay(creature, "/tmp/data", {
+    discoveryCacheDir: "/tmp/cache",
+    costOfGrowth: 0,
+  }, 0.5); // 0.5 minutes remaining
+
+  await queue.waitForCompletion();
+
+  assertEquals(
+    replayAttempted,
+    false,
+    "Replay should be skipped when remaining time is below minimum threshold",
+  );
+});
+
+Deno.test("DiscoveryReplayQueue - passes timeout to replay function", async () => {
+  const creature = makeBaseCreature();
+  creature.uuid = "fittest-1";
+
+  let receivedTimeout: number | undefined;
+  const mockDeps: DiscoveryReplayQueueDeps = {
+    replayDir: (
+      _creature: Creature,
+      _dataDir: string,
+      _options: NeatOptions,
+      timeoutMinutes?: number,
+    ): Promise<DiscoveryReplayDirResult> => {
+      receivedTimeout = timeoutMinutes;
+      return Promise.resolve({
+        original: { error: 0.5, score: 0.5 },
+        evaluatedSingles: 0,
+        evaluatedCombos: 0,
+        pruned: 0,
+        skippedAlreadyApplied: 0,
+        skippedNotApplicable: 0,
+      });
+    },
+  };
+
+  const queue = new DiscoveryReplayQueue(mockDeps);
+
+  // Schedule replay with 10 minutes remaining
+  queue.scheduleReplay(creature, "/tmp/data", {
+    discoveryCacheDir: "/tmp/cache",
+    costOfGrowth: 0,
+    discoveryReplayTimeoutMinutes: 15, // Configure 15 min max timeout
+  }, 10); // 10 minutes remaining
+
+  await queue.waitForCompletion();
+
+  // Timeout should be capped to the minimum of remaining time (10) and configured timeout (15)
+  assertEquals(
+    receivedTimeout,
+    10,
+    "Timeout should be the minimum of remaining time and configured timeout",
+  );
+});
+
+Deno.test("DiscoveryReplayQueue - caps timeout to configured maximum", async () => {
+  const creature = makeBaseCreature();
+  creature.uuid = "fittest-1";
+
+  let receivedTimeout: number | undefined;
+  const mockDeps: DiscoveryReplayQueueDeps = {
+    replayDir: (
+      _creature: Creature,
+      _dataDir: string,
+      _options: NeatOptions,
+      timeoutMinutes?: number,
+    ): Promise<DiscoveryReplayDirResult> => {
+      receivedTimeout = timeoutMinutes;
+      return Promise.resolve({
+        original: { error: 0.5, score: 0.5 },
+        evaluatedSingles: 0,
+        evaluatedCombos: 0,
+        pruned: 0,
+        skippedAlreadyApplied: 0,
+        skippedNotApplicable: 0,
+      });
+    },
+  };
+
+  const queue = new DiscoveryReplayQueue(mockDeps);
+
+  // Schedule replay with 30 minutes remaining but configured timeout is 5 minutes
+  queue.scheduleReplay(creature, "/tmp/data", {
+    discoveryCacheDir: "/tmp/cache",
+    costOfGrowth: 0,
+    discoveryReplayTimeoutMinutes: 5, // Configure 5 min max timeout
+  }, 30); // 30 minutes remaining
+
+  await queue.waitForCompletion();
+
+  // Timeout should be capped to the configured maximum (5)
+  assertEquals(
+    receivedTimeout,
+    5,
+    "Timeout should be capped to the configured maximum",
+  );
+});
+
+Deno.test("DiscoveryReplayQueue - uses default timeout when no remaining time provided", async () => {
+  const creature = makeBaseCreature();
+  creature.uuid = "fittest-1";
+
+  let receivedTimeout: number | undefined;
+  const mockDeps: DiscoveryReplayQueueDeps = {
+    replayDir: (
+      _creature: Creature,
+      _dataDir: string,
+      _options: NeatOptions,
+      timeoutMinutes?: number,
+    ): Promise<DiscoveryReplayDirResult> => {
+      receivedTimeout = timeoutMinutes;
+      return Promise.resolve({
+        original: { error: 0.5, score: 0.5 },
+        evaluatedSingles: 0,
+        evaluatedCombos: 0,
+        pruned: 0,
+        skippedAlreadyApplied: 0,
+        skippedNotApplicable: 0,
+      });
+    },
+  };
+
+  const queue = new DiscoveryReplayQueue(mockDeps);
+
+  // Schedule replay without remaining time (undefined)
+  queue.scheduleReplay(creature, "/tmp/data", {
+    discoveryCacheDir: "/tmp/cache",
+    costOfGrowth: 0,
+    discoveryReplayTimeoutMinutes: 5, // Configure 5 min max timeout
+  }); // No remaining time provided
+
+  await queue.waitForCompletion();
+
+  // Timeout should be the configured default (5)
+  assertEquals(
+    receivedTimeout,
+    5,
+    "Timeout should use the configured default when no remaining time provided",
+  );
+});
+
+Deno.test("DiscoveryReplayQueue - custom minimum time threshold", async () => {
+  const creature = makeBaseCreature();
+  creature.uuid = "fittest-1";
+
+  let replayAttempted = false;
+  const mockDeps: DiscoveryReplayQueueDeps = {
+    replayDir: (
+      _creature: Creature,
+      _dataDir: string,
+      _options: NeatOptions,
+      _timeoutMinutes?: number,
+    ): Promise<DiscoveryReplayDirResult> => {
+      replayAttempted = true;
+      return Promise.resolve({
+        original: { error: 0.5, score: 0.5 },
+        evaluatedSingles: 0,
+        evaluatedCombos: 0,
+        pruned: 0,
+        skippedAlreadyApplied: 0,
+        skippedNotApplicable: 0,
+      });
+    },
+  };
+
+  const queue = new DiscoveryReplayQueue(mockDeps);
+
+  // Schedule replay with 1.5 minutes remaining but minimum threshold is 2 minutes
+  queue.scheduleReplay(creature, "/tmp/data", {
+    discoveryCacheDir: "/tmp/cache",
+    costOfGrowth: 0,
+    discoveryReplayMinTimeMinutes: 2, // Custom minimum: 2 minutes
+  }, 1.5); // 1.5 minutes remaining
+
+  await queue.waitForCompletion();
+
+  assertEquals(
+    replayAttempted,
+    false,
+    "Replay should be skipped when remaining time is below custom minimum threshold",
+  );
+});
+
+Deno.test("DiscoveryReplayQueue - allows replay when remaining time equals minimum threshold", async () => {
+  const creature = makeBaseCreature();
+  creature.uuid = "fittest-1";
+
+  let replayAttempted = false;
+  const mockDeps: DiscoveryReplayQueueDeps = {
+    replayDir: (
+      _creature: Creature,
+      _dataDir: string,
+      _options: NeatOptions,
+      _timeoutMinutes?: number,
+    ): Promise<DiscoveryReplayDirResult> => {
+      replayAttempted = true;
+      return Promise.resolve({
+        original: { error: 0.5, score: 0.5 },
+        evaluatedSingles: 0,
+        evaluatedCombos: 0,
+        pruned: 0,
+        skippedAlreadyApplied: 0,
+        skippedNotApplicable: 0,
+      });
+    },
+  };
+
+  const queue = new DiscoveryReplayQueue(mockDeps);
+
+  // Schedule replay with exactly the minimum threshold
+  queue.scheduleReplay(creature, "/tmp/data", {
+    discoveryCacheDir: "/tmp/cache",
+    costOfGrowth: 0,
+    discoveryReplayMinTimeMinutes: 1, // Minimum: 1 minute
+  }, 1); // Exactly 1 minute remaining
+
+  await queue.waitForCompletion();
+
+  assertEquals(
+    replayAttempted,
+    true,
+    "Replay should be allowed when remaining time equals minimum threshold",
   );
 });

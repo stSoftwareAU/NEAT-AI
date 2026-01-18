@@ -235,6 +235,8 @@ export function createNeatConfig(options: NeatOptions): NeatConfig {
       return verify ? true : false;
     })(),
     discoveryReplayDiagnostics: options.discoveryReplayDiagnostics ?? false,
+    discoveryReplayTimeoutMinutes: options.discoveryReplayTimeoutMinutes ?? 5,
+    discoveryReplayMinTimeMinutes: options.discoveryReplayMinTimeMinutes ?? 1,
     discoveryMinCandidatesPerCategory: {
       ...DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY,
       ...options.discoveryMinCandidatesPerCategory,

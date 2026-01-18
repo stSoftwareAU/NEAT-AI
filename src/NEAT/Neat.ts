@@ -767,11 +767,13 @@ export class Neat {
       // Issue #997: Schedule background replay of cached discoveries against the new fittest.
       // This allows learnings from previous discovery runs to be applied when evolution
       // progresses. The replay runs in a non-blocking manner, one at a time.
+      // Issue #1113: Pass remaining time to replay so it can timeout gracefully.
       if (this.dataDir && this.config.discoveryCacheDir) {
         this.discoveryReplayQueue.scheduleReplay(
           fittest,
           this.dataDir,
           this.config,
+          trainingTimeOutMinutes > 0 ? trainingTimeOutMinutes : undefined,
         );
       }
     }

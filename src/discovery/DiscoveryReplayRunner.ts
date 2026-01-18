@@ -32,6 +32,12 @@ export interface DiscoveryReplayDirInput {
   creature: Creature;
   dataDir: string;
   options: NeatOptions;
+  /**
+   * Optional timeout in minutes for the replay operation.
+   * If provided and > 0, replay will abort gracefully when the timeout is reached.
+   * This prevents replay from hanging the evolution process when time runs out.
+   */
+  timeoutMinutes?: number;
 }
 
 export interface DiscoveryReplayEvaluationSummary {
@@ -111,6 +117,12 @@ export interface DiscoveryReplayDirResult {
   skippedAlreadyApplied: number;
   skippedNotApplicable: number;
   evaluations?: DiscoveryReplayEvaluationSummary[];
+  /**
+   * True if the replay operation timed out before completing all evaluations.
+   * When timed out, the result contains partial data from evaluations completed
+   * before the timeout.
+   */
+  timedOut?: boolean;
 }
 
 export interface DiscoveryReplayRunnerLike {
@@ -623,7 +635,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
   async replayDir(
     input: DiscoveryReplayDirInput,
   ): Promise<DiscoveryReplayDirResult> {
-    const { creature, dataDir, options } = input;
+    const { creature, dataDir, options, timeoutMinutes } = input;
     const config = createNeatConfig(options);
     const verifyScores = config.discoveryReplayVerifyScores;
     const replayConcurrency = verifyScores
@@ -636,6 +648,18 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
     const timingsMS: DiscoveryReplayDiagnostics["timingsMS"] | undefined =
       diagnosticsEnabled ? {} : undefined;
     let resultToReturn: DiscoveryReplayDirResult | undefined;
+
+    // Issue #1113: Calculate timeout deadline if timeout is provided
+    const deadlineTS = timeoutMinutes !== undefined && timeoutMinutes > 0
+      ? Date.now() + timeoutMinutes * 60 * 1000
+      : undefined;
+    let timedOut = false;
+
+    // Helper to check if we've exceeded the timeout
+    const isTimedOut = (): boolean => {
+      if (!deadlineTS) return false;
+      return Date.now() >= deadlineTS;
+    };
 
     const successCacheDir = config.discoverySuccessCacheDir;
     if (!successCacheDir) {
@@ -745,6 +769,21 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         timingsMS.applySingles = performance.now() - applySinglesStart;
       }
 
+      // Issue #1113: Check timeout before starting evaluations
+      if (isTimedOut()) {
+        timedOut = true;
+        // Return early with empty results if timed out before evaluation
+        return {
+          original: { error: 0, score: 0 },
+          evaluatedSingles: 0,
+          evaluatedCombos: 0,
+          pruned: 0,
+          skippedAlreadyApplied,
+          skippedNotApplicable,
+          timedOut: true,
+        };
+      }
+
       const tasksBaselineAndSingles: EvaluationTask[] = [
         { kind: "original", creature },
         ...singleCandidates.map((c) => ({
@@ -832,8 +871,17 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         description: describeCombo(c.entries),
       }));
 
+      // Issue #1113: Check timeout before evaluating combos - skip combos if timed out
+      // but still return partial results from singles evaluation
+      let evaluatedCombos: Array<
+        EvaluationTask & { error: number; score: number }
+      > = [];
       const evaluateCombosStart = diagnosticsEnabled ? performance.now() : 0;
-      const evaluatedCombos = await evaluateTasks(comboTasks);
+      if (!isTimedOut() && comboTasks.length > 0) {
+        evaluatedCombos = await evaluateTasks(comboTasks);
+      } else if (isTimedOut()) {
+        timedOut = true;
+      }
       if (timingsMS) {
         timingsMS.evaluateCombos = performance.now() - evaluateCombosStart;
       }
@@ -925,6 +973,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         skippedAlreadyApplied,
         skippedNotApplicable,
         evaluations,
+        timedOut: timedOut || undefined, // Only include if true
       };
 
       if (diagnosticsEnabled) {

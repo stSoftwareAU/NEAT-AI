@@ -14,11 +14,17 @@ export interface DiscoveryReplayQueueDeps {
   /**
    * Function to replay discoveries against a creature.
    * Defaults to using the DiscoveryReplayRunner.
+   *
+   * @param creature The creature to replay discoveries against
+   * @param dataDir The data directory containing training data
+   * @param options NEAT options
+   * @param timeoutMinutes Optional timeout in minutes (0 or undefined = no timeout)
    */
   replayDir?: (
     creature: Creature,
     dataDir: string,
     options: NeatOptions,
+    timeoutMinutes?: number,
   ) => Promise<DiscoveryReplayDirResult>;
 }
 
@@ -40,6 +46,7 @@ export class DiscoveryReplayQueue {
     creature: Creature;
     dataDir: string;
     options: NeatOptions;
+    timeoutMinutes?: number;
   } | null = null;
   #completedResults: DiscoveryReplayDirResult[] = [];
   #currentPromise: Promise<void> | null = null;
@@ -52,17 +59,24 @@ export class DiscoveryReplayQueue {
 
   /**
    * Default replay implementation using DiscoveryReplayRunner.
+   *
+   * @param creature The creature to replay discoveries against
+   * @param dataDir The data directory containing training data
+   * @param options NEAT options
+   * @param timeoutMinutes Optional timeout in minutes (0 or undefined = no timeout)
    */
   private async defaultReplayDir(
     creature: Creature,
     dataDir: string,
     options: NeatOptions,
+    timeoutMinutes?: number,
   ): Promise<DiscoveryReplayDirResult> {
     const runner = new DiscoveryReplayRunner();
     return await runner.replayDir({
       creature,
       dataDir,
       options,
+      timeoutMinutes,
     });
   }
 
@@ -76,17 +90,49 @@ export class DiscoveryReplayQueue {
    * @param creature The fittest creature to replay discoveries against
    * @param dataDir The directory containing the dataset
    * @param options NEAT options (must include discoveryCacheDir)
+   * @param remainingTimeMinutes Optional remaining evolution time in minutes.
+   *        If provided and below the minimum threshold, replay is skipped.
+   *        If provided, replay timeout is capped to this value.
    */
   scheduleReplay(
     creature: Creature,
     dataDir: string,
     options: NeatOptions,
+    remainingTimeMinutes?: number,
   ): void {
     const config = createNeatConfig(options);
 
     // Skip if no cache directory is configured
     if (!config.discoveryCacheDir) {
       return;
+    }
+
+    // Issue #1113: Skip replay if insufficient time remaining
+    const minTimeMinutes = config.discoveryReplayMinTimeMinutes;
+    if (
+      remainingTimeMinutes !== undefined &&
+      remainingTimeMinutes > 0 &&
+      remainingTimeMinutes < minTimeMinutes
+    ) {
+      // Not enough time remaining to start replay
+      return;
+    }
+
+    // Calculate effective timeout:
+    // - If remainingTimeMinutes is provided and positive, use the minimum of
+    //   remainingTimeMinutes and discoveryReplayTimeoutMinutes (if configured)
+    // - Otherwise use discoveryReplayTimeoutMinutes as the default timeout
+    let effectiveTimeout: number | undefined;
+    const configuredTimeout = config.discoveryReplayTimeoutMinutes;
+
+    if (remainingTimeMinutes !== undefined && remainingTimeMinutes > 0) {
+      if (configuredTimeout > 0) {
+        effectiveTimeout = Math.min(remainingTimeMinutes, configuredTimeout);
+      } else {
+        effectiveTimeout = remainingTimeMinutes;
+      }
+    } else if (configuredTimeout > 0) {
+      effectiveTimeout = configuredTimeout;
     }
 
     if (this.#replayInProgress) {
@@ -96,25 +142,42 @@ export class DiscoveryReplayQueue {
         creature: creature.shallowClone(),
         dataDir,
         options,
+        timeoutMinutes: effectiveTimeout,
       };
       return;
     }
 
     // Start the replay in the background
-    this.#startReplay(creature.shallowClone(), dataDir, options);
+    this.#startReplay(
+      creature.shallowClone(),
+      dataDir,
+      options,
+      effectiveTimeout,
+    );
   }
 
   /**
    * Start a replay in the background (non-blocking).
+   *
+   * @param creature The creature to replay discoveries against
+   * @param dataDir The data directory containing training data
+   * @param options NEAT options
+   * @param timeoutMinutes Optional timeout in minutes
    */
   #startReplay(
     creature: Creature,
     dataDir: string,
     options: NeatOptions,
+    timeoutMinutes?: number,
   ): void {
     this.#replayInProgress = true;
 
-    this.#currentPromise = this.#deps.replayDir!(creature, dataDir, options)
+    this.#currentPromise = this.#deps.replayDir!(
+      creature,
+      dataDir,
+      options,
+      timeoutMinutes,
+    )
       .then((result) => {
         this.#completedResults.push(result);
       })
@@ -129,7 +192,12 @@ export class DiscoveryReplayQueue {
         if (this.#queuedCreature) {
           const queued = this.#queuedCreature;
           this.#queuedCreature = null;
-          this.#startReplay(queued.creature, queued.dataDir, queued.options);
+          this.#startReplay(
+            queued.creature,
+            queued.dataDir,
+            queued.options,
+            queued.timeoutMinutes,
+          );
         }
       });
   }
