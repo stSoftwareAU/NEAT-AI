@@ -1,24 +1,32 @@
 ## Summary
 
-Fixed process hanging during discovery/replay by implementing proper timeout handling for discovery replay operations (Issue #1113).
+Fixed process hanging during discovery/replay by implementing proper timeout
+handling for discovery replay operations (Issue #1113).
 
 ### Problem
+
 The evolution process was hanging because:
+
 1. Discovery replay had no timeout - it could run indefinitely
-2. When evolution timed out, replay operations would continue, causing the process to hang
+2. When evolution timed out, replay operations would continue, causing the
+   process to hang
 3. There was no minimum time threshold check before starting replay
 
 ### Solution
+
 Added timeout handling for discovery replay operations:
 
 1. **New Configuration Options** (`NeatArguments.ts`, `NeatConfig.ts`):
-   - `discoveryReplayTimeoutMinutes` (default: 5 minutes) - Maximum time for replay operations
-   - `discoveryReplayMinTimeMinutes` (default: 1 minute) - Minimum remaining time required before starting replay
+   - `discoveryReplayTimeoutMinutes` (default: 5 minutes) - Maximum time for
+     replay operations
+   - `discoveryReplayMinTimeMinutes` (default: 1 minute) - Minimum remaining
+     time required before starting replay
 
 2. **DiscoveryReplayQueue Updates** (`DiscoveryReplayQueue.ts`):
    - `scheduleReplay()` now accepts optional `remainingTimeMinutes` parameter
    - Skips replay if remaining time is below the minimum threshold
-   - Calculates effective timeout as minimum of remaining time and configured timeout
+   - Calculates effective timeout as minimum of remaining time and configured
+     timeout
    - Passes timeout to the replay runner
 
 3. **DiscoveryReplayRunner Updates** (`DiscoveryReplayRunner.ts`):
@@ -28,13 +36,16 @@ Added timeout handling for discovery replay operations:
    - Returns partial results with `timedOut: true` flag when timeout is reached
 
 4. **Evolution Loop Updates** (`Neat.ts`):
-   - Passes remaining evolution time to `scheduleReplay()` so replay respects the overall time budget
+   - Passes remaining evolution time to `scheduleReplay()` so replay respects
+     the overall time budget
 
 ## Evidence
 
-This is a backend/algorithm fix with no visual interface. The fix prevents process hangs during long-running evolution sessions.
+This is a backend/algorithm fix with no visual interface. The fix prevents
+process hangs during long-running evolution sessions.
 
 **Test execution output:**
+
 ```
 running 13 tests from ./test/NEAT/DiscoveryReplayQueue.ts
 DiscoveryReplayQueue - schedules replay when new fittest is detected ... ok (3ms)
@@ -65,22 +76,38 @@ ok | 4 passed | 0 failed (6ms)
 Added new tests to verify timeout behaviour:
 
 ### DiscoveryReplayQueue Tests (`test/NEAT/DiscoveryReplayQueue.ts`):
-- **skips replay when remaining time is below minimum threshold**: Verifies replay is skipped when remaining time (0.5 min) is below the default minimum (1 min)
-- **passes timeout to replay function**: Verifies timeout is correctly passed (min of remaining time and configured timeout)
-- **caps timeout to configured maximum**: Verifies timeout is capped when remaining time exceeds configured maximum
-- **uses default timeout when no remaining time provided**: Verifies configured timeout is used when no remaining time is passed
-- **custom minimum time threshold**: Verifies custom `discoveryReplayMinTimeMinutes` setting is respected
-- **allows replay when remaining time equals minimum threshold**: Verifies replay runs when remaining time exactly equals the threshold
+
+- **skips replay when remaining time is below minimum threshold**: Verifies
+  replay is skipped when remaining time (0.5 min) is below the default minimum
+  (1 min)
+- **passes timeout to replay function**: Verifies timeout is correctly passed
+  (min of remaining time and configured timeout)
+- **caps timeout to configured maximum**: Verifies timeout is capped when
+  remaining time exceeds configured maximum
+- **uses default timeout when no remaining time provided**: Verifies configured
+  timeout is used when no remaining time is passed
+- **custom minimum time threshold**: Verifies custom
+  `discoveryReplayMinTimeMinutes` setting is respected
+- **allows replay when remaining time equals minimum threshold**: Verifies
+  replay runs when remaining time exactly equals the threshold
 
 ### DiscoveryReplayRunner Tests (`test/discovery/DiscoveryReplayRunner.ts`):
-- **returns timedOut when timeout occurs before evaluation**: Tests early timeout path
-- **completes normally with sufficient timeout**: Verifies normal operation with adequate time
-- **works without timeout (undefined)**: Verifies backward compatibility when no timeout is specified
+
+- **returns timedOut when timeout occurs before evaluation**: Tests early
+  timeout path
+- **completes normally with sufficient timeout**: Verifies normal operation with
+  adequate time
+- **works without timeout (undefined)**: Verifies backward compatibility when no
+  timeout is specified
 
 ## Breaking Changes
 
-None. The new configuration options have sensible defaults that preserve existing behaviour:
-- `discoveryReplayTimeoutMinutes: 5` - Provides a reasonable default timeout
-- `discoveryReplayMinTimeMinutes: 1` - Only skips replay when very little time remains
+None. The new configuration options have sensible defaults that preserve
+existing behaviour:
 
-Existing code that doesn't pass `remainingTimeMinutes` to `scheduleReplay()` will use the configured default timeout.
+- `discoveryReplayTimeoutMinutes: 5` - Provides a reasonable default timeout
+- `discoveryReplayMinTimeMinutes: 1` - Only skips replay when very little time
+  remains
+
+Existing code that doesn't pass `remainingTimeMinutes` to `scheduleReplay()`
+will use the configured default timeout.
