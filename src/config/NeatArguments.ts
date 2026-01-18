@@ -334,6 +334,29 @@ export interface NeatArguments {
   discoveryReplayDiagnostics: boolean;
 
   /**
+   * Maximum minutes allocated for discovery replay operations.
+   *
+   * When the evolution loop schedules a replay, it passes the remaining evolution
+   * time (if set). This option provides a default timeout when no evolution time
+   * constraint is active, or caps the replay time when specified.
+   *
+   * Set to 0 to disable replay timeout (not recommended for production).
+   * Defaults to 5 minutes.
+   */
+  discoveryReplayTimeoutMinutes: number;
+
+  /**
+   * Minimum remaining time (in minutes) required before starting discovery replay.
+   *
+   * If the remaining evolution time falls below this threshold, replay is skipped
+   * to avoid hanging the process. This ensures meaningful time remains for replay
+   * to complete.
+   *
+   * Defaults to 1 minute.
+   */
+  discoveryReplayMinTimeMinutes: number;
+
+  /**
    * Minimum candidates to evaluate per discovery category.
    */
   discoveryMinCandidatesPerCategory: Required<
