@@ -1,10 +1,18 @@
 {
   "version": "0.2",
   "language": "en-GB",
+  "ignorePaths": [
+    "wasm_activation/pkg/**"
+  ],
   "words": [
     "AJSON",
     "bindgen",
     "compilednetwork",
+    "Externref",
+    "externref",
+    "externrefs",
+    "klass",
+    "wbindgen",
     "mkdirp",
     "tsmerge",
     "githubusercontent",
