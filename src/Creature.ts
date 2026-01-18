@@ -1109,23 +1109,56 @@ export class Creature implements CreatureInternal {
 
   /**
    * Disconnect two neurons by removing the synapse between them.
+   * Uses binary search for O(log n) lookup since synapses are sorted by (from, to).
+   * Issue #1101: Performance optimisation for large creatures.
    *
    * @param {number} from - The index of the source neuron.
    * @param {number} to - The index of the target neuron.
    */
   disconnect(from: number, to: number) {
-    const connections = this.synapses;
+    const indx = this.binarySearchSynapse(from, to);
+    if (indx !== -1) {
+      this.synapses.splice(indx, 1);
+      this.clearCache(from, to);
+      this.invalidateScoreCache();
+    }
+  }
 
-    for (let i = 0; i < connections.length; i++) {
-      const connection = connections[i];
-      if (connection.from === from && connection.to === to) {
-        connections.splice(i, 1);
-        this.clearCache(from, to);
-        this.invalidateScoreCache();
+  /**
+   * Binary search for a synapse by (from, to) indices.
+   * Synapses are sorted first by `from`, then by `to` within the same `from`.
+   * Issue #1101: Performance optimisation for disconnect operations.
+   *
+   * @param {number} from - The source neuron index.
+   * @param {number} to - The target neuron index.
+   * @returns {number} The index of the synapse, or -1 if not found.
+   */
+  private binarySearchSynapse(from: number, to: number): number {
+    const synapses = this.synapses;
+    let low = 0;
+    let high = synapses.length - 1;
 
-        break;
+    while (low <= high) {
+      const mid = (low + high) >>> 1;
+      const syn = synapses[mid];
+
+      if (syn.from < from) {
+        low = mid + 1;
+      } else if (syn.from > from) {
+        high = mid - 1;
+      } else {
+        // syn.from === from, now compare `to`
+        if (syn.to < to) {
+          low = mid + 1;
+        } else if (syn.to > to) {
+          high = mid - 1;
+        } else {
+          return mid; // Found exact match
+        }
       }
     }
+
+    return -1; // Not found
   }
 
   /**
