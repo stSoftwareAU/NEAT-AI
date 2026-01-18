@@ -4,11 +4,17 @@
 /**
  * Compiled network data structure
  *
- * Format:
- * - Header: [num_neurons: u32, num_inputs: u32, num_synapses: u32]
+ * Format (Issue #1125 - updated to support aggregate functions):
+ * - Header: [num_neurons: u32, num_inputs: u32]
  * - Neuron data: For each neuron after inputs:
- *   - [bias: f32, squash_type: u8, num_connections: u16, is_constant: u8, padding: u8]
- *   - Connections: [from_index: u16, weight: f32] * num_connections
+ *   - [bias: f32, squash_type: u8, is_constant: u8, num_synapses: u16]
+ *   - Connections: [from_index: u16, synapse_type: u8, padding: u8, weight: f32] * num_connections
+ *
+ * Synapse types (for IF activation):
+ *   - 0: Standard/Positive (used in weighted sum or as positive branch for IF)
+ *   - 1: Condition (for IF: summed to determine branch)
+ *   - 2: Negative (for IF: used when condition <= 0)
+ *   - 3: Positive (explicit, same as Standard for IF)
  *
  * This compact format minimises memory access and enables efficient iteration.
  */
@@ -33,6 +39,8 @@ export class CompiledNetwork {
    *   - u16: num_synapses
    *   - For each synapse:
    *     - u16: from_index
+   *     - u8: synapse_type
+   *     - u8: padding
    *     - f32: weight
    */
   constructor(data: Uint8Array);
@@ -53,6 +61,7 @@ export class CompiledNetwork {
 /**
  * Batch activation - activate the network with multiple inputs at once
  * This reduces JS/WASM boundary crossing overhead for batch processing
+ * Updated for Issue #1125 to support aggregate functions (MINIMUM, MAXIMUM, IF)
  */
 export function activate_batch(
   network: CompiledNetwork,

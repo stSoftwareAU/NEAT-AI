@@ -2,6 +2,7 @@
  * Compile a Creature to a binary format suitable for WASM activation
  *
  * Issue #1116 - WASM prototype for creature activation
+ * Issue #1125 - Updated to support aggregate functions (IF, MINIMUM, MAXIMUM)
  *
  * Data format (all values little-endian):
  * - u32: num_neurons
@@ -13,11 +14,46 @@
  *   - u16: num_synapses
  *   - For each synapse:
  *     - u16: from_index
+ *     - u8: synapse_type (0=standard/positive, 1=condition, 2=negative, 3=positive)
+ *     - u8: padding
  *     - f32: weight
  */
 
 import type { Creature } from "../Creature.ts";
 import { getSquashType } from "./SquashType.ts";
+
+/**
+ * Synapse type enum for WASM - must match Rust SynapseType
+ * Used by IF squash function to categorise inputs
+ */
+export enum SynapseTypeCode {
+  /** Standard synapse (no special type) - also used as "positive" for IF */
+  Standard = 0,
+  /** Condition synapse for IF activation */
+  Condition = 1,
+  /** Negative synapse for IF activation */
+  Negative = 2,
+  /** Positive synapse for IF activation (explicit) */
+  Positive = 3,
+}
+
+/**
+ * Map synapse type string to SynapseTypeCode
+ */
+function getSynapseTypeCode(
+  synapseType: "positive" | "negative" | "condition" | undefined,
+): SynapseTypeCode {
+  switch (synapseType) {
+    case "condition":
+      return SynapseTypeCode.Condition;
+    case "negative":
+      return SynapseTypeCode.Negative;
+    case "positive":
+      return SynapseTypeCode.Positive;
+    default:
+      return SynapseTypeCode.Standard;
+  }
+}
 
 /**
  * Compiled creature data for WASM activation
@@ -41,6 +77,8 @@ export interface CompiledCreatureData {
  * The creature must be prepared (fix() called) before compilation.
  * The compilation creates a compact binary representation that can be
  * efficiently loaded into WASM memory.
+ *
+ * Issue #1125: Now includes synapse types for aggregate functions (IF, MINIMUM, MAXIMUM)
  */
 export function compileCreatureToWasm(
   creature: Creature,
@@ -52,7 +90,7 @@ export function compileCreatureToWasm(
   // Calculate total size needed
   // Header: 8 bytes (2 x u32)
   // Per non-input neuron: 8 bytes (f32 bias + u8 squash + u8 constant + u16 num_synapses)
-  // Per synapse: 6 bytes (u16 from + f32 weight)
+  // Per synapse: 8 bytes (u16 from + u8 synapse_type + u8 padding + f32 weight)
 
   let totalSynapses = 0;
   for (let i = numInputs; i < numNeurons; i++) {
@@ -62,7 +100,7 @@ export function compileCreatureToWasm(
 
   const headerSize = 8;
   const neuronsSize = (numNeurons - numInputs) * 8;
-  const synapsesSize = totalSynapses * 6;
+  const synapsesSize = totalSynapses * 8; // Updated: now 8 bytes per synapse
   const totalSize = headerSize + neuronsSize + synapsesSize;
 
   const buffer = new ArrayBuffer(totalSize);
@@ -107,6 +145,15 @@ export function compileCreatureToWasm(
       // Write from_index (u16)
       view.setUint16(offset, synapse.from, true);
       offset += 2;
+
+      // Write synapse_type (u8) - Issue #1125
+      const synapseTypeCode = getSynapseTypeCode(synapse.type);
+      view.setUint8(offset, synapseTypeCode);
+      offset += 1;
+
+      // Write padding (u8)
+      view.setUint8(offset, 0);
+      offset += 1;
 
       // Write weight (f32)
       view.setFloat32(offset, synapse.weight, true);

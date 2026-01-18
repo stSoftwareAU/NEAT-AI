@@ -12,7 +12,7 @@
 
 use wasm_bindgen::prelude::*;
 use js_sys::Float32Array;
-use std::f32::consts::{E, PI};
+// Note: E and PI are not currently used but kept for potential future squash functions
 
 // SELU constants
 const SELU_ALPHA: f32 = 1.6732632423543772;
@@ -61,6 +61,36 @@ pub enum SquashType {
     Exponential = 29,
     LogSigmoid = 30,
     Isru = 31,
+    // Aggregate functions (Issue #1125)
+    Minimum = 32,
+    Maximum = 33,
+    If = 34,
+}
+
+/// Synapse type identifiers for aggregate functions (Issue #1125)
+/// These are used by IF squash function to categorise inputs
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SynapseType {
+    /// Standard synapse (no special type) - also used as "positive" for IF
+    Standard = 0,
+    /// Condition synapse for IF activation
+    Condition = 1,
+    /// Negative synapse for IF activation
+    Negative = 2,
+    /// Positive synapse for IF activation (explicit)
+    Positive = 3,
+}
+
+impl From<u8> for SynapseType {
+    fn from(v: u8) -> Self {
+        match v {
+            1 => SynapseType::Condition,
+            2 => SynapseType::Negative,
+            3 => SynapseType::Positive,
+            _ => SynapseType::Standard,
+        }
+    }
 }
 
 impl From<u8> for SquashType {
@@ -98,6 +128,10 @@ impl From<u8> for SquashType {
             29 => SquashType::Exponential,
             30 => SquashType::LogSigmoid,
             31 => SquashType::Isru,
+            // Aggregate functions (Issue #1125)
+            32 => SquashType::Minimum,
+            33 => SquashType::Maximum,
+            34 => SquashType::If,
             _ => SquashType::Identity,
         }
     }
@@ -153,16 +187,26 @@ fn apply_squash(squash_type: SquashType, x: f32) -> f32 {
         SquashType::Exponential => x.exp(),
         SquashType::LogSigmoid => -(1.0 + (-x).exp()).ln(),
         SquashType::Isru => x / (1.0 + x * x).sqrt(),
+        // Aggregate functions (Issue #1125) - these are handled specially in the
+        // neuron activation loop and don't use the standard sum-then-squash pattern.
+        // Return identity as a fallback if they're ever called directly.
+        SquashType::Minimum | SquashType::Maximum | SquashType::If => x,
     }
 }
 
 /// Compiled network data structure
 ///
-/// Format:
-/// - Header: [num_neurons: u32, num_inputs: u32, num_synapses: u32]
+/// Format (Issue #1125 - updated to support aggregate functions):
+/// - Header: [num_neurons: u32, num_inputs: u32]
 /// - Neuron data: For each neuron after inputs:
-///   - [bias: f32, squash_type: u8, num_connections: u16, is_constant: u8, padding: u8]
-///   - Connections: [from_index: u16, weight: f32] * num_connections
+///   - [bias: f32, squash_type: u8, is_constant: u8, num_synapses: u16]
+///   - Connections: [from_index: u16, synapse_type: u8, padding: u8, weight: f32] * num_connections
+///
+/// Synapse types (for IF activation):
+///   - 0: Standard/Positive (used in weighted sum or as positive branch for IF)
+///   - 1: Condition (for IF: summed to determine branch)
+///   - 2: Negative (for IF: used when condition <= 0)
+///   - 3: Positive (explicit, same as Standard for IF)
 ///
 /// This compact format minimises memory access and enables efficient iteration.
 #[wasm_bindgen]
@@ -173,8 +217,8 @@ pub struct CompiledNetwork {
     num_inputs: usize,
     /// Neuron metadata: (bias, squash_type, start_synapse_idx, num_synapses, is_constant)
     neurons: Vec<(f32, u8, usize, usize, bool)>,
-    /// Synapse data: (from_index, weight)
-    synapses: Vec<(usize, f32)>,
+    /// Synapse data: (from_index, synapse_type, weight)
+    synapses: Vec<(usize, u8, f32)>,
     /// Activation buffer - reused across calls
     activations: Vec<f32>,
 }
@@ -193,6 +237,8 @@ impl CompiledNetwork {
     ///   - u16: num_synapses
     ///   - For each synapse:
     ///     - u16: from_index
+    ///     - u8: synapse_type
+    ///     - u8: padding
     ///     - f32: weight
     #[wasm_bindgen(constructor)]
     pub fn new(data: &[u8]) -> Result<CompiledNetwork, JsValue> {
@@ -223,17 +269,19 @@ impl CompiledNetwork {
             let start_synapse_idx = synapses.len();
 
             for _ in 0..num_synapse {
-                if offset + 6 > data.len() {
+                if offset + 8 > data.len() {
                     return Err(JsValue::from_str("Data too short for synapse"));
                 }
 
                 let from_index = u16::from_le_bytes([data[offset], data[offset + 1]]) as usize;
+                let synapse_type = data[offset + 2];
+                // offset + 3 is padding
                 let weight = f32::from_le_bytes([
-                    data[offset + 2], data[offset + 3], data[offset + 4], data[offset + 5]
+                    data[offset + 4], data[offset + 5], data[offset + 6], data[offset + 7]
                 ]);
-                offset += 6;
+                offset += 8;
 
-                synapses.push((from_index, weight));
+                synapses.push((from_index, synapse_type, weight));
             }
 
             neurons.push((bias, squash_type, start_synapse_idx, num_synapse, is_constant));
@@ -267,16 +315,77 @@ impl CompiledNetwork {
                 // Constant neuron - just set the bias value
                 self.activations[actual_idx] = bias;
             } else {
-                // Calculate weighted sum
-                let mut sum = bias;
-                for synapse_idx in start_synapse..(start_synapse + num_synapse) {
-                    let (from_idx, weight) = self.synapses[synapse_idx];
-                    sum += self.activations[from_idx] * weight;
-                }
-
-                // Apply squash function
                 let squash = SquashType::from(squash_type);
-                self.activations[actual_idx] = apply_squash(squash, sum);
+
+                // Handle aggregate functions differently (Issue #1125)
+                let activation = match squash {
+                    SquashType::Minimum => {
+                        // MINIMUM: take the minimum of all weighted inputs + bias
+                        let mut min_val = f32::INFINITY;
+                        for synapse_idx in start_synapse..(start_synapse + num_synapse) {
+                            let (from_idx, _, weight) = self.synapses[synapse_idx];
+                            let val = self.activations[from_idx] * weight;
+                            if val < min_val {
+                                min_val = val;
+                            }
+                        }
+                        if min_val == f32::INFINITY {
+                            bias
+                        } else {
+                            min_val + bias
+                        }
+                    }
+                    SquashType::Maximum => {
+                        // MAXIMUM: take the maximum of all weighted inputs + bias
+                        let mut max_val = f32::NEG_INFINITY;
+                        for synapse_idx in start_synapse..(start_synapse + num_synapse) {
+                            let (from_idx, _, weight) = self.synapses[synapse_idx];
+                            let val = self.activations[from_idx] * weight;
+                            if val > max_val {
+                                max_val = val;
+                            }
+                        }
+                        if max_val == f32::NEG_INFINITY {
+                            bias
+                        } else {
+                            max_val + bias
+                        }
+                    }
+                    SquashType::If => {
+                        // IF: sum condition inputs, then use positive or negative branch
+                        let mut condition_sum = 0.0f32;
+                        let mut positive_sum = 0.0f32;
+                        let mut negative_sum = 0.0f32;
+
+                        for synapse_idx in start_synapse..(start_synapse + num_synapse) {
+                            let (from_idx, syn_type, weight) = self.synapses[synapse_idx];
+                            let val = self.activations[from_idx] * weight;
+
+                            match SynapseType::from(syn_type) {
+                                SynapseType::Condition => condition_sum += val,
+                                SynapseType::Negative => negative_sum += val,
+                                SynapseType::Positive | SynapseType::Standard => positive_sum += val,
+                            }
+                        }
+
+                        if condition_sum > 0.0 {
+                            positive_sum + bias
+                        } else {
+                            negative_sum + bias
+                        }
+                    }
+                    _ => {
+                        // Standard activation: weighted sum + bias, then apply squash
+                        let mut sum = bias;
+                        for synapse_idx in start_synapse..(start_synapse + num_synapse) {
+                            let (from_idx, _, weight) = self.synapses[synapse_idx];
+                            sum += self.activations[from_idx] * weight;
+                        }
+                        apply_squash(squash, sum)
+                    }
+                };
+
+                self.activations[actual_idx] = activation;
             }
         }
 
@@ -313,6 +422,7 @@ impl CompiledNetwork {
 
 /// Batch activation - activate the network with multiple inputs at once
 /// This reduces JS/WASM boundary crossing overhead for batch processing
+/// Updated for Issue #1125 to support aggregate functions (MINIMUM, MAXIMUM, IF)
 #[wasm_bindgen]
 pub fn activate_batch(
     network: &mut CompiledNetwork,
@@ -341,14 +451,61 @@ pub fn activate_batch(
             if is_constant {
                 network.activations[actual_idx] = bias;
             } else {
-                let mut sum = bias;
-                for synapse_idx in start_synapse..(start_synapse + num_synapse) {
-                    let (from_idx, weight) = network.synapses[synapse_idx];
-                    sum += network.activations[from_idx] * weight;
-                }
-
                 let squash = SquashType::from(squash_type);
-                network.activations[actual_idx] = apply_squash(squash, sum);
+
+                // Handle aggregate functions differently (Issue #1125)
+                let activation = match squash {
+                    SquashType::Minimum => {
+                        let mut min_val = f32::INFINITY;
+                        for synapse_idx in start_synapse..(start_synapse + num_synapse) {
+                            let (from_idx, _, weight) = network.synapses[synapse_idx];
+                            let val = network.activations[from_idx] * weight;
+                            if val < min_val {
+                                min_val = val;
+                            }
+                        }
+                        if min_val == f32::INFINITY { bias } else { min_val + bias }
+                    }
+                    SquashType::Maximum => {
+                        let mut max_val = f32::NEG_INFINITY;
+                        for synapse_idx in start_synapse..(start_synapse + num_synapse) {
+                            let (from_idx, _, weight) = network.synapses[synapse_idx];
+                            let val = network.activations[from_idx] * weight;
+                            if val > max_val {
+                                max_val = val;
+                            }
+                        }
+                        if max_val == f32::NEG_INFINITY { bias } else { max_val + bias }
+                    }
+                    SquashType::If => {
+                        let mut condition_sum = 0.0f32;
+                        let mut positive_sum = 0.0f32;
+                        let mut negative_sum = 0.0f32;
+
+                        for synapse_idx in start_synapse..(start_synapse + num_synapse) {
+                            let (from_idx, syn_type, weight) = network.synapses[synapse_idx];
+                            let val = network.activations[from_idx] * weight;
+
+                            match SynapseType::from(syn_type) {
+                                SynapseType::Condition => condition_sum += val,
+                                SynapseType::Negative => negative_sum += val,
+                                SynapseType::Positive | SynapseType::Standard => positive_sum += val,
+                            }
+                        }
+
+                        if condition_sum > 0.0 { positive_sum + bias } else { negative_sum + bias }
+                    }
+                    _ => {
+                        let mut sum = bias;
+                        for synapse_idx in start_synapse..(start_synapse + num_synapse) {
+                            let (from_idx, _, weight) = network.synapses[synapse_idx];
+                            sum += network.activations[from_idx] * weight;
+                        }
+                        apply_squash(squash, sum)
+                    }
+                };
+
+                network.activations[actual_idx] = activation;
             }
         }
 

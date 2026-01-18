@@ -307,17 +307,17 @@ Deno.test({
 
 Deno.test({
   name: "WASM Activation: Large traced creature (known limitation)",
-  ignore: true, // Skip - traced.json uses aggregate functions (IF, MINIMUM, etc.) not yet supported
+  ignore: true, // Skip - traced.json uses deprecated functions (HYPOT, MEAN) not supported in WASM
   async fn() {
     // NOTE: This test is disabled because the traced.json creature uses
-    // aggregate activation functions (IF, MINIMUM, MAXIMUM, HYPOT, MEAN)
-    // that have complex multi-input logic with synapse types (condition,
-    // positive, negative). These require special handling in WASM that
-    // is beyond the scope of this prototype.
+    // deprecated activation functions (HYPOT, MEAN) that are not supported
+    // in WASM. Issue #1125 implemented support for the main aggregate
+    // functions (IF, MINIMUM, MAXIMUM).
     //
-    // The prototype successfully demonstrates WASM activation for standard
-    // squash functions (ReLU, TANH, LOGISTIC, SELU, etc.). Supporting
-    // aggregate functions would require significant additional work.
+    // The deprecated functions (HYPOT, MEAN) were intentionally not added
+    // to WASM as production creatures should have evolved away from using
+    // them. When the training data no longer includes creatures with these
+    // deprecated functions, this test can be enabled.
 
     // Load the traced creature from test data
     const creatureJson = JSON.parse(
@@ -416,5 +416,284 @@ Deno.test({
       threw = true;
     }
     assert(threw, "Should throw when using freed activation");
+  },
+});
+
+// Issue #1125 - WASM Migration Phase 0: Aggregate squash functions
+// These tests verify that aggregate functions (IF, MINIMUM, MAXIMUM) work correctly in WASM
+
+Deno.test({
+  name: "WASM Activation: MINIMUM squash function",
+  fn() {
+    // Create a creature with MINIMUM activation
+    // MINIMUM takes the minimum of all weighted input values + bias
+    // Neuron layout: [input0, input1, minimum-hidden, output]
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 2, bias: 0.5, squash: "MINIMUM" },
+        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 2.0 }, // input0 * 2.0
+        { from: 1, to: 2, weight: 1.5 }, // input1 * 1.5
+        { from: 2, to: 3, weight: 1.0 },
+      ],
+      input: 2,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Test with various inputs
+    const testCases = [
+      new Float32Array([1.0, 2.0]), // min(2.0, 3.0) + 0.5 = 2.5
+      new Float32Array([3.0, 1.0]), // min(6.0, 1.5) + 0.5 = 2.0
+      new Float32Array([-1.0, 2.0]), // min(-2.0, 3.0) + 0.5 = -1.5
+      new Float32Array([0.0, 0.0]), // min(0, 0) + 0.5 = 0.5
+      new Float32Array([-2.0, -1.0]), // min(-4.0, -1.5) + 0.5 = -3.5
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `MINIMUM Input: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: MAXIMUM squash function",
+  fn() {
+    // Create a creature with MAXIMUM activation
+    // MAXIMUM takes the maximum of all weighted input values + bias
+    // Neuron layout: [input0, input1, maximum-hidden, output]
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 2, bias: -0.5, squash: "MAXIMUM" },
+        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 2.0 }, // input0 * 2.0
+        { from: 1, to: 2, weight: 1.5 }, // input1 * 1.5
+        { from: 2, to: 3, weight: 1.0 },
+      ],
+      input: 2,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Test with various inputs
+    const testCases = [
+      new Float32Array([1.0, 2.0]), // max(2.0, 3.0) - 0.5 = 2.5
+      new Float32Array([3.0, 1.0]), // max(6.0, 1.5) - 0.5 = 5.5
+      new Float32Array([-1.0, 2.0]), // max(-2.0, 3.0) - 0.5 = 2.5
+      new Float32Array([0.0, 0.0]), // max(0, 0) - 0.5 = -0.5
+      new Float32Array([-2.0, -1.0]), // max(-4.0, -1.5) - 0.5 = -2.0
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `MAXIMUM Input: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: IF squash function",
+  fn() {
+    // Create a creature with IF activation
+    // IF uses three types of synapses: condition, positive, negative
+    // if (condition > 0) { output = positive + bias } else { output = negative + bias }
+    // Neuron layout: [input0, input1, input2, if-hidden, output]
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 3, bias: 1.0, squash: "IF" },
+        { type: "output", index: 4, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 3, weight: 1.0, type: "condition" }, // condition input
+        { from: 1, to: 3, weight: 2.0, type: "positive" }, // positive branch
+        { from: 2, to: 3, weight: 3.0, type: "negative" }, // negative branch
+        { from: 3, to: 4, weight: 1.0 },
+      ],
+      input: 3,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Test with various inputs
+    // [condition, positive, negative]
+    const testCases = [
+      // condition > 0: use positive branch
+      new Float32Array([1.0, 2.0, 5.0]), // 1.0 > 0, so: 2.0 * 2.0 + 1.0 = 5.0
+      new Float32Array([0.5, 3.0, 1.0]), // 0.5 > 0, so: 3.0 * 2.0 + 1.0 = 7.0
+      // condition <= 0: use negative branch
+      new Float32Array([-1.0, 2.0, 5.0]), // -1.0 <= 0, so: 5.0 * 3.0 + 1.0 = 16.0
+      new Float32Array([0.0, 3.0, 1.0]), // 0.0 <= 0, so: 1.0 * 3.0 + 1.0 = 4.0
+      new Float32Array([-0.5, 0.0, 2.0]), // -0.5 <= 0, so: 2.0 * 3.0 + 1.0 = 7.0
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `IF Input: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: IF with multiple condition inputs",
+  fn() {
+    // Test IF with multiple condition inputs (they get summed)
+    // Neuron layout: [input0, input1, input2, input3, if-hidden, output]
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 4, bias: 0, squash: "IF" },
+        { type: "output", index: 5, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 4, weight: 1.0, type: "condition" }, // condition 1
+        { from: 1, to: 4, weight: 1.0, type: "condition" }, // condition 2
+        { from: 2, to: 4, weight: 1.0, type: "positive" }, // positive branch
+        { from: 3, to: 4, weight: 1.0, type: "negative" }, // negative branch
+        { from: 4, to: 5, weight: 1.0 },
+      ],
+      input: 4,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Test with various inputs [cond1, cond2, positive, negative]
+    const testCases = [
+      // Sum of conditions > 0: use positive
+      new Float32Array([1.0, 1.0, 5.0, 2.0]), // (1+1) > 0, so: 5.0
+      new Float32Array([-0.5, 1.0, 3.0, 1.0]), // (-0.5+1) > 0, so: 3.0
+      // Sum of conditions <= 0: use negative
+      new Float32Array([-1.0, -1.0, 5.0, 2.0]), // (-1-1) <= 0, so: 2.0
+      new Float32Array([0.5, -0.5, 3.0, 1.0]), // (0.5-0.5) <= 0, so: 1.0
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `IF multiple conditions Input: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: Mixed aggregate and standard squash functions",
+  fn() {
+    // Create a more complex creature that uses both standard and aggregate functions
+    // Neuron layout: [input0, input1, relu-hidden, minimum-hidden, output]
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 2, bias: 0, squash: "ReLU" },
+        { type: "hidden", index: 3, bias: 0, squash: "MINIMUM" },
+        { type: "output", index: 4, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 1.0 },
+        { from: 1, to: 2, weight: -1.0 },
+        { from: 0, to: 3, weight: 1.0 },
+        { from: 2, to: 3, weight: 1.0 },
+        { from: 3, to: 4, weight: 1.0 },
+      ],
+      input: 2,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    const testCases = [
+      new Float32Array([2.0, 1.0]), // relu(2-1)=1, min(2, 1)=1
+      new Float32Array([1.0, 3.0]), // relu(1-3)=0, min(1, 0)=0
+      new Float32Array([-1.0, 0.0]), // relu(-1-0)=0, min(-1, 0)=-1
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `Mixed network Input: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: Squash type mapping for aggregate functions",
+  fn() {
+    // Verify aggregate function squash name to type mapping
+    assertEquals(getSquashType("MINIMUM"), SquashType.Minimum);
+    assertEquals(getSquashType("MAXIMUM"), SquashType.Maximum);
+    assertEquals(getSquashType("IF"), SquashType.If);
   },
 });
