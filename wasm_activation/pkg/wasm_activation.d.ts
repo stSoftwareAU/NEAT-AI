@@ -13,48 +13,53 @@
  * This compact format minimises memory access and enables efficient iteration.
  */
 export class CompiledNetwork {
-    free(): void;
-    [Symbol.dispose](): void;
-    /**
-     * Activate the network with the given input values
-     * Returns the output values
-     */
-    activate(input: Float32Array, num_outputs: number): Float32Array;
-    /**
-     * Create a new compiled network from serialised data
-     *
-     * Data format (all values little-endian):
-     * - u32: num_neurons
-     * - u32: num_inputs
-     * - For each non-input neuron:
-     *   - f32: bias
-     *   - u8: squash_type
-     *   - u8: is_constant (0 or 1)
-     *   - u16: num_synapses
-     *   - For each synapse:
-     *     - u16: from_index
-     *     - f32: weight
-     */
-    constructor(data: Uint8Array);
-    /**
-     * Get the number of input neurons
-     */
-    readonly num_inputs: number;
-    /**
-     * Get the number of neurons in the network
-     */
-    readonly num_neurons: number;
-    /**
-     * Get the number of synapses in the network
-     */
-    readonly num_synapses: number;
+  free(): void;
+  [Symbol.dispose](): void;
+  /**
+   * Activate the network with the given input values
+   * Returns the output values
+   */
+  activate(input: Float32Array, num_outputs: number): Float32Array;
+  /**
+   * Create a new compiled network from serialised data
+   *
+   * Data format (all values little-endian):
+   * - u32: num_neurons
+   * - u32: num_inputs
+   * - For each non-input neuron:
+   *   - f32: bias
+   *   - u8: squash_type
+   *   - u8: is_constant (0 or 1)
+   *   - u16: num_synapses
+   *   - For each synapse:
+   *     - u16: from_index
+   *     - f32: weight
+   */
+  constructor(data: Uint8Array);
+  /**
+   * Get the number of input neurons
+   */
+  readonly num_inputs: number;
+  /**
+   * Get the number of neurons in the network
+   */
+  readonly num_neurons: number;
+  /**
+   * Get the number of synapses in the network
+   */
+  readonly num_synapses: number;
 }
 
 /**
  * Batch activation - activate the network with multiple inputs at once
  * This reduces JS/WASM boundary crossing overhead for batch processing
  */
-export function activate_batch(network: CompiledNetwork, inputs: Float32Array, input_size: number, num_outputs: number): Float32Array;
+export function activate_batch(
+  network: CompiledNetwork,
+  inputs: Float32Array,
+  input_size: number,
+  num_outputs: number,
+): Float32Array;
 
 /**
  * Standalone squash function for testing
@@ -66,24 +71,43 @@ export function squash(squash_type: number, value: number): number;
  */
 export function version(): string;
 
-export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
+export type InitInput =
+  | RequestInfo
+  | URL
+  | Response
+  | BufferSource
+  | WebAssembly.Module;
 
 export interface InitOutput {
-    readonly memory: WebAssembly.Memory;
-    readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
-    readonly activate_batch: (a: number, b: number, c: number, d: number, e: number) => any;
-    readonly compilednetwork_activate: (a: number, b: number, c: number, d: number) => any;
-    readonly compilednetwork_new: (a: number, b: number) => [number, number, number];
-    readonly compilednetwork_num_inputs: (a: number) => number;
-    readonly compilednetwork_num_neurons: (a: number) => number;
-    readonly compilednetwork_num_synapses: (a: number) => number;
-    readonly squash: (a: number, b: number) => number;
-    readonly version: () => [number, number];
-    readonly __wbindgen_externrefs: WebAssembly.Table;
-    readonly __wbindgen_malloc: (a: number, b: number) => number;
-    readonly __externref_table_dealloc: (a: number) => void;
-    readonly __wbindgen_free: (a: number, b: number, c: number) => void;
-    readonly __wbindgen_start: () => void;
+  readonly memory: WebAssembly.Memory;
+  readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
+  readonly activate_batch: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+  ) => any;
+  readonly compilednetwork_activate: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => any;
+  readonly compilednetwork_new: (
+    a: number,
+    b: number,
+  ) => [number, number, number];
+  readonly compilednetwork_num_inputs: (a: number) => number;
+  readonly compilednetwork_num_neurons: (a: number) => number;
+  readonly compilednetwork_num_synapses: (a: number) => number;
+  readonly squash: (a: number, b: number) => number;
+  readonly version: () => [number, number];
+  readonly __wbindgen_externrefs: WebAssembly.Table;
+  readonly __wbindgen_malloc: (a: number, b: number) => number;
+  readonly __externref_table_dealloc: (a: number) => void;
+  readonly __wbindgen_free: (a: number, b: number, c: number) => void;
+  readonly __wbindgen_start: () => void;
 }
 
 export type SyncInitInput = BufferSource | WebAssembly.Module;
@@ -96,7 +120,9 @@ export type SyncInitInput = BufferSource | WebAssembly.Module;
  *
  * @returns {InitOutput}
  */
-export function initSync(module: { module: SyncInitInput } | SyncInitInput): InitOutput;
+export function initSync(
+  module: { module: SyncInitInput } | SyncInitInput,
+): InitOutput;
 
 /**
  * If `module_or_path` is {RequestInfo} or {URL}, makes a request and
@@ -106,4 +132,9 @@ export function initSync(module: { module: SyncInitInput } | SyncInitInput): Ini
  *
  * @returns {Promise<InitOutput>}
  */
-export default function __wbg_init (module_or_path?: { module_or_path: InitInput | Promise<InitInput> } | InitInput | Promise<InitInput>): Promise<InitOutput>;
+export default function __wbg_init(
+  module_or_path?:
+    | { module_or_path: InitInput | Promise<InitInput> }
+    | InitInput
+    | Promise<InitInput>,
+): Promise<InitOutput>;
