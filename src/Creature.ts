@@ -1125,6 +1125,151 @@ export class Creature implements CreatureInternal {
   }
 
   /**
+   * Batch connect multiple synapses with a single cache invalidation.
+   * Issue #1102: Performance optimisation for operations that add multiple synapses.
+   *
+   * This method is significantly more efficient than calling connect() in a loop
+   * because it:
+   * 1. Sorts connections first to enable efficient insertion
+   * 2. Validates all connections before inserting any
+   * 3. Invalidates caches only once at the end
+   *
+   * @param connections Array of connection specifications
+   * @throws {Error} If any connection already exists or duplicates exist within batch
+   */
+  connectBatch(
+    connections: Array<{
+      from: number;
+      to: number;
+      weight: number;
+      type?: "positive" | "negative" | "condition";
+    }>,
+  ): void {
+    if (connections.length === 0) {
+      return;
+    }
+
+    // Check for duplicates within the batch using a Set
+    const batchSet = new Set<string>();
+    for (const conn of connections) {
+      const key = `${conn.from}-${conn.to}`;
+      if (batchSet.has(key)) {
+        throw new Error(`Duplicate connection in batch: ${key} already exists`);
+      }
+      batchSet.add(key);
+    }
+
+    // Check that none of the connections already exist
+    for (const conn of connections) {
+      const existing = this.binarySearchSynapse(conn.from, conn.to);
+      if (existing !== -1) {
+        throw new Error(
+          `Connection ${conn.from}->${conn.to} already exists in creature`,
+        );
+      }
+    }
+
+    // Sort connections by (from, to) for efficient insertion
+    const sortedConnections = [...connections].sort((a, b) => {
+      if (a.from !== b.from) {
+        return a.from - b.from;
+      }
+      return a.to - b.to;
+    });
+
+    // Insert all synapses
+    // We process in reverse order of sorted array when inserting to maintain
+    // correct positions as the array grows
+    for (const conn of sortedConnections) {
+      const synapse = new Synapse(conn.from, conn.to, conn.weight, conn.type);
+      const location = this.findInsertionPoint(conn.from, conn.to);
+      if (location < this.synapses.length) {
+        this.synapses.splice(location, 0, synapse);
+      } else {
+        this.synapses.push(synapse);
+      }
+    }
+
+    // Single cache invalidation at the end
+    this.clearCache();
+    this.invalidateScoreCache();
+  }
+
+  /**
+   * Find the insertion point for a synapse to maintain sorted order.
+   * Uses binary search for O(log n) efficiency.
+   * Issue #1102: Helper method for connectBatch.
+   *
+   * @param from - The source neuron index.
+   * @param to - The target neuron index.
+   * @returns The index where the synapse should be inserted.
+   */
+  private findInsertionPoint(from: number, to: number): number {
+    const synapses = this.synapses;
+    let low = 0;
+    let high = synapses.length;
+
+    while (low < high) {
+      const mid = (low + high) >>> 1;
+      const syn = synapses[mid];
+
+      if (syn.from < from || (syn.from === from && syn.to < to)) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+
+    return low;
+  }
+
+  /**
+   * Batch disconnect multiple synapses with a single cache invalidation.
+   * Issue #1102: Performance optimisation for operations that remove multiple synapses.
+   *
+   * This method is significantly more efficient than calling disconnect() in a loop
+   * because it:
+   * 1. Finds all synapse indices first
+   * 2. Removes them in descending order to maintain correct indices
+   * 3. Invalidates caches only once at the end
+   *
+   * Non-existent connections are silently ignored.
+   *
+   * @param pairs Array of (from, to) pairs to disconnect
+   */
+  disconnectBatch(pairs: Array<{ from: number; to: number }>): void {
+    if (pairs.length === 0) {
+      return;
+    }
+
+    // Find all indices to remove
+    const indices: number[] = [];
+    for (const pair of pairs) {
+      const idx = this.binarySearchSynapse(pair.from, pair.to);
+      if (idx !== -1) {
+        indices.push(idx);
+      }
+    }
+
+    if (indices.length === 0) {
+      return;
+    }
+
+    // Sort indices in descending order so we can remove from end to start
+    // without affecting the positions of earlier indices
+    indices.sort((a, b) => b - a);
+
+    // Remove each synapse
+    for (const idx of indices) {
+      this.synapses.splice(idx, 1);
+    }
+
+    // Single cache invalidation at the end
+    this.clearCache();
+    this.invalidateScoreCache();
+  }
+
+  /**
    * Binary search for a synapse by (from, to) indices.
    * Synapses are sorted first by `from`, then by `to` within the same `from`.
    * Issue #1101: Performance optimisation for disconnect operations.

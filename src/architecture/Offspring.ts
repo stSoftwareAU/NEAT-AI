@@ -245,7 +245,19 @@ export class Offspring {
       indxMap.set(neuron.uuid, indx);
     });
 
-    // Connect synapses, reweighing as necessary
+    // Issue #1102: Collect all connections first, then batch connect
+    // This reduces cache invalidation overhead from O(n) to O(1)
+    const batchConnections: Array<{
+      from: number;
+      to: number;
+      weight: number;
+      type?: "positive" | "negative" | "condition";
+      tags?: SynapseExport["tags"];
+    }> = [];
+
+    // Track connections to avoid duplicates (matching original getSynapse check)
+    const connectionSet = new Set<string>();
+
     offspring.neurons.forEach((neuron) => {
       if (neuron.type !== "input") {
         const connections = connectionsMap.get(neuron.uuid);
@@ -260,15 +272,16 @@ export class Offspring {
             if (fromIndx <= toIndx) {
               const toType = offspring.neurons[toIndx].type;
               if (toType === "hidden" || toType === "output") {
-                if (!offspring.getSynapse(fromIndx, toIndx)) {
-                  const babySynapse = offspring.connect(
-                    fromIndx,
-                    toIndx,
-                    c.weight,
-                    c.type,
-                  );
-
-                  addTags(babySynapse, c);
+                const key = `${fromIndx}-${toIndx}`;
+                if (!connectionSet.has(key)) {
+                  connectionSet.add(key);
+                  batchConnections.push({
+                    from: fromIndx,
+                    to: toIndx,
+                    weight: c.weight,
+                    type: c.type,
+                    tags: c.tags,
+                  });
                 }
               } else {
                 throw new Error(
@@ -284,6 +297,19 @@ export class Offspring {
         });
       }
     });
+
+    // Batch connect all synapses with single cache invalidation
+    offspring.connectBatch(batchConnections);
+
+    // Apply tags to the created synapses
+    for (const conn of batchConnections) {
+      if (conn.tags) {
+        const synapse = offspring.getSynapse(conn.from, conn.to);
+        if (synapse) {
+          addTags(synapse, { tags: conn.tags });
+        }
+      }
+    }
 
     // Issue #1097: Prebuild inward index for large offspring.
     // This optimises subsequent inward connection lookups during validation
