@@ -2,26 +2,32 @@
 
 ## Summary
 
-This PR implements a prototype WASM-based activation system for the NEAT-AI neural network library. The goal was to evaluate whether WebAssembly can provide significant performance improvements over the existing dynamically-generated JavaScript activation functions.
+This PR implements a prototype WASM-based activation system for the NEAT-AI
+neural network library. The goal was to evaluate whether WebAssembly can provide
+significant performance improvements over the existing dynamically-generated
+JavaScript activation functions.
 
 ### Key Findings
 
-**✅ WASM provides a 9.54x performance improvement** over the existing JS-based activation for networks using standard squash functions.
+**✅ WASM provides a 9.54x performance improvement** over the existing JS-based
+activation for networks using standard squash functions.
 
-| Implementation | Time/iter (avg) | Iterations/sec | Speedup |
-|----------------|-----------------|----------------|---------|
-| JS Activation | 62.4 ms | 16.0 | baseline |
-| WASM Activation | 6.5 ms | 152.7 | **9.54x** |
-| WASM Batch Activation | 6.5 ms | 152.9 | **9.54x** |
+| Implementation        | Time/iter (avg) | Iterations/sec | Speedup   |
+| --------------------- | --------------- | -------------- | --------- |
+| JS Activation         | 62.4 ms         | 16.0           | baseline  |
+| WASM Activation       | 6.5 ms          | 152.7          | **9.54x** |
+| WASM Batch Activation | 6.5 ms          | 152.9          | **9.54x** |
 
-Benchmark configuration: 100 inputs, 200 hidden neurons, 10 outputs, 7830 synapses, 1000 activations per iteration.
+Benchmark configuration: 100 inputs, 200 hidden neurons, 10 outputs, 7830
+synapses, 1000 activations per iteration.
 
 ### Implementation Details
 
 The prototype includes:
 
 1. **Rust WASM Module** (`wasm_activation/`)
-   - Implements all 32 standard squash functions (ReLU, TANH, LOGISTIC, SELU, etc.)
+   - Implements all 32 standard squash functions (ReLU, TANH, LOGISTIC, SELU,
+     etc.)
    - Uses compact binary format for network serialisation
    - Supports both individual and batch activation
 
@@ -37,35 +43,44 @@ The prototype includes:
 ### Known Limitations
 
 The current prototype does **not** support aggregate activation functions:
+
 - `IF` (conditional branching with synapse types)
 - `MINIMUM`, `MAXIMUM`, `MEAN` (multi-input aggregation)
 - `HYPOT` (hypotenuse calculation)
 
-These functions use synapse types (condition, positive, negative) that require special handling beyond simple squash operations. Supporting them would require significant additional work to:
+These functions use synapse types (condition, positive, negative) that require
+special handling beyond simple squash operations. Supporting them would require
+significant additional work to:
+
 1. Encode synapse types in the binary format
 2. Implement conditional logic in WASM
 3. Handle multi-input aggregation patterns
 
 ### Recommendations for Full Implementation
 
-If proceeding with full WASM implementation, the following phases are recommended:
+If proceeding with full WASM implementation, the following phases are
+recommended:
 
 **Phase 1: Core WASM Infrastructure**
+
 - Set up automated WASM build pipeline (CI/CD)
 - Add WASM module to npm/deno package distribution
 - Implement automatic fallback to JS when WASM unavailable
 
 **Phase 2: Aggregate Function Support**
+
 - Extend binary format to include synapse types
 - Implement IF conditional logic in WASM
 - Implement MINIMUM, MAXIMUM, MEAN, HYPOT aggregation
 
 **Phase 3: Production Integration**
+
 - Add WASM activation option to Creature class
 - Implement hybrid mode (WASM for supported, JS for aggregate)
 - Add configuration options for activation method selection
 
 **Phase 4: Optimisation**
+
 - Explore SIMD instructions for batch processing
 - Consider shared memory for zero-copy input/output
 - Profile and optimise hot paths
@@ -93,11 +108,13 @@ summary
 ### Test Results
 
 All unit tests pass:
+
 ```
 ok | 10 passed | 0 failed | 1 ignored (17ms)
 ```
 
-The ignored test (`Large traced creature`) documents the aggregate function limitation.
+The ignored test (`Large traced creature`) documents the aggregate function
+limitation.
 
 ## Test Plan
 
@@ -116,6 +133,7 @@ The ignored test (`Large traced creature`) documents the aggregate function limi
 ## Files Changed
 
 ### New Files
+
 - `wasm_activation/` - Rust WASM module
   - `Cargo.toml` - Rust package configuration
   - `src/lib.rs` - WASM activation implementation
@@ -132,11 +150,16 @@ The ignored test (`Large traced creature`) documents the aggregate function limi
 
 ## Conclusion
 
-The prototype successfully demonstrates that **WASM can provide nearly 10x performance improvement** for neural network activation. This validates the feasibility of a full WASM implementation.
+The prototype successfully demonstrates that **WASM can provide nearly 10x
+performance improvement** for neural network activation. This validates the
+feasibility of a full WASM implementation.
 
 The recommendation is to proceed with full implementation if:
+
 1. The 9.54x speedup provides meaningful value for the use case
 2. The additional complexity of maintaining Rust/WASM code is acceptable
 3. Aggregate function support can be added in a follow-up phase
 
-A negative result note: Batch activation did not provide additional speedup over individual WASM calls (both ~6.5ms), suggesting the JS/WASM boundary overhead is minimal with wasm-bindgen.
+A negative result note: Batch activation did not provide additional speedup over
+individual WASM calls (both ~6.5ms), suggesting the JS/WASM boundary overhead is
+minimal with wasm-bindgen.
