@@ -55,6 +55,12 @@ import {
   DiscoveryReplayRunner,
   type DiscoveryReplayRunnerLike,
 } from "./discovery/DiscoveryReplayRunner.ts";
+import {
+  compileCreatureToWasm,
+  isWasmActivationAvailable,
+  SQUASH_NAME_TO_TYPE,
+  WasmCreatureActivation,
+} from "./wasm/mod.ts";
 
 interface CreatureOptions {
   semanticVersion?: string;
@@ -228,6 +234,21 @@ export class Creature implements CreatureInternal {
   private cachedOutputBuffer?: Float32Array;
 
   /**
+   * Cached WASM activation instance for this creature.
+   * Lazily compiled on first WASM activation request.
+   * Issue #1118: WASM Migration Phase 1 - Add WASM activation option.
+   */
+  private cachedWasmActivation?: WasmCreatureActivation;
+
+  /**
+   * Cached WASM eligibility status for this creature.
+   * True if all neurons use WASM-supported squash functions.
+   * Invalidated on structural changes.
+   * Issue #1118: WASM Migration Phase 1 - Add WASM activation option.
+   */
+  private wasmEligibilityCache?: boolean;
+
+  /**
    * Debug mode flag.
    * @type {boolean}
    */
@@ -280,6 +301,7 @@ export class Creature implements CreatureInternal {
     this.clearState();
     this.clearCache();
     this.clearFocusCache();
+    this.disposeWasm(); // Issue #1118: Clean up WASM resources
     this.synapses.length = 0;
     this.neurons.length = 0;
   }
@@ -357,6 +379,9 @@ export class Creature implements CreatureInternal {
    */
   public invalidateScoreCache() {
     this.cachedScoreComponents = undefined;
+    // Issue #1118: Invalidate WASM eligibility cache on structural changes
+    // (squash functions may have changed)
+    this.wasmEligibilityCache = undefined;
   }
 
   private initialize(options: {
@@ -479,6 +504,9 @@ export class Creature implements CreatureInternal {
     // Clear cached output buffer to ensure fresh buffer on next activation
     // Issue #1094: Performance optimisation for buffer reuse
     delete this.cachedOutputBuffer;
+    // Clear WASM cache - structure may have changed
+    // Issue #1118: WASM Migration Phase 1
+    this.disposeWasm();
   }
 
   private creatureActivationFunction?: () => undefined;
@@ -511,6 +539,11 @@ export class Creature implements CreatureInternal {
    *   to avoid allocating a new Float32Array on each call. This reduces GC pressure
    *   but callers must not mutate the returned array as it may be overwritten.
    *   Issue #1094: Performance optimisation for repeated activations.
+   * @param {boolean} [useWasm=false] - When true, attempts to use WASM activation.
+   *   Falls back to JS if WASM is unavailable or creature uses unsupported squash functions.
+   *   Note: WASM activation does not support tracing, so this parameter is currently
+   *   ignored and JS activation is always used for activateAndTrace.
+   *   Issue #1118: WASM Migration Phase 1.
    * @returns {Float32Array} The output values after activation.
    */
   activateAndTrace(
@@ -518,7 +551,10 @@ export class Creature implements CreatureInternal {
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
     reuseBuffer: boolean = false,
+    _useWasm: boolean = false,
   ): Float32Array {
+    // WASM activation does not support tracing, always use JS for activateAndTrace
+    // The useWasm parameter is accepted for API consistency but currently ignored
     this.prepareNeurons();
     const activations = this.state.makeActivation(input, feedbackLoop);
 
@@ -553,13 +589,23 @@ export class Creature implements CreatureInternal {
    *   to avoid allocating a new Float32Array on each call. This reduces GC pressure
    *   but callers must not mutate the returned array as it may be overwritten.
    *   Issue #1094: Performance optimisation for repeated activations.
+   * @param {boolean} [useWasm=false] - When true, attempts to use WASM activation.
+   *   Falls back to JS if WASM is unavailable or creature uses unsupported squash functions.
+   *   Issue #1118: WASM Migration Phase 1.
    * @returns {Float32Array} The output values after activation.
    */
   activate(
     input: Float32Array,
     feedbackLoop: boolean = false,
     reuseBuffer: boolean = false,
+    useWasm: boolean = false,
   ): Float32Array {
+    // Attempt WASM activation if requested
+    if (useWasm && this.canUseWasm()) {
+      return this.activateWasm(input, reuseBuffer);
+    }
+
+    // Fall back to JS activation
     this.prepareNeurons();
     const activations = this.state.makeActivation(input, feedbackLoop);
 
@@ -575,6 +621,129 @@ export class Creature implements CreatureInternal {
 
     const lastHiddenNode = this.neurons.length - this.output;
     return this.extractOutputs(activations, lastHiddenNode, reuseBuffer);
+  }
+
+  /**
+   * Check if this creature can use WASM activation.
+   * Returns true if WASM is available and all squash functions are supported.
+   * Issue #1118: WASM Migration Phase 1.
+   *
+   * @returns {boolean} True if WASM activation can be used.
+   */
+  private canUseWasm(): boolean {
+    // Check if WASM module is available
+    if (!isWasmActivationAvailable()) {
+      return false;
+    }
+
+    // Check if creature is eligible for WASM (all squash functions supported)
+    return this.isWasmEligible();
+  }
+
+  /**
+   * Activate the creature using WASM.
+   * Lazily compiles the creature to WASM on first call.
+   * Issue #1118: WASM Migration Phase 1.
+   *
+   * @param {Float32Array} input - The input values for the creature.
+   * @param {boolean} reuseBuffer - Whether to reuse the cached output buffer.
+   * @returns {Float32Array} The output values after activation.
+   */
+  private activateWasm(
+    input: Float32Array,
+    reuseBuffer: boolean,
+  ): Float32Array {
+    // Lazily compile to WASM if not already done
+    if (!this.cachedWasmActivation) {
+      const compiled = compileCreatureToWasm(this);
+      this.cachedWasmActivation = WasmCreatureActivation.create(compiled) ??
+        undefined;
+
+      // If compilation failed, fall back to JS
+      if (!this.cachedWasmActivation) {
+        return this.activate(input, false, reuseBuffer, false);
+      }
+    }
+
+    // Activate using WASM
+    const wasmOutput = this.cachedWasmActivation.activate(input);
+
+    // Handle buffer reuse
+    if (reuseBuffer) {
+      if (
+        !this.cachedOutputBuffer ||
+        this.cachedOutputBuffer.length !== this.output
+      ) {
+        this.cachedOutputBuffer = new Float32Array(this.output);
+      }
+      this.cachedOutputBuffer.set(wasmOutput);
+      return this.cachedOutputBuffer;
+    }
+
+    return wasmOutput;
+  }
+
+  /**
+   * Check if this creature is eligible for WASM activation.
+   * A creature is eligible if all its neurons use WASM-supported squash functions.
+   * The result is cached and invalidated when structure changes.
+   * Issue #1118: WASM Migration Phase 1.
+   *
+   * @returns {boolean} True if all squash functions are WASM-supported.
+   */
+  isWasmEligible(): boolean {
+    // Return cached result if available
+    if (this.wasmEligibilityCache !== undefined) {
+      return this.wasmEligibilityCache;
+    }
+
+    // Check all non-input neurons for supported squash functions
+    const unsupported = this.getUnsupportedWasmSquashFunctions();
+    this.wasmEligibilityCache = unsupported.length === 0;
+
+    return this.wasmEligibilityCache;
+  }
+
+  /**
+   * Get the list of squash functions used by this creature that are not supported by WASM.
+   * Issue #1118: WASM Migration Phase 1.
+   *
+   * @returns {string[]} Array of unsupported squash function names (empty if all are supported).
+   */
+  getUnsupportedWasmSquashFunctions(): string[] {
+    const unsupported: string[] = [];
+    const seen = new Set<string>();
+
+    for (let i = this.input; i < this.neurons.length; i++) {
+      const neuron = this.neurons[i];
+      const squash = neuron.squash ?? "IDENTITY";
+
+      // Skip if we've already checked this squash function
+      if (seen.has(squash)) {
+        continue;
+      }
+      seen.add(squash);
+
+      // Check if squash function is in the WASM-supported list
+      if (!(squash in SQUASH_NAME_TO_TYPE)) {
+        unsupported.push(squash);
+      }
+    }
+
+    return unsupported;
+  }
+
+  /**
+   * Dispose of cached WASM resources.
+   * Call this when the creature structure changes or when done using WASM activation.
+   * Issue #1118: WASM Migration Phase 1.
+   */
+  disposeWasm(): void {
+    if (this.cachedWasmActivation) {
+      this.cachedWasmActivation.free();
+      this.cachedWasmActivation = undefined;
+    }
+    this.wasmEligibilityCache = undefined;
   }
 
   /**
