@@ -173,6 +173,7 @@
     "recalc",
     "recomputation",
     "gdate",
-    "popover"
+    "popover",
+    "vars"
   ]
 }
