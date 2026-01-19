@@ -80,6 +80,26 @@ jobs:
           TEST_EXIT_CODE=$?
           set -e
 
+          # If deno was terminated (SIGTERM -> 143), retry once in a safer mode.
+          # This can happen on CI runners under transient load or when parallelism
+          # interacts badly with resource limits.
+          if [ "$TEST_EXIT_CODE" -eq 143 ]; then
+            echo "⚠️  deno test exited with 143 (SIGTERM). Retrying once with no parallelism and reduced memory..."
+            V8_MEMORY_MB_RETRY=$((V8_MEMORY_MB / 2))
+            if [ $V8_MEMORY_MB_RETRY -lt 512 ]; then
+              V8_MEMORY_MB_RETRY=512
+            fi
+            echo "Retry V8 memory limit: ${V8_MEMORY_MB_RETRY}MB"
+
+            set +e
+            deno test -A \
+              --v8-flags=--max-old-space-size=${V8_MEMORY_MB_RETRY},--expose-gc \
+              --coverage=.coverage \
+              --config ./deno.json --reporter junit > junit-raw.xml 2>test-errors.log
+            TEST_EXIT_CODE=$?
+            set -e
+          fi
+
           # Show any errors that occurred
           if [ -s test-errors.log ]; then
             echo "Test errors/warnings:"
