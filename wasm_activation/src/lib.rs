@@ -418,6 +418,190 @@ impl CompiledNetwork {
     pub fn num_synapses(&self) -> usize {
         self.synapses.len()
     }
+
+    /// Activate the network with tracing for backpropagation support
+    /// Issue #1121 - WASM Migration Phase 4: activateAndTrace
+    ///
+    /// Returns a combined result containing:
+    /// - Output activation values (num_outputs floats)
+    /// - All non-input neuron activations (for state.activations)
+    /// - Pre-squash values (hintValues) for all non-input neurons
+    /// - Trace data for aggregate functions
+    ///
+    /// The result format is a Float32Array:
+    /// - [0..num_outputs): output activation values
+    /// - [num_outputs..num_outputs+num_non_inputs): post-squash activations
+    /// - [num_outputs+num_non_inputs..num_outputs+2*num_non_inputs): pre-squash values (hintValues)
+    /// - [num_outputs+2*num_non_inputs..]: trace data encoded as:
+    ///   - For each non-input neuron with aggregate squash:
+    ///     - neuron_index (as f32, relative to input count)
+    ///     - For MINIMUM/MAXIMUM: winning_local_synapse_index (as f32)
+    ///     - For IF: branch_taken (1.0 = positive, 0.0 = negative)
+    ///   - Terminated by -1.0
+    #[wasm_bindgen]
+    pub fn activate_and_trace(&mut self, input: &[f32], num_outputs: usize) -> Float32Array {
+        // Copy input values to activation buffer
+        for (i, &val) in input.iter().enumerate() {
+            if i < self.num_inputs {
+                self.activations[i] = val;
+            }
+        }
+
+        // Track trace data for aggregate functions
+        // Format: pairs of (neuron_relative_index, trace_info), terminated by -1.0
+        let mut trace_data: Vec<f32> = Vec::new();
+
+        // Track pre-squash values (hintValues) for backpropagation
+        let num_non_inputs = self.num_neurons - self.num_inputs;
+        let mut hint_values: Vec<f32> = vec![0.0; num_non_inputs];
+
+        // Process each neuron in order
+        for (neuron_idx, &(bias, squash_type, start_synapse, num_synapse, is_constant)) in self.neurons.iter().enumerate() {
+            let actual_idx = self.num_inputs + neuron_idx;
+
+            if is_constant {
+                // Constant neuron - just set the bias value
+                self.activations[actual_idx] = bias;
+                hint_values[neuron_idx] = bias;
+            } else {
+                let squash = SquashType::from(squash_type);
+
+                // Handle aggregate functions differently (Issue #1125)
+                let (activation, hint_value) = match squash {
+                    SquashType::Minimum => {
+                        // MINIMUM: take the minimum of all weighted inputs + bias
+                        // Track which synapse provided the minimum value
+                        let mut min_val = f32::INFINITY;
+                        let mut min_local_idx: usize = 0;
+                        for local_idx in 0..num_synapse {
+                            let synapse_idx = start_synapse + local_idx;
+                            let (from_idx, _, weight) = self.synapses[synapse_idx];
+                            let val = self.activations[from_idx] * weight;
+                            if val < min_val {
+                                min_val = val;
+                                min_local_idx = local_idx;
+                            }
+                        }
+                        // Record trace: neuron index and winning synapse local index
+                        trace_data.push(neuron_idx as f32);
+                        trace_data.push(min_local_idx as f32);
+
+                        let result = if min_val == f32::INFINITY {
+                            bias
+                        } else {
+                            min_val + bias
+                        };
+                        // For aggregate functions, hintValue is the same as activation
+                        (result, result)
+                    }
+                    SquashType::Maximum => {
+                        // MAXIMUM: take the maximum of all weighted inputs + bias
+                        // Track which synapse provided the maximum value
+                        let mut max_val = f32::NEG_INFINITY;
+                        let mut max_local_idx: usize = 0;
+                        for local_idx in 0..num_synapse {
+                            let synapse_idx = start_synapse + local_idx;
+                            let (from_idx, _, weight) = self.synapses[synapse_idx];
+                            let val = self.activations[from_idx] * weight;
+                            if val > max_val {
+                                max_val = val;
+                                max_local_idx = local_idx;
+                            }
+                        }
+                        // Record trace: neuron index and winning synapse local index
+                        trace_data.push(neuron_idx as f32);
+                        trace_data.push(max_local_idx as f32);
+
+                        let result = if max_val == f32::NEG_INFINITY {
+                            bias
+                        } else {
+                            max_val + bias
+                        };
+                        // For aggregate functions, hintValue is the same as activation
+                        (result, result)
+                    }
+                    SquashType::If => {
+                        // IF: sum condition inputs, then use positive or negative branch
+                        let mut condition_sum = 0.0f32;
+                        let mut positive_sum = 0.0f32;
+                        let mut negative_sum = 0.0f32;
+
+                        for synapse_idx in start_synapse..(start_synapse + num_synapse) {
+                            let (from_idx, syn_type, weight) = self.synapses[synapse_idx];
+                            let val = self.activations[from_idx] * weight;
+
+                            match SynapseType::from(syn_type) {
+                                SynapseType::Condition => condition_sum += val,
+                                SynapseType::Negative => negative_sum += val,
+                                SynapseType::Positive | SynapseType::Standard => positive_sum += val,
+                            }
+                        }
+
+                        // Record trace: neuron index and branch taken (1.0 = positive, 0.0 = negative)
+                        let branch_taken = if condition_sum > 0.0 { 1.0f32 } else { 0.0f32 };
+                        trace_data.push(neuron_idx as f32);
+                        trace_data.push(branch_taken);
+
+                        let result = if condition_sum > 0.0 {
+                            positive_sum + bias
+                        } else {
+                            negative_sum + bias
+                        };
+                        // For aggregate functions, hintValue is the same as activation
+                        (result, result)
+                    }
+                    _ => {
+                        // Standard activation: weighted sum + bias, then apply squash
+                        let mut sum = bias;
+                        for synapse_idx in start_synapse..(start_synapse + num_synapse) {
+                            let (from_idx, _, weight) = self.synapses[synapse_idx];
+                            sum += self.activations[from_idx] * weight;
+                        }
+                        // For standard squash, hintValue is the pre-squash value (sum)
+                        (apply_squash(squash, sum), sum)
+                    }
+                };
+
+                self.activations[actual_idx] = activation;
+                hint_values[neuron_idx] = hint_value;
+            }
+        }
+
+        // Terminate trace data
+        trace_data.push(-1.0);
+
+        // Build result array:
+        // - Output values (num_outputs)
+        // - All non-input neuron activations (num_non_inputs)
+        // - Pre-squash values / hintValues (num_non_inputs)
+        // - Trace data
+        let output_start = self.num_neurons - num_outputs;
+        let result_len = num_outputs + (num_non_inputs * 2) + trace_data.len();
+
+        let result = Float32Array::new_with_length(result_len as u32);
+
+        // Copy output values
+        for (i, &val) in self.activations[output_start..].iter().enumerate() {
+            result.set_index(i as u32, val);
+        }
+
+        // Copy all non-input neuron activations
+        for (i, &val) in self.activations[self.num_inputs..].iter().enumerate() {
+            result.set_index((num_outputs + i) as u32, val);
+        }
+
+        // Copy pre-squash values (hintValues)
+        for (i, &val) in hint_values.iter().enumerate() {
+            result.set_index((num_outputs + num_non_inputs + i) as u32, val);
+        }
+
+        // Copy trace data
+        for (i, &val) in trace_data.iter().enumerate() {
+            result.set_index((num_outputs + (num_non_inputs * 2) + i) as u32, val);
+        }
+
+        result
+    }
 }
 
 /// Batch activation - activate the network with multiple inputs at once

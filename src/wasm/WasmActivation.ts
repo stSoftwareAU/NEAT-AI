@@ -22,6 +22,40 @@ type WasmModule = any;
 // deno-lint-ignore no-explicit-any
 type CompiledNetworkClass = any;
 
+/**
+ * Trace entry from WASM activation
+ * Issue #1121 - WASM Migration Phase 4: activateAndTrace
+ */
+export interface WasmTraceEntry {
+  /** Neuron index relative to input count (0 = first non-input neuron) */
+  neuronRelativeIndex: number;
+  /**
+   * Trace information:
+   * - For MINIMUM/MAXIMUM: local synapse index of the winning synapse
+   * - For IF: 1.0 = positive branch taken, 0.0 = negative branch taken
+   */
+  traceInfo: number;
+}
+
+/**
+ * Result from WASM activateAndTrace
+ * Issue #1121 - WASM Migration Phase 4: activateAndTrace
+ */
+export interface WasmTraceResult {
+  /** Output activation values */
+  outputs: Float32Array;
+  /** Post-squash activations for all non-input neurons (for state.activations) */
+  activations: Float32Array;
+  /**
+   * Pre-squash values (hintValues) for all non-input neurons.
+   * For standard squash functions, this is the weighted sum + bias before applying squash.
+   * For aggregate functions (MINIMUM, MAXIMUM, IF), this is the same as the activation.
+   */
+  hintValues: Float32Array;
+  /** Trace entries for aggregate functions */
+  traceEntries: WasmTraceEntry[];
+}
+
 // WASM module state
 let wasmModule: WasmModule | null = null;
 let CompiledNetwork: CompiledNetworkClass | null = null;
@@ -180,6 +214,88 @@ export class WasmCreatureActivation {
 
     // Call the WASM activate method
     return this.network.activate(input, this.numOutputs);
+  }
+
+  /**
+   * Activate the network with tracing support for backpropagation
+   * Issue #1121 - WASM Migration Phase 4: activateAndTrace
+   *
+   * Returns the output values and trace data for setting synapse usage flags.
+   * The trace data indicates which synapses were "used" during activation:
+   * - For MINIMUM/MAXIMUM: only the winning synapse is used
+   * - For IF: condition + active branch synapses are used
+   * - For standard squash: all synapses are used (default behaviour)
+   *
+   * @param input - The input values
+   * @returns Object containing outputs, neuron activations (hintValues), and trace data
+   */
+  activateAndTrace(input: Float32Array): WasmTraceResult {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+
+    // Ensure input is the right size
+    if (input.length !== this.numInputs) {
+      throw new Error(
+        `Input length ${input.length} does not match expected ${this.numInputs}`,
+      );
+    }
+
+    // Call the WASM activate_and_trace method
+    const result = this.network.activate_and_trace(input, this.numOutputs);
+
+    // Parse the result:
+    // - [0..numOutputs): output values
+    // - [numOutputs..numOutputs+numNonInputs): post-squash activations
+    // - [numOutputs+numNonInputs..numOutputs+2*numNonInputs): pre-squash hintValues
+    // - [numOutputs+2*numNonInputs..]: trace data pairs, terminated by -1.0
+    const numNonInputs = this.network.num_neurons - this.numInputs;
+
+    // Extract outputs
+    const outputs = new Float32Array(this.numOutputs);
+    for (let i = 0; i < this.numOutputs; i++) {
+      outputs[i] = result[i];
+    }
+
+    // Extract post-squash activations for all non-input neurons
+    const activations = new Float32Array(numNonInputs);
+    for (let i = 0; i < numNonInputs; i++) {
+      activations[i] = result[this.numOutputs + i];
+    }
+
+    // Extract pre-squash values (hintValues) for all non-input neurons
+    const hintValues = new Float32Array(numNonInputs);
+    for (let i = 0; i < numNonInputs; i++) {
+      hintValues[i] = result[this.numOutputs + numNonInputs + i];
+    }
+
+    // Parse trace data
+    // Format: pairs of (neuron_relative_index, trace_info), terminated by -1.0
+    // - For MINIMUM/MAXIMUM: trace_info is the local synapse index of the winning synapse
+    // - For IF: trace_info is 1.0 for positive branch, 0.0 for negative branch
+    const traceEntries: WasmTraceEntry[] = [];
+    let offset = this.numOutputs + (numNonInputs * 2);
+
+    while (offset < result.length) {
+      const neuronRelativeIdx = result[offset];
+      if (neuronRelativeIdx < 0) {
+        // Terminator
+        break;
+      }
+      const traceInfo = result[offset + 1];
+      traceEntries.push({
+        neuronRelativeIndex: Math.round(neuronRelativeIdx),
+        traceInfo: traceInfo,
+      });
+      offset += 2;
+    }
+
+    return {
+      outputs,
+      activations,
+      hintValues,
+      traceEntries,
+    };
   }
 
   /**

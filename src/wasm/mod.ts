@@ -22,5 +22,7 @@ export {
   isWasmActivationAvailable,
   WasmCreatureActivation,
   wasmSquash,
+  type WasmTraceEntry,
+  type WasmTraceResult,
   wasmVersion,
 } from "./WasmActivation.ts";
