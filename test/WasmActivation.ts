@@ -981,3 +981,680 @@ Deno.test({
     wasmActivation.free();
   },
 });
+
+// Issue #1120 - WASM Migration Phase 3: Additional MAXIMUM and MINIMUM tests
+
+Deno.test({
+  name: "WASM Activation: MAXIMUM batch activation",
+  fn() {
+    // Test MAXIMUM in batch mode
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 2, bias: 0.5, squash: "MAXIMUM" },
+        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 2.0 },
+        { from: 1, to: 2, weight: 1.5 },
+        { from: 2, to: 3, weight: 1.0 },
+      ],
+      input: 2,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Create batch inputs: 4 samples of 2 inputs each
+    const batchInputs = new Float32Array([
+      1.0,
+      2.0, // sample 0: max(2.0, 3.0) + 0.5 = 3.5
+      3.0,
+      1.0, // sample 1: max(6.0, 1.5) + 0.5 = 6.5
+      -1.0,
+      2.0, // sample 2: max(-2.0, 3.0) + 0.5 = 3.5
+      -2.0,
+      -1.0, // sample 3: max(-4.0, -1.5) + 0.5 = -1.0
+    ]);
+
+    const batchOutputs = wasmActivation.activateBatch(batchInputs, 2);
+    assertEquals(batchOutputs.length, 4, "Batch should have 4 outputs");
+
+    // Verify each output matches individual JS activation
+    for (let i = 0; i < 4; i++) {
+      const input = new Float32Array([
+        batchInputs[i * 2],
+        batchInputs[i * 2 + 1],
+      ]);
+      const jsOutput = creature.activate(input, false);
+      assertClose(batchOutputs[i], jsOutput[0], `MAXIMUM batch sample ${i}`);
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: MINIMUM batch activation",
+  fn() {
+    // Test MINIMUM in batch mode
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 2, bias: 0.5, squash: "MINIMUM" },
+        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 2.0 },
+        { from: 1, to: 2, weight: 1.5 },
+        { from: 2, to: 3, weight: 1.0 },
+      ],
+      input: 2,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Create batch inputs: 4 samples of 2 inputs each
+    const batchInputs = new Float32Array([
+      1.0,
+      2.0, // sample 0: min(2.0, 3.0) + 0.5 = 2.5
+      3.0,
+      1.0, // sample 1: min(6.0, 1.5) + 0.5 = 2.0
+      -1.0,
+      2.0, // sample 2: min(-2.0, 3.0) + 0.5 = -1.5
+      -2.0,
+      -1.0, // sample 3: min(-4.0, -1.5) + 0.5 = -3.5
+    ]);
+
+    const batchOutputs = wasmActivation.activateBatch(batchInputs, 2);
+    assertEquals(batchOutputs.length, 4, "Batch should have 4 outputs");
+
+    // Verify each output matches individual JS activation
+    for (let i = 0; i < 4; i++) {
+      const input = new Float32Array([
+        batchInputs[i * 2],
+        batchInputs[i * 2 + 1],
+      ]);
+      const jsOutput = creature.activate(input, false);
+      assertClose(batchOutputs[i], jsOutput[0], `MINIMUM batch sample ${i}`);
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: MAXIMUM with many inputs",
+  fn() {
+    // Test MAXIMUM with more than 2 inputs
+    // Neuron layout: [input0, input1, input2, input3, maximum-hidden, output]
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 4, bias: 1.0, squash: "MAXIMUM" },
+        { type: "output", index: 5, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 4, weight: 1.0 },
+        { from: 1, to: 4, weight: 2.0 },
+        { from: 2, to: 4, weight: 0.5 },
+        { from: 3, to: 4, weight: -1.0 },
+        { from: 4, to: 5, weight: 1.0 },
+      ],
+      input: 4,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Test with various inputs
+    const testCases = [
+      // [input0, input1, input2, input3]
+      new Float32Array([1.0, 1.0, 1.0, 1.0]), // max(1.0, 2.0, 0.5, -1.0) + 1.0 = 3.0
+      new Float32Array([5.0, 1.0, 1.0, 1.0]), // max(5.0, 2.0, 0.5, -1.0) + 1.0 = 6.0
+      new Float32Array([-1.0, -1.0, -1.0, -1.0]), // max(-1.0, -2.0, -0.5, 1.0) + 1.0 = 2.0
+      new Float32Array([0.0, 0.0, 10.0, 0.0]), // max(0.0, 0.0, 5.0, 0.0) + 1.0 = 6.0
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `MAXIMUM many inputs: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: MINIMUM with many inputs",
+  fn() {
+    // Test MINIMUM with more than 2 inputs
+    // Neuron layout: [input0, input1, input2, input3, minimum-hidden, output]
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 4, bias: 1.0, squash: "MINIMUM" },
+        { type: "output", index: 5, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 4, weight: 1.0 },
+        { from: 1, to: 4, weight: 2.0 },
+        { from: 2, to: 4, weight: 0.5 },
+        { from: 3, to: 4, weight: -1.0 },
+        { from: 4, to: 5, weight: 1.0 },
+      ],
+      input: 4,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Test with various inputs
+    const testCases = [
+      // [input0, input1, input2, input3]
+      new Float32Array([1.0, 1.0, 1.0, 1.0]), // min(1.0, 2.0, 0.5, -1.0) + 1.0 = 0.0
+      new Float32Array([5.0, 1.0, 1.0, 1.0]), // min(5.0, 2.0, 0.5, -1.0) + 1.0 = 0.0
+      new Float32Array([-1.0, -1.0, -1.0, 5.0]), // min(-1.0, -2.0, -0.5, -5.0) + 1.0 = -4.0
+      new Float32Array([0.0, 0.0, -10.0, 0.0]), // min(0.0, 0.0, -5.0, 0.0) + 1.0 = -4.0
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `MINIMUM many inputs: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: MAXIMUM with negative weights",
+  fn() {
+    // Test MAXIMUM with negative weights - important edge case
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 2, bias: 0, squash: "MAXIMUM" },
+        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: -1.0 }, // Negative weight flips sign
+        { from: 1, to: 2, weight: -2.0 },
+        { from: 2, to: 3, weight: 1.0 },
+      ],
+      input: 2,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Test: with negative weights, large positive inputs become large negative values
+    const testCases = [
+      new Float32Array([1.0, 1.0]), // max(-1.0, -2.0) = -1.0
+      new Float32Array([2.0, 1.0]), // max(-2.0, -2.0) = -2.0
+      new Float32Array([-1.0, -1.0]), // max(1.0, 2.0) = 2.0
+      new Float32Array([-2.0, 1.0]), // max(2.0, -2.0) = 2.0
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `MAXIMUM negative weights: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: MINIMUM with negative weights",
+  fn() {
+    // Test MINIMUM with negative weights - important edge case
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 2, bias: 0, squash: "MINIMUM" },
+        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: -1.0 }, // Negative weight flips sign
+        { from: 1, to: 2, weight: -2.0 },
+        { from: 2, to: 3, weight: 1.0 },
+      ],
+      input: 2,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Test: with negative weights, large positive inputs become large negative values
+    const testCases = [
+      new Float32Array([1.0, 1.0]), // min(-1.0, -2.0) = -2.0
+      new Float32Array([2.0, 1.0]), // min(-2.0, -2.0) = -2.0
+      new Float32Array([-1.0, -1.0]), // min(1.0, 2.0) = 1.0
+      new Float32Array([-2.0, 1.0]), // min(2.0, -2.0) = -2.0
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `MINIMUM negative weights: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: MAXIMUM with zero values",
+  fn() {
+    // Test MAXIMUM with zero inputs and weights
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 2, bias: 0.5, squash: "MAXIMUM" },
+        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 1.0 },
+        { from: 1, to: 2, weight: 1.0 },
+        { from: 2, to: 3, weight: 1.0 },
+      ],
+      input: 2,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    const testCases = [
+      new Float32Array([0.0, 0.0]), // max(0.0, 0.0) + 0.5 = 0.5
+      new Float32Array([0.0, 1.0]), // max(0.0, 1.0) + 0.5 = 1.5
+      new Float32Array([1.0, 0.0]), // max(1.0, 0.0) + 0.5 = 1.5
+      new Float32Array([-1.0, 0.0]), // max(-1.0, 0.0) + 0.5 = 0.5
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `MAXIMUM zero values: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: MINIMUM with zero values",
+  fn() {
+    // Test MINIMUM with zero inputs and weights
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 2, bias: 0.5, squash: "MINIMUM" },
+        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 1.0 },
+        { from: 1, to: 2, weight: 1.0 },
+        { from: 2, to: 3, weight: 1.0 },
+      ],
+      input: 2,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    const testCases = [
+      new Float32Array([0.0, 0.0]), // min(0.0, 0.0) + 0.5 = 0.5
+      new Float32Array([0.0, 1.0]), // min(0.0, 1.0) + 0.5 = 0.5
+      new Float32Array([1.0, 0.0]), // min(1.0, 0.0) + 0.5 = 0.5
+      new Float32Array([-1.0, 0.0]), // min(-1.0, 0.0) + 0.5 = -0.5
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `MINIMUM zero values: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: MAXIMUM in deep network",
+  fn() {
+    // Test MAXIMUM in a deeper network with multiple layers
+    // Network: input -> relu -> maximum -> tanh -> output
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 2, bias: 0, squash: "ReLU" },
+        { type: "hidden", index: 3, bias: 0, squash: "ReLU" },
+        { type: "hidden", index: 4, bias: 0.5, squash: "MAXIMUM" },
+        { type: "hidden", index: 5, bias: 0, squash: "TANH" },
+        { type: "output", index: 6, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 1.0 },
+        { from: 1, to: 3, weight: 1.0 },
+        { from: 2, to: 4, weight: 2.0 },
+        { from: 3, to: 4, weight: 1.5 },
+        { from: 4, to: 5, weight: 1.0 },
+        { from: 5, to: 6, weight: 1.0 },
+      ],
+      input: 2,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    const testCases = [
+      new Float32Array([1.0, 2.0]),
+      new Float32Array([2.0, 1.0]),
+      new Float32Array([-1.0, 3.0]),
+      new Float32Array([0.5, 0.5]),
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `MAXIMUM deep network: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: MINIMUM in deep network",
+  fn() {
+    // Test MINIMUM in a deeper network with multiple layers
+    // Network: input -> relu -> minimum -> tanh -> output
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 2, bias: 0, squash: "ReLU" },
+        { type: "hidden", index: 3, bias: 0, squash: "ReLU" },
+        { type: "hidden", index: 4, bias: 0.5, squash: "MINIMUM" },
+        { type: "hidden", index: 5, bias: 0, squash: "TANH" },
+        { type: "output", index: 6, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 1.0 },
+        { from: 1, to: 3, weight: 1.0 },
+        { from: 2, to: 4, weight: 2.0 },
+        { from: 3, to: 4, weight: 1.5 },
+        { from: 4, to: 5, weight: 1.0 },
+        { from: 5, to: 6, weight: 1.0 },
+      ],
+      input: 2,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    const testCases = [
+      new Float32Array([1.0, 2.0]),
+      new Float32Array([2.0, 1.0]),
+      new Float32Array([-1.0, 3.0]),
+      new Float32Array([0.5, 0.5]),
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `MINIMUM deep network: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: Multiple MAXIMUM neurons in network",
+  fn() {
+    // Test network with multiple MAXIMUM neurons
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 3, bias: 0, squash: "MAXIMUM" },
+        { type: "hidden", index: 4, bias: 0, squash: "MAXIMUM" },
+        { type: "output", index: 5, bias: 0, squash: "MAXIMUM" },
+      ],
+      synapses: [
+        { from: 0, to: 3, weight: 1.0 },
+        { from: 1, to: 3, weight: 1.0 },
+        { from: 1, to: 4, weight: 1.0 },
+        { from: 2, to: 4, weight: 1.0 },
+        { from: 3, to: 5, weight: 1.0 },
+        { from: 4, to: 5, weight: 1.0 },
+      ],
+      input: 3,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    const testCases = [
+      new Float32Array([1.0, 2.0, 3.0]),
+      new Float32Array([3.0, 1.0, 2.0]),
+      new Float32Array([-1.0, 0.0, 1.0]),
+      new Float32Array([0.0, 0.0, 0.0]),
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `Multiple MAXIMUM neurons: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: Multiple MINIMUM neurons in network",
+  fn() {
+    // Test network with multiple MINIMUM neurons
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 3, bias: 0, squash: "MINIMUM" },
+        { type: "hidden", index: 4, bias: 0, squash: "MINIMUM" },
+        { type: "output", index: 5, bias: 0, squash: "MINIMUM" },
+      ],
+      synapses: [
+        { from: 0, to: 3, weight: 1.0 },
+        { from: 1, to: 3, weight: 1.0 },
+        { from: 1, to: 4, weight: 1.0 },
+        { from: 2, to: 4, weight: 1.0 },
+        { from: 3, to: 5, weight: 1.0 },
+        { from: 4, to: 5, weight: 1.0 },
+      ],
+      input: 3,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    const testCases = [
+      new Float32Array([1.0, 2.0, 3.0]),
+      new Float32Array([3.0, 1.0, 2.0]),
+      new Float32Array([-1.0, 0.0, 1.0]),
+      new Float32Array([0.0, 0.0, 0.0]),
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `Multiple MINIMUM neurons: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: MAXIMUM and MINIMUM combined network",
+  fn() {
+    // Test network that uses both MAXIMUM and MINIMUM
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 2, bias: 0, squash: "MAXIMUM" },
+        { type: "hidden", index: 3, bias: 0, squash: "MINIMUM" },
+        { type: "output", index: 4, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 1.0 },
+        { from: 1, to: 2, weight: 1.0 },
+        { from: 0, to: 3, weight: 1.0 },
+        { from: 1, to: 3, weight: 1.0 },
+        { from: 2, to: 4, weight: 1.0 },
+        { from: 3, to: 4, weight: -1.0 }, // Subtracts minimum from maximum
+      ],
+      input: 2,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Output = max(a,b) - min(a,b) = absolute difference
+    const testCases = [
+      new Float32Array([1.0, 2.0]), // max(1,2) - min(1,2) = 2 - 1 = 1
+      new Float32Array([3.0, 1.0]), // max(3,1) - min(3,1) = 3 - 1 = 2
+      new Float32Array([-1.0, 2.0]), // max(-1,2) - min(-1,2) = 2 - (-1) = 3
+      new Float32Array([5.0, 5.0]), // max(5,5) - min(5,5) = 5 - 5 = 0
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `MAXIMUM and MINIMUM combined: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
