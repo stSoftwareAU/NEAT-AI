@@ -95,23 +95,23 @@ Deno.test({
     const config = createBackPropagationConfig({ generations: 1 });
     const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
-    // Test with JS
+    // Test with JS (useJs=true)
     const jsOutput = creature.activateAndTrace(
       input,
       false,
       sparseConfig,
       false,
-      false,
+      true, // useJs=true (force JS)
     );
 
-    // Clear state and test with WASM
+    // Clear state and test with WASM (useJs=false)
     creature.clearState();
     const wasmOutput = creature.activateAndTrace(
       input,
       false,
       sparseConfig,
       false,
-      true,
+      false, // useJs=false (use WASM - default)
     );
 
     assertArrayClose(
@@ -163,13 +163,13 @@ Deno.test({
       false,
       jsSparseConfig,
       false,
-      false,
+      true, // useJs=true (force JS)
     );
     const jsChanged = jsCreature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
       jsSparseConfig,
     );
-    const jsAfterApply = jsCreature.activate(input);
+    const jsAfterApply = jsCreature.activate(input, false, false, true); // useJs=true
 
     // Test WASM trace and applyLearnings
     const wasmCreature = Creature.fromJSON(creatureJson);
@@ -186,7 +186,7 @@ Deno.test({
       false,
       wasmSparseConfig,
       false,
-      true,
+      false, // useJs=false (use WASM)
     );
     const wasmChanged = wasmCreature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
@@ -254,13 +254,13 @@ Deno.test({
       false,
       jsSparseConfig,
       false,
-      false,
+      true, // useJs=true (force JS)
     );
     const jsChanged = jsCreature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
       jsSparseConfig,
     );
-    const jsAfterApply = jsCreature.activate(input);
+    const jsAfterApply = jsCreature.activate(input, false, false, true); // useJs=true
 
     // Test WASM trace and applyLearnings
     const wasmCreature = Creature.fromJSON(creatureJson);
@@ -277,7 +277,7 @@ Deno.test({
       false,
       wasmSparseConfig,
       false,
-      true,
+      false, // useJs=false (use WASM)
     );
     const wasmChanged = wasmCreature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
@@ -348,13 +348,13 @@ Deno.test({
       false,
       jsSparseConfig,
       false,
-      false,
+      true, // useJs=true (force JS)
     );
     const jsChanged = jsCreature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
       jsSparseConfig,
     );
-    const jsAfterApply = jsCreature.activate(input);
+    const jsAfterApply = jsCreature.activate(input, false, false, true); // useJs=true
 
     // Test WASM trace and applyLearnings
     const wasmCreature = Creature.fromJSON(creatureJson);
@@ -371,7 +371,7 @@ Deno.test({
       false,
       wasmSparseConfig,
       false,
-      true,
+      false, // useJs=false (use WASM)
     );
     const wasmChanged = wasmCreature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
@@ -446,13 +446,13 @@ Deno.test({
       false,
       jsSparseConfig,
       false,
-      false,
+      true, // useJs=true (force JS)
     );
     const jsChanged = jsCreature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
       jsSparseConfig,
     );
-    const jsAfterApply = jsCreature.activate(input);
+    const jsAfterApply = jsCreature.activate(input, false, false, true); // useJs=true
 
     // Test WASM trace and applyLearnings
     const wasmCreature = Creature.fromJSON(creatureJson);
@@ -469,7 +469,7 @@ Deno.test({
       false,
       wasmSparseConfig,
       false,
-      true,
+      false, // useJs=false (use WASM)
     );
     const wasmChanged = wasmCreature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
@@ -530,7 +530,7 @@ Deno.test({
     const jsConfig = createBackPropagationConfig({ sparseRatio: 1 });
     const jsSparseConfig = new SparseConfig(jsCreature.exportJSON(), jsConfig);
 
-    jsCreature.activateAndTrace(input, false, jsSparseConfig, false, false);
+    jsCreature.activateAndTrace(input, false, jsSparseConfig, false, true); // useJs=true
     const jsChanged = jsCreature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
       jsSparseConfig,
@@ -546,7 +546,7 @@ Deno.test({
       wasmConfig,
     );
 
-    wasmCreature.activateAndTrace(input, false, wasmSparseConfig, false, true);
+    wasmCreature.activateAndTrace(input, false, wasmSparseConfig, false, false); // useJs=false (WASM)
     const wasmChanged = wasmCreature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
       wasmSparseConfig,
@@ -611,7 +611,7 @@ Deno.test({
         false,
         jsSparseConfig,
         false,
-        false,
+        true, // useJs=true (force JS)
       );
       jsOutputs.push(new Float32Array(output));
     }
@@ -633,7 +633,7 @@ Deno.test({
         false,
         wasmSparseConfig,
         false,
-        true,
+        false, // useJs=false (use WASM)
       );
       wasmOutputs.push(new Float32Array(output));
     }
@@ -679,7 +679,7 @@ Deno.test({
     const jsConfig = createBackPropagationConfig({ sparseRatio: 1 });
     const jsSparseConfig = new SparseConfig(jsCreature.exportJSON(), jsConfig);
 
-    jsCreature.activateAndTrace(input, false, jsSparseConfig, false, false);
+    jsCreature.activateAndTrace(input, false, jsSparseConfig, false, true); // useJs=true
     const jsHintValue2 = jsCreature.state.node(2).hintValue;
 
     // Test WASM trace
@@ -692,7 +692,7 @@ Deno.test({
       wasmConfig,
     );
 
-    wasmCreature.activateAndTrace(input, false, wasmSparseConfig, false, true);
+    wasmCreature.activateAndTrace(input, false, wasmSparseConfig, false, false); // useJs=false (WASM)
     const wasmHintValue2 = wasmCreature.state.node(2).hintValue;
 
     // hintValue should be the same
@@ -754,13 +754,13 @@ Deno.test({
       false,
       jsSparseConfig,
       false,
-      false,
+      true, // useJs=true (force JS)
     );
     jsCreature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
       jsSparseConfig,
     );
-    const jsAfterApply = jsCreature.activate(input);
+    const jsAfterApply = jsCreature.activate(input, false, false, true); // useJs=true
     const jsSynapseCount = jsCreature.synapses.length;
 
     // Test WASM trace
@@ -778,13 +778,13 @@ Deno.test({
       false,
       wasmSparseConfig,
       false,
-      true,
+      false, // useJs=false (use WASM)
     );
     wasmCreature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
       wasmSparseConfig,
     );
-    const wasmAfterApply = wasmCreature.activate(input);
+    const wasmAfterApply = wasmCreature.activate(input, false, false, false); // useJs=false (WASM)
     const wasmSynapseCount = wasmCreature.synapses.length;
 
     // All results should match
