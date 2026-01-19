@@ -277,3 +277,27 @@ export function wasmVersion(): string {
   }
   return versionFn();
 }
+
+// -----------------------------------------------------------------------------
+// Optional auto-initialisation for test/CI runs
+// -----------------------------------------------------------------------------
+//
+// When `NEAT_AI_WASM_AUTO_INIT=1|true|yes|on` is set, initialise the WASM module
+// at module load time so the rest of the codebase can use WASM without each test
+// calling initWasmActivation() explicitly.
+//
+// This is intentionally opt-in and best-effort. If the module can't be loaded,
+// we log and continue (JS fallback still works).
+try {
+  const v = Deno.env.get("NEAT_AI_WASM_AUTO_INIT")?.trim().toLowerCase();
+  const shouldAutoInit = v === "1" || v === "true" || v === "yes" || v === "on";
+
+  if (shouldAutoInit && !isWasmActivationAvailable()) {
+    // repoRoot = <repo>/
+    const repoRoot = new URL("../../", import.meta.url).pathname;
+    const wasmPath = `${repoRoot}wasm_activation/pkg`;
+    await initWasmActivation(wasmPath);
+  }
+} catch {
+  // Ignore env permission errors; auto-init stays disabled.
+}
