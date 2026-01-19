@@ -99,6 +99,12 @@ export interface CachedScoreComponents {
 }
 
 /**
+ * Flag to track if WASM unavailability warning has been logged.
+ * Issue #1122: Graceful degradation - only warn once per process.
+ */
+let wasmUnavailableWarningShown = false;
+
+/**
  * Creature Class
  *
  * The Creature class represents an AI entity within the NEAT (NeuroEvolution of Augmenting Topologies) framework.
@@ -539,11 +545,8 @@ export class Creature implements CreatureInternal {
    *   to avoid allocating a new Float32Array on each call. This reduces GC pressure
    *   but callers must not mutate the returned array as it may be overwritten.
    *   Issue #1094: Performance optimisation for repeated activations.
-   * @param {boolean} [useWasm=false] - When true, attempts to use WASM activation.
-   *   Falls back to JS if WASM is unavailable or creature uses unsupported squash functions.
-   *   Note: WASM activation does not support tracing, so this parameter is currently
-   *   ignored and JS activation is always used for activateAndTrace.
-   *   Issue #1118: WASM Migration Phase 1.
+   * @param {boolean} [useJs=false] - When true, forces JavaScript activation instead of WASM.
+   *   Issue #1122: WASM Migration Phase 5 - WASM is now the default, use this to force JS.
    * @returns {Float32Array} The output values after activation.
    */
   activateAndTrace(
@@ -551,25 +554,25 @@ export class Creature implements CreatureInternal {
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
     reuseBuffer: boolean = false,
-    useWasm: boolean = false,
+    useJs: boolean = false,
   ): Float32Array {
-    // Allow WASM to be enabled globally for tests/benchmarks via env var.
-    // - If caller passes `useWasm` explicitly as true, that wins.
-    // - If omitted (defaults to false), `NEAT_AI_USE_WASM=1|true|yes|on` will enable it.
-    let effectiveUseWasm = useWasm;
-    if (!effectiveUseWasm) {
+    // Issue #1122: WASM is now the default activation implementation.
+    // - If caller passes `useJs` explicitly as true, use JS activation.
+    // - If `NEAT_AI_USE_JS=1|true|yes|on`, force JS activation.
+    // - Otherwise, use WASM when available.
+    let forceJs = useJs;
+    if (!forceJs) {
       try {
-        const v = Deno.env.get("NEAT_AI_USE_WASM")?.trim().toLowerCase();
-        effectiveUseWasm = v === "1" || v === "true" || v === "yes" ||
-          v === "on";
+        const v = Deno.env.get("NEAT_AI_USE_JS")?.trim().toLowerCase();
+        forceJs = v === "1" || v === "true" || v === "yes" || v === "on";
       } catch {
         // Ignore env permission errors; default remains false.
       }
     }
 
-    // Attempt WASM activation if requested and available
+    // Issue #1122: WASM is now the default. Use WASM unless JS is forced.
     // Issue #1121: WASM Migration Phase 4 - activateAndTrace with backpropagation support
-    if (effectiveUseWasm && this.canUseWasm()) {
+    if (!forceJs && this.canUseWasm()) {
       return this.activateAndTraceWasm(
         input,
         feedbackLoop,
@@ -613,32 +616,32 @@ export class Creature implements CreatureInternal {
    *   to avoid allocating a new Float32Array on each call. This reduces GC pressure
    *   but callers must not mutate the returned array as it may be overwritten.
    *   Issue #1094: Performance optimisation for repeated activations.
-   * @param {boolean} [useWasm=false] - When true, attempts to use WASM activation.
-   *   Falls back to JS if WASM is unavailable or creature uses unsupported squash functions.
-   *   Issue #1118: WASM Migration Phase 1.
+   * @param {boolean} [useJs=false] - When true, forces JavaScript activation instead of WASM.
+   *   Issue #1122: WASM Migration Phase 5 - WASM is now the default, use this to force JS.
    * @returns {Float32Array} The output values after activation.
    */
   activate(
     input: Float32Array,
     feedbackLoop: boolean = false,
     reuseBuffer: boolean = false,
-    useWasm: boolean | undefined = undefined,
+    useJs: boolean = false,
   ): Float32Array {
-    // Allow WASM to be enabled globally for tests/benchmarks via env var.
-    // - If caller passes `useWasm` explicitly, that wins.
-    // - If omitted, `NEAT_AI_USE_WASM=1|true|yes|on` will enable it by default.
-    let defaultUseWasm = false;
+    // Issue #1122: WASM is now the default activation implementation.
+    // - If caller passes `useJs` explicitly as true, use JS activation.
+    // - If `NEAT_AI_USE_JS=1|true|yes|on`, force JS activation.
+    // - Otherwise, use WASM when available.
+    let forceJs = useJs;
     try {
-      const v = Deno.env.get("NEAT_AI_USE_WASM")?.trim().toLowerCase();
-      defaultUseWasm = v === "1" || v === "true" || v === "yes" || v === "on";
+      const v = Deno.env.get("NEAT_AI_USE_JS")?.trim().toLowerCase();
+      if (v === "1" || v === "true" || v === "yes" || v === "on") {
+        forceJs = true;
+      }
     } catch {
       // Ignore env permission errors; default remains false.
     }
 
-    const effectiveUseWasm = useWasm ?? defaultUseWasm;
-
-    // Attempt WASM activation if requested (explicitly or via env default)
-    if (effectiveUseWasm && this.canUseWasm()) {
+    // Issue #1122: WASM is now the default. Use WASM unless JS is forced.
+    if (!forceJs && this.canUseWasm()) {
       return this.activateWasm(input, reuseBuffer);
     }
 
@@ -670,6 +673,17 @@ export class Creature implements CreatureInternal {
   private canUseWasm(): boolean {
     // Check if WASM module is available
     if (!isWasmActivationAvailable()) {
+      // Issue #1122: Graceful degradation - warn once when WASM unavailable
+      if (!wasmUnavailableWarningShown) {
+        wasmUnavailableWarningShown = true;
+        console.warn(
+          yellow(
+            "[NEAT-AI] WASM activation module not available. " +
+              "Falling back to JavaScript activation. " +
+              "Run `initWasmActivation()` to enable WASM for better performance.",
+          ),
+        );
+      }
       return false;
     }
 
@@ -734,7 +748,7 @@ export class Creature implements CreatureInternal {
 
       // If compilation failed, fall back to JS
       if (!this.cachedWasmActivation) {
-        return this.activate(input, false, reuseBuffer, false);
+        return this.activate(input, false, reuseBuffer, true); // useJs=true
       }
     }
 
@@ -791,7 +805,7 @@ export class Creature implements CreatureInternal {
           feedbackLoop,
           sparseConfig,
           reuseBuffer,
-          false,
+          true, // useJs=true to force JS fallback
         );
       }
     }
