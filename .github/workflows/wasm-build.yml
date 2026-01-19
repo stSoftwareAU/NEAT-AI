@@ -1,0 +1,70 @@
+name: WASM Build
+
+on:
+  pull_request:
+    branches:
+      - Develop
+  push:
+    branches:
+      - Develop
+  workflow_dispatch:
+
+jobs:
+  wasm_activation:
+    name: Build wasm_activation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Cargo (registry + git + target)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            wasm_activation/target
+          key: ${{ runner.os }}-cargo-wasm_activation-${{ hashFiles('wasm_activation/Cargo.toml', 'wasm_activation/build.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-wasm_activation-
+
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: latest
+
+      - name: Build WASM module
+        run: |
+          set -Eeuo pipefail
+          chmod +x wasm_activation/build.sh
+          ./wasm_activation/build.sh
+
+      - name: Verify build artifacts exist
+        run: |
+          set -Eeuo pipefail
+          test -f wasm_activation/pkg/wasm_activation_bg.wasm
+          test -f wasm_activation/pkg/wasm_activation_bg.wasm.d.ts
+          test -f wasm_activation/pkg/wasm_activation.js
+          test -f wasm_activation/pkg/wasm_activation.d.ts
+
+          wasm_size_bytes="$(stat -c%s wasm_activation/pkg/wasm_activation_bg.wasm)"
+          echo "wasm_activation_bg.wasm size: ${wasm_size_bytes} bytes"
+
+          # Optional sanity check: fail if unexpectedly huge (10MB)
+          if [ "${wasm_size_bytes}" -gt 10485760 ]; then
+            echo "❌ wasm_activation_bg.wasm is larger than 10MB (${wasm_size_bytes} bytes)" >&2
+            exit 1
+          fi
+
+      - name: Upload WASM package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm_activation-pkg
+          path: wasm_activation/pkg/
+          retention-days: 14

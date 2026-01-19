@@ -598,10 +598,23 @@ export class Creature implements CreatureInternal {
     input: Float32Array,
     feedbackLoop: boolean = false,
     reuseBuffer: boolean = false,
-    useWasm: boolean = false,
+    useWasm: boolean | undefined = undefined,
   ): Float32Array {
-    // Attempt WASM activation if requested
-    if (useWasm && this.canUseWasm()) {
+    // Allow WASM to be enabled globally for tests/benchmarks via env var.
+    // - If caller passes `useWasm` explicitly, that wins.
+    // - If omitted, `NEAT_AI_USE_WASM=1|true|yes|on` will enable it by default.
+    let defaultUseWasm = false;
+    try {
+      const v = Deno.env.get("NEAT_AI_USE_WASM")?.trim().toLowerCase();
+      defaultUseWasm = v === "1" || v === "true" || v === "yes" || v === "on";
+    } catch {
+      // Ignore env permission errors; default remains false.
+    }
+
+    const effectiveUseWasm = useWasm ?? defaultUseWasm;
+
+    // Attempt WASM activation if requested (explicitly or via env default)
+    if (effectiveUseWasm && this.canUseWasm()) {
       return this.activateWasm(input, reuseBuffer);
     }
 
@@ -634,6 +647,37 @@ export class Creature implements CreatureInternal {
     // Check if WASM module is available
     if (!isWasmActivationAvailable()) {
       return false;
+    }
+
+    // Optional performance guardrails:
+    // Using WASM requires per-creature compilation to a binary format. For small
+    // creatures this overhead can dominate and make test suites feel "stuck".
+    // These env vars allow preferring WASM only when the network is large enough.
+    //
+    // - NEAT_AI_USE_WASM_FORCE=1|true|yes|on: ignore thresholds
+    // - NEAT_AI_USE_WASM_MIN_NEURONS=<int>: minimum total neurons to use WASM
+    // - NEAT_AI_USE_WASM_MIN_SYNAPSES=<int>: minimum total synapses to use WASM
+    try {
+      const force = Deno.env.get("NEAT_AI_USE_WASM_FORCE")?.trim().toLowerCase();
+      const isForced = force === "1" || force === "true" || force === "yes" ||
+        force === "on";
+      if (!isForced) {
+        const minNeuronsRaw = Deno.env.get("NEAT_AI_USE_WASM_MIN_NEURONS")?.trim();
+        const minSynapsesRaw = Deno.env.get("NEAT_AI_USE_WASM_MIN_SYNAPSES")?.trim();
+        const minNeurons = minNeuronsRaw ? Number.parseInt(minNeuronsRaw, 10) : 0;
+        const minSynapses = minSynapsesRaw
+          ? Number.parseInt(minSynapsesRaw, 10)
+          : 0;
+
+        if (Number.isFinite(minNeurons) && minNeurons > 0) {
+          if (this.neurons.length < minNeurons) return false;
+        }
+        if (Number.isFinite(minSynapses) && minSynapses > 0) {
+          if (this.synapses.length < minSynapses) return false;
+        }
+      }
+    } catch {
+      // Ignore env permission errors; no thresholds applied.
     }
 
     // Check if creature is eligible for WASM (all squash functions supported)
