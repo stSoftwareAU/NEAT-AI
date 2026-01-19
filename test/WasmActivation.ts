@@ -697,3 +697,287 @@ Deno.test({
     assertEquals(getSquashType("IF"), SquashType.If);
   },
 });
+
+// Issue #1119 - WASM Migration Phase 2: Additional IF tests
+
+Deno.test({
+  name: "WASM Activation: IF with multiple positive and negative inputs",
+  fn() {
+    // Test IF with multiple positive and negative inputs (they get summed within each type)
+    // Neuron layout: [input0-cond, input1-pos, input2-pos, input3-neg, input4-neg, if-hidden, output]
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 5, bias: 0.5, squash: "IF" },
+        { type: "output", index: 6, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 5, weight: 1.0, type: "condition" }, // condition
+        { from: 1, to: 5, weight: 1.0, type: "positive" }, // positive 1
+        { from: 2, to: 5, weight: 2.0, type: "positive" }, // positive 2
+        { from: 3, to: 5, weight: 1.0, type: "negative" }, // negative 1
+        { from: 4, to: 5, weight: 3.0, type: "negative" }, // negative 2
+        { from: 5, to: 6, weight: 1.0 },
+      ],
+      input: 5,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Test with various inputs [cond, pos1, pos2, neg1, neg2]
+    const testCases = [
+      // condition > 0: use positive sum
+      // positive sum = 1.0*1.0 + 2.0*2.0 + 0.5 = 1.0 + 4.0 + 0.5 = 5.5
+      new Float32Array([1.0, 1.0, 2.0, 5.0, 10.0]),
+      // condition <= 0: use negative sum
+      // negative sum = 1.0*1.0 + 3.0*3.0 + 0.5 = 1.0 + 9.0 + 0.5 = 10.5
+      new Float32Array([-1.0, 1.0, 2.0, 1.0, 3.0]),
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `IF multiple pos/neg Input: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: IF with standard type synapses (treated as positive)",
+  fn() {
+    // Standard type synapses should be treated as positive in IF
+    // Neuron layout: [input0, input1, input2, if-hidden, output]
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 3, bias: 0, squash: "IF" },
+        { type: "output", index: 4, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 3, weight: 1.0, type: "condition" }, // condition
+        { from: 1, to: 3, weight: 2.0 }, // no type = standard = positive
+        { from: 2, to: 3, weight: 3.0, type: "negative" }, // negative
+        { from: 3, to: 4, weight: 1.0 },
+      ],
+      input: 3,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Test: condition > 0, so use standard (positive) branch
+    // positive = 5.0 * 2.0 = 10.0
+    const input1 = new Float32Array([1.0, 5.0, 2.0]);
+    const jsOutput1 = creature.activate(input1, false);
+    const wasmOutput1 = wasmActivation.activate(input1);
+    assertArrayClose(
+      wasmOutput1,
+      jsOutput1,
+      "IF standard as positive (cond > 0)",
+      TOLERANCE,
+    );
+
+    // Test: condition <= 0, so use negative branch
+    // negative = 2.0 * 3.0 = 6.0
+    const input2 = new Float32Array([-1.0, 5.0, 2.0]);
+    const jsOutput2 = creature.activate(input2, false);
+    const wasmOutput2 = wasmActivation.activate(input2);
+    assertArrayClose(
+      wasmOutput2,
+      jsOutput2,
+      "IF standard as positive (cond <= 0)",
+      TOLERANCE,
+    );
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: IF batch activation",
+  fn() {
+    // Test IF in batch mode
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 3, bias: 1.0, squash: "IF" },
+        { type: "output", index: 4, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 3, weight: 1.0, type: "condition" },
+        { from: 1, to: 3, weight: 2.0, type: "positive" },
+        { from: 2, to: 3, weight: 3.0, type: "negative" },
+        { from: 3, to: 4, weight: 1.0 },
+      ],
+      input: 3,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Create batch inputs: 4 samples of 3 inputs each
+    // Sample 0: cond=1 (positive), pos=2, neg=5 -> 2*2+1=5
+    // Sample 1: cond=-1 (negative), pos=2, neg=5 -> 5*3+1=16
+    // Sample 2: cond=0.5 (positive), pos=3, neg=1 -> 3*2+1=7
+    // Sample 3: cond=0 (negative), pos=3, neg=1 -> 1*3+1=4
+    const batchInputs = new Float32Array([
+      1.0,
+      2.0,
+      5.0, // sample 0
+      -1.0,
+      2.0,
+      5.0, // sample 1
+      0.5,
+      3.0,
+      1.0, // sample 2
+      0.0,
+      3.0,
+      1.0, // sample 3
+    ]);
+
+    const batchOutputs = wasmActivation.activateBatch(batchInputs, 3);
+    assertEquals(batchOutputs.length, 4, "Batch should have 4 outputs");
+
+    // Verify each output matches individual JS activation
+    for (let i = 0; i < 4; i++) {
+      const input = new Float32Array([
+        batchInputs[i * 3],
+        batchInputs[i * 3 + 1],
+        batchInputs[i * 3 + 2],
+      ]);
+      const jsOutput = creature.activate(input, false);
+      assertClose(batchOutputs[i], jsOutput[0], `IF batch sample ${i}`);
+    }
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: IF with weighted condition inputs",
+  fn() {
+    // Test IF where condition weight affects the threshold
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 3, bias: 0, squash: "IF" },
+        { type: "output", index: 4, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 3, weight: 2.0, type: "condition" }, // condition with weight 2
+        { from: 1, to: 3, weight: 1.0, type: "positive" },
+        { from: 2, to: 3, weight: 1.0, type: "negative" },
+        { from: 3, to: 4, weight: 1.0 },
+      ],
+      input: 3,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    // Test: input=0.5, weight=2.0, so condition = 1.0 > 0 -> positive
+    const input1 = new Float32Array([0.5, 10.0, 5.0]);
+    const jsOutput1 = creature.activate(input1, false);
+    const wasmOutput1 = wasmActivation.activate(input1);
+    assertArrayClose(
+      wasmOutput1,
+      jsOutput1,
+      "IF weighted condition (positive)",
+      TOLERANCE,
+    );
+
+    // Test: input=-0.5, weight=2.0, so condition = -1.0 <= 0 -> negative
+    const input2 = new Float32Array([-0.5, 10.0, 5.0]);
+    const jsOutput2 = creature.activate(input2, false);
+    const wasmOutput2 = wasmActivation.activate(input2);
+    assertArrayClose(
+      wasmOutput2,
+      jsOutput2,
+      "IF weighted condition (negative)",
+      TOLERANCE,
+    );
+
+    wasmActivation.free();
+  },
+});
+
+Deno.test({
+  name: "WASM Activation: IF in complex network with other neurons",
+  fn() {
+    // Test IF neuron in a larger network with other squash functions
+    // Network: input -> relu -> if -> output
+    //          input2 -------^
+    //          input3 -------^
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 3, bias: 0, squash: "ReLU" },
+        { type: "hidden", index: 4, bias: 0.5, squash: "IF" },
+        { type: "output", index: 5, bias: 0, squash: "TANH" },
+      ],
+      synapses: [
+        { from: 0, to: 3, weight: 1.0 }, // input0 -> relu
+        { from: 3, to: 4, weight: 1.0, type: "condition" }, // relu -> if (condition)
+        { from: 1, to: 4, weight: 2.0, type: "positive" }, // input1 -> if (positive)
+        { from: 2, to: 4, weight: 3.0, type: "negative" }, // input2 -> if (negative)
+        { from: 4, to: 5, weight: 1.0 }, // if -> output (tanh)
+      ],
+      input: 3,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const compiled = compileCreatureToWasm(creature);
+    const wasmActivation = WasmCreatureActivation.create(compiled);
+    assert(wasmActivation !== null, "WASM activation should be created");
+
+    const testCases = [
+      // input0=1 -> relu=1 > 0 -> positive: 2*2+0.5=4.5 -> tanh
+      new Float32Array([1.0, 2.0, 3.0]),
+      // input0=-1 -> relu=0 <= 0 -> negative: 3*3+0.5=9.5 -> tanh
+      new Float32Array([-1.0, 2.0, 3.0]),
+      // input0=0 -> relu=0 <= 0 -> negative: 1*3+0.5=3.5 -> tanh
+      new Float32Array([0.0, 2.0, 1.0]),
+    ];
+
+    for (const input of testCases) {
+      const jsOutput = creature.activate(input, false);
+      const wasmOutput = wasmActivation.activate(input);
+
+      assertArrayClose(
+        wasmOutput,
+        jsOutput,
+        `IF complex network Input: [${input.join(", ")}]`,
+        TOLERANCE,
+      );
+    }
+
+    wasmActivation.free();
+  },
+});
