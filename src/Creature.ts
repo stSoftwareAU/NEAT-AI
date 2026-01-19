@@ -658,13 +658,18 @@ export class Creature implements CreatureInternal {
     // - NEAT_AI_USE_WASM_MIN_NEURONS=<int>: minimum total neurons to use WASM
     // - NEAT_AI_USE_WASM_MIN_SYNAPSES=<int>: minimum total synapses to use WASM
     try {
-      const force = Deno.env.get("NEAT_AI_USE_WASM_FORCE")?.trim().toLowerCase();
+      const force = Deno.env.get("NEAT_AI_USE_WASM_FORCE")?.trim()
+        .toLowerCase();
       const isForced = force === "1" || force === "true" || force === "yes" ||
         force === "on";
       if (!isForced) {
-        const minNeuronsRaw = Deno.env.get("NEAT_AI_USE_WASM_MIN_NEURONS")?.trim();
-        const minSynapsesRaw = Deno.env.get("NEAT_AI_USE_WASM_MIN_SYNAPSES")?.trim();
-        const minNeurons = minNeuronsRaw ? Number.parseInt(minNeuronsRaw, 10) : 0;
+        const minNeuronsRaw = Deno.env.get("NEAT_AI_USE_WASM_MIN_NEURONS")
+          ?.trim();
+        const minSynapsesRaw = Deno.env.get("NEAT_AI_USE_WASM_MIN_SYNAPSES")
+          ?.trim();
+        const minNeurons = minNeuronsRaw
+          ? Number.parseInt(minNeuronsRaw, 10)
+          : 0;
         const minSynapses = minSynapsesRaw
           ? Number.parseInt(minSynapsesRaw, 10)
           : 0;
