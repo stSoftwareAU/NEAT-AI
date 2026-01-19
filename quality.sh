@@ -1,6 +1,70 @@
 #!/bin/bash
 set -e
 
+# Optional WASM toggles:
+# - --no-wasm: run full suite with WASM disabled by default (baseline JS run)
+# - --wasm: run full suite with WASM enabled by default (where supported)
+# - --wasm-fast: run full suite with WASM enabled, but only for larger networks (much faster)
+# - --wasm-only / --compare-wasm: run only WASM activation tests (these compare JS vs WASM outputs)
+# - --skip-wasm-tests: skip WASM activation tests entirely
+# - --wasm-build: rebuild wasm_activation/pkg before running WASM tests
+MODE="all"
+WASM_BUILD="false"
+
+usage() {
+  cat <<'EOF'
+Usage: ./quality.sh [options]
+
+Options:
+  --no-wasm         Run full quality suite with WASM disabled by default
+  --wasm            Run full quality suite with WASM enabled by default
+  --wasm-fast       Run full quality suite with WASM enabled only for larger networks
+  --wasm-only       Run only WASM activation tests (JS vs WASM comparisons)
+  --compare-wasm    Alias for --wasm-only
+  --skip-wasm-tests Skip WASM activation tests entirely
+  --wasm-build      Rebuild wasm_activation/pkg before WASM tests
+  -h, --help        Show this help
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --no-wasm)
+      MODE="no-wasm"
+      shift
+      ;;
+    --wasm)
+      MODE="wasm"
+      shift
+      ;;
+    --wasm-fast)
+      MODE="wasm-fast"
+      shift
+      ;;
+    --wasm-only|--compare-wasm)
+      MODE="wasm-only"
+      shift
+      ;;
+    --skip-wasm-tests)
+      MODE="skip-wasm-tests"
+      shift
+      ;;
+    --wasm-build)
+      WASM_BUILD="true"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
 # Ensure deno is in PATH (common install locations)
 export PATH="$HOME/.deno/bin:$PATH"
 
@@ -26,6 +90,37 @@ fi
 
 rm -rf .trace .test .coverage
 deno check
+
+WASM_TEST_IGNORE_ARGS=(--ignore=test/WasmActivation.ts --ignore=test/CreatureWasmActivation.ts)
+WASM_TEST_FILES=(test/WasmActivation.ts test/CreatureWasmActivation.ts)
+
+if [[ "$MODE" == "wasm-only" ]]; then
+  if [[ "$WASM_BUILD" == "true" ]]; then
+    echo "Rebuilding WASM module (wasm_activation/pkg)..."
+    chmod +x wasm_activation/build.sh
+    ./wasm_activation/build.sh
+  fi
+
+  echo ""
+  echo "Running WASM activation tests (JS vs WASM comparisons)..."
+  NEAT_AI_DISCOVERY_DETERMINISTIC=1 deno test \
+    --allow-read \
+    --allow-write \
+    --allow-net \
+    --allow-env \
+    --v8-flags=--max-old-space-size=8192 \
+    --parallel \
+    --config ./deno.json \
+    "${WASM_TEST_FILES[@]}"
+  exit 0
+fi
+
+if [[ ( "$MODE" == "wasm" || "$MODE" == "wasm-fast" ) ]] && [[ "$WASM_BUILD" == "true" ]]; then
+  echo "Rebuilding WASM module (wasm_activation/pkg)..."
+  chmod +x wasm_activation/build.sh
+  ./wasm_activation/build.sh
+fi
+
 (cd ../NEAT-AI-Discovery && ./scripts/runlib.sh)
 # # is intentionally loaded and kept in memory for performance (not a leak)
 
@@ -63,7 +158,24 @@ fi
 echo ""
 echo "Running discovery tests without FFI to verify graceful degradation..."
 
-NEAT_RUST_DISCOVERY_OPTIONAL=true NEAT_AI_DISCOVERY_DETERMINISTIC=1 deno test \
+NO_WASM_ARGS=()
+if [[ "$MODE" == "skip-wasm-tests" ]]; then
+  NO_WASM_ARGS=("${WASM_TEST_IGNORE_ARGS[@]}")
+fi
+
+ENV_CMD=(env)
+if [[ "$MODE" == "wasm" ]]; then
+  # Force WASM on wherever eligible.
+  ENV_CMD+=(NEAT_AI_USE_WASM=1 NEAT_AI_WASM_AUTO_INIT=1 NEAT_AI_USE_WASM_FORCE=1)
+elif [[ "$MODE" == "wasm-fast" ]]; then
+  # Prefer WASM only where it is likely beneficial, to keep the suite quick.
+  ENV_CMD+=(NEAT_AI_USE_WASM=1 NEAT_AI_WASM_AUTO_INIT=1 NEAT_AI_USE_WASM_MIN_NEURONS=64 NEAT_AI_USE_WASM_MIN_SYNAPSES=256)
+elif [[ "$MODE" == "no-wasm" ]]; then
+  # Force baseline JS default even if the user's shell has WASM env vars set.
+  ENV_CMD+=(NEAT_AI_USE_WASM=0 NEAT_AI_WASM_AUTO_INIT=0)
+fi
+
+"${ENV_CMD[@]}" NEAT_RUST_DISCOVERY_OPTIONAL=true NEAT_AI_DISCOVERY_DETERMINISTIC=1 deno test \
   --allow-read \
   --allow-write \
   --allow-net \
@@ -71,11 +183,12 @@ NEAT_RUST_DISCOVERY_OPTIONAL=true NEAT_AI_DISCOVERY_DETERMINISTIC=1 deno test \
   --v8-flags=--max-old-space-size=8192 \
   --parallel \
   --config ./deno.json \
+  "${NO_WASM_ARGS[@]}" \
   --ignore=test/ErrorGuidedStructuralEvolution/RustDiscoveryRequired.ts \
   test/ErrorGuidedStructuralEvolution/*.ts
 
 echo "Running tests with FFI enabled (full functionality)..."
-NEAT_AI_DISCOVERY_DETERMINISTIC=1 deno test \
+"${ENV_CMD[@]}" NEAT_AI_DISCOVERY_DETERMINISTIC=1 deno test \
   --allow-read \
   --allow-write \
   --allow-net \
@@ -84,7 +197,8 @@ NEAT_AI_DISCOVERY_DETERMINISTIC=1 deno test \
   --allow-ffi \
   --v8-flags=--max-old-space-size=8192 \
   --parallel \
-  --config ./deno.json
+  --config ./deno.json \
+  "${NO_WASM_ARGS[@]}"
 
   # --trace-leaks \
 # Note: --trace-leaks is disabled for discovery tests because the Rust library
