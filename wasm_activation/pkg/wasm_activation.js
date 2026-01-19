@@ -47,6 +47,41 @@ export class CompiledNetwork {
     return ret;
   }
   /**
+   * Activate the network with tracing for backpropagation support
+   * Issue #1121 - WASM Migration Phase 4: activateAndTrace
+   *
+   * Returns a combined result containing:
+   * - Output activation values (num_outputs floats)
+   * - All non-input neuron activations (for state.activations)
+   * - Pre-squash values (hintValues) for all non-input neurons
+   * - Trace data for aggregate functions
+   *
+   * The result format is a Float32Array:
+   * - [0..num_outputs): output activation values
+   * - [num_outputs..num_outputs+num_non_inputs): post-squash activations
+   * - [num_outputs+num_non_inputs..num_outputs+2*num_non_inputs): pre-squash values (hintValues)
+   * - [num_outputs+2*num_non_inputs..]: trace data encoded as:
+   *   - For each non-input neuron with aggregate squash:
+   *     - neuron_index (as f32, relative to input count)
+   *     - For MINIMUM/MAXIMUM: winning_local_synapse_index (as f32)
+   *     - For IF: branch_taken (1.0 = positive, 0.0 = negative)
+   *   - Terminated by -1.0
+   * @param {Float32Array} input
+   * @param {number} num_outputs
+   * @returns {Float32Array}
+   */
+  activate_and_trace(input, num_outputs) {
+    const ptr0 = passArrayF32ToWasm0(input, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.compilednetwork_activate_and_trace(
+      this.__wbg_ptr,
+      ptr0,
+      len0,
+      num_outputs,
+    );
+    return ret;
+  }
+  /**
    * Create a new compiled network from serialised data
    *
    * Data format (all values little-endian):

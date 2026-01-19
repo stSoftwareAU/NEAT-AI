@@ -551,10 +551,34 @@ export class Creature implements CreatureInternal {
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
     reuseBuffer: boolean = false,
-    _useWasm: boolean = false,
+    useWasm: boolean = false,
   ): Float32Array {
-    // WASM activation does not support tracing, always use JS for activateAndTrace
-    // The useWasm parameter is accepted for API consistency but currently ignored
+    // Allow WASM to be enabled globally for tests/benchmarks via env var.
+    // - If caller passes `useWasm` explicitly as true, that wins.
+    // - If omitted (defaults to false), `NEAT_AI_USE_WASM=1|true|yes|on` will enable it.
+    let effectiveUseWasm = useWasm;
+    if (!effectiveUseWasm) {
+      try {
+        const v = Deno.env.get("NEAT_AI_USE_WASM")?.trim().toLowerCase();
+        effectiveUseWasm = v === "1" || v === "true" || v === "yes" ||
+          v === "on";
+      } catch {
+        // Ignore env permission errors; default remains false.
+      }
+    }
+
+    // Attempt WASM activation if requested and available
+    // Issue #1121: WASM Migration Phase 4 - activateAndTrace with backpropagation support
+    if (effectiveUseWasm && this.canUseWasm()) {
+      return this.activateAndTraceWasm(
+        input,
+        feedbackLoop,
+        sparseConfig,
+        reuseBuffer,
+      );
+    }
+
+    // Fall back to JS activation
     this.prepareNeurons();
     const activations = this.state.makeActivation(input, feedbackLoop);
 
@@ -730,6 +754,191 @@ export class Creature implements CreatureInternal {
     }
 
     return wasmOutput;
+  }
+
+  /**
+   * Activate the creature using WASM with tracing support for backpropagation.
+   * Issue #1121: WASM Migration Phase 4 - activateAndTrace
+   *
+   * This method:
+   * 1. Compiles the creature to WASM format (cached)
+   * 2. Calls the WASM activate_and_trace method
+   * 3. Applies the trace data to the creature's state (synapse usage flags)
+   * 4. Sets hintValues for backpropagation
+   *
+   * @param {Float32Array} input - The input values for the creature.
+   * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
+   * @param {SparseConfig} sparseConfig - The sparse configuration for tracing.
+   * @param {boolean} reuseBuffer - Whether to reuse the cached output buffer.
+   * @returns {Float32Array} The output values after activation.
+   */
+  private activateAndTraceWasm(
+    input: Float32Array,
+    feedbackLoop: boolean,
+    sparseConfig: SparseConfig,
+    reuseBuffer: boolean,
+  ): Float32Array {
+    // Lazily compile to WASM if not already done
+    if (!this.cachedWasmActivation) {
+      const compiled = compileCreatureToWasm(this);
+      this.cachedWasmActivation = WasmCreatureActivation.create(compiled) ??
+        undefined;
+
+      // If compilation failed, fall back to JS
+      if (!this.cachedWasmActivation) {
+        return this.activateAndTrace(
+          input,
+          feedbackLoop,
+          sparseConfig,
+          reuseBuffer,
+          false,
+        );
+      }
+    }
+
+    // Prepare state for activation
+    this.prepareNeurons();
+    this.state.makeActivation(input, feedbackLoop);
+
+    // Call WASM activateAndTrace
+    const wasmResult = this.cachedWasmActivation.activateAndTrace(input);
+
+    // Apply activations to the state
+    const neurons = this.neurons;
+    for (let i = 0; i < wasmResult.activations.length; i++) {
+      const neuronIdx = this.input + i;
+      if (neuronIdx < neurons.length) {
+        this.state.activations[neuronIdx] = wasmResult.activations[i];
+      }
+    }
+
+    // Apply trace data to synapse states
+    // The trace entries contain information about which synapses were "used"
+    // for aggregate functions (MINIMUM, MAXIMUM, IF)
+    this.applyWasmTraceData(wasmResult.traceEntries, sparseConfig);
+
+    // Set hintValues for neurons that need propagation
+    // hintValue is the pre-squash value (for standard squash functions)
+    // or the activation (for aggregate functions)
+    for (let i = this.input; i < neurons.length; i++) {
+      const n = neurons[i];
+      if (sparseConfig.propagateNeeded(n.uuid)) {
+        this.state.node(n.index).hintValue =
+          wasmResult.hintValues[i - this.input];
+      }
+    }
+
+    // Handle buffer reuse
+    if (reuseBuffer) {
+      if (
+        !this.cachedOutputBuffer ||
+        this.cachedOutputBuffer.length !== this.output
+      ) {
+        this.cachedOutputBuffer = new Float32Array(this.output);
+      }
+      this.cachedOutputBuffer.set(wasmResult.outputs);
+      return this.cachedOutputBuffer;
+    }
+
+    return wasmResult.outputs;
+  }
+
+  /**
+   * Apply WASM trace data to synapse states.
+   * Issue #1121: WASM Migration Phase 4 - activateAndTrace
+   *
+   * This sets the `used` flag on synapse states for aggregate functions:
+   * - For MINIMUM/MAXIMUM: only the winning synapse is marked as used
+   * - For IF: condition synapses and active branch synapses are marked as used
+   * - For standard squash: all synapses are implicitly used (no action needed)
+   *
+   * @param traceEntries - The trace entries from WASM activation
+   * @param sparseConfig - The sparse configuration for tracing
+   */
+  private applyWasmTraceData(
+    traceEntries: Array<{ neuronRelativeIndex: number; traceInfo: number }>,
+    sparseConfig: SparseConfig,
+  ): void {
+    const neurons = this.neurons;
+
+    for (const entry of traceEntries) {
+      const neuronIdx = this.input + entry.neuronRelativeIndex;
+      if (neuronIdx >= neurons.length) continue;
+
+      const neuron = neurons[neuronIdx];
+      if (!sparseConfig.traceNeeded(neuron.uuid)) continue;
+
+      const inwardList = this.inwardConnections(neuronIdx);
+      if (inwardList.length === 0) continue;
+
+      // Sort by from index to match WASM ordering
+      const sortedInward = inwardList.slice().sort((a, b) => a.from - b.from);
+
+      const squash = neuron.squash ?? "IDENTITY";
+
+      if (squash === "MINIMUM" || squash === "MAXIMUM") {
+        // For MINIMUM/MAXIMUM: traceInfo is the local synapse index of the winning synapse
+        const winningLocalIdx = Math.round(entry.traceInfo);
+
+        // Mark all synapses as not used initially
+        for (const c of sortedInward) {
+          const cs = this.state.connection(c.from, c.to);
+          if (cs.used === undefined) cs.used = false;
+        }
+
+        // Mark only the winning synapse as used
+        if (winningLocalIdx >= 0 && winningLocalIdx < sortedInward.length) {
+          const winningConnection = sortedInward[winningLocalIdx];
+          this.state.connection(winningConnection.from, winningConnection.to)
+            .used = true;
+        }
+      } else if (squash === "IF") {
+        // For IF: traceInfo is 1.0 for positive branch, 0.0 for negative branch
+        const positiveBranch = entry.traceInfo > 0.5;
+
+        if (positiveBranch) {
+          // Positive branch: mark positive/standard synapses as used
+          for (const c of sortedInward) {
+            const cs = this.state.connection(c.from, c.to);
+            switch (c.type) {
+              case "condition":
+              case "negative":
+                if (cs.used === undefined) cs.used = false;
+                break;
+              default:
+                cs.used = true;
+            }
+          }
+        } else {
+          // Negative branch: mark negative synapses as used
+          for (const c of sortedInward) {
+            if (c.type === "negative") {
+              this.state.connection(c.from, c.to).used = true;
+            }
+          }
+        }
+      }
+    }
+
+    // For non-aggregate neurons that need tracing, mark all synapses as used
+    // (This matches the JS behaviour for standard squash functions)
+    for (let i = this.input; i < neurons.length; i++) {
+      const n = neurons[i];
+      if (!sparseConfig.traceNeeded(n.uuid)) continue;
+
+      const squash = n.squash ?? "IDENTITY";
+      if (squash === "MINIMUM" || squash === "MAXIMUM" || squash === "IF") {
+        // Already handled by trace entries
+        continue;
+      }
+
+      // Standard squash: all synapses are used
+      const inwardList = this.inwardConnections(i);
+      for (const c of inwardList) {
+        const cs = this.state.connection(c.from, c.to);
+        cs.used = true;
+      }
+    }
   }
 
   /**

@@ -15,6 +15,12 @@ export const compilednetwork_activate: (
   c: number,
   d: number,
 ) => any;
+export const compilednetwork_activate_and_trace: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+) => any;
 export const compilednetwork_new: (
   a: number,
   b: number,
