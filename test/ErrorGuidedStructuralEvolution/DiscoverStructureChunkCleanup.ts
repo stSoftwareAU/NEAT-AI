@@ -14,6 +14,11 @@ import type {
 import type { DiscoverStructureDeps } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Calculate the path to wasm_activation/pkg relative to repo root
+const repoRoot = new URL("../../", import.meta.url).pathname;
+const wasmPath = `${repoRoot}wasm_activation/pkg`;
 
 function makeMinimalCreature(): Creature {
   const exportJSON: CreatureExport = {
@@ -66,11 +71,11 @@ Deno.test({
   permissions: {
     read: true,
     write: true,
-    ffi: false,
   },
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
+    await initWasmActivation(wasmPath);
     const baseDir = await Deno.makeTempDir({ prefix: "neat-discovery-clean-" });
     const creature = makeMinimalCreature();
 
@@ -157,11 +162,11 @@ Deno.test({
   permissions: {
     read: true,
     write: true,
-    ffi: false,
   },
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
+    await initWasmActivation(wasmPath);
     const baseDir = await Deno.makeTempDir({ prefix: "neat-discovery-keep-" });
     const creature = makeMinimalCreature();
 

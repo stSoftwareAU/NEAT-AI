@@ -3,13 +3,13 @@
  *
  * Issue #1118 - WASM Migration Phase 1: Add WASM activation option to Creature class
  * Issue #1122 - WASM Migration Phase 5: Make WASM the default activation implementation
+ * Issue #1123 - WASM Migration Phase 6: Remove deprecated JS activation code
  *
  * These tests verify that:
- * 1. Creature.activate() uses WASM by default (useJs parameter forces JS)
- * 2. WASM is used when supported, with JS fallback otherwise
- * 3. WASM eligibility detection works correctly
- * 4. WASM compilation is cached and lazily initialised
- * 5. Both JS and WASM paths produce identical results
+ * 1. Creature.activate() uses WASM for activation
+ * 2. WASM eligibility detection works correctly
+ * 3. WASM compilation is cached and lazily initialised
+ * 4. All supported squash functions work correctly with WASM
  */
 
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
@@ -22,7 +22,7 @@ import {
 import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
 import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
 
-// Tolerance for floating point comparisons (WASM uses f32, JS uses f64)
+// Tolerance for floating point comparisons (WASM uses f32)
 const TOLERANCE = 1e-5;
 
 /**
@@ -60,151 +60,6 @@ Deno.test({
     const result = await initWasmActivation(wasmPath);
     assert(result, "WASM module should initialise successfully");
     assert(isWasmActivationAvailable(), "WASM should be available after init");
-  },
-});
-
-// =============================================================================
-// Test: activate() with useJs parameter (Issue #1122: parameter renamed from useWasm)
-// =============================================================================
-
-Deno.test({
-  name: "Creature WASM: activate() accepts useJs parameter",
-  fn() {
-    // Create a simple creature with WASM-compatible squash functions
-    const creatureJson: CreatureInternal = {
-      neurons: [
-        { type: "hidden", index: 2, bias: 0.5, squash: "ReLU" },
-        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
-      ],
-      synapses: [
-        { from: 0, to: 2, weight: 1.0 },
-        { from: 1, to: 2, weight: -1.0 },
-        { from: 2, to: 3, weight: 2.0 },
-      ],
-      input: 2,
-      output: 1,
-    };
-
-    const creature = Creature.fromJSON(creatureJson);
-    creature.fix();
-
-    const input = new Float32Array([1.0, 0.5]);
-
-    // Should work with useJs=true (explicit JS)
-    const jsOutput = creature.activate(input, false, false, true);
-    assert(jsOutput.length === 1, "JS output should have correct length");
-
-    // Should work with useJs=false (WASM - default)
-    const wasmOutput = creature.activate(input, false, false, false);
-    assert(wasmOutput.length === 1, "WASM output should have correct length");
-
-    // Both should produce identical results
-    assertArrayClose(wasmOutput, jsOutput, "JS and WASM outputs should match");
-  },
-});
-
-Deno.test({
-  name: "Creature WASM: activate() with WASM produces same results as JS",
-  fn() {
-    // Create a creature with multiple supported squash functions
-    const creatureJson: CreatureInternal = {
-      neurons: [
-        { type: "hidden", index: 2, bias: 0.1, squash: "ReLU" },
-        { type: "hidden", index: 3, bias: 0.2, squash: "TANH" },
-        { type: "hidden", index: 4, bias: 0.3, squash: "LOGISTIC" },
-        { type: "output", index: 5, bias: 0, squash: "IDENTITY" },
-      ],
-      synapses: [
-        { from: 0, to: 2, weight: 1.0 },
-        { from: 1, to: 2, weight: 0.5 },
-        { from: 0, to: 3, weight: -0.5 },
-        { from: 1, to: 3, weight: 1.0 },
-        { from: 2, to: 4, weight: 1.0 },
-        { from: 3, to: 4, weight: 1.0 },
-        { from: 4, to: 5, weight: 2.0 },
-      ],
-      input: 2,
-      output: 1,
-    };
-
-    const creature = Creature.fromJSON(creatureJson);
-    creature.fix();
-
-    // Test with various inputs
-    const testCases = [
-      new Float32Array([1.0, 0.0]),
-      new Float32Array([0.0, 1.0]),
-      new Float32Array([1.0, 1.0]),
-      new Float32Array([-1.0, -1.0]),
-      new Float32Array([2.0, 0.5]),
-      new Float32Array([-0.5, 0.5]),
-    ];
-
-    for (const input of testCases) {
-      const jsOutput = creature.activate(input, false, false, true); // useJs=true
-      const wasmOutput = creature.activate(input, false, false, false); // useJs=false (WASM)
-      assertArrayClose(
-        wasmOutput,
-        jsOutput,
-        `Input: [${input.join(", ")}]`,
-      );
-    }
-  },
-});
-
-// =============================================================================
-// Test: activateAndTrace() with useJs parameter (Issue #1122)
-// =============================================================================
-
-Deno.test({
-  name: "Creature WASM: activateAndTrace() accepts useJs parameter",
-  fn() {
-    const creatureJson: CreatureInternal = {
-      neurons: [
-        { type: "hidden", index: 2, bias: 0.5, squash: "ReLU" },
-        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
-      ],
-      synapses: [
-        { from: 0, to: 2, weight: 1.0 },
-        { from: 1, to: 2, weight: -1.0 },
-        { from: 2, to: 3, weight: 2.0 },
-      ],
-      input: 2,
-      output: 1,
-    };
-
-    const creature = Creature.fromJSON(creatureJson);
-    creature.fix();
-
-    const input = new Float32Array([1.0, 0.5]);
-    const creatureExport = creature.exportJSON();
-    const config = createBackPropagationConfig({
-      generations: 1,
-    });
-    const sparseConfig = new SparseConfig(creatureExport, config);
-
-    // Issue #1122: activateAndTrace now uses WASM by default
-    const jsOutput = creature.activateAndTrace(
-      input,
-      false,
-      sparseConfig,
-      false,
-      true, // useJs=true (force JS)
-    );
-    creature.clearState();
-    const wasmOutput = creature.activateAndTrace(
-      input,
-      false,
-      sparseConfig,
-      false,
-      false, // useJs=false (use WASM)
-    );
-
-    assertArrayClose(
-      wasmOutput,
-      jsOutput,
-      "activateAndTrace outputs should match",
-    );
   },
 });
 
@@ -369,45 +224,6 @@ Deno.test({
 });
 
 // =============================================================================
-// Test: Automatic fallback to JS when WASM cannot be used
-// =============================================================================
-
-Deno.test({
-  name: "Creature WASM: Falls back to JS for unsupported squash functions",
-  fn() {
-    const creatureJson: CreatureInternal = {
-      neurons: [
-        { type: "hidden", index: 2, bias: 0.5, squash: "MEAN" },
-        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
-      ],
-      synapses: [
-        { from: 0, to: 2, weight: 1.0 },
-        { from: 1, to: 2, weight: 1.0 },
-        { from: 2, to: 3, weight: 1.0 },
-      ],
-      input: 2,
-      output: 1,
-    };
-
-    const creature = Creature.fromJSON(creatureJson);
-    creature.fix();
-
-    const input = new Float32Array([1.0, 2.0]);
-
-    // Issue #1122: With default WASM activation, should fallback to JS for MEAN
-    const jsOutput = creature.activate(input, false, false, true); // useJs=true
-    const defaultOutput = creature.activate(input, false, false); // default (tries WASM, falls back)
-
-    // MEAN squash: (1.0 + 2.0) / 2 + bias = 1.5 + 0.5 = 2.0
-    assertArrayClose(
-      defaultOutput,
-      jsOutput,
-      "Should fallback to JS for MEAN squash",
-    );
-  },
-});
-
-// =============================================================================
 // Test: WASM compilation caching
 // =============================================================================
 
@@ -434,20 +250,29 @@ Deno.test({
     const input1 = new Float32Array([1.0, 0.5]);
     const input2 = new Float32Array([2.0, 1.0]);
 
-    // First activation with WASM should compile
-    const output1 = creature.activate(input1, false, false, false); // useJs=false (WASM)
+    // First activation should compile
+    const output1 = creature.activate(input1);
     assert(output1.length === 1);
 
     // Second activation should use cached WASM activation
-    const output2 = creature.activate(input2, false, false, false); // useJs=false (WASM)
+    const output2 = creature.activate(input2);
     assert(output2.length === 1);
 
-    // Results should still be correct
-    const jsOutput1 = creature.activate(input1, false, false, true); // useJs=true
-    const jsOutput2 = creature.activate(input2, false, false, true); // useJs=true
-
-    assertArrayClose(output1, jsOutput1);
-    assertArrayClose(output2, jsOutput2);
+    // Verify expected outputs based on network structure:
+    // input1: ReLU(1.0*1.0 + 0.5*(-1.0) + 0.5) = ReLU(1.0) = 1.0, then * 2.0 = 2.0
+    assertAlmostEquals(
+      output1[0],
+      2.0,
+      TOLERANCE,
+      "First output should be 2.0",
+    );
+    // input2: ReLU(2.0*1.0 + 1.0*(-1.0) + 0.5) = ReLU(1.5) = 1.5, then * 2.0 = 3.0
+    assertAlmostEquals(
+      output2[0],
+      3.0,
+      TOLERANCE,
+      "Second output should be 3.0",
+    );
   },
 });
 
@@ -477,14 +302,14 @@ Deno.test({
 
     const input = new Float32Array([1.0, 0.5]);
 
-    // Activate with WASM to compile and cache
-    const output1 = creature.activate(input, false, false, false); // useJs=false (WASM)
+    // Activate to compile and cache
+    const output1 = creature.activate(input);
 
     // Clear state (simulates structural change)
     creature.clearState();
 
     // Should still work after clearState (will recompile if needed)
-    const output2 = creature.activate(input, false, false, false); // useJs=false (WASM)
+    const output2 = creature.activate(input);
 
     assertArrayClose(
       output1,
@@ -499,7 +324,7 @@ Deno.test({
 // =============================================================================
 
 Deno.test({
-  name: "Creature WASM: Buffer reuse works with WASM default",
+  name: "Creature WASM: Buffer reuse works correctly",
   fn() {
     const creatureJson: CreatureInternal = {
       neurons: [
@@ -521,20 +346,25 @@ Deno.test({
     const input1 = new Float32Array([1.0, 0.5]);
     const input2 = new Float32Array([2.0, 1.0]);
 
-    // Activate with WASM and buffer reuse - copy immediately to avoid overwrite
-    const output1 = new Float32Array(
-      creature.activate(input1, false, true, false), // useJs=false (WASM), reuseBuffer=true
-    );
-    const expected1 = creature.activate(input1, false, false, true); // useJs=true
+    // Activate with buffer reuse - copy immediately to avoid overwrite
+    const output1 = new Float32Array(creature.activate(input1, false, true));
+    const output2 = new Float32Array(creature.activate(input2, false, true));
 
-    const output2 = new Float32Array(
-      creature.activate(input2, false, true, false), // useJs=false (WASM), reuseBuffer=true
+    // Verify expected outputs
+    // input1: ReLU(1.0 - 0.5 + 0.5) = 1.0, then * 2.0 = 2.0
+    assertAlmostEquals(
+      output1[0],
+      2.0,
+      TOLERANCE,
+      "First output with buffer reuse",
     );
-    const expected2 = creature.activate(input2, false, false, true); // useJs=true
-
-    // Results should still be correct with buffer reuse
-    assertArrayClose(output1, expected1, "First output with buffer reuse");
-    assertArrayClose(output2, expected2, "Second output with buffer reuse");
+    // input2: ReLU(2.0 - 1.0 + 0.5) = 1.5, then * 2.0 = 3.0
+    assertAlmostEquals(
+      output2[0],
+      3.0,
+      TOLERANCE,
+      "Second output with buffer reuse",
+    );
   },
 });
 
@@ -565,13 +395,17 @@ Deno.test({
     creature.fix();
 
     const input = new Float32Array([1.0, 0.5]);
+    const output = creature.activate(input);
 
-    const jsOutput = creature.activate(input, false, false, true); // useJs=true
-    const wasmOutput = creature.activate(input, false, false, false); // useJs=false (WASM)
+    assertEquals(output.length, 2, "Output should have 2 values");
 
-    assertEquals(jsOutput.length, 2, "JS output should have 2 values");
-    assertEquals(wasmOutput.length, 2, "WASM output should have 2 values");
-    assertArrayClose(wasmOutput, jsOutput, "Multi-output results should match");
+    // First output: ReLU(1.0 - 0.5 + 0.5) * 2.0 = 2.0
+    assertAlmostEquals(output[0], 2.0, TOLERANCE, "First output");
+    // Second output: TANH(ReLU(1.0) + 0.1) = TANH(1.1) ≈ 0.8
+    assert(
+      output[1] > 0.7 && output[1] < 0.9,
+      "Second output should be TANH of ~1.1",
+    );
   },
 });
 
@@ -582,16 +416,17 @@ Deno.test({
 Deno.test({
   name: "Creature WASM: Works with constant neurons",
   fn() {
+    // Constant neuron placed after input neurons (at index 1)
     const creatureJson: CreatureInternal = {
       neurons: [
-        { type: "constant", index: 0, bias: 1.0 },
+        { type: "constant", index: 1, bias: 0.5 },
         { type: "hidden", index: 2, bias: 0, squash: "IDENTITY" },
         { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
       ],
       synapses: [
-        { from: 0, to: 2, weight: 2.0 },
-        { from: 1, to: 2, weight: 1.0 },
-        { from: 2, to: 3, weight: 1.0 },
+        { from: 0, to: 2, weight: 1.0 }, // input -> hidden
+        { from: 1, to: 2, weight: 2.0 }, // constant -> hidden
+        { from: 2, to: 3, weight: 1.0 }, // hidden -> output
       ],
       input: 1,
       output: 1,
@@ -601,15 +436,52 @@ Deno.test({
     creature.fix();
 
     const input = new Float32Array([3.0]);
+    const output = creature.activate(input);
 
-    const jsOutput = creature.activate(input, false, false, true); // useJs=true
-    const wasmOutput = creature.activate(input, false, false, false); // useJs=false (WASM)
+    // Input neuron (index 0) contributes 3.0 * 1.0 = 3.0
+    // Constant neuron (index 1, bias 0.5) contributes 0.5 * 2.0 = 1.0
+    // Hidden (index 2): 3.0 + 1.0 = 4.0
+    // Output (index 3): 4.0 * 1.0 = 4.0
+    assertAlmostEquals(output[0], 4.0, TOLERANCE, "Constant neuron result");
+  },
+});
 
-    assertArrayClose(
-      wasmOutput,
-      jsOutput,
-      "Constant neuron results should match",
-    );
+// =============================================================================
+// Test: activateAndTrace() with WASM
+// =============================================================================
+
+Deno.test({
+  name: "Creature WASM: activateAndTrace() works correctly",
+  fn() {
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 2, bias: 0.5, squash: "ReLU" },
+        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 1.0 },
+        { from: 1, to: 2, weight: -1.0 },
+        { from: 2, to: 3, weight: 2.0 },
+      ],
+      input: 2,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const input = new Float32Array([1.0, 0.5]);
+    const creatureExport = creature.exportJSON();
+    const config = createBackPropagationConfig({
+      generations: 1,
+    });
+    const sparseConfig = new SparseConfig(creatureExport, config);
+
+    const output = creature.activateAndTrace(input, false, sparseConfig);
+
+    assertEquals(output.length, 1, "Output should have correct length");
+    // ReLU(1.0 - 0.5 + 0.5) * 2.0 = 2.0
+    assertAlmostEquals(output[0], 2.0, TOLERANCE, "activateAndTrace result");
   },
 });
 
@@ -723,14 +595,15 @@ Deno.test({
       const inputSize = squash === "IF" ? 3 : 2;
       const input = new Float32Array(inputSize).fill(0.5);
 
-      const jsOutput = creature.activate(input, false, false, true); // useJs=true
-      const wasmOutput = creature.activate(input, false, false, false); // useJs=false (WASM)
+      const output = creature.activate(input);
 
-      assertArrayClose(
-        wasmOutput,
-        jsOutput,
-        `${squash} should produce matching results`,
-        1e-4, // Slightly larger tolerance for complex functions
+      assert(
+        output.length === 1,
+        `${squash} should produce output of length 1`,
+      );
+      assert(
+        Number.isFinite(output[0]),
+        `${squash} should produce finite output`,
       );
     }
   },
@@ -818,14 +691,14 @@ Deno.test({
 
     const input = new Float32Array([1.0, 0.5]);
 
-    // Activate with WASM to compile and cache
-    creature.activate(input, false, false, false); // useJs=false (WASM)
+    // Activate to compile and cache
+    creature.activate(input);
 
     // Dispose WASM resources
     creature.disposeWasm();
 
-    // Should still work after dispose (will recompile on next WASM activation)
-    const output = creature.activate(input, false, false, false); // useJs=false (WASM)
+    // Should still work after dispose (will recompile on next activation)
+    const output = creature.activate(input);
     assert(output.length === 1, "Should still produce output after dispose");
   },
 });

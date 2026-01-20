@@ -14,6 +14,11 @@ import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Calculate the path to wasm_activation/pkg relative to repo root
+const repoRoot = new URL("../../", import.meta.url).pathname;
+const wasmPath = `${repoRoot}wasm_activation/pkg`;
 
 /**
  * Helper interface to access private methods for testing purposes
@@ -89,6 +94,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmActivation(wasmPath);
     const creature = makeTestCreature();
     CreatureUtil.makeUUID(creature);
 
@@ -195,6 +201,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmActivation(wasmPath);
     const creature = makeTestCreature();
     CreatureUtil.makeUUID(creature);
 
@@ -241,6 +248,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmActivation(wasmPath);
     const creature = makeTestCreature();
     CreatureUtil.makeUUID(creature);
 

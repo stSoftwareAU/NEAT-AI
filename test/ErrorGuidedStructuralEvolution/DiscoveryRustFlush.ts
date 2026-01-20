@@ -13,8 +13,14 @@ import type {
   RustRecordInput,
   RustRecordResult,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Calculate the path to wasm_activation/pkg relative to repo root
+const repoRoot = new URL("../../", import.meta.url).pathname;
+const wasmPath = `${repoRoot}wasm_activation/pkg`;
 
 Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
+  await initWasmActivation(wasmPath);
   const envKey = "NEAT_DISCOVERY_AWAIT_CLEANUP";
   const previousValue = (() => {
     try {
@@ -145,6 +151,7 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
 });
 
 Deno.test("Discovery flushes Rust recording based on estimated payload size", async () => {
+  await initWasmActivation(wasmPath);
   const envKey = "NEAT_DISCOVERY_AWAIT_CLEANUP";
   const previousValue = (() => {
     try {

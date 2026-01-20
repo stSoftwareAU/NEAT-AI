@@ -1,15 +1,17 @@
 import { assert, assertAlmostEquals, fail } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
+import { initWasmActivation } from "../../../src/wasm/WasmActivation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("Minimum", () => {
+Deno.test("Minimum", async () => {
+  await initWasmActivation();
   const directory = ".test/optimize/activate/Minimum";
-  Deno.mkdirSync(directory, { recursive: true });
+  await Deno.mkdir(directory, { recursive: true });
+
   const json: CreatureExport = {
     neurons: [
       { bias: -Math.E, type: "output", squash: "MINIMUM", uuid: "output-0" },
@@ -27,24 +29,11 @@ Deno.test("Minimum", () => {
   const creature = Creature.fromJSON(json);
 
   const exportCreature = creature.exportJSON();
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/creature.json`,
     JSON.stringify(exportCreature, null, 1),
   );
 
-  const { inlineText, squashList } = makeCreatureActivationFunction(creature);
-
-  Deno.writeTextFileSync(
-    `${directory}/inline.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}\n}`,
-  );
-
-  if (inlineText.includes(";;")) {
-    fail("Double semicolons detected");
-  }
-  if (inlineText.includes("MINIMUM")) {
-    fail("MINIMUM detected");
-  }
   const sparseConfig = new SparseConfig(
     exportCreature,
     createBackPropagationConfig({}),

@@ -3,13 +3,13 @@
  *
  * Issue #1121 - WASM Migration Phase 4: Implement activateAndTrace for WASM
  *               with backpropagation support
+ * Issue #1123 - WASM Migration Phase 6: Remove deprecated JS activation
  *
  * These tests verify that:
  * 1. WASM activateAndTrace returns correct activation values
  * 2. WASM activateAndTrace returns correct trace/usage flags
- * 3. Trace data matches JS implementation for all activation types
- * 4. Backpropagation works correctly with WASM activation
- * 5. applyLearnings() produces identical results with WASM trace data
+ * 3. Backpropagation works correctly with WASM activation
+ * 4. applyLearnings() produces correct results with WASM trace data
  */
 
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
@@ -22,7 +22,7 @@ import {
 import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
 import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
 
-// Tolerance for floating point comparisons (WASM uses f32, JS uses f64)
+// Tolerance for floating point comparisons (WASM uses f32)
 const TOLERANCE = 1e-5;
 
 /**
@@ -64,11 +64,11 @@ Deno.test({
 });
 
 // =============================================================================
-// Test: activateAndTrace() with WASM produces same output as JS
+// Test: activateAndTrace() with WASM produces correct output
 // =============================================================================
 
 Deno.test({
-  name: "WASM activateAndTrace: Returns same activation values as JS",
+  name: "WASM activateAndTrace: Returns correct activation values",
   fn() {
     const creatureJson: CreatureInternal = {
       neurons: [
@@ -95,39 +95,29 @@ Deno.test({
     const config = createBackPropagationConfig({ generations: 1 });
     const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
-    // Test with JS (useJs=true)
-    const jsOutput = creature.activateAndTrace(
+    const output = creature.activateAndTrace(
       input,
       false,
       sparseConfig,
       false,
-      true, // useJs=true (force JS)
     );
 
-    // Clear state and test with WASM (useJs=false)
-    creature.clearState();
-    const wasmOutput = creature.activateAndTrace(
-      input,
-      false,
-      sparseConfig,
-      false,
-      false, // useJs=false (use WASM - default)
-    );
-
-    assertArrayClose(
-      wasmOutput,
-      jsOutput,
-      "WASM activateAndTrace output should match JS",
+    // Verify output is valid
+    assert(output.length === 1, "Output should have correct length");
+    assert(!Number.isNaN(output[0]), "Output should not be NaN");
+    assert(
+      output[0] >= 0 && output[0] <= 1,
+      "Logistic output should be in [0,1]",
     );
   },
 });
 
 // =============================================================================
-// Test: MINIMUM trace behaviour matches JS
+// Test: MINIMUM trace behaviour works correctly
 // =============================================================================
 
 Deno.test({
-  name: "WASM activateAndTrace: MINIMUM trace behaviour matches JS",
+  name: "WASM activateAndTrace: MINIMUM trace behaviour works correctly",
   fn() {
     const creatureJson: CreatureInternal = {
       neurons: [
@@ -151,74 +141,49 @@ Deno.test({
 
     const input = new Float32Array([0.1, 0.2]);
 
-    // Test JS trace and applyLearnings
-    const jsCreature = Creature.fromJSON(creatureJson);
-    jsCreature.validate();
+    const creature = Creature.fromJSON(creatureJson);
+    creature.validate();
 
-    const jsConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const jsSparseConfig = new SparseConfig(jsCreature.exportJSON(), jsConfig);
+    const config = createBackPropagationConfig({ sparseRatio: 1 });
+    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
-    const jsOut = jsCreature.activateAndTrace(
+    const output = creature.activateAndTrace(
       input,
       false,
-      jsSparseConfig,
+      sparseConfig,
       false,
-      true, // useJs=true (force JS)
     );
-    const jsChanged = jsCreature.applyLearnings(
+    const changed = creature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
-      jsSparseConfig,
+      sparseConfig,
     );
-    const jsAfterApply = jsCreature.activate(input, false, false, true); // useJs=true
+    const afterApply = creature.activate(input);
 
-    // Test WASM trace and applyLearnings
-    const wasmCreature = Creature.fromJSON(creatureJson);
-    wasmCreature.validate();
+    // Verify output is valid
+    assertEquals(output.length, 2, "Output should have 2 values");
+    assert(!Number.isNaN(output[0]), "Output[0] should not be NaN");
+    assert(!Number.isNaN(output[1]), "Output[1] should not be NaN");
 
-    const wasmConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const wasmSparseConfig = new SparseConfig(
-      wasmCreature.exportJSON(),
-      wasmConfig,
+    // Verify applyLearnings doesn't break the creature
+    assert(
+      typeof changed === "boolean",
+      "applyLearnings should return boolean",
     );
-
-    const wasmOut = wasmCreature.activateAndTrace(
-      input,
-      false,
-      wasmSparseConfig,
-      false,
-      false, // useJs=false (use WASM)
-    );
-    const wasmChanged = wasmCreature.applyLearnings(
-      createBackPropagationConfig({ trainingMutationRate: 1 }),
-      wasmSparseConfig,
-    );
-    const wasmAfterApply = wasmCreature.activate(input);
-
-    // Activation values should match
-    assertArrayClose(wasmOut, jsOut, "MINIMUM activation values should match");
-
-    // applyLearnings behaviour should match
-    assertEquals(
-      wasmChanged,
-      jsChanged,
-      "MINIMUM applyLearnings changed flag should match",
-    );
-
-    // After applyLearnings, activation should still match
     assertArrayClose(
-      wasmAfterApply,
-      jsAfterApply,
-      "MINIMUM activation after applyLearnings should match",
+      afterApply,
+      output,
+      "Activation should be consistent",
+      1e-4,
     );
   },
 });
 
 // =============================================================================
-// Test: MAXIMUM trace behaviour matches JS
+// Test: MAXIMUM trace behaviour works correctly
 // =============================================================================
 
 Deno.test({
-  name: "WASM activateAndTrace: MAXIMUM trace behaviour matches JS",
+  name: "WASM activateAndTrace: MAXIMUM trace behaviour works correctly",
   fn() {
     const creatureJson: CreatureInternal = {
       neurons: [
@@ -242,75 +207,50 @@ Deno.test({
 
     const input = new Float32Array([0.1, 0.2]);
 
-    // Test JS trace and applyLearnings
-    const jsCreature = Creature.fromJSON(creatureJson);
-    jsCreature.validate();
+    const creature = Creature.fromJSON(creatureJson);
+    creature.validate();
 
-    const jsConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const jsSparseConfig = new SparseConfig(jsCreature.exportJSON(), jsConfig);
+    const config = createBackPropagationConfig({ sparseRatio: 1 });
+    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
-    const jsOut = jsCreature.activateAndTrace(
+    const output = creature.activateAndTrace(
       input,
       false,
-      jsSparseConfig,
+      sparseConfig,
       false,
-      true, // useJs=true (force JS)
     );
-    const jsChanged = jsCreature.applyLearnings(
+    const changed = creature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
-      jsSparseConfig,
+      sparseConfig,
     );
-    const jsAfterApply = jsCreature.activate(input, false, false, true); // useJs=true
+    const afterApply = creature.activate(input);
 
-    // Test WASM trace and applyLearnings
-    const wasmCreature = Creature.fromJSON(creatureJson);
-    wasmCreature.validate();
+    // Verify output is valid
+    assertEquals(output.length, 2, "Output should have 2 values");
+    assert(!Number.isNaN(output[0]), "Output[0] should not be NaN");
+    assert(!Number.isNaN(output[1]), "Output[1] should not be NaN");
 
-    const wasmConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const wasmSparseConfig = new SparseConfig(
-      wasmCreature.exportJSON(),
-      wasmConfig,
+    // Verify applyLearnings doesn't break the creature
+    assert(
+      typeof changed === "boolean",
+      "applyLearnings should return boolean",
     );
-
-    const wasmOut = wasmCreature.activateAndTrace(
-      input,
-      false,
-      wasmSparseConfig,
-      false,
-      false, // useJs=false (use WASM)
-    );
-    const wasmChanged = wasmCreature.applyLearnings(
-      createBackPropagationConfig({ trainingMutationRate: 1 }),
-      wasmSparseConfig,
-    );
-    const wasmAfterApply = wasmCreature.activate(input);
-
-    // Activation values should match
-    assertArrayClose(wasmOut, jsOut, "MAXIMUM activation values should match");
-
-    // applyLearnings behaviour should match
-    assertEquals(
-      wasmChanged,
-      jsChanged,
-      "MAXIMUM applyLearnings changed flag should match",
-    );
-
-    // After applyLearnings, activation should still match
     assertArrayClose(
-      wasmAfterApply,
-      jsAfterApply,
-      "MAXIMUM activation after applyLearnings should match",
+      afterApply,
+      output,
+      "Activation should be consistent",
+      1e-4,
     );
   },
 });
 
 // =============================================================================
-// Test: IF trace behaviour matches JS (condition > 0: positive branch used)
+// Test: IF trace behaviour works correctly (positive branch)
 // =============================================================================
 
 Deno.test({
   name:
-    "WASM activateAndTrace: IF trace behaviour matches JS (positive branch)",
+    "WASM activateAndTrace: IF trace behaviour works correctly (positive branch)",
   fn() {
     const creatureJson: CreatureInternal = {
       neurons: [
@@ -336,79 +276,50 @@ Deno.test({
     // Input that makes condition > 0 (positive branch used)
     const input = new Float32Array([0.1, 0.2]);
 
-    // Test JS trace and applyLearnings
-    const jsCreature = Creature.fromJSON(creatureJson);
-    jsCreature.validate();
+    const creature = Creature.fromJSON(creatureJson);
+    creature.validate();
 
-    const jsConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const jsSparseConfig = new SparseConfig(jsCreature.exportJSON(), jsConfig);
+    const config = createBackPropagationConfig({ sparseRatio: 1 });
+    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
-    const jsOut = jsCreature.activateAndTrace(
+    const output = creature.activateAndTrace(
       input,
       false,
-      jsSparseConfig,
+      sparseConfig,
       false,
-      true, // useJs=true (force JS)
     );
-    const jsChanged = jsCreature.applyLearnings(
+    const changed = creature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
-      jsSparseConfig,
+      sparseConfig,
     );
-    const jsAfterApply = jsCreature.activate(input, false, false, true); // useJs=true
+    const afterApply = creature.activate(input);
 
-    // Test WASM trace and applyLearnings
-    const wasmCreature = Creature.fromJSON(creatureJson);
-    wasmCreature.validate();
+    // Verify output is valid
+    assertEquals(output.length, 2, "Output should have 2 values");
+    assert(!Number.isNaN(output[0]), "Output[0] should not be NaN");
+    assert(!Number.isNaN(output[1]), "Output[1] should not be NaN");
 
-    const wasmConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const wasmSparseConfig = new SparseConfig(
-      wasmCreature.exportJSON(),
-      wasmConfig,
+    // Verify applyLearnings doesn't break the creature
+    assert(
+      typeof changed === "boolean",
+      "applyLearnings should return boolean",
     );
-
-    const wasmOut = wasmCreature.activateAndTrace(
-      input,
-      false,
-      wasmSparseConfig,
-      false,
-      false, // useJs=false (use WASM)
-    );
-    const wasmChanged = wasmCreature.applyLearnings(
-      createBackPropagationConfig({ trainingMutationRate: 1 }),
-      wasmSparseConfig,
-    );
-    const wasmAfterApply = wasmCreature.activate(input);
-
-    // Activation values should match
     assertArrayClose(
-      wasmOut,
-      jsOut,
-      "IF (positive branch) activation values should match",
-    );
-
-    // applyLearnings behaviour should match
-    assertEquals(
-      wasmChanged,
-      jsChanged,
-      "IF (positive branch) applyLearnings changed flag should match",
-    );
-
-    // After applyLearnings, activation should still match
-    assertArrayClose(
-      wasmAfterApply,
-      jsAfterApply,
-      "IF (positive branch) activation after applyLearnings should match",
+      afterApply,
+      output,
+      "Activation should be consistent",
+      1e-4,
     );
   },
 });
 
 // =============================================================================
-// Test: IF trace behaviour matches JS (condition <= 0: negative branch used)
+// Test: IF trace behaviour works correctly (negative branch)
 // =============================================================================
 
 Deno.test({
   name:
-    "WASM activateAndTrace: IF trace behaviour matches JS (negative branch)",
+    "WASM activateAndTrace: IF trace behaviour works correctly (negative branch)",
   fn() {
     const creatureJson: CreatureInternal = {
       neurons: [
@@ -434,78 +345,49 @@ Deno.test({
     // Input that makes condition <= 0 (negative branch used)
     const input = new Float32Array([0.1, 0.2]);
 
-    // Test JS trace and applyLearnings
-    const jsCreature = Creature.fromJSON(creatureJson);
-    jsCreature.validate();
+    const creature = Creature.fromJSON(creatureJson);
+    creature.validate();
 
-    const jsConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const jsSparseConfig = new SparseConfig(jsCreature.exportJSON(), jsConfig);
+    const config = createBackPropagationConfig({ sparseRatio: 1 });
+    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
-    const jsOut = jsCreature.activateAndTrace(
+    const output = creature.activateAndTrace(
       input,
       false,
-      jsSparseConfig,
+      sparseConfig,
       false,
-      true, // useJs=true (force JS)
     );
-    const jsChanged = jsCreature.applyLearnings(
+    const changed = creature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
-      jsSparseConfig,
+      sparseConfig,
     );
-    const jsAfterApply = jsCreature.activate(input, false, false, true); // useJs=true
+    const afterApply = creature.activate(input);
 
-    // Test WASM trace and applyLearnings
-    const wasmCreature = Creature.fromJSON(creatureJson);
-    wasmCreature.validate();
+    // Verify output is valid
+    assertEquals(output.length, 2, "Output should have 2 values");
+    assert(!Number.isNaN(output[0]), "Output[0] should not be NaN");
+    assert(!Number.isNaN(output[1]), "Output[1] should not be NaN");
 
-    const wasmConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const wasmSparseConfig = new SparseConfig(
-      wasmCreature.exportJSON(),
-      wasmConfig,
+    // Verify applyLearnings doesn't break the creature
+    assert(
+      typeof changed === "boolean",
+      "applyLearnings should return boolean",
     );
-
-    const wasmOut = wasmCreature.activateAndTrace(
-      input,
-      false,
-      wasmSparseConfig,
-      false,
-      false, // useJs=false (use WASM)
-    );
-    const wasmChanged = wasmCreature.applyLearnings(
-      createBackPropagationConfig({ trainingMutationRate: 1 }),
-      wasmSparseConfig,
-    );
-    const wasmAfterApply = wasmCreature.activate(input);
-
-    // Activation values should match
     assertArrayClose(
-      wasmOut,
-      jsOut,
-      "IF (negative branch) activation values should match",
-    );
-
-    // applyLearnings behaviour should match
-    assertEquals(
-      wasmChanged,
-      jsChanged,
-      "IF (negative branch) applyLearnings changed flag should match",
-    );
-
-    // After applyLearnings, activation should still match
-    assertArrayClose(
-      wasmAfterApply,
-      jsAfterApply,
-      "IF (negative branch) activation after applyLearnings should match",
+      afterApply,
+      output,
+      "Activation should be consistent",
+      1e-4,
     );
   },
 });
 
 // =============================================================================
-// Test: Standard squash functions mark all synapses as used
+// Test: Standard squash functions work with tracing
 // =============================================================================
 
 Deno.test({
-  name: "WASM activateAndTrace: Standard squash marks all synapses as used",
+  name: "WASM activateAndTrace: Standard squash functions work correctly",
   fn() {
     const creatureJson: CreatureInternal = {
       neurons: [
@@ -523,46 +405,29 @@ Deno.test({
 
     const input = new Float32Array([0.5, 0.5]);
 
-    // Test JS trace - standard neurons should not remove any synapses
-    const jsCreature = Creature.fromJSON(creatureJson);
-    jsCreature.validate();
+    const creature = Creature.fromJSON(creatureJson);
+    creature.validate();
 
-    const jsConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const jsSparseConfig = new SparseConfig(jsCreature.exportJSON(), jsConfig);
+    const config = createBackPropagationConfig({ sparseRatio: 1 });
+    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
-    jsCreature.activateAndTrace(input, false, jsSparseConfig, false, true); // useJs=true
-    const jsChanged = jsCreature.applyLearnings(
+    creature.activateAndTrace(input, false, sparseConfig, false);
+    const changed = creature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
-      jsSparseConfig,
+      sparseConfig,
     );
 
-    // Test WASM trace - should also not remove any synapses
-    const wasmCreature = Creature.fromJSON(creatureJson);
-    wasmCreature.validate();
-
-    const wasmConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const wasmSparseConfig = new SparseConfig(
-      wasmCreature.exportJSON(),
-      wasmConfig,
+    // Verify applyLearnings returns a boolean
+    assert(
+      typeof changed === "boolean",
+      "applyLearnings should return boolean",
     );
 
-    wasmCreature.activateAndTrace(input, false, wasmSparseConfig, false, false); // useJs=false (WASM)
-    const wasmChanged = wasmCreature.applyLearnings(
-      createBackPropagationConfig({ trainingMutationRate: 1 }),
-      wasmSparseConfig,
-    );
-
+    // Synapse count should remain 3 (standard squash uses all synapses)
     assertEquals(
-      wasmChanged,
-      jsChanged,
-      "Standard squash applyLearnings should match JS behaviour",
-    );
-
-    // Both should have the same number of synapses
-    assertEquals(
-      wasmCreature.synapses.length,
-      jsCreature.synapses.length,
-      "Same number of synapses after applyLearnings",
+      creature.synapses.length,
+      3,
+      "All synapses should be retained for standard squash",
     );
   },
 });
@@ -597,53 +462,46 @@ Deno.test({
       new Float32Array([0.8, 0.1]),
     ];
 
-    // Test with JS
-    const jsCreature = Creature.fromJSON(creatureJson);
-    jsCreature.validate();
+    const creature = Creature.fromJSON(creatureJson);
+    creature.validate();
 
-    const jsConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const jsSparseConfig = new SparseConfig(jsCreature.exportJSON(), jsConfig);
+    const config = createBackPropagationConfig({ sparseRatio: 1 });
+    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
-    const jsOutputs: Float32Array[] = [];
+    const outputs: Float32Array[] = [];
     for (const input of inputs) {
-      const output = jsCreature.activateAndTrace(
+      const output = creature.activateAndTrace(
         input,
         false,
-        jsSparseConfig,
+        sparseConfig,
         false,
-        true, // useJs=true (force JS)
       );
-      jsOutputs.push(new Float32Array(output));
+      outputs.push(new Float32Array(output));
     }
 
-    // Test with WASM
-    const wasmCreature = Creature.fromJSON(creatureJson);
-    wasmCreature.validate();
-
-    const wasmConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const wasmSparseConfig = new SparseConfig(
-      wasmCreature.exportJSON(),
-      wasmConfig,
-    );
-
-    const wasmOutputs: Float32Array[] = [];
-    for (const input of inputs) {
-      const output = wasmCreature.activateAndTrace(
-        input,
-        false,
-        wasmSparseConfig,
-        false,
-        false, // useJs=false (use WASM)
+    // All outputs should be valid
+    for (let i = 0; i < outputs.length; i++) {
+      assertEquals(
+        outputs[i].length,
+        1,
+        `Output ${i} should have correct length`,
       );
-      wasmOutputs.push(new Float32Array(output));
+      assert(!Number.isNaN(outputs[i][0]), `Output ${i} should not be NaN`);
     }
 
-    // All outputs should match
+    // Running same inputs again should produce same outputs
+    creature.clearState();
     for (let i = 0; i < inputs.length; i++) {
+      const output = creature.activateAndTrace(
+        inputs[i],
+        false,
+        sparseConfig,
+        false,
+      );
       assertArrayClose(
-        wasmOutputs[i],
-        jsOutputs[i],
-        `Iteration ${i} output should match`,
+        output,
+        outputs[i],
+        `Iteration ${i} should be reproducible`,
       );
     }
   },
@@ -672,36 +530,18 @@ Deno.test({
 
     const input = new Float32Array([0.5, 0.5]);
 
-    // Test JS trace
-    const jsCreature = Creature.fromJSON(creatureJson);
-    jsCreature.validate();
+    const creature = Creature.fromJSON(creatureJson);
+    creature.validate();
 
-    const jsConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const jsSparseConfig = new SparseConfig(jsCreature.exportJSON(), jsConfig);
+    const config = createBackPropagationConfig({ sparseRatio: 1 });
+    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
-    jsCreature.activateAndTrace(input, false, jsSparseConfig, false, true); // useJs=true
-    const jsHintValue2 = jsCreature.state.node(2).hintValue;
+    creature.activateAndTrace(input, false, sparseConfig, false);
+    const hintValue2 = creature.state.node(2).hintValue;
 
-    // Test WASM trace
-    const wasmCreature = Creature.fromJSON(creatureJson);
-    wasmCreature.validate();
-
-    const wasmConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const wasmSparseConfig = new SparseConfig(
-      wasmCreature.exportJSON(),
-      wasmConfig,
-    );
-
-    wasmCreature.activateAndTrace(input, false, wasmSparseConfig, false, false); // useJs=false (WASM)
-    const wasmHintValue2 = wasmCreature.state.node(2).hintValue;
-
-    // hintValue should be the same
-    assertAlmostEquals(
-      wasmHintValue2,
-      jsHintValue2,
-      TOLERANCE,
-      "hintValue should match for neuron 2",
-    );
+    // hintValue should be set (the WASM activation fills this for backprop)
+    assert(typeof hintValue2 === "number", "hintValue should be a number");
+    assert(!Number.isNaN(hintValue2), "hintValue should not be NaN");
   },
 });
 
@@ -742,62 +582,36 @@ Deno.test({
 
     const input = new Float32Array([0.3, 0.5, 0.7]);
 
-    // Test JS trace
-    const jsCreature = Creature.fromJSON(creatureJson);
-    jsCreature.validate();
+    const creature = Creature.fromJSON(creatureJson);
+    creature.validate();
 
-    const jsConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const jsSparseConfig = new SparseConfig(jsCreature.exportJSON(), jsConfig);
+    const config = createBackPropagationConfig({ sparseRatio: 1 });
+    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
-    const jsOut = jsCreature.activateAndTrace(
+    const output = creature.activateAndTrace(
       input,
       false,
-      jsSparseConfig,
+      sparseConfig,
       false,
-      true, // useJs=true (force JS)
     );
-    jsCreature.applyLearnings(
+    creature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
-      jsSparseConfig,
+      sparseConfig,
     );
-    const jsAfterApply = jsCreature.activate(input, false, false, true); // useJs=true
-    const jsSynapseCount = jsCreature.synapses.length;
+    const afterApply = creature.activate(input);
 
-    // Test WASM trace
-    const wasmCreature = Creature.fromJSON(creatureJson);
-    wasmCreature.validate();
-
-    const wasmConfig = createBackPropagationConfig({ sparseRatio: 1 });
-    const wasmSparseConfig = new SparseConfig(
-      wasmCreature.exportJSON(),
-      wasmConfig,
+    // Verify output is valid
+    assertEquals(output.length, 1, "Output should have 1 value");
+    assert(!Number.isNaN(output[0]), "Output should not be NaN");
+    assert(
+      output[0] >= 0 && output[0] <= 1,
+      "Logistic output should be in [0,1]",
     );
 
-    const wasmOut = wasmCreature.activateAndTrace(
-      input,
-      false,
-      wasmSparseConfig,
-      false,
-      false, // useJs=false (use WASM)
-    );
-    wasmCreature.applyLearnings(
-      createBackPropagationConfig({ trainingMutationRate: 1 }),
-      wasmSparseConfig,
-    );
-    const wasmAfterApply = wasmCreature.activate(input, false, false, false); // useJs=false (WASM)
-    const wasmSynapseCount = wasmCreature.synapses.length;
-
-    // All results should match
-    assertArrayClose(wasmOut, jsOut, "Complex network activation should match");
-    assertArrayClose(
-      wasmAfterApply,
-      jsAfterApply,
-      "Complex network activation after applyLearnings should match",
-    );
-    assertEquals(
-      wasmSynapseCount,
-      jsSynapseCount,
-      "Synapse count after applyLearnings should match",
+    // After applyLearnings, activation should still be valid
+    assert(
+      !Number.isNaN(afterApply[0]),
+      "After applyLearnings output should not be NaN",
     );
   },
 });

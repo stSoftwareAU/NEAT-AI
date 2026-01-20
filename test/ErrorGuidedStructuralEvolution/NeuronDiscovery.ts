@@ -28,6 +28,11 @@ import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Calculate the path to wasm_activation/pkg relative to repo root
+const repoRoot = new URL("../../", import.meta.url).pathname;
+const wasmPath = `${repoRoot}wasm_activation/pkg`;
 
 // =============================================================================
 // Test Scenarios - Designed to reveal production issues
@@ -298,6 +303,7 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
+    await initWasmActivation(wasmPath);
     const { crippledCreature, trainingData } = makeSimpleRecoveryScenario();
 
     console.log("\n=== SIMPLE CREATURE TEST ===");
@@ -367,6 +373,7 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
+    await initWasmActivation(wasmPath);
     const { crippledCreature, trainingData } = makeMultiLayerScenario();
 
     console.log("\n=== MULTI-LAYER CREATURE TEST ===");
@@ -443,6 +450,7 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
+    await initWasmActivation(wasmPath);
     const { crippledCreature, trainingData } = makeWideCreatureScenario();
 
     console.log("\n=== WIDE CREATURE TEST ===");
@@ -495,6 +503,7 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
+    await initWasmActivation(wasmPath);
     const { crippledCreature, trainingData } = makeMultiLayerScenario();
 
     console.log("\n=== PRODUCTION METHOD TEST ===");
@@ -558,6 +567,7 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
+    await initWasmActivation(wasmPath);
     const { crippledCreature, trainingData } = makeMultiLayerScenario();
 
     // Calculate error before discovery

@@ -36,7 +36,6 @@ import type { CostInterface } from "./costs/CostInterface.ts";
 import { Activations } from "./methods/activations/Activations.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
 import { Neat } from "./NEAT/Neat.ts";
-import { makeCreatureActivationFunction } from "./optimize/MakeCreatureActivationFunction.ts";
 import {
   type BackPropagationConfig,
   createBackPropagationConfig,
@@ -97,12 +96,6 @@ export interface CachedScoreComponents {
    */
   countWeightBias: number;
 }
-
-/**
- * Flag to track if WASM unavailability warning has been logged.
- * Issue #1122: Graceful degradation - only warn once per process.
- */
-let wasmUnavailableWarningShown = false;
 
 /**
  * Creature Class
@@ -506,7 +499,6 @@ export class Creature implements CreatureInternal {
   clearState() {
     delete this.score;
     this.state.clear();
-    delete this.creatureActivationResult;
     // Clear cached output buffer to ensure fresh buffer on next activation
     // Issue #1094: Performance optimisation for buffer reuse
     delete this.cachedOutputBuffer;
@@ -515,20 +507,15 @@ export class Creature implements CreatureInternal {
     this.disposeWasm();
   }
 
-  private creatureActivationFunction?: () => undefined;
-  private creatureActivationResult?: {
-    inlineFunction: () => undefined;
-    inlineText: string;
-    squashList: string[];
-  };
+  /**
+   * Prepares all non-input neurons for activation.
+   * Issue #1123: WASM Migration Phase 6 - Simplified from JS code generation.
+   */
   private prepareNeurons() {
     if (this.state.preparedNeurons) {
       return;
     }
 
-    this.creatureActivationResult = makeCreatureActivationFunction(this);
-    this.creatureActivationFunction =
-      this.creatureActivationResult.inlineFunction;
     for (let i = this.input, len = this.neurons.length; i < len; i++) {
       this.neurons[i].prepare();
     }
@@ -537,6 +524,7 @@ export class Creature implements CreatureInternal {
 
   /**
    * Activates the creature and traces the activity.
+   * Issue #1123: WASM Migration Phase 6 - WASM is now the sole activation implementation.
    *
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
@@ -545,8 +533,6 @@ export class Creature implements CreatureInternal {
    *   to avoid allocating a new Float32Array on each call. This reduces GC pressure
    *   but callers must not mutate the returned array as it may be overwritten.
    *   Issue #1094: Performance optimisation for repeated activations.
-   * @param {boolean} [useJs=false] - When true, forces JavaScript activation instead of WASM.
-   *   Issue #1122: WASM Migration Phase 5 - WASM is now the default, use this to force JS.
    * @returns {Float32Array} The output values after activation.
    */
   activateAndTrace(
@@ -554,173 +540,72 @@ export class Creature implements CreatureInternal {
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
     reuseBuffer: boolean = false,
-    useJs: boolean = false,
   ): Float32Array {
-    // Issue #1122: WASM is now the default activation implementation.
-    // - If caller passes `useJs` explicitly as true, use JS activation.
-    // - If `NEAT_AI_USE_JS=1|true|yes|on`, force JS activation.
-    // - Otherwise, use WASM when available.
-    let forceJs = useJs;
-    if (!forceJs) {
-      try {
-        const v = Deno.env.get("NEAT_AI_USE_JS")?.trim().toLowerCase();
-        forceJs = v === "1" || v === "true" || v === "yes" || v === "on";
-      } catch {
-        // Ignore env permission errors; default remains false.
-      }
-    }
-
-    // Issue #1122: WASM is now the default. Use WASM unless JS is forced.
-    // Issue #1121: WASM Migration Phase 4 - activateAndTrace with backpropagation support
-    if (!forceJs && this.canUseWasm()) {
-      return this.activateAndTraceWasm(
-        input,
-        feedbackLoop,
-        sparseConfig,
-        reuseBuffer,
+    // Issue #1123: WASM is now the sole activation implementation.
+    if (!this.canUseWasm()) {
+      throw new Error(
+        "WASM activation is not available. " +
+          "Ensure WASM module is initialised and all squash functions are supported. " +
+          `Unsupported squash functions: ${
+            this.getUnsupportedWasmSquashFunctions().join(", ") || "none"
+          }`,
       );
     }
 
-    // Fall back to JS activation
-    this.prepareNeurons();
-    const activations = this.state.makeActivation(input, feedbackLoop);
-
-    const neurons = this.neurons;
-    const len = neurons.length;
-
-    for (let i = this.input; i < len; i++) {
-      const n = neurons[i];
-      const result = sparseConfig.traceNeeded(n.uuid)
-        ? n.activateAndTraceNeuron()
-        : n.activateNeuron();
-
-      // Back propagation uses `hintValue` as the best available estimate of the
-      // neuron's pre-squash value. We store it for any neuron that may be
-      // propagated through (selected neurons + their paths) to avoid unstable
-      // inverse/derivative calculations.
-      if (sparseConfig.propagateNeeded(n.uuid)) {
-        this.state.node(n.index).hintValue = result.value;
-      }
-    }
-
-    const lastHiddenNode = len - this.output;
-    return this.extractOutputs(activations, lastHiddenNode, reuseBuffer);
+    return this.activateAndTraceWasm(
+      input,
+      feedbackLoop,
+      sparseConfig,
+      reuseBuffer,
+    );
   }
 
   /**
    * Activates the creature without calculating traces.
+   * Issue #1123: WASM Migration Phase 6 - WASM is now the sole activation implementation.
    *
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
+   *   Note: feedbackLoop is kept for API compatibility but is not used in WASM activation.
    * @param {boolean} [reuseBuffer=false] - When true, reuses a cached output buffer
    *   to avoid allocating a new Float32Array on each call. This reduces GC pressure
    *   but callers must not mutate the returned array as it may be overwritten.
    *   Issue #1094: Performance optimisation for repeated activations.
-   * @param {boolean} [useJs=false] - When true, forces JavaScript activation instead of WASM.
-   *   Issue #1122: WASM Migration Phase 5 - WASM is now the default, use this to force JS.
    * @returns {Float32Array} The output values after activation.
    */
   activate(
     input: Float32Array,
     feedbackLoop: boolean = false,
     reuseBuffer: boolean = false,
-    useJs: boolean = false,
   ): Float32Array {
-    // Issue #1122: WASM is now the default activation implementation.
-    // - If caller passes `useJs` explicitly as true, use JS activation.
-    // - If `NEAT_AI_USE_JS=1|true|yes|on`, force JS activation.
-    // - Otherwise, use WASM when available.
-    let forceJs = useJs;
-    try {
-      const v = Deno.env.get("NEAT_AI_USE_JS")?.trim().toLowerCase();
-      if (v === "1" || v === "true" || v === "yes" || v === "on") {
-        forceJs = true;
-      }
-    } catch {
-      // Ignore env permission errors; default remains false.
+    // Issue #1123: WASM is now the sole activation implementation.
+    if (!this.canUseWasm()) {
+      throw new Error(
+        "WASM activation is not available. " +
+          "Ensure WASM module is initialised and all squash functions are supported. " +
+          `Unsupported squash functions: ${
+            this.getUnsupportedWasmSquashFunctions().join(", ") || "none"
+          }`,
+      );
     }
 
-    // Issue #1122: WASM is now the default. Use WASM unless JS is forced.
-    if (!forceJs && this.canUseWasm()) {
-      return this.activateWasm(input, reuseBuffer);
-    }
+    // feedbackLoop parameter is kept for API compatibility but not used by WASM
+    void feedbackLoop;
 
-    // Fall back to JS activation
-    this.prepareNeurons();
-    const activations = this.state.makeActivation(input, feedbackLoop);
-
-    try {
-      this.creatureActivationFunction!();
-    } catch (e) {
-      console.error("Error in creature activation function", e);
-      const functionBody = this.creatureActivationResult?.inlineText ??
-        "Function body not available";
-      Deno.writeTextFileSync(".error-function.js", functionBody);
-      throw e;
-    }
-
-    const lastHiddenNode = this.neurons.length - this.output;
-    return this.extractOutputs(activations, lastHiddenNode, reuseBuffer);
+    return this.activateWasm(input, reuseBuffer);
   }
 
   /**
    * Check if this creature can use WASM activation.
-   * Returns true if WASM is available and all squash functions are supported.
-   * Issue #1118: WASM Migration Phase 1.
+   * Returns true if WASM module is available and all squash functions are supported.
+   * Issue #1123: WASM Migration Phase 6 - WASM is now the sole activation implementation.
    *
    * @returns {boolean} True if WASM activation can be used.
    */
   private canUseWasm(): boolean {
     // Check if WASM module is available
     if (!isWasmActivationAvailable()) {
-      // Issue #1122: Graceful degradation - warn once when WASM unavailable
-      if (!wasmUnavailableWarningShown) {
-        wasmUnavailableWarningShown = true;
-        console.warn(
-          yellow(
-            "[NEAT-AI] WASM activation module not available. " +
-              "Falling back to JavaScript activation. " +
-              "Run `initWasmActivation()` to enable WASM for better performance.",
-          ),
-        );
-      }
       return false;
-    }
-
-    // Optional performance guardrails:
-    // Using WASM requires per-creature compilation to a binary format. For small
-    // creatures this overhead can dominate and make test suites feel "stuck".
-    // These env vars allow preferring WASM only when the network is large enough.
-    //
-    // - NEAT_AI_USE_WASM_FORCE=1|true|yes|on: ignore thresholds
-    // - NEAT_AI_USE_WASM_MIN_NEURONS=<int>: minimum total neurons to use WASM
-    // - NEAT_AI_USE_WASM_MIN_SYNAPSES=<int>: minimum total synapses to use WASM
-    try {
-      const force = Deno.env.get("NEAT_AI_USE_WASM_FORCE")?.trim()
-        .toLowerCase();
-      const isForced = force === "1" || force === "true" || force === "yes" ||
-        force === "on";
-      if (!isForced) {
-        const minNeuronsRaw = Deno.env.get("NEAT_AI_USE_WASM_MIN_NEURONS")
-          ?.trim();
-        const minSynapsesRaw = Deno.env.get("NEAT_AI_USE_WASM_MIN_SYNAPSES")
-          ?.trim();
-        const minNeurons = minNeuronsRaw
-          ? Number.parseInt(minNeuronsRaw, 10)
-          : 0;
-        const minSynapses = minSynapsesRaw
-          ? Number.parseInt(minSynapsesRaw, 10)
-          : 0;
-
-        if (Number.isFinite(minNeurons) && minNeurons > 0) {
-          if (this.neurons.length < minNeurons) return false;
-        }
-        if (Number.isFinite(minSynapses) && minSynapses > 0) {
-          if (this.synapses.length < minSynapses) return false;
-        }
-      }
-    } catch {
-      // Ignore env permission errors; no thresholds applied.
     }
 
     // Check if creature is eligible for WASM (all squash functions supported)
@@ -730,7 +615,10 @@ export class Creature implements CreatureInternal {
   /**
    * Activate the creature using WASM.
    * Lazily compiles the creature to WASM on first call.
-   * Issue #1118: WASM Migration Phase 1.
+   * Issue #1123: WASM Migration Phase 6 - WASM is now the sole activation implementation.
+   *
+   * This method also populates state.activations so that creature.record()
+   * can access activation values for discovery recording.
    *
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} reuseBuffer - Whether to reuse the cached output buffer.
@@ -746,14 +634,30 @@ export class Creature implements CreatureInternal {
       this.cachedWasmActivation = WasmCreatureActivation.create(compiled) ??
         undefined;
 
-      // If compilation failed, fall back to JS
+      // Issue #1123: WASM is now required - throw if compilation fails
       if (!this.cachedWasmActivation) {
-        return this.activate(input, false, reuseBuffer, true); // useJs=true
+        throw new Error(
+          "WASM compilation failed. Cannot activate creature without WASM.",
+        );
       }
     }
 
-    // Activate using WASM
-    const wasmOutput = this.cachedWasmActivation.activate(input);
+    // Prepare state and populate input activations
+    this.prepareNeurons();
+    this.state.makeActivation(input, false);
+
+    // Use activateAndTrace to get both outputs and intermediate activations
+    // This is needed so that creature.record() can access activation values
+    const wasmResult = this.cachedWasmActivation.activateAndTrace(input);
+
+    // Apply activations to the state (for creature.record() to access)
+    const neurons = this.neurons;
+    for (let i = 0; i < wasmResult.activations.length; i++) {
+      const neuronIdx = this.input + i;
+      if (neuronIdx < neurons.length) {
+        this.state.activations[neuronIdx] = wasmResult.activations[i];
+      }
+    }
 
     // Handle buffer reuse
     if (reuseBuffer) {
@@ -763,16 +667,16 @@ export class Creature implements CreatureInternal {
       ) {
         this.cachedOutputBuffer = new Float32Array(this.output);
       }
-      this.cachedOutputBuffer.set(wasmOutput);
+      this.cachedOutputBuffer.set(wasmResult.outputs);
       return this.cachedOutputBuffer;
     }
 
-    return wasmOutput;
+    return wasmResult.outputs;
   }
 
   /**
    * Activate the creature using WASM with tracing support for backpropagation.
-   * Issue #1121: WASM Migration Phase 4 - activateAndTrace
+   * Issue #1123: WASM Migration Phase 6 - WASM is now the sole activation implementation.
    *
    * This method:
    * 1. Compiles the creature to WASM format (cached)
@@ -782,6 +686,7 @@ export class Creature implements CreatureInternal {
    *
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
+   *   Note: feedbackLoop is kept for API compatibility but is not used in WASM activation.
    * @param {SparseConfig} sparseConfig - The sparse configuration for tracing.
    * @param {boolean} reuseBuffer - Whether to reuse the cached output buffer.
    * @returns {Float32Array} The output values after activation.
@@ -798,21 +703,20 @@ export class Creature implements CreatureInternal {
       this.cachedWasmActivation = WasmCreatureActivation.create(compiled) ??
         undefined;
 
-      // If compilation failed, fall back to JS
+      // Issue #1123: WASM is now required - throw if compilation fails
       if (!this.cachedWasmActivation) {
-        return this.activateAndTrace(
-          input,
-          feedbackLoop,
-          sparseConfig,
-          reuseBuffer,
-          true, // useJs=true to force JS fallback
+        throw new Error(
+          "WASM compilation failed. Cannot activate creature without WASM.",
         );
       }
     }
 
+    // feedbackLoop parameter is kept for API compatibility but not used by WASM
+    void feedbackLoop;
+
     // Prepare state for activation
     this.prepareNeurons();
-    this.state.makeActivation(input, feedbackLoop);
+    this.state.makeActivation(input, false);
 
     // Call WASM activateAndTrace
     const wasmResult = this.cachedWasmActivation.activateAndTrace(input);
@@ -996,8 +900,17 @@ export class Creature implements CreatureInternal {
       }
       seen.add(squash);
 
+      // Resolve aliases to canonical name (e.g., "CLIPPED" -> "HARD_TANH")
+      let canonicalName = squash;
+      try {
+        const activation = Activations.find(squash);
+        canonicalName = activation.getName();
+      } catch {
+        // If we can't find the activation, use the original name
+      }
+
       // Check if squash function is in the WASM-supported list
-      if (!(squash in SQUASH_NAME_TO_TYPE)) {
+      if (!(canonicalName in SQUASH_NAME_TO_TYPE)) {
         unsupported.push(squash);
       }
     }

@@ -2,10 +2,6 @@ import { CreatureUtil } from "../../../architecture/CreatureUtils.ts";
 import type { DiscoverRecord } from "../../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { Neuron } from "../../../architecture/Neuron.ts";
 import { Mutation } from "../../../NEAT/Mutation.ts";
-import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
-import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
-import type { MakeActivationFunctionInterface } from "../../../optimize/MakeActivationFunctionInterface.ts";
-import { makeSynapsesValue } from "../../../optimize/MakeNeuronActivation.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import {
   type BackPropagationConfig,
@@ -24,12 +20,11 @@ import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
 
-export class IF
-  implements
-    NeuronActivationInterface,
-    ApplyLearningsInterface,
-    MakeActivationFunctionInterface,
-    InlineActivationInterface {
+/**
+ * IF aggregate activation function.
+ * Issue #1123: WASM Migration Phase 6 - Inline JS code generation removed.
+ */
+export class IF implements NeuronActivationInterface, ApplyLearningsInterface {
   public mutationProbability = 1;
   public static NAME = "IF";
   complexityPenalty = 3;
@@ -39,77 +34,6 @@ export class IF
     Number.MAX_SAFE_INTEGER,
   );
 
-  inlineActivation(neuron: Neuron) {
-    let functionBody = "";
-    let firstCondition = true;
-    let negativeBody = ` a[${neuron.index}]=${neuron.bias}`;
-    let positiveBody = ` a[${neuron.index}]=${neuron.bias}`;
-    const inwardList = neuron.creature.inwardConnections(neuron.index);
-    const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
-    for (let i = 0, len = inwardListClone.length; i < len; i++) {
-      const { type } = inwardListClone[i];
-
-      const value = makeSynapsesValue(
-        inwardListClone[i],
-        neuron.creature.neurons,
-      );
-
-      if (type === "condition") {
-        if (firstCondition) {
-          firstCondition = false;
-          functionBody += `if( ${value}`;
-        } else {
-          functionBody += `+ ${value}`;
-        }
-      } else if (type === "negative") {
-        negativeBody += `+ ${value}`;
-      } else {
-        positiveBody += `+ ${value}`;
-      }
-    }
-    functionBody += `>0){\n`;
-    functionBody += positiveBody;
-    functionBody += ";\n}else{\n";
-    functionBody += negativeBody;
-    functionBody += ";\n}\n";
-    return functionBody;
-  }
-
-  makeActivationFunction(
-    neuron: Neuron,
-    cache: {
-      key: string;
-      function: () => { activation: number; value: number };
-    },
-  ): () => {
-    activation: number;
-    value: number;
-  } {
-    let functionBody = "const a = this.activations;\n";
-
-    functionBody += this.inlineActivation(neuron);
-    functionBody += `return { activation:a[${neuron.index}], value:0 };`;
-    // console.info(functionBody);
-    const foundFunction = findActivationFunction(functionBody, cache);
-    if (foundFunction) {
-      return foundFunction;
-    }
-
-    // Dynamically create the function
-    const func = new Function(
-      functionBody,
-    ) as () => {
-      activation: number;
-      value: number;
-    };
-
-    // Bind static parameters: state and squash function
-    const bondedFunction = func.bind(
-      neuron.creature.state,
-    );
-    cache.function = bondedFunction;
-    return bondedFunction;
-  }
   getName() {
     return IF.NAME;
   }
@@ -537,6 +461,17 @@ export class IF
 
     const currentActivation = state.activations[neuron.index];
 
+    // Ensure the current neuron has a DiscoverRecord with activation field
+    let discoverRecord = discoverMap.get(neuron.uuid);
+    const isFirstVisit = discoverRecord === undefined;
+    if (isFirstVisit) {
+      discoverRecord = {
+        activation: currentActivation,
+        errors: [],
+      };
+      discoverMap.set(neuron.uuid, discoverRecord);
+    }
+
     let error = 0;
     if (Math.abs(requestedActivation - currentActivation) > 1e-8) {
       const targetValue = toValue(neuron, requestedActivation);
@@ -544,6 +479,11 @@ export class IF
 
       error = targetValue - currentValue;
     }
+
+    // Only process on first visit to prevent duplicate errors
+    if (!isFirstVisit) return;
+
+    discoverRecord!.errors.push(error);
 
     const eligible = inward.filter((c) => {
       if (c.from === c.to) return false;

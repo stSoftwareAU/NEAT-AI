@@ -11,6 +11,11 @@ import {
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Calculate the path to wasm_activation/pkg relative to repo root
+const repoRoot = new URL("../../", import.meta.url).pathname;
+const wasmPath = `${repoRoot}wasm_activation/pkg`;
 
 /**
  * Tests for discovery timeout handling and partial result recovery.
@@ -197,6 +202,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmActivation(wasmPath);
     assertRustDiscoveryAvailable();
     const tmpDir128 = await createTempTestDir("batch-128");
     const tmpDir512 = await createTempTestDir("batch-512");
@@ -339,6 +345,7 @@ Deno.test({
   name: "DiscoverDirectory returns partial results on timeout",
   ignore: shouldSkipRustDiscoveryTests(),
   async fn() {
+    await initWasmActivation(wasmPath);
     assertRustDiscoveryAvailable();
     const creature = makeTestCreature(15);
     CreatureUtil.makeUUID(creature);
@@ -415,6 +422,7 @@ Deno.test({
   name: "Timeout during file reading returns partial data",
   ignore: shouldSkipRustDiscoveryTests(),
   async fn() {
+    await initWasmActivation(wasmPath);
     assertRustDiscoveryAvailable();
     const creature = makeTestCreature(15);
     CreatureUtil.makeUUID(creature);
@@ -493,6 +501,7 @@ Deno.test({
   name: "Discovery completes successfully with reasonable timeout",
   ignore: shouldSkipRustDiscoveryTests(),
   async fn() {
+    await initWasmActivation(wasmPath);
     assertRustDiscoveryAvailable();
     const creature = makeTestCreature(15);
     CreatureUtil.makeUUID(creature);

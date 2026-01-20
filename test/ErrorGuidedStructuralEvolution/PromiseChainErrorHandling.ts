@@ -12,6 +12,11 @@ import {
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Calculate the path to wasm_activation/pkg relative to repo root
+const repoRoot = new URL("../../", import.meta.url).pathname;
+const wasmPath = `${repoRoot}wasm_activation/pkg`;
 
 /**
  * Tests for promise chain error handling in discovery.
@@ -47,60 +52,66 @@ function makeSimpleCreature(): Creature {
   return creature;
 }
 
-Deno.test("Discovery promise chains have error handlers", async () => {
-  const creature = makeSimpleCreature();
-  CreatureUtil.makeUUID(creature);
-  const discoverStructure = new DiscoverStructure(
-    creature,
-    5, // Reduced from 60s to 5s for faster tests
-    DEFAULT_RUST_FLUSH_RECORDS,
-  );
+Deno.test({
+  name: "Discovery promise chains have error handlers",
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
+  fn: async () => {
+    await initWasmActivation(wasmPath);
+    const creature = makeSimpleCreature();
+    CreatureUtil.makeUUID(creature);
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      5, // Reduced from 60s to 5s for faster tests
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
 
-  const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
-  // Initialize should create promises
-  discoverStructure.initialize(neuronPromisesMap);
+    // Initialize should create promises
+    discoverStructure.initialize(neuronPromisesMap);
 
-  // Create test data
-  const testData: DataRecordInterface[] = [
-    { input: new Float32Array([1.0]), output: new Float32Array([0.5]) },
-  ];
+    // Create test data
+    const testData: DataRecordInterface[] = [
+      { input: new Float32Array([1.0]), output: new Float32Array([0.5]) },
+    ];
 
-  // Record should chain promises
-  const recorded = discoverStructure.record(testData, neuronPromisesMap);
-  // Note: This test checks promise error handling, so we don't assert on recorded
-  // Flush Rust recording if using Rust
-  if (recorded) {
-    discoverStructure.flushRustRecording();
-  }
-
-  // All promises should have error handlers (not throw on rejection)
-  const promiseResults = await Promise.allSettled([
-    ...neuronPromisesMap.values(),
-  ]);
-
-  let completedCount = 0;
-  let errorCount = 0;
-
-  for (const result of promiseResults) {
-    if (result.status === "fulfilled") {
-      completedCount++;
-    } else {
-      // If we catch here, it means the promise didn't have an error handler
-      errorCount++;
-      console.warn("Promise rejected without handler:", result.reason);
+    // Record should chain promises
+    const recorded = discoverStructure.record(testData, neuronPromisesMap);
+    // Note: This test checks promise error handling, so we don't assert on recorded
+    // Flush Rust recording if using Rust
+    if (recorded) {
+      discoverStructure.flushRustRecording();
     }
-  }
 
-  // Cleanup
-  await discoverStructure.cleanUp();
+    // All promises should have error handlers (not throw on rejection)
+    const promiseResults = await Promise.allSettled([
+      ...neuronPromisesMap.values(),
+    ]);
 
-  // All promises should complete (with or without errors)
-  assertEquals(
-    completedCount + errorCount,
-    neuronPromisesMap.size,
-    "All promises should resolve or reject",
-  );
+    let completedCount = 0;
+    let errorCount = 0;
+
+    for (const result of promiseResults) {
+      if (result.status === "fulfilled") {
+        completedCount++;
+      } else {
+        // If we catch here, it means the promise didn't have an error handler
+        errorCount++;
+        console.warn("Promise rejected without handler:", result.reason);
+      }
+    }
+
+    // Cleanup
+    await discoverStructure.cleanUp();
+
+    // All promises should complete (with or without errors)
+    assertEquals(
+      completedCount + errorCount,
+      neuronPromisesMap.size,
+      "All promises should resolve or reject",
+    );
+  },
 });
 
 Deno.test({
@@ -109,6 +120,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmActivation(wasmPath);
     assertRustDiscoveryAvailable();
     const creature = makeSimpleCreature();
     CreatureUtil.makeUUID(creature);
@@ -171,57 +183,63 @@ Deno.test({
   },
 });
 
-Deno.test("Discovery Promise.all() completes within timeout", async () => {
-  const creature = makeSimpleCreature();
-  CreatureUtil.makeUUID(creature);
-  const discoverStructure = new DiscoverStructure(
-    creature,
-    5, // Reduced from 60s to 5s for faster tests
-    DEFAULT_RUST_FLUSH_RECORDS,
-  );
+Deno.test({
+  name: "Discovery Promise.all() completes within timeout",
+  sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
+  sanitizeOps: false, // Disable ops sanitization for FFI operations
+  fn: async () => {
+    await initWasmActivation(wasmPath);
+    const creature = makeSimpleCreature();
+    CreatureUtil.makeUUID(creature);
+    const discoverStructure = new DiscoverStructure(
+      creature,
+      5, // Reduced from 60s to 5s for faster tests
+      DEFAULT_RUST_FLUSH_RECORDS,
+    );
 
-  const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
 
-  discoverStructure.initialize(neuronPromisesMap);
+    discoverStructure.initialize(neuronPromisesMap);
 
-  const testData: DataRecordInterface[] = [
-    { input: new Float32Array([1.0]), output: new Float32Array([0.5]) },
-  ];
+    const testData: DataRecordInterface[] = [
+      { input: new Float32Array([1.0]), output: new Float32Array([0.5]) },
+    ];
 
-  const recorded = discoverStructure.record(testData, neuronPromisesMap);
-  // Flush Rust recording if using Rust
-  if (recorded) {
-    discoverStructure.flushRustRecording();
-  }
-
-  // Create a timeout to ensure Promise.all doesn't hang
-  const TIMEOUT_MS = 5000; // 5 seconds - sufficient for CI
-  let timeoutId: number | undefined;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new Error("Promise.all() timeout - likely deadlock"));
-    }, TIMEOUT_MS);
-  });
-
-  // This should complete or fail, but not hang
-  try {
-    await Promise.race([
-      Promise.all([...neuronPromisesMap.values()]),
-      timeoutPromise,
-    ]);
-    console.log("✓ Promise.all() completed successfully");
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("deadlock")) {
-      throw error; // This is the bad case
+    const recorded = discoverStructure.record(testData, neuronPromisesMap);
+    // Flush Rust recording if using Rust
+    if (recorded) {
+      discoverStructure.flushRustRecording();
     }
-    // Other errors are acceptable (file I/O failures)
-    console.log("✓ Promise.all() failed but didn't deadlock:", error);
-  } finally {
-    // Always clear timeout to prevent resource leak
-    if (timeoutId !== undefined) {
-      clearTimeout(timeoutId);
-    }
-  }
 
-  await discoverStructure.cleanUp();
+    // Create a timeout to ensure Promise.all doesn't hang
+    const TIMEOUT_MS = 5000; // 5 seconds - sufficient for CI
+    let timeoutId: number | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error("Promise.all() timeout - likely deadlock"));
+      }, TIMEOUT_MS);
+    });
+
+    // This should complete or fail, but not hang
+    try {
+      await Promise.race([
+        Promise.all([...neuronPromisesMap.values()]),
+        timeoutPromise,
+      ]);
+      console.log("✓ Promise.all() completed successfully");
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("deadlock")) {
+        throw error; // This is the bad case
+      }
+      // Other errors are acceptable (file I/O failures)
+      console.log("✓ Promise.all() failed but didn't deadlock:", error);
+    } finally {
+      // Always clear timeout to prevent resource leak
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    }
+
+    await discoverStructure.cleanUp();
+  },
 });

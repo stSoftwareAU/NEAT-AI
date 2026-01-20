@@ -3,13 +3,14 @@ import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
+import { initWasmActivation } from "../../../src/wasm/WasmActivation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("Constant", () => {
+Deno.test("Constant", async () => {
+  await initWasmActivation();
   const directory = ".test/optimize/activate/Constant";
-  Deno.mkdirSync(directory, { recursive: true });
+  await Deno.mkdir(directory, { recursive: true });
 
   const json: CreatureExport = {
     neurons: [
@@ -28,25 +29,10 @@ Deno.test("Constant", () => {
   const creature = Creature.fromJSON(json);
 
   const exportCreature = creature.exportJSON();
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/creature.json`,
     JSON.stringify(exportCreature, null, 1),
   );
-
-  const { inlineText, squashList } = makeCreatureActivationFunction(creature);
-
-  Deno.writeTextFileSync(
-    `${directory}/inline.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
-
-  if (inlineText.includes(";;")) {
-    fail("Double semicolons detected");
-  }
-
-  if (!inlineText.includes("6.28")) {
-    fail("Should calculated constant value");
-  }
 
   const sparseConfig = new SparseConfig(
     exportCreature,
@@ -88,9 +74,10 @@ Deno.test("Constant", () => {
   }
 });
 
-Deno.test("Constant-max", () => {
+Deno.test("Constant-max", async () => {
+  await initWasmActivation();
   const directory = ".test/optimize/activate/Constant-max";
-  Deno.mkdirSync(directory, { recursive: true });
+  await Deno.mkdir(directory, { recursive: true });
 
   const json: CreatureExport = {
     neurons: [
@@ -109,25 +96,10 @@ Deno.test("Constant-max", () => {
   const creature = Creature.fromJSON(json);
 
   const exportCreature = creature.exportJSON();
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/creature.json`,
     JSON.stringify(exportCreature, null, 1),
   );
-
-  const { inlineText, squashList } = makeCreatureActivationFunction(creature);
-
-  Deno.writeTextFileSync(
-    `${directory}/inline.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
-
-  if (inlineText.includes(";;")) {
-    fail("Double semicolons detected");
-  }
-
-  if (!inlineText.includes("6.28")) {
-    fail("Should calculated constant value");
-  }
 
   const sparseConfig = new SparseConfig(
     exportCreature,

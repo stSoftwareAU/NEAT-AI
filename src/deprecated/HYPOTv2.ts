@@ -3,87 +3,24 @@ import type { DiscoverRecord } from "../architecture/ErrorGuidedStructuralEvolut
 import type { Neuron } from "../architecture/Neuron.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
-import { findActivationFunction } from "../optimize/FunctionCache.ts";
-import type { InlineActivationInterface } from "../optimize/InlineActivationInterface.ts";
-import type { MakeActivationFunctionInterface } from "../optimize/MakeActivationFunctionInterface.ts";
-import { makeSynapsesValue } from "../optimize/MakeNeuronActivation.ts";
 import { ActivationRange } from "../propagate/ActivationRange.ts";
 import type { BackPropagationConfig } from "../propagate/BackPropagation.ts";
 import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 
 /**
- * @deprecated No longer used since v2.0.0. A normal neural network can mimic the behavior using SQRT & SQUARE.
+ * @deprecated No longer used since v2.0.0. A normal neural network can mimic the behaviour using SQRT & SQUARE.
+ * Issue #1123: WASM Migration Phase 6 - Inline JS code generation removed.
  */
-export class HYPOTv2
-  implements
-    NeuronActivationInterface,
-    MakeActivationFunctionInterface,
-    InlineActivationInterface {
+export class HYPOTv2 implements NeuronActivationInterface {
   public mutationProbability = 0;
   public static NAME = "HYPOTv2";
   complexityPenalty = 9_000;
-  inlineActivation(neuron: Neuron) {
-    let valueLine = "";
-
-    const inwardList = neuron.creature.inwardConnections(neuron.index);
-    const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
-    for (let i = 0, len = inwardListClone.length; i < len; i++) {
-      if (i > 0) {
-        valueLine += ",";
-      }
-      const value = makeSynapsesValue(
-        inwardListClone[i],
-        neuron.creature.neurons,
-      );
-      valueLine += value;
-      valueLine += ` + ${neuron.bias}`;
-    }
-
-    const functionBody = `a[${neuron.index}]= Math.hypot(${valueLine});\n`;
-
-    return functionBody;
-  }
 
   public readonly range = new ActivationRange(
     HYPOTv2.NAME,
     0,
     Number.MAX_SAFE_INTEGER,
   );
-
-  makeActivationFunction(
-    neuron: Neuron,
-    cache: {
-      key: string;
-      function: () => { activation: number; value: number };
-    },
-  ): () => {
-    activation: number;
-    value: number;
-  } {
-    let functionBody = "const a = this.activations;\n";
-    functionBody += this.inlineActivation(neuron);
-
-    functionBody += `return { activation: a[${neuron.index}], value:0 };`;
-    const foundFunction = findActivationFunction(functionBody, cache);
-    if (foundFunction) {
-      return foundFunction;
-    }
-
-    // Dynamically create the function
-    const func = new Function(
-      functionBody,
-    ) as () => {
-      activation: number;
-      value: number;
-    };
-
-    // Bind static parameters: state and squash function
-    const bondedFunction = func.bind(
-      neuron.creature.state,
-    );
-    cache.function = bondedFunction;
-    return bondedFunction;
-  }
 
   propagate(
     neuron: Neuron,

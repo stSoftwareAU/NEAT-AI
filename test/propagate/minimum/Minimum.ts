@@ -4,6 +4,11 @@ import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
 import { train } from "../../TrainTestOnlyUtil.ts";
+import { initWasmActivation } from "../../../src/wasm/WasmActivation.ts";
+
+// Calculate the path to wasm_activation/pkg relative to repo root
+const repoRoot = new URL("../../../", import.meta.url).pathname;
+const wasmPath = `${repoRoot}wasm_activation/pkg`;
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -22,7 +27,8 @@ function setup() {
   Deno.mkdirSync(directory, { recursive: true });
 }
 
-Deno.test("propagate/minimum", () => {
+Deno.test("propagate/minimum", async () => {
+  await initWasmActivation(wasmPath);
   check();
 });
 

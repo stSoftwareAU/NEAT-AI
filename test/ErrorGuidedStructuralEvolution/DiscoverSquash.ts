@@ -15,6 +15,11 @@ import { Mish } from "../../src/methods/activations/types/Mish.ts";
 import { ReLU } from "../../src/methods/activations/types/ReLU.ts";
 import { ReLU6 } from "../../src/methods/activations/types/ReLU6.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Calculate the path to wasm_activation/pkg relative to repo root
+const repoRoot = new URL("../../", import.meta.url).pathname;
+const wasmPath = `${repoRoot}wasm_activation/pkg`;
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -94,6 +99,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmActivation(wasmPath);
     const targetCreature = makeCreature();
     const data = makeData(targetCreature.input);
 

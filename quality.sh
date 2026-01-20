@@ -156,23 +156,26 @@ if ! deno run \
 fi
 
 echo ""
-echo "Running discovery tests without FFI to verify graceful degradation..."
+# Issue #1123: WASM is now required for activation, so FFI must be enabled for discovery tests.
+echo "Running discovery tests with FFI enabled..."
 
 NO_WASM_ARGS=()
 if [[ "$MODE" == "skip-wasm-tests" ]]; then
   NO_WASM_ARGS=("${WASM_TEST_IGNORE_ARGS[@]}")
 fi
 
-ENV_CMD=(env)
+# Issue #1123: WASM is now the sole activation implementation, so auto-init is always enabled.
+ENV_CMD=(env NEAT_AI_WASM_AUTO_INIT=1)
 if [[ "$MODE" == "wasm" ]]; then
   # Force WASM on wherever eligible.
-  ENV_CMD+=(NEAT_AI_USE_WASM=1 NEAT_AI_WASM_AUTO_INIT=1 NEAT_AI_USE_WASM_FORCE=1)
+  ENV_CMD+=(NEAT_AI_USE_WASM=1 NEAT_AI_USE_WASM_FORCE=1)
 elif [[ "$MODE" == "wasm-fast" ]]; then
   # Prefer WASM only where it is likely beneficial, to keep the suite quick.
-  ENV_CMD+=(NEAT_AI_USE_WASM=1 NEAT_AI_WASM_AUTO_INIT=1 NEAT_AI_USE_WASM_MIN_NEURONS=64 NEAT_AI_USE_WASM_MIN_SYNAPSES=256)
+  ENV_CMD+=(NEAT_AI_USE_WASM=1 NEAT_AI_USE_WASM_MIN_NEURONS=64 NEAT_AI_USE_WASM_MIN_SYNAPSES=256)
 elif [[ "$MODE" == "no-wasm" ]]; then
-  # Force baseline JS default even if the user's shell has WASM env vars set.
-  ENV_CMD+=(NEAT_AI_USE_WASM=0 NEAT_AI_WASM_AUTO_INIT=0)
+  # Note: no-wasm mode is now deprecated since WASM is the sole implementation.
+  # Keeping for backwards compatibility but it will fail if WASM is unavailable.
+  ENV_CMD+=(NEAT_AI_USE_WASM=0)
 fi
 
 "${ENV_CMD[@]}" NEAT_RUST_DISCOVERY_OPTIONAL=true NEAT_AI_DISCOVERY_DETERMINISTIC=1 deno test \
@@ -180,6 +183,7 @@ fi
   --allow-write \
   --allow-net \
   --allow-env \
+  --allow-ffi \
   --v8-flags=--max-old-space-size=8192 \
   --parallel \
   --config ./deno.json \

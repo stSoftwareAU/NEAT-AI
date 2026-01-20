@@ -1,16 +1,17 @@
 import { assert, assertAlmostEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 import { simplify } from "../../../src/optimize/Simplify.ts";
+import { initWasmActivation } from "../../../src/wasm/WasmActivation.ts";
 import { Cosine } from "../../../src/methods/activations/types/Cosine.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("Cosine", () => {
+Deno.test("Cosine", async () => {
   const directory = ".test/optimize/simplify/Cosine";
-  Deno.mkdirSync(directory, { recursive: true });
+  await initWasmActivation();
+  await Deno.mkdir(directory, { recursive: true });
 
   const json: CreatureExport = {
     neurons: [
@@ -100,25 +101,17 @@ Deno.test("Cosine", () => {
   const complex = Creature.fromJSON(json);
 
   const exportCreature = complex.exportJSON();
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/complex.json`,
     JSON.stringify(exportCreature, null, 1),
   );
   const simplifiedCreature = simplify(complex);
   assert(simplifiedCreature);
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/simplified.json`,
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
 
-  const { inlineText, squashList } = makeCreatureActivationFunction(
-    simplifiedCreature,
-  );
-
-  Deno.writeTextFileSync(
-    `${directory}/inline-simplified.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
   assertNotEquals(
     complex.uuid ?? "COMPLEX",
     simplifiedCreature.uuid ?? "SIMPLIFIED",

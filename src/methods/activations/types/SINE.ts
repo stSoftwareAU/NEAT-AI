@@ -1,5 +1,4 @@
 import { assert } from "@std/assert";
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import type { SimplifyBiasInterface } from "../../../optimize/SimplifyBiasInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
@@ -9,6 +8,7 @@ import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 
 /**
  * SINE Activation Function
+ * Issue #1123: WASM Migration Phase 6 - Inline JS code generation removed.
  *
  * The SINE function maps the input to a sinusoidal wave, returning values between -1 and 1.
  * This function can be useful for learning periodic patterns.
@@ -18,11 +18,7 @@ import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
  * https://en.wikipedia.org/wiki/Sine
  */
 export class SINE
-  implements
-    ActivationInterface,
-    UnSquashInterface,
-    InlineSquashInterface,
-    SimplifyBiasInterface {
+  implements ActivationInterface, UnSquashInterface, SimplifyBiasInterface {
   public mutationProbability = 16;
   simplifyBias(bias: number): number {
     return bias % (2 * Math.PI);
@@ -89,10 +85,6 @@ export class SINE
 
   getName() {
     return SINE.NAME;
-  }
-
-  inlineSquash(value: string): string {
-    return `Math.sin(${value})`;
   }
 
   // SINE function definition

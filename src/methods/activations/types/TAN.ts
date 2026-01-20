@@ -1,4 +1,3 @@
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import type { SimplifyBiasInterface } from "../../../optimize/SimplifyBiasInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
@@ -8,6 +7,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
  * TAN Activation Function
+ * Issue #1123: WASM Migration Phase 6 - Inline JS code generation removed.
  *
  * f(x) = tan(x)
  * f⁻¹(y) = atan(y) + πk, where k ∈ ℤ
@@ -16,11 +16,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Trigonometric_functions#Tangent
  */
 export class TAN
-  implements
-    ActivationInterface,
-    UnSquashInterface,
-    InlineSquashInterface,
-    SimplifyBiasInterface {
+  implements ActivationInterface, UnSquashInterface, SimplifyBiasInterface {
   public mutationProbability = 2;
   public static readonly NAME = "TAN";
 
@@ -36,10 +32,6 @@ export class TAN
 
   simplifyBias(bias: number): number {
     return bias % Math.PI;
-  }
-
-  inlineSquash(value: string): string {
-    return `Math.tan(${value})`;
   }
 
   squash(x: number): number {

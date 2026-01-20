@@ -2,8 +2,8 @@ import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 import { simplify } from "../../../src/optimize/Simplify.ts";
+import { initWasmActivation } from "../../../src/wasm/WasmActivation.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 import { MAXIMUM } from "../../../src/methods/activations/aggregate/MAXIMUM.ts";
@@ -11,9 +11,10 @@ import { makeData } from "./ABSOLUTE.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("IDENTITY", () => {
+Deno.test("IDENTITY", async () => {
   const directory = ".test/optimize/simplify/IDENTITY";
-  Deno.mkdirSync(directory, { recursive: true });
+  await initWasmActivation();
+  await Deno.mkdir(directory, { recursive: true });
 
   const json: CreatureExport = {
     neurons: [
@@ -61,19 +62,15 @@ Deno.test("IDENTITY", () => {
   const complex = Creature.fromJSON(json);
 
   const exportCreature = complex.exportJSON();
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/complex.json`,
     JSON.stringify(exportCreature, null, 1),
   );
   const simplifiedCreature = simplify(complex);
   assert(simplifiedCreature);
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/simplified.json`,
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
-  );
-
-  const { inlineText, squashList } = makeCreatureActivationFunction(
-    simplifiedCreature,
   );
 
   const sparseComplexConfig = new SparseConfig(
@@ -83,10 +80,6 @@ Deno.test("IDENTITY", () => {
   const sparseSimplifiedConfig = new SparseConfig(
     simplifiedCreature.exportJSON(),
     createBackPropagationConfig({}),
-  );
-  Deno.writeTextFileSync(
-    `${directory}/inline-simplified.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);
@@ -108,9 +101,10 @@ Deno.test("IDENTITY", () => {
   }
 });
 
-Deno.test("IDENTITY-simple", () => {
+Deno.test("IDENTITY-simple", async () => {
   const directory = ".test/optimize/simplify/IDENTITY-simple";
-  Deno.mkdirSync(directory, { recursive: true });
+  await initWasmActivation();
+  await Deno.mkdir(directory, { recursive: true });
 
   const json: CreatureExport = {
     neurons: [
@@ -133,19 +127,15 @@ Deno.test("IDENTITY-simple", () => {
   const complex = Creature.fromJSON(json);
 
   const exportCreature = complex.exportJSON();
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/complex.json`,
     JSON.stringify(exportCreature, null, 1),
   );
   const simplifiedCreature = simplify(complex);
   assert(simplifiedCreature);
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/simplified.json`,
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
-  );
-
-  const { inlineText, squashList } = makeCreatureActivationFunction(
-    simplifiedCreature,
   );
 
   const sparseComplexConfig = new SparseConfig(
@@ -155,10 +145,6 @@ Deno.test("IDENTITY-simple", () => {
   const sparseSimplifiedConfig = new SparseConfig(
     simplifiedCreature.exportJSON(),
     createBackPropagationConfig({}),
-  );
-  Deno.writeTextFileSync(
-    `${directory}/inline-simplified.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);
@@ -182,9 +168,10 @@ Deno.test("IDENTITY-simple", () => {
   }
 });
 
-Deno.test("IDENTITY Maximum", () => {
+Deno.test("IDENTITY Maximum", async () => {
   const directory = ".test/optimize/simplify/IDENTITY-maximum";
-  Deno.mkdirSync(directory, { recursive: true });
+  await initWasmActivation();
+  await Deno.mkdir(directory, { recursive: true });
 
   const json: CreatureExport = {
     neurons: [
@@ -207,7 +194,7 @@ Deno.test("IDENTITY Maximum", () => {
   const complex = Creature.fromJSON(json);
 
   const exportCreature = complex.exportJSON();
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/complex.json`,
     JSON.stringify(exportCreature, null, 1),
   );

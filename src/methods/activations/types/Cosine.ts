@@ -1,5 +1,7 @@
 /**
  * Cosine activation function
+ * Issue #1123: WASM Migration Phase 6 - Inline JS code generation removed.
+ *
  * Squash function: f(x) = cos(x)
  * Range: [-1, 1]
  * Source: Custom (Cosine is a standard mathematical function)
@@ -9,7 +11,6 @@
  * https://en.wikipedia.org/wiki/Inverse_trigonometric_functions#Arccosine
  */
 import { assert } from "@std/assert";
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import type { SimplifyBiasInterface } from "../../../optimize/SimplifyBiasInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
@@ -18,11 +19,7 @@ import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 
 export class Cosine
-  implements
-    ActivationInterface,
-    UnSquashInterface,
-    InlineSquashInterface,
-    SimplifyBiasInterface {
+  implements ActivationInterface, UnSquashInterface, SimplifyBiasInterface {
   public mutationProbability = 15;
   public static NAME = "Cosine";
   public readonly range: ActivationRange = new ActivationRange(
@@ -38,10 +35,6 @@ export class Cosine
   simplifyBias(bias: number): number {
     const tmp = bias % (2 * Math.PI);
     return tmp;
-  }
-
-  inlineSquash(value: string): string {
-    return `Math.cos(${value})`;
   }
 
   squash(x: number) {

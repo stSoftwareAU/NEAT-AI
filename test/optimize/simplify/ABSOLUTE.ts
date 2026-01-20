@@ -5,13 +5,14 @@ import { Exponential } from "../../../src/methods/activations/types/Exponential.
 import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
 import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
 import { STEP } from "../../../src/methods/activations/types/STEP.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 import { simplify } from "../../../src/optimize/Simplify.ts";
+import { initWasmActivation } from "../../../src/wasm/WasmActivation.ts";
 import { ReLU6 } from "../../../src/methods/activations/types/ReLU6.ts";
 
-Deno.test("ABSOLUTE", () => {
+Deno.test("ABSOLUTE", async () => {
   const directory = ".test/optimize/simplify/ABSOLUTE";
-  Deno.mkdirSync(directory, { recursive: true });
+  await initWasmActivation();
+  await Deno.mkdir(directory, { recursive: true });
 
   const json: CreatureExport = {
     neurons: [
@@ -116,25 +117,17 @@ Deno.test("ABSOLUTE", () => {
   const complex = Creature.fromJSON(json);
   complex.validate();
   const exportCreature = complex.exportJSON();
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/complex.json`,
     JSON.stringify(exportCreature, null, 1),
   );
   const simplifiedCreature = simplify(complex);
   assert(simplifiedCreature);
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/simplified.json`,
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
 
-  const { inlineText, squashList } = makeCreatureActivationFunction(
-    simplifiedCreature,
-  );
-
-  Deno.writeTextFileSync(
-    `${directory}/inline-simplified.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);
 

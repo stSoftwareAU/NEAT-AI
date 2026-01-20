@@ -11,11 +11,6 @@ import type {
 } from "../methods/activations/UnSquashInterface.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
 import {
-  findActivationFunction,
-  type FunctionCache,
-} from "../optimize/FunctionCache.ts";
-import type { MakeActivationFunctionInterface } from "../optimize/MakeActivationFunctionInterface.ts";
-import {
   type BackPropagationConfig,
   toValue,
 } from "../propagate/BackPropagation.ts";
@@ -153,67 +148,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
     }
   }
 
-  private functionCache: FunctionCache = { key: "" };
-
-  /**
-   * Creates a function that calculates the activation of the neuron
-   * @returns A function that calculates the activation of the neuron
-   */
-  private makeFunction(): () => {
-    activation: number;
-    value: number;
-  } {
-    let functionBody = "const activations = state.activations;\n";
-    functionBody += `const value = ${this.bias}`;
-
-    const inwardList = this.creature.inwardConnections(this.index);
-    const inwardListClone = inwardList.slice(0).sort((a, b) => a.from - b.from);
-    for (let i = 0, len = inwardListClone.length; i < len; i++) {
-      const { from, weight } = inwardListClone[i];
-      functionBody += `+\nactivations[${from}] * ${weight}`;
-    }
-    functionBody += `;\n`;
-
-    functionBody += `const activation = squash(value);\n`;
-    functionBody += `activations[${this.index}] = activation;\n`;
-    functionBody += "return { activation, value };";
-
-    const foundFunction = findActivationFunction(
-      functionBody,
-      this.functionCache,
-      this.squash,
-    );
-
-    if (foundFunction) {
-      return foundFunction;
-    }
-
-    // Dynamically create the function
-    const func = new Function(
-      "state", // Parameter: neuron state
-      "squash", // Parameter: squash function
-      functionBody,
-    ) as (
-      state: { activations: Float32Array },
-      squash: (value: number) => number,
-    ) => {
-      activation: number;
-      value: number;
-    };
-
-    // Bind static parameters: state and squash function
-    const bondedFunction = func.bind(
-      null,
-      this.creature.state,
-      this.squashProxy,
-    );
-
-    this.functionCache.function = bondedFunction;
-    return bondedFunction;
-  }
-
   /**
    * Updates the cached activation function based on neuron type and squash.
+   * Issue #1123: WASM Migration Phase 6 - Simplified, JS code generation removed.
+   * This method sets up proxies for activation methods, now only used for backpropagation.
    */
   public prepare():
     | undefined
@@ -227,28 +165,17 @@ export class Neuron implements TagsInterface, NeuronInternal {
       const squashMethod = this.findSquash();
       if (this.isNodeActivation(squashMethod)) {
         this.activateAndTraceNeuron = this.activateAndTraceNeuronActivation;
-
-        if (
-          (squashMethod as MakeActivationFunctionInterface)
-            .makeActivationFunction
-        ) {
-          this.activateNeuron =
-            (squashMethod as MakeActivationFunctionInterface)
-              .makeActivationFunction(this, this.functionCache);
-        } else {
-          this.activateNeuron = this.activateNeuronActivation;
-        }
+        this.activateNeuron = this.activateNeuronActivation;
         this.activateProxy = squashMethod.activate.bind(squashMethod);
         this.activateAndTraceProxy = squashMethod.activateAndTrace.bind(
           squashMethod,
         );
       } else {
         this.activateAndTraceNeuron = this.activateAndTraceLinear;
+        this.activateNeuron = this.activateLinear;
 
         const squashActivation = squashMethod as ActivationInterface;
         this.squashProxy = squashActivation.squash.bind(squashActivation);
-
-        this.activateNeuron = this.makeFunction();
       }
       return squashMethod;
     }
@@ -497,10 +424,32 @@ export class Neuron implements TagsInterface, NeuronInternal {
   }
 
   private activateAndTraceLinear(): { activation: number; value: number } {
-    const { activation, value } = this.activateNeuron();
+    const { activation, value } = this.activateLinear();
     const state = this.creature.state;
     const ns = state.node(this.index);
     ns.hintValue = value;
+
+    return { activation, value };
+  }
+
+  /**
+   * Activates a linear (non-aggregate) neuron.
+   * Issue #1123: WASM Migration Phase 6 - Replaces dynamically generated makeFunction().
+   * This is now only used for backpropagation calculations.
+   */
+  private activateLinear(): { activation: number; value: number } {
+    const state = this.creature.state;
+    const activations = state.activations;
+    const inwardList = this.creature.inwardConnections(this.index);
+
+    let value = this.bias;
+    for (let i = 0, len = inwardList.length; i < len; i++) {
+      const { from, weight } = inwardList[i];
+      value += activations[from] * weight;
+    }
+
+    const activation = this.squashProxy(value);
+    activations[this.index] = activation;
 
     return { activation, value };
   }

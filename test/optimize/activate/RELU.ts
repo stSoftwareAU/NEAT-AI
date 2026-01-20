@@ -3,17 +3,24 @@ import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
+import { initWasmActivation } from "../../../src/wasm/WasmActivation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("RELU", () => {
+/**
+ * Issue #1123: WASM Migration Phase 6 - These tests verify WASM activation
+ * for ReLU and MAXIMUM squash functions.
+ */
+
+Deno.test("RELU - WASM activation", async () => {
+  await initWasmActivation();
+
   const directory = ".test/optimize/activate/RELU";
-  Deno.mkdirSync(directory, { recursive: true });
+  await Deno.mkdir(directory, { recursive: true });
 
   const json: CreatureExport = {
     neurons: [
-      { bias: Math.LN2, type: "output", squash: "RELU", uuid: "output-0" },
+      { bias: Math.LN2, type: "output", squash: "ReLU", uuid: "output-0" },
     ],
     synapses: [
       { weight: Math.E, fromUUID: "input-0", toUUID: "output-0" },
@@ -26,25 +33,10 @@ Deno.test("RELU", () => {
   const creature = Creature.fromJSON(json);
 
   const exportCreature = creature.exportJSON();
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/creature.json`,
     JSON.stringify(exportCreature, null, 1),
   );
-
-  const { inlineText, squashList } = makeCreatureActivationFunction(creature);
-
-  Deno.writeTextFileSync(
-    `${directory}/inline.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
-
-  if (inlineText.includes(";;")) {
-    fail("Double semicolons detected");
-  }
-
-  if (inlineText.includes("RELU")) {
-    fail("RELU detected");
-  }
 
   const sparseConfig = new SparseConfig(
     exportCreature,
@@ -86,9 +78,11 @@ Deno.test("RELU", () => {
   }
 });
 
-Deno.test("Constant-max", () => {
+Deno.test("Constant-max - WASM activation", async () => {
+  await initWasmActivation();
+
   const directory = ".test/optimize/activate/Constant-max";
-  Deno.mkdirSync(directory, { recursive: true });
+  await Deno.mkdir(directory, { recursive: true });
 
   const json: CreatureExport = {
     neurons: [
@@ -107,25 +101,10 @@ Deno.test("Constant-max", () => {
   const creature = Creature.fromJSON(json);
 
   const exportCreature = creature.exportJSON();
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/creature.json`,
     JSON.stringify(exportCreature, null, 1),
   );
-
-  const { inlineText, squashList } = makeCreatureActivationFunction(creature);
-
-  Deno.writeTextFileSync(
-    `${directory}/inline.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
-
-  if (inlineText.includes(";;")) {
-    fail("Double semicolons detected");
-  }
-
-  if (!inlineText.includes("6.28")) {
-    fail("Should calculated constant value");
-  }
 
   const sparseConfig = new SparseConfig(
     exportCreature,

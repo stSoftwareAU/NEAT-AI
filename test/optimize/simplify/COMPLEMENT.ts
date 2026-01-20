@@ -3,15 +3,16 @@ import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { COMPLEMENT } from "../../../src/methods/activations/types/COMPLEMENT.ts";
 import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 import { simplify } from "../../../src/optimize/Simplify.ts";
+import { initWasmActivation } from "../../../src/wasm/WasmActivation.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("COMPLEMENT -> IDENTITY", () => {
+Deno.test("COMPLEMENT -> IDENTITY", async () => {
   const directory = ".test/optimize/simplify/COMPLEMENT";
-  Deno.mkdirSync(directory, { recursive: true });
+  await initWasmActivation();
+  await Deno.mkdir(directory, { recursive: true });
 
   const json: CreatureExport = {
     neurons: [
@@ -33,7 +34,7 @@ Deno.test("COMPLEMENT -> IDENTITY", () => {
 
   const complex = Creature.fromJSON(json);
 
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/complex.json`,
     JSON.stringify(complex.exportJSON(), null, 1),
   );
@@ -42,7 +43,7 @@ Deno.test("COMPLEMENT -> IDENTITY", () => {
   assert(simplifiedCreature);
 
   const simplifiedExport = simplifiedCreature.exportJSON();
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/simplified.json`,
     JSON.stringify(simplifiedExport, null, 1),
   );
@@ -62,14 +63,6 @@ Deno.test("COMPLEMENT -> IDENTITY", () => {
   assertAlmostEquals(weightsByFrom.get("input-0") ?? NaN, -0.5, 0.000_000_1);
   assertAlmostEquals(weightsByFrom.get("input-1") ?? NaN, 2, 0.000_000_1);
   assertAlmostEquals(weightsByFrom.get("input-2") ?? NaN, -1.25, 0.000_000_1);
-
-  const { inlineText, squashList } = makeCreatureActivationFunction(
-    simplifiedCreature,
-  );
-  Deno.writeTextFileSync(
-    `${directory}/inline-simplified.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
 
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);

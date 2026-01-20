@@ -1,4 +1,3 @@
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
@@ -7,14 +6,15 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
  * Hard Tanh Activation Function
+ * Issue #1123: WASM Migration Phase 6 - Inline JS code generation removed.
+ *
  * Piecewise linear function that clips input values to [-1, 1].
  * Formula: f(x) = max(-1, min(1, x))
  * Derivative: f'(x) = 1 if -1 < x < 1 else 0
  * Source: A Fast Learning Algorithm for Deep Belief Nets. Geoffrey Hinton et al., 2006
  * https://www.cs.toronto.edu/~fritz/absps/fastnc.pdf
  */
-export class HARD_TANH
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class HARD_TANH implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 21;
   public static NAME = "HARD_TANH";
   public readonly range: ActivationRange = new ActivationRange(
@@ -25,10 +25,6 @@ export class HARD_TANH
 
   getName() {
     return HARD_TANH.NAME;
-  }
-
-  inlineSquash(value: string): string {
-    return `Math.max(-1, Math.min(1, ${value}))`;
   }
 
   squash(x: number): number {

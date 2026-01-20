@@ -2,8 +2,14 @@ import { assert, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
 
-Deno.test("discovery records store errors as numeric arrays", () => {
+// Calculate the path to wasm_activation/pkg relative to repo root
+const repoRoot = new URL("../../", import.meta.url).pathname;
+const wasmPath = `${repoRoot}wasm_activation/pkg`;
+
+Deno.test("discovery records store errors as numeric arrays", async () => {
+  await initWasmActivation(wasmPath);
   const creatureJSON: CreatureExport = {
     input: 1,
     output: 1,

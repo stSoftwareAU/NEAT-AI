@@ -1,4 +1,3 @@
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
@@ -7,6 +6,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
  * ArcTan (Inverse Tangent) Activation Function
+ * Issue #1123: WASM Migration Phase 6 - Inline JS code generation removed.
  *
  * f(x) = atan(x), range: (-π/2, π/2)
  * f⁻¹(y) = tan(y)
@@ -15,8 +15,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Inverse_trigonometric_functions#Arctangent
  */
-export class ArcTan
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class ArcTan implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 23;
   public static NAME = "ArcTan";
 
@@ -28,10 +27,6 @@ export class ArcTan
   );
 
   public readonly range: ActivationRange = ArcTan.rangeStatic;
-
-  inlineSquash(value: string): string {
-    return `Math.atan(${value})`;
-  }
 
   squash(x: number): number {
     return Math.atan(x);

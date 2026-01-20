@@ -4,8 +4,14 @@ import { Creature } from "../../../src/Creature.ts";
 import { ArcTan } from "../../../src/methods/activations/types/ArcTan.ts";
 import { IF } from "../../../src/methods/activations/aggregate/IF.ts";
 import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
+import { initWasmActivation } from "../../../src/wasm/WasmActivation.ts";
 
-Deno.test("record(IF): prefers plastic positive-branch paths over saturated ArcTan parents", () => {
+// Calculate the path to wasm_activation/pkg relative to repo root
+const repoRoot = new URL("../../../", import.meta.url).pathname;
+const wasmPath = `${repoRoot}wasm_activation/pkg`;
+
+Deno.test("record(IF): prefers plastic positive-branch paths over saturated ArcTan parents", async () => {
+  await initWasmActivation(wasmPath);
   // IF output chooses positive branch when condition > 0.
   // We provide two positive sources:
   // - hidden-arctan saturated (raw ~1e12)

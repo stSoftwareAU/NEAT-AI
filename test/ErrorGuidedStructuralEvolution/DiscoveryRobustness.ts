@@ -14,6 +14,11 @@ import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Calculate the path to wasm_activation/pkg relative to repo root
+const repoRoot = new URL("../../", import.meta.url).pathname;
+const wasmPath = `${repoRoot}wasm_activation/pkg`;
 
 /**
  * Regression tests for discovery robustness issues found on Mac Air.
@@ -116,6 +121,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmActivation(wasmPath);
     assertRustDiscoveryAvailable();
     // This test ensures batching prevents "too many open files" errors
     const neuronCount = 100; // Reduced for faster tests, batching logic handles 1967+
@@ -180,6 +186,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmActivation(wasmPath);
     assertRustDiscoveryAvailable();
     const creature = makeCreatureWithManyNeurons(50);
     CreatureUtil.makeUUID(creature);
@@ -234,6 +241,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmActivation(wasmPath);
     assertRustDiscoveryAvailable();
     const creature = makeCreatureWithManyNeurons(100); // Reduced for faster tests
     CreatureUtil.makeUUID(creature);
@@ -308,6 +316,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmActivation(wasmPath);
     assertRustDiscoveryAvailable();
     const creature = makeCreatureWithManyNeurons(20);
     CreatureUtil.makeUUID(creature);
@@ -372,6 +381,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmActivation(wasmPath);
     assertRustDiscoveryAvailable();
     const creature = makeCreatureWithManyNeurons(30);
     CreatureUtil.makeUUID(creature);
@@ -448,6 +458,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmActivation(wasmPath);
     assertRustDiscoveryAvailable();
     // This test verifies the batching logic by checking it doesn't load all files at once
     const neuronCount = 100; // More than BATCH_SIZE (50), reduced for faster tests
