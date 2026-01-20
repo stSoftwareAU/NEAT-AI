@@ -16,8 +16,18 @@ import {
 import { Creature } from "../src/Creature.ts";
 import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
+import { initWasmActivation } from "../src/wasm/WasmActivation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+// Initialise WASM before running tests
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 /**
  * Test that default behaviour returns a new array on each call (backward compatibility).

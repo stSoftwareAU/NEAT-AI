@@ -9,6 +9,15 @@
 import { assertEquals, assertGreater } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { Mutation } from "../../src/NEAT/Mutation.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("../..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 Deno.test("PlateauDetection Integration - evolve returns plateau status", async () => {
   // Simple XOR dataset - known to potentially cause stagnation

@@ -2,6 +2,15 @@ import { assertAlmostEquals, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { pruneDeadSubgraphsInCreature } from "../../src/compact/CompactUtils.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("../..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 function mulberry32(seed: number) {
   let t = seed >>> 0;

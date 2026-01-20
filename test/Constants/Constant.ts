@@ -5,8 +5,17 @@ import { AddConnection } from "../../src/mutate/AddConnection.ts";
 import { ModBias } from "../../src/mutate/ModBias.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("../..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 Deno.test("No squash", () => {
   const json: CreatureInternal = {

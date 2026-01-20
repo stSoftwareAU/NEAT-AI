@@ -7,8 +7,17 @@ import { Neat } from "../src/NEAT/Neat.ts";
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import { DeDuplicator } from "../src/architecture/DeDuplicator.ts";
 import { CreatureUtil } from "../mod.ts";
+import { initWasmActivation } from "../src/wasm/WasmActivation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 /**
  * Test for issue #1099: Performance: Reduce de-duplication frequency in evolution loop

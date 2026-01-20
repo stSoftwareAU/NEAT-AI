@@ -12,6 +12,15 @@ import { ReLU } from "../../src/methods/activations/types/ReLU.ts";
 import { HYPOT } from "../../src/deprecated/HYPOT.ts";
 import { HYPOTv2 } from "../../src/deprecated/HYPOTv2.ts";
 import { MEAN } from "../../src/deprecated/MEAN.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("../..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 function maxAbsWeightAndBias(creature: Creature): number {
   let max = 0;

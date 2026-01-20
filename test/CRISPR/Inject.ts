@@ -7,6 +7,15 @@ import {
   type NeatOptions,
 } from "../../mod.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("../..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 Deno.test("CRISPR inject", async () => {
   for (let attempt = 0; true; attempt++) {

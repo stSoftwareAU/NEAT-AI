@@ -2,8 +2,17 @@ import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("../..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 /**
  * Test suite for Offspring.breed() functionality after shallowClone optimisation.

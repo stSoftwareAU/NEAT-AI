@@ -2,8 +2,17 @@ import type { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import type { NeatOptions } from "../src/config/NeatOptions.ts";
 import { Creature } from "../src/Creature.ts";
 import { train } from "./TrainTestOnlyUtil.ts";
+import { initWasmActivation } from "../src/wasm/WasmActivation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 Deno.test("Learn", () => {
   const nn = Creature.fromJSON(

@@ -4,6 +4,15 @@ import { compactCreature } from "../../src/compact/CompactCreature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { ABSOLUTE } from "../../src/methods/activations/types/ABSOLUTE.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("../..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 function maxAbsWeightAndBias(creature: Creature): number {
   let max = 0;

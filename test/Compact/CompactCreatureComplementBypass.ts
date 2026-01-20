@@ -5,6 +5,15 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { COMPLEMENT } from "../../src/methods/activations/types/COMPLEMENT.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { MAXIMUM } from "../../src/methods/activations/aggregate/MAXIMUM.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("../..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 function makeData(p: number, input: number): Float32Array {
   const data = new Float32Array(input);

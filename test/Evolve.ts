@@ -3,8 +3,17 @@ import { Creature } from "../src/Creature.ts";
 import { Mutation } from "../src/NEAT/Mutation.ts";
 import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
+import { initWasmActivation } from "../src/wasm/WasmActivation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 // Compact form: name and function
 Deno.test("AND", async () => {
