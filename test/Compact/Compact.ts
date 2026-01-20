@@ -26,7 +26,7 @@ Deno.test("removeDanglingHidden", () => {
       { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4 },
       { type: "hidden", squash: "LOGISTIC", bias: 0, index: 5 },
       { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 6 },
-      { type: "hidden", squash: "MEAN", bias: -0.25, index: 7 },
+      { type: "hidden", squash: "TANH", bias: -0.25, index: 7 },
       {
         type: "output",
         squash: "IDENTITY",
@@ -263,7 +263,7 @@ Deno.test("CompactSelf", () => {
       { type: "hidden", squash: "LOGISTIC", bias: -0.5, index: 4 },
       { type: "hidden", squash: "LOGISTIC", bias: 0, index: 5 },
       { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 6 },
-      { type: "hidden", squash: "MEAN", bias: -0.25, index: 7 },
+      { type: "hidden", squash: "TANH", bias: -0.25, index: 7 },
       {
         type: "output",
         squash: "LOGISTIC",

@@ -2,7 +2,6 @@ import { assert, assertAlmostEquals, fail } from "@std/assert";
 import type { ActivationInterface } from "../src/methods/activations/ActivationInterface.ts";
 import { Activations } from "../src/methods/activations/Activations.ts";
 import type { UnSquashInterface } from "../src/methods/activations/UnSquashInterface.ts";
-import { HYPOT } from "../src/deprecated/HYPOT.ts";
 import { IF } from "../src/methods/activations/aggregate/IF.ts";
 import { MAXIMUM } from "../src/methods/activations/aggregate/MAXIMUM.ts";
 import { MINIMUM } from "../src/methods/activations/aggregate/MINIMUM.ts";
@@ -19,8 +18,6 @@ import { SOFTSIGN } from "../src/methods/activations/types/SOFTSIGN.ts";
 import { STEP } from "../src/methods/activations/types/STEP.ts";
 import { Swish } from "../src/methods/activations/types/Swish.ts";
 import { TANH } from "../src/methods/activations/types/TANH.ts";
-import { HYPOTv2 } from "../src/deprecated/HYPOTv2.ts";
-import { MEAN } from "../src/deprecated/MEAN.ts";
 
 function makeValues() {
   const values: number[] = [];
@@ -323,9 +320,6 @@ Deno.test("unSquash", () => {
     if (
       name === MINIMUM.NAME ||
       name === MAXIMUM.NAME ||
-      name === HYPOT.NAME ||
-      name === HYPOTv2.NAME ||
-      name === MEAN.NAME ||
       name === IF.NAME
     ) {
       return;

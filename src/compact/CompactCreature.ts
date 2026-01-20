@@ -16,9 +16,6 @@ import { LeakyReLU } from "../methods/activations/types/LeakyReLU.ts";
 import { IF } from "../methods/activations/aggregate/IF.ts";
 import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
 import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
-import { HYPOT } from "../deprecated/HYPOT.ts";
-import { HYPOTv2 } from "../deprecated/HYPOTv2.ts";
-import { MEAN } from "../deprecated/MEAN.ts";
 import {
   cleanupOrphanedNeurons,
   pruneDeadSubgraphs,
@@ -456,9 +453,6 @@ function simplifyLargeWeights(exported: CreatureExport): boolean {
     MAXIMUM.NAME,
     MINIMUM.NAME,
     IF.NAME,
-    HYPOT.NAME,
-    HYPOTv2.NAME,
-    MEAN.NAME,
   ]);
 
   // Only attempt rescaling when there is a meaningful imbalance (3+ orders of magnitude).
@@ -580,8 +574,6 @@ function isAggregationSquashName(name?: string): boolean {
     case MAXIMUM.NAME:
     case MINIMUM.NAME:
     case IF.NAME:
-    case HYPOT.NAME:
-    case HYPOTv2.NAME:
       return true;
     default:
       return false;

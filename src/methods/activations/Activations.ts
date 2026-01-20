@@ -1,7 +1,4 @@
 import { assert } from "@std/assert";
-import { HYPOT } from "../../deprecated/HYPOT.ts";
-import { HYPOTv2 } from "../../deprecated/HYPOTv2.ts";
-import { MEAN } from "../../deprecated/MEAN.ts";
 import type { AbstractActivationInterface } from "./AbstractActivationInterface.ts";
 import { IF } from "./aggregate/IF.ts";
 import { MAXIMUM } from "./aggregate/MAXIMUM.ts";
@@ -114,9 +111,6 @@ const activationClasses = [
 
   HARD_TANH,
 
-  HYPOT,
-  HYPOTv2,
-
   IDENTITY,
   IF,
 
@@ -127,7 +121,6 @@ const activationClasses = [
   LogSigmoid,
 
   MAXIMUM,
-  MEAN,
   MINIMUM,
   Mish,
 
