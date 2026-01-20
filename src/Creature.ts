@@ -533,6 +533,8 @@ export class Creature implements CreatureInternal {
    *   to avoid allocating a new Float32Array on each call. This reduces GC pressure
    *   but callers must not mutate the returned array as it may be overwritten.
    *   Issue #1094: Performance optimisation for repeated activations.
+   * @param {boolean} [useJs=false] - Deprecated: kept for API compatibility only.
+   *   WASM is now the sole activation implementation; this parameter is ignored.
    * @returns {Float32Array} The output values after activation.
    */
   activateAndTrace(
@@ -540,6 +542,7 @@ export class Creature implements CreatureInternal {
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
     reuseBuffer: boolean = false,
+    useJs: boolean = false,
   ): Float32Array {
     // Issue #1123: WASM is now the sole activation implementation.
     if (!this.canUseWasm()) {
@@ -551,6 +554,9 @@ export class Creature implements CreatureInternal {
           }`,
       );
     }
+
+    // useJs parameter is kept for API compatibility but ignored
+    void useJs;
 
     return this.activateAndTraceWasm(
       input,
@@ -571,12 +577,15 @@ export class Creature implements CreatureInternal {
    *   to avoid allocating a new Float32Array on each call. This reduces GC pressure
    *   but callers must not mutate the returned array as it may be overwritten.
    *   Issue #1094: Performance optimisation for repeated activations.
+   * @param {boolean} [useJs=false] - Deprecated: kept for API compatibility only.
+   *   WASM is now the sole activation implementation; this parameter is ignored.
    * @returns {Float32Array} The output values after activation.
    */
   activate(
     input: Float32Array,
     feedbackLoop: boolean = false,
     reuseBuffer: boolean = false,
+    useJs: boolean = false,
   ): Float32Array {
     // Issue #1123: WASM is now the sole activation implementation.
     if (!this.canUseWasm()) {
@@ -589,8 +598,9 @@ export class Creature implements CreatureInternal {
       );
     }
 
-    // feedbackLoop parameter is kept for API compatibility but not used by WASM
+    // feedbackLoop and useJs parameters are kept for API compatibility but not used by WASM
     void feedbackLoop;
+    void useJs;
 
     return this.activateWasm(input, reuseBuffer);
   }

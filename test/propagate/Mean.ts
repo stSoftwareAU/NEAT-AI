@@ -1,9 +1,16 @@
-import { fail } from "@std/assert";
-import { ensureDirSync, existsSync } from "@std/fs";
+import { assertThrows } from "@std/assert";
+import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("../..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -64,20 +71,12 @@ function makeCreature() {
   return creature;
 }
 
-function makeInputs() {
-  const inputs: number[][] = [];
-
-  for (let i = 1000; i--;) {
-    inputs.push([
-      Math.random() * 2 - 1,
-      Math.random() * 2 - 1,
-      Math.random() * 2 - 1,
-    ]);
-  }
-  return inputs;
-}
-
-Deno.test("PropagateMean", () => {
+/**
+ * Issue #1123: WASM Migration Phase 6 - MEAN is a deprecated squash function
+ * that is not supported by WASM activation. This test verifies that activation
+ * correctly throws an error for creatures using deprecated squash functions.
+ */
+Deno.test("PropagateMean - activation throws for deprecated squash", () => {
   const creature = makeCreature();
   const traceDir = ".test/propagateMean";
 
@@ -88,51 +87,13 @@ Deno.test("PropagateMean", () => {
     JSON.stringify(creature.exportJSON(), null, 1),
   );
 
-  if (!existsSync(`${traceDir}/input.json`)) {
-    const generated = makeInputs();
-    Deno.writeTextFileSync(
-      `${traceDir}/input.json`,
-      JSON.stringify(generated, null, 1),
-    );
-  }
+  const input = new Float32Array([0.5, 0.3, -0.2]);
 
-  const inputs = JSON.parse(
-    Deno.readTextFileSync(`${traceDir}/input.json`),
-  ) as number[][];
-
-  const outputs: Float32Array[] = new Array(inputs.length);
-  for (let i = inputs.length; i--;) {
-    outputs[i] = creature.activate(new Float32Array(inputs[i]));
-  }
-
-  const neuron = creature.neurons.find((n) => n.uuid === "absolute-5");
-  if (!neuron) throw new Error("neuron not found");
-
-  neuron.bias = 0;
-  creature.state.preparedNeurons = false;
-
-  const config = createBackPropagationConfig({ learningRate: 0.1 });
-  console.info(config);
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
-  for (let i = inputs.length; i--;) {
-    creature.activateAndTrace(new Float32Array(inputs[i]), false, sparseConfig);
-    creature.propagate(new Float32Array(outputs[i]), config, sparseConfig);
-  }
-
-  const traced = creature.traceJSON();
-  Deno.writeTextFileSync(
-    `${traceDir}/1-trace.json`,
-    JSON.stringify(traced, null, 1),
+  // MEAN is a deprecated squash function not supported by WASM.
+  // Activation should throw an error indicating WASM cannot handle it.
+  assertThrows(
+    () => creature.activate(input),
+    Error,
+    "WASM activation is not available",
   );
-
-  creature.propagateUpdate(config, sparseConfig);
-
-  Deno.writeTextFileSync(
-    `${traceDir}/2-end.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
-  );
-
-  if (neuron.bias < 0.00001 || neuron.bias > 1) {
-    fail(`neuron.bias ${neuron.bias} not in range`);
-  }
 });

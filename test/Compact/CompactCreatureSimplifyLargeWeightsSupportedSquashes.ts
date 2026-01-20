@@ -9,9 +9,6 @@ import { ABSOLUTE } from "../../src/methods/activations/types/ABSOLUTE.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { ReLU } from "../../src/methods/activations/types/ReLU.ts";
-import { HYPOT } from "../../src/deprecated/HYPOT.ts";
-import { HYPOTv2 } from "../../src/deprecated/HYPOTv2.ts";
-import { MEAN } from "../../src/deprecated/MEAN.ts";
 import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
 
 // Get the project root directory for WASM module path
@@ -184,59 +181,16 @@ assertCompactionSimplifies(
   [[-2, -3, -4], [-2, 3, 4], [2, -3, -4], [2, 3, 4]],
 );
 
-assertCompactionSimplifies(
-  HYPOT.NAME,
-  {
-    neurons: [
-      { uuid: "hidden-0", type: "hidden", squash: HYPOT.NAME, bias: 1e6 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 1e6 },
-      { fromUUID: "input-1", toUUID: "hidden-0", weight: -2e6 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 1e-6 },
-    ],
-    input: 2,
-    output: 1,
-  },
-  [[-2, -2], [-2, 2], [2, -2], [2, 2]],
-);
-
-assertCompactionSimplifies(
-  HYPOTv2.NAME,
-  {
-    neurons: [
-      { uuid: "hidden-0", type: "hidden", squash: HYPOTv2.NAME, bias: 1e6 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 1e6 },
-      { fromUUID: "input-1", toUUID: "hidden-0", weight: -2e6 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 1e-6 },
-    ],
-    input: 2,
-    output: 1,
-  },
-  [[-2, -2], [-2, 2], [2, -2], [2, 2]],
-);
-
-assertCompactionSimplifies(
-  MEAN.NAME,
-  {
-    neurons: [
-      { uuid: "hidden-0", type: "hidden", squash: MEAN.NAME, bias: 1e6 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 1e6 },
-      { fromUUID: "input-1", toUUID: "hidden-0", weight: -2e6 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 1e-6 },
-    ],
-    input: 2,
-    output: 1,
-  },
-  [[-2, -2], [-2, 2], [2, -2], [2, 2]],
-);
+/**
+ * Issue #1123: WASM Migration Phase 6 - HYPOT, HYPOTv2, and MEAN are deprecated
+ * squash functions that are not supported by WASM activation. Tests for these
+ * squash functions have been removed as they cannot be activated with WASM.
+ *
+ * The following tests were removed:
+ * - compactCreature: simplifies large weights for HYPOT
+ * - compactCreature: simplifies large weights for HYPOTv2
+ * - compactCreature: simplifies large weights for MEAN
+ */
 
 // Sanity: keep the existing supported ones covered here too (optional redundancy).
 assertCompactionSimplifies(

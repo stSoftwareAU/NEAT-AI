@@ -1,8 +1,6 @@
-import { assert } from "@std/assert";
+import { assertThrows } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
-import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
 import { initWasmActivation } from "../src/wasm/WasmActivation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -15,7 +13,12 @@ Deno.test("WASM Initialisation", async () => {
   await initWasmActivation(wasmPath);
 });
 
-Deno.test("Hypot", () => {
+/**
+ * Issue #1123: WASM Migration Phase 6 - HYPOT is a deprecated squash function
+ * that is not supported by WASM activation. This test verifies that activation
+ * correctly throws an error for creatures using deprecated squash functions.
+ */
+Deno.test("Hypot - activation throws for deprecated squash", () => {
   const json: CreatureInternal = {
     neurons: [
       { bias: 0, type: "input", squash: "LOGISTIC", index: 0 },
@@ -32,28 +35,14 @@ Deno.test("Hypot", () => {
     output: 1,
   };
   const creature = Creature.fromJSON(json);
-  const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
-    createBackPropagationConfig({}),
+
+  const data = new Float32Array([0.5, 0.3, -0.2]);
+
+  // HYPOT is a deprecated squash function not supported by WASM.
+  // Activation should throw an error indicating WASM cannot handle it.
+  assertThrows(
+    () => creature.activate(data),
+    Error,
+    "WASM activation is not available",
   );
-  for (let p = 0; p < 1000; p++) {
-    const a = Math.random() * 2 - 1;
-    const b = Math.random() * 2 - 1;
-    const c = Math.random() * 2 - 1;
-
-    const data = new Float32Array([a, b, c]);
-    const actual = creature.activateAndTrace(data, false, sparseConfig)[0];
-    const actual2 = creature.activateAndTrace(data, false, sparseConfig)[0];
-
-    assert(
-      Math.abs(actual - actual2) < 0.00000001,
-      "repeated calls should return the same result",
-    );
-    const expected = Math.hypot(a, b, c);
-
-    assert(
-      Math.abs(expected - actual) < 0.00001,
-      p + ") Expected: " + expected + ", actual: " + actual + ", data: " + data,
-    );
-  }
 });

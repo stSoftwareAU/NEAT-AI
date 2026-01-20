@@ -1,7 +1,5 @@
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assertThrows } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
-import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
 import type { CreatureExport } from "../mod.ts";
 import { emptyDirSync } from "@std/fs";
 import { initWasmActivation } from "../src/wasm/WasmActivation.ts";
@@ -18,7 +16,12 @@ Deno.test("WASM Initialisation", async () => {
 const testDir = ".test/Mean";
 emptyDirSync(testDir);
 
-Deno.test("Mean", () => {
+/**
+ * Issue #1123: WASM Migration Phase 6 - MEAN is a deprecated squash function
+ * that is not supported by WASM activation. This test verifies that activation
+ * correctly throws an error for creatures using deprecated squash functions.
+ */
+Deno.test("Mean - activation throws for deprecated squash", () => {
   const json: CreatureExport = {
     neurons: [
       { bias: -0.2, type: "output", squash: "MEAN", uuid: "output-0" },
@@ -38,30 +41,14 @@ Deno.test("Mean", () => {
     `${testDir}/fixed.json`,
     JSON.stringify(creature.exportJSON(), null, 1),
   );
-  const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
-    createBackPropagationConfig({}),
+
+  const data = new Float32Array([0.5, 0.3, -0.2]);
+
+  // MEAN is a deprecated squash function not supported by WASM.
+  // Activation should throw an error indicating WASM cannot handle it.
+  assertThrows(
+    () => creature.activate(data),
+    Error,
+    "WASM activation is not available",
   );
-  for (let p = 0; p < 1000; p++) {
-    const a = Math.random() * 2 - 1;
-    const b = Math.random() * 2 - 1;
-    const c = Math.random() * 2 - 1;
-
-    const data = new Float32Array([a, b, c]);
-
-    const actual0 = creature.activate(data, false)[0];
-    const actual1 = creature.activateAndTrace(data, false, sparseConfig)[0];
-    const actual2 = creature.activateAndTrace(data, false, sparseConfig)[0];
-
-    assertAlmostEquals(actual0, actual1);
-    assertAlmostEquals(actual0, actual2);
-
-    const expected = (a + (b * -1) + c) / 3 + -0.2;
-
-    assert(
-      Math.abs(expected - actual0) < 0.00001,
-      p + ") Expected: " + expected + ", actual: " + actual0 + ", data: " +
-        data,
-    );
-  }
 });
