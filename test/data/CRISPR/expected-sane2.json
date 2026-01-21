@@ -46,7 +46,7 @@
       "index": 8,
       "uuid": "output-1",
       "bias": 0,
-      "squash": "MEAN",
+      "squash": "TANH",
       "tags": [
         {
           "name": "CRISPR",

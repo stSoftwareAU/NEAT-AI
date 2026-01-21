@@ -195,7 +195,7 @@
       "type": "hidden",
       "uuid": "f9f14ab6-c166-440b-87a3-09c43321761b",
       "bias": -1.3589073553235402,
-      "squash": "HYPOTv2"
+      "squash": "TANH"
     },
     {
       "type": "hidden",
@@ -297,7 +297,7 @@
       "type": "hidden",
       "uuid": "748d5ac0-0e3e-4704-88a9-ffa7e7f5c58d",
       "bias": 17.0508475,
-      "squash": "HYPOT"
+      "squash": "TANH"
     },
     {
       "type": "hidden",
@@ -351,7 +351,7 @@
       "type": "hidden",
       "uuid": "57882a2a-fbb1-44fd-8807-865cec35a49a",
       "bias": -1.6314517,
-      "squash": "HYPOT"
+      "squash": "TANH"
     },
     {
       "type": "hidden",
@@ -393,7 +393,7 @@
       "type": "hidden",
       "uuid": "f9a0bca8-fc00-4cc6-b264-a77f19328198",
       "bias": -0.5626515,
-      "squash": "HYPOTv2"
+      "squash": "TANH"
     },
     {
       "type": "hidden",
@@ -639,7 +639,7 @@
       "type": "hidden",
       "uuid": "5864e02c-b8ce-48f7-96a3-7642323be9da",
       "bias": 3.218869018363325,
-      "squash": "HYPOT"
+      "squash": "TANH"
     },
     {
       "type": "hidden",

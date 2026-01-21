@@ -33,7 +33,7 @@
       "index": 7,
       "uuid": "h5",
       "bias": -0.25,
-      "squash": "MEAN"
+      "squash": "TANH"
     },
     {
       "type": "hidden",
@@ -74,7 +74,7 @@
       "index": 12,
       "uuid": "ed56a8a6-002-4a53-9eab-583c499d231b",
       "bias": 0,
-      "squash": "MEAN",
+      "squash": "TANH",
       "tags": [
         {
           "name": "CRISPR",

@@ -14,7 +14,7 @@
       "bias": 0,
       "index": 1001,
       "type": "output",
-      "squash": "MEAN"
+      "squash": "TANH"
     },
     {
       "uuid": "ed56a8a6-003-4a53-9eab-583c499d231b",

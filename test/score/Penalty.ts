@@ -33,7 +33,8 @@ Deno.test("Score: Calculation with given parameters", () => {
     );
   }
 
-  const expectedScore = 0.396_802;
+  // Expected score updated after replacing deprecated HYPOT/HYPOTv2 with TANH (PR #1149)
+  const expectedScore = 0.396_849_6;
   assertAlmostEquals(score, expectedScore, 0.000_001, `Score was: ${score}`);
 });
 
