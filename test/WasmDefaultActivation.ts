@@ -13,12 +13,7 @@
  * 6. Unsupported squash functions throw appropriate errors
  */
 
-import {
-  assert,
-  assertAlmostEquals,
-  assertEquals,
-  assertThrows,
-} from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
 import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
 import {
@@ -153,40 +148,10 @@ Deno.test({
 });
 
 // =============================================================================
-// Test: Unsupported squash functions throw error
+// Test: Unsupported squash functions
 // =============================================================================
-
-Deno.test({
-  name: "WASM Activation: Unsupported squash function (MEAN) throws error",
-  fn() {
-    // MEAN is not supported in WASM, so it should throw an error
-    const creatureJson: CreatureInternal = {
-      neurons: [
-        { type: "hidden", index: 2, bias: 0.5, squash: "MEAN" },
-        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
-      ],
-      synapses: [
-        { from: 0, to: 2, weight: 1.0 },
-        { from: 1, to: 2, weight: 1.0 },
-        { from: 2, to: 3, weight: 1.0 },
-      ],
-      input: 2,
-      output: 1,
-    };
-
-    const creature = Creature.fromJSON(creatureJson);
-    creature.fix();
-
-    const input = new Float32Array([1.0, 2.0]);
-
-    // Should throw because MEAN is not supported in WASM
-    assertThrows(
-      () => creature.activate(input, false, false),
-      Error,
-      "WASM activation is not available",
-    );
-  },
-});
+// Note: Tests for MEAN squash function removed as part of Issue #1123
+// (WASM Migration Phase 6) - this activation is no longer registered.
 
 // =============================================================================
 // Test: Multiple outputs with WASM

@@ -107,7 +107,7 @@
       "type": "hidden",
       "uuid": "282be7ae-b5c4-4396-a640-7a56da325ac8",
       "bias": -3.4126274999999997,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -471,7 +471,7 @@
       "type": "hidden",
       "uuid": "71cf9846-4cef-4b1b-8b88-5ec4eb2363d3",
       "bias": 0.0188633,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -499,7 +499,7 @@
       "type": "hidden",
       "uuid": "369b011d-4d01-4cc8-9e8e-85b14351575f",
       "bias": 0.061608134833840034,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -527,7 +527,7 @@
       "type": "hidden",
       "uuid": "8f511432-4eb7-45a5-b381-d150cf456a1a",
       "bias": -1.6345755,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 262364,
         "totalValue": -452939.8439750649,
@@ -667,7 +667,7 @@
       "type": "hidden",
       "uuid": "5e4d4857-0d3f-48f8-adf1-76b17fd0fec3",
       "bias": -197.1847532,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 182614,
         "totalValue": 336468.0641787329,
@@ -821,7 +821,7 @@
       "type": "hidden",
       "uuid": "60984fb8-89bc-431c-a457-1146fea8c4ee",
       "bias": 0.1972155,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 2259817,
         "totalValue": 312998.37023488444,
@@ -835,7 +835,7 @@
       "type": "hidden",
       "uuid": "98cee92e-5d0b-4b74-9636-c0955023c7d0",
       "bias": -0.1799481,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -933,7 +933,7 @@
       "type": "hidden",
       "uuid": "eeef836f-5e1a-4a84-af67-c8c801c40171",
       "bias": 10.2780574,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 69864,
         "totalValue": -151641.4451406159,
@@ -1059,7 +1059,7 @@
       "type": "hidden",
       "uuid": "f5e760f9-308e-449d-bc4b-6376f55471dc",
       "bias": -1.5357991,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -1381,7 +1381,7 @@
       "type": "hidden",
       "uuid": "2856e35f-ca65-4adb-9fe2-bdccc9e301c4",
       "bias": -0.022906799999999998,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -1465,7 +1465,7 @@
       "type": "hidden",
       "uuid": "38bf7978-8c97-4cc6-b1d4-288eebe0c8c9",
       "bias": -13.3682327,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -1647,7 +1647,7 @@
       "type": "hidden",
       "uuid": "6206db4f-152f-48ec-b903-600951060c6d",
       "bias": -0.0788103,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -1717,7 +1717,7 @@
       "type": "hidden",
       "uuid": "bc41f7c5-a2e6-4097-8aec-ae1e223ff6b4",
       "bias": -2.3543209,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -1871,7 +1871,7 @@
       "type": "hidden",
       "uuid": "a6f9dad5-2862-428e-96ff-ac3aa172ac7e",
       "bias": 0.609038,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 18237,
         "totalValue": 58652.54303819756,
@@ -2305,7 +2305,7 @@
       "type": "hidden",
       "uuid": "86fcef86-f051-4697-a233-85573c0f6dc9",
       "bias": -0.1321827,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 62434,
         "totalValue": -33821.62467903089,
@@ -2515,7 +2515,7 @@
       "type": "hidden",
       "uuid": "a98604c5-5a68-425b-95e1-c069e21032cb",
       "bias": 5.045045,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 35527,
         "totalValue": 34152.39695410763,
@@ -2725,7 +2725,7 @@
       "type": "hidden",
       "uuid": "8d3da999-0c6c-47a7-99b7-9a84728163ab",
       "bias": -0.47381389999999995,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 72473,
         "totalValue": -119456.38958841904,
@@ -2753,7 +2753,7 @@
       "type": "hidden",
       "uuid": "70481510-9e7a-4cb8-8eac-a49904c464d1",
       "bias": 1.2803206999999999,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 88636,
         "totalValue": -260295.60446929428,
@@ -2781,7 +2781,7 @@
       "type": "hidden",
       "uuid": "dbb0ebb0-1aa7-45a4-ab6b-159147fa19de",
       "bias": 0.1589883,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 1788,
         "totalValue": 5674.583052685813,
@@ -2949,7 +2949,7 @@
       "type": "hidden",
       "uuid": "b9c96d46-5a43-4f15-8df0-88ec6f27e746",
       "bias": -0.03442462163673579,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 3659,
         "totalValue": -2325.0238147778455,
@@ -3019,7 +3019,7 @@
       "type": "hidden",
       "uuid": "1ceb4a37-6ec4-4ad4-9f48-ab15af6f6ec8",
       "bias": -8.6755515,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -3131,7 +3131,7 @@
       "type": "hidden",
       "uuid": "fdac4e49-3a25-4fee-9b8a-9fe1714a2b37",
       "bias": -11.2850314,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -3201,7 +3201,7 @@
       "type": "hidden",
       "uuid": "1ef95b91-efe9-4bae-90e2-da3a165a011c",
       "bias": 0.052092685703777175,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -3383,7 +3383,7 @@
       "type": "hidden",
       "uuid": "9dca7c44-3f57-4187-9a8c-6aab33418afd",
       "bias": 0.0779893879849721,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -3803,7 +3803,7 @@
       "type": "hidden",
       "uuid": "4a10f402-73d0-49db-b9ce-6fb3a2855a75",
       "bias": 0.045947999999999996,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -4055,7 +4055,7 @@
       "type": "hidden",
       "uuid": "a445b115-a115-4b19-9a23-94421f891a7b",
       "bias": -21.7332772,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 3992,
         "totalValue": -26586.30167127919,
@@ -4335,7 +4335,7 @@
       "type": "hidden",
       "uuid": "1668a56c-5506-4976-ad08-131f518cf3ac",
       "bias": -0.07952599541547066,
-      "squash": "HYPOT",
+      "squash": "MAXIMUM",
       "trace": {
         "count": 0,
         "totalValue": 0,
@@ -4481,7 +4481,7 @@
       "type": "hidden",
       "uuid": "7f3e8e30-ca33-4102-9fa5-d32a2ea2095c",
       "bias": 0.013791567138808289,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 1771,
         "totalValue": -2484.4850511344653,
@@ -4809,7 +4809,7 @@
       "type": "hidden",
       "uuid": "1c856445-5870-4c8b-82ff-f8f4bc87ea75",
       "bias": -0.06670129999999999,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 3040,
         "totalValue": -11850.211020747853,
@@ -5067,7 +5067,7 @@
       "type": "hidden",
       "uuid": "e62c575b-feb0-41a3-acef-e6afa49c38a5",
       "bias": 0.6376704,
-      "squash": "MEAN",
+      "squash": "MINIMUM",
       "trace": {
         "count": 502,
         "totalValue": 2500.281000884276,
@@ -7551,7 +7551,7 @@
       "toUUID": "3c9a71d0-7970-4b34-b7b2-295ef3bae1d2",
       "trace": {
         "count": 1692,
-        "averageWeight": 0.00009760832814842547
+        "averageWeight": 9.760832814842547e-05
       }
     },
     {
@@ -7684,7 +7684,7 @@
       "toUUID": "1bfc6ce3-14d3-4688-a492-3c2af01579ca",
       "trace": {
         "count": 12544,
-        "averageWeight": -0.000012906021472061196
+        "averageWeight": -1.2906021472061196e-05
       }
     },
     {
@@ -9302,7 +9302,7 @@
       "toUUID": "c10739df-f575-4a07-a5e8-d3127a0320e7",
       "trace": {
         "count": 352,
-        "averageWeight": -0.000029978955639086053
+        "averageWeight": -2.9978955639086053e-05
       }
     },
     {
@@ -9347,7 +9347,7 @@
       "toUUID": "ae18a1d8-c5a3-4c96-9c8a-ce62f8a210dd",
       "trace": {
         "count": 68454,
-        "averageWeight": -8.604208854685252e-7
+        "averageWeight": -8.604208854685252e-07
       }
     },
     {
@@ -17954,7 +17954,7 @@
       }
     },
     {
-      "weight": 0.000003,
+      "weight": 3e-06,
       "fromUUID": "input-621",
       "toUUID": "output-0",
       "tags": [
@@ -20765,7 +20765,7 @@
       "type": "positive",
       "trace": {
         "count": 142799,
-        "averageWeight": 0.0000055743948061826546,
+        "averageWeight": 5.5743948061826546e-06,
         "used": true
       }
     },
@@ -21414,7 +21414,7 @@
       "toUUID": "19e81fc1-4c07-4b40-8436-755311ffe70a",
       "trace": {
         "count": 24017,
-        "averageWeight": -0.0000013293894812609992
+        "averageWeight": -1.3293894812609992e-06
       }
     },
     {
@@ -21441,7 +21441,7 @@
       "toUUID": "71b29d72-42b2-4d69-b9ec-359d91f706aa",
       "trace": {
         "count": 4296,
-        "averageWeight": -0.0000037663946058856507
+        "averageWeight": -3.7663946058856507e-06
       }
     },
     {
@@ -22996,7 +22996,7 @@
       "toUUID": "8d865875-1749-4333-842b-cc478194136b",
       "trace": {
         "count": 9518,
-        "averageWeight": -0.0000013184097902886613
+        "averageWeight": -1.3184097902886613e-06
       }
     },
     {
@@ -24756,7 +24756,7 @@
       "toUUID": "e29d31ae-1435-46d6-842f-47c0d4211fdd",
       "trace": {
         "count": 10236,
-        "averageWeight": -9.949088247112136e-7
+        "averageWeight": -9.949088247112136e-07
       }
     },
     {
@@ -25136,7 +25136,7 @@
       "toUUID": "35348762-5485-4ea7-8ec7-bdd8e729b76e",
       "trace": {
         "count": 8569,
-        "averageWeight": 0.00003170592847561056
+        "averageWeight": 3.170592847561056e-05
       }
     },
     {
@@ -25145,7 +25145,7 @@
       "toUUID": "38edd224-99c2-411d-a142-55b7008c7cc9",
       "trace": {
         "count": 45405,
-        "averageWeight": 0.000004650318880756793
+        "averageWeight": 4.650318880756793e-06
       }
     },
     {
@@ -25182,7 +25182,7 @@
       "toUUID": "86499c48-f50d-448f-bca7-90ba2d79d65a",
       "trace": {
         "count": 8791,
-        "averageWeight": 0.00001714625878965057
+        "averageWeight": 1.714625878965057e-05
       }
     },
     {
@@ -25191,7 +25191,7 @@
       "toUUID": "5543cb04-1062-4fa6-aaf8-aaa188bfd827",
       "trace": {
         "count": 1004,
-        "averageWeight": 0.000023373109659874593
+        "averageWeight": 2.3373109659874593e-05
       }
     },
     {
@@ -25200,7 +25200,7 @@
       "toUUID": "3b718d7d-410a-4b99-bca0-037e9bbf26da",
       "trace": {
         "count": 502,
-        "averageWeight": 0.00003567357924303912
+        "averageWeight": 3.567357924303912e-05
       }
     },
     {
@@ -25511,7 +25511,7 @@
       "toUUID": "54d21043-558e-4a66-9fea-90be5509740c",
       "trace": {
         "count": 361,
-        "averageWeight": -0.000028389294584275727
+        "averageWeight": -2.8389294584275727e-05
       }
     },
     {
@@ -27520,7 +27520,7 @@
       "toUUID": "cc9f8c41-ae54-40a1-93cb-b6f3e5f780fa",
       "trace": {
         "count": 1888,
-        "averageWeight": 0.0000064374431288152465
+        "averageWeight": 6.4374431288152465e-06
       }
     },
     {
@@ -28030,7 +28030,7 @@
     },
     {
       "name": "trainMsg",
-      "value": "Compact a6954c06 Score: 0.4712792028640286, Error: 0.5285206981402077 -> 0.5285206981403612, 👿 -1.53e-13"
+      "value": "Compact a6954c06 Score: 0.4712792028640286, Error: 0.5285206981402077 -> 0.5285206981403612, \ud83d\udc7f -1.53e-13"
     },
     {
       "name": "adjusted",
@@ -28054,7 +28054,7 @@
     },
     {
       "name": "intelligentDesign",
-      "value": "💍  Tacit Knowledge, score: 0.471341 improved by 0.00000173"
+      "value": "\ud83d\udc8d  Tacit Knowledge, score: 0.471341 improved by 0.00000173"
     },
     {
       "name": "SAMPLER_HOST",

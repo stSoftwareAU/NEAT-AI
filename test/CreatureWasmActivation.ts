@@ -97,61 +97,9 @@ Deno.test({
   },
 });
 
-Deno.test({
-  name:
-    "Creature WASM: isWasmEligible() returns false for unsupported squash functions (MEAN)",
-  fn() {
-    const creatureJson: CreatureInternal = {
-      neurons: [
-        { type: "hidden", index: 2, bias: 0.5, squash: "MEAN" },
-        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
-      ],
-      synapses: [
-        { from: 0, to: 2, weight: 1.0 },
-        { from: 1, to: 2, weight: 1.0 },
-        { from: 2, to: 3, weight: 1.0 },
-      ],
-      input: 2,
-      output: 1,
-    };
-
-    const creature = Creature.fromJSON(creatureJson);
-    creature.fix();
-
-    assert(
-      !creature.isWasmEligible(),
-      "Creature with MEAN squash should NOT be WASM eligible",
-    );
-  },
-});
-
-Deno.test({
-  name:
-    "Creature WASM: isWasmEligible() returns false for unsupported squash functions (HYPOT)",
-  fn() {
-    const creatureJson: CreatureInternal = {
-      neurons: [
-        { type: "hidden", index: 2, bias: 0.5, squash: "HYPOT" },
-        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
-      ],
-      synapses: [
-        { from: 0, to: 2, weight: 1.0 },
-        { from: 1, to: 2, weight: 1.0 },
-        { from: 2, to: 3, weight: 1.0 },
-      ],
-      input: 2,
-      output: 1,
-    };
-
-    const creature = Creature.fromJSON(creatureJson);
-    creature.fix();
-
-    assert(
-      !creature.isWasmEligible(),
-      "Creature with HYPOT squash should NOT be WASM eligible",
-    );
-  },
-});
+// Note: Tests for MEAN and HYPOT squash functions have been removed as part of
+// Issue #1123 (WASM Migration Phase 6). These deprecated activation functions
+// are no longer registered in the Activations registry and cannot be used.
 
 Deno.test({
   name:
@@ -617,26 +565,8 @@ Deno.test({
   name:
     "Creature WASM: getUnsupportedWasmSquashFunctions() returns correct list",
   fn() {
-    // Creature with MEAN (unsupported)
-    const meanCreatureJson: CreatureInternal = {
-      neurons: [
-        { type: "hidden", index: 2, bias: 0.5, squash: "MEAN" },
-        { type: "output", index: 3, bias: 0, squash: "IDENTITY" },
-      ],
-      synapses: [
-        { from: 0, to: 2, weight: 1.0 },
-        { from: 1, to: 2, weight: 1.0 },
-        { from: 2, to: 3, weight: 1.0 },
-      ],
-      input: 2,
-      output: 1,
-    };
-
-    const meanCreature = Creature.fromJSON(meanCreatureJson);
-    meanCreature.fix();
-
-    const unsupported = meanCreature.getUnsupportedWasmSquashFunctions();
-    assert(unsupported.includes("MEAN"), "Should report MEAN as unsupported");
+    // Note: Tests for MEAN/HYPOT unsupported squash functions removed as part of
+    // Issue #1123 (WASM Migration Phase 6) - these activations are no longer registered.
 
     // Creature with all supported squash functions
     const supportedCreatureJson: CreatureInternal = {

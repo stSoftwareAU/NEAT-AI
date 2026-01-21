@@ -2,6 +2,15 @@ import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("../..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 Deno.test("Focus selection accounts for squashing function bounds on downstream paths", () => {
   // Create a network with two paths to output:

@@ -4,6 +4,15 @@ import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import type { RustRecordInput } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { initWasmActivation } from "../../src/wasm/WasmActivation.ts";
+
+// Get the project root directory for WASM module path
+const projectRoot = new URL("../..", import.meta.url).pathname;
+const wasmPath = `${projectRoot}wasm_activation/pkg`;
+
+Deno.test("WASM Initialisation", async () => {
+  await initWasmActivation(wasmPath);
+});
 
 function makeCreature(): Creature {
   const creature = Creature.fromJSON({
