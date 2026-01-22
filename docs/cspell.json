@@ -64,6 +64,8 @@
     "Sepp",
     "Hochreiter",
     "unsquash",
+    "unsquashed",
+    "roundtrip",
     "Backpropagation",
     "Deprioritise",
     "deprioritised",
