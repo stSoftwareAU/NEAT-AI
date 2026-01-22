@@ -99,6 +99,26 @@ export function activate_batch(
 export function derivative(squash_type: number, value: number): number;
 
 /**
+ * Standalone safe zone adjustment function for testing
+ * Issue #1140 - WASM Migration Phase 8
+ *
+ * Returns a float from 0 (not safe) to 1 (fully safe) indicating how useful it is
+ * to backpropagate through a neuron based on saturation levels.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `raw_input` - The raw input value before squashing
+ * * `error` - The error value from backpropagation
+ * * `weight` - The synapse weight (use NaN if not applicable)
+ */
+export function safe_zone_adjustment(
+  squash_type: number,
+  raw_input: number,
+  error: number,
+  weight: number,
+): number;
+
+/**
  * Standalone squash function for testing
  */
 export function squash(squash_type: number, value: number): number;
@@ -163,6 +183,12 @@ export interface InitOutput {
   readonly compilednetwork_num_neurons: (a: number) => number;
   readonly compilednetwork_num_synapses: (a: number) => number;
   readonly derivative: (a: number, b: number) => number;
+  readonly safe_zone_adjustment: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => number;
   readonly squash: (a: number, b: number) => number;
   readonly unsquash: (a: number, b: number, c: number) => number;
   readonly version: () => [number, number];

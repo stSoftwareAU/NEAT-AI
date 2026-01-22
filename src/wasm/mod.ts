@@ -22,6 +22,7 @@ export {
   isWasmActivationAvailable,
   WasmCreatureActivation,
   wasmDerivative,
+  wasmSafeZoneAdjustment,
   wasmSquash,
   type WasmTraceEntry,
   type WasmTraceResult,

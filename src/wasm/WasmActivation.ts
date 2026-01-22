@@ -72,6 +72,14 @@ let derivativeFn: ((squashType: number, value: number) => number) | null = null;
 let unsquashFn:
   | ((squashType: number, activation: number, hint: number) => number)
   | null = null;
+let safeZoneAdjustmentFn:
+  | ((
+    squashType: number,
+    rawInput: number,
+    error: number,
+    weight: number,
+  ) => number)
+  | null = null;
 let versionFn: (() => string) | null = null;
 
 /**
@@ -102,6 +110,7 @@ export async function initWasmActivation(
     squashFn = module.squash;
     derivativeFn = module.derivative;
     unsquashFn = module.unsquash;
+    safeZoneAdjustmentFn = module.safe_zone_adjustment;
     versionFn = module.version;
 
     return true;
@@ -136,6 +145,7 @@ export function initWasmActivationSync(
     squashFn = jsBindings.squash;
     derivativeFn = jsBindings.derivative;
     unsquashFn = jsBindings.unsquash;
+    safeZoneAdjustmentFn = jsBindings.safe_zone_adjustment;
     versionFn = jsBindings.version;
 
     return true;
@@ -434,6 +444,42 @@ export function wasmUnSquash(
   }
   // Use NaN as the hint when not provided, WASM will check for is_finite
   return unsquashFn(squashType, activation, hint ?? Number.NaN);
+}
+
+/**
+ * Standalone safe zone adjustment function
+ * Issue #1140 - WASM Migration Phase 8: Implement safeZoneAdjustment() in Rust/WASM
+ *
+ * Returns a float from 0 (not safe) to 1 (fully safe) indicating how useful it is
+ * to backpropagate through a neuron based on saturation levels.
+ *
+ * - 1.0: Fully in safe zone, gradient flows freely
+ * - 0.0: Completely saturated, no gradient should flow
+ * - 0.0-1.0: Partial safety, used for gradual fade-out
+ *
+ * @param squashType - The SquashType enum value
+ * @param rawInput - The raw input value before squashing
+ * @param error - The error value from backpropagation
+ * @param weight - An optional synapse weight (defaults to 1.0)
+ * @returns A value between 0 and 1 indicating backpropagation safety
+ */
+export function wasmSafeZoneAdjustment(
+  squashType: number,
+  rawInput: number,
+  error: number,
+  weight?: number,
+): number {
+  if (!safeZoneAdjustmentFn) {
+    throw new Error("WASM module not initialised");
+  }
+  // Use NaN as the weight when not provided, WASM will check for is_finite
+  // and default to 1.0
+  return safeZoneAdjustmentFn(
+    squashType,
+    rawInput,
+    error,
+    weight ?? Number.NaN,
+  );
 }
 
 /**

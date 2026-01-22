@@ -29,6 +29,12 @@ export const compilednetwork_num_inputs: (a: number) => number;
 export const compilednetwork_num_neurons: (a: number) => number;
 export const compilednetwork_num_synapses: (a: number) => number;
 export const derivative: (a: number, b: number) => number;
+export const safe_zone_adjustment: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+) => number;
 export const squash: (a: number, b: number) => number;
 export const unsquash: (a: number, b: number, c: number) => number;
 export const version: () => [number, number];

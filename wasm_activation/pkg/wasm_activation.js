@@ -176,6 +176,29 @@ export function derivative(squash_type, value) {
 }
 
 /**
+ * Standalone safe zone adjustment function for testing
+ * Issue #1140 - WASM Migration Phase 8
+ *
+ * Returns a float from 0 (not safe) to 1 (fully safe) indicating how useful it is
+ * to backpropagate through a neuron based on saturation levels.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `raw_input` - The raw input value before squashing
+ * * `error` - The error value from backpropagation
+ * * `weight` - The synapse weight (use NaN if not applicable)
+ * @param {number} squash_type
+ * @param {number} raw_input
+ * @param {number} error
+ * @param {number} weight
+ * @returns {number}
+ */
+export function safe_zone_adjustment(squash_type, raw_input, error, weight) {
+  const ret = wasm.safe_zone_adjustment(squash_type, raw_input, error, weight);
+  return ret;
+}
+
+/**
  * Standalone squash function for testing
  * @param {number} squash_type
  * @param {number} value
