@@ -90,6 +90,11 @@ let calculateErrorFn:
     currentValue: number,
   ) => number)
   | null = null;
+let getRangeFn: ((squashType: number) => Float32Array) | null = null;
+let validateRangeFn:
+  | ((squashType: number, activation: number) => boolean)
+  | null = null;
+let limitRangeFn: ((squashType: number, value: number) => number) | null = null;
 let versionFn: (() => string) | null = null;
 
 /**
@@ -128,6 +133,9 @@ export async function initWasmActivation(
       unsquashFn = module.unsquash;
       safeZoneAdjustmentFn = module.safe_zone_adjustment;
       calculateErrorFn = module.calculate_error;
+      getRangeFn = module.get_range;
+      validateRangeFn = module.validate_range;
+      limitRangeFn = module.limit_range;
       versionFn = module.version;
 
       return true;
@@ -180,6 +188,9 @@ export function initWasmActivationSync(
     unsquashFn = jsBindings.unsquash;
     safeZoneAdjustmentFn = jsBindings.safe_zone_adjustment;
     calculateErrorFn = jsBindings.calculate_error;
+    getRangeFn = jsBindings.get_range;
+    validateRangeFn = jsBindings.validate_range;
+    limitRangeFn = jsBindings.limit_range;
     versionFn = jsBindings.version;
 
     return true;
@@ -604,6 +615,50 @@ export function wasmCalculateError(
     targetActivation,
     currentValue,
   );
+}
+
+/**
+ * Range information for an activation function.
+ * Issue #1142 - WASM Migration Phase 10: Implement range validation in Rust/WASM
+ */
+export interface WasmActivationRange {
+  low: number;
+  high: number;
+}
+
+/**
+ * Get the valid output range for an activation function.
+ * Returns { low, high }.
+ */
+export function wasmGetRange(squashType: number): WasmActivationRange {
+  if (!getRangeFn) {
+    throw new Error("WASM module not initialised");
+  }
+  const arr = getRangeFn(squashType);
+  return { low: arr[0], high: arr[1] };
+}
+
+/**
+ * Validate that an activation value is within the valid range.
+ */
+export function wasmValidateRange(
+  squashType: number,
+  activation: number,
+): boolean {
+  if (!validateRangeFn) {
+    throw new Error("WASM module not initialised");
+  }
+  return validateRangeFn(squashType, activation);
+}
+
+/**
+ * Clamp a value to the valid range for an activation function.
+ */
+export function wasmLimitRange(squashType: number, value: number): number {
+  if (!limitRangeFn) {
+    throw new Error("WASM module not initialised");
+  }
+  return limitRangeFn(squashType, value);
 }
 
 /**

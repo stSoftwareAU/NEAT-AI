@@ -117,6 +117,31 @@ export function calculate_error(squash_type: number, current_activation: number,
 export function derivative(squash_type: number, value: number): number;
 
 /**
+ * Get the range (low, high) for an activation function
+ * Issue #1142 - WASM Migration Phase 10
+ *
+ * Returns a Float32Array with two elements: [low, high]
+ * representing the valid output range for the activation function.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ */
+export function get_range(squash_type: number): Float32Array;
+
+/**
+ * Clamp a value to the valid range for an activation function
+ * Issue #1142 - WASM Migration Phase 10
+ *
+ * Returns the value clamped to the valid range for the specified
+ * activation function. Infinity values are clamped to the bounds.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `value` - The value to clamp
+ */
+export function limit_range(squash_type: number, value: number): number;
+
+/**
  * Standalone safe zone adjustment function for testing
  * Issue #1140 - WASM Migration Phase 8
  *
@@ -151,6 +176,19 @@ export function squash(squash_type: number, value: number): number;
 export function unsquash(squash_type: number, activation: number, hint: number): number;
 
 /**
+ * Validate that an activation value is within the valid range
+ * Issue #1142 - WASM Migration Phase 10
+ *
+ * Returns true if the activation is within the valid range for the
+ * specified activation function, false otherwise.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `activation` - The activation value to validate
+ */
+export function validate_range(squash_type: number, activation: number): boolean;
+
+/**
  * Version information
  */
 export function version(): string;
@@ -173,6 +211,9 @@ export interface InitOutput {
     readonly unsquash: (a: number, b: number, c: number) => number;
     readonly safe_zone_adjustment: (a: number, b: number, c: number, d: number) => number;
     readonly calculate_error: (a: number, b: number, c: number, d: number) => number;
+    readonly get_range: (a: number) => any;
+    readonly validate_range: (a: number, b: number) => number;
+    readonly limit_range: (a: number, b: number) => number;
     readonly version: () => [number, number];
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
