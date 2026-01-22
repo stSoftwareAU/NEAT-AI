@@ -9,6 +9,12 @@ export const activate_batch: (
   d: number,
   e: number,
 ) => any;
+export const calculate_error: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+) => number;
 export const compilednetwork_activate: (
   a: number,
   b: number,

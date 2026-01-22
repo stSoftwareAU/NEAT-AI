@@ -164,6 +164,38 @@ export function activate_batch(network, inputs, input_size, num_outputs) {
 }
 
 /**
+ * Standalone calculate error function for testing
+ * Issue #1141 - WASM Migration Phase 9
+ *
+ * Calculates the error in value-space for backpropagation.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `current_activation` - The neuron's current output (after squash)
+ * * `target_activation` - The desired output
+ * * `current_value` - The pre-squash value (hint for unSquash)
+ * @param {number} squash_type
+ * @param {number} current_activation
+ * @param {number} target_activation
+ * @param {number} current_value
+ * @returns {number}
+ */
+export function calculate_error(
+  squash_type,
+  current_activation,
+  target_activation,
+  current_value,
+) {
+  const ret = wasm.calculate_error(
+    squash_type,
+    current_activation,
+    target_activation,
+    current_value,
+  );
+  return ret;
+}
+
+/**
  * Standalone derivative function for testing
  * Issue #1138 - WASM Migration Phase 6
  * @param {number} squash_type

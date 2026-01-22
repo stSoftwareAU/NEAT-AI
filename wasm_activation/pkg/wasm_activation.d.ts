@@ -93,6 +93,25 @@ export function activate_batch(
 ): Float32Array;
 
 /**
+ * Standalone calculate error function for testing
+ * Issue #1141 - WASM Migration Phase 9
+ *
+ * Calculates the error in value-space for backpropagation.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `current_activation` - The neuron's current output (after squash)
+ * * `target_activation` - The desired output
+ * * `current_value` - The pre-squash value (hint for unSquash)
+ */
+export function calculate_error(
+  squash_type: number,
+  current_activation: number,
+  target_activation: number,
+  current_value: number,
+): number;
+
+/**
  * Standalone derivative function for testing
  * Issue #1138 - WASM Migration Phase 6
  */
@@ -163,6 +182,12 @@ export interface InitOutput {
     d: number,
     e: number,
   ) => any;
+  readonly calculate_error: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => number;
   readonly compilednetwork_activate: (
     a: number,
     b: number,

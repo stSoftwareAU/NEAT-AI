@@ -80,6 +80,14 @@ let safeZoneAdjustmentFn:
     weight: number,
   ) => number)
   | null = null;
+let calculateErrorFn:
+  | ((
+    squashType: number,
+    currentActivation: number,
+    targetActivation: number,
+    currentValue: number,
+  ) => number)
+  | null = null;
 let versionFn: (() => string) | null = null;
 
 /**
@@ -111,6 +119,7 @@ export async function initWasmActivation(
     derivativeFn = module.derivative;
     unsquashFn = module.unsquash;
     safeZoneAdjustmentFn = module.safe_zone_adjustment;
+    calculateErrorFn = module.calculate_error;
     versionFn = module.version;
 
     return true;
@@ -146,6 +155,7 @@ export function initWasmActivationSync(
     derivativeFn = jsBindings.derivative;
     unsquashFn = jsBindings.unsquash;
     safeZoneAdjustmentFn = jsBindings.safe_zone_adjustment;
+    calculateErrorFn = jsBindings.calculate_error;
     versionFn = jsBindings.version;
 
     return true;
@@ -479,6 +489,43 @@ export function wasmSafeZoneAdjustment(
     rawInput,
     error,
     weight ?? Number.NaN,
+  );
+}
+
+/**
+ * Standalone calculate error function
+ * Issue #1141 - WASM Migration Phase 9: Implement calculateError() in Rust/WASM
+ *
+ * Calculates the error in value-space for backpropagation.
+ * This function combines derivative and unSquash to compute the error gradient.
+ *
+ * The basic algorithm:
+ * 1. Compute raw error: rawError = targetActivation - currentActivation
+ * 2. If raw error is tiny (< ERROR_EPSILON), return 0
+ * 3. If derivative (slope) is strong: error = rawError / slope
+ * 4. Otherwise fall back to: error = unSquash(targetActivation) - currentValue
+ * 5. Clamp error to prevent weight explosion
+ *
+ * @param squashType - The SquashType enum value
+ * @param currentActivation - The neuron's current output (after squash)
+ * @param targetActivation - The desired output
+ * @param currentValue - The pre-squash value (hint for unSquash)
+ * @returns The calculated error value, clamped to ±100
+ */
+export function wasmCalculateError(
+  squashType: number,
+  currentActivation: number,
+  targetActivation: number,
+  currentValue: number,
+): number {
+  if (!calculateErrorFn) {
+    throw new Error("WASM module not initialised");
+  }
+  return calculateErrorFn(
+    squashType,
+    currentActivation,
+    targetActivation,
+    currentValue,
   );
 }
 
