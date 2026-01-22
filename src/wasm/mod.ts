@@ -21,6 +21,7 @@ export {
   initWasmActivationSync,
   isWasmActivationAvailable,
   WasmCreatureActivation,
+  wasmDerivative,
   wasmSquash,
   type WasmTraceEntry,
   type WasmTraceResult,
