@@ -35,7 +35,10 @@ import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolutio
 import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { validateAfterDiscoveryOrThrow } from "../discovery/DiscoveryPostValidate.ts";
 import { PlateauDetector } from "./PlateauDetector.ts";
-import { DiscoveryReplayQueue } from "./DiscoveryReplayQueue.ts";
+import {
+  type DiscoveryReplayDirResult,
+  DiscoveryReplayQueue,
+} from "./DiscoveryReplayQueue.ts";
 
 /**
  * NEAT (NeuroEvolution of Augmenting Topologies) implementation.
@@ -455,6 +458,78 @@ export class Neat {
     });
 
     this.discoveryInProgress.set(uuid, p);
+  }
+
+  /**
+   * Issue #1150: Log a summary of the discovery replay result.
+   *
+   * This provides visibility into which candidates were evaluated during
+   * replay and which ones were successful. The summary is always logged
+   * when a replay completes, while detailed candidate information is
+   * only logged in verbose mode.
+   *
+   * @param result The discovery replay result to log
+   */
+  logReplaySummary(result: DiscoveryReplayDirResult): void {
+    const totalEvaluated = result.evaluatedSingles + result.evaluatedCombos;
+
+    // Build the summary parts
+    const parts: string[] = [];
+    parts.push(`evaluated: ${totalEvaluated}`);
+    if (result.evaluatedSingles > 0) {
+      parts.push(`singles: ${result.evaluatedSingles}`);
+    }
+    if (result.evaluatedCombos > 0) {
+      parts.push(`combos: ${result.evaluatedCombos}`);
+    }
+    if (result.pruned > 0) {
+      parts.push(`pruned: ${result.pruned}`);
+    }
+    if (result.skippedAlreadyApplied > 0) {
+      parts.push(`already-applied: ${result.skippedAlreadyApplied}`);
+    }
+    if (result.skippedNotApplicable > 0) {
+      parts.push(`not-applicable: ${result.skippedNotApplicable}`);
+    }
+    if (result.timedOut) {
+      parts.push("(timed out)");
+    }
+
+    // Log outcome
+    if (result.improvement) {
+      const changeType = result.improvement.changeType ?? "unknown";
+      const scoreDelta = result.improvement.scoreDelta?.toFixed(6) ?? "N/A";
+      console.info(
+        `[Neat] Discovery replay: ${
+          blue(changeType)
+        } improved score by ${scoreDelta} (${parts.join(", ")})`,
+      );
+    } else {
+      console.info(
+        `[Neat] Discovery replay: no improvement found (${parts.join(", ")})`,
+      );
+    }
+
+    // In verbose mode, log details of successful single candidates
+    if (this.config.verbose && result.evaluations) {
+      const successfulCandidates = result.evaluations.filter(
+        (e) => e.improved && e.kind !== "original",
+      );
+      if (successfulCandidates.length > 0) {
+        console.info("[Neat] Successful replay candidates:");
+        for (const candidate of successfulCandidates) {
+          const kind = candidate.kind === "combo" ? "combo" : "single";
+          const changeType = candidate.changeType ?? "unknown";
+          const description = candidate.description ?? candidate.key ?? "";
+          const scoreDelta = candidate.scoreDelta?.toFixed(6) ?? "N/A";
+          console.info(
+            `  - [${kind}] ${
+              blue(changeType)
+            }: ${description} (+${scoreDelta})`,
+          );
+        }
+      }
+    }
   }
 
   /**
@@ -1031,8 +1106,14 @@ export class Neat {
     // Issue #997: Process completed background replay results and add improved
     // creatures to the population. These are creatures that have had cached
     // discovery improvements re-applied from previous evolution runs.
+    // Issue #1150: Log detailed information about successful candidates
     const replayResults = this.discoveryReplayQueue.getCompletedResults();
     for (const result of replayResults) {
+      // Issue #1150: Log replay summary showing which candidates were evaluated
+      // and their outcomes. This provides visibility into the replay process
+      // even when no improvement is found.
+      this.logReplaySummary(result);
+
       if (result.improvement?.creature) {
         // The creature field is typed as `unknown` in DiscoveryReplayDirResult
         // but is actually a CreatureExport from exportJSON()

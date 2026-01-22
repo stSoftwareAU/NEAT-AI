@@ -6,6 +6,9 @@ import {
 } from "../discovery/DiscoveryReplayRunner.ts";
 import { createNeatConfig } from "../config/NeatConfig.ts";
 
+// Re-export for use by Neat.ts (Issue #1150)
+export type { DiscoveryReplayDirResult };
+
 /**
  * Dependencies for the DiscoveryReplayQueue.
  * These can be injected for testing purposes.
