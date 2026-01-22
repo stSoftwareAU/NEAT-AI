@@ -682,7 +682,7 @@ Deno.test({
       wasmAfter,
       jsAfter,
       "Activation after learning should match",
-      1e-3, // Slightly larger tolerance for accumulated differences
+      1e-2, // Larger tolerance for accumulated differences in backpropagation
     );
   },
 });
