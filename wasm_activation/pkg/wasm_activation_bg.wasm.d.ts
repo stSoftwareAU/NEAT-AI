@@ -28,6 +28,7 @@ export const compilednetwork_new: (
 export const compilednetwork_num_inputs: (a: number) => number;
 export const compilednetwork_num_neurons: (a: number) => number;
 export const compilednetwork_num_synapses: (a: number) => number;
+export const derivative: (a: number, b: number) => number;
 export const squash: (a: number, b: number) => number;
 export const version: () => [number, number];
 export const __wbindgen_externrefs: WebAssembly.Table;

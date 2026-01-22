@@ -164,6 +164,18 @@ export function activate_batch(network, inputs, input_size, num_outputs) {
 }
 
 /**
+ * Standalone derivative function for testing
+ * Issue #1138 - WASM Migration Phase 6
+ * @param {number} squash_type
+ * @param {number} value
+ * @returns {number}
+ */
+export function derivative(squash_type, value) {
+  const ret = wasm.derivative(squash_type, value);
+  return ret;
+}
+
+/**
  * Standalone squash function for testing
  * @param {number} squash_type
  * @param {number} value

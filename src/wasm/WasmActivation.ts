@@ -68,6 +68,7 @@ let activateBatchFn:
   ) => Float32Array)
   | null = null;
 let squashFn: ((squashType: number, value: number) => number) | null = null;
+let derivativeFn: ((squashType: number, value: number) => number) | null = null;
 let versionFn: (() => string) | null = null;
 
 /**
@@ -96,6 +97,7 @@ export async function initWasmActivation(
     CompiledNetwork = module.CompiledNetwork;
     activateBatchFn = module.activate_batch;
     squashFn = module.squash;
+    derivativeFn = module.derivative;
     versionFn = module.version;
 
     return true;
@@ -128,6 +130,7 @@ export function initWasmActivationSync(
     CompiledNetwork = jsBindings.CompiledNetwork;
     activateBatchFn = jsBindings.activate_batch;
     squashFn = jsBindings.squash;
+    derivativeFn = jsBindings.derivative;
     versionFn = jsBindings.version;
 
     return true;
@@ -382,6 +385,23 @@ export function wasmSquash(squashType: number, value: number): number {
     throw new Error("WASM module not initialised");
   }
   return squashFn(squashType, value);
+}
+
+/**
+ * Standalone derivative function
+ * Issue #1138 - WASM Migration Phase 6: Implement derivative() in Rust/WASM
+ *
+ * Computes the derivative of the specified activation function at the given value.
+ *
+ * @param squashType - The SquashType enum value
+ * @param value - The input value at which to compute the derivative
+ * @returns The derivative value
+ */
+export function wasmDerivative(squashType: number, value: number): number {
+  if (!derivativeFn) {
+    throw new Error("WASM module not initialised");
+  }
+  return derivativeFn(squashType, value);
 }
 
 /**

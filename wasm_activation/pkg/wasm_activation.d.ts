@@ -93,6 +93,12 @@ export function activate_batch(
 ): Float32Array;
 
 /**
+ * Standalone derivative function for testing
+ * Issue #1138 - WASM Migration Phase 6
+ */
+export function derivative(squash_type: number, value: number): number;
+
+/**
  * Standalone squash function for testing
  */
 export function squash(squash_type: number, value: number): number;
@@ -138,6 +144,7 @@ export interface InitOutput {
   readonly compilednetwork_num_inputs: (a: number) => number;
   readonly compilednetwork_num_neurons: (a: number) => number;
   readonly compilednetwork_num_synapses: (a: number) => number;
+  readonly derivative: (a: number, b: number) => number;
   readonly squash: (a: number, b: number) => number;
   readonly version: () => [number, number];
   readonly __wbindgen_externrefs: WebAssembly.Table;
