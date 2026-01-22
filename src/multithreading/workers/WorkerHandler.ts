@@ -17,6 +17,17 @@ import type { NeatConfig } from "../../config/NeatConfig.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
 
+export interface WasmActivationInitPayload {
+  /**
+   * The wasm-bindgen JS glue code as source text.
+   * This is imported by the worker via a `data:` URL so workers don't need
+   * filesystem reads to boot WASM.
+   */
+  jsSource: string;
+  /** Raw `wasm_activation_bg.wasm` bytes. */
+  wasmBinary: Uint8Array;
+}
+
 /**
  * Data structure for requests sent to workers.
  *
@@ -45,6 +56,14 @@ export interface RequestData {
      * Rust verbose logs.
      */
     discoveryVerbose?: boolean;
+    /**
+     * Optional WASM activation bootstrap payload.
+     *
+     * When provided, the worker will synchronously initialise the WASM
+     * activation module during startup, ensuring worker-side scoring/training
+     * uses the same WASM activation implementation as the main thread.
+     */
+    wasmActivation?: WasmActivationInitPayload;
   };
   /** Creature evaluation request */
   evaluate?: {
@@ -205,7 +224,7 @@ export interface WorkerInterface {
    *
    * @param data - Data to send to the worker
    */
-  postMessage(data: RequestData): void;
+  postMessage(data: RequestData, transfer?: Transferable[]): void;
 
   /**
    * Terminates the worker.
@@ -214,6 +233,59 @@ export interface WorkerInterface {
 }
 
 let globalWorkerID = 0;
+
+let cachedWasmActivationInitPayload: WasmActivationInitPayload | null = null;
+
+function shouldInitWasmInWorkers(): boolean {
+  // If JS is explicitly forced, do not init WASM in workers.
+  try {
+    const js = Deno.env.get("NEAT_AI_USE_JS")?.trim().toLowerCase();
+    if (js === "1" || js === "true" || js === "yes" || js === "on") {
+      return false;
+    }
+  } catch {
+    // ignore
+  }
+
+  // Default behaviour: follow `NEAT_AI_WASM_AUTO_INIT`.
+  // You can override with `NEAT_AI_WASM_WORKER_INIT=1|0`.
+  const readBool = (name: string): boolean | undefined => {
+    try {
+      const v = Deno.env.get(name);
+      if (!v) return undefined;
+      const n = v.trim().toLowerCase();
+      if (n === "1" || n === "true" || n === "yes" || n === "on") return true;
+      if (n === "0" || n === "false" || n === "no" || n === "off") return false;
+    } catch {
+      // ignore
+    }
+    return undefined;
+  };
+
+  const explicit = readBool("NEAT_AI_WASM_WORKER_INIT");
+  if (explicit !== undefined) return explicit;
+  const autoInit = readBool("NEAT_AI_WASM_AUTO_INIT");
+  return autoInit === true;
+}
+
+function loadWasmActivationInitPayload(): WasmActivationInitPayload | null {
+  if (cachedWasmActivationInitPayload) return cachedWasmActivationInitPayload;
+
+  try {
+    const repoRoot = new URL("../../../", import.meta.url).pathname;
+    const wasmDir = `${repoRoot}wasm_activation/pkg`;
+    const jsSource = Deno.readTextFileSync(`${wasmDir}/wasm_activation.js`);
+    const wasmBinary = Deno.readFileSync(`${wasmDir}/wasm_activation_bg.wasm`);
+
+    cachedWasmActivationInitPayload = {
+      jsSource,
+      wasmBinary,
+    };
+    return cachedWasmActivationInitPayload;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Manages communication with worker threads for parallel processing.
@@ -291,6 +363,9 @@ export class WorkerHandler {
         costName: costName,
         customCostData,
         discoveryVerbose,
+        wasmActivation: shouldInitWasmInWorkers()
+          ? (loadWasmActivationInitPayload() ?? undefined)
+          : undefined,
       },
     };
 
@@ -376,6 +451,8 @@ export class WorkerHandler {
       );
     }
 
+    // Note: we intentionally do NOT transfer the wasm ArrayBuffer here, because
+    // this initialization payload is cached and reused for multiple workers.
     this.worker.postMessage(data);
 
     return p;

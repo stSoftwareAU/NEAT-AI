@@ -37,6 +37,10 @@ export class ReplaySquash implements ActivationInterface {
     return this.name;
   }
 
+  wasmAliasName(): string {
+    return this.source.getName();
+  }
+
   squash(x: number): number {
     if (this.playback) {
       const playbackValue = this.playbackMap.get(x.toPrecision(6));

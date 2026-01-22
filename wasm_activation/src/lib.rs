@@ -2383,6 +2383,19 @@ pub struct CompiledNetwork {
 
 #[wasm_bindgen]
 impl CompiledNetwork {
+    /// Reset non-input activations to 0.0.
+    ///
+    /// This is important for parity with the JS implementation when
+    /// `feedbackLoop=false` (stateless activation). Without this, the reused
+    /// activation buffer can leak state between calls, effectively behaving
+    /// like a feedback loop.
+    #[wasm_bindgen]
+    pub fn reset_state(&mut self) {
+        for i in self.num_inputs..self.num_neurons {
+            self.activations[i] = 0.0;
+        }
+    }
+
     /// Create a new compiled network from serialised data
     ///
     /// Data format (all values little-endian):

@@ -12,6 +12,7 @@ export {
 
 export {
   getSquashType,
+  resolveWasmSquashName,
   SQUASH_NAME_TO_TYPE,
   SquashType,
 } from "./SquashType.ts";
@@ -20,13 +21,17 @@ export {
   initWasmActivation,
   initWasmActivationSync,
   isWasmActivationAvailable,
+  type WasmActivationRange,
   wasmCalculateError,
   WasmCreatureActivation,
   wasmDerivative,
+  wasmGetRange,
+  wasmLimitRange,
   wasmSafeZoneAdjustment,
   wasmSquash,
   type WasmTraceEntry,
   type WasmTraceResult,
   wasmUnSquash,
+  wasmValidateRange,
   wasmVersion,
 } from "./WasmActivation.ts";

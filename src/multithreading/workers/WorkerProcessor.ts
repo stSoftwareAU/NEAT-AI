@@ -9,6 +9,10 @@ import { Costs } from "../../Costs.ts";
 import type { CostInterface } from "../../costs/CostInterface.ts";
 import { Creature } from "../../Creature.ts";
 import { writeDiagnostics } from "../../utils/Diagnostics.ts";
+import {
+  initWasmActivationSync,
+  isWasmActivationAvailable,
+} from "../../wasm/mod.ts";
 import type { RequestData, ResponseData } from "./WorkerHandler.ts";
 
 type DiscoverResponsePayload = NonNullable<ResponseData["discover"]>;
@@ -85,6 +89,30 @@ export class WorkerProcessor {
 
   private cost?: CostInterface;
 
+  private wasmInitAttempted = false;
+
+  private async initialiseWasmActivationFromPayload(
+    payload: NonNullable<RequestData["initialize"]>["wasmActivation"],
+  ): Promise<void> {
+    if (!payload) return;
+    if (this.wasmInitAttempted) return;
+    this.wasmInitAttempted = true;
+
+    // If already initialised, nothing to do.
+    if (isWasmActivationAvailable()) return;
+
+    // Import wasm-bindgen glue from the provided source to avoid file reads.
+    const jsModuleUrl = `data:application/javascript;charset=utf-8,${
+      encodeURIComponent(payload.jsSource)
+    }`;
+    const jsBindings = await import(jsModuleUrl);
+
+    const ok = initWasmActivationSync(jsBindings, payload.wasmBinary);
+    if (!ok) {
+      throw new Error("Worker WASM activation init failed");
+    }
+  }
+
   /**
    * Loads a custom cost function from a file path using dynamic import.
    * This allows external programs to provide custom cost functions without
@@ -146,6 +174,13 @@ export class WorkerProcessor {
       } else {
         this.cost = Costs.find(data.initialize.costName);
       }
+
+      // Explicit worker startup init (production parity):
+      // initialise WASM activation once per worker, using payload supplied by
+      // the parent, so worker-side training/evaluation uses WASM.
+      await this.initialiseWasmActivationFromPayload(
+        data.initialize.wasmActivation,
+      );
 
       this.dataSetDir = data.initialize.dataSetDir;
       return {

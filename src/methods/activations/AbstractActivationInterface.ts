@@ -26,6 +26,15 @@ export interface AbstractActivationInterface {
     targetActivation: number,
     currentValue: number,
   ): number;
+  /**
+   * Optional hint for WASM forward activation:
+   * treat this activation as an alias of another activation name that *is*
+   * supported by WASM.
+   *
+   * This is useful for wrapper activations used for recording/debugging
+   * (e.g. tests) that should behave identically during the forward pass.
+   */
+  wasmAliasName?(): string;
   complexityPenalty?: number;
 
   mutationProbability: number;

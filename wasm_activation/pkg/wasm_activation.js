@@ -134,6 +134,17 @@ export class CompiledNetwork {
     const ret = wasm.compilednetwork_num_synapses(this.__wbg_ptr);
     return ret >>> 0;
   }
+  /**
+   * Reset non-input activations to 0.0.
+   *
+   * This is important for parity with the JS implementation when
+   * `feedbackLoop=false` (stateless activation). Without this, the reused
+   * activation buffer can leak state between calls, effectively behaving
+   * like a feedback loop.
+   */
+  reset_state() {
+    wasm.compilednetwork_reset_state(this.__wbg_ptr);
+  }
 }
 if (Symbol.dispose) {
   CompiledNetwork.prototype[Symbol.dispose] = CompiledNetwork.prototype.free;
