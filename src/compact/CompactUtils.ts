@@ -3,10 +3,10 @@ import type { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import type { Synapse } from "../architecture/Synapse.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import { Activations } from "../methods/activations/Activations.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
+// Issue #1143 - WASM backpropagation integration
+import { squash as wasmSquash } from "../wasm/ActivationMethods.ts";
 
 /**
  * Result of cleaning up orphaned neurons.
@@ -206,13 +206,10 @@ export function cleanupOrphanedNeurons(
           // A hidden neuron with bias X and squash function outputs squash(0 + X)
           // when receiving no input, so we must apply the squash function to get
           // the correct constant value.
+          // Issue #1143 - Use WASM squash when available
           let constantBias = neuron.bias;
           if (neuron.squash) {
-            const squashFn = Activations.find(neuron.squash);
-            const activation = squashFn as ActivationInterface;
-            if (activation?.squash) {
-              constantBias = activation.squash(neuron.bias);
-            }
+            constantBias = wasmSquash(neuron.squash, neuron.bias);
           }
           creatureExport.neurons[i] = {
             type: "constant",

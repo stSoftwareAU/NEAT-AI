@@ -19,6 +19,12 @@ import {
   type BackPropagationConfig,
   toValue,
 } from "../propagate/BackPropagation.ts";
+// Issue #1143 - WASM backpropagation integration
+import {
+  calculateError as wasmCalculateError,
+  safeZoneAdjustment as wasmSafeZoneAdjustment,
+  squash as wasmSquash,
+} from "../wasm/ActivationMethods.ts";
 import {
   accumulateBias,
   adjustedBias,
@@ -612,7 +618,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
     } else {
       let targetValue: number | undefined;
 
-      const error = squashMethod.calculateError!(
+      // Issue #1143 - Use WASM calculateError when available
+      const error = wasmCalculateError(
+        this.squash!,
         activation,
         targetActivation,
         ns.hintValue,
@@ -673,17 +681,16 @@ export class Neuron implements TagsInterface, NeuronInternal {
             type !== "constant" &&
             sparseConfig.propagateNeeded(fromNeuron.uuid)
           ) {
-            const fromSquash = fromNeuron.findSquash();
-            if (fromSquash.safeZoneAdjustment) {
-              // Important: rawInput must be the from-neuron's *pre-squash* value,
-              // not a synapse contribution (w*a).
-              const fromNS = state.node(from);
-              safeZoneAdj = fromSquash.safeZoneAdjustment(
-                fromNS.hintValue,
-                provisionalErrorPerLink,
-                fromWeight,
-              );
-            }
+            // Issue #1143 - Use WASM safeZoneAdjustment when available
+            // Important: rawInput must be the from-neuron's *pre-squash* value,
+            // not a synapse contribution (w*a).
+            const fromNS = state.node(from);
+            safeZoneAdj = wasmSafeZoneAdjustment(
+              fromNeuron.squash!,
+              fromNS.hintValue,
+              provisionalErrorPerLink,
+              fromWeight,
+            );
           }
           linkMeta[indx] = {
             activation: fromActivation,
@@ -811,11 +818,15 @@ export class Neuron implements TagsInterface, NeuronInternal {
         );
 
         const aBias = adjustedBias(this, config);
-        limitedActivation = (squashMethod as ActivationInterface).squash(
+        // Issue #1143 - Use WASM squash when available
+        limitedActivation = wasmSquash(
+          this.squash!,
           improvedValue + aBias - currentBias,
         );
       } else {
-        limitedActivation = (squashMethod as ActivationInterface).squash(
+        // Issue #1143 - Use WASM squash when available
+        limitedActivation = wasmSquash(
+          this.squash!,
           improvedValue,
         );
       }
@@ -904,27 +915,15 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
       let error = 0;
       if (Math.abs(targetActivation - currentActivation) > 1e-8) {
-        // Prefer activation-specific error semantics when available.
-        //
-        // Rationale: some discrete squashes (eg. STEP/BIPOLAR) intentionally clamp
-        // error in value-space (via `ErrorHelper`) to prevent extreme raw values
-        // from poisoning discovery statistics.
-        //
-        // Fallback: if the squash does not implement `calculateError()`, compute a
-        // generic value-space delta using `toValue()`.
-        const calculateError = (squashMethod as ActivationInterface)
-          .calculateError;
-        if (calculateError !== undefined) {
-          error = calculateError.call(
-            squashMethod,
-            currentActivation,
-            targetActivation,
-            currentValue!,
-          );
-        } else {
-          const targetValue = toValue(this, targetActivation, currentValue);
-          error = targetValue - currentValue!;
-        }
+        // Issue #1143 - Use WASM calculateError when available
+        // This handles both activation-specific error semantics (eg. STEP/BIPOLAR
+        // clamp error) and falls back appropriately when not supported.
+        error = wasmCalculateError(
+          this.squash!,
+          currentActivation,
+          targetActivation,
+          currentValue!,
+        );
       }
 
       // CRITICAL FIX: Track if this is the first visit to this neuron
