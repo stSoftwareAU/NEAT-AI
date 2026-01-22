@@ -25,5 +25,6 @@ export {
   wasmSquash,
   type WasmTraceEntry,
   type WasmTraceResult,
+  wasmUnSquash,
   wasmVersion,
 } from "./WasmActivation.ts";
