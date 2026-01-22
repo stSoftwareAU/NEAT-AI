@@ -1,6 +1,9 @@
 import type { Neuron } from "../architecture/Neuron.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
+// Issue #1143 - WASM backpropagation integration
+import {
+  squash as wasmSquash,
+  unSquash as wasmUnSquash,
+} from "../wasm/ActivationMethods.ts";
 
 export type BackPropagationArguments = {
   disableRandomSamples: boolean;
@@ -185,23 +188,20 @@ export function toValue(neuron: Neuron, activation: number, hint?: number) {
   if (neuron.type === "input" || neuron.type === "constant") {
     return activation;
   }
-  const squash = neuron.findSquash();
 
-  const unSquash = (squash as UnSquashInterface).unSquash;
-  if (unSquash !== undefined) {
-    const value = unSquash.call(squash, activation, hint);
-
+  // Issue #1143 - Use WASM unSquash when available
+  if (neuron.squash) {
+    const value = wasmUnSquash(neuron.squash, activation, hint);
     return limitValue(value);
-  } else {
-    return activation;
   }
-}
-export function toActivation(neuron: Neuron, value: number) {
-  const squash = neuron.findSquash();
 
-  const squashedActivation = (squash as ActivationInterface).squash(
-    value,
-  );
+  return activation;
+}
+
+export function toActivation(neuron: Neuron, value: number) {
+  // Issue #1143 - Use WASM squash when available
+  const squashedActivation = wasmSquash(neuron.squash!, value);
+  const squash = neuron.findSquash();
   squash.range.validate(squashedActivation);
   return squashedActivation;
 }
