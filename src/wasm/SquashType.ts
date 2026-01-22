@@ -5,6 +5,8 @@
  * Issue #1116 - WASM prototype for creature activation
  * Issue #1125 - Added aggregate functions (IF, MINIMUM, MAXIMUM)
  */
+import { Activations } from "../methods/activations/Activations.ts";
+
 export enum SquashType {
   Identity = 0,
   Relu = 1,
@@ -94,5 +96,35 @@ export function getSquashType(squashName: string | undefined): SquashType {
   if (!squashName) {
     return SquashType.Identity;
   }
-  return SQUASH_NAME_TO_TYPE[squashName] ?? SquashType.Identity;
+  const resolvedName = resolveWasmSquashName(squashName);
+  return resolvedName ? SQUASH_NAME_TO_TYPE[resolvedName] : SquashType.Identity;
+}
+
+/**
+ * Resolve a squash name to a WASM-supported squash name.
+ *
+ * - If `squashName` is directly supported, returns it.
+ * - Otherwise, if the activation exists and exposes `wasmAliasName()`, returns that
+ *   alias *iff* it is WASM-supported.
+ * - Otherwise returns undefined.
+ */
+export function resolveWasmSquashName(
+  squashName: string,
+): string | undefined {
+  if (squashName in SQUASH_NAME_TO_TYPE) {
+    return squashName;
+  }
+
+  try {
+    const activation = Activations.find(squashName) as unknown as {
+      wasmAliasName?: () => string;
+    };
+    const alias = activation?.wasmAliasName?.();
+    if (alias && (alias in SQUASH_NAME_TO_TYPE)) {
+      return alias;
+    }
+  } catch {
+    // Unknown activation name or no alias; treat as unsupported.
+  }
+  return undefined;
 }

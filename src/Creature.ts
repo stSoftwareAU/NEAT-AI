@@ -58,7 +58,7 @@ import {
 import {
   compileCreatureToWasm,
   isWasmActivationAvailable,
-  SQUASH_NAME_TO_TYPE,
+  resolveWasmSquashName,
   WasmCreatureActivation,
 } from "./wasm/mod.ts";
 
@@ -642,7 +642,7 @@ export class Creature implements CreatureInternal {
 
     // Issue #1122: WASM is now the default. Use WASM unless JS is forced.
     if (!forceJs && this.canUseWasm()) {
-      return this.activateWasm(input, reuseBuffer);
+      return this.activateWasm(input, feedbackLoop, reuseBuffer);
     }
 
     // Fall back to JS activation
@@ -738,6 +738,7 @@ export class Creature implements CreatureInternal {
    */
   private activateWasm(
     input: Float32Array,
+    feedbackLoop: boolean,
     reuseBuffer: boolean,
   ): Float32Array {
     // Lazily compile to WASM if not already done
@@ -752,8 +753,36 @@ export class Creature implements CreatureInternal {
       }
     }
 
-    // Activate using WASM
-    const wasmOutput = this.cachedWasmActivation.activate(input);
+    // Keep JS and WASM behavior aligned:
+    // - JS activation populates `state.activations` for *all* neurons.
+    // - Discovery recording (`creature.record(...)`) relies on those activations.
+    //
+    // So we run the WASM `activate_and_trace` path (even when callers use
+    // `activate()`), and apply activations + pre-squash values back onto state.
+    //
+    // This is slightly slower than the pure-output WASM activate() call, but it
+    // keeps tests and production behavior consistent (WASM-only future).
+    this.prepareNeurons();
+    this.state.makeActivation(input, feedbackLoop);
+
+    const wasmResult = this.cachedWasmActivation.activateAndTraceWithFeedback(
+      input,
+      feedbackLoop,
+    );
+
+    // Apply post-squash activations to state for all non-input neurons.
+    const neurons = this.neurons;
+    for (let i = 0; i < wasmResult.activations.length; i++) {
+      const neuronIdx = this.input + i;
+      if (neuronIdx < neurons.length) {
+        this.state.activations[neuronIdx] = wasmResult.activations[i];
+      }
+    }
+
+    // Apply pre-squash values (hintValues) for all non-input neurons.
+    for (let i = this.input; i < neurons.length; i++) {
+      this.state.node(i).hintValue = wasmResult.hintValues[i - this.input];
+    }
 
     // Handle buffer reuse
     if (reuseBuffer) {
@@ -763,11 +792,11 @@ export class Creature implements CreatureInternal {
       ) {
         this.cachedOutputBuffer = new Float32Array(this.output);
       }
-      this.cachedOutputBuffer.set(wasmOutput);
+      this.cachedOutputBuffer.set(wasmResult.outputs);
       return this.cachedOutputBuffer;
     }
 
-    return wasmOutput;
+    return wasmResult.outputs;
   }
 
   /**
@@ -815,7 +844,10 @@ export class Creature implements CreatureInternal {
     this.state.makeActivation(input, feedbackLoop);
 
     // Call WASM activateAndTrace
-    const wasmResult = this.cachedWasmActivation.activateAndTrace(input);
+    const wasmResult = this.cachedWasmActivation.activateAndTraceWithFeedback(
+      input,
+      feedbackLoop,
+    );
 
     // Apply activations to the state
     const neurons = this.neurons;
@@ -996,8 +1028,8 @@ export class Creature implements CreatureInternal {
       }
       seen.add(squash);
 
-      // Check if squash function is in the WASM-supported list
-      if (!(squash in SQUASH_NAME_TO_TYPE)) {
+      // Check if squash function is in the WASM-supported list (or aliases to one)
+      if (resolveWasmSquashName(squash) === undefined) {
         unsupported.push(squash);
       }
     }

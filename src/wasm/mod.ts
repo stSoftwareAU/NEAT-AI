@@ -12,6 +12,7 @@ export {
 
 export {
   getSquashType,
+  resolveWasmSquashName,
   SQUASH_NAME_TO_TYPE,
   SquashType,
 } from "./SquashType.ts";

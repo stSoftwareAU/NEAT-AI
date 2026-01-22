@@ -59,6 +59,8 @@ export interface WasmTraceResult {
 // WASM module state
 let wasmModule: WasmModule | null = null;
 let CompiledNetwork: CompiledNetworkClass | null = null;
+// Guard against concurrent initialisation (common under `deno test --parallel`)
+let initPromise: Promise<boolean> | null = null;
 let activateBatchFn:
   | ((
     network: unknown,
@@ -102,31 +104,44 @@ export async function initWasmActivation(
     return true; // Already initialised
   }
 
-  try {
-    // Import the generated JS bindings
-    const modulePath = `${wasmPath}/wasm_activation.js`;
-    const module = await import(modulePath);
-
-    // Initialize the WASM module
-    // The default export is the init function
-    await module.default();
-
-    // Store references to the exports
-    wasmModule = module;
-    CompiledNetwork = module.CompiledNetwork;
-    activateBatchFn = module.activate_batch;
-    squashFn = module.squash;
-    derivativeFn = module.derivative;
-    unsquashFn = module.unsquash;
-    safeZoneAdjustmentFn = module.safe_zone_adjustment;
-    calculateErrorFn = module.calculate_error;
-    versionFn = module.version;
-
-    return true;
-  } catch (error) {
-    console.error("Failed to initialise WASM activation module:", error);
-    return false;
+  // If an init is already in flight, await it.
+  if (initPromise) {
+    return await initPromise;
   }
+
+  initPromise = (async () => {
+    try {
+      // Import the generated JS bindings
+      const modulePath = `${wasmPath}/wasm_activation.js`;
+      const module = await import(modulePath);
+
+      // Initialize the WASM module
+      // The default export is the init function
+      await module.default();
+
+      // Store references to the exports
+      wasmModule = module;
+      CompiledNetwork = module.CompiledNetwork;
+      activateBatchFn = module.activate_batch;
+      squashFn = module.squash;
+      derivativeFn = module.derivative;
+      unsquashFn = module.unsquash;
+      safeZoneAdjustmentFn = module.safe_zone_adjustment;
+      calculateErrorFn = module.calculate_error;
+      versionFn = module.version;
+
+      return true;
+    } catch (error) {
+      console.error("Failed to initialise WASM activation module:", error);
+      return false;
+    } finally {
+      // If init succeeded, wasmModule is set and future calls will fast-path.
+      // If init failed, allow retries in a future call.
+      initPromise = null;
+    }
+  })();
+
+  return await initPromise;
 }
 
 /**
@@ -141,6 +156,15 @@ export function initWasmActivationSync(
 ): boolean {
   if (wasmModule !== null) {
     return true; // Already initialised
+  }
+
+  // Sync init should not run concurrently with async init; if async is in-flight,
+  // fail fast to avoid re-entrancy into wasm-bindgen initialisation.
+  if (initPromise) {
+    console.error(
+      "Failed to initialise WASM activation module sync: async init in progress",
+    );
+    return false;
   }
 
   try {
@@ -245,6 +269,28 @@ export class WasmCreatureActivation {
   }
 
   /**
+   * Stateless activation helper.
+   *
+   * When feedbackLoop=false we must ensure the WASM activation buffer does not
+   * carry state between calls. JS activation resets per-call unless feedbackLoop
+   * is explicitly enabled.
+   */
+  activateWithFeedback(
+    input: Float32Array,
+    feedbackLoop: boolean,
+  ): Float32Array {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+
+    if (!feedbackLoop && typeof this.network.reset_state === "function") {
+      this.network.reset_state();
+    }
+
+    return this.activate(input);
+  }
+
+  /**
    * Activate the network with tracing support for backpropagation
    * Issue #1121 - WASM Migration Phase 4: activateAndTrace
    *
@@ -326,6 +372,21 @@ export class WasmCreatureActivation {
     };
   }
 
+  activateAndTraceWithFeedback(
+    input: Float32Array,
+    feedbackLoop: boolean,
+  ): WasmTraceResult {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+
+    if (!feedbackLoop && typeof this.network.reset_state === "function") {
+      this.network.reset_state();
+    }
+
+    return this.activateAndTrace(input);
+  }
+
   /**
    * Activate the network with multiple inputs at once (batch mode)
    * This reduces JS/WASM boundary crossing overhead
@@ -349,6 +410,22 @@ export class WasmCreatureActivation {
     }
 
     return activateBatchFn(this.network, inputs, inputSize, this.numOutputs);
+  }
+
+  activateBatchWithFeedback(
+    inputs: Float32Array,
+    inputSize: number,
+    feedbackLoop: boolean,
+  ): Float32Array {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+
+    if (!feedbackLoop && typeof this.network.reset_state === "function") {
+      this.network.reset_state();
+    }
+
+    return this.activateBatch(inputs, inputSize);
   }
 
   /**
@@ -549,11 +626,51 @@ export function wasmVersion(): string {
 //
 // This is intentionally opt-in and best-effort. If the module can't be loaded,
 // we log and continue (JS fallback still works).
+//
+// IMPORTANT: Avoid auto-initialising inside Deno Workers by default.
+// Some environments end up spawning multiple workers (e.g. default `threads`
+// based on `navigator.hardwareConcurrency`). Auto-initialising WASM in every
+// worker can cause test runs to stall. If you explicitly want auto-init in
+// workers, set `NEAT_AI_WASM_AUTO_INIT_WORKERS=1|true|yes|on`.
+
+function isProbablyWorkerScope(): boolean {
+  // Most reliable when available.
+  try {
+    // deno-lint-ignore no-explicit-any
+    const g: any = globalThis;
+    if (typeof g.DedicatedWorkerGlobalScope === "function") {
+      return g instanceof g.DedicatedWorkerGlobalScope;
+    }
+  } catch {
+    // Ignore
+  }
+
+  // Heuristic fallback.
+  // In workers there is no `document`, but there is usually `postMessage` and `close`.
+  // (Deno module workers typically do not expose `importScripts`.)
+  // deno-lint-ignore no-explicit-any
+  const g: any = globalThis;
+  const hasDocument = typeof g.document !== "undefined";
+  const hasPostMessage = typeof g.postMessage === "function";
+  const hasClose = typeof g.close === "function";
+  const hasOnMessage = typeof g.onmessage !== "undefined";
+  return !hasDocument && hasPostMessage && hasClose && hasOnMessage;
+}
+
 try {
   const v = Deno.env.get("NEAT_AI_WASM_AUTO_INIT")?.trim().toLowerCase();
   const shouldAutoInit = v === "1" || v === "true" || v === "yes" || v === "on";
 
-  if (shouldAutoInit && !isWasmActivationAvailable()) {
+  const workerV = Deno.env.get("NEAT_AI_WASM_AUTO_INIT_WORKERS")?.trim()
+    .toLowerCase();
+  const allowInWorkers = workerV === "1" || workerV === "true" ||
+    workerV === "yes" || workerV === "on";
+  const isWorker = isProbablyWorkerScope();
+
+  if (
+    shouldAutoInit && (!isWorker || allowInWorkers) &&
+    !isWasmActivationAvailable()
+  ) {
     // repoRoot = <repo>/
     const repoRoot = new URL("../../", import.meta.url).pathname;
     const wasmPath = `${repoRoot}wasm_activation/pkg`;

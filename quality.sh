@@ -17,7 +17,7 @@ Usage: ./quality.sh [options]
 
 Options:
   --no-wasm         Run full quality suite with WASM disabled by default
-  --wasm            Run full quality suite with WASM enabled by default
+  --wasm            Run full quality suite with WASM enabled by default (guarded to avoid slowdowns)
   --wasm-fast       Run full quality suite with WASM enabled only for larger networks
   --wasm-only       Run only WASM activation tests (JS vs WASM comparisons)
   --compare-wasm    Alias for --wasm-only
@@ -165,8 +165,16 @@ fi
 
 ENV_CMD=(env)
 if [[ "$MODE" == "wasm" ]]; then
-  # Force WASM on wherever eligible.
-  ENV_CMD+=(NEAT_AI_USE_WASM=1 NEAT_AI_WASM_AUTO_INIT=1 NEAT_AI_USE_WASM_FORCE=1)
+  # Enable WASM by default.
+  #
+  # Important: using WASM requires per-creature compilation. For small networks
+  # (especially in evolutionary loops that create many tiny creatures), forcing
+  # WASM everywhere can make the suite appear "stuck" for a very long time.
+  #
+  # So for the full suite we keep WASM on, but apply conservative size
+  # thresholds to avoid pathological slowdowns. Dedicated WASM comparison tests
+  # are still covered by `--wasm-only`.
+  ENV_CMD+=(NEAT_AI_USE_WASM=1 NEAT_AI_WASM_AUTO_INIT=1 NEAT_AI_USE_WASM_MIN_NEURONS=32 NEAT_AI_USE_WASM_MIN_SYNAPSES=128)
 elif [[ "$MODE" == "wasm-fast" ]]; then
   # Prefer WASM only where it is likely beneficial, to keep the suite quick.
   ENV_CMD+=(NEAT_AI_USE_WASM=1 NEAT_AI_WASM_AUTO_INIT=1 NEAT_AI_USE_WASM_MIN_NEURONS=64 NEAT_AI_USE_WASM_MIN_SYNAPSES=256)
