@@ -88,6 +88,13 @@ let calculateErrorFn:
     currentValue: number,
   ) => number)
   | null = null;
+let getRangeFn: ((squashType: number) => Float32Array) | null = null;
+let validateRangeFn:
+  | ((squashType: number, activation: number) => boolean)
+  | null = null;
+let limitRangeFn:
+  | ((squashType: number, value: number) => number)
+  | null = null;
 let versionFn: (() => string) | null = null;
 
 /**
@@ -120,6 +127,9 @@ export async function initWasmActivation(
     unsquashFn = module.unsquash;
     safeZoneAdjustmentFn = module.safe_zone_adjustment;
     calculateErrorFn = module.calculate_error;
+    getRangeFn = module.get_range;
+    validateRangeFn = module.validate_range;
+    limitRangeFn = module.limit_range;
     versionFn = module.version;
 
     return true;
@@ -156,6 +166,9 @@ export function initWasmActivationSync(
     unsquashFn = jsBindings.unsquash;
     safeZoneAdjustmentFn = jsBindings.safe_zone_adjustment;
     calculateErrorFn = jsBindings.calculate_error;
+    getRangeFn = jsBindings.get_range;
+    validateRangeFn = jsBindings.validate_range;
+    limitRangeFn = jsBindings.limit_range;
     versionFn = jsBindings.version;
 
     return true;
@@ -527,6 +540,79 @@ export function wasmCalculateError(
     targetActivation,
     currentValue,
   );
+}
+
+/**
+ * Range bounds for an activation function
+ * Issue #1142 - WASM Migration Phase 10: Implement range validation in Rust/WASM
+ */
+export interface ActivationRangeBounds {
+  /** Minimum valid output value */
+  low: number;
+  /** Maximum valid output value */
+  high: number;
+}
+
+/**
+ * Get the range (low, high) for an activation function
+ * Issue #1142 - WASM Migration Phase 10: Implement range validation in Rust/WASM
+ *
+ * Returns an object with the valid output range for the activation function.
+ * For unbounded functions, very large values (±3.4e38) are used.
+ *
+ * @param squashType - The SquashType enum value
+ * @returns Object with low and high bounds
+ */
+export function wasmGetRange(squashType: number): ActivationRangeBounds {
+  if (!getRangeFn) {
+    throw new Error("WASM module not initialised");
+  }
+  const result = getRangeFn(squashType);
+  return {
+    low: result[0],
+    high: result[1],
+  };
+}
+
+/**
+ * Validate that an activation value is within the valid range
+ * Issue #1142 - WASM Migration Phase 10: Implement range validation in Rust/WASM
+ *
+ * Returns true if the activation is within the valid range for the
+ * specified activation function, false otherwise.
+ * Also returns false for NaN and Infinity values.
+ *
+ * @param squashType - The SquashType enum value
+ * @param activation - The activation value to validate
+ * @returns true if valid, false otherwise
+ */
+export function wasmValidateRange(
+  squashType: number,
+  activation: number,
+): boolean {
+  if (!validateRangeFn) {
+    throw new Error("WASM module not initialised");
+  }
+  return validateRangeFn(squashType, activation);
+}
+
+/**
+ * Clamp a value to the valid range for an activation function
+ * Issue #1142 - WASM Migration Phase 10: Implement range validation in Rust/WASM
+ *
+ * Returns the value clamped to the valid range for the specified
+ * activation function. Infinity values are clamped to the bounds.
+ * NaN returns 0.0 as a safe default.
+ *
+ * @param squashType - The SquashType enum value
+ * @param value - The value to clamp
+ * @returns The clamped value
+ */
+export function wasmLimitRange(squashType: number, value: number): number {
+  if (!limitRangeFn) {
+    throw new Error("WASM module not initialised");
+  }
+  return limitRangeFn(squashType, value);
 }
 
 /**

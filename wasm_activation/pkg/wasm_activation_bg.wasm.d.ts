@@ -35,6 +35,8 @@ export const compilednetwork_num_inputs: (a: number) => number;
 export const compilednetwork_num_neurons: (a: number) => number;
 export const compilednetwork_num_synapses: (a: number) => number;
 export const derivative: (a: number, b: number) => number;
+export const get_range: (a: number) => any;
+export const limit_range: (a: number, b: number) => number;
 export const safe_zone_adjustment: (
   a: number,
   b: number,
@@ -43,6 +45,7 @@ export const safe_zone_adjustment: (
 ) => number;
 export const squash: (a: number, b: number) => number;
 export const unsquash: (a: number, b: number, c: number) => number;
+export const validate_range: (a: number, b: number) => number;
 export const version: () => [number, number];
 export const __wbindgen_externrefs: WebAssembly.Table;
 export const __wbindgen_malloc: (a: number, b: number) => number;

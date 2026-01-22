@@ -208,6 +208,42 @@ export function derivative(squash_type, value) {
 }
 
 /**
+ * Get the range (low, high) for an activation function
+ * Issue #1142 - WASM Migration Phase 10
+ *
+ * Returns a Float32Array with two elements: [low, high]
+ * representing the valid output range for the activation function.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * @param {number} squash_type
+ * @returns {Float32Array}
+ */
+export function get_range(squash_type) {
+  const ret = wasm.get_range(squash_type);
+  return ret;
+}
+
+/**
+ * Clamp a value to the valid range for an activation function
+ * Issue #1142 - WASM Migration Phase 10
+ *
+ * Returns the value clamped to the valid range for the specified
+ * activation function. Infinity values are clamped to the bounds.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `value` - The value to clamp
+ * @param {number} squash_type
+ * @param {number} value
+ * @returns {number}
+ */
+export function limit_range(squash_type, value) {
+  const ret = wasm.limit_range(squash_type, value);
+  return ret;
+}
+
+/**
  * Standalone safe zone adjustment function for testing
  * Issue #1140 - WASM Migration Phase 8
  *
@@ -260,6 +296,25 @@ export function squash(squash_type, value) {
 export function unsquash(squash_type, activation, hint) {
   const ret = wasm.unsquash(squash_type, activation, hint);
   return ret;
+}
+
+/**
+ * Validate that an activation value is within the valid range
+ * Issue #1142 - WASM Migration Phase 10
+ *
+ * Returns true if the activation is within the valid range for the
+ * specified activation function, false otherwise.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `activation` - The activation value to validate
+ * @param {number} squash_type
+ * @param {number} activation
+ * @returns {boolean}
+ */
+export function validate_range(squash_type, activation) {
+  const ret = wasm.validate_range(squash_type, activation);
+  return ret !== 0;
 }
 
 /**
