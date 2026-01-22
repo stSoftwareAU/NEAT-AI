@@ -104,6 +104,24 @@ export function derivative(squash_type: number, value: number): number;
 export function squash(squash_type: number, value: number): number;
 
 /**
+ * Standalone unsquash function for testing
+ * Issue #1139 - WASM Migration Phase 7
+ *
+ * Computes the inverse of the specified activation function at the given activation value.
+ * The hint parameter guides the inverse for ambiguous or non-invertible functions.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `activation` - The squashed activation value to invert
+ * * `hint` - A hint value to guide the inverse (use NaN or pass the original input value)
+ */
+export function unsquash(
+  squash_type: number,
+  activation: number,
+  hint: number,
+): number;
+
+/**
  * Version information
  */
 export function version(): string;
@@ -146,6 +164,7 @@ export interface InitOutput {
   readonly compilednetwork_num_synapses: (a: number) => number;
   readonly derivative: (a: number, b: number) => number;
   readonly squash: (a: number, b: number) => number;
+  readonly unsquash: (a: number, b: number, c: number) => number;
   readonly version: () => [number, number];
   readonly __wbindgen_externrefs: WebAssembly.Table;
   readonly __wbindgen_malloc: (a: number, b: number) => number;

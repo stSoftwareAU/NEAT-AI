@@ -69,6 +69,9 @@ let activateBatchFn:
   | null = null;
 let squashFn: ((squashType: number, value: number) => number) | null = null;
 let derivativeFn: ((squashType: number, value: number) => number) | null = null;
+let unsquashFn:
+  | ((squashType: number, activation: number, hint: number) => number)
+  | null = null;
 let versionFn: (() => string) | null = null;
 
 /**
@@ -98,6 +101,7 @@ export async function initWasmActivation(
     activateBatchFn = module.activate_batch;
     squashFn = module.squash;
     derivativeFn = module.derivative;
+    unsquashFn = module.unsquash;
     versionFn = module.version;
 
     return true;
@@ -131,6 +135,7 @@ export function initWasmActivationSync(
     activateBatchFn = jsBindings.activate_batch;
     squashFn = jsBindings.squash;
     derivativeFn = jsBindings.derivative;
+    unsquashFn = jsBindings.unsquash;
     versionFn = jsBindings.version;
 
     return true;
@@ -402,6 +407,33 @@ export function wasmDerivative(squashType: number, value: number): number {
     throw new Error("WASM module not initialised");
   }
   return derivativeFn(squashType, value);
+}
+
+/**
+ * Standalone unsquash function
+ * Issue #1139 - WASM Migration Phase 7: Implement unSquash() in Rust/WASM
+ *
+ * Computes the inverse of the specified activation function at the given activation value.
+ * The unsquash function converts activation-space values back to value-space.
+ *
+ * For non-invertible functions (like Step, Bipolar) or functions with domain
+ * restrictions, the hint parameter guides the inverse when the result is ambiguous.
+ *
+ * @param squashType - The SquashType enum value
+ * @param activation - The squashed activation value to invert
+ * @param hint - An optional hint value to guide the inverse for ambiguous cases
+ * @returns The unsquashed value
+ */
+export function wasmUnSquash(
+  squashType: number,
+  activation: number,
+  hint?: number,
+): number {
+  if (!unsquashFn) {
+    throw new Error("WASM module not initialised");
+  }
+  // Use NaN as the hint when not provided, WASM will check for is_finite
+  return unsquashFn(squashType, activation, hint ?? Number.NaN);
 }
 
 /**

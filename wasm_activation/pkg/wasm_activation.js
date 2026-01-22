@@ -187,6 +187,27 @@ export function squash(squash_type, value) {
 }
 
 /**
+ * Standalone unsquash function for testing
+ * Issue #1139 - WASM Migration Phase 7
+ *
+ * Computes the inverse of the specified activation function at the given activation value.
+ * The hint parameter guides the inverse for ambiguous or non-invertible functions.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `activation` - The squashed activation value to invert
+ * * `hint` - A hint value to guide the inverse (use NaN or pass the original input value)
+ * @param {number} squash_type
+ * @param {number} activation
+ * @param {number} hint
+ * @returns {number}
+ */
+export function unsquash(squash_type, activation, hint) {
+  const ret = wasm.unsquash(squash_type, activation, hint);
+  return ret;
+}
+
+/**
  * Version information
  * @returns {string}
  */
