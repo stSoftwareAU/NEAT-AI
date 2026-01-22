@@ -20,6 +20,7 @@ export {
   initWasmActivation,
   initWasmActivationSync,
   isWasmActivationAvailable,
+  wasmCalculateError,
   WasmCreatureActivation,
   wasmDerivative,
   wasmSafeZoneAdjustment,
