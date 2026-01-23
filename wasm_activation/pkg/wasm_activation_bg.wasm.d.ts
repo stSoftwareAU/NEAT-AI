@@ -16,8 +16,16 @@ export const unsquash: (a: number, b: number, c: number) => number;
 export const safe_zone_adjustment: (a: number, b: number, c: number, d: number) => number;
 export const calculate_error: (a: number, b: number, c: number, d: number) => number;
 export const get_range: (a: number) => any;
-export const validate_range: (a: number, b: number) => number;
 export const limit_range: (a: number, b: number) => number;
+export const safe_zone_adjustment: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+) => number;
+export const squash: (a: number, b: number) => number;
+export const unsquash: (a: number, b: number, c: number) => number;
+export const validate_range: (a: number, b: number) => number;
 export const version: () => [number, number];
 export const __wbindgen_externrefs: WebAssembly.Table;
 export const __wbindgen_malloc: (a: number, b: number) => number;
