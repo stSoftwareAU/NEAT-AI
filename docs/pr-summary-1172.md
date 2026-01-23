@@ -2,27 +2,34 @@
 
 ## Summary
 
-This PR documents and tests the bulk copy optimisation for `activateAndTrace()` in the WASM activation module. The optimisation replaces element-by-element data copying with efficient `subarray().set()` bulk copy operations.
+This PR documents and tests the bulk copy optimisation for `activateAndTrace()`
+in the WASM activation module. The optimisation replaces element-by-element data
+copying with efficient `subarray().set()` bulk copy operations.
 
-**Note:** The actual code fix was already applied in earlier commits (as part of issue #1171 work). This PR adds comprehensive tests and benchmarks to verify the implementation and document the performance characteristics.
+**Note:** The actual code fix was already applied in earlier commits (as part of
+issue #1171 work). This PR adds comprehensive tests and benchmarks to verify the
+implementation and document the performance characteristics.
 
 ### What Changed
 
-The `WasmCreatureActivation.activateAndTrace()` method (in `src/wasm/WasmActivation.ts`) now uses bulk copy instead of per-element loops:
+The `WasmCreatureActivation.activateAndTrace()` method (in
+`src/wasm/WasmActivation.ts`) now uses bulk copy instead of per-element loops:
 
 **Before (element-by-element copying):**
+
 ```typescript
 const outputs = new Float32Array(this.numOutputs);
 for (let i = 0; i < this.numOutputs; i++) {
-    outputs[i] = result[i];  // Per-element copy
+  outputs[i] = result[i]; // Per-element copy
 }
 // Similar loops for activations and hintValues
 ```
 
 **After (bulk copy with subarray):**
+
 ```typescript
 const outputs = new Float32Array(this.numOutputs);
-outputs.set(result.subarray(0, this.numOutputs));  // Bulk copy
+outputs.set(result.subarray(0, this.numOutputs)); // Bulk copy
 // Similar for activations and hintValues
 ```
 
@@ -30,14 +37,15 @@ outputs.set(result.subarray(0, this.numOutputs));  // Bulk copy
 
 ### Benchmark Results
 
-The benchmark (`bench/ActivateAndTraceBulkCopy.ts`) was run on an Apple M4 Pro with Deno 2.6.4:
+The benchmark (`bench/ActivateAndTraceBulkCopy.ts`) was run on an Apple M4 Pro
+with Deno 2.6.4:
 
-| Network Size | Neurons | Synapses | Elements Copied/Call | Time/1000 Iterations |
-|-------------|---------|----------|---------------------|---------------------|
-| Medium | 111 | 686 | 123 | 3.0 ms |
-| Large | 302 | 5,236 | 406 | 11.8 ms |
-| Production-Scale | 703 | 25,712 | 1,009 | 36.2 ms |
-| XL | 1,205 | 68,878 | 1,815 | 78.5 ms |
+| Network Size     | Neurons | Synapses | Elements Copied/Call | Time/1000 Iterations |
+| ---------------- | ------- | -------- | -------------------- | -------------------- |
+| Medium           | 111     | 686      | 123                  | 3.0 ms               |
+| Large            | 302     | 5,236    | 406                  | 11.8 ms              |
+| Production-Scale | 703     | 25,712   | 1,009                | 36.2 ms              |
+| XL               | 1,205   | 68,878   | 1,815                | 78.5 ms              |
 
 ```
 Benchmark: activateAndTrace() Bulk Copy Performance
@@ -60,14 +68,19 @@ group xl-network
 | XL: activateAndTrace() [bulk copy]           |         78.5 ms |          12.7 |
 ```
 
-The optimisation eliminates 3 separate for loops per activation, replacing them with 3 efficient bulk copies. For a production network with 703 neurons, this means avoiding 1,009 individual array element assignments per activation call.
+The optimisation eliminates 3 separate for loops per activation, replacing them
+with 3 efficient bulk copies. For a production network with 703 neurons, this
+means avoiding 1,009 individual array element assignments per activation call.
 
 ### Test Results
 
-All 1,776 tests pass including 2 new tests specifically for the bulk copy behaviour:
+All 1,776 tests pass including 2 new tests specifically for the bulk copy
+behaviour:
 
-1. `WASM activateAndTrace: Bulk copy produces correct outputs, activations and hintValues (Issue #1172)` - Tests with a 5-hidden-neuron, 2-output network
-2. `WASM activateAndTrace: Bulk copy with large network produces correct results (Issue #1172)` - Stress test with 20 hidden neurons and 3 outputs
+1. `WASM activateAndTrace: Bulk copy produces correct outputs, activations and hintValues (Issue #1172)` -
+   Tests with a 5-hidden-neuron, 2-output network
+2. `WASM activateAndTrace: Bulk copy with large network produces correct results (Issue #1172)` -
+   Stress test with 20 hidden neurons and 3 outputs
 
 ```
 running 12 tests from ./test/WasmActivateAndTrace.ts
@@ -92,17 +105,21 @@ ok | 12 passed | 0 failed (23ms)
 - Added 2 new tests in `test/WasmActivateAndTrace.ts`:
   - `Bulk copy produces correct outputs, activations and hintValues (Issue #1172)`
   - `Bulk copy with large network produces correct results (Issue #1172)`
-- Added benchmark `bench/ActivateAndTraceBulkCopy.ts` to measure performance with various network sizes
+- Added benchmark `bench/ActivateAndTraceBulkCopy.ts` to measure performance
+  with various network sizes
 - All 1,776 existing tests continue to pass
 
 ## Files Changed
 
 1. `test/WasmActivateAndTrace.ts` - Added 2 new tests for bulk copy verification
-2. `bench/ActivateAndTraceBulkCopy.ts` - New benchmark file for performance measurement
+2. `bench/ActivateAndTraceBulkCopy.ts` - New benchmark file for performance
+   measurement
 3. `docs/pr-summary-1172.md` - This PR summary
 
 ## Related Issues
 
-- Issue #1172: WASM Performance: activateAndTrace() copies data element-by-element instead of using subarray()
+- Issue #1172: WASM Performance: activateAndTrace() copies data
+  element-by-element instead of using subarray()
 - Issue #1170: Parent issue for WASM performance improvements
-- Issue #1171: Related WASM activation optimisation (activate() allocation overhead)
+- Issue #1171: Related WASM activation optimisation (activate() allocation
+  overhead)
