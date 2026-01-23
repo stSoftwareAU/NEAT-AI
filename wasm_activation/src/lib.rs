@@ -2605,6 +2605,9 @@ pub struct CompiledNetwork {
     /// Pre-allocated buffer for hint values in activate_and_trace
     /// Issue #1173 - Pre-allocate Vec<f32> buffers in CompiledNetwork struct
     hint_values_buffer: Vec<f32>,
+    /// Pre-allocated buffer for trace data in activate_and_trace
+    /// Issue #1173 - Eliminates heap allocation per call
+    trace_data_buffer: Vec<f32>,
 }
 
 #[wasm_bindgen]
@@ -2712,6 +2715,11 @@ impl CompiledNetwork {
             });
         }
 
+        // Issue #1173 - Pre-allocate trace data buffer with estimated capacity
+        // Estimate ~10% of neurons have aggregate functions (MINIMUM, MAXIMUM, IF)
+        // Each aggregate records 2 floats (neuron_idx, trace_info), plus -1.0 terminator
+        let estimated_trace_size = (num_non_inputs / 10).max(1) * 2 + 1;
+
         Ok(CompiledNetwork {
             num_neurons,
             num_inputs,
@@ -2720,6 +2728,8 @@ impl CompiledNetwork {
             activations: vec![0.0; num_neurons],
             // Issue #1173 - Pre-allocate hint values buffer
             hint_values_buffer: vec![0.0; num_non_inputs],
+            // Issue #1173 - Pre-allocate trace data buffer
+            trace_data_buffer: Vec::with_capacity(estimated_trace_size),
         })
     }
 
@@ -3010,16 +3020,15 @@ impl CompiledNetwork {
         let input_len = input.len().min(self.num_inputs);
         self.activations[..input_len].copy_from_slice(&input[..input_len]);
 
+        // Issue #1173 - Reuse pre-allocated trace data buffer instead of allocating
         // Track trace data for aggregate functions
         // Format: pairs of (neuron_relative_index, trace_info), terminated by -1.0
-        let mut trace_data: Vec<f32> = Vec::new();
+        self.trace_data_buffer.clear();
 
         // Use pre-allocated hint values buffer (Issue #1173)
         let num_non_inputs = self.num_neurons - self.num_inputs;
-        // Zero out the buffer for reuse
-        for val in self.hint_values_buffer.iter_mut() {
-            *val = 0.0;
-        }
+        // Issue #1173 - Use fill(0.0) instead of loop for better performance
+        self.hint_values_buffer.fill(0.0);
 
         // Process each neuron in order
         for (neuron_idx, neuron) in self.neurons.iter().enumerate() {
@@ -3053,8 +3062,8 @@ impl CompiledNetwork {
                             }
                         }
                         // Record trace: neuron index and winning synapse local index
-                        trace_data.push(neuron_idx as f32);
-                        trace_data.push(min_local_idx as f32);
+                        self.trace_data_buffer.push(neuron_idx as f32);
+                        self.trace_data_buffer.push(min_local_idx as f32);
 
                         let result = if min_val == f64::INFINITY {
                             neuron.bias as f32
@@ -3079,8 +3088,8 @@ impl CompiledNetwork {
                             }
                         }
                         // Record trace: neuron index and winning synapse local index
-                        trace_data.push(neuron_idx as f32);
-                        trace_data.push(max_local_idx as f32);
+                        self.trace_data_buffer.push(neuron_idx as f32);
+                        self.trace_data_buffer.push(max_local_idx as f32);
 
                         let result = if max_val == f64::NEG_INFINITY {
                             neuron.bias as f32
@@ -3109,8 +3118,8 @@ impl CompiledNetwork {
 
                         // Record trace: neuron index and branch taken (1.0 = positive, 0.0 = negative)
                         let branch_taken = if condition_sum > 0.0 { 1.0f32 } else { 0.0f32 };
-                        trace_data.push(neuron_idx as f32);
-                        trace_data.push(branch_taken);
+                        self.trace_data_buffer.push(neuron_idx as f32);
+                        self.trace_data_buffer.push(branch_taken);
 
                         let result = if condition_sum > 0.0 {
                             (positive_sum + neuron.bias) as f32
@@ -3156,7 +3165,7 @@ impl CompiledNetwork {
         }
 
         // Terminate trace data
-        trace_data.push(-1.0);
+        self.trace_data_buffer.push(-1.0);
 
         // Build result array:
         // - Output values (num_outputs)
@@ -3164,7 +3173,7 @@ impl CompiledNetwork {
         // - Pre-squash values / hintValues (num_non_inputs)
         // - Trace data
         let output_start = self.num_neurons - num_outputs;
-        let result_len = num_outputs + (num_non_inputs * 2) + trace_data.len();
+        let result_len = num_outputs + (num_non_inputs * 2) + self.trace_data_buffer.len();
 
         let result = Float32Array::new_with_length(result_len as u32);
 
@@ -3183,8 +3192,8 @@ impl CompiledNetwork {
             result.set_index((num_outputs + num_non_inputs + i) as u32, val);
         }
 
-        // Copy trace data
-        for (i, &val) in trace_data.iter().enumerate() {
+        // Copy trace data from pre-allocated buffer
+        for (i, &val) in self.trace_data_buffer.iter().enumerate() {
             result.set_index((num_outputs + (num_non_inputs * 2) + i) as u32, val);
         }
 
