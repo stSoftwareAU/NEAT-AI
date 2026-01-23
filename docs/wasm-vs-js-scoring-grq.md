@@ -10,7 +10,7 @@ the **same score**.
 1. Build the local WASM package (not checked in):
 
 ```bash
-cd /Users/nigelleck/Develop/NEAT-AI
+cd ~/Develop/NEAT-AI
 bash wasm_activation/build.sh
 ```
 
@@ -18,19 +18,19 @@ bash wasm_activation/build.sh
    can diff/compare):
 
 ```bash
-cd /Users/nigelleck/Develop/NEAT-AI
+cd ~/Develop/NEAT-AI
 deno run --allow-read --allow-env --no-check - <<'EOF'
-import { Creature, Costs } from 'file:///Users/nigelleck/Develop/NEAT-AI/mod.ts';
-import { initWasmActivation, isWasmActivationAvailable } from 'file:///Users/nigelleck/Develop/NEAT-AI/src/wasm/mod.ts';
-import { calculate as calculateScore } from 'file:///Users/nigelleck/Develop/NEAT-AI/src/architecture/Score.ts';
+import { Creature, Costs } from 'file://~/Develop/NEAT-AI/mod.ts';
+import { initWasmActivation, isWasmActivationAvailable } from 'file://~/Develop/NEAT-AI/src/wasm/mod.ts';
+import { calculate as calculateScore } from 'file://~/Develop/NEAT-AI/src/architecture/Score.ts';
 
-const networkPath = '/Users/nigelleck/Develop/GRQ-cluster/network.json';
-const dataDir = '/Users/nigelleck/Develop/GRQ/.trainData-binary_89';
+const networkPath = '~/Develop/GRQ-cluster/network.json';
+const dataDir = '~/Develop/GRQ/.trainData-binary_89';
 const costName = 'MSE';
 const costOfGrowth = 0.0000001; // DEFAULT_COST_OF_GROWTH
 const feedbackLoop = false;
 
-await initWasmActivation('/Users/nigelleck/Develop/NEAT-AI/wasm_activation/pkg');
+await initWasmActivation('~/Develop/NEAT-AI/wasm_activation/pkg');
 if (!isWasmActivationAvailable()) throw new Error('WASM unavailable');
 
 const json = JSON.parse(await Deno.readTextFile(networkPath));
@@ -125,8 +125,8 @@ EOF
 
 ## Inputs
 
-- **Creature**: `/Users/nigelleck/Develop/GRQ-cluster/network.json`
-- **Training data**: `/Users/nigelleck/Develop/GRQ/.trainData-binary_89` (binary
+- **Creature**: `~/Develop/GRQ-cluster/network.json`
+- **Training data**: `~/Develop/GRQ/.trainData-binary_89` (binary
   `.bin` files)
 
 ## Environment
@@ -143,7 +143,7 @@ EOF
 WASM needs to be built locally (the `pkg/` artifacts are not checked in):
 
 ```bash
-cd /Users/nigelleck/Develop/NEAT-AI
+cd ~/Develop/NEAT-AI
 bash wasm_activation/build.sh
 ```
 
@@ -193,17 +193,17 @@ transparency; nothing was checked in besides this document):
 
 ```bash
 deno run --allow-read --allow-env --no-check - <<'EOF'
-import { Creature, Costs } from 'file:///Users/nigelleck/Develop/NEAT-AI/mod.ts';
-import { initWasmActivation, isWasmActivationAvailable } from 'file:///Users/nigelleck/Develop/NEAT-AI/src/wasm/mod.ts';
-import { calculate as calculateScore } from 'file:///Users/nigelleck/Develop/NEAT-AI/src/architecture/Score.ts';
+import { Creature, Costs } from 'file://~/Develop/NEAT-AI/mod.ts';
+import { initWasmActivation, isWasmActivationAvailable } from 'file://~/Develop/NEAT-AI/src/wasm/mod.ts';
+import { calculate as calculateScore } from 'file://~/Develop/NEAT-AI/src/architecture/Score.ts';
 
-const networkPath = '/Users/nigelleck/Develop/GRQ-cluster/network.json';
-const dataDir = '/Users/nigelleck/Develop/GRQ/.trainData-binary_89';
+const networkPath = '~/Develop/GRQ-cluster/network.json';
+const dataDir = '~/Develop/GRQ/.trainData-binary_89';
 const costName = 'MSE';
 const costOfGrowth = 0.0000001; // DEFAULT_COST_OF_GROWTH
 const feedbackLoop = false;
 
-await initWasmActivation('/Users/nigelleck/Develop/NEAT-AI/wasm_activation/pkg');
+await initWasmActivation('~/Develop/NEAT-AI/wasm_activation/pkg');
 if (!isWasmActivationAvailable()) throw new Error('WASM unavailable');
 
 const json = JSON.parse(await Deno.readTextFile(networkPath));
