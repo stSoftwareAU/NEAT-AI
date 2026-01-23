@@ -336,23 +336,24 @@ export class WasmCreatureActivation {
     // - [numOutputs+2*numNonInputs..]: trace data pairs, terminated by -1.0
     const numNonInputs = this.network.num_neurons - this.numInputs;
 
-    // Extract outputs
+    // Extract outputs using bulk copy (Issue #1172)
     const outputs = new Float32Array(this.numOutputs);
-    for (let i = 0; i < this.numOutputs; i++) {
-      outputs[i] = result[i];
-    }
+    outputs.set(result.subarray(0, this.numOutputs));
 
-    // Extract post-squash activations for all non-input neurons
+    // Extract post-squash activations for all non-input neurons using bulk copy
     const activations = new Float32Array(numNonInputs);
-    for (let i = 0; i < numNonInputs; i++) {
-      activations[i] = result[this.numOutputs + i];
-    }
+    activations.set(
+      result.subarray(this.numOutputs, this.numOutputs + numNonInputs),
+    );
 
-    // Extract pre-squash values (hintValues) for all non-input neurons
+    // Extract pre-squash values (hintValues) for all non-input neurons using bulk copy
     const hintValues = new Float32Array(numNonInputs);
-    for (let i = 0; i < numNonInputs; i++) {
-      hintValues[i] = result[this.numOutputs + numNonInputs + i];
-    }
+    hintValues.set(
+      result.subarray(
+        this.numOutputs + numNonInputs,
+        this.numOutputs + 2 * numNonInputs,
+      ),
+    );
 
     // Parse trace data
     // Format: pairs of (neuron_relative_index, trace_info), terminated by -1.0
