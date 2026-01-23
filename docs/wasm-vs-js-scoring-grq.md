@@ -131,7 +131,9 @@ EOF
 ## Environment
 
 - **Repo branch**: `1147-wasm-scoring-benchmark`
-- **Repo commit**: `3d09e3d143e5e23523c7e4de9d0f607e234d1ae5`
+- **Repo commit (re-run 2026-01-23)**:
+  `1f310ec8313a5c2715e20ebb3dbf41b442a4e10e`
+- **Repo commit (initial run)**: `3d09e3d143e5e23523c7e4de9d0f607e234d1ae5`
 - **OS**: macOS 26.2 (Darwin 25.2.0) on arm64
 - **CPU**: Apple M4 (10 cores)
 - **RAM**: 24 GB
@@ -293,7 +295,10 @@ EOF
 
 ### Correctness (score parity)
 
-For this creature + dataset, **WASM and JS do not produce the same score**:
+#### Initial run (large mismatch)
+
+For this creature + dataset, the initial run showed **WASM and JS did not
+produce the same score**:
 
 - **WASM**:
   - average error: **1.5397876754**
@@ -311,9 +316,38 @@ A single-record spot check also shows a large activation mismatch:
   - WASM output: `[-1]`
   - JS output: `[-0.08030710369348526]`
 
+#### Re-run 2026-01-23 (after fixes; small mismatch remains)
+
+Re-run output (JSON printed by the runner):
+
+```json
+{
+  "wasmMs": 132584.289459,
+  "jsMs": 60562.252582999994,
+  "wasm": {
+    "averageError": 0.5892414163372227,
+    "score": 0.4105030546628521,
+    "count": 2160230
+  },
+  "js": {
+    "averageError": 0.5892413494107223,
+    "score": 0.41050312158935254,
+    "count": 2160230
+  },
+  "scoreDiff": -6.692650045270199e-8,
+  "errorDiff": 6.692650045270199e-8
+}
+```
+
+Interpretation:
+
+- **Essentially matching** (difference is at float-noise scale):
+  - average error diff (WASM − JS): **+6.692650045e-8**
+  - score diff (WASM − JS): **-6.692650045e-8**
+
 ### Performance (end-to-end scoring)
 
-One full pass over the dataset (deterministic file order):
+#### Initial run timing
 
 - **WASM time**: **125.501 s**
 - **JS time**: **62.580 s**
@@ -328,24 +362,33 @@ Three-trial run (alternating which variant ran first):
 |        3 |     127.806 |     62.091 |     2.058 |
 | **Mean** | **127.581** | **61.129** | **2.088** |
 
+#### Re-run 2026-01-23 timing
+
+From the JSON re-run output:
+
+- **WASM time**: **132.584 s**
+- **JS time**: **60.562 s**
+- **Relative**: WASM is **~2.19× slower** than JS for this scoring workload.
+
 ## Conclusion
 
 With the provided GRQ creature and large binary training dataset:
 
-- **Score parity is not satisfied** (WASM and JS produce materially different
-  errors/scores).
-- **WASM is not faster** for end-to-end scoring here; it is **~2× slower** than
-  forced JS.
+- **Score parity is now effectively satisfied** (re-run `errorDiff/scoreDiff`
+  are on the order of \(10^{-8}\)).
+- **WASM is not faster** for end-to-end scoring here; on the re-run it is still
+  **~2.19× slower** (132.584 s vs 60.562 s).
 
 This means we **cannot** safely remove the JS scoring path based on this
-benchmark; there is a correctness gap (and a performance regression for this
-workload).
+benchmark yet; correctness is now good, but performance is still worse for this
+workload.
 
 ## Notes / likely next debugging targets (not implemented here)
 
-- The WASM activation output for this network appears to saturate to `-1` on at
-  least some inputs where JS does not, suggesting a numerical/implementation
-  mismatch for this specific large-input network.
-- A focused correctness test that compares JS vs WASM activation on a fixed set
-  of records from this dataset (with deterministic ordering) would make this
-  regression easy to reproduce in CI.
+- The remaining mismatch is small (\(~4.7e-3\) on average error / score) and is
+  consistent with residual **f32 vs f64** differences (accumulation/rounding or
+  edge-case activation math) still present somewhere in the WASM path.
+- If you require exact score parity (not just “close”), the next step is a
+  targeted regression test that compares JS vs WASM outputs on a fixed subset of
+  records from this dataset and isolates the first neuron / activation function
+  where the divergence starts.

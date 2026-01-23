@@ -6,8 +6,8 @@
  * Format (Issue #1125 - updated to support aggregate functions):
  * - Header: [num_neurons: u32, num_inputs: u32]
  * - Neuron data: For each neuron after inputs:
- *   - [bias: f32, squash_type: u8, is_constant: u8, num_synapses: u16]
- *   - Connections: [from_index: u16, synapse_type: u8, padding: u8, weight: f32] * num_connections
+ *   - [bias: f64, squash_type: u8, is_constant: u8, num_synapses: u16]
+ *   - Connections: [from_index: u16, synapse_type: u8, padding: u8, weight: f64] * num_connections
  *
  * Synapse types (for IF activation):
  *   - 0: Standard/Positive (used in weighted sum or as positive branch for IF)
@@ -96,7 +96,7 @@ export class CompiledNetwork {
    *     - u16: from_index
    *     - u8: synapse_type
    *     - u8: padding
-   *     - f32: weight
+   *     - f64: weight
    * @param {Uint8Array} data
    */
   constructor(data) {
