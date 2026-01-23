@@ -1,17 +1,25 @@
 ## Summary
 
-Added automatic wasm-pack version checking and updating to the WASM activation build script. Similar to how `deno outdated --update --latest` works for Deno packages, the build script now automatically checks for newer versions of wasm-pack on crates.io and updates it if a newer version is available.
+Added automatic wasm-pack version checking and updating to the WASM activation
+build script. Similar to how `deno outdated --update --latest` works for Deno
+packages, the build script now automatically checks for newer versions of
+wasm-pack on crates.io and updates it if a newer version is available.
 
 **Changes made:**
-- Updated `wasm_activation/build.sh` to include a `check_and_update_wasm_pack()` function
+
+- Updated `wasm_activation/build.sh` to include a `check_and_update_wasm_pack()`
+  function
 - The function queries crates.io to determine the latest wasm-pack version
 - Compares the installed version with the latest version
-- Automatically updates wasm-pack using `cargo install wasm-pack --force` when outdated
+- Automatically updates wasm-pack using `cargo install wasm-pack --force` when
+  outdated
 - If wasm-pack is not installed, it installs the latest version automatically
 
 **Behaviour:**
+
 - When wasm-pack is outdated: Updates to latest version before building
-- When wasm-pack is up-to-date: Displays "wasm-pack is already up to date." and proceeds with build
+- When wasm-pack is up-to-date: Displays "wasm-pack is already up to date." and
+  proceeds with build
 - When wasm-pack is not installed: Installs the latest version
 - When version check fails (e.g., offline): Proceeds with existing installation
 
