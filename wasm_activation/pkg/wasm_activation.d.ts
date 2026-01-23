@@ -225,6 +225,26 @@ export type InitInput =
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
+  readonly compilednetwork_reset_state: (a: number) => void;
+  readonly compilednetwork_new: (
+    a: number,
+    b: number,
+  ) => [number, number, number];
+  readonly compilednetwork_activate: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => any;
+  readonly compilednetwork_num_neurons: (a: number) => number;
+  readonly compilednetwork_num_inputs: (a: number) => number;
+  readonly compilednetwork_num_synapses: (a: number) => number;
+  readonly compilednetwork_activate_and_trace: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => any;
   readonly activate_batch: (
     a: number,
     b: number,
@@ -232,44 +252,24 @@ export interface InitOutput {
     d: number,
     e: number,
   ) => any;
-  readonly calculate_error: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-  ) => number;
-  readonly compilednetwork_activate: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-  ) => any;
-  readonly compilednetwork_activate_and_trace: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-  ) => any;
-  readonly compilednetwork_new: (
-    a: number,
-    b: number,
-  ) => [number, number, number];
-  readonly compilednetwork_num_inputs: (a: number) => number;
-  readonly compilednetwork_num_neurons: (a: number) => number;
-  readonly compilednetwork_num_synapses: (a: number) => number;
-  readonly compilednetwork_reset_state: (a: number) => void;
+  readonly squash: (a: number, b: number) => number;
   readonly derivative: (a: number, b: number) => number;
-  readonly get_range: (a: number) => any;
-  readonly limit_range: (a: number, b: number) => number;
+  readonly unsquash: (a: number, b: number, c: number) => number;
   readonly safe_zone_adjustment: (
     a: number,
     b: number,
     c: number,
     d: number,
   ) => number;
-  readonly squash: (a: number, b: number) => number;
-  readonly unsquash: (a: number, b: number, c: number) => number;
+  readonly calculate_error: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => number;
+  readonly get_range: (a: number) => any;
   readonly validate_range: (a: number, b: number) => number;
+  readonly limit_range: (a: number, b: number) => number;
   readonly version: () => [number, number];
   readonly __wbindgen_externrefs: WebAssembly.Table;
   readonly __wbindgen_malloc: (a: number, b: number) => number;

@@ -179,6 +179,14 @@ export function unSquash(
   hint?: number,
   useJs = false,
 ): number {
+  // StdInverse can easily produce values around ±1e12 for tiny activations.
+  // Returning those via f32 (WASM) introduces ~kilounit rounding error at that scale,
+  // which breaks backprop roundtrip invariants (see test/propagate/ToValue.ts).
+  // Use the JS implementation (f64) for correctness.
+  if (squashName === "StdInverse") {
+    useJs = true;
+  }
+
   // Try WASM if available and not forced to use JS
   if (!useJs && shouldUseWasmBackprop()) {
     const resolvedName = resolveWasmSquashName(squashName);
@@ -212,6 +220,11 @@ export function squash(
   value: number,
   useJs = false,
 ): number {
+  // See note in unSquash(): keep StdInverse in JS for precision.
+  if (squashName === "StdInverse") {
+    useJs = true;
+  }
+
   // Try WASM if available and not forced to use JS
   if (!useJs && shouldUseWasmBackprop()) {
     const resolvedName = resolveWasmSquashName(squashName);

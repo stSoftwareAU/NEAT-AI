@@ -33,7 +33,14 @@ export class Swish implements ActivationInterface, UnSquashInterface {
 
   squash(x: number): number {
     if (!Number.isFinite(x)) return 0;
-    const expNegX = x < -20 ? 0 : Math.exp(-x);
+    // Numerical stability:
+    // - For large positive x, exp(-x) underflows toward 0 (safe to treat as 0).
+    // - For large negative x, exp(-x) overflows toward +∞, and x/(1+∞) -> 0.
+    //
+    // NOTE: A previous implementation incorrectly used `x < -20 ? 0 : exp(-x)`,
+    // which made Swish behave ~like IDENTITY for large negative x. This breaks
+    // WASM/JS parity and is mathematically incorrect.
+    const expNegX = x > 20 ? 0 : Math.exp(-x);
     const value = x / (1 + expNegX);
     return Swish.rangeStatic.limit(value, x);
   }

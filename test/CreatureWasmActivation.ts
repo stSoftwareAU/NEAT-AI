@@ -153,6 +153,91 @@ Deno.test({
 });
 
 // =============================================================================
+// Regression: JS vs WASM parity for large inputs
+// =============================================================================
+
+Deno.test({
+  name: "Creature WASM: activate() parity with large input (regression)",
+  fn() {
+    // Large-input creatures are common in production. We validate that JS-forced
+    // and WASM-default remain close for a representative (non-adversarial) weight
+    // scale.
+    //
+    // Note: there exist adversarial cancellation cases where f32 vs f64 can
+    // diverge materially. We do not treat those as a hard parity guarantee here.
+
+    function seededRandom(seed: number): () => number {
+      let s = seed >>> 0;
+      return () => {
+        s = (s * 1664525 + 1013904223) >>> 0;
+        return s / 0xffffffff;
+      };
+    }
+
+    const N = 512;
+    const rand = seededRandom(123456);
+    const weights: number[] = new Array(N);
+    const input = new Float32Array(N);
+
+    for (let i = 0; i < N; i++) {
+      input[i] = rand() * 2 - 1; // [-1, 1]
+      weights[i] = (rand() * 2 - 1) * 1e4; // moderate scale
+    }
+
+    const outputIndex = N;
+    const creatureJson: CreatureInternal = {
+      neurons: [{
+        type: "output",
+        index: outputIndex,
+        bias: 0,
+        squash: "HARD_TANH",
+      }],
+      synapses: weights.map((w, i) => ({
+        from: i,
+        to: outputIndex,
+        weight: w,
+      })),
+      input: N,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const jsOutput = creature.activate(input, false, false, true);
+    const wasmOutput = creature.activate(input, false, false, false);
+
+    assertArrayClose(wasmOutput, jsOutput, "Large-input parity", 1e-4);
+  },
+});
+
+// =============================================================================
+// Regression: squash parity for large values (Exponential)
+// =============================================================================
+
+Deno.test({
+  name: "Creature WASM: Exponential clamp parity at large x (regression)",
+  fn() {
+    // JS Exponential clamps at x>=36 to Number.MAX_SAFE_INTEGER.
+    // WASM must match to avoid runaway values (and NaNs downstream).
+    const creatureJson: CreatureInternal = {
+      neurons: [{ type: "output", index: 1, bias: 0, squash: "Exponential" }],
+      synapses: [{ from: 0, to: 1, weight: 1.0 }],
+      input: 1,
+      output: 1,
+    };
+    const creature = Creature.fromJSON(creatureJson);
+    creature.fix();
+
+    const input = new Float32Array([50]); // > 36, triggers JS clamp
+    const jsOutput = creature.activate(input, false, false, true);
+    const wasmOutput = creature.activate(input, false, false, false);
+
+    assertArrayClose(wasmOutput, jsOutput, "Exponential clamp parity");
+  },
+});
+
+// =============================================================================
 // Test: activateAndTrace() with useJs parameter (Issue #1122)
 // =============================================================================
 
