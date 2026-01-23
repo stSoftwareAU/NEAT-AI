@@ -8,28 +8,8 @@
 import { assert, assertEquals, assertGreater } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
-
-/**
- * Helper to create a large creature for benchmarking.
- * Creates a creature with many neurons and synapses to simulate production workloads.
- */
-function createLargeCreature(
-  inputCount: number,
-  outputCount: number,
-  hiddenNeurons: number,
-): Creature {
-  const creature = new Creature(inputCount, outputCount);
-  const addNeuron = new AddNeuron(creature);
-
-  for (let i = 0; i < hiddenNeurons; i++) {
-    addNeuron.mutate();
-  }
-
-  return creature;
-}
 
 /**
  * Verifies that synapses are correctly ordered after connect() operations.
@@ -244,100 +224,9 @@ Deno.test("connect(): correctly inserts in middle of synapses array", () => {
   creatureValidate(creature);
 });
 
-Deno.test("connect(): benchmark - 1000 connect() calls on large creature", () => {
-  // Create a creature with approximately 10,000+ synapses as per issue requirements
-  // Using 50 inputs, 10 outputs, and 200 hidden neurons to create a large network
-  const creature = createLargeCreature(50, 10, 200);
-
-  const initialSynapseCount = creature.synapses.length;
-  console.log(`Initial synapse count: ${initialSynapseCount}`);
-
-  // Ensure we have a reasonably large creature
-  assertGreater(
-    initialSynapseCount,
-    500,
-    "Expected creature to have at least 500 synapses",
-  );
-
-  // Get available connection slots
-  const available = creature.getAvailableConnections();
-  const connectionsToAdd = Math.min(1000, available.length);
-
-  console.log(`Available connections: ${available.length}`);
-  console.log(`Connections to add: ${connectionsToAdd}`);
-
-  // Benchmark the connect() calls
-  const startTime = performance.now();
-
-  for (let i = 0; i < connectionsToAdd; i++) {
-    const [from, to] = available[i];
-    creature.connect(from, to, Math.random() * 2 - 1);
-  }
-
-  const endTime = performance.now();
-  const elapsed = endTime - startTime;
-  const avgPerConnect = elapsed / connectionsToAdd;
-
-  // Verify ordering is maintained
-  verifySynapseOrdering(creature);
-
-  // Validate the creature
-  creatureValidate(creature);
-
-  // Log benchmark results
-  console.log(`\n--- Connect() Splice Benchmark Results ---`);
-  console.log(`Synapse count after: ${creature.synapses.length}`);
-  console.log(`Connections added: ${connectionsToAdd}`);
-  console.log(`Total time: ${elapsed.toFixed(2)}ms`);
-  console.log(`Average per connect(): ${avgPerConnect.toFixed(4)}ms`);
-  console.log(`Operations per second: ${(1000 / avgPerConnect).toFixed(0)}`);
-  console.log(`------------------------------------------\n`);
-
-  // Performance assertion: should complete in reasonable time
-  // With splice optimisation, 1000 connections should complete in under 500ms
-  // (This is a conservative threshold to avoid flaky tests on slower machines)
-  assertGreater(
-    500,
-    elapsed,
-    `Expected ${connectionsToAdd} connect() calls to complete in under 500ms, took ${
-      elapsed.toFixed(2)
-    }ms`,
-  );
-});
-
-Deno.test("connect(): benchmark - measures memory efficiency", () => {
-  // This test verifies that connect() doesn't create excessive garbage
-  // by checking that we can perform many operations without issues
-
-  const creature = createLargeCreature(30, 5, 100);
-  const available = creature.getAvailableConnections();
-  const iterations = Math.min(500, available.length);
-
-  // Force garbage collection if available (Deno with --v8-flags=--expose-gc)
-  const globalWithGC = globalThis as unknown as { gc?: () => void };
-  if (typeof globalWithGC.gc === "function") {
-    globalWithGC.gc();
-  }
-
-  const startTime = performance.now();
-
-  for (let i = 0; i < iterations; i++) {
-    const [from, to] = available[i];
-    creature.connect(from, to, Math.random());
-  }
-
-  const endTime = performance.now();
-
-  // Validate structure
-  verifySynapseOrdering(creature);
-  creatureValidate(creature);
-
-  console.log(
-    `Memory efficiency test: ${iterations} connections in ${
-      (endTime - startTime).toFixed(2)
-    }ms`,
-  );
-});
+// NOTE: Performance benchmark tests have been moved to bench/mutate/ConnectSplice.ts
+// Unit tests should only verify correctness, not performance timings.
+// Performance tests are flaky when run in parallel (issue #1181).
 
 Deno.test("connect(): stress test with sequential insertions", () => {
   // This test verifies that repeated insertions at various positions work correctly
