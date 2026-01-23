@@ -161,7 +161,16 @@ fn apply_squash(squash_type: SquashType, x: f32) -> f32 {
         SquashType::Logistic => 1.0 / (1.0 + (-x).exp()),
         SquashType::Tanh => x.tanh(),
         SquashType::HardTanh => x.max(-1.0).min(1.0),
-        SquashType::Softsign => x / (1.0 + x.abs()),
+        SquashType::Softsign => {
+            // Match JS ActivationRange bounds (±0.99) and avoid tiny f32 overshoots
+            // that can fail validation (see test/propagate/ToValue.ts).
+            let y = x / (1.0 + x.abs());
+            // IMPORTANT: `0.99` in f32 is slightly *greater* than `0.99` in JS (f64),
+            // so clamping to `SOFTSIGN_LIMIT` can still yield values > 0.99 in JS.
+            // Use the next smaller f32 value to stay within the JS bounds.
+            let limit = f32::from_bits(SOFTSIGN_LIMIT.to_bits() - 1);
+            y.max(-limit).min(limit)
+        },
         SquashType::Softplus => (1.0 + x.exp()).ln(),
         SquashType::Swish => x / (1.0 + (-x).exp()),
         SquashType::Mish => x * (1.0 + x.exp()).ln().tanh(),
@@ -838,7 +847,10 @@ fn apply_unsquash(squash_type: SquashType, activation: f32, hint: f32) -> f32 {
 
         // f(x) = atan(x), f⁻¹(y) = tan(y)
         SquashType::ArcTan => {
-            const EPSILON: f32 = 1e-10;
+            // Match the TypeScript implementation (ArcTan.EPSILON = 1e-5).
+            // This ensures saturated activations map to ±1e6 (or hint) rather than
+            // a tan() result that is sensitive to f32 precision near ±π/2.
+            const EPSILON: f32 = 1e-5;
             let upper = std::f32::consts::FRAC_PI_2 - EPSILON;
             let lower = -std::f32::consts::FRAC_PI_2 + EPSILON;
 
@@ -896,6 +908,16 @@ fn apply_unsquash(squash_type: SquashType, activation: f32, hint: f32) -> f32 {
         // f⁻¹(y) = -log(2 / (y + 1) - 1)
         SquashType::BipolarSigmoid => {
             const EPSILON: f32 = 1e-10;
+            // Match JS "prefer smallest-change" behavior near saturation:
+            // when activation is very close to ±1 and we have a hint (current raw value),
+            // keep the hint instead of returning a large inverse that can cause
+            // instability and breaks roundtrip expectations (see test/propagate/ToValue.ts).
+            const SAT_EPS: f32 = 1e-6;
+            if hint.is_finite() {
+                if activation >= 1.0 - SAT_EPS || activation <= -1.0 + SAT_EPS {
+                    return hint;
+                }
+            }
             let y = activation.max(-1.0 + EPSILON).min(1.0 - EPSILON);
             let result = -(2.0 / (y + 1.0) - 1.0).ln();
             if result.is_finite() {

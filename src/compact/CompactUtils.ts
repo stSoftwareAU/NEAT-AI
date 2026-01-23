@@ -206,10 +206,13 @@ export function cleanupOrphanedNeurons(
           // A hidden neuron with bias X and squash function outputs squash(0 + X)
           // when receiving no input, so we must apply the squash function to get
           // the correct constant value.
-          // Issue #1143 - Use WASM squash when available
+          // IMPORTANT: This is a structural rewrite that must preserve the existing
+          // JS semantics exactly. Using WASM here can introduce f32 rounding (eg -0.58
+          // becomes -0.5799999833), which breaks long-standing tests and can change
+          // deterministic structure transformations.
           let constantBias = neuron.bias;
           if (neuron.squash) {
-            constantBias = wasmSquash(neuron.squash, neuron.bias);
+            constantBias = wasmSquash(neuron.squash, neuron.bias, true);
           }
           creatureExport.neurons[i] = {
             type: "constant",
