@@ -16,6 +16,7 @@
  *   - 3: Positive (explicit, same as Standard for IF)
  *
  * This compact format minimises memory access and enables efficient iteration.
+ * Issue #1175 - Uses typed structs for better cache locality and compiler optimisation.
  */
 export class CompiledNetwork {
   __destroy_into_raw() {
@@ -31,6 +32,8 @@ export class CompiledNetwork {
   /**
    * Activate the network with the given input values
    * Returns the output values
+   * Issue #1175 - Uses typed structs for better cache locality
+   * Issue #1177 - Inlines common squash functions to avoid function call overhead
    * @param {Float32Array} input
    * @param {number} num_outputs
    * @returns {Float32Array}
@@ -49,6 +52,9 @@ export class CompiledNetwork {
   /**
    * Activate the network with tracing for backpropagation support
    * Issue #1121 - WASM Migration Phase 4: activateAndTrace
+   * Issue #1173 - Pre-allocate Vec<f32> buffers in CompiledNetwork struct
+   * Issue #1175 - Uses typed structs for better cache locality
+   * Issue #1177 - Inlines common squash functions to avoid function call overhead
    *
    * Returns a combined result containing:
    * - Output activation values (num_outputs floats)
@@ -154,6 +160,8 @@ if (Symbol.dispose) {
  * Batch activation - activate the network with multiple inputs at once
  * This reduces JS/WASM boundary crossing overhead for batch processing
  * Updated for Issue #1125 to support aggregate functions (MINIMUM, MAXIMUM, IF)
+ * Issue #1175 - Uses typed structs for better cache locality
+ * Issue #1177 - Inlines common squash functions to avoid function call overhead
  * @param {CompiledNetwork} network
  * @param {Float32Array} inputs
  * @param {number} input_size
