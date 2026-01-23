@@ -801,3 +801,236 @@ Deno.test({
     );
   },
 });
+
+// =============================================================================
+// Test: activateAndTrace() bulk copy produces correct array structures
+// Issue #1172 - Verify subarray/set bulk copy works correctly
+// =============================================================================
+
+Deno.test({
+  name:
+    "WASM activateAndTrace: Bulk copy produces correct outputs, activations and hintValues (Issue #1172)",
+  fn() {
+    // Create a network with multiple hidden neurons to test bulk copy behaviour
+    // Issue #1172 optimises extraction of outputs, activations, and hintValues
+    // using subarray().set() instead of element-by-element copying
+    const creatureJson: CreatureInternal = {
+      neurons: [
+        { type: "hidden", index: 3, bias: 0.1, squash: "ReLU" },
+        { type: "hidden", index: 4, bias: -0.2, squash: "TANH" },
+        { type: "hidden", index: 5, bias: 0.15, squash: "LOGISTIC" },
+        { type: "output", index: 6, bias: 0, squash: "IDENTITY" },
+        { type: "output", index: 7, bias: 0.1, squash: "TANH" },
+      ],
+      synapses: [
+        { from: 0, to: 3, weight: 1.0 },
+        { from: 1, to: 3, weight: 0.5 },
+        { from: 2, to: 4, weight: -0.5 },
+        { from: 0, to: 4, weight: 0.8 },
+        { from: 3, to: 5, weight: 0.6 },
+        { from: 4, to: 5, weight: 0.4 },
+        { from: 5, to: 6, weight: 1.0 },
+        { from: 3, to: 7, weight: 0.7 },
+        { from: 4, to: 7, weight: 0.3 },
+      ],
+      input: 3,
+      output: 2,
+    };
+
+    const input = new Float32Array([0.5, 0.3, 0.8]);
+
+    // Test JS trace
+    const jsCreature = Creature.fromJSON(creatureJson);
+    jsCreature.validate();
+
+    const jsConfig = createBackPropagationConfig({ sparseRatio: 1 });
+    const jsSparseConfig = new SparseConfig(jsCreature.exportJSON(), jsConfig);
+
+    const jsOut = jsCreature.activateAndTrace(
+      input,
+      false,
+      jsSparseConfig,
+      false,
+      true, // useJs=true (force JS)
+    );
+
+    // Test WASM trace - uses bulk copy (Issue #1172)
+    const wasmCreature = Creature.fromJSON(creatureJson);
+    wasmCreature.validate();
+
+    const wasmConfig = createBackPropagationConfig({ sparseRatio: 1 });
+    const wasmSparseConfig = new SparseConfig(
+      wasmCreature.exportJSON(),
+      wasmConfig,
+    );
+
+    const wasmOut = wasmCreature.activateAndTrace(
+      input,
+      false,
+      wasmSparseConfig,
+      false,
+      false, // useJs=false (use WASM with bulk copy)
+    );
+
+    // Verify outputs match (tests bulk copy of outputs array)
+    assertArrayClose(
+      wasmOut,
+      jsOut,
+      "Bulk copy outputs should match JS",
+    );
+    assertEquals(wasmOut.length, 2, "Should have 2 outputs");
+
+    // Verify state is correctly populated (tests bulk copy of activations and hintValues)
+    // Check each non-input neuron's hintValue state
+    for (let i = 3; i <= 7; i++) {
+      const jsState = jsCreature.state.node(i);
+      const wasmState = wasmCreature.state.node(i);
+
+      assertAlmostEquals(
+        wasmState.hintValue,
+        jsState.hintValue,
+        TOLERANCE,
+        `Neuron ${i} hintValue should match after bulk copy`,
+      );
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "WASM activateAndTrace: Bulk copy with large network produces correct results (Issue #1172)",
+  fn() {
+    // Create a larger network to stress-test the bulk copy implementation
+    // This tests that subarray boundaries are calculated correctly for larger arrays
+    const neurons: CreatureInternal["neurons"] = [];
+    const synapses: CreatureInternal["synapses"] = [];
+
+    // Create 20 hidden neurons and 3 outputs
+    const numInputs = 5;
+    const numHidden = 20;
+    const numOutputs = 3;
+
+    // Hidden neurons
+    for (let i = 0; i < numHidden; i++) {
+      const squashes = ["ReLU", "TANH", "LOGISTIC", "IDENTITY"];
+      neurons.push({
+        type: "hidden",
+        index: numInputs + i,
+        bias: (i % 5 - 2) * 0.1,
+        squash: squashes[i % squashes.length],
+      });
+    }
+
+    // Output neurons
+    for (let i = 0; i < numOutputs; i++) {
+      neurons.push({
+        type: "output",
+        index: numInputs + numHidden + i,
+        bias: i * 0.05,
+        squash: "IDENTITY",
+      });
+    }
+
+    // Connect inputs to first hidden layer
+    for (let i = 0; i < numInputs; i++) {
+      for (let j = 0; j < 4; j++) {
+        synapses.push({
+          from: i,
+          to: numInputs + j,
+          weight: ((i + j) % 5 - 2) * 0.3,
+        });
+      }
+    }
+
+    // Connect hidden neurons in a chain
+    for (let i = 0; i < numHidden - 1; i++) {
+      synapses.push({
+        from: numInputs + i,
+        to: numInputs + i + 1,
+        weight: ((i % 3) - 1) * 0.5,
+      });
+    }
+
+    // Connect last hidden neurons to outputs
+    for (let i = numHidden - 4; i < numHidden; i++) {
+      for (let j = 0; j < numOutputs; j++) {
+        synapses.push({
+          from: numInputs + i,
+          to: numInputs + numHidden + j,
+          weight: ((i + j) % 4 - 1.5) * 0.4,
+        });
+      }
+    }
+
+    const creatureJson: CreatureInternal = {
+      neurons,
+      synapses,
+      input: numInputs,
+      output: numOutputs,
+    };
+
+    const input = new Float32Array(numInputs);
+    for (let i = 0; i < numInputs; i++) {
+      input[i] = (i + 1) * 0.2 - 0.5;
+    }
+
+    // Test JS trace
+    const jsCreature = Creature.fromJSON(creatureJson);
+    jsCreature.validate();
+
+    const jsConfig = createBackPropagationConfig({ sparseRatio: 1 });
+    const jsSparseConfig = new SparseConfig(jsCreature.exportJSON(), jsConfig);
+
+    const jsOut = jsCreature.activateAndTrace(
+      input,
+      false,
+      jsSparseConfig,
+      false,
+      true, // useJs=true (force JS)
+    );
+
+    // Test WASM trace - uses bulk copy (Issue #1172)
+    const wasmCreature = Creature.fromJSON(creatureJson);
+    wasmCreature.validate();
+
+    const wasmConfig = createBackPropagationConfig({ sparseRatio: 1 });
+    const wasmSparseConfig = new SparseConfig(
+      wasmCreature.exportJSON(),
+      wasmConfig,
+    );
+
+    const wasmOut = wasmCreature.activateAndTrace(
+      input,
+      false,
+      wasmSparseConfig,
+      false,
+      false, // useJs=false (use WASM with bulk copy)
+    );
+
+    // Verify outputs match
+    assertArrayClose(
+      wasmOut,
+      jsOut,
+      "Large network bulk copy outputs should match JS",
+    );
+    assertEquals(
+      wasmOut.length,
+      numOutputs,
+      `Should have ${numOutputs} outputs`,
+    );
+
+    // Verify all non-input neuron hintValues match
+    const totalNeurons = numInputs + numHidden + numOutputs;
+    for (let i = numInputs; i < totalNeurons; i++) {
+      const jsState = jsCreature.state.node(i);
+      const wasmState = wasmCreature.state.node(i);
+
+      assertAlmostEquals(
+        wasmState.hintValue,
+        jsState.hintValue,
+        TOLERANCE,
+        `Large network neuron ${i} hintValue should match`,
+      );
+    }
+  },
+});
