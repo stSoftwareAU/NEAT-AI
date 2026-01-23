@@ -126,8 +126,7 @@ EOF
 ## Inputs
 
 - **Creature**: `~/Develop/GRQ-cluster/network.json`
-- **Training data**: `~/Develop/GRQ/.trainData-binary_89` (binary
-  `.bin` files)
+- **Training data**: `~/Develop/GRQ/.trainData-binary_89` (binary `.bin` files)
 
 ## Environment
 
