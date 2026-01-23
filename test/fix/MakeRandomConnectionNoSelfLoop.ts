@@ -1,4 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
+import { stub } from "@std/testing/mock";
 import { Creature } from "../../src/Creature.ts";
 
 /**
@@ -13,11 +14,10 @@ import { Creature } from "../../src/Creature.ts";
  * previously, a high random value could force `from === to`.
  */
 Deno.test("Creature.makeRandomConnection: never creates self-loops", () => {
-  const originalRandom = Math.random;
+  // Use stub for proper mock isolation in parallel test environments.
+  // Deterministic: forces selection of the highest possible index.
+  const randomStub = stub(Math, "random", () => 0.999999);
   try {
-    // Deterministic: forces selection of the highest possible index.
-    Math.random = () => 0.999999;
-
     const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
     const hiddenIndex = creature.input;
 
@@ -33,6 +33,6 @@ Deno.test("Creature.makeRandomConnection: never creates self-loops", () => {
       "makeRandomConnection() created a self-loop, which must never happen",
     );
   } finally {
-    Math.random = originalRandom;
+    randomStub.restore();
   }
 });

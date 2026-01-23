@@ -1,4 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
+import { stub } from "@std/testing/mock";
 import { Creature } from "../../src/Creature.ts";
 import { Neuron } from "../../src/architecture/Neuron.ts";
 import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
@@ -23,8 +24,21 @@ Deno.test("AddNeuron: recurrent mode can fall back to a self-loop as last resort
 
   const originalGetSynapse = creature.getSynapse.bind(creature);
   const originalNeuronFix = Neuron.prototype.fix;
-  const originalRandom = Math.random;
   let insertedHiddenIndex: number | undefined;
+
+  // Make the mutation deterministic:
+  // - Ensure `toIndex` is a forward target (not the new neuron's own index),
+  //   so we don't "accidentally" pick a self-loop via the primary path.
+  // Use stub for proper mock isolation in parallel test environments.
+  const randomSeq = [
+    0.5, // Neuron bias
+    0.2, // Hidden neuron's squash selection
+    0.1, // New neuron index (range is 1, so this is stable)
+    0.1, // fromIndex selection (pos 0)
+    0.6, // toIndex selection (pos > neuron.index)
+  ];
+  let randomIdx = 0;
+  const randomStub = stub(Math, "random", () => randomSeq[randomIdx++] ?? 0.1);
 
   try {
     // For this regression we intentionally disable `Neuron.fix()` so we can
@@ -33,19 +47,6 @@ Deno.test("AddNeuron: recurrent mode can fall back to a self-loop as last resort
     Neuron.prototype.fix = function () {
       // no-op
     };
-
-    // Make the mutation deterministic:
-    // - Ensure `toIndex` is a forward target (not the new neuron's own index),
-    //   so we don't "accidentally" pick a self-loop via the primary path.
-    const randomSeq = [
-      0.5, // Neuron bias
-      0.2, // Hidden neuron's squash selection
-      0.1, // New neuron index (range is 1, so this is stable)
-      0.1, // fromIndex selection (pos 0)
-      0.6, // toIndex selection (pos > neuron.index)
-    ];
-    let randomIdx = 0;
-    Math.random = () => randomSeq[randomIdx++] ?? 0.1;
 
     // Simulate an edge case where forward targets are "exhausted" from the new
     // neuron by making `getSynapse()` *pretend* every forward target already has
@@ -87,7 +88,7 @@ Deno.test("AddNeuron: recurrent mode can fall back to a self-loop as last resort
     creature.validate();
   } finally {
     Neuron.prototype.fix = originalNeuronFix;
-    Math.random = originalRandom;
+    randomStub.restore();
     creature.getSynapse = originalGetSynapse as typeof creature.getSynapse;
   }
 });
