@@ -1,17 +1,21 @@
 # WASM vs JS scoring benchmark (GRQ creature + large dataset)
 
-This document benchmarks **end-to-end scoring** (dataset evaluation + cost aggregation + score calculation) for a **large creature** using **WASM activation** vs **forced JS activation**, and checks whether both paths produce the **same score**.
+This document benchmarks **end-to-end scoring** (dataset evaluation + cost
+aggregation + score calculation) for a **large creature** using **WASM
+activation** vs **forced JS activation**, and checks whether both paths produce
+the **same score**.
 
 ## Re-running later (copy/paste)
 
-1) Build the local WASM package (not checked in):
+1. Build the local WASM package (not checked in):
 
 ```bash
 cd /Users/nigelleck/Develop/NEAT-AI
 bash wasm_activation/build.sh
 ```
 
-2) Run the benchmark runner exactly as used for this document (prints JSON you can diff/compare):
+2. Run the benchmark runner exactly as used for this document (prints JSON you
+   can diff/compare):
 
 ```bash
 cd /Users/nigelleck/Develop/NEAT-AI
@@ -113,15 +117,17 @@ console.log(JSON.stringify({
 EOF
 ```
 
-3) What to compare in the output JSON:
+3. What to compare in the output JSON:
 
-- **Correctness**: `scoreDiff` and `errorDiff` should both be **0** (or within a tiny epsilon if you later change accumulation).
+- **Correctness**: `scoreDiff` and `errorDiff` should both be **0** (or within a
+  tiny epsilon if you later change accumulation).
 - **Performance**: compare `wasmMs` vs `jsMs` only after correctness is fixed.
 
 ## Inputs
 
 - **Creature**: `/Users/nigelleck/Develop/GRQ-cluster/network.json`
-- **Training data**: `/Users/nigelleck/Develop/GRQ/.trainData-binary_89` (binary `.bin` files)
+- **Training data**: `/Users/nigelleck/Develop/GRQ/.trainData-binary_89` (binary
+  `.bin` files)
 
 ## Environment
 
@@ -145,15 +151,24 @@ bash wasm_activation/build.sh
 
 ### What we measured
 
-- **Workload**: iterate every record in every `.bin` file, call `activate(...)`, compute **MSE**, average it, then compute final score via `calculateScore(creature, avgError, costOfGrowth)`.
-- **WASM run**: `creature.activate(observations, feedbackLoop)` (WASM used automatically when available).
-- **JS run**: `creature.activate(observations, feedbackLoop, reuseBuffer=false, useJs=true)` (forces JS activation).
+- **Workload**: iterate every record in every `.bin` file, call `activate(...)`,
+  compute **MSE**, average it, then compute final score via
+  `calculateScore(creature, avgError, costOfGrowth)`.
+- **WASM run**: `creature.activate(observations, feedbackLoop)` (WASM used
+  automatically when available).
+- **JS run**:
+  `creature.activate(observations, feedbackLoop, reuseBuffer=false, useJs=true)`
+  (forces JS activation).
 
 ### Why we did not call `Creature.scoreDir(...)` directly
 
-`Creature.scoreDir()` calls `evaluateDir()`, which calls `dataFiles(dataDir)` without options; by default that shuffles file order. For a very large run, that can change floating-point summation order (and makes comparisons harder to reproduce).
+`Creature.scoreDir()` calls `evaluateDir()`, which calls `dataFiles(dataDir)`
+without options; by default that shuffles file order. For a very large run, that
+can change floating-point summation order (and makes comparisons harder to
+reproduce).
 
-To ensure the JS vs WASM comparison is **byte-for-byte reproducible**, the benchmark explicitly:
+To ensure the JS vs WASM comparison is **byte-for-byte reproducible**, the
+benchmark explicitly:
 
 - scans `dataDir` for `*.bin`
 - sorts file names
@@ -168,11 +183,13 @@ To ensure the JS vs WASM comparison is **byte-for-byte reproducible**, the bench
   - output: 1
   - neurons: 2292
   - synapses: 18,201
-  - WASM eligibility: `getUnsupportedWasmSquashFunctions()` returned `[]` (eligible)
+  - WASM eligibility: `getUnsupportedWasmSquashFunctions()` returned `[]`
+    (eligible)
 
 ### Exact command used (ad-hoc runner)
 
-This was executed locally via `deno run` (script provided inline here for transparency; nothing was checked in besides this document):
+This was executed locally via `deno run` (script provided inline here for
+transparency; nothing was checked in besides this document):
 
 ```bash
 deno run --allow-read --allow-env --no-check - <<'EOF'
@@ -305,23 +322,31 @@ One full pass over the dataset (deterministic file order):
 
 Three-trial run (alternating which variant ran first):
 
-| Trial | WASM (s) | JS (s) | WASM / JS |
-|------:|---------:|-------:|----------:|
-| 1 | 128.600 | 61.200 | 2.102 |
-| 2 | 126.337 | 60.096 | 2.102 |
-| 3 | 127.806 | 62.091 | 2.058 |
+|    Trial |    WASM (s) |     JS (s) | WASM / JS |
+| -------: | ----------: | ---------: | --------: |
+|        1 |     128.600 |     61.200 |     2.102 |
+|        2 |     126.337 |     60.096 |     2.102 |
+|        3 |     127.806 |     62.091 |     2.058 |
 | **Mean** | **127.581** | **61.129** | **2.088** |
 
 ## Conclusion
 
 With the provided GRQ creature and large binary training dataset:
 
-- **Score parity is not satisfied** (WASM and JS produce materially different errors/scores).
-- **WASM is not faster** for end-to-end scoring here; it is **~2× slower** than forced JS.
+- **Score parity is not satisfied** (WASM and JS produce materially different
+  errors/scores).
+- **WASM is not faster** for end-to-end scoring here; it is **~2× slower** than
+  forced JS.
 
-This means we **cannot** safely remove the JS scoring path based on this benchmark; there is a correctness gap (and a performance regression for this workload).
+This means we **cannot** safely remove the JS scoring path based on this
+benchmark; there is a correctness gap (and a performance regression for this
+workload).
 
 ## Notes / likely next debugging targets (not implemented here)
 
-- The WASM activation output for this network appears to saturate to `-1` on at least some inputs where JS does not, suggesting a numerical/implementation mismatch for this specific large-input network.
-- A focused correctness test that compares JS vs WASM activation on a fixed set of records from this dataset (with deterministic ordering) would make this regression easy to reproduce in CI.
+- The WASM activation output for this network appears to saturate to `-1` on at
+  least some inputs where JS does not, suggesting a numerical/implementation
+  mismatch for this specific large-input network.
+- A focused correctness test that compares JS vs WASM activation on a fixed set
+  of records from this dataset (with deterministic ordering) would make this
+  regression easy to reproduce in CI.

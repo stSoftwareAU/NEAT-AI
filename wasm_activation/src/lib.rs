@@ -25,6 +25,11 @@ const SQRT_2_OVER_PI: f32 = 0.7978845608028654; // sqrt(2/pi)
 // LeakyReLU alpha
 const LEAKY_RELU_ALPHA: f32 = 0.01;
 
+// Match the JS implementation's practical clamp for very large one-sided outputs.
+// JS uses Number.MAX_SAFE_INTEGER (~9.007e15) as an upper bound for several
+// activations (e.g. Exponential).
+const JS_MAX_SAFE_INTEGER: f32 = 9_007_199_254_740_992.0;
+
 /// Squash function identifiers - must match TypeScript enum
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -184,8 +189,35 @@ fn apply_squash(squash_type: SquashType, x: f32) -> f32 {
                 1.0 / x
             }
         }
-        SquashType::Exponential => x.exp(),
-        SquashType::LogSigmoid => -(1.0 + (-x).exp()).ln(),
+        SquashType::Exponential => {
+            // Match TypeScript behavior:
+            // - For non-finite x, return a safe capped value.
+            // - For x >= 36, clamp to MAX_SAFE_INTEGER to prevent runaway growth.
+            //   (JS uses this to avoid overflow and destabilising downstream sums.)
+            if !x.is_finite() {
+                JS_MAX_SAFE_INTEGER
+            } else if x >= 36.0 {
+                JS_MAX_SAFE_INTEGER
+            } else {
+                x.exp()
+            }
+        }
+        SquashType::LogSigmoid => {
+            // Numerically stable LogSigmoid for f32:
+            //
+            // log(sigmoid(x)) = -log(1 + exp(-x))
+            //
+            // For large negative x, exp(-x) overflows in f32. Use an equivalent
+            // stable form that avoids overflow:
+            //   log(sigmoid(x)) = x - log(1 + exp(x))   (when x < 0)
+            if x >= 0.0 {
+                // exp(-x) is in (0, 1], safe
+                -(1.0 + (-x).exp()).ln()
+            } else {
+                // exp(x) is in (0, 1], safe (underflows to 0 for very negative x)
+                x - (1.0 + x.exp()).ln()
+            }
+        }
         SquashType::Isru => x / (1.0 + x * x).sqrt(),
         // Aggregate functions (Issue #1125) - these are handled specially in the
         // neuron activation loop and don't use the standard sum-then-squash pattern.
@@ -2484,7 +2516,7 @@ impl CompiledNetwork {
 
             if is_constant {
                 // Constant neuron - just set the bias value
-                self.activations[actual_idx] = bias;
+                self.activations[actual_idx] = apply_limit_range(SquashType::Identity, bias);
             } else {
                 let squash = SquashType::from(squash_type);
 
@@ -2556,7 +2588,9 @@ impl CompiledNetwork {
                     }
                 };
 
-                self.activations[actual_idx] = activation;
+                // Clamp to the activation's expected output range to avoid NaN/Inf
+                // propagation and to match the JS implementation's range limiting.
+                self.activations[actual_idx] = apply_limit_range(squash, activation);
             }
         }
 
@@ -2733,8 +2767,18 @@ impl CompiledNetwork {
                     }
                 };
 
-                self.activations[actual_idx] = activation;
-                hint_values[neuron_idx] = hint_value;
+                // Clamp activation output to match JS range limiting and prevent
+                // NaN/Inf propagation through the network.
+                let activation_limited = apply_limit_range(squash, activation);
+
+                self.activations[actual_idx] = activation_limited;
+
+                // hintValues: for aggregate functions we expect hint==activation.
+                // For standard squashes keep the pre-squash value.
+                hint_values[neuron_idx] = match squash {
+                    SquashType::Minimum | SquashType::Maximum | SquashType::If => activation_limited,
+                    _ => hint_value,
+                };
             }
         }
 
