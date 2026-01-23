@@ -280,6 +280,64 @@ export class WasmCreatureActivation {
   }
 
   /**
+   * Activate the network with the given inputs, writing to a pre-allocated output buffer
+   * Issue #1171 - Avoids per-call Float32Array allocation overhead
+   *
+   * This method writes directly to the caller's output buffer instead of allocating
+   * a new Float32Array on each call. For repeated activations (e.g., scoring millions
+   * of records), this eliminates allocation overhead and GC pressure.
+   *
+   * @param input - The input values
+   * @param output - Pre-allocated output buffer to write results into
+   */
+  activateInto(input: Float32Array, output: Float32Array): void {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+
+    // Ensure input is the right size
+    if (input.length !== this.numInputs) {
+      throw new Error(
+        `Input length ${input.length} does not match expected ${this.numInputs}`,
+      );
+    }
+
+    // Ensure output buffer is the right size
+    if (output.length !== this.numOutputs) {
+      throw new Error(
+        `Output buffer length ${output.length} does not match expected ${this.numOutputs}`,
+      );
+    }
+
+    // Call the WASM activate_into method
+    this.network.activate_into(input, output);
+  }
+
+  /**
+   * Activate with pre-allocated buffer and feedback loop control
+   * Issue #1171 - Zero-allocation activation for high-throughput scoring
+   *
+   * @param input - The input values
+   * @param output - Pre-allocated output buffer to write results into
+   * @param feedbackLoop - Whether to preserve state between calls
+   */
+  activateIntoWithFeedback(
+    input: Float32Array,
+    output: Float32Array,
+    feedbackLoop: boolean,
+  ): void {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+
+    if (!feedbackLoop && typeof this.network.reset_state === "function") {
+      this.network.reset_state();
+    }
+
+    this.activateInto(input, output);
+  }
+
+  /**
    * Stateless activation helper.
    *
    * When feedbackLoop=false we must ensure the WASM activation buffer does not
