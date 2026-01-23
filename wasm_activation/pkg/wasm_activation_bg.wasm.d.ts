@@ -27,6 +27,14 @@ export const compilednetwork_activate_and_trace: (
   c: number,
   d: number,
 ) => any;
+export const compilednetwork_activate_into: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: any,
+) => void;
 export const compilednetwork_new: (
   a: number,
   b: number,

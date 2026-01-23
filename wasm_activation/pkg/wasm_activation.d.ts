@@ -55,6 +55,22 @@ export class CompiledNetwork {
    */
   activate_and_trace(input: Float32Array, num_outputs: number): Float32Array;
   /**
+   * Activate the network with the given input values, writing to a pre-allocated output buffer
+   * Issue #1171 - Avoids per-call Float32Array allocation overhead
+   *
+   * This method writes directly to the caller's output buffer instead of allocating
+   * a new Float32Array on each call. For repeated activations (e.g., scoring millions
+   * of records), this eliminates allocation overhead and GC pressure.
+   *
+   * # Arguments
+   * * `input` - Input values slice
+   * * `output` - Pre-allocated output buffer to write results into
+   *
+   * # Panics
+   * Panics if the output buffer length doesn't match num_outputs
+   */
+  activate_into(input: Float32Array, output: Float32Array): void;
+  /**
    * Create a new compiled network from serialised data
    *
    * Data format (all values little-endian):
@@ -258,6 +274,14 @@ export interface InitOutput {
     c: number,
     d: number,
   ) => any;
+  readonly compilednetwork_activate_into: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: any,
+  ) => void;
   readonly compilednetwork_new: (
     a: number,
     b: number,

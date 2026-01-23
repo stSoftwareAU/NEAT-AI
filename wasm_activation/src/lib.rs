@@ -2841,6 +2841,129 @@ impl CompiledNetwork {
         result
     }
 
+    /// Activate the network with the given input values, writing to a pre-allocated output buffer
+    /// Issue #1171 - Avoids per-call Float32Array allocation overhead
+    ///
+    /// This method writes directly to the caller's output buffer instead of allocating
+    /// a new Float32Array on each call. For repeated activations (e.g., scoring millions
+    /// of records), this eliminates allocation overhead and GC pressure.
+    ///
+    /// # Arguments
+    /// * `input` - Input values slice
+    /// * `output` - Pre-allocated output buffer to write results into
+    ///
+    /// # Panics
+    /// Panics if the output buffer length doesn't match num_outputs
+    #[wasm_bindgen]
+    pub fn activate_into(&mut self, input: &[f32], output: &mut [f32]) {
+        let num_outputs = output.len();
+
+        // Copy input values to activation buffer
+        let input_len = input.len().min(self.num_inputs);
+        self.activations[..input_len].copy_from_slice(&input[..input_len]);
+
+        // Process each neuron in order
+        for (neuron_idx, neuron) in self.neurons.iter().enumerate() {
+            let actual_idx = self.num_inputs + neuron_idx;
+
+            if neuron.is_constant {
+                // Constant neuron - just set the bias value
+                self.activations[actual_idx] =
+                    apply_limit_range(SquashType::Identity, neuron.bias as f32);
+            } else {
+                let squash = SquashType::from(neuron.squash_type);
+                let start_synapse = neuron.start_synapse as usize;
+                let end_synapse = start_synapse + neuron.num_synapses as usize;
+
+                // Handle aggregate functions differently (Issue #1125)
+                let activation = match squash {
+                    SquashType::Minimum => {
+                        // MINIMUM: take the minimum of all weighted inputs + bias
+                        let mut min_val = f64::INFINITY;
+                        for synapse_idx in start_synapse..end_synapse {
+                            let synapse = &self.synapses[synapse_idx];
+                            let val = (self.activations[synapse.from_index as usize] as f64) * synapse.weight;
+                            if val < min_val {
+                                min_val = val;
+                            }
+                        }
+                        if min_val == f64::INFINITY {
+                            neuron.bias
+                        } else {
+                            min_val + neuron.bias
+                        }
+                    }
+                    SquashType::Maximum => {
+                        // MAXIMUM: take the maximum of all weighted inputs + bias
+                        let mut max_val = f64::NEG_INFINITY;
+                        for synapse_idx in start_synapse..end_synapse {
+                            let synapse = &self.synapses[synapse_idx];
+                            let val = (self.activations[synapse.from_index as usize] as f64) * synapse.weight;
+                            if val > max_val {
+                                max_val = val;
+                            }
+                        }
+                        if max_val == f64::NEG_INFINITY {
+                            neuron.bias
+                        } else {
+                            max_val + neuron.bias
+                        }
+                    }
+                    SquashType::If => {
+                        // IF: sum condition inputs, then use positive or negative branch
+                        let mut condition_sum = 0.0f64;
+                        let mut positive_sum = 0.0f64;
+                        let mut negative_sum = 0.0f64;
+
+                        for synapse_idx in start_synapse..end_synapse {
+                            let synapse = &self.synapses[synapse_idx];
+                            let val = (self.activations[synapse.from_index as usize] as f64) * synapse.weight;
+
+                            match SynapseType::from(synapse.synapse_type) {
+                                SynapseType::Condition => condition_sum += val,
+                                SynapseType::Negative => negative_sum += val,
+                                SynapseType::Positive | SynapseType::Standard => positive_sum += val,
+                            }
+                        }
+
+                        if condition_sum > 0.0 {
+                            positive_sum + neuron.bias
+                        } else {
+                            negative_sum + neuron.bias
+                        }
+                    }
+                    _ => {
+                        // Standard activation: weighted sum + bias, then apply squash
+                        let mut sum: f64 = neuron.bias;
+                        for synapse_idx in start_synapse..end_synapse {
+                            let synapse = &self.synapses[synapse_idx];
+                            sum += (self.activations[synapse.from_index as usize] as f64) * synapse.weight;
+                        }
+                        // Issue #1177 - Inline common squash functions for performance
+                        // These 4 functions cover ~80% of typical networks
+                        match neuron.squash_type {
+                            0 => sum,                                    // IDENTITY
+                            1 => sum.max(0.0),                          // ReLU
+                            6 => 1.0 / (1.0 + (-sum).exp()),           // LOGISTIC
+                            7 => sum.tanh(),                            // TANH
+                            _ => apply_squash_f64(squash, sum),         // Other (fallback)
+                        }
+                    }
+                };
+
+                // Clamp to the activation's expected output range to avoid NaN/Inf
+                // propagation and to match the JS implementation's range limiting.
+                let limited = apply_limit_range_f64(squash, activation) as f32;
+                self.activations[actual_idx] = limited;
+            }
+        }
+
+        // Extract outputs from the end of the activation buffer
+        // and copy directly to the caller's output buffer
+        let output_start = self.num_neurons - num_outputs;
+        output.copy_from_slice(&self.activations[output_start..output_start + num_outputs]);
+    }
+
     /// Get the number of neurons in the network
     #[wasm_bindgen(getter)]
     pub fn num_neurons(&self) -> usize {

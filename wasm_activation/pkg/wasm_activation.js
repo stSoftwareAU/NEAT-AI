@@ -88,6 +88,37 @@ export class CompiledNetwork {
     return ret;
   }
   /**
+   * Activate the network with the given input values, writing to a pre-allocated output buffer
+   * Issue #1171 - Avoids per-call Float32Array allocation overhead
+   *
+   * This method writes directly to the caller's output buffer instead of allocating
+   * a new Float32Array on each call. For repeated activations (e.g., scoring millions
+   * of records), this eliminates allocation overhead and GC pressure.
+   *
+   * # Arguments
+   * * `input` - Input values slice
+   * * `output` - Pre-allocated output buffer to write results into
+   *
+   * # Panics
+   * Panics if the output buffer length doesn't match num_outputs
+   * @param {Float32Array} input
+   * @param {Float32Array} output
+   */
+  activate_into(input, output) {
+    const ptr0 = passArrayF32ToWasm0(input, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    var ptr1 = passArrayF32ToWasm0(output, wasm.__wbindgen_malloc);
+    var len1 = WASM_VECTOR_LEN;
+    wasm.compilednetwork_activate_into(
+      this.__wbg_ptr,
+      ptr0,
+      len0,
+      ptr1,
+      len1,
+      output,
+    );
+  }
+  /**
    * Create a new compiled network from serialised data
    *
    * Data format (all values little-endian):
@@ -356,6 +387,15 @@ export function version() {
 function __wbg_get_imports() {
   const import0 = {
     __proto__: null,
+    __wbg___wbindgen_copy_to_typed_array_fc0809a4dec43528: function (
+      arg0,
+      arg1,
+      arg2,
+    ) {
+      new Uint8Array(arg2.buffer, arg2.byteOffset, arg2.byteLength).set(
+        getArrayU8FromWasm0(arg0, arg1),
+      );
+    },
     __wbg___wbindgen_throw_be289d5034ed271b: function (arg0, arg1) {
       throw new Error(getStringFromWasm0(arg0, arg1));
     },
@@ -398,6 +438,11 @@ function _assertClass(instance, klass) {
   if (!(instance instanceof klass)) {
     throw new Error(`expected instance of ${klass.name}`);
   }
+}
+
+function getArrayU8FromWasm0(ptr, len) {
+  ptr = ptr >>> 0;
+  return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
 }
 
 let cachedFloat32ArrayMemory0 = null;
