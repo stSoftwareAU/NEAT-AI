@@ -24,18 +24,6 @@ function createSimpleCreature(): Creature {
   return creature;
 }
 
-function createLargeCreature(): Creature {
-  // Create a creature with many neurons and synapses to test performance benefits
-  const creature = new Creature(10, 2, {
-    layers: [
-      { count: 20, squash: IDENTITY.NAME },
-      { count: 10, squash: IDENTITY.NAME },
-    ],
-    outputLayer: { squash: IDENTITY.NAME },
-  });
-  return creature;
-}
-
 Deno.test("IncrementalScoreUpdate: weight change should produce same score as full recalculation", () => {
   const creature = createSimpleCreature();
   const growthCost = 0.0001;
@@ -356,64 +344,9 @@ Deno.test("IncrementalScoreUpdate: should handle zero weight changes", () => {
   );
 });
 
-Deno.test("IncrementalScoreUpdate: performance - incremental should be faster than full recalc for large creatures", () => {
-  const creature = createLargeCreature();
-  const growthCost = 0.0001;
-  const error = 0.1;
-  const iterations = 100;
-
-  // Calculate initial score to populate cache
-  calculate(creature, error, growthCost);
-
-  // Benchmark incremental updates
-  const incrementalStart = performance.now();
-  for (let i = 0; i < iterations; i++) {
-    const synapse = creature.synapses[i % creature.synapses.length];
-    const oldWeight = synapse.weight;
-    const newWeight = oldWeight + 0.1;
-    updateScoreForWeightChange(
-      creature,
-      error,
-      growthCost,
-      oldWeight,
-      newWeight,
-    );
-    synapse.weight = newWeight;
-  }
-  const incrementalTime = performance.now() - incrementalStart;
-
-  // Reset weights for full recalculation benchmark
-  for (let i = 0; i < iterations; i++) {
-    creature.synapses[i % creature.synapses.length].weight -= 0.1;
-  }
-
-  // Benchmark full recalculations
-  const fullRecalcStart = performance.now();
-  for (let i = 0; i < iterations; i++) {
-    const synapse = creature.synapses[i % creature.synapses.length];
-    synapse.weight += 0.1;
-    creature.invalidateScoreCache();
-    calculate(creature, error, growthCost);
-  }
-  const fullRecalcTime = performance.now() - fullRecalcStart;
-
-  // Log results for visibility
-  console.log(
-    `Incremental: ${incrementalTime.toFixed(3)}ms, Full: ${
-      fullRecalcTime.toFixed(3)
-    }ms`,
-  );
-
-  // Incremental should be at least 20% faster (conservative threshold)
-  const improvementRatio = fullRecalcTime / incrementalTime;
-  assertEquals(
-    improvementRatio > 1.2,
-    true,
-    `Incremental updates should be faster. Improvement ratio: ${
-      improvementRatio.toFixed(2)
-    }x`,
-  );
-});
+// NOTE: Performance benchmark tests have been moved to bench/IncrementalScoreUpdate.ts
+// Unit tests should only verify correctness, not performance timings.
+// Performance tests are flaky when run in parallel (issue #1181).
 
 Deno.test("IncrementalScoreUpdate: should work when cache is empty", () => {
   const creature = createSimpleCreature();

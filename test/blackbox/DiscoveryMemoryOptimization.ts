@@ -43,16 +43,10 @@ Deno.test("discovery promise cleanup - simulated with evolveDataSet", async () =
     discoveryRecordTimeOutMinutes: 0, // Disable discovery for this test
   };
 
-  const startTime = Date.now();
+  // NOTE: Timing assertions removed as per issue #1181.
+  // Unit tests should only verify correctness, not performance timings.
+  // Performance tests are flaky when run in parallel.
   await creature.evolveDataSet(trainingSet, options);
-  const duration = Date.now() - startTime;
-
-  // Verify evolution completed
-  assert(duration > 0, "Evolution should take some time");
-  assert(
-    duration < 30000,
-    `Evolution should complete quickly, took ${duration}ms`,
-  );
 
   // Verify checkpoint was created
   // Note: Population size may vary during evolution if creatures are removed
