@@ -348,72 +348,10 @@ Deno.test("CreativeThinkingClone: clone UUID changes after modification", () => 
   );
 });
 
-Deno.test("CreativeThinkingClone: performance improvement over JSON clone", () => {
-  // Create a moderately sized creature for performance testing
-  const original = new Creature(50, 10, {
-    layers: [{ count: 100 }, { count: 50 }],
-  });
-  original.uuid = "perf-test";
-  original.score = 0.95;
-  original.memetic = {
-    generation: 20,
-    weights: {},
-    biases: {},
-    score: 0.9,
-  };
-  creatureValidate(original);
-
-  const iterations = 50;
-
-  // Benchmark JSON clone (old method)
-  performance.mark("json-start");
-  for (let i = 0; i < iterations; i++) {
-    const jsonClone = Creature.fromJSON(original.exportJSON());
-    delete jsonClone.memetic;
-    // Validate to ensure it's a proper clone
-    creatureValidate(jsonClone);
-  }
-  performance.mark("json-end");
-  const jsonDuration = performance.measure("json", "json-start", "json-end")
-    .duration;
-
-  // Benchmark shallow clone (new method)
-  performance.mark("shallow-start");
-  for (let i = 0; i < iterations; i++) {
-    const shallowClone = original.shallowClone();
-    delete shallowClone.memetic;
-    // Validate to ensure it's a proper clone
-    creatureValidate(shallowClone);
-  }
-  performance.mark("shallow-end");
-  const shallowDuration = performance.measure(
-    "shallow",
-    "shallow-start",
-    "shallow-end",
-  ).duration;
-
-  const speedup = jsonDuration / shallowDuration;
-  console.info(
-    `Creative Thinking Clone Performance: JSON clone: ${
-      jsonDuration.toFixed(2)
-    }ms, ` +
-      `Shallow clone: ${shallowDuration.toFixed(2)}ms, ` +
-      `Speedup: ${speedup.toFixed(2)}x`,
-  );
-
-  // Allow 10% tolerance for timing variability in CI environments.
-  // ShallowClone should generally be faster, but measurement noise
-  // can occasionally make timings close or even reversed.
-  const toleranceMultiplier = 1.1;
-  assert(
-    shallowDuration < jsonDuration * toleranceMultiplier,
-    `Shallow clone (${
-      shallowDuration.toFixed(2)
-    }ms) should not be significantly slower than JSON clone (${
-      jsonDuration.toFixed(2)
-    }ms) - tolerance: ${(toleranceMultiplier * 100 - 100).toFixed(0)}%`,
-  );
-});
+// NOTE: Performance testing for shallowClone vs JSON clone has been moved to
+// bench/CreativeThinkingClone.ts to avoid flaky tests in CI. Unit tests run
+// in parallel, making timing measurements unreliable. Use `deno bench` for
+// performance validation.
 
 Deno.test("CreativeThinkingClone: forwardOnly flag preserved through creative thinking", () => {
   const original = new Creature(3, 2, {
