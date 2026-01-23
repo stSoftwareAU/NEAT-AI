@@ -150,12 +150,18 @@ fn apply_squash(squash_type: SquashType, x: f32) -> f32 {
         SquashType::Relu => x.max(0.0),
         SquashType::Relu6 => x.max(0.0).min(6.0),
         SquashType::LeakyRelu => if x >= 0.0 { x } else { LEAKY_RELU_ALPHA * x },
+        // Match TypeScript behavior (SELU clamps upper bound to avoid exp overflow).
         SquashType::Selu => {
-            if x >= 0.0 {
-                SELU_LAMBDA * x
-            } else {
-                SELU_LAMBDA * SELU_ALPHA * (x.exp() - 1.0)
+            if !x.is_finite() {
+                return -JS_MAX_SAFE_INTEGER;
             }
+            let safe_x = (x as f64).min(709.0);
+            let fx = if safe_x > 0.0 {
+                safe_x
+            } else {
+                (SELU_ALPHA as f64) * safe_x.exp() - (SELU_ALPHA as f64)
+            };
+            ((SELU_LAMBDA as f64) * fx) as f32
         }
         SquashType::Elu => if x > 0.0 { x } else { x.exp() - 1.0 },
         SquashType::Logistic => 1.0 / (1.0 + (-x).exp()),
@@ -171,15 +177,24 @@ fn apply_squash(squash_type: SquashType, x: f32) -> f32 {
             let limit = f32::from_bits(SOFTSIGN_LIMIT.to_bits() - 1);
             y.max(-limit).min(limit)
         },
-        SquashType::Softplus => (1.0 + x.exp()).ln(),
+        // Match TypeScript behavior (Softplus clamps at x>=709 to 100, non-finite -> 1e-15).
+        SquashType::Softplus => {
+            if !x.is_finite() {
+                return 1e-15;
+            }
+            if x >= 709.0 {
+                return 100.0;
+            }
+            ((1.0f64 + (x as f64).exp()).ln()) as f32
+        }
         SquashType::Swish => x / (1.0 + (-x).exp()),
         SquashType::Mish => x * (1.0 + x.exp()).ln().tanh(),
         SquashType::Gelu => {
             0.5 * x * (1.0 + (SQRT_2_OVER_PI * (x + GELU_COEFF * x * x * x)).tanh())
         }
         SquashType::Sine => x.sin(),
-        SquashType::Cosine => x.cos(),
-        SquashType::Tan => x.tan(),
+        SquashType::Cosine => ((x as f64).cos()) as f32,
+        SquashType::Tan => ((x as f64).tan()) as f32,
         SquashType::ArcTan => x.atan(),
         SquashType::Gaussian => (-x * x).exp(),
         SquashType::BentIdentity => ((x * x + 1.0).sqrt() - 1.0) / 2.0 + x,
@@ -188,8 +203,14 @@ fn apply_squash(squash_type: SquashType, x: f32) -> f32 {
         SquashType::Step => if x > 0.0 { 1.0 } else { 0.0 },
         SquashType::Complement => 1.0 - x,
         SquashType::Absolute => x.abs(),
-        SquashType::Square => x * x,
-        SquashType::Cube => x * x * x,
+        SquashType::Square => {
+            let xf = x as f64;
+            (xf * xf) as f32
+        }
+        SquashType::Cube => {
+            let xf = x as f64;
+            (xf * xf * xf) as f32
+        }
         SquashType::Sqrt => if x >= 0.0 { x.sqrt() } else { 0.0 },
         SquashType::StdInverse => {
             if x.abs() < 1e-10 {
@@ -208,29 +229,124 @@ fn apply_squash(squash_type: SquashType, x: f32) -> f32 {
             } else if x >= 36.0 {
                 JS_MAX_SAFE_INTEGER
             } else {
-                x.exp()
+                ((x as f64).exp()) as f32
             }
         }
         SquashType::LogSigmoid => {
-            // Numerically stable LogSigmoid for f32:
-            //
-            // log(sigmoid(x)) = -log(1 + exp(-x))
-            //
-            // For large negative x, exp(-x) overflows in f32. Use an equivalent
-            // stable form that avoids overflow:
-            //   log(sigmoid(x)) = x - log(1 + exp(x))   (when x < 0)
-            if x >= 0.0 {
-                // exp(-x) is in (0, 1], safe
-                -(1.0 + (-x).exp()).ln()
-            } else {
-                // exp(x) is in (0, 1], safe (underflows to 0 for very negative x)
-                x - (1.0 + x.exp()).ln()
+            // Match TypeScript behavior:
+            // - Non-finite -> MIN_SAFE_INTEGER
+            // - For x <= -709, exp(-x) overflows in JS; TS clamps to low bound.
+            if !x.is_finite() || x <= -709.0 {
+                return -JS_MAX_SAFE_INTEGER;
             }
+            let xf = x as f64;
+            let exp_neg_x = (-xf).exp();
+            (-(1.0f64 + exp_neg_x).ln()) as f32
         }
         SquashType::Isru => x / (1.0 + x * x).sqrt(),
         // Aggregate functions (Issue #1125) - these are handled specially in the
         // neuron activation loop and don't use the standard sum-then-squash pattern.
         // Return identity as a fallback if they're ever called directly.
+        SquashType::Minimum | SquashType::Maximum | SquashType::If => x,
+    }
+}
+
+/// Apply a squash function to a value (f64 path).
+///
+/// This is used by the compiled-network activator to more closely match the
+/// TypeScript implementation (JS numbers are f64) while still storing the final
+/// activations as f32 (Float32Array parity).
+#[inline(always)]
+fn apply_squash_f64(squash_type: SquashType, x: f64) -> f64 {
+    match squash_type {
+        SquashType::Identity => x,
+        SquashType::Relu => x.max(0.0),
+        SquashType::Relu6 => x.max(0.0).min(6.0),
+        SquashType::LeakyRelu => if x >= 0.0 { x } else { (LEAKY_RELU_ALPHA as f64) * x },
+        SquashType::Selu => {
+            // Match TypeScript behavior: clamp upper bound to avoid exp overflow.
+            if !x.is_finite() {
+                return -JS_MAX_SAFE_INTEGER as f64;
+            }
+            let safe_x = x.min(709.0);
+            let fx = if safe_x > 0.0 {
+                safe_x
+            } else {
+                (SELU_ALPHA as f64) * safe_x.exp() - (SELU_ALPHA as f64)
+            };
+            (SELU_LAMBDA as f64) * fx
+        }
+        SquashType::Elu => if x > 0.0 { x } else { x.exp() - 1.0 },
+        SquashType::Logistic => 1.0 / (1.0 + (-x).exp()),
+        SquashType::Tanh => x.tanh(),
+        SquashType::HardTanh => x.max(-1.0).min(1.0),
+        SquashType::Softsign => x / (1.0 + x.abs()),
+        SquashType::Softplus => {
+            // Match TypeScript behavior:
+            // - Non-finite -> SMALL_THRESHOLD (1e-15)
+            // - Clamp at x>=709 to LARGE_THRESHOLD (100)
+            if !x.is_finite() {
+                return 1e-15;
+            }
+            if x >= 709.0 {
+                return 100.0;
+            }
+            (1.0 + x.exp()).ln()
+        }
+        SquashType::Swish => {
+            // Match TypeScript behavior: exp(-x) underflows for large +x.
+            if !x.is_finite() {
+                return 0.0;
+            }
+            let exp_neg_x = if x > 20.0 { 0.0 } else { (-x).exp() };
+            x / (1.0 + exp_neg_x)
+        }
+        SquashType::Mish => x * (1.0 + x.exp()).ln().tanh(),
+        SquashType::Gelu => {
+            let x3 = x * x * x;
+            0.5 * x * (1.0 + ((SQRT_2_OVER_PI as f64) * (x + (GELU_COEFF as f64) * x3)).tanh())
+        }
+        SquashType::Sine => x.sin(),
+        SquashType::Cosine => x.cos(),
+        SquashType::Tan => x.tan(),
+        SquashType::ArcTan => x.atan(),
+        SquashType::Gaussian => (-x * x).exp(),
+        SquashType::BentIdentity => ((x * x + 1.0).sqrt() - 1.0) / 2.0 + x,
+        SquashType::BipolarSigmoid => 2.0 / (1.0 + (-x).exp()) - 1.0,
+        SquashType::Bipolar => if x > 0.0 { 1.0 } else { -1.0 },
+        SquashType::Step => if x > 0.0 { 1.0 } else { 0.0 },
+        SquashType::Complement => 1.0 - x,
+        SquashType::Absolute => x.abs(),
+        SquashType::Square => x * x,
+        SquashType::Cube => x * x * x,
+        SquashType::Sqrt => if x >= 0.0 { x.sqrt() } else { 0.0 },
+        SquashType::StdInverse => {
+            // Match TypeScript: avoid division by near-zero and NaN.
+            if !x.is_finite() {
+                return 0.0;
+            }
+            let safe_x = if x.abs() < 1e-15 { if x > 0.0 { 1e-15 } else { -1e-15 } } else { x };
+            if safe_x != 0.0 { 1.0 / safe_x } else { 0.0 }
+        }
+        SquashType::Exponential => {
+            if !x.is_finite() {
+                return JS_MAX_SAFE_INTEGER as f64;
+            }
+            if x >= 36.0 {
+                return JS_MAX_SAFE_INTEGER as f64;
+            }
+            x.exp()
+        }
+        SquashType::LogSigmoid => {
+            // Match TypeScript clamp behavior.
+            if !x.is_finite() || x <= -709.0 {
+                return -(JS_MAX_SAFE_INTEGER as f64);
+            }
+            let exp_neg_x = (-x).exp();
+            -(1.0 + exp_neg_x).ln()
+        }
+        SquashType::Isru => x / (1.0 + x * x).sqrt(),
+        // Aggregate squashes are handled specially in the neuron loop.
         SquashType::Minimum | SquashType::Maximum | SquashType::If => x,
     }
 }
@@ -2406,13 +2522,33 @@ fn apply_limit_range(squash_type: SquashType, value: f32) -> f32 {
     value.max(low).min(high)
 }
 
+#[inline(always)]
+fn apply_limit_range_f64(squash_type: SquashType, value: f64) -> f64 {
+    if value.is_nan() {
+        return 0.0;
+    }
+
+    let (low_f32, high_f32) = apply_get_range(squash_type);
+    let low = low_f32 as f64;
+    let high = high_f32 as f64;
+
+    if value == f64::INFINITY {
+        return high.min(F32_LARGE as f64);
+    }
+    if value == f64::NEG_INFINITY {
+        return low.max(-(F32_LARGE as f64));
+    }
+
+    value.max(low).min(high)
+}
+
 /// Compiled network data structure
 ///
 /// Format (Issue #1125 - updated to support aggregate functions):
 /// - Header: [num_neurons: u32, num_inputs: u32]
 /// - Neuron data: For each neuron after inputs:
-///   - [bias: f32, squash_type: u8, is_constant: u8, num_synapses: u16]
-///   - Connections: [from_index: u16, synapse_type: u8, padding: u8, weight: f32] * num_connections
+///   - [bias: f64, squash_type: u8, is_constant: u8, num_synapses: u16]
+///   - Connections: [from_index: u16, synapse_type: u8, padding: u8, weight: f64] * num_connections
 ///
 /// Synapse types (for IF activation):
 ///   - 0: Standard/Positive (used in weighted sum or as positive branch for IF)
@@ -2428,9 +2564,9 @@ pub struct CompiledNetwork {
     /// Number of input neurons
     num_inputs: usize,
     /// Neuron metadata: (bias, squash_type, start_synapse_idx, num_synapses, is_constant)
-    neurons: Vec<(f32, u8, usize, usize, bool)>,
+    neurons: Vec<(f64, u8, usize, usize, bool)>,
     /// Synapse data: (from_index, synapse_type, weight)
-    synapses: Vec<(usize, u8, f32)>,
+    synapses: Vec<(usize, u8, f64)>,
     /// Activation buffer - reused across calls
     activations: Vec<f32>,
 }
@@ -2464,7 +2600,7 @@ impl CompiledNetwork {
     ///     - u16: from_index
     ///     - u8: synapse_type
     ///     - u8: padding
-    ///     - f32: weight
+    ///     - f64: weight
     #[wasm_bindgen(constructor)]
     pub fn new(data: &[u8]) -> Result<CompiledNetwork, JsValue> {
         if data.len() < 8 {
@@ -2479,32 +2615,48 @@ impl CompiledNetwork {
         let mut offset = 8;
 
         for _ in num_inputs..num_neurons {
-            if offset + 8 > data.len() {
+            // Neuron header is 12 bytes with f64 bias.
+            if offset + 12 > data.len() {
                 return Err(JsValue::from_str("Data too short for neuron"));
             }
 
-            let bias = f32::from_le_bytes([
-                data[offset], data[offset + 1], data[offset + 2], data[offset + 3]
+            let bias = f64::from_le_bytes([
+                data[offset],
+                data[offset + 1],
+                data[offset + 2],
+                data[offset + 3],
+                data[offset + 4],
+                data[offset + 5],
+                data[offset + 6],
+                data[offset + 7],
             ]);
-            let squash_type = data[offset + 4];
-            let is_constant = data[offset + 5] != 0;
-            let num_synapse = u16::from_le_bytes([data[offset + 6], data[offset + 7]]) as usize;
-            offset += 8;
+            let squash_type = data[offset + 8];
+            let is_constant = data[offset + 9] != 0;
+            let num_synapse = u16::from_le_bytes([data[offset + 10], data[offset + 11]]) as usize;
+            offset += 12;
 
             let start_synapse_idx = synapses.len();
 
             for _ in 0..num_synapse {
-                if offset + 8 > data.len() {
+                // Synapse record is 12 bytes with f64 weight.
+                if offset + 12 > data.len() {
                     return Err(JsValue::from_str("Data too short for synapse"));
                 }
 
                 let from_index = u16::from_le_bytes([data[offset], data[offset + 1]]) as usize;
                 let synapse_type = data[offset + 2];
                 // offset + 3 is padding
-                let weight = f32::from_le_bytes([
-                    data[offset + 4], data[offset + 5], data[offset + 6], data[offset + 7]
+                let weight = f64::from_le_bytes([
+                    data[offset + 4],
+                    data[offset + 5],
+                    data[offset + 6],
+                    data[offset + 7],
+                    data[offset + 8],
+                    data[offset + 9],
+                    data[offset + 10],
+                    data[offset + 11],
                 ]);
-                offset += 8;
+                offset += 12;
 
                 synapses.push((from_index, synapse_type, weight));
             }
@@ -2538,7 +2690,8 @@ impl CompiledNetwork {
 
             if is_constant {
                 // Constant neuron - just set the bias value
-                self.activations[actual_idx] = apply_limit_range(SquashType::Identity, bias);
+                self.activations[actual_idx] =
+                    apply_limit_range(SquashType::Identity, bias as f32);
             } else {
                 let squash = SquashType::from(squash_type);
 
@@ -2546,15 +2699,15 @@ impl CompiledNetwork {
                 let activation = match squash {
                     SquashType::Minimum => {
                         // MINIMUM: take the minimum of all weighted inputs + bias
-                        let mut min_val = f32::INFINITY;
+                        let mut min_val = f64::INFINITY;
                         for synapse_idx in start_synapse..(start_synapse + num_synapse) {
                             let (from_idx, _, weight) = self.synapses[synapse_idx];
-                            let val = self.activations[from_idx] * weight;
+                            let val = (self.activations[from_idx] as f64) * weight;
                             if val < min_val {
                                 min_val = val;
                             }
                         }
-                        if min_val == f32::INFINITY {
+                        if min_val == f64::INFINITY {
                             bias
                         } else {
                             min_val + bias
@@ -2562,15 +2715,15 @@ impl CompiledNetwork {
                     }
                     SquashType::Maximum => {
                         // MAXIMUM: take the maximum of all weighted inputs + bias
-                        let mut max_val = f32::NEG_INFINITY;
+                        let mut max_val = f64::NEG_INFINITY;
                         for synapse_idx in start_synapse..(start_synapse + num_synapse) {
                             let (from_idx, _, weight) = self.synapses[synapse_idx];
-                            let val = self.activations[from_idx] * weight;
+                            let val = (self.activations[from_idx] as f64) * weight;
                             if val > max_val {
                                 max_val = val;
                             }
                         }
-                        if max_val == f32::NEG_INFINITY {
+                        if max_val == f64::NEG_INFINITY {
                             bias
                         } else {
                             max_val + bias
@@ -2578,13 +2731,13 @@ impl CompiledNetwork {
                     }
                     SquashType::If => {
                         // IF: sum condition inputs, then use positive or negative branch
-                        let mut condition_sum = 0.0f32;
-                        let mut positive_sum = 0.0f32;
-                        let mut negative_sum = 0.0f32;
+                        let mut condition_sum = 0.0f64;
+                        let mut positive_sum = 0.0f64;
+                        let mut negative_sum = 0.0f64;
 
                         for synapse_idx in start_synapse..(start_synapse + num_synapse) {
                             let (from_idx, syn_type, weight) = self.synapses[synapse_idx];
-                            let val = self.activations[from_idx] * weight;
+                            let val = (self.activations[from_idx] as f64) * weight;
 
                             match SynapseType::from(syn_type) {
                                 SynapseType::Condition => condition_sum += val,
@@ -2601,18 +2754,19 @@ impl CompiledNetwork {
                     }
                     _ => {
                         // Standard activation: weighted sum + bias, then apply squash
-                        let mut sum = bias;
+                        let mut sum: f64 = bias;
                         for synapse_idx in start_synapse..(start_synapse + num_synapse) {
                             let (from_idx, _, weight) = self.synapses[synapse_idx];
-                            sum += self.activations[from_idx] * weight;
+                            sum += (self.activations[from_idx] as f64) * weight;
                         }
-                        apply_squash(squash, sum)
+                        apply_squash_f64(squash, sum)
                     }
                 };
 
                 // Clamp to the activation's expected output range to avoid NaN/Inf
                 // propagation and to match the JS implementation's range limiting.
-                self.activations[actual_idx] = apply_limit_range(squash, activation);
+                let limited = apply_limit_range_f64(squash, activation) as f32;
+                self.activations[actual_idx] = limited;
             }
         }
 
@@ -2688,8 +2842,9 @@ impl CompiledNetwork {
 
             if is_constant {
                 // Constant neuron - just set the bias value
-                self.activations[actual_idx] = bias;
-                hint_values[neuron_idx] = bias;
+                let b = bias as f32;
+                self.activations[actual_idx] = b;
+                hint_values[neuron_idx] = b;
             } else {
                 let squash = SquashType::from(squash_type);
 
@@ -2698,12 +2853,12 @@ impl CompiledNetwork {
                     SquashType::Minimum => {
                         // MINIMUM: take the minimum of all weighted inputs + bias
                         // Track which synapse provided the minimum value
-                        let mut min_val = f32::INFINITY;
+                        let mut min_val = f64::INFINITY;
                         let mut min_local_idx: usize = 0;
                         for local_idx in 0..num_synapse {
                             let synapse_idx = start_synapse + local_idx;
                             let (from_idx, _, weight) = self.synapses[synapse_idx];
-                            let val = self.activations[from_idx] * weight;
+                            let val = (self.activations[from_idx] as f64) * weight;
                             if val < min_val {
                                 min_val = val;
                                 min_local_idx = local_idx;
@@ -2713,10 +2868,10 @@ impl CompiledNetwork {
                         trace_data.push(neuron_idx as f32);
                         trace_data.push(min_local_idx as f32);
 
-                        let result = if min_val == f32::INFINITY {
-                            bias
+                        let result = if min_val == f64::INFINITY {
+                            bias as f32
                         } else {
-                            min_val + bias
+                            (min_val + bias) as f32
                         };
                         // For aggregate functions, hintValue is the same as activation
                         (result, result)
@@ -2724,12 +2879,12 @@ impl CompiledNetwork {
                     SquashType::Maximum => {
                         // MAXIMUM: take the maximum of all weighted inputs + bias
                         // Track which synapse provided the maximum value
-                        let mut max_val = f32::NEG_INFINITY;
+                        let mut max_val = f64::NEG_INFINITY;
                         let mut max_local_idx: usize = 0;
                         for local_idx in 0..num_synapse {
                             let synapse_idx = start_synapse + local_idx;
                             let (from_idx, _, weight) = self.synapses[synapse_idx];
-                            let val = self.activations[from_idx] * weight;
+                            let val = (self.activations[from_idx] as f64) * weight;
                             if val > max_val {
                                 max_val = val;
                                 max_local_idx = local_idx;
@@ -2739,23 +2894,23 @@ impl CompiledNetwork {
                         trace_data.push(neuron_idx as f32);
                         trace_data.push(max_local_idx as f32);
 
-                        let result = if max_val == f32::NEG_INFINITY {
-                            bias
+                        let result = if max_val == f64::NEG_INFINITY {
+                            bias as f32
                         } else {
-                            max_val + bias
+                            (max_val + bias) as f32
                         };
                         // For aggregate functions, hintValue is the same as activation
                         (result, result)
                     }
                     SquashType::If => {
                         // IF: sum condition inputs, then use positive or negative branch
-                        let mut condition_sum = 0.0f32;
-                        let mut positive_sum = 0.0f32;
-                        let mut negative_sum = 0.0f32;
+                        let mut condition_sum = 0.0f64;
+                        let mut positive_sum = 0.0f64;
+                        let mut negative_sum = 0.0f64;
 
                         for synapse_idx in start_synapse..(start_synapse + num_synapse) {
                             let (from_idx, syn_type, weight) = self.synapses[synapse_idx];
-                            let val = self.activations[from_idx] * weight;
+                            let val = (self.activations[from_idx] as f64) * weight;
 
                             match SynapseType::from(syn_type) {
                                 SynapseType::Condition => condition_sum += val,
@@ -2770,28 +2925,28 @@ impl CompiledNetwork {
                         trace_data.push(branch_taken);
 
                         let result = if condition_sum > 0.0 {
-                            positive_sum + bias
+                            (positive_sum + bias) as f32
                         } else {
-                            negative_sum + bias
+                            (negative_sum + bias) as f32
                         };
                         // For aggregate functions, hintValue is the same as activation
                         (result, result)
                     }
                     _ => {
                         // Standard activation: weighted sum + bias, then apply squash
-                        let mut sum = bias;
+                        let mut sum: f64 = bias;
                         for synapse_idx in start_synapse..(start_synapse + num_synapse) {
                             let (from_idx, _, weight) = self.synapses[synapse_idx];
-                            sum += self.activations[from_idx] * weight;
+                            sum += (self.activations[from_idx] as f64) * weight;
                         }
                         // For standard squash, hintValue is the pre-squash value (sum)
-                        (apply_squash(squash, sum), sum)
+                        (apply_squash_f64(squash, sum) as f32, sum as f32)
                     }
                 };
 
                 // Clamp activation output to match JS range limiting and prevent
                 // NaN/Inf propagation through the network.
-                let activation_limited = apply_limit_range(squash, activation);
+                let activation_limited = apply_limit_range_f64(squash, activation as f64) as f32;
 
                 self.activations[actual_idx] = activation_limited;
 
@@ -2870,42 +3025,51 @@ pub fn activate_batch(
             let actual_idx = network.num_inputs + neuron_idx;
 
             if is_constant {
-                network.activations[actual_idx] = bias;
+                network.activations[actual_idx] =
+                    apply_limit_range(SquashType::Identity, bias as f32);
             } else {
                 let squash = SquashType::from(squash_type);
 
                 // Handle aggregate functions differently (Issue #1125)
                 let activation = match squash {
                     SquashType::Minimum => {
-                        let mut min_val = f32::INFINITY;
+                        let mut min_val = f64::INFINITY;
                         for synapse_idx in start_synapse..(start_synapse + num_synapse) {
                             let (from_idx, _, weight) = network.synapses[synapse_idx];
-                            let val = network.activations[from_idx] * weight;
+                            let val = (network.activations[from_idx] as f64) * weight;
                             if val < min_val {
                                 min_val = val;
                             }
                         }
-                        if min_val == f32::INFINITY { bias } else { min_val + bias }
+                        if min_val == f64::INFINITY {
+                            bias as f32
+                        } else {
+                            (min_val + bias) as f32
+                        }
                     }
                     SquashType::Maximum => {
-                        let mut max_val = f32::NEG_INFINITY;
+                        let mut max_val = f64::NEG_INFINITY;
                         for synapse_idx in start_synapse..(start_synapse + num_synapse) {
                             let (from_idx, _, weight) = network.synapses[synapse_idx];
-                            let val = network.activations[from_idx] * weight;
+                            let val = (network.activations[from_idx] as f64) * weight;
                             if val > max_val {
                                 max_val = val;
                             }
                         }
-                        if max_val == f32::NEG_INFINITY { bias } else { max_val + bias }
+                        if max_val == f64::NEG_INFINITY {
+                            bias as f32
+                        } else {
+                            (max_val + bias) as f32
+                        }
                     }
                     SquashType::If => {
-                        let mut condition_sum = 0.0f32;
-                        let mut positive_sum = 0.0f32;
-                        let mut negative_sum = 0.0f32;
+                        let mut condition_sum = 0.0f64;
+                        let mut positive_sum = 0.0f64;
+                        let mut negative_sum = 0.0f64;
 
                         for synapse_idx in start_synapse..(start_synapse + num_synapse) {
                             let (from_idx, syn_type, weight) = network.synapses[synapse_idx];
-                            let val = network.activations[from_idx] * weight;
+                            let val = (network.activations[from_idx] as f64) * weight;
 
                             match SynapseType::from(syn_type) {
                                 SynapseType::Condition => condition_sum += val,
@@ -2914,19 +3078,23 @@ pub fn activate_batch(
                             }
                         }
 
-                        if condition_sum > 0.0 { positive_sum + bias } else { negative_sum + bias }
+                        if condition_sum > 0.0 {
+                            (positive_sum + bias) as f32
+                        } else {
+                            (negative_sum + bias) as f32
+                        }
                     }
                     _ => {
-                        let mut sum = bias;
+                        let mut sum: f64 = bias;
                         for synapse_idx in start_synapse..(start_synapse + num_synapse) {
                             let (from_idx, _, weight) = network.synapses[synapse_idx];
-                            sum += network.activations[from_idx] * weight;
+                            sum += (network.activations[from_idx] as f64) * weight;
                         }
-                        apply_squash(squash, sum)
+                        apply_squash_f64(squash, sum) as f32
                     }
                 };
 
-                network.activations[actual_idx] = activation;
+                network.activations[actual_idx] = apply_limit_range_f64(squash, activation as f64) as f32;
             }
         }
 

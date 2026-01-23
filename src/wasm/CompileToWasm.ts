@@ -8,7 +8,7 @@
  * - u32: num_neurons
  * - u32: num_inputs
  * - For each non-input neuron:
- *   - f32: bias
+ *   - f64: bias (matches JS number precision)
  *   - u8: squash_type
  *   - u8: is_constant (0 or 1)
  *   - u16: num_synapses
@@ -16,7 +16,7 @@
  *     - u16: from_index
  *     - u8: synapse_type (0=standard/positive, 1=condition, 2=negative, 3=positive)
  *     - u8: padding
- *     - f32: weight
+ *     - f64: weight (matches JS number precision)
  */
 
 import type { Creature } from "../Creature.ts";
@@ -89,8 +89,8 @@ export function compileCreatureToWasm(
 
   // Calculate total size needed
   // Header: 8 bytes (2 x u32)
-  // Per non-input neuron: 8 bytes (f32 bias + u8 squash + u8 constant + u16 num_synapses)
-  // Per synapse: 8 bytes (u16 from + u8 synapse_type + u8 padding + f32 weight)
+  // Per non-input neuron: 12 bytes (f64 bias + u8 squash + u8 constant + u16 num_synapses)
+  // Per synapse: 12 bytes (u16 from + u8 synapse_type + u8 padding + f64 weight)
 
   let totalSynapses = 0;
   for (let i = numInputs; i < numNeurons; i++) {
@@ -99,8 +99,8 @@ export function compileCreatureToWasm(
   }
 
   const headerSize = 8;
-  const neuronsSize = (numNeurons - numInputs) * 8;
-  const synapsesSize = totalSynapses * 8; // Updated: now 8 bytes per synapse
+  const neuronsSize = (numNeurons - numInputs) * 12;
+  const synapsesSize = totalSynapses * 12;
   const totalSize = headerSize + neuronsSize + synapsesSize;
 
   const buffer = new ArrayBuffer(totalSize);
@@ -122,9 +122,9 @@ export function compileCreatureToWasm(
     // Sort by from index for consistent ordering
     const sortedInward = inwardList.slice().sort((a, b) => a.from - b.from);
 
-    // Write bias (f32)
-    view.setFloat32(offset, neuron.bias ?? 0, true);
-    offset += 4;
+    // Write bias (f64)
+    view.setFloat64(offset, neuron.bias ?? 0, true);
+    offset += 8;
 
     // Write squash type (u8)
     const squashType = getSquashType(neuron.squash);
@@ -155,9 +155,9 @@ export function compileCreatureToWasm(
       view.setUint8(offset, 0);
       offset += 1;
 
-      // Write weight (f32)
-      view.setFloat32(offset, synapse.weight, true);
-      offset += 4;
+      // Write weight (f64)
+      view.setFloat64(offset, synapse.weight, true);
+      offset += 8;
     }
   }
 
