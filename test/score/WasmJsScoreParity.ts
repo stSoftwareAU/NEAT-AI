@@ -147,7 +147,7 @@ Deno.test("WASM scoring: synthetic dataset is finite and roughly matches JS", ()
     const target = new Float32Array([input[0] * 0.2 + input[1] * -0.1]);
 
     const wasmOut = wasmCreature.activate(input, false);
-    const jsOut = jsCreature.activate(input, false, false, true);
+    const jsOut = jsCreature.activate(input, false, true);
 
     wasmErr += cost.calculate(target, wasmOut);
     jsErr += cost.calculate(target, jsOut);

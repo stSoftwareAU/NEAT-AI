@@ -336,7 +336,7 @@ console.log("Running benchmarks...\n");
     group: "small",
   }, () => {
     for (let i = 0; i < config.iterations; i++) {
-      creature.activate(inputs[i % inputs.length], false, false, true);
+      creature.activate(inputs[i % inputs.length], false, true);
     }
   });
 
@@ -368,7 +368,7 @@ console.log("Running benchmarks...\n");
     group: "medium",
   }, () => {
     for (let i = 0; i < config.iterations; i++) {
-      creature.activate(inputs[i % inputs.length], false, false, true);
+      creature.activate(inputs[i % inputs.length], false, true);
     }
   });
 
@@ -400,7 +400,7 @@ console.log("Running benchmarks...\n");
     group: "large",
   }, () => {
     for (let i = 0; i < config.iterations; i++) {
-      creature.activate(inputs[i % inputs.length], false, false, true);
+      creature.activate(inputs[i % inputs.length], false, true);
     }
   });
 
@@ -432,7 +432,7 @@ console.log("Running benchmarks...\n");
     group: "very-large",
   }, () => {
     for (let i = 0; i < config.iterations; i++) {
-      creature.activate(inputs[i % inputs.length], false, false, true);
+      creature.activate(inputs[i % inputs.length], false, true);
     }
   });
 
@@ -478,7 +478,6 @@ console.log("Running benchmarks...\n");
         inputs[i % inputs.length],
         false,
         sparseConfig,
-        false,
         true, // useJs = true
       );
     }
@@ -494,7 +493,6 @@ console.log("Running benchmarks...\n");
         inputs[i % inputs.length],
         false,
         sparseConfig,
-        false,
         false, // useJs = false (WASM)
       );
     }
@@ -536,7 +534,6 @@ console.log("Running benchmarks...\n");
         trainingInputs[i],
         false,
         sparseConfig,
-        false,
         true, // useJs = true
       );
       jsCreature.propagate(trainingTargets[i], bpConfig, sparseConfig);
@@ -561,7 +558,6 @@ console.log("Running benchmarks...\n");
           trainingInputs[i],
           false,
           sparseConfig,
-          false,
           false, // useJs = false (WASM)
         );
         wasmCreature.propagate(trainingTargets[i], bpConfig, sparseConfig);
@@ -596,7 +592,7 @@ console.log("Running benchmarks...\n");
     { group: "api" },
     () => {
       for (let i = 0; i < config.iterations; i++) {
-        creature.activate(inputs[i % inputs.length], false, false, true);
+        creature.activate(inputs[i % inputs.length], false, true);
       }
     },
   );

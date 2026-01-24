@@ -10,6 +10,17 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { Creature } from "../../src/Creature.ts";
 import { BIPOLAR } from "../../src/methods/activations/types/BIPOLAR.ts";
 import { STEP } from "../../src/methods/activations/types/STEP.ts";
+import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+
+function traceAllConfig(creature: Creature): SparseConfig {
+  const config = createBackPropagationConfig({
+    sparseRatio: 1,
+    disableRandomSamples: true,
+    generations: 0,
+  });
+  return new SparseConfig(creature.exportJSON(), config);
+}
 
 // =============================================================================
 // Basic Recording Tests
@@ -40,10 +51,11 @@ Deno.test("STEP recording: errors stored as numeric arrays", () => {
   };
 
   const creature = Creature.fromJSON(creatureJSON);
+  const sparseConfig = traceAllConfig(creature);
 
   // Activate with positive input -> STEP outputs 1
   const input = new Float32Array([0.5]);
-  creature.activate(input);
+  creature.activateAndTrace(input, false, sparseConfig);
 
   // Request different expected output to generate error
   const expected = new Float32Array([0]);
@@ -83,10 +95,11 @@ Deno.test("STEP recording: error magnitude when crossing from 0 to 1", () => {
   };
 
   const creature = Creature.fromJSON(creatureJSON);
+  const sparseConfig = traceAllConfig(creature);
 
   // Input -5 -> STEP outputs 0 (since -5 + 0 bias = -5, which is <= 0)
   const input = new Float32Array([-5]);
-  creature.activate(input);
+  creature.activateAndTrace(input, false, sparseConfig);
 
   // Request output of 1 -> need to cross threshold
   // currentValue = -5, target = 1
@@ -128,10 +141,11 @@ Deno.test("STEP recording: error magnitude when crossing from 1 to 0", () => {
   };
 
   const creature = Creature.fromJSON(creatureJSON);
+  const sparseConfig = traceAllConfig(creature);
 
   // Input 5 -> STEP outputs 1 (since 5 + 0 bias = 5, which is > 0)
   const input = new Float32Array([5]);
-  creature.activate(input);
+  creature.activateAndTrace(input, false, sparseConfig);
 
   // Request output of 0 -> need to cross threshold
   // currentValue = 5, target = 0
@@ -177,10 +191,11 @@ Deno.test("STEP recording: zero error when already on correct side (positive)", 
   };
 
   const creature = Creature.fromJSON(creatureJSON);
+  const sparseConfig = traceAllConfig(creature);
 
   // Input 5 -> STEP outputs 1
   const input = new Float32Array([5]);
-  creature.activate(input);
+  creature.activateAndTrace(input, false, sparseConfig);
 
   // Request output of 1 -> already correct
   const expected = new Float32Array([1]);
@@ -220,10 +235,11 @@ Deno.test("STEP recording: zero error when already on correct side (negative)", 
   };
 
   const creature = Creature.fromJSON(creatureJSON);
+  const sparseConfig = traceAllConfig(creature);
 
   // Input -5 -> STEP outputs 0
   const input = new Float32Array([-5]);
-  creature.activate(input);
+  creature.activateAndTrace(input, false, sparseConfig);
 
   // Request output of 0 -> already correct
   const expected = new Float32Array([0]);
@@ -274,10 +290,11 @@ Deno.test("STEP recording: hidden neuron receives propagated error", () => {
   };
 
   const creature = Creature.fromJSON(creatureJSON);
+  const sparseConfig = traceAllConfig(creature);
 
   // Input 0.5 -> STEP outputs 1, IDENTITY outputs 1
   const input = new Float32Array([0.5]);
-  creature.activate(input);
+  creature.activateAndTrace(input, false, sparseConfig);
 
   // Request output of 0 -> error propagates back to hidden
   const expected = new Float32Array([0]);
@@ -317,10 +334,11 @@ Deno.test("STEP recording: at threshold (x=0)", () => {
   };
 
   const creature = Creature.fromJSON(creatureJSON);
+  const sparseConfig = traceAllConfig(creature);
 
   // Input 0 -> STEP outputs 0 (since 0 is NOT > 0)
   const input = new Float32Array([0]);
-  creature.activate(input);
+  creature.activateAndTrace(input, false, sparseConfig);
 
   // Request output of 1 -> need to cross
   // currentValue = 0, target = 1
@@ -363,6 +381,7 @@ Deno.test("STEP recording: extreme values are clamped (prevents exploding discov
   };
 
   const creature = Creature.fromJSON(creatureJSON);
+  const sparseConfig = traceAllConfig(creature);
 
   // Regression: extreme values should not explode recorded error statistics.
   //
@@ -370,7 +389,7 @@ Deno.test("STEP recording: extreme values are clamped (prevents exploding discov
   // Request output of 1 -> raw value-space error = 1 - (-1000) = 1001
   // With activation.calculateError() semantics, this must be clamped to +100.
   const input = new Float32Array([-1000]);
-  creature.activate(input);
+  creature.activateAndTrace(input, false, sparseConfig);
 
   const expected = new Float32Array([1]);
   const discoverMap = creature.record(expected);
@@ -413,12 +432,13 @@ Deno.test("BIPOLAR recording: extreme values are clamped (prevents exploding dis
   };
 
   const creature = Creature.fromJSON(creatureJSON);
+  const sparseConfig = traceAllConfig(creature);
 
   // Input +1e10 -> BIPOLAR outputs +1
   // Request output -1 -> raw value-space error ≈ -1 - 1e10
   // With activation.calculateError() semantics, this must be clamped to -100.
   const input = new Float32Array([1e10]);
-  creature.activate(input);
+  creature.activateAndTrace(input, false, sparseConfig);
 
   const expected = new Float32Array([-1]);
   const discoverMap = creature.record(expected);
@@ -459,6 +479,7 @@ Deno.test("STEP recording: consistent errors across multiple activations", () =>
   };
 
   const creature = Creature.fromJSON(creatureJSON);
+  const sparseConfig = traceAllConfig(creature);
 
   // Test multiple input/output combinations
   const testCases = [
@@ -469,7 +490,7 @@ Deno.test("STEP recording: consistent errors across multiple activations", () =>
 
   for (const tc of testCases) {
     const input = new Float32Array([tc.input]);
-    creature.activate(input);
+    creature.activateAndTrace(input, false, sparseConfig);
 
     const expected = new Float32Array([tc.expected]);
     const discoverMap = creature.record(expected);

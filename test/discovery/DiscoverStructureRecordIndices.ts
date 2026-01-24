@@ -4,6 +4,7 @@ import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import type { RustRecordInput } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 function makeCreature(): Creature {
   const creature = Creature.fromJSON({
@@ -25,6 +26,7 @@ function makeCreature(): Creature {
 }
 
 Deno.test("DiscoverStructure preserves record indices for single binary chunk", async () => {
+  await initWasmForTests();
   const creature = makeCreature();
   const recordedInputs: RustRecordInput[] = [];
 
@@ -125,6 +127,7 @@ function makeBatch(
 }
 
 Deno.test("DiscoverStructure keeps slice offsets across multiple chunk flushes", async () => {
+  await initWasmForTests();
   const creature = makeCreature();
   const recordedInputs: RustRecordInput[] = [];
 

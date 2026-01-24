@@ -15,6 +15,7 @@ import { Mish } from "../../src/methods/activations/types/Mish.ts";
 import { ReLU } from "../../src/methods/activations/types/ReLU.ts";
 import { ReLU6 } from "../../src/methods/activations/types/ReLU6.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -94,6 +95,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmForTests();
     const targetCreature = makeCreature();
     const data = makeData(targetCreature.input);
 

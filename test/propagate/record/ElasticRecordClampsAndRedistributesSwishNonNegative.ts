@@ -3,6 +3,8 @@ import type { CreatureExport } from "../../../src/architecture/CreatureInterface
 import { Creature } from "../../../src/Creature.ts";
 import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
 import { Swish } from "../../../src/methods/activations/types/Swish.ts";
+import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 
 Deno.test(
   "Creature.record: prefers not pushing Swish negative, clamps and redistributes residue",
@@ -31,7 +33,13 @@ Deno.test(
     };
 
     const creature = Creature.fromJSON(creatureJSON);
-    creature.activate(new Float32Array([1]));
+    const config = createBackPropagationConfig({
+      sparseRatio: 1,
+      disableRandomSamples: true,
+      generations: 0,
+    });
+    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    creature.activateAndTrace(new Float32Array([1]), false, sparseConfig);
 
     // Current output ≈ swish(1) + 1 ≈ 1.731.
     // Request a large negative output so the error is strongly negative.

@@ -14,6 +14,7 @@ import type {
 import type { DiscoverStructureDeps } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 function makeMinimalCreature(): Creature {
   const exportJSON: CreatureExport = {
@@ -71,6 +72,7 @@ Deno.test({
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
+    await initWasmForTests();
     const baseDir = await Deno.makeTempDir({ prefix: "neat-discovery-clean-" });
     const creature = makeMinimalCreature();
 
@@ -162,6 +164,7 @@ Deno.test({
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
+    await initWasmForTests();
     const baseDir = await Deno.makeTempDir({ prefix: "neat-discovery-keep-" });
     const creature = makeMinimalCreature();
 

@@ -2,6 +2,8 @@ import { assert } from "@std/assert";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../../src/Creature.ts";
 import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
+import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 
 Deno.test("record: avoids attributing error to tiny-weight links", () => {
   // If record attribution pushes value-space error into a link with an extremely
@@ -34,7 +36,13 @@ Deno.test("record: avoids attributing error to tiny-weight links", () => {
   };
 
   const creature = Creature.fromJSON(creatureJSON);
-  creature.activate(new Float32Array([1, 1]));
+  const config = createBackPropagationConfig({
+    sparseRatio: 1,
+    disableRandomSamples: true,
+    generations: 0,
+  });
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  creature.activateAndTrace(new Float32Array([1, 1]), false, sparseConfig);
 
   // Current output ≈ (1000 * 1e-6) + (1 * 1) = 1.001. Target 0 => error ~ -1.001.
   const discoverMap = creature.record(new Float32Array([0]));

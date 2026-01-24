@@ -6,6 +6,7 @@ import {
   cleanupOrphanedNeurons,
 } from "../../compact/CompactUtils.ts";
 import { Creature } from "../../Creature.ts";
+import { isWasmActivationAvailable } from "../../wasm/mod.ts";
 import type { Approach } from "../../NEAT/LogApproach.ts";
 import { memeticUpdate } from "../../blackbox/MemeticUpdate.ts";
 import { MSE } from "../../costs/MSE.ts";
@@ -732,25 +733,16 @@ export class DiscoverStructure {
   /**
    * Initializes the discovery process.
    * Requires the NEAT-AI-Discovery Rust library to be available.
-   * Discovery will fail gracefully if Rust module is not available.
    */
   public initialize(neuronPromisesMap: Map<string, Promise<void>>) {
     assert(!this.initialized, "Already initialized");
     this.initialized = true;
 
-    // Check if Rust discovery is enabled (requires both library file AND FFI permissions)
-    if (!this.deps.isRustDiscoveryEnabled()) {
-      console.warn(
-        `ℹ️  Discovery requires the NEAT-AI-Discovery Rust library and FFI permissions. Discovery will be skipped.`,
-      );
-      // Set up empty promises - discovery will fail gracefully
-      this.creature.neurons.forEach((neuron) => {
-        neuronPromisesMap.set(neuron.uuid, Promise.resolve());
-      });
-      return;
-    }
-
-    // Rust discovery is enabled - set up for Rust recording
+    // Rust discovery is required.
+    assert(
+      this.deps.isRustDiscoveryEnabled(),
+      "Rust discovery must be enabled (library present + permissions granted).",
+    );
     this.usingRustDualWrite = true;
 
     // Set up promise placeholders for all neurons (Rust handles file creation)
@@ -850,10 +842,10 @@ export class DiscoverStructure {
     this.recorded = true;
     this.cachedMaxOutputError = undefined;
 
-    // Rust module is required - if not available, discovery was already skipped in initialize()
-    if (!this.usingRustDualWrite) {
-      return false; // Discovery skipped - Rust not available
-    }
+    assert(
+      this.usingRustDualWrite,
+      "Discovery recording requires Rust discovery to be enabled.",
+    );
 
     // Under tight record deadlines (eg. 60ms timeout tests), we can end up with
     // buffered samples in the caller, but miss the final submit window by a few
@@ -937,12 +929,34 @@ export class DiscoverStructure {
       const record = effectiveTrainingData[i];
 
       try {
-        // Discovery recording requires `Creature.record(...)`, which relies on
-        // internal neuron activations being populated in `creature.state`.
+        // Discovery recording must use WASM tracing activation.
+        // If WASM isn't initialised, fail fast (JS fallback is being removed).
+        assert(
+          isWasmActivationAvailable(),
+          "WASM activation must be initialised before discovery recording",
+        );
+
+        // Discovery recording requires `Creature.record(...)`, which reads from
+        // `creature.state.activations` (and benefits from stable `hintValue`s).
         //
         // WASM `activate()` is intentionally output-only and does not populate
-        // `state.activations`; use the JS activation path here for correctness.
-        this.creature.activate(record.input, false, false, true);
+        // `state.activations`, so discovery must use the tracing activation path.
+        //
+        // We intentionally trace/propagate for *all* neurons here to ensure:
+        // - `state.activations` is populated for every non-input neuron
+        // - `hintValue` exists for neurons reached during record() recursion
+        const traceAll = {
+          traceNeeded: (_uuid: string) => true,
+          propagateNeeded: (_uuid: string) => true,
+          updateNeeded: (_uuid: string) => true,
+        };
+        this.creature.activateAndTrace(
+          record.input,
+          false, // feedbackLoop
+          // Duck-typed SparseConfig
+          traceAll as unknown as import("../../propagate/sparse/SparseConfig.ts").SparseConfig,
+          false, // useJs (allow WASM when available)
+        );
         const discoverMap = this.creature.record(record.output);
 
         // Accumulate data for Rust (Parquet format)
@@ -990,7 +1004,10 @@ export class DiscoverStructure {
   }
 
   public shouldFlushRustChunk(): boolean {
-    if (!this.usingRustDualWrite) return false;
+    assert(
+      this.usingRustDualWrite,
+      "Discovery requires Rust discovery to be enabled.",
+    );
     if (this.rustAccumulatedData.length >= this.rustFlushRecords) return true;
     return this.rustAccumulatedEstimatedBytes >= this.rustFlushBytesThreshold;
   }
@@ -1213,7 +1230,11 @@ export class DiscoverStructure {
   }
 
   public flushRustChunk(): boolean {
-    if (!this.usingRustDualWrite || this.rustAccumulatedData.length === 0) {
+    assert(
+      this.usingRustDualWrite,
+      "Discovery requires Rust discovery to be enabled.",
+    );
+    if (this.rustAccumulatedData.length === 0) {
       return false;
     }
 
@@ -1232,9 +1253,10 @@ export class DiscoverStructure {
   }
 
   public flushRustRecording(): boolean {
-    if (!this.usingRustDualWrite) {
-      return false;
-    }
+    assert(
+      this.usingRustDualWrite,
+      "Discovery requires Rust discovery to be enabled.",
+    );
 
     if (this.rustAccumulatedData.length > 0) {
       if (!this.flushRustChunk()) {
@@ -1249,10 +1271,9 @@ export class DiscoverStructure {
     }
 
     if (!this.deps.isRustLibraryAvailable()) {
-      console.warn(
-        `⚠️  Rust library not available when merging discovery chunks. Discovery recording failed.`,
+      throw new Error(
+        "Rust discovery library must be available when merging discovery chunks.",
       );
-      return false;
     }
 
     const outputFile = `${this.tempDir}/discovery_data.parquet`;

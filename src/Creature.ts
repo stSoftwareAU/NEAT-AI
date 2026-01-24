@@ -539,10 +539,6 @@ export class Creature implements CreatureInternal {
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
    * @param {SparseConfig} sparseConfig - The sparse configuration for tracing.
-   * @param {boolean} [reuseBuffer=false] - When true, reuses a cached output buffer
-   *   to avoid allocating a new Float32Array on each call. This reduces GC pressure
-   *   but callers must not mutate the returned array as it may be overwritten.
-   *   Issue #1094: Performance optimisation for repeated activations.
    * @param {boolean} [useJs=false] - When true, forces JavaScript activation instead of WASM.
    *   Issue #1122: WASM Migration Phase 5 - WASM is now the default, use this to force JS.
    * @returns {Float32Array} The output values after activation.
@@ -551,11 +547,8 @@ export class Creature implements CreatureInternal {
     input: Float32Array,
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
-    reuseBuffer: boolean = false,
     useJs: boolean = false,
   ): Float32Array {
-    // `reuseBuffer` is retained for backwards compatibility but no longer has
-    // any effect. Output arrays are always newly allocated to avoid footguns.
     // WASM is the default when available. Use JS only when explicitly requested.
     const forceJs = useJs;
     // Issue #1121: WASM Migration Phase 4 - activateAndTrace with backpropagation support
@@ -564,7 +557,6 @@ export class Creature implements CreatureInternal {
         input,
         feedbackLoop,
         sparseConfig,
-        reuseBuffer,
       );
     }
 
@@ -591,7 +583,7 @@ export class Creature implements CreatureInternal {
     }
 
     const lastHiddenNode = len - this.output;
-    return this.extractOutputs(activations, lastHiddenNode, reuseBuffer);
+    return this.extractOutputs(activations, lastHiddenNode);
   }
 
   /**
@@ -599,10 +591,6 @@ export class Creature implements CreatureInternal {
    *
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
-   * @param {boolean} [reuseBuffer=false] - When true, reuses a cached output buffer
-   *   to avoid allocating a new Float32Array on each call. This reduces GC pressure
-   *   but callers must not mutate the returned array as it may be overwritten.
-   *   Issue #1094: Performance optimisation for repeated activations.
    * @param {boolean} [useJs=false] - When true, forces JavaScript activation instead of WASM.
    *   Issue #1122: WASM Migration Phase 5 - WASM is now the default, use this to force JS.
    * @returns {Float32Array} The output values after activation.
@@ -610,15 +598,12 @@ export class Creature implements CreatureInternal {
   activate(
     input: Float32Array,
     feedbackLoop: boolean = false,
-    reuseBuffer: boolean = false,
     useJs: boolean = false,
   ): Float32Array {
-    // `reuseBuffer` is retained for backwards compatibility but no longer has
-    // any effect. Output arrays are always newly allocated to avoid footguns.
     // WASM is the default when available. Use JS only when explicitly requested.
     const forceJs = useJs;
     if (!forceJs && this.canUseWasm()) {
-      return this.activateWasm(input, feedbackLoop, reuseBuffer);
+      return this.activateWasm(input, feedbackLoop);
     }
 
     // Fall back to JS activation
@@ -636,7 +621,7 @@ export class Creature implements CreatureInternal {
     }
 
     const lastHiddenNode = this.neurons.length - this.output;
-    return this.extractOutputs(activations, lastHiddenNode, reuseBuffer);
+    return this.extractOutputs(activations, lastHiddenNode);
   }
 
   /**
@@ -663,42 +648,6 @@ export class Creature implements CreatureInternal {
       return false;
     }
 
-    // Optional performance guardrails:
-    // Using WASM requires per-creature compilation to a binary format. For small
-    // creatures this overhead can dominate and make test suites feel "stuck".
-    // These env vars allow preferring WASM only when the network is large enough.
-    //
-    // - NEAT_AI_USE_WASM_FORCE=1|true|yes|on: ignore thresholds
-    // - NEAT_AI_USE_WASM_MIN_NEURONS=<int>: minimum total neurons to use WASM
-    // - NEAT_AI_USE_WASM_MIN_SYNAPSES=<int>: minimum total synapses to use WASM
-    try {
-      const force = Deno.env.get("NEAT_AI_USE_WASM_FORCE")?.trim()
-        .toLowerCase();
-      const isForced = force === "1" || force === "true" || force === "yes" ||
-        force === "on";
-      if (!isForced) {
-        const minNeuronsRaw = Deno.env.get("NEAT_AI_USE_WASM_MIN_NEURONS")
-          ?.trim();
-        const minSynapsesRaw = Deno.env.get("NEAT_AI_USE_WASM_MIN_SYNAPSES")
-          ?.trim();
-        const minNeurons = minNeuronsRaw
-          ? Number.parseInt(minNeuronsRaw, 10)
-          : 0;
-        const minSynapses = minSynapsesRaw
-          ? Number.parseInt(minSynapsesRaw, 10)
-          : 0;
-
-        if (Number.isFinite(minNeurons) && minNeurons > 0) {
-          if (this.neurons.length < minNeurons) return false;
-        }
-        if (Number.isFinite(minSynapses) && minSynapses > 0) {
-          if (this.synapses.length < minSynapses) return false;
-        }
-      }
-    } catch {
-      // Ignore env permission errors; no thresholds applied.
-    }
-
     // Check if creature is eligible for WASM (all squash functions supported)
     return this.isWasmEligible();
   }
@@ -709,13 +658,11 @@ export class Creature implements CreatureInternal {
    * Issue #1118: WASM Migration Phase 1.
    *
    * @param {Float32Array} input - The input values for the creature.
-   * @param {boolean} reuseBuffer - Whether to reuse the cached output buffer.
    * @returns {Float32Array} The output values after activation.
    */
   private activateWasm(
     input: Float32Array,
     feedbackLoop: boolean,
-    _reuseBuffer: boolean,
   ): Float32Array {
     // Lazily compile to WASM if not already done
     if (!this.cachedWasmActivation) {
@@ -735,7 +682,6 @@ export class Creature implements CreatureInternal {
 
     // `activate()` should be fast and output-only.
     // Tracing/state backfill belongs in `activateAndTrace()`.
-    // `reuseBuffer` is ignored (see note above).
     return this.cachedWasmActivation.activateWithState(input, feedbackLoop);
   }
 
@@ -752,14 +698,12 @@ export class Creature implements CreatureInternal {
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
    * @param {SparseConfig} sparseConfig - The sparse configuration for tracing.
-   * @param {boolean} reuseBuffer - Whether to reuse the cached output buffer.
    * @returns {Float32Array} The output values after activation.
    */
   private activateAndTraceWasm(
     input: Float32Array,
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
-    _reuseBuffer: boolean,
   ): Float32Array {
     // Lazily compile to WASM if not already done
     if (!this.cachedWasmActivation) {
@@ -975,22 +919,15 @@ export class Creature implements CreatureInternal {
 
   /**
    * Extracts output values from the activations array.
-   * When reuseBuffer is true, reuses a cached buffer to avoid allocations.
-   * Issue #1094: Performance optimisation to reduce GC pressure during evolution.
    *
    * @param {Float32Array} activations - The full activations array.
    * @param {number} lastHiddenNode - The index of the first output neuron.
-   * @param {boolean} reuseBuffer - Whether to reuse the cached buffer.
    * @returns {Float32Array} The output values.
    */
   private extractOutputs(
     activations: Float32Array,
     lastHiddenNode: number,
-    reuseBuffer: boolean,
   ): Float32Array {
-    // `reuseBuffer` is retained for backwards compatibility but no longer has
-    // any effect. Always return a fresh Float32Array to avoid aliasing bugs.
-    void reuseBuffer;
     return new Float32Array(activations.subarray(lastHiddenNode));
   }
 
@@ -1820,13 +1757,22 @@ export class Creature implements CreatureInternal {
    * @param {BackPropagationConfig} config - The back propagation configuration.
    */
   propagateUpdate(config: BackPropagationConfig, sparseConfig: SparseConfig) {
+    let didUpdate = false;
     for (let indx = this.input; indx < this.neurons.length; indx++) {
       const n = this.neurons[indx];
       if (sparseConfig.updateNeeded(n.uuid)) {
         n.propagateUpdate(config);
+        didUpdate = true;
       }
     }
     this.state.preparedNeurons = false;
+
+    // If weights/biases changed, any cached WASM compilation is now stale.
+    // Free it so the next activation recompiles with updated parameters.
+    if (didUpdate && this.cachedWasmActivation) {
+      this.cachedWasmActivation.free();
+      this.cachedWasmActivation = undefined;
+    }
   }
 
   /**

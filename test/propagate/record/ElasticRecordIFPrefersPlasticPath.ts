@@ -4,6 +4,8 @@ import { Creature } from "../../../src/Creature.ts";
 import { ArcTan } from "../../../src/methods/activations/types/ArcTan.ts";
 import { IF } from "../../../src/methods/activations/aggregate/IF.ts";
 import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
+import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 
 Deno.test("record(IF): prefers plastic positive-branch paths over saturated ArcTan parents", () => {
   // IF output chooses positive branch when condition > 0.
@@ -50,7 +52,13 @@ Deno.test("record(IF): prefers plastic positive-branch paths over saturated ArcT
   };
 
   const creature = Creature.fromJSON(creatureJSON);
-  creature.activate(new Float32Array([1, 1]));
+  const config = createBackPropagationConfig({
+    sparseRatio: 1,
+    disableRandomSamples: true,
+    generations: 0,
+  });
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  creature.activateAndTrace(new Float32Array([1, 1]), false, sparseConfig);
 
   const discoverMap = creature.record(new Float32Array([0]));
   const arctanRec = discoverMap.get("hidden-arctan");

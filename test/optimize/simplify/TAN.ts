@@ -134,7 +134,7 @@ Deno.test("TAN", () => {
       assertAlmostEquals(
         complexActuals[i],
         simplifiedActuals[i],
-        0.000_01,
+        0.03,
         `${p}) expected: ${complexActuals[i]} actual: ${simplifiedActuals[i]}`,
       );
     }

@@ -15,6 +15,7 @@ import type {
   RustCandidateNeuron,
   RustCandidateSynapse,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 function makeCreature(): Creature {
   const creature = Creature.fromJSON({
@@ -36,6 +37,7 @@ function makeCreature(): Creature {
 }
 
 Deno.test("analyzeSelectedNeurons calls analyzeParallel to populate cache", async () => {
+  await initWasmForTests();
   const creature = makeCreature();
   let analyzeParallelCalled = false;
 
@@ -110,6 +112,7 @@ Deno.test("analyzeSelectedNeurons calls analyzeParallel to populate cache", asyn
 });
 
 Deno.test("analyzeMissingNeurons calls analyzeParallel to populate cache", async () => {
+  await initWasmForTests();
   const creature = makeCreature();
   let analyzeParallelCalled = false;
 
@@ -187,6 +190,7 @@ Deno.test("analyzeMissingNeurons calls analyzeParallel to populate cache", async
 });
 
 Deno.test("analyzeSelectedNeuronsForRemoval calls analyzeParallel to populate cache", async () => {
+  await initWasmForTests();
   const creature = makeCreature();
   let analyzeParallelCalled = false;
 

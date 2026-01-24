@@ -13,8 +13,10 @@ import type {
   RustRecordInput,
   RustRecordResult,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
+  await initWasmForTests();
   const envKey = "NEAT_DISCOVERY_AWAIT_CLEANUP";
   const previousValue = (() => {
     try {
@@ -145,6 +147,7 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
 });
 
 Deno.test("Discovery flushes Rust recording based on estimated payload size", async () => {
+  await initWasmForTests();
   const envKey = "NEAT_DISCOVERY_AWAIT_CLEANUP";
   const previousValue = (() => {
     try {

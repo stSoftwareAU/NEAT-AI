@@ -91,11 +91,11 @@ Deno.test({
     const input = new Float32Array([1.0, 0.5]);
 
     // Should work with useJs=true (explicit JS)
-    const jsOutput = creature.activate(input, false, false, true);
+    const jsOutput = creature.activate(input, false, true);
     assert(jsOutput.length === 1, "JS output should have correct length");
 
     // Should work with useJs=false (WASM - default)
-    const wasmOutput = creature.activate(input, false, false, false);
+    const wasmOutput = creature.activate(input, false, false);
     assert(wasmOutput.length === 1, "WASM output should have correct length");
 
     // Both should produce identical results
@@ -141,8 +141,8 @@ Deno.test({
     ];
 
     for (const input of testCases) {
-      const jsOutput = creature.activate(input, false, false, true); // useJs=true
-      const wasmOutput = creature.activate(input, false, false, false); // useJs=false (WASM)
+      const jsOutput = creature.activate(input, false, true); // useJs=true
+      const wasmOutput = creature.activate(input, false, false); // useJs=false (WASM)
       assertArrayClose(
         wasmOutput,
         jsOutput,
@@ -204,8 +204,8 @@ Deno.test({
     const creature = Creature.fromJSON(creatureJson);
     creature.fix();
 
-    const jsOutput = creature.activate(input, false, false, true);
-    const wasmOutput = creature.activate(input, false, false, false);
+    const jsOutput = creature.activate(input, false, true);
+    const wasmOutput = creature.activate(input, false, false);
 
     assertArrayClose(wasmOutput, jsOutput, "Large-input parity", 1e-4);
   },
@@ -230,8 +230,8 @@ Deno.test({
     creature.fix();
 
     const input = new Float32Array([50]); // > 36, triggers JS clamp
-    const jsOutput = creature.activate(input, false, false, true);
-    const wasmOutput = creature.activate(input, false, false, false);
+    const jsOutput = creature.activate(input, false, true);
+    const wasmOutput = creature.activate(input, false, false);
 
     assertArrayClose(wasmOutput, jsOutput, "Exponential clamp parity");
   },
@@ -273,7 +273,6 @@ Deno.test({
       input,
       false,
       sparseConfig,
-      false,
       true, // useJs=true (force JS)
     );
     creature.clearState();
@@ -281,7 +280,6 @@ Deno.test({
       input,
       false,
       sparseConfig,
-      false,
       false, // useJs=false (use WASM)
     );
 
@@ -480,7 +478,7 @@ Deno.test({
     const input = new Float32Array([1.0, 2.0]);
 
     // Issue #1122: With default WASM activation, should fallback to JS for MEAN
-    const jsOutput = creature.activate(input, false, false, true); // useJs=true
+    const jsOutput = creature.activate(input, false, true); // useJs=true
     const defaultOutput = creature.activate(input, false, false); // default (tries WASM, falls back)
 
     // MEAN squash: (1.0 + 2.0) / 2 + bias = 1.5 + 0.5 = 2.0
@@ -520,16 +518,16 @@ Deno.test({
     const input2 = new Float32Array([2.0, 1.0]);
 
     // First activation with WASM should compile
-    const output1 = creature.activate(input1, false, false, false); // useJs=false (WASM)
+    const output1 = creature.activate(input1, false, false); // useJs=false (WASM)
     assert(output1.length === 1);
 
     // Second activation should use cached WASM activation
-    const output2 = creature.activate(input2, false, false, false); // useJs=false (WASM)
+    const output2 = creature.activate(input2, false, false); // useJs=false (WASM)
     assert(output2.length === 1);
 
     // Results should still be correct
-    const jsOutput1 = creature.activate(input1, false, false, true); // useJs=true
-    const jsOutput2 = creature.activate(input2, false, false, true); // useJs=true
+    const jsOutput1 = creature.activate(input1, false, true); // useJs=true
+    const jsOutput2 = creature.activate(input2, false, true); // useJs=true
 
     assertArrayClose(output1, jsOutput1);
     assertArrayClose(output2, jsOutput2);
@@ -563,13 +561,13 @@ Deno.test({
     const input = new Float32Array([1.0, 0.5]);
 
     // Activate with WASM to compile and cache
-    const output1 = creature.activate(input, false, false, false); // useJs=false (WASM)
+    const output1 = creature.activate(input, false, false); // useJs=false (WASM)
 
     // Clear state (simulates structural change)
     creature.clearState();
 
     // Should still work after clearState (will recompile if needed)
-    const output2 = creature.activate(input, false, false, false); // useJs=false (WASM)
+    const output2 = creature.activate(input, false, false); // useJs=false (WASM)
 
     assertArrayClose(
       output1,
@@ -606,20 +604,19 @@ Deno.test({
     const input1 = new Float32Array([1.0, 0.5]);
     const input2 = new Float32Array([2.0, 1.0]);
 
-    // Activate with WASM and buffer reuse - copy immediately to avoid overwrite
+    // Activate with WASM - copy immediately (defensive)
     const output1 = new Float32Array(
-      creature.activate(input1, false, true, false), // useJs=false (WASM), reuseBuffer=true
+      creature.activate(input1, false, false), // useJs=false (WASM)
     );
-    const expected1 = creature.activate(input1, false, false, true); // useJs=true
+    const expected1 = creature.activate(input1, false, true); // useJs=true
 
     const output2 = new Float32Array(
-      creature.activate(input2, false, true, false), // useJs=false (WASM), reuseBuffer=true
+      creature.activate(input2, false, false), // useJs=false (WASM)
     );
-    const expected2 = creature.activate(input2, false, false, true); // useJs=true
+    const expected2 = creature.activate(input2, false, true); // useJs=true
 
-    // Results should still be correct with buffer reuse
-    assertArrayClose(output1, expected1, "First output with buffer reuse");
-    assertArrayClose(output2, expected2, "Second output with buffer reuse");
+    assertArrayClose(output1, expected1, "First output");
+    assertArrayClose(output2, expected2, "Second output");
   },
 });
 
@@ -651,8 +648,8 @@ Deno.test({
 
     const input = new Float32Array([1.0, 0.5]);
 
-    const jsOutput = creature.activate(input, false, false, true); // useJs=true
-    const wasmOutput = creature.activate(input, false, false, false); // useJs=false (WASM)
+    const jsOutput = creature.activate(input, false, true); // useJs=true
+    const wasmOutput = creature.activate(input, false, false); // useJs=false (WASM)
 
     assertEquals(jsOutput.length, 2, "JS output should have 2 values");
     assertEquals(wasmOutput.length, 2, "WASM output should have 2 values");
@@ -687,8 +684,8 @@ Deno.test({
 
     const input = new Float32Array([3.0]);
 
-    const jsOutput = creature.activate(input, false, false, true); // useJs=true
-    const wasmOutput = creature.activate(input, false, false, false); // useJs=false (WASM)
+    const jsOutput = creature.activate(input, false, true); // useJs=true
+    const wasmOutput = creature.activate(input, false, false); // useJs=false (WASM)
 
     assertArrayClose(
       wasmOutput,
@@ -808,8 +805,8 @@ Deno.test({
       const inputSize = squash === "IF" ? 3 : 2;
       const input = new Float32Array(inputSize).fill(0.5);
 
-      const jsOutput = creature.activate(input, false, false, true); // useJs=true
-      const wasmOutput = creature.activate(input, false, false, false); // useJs=false (WASM)
+      const jsOutput = creature.activate(input, false, true); // useJs=true
+      const wasmOutput = creature.activate(input, false, false); // useJs=false (WASM)
 
       assertArrayClose(
         wasmOutput,
@@ -904,13 +901,13 @@ Deno.test({
     const input = new Float32Array([1.0, 0.5]);
 
     // Activate with WASM to compile and cache
-    creature.activate(input, false, false, false); // useJs=false (WASM)
+    creature.activate(input, false, false); // useJs=false (WASM)
 
     // Dispose WASM resources
     creature.disposeWasm();
 
     // Should still work after dispose (will recompile on next WASM activation)
-    const output = creature.activate(input, false, false, false); // useJs=false (WASM)
+    const output = creature.activate(input, false, false); // useJs=false (WASM)
     assert(output.length === 1, "Should still produce output after dispose");
   },
 });

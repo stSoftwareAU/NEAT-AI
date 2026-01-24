@@ -21,6 +21,7 @@ import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 Deno.test({
   name:
@@ -29,6 +30,7 @@ Deno.test({
   sanitizeResources: false, // Disable resource sanitization for Rust FFI
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmForTests();
     assertRustDiscoveryAvailable();
 
     // Create a creature with multiple hidden neurons to get varied impact levels
@@ -168,6 +170,7 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
+    await initWasmForTests();
     assertRustDiscoveryAvailable();
 
     // Create a simple creature

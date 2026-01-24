@@ -1,14 +1,8 @@
 /**
- * Legacy tests for issue #1094: output buffer reuse in activate().
+ * Activation output safety tests.
  *
- * NOTE (2026-01): Output buffer reuse was removed as a default behaviour because:
- * - it is easy to misuse (returned array aliasing across calls)
- * - it showed no measurable performance win in our benchmarks
- *
- * The `reuseBuffer` parameter remains for backwards compatibility, but it is
- * now treated as a no-op. These tests validate:
- * - default behaviour returns a new array
- * - passing reuseBuffer=true still returns correct values and a new array
+ * These validate that activation returns fresh arrays and does not alias outputs
+ * across calls (avoids footguns and makes callers safe to mutate returned arrays).
  */
 import {
   assertAlmostEquals,
@@ -56,70 +50,6 @@ Deno.test("activate(): returns new array by default (backward compatibility)", (
 });
 
 /**
- * `reuseBuffer` is now a no-op (safety over aliasing footguns).
- */
-Deno.test("activate(): reuseBuffer=true is a no-op (still returns new array)", () => {
-  const creature = Creature.fromJSON({
-    input: 2,
-    output: 2,
-    neurons: [
-      { type: "output", uuid: "output-0", bias: 0.1, squash: "IDENTITY" },
-      { type: "output", uuid: "output-1", bias: 0.2, squash: "IDENTITY" },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "output-0", weight: 1 },
-      { fromUUID: "input-1", toUUID: "output-1", weight: 1 },
-    ],
-  });
-
-  const input = new Float32Array([0.5, 0.7]);
-
-  const output1 = creature.activate(input, false, true); // feedbackLoop=false, reuseBuffer=true
-  const output2 = creature.activate(input, false, true);
-
-  // Should still return a NEW array reference
-  assertNotStrictEquals(output1, output2);
-
-  // Values should still be correct
-  assertAlmostEquals(output1[0], 0.6, 1e-6, "output[0] = input[0] + bias[0]");
-  assertAlmostEquals(output1[1], 0.9, 1e-6, "output[1] = input[1] + bias[1]");
-});
-
-/**
- * Test that activateAndTrace also supports buffer reuse.
- */
-Deno.test(
-  "activateAndTrace(): reuseBuffer=true is a no-op (still returns new array)",
-  () => {
-  const creature = Creature.fromJSON({
-    input: 2,
-    output: 2,
-    neurons: [
-      { type: "output", uuid: "output-0", bias: 0.1, squash: "IDENTITY" },
-      { type: "output", uuid: "output-1", bias: 0.2, squash: "IDENTITY" },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "output-0", weight: 1 },
-      { fromUUID: "input-1", toUUID: "output-1", weight: 1 },
-    ],
-  });
-
-  const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
-    createBackPropagationConfig({}),
-  );
-
-  const input = new Float32Array([0.5, 0.7]);
-
-  const output1 = creature.activateAndTrace(input, false, sparseConfig, true); // reuseBuffer=true
-  const output2 = creature.activateAndTrace(input, false, sparseConfig, true);
-
-    // Should still return a NEW array reference
-    assertNotStrictEquals(output1, output2);
-  },
-);
-
-/**
  * Test that activateAndTrace default behaviour returns new arrays.
  */
 Deno.test("activateAndTrace(): returns new array by default", () => {
@@ -155,49 +85,6 @@ Deno.test("activateAndTrace(): returns new array by default", () => {
 });
 
 /**
- * Test that cached buffer is correctly sized when output count changes after
- * structural modifications (e.g., via export/import with different output count).
- */
-Deno.test("activate(): cached buffer resizes if output count changes", () => {
-  // Create initial creature with 2 outputs
-  const creature2 = Creature.fromJSON({
-    input: 2,
-    output: 2,
-    neurons: [
-      { type: "output", uuid: "output-0", bias: 0, squash: "IDENTITY" },
-      { type: "output", uuid: "output-1", bias: 0, squash: "IDENTITY" },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "output-0", weight: 1 },
-      { fromUUID: "input-1", toUUID: "output-1", weight: 1 },
-    ],
-  });
-
-  const input = new Float32Array([0.5, 0.7]);
-  const output2 = creature2.activate(input, false, true);
-  assertEquals(output2.length, 2, "Should have 2 outputs");
-
-  // Create a new creature with 3 outputs
-  const creature3 = Creature.fromJSON({
-    input: 2,
-    output: 3,
-    neurons: [
-      { type: "output", uuid: "output-0", bias: 0, squash: "IDENTITY" },
-      { type: "output", uuid: "output-1", bias: 0, squash: "IDENTITY" },
-      { type: "output", uuid: "output-2", bias: 0, squash: "IDENTITY" },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "output-0", weight: 1 },
-      { fromUUID: "input-1", toUUID: "output-1", weight: 1 },
-      { fromUUID: "input-0", toUUID: "output-2", weight: 0.5 },
-    ],
-  });
-
-  const output3 = creature3.activate(input, false, true);
-  assertEquals(output3.length, 3, "Should have 3 outputs after resize");
-});
-
-/**
  * Test that values in reused buffer are correctly updated on each activation.
  */
 Deno.test("activate(): outputs reflect new inputs (no aliasing)", () => {
@@ -216,13 +103,13 @@ Deno.test("activate(): outputs reflect new inputs (no aliasing)", () => {
 
   // First activation
   const input1 = new Float32Array([0.3, 0.4]);
-  const output1 = creature.activate(input1, false, true);
+  const output1 = creature.activate(input1);
   assertAlmostEquals(output1[0], 0.3, 1e-6);
   assertAlmostEquals(output1[1], 0.4, 1e-6);
 
   // Second activation with different input
   const input2 = new Float32Array([0.7, 0.8]);
-  const output2 = creature.activate(input2, false, true);
+  const output2 = creature.activate(input2);
 
   // New buffer reference (no reuse)
   assertNotStrictEquals(output1, output2);
@@ -255,13 +142,13 @@ Deno.test("clearState(): does not break activation", () => {
   const input = new Float32Array([0.5, 0.7]);
 
   // Get first output
-  const output1 = creature.activate(input, false, true);
+  const output1 = creature.activate(input);
 
   // Clear state
   creature.clearState();
 
   // Get second output - should still work
-  const output2 = creature.activate(input, false, true);
+  const output2 = creature.activate(input);
 
   assertNotStrictEquals(output1, output2);
 });
@@ -269,7 +156,7 @@ Deno.test("clearState(): does not break activation", () => {
 /**
  * Test output correctness with a more complex network.
  */
-Deno.test("activate(): buffer reuse produces correct output for complex network", () => {
+Deno.test("activate(): produces correct output for complex network", () => {
   const creature = Creature.fromJSON({
     input: 3,
     output: 2,
@@ -290,31 +177,28 @@ Deno.test("activate(): buffer reuse produces correct output for complex network"
 
   const input = new Float32Array([0.5, 0.6, 0.7]);
 
-  // Get output without buffer reuse
-  const outputNormal = creature.activate(input, false, false);
+  const output1 = creature.activate(input);
+  const output2 = creature.activate(input);
 
-  // Get output with buffer reuse
-  const outputReused = creature.activate(input, false, true);
-
-  // Values should be identical
+  // Values should be identical across repeated calls
   assertAlmostEquals(
-    outputReused[0],
-    outputNormal[0],
+    output2[0],
+    output1[0],
     1e-6,
-    "Buffer reuse should produce same output[0]",
+    "Repeated activation should produce same output[0]",
   );
   assertAlmostEquals(
-    outputReused[1],
-    outputNormal[1],
+    output2[1],
+    output1[1],
     1e-6,
-    "Buffer reuse should produce same output[1]",
+    "Repeated activation should produce same output[1]",
   );
 });
 
 /**
- * Test that caller can safely modify the returned array when reuseBuffer=false.
+ * Test that caller can safely modify the returned array.
  */
-Deno.test("activate(): caller can modify array when reuseBuffer=false", () => {
+Deno.test("activate(): caller can modify returned array", () => {
   const creature = Creature.fromJSON({
     input: 2,
     output: 2,
@@ -330,15 +214,14 @@ Deno.test("activate(): caller can modify array when reuseBuffer=false", () => {
 
   const input = new Float32Array([0.5, 0.7]);
 
-  // Get output without buffer reuse
-  const output1 = creature.activate(input, false, false);
+  const output1 = creature.activate(input);
   const originalValue = output1[0];
 
   // Modify the returned array
   output1[0] = 999;
 
   // Get another output
-  const output2 = creature.activate(input, false, false);
+  const output2 = creature.activate(input);
 
   // The new output should have the correct value, not the modified one
   assertAlmostEquals(
@@ -352,7 +235,7 @@ Deno.test("activate(): caller can modify array when reuseBuffer=false", () => {
 /**
  * Test with a creature with many outputs (as mentioned in issue #1094).
  */
-Deno.test("activate(): works with 100+ outputs (reuseBuffer is a no-op)", () => {
+Deno.test("activate(): works with 100+ outputs", () => {
   // Create a creature with 100 outputs
   const outputCount = 100;
   const neurons: {
@@ -386,11 +269,10 @@ Deno.test("activate(): works with 100+ outputs (reuseBuffer is a no-op)", () => 
 
   const input = new Float32Array([0.5, 0.3]);
 
-  // Activate multiple times with buffer reuse
-  const output1 = creature.activate(input, false, true);
+  const output1 = creature.activate(input);
   assertEquals(output1.length, outputCount, "Should have 100 outputs");
 
-  const output2 = creature.activate(input, false, true);
+  const output2 = creature.activate(input);
   assertNotStrictEquals(output1, output2);
 
   // Verify values are correct

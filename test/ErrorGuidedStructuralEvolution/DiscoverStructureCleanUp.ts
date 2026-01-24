@@ -42,11 +42,6 @@ function makeMinimalCreature(): Creature {
 
 Deno.test({
   name: "cleanUp clears neuron discovery references",
-  permissions: {
-    read: true,
-    write: true,
-    ffi: false,
-  },
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
@@ -55,6 +50,11 @@ Deno.test({
       creature,
       5,
       DEFAULT_RUST_FLUSH_RECORDS,
+      {
+        // This test is about JS object cleanup, not Rust integration.
+        // Avoid requiring FFI/env permissions by stubbing the dependency checks.
+        isRustDiscoveryEnabled: () => true,
+      },
     );
 
     const neuronPromises = new Map<string, Promise<void>>();
