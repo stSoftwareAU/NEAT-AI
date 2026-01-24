@@ -47,7 +47,9 @@ export class CompiledNetwork {
       len0,
       num_outputs,
     );
-    return ret;
+    var v2 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v2;
   }
   /**
    * Activate the network with tracing for backpropagation support
@@ -85,7 +87,9 @@ export class CompiledNetwork {
       len0,
       num_outputs,
     );
-    return ret;
+    var v2 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v2;
   }
   /**
    * Activate the network with the given input values, writing to a pre-allocated output buffer
@@ -117,6 +121,29 @@ export class CompiledNetwork {
       len1,
       output,
     );
+  }
+  /**
+   * Activate the network and return a zero-copy Float32Array view over WASM memory.
+   *
+   * IMPORTANT: The returned Float32Array aliases the network's internal activation buffer.
+   * It will be overwritten by subsequent activations of the same network instance.
+   *
+   * This is intended for high-throughput scoring where the caller consumes outputs
+   * immediately and does not retain references across calls.
+   * @param {Float32Array} input
+   * @param {number} num_outputs
+   * @returns {Float32Array}
+   */
+  activate_view(input, num_outputs) {
+    const ptr0 = passArrayF32ToWasm0(input, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.compilednetwork_activate_view(
+      this.__wbg_ptr,
+      ptr0,
+      len0,
+      num_outputs,
+    );
+    return ret;
   }
   /**
    * Create a new compiled network from serialised data
@@ -210,7 +237,9 @@ export function activate_batch(network, inputs, input_size, num_outputs) {
     input_size,
     num_outputs,
   );
-  return ret;
+  var v2 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+  wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+  return v2;
 }
 
 /**
@@ -407,6 +436,11 @@ function __wbg_get_imports() {
       arg0[arg1 >>> 0] = arg2;
     },
     __wbindgen_cast_0000000000000001: function (arg0, arg1) {
+      // Cast intrinsic for `Ref(Slice(F32)) -> NamedExternref("Float32Array")`.
+      const ret = getArrayF32FromWasm0(arg0, arg1);
+      return ret;
+    },
+    __wbindgen_cast_0000000000000002: function (arg0, arg1) {
       // Cast intrinsic for `Ref(String) -> Externref`.
       const ret = getStringFromWasm0(arg0, arg1);
       return ret;
@@ -438,6 +472,11 @@ function _assertClass(instance, klass) {
   if (!(instance instanceof klass)) {
     throw new Error(`expected instance of ${klass.name}`);
   }
+}
+
+function getArrayF32FromWasm0(ptr, len) {
+  ptr = ptr >>> 0;
+  return getFloat32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
 }
 
 function getArrayU8FromWasm0(ptr, len) {

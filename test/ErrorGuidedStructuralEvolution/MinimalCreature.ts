@@ -12,6 +12,7 @@ import {
 import { Creature } from "../../src/Creature.ts";
 import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 /**
  * Test discovery with minimal valid creatures to ensure edge cases are handled.
@@ -23,6 +24,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmForTests();
     assertRustDiscoveryAvailable();
     // Create the smallest valid creature
     const json: CreatureExport = {
@@ -101,6 +103,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmForTests();
     assertRustDiscoveryAvailable();
     const json: CreatureExport = {
       neurons: [
@@ -197,6 +200,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmForTests();
     assertRustDiscoveryAvailable();
     // Create creature with exactly 3 non-input neurons
     const json: CreatureExport = {

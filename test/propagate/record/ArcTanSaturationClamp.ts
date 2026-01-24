@@ -2,6 +2,8 @@ import { assert } from "@std/assert";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../../src/Creature.ts";
 import { ArcTan } from "../../../src/methods/activations/types/ArcTan.ts";
+import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 
 Deno.test("Creature.record: ArcTan saturation does not produce astronomical errors", () => {
   const creatureJSON: CreatureExport = {
@@ -26,9 +28,15 @@ Deno.test("Creature.record: ArcTan saturation does not produce astronomical erro
   };
 
   const creature = Creature.fromJSON(creatureJSON);
+  const config = createBackPropagationConfig({
+    sparseRatio: 1,
+    disableRandomSamples: true,
+    generations: 0,
+  });
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   // Activate once so record() has a current activation/value to compare against.
-  creature.activate(new Float32Array([1]));
+  creature.activateAndTrace(new Float32Array([1]), false, sparseConfig);
 
   // Request an impossible activation well beyond ArcTan's range; it will be clamped.
   const expected = new Float32Array([Math.PI]);

@@ -3,6 +3,8 @@ import type { CreatureExport } from "../../../src/architecture/CreatureInterface
 import { Creature } from "../../../src/Creature.ts";
 import { ABSOLUTE } from "../../../src/methods/activations/types/ABSOLUTE.ts";
 import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
+import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 
 Deno.test(
   "Creature.record: record attribution avoids impossible negative targets for non-negative squashes (ABSOLUTE)",
@@ -50,7 +52,13 @@ Deno.test(
 
     const creature = Creature.fromJSON(creatureJSON);
 
-    creature.activate(new Float32Array([1]));
+    const config = createBackPropagationConfig({
+      sparseRatio: 1,
+      disableRandomSamples: true,
+      generations: 0,
+    });
+    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    creature.activateAndTrace(new Float32Array([1]), false, sparseConfig);
 
     // Current output is ~2. Request a *far* negative target so the value-space
     // error is large enough that naive attribution would imply a negative

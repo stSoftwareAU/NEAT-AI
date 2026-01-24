@@ -2,6 +2,8 @@ import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
 Deno.test("Focus selection accounts for squashing function bounds on downstream paths", () => {
   // Create a network with two paths to output:
@@ -39,7 +41,17 @@ Deno.test("Focus selection accounts for squashing function bounds on downstream 
   CreatureUtil.makeUUID(creature);
 
   // Activate with extreme value on chain path
-  creature.activate(new Float32Array([0.1, 1000000]));
+  const config = createBackPropagationConfig({
+    sparseRatio: 1,
+    disableRandomSamples: true,
+    generations: 0,
+  });
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  creature.activateAndTrace(
+    new Float32Array([0.1, 1000000]),
+    false,
+    sparseConfig,
+  );
 
   // Create DiscoverStructure to access impact calculation
   const discover = new DiscoverStructure(creature, 60);
@@ -124,7 +136,13 @@ Deno.test("Focus selection correctly weights neurons by squash-bounded impact", 
   CreatureUtil.makeUUID(creature);
 
   // Activate with large value to push TANH into saturation
-  creature.activate(new Float32Array([5.0, 5.0]));
+  const config = createBackPropagationConfig({
+    sparseRatio: 1,
+    disableRandomSamples: true,
+    generations: 0,
+  });
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  creature.activateAndTrace(new Float32Array([5.0, 5.0]), false, sparseConfig);
 
   // Create DiscoverStructure to access impact calculation
   const discover = new DiscoverStructure(creature, 60);

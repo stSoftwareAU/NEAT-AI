@@ -4,6 +4,8 @@ import { Creature } from "../../../src/Creature.ts";
 import { ArcTan } from "../../../src/methods/activations/types/ArcTan.ts";
 import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
 import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
+import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 
 Deno.test("record: prefers plastic paths over saturated ArcTan parents", () => {
   // Two parallel parents feed the output:
@@ -34,7 +36,17 @@ Deno.test("record: prefers plastic paths over saturated ArcTan parents", () => {
   };
 
   const creature = Creature.fromJSON(creatureJSON);
-  const _output = creature.activate(new Float32Array([1]));
+  const config = createBackPropagationConfig({
+    sparseRatio: 1,
+    disableRandomSamples: true,
+    generations: 0,
+  });
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const _output = creature.activateAndTrace(
+    new Float32Array([1]),
+    false,
+    sparseConfig,
+  );
 
   // Current output is atan(1e12) + relu(1) ≈ 1.5708 + 1.
   // Request a much lower value so naive record() will attempt to push the ArcTan

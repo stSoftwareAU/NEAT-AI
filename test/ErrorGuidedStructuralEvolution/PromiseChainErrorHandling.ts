@@ -5,18 +5,40 @@ import {
   DEFAULT_RUST_FLUSH_RECORDS,
   DiscoverStructure,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import {
-  assertRustDiscoveryAvailable,
-  shouldSkipRustDiscoveryTests,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 /**
  * Tests for promise chain error handling in discovery.
  * These tests verify that file write errors don't cause deadlocks.
  */
+
+function makeStubDeps() {
+  return {
+    isRustDiscoveryEnabled: () => true,
+    isRustLibraryAvailable: () => true,
+    recordDiscovery: (input: { temp_dir: string }) => ({
+      success: true,
+      file: `${input.temp_dir}/chunk.parquet`,
+    }),
+    mergeDiscoveryParquet: (input: { outputFile: string }) => ({
+      success: true,
+      outputFile: input.outputFile,
+    }),
+    analyzeParallel: () => ({
+      success: true,
+      helpfulNeurons: [],
+      helpfulSynapses: [],
+      harmfulSynapses: [],
+    }),
+    readDiscoveryRecords: () => ({
+      success: true,
+      records: [],
+    }),
+  };
+}
 
 function makeSimpleCreature(): Creature {
   const json: CreatureExport = {
@@ -48,12 +70,14 @@ function makeSimpleCreature(): Creature {
 }
 
 Deno.test("Discovery promise chains have error handlers", async () => {
+  await initWasmForTests();
   const creature = makeSimpleCreature();
   CreatureUtil.makeUUID(creature);
   const discoverStructure = new DiscoverStructure(
     creature,
     5, // Reduced from 60s to 5s for faster tests
     DEFAULT_RUST_FLUSH_RECORDS,
+    makeStubDeps(),
   );
 
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();
@@ -105,11 +129,10 @@ Deno.test("Discovery promise chains have error handlers", async () => {
 
 Deno.test({
   name: "Discovery handles file write failures gracefully",
-  ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
-    assertRustDiscoveryAvailable();
+    await initWasmForTests();
     const creature = makeSimpleCreature();
     CreatureUtil.makeUUID(creature);
 
@@ -118,6 +141,7 @@ Deno.test({
       creature,
       5, // Reduced from 60s to 5s for faster tests
       DEFAULT_RUST_FLUSH_RECORDS,
+      makeStubDeps(),
     );
 
     const neuronPromisesMap: Map<string, Promise<void>> = new Map();
@@ -172,12 +196,14 @@ Deno.test({
 });
 
 Deno.test("Discovery Promise.all() completes within timeout", async () => {
+  await initWasmForTests();
   const creature = makeSimpleCreature();
   CreatureUtil.makeUUID(creature);
   const discoverStructure = new DiscoverStructure(
     creature,
     5, // Reduced from 60s to 5s for faster tests
     DEFAULT_RUST_FLUSH_RECORDS,
+    makeStubDeps(),
   );
 
   const neuronPromisesMap: Map<string, Promise<void>> = new Map();

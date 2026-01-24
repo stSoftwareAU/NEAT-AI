@@ -97,7 +97,7 @@ Deno.test({
     );
 
     // Explicit JS activation for comparison (useJs=true)
-    const jsOutput = creature.activate(input, false, false, true);
+    const jsOutput = creature.activate(input, false, true);
     assert(jsOutput.length === 1, "JS output should have correct length");
 
     // Both should produce identical results
@@ -132,7 +132,7 @@ Deno.test({
     const input = new Float32Array([1.0, 0.5]);
 
     // useJs=true should force JS activation
-    const jsOutput = creature.activate(input, false, false, true);
+    const jsOutput = creature.activate(input, false, true);
     assert(jsOutput.length === 1, "JS output should have correct length");
 
     // Default activation (WASM) should produce same results
@@ -191,7 +191,6 @@ Deno.test({
       input,
       false,
       sparseConfig,
-      false,
       true,
     );
     assert(jsOutput.length === 1, "JS output should have correct length");
@@ -235,7 +234,6 @@ Deno.test({
       input,
       false,
       sparseConfig,
-      false,
       true,
     );
     assert(jsOutput.length === 1, "JS output should have correct length");
@@ -292,7 +290,7 @@ Deno.test({
     );
 
     // Explicit JS activation for comparison
-    const jsOutput = creature.activate(input, false, false, true);
+    const jsOutput = creature.activate(input, false, true);
     assertArrayClose(
       defaultOutput,
       jsOutput,
@@ -336,7 +334,7 @@ Deno.test({
       "Default output should have 2 values",
     );
 
-    const jsOutput = creature.activate(input, false, false, true);
+    const jsOutput = creature.activate(input, false, true);
     assertEquals(jsOutput.length, 2, "JS output should have 2 values");
 
     assertArrayClose(
@@ -374,15 +372,14 @@ Deno.test({
     const input1 = new Float32Array([1.0, 0.5]);
     const input2 = new Float32Array([2.0, 1.0]);
 
-    // Copy results immediately since buffer is reused
-    const output1 = new Float32Array(creature.activate(input1, false, true));
-    const expected1 = creature.activate(input1, false, false, true);
+    const wasm1 = creature.activate(input1, false, false); // useJs=false (WASM default)
+    const js1 = creature.activate(input1, false, true); // useJs=true
 
-    const output2 = new Float32Array(creature.activate(input2, false, true));
-    const expected2 = creature.activate(input2, false, false, true);
+    const wasm2 = creature.activate(input2, false, false); // useJs=false (WASM default)
+    const js2 = creature.activate(input2, false, true); // useJs=true
 
-    assertArrayClose(output1, expected1, "First output with buffer reuse");
-    assertArrayClose(output2, expected2, "Second output with buffer reuse");
+    assertArrayClose(wasm1, js1, "First output (WASM vs JS)");
+    assertArrayClose(wasm2, js2, "Second output (WASM vs JS)");
   },
 });
 
@@ -493,7 +490,7 @@ Deno.test({
       // Default activation (WASM)
       const defaultOutput = creature.activate(input, false, false);
       // Explicit JS activation (useJs=true)
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
 
       assertArrayClose(
         defaultOutput,
@@ -538,8 +535,8 @@ Deno.test({
     const output2 = creature.activate(input2, false, false);
 
     // Verify with JS
-    const jsOutput1 = creature.activate(input1, false, false, true);
-    const jsOutput2 = creature.activate(input2, false, false, true);
+    const jsOutput1 = creature.activate(input1, false, true);
+    const jsOutput2 = creature.activate(input2, false, true);
 
     assertArrayClose(output1, jsOutput1, "First activation should match JS");
     assertArrayClose(output2, jsOutput2, "Second activation should match JS");
@@ -649,14 +646,13 @@ Deno.test({
       input,
       false,
       jsSparseConfig,
-      false,
       true,
     );
     const jsChanged = jsCreature.applyLearnings(
       createBackPropagationConfig({ trainingMutationRate: 1 }),
       jsSparseConfig,
     );
-    const jsAfterApply = jsCreature.activate(input, false, false, true);
+    const jsAfterApply = jsCreature.activate(input, false, true);
 
     // Results should match
     assertArrayClose(wasmOut, jsOut, "activateAndTrace output should match");
@@ -716,7 +712,7 @@ Deno.test({
     const defaultOutput = creature.activate(input, false, false);
 
     // Explicit JS activation (useJs=true)
-    const jsOutput = creature.activate(input, false, false, true);
+    const jsOutput = creature.activate(input, false, true);
 
     assertArrayClose(
       defaultOutput,
@@ -757,10 +753,10 @@ Deno.test({
     const defaultOutput = creature.activate(input, false, false);
 
     // useJs=false should also use WASM (same as default)
-    const wasmOutput = creature.activate(input, false, false, false);
+    const wasmOutput = creature.activate(input, false, false);
 
     // useJs=true should force JS
-    const jsOutput = creature.activate(input, false, false, true);
+    const jsOutput = creature.activate(input, false, true);
 
     // All should produce same results
     assertArrayClose(defaultOutput, wasmOutput, "default vs useJs=false");

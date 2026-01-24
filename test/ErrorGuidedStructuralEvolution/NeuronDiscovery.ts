@@ -24,6 +24,7 @@ import {
 import {
   shouldSkipRustDiscoveryTests,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
@@ -298,6 +299,7 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
+    await initWasmForTests();
     const { crippledCreature, trainingData } = makeSimpleRecoveryScenario();
 
     console.log("\n=== SIMPLE CREATURE TEST ===");
@@ -367,6 +369,7 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
+    await initWasmForTests();
     const { crippledCreature, trainingData } = makeMultiLayerScenario();
 
     console.log("\n=== MULTI-LAYER CREATURE TEST ===");
@@ -443,6 +446,7 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
+    await initWasmForTests();
     const { crippledCreature, trainingData } = makeWideCreatureScenario();
 
     console.log("\n=== WIDE CREATURE TEST ===");
@@ -495,6 +499,7 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
+    await initWasmForTests();
     const { crippledCreature, trainingData } = makeMultiLayerScenario();
 
     console.log("\n=== PRODUCTION METHOD TEST ===");
@@ -558,6 +563,7 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
+    await initWasmForTests();
     const { crippledCreature, trainingData } = makeMultiLayerScenario();
 
     // Calculate error before discovery

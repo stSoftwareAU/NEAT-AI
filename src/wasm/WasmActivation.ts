@@ -275,8 +275,31 @@ export class WasmCreatureActivation {
       );
     }
 
-    // Call the WASM activate method
+    // Call WASM activate (returns a fresh Float32Array copy).
     return this.network.activate(input, this.numOutputs);
+  }
+
+  /**
+   * Activate the network and return a zero-copy view into WASM memory.
+   *
+   * WARNING: The returned Float32Array is overwritten on the next activation
+   * of the same network instance. Only use this when you consume outputs
+   * immediately and do not retain references.
+   */
+  activateView(input: Float32Array): Float32Array {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+    if (input.length !== this.numInputs) {
+      throw new Error(
+        `Input length ${input.length} does not match expected ${this.numInputs}`,
+      );
+    }
+    if (typeof this.network.activate_view !== "function") {
+      // Fallback to safe copy if the export isn't present.
+      return this.activate(input);
+    }
+    return this.network.activate_view(input, this.numOutputs);
   }
 
   /**
@@ -338,13 +361,13 @@ export class WasmCreatureActivation {
   }
 
   /**
-   * Stateless activation helper.
+   * Activate with state-control (stateless vs stateful).
    *
-   * When feedbackLoop=false we must ensure the WASM activation buffer does not
+   * When `feedbackLoop=false` we must ensure the WASM activation buffer does not
    * carry state between calls. JS activation resets per-call unless feedbackLoop
    * is explicitly enabled.
    */
-  activateWithFeedback(
+  activateWithState(
     input: Float32Array,
     feedbackLoop: boolean,
   ): Float32Array {
@@ -357,6 +380,19 @@ export class WasmCreatureActivation {
     }
 
     return this.activate(input);
+  }
+
+  /**
+   * Backwards-compatible alias.
+   *
+   * NOTE: This name is misleading; it actually controls whether internal state
+   * is reset when `feedbackLoop=false`.
+   */
+  activateWithFeedback(
+    input: Float32Array,
+    feedbackLoop: boolean,
+  ): Float32Array {
+    return this.activateWithState(input, feedbackLoop);
   }
 
   /**

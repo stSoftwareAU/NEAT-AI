@@ -190,7 +190,7 @@ Deno.test({
     for (const input of testCases) {
       // Force JS activation explicitly. WASM is the default, so calling
       // activate(...) without `useJs=true` does NOT provide a JS reference.
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -239,7 +239,7 @@ Deno.test({
 
     const input = new Float32Array([0.5, -0.5]);
     // Force JS activation explicitly (see note in earlier test).
-    const jsOutput = creature.activate(input, false, false, true);
+    const jsOutput = creature.activate(input, false, true);
     const wasmOutput = wasmActivation.activate(input);
 
     assertArrayClose(wasmOutput, jsOutput);
@@ -277,7 +277,7 @@ Deno.test({
 
     const input = new Float32Array([3.0]);
     // Force JS activation explicitly (WASM is the default).
-    const jsOutput = creature.activate(input, false, false, true);
+    const jsOutput = creature.activate(input, false, true);
     const wasmOutput = wasmActivation.activate(input);
 
     // After fix(), neuron layout is: [input, constant, hidden, output]
@@ -323,7 +323,7 @@ Deno.test({
     for (let i = 0; i < 5; i++) {
       const input = new Float32Array([batchInputs[i]]);
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       assertClose(batchOutputs[i], jsOutput[0], `Sample ${i}`);
     }
 
@@ -364,7 +364,7 @@ Deno.test({
       }
 
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       // Use larger tolerance for complex network
@@ -487,7 +487,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -540,7 +540,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -598,7 +598,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -653,7 +653,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -705,7 +705,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -773,7 +773,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -819,7 +819,7 @@ Deno.test({
     // positive = 5.0 * 2.0 = 10.0
     const input1 = new Float32Array([1.0, 5.0, 2.0]);
     // Force JS activation explicitly (WASM is the default).
-    const jsOutput1 = creature.activate(input1, false, false, true);
+    const jsOutput1 = creature.activate(input1, false, true);
     const wasmOutput1 = wasmActivation.activate(input1);
     assertArrayClose(
       wasmOutput1,
@@ -832,7 +832,7 @@ Deno.test({
     // negative = 2.0 * 3.0 = 6.0
     const input2 = new Float32Array([-1.0, 5.0, 2.0]);
     // Force JS activation explicitly (WASM is the default).
-    const jsOutput2 = creature.activate(input2, false, false, true);
+    const jsOutput2 = creature.activate(input2, false, true);
     const wasmOutput2 = wasmActivation.activate(input2);
     assertArrayClose(
       wasmOutput2,
@@ -902,7 +902,7 @@ Deno.test({
         batchInputs[i * 3 + 2],
       ]);
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       assertClose(batchOutputs[i], jsOutput[0], `IF batch sample ${i}`);
     }
 
@@ -939,7 +939,7 @@ Deno.test({
     // Test: input=0.5, weight=2.0, so condition = 1.0 > 0 -> positive
     const input1 = new Float32Array([0.5, 10.0, 5.0]);
     // Force JS activation explicitly (WASM is the default).
-    const jsOutput1 = creature.activate(input1, false, false, true);
+    const jsOutput1 = creature.activate(input1, false, true);
     const wasmOutput1 = wasmActivation.activate(input1);
     assertArrayClose(
       wasmOutput1,
@@ -951,7 +951,7 @@ Deno.test({
     // Test: input=-0.5, weight=2.0, so condition = -1.0 <= 0 -> negative
     const input2 = new Float32Array([-0.5, 10.0, 5.0]);
     // Force JS activation explicitly (WASM is the default).
-    const jsOutput2 = creature.activate(input2, false, false, true);
+    const jsOutput2 = creature.activate(input2, false, true);
     const wasmOutput2 = wasmActivation.activate(input2);
     assertArrayClose(
       wasmOutput2,
@@ -1006,7 +1006,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -1070,7 +1070,7 @@ Deno.test({
         batchInputs[i * 2 + 1],
       ]);
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       assertClose(batchOutputs[i], jsOutput[0], `MAXIMUM batch sample ${i}`);
     }
 
@@ -1125,7 +1125,7 @@ Deno.test({
         batchInputs[i * 2 + 1],
       ]);
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       assertClose(batchOutputs[i], jsOutput[0], `MINIMUM batch sample ${i}`);
     }
 
@@ -1172,7 +1172,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -1226,7 +1226,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -1276,7 +1276,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -1326,7 +1326,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -1375,7 +1375,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -1424,7 +1424,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -1480,7 +1480,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -1536,7 +1536,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -1589,7 +1589,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -1642,7 +1642,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(
@@ -1696,7 +1696,7 @@ Deno.test({
 
     for (const input of testCases) {
       // Force JS activation explicitly (WASM is the default).
-      const jsOutput = creature.activate(input, false, false, true);
+      const jsOutput = creature.activate(input, false, true);
       const wasmOutput = wasmActivation.activate(input);
 
       assertArrayClose(

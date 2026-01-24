@@ -14,6 +14,7 @@ import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 /**
  * Helper interface to access private methods for testing purposes
@@ -89,6 +90,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmForTests();
     const creature = makeTestCreature();
     CreatureUtil.makeUUID(creature);
 
@@ -195,6 +197,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmForTests();
     const creature = makeTestCreature();
     CreatureUtil.makeUUID(creature);
 
@@ -241,6 +244,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmForTests();
     const creature = makeTestCreature();
     CreatureUtil.makeUUID(creature);
 

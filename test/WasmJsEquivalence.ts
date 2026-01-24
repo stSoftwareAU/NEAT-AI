@@ -170,9 +170,9 @@ Deno.test({
         const input = new Float32Array([inputVal]);
 
         // WASM activation (default)
-        const wasmOutput = creature.activate(input, false, false, false);
+        const wasmOutput = creature.activate(input, false, false);
         // JS activation (explicit)
-        const jsOutput = creature.activate(input, false, false, true);
+        const jsOutput = creature.activate(input, false, true);
 
         // Skip comparison if either result is non-finite
         if (
@@ -231,8 +231,8 @@ Deno.test({
       for (const inputVals of testCases) {
         const input = new Float32Array(inputVals);
 
-        const wasmOutput = creature.activate(input, false, false, false);
-        const jsOutput = creature.activate(input, false, false, true);
+        const wasmOutput = creature.activate(input, false, false);
+        const jsOutput = creature.activate(input, false, true);
 
         assertArrayClose(
           wasmOutput,
@@ -298,8 +298,8 @@ Deno.test({
       for (const inputVals of testCases) {
         const input = new Float32Array(inputVals);
 
-        const wasmOutput = creature.activate(input, false, false, false);
-        const jsOutput = creature.activate(input, false, false, true);
+        const wasmOutput = creature.activate(input, false, false);
+        const jsOutput = creature.activate(input, false, true);
 
         assertArrayClose(
           wasmOutput,
@@ -346,8 +346,8 @@ Deno.test({
     for (const inputVals of testCases) {
       const input = new Float32Array(inputVals);
 
-      const wasmOutput = creature.activate(input, false, false, false);
-      const jsOutput = creature.activate(input, false, false, true);
+      const wasmOutput = creature.activate(input, false, false);
+      const jsOutput = creature.activate(input, false, true);
 
       assertArrayClose(
         wasmOutput,
@@ -389,8 +389,8 @@ Deno.test({
     for (const inputVals of testCases) {
       const input = new Float32Array(inputVals);
 
-      const wasmOutput = creature.activate(input, false, false, false);
-      const jsOutput = creature.activate(input, false, false, true);
+      const wasmOutput = creature.activate(input, false, false);
+      const jsOutput = creature.activate(input, false, true);
 
       assertArrayClose(
         wasmOutput,
@@ -433,8 +433,8 @@ Deno.test({
     for (const inputVals of testCases) {
       const input = new Float32Array(inputVals);
 
-      const wasmOutput = creature.activate(input, false, false, false);
-      const jsOutput = creature.activate(input, false, false, true);
+      const wasmOutput = creature.activate(input, false, false);
+      const jsOutput = creature.activate(input, false, true);
 
       assertArrayClose(
         wasmOutput,
@@ -498,8 +498,8 @@ Deno.test({
     for (const inputVals of testCases) {
       const input = new Float32Array(inputVals);
 
-      const wasmOutput = creature.activate(input, false, false, false);
-      const jsOutput = creature.activate(input, false, false, true);
+      const wasmOutput = creature.activate(input, false, false);
+      const jsOutput = creature.activate(input, false, true);
 
       assertEquals(wasmOutput.length, 3, "Should have 3 outputs");
       assertEquals(jsOutput.length, 3, "Should have 3 outputs");
@@ -553,7 +553,6 @@ Deno.test({
         input,
         false,
         wasmSparseConfig,
-        false,
         false, // useJs = false (WASM)
       );
 
@@ -569,7 +568,6 @@ Deno.test({
         input,
         false,
         jsSparseConfig,
-        false,
         true, // useJs = true
       );
 
@@ -635,7 +633,6 @@ Deno.test({
         inputs[i],
         false,
         wasmSparseConfig,
-        false,
         false, // useJs = false (WASM)
       );
       wasmCreature.propagate(targets[i], wasmConfig, wasmSparseConfig);
@@ -659,7 +656,6 @@ Deno.test({
         inputs[i],
         false,
         jsSparseConfig,
-        false,
         true, // useJs = true
       );
       jsCreature.propagate(targets[i], jsConfig, jsSparseConfig);
@@ -675,8 +671,8 @@ Deno.test({
 
     // Verify outputs after learning are close
     const testInput = new Float32Array([0.7, 0.3]);
-    const wasmAfter = wasmCreature.activate(testInput, false, false, false);
-    const jsAfter = jsCreature.activate(testInput, false, false, true);
+    const wasmAfter = wasmCreature.activate(testInput, false, false);
+    const jsAfter = jsCreature.activate(testInput, false, true);
 
     assertArrayClose(
       wasmAfter,
@@ -718,8 +714,8 @@ Deno.test({
     );
 
     for (let i = 0; i < inputs.length; i++) {
-      const wasmOutput = creature.activate(inputs[i], false, false, false);
-      const jsOutput = creature.activate(inputs[i], false, false, true);
+      const wasmOutput = creature.activate(inputs[i], false, false);
+      const jsOutput = creature.activate(inputs[i], false, true);
 
       assertArrayClose(
         wasmOutput,
@@ -760,23 +756,23 @@ Deno.test({
 
     // Test with feedbackLoop = true
     creature.clearState();
-    const wasmOutput1 = creature.activate(input, true, false, false);
+    const wasmOutput1 = creature.activate(input, true, false);
     const jsCreature = Creature.fromJSON(creatureJson);
     jsCreature.fix();
     jsCreature.clearState();
-    const jsOutput1 = jsCreature.activate(input, true, false, true);
+    const jsOutput1 = jsCreature.activate(input, true, true);
 
     assertArrayClose(wasmOutput1, jsOutput1, "Feedback loop activation 1");
 
     // Second activation should use feedback
-    const wasmOutput2 = creature.activate(input, true, false, false);
-    const jsOutput2 = jsCreature.activate(input, true, false, true);
+    const wasmOutput2 = creature.activate(input, true, false);
+    const jsOutput2 = jsCreature.activate(input, true, true);
 
     assertArrayClose(wasmOutput2, jsOutput2, "Feedback loop activation 2");
 
     // Third activation
-    const wasmOutput3 = creature.activate(input, true, false, false);
-    const jsOutput3 = jsCreature.activate(input, true, false, true);
+    const wasmOutput3 = creature.activate(input, true, false);
+    const jsOutput3 = jsCreature.activate(input, true, true);
 
     assertArrayClose(wasmOutput3, jsOutput3, "Feedback loop activation 3");
   },
@@ -820,8 +816,8 @@ Deno.test({
       for (const val of extremeValues) {
         const input = new Float32Array([val]);
 
-        const wasmOutput = creature.activate(input, false, false, false);
-        const jsOutput = creature.activate(input, false, false, true);
+        const wasmOutput = creature.activate(input, false, false);
+        const jsOutput = creature.activate(input, false, true);
 
         // For extreme values, both should produce finite, bounded results
         assert(
@@ -941,8 +937,8 @@ Deno.test({
         input[i] = Math.random() * 2 - 1;
       }
 
-      const wasmOutput = creature.activate(input, false, false, false);
-      const jsOutput = creature.activate(input, false, false, true);
+      const wasmOutput = creature.activate(input, false, false);
+      const jsOutput = creature.activate(input, false, true);
 
       assertArrayClose(
         wasmOutput,
@@ -1027,8 +1023,8 @@ Deno.test({
     for (const inputVals of testCases) {
       const input = new Float32Array(inputVals);
 
-      const wasmOutput = creature.activate(input, false, false, false);
-      const jsOutput = creature.activate(input, false, false, true);
+      const wasmOutput = creature.activate(input, false, false);
+      const jsOutput = creature.activate(input, false, true);
 
       assertArrayClose(
         wasmOutput,
@@ -1072,22 +1068,9 @@ Deno.test({
     ];
 
     for (let i = 0; i < inputs.length; i++) {
-      // With buffer reuse
-      const wasmReuse = new Float32Array(
-        creature.activate(inputs[i], false, true, false),
-      );
-      const jsReuse = new Float32Array(
-        creature.activate(inputs[i], false, true, true),
-      );
-
-      // Without buffer reuse
-      const wasmNoReuse = creature.activate(inputs[i], false, false, false);
-      const jsNoReuse = creature.activate(inputs[i], false, false, true);
-
-      assertArrayClose(wasmReuse, jsReuse, `Buffer reuse ${i + 1}`);
-      assertArrayClose(wasmNoReuse, jsNoReuse, `No buffer reuse ${i + 1}`);
-      assertArrayClose(wasmReuse, wasmNoReuse, `WASM consistency ${i + 1}`);
-      assertArrayClose(jsReuse, jsNoReuse, `JS consistency ${i + 1}`);
+      const wasmOut = creature.activate(inputs[i], false, false);
+      const jsOut = creature.activate(inputs[i], false, true);
+      assertArrayClose(wasmOut, jsOut, `WASM vs JS ${i + 1}`);
     }
   },
 });
@@ -1168,8 +1151,8 @@ Deno.test({
         const input = new Float32Array(inputVals);
 
         try {
-          const wasmOutput = creature.activate(input, false, false, false);
-          const jsOutput = creature.activate(input, false, false, true);
+          const wasmOutput = creature.activate(input, false, false);
+          const jsOutput = creature.activate(input, false, true);
 
           let match = true;
           for (let i = 0; i < wasmOutput.length; i++) {

@@ -13,6 +13,7 @@ import { Creature } from "../../src/Creature.ts";
 import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 /**
  * Tests for invalid data detection (NaN/Infinity) in discovery process.
@@ -63,6 +64,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmForTests();
     assertRustDiscoveryAvailable();
     const creature = makeSimpleCreature();
     CreatureUtil.makeUUID(creature);
@@ -135,6 +137,7 @@ Deno.test({
   sanitizeResources: false, // Disable leak detection - Rust FFI library load/unload is expected
   sanitizeOps: false, // Disable ops sanitization for FFI operations
   fn: async () => {
+    await initWasmForTests();
     assertRustDiscoveryAvailable();
     const creature = makeSimpleCreature();
     CreatureUtil.makeUUID(creature);

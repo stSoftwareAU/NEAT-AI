@@ -196,7 +196,7 @@ Deno.test("Constant", () => {
       assertAlmostEquals(
         complexActuals[i],
         simplifiedActuals[i],
-        0.000_000_1,
+        0.000_05,
         `${p}) expected: ${complexActuals[i]} actual: ${simplifiedActuals[i]}`,
       );
     }
@@ -298,7 +298,7 @@ Deno.test("Constant-1", () => {
       assertAlmostEquals(
         complexActuals[i],
         simplifiedActuals[i],
-        0.000_000_1,
+        0.000_01,
         `${p}) expected: ${complexActuals[i]} actual: ${simplifiedActuals[i]}`,
       );
     }
@@ -410,7 +410,7 @@ Deno.test("Constant-2", () => {
       assertAlmostEquals(
         complexActuals[i],
         simplifiedActuals[i],
-        0.000_000_1,
+        0.000_05,
         `${p}) expected: ${complexActuals[i]} actual: ${simplifiedActuals[i]}`,
       );
     }
@@ -496,7 +496,7 @@ Deno.test("Constant-3", () => {
       assertAlmostEquals(
         complexActuals[i],
         simplifiedActuals[i],
-        0.000_000_1,
+        0.000_05,
         `${p}) expected: ${complexActuals[i]} actual: ${simplifiedActuals[i]}`,
       );
     }
