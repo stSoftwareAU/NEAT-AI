@@ -233,11 +233,12 @@ export class Creature implements CreatureInternal {
 
   /**
    * Cached output buffer for activate() and activateAndTrace() methods.
-   * When reuseBuffer=true is passed to these methods, this buffer is reused
-   * instead of creating a new Float32Array on each call.
-   * Issue #1094: Performance optimisation to reduce GC pressure during evolution.
+   *
+   * NOTE: Output buffer reuse was removed because it provided no measurable
+   * performance benefit in our benchmarks and is easy to misuse (callers may
+   * accidentally retain the returned array across calls).
    */
-  private cachedOutputBuffer?: Float32Array;
+  // (left intentionally unused for backwards-compat doc history)
 
   /**
    * Cached WASM activation instance for this creature.
@@ -507,9 +508,6 @@ export class Creature implements CreatureInternal {
     delete this.score;
     this.state.clear();
     delete this.creatureActivationResult;
-    // Clear cached output buffer to ensure fresh buffer on next activation
-    // Issue #1094: Performance optimisation for buffer reuse
-    delete this.cachedOutputBuffer;
     // Clear WASM cache - structure may have changed
     // Issue #1118: WASM Migration Phase 1
     this.disposeWasm();
@@ -556,21 +554,10 @@ export class Creature implements CreatureInternal {
     reuseBuffer: boolean = false,
     useJs: boolean = false,
   ): Float32Array {
-    // Issue #1122: WASM is now the default activation implementation.
-    // - If caller passes `useJs` explicitly as true, use JS activation.
-    // - If `NEAT_AI_USE_JS=1|true|yes|on`, force JS activation.
-    // - Otherwise, use WASM when available.
-    let forceJs = useJs;
-    if (!forceJs) {
-      try {
-        const v = Deno.env.get("NEAT_AI_USE_JS")?.trim().toLowerCase();
-        forceJs = v === "1" || v === "true" || v === "yes" || v === "on";
-      } catch {
-        // Ignore env permission errors; default remains false.
-      }
-    }
-
-    // Issue #1122: WASM is now the default. Use WASM unless JS is forced.
+    // `reuseBuffer` is retained for backwards compatibility but no longer has
+    // any effect. Output arrays are always newly allocated to avoid footguns.
+    // WASM is the default when available. Use JS only when explicitly requested.
+    const forceJs = useJs;
     // Issue #1121: WASM Migration Phase 4 - activateAndTrace with backpropagation support
     if (!forceJs && this.canUseWasm()) {
       return this.activateAndTraceWasm(
@@ -626,21 +613,10 @@ export class Creature implements CreatureInternal {
     reuseBuffer: boolean = false,
     useJs: boolean = false,
   ): Float32Array {
-    // Issue #1122: WASM is now the default activation implementation.
-    // - If caller passes `useJs` explicitly as true, use JS activation.
-    // - If `NEAT_AI_USE_JS=1|true|yes|on`, force JS activation.
-    // - Otherwise, use WASM when available.
-    let forceJs = useJs;
-    try {
-      const v = Deno.env.get("NEAT_AI_USE_JS")?.trim().toLowerCase();
-      if (v === "1" || v === "true" || v === "yes" || v === "on") {
-        forceJs = true;
-      }
-    } catch {
-      // Ignore env permission errors; default remains false.
-    }
-
-    // Issue #1122: WASM is now the default. Use WASM unless JS is forced.
+    // `reuseBuffer` is retained for backwards compatibility but no longer has
+    // any effect. Output arrays are always newly allocated to avoid footguns.
+    // WASM is the default when available. Use JS only when explicitly requested.
+    const forceJs = useJs;
     if (!forceJs && this.canUseWasm()) {
       return this.activateWasm(input, feedbackLoop, reuseBuffer);
     }
@@ -739,7 +715,7 @@ export class Creature implements CreatureInternal {
   private activateWasm(
     input: Float32Array,
     feedbackLoop: boolean,
-    reuseBuffer: boolean,
+    _reuseBuffer: boolean,
   ): Float32Array {
     // Lazily compile to WASM if not already done
     if (!this.cachedWasmActivation) {
@@ -747,56 +723,20 @@ export class Creature implements CreatureInternal {
       this.cachedWasmActivation = WasmCreatureActivation.create(compiled) ??
         undefined;
 
-      // If compilation failed, fall back to JS
       if (!this.cachedWasmActivation) {
-        return this.activate(input, false, reuseBuffer, true); // useJs=true
+        // At this point WASM was selected and eligibility was already checked.
+        // Failing to instantiate the WASM network is unexpected; fail fast rather
+        // than silently falling back to JS and masking the problem.
+        fail(
+          "WASM activation was selected but failed to instantiate CompiledNetwork",
+        );
       }
     }
 
-    // Keep JS and WASM behavior aligned:
-    // - JS activation populates `state.activations` for *all* neurons.
-    // - Discovery recording (`creature.record(...)`) relies on those activations.
-    //
-    // So we run the WASM `activate_and_trace` path (even when callers use
-    // `activate()`), and apply activations + pre-squash values back onto state.
-    //
-    // This is slightly slower than the pure-output WASM activate() call, but it
-    // keeps tests and production behavior consistent (WASM-only future).
-    this.prepareNeurons();
-    this.state.makeActivation(input, feedbackLoop);
-
-    const wasmResult = this.cachedWasmActivation.activateAndTraceWithFeedback(
-      input,
-      feedbackLoop,
-    );
-
-    // Apply post-squash activations to state for all non-input neurons.
-    const neurons = this.neurons;
-    for (let i = 0; i < wasmResult.activations.length; i++) {
-      const neuronIdx = this.input + i;
-      if (neuronIdx < neurons.length) {
-        this.state.activations[neuronIdx] = wasmResult.activations[i];
-      }
-    }
-
-    // Apply pre-squash values (hintValues) for all non-input neurons.
-    for (let i = this.input; i < neurons.length; i++) {
-      this.state.node(i).hintValue = wasmResult.hintValues[i - this.input];
-    }
-
-    // Handle buffer reuse
-    if (reuseBuffer) {
-      if (
-        !this.cachedOutputBuffer ||
-        this.cachedOutputBuffer.length !== this.output
-      ) {
-        this.cachedOutputBuffer = new Float32Array(this.output);
-      }
-      this.cachedOutputBuffer.set(wasmResult.outputs);
-      return this.cachedOutputBuffer;
-    }
-
-    return wasmResult.outputs;
+    // `activate()` should be fast and output-only.
+    // Tracing/state backfill belongs in `activateAndTrace()`.
+    // `reuseBuffer` is ignored (see note above).
+    return this.cachedWasmActivation.activateWithState(input, feedbackLoop);
   }
 
   /**
@@ -819,7 +759,7 @@ export class Creature implements CreatureInternal {
     input: Float32Array,
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
-    reuseBuffer: boolean,
+    _reuseBuffer: boolean,
   ): Float32Array {
     // Lazily compile to WASM if not already done
     if (!this.cachedWasmActivation) {
@@ -827,14 +767,9 @@ export class Creature implements CreatureInternal {
       this.cachedWasmActivation = WasmCreatureActivation.create(compiled) ??
         undefined;
 
-      // If compilation failed, fall back to JS
       if (!this.cachedWasmActivation) {
-        return this.activateAndTrace(
-          input,
-          feedbackLoop,
-          sparseConfig,
-          reuseBuffer,
-          true, // useJs=true to force JS fallback
+        fail(
+          "WASM activateAndTrace was selected but failed to instantiate CompiledNetwork",
         );
       }
     }
@@ -872,18 +807,6 @@ export class Creature implements CreatureInternal {
         this.state.node(n.index).hintValue =
           wasmResult.hintValues[i - this.input];
       }
-    }
-
-    // Handle buffer reuse
-    if (reuseBuffer) {
-      if (
-        !this.cachedOutputBuffer ||
-        this.cachedOutputBuffer.length !== this.output
-      ) {
-        this.cachedOutputBuffer = new Float32Array(this.output);
-      }
-      this.cachedOutputBuffer.set(wasmResult.outputs);
-      return this.cachedOutputBuffer;
     }
 
     return wasmResult.outputs;
@@ -1065,21 +988,10 @@ export class Creature implements CreatureInternal {
     lastHiddenNode: number,
     reuseBuffer: boolean,
   ): Float32Array {
-    if (reuseBuffer) {
-      // Reuse cached buffer if dimensions match, otherwise create a new one
-      if (
-        !this.cachedOutputBuffer ||
-        this.cachedOutputBuffer.length !== this.output
-      ) {
-        this.cachedOutputBuffer = new Float32Array(this.output);
-      }
-      // Copy output values from activations to cached buffer
-      this.cachedOutputBuffer.set(activations.subarray(lastHiddenNode));
-      return this.cachedOutputBuffer;
-    } else {
-      // Default behaviour: create a new Float32Array (maintains backward compatibility)
-      return new Float32Array(activations.subarray(lastHiddenNode));
-    }
+    // `reuseBuffer` is retained for backwards compatibility but no longer has
+    // any effect. Always return a fresh Float32Array to avoid aliasing bugs.
+    void reuseBuffer;
+    return new Float32Array(activations.subarray(lastHiddenNode));
   }
 
   /**

@@ -937,8 +937,12 @@ export class DiscoverStructure {
       const record = effectiveTrainingData[i];
 
       try {
-        // Activate creature with existing input
-        this.creature.activate(record.input);
+        // Discovery recording requires `Creature.record(...)`, which relies on
+        // internal neuron activations being populated in `creature.state`.
+        //
+        // WASM `activate()` is intentionally output-only and does not populate
+        // `state.activations`; use the JS activation path here for correctness.
+        this.creature.activate(record.input, false, false, true);
         const discoverMap = this.creature.record(record.output);
 
         // Accumulate data for Rust (Parquet format)
