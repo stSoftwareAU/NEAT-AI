@@ -171,20 +171,7 @@ function makeInputs(creature: Creature, count: number): Float32Array[] {
   return inputs;
 }
 
-// Generate flat batch inputs
-function makeBatchInputs(
-  creature: Creature,
-  count: number,
-): Float32Array {
-  const data = new Float32Array(count * creature.input);
-  for (let i = 0; i < count * creature.input; i++) {
-    data[i] = Math.random() * 4 - 2;
-  }
-  return data;
-}
-
 const inputs = makeInputs(creature, 100);
-const batchInputs = makeBatchInputs(creature, ITERATIONS);
 
 // Print creature stats
 console.log(`\nBenchmark Creature: Synthetic (standard squash functions only)`);
@@ -231,20 +218,11 @@ Deno.bench("JS Activation", { group: "activation" }, () => {
 });
 
 // WASM Activation benchmark (individual calls)
-Deno.bench("WASM Activation", { group: "activation" }, () => {
+Deno.bench("WASM Activation", { group: "activation", baseline: true }, () => {
   for (let i = 0; i < ITERATIONS; i++) {
     const input = inputs[i % inputs.length];
     wasmActivation.activate(input);
   }
 });
-
-// WASM Batch Activation benchmark
-Deno.bench(
-  "WASM Batch Activation",
-  { group: "activation", baseline: true },
-  () => {
-    wasmActivation.activateBatch(batchInputs, creature.input);
-  },
-);
 
 // Cleanup note: WASM resources will be freed when process exits
