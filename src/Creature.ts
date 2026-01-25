@@ -549,20 +549,26 @@ export class Creature implements CreatureInternal {
     sparseConfig: SparseConfig,
     useJs: boolean = false,
   ): Float32Array {
+    // Issue #1193: For forward-only creatures, feedbackLoop has no effect since there
+    // are no recurrent connections. Normalize to false for consistency and performance.
+    const effectiveFeedbackLoop = this.forwardOnly === true
+      ? false
+      : feedbackLoop;
+
     // WASM is the default when available. Use JS only when explicitly requested.
     const forceJs = useJs;
     // Issue #1121: WASM Migration Phase 4 - activateAndTrace with backpropagation support
     if (!forceJs && this.canUseWasm()) {
       return this.activateAndTraceWasm(
         input,
-        feedbackLoop,
+        effectiveFeedbackLoop,
         sparseConfig,
       );
     }
 
     // Fall back to JS activation
     this.prepareNeurons();
-    const activations = this.state.makeActivation(input, feedbackLoop);
+    const activations = this.state.makeActivation(input, effectiveFeedbackLoop);
 
     const neurons = this.neurons;
     const len = neurons.length;
@@ -600,15 +606,21 @@ export class Creature implements CreatureInternal {
     feedbackLoop: boolean = false,
     useJs: boolean = false,
   ): Float32Array {
+    // Issue #1193: For forward-only creatures, feedbackLoop has no effect since there
+    // are no recurrent connections. Normalize to false for consistency and performance.
+    const effectiveFeedbackLoop = this.forwardOnly === true
+      ? false
+      : feedbackLoop;
+
     // WASM is the default when available. Use JS only when explicitly requested.
     const forceJs = useJs;
     if (!forceJs && this.canUseWasm()) {
-      return this.activateWasm(input, feedbackLoop);
+      return this.activateWasm(input, effectiveFeedbackLoop);
     }
 
     // Fall back to JS activation
     this.prepareNeurons();
-    const activations = this.state.makeActivation(input, feedbackLoop);
+    const activations = this.state.makeActivation(input, effectiveFeedbackLoop);
 
     try {
       this.creatureActivationFunction!();
@@ -2180,6 +2192,10 @@ export class Creature implements CreatureInternal {
     const forwardOnlyGuaranteed = Number.isFinite(major) && major >= 4 &&
       this.forwardOnly === true;
 
+    // Issue #1193: For forward-only creatures, feedbackLoop has no effect since there
+    // are no recurrent connections. Normalize to false for consistency and performance.
+    const effectiveFeedbackLoop = forwardOnlyGuaranteed ? false : feedbackLoop;
+
     // Ensure WASM network is compiled once for scoring.
     if (canUseWasm && !this.cachedWasmActivation) {
       const compiled = compileCreatureToWasm(this);
@@ -2222,7 +2238,9 @@ export class Creature implements CreatureInternal {
       "MSLE",
       "HINGE",
     ] as const;
-    const useFusedWasm = canUseWasm && !feedbackLoop && forwardOnlyGuaranteed &&
+    // Issue #1193: For forward-only creatures, feedbackLoop has no effect since there are
+    // no recurrent connections to preserve state. We can use the fused path regardless.
+    const useFusedWasm = canUseWasm && forwardOnlyGuaranteed &&
       supportedFusedCosts.includes(
         costName as typeof supportedFusedCosts[number],
       );
@@ -2294,11 +2312,11 @@ export class Creature implements CreatureInternal {
               this.cachedWasmActivation!.activateIntoWithFeedback(
                 observations,
                 outputBuffer!,
-                feedbackLoop,
+                effectiveFeedbackLoop,
               );
               error += cost.calculate(target, outputBuffer!);
             } else {
-              const actual = this.activate(observations, feedbackLoop);
+              const actual = this.activate(observations, effectiveFeedbackLoop);
               error += cost.calculate(target, actual);
             }
 
