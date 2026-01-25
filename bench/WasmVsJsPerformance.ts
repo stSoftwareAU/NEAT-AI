@@ -315,8 +315,9 @@ console.log("Running benchmarks...\n");
 // =============================================================================
 
 {
-  const { creature, wasmActivation, inputs, config } =
-    benchmarkData.get("Small (10 neurons)")!;
+  const { creature, wasmActivation, inputs, config } = benchmarkData.get(
+    "Small (10 neurons)",
+  )!;
 
   Deno.bench(`Small: JS Activation (${config.iterations} iterations)`, {
     group: "small",
@@ -341,8 +342,9 @@ console.log("Running benchmarks...\n");
 // =============================================================================
 
 {
-  const { creature, wasmActivation, inputs, config } =
-    benchmarkData.get("Medium (50 neurons)")!;
+  const { creature, wasmActivation, inputs, config } = benchmarkData.get(
+    "Medium (50 neurons)",
+  )!;
 
   Deno.bench(`Medium: JS Activation (${config.iterations} iterations)`, {
     group: "medium",
@@ -367,8 +369,9 @@ console.log("Running benchmarks...\n");
 // =============================================================================
 
 {
-  const { creature, wasmActivation, inputs, config } =
-    benchmarkData.get("Large (200 neurons)")!;
+  const { creature, wasmActivation, inputs, config } = benchmarkData.get(
+    "Large (200 neurons)",
+  )!;
 
   Deno.bench(`Large: JS Activation (${config.iterations} iterations)`, {
     group: "large",
@@ -393,8 +396,9 @@ console.log("Running benchmarks...\n");
 // =============================================================================
 
 {
-  const { creature, wasmActivation, inputs, config } =
-    benchmarkData.get("Very Large (500 neurons)")!;
+  const { creature, wasmActivation, inputs, config } = benchmarkData.get(
+    "Very Large (500 neurons)",
+  )!;
 
   Deno.bench(`Very Large: JS Activation (${config.iterations} iterations)`, {
     group: "very-large",

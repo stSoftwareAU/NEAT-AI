@@ -117,7 +117,10 @@ Deno.test("WorkerProcessor.process skips WASM init if already attempted", async 
   }
 
   // Second call - should short-circuit because wasmInitAttempted is true
-  const response = await processor.process({ taskID: 2, initialize: mockPayload });
+  const response = await processor.process({
+    taskID: 2,
+    initialize: mockPayload,
+  });
   assertEquals(response.taskID, 2);
   assertExists(response.initialize);
   assertEquals(response.initialize.status, "OK");
