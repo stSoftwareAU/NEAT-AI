@@ -141,6 +141,30 @@ export function calculate_error(
 ): number;
 
 /**
+ * Fused activate + Cross Entropy calculation for batch scoring.
+ *
+ * Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
+ * Output values are clamped to [1e-15, 1-1e-15] to prevent log(0).
+ *
+ * # Arguments
+ * * `network` - The compiled network to activate
+ * * `records` - Packed array of `[inputs..., targets...]` records
+ * * `input_size` - Number of inputs per record
+ * * `num_outputs` - Number of outputs per record
+ * * `forward_only` - If true, skip reset_state() (for forward-only networks)
+ *
+ * # Returns
+ * Sum of per-record Cross Entropy errors (divide by record count for mean)
+ */
+export function cross_entropy_sum_batch_packed(
+  network: CompiledNetwork,
+  records: Float32Array,
+  input_size: number,
+  num_outputs: number,
+  forward_only: boolean,
+): number;
+
+/**
  * Standalone derivative function for testing
  * Issue #1138 - WASM Migration Phase 6
  */
@@ -159,6 +183,30 @@ export function derivative(squash_type: number, value: number): number;
 export function get_range(squash_type: number): Float32Array;
 
 /**
+ * Fused activate + Hinge Loss calculation for batch scoring.
+ *
+ * Hinge formula per record: Σmax(0, 1 - target * output)
+ * Note: Unlike MSE/MAE, Hinge does NOT divide by number of outputs per record.
+ *
+ * # Arguments
+ * * `network` - The compiled network to activate
+ * * `records` - Packed array of `[inputs..., targets...]` records
+ * * `input_size` - Number of inputs per record
+ * * `num_outputs` - Number of outputs per record
+ * * `forward_only` - If true, skip reset_state() (for forward-only networks)
+ *
+ * # Returns
+ * Sum of per-record Hinge errors (divide by record count for mean)
+ */
+export function hinge_sum_batch_packed(
+  network: CompiledNetwork,
+  records: Float32Array,
+  input_size: number,
+  num_outputs: number,
+  forward_only: boolean,
+): number;
+
+/**
  * Clamp a value to the valid range for an activation function
  * Issue #1142 - WASM Migration Phase 10
  *
@@ -170,6 +218,55 @@ export function get_range(squash_type: number): Float32Array;
  * * `value` - The value to clamp
  */
 export function limit_range(squash_type: number, value: number): number;
+
+/**
+ * Fused activate + MAE (Mean Absolute Error) calculation for batch scoring.
+ *
+ * Like `mse_sum_batch_packed`, this processes a batch of `[inputs..., targets...]` records
+ * in a single WASM call, returning the sum of per-record MAE errors.
+ *
+ * MAE formula per record: (1/n) * Σ|target - output|
+ *
+ * # Arguments
+ * * `network` - The compiled network to activate
+ * * `records` - Packed array of `[inputs..., targets...]` records
+ * * `input_size` - Number of inputs per record
+ * * `num_outputs` - Number of outputs per record
+ * * `forward_only` - If true, skip reset_state() (for forward-only networks)
+ *
+ * # Returns
+ * Sum of per-record MAE errors (divide by record count for mean)
+ */
+export function mae_sum_batch_packed(
+  network: CompiledNetwork,
+  records: Float32Array,
+  input_size: number,
+  num_outputs: number,
+  forward_only: boolean,
+): number;
+
+/**
+ * Fused activate + MAPE (Mean Absolute Percentage Error) calculation for batch scoring.
+ *
+ * MAPE formula per record: (1/n) * Σ|(output - target) / max(target, ε)|
+ *
+ * # Arguments
+ * * `network` - The compiled network to activate
+ * * `records` - Packed array of `[inputs..., targets...]` records
+ * * `input_size` - Number of inputs per record
+ * * `num_outputs` - Number of outputs per record
+ * * `forward_only` - If true, skip reset_state() (for forward-only networks)
+ *
+ * # Returns
+ * Sum of per-record MAPE errors (divide by record count for mean)
+ */
+export function mape_sum_batch_packed(
+  network: CompiledNetwork,
+  records: Float32Array,
+  input_size: number,
+  num_outputs: number,
+  forward_only: boolean,
+): number;
 
 /**
  * Compute Mean Squared Error (MSE) over packed records in a single WASM call.
@@ -189,6 +286,30 @@ export function limit_range(squash_type: number, value: number): number;
  * Issue #118x - Fuse activate + MSE for scoring performance.
  */
 export function mse_sum_batch_packed(
+  network: CompiledNetwork,
+  records: Float32Array,
+  input_size: number,
+  num_outputs: number,
+  forward_only: boolean,
+): number;
+
+/**
+ * Fused activate + MSLE (Mean Squared Logarithmic Error) calculation for batch scoring.
+ *
+ * MSLE formula per record: Σ(log(max(target, ε)) - log(max(output, ε)))
+ * Note: Unlike MSE/MAE, MSLE does NOT divide by number of outputs per record.
+ *
+ * # Arguments
+ * * `network` - The compiled network to activate
+ * * `records` - Packed array of `[inputs..., targets...]` records
+ * * `input_size` - Number of inputs per record
+ * * `num_outputs` - Number of outputs per record
+ * * `forward_only` - If true, skip reset_state() (for forward-only networks)
+ *
+ * # Returns
+ * Sum of per-record MSLE errors (divide by record count for mean)
+ */
+export function msle_sum_batch_packed(
   network: CompiledNetwork,
   records: Float32Array,
   input_size: number,
@@ -305,6 +426,46 @@ export interface InitOutput {
     d: number,
   ) => [number, number];
   readonly mse_sum_batch_packed: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => number;
+  readonly mae_sum_batch_packed: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => number;
+  readonly cross_entropy_sum_batch_packed: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => number;
+  readonly mape_sum_batch_packed: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => number;
+  readonly msle_sum_batch_packed: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => number;
+  readonly hinge_sum_batch_packed: (
     a: number,
     b: number,
     c: number,

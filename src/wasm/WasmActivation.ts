@@ -91,6 +91,51 @@ let mseSumBatchPackedFn:
     forwardOnly: boolean,
   ) => number)
   | null = null;
+let maeSumBatchPackedFn:
+  | ((
+    network: unknown,
+    records: Float32Array,
+    inputSize: number,
+    numOutputs: number,
+    forwardOnly: boolean,
+  ) => number)
+  | null = null;
+let crossEntropySumBatchPackedFn:
+  | ((
+    network: unknown,
+    records: Float32Array,
+    inputSize: number,
+    numOutputs: number,
+    forwardOnly: boolean,
+  ) => number)
+  | null = null;
+let mapeSumBatchPackedFn:
+  | ((
+    network: unknown,
+    records: Float32Array,
+    inputSize: number,
+    numOutputs: number,
+    forwardOnly: boolean,
+  ) => number)
+  | null = null;
+let msleSumBatchPackedFn:
+  | ((
+    network: unknown,
+    records: Float32Array,
+    inputSize: number,
+    numOutputs: number,
+    forwardOnly: boolean,
+  ) => number)
+  | null = null;
+let hingeSumBatchPackedFn:
+  | ((
+    network: unknown,
+    records: Float32Array,
+    inputSize: number,
+    numOutputs: number,
+    forwardOnly: boolean,
+  ) => number)
+  | null = null;
 let getRangeFn: ((squashType: number) => Float32Array) | null = null;
 let validateRangeFn:
   | ((squashType: number, activation: number) => boolean)
@@ -134,6 +179,11 @@ export async function initWasmActivation(
       safeZoneAdjustmentFn = module.safe_zone_adjustment;
       calculateErrorFn = module.calculate_error;
       mseSumBatchPackedFn = module.mse_sum_batch_packed;
+      maeSumBatchPackedFn = module.mae_sum_batch_packed;
+      crossEntropySumBatchPackedFn = module.cross_entropy_sum_batch_packed;
+      mapeSumBatchPackedFn = module.mape_sum_batch_packed;
+      msleSumBatchPackedFn = module.msle_sum_batch_packed;
+      hingeSumBatchPackedFn = module.hinge_sum_batch_packed;
       getRangeFn = module.get_range;
       validateRangeFn = module.validate_range;
       limitRangeFn = module.limit_range;
@@ -189,6 +239,11 @@ export function initWasmActivationSync(
     safeZoneAdjustmentFn = jsBindings.safe_zone_adjustment;
     calculateErrorFn = jsBindings.calculate_error;
     mseSumBatchPackedFn = jsBindings.mse_sum_batch_packed;
+    maeSumBatchPackedFn = jsBindings.mae_sum_batch_packed;
+    crossEntropySumBatchPackedFn = jsBindings.cross_entropy_sum_batch_packed;
+    mapeSumBatchPackedFn = jsBindings.mape_sum_batch_packed;
+    msleSumBatchPackedFn = jsBindings.msle_sum_batch_packed;
+    hingeSumBatchPackedFn = jsBindings.hinge_sum_batch_packed;
     getRangeFn = jsBindings.get_range;
     validateRangeFn = jsBindings.validate_range;
     limitRangeFn = jsBindings.limit_range;
@@ -541,6 +596,133 @@ export class WasmCreatureActivation {
       throw new Error("WASM module not initialised");
     }
     return mseSumBatchPackedFn(
+      this.network,
+      records,
+      inputSize,
+      this.numOutputs,
+      forwardOnly,
+    );
+  }
+
+  /**
+   * Compute sum(MAE) across packed [inputs..., targets...] records in WASM.
+   *
+   * Returns the sum of per-record MAE values (divide by record count for average).
+   */
+  maeSumBatchPacked(
+    records: Float32Array,
+    inputSize: number,
+    forwardOnly: boolean,
+  ): number {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+    if (!maeSumBatchPackedFn) {
+      throw new Error("WASM module not initialised");
+    }
+    return maeSumBatchPackedFn(
+      this.network,
+      records,
+      inputSize,
+      this.numOutputs,
+      forwardOnly,
+    );
+  }
+
+  /**
+   * Compute sum(Cross Entropy) across packed [inputs..., targets...] records in WASM.
+   *
+   * Returns the sum of per-record Cross Entropy values (divide by record count for average).
+   */
+  crossEntropySumBatchPacked(
+    records: Float32Array,
+    inputSize: number,
+    forwardOnly: boolean,
+  ): number {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+    if (!crossEntropySumBatchPackedFn) {
+      throw new Error("WASM module not initialised");
+    }
+    return crossEntropySumBatchPackedFn(
+      this.network,
+      records,
+      inputSize,
+      this.numOutputs,
+      forwardOnly,
+    );
+  }
+
+  /**
+   * Compute sum(MAPE) across packed [inputs..., targets...] records in WASM.
+   *
+   * Returns the sum of per-record MAPE values (divide by record count for average).
+   */
+  mapeSumBatchPacked(
+    records: Float32Array,
+    inputSize: number,
+    forwardOnly: boolean,
+  ): number {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+    if (!mapeSumBatchPackedFn) {
+      throw new Error("WASM module not initialised");
+    }
+    return mapeSumBatchPackedFn(
+      this.network,
+      records,
+      inputSize,
+      this.numOutputs,
+      forwardOnly,
+    );
+  }
+
+  /**
+   * Compute sum(MSLE) across packed [inputs..., targets...] records in WASM.
+   *
+   * Returns the sum of per-record MSLE values (divide by record count for average).
+   * Note: MSLE does not average per output within each record.
+   */
+  msleSumBatchPacked(
+    records: Float32Array,
+    inputSize: number,
+    forwardOnly: boolean,
+  ): number {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+    if (!msleSumBatchPackedFn) {
+      throw new Error("WASM module not initialised");
+    }
+    return msleSumBatchPackedFn(
+      this.network,
+      records,
+      inputSize,
+      this.numOutputs,
+      forwardOnly,
+    );
+  }
+
+  /**
+   * Compute sum(Hinge Loss) across packed [inputs..., targets...] records in WASM.
+   *
+   * Returns the sum of per-record Hinge values (divide by record count for average).
+   * Note: Hinge does not average per output within each record.
+   */
+  hingeSumBatchPacked(
+    records: Float32Array,
+    inputSize: number,
+    forwardOnly: boolean,
+  ): number {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+    if (!hingeSumBatchPackedFn) {
+      throw new Error("WASM module not initialised");
+    }
+    return hingeSumBatchPackedFn(
       this.network,
       records,
       inputSize,

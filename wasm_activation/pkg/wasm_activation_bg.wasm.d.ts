@@ -44,6 +44,46 @@ export const mse_sum_batch_packed: (
   e: number,
   f: number,
 ) => number;
+export const mae_sum_batch_packed: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+) => number;
+export const cross_entropy_sum_batch_packed: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+) => number;
+export const mape_sum_batch_packed: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+) => number;
+export const msle_sum_batch_packed: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+) => number;
+export const hinge_sum_batch_packed: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+) => number;
 export const squash: (a: number, b: number) => number;
 export const derivative: (a: number, b: number) => number;
 export const unsquash: (a: number, b: number, c: number) => number;

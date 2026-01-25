@@ -14,6 +14,110 @@ use wasm_bindgen::prelude::*;
 use js_sys::Float32Array;
 // Note: E and PI are not currently used but kept for potential future squash functions
 
+// Issue #1178 - WASM SIMD support
+// SIMD intrinsics for vectorized synapse weight summation
+#[cfg(target_arch = "wasm32")]
+use core::arch::wasm32::{
+    f32x4, f32x4_add, f32x4_extract_lane, f32x4_mul, f32x4_splat,
+};
+
+/// Issue #1178 - SIMD-optimized weighted sum for standard activations
+///
+/// Processes synapses in batches of 4 using 128-bit SIMD operations.
+/// Falls back to scalar for remaining synapses.
+///
+/// # Safety
+/// This function uses SIMD intrinsics and must be called with valid indices.
+#[cfg(target_arch = "wasm32")]
+#[target_feature(enable = "simd128")]
+#[inline]
+unsafe fn weighted_sum_simd(
+    synapses: &[SynapseData],
+    activations: &[f32],
+    start: usize,
+    end: usize,
+    bias: f32,
+) -> f32 {
+    let count = end - start;
+    if count == 0 {
+        return bias;
+    }
+
+    // For very small counts, scalar is faster due to SIMD setup overhead
+    if count < 4 {
+        let mut sum = bias;
+        for i in start..end {
+            let synapse = &synapses[i];
+            sum += activations[synapse.from_index as usize] * synapse.weight;
+        }
+        return sum;
+    }
+
+    // Process in chunks of 4 using SIMD
+    let chunks = count / 4;
+
+    // Initialize accumulator with bias in first lane, zeros in others
+    let mut acc = f32x4_splat(0.0);
+    let mut scalar_sum = bias;
+
+    // SIMD loop: process 4 synapses at a time
+    for chunk in 0..chunks {
+        let base = start + chunk * 4;
+
+        // Load 4 weights (contiguous in memory due to SynapseData layout)
+        let s0 = &synapses[base];
+        let s1 = &synapses[base + 1];
+        let s2 = &synapses[base + 2];
+        let s3 = &synapses[base + 3];
+
+        let weights = f32x4(s0.weight, s1.weight, s2.weight, s3.weight);
+
+        // Gather 4 activations (scatter/gather pattern - must be scalar)
+        let a0 = activations[s0.from_index as usize];
+        let a1 = activations[s1.from_index as usize];
+        let a2 = activations[s2.from_index as usize];
+        let a3 = activations[s3.from_index as usize];
+
+        let acts = f32x4(a0, a1, a2, a3);
+
+        // Vectorized multiply-add
+        acc = f32x4_add(acc, f32x4_mul(weights, acts));
+    }
+
+    // Horizontal sum of SIMD accumulator
+    scalar_sum += f32x4_extract_lane::<0>(acc)
+        + f32x4_extract_lane::<1>(acc)
+        + f32x4_extract_lane::<2>(acc)
+        + f32x4_extract_lane::<3>(acc);
+
+    // Handle remainder with scalar operations
+    let remainder_start = start + chunks * 4;
+    for i in remainder_start..end {
+        let synapse = &synapses[i];
+        scalar_sum += activations[synapse.from_index as usize] * synapse.weight;
+    }
+
+    scalar_sum
+}
+
+/// Scalar fallback for non-WASM targets (for testing)
+#[cfg(not(target_arch = "wasm32"))]
+#[inline]
+fn weighted_sum_simd(
+    synapses: &[SynapseData],
+    activations: &[f32],
+    start: usize,
+    end: usize,
+    bias: f32,
+) -> f32 {
+    let mut sum = bias;
+    for i in start..end {
+        let synapse = &synapses[i];
+        sum += activations[synapse.from_index as usize] * synapse.weight;
+    }
+    sum
+}
+
 // SELU constants
 const SELU_ALPHA: f32 = 1.6732632423543772;
 const SELU_LAMBDA: f32 = 1.0507009873554805;
@@ -2817,11 +2921,25 @@ impl CompiledNetwork {
                     }
                     _ => {
                         // Standard activation: weighted sum + bias, then apply squash
-                        let mut sum: f32 = neuron.bias;
-                        for synapse_idx in start_synapse..end_synapse {
-                            let synapse = &self.synapses[synapse_idx];
-                            sum += self.activations[synapse.from_index as usize] * synapse.weight;
-                        }
+                        // Issue #1178 - Use SIMD-optimized weighted sum
+                        #[cfg(target_arch = "wasm32")]
+                        let sum = unsafe {
+                            weighted_sum_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                                neuron.bias,
+                            )
+                        };
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let sum = weighted_sum_simd(
+                            &self.synapses,
+                            &self.activations,
+                            start_synapse,
+                            end_synapse,
+                            neuron.bias,
+                        );
                         // Issue #1177 - Inline common squash functions for performance
                         // These 4 functions cover ~80% of typical networks
                         match neuron.squash_type {
@@ -2959,11 +3077,25 @@ impl CompiledNetwork {
                     }
                     _ => {
                         // Standard activation: weighted sum + bias, then apply squash
-                        let mut sum: f32 = neuron.bias;
-                        for synapse_idx in start_synapse..end_synapse {
-                            let synapse = &self.synapses[synapse_idx];
-                            sum += self.activations[synapse.from_index as usize] * synapse.weight;
-                        }
+                        // Issue #1178 - Use SIMD-optimized weighted sum
+                        #[cfg(target_arch = "wasm32")]
+                        let sum = unsafe {
+                            weighted_sum_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                                neuron.bias,
+                            )
+                        };
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let sum = weighted_sum_simd(
+                            &self.synapses,
+                            &self.activations,
+                            start_synapse,
+                            end_synapse,
+                            neuron.bias,
+                        );
                         // Issue #1177 - Inline common squash functions for performance
                         // These 4 functions cover ~80% of typical networks
                         match neuron.squash_type {
@@ -3145,11 +3277,25 @@ impl CompiledNetwork {
                     }
                     _ => {
                         // Standard activation: weighted sum + bias, then apply squash
-                        let mut sum: f32 = neuron.bias;
-                        for synapse_idx in start_synapse..end_synapse {
-                            let synapse = &self.synapses[synapse_idx];
-                            sum += self.activations[synapse.from_index as usize] * synapse.weight;
-                        }
+                        // Issue #1178 - Use SIMD-optimized weighted sum
+                        #[cfg(target_arch = "wasm32")]
+                        let sum = unsafe {
+                            weighted_sum_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                                neuron.bias,
+                            )
+                        };
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let sum = weighted_sum_simd(
+                            &self.synapses,
+                            &self.activations,
+                            start_synapse,
+                            end_synapse,
+                            neuron.bias,
+                        );
                         // Issue #1177 - Inline common squash functions for performance
                         let squashed = match neuron.squash_type {
                             0 => sum,                                    // IDENTITY
@@ -3259,6 +3405,326 @@ pub fn mse_sum_batch_packed(
             sq_sum += diff * diff;
         }
         sum_error += sq_sum * inv_outputs;
+    }
+
+    sum_error
+}
+
+/// Fused activate + MAE (Mean Absolute Error) calculation for batch scoring.
+///
+/// Like `mse_sum_batch_packed`, this processes a batch of `[inputs..., targets...]` records
+/// in a single WASM call, returning the sum of per-record MAE errors.
+///
+/// MAE formula per record: (1/n) * Σ|target - output|
+///
+/// # Arguments
+/// * `network` - The compiled network to activate
+/// * `records` - Packed array of `[inputs..., targets...]` records
+/// * `input_size` - Number of inputs per record
+/// * `num_outputs` - Number of outputs per record
+/// * `forward_only` - If true, skip reset_state() (for forward-only networks)
+///
+/// # Returns
+/// Sum of per-record MAE errors (divide by record count for mean)
+#[wasm_bindgen]
+pub fn mae_sum_batch_packed(
+    network: &mut CompiledNetwork,
+    records: &[f32],
+    input_size: usize,
+    num_outputs: usize,
+    forward_only: bool,
+) -> f64 {
+    let values_per_record = input_size + num_outputs;
+    if values_per_record == 0 {
+        return 0.0;
+    }
+    let num_records = records.len() / values_per_record;
+    if num_records == 0 {
+        return 0.0;
+    }
+
+    let inv_outputs: f64 = if num_outputs > 0 {
+        1.0 / (num_outputs as f64)
+    } else {
+        0.0
+    };
+
+    let mut outputs: Vec<f32> = vec![0.0; num_outputs];
+    let mut sum_error: f64 = 0.0;
+
+    for record_idx in 0..num_records {
+        if !forward_only {
+            network.reset_state();
+        }
+
+        let base = record_idx * values_per_record;
+        let input_start = base;
+        let input_end = base + input_size;
+        let target_start = input_end;
+
+        network.activate_into(&records[input_start..input_end], &mut outputs[..]);
+
+        // Per-record MAE = mean(|target - output|)
+        let mut abs_sum: f64 = 0.0;
+        for j in 0..num_outputs {
+            let diff = (records[target_start + j] - outputs[j]) as f64;
+            abs_sum += diff.abs();
+        }
+        sum_error += abs_sum * inv_outputs;
+    }
+
+    sum_error
+}
+
+/// Fused activate + Cross Entropy calculation for batch scoring.
+///
+/// Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
+/// Output values are clamped to [1e-15, 1-1e-15] to prevent log(0).
+///
+/// # Arguments
+/// * `network` - The compiled network to activate
+/// * `records` - Packed array of `[inputs..., targets...]` records
+/// * `input_size` - Number of inputs per record
+/// * `num_outputs` - Number of outputs per record
+/// * `forward_only` - If true, skip reset_state() (for forward-only networks)
+///
+/// # Returns
+/// Sum of per-record Cross Entropy errors (divide by record count for mean)
+#[wasm_bindgen]
+pub fn cross_entropy_sum_batch_packed(
+    network: &mut CompiledNetwork,
+    records: &[f32],
+    input_size: usize,
+    num_outputs: usize,
+    forward_only: bool,
+) -> f64 {
+    let values_per_record = input_size + num_outputs;
+    if values_per_record == 0 {
+        return 0.0;
+    }
+    let num_records = records.len() / values_per_record;
+    if num_records == 0 {
+        return 0.0;
+    }
+
+    let inv_outputs: f64 = if num_outputs > 0 {
+        1.0 / (num_outputs as f64)
+    } else {
+        0.0
+    };
+
+    const EPSILON: f64 = 1e-15;
+    let mut outputs: Vec<f32> = vec![0.0; num_outputs];
+    let mut sum_error: f64 = 0.0;
+
+    for record_idx in 0..num_records {
+        if !forward_only {
+            network.reset_state();
+        }
+
+        let base = record_idx * values_per_record;
+        let input_start = base;
+        let input_end = base + input_size;
+        let target_start = input_end;
+
+        network.activate_into(&records[input_start..input_end], &mut outputs[..]);
+
+        // Per-record Cross Entropy = -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
+        let mut ce_sum: f64 = 0.0;
+        for j in 0..num_outputs {
+            let t = records[target_start + j] as f64;
+            let o_raw = outputs[j] as f64;
+            // Clamp to [epsilon, 1-epsilon] to prevent log(0)
+            let o = o_raw.max(EPSILON).min(1.0 - EPSILON);
+            ce_sum -= t * o.ln() + (1.0 - t) * (1.0 - o).ln();
+        }
+        sum_error += ce_sum * inv_outputs;
+    }
+
+    sum_error
+}
+
+/// Fused activate + MAPE (Mean Absolute Percentage Error) calculation for batch scoring.
+///
+/// MAPE formula per record: (1/n) * Σ|(output - target) / max(target, ε)|
+///
+/// # Arguments
+/// * `network` - The compiled network to activate
+/// * `records` - Packed array of `[inputs..., targets...]` records
+/// * `input_size` - Number of inputs per record
+/// * `num_outputs` - Number of outputs per record
+/// * `forward_only` - If true, skip reset_state() (for forward-only networks)
+///
+/// # Returns
+/// Sum of per-record MAPE errors (divide by record count for mean)
+#[wasm_bindgen]
+pub fn mape_sum_batch_packed(
+    network: &mut CompiledNetwork,
+    records: &[f32],
+    input_size: usize,
+    num_outputs: usize,
+    forward_only: bool,
+) -> f64 {
+    let values_per_record = input_size + num_outputs;
+    if values_per_record == 0 {
+        return 0.0;
+    }
+    let num_records = records.len() / values_per_record;
+    if num_records == 0 {
+        return 0.0;
+    }
+
+    let inv_outputs: f64 = if num_outputs > 0 {
+        1.0 / (num_outputs as f64)
+    } else {
+        0.0
+    };
+
+    const EPSILON: f64 = 1e-15;
+    let mut outputs: Vec<f32> = vec![0.0; num_outputs];
+    let mut sum_error: f64 = 0.0;
+
+    for record_idx in 0..num_records {
+        if !forward_only {
+            network.reset_state();
+        }
+
+        let base = record_idx * values_per_record;
+        let input_start = base;
+        let input_end = base + input_size;
+        let target_start = input_end;
+
+        network.activate_into(&records[input_start..input_end], &mut outputs[..]);
+
+        // Per-record MAPE = (1/n) * Σ|(output - target) / max(target, ε)|
+        let mut mape_sum: f64 = 0.0;
+        for j in 0..num_outputs {
+            let t = (records[target_start + j] as f64).max(EPSILON);
+            let o = outputs[j] as f64;
+            mape_sum += ((o - t) / t).abs();
+        }
+        sum_error += mape_sum * inv_outputs;
+    }
+
+    sum_error
+}
+
+/// Fused activate + MSLE (Mean Squared Logarithmic Error) calculation for batch scoring.
+///
+/// MSLE formula per record: Σ(log(max(target, ε)) - log(max(output, ε)))
+/// Note: Unlike MSE/MAE, MSLE does NOT divide by number of outputs per record.
+///
+/// # Arguments
+/// * `network` - The compiled network to activate
+/// * `records` - Packed array of `[inputs..., targets...]` records
+/// * `input_size` - Number of inputs per record
+/// * `num_outputs` - Number of outputs per record
+/// * `forward_only` - If true, skip reset_state() (for forward-only networks)
+///
+/// # Returns
+/// Sum of per-record MSLE errors (divide by record count for mean)
+#[wasm_bindgen]
+pub fn msle_sum_batch_packed(
+    network: &mut CompiledNetwork,
+    records: &[f32],
+    input_size: usize,
+    num_outputs: usize,
+    forward_only: bool,
+) -> f64 {
+    let values_per_record = input_size + num_outputs;
+    if values_per_record == 0 {
+        return 0.0;
+    }
+    let num_records = records.len() / values_per_record;
+    if num_records == 0 {
+        return 0.0;
+    }
+
+    const EPSILON: f64 = 1e-15;
+    let mut outputs: Vec<f32> = vec![0.0; num_outputs];
+    let mut sum_error: f64 = 0.0;
+
+    for record_idx in 0..num_records {
+        if !forward_only {
+            network.reset_state();
+        }
+
+        let base = record_idx * values_per_record;
+        let input_start = base;
+        let input_end = base + input_size;
+        let target_start = input_end;
+
+        network.activate_into(&records[input_start..input_end], &mut outputs[..]);
+
+        // Per-record MSLE = Σ(log(max(target, ε)) - log(max(output, ε)))
+        // Note: No averaging per record to match JS implementation
+        let mut msle_sum: f64 = 0.0;
+        for j in 0..num_outputs {
+            let t = (records[target_start + j] as f64).max(EPSILON);
+            let o = (outputs[j] as f64).max(EPSILON);
+            msle_sum += t.ln() - o.ln();
+        }
+        sum_error += msle_sum;
+    }
+
+    sum_error
+}
+
+/// Fused activate + Hinge Loss calculation for batch scoring.
+///
+/// Hinge formula per record: Σmax(0, 1 - target * output)
+/// Note: Unlike MSE/MAE, Hinge does NOT divide by number of outputs per record.
+///
+/// # Arguments
+/// * `network` - The compiled network to activate
+/// * `records` - Packed array of `[inputs..., targets...]` records
+/// * `input_size` - Number of inputs per record
+/// * `num_outputs` - Number of outputs per record
+/// * `forward_only` - If true, skip reset_state() (for forward-only networks)
+///
+/// # Returns
+/// Sum of per-record Hinge errors (divide by record count for mean)
+#[wasm_bindgen]
+pub fn hinge_sum_batch_packed(
+    network: &mut CompiledNetwork,
+    records: &[f32],
+    input_size: usize,
+    num_outputs: usize,
+    forward_only: bool,
+) -> f64 {
+    let values_per_record = input_size + num_outputs;
+    if values_per_record == 0 {
+        return 0.0;
+    }
+    let num_records = records.len() / values_per_record;
+    if num_records == 0 {
+        return 0.0;
+    }
+
+    let mut outputs: Vec<f32> = vec![0.0; num_outputs];
+    let mut sum_error: f64 = 0.0;
+
+    for record_idx in 0..num_records {
+        if !forward_only {
+            network.reset_state();
+        }
+
+        let base = record_idx * values_per_record;
+        let input_start = base;
+        let input_end = base + input_size;
+        let target_start = input_end;
+
+        network.activate_into(&records[input_start..input_end], &mut outputs[..]);
+
+        // Per-record Hinge = Σmax(0, 1 - target * output)
+        // Note: No averaging per record to match JS implementation
+        let mut hinge_sum: f64 = 0.0;
+        for j in 0..num_outputs {
+            let t = records[target_start + j] as f64;
+            let o = outputs[j] as f64;
+            hinge_sum += (1.0 - t * o).max(0.0);
+        }
+        sum_error += hinge_sum;
     }
 
     sum_error

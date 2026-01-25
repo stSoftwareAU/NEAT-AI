@@ -247,6 +247,49 @@ export function calculate_error(
 }
 
 /**
+ * Fused activate + Cross Entropy calculation for batch scoring.
+ *
+ * Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
+ * Output values are clamped to [1e-15, 1-1e-15] to prevent log(0).
+ *
+ * # Arguments
+ * * `network` - The compiled network to activate
+ * * `records` - Packed array of `[inputs..., targets...]` records
+ * * `input_size` - Number of inputs per record
+ * * `num_outputs` - Number of outputs per record
+ * * `forward_only` - If true, skip reset_state() (for forward-only networks)
+ *
+ * # Returns
+ * Sum of per-record Cross Entropy errors (divide by record count for mean)
+ * @param {CompiledNetwork} network
+ * @param {Float32Array} records
+ * @param {number} input_size
+ * @param {number} num_outputs
+ * @param {boolean} forward_only
+ * @returns {number}
+ */
+export function cross_entropy_sum_batch_packed(
+  network,
+  records,
+  input_size,
+  num_outputs,
+  forward_only,
+) {
+  _assertClass(network, CompiledNetwork);
+  const ptr0 = passArrayF32ToWasm0(records, wasm.__wbindgen_malloc);
+  const len0 = WASM_VECTOR_LEN;
+  const ret = wasm.cross_entropy_sum_batch_packed(
+    network.__wbg_ptr,
+    ptr0,
+    len0,
+    input_size,
+    num_outputs,
+    forward_only,
+  );
+  return ret;
+}
+
+/**
  * Standalone derivative function for testing
  * Issue #1138 - WASM Migration Phase 6
  * @param {number} squash_type
@@ -276,6 +319,49 @@ export function get_range(squash_type) {
 }
 
 /**
+ * Fused activate + Hinge Loss calculation for batch scoring.
+ *
+ * Hinge formula per record: Σmax(0, 1 - target * output)
+ * Note: Unlike MSE/MAE, Hinge does NOT divide by number of outputs per record.
+ *
+ * # Arguments
+ * * `network` - The compiled network to activate
+ * * `records` - Packed array of `[inputs..., targets...]` records
+ * * `input_size` - Number of inputs per record
+ * * `num_outputs` - Number of outputs per record
+ * * `forward_only` - If true, skip reset_state() (for forward-only networks)
+ *
+ * # Returns
+ * Sum of per-record Hinge errors (divide by record count for mean)
+ * @param {CompiledNetwork} network
+ * @param {Float32Array} records
+ * @param {number} input_size
+ * @param {number} num_outputs
+ * @param {boolean} forward_only
+ * @returns {number}
+ */
+export function hinge_sum_batch_packed(
+  network,
+  records,
+  input_size,
+  num_outputs,
+  forward_only,
+) {
+  _assertClass(network, CompiledNetwork);
+  const ptr0 = passArrayF32ToWasm0(records, wasm.__wbindgen_malloc);
+  const len0 = WASM_VECTOR_LEN;
+  const ret = wasm.hinge_sum_batch_packed(
+    network.__wbg_ptr,
+    ptr0,
+    len0,
+    input_size,
+    num_outputs,
+    forward_only,
+  );
+  return ret;
+}
+
+/**
  * Clamp a value to the valid range for an activation function
  * Issue #1142 - WASM Migration Phase 10
  *
@@ -291,6 +377,93 @@ export function get_range(squash_type) {
  */
 export function limit_range(squash_type, value) {
   const ret = wasm.limit_range(squash_type, value);
+  return ret;
+}
+
+/**
+ * Fused activate + MAE (Mean Absolute Error) calculation for batch scoring.
+ *
+ * Like `mse_sum_batch_packed`, this processes a batch of `[inputs..., targets...]` records
+ * in a single WASM call, returning the sum of per-record MAE errors.
+ *
+ * MAE formula per record: (1/n) * Σ|target - output|
+ *
+ * # Arguments
+ * * `network` - The compiled network to activate
+ * * `records` - Packed array of `[inputs..., targets...]` records
+ * * `input_size` - Number of inputs per record
+ * * `num_outputs` - Number of outputs per record
+ * * `forward_only` - If true, skip reset_state() (for forward-only networks)
+ *
+ * # Returns
+ * Sum of per-record MAE errors (divide by record count for mean)
+ * @param {CompiledNetwork} network
+ * @param {Float32Array} records
+ * @param {number} input_size
+ * @param {number} num_outputs
+ * @param {boolean} forward_only
+ * @returns {number}
+ */
+export function mae_sum_batch_packed(
+  network,
+  records,
+  input_size,
+  num_outputs,
+  forward_only,
+) {
+  _assertClass(network, CompiledNetwork);
+  const ptr0 = passArrayF32ToWasm0(records, wasm.__wbindgen_malloc);
+  const len0 = WASM_VECTOR_LEN;
+  const ret = wasm.mae_sum_batch_packed(
+    network.__wbg_ptr,
+    ptr0,
+    len0,
+    input_size,
+    num_outputs,
+    forward_only,
+  );
+  return ret;
+}
+
+/**
+ * Fused activate + MAPE (Mean Absolute Percentage Error) calculation for batch scoring.
+ *
+ * MAPE formula per record: (1/n) * Σ|(output - target) / max(target, ε)|
+ *
+ * # Arguments
+ * * `network` - The compiled network to activate
+ * * `records` - Packed array of `[inputs..., targets...]` records
+ * * `input_size` - Number of inputs per record
+ * * `num_outputs` - Number of outputs per record
+ * * `forward_only` - If true, skip reset_state() (for forward-only networks)
+ *
+ * # Returns
+ * Sum of per-record MAPE errors (divide by record count for mean)
+ * @param {CompiledNetwork} network
+ * @param {Float32Array} records
+ * @param {number} input_size
+ * @param {number} num_outputs
+ * @param {boolean} forward_only
+ * @returns {number}
+ */
+export function mape_sum_batch_packed(
+  network,
+  records,
+  input_size,
+  num_outputs,
+  forward_only,
+) {
+  _assertClass(network, CompiledNetwork);
+  const ptr0 = passArrayF32ToWasm0(records, wasm.__wbindgen_malloc);
+  const len0 = WASM_VECTOR_LEN;
+  const ret = wasm.mape_sum_batch_packed(
+    network.__wbg_ptr,
+    ptr0,
+    len0,
+    input_size,
+    num_outputs,
+    forward_only,
+  );
   return ret;
 }
 
@@ -328,6 +501,49 @@ export function mse_sum_batch_packed(
   const ptr0 = passArrayF32ToWasm0(records, wasm.__wbindgen_malloc);
   const len0 = WASM_VECTOR_LEN;
   const ret = wasm.mse_sum_batch_packed(
+    network.__wbg_ptr,
+    ptr0,
+    len0,
+    input_size,
+    num_outputs,
+    forward_only,
+  );
+  return ret;
+}
+
+/**
+ * Fused activate + MSLE (Mean Squared Logarithmic Error) calculation for batch scoring.
+ *
+ * MSLE formula per record: Σ(log(max(target, ε)) - log(max(output, ε)))
+ * Note: Unlike MSE/MAE, MSLE does NOT divide by number of outputs per record.
+ *
+ * # Arguments
+ * * `network` - The compiled network to activate
+ * * `records` - Packed array of `[inputs..., targets...]` records
+ * * `input_size` - Number of inputs per record
+ * * `num_outputs` - Number of outputs per record
+ * * `forward_only` - If true, skip reset_state() (for forward-only networks)
+ *
+ * # Returns
+ * Sum of per-record MSLE errors (divide by record count for mean)
+ * @param {CompiledNetwork} network
+ * @param {Float32Array} records
+ * @param {number} input_size
+ * @param {number} num_outputs
+ * @param {boolean} forward_only
+ * @returns {number}
+ */
+export function msle_sum_batch_packed(
+  network,
+  records,
+  input_size,
+  num_outputs,
+  forward_only,
+) {
+  _assertClass(network, CompiledNetwork);
+  const ptr0 = passArrayF32ToWasm0(records, wasm.__wbindgen_malloc);
+  const len0 = WASM_VECTOR_LEN;
+  const ret = wasm.msle_sum_batch_packed(
     network.__wbg_ptr,
     ptr0,
     len0,
