@@ -483,6 +483,7 @@ export function mape_sum_batch_packed(
  * stateless semantics (`feedbackLoop=false`) and avoid state leakage.
  *
  * Issue #118x - Fuse activate + MSE for scoring performance.
+ * Issue #1202 - Use 4-record SIMD batching for forward-only networks.
  * @param {CompiledNetwork} network
  * @param {Float32Array} records
  * @param {number} input_size
