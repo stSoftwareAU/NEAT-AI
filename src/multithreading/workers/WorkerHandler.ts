@@ -237,35 +237,8 @@ let globalWorkerID = 0;
 let cachedWasmActivationInitPayload: WasmActivationInitPayload | null = null;
 
 function shouldInitWasmInWorkers(): boolean {
-  // If JS is explicitly forced, do not init WASM in workers.
-  try {
-    const js = Deno.env.get("NEAT_AI_USE_JS")?.trim().toLowerCase();
-    if (js === "1" || js === "true" || js === "yes" || js === "on") {
-      return false;
-    }
-  } catch {
-    // ignore
-  }
-
-  // Default behaviour: follow `NEAT_AI_WASM_AUTO_INIT`.
-  // You can override with `NEAT_AI_WASM_WORKER_INIT=1|0`.
-  const readBool = (name: string): boolean | undefined => {
-    try {
-      const v = Deno.env.get(name);
-      if (!v) return undefined;
-      const n = v.trim().toLowerCase();
-      if (n === "1" || n === "true" || n === "yes" || n === "on") return true;
-      if (n === "0" || n === "false" || n === "no" || n === "off") return false;
-    } catch {
-      // ignore
-    }
-    return undefined;
-  };
-
-  const explicit = readBool("NEAT_AI_WASM_WORKER_INIT");
-  if (explicit !== undefined) return explicit;
-  const autoInit = readBool("NEAT_AI_WASM_AUTO_INIT");
-  return autoInit === true;
+  // Hard requirement: worker-side evaluation/training/discovery always uses WASM.
+  return true;
 }
 
 function loadWasmActivationInitPayload(): WasmActivationInitPayload | null {
@@ -285,6 +258,15 @@ function loadWasmActivationInitPayload(): WasmActivationInitPayload | null {
   } catch {
     return null;
   }
+}
+
+function loadWasmActivationInitPayloadOrThrow(): WasmActivationInitPayload {
+  const payload = loadWasmActivationInitPayload();
+  assert(
+    payload,
+    "WASM activation payload missing. Build `wasm_activation/pkg` first.",
+  );
+  return payload;
 }
 
 /**
@@ -322,6 +304,8 @@ export class WorkerHandler {
   private callbacks = new Map<number, CallableFunction>();
   /** Listeners to notify when worker becomes idle */
   private idleListeners: WorkerEventListener[] = [];
+  /** Promise that resolves once the worker is initialized */
+  private ready: Promise<ResponseData>;
 
   /**
    * Creates a new WorkerHandler instance.
@@ -364,7 +348,7 @@ export class WorkerHandler {
         customCostData,
         discoveryVerbose,
         wasmActivation: shouldInitWasmInWorkers()
-          ? (loadWasmActivationInitPayload() ?? undefined)
+          ? loadWasmActivationInitPayloadOrThrow()
           : undefined,
       },
     };
@@ -392,7 +376,13 @@ export class WorkerHandler {
 
       this.callback(me.data as ResponseData);
     });
-    this.makePromise(data);
+    this.ready = this.makePromise(data).then((result) => {
+      assert(
+        result.initialize?.status === "OK",
+        "Worker initialization failed",
+      );
+      return result;
+    });
   }
 
   /**
@@ -474,7 +464,7 @@ export class WorkerHandler {
       },
     };
 
-    return this.makePromise(data);
+    return this.ready.then(() => this.makePromise(data));
   }
 
   evaluate(creature: Creature, feedbackLoop: boolean) {
@@ -486,7 +476,7 @@ export class WorkerHandler {
       },
     };
 
-    return this.makePromise(data);
+    return this.ready.then(() => this.makePromise(data));
   }
 
   train(creature: Creature, options: TrainOptions) {
@@ -521,7 +511,7 @@ export class WorkerHandler {
     // @ts-ignore - clearing to help GC
     json.synapses = null;
 
-    return this.makePromise(data);
+    return this.ready.then(() => this.makePromise(data));
   }
 
   discover(creature: Creature, config: NeatConfig) {
@@ -541,7 +531,7 @@ export class WorkerHandler {
     // @ts-ignore - clearing to help GC
     json.synapses = null;
 
-    return this.makePromise(data);
+    return this.ready.then(() => this.makePromise(data));
   }
 
   /**
@@ -584,6 +574,6 @@ export class WorkerHandler {
     // @ts-ignore - clearing to help GC
     fatherJson.synapses = null;
 
-    return this.makePromise(data);
+    return this.ready.then(() => this.makePromise(data));
   }
 }

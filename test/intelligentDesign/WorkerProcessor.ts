@@ -5,12 +5,12 @@
  * datasets while still exercising the worker scoring flow.
  */
 
-import { assertEquals, assertExists, assertThrows } from "@std/assert";
+import { assertEquals, assertExists, assertRejects } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { WorkerProcessor } from "../../src/intelligentDesign/workers/WorkerProcessor.ts";
 import type { RequestData } from "../../src/intelligentDesign/workers/WorkerHandler.ts";
 
-Deno.test("WorkerProcessor.process returns score payload and tags exported creature", () => {
+Deno.test("WorkerProcessor.process returns score payload and tags exported creature", async () => {
   const originalScoreDir = Creature.prototype.scoreDir;
   try {
     Creature.prototype.scoreDir = function () {
@@ -33,7 +33,7 @@ Deno.test("WorkerProcessor.process returns score payload and tags exported creat
     };
 
     const processor = new WorkerProcessor();
-    const response = processor.process(request);
+    const response = await processor.process(request);
 
     assertEquals(response.taskID, 42);
     assertExists(response.score);
@@ -57,10 +57,10 @@ Deno.test("WorkerProcessor.process returns score payload and tags exported creat
   }
 });
 
-Deno.test("WorkerProcessor.process throws on unknown message", () => {
+Deno.test("WorkerProcessor.process throws on unknown message", async () => {
   const processor = new WorkerProcessor();
 
-  assertThrows(
+  await assertRejects(
     () => processor.process({ taskID: 1 } as RequestData),
     Error,
     "unknown message",

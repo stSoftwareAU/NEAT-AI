@@ -678,6 +678,19 @@ export class Creature implements CreatureInternal {
           "WASM activation was selected but failed to instantiate CompiledNetwork",
         );
       }
+
+      // Optimisation: for v4+ creatures explicitly marked forward-only, we can
+      // skip resetting WASM activation state when feedbackLoop=false because
+      // there are no recurrent/back edges that can read stale activations.
+      const major = Number.parseInt(
+        this.semanticVersion.split(".")[0] ?? "0",
+        10,
+      );
+      const forwardOnlyGuaranteed = Number.isFinite(major) && major >= 4 &&
+        this.forwardOnly === true;
+      this.cachedWasmActivation.setNeedsResetWhenStateless(
+        !forwardOnlyGuaranteed,
+      );
     }
 
     // `activate()` should be fast and output-only.
@@ -2156,6 +2169,34 @@ export class Creature implements CreatureInternal {
     let error = 0;
     let count = 0;
 
+    // Determine whether we can use the WASM scoring fast paths.
+    const canUseWasm = this.canUseWasm();
+    const costName = cost.getName();
+    const major = Number.parseInt(
+      this.semanticVersion.split(".")[0] ?? "0",
+      10,
+    );
+    const forwardOnlyGuaranteed = Number.isFinite(major) && major >= 4 &&
+      this.forwardOnly === true;
+
+    // Ensure WASM network is compiled once for scoring.
+    if (canUseWasm && !this.cachedWasmActivation) {
+      const compiled = compileCreatureToWasm(this);
+      this.cachedWasmActivation = WasmCreatureActivation.create(compiled) ??
+        undefined;
+      if (!this.cachedWasmActivation) {
+        fail(
+          "WASM activation was selected but failed to instantiate CompiledNetwork",
+        );
+      }
+      this.cachedWasmActivation.setNeedsResetWhenStateless(
+        !forwardOnlyGuaranteed,
+      );
+    }
+
+    // Pre-allocate a reusable output buffer for non-fused scoring.
+    const outputBuffer = canUseWasm ? new Float32Array(this.output) : null;
+
     const valuesCount = this.input + this.output;
     const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
     const SSD_OPTIMAL_READ_SIZE = 128 * 1024; // 128 KB
@@ -2168,6 +2209,10 @@ export class Creature implements CreatureInternal {
     // Shared buffers for batch processing
     const batchBuffer = new Uint8Array(BYTES_PER_BATCH);
     const batchArray = new Float32Array(batchBuffer.buffer);
+
+    // Fused WASM scoring is only valid for stateless MSE scoring.
+    const useFusedWasmMse = canUseWasm && !feedbackLoop &&
+      forwardOnlyGuaranteed && costName === "MSE";
 
     for (let fileIndx = dataResult.files.length; fileIndx--;) {
       const filePath = dataResult.files[fileIndx];
@@ -2188,23 +2233,41 @@ export class Creature implements CreatureInternal {
             "Invalid number of bytes read",
           );
 
+          if (useFusedWasmMse) {
+            // Process the whole batch in a single WASM call:
+            // records are laid out as [inputs..., targets...] per record.
+            const floatsRead = recordsRead * valuesCount;
+            const slice = batchArray.subarray(0, floatsRead);
+            error += this.cachedWasmActivation!.mseSumBatchPacked(
+              slice,
+              this.input,
+              true, // forwardOnly
+            );
+            count += recordsRead;
+            continue;
+          }
+
           // Process each record in the batch
           for (let recordIndex = 0; recordIndex < recordsRead; recordIndex++) {
             const offset = recordIndex * valuesCount;
             const inputEnd = offset + this.input;
-            const observations = new Float32Array(batchArray.subarray(
-              offset,
-              inputEnd,
-            ));
+            const observations = batchArray.subarray(offset, inputEnd);
+            const target = batchArray.subarray(inputEnd, offset + valuesCount);
 
-            const actual = this.activate(observations, feedbackLoop);
+            if (canUseWasm) {
+              // Zero-allocation activation during scoring.
+              // `outputBuffer` is reused, and must not be retained by callers.
+              this.cachedWasmActivation!.activateIntoWithFeedback(
+                observations,
+                outputBuffer!,
+                feedbackLoop,
+              );
+              error += cost.calculate(target, outputBuffer!);
+            } else {
+              const actual = this.activate(observations, feedbackLoop);
+              error += cost.calculate(target, actual);
+            }
 
-            const target = new Float32Array(batchArray.subarray(
-              inputEnd,
-              offset + valuesCount,
-            ));
-
-            error += cost.calculate(target, actual);
             count++;
           }
         }
