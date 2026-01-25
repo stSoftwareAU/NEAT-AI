@@ -3264,6 +3264,326 @@ pub fn mse_sum_batch_packed(
     sum_error
 }
 
+/// Fused activate + MAE (Mean Absolute Error) calculation for batch scoring.
+///
+/// Like `mse_sum_batch_packed`, this processes a batch of `[inputs..., targets...]` records
+/// in a single WASM call, returning the sum of per-record MAE errors.
+///
+/// MAE formula per record: (1/n) * Σ|target - output|
+///
+/// # Arguments
+/// * `network` - The compiled network to activate
+/// * `records` - Packed array of `[inputs..., targets...]` records
+/// * `input_size` - Number of inputs per record
+/// * `num_outputs` - Number of outputs per record
+/// * `forward_only` - If true, skip reset_state() (for forward-only networks)
+///
+/// # Returns
+/// Sum of per-record MAE errors (divide by record count for mean)
+#[wasm_bindgen]
+pub fn mae_sum_batch_packed(
+    network: &mut CompiledNetwork,
+    records: &[f32],
+    input_size: usize,
+    num_outputs: usize,
+    forward_only: bool,
+) -> f64 {
+    let values_per_record = input_size + num_outputs;
+    if values_per_record == 0 {
+        return 0.0;
+    }
+    let num_records = records.len() / values_per_record;
+    if num_records == 0 {
+        return 0.0;
+    }
+
+    let inv_outputs: f64 = if num_outputs > 0 {
+        1.0 / (num_outputs as f64)
+    } else {
+        0.0
+    };
+
+    let mut outputs: Vec<f32> = vec![0.0; num_outputs];
+    let mut sum_error: f64 = 0.0;
+
+    for record_idx in 0..num_records {
+        if !forward_only {
+            network.reset_state();
+        }
+
+        let base = record_idx * values_per_record;
+        let input_start = base;
+        let input_end = base + input_size;
+        let target_start = input_end;
+
+        network.activate_into(&records[input_start..input_end], &mut outputs[..]);
+
+        // Per-record MAE = mean(|target - output|)
+        let mut abs_sum: f64 = 0.0;
+        for j in 0..num_outputs {
+            let diff = (records[target_start + j] - outputs[j]) as f64;
+            abs_sum += diff.abs();
+        }
+        sum_error += abs_sum * inv_outputs;
+    }
+
+    sum_error
+}
+
+/// Fused activate + Cross Entropy calculation for batch scoring.
+///
+/// Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
+/// Output values are clamped to [1e-15, 1-1e-15] to prevent log(0).
+///
+/// # Arguments
+/// * `network` - The compiled network to activate
+/// * `records` - Packed array of `[inputs..., targets...]` records
+/// * `input_size` - Number of inputs per record
+/// * `num_outputs` - Number of outputs per record
+/// * `forward_only` - If true, skip reset_state() (for forward-only networks)
+///
+/// # Returns
+/// Sum of per-record Cross Entropy errors (divide by record count for mean)
+#[wasm_bindgen]
+pub fn cross_entropy_sum_batch_packed(
+    network: &mut CompiledNetwork,
+    records: &[f32],
+    input_size: usize,
+    num_outputs: usize,
+    forward_only: bool,
+) -> f64 {
+    let values_per_record = input_size + num_outputs;
+    if values_per_record == 0 {
+        return 0.0;
+    }
+    let num_records = records.len() / values_per_record;
+    if num_records == 0 {
+        return 0.0;
+    }
+
+    let inv_outputs: f64 = if num_outputs > 0 {
+        1.0 / (num_outputs as f64)
+    } else {
+        0.0
+    };
+
+    const EPSILON: f64 = 1e-15;
+    let mut outputs: Vec<f32> = vec![0.0; num_outputs];
+    let mut sum_error: f64 = 0.0;
+
+    for record_idx in 0..num_records {
+        if !forward_only {
+            network.reset_state();
+        }
+
+        let base = record_idx * values_per_record;
+        let input_start = base;
+        let input_end = base + input_size;
+        let target_start = input_end;
+
+        network.activate_into(&records[input_start..input_end], &mut outputs[..]);
+
+        // Per-record Cross Entropy = -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
+        let mut ce_sum: f64 = 0.0;
+        for j in 0..num_outputs {
+            let t = records[target_start + j] as f64;
+            let o_raw = outputs[j] as f64;
+            // Clamp to [epsilon, 1-epsilon] to prevent log(0)
+            let o = o_raw.max(EPSILON).min(1.0 - EPSILON);
+            ce_sum -= t * o.ln() + (1.0 - t) * (1.0 - o).ln();
+        }
+        sum_error += ce_sum * inv_outputs;
+    }
+
+    sum_error
+}
+
+/// Fused activate + MAPE (Mean Absolute Percentage Error) calculation for batch scoring.
+///
+/// MAPE formula per record: (1/n) * Σ|(output - target) / max(target, ε)|
+///
+/// # Arguments
+/// * `network` - The compiled network to activate
+/// * `records` - Packed array of `[inputs..., targets...]` records
+/// * `input_size` - Number of inputs per record
+/// * `num_outputs` - Number of outputs per record
+/// * `forward_only` - If true, skip reset_state() (for forward-only networks)
+///
+/// # Returns
+/// Sum of per-record MAPE errors (divide by record count for mean)
+#[wasm_bindgen]
+pub fn mape_sum_batch_packed(
+    network: &mut CompiledNetwork,
+    records: &[f32],
+    input_size: usize,
+    num_outputs: usize,
+    forward_only: bool,
+) -> f64 {
+    let values_per_record = input_size + num_outputs;
+    if values_per_record == 0 {
+        return 0.0;
+    }
+    let num_records = records.len() / values_per_record;
+    if num_records == 0 {
+        return 0.0;
+    }
+
+    let inv_outputs: f64 = if num_outputs > 0 {
+        1.0 / (num_outputs as f64)
+    } else {
+        0.0
+    };
+
+    const EPSILON: f64 = 1e-15;
+    let mut outputs: Vec<f32> = vec![0.0; num_outputs];
+    let mut sum_error: f64 = 0.0;
+
+    for record_idx in 0..num_records {
+        if !forward_only {
+            network.reset_state();
+        }
+
+        let base = record_idx * values_per_record;
+        let input_start = base;
+        let input_end = base + input_size;
+        let target_start = input_end;
+
+        network.activate_into(&records[input_start..input_end], &mut outputs[..]);
+
+        // Per-record MAPE = (1/n) * Σ|(output - target) / max(target, ε)|
+        let mut mape_sum: f64 = 0.0;
+        for j in 0..num_outputs {
+            let t = (records[target_start + j] as f64).max(EPSILON);
+            let o = outputs[j] as f64;
+            mape_sum += ((o - t) / t).abs();
+        }
+        sum_error += mape_sum * inv_outputs;
+    }
+
+    sum_error
+}
+
+/// Fused activate + MSLE (Mean Squared Logarithmic Error) calculation for batch scoring.
+///
+/// MSLE formula per record: Σ(log(max(target, ε)) - log(max(output, ε)))
+/// Note: Unlike MSE/MAE, MSLE does NOT divide by number of outputs per record.
+///
+/// # Arguments
+/// * `network` - The compiled network to activate
+/// * `records` - Packed array of `[inputs..., targets...]` records
+/// * `input_size` - Number of inputs per record
+/// * `num_outputs` - Number of outputs per record
+/// * `forward_only` - If true, skip reset_state() (for forward-only networks)
+///
+/// # Returns
+/// Sum of per-record MSLE errors (divide by record count for mean)
+#[wasm_bindgen]
+pub fn msle_sum_batch_packed(
+    network: &mut CompiledNetwork,
+    records: &[f32],
+    input_size: usize,
+    num_outputs: usize,
+    forward_only: bool,
+) -> f64 {
+    let values_per_record = input_size + num_outputs;
+    if values_per_record == 0 {
+        return 0.0;
+    }
+    let num_records = records.len() / values_per_record;
+    if num_records == 0 {
+        return 0.0;
+    }
+
+    const EPSILON: f64 = 1e-15;
+    let mut outputs: Vec<f32> = vec![0.0; num_outputs];
+    let mut sum_error: f64 = 0.0;
+
+    for record_idx in 0..num_records {
+        if !forward_only {
+            network.reset_state();
+        }
+
+        let base = record_idx * values_per_record;
+        let input_start = base;
+        let input_end = base + input_size;
+        let target_start = input_end;
+
+        network.activate_into(&records[input_start..input_end], &mut outputs[..]);
+
+        // Per-record MSLE = Σ(log(max(target, ε)) - log(max(output, ε)))
+        // Note: No averaging per record to match JS implementation
+        let mut msle_sum: f64 = 0.0;
+        for j in 0..num_outputs {
+            let t = (records[target_start + j] as f64).max(EPSILON);
+            let o = (outputs[j] as f64).max(EPSILON);
+            msle_sum += t.ln() - o.ln();
+        }
+        sum_error += msle_sum;
+    }
+
+    sum_error
+}
+
+/// Fused activate + Hinge Loss calculation for batch scoring.
+///
+/// Hinge formula per record: Σmax(0, 1 - target * output)
+/// Note: Unlike MSE/MAE, Hinge does NOT divide by number of outputs per record.
+///
+/// # Arguments
+/// * `network` - The compiled network to activate
+/// * `records` - Packed array of `[inputs..., targets...]` records
+/// * `input_size` - Number of inputs per record
+/// * `num_outputs` - Number of outputs per record
+/// * `forward_only` - If true, skip reset_state() (for forward-only networks)
+///
+/// # Returns
+/// Sum of per-record Hinge errors (divide by record count for mean)
+#[wasm_bindgen]
+pub fn hinge_sum_batch_packed(
+    network: &mut CompiledNetwork,
+    records: &[f32],
+    input_size: usize,
+    num_outputs: usize,
+    forward_only: bool,
+) -> f64 {
+    let values_per_record = input_size + num_outputs;
+    if values_per_record == 0 {
+        return 0.0;
+    }
+    let num_records = records.len() / values_per_record;
+    if num_records == 0 {
+        return 0.0;
+    }
+
+    let mut outputs: Vec<f32> = vec![0.0; num_outputs];
+    let mut sum_error: f64 = 0.0;
+
+    for record_idx in 0..num_records {
+        if !forward_only {
+            network.reset_state();
+        }
+
+        let base = record_idx * values_per_record;
+        let input_start = base;
+        let input_end = base + input_size;
+        let target_start = input_end;
+
+        network.activate_into(&records[input_start..input_end], &mut outputs[..]);
+
+        // Per-record Hinge = Σmax(0, 1 - target * output)
+        // Note: No averaging per record to match JS implementation
+        let mut hinge_sum: f64 = 0.0;
+        for j in 0..num_outputs {
+            let t = records[target_start + j] as f64;
+            let o = outputs[j] as f64;
+            hinge_sum += (1.0 - t * o).max(0.0);
+        }
+        sum_error += hinge_sum;
+    }
+
+    sum_error
+}
+
 /// Standalone squash function for testing
 #[wasm_bindgen]
 pub fn squash(squash_type: u8, value: f32) -> f32 {

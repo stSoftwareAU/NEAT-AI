@@ -2210,9 +2210,20 @@ export class Creature implements CreatureInternal {
     const batchBuffer = new Uint8Array(BYTES_PER_BATCH);
     const batchArray = new Float32Array(batchBuffer.buffer);
 
-    // Fused WASM scoring is only valid for stateless MSE scoring.
-    const useFusedWasmMse = canUseWasm && !feedbackLoop &&
-      forwardOnlyGuaranteed && costName === "MSE";
+    // Fused WASM scoring is only valid for stateless scoring with supported cost functions.
+    // All built-in cost functions are supported: MSE, MAE, CROSS_ENTROPY, MAPE, MSLE, HINGE.
+    const supportedFusedCosts = [
+      "MSE",
+      "MAE",
+      "CROSS_ENTROPY",
+      "MAPE",
+      "MSLE",
+      "HINGE",
+    ] as const;
+    const useFusedWasm = canUseWasm && !feedbackLoop && forwardOnlyGuaranteed &&
+      supportedFusedCosts.includes(
+        costName as typeof supportedFusedCosts[number],
+      );
 
     for (let fileIndx = dataResult.files.length; fileIndx--;) {
       const filePath = dataResult.files[fileIndx];
@@ -2233,16 +2244,37 @@ export class Creature implements CreatureInternal {
             "Invalid number of bytes read",
           );
 
-          if (useFusedWasmMse) {
+          if (useFusedWasm) {
             // Process the whole batch in a single WASM call:
             // records are laid out as [inputs..., targets...] per record.
             const floatsRead = recordsRead * valuesCount;
             const slice = batchArray.subarray(0, floatsRead);
-            error += this.cachedWasmActivation!.mseSumBatchPacked(
-              slice,
-              this.input,
-              true, // forwardOnly
-            );
+            const wasm = this.cachedWasmActivation!;
+
+            switch (costName) {
+              case "MSE":
+                error += wasm.mseSumBatchPacked(slice, this.input, true);
+                break;
+              case "MAE":
+                error += wasm.maeSumBatchPacked(slice, this.input, true);
+                break;
+              case "CROSS_ENTROPY":
+                error += wasm.crossEntropySumBatchPacked(
+                  slice,
+                  this.input,
+                  true,
+                );
+                break;
+              case "MAPE":
+                error += wasm.mapeSumBatchPacked(slice, this.input, true);
+                break;
+              case "MSLE":
+                error += wasm.msleSumBatchPacked(slice, this.input, true);
+                break;
+              case "HINGE":
+                error += wasm.hingeSumBatchPacked(slice, this.input, true);
+                break;
+            }
             count += recordsRead;
             continue;
           }
