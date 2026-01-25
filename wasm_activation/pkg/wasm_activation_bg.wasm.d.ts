@@ -43,6 +43,14 @@ export const activate_batch: (
   d: number,
   e: number,
 ) => [number, number];
+export const mse_sum_batch_packed: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+) => number;
 export const squash: (a: number, b: number) => number;
 export const derivative: (a: number, b: number) => number;
 export const unsquash: (a: number, b: number, c: number) => number;

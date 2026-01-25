@@ -12,10 +12,10 @@ const workerHandler =
   // deno-lint-ignore ban-types
   (self as unknown) as { onmessage: Function; postMessage: Function };
 
-workerHandler.onmessage = function (message: { data: RequestData }) {
+workerHandler.onmessage = async function (message: { data: RequestData }) {
   const start = Date.now();
   try {
-    const result = processor.process(message.data);
+    const result = await processor.process(message.data);
     workerHandler.postMessage(result);
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));

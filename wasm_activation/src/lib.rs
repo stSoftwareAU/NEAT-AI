@@ -3318,6 +3318,73 @@ pub fn activate_batch(
     result
 }
 
+/// Compute Mean Squared Error (MSE) over packed records in a single WASM call.
+///
+/// This is a scoring fast-path designed to minimise JS/WASM boundary crossings:
+/// - Each record is laid out as: [inputs..., targets...]
+/// - `input_size` must match the number of input floats in each record.
+/// - `num_outputs` must match the number of target/output floats in each record.
+///
+/// Returns the **sum** of per-record MSE values (not averaged over records).
+///
+/// When `forward_only=true`, we skip clearing `network.activations` between records
+/// because v4+ forward-only creatures guarantee there are no recurrent/back edges.
+/// When `forward_only=false`, we must call `reset_state()` each record to preserve
+/// stateless semantics (`feedbackLoop=false`) and avoid state leakage.
+///
+/// Issue #118x - Fuse activate + MSE for scoring performance.
+#[wasm_bindgen]
+pub fn mse_sum_batch_packed(
+    network: &mut CompiledNetwork,
+    records: &[f32],
+    input_size: usize,
+    num_outputs: usize,
+    forward_only: bool,
+) -> f64 {
+    let values_per_record = input_size + num_outputs;
+    if values_per_record == 0 {
+        return 0.0;
+    }
+    let num_records = records.len() / values_per_record;
+    if num_records == 0 {
+        return 0.0;
+    }
+
+    let inv_outputs: f64 = if num_outputs > 0 {
+        1.0 / (num_outputs as f64)
+    } else {
+        0.0
+    };
+
+    // Reuse a small output buffer to avoid per-record allocation.
+    let mut outputs: Vec<f32> = vec![0.0; num_outputs];
+
+    let mut sum_error: f64 = 0.0;
+    for record_idx in 0..num_records {
+        if !forward_only {
+            // Ensure stateless behaviour for networks that may read stale activations.
+            network.reset_state();
+        }
+
+        let base = record_idx * values_per_record;
+        let input_start = base;
+        let input_end = base + input_size;
+        let target_start = input_end;
+        // Activate into the reusable output buffer.
+        network.activate_into(&records[input_start..input_end], &mut outputs[..]);
+
+        // Per-record MSE = mean((target - output)^2)
+        let mut sq_sum: f64 = 0.0;
+        for j in 0..num_outputs {
+            let diff = (records[target_start + j] - outputs[j]) as f64;
+            sq_sum += diff * diff;
+        }
+        sum_error += sq_sum * inv_outputs;
+    }
+
+    sum_error
+}
+
 /// Standalone squash function for testing
 #[wasm_bindgen]
 pub fn squash(squash_type: u8, value: f32) -> f32 {

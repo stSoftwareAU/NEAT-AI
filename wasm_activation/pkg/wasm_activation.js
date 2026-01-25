@@ -323,6 +323,50 @@ export function limit_range(squash_type, value) {
 }
 
 /**
+ * Compute Mean Squared Error (MSE) over packed records in a single WASM call.
+ *
+ * This is a scoring fast-path designed to minimise JS/WASM boundary crossings:
+ * - Each record is laid out as: [inputs..., targets...]
+ * - `input_size` must match the number of input floats in each record.
+ * - `num_outputs` must match the number of target/output floats in each record.
+ *
+ * Returns the **sum** of per-record MSE values (not averaged over records).
+ *
+ * When `forward_only=true`, we skip clearing `network.activations` between records
+ * because v4+ forward-only creatures guarantee there are no recurrent/back edges.
+ * When `forward_only=false`, we must call `reset_state()` each record to preserve
+ * stateless semantics (`feedbackLoop=false`) and avoid state leakage.
+ *
+ * Issue #118x - Fuse activate + MSE for scoring performance.
+ * @param {CompiledNetwork} network
+ * @param {Float32Array} records
+ * @param {number} input_size
+ * @param {number} num_outputs
+ * @param {boolean} forward_only
+ * @returns {number}
+ */
+export function mse_sum_batch_packed(
+  network,
+  records,
+  input_size,
+  num_outputs,
+  forward_only,
+) {
+  _assertClass(network, CompiledNetwork);
+  const ptr0 = passArrayF32ToWasm0(records, wasm.__wbindgen_malloc);
+  const len0 = WASM_VECTOR_LEN;
+  const ret = wasm.mse_sum_batch_packed(
+    network.__wbg_ptr,
+    ptr0,
+    len0,
+    input_size,
+    num_outputs,
+    forward_only,
+  );
+  return ret;
+}
+
+/**
  * Standalone safe zone adjustment function for testing
  * Issue #1140 - WASM Migration Phase 8
  *

@@ -90,6 +90,15 @@ let calculateErrorFn:
     currentValue: number,
   ) => number)
   | null = null;
+let mseSumBatchPackedFn:
+  | ((
+    network: unknown,
+    records: Float32Array,
+    inputSize: number,
+    numOutputs: number,
+    forwardOnly: boolean,
+  ) => number)
+  | null = null;
 let getRangeFn: ((squashType: number) => Float32Array) | null = null;
 let validateRangeFn:
   | ((squashType: number, activation: number) => boolean)
@@ -133,6 +142,7 @@ export async function initWasmActivation(
       unsquashFn = module.unsquash;
       safeZoneAdjustmentFn = module.safe_zone_adjustment;
       calculateErrorFn = module.calculate_error;
+      mseSumBatchPackedFn = module.mse_sum_batch_packed;
       getRangeFn = module.get_range;
       validateRangeFn = module.validate_range;
       limitRangeFn = module.limit_range;
@@ -188,6 +198,7 @@ export function initWasmActivationSync(
     unsquashFn = jsBindings.unsquash;
     safeZoneAdjustmentFn = jsBindings.safe_zone_adjustment;
     calculateErrorFn = jsBindings.calculate_error;
+    mseSumBatchPackedFn = jsBindings.mse_sum_batch_packed;
     getRangeFn = jsBindings.get_range;
     validateRangeFn = jsBindings.validate_range;
     limitRangeFn = jsBindings.limit_range;
@@ -219,12 +230,28 @@ export class WasmCreatureActivation {
   private numInputs: number;
   private numOutputs: number;
   private freed = false;
+  // When true, stateless activations must call reset_state() to avoid leaking
+  // stale activations into backward/recurrent edges. For v4+ forward-only creatures
+  // this can safely be disabled for performance.
+  private needsResetWhenStateless = true;
 
   // deno-lint-ignore no-explicit-any
   private constructor(network: any, numInputs: number, numOutputs: number) {
     this.network = network;
     this.numInputs = numInputs;
     this.numOutputs = numOutputs;
+  }
+
+  /**
+   * Configure whether stateless activation must reset internal state.
+   *
+   * When `needsResetWhenStateless=false`, `feedbackLoop=false` activations will
+   * skip calling `reset_state()`. Only safe when the network is guaranteed
+   * forward-only (no recurrent/back edges, no self loops) and the caller does
+   * not rely on any internal state.
+   */
+  setNeedsResetWhenStateless(needsReset: boolean): void {
+    this.needsResetWhenStateless = needsReset;
   }
 
   /**
@@ -353,7 +380,10 @@ export class WasmCreatureActivation {
       throw new Error("WasmCreatureActivation has been freed");
     }
 
-    if (!feedbackLoop && typeof this.network.reset_state === "function") {
+    if (
+      !feedbackLoop && this.needsResetWhenStateless &&
+      typeof this.network.reset_state === "function"
+    ) {
       this.network.reset_state();
     }
 
@@ -375,7 +405,10 @@ export class WasmCreatureActivation {
       throw new Error("WasmCreatureActivation has been freed");
     }
 
-    if (!feedbackLoop && typeof this.network.reset_state === "function") {
+    if (
+      !feedbackLoop && this.needsResetWhenStateless &&
+      typeof this.network.reset_state === "function"
+    ) {
       this.network.reset_state();
     }
 
@@ -486,7 +519,10 @@ export class WasmCreatureActivation {
       throw new Error("WasmCreatureActivation has been freed");
     }
 
-    if (!feedbackLoop && typeof this.network.reset_state === "function") {
+    if (
+      !feedbackLoop && this.needsResetWhenStateless &&
+      typeof this.network.reset_state === "function"
+    ) {
       this.network.reset_state();
     }
 
@@ -527,11 +563,44 @@ export class WasmCreatureActivation {
       throw new Error("WasmCreatureActivation has been freed");
     }
 
-    if (!feedbackLoop && typeof this.network.reset_state === "function") {
+    if (
+      !feedbackLoop && this.needsResetWhenStateless &&
+      typeof this.network.reset_state === "function"
+    ) {
       this.network.reset_state();
     }
 
     return this.activateBatch(inputs, inputSize);
+  }
+
+  /**
+   * Compute sum(MSE) across packed [inputs..., targets...] records in WASM.
+   *
+   * Returns the sum of per-record MSE values (divide by record count for average).
+   *
+   * This is intended for scoring workloads where:
+   * - cost is MSE
+   * - feedbackLoop is false (stateless)
+   * - the creature is guaranteed forward-only (so we can skip per-record reset)
+   */
+  mseSumBatchPacked(
+    records: Float32Array,
+    inputSize: number,
+    forwardOnly: boolean,
+  ): number {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+    if (!mseSumBatchPackedFn) {
+      throw new Error("WASM module not initialised");
+    }
+    return mseSumBatchPackedFn(
+      this.network,
+      records,
+      inputSize,
+      this.numOutputs,
+      forwardOnly,
+    );
   }
 
   /**

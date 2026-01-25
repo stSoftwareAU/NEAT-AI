@@ -12,6 +12,11 @@ export interface ResponseData {
   taskID: number;
   /** Duration of the operation in milliseconds */
   duration: number;
+  /** Initialization result (present when an initialize request was made) */
+  initialize?: {
+    /** Status of the initialization */
+    status: "OK";
+  };
   /**
    * Error details when the worker failed to process the request.
    *

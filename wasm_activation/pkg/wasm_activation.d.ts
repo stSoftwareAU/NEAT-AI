@@ -186,6 +186,31 @@ export function get_range(squash_type: number): Float32Array;
 export function limit_range(squash_type: number, value: number): number;
 
 /**
+ * Compute Mean Squared Error (MSE) over packed records in a single WASM call.
+ *
+ * This is a scoring fast-path designed to minimise JS/WASM boundary crossings:
+ * - Each record is laid out as: [inputs..., targets...]
+ * - `input_size` must match the number of input floats in each record.
+ * - `num_outputs` must match the number of target/output floats in each record.
+ *
+ * Returns the **sum** of per-record MSE values (not averaged over records).
+ *
+ * When `forward_only=true`, we skip clearing `network.activations` between records
+ * because v4+ forward-only creatures guarantee there are no recurrent/back edges.
+ * When `forward_only=false`, we must call `reset_state()` each record to preserve
+ * stateless semantics (`feedbackLoop=false`) and avoid state leakage.
+ *
+ * Issue #118x - Fuse activate + MSE for scoring performance.
+ */
+export function mse_sum_batch_packed(
+  network: CompiledNetwork,
+  records: Float32Array,
+  input_size: number,
+  num_outputs: number,
+  forward_only: boolean,
+): number;
+
+/**
  * Standalone safe zone adjustment function for testing
  * Issue #1140 - WASM Migration Phase 8
  *
@@ -300,6 +325,14 @@ export interface InitOutput {
     d: number,
     e: number,
   ) => [number, number];
+  readonly mse_sum_batch_packed: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => number;
   readonly squash: (a: number, b: number) => number;
   readonly derivative: (a: number, b: number) => number;
   readonly unsquash: (a: number, b: number, c: number) => number;
