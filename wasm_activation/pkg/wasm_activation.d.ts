@@ -122,20 +122,6 @@ export class CompiledNetwork {
 }
 
 /**
- * Batch activation - activate the network with multiple inputs at once
- * This reduces JS/WASM boundary crossing overhead for batch processing
- * Updated for Issue #1125 to support aggregate functions (MINIMUM, MAXIMUM, IF)
- * Issue #1175 - Uses typed structs for better cache locality
- * Issue #1177 - Inlines common squash functions to avoid function call overhead
- */
-export function activate_batch(
-  network: CompiledNetwork,
-  inputs: Float32Array,
-  input_size: number,
-  num_outputs: number,
-): Float32Array;
-
-/**
  * Standalone calculate error function for testing
  * Issue #1141 - WASM Migration Phase 9
  *
@@ -317,13 +303,6 @@ export interface InitOutput {
     b: number,
     c: number,
     d: number,
-  ) => [number, number];
-  readonly activate_batch: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
   ) => [number, number];
   readonly mse_sum_batch_packed: (
     a: number,

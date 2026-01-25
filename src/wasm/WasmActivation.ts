@@ -61,14 +61,6 @@ let wasmModule: WasmModule | null = null;
 let CompiledNetwork: CompiledNetworkClass | null = null;
 // Guard against concurrent initialisation (common under `deno test --parallel`)
 let initPromise: Promise<boolean> | null = null;
-let activateBatchFn:
-  | ((
-    network: unknown,
-    inputs: Float32Array,
-    inputSize: number,
-    numOutputs: number,
-  ) => Float32Array)
-  | null = null;
 let squashFn: ((squashType: number, value: number) => number) | null = null;
 let derivativeFn: ((squashType: number, value: number) => number) | null = null;
 let unsquashFn:
@@ -136,7 +128,6 @@ export async function initWasmActivation(
       // Store references to the exports
       wasmModule = module;
       CompiledNetwork = module.CompiledNetwork;
-      activateBatchFn = module.activate_batch;
       squashFn = module.squash;
       derivativeFn = module.derivative;
       unsquashFn = module.unsquash;
@@ -192,7 +183,6 @@ export function initWasmActivationSync(
     // Store references to the exports
     wasmModule = jsBindings;
     CompiledNetwork = jsBindings.CompiledNetwork;
-    activateBatchFn = jsBindings.activate_batch;
     squashFn = jsBindings.squash;
     derivativeFn = jsBindings.derivative;
     unsquashFn = jsBindings.unsquash;
@@ -527,50 +517,6 @@ export class WasmCreatureActivation {
     }
 
     return this.activateAndTrace(input);
-  }
-
-  /**
-   * Activate the network with multiple inputs at once (batch mode)
-   * This reduces JS/WASM boundary crossing overhead
-   *
-   * @param inputs - Flat array of all input values
-   * @param inputSize - Number of inputs per sample (should equal numInputs)
-   * @returns Flat array of all output values
-   */
-  activateBatch(inputs: Float32Array, inputSize: number): Float32Array {
-    if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
-    }
-
-    if (!activateBatchFn) {
-      throw new Error("WASM module not initialised");
-    }
-
-    const numSamples = Math.floor(inputs.length / inputSize);
-    if (numSamples === 0) {
-      throw new Error("No complete samples in input array");
-    }
-
-    return activateBatchFn(this.network, inputs, inputSize, this.numOutputs);
-  }
-
-  activateBatchWithFeedback(
-    inputs: Float32Array,
-    inputSize: number,
-    feedbackLoop: boolean,
-  ): Float32Array {
-    if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
-    }
-
-    if (
-      !feedbackLoop && this.needsResetWhenStateless &&
-      typeof this.network.reset_state === "function"
-    ) {
-      this.network.reset_state();
-    }
-
-    return this.activateBatch(inputs, inputSize);
   }
 
   /**

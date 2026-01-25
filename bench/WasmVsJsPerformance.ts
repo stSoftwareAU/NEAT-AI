@@ -189,17 +189,6 @@ function generateInputs(inputSize: number, count: number): Float32Array[] {
   return inputs;
 }
 
-/**
- * Generate flat batch inputs for WASM batch processing
- */
-function generateBatchInputs(inputSize: number, count: number): Float32Array {
-  const data = new Float32Array(count * inputSize);
-  for (let i = 0; i < count * inputSize; i++) {
-    data[i] = Math.random() * 2 - 1;
-  }
-  return data;
-}
-
 // Get project root for WASM path
 const projectRoot = new URL("..", import.meta.url).pathname;
 const wasmPath = `${projectRoot}wasm_activation/pkg`;
@@ -282,7 +271,6 @@ const benchmarkData: Map<
     creature: Creature;
     wasmActivation: WasmCreatureActivation;
     inputs: Float32Array[];
-    batchInputs: Float32Array;
     config: BenchmarkConfig;
   }
 > = new Map();
@@ -304,7 +292,6 @@ for (const config of benchmarkConfigs) {
   }
 
   const inputs = generateInputs(config.inputs, 100);
-  const batchInputs = generateBatchInputs(config.inputs, config.iterations);
 
   console.log(`${config.name}:`);
   console.log(`  Total neurons: ${creature.neurons.length}`);
@@ -316,7 +303,6 @@ for (const config of benchmarkConfigs) {
     creature,
     wasmActivation,
     inputs,
-    batchInputs,
     config,
   });
 }
@@ -329,8 +315,9 @@ console.log("Running benchmarks...\n");
 // =============================================================================
 
 {
-  const { creature, wasmActivation, inputs, batchInputs, config } =
-    benchmarkData.get("Small (10 neurons)")!;
+  const { creature, wasmActivation, inputs, config } = benchmarkData.get(
+    "Small (10 neurons)",
+  )!;
 
   Deno.bench(`Small: JS Activation (${config.iterations} iterations)`, {
     group: "small",
@@ -342,17 +329,11 @@ console.log("Running benchmarks...\n");
 
   Deno.bench(`Small: WASM Activation (${config.iterations} iterations)`, {
     group: "small",
+    baseline: true,
   }, () => {
     for (let i = 0; i < config.iterations; i++) {
       wasmActivation.activate(inputs[i % inputs.length]);
     }
-  });
-
-  Deno.bench(`Small: WASM Batch (${config.iterations} iterations)`, {
-    group: "small",
-    baseline: true,
-  }, () => {
-    wasmActivation.activateBatch(batchInputs, config.inputs);
   });
 }
 
@@ -361,8 +342,9 @@ console.log("Running benchmarks...\n");
 // =============================================================================
 
 {
-  const { creature, wasmActivation, inputs, batchInputs, config } =
-    benchmarkData.get("Medium (50 neurons)")!;
+  const { creature, wasmActivation, inputs, config } = benchmarkData.get(
+    "Medium (50 neurons)",
+  )!;
 
   Deno.bench(`Medium: JS Activation (${config.iterations} iterations)`, {
     group: "medium",
@@ -374,17 +356,11 @@ console.log("Running benchmarks...\n");
 
   Deno.bench(`Medium: WASM Activation (${config.iterations} iterations)`, {
     group: "medium",
+    baseline: true,
   }, () => {
     for (let i = 0; i < config.iterations; i++) {
       wasmActivation.activate(inputs[i % inputs.length]);
     }
-  });
-
-  Deno.bench(`Medium: WASM Batch (${config.iterations} iterations)`, {
-    group: "medium",
-    baseline: true,
-  }, () => {
-    wasmActivation.activateBatch(batchInputs, config.inputs);
   });
 }
 
@@ -393,8 +369,9 @@ console.log("Running benchmarks...\n");
 // =============================================================================
 
 {
-  const { creature, wasmActivation, inputs, batchInputs, config } =
-    benchmarkData.get("Large (200 neurons)")!;
+  const { creature, wasmActivation, inputs, config } = benchmarkData.get(
+    "Large (200 neurons)",
+  )!;
 
   Deno.bench(`Large: JS Activation (${config.iterations} iterations)`, {
     group: "large",
@@ -406,17 +383,11 @@ console.log("Running benchmarks...\n");
 
   Deno.bench(`Large: WASM Activation (${config.iterations} iterations)`, {
     group: "large",
+    baseline: true,
   }, () => {
     for (let i = 0; i < config.iterations; i++) {
       wasmActivation.activate(inputs[i % inputs.length]);
     }
-  });
-
-  Deno.bench(`Large: WASM Batch (${config.iterations} iterations)`, {
-    group: "large",
-    baseline: true,
-  }, () => {
-    wasmActivation.activateBatch(batchInputs, config.inputs);
   });
 }
 
@@ -425,8 +396,9 @@ console.log("Running benchmarks...\n");
 // =============================================================================
 
 {
-  const { creature, wasmActivation, inputs, batchInputs, config } =
-    benchmarkData.get("Very Large (500 neurons)")!;
+  const { creature, wasmActivation, inputs, config } = benchmarkData.get(
+    "Very Large (500 neurons)",
+  )!;
 
   Deno.bench(`Very Large: JS Activation (${config.iterations} iterations)`, {
     group: "very-large",
@@ -438,17 +410,11 @@ console.log("Running benchmarks...\n");
 
   Deno.bench(`Very Large: WASM Activation (${config.iterations} iterations)`, {
     group: "very-large",
+    baseline: true,
   }, () => {
     for (let i = 0; i < config.iterations; i++) {
       wasmActivation.activate(inputs[i % inputs.length]);
     }
-  });
-
-  Deno.bench(`Very Large: WASM Batch (${config.iterations} iterations)`, {
-    group: "very-large",
-    baseline: true,
-  }, () => {
-    wasmActivation.activateBatch(batchInputs, config.inputs);
   });
 }
 

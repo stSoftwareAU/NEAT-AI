@@ -36,13 +36,6 @@ export const compilednetwork_activate_and_trace: (
   c: number,
   d: number,
 ) => [number, number];
-export const activate_batch: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-) => [number, number];
 export const mse_sum_batch_packed: (
   a: number,
   b: number,

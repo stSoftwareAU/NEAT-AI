@@ -215,34 +215,6 @@ if (Symbol.dispose) {
 }
 
 /**
- * Batch activation - activate the network with multiple inputs at once
- * This reduces JS/WASM boundary crossing overhead for batch processing
- * Updated for Issue #1125 to support aggregate functions (MINIMUM, MAXIMUM, IF)
- * Issue #1175 - Uses typed structs for better cache locality
- * Issue #1177 - Inlines common squash functions to avoid function call overhead
- * @param {CompiledNetwork} network
- * @param {Float32Array} inputs
- * @param {number} input_size
- * @param {number} num_outputs
- * @returns {Float32Array}
- */
-export function activate_batch(network, inputs, input_size, num_outputs) {
-  _assertClass(network, CompiledNetwork);
-  const ptr0 = passArrayF32ToWasm0(inputs, wasm.__wbindgen_malloc);
-  const len0 = WASM_VECTOR_LEN;
-  const ret = wasm.activate_batch(
-    network.__wbg_ptr,
-    ptr0,
-    len0,
-    input_size,
-    num_outputs,
-  );
-  var v2 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
-  wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
-  return v2;
-}
-
-/**
  * Standalone calculate error function for testing
  * Issue #1141 - WASM Migration Phase 9
  *
