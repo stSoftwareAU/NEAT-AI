@@ -181,6 +181,9 @@
     "Indx",
     "subarray",
     "kilounit",
-    "footguns"
+    "footguns",
+    "NVME",
+    "RUSTFLAGS",
+    "Σmax"
   ]
 }
