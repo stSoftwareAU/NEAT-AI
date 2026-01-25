@@ -235,38 +235,82 @@ export interface WorkerInterface {
 let globalWorkerID = 0;
 
 let cachedWasmActivationInitPayload: WasmActivationInitPayload | null = null;
+let cachedWasmPath: string | null = null;
 
-function shouldInitWasmInWorkers(): boolean {
-  // Hard requirement: worker-side evaluation/training/discovery always uses WASM.
-  return true;
+/**
+ * Get the default WASM activation directory path.
+ *
+ * @returns The path to the WASM activation pkg directory
+ */
+function getDefaultWasmPath(): string {
+  const repoRoot = new URL("../../../", import.meta.url).pathname;
+  return `${repoRoot}wasm_activation/pkg`;
 }
 
-function loadWasmActivationInitPayload(): WasmActivationInitPayload | null {
-  if (cachedWasmActivationInitPayload) return cachedWasmActivationInitPayload;
+/**
+ * Load the WASM activation payload from the specified path.
+ *
+ * Issue #1206 - Returns null if the WASM files are not available,
+ * allowing graceful fallback to JavaScript-based activation.
+ *
+ * @param wasmPath - Optional path to the WASM pkg directory. Defaults to the
+ *                   project's wasm_activation/pkg directory.
+ * @returns The WASM activation payload, or null if not available
+ */
+export function loadWasmActivationInitPayload(
+  wasmPath?: string,
+): WasmActivationInitPayload | null {
+  const targetPath = wasmPath ?? getDefaultWasmPath();
+
+  // Return cached payload if available and path matches
+  if (cachedWasmActivationInitPayload && cachedWasmPath === targetPath) {
+    return cachedWasmActivationInitPayload;
+  }
 
   try {
-    const repoRoot = new URL("../../../", import.meta.url).pathname;
-    const wasmDir = `${repoRoot}wasm_activation/pkg`;
-    const jsSource = Deno.readTextFileSync(`${wasmDir}/wasm_activation.js`);
-    const wasmBinary = Deno.readFileSync(`${wasmDir}/wasm_activation_bg.wasm`);
+    const jsSource = Deno.readTextFileSync(`${targetPath}/wasm_activation.js`);
+    const wasmBinary = Deno.readFileSync(
+      `${targetPath}/wasm_activation_bg.wasm`,
+    );
 
-    cachedWasmActivationInitPayload = {
+    // Cache for the default path only
+    if (!wasmPath) {
+      cachedWasmActivationInitPayload = {
+        jsSource,
+        wasmBinary,
+      };
+      cachedWasmPath = targetPath;
+      return cachedWasmActivationInitPayload;
+    }
+
+    return {
       jsSource,
       wasmBinary,
     };
-    return cachedWasmActivationInitPayload;
   } catch {
     return null;
   }
 }
 
-function loadWasmActivationInitPayloadOrThrow(): WasmActivationInitPayload {
-  const payload = loadWasmActivationInitPayload();
-  assert(
-    payload,
-    "WASM activation payload missing. Build `wasm_activation/pkg` first.",
-  );
-  return payload;
+/**
+ * Check if the WASM activation payload is available.
+ *
+ * Issue #1206 - Provides a way to check WASM availability without loading
+ * the full payload.
+ *
+ * @param wasmPath - Optional path to the WASM pkg directory
+ * @returns True if the WASM files are available, false otherwise
+ */
+export function isWasmActivationPayloadAvailable(wasmPath?: string): boolean {
+  const targetPath = wasmPath ?? getDefaultWasmPath();
+
+  try {
+    const jsStat = Deno.statSync(`${targetPath}/wasm_activation.js`);
+    const wasmStat = Deno.statSync(`${targetPath}/wasm_activation_bg.wasm`);
+    return jsStat.isFile && wasmStat.isFile;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -340,6 +384,10 @@ export class WorkerHandler {
       }
     })();
 
+    // Issue #1206 - Gracefully handle missing WASM files by allowing null
+    // payload. Workers will fall back to JavaScript-based activation.
+    const wasmPayload = loadWasmActivationInitPayload();
+
     const data: RequestData = {
       taskID: this.taskID++,
       initialize: {
@@ -347,9 +395,7 @@ export class WorkerHandler {
         costName: costName,
         customCostData,
         discoveryVerbose,
-        wasmActivation: shouldInitWasmInWorkers()
-          ? loadWasmActivationInitPayloadOrThrow()
-          : undefined,
+        wasmActivation: wasmPayload ?? undefined,
       },
     };
 
