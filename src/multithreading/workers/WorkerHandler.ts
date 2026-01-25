@@ -448,6 +448,59 @@ export class WorkerHandler {
     return p;
   }
 
+  /**
+   * Creates a promise for a request that is deferred until the worker is ready.
+   *
+   * Unlike `makePromise`, this method increments `busyCount` immediately so that
+   * `isBusy()` reflects queued work even while the worker is still initializing.
+   * The actual message is posted only after `this.ready` resolves.
+   *
+   * @param data - The request data to send
+   * @returns Promise resolving to the worker's response
+   */
+  private makePromiseDeferred(data: RequestData): Promise<ResponseData> {
+    // Increment busyCount immediately so isBusy() reflects pending work.
+    this.busyCount++;
+
+    const p = new Promise<ResponseData>((resolve, reject) => {
+      const call = (result: ResponseData) => {
+        this.busyCount--;
+
+        resolve(result);
+
+        if (!this.isBusy()) {
+          this.idleListeners.forEach((listener) => listener(this));
+        }
+      };
+
+      this.callbacks.set(data.taskID, call);
+
+      // Wait for initialization before posting the message.
+      this.ready.then(() => {
+        // Log discovery request posting
+        if (data.discover) {
+          console.log(
+            `[WorkerHandler] Posting discovery request to worker (taskID: ${data.taskID})`,
+          );
+        }
+
+        this.worker.postMessage(data);
+      }).catch((err) => {
+        // Initialization failed; clean up and reject.
+        this.callbacks.delete(data.taskID);
+        this.busyCount--;
+
+        if (!this.isBusy()) {
+          this.idleListeners.forEach((listener) => listener(this));
+        }
+
+        reject(err);
+      });
+    });
+
+    return p;
+  }
+
   terminate() {
     // Clear all pending callbacks to prevent memory leaks
     this.callbacks.clear();
@@ -464,7 +517,7 @@ export class WorkerHandler {
       },
     };
 
-    return this.ready.then(() => this.makePromise(data));
+    return this.makePromiseDeferred(data);
   }
 
   evaluate(creature: Creature, feedbackLoop: boolean) {
@@ -476,7 +529,7 @@ export class WorkerHandler {
       },
     };
 
-    return this.ready.then(() => this.makePromise(data));
+    return this.makePromiseDeferred(data);
   }
 
   train(creature: Creature, options: TrainOptions) {
@@ -511,7 +564,7 @@ export class WorkerHandler {
     // @ts-ignore - clearing to help GC
     json.synapses = null;
 
-    return this.ready.then(() => this.makePromise(data));
+    return this.makePromiseDeferred(data);
   }
 
   discover(creature: Creature, config: NeatConfig) {
@@ -531,7 +584,7 @@ export class WorkerHandler {
     // @ts-ignore - clearing to help GC
     json.synapses = null;
 
-    return this.ready.then(() => this.makePromise(data));
+    return this.makePromiseDeferred(data);
   }
 
   /**
@@ -574,6 +627,6 @@ export class WorkerHandler {
     // @ts-ignore - clearing to help GC
     fatherJson.synapses = null;
 
-    return this.ready.then(() => this.makePromise(data));
+    return this.makePromiseDeferred(data);
   }
 }
