@@ -51,7 +51,8 @@ check_and_update_wasm_pack
 
 # Issue #1178 - Enable SIMD support for WASM
 # simd128 enables 128-bit SIMD operations for vectorized activation
-export RUSTFLAGS="-C target-feature=+simd128"
+# Issue #1197 - Enable relaxed-simd for FMA (fused multiply-add) optimization
+export RUSTFLAGS="-C target-feature=+simd128,+relaxed-simd"
 
 # Build the WASM module with wasm-pack (preferred) or cargo
 if command -v wasm-pack &> /dev/null; then
