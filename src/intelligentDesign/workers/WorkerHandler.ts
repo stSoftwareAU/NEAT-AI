@@ -68,15 +68,48 @@ let globalWorkerID = 0;
 
 let cachedWasmActivationInitPayload: WasmActivationInitPayload | null = null;
 
-function loadWasmActivationInitPayloadOrThrow(): WasmActivationInitPayload {
+async function loadWasmActivationInitPayloadOrThrow(): Promise<
+  WasmActivationInitPayload
+> {
   if (cachedWasmActivationInitPayload) return cachedWasmActivationInitPayload;
 
   // Hard requirement: WASM activation must exist for Intelligent Design scoring.
-  const repoRoot = new URL("../../../", import.meta.url).pathname;
-  const wasmDir = `${repoRoot}wasm_activation/pkg`;
+  const wasmBaseUrl = new URL("../../../wasm_activation/pkg/", import.meta.url);
 
-  const jsSource = Deno.readTextFileSync(`${wasmDir}/wasm_activation.js`);
-  const wasmBinary = Deno.readFileSync(`${wasmDir}/wasm_activation_bg.wasm`);
+  let jsSource: string;
+  let wasmBinary: Uint8Array;
+
+  // Handle both local file system and JSR package URLs
+  if (wasmBaseUrl.protocol === "file:") {
+    // Local file system - use async file reads
+    const jsUrl = new URL("wasm_activation.js", wasmBaseUrl);
+    const wasmUrl = new URL("wasm_activation_bg.wasm", wasmBaseUrl);
+    jsSource = await Deno.readTextFile(jsUrl.pathname);
+    wasmBinary = await Deno.readFile(wasmUrl.pathname);
+  } else {
+    // JSR package URL (http/https) - fetch the files
+    const jsUrl = new URL("wasm_activation.js", wasmBaseUrl);
+    const wasmUrl = new URL("wasm_activation_bg.wasm", wasmBaseUrl);
+
+    const [jsResponse, wasmResponse] = await Promise.all([
+      fetch(jsUrl.href),
+      fetch(wasmUrl.href),
+    ]);
+
+    if (!jsResponse.ok) {
+      throw new Error(
+        `Failed to load wasm_activation.js from ${jsUrl.href}: ${jsResponse.status} ${jsResponse.statusText}`,
+      );
+    }
+    if (!wasmResponse.ok) {
+      throw new Error(
+        `Failed to load wasm_activation_bg.wasm from ${wasmUrl.href}: ${wasmResponse.status} ${wasmResponse.statusText}`,
+      );
+    }
+
+    jsSource = await jsResponse.text();
+    wasmBinary = new Uint8Array(await wasmResponse.arrayBuffer());
+  }
 
   cachedWasmActivationInitPayload = {
     jsSource,
@@ -141,12 +174,16 @@ export class WorkerHandler {
       this.callback(me.data as ResponseData);
     });
 
-    const wasmActivation = loadWasmActivationInitPayloadOrThrow();
-    const initReq: RequestData = {
-      taskID: this.taskID++,
-      initialize: { wasmActivation },
-    };
-    this.ready = this.makePromise(initReq).then((result) => {
+    // Load WASM activation payload (async for JSR package URLs)
+    this.ready = loadWasmActivationInitPayloadOrThrow().then(
+      (wasmActivation) => {
+        const initReq: RequestData = {
+          taskID: this.taskID++,
+          initialize: { wasmActivation },
+        };
+        return this.makePromise(initReq);
+      },
+    ).then((result) => {
       assert(
         result.initialize?.status === "OK" && !result.error,
         result.error?.message ??

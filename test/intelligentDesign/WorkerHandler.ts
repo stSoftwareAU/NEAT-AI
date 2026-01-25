@@ -14,6 +14,9 @@ import type { ResponseData } from "../../src/intelligentDesign/workers/ResponseD
 Deno.test("WorkerHandler resolves error response for invalid request and becomes idle", async () => {
   const handler = new WorkerHandler();
   try {
+    // Wait for initialization to complete before testing
+    await (handler as unknown as { ready: Promise<ResponseData> }).ready;
+
     let idleCount = 0;
     handler.addIdleListener(() => idleCount++);
 
