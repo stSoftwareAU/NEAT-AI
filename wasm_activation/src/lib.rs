@@ -16,20 +16,22 @@ use js_sys::Float32Array;
 
 // Issue #1178 - WASM SIMD support
 // SIMD intrinsics for vectorized synapse weight summation
+// Issue #1197 - Added f32x4_relaxed_madd for FMA optimization
 #[cfg(target_arch = "wasm32")]
 use core::arch::wasm32::{
-    f32x4, f32x4_add, f32x4_extract_lane, f32x4_mul, f32x4_splat,
+    f32x4, f32x4_extract_lane, f32x4_relaxed_madd, f32x4_splat,
 };
 
 /// Issue #1178 - SIMD-optimized weighted sum for standard activations
+/// Issue #1197 - Uses FMA (fused multiply-add) via relaxed-simd for better performance
 ///
-/// Processes synapses in batches of 4 using 128-bit SIMD operations.
+/// Processes synapses in batches of 4 using 128-bit SIMD operations with FMA.
 /// Falls back to scalar for remaining synapses.
 ///
 /// # Safety
 /// This function uses SIMD intrinsics and must be called with valid indices.
 #[cfg(target_arch = "wasm32")]
-#[target_feature(enable = "simd128")]
+#[target_feature(enable = "simd128", enable = "relaxed-simd")]
 #[inline]
 unsafe fn weighted_sum_simd(
     synapses: &[SynapseData],
@@ -56,11 +58,11 @@ unsafe fn weighted_sum_simd(
     // Process in chunks of 4 using SIMD
     let chunks = count / 4;
 
-    // Initialize accumulator with bias in first lane, zeros in others
+    // Initialize accumulator with zeros
     let mut acc = f32x4_splat(0.0);
     let mut scalar_sum = bias;
 
-    // SIMD loop: process 4 synapses at a time
+    // SIMD loop: process 4 synapses at a time using FMA
     for chunk in 0..chunks {
         let base = start + chunk * 4;
 
@@ -80,8 +82,9 @@ unsafe fn weighted_sum_simd(
 
         let acts = f32x4(a0, a1, a2, a3);
 
-        // Vectorized multiply-add
-        acc = f32x4_add(acc, f32x4_mul(weights, acts));
+        // Issue #1197 - Use FMA: acc = weights * acts + acc (single instruction)
+        // This replaces the previous: acc = f32x4_add(acc, f32x4_mul(weights, acts))
+        acc = f32x4_relaxed_madd(weights, acts, acc);
     }
 
     // Horizontal sum of SIMD accumulator
