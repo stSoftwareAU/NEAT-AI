@@ -3346,6 +3346,44 @@ impl CompiledNetwork {
     }
 }
 
+/// Issue #1203 - Kahan summation for compensated floating-point accumulation.
+///
+/// Kahan summation algorithm reduces numerical error when summing many floating-point
+/// numbers by tracking and compensating for lost precision. This allows using f32
+/// accumulation with similar precision to naive f64 summation, but with better performance.
+///
+/// Reference: https://en.wikipedia.org/wiki/Kahan_summation_algorithm
+#[derive(Clone, Copy, Default)]
+struct KahanSum {
+    sum: f32,
+    compensation: f32,
+}
+
+impl KahanSum {
+    #[inline]
+    fn new() -> Self {
+        Self {
+            sum: 0.0,
+            compensation: 0.0,
+        }
+    }
+
+    /// Add a value using Kahan summation to minimize floating-point error.
+    #[inline]
+    fn add(&mut self, value: f32) {
+        let y = value - self.compensation;
+        let t = self.sum + y;
+        self.compensation = (t - self.sum) - y;
+        self.sum = t;
+    }
+
+    /// Get the accumulated sum.
+    #[inline]
+    fn sum(self) -> f32 {
+        self.sum
+    }
+}
+
 /// Compute Mean Squared Error (MSE) over packed records in a single WASM call.
 ///
 /// This is a scoring fast-path designed to minimise JS/WASM boundary crossings:
@@ -3361,6 +3399,7 @@ impl CompiledNetwork {
 /// stateless semantics (`feedbackLoop=false`) and avoid state leakage.
 ///
 /// Issue #118x - Fuse activate + MSE for scoring performance.
+/// Issue #1203 - Use f32 with Kahan summation for better performance.
 #[wasm_bindgen]
 pub fn mse_sum_batch_packed(
     network: &mut CompiledNetwork,
@@ -3378,8 +3417,9 @@ pub fn mse_sum_batch_packed(
         return 0.0;
     }
 
-    let inv_outputs: f64 = if num_outputs > 0 {
-        1.0 / (num_outputs as f64)
+    // Issue #1203: Use f32 for inv_outputs since we're doing f32 math
+    let inv_outputs: f32 = if num_outputs > 0 {
+        1.0 / (num_outputs as f32)
     } else {
         0.0
     };
@@ -3387,7 +3427,8 @@ pub fn mse_sum_batch_packed(
     // Reuse a small output buffer to avoid per-record allocation.
     let mut outputs: Vec<f32> = vec![0.0; num_outputs];
 
-    let mut sum_error: f64 = 0.0;
+    // Issue #1203: Use Kahan summation with f32 for compensated accumulation
+    let mut kahan = KahanSum::new();
     for record_idx in 0..num_records {
         if !forward_only {
             // Ensure stateless behaviour for networks that may read stale activations.
@@ -3402,15 +3443,16 @@ pub fn mse_sum_batch_packed(
         network.activate_into(&records[input_start..input_end], &mut outputs[..]);
 
         // Per-record MSE = mean((target - output)^2)
-        let mut sq_sum: f64 = 0.0;
+        let mut sq_sum: f32 = 0.0;
         for j in 0..num_outputs {
-            let diff = (records[target_start + j] - outputs[j]) as f64;
+            let diff = records[target_start + j] - outputs[j];
             sq_sum += diff * diff;
         }
-        sum_error += sq_sum * inv_outputs;
+        kahan.add(sq_sum * inv_outputs);
     }
 
-    sum_error
+    // Return as f64 to maintain API compatibility
+    kahan.sum() as f64
 }
 
 /// Fused activate + MAE (Mean Absolute Error) calculation for batch scoring.
@@ -3429,6 +3471,8 @@ pub fn mse_sum_batch_packed(
 ///
 /// # Returns
 /// Sum of per-record MAE errors (divide by record count for mean)
+///
+/// Issue #1203 - Use f32 with Kahan summation for better performance.
 #[wasm_bindgen]
 pub fn mae_sum_batch_packed(
     network: &mut CompiledNetwork,
@@ -3446,14 +3490,16 @@ pub fn mae_sum_batch_packed(
         return 0.0;
     }
 
-    let inv_outputs: f64 = if num_outputs > 0 {
-        1.0 / (num_outputs as f64)
+    // Issue #1203: Use f32 for inv_outputs
+    let inv_outputs: f32 = if num_outputs > 0 {
+        1.0 / (num_outputs as f32)
     } else {
         0.0
     };
 
     let mut outputs: Vec<f32> = vec![0.0; num_outputs];
-    let mut sum_error: f64 = 0.0;
+    // Issue #1203: Use Kahan summation with f32
+    let mut kahan = KahanSum::new();
 
     for record_idx in 0..num_records {
         if !forward_only {
@@ -3468,15 +3514,16 @@ pub fn mae_sum_batch_packed(
         network.activate_into(&records[input_start..input_end], &mut outputs[..]);
 
         // Per-record MAE = mean(|target - output|)
-        let mut abs_sum: f64 = 0.0;
+        let mut abs_sum: f32 = 0.0;
         for j in 0..num_outputs {
-            let diff = (records[target_start + j] - outputs[j]) as f64;
+            let diff = records[target_start + j] - outputs[j];
             abs_sum += diff.abs();
         }
-        sum_error += abs_sum * inv_outputs;
+        kahan.add(abs_sum * inv_outputs);
     }
 
-    sum_error
+    // Return as f64 to maintain API compatibility
+    kahan.sum() as f64
 }
 
 /// Fused activate + Cross Entropy calculation for batch scoring.
@@ -3493,6 +3540,9 @@ pub fn mae_sum_batch_packed(
 ///
 /// # Returns
 /// Sum of per-record Cross Entropy errors (divide by record count for mean)
+///
+/// Issue #1203 - Use f32 with Kahan summation for outer accumulation.
+/// Note: Inner loop keeps f32 math with f32 ln() for log precision.
 #[wasm_bindgen]
 pub fn cross_entropy_sum_batch_packed(
     network: &mut CompiledNetwork,
@@ -3510,15 +3560,17 @@ pub fn cross_entropy_sum_batch_packed(
         return 0.0;
     }
 
-    let inv_outputs: f64 = if num_outputs > 0 {
-        1.0 / (num_outputs as f64)
+    // Issue #1203: Use f32 for inv_outputs
+    let inv_outputs: f32 = if num_outputs > 0 {
+        1.0 / (num_outputs as f32)
     } else {
         0.0
     };
 
-    const EPSILON: f64 = 1e-15;
+    const EPSILON: f32 = 1e-15;
     let mut outputs: Vec<f32> = vec![0.0; num_outputs];
-    let mut sum_error: f64 = 0.0;
+    // Issue #1203: Use Kahan summation with f32
+    let mut kahan = KahanSum::new();
 
     for record_idx in 0..num_records {
         if !forward_only {
@@ -3533,18 +3585,19 @@ pub fn cross_entropy_sum_batch_packed(
         network.activate_into(&records[input_start..input_end], &mut outputs[..]);
 
         // Per-record Cross Entropy = -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
-        let mut ce_sum: f64 = 0.0;
+        let mut ce_sum: f32 = 0.0;
         for j in 0..num_outputs {
-            let t = records[target_start + j] as f64;
-            let o_raw = outputs[j] as f64;
+            let t = records[target_start + j];
+            let o_raw = outputs[j];
             // Clamp to [epsilon, 1-epsilon] to prevent log(0)
             let o = o_raw.max(EPSILON).min(1.0 - EPSILON);
             ce_sum -= t * o.ln() + (1.0 - t) * (1.0 - o).ln();
         }
-        sum_error += ce_sum * inv_outputs;
+        kahan.add(ce_sum * inv_outputs);
     }
 
-    sum_error
+    // Return as f64 to maintain API compatibility
+    kahan.sum() as f64
 }
 
 /// Fused activate + MAPE (Mean Absolute Percentage Error) calculation for batch scoring.
@@ -3560,6 +3613,8 @@ pub fn cross_entropy_sum_batch_packed(
 ///
 /// # Returns
 /// Sum of per-record MAPE errors (divide by record count for mean)
+///
+/// Issue #1203 - Use f32 with Kahan summation for better performance.
 #[wasm_bindgen]
 pub fn mape_sum_batch_packed(
     network: &mut CompiledNetwork,
@@ -3577,15 +3632,17 @@ pub fn mape_sum_batch_packed(
         return 0.0;
     }
 
-    let inv_outputs: f64 = if num_outputs > 0 {
-        1.0 / (num_outputs as f64)
+    // Issue #1203: Use f32 for inv_outputs
+    let inv_outputs: f32 = if num_outputs > 0 {
+        1.0 / (num_outputs as f32)
     } else {
         0.0
     };
 
-    const EPSILON: f64 = 1e-15;
+    const EPSILON: f32 = 1e-15;
     let mut outputs: Vec<f32> = vec![0.0; num_outputs];
-    let mut sum_error: f64 = 0.0;
+    // Issue #1203: Use Kahan summation with f32
+    let mut kahan = KahanSum::new();
 
     for record_idx in 0..num_records {
         if !forward_only {
@@ -3600,16 +3657,17 @@ pub fn mape_sum_batch_packed(
         network.activate_into(&records[input_start..input_end], &mut outputs[..]);
 
         // Per-record MAPE = (1/n) * Σ|(output - target) / max(target, ε)|
-        let mut mape_sum: f64 = 0.0;
+        let mut mape_sum: f32 = 0.0;
         for j in 0..num_outputs {
-            let t = (records[target_start + j] as f64).max(EPSILON);
-            let o = outputs[j] as f64;
+            let t = records[target_start + j].max(EPSILON);
+            let o = outputs[j];
             mape_sum += ((o - t) / t).abs();
         }
-        sum_error += mape_sum * inv_outputs;
+        kahan.add(mape_sum * inv_outputs);
     }
 
-    sum_error
+    // Return as f64 to maintain API compatibility
+    kahan.sum() as f64
 }
 
 /// Fused activate + MSLE (Mean Squared Logarithmic Error) calculation for batch scoring.
@@ -3626,6 +3684,8 @@ pub fn mape_sum_batch_packed(
 ///
 /// # Returns
 /// Sum of per-record MSLE errors (divide by record count for mean)
+///
+/// Issue #1203 - Use f32 with Kahan summation for better performance.
 #[wasm_bindgen]
 pub fn msle_sum_batch_packed(
     network: &mut CompiledNetwork,
@@ -3643,9 +3703,10 @@ pub fn msle_sum_batch_packed(
         return 0.0;
     }
 
-    const EPSILON: f64 = 1e-15;
+    const EPSILON: f32 = 1e-15;
     let mut outputs: Vec<f32> = vec![0.0; num_outputs];
-    let mut sum_error: f64 = 0.0;
+    // Issue #1203: Use Kahan summation with f32
+    let mut kahan = KahanSum::new();
 
     for record_idx in 0..num_records {
         if !forward_only {
@@ -3661,16 +3722,17 @@ pub fn msle_sum_batch_packed(
 
         // Per-record MSLE = Σ(log(max(target, ε)) - log(max(output, ε)))
         // Note: No averaging per record to match JS implementation
-        let mut msle_sum: f64 = 0.0;
+        let mut msle_sum: f32 = 0.0;
         for j in 0..num_outputs {
-            let t = (records[target_start + j] as f64).max(EPSILON);
-            let o = (outputs[j] as f64).max(EPSILON);
+            let t = records[target_start + j].max(EPSILON);
+            let o = outputs[j].max(EPSILON);
             msle_sum += t.ln() - o.ln();
         }
-        sum_error += msle_sum;
+        kahan.add(msle_sum);
     }
 
-    sum_error
+    // Return as f64 to maintain API compatibility
+    kahan.sum() as f64
 }
 
 /// Fused activate + Hinge Loss calculation for batch scoring.
@@ -3687,6 +3749,8 @@ pub fn msle_sum_batch_packed(
 ///
 /// # Returns
 /// Sum of per-record Hinge errors (divide by record count for mean)
+///
+/// Issue #1203 - Use f32 with Kahan summation for better performance.
 #[wasm_bindgen]
 pub fn hinge_sum_batch_packed(
     network: &mut CompiledNetwork,
@@ -3705,7 +3769,8 @@ pub fn hinge_sum_batch_packed(
     }
 
     let mut outputs: Vec<f32> = vec![0.0; num_outputs];
-    let mut sum_error: f64 = 0.0;
+    // Issue #1203: Use Kahan summation with f32
+    let mut kahan = KahanSum::new();
 
     for record_idx in 0..num_records {
         if !forward_only {
@@ -3721,16 +3786,17 @@ pub fn hinge_sum_batch_packed(
 
         // Per-record Hinge = Σmax(0, 1 - target * output)
         // Note: No averaging per record to match JS implementation
-        let mut hinge_sum: f64 = 0.0;
+        let mut hinge_sum: f32 = 0.0;
         for j in 0..num_outputs {
-            let t = records[target_start + j] as f64;
-            let o = outputs[j] as f64;
+            let t = records[target_start + j];
+            let o = outputs[j];
             hinge_sum += (1.0 - t * o).max(0.0);
         }
-        sum_error += hinge_sum;
+        kahan.add(hinge_sum);
     }
 
-    sum_error
+    // Return as f64 to maintain API compatibility
+    kahan.sum() as f64
 }
 
 /// Standalone squash function for testing
