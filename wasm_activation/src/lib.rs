@@ -14,6 +14,110 @@ use wasm_bindgen::prelude::*;
 use js_sys::Float32Array;
 // Note: E and PI are not currently used but kept for potential future squash functions
 
+// Issue #1178 - WASM SIMD support
+// SIMD intrinsics for vectorized synapse weight summation
+#[cfg(target_arch = "wasm32")]
+use core::arch::wasm32::{
+    f32x4, f32x4_add, f32x4_extract_lane, f32x4_mul, f32x4_splat,
+};
+
+/// Issue #1178 - SIMD-optimized weighted sum for standard activations
+///
+/// Processes synapses in batches of 4 using 128-bit SIMD operations.
+/// Falls back to scalar for remaining synapses.
+///
+/// # Safety
+/// This function uses SIMD intrinsics and must be called with valid indices.
+#[cfg(target_arch = "wasm32")]
+#[target_feature(enable = "simd128")]
+#[inline]
+unsafe fn weighted_sum_simd(
+    synapses: &[SynapseData],
+    activations: &[f32],
+    start: usize,
+    end: usize,
+    bias: f32,
+) -> f32 {
+    let count = end - start;
+    if count == 0 {
+        return bias;
+    }
+
+    // For very small counts, scalar is faster due to SIMD setup overhead
+    if count < 4 {
+        let mut sum = bias;
+        for i in start..end {
+            let synapse = &synapses[i];
+            sum += activations[synapse.from_index as usize] * synapse.weight;
+        }
+        return sum;
+    }
+
+    // Process in chunks of 4 using SIMD
+    let chunks = count / 4;
+
+    // Initialize accumulator with bias in first lane, zeros in others
+    let mut acc = f32x4_splat(0.0);
+    let mut scalar_sum = bias;
+
+    // SIMD loop: process 4 synapses at a time
+    for chunk in 0..chunks {
+        let base = start + chunk * 4;
+
+        // Load 4 weights (contiguous in memory due to SynapseData layout)
+        let s0 = &synapses[base];
+        let s1 = &synapses[base + 1];
+        let s2 = &synapses[base + 2];
+        let s3 = &synapses[base + 3];
+
+        let weights = f32x4(s0.weight, s1.weight, s2.weight, s3.weight);
+
+        // Gather 4 activations (scatter/gather pattern - must be scalar)
+        let a0 = activations[s0.from_index as usize];
+        let a1 = activations[s1.from_index as usize];
+        let a2 = activations[s2.from_index as usize];
+        let a3 = activations[s3.from_index as usize];
+
+        let acts = f32x4(a0, a1, a2, a3);
+
+        // Vectorized multiply-add
+        acc = f32x4_add(acc, f32x4_mul(weights, acts));
+    }
+
+    // Horizontal sum of SIMD accumulator
+    scalar_sum += f32x4_extract_lane::<0>(acc)
+        + f32x4_extract_lane::<1>(acc)
+        + f32x4_extract_lane::<2>(acc)
+        + f32x4_extract_lane::<3>(acc);
+
+    // Handle remainder with scalar operations
+    let remainder_start = start + chunks * 4;
+    for i in remainder_start..end {
+        let synapse = &synapses[i];
+        scalar_sum += activations[synapse.from_index as usize] * synapse.weight;
+    }
+
+    scalar_sum
+}
+
+/// Scalar fallback for non-WASM targets (for testing)
+#[cfg(not(target_arch = "wasm32"))]
+#[inline]
+fn weighted_sum_simd(
+    synapses: &[SynapseData],
+    activations: &[f32],
+    start: usize,
+    end: usize,
+    bias: f32,
+) -> f32 {
+    let mut sum = bias;
+    for i in start..end {
+        let synapse = &synapses[i];
+        sum += activations[synapse.from_index as usize] * synapse.weight;
+    }
+    sum
+}
+
 // SELU constants
 const SELU_ALPHA: f32 = 1.6732632423543772;
 const SELU_LAMBDA: f32 = 1.0507009873554805;
@@ -2817,11 +2921,25 @@ impl CompiledNetwork {
                     }
                     _ => {
                         // Standard activation: weighted sum + bias, then apply squash
-                        let mut sum: f32 = neuron.bias;
-                        for synapse_idx in start_synapse..end_synapse {
-                            let synapse = &self.synapses[synapse_idx];
-                            sum += self.activations[synapse.from_index as usize] * synapse.weight;
-                        }
+                        // Issue #1178 - Use SIMD-optimized weighted sum
+                        #[cfg(target_arch = "wasm32")]
+                        let sum = unsafe {
+                            weighted_sum_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                                neuron.bias,
+                            )
+                        };
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let sum = weighted_sum_simd(
+                            &self.synapses,
+                            &self.activations,
+                            start_synapse,
+                            end_synapse,
+                            neuron.bias,
+                        );
                         // Issue #1177 - Inline common squash functions for performance
                         // These 4 functions cover ~80% of typical networks
                         match neuron.squash_type {
@@ -2959,11 +3077,25 @@ impl CompiledNetwork {
                     }
                     _ => {
                         // Standard activation: weighted sum + bias, then apply squash
-                        let mut sum: f32 = neuron.bias;
-                        for synapse_idx in start_synapse..end_synapse {
-                            let synapse = &self.synapses[synapse_idx];
-                            sum += self.activations[synapse.from_index as usize] * synapse.weight;
-                        }
+                        // Issue #1178 - Use SIMD-optimized weighted sum
+                        #[cfg(target_arch = "wasm32")]
+                        let sum = unsafe {
+                            weighted_sum_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                                neuron.bias,
+                            )
+                        };
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let sum = weighted_sum_simd(
+                            &self.synapses,
+                            &self.activations,
+                            start_synapse,
+                            end_synapse,
+                            neuron.bias,
+                        );
                         // Issue #1177 - Inline common squash functions for performance
                         // These 4 functions cover ~80% of typical networks
                         match neuron.squash_type {
@@ -3145,11 +3277,25 @@ impl CompiledNetwork {
                     }
                     _ => {
                         // Standard activation: weighted sum + bias, then apply squash
-                        let mut sum: f32 = neuron.bias;
-                        for synapse_idx in start_synapse..end_synapse {
-                            let synapse = &self.synapses[synapse_idx];
-                            sum += self.activations[synapse.from_index as usize] * synapse.weight;
-                        }
+                        // Issue #1178 - Use SIMD-optimized weighted sum
+                        #[cfg(target_arch = "wasm32")]
+                        let sum = unsafe {
+                            weighted_sum_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                                neuron.bias,
+                            )
+                        };
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let sum = weighted_sum_simd(
+                            &self.synapses,
+                            &self.activations,
+                            start_synapse,
+                            end_synapse,
+                            neuron.bias,
+                        );
                         // Issue #1177 - Inline common squash functions for performance
                         let squashed = match neuron.squash_type {
                             0 => sum,                                    // IDENTITY

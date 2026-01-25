@@ -17,3 +17,7 @@ lto = true
 
 [profile.release.package."*"]
 opt-level = 3
+
+# Issue #1178 - WASM SIMD support
+# Note: SIMD is enabled via RUSTFLAGS in build.sh, not here.
+# This comment documents the SIMD feature requirement.

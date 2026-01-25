@@ -2078,10 +2078,11 @@ export class Creature implements CreatureInternal {
 
     const valuesCount = this.input + this.output;
     const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
-    const SSD_OPTIMAL_READ_SIZE = 128 * 1024; // 128 KB
+    // Issue #1195: Increased from 128KB to 512KB for NVMe drives
+    const NVME_OPTIMAL_READ_SIZE = 512 * 1024; // 512 KB
     const BATCH_SIZE = Math.max(
       1,
-      Math.floor(SSD_OPTIMAL_READ_SIZE / BYTES_PER_RECORD),
+      Math.floor(NVME_OPTIMAL_READ_SIZE / BYTES_PER_RECORD),
     );
     const BYTES_PER_BATCH = BYTES_PER_RECORD * BATCH_SIZE;
 
@@ -2199,10 +2200,11 @@ export class Creature implements CreatureInternal {
 
     const valuesCount = this.input + this.output;
     const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
-    const SSD_OPTIMAL_READ_SIZE = 128 * 1024; // 128 KB
+    // Issue #1195: Increased from 128KB to 512KB for NVMe drives
+    const NVME_OPTIMAL_READ_SIZE = 512 * 1024; // 512 KB
     const BATCH_SIZE = Math.max(
       1,
-      Math.floor(SSD_OPTIMAL_READ_SIZE / BYTES_PER_RECORD),
+      Math.floor(NVME_OPTIMAL_READ_SIZE / BYTES_PER_RECORD),
     );
     const BYTES_PER_BATCH = BYTES_PER_RECORD * BATCH_SIZE;
 

@@ -49,9 +49,13 @@ check_and_update_wasm_pack() {
 # Check and update wasm-pack before building
 check_and_update_wasm_pack
 
+# Issue #1178 - Enable SIMD support for WASM
+# simd128 enables 128-bit SIMD operations for vectorized activation
+export RUSTFLAGS="-C target-feature=+simd128"
+
 # Build the WASM module with wasm-pack (preferred) or cargo
 if command -v wasm-pack &> /dev/null; then
-    echo "Using wasm-pack for build..."
+    echo "Using wasm-pack for build (with SIMD enabled)..."
     wasm-pack build --target web --release --out-dir pkg
 else
     echo "wasm-pack not found, using cargo + wasm-bindgen-cli..."
