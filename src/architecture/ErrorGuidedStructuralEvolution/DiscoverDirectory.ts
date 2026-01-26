@@ -3,6 +3,10 @@ import { blue, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import type { Creature } from "../../Creature.ts";
 import type { NeatConfig } from "../../config/NeatConfig.ts";
+import {
+  initWasmActivation,
+  isWasmActivationAvailable,
+} from "../../wasm/mod.ts";
 import { CreatureUtil } from "../CreatureUtils.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 import type { DiscoverResult } from "./DiscoverResult.ts";
@@ -20,6 +24,49 @@ import type {
 import { isRustDiscoveryEnabled } from "./RustDiscovery.ts";
 import { PhaseDiagnostics } from "./PhaseDiagnostics.ts";
 import { submitDiscoveryRecordBatch } from "./SubmitDiscoveryRecordBatch.ts";
+
+/**
+ * Issue #1219 - Returns the default WASM activation module path.
+ *
+ * The path is derived from this module's location, assuming the standard
+ * repository layout where `wasm_activation/pkg` is at the project root.
+ */
+export function getWasmDefaultPath(): string {
+  // Navigate from src/architecture/ErrorGuidedStructuralEvolution/ to project root
+  const repoRoot = new URL("../../../", import.meta.url).pathname;
+  return `${repoRoot}wasm_activation/pkg`;
+}
+
+/**
+ * Issue #1219 - Ensures WASM activation is initialised before discovery recording.
+ *
+ * Discovery recording requires WASM tracing activation. This function ensures
+ * the WASM module is initialised, either by confirming it's already available
+ * or by initialising it automatically.
+ *
+ * This allows calling programs to use discovery features without explicitly
+ * initialising WASM first - the library handles it automatically.
+ *
+ * @throws Error if WASM initialisation fails and is not available
+ */
+export async function ensureWasmActivationForDiscovery(): Promise<void> {
+  // If already initialised, nothing to do
+  if (isWasmActivationAvailable()) {
+    return;
+  }
+
+  // Try to initialise WASM from the default path
+  const wasmPath = getWasmDefaultPath();
+  const success = await initWasmActivation(wasmPath);
+
+  if (!success || !isWasmActivationAvailable()) {
+    throw new Error(
+      "WASM activation must be initialised before discovery recording. " +
+        "Ensure the WASM module is built at wasm_activation/pkg or call " +
+        "initWasmActivation() before using discovery features.",
+    );
+  }
+}
 
 const shouldLogDiscovery = (config: NeatConfig): boolean =>
   config.verbose || config.log > 0;
@@ -299,6 +346,10 @@ export async function recordDirectory(
   config: NeatConfig,
   deps: Partial<DiscoverStructureDeps> = {},
 ) {
+  // Issue #1219: Ensure WASM activation is initialised before discovery recording.
+  // This allows calling programs to use discovery without explicit WASM init.
+  await ensureWasmActivationForDiscovery();
+
   const recorder = new DataRecorder(creature, config, deps);
   return await recorder.recordDirectory(dataDir);
 }
