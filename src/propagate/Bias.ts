@@ -107,3 +107,68 @@ export function limitBias(
 
   return limitedBias;
 }
+
+/**
+ * Issue #1214 - Batch bias accumulation for 4 neurons simultaneously.
+ *
+ * Processes 4 neurons in a single call, enabling potential SIMD optimisation
+ * by V8 when processing mini-batches during backpropagation.
+ *
+ * @param nsArray Array of 4 NeuronState objects to accumulate into
+ * @param targetPreActivationValues Array of 4 target pre-activation values
+ * @param preActivationValues Array of 4 current pre-activation values
+ * @param currentBiases Array of 4 current neuron biases
+ * @param config Backpropagation configuration
+ */
+export function accumulateBiasBatch4Way(
+  nsArray: NeuronState[],
+  targetPreActivationValues: number[],
+  preActivationValues: number[],
+  currentBiases: number[],
+  config: BackPropagationConfig,
+) {
+  // Process all 4 neurons - enables V8 SIMD optimisation with typed arrays
+  for (let i = 0; i < 4; i++) {
+    const ns = nsArray[i];
+    const biasDelta = targetPreActivationValues[i] - preActivationValues[i];
+    const currentBias = currentBiases[i];
+
+    ns.count++;
+    const targetBias = currentBias + biasDelta;
+    ns.totalBias += targetBias;
+    ns.totalAdjustedBias += limitBias(targetBias, currentBias, config);
+  }
+}
+
+/**
+ * Issue #1214 - Batch bias accumulation for 8 neurons simultaneously.
+ *
+ * Processes 8 neurons in a single call, enabling potential SIMD optimisation
+ * by V8 when processing mini-batches during backpropagation.
+ * Uses two parallel 4-way operations for better cache utilisation.
+ *
+ * @param nsArray Array of 8 NeuronState objects to accumulate into
+ * @param targetPreActivationValues Array of 8 target pre-activation values
+ * @param preActivationValues Array of 8 current pre-activation values
+ * @param currentBiases Array of 8 current neuron biases
+ * @param config Backpropagation configuration
+ */
+export function accumulateBiasBatch8Way(
+  nsArray: NeuronState[],
+  targetPreActivationValues: number[],
+  preActivationValues: number[],
+  currentBiases: number[],
+  config: BackPropagationConfig,
+) {
+  // Process all 8 neurons - enables V8 SIMD optimisation with typed arrays
+  for (let i = 0; i < 8; i++) {
+    const ns = nsArray[i];
+    const biasDelta = targetPreActivationValues[i] - preActivationValues[i];
+    const currentBias = currentBiases[i];
+
+    ns.count++;
+    const targetBias = currentBias + biasDelta;
+    ns.totalBias += targetBias;
+    ns.totalAdjustedBias += limitBias(targetBias, currentBias, config);
+  }
+}
