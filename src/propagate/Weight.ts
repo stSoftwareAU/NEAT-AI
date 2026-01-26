@@ -156,3 +156,136 @@ export function limitWeight(
 
   return limitedWeight;
 }
+
+/**
+ * Issue #1214 - Batch weight accumulation for 4 synapses simultaneously.
+ *
+ * Processes 4 synapses in a single call, enabling potential SIMD optimisation
+ * by V8 when processing mini-batches during backpropagation.
+ *
+ * @param currentWeights Array of 4 current synapse weights
+ * @param csArray Array of 4 SynapseState objects to accumulate into
+ * @param targetValues Array of 4 target values for weight calculation
+ * @param activations Array of 4 activation values from source neurons
+ * @param config Backpropagation configuration
+ */
+export function accumulateWeightBatch4Way(
+  currentWeights: number[],
+  csArray: SynapseState[],
+  targetValues: number[],
+  activations: number[],
+  config: BackPropagationConfig,
+) {
+  const plankConstant = config.plankConstant;
+
+  // Process all 4 synapses - enables V8 SIMD optimisation with typed arrays
+  for (let i = 0; i < 4; i++) {
+    const activation = activations[i];
+    const currentWeight = currentWeights[i];
+    const targetValue = targetValues[i];
+    const cs = csArray[i];
+
+    const sign = Math.sign(activation) || 1;
+    let tmpActivation = activation;
+
+    // Prevent division issues with small activation values.
+    if (Math.abs(tmpActivation) < plankConstant) {
+      tmpActivation = plankConstant * sign;
+    }
+
+    // Adjust the target value if it's too small.
+    const tmpValue = Math.abs(targetValue) > plankConstant
+      ? targetValue
+      : plankConstant * Math.sign(targetValue);
+
+    // Calculate a preliminary weight based on the adjusted values.
+    const tmpWeight = tmpValue / tmpActivation;
+
+    // Adjust the weight with limiting.
+    const adjustedLimitedWeight = limitWeight(tmpWeight, currentWeight, config);
+
+    // Adjust weights based on the difference.
+    if (Math.abs(activation) > plankConstant) {
+      // Track positive and negative activations separately.
+      if (activation > 0) {
+        cs.totalPositiveActivation += activation;
+        cs.totalPositiveAdjustedValue += adjustedLimitedWeight * activation;
+        cs.countPositiveActivations++;
+      } else if (activation < 0) {
+        cs.totalNegativeActivation += Math.abs(activation);
+        cs.totalNegativeAdjustedValue += adjustedLimitedWeight * activation;
+        cs.countNegativeActivations++;
+      }
+    }
+
+    // Increment the count after processing the adjustment.
+    cs.count++;
+  }
+}
+
+/**
+ * Issue #1214 - Batch weight accumulation for 8 synapses simultaneously.
+ *
+ * Processes 8 synapses in a single call, enabling potential SIMD optimisation
+ * by V8 when processing mini-batches during backpropagation.
+ * Uses two parallel 4-way operations for better cache utilisation.
+ *
+ * @param currentWeights Array of 8 current synapse weights
+ * @param csArray Array of 8 SynapseState objects to accumulate into
+ * @param targetValues Array of 8 target values for weight calculation
+ * @param activations Array of 8 activation values from source neurons
+ * @param config Backpropagation configuration
+ */
+export function accumulateWeightBatch8Way(
+  currentWeights: number[],
+  csArray: SynapseState[],
+  targetValues: number[],
+  activations: number[],
+  config: BackPropagationConfig,
+) {
+  const plankConstant = config.plankConstant;
+
+  // Process all 8 synapses - enables V8 SIMD optimisation with typed arrays
+  for (let i = 0; i < 8; i++) {
+    const activation = activations[i];
+    const currentWeight = currentWeights[i];
+    const targetValue = targetValues[i];
+    const cs = csArray[i];
+
+    const sign = Math.sign(activation) || 1;
+    let tmpActivation = activation;
+
+    // Prevent division issues with small activation values.
+    if (Math.abs(tmpActivation) < plankConstant) {
+      tmpActivation = plankConstant * sign;
+    }
+
+    // Adjust the target value if it's too small.
+    const tmpValue = Math.abs(targetValue) > plankConstant
+      ? targetValue
+      : plankConstant * Math.sign(targetValue);
+
+    // Calculate a preliminary weight based on the adjusted values.
+    const tmpWeight = tmpValue / tmpActivation;
+
+    // Adjust the weight with limiting.
+    const adjustedLimitedWeight = limitWeight(tmpWeight, currentWeight, config);
+
+    // Adjust weights based on the difference.
+    if (Math.abs(activation) > plankConstant) {
+      // Track positive and negative activations separately.
+      if (activation > 0) {
+        cs.totalPositiveActivation += activation;
+        cs.totalPositiveAdjustedValue += adjustedLimitedWeight * activation;
+        cs.countPositiveActivations++;
+      } else if (activation < 0) {
+        cs.totalNegativeActivation += Math.abs(activation);
+        cs.totalNegativeAdjustedValue += adjustedLimitedWeight * activation;
+        cs.countNegativeActivations++;
+      }
+    }
+
+    // Increment the count after processing the adjustment.
+    cs.count++;
+  }
+}
