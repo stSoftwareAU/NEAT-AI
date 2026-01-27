@@ -51,7 +51,10 @@ export class WorkerProcessor {
       await new Promise((r) => setTimeout(r, 50));
     }
 
-    assert(isWasmActivationAvailable(), "Intelligent Design worker WASM activation init failed");
+    assert(
+      isWasmActivationAvailable(),
+      "Intelligent Design worker WASM activation init failed",
+    );
   }
 
   /**
