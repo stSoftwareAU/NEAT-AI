@@ -4,10 +4,10 @@ on:
   pull_request:
     branches:
       - Develop
-  push:
-    branches:
-      - Develop
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   wasm_activation:
@@ -17,6 +17,22 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          # Allow committing generated wasm_activation/pkg back to PR branches.
+          # (Same pattern as quality.yml)
+          token: ${{ secrets.ACTIONS_PUSH || github.token }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          fetch-depth: 0
+
+      - name: Setup Branch (avoid detached HEAD)
+        run: |
+          set -Eeuo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+          else
+            BRANCH_NAME="${{ github.ref_name }}"
+          fi
+          git checkout "$BRANCH_NAME" 2>/dev/null || git checkout -b "$BRANCH_NAME"
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -44,6 +60,23 @@ jobs:
           set -Eeuo pipefail
           chmod +x wasm_activation/build.sh
           ./wasm_activation/build.sh
+
+      - name: Commit wasm_activation/pkg (PR branches only)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -Eeuo pipefail
+          # Stage only the generated pkg output and its ignore file.
+          git add -A wasm_activation/pkg wasm_activation/pkg/.gitignore
+
+          if git diff --cached --quiet; then
+            echo "No wasm_activation/pkg changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(wasm): update wasm_activation/pkg"
+          git push origin "${{ github.event.pull_request.head.ref }}"
 
       - name: Verify build artifacts exist
         run: |
