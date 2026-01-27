@@ -1,13 +1,1 @@
 *
-!.gitignore
-
-# Commit the built WASM artefacts so consumers (and CI on Develop) don't need Rust.
-!package.json
-!wasm_activation.js
-!wasm_activation.d.ts
-!wasm_activation_bg.wasm
-!wasm_activation_bg.wasm.d.ts
-
-# If wasm-pack emits snippets/, keep them too.
-!snippets/
-!snippets/**
