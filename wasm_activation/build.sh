@@ -89,6 +89,32 @@ fi
 
 echo "Build complete. Output in pkg/"
 
+# Compute a stable fingerprint of the WASM inputs so CI can skip rebuilding
+# when nothing in the Rust/WASM sources changed.
+#
+# Note: we avoid `git` so this works for consumers building from a source tarball.
+compute_fingerprint() {
+    local hasher=""
+    if command -v sha256sum &> /dev/null; then
+        hasher="sha256sum"
+    elif command -v shasum &> /dev/null; then
+        hasher="shasum -a 256"
+    else
+        echo "WARN: no sha256sum/shasum available; fingerprint disabled" >&2
+        return 1
+    fi
+
+    # Hash the key input files. Keep this list small and stable.
+    # (If you add more Rust files, update this list.)
+    cat Cargo.toml src/lib.rs build.sh | eval "$hasher" | awk '{print $1}'
+}
+
+# Write fingerprint file for workflow guards.
+FINGERPRINT="$(compute_fingerprint || echo "")"
+if [[ -n "$FINGERPRINT" ]]; then
+    echo "$FINGERPRINT" > pkg/.build-fingerprint
+fi
+
 # Ensure pkg/.gitignore allows committing the built artefacts.
 # wasm-pack may recreate/overwrite pkg/.gitignore; we enforce the repo policy here
 # so CI can commit the generated files back to PR branches.
@@ -102,6 +128,7 @@ cat > pkg/.gitignore <<'EOF'
 !wasm_activation.d.ts
 !wasm_activation_bg.wasm
 !wasm_activation_bg.wasm.d.ts
+!.build-fingerprint
 
 # If wasm-pack emits snippets/, keep them too.
 !snippets/

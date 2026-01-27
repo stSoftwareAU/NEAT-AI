@@ -7,6 +7,7 @@
 !wasm_activation.d.ts
 !wasm_activation_bg.wasm
 !wasm_activation_bg.wasm.d.ts
+!.build-fingerprint
 
 # If wasm-pack emits snippets/, keep them too.
 !snippets/
