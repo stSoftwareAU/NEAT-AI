@@ -237,6 +237,15 @@ let globalWorkerID = 0;
 let cachedWasmActivationInitPayload: WasmActivationInitPayload | null = null;
 let cachedWasmPath: string | null = null;
 
+function shouldRequireWasmActivation(): boolean {
+  try {
+    const v = Deno.env.get("NEAT_AI_REQUIRE_WASM")?.trim().toLowerCase();
+    return v === "1" || v === "true" || v === "yes" || v === "on";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Get the default WASM activation directory path.
  *
@@ -495,6 +504,12 @@ export class WorkerHandler {
     // Worker init is async so we can load WASM payload for both local and JSR URLs.
     this.ready = (async () => {
       const wasmPayload = await loadWasmActivationInitPayloadAsync();
+      if (shouldRequireWasmActivation() && !wasmPayload) {
+        throw new Error(
+          "NEAT_AI_REQUIRE_WASM is set but wasm_activation/pkg could not be loaded. " +
+            "Ensure the published package includes wasm_activation/pkg or build it locally.",
+        );
+      }
       const data: RequestData = {
         taskID: this.taskID++,
         initialize: {
