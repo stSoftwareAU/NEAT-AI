@@ -115,6 +115,41 @@ if [[ -n "$FINGERPRINT" ]]; then
     echo "$FINGERPRINT" > pkg/.build-fingerprint
 fi
 
+# wasm-bindgen/wasm-pack occasionally emits duplicate `export const <name>` entries
+# in `wasm_activation_bg.wasm.d.ts`, which breaks `deno check` with TS2451.
+# We de-duplicate those declarations deterministically.
+dedupe_wasm_d_ts() {
+    local infile="pkg/wasm_activation_bg.wasm.d.ts"
+    local outfile="pkg/wasm_activation_bg.wasm.d.ts.tmp"
+    if [[ ! -f "$infile" ]]; then
+        return 0
+    fi
+
+    awk '
+      BEGIN { skip=0 }
+      # If we are skipping a multi-line duplicate block, drop lines until the terminating semicolon.
+      skip==1 {
+        if ($0 ~ /;/) { skip=0 }
+        next
+      }
+      # Match export const NAME: ... (portable awk)
+      $0 ~ /^export const [A-Za-z0-9_]+:/ {
+        line=$0
+        sub(/^export const /, "", line)
+        sub(/:.*/, "", line)
+        name=line
+        if (seen[name]++ > 0) {
+          # Skip this line and, if it starts a multi-line declaration, skip until semicolon.
+          if ($0 !~ /;$/) { skip=1 }
+          next
+        }
+      }
+      { print }
+    ' "$infile" > "$outfile" && mv "$outfile" "$infile"
+}
+
+dedupe_wasm_d_ts
+
 # Ensure pkg/.gitignore allows committing the built artefacts.
 # wasm-pack may recreate/overwrite pkg/.gitignore; we enforce the repo policy here
 # so CI can commit the generated files back to PR branches.
