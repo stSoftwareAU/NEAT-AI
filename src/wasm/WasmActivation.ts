@@ -987,8 +987,8 @@ export function wasmVersion(): string {
 // IMPORTANT: Avoid auto-initialising inside Deno Workers by default.
 // Some environments end up spawning multiple workers (e.g. default `threads`
 // based on `navigator.hardwareConcurrency`). Auto-initialising WASM in every
-// worker can cause test runs to stall. If you explicitly want auto-init in
-// workers, set `NEAT_AI_WASM_AUTO_INIT_WORKERS=1|true|yes|on`.
+// worker can cause stalls or deadlocks. Workers should initialise WASM via the
+// explicit payload bootstrap path (initWasmActivationSync in worker startup).
 
 function isProbablyWorkerScope(): boolean {
   // Most reliable when available.
@@ -1018,15 +1018,10 @@ try {
   const v = Deno.env.get("NEAT_AI_WASM_AUTO_INIT")?.trim().toLowerCase();
   const shouldAutoInit = v === "1" || v === "true" || v === "yes" || v === "on";
 
-  const workerV = Deno.env.get("NEAT_AI_WASM_AUTO_INIT_WORKERS")?.trim()
-    .toLowerCase();
-  const allowInWorkers = workerV === "1" || workerV === "true" ||
-    workerV === "yes" || workerV === "on";
   const isWorker = isProbablyWorkerScope();
 
   if (
-    shouldAutoInit && (!isWorker || allowInWorkers) &&
-    !isWasmActivationAvailable()
+    shouldAutoInit && !isWorker && !isWasmActivationAvailable()
   ) {
     // repoRoot = <repo>/
     const repoRoot = new URL("../../", import.meta.url).pathname;
