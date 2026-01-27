@@ -186,6 +186,7 @@
     "madd",
     "NVME",
     "RUSTFLAGS",
-    "Σmax"
+    "Σmax",
+    "clippy"
   ]
 }
