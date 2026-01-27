@@ -8,6 +8,7 @@
     "AJSON",
     "bindgen",
     "compilednetwork",
+    "clippy",
     "Externref",
     "externref",
     "externrefs",
