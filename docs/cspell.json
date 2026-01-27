@@ -187,6 +187,7 @@
     "NVME",
     "RUSTFLAGS",
     "Σmax",
-    "clippy"
+    "infile",
+    "dedupe"
   ]
 }

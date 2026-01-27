@@ -88,4 +88,86 @@ if command -v wasm-opt &> /dev/null; then
 fi
 
 echo "Build complete. Output in pkg/"
+
+# Compute a stable fingerprint of the WASM inputs so CI can skip rebuilding
+# when nothing in the Rust/WASM sources changed.
+#
+# Note: we avoid `git` so this works for consumers building from a source tarball.
+compute_fingerprint() {
+    local hasher=""
+    if command -v sha256sum &> /dev/null; then
+        hasher="sha256sum"
+    elif command -v shasum &> /dev/null; then
+        hasher="shasum -a 256"
+    else
+        echo "WARN: no sha256sum/shasum available; fingerprint disabled" >&2
+        return 1
+    fi
+
+    # Hash the key input files. Keep this list small and stable.
+    # (If you add more Rust files, update this list.)
+    cat Cargo.toml src/lib.rs build.sh | eval "$hasher" | awk '{print $1}'
+}
+
+# Write fingerprint file for workflow guards.
+FINGERPRINT="$(compute_fingerprint || echo "")"
+if [[ -n "$FINGERPRINT" ]]; then
+    echo "$FINGERPRINT" > pkg/.build-fingerprint
+fi
+
+# wasm-bindgen/wasm-pack occasionally emits duplicate `export const <name>` entries
+# in `wasm_activation_bg.wasm.d.ts`, which breaks `deno check` with TS2451.
+# We de-duplicate those declarations deterministically.
+dedupe_wasm_d_ts() {
+    local infile="pkg/wasm_activation_bg.wasm.d.ts"
+    local outfile="pkg/wasm_activation_bg.wasm.d.ts.tmp"
+    if [[ ! -f "$infile" ]]; then
+        return 0
+    fi
+
+    awk '
+      BEGIN { skip=0 }
+      # If we are skipping a multi-line duplicate block, drop lines until the terminating semicolon.
+      skip==1 {
+        if ($0 ~ /;/) { skip=0 }
+        next
+      }
+      # Match export const NAME: ... (portable awk)
+      $0 ~ /^export const [A-Za-z0-9_]+:/ {
+        line=$0
+        sub(/^export const /, "", line)
+        sub(/:.*/, "", line)
+        name=line
+        if (seen[name]++ > 0) {
+          # Skip this line and, if it starts a multi-line declaration, skip until semicolon.
+          if ($0 !~ /;$/) { skip=1 }
+          next
+        }
+      }
+      { print }
+    ' "$infile" > "$outfile" && mv "$outfile" "$infile"
+}
+
+dedupe_wasm_d_ts
+
+# Ensure pkg/.gitignore allows committing the built artefacts.
+# wasm-pack may recreate/overwrite pkg/.gitignore; we enforce the repo policy here
+# so CI can commit the generated files back to PR branches.
+cat > pkg/.gitignore <<'EOF'
+*
+!.gitignore
+
+# Commit the built WASM artefacts so consumers (and CI on Develop) don't need Rust.
+!package.json
+!wasm_activation.js
+!wasm_activation.d.ts
+!wasm_activation_bg.wasm
+!wasm_activation_bg.wasm.d.ts
+!.build-fingerprint
+
+# If wasm-pack emits snippets/, keep them too.
+!snippets/
+!snippets/**
+EOF
+
 ls -la pkg/

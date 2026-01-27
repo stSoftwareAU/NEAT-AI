@@ -13,6 +13,13 @@ jobs:
   wasm_activation:
     name: Build wasm_activation
     runs-on: ubuntu-latest
+    # Prevent infinite PR loops: this workflow pushes commits; don't run it again
+    # when the push was performed by GitHub Actions.
+    if: github.actor != 'github-actions[bot]'
+
+    concurrency:
+      group: wasm-build-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
 
     steps:
       - name: Checkout Code
@@ -55,14 +62,46 @@ jobs:
         with:
           version: latest
 
+      - name: Compute WASM input fingerprint
+        id: wasm_fingerprint
+        run: |
+          set -Eeuo pipefail
+          # Match wasm_activation/build.sh fingerprint logic
+          if command -v sha256sum >/dev/null 2>&1; then
+            HASHER="sha256sum"
+          else
+            HASHER="shasum -a 256"
+          fi
+          fp="$(cat wasm_activation/Cargo.toml wasm_activation/src/lib.rs wasm_activation/build.sh | eval "$HASHER" | awk '{print $1}')"
+          echo "fingerprint=$fp" >> "$GITHUB_OUTPUT"
+
+      - name: Decide if build needed
+        id: wasm_needed
+        run: |
+          set -Eeuo pipefail
+          expected="${{ steps.wasm_fingerprint.outputs.fingerprint }}"
+          if [[ -f "wasm_activation/pkg/.build-fingerprint" ]]; then
+            current="$(cat wasm_activation/pkg/.build-fingerprint | tr -d '\n\r')"
+          else
+            current=""
+          fi
+          if [[ -n "$expected" && "$expected" == "$current" && -f "wasm_activation/pkg/wasm_activation_bg.wasm" ]]; then
+            echo "build_needed=false" >> "$GITHUB_OUTPUT"
+            echo "WASM already built for this PR (fingerprint match)."
+          else
+            echo "build_needed=true" >> "$GITHUB_OUTPUT"
+            echo "WASM build needed (fingerprint differs or missing artefacts)."
+          fi
+
       - name: Build WASM module
+        if: steps.wasm_needed.outputs.build_needed == 'true'
         run: |
           set -Eeuo pipefail
           chmod +x wasm_activation/build.sh
           ./wasm_activation/build.sh
 
       - name: Commit wasm_activation/pkg (PR branches only)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.wasm_needed.outputs.build_needed == 'true'
         run: |
           set -Eeuo pipefail
           # Stage only the generated pkg output and its ignore file.
@@ -79,6 +118,7 @@ jobs:
           git push origin "${{ github.event.pull_request.head.ref }}"
 
       - name: Verify build artifacts exist
+        if: steps.wasm_needed.outputs.build_needed == 'true'
         run: |
           set -Eeuo pipefail
           test -f wasm_activation/pkg/wasm_activation_bg.wasm
