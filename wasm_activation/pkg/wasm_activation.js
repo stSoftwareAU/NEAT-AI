@@ -468,7 +468,7 @@ export function mape_sum_batch_packed(
 }
 
 /**
- * Compute Mean Squared Error (MSE) over packed records in a single WASM call.
+ * Fused activate + MSE (Mean Squared Error) calculation for batch scoring.
  *
  * This is a scoring fast-path designed to minimise JS/WASM boundary crossings:
  * - Each record is laid out as: [inputs..., targets...]
