@@ -40,7 +40,18 @@ export class WorkerProcessor {
       jsBindings,
       payload.wasmActivation.wasmBinary,
     );
-    assert(ok, "Intelligent Design worker WASM activation init failed");
+    if (ok) return;
+
+    // Defensive: avoid deadlock/race if module-level async auto-init is in-flight.
+    // Sync init fails fast in that case; wait briefly for the in-flight init.
+    const deadlineMs = Date.now() + 30_000;
+    while (Date.now() < deadlineMs) {
+      if (isWasmActivationAvailable()) return;
+      // deno-lint-ignore no-await-in-loop -- deliberate polling backoff
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    assert(isWasmActivationAvailable(), "Intelligent Design worker WASM activation init failed");
   }
 
   /**

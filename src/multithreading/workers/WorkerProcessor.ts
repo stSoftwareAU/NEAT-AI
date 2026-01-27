@@ -108,9 +108,20 @@ export class WorkerProcessor {
     const jsBindings = await import(jsModuleUrl);
 
     const ok = initWasmActivationSync(jsBindings, payload.wasmBinary);
-    if (!ok) {
-      throw new Error("Worker WASM activation init failed");
+    if (ok) return;
+
+    // Defensive: if an async auto-init is in flight (e.g. env-driven module-load init),
+    // the sync init intentionally fails fast to avoid re-entrancy into wasm-bindgen.
+    // In that case, wait briefly for the in-flight init to finish before failing.
+    const deadlineMs = Date.now() + 30_000;
+    while (Date.now() < deadlineMs) {
+      if (isWasmActivationAvailable()) return;
+      // deno-lint-ignore no-await-in-loop -- deliberate polling backoff
+      await new Promise((r) => setTimeout(r, 50));
     }
+
+    if (isWasmActivationAvailable()) return;
+    throw new Error("Worker WASM activation init failed");
   }
 
   /**
