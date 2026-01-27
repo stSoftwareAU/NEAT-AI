@@ -227,8 +227,18 @@ export function initWasmActivationSync(
   }
 
   try {
-    // Initialize synchronously
-    jsBindings.initSync(wasmBinary);
+    // Initialize synchronously.
+    //
+    // wasm-bindgen recently changed the signature to prefer a single options object:
+    //   initSync({ module: <bytes|WebAssembly.Module> })
+    // Passing raw bytes triggers a deprecation warning in newer generated glue.
+    //
+    // We support both shapes for compatibility with older generated bindings.
+    try {
+      jsBindings.initSync({ module: wasmBinary });
+    } catch {
+      jsBindings.initSync(wasmBinary);
+    }
 
     // Store references to the exports
     wasmModule = jsBindings;
