@@ -240,7 +240,7 @@ export function mae_sum_batch_packed(network: CompiledNetwork, records: Float32A
 export function mape_sum_batch_packed(network: CompiledNetwork, records: Float32Array, input_size: number, num_outputs: number, forward_only: boolean): number;
 
 /**
- * Compute Mean Squared Error (MSE) over packed records in a single WASM call.
+ * Fused activate + MSE (Mean Squared Error) calculation for batch scoring.
  *
  * This is a scoring fast-path designed to minimise JS/WASM boundary crossings:
  * - Each record is laid out as: [inputs..., targets...]
@@ -334,7 +334,6 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
-    readonly calculate_error: (a: number, b: number, c: number, d: number) => number;
     readonly compilednetwork_activate: (a: number, b: number, c: number, d: number) => [number, number];
     readonly compilednetwork_activate_and_trace: (a: number, b: number, c: number, d: number) => [number, number];
     readonly compilednetwork_activate_into: (a: number, b: number, c: number, d: number, e: number, f: any) => void;
@@ -345,14 +344,15 @@ export interface InitOutput {
     readonly compilednetwork_num_synapses: (a: number) => number;
     readonly compilednetwork_reset_state: (a: number) => void;
     readonly cross_entropy_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly derivative: (a: number, b: number) => number;
-    readonly get_range: (a: number) => any;
     readonly hinge_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly limit_range: (a: number, b: number) => number;
     readonly mae_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly mape_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly mse_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly msle_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly calculate_error: (a: number, b: number, c: number, d: number) => number;
+    readonly derivative: (a: number, b: number) => number;
+    readonly get_range: (a: number) => any;
+    readonly limit_range: (a: number, b: number) => number;
     readonly safe_zone_adjustment: (a: number, b: number, c: number, d: number) => number;
     readonly squash: (a: number, b: number) => number;
     readonly unsquash: (a: number, b: number, c: number) => number;

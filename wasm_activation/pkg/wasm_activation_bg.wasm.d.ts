@@ -2,7 +2,6 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const __wbg_compilednetwork_free: (a: number, b: number) => void;
-export const calculate_error: (a: number, b: number, c: number, d: number) => number;
 export const compilednetwork_activate: (a: number, b: number, c: number, d: number) => [number, number];
 export const compilednetwork_activate_and_trace: (a: number, b: number, c: number, d: number) => [number, number];
 export const compilednetwork_activate_into: (a: number, b: number, c: number, d: number, e: number, f: any) => void;
@@ -13,14 +12,15 @@ export const compilednetwork_num_neurons: (a: number) => number;
 export const compilednetwork_num_synapses: (a: number) => number;
 export const compilednetwork_reset_state: (a: number) => void;
 export const cross_entropy_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-export const derivative: (a: number, b: number) => number;
-export const get_range: (a: number) => any;
 export const hinge_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-export const limit_range: (a: number, b: number) => number;
 export const mae_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const mape_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const mse_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const msle_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+export const calculate_error: (a: number, b: number, c: number, d: number) => number;
+export const derivative: (a: number, b: number) => number;
+export const get_range: (a: number) => any;
+export const limit_range: (a: number, b: number) => number;
 export const safe_zone_adjustment: (a: number, b: number, c: number, d: number) => number;
 export const squash: (a: number, b: number) => number;
 export const unsquash: (a: number, b: number, c: number) => number;
