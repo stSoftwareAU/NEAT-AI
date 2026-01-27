@@ -243,8 +243,32 @@ let cachedWasmPath: string | null = null;
  * @returns The path to the WASM activation pkg directory
  */
 function getDefaultWasmPath(): string {
-  const repoRoot = new URL("../../../", import.meta.url).pathname;
-  return `${repoRoot}wasm_activation/pkg`;
+  // Default to a filesystem path for local checkouts.
+  // Note: When running from `https:` (JSR), this is not a valid filesystem path.
+  // Consumers should prefer loadWasmActivationInitPayloadAsync() in that case.
+  return new URL("../../../wasm_activation/pkg/", import.meta.url).pathname
+    .replace(/\/$/, "");
+}
+
+type ResolvedWasmLocation =
+  | { kind: "path"; key: string; basePath: string }
+  | { kind: "url"; key: string; baseUrl: URL };
+
+function resolveWasmLocation(wasmPath?: string): ResolvedWasmLocation {
+  if (!wasmPath) {
+    const baseUrl = new URL("../../../wasm_activation/pkg/", import.meta.url);
+    return { kind: "url", key: baseUrl.href, baseUrl };
+  }
+
+  // Accept both URL strings (file/http/https) and raw filesystem paths.
+  try {
+    const u = new URL(wasmPath);
+    const baseUrl = u.href.endsWith("/") ? u : new URL(`${u.href}/`);
+    return { kind: "url", key: baseUrl.href, baseUrl };
+  } catch {
+    const basePath = wasmPath.replace(/\/$/, "");
+    return { kind: "path", key: basePath, basePath };
+  }
 }
 
 /**
@@ -287,6 +311,64 @@ export function loadWasmActivationInitPayload(
       jsSource,
       wasmBinary,
     };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Async variant of loadWasmActivationInitPayload() that supports JSR `https:` URLs.
+ *
+ * This is required for consumers running from `jsr.io` where `wasm_activation/pkg`
+ * files are addressed via `https://...` and cannot be read using Deno filesystem APIs.
+ */
+export async function loadWasmActivationInitPayloadAsync(
+  wasmPath?: string,
+): Promise<WasmActivationInitPayload | null> {
+  const resolved = resolveWasmLocation(wasmPath);
+
+  // Return cached payload if available and path matches
+  if (cachedWasmActivationInitPayload && cachedWasmPath === resolved.key) {
+    return cachedWasmActivationInitPayload;
+  }
+
+  try {
+    let jsSource: string;
+    let wasmBinary: Uint8Array;
+
+    if (resolved.kind === "path") {
+      jsSource = await Deno.readTextFile(
+        `${resolved.basePath}/wasm_activation.js`,
+      );
+      wasmBinary = await Deno.readFile(
+        `${resolved.basePath}/wasm_activation_bg.wasm`,
+      );
+    } else {
+      const jsUrl = new URL("wasm_activation.js", resolved.baseUrl);
+      const wasmUrl = new URL("wasm_activation_bg.wasm", resolved.baseUrl);
+
+      if (resolved.baseUrl.protocol === "file:") {
+        jsSource = await Deno.readTextFile(jsUrl.pathname);
+        wasmBinary = await Deno.readFile(wasmUrl.pathname);
+      } else {
+        const [jsRes, wasmRes] = await Promise.all([
+          fetch(jsUrl.href),
+          fetch(wasmUrl.href),
+        ]);
+        if (!jsRes.ok || !wasmRes.ok) return null;
+        jsSource = await jsRes.text();
+        wasmBinary = new Uint8Array(await wasmRes.arrayBuffer());
+      }
+    }
+
+    // Cache for default location only (no explicit wasmPath)
+    if (!wasmPath) {
+      cachedWasmActivationInitPayload = { jsSource, wasmBinary };
+      cachedWasmPath = resolved.key;
+      return cachedWasmActivationInitPayload;
+    }
+
+    return { jsSource, wasmBinary };
   } catch {
     return null;
   }
@@ -386,19 +468,6 @@ export class WorkerHandler {
 
     // Issue #1206 - Gracefully handle missing WASM files by allowing null
     // payload. Workers will fall back to JavaScript-based activation.
-    const wasmPayload = loadWasmActivationInitPayload();
-
-    const data: RequestData = {
-      taskID: this.taskID++,
-      initialize: {
-        dataSetDir: dataSetDir,
-        costName: costName,
-        customCostData,
-        discoveryVerbose,
-        wasmActivation: wasmPayload ?? undefined,
-      },
-    };
-
     if (!direct) {
       this.worker = new Worker(
         new URL("./deno/worker.ts", import.meta.url).href,
@@ -422,13 +491,28 @@ export class WorkerHandler {
 
       this.callback(me.data as ResponseData);
     });
-    this.ready = this.makePromise(data).then((result) => {
+
+    // Worker init is async so we can load WASM payload for both local and JSR URLs.
+    this.ready = (async () => {
+      const wasmPayload = await loadWasmActivationInitPayloadAsync();
+      const data: RequestData = {
+        taskID: this.taskID++,
+        initialize: {
+          dataSetDir: dataSetDir,
+          costName: costName,
+          customCostData,
+          discoveryVerbose,
+          wasmActivation: wasmPayload ?? undefined,
+        },
+      };
+
+      const result = await this.makePromise(data);
       assert(
         result.initialize?.status === "OK",
         "Worker initialization failed",
       );
       return result;
-    });
+    })();
   }
 
   /**

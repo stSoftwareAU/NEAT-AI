@@ -32,9 +32,10 @@ import { submitDiscoveryRecordBatch } from "./SubmitDiscoveryRecordBatch.ts";
  * repository layout where `wasm_activation/pkg` is at the project root.
  */
 export function getWasmDefaultPath(): string {
-  // Navigate from src/architecture/ErrorGuidedStructuralEvolution/ to project root
-  const repoRoot = new URL("../../../", import.meta.url).pathname;
-  return `${repoRoot}wasm_activation/pkg`;
+  // Navigate from src/architecture/ErrorGuidedStructuralEvolution/ to project root.
+  // Use `href` so this works for both local `file:` and published `https:` (JSR) URLs.
+  return new URL("../../../wasm_activation/pkg/", import.meta.url).href
+    .replace(/\/$/, "");
 }
 
 /**

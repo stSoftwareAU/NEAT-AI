@@ -293,15 +293,20 @@ function testEquality(original: Creature, copied: Creature) {
       input.push(Math.random());
     }
 
+    // Force JS activation here so this test strictly validates JSON roundtrip
+    // invariants independent of whether WASM has been initialised elsewhere in
+    // the test suite.
     const ORout = original.activateAndTrace(
       new Float32Array(input),
       false,
       sparseConfig,
+      true,
     );
     const COout = copied.activateAndTrace(
       new Float32Array(input),
       false,
       sparseConfig,
+      true,
     );
 
     assertEquals(

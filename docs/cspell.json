@@ -186,6 +186,8 @@
     "madd",
     "NVME",
     "RUSTFLAGS",
-    "Σmax"
+    "Σmax",
+    "infile",
+    "dedupe"
   ]
 }
