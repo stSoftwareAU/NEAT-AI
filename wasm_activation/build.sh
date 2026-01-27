@@ -88,4 +88,24 @@ if command -v wasm-opt &> /dev/null; then
 fi
 
 echo "Build complete. Output in pkg/"
+
+# Ensure pkg/.gitignore allows committing the built artefacts.
+# wasm-pack may recreate/overwrite pkg/.gitignore; we enforce the repo policy here
+# so CI can commit the generated files back to PR branches.
+cat > pkg/.gitignore <<'EOF'
+*
+!.gitignore
+
+# Commit the built WASM artefacts so consumers (and CI on Develop) don't need Rust.
+!package.json
+!wasm_activation.js
+!wasm_activation.d.ts
+!wasm_activation_bg.wasm
+!wasm_activation_bg.wasm.d.ts
+
+# If wasm-pack emits snippets/, keep them too.
+!snippets/
+!snippets/**
+EOF
+
 ls -la pkg/

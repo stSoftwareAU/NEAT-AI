@@ -48,11 +48,13 @@ export class DeDuplicator {
           creatures.length - toRemove.length >
             this.breed.options.populationSize!
         ) {
-          console.info(
-            `Culling duplicate creature at ${indx - toRemove.length} of ${
-              creatures.length - toRemove.length
-            }`,
-          );
+          if (this.breed.options.debug || this.breed.options.verbose) {
+            console.debug(
+              `Culling duplicate creature at ${indx - toRemove.length} of ${
+                creatures.length - toRemove.length
+              }`,
+            );
+          }
           toRemove.push(indx);
         } else {
           this.replaceDuplicateCreature(creatures, indx, unique);
@@ -135,10 +137,12 @@ export class DeDuplicator {
 
   private logPopulationSize(creatures: Creature[]) {
     if (creatures.length > this.breed.options.populationSize! + 1) {
-      console.info(
-        `Over populated ${creatures.length}, expected ${this.breed.options
-          .populationSize!}.`,
-      );
+      if (this.breed.options.debug || this.breed.options.verbose) {
+        console.debug(
+          `Over populated ${creatures.length}, expected ${this.breed.options
+            .populationSize!}.`,
+        );
+      }
     }
   }
 
