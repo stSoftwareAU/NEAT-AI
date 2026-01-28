@@ -45,6 +45,10 @@ use safe_zone::apply_safe_zone_adjustment;
 use squash::apply_squash;
 use unsquash::apply_unsquash;
 
+// Issue #1213 - Export SIMD batch functions
+pub use derivative::apply_derivative_simd_4way;
+pub use error::apply_calculate_error_batch_4way;
+
 // Re-export constants for tests
 #[cfg(test)]
 pub use squash::LEAKY_RELU_ALPHA;
@@ -163,6 +167,104 @@ pub fn validate_range(squash_type: u8, activation: f32) -> bool {
 #[wasm_bindgen]
 pub fn limit_range(squash_type: u8, value: f32) -> f32 {
     apply_limit_range(SquashType::from(squash_type), value)
+}
+
+/// Issue #1213 - Batch derivative computation for 4 values simultaneously.
+///
+/// Returns a Float32Array with 4 derivative values computed in parallel using SIMD.
+/// This provides significant performance improvements during backpropagation.
+///
+/// # Arguments
+/// * `squash_type` - The SquashType enum value (u8)
+/// * `x0, x1, x2, x3` - The 4 input values to compute derivatives for
+#[wasm_bindgen]
+pub fn derivative_batch_4way(
+    squash_type: u8,
+    x0: f32,
+    x1: f32,
+    x2: f32,
+    x3: f32,
+) -> js_sys::Float32Array {
+    // SAFETY: The SIMD function is only unsafe on WASM target due to target_feature.
+    // The scalar fallback on non-WASM is safe. For WASM, we trust the SIMD intrinsics
+    // with valid f32 inputs.
+    #[cfg(target_arch = "wasm32")]
+    let (d0, d1, d2, d3) =
+        unsafe { apply_derivative_simd_4way(SquashType::from(squash_type), x0, x1, x2, x3) };
+    #[cfg(not(target_arch = "wasm32"))]
+    let (d0, d1, d2, d3) =
+        apply_derivative_simd_4way(SquashType::from(squash_type), x0, x1, x2, x3);
+
+    let result = js_sys::Float32Array::new_with_length(4);
+    result.set_index(0, d0);
+    result.set_index(1, d1);
+    result.set_index(2, d2);
+    result.set_index(3, d3);
+    result
+}
+
+/// Issue #1213 - Batch error calculation for 4 records simultaneously.
+///
+/// Returns a Float32Array with 4 error values computed for backpropagation.
+/// This provides significant performance improvements during mini-batch training.
+///
+/// # Arguments
+/// * `squash_type` - The SquashType enum value (u8)
+/// * `current_activations` - Float32Array of 4 current activation values
+/// * `target_activations` - Float32Array of 4 target activation values
+/// * `current_values` - Float32Array of 4 pre-squash values (hints for unSquash)
+#[wasm_bindgen]
+pub fn calculate_error_batch_4way(
+    squash_type: u8,
+    current_activations: &js_sys::Float32Array,
+    target_activations: &js_sys::Float32Array,
+    current_values: &js_sys::Float32Array,
+) -> js_sys::Float32Array {
+    let curr_acts: [f32; 4] = [
+        current_activations.get_index(0),
+        current_activations.get_index(1),
+        current_activations.get_index(2),
+        current_activations.get_index(3),
+    ];
+    let tgt_acts: [f32; 4] = [
+        target_activations.get_index(0),
+        target_activations.get_index(1),
+        target_activations.get_index(2),
+        target_activations.get_index(3),
+    ];
+    let curr_vals: [f32; 4] = [
+        current_values.get_index(0),
+        current_values.get_index(1),
+        current_values.get_index(2),
+        current_values.get_index(3),
+    ];
+
+    // SAFETY: The SIMD function is only unsafe on WASM target due to target_feature.
+    // The scalar fallback on non-WASM is safe. For WASM, we trust the SIMD intrinsics
+    // with valid f32 inputs.
+    #[cfg(target_arch = "wasm32")]
+    let (e0, e1, e2, e3) = unsafe {
+        apply_calculate_error_batch_4way(
+            SquashType::from(squash_type),
+            &curr_acts,
+            &tgt_acts,
+            &curr_vals,
+        )
+    };
+    #[cfg(not(target_arch = "wasm32"))]
+    let (e0, e1, e2, e3) = apply_calculate_error_batch_4way(
+        SquashType::from(squash_type),
+        &curr_acts,
+        &tgt_acts,
+        &curr_vals,
+    );
+
+    let result = js_sys::Float32Array::new_with_length(4);
+    result.set_index(0, e0);
+    result.set_index(1, e1);
+    result.set_index(2, e2);
+    result.set_index(3, e3);
+    result
 }
 
 /// Version information
