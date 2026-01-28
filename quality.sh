@@ -121,7 +121,9 @@ if [[ ( "$MODE" == "wasm" || "$MODE" == "wasm-fast" ) ]] && [[ "$WASM_BUILD" == 
   ./wasm_activation/build.sh
 fi
 
-(cd ../NEAT-AI-Discovery && ./scripts/runlib.sh)
+if [[ -d ../NEAT-AI-Discovery ]]; then
+  (cd ../NEAT-AI-Discovery && ./scripts/runlib.sh)
+fi
 # # is intentionally loaded and kept in memory for performance (not a leak)
 
 echo "Verifying discovery library availability..."

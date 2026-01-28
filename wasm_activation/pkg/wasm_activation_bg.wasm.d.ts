@@ -90,7 +90,20 @@ export const calculate_error: (
   c: number,
   d: number,
 ) => number;
+export const calculate_error_batch_4way: (
+  a: number,
+  b: any,
+  c: any,
+  d: any,
+) => any;
 export const derivative: (a: number, b: number) => number;
+export const derivative_batch_4way: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+) => any;
 export const get_range: (a: number) => any;
 export const limit_range: (a: number, b: number) => number;
 export const safe_zone_adjustment: (

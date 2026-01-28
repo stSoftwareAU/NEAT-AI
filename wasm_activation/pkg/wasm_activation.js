@@ -247,6 +247,38 @@ export function calculate_error(
 }
 
 /**
+ * Issue #1213 - Batch error calculation for 4 records simultaneously.
+ *
+ * Returns a Float32Array with 4 error values computed for backpropagation.
+ * This provides significant performance improvements during mini-batch training.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `current_activations` - Float32Array of 4 current activation values
+ * * `target_activations` - Float32Array of 4 target activation values
+ * * `current_values` - Float32Array of 4 pre-squash values (hints for unSquash)
+ * @param {number} squash_type
+ * @param {Float32Array} current_activations
+ * @param {Float32Array} target_activations
+ * @param {Float32Array} current_values
+ * @returns {Float32Array}
+ */
+export function calculate_error_batch_4way(
+  squash_type,
+  current_activations,
+  target_activations,
+  current_values,
+) {
+  const ret = wasm.calculate_error_batch_4way(
+    squash_type,
+    current_activations,
+    target_activations,
+    current_values,
+  );
+  return ret;
+}
+
+/**
  * Fused activate + Cross Entropy calculation for batch scoring.
  *
  * Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
@@ -298,6 +330,27 @@ export function cross_entropy_sum_batch_packed(
  */
 export function derivative(squash_type, value) {
   const ret = wasm.derivative(squash_type, value);
+  return ret;
+}
+
+/**
+ * Issue #1213 - Batch derivative computation for 4 values simultaneously.
+ *
+ * Returns a Float32Array with 4 derivative values computed in parallel using SIMD.
+ * This provides significant performance improvements during backpropagation.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `x0, x1, x2, x3` - The 4 input values to compute derivatives for
+ * @param {number} squash_type
+ * @param {number} x0
+ * @param {number} x1
+ * @param {number} x2
+ * @param {number} x3
+ * @returns {Float32Array}
+ */
+export function derivative_batch_4way(squash_type, x0, x1, x2, x3) {
+  const ret = wasm.derivative_batch_4way(squash_type, x0, x1, x2, x3);
   return ret;
 }
 
@@ -660,6 +713,10 @@ function __wbg_get_imports() {
     },
     __wbg___wbindgen_throw_be289d5034ed271b: function (arg0, arg1) {
       throw new Error(getStringFromWasm0(arg0, arg1));
+    },
+    __wbg_get_index_80a69050a46aaf91: function (arg0, arg1) {
+      const ret = arg0[arg1 >>> 0];
+      return ret;
     },
     __wbg_new_with_length_63f2683cc2521026: function (arg0) {
       const ret = new Float32Array(arg0 >>> 0);

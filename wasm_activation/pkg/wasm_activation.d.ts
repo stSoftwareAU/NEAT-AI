@@ -141,6 +141,25 @@ export function calculate_error(
 ): number;
 
 /**
+ * Issue #1213 - Batch error calculation for 4 records simultaneously.
+ *
+ * Returns a Float32Array with 4 error values computed for backpropagation.
+ * This provides significant performance improvements during mini-batch training.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `current_activations` - Float32Array of 4 current activation values
+ * * `target_activations` - Float32Array of 4 target activation values
+ * * `current_values` - Float32Array of 4 pre-squash values (hints for unSquash)
+ */
+export function calculate_error_batch_4way(
+  squash_type: number,
+  current_activations: Float32Array,
+  target_activations: Float32Array,
+  current_values: Float32Array,
+): Float32Array;
+
+/**
  * Fused activate + Cross Entropy calculation for batch scoring.
  *
  * Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
@@ -169,6 +188,24 @@ export function cross_entropy_sum_batch_packed(
  * Issue #1138 - WASM Migration Phase 6
  */
 export function derivative(squash_type: number, value: number): number;
+
+/**
+ * Issue #1213 - Batch derivative computation for 4 values simultaneously.
+ *
+ * Returns a Float32Array with 4 derivative values computed in parallel using SIMD.
+ * This provides significant performance improvements during backpropagation.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `x0, x1, x2, x3` - The 4 input values to compute derivatives for
+ */
+export function derivative_batch_4way(
+  squash_type: number,
+  x0: number,
+  x1: number,
+  x2: number,
+  x3: number,
+): Float32Array;
 
 /**
  * Get the range (low, high) for an activation function
@@ -480,7 +517,20 @@ export interface InitOutput {
     c: number,
     d: number,
   ) => number;
+  readonly calculate_error_batch_4way: (
+    a: number,
+    b: any,
+    c: any,
+    d: any,
+  ) => any;
   readonly derivative: (a: number, b: number) => number;
+  readonly derivative_batch_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+  ) => any;
   readonly get_range: (a: number) => any;
   readonly limit_range: (a: number, b: number) => number;
   readonly safe_zone_adjustment: (

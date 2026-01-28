@@ -2,10 +2,18 @@
 //!
 //! This module calculates the error in value-space given activation-space values.
 //! Issue #1141 - WASM Migration Phase 9.
+//! Issue #1213 - Added SIMD batch error computation for backpropagation.
 
 use crate::derivative::apply_derivative;
 use crate::squash::SquashType;
 use crate::unsquash::apply_unsquash;
+
+// Issue #1213 - WASM SIMD support for batch error computation
+#[cfg(target_arch = "wasm32")]
+use core::arch::wasm32::{
+    f32x4, f32x4_abs, f32x4_extract_lane, f32x4_gt, f32x4_lt, f32x4_max, f32x4_min, f32x4_neg,
+    f32x4_splat, f32x4_sub, v128, v128_bitselect,
+};
 
 /// Error epsilon - smallest meaningful difference between target and actual activation
 /// Used to short-circuit calculateError() for near-zero error cases.
@@ -406,6 +414,221 @@ pub fn apply_calculate_error(
     }
 }
 
+/// Issue #1213 - SIMD-optimised error computation for 4 records simultaneously.
+///
+/// Computes backpropagation errors for 4 activation values in parallel using SIMD operations.
+/// This is particularly useful during backpropagation where the same activation function
+/// error needs to be computed for multiple neurons/records.
+///
+/// # Arguments
+/// * `squash_type` - The type of activation function
+/// * `current_activations` - Array of 4 squashed activation values
+/// * `target_activations` - Array of 4 desired activation values
+/// * `current_values` - Array of 4 pre-squash values (used as hints for unSquash)
+///
+/// # Safety
+/// This function uses SIMD intrinsics and requires the WASM SIMD feature.
+#[cfg(target_arch = "wasm32")]
+#[target_feature(enable = "simd128")]
+#[inline]
+pub unsafe fn apply_calculate_error_batch_4way(
+    squash_type: SquashType,
+    current_activations: &[f32; 4],
+    target_activations: &[f32; 4],
+    current_values: &[f32; 4],
+) -> (f32, f32, f32, f32) {
+    let curr_acts = f32x4(
+        current_activations[0],
+        current_activations[1],
+        current_activations[2],
+        current_activations[3],
+    );
+    let tgt_acts = f32x4(
+        target_activations[0],
+        target_activations[1],
+        target_activations[2],
+        target_activations[3],
+    );
+    let curr_vals = f32x4(
+        current_values[0],
+        current_values[1],
+        current_values[2],
+        current_values[3],
+    );
+
+    let zeros = f32x4_splat(0.0);
+    let epsilon = f32x4_splat(ERROR_EPSILON);
+    let max_err = f32x4_splat(MAX_ERROR_MAGNITUDE);
+    let neg_max_err = f32x4_neg(max_err);
+
+    // Compute raw error: rawError = targetActivation - currentActivation
+    let raw_error = f32x4_sub(tgt_acts, curr_acts);
+
+    // Short-circuit mask: |rawError| < epsilon → result is 0
+    let abs_raw_error = f32x4_abs(raw_error);
+    let tiny_error_mask = f32x4_lt(abs_raw_error, epsilon);
+
+    let result = match squash_type {
+        // IDENTITY: Always use raw error directly (slope = 1)
+        SquashType::Identity => {
+            // error = rawError, clamped
+            let clamped = f32x4_min(f32x4_max(raw_error, neg_max_err), max_err);
+            v128_bitselect(zeros, clamped, tiny_error_mask)
+        }
+
+        // COMPLEMENT: Always use derivative (slope = -1)
+        SquashType::Complement => {
+            // error = rawError / -1 = -rawError
+            let error = f32x4_neg(raw_error);
+            let clamped = f32x4_min(f32x4_max(error, neg_max_err), max_err);
+            v128_bitselect(zeros, clamped, tiny_error_mask)
+        }
+
+        // ReLU: Use raw error when active, fallback otherwise
+        SquashType::Relu => {
+            // For active neurons (current_value > 0): use raw_error
+            // For inactive neurons: compute scalar fallback
+            let active_mask = f32x4_gt(curr_vals, zeros);
+
+            // Compute scalar fallbacks for inactive neurons
+            let e0 = if current_values[0] > 0.0 {
+                raw_error_lane(raw_error, 0)
+            } else {
+                apply_calculate_error(
+                    SquashType::Relu,
+                    current_activations[0],
+                    target_activations[0],
+                    current_values[0],
+                )
+            };
+            let e1 = if current_values[1] > 0.0 {
+                raw_error_lane(raw_error, 1)
+            } else {
+                apply_calculate_error(
+                    SquashType::Relu,
+                    current_activations[1],
+                    target_activations[1],
+                    current_values[1],
+                )
+            };
+            let e2 = if current_values[2] > 0.0 {
+                raw_error_lane(raw_error, 2)
+            } else {
+                apply_calculate_error(
+                    SquashType::Relu,
+                    current_activations[2],
+                    target_activations[2],
+                    current_values[2],
+                )
+            };
+            let e3 = if current_values[3] > 0.0 {
+                raw_error_lane(raw_error, 3)
+            } else {
+                apply_calculate_error(
+                    SquashType::Relu,
+                    current_activations[3],
+                    target_activations[3],
+                    current_values[3],
+                )
+            };
+
+            // Use SIMD for active neurons, scalar results for inactive
+            let scalar_result = f32x4(e0, e1, e2, e3);
+            let simd_result = f32x4_min(f32x4_max(raw_error, neg_max_err), max_err);
+            let mixed = v128_bitselect(simd_result, scalar_result, active_mask);
+            v128_bitselect(zeros, mixed, tiny_error_mask)
+        }
+
+        // For other squash types, use scalar computation for each lane
+        // This still provides memory access benefits from batching
+        _ => {
+            let e0 = apply_calculate_error(
+                squash_type,
+                current_activations[0],
+                target_activations[0],
+                current_values[0],
+            );
+            let e1 = apply_calculate_error(
+                squash_type,
+                current_activations[1],
+                target_activations[1],
+                current_values[1],
+            );
+            let e2 = apply_calculate_error(
+                squash_type,
+                current_activations[2],
+                target_activations[2],
+                current_values[2],
+            );
+            let e3 = apply_calculate_error(
+                squash_type,
+                current_activations[3],
+                target_activations[3],
+                current_values[3],
+            );
+            f32x4(e0, e1, e2, e3)
+        }
+    };
+
+    (
+        f32x4_extract_lane::<0>(result),
+        f32x4_extract_lane::<1>(result),
+        f32x4_extract_lane::<2>(result),
+        f32x4_extract_lane::<3>(result),
+    )
+}
+
+/// Helper to extract raw error from a specific lane (WASM target only).
+#[cfg(target_arch = "wasm32")]
+#[inline(always)]
+unsafe fn raw_error_lane(raw_error: v128, lane: usize) -> f32 {
+    match lane {
+        0 => f32x4_extract_lane::<0>(raw_error),
+        1 => f32x4_extract_lane::<1>(raw_error),
+        2 => f32x4_extract_lane::<2>(raw_error),
+        3 => f32x4_extract_lane::<3>(raw_error),
+        _ => 0.0,
+    }
+}
+
+/// Scalar fallback for non-WASM targets (for testing).
+/// Issue #1213 - SIMD batch error computation.
+#[cfg(not(target_arch = "wasm32"))]
+#[inline]
+pub fn apply_calculate_error_batch_4way(
+    squash_type: SquashType,
+    current_activations: &[f32; 4],
+    target_activations: &[f32; 4],
+    current_values: &[f32; 4],
+) -> (f32, f32, f32, f32) {
+    (
+        apply_calculate_error(
+            squash_type,
+            current_activations[0],
+            target_activations[0],
+            current_values[0],
+        ),
+        apply_calculate_error(
+            squash_type,
+            current_activations[1],
+            target_activations[1],
+            current_values[1],
+        ),
+        apply_calculate_error(
+            squash_type,
+            current_activations[2],
+            target_activations[2],
+            current_values[2],
+        ),
+        apply_calculate_error(
+            squash_type,
+            current_activations[3],
+            target_activations[3],
+            current_values[3],
+        ),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -509,5 +732,233 @@ mod tests {
             0.0
         );
         assert_eq!(apply_calculate_error(SquashType::If, 0.5, 0.8, 0.5), 0.0);
+    }
+
+    // Issue #1213 - SIMD batch error computation tests
+    #[test]
+    fn test_calculate_error_batch_4way_identity() {
+        let curr_acts = [0.5, 0.3, 0.7, 0.1];
+        let tgt_acts = [0.8, 0.5, 0.6, 0.9];
+        let curr_vals = [0.5, 0.3, 0.7, 0.1];
+
+        let (e0, e1, e2, e3) = apply_calculate_error_batch_4way(
+            SquashType::Identity,
+            &curr_acts,
+            &tgt_acts,
+            &curr_vals,
+        );
+
+        // Identity: error = rawError = target - current
+        assert!(
+            (e0 - 0.3).abs() < 1e-5,
+            "Identity e0 should be 0.3, got {}",
+            e0
+        );
+        assert!(
+            (e1 - 0.2).abs() < 1e-5,
+            "Identity e1 should be 0.2, got {}",
+            e1
+        );
+        assert!(
+            (e2 - (-0.1)).abs() < 1e-5,
+            "Identity e2 should be -0.1, got {}",
+            e2
+        );
+        assert!(
+            (e3 - 0.8).abs() < 1e-5,
+            "Identity e3 should be 0.8, got {}",
+            e3
+        );
+    }
+
+    #[test]
+    fn test_calculate_error_batch_4way_complement() {
+        let curr_acts = [0.5, 0.3, 0.7, 0.1];
+        let tgt_acts = [0.8, 0.5, 0.6, 0.9];
+        let curr_vals = [0.5, 0.7, 0.3, 0.9];
+
+        let (e0, e1, e2, e3) = apply_calculate_error_batch_4way(
+            SquashType::Complement,
+            &curr_acts,
+            &tgt_acts,
+            &curr_vals,
+        );
+
+        // Complement: error = rawError / -1 = -(target - current)
+        assert!(
+            (e0 - (-0.3)).abs() < 1e-5,
+            "Complement e0 should be -0.3, got {}",
+            e0
+        );
+        assert!(
+            (e1 - (-0.2)).abs() < 1e-5,
+            "Complement e1 should be -0.2, got {}",
+            e1
+        );
+        assert!(
+            (e2 - 0.1).abs() < 1e-5,
+            "Complement e2 should be 0.1, got {}",
+            e2
+        );
+        assert!(
+            (e3 - (-0.8)).abs() < 1e-5,
+            "Complement e3 should be -0.8, got {}",
+            e3
+        );
+    }
+
+    #[test]
+    fn test_calculate_error_batch_4way_tiny_error() {
+        let curr_acts = [0.5, 0.3, 0.7, 0.1];
+        let tgt_acts = [0.5 + 1e-8, 0.3 + 1e-9, 0.7 - 1e-8, 0.1];
+        let curr_vals = [0.5, 0.3, 0.7, 0.1];
+
+        let (e0, e1, e2, e3) = apply_calculate_error_batch_4way(
+            SquashType::Identity,
+            &curr_acts,
+            &tgt_acts,
+            &curr_vals,
+        );
+
+        // Tiny errors should be zeroed
+        assert_eq!(e0, 0.0, "Tiny error e0 should be 0");
+        assert_eq!(e1, 0.0, "Tiny error e1 should be 0");
+        assert_eq!(e2, 0.0, "Tiny error e2 should be 0");
+        assert_eq!(e3, 0.0, "Tiny error e3 should be 0");
+    }
+
+    #[test]
+    fn test_calculate_error_batch_4way_relu_active() {
+        // All neurons are active (current_value > 0)
+        let curr_acts = [2.0, 3.0, 1.0, 5.0];
+        let tgt_acts = [3.0, 4.0, 2.0, 6.0];
+        let curr_vals = [2.0, 3.0, 1.0, 5.0]; // All positive = active
+
+        let (e0, e1, e2, e3) =
+            apply_calculate_error_batch_4way(SquashType::Relu, &curr_acts, &tgt_acts, &curr_vals);
+
+        // Active ReLU: error = rawError
+        assert!(
+            (e0 - 1.0).abs() < 1e-5,
+            "ReLU active e0 should be 1.0, got {}",
+            e0
+        );
+        assert!(
+            (e1 - 1.0).abs() < 1e-5,
+            "ReLU active e1 should be 1.0, got {}",
+            e1
+        );
+        assert!(
+            (e2 - 1.0).abs() < 1e-5,
+            "ReLU active e2 should be 1.0, got {}",
+            e2
+        );
+        assert!(
+            (e3 - 1.0).abs() < 1e-5,
+            "ReLU active e3 should be 1.0, got {}",
+            e3
+        );
+    }
+
+    #[test]
+    fn test_calculate_error_batch_4way_clamping() {
+        let curr_acts = [0.0, 0.0, 0.0, 0.0];
+        let tgt_acts = [1000.0, -1000.0, 500.0, -500.0];
+        let curr_vals = [0.0, 0.0, 0.0, 0.0];
+
+        let (e0, e1, e2, e3) = apply_calculate_error_batch_4way(
+            SquashType::Identity,
+            &curr_acts,
+            &tgt_acts,
+            &curr_vals,
+        );
+
+        // Errors should be clamped to +/-100
+        assert!(e0.abs() <= 100.0, "Error e0 should be clamped, got {}", e0);
+        assert!(e1.abs() <= 100.0, "Error e1 should be clamped, got {}", e1);
+        assert!(e2.abs() <= 100.0, "Error e2 should be clamped, got {}", e2);
+        assert!(e3.abs() <= 100.0, "Error e3 should be clamped, got {}", e3);
+    }
+
+    #[test]
+    fn test_calculate_error_batch_4way_matches_scalar() {
+        // Test that batch results match scalar results for various squash types
+        let curr_acts = [0.5, 0.3, 0.7, 0.9];
+        let tgt_acts = [0.8, 0.5, 0.4, 0.2];
+        let curr_vals = [0.5, 0.3, 0.7, 0.9];
+
+        for squash_type in [
+            SquashType::Identity,
+            SquashType::Relu,
+            SquashType::Complement,
+            SquashType::Tanh,
+            SquashType::Logistic,
+            SquashType::LeakyRelu,
+        ] {
+            let (b0, b1, b2, b3) =
+                apply_calculate_error_batch_4way(squash_type, &curr_acts, &tgt_acts, &curr_vals);
+
+            let s0 = apply_calculate_error(squash_type, curr_acts[0], tgt_acts[0], curr_vals[0]);
+            let s1 = apply_calculate_error(squash_type, curr_acts[1], tgt_acts[1], curr_vals[1]);
+            let s2 = apply_calculate_error(squash_type, curr_acts[2], tgt_acts[2], curr_vals[2]);
+            let s3 = apply_calculate_error(squash_type, curr_acts[3], tgt_acts[3], curr_vals[3]);
+
+            assert!(
+                (b0 - s0).abs() < 1e-5,
+                "{:?}: b0={} != s0={}",
+                squash_type,
+                b0,
+                s0
+            );
+            assert!(
+                (b1 - s1).abs() < 1e-5,
+                "{:?}: b1={} != s1={}",
+                squash_type,
+                b1,
+                s1
+            );
+            assert!(
+                (b2 - s2).abs() < 1e-5,
+                "{:?}: b2={} != s2={}",
+                squash_type,
+                b2,
+                s2
+            );
+            assert!(
+                (b3 - s3).abs() < 1e-5,
+                "{:?}: b3={} != s3={}",
+                squash_type,
+                b3,
+                s3
+            );
+        }
+    }
+
+    #[test]
+    fn test_calculate_error_batch_4way_aggregate_functions() {
+        let curr_acts = [0.5, 0.3, 0.7, 0.9];
+        let tgt_acts = [0.8, 0.5, 0.4, 0.2];
+        let curr_vals = [0.5, 0.3, 0.7, 0.9];
+
+        // Aggregate functions should return 0
+        let (e0, e1, e2, e3) = apply_calculate_error_batch_4way(
+            SquashType::Minimum,
+            &curr_acts,
+            &tgt_acts,
+            &curr_vals,
+        );
+        assert_eq!((e0, e1, e2, e3), (0.0, 0.0, 0.0, 0.0));
+
+        let (e0, e1, e2, e3) = apply_calculate_error_batch_4way(
+            SquashType::Maximum,
+            &curr_acts,
+            &tgt_acts,
+            &curr_vals,
+        );
+        assert_eq!((e0, e1, e2, e3), (0.0, 0.0, 0.0, 0.0));
+
+        let (e0, e1, e2, e3) =
+            apply_calculate_error_batch_4way(SquashType::If, &curr_acts, &tgt_acts, &curr_vals);
+        assert_eq!((e0, e1, e2, e3), (0.0, 0.0, 0.0, 0.0));
     }
 }
