@@ -1026,7 +1026,9 @@ try {
     const cwdPath = typeof Deno !== "undefined"
       ? `${Deno.cwd()}/wasm_activation/pkg`
       : "";
-    const libPath = `${new URL("../../", import.meta.url).pathname}wasm_activation/pkg`;
+    const libPath = `${
+      new URL("../../", import.meta.url).pathname
+    }wasm_activation/pkg`;
     const firstPath = explicitPath || cwdPath || libPath;
     let ok = await initWasmActivation(firstPath);
     if (!ok && !explicitPath && cwdPath && firstPath === cwdPath) {
