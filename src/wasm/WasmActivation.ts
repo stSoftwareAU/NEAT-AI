@@ -1048,7 +1048,8 @@ try {
       ? `${Deno.cwd()}/wasm_activation/pkg`
       : "";
     const fromRemote = typeof import.meta.url === "string" &&
-      (import.meta.url.startsWith("http://") || import.meta.url.startsWith("https://"));
+      (import.meta.url.startsWith("http://") ||
+        import.meta.url.startsWith("https://"));
     const libPath = fromRemote
       ? ""
       : `${new URL("../../", import.meta.url).pathname}wasm_activation/pkg`;
