@@ -411,6 +411,7 @@ pub fn apply_calculate_error(
 
         // Aggregate functions - not differentiable, return 0
         SquashType::Minimum | SquashType::Maximum | SquashType::If => 0.0,
+        SquashType::Hypotenuse | SquashType::HypotenuseV2 | SquashType::Mean => 0.0,
     }
 }
 

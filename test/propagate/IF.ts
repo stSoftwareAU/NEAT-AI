@@ -1,14 +1,16 @@
+// deno-lint-ignore-file no-await-in-loop -- test writes trace files sequentially in retry loop
 import { assert, assertAlmostEquals } from "@std/assert";
-import { ensureDirSync } from "@std/fs";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("PropagateWeightsIF", () => {
+Deno.test("PropagateWeightsIF", async () => {
+  await initWasmForTests();
   const creatureA = makeCreature();
   for (let attempts = 0; true; attempts++) {
     const ts: DataRecordInterface[] = [];
@@ -23,9 +25,9 @@ Deno.test("PropagateWeightsIF", () => {
     }
 
     const traceDir = ".trace";
-    ensureDirSync(traceDir);
+    await Deno.mkdir(traceDir, { recursive: true });
 
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       ".trace/data.json",
       JSON.stringify(ts, null, 1),
     );
@@ -38,7 +40,7 @@ Deno.test("PropagateWeightsIF", () => {
 
     const exportJSON = creatureA.exportJSON();
 
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       ".trace/A-clean.json",
       JSON.stringify(exportJSON, null, 1),
     );
@@ -49,7 +51,7 @@ Deno.test("PropagateWeightsIF", () => {
       }
     });
 
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       ".trace/B-modified.json",
       JSON.stringify(exportJSON, null, 1),
     );
@@ -68,12 +70,12 @@ Deno.test("PropagateWeightsIF", () => {
       generations: 10,
     });
 
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       ".trace/C-trace.json",
       JSON.stringify(resultC.trace, null, 1),
     );
 
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       ".trace/C-creature.json",
       JSON.stringify(creatureC.exportJSON(), null, 1),
     );
@@ -98,7 +100,7 @@ Deno.test("PropagateWeightsIF", () => {
       `Didn't improve error B->C *reported*  start: ${errorB} end: ${resultC.error}`,
     );
 
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       ".trace/result.json",
       JSON.stringify(resultC.trace, null, 1),
     );
@@ -107,7 +109,8 @@ Deno.test("PropagateWeightsIF", () => {
   }
 });
 
-Deno.test("PropagateBiasIF", () => {
+Deno.test("PropagateBiasIF", async () => {
+  await initWasmForTests();
   const creatureA = makeCreature();
   for (let attempts = 0; true; attempts++) {
     const ts: DataRecordInterface[] = [];
@@ -122,9 +125,9 @@ Deno.test("PropagateBiasIF", () => {
     }
 
     const traceDir = ".trace";
-    ensureDirSync(traceDir);
+    await Deno.mkdir(traceDir, { recursive: true });
 
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       ".trace/data.json",
       JSON.stringify(ts, null, 1),
     );
@@ -137,7 +140,7 @@ Deno.test("PropagateBiasIF", () => {
 
     const exportJSON = creatureA.exportJSON();
 
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       ".trace/A-clean.json",
       JSON.stringify(exportJSON, null, 1),
     );
@@ -149,7 +152,7 @@ Deno.test("PropagateBiasIF", () => {
       }
     });
 
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       ".trace/B-modified.json",
       JSON.stringify(exportJSON, null, 1),
     );
@@ -168,12 +171,12 @@ Deno.test("PropagateBiasIF", () => {
       generations: 10,
     });
 
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       ".trace/C-trace.json",
       JSON.stringify(resultC.trace, null, 1),
     );
 
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       ".trace/C-creature.json",
       JSON.stringify(creatureC.exportJSON(), null, 1),
     );
@@ -198,7 +201,7 @@ Deno.test("PropagateBiasIF", () => {
       `Didn't improve error B->C *reported*  start: ${errorB} end: ${resultC.error}`,
     );
 
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       ".trace/result.json",
       JSON.stringify(resultC.trace, null, 1),
     );

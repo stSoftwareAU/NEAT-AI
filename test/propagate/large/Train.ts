@@ -1,32 +1,35 @@
+// deno-lint-ignore-file no-await-in-loop -- test writes iteration/trace files sequentially
 import { assert, fail } from "@std/assert";
 import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
 import { train } from "../../TrainTestOnlyUtil.ts";
+import { initWasmForTests } from "../../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("large", () => {
+Deno.test("large", async () => {
+  await initWasmForTests();
   const directory = ".test/propagate/large";
   const trainingSet = JSON.parse(
-    Deno.readTextFileSync("test/propagate/large/td.json"),
+    await Deno.readTextFile("test/propagate/large/td.json"),
   );
 
   const creature = Creature.fromJSON(
     JSON.parse(
-      Deno.readTextFileSync("test/propagate/large/creature.json"),
+      await Deno.readTextFile("test/propagate/large/creature.json"),
     ),
   );
   try {
-    Deno.removeSync(directory, { recursive: true });
+    await Deno.remove(directory, { recursive: true });
   } catch (e) {
     const name = (e as { name: string }).name;
     if (name !== "NotFound") {
       console.error(e);
     }
   }
-  Deno.mkdirSync(directory, { recursive: true });
-  Deno.writeTextFileSync(
+  await Deno.mkdir(directory, { recursive: true });
+  await Deno.writeTextFile(
     `${directory}/first.json`,
     JSON.stringify(creature.exportJSON(), null, 1),
   );
@@ -49,7 +52,7 @@ Deno.test("large", () => {
 
   let lastError = error;
   for (let i = 0; i < 6; i++) {
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       `${directory}/${i}.json`,
       JSON.stringify(creature.exportJSON(), null, 1),
     );
@@ -74,18 +77,18 @@ Deno.test("large", () => {
     creature.validate();
     Creature.fromJSON(results.trace).validate();
 
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       `${directory}/${i}-trace.json`,
       JSON.stringify(results.trace, null, 1),
     );
 
     if (results.compact) Creature.fromJSON(results.compact).validate();
     if (results.error > lastError) {
-      Deno.writeTextFileSync(
+      await Deno.writeTextFile(
         `${directory}/error.json`,
         JSON.stringify(creature.exportJSON(), null, 1),
       );
-      Deno.writeTextFileSync(
+      await Deno.writeTextFile(
         `${directory}/error-trace.json`,
         JSON.stringify(results.trace, null, 1),
       );

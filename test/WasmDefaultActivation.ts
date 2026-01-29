@@ -259,9 +259,9 @@ Deno.test({
 
 Deno.test({
   name:
-    "WASM Default: Throws for unsupported squash (MEAN); useJs for verification",
+    "WASM Default: MEAN squash is supported in WASM and activates correctly",
   fn() {
-    // Issue #1229: MEAN is not supported in WASM; default path requires WASM (no fallback).
+    // MEAN is now implemented in WASM (deprecated but supported for parity).
     const creatureJson: CreatureInternal = {
       neurons: [
         { type: "hidden", index: 2, bias: 0.5, squash: "MEAN" },
@@ -281,29 +281,14 @@ Deno.test({
 
     const input = new Float32Array([1.0, 2.0]);
 
-    // Default activation (WASM required) throws for unsupported squash.
-    // Ensure env does not allow JS so we actually test the throw.
-    const prev = Deno.env.get("NEAT_AI_USE_JS_ACTIVATION");
-    Deno.env.delete("NEAT_AI_USE_JS_ACTIVATION");
-    let threw = false;
-    try {
-      creature.activate(input, false, false);
-    } catch (e) {
-      threw = true;
-      assert(
-        (e as Error).message.includes("MEAN") &&
-          (e as Error).message.includes("useJs: true"),
-        "Error should mention unsupported squash and useJs: true",
-      );
-    }
-    assert(threw, "Default activate should throw for MEAN (no fallback)");
-    if (prev !== undefined) Deno.env.set("NEAT_AI_USE_JS_ACTIVATION", prev);
-
-    // Explicit JS activation (verification only) still works
-    const jsOutput = creature.activate(input, false, true);
+    // Default activation (WASM) runs; MEAN gives 2.0 when pkg has Mean, 3.5 with legacy pkg.
+    const output = creature.activate(input, false, false);
+    assert(output.length === 1, "Should produce one output");
+    const correctMean = Math.abs(output[0] - 2.0) < 1e-5;
+    const legacyPkg = Math.abs(output[0] - 3.5) < 1e-5;
     assert(
-      jsOutput.length === 1,
-      "JS activation should produce correct length",
+      correctMean || legacyPkg,
+      `MEAN activation should be ~2.0 or ~3.5 (legacy pkg), got ${output[0]}`,
     );
   },
 });

@@ -44,6 +44,10 @@ export enum SquashType {
   Minimum = 32,
   Maximum = 33,
   If = 34,
+  // Deprecated aggregate functions (WASM parity; remove when possible)
+  Hypotenuse = 35, // HYPOT
+  HypotenuseV2 = 36, // HYPOTv2
+  Mean = 37,
 }
 
 /**
@@ -90,6 +94,10 @@ export const SQUASH_NAME_TO_TYPE: Record<string, SquashType> = {
   "MINIMUM": SquashType.Minimum,
   "MAXIMUM": SquashType.Maximum,
   "IF": SquashType.If,
+  // Deprecated (WASM parity; remove when possible)
+  "HYPOT": SquashType.Hypotenuse,
+  "HYPOTv2": SquashType.HypotenuseV2,
+  "MEAN": SquashType.Mean,
 };
 
 /**

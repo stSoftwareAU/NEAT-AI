@@ -9,30 +9,32 @@ import { createBackPropagationConfig } from "../../../src/propagate/BackPropagat
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 import { upgrade } from "../../../src/upgrade/Upgrade.ts";
 import { ReplaySquash } from "./ReplaySquash.ts";
+import { initWasmForTests } from "../../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("record", () => {
+Deno.test("record", async () => {
+  await initWasmForTests();
   const directory = ".test/propagate/Record";
   const trainingSet = JSON.parse(
-    Deno.readTextFileSync("test/propagate/large/td.json"),
+    await Deno.readTextFile("test/propagate/large/td.json"),
   );
 
   const creature = upgrade(Creature.fromJSON(
     JSON.parse(
-      Deno.readTextFileSync("test/propagate/large/creature.json"),
+      await Deno.readTextFile("test/propagate/large/creature.json"),
     ),
   ));
   try {
-    Deno.removeSync(directory, { recursive: true });
+    await Deno.remove(directory, { recursive: true });
   } catch (e) {
     const name = (e as { name: string }).name;
     if (name !== "NotFound") {
       console.error(e);
     }
   }
-  Deno.mkdirSync(directory, { recursive: true });
-  Deno.writeTextFileSync(
+  await Deno.mkdir(directory, { recursive: true });
+  await Deno.writeTextFile(
     `${directory}/first.json`,
     JSON.stringify(creature.exportJSON(), null, 1),
   );
@@ -86,7 +88,7 @@ Deno.test("record", () => {
   const error = errorSum / counter;
   console.log("Trace Error", error);
   const trace = creature.traceJSON();
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/trace.json`,
     JSON.stringify(trace, null, 1),
   );
@@ -180,7 +182,7 @@ Deno.test("record", () => {
   const playBackError = errorSum / counter;
   console.log("Playback Error", playBackError);
   const playbackTrace = recordedCreature.traceJSON();
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${directory}/playback.json`,
     JSON.stringify(playbackTrace, null, 1),
   );
