@@ -978,8 +978,11 @@ export function wasmVersion(): string {
 // -----------------------------------------------------------------------------
 //
 // Initialise the WASM module at module load time on the main thread so calling
-// programs use WASM by default with no changes. Set NEAT_AI_USE_JS_ACTIVATION=1
-// to skip auto-init (verification only).
+// programs use WASM by default with no changes.
+// - Path is resolved in order: NEAT_AI_WASM_PKG_PATH (if set), then
+//   <cwd>/wasm_activation/pkg (changes with app root), then library-relative.
+// - Set NEAT_AI_WASM_PKG_PATH to override (e.g. when using from JSR).
+// - Set NEAT_AI_USE_JS_ACTIVATION=1 to skip auto-init (verification only).
 //
 // Workers do not auto-init here; they receive the WASM payload from the parent
 // and call initWasmActivationSync in worker startup.
@@ -1011,13 +1014,26 @@ try {
   const skipAutoInit = useJs === "1" || useJs === "true" ||
     useJs === "yes" || useJs === "on";
   const isWorker = isProbablyWorkerScope();
+  const explicitPath = Deno.env.get("NEAT_AI_WASM_PKG_PATH")?.trim();
   // Issue #1229: Auto-init by default on main thread unless verification mode.
-  const shouldAutoInit = !skipAutoInit && !isWorker;
+  // Also init in workers when NEAT_AI_WASM_PKG_PATH is set (e.g. JSR/standalone workers).
+  const shouldAutoInit = !skipAutoInit &&
+    (!isWorker || !!explicitPath) &&
+    !isWasmActivationAvailable();
 
-  if (shouldAutoInit && !isWasmActivationAvailable()) {
-    const repoRoot = new URL("../../", import.meta.url).pathname;
-    const wasmPath = `${repoRoot}wasm_activation/pkg`;
-    await initWasmActivation(wasmPath);
+  if (shouldAutoInit) {
+    // Path changes with context: try env path, then cwd (app root), then library-relative.
+    const cwdPath = typeof Deno !== "undefined"
+      ? `${Deno.cwd()}/wasm_activation/pkg`
+      : "";
+    const libPath = `${
+      new URL("../../", import.meta.url).pathname
+    }wasm_activation/pkg`;
+    const firstPath = explicitPath || cwdPath || libPath;
+    let ok = await initWasmActivation(firstPath);
+    if (!ok && !explicitPath && cwdPath && firstPath === cwdPath) {
+      ok = await initWasmActivation(libPath);
+    }
   }
 } catch {
   // Ignore env permission errors; auto-init stays disabled.
