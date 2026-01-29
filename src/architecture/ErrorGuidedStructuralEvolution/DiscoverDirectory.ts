@@ -3,10 +3,7 @@ import { blue, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import type { Creature } from "../../Creature.ts";
 import type { NeatConfig } from "../../config/NeatConfig.ts";
-import {
-  initWasmActivation,
-  isWasmActivationAvailable,
-} from "../../wasm/mod.ts";
+import { ensureWasmActivation } from "../../wasm/mod.ts";
 import { CreatureUtil } from "../CreatureUtils.ts";
 import type { DataRecordInterface } from "../DataSet.ts";
 import type { DiscoverResult } from "./DiscoverResult.ts";
@@ -28,45 +25,21 @@ import { submitDiscoveryRecordBatch } from "./SubmitDiscoveryRecordBatch.ts";
 /**
  * Issue #1219 - Returns the default WASM activation module path.
  *
- * The path is derived from this module's location, assuming the standard
- * repository layout where `wasm_activation/pkg` is at the project root.
+ * @deprecated Use `getWasmDefaultPath` from `../../wasm/EnsureWasmActivation.ts` instead.
+ * Kept for backward compatibility with existing imports.
  */
-export function getWasmDefaultPath(): string {
-  // Navigate from src/architecture/ErrorGuidedStructuralEvolution/ to project root.
-  // Use `href` so this works for both local `file:` and published `https:` (JSR) URLs.
-  return new URL("../../../wasm_activation/pkg/", import.meta.url).href
-    .replace(/\/$/, "");
-}
+export { getWasmDefaultPath } from "../../wasm/EnsureWasmActivation.ts";
 
 /**
  * Issue #1219 - Ensures WASM activation is initialised before discovery recording.
  *
- * Discovery recording requires WASM tracing activation. This function ensures
- * the WASM module is initialised, either by confirming it's already available
- * or by initialising it automatically.
- *
- * This allows calling programs to use discovery features without explicitly
- * initialising WASM first - the library handles it automatically.
+ * Issue #1247 - Delegates to the shared `ensureWasmActivation()` helper so that
+ * scoring, evaluation, and discovery all use the same initialisation logic.
  *
  * @throws Error if WASM initialisation fails and is not available
  */
 export async function ensureWasmActivationForDiscovery(): Promise<void> {
-  // If already initialised, nothing to do
-  if (isWasmActivationAvailable()) {
-    return;
-  }
-
-  // Try to initialise WASM from the default path
-  const wasmPath = getWasmDefaultPath();
-  const success = await initWasmActivation(wasmPath);
-
-  if (!success || !isWasmActivationAvailable()) {
-    throw new Error(
-      "WASM activation must be initialised before discovery recording. " +
-        "Ensure the WASM module is built at wasm_activation/pkg or call " +
-        "initWasmActivation() before using discovery features.",
-    );
-  }
+  await ensureWasmActivation();
 }
 
 const shouldLogDiscovery = (config: NeatConfig): boolean =>

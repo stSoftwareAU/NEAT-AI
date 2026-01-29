@@ -79,7 +79,7 @@ export class WorkerProcessor {
       const json = JSON.parse(creature);
       const adjustedCreature = Creature.fromJSON(json);
       adjustedCreature.fix();
-      const result = adjustedCreature.scoreDir(dataDir, options);
+      const result = await adjustedCreature.scoreDir(dataDir, options);
       const exported = adjustedCreature.exportJSON();
       addTag(exported, "score", `${result.score}`);
       addTag(exported, "error", `${result.error}`);

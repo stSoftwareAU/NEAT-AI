@@ -57,6 +57,7 @@ import {
 } from "./discovery/DiscoveryReplayRunner.ts";
 import {
   compileCreatureToWasm,
+  ensureWasmActivation,
   isWasmActivationAvailable,
   resolveWasmSquashName,
   WasmCreatureActivation,
@@ -2014,13 +2015,13 @@ export class Creature implements CreatureInternal {
    * @param options The NEAT configuration options.
    * @returns the score and error of the creature.
    */
-  scoreDir(
+  async scoreDir(
     dataDir: string,
     options: NeatOptions,
-  ): { score: number; error: number } {
+  ): Promise<{ score: number; error: number }> {
     const config = createNeatConfig(options);
 
-    const result = this.evaluateDir(
+    const result = await this.evaluateDir(
       dataDir,
       Costs.find(config.costName),
       config.feedbackLoop,
@@ -2188,13 +2189,18 @@ export class Creature implements CreatureInternal {
    * @param {boolean} feedbackLoop - Whether to use a feedback loop during evaluation.
    * @returns {{ error: number }} The evaluation result.
    */
-  evaluateDir(
+  async evaluateDir(
     dataDir: string,
     cost: CostInterface,
     feedbackLoop: boolean,
-  ): { error: number } {
+  ): Promise<{ error: number }> {
     const dataResult = dataFiles(dataDir);
     assert(dataResult.files.length > 0, "No data files found");
+
+    // Issue #1247: Auto-initialise WASM before scoring if not yet available.
+    if (!isUseJsActivationEnvSet()) {
+      await ensureWasmActivation();
+    }
 
     // Issue #1229: WASM is required by default with no fallback.
     this.requireWasmOrThrow();

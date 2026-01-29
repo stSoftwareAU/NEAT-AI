@@ -9,11 +9,11 @@ import { assertEquals, assertExists } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { applyNeuronChanges } from "../../src/intelligentDesign/TacitKnowledge.ts";
 
-Deno.test("applyNeuronChanges updates neuron squashes, tags changes, and tags score/error", () => {
+Deno.test("applyNeuronChanges updates neuron squashes, tags changes, and tags score/error", async () => {
   const originalScoreDir = Creature.prototype.scoreDir;
   try {
     Creature.prototype.scoreDir = function () {
-      return { score: 9.9, error: 0.01 } as const;
+      return Promise.resolve({ score: 9.9, error: 0.01 } as const);
     };
 
     const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
@@ -39,7 +39,7 @@ Deno.test("applyNeuronChanges updates neuron squashes, tags changes, and tags sc
     neuronSquashMap.set(first.uuid, { squash: "Swish", score: 2, error: 1 });
     neuronSquashMap.set(second.uuid, { squash: "GELU", score: 2, error: 1 }); // unchanged
 
-    const result = applyNeuronChanges(exported, neuronSquashMap, ".", {});
+    const result = await applyNeuronChanges(exported, neuronSquashMap, ".", {});
 
     assertEquals(result.score, 9.9);
     assertEquals(result.error, 0.01);
