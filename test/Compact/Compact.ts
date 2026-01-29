@@ -222,7 +222,7 @@ Deno.test("RandomizeCompact", () => {
       const endNodes = b.neurons.length;
       const endConnections = b.synapses.length;
 
-      const endOut = b.activate(input);
+      const endOut = b.activate(input, false, true);
 
       assertAlmostEquals(startOut[0], endOut[0], 0.1);
       assertAlmostEquals(startOut[1], endOut[1], 0.1);
@@ -285,14 +285,14 @@ Deno.test("CompactSelf", () => {
   const startConnections = a.synapses.length;
 
   const input = new Float32Array([0.1, 0.2, 0.3]);
-  const aOut = a.activate(input);
+  const aOut = a.activate(input, false, true);
 
   Deno.writeTextFileSync(
     `${directory}/0-start.json`,
     JSON.stringify(a.exportJSON(), null, 1),
   );
 
-  const aOut2 = a.activate(input);
+  const aOut2 = a.activate(input, false, true);
 
   assertAlmostEquals(aOut[0], aOut2[0], 0.001);
   const b = a.compact(false);
@@ -308,7 +308,7 @@ Deno.test("CompactSelf", () => {
   const endNodes = b.neurons.length;
   const endConnections = b.synapses.length;
 
-  const endOut = b.activate(input);
+  const endOut = b.activate(input, false, true);
 
   assertAlmostEquals(aOut[0], endOut[0], 0.001);
   assert(endNodes < startNodes);

@@ -33,8 +33,10 @@ Deno.test("Hypot", () => {
     const c = Math.random() * 2 - 1;
 
     const data = new Float32Array([a, b, c]);
-    const actual = creature.activateAndTrace(data, false, sparseConfig)[0];
-    const actual2 = creature.activateAndTrace(data, false, sparseConfig)[0];
+    const actual =
+      creature.activateAndTrace(data, false, sparseConfig, true)[0];
+    const actual2 =
+      creature.activateAndTrace(data, false, sparseConfig, true)[0];
 
     assert(
       Math.abs(actual - actual2) < 0.00000001,

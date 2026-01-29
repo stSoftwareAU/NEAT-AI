@@ -237,12 +237,22 @@ let globalWorkerID = 0;
 let cachedWasmActivationInitPayload: WasmActivationInitPayload | null = null;
 let cachedWasmPath: string | null = null;
 
+/**
+ * Issue #1229: WASM is required by default with no fallback.
+ * Set NEAT_AI_USE_JS_ACTIVATION=1 to allow workers without WASM (verification only).
+ */
 function shouldRequireWasmActivation(): boolean {
   try {
-    const v = Deno.env.get("NEAT_AI_REQUIRE_WASM")?.trim().toLowerCase();
-    return v === "1" || v === "true" || v === "yes" || v === "on";
+    const useJs = Deno.env.get("NEAT_AI_USE_JS_ACTIVATION")?.trim()
+      .toLowerCase();
+    if (
+      useJs === "1" || useJs === "true" || useJs === "yes" || useJs === "on"
+    ) {
+      return false;
+    }
+    return true;
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -475,8 +485,9 @@ export class WorkerHandler {
       }
     })();
 
-    // Issue #1206 - Gracefully handle missing WASM files by allowing null
-    // payload. Workers will fall back to JavaScript-based activation.
+    // Issue #1229: WASM is required by default. When shouldRequireWasmActivation()
+    // is true, missing WASM payload throws below. Set NEAT_AI_USE_JS_ACTIVATION=1
+    // for verification only.
     if (!direct) {
       this.worker = new Worker(
         new URL("./deno/worker.ts", import.meta.url).href,
@@ -506,8 +517,9 @@ export class WorkerHandler {
       const wasmPayload = await loadWasmActivationInitPayloadAsync();
       if (shouldRequireWasmActivation() && !wasmPayload) {
         throw new Error(
-          "NEAT_AI_REQUIRE_WASM is set but wasm_activation/pkg could not be loaded. " +
-            "Ensure the published package includes wasm_activation/pkg or build it locally.",
+          "WASM activation is required but wasm_activation/pkg could not be loaded. " +
+            "Ensure the published package includes wasm_activation/pkg or build it locally. " +
+            "For verification only, set NEAT_AI_USE_JS_ACTIVATION=1.",
         );
       }
       const data: RequestData = {

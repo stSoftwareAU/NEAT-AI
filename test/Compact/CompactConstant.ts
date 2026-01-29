@@ -89,7 +89,7 @@ Deno.test("CompactConstants", () => {
 
   const outputs: Float32Array[] = new Array(data.length);
   for (let i = data.length; i--;) {
-    outputs[i] = creature.activate(new Float32Array(data[i]));
+    outputs[i] = creature.activate(new Float32Array(data[i]), false, true);
   }
 
   const config = createBackPropagationConfig();
@@ -99,6 +99,7 @@ Deno.test("CompactConstants", () => {
       new Float32Array(data[i]),
       false,
       sparseConfig,
+      true,
     );
     creature.propagate(new Float32Array(outputs[i]), config, sparseConfig);
     assertAlmostEquals(
@@ -134,7 +135,7 @@ Deno.test("CompactConstants", () => {
   );
 
   for (let i = data.length; i--;) {
-    const actual = compacted.activate(new Float32Array(data[i]));
+    const actual = compacted.activate(new Float32Array(data[i]), false, true);
 
     assertAlmostEquals(
       actual[0],
@@ -156,6 +157,7 @@ Deno.test("CompactConstants", () => {
       new Float32Array(data[i]),
       false,
       sparseConfig,
+      true,
     );
     compacted.propagate(new Float32Array(outputs[i]), config, sparseConfig);
     assertAlmostEquals(
@@ -189,7 +191,11 @@ Deno.test("CompactConstants", () => {
     );
 
     for (let i = data.length; i--;) {
-      const actual = compacted2.activate(new Float32Array(data[i]));
+      const actual = compacted2.activate(
+        new Float32Array(data[i]),
+        false,
+        true,
+      );
 
       assertAlmostEquals(
         actual[0],

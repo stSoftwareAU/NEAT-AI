@@ -12,6 +12,7 @@ import type { NeatOptions } from "../src/config/NeatOptions.ts";
 import type { TrainOptions } from "../src/config/TrainOptions.ts";
 import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
+import { initWasmForTests } from "./_initWasm.ts";
 import { train } from "./TrainTestOnlyUtil.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -322,51 +323,63 @@ function testEquality(original: Creature, copied: Creature) {
 /*******************************************************************************************
                           Test the performance of creatures
 *******************************************************************************************/
-Deno.test("ADD_NODE", () => {
+Deno.test("ADD_NODE", async () => {
+  await initWasmForTests();
   checkMutation(Mutation.ADD_NODE);
 });
 
-Deno.test("ADD_CONNECTION", () => {
+Deno.test("ADD_CONNECTION", async () => {
+  await initWasmForTests();
   checkMutation(Mutation.ADD_CONN);
 });
 
-Deno.test("MOD_BIAS", () => {
+Deno.test("MOD_BIAS", async () => {
+  await initWasmForTests();
   checkMutation(Mutation.MOD_BIAS);
 });
 
-Deno.test("MOD_WEIGHT", () => {
+Deno.test("MOD_WEIGHT", async () => {
+  await initWasmForTests();
   checkMutation(Mutation.MOD_WEIGHT);
 });
 
-Deno.test("SUB_CONN", () => {
+Deno.test("SUB_CONN", async () => {
+  await initWasmForTests();
   checkMutation(Mutation.SUB_CONN);
 });
 
-Deno.test("SUB_NODE", () => {
+Deno.test("SUB_NODE", async () => {
+  await initWasmForTests();
   checkMutation(Mutation.SUB_NODE);
 });
 
-Deno.test("MOD_SQUASH", () => {
+Deno.test("MOD_SQUASH", async () => {
+  await initWasmForTests();
   checkMutation(Mutation.MOD_SQUASH);
 });
 
-Deno.test("ADD_SELF_CONN", () => {
+Deno.test("ADD_SELF_CONN", async () => {
+  await initWasmForTests();
   checkMutation(Mutation.ADD_SELF_CONN);
 });
 
-Deno.test("SUB_BACK_CONN", () => {
+Deno.test("SUB_BACK_CONN", async () => {
+  await initWasmForTests();
   checkMutation(Mutation.SUB_BACK_CONN);
 });
 
-Deno.test("ADD_BACK_CONN", () => {
+Deno.test("ADD_BACK_CONN", async () => {
+  await initWasmForTests();
   checkMutation(Mutation.ADD_BACK_CONN);
 });
 
-Deno.test("SUB_SELF_CONN", () => {
+Deno.test("SUB_SELF_CONN", async () => {
+  await initWasmForTests();
   checkMutation(Mutation.SUB_SELF_CONN);
 });
 
-Deno.test("SWAP_NODES", () => {
+Deno.test("SWAP_NODES", async () => {
+  await initWasmForTests();
   checkMutation(Mutation.SWAP_NODES);
 });
 
@@ -455,7 +468,8 @@ Deno.test("from/toJSON equivalency", () => {
   testEquality(original, copy);
 });
 
-Deno.test("train_AND_gate", () => {
+Deno.test("train_AND_gate", async () => {
+  await initWasmForTests();
   trainSet(
     [
       { input: new Float32Array([0, 0]), output: new Float32Array([0]) },

@@ -40,8 +40,8 @@ Deno.test("HYPOT", () => {
   for (let p = 3; p < 12; p++) {
     const data = makeData(p, start.input);
 
-    const expected = start.activate(data, false);
-    const actual = upgraded.activate(data, false);
+    const expected = start.activate(data, false, true);
+    const actual = upgraded.activate(data, false, true);
 
     for (let i = 0; i < expected.length; i++) {
       const delta = Math.abs(expected[i] - actual[i]);

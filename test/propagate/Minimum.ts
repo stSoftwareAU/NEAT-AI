@@ -5,20 +5,22 @@ import type { TrainOptions } from "../../src/config/TrainOptions.ts";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { train } from "../TrainTestOnlyUtil.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import { train } from "../TrainTestOnlyUtil.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("PropagateMinimum", () => {
+Deno.test("PropagateMinimum", async () => {
+  await initWasmForTests();
   for (let attempts = 0; true; attempts++) {
     const creature = makeCreature();
 
     const ts: DataRecordInterface[] = [];
     for (let i = 1_000; i--;) {
       const input = makeInput();
-      const output = creature.activate(new Float32Array(input));
+      const output = creature.activate(new Float32Array(input), false, true);
 
       ts.push({
         input: new Float32Array(input),
@@ -29,12 +31,17 @@ Deno.test("PropagateMinimum", () => {
     const traceDir = ".trace";
     ensureDirSync(traceDir);
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/data.json",
       JSON.stringify(ts, null, 1),
     );
     ts.forEach((item) => {
-      const result = creature.activate(new Float32Array(item.input));
+      const result = creature.activate(
+        new Float32Array(item.input),
+        false,
+        true,
+      );
 
       assertAlmostEquals(item.output[0], result[0], 0.00001);
       assertAlmostEquals(item.output[1], result[1], 0.00001);
@@ -42,6 +49,7 @@ Deno.test("PropagateMinimum", () => {
 
     const exportJSON = creature.exportJSON();
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/A-clean.json",
       JSON.stringify(exportJSON, null, 1),
@@ -56,6 +64,7 @@ Deno.test("PropagateMinimum", () => {
       c.weight = c.weight + ((indx % 2 === 0 ? 1 : -1) * 0.1);
     });
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/B-modified.json",
       JSON.stringify(exportJSON, null, 1),
@@ -77,11 +86,13 @@ Deno.test("PropagateMinimum", () => {
 
     const resultC = train(creatureC, ts, to);
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/C-trace.json",
       JSON.stringify(resultC.trace, null, 1),
     );
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/C-creature.json",
       JSON.stringify(creatureC.exportJSON(), null, 1),
@@ -113,16 +124,19 @@ Deno.test("PropagateMinimum", () => {
       `Error: B: ${errorB}, C: ${errorC}, D: ${errorD}, E: ${errorE}`,
     );
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/D-creature.json",
       JSON.stringify(creatureD.exportJSON(), null, 1),
     );
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/D-trace.json",
       JSON.stringify(creatureD.traceJSON(), null, 1),
     );
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/E-creature.json",
       JSON.stringify(creatureE.exportJSON(), null, 1),
@@ -138,6 +152,7 @@ Deno.test("PropagateMinimum", () => {
       `Didn't improve error B->C *reported*  start: ${errorB} end: ${resultC.error}`,
     );
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/result.json",
       JSON.stringify(resultC.trace, null, 1),
@@ -156,7 +171,7 @@ function calculateError(
   const mse = Costs.find("MSE");
   for (let i = count; i--;) {
     const data = json[i];
-    const output = creature.activate(new Float32Array(data.input), false);
+    const output = creature.activate(new Float32Array(data.input), false, true);
     error += mse.calculate(
       new Float32Array(data.output),
       new Float32Array(output),

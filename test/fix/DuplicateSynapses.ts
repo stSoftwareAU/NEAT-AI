@@ -1,5 +1,6 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 function mulberry32(seed: number) {
   let t = seed >>> 0;
@@ -33,7 +34,8 @@ function makeCreature(): Creature {
   return creature;
 }
 
-Deno.test("fix(): merges duplicate synapses by summing weights (behaviour-preserving)", () => {
+Deno.test("fix(): merges duplicate synapses by summing weights (behaviour-preserving)", async () => {
+  await initWasmForTests();
   const creature = makeCreature();
 
   const rnd = mulberry32(20251229);

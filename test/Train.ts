@@ -2,11 +2,13 @@ import { assert, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../src/Creature.ts";
 import { train } from "./TrainTestOnlyUtil.ts";
+import { initWasmForTests } from "./_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 // Compact form: name and function
-Deno.test("AND", () => {
+Deno.test("AND", async () => {
+  await initWasmForTests();
   // Train the AND gate
   const trainingSet = [
     { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
@@ -32,7 +34,8 @@ Deno.test("AND", () => {
   }
 });
 
-Deno.test("MT", () => {
+Deno.test("MT", async () => {
+  await initWasmForTests();
   // Train the AND gate
   const trainingSet = [
     { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
@@ -62,7 +65,8 @@ Deno.test("MT", () => {
   }
 });
 
-Deno.test("train-XOR", () => {
+Deno.test("train-XOR", async () => {
+  await initWasmForTests();
   // Train the XOR gate
   const trainingSet = [
     { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
@@ -84,6 +88,7 @@ Deno.test("train-XOR", () => {
     });
 
     if (attempts === 0) {
+      // deno-lint-ignore no-sync-fn-in-async-fn
       Deno.writeTextFileSync(
         `.trace/start.json`,
         JSON.stringify(network.exportJSON(), null, 1),
@@ -94,6 +99,7 @@ Deno.test("train-XOR", () => {
       targetError: 0.03,
       iterations: 10000,
     });
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       `.trace/${attempts}.json`,
       JSON.stringify(results.trace, null, 1),
@@ -112,7 +118,8 @@ Deno.test("train-XOR", () => {
 /**
  * Train the XNOR gate
  */
-Deno.test("XNOR - train", () => {
+Deno.test("XNOR - train", async () => {
+  await initWasmForTests();
   const trainingSet = [
     { input: new Float32Array([0, 0]), output: new Float32Array([1]) },
     { input: new Float32Array([0, 1]), output: new Float32Array([0]) },

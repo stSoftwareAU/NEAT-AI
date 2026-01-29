@@ -98,11 +98,15 @@ export interface CachedScoreComponents {
   countWeightBias: number;
 }
 
-/**
- * Flag to track if WASM unavailability warning has been logged.
- * Issue #1122: Graceful degradation - only warn once per process.
- */
-let wasmUnavailableWarningShown = false;
+/** Issue #1229: When set, allow JS activation path (tests / verification). */
+function isUseJsActivationEnvSet(): boolean {
+  try {
+    const v = Deno.env.get("NEAT_AI_USE_JS_ACTIVATION")?.trim().toLowerCase();
+    return v === "1" || v === "true" || v === "yes" || v === "on";
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Creature Class
@@ -539,8 +543,8 @@ export class Creature implements CreatureInternal {
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
    * @param {SparseConfig} sparseConfig - The sparse configuration for tracing.
-   * @param {boolean} [useJs=false] - When true, forces JavaScript activation instead of WASM.
-   *   Issue #1122: WASM Migration Phase 5 - WASM is now the default, use this to force JS.
+   * @param {boolean} [useJs=false] - When true, uses JavaScript activation (verification only).
+   *   Issue #1229: WASM is the default with no fallback; use true only for verification.
    * @returns {Float32Array} The output values after activation.
    */
   activateAndTrace(
@@ -555,18 +559,20 @@ export class Creature implements CreatureInternal {
       ? false
       : feedbackLoop;
 
-    // WASM is the default when available. Use JS only when explicitly requested.
+    // Issue #1229: WASM is the default with no fallback. Use useJs: true or NEAT_AI_USE_JS_ACTIVATION=1 for verification.
     const forceJs = useJs;
-    // Issue #1121: WASM Migration Phase 4 - activateAndTrace with backpropagation support
-    if (!forceJs && this.canUseWasm()) {
-      return this.activateAndTraceWasm(
-        input,
-        effectiveFeedbackLoop,
-        sparseConfig,
-      );
+    if (!forceJs) {
+      this.requireWasmOrThrow();
+      if (this.canUseWasm()) {
+        return this.activateAndTraceWasm(
+          input,
+          effectiveFeedbackLoop,
+          sparseConfig,
+        );
+      }
     }
 
-    // Fall back to JS activation
+    // JS activation (verification only)
     this.prepareNeurons();
     const activations = this.state.makeActivation(input, effectiveFeedbackLoop);
 
@@ -597,8 +603,8 @@ export class Creature implements CreatureInternal {
    *
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
-   * @param {boolean} [useJs=false] - When true, forces JavaScript activation instead of WASM.
-   *   Issue #1122: WASM Migration Phase 5 - WASM is now the default, use this to force JS.
+   * @param {boolean} [useJs=false] - When true, uses JavaScript activation (verification only).
+   *   Issue #1229: WASM is the default with no fallback; use true only for verification.
    * @returns {Float32Array} The output values after activation.
    */
   activate(
@@ -612,13 +618,16 @@ export class Creature implements CreatureInternal {
       ? false
       : feedbackLoop;
 
-    // WASM is the default when available. Use JS only when explicitly requested.
+    // Issue #1229: WASM is the default with no fallback. Use useJs: true or NEAT_AI_USE_JS_ACTIVATION=1 for verification.
     const forceJs = useJs;
-    if (!forceJs && this.canUseWasm()) {
-      return this.activateWasm(input, effectiveFeedbackLoop);
+    if (!forceJs) {
+      this.requireWasmOrThrow();
+      if (this.canUseWasm()) {
+        return this.activateWasm(input, effectiveFeedbackLoop);
+      }
     }
 
-    // Fall back to JS activation
+    // JS activation (verification only)
     this.prepareNeurons();
     const activations = this.state.makeActivation(input, effectiveFeedbackLoop);
 
@@ -644,24 +653,32 @@ export class Creature implements CreatureInternal {
    * @returns {boolean} True if WASM activation can be used.
    */
   private canUseWasm(): boolean {
-    // Check if WASM module is available
-    if (!isWasmActivationAvailable()) {
-      // Issue #1122: Graceful degradation - warn once when WASM unavailable
-      if (!wasmUnavailableWarningShown) {
-        wasmUnavailableWarningShown = true;
-        console.warn(
-          yellow(
-            "[NEAT-AI] WASM activation module not available. " +
-              "Falling back to JavaScript activation. " +
-              "Run `initWasmActivation()` to enable WASM for better performance.",
-          ),
-        );
-      }
-      return false;
-    }
-
-    // Check if creature is eligible for WASM (all squash functions supported)
+    if (!isWasmActivationAvailable()) return false;
     return this.isWasmEligible();
+  }
+
+  /**
+   * Issue #1229: Require WASM by default with no fallback.
+   * Throws if WASM is not available or creature is not WASM-eligible.
+   * Use activate(..., useJs: true) for JS verification only.
+   */
+  private requireWasmOrThrow(): void {
+    if (isUseJsActivationEnvSet()) return;
+    if (!isWasmActivationAvailable()) {
+      throw new Error(
+        "WASM activation is required but not initialised. " +
+          "Call initWasmActivation() before training, or set NEAT_AI_WASM_AUTO_INIT=1. " +
+          "For verification only, use activate(..., useJs: true) or NEAT_AI_USE_JS_ACTIVATION=1.",
+      );
+    }
+    if (!this.isWasmEligible()) {
+      const unsupported = this.getUnsupportedWasmSquashFunctions();
+      throw new Error(
+        "WASM activation is required but this creature uses squash functions not supported by WASM: " +
+          unsupported.join(", ") +
+          ". Use activate(..., useJs: true) or NEAT_AI_USE_JS_ACTIVATION=1 for JS verification only.",
+      );
+    }
   }
 
   /**
@@ -2179,6 +2196,9 @@ export class Creature implements CreatureInternal {
     const dataResult = dataFiles(dataDir);
     assert(dataResult.files.length > 0, "No data files found");
 
+    // Issue #1229: WASM is required by default with no fallback.
+    this.requireWasmOrThrow();
+
     let error = 0;
     let count = 0;
 
@@ -2308,7 +2328,6 @@ export class Creature implements CreatureInternal {
 
             if (canUseWasm) {
               // Zero-allocation activation during scoring.
-              // `outputBuffer` is reused, and must not be retained by callers.
               this.cachedWasmActivation!.activateIntoWithFeedback(
                 observations,
                 outputBuffer!,
@@ -2316,7 +2335,12 @@ export class Creature implements CreatureInternal {
               );
               error += cost.calculate(target, outputBuffer!);
             } else {
-              const actual = this.activate(observations, effectiveFeedbackLoop);
+              // NEAT_AI_USE_JS_ACTIVATION=1 or creature has unsupported squash.
+              const actual = this.activate(
+                observations,
+                effectiveFeedbackLoop,
+                true,
+              );
               error += cost.calculate(target, actual);
             }
 
