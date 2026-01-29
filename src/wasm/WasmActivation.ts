@@ -145,6 +145,10 @@ let versionFn: (() => string) | null = null;
 
 /** True if path looks like an absolute filesystem path (Unix / or Windows C:\). */
 function isAbsoluteFileSystemPath(path: string): boolean {
+  // URL pathnames (JSR, npm) must not be turned into file://.
+  if (path.startsWith("/@") || path.startsWith("/node_modules/")) {
+    return false;
+  }
   return path.startsWith("/") || /^[A-Za-z]:[/\\]/.test(path);
 }
 
@@ -1043,12 +1047,14 @@ try {
     const cwdPath = typeof Deno !== "undefined"
       ? `${Deno.cwd()}/wasm_activation/pkg`
       : "";
-    const libPath = `${
-      new URL("../../", import.meta.url).pathname
-    }wasm_activation/pkg`;
+    const fromRemote = typeof import.meta.url === "string" &&
+      (import.meta.url.startsWith("http://") || import.meta.url.startsWith("https://"));
+    const libPath = fromRemote
+      ? ""
+      : `${new URL("../../", import.meta.url).pathname}wasm_activation/pkg`;
     const firstPath = explicitPath || cwdPath || libPath;
-    let ok = await initWasmActivation(firstPath);
-    if (!ok && !explicitPath && cwdPath && firstPath === cwdPath) {
+    let ok = firstPath ? await initWasmActivation(firstPath) : false;
+    if (!ok && !explicitPath && cwdPath && firstPath === cwdPath && libPath) {
       ok = await initWasmActivation(libPath);
     }
   }
