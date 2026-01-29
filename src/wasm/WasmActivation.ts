@@ -143,6 +143,19 @@ let validateRangeFn:
 let limitRangeFn: ((squashType: number, value: number) => number) | null = null;
 let versionFn: (() => string) | null = null;
 
+/** True if path looks like an absolute filesystem path (Unix / or Windows C:\). */
+function isAbsoluteFileSystemPath(path: string): boolean {
+  return path.startsWith("/") || /^[A-Za-z]:[/\\]/.test(path);
+}
+
+/** Convert an absolute filesystem path to a file:// URL so import() loads from disk. */
+function pathToFileUrl(path: string): string {
+  const normalized = path.replace(/\\/g, "/");
+  return path.startsWith("/")
+    ? `file://${normalized}`
+    : `file:///${normalized}`;
+}
+
 /**
  * Load and initialise the WASM module
  *
@@ -162,8 +175,12 @@ export async function initWasmActivation(
 
   initPromise = (async () => {
     try {
-      // Import the generated JS bindings
-      const modulePath = `${wasmPath}/wasm_activation.js`;
+      // Import the generated JS bindings. Use file:// URL for absolute paths
+      // so Deno loads from the filesystem when the library is loaded from JSR.
+      const jsPath = `${wasmPath.replace(/\/$/, "")}/wasm_activation.js`;
+      const modulePath = isAbsoluteFileSystemPath(jsPath)
+        ? pathToFileUrl(jsPath)
+        : jsPath;
       const module = await import(modulePath);
 
       // Initialize the WASM module
