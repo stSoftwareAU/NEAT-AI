@@ -1,9 +1,10 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
-import { Creature } from "../../src/Creature.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import { Creature } from "../../src/Creature.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -192,7 +193,8 @@ Deno.test("propagateMultiLevelRandom", () => {
   }
 });
 
-Deno.test("propagateMultiLevelKnownA", () => {
+Deno.test("propagateMultiLevelKnownA", async () => {
+  await initWasmForTests();
   const creatureA = makeCreature();
 
   const ts = [
@@ -340,6 +342,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
 
   const internalJSON = creatureA.exportJSON();
 
+  // deno-lint-ignore no-sync-fn-in-async-fn
   Deno.writeTextFileSync(
     ".trace/1-clean.json",
     JSON.stringify(internalJSON, null, 1),
@@ -354,6 +357,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
     c.weight = c.weight + ((indx % 2 === 0 ? 1 : -1) * 0.005);
   });
 
+  // deno-lint-ignore no-sync-fn-in-async-fn
   Deno.writeTextFileSync(
     ".trace/2-modified.json",
     JSON.stringify(internalJSON, null, 1),
@@ -375,6 +379,7 @@ Deno.test("propagateMultiLevelKnownA", () => {
       targetError: 0,
     });
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/3-first.json",
       JSON.stringify(creatureB.exportJSON(), null, 1),
@@ -385,11 +390,13 @@ Deno.test("propagateMultiLevelKnownA", () => {
       targetError: 0,
     });
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/4-last.json",
       JSON.stringify(creatureB.exportJSON(), null, 1),
     );
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/result.json",
       JSON.stringify(result2.trace, null, 1),
@@ -405,7 +412,8 @@ Deno.test("propagateMultiLevelKnownA", () => {
   }
 });
 
-Deno.test("propagateMultiLevelKnownB", () => {
+Deno.test("propagateMultiLevelKnownB", async () => {
+  await initWasmForTests();
   const creatureA = makeCreature();
 
   const ts = [
@@ -553,6 +561,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
 
   const internalJSON = creatureA.exportJSON();
 
+  // deno-lint-ignore no-sync-fn-in-async-fn
   Deno.writeTextFileSync(
     ".trace/start.json",
     JSON.stringify(internalJSON, null, 1),
@@ -567,6 +576,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
     c.weight = c.weight + ((indx % 2 === 0 ? 1 : -1) * 0.005);
   });
 
+  // deno-lint-ignore no-sync-fn-in-async-fn
   Deno.writeTextFileSync(
     ".trace/changed.json",
     JSON.stringify(internalJSON, null, 1),
@@ -588,6 +598,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
       targetError: 0,
     });
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/first.json",
       JSON.stringify(creatureB.exportJSON(), null, 1),
@@ -598,6 +609,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
       targetError: 0,
     });
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/last.json",
       JSON.stringify(creatureB.exportJSON(), null, 1),
@@ -610,6 +622,7 @@ Deno.test("propagateMultiLevelKnownB", () => {
 
     assert(result1.error >= result2.error, `Didn't improve error`);
 
+    // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/result.json",
       JSON.stringify(result2.trace, null, 1),

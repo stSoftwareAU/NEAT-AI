@@ -974,21 +974,15 @@ export function wasmVersion(): string {
 }
 
 // -----------------------------------------------------------------------------
-// Optional auto-initialisation for test/CI runs
+// Auto-initialisation (Issue #1229: WASM is the default)
 // -----------------------------------------------------------------------------
 //
-// When `NEAT_AI_WASM_AUTO_INIT=1|true|yes|on` is set, initialise the WASM module
-// at module load time so the rest of the codebase can use WASM without each test
-// calling initWasmActivation() explicitly.
+// Initialise the WASM module at module load time on the main thread so calling
+// programs use WASM by default with no changes. Set NEAT_AI_USE_JS_ACTIVATION=1
+// to skip auto-init (verification only).
 //
-// This is intentionally opt-in and best-effort. If the module can't be loaded,
-// we log and continue (JS fallback still works).
-//
-// IMPORTANT: Avoid auto-initialising inside Deno Workers by default.
-// Some environments end up spawning multiple workers (e.g. default `threads`
-// based on `navigator.hardwareConcurrency`). Auto-initialising WASM in every
-// worker can cause stalls or deadlocks. Workers should initialise WASM via the
-// explicit payload bootstrap path (initWasmActivationSync in worker startup).
+// Workers do not auto-init here; they receive the WASM payload from the parent
+// and call initWasmActivationSync in worker startup.
 
 function isProbablyWorkerScope(): boolean {
   // Most reliable when available.
@@ -1003,8 +997,6 @@ function isProbablyWorkerScope(): boolean {
   }
 
   // Heuristic fallback.
-  // In workers there is no `document`, but there is usually `postMessage` and `close`.
-  // (Deno module workers typically do not expose `importScripts`.)
   // deno-lint-ignore no-explicit-any
   const g: any = globalThis;
   const hasDocument = typeof g.document !== "undefined";
@@ -1015,15 +1007,14 @@ function isProbablyWorkerScope(): boolean {
 }
 
 try {
-  const v = Deno.env.get("NEAT_AI_WASM_AUTO_INIT")?.trim().toLowerCase();
-  const shouldAutoInit = v === "1" || v === "true" || v === "yes" || v === "on";
-
+  const useJs = Deno.env.get("NEAT_AI_USE_JS_ACTIVATION")?.trim().toLowerCase();
+  const skipAutoInit = useJs === "1" || useJs === "true" ||
+    useJs === "yes" || useJs === "on";
   const isWorker = isProbablyWorkerScope();
+  // Issue #1229: Auto-init by default on main thread unless verification mode.
+  const shouldAutoInit = !skipAutoInit && !isWorker;
 
-  if (
-    shouldAutoInit && !isWorker && !isWasmActivationAvailable()
-  ) {
-    // repoRoot = <repo>/
+  if (shouldAutoInit && !isWasmActivationAvailable()) {
     const repoRoot = new URL("../../", import.meta.url).pathname;
     const wasmPath = `${repoRoot}wasm_activation/pkg`;
     await initWasmActivation(wasmPath);

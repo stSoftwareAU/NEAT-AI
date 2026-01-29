@@ -452,11 +452,12 @@ Deno.test({
 });
 
 // =============================================================================
-// Test: Automatic fallback to JS when WASM cannot be used
+// Test: Issue #1229 - No fallback; default requires WASM; useJs for verification
 // =============================================================================
 
 Deno.test({
-  name: "Creature WASM: Falls back to JS for unsupported squash functions",
+  name:
+    "Creature WASM: Throws for unsupported squash (MEAN); useJs works for verification",
   fn() {
     const creatureJson: CreatureInternal = {
       neurons: [
@@ -477,16 +478,28 @@ Deno.test({
 
     const input = new Float32Array([1.0, 2.0]);
 
-    // Issue #1122: With default WASM activation, should fallback to JS for MEAN
-    const jsOutput = creature.activate(input, false, true); // useJs=true
-    const defaultOutput = creature.activate(input, false, false); // default (tries WASM, falls back)
+    // Issue #1229: Default path requires WASM; no fallback - throws for MEAN.
+    // Ensure env does not allow JS so we actually test the throw.
+    const prev = Deno.env.get("NEAT_AI_USE_JS_ACTIVATION");
+    Deno.env.delete("NEAT_AI_USE_JS_ACTIVATION");
+    let threw = false;
+    try {
+      creature.activate(input, false, false);
+    } catch (e) {
+      threw = true;
+      assert(
+        (e as Error).message.includes("MEAN"),
+        "Error should mention unsupported squash",
+      );
+    }
+    assert(threw, "Default activate should throw for MEAN (no fallback)");
+    if (prev !== undefined) Deno.env.set("NEAT_AI_USE_JS_ACTIVATION", prev);
 
+    // useJs=true (verification only) still works
+    const jsOutput = creature.activate(input, false, true);
+    assertEquals(jsOutput.length, 1, "JS activation should produce one output");
     // MEAN squash: (1.0 + 2.0) / 2 + bias = 1.5 + 0.5 = 2.0
-    assertArrayClose(
-      defaultOutput,
-      jsOutput,
-      "Should fallback to JS for MEAN squash",
-    );
+    assertAlmostEquals(jsOutput[0], 2.0, 1e-5);
   },
 });
 

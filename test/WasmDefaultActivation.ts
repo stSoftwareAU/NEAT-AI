@@ -5,11 +5,10 @@
  *
  * These tests verify that:
  * 1. WASM is used by default for all activation calls (when available)
- * 2. JS fallback works when WASM is unavailable
- * 3. Configuration options allow forcing JS (useJs parameter)
- * 4. Environment variable NEAT_AI_USE_JS forces JS activation
- * 5. Graceful degradation with warning when WASM unavailable
- * 6. All existing tests continue to pass
+ * 2. Issue #1229: No fallback - default path requires WASM; throws if unavailable or unsupported squash
+ * 3. useJs parameter allows JS activation for verification only
+ * 4. NEAT_AI_USE_JS_ACTIVATION=1 allows JS/verification mode
+ * 5. All existing tests continue to pass
  */
 
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
@@ -260,9 +259,9 @@ Deno.test({
 
 Deno.test({
   name:
-    "WASM Default: Falls back to JS for unsupported squash functions (MEAN)",
+    "WASM Default: Throws for unsupported squash (MEAN); useJs for verification",
   fn() {
-    // MEAN is not supported in WASM, so it should fall back to JS
+    // Issue #1229: MEAN is not supported in WASM; default path requires WASM (no fallback).
     const creatureJson: CreatureInternal = {
       neurons: [
         { type: "hidden", index: 2, bias: 0.5, squash: "MEAN" },
@@ -282,19 +281,29 @@ Deno.test({
 
     const input = new Float32Array([1.0, 2.0]);
 
-    // Default activation should fallback to JS (MEAN not supported in WASM)
-    const defaultOutput = creature.activate(input, false, false);
-    assert(
-      defaultOutput.length === 1,
-      "Default output should have correct length",
-    );
+    // Default activation (WASM required) throws for unsupported squash.
+    // Ensure env does not allow JS so we actually test the throw.
+    const prev = Deno.env.get("NEAT_AI_USE_JS_ACTIVATION");
+    Deno.env.delete("NEAT_AI_USE_JS_ACTIVATION");
+    let threw = false;
+    try {
+      creature.activate(input, false, false);
+    } catch (e) {
+      threw = true;
+      assert(
+        (e as Error).message.includes("MEAN") &&
+          (e as Error).message.includes("useJs: true"),
+        "Error should mention unsupported squash and useJs: true",
+      );
+    }
+    assert(threw, "Default activate should throw for MEAN (no fallback)");
+    if (prev !== undefined) Deno.env.set("NEAT_AI_USE_JS_ACTIVATION", prev);
 
-    // Explicit JS activation for comparison
+    // Explicit JS activation (verification only) still works
     const jsOutput = creature.activate(input, false, true);
-    assertArrayClose(
-      defaultOutput,
-      jsOutput,
-      "Fallback should produce same results as JS",
+    assert(
+      jsOutput.length === 1,
+      "JS activation should produce correct length",
     );
   },
 });

@@ -102,7 +102,7 @@ Deno.test("PropagateMean", () => {
 
   const outputs: Float32Array[] = new Array(inputs.length);
   for (let i = inputs.length; i--;) {
-    outputs[i] = creature.activate(new Float32Array(inputs[i]));
+    outputs[i] = creature.activate(new Float32Array(inputs[i]), false, true);
   }
 
   const neuron = creature.neurons.find((n) => n.uuid === "absolute-5");
@@ -115,7 +115,12 @@ Deno.test("PropagateMean", () => {
   console.info(config);
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = inputs.length; i--;) {
-    creature.activateAndTrace(new Float32Array(inputs[i]), false, sparseConfig);
+    creature.activateAndTrace(
+      new Float32Array(inputs[i]),
+      false,
+      sparseConfig,
+      true,
+    );
     creature.propagate(new Float32Array(outputs[i]), config, sparseConfig);
   }
 
