@@ -7,8 +7,8 @@ The root cause was that `evaluateDir()` and `scoreDir()` called
 `requireWasmOrThrow()` which simply threw if WASM was not yet initialised,
 unlike the discovery path which had `ensureWasmActivationForDiscovery()` to
 auto-initialise. When the module-level auto-init failed silently (e.g. in
-workers, JSR downloads, or permission-restricted environments), users received
-a confusing error with no automatic recovery.
+workers, JSR downloads, or permission-restricted environments), users received a
+confusing error with no automatic recovery.
 
 ### Changes
 
