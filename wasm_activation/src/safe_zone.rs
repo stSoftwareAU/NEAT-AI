@@ -968,5 +968,6 @@ pub fn apply_safe_zone_adjustment(
 
         // Aggregate functions - not differentiable, always return 0
         SquashType::Minimum | SquashType::Maximum | SquashType::If => 0.0,
+        SquashType::Hypotenuse | SquashType::HypotenuseV2 | SquashType::Mean => 0.0,
     }
 }

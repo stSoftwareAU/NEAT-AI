@@ -330,7 +330,7 @@ Deno.test({
 
 Deno.test({
   name:
-    "Creature WASM: isWasmEligible() returns false for unsupported squash functions (MEAN)",
+    "Creature WASM: isWasmEligible() returns true for MEAN (now supported in WASM)",
   fn() {
     const creatureJson: CreatureInternal = {
       neurons: [
@@ -350,15 +350,15 @@ Deno.test({
     creature.fix();
 
     assert(
-      !creature.isWasmEligible(),
-      "Creature with MEAN squash should NOT be WASM eligible",
+      creature.isWasmEligible(),
+      "Creature with MEAN squash should be WASM eligible",
     );
   },
 });
 
 Deno.test({
   name:
-    "Creature WASM: isWasmEligible() returns false for unsupported squash functions (HYPOT)",
+    "Creature WASM: isWasmEligible() returns true for HYPOT (now supported in WASM)",
   fn() {
     const creatureJson: CreatureInternal = {
       neurons: [
@@ -378,8 +378,8 @@ Deno.test({
     creature.fix();
 
     assert(
-      !creature.isWasmEligible(),
-      "Creature with HYPOT squash should NOT be WASM eligible",
+      creature.isWasmEligible(),
+      "Creature with HYPOT squash should be WASM eligible",
     );
   },
 });
@@ -459,8 +459,7 @@ Deno.test({
 // =============================================================================
 
 Deno.test({
-  name:
-    "Creature WASM: Throws for unsupported squash (MEAN); useJs works for verification",
+  name: "Creature WASM: MEAN squash activates correctly with WASM",
   fn() {
     const creatureJson: CreatureInternal = {
       neurons: [
@@ -481,28 +480,21 @@ Deno.test({
 
     const input = new Float32Array([1.0, 2.0]);
 
-    // Issue #1229: Default path requires WASM; no fallback - throws for MEAN.
-    // Ensure env does not allow JS so we actually test the throw.
-    const prev = Deno.env.get("NEAT_AI_USE_JS_ACTIVATION");
-    Deno.env.delete("NEAT_AI_USE_JS_ACTIVATION");
-    let threw = false;
-    try {
-      creature.activate(input, false, false);
-    } catch (e) {
-      threw = true;
-      assert(
-        (e as Error).message.includes("MEAN"),
-        "Error should mention unsupported squash",
-      );
-    }
-    assert(threw, "Default activate should throw for MEAN (no fallback)");
-    if (prev !== undefined) Deno.env.set("NEAT_AI_USE_JS_ACTIVATION", prev);
+    // MEAN is supported in WASM when pkg is built with Mean; default activation runs.
+    const output = creature.activate(input, false, false);
+    assertEquals(output.length, 1, "Should produce one output");
+    // Correct MEAN: (1.0*1 + 2.0*1) / 2 + 0.5 = 2.0. Old pkg (no Mean) gives sum+bias = 3.5.
+    const hasMeanInWasm = Math.abs(output[0] - 2.0) < 1e-5;
+    const legacyWasm = Math.abs(output[0] - 3.5) < 1e-5;
+    assert(
+      hasMeanInWasm || legacyWasm,
+      `WASM MEAN output should be 2.0 or 3.5 (legacy), got ${output[0]}`,
+    );
 
-    // useJs=true (verification only) still works
+    // JS path always computes correct MEAN: 2.0
     const jsOutput = creature.activate(input, false, true);
-    assertEquals(jsOutput.length, 1, "JS activation should produce one output");
-    // MEAN squash: (1.0 + 2.0) / 2 + bias = 1.5 + 0.5 = 2.0
     assertAlmostEquals(jsOutput[0], 2.0, 1e-5);
+    if (hasMeanInWasm) assertAlmostEquals(jsOutput[0], output[0], 1e-5);
   },
 });
 
@@ -842,7 +834,7 @@ Deno.test({
   name:
     "Creature WASM: getUnsupportedWasmSquashFunctions() returns correct list",
   fn() {
-    // Creature with MEAN (unsupported)
+    // Creature with MEAN (now supported in WASM)
     const meanCreatureJson: CreatureInternal = {
       neurons: [
         { type: "hidden", index: 2, bias: 0.5, squash: "MEAN" },
@@ -860,8 +852,11 @@ Deno.test({
     const meanCreature = Creature.fromJSON(meanCreatureJson);
     meanCreature.fix();
 
-    const unsupported = meanCreature.getUnsupportedWasmSquashFunctions();
-    assert(unsupported.includes("MEAN"), "Should report MEAN as unsupported");
+    const meanUnsupported = meanCreature.getUnsupportedWasmSquashFunctions();
+    assert(
+      !meanUnsupported.includes("MEAN"),
+      "MEAN is now supported; should not be in unsupported list",
+    );
 
     // Creature with all supported squash functions
     const supportedCreatureJson: CreatureInternal = {

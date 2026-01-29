@@ -327,6 +327,7 @@ pub fn apply_derivative(squash_type: SquashType, x: f32) -> f32 {
         // Aggregate functions don't have traditional derivatives
         // Return 0 as a safe default
         SquashType::Minimum | SquashType::Maximum | SquashType::If => 0.0,
+        SquashType::Hypotenuse | SquashType::HypotenuseV2 | SquashType::Mean => 0.0,
     }
 }
 

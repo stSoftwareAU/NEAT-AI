@@ -286,6 +286,40 @@ impl CompiledNetwork {
                             negative_sum + neuron.bias
                         }
                     }
+                    SquashType::Hypotenuse => {
+                        let mut sum_sq = 0.0f32;
+                        for synapse_idx in start_synapse..end_synapse {
+                            let synapse = &self.synapses[synapse_idx];
+                            let val =
+                                self.activations[synapse.from_index as usize] * synapse.weight;
+                            sum_sq += val * val;
+                        }
+                        sum_sq.sqrt() + neuron.bias
+                    }
+                    SquashType::HypotenuseV2 => {
+                        let mut sum_sq = 0.0f32;
+                        for synapse_idx in start_synapse..end_synapse {
+                            let synapse = &self.synapses[synapse_idx];
+                            let val = neuron.bias
+                                + self.activations[synapse.from_index as usize] * synapse.weight;
+                            sum_sq += val * val;
+                        }
+                        sum_sq.sqrt()
+                    }
+                    SquashType::Mean => {
+                        let n = (end_synapse - start_synapse) as f32;
+                        if n <= 0.0 {
+                            neuron.bias
+                        } else {
+                            let mut sum = 0.0f32;
+                            for synapse_idx in start_synapse..end_synapse {
+                                let synapse = &self.synapses[synapse_idx];
+                                sum += self.activations[synapse.from_index as usize]
+                                    * synapse.weight;
+                            }
+                            sum / n + neuron.bias
+                        }
+                    }
                     _ => {
                         // Standard activation: weighted sum + bias, then apply squash
                         // Issue #1178 - Use SIMD-optimised weighted sum
@@ -444,6 +478,40 @@ impl CompiledNetwork {
                             positive_sum + neuron.bias
                         } else {
                             negative_sum + neuron.bias
+                        }
+                    }
+                    SquashType::Hypotenuse => {
+                        let mut sum_sq = 0.0f32;
+                        for synapse_idx in start_synapse..end_synapse {
+                            let synapse = &self.synapses[synapse_idx];
+                            let val =
+                                self.activations[synapse.from_index as usize] * synapse.weight;
+                            sum_sq += val * val;
+                        }
+                        sum_sq.sqrt() + neuron.bias
+                    }
+                    SquashType::HypotenuseV2 => {
+                        let mut sum_sq = 0.0f32;
+                        for synapse_idx in start_synapse..end_synapse {
+                            let synapse = &self.synapses[synapse_idx];
+                            let val = neuron.bias
+                                + self.activations[synapse.from_index as usize] * synapse.weight;
+                            sum_sq += val * val;
+                        }
+                        sum_sq.sqrt()
+                    }
+                    SquashType::Mean => {
+                        let n = (end_synapse - start_synapse) as f32;
+                        if n <= 0.0 {
+                            neuron.bias
+                        } else {
+                            let mut sum = 0.0f32;
+                            for synapse_idx in start_synapse..end_synapse {
+                                let synapse = &self.synapses[synapse_idx];
+                                sum += self.activations[synapse.from_index as usize]
+                                    * synapse.weight;
+                            }
+                            sum / n + neuron.bias
                         }
                     }
                     _ => {
@@ -651,6 +719,49 @@ impl CompiledNetwork {
                         // For aggregate functions, hintValue is the same as activation
                         (result, result)
                     }
+                    SquashType::Hypotenuse => {
+                        let mut sum_sq = 0.0f32;
+                        for synapse_idx in start_synapse..end_synapse {
+                            let synapse = &self.synapses[synapse_idx];
+                            let val =
+                                self.activations[synapse.from_index as usize] * synapse.weight;
+                            sum_sq += val * val;
+                        }
+                        let result = sum_sq.sqrt() + neuron.bias;
+                        self.trace_data_buffer.push(neuron_idx as f32);
+                        self.trace_data_buffer.push(0.0f32);
+                        (result, result)
+                    }
+                    SquashType::HypotenuseV2 => {
+                        let mut sum_sq = 0.0f32;
+                        for synapse_idx in start_synapse..end_synapse {
+                            let synapse = &self.synapses[synapse_idx];
+                            let val = neuron.bias
+                                + self.activations[synapse.from_index as usize] * synapse.weight;
+                            sum_sq += val * val;
+                        }
+                        let result = sum_sq.sqrt();
+                        self.trace_data_buffer.push(neuron_idx as f32);
+                        self.trace_data_buffer.push(0.0f32);
+                        (result, result)
+                    }
+                    SquashType::Mean => {
+                        let n = num_synapse as f32;
+                        let result = if n <= 0.0 {
+                            neuron.bias
+                        } else {
+                            let mut sum = 0.0f32;
+                            for synapse_idx in start_synapse..end_synapse {
+                                let synapse = &self.synapses[synapse_idx];
+                                sum += self.activations[synapse.from_index as usize]
+                                    * synapse.weight;
+                            }
+                            sum / n + neuron.bias
+                        };
+                        self.trace_data_buffer.push(neuron_idx as f32);
+                        self.trace_data_buffer.push(0.0f32);
+                        (result, result)
+                    }
                     _ => {
                         // Standard activation: weighted sum + bias, then apply squash
                         // Issue #1178 - Use SIMD-optimised weighted sum
@@ -694,9 +805,12 @@ impl CompiledNetwork {
                 // hintValues: for aggregate functions we expect hint==activation.
                 // For standard squashes keep the pre-squash value.
                 self.hint_values_buffer[neuron_idx] = match squash {
-                    SquashType::Minimum | SquashType::Maximum | SquashType::If => {
-                        activation_limited
-                    }
+                    SquashType::Minimum
+                    | SquashType::Maximum
+                    | SquashType::If
+                    | SquashType::Hypotenuse
+                    | SquashType::HypotenuseV2
+                    | SquashType::Mean => activation_limited,
                     _ => hint_value,
                 };
             }

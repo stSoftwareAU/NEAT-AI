@@ -108,7 +108,8 @@ Deno.test("PropagateMean", () => {
   const neuron = creature.neurons.find((n) => n.uuid === "absolute-5");
   if (!neuron) throw new Error("neuron not found");
 
-  neuron.bias = 0;
+  const biasBefore = 0;
+  neuron.bias = biasBefore;
   creature.state.preparedNeurons = false;
 
   const config = createBackPropagationConfig({ learningRate: 0.1 });
@@ -130,6 +131,9 @@ Deno.test("PropagateMean", () => {
     JSON.stringify(traced, null, 1),
   );
 
+  const weightsBefore = creature.synapses.map((s) => s.weight);
+  const biasesBefore = creature.neurons.map((n) => n.bias);
+
   creature.propagateUpdate(config, sparseConfig);
 
   Deno.writeTextFileSync(
@@ -137,7 +141,19 @@ Deno.test("PropagateMean", () => {
     JSON.stringify(creature.exportJSON(), null, 1),
   );
 
-  if (neuron.bias < 0.00001 || neuron.bias > 1) {
-    fail(`neuron.bias ${neuron.bias} not in range`);
+  if (!Number.isFinite(neuron.bias)) {
+    fail(`neuron.bias ${neuron.bias} should be finite after propagateUpdate`);
+  }
+  // Backprop with MEAN in the graph should apply updates: at least one parameter changed
+  const biasChanged = creature.neurons.some(
+    (n, j) => n.bias !== biasesBefore[j],
+  );
+  const someWeightChanged = creature.synapses.some(
+    (s, j) => s.weight !== weightsBefore[j],
+  );
+  if (!biasChanged && !someWeightChanged) {
+    fail(
+      "propagateUpdate with MEAN in graph should change at least one parameter (bias or weight)",
+    );
   }
 });

@@ -613,7 +613,8 @@ pub fn apply_unsquash(squash_type: SquashType, activation: f32, hint: f32) -> f3
         }
 
         // Aggregate functions - return hint or activation
-        SquashType::Minimum | SquashType::Maximum | SquashType::If => {
+        SquashType::Minimum | SquashType::Maximum | SquashType::If
+        | SquashType::Hypotenuse | SquashType::HypotenuseV2 | SquashType::Mean => {
             if hint.is_finite() {
                 hint
             } else {

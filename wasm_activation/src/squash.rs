@@ -62,6 +62,10 @@ pub enum SquashType {
     Minimum = 32,
     Maximum = 33,
     If = 34,
+    // Deprecated aggregate functions (implemented for WASM parity, remove when possible)
+    Hypotenuse = 35,   // HYPOT: hypot(weighted_inputs) + bias
+    HypotenuseV2 = 36, // HYPOTv2: hypot(bias + weighted_inputs)
+    Mean = 37,         // MEAN: (sum of weighted_inputs) / n + bias
 }
 
 impl From<u8> for SquashType {
@@ -103,6 +107,9 @@ impl From<u8> for SquashType {
             32 => SquashType::Minimum,
             33 => SquashType::Maximum,
             34 => SquashType::If,
+            35 => SquashType::Hypotenuse,
+            36 => SquashType::HypotenuseV2,
+            37 => SquashType::Mean,
             _ => SquashType::Identity,
         }
     }
@@ -246,6 +253,9 @@ pub fn apply_squash(squash_type: SquashType, x: f32) -> f32 {
         // neuron activation loop and don't use the standard sum-then-squash pattern.
         // Return identity as a fallback if they're ever called directly.
         SquashType::Minimum | SquashType::Maximum | SquashType::If => x,
+        // Deprecated aggregates: single-value fallback (hypot(x)=|x|, mean(x)=x)
+        SquashType::Hypotenuse | SquashType::HypotenuseV2 => x.abs(),
+        SquashType::Mean => x,
     }
 }
 
@@ -389,6 +399,8 @@ pub fn apply_squash_f64(squash_type: SquashType, x: f64) -> f64 {
         SquashType::Isru => x / (1.0 + x * x).sqrt(),
         // Aggregate squashes are handled specially in the neuron loop.
         SquashType::Minimum | SquashType::Maximum | SquashType::If => x,
+        SquashType::Hypotenuse | SquashType::HypotenuseV2 => x.abs(),
+        SquashType::Mean => x,
     }
 }
 

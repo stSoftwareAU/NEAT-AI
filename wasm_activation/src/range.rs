@@ -81,6 +81,9 @@ pub fn apply_get_range(squash_type: SquashType) -> (f32, f32) {
         SquashType::Minimum => (-F32_LARGE, F32_LARGE),
         SquashType::Maximum => (-F32_LARGE, F32_LARGE),
         SquashType::If => (-F32_LARGE, F32_LARGE),
+        SquashType::Hypotenuse => (-F32_LARGE, F32_LARGE),
+        SquashType::HypotenuseV2 => (0.0, F32_LARGE), // HYPOTv2 output >= 0
+        SquashType::Mean => (-F32_LARGE, F32_LARGE),
     }
 }
 
