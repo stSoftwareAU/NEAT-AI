@@ -293,8 +293,12 @@ function resolveWasmLocation(wasmPath?: string): ResolvedWasmLocation {
 /**
  * Load the WASM activation payload from the specified path.
  *
- * Issue #1206 - Returns null if the WASM files are not available,
- * allowing graceful fallback to JavaScript-based activation.
+ * Issue #1206 - Returns null if the WASM files are not available.
+ *
+ * Note: Issue #1229 changes the default behaviour. When the returned payload
+ * is null and NEAT_AI_USE_JS_ACTIVATION is not set, workers require WASM and
+ * will fail. A null return is only valid in verification/optional-WASM mode
+ * (e.g. when NEAT_AI_USE_JS_ACTIVATION=1).
  *
  * @param wasmPath - Optional path to the WASM pkg directory. Defaults to the
  *                   project's wasm_activation/pkg directory.

@@ -45,7 +45,7 @@ All standard and aggregate squash functions are WASM-supported:
 | Advanced      | LogSigmoid, ISRU                                      |
 | Aggregate     | MINIMUM, MAXIMUM, IF                                  |
 
-### Unsupported Functions (fallback to JS)
+### Unsupported Functions
 
 The following deprecated functions are not supported in WASM:
 
@@ -53,8 +53,9 @@ The following deprecated functions are not supported in WASM:
 - `HYPOT` - Deprecated aggregate function
 - `HYPOTv2` - Deprecated aggregate function
 
-When a creature uses any unsupported function, `activate()` with `useWasm=true`
-automatically falls back to the JS implementation.
+> **Note:** Issue #1229 removes the default-path JS fallback for activation. On
+> the default path, unsupported squash functions now throw. Use `useJs: true` or
+> `NEAT_AI_USE_JS_ACTIVATION=1` for verification only.
 
 ## Evidence
 

@@ -58,7 +58,9 @@ Phase 10 (range)    ────────────────────
 
 1. **Each phase is independently completable** - Can be done by different
    developers or at different times
-2. **Library remains functional** - JS fallback preserved until Phase 12
+2. **Library remains functional** - JS path available via `useJs: true` or
+   `NEAT_AI_USE_JS_ACTIVATION=1` for verification (Issue #1229 removes
+   default-path JS fallback)
 3. **Clear acceptance criteria** - Each issue has specific deliverables
 4. **Risk mitigation** - Problems caught early before removing JS code
 5. **Testable increments** - Each phase adds tests before removing anything

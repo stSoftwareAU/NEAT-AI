@@ -148,6 +148,9 @@ limitation.
 - `bench/ActivateWasm.ts` - Performance benchmark
 - `docs/pr-summary-1116.md` - This summary
 
+> **Note:** Issue #1229 removes the default-path JS fallback for activation.
+> WASM is now required on the default path.
+
 ## Conclusion
 
 The prototype successfully demonstrates that **WASM can provide nearly 10x
