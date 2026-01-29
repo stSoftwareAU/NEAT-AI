@@ -667,7 +667,7 @@ export class Creature implements CreatureInternal {
     if (!isWasmActivationAvailable()) {
       throw new Error(
         "WASM activation is required but not initialised. " +
-          "Call initWasmActivation(path) before scoring/training, or set NEAT_AI_WASM_PKG_PATH to the directory containing wasm_activation.js (e.g. /path/to/wasm_activation/pkg). " +
+          "Call initWasmActivation(path) before scoring/training. " +
           "For verification only, use activate(..., useJs: true) or NEAT_AI_USE_JS_ACTIVATION=1.",
       );
     }
