@@ -215,7 +215,7 @@ export function getNeuronsToTest(
  * @param options - Scoring options
  * @returns The final creature export with tags applied
  */
-export function applyNeuronChanges(
+export async function applyNeuronChanges(
   creatureExport: CreatureExport,
   neuronSquashMap: Map<
     string,
@@ -223,7 +223,7 @@ export function applyNeuronChanges(
   >,
   dataDir: string,
   options: object,
-): { creature: CreatureExport; score: number; error: number } {
+): Promise<{ creature: CreatureExport; score: number; error: number }> {
   const finalJson = Creature.fromJSON(creatureExport).exportJSON();
 
   for (const uuid of neuronSquashMap.keys()) {
@@ -246,7 +246,7 @@ export function applyNeuronChanges(
 
   const finalCreature = Creature.fromJSON(finalJson);
   finalCreature.fix();
-  const result = finalCreature.scoreDir(dataDir, options);
+  const result = await finalCreature.scoreDir(dataDir, options);
 
   const exported = finalCreature.exportJSON();
   addTag(exported, "score", `${result.score}`);

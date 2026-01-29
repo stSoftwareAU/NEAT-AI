@@ -210,7 +210,7 @@ export class WorkerProcessor {
         creature = Creature.fromJSON(JSON.parse(data.evaluate.creature));
         /* release some memory*/
         data.evaluate.creature = "";
-        const result = creature.evaluateDir(
+        const result = await creature.evaluateDir(
           this.dataSetDir,
           this.cost,
           data.evaluate.feedbackLoop,

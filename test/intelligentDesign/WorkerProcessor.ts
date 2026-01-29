@@ -14,7 +14,7 @@ Deno.test("WorkerProcessor.process returns score payload and tags exported creat
   const originalScoreDir = Creature.prototype.scoreDir;
   try {
     Creature.prototype.scoreDir = function () {
-      return { score: 123.456, error: 0.789 } as const;
+      return Promise.resolve({ score: 123.456, error: 0.789 } as const);
     };
 
     const creature = new Creature(2, 1, { layers: [{ count: 2 }] });

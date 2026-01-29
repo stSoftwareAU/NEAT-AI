@@ -20,25 +20,25 @@ function cleanup() {
   }
 }
 
-Deno.test("combineImprovements returns original creature when no improvements exist", () => {
+Deno.test("combineImprovements returns original creature when no improvements exist", async () => {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
   const exported = creature.exportJSON();
 
-  const result = combineImprovements(exported, new Map(), ".", 1.0);
+  const result = await combineImprovements(exported, new Map(), ".", 1.0);
   assertEquals(result.creature, exported);
   assertEquals(result.message, "No improvements found.");
 });
 
-Deno.test("combineImprovements returns the single improvement file contents", () => {
+Deno.test("combineImprovements returns the single improvement file contents", async () => {
   cleanup();
   try {
-    Deno.mkdirSync(TEST_DIR, { recursive: true });
+    await Deno.mkdir(TEST_DIR, { recursive: true });
 
     const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
     const exported = creature.exportJSON();
 
     const path = `${TEST_DIR}/one.json`;
-    Deno.writeTextFileSync(path, JSON.stringify(exported, null, 1));
+    await Deno.writeTextFile(path, JSON.stringify(exported, null, 1));
 
     const improvements = new Map<
       string,
@@ -51,7 +51,7 @@ Deno.test("combineImprovements returns the single improvement file contents", ()
       message: "improved",
     });
 
-    const result = combineImprovements(exported, improvements, ".", 1.0);
+    const result = await combineImprovements(exported, improvements, ".", 1.0);
     assertEquals(result.message, "improved");
     assertEquals(JSON.stringify(result.creature), JSON.stringify(exported));
   } finally {
@@ -59,15 +59,15 @@ Deno.test("combineImprovements returns the single improvement file contents", ()
   }
 });
 
-Deno.test("combineImprovements returns combined creature when combined score beats best individual", () => {
+Deno.test("combineImprovements returns combined creature when combined score beats best individual", async () => {
   const originalScoreDir = Creature.prototype.scoreDir;
   cleanup();
   try {
     Creature.prototype.scoreDir = function () {
-      return { score: 10, error: 0.1 } as const;
+      return Promise.resolve({ score: 10, error: 0.1 } as const);
     };
 
-    Deno.mkdirSync(TEST_DIR, { recursive: true });
+    await Deno.mkdir(TEST_DIR, { recursive: true });
 
     const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const exported = creature.exportJSON();
@@ -80,8 +80,8 @@ Deno.test("combineImprovements returns combined creature when combined score bea
 
     const pathA = `${TEST_DIR}/a.json`;
     const pathB = `${TEST_DIR}/b.json`;
-    Deno.writeTextFileSync(pathA, JSON.stringify(exported, null, 1));
-    Deno.writeTextFileSync(pathB, JSON.stringify(exported, null, 1));
+    await Deno.writeTextFile(pathA, JSON.stringify(exported, null, 1));
+    await Deno.writeTextFile(pathB, JSON.stringify(exported, null, 1));
 
     const improvements = new Map<
       string,
@@ -101,7 +101,7 @@ Deno.test("combineImprovements returns combined creature when combined score bea
       message: "B",
     });
 
-    const result = combineImprovements(exported, improvements, ".", 1.0);
+    const result = await combineImprovements(exported, improvements, ".", 1.0);
     assertEquals(typeof result.message, "string");
 
     const combined: CreatureExport = result.creature;
@@ -119,15 +119,15 @@ Deno.test("combineImprovements returns combined creature when combined score bea
   }
 });
 
-Deno.test("combineImprovements falls back to best individual when marriage fails", () => {
+Deno.test("combineImprovements falls back to best individual when marriage fails", async () => {
   const originalScoreDir = Creature.prototype.scoreDir;
   cleanup();
   try {
     Creature.prototype.scoreDir = function () {
-      return { score: 4.5, error: 0.2 } as const;
+      return Promise.resolve({ score: 4.5, error: 0.2 } as const);
     };
 
-    Deno.mkdirSync(TEST_DIR, { recursive: true });
+    await Deno.mkdir(TEST_DIR, { recursive: true });
 
     const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const exported = creature.exportJSON();
@@ -140,8 +140,8 @@ Deno.test("combineImprovements falls back to best individual when marriage fails
 
     const pathA = `${TEST_DIR}/best.json`;
     const pathB = `${TEST_DIR}/worst.json`;
-    Deno.writeTextFileSync(pathA, JSON.stringify(exported, null, 1));
-    Deno.writeTextFileSync(pathB, JSON.stringify(exported, null, 1));
+    await Deno.writeTextFile(pathA, JSON.stringify(exported, null, 1));
+    await Deno.writeTextFile(pathB, JSON.stringify(exported, null, 1));
 
     const improvements = new Map<
       string,
@@ -160,7 +160,7 @@ Deno.test("combineImprovements falls back to best individual when marriage fails
       message: "worse",
     });
 
-    const result = combineImprovements(exported, improvements, ".", 1.0);
+    const result = await combineImprovements(exported, improvements, ".", 1.0);
     assertEquals(result.message.includes("Marriage failed"), true);
 
     const fallbackCreature: CreatureExport = result.creature;

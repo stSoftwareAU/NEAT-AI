@@ -586,13 +586,13 @@ export async function scanForSquashImprovements(
  * @param options - NEAT options for scoring
  * @returns The best creature export with appropriate tags
  */
-export function combineImprovements(
+export async function combineImprovements(
   originalCreature: CreatureExport,
   improvements: Map<string, BestNeuronSquash>,
   dataDir: string,
   bestScore: number,
   options: NeatOptions = {},
-): { creature: CreatureExport; message: string } {
+): Promise<{ creature: CreatureExport; message: string }> {
   if (improvements.size === 0) {
     return {
       creature: originalCreature,
@@ -603,7 +603,7 @@ export function combineImprovements(
   if (improvements.size === 1) {
     const improvement = improvements.values().next().value;
     assert(improvement, "Should have one improvement");
-    const json = JSON.parse(Deno.readTextFileSync(improvement.path));
+    const json = JSON.parse(await Deno.readTextFile(improvement.path));
     return {
       creature: json,
       message: improvement.message,
@@ -643,7 +643,7 @@ export function combineImprovements(
 
   const finalCreature = Creature.fromJSON(finalJson);
   finalCreature.fix();
-  const result = finalCreature.scoreDir(dataDir, options);
+  const result = await finalCreature.scoreDir(dataDir, options);
 
   if (result.score > bestIndividualScore) {
     const message = `Combined ${improvements.size} neurons, score: ${
@@ -663,7 +663,7 @@ export function combineImprovements(
 
   // Return the best individual improvement
   assert(bestIndividual, "Best individual should be defined");
-  const json = JSON.parse(Deno.readTextFileSync(bestIndividual.path));
+  const json = JSON.parse(await Deno.readTextFile(bestIndividual.path));
   const message =
     `Marriage failed, using best individual: ${bestIndividual.message}`;
   addTag(json, "intelligentDesign", message);
