@@ -52,6 +52,7 @@ export enum SquashType {
 export const SQUASH_NAME_TO_TYPE: Record<string, SquashType> = {
   "IDENTITY": SquashType.Identity,
   "ReLU": SquashType.Relu,
+  "RELU": SquashType.Relu, // alias for ReLU
   "ReLU6": SquashType.Relu6,
   "LeakyReLU": SquashType.LeakyRelu,
   "SELU": SquashType.Selu,
@@ -59,12 +60,14 @@ export const SQUASH_NAME_TO_TYPE: Record<string, SquashType> = {
   "LOGISTIC": SquashType.Logistic,
   "TANH": SquashType.Tanh,
   "HARD_TANH": SquashType.HardTanh,
+  "CLIPPED": SquashType.HardTanh, // alias for HARD_TANH (Issue #1248)
   "SOFTSIGN": SquashType.Softsign,
   "Softplus": SquashType.Softplus,
   "Swish": SquashType.Swish,
   "Mish": SquashType.Mish,
   "GELU": SquashType.Gelu,
   "SINE": SquashType.Sine,
+  "SINUSOID": SquashType.Sine, // alias for SINE
   "Cosine": SquashType.Cosine,
   "TAN": SquashType.Tan,
   "ArcTan": SquashType.ArcTan,
@@ -74,6 +77,7 @@ export const SQUASH_NAME_TO_TYPE: Record<string, SquashType> = {
   "BIPOLAR": SquashType.Bipolar,
   "STEP": SquashType.Step,
   "COMPLEMENT": SquashType.Complement,
+  "INVERSE": SquashType.Complement, // alias for COMPLEMENT
   "ABSOLUTE": SquashType.Absolute,
   "SQUARE": SquashType.Square,
   "Cube": SquashType.Cube,
