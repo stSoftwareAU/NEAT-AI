@@ -182,7 +182,8 @@ export async function initWasmActivation(
       // Import the generated JS bindings. Use file:// for absolute fs paths;
       // use full URL as-is when wasmPath is the JSR package URL (publish includes wasm_activation/pkg).
       const jsPath = `${wasmPath.replace(/\/$/, "")}/wasm_activation.js`;
-      const isPackageUrl = wasmPath.startsWith("http://") || wasmPath.startsWith("https://");
+      const isPackageUrl = wasmPath.startsWith("http://") ||
+        wasmPath.startsWith("https://");
       const modulePath = isPackageUrl
         ? jsPath
         : isAbsoluteFileSystemPath(jsPath)
@@ -217,7 +218,8 @@ export async function initWasmActivation(
     } catch (error) {
       const code = (error as { code?: string })?.code;
       const msg = (error as Error)?.message ?? String(error);
-      const isNotFound = code === "ERR_MODULE_NOT_FOUND" || /module not found/i.test(msg);
+      const isNotFound = code === "ERR_MODULE_NOT_FOUND" ||
+        /module not found/i.test(msg);
       if (isNotFound) {
         console.warn(
           `WASM activation: pkg not found at ${wasmPath}. ` +
@@ -1057,7 +1059,8 @@ try {
   if (shouldAutoInit) {
     // Load only from the NEAT-AI package (JSR URL or cache path). No env vars required.
     const fromRemote = typeof import.meta.url === "string" &&
-      (import.meta.url.startsWith("http://") || import.meta.url.startsWith("https://"));
+      (import.meta.url.startsWith("http://") ||
+        import.meta.url.startsWith("https://"));
     const packagePkgUrl = fromRemote
       ? new URL("../../wasm_activation/pkg/", import.meta.url).href
       : "";
