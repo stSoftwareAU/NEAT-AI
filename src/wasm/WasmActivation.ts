@@ -179,10 +179,13 @@ export async function initWasmActivation(
 
   initPromise = (async () => {
     try {
-      // Import the generated JS bindings. Use file:// URL for absolute paths
-      // so Deno loads from the filesystem when the library is loaded from JSR.
+      // Import the generated JS bindings. Use file:// for absolute fs paths;
+      // use full URL as-is when wasmPath is the JSR package URL (publish includes wasm_activation/pkg).
       const jsPath = `${wasmPath.replace(/\/$/, "")}/wasm_activation.js`;
-      const modulePath = isAbsoluteFileSystemPath(jsPath)
+      const isPackageUrl = wasmPath.startsWith("http://") || wasmPath.startsWith("https://");
+      const modulePath = isPackageUrl
+        ? jsPath
+        : isAbsoluteFileSystemPath(jsPath)
         ? pathToFileUrl(jsPath)
         : jsPath;
       const module = await import(modulePath);
@@ -212,7 +215,17 @@ export async function initWasmActivation(
 
       return true;
     } catch (error) {
-      console.error("Failed to initialise WASM activation module:", error);
+      const code = (error as { code?: string })?.code;
+      const msg = (error as Error)?.message ?? String(error);
+      const isNotFound = code === "ERR_MODULE_NOT_FOUND" || /module not found/i.test(msg);
+      if (isNotFound) {
+        console.warn(
+          `WASM activation: pkg not found at ${wasmPath}. ` +
+            "Use NEAT_AI_USE_JS_ACTIVATION=1 for verification-only mode.",
+        );
+      } else {
+        console.error("Failed to initialise WASM activation module:", error);
+      }
       return false;
     } finally {
       // If init succeeded, wasmModule is set and future calls will fast-path.
@@ -1000,9 +1013,8 @@ export function wasmVersion(): string {
 //
 // Initialise the WASM module at module load time on the main thread so calling
 // programs use WASM by default with no changes.
-// - Path is resolved in order: NEAT_AI_WASM_PKG_PATH (if set), then
-//   <cwd>/wasm_activation/pkg (changes with app root), then library-relative.
-// - Set NEAT_AI_WASM_PKG_PATH to override (e.g. when using from JSR).
+// - WASM is loaded from the NEAT-AI package (JSR URL or cache path). No env vars required.
+// - Set NEAT_AI_WASM_PKG_PATH only to override the path (optional).
 // - Set NEAT_AI_USE_JS_ACTIVATION=1 to skip auto-init (verification only).
 //
 // Workers do not auto-init here; they receive the WASM payload from the parent
@@ -1043,20 +1055,18 @@ try {
     !isWasmActivationAvailable();
 
   if (shouldAutoInit) {
-    // Path changes with context: try env path, then cwd (app root), then library-relative.
-    const cwdPath = typeof Deno !== "undefined"
-      ? `${Deno.cwd()}/wasm_activation/pkg`
-      : "";
+    // Load only from the NEAT-AI package (JSR URL or cache path). No env vars required.
     const fromRemote = typeof import.meta.url === "string" &&
-      (import.meta.url.startsWith("http://") ||
-        import.meta.url.startsWith("https://"));
+      (import.meta.url.startsWith("http://") || import.meta.url.startsWith("https://"));
+    const packagePkgUrl = fromRemote
+      ? new URL("../../wasm_activation/pkg/", import.meta.url).href
+      : "";
     const libPath = fromRemote
       ? ""
       : `${new URL("../../", import.meta.url).pathname}wasm_activation/pkg`;
-    const firstPath = explicitPath || cwdPath || libPath;
-    let ok = firstPath ? await initWasmActivation(firstPath) : false;
-    if (!ok && !explicitPath && cwdPath && firstPath === cwdPath && libPath) {
-      ok = await initWasmActivation(libPath);
+    const wasmPath = explicitPath || packagePkgUrl || libPath;
+    if (wasmPath) {
+      await initWasmActivation(wasmPath);
     }
   }
 } catch {
