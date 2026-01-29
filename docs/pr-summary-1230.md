@@ -24,8 +24,8 @@ established by Issue #1229. This PR addresses all items identified in Issue
      `NEAT_AI_USE_JS_ACTIVATION=1` is set
 
 3. **test/CreatureWasmActivation.ts** (top-of-file comment)
-   - Changed "WASM is used when supported, with JS fallback otherwise" to
-     "WASM is required on the default path; unsupported squash functions throw"
+   - Changed "WASM is used when supported, with JS fallback otherwise" to "WASM
+     is required on the default path; unsupported squash functions throw"
    - Added note about #1229 removing default-path JS fallback
 
 4. **src/multithreading/workers/WorkerHandler.ts** (comment for
@@ -42,9 +42,9 @@ established by Issue #1229. This PR addresses all items identified in Issue
      - Unsupported squash functions throw on the default path
 
 6. **README.md**
-   - Added note under "Efficient Model Utilisation" that activation uses WASM
-     by default, requires init, and that `useJs`/`NEAT_AI_USE_JS_ACTIVATION`
-     are for verification
+   - Added note under "Efficient Model Utilisation" that activation uses WASM by
+     default, requires init, and that `useJs`/`NEAT_AI_USE_JS_ACTIVATION` are
+     for verification
 
 7. **Other PR summaries** (one-line notes added)
    - docs/pr-summary-1143.md – Note about #1229 removing default-path fallback
