@@ -2,6 +2,7 @@ import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -234,7 +235,8 @@ Deno.test("Offspring.breed() - semantic version and forwardOnly preservation", (
   assert(foundOffspring, "Should have at least one successful offspring");
 });
 
-Deno.test("Offspring.breed() - activation equivalence with original implementation", () => {
+Deno.test("Offspring.breed() - activation equivalence with original implementation", async () => {
+  await initWasmForTests();
   // Create creatures and breed them
   const mum = new Creature(4, 2, {
     layers: [{ count: 6 }],

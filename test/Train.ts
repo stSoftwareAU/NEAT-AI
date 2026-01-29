@@ -7,7 +7,8 @@ import { initWasmForTests } from "./_initWasm.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 // Compact form: name and function
-Deno.test("AND", () => {
+Deno.test("AND", async () => {
+  await initWasmForTests();
   // Train the AND gate
   const trainingSet = [
     { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
