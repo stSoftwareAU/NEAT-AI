@@ -2,10 +2,12 @@ import type { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import type { NeatOptions } from "../src/config/NeatOptions.ts";
 import { Creature } from "../src/Creature.ts";
 import { train } from "./TrainTestOnlyUtil.ts";
+import { initWasmForTests } from "./_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("Learn", () => {
+Deno.test("Learn", async () => {
+  await initWasmForTests();
   const nn = Creature.fromJSON(
     {
       neurons: [

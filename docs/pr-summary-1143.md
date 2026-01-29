@@ -40,6 +40,9 @@ performance.
 - The wrapper functions automatically detect WASM availability
 - No breaking changes to existing APIs
 
+> **Note:** Issue #1229 removes the default-path JS fallback for activation.
+> WASM is now required on the default path.
+
 ## Evidence
 
 Unable to generate screenshot: This is a CLI library with no visual interface.

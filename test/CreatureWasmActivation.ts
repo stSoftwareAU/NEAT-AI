@@ -6,10 +6,13 @@
  *
  * These tests verify that:
  * 1. Creature.activate() uses WASM by default (useJs parameter forces JS)
- * 2. WASM is used when supported, with JS fallback otherwise
+ * 2. WASM is required on the default path; unsupported squash functions throw
  * 3. WASM eligibility detection works correctly
  * 4. WASM compilation is cached and lazily initialised
  * 5. Both JS and WASM paths produce identical results
+ *
+ * Note: Issue #1229 removes the default-path JS fallback. Use `useJs: true`
+ * or `NEAT_AI_USE_JS_ACTIVATION=1` for verification only.
  */
 
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
