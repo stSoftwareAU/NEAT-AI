@@ -288,7 +288,14 @@ jobs:
           # Check memory usage after tests
           echo "Memory usage after tests:"
           free -h
-          deno coverage .coverage --lcov > .coverage.lcov # create coverage report
+          # Exclude ephemeral temp-file modules (eg `file:///tmp/...`) that can be
+          # generated during tests and removed before report generation.
+          # Keep the default `test\.(js|mjs|ts|jsx|tsx)$` exclusion as well.
+          deno coverage .coverage \
+            --lcov \
+            --output=.coverage.lcov \
+            --exclude="^file:///tmp/" \
+            --exclude="test\\.(js|mjs|ts|jsx|tsx)$"
 
       - name: Upload coverage to Codecov
         if: ${{ steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success' }}
