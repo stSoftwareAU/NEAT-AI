@@ -60,10 +60,13 @@ standard term the first time it appears.
    forward pass that maps inputs to outputs, allowing for quick and easy
    deployment of the trained model.
 
-   **Activation uses WASM by default** and requires initialisation via
-   `initWasmActivation()` (or set `NEAT_AI_WASM_AUTO_INIT=1`). The JavaScript
-   activation path is available for verification only via `useJs: true` or
-   `NEAT_AI_USE_JS_ACTIVATION=1`.
+   **Activation uses WASM by default.** The library initialises the WASM backend
+   automatically; callers do not need to call any init function or set
+   environment variables. This works transparently in both the main thread and
+   Deno Worker contexts. If WASM cannot be loaded inside a Worker (e.g. due to
+   restricted file-system access), the library falls back to JavaScript
+   activation silently. The JavaScript activation path can also be forced for
+   verification/debug via `useJs: true` or `NEAT_AI_USE_JS_ACTIVATION=1`.
 
 ## Feed-forward vs recurrent connections
 
