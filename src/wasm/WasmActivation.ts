@@ -161,7 +161,8 @@ function pathToFileUrl(path: string): string {
 }
 
 /**
- * Load and initialise the WASM module
+ * Load and initialise the WASM module. Internal implementation detail (Issue #1256).
+ * Callers do not call this; the library initialises the backend automatically.
  *
  * @param wasmPath - Path to the WASM directory containing pkg/wasm_activation.js
  */
@@ -223,7 +224,7 @@ export async function initWasmActivation(
       if (isNotFound) {
         console.warn(
           `WASM activation: pkg not found at ${wasmPath}. ` +
-            "Use NEAT_AI_USE_JS_ACTIVATION=1 for verification-only mode.",
+            "For verification-only mode, set NEAT_AI_USE_JS_ACTIVATION=1 (optional, debug only).",
         );
       } else {
         console.error("Failed to initialise WASM activation module:", error);
@@ -240,7 +241,7 @@ export async function initWasmActivation(
 }
 
 /**
- * Load and initialise the WASM module synchronously from binary data
+ * Load and initialise the WASM module synchronously from binary data. Internal implementation detail (Issue #1256).
  *
  * @param jsBindings - The JS bindings module
  * @param wasmBinary - The WASM binary data
@@ -1010,17 +1011,16 @@ export function wasmVersion(): string {
 }
 
 // -----------------------------------------------------------------------------
-// Auto-initialisation (Issue #1229: WASM is the default)
+// Auto-initialisation (Issue #1256: WASM and backends are implementation details)
 // -----------------------------------------------------------------------------
 //
-// Initialise the WASM module at module load time on the main thread so calling
-// programs use WASM by default with no changes.
-// - WASM is loaded from the NEAT-AI package (JSR URL or cache path). No env vars required.
-// - Set NEAT_AI_WASM_PKG_PATH only to override the path (optional).
-// - Set NEAT_AI_USE_JS_ACTIVATION=1 to skip auto-init (verification only).
+// Initialise the WASM module at module load time on the main thread so callers
+// use the best available backend with no code changes or env vars required.
+// - WASM is loaded from the NEAT-AI package (JSR URL or cache path).
+// - NEAT_AI_WASM_PKG_PATH: optional override for the WASM pkg path (debug only).
+// - NEAT_AI_USE_JS_ACTIVATION=1: optional skip auto-init / use JS path (verification only).
 //
-// Workers do not auto-init here; they receive the WASM payload from the parent
-// and call initWasmActivationSync in worker startup.
+// Workers receive the WASM payload from the parent and initialise internally.
 
 function isProbablyWorkerScope(): boolean {
   // Most reliable when available.

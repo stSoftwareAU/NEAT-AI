@@ -2,14 +2,10 @@
  * WASM Activation Methods Integration
  *
  * Issue #1143 - WASM Migration Phase 11: Integrate WASM activation methods into backpropagation
+ * Issue #1256 - Backend is an implementation detail. No env vars required for normal use.
  *
- * This module provides unified wrapper functions that can delegate to either JS or WASM
- * implementations of activation methods. The WASM methods are used when available unless
- * explicitly disabled via environment variable or the useJs flag.
- *
- * Usage:
- * - Set NEAT_AI_USE_WASM_BACKPROP=false to force JS backpropagation
- * - Default is to use WASM when available
+ * Unified wrapper functions delegate to JS or WASM. WASM is used when available.
+ * NEAT_AI_USE_WASM_BACKPROP=false is optional (debug only) to force JS backpropagation.
  */
 
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";

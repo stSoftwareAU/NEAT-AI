@@ -238,8 +238,7 @@ let cachedWasmActivationInitPayload: WasmActivationInitPayload | null = null;
 let cachedWasmPath: string | null = null;
 
 /**
- * Issue #1229: WASM is required by default with no fallback.
- * Set NEAT_AI_USE_JS_ACTIVATION=1 to allow workers without WASM (verification only).
+ * Issue #1256: WASM is the default backend. NEAT_AI_USE_JS_ACTIVATION=1 is optional (verification/debug only).
  */
 function shouldRequireWasmActivation(): boolean {
   try {
@@ -295,10 +294,9 @@ function resolveWasmLocation(wasmPath?: string): ResolvedWasmLocation {
  *
  * Issue #1206 - Returns null if the WASM files are not available.
  *
- * Note: Issue #1229 changes the default behaviour. When the returned payload
- * is null and NEAT_AI_USE_JS_ACTIVATION is not set, workers require WASM and
- * will fail. A null return is only valid in verification/optional-WASM mode
- * (e.g. when NEAT_AI_USE_JS_ACTIVATION=1).
+ * Note: Issue #1256 - Backend is an implementation detail. When the payload
+ * is null and NEAT_AI_USE_JS_ACTIVATION is not set, workers require WASM.
+ * NEAT_AI_USE_JS_ACTIVATION=1 is optional (verification/debug only).
  *
  * @param wasmPath - Optional path to the WASM pkg directory. Defaults to the
  *                   project's wasm_activation/pkg directory.
@@ -489,9 +487,7 @@ export class WorkerHandler {
       }
     })();
 
-    // Issue #1229: WASM is required by default. When shouldRequireWasmActivation()
-    // is true, missing WASM payload throws below. Set NEAT_AI_USE_JS_ACTIVATION=1
-    // for verification only.
+    // Issue #1256: WASM is the default backend. NEAT_AI_USE_JS_ACTIVATION=1 is optional (debug only).
     if (!direct) {
       this.worker = new Worker(
         new URL("./deno/worker.ts", import.meta.url).href,
@@ -521,9 +517,8 @@ export class WorkerHandler {
       const wasmPayload = await loadWasmActivationInitPayloadAsync();
       if (shouldRequireWasmActivation() && !wasmPayload) {
         throw new Error(
-          "WASM activation is required but wasm_activation/pkg could not be loaded. " +
-            "Ensure the published package includes wasm_activation/pkg or build it locally. " +
-            "For verification only, set NEAT_AI_USE_JS_ACTIVATION=1.",
+          "WASM activation could not be loaded. Ensure the NEAT-AI package is installed correctly. " +
+            "For verification-only mode, set NEAT_AI_USE_JS_ACTIVATION=1 (optional, debug only).",
         );
       }
       const data: RequestData = {

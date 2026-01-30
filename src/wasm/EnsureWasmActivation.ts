@@ -1,10 +1,8 @@
 /**
- * Issue #1247 - Shared WASM activation initialisation helper.
+ * Issue #1247 / #1256 - Shared WASM activation initialisation helper (internal).
  *
- * Provides a reusable function to ensure WASM activation is initialised
- * before scoring, evaluation, or discovery operations. This avoids the
- * "WASM activation is required but not initialised" error by
- * auto-initialising when needed.
+ * Ensures WASM activation is initialised before scoring/evaluation. Callers do not
+ * call init APIs; the library initialises the backend automatically (Issue #1256).
  */
 import { initWasmActivation, isWasmActivationAvailable } from "./mod.ts";
 
@@ -40,10 +38,8 @@ export async function ensureWasmActivation(): Promise<void> {
 
   if (!success || !isWasmActivationAvailable()) {
     throw new Error(
-      "WASM activation must be initialised before scoring/evaluation. " +
-        "Ensure the WASM module is built at wasm_activation/pkg or call " +
-        "initWasmActivation() before using scoring features. " +
-        "For verification only, use NEAT_AI_USE_JS_ACTIVATION=1.",
+      "WASM activation could not be loaded. Ensure the NEAT-AI package is installed correctly. " +
+        "For verification-only mode, set NEAT_AI_USE_JS_ACTIVATION=1 (optional, debug only).",
     );
   }
 }

@@ -3,6 +3,9 @@
  *
  * Issue #1116 - WASM prototype for creature activation
  * Issue #1143 - WASM Migration Phase 11: Integrate WASM activation methods into backpropagation
+ * Issue #1256 - initWasmActivation / initWasmActivationSync are internal implementation details;
+ * the public API (mod.ts) does not export them. Callers use Creature.activate() etc.; the library
+ * initialises the backend automatically.
  */
 
 export {
