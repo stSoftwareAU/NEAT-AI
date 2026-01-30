@@ -174,14 +174,38 @@ export class WorkerHandler {
       this.callback(me.data as ResponseData);
     });
 
-    // Load WASM activation payload (async for JSR package URLs)
+    // Load WASM activation payload (async for JSR package URLs).
+    // Issue #1260: Timeout so we fail fast if worker never responds (e.g. worker crash on init).
+    const INIT_RESPONSE_TIMEOUT_MS = 15_000;
     this.ready = loadWasmActivationInitPayloadOrThrow().then(
       (wasmActivation) => {
         const initReq: RequestData = {
           taskID: this.taskID++,
           initialize: { wasmActivation },
         };
-        return this.makePromise(initReq);
+        return new Promise<ResponseData>((resolve, reject) => {
+          const timeoutId = setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `ID worker init: no response after ${
+                    INIT_RESPONSE_TIMEOUT_MS / 1000
+                  }s. Worker may have crashed or be stuck loading WASM.`,
+                ),
+              ),
+            INIT_RESPONSE_TIMEOUT_MS,
+          );
+          this.makePromise(initReq).then(
+            (r) => {
+              clearTimeout(timeoutId);
+              resolve(r);
+            },
+            (err) => {
+              clearTimeout(timeoutId);
+              reject(err);
+            },
+          );
+        });
       },
     ).then((result) => {
       assert(

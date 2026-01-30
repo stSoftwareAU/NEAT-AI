@@ -113,7 +113,8 @@ export class WorkerProcessor {
     // Defensive: if an async auto-init is in flight (e.g. env-driven module-load init),
     // the sync init intentionally fails fast to avoid re-entrancy into wasm-bindgen.
     // In that case, wait briefly for the in-flight init to finish before failing.
-    const deadlineMs = Date.now() + 30_000;
+    // Issue #1260: WASM is built in-repo and published; use short deadline to fail fast.
+    const deadlineMs = Date.now() + 2_000;
     while (Date.now() < deadlineMs) {
       if (isWasmActivationAvailable()) return;
       // deno-lint-ignore no-await-in-loop -- deliberate polling backoff
