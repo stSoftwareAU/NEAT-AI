@@ -101,7 +101,7 @@ Deno.test("booleanXOR", async () => {
       elitism: 10,
       mutationRate: 0.5,
       targetError: 0.025,
-      // threads: 1,
+      threads: 1, // Avoid worker init in test; multi-threaded evolution is tested elsewhere.
       iterations: 1000,
     });
 
@@ -135,6 +135,7 @@ Deno.test("XNOR - evolve", async () => {
       targetError: 0.05,
       iterations: 20_000,
       enableRepetitiveTraining: true,
+      threads: 1, // Avoid worker init in test; multi-threaded evolution is tested elsewhere.
     });
 
     if (results.error > 0.05) {

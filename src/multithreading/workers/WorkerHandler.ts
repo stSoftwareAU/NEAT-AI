@@ -535,6 +535,18 @@ export class WorkerHandler {
     });
 
     // Worker init is async so we can load WASM payload for both local and JSR URLs.
+    // Issue #1260: Timeout so we fail fast if worker never responds (e.g. worker crash on init).
+    // Production with many workers (e.g. 28+): set NEAT_AI_WORKER_INIT_TIMEOUT_MS if init is slow.
+    const INIT_RESPONSE_TIMEOUT_MS = (() => {
+      try {
+        const v = Deno.env.get("NEAT_AI_WORKER_INIT_TIMEOUT_MS");
+        if (v === null || v === undefined || v === "") return 15_000;
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) && n >= 1000 ? n : 15_000;
+      } catch {
+        return 15_000;
+      }
+    })();
     this.ready = (async () => {
       const wasmPayload = await loadWasmActivationInitPayloadAsync();
       if (shouldRequireWasmActivation() && !wasmPayload) {
@@ -554,7 +566,29 @@ export class WorkerHandler {
         },
       };
 
-      const result = await this.makePromise(data);
+      const result = await new Promise<ResponseData>((resolve, reject) => {
+        const timeoutId = setTimeout(
+          () =>
+            reject(
+              new Error(
+                `Worker init: no response after ${
+                  INIT_RESPONSE_TIMEOUT_MS / 1000
+                }s. Worker may have crashed or be stuck loading WASM.`,
+              ),
+            ),
+          INIT_RESPONSE_TIMEOUT_MS,
+        );
+        this.makePromise(data).then(
+          (r) => {
+            clearTimeout(timeoutId);
+            resolve(r);
+          },
+          (err) => {
+            clearTimeout(timeoutId);
+            reject(err);
+          },
+        );
+      });
       assert(
         result.initialize?.status === "OK",
         result.initialize?.error ?? "Worker initialization failed",

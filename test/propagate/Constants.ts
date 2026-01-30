@@ -4,6 +4,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -244,7 +245,8 @@ Deno.test("Constants Known Few", () => {
   );
 });
 
-Deno.test("ConstantsMany", () => {
+Deno.test("ConstantsMany", async () => {
+  await initWasmForTests();
   const traceDir = ".trace/ConstantsMany";
   ensureDirSync(traceDir);
 
@@ -255,14 +257,16 @@ Deno.test("ConstantsMany", () => {
   for (let attempt = 0; true; attempt++) {
     const creature = makeCreature();
 
-    Deno.writeTextFileSync(
+    // deno-lint-ignore no-await-in-loop -- retry loop: each attempt depends on previous
+    await Deno.writeTextFile(
       `${traceDir}/0-start.json`,
       JSON.stringify(creature.exportJSON(), null, 1),
     );
 
     const observations = makeInputs();
 
-    Deno.writeTextFileSync(
+    // deno-lint-ignore no-await-in-loop -- retry loop: each attempt depends on previous
+    await Deno.writeTextFile(
       `${traceDir}/observations.json`,
       JSON.stringify(observations, null, 1),
     );
@@ -290,7 +294,8 @@ Deno.test("ConstantsMany", () => {
           creature.propagate(new Float32Array(output), config, sparseConfig);
         }
       }
-      Deno.writeTextFileSync(
+      // deno-lint-ignore no-await-in-loop -- trace file per generation, sequential
+      await Deno.writeTextFile(
         `${traceDir}/1-trace.json`,
         JSON.stringify(creature.traceJSON(), null, 1),
       );
@@ -303,7 +308,8 @@ Deno.test("ConstantsMany", () => {
 
     actual = creature.activate(new Float32Array(sampleInput));
 
-    Deno.writeTextFileSync(
+    // deno-lint-ignore no-await-in-loop -- retry loop: each attempt depends on previous
+    await Deno.writeTextFile(
       `${traceDir}/2-end.json`,
       JSON.stringify(creature.exportJSON(), null, 1),
     );

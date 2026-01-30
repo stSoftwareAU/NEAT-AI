@@ -27,6 +27,7 @@ Deno.test("hypotenuse", async () => {
     log: 50,
     elitism: 3,
     enableRepetitiveTraining: true,
+    threads: 1, // Avoid worker init in test; multi-threaded evolution is tested elsewhere.
   };
 
   let errorPercent = 0;

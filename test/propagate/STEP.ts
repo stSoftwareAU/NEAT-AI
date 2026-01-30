@@ -4,6 +4,7 @@ import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 function makeCreature() {
   const json: CreatureExport = {
@@ -44,27 +45,28 @@ function makeInputs() {
   return inputs;
 }
 
-Deno.test("PropagateSTEP", () => {
+Deno.test("PropagateSTEP", async () => {
+  await initWasmForTests();
   const creature = makeCreature();
   const testDir = ".test/propagateSTEP";
 
   ensureDirSync(testDir);
 
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${testDir}/0-start.json`,
     JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   if (!existsSync(`${testDir}/input.json`)) {
     const generated = makeInputs();
-    Deno.writeTextFileSync(
+    await Deno.writeTextFile(
       `${testDir}/input.json`,
       JSON.stringify(generated, null, 1),
     );
   }
 
   const inputs = JSON.parse(
-    Deno.readTextFileSync(`${testDir}/input.json`),
+    await Deno.readTextFile(`${testDir}/input.json`),
   ) as number[][];
 
   const outputs: Float32Array[] = new Array(inputs.length);
@@ -95,14 +97,14 @@ Deno.test("PropagateSTEP", () => {
   }
 
   const traced = creature.traceJSON();
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${testDir}/1-trace.json`,
     JSON.stringify(traced, null, 1),
   );
 
   creature.propagateUpdate(config, sparseConfig);
 
-  Deno.writeTextFileSync(
+  await Deno.writeTextFile(
     `${testDir}/2-end.json`,
     JSON.stringify(creature.exportJSON(), null, 1),
   );
