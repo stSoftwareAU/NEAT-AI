@@ -189,6 +189,7 @@
     "RUSTFLAGS",
     "Σmax",
     "infile",
-    "dedupe"
+    "dedupe",
+    "inflight"
   ]
 }

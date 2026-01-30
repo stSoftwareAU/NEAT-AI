@@ -176,12 +176,22 @@ export class DiscoveryRunner {
     try {
       const workersStart = performance.now();
       for (let i = 0; i < workerCount; i++) {
-        workers.push(this.#workerFactory({
+        const worker = this.#workerFactory({
           dataDir,
           costName: config.costName,
           direct: workerCount === 1,
           customCost: config.customCost,
-        }));
+        });
+        workers.push(worker);
+        // Avoid a cold-cache download storm by warming workers sequentially when supported.
+        // (Custom workerFactory implementations may not expose this method.)
+        const maybeWait =
+          (worker as unknown as { waitUntilReady?: () => Promise<void> })
+            .waitUntilReady;
+        if (typeof maybeWait === "function") {
+          // deno-lint-ignore no-await-in-loop
+          await maybeWait.call(worker);
+        }
       }
       markPhase("Worker initialisation", workersStart);
 

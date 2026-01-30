@@ -238,6 +238,9 @@ let globalWorkerID = 0;
 
 let cachedWasmActivationInitPayload: WasmActivationInitPayload | null = null;
 let cachedWasmPath: string | null = null;
+let inFlightWasmActivationPayload:
+  | { key: string; promise: Promise<WasmActivationInitPayload | null> }
+  | null = null;
 
 /**
  * Issue #1256: WASM is the default backend. NEAT_AI_USE_JS_ACTIVATION=1 is optional (verification/debug only).
@@ -354,8 +357,15 @@ export async function loadWasmActivationInitPayloadAsync(
   if (cachedWasmActivationInitPayload && cachedWasmPath === resolved.key) {
     return cachedWasmActivationInitPayload;
   }
+  // De-duplicate concurrent loads of the same payload (common when spinning up many workers).
+  if (
+    inFlightWasmActivationPayload &&
+    inFlightWasmActivationPayload.key === resolved.key
+  ) {
+    return await inFlightWasmActivationPayload.promise;
+  }
 
-  try {
+  const promise = (async () => {
     let jsSource: string;
     let wasmBinary: Uint8Array;
 
@@ -405,7 +415,7 @@ export async function loadWasmActivationInitPayloadAsync(
     }
 
     return { jsSource, wasmBinary };
-  } catch (err) {
+  })().catch((err) => {
     // Issue #1260: WASM is built in-repo and published; fail fast with clear error when using default location.
     if (!wasmPath) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -414,7 +424,15 @@ export async function loadWasmActivationInitPayloadAsync(
       );
     }
     return null;
-  }
+  }).finally(() => {
+    // Clear inflight tracker only if it still refers to this promise/key.
+    if (inFlightWasmActivationPayload?.key === resolved.key) {
+      inFlightWasmActivationPayload = null;
+    }
+  });
+
+  inFlightWasmActivationPayload = { key: resolved.key, promise };
+  return await promise;
 }
 
 /**
@@ -540,11 +558,12 @@ export class WorkerHandler {
     const INIT_RESPONSE_TIMEOUT_MS = (() => {
       try {
         const v = Deno.env.get("NEAT_AI_WORKER_INIT_TIMEOUT_MS");
-        if (v === null || v === undefined || v === "") return 15_000;
+        // Default is intentionally generous to handle first-run JSR/WASM cache warmup.
+        if (v === null || v === undefined || v === "") return 60_000;
         const n = parseInt(v, 10);
-        return Number.isFinite(n) && n >= 1000 ? n : 15_000;
+        return Number.isFinite(n) && n >= 1000 ? n : 60_000;
       } catch {
-        return 15_000;
+        return 60_000;
       }
     })();
     this.ready = (async () => {
@@ -595,6 +614,16 @@ export class WorkerHandler {
       );
       return result;
     })();
+  }
+
+  /**
+   * Wait until the worker has completed initialization.
+   *
+   * Useful for callers that want to avoid a "download storm" when spinning up
+   * many workers from a cold cache (e.g. JSR + WASM payloads).
+   */
+  waitUntilReady(): Promise<void> {
+    return this.ready.then(() => undefined);
   }
 
   /**
