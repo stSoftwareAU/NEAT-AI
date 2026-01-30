@@ -69,6 +69,7 @@ Deno.test("XOR-evolve", async () => {
     results = await creature.evolveDataSet(trainingSet, {
       iterations: 10_000,
       targetError: 0.03,
+      threads: 1, // Avoid worker init in test; multi-threaded evolution is tested elsewhere.
     });
 
     if (results.error < bestError) {

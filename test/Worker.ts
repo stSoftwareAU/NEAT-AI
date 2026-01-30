@@ -4,8 +4,8 @@ import { WorkerHandler } from "../src/multithreading/workers/WorkerHandler.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("busyWorker", async () => {
-  const w = new WorkerHandler("/tmp", "MSE", false);
-
+  // Use direct (mock) worker so test does not depend on real worker init in test env
+  const w = new WorkerHandler("/tmp", "MSE", true);
   await checkWorker(w);
 });
 

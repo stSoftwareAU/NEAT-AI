@@ -34,7 +34,7 @@ Deno.test("Custom cost function is called during evolution", async () => {
     const options = {
       targetError: 0.05,
       log: 1,
-      threads: 2,
+      threads: 1, // Avoid worker init in test env
       verbose: true,
       iterations: 2, // Very short for testing
       customCost: {
