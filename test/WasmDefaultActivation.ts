@@ -281,14 +281,15 @@ Deno.test({
 
     const input = new Float32Array([1.0, 2.0]);
 
-    // Default activation (WASM) runs; MEAN gives 2.0 when pkg has Mean, 3.5 with legacy pkg.
+    // Default activation (WASM) runs; MEAN is now supported in the WASM package.
     const output = creature.activate(input, false, false);
-    assert(output.length === 1, "Should produce one output");
-    const correctMean = Math.abs(output[0] - 2.0) < 1e-5;
-    const legacyPkg = Math.abs(output[0] - 3.5) < 1e-5;
-    assert(
-      correctMean || legacyPkg,
-      `MEAN activation should be ~2.0 or ~3.5 (legacy pkg), got ${output[0]}`,
+    assertEquals(output.length, 1, "Should produce one output");
+    // Correct MEAN: (1.0*1 + 2.0*1) / 2 + 0.5 = 2.0
+    assertAlmostEquals(
+      output[0],
+      2.0,
+      1e-5,
+      "WASM MEAN activation should be 2.0",
     );
   },
 });

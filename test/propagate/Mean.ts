@@ -1,4 +1,4 @@
-import { fail } from "@std/assert";
+import { assert } from "@std/assert";
 import { ensureDirSync, existsSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
@@ -141,9 +141,10 @@ Deno.test("PropagateMean", () => {
     JSON.stringify(creature.exportJSON(), null, 1),
   );
 
-  if (!Number.isFinite(neuron.bias)) {
-    fail(`neuron.bias ${neuron.bias} should be finite after propagateUpdate`);
-  }
+  assert(
+    Number.isFinite(neuron.bias),
+    `neuron.bias ${neuron.bias} should be finite after propagateUpdate`,
+  );
   // Backprop with MEAN in the graph should apply updates: at least one parameter changed
   const biasChanged = creature.neurons.some(
     (n, j) => n.bias !== biasesBefore[j],
@@ -151,9 +152,8 @@ Deno.test("PropagateMean", () => {
   const someWeightChanged = creature.synapses.some(
     (s, j) => s.weight !== weightsBefore[j],
   );
-  if (!biasChanged && !someWeightChanged) {
-    fail(
-      "propagateUpdate with MEAN in graph should change at least one parameter (bias or weight)",
-    );
-  }
+  assert(
+    biasChanged || someWeightChanged,
+    "propagateUpdate with MEAN in graph should change at least one parameter (bias or weight)",
+  );
 });

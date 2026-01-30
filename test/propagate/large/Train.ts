@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-await-in-loop -- test writes iteration/trace files sequentially
-import { assert, fail } from "@std/assert";
+import { assert } from "@std/assert";
 import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
@@ -20,14 +20,9 @@ Deno.test("large", async () => {
       await Deno.readTextFile("test/propagate/large/creature.json"),
     ),
   );
-  try {
-    await Deno.remove(directory, { recursive: true });
-  } catch (e) {
-    const name = (e as { name: string }).name;
-    if (name !== "NotFound") {
-      console.error(e);
-    }
-  }
+  await Deno.remove(directory, { recursive: true }).catch(() => {
+    // Directory may not exist yet; safe to ignore.
+  });
   await Deno.mkdir(directory, { recursive: true });
   await Deno.writeTextFile(
     `${directory}/first.json`,
@@ -83,23 +78,12 @@ Deno.test("large", async () => {
     );
 
     if (results.compact) Creature.fromJSON(results.compact).validate();
-    if (results.error > lastError) {
-      await Deno.writeTextFile(
-        `${directory}/error.json`,
-        JSON.stringify(creature.exportJSON(), null, 1),
-      );
-      await Deno.writeTextFile(
-        `${directory}/error-trace.json`,
-        JSON.stringify(results.trace, null, 1),
-      );
-      if (results.error - lastError > 0.35) {
-        fail(
-          `Error rate was ${results.error}, regression ${
-            lastError - results.error
-          }`,
-        );
-      }
-    }
+    assert(
+      results.error - lastError <= 0.35,
+      `Error rate was ${results.error}, regression ${
+        lastError - results.error
+      }`,
+    );
     lastError = results.error;
     if (lastError < 0.2) {
       console.log("Stopping early, error below 0.2");

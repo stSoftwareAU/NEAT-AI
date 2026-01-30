@@ -25,14 +25,9 @@ Deno.test("record", async () => {
       await Deno.readTextFile("test/propagate/large/creature.json"),
     ),
   ));
-  try {
-    await Deno.remove(directory, { recursive: true });
-  } catch (e) {
-    const name = (e as { name: string }).name;
-    if (name !== "NotFound") {
-      console.error(e);
-    }
-  }
+  await Deno.remove(directory, { recursive: true }).catch(() => {
+    // Directory may not exist yet; safe to ignore.
+  });
   await Deno.mkdir(directory, { recursive: true });
   await Deno.writeTextFile(
     `${directory}/first.json`,

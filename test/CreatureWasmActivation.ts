@@ -480,21 +480,21 @@ Deno.test({
 
     const input = new Float32Array([1.0, 2.0]);
 
-    // MEAN is supported in WASM when pkg is built with Mean; default activation runs.
+    // MEAN is now supported in WASM; default activation runs correctly.
     const output = creature.activate(input, false, false);
     assertEquals(output.length, 1, "Should produce one output");
-    // Correct MEAN: (1.0*1 + 2.0*1) / 2 + 0.5 = 2.0. Old pkg (no Mean) gives sum+bias = 3.5.
-    const hasMeanInWasm = Math.abs(output[0] - 2.0) < 1e-5;
-    const legacyWasm = Math.abs(output[0] - 3.5) < 1e-5;
-    assert(
-      hasMeanInWasm || legacyWasm,
-      `WASM MEAN output should be 2.0 or 3.5 (legacy), got ${output[0]}`,
-    );
+    // Correct MEAN: (1.0*1 + 2.0*1) / 2 + 0.5 = 2.0
+    assertAlmostEquals(output[0], 2.0, 1e-5, "WASM MEAN output should be 2.0");
 
-    // JS path always computes correct MEAN: 2.0
+    // JS path also computes correct MEAN: 2.0
     const jsOutput = creature.activate(input, false, true);
     assertAlmostEquals(jsOutput[0], 2.0, 1e-5);
-    if (hasMeanInWasm) assertAlmostEquals(jsOutput[0], output[0], 1e-5);
+    assertAlmostEquals(
+      jsOutput[0],
+      output[0],
+      1e-5,
+      "JS and WASM should agree",
+    );
   },
 });
 
