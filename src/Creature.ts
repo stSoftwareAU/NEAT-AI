@@ -544,8 +544,8 @@ export class Creature implements CreatureInternal {
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
    * @param {SparseConfig} sparseConfig - The sparse configuration for tracing.
-   * @param {boolean} [useJs=false] - When true, uses JavaScript activation (verification only).
-   *   Issue #1229: WASM is the default with no fallback; use true only for verification.
+   * @param {boolean} [useJs=false] - Optional. When true, uses JavaScript activation (verification/debug only).
+   *   Callers do not need to set this; the library uses the best available backend internally (Issue #1256).
    * @returns {Float32Array} The output values after activation.
    */
   activateAndTrace(
@@ -560,7 +560,7 @@ export class Creature implements CreatureInternal {
       ? false
       : feedbackLoop;
 
-    // Issue #1229: WASM is the default with no fallback. Use useJs: true or NEAT_AI_USE_JS_ACTIVATION=1 for verification.
+    // Issue #1256: WASM is the default; useJs is for verification/debug only. No caller-facing backend API.
     const forceJs = useJs;
     if (!forceJs) {
       this.requireWasmOrThrow();
@@ -604,8 +604,8 @@ export class Creature implements CreatureInternal {
    *
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
-   * @param {boolean} [useJs=false] - When true, uses JavaScript activation (verification only).
-   *   Issue #1229: WASM is the default with no fallback; use true only for verification.
+   * @param {boolean} [useJs=false] - Optional. When true, uses JavaScript activation (verification/debug only).
+   *   Callers do not need to set this; the library uses the best available backend internally (Issue #1256).
    * @returns {Float32Array} The output values after activation.
    */
   activate(
@@ -619,7 +619,7 @@ export class Creature implements CreatureInternal {
       ? false
       : feedbackLoop;
 
-    // Issue #1229: WASM is the default with no fallback. Use useJs: true or NEAT_AI_USE_JS_ACTIVATION=1 for verification.
+    // Issue #1256: WASM is the default; useJs is for verification/debug only. No caller-facing backend API.
     const forceJs = useJs;
     if (!forceJs) {
       this.requireWasmOrThrow();
@@ -659,33 +659,30 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Issue #1229: Require WASM by default with no fallback.
-   * Throws if WASM is not available or creature is not WASM-eligible.
-   * Use activate(..., useJs: true) for JS verification only.
+   * Issue #1256: Require WASM by default. Throws if WASM could not be loaded or creature is not WASM-eligible.
+   * Callers do not initialise WASM; the library does so internally. Env vars are optional overrides for debug only.
    */
   private requireWasmOrThrow(): void {
     if (isUseJsActivationEnvSet()) return;
     if (!isWasmActivationAvailable()) {
       throw new Error(
-        "WASM activation is required but not initialised. " +
-          "Call initWasmActivation(path) before scoring/training. " +
-          "For verification only, use activate(..., useJs: true) or NEAT_AI_USE_JS_ACTIVATION=1.",
+        "WASM activation could not be loaded. Ensure the NEAT-AI package is installed correctly. " +
+          "For verification-only mode, set NEAT_AI_USE_JS_ACTIVATION=1 (optional, debug only).",
       );
     }
     if (!this.isWasmEligible()) {
       const unsupported = this.getUnsupportedWasmSquashFunctions();
       throw new Error(
-        "WASM activation is required but this creature uses squash functions not supported by WASM: " +
+        "This creature uses squash functions not supported by the current backend: " +
           unsupported.join(", ") +
-          ". Use activate(..., useJs: true) or NEAT_AI_USE_JS_ACTIVATION=1 for JS verification only.",
+          ". For verification-only mode, set NEAT_AI_USE_JS_ACTIVATION=1 (optional, debug only).",
       );
     }
   }
 
   /**
-   * Activate the creature using WASM.
+   * Activate the creature using WASM. Backend is an implementation detail (Issue #1256).
    * Lazily compiles the creature to WASM on first call.
-   * Issue #1118: WASM Migration Phase 1.
    *
    * @param {Float32Array} input - The input values for the creature.
    * @returns {Float32Array} The output values after activation.

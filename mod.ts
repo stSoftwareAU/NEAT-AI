@@ -6,6 +6,9 @@
  * This module provides various utilities and classes to facilitate the development,
  * manipulation, and evolution of AI entities within the NEAT (NeuroEvolution of Augmenting Topologies) framework.
  *
+ * Backends (e.g. WASM, future GPU) are implementation details; callers use the same API and do not
+ * initialise or configure backends (Issue #1256).
+ *
  * @example
  * ```ts
  * import { Creature } from "./mod.ts";
