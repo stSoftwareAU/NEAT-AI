@@ -358,7 +358,10 @@ export async function loadWasmActivationInitPayloadAsync(
     return cachedWasmActivationInitPayload;
   }
   // De-duplicate concurrent loads of the same payload (common when spinning up many workers).
-  if (inFlightWasmActivationPayload && inFlightWasmActivationPayload.key === resolved.key) {
+  if (
+    inFlightWasmActivationPayload &&
+    inFlightWasmActivationPayload.key === resolved.key
+  ) {
     return await inFlightWasmActivationPayload.promise;
   }
 

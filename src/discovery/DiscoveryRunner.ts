@@ -185,8 +185,9 @@ export class DiscoveryRunner {
         workers.push(worker);
         // Avoid a cold-cache download storm by warming workers sequentially when supported.
         // (Custom workerFactory implementations may not expose this method.)
-        const maybeWait = (worker as unknown as { waitUntilReady?: () => Promise<void> })
-          .waitUntilReady;
+        const maybeWait =
+          (worker as unknown as { waitUntilReady?: () => Promise<void> })
+            .waitUntilReady;
         if (typeof maybeWait === "function") {
           // deno-lint-ignore no-await-in-loop
           await maybeWait.call(worker);

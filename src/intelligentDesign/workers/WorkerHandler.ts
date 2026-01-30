@@ -78,7 +78,10 @@ async function loadWasmActivationInitPayloadOrThrow(): Promise<
 
   inFlightWasmActivationPayload = (async () => {
     // Hard requirement: WASM activation must exist for Intelligent Design scoring.
-    const wasmBaseUrl = new URL("../../../wasm_activation/pkg/", import.meta.url);
+    const wasmBaseUrl = new URL(
+      "../../../wasm_activation/pkg/",
+      import.meta.url,
+    );
 
     let jsSource: string;
     let wasmBinary: Uint8Array;
