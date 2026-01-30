@@ -58,6 +58,7 @@ import {
 import {
   compileCreatureToWasm,
   ensureWasmActivation,
+  isProbablyWorkerScope,
   isWasmActivationAvailable,
   resolveWasmSquashName,
   WasmCreatureActivation,
@@ -660,11 +661,18 @@ export class Creature implements CreatureInternal {
 
   /**
    * Issue #1256: Require WASM by default. Throws if WASM could not be loaded or creature is not WASM-eligible.
+   * Issue #1258: In Deno Worker contexts where WASM could not be loaded, fall back to JS silently
+   * so callers do not need env vars or API options.
    * Callers do not initialise WASM; the library does so internally. Env vars are optional overrides for debug only.
    */
   private requireWasmOrThrow(): void {
     if (isUseJsActivationEnvSet()) return;
     if (!isWasmActivationAvailable()) {
+      // Issue #1258: When running inside a Deno Worker that imported NEAT-AI
+      // independently, WASM may fail to load (e.g. restricted import.meta.url,
+      // missing file-system access). Fall back to JS transparently so callers
+      // do not need to set env vars or pass useJs:true.
+      if (isProbablyWorkerScope()) return;
       throw new Error(
         "WASM activation could not be loaded. Ensure the NEAT-AI package is installed correctly. " +
           "For verification-only mode, set NEAT_AI_USE_JS_ACTIVATION=1 (optional, debug only).",

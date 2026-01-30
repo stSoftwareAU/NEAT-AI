@@ -1022,7 +1022,7 @@ export function wasmVersion(): string {
 //
 // Workers receive the WASM payload from the parent and initialise internally.
 
-function isProbablyWorkerScope(): boolean {
+export function isProbablyWorkerScope(): boolean {
   // Most reliable when available.
   try {
     // deno-lint-ignore no-explicit-any
@@ -1048,12 +1048,12 @@ try {
   const useJs = Deno.env.get("NEAT_AI_USE_JS_ACTIVATION")?.trim().toLowerCase();
   const skipAutoInit = useJs === "1" || useJs === "true" ||
     useJs === "yes" || useJs === "on";
-  const isWorker = isProbablyWorkerScope();
   const explicitPath = Deno.env.get("NEAT_AI_WASM_PKG_PATH")?.trim();
-  // Issue #1229: Auto-init by default on main thread unless verification mode.
-  // Also init in workers when NEAT_AI_WASM_PKG_PATH is set (e.g. JSR/standalone workers).
+  // Issue #1258: Auto-init in both main thread and workers. When a Deno Worker
+  // imports NEAT-AI independently (not via the library's own worker system),
+  // WASM should load transparently. If init fails in a worker the library falls
+  // back to JS activation silently (see Creature.requireWasmOrThrow).
   const shouldAutoInit = !skipAutoInit &&
-    (!isWorker || !!explicitPath) &&
     !isWasmActivationAvailable();
 
   if (shouldAutoInit) {

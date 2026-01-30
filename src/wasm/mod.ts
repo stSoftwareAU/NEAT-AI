@@ -24,6 +24,7 @@ export {
 export {
   initWasmActivation,
   initWasmActivationSync,
+  isProbablyWorkerScope,
   isWasmActivationAvailable,
   type WasmActivationRange,
   wasmCalculateError,
