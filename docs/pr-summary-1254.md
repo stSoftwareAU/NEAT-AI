@@ -1,9 +1,9 @@
 ## Summary
 
-Improve code coverage for changes introduced in PR #1253 by removing
-unreachable branches and simplifying test assertions. The codecov patch
-coverage was 82.14% (target 90%) due to 15 uncovered lines across 5 test
-files. These uncovered lines were caused by:
+Improve code coverage for changes introduced in PR #1253 by removing unreachable
+branches and simplifying test assertions. The codecov patch coverage was 82.14%
+(target 90%) due to 15 uncovered lines across 5 test files. These uncovered
+lines were caused by:
 
 1. **Legacy WASM fallback branches** that could never execute because the WASM
    package now supports MEAN/HYPOT/HYPOTv2 squash functions.
