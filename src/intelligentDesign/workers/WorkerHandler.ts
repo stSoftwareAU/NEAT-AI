@@ -67,55 +67,64 @@ export interface WorkerInterface {
 let globalWorkerID = 0;
 
 let cachedWasmActivationInitPayload: WasmActivationInitPayload | null = null;
+let inFlightWasmActivationPayload: Promise<WasmActivationInitPayload> | null =
+  null;
 
 async function loadWasmActivationInitPayloadOrThrow(): Promise<
   WasmActivationInitPayload
 > {
   if (cachedWasmActivationInitPayload) return cachedWasmActivationInitPayload;
+  if (inFlightWasmActivationPayload) return await inFlightWasmActivationPayload;
 
-  // Hard requirement: WASM activation must exist for Intelligent Design scoring.
-  const wasmBaseUrl = new URL("../../../wasm_activation/pkg/", import.meta.url);
+  inFlightWasmActivationPayload = (async () => {
+    // Hard requirement: WASM activation must exist for Intelligent Design scoring.
+    const wasmBaseUrl = new URL("../../../wasm_activation/pkg/", import.meta.url);
 
-  let jsSource: string;
-  let wasmBinary: Uint8Array;
+    let jsSource: string;
+    let wasmBinary: Uint8Array;
 
-  // Handle both local file system and JSR package URLs
-  if (wasmBaseUrl.protocol === "file:") {
-    // Local file system - use async file reads
-    const jsUrl = new URL("wasm_activation.js", wasmBaseUrl);
-    const wasmUrl = new URL("wasm_activation_bg.wasm", wasmBaseUrl);
-    jsSource = await Deno.readTextFile(jsUrl.pathname);
-    wasmBinary = await Deno.readFile(wasmUrl.pathname);
-  } else {
-    // JSR package URL (http/https) - fetch the files
-    const jsUrl = new URL("wasm_activation.js", wasmBaseUrl);
-    const wasmUrl = new URL("wasm_activation_bg.wasm", wasmBaseUrl);
+    // Handle both local file system and JSR package URLs
+    if (wasmBaseUrl.protocol === "file:") {
+      // Local file system - use async file reads
+      const jsUrl = new URL("wasm_activation.js", wasmBaseUrl);
+      const wasmUrl = new URL("wasm_activation_bg.wasm", wasmBaseUrl);
+      jsSource = await Deno.readTextFile(jsUrl.pathname);
+      wasmBinary = await Deno.readFile(wasmUrl.pathname);
+    } else {
+      // JSR package URL (http/https) - fetch the files
+      const jsUrl = new URL("wasm_activation.js", wasmBaseUrl);
+      const wasmUrl = new URL("wasm_activation_bg.wasm", wasmBaseUrl);
 
-    const [jsResponse, wasmResponse] = await Promise.all([
-      fetch(jsUrl.href),
-      fetch(wasmUrl.href),
-    ]);
+      const [jsResponse, wasmResponse] = await Promise.all([
+        fetch(jsUrl.href),
+        fetch(wasmUrl.href),
+      ]);
 
-    if (!jsResponse.ok) {
-      throw new Error(
-        `Failed to load wasm_activation.js from ${jsUrl.href}: ${jsResponse.status} ${jsResponse.statusText}`,
-      );
+      if (!jsResponse.ok) {
+        throw new Error(
+          `Failed to load wasm_activation.js from ${jsUrl.href}: ${jsResponse.status} ${jsResponse.statusText}`,
+        );
+      }
+      if (!wasmResponse.ok) {
+        throw new Error(
+          `Failed to load wasm_activation_bg.wasm from ${wasmUrl.href}: ${wasmResponse.status} ${wasmResponse.statusText}`,
+        );
+      }
+
+      jsSource = await jsResponse.text();
+      wasmBinary = new Uint8Array(await wasmResponse.arrayBuffer());
     }
-    if (!wasmResponse.ok) {
-      throw new Error(
-        `Failed to load wasm_activation_bg.wasm from ${wasmUrl.href}: ${wasmResponse.status} ${wasmResponse.statusText}`,
-      );
-    }
 
-    jsSource = await jsResponse.text();
-    wasmBinary = new Uint8Array(await wasmResponse.arrayBuffer());
-  }
+    cachedWasmActivationInitPayload = {
+      jsSource,
+      wasmBinary,
+    };
+    return cachedWasmActivationInitPayload;
+  })().finally(() => {
+    inFlightWasmActivationPayload = null;
+  });
 
-  cachedWasmActivationInitPayload = {
-    jsSource,
-    wasmBinary,
-  };
-  return cachedWasmActivationInitPayload;
+  return await inFlightWasmActivationPayload;
 }
 
 /**
@@ -176,7 +185,16 @@ export class WorkerHandler {
 
     // Load WASM activation payload (async for JSR package URLs).
     // Issue #1260: Timeout so we fail fast if worker never responds (e.g. worker crash on init).
-    const INIT_RESPONSE_TIMEOUT_MS = 15_000;
+    const INIT_RESPONSE_TIMEOUT_MS = (() => {
+      try {
+        const v = Deno.env.get("NEAT_AI_WORKER_INIT_TIMEOUT_MS");
+        if (v === null || v === undefined || v === "") return 60_000;
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) && n >= 1000 ? n : 60_000;
+      } catch {
+        return 60_000;
+      }
+    })();
     this.ready = loadWasmActivationInitPayloadOrThrow().then(
       (wasmActivation) => {
         const initReq: RequestData = {
@@ -215,6 +233,15 @@ export class WorkerHandler {
       );
       return result;
     });
+  }
+
+  /**
+   * Wait until the worker has completed initialization.
+   *
+   * Useful to avoid cold-cache download storms when creating many workers.
+   */
+  waitUntilReady(): Promise<void> {
+    return this.ready.then(() => undefined);
   }
 
   /**

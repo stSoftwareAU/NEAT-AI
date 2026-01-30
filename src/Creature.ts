@@ -1856,14 +1856,16 @@ export class Creature implements CreatureInternal {
     const threads = config.threads;
 
     for (let i = threads; i--;) {
-      workers.push(
-        new WorkerHandler(
-          dataSetDir,
-          config.costName,
-          threads === 1,
-          config.customCost,
-        ),
+      const w = new WorkerHandler(
+        dataSetDir,
+        config.costName,
+        threads === 1,
+        config.customCost,
       );
+      workers.push(w);
+      // Warm worker sequentially to avoid cold-cache download storms.
+      // deno-lint-ignore no-await-in-loop
+      await w.waitUntilReady();
     }
 
     // Initialize the NEAT instance
