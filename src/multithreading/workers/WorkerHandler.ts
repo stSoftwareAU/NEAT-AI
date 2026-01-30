@@ -123,6 +123,8 @@ export interface ResponseData {
   initialize?: {
     /** Status of the initialization */
     status: string;
+    /** Error message when status is not OK (Issue #1260) */
+    error?: string;
   };
   /** Evaluation response */
   evaluate?: {
@@ -376,6 +378,19 @@ export async function loadWasmActivationInitPayloadAsync(
           fetch(jsUrl.href),
           fetch(wasmUrl.href),
         ]);
+        if (!wasmPath && (!jsRes.ok || !wasmRes.ok)) {
+          const jsErr = !jsRes.ok
+            ? `${jsUrl.href}: ${jsRes.status} ${jsRes.statusText}`
+            : null;
+          const wasmErr = !wasmRes.ok
+            ? `${wasmUrl.href}: ${wasmRes.status} ${wasmRes.statusText}`
+            : null;
+          throw new Error(
+            `WASM activation payload could not be loaded. ${
+              [jsErr, wasmErr].filter(Boolean).join("; ")
+            }`,
+          );
+        }
         if (!jsRes.ok || !wasmRes.ok) return null;
         jsSource = await jsRes.text();
         wasmBinary = new Uint8Array(await wasmRes.arrayBuffer());
@@ -390,7 +405,14 @@ export async function loadWasmActivationInitPayloadAsync(
     }
 
     return { jsSource, wasmBinary };
-  } catch {
+  } catch (err) {
+    // Issue #1260: WASM is built in-repo and published; fail fast with clear error when using default location.
+    if (!wasmPath) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `WASM activation payload could not be loaded from the default location. ${msg}`,
+      );
+    }
     return null;
   }
 }
@@ -535,7 +557,7 @@ export class WorkerHandler {
       const result = await this.makePromise(data);
       assert(
         result.initialize?.status === "OK",
-        "Worker initialization failed",
+        result.initialize?.error ?? "Worker initialization failed",
       );
       return result;
     })();

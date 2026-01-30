@@ -6,9 +6,33 @@ const workerHandler =
   // deno-lint-ignore ban-types
   (self as unknown) as { onmessage: Function; postMessage: Function };
 
+/** Issue #1260: Max time for init so caller gets a response instead of hanging. */
+const INIT_TIMEOUT_MS = 15_000;
+
 workerHandler.onmessage = async function (message: { data: RequestData }) {
   try {
-    const result = await processor.process(message.data);
+    let result: ResponseData;
+    if (message.data.initialize) {
+      const timeoutPromise = new Promise<ResponseData>((_, reject) => {
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                `Worker init timed out after ${
+                  INIT_TIMEOUT_MS / 1000
+                }s (WASM may still be loading)`,
+              ),
+            ),
+          INIT_TIMEOUT_MS,
+        );
+      });
+      result = await Promise.race([
+        processor.process(message.data),
+        timeoutPromise,
+      ]);
+    } else {
+      result = await processor.process(message.data);
+    }
     workerHandler.postMessage(result);
   } catch (error) {
     console.error("Worker processing error:", error);
@@ -43,6 +67,7 @@ workerHandler.onmessage = async function (message: { data: RequestData }) {
     } else if (message.data.initialize) {
       errorResponse.initialize = {
         status: "ERROR",
+        error: error instanceof Error ? error.message : String(error),
       };
     } else if (message.data.breed) {
       // Issue #1026: Handle breeding errors

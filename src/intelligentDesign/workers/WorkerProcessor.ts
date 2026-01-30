@@ -44,7 +44,8 @@ export class WorkerProcessor {
 
     // Defensive: avoid deadlock/race if module-level async auto-init is in-flight.
     // Sync init fails fast in that case; wait briefly for the in-flight init.
-    const deadlineMs = Date.now() + 30_000;
+    // Issue #1260: WASM is built in-repo and published; use short deadline to fail fast.
+    const deadlineMs = Date.now() + 2_000;
     while (Date.now() < deadlineMs) {
       if (isWasmActivationAvailable()) return;
       // deno-lint-ignore no-await-in-loop -- deliberate polling backoff
