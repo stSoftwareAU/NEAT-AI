@@ -41,6 +41,6 @@ interface.
   `Creature`, calls `activate()`, and posts the result back. Verifies that the
   worker succeeds without any caller-set environment variables and that the
   outputs are finite numbers.
-- First phase of `quality.sh` (discovery tests without FFI) passed: 34 passed,
-  0 failed.
+- First phase of `quality.sh` (discovery tests without FFI) passed: 34 passed, 0
+  failed.
 - Full `quality.sh` suite runs without regressions from these changes.

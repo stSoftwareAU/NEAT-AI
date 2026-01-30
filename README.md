@@ -60,8 +60,8 @@ standard term the first time it appears.
    forward pass that maps inputs to outputs, allowing for quick and easy
    deployment of the trained model.
 
-   **Activation uses WASM by default.** The library initialises the WASM
-   backend automatically; callers do not need to call any init function or set
+   **Activation uses WASM by default.** The library initialises the WASM backend
+   automatically; callers do not need to call any init function or set
    environment variables. This works transparently in both the main thread and
    Deno Worker contexts. If WASM cannot be loaded inside a Worker (e.g. due to
    restricted file-system access), the library falls back to JavaScript
