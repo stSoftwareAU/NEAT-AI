@@ -6,25 +6,25 @@ eliminate JS activation fallback paths (#1236).
 ### Changes
 
 - **`src/wasm/ActivationMethods.ts`**: Removed `useJs` parameter from
-  `calculateError()`, `safeZoneAdjustment()`, `unSquash()`, and `squash()`.
-  All four functions now unconditionally delegate to WASM when available.
-  The `StdInverse` special case (which requires f64 precision to avoid kilounit
-  rounding errors) now calls the JS implementation directly instead of setting
-  a `useJs` flag.
+  `calculateError()`, `safeZoneAdjustment()`, `unSquash()`, and `squash()`. All
+  four functions now unconditionally delegate to WASM when available. The
+  `StdInverse` special case (which requires f64 precision to avoid kilounit
+  rounding errors) now calls the JS implementation directly instead of setting a
+  `useJs` flag.
 
 - **`src/Creature.ts`**: Removed stale `@param useJs` JSDoc entries from
-  `activate()` and `activateAndTrace()` (the parameter was already removed
-  from the signatures in a prior PR).
+  `activate()` and `activateAndTrace()` (the parameter was already removed from
+  the signatures in a prior PR).
 
 - **`src/compact/CompactUtils.ts`**: Replaced `wasmSquash(name, value, true)`
-  call with a direct `Activations.find(name).squash(value)` call. This
-  preserves the f64 precision required for deterministic structural rewrites
-  without depending on the removed `useJs` parameter.
+  call with a direct `Activations.find(name).squash(value)` call. This preserves
+  the f64 precision required for deterministic structural rewrites without
+  depending on the removed `useJs` parameter.
 
-- **`test/WasmBackpropagation.ts`**: Converted WASM-vs-JS equivalence tests
-  to WASM-only correctness tests. Tests now verify that WASM produces finite,
-  correct results against known reference values rather than comparing WASM
-  and JS paths.
+- **`test/WasmBackpropagation.ts`**: Converted WASM-vs-JS equivalence tests to
+  WASM-only correctness tests. Tests now verify that WASM produces finite,
+  correct results against known reference values rather than comparing WASM and
+  JS paths.
 
 - **`test/score/WasmJsScoreParity.ts`**: Updated file-level comment to reflect
   WASM-only scoring (removed stale `useJs=true` reference).
@@ -35,8 +35,8 @@ eliminate JS activation fallback paths (#1236).
   codebase.
 - `NEAT_AI_USE_WASM_BACKPROP` debug-only environment variable is retained
   (separate concern; used for backpropagation debugging, not activation).
-- Historical PR summary docs (`pr-summary-1118.md`, `pr-summary-1122.md`)
-  are left unchanged as they document prior migration phases.
+- Historical PR summary docs (`pr-summary-1118.md`, `pr-summary-1122.md`) are
+  left unchanged as they document prior migration phases.
 
 ## Evidence
 
