@@ -55,4 +55,3 @@ export class MockWorker implements WorkerInterface {
     this.processor = null;
   }
 }
-

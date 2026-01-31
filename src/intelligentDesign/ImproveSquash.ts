@@ -270,7 +270,9 @@ export async function scanForSquashImprovements(
   const altSquashes = alternativeSquashesOverride ?? alternativeSquashes;
   const CPU_COUNT = cpuCount ?? (navigator.hardwareConcurrency || 4);
   const makeWorker = createWorker ?? (() => new WorkerHandler(false));
-  const makeDirectWorker = createWorker ? null : (() => new WorkerHandler(true));
+  const makeDirectWorker = createWorker
+    ? null
+    : (() => new WorkerHandler(true));
   const writeTextFile = writeText ?? safeWriteText;
   const writeTextFileSync = writeTextSync ?? safeWriteTextSync;
   const removeFile = remove ?? (removeSync

@@ -175,15 +175,13 @@ export class WorkerHandler {
     });
 
     const workerUrl = new URL("./deno/worker.ts", import.meta.url).href;
-    this.worker = direct
-      ? new MockWorker()
-      : new Worker(
-        workerUrl,
-        {
-          type: "module",
-          name: "id-worker-" + this.workerID,
-        },
-      );
+    this.worker = direct ? new MockWorker() : new Worker(
+      workerUrl,
+      {
+        type: "module",
+        name: "id-worker-" + this.workerID,
+      },
+    );
     const captureInitError = (err: Error) => {
       if (!this.initWorkerError) this.initWorkerError = err;
       rejectInitError?.(err);
