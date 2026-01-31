@@ -11,6 +11,7 @@ import { assert } from "@std/assert";
 import type { Creature } from "../../Creature.ts";
 import type { NeatOptions } from "../../config/NeatOptions.ts";
 import type { ResponseData } from "./ResponseData.ts";
+import { MockWorker } from "./MockWorker.ts";
 
 export interface WasmActivationInitPayload {
   /**
@@ -167,44 +168,48 @@ export class WorkerHandler {
   /**
    * Creates a new WorkerHandler instance.
    */
-  constructor() {
+  constructor(direct: boolean = false) {
     let rejectInitError: ((err: Error) => void) | null = null;
     const initErrorPromise: Promise<never> = new Promise((_, reject) => {
       rejectInitError = reject;
     });
 
     const workerUrl = new URL("./deno/worker.ts", import.meta.url).href;
-    this.worker = new Worker(
-      workerUrl,
-      {
-        type: "module",
-        name: "id-worker-" + this.workerID,
-      },
-    );
+    this.worker = direct
+      ? new MockWorker()
+      : new Worker(
+        workerUrl,
+        {
+          type: "module",
+          name: "id-worker-" + this.workerID,
+        },
+      );
     const captureInitError = (err: Error) => {
       if (!this.initWorkerError) this.initWorkerError = err;
       rejectInitError?.(err);
       rejectInitError = null;
     };
-    this.worker.addEventListener("error", (e) => {
-      const ev = e as ErrorEvent;
-      const msg = [
-        `ID worker error event during init (workerID=${this.workerID})`,
-        `script=${workerUrl}`,
-        ev.message ? `message=${ev.message}` : null,
-        ev.filename ? `file=${ev.filename}:${ev.lineno}:${ev.colno}` : null,
-      ].filter(Boolean).join(" | ");
-      const err = new Error(msg, { cause: ev.error });
-      captureInitError(err);
-      console.error(msg, ev.error ?? ev);
-    });
-    this.worker.addEventListener("messageerror", (e) => {
-      const msg =
-        `ID worker messageerror event during init (workerID=${this.workerID}) | script=${workerUrl}`;
-      const err = new Error(msg, { cause: e });
-      captureInitError(err);
-      console.error(msg, e);
-    });
+    if (!direct) {
+      this.worker.addEventListener("error", (e) => {
+        const ev = e as ErrorEvent;
+        const msg = [
+          `ID worker error event during init (workerID=${this.workerID})`,
+          `script=${workerUrl}`,
+          ev.message ? `message=${ev.message}` : null,
+          ev.filename ? `file=${ev.filename}:${ev.lineno}:${ev.colno}` : null,
+        ].filter(Boolean).join(" | ");
+        const err = new Error(msg, { cause: ev.error });
+        captureInitError(err);
+        console.error(msg, ev.error ?? ev);
+      });
+      this.worker.addEventListener("messageerror", (e) => {
+        const msg =
+          `ID worker messageerror event during init (workerID=${this.workerID}) | script=${workerUrl}`;
+        const err = new Error(msg, { cause: e });
+        captureInitError(err);
+        console.error(msg, e);
+      });
+    }
 
     this.worker.addEventListener("message", (message) => {
       const me = message as MessageEvent;

@@ -679,14 +679,42 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         const workerCount = replayConcurrency;
         const setupStart = diagnosticsEnabled ? performance.now() : 0;
         for (let i = 0; i < workerCount; i++) {
-          workers.push(
-            new WorkerHandler(
-              dataDir,
-              config.costName as CostName,
-              workerCount === 1,
-              config.customCost,
-            ),
+          const preferDirect = workerCount === 1;
+          let w = new WorkerHandler(
+            dataDir,
+            config.costName as CostName,
+            preferDirect,
+            config.customCost,
           );
+          try {
+            // Warm worker sequentially to avoid cold-cache download storms and
+            // to ensure only usable workers are added to the pool.
+            // deno-lint-ignore no-await-in-loop
+            await w.waitUntilReady();
+          } catch (err) {
+            try {
+              w.terminate();
+            } catch {
+              // Ignore termination errors.
+            }
+            if (!preferDirect) {
+              console.warn(
+                "[DiscoveryReplayRunner] Worker init failed; falling back to direct execution for this worker slot.",
+                err,
+              );
+              w = new WorkerHandler(
+                dataDir,
+                config.costName as CostName,
+                true,
+                config.customCost,
+              );
+              // deno-lint-ignore no-await-in-loop
+              await w.waitUntilReady();
+            } else {
+              throw err;
+            }
+          }
+          workers.push(w);
         }
         if (timingsMS) timingsMS.setupWorkers = performance.now() - setupStart;
       }

@@ -176,10 +176,11 @@ export class DiscoveryRunner {
     try {
       const workersStart = performance.now();
       for (let i = 0; i < workerCount; i++) {
-        const worker = this.#workerFactory({
+        const preferDirect = workerCount === 1;
+        let worker = this.#workerFactory({
           dataDir,
           costName: config.costName,
-          direct: workerCount === 1,
+          direct: preferDirect,
           customCost: config.customCost,
         });
         // Avoid a cold-cache download storm by warming workers sequentially when supported.
@@ -197,7 +198,27 @@ export class DiscoveryRunner {
             } catch {
               // Swallow termination errors as worker may already be closed.
             }
-            throw err;
+            if (!preferDirect) {
+              console.warn(
+                "[DiscoveryRunner] Worker init failed; falling back to direct execution for this worker slot.",
+                err,
+              );
+              worker = this.#workerFactory({
+                dataDir,
+                costName: config.costName,
+                direct: true,
+                customCost: config.customCost,
+              });
+              const wait2 =
+                (worker as unknown as { waitUntilReady?: () => Promise<void> })
+                  .waitUntilReady;
+              if (typeof wait2 === "function") {
+                // deno-lint-ignore no-await-in-loop
+                await wait2.call(worker);
+              }
+            } else {
+              throw err;
+            }
           }
         }
         // Only add to the pool once initialization succeeded (or is not supported).
