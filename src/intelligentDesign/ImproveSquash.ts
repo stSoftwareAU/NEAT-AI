@@ -269,7 +269,10 @@ export async function scanForSquashImprovements(
 
   const altSquashes = alternativeSquashesOverride ?? alternativeSquashes;
   const CPU_COUNT = cpuCount ?? (navigator.hardwareConcurrency || 4);
-  const makeWorker = createWorker ?? (() => new WorkerHandler());
+  const makeWorker = createWorker ?? (() => new WorkerHandler(false));
+  const makeDirectWorker = createWorker
+    ? null
+    : (() => new WorkerHandler(true));
   const writeTextFile = writeText ?? safeWriteText;
   const writeTextFileSync = writeTextSync ?? safeWriteTextSync;
   const removeFile = remove ?? (removeSync
@@ -279,10 +282,38 @@ export async function scanForSquashImprovements(
     }
     : (path: string) => Deno.remove(path));
 
-  const workers: Array<Pick<WorkerHandler, "score" | "terminate">> = Array.from(
-    { length: CPU_COUNT },
-    () => makeWorker(),
-  );
+  const workers: Array<Pick<WorkerHandler, "score" | "terminate">> = [];
+  for (let i = 0; i < CPU_COUNT; i++) {
+    let w: Pick<WorkerHandler, "score" | "terminate"> =
+      makeWorker() as unknown as Pick<WorkerHandler, "score" | "terminate">;
+    const wait = (w as unknown as { waitUntilReady?: () => Promise<void> })
+      .waitUntilReady;
+    if (typeof wait === "function") {
+      try {
+        // deno-lint-ignore no-await-in-loop
+        await wait.call(w);
+      } catch (err) {
+        try {
+          w.terminate();
+        } catch {
+          // ignore
+        }
+        if (makeDirectWorker) {
+          console.warn(
+            "[ImproveSquash] Worker init failed; falling back to direct execution for this worker slot.",
+            err,
+          );
+          w = makeDirectWorker();
+          // deno-lint-ignore no-await-in-loop
+          await (w as unknown as { waitUntilReady: () => Promise<void> })
+            .waitUntilReady();
+        } else {
+          throw err;
+        }
+      }
+    }
+    workers.push(w);
+  }
 
   const maxPending = options.maxPending ??
     Math.min(maxImprovements, CPU_COUNT) * 2;

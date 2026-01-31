@@ -1856,10 +1856,14 @@ export class Creature implements CreatureInternal {
     const threads = config.threads;
 
     for (let i = threads; i--;) {
-      const w = new WorkerHandler(
+      // Prefer real workers when threads > 1, but fall back to direct execution
+      // if worker startup fails (e.g. remote environment can't fetch/compile the
+      // worker module graph from JSR in time).
+      const preferDirect = threads === 1;
+      let w = new WorkerHandler(
         dataSetDir,
         config.costName,
-        threads === 1,
+        preferDirect,
         config.customCost,
       );
       try {
@@ -1872,7 +1876,22 @@ export class Creature implements CreatureInternal {
         } catch {
           // Ignore termination errors.
         }
-        throw err;
+        if (!preferDirect) {
+          console.warn(
+            "[Creature.evolveDir] Worker init failed; falling back to direct execution for this worker slot.",
+            err,
+          );
+          w = new WorkerHandler(
+            dataSetDir,
+            config.costName,
+            true,
+            config.customCost,
+          );
+          // deno-lint-ignore no-await-in-loop
+          await w.waitUntilReady();
+        } else {
+          throw err;
+        }
       }
       // Only add to the worker pool once initialization succeeded.
       workers.push(w);

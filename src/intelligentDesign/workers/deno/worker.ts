@@ -14,7 +14,16 @@ const workerHandler =
   (self as unknown) as { onmessage: Function; postMessage: Function };
 
 /** Max time for init so caller gets a response instead of hanging (Issue #1260). */
-const INIT_TIMEOUT_MS = 15_000;
+const INIT_TIMEOUT_MS = (() => {
+  try {
+    const v = Deno.env.get("NEAT_AI_WORKER_INIT_TIMEOUT_MS");
+    if (v === null || v === undefined || v === "") return 60_000;
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) && n >= 1000 ? n : 60_000;
+  } catch {
+    return 60_000;
+  }
+})();
 
 workerHandler.onmessage = async function (message: { data: RequestData }) {
   const start = Date.now();
