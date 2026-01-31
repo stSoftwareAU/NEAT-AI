@@ -1862,10 +1862,20 @@ export class Creature implements CreatureInternal {
         threads === 1,
         config.customCost,
       );
+      try {
+        // Warm worker sequentially to avoid cold-cache download storms.
+        // deno-lint-ignore no-await-in-loop
+        await w.waitUntilReady();
+      } catch (err) {
+        try {
+          w.terminate();
+        } catch {
+          // Ignore termination errors.
+        }
+        throw err;
+      }
+      // Only add to the worker pool once initialization succeeded.
       workers.push(w);
-      // Warm worker sequentially to avoid cold-cache download storms.
-      // deno-lint-ignore no-await-in-loop
-      await w.waitUntilReady();
     }
 
     // Initialize the NEAT instance

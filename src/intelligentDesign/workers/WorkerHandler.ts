@@ -161,23 +161,49 @@ export class WorkerHandler {
   private idleListeners: WorkerEventListener[] = [];
   /** Promise that resolves once the worker is initialized */
   private ready: Promise<ResponseData>;
+  /** Captured worker error during initialization (if any). */
+  private initWorkerError?: Error;
 
   /**
    * Creates a new WorkerHandler instance.
    */
   constructor() {
+    let rejectInitError: ((err: Error) => void) | null = null;
+    const initErrorPromise: Promise<never> = new Promise((_, reject) => {
+      rejectInitError = reject;
+    });
+
+    const workerUrl = new URL("./deno/worker.ts", import.meta.url).href;
     this.worker = new Worker(
-      new URL("./deno/worker.ts", import.meta.url).href,
+      workerUrl,
       {
         type: "module",
         name: "id-worker-" + this.workerID,
       },
     );
+    const captureInitError = (err: Error) => {
+      if (!this.initWorkerError) this.initWorkerError = err;
+      rejectInitError?.(err);
+      rejectInitError = null;
+    };
     this.worker.addEventListener("error", (e) => {
-      console.error("Worker error event:", e);
+      const ev = e as ErrorEvent;
+      const msg = [
+        `ID worker error event during init (workerID=${this.workerID})`,
+        `script=${workerUrl}`,
+        ev.message ? `message=${ev.message}` : null,
+        ev.filename ? `file=${ev.filename}:${ev.lineno}:${ev.colno}` : null,
+      ].filter(Boolean).join(" | ");
+      const err = new Error(msg, { cause: ev.error });
+      captureInitError(err);
+      console.error(msg, ev.error ?? ev);
     });
     this.worker.addEventListener("messageerror", (e) => {
-      console.error("Worker message error event:", e);
+      const msg =
+        `ID worker messageerror event during init (workerID=${this.workerID}) | script=${workerUrl}`;
+      const err = new Error(msg, { cause: e });
+      captureInitError(err);
+      console.error(msg, e);
     });
 
     this.worker.addEventListener("message", (message) => {
@@ -204,28 +230,37 @@ export class WorkerHandler {
           taskID: this.taskID++,
           initialize: { wasmActivation },
         };
-        return new Promise<ResponseData>((resolve, reject) => {
-          const timeoutId = setTimeout(
-            () =>
-              reject(
-                new Error(
-                  `ID worker init: no response after ${
-                    INIT_RESPONSE_TIMEOUT_MS / 1000
-                  }s. Worker may have crashed or be stuck loading WASM.`,
+        const initSequence = async (): Promise<ResponseData> =>
+          await new Promise<ResponseData>((resolve, reject) => {
+            const timeoutId = setTimeout(
+              () =>
+                reject(
+                  new Error(
+                    `ID worker init: no response after ${
+                      INIT_RESPONSE_TIMEOUT_MS / 1000
+                    }s. Worker may have crashed or be stuck loading WASM.${
+                      this.initWorkerError
+                        ? ` First worker error: ${this.initWorkerError.message}`
+                        : ""
+                    }`,
+                  ),
                 ),
-              ),
-            INIT_RESPONSE_TIMEOUT_MS,
-          );
-          this.makePromise(initReq).then(
-            (r) => {
-              clearTimeout(timeoutId);
-              resolve(r);
-            },
-            (err) => {
-              clearTimeout(timeoutId);
-              reject(err);
-            },
-          );
+              INIT_RESPONSE_TIMEOUT_MS,
+            );
+            this.makePromise(initReq).then(
+              (r) => {
+                clearTimeout(timeoutId);
+                resolve(r);
+              },
+              (err) => {
+                clearTimeout(timeoutId);
+                reject(err);
+              },
+            );
+          });
+
+        return Promise.race([initSequence(), initErrorPromise]).finally(() => {
+          rejectInitError = null;
         });
       },
     ).then((result) => {
