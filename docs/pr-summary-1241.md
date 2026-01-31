@@ -26,13 +26,13 @@ opt-out. The only JS code paths that remain are:
 - **`test/WasmBackpropagation.ts`**: Removed the `shouldUseWasmBackprop flag`
   test and updated imports.
 - **`test/wasm/NoWasmFeatureFlags.ts`** (new): Verifies that WASM activation is
-  unconditionally available, old toggle functions are no longer exported, and all
-  standard squash functions are WASM-supported.
+  unconditionally available, old toggle functions are no longer exported, and
+  all standard squash functions are WASM-supported.
 
 ## Evidence
 
-Unable to generate screenshot: this is a CLI-only neural network library with
-no visual interface.
+Unable to generate screenshot: this is a CLI-only neural network library with no
+visual interface.
 
 ## Test Plan
 
