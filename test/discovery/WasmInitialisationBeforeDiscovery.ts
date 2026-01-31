@@ -12,12 +12,7 @@ import {
 } from "../../src/wasm/mod.ts";
 import {
   ensureWasmActivationForDiscovery,
-  getWasmDefaultPath,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
-
-// Get the project root directory for WASM module path
-const projectRoot = new URL("../..", import.meta.url).pathname;
-const wasmPath = `${projectRoot}wasm_activation/pkg`;
 
 /**
  * Tests that WASM gets initialised when not already available
@@ -43,17 +38,6 @@ Deno.test({
 /**
  * Tests that getWasmDefaultPath returns a valid path
  */
-Deno.test({
-  name: "Issue #1219: getWasmDefaultPath returns the expected default path",
-  fn() {
-    const path = getWasmDefaultPath();
-    assert(
-      path.includes("wasm_activation/pkg"),
-      `Path should contain wasm_activation/pkg, got: ${path}`,
-    );
-  },
-});
-
 /**
  * Tests that ensureWasmActivationForDiscovery is idempotent
  * (calling it multiple times is safe)
@@ -94,7 +78,7 @@ Deno.test({
   async fn() {
     // Ensure WASM is initialised manually first
     if (!isWasmActivationAvailable()) {
-      await initWasmActivation(wasmPath);
+      await initWasmActivation();
     }
     assert(
       isWasmActivationAvailable(),

@@ -55,15 +55,11 @@ function assertArrayClose(
   }
 }
 
-// Get the project root directory for WASM module path
-const projectRoot = new URL("..", import.meta.url).pathname;
-const wasmPath = `${projectRoot}wasm_activation/pkg`;
-
 // Initialise WASM before tests
 Deno.test({
   name: "WASM Activation: Module initialisation",
   async fn() {
-    const result = await initWasmActivation(wasmPath);
+    const result = await initWasmActivation();
     assert(result, "WASM module should initialise successfully");
     assert(isWasmActivationAvailable(), "WASM should be available after init");
   },
