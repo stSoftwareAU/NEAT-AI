@@ -42,10 +42,7 @@ export {
 } from "./WasmActivation.ts";
 
 // Issue #1247 - Shared WASM activation initialisation helper
-export {
-  ensureWasmActivation,
-  getWasmDefaultPath,
-} from "./EnsureWasmActivation.ts";
+export { ensureWasmActivation } from "./EnsureWasmActivation.ts";
 
 // Issue #1143 - Unified wrapper functions for WASM/JS activation methods
 export {

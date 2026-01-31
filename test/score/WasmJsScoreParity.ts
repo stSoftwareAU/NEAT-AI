@@ -24,11 +24,6 @@ import {
   isWasmActivationAvailable,
 } from "../../src/wasm/mod.ts";
 
-// Get the project root directory for WASM module path
-// (this file lives under `test/score/`, so we need to go up twice)
-const projectRoot = new URL("../..", import.meta.url).pathname;
-const wasmPath = `${projectRoot}wasm_activation/pkg`;
-
 function seededRandom(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
@@ -40,7 +35,7 @@ function seededRandom(seed: number): () => number {
 Deno.test({
   name: "WASM score parity: Module initialisation",
   async fn() {
-    const result = await initWasmActivation(wasmPath);
+    const result = await initWasmActivation();
     assert(result, "WASM module should initialise successfully");
     assert(isWasmActivationAvailable(), "WASM should be available after init");
   },

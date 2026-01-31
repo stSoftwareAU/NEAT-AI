@@ -23,14 +23,6 @@ import { PhaseDiagnostics } from "./PhaseDiagnostics.ts";
 import { submitDiscoveryRecordBatch } from "./SubmitDiscoveryRecordBatch.ts";
 
 /**
- * Issue #1219 - Returns the default WASM activation module path.
- *
- * @deprecated Use `getWasmDefaultPath` from `../../wasm/EnsureWasmActivation.ts` instead.
- * Kept for backward compatibility with existing imports.
- */
-export { getWasmDefaultPath } from "../../wasm/EnsureWasmActivation.ts";
-
-/**
  * Issue #1219 - Ensures WASM activation is initialised before discovery recording.
  *
  * Issue #1247 - Delegates to the shared `ensureWasmActivation()` helper so that

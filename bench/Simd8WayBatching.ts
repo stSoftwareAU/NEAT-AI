@@ -17,12 +17,8 @@ import {
   WasmCreatureActivation,
 } from "../src/wasm/mod.ts";
 
-// Get project root for WASM path
-const projectRoot = new URL("..", import.meta.url).pathname;
-const wasmPath = `${projectRoot}wasm_activation/pkg`;
-
 // Initialise WASM
-const wasmInitialised = await initWasmActivation(wasmPath);
+const wasmInitialised = await initWasmActivation();
 if (!wasmInitialised || !isWasmActivationAvailable()) {
   console.error("Failed to initialise WASM module.");
   Deno.exit(1);

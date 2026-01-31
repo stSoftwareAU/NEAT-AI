@@ -180,12 +180,8 @@ console.log(
 );
 console.log(`  Synapses: ${creature.synapses.length}`);
 
-// Get project root for WASM path
-const projectRoot = new URL("..", import.meta.url).pathname;
-const wasmPath = `${projectRoot}wasm_activation/pkg`;
-
 // Initialise WASM
-const wasmInitialised = await initWasmActivation(wasmPath);
+const wasmInitialised = await initWasmActivation();
 if (!wasmInitialised) {
   console.error(
     "Failed to initialise WASM module. Ensure wasm_activation is built.",

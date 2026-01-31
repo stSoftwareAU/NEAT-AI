@@ -20,10 +20,6 @@ import { Costs } from "../../src/Costs.ts";
 // Tolerance for f32 vs f64 precision differences
 const TOLERANCE = 1e-4;
 
-// Get the project root directory for WASM module path
-const projectRoot = new URL("../..", import.meta.url).pathname;
-const wasmPath = `${projectRoot}wasm_activation/pkg`;
-
 // Test creature configuration (input neurons are implicit via `input` count)
 // 3 inputs, 2 hidden, 2 outputs
 const testCreatureJSON: CreatureInternal = {
@@ -58,7 +54,7 @@ const testRecords = [
 ];
 
 Deno.test("Fused Cost Scoring: Initialise WASM", async () => {
-  await initWasmActivation(wasmPath);
+  await initWasmActivation();
 });
 
 Deno.test("Fused Cost Scoring: MSE - WASM vs JS equivalence", () => {

@@ -7,19 +7,6 @@
 import { initWasmActivation, isWasmActivationAvailable } from "./mod.ts";
 
 /**
- * Returns the default WASM activation module path.
- *
- * The path is derived from this module's location, assuming the standard
- * repository layout where `wasm_activation/pkg` is at the project root.
- */
-export function getWasmDefaultPath(): string {
-  // Navigate from src/wasm/ to project root.
-  // Use `href` so this works for both local `file:` and published `https:` (JSR) URLs.
-  return new URL("../../wasm_activation/pkg/", import.meta.url).href
-    .replace(/\/$/, "");
-}
-
-/**
  * Ensures WASM activation is initialised before scoring/evaluation.
  *
  * If WASM is already available, this is a no-op. Otherwise it attempts
@@ -33,8 +20,7 @@ export async function ensureWasmActivation(): Promise<void> {
     return;
   }
 
-  const wasmPath = getWasmDefaultPath();
-  const success = await initWasmActivation(wasmPath);
+  const success = await initWasmActivation();
 
   if (!success || !isWasmActivationAvailable()) {
     throw new Error(

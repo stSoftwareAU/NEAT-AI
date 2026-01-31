@@ -19,8 +19,7 @@ import {
 import { SquashType } from "../../src/wasm/SquashType.ts";
 
 // Initialise WASM module before tests
-const wasmPath = new URL("../../wasm_activation/pkg", import.meta.url).pathname;
-await initWasmActivation(wasmPath);
+await initWasmActivation();
 
 /**
  * Maps TypeScript activation names to SquashType enum values

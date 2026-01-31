@@ -143,32 +143,11 @@ let validateRangeFn:
 let limitRangeFn: ((squashType: number, value: number) => number) | null = null;
 let versionFn: (() => string) | null = null;
 
-/** True if path looks like an absolute filesystem path (Unix / or Windows C:\). */
-function isAbsoluteFileSystemPath(path: string): boolean {
-  // URL pathnames (JSR, npm) must not be turned into file://.
-  if (path.startsWith("/@") || path.startsWith("/node_modules/")) {
-    return false;
-  }
-  return path.startsWith("/") || /^[A-Za-z]:[/\\]/.test(path);
-}
-
-/** Convert an absolute filesystem path to a file:// URL so import() loads from disk. */
-function pathToFileUrl(path: string): string {
-  const normalized = path.replace(/\\/g, "/");
-  return path.startsWith("/")
-    ? `file://${normalized}`
-    : `file:///${normalized}`;
-}
-
 /**
  * Load and initialise the WASM module. Internal implementation detail (Issue #1256).
  * Callers do not call this; the library initialises the backend automatically.
- *
- * @param wasmPath - Path to the WASM directory containing pkg/wasm_activation.js
  */
-export async function initWasmActivation(
-  wasmPath: string = "./wasm_activation/pkg",
-): Promise<boolean> {
+export async function initWasmActivation(): Promise<boolean> {
   if (wasmModule !== null) {
     return true; // Already initialised
   }
@@ -180,16 +159,11 @@ export async function initWasmActivation(
 
   initPromise = (async () => {
     try {
-      // Import the generated JS bindings. Use file:// for absolute fs paths;
-      // use full URL as-is when wasmPath is the JSR package URL (publish includes wasm_activation/pkg).
-      const jsPath = `${wasmPath.replace(/\/$/, "")}/wasm_activation.js`;
-      const isPackageUrl = wasmPath.startsWith("http://") ||
-        wasmPath.startsWith("https://");
-      const modulePath = isPackageUrl
-        ? jsPath
-        : isAbsoluteFileSystemPath(jsPath)
-        ? pathToFileUrl(jsPath)
-        : jsPath;
+      // Canonical location: always resolve from this module's import.meta.url.
+      // This works for both local `file:` and published `https:` (JSR) contexts.
+      const modulePath =
+        new URL("../../wasm_activation/pkg/wasm_activation.js", import.meta.url)
+          .href;
       const module = await import(modulePath);
 
       // Initialize the WASM module
@@ -223,8 +197,7 @@ export async function initWasmActivation(
         /module not found/i.test(msg);
       if (isNotFound) {
         console.warn(
-          `WASM activation: pkg not found at ${wasmPath}. ` +
-            "For verification-only mode, set NEAT_AI_USE_JS_ACTIVATION=1 (optional, debug only).",
+          "WASM activation: pkg not found at the canonical package location.",
         );
       } else {
         console.error("Failed to initialise WASM activation module:", error);
@@ -1017,7 +990,6 @@ export function wasmVersion(): string {
 // Initialise the WASM module at module load time on the main thread so callers
 // use the best available backend with no code changes or env vars required.
 // - WASM is loaded from the NEAT-AI package (JSR URL or cache path).
-// - NEAT_AI_WASM_PKG_PATH: optional override for the WASM pkg path (debug only).
 // - NEAT_AI_USE_JS_ACTIVATION=1: optional skip auto-init / use JS path (verification only).
 //
 // Workers receive the WASM payload from the parent and initialise internally.
@@ -1048,7 +1020,6 @@ try {
   const useJs = Deno.env.get("NEAT_AI_USE_JS_ACTIVATION")?.trim().toLowerCase();
   const skipAutoInit = useJs === "1" || useJs === "true" ||
     useJs === "yes" || useJs === "on";
-  const explicitPath = Deno.env.get("NEAT_AI_WASM_PKG_PATH")?.trim();
   // Issue #1258: Auto-init in both main thread and workers. When a Deno Worker
   // imports NEAT-AI independently (not via the library's own worker system),
   // WASM should load transparently. If init fails in a worker the library falls
@@ -1057,20 +1028,7 @@ try {
     !isWasmActivationAvailable();
 
   if (shouldAutoInit) {
-    // Load only from the NEAT-AI package (JSR URL or cache path). No env vars required.
-    const fromRemote = typeof import.meta.url === "string" &&
-      (import.meta.url.startsWith("http://") ||
-        import.meta.url.startsWith("https://"));
-    const packagePkgUrl = fromRemote
-      ? new URL("../../wasm_activation/pkg/", import.meta.url).href
-      : "";
-    const libPath = fromRemote
-      ? ""
-      : `${new URL("../../", import.meta.url).pathname}wasm_activation/pkg`;
-    const wasmPath = explicitPath || packagePkgUrl || libPath;
-    if (wasmPath) {
-      await initWasmActivation(wasmPath);
-    }
+    await initWasmActivation();
   }
 } catch {
   // Ignore env permission errors; auto-init stays disabled.
