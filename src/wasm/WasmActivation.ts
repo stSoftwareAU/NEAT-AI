@@ -1024,10 +1024,13 @@ try {
   // Issue #1263: WASM is mandatory. However, for the library's own worker
   // system, workers receive a preloaded WASM payload from the parent and
   // initialise from that payload during the worker init handshake. In that case
-  // we intentionally avoid auto-init at module-evaluation time in worker scope,
-  // to prevent duplicate loads and reduce worker start flakiness.
-  const shouldAutoInit = !isProbablyWorkerScope() &&
-    !isWasmActivationAvailable();
+  // we intentionally avoid auto-init at module-evaluation time in that worker,
+  // to prevent duplicate loads and reduce worker start flakiness. Internal
+  // worker entrypoints set a global flag before importing NEAT-AI modules.
+  // deno-lint-ignore no-explicit-any
+  const g: any = globalThis;
+  const shouldAutoInit = !isWasmActivationAvailable() &&
+    g.__NEAT_AI_SKIP_WASM_AUTO_INIT !== true;
 
   if (shouldAutoInit) {
     await initWasmActivation();
