@@ -182,16 +182,26 @@ export class DiscoveryRunner {
           direct: workerCount === 1,
           customCost: config.customCost,
         });
-        workers.push(worker);
         // Avoid a cold-cache download storm by warming workers sequentially when supported.
         // (Custom workerFactory implementations may not expose this method.)
         const maybeWait =
           (worker as unknown as { waitUntilReady?: () => Promise<void> })
             .waitUntilReady;
         if (typeof maybeWait === "function") {
-          // deno-lint-ignore no-await-in-loop
-          await maybeWait.call(worker);
+          try {
+            // deno-lint-ignore no-await-in-loop
+            await maybeWait.call(worker);
+          } catch (err) {
+            try {
+              worker.terminate();
+            } catch {
+              // Swallow termination errors as worker may already be closed.
+            }
+            throw err;
+          }
         }
+        // Only add to the pool once initialization succeeded (or is not supported).
+        workers.push(worker);
       }
       markPhase("Worker initialisation", workersStart);
 
