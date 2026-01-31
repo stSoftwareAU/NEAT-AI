@@ -64,7 +64,7 @@ Deno.test("CompactCascade", () => {
 
     outputs = new Array(data.length);
     for (let i = data.length; i--;) {
-      outputs[i] = creature.activate(new Float32Array(data[i]), false, true);
+      outputs[i] = creature.activate(new Float32Array(data[i]), false);
     }
 
     const config = createBackPropagationConfig();
@@ -74,7 +74,6 @@ Deno.test("CompactCascade", () => {
         new Float32Array(data[i]),
         false,
         sparseConfig,
-        true,
       );
       creature.propagate(outputs[i], config, sparseConfig);
       assertAlmostEquals(
@@ -110,7 +109,7 @@ Deno.test("CompactCascade", () => {
   );
 
   for (let i = data.length; i--;) {
-    const actual = compacted.activate(new Float32Array(data[i]), false, true);
+    const actual = compacted.activate(new Float32Array(data[i]), false);
 
     assertAlmostEquals(
       actual[0],

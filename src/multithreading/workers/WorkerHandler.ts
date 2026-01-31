@@ -242,24 +242,6 @@ let inFlightWasmActivationPayload:
   | null = null;
 
 /**
- * Issue #1256: WASM is the default backend. NEAT_AI_USE_JS_ACTIVATION=1 is optional (verification/debug only).
- */
-function shouldRequireWasmActivation(): boolean {
-  try {
-    const useJs = Deno.env.get("NEAT_AI_USE_JS_ACTIVATION")?.trim()
-      .toLowerCase();
-    if (
-      useJs === "1" || useJs === "true" || useJs === "yes" || useJs === "on"
-    ) {
-      return false;
-    }
-    return true;
-  } catch {
-    return true;
-  }
-}
-
-/**
  * Get the default WASM activation directory path.
  *
  * @returns The path to the WASM activation pkg directory
@@ -268,10 +250,6 @@ function shouldRequireWasmActivation(): boolean {
  * Load the WASM activation payload from the canonical package location.
  *
  * Issue #1206 - Returns null if the WASM files are not available.
- *
- * Note: Issue #1256 - Backend is an implementation detail. When the payload
- * is null and NEAT_AI_USE_JS_ACTIVATION is not set, workers require WASM.
- * NEAT_AI_USE_JS_ACTIVATION=1 is optional (verification/debug only).
  *
  * @returns The WASM activation payload, or null if not available
  */
@@ -451,7 +429,7 @@ export class WorkerHandler {
       }
     })();
 
-    // Issue #1256: WASM is the default backend. NEAT_AI_USE_JS_ACTIVATION=1 is optional (debug only).
+    // Issue #1263: WASM activation is mandatory.
     if (!direct) {
       const workerUrl = new URL("./deno/worker.ts", import.meta.url).href;
       this.worker = new Worker(
@@ -513,12 +491,6 @@ export class WorkerHandler {
     })();
     this.ready = (async () => {
       const wasmPayload = await loadWasmActivationInitPayloadAsync();
-      if (shouldRequireWasmActivation() && !wasmPayload) {
-        throw new Error(
-          "WASM activation could not be loaded. Ensure the NEAT-AI package is installed correctly. " +
-            "For verification-only mode, set NEAT_AI_USE_JS_ACTIVATION=1 (optional, debug only).",
-        );
-      }
       const data: RequestData = {
         taskID: this.taskID++,
         initialize: {
@@ -526,7 +498,7 @@ export class WorkerHandler {
           costName: costName,
           customCostData,
           discoveryVerbose,
-          wasmActivation: wasmPayload ?? undefined,
+          wasmActivation: wasmPayload,
         },
       };
 

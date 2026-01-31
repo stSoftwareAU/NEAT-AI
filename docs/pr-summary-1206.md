@@ -4,24 +4,13 @@ Fixed issue #1206 where `WorkerHandler` would throw an `AssertionError` with
 message "WASM activation payload missing. Build `wasm_activation/pkg` first."
 when the WASM activation files were not built.
 
-The fix makes WASM activation optional. When the WASM files
-(`wasm_activation/pkg/wasm_activation.js` and
+> **Note (historical):** This PR summary predates Issue #1263. As of #1263,
+> **WASM activation is mandatory** and there is **no JS fallback** or env-toggle
+> to disable WASM.
+
+When the WASM files (`wasm_activation/pkg/wasm_activation.js` and
 `wasm_activation/pkg/wasm_activation_bg.wasm`) are not available, the library
 returns `null` from `loadWasmActivationInitPayload()`.
-
-> **Note:** Issue #1229 changes the default behaviour: WASM is now required on
-> the default path. When the payload is `null` and `NEAT_AI_USE_JS_ACTIVATION`
-> is not set, workers will fail rather than falling back to JavaScript. Set
-> `NEAT_AI_USE_JS_ACTIVATION=1` for verification or optional-WASM mode only.
-
-This is important for:
-
-1. **Library consumers** - Users who install the library from JSR should build
-   the WASM module or set `NEAT_AI_USE_JS_ACTIVATION=1` for verification
-2. **Development environments** - Developers working on non-WASM parts of the
-   codebase can set `NEAT_AI_USE_JS_ACTIVATION=1` to run tests without WASM
-3. **CI/CD pipelines** - Build pipelines that don't include the Rust/WASM
-   toolchain can set `NEAT_AI_USE_JS_ACTIVATION=1` for verification
 
 ### Changes
 

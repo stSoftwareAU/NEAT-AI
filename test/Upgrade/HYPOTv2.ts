@@ -41,8 +41,8 @@ Deno.test("HYPOTv2-small", () => {
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, start.input);
 
-    const expected = start.activate(data, false, true);
-    const actual = upgraded.activate(data, false, true);
+    const expected = start.activate(data, false);
+    const actual = upgraded.activate(data, false);
 
     for (let i = 0; i < expected.length; i++) {
       const delta = Math.abs(expected[i] - actual[i]);
@@ -98,8 +98,8 @@ Deno.test("HYPOTv2", () => {
   for (let p = 3; p < 12; p++) {
     const data = makeData(p, start.input);
 
-    const expected = start.activate(data, false, true);
-    const actual = upgraded.activate(data, false, true);
+    const expected = start.activate(data, false);
+    const actual = upgraded.activate(data, false);
 
     for (let i = 0; i < expected.length; i++) {
       const delta = Math.abs(expected[i] - actual[i]);

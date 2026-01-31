@@ -58,7 +58,6 @@ import {
 import {
   compileCreatureToWasm,
   ensureWasmActivation,
-  isProbablyWorkerScope,
   isWasmActivationAvailable,
   resolveWasmSquashName,
   WasmCreatureActivation,
@@ -98,16 +97,6 @@ export interface CachedScoreComponents {
    * Issue #1045: Required for incremental updates.
    */
   countWeightBias: number;
-}
-
-/** Issue #1229: When set, allow JS activation path (tests / verification). */
-function isUseJsActivationEnvSet(): boolean {
-  try {
-    const v = Deno.env.get("NEAT_AI_USE_JS_ACTIVATION")?.trim().toLowerCase();
-    return v === "1" || v === "true" || v === "yes" || v === "on";
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -553,7 +542,6 @@ export class Creature implements CreatureInternal {
     input: Float32Array,
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
-    useJs: boolean = false,
   ): Float32Array {
     // Issue #1193: For forward-only creatures, feedbackLoop has no effect since there
     // are no recurrent connections. Normalize to false for consistency and performance.
@@ -561,43 +549,12 @@ export class Creature implements CreatureInternal {
       ? false
       : feedbackLoop;
 
-    // Issue #1256: WASM is the default; useJs is for verification/debug only. No caller-facing backend API.
-    const forceJs = useJs;
-    if (!forceJs) {
-      this.requireWasmOrThrow();
-      if (this.canUseWasm()) {
-        return this.activateAndTraceWasm(
-          input,
-          effectiveFeedbackLoop,
-          sparseConfig,
-        );
-      }
-    }
-
-    // JS activation (verification only)
-    this.prepareNeurons();
-    const activations = this.state.makeActivation(input, effectiveFeedbackLoop);
-
-    const neurons = this.neurons;
-    const len = neurons.length;
-
-    for (let i = this.input; i < len; i++) {
-      const n = neurons[i];
-      const result = sparseConfig.traceNeeded(n.uuid)
-        ? n.activateAndTraceNeuron()
-        : n.activateNeuron();
-
-      // Back propagation uses `hintValue` as the best available estimate of the
-      // neuron's pre-squash value. We store it for any neuron that may be
-      // propagated through (selected neurons + their paths) to avoid unstable
-      // inverse/derivative calculations.
-      if (sparseConfig.propagateNeeded(n.uuid)) {
-        this.state.node(n.index).hintValue = result.value;
-      }
-    }
-
-    const lastHiddenNode = len - this.output;
-    return this.extractOutputs(activations, lastHiddenNode);
+    this.requireWasmOrThrow();
+    return this.activateAndTraceWasm(
+      input,
+      effectiveFeedbackLoop,
+      sparseConfig,
+    );
   }
 
   /**
@@ -612,7 +569,6 @@ export class Creature implements CreatureInternal {
   activate(
     input: Float32Array,
     feedbackLoop: boolean = false,
-    useJs: boolean = false,
   ): Float32Array {
     // Issue #1193: For forward-only creatures, feedbackLoop has no effect since there
     // are no recurrent connections. Normalize to false for consistency and performance.
@@ -620,31 +576,8 @@ export class Creature implements CreatureInternal {
       ? false
       : feedbackLoop;
 
-    // Issue #1256: WASM is the default; useJs is for verification/debug only. No caller-facing backend API.
-    const forceJs = useJs;
-    if (!forceJs) {
-      this.requireWasmOrThrow();
-      if (this.canUseWasm()) {
-        return this.activateWasm(input, effectiveFeedbackLoop);
-      }
-    }
-
-    // JS activation (verification only)
-    this.prepareNeurons();
-    const activations = this.state.makeActivation(input, effectiveFeedbackLoop);
-
-    try {
-      this.creatureActivationFunction!();
-    } catch (e) {
-      console.error("Error in creature activation function", e);
-      const functionBody = this.creatureActivationResult?.inlineText ??
-        "Function body not available";
-      Deno.writeTextFileSync(".error-function.js", functionBody);
-      throw e;
-    }
-
-    const lastHiddenNode = this.neurons.length - this.output;
-    return this.extractOutputs(activations, lastHiddenNode);
+    this.requireWasmOrThrow();
+    return this.activateWasm(input, effectiveFeedbackLoop);
   }
 
   /**
@@ -654,28 +587,15 @@ export class Creature implements CreatureInternal {
    *
    * @returns {boolean} True if WASM activation can be used.
    */
-  private canUseWasm(): boolean {
-    if (!isWasmActivationAvailable()) return false;
-    return this.isWasmEligible();
-  }
-
   /**
-   * Issue #1256: Require WASM by default. Throws if WASM could not be loaded or creature is not WASM-eligible.
-   * Issue #1258: In Deno Worker contexts where WASM could not be loaded, fall back to JS silently
-   * so callers do not need env vars or API options.
-   * Callers do not initialise WASM; the library does so internally. Env vars are optional overrides for debug only.
+   * Issue #1263: WASM activation is mandatory. Throws if WASM could not be loaded
+   * or creature is not WASM-eligible.
    */
   private requireWasmOrThrow(): void {
-    if (isUseJsActivationEnvSet()) return;
     if (!isWasmActivationAvailable()) {
-      // Issue #1258: When running inside a Deno Worker that imported NEAT-AI
-      // independently, WASM may fail to load (e.g. restricted import.meta.url,
-      // missing file-system access). Fall back to JS transparently so callers
-      // do not need to set env vars or pass useJs:true.
-      if (isProbablyWorkerScope()) return;
       throw new Error(
         "WASM activation could not be loaded. Ensure the NEAT-AI package is installed correctly. " +
-          "For verification-only mode, set NEAT_AI_USE_JS_ACTIVATION=1 (optional, debug only).",
+          "WASM activation is required.",
       );
     }
     if (!this.isWasmEligible()) {
@@ -683,7 +603,7 @@ export class Creature implements CreatureInternal {
       throw new Error(
         "This creature uses squash functions not supported by the current backend: " +
           unsupported.join(", ") +
-          ". For verification-only mode, set NEAT_AI_USE_JS_ACTIVATION=1 (optional, debug only).",
+          ". WASM activation is required.",
       );
     }
   }
@@ -2234,9 +2154,7 @@ export class Creature implements CreatureInternal {
     assert(dataResult.files.length > 0, "No data files found");
 
     // Issue #1247: Auto-initialise WASM before scoring if not yet available.
-    if (!isUseJsActivationEnvSet()) {
-      await ensureWasmActivation();
-    }
+    await ensureWasmActivation();
 
     // Issue #1229: WASM is required by default with no fallback.
     this.requireWasmOrThrow();
@@ -2244,8 +2162,6 @@ export class Creature implements CreatureInternal {
     let error = 0;
     let count = 0;
 
-    // Determine whether we can use the WASM scoring fast paths.
-    const canUseWasm = this.canUseWasm();
     const costName = cost.getName();
     const major = Number.parseInt(
       this.semanticVersion.split(".")[0] ?? "0",
@@ -2259,7 +2175,7 @@ export class Creature implements CreatureInternal {
     const effectiveFeedbackLoop = forwardOnlyGuaranteed ? false : feedbackLoop;
 
     // Ensure WASM network is compiled once for scoring.
-    if (canUseWasm && !this.cachedWasmActivation) {
+    if (!this.cachedWasmActivation) {
       const compiled = compileCreatureToWasm(this);
       this.cachedWasmActivation = WasmCreatureActivation.create(compiled) ??
         undefined;
@@ -2274,7 +2190,7 @@ export class Creature implements CreatureInternal {
     }
 
     // Pre-allocate a reusable output buffer for non-fused scoring.
-    const outputBuffer = canUseWasm ? new Float32Array(this.output) : null;
+    const outputBuffer = new Float32Array(this.output);
 
     const valuesCount = this.input + this.output;
     const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
@@ -2302,7 +2218,7 @@ export class Creature implements CreatureInternal {
     ] as const;
     // Issue #1193: For forward-only creatures, feedbackLoop has no effect since there are
     // no recurrent connections to preserve state. We can use the fused path regardless.
-    const useFusedWasm = canUseWasm && forwardOnlyGuaranteed &&
+    const useFusedWasm = forwardOnlyGuaranteed &&
       supportedFusedCosts.includes(
         costName as typeof supportedFusedCosts[number],
       );
@@ -2368,23 +2284,13 @@ export class Creature implements CreatureInternal {
             const observations = batchArray.subarray(offset, inputEnd);
             const target = batchArray.subarray(inputEnd, offset + valuesCount);
 
-            if (canUseWasm) {
-              // Zero-allocation activation during scoring.
-              this.cachedWasmActivation!.activateIntoWithFeedback(
-                observations,
-                outputBuffer!,
-                effectiveFeedbackLoop,
-              );
-              error += cost.calculate(target, outputBuffer!);
-            } else {
-              // NEAT_AI_USE_JS_ACTIVATION=1 or creature has unsupported squash.
-              const actual = this.activate(
-                observations,
-                effectiveFeedbackLoop,
-                true,
-              );
-              error += cost.calculate(target, actual);
-            }
+            // Zero-allocation activation during scoring.
+            this.cachedWasmActivation!.activateIntoWithFeedback(
+              observations,
+              outputBuffer,
+              effectiveFeedbackLoop,
+            );
+            error += cost.calculate(target, outputBuffer);
 
             count++;
           }

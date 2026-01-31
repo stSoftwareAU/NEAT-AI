@@ -9,24 +9,16 @@ import {
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 
 Deno.test("CRISPR inject", async () => {
-  // Creature uses CLIPPED (not in WASM); allow JS path for evolution/workers.
-  const prev = Deno.env.get("NEAT_AI_USE_JS_ACTIVATION");
-  Deno.env.set("NEAT_AI_USE_JS_ACTIVATION", "1");
-  try {
-    for (let attempt = 0; true; attempt++) {
-      // deno-lint-ignore no-await-in-loop
-      const successful = await doAttempt();
-      if (successful) {
-        break;
-      }
-
-      if (attempt > 100) {
-        fail("Too many attempts");
-      }
+  for (let attempt = 0; true; attempt++) {
+    // deno-lint-ignore no-await-in-loop
+    const successful = await doAttempt();
+    if (successful) {
+      break;
     }
-  } finally {
-    if (prev !== undefined) Deno.env.set("NEAT_AI_USE_JS_ACTIVATION", prev);
-    else Deno.env.delete("NEAT_AI_USE_JS_ACTIVATION");
+
+    if (attempt > 100) {
+      fail("Too many attempts");
+    }
   }
 });
 
@@ -134,9 +126,10 @@ async function doAttempt() {
   const ds: DataRecordInterface[] = [];
 
   inputs.forEach((input) => {
+    const inputF32 = new Float32Array(input);
     ds.push({
-      input: new Float32Array(input),
-      output: new Float32Array(enhancedCreature.activate(input, false, true)),
+      input: inputF32,
+      output: new Float32Array(enhancedCreature.activate(inputF32, false)),
     });
   });
   const options: NeatOptions = {

@@ -121,7 +121,6 @@ Deno.test("propagateInverseRandom", () => {
     const result = creatureA.activate(
       new Float32Array(item.input),
       false,
-      true,
     );
 
     assertAlmostEquals(item.output[0], result[0], 0.00001);

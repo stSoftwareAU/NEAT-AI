@@ -20,7 +20,7 @@ Deno.test("PropagateMinimum", async () => {
     const ts: DataRecordInterface[] = [];
     for (let i = 1_000; i--;) {
       const input = makeInput();
-      const output = creature.activate(new Float32Array(input), false, true);
+      const output = creature.activate(new Float32Array(input), false);
 
       ts.push({
         input: new Float32Array(input),
@@ -40,7 +40,6 @@ Deno.test("PropagateMinimum", async () => {
       const result = creature.activate(
         new Float32Array(item.input),
         false,
-        true,
       );
 
       assertAlmostEquals(item.output[0], result[0], 0.00001);
@@ -171,7 +170,7 @@ function calculateError(
   const mse = Costs.find("MSE");
   for (let i = count; i--;) {
     const data = json[i];
-    const output = creature.activate(new Float32Array(data.input), false, true);
+    const output = creature.activate(new Float32Array(data.input), false);
     error += mse.calculate(
       new Float32Array(data.output),
       new Float32Array(output),

@@ -2,6 +2,9 @@
 
 Fix WASM activation loading in Deno Worker contexts (issue #1258).
 
+> **Note (historical):** As of Issue #1263, WASM activation is mandatory and the
+> JS fallback/activation toggles mentioned in older docs have been removed.
+
 When a Deno `Worker` independently imports NEAT-AI and calls
 `Creature.activate()`, WASM auto-initialisation was previously skipped for
 worker scopes (unless `NEAT_AI_WASM_PKG_PATH` was explicitly set). This caused
@@ -17,10 +20,9 @@ the library to throw:
    (unless `NEAT_AI_WASM_PKG_PATH` was set) has been removed so WASM loads
    transparently everywhere.
 
-2. **`src/Creature.ts`**: `requireWasmOrThrow()` now detects worker scopes. If
-   WASM could not be loaded inside a worker, the library silently falls back to
-   JavaScript activation instead of throwing. Callers do not need to set
-   environment variables or pass `useJs: true`.
+2. **`src/Creature.ts`**: `requireWasmOrThrow()` now detects worker scopes.
+   (This behaviour was later superseded by Issue #1263, which makes WASM
+   mandatory and removes fallback/toggles.)
 
 3. **`src/wasm/mod.ts`**: Exported the new `isProbablyWorkerScope()` helper so
    `Creature.ts` can use it.
