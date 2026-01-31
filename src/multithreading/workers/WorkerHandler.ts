@@ -542,13 +542,6 @@ export class WorkerHandler {
         {
           type: "module",
           name: "worker-" + this.workerID,
-          // Ensure workers inherit the same permissions as the main thread.
-          // This avoids confusing cross-machine failures when workers need to
-          // import `https:` modules or access env during startup.
-          // (Deno extension to WorkerOptions; ignored by non-Deno runtimes.)
-          deno: {
-            permissions: "inherit",
-          },
         },
       );
       const captureInitError = (err: Error) => {

@@ -179,9 +179,6 @@ export class WorkerHandler {
       {
         type: "module",
         name: "id-worker-" + this.workerID,
-        deno: {
-          permissions: "inherit",
-        },
       },
     );
     const captureInitError = (err: Error) => {
