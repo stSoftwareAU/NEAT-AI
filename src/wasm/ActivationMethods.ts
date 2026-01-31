@@ -3,11 +3,12 @@
  *
  * Issue #1143 - WASM Migration Phase 11: Integrate WASM activation methods into backpropagation
  * Issue #1236 - Remove useJs parameter and JS activation fallback paths
+ * Issue #1241 - Final cleanup: remove all WASM feature flags and env variables
  * Issue #1256 - Backend is an implementation detail. No env vars required for normal use.
  *
- * All activation methods delegate to WASM. JS is only used for StdInverse
- * (which requires f64 precision to avoid kilounit rounding errors).
- * NEAT_AI_USE_WASM_BACKPROP=false is optional (debug only) to force JS backpropagation.
+ * All activation methods delegate to WASM unconditionally. JS is only used for
+ * StdInverse (which requires f64 precision to avoid kilounit rounding errors)
+ * and as a fallback for squash functions not yet implemented in WASM.
  */
 
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
@@ -22,42 +23,6 @@ import {
   wasmSquash,
   wasmUnSquash,
 } from "./mod.ts";
-
-/**
- * Global flag to control WASM backpropagation usage.
- * Can be disabled via NEAT_AI_USE_WASM_BACKPROP=false environment variable.
- */
-let useWasmBackprop: boolean | null = null;
-
-/**
- * Check if WASM backpropagation should be used.
- * This checks:
- * 1. The environment variable NEAT_AI_USE_WASM_BACKPROP (cached on first access)
- * 2. Whether WASM activation is available
- */
-export function shouldUseWasmBackprop(): boolean {
-  if (useWasmBackprop === null) {
-    try {
-      const envValue = Deno.env.get("NEAT_AI_USE_WASM_BACKPROP")?.trim()
-        .toLowerCase();
-      // Default to true unless explicitly set to "false", "0", "no", or "off"
-      useWasmBackprop = envValue !== "false" && envValue !== "0" &&
-        envValue !== "no" && envValue !== "off";
-    } catch {
-      // If we can't read the environment variable (permissions), default to true
-      useWasmBackprop = true;
-    }
-  }
-  return useWasmBackprop && isWasmActivationAvailable();
-}
-
-/**
- * Reset the cached WASM backprop flag.
- * Useful for testing when environment variables change.
- */
-export function resetWasmBackpropFlag(): void {
-  useWasmBackprop = null;
-}
 
 /**
  * Check if a squash function is supported by WASM.
@@ -85,8 +50,8 @@ export function calculateError(
   targetActivation: number,
   currentValue: number,
 ): number {
-  // Use WASM when available
-  if (shouldUseWasmBackprop()) {
+  // Use WASM (unconditional – Issue #1241)
+  if (isWasmActivationAvailable()) {
     const resolvedName = resolveWasmSquashName(squashName);
     if (resolvedName !== undefined) {
       const squashType = getSquashType(resolvedName);
@@ -99,7 +64,7 @@ export function calculateError(
     }
   }
 
-  // Fall back to JS implementation
+  // Fall back to JS for squash functions not yet in WASM
   const squash = Activations.find(squashName) as ActivationInterface;
   if (squash.calculateError) {
     return squash.calculateError(
@@ -138,8 +103,8 @@ export function safeZoneAdjustment(
   error: number,
   weight?: number,
 ): number {
-  // Use WASM when available
-  if (shouldUseWasmBackprop()) {
+  // Use WASM (unconditional – Issue #1241)
+  if (isWasmActivationAvailable()) {
     const resolvedName = resolveWasmSquashName(squashName);
     if (resolvedName !== undefined) {
       const squashType = getSquashType(resolvedName);
@@ -147,7 +112,7 @@ export function safeZoneAdjustment(
     }
   }
 
-  // Fall back to JS implementation
+  // Fall back to JS for squash functions not yet in WASM
   const squash = Activations.find(squashName);
   if (squash.safeZoneAdjustment) {
     return squash.safeZoneAdjustment(rawInput, error, weight ?? 1);
@@ -183,8 +148,8 @@ export function unSquash(
     return activation;
   }
 
-  // Use WASM when available
-  if (shouldUseWasmBackprop()) {
+  // Use WASM (unconditional – Issue #1241)
+  if (isWasmActivationAvailable()) {
     const resolvedName = resolveWasmSquashName(squashName);
     if (resolvedName !== undefined) {
       const squashType = getSquashType(resolvedName);
@@ -192,7 +157,7 @@ export function unSquash(
     }
   }
 
-  // Fall back to JS implementation for unsupported squash functions
+  // Fall back to JS for squash functions not yet in WASM
   const squash = Activations.find(squashName) as unknown as UnSquashInterface;
   if (squash.unSquash) {
     return squash.unSquash(activation, hint);
@@ -220,8 +185,8 @@ export function squash(
     return squashFn.squash(value);
   }
 
-  // Use WASM when available
-  if (shouldUseWasmBackprop()) {
+  // Use WASM (unconditional – Issue #1241)
+  if (isWasmActivationAvailable()) {
     const resolvedName = resolveWasmSquashName(squashName);
     if (resolvedName !== undefined) {
       const squashType = getSquashType(resolvedName);
@@ -229,7 +194,7 @@ export function squash(
     }
   }
 
-  // Fall back to JS implementation for unsupported squash functions
+  // Fall back to JS for squash functions not yet in WASM
   const squashFn = Activations.find(squashName) as ActivationInterface;
   return squashFn.squash(value);
 }

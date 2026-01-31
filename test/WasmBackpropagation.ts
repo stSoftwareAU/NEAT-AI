@@ -3,6 +3,7 @@
  *
  * Issue #1143 - WASM Migration Phase 11: Integrate WASM activation methods into backpropagation
  * Issue #1236 - Remove useJs parameter and JS activation fallback paths
+ * Issue #1241 - Final cleanup: WASM is unconditional, no feature flags
  *
  * These tests verify that the WASM wrapper functions produce correct results
  * and that training works correctly with WASM backpropagation.
@@ -19,9 +20,7 @@ import {
   initWasmActivation,
   isWasmActivationAvailable,
   isWasmSquashSupported,
-  resetWasmBackpropFlag,
   safeZoneAdjustment,
-  shouldUseWasmBackprop,
   squash,
   unSquash,
 } from "../src/wasm/mod.ts";
@@ -36,18 +35,6 @@ Deno.test({
     const result = await initWasmActivation();
     assert(result, "WASM module should initialise successfully");
     assert(isWasmActivationAvailable(), "WASM should be available after init");
-  },
-});
-
-Deno.test({
-  name: "WASM Backpropagation: shouldUseWasmBackprop flag",
-  fn() {
-    // Reset and check default behaviour (should use WASM when available)
-    resetWasmBackpropFlag();
-    assert(
-      shouldUseWasmBackprop(),
-      "Should use WASM backprop by default when available",
-    );
   },
 });
 
