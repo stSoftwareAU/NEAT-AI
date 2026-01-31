@@ -7,21 +7,24 @@ accurately reflect the current WASM-default, no-JS-fallback behaviour
 established by Issue #1229. This PR addresses all items identified in Issue
 #1230.
 
+> **Note (historical):** Activation toggles and any JS activation path have been
+> removed as of Issue #1263.
+
 ### Changes Made
 
 1. **docs/pr-summary-1122.md** (Phase 5 – WASM as default)
    - Removed references to "JavaScript fallback remains available"
    - Changed "Graceful degradation" to "No JS fallback on default path"
-   - Corrected environment variable from `NEAT_AI_USE_JS=1` to
-     `NEAT_AI_USE_JS_ACTIVATION=1`
+   - Corrected environment variable name in historical docs (later removed by
+     #1263)
    - Updated test plan descriptions to reflect throw behaviour instead of
      fallback
 
 2. **docs/pr-summary-1206.md** (optional WASM in workers)
    - Replaced "gracefully falls back to JavaScript-based activation" with
      accurate description of #1229 behaviour
-   - Added note that `null` payload leads to failure unless
-     `NEAT_AI_USE_JS_ACTIVATION=1` is set
+   - Added note about historical optional-WASM behaviour (later removed by
+     #1263)
 
 3. **test/CreatureWasmActivation.ts** (top-of-file comment)
    - Changed "WASM is used when supported, with JS fallback otherwise" to "WASM
@@ -38,13 +41,11 @@ established by Issue #1229. This PR addresses all items identified in Issue
    - Created missing migration document for #1229 describing:
      - WASM is the default with no JS fallback
      - `initWasmActivation()` or `NEAT_AI_WASM_AUTO_INIT=1` required
-     - `useJs: true` or `NEAT_AI_USE_JS_ACTIVATION=1` for verification only
+     - verification-only JS activation (later removed by #1263)
      - Unsupported squash functions throw on the default path
 
 6. **README.md**
-   - Added note under "Efficient Model Utilisation" that activation uses WASM by
-     default, requires init, and that `useJs`/`NEAT_AI_USE_JS_ACTIVATION` are
-     for verification
+   - Added activation documentation (later updated by #1263)
 
 7. **Other PR summaries** (one-line notes added)
    - docs/pr-summary-1143.md – Note about #1229 removing default-path fallback

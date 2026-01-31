@@ -180,12 +180,12 @@ Deno.test("Squash lookup table - consistent with traced.json creature", () => {
     input[i] = Math.random() * 4 - 2;
   }
 
-  // Activate and verify consistency (useJs: true - traced.json has HYPOT, MEAN)
+  // Activate and verify consistency
   creature.clearState();
-  const output1 = creature.activate(input, false, true);
+  const output1 = creature.activate(input, false);
 
   creature.clearState();
-  const output2 = creature.activate(input, false, true);
+  const output2 = creature.activate(input, false);
 
   for (let i = 0; i < output1.length; i++) {
     assertAlmostEquals(
@@ -289,10 +289,10 @@ Deno.test("Squash lookup table - performance comparable to original", () => {
     inputs.push(input);
   }
 
-  // Warm up (useJs: true - traced.json has HYPOT, MEAN)
+  // Warm up
   creature.clearState();
   for (const input of inputs) {
-    creature.activate(input, false, true);
+    creature.activate(input, false);
   }
 
   // Measure performance
@@ -302,7 +302,7 @@ Deno.test("Squash lookup table - performance comparable to original", () => {
   const start = performance.now();
   for (let i = 0; i < iterations; i++) {
     const input = inputs[i % inputs.length];
-    creature.activate(input, false, true);
+    creature.activate(input, false);
   }
   const end = performance.now();
 

@@ -93,7 +93,7 @@ Deno.test("CompactKeepOrder", () => {
 
   const outputs: Float32Array[] = new Array(data.length);
   for (let i = data.length; i--;) {
-    outputs[i] = creature.activate(new Float32Array(data[i]), false, true);
+    outputs[i] = creature.activate(new Float32Array(data[i]), false);
   }
 
   const config = createBackPropagationConfig();
@@ -103,7 +103,6 @@ Deno.test("CompactKeepOrder", () => {
       new Float32Array(data[i]),
       false,
       sparseConfig,
-      true,
     );
     creature.propagate(new Float32Array(outputs[i]), config, sparseConfig);
     assertAlmostEquals(
@@ -140,7 +139,7 @@ Deno.test("CompactKeepOrder", () => {
   );
 
   for (let i = data.length; i--;) {
-    const actual = compacted.activate(new Float32Array(data[i]), false, true);
+    const actual = compacted.activate(new Float32Array(data[i]), false);
 
     assertAlmostEquals(
       actual[0],
@@ -161,7 +160,6 @@ Deno.test("CompactKeepOrder", () => {
       new Float32Array(data[i]),
       false,
       sparseConfig,
-      true,
     );
     compacted.propagate(new Float32Array(outputs[i]), config, sparseConfig);
     assertAlmostEquals(
@@ -198,7 +196,6 @@ Deno.test("CompactKeepOrder", () => {
       const actual = compacted2.activate(
         new Float32Array(data[i]),
         false,
-        true,
       );
 
       assertAlmostEquals(

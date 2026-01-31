@@ -7,6 +7,9 @@ path to the `Creature` class with automatic fallback to JS when WASM cannot be
 used. The library remains fully functional while introducing optional WASM
 acceleration.
 
+> **Note (historical):** As of Issue #1263, WASM activation is mandatory and the
+> JS fallback/env toggle described below has been removed.
+
 ### Changes Made
 
 1. **Extended `activate()` and `activateAndTrace()` methods**
@@ -53,9 +56,8 @@ The following deprecated functions are not supported in WASM:
 - `HYPOT` - Deprecated aggregate function
 - `HYPOTv2` - Deprecated aggregate function
 
-> **Note:** Issue #1229 removes the default-path JS fallback for activation. On
-> the default path, unsupported squash functions now throw. Use `useJs: true` or
-> `NEAT_AI_USE_JS_ACTIVATION=1` for verification only.
+> **Note (historical):** The `useJs` parameter and any activation env toggles
+> have been removed (Issue #1263).
 
 ## Evidence
 

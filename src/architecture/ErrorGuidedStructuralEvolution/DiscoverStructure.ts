@@ -955,7 +955,6 @@ export class DiscoverStructure {
           false, // feedbackLoop
           // Duck-typed SparseConfig
           traceAll as unknown as import("../../propagate/sparse/SparseConfig.ts").SparseConfig,
-          false, // useJs (allow WASM when available)
         );
         const discoverMap = this.creature.record(record.output);
 

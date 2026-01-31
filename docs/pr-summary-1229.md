@@ -7,6 +7,9 @@ activation path**. The JavaScript activation fallback has been removed from the
 default code path. This is the final step before the JS activation path can be
 removed entirely.
 
+> **Note (historical):** As of Issue #1263, **WASM activation is mandatory** and
+> the JS activation path/toggles described below have been removed.
+
 ### Key Changes
 
 1. **WASM is the default with no JS fallback** - The default activation path
@@ -15,25 +18,16 @@ removed entirely.
    JavaScript.
 
 2. **Initialisation required** - Call `initWasmActivation()` before using
-   activation, or set `NEAT_AI_WASM_AUTO_INIT=1` for automatic initialisation.
+   activation, or rely on the library's automatic initialisation.
 
-3. **JS activation for verification only** - Use `activate(..., useJs: true)` or
-   set `NEAT_AI_USE_JS_ACTIVATION=1` to enable JavaScript activation for
-   verification and comparison purposes only.
+3. **JS activation for verification only** - This existed historically for
+   verification and comparison purposes only (removed by Issue #1263).
 
-4. **Unsupported squash functions** - Squash functions not yet implemented in
-   WASM (e.g. MEAN, HYPOT, HYPOTv2, INVERSE, CLIPPED) throw on the default path.
-   Use `useJs: true` for creatures that use these squash functions in tests.
+4. **Unsupported squash functions** - Historically, some squash functions were
+   not implemented in WASM and would throw on the default path.
 
 5. **Tests updated** - Tests that require WASM use `initWasmForTests()` where
    needed.
-
-### Environment Variables
-
-| Variable                      | Purpose                                            |
-| ----------------------------- | -------------------------------------------------- |
-| `NEAT_AI_WASM_AUTO_INIT=1`    | Automatically initialise WASM on first activation  |
-| `NEAT_AI_USE_JS_ACTIVATION=1` | Enable JavaScript activation for verification only |
 
 ### Migration Guide
 
@@ -46,8 +40,8 @@ import { initWasmActivation } from "./src/wasm/mod.ts";
 await initWasmActivation(); // Required before activation
 const output = creature.activate(input); // Throws if WASM not initialised
 
-// For verification/testing with JS:
-const jsOutput = creature.activate(input, false, false, true); // useJs=true
+// Historical: verification/testing JS activation was previously available
+// (removed by Issue #1263).
 ```
 
 ## Evidence
@@ -63,6 +57,4 @@ are required.
 
 - Existing tests updated to use `initWasmForTests()` where WASM initialisation
   is required
-- Tests using unsupported squash functions (MEAN, HYPOT, etc.) use `useJs: true`
-  to verify JS path still works for comparison
 - `./quality.sh` passes cleanly

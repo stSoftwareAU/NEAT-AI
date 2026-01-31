@@ -55,12 +55,10 @@ Deno.test("HYPOT", () => {
     const c = Math.random() * 3 - 1.5;
 
     const data = new Float32Array([a, b, c]);
-    const actual0 = creature.activate(data, false, true)[0];
+    const actual0 = creature.activate(data, false)[0];
 
-    const actual1 =
-      creature.activateAndTrace(data, false, sparseConfig, true)[0];
-    const actual2 =
-      creature.activateAndTrace(data, false, sparseConfig, true)[0];
+    const actual1 = creature.activateAndTrace(data, false, sparseConfig)[0];
+    const actual2 = creature.activateAndTrace(data, false, sparseConfig)[0];
 
     assertAlmostEquals(actual0, actual1);
     assertAlmostEquals(actual0, actual2);

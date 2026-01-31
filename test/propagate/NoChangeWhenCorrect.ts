@@ -79,7 +79,7 @@ Deno.test("NoChangeWhenCorrect", () => {
 
   const outputs: Float32Array[] = new Array(data.length);
   for (let i = data.length; i--;) {
-    outputs[i] = creature.activate(new Float32Array(data[i]), false, true);
+    outputs[i] = creature.activate(new Float32Array(data[i]), false);
   }
 
   const config = createBackPropagationConfig();
@@ -89,7 +89,6 @@ Deno.test("NoChangeWhenCorrect", () => {
       new Float32Array(data[i]),
       false,
       sparseConfig,
-      true,
     );
     creature.propagate(new Float32Array(outputs[i]), config, sparseConfig);
     assertAlmostEquals(

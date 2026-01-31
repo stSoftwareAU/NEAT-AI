@@ -990,7 +990,7 @@ export function wasmVersion(): string {
 // Initialise the WASM module at module load time on the main thread so callers
 // use the best available backend with no code changes or env vars required.
 // - WASM is loaded from the NEAT-AI package (JSR URL or cache path).
-// - NEAT_AI_USE_JS_ACTIVATION=1: optional skip auto-init / use JS path (verification only).
+// - WASM activation is mandatory (Issue #1263).
 //
 // Workers receive the WASM payload from the parent and initialise internally.
 
@@ -1017,15 +1017,20 @@ export function isProbablyWorkerScope(): boolean {
 }
 
 try {
-  const useJs = Deno.env.get("NEAT_AI_USE_JS_ACTIVATION")?.trim().toLowerCase();
-  const skipAutoInit = useJs === "1" || useJs === "true" ||
-    useJs === "yes" || useJs === "on";
   // Issue #1258: Auto-init in both main thread and workers. When a Deno Worker
   // imports NEAT-AI independently (not via the library's own worker system),
-  // WASM should load transparently. If init fails in a worker the library falls
-  // back to JS activation silently (see Creature.requireWasmOrThrow).
-  const shouldAutoInit = !skipAutoInit &&
-    !isWasmActivationAvailable();
+  // WASM should load transparently.
+  //
+  // Issue #1263: WASM is mandatory. However, for the library's own worker
+  // system, workers receive a preloaded WASM payload from the parent and
+  // initialise from that payload during the worker init handshake. In that case
+  // we intentionally avoid auto-init at module-evaluation time in that worker,
+  // to prevent duplicate loads and reduce worker start flakiness. Internal
+  // worker entrypoints set a global flag before importing NEAT-AI modules.
+  // deno-lint-ignore no-explicit-any
+  const g: any = globalThis;
+  const shouldAutoInit = !isWasmActivationAvailable() &&
+    g.__NEAT_AI_SKIP_WASM_AUTO_INIT !== true;
 
   if (shouldAutoInit) {
     await initWasmActivation();

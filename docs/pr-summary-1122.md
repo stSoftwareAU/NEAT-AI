@@ -3,9 +3,8 @@
 This PR completes **WASM Migration Phase 5** (Issue #1122), making WASM the
 default activation implementation for all creatures.
 
-> **Note:** Issue #1229 removes the default-path JS fallback for activation.
-> WASM is now required; use `useJs: true` or `NEAT_AI_USE_JS_ACTIVATION=1` for
-> verification only.
+> **Note (historical):** As of Issue #1263, WASM activation is mandatory and any
+> JS activation path/toggles have been removed.
 
 ### Key Changes
 
@@ -17,13 +16,12 @@ default activation implementation for all creatures.
      `useWasm=true` meant "use WASM"
    - New: `activate(input, feedbackLoop, reuseBuffer, useJs)` where `useJs=true`
      means "force JavaScript"
-3. **Environment variable renamed** - Use `NEAT_AI_USE_JS_ACTIVATION=1` to
-   globally force JavaScript activation for verification only (previously
-   `NEAT_AI_USE_WASM=1` was used to enable WASM)
+3. **Environment variable renamed** - Use the historical JS activation env var
+   (removed by #1263) to globally force JavaScript activation for verification
+   only (previously `NEAT_AI_USE_WASM=1` was used to enable WASM)
 4. **No JS fallback on default path** - With #1229, the default path requires
    WASM and throws if WASM is not initialised or the squash function is
-   unsupported. Use `useJs: true` or `NEAT_AI_USE_JS_ACTIVATION=1` for
-   verification only
+   unsupported.
 
 ### API Changes
 
@@ -55,12 +53,8 @@ creature.activateAndTrace(input, false, sparseConfig, false); // WASM (default)
 
 ### Environment Variables
 
-| Variable                              | Purpose                                           |
-| ------------------------------------- | ------------------------------------------------- |
-| `NEAT_AI_USE_JS_ACTIVATION=1`         | Force JavaScript activation for verification only |
-| `NEAT_AI_USE_WASM_FORCE=1`            | Ignore minimum size thresholds for WASM           |
-| `NEAT_AI_USE_WASM_MIN_NEURONS=<int>`  | Minimum neurons before using WASM                 |
-| `NEAT_AI_USE_WASM_MIN_SYNAPSES=<int>` | Minimum synapses before using WASM                |
+This section is historical; activation-backend selection toggles were removed by
+Issue #1263.
 
 ### Migration Guide
 
@@ -73,8 +67,7 @@ creature.activate(input, false, false, true); // useWasm=true
 // New code - no changes needed, WASM is now default
 creature.activate(input, false, false);
 
-// If you need explicit JS activation
-creature.activate(input, false, false, true); // useJs=true
+// Historical: explicit JS activation was previously available (removed by #1263)
 ```
 
 ## Evidence
@@ -89,7 +82,7 @@ compatibility:
 
 - WASM and JS implementations produce identical results
 - Unsupported squash functions (MEAN, HYPOT, etc.) throw on the default path;
-  use `useJs: true` for those creatures in tests
+  (historical note: JS comparison paths were removed by #1263)
 - All 35 supported WASM squash functions verified
 - Backpropagation works correctly with WASM default
 
@@ -107,7 +100,7 @@ New tests added in `test/WasmDefaultActivation.ts`:
 - `WASM Default: activateAndTrace() with useJs=true forces JavaScript activation` -
   Explicit JS trace
 - `WASM Default: Throws for unsupported squash functions (MEAN) on default path` -
-  Use `useJs: true` or `NEAT_AI_USE_JS_ACTIVATION=1` for verification
+  (historical: verification toggles removed by #1263)
 - `WASM Default: Works with multiple outputs` - Multi-output networks
 - `WASM Default: Buffer reuse works correctly` - Performance feature
 - `WASM Default: All supported squash functions produce correct results` - All

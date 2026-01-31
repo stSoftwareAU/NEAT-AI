@@ -50,8 +50,8 @@ function assertCompactionSimplifies(
       );
 
       for (const input of inputs) {
-        const a = creature.activate(new Float32Array(input), false, true);
-        const b = compacted.activate(new Float32Array(input), false, true);
+        const a = creature.activate(new Float32Array(input), false);
+        const b = compacted.activate(new Float32Array(input), false);
         assert(a.length === b.length);
         for (let i = 0; i < a.length; i++) {
           assertAlmostEquals(
