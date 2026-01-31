@@ -2,10 +2,10 @@
  * WASM Backpropagation Integration Tests
  *
  * Issue #1143 - WASM Migration Phase 11: Integrate WASM activation methods into backpropagation
+ * Issue #1236 - Remove useJs parameter and JS activation fallback paths
  *
- * These tests verify that the unified wrapper functions correctly delegate to
- * either JS or WASM implementations and that training works correctly with
- * WASM backpropagation enabled.
+ * These tests verify that the WASM wrapper functions produce correct results
+ * and that training works correctly with WASM backpropagation.
  */
 
 import { assert, assertAlmostEquals } from "@std/assert";
@@ -73,9 +73,9 @@ Deno.test({
 });
 
 Deno.test({
-  name: "WASM Backpropagation: squash function wrapper",
+  name: "WASM Backpropagation: squash function produces correct results",
   fn() {
-    // Test various squash functions
+    // Test various squash functions against known reference values
     const testCases = [
       { name: "TANH", value: 0.5, jsRef: Math.tanh(0.5) },
       { name: "ReLU", value: 0.5, jsRef: 0.5 },
@@ -85,27 +85,20 @@ Deno.test({
     ];
 
     for (const tc of testCases) {
-      const wasmResult = squash(tc.name, tc.value, false);
-      const jsResult = squash(tc.name, tc.value, true);
+      const result = squash(tc.name, tc.value);
 
       assertAlmostEquals(
-        wasmResult,
+        result,
         tc.jsRef,
         TOLERANCE,
-        `WASM ${tc.name}(${tc.value}) should match JS`,
-      );
-      assertAlmostEquals(
-        jsResult,
-        tc.jsRef,
-        TOLERANCE,
-        `JS ${tc.name}(${tc.value}) should match expected`,
+        `squash ${tc.name}(${tc.value}) should match expected`,
       );
     }
   },
 });
 
 Deno.test({
-  name: "WASM Backpropagation: unSquash function wrapper",
+  name: "WASM Backpropagation: unSquash function produces correct results",
   fn() {
     // Test unSquash for squash functions that support it
     const testCases = [
@@ -115,19 +108,15 @@ Deno.test({
     ];
 
     for (const tc of testCases) {
-      const wasmResult = unSquash(tc.name, tc.activation, undefined, false);
-      const jsResult = unSquash(tc.name, tc.activation, undefined, true);
+      const result = unSquash(tc.name, tc.activation);
 
-      // WASM and JS should produce similar results
-      assertAlmostEquals(
-        wasmResult,
-        jsResult,
-        TOLERANCE,
-        `unSquash ${tc.name}(${tc.activation}) WASM vs JS`,
+      assert(
+        Number.isFinite(result),
+        `unSquash ${tc.name}(${tc.activation}) should be finite`,
       );
 
       // Round-trip test: squash(unSquash(a)) ≈ a
-      const roundTrip = squash(tc.name, wasmResult, false);
+      const roundTrip = squash(tc.name, result);
       assertAlmostEquals(
         roundTrip,
         tc.activation,
@@ -139,7 +128,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: "WASM Backpropagation: calculateError function wrapper",
+  name: "WASM Backpropagation: calculateError function produces finite results",
   fn() {
     // Test calculateError for various squash functions
     const testCases = [
@@ -164,34 +153,30 @@ Deno.test({
     ];
 
     for (const tc of testCases) {
-      const wasmResult = calculateError(
+      const result = calculateError(
         tc.name,
         tc.currentActivation,
         tc.targetActivation,
         tc.currentValue,
-        false,
-      );
-      const jsResult = calculateError(
-        tc.name,
-        tc.currentActivation,
-        tc.targetActivation,
-        tc.currentValue,
-        true,
       );
 
-      // WASM and JS should produce similar results
-      assertAlmostEquals(
-        wasmResult,
-        jsResult,
-        TOLERANCE,
-        `calculateError ${tc.name}: WASM vs JS`,
+      assert(
+        Number.isFinite(result),
+        `calculateError ${tc.name} should be finite, got ${result}`,
+      );
+
+      // Error should be non-zero when target != current
+      assert(
+        result !== 0,
+        `calculateError ${tc.name} should be non-zero when target != current`,
       );
     }
   },
 });
 
 Deno.test({
-  name: "WASM Backpropagation: safeZoneAdjustment function wrapper",
+  name:
+    "WASM Backpropagation: safeZoneAdjustment function produces valid results",
   fn() {
     // Test safeZoneAdjustment for various squash functions
     const testCases = [
@@ -204,32 +189,16 @@ Deno.test({
     ];
 
     for (const tc of testCases) {
-      const wasmResult = safeZoneAdjustment(
+      const result = safeZoneAdjustment(
         tc.name,
         tc.rawInput,
         tc.error,
         1.0,
-        false,
-      );
-      const jsResult = safeZoneAdjustment(
-        tc.name,
-        tc.rawInput,
-        tc.error,
-        1.0,
-        true,
-      );
-
-      // WASM and JS should produce similar results
-      assertAlmostEquals(
-        wasmResult,
-        jsResult,
-        TOLERANCE,
-        `safeZoneAdjustment ${tc.name}(${tc.rawInput}, ${tc.error}): WASM vs JS`,
       );
 
       // Result should be in [0, 1] range
-      assert(wasmResult >= 0, "safeZoneAdjustment should be >= 0");
-      assert(wasmResult <= 1, "safeZoneAdjustment should be <= 1");
+      assert(result >= 0, "safeZoneAdjustment should be >= 0");
+      assert(result <= 1, "safeZoneAdjustment should be <= 1");
     }
   },
 });
@@ -284,9 +253,9 @@ Deno.test({
 });
 
 Deno.test({
-  name: "WASM Backpropagation: Both networks produce same initial output",
+  name: "WASM Backpropagation: Cloned networks produce same initial output",
   fn() {
-    // Verify both WASM and JS pathways produce identical initial results
+    // Verify cloned networks produce identical initial results via WASM
     const createNetwork = () => {
       const json: CreatureInternal = {
         neurons: [
@@ -323,15 +292,15 @@ Deno.test({
       return error;
     };
 
-    const wasmCreature = createNetwork();
-    const jsCreature = createNetwork();
+    const creature1 = createNetwork();
+    const creature2 = createNetwork();
 
     // Verify both start at the same state
-    const wasmInitialError = calculateTotalError(wasmCreature);
-    const jsInitialError = calculateTotalError(jsCreature);
+    const error1 = calculateTotalError(creature1);
+    const error2 = calculateTotalError(creature2);
     assertAlmostEquals(
-      wasmInitialError,
-      jsInitialError,
+      error1,
+      error2,
       TOLERANCE,
       "Initial errors should match",
     );
@@ -342,40 +311,38 @@ Deno.test({
       generations: 0,
       plankConstant: 1e-7,
     });
-    const wasmSparseConfig = new SparseConfig(
-      wasmCreature.exportJSON(),
-      config,
-    );
-    const jsSparseConfig = new SparseConfig(jsCreature.exportJSON(), config);
+    const sparseConfig1 = new SparseConfig(creature1.exportJSON(), config);
+    const sparseConfig2 = new SparseConfig(creature2.exportJSON(), config);
 
     // Run one epoch on each
     for (const data of trainingData) {
-      wasmCreature.activateAndTrace(data.input, false, wasmSparseConfig);
-      wasmCreature.propagate(
+      creature1.activateAndTrace(data.input, false, sparseConfig1);
+      creature1.propagate(
         new Float32Array(data.output),
         config,
-        wasmSparseConfig,
+        sparseConfig1,
       );
     }
-    wasmCreature.propagateUpdate(config, wasmSparseConfig);
+    creature1.propagateUpdate(config, sparseConfig1);
 
     for (const data of trainingData) {
-      jsCreature.activateAndTrace(data.input, false, jsSparseConfig);
-      jsCreature.propagate(
+      creature2.activateAndTrace(data.input, false, sparseConfig2);
+      creature2.propagate(
         new Float32Array(data.output),
         config,
-        jsSparseConfig,
+        sparseConfig2,
       );
     }
-    jsCreature.propagateUpdate(config, jsSparseConfig);
+    creature2.propagateUpdate(config, sparseConfig2);
 
     // Both should have processed training without error
-    assert(true, "Both WASM and JS training pipelines execute successfully");
+    assert(true, "Both training pipelines execute successfully");
   },
 });
 
 Deno.test({
-  name: "WASM Backpropagation: All standard squash functions work with wrapper",
+  name:
+    "WASM Backpropagation: All standard squash functions work with WASM wrapper",
   fn() {
     const supportedSquashes = [
       "IDENTITY",
@@ -413,41 +380,31 @@ Deno.test({
     ];
 
     for (const squashName of supportedSquashes) {
-      // Test that squash works via WASM
+      // Test that squash produces finite results
       const testValue = 0.5;
-      const wasmResult = squash(squashName, testValue, false);
-      const jsResult = squash(squashName, testValue, true);
+      const result = squash(squashName, testValue);
 
-      // Results should be similar
-      assertAlmostEquals(
-        wasmResult,
-        jsResult,
-        TOLERANCE,
-        `squash ${squashName}(${testValue}): WASM vs JS`,
+      assert(
+        Number.isFinite(result),
+        `squash ${squashName}(${testValue}) should be finite, got ${result}`,
       );
 
       // Test safeZoneAdjustment if the JS implementation has it
       const jsSquash = Activations.find(squashName);
       if (jsSquash.safeZoneAdjustment) {
-        const wasmSafe = safeZoneAdjustment(
+        const safeResult = safeZoneAdjustment(
           squashName,
           testValue,
           0.1,
           1.0,
-          false,
         );
-        const jsSafe = safeZoneAdjustment(
-          squashName,
-          testValue,
-          0.1,
-          1.0,
-          true,
+        assert(
+          Number.isFinite(safeResult),
+          `safeZoneAdjustment ${squashName} should be finite`,
         );
-        assertAlmostEquals(
-          wasmSafe,
-          jsSafe,
-          TOLERANCE,
-          `safeZoneAdjustment ${squashName}: WASM vs JS`,
+        assert(
+          safeResult >= 0 && safeResult <= 1,
+          `safeZoneAdjustment ${squashName} should be in [0,1]`,
         );
       }
     }

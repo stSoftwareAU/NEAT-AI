@@ -534,8 +534,6 @@ export class Creature implements CreatureInternal {
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
    * @param {SparseConfig} sparseConfig - The sparse configuration for tracing.
-   * @param {boolean} [useJs=false] - Optional. When true, uses JavaScript activation (verification/debug only).
-   *   Callers do not need to set this; the library uses the best available backend internally (Issue #1256).
    * @returns {Float32Array} The output values after activation.
    */
   activateAndTrace(
@@ -562,8 +560,6 @@ export class Creature implements CreatureInternal {
    *
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
-   * @param {boolean} [useJs=false] - Optional. When true, uses JavaScript activation (verification/debug only).
-   *   Callers do not need to set this; the library uses the best available backend internally (Issue #1256).
    * @returns {Float32Array} The output values after activation.
    */
   activate(

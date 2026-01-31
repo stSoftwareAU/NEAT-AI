@@ -2,9 +2,11 @@
  * WASM Activation Methods Integration
  *
  * Issue #1143 - WASM Migration Phase 11: Integrate WASM activation methods into backpropagation
+ * Issue #1236 - Remove useJs parameter and JS activation fallback paths
  * Issue #1256 - Backend is an implementation detail. No env vars required for normal use.
  *
- * Unified wrapper functions delegate to JS or WASM. WASM is used when available.
+ * All activation methods delegate to WASM. JS is only used for StdInverse
+ * (which requires f64 precision to avoid kilounit rounding errors).
  * NEAT_AI_USE_WASM_BACKPROP=false is optional (debug only) to force JS backpropagation.
  */
 
@@ -75,7 +77,6 @@ export function isWasmSquashSupported(squashName: string): boolean {
  * @param currentActivation - The neuron's current output (after squash)
  * @param targetActivation - The desired output
  * @param currentValue - The pre-squash value (hint for unSquash)
- * @param useJs - Force JavaScript implementation
  * @returns The calculated error value
  */
 export function calculateError(
@@ -83,10 +84,9 @@ export function calculateError(
   currentActivation: number,
   targetActivation: number,
   currentValue: number,
-  useJs = false,
 ): number {
-  // Try WASM if available and not forced to use JS
-  if (!useJs && shouldUseWasmBackprop()) {
+  // Use WASM when available
+  if (shouldUseWasmBackprop()) {
     const resolvedName = resolveWasmSquashName(squashName);
     if (resolvedName !== undefined) {
       const squashType = getSquashType(resolvedName);
@@ -130,7 +130,6 @@ export function calculateError(
  * @param rawInput - The raw input value before squashing
  * @param error - The error value from backpropagation
  * @param weight - An optional synapse weight (defaults to 1.0)
- * @param useJs - Force JavaScript implementation
  * @returns A value between 0 and 1 indicating backpropagation safety
  */
 export function safeZoneAdjustment(
@@ -138,10 +137,9 @@ export function safeZoneAdjustment(
   rawInput: number,
   error: number,
   weight?: number,
-  useJs = false,
 ): number {
-  // Try WASM if available and not forced to use JS
-  if (!useJs && shouldUseWasmBackprop()) {
+  // Use WASM when available
+  if (shouldUseWasmBackprop()) {
     const resolvedName = resolveWasmSquashName(squashName);
     if (resolvedName !== undefined) {
       const squashType = getSquashType(resolvedName);
@@ -166,25 +164,27 @@ export function safeZoneAdjustment(
  * @param squashName - The name of the squash function
  * @param activation - The squashed activation value to invert
  * @param hint - An optional hint value to guide the inverse
- * @param useJs - Force JavaScript implementation
  * @returns The unsquashed value
  */
 export function unSquash(
   squashName: string,
   activation: number,
   hint?: number,
-  useJs = false,
 ): number {
   // StdInverse can easily produce values around ±1e12 for tiny activations.
   // Returning those via f32 (WASM) introduces ~kilounit rounding error at that scale,
   // which breaks backprop roundtrip invariants (see test/propagate/ToValue.ts).
   // Use the JS implementation (f64) for correctness.
   if (squashName === "StdInverse") {
-    useJs = true;
+    const sq = Activations.find(squashName) as unknown as UnSquashInterface;
+    if (sq.unSquash) {
+      return sq.unSquash(activation, hint);
+    }
+    return activation;
   }
 
-  // Try WASM if available and not forced to use JS
-  if (!useJs && shouldUseWasmBackprop()) {
+  // Use WASM when available
+  if (shouldUseWasmBackprop()) {
     const resolvedName = resolveWasmSquashName(squashName);
     if (resolvedName !== undefined) {
       const squashType = getSquashType(resolvedName);
@@ -192,7 +192,7 @@ export function unSquash(
     }
   }
 
-  // Fall back to JS implementation
+  // Fall back to JS implementation for unsupported squash functions
   const squash = Activations.find(squashName) as unknown as UnSquashInterface;
   if (squash.unSquash) {
     return squash.unSquash(activation, hint);
@@ -208,21 +208,20 @@ export function unSquash(
  *
  * @param squashName - The name of the squash function
  * @param value - The value to squash
- * @param useJs - Force JavaScript implementation
  * @returns The squashed activation value
  */
 export function squash(
   squashName: string,
   value: number,
-  useJs = false,
 ): number {
-  // See note in unSquash(): keep StdInverse in JS for precision.
+  // See note in unSquash(): keep StdInverse in JS for f64 precision.
   if (squashName === "StdInverse") {
-    useJs = true;
+    const squashFn = Activations.find(squashName) as ActivationInterface;
+    return squashFn.squash(value);
   }
 
-  // Try WASM if available and not forced to use JS
-  if (!useJs && shouldUseWasmBackprop()) {
+  // Use WASM when available
+  if (shouldUseWasmBackprop()) {
     const resolvedName = resolveWasmSquashName(squashName);
     if (resolvedName !== undefined) {
       const squashType = getSquashType(resolvedName);
@@ -230,7 +229,7 @@ export function squash(
     }
   }
 
-  // Fall back to JS implementation
+  // Fall back to JS implementation for unsupported squash functions
   const squashFn = Activations.find(squashName) as ActivationInterface;
   return squashFn.squash(value);
 }

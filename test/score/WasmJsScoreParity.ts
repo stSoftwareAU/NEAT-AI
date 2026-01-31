@@ -1,18 +1,16 @@
 /**
- * Regression: WASM vs JS score parity.
+ * Regression: WASM score sanity.
  *
  * This test intentionally does NOT use external GRQ files/datasets.
  * It builds a deterministic synthetic creature + dataset and asserts that
- * end-to-end scoring (avg error + score calculation) matches between:
- * - WASM-default activation (Creature.activate(...))
- * - forced-JS activation (Creature.activate(..., useJs=true))
+ * end-to-end scoring (avg error + score calculation) via WASM activation
+ * produces finite, stable results.
  *
- * NOTE (2026-01): WASM activation now prioritizes throughput and uses an f32-first
- * implementation. Exact parity with JS (f64) is not guaranteed, especially for
- * numerically sensitive squashes (e.g. TAN/Cosine).
+ * NOTE (2026-01): WASM activation uses an f32-first implementation.
+ * This regression checks finiteness and stability on a deterministic
+ * synthetic dataset using stable squashes (Logistic/Tanh).
  *
- * This regression now checks *rough* parity on a deterministic synthetic dataset
- * using stable squashes (Logistic/Tanh), and only asserts finiteness.
+ * Issue #1236: Removed useJs parameter and JS activation fallback paths.
  */
 
 import { assert, assertAlmostEquals } from "@std/assert";

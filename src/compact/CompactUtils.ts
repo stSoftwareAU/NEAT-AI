@@ -5,8 +5,8 @@ import { Neuron } from "../architecture/Neuron.ts";
 import type { Synapse } from "../architecture/Synapse.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
-// Issue #1143 - WASM backpropagation integration
-import { squash as wasmSquash } from "../wasm/ActivationMethods.ts";
+import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import { Activations } from "../methods/activations/Activations.ts";
 
 /**
  * Result of cleaning up orphaned neurons.
@@ -206,13 +206,16 @@ export function cleanupOrphanedNeurons(
           // A hidden neuron with bias X and squash function outputs squash(0 + X)
           // when receiving no input, so we must apply the squash function to get
           // the correct constant value.
-          // IMPORTANT: This is a structural rewrite that must preserve the existing
-          // JS semantics exactly. Using WASM here can introduce f32 rounding (eg -0.58
-          // becomes -0.5799999833), which breaks long-standing tests and can change
-          // deterministic structure transformations.
+          // IMPORTANT: This is a structural rewrite that must preserve f64 precision.
+          // Using WASM (f32) here can introduce rounding (eg -0.58 becomes
+          // -0.5799999833), which breaks long-standing tests and can change
+          // deterministic structure transformations. Call JS squash directly.
           let constantBias = neuron.bias;
           if (neuron.squash) {
-            constantBias = wasmSquash(neuron.squash, neuron.bias, true);
+            const squashFn = Activations.find(
+              neuron.squash,
+            ) as ActivationInterface;
+            constantBias = squashFn.squash(neuron.bias);
           }
           creatureExport.neurons[i] = {
             type: "constant",
