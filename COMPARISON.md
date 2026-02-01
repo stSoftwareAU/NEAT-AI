@@ -14,23 +14,8 @@ introduction to NEAT and only assume basic familiarity with ML concepts. It aims
 to stay accurate and links to authoritative sources whenever new ideas are
 introduced.
 
-## Terminology Cheat Sheet
-
-- **Creatures** → individual neural networks/genomes inside a NEAT population,
-  as formalised in the
-  [original NEAT paper](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
-- **Memetic evolution** → our implementation of a
-  [memetic algorithm](https://en.wikipedia.org/wiki/Memetic_algorithm), i.e.,
-  evolution plus local gradient-based fine-tuning.
-- **CRISPR injections** → targeted gene edits inspired by
-  [CRISPR-Cas9 gene editing](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/);
-  practically, we add curated synapses or neurons.
-- **Grafting** → cross-island crossover when parent genomes are incompatible,
-  similar to the
-  [island model in evolutionary computation](https://en.wikipedia.org/wiki/Island_model).
-
-These nicknames keep the tone fun, but every entry maps back to a standard
-machine-learning concept.
+For project terminology (Creatures, Memetic evolution, CRISPR injections,
+Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
 
 ## Table of Contents
 
