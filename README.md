@@ -13,9 +13,9 @@ For project terminology, coding conventions, and development guidelines, see
 1. **Extendable Observations**: Input and output features are identified by
    stable UUIDs in the exported representation, rather than only by positional
    indices. This prevents the need to restart the evolution process as new
-   observations are added, and makes it practical to evolve creatures on multiple
-   machines and then recombine them, much like NEAT's historical marking for
-   genes
+   observations are added, and makes it practical to evolve creatures on
+   multiple machines and then recombine them, much like NEAT's historical
+   marking for genes
    [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
 
 2. **Distributed Training**: Training and evolution can be run on multiple
@@ -61,8 +61,8 @@ For project terminology, coding conventions, and development guidelines, see
 10. **Error-Guided Structural Evolution**: Dynamically identifies and creates
     new synapses by analysing neuron activations and errors. A dedicated Rust
     module performs GPU-accelerated analysis and proposes structural candidates.
-    Discovery runs typically find improvements of 0.5-3% per run that
-    accumulate over many iterations.
+    Discovery runs typically find improvements of 0.5-3% per run that accumulate
+    over many iterations.
 
     **Note**: Relies entirely on the
     [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) Rust
@@ -108,8 +108,8 @@ instructions.
 
 For detailed documentation, see the [docs/](./docs/) directory:
 
-- **[AGENTS.md](./AGENTS.md)**: Coding conventions, terminology, and
-  development guidelines
+- **[AGENTS.md](./AGENTS.md)**: Coding conventions, terminology, and development
+  guidelines
 - **[COMPARISON.md](./COMPARISON.md)**: How NEAT compares to traditional neural
   networks, CNNs, RNNs, and modern LLMs
 - **[Discovery Guide](./docs/DISCOVERY_GUIDE.md)**: Complete guide to
