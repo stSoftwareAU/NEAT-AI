@@ -8,7 +8,6 @@ import { GAUSSIAN } from "../../../src/methods/activations/types/GAUSSIAN.ts";
 import { GELU } from "../../../src/methods/activations/types/GELU.ts";
 import { LogSigmoid } from "../../../src/methods/activations/types/LogSigmoid.ts";
 import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 import { simplify } from "../../../src/optimize/Simplify.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
@@ -173,14 +172,6 @@ Deno.test("Constant", () => {
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
 
-  const { inlineText, squashList } = makeCreatureActivationFunction(
-    simplifiedCreature,
-  );
-
-  Deno.writeTextFileSync(
-    `${directory}/inline-simplified.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
   assertNotEquals(
     complex.uuid ?? "COMPLEX",
     simplifiedCreature.uuid ?? "SIMPLIFIED",
@@ -278,14 +269,6 @@ Deno.test("Constant-1", () => {
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
   simplifiedCreature.validate();
-  const { inlineText, squashList } = makeCreatureActivationFunction(
-    simplifiedCreature,
-  );
-
-  Deno.writeTextFileSync(
-    `${directory}/inline-simplified.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
 
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);
@@ -390,14 +373,6 @@ Deno.test("Constant-2", () => {
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
   simplifiedCreature.validate();
-  const { inlineText, squashList } = makeCreatureActivationFunction(
-    simplifiedCreature,
-  );
-
-  Deno.writeTextFileSync(
-    `${directory}/inline-simplified.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
 
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);
@@ -476,14 +451,6 @@ Deno.test("Constant-3", () => {
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
   simplifiedCreature.validate();
-  const { inlineText, squashList } = makeCreatureActivationFunction(
-    simplifiedCreature,
-  );
-
-  Deno.writeTextFileSync(
-    `${directory}/inline-simplified.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
 
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);

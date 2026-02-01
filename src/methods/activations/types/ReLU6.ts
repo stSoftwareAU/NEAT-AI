@@ -1,4 +1,3 @@
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
@@ -14,8 +13,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://www.tensorflow.org/api_docs/python/tf/nn/relu6
  */
-export class ReLU6
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class ReLU6 implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 3;
   public static readonly NAME = "ReLU6";
 
@@ -29,10 +27,6 @@ export class ReLU6
 
   getName(): string {
     return ReLU6.NAME;
-  }
-
-  inlineSquash(value: string): string {
-    return `Math.min(Math.max(0, (${value})), 6)`;
   }
 
   squash(x: number): number {

@@ -1,15 +1,11 @@
-import { assertAlmostEquals, assertEquals, assertExists } from "@std/assert";
+import { assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../src/Creature.ts";
-import { makeCreatureActivationFunction } from "../src/optimize/MakeCreatureActivationFunction.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 /**
- * Tests for squash lookup table optimisation.
- * Issue #1017: Replace squash function parameters with lookup table.
- *
- * These tests verify that the lookup table approach provides
- * identical behaviour to the original parameter-based approach.
+ * Tests for squash lookup table / WASM activation.
+ * Issue #1238: JS dynamic activation code generation removed; activation is WASM-only.
  */
 
 /**
@@ -128,20 +124,16 @@ function createCreatureWithMixedSquashes(): Creature {
   });
 }
 
-Deno.test("Squash lookup table - activation function generation", () => {
+Deno.test("Squash lookup table - WASM activation runs", () => {
   const creature = createCreatureWithMixedSquashes();
   creature.validate();
 
-  const result = makeCreatureActivationFunction(creature);
-
-  assertExists(result.inlineFunction, "Should generate inline function");
-  assertExists(result.inlineText, "Should generate inline text");
-  assertExists(result.squashList, "Should generate squash list");
-
-  // The squash list should contain non-inline squash functions
-  // With the lookup table approach, squashList should still be populated
-  // for compatibility, but the function should use a lookup table internally
-  assertEquals(typeof result.inlineFunction, "function");
+  const input = new Float32Array([0.5, -0.3]);
+  const output = creature.activate(input);
+  // Activation should produce a valid output
+  if (output.length !== 1 || !Number.isFinite(output[0])) {
+    throw new Error("WASM activation should produce valid output");
+  }
 });
 
 Deno.test("Squash lookup table - activation produces correct output", () => {
@@ -170,17 +162,13 @@ Deno.test("Squash lookup table - consistent with traced.json creature", () => {
   const creature = Creature.fromJSON(creatureJson);
   creature.fix();
 
-  // Generate activation function
-  const result = makeCreatureActivationFunction(creature);
-  assertExists(result.inlineFunction);
-
   // Create random input
   const input = new Float32Array(creature.input);
   for (let i = 0; i < creature.input; i++) {
     input[i] = Math.random() * 4 - 2;
   }
 
-  // Activate and verify consistency
+  // Activate and verify consistency (WASM activation)
   creature.clearState();
   const output1 = creature.activate(input, false);
 

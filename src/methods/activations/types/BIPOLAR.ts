@@ -1,5 +1,4 @@
 import { assert } from "@std/assert";
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
@@ -25,8 +24,7 @@ class BipolarRange extends ActivationRange {
  * Reference:
  * https://en.wikipedia.org/wiki/Activation_function#Binary_step_function
  */
-export class BIPOLAR
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class BIPOLAR implements ActivationInterface, UnSquashInterface {
   public static NAME = "BIPOLAR";
   public mutationProbability = 1;
   public readonly range: ActivationRange = new BipolarRange();
@@ -47,15 +45,6 @@ export class BIPOLAR
 
     // Use safe fallback: any positive number maps to 1, negative to -1
     return activation >= 0 ? 1 : -1;
-  }
-
-  /**
-   * The inlineSquash function is used for optimization purposes.
-   * It provides a string representation of the activation function
-   * that can be used in optimized code generation.
-   */
-  inlineSquash(value: string): string {
-    return `(${value}) > 0 ? 1 : -1`;
   }
 
   squash(x: number) {

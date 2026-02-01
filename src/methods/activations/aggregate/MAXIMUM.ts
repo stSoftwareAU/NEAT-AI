@@ -4,7 +4,7 @@ import type { Neuron } from "../../../architecture/Neuron.ts";
 import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
 import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
 import type { MakeActivationFunctionInterface } from "../../../optimize/MakeActivationFunctionInterface.ts";
-import { makeSynapsesValue } from "../../../optimize/MakeNeuronActivation.ts";
+import { makeSynapsesValue } from "../../../optimize/makeSynapsesValue.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import {
   type BackPropagationConfig,

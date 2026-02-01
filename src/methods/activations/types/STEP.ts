@@ -1,5 +1,4 @@
 import { assert } from "@std/assert";
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
@@ -25,8 +24,7 @@ class StepRange extends ActivationRange {
  * Reference:
  * https://en.wikipedia.org/wiki/Step_function
  */
-export class STEP
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class STEP implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 2;
   public static readonly NAME = "STEP";
 
@@ -34,10 +32,6 @@ export class STEP
 
   getName(): string {
     return STEP.NAME;
-  }
-
-  inlineSquash(value: string): string {
-    return `(${value}) > 0 ? 1 : 0`;
   }
 
   squash(x: number): number {

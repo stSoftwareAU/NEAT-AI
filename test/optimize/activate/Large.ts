@@ -1,6 +1,4 @@
-import { fail } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -28,35 +26,13 @@ Deno.test("large", () => {
     JSON.stringify(exportCreature, null, 1),
   );
 
-  const { inlineText, squashList } = makeCreatureActivationFunction(creature);
-
-  Deno.writeTextFileSync(
-    `${directory}/inline.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
-
-  if (inlineText.includes(";;")) {
-    fail("Double semicolons detected");
+  // WASM activation (Issue #1238: JS codegen removed)
+  const input = new Float32Array(creature.input);
+  for (let i = 0; i < creature.input; i++) {
+    input[i] = Math.random() * 2 - 1;
   }
-  const shouldNotContain = [
-    " IDENTITY",
-    "=IDENTITY",
-    " TANH",
-    "=TANH",
-    "STEP",
-    "ABSOLUTE",
-    "CLIPPED",
-    "HARD_TANH",
-    "ArcTan",
-    "BIPOLAR(",
-    "COMPLEMENT",
-    "Cosine",
-    "ReLU6",
-    "SINE",
-  ];
-  shouldNotContain.forEach((text) => {
-    if (inlineText.includes(text)) {
-      fail(`${text} detected`);
-    }
-  });
+  const output = creature.activate(input, false);
+  if (output.length !== creature.output || !output.every(Number.isFinite)) {
+    throw new Error("WASM activation should produce valid output");
+  }
 });

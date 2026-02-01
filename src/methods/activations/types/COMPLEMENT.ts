@@ -1,4 +1,3 @@
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
@@ -17,8 +16,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * https://en.wikipedia.org/wiki/Feature_scaling
  * https://en.wikipedia.org/wiki/Complement_coding
  */
-export class COMPLEMENT
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class COMPLEMENT implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 1;
   public static NAME = "COMPLEMENT";
 
@@ -32,10 +30,6 @@ export class COMPLEMENT
 
   getName(): string {
     return COMPLEMENT.NAME;
-  }
-
-  inlineSquash(value: string): string {
-    return `1 - (${value})`;
   }
 
   squash(x: number): number {
