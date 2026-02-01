@@ -7,8 +7,8 @@
  * Issue #1256 - Backend is an implementation detail. No env vars required for normal use.
  *
  * All activation methods delegate to WASM unconditionally. JS is only used for
- * StdInverse (which requires f64 precision to avoid kilounit rounding errors)
- * and as a fallback for squash functions not yet implemented in WASM.
+ * StdInverse (which requires f64 precision to avoid kilounit rounding errors).
+ * WASM must always be available and all squash functions must be defined in WASM.
  */
 
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
@@ -16,7 +16,6 @@ import { Activations } from "../methods/activations/Activations.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import {
   getSquashType,
-  isWasmActivationAvailable,
   resolveWasmSquashName,
   wasmCalculateError,
   wasmSafeZoneAdjustment,
@@ -36,7 +35,7 @@ export function isWasmSquashSupported(squashName: string): boolean {
 
 /**
  * Calculate the error in value-space for backpropagation.
- * Delegates to WASM when available and supported.
+ * Delegates to WASM unconditionally.
  *
  * @param squashName - The name of the squash function
  * @param currentActivation - The neuron's current output (after squash)
@@ -50,46 +49,24 @@ export function calculateError(
   targetActivation: number,
   currentValue: number,
 ): number {
-  // Use WASM (unconditional – Issue #1241)
-  if (isWasmActivationAvailable()) {
-    const resolvedName = resolveWasmSquashName(squashName);
-    if (resolvedName !== undefined) {
-      const squashType = getSquashType(resolvedName);
-      return wasmCalculateError(
-        squashType,
-        currentActivation,
-        targetActivation,
-        currentValue,
-      );
-    }
-  }
-
-  // Fall back to JS for squash functions not yet in WASM
-  const squash = Activations.find(squashName) as ActivationInterface;
-  if (squash.calculateError) {
-    return squash.calculateError(
-      currentActivation,
-      targetActivation,
-      currentValue,
+  const resolvedName = resolveWasmSquashName(squashName);
+  if (resolvedName === undefined) {
+    throw new Error(
+      `Squash function '${squashName}' is not defined in WASM. All squash functions must be implemented in Rust/WASM.`,
     );
   }
-
-  // If no calculateError method exists, return a simple difference
-  // This matches the fallback behaviour in Neuron.ts record()
-  if (squash as unknown as UnSquashInterface) {
-    const unSquash = squash as unknown as UnSquashInterface;
-    if (unSquash.unSquash) {
-      const targetValue = unSquash.unSquash(targetActivation, currentValue);
-      return targetValue - currentValue;
-    }
-  }
-
-  return targetActivation - currentActivation;
+  const squashType = getSquashType(resolvedName);
+  return wasmCalculateError(
+    squashType,
+    currentActivation,
+    targetActivation,
+    currentValue,
+  );
 }
 
 /**
  * Get the safe zone adjustment factor for backpropagation.
- * Delegates to WASM when available and supported.
+ * Delegates to WASM unconditionally.
  *
  * @param squashName - The name of the squash function
  * @param rawInput - The raw input value before squashing
@@ -103,28 +80,19 @@ export function safeZoneAdjustment(
   error: number,
   weight?: number,
 ): number {
-  // Use WASM (unconditional – Issue #1241)
-  if (isWasmActivationAvailable()) {
-    const resolvedName = resolveWasmSquashName(squashName);
-    if (resolvedName !== undefined) {
-      const squashType = getSquashType(resolvedName);
-      return wasmSafeZoneAdjustment(squashType, rawInput, error, weight);
-    }
+  const resolvedName = resolveWasmSquashName(squashName);
+  if (resolvedName === undefined) {
+    throw new Error(
+      `Squash function '${squashName}' is not defined in WASM. All squash functions must be implemented in Rust/WASM.`,
+    );
   }
-
-  // Fall back to JS for squash functions not yet in WASM
-  const squash = Activations.find(squashName);
-  if (squash.safeZoneAdjustment) {
-    return squash.safeZoneAdjustment(rawInput, error, weight ?? 1);
-  }
-
-  // Default to fully safe if no safeZoneAdjustment method exists
-  return 1;
+  const squashType = getSquashType(resolvedName);
+  return wasmSafeZoneAdjustment(squashType, rawInput, error, weight);
 }
 
 /**
  * Convert activation value back to pre-squash value.
- * Delegates to WASM when available and supported.
+ * Delegates to WASM unconditionally (except StdInverse which requires f64 precision).
  *
  * @param squashName - The name of the squash function
  * @param activation - The squashed activation value to invert
@@ -148,28 +116,19 @@ export function unSquash(
     return activation;
   }
 
-  // Use WASM (unconditional – Issue #1241)
-  if (isWasmActivationAvailable()) {
-    const resolvedName = resolveWasmSquashName(squashName);
-    if (resolvedName !== undefined) {
-      const squashType = getSquashType(resolvedName);
-      return wasmUnSquash(squashType, activation, hint);
-    }
+  const resolvedName = resolveWasmSquashName(squashName);
+  if (resolvedName === undefined) {
+    throw new Error(
+      `Squash function '${squashName}' is not defined in WASM. All squash functions must be implemented in Rust/WASM.`,
+    );
   }
-
-  // Fall back to JS for squash functions not yet in WASM
-  const squash = Activations.find(squashName) as unknown as UnSquashInterface;
-  if (squash.unSquash) {
-    return squash.unSquash(activation, hint);
-  }
-
-  // If no unSquash method exists, return the activation as-is
-  return activation;
+  const squashType = getSquashType(resolvedName);
+  return wasmUnSquash(squashType, activation, hint);
 }
 
 /**
  * Apply squash function to a value.
- * Delegates to WASM when available and supported.
+ * Delegates to WASM unconditionally (except StdInverse which requires f64 precision).
  *
  * @param squashName - The name of the squash function
  * @param value - The value to squash
@@ -185,16 +144,12 @@ export function squash(
     return squashFn.squash(value);
   }
 
-  // Use WASM (unconditional – Issue #1241)
-  if (isWasmActivationAvailable()) {
-    const resolvedName = resolveWasmSquashName(squashName);
-    if (resolvedName !== undefined) {
-      const squashType = getSquashType(resolvedName);
-      return wasmSquash(squashType, value);
-    }
+  const resolvedName = resolveWasmSquashName(squashName);
+  if (resolvedName === undefined) {
+    throw new Error(
+      `Squash function '${squashName}' is not defined in WASM. All squash functions must be implemented in Rust/WASM.`,
+    );
   }
-
-  // Fall back to JS for squash functions not yet in WASM
-  const squashFn = Activations.find(squashName) as ActivationInterface;
-  return squashFn.squash(value);
+  const squashType = getSquashType(resolvedName);
+  return wasmSquash(squashType, value);
 }
