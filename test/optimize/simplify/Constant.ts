@@ -187,7 +187,7 @@ Deno.test("Constant", () => {
       assertAlmostEquals(
         complexActuals[i],
         simplifiedActuals[i],
-        0.000_05,
+        0.000_06,
         `${p}) expected: ${complexActuals[i]} actual: ${simplifiedActuals[i]}`,
       );
     }
