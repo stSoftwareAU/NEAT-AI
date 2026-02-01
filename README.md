@@ -5,238 +5,85 @@
 This project is a practical implementation of a neural network based on the NEAT (NeuroEvolution of Augmenting Topologies) algorithm, written in DenoJS using TypeScript, with additional features such as error-guided discovery, memetic evolution, and distributed workflows.
 </p>
 
-## Terminology
-
-We keep the tone playful, but every nickname maps to a mainstream
-machine-learning idea:
-
-- **Creatures** are simply individual neural networks/genomes inside a NEAT
-  population, as described in the original NEAT paper by
-  [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
-- **Memetic evolution** refers to the well-studied combination of evolutionary
-  search plus local gradient descent, also called a
-  [memetic algorithm](https://en.wikipedia.org/wiki/Memetic_algorithm).
-- **CRISPR injections** describe targeted gene edits inspired by the real-world
-  [CRISPR gene editing technique](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/);
-  in practice we add hand-crafted synapses/neurons.
-- **Grafting** is crossover between incompatibly shaped genomes, similar to the
-  [island-model speciation strategies](https://en.wikipedia.org/wiki/Island_model)
-  used in evolutionary algorithms.
-
-If you spot another fun label, expect it to be backed by a reference to the
-standard term the first time it appears.
+For project terminology, coding conventions, and development guidelines, see
+[AGENTS.md](./AGENTS.md).
 
 ## Feature Highlights
 
-1. **Extendable Observations**: The observations can be extended over time
-   because input and output features are identified by stable UUIDs in the
-   exported representation, rather than only by positional indices. This
-   prevents the need to restart the evolution process as new observations are
-   added, and makes it practical to evolve creatures on multiple machines and
-   then recombine them, much like NEAT's historical marking for genes
+1. **Extendable Observations**: Input and output features are identified by
+   stable UUIDs in the exported representation, rather than only by positional
+   indices. This prevents the need to restart the evolution process as new
+   observations are added, and makes it practical to evolve creatures on multiple
+   machines and then recombine them, much like NEAT's historical marking for
+   genes
    [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
 
 2. **Distributed Training**: Training and evolution can be run on multiple
    independent nodes. The best-of-breed creatures can later be combined on a
-   centralized controller node, mirroring the
+   centralised controller node, mirroring the
    [island model](https://en.wikipedia.org/wiki/Island_model) used in
-   evolutionary algorithms. This feature allows for distributed computing and
-   potentially faster training times, enhancing the efficiency of the learning
-   process.
+   evolutionary algorithms.
 
-3. **Life Long Learning**: Unlike many pre-trained neural networks, this project
-   is designed for continuous learning, making it adaptable in changing
-   environments. In long-running deployments (for example, generating fresh
-   training data each day from many years of market and company data), the same
-   population can keep training and adapting as time goes on. New observations
-   can be added over weeks or months by widening the dataset and introducing new
-   UUID-indexed features, without throwing away existing creatures. This
-   supports continual learning in the spirit of
-   [continual learning](https://en.wikipedia.org/wiki/Continual_learning), while
+3. **Life Long Learning**: Designed for continuous learning in changing
+   environments. The same population can keep training and adapting as new data
+   arrives over weeks or months, supporting
+   [continual learning](https://en.wikipedia.org/wiki/Continual_learning) while
    still relying on your training data to keep past knowledge represented.
 
 4. **Efficient Model Utilisation**: Once trained, the current best model can be
    utilised efficiently by calling the `activate` function. This runs a single
-   forward pass that maps inputs to outputs, allowing for quick and easy
-   deployment of the trained model.
+   forward pass that maps inputs to outputs.
 
-**Activation uses WASM (required).** The library initialises the WASM backend
-automatically; callers do not need to call any init function or set environment
-variables. This works transparently in both the main thread and Deno Worker
-contexts. If WASM cannot be loaded, activation/scoring fails fast with an
-actionable error (Issue #1263).
+   **Activation uses WASM (required).** The library initialises the WASM backend
+   automatically; callers do not need to call any init function or set
+   environment variables.
 
-## Feed-forward vs recurrent connections
-
-NEAT-AI supports two broad topology styles:
-
-- **Feed-forward (forward-only)**: No **recurrent connections**. This means:
-  - No **self-loops** (\(from == to\))
-  - No **feedback/backward connections** (\(from > to\), ie an edge that points
-    to an earlier neuron index)
-  - Each activation depends only on the current input and upstream neuron
-    activations
-
-- **Recurrent (feedback-enabled)**: **Recurrent connections** are allowed
-  (self-loops and feedback/backward connections). These can make use of previous
-  activations and are useful for time-series style behaviours.
-
-In our production workloads, each record is treated as independent (no temporal
-dependence), so the default configuration is feed-forward/forward-only.
-
-5. **Unique Squash Functions**: The neural network supports unique squash
-   functions such as IF, MAX and MIN. These functions provide more options for
-   the activation function, which can lead to different network behaviours,
-   offering a wider range of potential solutions. More about
+5. **Unique Squash Functions**: Supports unique squash functions such as IF, MAX
+   and MIN, offering a wider range of potential solutions. More about
    [Activation Functions](https://en.wikipedia.org/wiki/Activation_function).
 
 6. **Neuron Pruning**: Neurons whose activations don't vary during training are
-   removed, and the biases in the associated neurons are adjusted. This feature
-   optimizes the network by reducing redundancy and computational load. More
-   about
+   removed, and the biases in associated neurons are adjusted. More about
    [Pruning (Neural Networks)](https://en.wikipedia.org/wiki/Pruning_(neural_networks)).
 
 7. **CRISPR**: Allows injection of genes into a population of creatures during
-   evolution. This feature can introduce new traits and potentially improve the
-   performance of the population. More about
-   [CRISPR](https://en.wikipedia.org/wiki/CRISPR).
+   evolution. More about [CRISPR](https://en.wikipedia.org/wiki/CRISPR).
 
-8. **Grafting**: If parents aren't "genetically compatible", then the "grafting"
-   algorithm from one parent to another parent onto the child will be used. This
-   allows for species from islands to interbreed, preserving diversity in the
-   same spirit as cross-island migration in
+8. **Grafting**: If parents aren't "genetically compatible", the grafting
+   algorithm enables cross-island interbreeding, preserving diversity in the
+   same spirit as
    [island-model evolution](https://en.wikipedia.org/wiki/Island_model).
 
-9. **Memetic Evolution**: The algorithm can now record and utilize the biases
-   and weights of the fittest creatures to fine-tune future generations. This
-   process, inspired by the concept of memes, allows the system to "remember"
-   and build upon successful traits, enhancing the evolutionary process. Learn
-   more about
+9. **Memetic Evolution**: Records and utilises the biases and weights of the
+   fittest creatures to fine-tune future generations. Learn more about
    [Memetic Algorithms](https://en.wikipedia.org/wiki/Memetic_algorithm).
 
 10. **Error-Guided Structural Evolution**: Dynamically identifies and creates
-    new synapses by analysing neuron activations and errors. This targeted
-    structural adaptation improves performance by explicitly reducing
-    neuron-level errors, blending evolutionary topology adjustments with
-    error-driven learning. The Rust discovery engine can currently reconstruct
-    hidden neurons using standard squashes including ReLU, GELU, ELU, SELU,
-    Softplus, LOGISTIC (sigmoid), and TANH.
+    new synapses by analysing neuron activations and errors. A dedicated Rust
+    module performs GPU-accelerated analysis and proposes structural candidates.
+    Discovery runs typically find improvements of 0.5-3% per run that
+    accumulate over many iterations.
 
-    Instead of relying purely on random structural mutations (as many NEAT
-    implementations do), a dedicated Rust module performs GPU-accelerated
-    analysis and proposes a focused set of structural candidates. In our own
-    workloads, discovery runs typically uncover small but meaningful
-    improvements (around 0.5–3% per run) that accumulate over many iterations
-    without hand-editing architectures.
-
-    **Note**: Error-Guided Structural Evolution now relies entirely on the
+    **Note**: Relies entirely on the
     [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) Rust
     extension library. If the library is not available, the discovery phase is
-    skipped wholesale; there is no TypeScript fallback.
+    skipped; there is no TypeScript fallback.
 
-11. **[Visualization](https://stsoftwareau.github.io/NEAT-AI/index.html)**
+11. **[Visualisation](https://stsoftwareau.github.io/NEAT-AI/index.html)**
 
-12. **Discovery Integration Guide**: Step-by-step instructions for running
-    discovery via `Creature.discoveryDir()` are available in the
-    [DiscoveryDir guide](./docs/DiscoveryDir.md).
+12. **Adaptive Mutation Rate**: Automatically adjusts mutation strategy based on
+    creature size - large creatures focus on weight/bias modification rather
+    than topology expansion.
 
-13. **Adaptive Mutation Rate**: Large creatures (619 neurons, 17,935 synapses)
-    have a massive search space. Adding more structure (ADD_NODE,
-    ADD_CONNECTION) makes the search space exponentially larger while rarely
-    improving fitness. The adaptive mutation rate feature automatically adjusts
-    mutation strategy based on creature size:
-    - **Small creatures** (< 100 neurons): Normal topology mutation rates
-    - **Medium creatures** (100-300 neurons): Gradually reduced topology
-      expansion
-    - **Large creatures** (> 300 neurons): Focus primarily on MOD_WEIGHT,
-      MOD_BIAS
-
-    Configuration example:
-    ```typescript
-    const options: NeatOptions = {
-      adaptiveMutationThresholds: {
-        medium: 100, // neurons threshold for medium creatures
-        large: 300, // neurons threshold for large creatures
-        largeTopologyWeight: 0.1, // 10% chance of topology mutation for large
-      },
-    };
-    ```
-
-    This leads to faster convergence for large creatures while preventing
-    unnecessary structural growth that rarely improves fitness.
-
-14. **Adaptive Mutation Rate Based on Fitness Progress**: The mutation rate is
+13. **Adaptive Mutation Rate Based on Fitness Progress**: Mutation rate is
     automatically adjusted based on whether evolution is improving, stagnating,
-    or stable. This is a well-established technique in evolutionary computation
-    literature that helps balance exploration and exploitation:
-    - **During stagnation/plateaus**: Mutation rate is increased (default 2x) to
-      help escape local optima
-    - **During rapid improvement**: Mutation rate is reduced (default 0.8x) to
-      exploit promising solutions
-    - **During stable progress**: Normal mutation rate is used
+    or stable, helping balance exploration and exploitation.
 
-    Configuration example:
-    ```typescript
-    const options: NeatOptions = {
-      plateauDetection: {
-        enabled: true,
-        windowSize: 10, // generations to track
-        minImprovementRate: 0.001, // 0.1% minimum for stable progress
-        rapidImprovementRate: 0.01, // 1% threshold for "rapid" improvement
-        responseMutationMultiplier: 2.0, // 2x mutation during stagnation
-        responseImprovementMultiplier: 0.8, // 0.8x mutation during improvement
-      },
-    };
-    ```
-
-    This leads to faster convergence (5-15% fewer generations needed) and better
-    escape from local optima while exploiting promising solutions.
-
-15. **Continuous Incremental Discovery**: For distributed, multi-machine
+14. **Continuous Incremental Discovery**: For distributed, multi-machine
     discovery workflows that accumulate small improvements over time, see the
     [Discovery Guide](./docs/DISCOVERY_GUIDE.md).
 
-## Documentation
-
-For detailed documentation, see the [docs/](./docs/) directory:
-
-- **[Discovery Guide](./docs/DISCOVERY_GUIDE.md)**: Complete guide to
-  distributed, multi-machine discovery workflows
-- **[Elastic back propagation](./docs/BACKPROP_ELASTICITY.md)**: Why we prefer
-  minimum-change weight updates and avoid pushing saturated squashes (eg.
-  ArcTan) further into saturation
-- **[DiscoveryDir API](./docs/DiscoveryDir.md)**: Technical API reference for
-  `Creature.discoveryDir()` and data preparation
-- **[GPU Acceleration](./docs/GPU_ACCELERATION.md)**: GPU acceleration for
-  discovery on macOS using Metal
-
-## Comparison with Other AI Approaches
-
-Want to understand how NEAT compares to traditional neural networks, CNNs, RNNs,
-and modern LLMs? See our comprehensive [COMPARISON.md](./COMPARISON.md) document
-which explains:
-
-- What we've implemented and how it works
-- Pros and cons of our NEAT approach vs traditional methods
-- Our unique innovations (memetic evolution, error-guided discovery, etc.)
-- Shortcomings and future work opportunities with references
-
-This comparison helps you understand when to use NEAT vs other approaches and
-identifies areas for future development.
-
-## Usage
-
-This project is designed to be used in a DenoJS environment. Please refer to the
-[DenoJS documentation](https://deno.land/manual) for setup and usage
-instructions.
-
-## Discovery Integration
-
-Discovery enables **continuous incremental improvement** of neural networks
-through automated structural analysis. Each discovery run finds small
-improvements (0.5-3%), which accumulate over time through repeated iterations.
-
-### Quick Start
+## Quick Start
 
 ```typescript
 // Single discovery iteration
@@ -251,325 +98,33 @@ if (result.improvement) {
 }
 ```
 
-### Documentation
+## Usage
 
+This project is designed to be used in a DenoJS environment. Please refer to the
+[DenoJS documentation](https://deno.land/manual) for setup and usage
+instructions.
+
+## Documentation
+
+For detailed documentation, see the [docs/](./docs/) directory:
+
+- **[AGENTS.md](./AGENTS.md)**: Coding conventions, terminology, and
+  development guidelines
+- **[COMPARISON.md](./COMPARISON.md)**: How NEAT compares to traditional neural
+  networks, CNNs, RNNs, and modern LLMs
 - **[Discovery Guide](./docs/DISCOVERY_GUIDE.md)**: Complete guide to
-  distributed, multi-machine discovery workflows
-- **[DiscoveryDir API](./docs/DiscoveryDir.md)**: Technical API reference and
-  data preparation
-
-### Evaluation Summary Logging
-
-By default, the library logs evaluation summaries with the `[DiscoveryRunner]`
-prefix. To avoid duplicate logging when your application also logs evaluation
-results:
-
-1. **Disable library logging**: Set
-   `discoveryDisableEvaluationSummaryLogging: true` in your options
-2. **Use exported formatting utilities**: Import `formatErrorDelta` and
-   `formatPercentWithSignificantDigits` from the discovery module to format
-   summaries consistently
-
-```typescript
-import { formatErrorDelta } from "./mod.ts";
-
-const result = await creature.discoveryDir(dataDir, {
-  discoveryDisableEvaluationSummaryLogging: true, // Disable library logging
-  // ... other options
-});
-
-// Log summaries yourself using the exported formatters
-if (result.evaluations) {
-  for (const summary of result.evaluations) {
-    console.log(
-      `Candidate: ${summary.changeType}, improvement: ${
-        formatErrorDelta(summary.errorDeltaPct ?? 0)
-      }`,
-    );
-  }
-}
-```
-
-Discovery is designed for **continuous operation** across multiple machines,
-accumulating improvements over hundreds of iterations. See the
-[Discovery Guide](./docs/DISCOVERY_GUIDE.md) for real-world workflows and
-production-tuned configurations.
-
-### Discovery Failure Cache
-
-When running discovery iteratively with a stable training dataset, you can
-enable failure caching to avoid re-evaluating candidates that previously failed
-to improve the creature's score. This significantly speeds up discovery runs by
-skipping known-failing candidates.
-
-```typescript
-const result = await creature.discoveryDir(dataDir, {
-  discoveryFailureCacheDir: ".discovery/failure-cache",
-  // ... other options
-});
-```
-
-**How it works:**
-
-1. After evaluating candidates, those that fail to improve the score are cached
-2. On subsequent runs, cached candidates are skipped before evaluation
-3. Cache keys use weight/bias magnitude (exponent only), so only significant
-   changes trigger re-evaluation
-4. Delete the cache directory when your training dataset changes
-
-**When to use:**
-
-- Training dataset changes infrequently (e.g., once a day)
-- Running discovery repeatedly on the same creature
-- Want to reduce wasted computation on known-failing candidates
-
-**Cache key design:**
-
-- **Neuron removal** (`remove-neuron`, `remove-low-impact`): Uses just the
-  neuron UUID - if removal failed once, it won't succeed until the creature
-  structure changes significantly
-- **Synapse removal** (`remove-synapse`): Uses just the from/to neuron UUIDs
-- **Other candidates**: Uses the exponential component of weights/biases in
-  scientific notation - weights like `0.123` and `0.234` (both `e-1`) map to the
-  same key, while `0.001` (`e-3`) and `0.1` (`e-1`) map to different keys
-
-**Cache entry metadata:**
-
-Each cached failure includes diagnostic metadata such as scores, error values,
-and the `discoveryVersion` field indicating which NEAT-AI-Discovery library
-version generated the candidate. This helps identify when cache entries may be
-stale due to library upgrades that improve candidate generation.
-
-For debugging purposes, each cache entry also includes a `rustRequest` field
-containing the original Rust candidate response (e.g., `neuronDetails` for
-add-neurons, `synapseCandidate` for add-synapses, `squashCandidate` for
-change-squash, `removalCandidate` for remove-low-impact). This allows comparison
-between what Rust suggested and what actually happened during evaluation.
-
-### Discovery Success Cache + Replay
-
-Discovery runs can take a long time (often tens of minutes). In that time, the
-normal evolution loop may advance the population so far that a successful
-discovery result is no longer competitive by the time you reinsert it.
-
-To prevent successful discoveries being lost, you can enable a **success cache**
-and periodically **replay** cached successes against the _current_ fittest
-creature.
-
-**Enable success caching during discovery:**
-
-```typescript
-const result = await creature.discoveryDir(dataDir, {
-  discoveryFailureCacheDir: ".discovery/failure-cache",
-  discoverySuccessCacheDir: ".discovery/success-cache",
-  // ... other options
-});
-```
-
-When `discoverySuccessCacheDir` is set, every single-step candidate that
-improves score is persisted so it can be replayed later. The cache stores the
-candidate details (and diagnostic metadata), not a full creature export.
-(Combination candidates are not stored; replay will try combinations on demand.)
-
-**Replay cached successes against the current fittest creature:**
-
-```typescript
-const replay = await creature.discoveryReplayDir(dataDir, {
-  discoverySuccessCacheDir: ".discovery/success-cache",
-  // Optional tuning knobs (defaults are usually fine)
-  discoveryReplayMaxSingles: 20,
-  discoveryReplayMaxPairwise: 10,
-  discoveryReplayMaxTriples: 8,
-  // Optional (off by default): verify scores against the current dataset to
-  // detect drift and avoid accepting stale improvements.
-  discoveryReplayVerifyScores: true,
-  // Bounded concurrency used during verification (defaults to max(availableCores, 8))
-  discoveryReplayConcurrency: 8,
-  // When verification is enabled, include claimed vs actual baseline drift details
-  discoveryReplayRescoreBaseline: true,
-  // Optional: return timing diagnostics for visibility into where replay time is spent.
-  discoveryReplayDiagnostics: true,
-});
-
-if (replay.improvement) {
-  console.log(replay.improvement.message);
-  // Reinsert replay.improvement.creature into your population and re-evaluate.
-}
-
-// When discoveryReplayVerifyScores is enabled, replay also reports:
-// - baselineRescore: claimed vs actual baseline score on the current dataset
-// - verifiedImprovement: the selected best outcome, gated by baseline actual score
-if (replay.baselineRescore?.changed) {
-  console.log(replay.baselineRescore.reason);
-}
-if (replay.verifiedImprovement?.improved) {
-  console.log(replay.verifiedImprovement.message);
-}
-if (replay.diagnostics) {
-  console.log(replay.diagnostics.timingsMS);
-}
-```
-
-**Replay behaviour:**
-
-1. Skips cached candidates that already appear to be applied to the current
-   creature
-2. Re-scores the remaining candidates against the current creature
-3. Archives cache entries that no longer improve score (obsolete successes) to
-   an `obsolete` directory at the same level as the success cache directory
-4. Tries combinations of still-successful candidates (pairs/triples/all) and
-   returns the best improvement
-
-**Obsolete entries archive:**
-
-When a cached success entry no longer results in an improvement (e.g., due to
-training data drift), it is moved to an `obsolete` directory rather than being
-deleted. This preserves the history of candidates that once resulted in
-improvements:
-
-- Success cache: `.discovery/success-cache/{changeType}/{key}.json`
-- Obsolete archive: `.discovery/obsolete/{changeType}/{key}.json`
-
-As with the failure cache, delete the success cache and obsolete directories
-when your training dataset changes materially.
-
-### Discovery Candidate Category Limits
-
-You can control the minimum number of candidates evaluated per category. This is
-useful when certain mutation types are more successful for your use case. For
-example, if neuron removal is working well but adding neurons isn't, you can
-increase the removal candidates and reduce add-neurons candidates.
-
-```typescript
-const result = await creature.discoveryDir(dataDir, {
-  discoveryMinCandidatesPerCategory: {
-    addNeurons: 0, // Skip add-neurons candidates
-    addSynapses: 1, // Minimum 1 add-synapses candidate
-    changeSquash: 1, // Minimum 1 change-squash candidate
-    removeLowImpact: 10, // Evaluate 10 removal candidates
-  },
-  // ... other options
-});
-```
-
-**Default values:**
-
-- `addNeurons`: 1
-- `addSynapses`: 1
-- `changeSquash`: 1
-- `removeLowImpact`: 3
-
-Higher values mean more candidates of that type will be evaluated. Set to 0 to
-skip a category entirely.
-
-### Forced Focus Overrides
-
-The discovery recorder now honours an optional `discoveryFocusNeuronUUIDs`
-override. When supplied, the recorder prioritises those hidden/output neuron
-UUIDs instead of sampling by error, giving you deterministic reproduction of a
-known gap. Each entry must match a neuron in the crippled creature.
-
-To see the override in action, run the sibling
-[`NEAT-AI-Examples`](../NEAT-AI-Examples) repository. The
-`discovery/discover_missing_neuron.ts` script generates a wide, long synthetic
-dataset, removes a known neuron, and invokes `Creature.discoveryDir()` with a
-forced focus list so you can reproduce production time-outs safely:
-
-```bash
-deno run --allow-read --allow-write --allow-env --allow-ffi \
-  ../NEAT-AI-Examples/discovery/discover_missing_neuron.ts
-```
-
-The example writes synthetic assets to a hidden `.synthetic-discovery/`
-directory (ignored by git) and logs extended diagnostics whenever the Rust
-recorder flushes or hits the time-out path. Use it as the starting point for
-debugging “Invalid string length” failures without touching live workloads.
-
-### Discovery Cost-of-Growth Gate
-
-Discovery candidates are now triaged using the configured `costOfGrowth` setting
-before they reach the evaluator. Each new synapse consumes `1 x
-costOfGrowth`,
-while every new neuron consumes roughly `3 x costOfGrowth` (two synapses plus
-the neuron). Candidates whose expected error reduction is smaller than their
-structural cost are skipped entirely. This keeps discovery focused on proposals
-that can actually repay the growth penalty and prevents logs from being flooded
-with meaningless `+0.000%` deltas.
-
-**Note:** The following candidate types are excluded from the cost-of-growth
-threshold check:
-
-- **Squash changes (`change-squash`)**: Don't add structural complexity (no new
-  synapses or neurons). They only modify the activation function of existing
-  neurons, so there is no growth cost to penalise.
-
-- **Removal candidates (`remove-neuron`, `remove-synapse`,
-  `remove-low-impact`)**: Don't add structural complexity - they remove it. They
-  improve score by reducing complexity, not by reducing error. Removing elements
-  that return a similar score will improve the creature's score.
-
-## Enabling the Rust Discovery Module
-
-The Rust FFI extension shipped via
-[NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) provides
-the accelerated structural hints used by `discoveryDir()`. To enable it:
-
-1. Clone the repository alongside this project and build/install the library:
-
-   ```bash
-   git clone https://github.com/stSoftwareAU/NEAT-AI-Discovery.git
-   ../NEAT-AI-Discovery/scripts/runlib.sh
-   ```
-
-   The `runlib.sh` script automatically:
-   - Installs Rust and Cargo if missing (no sudo required)
-   - Builds the library in release mode
-   - Installs it to `~/.cargo/lib/` with version tracking
-   - Signs it on macOS for FFI compatibility
-
-2. Alternatively, export an explicit path to the library:
-
-   ```bash
-   export NEAT_AI_DISCOVERY_LIB_PATH="/absolute/path/to/libneat_ai_discovery.dylib"
-   ```
-
-3. Grant FFI permissions and validate the installation:
-
-   ```bash
-   deno run --allow-env --allow-ffi --allow-read scripts/check_discovery.ts
-   ```
-
-4. In your application, guard discovery calls with `isRustDiscoveryEnabled()` so
-   that controllers fail fast when the module is unavailable.
-
-When the library cannot be resolved, set `NEAT_RUST_DISCOVERY_OPTIONAL=true` in
-environments where skipping discovery should not abort the worker. Otherwise,
-treat a missing module as a deployment error and halt the job.
-
-## Deployment Checklist
-
-Before committing code changes, ensure you complete the following steps:
-
-1. **Run quality checks in both repositories:**
-   ```bash
-   # In NEAT-AI-Discovery
-   cd ../NEAT-AI-Discovery
-   ./quality.sh
-
-   # In NEAT-AI
-   cd ../NEAT-AI
-   ./quality.sh
-   ```
-
-2. **Increment version numbers:**
-   - **NEAT-AI**: Update `deno.json` version field (e.g., `0.204.1` → `0.204.2`)
-   - **NEAT-AI-Discovery**: Update `Cargo.toml` version field (e.g., `0.1.41` →
-     `0.1.42`)
-
-3. **Verify all tests pass** in both repositories before committing.
-
-These steps ensure code quality, proper versioning, and that all tests pass
-before deployment.
+  distributed, multi-machine discovery workflows, including failure/success
+  caches, replay, candidate category limits, focus overrides, and the
+  cost-of-growth gate
+- **[DiscoveryDir API](./docs/DiscoveryDir.md)**: Technical API reference for
+  `Creature.discoveryDir()` and data preparation
+- **[Elastic back propagation](./docs/BACKPROP_ELASTICITY.md)**: Why we prefer
+  minimum-change weight updates and avoid pushing saturated squashes further
+  into saturation
+- **[GPU Acceleration](./docs/GPU_ACCELERATION.md)**: GPU acceleration for
+  discovery on macOS using Metal
+- **[Intelligent Design](./docs/INTELLIGENT_DESIGN.md)**: Systematic squash
+  function optimisation for hidden neurons
 
 ## Contributions
 
