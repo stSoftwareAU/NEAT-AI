@@ -3,7 +3,6 @@ import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -30,19 +29,6 @@ Deno.test("Maximum", () => {
     JSON.stringify(exportCreature, null, 1),
   );
 
-  const { inlineText, squashList } = makeCreatureActivationFunction(creature);
-
-  Deno.writeTextFileSync(
-    `${directory}/inline.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}\n}`,
-  );
-
-  if (inlineText.includes(";;")) {
-    fail("Double semicolons detected");
-  }
-  if (inlineText.includes("MAXIMUM")) {
-    fail("MAXIMUM detected");
-  }
   const sparseConfig = new SparseConfig(
     exportCreature,
     createBackPropagationConfig({}),

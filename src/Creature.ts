@@ -36,7 +36,6 @@ import type { CostInterface } from "./costs/CostInterface.ts";
 import { Activations } from "./methods/activations/Activations.ts";
 import { WorkerHandler } from "./multithreading/workers/WorkerHandler.ts";
 import { Neat } from "./NEAT/Neat.ts";
-import { makeCreatureActivationFunction } from "./optimize/MakeCreatureActivationFunction.ts";
 import {
   type BackPropagationConfig,
   createBackPropagationConfig,
@@ -502,26 +501,15 @@ export class Creature implements CreatureInternal {
   clearState() {
     delete this.score;
     this.state.clear();
-    delete this.creatureActivationResult;
     // Clear WASM cache - structure may have changed
     // Issue #1118: WASM Migration Phase 1
     this.disposeWasm();
   }
 
-  private creatureActivationFunction?: () => undefined;
-  private creatureActivationResult?: {
-    inlineFunction: () => undefined;
-    inlineText: string;
-    squashList: string[];
-  };
   private prepareNeurons() {
     if (this.state.preparedNeurons) {
       return;
     }
-
-    this.creatureActivationResult = makeCreatureActivationFunction(this);
-    this.creatureActivationFunction =
-      this.creatureActivationResult.inlineFunction;
     for (let i = this.input, len = this.neurons.length; i < len; i++) {
       this.neurons[i].prepare();
     }

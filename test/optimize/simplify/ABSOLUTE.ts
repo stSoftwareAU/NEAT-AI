@@ -5,7 +5,6 @@ import { Exponential } from "../../../src/methods/activations/types/Exponential.
 import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
 import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
 import { STEP } from "../../../src/methods/activations/types/STEP.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 import { simplify } from "../../../src/optimize/Simplify.ts";
 import { ReLU6 } from "../../../src/methods/activations/types/ReLU6.ts";
 
@@ -127,14 +126,6 @@ Deno.test("ABSOLUTE", () => {
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
 
-  const { inlineText, squashList } = makeCreatureActivationFunction(
-    simplifiedCreature,
-  );
-
-  Deno.writeTextFileSync(
-    `${directory}/inline-simplified.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);
 

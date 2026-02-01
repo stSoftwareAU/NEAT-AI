@@ -1,4 +1,3 @@
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
@@ -14,8 +13,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Note: This function doesn't have a unique inverse, so the unSquash function will return
  * one possible original value (positive version of the input).
  */
-export class ABSOLUTE
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class ABSOLUTE implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 14;
   public static NAME = "ABSOLUTE";
   private static rangeStatic: ActivationRange = new ActivationRange(
@@ -23,10 +21,6 @@ export class ABSOLUTE
     0,
     Number.MAX_SAFE_INTEGER,
   );
-
-  inlineSquash(value: string): string {
-    return `Math.abs(${value})`;
-  }
 
   public readonly range: ActivationRange = ABSOLUTE.rangeStatic;
 
