@@ -7,7 +7,10 @@ use js_sys::Float32Array;
 use wasm_bindgen::prelude::*;
 
 use crate::range::apply_limit_range;
-use crate::simd::weighted_sum_simd;
+use crate::simd::{
+    weighted_sum_no_bias_simd, weighted_sum_of_squares_simd, weighted_sum_of_squares_v2_simd,
+    weighted_sum_simd,
+};
 use crate::squash::{apply_squash, SquashType};
 use crate::synapse_type::SynapseType;
 
@@ -287,23 +290,45 @@ impl CompiledNetwork {
                         }
                     }
                     SquashType::Hypotenuse => {
-                        let mut sum_sq = 0.0f32;
-                        for synapse_idx in start_synapse..end_synapse {
-                            let synapse = &self.synapses[synapse_idx];
-                            let val =
-                                self.activations[synapse.from_index as usize] * synapse.weight;
-                            sum_sq += val * val;
-                        }
+                        // Issue #1178 - Use SIMD-optimised sum of squares
+                        #[cfg(target_arch = "wasm32")]
+                        let sum_sq = unsafe {
+                            weighted_sum_of_squares_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                            )
+                        };
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let sum_sq = weighted_sum_of_squares_simd(
+                            &self.synapses,
+                            &self.activations,
+                            start_synapse,
+                            end_synapse,
+                        );
                         sum_sq.sqrt() + neuron.bias
                     }
                     SquashType::HypotenuseV2 => {
-                        let mut sum_sq = 0.0f32;
-                        for synapse_idx in start_synapse..end_synapse {
-                            let synapse = &self.synapses[synapse_idx];
-                            let val = neuron.bias
-                                + self.activations[synapse.from_index as usize] * synapse.weight;
-                            sum_sq += val * val;
-                        }
+                        // Issue #1178 - Use SIMD-optimised sum of squares V2
+                        #[cfg(target_arch = "wasm32")]
+                        let sum_sq = unsafe {
+                            weighted_sum_of_squares_v2_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                                neuron.bias,
+                            )
+                        };
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let sum_sq = weighted_sum_of_squares_v2_simd(
+                            &self.synapses,
+                            &self.activations,
+                            start_synapse,
+                            end_synapse,
+                            neuron.bias,
+                        );
                         sum_sq.sqrt()
                     }
                     SquashType::Mean => {
@@ -311,12 +336,23 @@ impl CompiledNetwork {
                         if n <= 0.0 {
                             neuron.bias
                         } else {
-                            let mut sum = 0.0f32;
-                            for synapse_idx in start_synapse..end_synapse {
-                                let synapse = &self.synapses[synapse_idx];
-                                sum += self.activations[synapse.from_index as usize]
-                                    * synapse.weight;
-                            }
+                            // Issue #1178 - Use SIMD-optimised weighted sum for Mean
+                            #[cfg(target_arch = "wasm32")]
+                            let sum = unsafe {
+                                weighted_sum_no_bias_simd(
+                                    &self.synapses,
+                                    &self.activations,
+                                    start_synapse,
+                                    end_synapse,
+                                )
+                            };
+                            #[cfg(not(target_arch = "wasm32"))]
+                            let sum = weighted_sum_no_bias_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                            );
                             sum / n + neuron.bias
                         }
                     }
@@ -481,23 +517,45 @@ impl CompiledNetwork {
                         }
                     }
                     SquashType::Hypotenuse => {
-                        let mut sum_sq = 0.0f32;
-                        for synapse_idx in start_synapse..end_synapse {
-                            let synapse = &self.synapses[synapse_idx];
-                            let val =
-                                self.activations[synapse.from_index as usize] * synapse.weight;
-                            sum_sq += val * val;
-                        }
+                        // Issue #1178 - Use SIMD-optimised sum of squares
+                        #[cfg(target_arch = "wasm32")]
+                        let sum_sq = unsafe {
+                            weighted_sum_of_squares_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                            )
+                        };
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let sum_sq = weighted_sum_of_squares_simd(
+                            &self.synapses,
+                            &self.activations,
+                            start_synapse,
+                            end_synapse,
+                        );
                         sum_sq.sqrt() + neuron.bias
                     }
                     SquashType::HypotenuseV2 => {
-                        let mut sum_sq = 0.0f32;
-                        for synapse_idx in start_synapse..end_synapse {
-                            let synapse = &self.synapses[synapse_idx];
-                            let val = neuron.bias
-                                + self.activations[synapse.from_index as usize] * synapse.weight;
-                            sum_sq += val * val;
-                        }
+                        // Issue #1178 - Use SIMD-optimised sum of squares V2
+                        #[cfg(target_arch = "wasm32")]
+                        let sum_sq = unsafe {
+                            weighted_sum_of_squares_v2_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                                neuron.bias,
+                            )
+                        };
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let sum_sq = weighted_sum_of_squares_v2_simd(
+                            &self.synapses,
+                            &self.activations,
+                            start_synapse,
+                            end_synapse,
+                            neuron.bias,
+                        );
                         sum_sq.sqrt()
                     }
                     SquashType::Mean => {
@@ -505,12 +563,23 @@ impl CompiledNetwork {
                         if n <= 0.0 {
                             neuron.bias
                         } else {
-                            let mut sum = 0.0f32;
-                            for synapse_idx in start_synapse..end_synapse {
-                                let synapse = &self.synapses[synapse_idx];
-                                sum += self.activations[synapse.from_index as usize]
-                                    * synapse.weight;
-                            }
+                            // Issue #1178 - Use SIMD-optimised weighted sum for Mean
+                            #[cfg(target_arch = "wasm32")]
+                            let sum = unsafe {
+                                weighted_sum_no_bias_simd(
+                                    &self.synapses,
+                                    &self.activations,
+                                    start_synapse,
+                                    end_synapse,
+                                )
+                            };
+                            #[cfg(not(target_arch = "wasm32"))]
+                            let sum = weighted_sum_no_bias_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                            );
                             sum / n + neuron.bias
                         }
                     }
@@ -720,26 +789,48 @@ impl CompiledNetwork {
                         (result, result)
                     }
                     SquashType::Hypotenuse => {
-                        let mut sum_sq = 0.0f32;
-                        for synapse_idx in start_synapse..end_synapse {
-                            let synapse = &self.synapses[synapse_idx];
-                            let val =
-                                self.activations[synapse.from_index as usize] * synapse.weight;
-                            sum_sq += val * val;
-                        }
+                        // Issue #1178 - Use SIMD-optimised sum of squares
+                        #[cfg(target_arch = "wasm32")]
+                        let sum_sq = unsafe {
+                            weighted_sum_of_squares_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                            )
+                        };
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let sum_sq = weighted_sum_of_squares_simd(
+                            &self.synapses,
+                            &self.activations,
+                            start_synapse,
+                            end_synapse,
+                        );
                         let result = sum_sq.sqrt() + neuron.bias;
                         self.trace_data_buffer.push(neuron_idx as f32);
                         self.trace_data_buffer.push(0.0f32);
                         (result, result)
                     }
                     SquashType::HypotenuseV2 => {
-                        let mut sum_sq = 0.0f32;
-                        for synapse_idx in start_synapse..end_synapse {
-                            let synapse = &self.synapses[synapse_idx];
-                            let val = neuron.bias
-                                + self.activations[synapse.from_index as usize] * synapse.weight;
-                            sum_sq += val * val;
-                        }
+                        // Issue #1178 - Use SIMD-optimised sum of squares V2
+                        #[cfg(target_arch = "wasm32")]
+                        let sum_sq = unsafe {
+                            weighted_sum_of_squares_v2_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                                neuron.bias,
+                            )
+                        };
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let sum_sq = weighted_sum_of_squares_v2_simd(
+                            &self.synapses,
+                            &self.activations,
+                            start_synapse,
+                            end_synapse,
+                            neuron.bias,
+                        );
                         let result = sum_sq.sqrt();
                         self.trace_data_buffer.push(neuron_idx as f32);
                         self.trace_data_buffer.push(0.0f32);
@@ -750,12 +841,23 @@ impl CompiledNetwork {
                         let result = if n <= 0.0 {
                             neuron.bias
                         } else {
-                            let mut sum = 0.0f32;
-                            for synapse_idx in start_synapse..end_synapse {
-                                let synapse = &self.synapses[synapse_idx];
-                                sum += self.activations[synapse.from_index as usize]
-                                    * synapse.weight;
-                            }
+                            // Issue #1178 - Use SIMD-optimised weighted sum for Mean
+                            #[cfg(target_arch = "wasm32")]
+                            let sum = unsafe {
+                                weighted_sum_no_bias_simd(
+                                    &self.synapses,
+                                    &self.activations,
+                                    start_synapse,
+                                    end_synapse,
+                                )
+                            };
+                            #[cfg(not(target_arch = "wasm32"))]
+                            let sum = weighted_sum_no_bias_simd(
+                                &self.synapses,
+                                &self.activations,
+                                start_synapse,
+                                end_synapse,
+                            );
                             sum / n + neuron.bias
                         };
                         self.trace_data_buffer.push(neuron_idx as f32);
