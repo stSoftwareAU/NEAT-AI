@@ -3,6 +3,53 @@ import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidates
 import type { NeatArguments } from "./NeatArguments.ts";
 import type { PlateauDetectionConfig } from "../NEAT/PlateauDetector.ts";
 
+/** Converts number to number | string; recursively for plain numeric config objects. */
+export type CoerceNumeric<T> = T extends number ? number | string
+  : T extends readonly (infer _U)[] ? T
+  : T extends object ? { [K in keyof T]: CoerceNumeric<T[K]> }
+  : T;
+
+/** Keys that are numeric scalars from CLI - coerce to allow string. Non-numeric/complex types are omitted. */
+type NumericOptionKeys =
+  | "creativeThinkingConnectionCount"
+  | "dataSetPartitionBreak"
+  | "trainingSampleRate"
+  | "focusRate"
+  | "targetError"
+  | "costOfGrowth"
+  | "iterations"
+  | "populationSize"
+  | "elitism"
+  | "maxConns"
+  | "maximumNumberOfNodes"
+  | "mutationRate"
+  | "mutationAmount"
+  | "timeoutMinutes"
+  | "trainPerGen"
+  | "log"
+  | "trainingBatchSize"
+  | "threads"
+  | "maximumBiasAdjustmentScale"
+  | "maximumWeightAdjustmentScale"
+  | "sparseRatio"
+  | "globalBreedingRate"
+  | "geneticCompatibilityThreshold"
+  | "discoverySampleRate"
+  | "discoveryRecordTimeOutMinutes"
+  | "discoveryAnalysisTimeoutMinutes"
+  | "discoveryBatchSize"
+  | "discoveryBufferSize"
+  | "discoveryRustFlushRecords"
+  | "discoveryRustFlushBytes"
+  | "discoveryMaxNeurons"
+  | "discoveryDrainEveryNBatches"
+  | "discoveryReplayMaxSingles"
+  | "discoveryReplayMaxPairwise"
+  | "discoveryReplayMaxTriples"
+  | "discoveryReplayConcurrency"
+  | "discoveryReplayTimeoutMinutes"
+  | "discoveryReplayMinTimeMinutes";
+
 /**
  * Options for NEAT configuration.
  * All properties are optional; defaults are applied in createNeatConfig().
@@ -23,4 +70,42 @@ export type NeatOptions =
     adaptiveMutationThresholds?: AdaptiveMutationThresholds;
     /** Partial overrides for plateau detection configuration (defaults applied if not specified) */
     plateauDetection?: PlateauDetectionConfig;
+  };
+
+/**
+ * Input options for createNeatConfig(), accepting unvalidated values from CLI/env.
+ *
+ * Numeric fields accept `string | number` so you can pass values directly from
+ * bash scripts, argv, env vars, etc. without pre-parsing. createNeatConfig()
+ * parses and validates everything; do not trust input until you have a NeatConfig.
+ *
+ * @example
+ * ```ts
+ * // From CLI arguments (unvalidated)
+ * const config = createNeatConfig({
+ *   trainingSampleRate: process.env.SAMPLE_RATE ?? "0.5",
+ *   populationSize: parseInt(process.argv[2] ?? "50", 10),
+ *   targetError: "0.05",
+ * });
+ * ```
+ */
+export type NeatOptionsInput =
+  & Omit<
+    NeatOptions,
+    | NumericOptionKeys
+    | "discoveryMinCandidatesPerCategory"
+    | "adaptiveMutationThresholds"
+    | "plateauDetection"
+  >
+  & {
+    [K in NumericOptionKeys]?: NonNullable<NeatOptions[K]> extends number
+      ? number | string
+      : NeatOptions[K];
+  }
+  & {
+    discoveryMinCandidatesPerCategory?: CoerceNumeric<
+      DiscoveryMinCandidatesPerCategory
+    >;
+    adaptiveMutationThresholds?: CoerceNumeric<AdaptiveMutationThresholds>;
+    plateauDetection?: CoerceNumeric<PlateauDetectionConfig>;
   };

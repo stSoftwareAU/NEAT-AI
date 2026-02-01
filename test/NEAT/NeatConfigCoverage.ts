@@ -86,9 +86,19 @@ Deno.test("NEAT/NeatConfigCoverage - discoveryFocusNeuronUUIDs entries must be n
   }
 });
 
-Deno.test("NEAT/NeatConfigCoverage - discoveryReplayConcurrency coerces non-positive to 1", () => {
-  const config = createNeatConfig({ discoveryReplayConcurrency: 0 });
-  assertEquals(config.discoveryReplayConcurrency, 1);
+Deno.test("NEAT/NeatConfigCoverage - discoveryReplayConcurrency rejects non-positive", () => {
+  try {
+    createNeatConfig({ discoveryReplayConcurrency: 0 });
+    fail(
+      "Expected createNeatConfig() to throw for discoveryReplayConcurrency 0",
+    );
+  } catch (e) {
+    assertEquals(
+      (e as Error).message.includes("Discovery Replay Concurrency"),
+      true,
+      `Error should mention field: ${(e as Error).message}`,
+    );
+  }
 });
 
 Deno.test("NEAT/NeatConfigCoverage - discoveryReplayConcurrency default path when verify enabled", () => {
