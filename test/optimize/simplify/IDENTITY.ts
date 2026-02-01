@@ -2,7 +2,6 @@ import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 import { simplify } from "../../../src/optimize/Simplify.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
@@ -72,10 +71,6 @@ Deno.test("IDENTITY", () => {
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
 
-  const { inlineText, squashList } = makeCreatureActivationFunction(
-    simplifiedCreature,
-  );
-
   const sparseComplexConfig = new SparseConfig(
     complex.exportJSON(),
     createBackPropagationConfig({}),
@@ -83,10 +78,6 @@ Deno.test("IDENTITY", () => {
   const sparseSimplifiedConfig = new SparseConfig(
     simplifiedCreature.exportJSON(),
     createBackPropagationConfig({}),
-  );
-  Deno.writeTextFileSync(
-    `${directory}/inline-simplified.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);
@@ -144,10 +135,6 @@ Deno.test("IDENTITY-simple", () => {
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
 
-  const { inlineText, squashList } = makeCreatureActivationFunction(
-    simplifiedCreature,
-  );
-
   const sparseComplexConfig = new SparseConfig(
     complex.exportJSON(),
     createBackPropagationConfig({}),
@@ -155,10 +142,6 @@ Deno.test("IDENTITY-simple", () => {
   const sparseSimplifiedConfig = new SparseConfig(
     simplifiedCreature.exportJSON(),
     createBackPropagationConfig({}),
-  );
-  Deno.writeTextFileSync(
-    `${directory}/inline-simplified.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
   );
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);

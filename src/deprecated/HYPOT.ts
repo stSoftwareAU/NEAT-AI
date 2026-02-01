@@ -5,7 +5,7 @@ import type { NeuronActivationInterface } from "../methods/activations/NeuronAct
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 import { findActivationFunction } from "../optimize/FunctionCache.ts";
 import type { MakeActivationFunctionInterface } from "../optimize/MakeActivationFunctionInterface.ts";
-import { makeSynapsesValue } from "../optimize/MakeNeuronActivation.ts";
+import { makeSynapsesValue } from "../optimize/makeSynapsesValue.ts";
 import { ActivationRange } from "../propagate/ActivationRange.ts";
 import type { BackPropagationConfig } from "../propagate/BackPropagation.ts";
 import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";

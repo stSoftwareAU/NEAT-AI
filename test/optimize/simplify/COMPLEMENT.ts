@@ -3,7 +3,6 @@ import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { COMPLEMENT } from "../../../src/methods/activations/types/COMPLEMENT.ts";
 import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 import { simplify } from "../../../src/optimize/Simplify.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
@@ -62,14 +61,6 @@ Deno.test("COMPLEMENT -> IDENTITY", () => {
   assertAlmostEquals(weightsByFrom.get("input-0") ?? NaN, -0.5, 0.000_000_1);
   assertAlmostEquals(weightsByFrom.get("input-1") ?? NaN, 2, 0.000_000_1);
   assertAlmostEquals(weightsByFrom.get("input-2") ?? NaN, -1.25, 0.000_000_1);
-
-  const { inlineText, squashList } = makeCreatureActivationFunction(
-    simplifiedCreature,
-  );
-  Deno.writeTextFileSync(
-    `${directory}/inline-simplified.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
 
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);

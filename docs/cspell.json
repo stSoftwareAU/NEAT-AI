@@ -190,6 +190,7 @@
     "Σmax",
     "infile",
     "dedupe",
-    "inflight"
+    "inflight",
+    "codegen"
   ]
 }

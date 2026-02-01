@@ -1,4 +1,3 @@
-import type { InlineSquashInterface } from "../../../optimize/InlineSquashInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
@@ -14,8 +13,7 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
  * Reference:
  * https://en.wikipedia.org/wiki/Rectifier_(neural_networks)
  */
-export class ReLU
-  implements ActivationInterface, UnSquashInterface, InlineSquashInterface {
+export class ReLU implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 5;
   public static readonly NAME = "ReLU";
 
@@ -27,10 +25,6 @@ export class ReLU
 
   getName(): string {
     return ReLU.NAME;
-  }
-
-  inlineSquash(value: string): string {
-    return `Math.max(0, (${value}))`;
   }
 
   squash(x: number): number {

@@ -2,7 +2,6 @@ import { assert, assertAlmostEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { SINE } from "../../../src/methods/activations/types/SINE.ts";
-import { makeCreatureActivationFunction } from "../../../src/optimize/MakeCreatureActivationFunction.ts";
 import { simplify } from "../../../src/optimize/Simplify.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
@@ -111,14 +110,6 @@ Deno.test("SINE", () => {
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
 
-  const { inlineText, squashList } = makeCreatureActivationFunction(
-    simplifiedCreature,
-  );
-
-  Deno.writeTextFileSync(
-    `${directory}/inline-simplified.js`,
-    `export function example(${squashList.join(",")}){\n${inlineText}}`,
-  );
   assertNotEquals(
     complex.uuid ?? "COMPLEX",
     simplifiedCreature.uuid ?? "SIMPLIFIED",
