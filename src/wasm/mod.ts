@@ -45,12 +45,11 @@ export {
 export { ensureWasmActivation } from "./EnsureWasmActivation.ts";
 
 // Issue #1143 - Unified wrapper functions for WASM/JS activation methods
+// Issue #1241 - Removed shouldUseWasmBackprop/resetWasmBackpropFlag (WASM is unconditional)
 export {
   calculateError,
   isWasmSquashSupported,
-  resetWasmBackpropFlag,
   safeZoneAdjustment,
-  shouldUseWasmBackprop,
   squash,
   unSquash,
 } from "./ActivationMethods.ts";
