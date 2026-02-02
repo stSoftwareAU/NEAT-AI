@@ -50,6 +50,7 @@ single-record results across all squash function types.
 ## Test Plan
 
 ### Rust unit tests (wasm_activation/src/network.rs)
+
 - `test_batch_4way_matches_single_relu` - ReLU network parity
 - `test_batch_4way_matches_single_tanh_logistic` - TANH + LOGISTIC parity
 - `test_batch_4way_minimum_aggregate` - MINIMUM aggregate with trace data
@@ -59,6 +60,7 @@ single-record results across all squash function types.
 - `test_batch_4way_multi_layer` - Multi-layer (2 hidden + 1 output) parity
 
 ### TypeScript integration tests (test/wasm/ActivateAndTraceBatch4Way.ts)
+
 - Module initialisation
 - ReLU network matches single-record `activateAndTrace`
 - TANH + LOGISTIC network matches single-record
