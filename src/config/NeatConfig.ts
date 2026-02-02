@@ -1,4 +1,4 @@
-import type { NeatOptions } from "../../mod.ts";
+import type { NeatOptionsInput } from "./NeatOptions.ts";
 import {
   DEFAULT_RUST_FLUSH_BYTES,
   DEFAULT_RUST_FLUSH_RECORDS,
@@ -15,6 +15,7 @@ import {
 } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
+import { parseNumber } from "./ParseOptions.ts";
 
 /**
  * Default cost of growth value used when not specified in options.
@@ -67,9 +68,11 @@ export type NeatConfig = Readonly<NeatArguments>;
  * It handles selection strategy randomization and validates all parameters
  * to ensure they are within acceptable ranges.
  *
- * @param options - Partial configuration options from the user
+ * @param options - Partial configuration options from the user. Numeric options
+ * (e.g. trainingSampleRate, targetError, populationSize) accept string or number,
+ * so CLI-derived values can be passed without pre-parsing (Issue #1280).
  * @returns A frozen, validated NEAT configuration object
- * @throws {Error} When configuration parameters are invalid
+ * @throws {Error} When configuration parameters are invalid (parse/validation happens here)
  *
  * @example
  * ```ts
@@ -80,7 +83,8 @@ export type NeatConfig = Readonly<NeatArguments>;
  * });
  * ```
  */
-export function createNeatConfig(options: NeatOptions): NeatConfig {
+export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
+  const opts = options as Record<string, unknown>;
   let selection: SelectionInterface = Selection.POWER;
   if (options.selection) {
     selection = options.selection;
@@ -93,15 +97,35 @@ export function createNeatConfig(options: NeatOptions): NeatConfig {
     }
   }
 
+  const defaultThreads = Math.max(1, navigator.hardwareConcurrency ?? 1);
+  const threads = parseNumber("Threads", opts.threads, defaultThreads, {
+    integer: true,
+    min: 1,
+  });
+
   const config: NeatArguments = {
-    creativeThinkingConnectionCount: options.creativeThinkingConnectionCount ??
+    creativeThinkingConnectionCount: parseNumber(
+      "Creative thinking connection count",
+      opts.creativeThinkingConnectionCount,
       1,
+      { integer: true, min: 0 },
+    ),
     creatureStore: options.creatureStore,
     experimentStore: options.experimentStore,
     creatures: options.creatures ? options.creatures : [],
     costName: options.costName ?? "MSE",
-    dataSetPartitionBreak: options.dataSetPartitionBreak ?? 2000,
-    trainingSampleRate: options.trainingSampleRate ?? 1,
+    dataSetPartitionBreak: parseNumber(
+      "Data Set Partition Break",
+      opts.dataSetPartitionBreak,
+      2000,
+      { integer: true, min: 1 },
+    ),
+    trainingSampleRate: parseNumber(
+      "Training Sample Rate",
+      opts.trainingSampleRate,
+      1,
+      { min: 0.0001, max: 1 },
+    ),
 
     debug: options.debug
       ? true
@@ -113,74 +137,191 @@ export function createNeatConfig(options: NeatOptions): NeatConfig {
     disableRandomSamples: options.disableRandomSamples ??
       options.feedbackLoop === true,
     focusList: options.focusList || [],
-    focusRate: options.focusRate || 0.25,
+    focusRate: parseNumber("Focus rate", opts.focusRate, 0.25, {
+      min: 0,
+      max: 1,
+    }),
 
-    targetError: options.targetError ?? 0.05,
+    targetError: parseNumber("Target error", opts.targetError, 0.05, {
+      min: 0,
+      max: 1,
+    }),
 
-    costOfGrowth: Math.max(
-      options.costOfGrowth ?? DEFAULT_COST_OF_GROWTH,
-      MIN_COST_OF_GROWTH,
+    costOfGrowth: parseNumber(
+      "Cost of growth",
+      opts.costOfGrowth,
+      DEFAULT_COST_OF_GROWTH,
+      {
+        min: 0,
+      },
     ),
 
-    iterations: options.iterations ?? Number.MAX_SAFE_INTEGER,
-
-    populationSize: options.populationSize || 50,
-    elitism: options.elitism || 1,
-
-    maxConns: options.maxConns || Number.MAX_SAFE_INTEGER,
-    maximumNumberOfNodes: options.maximumNumberOfNodes ||
+    iterations: parseNumber(
+      "Iterations",
+      opts.iterations,
       Number.MAX_SAFE_INTEGER,
-    mutationRate: options.mutationRate || 0.3,
+      { min: 0 },
+    ),
 
-    mutationAmount: options.mutationAmount ?? 1,
+    populationSize: parseNumber("Population Size", opts.populationSize, 50, {
+      integer: true,
+      min: 2,
+    }),
+    elitism: parseNumber("Elitism", opts.elitism, 1, {
+      integer: true,
+      min: 1,
+    }),
+
+    maxConns: parseNumber(
+      "Max Connections",
+      opts.maxConns,
+      Number.MAX_SAFE_INTEGER,
+      {
+        integer: true,
+        min: 1,
+      },
+    ),
+    maximumNumberOfNodes: parseNumber(
+      "Maximum Number of Nodes",
+      opts.maximumNumberOfNodes,
+      Number.MAX_SAFE_INTEGER,
+      { integer: true, min: 1 },
+    ),
+    mutationRate: parseNumber("Mutation Rate", opts.mutationRate, 0.3, {
+      minExclusive: 0.001,
+    }),
+
+    mutationAmount: parseNumber("Mutation Amount", opts.mutationAmount, 1, {
+      integer: true,
+      min: 1,
+    }),
 
     mutation: options.mutation ? [...options.mutation] : [...Mutation.FFW],
     selection: selection,
-    timeoutMinutes: options.timeoutMinutes ?? 0,
+    timeoutMinutes: parseNumber("Timeout Minutes", opts.timeoutMinutes, 0, {
+      integer: true,
+      min: 0,
+    }),
     traceStore: options.traceStore,
-    trainPerGen: options.trainPerGen ?? 1,
+    trainPerGen: parseNumber("Training per generation", opts.trainPerGen, 1, {
+      integer: true,
+      min: 0,
+    }),
 
-    log: options.log ?? (options.verbose ? 1 : 0),
+    log: parseNumber("Log", opts.log, options.verbose ? 1 : 0, {
+      integer: true,
+      min: 0,
+    }),
     verbose: options.verbose ? true : false,
 
     enableRepetitiveTraining: options.enableRepetitiveTraining || false,
 
-    trainingBatchSize: options.trainingBatchSize || 100,
-    threads: options.threads ??
-      Math.max(1, navigator.hardwareConcurrency ?? 1),
+    trainingBatchSize: parseNumber(
+      "Training Batch Size",
+      opts.trainingBatchSize,
+      100,
+      { integer: true, min: 1 },
+    ),
+    threads,
 
-    maximumBiasAdjustmentScale: options.maximumBiasAdjustmentScale ?? 1,
+    maximumBiasAdjustmentScale: parseNumber(
+      "Maximum Bias Adjustment Scale",
+      opts.maximumBiasAdjustmentScale,
+      1,
+      { min: 0 },
+    ),
 
-    maximumWeightAdjustmentScale: options.maximumWeightAdjustmentScale ?? 1,
-    sparseRatio: options.sparseRatio ?? Math.random() * Math.random(),
+    maximumWeightAdjustmentScale: parseNumber(
+      "Maximum Weight Adjustment Scale",
+      opts.maximumWeightAdjustmentScale,
+      1,
+      { min: 0 },
+    ),
+    sparseRatio: parseNumber(
+      "Sparse Ratio",
+      opts.sparseRatio,
+      Math.random() * Math.random(),
+      { min: 0, max: 1 },
+    ),
     globalBreedingRate: Math.max(
-      Math.min(options.globalBreedingRate ?? Math.random(), 1),
+      Math.min(
+        parseNumber(
+          "Global breeding rate",
+          opts.globalBreedingRate,
+          Math.random(),
+          {
+            min: 0,
+            max: 1,
+          },
+        ),
+        1,
+      ),
       0,
     ),
     CRISPRs: options.CRISPRs || [],
-    geneticCompatibilityThreshold: options.geneticCompatibilityThreshold || 0.3,
-    discoverySampleRate: options.discoverySampleRate === undefined
-      ? 0.05
-      : options.discoverySampleRate,
-    discoveryRecordTimeOutMinutes: (() => {
-      const legacyRecordTimeout = (options as {
-        discoveryTimeOutMinutes?: number;
-      }).discoveryTimeOutMinutes;
-      const recordTimeout = options.discoveryRecordTimeOutMinutes ??
-        legacyRecordTimeout ??
-        1;
-      return recordTimeout;
-    })(), // Default 1 min for recording (was 0). Legacy discoveryTimeOutMinutes is still accepted.
-    discoveryAnalysisTimeoutMinutes: options.discoveryAnalysisTimeoutMinutes ??
-      10, // Default 10 min for analysis (was 3 - production-tuned)
-    discoveryBatchSize: options.discoveryBatchSize || 128,
-    discoveryBufferSize: options.discoveryBufferSize || 0,
-    discoveryRustFlushRecords: options.discoveryRustFlushRecords ??
+    geneticCompatibilityThreshold: parseNumber(
+      "Genetic Compatibility Threshold",
+      opts.geneticCompatibilityThreshold,
+      0.3,
+      { min: 0, max: 1 },
+    ),
+    discoverySampleRate: parseNumber(
+      "Discovery sample rate",
+      opts.discoverySampleRate,
+      0.05,
+      { min: 0, max: 1 },
+    ),
+    discoveryRecordTimeOutMinutes: parseNumber(
+      "Discovery record timeout minutes",
+      opts.discoveryRecordTimeOutMinutes ?? opts.discoveryTimeOutMinutes,
+      1,
+      { min: 0 },
+    ),
+    discoveryAnalysisTimeoutMinutes: parseNumber(
+      "Discovery Analysis Timeout Minutes",
+      opts.discoveryAnalysisTimeoutMinutes,
+      10,
+      {
+        min: MIN_ANALYSIS_TIMEOUT_MINUTES,
+        max: MAX_ANALYSIS_TIMEOUT_MINUTES,
+      },
+    ),
+    discoveryBatchSize: parseNumber(
+      "Discovery batch size",
+      opts.discoveryBatchSize,
+      128,
+      { integer: true, min: 1 },
+    ),
+    discoveryBufferSize: parseNumber(
+      "Discovery buffer size",
+      opts.discoveryBufferSize,
+      0,
+      { min: 0 },
+    ),
+    discoveryRustFlushRecords: parseNumber(
+      "Discovery Rust Flush Records",
+      opts.discoveryRustFlushRecords,
       DEFAULT_RUST_FLUSH_RECORDS,
-    discoveryRustFlushBytes: options.discoveryRustFlushBytes ??
+      { integer: true, min: 1 },
+    ),
+    discoveryRustFlushBytes: parseNumber(
+      "Discovery Rust Flush Bytes",
+      opts.discoveryRustFlushBytes,
       DEFAULT_RUST_FLUSH_BYTES,
-    discoveryMaxNeurons: options.discoveryMaxNeurons ?? 6, // Default 6 neurons (was 0 - production-tuned)
-    discoveryDrainEveryNBatches: options.discoveryDrainEveryNBatches ?? 10,
+      { min: 1 },
+    ),
+    discoveryMaxNeurons: parseNumber(
+      "Discovery max neurons",
+      opts.discoveryMaxNeurons,
+      6,
+      { integer: true, min: 0 },
+    ),
+    discoveryDrainEveryNBatches: parseNumber(
+      "Discovery drain every N batches",
+      opts.discoveryDrainEveryNBatches,
+      10,
+      { integer: true, min: 1 },
+    ),
     discoveryFocusNeuronUUIDs: options.discoveryFocusNeuronUUIDs
       ? [...options.discoveryFocusNeuronUUIDs]
       : [],
@@ -212,21 +353,37 @@ export function createNeatConfig(options: NeatOptions): NeatConfig {
       const base = options.discoveryCacheDir?.trim();
       return base ? `${base}/success` : undefined;
     })(),
-    discoveryReplayMaxSingles: options.discoveryReplayMaxSingles ??
-      Math.max(2 * (options.threads ?? 1), 10),
-    discoveryReplayMaxPairwise: options.discoveryReplayMaxPairwise ?? 10,
-    discoveryReplayMaxTriples: options.discoveryReplayMaxTriples ?? 8,
+    discoveryReplayMaxSingles: parseNumber(
+      "Discovery replay max singles",
+      opts.discoveryReplayMaxSingles,
+      Math.max(2 * threads, 10),
+      { integer: true, min: 0 },
+    ),
+    discoveryReplayMaxPairwise: parseNumber(
+      "Discovery replay max pairwise",
+      opts.discoveryReplayMaxPairwise,
+      10,
+      { integer: true, min: 0 },
+    ),
+    discoveryReplayMaxTriples: parseNumber(
+      "Discovery replay max triples",
+      opts.discoveryReplayMaxTriples,
+      8,
+      { integer: true, min: 0 },
+    ),
     discoveryReplayVerifyScores: options.discoveryReplayVerifyScores ?? false,
     discoveryReplayConcurrency: (() => {
-      const verify = options.discoveryReplayVerifyScores ?? false;
+      const verify = opts.discoveryReplayVerifyScores ?? false;
       const availableCores = Math.max(1, navigator.hardwareConcurrency ?? 1);
       const defaultWhenVerify = Math.max(availableCores, 8);
-      const user = options.discoveryReplayConcurrency;
-      if (typeof user === "number" && Number.isFinite(user)) {
-        return Math.max(1, Math.floor(user));
-      }
-      return verify ? defaultWhenVerify : (options.threads ??
-        Math.max(1, navigator.hardwareConcurrency ?? 1));
+      const defaultConcurrency = verify ? defaultWhenVerify : threads;
+      const parsed = parseNumber(
+        "Discovery Replay Concurrency",
+        opts.discoveryReplayConcurrency,
+        defaultConcurrency,
+        { min: 1 },
+      );
+      return Math.max(1, Math.floor(parsed));
     })(),
     discoveryReplayRescoreBaseline: (() => {
       const verify = options.discoveryReplayVerifyScores ?? false;
@@ -235,208 +392,157 @@ export function createNeatConfig(options: NeatOptions): NeatConfig {
       return verify ? true : false;
     })(),
     discoveryReplayDiagnostics: options.discoveryReplayDiagnostics ?? false,
-    discoveryReplayTimeoutMinutes: options.discoveryReplayTimeoutMinutes ?? 5,
-    discoveryReplayMinTimeMinutes: options.discoveryReplayMinTimeMinutes ?? 1,
-    discoveryMinCandidatesPerCategory: {
-      ...DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY,
-      ...options.discoveryMinCandidatesPerCategory,
-    } as Required<DiscoveryMinCandidatesPerCategory>,
-    adaptiveMutationThresholds: {
-      ...DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS,
-      ...options.adaptiveMutationThresholds,
-    } as RequiredAdaptiveMutationThresholds,
-    plateauDetection: {
-      ...DEFAULT_PLATEAU_DETECTION,
-      ...options.plateauDetection,
-    } as RequiredPlateauDetectionConfig,
+    discoveryReplayTimeoutMinutes: parseNumber(
+      "Discovery replay timeout minutes",
+      opts.discoveryReplayTimeoutMinutes,
+      5,
+      { min: 0 },
+    ),
+    discoveryReplayMinTimeMinutes: parseNumber(
+      "Discovery replay min time minutes",
+      opts.discoveryReplayMinTimeMinutes,
+      1,
+      { min: 0 },
+    ),
+    discoveryMinCandidatesPerCategory: (() => {
+      const overrides = opts.discoveryMinCandidatesPerCategory as
+        | Record<
+          string,
+          unknown
+        >
+        | undefined;
+      const d = DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY;
+      return {
+        addNeurons: parseNumber(
+          "Discovery min candidates addNeurons",
+          overrides?.addNeurons,
+          d.addNeurons,
+          { integer: true, min: 0 },
+        ),
+        addSynapses: parseNumber(
+          "Discovery min candidates addSynapses",
+          overrides?.addSynapses,
+          d.addSynapses,
+          { integer: true, min: 0 },
+        ),
+        changeSquash: parseNumber(
+          "Discovery min candidates changeSquash",
+          overrides?.changeSquash,
+          d.changeSquash,
+          { integer: true, min: 0 },
+        ),
+        removeLowImpact: parseNumber(
+          "Discovery min candidates removeLowImpact",
+          overrides?.removeLowImpact,
+          d.removeLowImpact,
+          { integer: true, min: 0 },
+        ),
+      } as Required<DiscoveryMinCandidatesPerCategory>;
+    })(),
+    adaptiveMutationThresholds: (() => {
+      const overrides = opts.adaptiveMutationThresholds as
+        | Record<
+          string,
+          unknown
+        >
+        | undefined;
+      const d = DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS;
+      return {
+        medium: parseNumber(
+          "Adaptive mutation medium threshold",
+          overrides?.medium,
+          d.medium,
+          { integer: true, min: 1 },
+        ),
+        large: parseNumber(
+          "Adaptive mutation large threshold",
+          overrides?.large,
+          d.large,
+          { integer: true, min: 1 },
+        ),
+        largeTopologyWeight: parseNumber(
+          "Adaptive mutation largeTopologyWeight",
+          overrides?.largeTopologyWeight,
+          d.largeTopologyWeight,
+          { min: 0, max: 1 },
+        ),
+      } as RequiredAdaptiveMutationThresholds;
+    })(),
+    plateauDetection: (() => {
+      const overrides = opts.plateauDetection as
+        | Record<string, unknown>
+        | undefined;
+      const d = DEFAULT_PLATEAU_DETECTION;
+      return {
+        windowSize: parseNumber(
+          "Plateau detection windowSize",
+          overrides?.windowSize,
+          d.windowSize,
+          { integer: true, min: 1 },
+        ),
+        minImprovementRate: parseNumber(
+          "Plateau detection minImprovementRate",
+          overrides?.minImprovementRate,
+          d.minImprovementRate,
+          { min: 0, max: 1 },
+        ),
+        rapidImprovementRate: parseNumber(
+          "Plateau detection rapidImprovementRate",
+          overrides?.rapidImprovementRate,
+          d.rapidImprovementRate,
+          { min: 0, max: 1 },
+        ),
+        responseMutationMultiplier: parseNumber(
+          "Plateau detection responseMutationMultiplier",
+          overrides?.responseMutationMultiplier,
+          d.responseMutationMultiplier,
+          { min: 1 },
+        ),
+        responseImprovementMultiplier: parseNumber(
+          "Plateau detection responseImprovementMultiplier",
+          overrides?.responseImprovementMultiplier,
+          d.responseImprovementMultiplier,
+          { min: 0, max: 1 },
+        ),
+        enabled: typeof overrides?.enabled === "boolean"
+          ? overrides.enabled
+          : d.enabled,
+      } as RequiredPlateauDetectionConfig;
+    })(),
   };
   validate(config);
   return Object.freeze(config);
 }
 
 function validate(config: NeatArguments) {
-  if (
-    Number.isFinite(config.sparseRatio) === false || config.sparseRatio < 0 ||
-    config.sparseRatio > 1
-  ) {
-    throw new Error(
-      `Sparse Ratio must be between 0 and 1 was: ${config.sparseRatio}`,
-    );
-  }
-
+  // Cross-field validation not covered by parseNumber
   if (config.feedbackLoop === true && config.disableRandomSamples === false) {
     throw new Error(
       "Feedback Loop, Disable Random Samples must be set together",
     );
   }
-  if (Number.isInteger(config.threads) === false || config.threads < 1) {
+
+  const adaptiveThresholds = config.adaptiveMutationThresholds;
+  if (
+    adaptiveThresholds.large <= adaptiveThresholds.medium
+  ) {
     throw new Error(
-      `Threads must be more than zero was: ${config.threads}`,
+      `Adaptive mutation large threshold must be greater than medium threshold. ` +
+        `Large: ${adaptiveThresholds.large}, Medium: ${adaptiveThresholds.medium}`,
     );
   }
 
+  const plateauDetection = config.plateauDetection;
   if (
-    Number.isInteger(config.discoveryReplayConcurrency) === false ||
-    config.discoveryReplayConcurrency < 1
+    plateauDetection.rapidImprovementRate <=
+      plateauDetection.minImprovementRate
   ) {
     throw new Error(
-      `Discovery Replay Concurrency must be an integer greater than 0 was: ${config.discoveryReplayConcurrency}`,
+      `Plateau detection rapidImprovementRate must be greater than minImprovementRate. ` +
+        `rapidImprovementRate: ${plateauDetection.rapidImprovementRate}, minImprovementRate: ${plateauDetection.minImprovementRate}`,
     );
   }
 
-  if (Number.isInteger(config.log) === false || config.log < 0) {
-    throw new Error(
-      `Training per generation must be zero or more: ${config.trainPerGen}`,
-    );
-  }
-  if (
-    Number.isInteger(config.trainPerGen) === false || config.trainPerGen < 0
-  ) {
-    throw new Error(
-      `Training per generation must be zero or more: ${config.trainPerGen}`,
-    );
-  }
-  if (
-    Number.isInteger(config.timeoutMinutes) === false ||
-    config.timeoutMinutes < 0
-  ) {
-    throw new Error(
-      `Timeout Minutes must be zero or more: ${config.timeoutMinutes}`,
-    );
-  }
-  if (Number.isInteger(config.dataSetPartitionBreak) === false) {
-    throw new Error(
-      "Data Set Partition Break must be an integer was: " +
-        config.dataSetPartitionBreak,
-    );
-  }
-  if (config.dataSetPartitionBreak < 1) {
-    throw new Error(
-      "Data Set Partition Break must be more than zero was: " +
-        config.dataSetPartitionBreak,
-    );
-  }
-
-  if (config.populationSize < 2) {
-    throw new Error(
-      "Population Size must be more than 1 was: " + config.populationSize,
-    );
-  }
-
-  if (config.elitism < 1) {
-    throw new Error("Elitism must be more than zero was: " + config.elitism);
-  }
-
-  if (config.maxConns < 1 || Number.isInteger(config.maxConns) === false) {
-    throw new Error(
-      "Max Connections must be more than zero was: " + config.maxConns,
-    );
-  }
-
-  if (
-    Number.isInteger(config.maximumNumberOfNodes) === false ||
-    config.maximumNumberOfNodes < 1
-  ) {
-    throw new Error(
-      `Maximum Number of Nodes must be more than zero was: ${config.maximumNumberOfNodes}`,
-    );
-  }
-
-  if (config.mutationRate <= 0.001) {
-    throw new Error(
-      `Mutation Rate must be more than zero was: ${config.mutationRate}`,
-    );
-  }
-
-  if (config.iterations < 0) {
-    throw new Error(
-      "Iterations must be more than zero was: " + config.iterations,
-    );
-  }
-
-  if (config.trainingBatchSize < 1) {
-    throw new Error(
-      "Training Batch Size must be more than zero was: " +
-        config.trainingBatchSize,
-    );
-  }
-  if (
-    Number.isFinite(config.trainingSampleRate) === false ||
-    config.trainingSampleRate < 0.0001 || config.trainingSampleRate > 1
-  ) {
-    throw new Error(
-      `Training Sample Rate must be between 0.0001 and 1 was: ${config.trainingSampleRate}`,
-    );
-  }
-  if (
-    Number.isInteger(config.mutationAmount) === false ||
-    config.mutationAmount < 1
-  ) {
-    throw new Error(
-      `Mutation Amount must be more than zero was: ${config.mutationAmount}`,
-    );
-  }
-
-  if (
-    Number.isFinite(config.targetError) === false || config.targetError < 0 ||
-    config.targetError > 1
-  ) {
-    throw new Error(
-      `Target error must be between 0 and 1 was: ${config.targetError}`,
-    );
-  }
-
-  if (
-    Number.isFinite(config.maximumBiasAdjustmentScale) === false ||
-    config.maximumBiasAdjustmentScale < 0
-  ) {
-    throw new Error(
-      `Maximum Bias Adjustment Scale must be more than zero was: ${config.maximumBiasAdjustmentScale}`,
-    );
-  }
-  if (
-    Number.isFinite(config.maximumWeightAdjustmentScale) === false ||
-    config.maximumWeightAdjustmentScale < 0
-  ) {
-    throw new Error(
-      `Maximum Weight Adjustment Scale must be more than zero was: ${config.maximumWeightAdjustmentScale}`,
-    );
-  }
-  if (
-    Number.isFinite(config.geneticCompatibilityThreshold) === false ||
-    config.geneticCompatibilityThreshold < 0 ||
-    config.geneticCompatibilityThreshold > 1
-  ) {
-    throw new Error(
-      `Genetic Compatibility Threshold must be between 0 and 1 was: ${config.geneticCompatibilityThreshold}`,
-    );
-  }
-  // Rust library requires timeout between 3 seconds (0.05 min) and 1 hour (60 min)
-  if (
-    Number.isFinite(config.discoveryAnalysisTimeoutMinutes) === false ||
-    config.discoveryAnalysisTimeoutMinutes < MIN_ANALYSIS_TIMEOUT_MINUTES ||
-    config.discoveryAnalysisTimeoutMinutes > MAX_ANALYSIS_TIMEOUT_MINUTES
-  ) {
-    throw new Error(
-      `Discovery Analysis Timeout Minutes must be between ${MIN_ANALYSIS_TIMEOUT_MINUTES} (3 seconds) and ${MAX_ANALYSIS_TIMEOUT_MINUTES} (1 hour), was: ${config.discoveryAnalysisTimeoutMinutes}`,
-    );
-  }
-  if (
-    Number.isInteger(config.discoveryRustFlushRecords) === false ||
-    config.discoveryRustFlushRecords < 1
-  ) {
-    throw new Error(
-      `Discovery Rust Flush Records must be an integer greater than 0 was: ${config.discoveryRustFlushRecords}`,
-    );
-  }
-  if (
-    Number.isFinite(config.discoveryRustFlushBytes) === false ||
-    config.discoveryRustFlushBytes < 1
-  ) {
-    throw new Error(
-      `Discovery Rust Flush Bytes must be greater than 0 was: ${config.discoveryRustFlushBytes}`,
-    );
-  }
   if (!Array.isArray(config.discoveryFocusNeuronUUIDs)) {
     throw new Error(
       "Discovery focus neuron UUIDs must be an array when provided.",
@@ -448,136 +554,6 @@ function validate(config: NeatArguments) {
         `Discovery focus neuron UUIDs must be non-empty strings, found: ${
           String(uuid)
         }`,
-      );
-    }
-  }
-  // Validate discoveryMinCandidatesPerCategory
-  const minCandidates = config.discoveryMinCandidatesPerCategory;
-  if (minCandidates) {
-    if (
-      !Number.isInteger(minCandidates.addNeurons) ||
-      minCandidates.addNeurons < 0
-    ) {
-      throw new Error(
-        `Discovery min candidates for addNeurons must be a non-negative integer, was: ${minCandidates.addNeurons}`,
-      );
-    }
-    if (
-      !Number.isInteger(minCandidates.addSynapses) ||
-      minCandidates.addSynapses < 0
-    ) {
-      throw new Error(
-        `Discovery min candidates for addSynapses must be a non-negative integer, was: ${minCandidates.addSynapses}`,
-      );
-    }
-    if (
-      !Number.isInteger(minCandidates.changeSquash) ||
-      minCandidates.changeSquash < 0
-    ) {
-      throw new Error(
-        `Discovery min candidates for changeSquash must be a non-negative integer, was: ${minCandidates.changeSquash}`,
-      );
-    }
-    if (
-      !Number.isInteger(minCandidates.removeLowImpact) ||
-      minCandidates.removeLowImpact < 0
-    ) {
-      throw new Error(
-        `Discovery min candidates for removeLowImpact must be a non-negative integer, was: ${minCandidates.removeLowImpact}`,
-      );
-    }
-  }
-  // Validate adaptiveMutationThresholds (Issue #1037)
-  const adaptiveThresholds = config.adaptiveMutationThresholds;
-  if (adaptiveThresholds) {
-    if (
-      !Number.isInteger(adaptiveThresholds.medium) ||
-      adaptiveThresholds.medium < 1
-    ) {
-      throw new Error(
-        `Adaptive mutation medium threshold must be a positive integer, was: ${adaptiveThresholds.medium}`,
-      );
-    }
-    if (
-      !Number.isInteger(adaptiveThresholds.large) ||
-      adaptiveThresholds.large < 1
-    ) {
-      throw new Error(
-        `Adaptive mutation large threshold must be a positive integer, was: ${adaptiveThresholds.large}`,
-      );
-    }
-    if (adaptiveThresholds.large <= adaptiveThresholds.medium) {
-      throw new Error(
-        `Adaptive mutation large threshold must be greater than medium threshold. ` +
-          `Large: ${adaptiveThresholds.large}, Medium: ${adaptiveThresholds.medium}`,
-      );
-    }
-    if (
-      !Number.isFinite(adaptiveThresholds.largeTopologyWeight) ||
-      adaptiveThresholds.largeTopologyWeight < 0 ||
-      adaptiveThresholds.largeTopologyWeight > 1
-    ) {
-      throw new Error(
-        `Adaptive mutation largeTopologyWeight must be between 0 and 1, was: ${adaptiveThresholds.largeTopologyWeight}`,
-      );
-    }
-  }
-  // Validate plateauDetection (Issue #1039 and Issue #1012)
-  const plateauDetection = config.plateauDetection;
-  if (plateauDetection) {
-    if (
-      !Number.isInteger(plateauDetection.windowSize) ||
-      plateauDetection.windowSize < 1
-    ) {
-      throw new Error(
-        `Plateau detection windowSize must be a positive integer, was: ${plateauDetection.windowSize}`,
-      );
-    }
-    if (
-      !Number.isFinite(plateauDetection.minImprovementRate) ||
-      plateauDetection.minImprovementRate < 0 ||
-      plateauDetection.minImprovementRate > 1
-    ) {
-      throw new Error(
-        `Plateau detection minImprovementRate must be between 0 and 1, was: ${plateauDetection.minImprovementRate}`,
-      );
-    }
-    if (
-      !Number.isFinite(plateauDetection.responseMutationMultiplier) ||
-      plateauDetection.responseMutationMultiplier < 1
-    ) {
-      throw new Error(
-        `Plateau detection responseMutationMultiplier must be >= 1, was: ${plateauDetection.responseMutationMultiplier}`,
-      );
-    }
-    // Issue #1012: Validate responseImprovementMultiplier
-    if (
-      !Number.isFinite(plateauDetection.responseImprovementMultiplier) ||
-      plateauDetection.responseImprovementMultiplier < 0 ||
-      plateauDetection.responseImprovementMultiplier > 1
-    ) {
-      throw new Error(
-        `Plateau detection responseImprovementMultiplier must be between 0 and 1, was: ${plateauDetection.responseImprovementMultiplier}`,
-      );
-    }
-    // Issue #1012: Validate rapidImprovementRate
-    if (
-      !Number.isFinite(plateauDetection.rapidImprovementRate) ||
-      plateauDetection.rapidImprovementRate < 0 ||
-      plateauDetection.rapidImprovementRate > 1
-    ) {
-      throw new Error(
-        `Plateau detection rapidImprovementRate must be between 0 and 1, was: ${plateauDetection.rapidImprovementRate}`,
-      );
-    }
-    // Issue #1012: Validate rapidImprovementRate > minImprovementRate
-    if (
-      plateauDetection.rapidImprovementRate <=
-        plateauDetection.minImprovementRate
-    ) {
-      throw new Error(
-        `Plateau detection rapidImprovementRate must be greater than minImprovementRate. ` +
-          `rapidImprovementRate: ${plateauDetection.rapidImprovementRate}, minImprovementRate: ${plateauDetection.minImprovementRate}`,
       );
     }
   }

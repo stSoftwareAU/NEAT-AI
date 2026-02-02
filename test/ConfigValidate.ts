@@ -1,9 +1,9 @@
 import { assertFalse } from "@std/assert";
-import type { NeatOptions } from "../mod.ts";
+import type { NeatOptionsInput } from "../mod.ts";
 import { createNeatConfig } from "../src/config/NeatConfig.ts";
 
 Deno.test("ConfigValidate: Validate config", () => {
-  const invalid: NeatOptions[] = [
+  const invalid: NeatOptionsInput[] = [
     {
       sparseRatio: 2,
     },
@@ -70,14 +70,10 @@ Deno.test("ConfigValidate: Validate config", () => {
     },
   ];
 
-  const wrongTypes = [{
-    dataSetPartitionBreak: "abc",
-  }, {
-    dataSetPartitionBreak: "xyz",
-  }];
-  wrongTypes.forEach((wrongType) => {
-    invalid.push((wrongType as unknown) as NeatOptions);
-  });
+  invalid.push(
+    { dataSetPartitionBreak: "abc" },
+    { dataSetPartitionBreak: "xyz" },
+  );
 
   invalid.forEach((config) => {
     let valid = false;
