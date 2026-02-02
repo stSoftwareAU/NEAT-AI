@@ -595,6 +595,134 @@ export class WasmCreatureActivation {
   }
 
   /**
+   * Issue #1212 - Batch activate and trace for 4 records simultaneously.
+   *
+   * Processes 4 input records through the network in a single WASM call,
+   * capturing trace data for backpropagation. Uses SIMD for parallel
+   * weighted sum computation across all 4 records.
+   *
+   * @param inputs - Array of 4 input Float32Arrays, one per record
+   * @returns Array of 4 WasmTraceResult objects, one per record
+   */
+  activateAndTraceBatch4Way(
+    inputs: [Float32Array, Float32Array, Float32Array, Float32Array],
+  ): [WasmTraceResult, WasmTraceResult, WasmTraceResult, WasmTraceResult] {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+
+    for (let i = 0; i < 4; i++) {
+      if (inputs[i].length !== this.numInputs) {
+        throw new Error(
+          `Input ${i} length ${
+            inputs[i].length
+          } does not match expected ${this.numInputs}`,
+        );
+      }
+    }
+
+    // Pack 4 inputs into a single contiguous array
+    const packedInput = new Float32Array(this.numInputs * 4);
+    for (let i = 0; i < 4; i++) {
+      packedInput.set(inputs[i], i * this.numInputs);
+    }
+
+    // Call the WASM batch method
+    const result = this.network.activate_and_trace_batch_4way(
+      packedInput,
+      this.numInputs,
+      this.numOutputs,
+    );
+
+    // Parse the result: first 4 values are per-record lengths
+    const len0 = result[0] as number;
+    const len1 = result[1] as number;
+    const len2 = result[2] as number;
+    const len3 = result[3] as number;
+
+    const start0 = 4;
+    const start1 = start0 + len0;
+    const start2 = start1 + len1;
+    const start3 = start2 + len2;
+
+    const numNonInputs = this.network.num_neurons - this.numInputs;
+
+    // Parse each record using the same format as activateAndTrace
+    const parseRecord = (
+      data: Float32Array,
+      offset: number,
+      len: number,
+    ): WasmTraceResult => {
+      const recordData = data.subarray(offset, offset + len);
+
+      const outputs = new Float32Array(this.numOutputs);
+      outputs.set(recordData.subarray(0, this.numOutputs));
+
+      const activations = new Float32Array(numNonInputs);
+      activations.set(
+        recordData.subarray(this.numOutputs, this.numOutputs + numNonInputs),
+      );
+
+      const hintValues = new Float32Array(numNonInputs);
+      hintValues.set(
+        recordData.subarray(
+          this.numOutputs + numNonInputs,
+          this.numOutputs + 2 * numNonInputs,
+        ),
+      );
+
+      const traceEntries: WasmTraceEntry[] = [];
+      let traceOffset = this.numOutputs + numNonInputs * 2;
+      while (traceOffset < len) {
+        const neuronRelativeIdx = recordData[traceOffset];
+        if (neuronRelativeIdx < 0) break;
+        traceEntries.push({
+          neuronRelativeIndex: Math.round(neuronRelativeIdx),
+          traceInfo: recordData[traceOffset + 1],
+        });
+        traceOffset += 2;
+      }
+
+      return { outputs, activations, hintValues, traceEntries };
+    };
+
+    return [
+      parseRecord(result, start0, len0),
+      parseRecord(result, start1, len1),
+      parseRecord(result, start2, len2),
+      parseRecord(result, start3, len3),
+    ];
+  }
+
+  /**
+   * Issue #1212 - Batch activate and trace with feedback loop control.
+   *
+   * Processes 4 records simultaneously with optional state reset for
+   * stateless (feedbackLoop=false) networks.
+   *
+   * @param inputs - Array of 4 input Float32Arrays
+   * @param feedbackLoop - Whether to preserve state between calls
+   * @returns Array of 4 WasmTraceResult objects
+   */
+  activateAndTraceBatch4WayWithFeedback(
+    inputs: [Float32Array, Float32Array, Float32Array, Float32Array],
+    feedbackLoop: boolean,
+  ): [WasmTraceResult, WasmTraceResult, WasmTraceResult, WasmTraceResult] {
+    if (this.freed) {
+      throw new Error("WasmCreatureActivation has been freed");
+    }
+
+    if (
+      !feedbackLoop && this.needsResetWhenStateless &&
+      typeof this.network.reset_state === "function"
+    ) {
+      this.network.reset_state();
+    }
+
+    return this.activateAndTraceBatch4Way(inputs);
+  }
+
+  /**
    * Compute sum(MSE) across packed [inputs..., targets...] records in WASM.
    *
    * Returns the sum of per-record MSE values (divide by record count for average).

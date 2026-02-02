@@ -92,6 +92,40 @@ export class CompiledNetwork {
     return v2;
   }
   /**
+   * Issue #1212 - Batch activate and trace for 4 records simultaneously.
+   *
+   * Processes 4 input records through the network in parallel, capturing trace
+   * data for backpropagation. Uses SIMD via `weighted_sum_simd_4records()` for
+   * standard squash functions.
+   *
+   * # Arguments
+   * * `inputs` - Packed input array: [input0..., input1..., input2..., input3...]
+   * * `input_size` - Number of input values per record
+   * * `num_outputs` - Number of output neurons
+   *
+   * # Returns
+   * Four Vec<f32>, one per record. Each has the same format as `activate_and_trace`:
+   * [outputs..., activations..., hints..., trace_data...]
+   * @param {Float32Array} inputs
+   * @param {number} input_size
+   * @param {number} num_outputs
+   * @returns {Float32Array}
+   */
+  activate_and_trace_batch_4way(inputs, input_size, num_outputs) {
+    const ptr0 = passArrayF32ToWasm0(inputs, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.compilednetwork_activate_and_trace_batch_4way(
+      this.__wbg_ptr,
+      ptr0,
+      len0,
+      input_size,
+      num_outputs,
+    );
+    var v2 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v2;
+  }
+  /**
    * Activate the network with the given input values, writing to a pre-allocated output buffer
    * Issue #1171 - Avoids per-call Float32Array allocation overhead
    *
