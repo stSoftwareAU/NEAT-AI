@@ -129,3 +129,53 @@ Deno.test("NeatConfigParseOptions - dataSetPartitionBreak invalid string throws 
     );
   }
 });
+
+Deno.test("NeatConfigParseOptions - discoverySampleRate -1 (disabled) accepted", () => {
+  const config = createNeatConfig({ discoverySampleRate: -1 });
+  assertEquals(config.discoverySampleRate, -1);
+});
+
+Deno.test("NeatConfigParseOptions - discoverySampleRate -1 as string accepted", () => {
+  const config = createNeatConfig({ discoverySampleRate: "-1" });
+  assertEquals(config.discoverySampleRate, -1);
+});
+
+Deno.test("NeatConfigParseOptions - discoverySampleRate 0 and 0.05 and 1 accepted", () => {
+  assertEquals(
+    createNeatConfig({ discoverySampleRate: 0 }).discoverySampleRate,
+    0,
+  );
+  assertEquals(
+    createNeatConfig({ discoverySampleRate: 0.05 }).discoverySampleRate,
+    0.05,
+  );
+  assertEquals(
+    createNeatConfig({ discoverySampleRate: 1 }).discoverySampleRate,
+    1,
+  );
+});
+
+Deno.test("NeatConfigParseOptions - discoverySampleRate other negative (e.g. -0.12) throws", () => {
+  try {
+    createNeatConfig({ discoverySampleRate: -0.12 });
+    fail("Expected error for discoverySampleRate -0.12");
+  } catch (e) {
+    const msg = (e as Error).message;
+    assertEquals(
+      msg.includes(
+        "Discovery sample rate must be -1 (disabled) or between 0 and 1",
+      ),
+      true,
+      `Error: ${msg}`,
+    );
+    assertEquals(
+      msg.includes("-0.12"),
+      true,
+      `Error should include value: ${msg}`,
+    );
+  }
+});
+
+Deno.test("NeatConfigParseOptions - discoverySampleRate missing uses default", () => {
+  assertEquals(createNeatConfig({}).discoverySampleRate, 0.05);
+});
