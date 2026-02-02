@@ -147,11 +147,13 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       max: 1,
     }),
 
-    costOfGrowth: Math.max(
-      parseNumber("Cost of growth", opts.costOfGrowth, DEFAULT_COST_OF_GROWTH, {
+    costOfGrowth: parseNumber(
+      "Cost of growth",
+      opts.costOfGrowth,
+      DEFAULT_COST_OF_GROWTH,
+      {
         min: 0,
-      }),
-      MIN_COST_OF_GROWTH,
+      },
     ),
 
     iterations: parseNumber(

@@ -6,7 +6,10 @@
  * - Missing option → default used
  */
 import { assertEquals, fail } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import {
+  createNeatConfig,
+  DEFAULT_COST_OF_GROWTH,
+} from "../../src/config/NeatConfig.ts";
 
 Deno.test("NeatConfigParseOptions - trainingSampleRate accepts number", () => {
   const config = createNeatConfig({ trainingSampleRate: 0.5 });
@@ -69,6 +72,16 @@ Deno.test("NeatConfigParseOptions - targetError invalid string throws", () => {
 
 Deno.test("NeatConfigParseOptions - targetError missing uses default", () => {
   assertEquals(createNeatConfig({}).targetError, 0.05);
+});
+
+Deno.test("NeatConfigParseOptions - costOfGrowth 0 is valid (not the default)", () => {
+  const config = createNeatConfig({ costOfGrowth: 0 });
+  assertEquals(config.costOfGrowth, 0);
+});
+
+Deno.test("NeatConfigParseOptions - costOfGrowth missing uses default", () => {
+  const config = createNeatConfig({});
+  assertEquals(config.costOfGrowth, DEFAULT_COST_OF_GROWTH);
 });
 
 Deno.test("NeatConfigParseOptions - sparseRatio accepts number and string", () => {
