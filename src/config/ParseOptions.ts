@@ -95,3 +95,52 @@ export function parseNumber(
 
   return num;
 }
+
+/** Sentinel for "discovery sampling disabled". Only -1 is allowed; other negatives (e.g. -0.12) are rejected. */
+export const DISCOVERY_SAMPLE_RATE_DISABLED = -1;
+
+/**
+ * Parses discovery sample rate: -1 (disabled) or a number in [0, 1].
+ * Rejects other negative values (e.g. -0.12) with a clear error so typos are caught.
+ */
+export function parseDiscoverySampleRate(
+  value: unknown,
+  defaultValue: number,
+): number {
+  if (value === undefined) {
+    return defaultValue;
+  }
+
+  let num: number;
+  if (typeof value === "string") {
+    num = Number(value);
+    if (!Number.isFinite(num) || value.trim() === "") {
+      throw new Error(
+        `Discovery sample rate must be -1 (disabled) or between 0 and 1, got: ${
+          JSON.stringify(value)
+        }`,
+      );
+    }
+  } else if (typeof value === "number") {
+    num = value;
+    if (!Number.isFinite(num)) {
+      throw new Error(
+        `Discovery sample rate must be -1 (disabled) or between 0 and 1, got: ${num}`,
+      );
+    }
+  } else {
+    throw new Error(
+      `Discovery sample rate must be a number or string, got: ${typeof value}`,
+    );
+  }
+
+  if (num === DISCOVERY_SAMPLE_RATE_DISABLED) {
+    return num;
+  }
+  if (num >= 0 && num <= 1) {
+    return num;
+  }
+  throw new Error(
+    `Discovery sample rate must be -1 (disabled) or between 0 and 1, got: ${num}`,
+  );
+}

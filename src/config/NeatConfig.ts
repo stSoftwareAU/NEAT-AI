@@ -15,7 +15,7 @@ import {
 } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
-import { parseNumber } from "./ParseOptions.ts";
+import { parseDiscoverySampleRate, parseNumber } from "./ParseOptions.ts";
 
 /**
  * Default cost of growth value used when not specified in options.
@@ -265,11 +265,9 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       0.3,
       { min: 0, max: 1 },
     ),
-    discoverySampleRate: parseNumber(
-      "Discovery sample rate",
+    discoverySampleRate: parseDiscoverySampleRate(
       opts.discoverySampleRate,
       0.05,
-      { min: 0, max: 1 },
     ),
     discoveryRecordTimeOutMinutes: parseNumber(
       "Discovery record timeout minutes",
