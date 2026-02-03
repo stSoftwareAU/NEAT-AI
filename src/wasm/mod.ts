@@ -53,3 +53,14 @@ export {
   squash,
   unSquash,
 } from "./ActivationMethods.ts";
+
+// Issue #1301 - WASM compilation caching for creatures with identical topologies
+export {
+  clearWasmCompilationCache,
+  getOrCompileWasmModule,
+  getWasmCompilationCacheMaxSize,
+  getWasmCompilationCacheStats,
+  invalidateWasmCache,
+  setWasmCompilationCacheSize,
+  type WasmCacheStats,
+} from "./WasmCompilationCache.ts";

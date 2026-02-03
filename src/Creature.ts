@@ -58,6 +58,7 @@ import {
 import {
   compileCreatureToWasm,
   ensureWasmActivation,
+  getOrCompileWasmModule,
   isWasmActivationAvailable,
   resolveWasmSquashName,
   WasmCreatureActivation,
@@ -330,6 +331,9 @@ export class Creature implements CreatureInternal {
       // Invalidate available connections cache on full cache clear
       // Issue #1098: Performance optimisation for AddConnection mutation
       this.availableConnectionsCache = null;
+      // Invalidate topology hash on full cache clear (structure changed)
+      // Issue #1301: Performance optimisation for WASM compilation caching
+      this.topologyHash = undefined;
     } else {
       this.cacheTo.delete(to);
       this.cacheFrom.delete(from);
@@ -345,6 +349,9 @@ export class Creature implements CreatureInternal {
       // Invalidate available connections cache on partial clear (structure changed)
       // Issue #1098: Performance optimisation for AddConnection mutation
       this.availableConnectionsCache = null;
+      // Invalidate topology hash on partial clear (structure changed)
+      // Issue #1301: Performance optimisation for WASM compilation caching
+      this.topologyHash = undefined;
     }
     // Issue #1100: Do NOT clear focus cache on structural changes.
     // Focus cache validity depends on the focus list, not on structure.
@@ -605,10 +612,10 @@ export class Creature implements CreatureInternal {
     feedbackLoop: boolean,
   ): Float32Array {
     // Lazily compile to WASM if not already done
+    // Issue #1301: Use topology-based caching to avoid redundant compilation
     if (!this.cachedWasmActivation) {
-      const compiled = compileCreatureToWasm(this);
-      this.cachedWasmActivation = WasmCreatureActivation.create(compiled) ??
-        undefined;
+      // Try to get from cache first (uses topology hash for cache key)
+      this.cachedWasmActivation = getOrCompileWasmModule(this) ?? undefined;
 
       if (!this.cachedWasmActivation) {
         // At this point WASM was selected and eligibility was already checked.
@@ -659,10 +666,10 @@ export class Creature implements CreatureInternal {
     sparseConfig: SparseConfig,
   ): Float32Array {
     // Lazily compile to WASM if not already done
+    // Issue #1301: Use topology-based caching to avoid redundant compilation
     if (!this.cachedWasmActivation) {
-      const compiled = compileCreatureToWasm(this);
-      this.cachedWasmActivation = WasmCreatureActivation.create(compiled) ??
-        undefined;
+      // Try to get from cache first (uses topology hash for cache key)
+      this.cachedWasmActivation = getOrCompileWasmModule(this) ?? undefined;
 
       if (!this.cachedWasmActivation) {
         fail(
