@@ -25,6 +25,7 @@ import type {
   ResponseData,
   WorkerHandler,
 } from "../multithreading/workers/WorkerHandler.ts";
+import { WorkerPool } from "../multithreading/WorkerPool.ts";
 import { AddConnection } from "../mutate/AddConnection.ts";
 import { Genus } from "./Genus.ts";
 import type { Approach } from "./LogApproach.ts";
@@ -87,6 +88,11 @@ export class Neat {
    */
   readonly discoveryReplayQueue: DiscoveryReplayQueue;
 
+  /**
+   * Worker pool with work-stealing queues for better load balancing (Issue #1290).
+   */
+  readonly workerPool: WorkerPool;
+
   /** Data directory for discovery replay (Issue #997) */
   private dataDir?: string;
 
@@ -137,6 +143,9 @@ export class Neat {
 
     // Initialize discovery replay queue (Issue #997)
     this.discoveryReplayQueue = new DiscoveryReplayQueue();
+
+    // Issue #1290: Initialise worker pool with work-stealing queues
+    this.workerPool = new WorkerPool(this.workers);
   }
 
   /**
@@ -348,18 +357,11 @@ export class Neat {
 
     const uuid = CreatureUtil.makeUUID(creature);
 
-    let w: WorkerHandler;
-
-    w = this.workers[Math.floor(this.workers.length * Math.random())];
-
-    if (w.isBusy()) {
-      for (let i = this.workers.length; i--;) {
-        const tmpWorker = this.workers[i];
-        if (!tmpWorker.isBusy()) {
-          w = tmpWorker;
-          break;
-        }
-      }
+    // Issue #1290: Use work-stealing pool for smarter worker selection
+    const w = this.workerPool.selectWorker();
+    if (!w) {
+      console.warn("[Neat] No workers available for discovery");
+      return;
     }
 
     if (this.config.verbose) {
@@ -561,18 +563,11 @@ export class Neat {
       }
     }
 
-    let w: WorkerHandler;
-
-    w = this.workers[Math.floor(this.workers.length * Math.random())];
-
-    if (w.isBusy()) {
-      for (let i = this.workers.length; i--;) {
-        const tmpWorker = this.workers[i];
-        if (!tmpWorker.isBusy()) {
-          w = tmpWorker;
-          break;
-        }
-      }
+    // Issue #1290: Use work-stealing pool for smarter worker selection
+    const w = this.workerPool.selectWorker();
+    if (!w) {
+      console.warn("[Neat] No workers available for training");
+      return;
     }
 
     if (this.config.verbose) {
