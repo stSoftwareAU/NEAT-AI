@@ -11,6 +11,7 @@ import {
   createBackPropagationConfig,
 } from "../propagate/BackPropagation.ts";
 import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
+import { BufferPool } from "../utils/BufferPool.ts";
 import type { CreatureExport, CreatureTrace } from "./CreatureInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 
@@ -152,6 +153,13 @@ function trainDirBinary(
   const recordBuffer = new Uint8Array(BYTES_PER_RECORD);
   const recordArray = new Float32Array(recordBuffer.buffer);
 
+  // Issue #1297: Pre-allocated buffers for batch operations
+  // These buffers are reused throughout the training loop to avoid
+  // repeated Float32Array allocations in the hot path.
+  const bufferPool = new BufferPool({ maxBuffersPerSize: 4 });
+  const observationsBuffer = bufferPool.acquire(creature.input);
+  const targetsBuffer = bufferPool.acquire(creature.output);
+
   const indxMap = new Map<string, Set<number>>();
 
   // Training loop
@@ -252,23 +260,19 @@ function trainDirBinary(
             continue;
           }
 
-          // Create independent copies to avoid data corruption from shared buffer
-          const observations = new Float32Array(
-            recordArray.subarray(0, creature.input),
-          );
+          // Issue #1297: Copy into pre-allocated buffers instead of creating new arrays
+          // This reduces allocation overhead in the hot training loop.
+          observationsBuffer.set(recordArray.subarray(0, creature.input));
+          targetsBuffer.set(recordArray.subarray(creature.input));
 
           const output = creature.activateAndTrace(
-            observations,
+            observationsBuffer,
             feedbackLoop,
             sparseConfig,
           );
 
-          const targets = new Float32Array(
-            recordArray.subarray(creature.input),
-          );
-
           const sampleError = cost.calculate(
-            targets,
+            targetsBuffer,
             output,
           );
           assert(Number.isFinite(sampleError), "Sample error is not finite");
@@ -278,7 +282,7 @@ function trainDirBinary(
             console.warn(
               `Training ${
                 blue(ID)
-              } stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} record.output: ${targets} output: ${output}`,
+              } stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} record.output: ${targetsBuffer} output: ${output}`,
             );
             trainingStopped = true;
             break;
@@ -296,7 +300,7 @@ function trainDirBinary(
               break;
             }
           }
-          creature.propagate(targets, iterationConfig, sparseConfig);
+          creature.propagate(targetsBuffer, iterationConfig, sparseConfig);
 
           const now = Date.now();
           const diff = now - lastTS;
