@@ -43,6 +43,7 @@ import {
 import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 import { upgradeOne } from "./upgrade/UpgradeOne.ts";
 import { CreatureExportBuilder } from "./utils/CreatureExportBuilder.ts";
+import { BufferPool } from "./utils/BufferPool.ts";
 import { mergeTagsByNameValue } from "./utils/TagUtils.ts";
 import {
   type DiscoveryDirResult,
@@ -2060,6 +2061,11 @@ export class Creature implements CreatureInternal {
     const batchBuffer = new Uint8Array(BYTES_PER_BATCH);
     const batchArray = new Float32Array(batchBuffer.buffer);
 
+    // Issue #1297: Pre-allocated buffers to reduce allocation overhead in hot loop
+    const bufferPool = new BufferPool({ maxBuffersPerSize: 4 });
+    const observationsBuffer = bufferPool.acquire(this.input);
+    const targetsBuffer = bufferPool.acquire(this.output);
+
     for (let fileIndx = dataResult.files.length; fileIndx--;) {
       const filePath = dataResult.files[fileIndx];
       const file = Deno.openSync(filePath, { read: true });
@@ -2083,24 +2089,22 @@ export class Creature implements CreatureInternal {
           for (let recordIndex = 0; recordIndex < recordsRead; recordIndex++) {
             const offset = recordIndex * valuesCount;
             const inputEnd = offset + this.input;
-            const observations = new Float32Array(batchArray.subarray(
-              offset,
-              inputEnd,
-            ));
+
+            // Issue #1297: Copy into pre-allocated buffers instead of creating new arrays
+            observationsBuffer.set(batchArray.subarray(offset, inputEnd));
+            targetsBuffer.set(
+              batchArray.subarray(inputEnd, offset + valuesCount),
+            );
 
             const actuals = this.activateAndTrace(
-              observations,
+              observationsBuffer,
               true,
               sparseConfig,
             );
 
-            const targets = new Float32Array(batchArray.subarray(
-              inputEnd,
-              offset + valuesCount,
-            ));
-            this.propagate(targets, backPropConfig, sparseConfig);
+            this.propagate(targetsBuffer, backPropConfig, sparseConfig);
 
-            error += cost.calculate(targets, actuals);
+            error += cost.calculate(targetsBuffer, actuals);
             count++;
           }
         }
