@@ -122,14 +122,19 @@ Deno.test("TAN", () => {
 
     assert(complexActuals.length === simplifiedActuals.length);
     for (let i = 0; i < complexActuals.length; i++) {
+      const expected = complexActuals[i];
+      const actual = simplifiedActuals[i];
+      // TAN is numerically sensitive and small platform/JIT differences can
+      // accumulate through the simplified code path. Near asymptotes, TAN
+      // outputs can be very large (1000+), so use a relative tolerance for
+      // large values and an absolute tolerance for small values.
+      const magnitude = Math.max(Math.abs(expected), Math.abs(actual), 1);
+      const tolerance = Math.max(0.04, magnitude * 0.001); // 0.1% relative or 0.04 absolute
       assertAlmostEquals(
-        complexActuals[i],
-        simplifiedActuals[i],
-        // TAN is numerically sensitive and small platform/JIT differences can
-        // accumulate through the simplified code path. Keep this test stable
-        // across architectures by using a slightly looser absolute tolerance.
-        0.04,
-        `${p}) expected: ${complexActuals[i]} actual: ${simplifiedActuals[i]}`,
+        expected,
+        actual,
+        tolerance,
+        `${p}) expected: ${expected} actual: ${actual}`,
       );
     }
   }
