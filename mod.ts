@@ -215,3 +215,12 @@ export type {
   PlateauDetectionConfig,
   RequiredPlateauDetectionConfig,
 } from "./src/NEAT/PlateauDetector.ts";
+
+/**
+ * WASM preload for workers (Issue #1285)
+ *
+ * Call {@link fetchWasmForWorkers} in the main thread before spawning workers
+ * so WASM is fetched once and cached; workers then receive the cached payload
+ * instead of each fetching separately.
+ */
+export { fetchWasmForWorkers } from "./src/multithreading/workers/WorkerHandler.ts";
