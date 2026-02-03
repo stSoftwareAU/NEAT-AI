@@ -1,14 +1,18 @@
 ## Summary
 
-Implements a Bloom filter for fast duplicate detection during the de-duplication phase of the evolution loop (Issue #1292).
+Implements a Bloom filter for fast duplicate detection during the de-duplication
+phase of the evolution loop (Issue #1292).
 
 ### Changes
 
-- **New `BloomFilter` class** (`src/utils/BloomFilter.ts`): A probabilistic data structure with configurable size and hash count, providing:
+- **New `BloomFilter` class** (`src/utils/BloomFilter.ts`): A probabilistic data
+  structure with configurable size and hash count, providing:
   - `add(key)` - Add a key to the filter
-  - `mayContain(key)` - Fast check returning `false` (definitely not present) or `true` (possibly present)
+  - `mayContain(key)` - Fast check returning `false` (definitely not present) or
+    `true` (possibly present)
   - `clear()` - Reset the filter for the next generation
-  - `BloomFilter.create(expectedItems, falsePositiveRate)` - Factory method with optimal parameter calculation
+  - `BloomFilter.create(expectedItems, falsePositiveRate)` - Factory method with
+    optimal parameter calculation
 
 - **Integrated into `DeDuplicator`** (`src/architecture/DeDuplicator.ts`):
   - Bloom filter is used as a fast pre-check before the Set.has() lookup
@@ -29,11 +33,16 @@ Implements a Bloom filter for fast duplicate detection during the de-duplication
 
 ### Benchmark Results
 
-The benchmarks show that while raw Bloom filter operations are slower than JavaScript's highly-optimised Set for individual operations, the Bloom filter provides value through:
+The benchmarks show that while raw Bloom filter operations are slower than
+JavaScript's highly-optimised Set for individual operations, the Bloom filter
+provides value through:
 
-1. **Fast rejection**: When most creatures are unique (common case), Bloom filter rejects quickly
-2. **Reduced memory pressure**: Bloom filter uses fixed memory regardless of key size
-3. **Foundation for future optimisations**: Structure in place for cross-generation duplicate tracking
+1. **Fast rejection**: When most creatures are unique (common case), Bloom
+   filter rejects quickly
+2. **Reduced memory pressure**: Bloom filter uses fixed memory regardless of key
+   size
+3. **Foundation for future optimisations**: Structure in place for
+   cross-generation duplicate tracking
 
 ```
 === Bloom Filter De-duplication Benchmark Setup ===
@@ -54,7 +63,8 @@ group Bloom filter creation (minimal overhead)
 | BloomFilter.clear() (100 item capacity)                          | 216.5 ns |
 ```
 
-The de-duplication performance scales well with population size, and the Bloom filter creation/clear overhead is negligible (~100-250 nanoseconds).
+The de-duplication performance scales well with population size, and the Bloom
+filter creation/clear overhead is negligible (~100-250 nanoseconds).
 
 ## Test Plan
 
@@ -78,9 +88,13 @@ The de-duplication performance scales well with population size, and the Bloom f
    - Integration with full evolution
 
 ### Existing Tests
+
 All 1799 existing tests continue to pass, including:
+
 - `test/DeDuplicate.ts`
 - `test/SinglePassDeDuplication.ts`
 
 ### Benchmark
-- `bench/BloomFilterDeDuplication.ts` - Performance benchmarks for Bloom filter operations and de-duplication scenarios
+
+- `bench/BloomFilterDeDuplication.ts` - Performance benchmarks for Bloom filter
+  operations and de-duplication scenarios
