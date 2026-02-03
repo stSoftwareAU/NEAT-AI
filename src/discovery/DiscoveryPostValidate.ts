@@ -1,6 +1,13 @@
 import type { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { getMajorVersion } from "../upgrade/Upgrade.ts";
+import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
+import {
+  BatchDiscoveryValidator,
+  type BatchValidationResult,
+  type BatchValidationStats,
+  type BatchValidatorOptions,
+} from "./BatchDiscoveryValidator.ts";
 
 /**
  * Validate a creature immediately after applying discovery changes.
@@ -132,3 +139,80 @@ function sampleForwardOnlyViolations(
   }
   return out;
 }
+
+/**
+ * Validate multiple discovery candidates in a batch.
+ *
+ * This function provides batch validation for discovery candidates, reducing
+ * the overhead of individual validation calls by:
+ * 1. Grouping candidates by type (structural vs weight-only changes)
+ * 2. Validating structural candidates with early-exit on first invalid
+ * 3. Caching common validation results across candidates
+ *
+ * Issue #1291 - Performance: Batch discovery candidate validation
+ *
+ * @param args - Batch validation arguments
+ * @returns Batch validation results with statistics
+ */
+export function validateDiscoveryCandidatesBatch(args: {
+  /** The base creature the candidates were derived from */
+  baseCreature: Creature;
+  /** The candidates to validate */
+  candidates: DiscoveryCandidate[];
+  /** Discovery session ID (for log correlation) */
+  discoveryID: string;
+  /** The config feedbackLoop flag for the current run */
+  feedbackLoop: boolean | undefined;
+  /** Whether to exit early on first structural validation failure */
+  earlyExitOnStructuralFailure?: boolean;
+}): {
+  results: BatchValidationResult[];
+  stats: BatchValidationStats;
+  validCandidates: DiscoveryCandidate[];
+  invalidCandidates: DiscoveryCandidate[];
+} {
+  const {
+    baseCreature,
+    candidates,
+    feedbackLoop,
+    earlyExitOnStructuralFailure,
+  } = args;
+
+  const options: BatchValidatorOptions = {
+    feedbackLoop: feedbackLoop ?? false,
+    earlyExitOnStructuralFailure: earlyExitOnStructuralFailure ?? false,
+  };
+
+  const validator = new BatchDiscoveryValidator(options);
+  const results = validator.validateBatch(baseCreature, candidates);
+  const stats = validator.getStats();
+
+  // Separate valid and invalid candidates for convenience
+  const validCandidates: DiscoveryCandidate[] = [];
+  const invalidCandidates: DiscoveryCandidate[] = [];
+
+  for (const result of results) {
+    if (result.valid) {
+      validCandidates.push(result.candidate);
+    } else {
+      invalidCandidates.push(result.candidate);
+    }
+  }
+
+  return {
+    results,
+    stats,
+    validCandidates,
+    invalidCandidates,
+  };
+}
+
+/**
+ * Re-export batch validation types for convenience.
+ */
+export type {
+  BatchValidationResult,
+  BatchValidationStats,
+  BatchValidatorOptions,
+};
+export { BatchDiscoveryValidator };
