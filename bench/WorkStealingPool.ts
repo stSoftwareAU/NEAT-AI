@@ -71,7 +71,9 @@ const SELECTION_COUNT = 10000;
 
 // Create workers
 const oldWorkers = createMockWorkers(WORKER_COUNT);
-const newWorkers = createMockWorkers(WORKER_COUNT) as unknown as WorkerHandler[];
+const newWorkers = createMockWorkers(
+  WORKER_COUNT,
+) as unknown as WorkerHandler[];
 const pool = new WorkerPool(newWorkers);
 
 console.log(`Worker count: ${WORKER_COUNT}`);
@@ -110,7 +112,9 @@ Deno.bench({
 const oldBusyWorkers = createMockWorkers(WORKER_COUNT);
 oldBusyWorkers.forEach((w) => w.setBusy(true));
 
-const newBusyWorkers = createMockWorkers(WORKER_COUNT) as unknown as WorkerHandler[];
+const newBusyWorkers = createMockWorkers(
+  WORKER_COUNT,
+) as unknown as WorkerHandler[];
 newBusyWorkers.forEach((w) => (w as unknown as MockBenchWorker).setBusy(true));
 const busyPool = new WorkerPool(newBusyWorkers);
 
@@ -219,7 +223,9 @@ Deno.bench({
   name: "WorkerPool: selectWorkerByWorkload",
   group: "Workload Selection",
   fn() {
-    const wlWorkers = createMockWorkers(WORKER_COUNT) as unknown as WorkerHandler[];
+    const wlWorkers = createMockWorkers(
+      WORKER_COUNT,
+    ) as unknown as WorkerHandler[];
     wlWorkers.forEach((w) => (w as unknown as MockBenchWorker).setBusy(true));
     const wlPool = new WorkerPool<TestTask>(wlWorkers);
 

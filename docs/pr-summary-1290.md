@@ -1,26 +1,36 @@
 ## Summary
 
-Implements a work-stealing queue pattern for better load distribution across workers, replacing the random selection with fallback to least-busy approach.
+Implements a work-stealing queue pattern for better load distribution across
+workers, replacing the random selection with fallback to least-busy approach.
 
 ### Changes
 
-- **New file: `src/multithreading/WorkStealingQueue.ts`** - A concurrent deque (double-ended queue) implementation enabling work-stealing patterns. Workers push/pop from front while thieves steal from back.
+- **New file: `src/multithreading/WorkStealingQueue.ts`** - A concurrent deque
+  (double-ended queue) implementation enabling work-stealing patterns. Workers
+  push/pop from front while thieves steal from back.
 
-- **New file: `src/multithreading/WorkerPool.ts`** - Worker pool manager with work-stealing capabilities, including:
+- **New file: `src/multithreading/WorkerPool.ts`** - Worker pool manager with
+  work-stealing capabilities, including:
   - Intelligent worker selection based on queue size
   - Workload-based selection using estimated task durations
   - Bulk steal operations for efficient load rebalancing
   - Statistics tracking for monitoring load balancing effectiveness
 
-- **Modified: `src/NEAT/Neat.ts`** - Integrated `WorkerPool` for smarter worker selection in `scheduleDiscovery()` and `scheduleTraining()` methods, replacing the previous random + linear scan approach.
+- **Modified: `src/NEAT/Neat.ts`** - Integrated `WorkerPool` for smarter worker
+  selection in `scheduleDiscovery()` and `scheduleTraining()` methods, replacing
+  the previous random + linear scan approach.
 
 ### Key Features
 
-1. **Work-stealing queues per worker** - Each worker maintains a local deque of tasks
-2. **Smarter worker selection** - Selects non-busy workers first, falls back to least-loaded when all busy
-3. **Workload-aware selection** - Can select workers based on estimated task duration
+1. **Work-stealing queues per worker** - Each worker maintains a local deque of
+   tasks
+2. **Smarter worker selection** - Selects non-busy workers first, falls back to
+   least-loaded when all busy
+3. **Workload-aware selection** - Can select workers based on estimated task
+   duration
 4. **Steal operations** - Idle workers can steal tasks from busy workers' queues
-5. **Statistics tracking** - Tracks steal attempts and success rates for monitoring
+5. **Statistics tracking** - Tracks steal attempts and success rates for
+   monitoring
 
 ## Evidence
 
@@ -52,7 +62,11 @@ group Steal Operations
 | WorkerPool: stealWork simulation             | 9.2 µs | 108,200 iter/s |
 ```
 
-**Analysis**: The new approach shows significant improvement (4.24x faster) for the common case of selecting idle workers. The overhead when all workers are busy is acceptable given the load balancing benefits. The real-world improvement comes from:
+**Analysis**: The new approach shows significant improvement (4.24x faster) for
+the common case of selecting idle workers. The overhead when all workers are
+busy is acceptable given the load balancing benefits. The real-world improvement
+comes from:
+
 - Reduced worker idle time through work stealing
 - Better handling of heterogeneous task durations
 - More even load distribution across workers
@@ -79,7 +93,8 @@ group Steal Operations
 
 ### Existing Tests
 
-All 1863 existing tests continue to pass, confirming the integration doesn't break existing functionality.
+All 1863 existing tests continue to pass, confirming the integration doesn't
+break existing functionality.
 
 ## References
 
