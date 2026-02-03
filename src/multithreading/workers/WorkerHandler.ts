@@ -329,6 +329,20 @@ export async function loadWasmActivationInitPayloadAsync(): Promise<
 }
 
 /**
+ * Prefetch WASM activation in the main thread for use by workers.
+ *
+ * Issue #1285: Call this before spawning workers (e.g. GRQ training, portfolio,
+ * IntelligentDesign) so the main thread does one fetch and workers receive the
+ * cached payload instead of each worker triggering its own fetch. Avoids
+ * timeouts and duplicate work when many workers start at once.
+ *
+ * @returns Promise that resolves when the WASM payload is loaded and cached
+ */
+export async function fetchWasmForWorkers(): Promise<void> {
+  await loadWasmActivationInitPayloadAsync();
+}
+
+/**
  * Check if the WASM activation payload is available.
  *
  * Issue #1206 - Provides a way to check WASM availability without loading
