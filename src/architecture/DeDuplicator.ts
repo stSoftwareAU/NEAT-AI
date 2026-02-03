@@ -3,15 +3,48 @@ import { format } from "@std/fmt/duration";
 import type { Breed } from "../breed/Breed.ts";
 import { Creature } from "../Creature.ts";
 import type { Mutator } from "../NEAT/Mutator.ts";
+import { BloomFilter } from "../utils/BloomFilter.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 
+/**
+ * DeDuplicator - Removes duplicate creatures from a population.
+ *
+ * Uses a Bloom filter (Issue #1292) as a fast first-pass check for duplicates,
+ * reducing overhead in the duplicate detection phase. The Bloom filter provides:
+ *
+ * 1. **Fast rejection**: If mayContain() returns false, the UUID is definitely
+ *    not a duplicate - skip the Set.has() call entirely
+ * 2. **Probabilistic matching**: If mayContain() returns true, do the exact
+ *    Set.has() check to confirm
+ *
+ * Performance benefit: When most creatures in a population are unique (the
+ * common case in healthy evolution), the Bloom filter quickly rejects non-duplicates
+ * without needing to hash and probe the Set's internal data structure.
+ *
+ * The filter is cleared each generation to maintain optimal performance.
+ */
 export class DeDuplicator {
   private breed: Breed;
   private mutator: Mutator;
 
+  /**
+   * Bloom filter for fast duplicate pre-filtering (Issue #1292).
+   * Provides O(k) rejection where k is the number of hash functions,
+   * avoiding Set.has() overhead for definitely-unique UUIDs.
+   */
+  private bloomFilter: BloomFilter;
+
   constructor(breed: Breed, mutator: Mutator) {
     this.breed = breed;
     this.mutator = mutator;
+
+    // Create Bloom filter sized for expected population with <1% false positive rate
+    // Using population size * 1.5 to account for temporary over-population
+    const expectedItems = Math.max(
+      100,
+      (this.breed.options.populationSize ?? 100) * 1.5,
+    );
+    this.bloomFilter = BloomFilter.create(expectedItems, 0.01);
   }
 
   public perform(creatures: Creature[]) {
@@ -19,12 +52,16 @@ export class DeDuplicator {
     let previousExperimentMS = 0;
     this.logPopulationSize(creatures);
 
-    creatures.forEach((creature) => {
+    // Issue #1292: Clear Bloom filter for this generation
+    this.bloomFilter.clear();
+
+    // First pass: compute UUIDs and add to genus
+    for (const creature of creatures) {
       CreatureUtil.makeUUID(creature);
-
       this.breed.genus.addCreature(creature);
-    });
+    }
 
+    // Second pass: Detect and handle duplicates
     const unique = new Set<string>();
     const toRemove: number[] = [];
 
@@ -32,7 +69,17 @@ export class DeDuplicator {
       const creature = creatures[indx];
       const UUID = creature.uuid;
       assert(UUID, "No creature UUID");
-      let duplicate = unique.has(UUID);
+
+      // Issue #1292: Use Bloom filter as fast pre-check
+      // If Bloom filter says "not present", skip Set.has() entirely
+      let duplicate = false;
+      if (this.bloomFilter.mayContain(UUID)) {
+        // Possible duplicate - confirm with exact Set check
+        duplicate = unique.has(UUID);
+      }
+
+      // Add to Bloom filter AFTER checking (to avoid self-match)
+      this.bloomFilter.add(UUID);
 
       if (!duplicate) {
         if (indx > this.breed.options.elitism!) {
@@ -62,7 +109,7 @@ export class DeDuplicator {
       }
     }
 
-    // Second pass to remove duplicates
+    // Third pass: Remove duplicates
     for (let removeIndx = toRemove.length; removeIndx--;) {
       const indx = toRemove[removeIndx];
       creatures.splice(indx, 1);
@@ -99,12 +146,17 @@ export class DeDuplicator {
 
         if (child) {
           const key2 = CreatureUtil.makeUUID(child);
-          let duplicate2 = unique.has(key2);
+
+          // Issue #1292: Use Bloom filter as fast pre-check
+          const mayBeDuplicate2 = this.bloomFilter.mayContain(key2);
+          let duplicate2 = mayBeDuplicate2 ? unique.has(key2) : false;
+
           if (!duplicate2 && index > this.breed.options.elitism!) {
             duplicate2 = this.previousExperiment(key2);
           }
           if (!duplicate2) {
             unique.add(key2);
+            this.bloomFilter.add(key2);
             creatures[index] = child;
             this.breed.genus.addCreature(child);
             return;
@@ -113,7 +165,11 @@ export class DeDuplicator {
         const tmpCreature = Creature.fromJSON(creatures[index].exportJSON());
         this.mutator.mutate([tmpCreature]);
         const key3 = CreatureUtil.makeUUID(tmpCreature);
-        let duplicate3 = unique.has(key3);
+
+        // Issue #1292: Use Bloom filter as fast pre-check
+        const mayBeDuplicate3 = this.bloomFilter.mayContain(key3);
+        let duplicate3 = mayBeDuplicate3 ? unique.has(key3) : false;
+
         if (!duplicate3 && index > this.breed.options.elitism!) {
           duplicate3 = this.previousExperiment(key3);
         }
@@ -121,6 +177,7 @@ export class DeDuplicator {
           this.breed.genus.addCreature(tmpCreature);
           creatures[index] = tmpCreature;
           unique.add(key3);
+          this.bloomFilter.add(key3);
           return;
         } else if (attempts > 48) {
           console.error(
