@@ -191,6 +191,7 @@
     "infile",
     "dedupe",
     "inflight",
-    "codegen"
+    "codegen",
+    "preexp"
   ]
 }
