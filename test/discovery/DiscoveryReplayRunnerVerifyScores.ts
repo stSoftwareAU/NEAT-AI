@@ -349,7 +349,16 @@ Deno.test("DiscoveryReplayRunner: returns timing diagnostics when enabled", asyn
   assertExists(result.diagnostics);
   assertExists(result.diagnostics.timingsMS.total);
   assertExists(result.diagnostics.timingsMS.listEntries);
-  assertExists(result.diagnostics.timingsMS.sortEntries);
+  // With priority queue enabled (default), priorityQueueBuild is used instead of sortEntries
+  // Either one should be present depending on discoveryReplayPriorityEnabled setting
+  const hasSortTiming =
+    result.diagnostics.timingsMS.sortEntries !== undefined ||
+    result.diagnostics.timingsMS.priorityQueueBuild !== undefined;
+  assertEquals(
+    hasSortTiming,
+    true,
+    "Expected either sortEntries or priorityQueueBuild timing",
+  );
   assertExists(result.diagnostics.timingsMS.applySingles);
   assertExists(result.diagnostics.timingsMS.evaluateBaselineAndSingles);
   assertExists(result.diagnostics.timingsMS.selectBest);

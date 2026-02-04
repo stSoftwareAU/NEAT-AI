@@ -357,6 +357,20 @@ export interface NeatArguments {
   discoveryReplayMinTimeMinutes: number;
 
   /**
+   * When enabled, discovery replay uses a priority queue to process candidates
+   * in order of expected improvement, rather than simple score delta ordering.
+   *
+   * Priority scoring considers:
+   * - Historical success rate for similar modifications
+   * - Improvement magnitude in original discovery
+   * - Deprioritisation of repeatedly unsuccessful candidate types
+   *
+   * Issue #1299: Priority-based discovery replay queue
+   * Defaults to true (enabled).
+   */
+  discoveryReplayPriorityEnabled: boolean;
+
+  /**
    * Minimum candidates to evaluate per discovery category.
    */
   discoveryMinCandidatesPerCategory: Required<

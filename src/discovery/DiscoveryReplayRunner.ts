@@ -23,6 +23,10 @@ import type { Creature } from "../Creature.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { formatWeight } from "./FailureCache.ts";
 import {
+  calculatePriority,
+  PriorityDiscoveryQueue,
+} from "./PriorityDiscoveryQueue.ts";
+import {
   archiveSuccessByKeySync,
   listSuccessEntriesSync,
   type SuccessCacheEntry,
@@ -61,6 +65,7 @@ export interface DiscoveryReplayDiagnostics {
     setupWorkers?: number;
     listEntries?: number;
     sortEntries?: number;
+    priorityQueueBuild?: number;
     applySingles?: number;
     evaluateBaselineAndSingles?: number;
     buildCombos?: number;
@@ -78,6 +83,20 @@ export interface DiscoveryReplayDiagnostics {
     pruned: number;
     skippedAlreadyApplied: number;
     skippedNotApplicable: number;
+  };
+  /**
+   * Priority queue metrics (only populated when priority mode is enabled).
+   * Issue #1299: Priority-based discovery replay queue
+   */
+  priorityQueue?: {
+    /** Whether priority mode was used */
+    enabled: boolean;
+    /** Success rates per change type (0-1) */
+    successRates: Record<string, number>;
+    /** Failure counts per change type */
+    failureCounts: Record<string, number>;
+    /** Top 5 priorities assigned (for debugging) */
+    topPriorities: Array<{ key: string; priority: number; changeType: string }>;
   };
 }
 
@@ -759,7 +778,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         );
       };
 
-      // Load cache entries and prioritise by historical delta.
+      // Load cache entries and prioritise by historical delta or priority queue.
       const listStart = diagnosticsEnabled ? performance.now() : 0;
       const allEntries = deps.listEntries(successCacheDir)
         .filter((e) =>
@@ -769,18 +788,101 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         .filter((e) => !e.changeType.startsWith("combo-"));
       if (timingsMS) timingsMS.listEntries = performance.now() - listStart;
 
-      const sortStart = diagnosticsEnabled ? performance.now() : 0;
-      allEntries.sort((a, b) => {
-        const aDelta = safeNumber(a.scoreDelta) ?? 0;
-        const bDelta = safeNumber(b.scoreDelta) ?? 0;
-        return bDelta - aDelta;
-      });
-      if (timingsMS) timingsMS.sortEntries = performance.now() - sortStart;
+      // Issue #1299: Priority-based discovery replay queue
+      const usePriorityQueue = config.discoveryReplayPriorityEnabled;
 
-      const selectedEntries = allEntries.slice(
-        0,
-        config.discoveryReplayMaxSingles,
-      );
+      // Calculate success rates per change type from historical data
+      const successRates = new Map<string, number>();
+      const failureCounts = new Map<string, number>();
+      let priorityQueueDiagnostics:
+        | NonNullable<DiscoveryReplayDiagnostics["priorityQueue"]>
+        | undefined;
+
+      if (usePriorityQueue) {
+        // Group entries by changeType and calculate success rate
+        const typeStats = new Map<
+          string,
+          { successes: number; total: number }
+        >();
+        for (const entry of allEntries) {
+          const stats = typeStats.get(entry.changeType) ??
+            { successes: 0, total: 0 };
+          stats.total++;
+          // An entry in success cache was successful at some point
+          // Use scoreDelta > 0 as a proxy for likely continued success
+          if ((safeNumber(entry.scoreDelta) ?? 0) > 0) {
+            stats.successes++;
+          }
+          typeStats.set(entry.changeType, stats);
+        }
+
+        for (const [changeType, stats] of typeStats) {
+          const rate = stats.total > 0 ? stats.successes / stats.total : 0;
+          successRates.set(changeType, rate);
+        }
+      }
+
+      const sortStart = diagnosticsEnabled ? performance.now() : 0;
+      let selectedEntries: SuccessCacheEntry[];
+
+      if (usePriorityQueue) {
+        // Use priority queue for ordering
+        const priorityQueue = new PriorityDiscoveryQueue();
+
+        for (const entry of allEntries) {
+          const priority = calculatePriority(entry, {
+            successRates,
+            failureCounts,
+          });
+          priorityQueue.enqueue(entry, priority);
+        }
+
+        // Extract top entries in priority order
+        selectedEntries = [];
+        const maxSingles = config.discoveryReplayMaxSingles;
+        while (
+          !priorityQueue.isEmpty() && selectedEntries.length < maxSingles
+        ) {
+          const item = priorityQueue.dequeue();
+          if (item) {
+            selectedEntries.push(item.entry);
+          }
+        }
+
+        // Record diagnostics for priority queue
+        if (diagnosticsEnabled) {
+          const topItems = priorityQueue.toArray().slice(0, 5);
+          priorityQueueDiagnostics = {
+            enabled: true,
+            successRates: Object.fromEntries(successRates),
+            failureCounts: Object.fromEntries(failureCounts),
+            topPriorities: topItems.map((item) => ({
+              key: item.entry.key,
+              priority: item.priority,
+              changeType: item.entry.changeType,
+            })),
+          };
+        }
+
+        if (timingsMS) {
+          timingsMS.priorityQueueBuild = performance.now() - sortStart;
+        }
+      } else {
+        // Legacy mode: simple sort by scoreDelta
+        allEntries.sort((a, b) => {
+          const aDelta = safeNumber(a.scoreDelta) ?? 0;
+          const bDelta = safeNumber(b.scoreDelta) ?? 0;
+          return bDelta - aDelta;
+        });
+
+        selectedEntries = allEntries.slice(
+          0,
+          config.discoveryReplayMaxSingles,
+        );
+      }
+      if (timingsMS && !usePriorityQueue) {
+        timingsMS.sortEntries = performance.now() - sortStart;
+      }
 
       let skippedAlreadyApplied = 0;
       let skippedNotApplicable = 0;
@@ -1029,6 +1131,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
             skippedAlreadyApplied,
             skippedNotApplicable,
           },
+          priorityQueue: priorityQueueDiagnostics,
         };
       }
 

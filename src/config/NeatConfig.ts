@@ -402,6 +402,8 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       1,
       { min: 0 },
     ),
+    discoveryReplayPriorityEnabled: options.discoveryReplayPriorityEnabled ??
+      true,
     discoveryMinCandidatesPerCategory: (() => {
       const overrides = opts.discoveryMinCandidatesPerCategory as
         | Record<
