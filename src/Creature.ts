@@ -527,16 +527,31 @@ export class Creature implements CreatureInternal {
   /**
    * Activates the creature and traces the activity.
    *
+   * Issue #1314 - Input values are validated to be finite. Non-finite values
+   * (Infinity, -Infinity, NaN) will throw an error to prevent corruption.
+   *
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} feedbackLoop - Whether to use a feedback loop during activation.
    * @param {SparseConfig} sparseConfig - The sparse configuration for tracing.
    * @returns {Float32Array} The output values after activation.
+   * @throws {Error} If any input value is not finite.
    */
   activateAndTrace(
     input: Float32Array,
     feedbackLoop: boolean,
     sparseConfig: SparseConfig,
   ): Float32Array {
+    // Issue #1314: Validate that all input values are finite
+    for (let i = 0; i < input.length; i++) {
+      if (!Number.isFinite(input[i])) {
+        throw new Error(
+          `Input observation at index ${i} must be a finite number, got ${
+            input[i]
+          }`,
+        );
+      }
+    }
+
     // Issue #1193: For forward-only creatures, feedbackLoop has no effect since there
     // are no recurrent connections. Normalize to false for consistency and performance.
     const effectiveFeedbackLoop = this.forwardOnly === true
@@ -554,14 +569,29 @@ export class Creature implements CreatureInternal {
   /**
    * Activates the creature without calculating traces.
    *
+   * Issue #1314 - Input values are validated to be finite. Non-finite values
+   * (Infinity, -Infinity, NaN) will throw an error to prevent corruption.
+   *
    * @param {Float32Array} input - The input values for the creature.
    * @param {boolean} [feedbackLoop=false] - Whether to use a feedback loop during activation.
    * @returns {Float32Array} The output values after activation.
+   * @throws {Error} If any input value is not finite.
    */
   activate(
     input: Float32Array,
     feedbackLoop: boolean = false,
   ): Float32Array {
+    // Issue #1314: Validate that all input values are finite
+    for (let i = 0; i < input.length; i++) {
+      if (!Number.isFinite(input[i])) {
+        throw new Error(
+          `Input observation at index ${i} must be a finite number, got ${
+            input[i]
+          }`,
+        );
+      }
+    }
+
     // Issue #1193: For forward-only creatures, feedbackLoop has no effect since there
     // are no recurrent connections. Normalize to false for consistency and performance.
     const effectiveFeedbackLoop = this.forwardOnly === true

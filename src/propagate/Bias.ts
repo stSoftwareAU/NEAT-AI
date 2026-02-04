@@ -2,6 +2,13 @@ import type { NeuronState } from "../architecture/CreatureState.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
 import type { BackPropagationConfig } from "./BackPropagation.ts";
 
+/**
+ * Accumulates bias adjustments for a neuron during backpropagation.
+ *
+ * Issue #1314 - Non-finite pre-activation values are detected early and
+ * the accumulation is skipped to prevent corruption of the neuron state.
+ * This protects against Infinity, -Infinity, and NaN values.
+ */
 export function accumulateBias(
   ns: NeuronState,
   targetPreActivationValue: number,
@@ -9,10 +16,31 @@ export function accumulateBias(
   currentBias: number,
   config: BackPropagationConfig,
 ) {
+  // Issue #1314: Guard against non-finite inputs that would produce non-finite bias
+  if (
+    !Number.isFinite(targetPreActivationValue) ||
+    !Number.isFinite(preActivationValue) ||
+    !Number.isFinite(currentBias)
+  ) {
+    // Skip this accumulation to prevent state corruption
+    return;
+  }
+
   const biasDelta = targetPreActivationValue - preActivationValue;
 
-  ns.count++;
+  // Issue #1314: Guard against non-finite biasDelta (e.g., from extreme values)
+  if (!Number.isFinite(biasDelta)) {
+    return;
+  }
+
   const targetBias = currentBias + biasDelta;
+
+  // Issue #1314: Guard against non-finite targetBias
+  if (!Number.isFinite(targetBias)) {
+    return;
+  }
+
+  ns.count++;
   ns.totalBias += targetBias;
   ns.totalAdjustedBias += limitBias(targetBias, currentBias, config);
 }
@@ -110,6 +138,7 @@ export function limitBias(
 
 /**
  * Issue #1214 - Batch bias accumulation for 4 neurons simultaneously.
+ * Issue #1314 - Non-finite values are skipped to prevent state corruption.
  *
  * Processes 4 neurons in a single call, enabling potential SIMD optimisation
  * by V8 when processing mini-batches during backpropagation.
@@ -129,12 +158,31 @@ export function accumulateBiasBatch4Way(
 ) {
   // Process all 4 neurons - enables V8 SIMD optimisation with typed arrays
   for (let i = 0; i < 4; i++) {
-    const ns = nsArray[i];
-    const biasDelta = targetPreActivationValues[i] - preActivationValues[i];
+    const targetPreActivation = targetPreActivationValues[i];
+    const preActivation = preActivationValues[i];
     const currentBias = currentBiases[i];
 
-    ns.count++;
+    // Issue #1314: Skip non-finite values
+    if (
+      !Number.isFinite(targetPreActivation) ||
+      !Number.isFinite(preActivation) ||
+      !Number.isFinite(currentBias)
+    ) {
+      continue;
+    }
+
+    const biasDelta = targetPreActivation - preActivation;
+    if (!Number.isFinite(biasDelta)) {
+      continue;
+    }
+
     const targetBias = currentBias + biasDelta;
+    if (!Number.isFinite(targetBias)) {
+      continue;
+    }
+
+    const ns = nsArray[i];
+    ns.count++;
     ns.totalBias += targetBias;
     ns.totalAdjustedBias += limitBias(targetBias, currentBias, config);
   }
@@ -142,6 +190,7 @@ export function accumulateBiasBatch4Way(
 
 /**
  * Issue #1214 - Batch bias accumulation for 8 neurons simultaneously.
+ * Issue #1314 - Non-finite values are skipped to prevent state corruption.
  *
  * Processes 8 neurons in a single call, enabling potential SIMD optimisation
  * by V8 when processing mini-batches during backpropagation.
@@ -162,12 +211,31 @@ export function accumulateBiasBatch8Way(
 ) {
   // Process all 8 neurons - enables V8 SIMD optimisation with typed arrays
   for (let i = 0; i < 8; i++) {
-    const ns = nsArray[i];
-    const biasDelta = targetPreActivationValues[i] - preActivationValues[i];
+    const targetPreActivation = targetPreActivationValues[i];
+    const preActivation = preActivationValues[i];
     const currentBias = currentBiases[i];
 
-    ns.count++;
+    // Issue #1314: Skip non-finite values
+    if (
+      !Number.isFinite(targetPreActivation) ||
+      !Number.isFinite(preActivation) ||
+      !Number.isFinite(currentBias)
+    ) {
+      continue;
+    }
+
+    const biasDelta = targetPreActivation - preActivation;
+    if (!Number.isFinite(biasDelta)) {
+      continue;
+    }
+
     const targetBias = currentBias + biasDelta;
+    if (!Number.isFinite(targetBias)) {
+      continue;
+    }
+
+    const ns = nsArray[i];
+    ns.count++;
     ns.totalBias += targetBias;
     ns.totalAdjustedBias += limitBias(targetBias, currentBias, config);
   }

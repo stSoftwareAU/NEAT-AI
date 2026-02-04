@@ -46,7 +46,19 @@ export class NeuronState implements NeuronStateInterface {
     this.totalErrorAbsolute = 0;
   }
 
+  /**
+   * Traces an activation value, updating the min/max and total.
+   *
+   * Issue #1314 - Non-finite activation values are skipped to prevent
+   * corruption of the state. This protects against Infinity, -Infinity,
+   * and NaN values propagating through the network.
+   */
   traceActivation(activation: number) {
+    // Issue #1314: Skip non-finite values to prevent state corruption
+    if (!Number.isFinite(activation)) {
+      return;
+    }
+
     if (activation > this.maximumActivation) {
       this.maximumActivation = activation;
     }
