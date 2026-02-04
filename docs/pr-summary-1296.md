@@ -2,18 +2,26 @@
 
 ## Summary
 
-Issue #1296 requested streaming JSON parsing for creature serialisation to reduce memory pressure and improve I/O performance for large creatures (600+ neurons, 17k+ synapses).
+Issue #1296 requested streaming JSON parsing for creature serialisation to
+reduce memory pressure and improve I/O performance for large creatures (600+
+neurons, 17k+ synapses).
 
-This PR implements a **streaming creature I/O module** (`src/architecture/StreamingCreatureIO.ts`) that provides:
+This PR implements a **streaming creature I/O module**
+(`src/architecture/StreamingCreatureIO.ts`) that provides:
 
-1. **Incremental JSON writers** - Generator functions that yield JSON chunks for memory-efficient writing
-2. **Streaming file readers** - Chunked file reading to avoid loading entire files into memory
-3. **Sync and async variants** - Both synchronous and asynchronous APIs for different use cases
-4. **Discovery payload support** - Specialised functions for streaming discovery candidate payloads
+1. **Incremental JSON writers** - Generator functions that yield JSON chunks for
+   memory-efficient writing
+2. **Streaming file readers** - Chunked file reading to avoid loading entire
+   files into memory
+3. **Sync and async variants** - Both synchronous and asynchronous APIs for
+   different use cases
+4. **Discovery payload support** - Specialised functions for streaming discovery
+   candidate payloads
 
 ### Benchmark Results
 
-Benchmarks were run to compare traditional `JSON.stringify()` with the new streaming approach:
+Benchmarks were run to compare traditional `JSON.stringify()` with the new
+streaming approach:
 
 ```
 group small-creature
@@ -34,18 +42,25 @@ group large-creature
 
 ### Key Finding
 
-The benchmarks reveal that V8's `JSON.stringify()` is highly optimised and performs better than incremental writing for raw throughput. The streaming approach incurs overhead from multiple small write system calls.
+The benchmarks reveal that V8's `JSON.stringify()` is highly optimised and
+performs better than incremental writing for raw throughput. The streaming
+approach incurs overhead from multiple small write system calls.
 
 **However, the streaming approach provides value for:**
-- Memory-constrained environments where the full JSON string would cause memory pressure
+
+- Memory-constrained environments where the full JSON string would cause memory
+  pressure
 - Very large creatures where avoiding a large intermediate string is beneficial
 - Streaming reads that can process data before the entire file is loaded
 
 ### Implementation Decision
 
-Based on benchmark results, this PR provides the streaming infrastructure as a library but does **not** replace existing `JSON.stringify()` calls in the codebase. The traditional approach remains faster for typical creature sizes.
+Based on benchmark results, this PR provides the streaming infrastructure as a
+library but does **not** replace existing `JSON.stringify()` calls in the
+codebase. The traditional approach remains faster for typical creature sizes.
 
 The streaming module is available for:
+
 - Future use cases requiring memory-efficient I/O
 - Environments with strict memory constraints
 - Processing very large creatures (1000+ neurons)
@@ -55,6 +70,7 @@ The streaming module is available for:
 ### Benchmark Results
 
 See benchmark output above. Run benchmarks with:
+
 ```bash
 deno bench --allow-read --allow-write --allow-env --allow-ffi bench/StreamingCreatureIO.ts
 ```
@@ -62,6 +78,7 @@ deno bench --allow-read --allow-write --allow-env --allow-ffi bench/StreamingCre
 ### Test Coverage
 
 All 10 streaming I/O tests pass, verifying:
+
 - Round-trip serialisation preserves creature structure
 - Activation outputs match between original and loaded creatures
 - Tags, forwardOnly flag, and memetic data are preserved
