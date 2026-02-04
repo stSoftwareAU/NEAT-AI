@@ -1,10 +1,13 @@
 ## Summary
 
-Implements a priority-based discovery replay queue (Issue #1299) that orders candidates by expected improvement, processing the most promising discoveries first.
+Implements a priority-based discovery replay queue (Issue #1299) that orders
+candidates by expected improvement, processing the most promising discoveries
+first.
 
 ### Changes
 
-1. **New `PriorityDiscoveryQueue` class** (`src/discovery/PriorityDiscoveryQueue.ts`):
+1. **New `PriorityDiscoveryQueue` class**
+   (`src/discovery/PriorityDiscoveryQueue.ts`):
    - Max-heap structure for O(log n) enqueue/dequeue operations
    - Priority scoring based on:
      - Score delta from original discovery (base priority)
@@ -12,10 +15,12 @@ Implements a priority-based discovery replay queue (Issue #1299) that orders can
      - Failure counts for deprioritisation of unsuccessful types
    - Support for dynamic priority updates and deprioritisation
 
-2. **Updated `DiscoveryReplayRunner`** to use priority queue when `discoveryReplayPriorityEnabled` is true (default):
+2. **Updated `DiscoveryReplayRunner`** to use priority queue when
+   `discoveryReplayPriorityEnabled` is true (default):
    - Calculates success rates per change type from historical entries
    - Uses `calculatePriority()` to rank candidates by expected improvement
-   - Includes priority queue diagnostics when `discoveryReplayDiagnostics` is enabled
+   - Includes priority queue diagnostics when `discoveryReplayDiagnostics` is
+     enabled
 
 3. **New configuration option** `discoveryReplayPriorityEnabled`:
    - Defaults to `true` (enabled)
@@ -40,12 +45,14 @@ Implements a priority-based discovery replay queue (Issue #1299) that orders can
 ```
 
 The priority queue provides:
+
 - Similar performance to Array.sort for simple top-N selection
 - O(log n) dynamic priority updates (not possible with sorted arrays)
 - Early termination without sorting entire collection
 - Incremental processing capability
 
 ### Expected Impact
+
 - Better discoveries found earlier in evolution
 - Reduced time on low-value replays
 - Adaptive prioritisation based on historical success patterns
@@ -53,6 +60,7 @@ The priority queue provides:
 ## Test Plan
 
 ### Unit Tests Added
+
 - `test/discovery/PriorityDiscoveryQueue.ts` - 17 tests covering:
   - Enqueue/dequeue in priority order
   - Peek operation
@@ -64,6 +72,7 @@ The priority queue provides:
   - `calculatePriority()` function with various options
 
 ### Integration Tests Added
+
 - `test/discovery/PriorityDiscoveryReplay.ts` - 5 tests covering:
   - Priority queue usage when enabled
   - Fallback to simple sort when disabled
@@ -72,7 +81,11 @@ The priority queue provides:
   - Diagnostics recording
 
 ### Existing Tests Modified
-- `test/discovery/DiscoveryReplayRunnerVerifyScores.ts` - Updated to handle either `sortEntries` or `priorityQueueBuild` timing diagnostic
+
+- `test/discovery/DiscoveryReplayRunnerVerifyScores.ts` - Updated to handle
+  either `sortEntries` or `priorityQueueBuild` timing diagnostic
 
 ### Benchmark Added
-- `bench/PriorityDiscoveryQueue.ts` - Performance comparison of priority queue vs Array.sort
+
+- `bench/PriorityDiscoveryQueue.ts` - Performance comparison of priority queue
+  vs Array.sort

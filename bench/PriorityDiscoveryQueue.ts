@@ -15,7 +15,11 @@ import {
 } from "../src/discovery/PriorityDiscoveryQueue.ts";
 import type { SuccessCacheEntry } from "../src/discovery/SuccessCache.ts";
 
-function makeEntry(key: string, scoreDelta: number, changeType: string): SuccessCacheEntry {
+function makeEntry(
+  key: string,
+  scoreDelta: number,
+  changeType: string,
+): SuccessCacheEntry {
   return {
     key,
     changeType,
@@ -29,7 +33,12 @@ function makeEntry(key: string, scoreDelta: number, changeType: string): Success
 }
 
 function generateEntries(count: number): SuccessCacheEntry[] {
-  const changeTypes = ["add-synapses", "add-neurons", "change-squash", "remove-low-impact"];
+  const changeTypes = [
+    "add-synapses",
+    "add-neurons",
+    "change-squash",
+    "remove-low-impact",
+  ];
   return Array.from({ length: count }, (_, i) => {
     const changeType = changeTypes[i % changeTypes.length];
     const scoreDelta = 0.01 + Math.random() * 0.2;
@@ -109,7 +118,9 @@ Deno.bench("Array.sort: sort 1000 entries by scoreDelta", () => {
   entries.sort((a, b) => (b.scoreDelta ?? 0) - (a.scoreDelta ?? 0));
 });
 
-Deno.bench("PriorityQueue vs Array.sort: process top 100 from 1000", { group: "top-100" }, () => {
+Deno.bench("PriorityQueue vs Array.sort: process top 100 from 1000", {
+  group: "top-100",
+}, () => {
   const queue = new PriorityDiscoveryQueue();
   const entries = generateEntries(1000);
   const successRates = new Map([
@@ -133,7 +144,10 @@ Deno.bench("PriorityQueue vs Array.sort: process top 100 from 1000", { group: "t
   }
 });
 
-Deno.bench("Array.sort: process top 100 from 1000", { group: "top-100", baseline: true }, () => {
+Deno.bench("Array.sort: process top 100 from 1000", {
+  group: "top-100",
+  baseline: true,
+}, () => {
   const entries = generateEntries(1000);
   const successRates = new Map([
     ["add-synapses", 0.8],
@@ -155,21 +169,24 @@ Deno.bench("Array.sort: process top 100 from 1000", { group: "top-100", baseline
 });
 
 // Benchmark: Update priority operation
-Deno.bench("PriorityDiscoveryQueue: update 100 priorities in 1000-item queue", () => {
-  const queue = new PriorityDiscoveryQueue();
-  const entries = generateEntries(1000);
+Deno.bench(
+  "PriorityDiscoveryQueue: update 100 priorities in 1000-item queue",
+  () => {
+    const queue = new PriorityDiscoveryQueue();
+    const entries = generateEntries(1000);
 
-  for (const entry of entries) {
-    queue.enqueue(entry, entry.scoreDelta ?? 0);
-  }
+    for (const entry of entries) {
+      queue.enqueue(entry, entry.scoreDelta ?? 0);
+    }
 
-  // Update 100 random priorities
-  for (let i = 0; i < 100; i++) {
-    const key = `entry-${Math.floor(Math.random() * 1000)}`;
-    const newPriority = Math.random() * 0.3;
-    queue.updatePriority(key, newPriority);
-  }
-});
+    // Update 100 random priorities
+    for (let i = 0; i < 100; i++) {
+      const key = `entry-${Math.floor(Math.random() * 1000)}`;
+      const newPriority = Math.random() * 0.3;
+      queue.updatePriority(key, newPriority);
+    }
+  },
+);
 
 // Benchmark: Realistic workload - simulate replay scenario
 Deno.bench("Realistic: replay with 200 entries selecting top 20", () => {
