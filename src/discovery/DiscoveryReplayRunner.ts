@@ -23,6 +23,14 @@ import type { Creature } from "../Creature.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { formatWeight } from "./FailureCache.ts";
 import {
+  calculatePriority,
+  dequeueAll,
+  enqueue,
+  makeEmptyQueue,
+  type PriorityDiscoveryQueue,
+  updateSuccessRate,
+} from "./PriorityDiscoveryQueue.ts";
+import {
   archiveSuccessByKeySync,
   listSuccessEntriesSync,
   type SuccessCacheEntry,
@@ -759,7 +767,10 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         );
       };
 
-      // Load cache entries and prioritise by historical delta.
+      // Load cache entries and prioritise using the priority queue (Issue #1299).
+      // The priority queue orders candidates by expected improvement based on:
+      // - Score delta from original discovery (primary factor)
+      // - Historical success rate for the candidate's change type
       const listStart = diagnosticsEnabled ? performance.now() : 0;
       const allEntries = deps.listEntries(successCacheDir)
         .filter((e) =>
@@ -770,14 +781,21 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
       if (timingsMS) timingsMS.listEntries = performance.now() - listStart;
 
       const sortStart = diagnosticsEnabled ? performance.now() : 0;
-      allEntries.sort((a, b) => {
-        const aDelta = safeNumber(a.scoreDelta) ?? 0;
-        const bDelta = safeNumber(b.scoreDelta) ?? 0;
-        return bDelta - aDelta;
-      });
+      // Build a priority queue with all entries
+      let priorityQueue: PriorityDiscoveryQueue = makeEmptyQueue();
+      for (const entry of allEntries) {
+        const priority = calculatePriority(entry, {
+          successRates: priorityQueue.successRates,
+        });
+        priorityQueue = enqueue(priorityQueue, entry, priority);
+      }
+
+      // Dequeue all entries in priority order
+      const [prioritisedCandidates] = dequeueAll(priorityQueue);
+      const sortedEntries = prioritisedCandidates.map((pc) => pc.entry);
       if (timingsMS) timingsMS.sortEntries = performance.now() - sortStart;
 
-      const selectedEntries = allEntries.slice(
+      const selectedEntries = sortedEntries.slice(
         0,
         config.discoveryReplayMaxSingles,
       );
@@ -864,6 +882,19 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
       const failedSingles = singleResults.filter((r) =>
         r.score <= originalEval.score
       );
+
+      // Update success rates for future priority calculations (Issue #1299).
+      // This helps refine priority scoring by tracking which change types
+      // are more likely to succeed.
+      for (const result of singleResults) {
+        const succeeded = result.score > originalEval.score;
+        priorityQueue = updateSuccessRate(
+          priorityQueue,
+          result.entry.changeType,
+          succeeded,
+        );
+      }
+
       for (const failed of failedSingles) {
         // Archive obsolete entries instead of deleting them to preserve history
         deps.archiveEntry(successCacheDir, failed.entry);
