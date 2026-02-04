@@ -217,6 +217,17 @@ function parseClaimedTagNumber(
   return undefined;
 }
 
+/**
+ * Whether a claimed score (e.g. from tags) differs meaningfully from a re-computed score.
+ * Uses a relaxed relative threshold so we do not report drift from normal floating-point
+ * and string round-trip noise.
+ *
+ * Post-WASM migration, small differences are expected because: (1) WASM activation uses
+ * f32 in Rust, so results can differ at the last few bits from pre-migration f64 JS or
+ * between main-thread and worker WASM instances; (2) worker evaluation rebuilds the
+ * creature from JSON, so weight/bias round-trip can introduce sub-ulp differences;
+ * (3) the claimed score is stored via number.toString(), which can round when parsed back.
+ */
 function scoreMeaningfullyDifferent(
   claimed: number | undefined,
   actual: number,
@@ -226,7 +237,7 @@ function scoreMeaningfullyDifferent(
   const absDiff = Math.abs(claimed - actual);
   if (absDiff <= 1e-12) return false;
   const denom = Math.max(1, Math.abs(claimed), Math.abs(actual));
-  return absDiff / denom > 1e-9;
+  return absDiff / denom > 1e-6;
 }
 
 async function mapConcurrent<TIn, TOut>(
