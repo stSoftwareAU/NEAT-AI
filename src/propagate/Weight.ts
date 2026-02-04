@@ -4,6 +4,13 @@ import type { Synapse } from "../architecture/Synapse.ts";
 import type { BackPropagationConfig } from "./BackPropagation.ts";
 import type { SynapseState } from "./SynapseState.ts";
 
+/**
+ * Accumulates weight adjustments for a synapse during backpropagation.
+ *
+ * Issue #1314 - Non-finite activation and target values are detected early
+ * and the accumulation is skipped to prevent corruption of the synapse state.
+ * This protects against Infinity, -Infinity, and NaN values.
+ */
 export function accumulateWeight(
   currentWeight: number,
   cs: SynapseState,
@@ -11,6 +18,16 @@ export function accumulateWeight(
   activation: number,
   config: BackPropagationConfig,
 ) {
+  // Issue #1314: Guard against non-finite inputs that would produce non-finite weights
+  if (
+    !Number.isFinite(activation) ||
+    !Number.isFinite(targetValue) ||
+    !Number.isFinite(currentWeight)
+  ) {
+    // Skip this accumulation to prevent state corruption
+    return;
+  }
+
   const sign = Math.sign(activation) || 1; // Maintain sign, defaulting to 1 if activation is zero.
   let tmpActivation = activation;
 
@@ -26,6 +43,11 @@ export function accumulateWeight(
 
   // Calculate a preliminary weight based on the adjusted values.
   const tmpWeight = tmpValue / tmpActivation;
+
+  // Issue #1314: Guard against non-finite calculated weight
+  if (!Number.isFinite(tmpWeight)) {
+    return;
+  }
 
   // Adjust the weight with limiting.
   const adjustedLimitedWeight = limitWeight(tmpWeight, currentWeight, config);
@@ -159,6 +181,7 @@ export function limitWeight(
 
 /**
  * Issue #1214 - Batch weight accumulation for 4 synapses simultaneously.
+ * Issue #1314 - Non-finite values are skipped to prevent state corruption.
  *
  * Processes 4 synapses in a single call, enabling potential SIMD optimisation
  * by V8 when processing mini-batches during backpropagation.
@@ -183,6 +206,16 @@ export function accumulateWeightBatch4Way(
     const activation = activations[i];
     const currentWeight = currentWeights[i];
     const targetValue = targetValues[i];
+
+    // Issue #1314: Skip non-finite values
+    if (
+      !Number.isFinite(activation) ||
+      !Number.isFinite(currentWeight) ||
+      !Number.isFinite(targetValue)
+    ) {
+      continue;
+    }
+
     const cs = csArray[i];
 
     const sign = Math.sign(activation) || 1;
@@ -200,6 +233,11 @@ export function accumulateWeightBatch4Way(
 
     // Calculate a preliminary weight based on the adjusted values.
     const tmpWeight = tmpValue / tmpActivation;
+
+    // Issue #1314: Skip if calculated weight is non-finite
+    if (!Number.isFinite(tmpWeight)) {
+      continue;
+    }
 
     // Adjust the weight with limiting.
     const adjustedLimitedWeight = limitWeight(tmpWeight, currentWeight, config);
@@ -225,6 +263,7 @@ export function accumulateWeightBatch4Way(
 
 /**
  * Issue #1214 - Batch weight accumulation for 8 synapses simultaneously.
+ * Issue #1314 - Non-finite values are skipped to prevent state corruption.
  *
  * Processes 8 synapses in a single call, enabling potential SIMD optimisation
  * by V8 when processing mini-batches during backpropagation.
@@ -250,6 +289,16 @@ export function accumulateWeightBatch8Way(
     const activation = activations[i];
     const currentWeight = currentWeights[i];
     const targetValue = targetValues[i];
+
+    // Issue #1314: Skip non-finite values
+    if (
+      !Number.isFinite(activation) ||
+      !Number.isFinite(currentWeight) ||
+      !Number.isFinite(targetValue)
+    ) {
+      continue;
+    }
+
     const cs = csArray[i];
 
     const sign = Math.sign(activation) || 1;
@@ -267,6 +316,11 @@ export function accumulateWeightBatch8Way(
 
     // Calculate a preliminary weight based on the adjusted values.
     const tmpWeight = tmpValue / tmpActivation;
+
+    // Issue #1314: Skip if calculated weight is non-finite
+    if (!Number.isFinite(tmpWeight)) {
+      continue;
+    }
 
     // Adjust the weight with limiting.
     const adjustedLimitedWeight = limitWeight(tmpWeight, currentWeight, config);
