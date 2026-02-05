@@ -9,6 +9,7 @@ import type { MutationInterface } from "../NEAT/MutationInterface.ts";
 import type { RequiredPlateauDetectionConfig } from "../NEAT/PlateauDetector.ts";
 import type { RequiredAdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
+import type { RequiredStabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
 
 /**
  * Concrete, fully-populated configuration shape used internally after defaults
@@ -397,4 +398,27 @@ export interface NeatArguments {
    * - enabled: Whether plateau detection is active (default: false)
    */
   plateauDetection: RequiredPlateauDetectionConfig;
+
+  /**
+   * Stability-based mutation adaptation configuration.
+   *
+   * Issue #1307: Reduce brittleness by adapting mutation rates based on
+   * validation stability. This tracks mutation outcomes per creature and
+   * adjusts mutation strategies for creatures producing brittle offspring.
+   *
+   * When enabled:
+   * - Tracks success rate of recent mutations per creature
+   * - Distinguishes between "failed validation" vs "passed but brittle"
+   * - Reduces mutation magnitude for creatures producing brittle offspring
+   * - Increases exploration for creatures with stable mutations
+   * - Factors stability into parent selection during breeding
+   *
+   * Configuration options:
+   * - enabled: Whether stability adaptation is active (default: false)
+   * - stabilityWindowSize: Rolling window size for tracking outcomes (default: 20)
+   * - brittlenessThreshold: Threshold for considering a creature brittle (default: 0.3)
+   * - brittleReductionFactor: Mutation rate reduction for brittle creatures (default: 0.5)
+   * - selectionStabilityWeight: Weight given to stability in parent selection (default: 0.2)
+   */
+  stabilityAdaptation: RequiredStabilityAdaptationConfig;
 }

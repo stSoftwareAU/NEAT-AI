@@ -16,6 +16,10 @@ import {
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
 import { parseDiscoverySampleRate, parseNumber } from "./ParseOptions.ts";
+import {
+  DEFAULT_STABILITY_ADAPTATION_CONFIG,
+  type RequiredStabilityAdaptationConfig,
+} from "./StabilityAdaptationConfig.ts";
 
 /**
  * Default cost of growth value used when not specified in options.
@@ -506,6 +510,68 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
           ? overrides.enabled
           : d.enabled,
       } as RequiredPlateauDetectionConfig;
+    })(),
+    // Issue #1307: Stability-based mutation adaptation configuration
+    stabilityAdaptation: (() => {
+      const overrides = opts.stabilityAdaptation as
+        | Record<string, unknown>
+        | undefined;
+      const d = DEFAULT_STABILITY_ADAPTATION_CONFIG;
+      return {
+        enabled: typeof overrides?.enabled === "boolean"
+          ? overrides.enabled
+          : d.enabled,
+        stabilityWindowSize: parseNumber(
+          "Stability adaptation windowSize",
+          overrides?.stabilityWindowSize,
+          d.stabilityWindowSize,
+          { integer: true, min: 1 },
+        ),
+        brittlenessThreshold: parseNumber(
+          "Stability adaptation brittlenessThreshold",
+          overrides?.brittlenessThreshold,
+          d.brittlenessThreshold,
+          { min: 0, max: 1 },
+        ),
+        brittleReductionFactor: parseNumber(
+          "Stability adaptation brittleReductionFactor",
+          overrides?.brittleReductionFactor,
+          d.brittleReductionFactor,
+          { min: 0, max: 1 },
+        ),
+        stableBoostFactor: parseNumber(
+          "Stability adaptation stableBoostFactor",
+          overrides?.stableBoostFactor,
+          d.stableBoostFactor,
+          { min: 1 },
+        ),
+        stableBoostThreshold: parseNumber(
+          "Stability adaptation stableBoostThreshold",
+          overrides?.stableBoostThreshold,
+          d.stableBoostThreshold,
+          { min: 0, max: 1 },
+        ),
+        selectionStabilityWeight: parseNumber(
+          "Stability adaptation selectionStabilityWeight",
+          overrides?.selectionStabilityWeight,
+          d.selectionStabilityWeight,
+          { min: 0, max: 1 },
+        ),
+        adaptiveSelectionWeight: typeof overrides?.adaptiveSelectionWeight ===
+            "boolean"
+          ? overrides.adaptiveSelectionWeight
+          : d.adaptiveSelectionWeight,
+        topologyMutationReductionForBrittle: parseNumber(
+          "Stability adaptation topologyMutationReductionForBrittle",
+          overrides?.topologyMutationReductionForBrittle,
+          d.topologyMutationReductionForBrittle,
+          { min: 0, max: 1 },
+        ),
+        trackPerMutationType: typeof overrides?.trackPerMutationType ===
+            "boolean"
+          ? overrides.trackPerMutationType
+          : d.trackPerMutationType,
+      } as RequiredStabilityAdaptationConfig;
     })(),
   };
   validate(config);

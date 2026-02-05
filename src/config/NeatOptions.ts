@@ -2,6 +2,7 @@ import type { AdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
 import type { PlateauDetectionConfig } from "../NEAT/PlateauDetector.ts";
+import type { StabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
 export type CoerceNumeric<T> = T extends number ? number | string
@@ -53,8 +54,8 @@ type NumericOptionKeys =
 /**
  * Options for NEAT configuration.
  * All properties are optional; defaults are applied in createNeatConfig().
- * For discoveryMinCandidatesPerCategory, adaptiveMutationThresholds, and plateauDetection,
- * you can specify partial overrides and defaults will be merged in.
+ * For discoveryMinCandidatesPerCategory, adaptiveMutationThresholds, plateauDetection,
+ * and stabilityAdaptation, you can specify partial overrides and defaults will be merged in.
  */
 export type NeatOptions =
   & Omit<
@@ -62,6 +63,7 @@ export type NeatOptions =
     | "discoveryMinCandidatesPerCategory"
     | "adaptiveMutationThresholds"
     | "plateauDetection"
+    | "stabilityAdaptation"
   >
   & {
     /** Partial overrides for minimum candidates per category (defaults applied if not specified) */
@@ -70,6 +72,8 @@ export type NeatOptions =
     adaptiveMutationThresholds?: AdaptiveMutationThresholds;
     /** Partial overrides for plateau detection configuration (defaults applied if not specified) */
     plateauDetection?: PlateauDetectionConfig;
+    /** Partial overrides for stability adaptation configuration (defaults applied if not specified) */
+    stabilityAdaptation?: StabilityAdaptationConfig;
   };
 
 /**
@@ -96,6 +100,7 @@ export type NeatOptionsInput =
     | "discoveryMinCandidatesPerCategory"
     | "adaptiveMutationThresholds"
     | "plateauDetection"
+    | "stabilityAdaptation"
   >
   & {
     [K in NumericOptionKeys]?: NonNullable<NeatOptions[K]> extends number
@@ -108,4 +113,5 @@ export type NeatOptionsInput =
     >;
     adaptiveMutationThresholds?: CoerceNumeric<AdaptiveMutationThresholds>;
     plateauDetection?: CoerceNumeric<PlateauDetectionConfig>;
+    stabilityAdaptation?: CoerceNumeric<StabilityAdaptationConfig>;
   };
