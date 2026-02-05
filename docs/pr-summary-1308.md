@@ -2,11 +2,15 @@
 
 ## Overview
 
-This PR implements enhanced discovery candidate validation with holdout testing and brittleness scoring as part of the "Brilliant but Brittle" initiative. The goal is to strengthen validation of discovery candidates to catch brittleness before integration.
+This PR implements enhanced discovery candidate validation with holdout testing
+and brittleness scoring as part of the "Brilliant but Brittle" initiative. The
+goal is to strengthen validation of discovery candidates to catch brittleness
+before integration.
 
 ## Problem Statement
 
 Discovery candidates may pass initial validation but fail in production due to:
+
 - Overfitting to the validation set
 - Sensitivity to input distributions not in the test set
 - Edge cases not represented in validation data
@@ -17,15 +21,18 @@ Discovery candidates may pass initial validation but fail in production due to:
 
 #### 1. HoldoutValidator (`src/discovery/HoldoutValidator.ts`)
 
-Reserves a portion of training data unseen during discovery to validate candidates.
+Reserves a portion of training data unseen during discovery to validate
+candidates.
 
 **Key Features:**
+
 - Configurable holdout percentage (default: 20%)
 - Seeded random splitting for reproducibility
 - Performance gap detection (holdout error - training error)
 - Rejection when performance gap exceeds threshold
 
 **API:**
+
 ```typescript
 const validator = new HoldoutValidator({
   holdoutPercentage: 0.2,
@@ -41,12 +48,14 @@ const result = validator.validateWithGap(creature, trainingDir, holdoutDir);
 Tests candidates with perturbed inputs and measures output variance.
 
 **Key Features:**
+
 - Configurable perturbation magnitude
 - Multiple perturbations per input for statistical validity
 - Brittleness score combining mean output change and variance
 - Rejection when brittleness exceeds threshold
 
 **API:**
+
 ```typescript
 const scorer = new BrittlenessScorer({
   perturbationMagnitude: 0.1,
@@ -63,12 +72,14 @@ const result = scorer.computeBrittleness(creature, sampleInputs);
 Combines holdout validation and brittleness scoring into a unified validator.
 
 **Key Features:**
+
 - Runs both checks (when enabled)
 - Computes combined brittleness score
 - Verbose logging for analysis
 - Batch validation support
 
 **API:**
+
 ```typescript
 const validator = new EnhancedDiscoveryValidator({
   holdout: { enabled: true, holdoutPercentage: 0.2 },
@@ -84,12 +95,14 @@ const result = validator.validateCandidate(baseCreature, candidate, dataDir);
 #### BatchDiscoveryValidator Updates
 
 The existing `BatchDiscoveryValidator` has been extended with:
+
 - New options for holdout and brittleness configuration
 - `validateBatchWithEnhanced()` method that runs enhanced validation
 - `isEnhancedValidationEnabled()` helper method
 - Enhanced rejection statistics tracking
 
 **Usage:**
+
 ```typescript
 const validator = new BatchDiscoveryValidator({
   feedbackLoop: false,
@@ -113,23 +126,23 @@ const results = validator.validateBatchWithEnhanced(baseCreature, candidates);
 
 ### Holdout Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | false | Enable holdout validation |
-| `holdoutPercentage` | number | 0.2 | Portion of data to reserve |
-| `seed` | number | random | Seed for deterministic splitting |
-| `maxPerformanceGap` | number | ∞ | Maximum allowed performance gap |
-| `costName` | string | "MSE" | Cost function for evaluation |
+| Option              | Type    | Default | Description                      |
+| ------------------- | ------- | ------- | -------------------------------- |
+| `enabled`           | boolean | false   | Enable holdout validation        |
+| `holdoutPercentage` | number  | 0.2     | Portion of data to reserve       |
+| `seed`              | number  | random  | Seed for deterministic splitting |
+| `maxPerformanceGap` | number  | ∞       | Maximum allowed performance gap  |
+| `costName`          | string  | "MSE"   | Cost function for evaluation     |
 
 ### Brittleness Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | false | Enable brittleness scoring |
-| `perturbationMagnitude` | number | 0.1 | Max perturbation size (0-1) |
-| `perturbationsPerInput` | number | 5 | Number of perturbations per input |
-| `seed` | number | random | Seed for deterministic perturbations |
-| `brittlenessThreshold` | number | ∞ | Maximum allowed brittleness score |
+| Option                  | Type    | Default | Description                          |
+| ----------------------- | ------- | ------- | ------------------------------------ |
+| `enabled`               | boolean | false   | Enable brittleness scoring           |
+| `perturbationMagnitude` | number  | 0.1     | Max perturbation size (0-1)          |
+| `perturbationsPerInput` | number  | 5       | Number of perturbations per input    |
+| `seed`                  | number  | random  | Seed for deterministic perturbations |
+| `brittlenessThreshold`  | number  | ∞       | Maximum allowed brittleness score    |
 
 ## Test Coverage
 
@@ -143,6 +156,7 @@ Total: 44 passing tests
 ## Files Changed
 
 ### New Files
+
 - `src/discovery/HoldoutValidator.ts`
 - `src/discovery/BrittlenessScorer.ts`
 - `src/discovery/EnhancedDiscoveryValidator.ts`
@@ -151,6 +165,7 @@ Total: 44 passing tests
 - `test/discovery/EnhancedDiscoveryValidator.ts`
 
 ### Modified Files
+
 - `src/discovery/BatchDiscoveryValidator.ts`
 - `test/discovery/BatchDiscoveryValidator.ts`
 
@@ -163,5 +178,6 @@ Total: 44 passing tests
 
 ## Related Issues
 
-- Issue #1308: Reduce brittleness: Enhanced discovery candidate validation with holdout testing
+- Issue #1308: Reduce brittleness: Enhanced discovery candidate validation with
+  holdout testing
 - Part of the "Brilliant but Brittle" initiative
