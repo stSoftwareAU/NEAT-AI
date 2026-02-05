@@ -3,6 +3,7 @@ import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidates
 import type { NeatArguments } from "./NeatArguments.ts";
 import type { PlateauDetectionConfig } from "../NEAT/PlateauDetector.ts";
 import type { StabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
+import type { WeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
 export type CoerceNumeric<T> = T extends number ? number | string
@@ -64,6 +65,7 @@ export type NeatOptions =
     | "adaptiveMutationThresholds"
     | "plateauDetection"
     | "stabilityAdaptation"
+    | "weightRegularisation"
   >
   & {
     /** Partial overrides for minimum candidates per category (defaults applied if not specified) */
@@ -74,6 +76,8 @@ export type NeatOptions =
     plateauDetection?: PlateauDetectionConfig;
     /** Partial overrides for stability adaptation configuration (defaults applied if not specified) */
     stabilityAdaptation?: StabilityAdaptationConfig;
+    /** Partial overrides for weight regularisation configuration (defaults applied if not specified) */
+    weightRegularisation?: WeightRegularisationConfig;
   };
 
 /**
@@ -101,6 +105,7 @@ export type NeatOptionsInput =
     | "adaptiveMutationThresholds"
     | "plateauDetection"
     | "stabilityAdaptation"
+    | "weightRegularisation"
   >
   & {
     [K in NumericOptionKeys]?: NonNullable<NeatOptions[K]> extends number
@@ -114,4 +119,5 @@ export type NeatOptionsInput =
     adaptiveMutationThresholds?: CoerceNumeric<AdaptiveMutationThresholds>;
     plateauDetection?: CoerceNumeric<PlateauDetectionConfig>;
     stabilityAdaptation?: CoerceNumeric<StabilityAdaptationConfig>;
+    weightRegularisation?: CoerceNumeric<WeightRegularisationConfig>;
   };

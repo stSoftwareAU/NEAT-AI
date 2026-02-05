@@ -133,7 +133,8 @@ export class Mutator {
       case Mutation.MOD_WEIGHT.name: {
         let instance = this.modWeightCache.get(creature);
         if (!instance) {
-          instance = new ModWeight(creature);
+          // Issue #1309: Pass weight regularisation config to ModWeight
+          instance = new ModWeight(creature, this.config.weightRegularisation);
           this.modWeightCache.set(creature, instance);
         }
         return instance;
