@@ -198,6 +198,7 @@
     "codegen",
     "MINSTD",
     "unregularised",
-    "Unregularised"
+    "Unregularised",
+    "finaliser"
   ]
 }
