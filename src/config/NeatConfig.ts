@@ -14,6 +14,10 @@ import {
   type RequiredAdaptiveMutationThresholds,
 } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
+import {
+  DEFAULT_ENSEMBLE_DIVERSITY_CONFIG,
+  type RequiredEnsembleDiversityConfig,
+} from "./EnsembleDiversityConfig.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
 import { parseDiscoverySampleRate, parseNumber } from "./ParseOptions.ts";
 import {
@@ -615,6 +619,70 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
           { min: 0, max: 1 },
         ),
       } as RequiredWeightRegularisationConfig;
+    })(),
+    // Issue #1310: Ensemble diversity scoring for species
+    ensembleDiversity: (() => {
+      const overrides = opts.ensembleDiversity as
+        | Record<string, unknown>
+        | undefined;
+      const d = DEFAULT_ENSEMBLE_DIVERSITY_CONFIG;
+      return {
+        enabled: typeof overrides?.enabled === "boolean"
+          ? overrides.enabled
+          : d.enabled,
+        diversityWeight: parseNumber(
+          "Ensemble diversity diversityWeight",
+          overrides?.diversityWeight,
+          d.diversityWeight,
+          { min: 0, max: 1 },
+        ),
+        weightVarianceWeight: parseNumber(
+          "Ensemble diversity weightVarianceWeight",
+          overrides?.weightVarianceWeight,
+          d.weightVarianceWeight,
+          { min: 0, max: 1 },
+        ),
+        squashEntropyWeight: parseNumber(
+          "Ensemble diversity squashEntropyWeight",
+          overrides?.squashEntropyWeight,
+          d.squashEntropyWeight,
+          { min: 0, max: 1 },
+        ),
+        topologyDiversityWeight: parseNumber(
+          "Ensemble diversity topologyDiversityWeight",
+          overrides?.topologyDiversityWeight,
+          d.topologyDiversityWeight,
+          { min: 0, max: 1 },
+        ),
+        protectDiverseLowPerformers:
+          typeof overrides?.protectDiverseLowPerformers === "boolean"
+            ? overrides.protectDiverseLowPerformers
+            : d.protectDiverseLowPerformers,
+        diversityProtectionThreshold: parseNumber(
+          "Ensemble diversity diversityProtectionThreshold",
+          overrides?.diversityProtectionThreshold,
+          d.diversityProtectionThreshold,
+          { min: 0, max: 1 },
+        ),
+        crossSpeciesBreedingThreshold: parseNumber(
+          "Ensemble diversity crossSpeciesBreedingThreshold",
+          overrides?.crossSpeciesBreedingThreshold,
+          d.crossSpeciesBreedingThreshold,
+          { min: 0, max: 1 },
+        ),
+        lowDiversityThreshold: parseNumber(
+          "Ensemble diversity lowDiversityThreshold",
+          overrides?.lowDiversityThreshold,
+          d.lowDiversityThreshold,
+          { min: 0, max: 1 },
+        ),
+        diverseParentPreferenceWeight: parseNumber(
+          "Ensemble diversity diverseParentPreferenceWeight",
+          overrides?.diverseParentPreferenceWeight,
+          d.diverseParentPreferenceWeight,
+          { min: 0, max: 1 },
+        ),
+      } as RequiredEnsembleDiversityConfig;
     })(),
   };
   validate(config);

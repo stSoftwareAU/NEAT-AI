@@ -1,5 +1,6 @@
 import type { AdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
+import type { EnsembleDiversityConfig } from "./EnsembleDiversityConfig.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
 import type { PlateauDetectionConfig } from "../NEAT/PlateauDetector.ts";
 import type { StabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
@@ -66,6 +67,7 @@ export type NeatOptions =
     | "plateauDetection"
     | "stabilityAdaptation"
     | "weightRegularisation"
+    | "ensembleDiversity"
   >
   & {
     /** Partial overrides for minimum candidates per category (defaults applied if not specified) */
@@ -78,6 +80,8 @@ export type NeatOptions =
     stabilityAdaptation?: StabilityAdaptationConfig;
     /** Partial overrides for weight regularisation configuration (defaults applied if not specified) */
     weightRegularisation?: WeightRegularisationConfig;
+    /** Partial overrides for ensemble diversity configuration (defaults applied if not specified) */
+    ensembleDiversity?: EnsembleDiversityConfig;
   };
 
 /**
@@ -106,6 +110,7 @@ export type NeatOptionsInput =
     | "plateauDetection"
     | "stabilityAdaptation"
     | "weightRegularisation"
+    | "ensembleDiversity"
   >
   & {
     [K in NumericOptionKeys]?: NonNullable<NeatOptions[K]> extends number
@@ -120,4 +125,5 @@ export type NeatOptionsInput =
     plateauDetection?: CoerceNumeric<PlateauDetectionConfig>;
     stabilityAdaptation?: CoerceNumeric<StabilityAdaptationConfig>;
     weightRegularisation?: CoerceNumeric<WeightRegularisationConfig>;
+    ensembleDiversity?: CoerceNumeric<EnsembleDiversityConfig>;
   };

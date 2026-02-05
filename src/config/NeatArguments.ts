@@ -9,6 +9,7 @@ import type { MutationInterface } from "../NEAT/MutationInterface.ts";
 import type { RequiredPlateauDetectionConfig } from "../NEAT/PlateauDetector.ts";
 import type { RequiredAdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
+import type { RequiredEnsembleDiversityConfig } from "./EnsembleDiversityConfig.ts";
 import type { RequiredStabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 
@@ -446,4 +447,29 @@ export interface NeatArguments {
    * - smallChangeScale: Scale factor for small change preference (default: 0.5)
    */
   weightRegularisation: RequiredWeightRegularisationConfig;
+
+  /**
+   * Ensemble diversity scoring configuration for species management.
+   *
+   * Issue #1310: Reduce brittleness by encouraging species diversity to avoid
+   * over-reliance on "brilliant but brittle" high-performers.
+   *
+   * When enabled:
+   * - Measures diversity within species using weight variance, squash entropy,
+   *   and topology diversity
+   * - Adjusts fitness scores to reward diversity contribution
+   * - Optionally protects diverse low-performers from culling
+   * - Triggers cross-species breeding when diversity is too low
+   * - Prefers diverse parent combinations during selection
+   *
+   * Configuration options:
+   * - enabled: Whether ensemble diversity scoring is active (default: false)
+   * - diversityWeight: Weight given to diversity in fitness adjustment (default: 0.15)
+   * - weightVarianceWeight: Weight for weight variance metric (default: 0.4)
+   * - squashEntropyWeight: Weight for squash entropy metric (default: 0.3)
+   * - topologyDiversityWeight: Weight for topology diversity metric (default: 0.3)
+   * - protectDiverseLowPerformers: Protect diverse creatures from culling (default: false)
+   * - crossSpeciesBreedingThreshold: Trigger cross-species breeding below this (default: 0.2)
+   */
+  ensembleDiversity: RequiredEnsembleDiversityConfig;
 }
