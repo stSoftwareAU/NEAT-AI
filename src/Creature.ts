@@ -63,6 +63,10 @@ import {
   resolveWasmSquashName,
   WasmCreatureActivation,
 } from "./wasm/mod.ts";
+import {
+  evictOldestWasmCreatureActivations,
+  noteWasmCreatureActivationUse,
+} from "./wasm/WasmCreatureActivationLRU.ts";
 
 interface CreatureOptions {
   semanticVersion?: string;
@@ -647,6 +651,14 @@ export class Creature implements CreatureInternal {
       // Try to get from cache first (uses topology hash for cache key)
       this.cachedWasmActivation = getOrCompileWasmModule(this) ?? undefined;
 
+      // Issue #1338: Under memory pressure (common in long-running parallel data-gen),
+      // instantiating `CompiledNetwork` can trap. Best-effort: evict old cached WASM
+      // activations and retry once before failing fast.
+      if (!this.cachedWasmActivation) {
+        evictOldestWasmCreatureActivations(64);
+        this.cachedWasmActivation = getOrCompileWasmModule(this) ?? undefined;
+      }
+
       if (!this.cachedWasmActivation) {
         // At this point WASM was selected and eligibility was already checked.
         // Failing to instantiate the WASM network is unexpected; fail fast rather
@@ -669,6 +681,8 @@ export class Creature implements CreatureInternal {
         !forwardOnlyGuaranteed,
       );
     }
+
+    noteWasmCreatureActivationUse(this);
 
     // `activate()` should be fast and output-only.
     // Tracing/state backfill belongs in `activateAndTrace()`.
@@ -701,12 +715,20 @@ export class Creature implements CreatureInternal {
       // Try to get from cache first (uses topology hash for cache key)
       this.cachedWasmActivation = getOrCompileWasmModule(this) ?? undefined;
 
+      // Issue #1338: Best-effort eviction + retry under memory pressure.
+      if (!this.cachedWasmActivation) {
+        evictOldestWasmCreatureActivations(64);
+        this.cachedWasmActivation = getOrCompileWasmModule(this) ?? undefined;
+      }
+
       if (!this.cachedWasmActivation) {
         fail(
           "WASM activateAndTrace was selected but failed to instantiate CompiledNetwork",
         );
       }
     }
+
+    noteWasmCreatureActivationUse(this);
 
     // Prepare state for activation
     this.prepareNeurons();
@@ -2204,6 +2226,13 @@ export class Creature implements CreatureInternal {
       const compiled = compileCreatureToWasm(this);
       this.cachedWasmActivation = WasmCreatureActivation.create(compiled) ??
         undefined;
+
+      // Issue #1338: Best-effort eviction + retry under memory pressure.
+      if (!this.cachedWasmActivation) {
+        evictOldestWasmCreatureActivations(64);
+        this.cachedWasmActivation = WasmCreatureActivation.create(compiled) ??
+          undefined;
+      }
       if (!this.cachedWasmActivation) {
         fail(
           "WASM activation was selected but failed to instantiate CompiledNetwork",
@@ -2213,6 +2242,8 @@ export class Creature implements CreatureInternal {
         !forwardOnlyGuaranteed,
       );
     }
+
+    noteWasmCreatureActivationUse(this);
 
     // Pre-allocate a reusable output buffer for non-fused scoring.
     const outputBuffer = new Float32Array(this.output);

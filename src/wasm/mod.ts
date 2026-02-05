@@ -64,3 +64,9 @@ export {
   setWasmCompilationCacheSize,
   type WasmCacheStats,
 } from "./WasmCompilationCache.ts";
+
+// Issue #1338 - Bound cached WASM activations under memory pressure
+export {
+  getMaxCachedWasmCreatureActivations,
+  setMaxCachedWasmCreatureActivations,
+} from "./WasmCreatureActivationLRU.ts";

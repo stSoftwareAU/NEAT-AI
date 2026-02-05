@@ -94,12 +94,21 @@ export class WorkerProcessor {
   private async initialiseWasmActivationFromPayload(
     payload: NonNullable<RequestData["initialize"]>["wasmActivation"],
   ): Promise<void> {
-    if (!payload) return;
     if (this.wasmInitAttempted) return;
     this.wasmInitAttempted = true;
 
     // If already initialised, nothing to do.
     if (isWasmActivationAvailable()) return;
+
+    // WASM is mandatory. If the parent did not supply the init payload, fail fast
+    // so the worker does not accept jobs that are guaranteed to fail later.
+    if (!payload) {
+      throw new Error(
+        "Worker WASM activation payload missing (WASM is required). " +
+          "Call fetchWasmForWorkers() before spawning workers, or ensure the NEAT-AI " +
+          "package includes `wasm_activation/pkg`.",
+      );
+    }
 
     // Import wasm-bindgen glue from the provided source to avoid file reads.
     const jsModuleUrl = `data:application/javascript;charset=utf-8,${
