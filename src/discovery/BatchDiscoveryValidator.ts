@@ -20,6 +20,12 @@ import type {
   DiscoveryCandidate,
   DiscoveryChangeType,
 } from "./DiscoveryCandidates.ts";
+import {
+  type EnhancedBrittlenessOptions,
+  EnhancedDiscoveryValidator,
+  type EnhancedHoldoutOptions,
+  type EnhancedValidationResult,
+} from "./EnhancedDiscoveryValidator.ts";
 
 /**
  * Result of a batch validation for a single candidate.
@@ -33,6 +39,8 @@ export interface BatchValidationResult {
   error?: string;
   /** Whether this result came from the cache */
   cached?: boolean;
+  /** Result from enhanced validation (if enabled) */
+  enhancedResult?: EnhancedValidationResult;
 }
 
 /**
@@ -69,6 +77,8 @@ export interface BatchValidationStats {
   weightOnlyCount: number;
   /** Whether early exit was triggered */
   earlyExitTriggered: boolean;
+  /** Number of candidates rejected by enhanced validation */
+  enhancedRejectionCount: number;
 }
 
 /**
@@ -81,6 +91,14 @@ export interface BatchValidatorOptions {
   earlyExitOnStructuralFailure?: boolean;
   /** Maximum cache size before pruning */
   maxCacheSize?: number;
+  /** Holdout validation options (Issue #1308) */
+  holdout?: EnhancedHoldoutOptions;
+  /** Brittleness scoring options (Issue #1308) */
+  brittleness?: EnhancedBrittlenessOptions;
+  /** Enable verbose logging for enhanced validation */
+  verbose?: boolean;
+  /** Data directory for enhanced validation */
+  dataDir?: string;
 }
 
 /**
@@ -175,9 +193,14 @@ function generateStructureHash(creature: Creature): string {
  * - Validation result caching to avoid redundant work
  */
 export class BatchDiscoveryValidator {
-  readonly #options: Required<BatchValidatorOptions>;
+  readonly #options: BatchValidatorOptions & {
+    feedbackLoop: boolean;
+    earlyExitOnStructuralFailure: boolean;
+    maxCacheSize: number;
+  };
   #cache: Map<string, ValidationCacheEntry>;
   #stats: BatchValidationStats;
+  readonly #enhancedValidator?: EnhancedDiscoveryValidator;
 
   constructor(options: BatchValidatorOptions = {}) {
     this.#options = {
@@ -185,10 +208,23 @@ export class BatchDiscoveryValidator {
       earlyExitOnStructuralFailure: options.earlyExitOnStructuralFailure ??
         false,
       maxCacheSize: options.maxCacheSize ?? 1000,
+      holdout: options.holdout,
+      brittleness: options.brittleness,
+      verbose: options.verbose,
+      dataDir: options.dataDir,
     };
 
     this.#cache = new Map();
     this.#stats = this.#createEmptyStats();
+
+    // Initialise enhanced validator if holdout or brittleness is enabled
+    if (options.holdout?.enabled || options.brittleness?.enabled) {
+      this.#enhancedValidator = new EnhancedDiscoveryValidator({
+        holdout: options.holdout,
+        brittleness: options.brittleness,
+        verbose: options.verbose,
+      });
+    }
   }
 
   /**
@@ -240,6 +276,63 @@ export class BatchDiscoveryValidator {
     }
 
     return results;
+  }
+
+  /**
+   * Validate a batch of discovery candidates with enhanced validation.
+   *
+   * Runs enhanced validation (holdout/brittleness) on candidates that
+   * pass basic structural validation.
+   *
+   * @param baseCreature - The base creature the candidates are derived from
+   * @param candidates - The candidates to validate
+   * @returns Validation results for each candidate
+   */
+  validateBatchWithEnhanced(
+    baseCreature: Creature,
+    candidates: DiscoveryCandidate[],
+  ): BatchValidationResult[] {
+    // First, run basic validation
+    const results = this.validateBatch(baseCreature, candidates);
+
+    // If enhanced validator is not configured or no dataDir, return basic results
+    if (!this.#enhancedValidator || !this.#options.dataDir) {
+      return results;
+    }
+
+    // Run enhanced validation on candidates that passed basic validation
+    for (const result of results) {
+      if (!result.valid || result.cached) {
+        continue;
+      }
+
+      const enhancedResult = this.#enhancedValidator.validateCandidate(
+        baseCreature,
+        result.candidate,
+        this.#options.dataDir,
+      );
+
+      result.enhancedResult = enhancedResult;
+
+      if (!enhancedResult.passed) {
+        result.valid = false;
+        const reasons = enhancedResult.rejectionReasons?.join("; ") ??
+          "Enhanced validation failed";
+        result.error = reasons;
+        this.#stats.validCount--;
+        this.#stats.invalidCount++;
+        this.#stats.enhancedRejectionCount++;
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Check if enhanced validation is enabled.
+   */
+  isEnhancedValidationEnabled(): boolean {
+    return this.#enhancedValidator !== undefined;
   }
 
   /**
@@ -476,6 +569,7 @@ export class BatchDiscoveryValidator {
       structuralCount: 0,
       weightOnlyCount: 0,
       earlyExitTriggered: false,
+      enhancedRejectionCount: 0,
     };
   }
 }
@@ -498,4 +592,24 @@ export function validateDiscoveryCandidatesBatch(
 ): BatchValidationResult[] {
   const validator = new BatchDiscoveryValidator(options);
   return validator.validateBatch(baseCreature, candidates);
+}
+
+/**
+ * Validate multiple candidates with enhanced validation (holdout/brittleness).
+ *
+ * This is a convenience function that creates a BatchDiscoveryValidator
+ * and validates all candidates including enhanced validation.
+ *
+ * @param baseCreature - The base creature
+ * @param candidates - The candidates to validate
+ * @param options - Validation options (must include dataDir for enhanced validation)
+ * @returns Array of validation results
+ */
+export function validateDiscoveryCandidatesBatchWithEnhanced(
+  baseCreature: Creature,
+  candidates: DiscoveryCandidate[],
+  options: BatchValidatorOptions = {},
+): BatchValidationResult[] {
+  const validator = new BatchDiscoveryValidator(options);
+  return validator.validateBatchWithEnhanced(baseCreature, candidates);
 }

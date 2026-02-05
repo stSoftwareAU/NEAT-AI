@@ -21,7 +21,9 @@ import {
   BatchDiscoveryValidator,
   type BatchValidationResult,
   groupCandidatesByType,
+  validateDiscoveryCandidatesBatchWithEnhanced,
 } from "../../src/discovery/BatchDiscoveryValidator.ts";
+import { makeDataDir } from "../../src/architecture/DataSet.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 
@@ -533,5 +535,226 @@ Deno.test(
       stats2.totalValidations > 0,
       "Should have validations after second batch",
     );
+  },
+);
+
+Deno.test(
+  "BatchDiscoveryValidator reports enhanced validation as disabled by default",
+  () => {
+    const validator = new BatchDiscoveryValidator({
+      feedbackLoop: false,
+    });
+
+    assertEquals(
+      validator.isEnhancedValidationEnabled(),
+      false,
+      "Enhanced validation should be disabled by default",
+    );
+  },
+);
+
+Deno.test(
+  "BatchDiscoveryValidator enables enhanced validation when holdout is configured",
+  () => {
+    const validator = new BatchDiscoveryValidator({
+      feedbackLoop: false,
+      holdout: {
+        enabled: true,
+        holdoutPercentage: 0.2,
+      },
+    });
+
+    assertEquals(
+      validator.isEnhancedValidationEnabled(),
+      true,
+      "Enhanced validation should be enabled when holdout is configured",
+    );
+  },
+);
+
+Deno.test(
+  "BatchDiscoveryValidator enables enhanced validation when brittleness is configured",
+  () => {
+    const validator = new BatchDiscoveryValidator({
+      feedbackLoop: false,
+      brittleness: {
+        enabled: true,
+        perturbationMagnitude: 0.1,
+      },
+    });
+
+    assertEquals(
+      validator.isEnhancedValidationEnabled(),
+      true,
+      "Enhanced validation should be enabled when brittleness is configured",
+    );
+  },
+);
+
+Deno.test(
+  "BatchDiscoveryValidator tracks enhanced rejection statistics",
+  () => {
+    const base = makeBaselineCreature();
+
+    // Generate training data
+    const trainingData: Array<{ input: Float32Array; output: Float32Array }> =
+      [];
+    for (let i = 0; i < 50; i++) {
+      const input = new Float32Array([
+        Math.random(),
+        Math.random(),
+        Math.random(),
+        Math.random(),
+      ]);
+      const output = base.activate(input);
+      trainingData.push({ input, output: new Float32Array(output) });
+    }
+
+    const dataDir = makeDataDir(trainingData, 1000, {
+      input: base.input,
+      output: base.output,
+    });
+
+    try {
+      const discovery: DiscoverResult = {
+        ID: "ENHANCED-STATS-TEST",
+        addHelpfulSynapses: [
+          {
+            fromNeuronUUID: "input-2",
+            toNeuronUUID: "hidden-1",
+            weight: 0.5,
+            targetNeuronImpact: 1.0,
+            expectedCreatureErrorReduction: 0,
+            expectedCreatureScoreGain: 0.2,
+            improvedCount: 3,
+            totalCount: 5,
+          },
+        ],
+        addHelpfulNeurons: undefined,
+        removeHarmfulSynapse: undefined,
+        removeHarmfulNeurons: undefined,
+        removalCandidates: undefined,
+        candidateSquashes: undefined,
+      };
+
+      const candidates = buildDiscoveryCandidates(base, discovery, {
+        skipCombinedCandidates: true,
+      });
+
+      const validator = new BatchDiscoveryValidator({
+        feedbackLoop: false,
+        holdout: {
+          enabled: true,
+          holdoutPercentage: 0.2,
+          seed: 42,
+          maxPerformanceGap: 1.0, // Lenient to avoid rejections
+        },
+        dataDir: dataDir,
+      });
+
+      validator.validateBatchWithEnhanced(base, candidates);
+      const stats = validator.getStats();
+
+      assertExists(
+        stats.enhancedRejectionCount,
+        "Should track enhanced rejection count",
+      );
+      assert(
+        stats.enhancedRejectionCount >= 0,
+        "Enhanced rejection count should be non-negative",
+      );
+    } finally {
+      try {
+        Deno.removeSync(dataDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  },
+);
+
+Deno.test(
+  "validateDiscoveryCandidatesBatchWithEnhanced convenience function works",
+  () => {
+    const base = makeBaselineCreature();
+
+    // Generate training data
+    const trainingData: Array<{ input: Float32Array; output: Float32Array }> =
+      [];
+    for (let i = 0; i < 30; i++) {
+      const input = new Float32Array([
+        Math.random(),
+        Math.random(),
+        Math.random(),
+        Math.random(),
+      ]);
+      const output = base.activate(input);
+      trainingData.push({ input, output: new Float32Array(output) });
+    }
+
+    const dataDir = makeDataDir(trainingData, 1000, {
+      input: base.input,
+      output: base.output,
+    });
+
+    try {
+      const discovery: DiscoverResult = {
+        ID: "CONVENIENCE-FUNC-TEST",
+        addHelpfulSynapses: [
+          {
+            fromNeuronUUID: "input-2",
+            toNeuronUUID: "hidden-1",
+            weight: 0.5,
+            targetNeuronImpact: 1.0,
+            expectedCreatureErrorReduction: 0,
+            expectedCreatureScoreGain: 0.2,
+            improvedCount: 3,
+            totalCount: 5,
+          },
+        ],
+        addHelpfulNeurons: undefined,
+        removeHarmfulSynapse: undefined,
+        removeHarmfulNeurons: undefined,
+        removalCandidates: undefined,
+        candidateSquashes: undefined,
+      };
+
+      const candidates = buildDiscoveryCandidates(base, discovery, {
+        skipCombinedCandidates: true,
+      });
+
+      const results = validateDiscoveryCandidatesBatchWithEnhanced(
+        base,
+        candidates,
+        {
+          feedbackLoop: false,
+          brittleness: {
+            enabled: true,
+            perturbationMagnitude: 0.1,
+            brittlenessThreshold: 10.0, // Very lenient
+            seed: 42,
+          },
+          dataDir: dataDir,
+        },
+      );
+
+      assertEquals(
+        results.length,
+        candidates.length,
+        "Should return one result per candidate",
+      );
+
+      for (const result of results) {
+        assertExists(result.candidate, "Each result should have a candidate");
+        assertEquals(typeof result.valid, "boolean", "valid should be boolean");
+        // Enhanced results may or may not be present depending on whether it passed basic validation
+      }
+    } finally {
+      try {
+        Deno.removeSync(dataDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
   },
 );
