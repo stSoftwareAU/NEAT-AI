@@ -6,16 +6,29 @@ import type { CreatureExport } from "../../mod.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { assert } from "@std/assert";
 import type { Approach } from "../NEAT/LogApproach.ts";
-import type { MemeticInterface } from "./MemeticInterface.ts";
+import {
+  DEFAULT_ANCESTRY_DEPTH,
+  type MemeticInterface,
+} from "./MemeticInterface.ts";
+import {
+  addToAncestry,
+  calculateTrajectoryMomentum,
+  createAncestorSnapshot,
+} from "./MemeticTrajectory.ts";
 
 export const MIN_STEP = 0.000_000_1;
 
 /**
  * Adjusts the best value based on the difference between the current best and previous best value.
+ * Uses trajectory momentum to bias adjustments in the direction of consistent historical improvement.
  *
  * @param {number} currentBest - The current fittest value.
  * @param {number} previousBest - The previous fittest value.
  * @param {boolean} forwardOnly - Mode to adjust values; true for forward only, false for randomize.
+ * @param {boolean} backtrack - Whether to backtrack (use smaller scale).
+ * @param {number} momentumFactor - Optional momentum factor (0.5-2.0) from trajectory analysis.
+ *                                  Higher values bias adjustment more strongly in the direction of change.
+ * @param {number} suggestedDirection - Optional suggested direction from trajectory (-1, 0, or 1).
  * @returns {number} - The adjusted best value.
  */
 export function quantumAdjust(
@@ -23,15 +36,41 @@ export function quantumAdjust(
   previousBest: number,
   forwardOnly: boolean,
   backtrack: boolean,
+  momentumFactor?: number,
+  suggestedDirection?: number,
 ): { value: number; changed: boolean } {
   const diff = currentBest - previousBest;
   if (Math.abs(diff) >= MIN_STEP - MIN_STEP / 10) {
     const scale = backtrack ? 1 : 2;
     let delta: number;
+
+    // Apply momentum factor when available
+    const effectiveMomentum = momentumFactor ?? 1.0;
+
     if (forwardOnly) {
       delta = diff * Math.random() * scale;
     } else {
       delta = diff * Math.random() * (scale + 1) - diff;
+    }
+
+    // Apply momentum: if we have a strong consistent trajectory, bias towards it
+    if (
+      effectiveMomentum > 1.0 && suggestedDirection !== undefined &&
+      suggestedDirection !== 0
+    ) {
+      // Increase adjustment magnitude in the suggested direction
+      const momentumBoost = (effectiveMomentum - 1.0) * Math.abs(diff);
+      if (Math.sign(delta) === suggestedDirection) {
+        // Already moving in suggested direction, amplify
+        delta *= effectiveMomentum;
+      } else if (Math.random() < 0.5) {
+        // Moving against suggested direction, sometimes flip
+        delta = Math.abs(delta) * suggestedDirection +
+          momentumBoost * suggestedDirection;
+      }
+    } else if (effectiveMomentum < 1.0) {
+      // Low consistency, be more conservative
+      delta *= effectiveMomentum;
     }
 
     const adjustedValue = currentBest + delta;
@@ -134,9 +173,12 @@ function tuneRandomize(
   const fittestJSON = fittest.exportJSON();
 
   let memetic: MemeticInterface;
+  let existingMemetic: MemeticInterface | undefined;
 
   if (fittestJSON.memetic) {
-    memetic = fittestJSON.memetic;
+    existingMemetic = fittestJSON.memetic;
+    // Create a deep copy of the existing memetic data
+    memetic = JSON.parse(JSON.stringify(fittestJSON.memetic));
   } else {
     memetic = {
       generation: 0,
@@ -163,11 +205,29 @@ function tuneRandomize(
     const previousNeuron = uuidNodeMap.get(fittestNeuron.uuid);
 
     if (previousNeuron && fittestNeuron.squash === previousNeuron.squash) {
+      // Calculate trajectory momentum for this bias if we have ancestry
+      let momentumFactor: number | undefined;
+      let suggestedDirection: number | undefined;
+      if (existingMemetic?.ancestry && existingMemetic.ancestry.length > 0) {
+        const momentum = calculateTrajectoryMomentum(
+          existingMemetic,
+          fittestNeuron.uuid,
+          undefined,
+          true, // isBias
+        );
+        if (momentum) {
+          momentumFactor = momentum.factor;
+          suggestedDirection = momentum.suggestedDirection;
+        }
+      }
+
       const result = quantumAdjust(
         fittestNeuron.bias,
         previousNeuron.bias,
         forwardOnly,
         backtrack,
+        momentumFactor,
+        suggestedDirection,
       );
       if (result.changed) {
         fittestNeuron.bias = result.value;
@@ -188,11 +248,29 @@ function tuneRandomize(
         fittestSynapse.fromUUID === previousSynapse.fromUUID &&
         fittestSynapse.toUUID === previousSynapse.toUUID
       ) {
+        // Calculate trajectory momentum for this weight if we have ancestry
+        let momentumFactor: number | undefined;
+        let suggestedDirection: number | undefined;
+        if (existingMemetic?.ancestry && existingMemetic.ancestry.length > 0) {
+          const momentum = calculateTrajectoryMomentum(
+            existingMemetic,
+            fittestSynapse.fromUUID,
+            fittestSynapse.toUUID,
+            false, // not a bias
+          );
+          if (momentum) {
+            momentumFactor = momentum.factor;
+            suggestedDirection = momentum.suggestedDirection;
+          }
+        }
+
         const result = quantumAdjust(
           fittestSynapse.weight,
           previousSynapse.weight,
           forwardOnly,
           backtrack,
+          momentumFactor,
+          suggestedDirection,
         );
         if (result.changed) {
           fittestSynapse.weight = result.value;
@@ -226,6 +304,16 @@ function tuneRandomize(
       changeWeightCount: changeWeightCount,
       tuned: null,
     };
+  }
+
+  // Build ancestry: add current memetic state to ancestry before incrementing generation
+  if (existingMemetic && memetic.generation > 0) {
+    const ancestorSnapshot = createAncestorSnapshot(existingMemetic);
+    memetic.ancestry = addToAncestry(
+      existingMemetic.ancestry,
+      ancestorSnapshot,
+      DEFAULT_ANCESTRY_DEPTH,
+    );
   }
 
   memetic.generation++;
