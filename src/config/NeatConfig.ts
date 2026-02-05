@@ -20,6 +20,10 @@ import {
   DEFAULT_STABILITY_ADAPTATION_CONFIG,
   type RequiredStabilityAdaptationConfig,
 } from "./StabilityAdaptationConfig.ts";
+import {
+  DEFAULT_WEIGHT_REGULARISATION_CONFIG,
+  type RequiredWeightRegularisationConfig,
+} from "./WeightRegularisationConfig.ts";
 
 /**
  * Default cost of growth value used when not specified in options.
@@ -572,6 +576,45 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
           ? overrides.trackPerMutationType
           : d.trackPerMutationType,
       } as RequiredStabilityAdaptationConfig;
+    })(),
+    // Issue #1309: Weight regularisation during mutation
+    weightRegularisation: (() => {
+      const overrides = opts.weightRegularisation as
+        | Record<string, unknown>
+        | undefined;
+      const d = DEFAULT_WEIGHT_REGULARISATION_CONFIG;
+      return {
+        enabled: typeof overrides?.enabled === "boolean"
+          ? overrides.enabled
+          : d.enabled,
+        maxAbsoluteWeight: parseNumber(
+          "Weight regularisation maxAbsoluteWeight",
+          overrides?.maxAbsoluteWeight,
+          d.maxAbsoluteWeight,
+          { min: 0.001 },
+        ),
+        maxWeightChange: parseNumber(
+          "Weight regularisation maxWeightChange",
+          overrides?.maxWeightChange,
+          d.maxWeightChange,
+          { min: 0.001 },
+        ),
+        l2Strength: parseNumber(
+          "Weight regularisation l2Strength",
+          overrides?.l2Strength,
+          d.l2Strength,
+          { min: 0, max: 1 },
+        ),
+        preferSmallChanges: typeof overrides?.preferSmallChanges === "boolean"
+          ? overrides.preferSmallChanges
+          : d.preferSmallChanges,
+        smallChangeScale: parseNumber(
+          "Weight regularisation smallChangeScale",
+          overrides?.smallChangeScale,
+          d.smallChangeScale,
+          { min: 0, max: 1 },
+        ),
+      } as RequiredWeightRegularisationConfig;
     })(),
   };
   validate(config);

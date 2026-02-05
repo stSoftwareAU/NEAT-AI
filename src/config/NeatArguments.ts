@@ -10,6 +10,7 @@ import type { RequiredPlateauDetectionConfig } from "../NEAT/PlateauDetector.ts"
 import type { RequiredAdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { RequiredStabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
+import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 
 /**
  * Concrete, fully-populated configuration shape used internally after defaults
@@ -421,4 +422,28 @@ export interface NeatArguments {
    * - selectionStabilityWeight: Weight given to stability in parent selection (default: 0.2)
    */
   stabilityAdaptation: RequiredStabilityAdaptationConfig;
+
+  /**
+   * Weight regularisation configuration during mutation.
+   *
+   * Issue #1309: Reduce brittleness by regularising weight mutations to prevent
+   * extreme values that cause brittleness. Weight mutations can produce extreme
+   * values that create near-constant outputs, amplify noise excessively, or
+   * cause saturation in downstream neurons.
+   *
+   * When enabled:
+   * - Enforces hard limits on maximum absolute weight
+   * - Enforces hard limits on maximum weight change per mutation
+   * - Applies L2-style regularisation biasing towards smaller weights
+   * - Prefers smaller weight changes over large jumps
+   *
+   * Configuration options:
+   * - enabled: Whether weight regularisation is active (default: true)
+   * - maxAbsoluteWeight: Maximum absolute weight value (default: 100)
+   * - maxWeightChange: Maximum change per mutation (default: 10)
+   * - l2Strength: Strength of L2 bias towards smaller weights (default: 0.1)
+   * - preferSmallChanges: Whether to prefer smaller changes (default: true)
+   * - smallChangeScale: Scale factor for small change preference (default: 0.5)
+   */
+  weightRegularisation: RequiredWeightRegularisationConfig;
 }

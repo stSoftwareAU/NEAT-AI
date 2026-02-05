@@ -196,6 +196,8 @@
     "dedupe",
     "inflight",
     "codegen",
-    "MINSTD"
+    "MINSTD",
+    "unregularised",
+    "Unregularised"
   ]
 }
