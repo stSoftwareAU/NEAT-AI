@@ -111,6 +111,16 @@ function checkMutation(method: { name: string }) {
     );
   }
 }
+
+/** Seeded RNG for deterministic test data (reduces flakiness). */
+function seededRandom(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0xffffffff;
+  };
+}
+
 let first = true;
 async function evolveSet(
   set: DataRecordInterface[],
@@ -646,10 +656,11 @@ Deno.test("train_Bigger_than", () => {
 
 Deno.test("evolve_Bigger_than", async () => {
   const set = [];
+  const rand = seededRandom(42);
 
   for (let i = 0; i < 100; i++) {
-    const x = Math.random();
-    const y = Math.random();
+    const x = rand();
+    const y = rand();
     const z = x > y ? 1 : 0;
 
     set.push({
@@ -658,7 +669,7 @@ Deno.test("evolve_Bigger_than", async () => {
     });
   }
 
-  await evolveSet(set, 10000, 0.08);
+  await evolveSet(set, 10000, 0.08, 3);
 });
 /*
 Deno.test("NARX Sequence", async () => {
