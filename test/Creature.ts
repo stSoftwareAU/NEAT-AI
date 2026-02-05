@@ -771,7 +771,7 @@ Deno.test("evolveSHIFT", async () => {
     });
   }
 
-  const creature = await evolveSet(set, 5000, 0.03);
+  const creature = await evolveSet(set, 5000, 0.03, 3);
   const evolveDir = ".evolve";
   ensureDirSync(evolveDir);
   // deno-lint-ignore no-sync-fn-in-async-fn
