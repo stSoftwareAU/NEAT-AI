@@ -195,6 +195,7 @@
     "infile",
     "dedupe",
     "inflight",
-    "codegen"
+    "codegen",
+    "MINSTD"
   ]
 }

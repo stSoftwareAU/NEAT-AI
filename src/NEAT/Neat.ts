@@ -979,7 +979,10 @@ export class Neat {
     for (let i = this.trainingComplete.length; i--;) {
       const r = this.trainingComplete[i];
       assert(r.train, "No train found");
-      assert(Number.isFinite(r.train.error), "No train error found");
+      // Skip failed training results (those with non-finite errors like Infinity)
+      if (!Number.isFinite(r.train.error)) {
+        continue;
+      }
 
       const json = JSON.parse(r.train.creature);
       if (this.config.verbose) {
