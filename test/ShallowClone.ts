@@ -1,9 +1,4 @@
-import {
-  assert,
-  assertAlmostEquals,
-  assertEquals,
-  assertNotEquals,
-} from "@std/assert";
+import { assertAlmostEquals, assertEquals, assertNotEquals } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../src/Creature.ts";
 import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
@@ -328,57 +323,6 @@ Deno.test("shallowClone - activateAndTrace equivalence", () => {
       );
     }
   }
-});
-
-Deno.test("shallowClone - performance benchmark vs JSON clone", () => {
-  // Create a reasonably large creature
-  const original = new Creature(100, 20, {
-    layers: [
-      { count: 200 },
-      { count: 100 },
-    ],
-  });
-  original.uuid = "benchmark-uuid";
-  original.score = 0.99;
-  addTag(original, "benchmark", "true");
-
-  const iterations = 100;
-
-  // Benchmark JSON clone
-  performance.mark("json-start");
-  for (let i = 0; i < iterations; i++) {
-    const jsonClone = Creature.fromJSON(original.exportJSON());
-    jsonClone.uuid = original.uuid;
-    jsonClone.score = original.score;
-  }
-  performance.mark("json-end");
-  const jsonDuration = performance.measure("json", "json-start", "json-end")
-    .duration;
-
-  // Benchmark shallow clone
-  performance.mark("shallow-start");
-  for (let i = 0; i < iterations; i++) {
-    const _shallowClone = original.shallowClone();
-  }
-  performance.mark("shallow-end");
-  const shallowDuration = performance.measure(
-    "shallow",
-    "shallow-start",
-    "shallow-end",
-  ).duration;
-
-  const speedup = jsonDuration / shallowDuration;
-  console.info(
-    `Performance: JSON clone: ${jsonDuration.toFixed(2)}ms, ` +
-      `Shallow clone: ${shallowDuration.toFixed(2)}ms, ` +
-      `Speedup: ${speedup.toFixed(2)}x`,
-  );
-
-  // Shallow clone should be faster
-  assert(
-    shallowDuration < jsonDuration,
-    `Shallow clone (${shallowDuration}ms) should be faster than JSON clone (${jsonDuration}ms)`,
-  );
 });
 
 Deno.test("shallowClone - structural equivalence with fromJSON", () => {

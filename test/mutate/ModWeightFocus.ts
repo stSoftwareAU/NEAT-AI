@@ -1,43 +1,14 @@
 /**
- * Benchmark tests for ModWeight mutation focus optimisation (Issue #1096).
+ * Functional tests for ModWeight mutation focus optimisation (Issue #1096).
  *
- * This benchmark measures the performance improvement from using indexed
- * synapse lookups (outwardConnections/inwardConnections) instead of scanning
- * all synapses when a focus list is provided.
+ * These tests verify that the ModWeight mutation correctly modifies weights
+ * when a focus list is provided, and handles edge cases properly.
  */
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { ModWeight } from "../../src/mutate/ModWeight.ts";
-import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
-
-/**
- * Creates a large densely-connected creature for benchmarking.
- * This simulates production workloads with thousands of synapses.
- */
-function createLargeCreature(
-  inputCount: number,
-  outputCount: number,
-  hiddenNeurons: number,
-): Creature {
-  const creature = new Creature(inputCount, outputCount);
-  const addNeuron = new AddNeuron(creature);
-
-  for (let i = 0; i < hiddenNeurons; i++) {
-    addNeuron.mutate();
-  }
-
-  // Add more connections to create a denser network
-  const available = creature.getAvailableConnections();
-  const toAdd = Math.min(available.length, 5000);
-  for (let i = 0; i < toAdd; i++) {
-    const [from, to] = available[i];
-    creature.connect(from, to, Math.random() * 2 - 1);
-  }
-
-  return creature;
-}
 
 Deno.test("ModWeight - mutate correctly modifies weight with focus list", () => {
   const json = {
@@ -205,123 +176,6 @@ Deno.test("ModWeight - focus list with no connected synapses returns false", () 
     false,
     "Should return false when focus list has no connected synapses",
   );
-});
-
-Deno.test("ModWeight - benchmark: 1000 mutations with focus list on large creature", () => {
-  // Create a large creature with many synapses (target: 10,000+)
-  const creature = createLargeCreature(50, 10, 300);
-
-  console.log(`\n--- ModWeight Benchmark Setup ---`);
-  console.log(`Neurons: ${creature.neurons.length}`);
-  console.log(`Synapses: ${creature.synapses.length}`);
-
-  // Small focus list (10 neurons) - representative of production use
-  const focusList: number[] = [];
-  for (let i = 0; i < 10; i++) {
-    focusList.push(Math.floor(Math.random() * creature.neurons.length));
-  }
-
-  const iterations = 1000;
-
-  // Benchmark with focus list
-  const startWithFocus = performance.now();
-  let successCountWithFocus = 0;
-  for (let i = 0; i < iterations; i++) {
-    const modWeight = new ModWeight(creature);
-    if (modWeight.mutate(focusList)) {
-      successCountWithFocus++;
-    }
-  }
-  const endWithFocus = performance.now();
-  const timeWithFocus = endWithFocus - startWithFocus;
-
-  // Benchmark without focus list (baseline)
-  const startNoFocus = performance.now();
-  let successCountNoFocus = 0;
-  for (let i = 0; i < iterations; i++) {
-    const modWeight = new ModWeight(creature);
-    if (modWeight.mutate()) {
-      successCountNoFocus++;
-    }
-  }
-  const endNoFocus = performance.now();
-  const timeNoFocus = endNoFocus - startNoFocus;
-
-  console.log(
-    `\n--- ModWeight Benchmark Results (${iterations} iterations) ---`,
-  );
-  console.log(
-    `With focus list (${focusList.length} items): ${
-      timeWithFocus.toFixed(2)
-    }ms`,
-  );
-  console.log(
-    `  Success rate: ${(successCountWithFocus / iterations * 100).toFixed(1)}%`,
-  );
-  console.log(`  Per mutation: ${(timeWithFocus / iterations).toFixed(4)}ms`);
-  console.log(`Without focus list: ${timeNoFocus.toFixed(2)}ms`);
-  console.log(
-    `  Success rate: ${(successCountNoFocus / iterations * 100).toFixed(1)}%`,
-  );
-  console.log(`  Per mutation: ${(timeNoFocus / iterations).toFixed(4)}ms`);
-  console.log(
-    `Ratio (focus/no-focus): ${(timeWithFocus / timeNoFocus).toFixed(2)}x`,
-  );
-  console.log(`-------------------------------------------------\n`);
-
-  // Note: Performance is validated in bench/ directory benchmarks.
-  // Unit tests run in parallel and timing is unreliable, so we only
-  // verify functionality here and report timing for informational purposes.
-});
-
-Deno.test("ModWeight - benchmark: comparison with varying synapse counts", () => {
-  const iterations = 500;
-  const focusSize = 10;
-
-  const testCases = [
-    { inputs: 20, outputs: 5, hidden: 50, expectedSynapses: ">200" },
-    { inputs: 30, outputs: 10, hidden: 150, expectedSynapses: ">1000" },
-    { inputs: 50, outputs: 10, hidden: 300, expectedSynapses: ">5000" },
-  ];
-
-  console.log(`\n--- ModWeight Scaling Benchmark ---`);
-
-  for (const testCase of testCases) {
-    const creature = createLargeCreature(
-      testCase.inputs,
-      testCase.outputs,
-      testCase.hidden,
-    );
-
-    const focusList: number[] = [];
-    for (let i = 0; i < focusSize; i++) {
-      focusList.push(Math.floor(Math.random() * creature.neurons.length));
-    }
-
-    const startWithFocus = performance.now();
-    for (let i = 0; i < iterations; i++) {
-      const modWeight = new ModWeight(creature);
-      modWeight.mutate(focusList);
-    }
-    const timeWithFocus = performance.now() - startWithFocus;
-
-    const startNoFocus = performance.now();
-    for (let i = 0; i < iterations; i++) {
-      const modWeight = new ModWeight(creature);
-      modWeight.mutate();
-    }
-    const timeNoFocus = performance.now() - startNoFocus;
-
-    console.log(
-      `Synapses: ${creature.synapses.length} | Focus: ${
-        timeWithFocus.toFixed(1)
-      }ms | No-focus: ${timeNoFocus.toFixed(1)}ms | Ratio: ${
-        (timeWithFocus / timeNoFocus).toFixed(2)
-      }x`,
-    );
-  }
-
-  console.log(`-----------------------------------\n`);
 });
 
 Deno.test("ModWeight - empty focus list treated as no focus", () => {

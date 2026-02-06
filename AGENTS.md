@@ -101,13 +101,44 @@ documentation:
 
 ### Testing
 
-- **Unit tests are for functionality only** - verify correct results, not
-  performance
-- **Benchmarks are for performance** - use `bench/` directory
-- Tests run in parallel; do not rely on timing in unit tests
-- Do not reduce iteration counts to make "performance tests" faster
+#### Unit Tests vs Benchmarks
+
+- **Unit tests** (`test/`) verify **what** the code does — correct outputs,
+  correct errors, correct state changes. They must never measure timing or
+  performance.
+- **Benchmarks** (`bench/`) measure **how fast** the code runs. Use
+  `Deno.bench()` or `performance.now()` here, never in unit tests.
+- Tests run in parallel; timing in unit tests is inherently unreliable. Do not
+  use `performance.now()`, `performance.mark()`, `Date.now()`, or any timing API
+  in test files.
+- Do not reduce iteration counts to make "performance tests" faster — move them
+  to `bench/` instead.
+
+#### "What" Tests (Good) vs "How" Tests (Bad)
+
+Every test should be a **"what" test**: it exercises real code with test data
+and asserts on the **outcome** (return values, side effects, error conditions).
+
+A **"how" test** checks implementation details rather than outcomes. Examples of
+"how" tests to avoid:
+
+- Asserting that a specific internal method was called
+- Checking that a particular algorithm or data structure is used
+- Grepping source files for patterns, keywords, or headings
+- Inspecting function bodies, line counts, or documentation content
+- Verifying that one function calls another
+
+"How" tests break when implementation changes even though behaviour is
+identical. For example, switching from quicksort to mergesort should not break
+any unit test — the result is the same. If you need to verify performance
+characteristics (e.g., that a cache makes things faster), write a benchmark.
+
+#### Conventions
+
 - Tests use `Deno.test()` with `@std/assert` imports
 - Test files live under `test/` and are included via `deno.json`
+- Name test files after the functionality they verify, not after performance
+  characteristics (avoid "Benchmark" or "Performance" in test file names)
 
 ### Error Handling
 
