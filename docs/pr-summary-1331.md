@@ -2,15 +2,26 @@
 
 Implement bias-weight coordination in memetic quantum adjustments (#1331).
 
-Previously, bias and weight quantum adjustments in `tuneRandomize()` were made independently per neuron. Since a neuron's pre-activation is `v = b + Σ(w_i * a_i)`, independent changes to bias (Δb) and weights (Δw) can cancel each other out, wasting parameter space exploration.
+Previously, bias and weight quantum adjustments in `tuneRandomize()` were made
+independently per neuron. Since a neuron's pre-activation is
+`v = b + Σ(w_i * a_i)`, independent changes to bias (Δb) and weights (Δw) can
+cancel each other out, wasting parameter space exploration.
 
-This change introduces a coordination phase that detects when bias and weight changes oppose each other and reduces the smaller opposing force to preserve the net effect direction. Aligned changes (same direction) pass through unchanged to reinforce each other.
+This change introduces a coordination phase that detects when bias and weight
+changes oppose each other and reduces the smaller opposing force to preserve the
+net effect direction. Aligned changes (same direction) pass through unchanged to
+reinforce each other.
 
 ### Changes
 
-- **New file `src/blackbox/BiasWeightCoordination.ts`**: Coordination module with `coordinateBiasWeightAdjustments()` that takes a per-neuron adjustment plan and returns coordinated bias/weight values. When opposing changes are detected, the smaller opposing force is scaled down by 80% while the larger force is preserved.
+- **New file `src/blackbox/BiasWeightCoordination.ts`**: Coordination module
+  with `coordinateBiasWeightAdjustments()` that takes a per-neuron adjustment
+  plan and returns coordinated bias/weight values. When opposing changes are
+  detected, the smaller opposing force is scaled down by 80% while the larger
+  force is preserved.
 
-- **Modified `src/blackbox/FineTune.ts`**: Restructured `tuneRandomize()` into three phases:
+- **Modified `src/blackbox/FineTune.ts`**: Restructured `tuneRandomize()` into
+  three phases:
   1. Compute candidate bias adjustments per neuron
   2. Compute candidate weight adjustments grouped by target neuron
   3. Coordinate bias and weight adjustments per neuron before applying
@@ -18,8 +29,11 @@ This change introduces a coordination phase that detects when bias and weight ch
 ## Evidence
 
 This is a backend/algorithm change with no UI. Verified by:
-- All 2004 existing tests pass (including FineTune, QuantumAdjust, and MemeticAncestry tests)
-- The evolve integration test shows fine-tuning continues to improve fitness correctly
+
+- All 2004 existing tests pass (including FineTune, QuantumAdjust, and
+  MemeticAncestry tests)
+- The evolve integration test shows fine-tuning continues to improve fitness
+  correctly
 - `./quality.sh` passes cleanly
 
 ## Test Plan
