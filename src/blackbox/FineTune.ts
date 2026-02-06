@@ -15,6 +15,11 @@ import {
   calculateTrajectoryMomentum,
   createAncestorSnapshot,
 } from "./MemeticTrajectory.ts";
+import {
+  coordinateBiasWeightAdjustments,
+  type NeuronAdjustmentPlan,
+  type SynapseAdjustmentPlan,
+} from "./BiasWeightCoordination.ts";
 
 export const MIN_STEP = 0.000_000_1;
 
@@ -197,15 +202,23 @@ function tuneRandomize(
     uuidNodeMap.set(n.uuid, n);
   });
 
-  let changeBiasCount = 0;
-  let changeWeightCount = 0;
+  // Build a lookup for previous synapses by (fromUUID, toUUID)
+  const previousSynapseMap = new Map<string, SynapseExport>();
+  for (const ps of previousJSON.synapses) {
+    previousSynapseMap.set(`${ps.fromUUID}->${ps.toUUID}`, ps);
+  }
+
+  // Phase 1: Compute candidate bias adjustments per neuron
+  const candidateBiases = new Map<
+    string,
+    { original: number; candidate: number; previousBias: number }
+  >();
+
   for (let i = fittestJSON.neurons.length; i--;) {
     const fittestNeuron = fittestJSON.neurons[i];
-
     const previousNeuron = uuidNodeMap.get(fittestNeuron.uuid);
 
     if (previousNeuron && fittestNeuron.squash === previousNeuron.squash) {
-      // Calculate trajectory momentum for this bias if we have ancestry
       let momentumFactor: number | undefined;
       let suggestedDirection: number | undefined;
       if (existingMemetic?.ancestry && existingMemetic.ancestry.length > 0) {
@@ -213,7 +226,7 @@ function tuneRandomize(
           existingMemetic,
           fittestNeuron.uuid,
           undefined,
-          true, // isBias
+          true,
         );
         if (momentum) {
           momentumFactor = momentum.factor;
@@ -229,71 +242,166 @@ function tuneRandomize(
         momentumFactor,
         suggestedDirection,
       );
-      if (result.changed) {
-        fittestNeuron.bias = result.value;
+      candidateBiases.set(fittestNeuron.uuid, {
+        original: fittestNeuron.bias,
+        candidate: result.changed ? result.value : fittestNeuron.bias,
+        previousBias: previousNeuron.bias,
+      });
+    }
+  }
+
+  // Phase 2: Compute candidate weight adjustments, grouped by target neuron
+  const candidateWeights = new Map<
+    string,
+    {
+      synapseIndex: number;
+      fromUUID: string;
+      toUUID: string;
+      original: number;
+      candidate: number;
+      previousWeight: number;
+    }[]
+  >();
+
+  for (let i = fittestJSON.synapses.length; i--;) {
+    const fittestSynapse = fittestJSON.synapses[i];
+    const key = `${fittestSynapse.fromUUID}->${fittestSynapse.toUUID}`;
+    const previousSynapse = previousSynapseMap.get(key);
+
+    if (previousSynapse) {
+      let momentumFactor: number | undefined;
+      let suggestedDirection: number | undefined;
+      if (existingMemetic?.ancestry && existingMemetic.ancestry.length > 0) {
+        const momentum = calculateTrajectoryMomentum(
+          existingMemetic,
+          fittestSynapse.fromUUID,
+          fittestSynapse.toUUID,
+          false,
+        );
+        if (momentum) {
+          momentumFactor = momentum.factor;
+          suggestedDirection = momentum.suggestedDirection;
+        }
+      }
+
+      const result = quantumAdjust(
+        fittestSynapse.weight,
+        previousSynapse.weight,
+        forwardOnly,
+        backtrack,
+        momentumFactor,
+        suggestedDirection,
+      );
+
+      const entry = {
+        synapseIndex: i,
+        fromUUID: fittestSynapse.fromUUID,
+        toUUID: fittestSynapse.toUUID,
+        original: fittestSynapse.weight,
+        candidate: result.changed ? result.value : fittestSynapse.weight,
+        previousWeight: previousSynapse.weight,
+      };
+
+      const existing = candidateWeights.get(fittestSynapse.toUUID);
+      if (existing) {
+        existing.push(entry);
+      } else {
+        candidateWeights.set(fittestSynapse.toUUID, [entry]);
+      }
+    }
+  }
+
+  // Phase 3: Coordinate bias and weight adjustments per neuron
+  let changeBiasCount = 0;
+  let changeWeightCount = 0;
+
+  for (const [neuronUUID, biasInfo] of candidateBiases) {
+    const weightEntries = candidateWeights.get(neuronUUID) ?? [];
+
+    const synapsePlans: SynapseAdjustmentPlan[] = weightEntries.map((w) => ({
+      fromUUID: w.fromUUID,
+      toUUID: w.toUUID,
+      originalWeight: w.original,
+      candidateWeight: w.candidate,
+    }));
+
+    const plan: NeuronAdjustmentPlan = {
+      neuronUUID,
+      originalBias: biasInfo.original,
+      candidateBias: biasInfo.candidate,
+      synapses: synapsePlans,
+    };
+
+    const coordinated = coordinateBiasWeightAdjustments(plan);
+
+    if (!coordinated.changed) continue;
+
+    // Apply coordinated bias
+    if (coordinated.adjustedBias !== biasInfo.original) {
+      const neuron = fittestJSON.neurons.find((n) => n.uuid === neuronUUID);
+      if (neuron) {
+        neuron.bias = coordinated.adjustedBias;
         changeBiasCount++;
-        if (!memetic.biases[fittestNeuron.uuid]) {
-          memetic.biases[fittestNeuron.uuid] = previousNeuron.bias;
+        if (!memetic.biases[neuronUUID]) {
+          memetic.biases[neuronUUID] = biasInfo.previousBias;
+        }
+      }
+    }
+
+    // Apply coordinated weights
+    for (let wi = 0; wi < coordinated.adjustedWeights.length; wi++) {
+      const coordWeight = coordinated.adjustedWeights[wi];
+      const weightEntry = weightEntries[wi];
+
+      if (coordWeight.weight !== weightEntry.original) {
+        const fittestSynapse = fittestJSON.synapses[weightEntry.synapseIndex];
+        fittestSynapse.weight = coordWeight.weight;
+        assert(
+          Number.isFinite(fittestSynapse.weight),
+          "weight must be a number",
+        );
+        changeWeightCount++;
+        if (!memetic.weights[weightEntry.fromUUID]) {
+          memetic.weights[weightEntry.fromUUID] = [];
+        }
+        const existingWeight = memetic.weights[weightEntry.fromUUID].find(
+          (w) => w.toUUID === weightEntry.toUUID,
+        );
+        if (!existingWeight) {
+          memetic.weights[weightEntry.fromUUID].push({
+            toUUID: weightEntry.toUUID,
+            weight: weightEntry.previousWeight,
+          });
         }
       }
     }
   }
 
-  for (let i = fittestJSON.synapses.length; i--;) {
-    const fittestSynapse = fittestJSON.synapses[i];
-    for (let j = previousJSON.synapses.length; j--;) {
-      const previousSynapse = previousJSON.synapses[j];
+  // Handle weights for neurons that had no bias candidate (e.g., input neurons as targets)
+  for (const [neuronUUID, weightEntries] of candidateWeights) {
+    if (candidateBiases.has(neuronUUID)) continue; // Already coordinated above
 
-      if (
-        fittestSynapse.fromUUID === previousSynapse.fromUUID &&
-        fittestSynapse.toUUID === previousSynapse.toUUID
-      ) {
-        // Calculate trajectory momentum for this weight if we have ancestry
-        let momentumFactor: number | undefined;
-        let suggestedDirection: number | undefined;
-        if (existingMemetic?.ancestry && existingMemetic.ancestry.length > 0) {
-          const momentum = calculateTrajectoryMomentum(
-            existingMemetic,
-            fittestSynapse.fromUUID,
-            fittestSynapse.toUUID,
-            false, // not a bias
-          );
-          if (momentum) {
-            momentumFactor = momentum.factor;
-            suggestedDirection = momentum.suggestedDirection;
-          }
-        }
-
-        const result = quantumAdjust(
-          fittestSynapse.weight,
-          previousSynapse.weight,
-          forwardOnly,
-          backtrack,
-          momentumFactor,
-          suggestedDirection,
+    for (const weightEntry of weightEntries) {
+      if (weightEntry.candidate !== weightEntry.original) {
+        const fittestSynapse = fittestJSON.synapses[weightEntry.synapseIndex];
+        fittestSynapse.weight = weightEntry.candidate;
+        assert(
+          Number.isFinite(fittestSynapse.weight),
+          "weight must be a number",
         );
-        if (result.changed) {
-          fittestSynapse.weight = result.value;
-          assert(
-            Number.isFinite(fittestSynapse.weight),
-            "weight must be a number",
-          );
-          changeWeightCount++;
-          if (!memetic.weights[fittestSynapse.fromUUID]) {
-            memetic.weights[fittestSynapse.fromUUID] = [];
-          }
-          const existingWeight = memetic.weights[fittestSynapse.fromUUID].find(
-            (w) => w.toUUID === fittestSynapse.toUUID,
-          );
-          if (!existingWeight) {
-            memetic.weights[fittestSynapse.fromUUID].push({
-              toUUID: fittestSynapse.toUUID,
-              weight: previousSynapse.weight,
-            });
-          }
+        changeWeightCount++;
+        if (!memetic.weights[weightEntry.fromUUID]) {
+          memetic.weights[weightEntry.fromUUID] = [];
         }
-
-        break;
+        const existingWeight = memetic.weights[weightEntry.fromUUID].find(
+          (w) => w.toUUID === weightEntry.toUUID,
+        );
+        if (!existingWeight) {
+          memetic.weights[weightEntry.fromUUID].push({
+            toUUID: weightEntry.toUUID,
+            weight: weightEntry.previousWeight,
+          });
+        }
       }
     }
   }
