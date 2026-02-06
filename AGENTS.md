@@ -109,8 +109,8 @@ documentation:
 - **Benchmarks** (`bench/`) measure **how fast** the code runs. Use
   `Deno.bench()` or `performance.now()` here, never in unit tests.
 - Tests run in parallel; timing in unit tests is inherently unreliable. Do not
-  use `performance.now()`, `performance.mark()`, `Date.now()`, or any timing
-  API in test files.
+  use `performance.now()`, `performance.mark()`, `Date.now()`, or any timing API
+  in test files.
 - Do not reduce iteration counts to make "performance tests" faster — move them
   to `bench/` instead.
 
