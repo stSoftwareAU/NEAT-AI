@@ -10,6 +10,7 @@ import type { RequiredPlateauDetectionConfig } from "../NEAT/PlateauDetector.ts"
 import type { RequiredAdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { RequiredEnsembleDiversityConfig } from "./EnsembleDiversityConfig.ts";
+import type { RequiredMemeticStepConfig } from "./MemeticStepConfig.ts";
 import type { RequiredStabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 
@@ -472,4 +473,20 @@ export interface NeatArguments {
    * - crossSpeciesBreedingThreshold: Trigger cross-species breeding below this (default: 0.2)
    */
   ensembleDiversity: RequiredEnsembleDiversityConfig;
+
+  /**
+   * Memetic quantum step size configuration.
+   *
+   * Issue #1330: Configurable quantum step size based on training progress.
+   *
+   * Controls the granularity of weight/bias adjustments during fine-tuning.
+   * Adaptive step sizing uses larger steps when far from the optimum and
+   * smaller steps when fine-tuning near convergence.
+   *
+   * Configuration options:
+   * - minStepSize: Minimum quantum step size floor (default: 0.000_000_1)
+   * - maxStepSize: Maximum adaptive step size cap (default: 0.001)
+   * - errorScale: How strongly error magnitude influences step size (default: 10)
+   */
+  memeticStep: RequiredMemeticStepConfig;
 }

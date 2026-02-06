@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../mod.ts";
+import type { RequiredMemeticStepConfig } from "../config/MemeticStepConfig.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
 import { fineTuneImprovement } from "./FineTune.ts";
 import { restoreSource } from "./RestoreSource.ts";
@@ -11,8 +12,10 @@ const PLANK_CONSTANT = 0.000_000_000_001;
 export function retry(
   population: Creature[],
   feedbackLoop: boolean,
-  filter: Filter = "NONE",
+  filter?: Filter,
+  memeticStepConfig?: RequiredMemeticStepConfig,
 ): Creature[] {
+  const effectiveFilter = filter ?? "NONE";
   const possibleRetryPopulation = population.filter((creature) => {
     if (creature.memetic) {
       assert(creature.score);
@@ -25,10 +28,10 @@ export function retry(
       }
 
       // Apply the filter logic
-      if (filter === "FORWARD" && difference <= 0) {
+      if (effectiveFilter === "FORWARD" && difference <= 0) {
         return false;
       }
-      if (filter === "BACKWARDS" && difference >= 0) {
+      if (effectiveFilter === "BACKWARDS" && difference >= 0) {
         return false;
       }
 
@@ -80,6 +83,7 @@ export function retry(
       feedbackLoop,
       2,
       approach === "backtrack",
+      memeticStepConfig,
     );
 
     retryPopulation.forEach((creature) => {

@@ -18,6 +18,10 @@ import {
   DEFAULT_ENSEMBLE_DIVERSITY_CONFIG,
   type RequiredEnsembleDiversityConfig,
 } from "./EnsembleDiversityConfig.ts";
+import {
+  DEFAULT_MEMETIC_STEP_CONFIG,
+  type RequiredMemeticStepConfig,
+} from "./MemeticStepConfig.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
 import { parseDiscoverySampleRate, parseNumber } from "./ParseOptions.ts";
 import {
@@ -684,7 +688,43 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
         ),
       } as RequiredEnsembleDiversityConfig;
     })(),
+    // Issue #1330: Memetic quantum step size configuration
+    memeticStep: (() => {
+      const overrides = opts.memeticStep as
+        | Record<string, unknown>
+        | undefined;
+      const d = DEFAULT_MEMETIC_STEP_CONFIG;
+      return {
+        minStepSize: parseNumber(
+          "Memetic step minStepSize",
+          overrides?.minStepSize,
+          d.minStepSize,
+          { minExclusive: 0 },
+        ),
+        maxStepSize: parseNumber(
+          "Memetic step maxStepSize",
+          overrides?.maxStepSize,
+          d.maxStepSize,
+          { minExclusive: 0 },
+        ),
+        errorScale: parseNumber(
+          "Memetic step errorScale",
+          overrides?.errorScale,
+          d.errorScale,
+          { min: 0 },
+        ),
+      } as RequiredMemeticStepConfig;
+    })(),
   };
+
+  // Cross-field validation for memeticStep
+  if (config.memeticStep.maxStepSize < config.memeticStep.minStepSize) {
+    throw new Error(
+      `Memetic step maxStepSize must be >= minStepSize. ` +
+        `maxStepSize: ${config.memeticStep.maxStepSize}, minStepSize: ${config.memeticStep.minStepSize}`,
+    );
+  }
+
   validate(config);
   return Object.freeze(config);
 }

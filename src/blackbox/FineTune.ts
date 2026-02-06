@@ -15,8 +15,29 @@ import {
   calculateTrajectoryMomentum,
   createAncestorSnapshot,
 } from "./MemeticTrajectory.ts";
+import type { RequiredMemeticStepConfig } from "../config/MemeticStepConfig.ts";
 
 export const MIN_STEP = 0.000_000_1;
+
+/**
+ * Calculates an adaptive step size based on the current score (error magnitude).
+ *
+ * Larger steps when far from the optimum (large negative score),
+ * smaller steps when close to convergence (score near zero).
+ *
+ * @param score - The current creature score (typically negative; closer to 0 is better).
+ * @param config - The memetic step configuration with min/max step and error scale.
+ * @returns The calculated step size, bounded between minStepSize and maxStepSize.
+ */
+export function calculateAdaptiveStepSize(
+  score: number,
+  config: RequiredMemeticStepConfig,
+): number {
+  const normalisedError = Math.abs(score);
+  const rawStep = config.minStepSize *
+    (1 + config.errorScale * normalisedError);
+  return Math.min(rawStep, config.maxStepSize);
+}
 
 /**
  * Adjusts the best value based on the difference between the current best and previous best value.
@@ -29,6 +50,7 @@ export const MIN_STEP = 0.000_000_1;
  * @param {number} momentumFactor - Optional momentum factor (0.5-2.0) from trajectory analysis.
  *                                  Higher values bias adjustment more strongly in the direction of change.
  * @param {number} suggestedDirection - Optional suggested direction from trajectory (-1, 0, or 1).
+ * @param {number} stepSize - Optional quantum step size (defaults to MIN_STEP).
  * @returns {number} - The adjusted best value.
  */
 export function quantumAdjust(
@@ -38,9 +60,11 @@ export function quantumAdjust(
   backtrack: boolean,
   momentumFactor?: number,
   suggestedDirection?: number,
+  stepSize?: number,
 ): { value: number; changed: boolean } {
+  const effectiveStep = stepSize ?? MIN_STEP;
   const diff = currentBest - previousBest;
-  if (Math.abs(diff) >= MIN_STEP - MIN_STEP / 10) {
+  if (Math.abs(diff) >= effectiveStep - effectiveStep / 10) {
     const scale = backtrack ? 1 : 2;
     let delta: number;
 
@@ -74,15 +98,15 @@ export function quantumAdjust(
     }
 
     const adjustedValue = currentBest + delta;
-    const currentQuantum = Math.round(currentBest / MIN_STEP);
-    let quantum = Math.round(adjustedValue / MIN_STEP);
+    const currentQuantum = Math.round(currentBest / effectiveStep);
+    let quantum = Math.round(adjustedValue / effectiveStep);
 
-    /* Ensure the quantum value is at least one MIN_STEP different in the correct direction */
+    /* Ensure the quantum value is at least one step different in the correct direction */
     if (currentQuantum === quantum) {
       quantum += Math.sign(delta);
     }
 
-    const quantizedValue = quantum * MIN_STEP;
+    const quantizedValue = quantum * effectiveStep;
 
     return { value: quantizedValue, changed: true };
   }
@@ -166,8 +190,9 @@ function addMissingSynapses(
 function tuneRandomize(
   fittest: Creature,
   previousFittest: Creature,
-  forwardOnly = false,
-  backtrack = false,
+  forwardOnly: boolean,
+  backtrack: boolean,
+  stepSize?: number,
 ) {
   const previousJSON = previousFittest.exportJSON();
   const fittestJSON = fittest.exportJSON();
@@ -228,6 +253,7 @@ function tuneRandomize(
         backtrack,
         momentumFactor,
         suggestedDirection,
+        stepSize,
       );
       if (result.changed) {
         fittestNeuron.bias = result.value;
@@ -271,6 +297,7 @@ function tuneRandomize(
           backtrack,
           momentumFactor,
           suggestedDirection,
+          stepSize,
         );
         if (result.changed) {
           fittestSynapse.weight = result.value;
@@ -352,9 +379,12 @@ export function fineTuneImprovement(
   fittest: Creature,
   previousFittest: Creature | null,
   feedbackLoop: boolean,
-  popSize = 10,
-  backtrack = false,
+  popSize?: number,
+  backtrack?: boolean,
+  memeticStepConfig?: RequiredMemeticStepConfig,
 ) {
+  const effectivePopSize = popSize ?? 10;
+  const effectiveBacktrack = backtrack ?? false;
   if (previousFittest === null) {
     return [];
   }
@@ -366,6 +396,11 @@ export function fineTuneImprovement(
   ) {
     return [];
   }
+
+  // Calculate adaptive step size from the fittest creature's score
+  const stepSize = memeticStepConfig
+    ? calculateAdaptiveStepSize(fittest.score, memeticStepConfig)
+    : undefined;
 
   const fittestUUID = CreatureUtil.makeUUID(fittest);
   const UUIDs = new Set<string>();
@@ -387,7 +422,8 @@ export function fineTuneImprovement(
     fittest,
     previousFittest,
     forwardOnly,
-    backtrack,
+    effectiveBacktrack,
+    stepSize,
   );
   if (resultSame.tuned) {
     const randomUUID = CreatureUtil.makeUUID(resultSame.tuned);
@@ -399,14 +435,15 @@ export function fineTuneImprovement(
 
   for (
     let attempt = 0;
-    attempt < popSize * 2 && fineTuned.length < popSize;
+    attempt < effectivePopSize * 2 && fineTuned.length < effectivePopSize;
     attempt++
   ) {
     const resultRandomize = tuneRandomize(
       fittest,
       previousFittest,
       forwardOnly,
-      backtrack,
+      effectiveBacktrack,
+      stepSize,
     );
     if (resultRandomize.tuned) {
       const randomUUID = CreatureUtil.makeUUID(resultRandomize.tuned);

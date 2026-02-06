@@ -1,6 +1,7 @@
 import type { AdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { EnsembleDiversityConfig } from "./EnsembleDiversityConfig.ts";
+import type { MemeticStepConfig } from "./MemeticStepConfig.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
 import type { PlateauDetectionConfig } from "../NEAT/PlateauDetector.ts";
 import type { StabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
@@ -68,6 +69,7 @@ export type NeatOptions =
     | "stabilityAdaptation"
     | "weightRegularisation"
     | "ensembleDiversity"
+    | "memeticStep"
   >
   & {
     /** Partial overrides for minimum candidates per category (defaults applied if not specified) */
@@ -82,6 +84,8 @@ export type NeatOptions =
     weightRegularisation?: WeightRegularisationConfig;
     /** Partial overrides for ensemble diversity configuration (defaults applied if not specified) */
     ensembleDiversity?: EnsembleDiversityConfig;
+    /** Partial overrides for memetic quantum step size configuration (defaults applied if not specified) */
+    memeticStep?: MemeticStepConfig;
   };
 
 /**
@@ -111,6 +115,7 @@ export type NeatOptionsInput =
     | "stabilityAdaptation"
     | "weightRegularisation"
     | "ensembleDiversity"
+    | "memeticStep"
   >
   & {
     [K in NumericOptionKeys]?: NonNullable<NeatOptions[K]> extends number
@@ -126,4 +131,5 @@ export type NeatOptionsInput =
     stabilityAdaptation?: CoerceNumeric<StabilityAdaptationConfig>;
     weightRegularisation?: CoerceNumeric<WeightRegularisationConfig>;
     ensembleDiversity?: CoerceNumeric<EnsembleDiversityConfig>;
+    memeticStep?: CoerceNumeric<MemeticStepConfig>;
   };
