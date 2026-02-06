@@ -25,6 +25,10 @@ import {
   type RequiredStabilityAdaptationConfig,
 } from "./StabilityAdaptationConfig.ts";
 import {
+  DEFAULT_QUANTUM_STEP_CONFIG,
+  type RequiredQuantumStepConfig,
+} from "./QuantumStepConfig.ts";
+import {
   DEFAULT_WEIGHT_REGULARISATION_CONFIG,
   type RequiredWeightRegularisationConfig,
 } from "./WeightRegularisationConfig.ts";
@@ -684,7 +688,35 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
         ),
       } as RequiredEnsembleDiversityConfig;
     })(),
+    // Issue #1330: Quantum step size configuration for memetic fine-tuning
+    quantumStep: (() => {
+      const overrides = opts.quantumStep as
+        | Record<string, unknown>
+        | undefined;
+      const d = DEFAULT_QUANTUM_STEP_CONFIG;
+      return {
+        minStep: parseNumber(
+          "Quantum step minStep",
+          overrides?.minStep,
+          d.minStep,
+          { minExclusive: 0 },
+        ),
+        maxStep: parseNumber(
+          "Quantum step maxStep",
+          overrides?.maxStep,
+          d.maxStep,
+          { minExclusive: 0 },
+        ),
+        scaleFactor: parseNumber(
+          "Quantum step scaleFactor",
+          overrides?.scaleFactor,
+          d.scaleFactor,
+          { min: 0 },
+        ),
+      } as RequiredQuantumStepConfig;
+    })(),
   };
+
   validate(config);
   return Object.freeze(config);
 }
@@ -715,6 +747,14 @@ function validate(config: NeatArguments) {
     throw new Error(
       `Plateau detection rapidImprovementRate must be greater than minImprovementRate. ` +
         `rapidImprovementRate: ${plateauDetection.rapidImprovementRate}, minImprovementRate: ${plateauDetection.minImprovementRate}`,
+    );
+  }
+
+  const quantumStep = config.quantumStep;
+  if (quantumStep.maxStep < quantumStep.minStep) {
+    throw new Error(
+      `Quantum step maxStep must be greater than or equal to minStep. ` +
+        `maxStep: ${quantumStep.maxStep}, minStep: ${quantumStep.minStep}`,
     );
   }
 

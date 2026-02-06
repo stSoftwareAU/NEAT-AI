@@ -113,6 +113,8 @@ export class FindTunePopulation {
           tmpPreviousFittest,
           this.neat.config.feedbackLoop,
           fineTunePopSize - 1,
+          undefined,
+          this.neat.config.quantumStep,
         );
         logApproach(fittest, tmpPreviousFittest);
       }
@@ -127,6 +129,8 @@ export class FindTunePopulation {
             restoredCreature,
             this.neat.config.feedbackLoop,
             2,
+            undefined,
+            this.neat.config.quantumStep,
           );
 
           fineTunedPopulation.push(...restoredTunedPopulation);
@@ -135,6 +139,8 @@ export class FindTunePopulation {
         const retryPopulation = retry(
           genus.population,
           this.neat.config.feedbackLoop,
+          undefined,
+          this.neat.config.quantumStep,
         );
         fineTunedPopulation.push(...retryPopulation);
       }
@@ -188,6 +194,8 @@ export class FindTunePopulation {
                 nextBestCreature,
                 this.neat.config.feedbackLoop,
                 speciesFineTunePopSize,
+                undefined,
+                this.neat.config.quantumStep,
               );
 
               fineTunedPopulation.push(...extendedTunedPopulation);
@@ -218,6 +226,8 @@ export class FindTunePopulation {
             extendedPreviousFittest,
             this.neat.config.feedbackLoop,
             extendedFineTunePopSize,
+            undefined,
+            this.neat.config.quantumStep,
           );
 
           fineTunedPopulation.push(...extendedTunedPopulation);
