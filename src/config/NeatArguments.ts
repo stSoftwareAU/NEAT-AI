@@ -11,6 +11,7 @@ import type { RequiredAdaptiveMutationThresholds } from "./AdaptiveMutationThres
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { RequiredEnsembleDiversityConfig } from "./EnsembleDiversityConfig.ts";
 import type { RequiredStabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
+import type { RequiredQuantumStepConfig } from "./QuantumStepConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 
 /**
@@ -472,4 +473,18 @@ export interface NeatArguments {
    * - crossSpeciesBreedingThreshold: Trigger cross-species breeding below this (default: 0.2)
    */
   ensembleDiversity: RequiredEnsembleDiversityConfig;
+
+  /**
+   * Quantum step sizing configuration for memetic fine-tuning.
+   *
+   * Issue #1330: Adaptive step sizing based on training progress improves
+   * convergence - larger steps when far from optimum, smaller steps when
+   * fine-tuning near convergence.
+   *
+   * Configuration options:
+   * - minStep: Minimum quantum step size (default: 0.000_000_1)
+   * - maxStep: Maximum quantum step size (default: 0.001)
+   * - errorScale: Scale factor for error-based adaptation (default: 10)
+   */
+  quantumStep: RequiredQuantumStepConfig;
 }
