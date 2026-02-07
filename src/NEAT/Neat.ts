@@ -620,6 +620,7 @@ export class Neat {
         this.config.feedbackLoop,
         1,
         true,
+        this.config.quantumStep,
       );
       const forward = fineTuneImprovement(
         creature,
@@ -627,6 +628,7 @@ export class Neat {
         this.config.feedbackLoop,
         1,
         false,
+        this.config.quantumStep,
       );
 
       if (backtracked.length > 0 || forward.length > 0) {

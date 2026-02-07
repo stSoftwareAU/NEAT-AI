@@ -21,6 +21,10 @@ import {
 import type { NeatArguments } from "./NeatArguments.ts";
 import { parseDiscoverySampleRate, parseNumber } from "./ParseOptions.ts";
 import {
+  DEFAULT_QUANTUM_STEP_CONFIG,
+  type RequiredQuantumStepConfig,
+} from "./QuantumStepConfig.ts";
+import {
   DEFAULT_STABILITY_ADAPTATION_CONFIG,
   type RequiredStabilityAdaptationConfig,
 } from "./StabilityAdaptationConfig.ts";
@@ -684,7 +688,43 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
         ),
       } as RequiredEnsembleDiversityConfig;
     })(),
+    // Issue #1330: Adaptive quantum step sizing for memetic fine-tuning
+    quantumStep: (() => {
+      const overrides = opts.quantumStep as
+        | Record<string, unknown>
+        | undefined;
+      const d = DEFAULT_QUANTUM_STEP_CONFIG;
+      return {
+        minStep: parseNumber(
+          "Quantum step minStep",
+          overrides?.minStep,
+          d.minStep,
+          { min: 0.000_000_000_001 },
+        ),
+        maxStep: parseNumber(
+          "Quantum step maxStep",
+          overrides?.maxStep,
+          d.maxStep,
+          { min: 0.000_000_000_001 },
+        ),
+        errorScale: parseNumber(
+          "Quantum step errorScale",
+          overrides?.errorScale,
+          d.errorScale,
+          { min: 0 },
+        ),
+      } as RequiredQuantumStepConfig;
+    })(),
   };
+
+  // Cross-field validation for quantum step config
+  if (config.quantumStep.maxStep < config.quantumStep.minStep) {
+    throw new Error(
+      `Quantum step maxStep must be >= minStep. ` +
+        `maxStep: ${config.quantumStep.maxStep}, minStep: ${config.quantumStep.minStep}`,
+    );
+  }
+
   validate(config);
   return Object.freeze(config);
 }
