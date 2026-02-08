@@ -18,6 +18,10 @@ import {
   DEFAULT_ENSEMBLE_DIVERSITY_CONFIG,
   type RequiredEnsembleDiversityConfig,
 } from "./EnsembleDiversityConfig.ts";
+import {
+  DEFAULT_FINE_TUNE_POPULATION_CONFIG,
+  type RequiredFineTunePopulationConfig,
+} from "./FineTunePopulationConfig.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
 import { parseDiscoverySampleRate, parseNumber } from "./ParseOptions.ts";
 import {
@@ -715,6 +719,39 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
         ),
       } as RequiredQuantumStepConfig;
     })(),
+    // Issue #1323: Adaptive fine-tuning population sizing
+    fineTunePopulation: (() => {
+      const overrides = opts.fineTunePopulation as
+        | Record<string, unknown>
+        | undefined;
+      const d = DEFAULT_FINE_TUNE_POPULATION_CONFIG;
+      return {
+        minPopulationFraction: parseNumber(
+          "Fine-tune population minPopulationFraction",
+          overrides?.minPopulationFraction,
+          d.minPopulationFraction,
+          { min: 0, max: 1 },
+        ),
+        maxPopulationFraction: parseNumber(
+          "Fine-tune population maxPopulationFraction",
+          overrides?.maxPopulationFraction,
+          d.maxPopulationFraction,
+          { min: 0, max: 1 },
+        ),
+        basePopulationFraction: parseNumber(
+          "Fine-tune population basePopulationFraction",
+          overrides?.basePopulationFraction,
+          d.basePopulationFraction,
+          { min: 0, max: 1 },
+        ),
+        successRateWindow: parseNumber(
+          "Fine-tune population successRateWindow",
+          overrides?.successRateWindow,
+          d.successRateWindow,
+          { integer: true, min: 1 },
+        ),
+      } as RequiredFineTunePopulationConfig;
+    })(),
   };
 
   // Cross-field validation for quantum step config
@@ -722,6 +759,38 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     throw new Error(
       `Quantum step maxStep must be >= minStep. ` +
         `maxStep: ${config.quantumStep.maxStep}, minStep: ${config.quantumStep.minStep}`,
+    );
+  }
+
+  // Cross-field validation for fine-tune population config
+  if (
+    config.fineTunePopulation.maxPopulationFraction <
+      config.fineTunePopulation.minPopulationFraction
+  ) {
+    throw new Error(
+      `Fine-tune population maxPopulationFraction must be >= minPopulationFraction. ` +
+        `maxPopulationFraction: ${config.fineTunePopulation.maxPopulationFraction}, ` +
+        `minPopulationFraction: ${config.fineTunePopulation.minPopulationFraction}`,
+    );
+  }
+  if (
+    config.fineTunePopulation.basePopulationFraction <
+      config.fineTunePopulation.minPopulationFraction
+  ) {
+    throw new Error(
+      `Fine-tune population basePopulationFraction must be >= minPopulationFraction. ` +
+        `basePopulationFraction: ${config.fineTunePopulation.basePopulationFraction}, ` +
+        `minPopulationFraction: ${config.fineTunePopulation.minPopulationFraction}`,
+    );
+  }
+  if (
+    config.fineTunePopulation.basePopulationFraction >
+      config.fineTunePopulation.maxPopulationFraction
+  ) {
+    throw new Error(
+      `Fine-tune population basePopulationFraction must be <= maxPopulationFraction. ` +
+        `basePopulationFraction: ${config.fineTunePopulation.basePopulationFraction}, ` +
+        `maxPopulationFraction: ${config.fineTunePopulation.maxPopulationFraction}`,
     );
   }
 

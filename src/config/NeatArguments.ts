@@ -10,6 +10,7 @@ import type { RequiredPlateauDetectionConfig } from "../NEAT/PlateauDetector.ts"
 import type { RequiredAdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { RequiredEnsembleDiversityConfig } from "./EnsembleDiversityConfig.ts";
+import type { RequiredFineTunePopulationConfig } from "./FineTunePopulationConfig.ts";
 import type { RequiredStabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
 import type { RequiredQuantumStepConfig } from "./QuantumStepConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
@@ -487,4 +488,21 @@ export interface NeatArguments {
    * - errorScale: Scale factor for error-based adaptation (default: 10)
    */
   quantumStep: RequiredQuantumStepConfig;
+
+  /**
+   * Adaptive fine-tuning population sizing configuration.
+   *
+   * Issue #1323: Dynamically adjusts the fine-tuning population size based
+   * on how successful fine-tuning has been in recent generations.
+   *
+   * When fine-tuning produces improvements, more resources are allocated to it.
+   * When fine-tuning consistently fails, the population size decreases.
+   *
+   * Configuration options:
+   * - minPopulationFraction: Minimum fraction of population for fine-tuning (default: 0.1)
+   * - maxPopulationFraction: Maximum fraction of population for fine-tuning (default: 0.4)
+   * - basePopulationFraction: Starting fraction before success data exists (default: 0.2)
+   * - successRateWindow: Number of recent generations to consider (default: 10)
+   */
+  fineTunePopulation: RequiredFineTunePopulationConfig;
 }

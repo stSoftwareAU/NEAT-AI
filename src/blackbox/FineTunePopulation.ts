@@ -6,13 +6,16 @@ import { Species } from "../NEAT/Species.ts";
 import type { Neat } from "../NEAT/Neat.ts";
 import { logApproach } from "../NEAT/LogApproach.ts";
 import { restoreSource } from "./RestoreSource.ts";
+import type { AdaptiveFineTuneTracker } from "./AdaptiveFineTuneTracker.ts";
 
 import { retry } from "./Retry.ts";
 
 export class FindTunePopulation {
   private neat: Neat;
-  constructor(neat: Neat) {
+  private fineTuneTracker?: AdaptiveFineTuneTracker;
+  constructor(neat: Neat, fineTuneTracker?: AdaptiveFineTuneTracker) {
     this.neat = neat;
+    this.fineTuneTracker = fineTuneTracker;
   }
 
   make(
@@ -92,15 +95,22 @@ export class FindTunePopulation {
         "Failed to find previous fittest creature, all the same score as fittest. Skipping fine tuning.",
       );
     } else {
-      /** 20% of population or those that just died, leave one for the extended */
-      const fineTunePopSize = Math.max(
-        Math.ceil(
-          this.neat.config.populationSize / 5,
-        ),
-        this.neat.config.populationSize - this.neat.population.length -
-          this.neat.config.elitism -
+      /** Issue #1323: Adaptive fine-tune population size based on improvement rate */
+      const fineTunePopSize = this.fineTuneTracker
+        ? this.fineTuneTracker.calculatePopSize(
+          this.neat.config.populationSize,
+          this.neat.population.length,
+          this.neat.config.elitism,
           this.neat.trainingComplete.length,
-      );
+        )
+        : Math.max(
+          Math.ceil(
+            this.neat.config.populationSize / 5,
+          ),
+          this.neat.config.populationSize - this.neat.population.length -
+            this.neat.config.elitism -
+            this.neat.trainingComplete.length,
+        );
 
       const tunedUUID = new Set<string>();
 

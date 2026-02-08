@@ -1,6 +1,7 @@
 import type { AdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { EnsembleDiversityConfig } from "./EnsembleDiversityConfig.ts";
+import type { FineTunePopulationConfig } from "./FineTunePopulationConfig.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
 import type { PlateauDetectionConfig } from "../NEAT/PlateauDetector.ts";
 import type { QuantumStepConfig } from "./QuantumStepConfig.ts";
@@ -70,6 +71,7 @@ export type NeatOptions =
     | "weightRegularisation"
     | "ensembleDiversity"
     | "quantumStep"
+    | "fineTunePopulation"
   >
   & {
     /** Partial overrides for minimum candidates per category (defaults applied if not specified) */
@@ -86,6 +88,8 @@ export type NeatOptions =
     ensembleDiversity?: EnsembleDiversityConfig;
     /** Partial overrides for quantum step configuration (defaults applied if not specified) */
     quantumStep?: QuantumStepConfig;
+    /** Partial overrides for fine-tune population configuration (defaults applied if not specified) */
+    fineTunePopulation?: FineTunePopulationConfig;
   };
 
 /**
@@ -116,6 +120,7 @@ export type NeatOptionsInput =
     | "weightRegularisation"
     | "ensembleDiversity"
     | "quantumStep"
+    | "fineTunePopulation"
   >
   & {
     [K in NumericOptionKeys]?: NonNullable<NeatOptions[K]> extends number
@@ -132,4 +137,5 @@ export type NeatOptionsInput =
     weightRegularisation?: CoerceNumeric<WeightRegularisationConfig>;
     ensembleDiversity?: CoerceNumeric<EnsembleDiversityConfig>;
     quantumStep?: CoerceNumeric<QuantumStepConfig>;
+    fineTunePopulation?: CoerceNumeric<FineTunePopulationConfig>;
   };

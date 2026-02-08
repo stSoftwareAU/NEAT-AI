@@ -13,6 +13,7 @@ import {
 } from "../architecture/ElitismUtils.ts";
 import { Fitness } from "../architecture/Fitness.ts";
 import { calculate as calculateScore } from "../architecture/Score.ts";
+import { AdaptiveFineTuneTracker } from "../blackbox/AdaptiveFineTuneTracker.ts";
 import { fineTuneImprovement } from "../blackbox/FineTune.ts";
 import { FindTunePopulation } from "../blackbox/FineTunePopulation.ts";
 import { Breed } from "../breed/Breed.ts";
@@ -82,6 +83,9 @@ export class Neat {
   /** Plateau detector for fitness stagnation detection (Issue #1039) */
   readonly plateauDetector: PlateauDetector;
 
+  /** Adaptive fine-tune population tracker (Issue #1323) */
+  readonly fineTuneTracker: AdaptiveFineTuneTracker;
+
   /**
    * Discovery replay queue for non-blocking background replay of cached
    * discoveries against new fittest creatures (Issue #997).
@@ -140,6 +144,11 @@ export class Neat {
 
     // Initialize plateau detector (Issue #1039)
     this.plateauDetector = new PlateauDetector(this.config.plateauDetection);
+
+    // Issue #1323: Initialize adaptive fine-tune population tracker
+    this.fineTuneTracker = new AdaptiveFineTuneTracker(
+      this.config.fineTunePopulation,
+    );
 
     // Initialize discovery replay queue (Issue #997)
     this.discoveryReplayQueue = new DiscoveryReplayQueue();
@@ -798,6 +807,14 @@ export class Neat {
     // Issue #1039: Record fitness for plateau detection
     this.plateauDetector.recordFitness(fittest.score);
 
+    // Issue #1323: Record whether fine-tuning produced the new fittest
+    if (previousFittest) {
+      const approach = getTag(tmpFittest, "approach");
+      const fineTuneImproved = approach === "fine" &&
+        tmpFittest.uuid !== previousFittest.uuid;
+      this.fineTuneTracker.recordOutcome(fineTuneImproved);
+    }
+
     addTag(fittest, "score", fittest.score.toString());
 
     const error = getTag(fittest, "error");
@@ -914,7 +931,7 @@ export class Neat {
       newPopulation.push(creativeThinking);
     }
 
-    const ftp = new FindTunePopulation(this);
+    const ftp = new FindTunePopulation(this, this.fineTuneTracker);
     const fineTunedPopulation = ftp.make(
       fittest,
       previousFittest,
