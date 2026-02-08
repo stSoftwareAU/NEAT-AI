@@ -24,6 +24,8 @@ import {
   DEFAULT_QUANTUM_STEP_CONFIG,
   type RequiredQuantumStepConfig,
 } from "../config/QuantumStepConfig.ts";
+export type { GradientHint, GradientHintMap } from "./GradientHint.ts";
+import type { GradientHintMap } from "./GradientHint.ts";
 
 export const MIN_STEP = DEFAULT_QUANTUM_STEP_CONFIG.minStep;
 
@@ -63,6 +65,7 @@ export function calculateEffectiveStep(
 /**
  * Adjusts the best value based on the difference between the current best and previous best value.
  * Uses trajectory momentum to bias adjustments in the direction of consistent historical improvement.
+ * Optionally uses gradient hints from backpropagation to inform the direction and magnitude.
  *
  * @param {number} currentBest - The current fittest value.
  * @param {number} previousBest - The previous fittest value.
@@ -72,7 +75,10 @@ export function calculateEffectiveStep(
  *                                  Higher values bias adjustment more strongly in the direction of change.
  * @param {number} suggestedDirection - Optional suggested direction from trajectory (-1, 0, or 1).
  * @param {AdaptiveQuantumParams} adaptiveParams - Optional adaptive parameters for step sizing.
- * @returns {number} - The adjusted best value.
+ * @param {GradientHint} gradientHint - Optional gradient hint from backpropagation.
+ *                                      Biases the adjustment direction using gradient sign and scales
+ *                                      magnitude based on gradient strength.
+ * @returns {{ value: number; changed: boolean }} - The adjusted best value and whether it changed.
  */
 export function quantumAdjust(
   currentBest: number,
@@ -82,6 +88,7 @@ export function quantumAdjust(
   momentumFactor?: number,
   suggestedDirection?: number,
   adaptiveParams?: AdaptiveQuantumParams,
+  gradientHint?: { direction: -1 | 0 | 1; magnitude: number },
 ): { value: number; changed: boolean } {
   // Calculate effective step size based on training progress
   const stepSize = adaptiveParams
@@ -123,6 +130,23 @@ export function quantumAdjust(
     } else if (effectiveMomentum < 1.0) {
       // Low consistency, be more conservative
       delta *= effectiveMomentum;
+    }
+
+    // Apply gradient hint: bias delta direction towards the gradient sign
+    if (
+      gradientHint && gradientHint.direction !== 0 &&
+      gradientHint.magnitude > 0
+    ) {
+      if (Math.sign(delta) !== gradientHint.direction) {
+        // Delta opposes gradient direction - blend towards gradient
+        // Higher gradient magnitude = stronger pull towards gradient direction
+        if (Math.random() < gradientHint.magnitude) {
+          delta = Math.abs(delta) * gradientHint.direction;
+        }
+      } else {
+        // Delta already aligns with gradient - amplify proportionally
+        delta *= 1 + gradientHint.magnitude * 0.5;
+      }
     }
 
     const adjustedValue = currentBest + delta;
@@ -221,6 +245,7 @@ function tuneRandomize(
   forwardOnly?: boolean,
   backtrack?: boolean,
   quantumStepConfig?: RequiredQuantumStepConfig,
+  gradientHints?: GradientHintMap,
 ) {
   const effectiveForwardOnly = forwardOnly ?? false;
   const effectiveBacktrack = backtrack ?? false;
@@ -299,6 +324,7 @@ function tuneRandomize(
         }
       }
 
+      const biasGradientHint = gradientHints?.biases.get(fittestNeuron.uuid);
       const result = quantumAdjust(
         fittestNeuron.bias,
         previousNeuron.bias,
@@ -307,6 +333,7 @@ function tuneRandomize(
         momentumFactor,
         suggestedDirection,
         adaptiveParams,
+        biasGradientHint,
       );
       candidateBiases.set(fittestNeuron.uuid, {
         original: fittestNeuron.bias,
@@ -350,6 +377,8 @@ function tuneRandomize(
         }
       }
 
+      const weightKey = `${fittestSynapse.fromUUID}->${fittestSynapse.toUUID}`;
+      const weightGradientHint = gradientHints?.weights.get(weightKey);
       const result = quantumAdjust(
         fittestSynapse.weight,
         previousSynapse.weight,
@@ -358,6 +387,7 @@ function tuneRandomize(
         momentumFactor,
         suggestedDirection,
         adaptiveParams,
+        weightGradientHint,
       );
 
       const entry = {
@@ -530,6 +560,7 @@ export function fineTuneImprovement(
   popSize?: number,
   backtrack?: boolean,
   quantumStepConfig?: RequiredQuantumStepConfig,
+  gradientHints?: GradientHintMap,
 ) {
   const effectivePopSize = popSize ?? 10;
   const effectiveBacktrack = backtrack ?? false;
@@ -567,6 +598,7 @@ export function fineTuneImprovement(
     forwardOnly,
     effectiveBacktrack,
     quantumStepConfig,
+    gradientHints,
   );
   if (resultSame.tuned) {
     const randomUUID = CreatureUtil.makeUUID(resultSame.tuned);
@@ -587,6 +619,7 @@ export function fineTuneImprovement(
       forwardOnly,
       effectiveBacktrack,
       quantumStepConfig,
+      gradientHints,
     );
     if (resultRandomize.tuned) {
       const randomUUID = CreatureUtil.makeUUID(resultRandomize.tuned);
