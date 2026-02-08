@@ -24,6 +24,11 @@ import {
   DEFAULT_QUANTUM_STEP_CONFIG,
   type RequiredQuantumStepConfig,
 } from "../config/QuantumStepConfig.ts";
+import {
+  applyGradientBias,
+  computeGradientHint,
+  type GradientHint,
+} from "./GradientHint.ts";
 
 export const MIN_STEP = DEFAULT_QUANTUM_STEP_CONFIG.minStep;
 
@@ -72,6 +77,7 @@ export function calculateEffectiveStep(
  *                                  Higher values bias adjustment more strongly in the direction of change.
  * @param {number} suggestedDirection - Optional suggested direction from trajectory (-1, 0, or 1).
  * @param {AdaptiveQuantumParams} adaptiveParams - Optional adaptive parameters for step sizing.
+ * @param {GradientHint} gradientHint - Optional gradient information to bias the adjustment direction.
  * @returns {number} - The adjusted best value.
  */
 export function quantumAdjust(
@@ -82,6 +88,7 @@ export function quantumAdjust(
   momentumFactor?: number,
   suggestedDirection?: number,
   adaptiveParams?: AdaptiveQuantumParams,
+  gradientHint?: GradientHint,
 ): { value: number; changed: boolean } {
   // Calculate effective step size based on training progress
   const stepSize = adaptiveParams
@@ -103,6 +110,11 @@ export function quantumAdjust(
       delta = diff * Math.random() * scale;
     } else {
       delta = diff * Math.random() * (scale + 1) - diff;
+    }
+
+    // Apply gradient hint: bias delta direction using gradient information
+    if (gradientHint) {
+      delta = applyGradientBias(delta, gradientHint);
     }
 
     // Apply momentum: if we have a strong consistent trajectory, bias towards it
@@ -243,6 +255,13 @@ function tuneRandomize(
     };
   }
 
+  // Compute score improvement for gradient hint generation
+  // Scores are negative (closer to zero is better), so improvement is current - previous
+  const scoreImprovement = (Number.isFinite(fittest.score) &&
+      Number.isFinite(previousFittest.score))
+    ? (fittest.score! - previousFittest.score!)
+    : 0;
+
   // Build adaptive quantum params from creature scores and config
   const adaptiveParams: AdaptiveQuantumParams | undefined = quantumStepConfig &&
       Number.isFinite(fittest.score) &&
@@ -299,6 +318,13 @@ function tuneRandomize(
         }
       }
 
+      // Compute gradient hint from bias change direction and score improvement
+      const biasGradientHint = computeGradientHint(
+        fittestNeuron.bias,
+        previousNeuron.bias,
+        scoreImprovement,
+      );
+
       const result = quantumAdjust(
         fittestNeuron.bias,
         previousNeuron.bias,
@@ -307,6 +333,7 @@ function tuneRandomize(
         momentumFactor,
         suggestedDirection,
         adaptiveParams,
+        biasGradientHint,
       );
       candidateBiases.set(fittestNeuron.uuid, {
         original: fittestNeuron.bias,
@@ -350,6 +377,13 @@ function tuneRandomize(
         }
       }
 
+      // Compute gradient hint from weight change direction and score improvement
+      const weightGradientHint = computeGradientHint(
+        fittestSynapse.weight,
+        previousSynapse.weight,
+        scoreImprovement,
+      );
+
       const result = quantumAdjust(
         fittestSynapse.weight,
         previousSynapse.weight,
@@ -358,6 +392,7 @@ function tuneRandomize(
         momentumFactor,
         suggestedDirection,
         adaptiveParams,
+        weightGradientHint,
       );
 
       const entry = {
