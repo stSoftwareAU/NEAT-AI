@@ -4,6 +4,7 @@
   "version": "0.310.4",
   "publish": {
     "include": [
+      "README.md",
       "mod.ts",
       "src/**",
       "wasm_activation/pkg/**"
@@ -23,16 +24,11 @@
     "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.13"
   },
   "test": {
-    "include": [
-      "test/**/*.ts"
-    ]
+    "include": ["test/**/*.ts"]
   },
   "lint": {
     "rules": {
-      "tags": [
-        "recommended",
-        "jsr"
-      ],
+      "tags": ["recommended", "jsr"],
       "include": [
         "ban-untagged-todo",
         "camelcase",

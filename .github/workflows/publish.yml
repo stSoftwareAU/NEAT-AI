@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write  # OIDC for JSR (provenance + tokenless publish)
     steps:
       - uses: actions/checkout@v4
 
@@ -18,8 +19,9 @@ jobs:
         with:
           deno-version: v2.x
 
-      # JSR_TOKEN: use a token from a @stsoftware scope member so publish works
-      # regardless of which GitHub actor (e.g. stservice) triggered the run.
-      # Create at https://jsr.io → account → Access Tokens; store as repo secret.
+      # Tokenless publish: package must be linked to this repo on JSR.
+      # For runs triggered by bots (e.g. stservice): scope admin must disable
+      # "Only allow publishing when triggered by a scope member" in scope settings.
+      # See https://jsr.io/docs/scopes#github-actions-publishing-security
       - name: Publish to JSR
-        run: deno publish --token "${{ secrets.JSR_TOKEN }}"
+        run: npx jsr publish
