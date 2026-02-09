@@ -10,6 +10,7 @@ import {
   calculateLearningRate,
   createBackPropagationConfig,
 } from "../propagate/BackPropagation.ts";
+import { buildOutgoingSynapsesMap } from "../propagate/sparse/CalculatePathsToOutput.ts";
 import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 import { BufferPool } from "../utils/BufferPool.ts";
 import type { CreatureExport, CreatureTrace } from "./CreatureInterfaces.ts";
@@ -179,7 +180,14 @@ function trainDirBinary(
   let lastTraceJSON = bestTraceJSON;
   let knownSampleCount = -1;
 
-  const sparseConfig = new SparseConfig(bestCreatureJSON, backPropConfig);
+  // Issue #1294: Build outgoing synapse map once and cache it.
+  // Map construction is O(synapses) and dominated calculatePathsToOutput cost.
+  const outgoingSynapsesMap = buildOutgoingSynapsesMap(bestCreatureJSON);
+  const sparseConfig = new SparseConfig(
+    bestCreatureJSON,
+    backPropConfig,
+    outgoingSynapsesMap,
+  );
 
   while (true) {
     const currentLearningRate = calculateLearningRate(
