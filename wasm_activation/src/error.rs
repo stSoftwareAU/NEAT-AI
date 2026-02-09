@@ -427,12 +427,10 @@ pub fn apply_calculate_error(
 /// * `target_activations` - Array of 4 desired activation values
 /// * `current_values` - Array of 4 pre-squash values (used as hints for unSquash)
 ///
-/// # Safety
-/// This function uses SIMD intrinsics and requires the WASM SIMD feature.
 #[cfg(target_arch = "wasm32")]
 #[target_feature(enable = "simd128")]
 #[inline]
-pub unsafe fn apply_calculate_error_batch_4way(
+pub fn apply_calculate_error_batch_4way(
     squash_type: SquashType,
     current_activations: &[f32; 4],
     target_activations: &[f32; 4],

@@ -31,12 +31,10 @@ use core::arch::wasm32::{
 /// independent f32x4 accumulators to hide FMA latency via instruction-level
 /// parallelism. Falls back to 4-wide for counts 4..7 and scalar for < 4.
 ///
-/// # Safety
-/// This function uses SIMD intrinsics and must be called with valid indices.
 #[cfg(target_arch = "wasm32")]
 #[target_feature(enable = "simd128", enable = "relaxed-simd")]
 #[inline]
-pub unsafe fn weighted_sum_simd(
+pub fn weighted_sum_simd(
     synapses: &[SynapseData],
     activations: &[f32],
     start: usize,
@@ -141,12 +139,10 @@ pub unsafe fn weighted_sum_simd(
 /// Computes sum((activation[from] * weight)^2) using SIMD with dual accumulators.
 /// Used by the Hypotenuse squash function: sqrt(sum_sq) + bias.
 ///
-/// # Safety
-/// This function uses SIMD intrinsics and must be called with valid indices.
 #[cfg(target_arch = "wasm32")]
 #[target_feature(enable = "simd128", enable = "relaxed-simd")]
 #[inline]
-pub unsafe fn weighted_sum_of_squares_simd(
+pub fn weighted_sum_of_squares_simd(
     synapses: &[SynapseData],
     activations: &[f32],
     start: usize,
@@ -211,12 +207,10 @@ pub unsafe fn weighted_sum_of_squares_simd(
 /// the Mean squash: sum / n + bias. Shares the dual-accumulator approach
 /// with `weighted_sum_simd` but omits the bias to keep the division clean.
 ///
-/// # Safety
-/// This function uses SIMD intrinsics and must be called with valid indices.
 #[cfg(target_arch = "wasm32")]
 #[target_feature(enable = "simd128", enable = "relaxed-simd")]
 #[inline]
-pub unsafe fn weighted_sum_no_bias_simd(
+pub fn weighted_sum_no_bias_simd(
     synapses: &[SynapseData],
     activations: &[f32],
     start: usize,
@@ -276,12 +270,10 @@ pub unsafe fn weighted_sum_no_bias_simd(
 /// Computes sum((bias + activation[from] * weight)^2) using SIMD.
 /// Used by the HypotenuseV2 squash function: sqrt(sum_sq).
 ///
-/// # Safety
-/// This function uses SIMD intrinsics and must be called with valid indices.
 #[cfg(target_arch = "wasm32")]
 #[target_feature(enable = "simd128", enable = "relaxed-simd")]
 #[inline]
-pub unsafe fn weighted_sum_of_squares_v2_simd(
+pub fn weighted_sum_of_squares_v2_simd(
     synapses: &[SynapseData],
     activations: &[f32],
     start: usize,
@@ -348,12 +340,10 @@ pub unsafe fn weighted_sum_of_squares_v2_simd(
 /// Processes the same neuron for 4 different records in parallel using SIMD.
 /// Each record has its own activation buffer, but weights are shared.
 ///
-/// # Safety
-/// This function uses SIMD intrinsics and must be called with valid indices.
 #[cfg(target_arch = "wasm32")]
 #[target_feature(enable = "simd128", enable = "relaxed-simd")]
 #[inline]
-pub unsafe fn weighted_sum_simd_4records(
+pub fn weighted_sum_simd_4records(
     synapses: &[SynapseData],
     act0: &[f32],
     act1: &[f32],
@@ -403,13 +393,11 @@ pub unsafe fn weighted_sum_simd_4records(
 /// This extends the 4-record approach (Issue #1202) by stacking two v128 operations
 /// for better cache utilisation and amortised overhead.
 ///
-/// # Safety
-/// This function uses SIMD intrinsics and must be called with valid indices.
 #[cfg(target_arch = "wasm32")]
 #[target_feature(enable = "simd128", enable = "relaxed-simd")]
 #[inline]
 #[allow(clippy::too_many_arguments)]
-pub unsafe fn weighted_sum_simd_8records(
+pub fn weighted_sum_simd_8records(
     synapses: &[SynapseData],
     act0: &[f32],
     act1: &[f32],

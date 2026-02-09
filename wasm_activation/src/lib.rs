@@ -185,13 +185,6 @@ pub fn derivative_batch_4way(
     x2: f32,
     x3: f32,
 ) -> js_sys::Float32Array {
-    // SAFETY: The SIMD function is only unsafe on WASM target due to target_feature.
-    // The scalar fallback on non-WASM is safe. For WASM, we trust the SIMD intrinsics
-    // with valid f32 inputs.
-    #[cfg(target_arch = "wasm32")]
-    let (d0, d1, d2, d3) =
-        unsafe { apply_derivative_simd_4way(SquashType::from(squash_type), x0, x1, x2, x3) };
-    #[cfg(not(target_arch = "wasm32"))]
     let (d0, d1, d2, d3) =
         apply_derivative_simd_4way(SquashType::from(squash_type), x0, x1, x2, x3);
 
@@ -239,19 +232,6 @@ pub fn calculate_error_batch_4way(
         current_values.get_index(3),
     ];
 
-    // SAFETY: The SIMD function is only unsafe on WASM target due to target_feature.
-    // The scalar fallback on non-WASM is safe. For WASM, we trust the SIMD intrinsics
-    // with valid f32 inputs.
-    #[cfg(target_arch = "wasm32")]
-    let (e0, e1, e2, e3) = unsafe {
-        apply_calculate_error_batch_4way(
-            SquashType::from(squash_type),
-            &curr_acts,
-            &tgt_acts,
-            &curr_vals,
-        )
-    };
-    #[cfg(not(target_arch = "wasm32"))]
     let (e0, e1, e2, e3) = apply_calculate_error_batch_4way(
         SquashType::from(squash_type),
         &curr_acts,
