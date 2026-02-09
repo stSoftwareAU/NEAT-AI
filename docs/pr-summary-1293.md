@@ -5,8 +5,8 @@ compatibility distances between creatures (#1293).
 
 The `DistanceCache` stores computed compatibility scores keyed by creature UUID
 pairs. Since creature UUIDs are deterministic hashes of structure, a cached
-distance remains valid as long as neither creature's structure has changed (which
-would produce a new UUID). The cache uses canonical key ordering so that
+distance remains valid as long as neither creature's structure has changed
+(which would produce a new UUID). The cache uses canonical key ordering so that
 `distance(A, B)` and `distance(B, A)` share a single entry.
 
 ### Changes
@@ -26,11 +26,11 @@ would produce a new UUID). The cache uses canonical key ordering so that
 
 ### Benchmark Results
 
-| Scenario | Without Cache | With Cache (warm) | Improvement |
-|----------|--------------|-------------------|-------------|
-| All pairwise (50 creatures, 1225 pairs) | 984 µs | 126 µs | **7.8x faster** |
-| 3 generations repeated pairwise | 3.0 ms | 382 µs | **7.9x faster** |
-| Single pair repeated 100 times | 83.6 µs | 6.3 µs | **13.3x faster** |
+| Scenario                                | Without Cache | With Cache (warm) | Improvement      |
+| --------------------------------------- | ------------- | ----------------- | ---------------- |
+| All pairwise (50 creatures, 1225 pairs) | 984 µs        | 126 µs            | **7.8x faster**  |
+| 3 generations repeated pairwise         | 3.0 ms        | 382 µs            | **7.9x faster**  |
+| Single pair repeated 100 times          | 83.6 µs       | 6.3 µs            | **13.3x faster** |
 
 Cold cache (first computation) adds ~40% overhead for Map operations, but this
 is amortised immediately on the next comparison of the same pair.
@@ -58,4 +58,5 @@ float + access counter). At the default max of 10,000 entries, this is ~1 MB.
 - All 4 existing `GeneticCompatibility` tests pass unchanged
 - All 6 existing `HiddenNeuronUUIDCache` tests pass unchanged
 - All 7 existing `ParallelBreeding` tests pass unchanged
-- Full quality.sh: 2165 passed, 1 pre-existing flaky failure unrelated to changes
+- Full quality.sh: 2165 passed, 1 pre-existing flaky failure unrelated to
+  changes
