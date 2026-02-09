@@ -492,8 +492,9 @@ pub unsafe fn apply_calculate_error_batch_4way(
             let active_mask = f32x4_gt(curr_vals, zeros);
 
             // Compute scalar fallbacks for inactive neurons
+            // SAFETY: raw_error_lane extracts a lane from a valid v128 SIMD vector.
             let e0 = if current_values[0] > 0.0 {
-                raw_error_lane(raw_error, 0)
+                unsafe { raw_error_lane(raw_error, 0) }
             } else {
                 apply_calculate_error(
                     SquashType::Relu,
@@ -503,7 +504,7 @@ pub unsafe fn apply_calculate_error_batch_4way(
                 )
             };
             let e1 = if current_values[1] > 0.0 {
-                raw_error_lane(raw_error, 1)
+                unsafe { raw_error_lane(raw_error, 1) }
             } else {
                 apply_calculate_error(
                     SquashType::Relu,
@@ -513,7 +514,7 @@ pub unsafe fn apply_calculate_error_batch_4way(
                 )
             };
             let e2 = if current_values[2] > 0.0 {
-                raw_error_lane(raw_error, 2)
+                unsafe { raw_error_lane(raw_error, 2) }
             } else {
                 apply_calculate_error(
                     SquashType::Relu,
@@ -523,7 +524,7 @@ pub unsafe fn apply_calculate_error_batch_4way(
                 )
             };
             let e3 = if current_values[3] > 0.0 {
-                raw_error_lane(raw_error, 3)
+                unsafe { raw_error_lane(raw_error, 3) }
             } else {
                 apply_calculate_error(
                     SquashType::Relu,
