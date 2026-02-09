@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write  # OIDC for JSR (provenance + tokenless publish)
+      id-token: write # OIDC for JSR (provenance + tokenless publish)
     steps:
       - uses: actions/checkout@v4
 
