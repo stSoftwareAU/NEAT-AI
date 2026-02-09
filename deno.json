@@ -1,9 +1,10 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "0.310.4",
+  "version": "0.310.5",
   "publish": {
     "include": [
+      "README.md",
       "mod.ts",
       "src/**",
       "wasm_activation/pkg/**"
