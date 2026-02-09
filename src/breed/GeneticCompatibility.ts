@@ -1,5 +1,6 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../../mod.ts";
+import { getCachedDistance, setCachedDistance } from "./DistanceCache.ts";
 
 /**
  * Calculates the genetic compatibility between two creatures for breeding.
@@ -13,6 +14,9 @@ import type { Creature } from "../../mod.ts";
  * total number of hidden neurons in the smaller creature.
  *
  * Issue #1032: Uses cached hidden neuron UUIDs for improved performance.
+ * Issue #1293: Uses distance cache for incremental computation. Since creature
+ * UUIDs are deterministic hashes of structure, a cached distance remains valid
+ * as long as neither creature's structure has changed.
  *
  * @param father - The first creature for compatibility calculation
  * @param mother - The second creature for compatibility calculation
@@ -30,6 +34,14 @@ export function geneticCompatibility(
   father: Creature,
   mother: Creature,
 ): number {
+  // Issue #1293: Check distance cache first when both creatures have UUIDs
+  if (father.uuid && mother.uuid) {
+    const cached = getCachedDistance(father.uuid, mother.uuid);
+    if (cached !== undefined) {
+      return cached;
+    }
+  }
+
   // Use cached hidden neuron UUIDs for improved performance (Issue #1032)
   const fatherNeurons = father.getHiddenNeuronUUIDs();
   const motherNeurons = mother.getHiddenNeuronUUIDs();
@@ -60,5 +72,11 @@ export function geneticCompatibility(
     neuronCompatibility >= 0 && neuronCompatibility <= 1,
     `Neuron compatibility should be between 0 and 1, got ${neuronCompatibility}`,
   );
+
+  // Issue #1293: Store in distance cache for future lookups
+  if (father.uuid && mother.uuid) {
+    setCachedDistance(father.uuid, mother.uuid, neuronCompatibility);
+  }
+
   return neuronCompatibility;
 }
