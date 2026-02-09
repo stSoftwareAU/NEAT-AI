@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # The OIDC ID token is used for authentication with JSR.
     steps:
       - uses: actions/checkout@v4
 
@@ -19,5 +18,8 @@ jobs:
         with:
           deno-version: v2.x
 
+      # JSR_TOKEN: use a token from a @stsoftware scope member so publish works
+      # regardless of which GitHub actor (e.g. stservice) triggered the run.
+      # Create at https://jsr.io → account → Access Tokens; store as repo secret.
       - name: Publish to JSR
-        run: deno publish
+        run: deno publish --token "${{ secrets.JSR_TOKEN }}"
