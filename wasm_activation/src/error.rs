@@ -12,7 +12,7 @@ use crate::unsquash::apply_unsquash;
 #[cfg(target_arch = "wasm32")]
 use core::arch::wasm32::{
     f32x4, f32x4_abs, f32x4_extract_lane, f32x4_gt, f32x4_lt, f32x4_max, f32x4_min, f32x4_neg,
-    f32x4_splat, f32x4_sub, v128, v128_bitselect,
+    f32x4_splat, f32x4_sub, v128_bitselect,
 };
 
 /// Error epsilon - smallest meaningful difference between target and actual activation
@@ -427,12 +427,10 @@ pub fn apply_calculate_error(
 /// * `target_activations` - Array of 4 desired activation values
 /// * `current_values` - Array of 4 pre-squash values (used as hints for unSquash)
 ///
-/// # Safety
-/// This function uses SIMD intrinsics and requires the WASM SIMD feature.
 #[cfg(target_arch = "wasm32")]
 #[target_feature(enable = "simd128")]
 #[inline]
-pub unsafe fn apply_calculate_error_batch_4way(
+pub fn apply_calculate_error_batch_4way(
     squash_type: SquashType,
     current_activations: &[f32; 4],
     target_activations: &[f32; 4],
@@ -491,9 +489,16 @@ pub unsafe fn apply_calculate_error_batch_4way(
             // For inactive neurons: compute scalar fallback
             let active_mask = f32x4_gt(curr_vals, zeros);
 
+            let (re0, re1, re2, re3) = (
+                f32x4_extract_lane::<0>(raw_error),
+                f32x4_extract_lane::<1>(raw_error),
+                f32x4_extract_lane::<2>(raw_error),
+                f32x4_extract_lane::<3>(raw_error),
+            );
+
             // Compute scalar fallbacks for inactive neurons
             let e0 = if current_values[0] > 0.0 {
-                raw_error_lane(raw_error, 0)
+                re0
             } else {
                 apply_calculate_error(
                     SquashType::Relu,
@@ -503,7 +508,7 @@ pub unsafe fn apply_calculate_error_batch_4way(
                 )
             };
             let e1 = if current_values[1] > 0.0 {
-                raw_error_lane(raw_error, 1)
+                re1
             } else {
                 apply_calculate_error(
                     SquashType::Relu,
@@ -513,7 +518,7 @@ pub unsafe fn apply_calculate_error_batch_4way(
                 )
             };
             let e2 = if current_values[2] > 0.0 {
-                raw_error_lane(raw_error, 2)
+                re2
             } else {
                 apply_calculate_error(
                     SquashType::Relu,
@@ -523,7 +528,7 @@ pub unsafe fn apply_calculate_error_batch_4way(
                 )
             };
             let e3 = if current_values[3] > 0.0 {
-                raw_error_lane(raw_error, 3)
+                re3
             } else {
                 apply_calculate_error(
                     SquashType::Relu,
@@ -577,19 +582,6 @@ pub unsafe fn apply_calculate_error_batch_4way(
         f32x4_extract_lane::<2>(result),
         f32x4_extract_lane::<3>(result),
     )
-}
-
-/// Helper to extract raw error from a specific lane (WASM target only).
-#[cfg(target_arch = "wasm32")]
-#[inline(always)]
-unsafe fn raw_error_lane(raw_error: v128, lane: usize) -> f32 {
-    match lane {
-        0 => f32x4_extract_lane::<0>(raw_error),
-        1 => f32x4_extract_lane::<1>(raw_error),
-        2 => f32x4_extract_lane::<2>(raw_error),
-        3 => f32x4_extract_lane::<3>(raw_error),
-        _ => 0.0,
-    }
 }
 
 /// Scalar fallback for non-WASM targets (for testing).

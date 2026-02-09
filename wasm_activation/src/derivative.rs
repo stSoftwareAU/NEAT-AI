@@ -337,12 +337,10 @@ pub fn apply_derivative(squash_type: SquashType, x: f32) -> f32 {
 /// This is particularly useful during backpropagation where the same activation function
 /// derivative needs to be computed for multiple neurons/records.
 ///
-/// # Safety
-/// This function uses SIMD intrinsics and requires the WASM SIMD feature.
 #[cfg(target_arch = "wasm32")]
 #[target_feature(enable = "simd128")]
 #[inline]
-pub unsafe fn apply_derivative_simd_4way(
+pub fn apply_derivative_simd_4way(
     squash_type: SquashType,
     x0: f32,
     x1: f32,

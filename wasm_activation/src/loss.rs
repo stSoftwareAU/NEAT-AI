@@ -19,7 +19,7 @@ use crate::synapse_type::SynapseType;
 /// This macro generates the neuron activation loop for 8 records in parallel,
 /// then calls a provided error calculation closure for each record.
 macro_rules! batch_8way_activation {
-    ($network:expr, $records:expr, $values_per_record:expr, $input_size:expr, $num_outputs:expr, $num_records:expr, $error_fn:expr) => {{
+    ($network:expr_2021, $records:expr_2021, $values_per_record:expr_2021, $input_size:expr_2021, $num_outputs:expr_2021, $num_records:expr_2021, $error_fn:expr_2021) => {{
         let num_neurons = $network.num_neurons;
         let num_inputs = $network.num_inputs;
         let mut act0: Vec<f32> = vec![0.0; num_neurons];
@@ -184,24 +184,6 @@ macro_rules! batch_8way_activation {
                             }
                         }
                         _ => {
-                            #[cfg(target_arch = "wasm32")]
-                            let (sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7) = unsafe {
-                                weighted_sum_simd_8records(
-                                    &$network.synapses,
-                                    &act0,
-                                    &act1,
-                                    &act2,
-                                    &act3,
-                                    &act4,
-                                    &act5,
-                                    &act6,
-                                    &act7,
-                                    start_synapse,
-                                    end_synapse,
-                                    neuron.bias,
-                                )
-                            };
-                            #[cfg(not(target_arch = "wasm32"))]
                             let (sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7) =
                                 weighted_sum_simd_8records(
                                     &$network.synapses,
@@ -398,20 +380,6 @@ macro_rules! batch_8way_activation {
                                 }
                             }
                             _ => {
-                                #[cfg(target_arch = "wasm32")]
-                                let (sum0, sum1, sum2, sum3) = unsafe {
-                                    weighted_sum_simd_4records(
-                                        &$network.synapses,
-                                        &act0,
-                                        &act1,
-                                        &act2,
-                                        &act3,
-                                        start_synapse,
-                                        end_synapse,
-                                        neuron.bias,
-                                    )
-                                };
-                                #[cfg(not(target_arch = "wasm32"))]
                                 let (sum0, sum1, sum2, sum3) = weighted_sum_simd_4records(
                                     &$network.synapses,
                                     &act0,
@@ -822,20 +790,6 @@ fn mse_sum_batch_4way(
                     }
                     _ => {
                         // Use SIMD for standard squash functions
-                        #[cfg(target_arch = "wasm32")]
-                        let (sum0, sum1, sum2, sum3) = unsafe {
-                            weighted_sum_simd_4records(
-                                &network.synapses,
-                                &act0,
-                                &act1,
-                                &act2,
-                                &act3,
-                                start_synapse,
-                                end_synapse,
-                                neuron.bias,
-                            )
-                        };
-                        #[cfg(not(target_arch = "wasm32"))]
                         let (sum0, sum1, sum2, sum3) = weighted_sum_simd_4records(
                             &network.synapses,
                             &act0,
@@ -1181,24 +1135,6 @@ fn mse_sum_batch_8way(
                     }
                     _ => {
                         // Use SIMD for standard squash functions
-                        #[cfg(target_arch = "wasm32")]
-                        let (sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7) = unsafe {
-                            weighted_sum_simd_8records(
-                                &network.synapses,
-                                &act0,
-                                &act1,
-                                &act2,
-                                &act3,
-                                &act4,
-                                &act5,
-                                &act6,
-                                &act7,
-                                start_synapse,
-                                end_synapse,
-                                neuron.bias,
-                            )
-                        };
-                        #[cfg(not(target_arch = "wasm32"))]
                         let (sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7) =
                             weighted_sum_simd_8records(
                                 &network.synapses,
@@ -1373,20 +1309,6 @@ fn mse_sum_batch_8way(
                             }
                         }
                         _ => {
-                            #[cfg(target_arch = "wasm32")]
-                            let (sum0, sum1, sum2, sum3) = unsafe {
-                                weighted_sum_simd_4records(
-                                    &network.synapses,
-                                    &act0,
-                                    &act1,
-                                    &act2,
-                                    &act3,
-                                    start_synapse,
-                                    end_synapse,
-                                    neuron.bias,
-                                )
-                            };
-                            #[cfg(not(target_arch = "wasm32"))]
                             let (sum0, sum1, sum2, sum3) = weighted_sum_simd_4records(
                                 &network.synapses,
                                 &act0,
