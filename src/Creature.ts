@@ -40,6 +40,7 @@ import {
   type BackPropagationConfig,
   createBackPropagationConfig,
 } from "./propagate/BackPropagation.ts";
+import { buildOutgoingSynapsesMap } from "./propagate/sparse/CalculatePathsToOutput.ts";
 import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 import { upgradeOne } from "./upgrade/UpgradeOne.ts";
 import { CreatureExportBuilder } from "./utils/CreatureExportBuilder.ts";
@@ -2101,9 +2102,13 @@ export class Creature implements CreatureInternal {
     let error = 0;
     let count = 0;
     const backPropConfig = createBackPropagationConfig(config);
+    const creatureJSON = this.exportJSON();
+    // Issue #1294: Cache outgoing synapse map for path calculation.
+    const outgoingSynapsesMap = buildOutgoingSynapsesMap(creatureJSON);
     const sparseConfig = new SparseConfig(
-      this.exportJSON(),
+      creatureJSON,
       backPropConfig,
+      outgoingSynapsesMap,
     );
 
     const valuesCount = this.input + this.output;
