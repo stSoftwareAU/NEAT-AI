@@ -1,8 +1,14 @@
 ## Summary
 
-Fixed `limitValue()` in `src/propagate/BackPropagation.ts` to guard against `NaN` and `Infinity` inputs. The function is called from `toValue()` after WASM `unSquash` operations that could produce non-finite results. Previously, `NaN` would pass through unchecked because `NaN > 1e12` and `NaN < -1e12` both evaluate to `false`.
+Fixed `limitValue()` in `src/propagate/BackPropagation.ts` to guard against
+`NaN` and `Infinity` inputs. The function is called from `toValue()` after WASM
+`unSquash` operations that could produce non-finite results. Previously, `NaN`
+would pass through unchecked because `NaN > 1e12` and `NaN < -1e12` both
+evaluate to `false`.
 
-The fix (applied in #1363) uses `Number.isFinite()` to catch all non-finite values upfront: `NaN` returns `0` (a safe neutral value), and `Infinity`/`-Infinity` clamp to `+/-1e12`.
+The fix (applied in #1363) uses `Number.isFinite()` to catch all non-finite
+values upfront: `NaN` returns `0` (a safe neutral value), and
+`Infinity`/`-Infinity` clamp to `+/-1e12`.
 
 This PR adds additional edge case tests to strengthen coverage for issue #1364.
 
@@ -35,6 +41,7 @@ Full quality gate passed: 2208 tests passed, 0 failed.
   - `Infinity` clamped to `1e12`
   - `-Infinity` clamped to `-1e12`
   - `NaN` converted to `0`
-  - Computed `NaN` values (`0/0`, `Infinity - Infinity`, `Infinity * 0`) converted to `0`
+  - Computed `NaN` values (`0/0`, `Infinity - Infinity`, `Infinity * 0`)
+    converted to `0`
   - Negative zero handled correctly
   - Values just inside boundaries pass through unchanged
