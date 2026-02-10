@@ -140,6 +140,12 @@ export function parseDiscoverySampleRate(
     );
   }
 
+  // Normalise negative zero to positive zero to prevent subtle bugs
+  // (e.g. 1 / -0 === -Infinity)
+  if (Object.is(num, -0)) {
+    num = 0;
+  }
+
   if (num === DISCOVERY_SAMPLE_RATE_DISABLED) {
     return num;
   }
