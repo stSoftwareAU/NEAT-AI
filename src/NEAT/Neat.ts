@@ -36,6 +36,7 @@ import { simplify } from "../optimize/Simplify.ts";
 import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { validateAfterDiscoveryOrThrow } from "../discovery/DiscoveryPostValidate.ts";
+import { calculateDiscoveryTimeout } from "../discovery/DiscoveryTimeout.ts";
 import { PlateauDetector } from "./PlateauDetector.ts";
 import {
   type DiscoveryReplayDirResult,
@@ -381,10 +382,27 @@ export class Neat {
       );
     }
 
+    // Issue #1298: Adaptive discovery timeout based on creature complexity.
+    // Cap the recording-phase timeout so simple creatures don't wait unnecessarily
+    // long, while complex creatures are allowed more time.
+    const adaptiveTimeout = calculateDiscoveryTimeout({
+      neuronCount: creature.neurons.length,
+      synapseCount: creature.synapses.length,
+    });
+    const effectiveTimeout = Math.min(timeOutMinutes, adaptiveTimeout);
+
+    if (this.config.verbose) {
+      console.info(
+        `[Neat] Adaptive discovery timeout: ${adaptiveTimeout.toFixed(2)}m ` +
+          `(neurons=${creature.neurons.length}, synapses=${creature.synapses.length}), ` +
+          `effective=${effectiveTimeout.toFixed(2)}m`,
+      );
+    }
+
     // Create a new frozen config with the dynamic timeout override
     const discoveryConfig = createNeatConfig({
       ...this.config,
-      discoveryRecordTimeOutMinutes: timeOutMinutes,
+      discoveryRecordTimeOutMinutes: effectiveTimeout,
     });
 
     const taskStartTime = Date.now();
