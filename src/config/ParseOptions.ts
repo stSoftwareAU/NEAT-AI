@@ -59,6 +59,12 @@ export function parseNumber(
     );
   }
 
+  // Normalise negative zero to positive zero to prevent subtle bugs
+  // (e.g. 1 / -0 === -Infinity)
+  if (Object.is(num, -0)) {
+    num = 0;
+  }
+
   if (constraints?.integer) {
     if (!Number.isInteger(num)) {
       throw new Error(
