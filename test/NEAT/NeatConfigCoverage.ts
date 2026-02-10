@@ -53,7 +53,7 @@ Deno.test("NEAT/NeatConfigCoverage - discoveryRustFlushRecords validation (non-p
 Deno.test("NEAT/NeatConfigCoverage - discoveryFocusNeuronUUIDs must be an array", () => {
   try {
     createNeatConfig({
-      discoveryFocusNeuronUUIDs: (123 as unknown as string[]),
+      discoveryFocusNeuronUUIDs: 123 as unknown as string[],
     });
     fail(
       "Expected createNeatConfig() to throw for non-array discoveryFocusNeuronUUIDs",
