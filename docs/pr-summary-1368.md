@@ -8,12 +8,14 @@ In JavaScript, `-0 >= 0` evaluates to `true`, so `-0` silently passes range
 checks. This can cause subtle bugs (e.g. `1 / -0 === -Infinity`). The fix adds
 the same `Object.is(num, -0)` guard to `parseDiscoverySampleRate()`.
 
-Also expanded the test file to cover `parseDiscoverySampleRate` with `-0` inputs.
+Also expanded the test file to cover `parseDiscoverySampleRate` with `-0`
+inputs.
 
 ## Evidence
 
 This is a backend/config change with no UI. All 2218 tests pass including the
-new negative zero tests for both `parseNumber()` and `parseDiscoverySampleRate()`.
+new negative zero tests for both `parseNumber()` and
+`parseDiscoverySampleRate()`.
 
 ## Test Plan
 
