@@ -207,6 +207,10 @@ export function toActivation(neuron: Neuron, value: number) {
 }
 
 export function limitValue(value: number) {
+  if (!Number.isFinite(value)) {
+    if (Number.isNaN(value)) return 0;
+    return value > 0 ? 1e12 : -1e12;
+  }
   if (value > 1e12) return 1e12;
   if (value < -1e12) return -1e12;
 

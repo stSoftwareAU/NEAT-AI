@@ -114,14 +114,14 @@ export function creatureValidate(
       if (uuid !== expectedUUID) {
         debugWrite(creature);
         throw new ValidationError(
-          `${uuid} + ") invalid output UUID: ${uuid}`,
+          `${uuid}) invalid output UUID: ${uuid}`,
           "OTHER",
         );
       }
     } else if (outputIndx) {
       debugWrite(creature);
       throw new ValidationError(
-        `${uuid} + ") type ${neuron.type} after output neuron`,
+        `${uuid}) type ${neuron.type} after output neuron`,
         "OTHER",
       );
     }
@@ -130,7 +130,7 @@ export function creatureValidate(
       debugWrite(creature);
 
       throw new ValidationError(
-        `${uuid} + ") input neuron after the maximum input neurons`,
+        `${uuid}) input neuron after the maximum input neurons`,
         "OTHER",
       );
     }
@@ -322,11 +322,8 @@ export function creatureValidate(
     }
 
     if (c.from > c.to) {
-      /** When feed back is enabled we allow recursive synapses */
-      if (
-        feedbackLoop !== undefined &&
-        feedbackLoop === false
-      ) {
+      /** Recursive synapses rejected only when explicitly disallowed (feedbackLoop === false) */
+      if (feedbackLoop === false) {
         debugWrite(creature);
         throw new ValidationError(
           `${indx}) Recursive synapse ${c.from} (${

@@ -207,7 +207,11 @@ export function removeNeuron(
   } else {
     for (const synapse of fromList) {
       const adjustedBias = synapse.weight * activation;
-      creature.neurons[synapse.to].bias += adjustedBias;
+      const newBias = creature.neurons[synapse.to].bias + adjustedBias;
+      if (!Number.isFinite(newBias)) {
+        return false;
+      }
+      creature.neurons[synapse.to].bias = newBias;
 
       const toList = creature.inwardConnections(synapse.to);
       if (toList.length < 2) {
