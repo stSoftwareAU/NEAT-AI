@@ -205,14 +205,24 @@ export function removeNeuron(
 
     return true;
   } else {
+    // Validate all bias adjustments before applying any, to avoid
+    // leaving the creature in a partially corrupted state.
+    const adjustments: { toIndex: number; newBias: number }[] = [];
     for (const synapse of fromList) {
       const adjustedBias = synapse.weight * activation;
       const newBias = creature.neurons[synapse.to].bias + adjustedBias;
       if (!Number.isFinite(newBias)) {
         return false;
       }
-      creature.neurons[synapse.to].bias = newBias;
+      adjustments.push({ toIndex: synapse.to, newBias });
+    }
 
+    // All adjustments are finite — safe to apply
+    for (const { toIndex, newBias } of adjustments) {
+      creature.neurons[toIndex].bias = newBias;
+    }
+
+    for (const synapse of fromList) {
       const toList = creature.inwardConnections(synapse.to);
       if (toList.length < 2) {
         const randomFromIndx = Math.floor(Math.random() * creature.input);
