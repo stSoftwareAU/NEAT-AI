@@ -11,8 +11,8 @@ This change introduces `calculateDiscoveryTimeout()` which computes a
 complexity-aware timeout that scales logarithmically with the creature's neuron
 and synapse counts:
 
-- **Simple creatures** (few neurons/synapses) get shorter timeouts (~30 seconds),
-  enabling faster stuck-discovery recovery.
+- **Simple creatures** (few neurons/synapses) get shorter timeouts (~30
+  seconds), enabling faster stuck-discovery recovery.
 - **Complex creatures** (many neurons/synapses) are allowed longer timeouts (up
   to 10 minutes) so they have enough time to complete.
 
