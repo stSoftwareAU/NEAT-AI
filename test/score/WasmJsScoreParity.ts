@@ -74,7 +74,7 @@ Deno.test("WASM scoring: synthetic dataset is finite and roughly matches JS", ()
   neurons.push({
     type: "output",
     index: outputIndex,
-    bias: (rand() * 2 - 1),
+    bias: rand() * 2 - 1,
     squash: "IDENTITY",
   });
 

@@ -186,8 +186,8 @@ function runBenchmark() {
       bfsIndexPointerAvgMs: bfsIndexAvg,
       totalWithoutCacheMs: mapAvg + bfsShiftAvg,
       totalWithCacheMs: bfsIndexAvg,
-      savingsPercent:
-        ((mapAvg + bfsShiftAvg - bfsIndexAvg) / (mapAvg + bfsShiftAvg) * 100),
+      savingsPercent: (mapAvg + bfsShiftAvg - bfsIndexAvg) /
+        (mapAvg + bfsShiftAvg) * 100,
     },
     null,
     2,
