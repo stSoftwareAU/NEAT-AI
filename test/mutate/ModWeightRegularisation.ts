@@ -132,7 +132,11 @@ Deno.test("ModWeight - L2 regularisation biases towards smaller weights", () => 
 });
 
 Deno.test("ModWeight - preferSmallChanges reduces mutation magnitude", () => {
-  // Compare mutation magnitudes with and without small change preference
+  // Compare mutation magnitudes with and without small change preference.
+  // We reset the weight before each mutation to prevent weight drift from
+  // changing the quantum and confounding the comparison.
+  const initialWeight = 10;
+
   const configWithSmallChanges: RequiredWeightRegularisationConfig = {
     ...DEFAULT_WEIGHT_REGULARISATION_CONFIG,
     enabled: true,
@@ -154,32 +158,32 @@ Deno.test("ModWeight - preferSmallChanges reduces mutation magnitude", () => {
 
   // Collect change magnitudes with small change preference
   const changesWithPref: number[] = [];
-  const creatureWithPref = createTestCreature(10);
+  const creatureWithPref = createTestCreature(initialWeight);
   const modWeightWithPref = new ModWeight(
     creatureWithPref,
     configWithSmallChanges,
   );
 
-  for (let i = 0; i < 300; i++) {
-    const before = creatureWithPref.synapses[0].weight;
+  for (let i = 0; i < 500; i++) {
+    creatureWithPref.synapses[0].weight = initialWeight;
     modWeightWithPref.mutate();
     const after = creatureWithPref.synapses[0].weight;
-    changesWithPref.push(Math.abs(after - before));
+    changesWithPref.push(Math.abs(after - initialWeight));
   }
 
   // Collect change magnitudes without small change preference
   const changesWithoutPref: number[] = [];
-  const creatureWithoutPref = createTestCreature(10);
+  const creatureWithoutPref = createTestCreature(initialWeight);
   const modWeightWithoutPref = new ModWeight(
     creatureWithoutPref,
     configWithoutSmallChanges,
   );
 
-  for (let i = 0; i < 300; i++) {
-    const before = creatureWithoutPref.synapses[0].weight;
+  for (let i = 0; i < 500; i++) {
+    creatureWithoutPref.synapses[0].weight = initialWeight;
     modWeightWithoutPref.mutate();
     const after = creatureWithoutPref.synapses[0].weight;
-    changesWithoutPref.push(Math.abs(after - before));
+    changesWithoutPref.push(Math.abs(after - initialWeight));
   }
 
   // Calculate mean changes
