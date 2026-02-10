@@ -38,3 +38,23 @@ Deno.test("limitValue - clamps negative Infinity to -1e12", () => {
 Deno.test("limitValue - converts NaN to 0", () => {
   assertEquals(limitValue(NaN), 0);
 });
+
+Deno.test("limitValue - converts computed NaN values to 0", () => {
+  // NaN can arise from various arithmetic operations
+  assertEquals(limitValue(0 / 0), 0);
+  assertEquals(limitValue(Infinity - Infinity), 0);
+  assertEquals(limitValue(Infinity * 0), 0);
+});
+
+Deno.test("limitValue - handles negative zero", () => {
+  // -0 is finite and within range, should pass through as a valid number
+  const result = limitValue(-0);
+  assertEquals(result, 0);
+});
+
+Deno.test("limitValue - passes through values just inside boundaries", () => {
+  const justUnder = 1e12 - 1;
+  const justOver = -1e12 + 1;
+  assertEquals(limitValue(justUnder), justUnder);
+  assertEquals(limitValue(justOver), justOver);
+});
