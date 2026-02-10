@@ -8,16 +8,16 @@ proven pattern from `ParallelBreeding` (Issue #1026).
 ### What changed
 
 - **`src/architecture/Fitness.ts`** — Rewrote `calculate()` to use
-  `Promise.all(workers.map(processNext))` instead of the old
-  `CalculationData` / idle-listener / `_reschedule` machinery. The public API
-  is unchanged. Deduplication (Issue #1016) is preserved.
+  `Promise.all(workers.map(processNext))` instead of the old `CalculationData` /
+  idle-listener / `_reschedule` machinery. The public API is unchanged.
+  Deduplication (Issue #1016) is preserved.
 
 - **`test/architecture/ParallelFitnessEvaluation.ts`** — New test suite
   verifying parallel distribution, deduplication, single-worker fallback,
   empty/pre-scored edge cases, and large-population distribution.
 
-- **`bench/ParallelFitnessEvaluation.ts`** — New benchmark measuring
-  evaluation time across 1/2/4 workers for 10/50/100 creature populations.
+- **`bench/ParallelFitnessEvaluation.ts`** — New benchmark measuring evaluation
+  time across 1/2/4 workers for 10/50/100 creature populations.
 
 ## Evidence — Benchmark results
 
