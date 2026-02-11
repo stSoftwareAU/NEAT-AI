@@ -145,6 +145,19 @@ let hingeSumBatchPackedFn:
     forwardOnly: boolean,
   ) => number)
   | null = null;
+// Issue #1377 - Fused backward pass error distribution
+let fusedErrorDistributionFn:
+  | ((
+    neuronSquashType: number,
+    neuronActivation: number,
+    neuronTargetActivation: number,
+    neuronHintValue: number,
+    upstreamSquashTypes: Uint8Array,
+    upstreamHintValues: Float32Array,
+    upstreamActivations: Float32Array,
+    synapseWeights: Float32Array,
+  ) => Float32Array)
+  | null = null;
 let getRangeFn: ((squashType: number) => Float32Array) | null = null;
 let validateRangeFn:
   | ((squashType: number, activation: number) => boolean)
@@ -188,6 +201,7 @@ export async function initWasmActivation(): Promise<boolean> {
       safeZoneAdjustmentFn = module.safe_zone_adjustment;
       safeZoneAdjustmentBatchFn = module.safe_zone_adjustment_batch;
       calculateErrorFn = module.calculate_error;
+      fusedErrorDistributionFn = module.fused_error_distribution;
       mseSumBatchPackedFn = module.mse_sum_batch_packed;
       maeSumBatchPackedFn = module.mae_sum_batch_packed;
       crossEntropySumBatchPackedFn = module.cross_entropy_sum_batch_packed;
@@ -269,6 +283,7 @@ export function initWasmActivationSync(
     safeZoneAdjustmentFn = jsBindings.safe_zone_adjustment;
     safeZoneAdjustmentBatchFn = jsBindings.safe_zone_adjustment_batch;
     calculateErrorFn = jsBindings.calculate_error;
+    fusedErrorDistributionFn = jsBindings.fused_error_distribution;
     mseSumBatchPackedFn = jsBindings.mse_sum_batch_packed;
     maeSumBatchPackedFn = jsBindings.mae_sum_batch_packed;
     crossEntropySumBatchPackedFn = jsBindings.cross_entropy_sum_batch_packed;
@@ -1091,6 +1106,66 @@ export function wasmCalculateError(
     targetActivation,
     currentValue,
   );
+}
+
+/**
+ * Issue #1377 - Result from fused backward pass error distribution.
+ */
+export interface FusedErrorDistributionResult {
+  /** The calculated error in value-space */
+  error: number;
+  /** Safe zone factors (0-1) for each synapse */
+  safeZoneFactors: Float32Array;
+  /** Per-link error shares (sum equals error) */
+  perLinkError: Float32Array;
+}
+
+/**
+ * Issue #1377 - Fused backward pass error distribution.
+ *
+ * Combines calculateError + safeZoneAdjustment + elastic error distribution
+ * into a single WASM call, eliminating S+1 boundary crossings per neuron.
+ *
+ * @param neuronSquashType - The SquashType of the neuron being propagated through
+ * @param neuronActivation - The neuron's current output (after squash)
+ * @param neuronTargetActivation - The desired output for this neuron
+ * @param neuronHintValue - The pre-squash value for this neuron
+ * @param upstreamSquashTypes - Uint8Array of upstream neuron squash type enums
+ * @param upstreamHintValues - Float32Array of upstream pre-squash values
+ * @param upstreamActivations - Float32Array of upstream neuron activations
+ * @param synapseWeights - Float32Array of inbound synapse weights
+ * @returns FusedErrorDistributionResult with error, safeZoneFactors, and perLinkError
+ */
+export function wasmFusedErrorDistribution(
+  neuronSquashType: number,
+  neuronActivation: number,
+  neuronTargetActivation: number,
+  neuronHintValue: number,
+  upstreamSquashTypes: Uint8Array,
+  upstreamHintValues: Float32Array,
+  upstreamActivations: Float32Array,
+  synapseWeights: Float32Array,
+): FusedErrorDistributionResult {
+  if (!fusedErrorDistributionFn) {
+    throw new Error("WASM module not initialised");
+  }
+  const flat = fusedErrorDistributionFn(
+    neuronSquashType,
+    neuronActivation,
+    neuronTargetActivation,
+    neuronHintValue,
+    upstreamSquashTypes,
+    upstreamHintValues,
+    upstreamActivations,
+    synapseWeights,
+  );
+
+  const count = upstreamSquashTypes.length;
+  const error = flat[0];
+  const safeZoneFactors = flat.subarray(1, 1 + count);
+  const perLinkError = flat.subarray(1 + count, 1 + 2 * count);
+
+  return { error, safeZoneFactors, perLinkError };
 }
 
 /**

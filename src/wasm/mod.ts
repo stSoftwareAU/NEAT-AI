@@ -22,6 +22,7 @@ export {
 } from "./SquashType.ts";
 
 export {
+  type FusedErrorDistributionResult,
   initWasmActivation,
   initWasmActivationSync,
   isProbablyWorkerScope,
@@ -30,6 +31,7 @@ export {
   wasmCalculateError,
   WasmCreatureActivation,
   wasmDerivative,
+  wasmFusedErrorDistribution,
   wasmGetRange,
   wasmLimitRange,
   wasmSafeZoneAdjustment,
@@ -49,6 +51,7 @@ export { ensureWasmActivation } from "./EnsureWasmActivation.ts";
 // Issue #1241 - Removed shouldUseWasmBackprop/resetWasmBackpropFlag (WASM is unconditional)
 export {
   calculateError,
+  fusedErrorDistribution,
   isWasmSquashSupported,
   safeZoneAdjustment,
   safeZoneAdjustmentBatch,
