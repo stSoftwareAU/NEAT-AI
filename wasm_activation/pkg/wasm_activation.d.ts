@@ -229,6 +229,37 @@ export function derivative_batch_4way(
 ): Float32Array;
 
 /**
+ * Issue #1377 - Fused backward pass error distribution.
+ *
+ * Combines calculateError + safeZoneAdjustment + elastic error distribution
+ * into a single WASM call, eliminating S+1 boundary crossings per neuron.
+ *
+ * # Arguments
+ * * `neuron_squash_type` - The SquashType of the neuron being propagated through
+ * * `neuron_activation` - The neuron's current output (after squash)
+ * * `neuron_target_activation` - The desired output for this neuron
+ * * `neuron_hint_value` - The pre-squash value for this neuron
+ * * `upstream_squash_types` - Packed u8 array of upstream neuron squash types
+ * * `upstream_hint_values` - Float32Array of upstream pre-squash values
+ * * `upstream_activations` - Float32Array of upstream neuron activations
+ * * `synapse_weights` - Float32Array of inbound synapse weights
+ *
+ * # Returns
+ * Float32Array with layout: [error, safeZone_0..N, perLinkError_0..N]
+ * Total length: 1 + 2*N where N is the number of synapses.
+ */
+export function fused_error_distribution(
+  neuron_squash_type: number,
+  neuron_activation: number,
+  neuron_target_activation: number,
+  neuron_hint_value: number,
+  upstream_squash_types: Uint8Array,
+  upstream_hint_values: Float32Array,
+  upstream_activations: Float32Array,
+  synapse_weights: Float32Array,
+): Float32Array;
+
+/**
  * Get the range (low, high) for an activation function
  * Issue #1142 - WASM Migration Phase 10
  *
@@ -581,6 +612,20 @@ export interface InitOutput {
     d: number,
     e: number,
   ) => any;
+  readonly fused_error_distribution: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+    l: number,
+  ) => [number, number];
   readonly get_range: (a: number) => any;
   readonly limit_range: (a: number, b: number) => number;
   readonly safe_zone_adjustment: (

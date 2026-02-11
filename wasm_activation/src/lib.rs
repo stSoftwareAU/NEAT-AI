@@ -17,6 +17,7 @@ use wasm_bindgen::prelude::*;
 // Module declarations
 mod derivative;
 mod error;
+mod fused_error;
 mod loss;
 mod network;
 mod range;
@@ -40,6 +41,7 @@ pub use loss::{
 // Internal module imports for standalone functions
 use derivative::apply_derivative;
 use error::apply_calculate_error;
+use fused_error::apply_fused_error_distribution;
 use range::{apply_get_range, apply_limit_range, apply_validate_range};
 use safe_zone::{apply_safe_zone_adjustment, apply_safe_zone_adjustment_batch};
 use squash::apply_squash;
@@ -120,6 +122,47 @@ pub fn safe_zone_adjustment_batch(
     weights: &[f32],
 ) -> Vec<f32> {
     apply_safe_zone_adjustment_batch(squash_types, raw_inputs, error, weights)
+}
+
+/// Issue #1377 - Fused backward pass error distribution.
+///
+/// Combines calculateError + safeZoneAdjustment + elastic error distribution
+/// into a single WASM call, eliminating S+1 boundary crossings per neuron.
+///
+/// # Arguments
+/// * `neuron_squash_type` - The SquashType of the neuron being propagated through
+/// * `neuron_activation` - The neuron's current output (after squash)
+/// * `neuron_target_activation` - The desired output for this neuron
+/// * `neuron_hint_value` - The pre-squash value for this neuron
+/// * `upstream_squash_types` - Packed u8 array of upstream neuron squash types
+/// * `upstream_hint_values` - Float32Array of upstream pre-squash values
+/// * `upstream_activations` - Float32Array of upstream neuron activations
+/// * `synapse_weights` - Float32Array of inbound synapse weights
+///
+/// # Returns
+/// Float32Array with layout: [error, safeZone_0..N, perLinkError_0..N]
+/// Total length: 1 + 2*N where N is the number of synapses.
+#[wasm_bindgen]
+pub fn fused_error_distribution(
+    neuron_squash_type: u8,
+    neuron_activation: f32,
+    neuron_target_activation: f32,
+    neuron_hint_value: f32,
+    upstream_squash_types: &[u8],
+    upstream_hint_values: &[f32],
+    upstream_activations: &[f32],
+    synapse_weights: &[f32],
+) -> Vec<f32> {
+    apply_fused_error_distribution(
+        SquashType::from(neuron_squash_type),
+        neuron_activation,
+        neuron_target_activation,
+        neuron_hint_value,
+        upstream_squash_types,
+        upstream_hint_values,
+        upstream_activations,
+        synapse_weights,
+    )
 }
 
 /// Standalone calculate error function for testing

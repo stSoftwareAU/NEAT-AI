@@ -111,6 +111,20 @@ export const derivative_batch_4way: (
   d: number,
   e: number,
 ) => any;
+export const fused_error_distribution: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+  g: number,
+  h: number,
+  i: number,
+  j: number,
+  k: number,
+  l: number,
+) => [number, number];
 export const get_range: (a: number) => any;
 export const limit_range: (a: number, b: number) => number;
 export const safe_zone_adjustment: (

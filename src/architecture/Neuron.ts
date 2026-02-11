@@ -20,14 +20,13 @@ import {
   toValue,
 } from "../propagate/BackPropagation.ts";
 // Issue #1143 - WASM backpropagation integration
-// Issue #1376 - Batch safe zone adjustment to eliminate per-synapse boundary crossings
+// Issue #1377 - Fused backward pass error distribution in WASM
 import {
   calculateError as wasmCalculateError,
-  safeZoneAdjustment as wasmSafeZoneAdjustment,
-  safeZoneAdjustmentBatch as wasmSafeZoneAdjustmentBatch,
+  fusedErrorDistribution,
   squash as wasmSquash,
 } from "../wasm/ActivationMethods.ts";
-import { getSquashType } from "../wasm/SquashType.ts";
+import { getSquashType, SquashType } from "../wasm/SquashType.ts";
 import {
   accumulateBias,
   adjustedBias,
@@ -621,14 +620,6 @@ export class Neuron implements TagsInterface, NeuronInternal {
     } else {
       let targetValue: number | undefined;
 
-      // Issue #1143 - Use WASM calculateError when available
-      const error = wasmCalculateError(
-        this.squash!,
-        activation,
-        targetActivation,
-        ns.hintValue,
-      );
-
       const currentBias = adjustedBias(this, config);
       let improvedValue = currentBias;
       const inwardList = this.creature.inwardConnections(this.index);
@@ -636,52 +627,50 @@ export class Neuron implements TagsInterface, NeuronInternal {
       const listLength = inwardList.length;
 
       if (listLength) {
-        // Elastic distribution: allocate more of the value-space error to
-        // upstream links that can change the output with smaller weight changes.
-        // For a linear pre-activation, minimum L2 weight change yields
-        // contribution shares proportional to activation².
+        // Issue #1377 - Fused backward pass error distribution in WASM.
+        // Combines calculateError + safeZoneAdjustment + elastic distribution
+        // into a single WASM call, eliminating S+1 boundary crossings and
+        // keeping all intermediate float values in WASM linear memory.
         //
-        // We also incorporate each upstream squash's `safeZoneAdjustment` so we
-        // avoid pushing already-saturated parents further into saturation.
-        const linkMeta = new Array<
-          { activation: number; safeZoneFactor: number }
-        >(
-          listLength,
-        );
+        // For non-eligible synapses (self-loops, input/constant neurons), we
+        // use values that produce correct behaviour in the fused function:
+        // - Self-loops: activation=0 → elastic score=0 (excluded from distribution)
+        // - Input/constant: squash=Identity → safeZone=1 (fully safe)
         const fromActivationCache = new Array<number>(listLength);
         const fromWeightCache = new Array<number>(listLength);
         const fromValueCache = new Array<number>(listLength);
         const safeZoneFactorCache = new Array<number>(listLength);
-        const provisionalErrorPerLink = error / listLength;
 
-        // Issue #1376 - Two-pass approach: gather data, then batch WASM call.
-        // Pass 1: Cache activations/weights and identify eligible synapses.
-        // Eligible indices are those needing safe zone adjustment (not self-loops,
-        // not input/constant neurons, and propagation needed by sparse config).
-        const batchIndices: number[] = [];
+        const fusedSquashTypes = new Uint8Array(listLength);
+        const fusedHintValues = new Float32Array(listLength);
+        const fusedActivations = new Float32Array(listLength);
+        const fusedWeights = new Float32Array(listLength);
 
         for (let indx = 0; indx < listLength; indx++) {
           const c = inwardList[indx];
           const { from, to } = c;
 
           if (from === to) {
-            linkMeta[indx] = { activation: 0, safeZoneFactor: 0 };
+            // Self-loop: activation=0 makes elastic score=0
             fromActivationCache[indx] = 0;
             fromWeightCache[indx] = 0;
             fromValueCache[indx] = 0;
-            safeZoneFactorCache[indx] = 0;
+            fusedSquashTypes[indx] = SquashType.Identity;
+            fusedHintValues[indx] = 0;
+            fusedActivations[indx] = 0;
+            fusedWeights[indx] = 0;
             continue;
           }
 
           const fromNeuron = this.creature.neurons[from];
-
           const fromActivation = fromNeuron.adjustedActivation(config);
-
           const fromWeight = adjustedWeight(state, c, config);
 
           fromActivationCache[indx] = fromActivation;
           fromWeightCache[indx] = fromWeight;
           fromValueCache[indx] = fromWeight * fromActivation;
+          fusedActivations[indx] = fromActivation;
+          fusedWeights[indx] = fromWeight;
 
           const type = fromNeuron.type;
           if (
@@ -689,87 +678,48 @@ export class Neuron implements TagsInterface, NeuronInternal {
             type !== "constant" &&
             sparseConfig.propagateNeeded(fromNeuron.uuid)
           ) {
-            batchIndices.push(indx);
+            // Eligible: use actual squash type and hint value
+            const fromNS = state.node(from);
+            fusedSquashTypes[indx] = getSquashType(fromNeuron.squash);
+            fusedHintValues[indx] = fromNS.hintValue;
           } else {
-            // Default: fully safe for input/constant/non-propagated neurons
-            safeZoneFactorCache[indx] = 1;
-            linkMeta[indx] = {
-              activation: fromActivation,
-              safeZoneFactor: 1,
-            };
+            // Input/constant/non-propagated: Identity squash → safeZone=1
+            fusedSquashTypes[indx] = SquashType.Identity;
+            fusedHintValues[indx] = 0;
           }
         }
 
-        // Issue #1376 - Safe zone adjustment for eligible synapses.
-        // Use batch WASM call for large counts (>=64 synapses) to amortise
-        // TypedArray allocation over many boundary crossings saved.
-        // For small counts, scalar calls are faster due to zero allocation overhead.
-        const batchCount = batchIndices.length;
-        if (batchCount >= 64) {
-          const batchSquashTypes = new Uint8Array(batchCount);
-          const batchRawInputs = new Float32Array(batchCount);
-          const batchWeights = new Float32Array(batchCount);
+        // Single fused WASM call: calculateError + safeZoneAdjustment + elastic
+        const fusedResult = fusedErrorDistribution(
+          getSquashType(this.squash),
+          activation,
+          targetActivation,
+          ns.hintValue,
+          fusedSquashTypes,
+          fusedHintValues,
+          fusedActivations,
+          fusedWeights,
+        );
 
-          for (let b = 0; b < batchCount; b++) {
-            const indx = batchIndices[b];
-            const c = inwardList[indx];
-            const fromNeuron = this.creature.neurons[c.from];
-            const fromNS = state.node(c.from);
-            batchSquashTypes[b] = getSquashType(fromNeuron.squash);
-            batchRawInputs[b] = fromNS.hintValue;
-            batchWeights[b] = fromWeightCache[indx];
-          }
+        const error = fusedResult.error;
 
-          const batchResults = wasmSafeZoneAdjustmentBatch(
-            batchSquashTypes,
-            batchRawInputs,
-            provisionalErrorPerLink,
-            batchWeights,
-          );
-
-          // Scatter results back into caches
-          for (let b = 0; b < batchCount; b++) {
-            const indx = batchIndices[b];
-            const safeZoneAdj = batchResults[b];
-            safeZoneFactorCache[indx] = safeZoneAdj;
-            linkMeta[indx] = {
-              activation: fromActivationCache[indx],
-              safeZoneFactor: safeZoneAdj,
-            };
-          }
-        } else {
-          // Scalar path: individual WASM calls for small synapse counts
-          for (let b = 0; b < batchCount; b++) {
-            const indx = batchIndices[b];
-            const c = inwardList[indx];
-            const fromNeuron = this.creature.neurons[c.from];
-            const fromNS = state.node(c.from);
-            const safeZoneAdj = wasmSafeZoneAdjustment(
-              fromNeuron.squash!,
-              fromNS.hintValue,
-              provisionalErrorPerLink,
-              fromWeightCache[indx],
-            );
-            safeZoneFactorCache[indx] = safeZoneAdj;
-            linkMeta[indx] = {
-              activation: fromActivationCache[indx],
-              safeZoneFactor: safeZoneAdj,
-            };
+        // Extract safe zone factors for recursion guards below.
+        // Override self-loops to 0 (the fused function sees Identity which
+        // returns 1.0, but self-loops must be blocked for hasUsableSafeZone).
+        for (let i = 0; i < listLength; i++) {
+          const c = inwardList[i];
+          if (c.from === c.to) {
+            safeZoneFactorCache[i] = 0;
+          } else {
+            safeZoneFactorCache[i] = fusedResult.safeZoneFactors[i];
           }
         }
 
-        // If every upstream link is blocked by safe-zone (eg. parents are deep in
-        // saturation), the standard elastic denominator can collapse to ~0.
-        //
-        // Historically we fell back to an equal split in `distributeElasticError`,
-        // which reintroduced “forced” upstream activation targets when recursion
-        // was enabled. For training, we still want learning to progress, but we
-        // prefer the minimum-change *weight* solution rather than an equal split.
-        //
-        // So: if safe-zone blocks everything, ignore safe-zone for distribution
-        // (use activation² only), while the recursion guard below prevents trying
-        // to push saturated parents via activation targets.
-        let perLinkError: number[];
+        // If every upstream link is blocked by safe-zone (eg. parents are deep
+        // in saturation), the fused function's elastic denominator collapses to
+        // ~0 and it falls back to an equal split. However, we prefer the
+        // activation²-only distribution (ignoring safe zones) for this case.
+        let perLinkError: Float32Array | number[];
         let hasUsableSafeZone = false;
         for (let i = 0; i < listLength; i++) {
           const safe = safeZoneFactorCache[i] ?? 1;
@@ -779,14 +729,16 @@ export class Neuron implements TagsInterface, NeuronInternal {
           }
         }
         if (hasUsableSafeZone) {
-          perLinkError = distributeElasticError(error, linkMeta, {
-            plankConstant: config.plankConstant,
-          });
+          perLinkError = fusedResult.perLinkError;
         } else {
-          const fallbackMeta = linkMeta.map((m) => ({
-            activation: m.activation,
-            safeZoneFactor: 1,
-          }));
+          // Fallback: ignore safe zones, use activation² only
+          const fallbackMeta = new Array(listLength);
+          for (let i = 0; i < listLength; i++) {
+            fallbackMeta[i] = {
+              activation: fusedActivations[i],
+              safeZoneFactor: 1,
+            };
+          }
           perLinkError = distributeElasticError(error, fallbackMeta, {
             plankConstant: config.plankConstant,
           });

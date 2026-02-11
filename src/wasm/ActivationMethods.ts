@@ -15,9 +15,11 @@ import type { ActivationInterface } from "../methods/activations/ActivationInter
 import { Activations } from "../methods/activations/Activations.ts";
 import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
 import {
+  type FusedErrorDistributionResult,
   getSquashType,
   resolveWasmSquashName,
   wasmCalculateError,
+  wasmFusedErrorDistribution,
   wasmSafeZoneAdjustment,
   wasmSafeZoneAdjustmentBatch,
   wasmSquash,
@@ -174,4 +176,43 @@ export function squash(
   }
   const squashType = getSquashType(resolvedName);
   return wasmSquash(squashType, value);
+}
+
+/**
+ * Issue #1377 - Fused backward pass error distribution.
+ *
+ * Combines calculateError + safeZoneAdjustment + elastic error distribution
+ * into a single WASM call, eliminating S+1 boundary crossings per neuron.
+ * All intermediate values stay in WASM linear memory.
+ *
+ * @param neuronSquashType - The SquashType number for the neuron
+ * @param neuronActivation - The neuron's current output (after squash)
+ * @param neuronTargetActivation - The desired output for this neuron
+ * @param neuronHintValue - The pre-squash value for this neuron
+ * @param upstreamSquashTypes - Uint8Array of upstream neuron squash type enums
+ * @param upstreamHintValues - Float32Array of upstream pre-squash values
+ * @param upstreamActivations - Float32Array of upstream neuron activations
+ * @param synapseWeights - Float32Array of inbound synapse weights
+ * @returns FusedErrorDistributionResult with error, safeZoneFactors, and perLinkError
+ */
+export function fusedErrorDistribution(
+  neuronSquashType: number,
+  neuronActivation: number,
+  neuronTargetActivation: number,
+  neuronHintValue: number,
+  upstreamSquashTypes: Uint8Array,
+  upstreamHintValues: Float32Array,
+  upstreamActivations: Float32Array,
+  synapseWeights: Float32Array,
+): FusedErrorDistributionResult {
+  return wasmFusedErrorDistribution(
+    neuronSquashType,
+    neuronActivation,
+    neuronTargetActivation,
+    neuronHintValue,
+    upstreamSquashTypes,
+    upstreamHintValues,
+    upstreamActivations,
+    synapseWeights,
+  );
 }

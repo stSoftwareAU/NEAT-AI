@@ -389,6 +389,78 @@ export function derivative_batch_4way(squash_type, x0, x1, x2, x3) {
 }
 
 /**
+ * Issue #1377 - Fused backward pass error distribution.
+ *
+ * Combines calculateError + safeZoneAdjustment + elastic error distribution
+ * into a single WASM call, eliminating S+1 boundary crossings per neuron.
+ *
+ * # Arguments
+ * * `neuron_squash_type` - The SquashType of the neuron being propagated through
+ * * `neuron_activation` - The neuron's current output (after squash)
+ * * `neuron_target_activation` - The desired output for this neuron
+ * * `neuron_hint_value` - The pre-squash value for this neuron
+ * * `upstream_squash_types` - Packed u8 array of upstream neuron squash types
+ * * `upstream_hint_values` - Float32Array of upstream pre-squash values
+ * * `upstream_activations` - Float32Array of upstream neuron activations
+ * * `synapse_weights` - Float32Array of inbound synapse weights
+ *
+ * # Returns
+ * Float32Array with layout: [error, safeZone_0..N, perLinkError_0..N]
+ * Total length: 1 + 2*N where N is the number of synapses.
+ * @param {number} neuron_squash_type
+ * @param {number} neuron_activation
+ * @param {number} neuron_target_activation
+ * @param {number} neuron_hint_value
+ * @param {Uint8Array} upstream_squash_types
+ * @param {Float32Array} upstream_hint_values
+ * @param {Float32Array} upstream_activations
+ * @param {Float32Array} synapse_weights
+ * @returns {Float32Array}
+ */
+export function fused_error_distribution(
+  neuron_squash_type,
+  neuron_activation,
+  neuron_target_activation,
+  neuron_hint_value,
+  upstream_squash_types,
+  upstream_hint_values,
+  upstream_activations,
+  synapse_weights,
+) {
+  const ptr0 = passArray8ToWasm0(upstream_squash_types, wasm.__wbindgen_malloc);
+  const len0 = WASM_VECTOR_LEN;
+  const ptr1 = passArrayF32ToWasm0(
+    upstream_hint_values,
+    wasm.__wbindgen_malloc,
+  );
+  const len1 = WASM_VECTOR_LEN;
+  const ptr2 = passArrayF32ToWasm0(
+    upstream_activations,
+    wasm.__wbindgen_malloc,
+  );
+  const len2 = WASM_VECTOR_LEN;
+  const ptr3 = passArrayF32ToWasm0(synapse_weights, wasm.__wbindgen_malloc);
+  const len3 = WASM_VECTOR_LEN;
+  const ret = wasm.fused_error_distribution(
+    neuron_squash_type,
+    neuron_activation,
+    neuron_target_activation,
+    neuron_hint_value,
+    ptr0,
+    len0,
+    ptr1,
+    len1,
+    ptr2,
+    len2,
+    ptr3,
+    len3,
+  );
+  var v5 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+  wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+  return v5;
+}
+
+/**
  * Get the range (low, high) for an activation function
  * Issue #1142 - WASM Migration Phase 10
  *
