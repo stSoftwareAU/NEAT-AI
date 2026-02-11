@@ -40,6 +40,7 @@ import {
   type BackPropagationConfig,
   createBackPropagationConfig,
 } from "./propagate/BackPropagation.ts";
+import { BackpropBuffers } from "./propagate/BackpropBuffers.ts";
 import { buildOutgoingSynapsesMap } from "./propagate/sparse/CalculatePathsToOutput.ts";
 import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 import { upgradeOne } from "./upgrade/UpgradeOne.ts";
@@ -1685,6 +1686,11 @@ export class Creature implements CreatureInternal {
     sparseConfig: SparseConfig,
   ) {
     this.state.cacheAdjustedActivation.clear();
+
+    // Issue #1379: Lazily initialise reusable backward pass buffers.
+    if (this.state.backpropBuffers === undefined) {
+      this.state.backpropBuffers = new BackpropBuffers();
+    }
 
     const neurons = this.neurons;
     const lastOutputIndx = neurons.length - this.output;

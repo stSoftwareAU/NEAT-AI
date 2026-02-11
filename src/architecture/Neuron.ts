@@ -660,15 +660,20 @@ export class Neuron implements TagsInterface, NeuronInternal {
         // use values that produce correct behaviour in the fused function:
         // - Self-loops: activation=0 → elastic score=0 (excluded from distribution)
         // - Input/constant: squash=Identity → safeZone=1 (fully safe)
-        const fromActivationCache = new Array<number>(listLength);
-        const fromWeightCache = new Array<number>(listLength);
-        const fromValueCache = new Array<number>(listLength);
-        const safeZoneFactorCache = new Array<number>(listLength);
 
-        const fusedSquashTypes = new Uint8Array(listLength);
-        const fusedHintValues = new Float32Array(listLength);
-        const fusedActivations = new Float32Array(listLength);
-        const fusedWeights = new Float32Array(listLength);
+        // Issue #1379: Acquire reusable buffers instead of allocating fresh
+        // arrays. The pool is stack-based so recursive propagate() calls each
+        // get their own set.
+        const backpropBuffers = state.backpropBuffers!;
+        const buf = backpropBuffers.acquire(listLength);
+        const fromActivationCache = buf.fromActivationCache;
+        const fromWeightCache = buf.fromWeightCache;
+        const fromValueCache = buf.fromValueCache;
+        const safeZoneFactorCache = buf.safeZoneFactorCache;
+        const fusedSquashTypes = buf.fusedSquashTypes;
+        const fusedHintValues = buf.fusedHintValues;
+        const fusedActivations = buf.fusedActivations;
+        const fusedWeights = buf.fusedWeights;
 
         for (let indx = 0; indx < listLength; indx++) {
           const c = inwardList[indx];
@@ -716,15 +721,17 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
         // Single fused WASM call: calculateError + safeZoneAdjustment + elastic
         // Issue #1378: Use pre-computed cached squash type
+        // Issue #1379: Pass correctly-sized views since buffers may be
+        // larger than listLength.
         const fusedResult = fusedErrorDistribution(
           this.cachedSquashType(),
           activation,
           targetActivation,
           ns.hintValue,
-          fusedSquashTypes,
-          fusedHintValues,
-          fusedActivations,
-          fusedWeights,
+          fusedSquashTypes.subarray(0, listLength),
+          fusedHintValues.subarray(0, listLength),
+          fusedActivations.subarray(0, listLength),
+          fusedWeights.subarray(0, listLength),
         );
 
         const error = fusedResult.error;
@@ -839,6 +846,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
             improvedValue += improvedFromValue;
           }
         }
+
+        // Issue #1379: Return buffers to the pool for reuse by subsequent
+        // neurons or future training samples.
+        backpropBuffers.release(buf);
       }
 
       if (updateNeeded) {

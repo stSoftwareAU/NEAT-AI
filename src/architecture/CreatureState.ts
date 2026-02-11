@@ -1,5 +1,6 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
+import type { BackpropBuffers } from "../propagate/BackpropBuffers.ts";
 import { SynapseState } from "../propagate/SynapseState.ts";
 import { DenseNumberMap } from "./DenseNumberMap.ts";
 
@@ -81,6 +82,12 @@ export class CreatureState {
    * Issue #1041: Use TypedArray for dense neuron state storage.
    */
   readonly cacheAdjustedActivation: DenseNumberMap;
+  /**
+   * Issue #1379: Pre-allocated reusable buffers for backward pass.
+   * Lazily initialised on first backward pass to avoid overhead for
+   * creatures that are only used for forward activation (evaluation).
+   */
+  backpropBuffers?: BackpropBuffers;
   public preparedNeurons = false;
 
   constructor(creature: Creature) {
