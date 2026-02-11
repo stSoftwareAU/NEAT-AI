@@ -160,12 +160,17 @@ export interface NeatArguments {
   /** The threshold for genetic compatibility between two creatures */
   geneticCompatibilityThreshold: number;
 
-  /** Discovery Sample rate */
+  /**
+   * Discovery sample rate: the fraction of training records sampled for structural analysis.
+   * Defaults to 0.2 (20%) — increased from 0.05 in #1386 for better statistical coverage.
+   * Set to -1 to disable discovery entirely.
+   */
   discoverySampleRate: number;
 
   /**
    * Maximum minutes allocated to the recording phase before discovery advances to analysis.
-   * Defaults to 1 minute (sufficient for ~50k records at 700 records/sec).
+   * Defaults to 5 minutes (sufficient for ~210k records at 700 records/sec).
+   * Increased from 1 minute in #1386 to accommodate the higher default sample rate.
    */
   discoveryRecordTimeOutMinutes: number;
 

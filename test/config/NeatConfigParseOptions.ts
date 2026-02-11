@@ -9,6 +9,8 @@ import { assertEquals, fail } from "@std/assert";
 import {
   createNeatConfig,
   DEFAULT_COST_OF_GROWTH,
+  DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES,
+  DEFAULT_DISCOVERY_SAMPLE_RATE,
 } from "../../src/config/NeatConfig.ts";
 
 Deno.test("NeatConfigParseOptions - trainingSampleRate accepts number", () => {
@@ -177,5 +179,49 @@ Deno.test("NeatConfigParseOptions - discoverySampleRate other negative (e.g. -0.
 });
 
 Deno.test("NeatConfigParseOptions - discoverySampleRate missing uses default", () => {
-  assertEquals(createNeatConfig({}).discoverySampleRate, 0.05);
+  assertEquals(
+    createNeatConfig({}).discoverySampleRate,
+    DEFAULT_DISCOVERY_SAMPLE_RATE,
+  );
+});
+
+Deno.test("NeatConfigParseOptions - discoverySampleRate default is 0.2 (#1386)", () => {
+  assertEquals(DEFAULT_DISCOVERY_SAMPLE_RATE, 0.2);
+  assertEquals(createNeatConfig({}).discoverySampleRate, 0.2);
+});
+
+Deno.test("NeatConfigParseOptions - discoveryRecordTimeOutMinutes missing uses default", () => {
+  assertEquals(
+    createNeatConfig({}).discoveryRecordTimeOutMinutes,
+    DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES,
+  );
+});
+
+Deno.test("NeatConfigParseOptions - discoveryRecordTimeOutMinutes default is 5 (#1386)", () => {
+  assertEquals(DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES, 5);
+  assertEquals(createNeatConfig({}).discoveryRecordTimeOutMinutes, 5);
+});
+
+Deno.test("NeatConfigParseOptions - discoverySampleRate explicit override still works", () => {
+  assertEquals(
+    createNeatConfig({ discoverySampleRate: 0.05 }).discoverySampleRate,
+    0.05,
+  );
+  assertEquals(
+    createNeatConfig({ discoverySampleRate: 0.5 }).discoverySampleRate,
+    0.5,
+  );
+});
+
+Deno.test("NeatConfigParseOptions - discoveryRecordTimeOutMinutes explicit override still works", () => {
+  assertEquals(
+    createNeatConfig({ discoveryRecordTimeOutMinutes: 1 })
+      .discoveryRecordTimeOutMinutes,
+    1,
+  );
+  assertEquals(
+    createNeatConfig({ discoveryRecordTimeOutMinutes: 10 })
+      .discoveryRecordTimeOutMinutes,
+    10,
+  );
 });
