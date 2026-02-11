@@ -35,14 +35,14 @@ group single-lookup
 ```
 
 The pre-computed cache eliminates 32–55x overhead in the squash type resolution
-path. For a network with 2000 neurons and 16000 synapses, this saves ~639 µs
-per backward pass per training sample.
+path. For a network with 2000 neurons and 16000 synapses, this saves ~639 µs per
+backward pass per training sample.
 
 ### What was changed
 
 - **`src/architecture/Neuron.ts`**: Added `squashTypeCache` field and
-  `cachedSquashType()` method. Updated `propagate()` to use cached values.
-  Cache invalidated in `setSquash()` and `fix()`.
+  `cachedSquashType()` method. Updated `propagate()` to use cached values. Cache
+  invalidated in `setSquash()` and `fix()`.
 
 This is a backend/CLI change with no visual output.
 
@@ -50,7 +50,8 @@ This is a backend/CLI change with no visual output.
 
 - Added `test/wasm/PreComputedSquashTypes.ts` with 6 tests:
   - `cachedSquashType returns correct type for each neuron`
-  - `cachedSquashType matches getSquashType for all squash names` (20 squash types)
+  - `cachedSquashType matches getSquashType for all squash names` (20 squash
+    types)
   - `cachedSquashType is invalidated by setSquash()`
   - `cachedSquashType is stable across multiple calls`
   - `cachedSquashType for input neurons returns Identity`
