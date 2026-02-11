@@ -1,15 +1,15 @@
 ## Summary
 
-Performance optimisation for issue #1377: "Fused backward pass error distribution
-in WASM".
+Performance optimisation for issue #1377: "Fused backward pass error
+distribution in WASM".
 
 Implemented a single `fused_error_distribution()` WASM function that combines
 three backward pass steps — `calculateError()`, per-synapse
 `safeZoneAdjustment()`, and elastic error distribution — into one boundary
 crossing. This eliminates S+1 WASM calls per neuron and keeps all intermediate
-float values in WASM linear memory. The fused path replaces the previous separate
-calls unconditionally (no threshold), since the crossover point is ~200 synapses
-and the overhead for small counts is modest (~10%).
+float values in WASM linear memory. The fused path replaces the previous
+separate calls unconditionally (no threshold), since the crossover point is ~200
+synapses and the overhead for small counts is modest (~10%).
 
 ### Changes
 
@@ -17,8 +17,8 @@ and the overhead for small counts is modest (~10%).
 
 - New `apply_fused_error_distribution()` combining error calculation, safe zone
   adjustment, and elastic distribution in a single function
-- Returns flat `Vec<f32>` with layout `[error, safeZone_0..N, perLinkError_0..N]`
-  to minimise WASM boundary overhead
+- Returns flat `Vec<f32>` with layout
+  `[error, safeZone_0..N, perLinkError_0..N]` to minimise WASM boundary overhead
 - Includes equal-split fallback for early training (all activations near zero)
   and floating-point residue cleanup
 - Exported as `fused_error_distribution()` via `#[wasm_bindgen]`
