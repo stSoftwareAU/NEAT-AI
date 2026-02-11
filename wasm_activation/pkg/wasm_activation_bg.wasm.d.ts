@@ -119,6 +119,15 @@ export const safe_zone_adjustment: (
   c: number,
   d: number,
 ) => number;
+export const safe_zone_adjustment_batch: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+  g: number,
+) => [number, number];
 export const squash: (a: number, b: number) => number;
 export const unsquash: (a: number, b: number, c: number) => number;
 export const validate_range: (a: number, b: number) => number;

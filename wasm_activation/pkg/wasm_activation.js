@@ -666,6 +666,52 @@ export function safe_zone_adjustment(squash_type, raw_input, error, weight) {
 }
 
 /**
+ * Issue #1376 - Batch safe zone adjustment for backward pass inner loop.
+ *
+ * Processes multiple safe zone adjustments in a single WASM call, eliminating
+ * per-synapse boundary crossing overhead (~8.7ns each).
+ *
+ * # Arguments
+ * * `squash_types` - Packed u8 array of squash type enum values
+ * * `raw_inputs` - Float32Array of pre-squash values for upstream neurons
+ * * `error` - The provisional error per link (same for all synapses)
+ * * `weights` - Float32Array of synapse weights
+ *
+ * # Returns
+ * Float32Array of safe zone factors (0.0 to 1.0), one per synapse
+ * @param {Uint8Array} squash_types
+ * @param {Float32Array} raw_inputs
+ * @param {number} error
+ * @param {Float32Array} weights
+ * @returns {Float32Array}
+ */
+export function safe_zone_adjustment_batch(
+  squash_types,
+  raw_inputs,
+  error,
+  weights,
+) {
+  const ptr0 = passArray8ToWasm0(squash_types, wasm.__wbindgen_malloc);
+  const len0 = WASM_VECTOR_LEN;
+  const ptr1 = passArrayF32ToWasm0(raw_inputs, wasm.__wbindgen_malloc);
+  const len1 = WASM_VECTOR_LEN;
+  const ptr2 = passArrayF32ToWasm0(weights, wasm.__wbindgen_malloc);
+  const len2 = WASM_VECTOR_LEN;
+  const ret = wasm.safe_zone_adjustment_batch(
+    ptr0,
+    len0,
+    ptr1,
+    len1,
+    error,
+    ptr2,
+    len2,
+  );
+  var v4 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+  wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+  return v4;
+}
+
+/**
  * Standalone squash function for testing
  * @param {number} squash_type
  * @param {number} value

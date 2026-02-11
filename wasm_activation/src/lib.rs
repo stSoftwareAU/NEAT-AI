@@ -41,7 +41,7 @@ pub use loss::{
 use derivative::apply_derivative;
 use error::apply_calculate_error;
 use range::{apply_get_range, apply_limit_range, apply_validate_range};
-use safe_zone::apply_safe_zone_adjustment;
+use safe_zone::{apply_safe_zone_adjustment, apply_safe_zone_adjustment_batch};
 use squash::apply_squash;
 use unsquash::apply_unsquash;
 
@@ -97,6 +97,29 @@ pub fn safe_zone_adjustment(squash_type: u8, raw_input: f32, error: f32, weight:
     // If weight is NaN, use 1.0 as a neutral default
     let safe_weight = if weight.is_finite() { weight } else { 1.0 };
     apply_safe_zone_adjustment(SquashType::from(squash_type), raw_input, error, safe_weight)
+}
+
+/// Issue #1376 - Batch safe zone adjustment for backward pass inner loop.
+///
+/// Processes multiple safe zone adjustments in a single WASM call, eliminating
+/// per-synapse boundary crossing overhead (~8.7ns each).
+///
+/// # Arguments
+/// * `squash_types` - Packed u8 array of squash type enum values
+/// * `raw_inputs` - Float32Array of pre-squash values for upstream neurons
+/// * `error` - The provisional error per link (same for all synapses)
+/// * `weights` - Float32Array of synapse weights
+///
+/// # Returns
+/// Float32Array of safe zone factors (0.0 to 1.0), one per synapse
+#[wasm_bindgen]
+pub fn safe_zone_adjustment_batch(
+    squash_types: &[u8],
+    raw_inputs: &[f32],
+    error: f32,
+    weights: &[f32],
+) -> Vec<f32> {
+    apply_safe_zone_adjustment_batch(squash_types, raw_inputs, error, weights)
 }
 
 /// Standalone calculate error function for testing
@@ -795,5 +818,61 @@ mod tests {
         let (low, high) = apply_get_range(SquashType::If);
         assert!(low < -1e30, "If low should be very negative");
         assert!(high > 1e30, "If high should be very positive");
+    }
+
+    // Issue #1376 - Batch safe zone adjustment tests
+    #[test]
+    fn test_safe_zone_batch_matches_scalar() {
+        // Batch results must be identical to individual scalar calls
+        let squash_types: Vec<u8> = vec![
+            SquashType::Relu as u8,
+            SquashType::Tanh as u8,
+            SquashType::Logistic as u8,
+            SquashType::Identity as u8,
+            SquashType::LeakyRelu as u8,
+            SquashType::Minimum as u8,
+        ];
+        let raw_inputs = vec![1.0, -3.0, 0.5, 100.0, -60.0, 2.0];
+        let error = 0.1;
+        let weights = vec![0.5, 1.0, -0.3, 0.001, 2.0, 1.0];
+
+        let batch_results =
+            apply_safe_zone_adjustment_batch(&squash_types, &raw_inputs, error, &weights);
+
+        for i in 0..squash_types.len() {
+            let scalar = apply_safe_zone_adjustment(
+                SquashType::from(squash_types[i]),
+                raw_inputs[i],
+                error,
+                weights[i],
+            );
+            assert!(
+                (batch_results[i] - scalar).abs() < 1e-7,
+                "Mismatch at index {}: batch={}, scalar={}",
+                i,
+                batch_results[i],
+                scalar
+            );
+        }
+    }
+
+    #[test]
+    fn test_safe_zone_batch_empty() {
+        let result = apply_safe_zone_adjustment_batch(&[], &[], 0.1, &[]);
+        assert!(result.is_empty(), "Empty batch should return empty results");
+    }
+
+    #[test]
+    fn test_safe_zone_batch_single() {
+        let result = apply_safe_zone_adjustment_batch(
+            &[SquashType::Relu as u8],
+            &[1.0],
+            0.5,
+            &[1.0],
+        );
+        assert_eq!(result.len(), 1);
+        let scalar =
+            apply_safe_zone_adjustment(SquashType::Relu, 1.0, 0.5, 1.0);
+        assert!((result[0] - scalar).abs() < 1e-7);
     }
 }

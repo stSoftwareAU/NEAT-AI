@@ -971,3 +971,40 @@ pub fn apply_safe_zone_adjustment(
         SquashType::Hypotenuse | SquashType::HypotenuseV2 | SquashType::Mean => 0.0,
     }
 }
+
+/// Issue #1376 - Batch safe zone adjustment to eliminate WASM boundary crossings.
+///
+/// Processes multiple safe zone adjustments in a single WASM call, avoiding the
+/// overhead of individual boundary crossings (~8.7ns each). For a neuron with S
+/// inbound synapses, this replaces S WASM calls with 1.
+///
+/// # Arguments
+/// * `squash_types` - Array of squash type enum values (u8 per synapse)
+/// * `raw_inputs` - Array of pre-squash values for upstream neurons
+/// * `error` - The provisional error per link (same for all synapses)
+/// * `weights` - Array of synapse weights
+///
+/// # Returns
+/// Vec<f32> of safe zone factors (0.0 to 1.0), one per synapse
+pub fn apply_safe_zone_adjustment_batch(
+    squash_types: &[u8],
+    raw_inputs: &[f32],
+    error: f32,
+    weights: &[f32],
+) -> Vec<f32> {
+    let count = squash_types.len();
+    let mut results = Vec::with_capacity(count);
+
+    for i in 0..count {
+        let squash = SquashType::from(squash_types[i]);
+        let raw_input = raw_inputs[i];
+        let weight = if weights[i].is_finite() {
+            weights[i]
+        } else {
+            1.0
+        };
+        results.push(apply_safe_zone_adjustment(squash, raw_input, error, weight));
+    }
+
+    results
+}

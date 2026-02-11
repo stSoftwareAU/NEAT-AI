@@ -397,6 +397,28 @@ export function safe_zone_adjustment(
 ): number;
 
 /**
+ * Issue #1376 - Batch safe zone adjustment for backward pass inner loop.
+ *
+ * Processes multiple safe zone adjustments in a single WASM call, eliminating
+ * per-synapse boundary crossing overhead (~8.7ns each).
+ *
+ * # Arguments
+ * * `squash_types` - Packed u8 array of squash type enum values
+ * * `raw_inputs` - Float32Array of pre-squash values for upstream neurons
+ * * `error` - The provisional error per link (same for all synapses)
+ * * `weights` - Float32Array of synapse weights
+ *
+ * # Returns
+ * Float32Array of safe zone factors (0.0 to 1.0), one per synapse
+ */
+export function safe_zone_adjustment_batch(
+  squash_types: Uint8Array,
+  raw_inputs: Float32Array,
+  error: number,
+  weights: Float32Array,
+): Float32Array;
+
+/**
  * Standalone squash function for testing
  */
 export function squash(squash_type: number, value: number): number;
@@ -567,6 +589,15 @@ export interface InitOutput {
     c: number,
     d: number,
   ) => number;
+  readonly safe_zone_adjustment_batch: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+  ) => [number, number];
   readonly squash: (a: number, b: number) => number;
   readonly unsquash: (a: number, b: number, c: number) => number;
   readonly validate_range: (a: number, b: number) => number;

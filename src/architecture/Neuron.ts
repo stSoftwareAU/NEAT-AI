@@ -20,11 +20,14 @@ import {
   toValue,
 } from "../propagate/BackPropagation.ts";
 // Issue #1143 - WASM backpropagation integration
+// Issue #1376 - Batch safe zone adjustment to eliminate per-synapse boundary crossings
 import {
   calculateError as wasmCalculateError,
   safeZoneAdjustment as wasmSafeZoneAdjustment,
+  safeZoneAdjustmentBatch as wasmSafeZoneAdjustmentBatch,
   squash as wasmSquash,
 } from "../wasm/ActivationMethods.ts";
+import { getSquashType } from "../wasm/SquashType.ts";
 import {
   accumulateBias,
   adjustedBias,
@@ -651,6 +654,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
         const safeZoneFactorCache = new Array<number>(listLength);
         const provisionalErrorPerLink = error / listLength;
 
+        // Issue #1376 - Two-pass approach: gather data, then batch WASM call.
+        // Pass 1: Cache activations/weights and identify eligible synapses.
+        // Eligible indices are those needing safe zone adjustment (not self-loops,
+        // not input/constant neurons, and propagation needed by sparse config).
+        const batchIndices: number[] = [];
+
         for (let indx = 0; indx < listLength; indx++) {
           const c = inwardList[indx];
           const { from, to } = c;
@@ -674,29 +683,79 @@ export class Neuron implements TagsInterface, NeuronInternal {
           fromWeightCache[indx] = fromWeight;
           fromValueCache[indx] = fromWeight * fromActivation;
 
-          let safeZoneAdj = 1;
           const type = fromNeuron.type;
           if (
             type !== "input" &&
             type !== "constant" &&
             sparseConfig.propagateNeeded(fromNeuron.uuid)
           ) {
-            // Issue #1143 - Use WASM safeZoneAdjustment when available
-            // Important: rawInput must be the from-neuron's *pre-squash* value,
-            // not a synapse contribution (w*a).
-            const fromNS = state.node(from);
-            safeZoneAdj = wasmSafeZoneAdjustment(
+            batchIndices.push(indx);
+          } else {
+            // Default: fully safe for input/constant/non-propagated neurons
+            safeZoneFactorCache[indx] = 1;
+            linkMeta[indx] = {
+              activation: fromActivation,
+              safeZoneFactor: 1,
+            };
+          }
+        }
+
+        // Issue #1376 - Safe zone adjustment for eligible synapses.
+        // Use batch WASM call for large counts (>=64 synapses) to amortise
+        // TypedArray allocation over many boundary crossings saved.
+        // For small counts, scalar calls are faster due to zero allocation overhead.
+        const batchCount = batchIndices.length;
+        if (batchCount >= 64) {
+          const batchSquashTypes = new Uint8Array(batchCount);
+          const batchRawInputs = new Float32Array(batchCount);
+          const batchWeights = new Float32Array(batchCount);
+
+          for (let b = 0; b < batchCount; b++) {
+            const indx = batchIndices[b];
+            const c = inwardList[indx];
+            const fromNeuron = this.creature.neurons[c.from];
+            const fromNS = state.node(c.from);
+            batchSquashTypes[b] = getSquashType(fromNeuron.squash);
+            batchRawInputs[b] = fromNS.hintValue;
+            batchWeights[b] = fromWeightCache[indx];
+          }
+
+          const batchResults = wasmSafeZoneAdjustmentBatch(
+            batchSquashTypes,
+            batchRawInputs,
+            provisionalErrorPerLink,
+            batchWeights,
+          );
+
+          // Scatter results back into caches
+          for (let b = 0; b < batchCount; b++) {
+            const indx = batchIndices[b];
+            const safeZoneAdj = batchResults[b];
+            safeZoneFactorCache[indx] = safeZoneAdj;
+            linkMeta[indx] = {
+              activation: fromActivationCache[indx],
+              safeZoneFactor: safeZoneAdj,
+            };
+          }
+        } else {
+          // Scalar path: individual WASM calls for small synapse counts
+          for (let b = 0; b < batchCount; b++) {
+            const indx = batchIndices[b];
+            const c = inwardList[indx];
+            const fromNeuron = this.creature.neurons[c.from];
+            const fromNS = state.node(c.from);
+            const safeZoneAdj = wasmSafeZoneAdjustment(
               fromNeuron.squash!,
               fromNS.hintValue,
               provisionalErrorPerLink,
-              fromWeight,
+              fromWeightCache[indx],
             );
+            safeZoneFactorCache[indx] = safeZoneAdj;
+            linkMeta[indx] = {
+              activation: fromActivationCache[indx],
+              safeZoneFactor: safeZoneAdj,
+            };
           }
-          linkMeta[indx] = {
-            activation: fromActivation,
-            safeZoneFactor: safeZoneAdj,
-          };
-          safeZoneFactorCache[indx] = safeZoneAdj;
         }
 
         // If every upstream link is blocked by safe-zone (eg. parents are deep in

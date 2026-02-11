@@ -19,6 +19,7 @@ import {
   resolveWasmSquashName,
   wasmCalculateError,
   wasmSafeZoneAdjustment,
+  wasmSafeZoneAdjustmentBatch,
   wasmSquash,
   wasmUnSquash,
 } from "./mod.ts";
@@ -88,6 +89,27 @@ export function safeZoneAdjustment(
   }
   const squashType = getSquashType(resolvedName);
   return wasmSafeZoneAdjustment(squashType, rawInput, error, weight);
+}
+
+/**
+ * Issue #1376 - Batch safe zone adjustment for backward pass inner loop.
+ *
+ * Processes multiple safe zone adjustments in a single WASM call, eliminating
+ * per-synapse boundary crossing overhead. Replaces S individual WASM calls with 1.
+ *
+ * @param squashTypes - Uint8Array of SquashType enum values (pre-resolved)
+ * @param rawInputs - Float32Array of pre-squash values for upstream neurons
+ * @param error - The provisional error per link (same for all synapses)
+ * @param weights - Float32Array of synapse weights
+ * @returns Float32Array of safe zone factors (0.0 to 1.0)
+ */
+export function safeZoneAdjustmentBatch(
+  squashTypes: Uint8Array,
+  rawInputs: Float32Array,
+  error: number,
+  weights: Float32Array,
+): Float32Array {
+  return wasmSafeZoneAdjustmentBatch(squashTypes, rawInputs, error, weights);
 }
 
 /**

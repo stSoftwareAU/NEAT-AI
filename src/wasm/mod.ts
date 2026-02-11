@@ -33,6 +33,7 @@ export {
   wasmGetRange,
   wasmLimitRange,
   wasmSafeZoneAdjustment,
+  wasmSafeZoneAdjustmentBatch,
   wasmSquash,
   type WasmTraceEntry,
   type WasmTraceResult,
@@ -50,6 +51,7 @@ export {
   calculateError,
   isWasmSquashSupported,
   safeZoneAdjustment,
+  safeZoneAdjustmentBatch,
   squash,
   unSquash,
 } from "./ActivationMethods.ts";
