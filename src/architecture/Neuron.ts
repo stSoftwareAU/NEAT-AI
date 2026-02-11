@@ -92,6 +92,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
    */
   private complexityPenaltyCache?: number;
 
+  /**
+   * Cached SquashType enum value for this neuron's squash function.
+   * Issue #1378: Pre-compute squash type indices to avoid repeated
+   * getSquashType() string-to-enum lookups during backpropagation.
+   * Invalidated when squash function changes via setSquash().
+   */
+  private squashTypeCache?: number;
+
   /** Index position of the neuron in the creature's neuron array */
   public index: number;
   /** Tags for storing metadata about the neuron */
@@ -272,6 +280,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     if (name !== this.squash) {
       delete this.squashMethodCache;
       delete this.complexityPenaltyCache;
+      delete this.squashTypeCache;
       this.squash = name;
       // Invalidate creature's score cache since complexity penalty may have changed
       // Issue #1043: Cache Activations.find() lookups in score calculation
@@ -308,6 +317,20 @@ export class Neuron implements TagsInterface, NeuronInternal {
     return this.complexityPenaltyCache;
   }
 
+  /**
+   * Returns the pre-computed SquashType enum value for this neuron.
+   * Issue #1378: Avoids repeated getSquashType() string-to-enum lookups
+   * during backpropagation. The cache is invalidated when the squash
+   * function changes via setSquash().
+   */
+  cachedSquashType(): number {
+    if (this.squashTypeCache !== undefined) {
+      return this.squashTypeCache;
+    }
+    this.squashTypeCache = getSquashType(this.squash);
+    return this.squashTypeCache;
+  }
+
   findSquash():
     | NeuronActivationInterface
     | ActivationInterface
@@ -324,6 +347,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
   fix() {
     delete this.squashMethodCache;
+    delete this.squashTypeCache;
 
     if (this.squash !== "IF") {
       const toList = this.creature.inwardConnections(this.index);
@@ -679,8 +703,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
             sparseConfig.propagateNeeded(fromNeuron.uuid)
           ) {
             // Eligible: use actual squash type and hint value
+            // Issue #1378: Use pre-computed cached squash type
             const fromNS = state.node(from);
-            fusedSquashTypes[indx] = getSquashType(fromNeuron.squash);
+            fusedSquashTypes[indx] = fromNeuron.cachedSquashType();
             fusedHintValues[indx] = fromNS.hintValue;
           } else {
             // Input/constant/non-propagated: Identity squash → safeZone=1
@@ -690,8 +715,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
         }
 
         // Single fused WASM call: calculateError + safeZoneAdjustment + elastic
+        // Issue #1378: Use pre-computed cached squash type
         const fusedResult = fusedErrorDistribution(
-          getSquashType(this.squash),
+          this.cachedSquashType(),
           activation,
           targetActivation,
           ns.hintValue,
