@@ -1,7 +1,7 @@
 ## Summary
 
-Performance optimisation for issue #1376: "Move backward pass inner loop to
-WASM (fused propagate)".
+Performance optimisation for issue #1376: "Move backward pass inner loop to WASM
+(fused propagate)".
 
 Implemented a batch `safe_zone_adjustment_batch()` WASM function that processes
 all eligible synapses in a single boundary crossing, replacing S individual
@@ -12,6 +12,7 @@ smaller counts.
 ### Changes
 
 **Rust/WASM** (`wasm_activation/src/safe_zone.rs`, `lib.rs`):
+
 - Added `apply_safe_zone_adjustment_batch()` that takes typed arrays of squash
   types, raw inputs, and weights, processing all synapses in a single call
 - Exported as `safe_zone_adjustment_batch()` via `#[wasm_bindgen]`
@@ -19,11 +20,13 @@ smaller counts.
 
 **TypeScript bridge** (`src/wasm/WasmActivation.ts`, `ActivationMethods.ts`,
 `mod.ts`):
+
 - Added `wasmSafeZoneAdjustmentBatch()` low-level binding
 - Added `safeZoneAdjustmentBatch()` high-level wrapper
 - Wired into both async and sync WASM init paths
 
 **Neuron.propagate() inner loop** (`src/architecture/Neuron.ts`):
+
 - Restructured into a two-pass approach:
   1. Pass 1: Cache activations/weights and identify eligible synapses
   2. Pass 2: Batch WASM call for >=64 eligible synapses; scalar calls otherwise
@@ -34,8 +37,8 @@ smaller counts.
 
 Benchmarking revealed that TypedArray allocation overhead makes batch calls
 slower than scalar for small synapse counts. The crossover point is ~100
-synapses; the threshold is set conservatively at 64 to ensure the batch path
-is only used where it provides clear benefit.
+synapses; the threshold is set conservatively at 64 to ensure the batch path is
+only used where it provides clear benefit.
 
 | Synapse count | Batch vs scalar | Winner |
 | ------------- | --------------- | ------ |
