@@ -74,6 +74,15 @@ let safeZoneAdjustmentFn:
     weight: number,
   ) => number)
   | null = null;
+// Issue #1376 - Batch safe zone adjustment to eliminate per-synapse boundary crossings
+let safeZoneAdjustmentBatchFn:
+  | ((
+    squashTypes: Uint8Array,
+    rawInputs: Float32Array,
+    error: number,
+    weights: Float32Array,
+  ) => Float32Array)
+  | null = null;
 let calculateErrorFn:
   | ((
     squashType: number,
@@ -177,6 +186,7 @@ export async function initWasmActivation(): Promise<boolean> {
       derivativeFn = module.derivative;
       unsquashFn = module.unsquash;
       safeZoneAdjustmentFn = module.safe_zone_adjustment;
+      safeZoneAdjustmentBatchFn = module.safe_zone_adjustment_batch;
       calculateErrorFn = module.calculate_error;
       mseSumBatchPackedFn = module.mse_sum_batch_packed;
       maeSumBatchPackedFn = module.mae_sum_batch_packed;
@@ -257,6 +267,7 @@ export function initWasmActivationSync(
     derivativeFn = jsBindings.derivative;
     unsquashFn = jsBindings.unsquash;
     safeZoneAdjustmentFn = jsBindings.safe_zone_adjustment;
+    safeZoneAdjustmentBatchFn = jsBindings.safe_zone_adjustment_batch;
     calculateErrorFn = jsBindings.calculate_error;
     mseSumBatchPackedFn = jsBindings.mse_sum_batch_packed;
     maeSumBatchPackedFn = jsBindings.mae_sum_batch_packed;
@@ -1018,6 +1029,31 @@ export function wasmSafeZoneAdjustment(
     error,
     weight ?? Number.NaN,
   );
+}
+
+/**
+ * Issue #1376 - Batch safe zone adjustment to eliminate per-synapse WASM boundary crossings.
+ *
+ * Processes multiple safe zone adjustments in a single WASM call, replacing S
+ * individual calls with 1. For a neuron with S inbound synapses, this eliminates
+ * ~S boundary crossings (~8.7ns each).
+ *
+ * @param squashTypes - Uint8Array of SquashType enum values (one per synapse)
+ * @param rawInputs - Float32Array of pre-squash values for upstream neurons
+ * @param error - The provisional error per link (same for all synapses)
+ * @param weights - Float32Array of synapse weights
+ * @returns Float32Array of safe zone factors (0.0 to 1.0), one per synapse
+ */
+export function wasmSafeZoneAdjustmentBatch(
+  squashTypes: Uint8Array,
+  rawInputs: Float32Array,
+  error: number,
+  weights: Float32Array,
+): Float32Array {
+  if (!safeZoneAdjustmentBatchFn) {
+    throw new Error("WASM module not initialised");
+  }
+  return safeZoneAdjustmentBatchFn(squashTypes, rawInputs, error, weights);
 }
 
 /**
