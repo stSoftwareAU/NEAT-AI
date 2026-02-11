@@ -44,6 +44,26 @@ import {
 export const DEFAULT_COST_OF_GROWTH = 0.000_000_1;
 
 /**
+ * Default discovery sample rate.
+ *
+ * Issue #1386: Increased from 0.05 (5%) to 0.2 (20%) so that the Rust
+ * discovery engine has 4x more data points to base structural decisions on.
+ * A larger sample improves the statistical significance of candidate rankings
+ * and reduces the chance of missing important edge cases.
+ */
+export const DEFAULT_DISCOVERY_SAMPLE_RATE = 0.2;
+
+/**
+ * Default maximum minutes allocated to the recording phase before discovery
+ * advances to analysis.
+ *
+ * Issue #1386: Increased from 1 minute to 5 minutes to accommodate the higher
+ * default sample rate. At ~700 records/sec, 5 minutes allows recording ~210k
+ * samples, which is sufficient for a 20% sample of a 1M-record dataset.
+ */
+export const DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES = 5;
+
+/**
  * Minimum allowed cost of growth value.
  */
 export const MIN_COST_OF_GROWTH = 0.000_000_000_1;
@@ -287,12 +307,12 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     ),
     discoverySampleRate: parseDiscoverySampleRate(
       opts.discoverySampleRate,
-      0.05,
+      DEFAULT_DISCOVERY_SAMPLE_RATE,
     ),
     discoveryRecordTimeOutMinutes: parseNumber(
       "Discovery record timeout minutes",
       opts.discoveryRecordTimeOutMinutes ?? opts.discoveryTimeOutMinutes,
-      1,
+      DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES,
       { min: 0 },
     ),
     discoveryAnalysisTimeoutMinutes: parseNumber(
