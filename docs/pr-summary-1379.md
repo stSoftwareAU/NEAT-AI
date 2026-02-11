@@ -44,8 +44,8 @@ summary
 
 - **`src/propagate/BackpropBuffers.ts`** (new): Stack-based pool of reusable
   `BackpropBufferSet` objects containing 4 `number[]` arrays and 4 typed arrays.
-- **`src/architecture/CreatureState.ts`**: Added optional `backpropBuffers` field,
-  lazily initialised to avoid overhead for evaluation-only creatures.
+- **`src/architecture/CreatureState.ts`**: Added optional `backpropBuffers`
+  field, lazily initialised to avoid overhead for evaluation-only creatures.
 - **`src/Creature.ts`**: Lazily initialises `backpropBuffers` on first
   `propagate()` call.
 - **`src/architecture/Neuron.ts`**: Replaced 8 `new Array`/`new TypedArray`
