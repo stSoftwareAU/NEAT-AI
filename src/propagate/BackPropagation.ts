@@ -150,9 +150,22 @@ export function createBackPropagationConfig(
   return Object.freeze(config);
 }
 
+/**
+ * Optional error feedback for the adaptive learning rate strategy.
+ * When provided, the adaptive strategy adjusts the learning rate based on
+ * whether training is improving, stagnating, or worsening.
+ */
+export interface ErrorFeedback {
+  /** Error from the previous iteration */
+  previousError: number;
+  /** Error from the current iteration */
+  currentError: number;
+}
+
 export function calculateLearningRate(
   config: BackPropagationConfig,
   iteration: number,
+  errorFeedback?: ErrorFeedback,
 ): number {
   switch (config.learningRateStrategy) {
     case "fixed":
@@ -161,23 +174,41 @@ export function calculateLearningRate(
       return config.initialLearningRate *
         Math.pow(config.learningRateDecay, iteration);
     case "adaptive": {
-      // Adaptive strategy: adjust learning rate based on training progress
-      // This is different from decay which only decreases over time
+      // Adaptive strategy: adjust learning rate based on actual error feedback.
+      // When error is improving => maintain the current rate.
+      // When error stagnates  => increase the rate to escape the plateau.
+      // When error worsens    => reduce the rate to avoid overshooting.
       const baseRate = config.initialLearningRate;
 
-      // For now, implement a simple adaptive strategy that:
-      // 1. Starts with initial learning rate
-      // 2. Decays more slowly than the decay strategy
-      // 3. Could be enhanced to use actual error feedback in the future
-
-      // Use a slower decay rate for adaptive strategy to allow oscillation to be visible
-      const adaptiveDecay = Math.sqrt(config.learningRateDecay); // Slower decay
+      // Apply a slower decay than the pure decay strategy
+      const adaptiveDecay = Math.sqrt(config.learningRateDecay);
       const adaptiveFactor = Math.pow(adaptiveDecay, iteration);
 
-      // Add significant variation to make it truly adaptive and non-monotonic
-      const variation = 1 + 0.3 * Math.sin(iteration * 0.8); // Larger oscillation
+      let errorAdjustment = 1;
+      if (
+        errorFeedback &&
+        Number.isFinite(errorFeedback.previousError) &&
+        Number.isFinite(errorFeedback.currentError) &&
+        errorFeedback.previousError > 0
+      ) {
+        // Ratio of current to previous error: <1 = improving, ~1 = stagnant, >1 = worsening
+        const errorRatio = errorFeedback.currentError /
+          errorFeedback.previousError;
 
-      return baseRate * adaptiveFactor * variation;
+        if (errorRatio < 0.95) {
+          // Good improvement: maintain or slightly boost the rate
+          errorAdjustment = 1.1;
+        } else if (errorRatio < 1.0) {
+          // Stagnation: increase rate to escape plateau
+          errorAdjustment = 1.3;
+        } else {
+          // Error worsened: reduce the rate to avoid overshooting.
+          // The worse the ratio, the more we reduce (down to 0.5x).
+          errorAdjustment = Math.max(0.5, 1.0 / errorRatio);
+        }
+      }
+
+      return baseRate * adaptiveFactor * errorAdjustment;
     }
     default:
       return config.learningRate;

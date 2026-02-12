@@ -764,12 +764,15 @@ export class Neuron implements TagsInterface, NeuronInternal {
         if (hasUsableSafeZone) {
           perLinkError = fusedResult.perLinkError;
         } else {
-          // Fallback: ignore safe zones, use activation² only
+          // Fallback: ignore safe zones, use activation² only.
+          // Include weight data for the weight-based fallback when activations
+          // are near zero (Issue #1388).
           const fallbackMeta = new Array(listLength);
           for (let i = 0; i < listLength; i++) {
             fallbackMeta[i] = {
               activation: fusedActivations[i],
               safeZoneFactor: 1,
+              weight: fromWeightCache[i],
             };
           }
           perLinkError = distributeElasticError(error, fallbackMeta, {

@@ -9,6 +9,7 @@ import type { TrainOptions } from "../config/TrainOptions.ts";
 import {
   calculateLearningRate,
   createBackPropagationConfig,
+  type ErrorFeedback,
 } from "../propagate/BackPropagation.ts";
 import { buildOutgoingSynapsesMap } from "../propagate/sparse/CalculatePathsToOutput.ts";
 import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
@@ -174,6 +175,7 @@ function trainDirBinary(
   }
 
   let bestError: number | undefined = undefined;
+  let previousIterationError: number | undefined = undefined;
   let trainingFailures = 0;
   let bestCreatureJSON = creature.exportJSON();
   let bestTraceJSON = creature.traceJSON();
@@ -183,16 +185,23 @@ function trainDirBinary(
   // Issue #1294: Build outgoing synapse map once and cache it.
   // Map construction is O(synapses) and dominated calculatePathsToOutput cost.
   const outgoingSynapsesMap = buildOutgoingSynapsesMap(bestCreatureJSON);
-  const sparseConfig = new SparseConfig(
+  let sparseConfig = new SparseConfig(
     bestCreatureJSON,
     backPropConfig,
     outgoingSynapsesMap,
   );
 
   while (true) {
+    // Issue #1388: Pass error feedback to the adaptive learning rate strategy.
+    const errorFeedback: ErrorFeedback | undefined =
+      previousIterationError !== undefined && bestError !== undefined
+        ? { previousError: previousIterationError, currentError: bestError }
+        : undefined;
+
     const currentLearningRate = calculateLearningRate(
       backPropConfig,
       iteration,
+      errorFeedback,
     );
 
     iteration++;
@@ -371,6 +380,9 @@ function trainDirBinary(
       );
     }
 
+    // Issue #1388: Track error history for adaptive learning rate feedback.
+    previousIterationError = bestError;
+
     if (bestError !== undefined && bestError < error) {
       trainingFailures++;
       if (trainingStopped === false) {
@@ -396,6 +408,12 @@ function trainDirBinary(
       creature.loadFrom(bestCreatureJSON, false);
       lastTraceJSON = bestTraceJSON;
     } else {
+      // Issue #1388: Collect neuron error data before clearing state.
+      // This feeds into error-guided sparse neuron selection for the next iteration.
+      const neuronErrors = backPropConfig.sparseRatio < 1
+        ? creature.state.collectNeuronErrors()
+        : undefined;
+
       lastTraceJSON = creature.traceJSON();
       if (bestError === undefined || bestError > error) {
         bestTraceJSON = lastTraceJSON;
@@ -405,6 +423,17 @@ function trainDirBinary(
 
       creature.applyLearnings(iterationConfig, sparseConfig);
       creature.clearState();
+
+      // Issue #1388: Rebuild sparse config with error-guided neuron selection
+      // when sparse training is active and we have error data.
+      if (neuronErrors && neuronErrors.size > 0) {
+        sparseConfig = new SparseConfig(
+          bestCreatureJSON,
+          backPropConfig,
+          outgoingSynapsesMap,
+          neuronErrors,
+        );
+      }
     }
 
     if (timedOut || bestError <= targetError || iteration >= iterations) {

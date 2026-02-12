@@ -1,9 +1,23 @@
 import type { CreatureExport } from "../../architecture/CreatureInterfaces.ts";
+import type { NeuronStateInterface } from "../../architecture/CreatureState.ts";
 import type { BackPropagationConfig } from "../BackPropagation.ts";
 
+/**
+ * Selects neurons for sparse backpropagation training.
+ *
+ * When neuronErrors are provided (from a previous iteration), uses error-guided
+ * selection: neurons with higher accumulated error are prioritised, as they
+ * have the most room for improvement. Falls back to random selection when
+ * no error data is available.
+ *
+ * @param creature - The exported creature definition
+ * @param config - Backpropagation configuration (includes sparseRatio)
+ * @param neuronErrors - Optional per-neuron error data from previous iteration
+ */
 export function chooseNeurons(
   creature: CreatureExport,
   config: BackPropagationConfig,
+  neuronErrors?: ReadonlyMap<string, NeuronStateInterface>,
 ): Readonly<Set<string>> {
   // Handle the special case where sparseRatio is 1.
   if (config.sparseRatio === 1) {
@@ -28,16 +42,30 @@ export function chooseNeurons(
     Math.ceil(eligibleNeurons.length * config.sparseRatio),
   );
 
-  // Shuffle the eligible neurons to get random starting points.
-  fisherYatesShuffle(eligibleNeurons);
+  // Sort or shuffle eligible neurons based on error data availability.
+  if (neuronErrors && neuronErrors.size > 0) {
+    // Error-guided selection: sort by descending totalErrorAbsolute.
+    // Neurons with higher accumulated error are prioritised for training
+    // as they have the most room for improvement.
+    errorGuidedSort(eligibleNeurons, neuronErrors);
+  } else {
+    // No error data available: fall back to random selection.
+    fisherYatesShuffle(eligibleNeurons);
+  }
 
   // Set of chosen neurons and a queue to expand the cluster.
   const selectedNeurons = new Set<string>();
   const queue: string[] = [];
 
   // Select the initial neurons up to the required number.
+  const hasErrorData = neuronErrors !== undefined && neuronErrors.size > 0;
   for (let i = 0; i < numberOfNeuronsToSelect; i++) {
     const neuronUUID = eligibleNeurons[i].uuid;
+    // When error-guided, add directly to selectedNeurons to guarantee
+    // high-error neurons are included (they are sorted first).
+    if (hasErrorData) {
+      selectedNeurons.add(neuronUUID);
+    }
     queue.push(neuronUUID);
   }
 
@@ -72,6 +100,25 @@ export function chooseNeurons(
 
   // Freeze the set to make it immutable.
   return Object.freeze(selectedNeurons);
+}
+
+/**
+ * Sorts neurons by descending accumulated error, with randomisation among
+ * neurons that have similar error levels to maintain exploration diversity.
+ */
+function errorGuidedSort(
+  neurons: { uuid: string; type: string }[],
+  neuronErrors: ReadonlyMap<string, NeuronStateInterface>,
+): void {
+  // First shuffle to break ties randomly
+  fisherYatesShuffle(neurons);
+
+  // Then stable-sort by descending error (high error neurons first)
+  neurons.sort((a, b) => {
+    const errorA = neuronErrors.get(a.uuid)?.totalErrorAbsolute ?? 0;
+    const errorB = neuronErrors.get(b.uuid)?.totalErrorAbsolute ?? 0;
+    return errorB - errorA;
+  });
 }
 
 function fisherYatesShuffle<T>(array: T[]): void {
