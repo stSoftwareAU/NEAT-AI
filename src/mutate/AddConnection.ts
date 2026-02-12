@@ -4,14 +4,7 @@ import type { Creature } from "../Creature.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
 import { Synapse } from "../architecture/Synapse.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
-import { getMajorVersion } from "../upgrade/Upgrade.ts";
-
-function bumpToFourIfForwardOnlyConfirmed(creature: Creature): void {
-  const major = getMajorVersion(creature.semanticVersion);
-  if (major === 2 || major === 3) {
-    creature.semanticVersion = "4.0.0";
-  }
-}
+import { validateAndBumpForwardOnly } from "./MutationUtils.ts";
 
 export class AddConnection implements RadioactiveInterface {
   private creature: Creature;
@@ -38,33 +31,12 @@ export class AddConnection implements RadioactiveInterface {
     const enforceForwardOnly = this.creature.forwardOnly === true;
 
     if (enforceForwardOnly) {
-      const major = getMajorVersion(this.creature.semanticVersion);
       // Fail fast for 4.x+ (hard invariant). For pre-4.x we repair and continue,
       // because forward-only is not yet a hard guarantee until validated+upgraded.
-      try {
-        this.creature.validate({ forwardOnly: true });
-        bumpToFourIfForwardOnlyConfirmed(this.creature);
-      } catch (e) {
-        const error = e as Error;
-        if (major >= 4) {
-          throw new Error(
-            `[AddConnection] CRITICAL: 4.x forward-only creature is invalid before mutation: ` +
-              `${error.name} - ${error.message}`,
-          );
-        }
-
-        if (
-          error.name === "SELF_CONNECTION" || error.name === "RECURSIVE_SYNAPSE"
-        ) {
-          // Australian English: forward-only pre-4.x may temporarily be invalid; repair it
-          // so we can continue evolution and only lock the invariant once confirmed.
-          this.creature.fix({ forwardOnly: true });
-          this.creature.validate({ forwardOnly: true });
-          bumpToFourIfForwardOnlyConfirmed(this.creature);
-        } else {
-          throw e;
-        }
-      }
+      validateAndBumpForwardOnly(
+        this.creature,
+        "AddConnection before mutation",
+      );
 
       // Forward-only invariant: neuron indices must be consistent.
       //
@@ -121,29 +93,10 @@ export class AddConnection implements RadioactiveInterface {
     if (enforceForwardOnly) {
       // Validation is useful. For 4.x+ this is a hard failure; for pre-4.x we can
       // repair and continue, then bump to 4.x once forward-only is confirmed.
-      const major = getMajorVersion(this.creature.semanticVersion);
-      try {
-        this.creature.validate({ forwardOnly: true });
-        bumpToFourIfForwardOnlyConfirmed(this.creature);
-      } catch (e) {
-        const error = e as Error;
-        if (major >= 4) {
-          throw new Error(
-            `[AddConnection] CRITICAL: 4.x forward-only creature became invalid after mutation: ` +
-              `${error.name} - ${error.message}`,
-          );
-        }
-
-        if (
-          error.name === "SELF_CONNECTION" || error.name === "RECURSIVE_SYNAPSE"
-        ) {
-          this.creature.fix({ forwardOnly: true });
-          this.creature.validate({ forwardOnly: true });
-          bumpToFourIfForwardOnlyConfirmed(this.creature);
-        } else {
-          throw e;
-        }
-      }
+      validateAndBumpForwardOnly(
+        this.creature,
+        "AddConnection after mutation",
+      );
     }
     delete this.creature.memetic;
     return true;

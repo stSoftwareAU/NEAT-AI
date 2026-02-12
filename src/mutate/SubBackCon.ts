@@ -1,7 +1,7 @@
 import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
 import type { Creature } from "../Creature.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
+import { cleanupDisconnectedNeuron } from "./MutationUtils.ts";
 
 export class SubBackCon implements RadioactiveInterface {
   private creature: Creature;
@@ -39,36 +39,10 @@ export class SubBackCon implements RadioactiveInterface {
     delete this.creature.memetic;
 
     // Cleanup: Check if TO neuron needs handling
-    const inwardList = this.creature.inwardConnections(pair[1]);
-    let toNeuronRemoved = false;
-    if (inwardList.length === 0) {
-      const toNeuron = this.creature.neurons[pair[1]];
-      if (toNeuron.type === "hidden") {
-        const outwardList = this.creature.outwardConnections(pair[1]);
-        if (outwardList.length === 0) {
-          console.info(
-            `Remove neuron ${toNeuron.uuid} as completely disconnected`,
-          );
-          removeHiddenNeuron(this.creature, pair[1]);
-          toNeuronRemoved = true;
-        } else {
-          console.info(
-            `Convert neuron ${toNeuron.uuid} from ${toNeuron.type} to constant`,
-          );
-          const squash = toNeuron.findSquash();
-          const activation = squash as ActivationInterface;
-          if (activation.squash) {
-            const constantBias = activation.squash(toNeuron.bias);
-            console.info(
-              `Adjust neuron ${toNeuron.uuid} bias ${toNeuron.bias} to ${constantBias}`,
-            );
-            toNeuron.bias = constantBias;
-          }
-          toNeuron.type = "constant";
-          toNeuron.setSquash(undefined);
-        }
-      }
-    }
+    const toNeuronRemoved = cleanupDisconnectedNeuron(
+      this.creature,
+      pair[1],
+    );
 
     // Adjust the 'from' index if the 'to' neuron was removed and it came before the 'from' neuron
     let fromIndex = pair[0];
