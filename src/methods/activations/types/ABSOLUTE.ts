@@ -107,6 +107,8 @@ export class ABSOLUTE implements ActivationInterface, UnSquashInterface {
    * @returns        Value in [0,1] indicating confidence in adjusting the raw input
    */
   safeZoneAdjustment(rawInput: number, _error: number, weight: number): number {
+    if (!Number.isFinite(rawInput)) return 0;
+
     const absInput = Math.abs(rawInput);
     const absWeight = Math.abs(weight);
 
