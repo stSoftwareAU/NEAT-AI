@@ -1160,7 +1160,7 @@ export class Neat {
         CreatureUtil.makeUUID(replayedCreature);
 
         // Tag the creature to indicate it came from discovery replay
-        addTag(replayedCreature, "approach", "discovery-replay" as Approach);
+        addTag(replayedCreature, "approach", "discovery-replay");
 
         validateAfterDiscoveryOrThrow({
           baseCreature: fittest,
