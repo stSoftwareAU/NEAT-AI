@@ -3,7 +3,7 @@ import { CreatureUtil } from "../../mod.ts";
 import type { Creature } from "../Creature.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import { Synapse } from "../architecture/Synapse.ts";
-import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
+import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
 /**
  * Selects a suitable outward connection target for a newly inserted neuron.
@@ -34,18 +34,11 @@ export function pickOutwardTargetNeuronIndex(
   return creature.neurons[nonConstantIndx].index;
 }
 
-export class AddNeuron implements RadioactiveInterface {
-  private creature: Creature;
-  constructor(creature: Creature) {
-    this.creature = creature;
-  }
-
+export class AddNeuron extends AbstractMutationOperator {
   /**
    * Add a neuron to the network.
-   *
-   * @param {number[]} [focusList] - The list of focus indices.
    */
-  public mutate(focusList?: number[]): boolean {
+  protected performMutation(focusList?: number[]): boolean {
     const creature = this.creature;
     const startUUID = CreatureUtil.makeUUID(creature);
     delete creature.uuid;

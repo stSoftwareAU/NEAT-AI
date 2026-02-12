@@ -1,26 +1,22 @@
-import type { Creature } from "../Creature.ts";
-import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 import { Synapse } from "../architecture/Synapse.ts";
+import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
-export class AddSelfCon implements RadioactiveInterface {
-  private creature: Creature;
-  constructor(creature: Creature) {
-    this.creature = creature;
-  }
+export class AddSelfCon extends AbstractMutationOperator {
+  protected performMutation(focusList?: number[]): boolean {
+    const creature = this.creature;
 
-  mutate(focusList?: number[]): boolean {
     // Check which neurons aren't self connected yet
     const possible = [];
     for (
-      let i = this.creature.input;
-      i < this.creature.neurons.length - this.creature.output;
+      let i = creature.input;
+      i < creature.neurons.length - creature.output;
       i++
     ) {
-      if (this.creature.inFocus(i, focusList)) {
-        const neuron = this.creature.neurons[i];
+      if (creature.inFocus(i, focusList)) {
+        const neuron = creature.neurons[i];
         if (neuron.type === "constant") continue;
 
-        const c = this.creature.selfConnection(neuron.index);
+        const c = creature.selfConnection(neuron.index);
         if (c === null) {
           possible.push(neuron);
         }
@@ -31,14 +27,11 @@ export class AddSelfCon implements RadioactiveInterface {
       return false;
     }
 
-    // Select a random node
     const neuron = possible[Math.floor(Math.random() * possible.length)];
-
-    // Connect it to himself
     const indx = neuron.index;
-    this.creature.connect(indx, indx, Synapse.randomWeight());
+    creature.connect(indx, indx, Synapse.randomWeight());
 
-    delete this.creature.memetic;
+    delete creature.memetic;
     return true;
   }
 }

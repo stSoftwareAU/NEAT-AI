@@ -1,33 +1,14 @@
-import type { Creature } from "../Creature.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
-import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
+import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
-export class ModBias implements RadioactiveInterface {
-  private creature: Creature;
-  constructor(creature: Creature) {
-    this.creature = creature;
-  }
-
+export class ModBias extends AbstractMutationOperator {
   /**
    * Modify the bias of a neuron.
-   *
-   * @param {number[]} [focusList] - The list of focus indices.
    */
-  mutate(focusList?: number[]): boolean {
-    let changed = false;
-    for (let attempts = 0; attempts < 12; attempts++) {
-      // Has no effect on input node, so they are excluded
-      const index = Math.floor(
-        Math.random() * (this.creature.neurons.length - this.creature.input) +
-          this.creature.input,
-      );
-      const neuron = this.creature.neurons[index];
-      if (neuron.type === "constant") continue;
-      if (!this.creature.inFocus(index, focusList) && attempts < 6) continue;
-      changed = neuron.mutate(Mutation.MOD_BIAS.name);
-      break;
-    }
+  protected performMutation(focusList?: number[]): boolean {
+    const index = this.selectRandomNonInputNeuronIndex(focusList);
+    if (index === -1) return false;
 
-    return changed;
+    return this.creature.neurons[index].mutate(Mutation.MOD_BIAS.name);
   }
 }

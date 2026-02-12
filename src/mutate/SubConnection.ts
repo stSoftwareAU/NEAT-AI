@@ -2,22 +2,14 @@ import {
   cleanupMemeticForRemovedSynapse,
   cleanupOrphanedNeurons,
 } from "../compact/CompactUtils.ts";
-import type { Creature } from "../Creature.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
-import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
+import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
-export class SubConnection implements RadioactiveInterface {
-  private creature: Creature;
-  constructor(creature: Creature) {
-    this.creature = creature;
-  }
-
+export class SubConnection extends AbstractMutationOperator {
   /**
    * Subtract a connection from the network.
-   *
-   * @param {number[]} [focusList] - The list of focus indices.
    */
-  public mutate(focusList?: number[]): boolean {
+  protected performMutation(focusList?: number[]): boolean {
     // Export the creature to JSON for clean manipulation
     // Use the builder directly to avoid validation (creature may be in an intermediate state)
     const builder = new CreatureExportBuilder(this.creature);

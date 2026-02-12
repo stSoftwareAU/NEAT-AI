@@ -1,30 +1,14 @@
-import type { Creature } from "../Creature.ts";
-import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 import { Mutation } from "../../mod.ts";
+import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
-export class ModActivation implements RadioactiveInterface {
-  private creature: Creature;
-  constructor(creature: Creature) {
-    this.creature = creature;
-  }
+export class ModActivation extends AbstractMutationOperator {
+  protected performMutation(focusList?: number[]): boolean {
+    const index = this.selectRandomNonInputNeuronIndex(focusList);
+    if (index === -1) return false;
 
-  mutate(focusList?: number[]): boolean {
-    let changed = false;
-    for (let attempts = 0; attempts < 12; attempts++) {
-      const index = Math.floor(
-        Math.random() * (
-              this.creature.neurons.length -
-              this.creature.input
-            ) + this.creature.input,
-      );
-      const neuron = this.creature.neurons[index];
-
-      if (neuron.type === "constant") continue;
-
-      if (!this.creature.inFocus(index, focusList) && attempts < 6) continue;
-      changed = neuron.mutate(Mutation.MOD_SQUASH.name);
-      break;
-    }
+    const changed = this.creature.neurons[index].mutate(
+      Mutation.MOD_SQUASH.name,
+    );
 
     if (changed) {
       delete this.creature.memetic;
