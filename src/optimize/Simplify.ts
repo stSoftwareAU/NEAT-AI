@@ -3,13 +3,9 @@ import { type CreatureExport, CreatureUtil } from "../../mod.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { Creature } from "../Creature.ts";
-import { HYPOT } from "../deprecated/HYPOT.ts";
-import { HYPOTv2 } from "../deprecated/HYPOTv2.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
-import { IF } from "../methods/activations/aggregate/IF.ts";
-import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
-import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
+import { isAggregationSquash } from "../methods/activations/SquashUtils.ts";
 import { ABSOLUTE } from "../methods/activations/types/ABSOLUTE.ts";
 import { COMPLEMENT } from "../methods/activations/types/COMPLEMENT.ts";
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
@@ -174,21 +170,6 @@ export function removeKnownSign(exported: CreatureExport) {
   }
 
   return exported;
-}
-
-function isAggregationSquash(
-  squash?: string,
-): boolean {
-  switch (squash) {
-    case MAXIMUM.NAME:
-    case MINIMUM.NAME:
-    case HYPOT.NAME:
-    case HYPOTv2.NAME:
-    case IF.NAME:
-      return true;
-    default:
-      return false;
-  }
 }
 
 function simplifyConstants(exported: CreatureExport) {

@@ -22,12 +22,6 @@ export function memeticUpdate(
     biasMap.set(neuron.uuid, neuron.bias);
   }
 
-  for (let i = parent.input; i < parent.neurons.length; i++) {
-    const neuron = parent.neurons[i];
-    squashMap.set(neuron.uuid, neuron.squash ?? "NONE");
-    biasMap.set(neuron.uuid, neuron.bias);
-  }
-
   for (let i = child.input; i < child.neurons.length; i++) {
     const neuron = child.neurons[i];
     const squash = squashMap.get(neuron.uuid);
@@ -98,8 +92,6 @@ export function memeticUpdate(
         });
       }
     }
-
-    foundSet.delete(`${synapse.fromUUID}-${synapse.toUUID}`);
   }
 
   if (foundSet.size > 0) {

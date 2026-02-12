@@ -1,13 +1,11 @@
-import { assert } from "@std/assert";
-import { Creature, type NeatOptions, Selection } from "../../mod.ts";
+import { Creature, type NeatOptions } from "../../mod.ts";
 import { Offspring } from "../architecture/Offspring.ts";
 import { discover } from "../blackbox/Discover.ts";
 import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
 import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import type { Genus } from "../NEAT/Genus.ts";
-import { calculateAdaptiveTournamentSize } from "./AdaptiveTournamentSize.ts";
-import { createCompatibleFatherFromCreatures } from "./Father.ts";
 import { FitnessRanking } from "./FitnessRanking.ts";
+import { findFather, selectParent } from "./ParentSelection.ts";
 
 /**
  * Represents a parent pair for breeding.
@@ -199,136 +197,17 @@ export class ParallelBreeding {
     populationRanking: FitnessRanking,
     config: NeatConfig,
   ): ParentPair | undefined {
-    const mum = this.selectParent(populationRanking, config);
+    const mum = selectParent(populationRanking, config);
     if (!mum) {
       return undefined;
     }
 
-    const dad = this.getDad(mum, config);
+    const dad = findFather(mum, this.genus, config);
     if (!dad) {
       return undefined;
     }
 
     return { mother: mum, father: dad };
-  }
-
-  /**
-   * Selects a father for breeding with the given mother.
-   *
-   * Creates a FitnessRanking for the filtered father population to enable
-   * efficient parent selection.
-   *
-   * @param mum - The mother creature
-   * @param config - NEAT configuration
-   * @returns A compatible father creature, or undefined if none found
-   */
-  private getDad(
-    mum: Creature,
-    config: NeatConfig,
-  ): Creature | undefined {
-    assert(mum.uuid, "Mother UUID is undefined");
-
-    let possibleFathers: Creature[] = [];
-
-    if (config.globalBreedingRate > Math.random()) {
-      possibleFathers = this.genus.population.filter((creature) =>
-        creature.uuid !== mum.uuid
-      );
-    }
-
-    if (possibleFathers.length === 0) {
-      const species = this.genus.findSpeciesByCreatureUUID(mum.uuid);
-
-      possibleFathers = species.creatures.filter((creature) =>
-        creature.uuid !== mum.uuid
-      );
-
-      if (possibleFathers.length === 0) {
-        const closestSpecies = this.genus.findClosestMatchingSpecies(mum);
-        if (closestSpecies) {
-          possibleFathers = closestSpecies.creatures;
-
-          if (possibleFathers.length === 0) {
-            possibleFathers = this.genus.population.filter((creature) =>
-              creature.uuid !== mum.uuid
-            );
-          }
-        }
-      }
-    }
-
-    if (possibleFathers.length === 0) {
-      return undefined;
-    }
-
-    // Create a new FitnessRanking for the filtered father population
-    const fatherRanking = new FitnessRanking(possibleFathers);
-    const father = this.selectParent(fatherRanking, config);
-    assert(father !== undefined, "Father is undefined");
-
-    // Issue #1034: Avoid JSON exports in parent selection compatibility check.
-    // Uses optimised function that works directly with Creature objects.
-    const fatherExport = createCompatibleFatherFromCreatures(mum, father);
-    try {
-      const compatibleFather = Creature.fromJSON(
-        fatherExport,
-      );
-
-      return compatibleFather;
-    } catch (e) {
-      Deno.writeTextFileSync(
-        "./.source_mother.json",
-        JSON.stringify(mum.exportJSON(), null, 1),
-      );
-      Deno.writeTextFileSync(
-        "./.source_father.json",
-        JSON.stringify(father.exportJSON(), null, 1),
-      );
-
-      Deno.writeTextFileSync(
-        "./.invalid_father.json",
-        JSON.stringify(fatherExport, null, 1),
-      );
-      throw e;
-    }
-  }
-
-  /**
-   * Selects a parent from a pre-computed fitness ranking based on the selection strategy.
-   *
-   * Uses the pre-computed FitnessRanking for O(1) or O(k) selection instead of
-   * recalculating fitness metrics on every selection.
-   *
-   * @param ranking - Pre-computed fitness ranking
-   * @param config - NEAT configuration
-   * @returns The selected parent creature
-   * @throws {Error} When selection fails or unknown selection strategy
-   */
-  private selectParent(ranking: FitnessRanking, config: NeatConfig): Creature {
-    switch (config.selection) {
-      case Selection.POWER: {
-        return ranking.selectPower(Selection.POWER.power);
-      }
-      case Selection.FITNESS_PROPORTIONATE: {
-        return ranking.selectFitnessProportionate();
-      }
-      case Selection.TOURNAMENT: {
-        // Issue #1019: Use adaptive tournament size that scales with population
-        // instead of fixed size of 5. This improves selection pressure for
-        // large populations and reduces variance for small populations.
-        const adaptiveSize = calculateAdaptiveTournamentSize(
-          ranking.sortedPopulation.length,
-        );
-
-        return ranking.selectTournament(
-          adaptiveSize,
-          Selection.TOURNAMENT.probability,
-        );
-      }
-      default: {
-        throw new Error(`Unknown selection: ${config.selection}`);
-      }
-    }
   }
 
   /**

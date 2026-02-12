@@ -13,12 +13,13 @@ import { COMPLEMENT } from "../methods/activations/types/COMPLEMENT.ts";
 import { ABSOLUTE } from "../methods/activations/types/ABSOLUTE.ts";
 import { ReLU } from "../methods/activations/types/ReLU.ts";
 import { LeakyReLU } from "../methods/activations/types/LeakyReLU.ts";
-import { IF } from "../methods/activations/aggregate/IF.ts";
-import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
-import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
 import { HYPOT } from "../deprecated/HYPOT.ts";
 import { HYPOTv2 } from "../deprecated/HYPOTv2.ts";
 import { MEAN } from "../deprecated/MEAN.ts";
+import { isAggregationSquash } from "../methods/activations/SquashUtils.ts";
+import { IF } from "../methods/activations/aggregate/IF.ts";
+import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
+import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
 import {
   cleanupOrphanedNeurons,
   pruneDeadSubgraphs,
@@ -169,7 +170,7 @@ export function compactCreature(
     // aggregate consumers, but that is more complex and not required here.)
     const toNeurons = outConns.map((c) => neuronMap.get(c.toUUID));
     if (toNeurons.some((n) => !n)) continue;
-    if (toNeurons.some((n) => isAggregationSquashName(n!.squash))) continue;
+    if (toNeurons.some((n) => isAggregationSquash(n!.squash))) continue;
 
     // Avoid introducing self-loops or invalid forward-only edges via bypass.
     let unsafe = false;
@@ -573,17 +574,4 @@ function calculateWeightBiasPenalty(exported: CreatureExport): number {
 
   const avg = total / count;
   return (valuePenalty(max) + valuePenalty(avg)) / 2;
-}
-
-function isAggregationSquashName(name?: string): boolean {
-  switch (name) {
-    case MAXIMUM.NAME:
-    case MINIMUM.NAME:
-    case IF.NAME:
-    case HYPOT.NAME:
-    case HYPOTv2.NAME:
-      return true;
-    default:
-      return false;
-  }
 }

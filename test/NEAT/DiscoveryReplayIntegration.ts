@@ -26,7 +26,6 @@ import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { Neat } from "../../src/NEAT/Neat.ts";
 import { validateAfterDiscoveryOrThrow } from "../../src/discovery/DiscoveryPostValidate.ts";
-import type { Approach } from "../../src/NEAT/LogApproach.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 
 /**
@@ -131,7 +130,7 @@ Deno.test("DiscoveryReplayIntegration - tags creature with discovery-replay appr
   CreatureUtil.makeUUID(replayedCreature);
 
   // This is the exact tagging code from Neat.ts line 1128
-  addTag(replayedCreature, "approach", "discovery-replay" as Approach);
+  addTag(replayedCreature, "approach", "discovery-replay");
 
   // Verify the tag was applied
   const approachTag = getTag(replayedCreature, "approach");
@@ -201,7 +200,7 @@ Deno.test("DiscoveryReplayIntegration - adds replayed creature to population arr
       result.improvement.creature as Parameters<typeof Creature.fromJSON>[0],
     );
     CreatureUtil.makeUUID(replayedCreature);
-    addTag(replayedCreature, "approach", "discovery-replay" as Approach);
+    addTag(replayedCreature, "approach", "discovery-replay");
 
     validateAfterDiscoveryOrThrow({
       baseCreature: baseCreature,
@@ -426,7 +425,7 @@ Deno.test("DiscoveryReplayIntegration - processes multiple replay results", () =
         result.improvement.creature as Parameters<typeof Creature.fromJSON>[0],
       );
       CreatureUtil.makeUUID(replayedCreature);
-      addTag(replayedCreature, "approach", "discovery-replay" as Approach);
+      addTag(replayedCreature, "approach", "discovery-replay");
 
       validateAfterDiscoveryOrThrow({
         baseCreature: baseCreature,

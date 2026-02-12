@@ -21,10 +21,9 @@ export class ModActivation implements RadioactiveInterface {
 
       if (neuron.type === "constant") continue;
 
-      if (this.creature.inFocus(index, focusList)) {
-        changed = neuron.mutate(Mutation.MOD_SQUASH.name);
-        break;
-      }
+      if (!this.creature.inFocus(index, focusList) && attempts < 6) continue;
+      changed = neuron.mutate(Mutation.MOD_SQUASH.name);
+      break;
     }
 
     if (changed) {
