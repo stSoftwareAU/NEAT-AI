@@ -1,9 +1,9 @@
 ## Summary
 
 Refactored DiscoverStructure.ts (5,413 lines) by extracting types, static
-application methods, and Rust flush diagnostics into three focused modules.
-The main file was reduced by ~29% (to 3,854 lines) while maintaining full
-backward compatibility through re-exports. Closes #1395.
+application methods, and Rust flush diagnostics into three focused modules. The
+main file was reduced by ~29% (to 3,854 lines) while maintaining full backward
+compatibility through re-exports. Closes #1395.
 
 ## Changes
 
@@ -33,13 +33,13 @@ backward compatibility through re-exports. Closes #1395.
 
 - **test/ErrorGuidedStructuralEvolution/RustFlushDiagnostics.ts** (251 lines)
   - 15 tests covering truncation, aggregation, sample observation, mismatch
-  detection, missing UUID detection, non-finite value detection, error count
-  validation, and batch metric computation
+    detection, missing UUID detection, non-finite value detection, error count
+    validation, and batch metric computation
 
 - **test/ErrorGuidedStructuralEvolution/DiscoveryApplication.ts** (338 lines)
   - 16 tests covering validateAndFixIfNeeded, removeSynapse, addHelpfulSynapses,
-  addHelpfulNeurons, changeSquash, removeHarmfulNeuron, removal diagnostics,
-  and recordDiscoveryIssue
+    addHelpfulNeurons, changeSquash, removeHarmfulNeuron, removal diagnostics,
+    and recordDiscoveryIssue
 
 ## Evidence
 
