@@ -1,14 +1,6 @@
 import { assert } from "@std/assert";
-import { addTag, removeTag, type TagsInterface } from "@stsoftware/tags/mod";
-import { CreatureUtil } from "../../../mod.ts";
-import {
-  cleanupMemeticForRemovedNeuron,
-  cleanupOrphanedNeurons,
-} from "../../compact/CompactUtils.ts";
-import { Creature } from "../../Creature.ts";
+import type { Creature } from "../../Creature.ts";
 import { isWasmActivationAvailable } from "../../wasm/mod.ts";
-import type { Approach } from "../../NEAT/LogApproach.ts";
-import { memeticUpdate } from "../../blackbox/MemeticUpdate.ts";
 import { MSE } from "../../costs/MSE.ts";
 import type { ActivationInterface } from "../../methods/activations/ActivationInterface.ts";
 import { Activations } from "../../methods/activations/Activations.ts";
@@ -46,10 +38,74 @@ import {
   DEFAULT_RUST_FLUSH_RECORDS,
 } from "./constants.ts";
 import { emptyDirSync, ensureDirSync } from "@std/fs";
-import { dirname, join } from "@std/path";
+import { dirname } from "@std/path";
+import type {
+  BinaryRecordIndices,
+  CandidateAnalysisBundle,
+  CandidateHarmfulNeuron,
+  CandidateNeuron,
+  CandidateSquash,
+  CandidateSynapse,
+  DiscoverRecord,
+  DiscoverStructureOptions,
+  FocusNeuronCandidate,
+  FocusSelectionAnalysis,
+  FocusSelectionMode,
+  FocusSelectionSummary,
+  LowImpactNeuron,
+  NeuronErrorInfo,
+  NeuronImpactInfo,
+  NeuronScanStats,
+  RustFlushAggregation,
+  RustFlushDiagnostics,
+} from "./DiscoverStructureTypes.ts";
+import {
+  addHelpfulNeurons as addHelpfulNeuronsImpl,
+  addHelpfulSynapses as addHelpfulSynapsesImpl,
+  changeSquash as changeSquashImpl,
+  getRemovalSameUUIDCount as getRemovalSameUUIDCountImpl,
+  recordDiscoveryIssue as recordDiscoveryIssueImpl,
+  removeHarmfulNeuron as removeHarmfulNeuronImpl,
+  removeLowImpactNeuron as removeLowImpactNeuronImpl,
+  removeSynapse as removeSynapseImpl,
+  resetRemovalDiagnostics as resetRemovalDiagnosticsImpl,
+  validateAndFixIfNeeded as validateAndFixIfNeededImpl,
+} from "./DiscoveryApplication.ts";
+import {
+  computeRustFlushMetrics as computeRustFlushMetricsImpl,
+  createRustFlushAggregation as createRustFlushAggregationImpl,
+  finalizeRustFlushDiagnostics as finalizeRustFlushDiagnosticsImpl,
+  observeRustTrainingRecord as observeRustTrainingRecordImpl,
+  truncateForLogValue as truncateForLogValueImpl,
+} from "./RustFlushDiagnostics.ts";
 
 export { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
 export { DEFAULT_RUST_FLUSH_BYTES } from "./constants.ts";
+
+// Re-export all types from DiscoverStructureTypes for backward compatibility
+export type {
+  BinaryRecordIndices,
+  CandidateAnalysisBundle,
+  CandidateHarmfulNeuron,
+  CandidateNeuron,
+  CandidateSquash,
+  CandidateSynapse,
+  DiscoverRecord,
+  DiscoverStructureOptions,
+  FocusNeuronCandidate,
+  FocusSelectionAnalysis,
+  FocusSelectionMode,
+  FocusSelectionSummary,
+  FocusSelectionSummaryEntry,
+  LowImpactNeuron,
+  NeuronErrorInfo,
+  NeuronImpactInfo,
+  NeuronScanStats,
+  NeuronStats,
+  RustFlushAggregation,
+  RustFlushDiagnostics,
+  RustFlushMetrics,
+} from "./DiscoverStructureTypes.ts";
 
 export interface DiscoverStructureDeps {
   isRustDiscoveryEnabled: typeof isRustDiscoveryEnabled;
@@ -71,304 +127,7 @@ const DEFAULT_DISCOVER_STRUCTURE_DEPS: DiscoverStructureDeps = {
   rankFocusNeurons,
 };
 
-/**
- * Options for configuring DiscoverStructure behaviour (primarily for debugging/testing).
- */
-export interface DiscoverStructureOptions {
-  /**
-   * Base directory for discovery temporary files.
-   * Defaults to `.discovery` in the current working directory.
-   */
-  baseDirectory?: string;
-
-  /**
-   * When true, skips cleanup of temporary files after discovery.
-   * Useful for debugging to examine parquet files.
-   */
-  disableCleanup?: boolean;
-
-  /**
-   * When true, skips the record phase if parquet files already exist.
-   * Useful for debugging to re-run analysis on existing data.
-   */
-  skipRecordPhase?: boolean;
-
-  /**
-   * Estimated payload size threshold (in bytes) before forcing a Rust flush.
-   *
-   * Primarily for testing and production tuning; defaults to ~50 MiB.
-   */
-  rustFlushBytesThreshold?: number;
-}
-
 const OUTPUT_ERROR_CACHE_TTL_MS = 30_000;
-
-/**
- * Implements Error-Driven Synapse Discovery, a neuroevolution technique for optimizing neural network structures.
- * This class analyzes neuron activations and back-propagation errors to discover beneficial new synapses
- * that explicitly reduce neuron-level errors.
- *
- * References:
- * - Stanley, K. O., & Miikkulainen, R. (2002). Evolving Neural Networks through Augmenting Topologies (NEAT).
- *   Evolutionary Computation, 10(2), 99–127.
- * - Floreano, D., Dürr, P., & Mattiussi, C. (2008). Neuroevolution: from architectures to learning. Evolutionary Intelligence, 1(1), 47-62.
- */
-
-export interface DiscoverRecord {
-  activation: number;
-  errors: number[];
-  value?: number;
-}
-
-/**
- * Tracks which binary file records were selected during discovery.
- * Maps binary file paths to arrays of record indices.
- */
-export interface BinaryRecordIndices {
-  [binaryFile: string]: number[];
-}
-
-/**
- * Represents a potential new synapse and the associated metrics calculated during discovery.
- */
-export interface NeuronStats {
-  meanError: number;
-  errorVariance: number;
-  meanActivation: number;
-  activationVariance: number;
-  errorSpikeCount: number;
-  activationSpikeCount: number;
-  activationMin: number;
-  activationMax: number;
-}
-
-/**
- * Represents a synapse candidate proposed during discovery.
- *
- * As of Rust v0.2.0, this interface uses creature-level metrics:
- * - targetNeuronImpact: 0.0-1.0, where output neurons = 1.0
- * - expectedCreatureErrorReduction: creature-level error reduction
- * - expectedCreatureScoreGain: creature-level score improvement
- *
- * These values are already scaled by the neuron's impact on creature output,
- * so TypeScript should NOT apply additional scaling.
- */
-export interface CandidateSynapse {
-  fromNeuronUUID: string;
-  toNeuronUUID: string;
-  weight: number;
-  targetNeuronImpact: number;
-  expectedCreatureErrorReduction: number;
-  expectedCreatureScoreGain: number;
-  improvedCount: number;
-  totalCount: number;
-  /**
-   * Optional diagnostic comment (primarily surfaced from Rust candidates).
-   * This must not affect ranking/selection logic.
-   */
-  comment?: string;
-  targetNeuronStats?: NeuronStats;
-}
-
-/**
- * Represents a squash (activation function) change candidate.
- *
- * As of Rust v0.2.0, this interface uses creature-level metrics:
- * - expectedCreatureScoreGain: creature-level score improvement
- *
- * Note: Squash changes don't have targetNeuronImpact as they modify
- * existing neurons rather than adding new connections.
- */
-export interface CandidateSquash {
-  neuronUUID: string;
-  previousSquash: string;
-  squash: string;
-  expectedCreatureScoreGain: number;
-  improvedError: number;
-  currentError: number;
-  /**
-   * Optional diagnostic comment (primarily for Rust experiments/telemetry).
-   * This must not affect ranking/selection logic.
-   */
-  comment?: string;
-}
-
-/**
- * Represents a neuron candidate proposed during discovery.
- *
- * As of Rust v0.2.0, this interface uses creature-level metrics:
- * - targetNeuronImpact: 0.0-1.0, where output neurons = 1.0
- * - expectedCreatureErrorReduction: creature-level error reduction
- * - expectedCreatureScoreGain: creature-level score improvement
- *
- * These values are already scaled by the neuron's impact on creature output,
- * so TypeScript should NOT apply additional scaling.
- */
-export interface CandidateNeuron {
-  fromNeuronUUID: string;
-  toNeuronUUID: string;
-  incomingWeight: number;
-  outgoingWeight: number;
-  squash: string;
-  bias: number;
-  targetNeuronImpact: number;
-  expectedCreatureErrorReduction: number;
-  expectedCreatureScoreGain: number;
-  improvedCount: number;
-  totalCount: number;
-  /**
-   * Optional diagnostic comment (primarily surfaced from Rust candidates).
-   * This must not affect ranking/selection logic.
-   */
-  comment?: string;
-  targetNeuronStats?: NeuronStats;
-}
-
-/**
- * Represents a neuron identified as harmful (high error contribution).
- *
- * As of Rust v0.2.0, uses creature-level metrics:
- * - expectedCreatureScoreGain: expected score improvement from removal
- */
-export interface CandidateHarmfulNeuron {
-  neuronUUID: string;
-  errorMagnitude: number;
-  expectedCreatureScoreGain: number;
-  sampleCount: number;
-  averageActivation: number; // Average activation across all samples for efficient bias adjustment
-  /**
-   * Optional diagnostic comment (primarily for Rust experiments/telemetry).
-   * This must not affect ranking/selection logic.
-   */
-  comment?: string;
-}
-
-interface CandidateAnalysisBundle {
-  helpfulSynapses?: CandidateSynapse[];
-  harmfulSynapse?: CandidateSynapse;
-  helpfulNeurons?: CandidateNeuron[];
-  coordinatedStructuralCandidates?: CoordinatedStructuralCandidate[];
-  /**
-   * Optional metadata returned by NEAT-AI-Discovery for the synapse analysis path.
-   * Used for logging only.
-   */
-  synapseMetadata?: { candidatesFound: number; candidatesReturned: number };
-  /**
-   * Optional metadata returned by NEAT-AI-Discovery for the neuron analysis path.
-   * Used for logging only.
-   */
-  neuronMetadata?: { candidatesFound: number; candidatesReturned: number };
-}
-
-type FocusSelectionMode = "weighted" | "forced" | "all" | "random";
-
-interface FocusSelectionSummaryEntry {
-  uuid: string;
-  weight?: number;
-}
-
-interface FocusSelectionSummary {
-  key: string;
-  mode: FocusSelectionMode;
-  reason: string;
-  neurons: FocusSelectionSummaryEntry[];
-  totalWeight?: number;
-}
-
-interface NeuronScanStats {
-  processed: number;
-  total: number;
-  timedOut: boolean;
-  durationMs: number;
-}
-
-/**
- * Detailed neuron focus candidate for JSON analysis output.
- * Includes all metrics needed to understand neuron selection and potential.
- */
-export interface FocusNeuronCandidate {
-  neuronUuid: string;
-  totalError: number;
-  impact: number;
-  potentialErrorReduction: number;
-  activationAffectPct: number;
-  weightedScore: number;
-  selected: boolean;
-}
-
-/**
- * Low-impact neuron candidate for potential removal.
- * These neurons contribute little to outputs and might be pruned.
- */
-export interface LowImpactNeuron {
-  neuronUuid: string;
-  impact: number;
-  activationAffectPct: number;
-  totalError: number;
-  reason: string;
-}
-
-/**
- * Complete focus selection analysis for JSON output.
- * Documents all candidates, selection method, and low-impact neurons.
- */
-export interface FocusSelectionAnalysis {
-  discoveryID: string;
-  timestamp: string;
-  costOfGrowth: number;
-  selectionMethod: string;
-  totalCandidates: number;
-  selectedCount: number;
-  totalWeightedSum: number;
-  candidates: FocusNeuronCandidate[];
-  lowImpactNeurons: LowImpactNeuron[];
-  retryNumber?: number;
-}
-
-/**
- * Represents a neuron and its total accumulated error for ranking neurons during discovery.
- * Impact measures how much a neuron affects outputs through its outgoing synapse weights.
- */
-export interface NeuronErrorInfo {
-  uuid: string;
-  totalError: number;
-  impact: number;
-}
-
-interface NeuronImpactInfo {
-  uuid: string;
-  neuronType: string;
-  impact: number;
-}
-
-export interface RustFlushMetrics extends RustRecordBatchStats {
-  recordsWithNoNeuronData: number;
-  recordsWithMismatchedNeuronCount: number;
-  recordsWithInputMismatch: number;
-  recordsWithOutputMismatch: number;
-  missingUuidEntries: number;
-  nonFiniteActivationCount: number;
-  nonFiniteValueCount: number;
-  nonFiniteErrorCount: number;
-  firstMissingUuidLocation?: string;
-  firstNonFiniteActivationLocation?: string;
-  firstNonFiniteValueLocation?: string;
-  firstNonFiniteErrorLocation?: string;
-}
-
-interface RustFlushDiagnostics {
-  summary: string;
-  warnings: string[];
-  errors: string[];
-  metrics: RustFlushMetrics;
-}
-
-interface RustFlushAggregation {
-  expectedInputLength: number;
-  expectedOutputLength: number;
-  expectedNeuronCount: number;
-  metrics: RustFlushMetrics;
-}
 
 /**
  * Implements Error-Driven Structural Discovery, analysing neuron activations and errors
@@ -1318,24 +1077,12 @@ export class DiscoverStructure {
     expectedInputLength: number,
     expectedOutputLength: number,
   ): RustRecordBatchStats {
-    const aggregation = DiscoverStructure.createRustFlushAggregationInternal(
+    return computeRustFlushMetricsImpl(
+      data,
+      expectedNeuronCount,
       expectedInputLength,
       expectedOutputLength,
-      expectedNeuronCount,
     );
-    data.forEach((record, recordIndex) => {
-      DiscoverStructure.observeRustTrainingRecordInternal(
-        aggregation,
-        record,
-        recordIndex,
-      );
-    });
-    const diagnostics = DiscoverStructure
-      .finalizeRustFlushDiagnosticsInternal(
-        aggregation,
-        DiscoverStructure.truncateForLogValue,
-      );
-    return diagnostics.metrics;
   }
 
   private emitRustFlushDiagnostics(
@@ -1352,7 +1099,7 @@ export class DiscoverStructure {
     expectedOutputLength: number,
     expectedNeuronCount: number,
   ): RustFlushAggregation {
-    return DiscoverStructure.createRustFlushAggregationInternal(
+    return createRustFlushAggregationImpl(
       expectedInputLength,
       expectedOutputLength,
       expectedNeuronCount,
@@ -1364,17 +1111,13 @@ export class DiscoverStructure {
     record: RustRecordInput["training_data"][number],
     globalSampleIndex: number,
   ): void {
-    DiscoverStructure.observeRustTrainingRecordInternal(
-      aggregation,
-      record,
-      globalSampleIndex,
-    );
+    observeRustTrainingRecordImpl(aggregation, record, globalSampleIndex);
   }
 
   private finalizeRustFlushDiagnostics(
     aggregation: RustFlushAggregation,
   ): RustFlushDiagnostics {
-    return DiscoverStructure.finalizeRustFlushDiagnosticsInternal(
+    return finalizeRustFlushDiagnosticsImpl(
       aggregation,
       (value, max) => this.truncateForLog(value, max),
     );
@@ -1398,273 +1141,7 @@ export class DiscoverStructure {
   }
 
   private truncateForLog(value: string, max = 120): string {
-    return DiscoverStructure.truncateForLogValue(value, max);
-  }
-
-  private static truncateForLogValue(value: string, max = 120): string {
-    if (value.length <= max) {
-      return value;
-    }
-    return `${value.slice(0, max)}…`;
-  }
-
-  private static createRustFlushAggregationInternal(
-    expectedInputLength: number,
-    expectedOutputLength: number,
-    expectedNeuronCount: number,
-  ): RustFlushAggregation {
-    return {
-      expectedInputLength,
-      expectedOutputLength,
-      expectedNeuronCount,
-      metrics: {
-        sampleCount: 0,
-        expectedNeuronCount,
-        totalNeuronRecords: 0,
-        totalNeuronUuidBytes: 0,
-        longestNeuronUuidLength: 0,
-        longestNeuronUuid: undefined,
-        totalErrorValues: 0,
-        maxErrorValuesPerNeuron: 0,
-        inputLength: undefined,
-        outputLength: undefined,
-        recordsWithNoNeuronData: 0,
-        recordsWithMismatchedNeuronCount: 0,
-        recordsWithInputMismatch: 0,
-        recordsWithOutputMismatch: 0,
-        missingUuidEntries: 0,
-        nonFiniteActivationCount: 0,
-        nonFiniteValueCount: 0,
-        nonFiniteErrorCount: 0,
-        firstMissingUuidLocation: undefined,
-        firstNonFiniteActivationLocation: undefined,
-        firstNonFiniteValueLocation: undefined,
-        firstNonFiniteErrorLocation: undefined,
-      },
-    };
-  }
-
-  private static observeRustTrainingRecordInternal(
-    aggregation: RustFlushAggregation,
-    record: RustRecordInput["training_data"][number],
-    globalSampleIndex: number,
-  ): void {
-    const metrics = aggregation.metrics;
-    metrics.sampleCount += 1;
-
-    if (metrics.inputLength === undefined) {
-      metrics.inputLength = record.input.length;
-    }
-    if (metrics.outputLength === undefined) {
-      metrics.outputLength = record.output.length;
-    }
-
-    if (record.input.length !== aggregation.expectedInputLength) {
-      metrics.recordsWithInputMismatch += 1;
-    }
-
-    if (record.output.length !== aggregation.expectedOutputLength) {
-      metrics.recordsWithOutputMismatch += 1;
-    }
-
-    const neuronData = record.neuron_data ?? [];
-    metrics.totalNeuronRecords += neuronData.length;
-
-    if (neuronData.length === 0) {
-      metrics.recordsWithNoNeuronData += 1;
-    }
-    if (neuronData.length !== aggregation.expectedNeuronCount) {
-      metrics.recordsWithMismatchedNeuronCount += 1;
-    }
-
-    neuronData.forEach((neuron, neuronIndex) => {
-      const uuid = typeof neuron.neuron_uuid === "string"
-        ? neuron.neuron_uuid
-        : "";
-      const uuidLength = uuid.length;
-      metrics.totalNeuronUuidBytes += uuidLength;
-
-      if (uuidLength === 0) {
-        metrics.missingUuidEntries += 1;
-        if (!metrics.firstMissingUuidLocation) {
-          metrics.firstMissingUuidLocation =
-            `record ${globalSampleIndex}, neuron ${neuronIndex}`;
-        }
-      } else if (uuidLength > metrics.longestNeuronUuidLength) {
-        metrics.longestNeuronUuidLength = uuidLength;
-        metrics.longestNeuronUuid = uuid;
-      }
-
-      if (!Number.isFinite(neuron.activation)) {
-        metrics.nonFiniteActivationCount += 1;
-        if (!metrics.firstNonFiniteActivationLocation) {
-          metrics.firstNonFiniteActivationLocation =
-            `record ${globalSampleIndex}, neuron ${neuronIndex}`;
-        }
-      }
-
-      const value = (neuron as { value?: number }).value;
-      if (value !== undefined && value !== null && !Number.isFinite(value)) {
-        metrics.nonFiniteValueCount += 1;
-        if (!metrics.firstNonFiniteValueLocation) {
-          metrics.firstNonFiniteValueLocation =
-            `record ${globalSampleIndex}, neuron ${neuronIndex}`;
-        }
-      }
-
-      const errors = Array.isArray(neuron.errors) ? neuron.errors : [];
-      const errorCount = errors.length;
-      metrics.totalErrorValues += errorCount;
-      if (errorCount > metrics.maxErrorValuesPerNeuron) {
-        metrics.maxErrorValuesPerNeuron = errorCount;
-      }
-
-      // VALIDATION: Check for unreasonable error counts
-      // This is per-record (per-sample) validation.
-      // During backpropagation for ONE sample, each neuron records ONE error
-      // - Expected: 1 error per neuron per sample
-      // - Multiplier of 2 provides buffer for edge cases
-      // - Minimum threshold of 10 for safety
-      const outputCount = aggregation.expectedOutputLength;
-      const maxReasonableErrorsPerNeuronPerRecord = Math.max(
-        10,
-        outputCount * 2,
-      );
-
-      if (errorCount > maxReasonableErrorsPerNeuronPerRecord) {
-        console.error(
-          `❌ CRITICAL: Neuron ${uuid} has ${errorCount} errors in record ${globalSampleIndex}, ` +
-            `which exceeds reasonable maximum (${maxReasonableErrorsPerNeuronPerRecord})!`,
-        );
-        console.error(
-          `Record ${globalSampleIndex}, Neuron ${neuronIndex}`,
-        );
-        console.error(
-          `Outputs: ${outputCount} (expected ≤${
-            outputCount * 2
-          } errors per neuron per sample)`,
-        );
-        console.error(`Errors array sample (first 10):`, errors.slice(0, 10));
-        throw new Error(
-          `Data corruption detected: neuron ${uuid} has ${errorCount} errors in a single record, ` +
-            `which far exceeds reasonable maximum (${maxReasonableErrorsPerNeuronPerRecord}). ` +
-            `During backprop, each neuron should record ONE error per sample. This indicates record() is being called too many times.`,
-        );
-      }
-
-      // LOG WARNING: Log if we're seeing unusually high error counts per sample
-      const warningThreshold = Math.max(5, Math.ceil(outputCount * 1.5));
-      if (errorCount > warningThreshold) {
-        console.warn(
-          `⚠️  Record ${globalSampleIndex}: Neuron ${uuid} has ${errorCount} errors ` +
-            `(expected ≤${warningThreshold} for ${outputCount} outputs). ` +
-            `During backprop, record() should be called once per output. Multiple calls suggest a logic error.`,
-        );
-      }
-
-      errors.forEach((errorValue, errorIndex) => {
-        if (!Number.isFinite(errorValue)) {
-          metrics.nonFiniteErrorCount += 1;
-          if (!metrics.firstNonFiniteErrorLocation) {
-            metrics.firstNonFiniteErrorLocation =
-              `record ${globalSampleIndex}, neuron ${neuronIndex}, error ${errorIndex}`;
-          }
-        }
-      });
-    });
-  }
-
-  private static finalizeRustFlushDiagnosticsInternal(
-    aggregation: RustFlushAggregation,
-    truncate: (value: string, max?: number) => string,
-  ): RustFlushDiagnostics {
-    const { metrics } = aggregation;
-    const summaryParts = [
-      `samples=${metrics.sampleCount}`,
-      `expectedNeuronCount=${aggregation.expectedNeuronCount}`,
-      `recordsWithNoNeuronData=${metrics.recordsWithNoNeuronData}`,
-      `recordsWithMismatchedNeuronCount=${metrics.recordsWithMismatchedNeuronCount}`,
-      `recordsWithInputMismatch=${metrics.recordsWithInputMismatch}`,
-      `recordsWithOutputMismatch=${metrics.recordsWithOutputMismatch}`,
-      `missingUuidEntries=${metrics.missingUuidEntries}`,
-      `nonFiniteActivationValues=${metrics.nonFiniteActivationCount}`,
-      `nonFiniteNeuronValues=${metrics.nonFiniteValueCount}`,
-      `nonFiniteErrorValues=${metrics.nonFiniteErrorCount}`,
-    ];
-
-    if (metrics.longestNeuronUuid && metrics.longestNeuronUuidLength > 0) {
-      summaryParts.push(
-        `longestUuid="${
-          truncate(metrics.longestNeuronUuid)
-        }" (${metrics.longestNeuronUuidLength})`,
-      );
-    }
-
-    const warnings: string[] = [];
-    if (metrics.recordsWithNoNeuronData > 0) {
-      warnings.push(
-        `Rust flush detected ${metrics.recordsWithNoNeuronData} record(s) without neuron data.`,
-      );
-    }
-    if (metrics.recordsWithMismatchedNeuronCount > 0) {
-      warnings.push(
-        `Rust flush detected ${metrics.recordsWithMismatchedNeuronCount} record(s) with neuron count mismatch (expected ${aggregation.expectedNeuronCount}).`,
-      );
-    }
-    if (metrics.recordsWithInputMismatch > 0) {
-      warnings.push(
-        `Rust flush detected ${metrics.recordsWithInputMismatch} record(s) where input length != expected ${aggregation.expectedInputLength}.`,
-      );
-    }
-    if (metrics.recordsWithOutputMismatch > 0) {
-      warnings.push(
-        `Rust flush detected ${metrics.recordsWithOutputMismatch} record(s) where output length != expected ${aggregation.expectedOutputLength}.`,
-      );
-    }
-
-    const errors: string[] = [];
-    if (metrics.missingUuidEntries > 0) {
-      const location = metrics.firstMissingUuidLocation
-        ? ` (first observed at ${metrics.firstMissingUuidLocation})`
-        : "";
-      errors.push(
-        `Rust flush encountered ${metrics.missingUuidEntries} neuron entries with missing UUID${location}.`,
-      );
-    }
-    if (metrics.nonFiniteActivationCount > 0) {
-      errors.push(
-        `Rust flush encountered ${metrics.nonFiniteActivationCount} non-finite activation value(s)${
-          metrics.firstNonFiniteActivationLocation
-            ? ` (first observed at ${metrics.firstNonFiniteActivationLocation})`
-            : ""
-        }.`,
-      );
-    }
-    if (metrics.nonFiniteValueCount > 0) {
-      errors.push(
-        `Rust flush encountered ${metrics.nonFiniteValueCount} non-finite optional neuron value(s)${
-          metrics.firstNonFiniteValueLocation
-            ? ` (first observed at ${metrics.firstNonFiniteValueLocation})`
-            : ""
-        }.`,
-      );
-    }
-    if (metrics.nonFiniteErrorCount > 0) {
-      errors.push(
-        `Rust flush encountered ${metrics.nonFiniteErrorCount} non-finite error value(s)${
-          metrics.firstNonFiniteErrorLocation
-            ? ` (first observed at ${metrics.firstNonFiniteErrorLocation})`
-            : ""
-        }.`,
-      );
-    }
-
-    return {
-      summary: `Rust flush diagnostics: ${summaryParts.join(", ")}`,
-      warnings,
-      errors,
-      metrics,
-    };
+    return truncateForLogValueImpl(value, max);
   }
 
   private discoveries: CandidateSynapse[] = [];
@@ -4007,19 +3484,7 @@ export class DiscoverStructure {
     return undefined;
   }
 
-  /**
-   * Validates a creature and attempts to fix it if validation fails.
-   * If validation fails and discoveryFailureCacheDir is specified, records the issue
-   * to an "issues" subdirectory for later debugging.
-   *
-   * @param creature - The creature to validate (modified in place if fix is needed).
-   * @param originalCreature - The original creature before modifications.
-   * @param discoveryID - Unique identifier for the discovery process.
-   * @param operationType - Type of operation (e.g., "add-synapses", "remove-neuron").
-   * @param candidate - The discovery candidate that caused the modification.
-   * @param discoveryFailureCacheDir - Optional directory to log validation issues.
-   * @returns Result indicating success/failure and whether fix was called.
-   */
+  /** Delegates to the extracted validateAndFixIfNeeded function. */
   private static validateAndFixIfNeeded(
     creature: Creature,
     originalCreature: Creature,
@@ -4028,180 +3493,17 @@ export class DiscoverStructure {
     candidate: unknown,
     discoveryFailureCacheDir?: string,
   ): { success: boolean; fixWasCalled: boolean; validationError?: Error } {
-    const enforceForwardOnly = originalCreature.forwardOnly === true;
-
-    const bumpToFourIfForwardOnlyConfirmed = () => {
-      const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(creature.semanticVersion);
-      if (!match) return;
-      const major = Number.parseInt(match[1], 10);
-      if (Number.isNaN(major)) return;
-      // Backwards compatibility: never downgrade.
-      if (major === 2 || major === 3) {
-        creature.semanticVersion = "4.0.0";
-      }
-    };
-
-    // First attempt validation
-    try {
-      if (enforceForwardOnly) {
-        creature.validate({ forwardOnly: true });
-        creature.forwardOnly = true;
-        bumpToFourIfForwardOnlyConfirmed();
-      } else {
-        creature.validate();
-      }
-      return { success: true, fixWasCalled: false };
-    } catch (validationError) {
-      const error = validationError as Error;
-
-      // Log the validation issue if discoveryFailureCacheDir is specified
-      if (discoveryFailureCacheDir) {
-        this.recordValidationIssue(
-          creature,
-          originalCreature,
-          discoveryID,
-          operationType,
-          candidate,
-          error,
-          discoveryFailureCacheDir,
-        );
-      }
-
-      console.warn(
-        `[Discovery ${discoveryID}] Creature became invalid after ${operationType}: ${error.name} - ${error.message}. ` +
-          `This is a bug that should be investigated. Attempting fix() as last resort.`,
-      );
-
-      // Attempt to fix the creature.
-      // If the original creature is forward-only, ensure we repair by removing recurrent connections.
-      if (enforceForwardOnly) {
-        creature.fix({ forwardOnly: true });
-      } else {
-        creature.fix();
-      }
-
-      // Re-validate after fix
-      try {
-        if (enforceForwardOnly) {
-          creature.validate({ forwardOnly: true });
-          creature.forwardOnly = true;
-          bumpToFourIfForwardOnlyConfirmed();
-        } else {
-          creature.validate();
-        }
-        return { success: true, fixWasCalled: true, validationError: error };
-      } catch (fixError) {
-        console.error(
-          `[Discovery ${discoveryID}] fix() failed to repair creature after ${operationType}. Error: ${fixError}`,
-        );
-        return { success: false, fixWasCalled: true, validationError: error };
-      }
-    }
+    return validateAndFixIfNeededImpl(
+      creature,
+      originalCreature,
+      discoveryID,
+      operationType,
+      candidate,
+      discoveryFailureCacheDir,
+    );
   }
 
-  /**
-   * Records a validation issue to the issues subdirectory for debugging.
-   * Creates a unique directory containing all information needed to reproduce the issue.
-   *
-   * @param invalidCreature - The creature that failed validation.
-   * @param originalCreature - The original creature before modifications.
-   * @param discoveryID - Unique identifier for the discovery process.
-   * @param operationType - Type of operation that caused the issue.
-   * @param candidate - The discovery candidate that was applied.
-   * @param error - The validation error.
-   * @param discoveryFailureCacheDir - Base directory for the failure cache.
-   */
-  private static recordValidationIssue(
-    invalidCreature: Creature,
-    originalCreature: Creature,
-    discoveryID: string,
-    operationType: string,
-    candidate: unknown,
-    error: Error,
-    discoveryFailureCacheDir: string,
-  ): void {
-    try {
-      // Create timestamp in Australian format (yyyymmdd-HHmmss)
-      const now = new Date();
-      const timestamp = now.toISOString()
-        .replace(/[-:]/g, "")
-        .replace("T", "-")
-        .slice(0, 15);
-
-      // Create unique directory for this issue
-      const issueDir = join(
-        discoveryFailureCacheDir,
-        "issues",
-        `${timestamp}-${discoveryID}-${operationType}`,
-      );
-      ensureDirSync(issueDir);
-
-      // Save the candidate
-      const candidatePath = join(issueDir, "candidate.json");
-      Deno.writeTextFileSync(
-        candidatePath,
-        JSON.stringify(candidate, null, 2),
-      );
-
-      // Save the original creature
-      const originalPath = join(issueDir, "original-creature.json");
-      Deno.writeTextFileSync(
-        originalPath,
-        JSON.stringify(originalCreature.exportJSON(), null, 2),
-      );
-
-      // Save the invalid creature (before fix)
-      const invalidPath = join(issueDir, "invalid-creature.json");
-      Deno.writeTextFileSync(
-        invalidPath,
-        JSON.stringify(invalidCreature.exportJSON(), null, 2),
-      );
-
-      // Save the error details
-      const errorPath = join(issueDir, "error.txt");
-      const errorContent = [
-        `Validation Error Report`,
-        `=======================`,
-        ``,
-        `Timestamp: ${now.toISOString()}`,
-        `Discovery ID: ${discoveryID}`,
-        `Operation Type: ${operationType}`,
-        ``,
-        `Error Name: ${error.name}`,
-        `Error Message: ${error.message}`,
-        ``,
-        `Stack Trace:`,
-        error.stack ?? "No stack trace available",
-      ].join("\n");
-      Deno.writeTextFileSync(errorPath, errorContent);
-
-      console.warn(
-        `[Discovery ${discoveryID}] Validation issue recorded to: ${issueDir}`,
-      );
-    } catch (recordError) {
-      // Don't let recording failure prevent the main flow
-      console.error(
-        `[Discovery ${discoveryID}] Failed to record validation issue: ${recordError}`,
-      );
-    }
-  }
-
-  /**
-   * Records a discovery issue to the issues subdirectory for debugging.
-   *
-   * This is used for cases where the creature may still validate, but the discovery
-   * candidate is logically broken for our forward-pass evaluation ordering (eg,
-   * a candidate proposes a from → to link where the "from" neuron is after the
-   * target neuron in the evaluation order, making the new neuron's activation
-   * effectively zero at that stage).
-   *
-   * @param originalCreature - The original creature before modifications.
-   * @param discoveryID - Unique identifier for the discovery process.
-   * @param operationType - Type of operation (eg, "add-neurons").
-   * @param issueType - Short discriminator for the issue kind.
-   * @param details - JSON-serialisable diagnostic payload.
-   * @param discoveryFailureCacheDir - Base directory for the failure cache.
-   */
+  /** Delegates to the extracted recordDiscoveryIssue function. */
   private static recordDiscoveryIssue(
     originalCreature: Creature,
     discoveryID: string,
@@ -4210,666 +3512,74 @@ export class DiscoverStructure {
     details: unknown,
     discoveryFailureCacheDir: string,
   ): void {
-    try {
-      // Create timestamp in Australian format (yyyymmdd-HHmmss)
-      const now = new Date();
-      const timestamp = now.toISOString()
-        .replace(/[-:]/g, "")
-        .replace("T", "-")
-        .slice(0, 15);
-
-      const issueDir = join(
-        discoveryFailureCacheDir,
-        "issues",
-        `${timestamp}-${discoveryID}-${operationType}-${issueType}`,
-      );
-      ensureDirSync(issueDir);
-
-      const detailsPath = join(issueDir, "candidate.json");
-      Deno.writeTextFileSync(detailsPath, JSON.stringify(details, null, 2));
-
-      const originalPath = join(issueDir, "original-creature.json");
-      Deno.writeTextFileSync(
-        originalPath,
-        JSON.stringify(originalCreature.exportJSON(), null, 2),
-      );
-
-      const errorPath = join(issueDir, "error.txt");
-      const detailsRecord = details as Record<string, unknown> | null;
-      const message =
-        detailsRecord && typeof detailsRecord["message"] === "string"
-          ? detailsRecord["message"]
-          : undefined;
-      const fromIndex =
-        detailsRecord && typeof detailsRecord["fromIndex"] === "number"
-          ? detailsRecord["fromIndex"]
-          : undefined;
-      const targetIndex = detailsRecord &&
-          typeof detailsRecord["targetIndex"] === "number"
-        ? detailsRecord["targetIndex"]
-        : undefined;
-      const errorContent = [
-        `Discovery Issue Report`,
-        `======================`,
-        ``,
-        `Timestamp: ${now.toISOString()}`,
-        `Discovery ID: ${discoveryID}`,
-        `Operation Type: ${operationType}`,
-        `Issue Type: ${issueType}`,
-        ``,
-        `Summary: Candidate is incompatible with forward-pass evaluation ordering.`,
-        message ? `Message: ${message}` : undefined,
-        fromIndex !== undefined ? `fromIndex: ${fromIndex}` : undefined,
-        targetIndex !== undefined ? `targetIndex: ${targetIndex}` : undefined,
-      ].filter((line) => line !== undefined).join("\n");
-      Deno.writeTextFileSync(errorPath, errorContent);
-
-      console.warn(
-        `[Discovery ${discoveryID}] Discovery issue recorded to: ${issueDir}`,
-      );
-    } catch (recordError) {
-      // Don't let recording failure prevent the main flow
-      console.error(
-        `[Discovery ${discoveryID}] Failed to record discovery issue: ${recordError}`,
-      );
-    }
+    recordDiscoveryIssueImpl(
+      originalCreature,
+      discoveryID,
+      operationType,
+      issueType,
+      details,
+      discoveryFailureCacheDir,
+    );
   }
 
-  /**
-   * Removes a synapse from the creature if it is determined to be harmful.
-   * This method is used to prune synapses that consistently worsen prediction error.
-   * @param ID - Unique identifier for the discovery process.
-   * @param creature the Creature instance to modify.
-   * @param worseCandidate the candidate synapse to remove.
-   * @param discoveryFailureCacheDir - Optional directory to log validation issues.
-   * @returns returns a modified Creature with the synapse removed, or null if no change was made.
-   */
+  /** Delegates to the extracted removeSynapse function. */
   public static removeSynapse(
     ID: string,
     creature: Creature,
     worseCandidate?: CandidateSynapse,
     discoveryFailureCacheDir?: string,
   ): Creature | null {
-    if (!worseCandidate) return null;
-
-    // Find the synapse indices in the creature
-    const fromNeuron = creature.neurons.find(
-      (n) => n.uuid === worseCandidate.fromNeuronUUID,
-    );
-    const toNeuron = creature.neurons.find(
-      (n) => n.uuid === worseCandidate.toNeuronUUID,
-    );
-
-    if (!fromNeuron || !toNeuron) {
-      console.warn(
-        `[DiscoverStructure] removeSynapse: neuron(s) not found for synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID}`,
-      );
-      return null;
-    }
-
-    const fromIndx = fromNeuron.index;
-    const toIndx = toNeuron.index;
-
-    // Check if the synapse actually exists
-    const synapse = creature.getSynapse(fromIndx, toIndx);
-    if (!synapse) {
-      console.warn(
-        `[DiscoverStructure] removeSynapse: synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID} does not exist in creature`,
-      );
-      return null;
-    }
-
-    const creatureUUID = CreatureUtil.makeUUID(creature);
-    const exportJSON = creature.exportJSON();
-    exportJSON.synapses = exportJSON.synapses.filter((s) => {
-      return s.fromUUID !== worseCandidate.fromNeuronUUID ||
-        s.toUUID !== worseCandidate.toNeuronUUID;
-    });
-
-    // Clean up any neurons that have become orphaned after synapse removal.
-    // This handles both:
-    // - Converting hidden neurons with no inward connections to constants
-    // - Removing hidden/constant neurons with no outward connections
-    cleanupOrphanedNeurons(exportJSON);
-
-    const tmpCreature = Creature.fromJSON(exportJSON);
-    // We modified the structure by filtering synapses, so we must delete UUID
-    delete tmpCreature.uuid;
-    delete tmpCreature.memetic;
-
-    // Validate the creature - only call fix() as a last resort
-    const validationResult = this.validateAndFixIfNeeded(
-      tmpCreature,
-      creature,
+    return removeSynapseImpl(
       ID,
-      "remove-synapse",
+      creature,
       worseCandidate,
       discoveryFailureCacheDir,
     );
-    if (!validationResult.success) {
-      return null;
-    }
-
-    const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
-    if (tmpUUID !== creatureUUID) {
-      addTag(tmpCreature, "approach", "discovery" as Approach);
-      addTag(tmpCreature, "discoveryID", ID);
-      const summary =
-        `☣️ Removed harmful synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID}`;
-      addTag(tmpCreature, "Discovery", summary);
-      removeTag(tmpCreature, "approach-logged");
-
-      return tmpCreature;
-    }
-
-    // Synapse existed but removal didn't change UUID
-    console.warn(
-      `[DiscoverStructure] removeSynapse: synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID} existed but removal had no structural effect`,
-    );
-    return null;
   }
 
-  /**
-   * Adds a new synapse to the creature if it improves performance.
-   *
-   * @param ID - Unique identifier for the discovery process.
-   * @param creature - The Creature instance to modify.
-   * @param helpfulSynapses - The candidate synapses to add.
-   * @param discoveryFailureCacheDir - Optional directory to log validation issues.
-   * @returns A modified Creature with the new synapse added, or null if no change was made.
-   */
+  /** Delegates to the extracted addHelpfulSynapses function. */
   public static addHelpfulSynapses(
     ID: string,
     creature: Creature,
     helpfulSynapses?: CandidateSynapse[],
     discoveryFailureCacheDir?: string,
   ): Creature | undefined {
-    if (!helpfulSynapses || helpfulSynapses.length === 0) return;
-    const creatureUUID = CreatureUtil.makeUUID(creature);
-    const exportJSON = creature.exportJSON();
-
-    const appliedSynapses: CandidateSynapse[] = [];
-
-    helpfulSynapses.forEach((bestCandidate) => {
-      const foundSynapse = exportJSON.synapses.find((synapse) => {
-        return synapse.fromUUID === bestCandidate.fromNeuronUUID &&
-          synapse.toUUID === bestCandidate.toNeuronUUID;
-      });
-
-      if (foundSynapse) {
-        console.warn(
-          `[Discovery ${ID}] Synapse ${bestCandidate.fromNeuronUUID} -> ${bestCandidate.toNeuronUUID} already exists, skipping`,
-        );
-        return;
-      }
-
-      const foundFromNeuron = exportJSON.neurons.find((neuron) => {
-        return neuron.uuid === bestCandidate.fromNeuronUUID;
-      });
-      if (!foundFromNeuron) {
-        if (!bestCandidate.fromNeuronUUID.startsWith("input-")) {
-          console.warn(
-            `[Discovery ${ID}] Source neuron ${bestCandidate.fromNeuronUUID} not found, skipping synapse`,
-          );
-          return;
-        }
-      }
-      const foundToNeuron = exportJSON.neurons.find((neuron) => {
-        /** may have converted a hidden neuron to a constant */
-        if (neuron.type !== "hidden" && neuron.type !== "output") return false;
-        return neuron.uuid === bestCandidate.toNeuronUUID;
-      });
-      if (!foundToNeuron) {
-        console.warn(
-          `[Discovery ${ID}] Target neuron ${bestCandidate.toNeuronUUID} not found or is not hidden/output, skipping synapse`,
-        );
-        return;
-      }
-
-      const addSynapse = {
-        fromUUID: bestCandidate.fromNeuronUUID,
-        toUUID: bestCandidate.toNeuronUUID,
-        weight: bestCandidate.weight,
-      };
-
-      // Tag the new synapse so it can be identified later and survives export/import.
-      // This mirrors neuron tagging (see addHelpfulNeurons) and helps debug why
-      // add-synapses candidates are (or are not) appearing in logs.
-      addTag(addSynapse as TagsInterface, "discovered", "synapse");
-      addTag(addSynapse as TagsInterface, "discovery", "beneficial");
-      addTag(addSynapse as TagsInterface, "discoveryID", ID);
-      if (bestCandidate.comment) {
-        addTag(
-          addSynapse as TagsInterface,
-          "discovery-comment",
-          bestCandidate.comment,
-        );
-      }
-      exportJSON.synapses.push(addSynapse);
-      appliedSynapses.push(bestCandidate);
-    });
-
-    if (appliedSynapses.length === 0) {
-      console.warn(
-        `[Discovery ${ID}] No synapses could be added from ${helpfulSynapses.length} candidates`,
-      );
-      return;
-    }
-
-    const tmpCreature = Creature.fromJSON(exportJSON);
-    // We added synapses to the structure, so we must delete UUID to get a new one
-    delete tmpCreature.uuid;
-
-    // Validate and fix if needed
-    const beforeFixSynapseCount = tmpCreature.synapses.length;
-    const beforeFixNeuronCount = tmpCreature.neurons.length;
-    const validationResult = this.validateAndFixIfNeeded(
-      tmpCreature,
-      creature,
+    return addHelpfulSynapsesImpl(
       ID,
-      "add-synapses",
-      appliedSynapses,
+      creature,
+      helpfulSynapses,
       discoveryFailureCacheDir,
     );
-    if (!validationResult.success) {
-      return;
-    }
-    const fixWasCalled = validationResult.fixWasCalled;
-
-    // Log what fix() changed if it was called
-    if (fixWasCalled) {
-      const afterFixSynapseCount = tmpCreature.synapses.length;
-      const afterFixNeuronCount = tmpCreature.neurons.length;
-      if (
-        afterFixSynapseCount !== beforeFixSynapseCount ||
-        afterFixNeuronCount !== beforeFixNeuronCount
-      ) {
-        console.warn(
-          `[Discovery ${ID}] fix() modified structure: synapses ${beforeFixSynapseCount} -> ${afterFixSynapseCount}, neurons ${beforeFixNeuronCount} -> ${afterFixNeuronCount}`,
-        );
-      }
-    }
-
-    const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
-    if (tmpUUID !== creatureUUID && appliedSynapses.length > 0) {
-      const exemplar = appliedSynapses[0];
-      const summary = appliedSynapses.length === 1
-        ? `🕵🏻‍♂️ Added helpful synapse ${exemplar.fromNeuronUUID} -> ${exemplar.toNeuronUUID}`
-        : `🕵🏻‍♂️ Added ${appliedSynapses.length} helpful synapses (eg ${exemplar.fromNeuronUUID} -> ${exemplar.toNeuronUUID})`;
-      addTag(tmpCreature, "approach", "discovery" as Approach);
-      addTag(tmpCreature, "discoveryID", ID);
-      addTag(tmpCreature, "Discovery", summary);
-      if (fixWasCalled) {
-        addTag(tmpCreature, "discovery-fix-required", "true");
-      }
-      if (tmpCreature.memetic) {
-        tmpCreature.memetic = memeticUpdate(creature, tmpCreature);
-      }
-
-      removeTag(tmpCreature, "approach-logged");
-
-      return tmpCreature;
-    }
-    return;
   }
 
-  /**
-   * Adds new neurons to the creature if they improve performance.
-   *
-   * @param ID - Unique identifier for the discovery process.
-   * @param creature - The Creature instance to modify.
-   * @param helpfulNeurons - The candidate neurons to add.
-   * @param discoveryFailureCacheDir - Optional directory to log validation issues.
-   * @returns A modified Creature with the new neurons added, or undefined if no change was made.
-   */
+  /** Delegates to the extracted addHelpfulNeurons function. */
   public static addHelpfulNeurons(
     ID: string,
     creature: Creature,
     helpfulNeurons?: CandidateNeuron[],
     discoveryFailureCacheDir?: string,
   ): Creature | undefined {
-    if (!helpfulNeurons || helpfulNeurons.length === 0) return;
-    const creatureUUID = CreatureUtil.makeUUID(creature);
-    const exportJSON = creature.exportJSON();
-
-    const existingNeuronUUIDs = new Set(
-      exportJSON.neurons.map((neuron) => neuron.uuid),
-    );
-    const processedKeys = new Set<string>();
-    const addedNeuronUUIDs: string[] = [];
-    const appliedCandidates: CandidateNeuron[] = [];
-
-    helpfulNeurons.forEach((candidate) => {
-      const key = `${candidate.fromNeuronUUID}->${candidate.toNeuronUUID}`;
-      if (processedKeys.has(key)) return;
-      processedKeys.add(key);
-
-      const sourceExists = existingNeuronUUIDs.has(candidate.fromNeuronUUID) ||
-        candidate.fromNeuronUUID.startsWith("input-");
-      if (!sourceExists) return;
-
-      const targetNeuron = exportJSON.neurons.find((neuron) => {
-        if (neuron.type !== "hidden" && neuron.type !== "output") return false;
-        return neuron.uuid === candidate.toNeuronUUID;
-      });
-      if (!targetNeuron) return;
-
-      // Guard: ensure the source neuron is evaluated before the target neuron.
-      //
-      // This should always be true for Rust-proposed add-neuron candidates in a
-      // feed-forward creature. If it isn't, the new neuron's activation will be
-      // computed before its inputs are available, making the mutation ineffective
-      // (activation looks like zero at that stage).
-      const fromIndex = candidate.fromNeuronUUID.startsWith("input-")
-        ? -1
-        : exportJSON.neurons.findIndex((n) =>
-          n.uuid === candidate.fromNeuronUUID
-        );
-      const toIndex = exportJSON.neurons.findIndex((n) =>
-        n.uuid === candidate.toNeuronUUID
-      );
-
-      if (fromIndex >= 0 && toIndex >= 0 && fromIndex >= toIndex) {
-        const summary =
-          `from neuron must be before target neuron (fromIndex=${fromIndex}, targetIndex=${toIndex})`;
-        console.warn(
-          `[Discovery ${ID}] addHelpfulNeurons: Skipping candidate ${candidate.fromNeuronUUID} -> ${candidate.toNeuronUUID}: ${summary}`,
-        );
-
-        if (discoveryFailureCacheDir) {
-          this.recordDiscoveryIssue(
-            creature,
-            ID,
-            "add-neurons",
-            "ordering",
-            {
-              message: summary,
-              fromNeuronUUID: candidate.fromNeuronUUID,
-              toNeuronUUID: candidate.toNeuronUUID,
-              fromIndex,
-              targetIndex: toIndex,
-              candidate,
-              neuronOrder: exportJSON.neurons.map((n) => ({
-                uuid: n.uuid,
-                type: n.type,
-              })),
-            },
-            discoveryFailureCacheDir,
-          );
-        }
-        return;
-      }
-
-      const newNeuronUUID =
-        `hidden-discovery-${(globalThis.crypto?.randomUUID?.() ??
-          `fallback-${Math.random().toString(16).slice(2)}`)}`;
-      const newNeuron = {
-        type: "hidden" as const,
-        uuid: newNeuronUUID,
-        squash: candidate.squash,
-        bias: candidate.bias,
-      };
-      addTag(newNeuron as TagsInterface, "discovered", candidate.squash);
-      if (candidate.comment) {
-        addTag(
-          newNeuron as TagsInterface,
-          "discovery-comment",
-          candidate.comment,
-        );
-      }
-      // Diagnostic tags for troubleshooting
-      addTag(
-        newNeuron as TagsInterface,
-        "discovery-bias",
-        candidate.bias.toString(),
-      );
-      addTag(
-        newNeuron as TagsInterface,
-        "discovery-incoming-weight",
-        candidate.incomingWeight.toString(),
-      );
-      addTag(
-        newNeuron as TagsInterface,
-        "discovery-outgoing-weight",
-        candidate.outgoingWeight.toString(),
-      );
-      // IMPORTANT: Insert location depends on target neuron type.
-      //
-      // - Hidden targets: insert BEFORE the target neuron. Otherwise the new → target
-      //   synapse becomes a backwards edge (later index → earlier index) and cannot
-      //   influence the forward pass. This shows up as pure cost-of-growth penalty
-      //   (eg, -1.2e-7) with ~zero error reduction.
-      //
-      // - Output targets: insert BEFORE the FIRST output neuron (not directly before
-      //   output-1 / output-2). Otherwise we'd place a hidden neuron between outputs,
-      //   violating the invariant that outputs are contiguous at the end of the list.
-      const firstOutputIndex = exportJSON.neurons.findIndex((neuron) =>
-        neuron.type === "output"
-      );
-      const targetIndex = exportJSON.neurons.findIndex((neuron) =>
-        neuron.uuid === candidate.toNeuronUUID
-      );
-
-      if (targetNeuron.type === "output") {
-        if (firstOutputIndex >= 0) {
-          exportJSON.neurons.splice(firstOutputIndex, 0, newNeuron);
-        } else {
-          // Shouldn't happen, but keep behaviour sane.
-          exportJSON.neurons.push(newNeuron);
-        }
-      } else if (targetIndex >= 0) {
-        exportJSON.neurons.splice(targetIndex, 0, newNeuron);
-      } else if (firstOutputIndex >= 0) {
-        // Fallback: keep hidden neurons before outputs.
-        exportJSON.neurons.splice(firstOutputIndex, 0, newNeuron);
-      } else {
-        exportJSON.neurons.push(newNeuron);
-      }
-      existingNeuronUUIDs.add(newNeuronUUID);
-      addedNeuronUUIDs.push(newNeuronUUID);
-      appliedCandidates.push(candidate);
-
-      const incomingSynapse = {
-        fromUUID: candidate.fromNeuronUUID,
-        toUUID: newNeuronUUID,
-        weight: candidate.incomingWeight,
-      };
-      addTag(incomingSynapse as TagsInterface, "discoveryID", ID);
-      addTag(incomingSynapse as TagsInterface, "discovery", "beneficial");
-      if (candidate.comment) {
-        addTag(
-          incomingSynapse as TagsInterface,
-          "discovery-comment",
-          candidate.comment,
-        );
-      }
-      exportJSON.synapses.push(incomingSynapse);
-
-      const outgoingSynapse = {
-        fromUUID: newNeuronUUID,
-        toUUID: candidate.toNeuronUUID,
-        weight: candidate.outgoingWeight,
-      };
-      addTag(outgoingSynapse as TagsInterface, "discoveryID", ID);
-      addTag(outgoingSynapse as TagsInterface, "discovery", "beneficial");
-      if (candidate.comment) {
-        addTag(
-          outgoingSynapse as TagsInterface,
-          "discovery-comment",
-          candidate.comment,
-        );
-      }
-      exportJSON.synapses.push(outgoingSynapse);
-    });
-
-    if (addedNeuronUUIDs.length === 0) {
-      console.warn(
-        `[Discovery ${ID}] No neurons could be added from ${helpfulNeurons.length} candidates`,
-      );
-      return;
-    }
-
-    const tmpCreature = Creature.fromJSON(exportJSON);
-    // We added neurons and synapses to the structure, so we must delete UUID to get a new one
-    delete tmpCreature.uuid;
-
-    // Validate and fix if needed
-    const beforeFixSynapseCount = tmpCreature.synapses.length;
-    const beforeFixNeuronCount = tmpCreature.neurons.length;
-    const validationResult = this.validateAndFixIfNeeded(
-      tmpCreature,
-      creature,
+    return addHelpfulNeuronsImpl(
       ID,
-      "add-neurons",
-      appliedCandidates,
+      creature,
+      helpfulNeurons,
       discoveryFailureCacheDir,
     );
-    if (!validationResult.success) {
-      return;
-    }
-    const fixWasCalled = validationResult.fixWasCalled;
-
-    // Log what fix() changed if it was called
-    if (fixWasCalled) {
-      const afterFixSynapseCount = tmpCreature.synapses.length;
-      const afterFixNeuronCount = tmpCreature.neurons.length;
-      if (
-        afterFixSynapseCount !== beforeFixSynapseCount ||
-        afterFixNeuronCount !== beforeFixNeuronCount
-      ) {
-        console.warn(
-          `[Discovery ${ID}] fix() modified structure: synapses ${beforeFixSynapseCount} -> ${afterFixSynapseCount}, neurons ${beforeFixNeuronCount} -> ${afterFixNeuronCount}`,
-        );
-      }
-    }
-
-    const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
-    if (tmpUUID !== creatureUUID) {
-      addTag(tmpCreature, "approach", "discovery" as Approach);
-      addTag(tmpCreature, "discoveryID", ID);
-      if (appliedCandidates.length > 0) {
-        const exemplar = appliedCandidates[0];
-        const summary = appliedCandidates.length === 1
-          ? `🕵🏻‍♂️ Added discovery neuron linking ${exemplar.fromNeuronUUID} -> ${exemplar.toNeuronUUID}`
-          : `🕵🏻‍♂️ Added ${appliedCandidates.length} discovery neurons (eg ${exemplar.fromNeuronUUID} -> ${exemplar.toNeuronUUID})`;
-        addTag(tmpCreature, "Discovery", summary);
-      }
-      if (fixWasCalled) {
-        addTag(tmpCreature, "discovery-fix-required", "true");
-      }
-      if (tmpCreature.memetic) {
-        tmpCreature.memetic = memeticUpdate(creature, tmpCreature);
-      }
-
-      removeTag(tmpCreature, "approach-logged");
-
-      return tmpCreature;
-    }
-    return;
   }
 
-  /**
-   * Adjust the squash function of a neuron to improve its performance.
-   *
-   * @param ID - Unique identifier for the discovery process.
-   * @param creature - The Creature instance to modify.
-   * @param helpfulSquashes - The candidate squash functions to apply.
-   * @param discoveryFailureCacheDir - Optional directory to log validation issues.
-   * @returns A modified Creature with the new modified squash, or null if no change was made.
-   */
+  /** Delegates to the extracted changeSquash function. */
   public static changeSquash(
     ID: string,
     creature: Creature,
     helpfulSquashes?: CandidateSquash[],
     discoveryFailureCacheDir?: string,
   ): Creature | undefined {
-    if (!helpfulSquashes || helpfulSquashes.length === 0) return;
-    const creatureUUID = CreatureUtil.makeUUID(creature);
-    const exportJSON = creature.exportJSON();
-
-    const appliedSquashes: CandidateSquash[] = [];
-
-    helpfulSquashes.forEach((bestCandidate) => {
-      const foundNeuron = exportJSON.neurons.find((neuron) => {
-        return neuron.uuid === bestCandidate.neuronUUID;
-      });
-
-      if (!foundNeuron) return;
-      if (foundNeuron.type !== "hidden" && foundNeuron.type !== "output") {
-        return;
-      }
-
-      addTag(foundNeuron as TagsInterface, "discovered", bestCandidate.squash);
-
-      foundNeuron.squash = bestCandidate.squash;
-      appliedSquashes.push(bestCandidate);
-    });
-
-    if (appliedSquashes.length === 0) {
-      console.warn(
-        `[Discovery ${ID}] No squash changes could be applied from ${helpfulSquashes.length} candidates`,
-      );
-      return;
-    }
-
-    const tmpCreature = Creature.fromJSON(exportJSON);
-    // We changed squash functions, so we must delete UUID to get a new one
-    delete tmpCreature.uuid;
-
-    // Validate and fix if needed
-    // Squash changes should rarely (if ever) require fix(), but handle edge cases
-    const beforeFixSynapseCount = tmpCreature.synapses.length;
-    const beforeFixNeuronCount = tmpCreature.neurons.length;
-    const validationResult = this.validateAndFixIfNeeded(
-      tmpCreature,
-      creature,
+    return changeSquashImpl(
       ID,
-      "change-squash",
-      appliedSquashes,
+      creature,
+      helpfulSquashes,
       discoveryFailureCacheDir,
     );
-    if (!validationResult.success) {
-      return;
-    }
-    const fixWasCalled = validationResult.fixWasCalled;
-
-    // Log what fix() changed if it was called
-    if (fixWasCalled) {
-      const afterFixSynapseCount = tmpCreature.synapses.length;
-      const afterFixNeuronCount = tmpCreature.neurons.length;
-      if (
-        afterFixSynapseCount !== beforeFixSynapseCount ||
-        afterFixNeuronCount !== beforeFixNeuronCount
-      ) {
-        console.warn(
-          `[Discovery ${ID}] fix() modified structure: synapses ${beforeFixSynapseCount} -> ${afterFixSynapseCount}, neurons ${beforeFixNeuronCount} -> ${afterFixNeuronCount}`,
-        );
-      }
-    }
-
-    const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
-    if (tmpUUID !== creatureUUID) {
-      addTag(tmpCreature, "approach", "discovery" as Approach);
-      addTag(tmpCreature, "discoveryID", ID);
-      if (appliedSquashes.length > 0) {
-        const exemplar = appliedSquashes[0];
-        const summary = appliedSquashes.length === 1
-          ? `🕵🏻‍♂️ Swapped ${exemplar.neuronUUID} squash to ${exemplar.squash}`
-          : `🕵🏻‍♂️ Updated squash on ${appliedSquashes.length} neurons (eg ${exemplar.neuronUUID} -> ${exemplar.squash})`;
-        addTag(tmpCreature, "Discovery", summary);
-      }
-      if (fixWasCalled) {
-        addTag(tmpCreature, "discovery-fix-required", "true");
-      }
-      if (tmpCreature.memetic) {
-        tmpCreature.memetic = memeticUpdate(creature, tmpCreature);
-      }
-
-      removeTag(tmpCreature, "approach-logged");
-
-      return tmpCreature;
-    }
-    return;
   }
 
   /**
@@ -5092,313 +3802,44 @@ export class DiscoverStructure {
     return candidates;
   }
 
-  /**
-   * Removes a harmful neuron from the creature efficiently.
-   * This method uses the average activation from discovery records to adjust
-   * downstream neurons' biases, then removes all synapses and the neuron itself.
-   * This is more efficient than the generic removeNeuron as it uses actual
-   * activation data rather than just the bias.
-   *
-   * @param ID - Unique identifier for the discovery process.
-   * @param creature - The Creature instance to modify.
-   * @param harmfulNeuron - The harmful neuron candidate to remove.
-   * @param discoveryFailureCacheDir - Optional directory to log validation issues.
-   * @returns A modified Creature with the neuron removed, or undefined if no change was made.
-   */
+  /** Delegates to the extracted removeHarmfulNeuron function. */
   public static removeHarmfulNeuron(
     ID: string,
     creature: Creature,
     harmfulNeuron?: CandidateHarmfulNeuron,
     discoveryFailureCacheDir?: string,
   ): Creature | undefined {
-    if (!harmfulNeuron) return undefined;
-
-    const creatureUUID = CreatureUtil.makeUUID(creature);
-    const exportJSON = creature.exportJSON();
-
-    // Check if neuron exists
-    const neuronToRemove = exportJSON.neurons.find(
-      (neuron) => neuron.uuid === harmfulNeuron.neuronUUID,
-    );
-    if (!neuronToRemove) {
-      return undefined; // Neuron doesn't exist, nothing to remove
-    }
-
-    // Don't remove output neurons (input neurons don't exist in this type system)
-    if (neuronToRemove.type === "output") {
-      return undefined;
-    }
-
-    // Create a deep copy to modify
-    const simplifiedExport: typeof exportJSON = JSON.parse(
-      JSON.stringify(exportJSON),
-    );
-
-    // Find all downstream neurons (neurons that receive input from this neuron)
-    const outgoingSynapses = simplifiedExport.synapses.filter(
-      (synapse) => synapse.fromUUID === harmfulNeuron.neuronUUID,
-    );
-
-    // Adjust downstream neurons' biases using average activation * synapse weight
-    // Accumulate all synapse weights for each target neuron before applying adjustment
-    const averageActivation = harmfulNeuron.averageActivation;
-    const weightSums = new Map<string, number>();
-
-    // First pass: accumulate all synapse weights for each target neuron
-    outgoingSynapses.forEach((synapse) => {
-      const currentWeightSum = weightSums.get(synapse.toUUID) || 0;
-      // Sum up weights for all synapses to the same target
-      weightSums.set(
-        synapse.toUUID,
-        currentWeightSum + synapse.weight,
-      );
-    });
-
-    // Second pass: multiply by average activation once and apply the total bias adjustment
-    weightSums.forEach((totalWeight, neuronUUID) => {
-      const downstreamNeuron = simplifiedExport.neurons.find(
-        (n) => n.uuid === neuronUUID,
-      );
-      if (downstreamNeuron) {
-        // Apply the accumulated adjustment: averageActivation * (sum of weights)
-        const totalAdjustment = averageActivation * totalWeight;
-        downstreamNeuron.bias = (downstreamNeuron.bias || 0) + totalAdjustment;
-      }
-    });
-
-    // Remove all synapses to/from this neuron
-    simplifiedExport.synapses = simplifiedExport.synapses.filter(
-      (synapse) =>
-        synapse.fromUUID !== harmfulNeuron.neuronUUID &&
-        synapse.toUUID !== harmfulNeuron.neuronUUID,
-    );
-
-    // Remove the neuron itself
-    simplifiedExport.neurons = simplifiedExport.neurons.filter(
-      (neuron) => neuron.uuid !== harmfulNeuron.neuronUUID,
-    );
-
-    // Clean up any neurons that have become orphaned (no outward connections)
-    // This prevents validation failures when neurons that only connected to
-    // the removed neuron are left dangling
-    cleanupOrphanedNeurons(simplifiedExport);
-
-    const tmpCreature = Creature.fromJSON(simplifiedExport);
-    // We modified the structure, so we must delete UUID
-    delete tmpCreature.uuid;
-
-    // Validate and fix if needed
-    const validationResult = this.validateAndFixIfNeeded(
-      tmpCreature,
-      creature,
+    return removeHarmfulNeuronImpl(
       ID,
-      "remove-neuron",
+      creature,
       harmfulNeuron,
       discoveryFailureCacheDir,
     );
-    if (!validationResult.success) {
-      return undefined;
-    }
-
-    const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
-    if (tmpUUID !== creatureUUID) {
-      addTag(tmpCreature, "approach", "discovery" as Approach);
-      addTag(tmpCreature, "discoveryID", ID);
-      const summary =
-        `🗑️ Removed harmful neuron ${harmfulNeuron.neuronUUID} (error: ${
-          harmfulNeuron.errorMagnitude.toExponential(2)
-        }, avg activation: ${averageActivation.toFixed(4)})`;
-      addTag(tmpCreature, "Discovery", summary);
-      delete tmpCreature.memetic;
-      removeTag(tmpCreature, "approach-logged");
-
-      return tmpCreature;
-    }
-    return undefined;
   }
 
-  /**
-   * Removes a low-impact neuron from the creature.
-   * Unlike removeHarmfulNeuron, this doesn't require averageActivation for bias adjustment
-   * since low-impact neurons (by definition) have negligible effect on downstream neurons.
-   *
-   * @param ID - Unique identifier for the discovery process.
-   * @param creature - The Creature instance to modify.
-   * @param removalCandidate - The low-impact neuron candidate to remove.
-   * @param discoveryFailureCacheDir - Optional directory to log validation issues.
-   * @returns A modified Creature with the neuron removed, or undefined if no change was made.
-   */
-  // Track removal diagnostics across calls (static to aggregate across multiple removals)
-  private static removalDiagnostics = {
-    sameUUIDCount: 0,
-    firstSameUUIDLogged: false,
-  };
-
+  /** Delegates to the extracted removeLowImpactNeuron function. */
   public static removeLowImpactNeuron(
     ID: string,
     creature: Creature,
     removalCandidate?: import("./DiscoverResult.ts").RemovalCandidate,
     discoveryFailureCacheDir?: string,
   ): Creature | undefined {
-    if (!removalCandidate) return undefined;
-
-    const creatureUUID = CreatureUtil.makeUUID(creature);
-    const exportJSON = creature.exportJSON();
-
-    // Check if neuron exists
-    const neuronToRemove = exportJSON.neurons.find(
-      (neuron) => neuron.uuid === removalCandidate.neuronUUID,
-    );
-    if (!neuronToRemove) {
-      return undefined; // Neuron doesn't exist, nothing to remove
-    }
-
-    // Don't remove output neurons
-    if (neuronToRemove.type === "output") {
-      return undefined;
-    }
-
-    // Create a deep copy to modify
-    const simplifiedExport: typeof exportJSON = JSON.parse(
-      JSON.stringify(exportJSON),
-    );
-
-    const originalSynapseCount = simplifiedExport.synapses.length;
-    const originalNeuronCount = simplifiedExport.neurons.length;
-
-    // Bias compensation (average-preserving ablation):
-    // For each outgoing synapse X -> T with weight w, removing X deletes an average
-    // contribution of (w * meanActivation(X)) from T's pre-activation sum.
-    // Compensate by adjusting T.bias += w * meanActivation(X) for all targets T.
-    const meanActivation = removalCandidate.meanActivation;
-    if (typeof meanActivation === "number" && Number.isFinite(meanActivation)) {
-      const outgoing = simplifiedExport.synapses.filter(
-        (synapse) => synapse.fromUUID === removalCandidate.neuronUUID,
-      );
-
-      if (outgoing.length > 0) {
-        const weightSumsByTarget = new Map<string, number>();
-        for (const synapse of outgoing) {
-          if (synapse.toUUID === removalCandidate.neuronUUID) continue;
-          weightSumsByTarget.set(
-            synapse.toUUID,
-            (weightSumsByTarget.get(synapse.toUUID) ?? 0) + synapse.weight,
-          );
-        }
-
-        for (const [targetUUID, weightSum] of weightSumsByTarget) {
-          const target = simplifiedExport.neurons.find((n) =>
-            n.uuid === targetUUID
-          );
-          if (!target) continue;
-          target.bias = (target.bias ?? 0) + (weightSum * meanActivation);
-        }
-      }
-    }
-
-    // Remove all synapses to/from this neuron.
-    simplifiedExport.synapses = simplifiedExport.synapses.filter(
-      (synapse) =>
-        synapse.fromUUID !== removalCandidate.neuronUUID &&
-        synapse.toUUID !== removalCandidate.neuronUUID,
-    );
-
-    // Remove the neuron itself
-    simplifiedExport.neurons = simplifiedExport.neurons.filter(
-      (neuron) => neuron.uuid !== removalCandidate.neuronUUID,
-    );
-
-    // Clean up memetic data for the removed neuron (fixes issue #912)
-    // This must be called before validation to prevent MEMETIC errors
-    cleanupMemeticForRemovedNeuron(
-      simplifiedExport,
-      removalCandidate.neuronUUID,
-    );
-
-    // Clean up any neurons that have become orphaned (no outward connections)
-    // This prevents validation failures when neurons that only connected to
-    // the removed neuron are left dangling
-    cleanupOrphanedNeurons(simplifiedExport);
-
-    const removedSynapseCount = originalSynapseCount -
-      simplifiedExport.synapses.length;
-    const removedNeuronCount = originalNeuronCount -
-      simplifiedExport.neurons.length;
-
-    const tmpCreature = Creature.fromJSON(simplifiedExport);
-    // We modified the structure, so we must delete UUID
-    delete tmpCreature.uuid;
-
-    // Validate and fix if needed
-    const validationResult = this.validateAndFixIfNeeded(
-      tmpCreature,
-      creature,
+    return removeLowImpactNeuronImpl(
       ID,
-      "remove-low-impact",
+      creature,
       removalCandidate,
       discoveryFailureCacheDir,
     );
-    if (!validationResult.success) {
-      return undefined;
-    }
-
-    // Check if fix() re-added any structure
-    const afterFixSynapseCount = tmpCreature.synapses.length;
-    const afterFixNeuronCount = tmpCreature.neurons.length;
-    const fixReaddedSynapses = afterFixSynapseCount -
-      simplifiedExport.synapses.length;
-    const fixReaddedNeurons = afterFixNeuronCount -
-      simplifiedExport.neurons.length;
-
-    const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
-    if (tmpUUID !== creatureUUID) {
-      // Reset diagnostics on successful removal
-      this.removalDiagnostics.sameUUIDCount = 0;
-      this.removalDiagnostics.firstSameUUIDLogged = false;
-
-      addTag(tmpCreature, "approach", "discovery" as Approach);
-      addTag(tmpCreature, "discoveryID", ID);
-      const summary =
-        `🪶 Removed low-impact neuron ${removalCandidate.neuronUUID} (error: ${
-          removalCandidate.totalError.toFixed(4)
-        }, impact: ${(removalCandidate.impact * 100).toFixed(2)}%)`;
-      addTag(tmpCreature, "Discovery", summary);
-      delete tmpCreature.memetic;
-      removeTag(tmpCreature, "approach-logged");
-
-      return tmpCreature;
-    }
-
-    // UUID didn't change - track this case
-    this.removalDiagnostics.sameUUIDCount++;
-
-    // Log detailed diagnostics for first occurrence only
-    if (!this.removalDiagnostics.firstSameUUIDLogged) {
-      this.removalDiagnostics.firstSameUUIDLogged = true;
-      console.warn(
-        `[DiscoverStructure] removeLowImpactNeuron UUID unchanged after removal:`,
-        `\n  neuronUUID: ${removalCandidate.neuronUUID}`,
-        `\n  removedSynapses: ${removedSynapseCount}, removedNeurons: ${removedNeuronCount}`,
-        `\n  fix() re-added: synapses=${fixReaddedSynapses}, neurons=${fixReaddedNeurons}`,
-        `\n  originalUUID: ${creatureUUID}`,
-        `\n  newUUID: ${tmpUUID}`,
-      );
-    }
-
-    return undefined;
   }
 
   /** Reset removal diagnostics (call at start of discovery to get fresh stats). */
   public static resetRemovalDiagnostics(): void {
-    this.removalDiagnostics = {
-      sameUUIDCount: 0,
-      firstSameUUIDLogged: false,
-    };
+    resetRemovalDiagnosticsImpl();
   }
 
   /** Get count of removals that failed due to same UUID. */
   public static getRemovalSameUUIDCount(): number {
-    return this.removalDiagnostics.sameUUIDCount;
+    return getRemovalSameUUIDCountImpl();
   }
 
   /**
