@@ -45,24 +45,15 @@ export class Mutator {
   private mutationCache: Map<string, MutationCacheEntry> = new Map();
 
   /**
-   * Issue #1103: WeakMap-based caches for mutation class instances per creature.
+   * Issue #1103: WeakMap-based cache for mutation operator instances per creature.
+   * Issue #1396: Consolidated from 12 separate WeakMaps into a single cache.
    * Using WeakMap allows garbage collection of unused creatures while caching
    * their mutation instances. This reduces object allocations during evolution.
-   *
-   * Each mutation type has its own cache because instances are type-specific.
    */
-  private addNeuronCache = new WeakMap<Creature, AddNeuron>();
-  private subNeuronCache = new WeakMap<Creature, SubNeuron>();
-  private addConnectionCache = new WeakMap<Creature, AddConnection>();
-  private subConnectionCache = new WeakMap<Creature, SubConnection>();
-  private modWeightCache = new WeakMap<Creature, ModWeight>();
-  private modBiasCache = new WeakMap<Creature, ModBias>();
-  private modSquashCache = new WeakMap<Creature, ModSquash>();
-  private addSelfConCache = new WeakMap<Creature, AddSelfCon>();
-  private subSelfConCache = new WeakMap<Creature, SubSelfCon>();
-  private addBackConCache = new WeakMap<Creature, AddBackCon>();
-  private subBackConCache = new WeakMap<Creature, SubBackCon>();
-  private swapNeuronsCache = new WeakMap<Creature, SwapNeurons>();
+  private operatorCache = new WeakMap<
+    Creature,
+    Map<string, RadioactiveInterface>
+  >();
 
   constructor(config: NeatConfig) {
     this.config = config;
@@ -78,16 +69,8 @@ export class Mutator {
 
   /**
    * Issue #1103: Gets a cached mutator instance for a creature and mutation type.
-   *
-   * This method uses WeakMap-based caching to avoid recreating mutation class
-   * instances for each mutation. Since mutation classes are largely stateless
-   * (they just hold a creature reference), caching them significantly reduces
-   * object allocations during evolution.
-   *
-   * Benefits:
-   * - ~90% reduction in mutation class allocations
-   * - Reduced GC pressure during evolution
-   * - WeakMap allows GC of unused creatures
+   * Issue #1396: Consolidated from 12 separate switch cases into a single
+   * cache lookup with a factory method.
    *
    * @param creature - The creature to get a mutator for.
    * @param methodName - The name of the mutation method.
@@ -97,104 +80,53 @@ export class Mutator {
     creature: Creature,
     methodName: string,
   ): RadioactiveInterface {
+    let creatureOps = this.operatorCache.get(creature);
+    if (!creatureOps) {
+      creatureOps = new Map();
+      this.operatorCache.set(creature, creatureOps);
+    }
+
+    let instance = creatureOps.get(methodName);
+    if (!instance) {
+      instance = this.createOperator(creature, methodName);
+      creatureOps.set(methodName, instance);
+    }
+    return instance;
+  }
+
+  /**
+   * Factory method that creates the correct mutation operator for a given method name.
+   */
+  private createOperator(
+    creature: Creature,
+    methodName: string,
+  ): RadioactiveInterface {
     switch (methodName) {
-      case Mutation.ADD_NODE.name: {
-        let instance = this.addNeuronCache.get(creature);
-        if (!instance) {
-          instance = new AddNeuron(creature);
-          this.addNeuronCache.set(creature, instance);
-        }
-        return instance;
-      }
-      case Mutation.SUB_NODE.name: {
-        let instance = this.subNeuronCache.get(creature);
-        if (!instance) {
-          instance = new SubNeuron(creature);
-          this.subNeuronCache.set(creature, instance);
-        }
-        return instance;
-      }
-      case Mutation.ADD_CONN.name: {
-        let instance = this.addConnectionCache.get(creature);
-        if (!instance) {
-          instance = new AddConnection(creature);
-          this.addConnectionCache.set(creature, instance);
-        }
-        return instance;
-      }
-      case Mutation.SUB_CONN.name: {
-        let instance = this.subConnectionCache.get(creature);
-        if (!instance) {
-          instance = new SubConnection(creature);
-          this.subConnectionCache.set(creature, instance);
-        }
-        return instance;
-      }
-      case Mutation.MOD_WEIGHT.name: {
-        let instance = this.modWeightCache.get(creature);
-        if (!instance) {
-          // Issue #1309: Pass weight regularisation config to ModWeight
-          instance = new ModWeight(creature, this.config.weightRegularisation);
-          this.modWeightCache.set(creature, instance);
-        }
-        return instance;
-      }
-      case Mutation.MOD_BIAS.name: {
-        let instance = this.modBiasCache.get(creature);
-        if (!instance) {
-          instance = new ModBias(creature);
-          this.modBiasCache.set(creature, instance);
-        }
-        return instance;
-      }
-      case Mutation.MOD_SQUASH.name: {
-        let instance = this.modSquashCache.get(creature);
-        if (!instance) {
-          instance = new ModSquash(creature);
-          this.modSquashCache.set(creature, instance);
-        }
-        return instance;
-      }
-      case Mutation.ADD_SELF_CONN.name: {
-        let instance = this.addSelfConCache.get(creature);
-        if (!instance) {
-          instance = new AddSelfCon(creature);
-          this.addSelfConCache.set(creature, instance);
-        }
-        return instance;
-      }
-      case Mutation.SUB_SELF_CONN.name: {
-        let instance = this.subSelfConCache.get(creature);
-        if (!instance) {
-          instance = new SubSelfCon(creature);
-          this.subSelfConCache.set(creature, instance);
-        }
-        return instance;
-      }
-      case Mutation.ADD_BACK_CONN.name: {
-        let instance = this.addBackConCache.get(creature);
-        if (!instance) {
-          instance = new AddBackCon(creature);
-          this.addBackConCache.set(creature, instance);
-        }
-        return instance;
-      }
-      case Mutation.SUB_BACK_CONN.name: {
-        let instance = this.subBackConCache.get(creature);
-        if (!instance) {
-          instance = new SubBackCon(creature);
-          this.subBackConCache.set(creature, instance);
-        }
-        return instance;
-      }
-      case Mutation.SWAP_NODES.name: {
-        let instance = this.swapNeuronsCache.get(creature);
-        if (!instance) {
-          instance = new SwapNeurons(creature);
-          this.swapNeuronsCache.set(creature, instance);
-        }
-        return instance;
-      }
+      case Mutation.ADD_NODE.name:
+        return new AddNeuron(creature);
+      case Mutation.SUB_NODE.name:
+        return new SubNeuron(creature);
+      case Mutation.ADD_CONN.name:
+        return new AddConnection(creature);
+      case Mutation.SUB_CONN.name:
+        return new SubConnection(creature);
+      case Mutation.MOD_WEIGHT.name:
+        // Issue #1309: Pass weight regularisation config to ModWeight
+        return new ModWeight(creature, this.config.weightRegularisation);
+      case Mutation.MOD_BIAS.name:
+        return new ModBias(creature);
+      case Mutation.MOD_SQUASH.name:
+        return new ModSquash(creature);
+      case Mutation.ADD_SELF_CONN.name:
+        return new AddSelfCon(creature);
+      case Mutation.SUB_SELF_CONN.name:
+        return new SubSelfCon(creature);
+      case Mutation.ADD_BACK_CONN.name:
+        return new AddBackCon(creature);
+      case Mutation.SUB_BACK_CONN.name:
+        return new SubBackCon(creature);
+      case Mutation.SWAP_NODES.name:
+        return new SwapNeurons(creature);
       default:
         throw new Error("unknown mutation method: " + methodName);
     }

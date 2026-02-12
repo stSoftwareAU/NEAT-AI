@@ -1,32 +1,28 @@
-import type { Creature } from "../Creature.ts";
-import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 import { Synapse } from "../architecture/Synapse.ts";
+import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
-export class AddBackCon implements RadioactiveInterface {
-  private creature: Creature;
-  constructor(creature: Creature) {
-    this.creature = creature;
-  }
+export class AddBackCon extends AbstractMutationOperator {
+  protected performMutation(focusList?: number[]): boolean {
+    const creature = this.creature;
 
-  mutate(focusList?: number[]): boolean {
     // Create an array of all uncreated (back feed) connections
     const available = [];
     for (
-      let toIndx = this.creature.input;
-      toIndx < this.creature.neurons.length;
+      let toIndx = creature.input;
+      toIndx < creature.neurons.length;
       toIndx++
     ) {
-      if (this.creature.inFocus(toIndx, focusList)) {
-        const neuronTo = this.creature.neurons[toIndx];
+      if (creature.inFocus(toIndx, focusList)) {
+        const neuronTo = creature.neurons[toIndx];
         for (
-          let fromIndx = this.creature.input;
+          let fromIndx = creature.input;
           fromIndx < toIndx;
           fromIndx++
         ) {
-          const neuronFrom = this.creature.neurons[fromIndx];
+          const neuronFrom = creature.neurons[fromIndx];
           if (neuronFrom.type === "output") break;
           if (neuronTo.type === "constant") continue;
-          if (this.creature.inFocus(neuronFrom.index, focusList)) {
+          if (creature.inFocus(neuronFrom.index, focusList)) {
             if (!neuronFrom.isProjectingTo(neuronTo)) {
               available.push([neuronFrom, neuronTo]);
             }
@@ -42,8 +38,8 @@ export class AddBackCon implements RadioactiveInterface {
     const pair = available[Math.floor(Math.random() * available.length)];
     const fromIndx = pair[0].index;
     const toIndx = pair[1].index;
-    this.creature.connect(fromIndx, toIndx, Synapse.randomWeight());
-    delete this.creature.memetic;
+    creature.connect(fromIndx, toIndx, Synapse.randomWeight());
+    delete creature.memetic;
     return true;
   }
 }

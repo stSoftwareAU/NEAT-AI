@@ -1,15 +1,9 @@
 import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
-import type { Creature } from "../Creature.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
+import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
-export class SubBackCon implements RadioactiveInterface {
-  private creature: Creature;
-  constructor(creature: Creature) {
-    this.creature = creature;
-  }
-
-  mutate(focusList?: number[]): boolean {
+export class SubBackCon extends AbstractMutationOperator {
+  protected performMutation(focusList?: number[]): boolean {
     // Create an array of all back connections that can be removed
     const available = [];
     for (

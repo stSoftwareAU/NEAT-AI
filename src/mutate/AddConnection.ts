@@ -3,8 +3,8 @@ import type { ConnectionOptions } from "../ConnectionOptions.ts";
 import type { Creature } from "../Creature.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
 import { Synapse } from "../architecture/Synapse.ts";
-import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 import { getMajorVersion } from "../upgrade/Upgrade.ts";
+import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
 function bumpToFourIfForwardOnlyConfirmed(creature: Creature): void {
   const major = getMajorVersion(creature.semanticVersion);
@@ -13,20 +13,15 @@ function bumpToFourIfForwardOnlyConfirmed(creature: Creature): void {
   }
 }
 
-export class AddConnection implements RadioactiveInterface {
-  private creature: Creature;
-  constructor(creature: Creature) {
-    this.creature = creature;
-  }
-
+export class AddConnection extends AbstractMutationOperator {
   /**
    * Add a connection between two neurons.
    *
-   * @param focusList - The list of focus indices. If provided, only neurons at these indices will be considered for connection.
+   * @param focusList - The list of focus indices.
    * @param options - The options for the connection.
    * @param options.weightScale - A scaling factor for the weight of the connection.
    */
-  public mutate(focusList?: number[], options: ConnectionOptions = {
+  public override mutate(focusList?: number[], options: ConnectionOptions = {
     weightScale: 1,
   }): boolean {
     // Create an array of all uncreated connections.
@@ -147,5 +142,11 @@ export class AddConnection implements RadioactiveInterface {
     }
     delete this.creature.memetic;
     return true;
+  }
+
+  protected performMutation(_focusList?: number[]): boolean {
+    // AddConnection overrides mutate() directly due to extra options parameter.
+    // This method is never called.
+    throw new Error("unreachable");
   }
 }

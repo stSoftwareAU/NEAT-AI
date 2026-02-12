@@ -5,7 +5,7 @@ import {
   DEFAULT_WEIGHT_REGULARISATION_CONFIG,
   type RequiredWeightRegularisationConfig,
 } from "../config/WeightRegularisationConfig.ts";
-import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
+import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
 /**
  * Mutation operator that modifies synapse weights.
@@ -17,8 +17,7 @@ import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
  * - L2-style regularisation biasing towards smaller weights
  * - Small change preference reducing mutation magnitude
  */
-export class ModWeight implements RadioactiveInterface {
-  private creature: Creature;
+export class ModWeight extends AbstractMutationOperator {
   private config: RequiredWeightRegularisationConfig;
 
   /**
@@ -32,18 +31,14 @@ export class ModWeight implements RadioactiveInterface {
     creature: Creature,
     config?: RequiredWeightRegularisationConfig,
   ) {
-    this.creature = creature;
+    super(creature);
     this.config = config ?? DEFAULT_WEIGHT_REGULARISATION_CONFIG;
   }
 
   /**
    * Mutates a synapse weight with optional regularisation.
-   *
-   * @param focusList - Optional list of neuron indices to focus on.
-   *                    When provided, only synapses connected to these neurons are considered.
-   * @returns true if a mutation occurred, false otherwise
    */
-  mutate(focusList?: number[]): boolean {
+  protected performMutation(focusList?: number[]): boolean {
     let relevantConnections: Synapse[];
 
     if (!focusList || focusList.length === 0) {

@@ -1,15 +1,9 @@
 import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
-import type { Creature } from "../Creature.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
+import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
-export class SubSelfCon implements RadioactiveInterface {
-  private creature: Creature;
-  constructor(creature: Creature) {
-    this.creature = creature;
-  }
-
-  mutate(focusList?: number[]): boolean {
+export class SubSelfCon extends AbstractMutationOperator {
+  protected performMutation(focusList?: number[]): boolean {
     // Check which neurons have safely removable self-connections
     const possible = [];
     for (let i = this.creature.input; i < this.creature.neurons.length; i++) {
