@@ -214,8 +214,15 @@ export function cleanupOrphanedNeurons(
           if (neuron.squash) {
             const squashFn = Activations.find(
               neuron.squash,
-            ) as ActivationInterface;
-            constantBias = squashFn.squash(neuron.bias);
+            );
+            // Aggregate activations (IF, MAXIMUM, MINIMUM, etc.) don't have
+            // a simple squash(x) method — they operate on multiple inputs.
+            // For those, just use the bias as-is.
+            if ("squash" in squashFn) {
+              constantBias = (squashFn as ActivationInterface).squash(
+                neuron.bias,
+              );
+            }
           }
           creatureExport.neurons[i] = {
             type: "constant",
