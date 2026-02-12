@@ -22,6 +22,8 @@
 export type ElasticLink = Readonly<{
   activation: number;
   safeZoneFactor: number;
+  /** Optional synapse weight, used for weight-based fallback when activations are near zero. */
+  weight?: number;
 }>;
 
 export function distributeElasticError(
@@ -54,8 +56,43 @@ export function distributeElasticError(
   }
 
   if (denom <= plankConstant) {
-    // Fallback: equal split. This keeps learning moving when activations are
-    // near zero and the minimum-change heuristic is underdetermined.
+    // Primary fallback: weight-based scoring (weight²).
+    // When activations are near zero the minimum-change heuristic is
+    // underdetermined. Links with larger weights carry more influence and
+    // should absorb proportionally more error — mirroring the record-time
+    // elasticity approach (RecordElasticity.ts uses weight²).
+    let weightDenom = 0;
+    const weightScores = new Array<number>(links.length);
+    for (let i = 0; i < links.length; i++) {
+      const w = (links[i] as { weight?: number }).weight;
+      const w2 = (w !== null && w !== undefined && Number.isFinite(w))
+        ? w * w
+        : 0;
+      weightScores[i] = w2;
+      weightDenom += w2;
+    }
+
+    if (weightDenom > plankConstant) {
+      const weightShares = new Array<number>(links.length);
+      let wSum = 0;
+      for (let i = 0; i < links.length; i++) {
+        const share = error * (weightScores[i] / weightDenom);
+        weightShares[i] = share;
+        wSum += share;
+      }
+      // Floating-point tidy-up
+      const wResidue = error - wSum;
+      if (Math.abs(wResidue) > plankConstant) {
+        let bestIdx = 0;
+        for (let i = 1; i < weightScores.length; i++) {
+          if (weightScores[i] > weightScores[bestIdx]) bestIdx = i;
+        }
+        weightShares[bestIdx] += wResidue;
+      }
+      return weightShares;
+    }
+
+    // Last resort: equal split when both activations and weights are zero.
     const per = error / links.length;
     return new Array(links.length).fill(per);
   }

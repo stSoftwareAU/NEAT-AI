@@ -45,35 +45,36 @@ Deno.test("optimization/AdaptiveVsDecay - should produce different learning rate
   );
 });
 
-Deno.test("optimization/AdaptiveVsDecay - adaptive should have oscillation pattern", () => {
+Deno.test("optimization/AdaptiveVsDecay - adaptive responds to error feedback", () => {
   const config = createBackPropagationConfig({
     learningRateStrategy: "adaptive",
     initialLearningRate: 0.1,
     learningRateDecay: 0.95,
   });
 
-  // Test that adaptive strategy has the expected oscillation pattern
-  const rates = [];
-  for (let i = 0; i < 10; i++) {
-    rates.push(calculateLearningRate(config, i));
-  }
+  // Without error feedback, adaptive uses slower decay (sqrt of decay rate)
+  const rateWithoutFeedback = calculateLearningRate(config, 5);
 
-  // Check that rates are not monotonically decreasing (unlike decay)
-  let isMonotonic = true;
-  for (let i = 1; i < rates.length; i++) {
-    if (rates[i] > rates[i - 1]) {
-      isMonotonic = false;
-      break;
-    }
-  }
+  // With stagnation feedback, rate should be higher (boosted to escape plateau)
+  const rateWithStagnation = calculateLearningRate(config, 5, {
+    previousError: 0.5,
+    currentError: 0.499,
+  });
 
-  // Adaptive strategy should NOT be monotonically decreasing due to oscillation
+  // With improvement feedback, rate should be maintained/slightly boosted
+  const rateWithImprovement = calculateLearningRate(config, 5, {
+    previousError: 0.5,
+    currentError: 0.3,
+  });
+
+  // Stagnation should produce a higher rate than improvement (to escape plateau)
   assert(
-    !isMonotonic,
-    "Adaptive strategy should not be monotonically decreasing due to oscillation pattern",
+    rateWithStagnation > rateWithImprovement,
+    `Stagnation rate (${rateWithStagnation}) should exceed improvement rate (${rateWithImprovement})`,
   );
 
-  console.log(
-    "✅ Adaptive strategy has oscillation pattern (not monotonically decreasing)",
-  );
+  // All rates should be positive
+  assert(rateWithoutFeedback > 0, "Rate without feedback should be positive");
+  assert(rateWithStagnation > 0, "Rate with stagnation should be positive");
+  assert(rateWithImprovement > 0, "Rate with improvement should be positive");
 });
