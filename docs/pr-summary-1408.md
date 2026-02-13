@@ -1,18 +1,20 @@
 ## Summary
 
-Added `--help`, `--skip-tests`, `--skip-discovery`, `--lint-only`, `--check-only`,
-and `--dry-run` flags to `quality.sh` for faster development iteration. The script
-now shows `[N/M]` progress indicators for each step and documents exit codes.
-Closes #1408.
+Added `--help`, `--skip-tests`, `--skip-discovery`, `--lint-only`,
+`--check-only`, and `--dry-run` flags to `quality.sh` for faster development
+iteration. The script now shows `[N/M]` progress indicators for each step and
+documents exit codes. Closes #1408.
 
 ### Changes
 
 - **quality.sh**: Added flag parsing, `show_help()`, progress numbering, dry-run
-  mode, and step-skip logic. All existing behaviour is preserved when no flags are
-  provided. Added `--allow-run` to the test invocation for the new test file.
+  mode, and step-skip logic. All existing behaviour is preserved when no flags
+  are provided. Added `--allow-run` to the test invocation for the new test
+  file.
 - **test/QualityScript.ts**: 11 new tests verifying `--help`, `-h`, `--dry-run`,
-  `--skip-tests`, `--skip-discovery`, `--lint-only`, `--check-only`, unknown flag
-  rejection, combined skip flags, exit code documentation, and progress numbering.
+  `--skip-tests`, `--skip-discovery`, `--lint-only`, `--check-only`, unknown
+  flag rejection, combined skip flags, exit code documentation, and progress
+  numbering.
 - **AGENTS.md**: Updated Quality Gate section to document optional flags.
 - **CONTRIBUTING.md**: Added quick-reference for skip flags in the quality gate
   section.
@@ -20,7 +22,8 @@ Closes #1408.
 ## Evidence
 
 This is a CLI/script change with no visual output. Evidence is provided by the
-11 passing tests that exercise real script invocations and verify stdout/exit codes.
+11 passing tests that exercise real script invocations and verify stdout/exit
+codes.
 
 ```
 ok | 3024 passed (2 steps) | 0 failed
