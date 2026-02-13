@@ -229,6 +229,7 @@ In our production workloads, the default is feed-forward/forward-only.
 - **README.md** - Human-readable project overview, features, and quick start
 - **AGENTS.md** (this file) - Coding guidelines and development reference
 - **COMPARISON.md** - Comparison with other AI approaches
+- **docs/API_REFERENCE.md** - Comprehensive public API reference
 - **docs/DISCOVERY_GUIDE.md** - Complete discovery workflow guide
 - **docs/DiscoveryDir.md** - Technical API reference for `discoveryDir()`
 - **docs/GPU_ACCELERATION.md** - GPU acceleration details
