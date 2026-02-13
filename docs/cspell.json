@@ -206,6 +206,7 @@
     "passthrough",
     "PRNG",
     "seedable",
-    "xoshiro"
+    "xoshiro",
+    "rotl"
   ]
 }
