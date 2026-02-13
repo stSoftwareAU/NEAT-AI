@@ -6,6 +6,7 @@ import type { NeatArguments } from "./NeatArguments.ts";
 import type { PlateauDetectionConfig } from "../NEAT/PlateauDetector.ts";
 import type { QuantumStepConfig } from "./QuantumStepConfig.ts";
 import type { StabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
+import type { BiasRegularisationConfig } from "./BiasRegularisationConfig.ts";
 import type { WeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
@@ -69,6 +70,7 @@ export type NeatOptions =
     | "plateauDetection"
     | "stabilityAdaptation"
     | "weightRegularisation"
+    | "biasRegularisation"
     | "ensembleDiversity"
     | "quantumStep"
     | "fineTunePopulation"
@@ -84,6 +86,8 @@ export type NeatOptions =
     stabilityAdaptation?: StabilityAdaptationConfig;
     /** Partial overrides for weight regularisation configuration (defaults applied if not specified) */
     weightRegularisation?: WeightRegularisationConfig;
+    /** Partial overrides for bias regularisation configuration (defaults applied if not specified) */
+    biasRegularisation?: BiasRegularisationConfig;
     /** Partial overrides for ensemble diversity configuration (defaults applied if not specified) */
     ensembleDiversity?: EnsembleDiversityConfig;
     /** Partial overrides for quantum step configuration (defaults applied if not specified) */
@@ -118,6 +122,7 @@ export type NeatOptionsInput =
     | "plateauDetection"
     | "stabilityAdaptation"
     | "weightRegularisation"
+    | "biasRegularisation"
     | "ensembleDiversity"
     | "quantumStep"
     | "fineTunePopulation"
@@ -135,6 +140,7 @@ export type NeatOptionsInput =
     plateauDetection?: CoerceNumeric<PlateauDetectionConfig>;
     stabilityAdaptation?: CoerceNumeric<StabilityAdaptationConfig>;
     weightRegularisation?: CoerceNumeric<WeightRegularisationConfig>;
+    biasRegularisation?: CoerceNumeric<BiasRegularisationConfig>;
     ensembleDiversity?: CoerceNumeric<EnsembleDiversityConfig>;
     quantumStep?: CoerceNumeric<QuantumStepConfig>;
     fineTunePopulation?: CoerceNumeric<FineTunePopulationConfig>;

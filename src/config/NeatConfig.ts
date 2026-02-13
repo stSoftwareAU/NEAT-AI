@@ -33,6 +33,10 @@ import {
   type RequiredStabilityAdaptationConfig,
 } from "./StabilityAdaptationConfig.ts";
 import {
+  DEFAULT_BIAS_REGULARISATION_CONFIG,
+  type RequiredBiasRegularisationConfig,
+} from "./BiasRegularisationConfig.ts";
+import {
   DEFAULT_WEIGHT_REGULARISATION_CONFIG,
   type RequiredWeightRegularisationConfig,
 } from "./WeightRegularisationConfig.ts";
@@ -647,6 +651,45 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
           { min: 0, max: 1 },
         ),
       } as RequiredWeightRegularisationConfig;
+    })(),
+    // Issue #1416: Bias regularisation during mutation
+    biasRegularisation: (() => {
+      const overrides = opts.biasRegularisation as
+        | Record<string, unknown>
+        | undefined;
+      const d = DEFAULT_BIAS_REGULARISATION_CONFIG;
+      return {
+        enabled: typeof overrides?.enabled === "boolean"
+          ? overrides.enabled
+          : d.enabled,
+        maxAbsoluteBias: parseNumber(
+          "Bias regularisation maxAbsoluteBias",
+          overrides?.maxAbsoluteBias,
+          d.maxAbsoluteBias,
+          { min: 0.001 },
+        ),
+        maxBiasChange: parseNumber(
+          "Bias regularisation maxBiasChange",
+          overrides?.maxBiasChange,
+          d.maxBiasChange,
+          { min: 0.001 },
+        ),
+        l2Strength: parseNumber(
+          "Bias regularisation l2Strength",
+          overrides?.l2Strength,
+          d.l2Strength,
+          { min: 0, max: 1 },
+        ),
+        preferSmallChanges: typeof overrides?.preferSmallChanges === "boolean"
+          ? overrides.preferSmallChanges
+          : d.preferSmallChanges,
+        smallChangeScale: parseNumber(
+          "Bias regularisation smallChangeScale",
+          overrides?.smallChangeScale,
+          d.smallChangeScale,
+          { min: 0, max: 1 },
+        ),
+      } as RequiredBiasRegularisationConfig;
     })(),
     // Issue #1310: Ensemble diversity scoring for species
     ensembleDiversity: (() => {
