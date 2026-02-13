@@ -714,8 +714,7 @@ export class DiscoverStructure {
         this.creature.activateAndTrace(
           record.input,
           false, // feedbackLoop
-          // Duck-typed SparseConfig
-          traceAll as unknown as import("../../propagate/sparse/SparseConfig.ts").SparseConfig,
+          traceAll,
         );
         const discoverMap = this.creature.record(record.output);
 

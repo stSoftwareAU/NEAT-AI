@@ -182,7 +182,7 @@ export class CRISPR {
           if (firstNetworkOutputIndex === -1) {
             firstNetworkOutputIndex = indx;
           }
-          (neuron as unknown as { type: string }).type = "hidden";
+          neuron.type = "hidden";
           if (neuron.uuid?.startsWith("output-")) {
             const uuid = crypto.randomUUID();
             dna.synapses.forEach((synapse) => {

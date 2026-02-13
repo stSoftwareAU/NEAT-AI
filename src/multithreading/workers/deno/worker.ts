@@ -1,17 +1,21 @@
 import type { RequestData, ResponseData } from "../WorkerHandler.ts";
+import "../../../globals.d.ts";
 
 // Issue #1263: WASM activation is mandatory. For the library's internal worker
 // system, workers receive the WASM payload from the parent during init, so we
 // skip module-evaluation auto-init to reduce worker start flakiness.
-// deno-lint-ignore no-explicit-any
-(globalThis as any).__NEAT_AI_SKIP_WASM_AUTO_INIT = true;
+globalThis.__NEAT_AI_SKIP_WASM_AUTO_INIT = true;
 
 const { WorkerProcessor } = await import("../WorkerProcessor.ts");
 const { getLogger } = await import("../../../utils/Logger.ts");
 const processor = new WorkerProcessor();
-const workerHandler =
-  // deno-lint-ignore ban-types
-  (self as unknown) as { onmessage: Function; postMessage: Function };
+
+/** Typed handle for the Deno Worker global scope. */
+interface WorkerSelf {
+  onmessage: ((message: { data: RequestData }) => void) | null;
+  postMessage: (data: ResponseData) => void;
+}
+const workerHandler = self as unknown as WorkerSelf;
 
 /** Issue #1260: Max time for init so caller gets a response instead of hanging. */
 const INIT_TIMEOUT_MS = (() => {

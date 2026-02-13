@@ -4,8 +4,9 @@ import type { BackPropagationConfig } from "../BackPropagation.ts";
 import type { OutgoingSynapsesMap } from "./CalculatePathsToOutput.ts";
 import { calculatePathsToOutput } from "./CalculatePathsToOutput.ts";
 import { chooseNeurons } from "./ChooseNeurons.ts";
+import type { SparseConfigLike } from "./SparseConfigLike.ts";
 
-export class SparseConfig {
+export class SparseConfig implements SparseConfigLike {
   private selectedNeurons: Readonly<Set<string>>;
   private paths: Readonly<Set<string>>;
 

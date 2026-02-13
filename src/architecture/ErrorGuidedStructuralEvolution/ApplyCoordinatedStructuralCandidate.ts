@@ -11,43 +11,6 @@ import type {
   CoordinatedStructuralOperation,
 } from "./CoordinatedStructuralCandidate.ts";
 
-// Local operation shapes (kept small and structural so the editor stays happy even
-// if its module graph gets temporarily out-of-date). Deno `check` remains the
-// source-of-truth for type safety.
-type AddNeuronOp = {
-  type: "addNeuron";
-  neuronUuid: string;
-  neuronType: "hidden" | "output";
-  squash: string;
-  bias: number;
-  insertBeforeNeuronUuid?: string;
-};
-
-type RemoveNeuronOp = { type: "removeNeuron"; neuronUuid: string };
-type ChangeSquashOp = {
-  type: "changeSquash";
-  neuronUuid: string;
-  squash: string;
-};
-type SetBiasOp = { type: "setBias"; neuronUuid: string; bias: number };
-type RemoveSynapseOp = {
-  type: "removeSynapse";
-  fromNeuronUuid: string;
-  toNeuronUuid: string;
-};
-type AddSynapseOp = {
-  type: "addSynapse";
-  fromNeuronUuid: string;
-  toNeuronUuid: string;
-  weight: number;
-};
-type SetWeightOp = {
-  type: "setWeight";
-  fromNeuronUuid: string;
-  toNeuronUuid: string;
-  weight: number;
-};
-
 function buildUuidToIndexMap(creature: CreatureExport): Map<string, number> {
   const uuidToIndex = new Map<string, number>();
   const inputCount = creature.input ?? 0;
@@ -121,191 +84,186 @@ export function applyCoordinatedStructuralCandidate(
   for (const op of ops) {
     if (!op || typeof op.type !== "string") continue;
 
-    if ((op.type as string) === "addNeuron") {
-      const add = op as unknown as AddNeuronOp;
-      // Ensure deterministic idempotency: if neuron already exists, update fields.
-      const existingIndex = next.neurons.findIndex((n) =>
-        n.uuid === add.neuronUuid
-      );
-      if (existingIndex >= 0) {
-        // Some exports treat neuron entries as readonly, so replace the object.
-        next.neurons[existingIndex] = {
-          ...next.neurons[existingIndex],
-          uuid: add.neuronUuid,
-          type: add.neuronType,
-          squash: add.squash,
-          bias: add.bias,
+    switch (op.type) {
+      case "addNeuron": {
+        // Ensure deterministic idempotency: if neuron already exists, update fields.
+        const existingIndex = next.neurons.findIndex((n) =>
+          n.uuid === op.neuronUuid
+        );
+        if (existingIndex >= 0) {
+          // Some exports treat neuron entries as readonly, so replace the object.
+          next.neurons[existingIndex] = {
+            ...next.neurons[existingIndex],
+            uuid: op.neuronUuid,
+            type: op.neuronType,
+            squash: op.squash,
+            bias: op.bias,
+          };
+          continue;
+        }
+
+        const newNeuron = {
+          uuid: op.neuronUuid,
+          type: op.neuronType,
+          squash: op.squash,
+          bias: op.bias,
         };
-        continue;
-      }
 
-      const newNeuron = {
-        uuid: add.neuronUuid,
-        type: add.neuronType,
-        squash: add.squash,
-        bias: add.bias,
-      };
+        if (typeof op.insertBeforeNeuronUuid === "string") {
+          const beforeIdx = next.neurons.findIndex((n) =>
+            n.uuid === op.insertBeforeNeuronUuid
+          );
+          if (beforeIdx >= 0) {
+            next.neurons.splice(beforeIdx, 0, newNeuron);
+            continue;
+          }
 
-      if (typeof add.insertBeforeNeuronUuid === "string") {
-        const beforeIdx = next.neurons.findIndex((n) =>
-          n.uuid === add.insertBeforeNeuronUuid
-        );
-        if (beforeIdx >= 0) {
-          next.neurons.splice(beforeIdx, 0, newNeuron);
-          continue;
+          // `insertBeforeNeuronUuid` is an explicit ordering intent. If the target
+          // neuron is missing and this creature is forward-only, appending would
+          // violate layer ordering (hidden after output). Treat as a no-op instead.
+          if (next.forwardOnly === true) {
+            continue;
+          }
         }
 
-        // `insertBeforeNeuronUuid` is an explicit ordering intent. If the target
-        // neuron is missing and this creature is forward-only, appending would
-        // violate layer ordering (hidden after output). Treat as a no-op instead.
-        if (next.forwardOnly === true) {
-          continue;
-        }
-      }
-
-      // Default placement must preserve the invariant that hidden neurons appear
-      // before output neurons (even when recurrent connections are allowed).
-      if (add.neuronType === "hidden") {
-        const firstOutputIdx = next.neurons.findIndex((n) =>
-          n.type === "output"
-        );
-        if (firstOutputIdx >= 0) {
-          next.neurons.splice(firstOutputIdx, 0, newNeuron);
+        // Default placement must preserve the invariant that hidden neurons appear
+        // before output neurons (even when recurrent connections are allowed).
+        if (op.neuronType === "hidden") {
+          const firstOutputIdx = next.neurons.findIndex((n) =>
+            n.type === "output"
+          );
+          if (firstOutputIdx >= 0) {
+            next.neurons.splice(firstOutputIdx, 0, newNeuron);
+          } else {
+            next.neurons.push(newNeuron);
+          }
         } else {
           next.neurons.push(newNeuron);
         }
-      } else {
-        next.neurons.push(newNeuron);
-      }
-      continue;
-    }
-
-    if ((op.type as string) === "removeNeuron") {
-      const remove = op as unknown as RemoveNeuronOp;
-      const uuid = remove.neuronUuid;
-      const beforeNeuronCount = next.neurons.length;
-      next.neurons = next.neurons.filter((n) => n.uuid !== uuid);
-      if (next.neurons.length === beforeNeuronCount) {
-        // No-op if neuron didn't exist (idempotent).
         continue;
       }
 
-      // Remove any synapses that reference the neuron, and clean up memetic state.
-      const removedEdges: Array<{ fromUUID: string; toUUID: string }> = [];
-      for (const s of next.synapses) {
-        if (s.fromUUID === uuid || s.toUUID === uuid) {
-          removedEdges.push({ fromUUID: s.fromUUID, toUUID: s.toUUID });
+      case "removeNeuron": {
+        const uuid = op.neuronUuid;
+        const beforeNeuronCount = next.neurons.length;
+        next.neurons = next.neurons.filter((n) => n.uuid !== uuid);
+        if (next.neurons.length === beforeNeuronCount) {
+          // No-op if neuron didn't exist (idempotent).
+          continue;
         }
-      }
-      next.synapses = next.synapses.filter((s) =>
-        !(s.fromUUID === uuid || s.toUUID === uuid)
-      );
-      for (const e of removedEdges) {
-        cleanupMemeticForRemovedSynapse(next, e.fromUUID, e.toUUID);
-      }
-      cleanupMemeticForRemovedNeuron(next, uuid);
-      continue;
-    }
 
-    if ((op.type as string) === "changeSquash") {
-      const change = op as unknown as ChangeSquashOp;
-      const n = next.neurons.find((x) => x.uuid === change.neuronUuid);
-      if (n) n.squash = change.squash;
-      continue;
-    }
-
-    if ((op.type as string) === "setBias") {
-      const set = op as unknown as SetBiasOp;
-      const n = next.neurons.find((x) => x.uuid === set.neuronUuid);
-      if (n) n.bias = set.bias;
-      continue;
-    }
-
-    if ((op.type as string) === "removeSynapse") {
-      const remove = op as unknown as RemoveSynapseOp;
-      const existing = next.synapses.find((s) =>
-        s.fromUUID === remove.fromNeuronUuid && s.toUUID === remove.toNeuronUuid
-      );
-      if (existing) {
-        removedSynapseMeta.set(
-          edgeKey(remove.fromNeuronUuid, remove.toNeuronUuid),
-          {
-            type: existing.type,
-            tags: existing.tags
-              ? existing.tags.map((t) => ({ ...t }))
-              : undefined,
-          },
+        // Remove any synapses that reference the neuron, and clean up memetic state.
+        const removedEdges: Array<{ fromUUID: string; toUUID: string }> = [];
+        for (const s of next.synapses) {
+          if (s.fromUUID === uuid || s.toUUID === uuid) {
+            removedEdges.push({ fromUUID: s.fromUUID, toUUID: s.toUUID });
+          }
+        }
+        next.synapses = next.synapses.filter((s) =>
+          !(s.fromUUID === uuid || s.toUUID === uuid)
         );
-      }
-      const before = next.synapses.length;
-      next.synapses = next.synapses.filter((s) =>
-        !(
-          s.fromUUID === remove.fromNeuronUuid &&
-          s.toUUID === remove.toNeuronUuid
-        )
-      );
-      if (next.synapses.length !== before) {
-        cleanupMemeticForRemovedSynapse(
-          next,
-          remove.fromNeuronUuid,
-          remove.toNeuronUuid,
-        );
-      }
-      continue;
-    }
-
-    if ((op.type as string) === "addSynapse") {
-      const add = op as unknown as AddSynapseOp;
-      // Ensure both endpoints exist; avoid crashing on stale ops.
-      const existingNeuronUUIDs = new Set<string>();
-      const inputCount = next.input ?? 0;
-      for (let i = 0; i < inputCount; i++) {
-        existingNeuronUUIDs.add(`input-${i}`);
-      }
-      for (const n of next.neurons) existingNeuronUUIDs.add(n.uuid);
-      if (
-        !existingNeuronUUIDs.has(add.fromNeuronUuid) ||
-        !existingNeuronUUIDs.has(add.toNeuronUuid)
-      ) {
+        for (const e of removedEdges) {
+          cleanupMemeticForRemovedSynapse(next, e.fromUUID, e.toUUID);
+        }
+        cleanupMemeticForRemovedNeuron(next, uuid);
         continue;
       }
 
-      if (
-        !canAddForwardOnlySynapse(next, add.fromNeuronUuid, add.toNeuronUuid)
-      ) {
+      case "changeSquash": {
+        const n = next.neurons.find((x) => x.uuid === op.neuronUuid);
+        if (n) n.squash = op.squash;
         continue;
       }
 
-      const existing = next.synapses.find((s) =>
-        s.fromUUID === add.fromNeuronUuid && s.toUUID === add.toNeuronUuid
-      );
-      if (existing) {
-        existing.weight = add.weight;
-      } else {
-        const meta = removedSynapseMeta.get(
-          edgeKey(add.fromNeuronUuid, add.toNeuronUuid),
-        );
-        next.synapses.push({
-          fromUUID: add.fromNeuronUuid,
-          toUUID: add.toNeuronUuid,
-          weight: add.weight,
-          type: meta?.type,
-          tags: meta?.tags ? meta.tags.map((t) => ({ ...t })) : undefined,
-        });
+      case "setBias": {
+        const n = next.neurons.find((x) => x.uuid === op.neuronUuid);
+        if (n) n.bias = op.bias;
+        continue;
       }
-      continue;
-    }
 
-    if ((op.type as string) === "setWeight") {
-      const set = op as unknown as SetWeightOp;
-      const existing = next.synapses.find((s) =>
-        s.fromUUID === set.fromNeuronUuid && s.toUUID === set.toNeuronUuid
-      );
-      if (existing) {
-        existing.weight = set.weight;
+      case "removeSynapse": {
+        const existing = next.synapses.find((s) =>
+          s.fromUUID === op.fromNeuronUuid && s.toUUID === op.toNeuronUuid
+        );
+        if (existing) {
+          removedSynapseMeta.set(
+            edgeKey(op.fromNeuronUuid, op.toNeuronUuid),
+            {
+              type: existing.type,
+              tags: existing.tags
+                ? existing.tags.map((t) => ({ ...t }))
+                : undefined,
+            },
+          );
+        }
+        const before = next.synapses.length;
+        next.synapses = next.synapses.filter((s) =>
+          !(
+            s.fromUUID === op.fromNeuronUuid &&
+            s.toUUID === op.toNeuronUuid
+          )
+        );
+        if (next.synapses.length !== before) {
+          cleanupMemeticForRemovedSynapse(
+            next,
+            op.fromNeuronUuid,
+            op.toNeuronUuid,
+          );
+        }
+        continue;
       }
-      // No-op if synapse doesn't exist (idempotent).
-      continue;
+
+      case "addSynapse": {
+        // Ensure both endpoints exist; avoid crashing on stale ops.
+        const existingNeuronUUIDs = new Set<string>();
+        const inputCount = next.input ?? 0;
+        for (let i = 0; i < inputCount; i++) {
+          existingNeuronUUIDs.add(`input-${i}`);
+        }
+        for (const n of next.neurons) existingNeuronUUIDs.add(n.uuid);
+        if (
+          !existingNeuronUUIDs.has(op.fromNeuronUuid) ||
+          !existingNeuronUUIDs.has(op.toNeuronUuid)
+        ) {
+          continue;
+        }
+
+        if (
+          !canAddForwardOnlySynapse(next, op.fromNeuronUuid, op.toNeuronUuid)
+        ) {
+          continue;
+        }
+
+        const existing = next.synapses.find((s) =>
+          s.fromUUID === op.fromNeuronUuid && s.toUUID === op.toNeuronUuid
+        );
+        if (existing) {
+          existing.weight = op.weight;
+        } else {
+          const meta = removedSynapseMeta.get(
+            edgeKey(op.fromNeuronUuid, op.toNeuronUuid),
+          );
+          next.synapses.push({
+            fromUUID: op.fromNeuronUuid,
+            toUUID: op.toNeuronUuid,
+            weight: op.weight,
+            type: meta?.type,
+            tags: meta?.tags ? meta.tags.map((t) => ({ ...t })) : undefined,
+          });
+        }
+        continue;
+      }
+
+      case "setWeight": {
+        const existing = next.synapses.find((s) =>
+          s.fromUUID === op.fromNeuronUuid && s.toUUID === op.toNeuronUuid
+        );
+        if (existing) {
+          existing.weight = op.weight;
+        }
+        // No-op if synapse doesn't exist (idempotent).
+        continue;
+      }
     }
   }
 

@@ -36,6 +36,7 @@ export interface DiscoveryRunnerWorker {
     feedbackLoop: boolean,
   ): Promise<Awaited<ReturnType<WorkerHandler["evaluate"]>>>;
   terminate(): void;
+  waitUntilReady?(): Promise<void>;
 }
 
 export interface DiscoveryRunnerWorkerFactoryArgs {
@@ -186,13 +187,10 @@ export class DiscoveryRunner {
         });
         // Avoid a cold-cache download storm by warming workers sequentially when supported.
         // (Custom workerFactory implementations may not expose this method.)
-        const maybeWait =
-          (worker as unknown as { waitUntilReady?: () => Promise<void> })
-            .waitUntilReady;
-        if (typeof maybeWait === "function") {
+        if (typeof worker.waitUntilReady === "function") {
           try {
             // deno-lint-ignore no-await-in-loop
-            await maybeWait.call(worker);
+            await worker.waitUntilReady();
           } catch (err) {
             try {
               worker.terminate();
@@ -210,12 +208,9 @@ export class DiscoveryRunner {
                 direct: true,
                 customCost: config.customCost,
               });
-              const wait2 =
-                (worker as unknown as { waitUntilReady?: () => Promise<void> })
-                  .waitUntilReady;
-              if (typeof wait2 === "function") {
+              if (typeof worker.waitUntilReady === "function") {
                 // deno-lint-ignore no-await-in-loop
-                await wait2.call(worker);
+                await worker.waitUntilReady();
               }
             } else {
               throw err;
