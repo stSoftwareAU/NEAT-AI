@@ -7,14 +7,14 @@ delegates to specialised modules in `src/creature/`. The public API is unchanged
 
 ### New Module Structure
 
-| Module                    | Lines | Responsibility                                      |
-| ------------------------- | ----- | --------------------------------------------------- |
-| `CreatureActivation.ts`   | 452   | Forward pass, WASM activation, evaluation           |
-| `CreatureTopology.ts`     | 575   | Connection queries, binary search, caching, focus   |
-| `CreatureTraining.ts`     | 555   | Training orchestration, evolution, scoring           |
-| `CreatureSerialization.ts`| 334   | JSON import/export, cloning                          |
-| `CreatureMutation.ts`     | 225   | Network structure repair, random connections         |
-| `mod.ts`                  | 67    | Barrel re-export of all module functions             |
+| Module                     | Lines | Responsibility                                    |
+| -------------------------- | ----- | ------------------------------------------------- |
+| `CreatureActivation.ts`    | 452   | Forward pass, WASM activation, evaluation         |
+| `CreatureTopology.ts`      | 575   | Connection queries, binary search, caching, focus |
+| `CreatureTraining.ts`      | 555   | Training orchestration, evolution, scoring        |
+| `CreatureSerialization.ts` | 334   | JSON import/export, cloning                       |
+| `CreatureMutation.ts`      | 225   | Network structure repair, random connections      |
+| `mod.ts`                   | 67    | Barrel re-export of all module functions          |
 
 ### Before vs After
 
