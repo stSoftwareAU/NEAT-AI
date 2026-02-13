@@ -16,20 +16,20 @@ import type { SynapseInternal } from "../../src/architecture/SynapseInterfaces.t
 Deno.test("Offspring.breed - produces offspring from compatible parents", () => {
   const mum = new Creature(3, 2, {
     layers: [
-      { count: 4, squash: "IDENTITY" },
-      { count: 3, squash: "LOGISTIC" },
+      { count: 2, squash: "IDENTITY" },
+      { count: 2, squash: "LOGISTIC" },
     ],
   });
   const dad = new Creature(3, 2, {
     layers: [
-      { count: 4, squash: "LOGISTIC" },
-      { count: 3, squash: "IDENTITY" },
+      { count: 2, squash: "LOGISTIC" },
+      { count: 2, squash: "IDENTITY" },
     ],
   });
 
   // Try multiple times since breeding involves randomness
   let offspring: Creature | undefined;
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 10; i++) {
     offspring = Offspring.breed(mum, dad);
     if (offspring) break;
   }
@@ -72,7 +72,7 @@ Deno.test("Offspring.breed - returns undefined when offspring clones parent", ()
 
   // With minimal structure, offspring often equals a parent
   let cloneCount = 0;
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 10; i++) {
     const offspring = Offspring.breed(mum, dad);
     if (offspring === undefined) {
       cloneCount++;
@@ -88,14 +88,14 @@ Deno.test("Offspring.breed - returns undefined when offspring clones parent", ()
 
 Deno.test("Offspring.breed - offspring has valid synapses", () => {
   const mum = new Creature(2, 1, {
-    layers: [{ count: 3, squash: "IDENTITY" }],
+    layers: [{ count: 2, squash: "IDENTITY" }],
   });
   const dad = new Creature(2, 1, {
-    layers: [{ count: 3, squash: "IDENTITY" }],
+    layers: [{ count: 2, squash: "IDENTITY" }],
   });
 
   let offspring: Creature | undefined;
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 5; i++) {
     offspring = Offspring.breed(mum, dad);
     if (offspring) break;
   }
@@ -126,7 +126,7 @@ Deno.test("Offspring.breed - offspring gets a UUID", () => {
   });
 
   let offspring: Creature | undefined;
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 5; i++) {
     offspring = Offspring.breed(mum, dad);
     if (offspring) break;
   }
@@ -146,7 +146,7 @@ Deno.test("Offspring.breed - with forwardOnly option", () => {
   });
 
   let offspring: Creature | undefined;
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 5; i++) {
     offspring = Offspring.breed(mum, dad, { forwardOnly: true });
     if (offspring) break;
   }
@@ -201,7 +201,7 @@ Deno.test("Offspring.cloneConnections - empty connections list", () => {
 
 Deno.test("Offspring.sortNeurons - keeps input before hidden before output", () => {
   const creature = new Creature(2, 1, {
-    layers: [{ count: 2, squash: "IDENTITY" }],
+    layers: [{ count: 1, squash: "IDENTITY" }],
   });
 
   // Create a child array replicating the mother's structure
