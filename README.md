@@ -125,6 +125,8 @@ For detailed documentation, see the [docs/](./docs/) directory:
   discovery on macOS using Metal
 - **[Intelligent Design](./docs/INTELLIGENT_DESIGN.md)**: Systematic squash
   function optimisation for hidden neurons
+- **[Troubleshooting](./docs/TROUBLESHOOTING.md)**: Common issues and solutions
+  for WASM, discovery, memory, CI, and configuration
 
 ## Contributions
 
