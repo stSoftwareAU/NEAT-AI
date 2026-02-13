@@ -135,6 +135,15 @@ The quality gate runs:
 
 Keep running `./quality.sh` until it passes cleanly.
 
+For faster iteration, you can skip specific steps:
+
+```bash
+./quality.sh --help            # Show all available options
+./quality.sh --skip-tests      # Quick check without running tests
+./quality.sh --lint-only       # Only format + lint
+./quality.sh --check-only      # Only type-check
+```
+
 ### 5. Submit a Pull Request
 
 - Target the `Develop` branch.
