@@ -46,19 +46,15 @@ export class Upgrade {
   static CRISPR(dnaLegacy: CrisprInterface): CrisprInterface {
     const dnaClean: CrisprInterface = JSON.parse(JSON.stringify(dnaLegacy));
 
-    // Convert legacy nodes to neurons
-    if ((dnaClean as unknown as { nodes: { squash: string }[] }).nodes) {
-      (dnaClean as unknown as { neurons: { squash: string }[] }).neurons =
-        (dnaClean as unknown as { nodes: { squash: string }[] }).nodes;
+    // Normalise legacy property names (nodes → neurons, connections → synapses).
+    const raw = dnaClean as unknown as Record<string, unknown>;
+    if (raw.nodes) {
+      raw.neurons = raw.nodes;
+      delete raw.nodes;
     }
-
-    // Convert legacy connections to synapses
-    if (
-      (dnaClean as unknown as { connections: { weight: number }[] }).connections
-    ) {
-      (dnaClean as unknown as { synapses: { weight: number }[] }).synapses =
-        (dnaClean as unknown as { connections: { weight: number }[] })
-          .connections;
+    if (raw.connections) {
+      raw.synapses = raw.connections;
+      delete raw.connections;
     }
 
     // Ensure mode is set to "insert" or "append"

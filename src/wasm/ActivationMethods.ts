@@ -13,7 +13,7 @@
 
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
-import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
+import { hasUnSquash } from "../methods/activations/TypeGuards.ts";
 import {
   type FusedErrorDistributionResult,
   getSquashType,
@@ -133,8 +133,8 @@ export function unSquash(
   // which breaks backprop roundtrip invariants (see test/propagate/ToValue.ts).
   // Use the JS implementation (f64) for correctness.
   if (squashName === "StdInverse") {
-    const sq = Activations.find(squashName) as unknown as UnSquashInterface;
-    if (sq.unSquash) {
+    const sq = Activations.find(squashName);
+    if (hasUnSquash(sq)) {
       return sq.unSquash(activation, hint);
     }
     return activation;

@@ -97,7 +97,9 @@ export interface ImproveSquashOptions {
    *
    * This is primarily intended for tests (to avoid spawning actual workers).
    */
-  createWorker?: () => Pick<WorkerHandler, "score" | "terminate">;
+  createWorker?: () =>
+    & Pick<WorkerHandler, "score" | "terminate">
+    & Partial<Pick<WorkerHandler, "waitUntilReady">>;
 
   /**
    * Optional file writer overrides.
@@ -285,16 +287,16 @@ export async function scanForSquashImprovements(
     }
     : (path: string) => Deno.remove(path));
 
-  const workers: Array<Pick<WorkerHandler, "score" | "terminate">> = [];
+  type WorkerLike =
+    & Pick<WorkerHandler, "score" | "terminate">
+    & Partial<Pick<WorkerHandler, "waitUntilReady">>;
+  const workers: WorkerLike[] = [];
   for (let i = 0; i < CPU_COUNT; i++) {
-    let w: Pick<WorkerHandler, "score" | "terminate"> =
-      makeWorker() as unknown as Pick<WorkerHandler, "score" | "terminate">;
-    const wait = (w as unknown as { waitUntilReady?: () => Promise<void> })
-      .waitUntilReady;
-    if (typeof wait === "function") {
+    let w: WorkerLike = makeWorker();
+    if (typeof w.waitUntilReady === "function") {
       try {
         // deno-lint-ignore no-await-in-loop
-        await wait.call(w);
+        await w.waitUntilReady();
       } catch (err) {
         try {
           w.terminate();
@@ -307,9 +309,10 @@ export async function scanForSquashImprovements(
             err,
           );
           w = makeDirectWorker();
-          // deno-lint-ignore no-await-in-loop
-          await (w as unknown as { waitUntilReady: () => Promise<void> })
-            .waitUntilReady();
+          if (typeof w.waitUntilReady === "function") {
+            // deno-lint-ignore no-await-in-loop
+            await w.waitUntilReady();
+          }
         } else {
           throw err;
         }

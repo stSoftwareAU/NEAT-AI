@@ -128,9 +128,7 @@ export function resolveWasmSquashName(
   }
 
   try {
-    const activation = Activations.find(squashName) as unknown as {
-      wasmAliasName?: () => string;
-    };
+    const activation = Activations.find(squashName);
     const alias = activation?.wasmAliasName?.();
     if (alias && (alias in SQUASH_NAME_TO_TYPE)) {
       return alias;

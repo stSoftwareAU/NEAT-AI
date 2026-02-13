@@ -3,6 +3,7 @@ import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
 import { getTag, type TagInterface } from "@stsoftware/tags/mod";
+import "./globals.d.ts";
 import type {
   CreatureExport,
   CreatureInternal,
@@ -43,6 +44,7 @@ import {
 import { BackpropBuffers } from "./propagate/BackpropBuffers.ts";
 import { buildOutgoingSynapsesMap } from "./propagate/sparse/CalculatePathsToOutput.ts";
 import { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
+import type { SparseConfigLike } from "./propagate/sparse/SparseConfigLike.ts";
 import { upgradeOne } from "./upgrade/UpgradeOne.ts";
 import { CreatureExportBuilder } from "./utils/CreatureExportBuilder.ts";
 import { BufferPool } from "./utils/BufferPool.ts";
@@ -263,7 +265,7 @@ export class Creature implements CreatureInternal {
    * Debug mode flag.
    * @type {boolean}
    */
-  DEBUG: boolean = ((globalThis as unknown) as { DEBUG: boolean }).DEBUG;
+  DEBUG: boolean = globalThis.DEBUG ?? false;
 
   /**
    * Constructs a new Creature instance.
@@ -547,7 +549,7 @@ export class Creature implements CreatureInternal {
   activateAndTrace(
     input: Float32Array,
     feedbackLoop: boolean,
-    sparseConfig: SparseConfig,
+    sparseConfig: SparseConfigLike,
   ): Float32Array {
     // Issue #1314: Validate that all input values are finite
     for (let i = 0; i < input.length; i++) {
@@ -711,7 +713,7 @@ export class Creature implements CreatureInternal {
   private activateAndTraceWasm(
     input: Float32Array,
     feedbackLoop: boolean,
-    sparseConfig: SparseConfig,
+    sparseConfig: SparseConfigLike,
   ): Float32Array {
     // Lazily compile to WASM if not already done
     // Issue #1301: Use topology-based caching to avoid redundant compilation
@@ -786,7 +788,7 @@ export class Creature implements CreatureInternal {
    */
   private applyWasmTraceData(
     traceEntries: Array<{ neuronRelativeIndex: number; traceInfo: number }>,
-    sparseConfig: SparseConfig,
+    sparseConfig: SparseConfigLike,
   ): void {
     const neurons = this.neurons;
 
@@ -2946,19 +2948,17 @@ export class Creature implements CreatureInternal {
       semanticVersion: json.semanticVersion,
     });
 
-    const legacy = (json as unknown) as {
-      nodes?: [];
-      neurons?: [];
-      connections?: [];
-      synapses?: [];
-    };
-    if (legacy.nodes) {
-      legacy.neurons = legacy.nodes;
-      delete legacy.nodes;
+    // Normalise legacy property names (nodes → neurons, connections → synapses).
+    // The intermediate `unknown` cast is required because legacy JSON may carry
+    // properties not declared on CreatureInternal/CreatureExport.
+    const raw = json as unknown as Record<string, unknown>;
+    if (raw.nodes) {
+      raw.neurons = raw.nodes;
+      delete raw.nodes;
     }
-    if (legacy.connections) {
-      legacy.synapses = legacy.connections;
-      delete legacy.connections;
+    if (raw.connections) {
+      raw.synapses = raw.connections;
+      delete raw.connections;
     }
     creature.loadFrom(json, validate);
 

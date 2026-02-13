@@ -10,7 +10,7 @@ import { ABSOLUTE } from "../methods/activations/types/ABSOLUTE.ts";
 import { COMPLEMENT } from "../methods/activations/types/COMPLEMENT.ts";
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 import { ReLU } from "../methods/activations/types/ReLU.ts";
-import type { SimplifyBiasInterface } from "./SimplifyBiasInterface.ts";
+import { hasSimplifyBias } from "../methods/activations/TypeGuards.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 export function simplify(creature: Creature): Creature | undefined {
@@ -78,11 +78,8 @@ export function simplify(creature: Creature): Creature | undefined {
   simplified.neurons.forEach((neuron) => {
     if (neuron.squash) {
       const squash = Activations.find(neuron.squash);
-      if (squash) {
-        const squashedSimplified = (squash as unknown) as SimplifyBiasInterface;
-        if (squashedSimplified.simplifyBias) {
-          neuron.bias = squashedSimplified.simplifyBias(neuron.bias);
-        }
+      if (squash && hasSimplifyBias(squash)) {
+        neuron.bias = squash.simplifyBias(neuron.bias);
       }
     }
   });
