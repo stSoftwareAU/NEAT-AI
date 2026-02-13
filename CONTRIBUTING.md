@@ -304,18 +304,18 @@ format — include priority, invertibility, and backpropagation strategy.
 
 All code, comments, and documentation use Australian English spelling:
 
-| Use              | Not           |
-| ---------------- | ------------- |
-| colour           | color         |
-| behaviour        | behavior      |
-| organisation     | organization  |
-| favour           | favor         |
-| optimise         | optimize      |
-| normalise        | normalize     |
-| analyse          | analyze       |
-| centre           | center        |
-| licence (noun)   | license       |
-| license (verb)   | license       |
+| Use            | Not          |
+| -------------- | ------------ |
+| colour         | color        |
+| behaviour      | behavior     |
+| organisation   | organization |
+| favour         | favor        |
+| optimise       | optimize     |
+| normalise      | normalize    |
+| analyse        | analyze      |
+| centre         | center       |
+| licence (noun) | license      |
+| license (verb) | license      |
 
 ### Key Lint Rules
 
@@ -368,5 +368,4 @@ scripts/                # Utility scripts
 - Open an [issue](https://github.com/stSoftwareAU/NEAT-AI/issues) for bugs or
   feature requests.
 - Check [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) for common issues.
-- See [AGENTS.md](./AGENTS.md) for detailed coding conventions and
-  architecture.
+- See [AGENTS.md](./AGENTS.md) for detailed coding conventions and architecture.
