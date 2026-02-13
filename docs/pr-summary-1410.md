@@ -11,16 +11,16 @@ defaults, types, ranges, and usage recipes. Closes #1410.
   - Detailed sections for each config group: core evolution, training,
     discovery, discovery replay, discovery caching, adaptive mutation
     thresholds, plateau detection, stability adaptation, weight/bias
-    regularisation, ensemble diversity, quantum step, fine-tune population,
-    and logging/reproducibility
+    regularisation, ensemble diversity, quantum step, fine-tune population, and
+    logging/reproducibility
   - Validation rules and cross-field constraints
   - Five recipe configurations: fast prototyping, production training,
     research/reproducibility, time-series/recurrent, and minimal complexity
 - **`AGENTS.md`** — Added configuration guide to the documentation layout
   section
-- **`test/config/ConfigurationGuideDefaults.ts`** — 11 tests that import
-  actual default constants and verify they match documented values, ensuring
-  the guide stays in sync with source code
+- **`test/config/ConfigurationGuideDefaults.ts`** — 11 tests that import actual
+  default constants and verify they match documented values, ensuring the guide
+  stays in sync with source code
 
 ## Evidence
 
