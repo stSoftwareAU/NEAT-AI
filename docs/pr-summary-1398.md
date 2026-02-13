@@ -12,33 +12,34 @@ or call `setLogger()` globally.
 ## What Changed
 
 ### New Files
+
 - **`src/utils/Logger.ts`** -- `Logger` interface, `LogLevel` type,
   `createConsoleLogger()` factory with level filtering, `SILENT_LOGGER`,
   `getLogger()`/`setLogger()` global accessor pair.
-- **`test/utils/Logger.ts`** -- 10 unit tests covering level filtering,
-  silent logger, round-trip get/set, argument passthrough, console method
-  mapping.
+- **`test/utils/Logger.ts`** -- 10 unit tests covering level filtering, silent
+  logger, round-trip get/set, argument passthrough, console method mapping.
 - **`test/config/LoggerConfig.ts`** -- 8 integration tests covering config
   defaults, custom logger injection, `logLevel` filtering, global logger
   propagation, config freeze.
 
 ### Config Integration
+
 - **`NeatArguments.ts`** -- Added `logger: Logger` field.
 - **`NeatOptions.ts`** -- Added `logger?: Logger` and `logLevel?: LogLevel`
   options (omitted from `NeatOptionsInput` `CoerceNumeric` coercion since
   loggers are not CLI-serialisable).
-- **`NeatConfig.ts`** -- Creates default console logger from `logLevel`
-  (default `"info"`) or uses the injected `logger`; calls `setLogger()` to
-  propagate globally.
+- **`NeatConfig.ts`** -- Creates default console logger from `logLevel` (default
+  `"info"`) or uses the injected `logger`; calls `setLogger()` to propagate
+  globally.
 - **`mod.ts`** -- Exports `createConsoleLogger`, `getLogger`, `setLogger`,
   `SILENT_LOGGER`, `Logger`, `LogLevel`.
 
 ### Console Replacement (46 production files)
+
 Every `console.log(` was mapped to `getLogger().info(`, `console.info(` to
-`getLogger().info(`, `console.warn(` to `getLogger().warn(`,
-`console.error(` to `getLogger().error(`, `console.debug(` to
-`getLogger().debug(`. JSDoc examples containing `console.log` were
-preserved unchanged.
+`getLogger().info(`, `console.warn(` to `getLogger().warn(`, `console.error(` to
+`getLogger().error(`, `console.debug(` to `getLogger().debug(`. JSDoc examples
+containing `console.log` were preserved unchanged.
 
 ## Evidence
 
