@@ -23,7 +23,6 @@ import type {
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
 import { getLogger } from "../../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../../utils/RandomNumberGenerator.ts";
 
 /**
  * Validates a creature and attempts to fix it if validation fails.
@@ -603,11 +602,7 @@ export function addHelpfulNeurons(
       return;
     }
 
-    const newNeuronUUID =
-      `hidden-discovery-${(globalThis.crypto?.randomUUID?.() ??
-        `fallback-${
-          getRandomNumberGenerator().random().toString(16).slice(2)
-        }`)}`;
+    const newNeuronUUID = `hidden-discovery-${crypto.randomUUID()}`;
     const newNeuron = {
       type: "hidden" as const,
       uuid: newNeuronUUID,
