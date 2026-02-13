@@ -9,6 +9,7 @@
  */
 
 import type { Creature } from "../Creature.ts";
+import { getLogger } from "../utils/Logger.ts";
 import {
   compileCreatureToWasm,
   type CompiledCreatureData,
@@ -220,11 +221,14 @@ export async function initWasmActivation(): Promise<boolean> {
       const isNotFound = code === "ERR_MODULE_NOT_FOUND" ||
         /module not found/i.test(msg);
       if (isNotFound) {
-        console.warn(
+        getLogger().warn(
           "WASM activation: pkg not found at the canonical package location.",
         );
       } else {
-        console.error("Failed to initialise WASM activation module:", error);
+        getLogger().error(
+          "Failed to initialise WASM activation module:",
+          error,
+        );
       }
       return false;
     } finally {
@@ -254,7 +258,7 @@ export function initWasmActivationSync(
   // Sync init should not run concurrently with async init; if async is in-flight,
   // fail fast to avoid re-entrancy into wasm-bindgen initialisation.
   if (initPromise) {
-    console.error(
+    getLogger().error(
       "Failed to initialise WASM activation module sync: async init in progress",
     );
     return false;
@@ -297,7 +301,10 @@ export function initWasmActivationSync(
 
     return true;
   } catch (error) {
-    console.error("Failed to initialise WASM activation module sync:", error);
+    getLogger().error(
+      "Failed to initialise WASM activation module sync:",
+      error,
+    );
     return false;
   }
 }
@@ -350,7 +357,7 @@ export class WasmCreatureActivation {
    */
   static create(compiled: CompiledCreatureData): WasmCreatureActivation | null {
     if (!CompiledNetwork) {
-      console.error("WASM module not initialised");
+      getLogger().error("WASM module not initialised");
       return null;
     }
 
@@ -364,7 +371,7 @@ export class WasmCreatureActivation {
         compiled.numOutputs,
       );
     } catch (error) {
-      console.error("Failed to create WASM activation:", error);
+      getLogger().error("Failed to create WASM activation:", error);
       return null;
     }
   }

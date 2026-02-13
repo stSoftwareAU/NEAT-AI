@@ -4,6 +4,7 @@ import type { Breed } from "../breed/Breed.ts";
 import { Creature } from "../Creature.ts";
 import type { Mutator } from "../NEAT/Mutator.ts";
 import { BloomFilter } from "../utils/BloomFilter.ts";
+import { getLogger } from "../utils/Logger.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 
 /**
@@ -96,7 +97,7 @@ export class DeDuplicator {
             this.breed.options.populationSize!
         ) {
           if (this.breed.options.debug || this.breed.options.verbose) {
-            console.debug(
+            getLogger().debug(
               `Culling duplicate creature at ${indx - toRemove.length} of ${
                 creatures.length - toRemove.length
               }`,
@@ -120,7 +121,7 @@ export class DeDuplicator {
       const difference = format(end - start, {
         ignoreZero: true,
       });
-      console.log(
+      getLogger().info(
         `DeDuplication of ${toRemove.length} creatures to ${creatures.length} in ${difference} (previous experiment ${
           format(
             previousExperimentMS,
@@ -180,7 +181,7 @@ export class DeDuplicator {
           this.bloomFilter.add(key3);
           return;
         } else if (attempts > 48) {
-          console.error(
+          getLogger().error(
             `Can't deDuplicate creature at ${index} of ${creatures.length}`,
           );
           creatures.splice(index, 1);
@@ -195,7 +196,7 @@ export class DeDuplicator {
   private logPopulationSize(creatures: Creature[]) {
     if (creatures.length > this.breed.options.populationSize! + 1) {
       if (this.breed.options.debug || this.breed.options.verbose) {
-        console.debug(
+        getLogger().debug(
           `Over populated ${creatures.length}, expected ${this.breed.options
             .populationSize!}.`,
         );

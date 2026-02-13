@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import { addTags, removeTag, type TagsInterface } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
+import { getLogger } from "../utils/Logger.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import type { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
@@ -920,14 +921,14 @@ export class Neuron implements TagsInterface, NeuronInternal {
     // DIAGNOSTIC: Log if we're accumulating excessive errors
     // Note: Errors accumulate from all paths (correct behavior), but recursion should only happen once
     if (!isNewRecord && discoverRecord.errors.length > 200) {
-      console.warn(
+      getLogger().warn(
         `⚠️  PERFORMANCE: Neuron ${this.uuid} has ${discoverRecord.errors.length} accumulated errors`,
       );
-      console.warn(
+      getLogger().warn(
         `  Type: ${this.type}, Inward connections: ${listLength}`,
       );
       if (discoverRecord.errors.length > 500) {
-        console.error(
+        getLogger().error(
           `❌ CRITICAL: Neuron ${this.uuid} has ${discoverRecord.errors.length} errors - likely infinite recursion!`,
         );
         throw new Error(

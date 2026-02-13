@@ -4,6 +4,7 @@ import type { Creature } from "../Creature.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import { Synapse } from "../architecture/Synapse.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
+import { getLogger } from "../utils/Logger.ts";
 
 /**
  * Selects a suitable outward connection target for a newly inserted neuron.
@@ -235,7 +236,7 @@ export class AddNeuron extends AbstractMutationOperator {
     // delete this.creature.memetic;
     const endUUID = CreatureUtil.makeUUID(creature);
     if (startUUID === endUUID) {
-      console.warn("AddNeuron: No change.");
+      getLogger().warn("AddNeuron: No change.");
       return false;
     } else {
       return true;

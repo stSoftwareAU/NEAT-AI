@@ -224,3 +224,19 @@ export type {
  * instead of each fetching separately.
  */
 export { fetchWasmForWorkers } from "./src/multithreading/workers/WorkerHandler.ts";
+
+/**
+ * Structured Logger
+ *
+ * Issue #1398: Configurable logging abstraction. Consumers can inject a custom
+ * logger via NeatOptions or call setLogger() globally.
+ *
+ * @see {@link module:src/utils/Logger}
+ */
+export {
+  createConsoleLogger,
+  getLogger,
+  setLogger,
+  SILENT_LOGGER,
+} from "./src/utils/Logger.ts";
+export type { Logger, LogLevel } from "./src/utils/Logger.ts";

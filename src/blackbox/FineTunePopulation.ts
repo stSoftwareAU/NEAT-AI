@@ -9,6 +9,7 @@ import { restoreSource } from "./RestoreSource.ts";
 import type { AdaptiveFineTuneTracker } from "./AdaptiveFineTuneTracker.ts";
 
 import { retry } from "./Retry.ts";
+import { getLogger } from "../utils/Logger.ts";
 
 export class FindTunePopulation {
   private neat: Neat;
@@ -91,7 +92,7 @@ export class FindTunePopulation {
 
     let fineTunedPopulation: Creature[] = [];
     if (!tmpPreviousFittest) {
-      console.warn(
+      getLogger().warn(
         "Failed to find previous fittest creature, all the same score as fittest. Skipping fine tuning.",
       );
     } else {

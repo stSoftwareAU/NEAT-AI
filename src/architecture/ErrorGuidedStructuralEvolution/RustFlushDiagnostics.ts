@@ -12,6 +12,7 @@ import type {
   RustFlushDiagnostics,
   RustFlushMetrics,
 } from "./DiscoverStructureTypes.ts";
+import { getLogger } from "../../utils/Logger.ts";
 
 /**
  * Truncates a string for log output.
@@ -154,19 +155,19 @@ export function observeRustTrainingRecord(
     );
 
     if (errorCount > maxReasonableErrorsPerNeuronPerRecord) {
-      console.error(
+      getLogger().error(
         `❌ CRITICAL: Neuron ${uuid} has ${errorCount} errors in record ${globalSampleIndex}, ` +
           `which exceeds reasonable maximum (${maxReasonableErrorsPerNeuronPerRecord})!`,
       );
-      console.error(
+      getLogger().error(
         `Record ${globalSampleIndex}, Neuron ${neuronIndex}`,
       );
-      console.error(
+      getLogger().error(
         `Outputs: ${outputCount} (expected ≤${
           outputCount * 2
         } errors per neuron per sample)`,
       );
-      console.error(`Errors array sample (first 10):`, errors.slice(0, 10));
+      getLogger().error(`Errors array sample (first 10):`, errors.slice(0, 10));
       throw new Error(
         `Data corruption detected: neuron ${uuid} has ${errorCount} errors in a single record, ` +
           `which far exceeds reasonable maximum (${maxReasonableErrorsPerNeuronPerRecord}). ` +
@@ -177,7 +178,7 @@ export function observeRustTrainingRecord(
     // LOG WARNING: Log if we're seeing unusually high error counts per sample
     const warningThreshold = Math.max(5, Math.ceil(outputCount * 1.5));
     if (errorCount > warningThreshold) {
-      console.warn(
+      getLogger().warn(
         `⚠️  Record ${globalSampleIndex}: Neuron ${uuid} has ${errorCount} errors ` +
           `(expected ≤${warningThreshold} for ${outputCount} outputs). ` +
           `During backprop, record() should be called once per output. Multiple calls suggest a logic error.`,

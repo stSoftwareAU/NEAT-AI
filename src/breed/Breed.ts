@@ -6,6 +6,7 @@ import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
 import type { Genus } from "../NEAT/Genus.ts";
 import { FitnessRanking } from "./FitnessRanking.ts";
 import { findFather, selectParent } from "./ParentSelection.ts";
+import { getLogger } from "../utils/Logger.ts";
 
 /**
  * Handles breeding operations between creatures in a NEAT population.
@@ -72,7 +73,7 @@ export class Breed {
 
     const dad = findFather(mum, this.genus, config);
     if (!dad) {
-      console.warn(
+      getLogger().warn(
         "No father found",
       );
 

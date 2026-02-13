@@ -5,6 +5,7 @@ import type {
 } from "./WorkerHandler.ts";
 
 import { WorkerProcessor } from "./WorkerProcessor.ts";
+import { getLogger } from "../../utils/Logger.ts";
 
 export class MockWorker implements WorkerInterface {
   private callBack: EventListener | null = null;
@@ -27,7 +28,7 @@ export class MockWorker implements WorkerInterface {
         this.callBack(me);
       }
     }).catch((error) => {
-      console.error("MockWorker processing error:", error);
+      getLogger().error("MockWorker processing error:", error);
       // Create a proper error response with operation-specific error field
       const errorResponse: ResponseData = {
         taskID: data.taskID,

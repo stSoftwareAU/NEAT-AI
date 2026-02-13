@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import type { CachedScoreComponents, Creature } from "../Creature.ts";
 import { SEMANTIC_MAJOR_VERSION } from "../upgrade/Upgrade.ts";
+import { getLogger } from "../utils/Logger.ts";
 
 /**
  * Calculates the fitness score for a creature based on its error and complexity.
@@ -169,11 +170,11 @@ function computeAndCacheScoreComponents(
 
   // Handle overflow protection
   if (maxWeightBias > Number.MAX_SAFE_INTEGER) {
-    console.log("Max is too large", maxWeightBias);
+    getLogger().info("Max is too large", maxWeightBias);
     maxWeightBias = Number.MAX_SAFE_INTEGER;
   }
   if (totalWeightBias > Number.MAX_SAFE_INTEGER) {
-    console.log("Total is too large", totalWeightBias);
+    getLogger().info("Total is too large", totalWeightBias);
     totalWeightBias = Number.MAX_SAFE_INTEGER;
   }
 

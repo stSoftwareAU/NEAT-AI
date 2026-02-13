@@ -7,6 +7,7 @@ import {
   getMajorVersion,
   upgradeSemanticVersionIfForwardOnlyConfirmed,
 } from "../upgrade/Upgrade.ts";
+import { getLogger } from "../utils/Logger.ts";
 
 /**
  * Interface representing the structure of the CRISPR modification data.
@@ -471,7 +472,7 @@ export class CRISPR {
         JSON.stringify(modifiedCreature.exportJSON(), null, 1),
       );
 
-      console.warn(`Invalid creature saved to ${name}`, e);
+      getLogger().warn(`Invalid creature saved to ${name}`, e);
       return this.creature;
     }
 

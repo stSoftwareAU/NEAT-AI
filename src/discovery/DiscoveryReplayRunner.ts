@@ -1,4 +1,5 @@
 import { assertExists } from "@std/assert";
+import { getLogger } from "../utils/Logger.ts";
 import type { CostName } from "../Costs.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
@@ -717,7 +718,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
               // Ignore termination errors.
             }
             if (!preferDirect) {
-              console.warn(
+              getLogger().warn(
                 "[DiscoveryReplayRunner] Worker init failed; falling back to direct execution for this worker slot.",
                 err,
               );

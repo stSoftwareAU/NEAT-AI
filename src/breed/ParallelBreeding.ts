@@ -6,6 +6,7 @@ import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import type { Genus } from "../NEAT/Genus.ts";
 import { FitnessRanking } from "./FitnessRanking.ts";
 import { findFather, selectParent } from "./ParentSelection.ts";
+import { getLogger } from "../utils/Logger.ts";
 
 /**
  * Represents a parent pair for breeding.
@@ -168,7 +169,7 @@ export class ParallelBreeding {
           results[currentIndex] = undefined;
         }
       } catch (error) {
-        console.warn(
+        getLogger().warn(
           `[ParallelBreeding] Worker breeding failed: ${
             error instanceof Error ? error.message : String(error)
           }`,
@@ -247,7 +248,7 @@ export class ParallelBreeding {
 
           resolve(child);
         } catch (error) {
-          console.warn(
+          getLogger().warn(
             `[ParallelBreeding] Breeding failed: ${
               error instanceof Error ? error.message : String(error)
             }`,

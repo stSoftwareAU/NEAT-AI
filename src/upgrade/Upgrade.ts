@@ -1,6 +1,7 @@
 import { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { writeDiagnostics } from "../utils/Diagnostics.ts";
+import { getLogger } from "../utils/Logger.ts";
 import { upgradeTwo } from "./UpgradeTwo.ts";
 
 /**
@@ -58,7 +59,7 @@ function validateThreeX(creature: Creature): void {
     // This should never happen - 3.x creatures should have been validated.
     // Log the error but don't modify the creature - offspring validation will
     // handle any issues during breeding.
-    console.error(
+    getLogger().error(
       `[upgrade] Version 3.x creature has invalid recurrent connections. ` +
         `This indicates a data integrity issue. UUID: ${creature.uuid}, Error: ${
           error instanceof Error ? error.message : error
@@ -92,7 +93,7 @@ function validateFourX(creature: Creature): void {
     if (
       error.name === "SELF_CONNECTION" || error.name === "RECURSIVE_SYNAPSE"
     ) {
-      console.warn(
+      getLogger().warn(
         `[upgrade] WARNING: 4.x creature (UUID: ${
           creature.uuid ?? "unknown"
         }) failed forward-only validation: ` +
@@ -119,7 +120,7 @@ function validateFourX(creature: Creature): void {
         creatureValidate(creature, { forwardOnly: true });
         creature.forwardOnly = true;
 
-        console.warn(
+        getLogger().warn(
           `[upgrade] Successfully repaired 4.x creature (UUID: ${
             creature.uuid ?? "unknown"
           }). ` +
@@ -128,7 +129,7 @@ function validateFourX(creature: Creature): void {
         return;
       } catch (fixError) {
         // Repair failed - fall through to throw the original error.
-        console.error(
+        getLogger().error(
           `[upgrade] CRITICAL: Failed to repair 4.x creature (UUID: ${
             creature.uuid ?? "unknown"
           }). ` +
@@ -141,7 +142,7 @@ function validateFourX(creature: Creature): void {
 
     // 4.x forward-only is a hard invariant. Any failure that cannot be repaired
     // indicates a serious bug that must be investigated.
-    console.error(
+    getLogger().error(
       `[upgrade] CRITICAL: 4.x creature (UUID: ${
         creature.uuid ?? "unknown"
       }) failed forward-only validation: ` +
@@ -196,7 +197,7 @@ function tryUpgradeToFour(creature: Creature): Creature {
       } catch (_fixError) {
         // Fall through to clearing the flag below.
       }
-      console.warn(
+      getLogger().warn(
         `[upgrade] Creature claims forwardOnly but failed validation; clearing flag`,
       );
       creature.forwardOnly = undefined;

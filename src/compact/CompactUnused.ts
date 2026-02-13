@@ -2,6 +2,7 @@ import { assert } from "@std/assert";
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { Creature, type CreatureTrace, CreatureUtil } from "../../mod.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import { getLogger } from "../utils/Logger.ts";
 import type { NeuronTrace } from "../architecture/NeuronInterfaces.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
@@ -88,7 +89,7 @@ export function compactUnused(
         creatureValidate(compacted);
       } catch (e) {
         const errorMsg = (e as Error).message;
-        console.warn("compactUnused", errorMsg);
+        getLogger().warn("compactUnused", errorMsg);
         compacted.fix();
       }
     }
@@ -153,7 +154,7 @@ export function removeNeuron(
     for (const synapse of fromList) {
       const connection = creature.getSynapse(constantNeuron.index, synapse.to);
       if (connection) {
-        console.info(
+        getLogger().info(
           `compactUnused: ${neuron.uuid} already connected to ${constantNeuron.uuid}`,
         );
         if (!synapse.type || !connection.type) {
@@ -165,13 +166,13 @@ export function removeNeuron(
               synapse.type = connection.type;
             }
           } else {
-            console.warn(
+            getLogger().warn(
               `compactUnused: ${neuron.uuid} already connected to ${constantNeuron.uuid} with weight ${connection.weight} required ${synapse.weight}`,
             );
             return false;
           }
         } else {
-          console.warn(
+          getLogger().warn(
             `compactUnused: ${neuron.uuid} already connected to ${constantNeuron.uuid} with type ${connection.type} required ${connection.type}`,
           );
           return false;
@@ -185,7 +186,7 @@ export function removeNeuron(
         synapse.to,
       );
       if (connection) {
-        console.info(
+        getLogger().info(
           `compactUnused: ${neuron.uuid} already connected to ${constantNeuron.uuid}`,
         );
         if (synapse.type) {

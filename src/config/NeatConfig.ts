@@ -40,6 +40,11 @@ import {
   DEFAULT_WEIGHT_REGULARISATION_CONFIG,
   type RequiredWeightRegularisationConfig,
 } from "./WeightRegularisationConfig.ts";
+import {
+  createConsoleLogger,
+  type Logger,
+  setLogger,
+} from "../utils/Logger.ts";
 
 /**
  * Default cost of growth value used when not specified in options.
@@ -815,7 +820,15 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
         ),
       } as RequiredFineTunePopulationConfig;
     })(),
+    // Issue #1398: Structured logging configuration
+    logger: (() => {
+      if (options.logger) return options.logger;
+      return createConsoleLogger(options.logLevel ?? "info");
+    })() as Logger,
   };
+
+  // Issue #1398: Set the global logger so code without config access can use it
+  setLogger(config.logger);
 
   // Cross-field validation for quantum step config
   if (config.quantumStep.maxStep < config.quantumStep.minStep) {

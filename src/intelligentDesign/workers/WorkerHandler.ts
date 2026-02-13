@@ -12,6 +12,7 @@ import type { Creature } from "../../Creature.ts";
 import type { NeatOptions } from "../../config/NeatOptions.ts";
 import type { ResponseData } from "./ResponseData.ts";
 import { MockWorker } from "./MockWorker.ts";
+import { getLogger } from "../../utils/Logger.ts";
 
 export interface WasmActivationInitPayload {
   /**
@@ -198,14 +199,14 @@ export class WorkerHandler {
         ].filter(Boolean).join(" | ");
         const err = new Error(msg, { cause: ev.error });
         captureInitError(err);
-        console.error(msg, ev.error ?? ev);
+        getLogger().error(msg, ev.error ?? ev);
       });
       this.worker.addEventListener("messageerror", (e) => {
         const msg =
           `ID worker messageerror event during init (workerID=${this.workerID}) | script=${workerUrl}`;
         const err = new Error(msg, { cause: e });
         captureInitError(err);
-        console.error(msg, e);
+        getLogger().error(msg, e);
       });
     }
 

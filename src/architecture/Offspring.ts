@@ -10,6 +10,7 @@ import {
   upgradeSemanticVersionIfForwardOnlyConfirmed,
 } from "../upgrade/Upgrade.ts";
 import { writeDiagnostics } from "../utils/Diagnostics.ts";
+import { getLogger } from "../utils/Logger.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { Neuron } from "./Neuron.ts";
@@ -372,7 +373,7 @@ export class Offspring {
           // feedback/memory mode here, it's a misuse of the API. We override it to
           // keep invariants stable and avoid producing a "4.x but not forwardOnly"
           // creature that later fails upgrade/validation.
-          console.warn(
+          getLogger().warn(
             `[Offspring] feedbackLoop/memory mode requested but both parents are 4.x; forcing forwardOnly child`,
           );
         }
@@ -409,7 +410,7 @@ export class Offspring {
             }
 
             // If either parent is 2.x, fixing is expected and OK
-            console.warn(
+            getLogger().warn(
               `[Offspring] Forward-only violation after breed() with 2.x parent. ` +
                 `Fixing offspring. Error=${error.name}: ${error.message}. ` +
                 `Violations(sample up to 10): ${violations.join(" | ")}`,
@@ -441,7 +442,7 @@ export class Offspring {
           offspring.validate();
           return offspring;
         default:
-          console.error(e);
+          getLogger().error(e);
           offspring.DEBUG = false;
           writeDiagnostics({
             error,

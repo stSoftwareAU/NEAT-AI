@@ -1,3 +1,4 @@
+import type { Logger, LogLevel } from "../utils/Logger.ts";
 import type { AdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { EnsembleDiversityConfig } from "./EnsembleDiversityConfig.ts";
@@ -74,6 +75,7 @@ export type NeatOptions =
     | "ensembleDiversity"
     | "quantumStep"
     | "fineTunePopulation"
+    | "logger"
   >
   & {
     /** Partial overrides for minimum candidates per category (defaults applied if not specified) */
@@ -94,6 +96,17 @@ export type NeatOptions =
     quantumStep?: QuantumStepConfig;
     /** Partial overrides for fine-tune population configuration (defaults applied if not specified) */
     fineTunePopulation?: FineTunePopulationConfig;
+    /**
+     * Custom logger instance. When provided, all NEAT-AI log output is
+     * routed through this logger instead of the default console logger.
+     */
+    logger?: Logger;
+    /**
+     * Log level filter when using the default console logger.
+     * Ignored when a custom `logger` is provided.
+     * Default: "info"
+     */
+    logLevel?: LogLevel;
   };
 
 /**
@@ -126,6 +139,8 @@ export type NeatOptionsInput =
     | "ensembleDiversity"
     | "quantumStep"
     | "fineTunePopulation"
+    | "logger"
+    | "logLevel"
   >
   & {
     [K in NumericOptionKeys]?: NonNullable<NeatOptions[K]> extends number
@@ -144,4 +159,8 @@ export type NeatOptionsInput =
     ensembleDiversity?: CoerceNumeric<EnsembleDiversityConfig>;
     quantumStep?: CoerceNumeric<QuantumStepConfig>;
     fineTunePopulation?: CoerceNumeric<FineTunePopulationConfig>;
+    /** Custom logger instance (not coerced — functions cannot come from CLI). */
+    logger?: Logger;
+    /** Log level filter for the default console logger. */
+    logLevel?: LogLevel;
   };

@@ -1,6 +1,7 @@
 import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
+import { getLogger } from "../utils/Logger.ts";
 
 export class SubBackCon extends AbstractMutationOperator {
   protected performMutation(focusList?: number[]): boolean {
@@ -40,20 +41,20 @@ export class SubBackCon extends AbstractMutationOperator {
       if (toNeuron.type === "hidden") {
         const outwardList = this.creature.outwardConnections(pair[1]);
         if (outwardList.length === 0) {
-          console.info(
+          getLogger().info(
             `Remove neuron ${toNeuron.uuid} as completely disconnected`,
           );
           removeHiddenNeuron(this.creature, pair[1]);
           toNeuronRemoved = true;
         } else {
-          console.info(
+          getLogger().info(
             `Convert neuron ${toNeuron.uuid} from ${toNeuron.type} to constant`,
           );
           const squash = toNeuron.findSquash();
           const activation = squash as ActivationInterface;
           if (activation.squash) {
             const constantBias = activation.squash(toNeuron.bias);
-            console.info(
+            getLogger().info(
               `Adjust neuron ${toNeuron.uuid} bias ${toNeuron.bias} to ${constantBias}`,
             );
             toNeuron.bias = constantBias;
@@ -74,7 +75,7 @@ export class SubBackCon extends AbstractMutationOperator {
     if (fromOutwardList.length === 0) {
       const fromNeuron = this.creature.neurons[fromIndex];
       if (fromNeuron.type === "hidden" || fromNeuron.type === "constant") {
-        console.info(
+        getLogger().info(
           `Remove neuron ${fromNeuron.uuid} as no longer connected`,
         );
         removeHiddenNeuron(this.creature, fromIndex);

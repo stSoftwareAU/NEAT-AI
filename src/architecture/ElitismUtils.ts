@@ -1,8 +1,9 @@
 import { assert } from "@std/assert";
 import { blue, bold, green, red, white, yellow } from "@std/fmt/colors";
+import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
-import { addTag, getTag } from "@stsoftware/tags/mod";
+import { getLogger } from "../utils/Logger.ts";
 
 interface ElitistsResults {
   elitists: Creature[];
@@ -86,7 +87,7 @@ export function logVerbose(creatures: Creature[]): number {
       if (trainVariant) {
         trainMsg += `, Variant: ${trainVariant}`;
       }
-      console.info(trainMsg);
+      getLogger().info(trainMsg);
       addTag(creature, "trainMsg", trainMsg);
     }
     const sourceUUID = getTag(creature, "CRISPR-SOURCE");
@@ -101,7 +102,7 @@ export function logVerbose(creatures: Creature[]): number {
           Number.parseFloat(error);
         const dnaID = getTag(creature, "CRISPR-DNA");
 
-        console.info(
+        getLogger().info(
           `CRISPR ${blue(dnaID ?? "unknown")} Score: ${
             yellow(score.toString())
           }, Error: ${yellow(sourceError)} -> ${yellow(error)}` + (diff > 0

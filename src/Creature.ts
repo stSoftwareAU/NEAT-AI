@@ -69,6 +69,7 @@ import {
   evictOldestWasmCreatureActivations,
   noteWasmCreatureActivationUse,
 } from "./wasm/WasmCreatureActivationLRU.ts";
+import { getLogger } from "./utils/Logger.ts";
 
 interface CreatureOptions {
   semanticVersion?: string;
@@ -1743,19 +1744,19 @@ export class Creature implements CreatureInternal {
     // Expected: approximately neurons.length * output (one error per neuron per output)
     const expectedMax = neurons.length * this.output * 3;
     if (totalErrors > expectedMax) {
-      console.error(
+      getLogger().error(
         `❌ CRITICAL: Sample generated ${totalErrors} total errors (expected ≤${expectedMax})`,
       );
-      console.error(
+      getLogger().error(
         `   Neurons: ${neurons.length}, Outputs: ${this.output}, ErrorMap size: ${errorMap.size}`,
       );
       // Log top 5 neurons with most errors
       const sorted = Array.from(errorMap.entries())
         .sort((a, b) => b[1].errors.length - a[1].errors.length)
         .slice(0, 5);
-      console.error(`   Top 5 neurons by error count:`);
+      getLogger().error(`   Top 5 neurons by error count:`);
       sorted.forEach(([uuid, rec]) => {
-        console.error(`     - ${uuid}: ${rec.errors.length} errors`);
+        getLogger().error(`     - ${uuid}: ${rec.errors.length} errors`);
       });
 
       if (totalErrors > expectedMax * 10) {
@@ -1809,7 +1810,7 @@ export class Creature implements CreatureInternal {
   > {
     let interrupted = false;
     const signalListener = () => {
-      console.log("SIGTERM received, saving progress...");
+      getLogger().info("SIGTERM received, saving progress...");
       interrupted = true;
     };
 
@@ -1848,7 +1849,7 @@ export class Creature implements CreatureInternal {
           // Ignore termination errors.
         }
         if (!preferDirect) {
-          console.warn(
+          getLogger().warn(
             "[Creature.evolveDir] Worker init failed; falling back to direct execution for this worker slot.",
             err,
           );
@@ -1932,7 +1933,7 @@ export class Creature implements CreatureInternal {
         if (Number.isFinite(result.averageScore)) {
           avgTxt = `(avg: ${yellow(result.averageScore.toFixed(4))})`;
         }
-        console.log(
+        getLogger().info(
           "Generation",
           generation,
           "score",
@@ -2373,7 +2374,7 @@ export class Creature implements CreatureInternal {
       if (Number.isFinite(averageError)) {
         return { error: averageError };
       } else {
-        console.warn(
+        getLogger().warn(
           `AverageError: ${averageError} is not finite, Error: ${error}, Count: ${count}`,
         );
         return { error: Number.MAX_SAFE_INTEGER };
@@ -2588,11 +2589,11 @@ export class Creature implements CreatureInternal {
       }
 
       if (synapse.to > maxTo) {
-        console.debug("Ignoring connection to above max", maxTo, synapse);
+        getLogger().debug("Ignoring connection to above max", maxTo, synapse);
         return;
       }
       if (synapse.to < minTo) {
-        console.debug("Ignoring connection to below min", minTo, synapse);
+        getLogger().debug("Ignoring connection to below min", minTo, synapse);
         return;
       }
 
@@ -2661,7 +2662,7 @@ export class Creature implements CreatureInternal {
           this.outwardConnections(pos).length === 0
         ) {
           if (this.DEBUG) {
-            console.debug(
+            getLogger().debug(
               `fix() removing disconnected neuron ${pos} ${
                 this.neurons[pos].uuid
               }`,
@@ -2676,7 +2677,7 @@ export class Creature implements CreatureInternal {
 
     for (let i = 1; i < this.synapses.length; i++) {
       if (this.synapses[i - 1].from > this.synapses[i].from) {
-        console.error(
+        getLogger().error(
           "Synapses not sorted",
           this.synapses[i - 1],
           this.synapses[i],

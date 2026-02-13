@@ -5,6 +5,7 @@ import {
   DiscoveryReplayRunner,
 } from "../discovery/DiscoveryReplayRunner.ts";
 import { createNeatConfig } from "../config/NeatConfig.ts";
+import { getLogger } from "../utils/Logger.ts";
 
 // Re-export for use by Neat.ts (Issue #1150)
 export type { DiscoveryReplayDirResult };
@@ -185,7 +186,7 @@ export class DiscoveryReplayQueue {
         this.#completedResults.push(result);
       })
       .catch((error) => {
-        console.error("[DiscoveryReplayQueue] Replay failed:", error);
+        getLogger().error("[DiscoveryReplayQueue] Replay failed:", error);
       })
       .finally(() => {
         this.#replayInProgress = false;
