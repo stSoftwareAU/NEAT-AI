@@ -3,7 +3,7 @@ import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
 import { getTag, type TagInterface } from "@stsoftware/tags/mod";
-import "./globals.d.ts";
+import { getGlobalDebug } from "./globalAccessors.ts";
 import type {
   CreatureExport,
   CreatureInternal,
@@ -265,7 +265,7 @@ export class Creature implements CreatureInternal {
    * Debug mode flag.
    * @type {boolean}
    */
-  DEBUG: boolean = globalThis.DEBUG ?? false;
+  DEBUG: boolean = getGlobalDebug();
 
   /**
    * Constructs a new Creature instance.

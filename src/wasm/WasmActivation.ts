@@ -10,6 +10,7 @@
 
 import type { Creature } from "../Creature.ts";
 import { WasmError } from "../errors/WasmError.ts";
+import { getSkipWasmAutoInit } from "../globalAccessors.ts";
 import { getLogger } from "../utils/Logger.ts";
 import {
   compileCreatureToWasm,
@@ -1274,10 +1275,8 @@ try {
   // we intentionally avoid auto-init at module-evaluation time in that worker,
   // to prevent duplicate loads and reduce worker start flakiness. Internal
   // worker entrypoints set a global flag before importing NEAT-AI modules.
-  // deno-lint-ignore no-explicit-any
-  const g: any = globalThis;
   const shouldAutoInit = !isWasmActivationAvailable() &&
-    g.__NEAT_AI_SKIP_WASM_AUTO_INIT !== true;
+    !getSkipWasmAutoInit();
 
   if (shouldAutoInit) {
     await initWasmActivation();

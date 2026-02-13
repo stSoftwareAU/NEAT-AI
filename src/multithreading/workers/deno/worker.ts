@@ -1,10 +1,10 @@
 import type { RequestData, ResponseData } from "../WorkerHandler.ts";
-import "../../../globals.d.ts";
+import { setSkipWasmAutoInit } from "../../../globalAccessors.ts";
 
 // Issue #1263: WASM activation is mandatory. For the library's internal worker
 // system, workers receive the WASM payload from the parent during init, so we
 // skip module-evaluation auto-init to reduce worker start flakiness.
-globalThis.__NEAT_AI_SKIP_WASM_AUTO_INIT = true;
+setSkipWasmAutoInit(true);
 
 const { WorkerProcessor } = await import("../WorkerProcessor.ts");
 const { getLogger } = await import("../../../utils/Logger.ts");
