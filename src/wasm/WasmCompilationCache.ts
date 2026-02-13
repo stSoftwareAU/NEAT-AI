@@ -24,10 +24,8 @@ import type { Creature } from "../Creature.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import { getSquashType } from "./SquashType.ts";
 import type { CompiledCreatureData } from "./CompileToWasm.ts";
-import {
-  isWasmActivationAvailable,
-  WasmCreatureActivation,
-} from "./WasmActivation.ts";
+import { WasmCreatureActivation } from "./WasmActivation.ts";
+import { isWasmActivationAvailable } from "./WasmModuleLoader.ts";
 
 /**
  * Synapse type enum for WASM - must match Rust SynapseType

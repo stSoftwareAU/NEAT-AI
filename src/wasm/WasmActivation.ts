@@ -1,29 +1,30 @@
 /**
- * WASM Activation module for NEAT-AI
+ * WASM Creature Activation
  *
  * Issue #1116 - WASM prototype for creature activation
+ * Issue #1405 - Refactored: module loading moved to WasmModuleLoader.ts,
+ *   standalone functions moved to WasmStandaloneFunctions.ts,
+ *   auto-init moved to WasmAutoInit.ts.
  *
- * This module provides a WASM-based implementation of creature activation
- * that can be compared against the existing JS-based activation for
- * performance benchmarking.
+ * This module contains the WasmCreatureActivation class (the compiled network
+ * wrapper) and associated trace types. It delegates to function pointers
+ * obtained from WasmModuleLoader.
  */
 
 import type { Creature } from "../Creature.ts";
 import { WasmError } from "../errors/WasmError.ts";
-import { getSkipWasmAutoInit } from "../globalAccessors.ts";
 import { getLogger } from "../utils/Logger.ts";
+import { compileCreatureToWasm } from "./CompileToWasm.ts";
 import {
-  compileCreatureToWasm,
-  type CompiledCreatureData,
-} from "./CompileToWasm.ts";
-
-// Import types from the generated WASM bindings
-// The actual module is loaded dynamically to handle the async initialization
-
-// deno-lint-ignore no-explicit-any
-type WasmModule = any;
-// deno-lint-ignore no-explicit-any
-type CompiledNetworkClass = any;
+  getCompiledNetworkClass,
+  getCrossEntropySumBatchPackedFn,
+  getHingeSumBatchPackedFn,
+  getMaeSumBatchPackedFn,
+  getMapeSumBatchPackedFn,
+  getMseSumBatchPackedFn,
+  getMsleSumBatchPackedFn,
+} from "./WasmModuleLoader.ts";
+import type { CompiledCreatureData } from "./CompileToWasm.ts";
 
 /**
  * Trace entry from WASM activation
@@ -59,265 +60,6 @@ export interface WasmTraceResult {
   traceEntries: WasmTraceEntry[];
 }
 
-// WASM module state
-let wasmModule: WasmModule | null = null;
-let CompiledNetwork: CompiledNetworkClass | null = null;
-// Guard against concurrent initialisation (common under `deno test --parallel`)
-let initPromise: Promise<boolean> | null = null;
-let squashFn: ((squashType: number, value: number) => number) | null = null;
-let derivativeFn: ((squashType: number, value: number) => number) | null = null;
-let unsquashFn:
-  | ((squashType: number, activation: number, hint: number) => number)
-  | null = null;
-let safeZoneAdjustmentFn:
-  | ((
-    squashType: number,
-    rawInput: number,
-    error: number,
-    weight: number,
-  ) => number)
-  | null = null;
-// Issue #1376 - Batch safe zone adjustment to eliminate per-synapse boundary crossings
-let safeZoneAdjustmentBatchFn:
-  | ((
-    squashTypes: Uint8Array,
-    rawInputs: Float32Array,
-    error: number,
-    weights: Float32Array,
-  ) => Float32Array)
-  | null = null;
-let calculateErrorFn:
-  | ((
-    squashType: number,
-    currentActivation: number,
-    targetActivation: number,
-    currentValue: number,
-  ) => number)
-  | null = null;
-let mseSumBatchPackedFn:
-  | ((
-    network: unknown,
-    records: Float32Array,
-    inputSize: number,
-    numOutputs: number,
-    forwardOnly: boolean,
-  ) => number)
-  | null = null;
-let maeSumBatchPackedFn:
-  | ((
-    network: unknown,
-    records: Float32Array,
-    inputSize: number,
-    numOutputs: number,
-    forwardOnly: boolean,
-  ) => number)
-  | null = null;
-let crossEntropySumBatchPackedFn:
-  | ((
-    network: unknown,
-    records: Float32Array,
-    inputSize: number,
-    numOutputs: number,
-    forwardOnly: boolean,
-  ) => number)
-  | null = null;
-let mapeSumBatchPackedFn:
-  | ((
-    network: unknown,
-    records: Float32Array,
-    inputSize: number,
-    numOutputs: number,
-    forwardOnly: boolean,
-  ) => number)
-  | null = null;
-let msleSumBatchPackedFn:
-  | ((
-    network: unknown,
-    records: Float32Array,
-    inputSize: number,
-    numOutputs: number,
-    forwardOnly: boolean,
-  ) => number)
-  | null = null;
-let hingeSumBatchPackedFn:
-  | ((
-    network: unknown,
-    records: Float32Array,
-    inputSize: number,
-    numOutputs: number,
-    forwardOnly: boolean,
-  ) => number)
-  | null = null;
-// Issue #1377 - Fused backward pass error distribution
-let fusedErrorDistributionFn:
-  | ((
-    neuronSquashType: number,
-    neuronActivation: number,
-    neuronTargetActivation: number,
-    neuronHintValue: number,
-    upstreamSquashTypes: Uint8Array,
-    upstreamHintValues: Float32Array,
-    upstreamActivations: Float32Array,
-    synapseWeights: Float32Array,
-  ) => Float32Array)
-  | null = null;
-let getRangeFn: ((squashType: number) => Float32Array) | null = null;
-let validateRangeFn:
-  | ((squashType: number, activation: number) => boolean)
-  | null = null;
-let limitRangeFn: ((squashType: number, value: number) => number) | null = null;
-let versionFn: (() => string) | null = null;
-
-/**
- * Load and initialise the WASM module. Internal implementation detail (Issue #1256).
- * Callers do not call this; the library initialises the backend automatically.
- */
-export async function initWasmActivation(): Promise<boolean> {
-  if (wasmModule !== null) {
-    return true; // Already initialised
-  }
-
-  // If an init is already in flight, await it.
-  if (initPromise) {
-    return await initPromise;
-  }
-
-  initPromise = (async () => {
-    try {
-      // Canonical location: always resolve from this module's import.meta.url.
-      // This works for both local `file:` and published `https:` (JSR) contexts.
-      const modulePath =
-        new URL("../../wasm_activation/pkg/wasm_activation.js", import.meta.url)
-          .href;
-      const module = await import(modulePath);
-
-      // Initialize the WASM module
-      // The default export is the init function
-      await module.default();
-
-      // Store references to the exports
-      wasmModule = module;
-      CompiledNetwork = module.CompiledNetwork;
-      squashFn = module.squash;
-      derivativeFn = module.derivative;
-      unsquashFn = module.unsquash;
-      safeZoneAdjustmentFn = module.safe_zone_adjustment;
-      safeZoneAdjustmentBatchFn = module.safe_zone_adjustment_batch;
-      calculateErrorFn = module.calculate_error;
-      fusedErrorDistributionFn = module.fused_error_distribution;
-      mseSumBatchPackedFn = module.mse_sum_batch_packed;
-      maeSumBatchPackedFn = module.mae_sum_batch_packed;
-      crossEntropySumBatchPackedFn = module.cross_entropy_sum_batch_packed;
-      mapeSumBatchPackedFn = module.mape_sum_batch_packed;
-      msleSumBatchPackedFn = module.msle_sum_batch_packed;
-      hingeSumBatchPackedFn = module.hinge_sum_batch_packed;
-      getRangeFn = module.get_range;
-      validateRangeFn = module.validate_range;
-      limitRangeFn = module.limit_range;
-      versionFn = module.version;
-
-      return true;
-    } catch (error) {
-      const code = (error as { code?: string })?.code;
-      const msg = (error as Error)?.message ?? String(error);
-      const isNotFound = code === "ERR_MODULE_NOT_FOUND" ||
-        /module not found/i.test(msg);
-      if (isNotFound) {
-        getLogger().warn(
-          "WASM activation: pkg not found at the canonical package location.",
-        );
-      } else {
-        getLogger().error(
-          "Failed to initialise WASM activation module:",
-          error,
-        );
-      }
-      return false;
-    } finally {
-      // If init succeeded, wasmModule is set and future calls will fast-path.
-      // If init failed, allow retries in a future call.
-      initPromise = null;
-    }
-  })();
-
-  return await initPromise;
-}
-
-/**
- * Load and initialise the WASM module synchronously from binary data. Internal implementation detail (Issue #1256).
- *
- * @param jsBindings - The JS bindings module
- * @param wasmBinary - The WASM binary data
- */
-export function initWasmActivationSync(
-  jsBindings: WasmModule,
-  wasmBinary: Uint8Array,
-): boolean {
-  if (wasmModule !== null) {
-    return true; // Already initialised
-  }
-
-  // Sync init should not run concurrently with async init; if async is in-flight,
-  // fail fast to avoid re-entrancy into wasm-bindgen initialisation.
-  if (initPromise) {
-    getLogger().error(
-      "Failed to initialise WASM activation module sync: async init in progress",
-    );
-    return false;
-  }
-
-  try {
-    // Initialize synchronously.
-    //
-    // wasm-bindgen recently changed the signature to prefer a single options object:
-    //   initSync({ module: <bytes|WebAssembly.Module> })
-    // Passing raw bytes triggers a deprecation warning in newer generated glue.
-    //
-    // We support both shapes for compatibility with older generated bindings.
-    try {
-      jsBindings.initSync({ module: wasmBinary });
-    } catch {
-      jsBindings.initSync(wasmBinary);
-    }
-
-    // Store references to the exports
-    wasmModule = jsBindings;
-    CompiledNetwork = jsBindings.CompiledNetwork;
-    squashFn = jsBindings.squash;
-    derivativeFn = jsBindings.derivative;
-    unsquashFn = jsBindings.unsquash;
-    safeZoneAdjustmentFn = jsBindings.safe_zone_adjustment;
-    safeZoneAdjustmentBatchFn = jsBindings.safe_zone_adjustment_batch;
-    calculateErrorFn = jsBindings.calculate_error;
-    fusedErrorDistributionFn = jsBindings.fused_error_distribution;
-    mseSumBatchPackedFn = jsBindings.mse_sum_batch_packed;
-    maeSumBatchPackedFn = jsBindings.mae_sum_batch_packed;
-    crossEntropySumBatchPackedFn = jsBindings.cross_entropy_sum_batch_packed;
-    mapeSumBatchPackedFn = jsBindings.mape_sum_batch_packed;
-    msleSumBatchPackedFn = jsBindings.msle_sum_batch_packed;
-    hingeSumBatchPackedFn = jsBindings.hinge_sum_batch_packed;
-    getRangeFn = jsBindings.get_range;
-    validateRangeFn = jsBindings.validate_range;
-    limitRangeFn = jsBindings.limit_range;
-    versionFn = jsBindings.version;
-
-    return true;
-  } catch (error) {
-    getLogger().error(
-      "Failed to initialise WASM activation module sync:",
-      error,
-    );
-    return false;
-  }
-}
-
-/**
- * Check if WASM activation is available
- */
-export function isWasmActivationAvailable(): boolean {
-  return wasmModule !== null && CompiledNetwork !== null;
-}
-
 /**
  * WASM-based creature activation wrapper
  *
@@ -330,9 +72,6 @@ export class WasmCreatureActivation {
   private numInputs: number;
   private numOutputs: number;
   private freed = false;
-  // When true, stateless activations must call reset_state() to avoid leaking
-  // stale activations into backward/recurrent edges. For v4+ forward-only creatures
-  // this can safely be disabled for performance.
   private needsResetWhenStateless = true;
 
   // deno-lint-ignore no-explicit-any
@@ -358,15 +97,14 @@ export class WasmCreatureActivation {
    * Create a WASM activation wrapper from a compiled creature
    */
   static create(compiled: CompiledCreatureData): WasmCreatureActivation | null {
+    const CompiledNetwork = getCompiledNetworkClass();
     if (!CompiledNetwork) {
       getLogger().error("WASM module not initialised");
       return null;
     }
 
     try {
-      // Create the CompiledNetwork instance using the wasm-bindgen generated class
       const network = new CompiledNetwork(compiled.data);
-
       return new WasmCreatureActivation(
         network,
         compiled.numInputs,
@@ -387,22 +125,18 @@ export class WasmCreatureActivation {
   }
 
   /**
-   * Activate the network with the given inputs
-   * Returns the output values as a Float32Array
+   * Activate the network with the given inputs.
+   * Returns the output values as a Float32Array.
    */
   activate(input: Float32Array): Float32Array {
     if (this.freed) {
       throw new Error("WasmCreatureActivation has been freed");
     }
-
-    // Ensure input is the right size
     if (input.length !== this.numInputs) {
       throw new Error(
         `Input length ${input.length} does not match expected ${this.numInputs}`,
       );
     }
-
-    // Call WASM activate (returns a fresh Float32Array copy).
     return this.network.activate(input, this.numOutputs);
   }
 
@@ -423,53 +157,35 @@ export class WasmCreatureActivation {
       );
     }
     if (typeof this.network.activate_view !== "function") {
-      // Fallback to safe copy if the export isn't present.
       return this.activate(input);
     }
     return this.network.activate_view(input, this.numOutputs);
   }
 
   /**
-   * Activate the network with the given inputs, writing to a pre-allocated output buffer
-   * Issue #1171 - Avoids per-call Float32Array allocation overhead
-   *
-   * This method writes directly to the caller's output buffer instead of allocating
-   * a new Float32Array on each call. For repeated activations (e.g., scoring millions
-   * of records), this eliminates allocation overhead and GC pressure.
-   *
-   * @param input - The input values
-   * @param output - Pre-allocated output buffer to write results into
+   * Activate the network with the given inputs, writing to a pre-allocated output buffer.
+   * Issue #1171 - Avoids per-call Float32Array allocation overhead.
    */
   activateInto(input: Float32Array, output: Float32Array): void {
     if (this.freed) {
       throw new Error("WasmCreatureActivation has been freed");
     }
-
-    // Ensure input is the right size
     if (input.length !== this.numInputs) {
       throw new Error(
         `Input length ${input.length} does not match expected ${this.numInputs}`,
       );
     }
-
-    // Ensure output buffer is the right size
     if (output.length !== this.numOutputs) {
       throw new Error(
         `Output buffer length ${output.length} does not match expected ${this.numOutputs}`,
       );
     }
-
-    // Call the WASM activate_into method
     this.network.activate_into(input, output);
   }
 
   /**
-   * Activate with pre-allocated buffer and feedback loop control
-   * Issue #1171 - Zero-allocation activation for high-throughput scoring
-   *
-   * @param input - The input values
-   * @param output - Pre-allocated output buffer to write results into
-   * @param feedbackLoop - Whether to preserve state between calls
+   * Activate with pre-allocated buffer and feedback loop control.
+   * Issue #1171 - Zero-allocation activation for high-throughput scoring.
    */
   activateIntoWithFeedback(
     input: Float32Array,
@@ -479,23 +195,17 @@ export class WasmCreatureActivation {
     if (this.freed) {
       throw new Error("WasmCreatureActivation has been freed");
     }
-
     if (
       !feedbackLoop && this.needsResetWhenStateless &&
       typeof this.network.reset_state === "function"
     ) {
       this.network.reset_state();
     }
-
     this.activateInto(input, output);
   }
 
   /**
    * Activate with state-control (stateless vs stateful).
-   *
-   * When `feedbackLoop=false` we must ensure the WASM activation buffer does not
-   * carry state between calls. JS activation resets per-call unless feedbackLoop
-   * is explicitly enabled.
    */
   activateWithState(
     input: Float32Array,
@@ -504,22 +214,17 @@ export class WasmCreatureActivation {
     if (this.freed) {
       throw new Error("WasmCreatureActivation has been freed");
     }
-
     if (
       !feedbackLoop && this.needsResetWhenStateless &&
       typeof this.network.reset_state === "function"
     ) {
       this.network.reset_state();
     }
-
     return this.activate(input);
   }
 
   /**
    * Backwards-compatible alias.
-   *
-   * NOTE: This name is misleading; it actually controls whether internal state
-   * is reset when `feedbackLoop=false`.
    */
   activateWithFeedback(
     input: Float32Array,
@@ -529,51 +234,30 @@ export class WasmCreatureActivation {
   }
 
   /**
-   * Activate the network with tracing support for backpropagation
+   * Activate the network with tracing support for backpropagation.
    * Issue #1121 - WASM Migration Phase 4: activateAndTrace
-   *
-   * Returns the output values and trace data for setting synapse usage flags.
-   * The trace data indicates which synapses were "used" during activation:
-   * - For MINIMUM/MAXIMUM: only the winning synapse is used
-   * - For IF: condition + active branch synapses are used
-   * - For standard squash: all synapses are used (default behaviour)
-   *
-   * @param input - The input values
-   * @returns Object containing outputs, neuron activations (hintValues), and trace data
    */
   activateAndTrace(input: Float32Array): WasmTraceResult {
     if (this.freed) {
       throw new Error("WasmCreatureActivation has been freed");
     }
-
-    // Ensure input is the right size
     if (input.length !== this.numInputs) {
       throw new Error(
         `Input length ${input.length} does not match expected ${this.numInputs}`,
       );
     }
 
-    // Call the WASM activate_and_trace method
     const result = this.network.activate_and_trace(input, this.numOutputs);
-
-    // Parse the result:
-    // - [0..numOutputs): output values
-    // - [numOutputs..numOutputs+numNonInputs): post-squash activations
-    // - [numOutputs+numNonInputs..numOutputs+2*numNonInputs): pre-squash hintValues
-    // - [numOutputs+2*numNonInputs..]: trace data pairs, terminated by -1.0
     const numNonInputs = this.network.num_neurons - this.numInputs;
 
-    // Extract outputs using bulk copy (Issue #1172)
     const outputs = new Float32Array(this.numOutputs);
     outputs.set(result.subarray(0, this.numOutputs));
 
-    // Extract post-squash activations for all non-input neurons using bulk copy
     const activations = new Float32Array(numNonInputs);
     activations.set(
       result.subarray(this.numOutputs, this.numOutputs + numNonInputs),
     );
 
-    // Extract pre-squash values (hintValues) for all non-input neurons using bulk copy
     const hintValues = new Float32Array(numNonInputs);
     hintValues.set(
       result.subarray(
@@ -582,19 +266,11 @@ export class WasmCreatureActivation {
       ),
     );
 
-    // Parse trace data
-    // Format: pairs of (neuron_relative_index, trace_info), terminated by -1.0
-    // - For MINIMUM/MAXIMUM: trace_info is the local synapse index of the winning synapse
-    // - For IF: trace_info is 1.0 for positive branch, 0.0 for negative branch
     const traceEntries: WasmTraceEntry[] = [];
     let offset = this.numOutputs + (numNonInputs * 2);
-
     while (offset < result.length) {
       const neuronRelativeIdx = result[offset];
-      if (neuronRelativeIdx < 0) {
-        // Terminator
-        break;
-      }
+      if (neuronRelativeIdx < 0) break;
       const traceInfo = result[offset + 1];
       traceEntries.push({
         neuronRelativeIndex: Math.round(neuronRelativeIdx),
@@ -603,12 +279,7 @@ export class WasmCreatureActivation {
       offset += 2;
     }
 
-    return {
-      outputs,
-      activations,
-      hintValues,
-      traceEntries,
-    };
+    return { outputs, activations, hintValues, traceEntries };
   }
 
   activateAndTraceWithFeedback(
@@ -618,26 +289,17 @@ export class WasmCreatureActivation {
     if (this.freed) {
       throw new Error("WasmCreatureActivation has been freed");
     }
-
     if (
       !feedbackLoop && this.needsResetWhenStateless &&
       typeof this.network.reset_state === "function"
     ) {
       this.network.reset_state();
     }
-
     return this.activateAndTrace(input);
   }
 
   /**
    * Issue #1212 - Batch activate and trace for 4 records simultaneously.
-   *
-   * Processes 4 input records through the network in a single WASM call,
-   * capturing trace data for backpropagation. Uses SIMD for parallel
-   * weighted sum computation across all 4 records.
-   *
-   * @param inputs - Array of 4 input Float32Arrays, one per record
-   * @returns Array of 4 WasmTraceResult objects, one per record
    */
   activateAndTraceBatch4Way(
     inputs: [Float32Array, Float32Array, Float32Array, Float32Array],
@@ -656,20 +318,17 @@ export class WasmCreatureActivation {
       }
     }
 
-    // Pack 4 inputs into a single contiguous array
     const packedInput = new Float32Array(this.numInputs * 4);
     for (let i = 0; i < 4; i++) {
       packedInput.set(inputs[i], i * this.numInputs);
     }
 
-    // Call the WASM batch method
     const result = this.network.activate_and_trace_batch_4way(
       packedInput,
       this.numInputs,
       this.numOutputs,
     );
 
-    // Parse the result: first 4 values are per-record lengths
     const len0 = result[0] as number;
     const len1 = result[1] as number;
     const len2 = result[2] as number;
@@ -682,7 +341,6 @@ export class WasmCreatureActivation {
 
     const numNonInputs = this.network.num_neurons - this.numInputs;
 
-    // Parse each record using the same format as activateAndTrace
     const parseRecord = (
       data: Float32Array,
       offset: number,
@@ -731,13 +389,6 @@ export class WasmCreatureActivation {
 
   /**
    * Issue #1212 - Batch activate and trace with feedback loop control.
-   *
-   * Processes 4 records simultaneously with optional state reset for
-   * stateless (feedbackLoop=false) networks.
-   *
-   * @param inputs - Array of 4 input Float32Arrays
-   * @param feedbackLoop - Whether to preserve state between calls
-   * @returns Array of 4 WasmTraceResult objects
    */
   activateAndTraceBatch4WayWithFeedback(
     inputs: [Float32Array, Float32Array, Float32Array, Float32Array],
@@ -746,26 +397,17 @@ export class WasmCreatureActivation {
     if (this.freed) {
       throw new Error("WasmCreatureActivation has been freed");
     }
-
     if (
       !feedbackLoop && this.needsResetWhenStateless &&
       typeof this.network.reset_state === "function"
     ) {
       this.network.reset_state();
     }
-
     return this.activateAndTraceBatch4Way(inputs);
   }
 
   /**
    * Compute sum(MSE) across packed [inputs..., targets...] records in WASM.
-   *
-   * Returns the sum of per-record MSE values (divide by record count for average).
-   *
-   * This is intended for scoring workloads where:
-   * - cost is MSE
-   * - feedbackLoop is false (stateless)
-   * - the creature is guaranteed forward-only (so we can skip per-record reset)
    */
   mseSumBatchPacked(
     records: Float32Array,
@@ -775,22 +417,15 @@ export class WasmCreatureActivation {
     if (this.freed) {
       throw new Error("WasmCreatureActivation has been freed");
     }
-    if (!mseSumBatchPackedFn) {
+    const fn = getMseSumBatchPackedFn();
+    if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    return mseSumBatchPackedFn(
-      this.network,
-      records,
-      inputSize,
-      this.numOutputs,
-      forwardOnly,
-    );
+    return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
   }
 
   /**
    * Compute sum(MAE) across packed [inputs..., targets...] records in WASM.
-   *
-   * Returns the sum of per-record MAE values (divide by record count for average).
    */
   maeSumBatchPacked(
     records: Float32Array,
@@ -800,22 +435,15 @@ export class WasmCreatureActivation {
     if (this.freed) {
       throw new Error("WasmCreatureActivation has been freed");
     }
-    if (!maeSumBatchPackedFn) {
+    const fn = getMaeSumBatchPackedFn();
+    if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    return maeSumBatchPackedFn(
-      this.network,
-      records,
-      inputSize,
-      this.numOutputs,
-      forwardOnly,
-    );
+    return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
   }
 
   /**
    * Compute sum(Cross Entropy) across packed [inputs..., targets...] records in WASM.
-   *
-   * Returns the sum of per-record Cross Entropy values (divide by record count for average).
    */
   crossEntropySumBatchPacked(
     records: Float32Array,
@@ -825,22 +453,15 @@ export class WasmCreatureActivation {
     if (this.freed) {
       throw new Error("WasmCreatureActivation has been freed");
     }
-    if (!crossEntropySumBatchPackedFn) {
+    const fn = getCrossEntropySumBatchPackedFn();
+    if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    return crossEntropySumBatchPackedFn(
-      this.network,
-      records,
-      inputSize,
-      this.numOutputs,
-      forwardOnly,
-    );
+    return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
   }
 
   /**
    * Compute sum(MAPE) across packed [inputs..., targets...] records in WASM.
-   *
-   * Returns the sum of per-record MAPE values (divide by record count for average).
    */
   mapeSumBatchPacked(
     records: Float32Array,
@@ -850,23 +471,15 @@ export class WasmCreatureActivation {
     if (this.freed) {
       throw new Error("WasmCreatureActivation has been freed");
     }
-    if (!mapeSumBatchPackedFn) {
+    const fn = getMapeSumBatchPackedFn();
+    if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    return mapeSumBatchPackedFn(
-      this.network,
-      records,
-      inputSize,
-      this.numOutputs,
-      forwardOnly,
-    );
+    return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
   }
 
   /**
    * Compute sum(MSLE) across packed [inputs..., targets...] records in WASM.
-   *
-   * Returns the sum of per-record MSLE values (divide by record count for average).
-   * Note: MSLE does not average per output within each record.
    */
   msleSumBatchPacked(
     records: Float32Array,
@@ -876,23 +489,15 @@ export class WasmCreatureActivation {
     if (this.freed) {
       throw new Error("WasmCreatureActivation has been freed");
     }
-    if (!msleSumBatchPackedFn) {
+    const fn = getMsleSumBatchPackedFn();
+    if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    return msleSumBatchPackedFn(
-      this.network,
-      records,
-      inputSize,
-      this.numOutputs,
-      forwardOnly,
-    );
+    return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
   }
 
   /**
    * Compute sum(Hinge Loss) across packed [inputs..., targets...] records in WASM.
-   *
-   * Returns the sum of per-record Hinge values (divide by record count for average).
-   * Note: Hinge does not average per output within each record.
    */
   hingeSumBatchPacked(
     records: Float32Array,
@@ -902,385 +507,40 @@ export class WasmCreatureActivation {
     if (this.freed) {
       throw new Error("WasmCreatureActivation has been freed");
     }
-    if (!hingeSumBatchPackedFn) {
+    const fn = getHingeSumBatchPackedFn();
+    if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    return hingeSumBatchPackedFn(
-      this.network,
-      records,
-      inputSize,
-      this.numOutputs,
-      forwardOnly,
-    );
+    return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
   }
 
-  /**
-   * Get the number of neurons in the network
-   */
   get neurons(): number {
     if (this.freed) return 0;
     return this.network.num_neurons;
   }
 
-  /**
-   * Get the number of input neurons
-   */
   get inputs(): number {
     return this.numInputs;
   }
 
-  /**
-   * Get the number of output neurons
-   */
   get outputs(): number {
     return this.numOutputs;
   }
 
-  /**
-   * Get the number of synapses
-   */
   get synapses(): number {
     if (this.freed) return 0;
     return this.network.num_synapses;
   }
 
-  /**
-   * Free the WASM resources
-   */
   free(): void {
     if (this.freed) return;
-
     if (this.network) {
       this.network.free();
     }
-
     this.freed = true;
   }
 
-  /**
-   * Dispose method for use with `using` keyword
-   */
   [Symbol.dispose](): void {
     this.free();
   }
-}
-
-/**
- * Standalone squash function test (for verification)
- */
-export function wasmSquash(squashType: number, value: number): number {
-  if (!squashFn) {
-    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
-  }
-  return squashFn(squashType, value);
-}
-
-/**
- * Standalone derivative function
- * Issue #1138 - WASM Migration Phase 6: Implement derivative() in Rust/WASM
- *
- * Computes the derivative of the specified activation function at the given value.
- *
- * @param squashType - The SquashType enum value
- * @param value - The input value at which to compute the derivative
- * @returns The derivative value
- */
-export function wasmDerivative(squashType: number, value: number): number {
-  if (!derivativeFn) {
-    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
-  }
-  return derivativeFn(squashType, value);
-}
-
-/**
- * Standalone unsquash function
- * Issue #1139 - WASM Migration Phase 7: Implement unSquash() in Rust/WASM
- *
- * Computes the inverse of the specified activation function at the given activation value.
- * The unsquash function converts activation-space values back to value-space.
- *
- * For non-invertible functions (like Step, Bipolar) or functions with domain
- * restrictions, the hint parameter guides the inverse when the result is ambiguous.
- *
- * @param squashType - The SquashType enum value
- * @param activation - The squashed activation value to invert
- * @param hint - An optional hint value to guide the inverse for ambiguous cases
- * @returns The unsquashed value
- */
-export function wasmUnSquash(
-  squashType: number,
-  activation: number,
-  hint?: number,
-): number {
-  if (!unsquashFn) {
-    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
-  }
-  // Use NaN as the hint when not provided, WASM will check for is_finite
-  return unsquashFn(squashType, activation, hint ?? Number.NaN);
-}
-
-/**
- * Standalone safe zone adjustment function
- * Issue #1140 - WASM Migration Phase 8: Implement safeZoneAdjustment() in Rust/WASM
- *
- * Returns a float from 0 (not safe) to 1 (fully safe) indicating how useful it is
- * to backpropagate through a neuron based on saturation levels.
- *
- * - 1.0: Fully in safe zone, gradient flows freely
- * - 0.0: Completely saturated, no gradient should flow
- * - 0.0-1.0: Partial safety, used for gradual fade-out
- *
- * @param squashType - The SquashType enum value
- * @param rawInput - The raw input value before squashing
- * @param error - The error value from backpropagation
- * @param weight - An optional synapse weight (defaults to 1.0)
- * @returns A value between 0 and 1 indicating backpropagation safety
- */
-export function wasmSafeZoneAdjustment(
-  squashType: number,
-  rawInput: number,
-  error: number,
-  weight?: number,
-): number {
-  if (!safeZoneAdjustmentFn) {
-    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
-  }
-  // Use NaN as the weight when not provided, WASM will check for is_finite
-  // and default to 1.0
-  return safeZoneAdjustmentFn(
-    squashType,
-    rawInput,
-    error,
-    weight ?? Number.NaN,
-  );
-}
-
-/**
- * Issue #1376 - Batch safe zone adjustment to eliminate per-synapse WASM boundary crossings.
- *
- * Processes multiple safe zone adjustments in a single WASM call, replacing S
- * individual calls with 1. For a neuron with S inbound synapses, this eliminates
- * ~S boundary crossings (~8.7ns each).
- *
- * @param squashTypes - Uint8Array of SquashType enum values (one per synapse)
- * @param rawInputs - Float32Array of pre-squash values for upstream neurons
- * @param error - The provisional error per link (same for all synapses)
- * @param weights - Float32Array of synapse weights
- * @returns Float32Array of safe zone factors (0.0 to 1.0), one per synapse
- */
-export function wasmSafeZoneAdjustmentBatch(
-  squashTypes: Uint8Array,
-  rawInputs: Float32Array,
-  error: number,
-  weights: Float32Array,
-): Float32Array {
-  if (!safeZoneAdjustmentBatchFn) {
-    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
-  }
-  return safeZoneAdjustmentBatchFn(squashTypes, rawInputs, error, weights);
-}
-
-/**
- * Standalone calculate error function
- * Issue #1141 - WASM Migration Phase 9: Implement calculateError() in Rust/WASM
- *
- * Calculates the error in value-space for backpropagation.
- * This function combines derivative and unSquash to compute the error gradient.
- *
- * The basic algorithm:
- * 1. Compute raw error: rawError = targetActivation - currentActivation
- * 2. If raw error is tiny (< ERROR_EPSILON), return 0
- * 3. If derivative (slope) is strong: error = rawError / slope
- * 4. Otherwise fall back to: error = unSquash(targetActivation) - currentValue
- * 5. Clamp error to prevent weight explosion
- *
- * @param squashType - The SquashType enum value
- * @param currentActivation - The neuron's current output (after squash)
- * @param targetActivation - The desired output
- * @param currentValue - The pre-squash value (hint for unSquash)
- * @returns The calculated error value, clamped to ±100
- */
-export function wasmCalculateError(
-  squashType: number,
-  currentActivation: number,
-  targetActivation: number,
-  currentValue: number,
-): number {
-  if (!calculateErrorFn) {
-    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
-  }
-  return calculateErrorFn(
-    squashType,
-    currentActivation,
-    targetActivation,
-    currentValue,
-  );
-}
-
-/**
- * Issue #1377 - Result from fused backward pass error distribution.
- */
-export interface FusedErrorDistributionResult {
-  /** The calculated error in value-space */
-  error: number;
-  /** Safe zone factors (0-1) for each synapse */
-  safeZoneFactors: Float32Array;
-  /** Per-link error shares (sum equals error) */
-  perLinkError: Float32Array;
-}
-
-/**
- * Issue #1377 - Fused backward pass error distribution.
- *
- * Combines calculateError + safeZoneAdjustment + elastic error distribution
- * into a single WASM call, eliminating S+1 boundary crossings per neuron.
- *
- * @param neuronSquashType - The SquashType of the neuron being propagated through
- * @param neuronActivation - The neuron's current output (after squash)
- * @param neuronTargetActivation - The desired output for this neuron
- * @param neuronHintValue - The pre-squash value for this neuron
- * @param upstreamSquashTypes - Uint8Array of upstream neuron squash type enums
- * @param upstreamHintValues - Float32Array of upstream pre-squash values
- * @param upstreamActivations - Float32Array of upstream neuron activations
- * @param synapseWeights - Float32Array of inbound synapse weights
- * @returns FusedErrorDistributionResult with error, safeZoneFactors, and perLinkError
- */
-export function wasmFusedErrorDistribution(
-  neuronSquashType: number,
-  neuronActivation: number,
-  neuronTargetActivation: number,
-  neuronHintValue: number,
-  upstreamSquashTypes: Uint8Array,
-  upstreamHintValues: Float32Array,
-  upstreamActivations: Float32Array,
-  synapseWeights: Float32Array,
-): FusedErrorDistributionResult {
-  if (!fusedErrorDistributionFn) {
-    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
-  }
-  const flat = fusedErrorDistributionFn(
-    neuronSquashType,
-    neuronActivation,
-    neuronTargetActivation,
-    neuronHintValue,
-    upstreamSquashTypes,
-    upstreamHintValues,
-    upstreamActivations,
-    synapseWeights,
-  );
-
-  const count = upstreamSquashTypes.length;
-  const error = flat[0];
-  const safeZoneFactors = flat.subarray(1, 1 + count);
-  const perLinkError = flat.subarray(1 + count, 1 + 2 * count);
-
-  return { error, safeZoneFactors, perLinkError };
-}
-
-/**
- * Range information for an activation function.
- * Issue #1142 - WASM Migration Phase 10: Implement range validation in Rust/WASM
- */
-export interface WasmActivationRange {
-  low: number;
-  high: number;
-}
-
-/**
- * Get the valid output range for an activation function.
- * Returns { low, high }.
- */
-export function wasmGetRange(squashType: number): WasmActivationRange {
-  if (!getRangeFn) {
-    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
-  }
-  const arr = getRangeFn(squashType);
-  return { low: arr[0], high: arr[1] };
-}
-
-/**
- * Validate that an activation value is within the valid range.
- */
-export function wasmValidateRange(
-  squashType: number,
-  activation: number,
-): boolean {
-  if (!validateRangeFn) {
-    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
-  }
-  return validateRangeFn(squashType, activation);
-}
-
-/**
- * Clamp a value to the valid range for an activation function.
- */
-export function wasmLimitRange(squashType: number, value: number): number {
-  if (!limitRangeFn) {
-    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
-  }
-  return limitRangeFn(squashType, value);
-}
-
-/**
- * Get WASM module version
- */
-export function wasmVersion(): string {
-  if (!versionFn) {
-    return "not loaded";
-  }
-  return versionFn();
-}
-
-// -----------------------------------------------------------------------------
-// Auto-initialisation (Issue #1256: WASM and backends are implementation details)
-// -----------------------------------------------------------------------------
-//
-// Initialise the WASM module at module load time on the main thread so callers
-// use the best available backend with no code changes or env vars required.
-// - WASM is loaded from the NEAT-AI package (JSR URL or cache path).
-// - WASM activation is mandatory (Issue #1263).
-//
-// Workers receive the WASM payload from the parent and initialise internally.
-
-export function isProbablyWorkerScope(): boolean {
-  // Most reliable when available.
-  try {
-    // deno-lint-ignore no-explicit-any
-    const g: any = globalThis;
-    if (typeof g.DedicatedWorkerGlobalScope === "function") {
-      return g instanceof g.DedicatedWorkerGlobalScope;
-    }
-  } catch {
-    // Ignore
-  }
-
-  // Heuristic fallback.
-  // deno-lint-ignore no-explicit-any
-  const g: any = globalThis;
-  const hasDocument = typeof g.document !== "undefined";
-  const hasPostMessage = typeof g.postMessage === "function";
-  const hasClose = typeof g.close === "function";
-  const hasOnMessage = typeof g.onmessage !== "undefined";
-  return !hasDocument && hasPostMessage && hasClose && hasOnMessage;
-}
-
-try {
-  // Issue #1258: Auto-init in both main thread and workers. When a Deno Worker
-  // imports NEAT-AI independently (not via the library's own worker system),
-  // WASM should load transparently.
-  //
-  // Issue #1263: WASM is mandatory. However, for the library's own worker
-  // system, workers receive a preloaded WASM payload from the parent and
-  // initialise from that payload during the worker init handshake. In that case
-  // we intentionally avoid auto-init at module-evaluation time in that worker,
-  // to prevent duplicate loads and reduce worker start flakiness. Internal
-  // worker entrypoints set a global flag before importing NEAT-AI modules.
-  const shouldAutoInit = !isWasmActivationAvailable() &&
-    !getSkipWasmAutoInit();
-
-  if (shouldAutoInit) {
-    await initWasmActivation();
-  }
-} catch {
-  // Ignore env permission errors; auto-init stays disabled.
 }

@@ -12,10 +12,12 @@ import { Activations } from "../../src/methods/activations/Activations.ts";
 import {
   initWasmActivation,
   isWasmActivationAvailable,
+} from "../../src/wasm/WasmModuleLoader.ts";
+import {
   wasmGetRange,
   wasmLimitRange,
   wasmValidateRange,
-} from "../../src/wasm/WasmActivation.ts";
+} from "../../src/wasm/WasmStandaloneFunctions.ts";
 import { SquashType } from "../../src/wasm/SquashType.ts";
 
 // Initialise WASM module before tests

@@ -14,7 +14,7 @@ import {
   wasmSafeZoneAdjustmentBatch,
 } from "../../src/wasm/mod.ts";
 import { distributeElasticError } from "../../src/propagate/ElasticDistribution.ts";
-import { wasmFusedErrorDistribution } from "../../src/wasm/WasmActivation.ts";
+import { wasmFusedErrorDistribution } from "../../src/wasm/WasmStandaloneFunctions.ts";
 
 await ensureWasmActivation();
 

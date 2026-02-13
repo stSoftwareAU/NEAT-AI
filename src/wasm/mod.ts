@@ -6,6 +6,8 @@
  * Issue #1256 - initWasmActivation / initWasmActivationSync are internal implementation details;
  * the public API (mod.ts) does not export them. Callers use Creature.activate() etc.; the library
  * initialises the backend automatically.
+ * Issue #1405 - Facade refactoring: WasmActivation.ts split into WasmModuleLoader.ts,
+ * WasmStandaloneFunctions.ts, WasmAutoInit.ts, and WasmActivation.ts (class only).
  */
 
 export {
@@ -21,15 +23,18 @@ export {
   SquashType,
 } from "./SquashType.ts";
 
+// Issue #1405 - Module loading, init, and availability from WasmModuleLoader
 export {
-  type FusedErrorDistributionResult,
   initWasmActivation,
   initWasmActivationSync,
-  isProbablyWorkerScope,
   isWasmActivationAvailable,
+} from "./WasmModuleLoader.ts";
+
+// Issue #1405 - Standalone WASM functions from WasmStandaloneFunctions
+export {
+  type FusedErrorDistributionResult,
   type WasmActivationRange,
   wasmCalculateError,
-  WasmCreatureActivation,
   wasmDerivative,
   wasmFusedErrorDistribution,
   wasmGetRange,
@@ -37,12 +42,20 @@ export {
   wasmSafeZoneAdjustment,
   wasmSafeZoneAdjustmentBatch,
   wasmSquash,
-  type WasmTraceEntry,
-  type WasmTraceResult,
   wasmUnSquash,
   wasmValidateRange,
   wasmVersion,
+} from "./WasmStandaloneFunctions.ts";
+
+// Issue #1405 - WasmCreatureActivation class and trace types from WasmActivation
+export {
+  WasmCreatureActivation,
+  type WasmTraceEntry,
+  type WasmTraceResult,
 } from "./WasmActivation.ts";
+
+// Issue #1405 - Auto-init and worker scope detection from WasmAutoInit
+export { isProbablyWorkerScope } from "./WasmAutoInit.ts";
 
 // Issue #1247 - Shared WASM activation initialisation helper
 export { ensureWasmActivation } from "./EnsureWasmActivation.ts";

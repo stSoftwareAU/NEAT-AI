@@ -5,7 +5,10 @@
  * call init APIs; the library initialises the backend automatically (Issue #1256).
  */
 import { WasmError } from "../errors/WasmError.ts";
-import { initWasmActivation, isWasmActivationAvailable } from "./mod.ts";
+import {
+  initWasmActivation,
+  isWasmActivationAvailable,
+} from "./WasmModuleLoader.ts";
 
 /**
  * Ensures WASM activation is initialised before scoring/evaluation.
