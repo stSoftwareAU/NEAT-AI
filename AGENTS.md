@@ -227,6 +227,8 @@ In our production workloads, the default is feed-forward/forward-only.
 ## Documentation Layout
 
 - **README.md** - Human-readable project overview, features, and quick start
+- **CONTRIBUTING.md** - First-time contributor guide with development setup and
+  workflow
 - **AGENTS.md** (this file) - Coding guidelines and development reference
 - **COMPARISON.md** - Comparison with other AI approaches
 - **docs/API_REFERENCE.md** - Comprehensive public API reference
