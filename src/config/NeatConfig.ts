@@ -1,5 +1,5 @@
 import type { NeatOptionsInput } from "./NeatOptions.ts";
-import "../globals.d.ts";
+import { getGlobalDebug } from "../globalAccessors.ts";
 import {
   DEFAULT_RUST_FLUSH_BYTES,
   DEFAULT_RUST_FLUSH_RECORDS,
@@ -196,7 +196,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       { min: 0.0001, max: 1 },
     ),
 
-    debug: options.debug === true || globalThis.DEBUG === true,
+    debug: options.debug === true || getGlobalDebug(),
 
     feedbackLoop: options.feedbackLoop || false,
     disableRandomSamples: options.disableRandomSamples ??

@@ -1,26 +1,33 @@
 import { assertEquals } from "@std/assert";
-import "../../src/globals.d.ts";
+import {
+  getGlobalDebug,
+  getSkipWasmAutoInit,
+  setGlobalDebug,
+  setSkipWasmAutoInit,
+} from "../../src/globalAccessors.ts";
 
-Deno.test("globalThis.DEBUG is typed and accessible", () => {
-  // Before setting, should be undefined
-  const original = globalThis.DEBUG;
+Deno.test("getGlobalDebug / setGlobalDebug round-trips correctly", () => {
+  const original = getGlobalDebug();
 
-  globalThis.DEBUG = true;
-  assertEquals(globalThis.DEBUG, true);
+  setGlobalDebug(true);
+  assertEquals(getGlobalDebug(), true);
 
-  globalThis.DEBUG = false;
-  assertEquals(globalThis.DEBUG, false);
+  setGlobalDebug(false);
+  assertEquals(getGlobalDebug(), false);
 
   // Restore
-  globalThis.DEBUG = original;
+  setGlobalDebug(original || undefined);
 });
 
-Deno.test("globalThis.__NEAT_AI_SKIP_WASM_AUTO_INIT is typed and accessible", () => {
-  const original = globalThis.__NEAT_AI_SKIP_WASM_AUTO_INIT;
+Deno.test("getSkipWasmAutoInit / setSkipWasmAutoInit round-trips correctly", () => {
+  const original = getSkipWasmAutoInit();
 
-  globalThis.__NEAT_AI_SKIP_WASM_AUTO_INIT = true;
-  assertEquals(globalThis.__NEAT_AI_SKIP_WASM_AUTO_INIT, true);
+  setSkipWasmAutoInit(true);
+  assertEquals(getSkipWasmAutoInit(), true);
+
+  setSkipWasmAutoInit(false);
+  assertEquals(getSkipWasmAutoInit(), false);
 
   // Restore
-  globalThis.__NEAT_AI_SKIP_WASM_AUTO_INIT = original;
+  setSkipWasmAutoInit(original);
 });
