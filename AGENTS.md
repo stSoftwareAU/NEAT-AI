@@ -154,7 +154,7 @@ Before committing, run:
 ./quality.sh
 ```
 
-This script:
+This script runs the following steps by default:
 
 1. Updates dependencies (`deno outdated --update --latest`)
 2. Formats code (`deno fmt`)
@@ -162,8 +162,20 @@ This script:
 4. Checks bash script syntax
 5. Type-checks (`deno check`)
 6. Builds the Rust discovery library (if `../NEAT-AI-Discovery` exists)
-7. Verifies discovery library availability
-8. Runs all tests in parallel with leak detection
+7. Runs all tests in parallel with leak detection
+
+### Optional Flags
+
+```bash
+./quality.sh --help            # Show usage and step descriptions
+./quality.sh --skip-tests      # Skip test execution
+./quality.sh --skip-discovery  # Skip discovery library build and verification
+./quality.sh --lint-only       # Only run formatting + linting (includes bash check)
+./quality.sh --check-only      # Only run type-checking (deno check)
+./quality.sh --dry-run         # Show which steps would run without executing them
+```
+
+Flags can be combined, e.g. `./quality.sh --skip-tests --skip-discovery`.
 
 ### Deployment Checklist
 
