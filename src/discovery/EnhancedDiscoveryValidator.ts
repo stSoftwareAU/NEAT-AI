@@ -13,6 +13,7 @@
  */
 
 import type { Creature } from "../Creature.ts";
+import { getLogger } from "../utils/Logger.ts";
 import type { DataRecordInterface } from "../architecture/DataSet.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import {
@@ -373,12 +374,12 @@ export class EnhancedDiscoveryValidator {
     const status = result.passed ? "✓ PASSED" : "✗ FAILED";
     const changeType = candidate.change.type;
 
-    console.info(
+    getLogger().info(
       `[EnhancedValidator] ${status} ${changeType}`,
     );
 
     if (result.holdoutResult) {
-      console.info(
+      getLogger().info(
         `[EnhancedValidator]   Holdout: error=${
           result.holdoutResult.holdoutError.toPrecision(4)
         } gap=${(result.holdoutResult.performanceGap ?? 0).toPrecision(4)}`,
@@ -386,7 +387,7 @@ export class EnhancedDiscoveryValidator {
     }
 
     if (result.brittlenessResult) {
-      console.info(
+      getLogger().info(
         `[EnhancedValidator]   Brittleness: score=${
           result.brittlenessResult.brittlenessScore.toPrecision(4)
         } variance=${result.brittlenessResult.outputVariance.toPrecision(4)}`,
@@ -394,7 +395,7 @@ export class EnhancedDiscoveryValidator {
     }
 
     if (result.combinedBrittlenessScore !== undefined) {
-      console.info(
+      getLogger().info(
         `[EnhancedValidator]   Combined: ${
           result.combinedBrittlenessScore.toPrecision(4)
         }`,
@@ -403,7 +404,7 @@ export class EnhancedDiscoveryValidator {
 
     if (result.rejectionReasons && result.rejectionReasons.length > 0) {
       for (const reason of result.rejectionReasons) {
-        console.info(`[EnhancedValidator]   Rejection: ${reason}`);
+        getLogger().info(`[EnhancedValidator]   Rejection: ${reason}`);
       }
     }
   }

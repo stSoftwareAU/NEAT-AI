@@ -18,6 +18,7 @@
 import { dirname } from "@std/path/dirname";
 import { join } from "@std/path/join";
 import { getDiscoveryVersion } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { getLogger } from "../utils/Logger.ts";
 import type { Creature } from "../Creature.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import { buildCacheKey, extractActualCreatureChanges } from "./FailureCache.ts";
@@ -324,7 +325,7 @@ export function listSuccessEntriesSync(cacheDir: string): SuccessCacheEntry[] {
             results.push(parsed);
           }
         } catch (error) {
-          console.warn(
+          getLogger().warn(
             `[SuccessCache] Failed to parse success cache entry '${filePath}':`,
             error,
           );

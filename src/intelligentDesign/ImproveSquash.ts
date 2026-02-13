@@ -17,6 +17,7 @@ import { alternativeSquashes } from "./AlternativeSquashes.ts";
 import type { BestNeuronSquash } from "./BestNeuronSquash.ts";
 import { safeWriteText, safeWriteTextSync } from "./SafeWrite.ts";
 import { WorkerHandler } from "./workers/WorkerHandler.ts";
+import { getLogger } from "../utils/Logger.ts";
 
 function remainingTimeMs(deadlineMs: number): number {
   return Math.max(0, deadlineMs - Date.now());
@@ -189,7 +190,7 @@ export function makeModifiedCreatureWithPrevious(
   assert(previousSquash, "Previous squash should be defined");
 
   if (neuronData.squash === nextSquash) {
-    console.warn(
+    getLogger().warn(
       `${neuronData.uuid} Squash should be different from ${nextSquash}`,
     );
   }
@@ -299,7 +300,7 @@ export async function scanForSquashImprovements(
           // ignore
         }
         if (makeDirectWorker) {
-          console.warn(
+          getLogger().warn(
             "[ImproveSquash] Worker init failed; falling back to direct execution for this worker slot.",
             err,
           );
@@ -340,7 +341,7 @@ export async function scanForSquashImprovements(
       // Check timeout
       const now = Date.now();
       if (now - start > timeoutMs) {
-        console.warn(`Timeout after: ${now - start}ms`);
+        getLogger().warn(`Timeout after: ${now - start}ms`);
         timedOut = true;
         break;
       }
@@ -361,7 +362,7 @@ export async function scanForSquashImprovements(
         const throttleNow = Date.now();
 
         if (throttleNow - lastThrottleTime > 60_000) {
-          console.log(
+          getLogger().info(
             `Throttling: waiting for tasks to complete... pending: ${pendingCount}, max: ${maxPending}, found: ${bestNeuronSquashMap.size}`,
           );
           lastThrottleTime = throttleNow;
@@ -378,7 +379,7 @@ export async function scanForSquashImprovements(
 
       // Skip if neuron already has target squash
       if (targetSquash === neuron.squash) {
-        console.log(
+        getLogger().info(
           `Neuron ${
             neuron.uuid?.slice(-8)
           } already has squash ${targetSquash}, skipping.`,
@@ -423,7 +424,7 @@ export async function scanForSquashImprovements(
               `Neuron ${shortId} ${previousSquash} -> ${targetSquash}, score: ${
                 res.score.score.toPrecision(6)
               } improved by ${(res.score.score - bestScore).toPrecision(3)}`;
-            console.log(lastMessage);
+            getLogger().info(lastMessage);
 
             const path = `${outputDir}/${targetSquash}_${shortId}.json`;
 
@@ -487,7 +488,7 @@ export async function scanForSquashImprovements(
                             3,
                           )
                         }`;
-                      console.log(alternativeMessage);
+                      getLogger().info(alternativeMessage);
 
                       const altPath =
                         `${outputDir}/${altSquash}_${shortId}.json`;
@@ -598,7 +599,10 @@ export async function scanForSquashImprovements(
       try {
         worker.terminate();
       } catch (error) {
-        console.error("Failed to terminate Intelligent Design worker:", error);
+        getLogger().error(
+          "Failed to terminate Intelligent Design worker:",
+          error,
+        );
       }
     }
   }

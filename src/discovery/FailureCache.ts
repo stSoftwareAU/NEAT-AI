@@ -21,6 +21,7 @@ import { dirname } from "@std/path/dirname";
 import { join } from "@std/path/join";
 import { crypto as stdCrypto } from "@std/crypto";
 import { getDiscoveryVersion } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { getLogger } from "../utils/Logger.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type { Creature } from "../Creature.ts";
 
@@ -577,46 +578,50 @@ export function logPredictionTrace(
 ): void {
   if (!isPredictionTracingEnabled()) return;
 
-  console.info("=".repeat(80));
-  console.info("[PREDICTION TRACE] Candidate evaluation details");
-  console.info("=".repeat(80));
-  console.info(`Change Type: ${candidate.change.type}`);
-  console.info(`Description: ${candidate.change.description}`);
-  console.info("");
+  getLogger().info("=".repeat(80));
+  getLogger().info("[PREDICTION TRACE] Candidate evaluation details");
+  getLogger().info("=".repeat(80));
+  getLogger().info(`Change Type: ${candidate.change.type}`);
+  getLogger().info(`Description: ${candidate.change.description}`);
+  getLogger().info("");
 
   // Log score comparison from metadata
-  console.info("--- Score Comparison ---");
-  console.info(`Original Score:    ${metadata.originalScore.toPrecision(8)}`);
-  console.info(`Candidate Score:   ${metadata.candidateScore.toPrecision(8)}`);
-  console.info(
+  getLogger().info("--- Score Comparison ---");
+  getLogger().info(
+    `Original Score:    ${metadata.originalScore.toPrecision(8)}`,
+  );
+  getLogger().info(
+    `Candidate Score:   ${metadata.candidateScore.toPrecision(8)}`,
+  );
+  getLogger().info(
     `Score Delta:       ${metadata.scoreDelta.toPrecision(8)} (${
       metadata.scoreDelta > 0 ? "IMPROVED" : "DEGRADED"
     })`,
   );
-  console.info("");
+  getLogger().info("");
 
   // Log prediction details
   if (cacheEntry.predictionDetails) {
-    console.info("--- Rust Prediction Details ---");
-    console.info(JSON.stringify(cacheEntry.predictionDetails, null, 2));
-    console.info("");
+    getLogger().info("--- Rust Prediction Details ---");
+    getLogger().info(JSON.stringify(cacheEntry.predictionDetails, null, 2));
+    getLogger().info("");
   }
 
   // Log target neuron info
   if (cacheEntry.targetNeuronInfo) {
-    console.info("--- Target Neuron Info ---");
-    console.info(JSON.stringify(cacheEntry.targetNeuronInfo, null, 2));
-    console.info("");
+    getLogger().info("--- Target Neuron Info ---");
+    getLogger().info(JSON.stringify(cacheEntry.targetNeuronInfo, null, 2));
+    getLogger().info("");
   }
 
   // Log actual changes
   if (cacheEntry.actualCreatureChange) {
-    console.info("--- Actual Creature Changes ---");
-    console.info(JSON.stringify(cacheEntry.actualCreatureChange, null, 2));
-    console.info("");
+    getLogger().info("--- Actual Creature Changes ---");
+    getLogger().info(JSON.stringify(cacheEntry.actualCreatureChange, null, 2));
+    getLogger().info("");
   }
 
-  console.info("=".repeat(80));
+  getLogger().info("=".repeat(80));
 }
 
 /**
@@ -656,7 +661,7 @@ export async function isCandidateCached(
       return false;
     }
     // Log unexpected errors but don't fail
-    console.warn(
+    getLogger().warn(
       `[FailureCache] Error checking cache for candidate: ${error}`,
     );
     return false;
@@ -690,7 +695,7 @@ export function isCandidateCachedSync(
       return false;
     }
     // Log unexpected errors but don't fail
-    console.warn(
+    getLogger().warn(
       `[FailureCache] Error checking cache for candidate: ${error}`,
     );
     return false;
@@ -869,7 +874,7 @@ export async function recordFailure(
     await Deno.writeTextFile(filePath, JSON.stringify(cacheEntry, null, 2));
   } catch (error) {
     // Log but don't fail - caching is an optimisation, not critical
-    console.warn(
+    getLogger().warn(
       `[FailureCache] Failed to record failure for candidate ${candidate.change.type}: ${error}`,
     );
   }
@@ -1047,7 +1052,7 @@ export function recordFailureSync(
     Deno.writeTextFileSync(filePath, JSON.stringify(cacheEntry, null, 2));
   } catch (error) {
     // Log but don't fail - caching is an optimisation, not critical
-    console.warn(
+    getLogger().warn(
       `[FailureCache] Failed to record failure for candidate ${candidate.change.type}: ${error}`,
     );
   }

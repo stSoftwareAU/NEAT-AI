@@ -21,6 +21,7 @@ import type {
 import { isRustDiscoveryEnabled } from "./RustDiscovery.ts";
 import { PhaseDiagnostics } from "./PhaseDiagnostics.ts";
 import { submitDiscoveryRecordBatch } from "./SubmitDiscoveryRecordBatch.ts";
+import { getLogger } from "../../utils/Logger.ts";
 
 /**
  * Issue #1219 - Ensures WASM activation is initialised before discovery recording.
@@ -119,7 +120,7 @@ class DiscoveryPerformanceStats {
   logSummary(discoveryID: string, config: NeatConfig): void {
     if (!shouldLogDiscovery(config)) return;
 
-    console.log(
+    getLogger().info(
       formatDiscoveryPerformanceSummary(
         discoveryID,
         {
@@ -435,7 +436,7 @@ class DataRecorder {
       : isRustDiscoveryEnabled();
     if (!rustEnabled) {
       if (shouldLogDiscovery(this.config)) {
-        console.warn(
+        getLogger().warn(
           `🔧 Discovery skipped: Rust module or GPU not available. Discovery requires the NEAT-AI-Discovery Rust library to be built and available, and a GPU to be present.`,
         );
       }
@@ -542,7 +543,7 @@ class DataRecorder {
         readTime += Date.now() - readStartTime;
 
         if (bytesRead === null || bytesRead !== this.BYTES_PER_RECORD) {
-          console.warn(
+          getLogger().warn(
             `Failed to read complete record at index ${recordIndex}`,
           );
           continue;
@@ -589,7 +590,7 @@ class DataRecorder {
             params.drainCounter.count = 0;
 
             if (shouldLogDiscovery(this.config)) {
-              console.log(
+              getLogger().info(
                 `Discovery ${
                   blue(this.ID)
                 } drained promises after ${this.drainEveryNBatches} batches`,
@@ -600,7 +601,7 @@ class DataRecorder {
           if (discoverStructure.shouldFlushRustChunk()) {
             const flushed = discoverStructure.flushRustChunk();
             if (!flushed) {
-              console.warn(
+              getLogger().warn(
                 `⚠️  Discovery ${
                   blue(this.ID)
                 } failed to flush discovery chunk after batch.`,
@@ -634,7 +635,7 @@ class DataRecorder {
         if (discoverStructure.shouldFlushRustChunk()) {
           const flushed = discoverStructure.flushRustChunk();
           if (!flushed) {
-            console.warn(
+            getLogger().warn(
               `⚠️  Discovery ${
                 blue(this.ID)
               } failed to flush discovery chunk after partial batch.`,
@@ -663,7 +664,7 @@ class DataRecorder {
     const perfStats = new DiscoveryPerformanceStats();
 
     if (shouldLogDiscovery(config)) {
-      console.info(
+      getLogger().info(
         `Discovery ${
           blue(this.ID)
         } with ${binaryFiles.length} binary files, sample rate: ${
@@ -703,7 +704,7 @@ class DataRecorder {
     ): void => {
       const tag = classifyCandidateTag(gain, comment);
       const commentText = comment ? ` comment=${JSON.stringify(comment)}` : "";
-      console.log(
+      getLogger().info(
         `Discovery ${blue(this.ID)} ${scope} ${tag} ${from} -> ${to} expected=${
           formatGainPct(gain)
         } improved=${improved}/${total}${commentText}`,
@@ -746,7 +747,7 @@ class DataRecorder {
     let fileProcessTime = 0;
 
     if (shouldLogDiscovery(config)) {
-      console.log(
+      getLogger().info(
         `Discovery ${blue(this.ID)} initialize time ${
           yellow(format(initializeTime, { ignoreZero: true }))
         }`,
@@ -770,7 +771,7 @@ class DataRecorder {
       // Skip the entire recording phase if using existing parquet files
       if (skipRecording) {
         if (shouldLogDiscovery(config)) {
-          console.log(
+          getLogger().info(
             `Discovery ${
               blue(this.ID)
             } skipping record phase - using existing parquet files from: ${discoverStructure.getTempDir()}`,
@@ -816,7 +817,7 @@ class DataRecorder {
             if (discoverStructure.shouldFlushRustChunk()) {
               const flushed = discoverStructure.flushRustChunk();
               if (!flushed) {
-                console.warn(
+                getLogger().warn(
                   `⚠️  Discovery ${
                     blue(this.ID)
                   } failed to flush discovery chunk after file ${filePath}.`,
@@ -837,7 +838,7 @@ class DataRecorder {
 
           if (this.timeoutTS && Date.now() > this.timeoutTS) {
             if (shouldLogDiscovery(this.config)) {
-              console.warn(
+              getLogger().warn(
                 `⏲  Discovery ${
                   blue(this.ID)
                 } timeout reached during file processing. ` +
@@ -863,7 +864,7 @@ class DataRecorder {
 
         const scannedTime = Date.now() - startTime;
         if (shouldLogDiscovery(config)) {
-          console.log(
+          getLogger().info(
             `Discovery ${blue(this.ID)} scanning time ${
               yellow(format(scannedTime, { ignoreZero: true }))
             }`,
@@ -894,7 +895,7 @@ class DataRecorder {
             timeoutPromise,
           ]);
         } catch (error) {
-          console.error(
+          getLogger().error(
             `❌ DISCOVERY WRITE ERROR for ${blue(this.ID)}:`,
             error,
           );
@@ -915,7 +916,7 @@ class DataRecorder {
         if (!rustFlushSuccess) {
           // Rust recording failed - return empty result (discovery skipped)
           if (shouldLogDiscovery(config)) {
-            console.warn(
+            getLogger().warn(
               `⚠️  Discovery ${
                 blue(this.ID)
               }: Rust recording failed, discovery skipped.`,
@@ -937,7 +938,7 @@ class DataRecorder {
         perfStats.recordPhaseTime = recordPhaseEndTime - startTime;
 
         if (shouldLogDiscovery(config)) {
-          console.log(
+          getLogger().info(
             `Discovery ${blue(this.ID)} recorded time ${
               yellow(format(perfStats.recordPhaseTime, { ignoreZero: true }))
             }`,
@@ -955,7 +956,7 @@ class DataRecorder {
       this.timeoutTS = analysisDeadlineAt;
 
       if (shouldLogDiscovery(config)) {
-        console.log(
+        getLogger().info(
           `Discovery ${blue(this.ID)} analysis timeout extended by ${
             yellow(analysisTimeoutMinutes.toString())
           }m`,
@@ -987,7 +988,7 @@ class DataRecorder {
         // while avoiding long-running Rust analysis on GPU-backed machines.
         if (this.discoveryMaxNeurons <= 0) {
           if (shouldLogDiscovery(config)) {
-            console.log(
+            getLogger().info(
               `Discovery ${
                 blue(this.ID)
               } skipping analysis phase because discoveryMaxNeurons <= 0`,
@@ -1014,7 +1015,7 @@ class DataRecorder {
           const retryMsg = retryAttempt > 0
             ? ` (retry ${retryAttempt}, ${attemptedNeurons.size} already tried)`
             : "";
-          console.log(
+          getLogger().info(
             `Discovery ${blue(this.ID)} selected ${
               yellow(newFocusList.length.toString())
             } focus neuron${newFocusList.length === 1 ? "" : "s"} in ${
@@ -1030,7 +1031,7 @@ class DataRecorder {
         // If we have no new neurons to try, stop retrying
         if (newFocusList.length === 0) {
           if (shouldLogDiscovery(config)) {
-            console.log(
+            getLogger().info(
               `Discovery ${
                 blue(this.ID)
               } no new neurons to analyze, stopping retry loop`,
@@ -1095,7 +1096,7 @@ class DataRecorder {
               ? `, neuron meta: found=${neuronMeta.candidatesFound} returned=${neuronMeta.candidatesReturned}`
               : "";
 
-            console.log(
+            getLogger().info(
               `Discovery ${blue(this.ID)} candidate collection ${
                 yellow(format(candidateCollectionTime, {
                   ignoreZero: true,
@@ -1158,7 +1159,7 @@ class DataRecorder {
               });
               squashSummaryText = `, Summary: ${squashSummary.join(",")}`;
             }
-            console.log(
+            getLogger().info(
               `Discovery ${blue(this.ID)} analyze squashes time ${
                 yellow(format(squashTime, { ignoreZero: true }))
               } found ${squashCount} candidate${
@@ -1190,7 +1191,7 @@ class DataRecorder {
               const neuronAnalyzeTime = Date.now() - neuronAnalyzeStart;
               perfStats.neuronAnalysisTime += neuronAnalyzeTime;
               if (shouldLogDiscovery(config)) {
-                console.log(
+                getLogger().info(
                   `Discovery ${blue(this.ID)} analyze neurons time ${
                     yellow(format(neuronAnalyzeTime, { ignoreZero: true }))
                   } found ${
@@ -1214,7 +1215,7 @@ class DataRecorder {
               const analyzeTime = Date.now() - analyzeStartTime;
               perfStats.synapseAnalysisTime += analyzeTime;
               if (shouldLogDiscovery(config)) {
-                console.log(
+                getLogger().info(
                   `Discovery ${blue(this.ID)} analyze synapses time ${
                     yellow(format(analyzeTime, { ignoreZero: true }))
                   } found ${
@@ -1238,7 +1239,7 @@ class DataRecorder {
               const harmfulTime = Date.now() - harmfulStartTime;
               perfStats.harmfulSynapseAnalysisTime += harmfulTime;
               if (shouldLogDiscovery(config)) {
-                console.log(
+                getLogger().info(
                   `Discovery ${blue(this.ID)} analyze harmful time ${
                     yellow(format(harmfulTime, { ignoreZero: true }))
                   } found ${harmfulSynapse ? 1 : 0} candidates`,
@@ -1272,7 +1273,7 @@ class DataRecorder {
                   });
                   squashSummaryText = `, Summary: ${squashSummary.join(",")}`;
                 }
-                console.log(
+                getLogger().info(
                   `Discovery ${blue(this.ID)} analyze squashes time ${
                     yellow(format(squashTime, { ignoreZero: true }))
                   } found ${squashCount} candidate${
@@ -1297,7 +1298,7 @@ class DataRecorder {
                 const harmfulNeuronCount = harmfulNeurons
                   ? harmfulNeurons.length
                   : 0;
-                console.log(
+                getLogger().info(
                   `Discovery ${blue(this.ID)} analyze harmful neurons time ${
                     yellow(format(harmfulNeuronTime, { ignoreZero: true }))
                   } found ${harmfulNeuronCount} candidate${
@@ -1428,7 +1429,7 @@ class DataRecorder {
             discoverResult.candidateSquashes,
         );
         if (foundCandidates && shouldLogDiscovery(config)) {
-          console.log(
+          getLogger().info(
             `Discovery ${
               blue(this.ID)
             } accumulated candidate updates; continuing search while time remains.`,
@@ -1438,7 +1439,7 @@ class DataRecorder {
         const timeRemaining = this.timeoutTS - Date.now();
         if (timeRemaining <= 0) {
           if (shouldLogDiscovery(config)) {
-            console.log(
+            getLogger().info(
               `Discovery ${
                 blue(this.ID)
               } analysis timeout reached after evaluating ${attemptedNeurons.size} neuron(s)`,
@@ -1450,7 +1451,7 @@ class DataRecorder {
         perfStats.retryAttempts = retryAttempt;
         retryAttempt++;
         if (shouldLogDiscovery(config)) {
-          console.log(
+          getLogger().info(
             `Discovery ${blue(this.ID)} retrying with different neurons (${
               yellow(format(timeRemaining, { ignoreZero: true }))
             } remaining, retry ${retryAttempt})`,
@@ -1464,7 +1465,7 @@ class DataRecorder {
       if (removalCandidates && removalCandidates.length > 0) {
         discoverResult.removalCandidates = removalCandidates;
         if (shouldLogDiscovery(config)) {
-          console.log(
+          getLogger().info(
             `Discovery ${blue(this.ID)} found ${
               yellow(removalCandidates.length.toString())
             } low-impact removal candidate${
@@ -1477,7 +1478,7 @@ class DataRecorder {
       phaseDiagnostics.enterPhase("complete");
       if (shouldLogDiscovery(config)) {
         const totalTime = Date.now() - startTime;
-        console.log(
+        getLogger().info(
           `Discovery ${blue(this.ID)} analysis complete, total time ${
             yellow(format(totalTime, { ignoreZero: true }))
           }, starting cleanup...`,
@@ -1490,19 +1491,19 @@ class DataRecorder {
       const cleanupStartTime = Date.now();
       const cleanupPromise = (async () => {
         if (shouldLogDiscovery(config)) {
-          console.log(`Discovery ${blue(this.ID)} performing cleanup...`);
+          getLogger().info(`Discovery ${blue(this.ID)} performing cleanup...`);
         }
         await discoverStructure.cleanUp();
         perfStats.cleanupTime = Date.now() - cleanupStartTime;
         if (shouldLogDiscovery(config)) {
-          console.log(`Discovery ${blue(this.ID)} cleanup complete.`);
+          getLogger().info(`Discovery ${blue(this.ID)} cleanup complete.`);
         }
       })();
 
       if (this.shouldAwaitCleanup()) {
         await cleanupPromise;
         if (shouldLogDiscovery(config)) {
-          console.log(
+          getLogger().info(
             `Discovery ${blue(this.ID)} cleanup awaited and complete (${
               format(perfStats.cleanupTime, { ignoreZero: true })
             }).`,
@@ -1512,13 +1513,13 @@ class DataRecorder {
         // Don't await cleanup - let it happen in the background
         // Catch any errors to prevent unhandled rejections and resource leaks
         cleanupPromise.catch((error) => {
-          console.error(
+          getLogger().error(
             `❌ CRITICAL: Discovery ${this.ID} cleanup failed - potential resource leak:`,
             error,
           );
         });
         if (shouldLogDiscovery(config)) {
-          console.log(
+          getLogger().info(
             `Discovery ${
               blue(this.ID)
             } cleanup scheduled (async, non-blocking - results will be returned immediately).`,
@@ -1557,44 +1558,46 @@ class DataRecorder {
     } catch (error) {
       // On error, show diagnostics unconditionally (indicates a bug)
       const totalTime = Date.now() - startTime;
-      console.error(
+      getLogger().error(
         `❌ DISCOVERY ERROR for ${blue(this.ID)} after ${
           format(totalTime, { ignoreZero: true })
         }:`,
       );
-      console.error(`   Error: ${error}`);
+      getLogger().error(`   Error: ${error}`);
       const phaseSnapshot = phaseDiagnostics.snapshot();
-      console.error(`   Current phase: ${phaseSnapshot.currentPhase}`);
+      getLogger().error(`   Current phase: ${phaseSnapshot.currentPhase}`);
       if (phaseSnapshot.parallelPhases.length > 0) {
-        console.error(
+        getLogger().error(
           `   Active analysis phases: ${
             phaseSnapshot.parallelPhases.join(", ")
           }`,
         );
       }
-      console.error(`   Phase timing diagnostics:`);
-      console.error(
+      getLogger().error(`   Phase timing diagnostics:`);
+      getLogger().error(
         `     - Initialize: ${format(initializeTime, { ignoreZero: true })}`,
       );
-      console.error(
+      getLogger().error(
         `     - File processing: ${
           format(fileProcessTime, { ignoreZero: true })
         }`,
       );
-      console.error(`     - Total: ${format(totalTime, { ignoreZero: true })}`);
+      getLogger().error(
+        `     - Total: ${format(totalTime, { ignoreZero: true })}`,
+      );
 
       if (shouldLogDiscovery(config)) {
-        console.log(
+        getLogger().info(
           `Discovery ${blue(this.ID)} error occurred, performing cleanup...`,
         );
       }
       try {
         await discoverStructure.cleanUp();
         if (shouldLogDiscovery(config)) {
-          console.log(`Discovery ${blue(this.ID)} cleanup complete.`);
+          getLogger().info(`Discovery ${blue(this.ID)} cleanup complete.`);
         }
       } catch (cleanupError) {
-        console.error(
+        getLogger().error(
           `❌ WARNING: Discovery ${this.ID} cleanup failed after error:`,
           cleanupError,
         );

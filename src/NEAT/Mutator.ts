@@ -22,6 +22,7 @@ import {
   getMajorVersion,
   upgradeSemanticVersionIfForwardOnlyConfirmed,
 } from "../upgrade/Upgrade.ts";
+import { getLogger } from "../utils/Logger.ts";
 
 /**
  * Cache entry for valid mutation candidates.
@@ -468,7 +469,7 @@ export class Mutator {
       creature.forwardOnly === true &&
       majorVersion < 4
     ) {
-      console.warn(
+      getLogger().warn(
         `[Mutator] feedbackLoop=true requested for forwardOnly creature (${startUUID}); clearing creature.forwardOnly flag`,
       );
       creature.forwardOnly = undefined;
@@ -482,7 +483,7 @@ export class Mutator {
     const changed = mutator.mutate(focusList);
 
     if (!changed && (!focusList || focusList.length === 0)) {
-      console.info(
+      getLogger().info(
         `${method.name} didn't mutate the creature. ${creature.input} observations, ${
           creature.neurons.length - creature.input - creature.output
         } neurons, ${creature.output} outputs, ${creature.synapses.length} synapses`,
@@ -535,7 +536,7 @@ export class Mutator {
                   creature.neurons[s.from]?.ID?.() ?? "?"
                 }) -> ${s.to} (${creature.neurons[s.to]?.ID?.() ?? "?"})`
               );
-            console.error(
+            getLogger().error(
               `[Mutator] Forward-only violation after '${method.name}'. This indicates a bug: ` +
                 `creature is marked forwardOnly=${
                   creature.forwardOnly === true
@@ -604,7 +605,7 @@ export class Mutator {
 
     const endUUID = CreatureUtil.makeUUID(creature);
     if (startUUID === endUUID) {
-      console.warn(
+      getLogger().warn(
         `UUID didn't change after ${method.name} mutation, changed: ${changed}`,
       );
       return false;

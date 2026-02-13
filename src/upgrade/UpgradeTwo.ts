@@ -1,5 +1,6 @@
 import { assert } from "@std/assert";
 import { Creature, type SynapseExport } from "../../mod.ts";
+import { getLogger } from "../utils/Logger.ts";
 import type {
   CreatureExport,
   CreatureInternal,
@@ -50,7 +51,7 @@ function removeHYPOT(json: CreatureExport) {
   for (let i = 0; i < neuronsLength; i++) {
     const neuron = neurons[i];
     if (neuron.squash === "HYPOT") {
-      console.log("Replacing HYPOT neuron", neuron.uuid);
+      getLogger().info("Replacing HYPOT neuron", neuron.uuid);
       changed = true;
       for (let j = 0; j < synapsesLength; j++) {
         const synapse = synapses[j];
@@ -115,7 +116,7 @@ function removeHYPOT(json: CreatureExport) {
   try {
     tempCreature.validate();
   } catch (e) {
-    console.log("Creature is not valid", e);
+    getLogger().info("Creature is not valid", e);
     tempCreature.fix();
   }
   return tempCreature.exportJSON();
@@ -130,7 +131,7 @@ function removeHYPOTv2(json: CreatureExport) {
   for (let i = 0; i < neuronsLength; i++) {
     const neuron = neurons[i];
     if (neuron.squash === "HYPOTv2") {
-      console.log("Replacing HYPOTv2 neuron", neuron.uuid);
+      getLogger().info("Replacing HYPOTv2 neuron", neuron.uuid);
       changed = true;
       for (let j = 0; j < synapsesLength; j++) {
         const synapse = synapses[j];
@@ -169,7 +170,7 @@ function removeHYPOTv2(json: CreatureExport) {
   try {
     tempCreature.validate();
   } catch (e) {
-    console.log("Creature is not valid", e);
+    getLogger().info("Creature is not valid", e);
     delete tempCreature.memetic;
     tempCreature.fix();
   }

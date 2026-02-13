@@ -12,6 +12,7 @@ import { addTag } from "@stsoftware/tags/mod";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import { Creature } from "../Creature.ts";
+import { getLogger } from "../utils/Logger.ts";
 
 /**
  * Tacit knowledge is a mapping from neuron UUID to squash function name.
@@ -82,7 +83,7 @@ export function makeModifiedCreature(
   assert(previousSquash, "Previous squash should be defined");
 
   if (neuronData.squash === nextSquash) {
-    console.warn(
+    getLogger().warn(
       `${neuronData.uuid.slice(-8)} Squash already set to ${nextSquash}`,
     );
   }
@@ -143,7 +144,7 @@ export function cleanKnowledge(
   for (const key of Object.keys(cleanedHive)) {
     const creatureSquash = validNeuronUUIDs.get(key);
     if (!creatureSquash) {
-      console.warn(
+      getLogger().warn(
         `Removing invalid hive knowledge for ${
           key.slice(-8)
         }: not found in the creature.`,
@@ -155,7 +156,7 @@ export function cleanKnowledge(
   // Add missing neurons to hive knowledge
   validNeuronUUIDs.forEach((squash, uuid) => {
     if (!cleanedHive[uuid]) {
-      console.warn(
+      getLogger().warn(
         `No hive knowledge for ${
           uuid.slice(-8)
         } with squash ${squash}, adding.`,

@@ -32,6 +32,7 @@
  */
 
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import { getLogger } from "../utils/Logger.ts";
 import {
   type CandidateHarmfulNeuron,
   type CandidateNeuron,
@@ -286,7 +287,7 @@ export function buildDiscoveryCandidates(
   } else if (
     !skipCombos && helpfulNeuronCandidates && helpfulNeuronCandidates.length > 0
   ) {
-    console.info(
+    getLogger().info(
       `[DiscoveryCandidates] Combined add-neurons candidate not created (${helpfulNeuronCandidates.length} neuron${
         helpfulNeuronCandidates.length === 1 ? "" : "s"
       } suggested but structure change returned undefined)`,
@@ -328,14 +329,14 @@ export function buildDiscoveryCandidates(
         });
       } catch (error) {
         skippedCount++;
-        console.info(
+        getLogger().info(
           `[DiscoveryCandidates] Skipped coordinated-structural candidate (apply failed):`,
           error,
         );
       }
     }
     if (skippedCount > 0) {
-      console.info(
+      getLogger().info(
         `[DiscoveryCandidates] Skipped ${skippedCount}/${coordinatedStructuralCandidates.length} coordinated-structural candidate${
           skippedCount === 1 ? "" : "s"
         } (apply failed)`,
@@ -373,7 +374,7 @@ export function buildDiscoveryCandidates(
   } else if (
     !skipCombos && addHelpfulSynapses && addHelpfulSynapses.length > 0
   ) {
-    console.info(
+    getLogger().info(
       `[DiscoveryCandidates] Combined add-synapses candidate not created (${addHelpfulSynapses.length} synapse${
         addHelpfulSynapses.length === 1 ? "" : "s"
       } suggested but structure change returned undefined)`,
@@ -557,7 +558,7 @@ export function buildDiscoveryCandidates(
       }
     }
   } else if (!skipCombos && candidateSquashes && candidateSquashes.length > 0) {
-    console.info(
+    getLogger().info(
       `[DiscoveryCandidates] Combined change-squash candidate not created (${candidateSquashes.length} squash${
         candidateSquashes.length === 1 ? "" : "es"
       } suggested but structure change returned undefined)`,
@@ -671,7 +672,7 @@ export function buildDiscoveryCandidates(
       const failureDetails = Array.from(failureReasons.entries())
         .map(([reason, count]) => `${reason}: ${count}`)
         .join(", ");
-      console.info(
+      getLogger().info(
         `[DiscoveryCandidates] Removal candidates: ${removalCandidates.length} total, ` +
           `${removalSuccessCount} succeeded, ${removalFailureCount} failed` +
           (failureDetails ? ` (${failureDetails})` : ""),
@@ -686,7 +687,7 @@ export function buildDiscoveryCandidates(
       const candidateDetails = topCandidates.map((c) =>
         `${shortID(c.neuronUUID)}:${c.impact.toExponential(2)}`
       ).join(", ");
-      console.info(
+      getLogger().info(
         `[DiscoveryCandidates] Top ${topCandidates.length} lowest-impact removal candidates: ${candidateDetails}`,
       );
 
@@ -698,7 +699,7 @@ export function buildDiscoveryCandidates(
         c.neuronUUID.toLowerCase().includes("removal")
       );
       if (testNeuronMatches.length > 0) {
-        console.info(
+        getLogger().info(
           `[DiscoveryCandidates] Found ${testNeuronMatches.length} potential test neuron(s) in removal list: ` +
             testNeuronMatches.map((c) =>
               `${c.neuronUUID}:${c.impact.toExponential(2)}`
@@ -847,7 +848,7 @@ function buildSingleSynapseCandidates(
     });
   }
   if (skippedCount > 0) {
-    console.info(
+    getLogger().info(
       `[DiscoveryCandidates] Skipped ${skippedCount}/${synapses.length} individual synapse candidate${
         skippedCount === 1 ? "" : "s"
       } (structure change returned undefined)`,
@@ -911,7 +912,7 @@ function buildSingleNeuronCandidates(
     });
   }
   if (skippedCount > 0) {
-    console.info(
+    getLogger().info(
       `[DiscoveryCandidates] Skipped ${skippedCount}/${neurons.length} individual neuron candidate${
         skippedCount === 1 ? "" : "s"
       } (structure change returned undefined)`,
@@ -964,7 +965,7 @@ function buildSingleSquashCandidates(
     });
   }
   if (skippedCount > 0) {
-    console.info(
+    getLogger().info(
       `[DiscoveryCandidates] Skipped ${skippedCount}/${squashes.length} individual squash candidate${
         skippedCount === 1 ? "" : "s"
       } (structure change returned undefined)`,
@@ -1511,7 +1512,7 @@ export function buildCombinedFromSuccessful(
 
   // Log summary of generated combinations
   if (combinedCandidates.length > 0) {
-    console.info(
+    getLogger().info(
       `[DiscoveryCandidates] Generated ${combinedCandidates.length} combination candidate${
         combinedCandidates.length === 1 ? "" : "s"
       } from ${successfulCandidates.length} successful singles`,
@@ -1661,16 +1662,16 @@ function validateAndFixCreatureSync(
       );
 
     // Log the validation failure with details
-    console.warn(
+    getLogger().warn(
       `[DiscoveryCandidates] Validation failed for ${changeType} change: ${validationError.message}`,
     );
-    console.warn(
+    getLogger().warn(
       `[DiscoveryCandidates] Cannot write debug file in synchronous context`,
     );
 
     // Last resort: call fix() to repair the creature
     // This should be treated as a bug - the modification logic should be improved
-    console.warn(
+    getLogger().warn(
       `[DiscoveryCandidates] Calling fix() on ${changeType} change - this indicates a bug in modification logic that should be addressed`,
     );
     if (enforceForwardOnly) {
@@ -1690,7 +1691,7 @@ function validateAndFixCreatureSync(
         creature.validate();
       }
     } catch (fixError) {
-      console.error(
+      getLogger().error(
         `[DiscoveryCandidates] Creature still invalid after fix() for ${changeType}: ${fixError}`,
       );
       throw fixError;
@@ -2072,13 +2073,13 @@ function applyChangeToCreature(
       default:
         // For combo types or unknown, just return the candidate's creature
         // This shouldn't happen in two-phase scoring but provides a fallback
-        console.warn(
+        getLogger().warn(
           `[DiscoveryCandidates] Unknown change type for combination: ${changeType}`,
         );
         return undefined;
     }
   } catch (error) {
-    console.warn(
+    getLogger().warn(
       `[DiscoveryCandidates] Failed to apply ${changeType} change during combination:`,
       error,
     );

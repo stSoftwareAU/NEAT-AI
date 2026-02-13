@@ -42,6 +42,7 @@ import {
   type DiscoveryReplayDirResult,
   DiscoveryReplayQueue,
 } from "./DiscoveryReplayQueue.ts";
+import { getLogger } from "../utils/Logger.ts";
 
 /**
  * NEAT (NeuroEvolution of Augmenting Topologies) implementation.
@@ -208,7 +209,7 @@ export class Neat {
         this.discoveryInProgress.size > 0 || this.trainingInProgress.size > 0
       ) {
         this.cleanUpDelayCount = 2;
-        console.info(
+        getLogger().info(
           `Set training/discovery clean up count to ${this.cleanUpDelayCount}`,
         );
       }
@@ -252,7 +253,7 @@ export class Neat {
               maxWaitByTime = maxGenerationsIn5Minutes;
             }
 
-            console.info(
+            getLogger().info(
               `Avg time per generation: ${
                 Math.round(avgTimePerGeneration)
               }ms, max wait: ${maxGenerationsIn5Minutes} generations in 5 minutes`,
@@ -275,7 +276,7 @@ export class Neat {
           maxWaitByIterations,
           maxWaitByTime,
         );
-        console.info(
+        getLogger().info(
           `Discovery timeout set to ${this.maxDiscoveryWaitGenerations} generations (based on limiting factor)`,
         );
       }
@@ -286,7 +287,7 @@ export class Neat {
         const stuckUUIDs = Array.from(this.discoveryInProgress.keys()).map(
           (uuid) => uuid.substring(Math.max(0, uuid.length - 8)),
         );
-        console.warn(
+        getLogger().warn(
           `[Neat] Discovery timeout reached after ${this.discoveryWaitGenerations} generations. Clearing stuck discoveries: ${
             stuckUUIDs.join(", ")
           }`,
@@ -303,7 +304,7 @@ export class Neat {
       const inProgressUUIDs = Array.from(this.discoveryInProgress.keys()).map(
         (uuid) => uuid.substring(Math.max(0, uuid.length - 8)),
       );
-      console.info(
+      getLogger().info(
         `[Neat] Waiting for discovery to complete (${this.discoveryWaitGenerations}/${this.maxDiscoveryWaitGenerations}) - In progress: ${
           inProgressUUIDs.join(", ")
         }`,
@@ -313,19 +314,19 @@ export class Neat {
     }
 
     if (this.trainingInProgress.size > 0) {
-      console.info("Waiting for training to complete");
+      getLogger().info("Waiting for training to complete");
       return false;
     }
 
     if (this.cleanUpDelayCount > 0) {
-      console.info(
+      getLogger().info(
         `Waiting for training/discovery clean up ${this.cleanUpDelayCount}`,
       );
       this.cleanUpDelayCount--;
       return false;
     }
     if (this.additionalGenerationCount > 0) {
-      console.info(
+      getLogger().info(
         `Waiting for additional generation${
           this.additionalGenerationCount > 1 ? "s" : ""
         }`,
@@ -370,12 +371,12 @@ export class Neat {
     // Issue #1290: Use work-stealing pool for smarter worker selection
     const w = this.workerPool.selectWorker();
     if (!w) {
-      console.warn("[Neat] No workers available for discovery");
+      getLogger().warn("[Neat] No workers available for discovery");
       return;
     }
 
     if (this.config.verbose) {
-      console.info(
+      getLogger().info(
         `Discovery ${
           blue(uuid.substring(Math.max(0, uuid.length - 8)))
         } scheduled`,
@@ -392,7 +393,7 @@ export class Neat {
     const effectiveTimeout = Math.min(timeOutMinutes, adaptiveTimeout);
 
     if (this.config.verbose) {
-      console.info(
+      getLogger().info(
         `[Neat] Adaptive discovery timeout: ${adaptiveTimeout.toFixed(2)}m ` +
           `(neurons=${creature.neurons.length}, synapses=${creature.synapses.length}), ` +
           `effective=${effectiveTimeout.toFixed(2)}m`,
@@ -407,7 +408,7 @@ export class Neat {
 
     const taskStartTime = Date.now();
     if (this.config.verbose) {
-      console.info(
+      getLogger().info(
         `[Neat] Discovery request sent to worker for ${
           blue(uuid.substring(Math.max(0, uuid.length - 8)))
         }`,
@@ -425,7 +426,7 @@ export class Neat {
       this.lastDiscoveryDurationMS = discoveryDurationMS;
 
       if (this.config.verbose) {
-        console.info(
+        getLogger().info(
           `[Neat] Discovery completed for ${
             blue(uuid.substring(Math.max(0, uuid.length - 8)))
           } after ${(discoveryDurationMS / 1000).toFixed(1)}s`,
@@ -452,7 +453,7 @@ export class Neat {
         r.discover.improvedCreature = improvedCreature.exportJSON();
 
         if (this.config.verbose) {
-          console.info(
+          getLogger().info(
             `[Neat] Built improved creature from discovery ${
               blue(uuid.substring(Math.max(0, uuid.length - 8)))
             } with ${
@@ -466,7 +467,7 @@ export class Neat {
 
       this.discoveryInProgress.delete(uuid);
     }).catch((error) => {
-      console.error(
+      getLogger().error(
         `[Neat] Discovery failed for creature ${
           uuid.substring(Math.max(0, uuid.length - 8))
         } after ${((Date.now() - taskStartTime) / 1000).toFixed(1)}s:`,
@@ -528,13 +529,13 @@ export class Neat {
     if (result.improvement) {
       const changeType = result.improvement.changeType ?? "unknown";
       const scoreDelta = result.improvement.scoreDelta?.toFixed(6) ?? "N/A";
-      console.info(
+      getLogger().info(
         `[Neat] Discovery replay: ${
           blue(changeType)
         } improved score by ${scoreDelta} (${parts.join(", ")})`,
       );
     } else {
-      console.info(
+      getLogger().info(
         `[Neat] Discovery replay: no improvement found (${parts.join(", ")})`,
       );
     }
@@ -545,13 +546,13 @@ export class Neat {
         (e) => e.improved && e.kind !== "original",
       );
       if (successfulCandidates.length > 0) {
-        console.info("[Neat] Successful replay candidates:");
+        getLogger().info("[Neat] Successful replay candidates:");
         for (const candidate of successfulCandidates) {
           const kind = candidate.kind === "combo" ? "combo" : "single";
           const changeType = candidate.changeType ?? "unknown";
           const description = candidate.description ?? candidate.key ?? "";
           const scoreDelta = candidate.scoreDelta?.toFixed(6) ?? "N/A";
-          console.info(
+          getLogger().info(
             `  - [${kind}] ${
               blue(changeType)
             }: ${description} (+${scoreDelta})`,
@@ -593,12 +594,12 @@ export class Neat {
     // Issue #1290: Use work-stealing pool for smarter worker selection
     const w = this.workerPool.selectWorker();
     if (!w) {
-      console.warn("[Neat] No workers available for training");
+      getLogger().warn("[Neat] No workers available for training");
       return;
     }
 
     if (this.config.verbose) {
-      console.info(
+      getLogger().info(
         `Training ${
           blue(uuid.substring(Math.max(0, uuid.length - 8)))
         } scheduled`,
@@ -628,7 +629,7 @@ export class Neat {
 
       let trainingImprovement = true;
       if (r.train.error > parseFloat(errorTx)) {
-        console.warn(
+        getLogger().warn(
           `Training ${
             blue(r.train.ID)
           } caused a higher error of ${r.train.error} from ${errorTx}`,
@@ -679,7 +680,7 @@ export class Neat {
           r.train.forward = JSON.stringify(forwardCreature);
         }
       } else if (trainingImprovement === false) {
-        console.warn(
+        getLogger().warn(
           `Training ${
             blue(r.train.ID)
           } caused a higher error of ${r.train.error} from ${errorTx} and no tuning`,
@@ -704,7 +705,7 @@ export class Neat {
         }
       }
     }).catch((error) => {
-      console.error(
+      getLogger().error(
         `Training failed for creature ${
           uuid.substring(Math.max(0, uuid.length - 8))
         }:`,
@@ -771,7 +772,7 @@ export class Neat {
       genus.addCreature(creature);
     }
     if (this.population.length === 0) {
-      console.warn("All creatures died, using zombies");
+      getLogger().warn("All creatures died, using zombies");
     }
 
     const numberOfElitists = this.config.elitism > 1
@@ -803,7 +804,7 @@ export class Neat {
       );
       if (previousFittest.score === tmpFittest.score) {
         if (previousFittest.uuid !== tmpFittest.uuid) {
-          console.info(
+          getLogger().info(
             `Fittest creature ${
               tmpFittest.uuid.substring(0, 8)
             } has the same score as previous fittest ${
@@ -864,7 +865,7 @@ export class Neat {
           this.scheduleDiscovery(fittest, trainingTimeOutMinutes);
         } else {
           if (this.config.verbose) {
-            console.info(
+            getLogger().info(
               `Skipping discovery: insufficient time (${trainingTimeOutMinutes}m remaining, ${estimatedDiscoveryMinutes}m estimated)`,
             );
           }
@@ -991,7 +992,7 @@ export class Neat {
         mutationRate: adjustedMutationRate,
       });
       if (this.config.verbose) {
-        console.info(
+        getLogger().info(
           `[Plateau] Stagnation detected - mutation rate increased from ` +
             `${(this.config.mutationRate * 100).toFixed(1)}% to ` +
             `${(adjustedMutationRate * 100).toFixed(1)}% ` +
@@ -1023,7 +1024,7 @@ export class Neat {
 
       const json = JSON.parse(r.train.creature);
       if (this.config.verbose) {
-        console.info(
+        getLogger().info(
           `Training ${blue(r.train.ID)} completed ${
             r.duration
               ? "after " + format(r.duration, { ignoreZero: true })
@@ -1055,7 +1056,7 @@ export class Neat {
 
       if (compactJSON) {
         if (this.config.verbose) {
-          console.info(
+          getLogger().info(
             `Training ${blue(r.train.ID)} compacted`,
           );
         }
@@ -1114,7 +1115,7 @@ export class Neat {
         trainedPopulation.push(discoveredCreature);
 
         if (this.config.verbose) {
-          console.info(
+          getLogger().info(
             `[Neat] Added discovered creature ${
               blue(discoveredCreature.uuid?.substring(0, 8) ?? "unknown")
             } to population (from discovery ${
@@ -1173,7 +1174,7 @@ export class Neat {
         trainedPopulation.push(replayedCreature);
 
         if (this.config.verbose) {
-          console.info(
+          getLogger().info(
             `[Neat] Added replayed creature ${
               blue(replayedCreature.uuid?.substring(0, 8) ?? "unknown")
             } to population (score improvement: ${

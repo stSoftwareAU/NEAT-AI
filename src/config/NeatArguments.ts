@@ -14,6 +14,7 @@ import type { RequiredFineTunePopulationConfig } from "./FineTunePopulationConfi
 import type { RequiredStabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
 import type { RequiredQuantumStepConfig } from "./QuantumStepConfig.ts";
 import type { RequiredBiasRegularisationConfig } from "./BiasRegularisationConfig.ts";
+import type { Logger } from "../utils/Logger.ts";
 import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 
 /**
@@ -535,4 +536,13 @@ export interface NeatArguments {
    * - successRateWindow: Number of recent generations to consider (default: 10)
    */
   fineTunePopulation: RequiredFineTunePopulationConfig;
+
+  /**
+   * Structured logger instance for NEAT-AI output.
+   *
+   * Issue #1398: Consumers can inject a custom logger for integration
+   * with external logging systems. When not provided, defaults to a
+   * console-based logger at "info" level.
+   */
+  logger: Logger;
 }

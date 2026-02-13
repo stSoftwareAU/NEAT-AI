@@ -19,6 +19,7 @@
  */
 
 import type { Creature } from "../Creature.ts";
+import { getLogger } from "../utils/Logger.ts";
 import {
   DEFAULT_ENSEMBLE_DIVERSITY_CONFIG,
   type EnsembleDiversityConfig,
@@ -504,7 +505,7 @@ export class EnsembleDiversityScoring {
       if (needsCrossBreeding) {
         message += " [CROSS-BREED]";
       }
-      console.info(message);
+      getLogger().info(message);
     }
   }
 
@@ -535,7 +536,7 @@ export class EnsembleDiversityScoring {
 
     const avgDiversity = speciesCount > 0 ? totalDiversity / speciesCount : 0;
 
-    console.info(
+    getLogger().info(
       `[EnsembleDiversity] Population: ${totalCreatures} creatures, ` +
         `${speciesCount} species, ` +
         `avg diversity: ${(avgDiversity * 100).toFixed(1)}%, ` +

@@ -2,6 +2,7 @@ import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../mod.ts";
 import { blue, bold, cyan } from "@std/fmt/colors";
 import { assert } from "@std/assert";
+import { getLogger } from "../utils/Logger.ts";
 
 // Define a union type for the possible approaches
 export type Approach =
@@ -35,7 +36,7 @@ export function logApproach(fittest: Creature, previous: Creature) {
         case "fine": {
           const restored = getTag(previous, "restored");
           const restoredMsg = restored ? `Restored: ${restored}` : "";
-          console.info(
+          getLogger().info(
             "Fine tuning increased fitness by",
             fScore - pScore,
             "to",
@@ -47,7 +48,7 @@ export function logApproach(fittest: Creature, previous: Creature) {
           break;
         }
         case "backtrack": {
-          console.info(
+          getLogger().info(
             "Backtracking increased fitness by",
             fScore - pScore,
             "to",
@@ -58,7 +59,7 @@ export function logApproach(fittest: Creature, previous: Creature) {
           break;
         }
         case "simplified": {
-          console.info(
+          getLogger().info(
             "Simplifying improved by",
             fScore - pScore,
             "to",
@@ -67,7 +68,7 @@ export function logApproach(fittest: Creature, previous: Creature) {
           break;
         }
         case "retry": {
-          console.info(
+          getLogger().info(
             "Retrying increased fitness by",
             fScore - pScore,
             "to",
@@ -79,7 +80,7 @@ export function logApproach(fittest: Creature, previous: Creature) {
         }
         case "trained": {
           const trainID = getTag(fittest, "trainID");
-          console.info(
+          getLogger().info(
             bold(cyan("Training")),
             blue(`${trainID}`),
             "increased fitness by",
@@ -96,7 +97,7 @@ export function logApproach(fittest: Creature, previous: Creature) {
           const evaluation = getTag(fittest, "Discovery") ??
             getTag(fittest, "discovery");
 
-          console.info(
+          getLogger().info(
             bold(cyan("Discovery")),
             blue(`${discoveryID}`),
             evaluation ?? cyan("unknown"),
@@ -111,7 +112,7 @@ export function logApproach(fittest: Creature, previous: Creature) {
           const oldNeuronsTxt = getTag(fittest, "old-neurons");
           assert(oldNeuronsTxt, "Old neurons must be defined");
           const oldNeurons = Number.parseInt(oldNeuronsTxt);
-          console.info(
+          getLogger().info(
             "Compacting increased fitness by",
             fScore - pScore,
             "to",

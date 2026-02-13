@@ -22,6 +22,7 @@ import type {
 } from "./DiscoverStructureTypes.ts";
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
+import { getLogger } from "../../utils/Logger.ts";
 
 /**
  * Validates a creature and attempts to fix it if validation fails.
@@ -83,7 +84,7 @@ export function validateAndFixIfNeeded(
       );
     }
 
-    console.warn(
+    getLogger().warn(
       `[Discovery ${discoveryID}] Creature became invalid after ${operationType}: ${error.name} - ${error.message}. ` +
         `This is a bug that should be investigated. Attempting fix() as last resort.`,
     );
@@ -107,7 +108,7 @@ export function validateAndFixIfNeeded(
       }
       return { success: true, fixWasCalled: true, validationError: error };
     } catch (fixError) {
-      console.error(
+      getLogger().error(
         `[Discovery ${discoveryID}] fix() failed to repair creature after ${operationType}. Error: ${fixError}`,
       );
       return { success: false, fixWasCalled: true, validationError: error };
@@ -183,12 +184,12 @@ function recordValidationIssue(
     ].join("\n");
     Deno.writeTextFileSync(errorPath, errorContent);
 
-    console.warn(
+    getLogger().warn(
       `[Discovery ${discoveryID}] Validation issue recorded to: ${issueDir}`,
     );
   } catch (recordError) {
     // Don't let recording failure prevent the main flow
-    console.error(
+    getLogger().error(
       `[Discovery ${discoveryID}] Failed to record validation issue: ${recordError}`,
     );
   }
@@ -265,12 +266,12 @@ export function recordDiscoveryIssue(
     ].filter((line) => line !== undefined).join("\n");
     Deno.writeTextFileSync(errorPath, errorContent);
 
-    console.warn(
+    getLogger().warn(
       `[Discovery ${discoveryID}] Discovery issue recorded to: ${issueDir}`,
     );
   } catch (recordError) {
     // Don't let recording failure prevent the main flow
-    console.error(
+    getLogger().error(
       `[Discovery ${discoveryID}] Failed to record discovery issue: ${recordError}`,
     );
   }
@@ -302,7 +303,7 @@ export function removeSynapse(
   );
 
   if (!fromNeuron || !toNeuron) {
-    console.warn(
+    getLogger().warn(
       `[DiscoverStructure] removeSynapse: neuron(s) not found for synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID}`,
     );
     return null;
@@ -314,7 +315,7 @@ export function removeSynapse(
   // Check if the synapse actually exists
   const synapse = creature.getSynapse(fromIndx, toIndx);
   if (!synapse) {
-    console.warn(
+    getLogger().warn(
       `[DiscoverStructure] removeSynapse: synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID} does not exist in creature`,
     );
     return null;
@@ -364,7 +365,7 @@ export function removeSynapse(
   }
 
   // Synapse existed but removal didn't change UUID
-  console.warn(
+  getLogger().warn(
     `[DiscoverStructure] removeSynapse: synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID} existed but removal had no structural effect`,
   );
   return null;
@@ -398,7 +399,7 @@ export function addHelpfulSynapses(
     });
 
     if (foundSynapse) {
-      console.warn(
+      getLogger().warn(
         `[Discovery ${ID}] Synapse ${bestCandidate.fromNeuronUUID} -> ${bestCandidate.toNeuronUUID} already exists, skipping`,
       );
       return;
@@ -409,7 +410,7 @@ export function addHelpfulSynapses(
     });
     if (!foundFromNeuron) {
       if (!bestCandidate.fromNeuronUUID.startsWith("input-")) {
-        console.warn(
+        getLogger().warn(
           `[Discovery ${ID}] Source neuron ${bestCandidate.fromNeuronUUID} not found, skipping synapse`,
         );
         return;
@@ -421,7 +422,7 @@ export function addHelpfulSynapses(
       return neuron.uuid === bestCandidate.toNeuronUUID;
     });
     if (!foundToNeuron) {
-      console.warn(
+      getLogger().warn(
         `[Discovery ${ID}] Target neuron ${bestCandidate.toNeuronUUID} not found or is not hidden/output, skipping synapse`,
       );
       return;
@@ -451,7 +452,7 @@ export function addHelpfulSynapses(
   });
 
   if (appliedSynapses.length === 0) {
-    console.warn(
+    getLogger().warn(
       `[Discovery ${ID}] No synapses could be added from ${helpfulSynapses.length} candidates`,
     );
     return;
@@ -485,7 +486,7 @@ export function addHelpfulSynapses(
       afterFixSynapseCount !== beforeFixSynapseCount ||
       afterFixNeuronCount !== beforeFixNeuronCount
     ) {
-      console.warn(
+      getLogger().warn(
         `[Discovery ${ID}] fix() modified structure: synapses ${beforeFixSynapseCount} -> ${afterFixSynapseCount}, neurons ${beforeFixNeuronCount} -> ${afterFixNeuronCount}`,
       );
     }
@@ -573,7 +574,7 @@ export function addHelpfulNeurons(
     if (fromIndex >= 0 && toIndex >= 0 && fromIndex >= toIndex) {
       const summary =
         `from neuron must be before target neuron (fromIndex=${fromIndex}, targetIndex=${toIndex})`;
-      console.warn(
+      getLogger().warn(
         `[Discovery ${ID}] addHelpfulNeurons: Skipping candidate ${candidate.fromNeuronUUID} -> ${candidate.toNeuronUUID}: ${summary}`,
       );
 
@@ -704,7 +705,7 @@ export function addHelpfulNeurons(
   });
 
   if (addedNeuronUUIDs.length === 0) {
-    console.warn(
+    getLogger().warn(
       `[Discovery ${ID}] No neurons could be added from ${helpfulNeurons.length} candidates`,
     );
     return;
@@ -738,7 +739,7 @@ export function addHelpfulNeurons(
       afterFixSynapseCount !== beforeFixSynapseCount ||
       afterFixNeuronCount !== beforeFixNeuronCount
     ) {
-      console.warn(
+      getLogger().warn(
         `[Discovery ${ID}] fix() modified structure: synapses ${beforeFixSynapseCount} -> ${afterFixSynapseCount}, neurons ${beforeFixNeuronCount} -> ${afterFixNeuronCount}`,
       );
     }
@@ -807,7 +808,7 @@ export function changeSquash(
   });
 
   if (appliedSquashes.length === 0) {
-    console.warn(
+    getLogger().warn(
       `[Discovery ${ID}] No squash changes could be applied from ${helpfulSquashes.length} candidates`,
     );
     return;
@@ -842,7 +843,7 @@ export function changeSquash(
       afterFixSynapseCount !== beforeFixSynapseCount ||
       afterFixNeuronCount !== beforeFixNeuronCount
     ) {
-      console.warn(
+      getLogger().warn(
         `[Discovery ${ID}] fix() modified structure: synapses ${beforeFixSynapseCount} -> ${afterFixSynapseCount}, neurons ${beforeFixNeuronCount} -> ${afterFixNeuronCount}`,
       );
     }
@@ -1156,7 +1157,7 @@ export function removeLowImpactNeuron(
   // Log detailed diagnostics for first occurrence only
   if (!removalDiagnostics.firstSameUUIDLogged) {
     removalDiagnostics.firstSameUUIDLogged = true;
-    console.warn(
+    getLogger().warn(
       `[DiscoverStructure] removeLowImpactNeuron UUID unchanged after removal:`,
       `\n  neuronUUID: ${removalCandidate.neuronUUID}`,
       `\n  removedSynapses: ${removedSynapseCount}, removedNeurons: ${removedNeuronCount}`,

@@ -1,4 +1,5 @@
 import { assert, assertExists } from "@std/assert";
+import { getLogger } from "../utils/Logger.ts";
 import { bold, cyan, green, red, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { join } from "@std/path/join";
@@ -146,7 +147,7 @@ export class DiscoveryRunner {
     const config = createNeatConfig(input.options);
     const verboseLog = (...args: unknown[]) => {
       if (config.verbose) {
-        console.info("[DiscoveryRunner]", ...args);
+        getLogger().info("[DiscoveryRunner]", ...args);
       }
     };
     if (config.discoverySampleRate <= 0) {
@@ -199,7 +200,7 @@ export class DiscoveryRunner {
               // Swallow termination errors as worker may already be closed.
             }
             if (!preferDirect) {
-              console.warn(
+              getLogger().warn(
                 "[DiscoveryRunner] Worker init failed; falling back to direct execution for this worker slot.",
                 err,
               );
@@ -303,7 +304,7 @@ export class DiscoveryRunner {
       const countBreakdown = Array.from(candidateCountsByType.entries())
         .map(([type, count]) => `${type}: ${count}`)
         .join(", ");
-      console.info(
+      getLogger().info(
         `[DiscoveryRunner] Built ${singleCandidates.length} candidate${
           singleCandidates.length === 1 ? "" : "s"
         }${countBreakdown ? ` (${countBreakdown})` : ""}`,
@@ -657,7 +658,7 @@ export class DiscoveryRunner {
         archiveDir = targetDir;
         resolvedArchiveDir = safeRealPath(targetDir);
       } catch (error) {
-        console.warn(
+        getLogger().warn(
           "[DiscoveryRunner] Failed to create discovery candidate archive:",
           error,
         );
@@ -683,7 +684,7 @@ export class DiscoveryRunner {
         Deno.writeTextFileSync(filePath, JSON.stringify(payload, null, 1));
         return safeRealPath(filePath);
       } catch (error) {
-        console.warn(
+        getLogger().warn(
           `[DiscoveryRunner] Failed to persist discovery candidate '${baseLabel}':`,
           error,
         );
@@ -744,7 +745,7 @@ export class DiscoveryRunner {
         const summaryPath = join(archiveDir, "summary.json");
         Deno.writeTextFileSync(summaryPath, JSON.stringify(summaries, null, 1));
       } catch (error) {
-        console.warn(
+        getLogger().warn(
           "[DiscoveryRunner] Failed to persist discovery evaluation summary:",
           error,
         );
@@ -775,7 +776,7 @@ export class DiscoveryRunner {
     // Identify the best candidate (highest score delta)
     const bestCandidate = candidates.length > 0 ? candidates[0] : undefined;
 
-    console.info(
+    getLogger().info(
       `[DiscoveryRunner] ${
         bold(`Discovery ${discoveryID} evaluation summary:`)
       }`,
@@ -843,7 +844,7 @@ export class DiscoveryRunner {
         summary.error.toPrecision(6)
       } ${scoreText}${scoreDeltaText}${improvedText} ${errorDeltaText}${bestMarker}`;
 
-    console.info(
+    getLogger().info(
       `[DiscoveryRunner]   ${label}${description}: ${mainInfo}`,
     );
 
@@ -852,7 +853,7 @@ export class DiscoveryRunner {
     if (summary.neuronDetails) {
       const nd = summary.neuronDetails;
       const prefix = isBest ? "★ " : "  ";
-      console.info(
+      getLogger().info(
         `[DiscoveryRunner]     ${prefix}neuron: ` +
           `from=${shortID(nd.fromNeuronUUID)} to=${shortID(nd.toNeuronUUID)} ` +
           `squash=${nd.squash} ` +
@@ -864,7 +865,7 @@ export class DiscoveryRunner {
     }
 
     if (summary.archivePath) {
-      console.info(
+      getLogger().info(
         `[DiscoveryRunner]     Saved creature at ${summary.archivePath}`,
       );
     }
@@ -918,7 +919,7 @@ export class DiscoveryRunner {
       });
 
       if (verbose) {
-        console.info("[DiscoveryRunner] Evaluation result", {
+        getLogger().info("[DiscoveryRunner] Evaluation result", {
           kind: task.kind,
           change: task.candidate?.change.type,
           error,
@@ -1006,7 +1007,7 @@ export class DiscoveryRunner {
             .join(", ");
           parts.push(typeBreakdown || `${cache.cachedOther} other`);
         }
-        console.info(
+        getLogger().info(
           `[DiscoveryRunner] ⏭️ Skipped ${cache.totalCached} candidate${
             cache.totalCached === 1 ? "" : "s"
           } due to previous failure: ${parts.join(", ")}`,
@@ -1022,7 +1023,7 @@ export class DiscoveryRunner {
         .map(([type, counts]) => `${type}: ${counts.selected}/${counts.total}`)
         .join(", ");
       if (diversitySummary.length > 0) {
-        console.info(
+        getLogger().info(
           `[DiscoveryRunner] Category diversity: ${diversitySummary}`,
         );
       }
@@ -1032,14 +1033,14 @@ export class DiscoveryRunner {
     if (result.diagnostics?.removalSelection) {
       const removal = result.diagnostics.removalSelection;
       if (removal.poolImpacts.length > 0) {
-        console.info(
+        getLogger().info(
           `[DiscoveryRunner] Top ${removal.poolImpacts.length} lowest-impact removal candidates pool: [${
             removal.poolImpacts.join(", ")
           }]`,
         );
       }
       if (removal.selectedImpacts.length > 0) {
-        console.info(
+        getLogger().info(
           `[DiscoveryRunner] ✓ Selected ${removal.selectedImpacts.length} removal from top ${removal.poolImpacts.length}: [${
             removal.selectedImpacts.join(", ")
           }]`,

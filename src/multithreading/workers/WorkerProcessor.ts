@@ -14,6 +14,7 @@ import {
   isWasmActivationAvailable,
 } from "../../wasm/mod.ts";
 import type { RequestData, ResponseData } from "./WorkerHandler.ts";
+import { getLogger } from "../../utils/Logger.ts";
 
 type DiscoverResponsePayload = NonNullable<ResponseData["discover"]>;
 
@@ -234,7 +235,7 @@ export class WorkerProcessor {
           },
         };
       } catch (error) {
-        console.error(error);
+        getLogger().error(error);
         writeDiagnostics({
           error,
           prefix: "evaluate",
@@ -324,7 +325,7 @@ export class WorkerProcessor {
         creatureValidate(creature);
 
         if (data.discover.config.log) {
-          console.log(
+          getLogger().info(
             `[Worker] Starting discovery for creature (taskID: ${data.taskID})...`,
           );
         }
@@ -336,7 +337,7 @@ export class WorkerProcessor {
         );
 
         if (data.discover.config.log) {
-          console.log(
+          getLogger().info(
             `[Worker] Discovery complete for creature (taskID: ${data.taskID}), preparing response...`,
           );
         }
@@ -350,7 +351,7 @@ export class WorkerProcessor {
         clearDiscoverResultForGC(result);
 
         if (data.discover!.config.log) {
-          console.log(
+          getLogger().info(
             `[Worker] Returning discovery response (taskID: ${data.taskID})...`,
           );
         }

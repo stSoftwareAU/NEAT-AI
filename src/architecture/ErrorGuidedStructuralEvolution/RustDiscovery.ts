@@ -14,6 +14,7 @@
 import { assert } from "@std/assert";
 import { fromFileUrl } from "@std/path/from-file-url";
 import { join } from "@std/path/join";
+import { getLogger } from "../../utils/Logger.ts";
 
 const MAX_C_STRING_BYTES = 128 * 1024 * 1024; // 128 MiB guard for FFI strings
 
@@ -589,16 +590,19 @@ export function computeRustRecordStats(
       );
 
       if (errorCount > maxReasonableErrorsPerNeuron) {
-        console.error(
+        getLogger().error(
           `❌ CRITICAL: Neuron ${uuid} has ${errorCount} errors, which exceeds reasonable maximum (${maxReasonableErrorsPerNeuron})!`,
         );
-        console.error(
+        getLogger().error(
           `This indicates data corruption in the TypeScript logic.`,
         );
-        console.error(
+        getLogger().error(
           `Samples: ${sampleCount}, Outputs: ${outputCount}, Max per neuron: ${maxReasonableErrorsPerNeuron}`,
         );
-        console.error(`Errors array sample (first 10):`, errors.slice(0, 10));
+        getLogger().error(
+          `Errors array sample (first 10):`,
+          errors.slice(0, 10),
+        );
         throw new Error(
           `Data corruption detected: neuron ${uuid} has ${errorCount} errors, ` +
             `which far exceeds reasonable maximum (${maxReasonableErrorsPerNeuron}). ` +
@@ -613,7 +617,7 @@ export function computeRustRecordStats(
         Math.ceil(sampleCount * outputCount * 1.5),
       );
       if (errorCount > warningThreshold) {
-        console.warn(
+        getLogger().warn(
           `⚠️  Neuron ${uuid} has ${errorCount} errors (expected ≤${warningThreshold} for ${sampleCount} samples × ${outputCount} outputs). ` +
             `During backprop, record() should be called once per sample per output. Multiple calls suggest a logic error.`,
         );
@@ -631,18 +635,18 @@ export function computeRustRecordStats(
   );
   const maxReasonableErrors = totalNeuronRecords * maxReasonableErrorsPerRecord;
   if (totalErrorValues > maxReasonableErrors) {
-    console.error(
+    getLogger().error(
       `❌ CRITICAL: Total error values (${totalErrorValues}) exceeds reasonable maximum (${maxReasonableErrors})!`,
     );
-    console.error(
+    getLogger().error(
       `With ${sampleCount} samples and ${expectedNeuronCount} neurons (${totalNeuronRecords} neuron records), this is impossible.`,
     );
-    console.error(
+    getLogger().error(
       `Average errors per neuron record: ${
         (totalErrorValues / totalNeuronRecords).toFixed(2)
       }`,
     );
-    console.error(
+    getLogger().error(
       `Max reasonable per record: ${maxReasonableErrorsPerRecord}`,
     );
     throw new Error(
@@ -915,7 +919,7 @@ export function loadRustLibrary(): boolean {
         path: libPath,
       });
       if (permission.state !== "granted") {
-        console.warn(
+        getLogger().warn(
           `FFI permission denied for discovery library at ${libPath}. ` +
             "Run with --allow-ffi to enable Rust discovery.",
         );
@@ -968,7 +972,7 @@ export function loadRustLibrary(): boolean {
     rustLib = Deno.dlopen(libPath, symbols);
     return true;
   } catch (error) {
-    console.warn(
+    getLogger().warn(
       `Failed to load Rust discovery library from ${libPath}:`,
       error,
     );
@@ -1013,7 +1017,7 @@ export function getDiscoveryVersion(): string | undefined {
   try {
     const resultPtr = rustLib.symbols["get_library_version"]();
     if (resultPtr === null) {
-      console.warn(
+      getLogger().warn(
         "[RustDiscovery] get_library_version returned null pointer.",
       );
       cachedDiscoveryVersion = undefined;
@@ -1029,14 +1033,14 @@ export function getDiscoveryVersion(): string | undefined {
       return parsed.version;
     }
 
-    console.warn(
+    getLogger().warn(
       "[RustDiscovery] get_library_version failed:",
       parsed.error ?? "unknown error",
     );
     cachedDiscoveryVersion = undefined;
     return undefined;
   } catch (error) {
-    console.warn("[RustDiscovery] get_library_version threw:", error);
+    getLogger().warn("[RustDiscovery] get_library_version threw:", error);
     cachedDiscoveryVersion = undefined;
     return undefined;
   }
@@ -1060,7 +1064,7 @@ export function isRustGpuAvailable(): boolean {
     if (resultPtr === null) {
       if (!rustGpuWarningEmitted) {
         rustGpuWarningEmitted = true;
-        console.warn(
+        getLogger().warn(
           "⚠️  Discovery GPU probe returned a null pointer. " +
             "Discovery will be disabled on this worker.",
         );
@@ -1077,7 +1081,7 @@ export function isRustGpuAvailable(): boolean {
     } catch {
       if (!rustGpuWarningEmitted) {
         rustGpuWarningEmitted = true;
-        console.warn(
+        getLogger().warn(
           "⚠️  Discovery GPU probe returned invalid JSON. " +
             "Discovery will be disabled on this worker.",
           resultJson,
@@ -1090,7 +1094,7 @@ export function isRustGpuAvailable(): boolean {
       if (!rustGpuWarningEmitted) {
         rustGpuWarningEmitted = true;
         const detail = parsed.error ?? "no usable GPU detected";
-        console.warn(
+        getLogger().warn(
           "🚧 Discovery disabled: Rust discovery library is loaded but no usable GPU " +
             `was reported for this worker (${detail}).`,
         );
@@ -1102,7 +1106,7 @@ export function isRustGpuAvailable(): boolean {
   } catch (error) {
     if (!rustGpuWarningEmitted) {
       rustGpuWarningEmitted = true;
-      console.warn(
+      getLogger().warn(
         "⚠️  Discovery GPU probe threw an error. Discovery will be disabled " +
           "on this worker.",
         error,

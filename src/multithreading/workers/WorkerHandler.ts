@@ -16,6 +16,7 @@ import type {
 import type { NeatConfig } from "../../config/NeatConfig.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
 import { MockWorker } from "./MockWorker.ts";
+import { getLogger } from "../../utils/Logger.ts";
 
 export interface WasmActivationInitPayload {
   /**
@@ -470,14 +471,14 @@ export class WorkerHandler {
         ].filter(Boolean).join(" | ");
         const err = new Error(msg, { cause: ev.error });
         captureInitError(err);
-        console.error(msg, ev.error ?? ev);
+        getLogger().error(msg, ev.error ?? ev);
       });
       this.worker.addEventListener("messageerror", (e) => {
         const msg =
           `Worker messageerror event during init (workerID=${this.workerID}) | script=${workerUrl}`;
         const err = new Error(msg, { cause: e });
         captureInitError(err);
-        console.error(msg, e);
+        getLogger().error(msg, e);
       });
     } else {
       this.worker = new MockWorker();
@@ -593,7 +594,7 @@ export class WorkerHandler {
 
     // Log discovery response receipt
     if (data.discover) {
-      console.log(
+      getLogger().info(
         `[WorkerHandler] Received discovery response for taskID: ${data.taskID}`,
       );
     }
@@ -620,7 +621,7 @@ export class WorkerHandler {
 
     // Log discovery request posting
     if (data.discover) {
-      console.log(
+      getLogger().info(
         `[WorkerHandler] Posting discovery request to worker (taskID: ${data.taskID})`,
       );
     }
@@ -663,7 +664,7 @@ export class WorkerHandler {
       this.ready.then(() => {
         // Log discovery request posting
         if (data.discover) {
-          console.log(
+          getLogger().info(
             `[WorkerHandler] Posting discovery request to worker (taskID: ${data.taskID})`,
           );
         }

@@ -78,6 +78,7 @@ import {
   observeRustTrainingRecord as observeRustTrainingRecordImpl,
   truncateForLogValue as truncateForLogValueImpl,
 } from "./RustFlushDiagnostics.ts";
+import { getLogger } from "../../utils/Logger.ts";
 
 export { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
 export { DEFAULT_RUST_FLUSH_BYTES } from "./constants.ts";
@@ -310,7 +311,7 @@ export class DiscoverStructure {
       const stat = Deno.statSync(mergedParquetPath);
       if (stat.isFile && stat.size > 0) {
         if (this.loggingEnabled) {
-          console.log(
+          getLogger().info(
             `[Discovery ${this.discoveryID}] Skipping record phase - using existing parquet file: ${mergedParquetPath}`,
           );
         }
@@ -332,7 +333,7 @@ export class DiscoverStructure {
         );
         if (parquetChunks.length > 0) {
           if (this.loggingEnabled) {
-            console.log(
+            getLogger().info(
               `[Discovery ${this.discoveryID}] Skipping record phase - found ${parquetChunks.length} existing chunk files in: ${chunksDir}`,
             );
           }
@@ -348,7 +349,7 @@ export class DiscoverStructure {
     }
 
     if (this.loggingEnabled) {
-      console.log(
+      getLogger().info(
         `[Discovery ${this.discoveryID}] No existing parquet files found - proceeding with recording`,
       );
     }
@@ -559,7 +560,7 @@ export class DiscoverStructure {
     // Skip directory removal if cleanup is disabled (for debugging)
     if (this.disableCleanup) {
       if (this.loggingEnabled) {
-        console.log(
+        getLogger().info(
           `[Discovery ${this.discoveryID}] Cleanup disabled - preserving temporary files at: ${this.tempDir}`,
         );
       }
@@ -570,7 +571,7 @@ export class DiscoverStructure {
       await Deno.remove(this.tempDir, { recursive: true });
     } catch (error) {
       // Ignore cleanup errors to prevent crashes
-      console.warn(`Failed to cleanup discovery temp dir: ${error}`);
+      getLogger().warn(`Failed to cleanup discovery temp dir: ${error}`);
     }
   }
 
@@ -743,16 +744,16 @@ export class DiscoverStructure {
         if (
           error instanceof Error && error.message.includes("Excessive record()")
         ) {
-          console.error(
+          getLogger().error(
             `❌ Error occurred while processing sample ${
               i + 1
             }/${trainingData.length}`,
           );
-          console.error(
+          getLogger().error(
             `   Total samples accumulated so far: ${this.rustAccumulatedData.length}`,
           );
-          console.error(`   Input: ${record.input.slice(0, 5)}...`);
-          console.error(`   Output: ${record.output.slice(0, 5)}...`);
+          getLogger().error(`   Input: ${record.input.slice(0, 5)}...`);
+          getLogger().error(`   Output: ${record.output.slice(0, 5)}...`);
         }
         throw error;
       }
@@ -800,14 +801,14 @@ export class DiscoverStructure {
     // Check if creature has been cleaned up (race condition protection)
     // @ts-ignore - creature can be null after cleanUp()
     if (!this.creature) {
-      console.warn(
+      getLogger().warn(
         `⚠️  Discovery recording skipped: creature has been cleaned up.`,
       );
       return null;
     }
 
     if (!this.deps.isRustLibraryAvailable()) {
-      console.warn(
+      getLogger().warn(
         `⚠️  Rust library not available when flushing. Discovery recording failed.`,
       );
       return null;
@@ -1005,7 +1006,7 @@ export class DiscoverStructure {
       this.rustChunkFiles.push(parquetPath);
       return true;
     } catch (error) {
-      console.error("❌ Failed to flush discovery chunk:", error);
+      getLogger().error("❌ Failed to flush discovery chunk:", error);
       return false;
     }
   }
@@ -1042,7 +1043,7 @@ export class DiscoverStructure {
     });
 
     if (!mergeResult || !mergeResult.success) {
-      console.error(
+      getLogger().error(
         "❌ Rust discovery merge failed:",
         mergeResult?.error ?? "Unknown error",
       );
@@ -1585,19 +1586,19 @@ export class DiscoverStructure {
 
     switch (level) {
       case "debug":
-        if (this.loggingEnabled) console.debug(...args);
+        if (this.loggingEnabled) getLogger().debug(...args);
         break;
       case "info":
-        if (this.loggingEnabled) console.info(...args);
+        if (this.loggingEnabled) getLogger().info(...args);
         break;
       case "warn":
-        console.warn(...args);
+        getLogger().warn(...args);
         break;
       case "error":
-        console.error(...args);
+        getLogger().error(...args);
         break;
       default:
-        console.log(...args);
+        getLogger().info(...args);
         break;
     }
   }
@@ -1724,7 +1725,7 @@ export class DiscoverStructure {
       }
     } catch (error) {
       // Don't fail discovery if we can't write the analysis file
-      console.warn(
+      getLogger().warn(
         `Failed to write focus selection analysis: ${
           error instanceof Error ? error.message : String(error)
         }`,
@@ -2279,7 +2280,7 @@ export class DiscoverStructure {
           error instanceof Error &&
           error.message.includes("Too many open files") && retries < maxRetries
         ) {
-          console.warn(
+          getLogger().warn(
             `Too many open files, retrying in ${delay}ms (attempt ${
               retries + 1
             }/${maxRetries})`,
@@ -2328,7 +2329,7 @@ export class DiscoverStructure {
             // Read the record
             const bytesRead = file.readSync(recordBuffer);
             if (bytesRead === null || bytesRead !== BYTES_PER_RECORD) {
-              console.warn(
+              getLogger().warn(
                 `Failed to read record ${recordIndex} from ${binaryFile}`,
               );
               continue;
@@ -2594,7 +2595,7 @@ export class DiscoverStructure {
     targetCount?: number,
   ): NeuronErrorInfo[] {
     if (!this.recorded) {
-      console.warn("No recorded data to list neurons.");
+      getLogger().warn("No recorded data to list neurons.");
       return [];
     }
 
@@ -2621,10 +2622,10 @@ export class DiscoverStructure {
     }
 
     // Rust discovery is required - no fallback
-    console.error(
+    getLogger().error(
       `❌ CRITICAL: Rust focus ranking failed. Discovery cannot proceed without Rust analysis.`,
     );
-    console.error(
+    getLogger().error(
       `   Ensure NEAT-AI-Discovery Rust library is properly built and available.`,
     );
     return [];
@@ -2973,10 +2974,10 @@ export class DiscoverStructure {
 
     // Guard against NaN, Infinity, or zero total weighted sum
     if (!Number.isFinite(totalWeightedSum)) {
-      console.error(
+      getLogger().error(
         `❌ CRITICAL ERROR: totalWeightedSum is ${totalWeightedSum} (NaN or Infinity). This indicates corrupt error/impact calculations in the discovery process!`,
       );
-      console.error(
+      getLogger().error(
         `   Neuron weighted summary: ${
           weightedValues.slice(0, 5).map((n) =>
             `${n.uuid.slice(-8)}: weight=${n.weight}`
@@ -2984,7 +2985,7 @@ export class DiscoverStructure {
         }...`,
       );
       // Fallback to random selection to prevent infinite loops
-      console.warn(
+      getLogger().warn(
         `   Falling back to random neuron selection to continue discovery`,
       );
       const shuffled = [...neuronErrors].sort(() => Math.random() - 0.5);
@@ -3009,10 +3010,10 @@ export class DiscoverStructure {
     }
 
     if (totalWeightedSum <= 0) {
-      console.warn(
+      getLogger().warn(
         `⚠️  WARNING: totalWeightedSum is ${totalWeightedSum} (zero or negative). All neurons have zero error × impact?`,
       );
-      console.warn(`   Falling back to random neuron selection`);
+      getLogger().warn(`   Falling back to random neuron selection`);
       // Fallback to random selection without weighting
       const shuffled = [...neuronErrors].sort(() => Math.random() - 0.5);
       const fallback = shuffled.slice(0, count).map((n) => n.uuid);
@@ -3080,13 +3081,13 @@ export class DiscoverStructure {
     }
 
     if (iterations >= maxIterations) {
-      console.error(
+      getLogger().error(
         `❌ ERROR: Selection reached max iterations (${maxIterations}), only selected ${selectedUUIDs.size}/${count} neurons`,
       );
-      console.error(
+      getLogger().error(
         `   This should not happen with the hybrid approach. Please report this.`,
       );
-      console.error(
+      getLogger().error(
         `   totalWeightedSum: ${totalWeightedSum}, neuronErrors.length: ${neuronErrors.length}`,
       );
     }

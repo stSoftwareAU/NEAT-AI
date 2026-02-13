@@ -9,6 +9,8 @@
  * - Error-Guided Structural Evolution (EGSE)
  */
 
+import { getLogger } from "../utils/Logger.ts";
+
 export interface TrainingMetrics {
   /** Unique identifier for this training session */
   sessionId: string;
@@ -198,33 +200,39 @@ export class TrainingMetricsCollector {
     const totalTime = Date.now() - this.metrics.startTime;
     const minutes = totalTime / (1000 * 60);
 
-    console.log(
+    getLogger().info(
       `\n📊 Training Metrics Report - Session: ${this.metrics.sessionId}`,
     );
-    console.log(`⏱️  Total Time: ${minutes.toFixed(1)} minutes`);
-    console.log(`🎯 Best Fitness: ${this.metrics.bestFitness.toFixed(6)}`);
-    console.log(
+    getLogger().info(`⏱️  Total Time: ${minutes.toFixed(1)} minutes`);
+    getLogger().info(
+      `🎯 Best Fitness: ${this.metrics.bestFitness.toFixed(6)}`,
+    );
+    getLogger().info(
       `📈 Total Improvements: ${this.metrics.summary.totalImprovements}`,
     );
-    console.log(
+    getLogger().info(
       `⚡ Improvements/Min: ${
         (this.metrics.summary.totalImprovements / minutes).toFixed(2)
       }`,
     );
 
-    console.log(`\n🔍 Strategy Breakdown:`);
+    getLogger().info(`\n🔍 Strategy Breakdown:`);
     for (const [strategy, stats] of Object.entries(summary)) {
       if (stats.count > 0) {
-        console.log(`  ${strategy}:`);
-        console.log(`    Count: ${stats.count}`);
-        console.log(
+        getLogger().info(`  ${strategy}:`);
+        getLogger().info(`    Count: ${stats.count}`);
+        getLogger().info(
           `    Total Improvement: ${stats.totalImprovement.toFixed(6)}`,
         );
-        console.log(`    Avg Improvement: ${stats.avgImprovement.toFixed(6)}`);
-        console.log(
+        getLogger().info(
+          `    Avg Improvement: ${stats.avgImprovement.toFixed(6)}`,
+        );
+        getLogger().info(
           `    Best Improvement: ${stats.bestImprovement.toFixed(6)}`,
         );
-        console.log(`    % of Total: ${stats.improvementPercent.toFixed(1)}%`);
+        getLogger().info(
+          `    % of Total: ${stats.improvementPercent.toFixed(1)}%`,
+        );
       }
     }
 
@@ -234,7 +242,7 @@ export class TrainingMetricsCollector {
       .sort((a, b) => b[1].totalImprovement - a[1].totalImprovement)[0];
 
     if (bestStrategy) {
-      console.log(
+      getLogger().info(
         `\n🏆 Best Strategy: ${bestStrategy[0]} (${
           bestStrategy[1].totalImprovement.toFixed(6)
         } total improvement)`,

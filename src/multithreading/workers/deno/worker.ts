@@ -7,6 +7,7 @@ import type { RequestData, ResponseData } from "../WorkerHandler.ts";
 (globalThis as any).__NEAT_AI_SKIP_WASM_AUTO_INIT = true;
 
 const { WorkerProcessor } = await import("../WorkerProcessor.ts");
+const { getLogger } = await import("../../../utils/Logger.ts");
 const processor = new WorkerProcessor();
 const workerHandler =
   // deno-lint-ignore ban-types
@@ -51,7 +52,7 @@ workerHandler.onmessage = async function (message: { data: RequestData }) {
     }
     workerHandler.postMessage(result);
   } catch (error) {
-    console.error("Worker processing error:", error);
+    getLogger().error("Worker processing error:", error);
     // Create a proper error response with operation-specific error field
     const errorResponse: ResponseData = {
       taskID: message.data.taskID,

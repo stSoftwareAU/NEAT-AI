@@ -6,6 +6,7 @@ import type { CostInterface } from "../costs/CostInterface.ts";
 import { Creature } from "../Creature.ts";
 import { compactUnused } from "../compact/CompactUnused.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
+import { getLogger } from "../utils/Logger.ts";
 import {
   calculateLearningRate,
   createBackPropagationConfig,
@@ -138,7 +139,7 @@ function trainDirBinary(
 
   const ID = uuid.substring(Math.max(0, uuid.length - 8));
   if (options.log) {
-    console.info(
+    getLogger().info(
       `Training ${blue(ID)} with ${binaryFiles.length} binary file${
         binaryFiles.length > 1 ? "s" : ""
       }, target error: ${yellow(targetError.toString())}, iterations: ${
@@ -271,7 +272,7 @@ function trainDirBinary(
           // Read the single record
           const bytesRead = file.readSync(recordBuffer);
           if (bytesRead === null || bytesRead !== BYTES_PER_RECORD) {
-            console.warn(
+            getLogger().warn(
               `Failed to read complete record at index ${recordIndex}`,
             );
             continue;
@@ -296,7 +297,7 @@ function trainDirBinary(
           errorSum += sampleError;
           counter++;
           if (Number.isFinite(errorSum) === false) {
-            console.warn(
+            getLogger().warn(
               `Training ${
                 blue(ID)
               } stopped as errorSum is not finite: ${errorSum} sampleError: ${sampleError} counter: ${counter} record.output: ${targetsBuffer} output: ${output}`,
@@ -306,7 +307,7 @@ function trainDirBinary(
           } else if (bestError !== undefined && counter < knownSampleCount) {
             const bestPossibleError = errorSum / knownSampleCount;
             if (bestPossibleError > bestError) {
-              console.warn(
+              getLogger().warn(
                 `Training ${blue(ID)} stopped as 'best possible' error ${
                   yellow(bestPossibleError.toFixed(3))
                 } > 'best' error ${yellow(bestError.toFixed(3))} at counter ${
@@ -325,7 +326,7 @@ function trainDirBinary(
           if (diff > 60_000) {
             lastTS = now;
             const totalTime = now - startTS;
-            console.log(
+            getLogger().info(
               `Training ${blue(ID)} samples`,
               yellow(counter.toLocaleString("en-AU")),
               `${
@@ -356,7 +357,7 @@ function trainDirBinary(
 
             if (timeoutTS && now > timeoutTS) {
               timedOut = true;
-              console.log(
+              getLogger().info(
                 `Training ${blue(ID)} timed out after ${
                   yellow(format(totalTime, { ignoreZero: true }))
                 }`,
@@ -386,7 +387,7 @@ function trainDirBinary(
     if (bestError !== undefined && bestError < error) {
       trainingFailures++;
       if (trainingStopped === false) {
-        console.warn(
+        getLogger().warn(
           `Training ${blue(ID)} made the error: ${
             yellow(bestError.toFixed(3))
           }, worse: ${yellow(error.toFixed(3))}, target: ${
