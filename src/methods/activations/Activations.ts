@@ -38,6 +38,7 @@ import { StdInverse } from "./types/StdInverse.ts";
 import { Swish } from "./types/Swish.ts";
 import { TAN } from "./types/TAN.ts";
 import { TANH } from "./types/TANH.ts";
+import { getRandomNumberGenerator } from "../../utils/RandomNumberGenerator.ts";
 
 export interface ActivationOptions {
   aliases?: string[];
@@ -89,7 +90,7 @@ export class Activations {
     const pool = exclude
       ? Activations.WEIGHTED_POOL.filter((name) => name !== exclude)
       : Activations.WEIGHTED_POOL;
-    const index = Math.floor(Math.random() * pool.length);
+    const index = Math.floor(getRandomNumberGenerator().random() * pool.length);
     return pool[index];
   }
 }

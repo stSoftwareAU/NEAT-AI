@@ -7,6 +7,7 @@ import { Creature } from "../Creature.ts";
 import { compactUnused } from "../compact/CompactUnused.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
 import { getLogger } from "../utils/Logger.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import {
   calculateLearningRate,
   createBackPropagationConfig,
@@ -50,8 +51,9 @@ export function dataFiles(dataDir: string, options: TrainOptions = {}) {
   const files = binaryFiles;
 
   if (!options.disableRandomSamples) {
+    const rng = getRandomNumberGenerator();
     for (let i = files.length; i--;) {
-      const j = Math.round(Math.random() * i);
+      const j = Math.round(rng.random() * i);
       [files[i], files[j]] = [files[j], files[i]];
     }
   } else {

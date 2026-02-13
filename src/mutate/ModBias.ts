@@ -4,6 +4,7 @@ import {
   DEFAULT_BIAS_REGULARISATION_CONFIG,
   type RequiredBiasRegularisationConfig,
 } from "../config/BiasRegularisationConfig.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
 /**
@@ -132,8 +133,9 @@ export class ModBias extends AbstractMutationOperator {
     currentBias: number,
     quantum: number,
   ): number {
+    const rng = getRandomNumberGenerator();
     // Base random modification
-    const baseModification = (Math.random() * 2 - 1) * quantum;
+    const baseModification = (rng.random() * 2 - 1) * quantum;
 
     if (this.config.l2Strength <= 0) {
       return baseModification;
@@ -142,7 +144,7 @@ export class ModBias extends AbstractMutationOperator {
     // L2 regularisation: create a bias towards zero
     // The pull towards zero is proportional to the current bias magnitude
     // and the l2Strength parameter
-    const l2Pull = -currentBias * this.config.l2Strength * Math.random();
+    const l2Pull = -currentBias * this.config.l2Strength * rng.random();
 
     // Blend the base modification with the L2 pull
     // Higher l2Strength means more influence from the pull towards zero
@@ -171,7 +173,8 @@ export class ModBias extends AbstractMutationOperator {
     }
 
     // Generate a random modification value based on the quantum
-    const modification = (Math.random() * 2 - 1) * quantum;
+    const modification = (getRandomNumberGenerator().random() * 2 - 1) *
+      quantum;
 
     return currentBias + modification;
   }

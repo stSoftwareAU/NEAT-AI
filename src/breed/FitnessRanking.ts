@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import { getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 /**
  * Pre-computed fitness ranking data for a population.
@@ -137,7 +138,8 @@ export class FitnessRanking {
    * @returns The selected creature
    */
   selectPower(power: number): Creature {
-    const r = Math.random();
+    const rng = getRandomNumberGenerator();
+    const r = rng.random();
     const index = Math.floor(
       Math.pow(r, power) * this.sortedPopulation.length,
     );
@@ -153,8 +155,9 @@ export class FitnessRanking {
    * @returns The selected creature
    */
   selectFitnessProportionate(): Creature {
+    const rng = getRandomNumberGenerator();
     const adjustFitness = Math.abs(this.minFitness);
-    const random = Math.random() * this.adjustedTotalFitness;
+    const random = rng.random() * this.adjustedTotalFitness;
     let value = 0;
 
     for (let i = 0; i < this.sortedPopulation.length; i++) {
@@ -167,7 +170,7 @@ export class FitnessRanking {
 
     // If all scores equal, return random creature
     return this.sortedPopulation[
-      Math.floor(Math.random() * this.sortedPopulation.length)
+      Math.floor(rng.random() * this.sortedPopulation.length)
     ];
   }
 
@@ -184,13 +187,14 @@ export class FitnessRanking {
    * @throws {Error} When no parent found in tournament
    */
   selectTournament(size: number, probability: number): Creature {
+    const rng = getRandomNumberGenerator();
     const actualSize = Math.min(size, this.sortedPopulation.length);
 
     // Create tournament participants
     const participants = new Array<Creature>(actualSize);
     for (let i = 0; i < actualSize; i++) {
       const randomIdx = Math.floor(
-        Math.random() * this.sortedPopulation.length,
+        rng.random() * this.sortedPopulation.length,
       );
       participants[i] = this.sortedPopulation[randomIdx];
     }
@@ -202,7 +206,7 @@ export class FitnessRanking {
 
     // Select with probability
     for (let i = 0; i < actualSize; i++) {
-      if (Math.random() < probability || i === actualSize - 1) {
+      if (rng.random() < probability || i === actualSize - 1) {
         return participants[i];
       }
     }

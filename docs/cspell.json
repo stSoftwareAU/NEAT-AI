@@ -203,6 +203,10 @@
     "mergesort",
     "NONEXISTENT",
     "incl",
-    "passthrough"
+    "passthrough",
+    "PRNG",
+    "seedable",
+    "xoshiro",
+    "rotl"
   ]
 }

@@ -43,6 +43,7 @@ import {
   DiscoveryReplayQueue,
 } from "./DiscoveryReplayQueue.ts";
 import { getLogger } from "../utils/Logger.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 /**
  * NEAT (NeuroEvolution of Augmenting Topologies) implementation.
@@ -183,8 +184,9 @@ export class Neat {
     const cloned = JSON.parse(JSON.stringify(arr)) as T[];
 
     // Shuffle (Fisher-Yates)
+    const rng = getRandomNumberGenerator();
     for (let i = cloned.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rng.random() * (i + 1));
       [cloned[i], cloned[j]] = [cloned[j], cloned[i]];
     }
     return cloned;
@@ -937,7 +939,7 @@ export class Neat {
       const addConnection = new AddConnection(creativeThinking);
       for (let i = 0; i < this.config.creativeThinkingConnectionCount; i++) {
         addConnection.mutate(
-          Math.random() < this.config.focusRate
+          getRandomNumberGenerator().random() < this.config.focusRate
             ? this.config.focusList
             : undefined,
           {

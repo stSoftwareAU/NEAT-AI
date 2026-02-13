@@ -4,6 +4,7 @@ import {
   squash as wasmSquash,
   unSquash as wasmUnSquash,
 } from "../wasm/ActivationMethods.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 export type BackPropagationArguments = {
   disableRandomSamples: boolean;
@@ -74,11 +75,12 @@ export type BackPropagationConfig = Readonly<BackPropagationArguments>;
 export function createBackPropagationConfig(
   options?: BackPropagationOptions,
 ): BackPropagationConfig {
+  const rng = getRandomNumberGenerator();
   const config: BackPropagationArguments = {
     disableRandomSamples: options?.disableRandomSamples ?? false,
 
     generations: Math.max(
-      options?.generations ?? Math.floor(Math.random() * 100) + 1,
+      options?.generations ?? Math.floor(rng.random() * 100) + 1,
       0,
     ),
 
@@ -99,8 +101,8 @@ export function createBackPropagationConfig(
     learningRate: Math.min(
       Math.max(
         options?.learningRate ??
-          Math.random() * Math.random() *
-            Math
+          rng.random() * rng.random() *
+            rng
               .random(), /* Random number between 0..1 but on the lower side */
         0.001,
       ),
@@ -109,7 +111,7 @@ export function createBackPropagationConfig(
 
     trainingMutationRate: Math.min(
       Math.max(
-        options?.trainingMutationRate ?? Math.random(),
+        options?.trainingMutationRate ?? rng.random(),
         0.01,
       ),
       1,
@@ -126,7 +128,7 @@ export function createBackPropagationConfig(
         ? "fixed"
         // Randomize strategy selection for exploration with correct probabilities
         : (() => {
-          const rand = Math.random();
+          const rand = rng.random();
           if (rand < 0.4) return "decay";
           if (rand < 0.7) return "adaptive";
           return "fixed";

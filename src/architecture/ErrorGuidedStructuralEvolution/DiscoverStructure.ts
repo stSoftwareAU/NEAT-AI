@@ -79,6 +79,7 @@ import {
   truncateForLogValue as truncateForLogValueImpl,
 } from "./RustFlushDiagnostics.ts";
 import { getLogger } from "../../utils/Logger.ts";
+import { getRandomNumberGenerator } from "../../utils/RandomNumberGenerator.ts";
 
 export { DEFAULT_RUST_FLUSH_RECORDS } from "./constants.ts";
 export { DEFAULT_RUST_FLUSH_BYTES } from "./constants.ts";
@@ -2805,6 +2806,7 @@ export class DiscoverStructure {
     retryNumber?: number,
     mode: "add" | "remove" = "add",
   ): Promise<string[]> {
+    const rng = getRandomNumberGenerator();
     assert(count > 0, "Count must be greater than 0");
     this.lastFocusSelection = undefined;
     if (
@@ -2988,7 +2990,7 @@ export class DiscoverStructure {
       getLogger().warn(
         `   Falling back to random neuron selection to continue discovery`,
       );
-      const shuffled = [...neuronErrors].sort(() => Math.random() - 0.5);
+      const shuffled = [...neuronErrors].sort(() => rng.random() - 0.5);
       const fallback = shuffled.slice(0, count).map((n) => n.uuid);
       this.updateFocusSelectionSummary(
         "random",
@@ -3015,7 +3017,7 @@ export class DiscoverStructure {
       );
       getLogger().warn(`   Falling back to random neuron selection`);
       // Fallback to random selection without weighting
-      const shuffled = [...neuronErrors].sort(() => Math.random() - 0.5);
+      const shuffled = [...neuronErrors].sort(() => rng.random() - 0.5);
       const fallback = shuffled.slice(0, count).map((n) => n.uuid);
       this.updateFocusSelectionSummary(
         "random",
@@ -3050,7 +3052,7 @@ export class DiscoverStructure {
 
     while (selectedUUIDs.size < count && iterations < maxIterations) {
       iterations++;
-      const randValue = Math.random() * totalWeightedSum;
+      const randValue = rng.random() * totalWeightedSum;
       let cumulativeWeight = 0;
 
       for (const weighted of weightedValues) {
@@ -3069,7 +3071,7 @@ export class DiscoverStructure {
           // Fill remaining slots with random selection from unselected neurons
           const unselected = neuronErrors
             .filter((n) => !selectedUUIDs.has(n.uuid))
-            .sort(() => Math.random() - 0.5);
+            .sort(() => rng.random() - 0.5);
           const needed = count - selectedUUIDs.size;
           unselected.slice(0, needed).forEach((n) => selectedUUIDs.add(n.uuid));
           break;
@@ -3305,8 +3307,9 @@ export class DiscoverStructure {
     ) as ActivationInterface[];
 
     // Randomize the order of the squash functions using Fisher-Yates shuffle
+    const rng = getRandomNumberGenerator();
     for (let i = squashFunctions.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rng.random() * (i + 1));
       [squashFunctions[i], squashFunctions[j]] = [
         squashFunctions[j],
         squashFunctions[i],

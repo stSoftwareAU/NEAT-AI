@@ -11,6 +11,7 @@ import { COMPLEMENT } from "../methods/activations/types/COMPLEMENT.ts";
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 import { ReLU } from "../methods/activations/types/ReLU.ts";
 import type { SimplifyBiasInterface } from "./SimplifyBiasInterface.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 export function simplify(creature: Creature): Creature | undefined {
   const complexUUID = CreatureUtil.makeUUID(creature);
@@ -64,7 +65,9 @@ export function simplify(creature: Creature): Creature | undefined {
   if (identityUUIDs.length !== 0) {
     simplified = removeNeuron(
       exported,
-      identityUUIDs[Math.floor(Math.random() * identityUUIDs.length)],
+      identityUUIDs[
+        Math.floor(getRandomNumberGenerator().random() * identityUUIDs.length)
+      ],
     );
   }
 

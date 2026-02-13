@@ -7,6 +7,7 @@ import type { NeuronTrace } from "../architecture/NeuronInterfaces.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
 import { createConstantOne, removeHiddenNeuron } from "./CompactUtils.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 export function compactUnused(
   traced: CreatureTrace,
@@ -226,7 +227,9 @@ export function removeNeuron(
     for (const synapse of fromList) {
       const toList = creature.inwardConnections(synapse.to);
       if (toList.length < 2) {
-        const randomFromIndx = Math.floor(Math.random() * creature.input);
+        const randomFromIndx = Math.floor(
+          getRandomNumberGenerator().random() * creature.input,
+        );
 
         /* Add a new connection which will be removed later because weight is zero */
         creature.connect(randomFromIndx, synapse.to, 0);

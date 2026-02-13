@@ -24,6 +24,7 @@ import {
   DEFAULT_QUANTUM_STEP_CONFIG,
   type RequiredQuantumStepConfig,
 } from "../config/QuantumStepConfig.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 export const MIN_STEP = DEFAULT_QUANTUM_STEP_CONFIG.minStep;
 
@@ -98,11 +99,12 @@ export function quantumAdjust(
 
     // Apply momentum factor when available
     const effectiveMomentum = momentumFactor ?? 1.0;
+    const rng = getRandomNumberGenerator();
 
     if (forwardOnly) {
-      delta = diff * Math.random() * scale;
+      delta = diff * rng.random() * scale;
     } else {
-      delta = diff * Math.random() * (scale + 1) - diff;
+      delta = diff * rng.random() * (scale + 1) - diff;
     }
 
     // Apply momentum: if we have a strong consistent trajectory, bias towards it
@@ -115,7 +117,7 @@ export function quantumAdjust(
       if (Math.sign(delta) === suggestedDirection) {
         // Already moving in suggested direction, amplify
         delta *= effectiveMomentum;
-      } else if (Math.random() < 0.5) {
+      } else if (rng.random() < 0.5) {
         // Moving against suggested direction, sometimes flip
         delta = Math.abs(delta) * suggestedDirection +
           momentumBoost * suggestedDirection;

@@ -2,6 +2,7 @@ import { assert } from "@std/assert";
 import { addTags, removeTag, type TagsInterface } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
 import { getLogger } from "../utils/Logger.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import type { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
@@ -350,6 +351,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
     delete this.squashMethodCache;
     delete this.squashTypeCache;
 
+    const rng = getRandomNumberGenerator();
+
     if (this.squash !== "IF") {
       const toList = this.creature.inwardConnections(this.index);
       toList.forEach((c) => {
@@ -373,7 +376,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         if (possibleSources.length > 0) {
           // Pick a random valid source
           const fromIndx =
-            possibleSources[Math.floor(Math.random() * possibleSources.length)];
+            possibleSources[Math.floor(rng.random() * possibleSources.length)];
           this.creature.connect(
             fromIndx,
             this.index,
@@ -385,7 +388,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
       const toList = this.creature.inwardConnections(this.index);
       if (toList.length === 0) {
         const fromIndx = Math.floor(
-          Math.random() *
+          rng.random() *
             (this.creature.nodeCount() - this.creature.outputCount()),
         );
         this.creature.connect(
@@ -458,8 +461,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
       return false;
     }
 
-    const targetIndex =
-      candidates[Math.floor(Math.random() * candidates.length)];
+    const targetIndex = candidates[
+      Math.floor(getRandomNumberGenerator().random() * candidates.length)
+    ];
     this.creature.connect(
       this.index,
       targetIndex,
@@ -1160,7 +1164,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
         }
 
         // Generate a random modification value based on the quantum
-        const modification = (Math.random() * 2 - 1) * quantum;
+        const modification = (getRandomNumberGenerator().random() * 2 - 1) *
+          quantum;
 
         this.bias += modification;
         changed = true;

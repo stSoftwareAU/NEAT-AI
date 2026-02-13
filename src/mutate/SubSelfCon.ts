@@ -1,5 +1,6 @@
 import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 import { getLogger } from "../utils/Logger.ts";
 
@@ -30,7 +31,9 @@ export class SubSelfCon extends AbstractMutationOperator {
     }
 
     // All neurons in possible are safe to disconnect, so just pick one
-    const neuron = possible[Math.floor(Math.random() * possible.length)];
+    const neuron = possible[
+      Math.floor(getRandomNumberGenerator().random() * possible.length)
+    ];
     const indx = neuron.index;
 
     this.creature.disconnect(indx, indx);

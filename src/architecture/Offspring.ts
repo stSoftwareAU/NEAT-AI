@@ -4,6 +4,7 @@ import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
 import { editParentByIndex } from "../breed/EditParentByIndex.ts";
 import { geneticCompatibility } from "../breed/GeneticCompatibility.ts";
 import { Creature } from "../Creature.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import {
   getMajorVersion,
   upgrade,
@@ -35,6 +36,7 @@ export class Offspring {
       forwardOnly?: boolean;
     } = {},
   ): Creature | undefined {
+    const rng = getRandomNumberGenerator();
     // Issue #1095: Use shallowClone() instead of JSON serialisation/deserialisation
     // for parent preparation. shallowClone() is 3-4x faster as it:
     // - Creates new Creature with copied neuron/synapse arrays
@@ -117,7 +119,7 @@ export class Offspring {
 
     for (const node of father.neurons) {
       if (node.type !== "input") {
-        if (Math.random() >= 0.5) {
+        if (rng.random() >= 0.5) {
           const connections = father.inwardConnections(node.index);
 
           Offspring.fixType(node, connections);
@@ -146,7 +148,7 @@ export class Offspring {
               const motherNeuron = motherNeuronMap.get(connection.fromUUID);
               fromNeuron = motherNeuron;
               let parent = mother;
-              if (!fromNeuron || Math.random() >= 0.5) {
+              if (!fromNeuron || rng.random() >= 0.5) {
                 const fatherNeuron = fatherNeuronMap.get(connection.fromUUID);
                 if (fatherNeuron) {
                   fromNeuron = fatherNeuron;

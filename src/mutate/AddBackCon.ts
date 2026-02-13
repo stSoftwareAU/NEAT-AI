@@ -1,4 +1,5 @@
 import { Synapse } from "../architecture/Synapse.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
 export class AddBackCon extends AbstractMutationOperator {
@@ -35,7 +36,9 @@ export class AddBackCon extends AbstractMutationOperator {
       return false;
     }
 
-    const pair = available[Math.floor(Math.random() * available.length)];
+    const pair = available[
+      Math.floor(getRandomNumberGenerator().random() * available.length)
+    ];
     const fromIndx = pair[0].index;
     const toIndx = pair[1].index;
     creature.connect(fromIndx, toIndx, Synapse.randomWeight());

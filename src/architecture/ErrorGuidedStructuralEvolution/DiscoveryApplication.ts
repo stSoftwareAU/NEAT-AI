@@ -602,9 +602,7 @@ export function addHelpfulNeurons(
       return;
     }
 
-    const newNeuronUUID =
-      `hidden-discovery-${(globalThis.crypto?.randomUUID?.() ??
-        `fallback-${Math.random().toString(16).slice(2)}`)}`;
+    const newNeuronUUID = `hidden-discovery-${crypto.randomUUID()}`;
     const newNeuron = {
       type: "hidden" as const,
       uuid: newNeuronUUID,

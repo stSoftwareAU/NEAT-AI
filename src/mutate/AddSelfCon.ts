@@ -1,4 +1,5 @@
 import { Synapse } from "../architecture/Synapse.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
 export class AddSelfCon extends AbstractMutationOperator {
@@ -27,7 +28,9 @@ export class AddSelfCon extends AbstractMutationOperator {
       return false;
     }
 
-    const neuron = possible[Math.floor(Math.random() * possible.length)];
+    const neuron = possible[
+      Math.floor(getRandomNumberGenerator().random() * possible.length)
+    ];
     const indx = neuron.index;
     creature.connect(indx, indx, Synapse.randomWeight());
 

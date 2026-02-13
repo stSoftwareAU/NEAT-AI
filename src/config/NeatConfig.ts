@@ -45,6 +45,12 @@ import {
   type Logger,
   setLogger,
 } from "../utils/Logger.ts";
+import {
+  createSeededRng,
+  createUnseededRng,
+  type RandomNumberGenerator,
+  setRandomNumberGenerator,
+} from "../utils/RandomNumberGenerator.ts";
 
 /**
  * Default cost of growth value used when not specified in options.
@@ -134,11 +140,24 @@ export type NeatConfig = Readonly<NeatArguments>;
  */
 export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
   const opts = options as Record<string, unknown>;
+
+  // Issue #1400: Set up the global RNG before anything else uses randomness.
+  const rng: RandomNumberGenerator = (() => {
+    if (options.rng) return options.rng;
+    const seedRaw = opts.seed;
+    if (seedRaw !== undefined && seedRaw !== null) {
+      const seed = parseNumber("Seed", seedRaw, 0, { min: 0 });
+      return createSeededRng(seed);
+    }
+    return createUnseededRng();
+  })();
+  setRandomNumberGenerator(rng);
+
   let selection: SelectionInterface = Selection.POWER;
   if (options.selection) {
     selection = options.selection;
   } else {
-    const r0 = Math.random();
+    const r0 = rng.random();
     if (r0 < 0.33) {
       selection = Selection.FITNESS_PROPORTIONATE;
     } else if (r0 < 0.66) {
@@ -289,7 +308,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     sparseRatio: parseNumber(
       "Sparse Ratio",
       opts.sparseRatio,
-      Math.random() * Math.random(),
+      rng.random() * rng.random(),
       { min: 0, max: 1 },
     ),
     globalBreedingRate: Math.max(
@@ -297,7 +316,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
         parseNumber(
           "Global breeding rate",
           opts.globalBreedingRate,
-          Math.random(),
+          rng.random(),
           {
             min: 0,
             max: 1,
@@ -825,6 +844,8 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       if (options.logger) return options.logger;
       return createConsoleLogger(options.logLevel ?? "info");
     })() as Logger,
+    // Issue #1400: Reproducible random number generation
+    rng,
   };
 
   // Issue #1398: Set the global logger so code without config access can use it

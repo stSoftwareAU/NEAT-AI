@@ -10,6 +10,7 @@ import type { AdaptiveFineTuneTracker } from "./AdaptiveFineTuneTracker.ts";
 
 import { retry } from "./Retry.ts";
 import { getLogger } from "../utils/Logger.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 export class FindTunePopulation {
   private neat: Neat;
@@ -220,8 +221,9 @@ export class FindTunePopulation {
           fineTunedPopulation.length;
         if (extendedFineTunePopSize > 0 && tmpFineTunePopulation.length > 0) {
           /* Choose a creature from near the top of the list. */
+          const rng = getRandomNumberGenerator();
           const location = Math.floor(
-            tmpFineTunePopulation.length * Math.random() * Math.random(),
+            tmpFineTunePopulation.length * rng.random() * rng.random(),
           );
 
           const extendedPreviousFittest = tmpFineTunePopulation[location];
@@ -265,7 +267,7 @@ export class FindTunePopulation {
       (sum, creature) => sum + 1 / (creatures.indexOf(creature) + 1),
       0,
     );
-    let random = Math.random() * totalWeight;
+    let random = getRandomNumberGenerator().random() * totalWeight;
 
     for (const creature of creatures) {
       random -= 1 / (creatures.indexOf(creature) + 1);

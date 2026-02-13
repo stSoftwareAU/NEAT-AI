@@ -3,6 +3,7 @@ import {
   cleanupOrphanedNeurons,
 } from "../compact/CompactUtils.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
 export class SubConnection extends AbstractMutationOperator {
@@ -53,7 +54,9 @@ export class SubConnection extends AbstractMutationOperator {
     }
 
     // Select a random connection to remove
-    const randomConn = possible[Math.floor(Math.random() * possible.length)];
+    const randomConn = possible[
+      Math.floor(getRandomNumberGenerator().random() * possible.length)
+    ];
 
     // Remove the selected synapse
     exportJSON.synapses = exportJSON.synapses.filter(

@@ -5,6 +5,7 @@ import type { RequiredQuantumStepConfig } from "../config/QuantumStepConfig.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
 import { fineTuneImprovement } from "./FineTune.ts";
 import { restoreSource } from "./RestoreSource.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 export type Filter = "NONE" | "FORWARD" | "BACKWARDS";
 
@@ -57,8 +58,9 @@ export function retry(
     });
 
     // Get the index by multiplying two random numbers (favoring the top, but can be anywhere)
+    const rng = getRandomNumberGenerator();
     const randomIndx = Math.floor(
-      possibleRetryPopulation.length * Math.random() * Math.random(),
+      possibleRetryPopulation.length * rng.random() * rng.random(),
     );
     const tmpCreature = possibleRetryPopulation[randomIndx];
 
