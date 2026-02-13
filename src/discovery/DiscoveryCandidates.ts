@@ -1434,10 +1434,12 @@ export function buildCombinedFromSuccessful(
   }
 
   // Strategy 4: Pairwise combinations
-  // Try all pairs to find which 2 changes work best together
-  if (successfulCandidates.length >= 2 && successfulCandidates.length <= 10) {
-    for (let i = 0; i < successfulCandidates.length; i++) {
-      for (let j = i + 1; j < successfulCandidates.length; j++) {
+  // Try all pairs to find which 2 changes work best together.
+  // For sets > 10, sample the top candidates to keep the count manageable.
+  if (successfulCandidates.length >= 2) {
+    const pairLimit = Math.min(successfulCandidates.length, 10);
+    for (let i = 0; i < pairLimit; i++) {
+      for (let j = i + 1; j < pairLimit; j++) {
         const pairKey = makeCombinationKey([i, j]);
         if (seenCombinations.has(pairKey)) continue;
         seenCombinations.add(pairKey);
@@ -1454,11 +1456,13 @@ export function buildCombinedFromSuccessful(
   }
 
   // Strategy 5: Triple combinations (for medium-sized candidate sets)
-  // Try all triples to find optimal 3-way combinations
-  if (successfulCandidates.length >= 4 && successfulCandidates.length <= 8) {
-    for (let i = 0; i < successfulCandidates.length; i++) {
-      for (let j = i + 1; j < successfulCandidates.length; j++) {
-        for (let k = j + 1; k < successfulCandidates.length; k++) {
+  // Try all triples for sets up to 8. For larger sets, sample the top
+  // candidates to keep the combinatorial count sensible.
+  if (successfulCandidates.length >= 4) {
+    const tripleLimit = Math.min(successfulCandidates.length, 8);
+    for (let i = 0; i < tripleLimit; i++) {
+      for (let j = i + 1; j < tripleLimit; j++) {
+        for (let k = j + 1; k < tripleLimit; k++) {
           const tripleKey = makeCombinationKey([i, j, k]);
           if (seenCombinations.has(tripleKey)) continue;
           seenCombinations.add(tripleKey);
@@ -1474,6 +1478,33 @@ export function buildCombinedFromSuccessful(
             combinedCandidates.push(tripleCombined);
           }
         }
+      }
+    }
+  }
+
+  // Strategy 6: Leave-one-out combinations (#1417)
+  // Address the concern that two "aggressive" candidates may score well
+  // individually but negatively together. By trying all (N-1)-sized subsets,
+  // we can identify which single candidate is the culprit when the full
+  // combination underperforms. This is O(N) and runs in parallel, so there
+  // is no real harm in trying these additional combinations.
+  if (successfulCandidates.length >= 3) {
+    for (
+      let excluded = 0;
+      excluded < successfulCandidates.length;
+      excluded++
+    ) {
+      const subset = successfulCandidates.filter((_, i) => i !== excluded);
+      const indices = successfulCandidates
+        .map((_, i) => i)
+        .filter((i) => i !== excluded);
+      const looKey = makeCombinationKey(indices);
+      if (seenCombinations.has(looKey)) continue;
+      seenCombinations.add(looKey);
+
+      const looCombined = buildCombination(subset);
+      if (looCombined) {
+        combinedCandidates.push(looCombined);
       }
     }
   }
