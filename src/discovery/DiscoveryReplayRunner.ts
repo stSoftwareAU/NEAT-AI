@@ -303,13 +303,6 @@ function nearlyEqual(a: number, b: number): boolean {
   return diff <= 1e-7 * scale;
 }
 
-type SetWeightOp = {
-  type: "setWeight";
-  fromNeuronUuid: string;
-  toNeuronUuid: string;
-  weight: number;
-};
-
 function isAlreadyApplied(
   creature: Creature,
   entry: SuccessCacheEntry,
@@ -393,9 +386,8 @@ function isAlreadyApplied(
         });
         continue;
       }
-      if ((op.type as string) === "setWeight") {
-        const set = op as unknown as SetWeightOp;
-        const key = edgeKey(set.fromNeuronUuid, set.toNeuronUuid);
+      if (op.type === "setWeight") {
+        const key = edgeKey(op.fromNeuronUuid, op.toNeuronUuid);
         const existing = expectedByEdge.get(key);
         // setWeight is a no-op if the synapse doesn't exist. If the edge is
         // already marked as absent (from a prior removeSynapse), leave it absent.
@@ -406,7 +398,7 @@ function isAlreadyApplied(
         // Otherwise, update the weight (synapse must be present).
         expectedByEdge.set(key, {
           present: true,
-          weight: set.weight,
+          weight: op.weight,
         });
         continue;
       }
@@ -661,9 +653,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
     const replayConcurrency = verifyScores
       ? config.discoveryReplayConcurrency
       : config.threads;
-    const diagnosticsEnabled =
-      (config as unknown as { discoveryReplayDiagnostics?: boolean })
-        .discoveryReplayDiagnostics ?? false;
+    const diagnosticsEnabled = config.discoveryReplayDiagnostics ?? false;
     const totalStart = diagnosticsEnabled ? performance.now() : 0;
     const timingsMS: DiscoveryReplayDiagnostics["timingsMS"] | undefined =
       diagnosticsEnabled ? {} : undefined;
