@@ -20,6 +20,11 @@ export class MockWorker implements WorkerInterface {
 
   private processor = new WorkerProcessor();
   postMessage(data: RequestData, _transfer?: Transferable[]) {
+    // Issue #1428: Validate that the payload is structured-clone safe, just
+    // like a real Worker.postMessage() would. This catches non-cloneable data
+    // (functions, symbols, etc.) that would cause a DataCloneError in production.
+    structuredClone(data);
+
     this.processor.process(data).then((result) => {
       type MockEvent = Event & { data: ResponseData };
       const me = new Event("mock") as MockEvent;
