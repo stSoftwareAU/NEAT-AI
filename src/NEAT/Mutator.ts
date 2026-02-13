@@ -114,7 +114,8 @@ export class Mutator {
         // Issue #1309: Pass weight regularisation config to ModWeight
         return new ModWeight(creature, this.config.weightRegularisation);
       case Mutation.MOD_BIAS.name:
-        return new ModBias(creature);
+        // Issue #1416: Pass bias regularisation config to ModBias
+        return new ModBias(creature, this.config.biasRegularisation);
       case Mutation.MOD_SQUASH.name:
         return new ModSquash(creature);
       case Mutation.ADD_SELF_CONN.name:

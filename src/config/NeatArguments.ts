@@ -13,6 +13,7 @@ import type { RequiredEnsembleDiversityConfig } from "./EnsembleDiversityConfig.
 import type { RequiredFineTunePopulationConfig } from "./FineTunePopulationConfig.ts";
 import type { RequiredStabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
 import type { RequiredQuantumStepConfig } from "./QuantumStepConfig.ts";
+import type { RequiredBiasRegularisationConfig } from "./BiasRegularisationConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 
 /**
@@ -454,6 +455,30 @@ export interface NeatArguments {
    * - smallChangeScale: Scale factor for small change preference (default: 0.5)
    */
   weightRegularisation: RequiredWeightRegularisationConfig;
+
+  /**
+   * Bias regularisation configuration during mutation.
+   *
+   * Issue #1416: Evolve towards "safe" biases by regularising bias mutations
+   * to prevent extreme values that cause exploding activations. Bias mutations
+   * can produce extreme values that cause saturation, amplify noise, or
+   * create near-constant outputs in downstream neurons.
+   *
+   * When enabled:
+   * - Enforces hard limits on maximum absolute bias
+   * - Enforces hard limits on maximum bias change per mutation
+   * - Applies L2-style regularisation biasing towards smaller biases
+   * - Prefers smaller bias changes over large jumps
+   *
+   * Configuration options:
+   * - enabled: Whether bias regularisation is active (default: true)
+   * - maxAbsoluteBias: Maximum absolute bias value (default: 100)
+   * - maxBiasChange: Maximum change per mutation (default: 10)
+   * - l2Strength: Strength of L2 bias towards smaller biases (default: 0.1)
+   * - preferSmallChanges: Whether to prefer smaller changes (default: true)
+   * - smallChangeScale: Scale factor for small change preference (default: 0.5)
+   */
+  biasRegularisation: RequiredBiasRegularisationConfig;
 
   /**
    * Ensemble diversity scoring configuration for species management.
