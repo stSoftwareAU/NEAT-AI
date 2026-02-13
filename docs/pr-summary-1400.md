@@ -5,39 +5,38 @@ Closes #1400
 ## Summary
 
 Replaced all ~79 scattered `Math.random()` calls across the codebase with an
-injectable, seedable random number generator. Consumers can now pass a `seed`
-in `NeatOptions` for fully deterministic evolution runs, or inject a custom
-`rng` instance. Unseeded behaviour (backed by `Math.random()`) is preserved
-by default for backward compatibility.
+injectable, seedable random number generator. Consumers can now pass a `seed` in
+`NeatOptions` for fully deterministic evolution runs, or inject a custom `rng`
+instance. Unseeded behaviour (backed by `Math.random()`) is preserved by default
+for backward compatibility.
 
 ## What Changed
 
 ### New Files
 
-- **`src/utils/RandomNumberGenerator.ts`** -- `RandomNumberGenerator`
-  interface with `random()`, `randomInt(min, max)`, `choice(array)`,
-  `seeded` property. Two implementations: `SeededRng` (xoshiro256** PRNG
-  with SplitMix64 initialisation) and `UnseededRng` (wraps `Math.random()`).
-  Global instance pattern: `getRandomNumberGenerator()`/
-  `setRandomNumberGenerator()`. Factories: `createSeededRng(seed)`,
-  `createUnseededRng()`.
+- **`src/utils/RandomNumberGenerator.ts`** -- `RandomNumberGenerator` interface
+  with `random()`, `randomInt(min, max)`, `choice(array)`, `seeded` property.
+  Two implementations: `SeededRng` (xoshiro256** PRNG with SplitMix64
+  initialisation) and `UnseededRng` (wraps `Math.random()`). Global instance
+  pattern: `getRandomNumberGenerator()`/ `setRandomNumberGenerator()`.
+  Factories: `createSeededRng(seed)`, `createUnseededRng()`.
 - **`test/utils/RandomNumberGenerator.ts`** -- 21 unit tests covering
   reproducibility, range correctness, uniformity (chi-squared), diversity,
-  interleaved operations, edge cases (seed 0, large seed, single-element
-  choice, empty array).
-- **`test/config/NeatConfigRng.ts`** -- 10 integration tests covering
-  config seed parsing (number and string), unseeded default, custom rng
-  precedence, global RNG propagation, deterministic config defaults
-  (sparseRatio, globalBreedingRate, selection), and reproducible mutation
-  (MOD_WEIGHT and MOD_BIAS produce identical results with same seed).
+  interleaved operations, edge cases (seed 0, large seed, single-element choice,
+  empty array).
+- **`test/config/NeatConfigRng.ts`** -- 10 integration tests covering config
+  seed parsing (number and string), unseeded default, custom rng precedence,
+  global RNG propagation, deterministic config defaults (sparseRatio,
+  globalBreedingRate, selection), and reproducible mutation (MOD_WEIGHT and
+  MOD_BIAS produce identical results with same seed).
 
 ### Config Integration
 
 - **`NeatArguments.ts`** -- Added `rng: RandomNumberGenerator` field.
 - **`NeatOptions.ts`** -- Added `seed?: number` and
-  `rng?: RandomNumberGenerator` to `NeatOptions`; added
-  `seed?: number | string` and `rng?: RandomNumberGenerator` to
-  `NeatOptionsInput` for CLI support. Both added to Omit lists.
+  `rng?: RandomNumberGenerator` to `NeatOptions`; added `seed?: number | string`
+  and `rng?: RandomNumberGenerator` to `NeatOptionsInput` for CLI support. Both
+  added to Omit lists.
 - **`NeatConfig.ts`** -- Creates RNG at the very top of `createNeatConfig()`
   before any randomness: uses `options.rng` if provided, else
   `createSeededRng(seed)` if seed given, else `createUnseededRng()`. Calls
@@ -66,10 +65,10 @@ The only remaining `Math.random()` call in production code is inside
 
 ## Test Plan
 
-- [x] `test/utils/RandomNumberGenerator.ts` -- 21 unit tests for RNG
-      interface, xoshiro256** reproducibility, uniformity, edge cases
-- [x] `test/config/NeatConfigRng.ts` -- 10 integration tests for config
-      seed/rng parsing, global propagation, deterministic mutation
+- [x] `test/utils/RandomNumberGenerator.ts` -- 21 unit tests for RNG interface,
+      xoshiro256** reproducibility, uniformity, edge cases
+- [x] `test/config/NeatConfigRng.ts` -- 10 integration tests for config seed/rng
+      parsing, global propagation, deterministic mutation
 - [x] Full test suite (2822 tests) passes with no regressions
 - [x] `deno check` type-checking passes
 - [x] `deno fmt --check` formatting passes
