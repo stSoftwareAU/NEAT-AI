@@ -214,6 +214,8 @@
     "cloneability",
     "Cloneability",
     "invertibility",
-    "favor"
+    "favor",
+    "topo",
+    "checkpointing"
   ]
 }
