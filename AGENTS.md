@@ -247,6 +247,7 @@ In our production workloads, the default is feed-forward/forward-only.
 - **docs/DISCOVERY_GUIDE.md** - Complete discovery workflow guide
 - **docs/DiscoveryDir.md** - Technical API reference for `discoveryDir()`
 - **docs/GPU_ACCELERATION.md** - GPU acceleration details
+- **docs/CONFIGURATION_GUIDE.md** - Complete configuration options reference
 - **docs/BACKPROP_ELASTICITY.md** - Elastic backpropagation explanation
 - **docs/INTELLIGENT_DESIGN.md** - Intelligent Design squash optimisation guide
 - **docs/TROUBLESHOOTING.md** - Common issues and solutions
