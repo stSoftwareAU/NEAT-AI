@@ -235,4 +235,5 @@ In our production workloads, the default is feed-forward/forward-only.
 - **docs/GPU_ACCELERATION.md** - GPU acceleration details
 - **docs/BACKPROP_ELASTICITY.md** - Elastic backpropagation explanation
 - **docs/INTELLIGENT_DESIGN.md** - Intelligent Design squash optimisation guide
+- **docs/TROUBLESHOOTING.md** - Common issues and solutions
 - **src/methods/activations/README.md** - Activation function strategy reference
