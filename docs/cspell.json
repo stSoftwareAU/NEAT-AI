@@ -207,6 +207,7 @@
     "PRNG",
     "seedable",
     "xoshiro",
-    "rotl"
+    "rotl",
+    "deserialising"
   ]
 }
