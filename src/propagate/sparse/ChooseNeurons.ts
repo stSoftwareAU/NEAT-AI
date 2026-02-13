@@ -1,6 +1,7 @@
 import type { CreatureExport } from "../../architecture/CreatureInterfaces.ts";
 import type { NeuronStateInterface } from "../../architecture/CreatureState.ts";
 import type { BackPropagationConfig } from "../BackPropagation.ts";
+import { getRandomNumberGenerator } from "../../utils/RandomNumberGenerator.ts";
 
 /**
  * Selects neurons for sparse backpropagation training.
@@ -122,8 +123,9 @@ function errorGuidedSort(
 }
 
 function fisherYatesShuffle<T>(array: T[]): void {
+  const rng = getRandomNumberGenerator();
   for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1)); // Get a random index from 0 to i (inclusive)
+    const j = Math.floor(rng.random() * (i + 1)); // Get a random index from 0 to i (inclusive)
     [array[i], array[j]] = [array[j], array[i]]; // Swap elements at index i and j
   }
 }

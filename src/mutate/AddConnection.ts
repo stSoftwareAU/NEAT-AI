@@ -3,6 +3,7 @@ import type { ConnectionOptions } from "../ConnectionOptions.ts";
 import type { Creature } from "../Creature.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
 import { Synapse } from "../architecture/Synapse.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { getMajorVersion } from "../upgrade/Upgrade.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
@@ -97,7 +98,9 @@ export class AddConnection extends AbstractMutationOperator {
       return false;
     }
 
-    const pair = available[Math.floor(Math.random() * available.length)];
+    const pair = available[
+      Math.floor(getRandomNumberGenerator().random() * available.length)
+    ];
     const fromIndex = pair[0];
     const toIndex = pair[1];
 

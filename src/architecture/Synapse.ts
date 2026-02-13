@@ -1,5 +1,6 @@
 import { assert } from "@std/assert";
 import type { TagInterface } from "@stsoftware/tags/mod";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 
 /**
@@ -44,7 +45,7 @@ export class Synapse implements SynapseInternal {
    * @returns A random weight value between -scale/2 and scale/2
    */
   public static randomWeight(scale = 1): number {
-    const rawWeight = Math.random() * scale - scale / 2;
+    const rawWeight = getRandomNumberGenerator().random() * scale - scale / 2;
 
     const plank = 0.000_000_1;
     /* Ensure the weight is at least one plank different and within sensible limits */

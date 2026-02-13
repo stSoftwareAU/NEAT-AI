@@ -23,6 +23,7 @@ import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
+import { getRandomNumberGenerator } from "../../../utils/RandomNumberGenerator.ts";
 
 export class IF
   implements
@@ -165,7 +166,7 @@ export class IF
           foundPositive = true;
           c.type = "positive";
         } else {
-          switch (Math.floor(Math.random() * 3)) {
+          switch (Math.floor(getRandomNumberGenerator().random() * 3)) {
             case 0:
               c.type = "condition";
               break;

@@ -15,6 +15,7 @@ import type { RequiredStabilityAdaptationConfig } from "./StabilityAdaptationCon
 import type { RequiredQuantumStepConfig } from "./QuantumStepConfig.ts";
 import type { RequiredBiasRegularisationConfig } from "./BiasRegularisationConfig.ts";
 import type { Logger } from "../utils/Logger.ts";
+import type { RandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 
 /**
@@ -545,4 +546,15 @@ export interface NeatArguments {
    * console-based logger at "info" level.
    */
   logger: Logger;
+
+  /**
+   * Random number generator instance for reproducible evolution.
+   *
+   * Issue #1400: All stochastic operations (mutation, selection, breeding,
+   * shuffling) use this RNG instead of `Math.random()`. When a `seed` is
+   * provided via NeatOptions, a deterministic xoshiro256** PRNG is used;
+   * otherwise an unseeded wrapper around `Math.random()` preserves backward
+   * compatibility.
+   */
+  rng: RandomNumberGenerator;
 }

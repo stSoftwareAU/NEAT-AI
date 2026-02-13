@@ -70,6 +70,7 @@ import {
   noteWasmCreatureActivationUse,
 } from "./wasm/WasmCreatureActivationLRU.ts";
 import { getLogger } from "./utils/Logger.ts";
+import { getRandomNumberGenerator } from "./utils/RandomNumberGenerator.ts";
 
 interface CreatureOptions {
   semanticVersion?: string;
@@ -432,7 +433,7 @@ export class Creature implements CreatureInternal {
           const neuron = new Neuron(
             crypto.randomUUID(),
             "hidden",
-            Math.random() * 0.2 - 0.1,
+            getRandomNumberGenerator().random() * 0.2 - 0.1,
             this,
             tmpSquash,
           );
@@ -465,7 +466,7 @@ export class Creature implements CreatureInternal {
         const neuron = new Neuron(
           `output-${indx}`,
           type,
-          Math.random() * 0.2 - 0.1,
+          getRandomNumberGenerator().random() * 0.2 - 0.1,
           this,
           squash,
         );
@@ -485,7 +486,7 @@ export class Creature implements CreatureInternal {
         const neuron = new Neuron(
           `output-${indx}`,
           type,
-          Math.random() * 0.2 - 0.1,
+          getRandomNumberGenerator().random() * 0.2 - 0.1,
           this,
           Activations.pickRandomSquash(),
         );
@@ -498,7 +499,7 @@ export class Creature implements CreatureInternal {
       for (let i = 0; i < this.input; i++) {
         for (let j = this.input; j < this.output + this.input; j++) {
           /** https://stats.stackexchange.com/a/248040/147931 */
-          const weight = Math.random() * this.input *
+          const weight = getRandomNumberGenerator().random() * this.input *
             Math.sqrt(2 / this.input);
           this.connect(i, j, weight);
         }
@@ -1657,7 +1658,7 @@ export class Creature implements CreatureInternal {
 
     let changed = false;
     for (let indx = this.neurons.length - 1; indx >= this.input; indx--) {
-      if (config.trainingMutationRate > Math.random()) {
+      if (config.trainingMutationRate > getRandomNumberGenerator().random()) {
         const n = this.neurons[indx];
         if (sparseConfig.updateNeeded(n.uuid)) {
           changed ||= n.applyLearnings();
@@ -2514,7 +2515,7 @@ export class Creature implements CreatureInternal {
         // is used as a repair step for disconnected neurons. A self-loop does
         // not introduce any upstream signal, so it does not "fix" connectivity.
         // We therefore never generate self-loops here.
-        Math.floor(Math.random() * indx), // 0..(indx-1)
+        Math.floor(getRandomNumberGenerator().random() * indx), // 0..(indx-1)
       );
       const c = this.getSynapse(from, indx);
       if (c === null) {

@@ -3,6 +3,7 @@ import {
   cleanupOrphanedNeurons,
 } from "../compact/CompactUtils.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
 export class SubNeuron extends AbstractMutationOperator {
@@ -41,8 +42,11 @@ export class SubNeuron extends AbstractMutationOperator {
 
     for (let attempts = 0; attempts < 24; attempts++) {
       // Select a random removable neuron
-      const randomNeuron =
-        removableNeurons[Math.floor(Math.random() * removableNeurons.length)];
+      const randomNeuron = removableNeurons[
+        Math.floor(
+          getRandomNumberGenerator().random() * removableNeurons.length,
+        )
+      ];
       const neuronIdx = neuronIndexMap.get(randomNeuron.uuid);
 
       // Check focus list using transitive focus checking (relax after 12 attempts)

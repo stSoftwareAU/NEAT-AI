@@ -1,6 +1,7 @@
 import type { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 /**
  * Lightweight neuron info needed for compatibility check.
@@ -169,8 +170,9 @@ export function createCompatibleFather(
       !usedMotherUUIDs.has(motherNeuron.uuid)
     ) {
       // Randomly select one matching father neuron for the mapping
+      const rng = getRandomNumberGenerator();
       const selectedFatherNeuron = matchingFatherNeurons[
-        Math.floor(Math.random() * matchingFatherNeurons.length)
+        Math.floor(rng.random() * matchingFatherNeurons.length)
       ];
 
       uuidMapping.set(selectedFatherNeuron.uuid, motherNeuron.uuid);
@@ -279,8 +281,9 @@ export function createCompatibleFatherFromCreatures(
       !usedMotherUUIDs.has(motherNeuron.uuid)
     ) {
       // Randomly select one matching father neuron for the mapping
+      const rng = getRandomNumberGenerator();
       const selectedFatherNeuron = matchingFatherNeurons[
-        Math.floor(Math.random() * matchingFatherNeurons.length)
+        Math.floor(rng.random() * matchingFatherNeurons.length)
       ];
 
       uuidMapping.set(selectedFatherNeuron.uuid, motherNeuron.uuid);

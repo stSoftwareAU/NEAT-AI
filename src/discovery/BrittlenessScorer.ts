@@ -13,6 +13,7 @@
  */
 
 import type { Creature } from "../Creature.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 /**
  * Options for brittleness scoring.
@@ -76,7 +77,9 @@ export function perturbInput(
   magnitude: number,
   seed?: number,
 ): Float32Array {
-  const random = seed !== undefined ? createSeededRandom(seed) : Math.random;
+  const random = seed !== undefined
+    ? createSeededRandom(seed)
+    : () => getRandomNumberGenerator().random();
   const perturbed = new Float32Array(input.length);
 
   for (let i = 0; i < input.length; i++) {
@@ -101,7 +104,8 @@ export class BrittlenessScorer {
     this.#options = {
       perturbationMagnitude: options.perturbationMagnitude ?? 0.1,
       perturbationsPerInput: options.perturbationsPerInput ?? 5,
-      seed: options.seed ?? Math.floor(Math.random() * 2147483647),
+      seed: options.seed ??
+        Math.floor(getRandomNumberGenerator().random() * 2147483647),
       brittlenessThreshold: options.brittlenessThreshold ??
         Number.POSITIVE_INFINITY,
     };

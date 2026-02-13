@@ -1,5 +1,6 @@
 import { generate as generateV5Sync } from "./SyncV5.ts";
 import type { Creature } from "../Creature.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 /**
  * Utility class for Creature-related operations.
@@ -36,8 +37,9 @@ export class CreatureUtil {
    */
   static shuffle(array: Int32Array): void {
     if (array.length > 1) {
+      const rng = getRandomNumberGenerator();
       for (let i = array.length; i--;) {
-        const j = Math.round(Math.random() * i);
+        const j = Math.round(rng.random() * i);
         [array[i], array[j]] = [array[j], array[i]];
       }
     }

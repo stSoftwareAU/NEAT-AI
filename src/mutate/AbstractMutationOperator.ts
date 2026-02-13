@@ -1,4 +1,5 @@
 import type { Creature } from "../Creature.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
 /**
@@ -52,12 +53,13 @@ export abstract class AbstractMutationOperator implements RadioactiveInterface {
     relaxAfter = 6,
   ): number {
     const creature = this.creature;
+    const rng = getRandomNumberGenerator();
     const hiddenCount = creature.neurons.length - creature.input -
       creature.output;
     if (hiddenCount <= 0) return -1;
 
     for (let attempts = 0; attempts < maxAttempts; attempts++) {
-      const index = Math.floor(Math.random() * hiddenCount) + creature.input;
+      const index = Math.floor(rng.random() * hiddenCount) + creature.input;
       const neuron = creature.neurons[index];
       if (neuron.type !== "hidden") continue;
       if (
@@ -88,10 +90,11 @@ export abstract class AbstractMutationOperator implements RadioactiveInterface {
     relaxAfter = 6,
   ): number {
     const creature = this.creature;
+    const rng = getRandomNumberGenerator();
 
     for (let attempts = 0; attempts < maxAttempts; attempts++) {
       const index = Math.floor(
-        Math.random() * (creature.neurons.length - creature.input) +
+        rng.random() * (creature.neurons.length - creature.input) +
           creature.input,
       );
       const neuron = creature.neurons[index];

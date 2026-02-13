@@ -1,5 +1,6 @@
 import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 import { getLogger } from "../utils/Logger.ts";
 
@@ -28,7 +29,9 @@ export class SubBackCon extends AbstractMutationOperator {
       return false;
     }
 
-    const pair = available[Math.floor(Math.random() * available.length)];
+    const pair = available[
+      Math.floor(getRandomNumberGenerator().random() * available.length)
+    ];
     this.creature.disconnect(pair[0], pair[1]);
 
     delete this.creature.memetic;

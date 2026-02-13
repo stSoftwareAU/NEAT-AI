@@ -3,6 +3,7 @@ import { CreatureUtil } from "../../mod.ts";
 import type { Creature } from "../Creature.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import { Synapse } from "../architecture/Synapse.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 import { getLogger } from "../utils/Logger.ts";
 
@@ -41,18 +42,19 @@ export class AddNeuron extends AbstractMutationOperator {
    */
   protected performMutation(focusList?: number[]): boolean {
     const creature = this.creature;
+    const rng = getRandomNumberGenerator();
     const startUUID = CreatureUtil.makeUUID(creature);
     delete creature.uuid;
     const forwardOnly = creature.forwardOnly === true;
     const neuron = new Neuron(
       crypto.randomUUID(),
       "hidden",
-      Math.random() * 0.2 - 0.1,
+      rng.random() * 0.2 - 0.1,
       creature,
     );
 
     let indx = Math.floor(
-      Math.random() *
+      rng.random() *
         (creature.neurons.length - creature.output - creature.input + 1),
     ) + creature.input;
 
@@ -336,7 +338,7 @@ export class AddNeuron extends AbstractMutationOperator {
 
     // Direct random selection from valid candidates
     return sourceCandidates[
-      Math.floor(Math.random() * sourceCandidates.length)
+      Math.floor(getRandomNumberGenerator().random() * sourceCandidates.length)
     ];
   }
 
@@ -382,7 +384,7 @@ export class AddNeuron extends AbstractMutationOperator {
 
     // Direct random selection from valid candidates
     return targetCandidates[
-      Math.floor(Math.random() * targetCandidates.length)
+      Math.floor(getRandomNumberGenerator().random() * targetCandidates.length)
     ];
   }
 }

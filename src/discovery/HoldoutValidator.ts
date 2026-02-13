@@ -16,6 +16,7 @@
 import type { Creature } from "../Creature.ts";
 import type { DataRecordInterface } from "../architecture/DataSet.ts";
 import { Costs } from "../Costs.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 /**
  * Options for holdout validation.
@@ -105,7 +106,9 @@ export function splitDataForHoldout(
   const indices = Array.from({ length: data.length }, (_, i) => i);
 
   // Use seeded or standard random for shuffling
-  const random = seed !== undefined ? createSeededRandom(seed) : Math.random;
+  const random = seed !== undefined
+    ? createSeededRandom(seed)
+    : () => getRandomNumberGenerator().random();
 
   // Fisher-Yates shuffle
   for (let i = indices.length - 1; i > 0; i--) {
@@ -181,7 +184,8 @@ export class HoldoutValidator {
   constructor(options: HoldoutValidatorOptions = {}) {
     this.#options = {
       holdoutPercentage: options.holdoutPercentage ?? 0.2,
-      seed: options.seed ?? Math.floor(Math.random() * 2147483647),
+      seed: options.seed ??
+        Math.floor(getRandomNumberGenerator().random() * 2147483647),
       maxPerformanceGap: options.maxPerformanceGap ?? Number.POSITIVE_INFINITY,
       costName: options.costName ?? "MSE",
     };

@@ -23,6 +23,7 @@ import {
   upgradeSemanticVersionIfForwardOnlyConfirmed,
 } from "../upgrade/Upgrade.ts";
 import { getLogger } from "../utils/Logger.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 /**
  * Cache entry for valid mutation candidates.
@@ -138,8 +139,9 @@ export class Mutator {
    * Mutates the given (or current) population
    */
   mutate(creatures: Creature[]): void {
+    const rng = getRandomNumberGenerator();
     for (let i = creatures.length; i--;) {
-      if (Math.random() <= this.config.mutationRate) {
+      if (rng.random() <= this.config.mutationRate) {
         const creature = creatures[i];
         let original: Creature | undefined;
         if (creature.score !== undefined || creature.memetic) {
@@ -155,7 +157,7 @@ export class Mutator {
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
 
-          const currentFocusList = Math.random() < this.config.focusRate
+          const currentFocusList = rng.random() < this.config.focusRate
             ? this.config.focusList
             : undefined;
 
@@ -408,9 +410,10 @@ export class Mutator {
     // Optimized weighted selection (Issue #1009).
     // Prefer weight/bias mutations based on creature size for faster convergence.
     // This replaces the rejection sampling loop that could iterate up to 10,000 times.
-    if (Math.random() < weightBiasPreference && weightBiasCount > 0) {
+    const rng = getRandomNumberGenerator();
+    if (rng.random() < weightBiasPreference && weightBiasCount > 0) {
       // Select uniformly from weight/bias mutations
-      const targetIndex = Math.floor(Math.random() * weightBiasCount);
+      const targetIndex = Math.floor(rng.random() * weightBiasCount);
       let found = 0;
       for (let i = 0; i < candidates.length; i++) {
         const name = candidates[i].name;
@@ -435,13 +438,13 @@ export class Mutator {
       );
       if (nonExpansionCandidates.length > 0) {
         return nonExpansionCandidates[
-          Math.floor(Math.random() * nonExpansionCandidates.length)
+          Math.floor(rng.random() * nonExpansionCandidates.length)
         ];
       }
     }
 
     // Fallback: select uniformly from all candidates
-    return candidates[Math.floor(Math.random() * candidates.length)];
+    return candidates[Math.floor(rng.random() * candidates.length)];
   }
 
   /**

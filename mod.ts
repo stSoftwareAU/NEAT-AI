@@ -240,3 +240,20 @@ export {
   SILENT_LOGGER,
 } from "./src/utils/Logger.ts";
 export type { Logger, LogLevel } from "./src/utils/Logger.ts";
+
+/**
+ * Random Number Generator
+ *
+ * Issue #1400: Reproducible random number generation with seeding support.
+ * Pass a `seed` in NeatOptions for deterministic evolution runs, or inject
+ * a custom RNG via the `rng` option.
+ *
+ * @see {@link module:src/utils/RandomNumberGenerator}
+ */
+export {
+  createSeededRng,
+  createUnseededRng,
+  getRandomNumberGenerator,
+  setRandomNumberGenerator,
+} from "./src/utils/RandomNumberGenerator.ts";
+export type { RandomNumberGenerator } from "./src/utils/RandomNumberGenerator.ts";

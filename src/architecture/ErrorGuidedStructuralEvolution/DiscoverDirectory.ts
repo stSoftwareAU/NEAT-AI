@@ -22,6 +22,7 @@ import { isRustDiscoveryEnabled } from "./RustDiscovery.ts";
 import { PhaseDiagnostics } from "./PhaseDiagnostics.ts";
 import { submitDiscoveryRecordBatch } from "./SubmitDiscoveryRecordBatch.ts";
 import { getLogger } from "../../utils/Logger.ts";
+import { getRandomNumberGenerator } from "../../utils/RandomNumberGenerator.ts";
 
 /**
  * Issue #1219 - Ensures WASM activation is initialised before discovery recording.
@@ -400,8 +401,9 @@ class DataRecorder {
   }
 
   private shuffleFiles(files: string[]): string[] {
+    const rng = getRandomNumberGenerator();
     for (let i = files.length; i--;) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rng.random() * (i + 1));
       [files[i], files[j]] = [files[j], files[i]];
     }
     return files;

@@ -1,4 +1,5 @@
 import type { Logger, LogLevel } from "../utils/Logger.ts";
+import type { RandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import type { AdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { EnsembleDiversityConfig } from "./EnsembleDiversityConfig.ts";
@@ -76,6 +77,7 @@ export type NeatOptions =
     | "quantumStep"
     | "fineTunePopulation"
     | "logger"
+    | "rng"
   >
   & {
     /** Partial overrides for minimum candidates per category (defaults applied if not specified) */
@@ -107,6 +109,25 @@ export type NeatOptions =
      * Default: "info"
      */
     logLevel?: LogLevel;
+    /**
+     * Seed for reproducible random number generation.
+     *
+     * Issue #1400: When provided, all stochastic operations (mutation,
+     * selection, breeding, shuffling) use a deterministic xoshiro256**
+     * PRNG seeded with this value. Two runs with the same seed and
+     * configuration produce identical results.
+     *
+     * When omitted, an unseeded RNG backed by `Math.random()` is used
+     * for backward compatibility.
+     */
+    seed?: number;
+    /**
+     * Custom random number generator instance.
+     *
+     * Issue #1400: Advanced users can inject their own RNG implementation.
+     * Takes precedence over `seed` when both are provided.
+     */
+    rng?: RandomNumberGenerator;
   };
 
 /**
@@ -141,6 +162,8 @@ export type NeatOptionsInput =
     | "fineTunePopulation"
     | "logger"
     | "logLevel"
+    | "seed"
+    | "rng"
   >
   & {
     [K in NumericOptionKeys]?: NonNullable<NeatOptions[K]> extends number
@@ -163,4 +186,8 @@ export type NeatOptionsInput =
     logger?: Logger;
     /** Log level filter for the default console logger. */
     logLevel?: LogLevel;
+    /** Seed for reproducible random number generation. Accepts string from CLI. */
+    seed?: number | string;
+    /** Custom RNG instance (not coerced — functions cannot come from CLI). */
+    rng?: RandomNumberGenerator;
   };
