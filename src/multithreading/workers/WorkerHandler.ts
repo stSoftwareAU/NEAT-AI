@@ -3,6 +3,9 @@ import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { CostName } from "../../Costs.ts";
 import type { Creature } from "../../Creature.ts";
 import type { CreatureExport } from "../../architecture/CreatureInterfaces.ts";
+import type {
+  CoordinatedStructuralCandidate,
+} from "../../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import type { RemovalCandidate } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CandidateHarmfulNeuron,
@@ -10,13 +13,10 @@ import type {
   CandidateSquash,
   CandidateSynapse,
 } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type {
-  CoordinatedStructuralCandidate,
-} from "../../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import type { NeatConfig } from "../../config/NeatConfig.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
-import { MockWorker } from "./MockWorker.ts";
 import { getLogger } from "../../utils/Logger.ts";
+import { MockWorker } from "./MockWorker.ts";
 
 export interface WasmActivationInitPayload {
   /**
@@ -755,11 +755,17 @@ export class WorkerHandler {
   discover(creature: Creature, config: NeatConfig) {
     const json = creature.exportJSON();
 
+    // Strip non-cloneable properties so postMessage structured clone succeeds.
+    // Workers use getLogger() and getRandomNumberGenerator() set during init.
+    const configForWorker = { ...config } as Record<string, unknown>;
+    delete configForWorker.logger;
+    delete configForWorker.rng;
+
     const data: RequestData = {
       taskID: this.taskID++,
       discover: {
         creature: JSON.stringify(json),
-        config: config,
+        config: configForWorker as NeatConfig,
       },
     };
 
