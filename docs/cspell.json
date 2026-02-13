@@ -209,6 +209,9 @@
     "xoshiro",
     "rotl",
     "deserialising",
-    "rustup"
+    "rustup",
+    "cloneable",
+    "cloneability",
+    "Cloneability"
   ]
 }
