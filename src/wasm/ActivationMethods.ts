@@ -11,6 +11,7 @@
  * WASM must always be available and all squash functions must be defined in WASM.
  */
 
+import { WasmError } from "../errors/WasmError.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { hasUnSquash } from "../methods/activations/TypeGuards.ts";
@@ -54,8 +55,9 @@ export function calculateError(
 ): number {
   const resolvedName = resolveWasmSquashName(squashName);
   if (resolvedName === undefined) {
-    throw new Error(
+    throw new WasmError(
       `Squash function '${squashName}' is not defined in WASM. All squash functions must be implemented in Rust/WASM.`,
+      "ACTIVATION_FAILED",
     );
   }
   const squashType = getSquashType(resolvedName);
@@ -85,8 +87,9 @@ export function safeZoneAdjustment(
 ): number {
   const resolvedName = resolveWasmSquashName(squashName);
   if (resolvedName === undefined) {
-    throw new Error(
+    throw new WasmError(
       `Squash function '${squashName}' is not defined in WASM. All squash functions must be implemented in Rust/WASM.`,
+      "ACTIVATION_FAILED",
     );
   }
   const squashType = getSquashType(resolvedName);
@@ -142,8 +145,9 @@ export function unSquash(
 
   const resolvedName = resolveWasmSquashName(squashName);
   if (resolvedName === undefined) {
-    throw new Error(
+    throw new WasmError(
       `Squash function '${squashName}' is not defined in WASM. All squash functions must be implemented in Rust/WASM.`,
+      "ACTIVATION_FAILED",
     );
   }
   const squashType = getSquashType(resolvedName);
@@ -170,8 +174,9 @@ export function squash(
 
   const resolvedName = resolveWasmSquashName(squashName);
   if (resolvedName === undefined) {
-    throw new Error(
+    throw new WasmError(
       `Squash function '${squashName}' is not defined in WASM. All squash functions must be implemented in Rust/WASM.`,
+      "ACTIVATION_FAILED",
     );
   }
   const squashType = getSquashType(resolvedName);

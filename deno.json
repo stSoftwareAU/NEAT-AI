@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "0.311.2",
+  "version": "0.311.3",
   "publish": {
     "include": [
       "README.md",

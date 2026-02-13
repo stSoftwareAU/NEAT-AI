@@ -14,6 +14,7 @@
 import { assert } from "@std/assert";
 import { fromFileUrl } from "@std/path/from-file-url";
 import { join } from "@std/path/join";
+import { DiscoveryError } from "../../errors/DiscoveryError.ts";
 import { getLogger } from "../../utils/Logger.ts";
 
 const MAX_C_STRING_BYTES = 128 * 1024 * 1024; // 128 MiB guard for FFI strings
@@ -603,10 +604,11 @@ export function computeRustRecordStats(
           `Errors array sample (first 10):`,
           errors.slice(0, 10),
         );
-        throw new Error(
+        throw new DiscoveryError(
           `Data corruption detected: neuron ${uuid} has ${errorCount} errors, ` +
             `which far exceeds reasonable maximum (${maxReasonableErrorsPerNeuron}). ` +
             `With ${sampleCount} samples and ${outputCount} outputs, this is impossible and indicates a bug in error recording.`,
+          "DATA_CORRUPTION",
         );
       }
 
@@ -649,9 +651,10 @@ export function computeRustRecordStats(
     getLogger().error(
       `Max reasonable per record: ${maxReasonableErrorsPerRecord}`,
     );
-    throw new Error(
+    throw new DiscoveryError(
       `Data corruption detected: ${totalErrorValues} total error values for ${totalNeuronRecords} neuron records ` +
         `(max ${maxReasonableErrors}). This suggests a critical bug in the error accumulation logic.`,
+      "DATA_CORRUPTION",
     );
   }
 
@@ -1213,9 +1216,10 @@ export function assertRustDiscoveryAvailable(): void {
   const exists = rustLibraryExists();
 
   if (!exists) {
-    throw new Error(
+    throw new DiscoveryError(
       "Rust discovery library not available: Library file not found. " +
         "Install it into ~/.cargo/lib or set NEAT_AI_DISCOVERY_LIB_PATH environment variable.",
+      "LIBRARY_NOT_FOUND",
     );
   }
 
@@ -1229,14 +1233,15 @@ export function assertRustDiscoveryAvailable(): void {
           path: libPath,
         });
         if (permission.state !== "granted") {
-          throw new Error(
+          throw new DiscoveryError(
             "Rust discovery library not available: FFI permission denied. " +
               "Run with --allow-ffi flag to enable discovery.",
+            "FFI_CRASH",
           );
         }
       }
     } catch (error) {
-      if (error instanceof Error && error.message.includes("FFI permission")) {
+      if (error instanceof DiscoveryError) {
         throw error;
       }
       // Permission check failed, but might be for other reasons
@@ -1244,9 +1249,10 @@ export function assertRustDiscoveryAvailable(): void {
   }
 
   // Library exists and FFI is allowed, but still not enabled
-  throw new Error(
+  throw new DiscoveryError(
     "Rust discovery library not available: Library found but could not be loaded. " +
       "Rebuild the library via the NEAT-AI-Discovery project.",
+    "FFI_CRASH",
   );
 }
 

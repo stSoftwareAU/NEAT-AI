@@ -9,6 +9,7 @@
  */
 
 import type { Creature } from "../Creature.ts";
+import { WasmError } from "../errors/WasmError.ts";
 import { getLogger } from "../utils/Logger.ts";
 import {
   compileCreatureToWasm,
@@ -774,7 +775,7 @@ export class WasmCreatureActivation {
       throw new Error("WasmCreatureActivation has been freed");
     }
     if (!mseSumBatchPackedFn) {
-      throw new Error("WASM module not initialised");
+      throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
     return mseSumBatchPackedFn(
       this.network,
@@ -799,7 +800,7 @@ export class WasmCreatureActivation {
       throw new Error("WasmCreatureActivation has been freed");
     }
     if (!maeSumBatchPackedFn) {
-      throw new Error("WASM module not initialised");
+      throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
     return maeSumBatchPackedFn(
       this.network,
@@ -824,7 +825,7 @@ export class WasmCreatureActivation {
       throw new Error("WasmCreatureActivation has been freed");
     }
     if (!crossEntropySumBatchPackedFn) {
-      throw new Error("WASM module not initialised");
+      throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
     return crossEntropySumBatchPackedFn(
       this.network,
@@ -849,7 +850,7 @@ export class WasmCreatureActivation {
       throw new Error("WasmCreatureActivation has been freed");
     }
     if (!mapeSumBatchPackedFn) {
-      throw new Error("WASM module not initialised");
+      throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
     return mapeSumBatchPackedFn(
       this.network,
@@ -875,7 +876,7 @@ export class WasmCreatureActivation {
       throw new Error("WasmCreatureActivation has been freed");
     }
     if (!msleSumBatchPackedFn) {
-      throw new Error("WASM module not initialised");
+      throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
     return msleSumBatchPackedFn(
       this.network,
@@ -901,7 +902,7 @@ export class WasmCreatureActivation {
       throw new Error("WasmCreatureActivation has been freed");
     }
     if (!hingeSumBatchPackedFn) {
-      throw new Error("WASM module not initialised");
+      throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
     return hingeSumBatchPackedFn(
       this.network,
@@ -968,7 +969,7 @@ export class WasmCreatureActivation {
  */
 export function wasmSquash(squashType: number, value: number): number {
   if (!squashFn) {
-    throw new Error("WASM module not initialised");
+    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
   }
   return squashFn(squashType, value);
 }
@@ -985,7 +986,7 @@ export function wasmSquash(squashType: number, value: number): number {
  */
 export function wasmDerivative(squashType: number, value: number): number {
   if (!derivativeFn) {
-    throw new Error("WASM module not initialised");
+    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
   }
   return derivativeFn(squashType, value);
 }
@@ -1011,7 +1012,7 @@ export function wasmUnSquash(
   hint?: number,
 ): number {
   if (!unsquashFn) {
-    throw new Error("WASM module not initialised");
+    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
   }
   // Use NaN as the hint when not provided, WASM will check for is_finite
   return unsquashFn(squashType, activation, hint ?? Number.NaN);
@@ -1041,7 +1042,7 @@ export function wasmSafeZoneAdjustment(
   weight?: number,
 ): number {
   if (!safeZoneAdjustmentFn) {
-    throw new Error("WASM module not initialised");
+    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
   }
   // Use NaN as the weight when not provided, WASM will check for is_finite
   // and default to 1.0
@@ -1073,7 +1074,7 @@ export function wasmSafeZoneAdjustmentBatch(
   weights: Float32Array,
 ): Float32Array {
   if (!safeZoneAdjustmentBatchFn) {
-    throw new Error("WASM module not initialised");
+    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
   }
   return safeZoneAdjustmentBatchFn(squashTypes, rawInputs, error, weights);
 }
@@ -1105,7 +1106,7 @@ export function wasmCalculateError(
   currentValue: number,
 ): number {
   if (!calculateErrorFn) {
-    throw new Error("WASM module not initialised");
+    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
   }
   return calculateErrorFn(
     squashType,
@@ -1154,7 +1155,7 @@ export function wasmFusedErrorDistribution(
   synapseWeights: Float32Array,
 ): FusedErrorDistributionResult {
   if (!fusedErrorDistributionFn) {
-    throw new Error("WASM module not initialised");
+    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
   }
   const flat = fusedErrorDistributionFn(
     neuronSquashType,
@@ -1190,7 +1191,7 @@ export interface WasmActivationRange {
  */
 export function wasmGetRange(squashType: number): WasmActivationRange {
   if (!getRangeFn) {
-    throw new Error("WASM module not initialised");
+    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
   }
   const arr = getRangeFn(squashType);
   return { low: arr[0], high: arr[1] };
@@ -1204,7 +1205,7 @@ export function wasmValidateRange(
   activation: number,
 ): boolean {
   if (!validateRangeFn) {
-    throw new Error("WASM module not initialised");
+    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
   }
   return validateRangeFn(squashType, activation);
 }
@@ -1214,7 +1215,7 @@ export function wasmValidateRange(
  */
 export function wasmLimitRange(squashType: number, value: number): number {
   if (!limitRangeFn) {
-    throw new Error("WASM module not initialised");
+    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
   }
   return limitRangeFn(squashType, value);
 }
