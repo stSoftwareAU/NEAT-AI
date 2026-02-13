@@ -1,5 +1,6 @@
 import type { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import { DiscoveryError } from "../errors/DiscoveryError.ts";
 import { getMajorVersion } from "../upgrade/Upgrade.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import {
@@ -96,7 +97,7 @@ export function validateAfterDiscoveryOrThrow(args: {
       ? ` Violations(sample up to 10): ${violations.join(" | ")}`
       : "";
 
-    throw new Error(
+    throw new DiscoveryError(
       `[Discovery ${discoveryID}] CRITICAL: discovery operation '${operation}' produced an invalid creature. ` +
         `base=${
           baseCreature.uuid ?? "unknown"
@@ -110,6 +111,7 @@ export function validateAfterDiscoveryOrThrow(args: {
         }), ` +
         `hardInvariant=${isHardForwardOnlyInvariant}, attemptedRepair=${shouldAttemptForwardOnlyRepair}. ` +
         `Error=${error.name}: ${error.message}.${detail}`,
+      "INVALID_CREATURE",
     );
   }
 }
