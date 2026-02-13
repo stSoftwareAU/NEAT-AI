@@ -108,6 +108,8 @@ instructions.
 
 For detailed documentation, see the [docs/](./docs/) directory:
 
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)**: First-time contributor guide with
+  development setup and workflow
 - **[AGENTS.md](./AGENTS.md)**: Coding conventions, terminology, and development
   guidelines
 - **[COMPARISON.md](./COMPARISON.md)**: How NEAT compares to traditional neural
@@ -130,8 +132,9 @@ For detailed documentation, see the [docs/](./docs/) directory:
 
 ## Contributions
 
-Contributions are welcome. Please submit a pull request or open an issue to
-discuss potential changes/additions.
+Contributions are welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for
+development setup, workflow, and guidelines. Please submit a pull request or
+open an issue to discuss potential changes/additions.
 
 ## License
 
