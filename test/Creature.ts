@@ -625,16 +625,17 @@ Deno.test("train_SIN_function", () => {
 
 Deno.test("evolve_SIN_function", async () => {
   const set = [];
+  const rand = seededRandom(99);
 
   while (set.length < 100) {
-    const inputValue = Math.random() * Math.PI * 2;
+    const inputValue = rand() * Math.PI * 2;
     set.push({
       input: new Float32Array([inputValue / (Math.PI * 2)]),
       output: new Float32Array([(Math.sin(inputValue) + 1) / 2]),
     });
   }
 
-  await evolveSet(set, 10000, 0.065);
+  await evolveSet(set, 10000, 0.065, 3);
 });
 
 Deno.test("train_Bigger_than", () => {
@@ -736,9 +737,10 @@ Deno.test("train SIN + COS", () => {
 
 Deno.test("evolve SIN + COS", async () => {
   const set = [];
+  const rand = seededRandom(77);
 
   while (set.length < 100) {
-    const inputValue = Math.random() * Math.PI * 2;
+    const inputValue = rand() * Math.PI * 2;
     set.push({
       input: new Float32Array([inputValue / (Math.PI * 2)]),
       output: new Float32Array([
@@ -748,7 +750,7 @@ Deno.test("evolve SIN + COS", async () => {
     });
   }
 
-  await evolveSet(set, 100_000, 0.09);
+  await evolveSet(set, 100_000, 0.09, 3);
 });
 
 Deno.test("train_SHIFT", () => {
