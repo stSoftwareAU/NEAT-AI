@@ -31,14 +31,15 @@ evolutionary operators produce correct results. Closes #1441.
   and weight actually changes value.
 
 - **ModSquashBehavioural.ts** (7 tests): Verifies ModSquash produces valid
-  activation function assignments, creature remains valid after mutation,
-  squash function actually changes, input neurons are never modified, diverse
-  squash functions are assigned, and memetic flag is cleared.
+  activation function assignments, creature remains valid after mutation, squash
+  function actually changes, input neurons are never modified, diverse squash
+  functions are assigned, and memetic flag is cleared.
 
 - **SwapNeuronsBehavioural.ts** (8 tests): Verifies SwapNeurons maintains
   network validity, bias and squash are correctly swapped between neurons,
   returns false with insufficient hidden neurons, UUID remains stable after
-  swap, creature can round-trip through JSON, and works with many hidden neurons.
+  swap, creature can round-trip through JSON, and works with many hidden
+  neurons.
 
 ## Evidence
 
@@ -51,5 +52,6 @@ This is a test-only change with no UI or performance impact. All 3273 tests
 - `test/breed/GeneticCompatibilityBehavioural.ts` — 8 tests for genetic distance
 - `test/mutate/AddConnectionBehavioural.ts` — 7 tests for connection addition
 - `test/mutate/ModWeightBehavioural.ts` — 7 tests for weight modification
-- `test/mutate/ModSquashBehavioural.ts` — 7 tests for activation function mutation
+- `test/mutate/ModSquashBehavioural.ts` — 7 tests for activation function
+  mutation
 - `test/mutate/SwapNeuronsBehavioural.ts` — 8 tests for neuron swapping
