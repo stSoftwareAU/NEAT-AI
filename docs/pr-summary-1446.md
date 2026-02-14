@@ -1,8 +1,8 @@
 ## Summary
 
 Removed timing-based assertions (`performance.now()`) from two unit test files
-and replaced them with behavioural assertions that verify correctness rather than
-performance. Closes #1446.
+and replaced them with behavioural assertions that verify correctness rather
+than performance. Closes #1446.
 
 Per AGENTS.md guidelines, unit tests must not use timing APIs since tests run in
 parallel, making performance measurements unreliable. The performance properties
@@ -11,17 +11,15 @@ are already covered by existing benchmarks (`bench/ScoreCalculationCache.ts` and
 
 ### Changes
 
-- **`test/score/ScoreCacheWeightBias.ts`**: Replaced the
-  "performance - caching should avoid redundant iterations" test with a
-  behavioural test that verifies the cache reference persists across 100
-  calculations with varying error values — confirming the cache is reused without
-  relying on timing.
+- **`test/score/ScoreCacheWeightBias.ts`**: Replaced the "performance - caching
+  should avoid redundant iterations" test with a behavioural test that verifies
+  the cache reference persists across 100 calculations with varying error values
+  — confirming the cache is reused without relying on timing.
 
-- **`test/mutate/AddConnectionOptimisation.ts`**: Replaced the
-  "performance with large creature" test with a behavioural test that verifies
-  mutation correctness at scale — checking creature validity and that synapse
-  counts match the number of successful mutations, rather than timing the
-  operations.
+- **`test/mutate/AddConnectionOptimisation.ts`**: Replaced the "performance with
+  large creature" test with a behavioural test that verifies mutation
+  correctness at scale — checking creature validity and that synapse counts
+  match the number of successful mutations, rather than timing the operations.
 
 ## Evidence
 
