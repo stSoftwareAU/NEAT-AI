@@ -16,7 +16,7 @@ export type BackPropagationArguments = {
   generations: number;
 
   /**
-   * The learning rate. Between 0..1, Default random number.
+   * The learning rate. Between 0..1, Default 0.01.
    */
   learningRate: number;
 
@@ -58,14 +58,17 @@ export type BackPropagationArguments = {
   /** Determine how many neurons to select based on the sparseRatio. */
   sparseRatio: number;
 
-  /** Learning rate strategy: 'fixed', 'decay', 'adaptive' */
-  learningRateStrategy: "fixed" | "decay" | "adaptive";
+  /** Learning rate strategy: 'fixed', 'decay', 'adaptive', 'warm_restart' */
+  learningRateStrategy: "fixed" | "decay" | "adaptive" | "warm_restart";
 
-  /** Initial learning rate for decay/adaptive strategies */
+  /** Initial learning rate for decay/adaptive/warm_restart strategies */
   initialLearningRate: number;
 
-  /** Learning rate decay factor for decay strategy */
+  /** Learning rate decay factor for decay/warm_restart strategies */
   learningRateDecay: number;
+
+  /** Number of iterations between warm restarts. Default 10, minimum 2. */
+  warmRestartPeriod: number;
 };
 
 export type BackPropagationOptions = Partial<BackPropagationArguments>;
@@ -98,12 +101,11 @@ export function createBackPropagationConfig(
 
     limitWeightScale: Math.max(options?.limitWeightScale ?? 100_000, 1),
 
+    // Issue #1437: Use a sensible fixed default (0.01) instead of random()^3
+    // which was heavily biased towards tiny values (mean ~0.05).
     learningRate: Math.min(
       Math.max(
-        options?.learningRate ??
-          rng.random() * rng.random() *
-            rng
-              .random(), /* Random number between 0..1 but on the lower side */
+        options?.learningRate ?? 0.01,
         0.001,
       ),
       1,
@@ -126,11 +128,12 @@ export function createBackPropagationConfig(
     learningRateStrategy: options?.learningRateStrategy ??
       (options?.learningRate !== undefined
         ? "fixed"
-        // Randomize strategy selection for exploration with correct probabilities
+        // Issue #1437: Randomise strategy selection including warm_restart
         : (() => {
           const rand = rng.random();
-          if (rand < 0.4) return "decay";
-          if (rand < 0.7) return "adaptive";
+          if (rand < 0.3) return "decay";
+          if (rand < 0.55) return "adaptive";
+          if (rand < 0.75) return "warm_restart";
           return "fixed";
         })()),
     initialLearningRate: Math.min(
@@ -147,6 +150,7 @@ export function createBackPropagationConfig(
       ),
       1,
     ),
+    warmRestartPeriod: Math.max(options?.warmRestartPeriod ?? 10, 2),
   };
 
   return Object.freeze(config);
@@ -211,6 +215,16 @@ export function calculateLearningRate(
       }
 
       return baseRate * adaptiveFactor * errorAdjustment;
+    }
+    case "warm_restart": {
+      // Issue #1437: Cosine annealing with warm restarts.
+      // The learning rate decays within each period, then resets to
+      // initialLearningRate at the start of each new period. This helps
+      // escape local minima by periodically boosting the learning rate.
+      const period = config.warmRestartPeriod;
+      const positionInPeriod = iteration % period;
+      return config.initialLearningRate *
+        Math.pow(config.learningRateDecay, positionInPeriod);
     }
     default:
       return config.learningRate;
