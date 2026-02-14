@@ -15,8 +15,78 @@ interface NeuronInfo {
 }
 
 /**
+ * Synapse maps used for building composite neuron keys.
+ * Issue #1444: Consolidated from duplicate implementations.
+ */
+interface SynapseMaps {
+  /** Maps source UUID to sorted list of destination UUIDs */
+  fromMap: Map<string, string[]>;
+  /** Maps destination UUID to sorted list of source UUIDs */
+  toMap: Map<string, string[]>;
+}
+
+/**
+ * Builds synapse lookup maps from UUID pairs without allocating a sorted copy.
+ *
+ * Issue #1444: Consolidated from two duplicate implementations. Instead of
+ * spreading all synapses into a new array and sorting globally (O(n log n) +
+ * allocation), this builds maps in O(n) and sorts only the individual
+ * per-neuron lists. Since each neuron typically has far fewer connections
+ * than the total synapse count, this reduces overall work.
+ */
+function buildSynapseMaps(
+  synapseCount: number,
+  getFromUUID: (index: number) => string,
+  getToUUID: (index: number) => string,
+): SynapseMaps {
+  const fromMap = new Map<string, string[]>();
+  const toMap = new Map<string, string[]>();
+
+  for (let i = 0; i < synapseCount; i++) {
+    const fromUUID = getFromUUID(i);
+    const toUUID = getToUUID(i);
+
+    let fromList = fromMap.get(fromUUID);
+    if (!fromList) {
+      fromList = [];
+      fromMap.set(fromUUID, fromList);
+    }
+    fromList.push(toUUID);
+
+    let toList = toMap.get(toUUID);
+    if (!toList) {
+      toList = [];
+      toMap.set(toUUID, toList);
+    }
+    toList.push(fromUUID);
+  }
+
+  // Sort individual per-neuron lists for consistent key generation
+  for (const list of fromMap.values()) {
+    list.sort();
+  }
+  for (const list of toMap.values()) {
+    list.sort();
+  }
+
+  return { fromMap, toMap };
+}
+
+/**
+ * Builds a composite key for a hidden neuron based on its connected synapses.
+ */
+function buildNeuronKey(
+  uuid: string,
+  synapseMaps: SynapseMaps,
+): string {
+  const incomingKeys = (synapseMaps.toMap.get(uuid) || []).join("-");
+  const outgoingKeys = (synapseMaps.fromMap.get(uuid) || []).join("-");
+  return `${incomingKeys}|${outgoingKeys}`;
+}
+
+/**
  * Generates a key map from Creature objects directly without JSON export.
- * This is the optimised version for issue #1034.
+ * Issue #1034: Optimised version. Issue #1444: Uses consolidated buildSynapseMaps.
  */
 function generateNeuronKeyMapFromCreature(
   creature: Creature,
@@ -26,59 +96,20 @@ function generateNeuronKeyMapFromCreature(
   const synapses = creature.synapses;
 
   // Build UUID lookup for neurons (for converting synapse indices to UUIDs)
-  // Pre-allocate array size for performance
   const indexToUUID: string[] = new Array(neurons.length);
   for (let i = 0; i < neurons.length; i++) {
     indexToUUID[i] = neurons[i].uuid;
   }
 
-  // Collect synapses with UUIDs, sorted for consistent key generation
-  const synapseInfos: { fromUUID: string; toUUID: string }[] = new Array(
+  const synapseMaps = buildSynapseMaps(
     synapses.length,
+    (i) => indexToUUID[synapses[i].from],
+    (i) => indexToUUID[synapses[i].to],
   );
-  for (let i = 0; i < synapses.length; i++) {
-    const s = synapses[i];
-    synapseInfos[i] = {
-      fromUUID: indexToUUID[s.from],
-      toUUID: indexToUUID[s.to],
-    };
-  }
 
-  // Sort synapses by fromUUID and toUUID to ensure consistent key generation
-  synapseInfos.sort((a, b) => {
-    if (a.fromUUID < b.fromUUID) return -1;
-    if (a.fromUUID > b.fromUUID) return 1;
-    if (a.toUUID < b.toUUID) return -1;
-    if (a.toUUID > b.toUUID) return 1;
-    return 0;
-  });
-
-  // Map synapses by their UUIDs for quick lookup
-  const synapseFromMap = new Map<string, string[]>();
-  const synapseToMap = new Map<string, string[]>();
-
-  for (const synapse of synapseInfos) {
-    let fromList = synapseFromMap.get(synapse.fromUUID);
-    if (!fromList) {
-      fromList = [];
-      synapseFromMap.set(synapse.fromUUID, fromList);
-    }
-    fromList.push(synapse.toUUID);
-
-    let toList = synapseToMap.get(synapse.toUUID);
-    if (!toList) {
-      toList = [];
-      synapseToMap.set(synapse.toUUID, toList);
-    }
-    toList.push(synapse.fromUUID);
-  }
-
-  // Create composite keys for neurons based on their connected synapses
   for (const neuron of neurons) {
     if (neuron.type === "hidden") {
-      const incomingKeys = (synapseToMap.get(neuron.uuid) || []).join("-");
-      const outgoingKeys = (synapseFromMap.get(neuron.uuid) || []).join("-");
-      const key = `${incomingKeys}|${outgoingKeys}`;
+      const key = buildNeuronKey(neuron.uuid, synapseMaps);
       keyMap.set(key, {
         uuid: neuron.uuid,
         type: neuron.type,
@@ -91,45 +122,28 @@ function generateNeuronKeyMapFromCreature(
   return keyMap;
 }
 
+/**
+ * Generates a key map from CreatureExport without array spread/sort overhead.
+ * Issue #1444: Uses consolidated buildSynapseMaps instead of [...synapses].sort().
+ */
 function generateNeuronKeyMap(
   creature: CreatureExport,
 ): Map<string, NeuronExport> {
   const keyMap = new Map<string, NeuronExport>();
+  const synapses = creature.synapses;
 
-  // Sort synapses by fromUUID and toUUID to ensure consistent key generation
-  const sortedSynapses = [...creature.synapses].sort((a, b) => {
-    if (a.fromUUID < b.fromUUID) return -1;
-    if (a.fromUUID > b.fromUUID) return 1;
-    if (a.toUUID < b.toUUID) return -1;
-    if (a.toUUID > b.toUUID) return 1;
-    return 0;
-  });
+  const synapseMaps = buildSynapseMaps(
+    synapses.length,
+    (i) => synapses[i].fromUUID,
+    (i) => synapses[i].toUUID,
+  );
 
-  // Map synapses by their UUIDs for quick lookup
-  const synapseFromMap = new Map<string, string[]>();
-  const synapseToMap = new Map<string, string[]>();
-
-  sortedSynapses.forEach((synapse) => {
-    if (!synapseFromMap.has(synapse.fromUUID)) {
-      synapseFromMap.set(synapse.fromUUID, []);
-    }
-    synapseFromMap.get(synapse.fromUUID)!.push(synapse.toUUID);
-
-    if (!synapseToMap.has(synapse.toUUID)) {
-      synapseToMap.set(synapse.toUUID, []);
-    }
-    synapseToMap.get(synapse.toUUID)!.push(synapse.fromUUID);
-  });
-
-  // Create composite keys for neurons based on their connected synapses
-  creature.neurons.forEach((neuron) => {
+  for (const neuron of creature.neurons) {
     if (neuron.type === "hidden") {
-      const incomingKeys = (synapseToMap.get(neuron.uuid) || []).join("-");
-      const outgoingKeys = (synapseFromMap.get(neuron.uuid) || []).join("-");
-      const key = `${incomingKeys}|${outgoingKeys}`;
+      const key = buildNeuronKey(neuron.uuid, synapseMaps);
       keyMap.set(key, neuron);
     }
-  });
+  }
 
   return keyMap;
 }

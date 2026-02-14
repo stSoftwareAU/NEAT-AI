@@ -175,3 +175,17 @@ Deno.bench({
     createCompatibleFatherFromCreatures(mother, father);
   },
 });
+
+// Issue #1444: Benchmark key generation with pre-exported data
+// This isolates the createCompatibleFather logic (including key map generation)
+// from the exportJSON overhead, showing the improvement from consolidating
+// the spread-and-sort into buildSynapseMaps.
+const preExportedMother = mother.exportJSON();
+const preExportedFather = father.exportJSON();
+
+Deno.bench({
+  name: "createCompatibleFather (pre-exported, key gen only)",
+  fn() {
+    createCompatibleFather(preExportedMother, preExportedFather);
+  },
+});
