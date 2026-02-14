@@ -43,4 +43,5 @@ through unit tests that verify the reduced dampening behaviour:
   - `calculateBias - generations=0 still works correctly`
   - `createBackPropagationConfig - default generations is capped at reasonable value`
   - `createBackPropagationConfig - explicit generations above cap is still respected`
-- Updated `test/propagate/Generation.ts` expected weight value to reflect reduced dampening
+- Updated `test/propagate/Generation.ts` expected weight value to reflect
+  reduced dampening
