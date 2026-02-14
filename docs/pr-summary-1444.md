@@ -19,21 +19,23 @@ This is a backend code change with no UI impact. Benchmark results below.
 ### Benchmark Results (300 neurons, 1287 synapses per creature)
 
 **Before (baseline):**
-| Benchmark | time/iter (avg) |
-|---|---|
-| Original (with exportJSON) | 1.8 ms |
-| Optimised (direct Creature access) | 1.6 ms |
-| Original compatibility only | 1.5 ms |
-| Optimised compatibility only | 1.4 ms |
+
+| Benchmark                          | time/iter (avg) |
+| ---------------------------------- | --------------- |
+| Original (with exportJSON)         | 1.8 ms          |
+| Optimised (direct Creature access) | 1.6 ms          |
+| Original compatibility only        | 1.5 ms          |
+| Optimised compatibility only       | 1.4 ms          |
 
 **After (consolidated buildSynapseMaps):**
-| Benchmark | time/iter (avg) |
-|---|---|
-| Original (with exportJSON) | 1.8 ms |
-| Optimised (direct Creature access) | 1.7 ms |
-| Original compatibility only | 1.6 ms |
-| Optimised compatibility only | 1.5 ms |
-| createCompatibleFather (pre-exported, key gen only) | 1.4 ms |
+
+| Benchmark                                           | time/iter (avg) |
+| --------------------------------------------------- | --------------- |
+| Original (with exportJSON)                          | 1.8 ms          |
+| Optimised (direct Creature access)                  | 1.7 ms          |
+| Original compatibility only                         | 1.6 ms          |
+| Optimised compatibility only                        | 1.5 ms          |
+| createCompatibleFather (pre-exported, key gen only) | 1.4 ms          |
 
 The overall end-to-end benchmark times are dominated by `Creature.fromJSON()`,
 which masks the key generation improvement. The consolidation eliminates
