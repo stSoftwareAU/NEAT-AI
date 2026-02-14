@@ -124,8 +124,9 @@ export class Creature implements CreatureInternal {
     inwardCacheMissCount: 0,
   };
 
-  // Focus cache (separate from topology caches per Issue #1100)
-  private cacheFocus: Map<number, boolean> = new Map();
+  // Focus closure cache (separate from topology caches per Issue #1100)
+  // Issue #1443: Changed from Map<number, boolean> to Set<number> (BFS closure).
+  private focusClosure: Set<number> | null = null;
   private cacheFocusList: number[] | undefined = undefined;
 
   /** The version of this creature */
@@ -242,7 +243,7 @@ export class Creature implements CreatureInternal {
   }
 
   public clearFocusCache(): void {
-    this.cacheFocus.clear();
+    this.focusClosure = null;
     this.cacheFocusList = undefined;
   }
 
@@ -616,17 +617,16 @@ export class Creature implements CreatureInternal {
   public inFocus(
     index: number,
     focusList?: number[],
-    checked: Set<number> = new Set(),
   ): boolean {
     const result = topology.inFocus(
       this,
       this._topoCaches,
-      this.cacheFocus,
+      this.focusClosure,
       this.cacheFocusList,
       index,
       focusList,
-      checked,
     );
+    this.focusClosure = result.updatedFocusClosure;
     this.cacheFocusList = result.updatedCacheFocusList;
     return result.result;
   }

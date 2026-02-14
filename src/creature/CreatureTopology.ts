@@ -485,77 +485,102 @@ export function findInsertionPoint(
 
 /**
  * Check if a neuron is in focus.
+ *
+ * Issue #1443: Uses iterative BFS to build the complete focus closure
+ * as a Set<number> on first call, then O(1) lookup for subsequent calls.
+ * The closure includes all neurons downstream of focus neurons (reachable
+ * via outward connections) plus neurons with self-connections.
  */
 export function inFocus(
   creature: Creature,
   caches: TopologyCaches,
-  cacheFocus: Map<number, boolean>,
+  focusClosure: Set<number> | null,
   cacheFocusList: number[] | undefined,
   index: number,
   focusList?: number[],
-  checked: Set<number> = new Set(),
-): { result: boolean; updatedCacheFocusList: number[] | undefined } {
+): {
+  result: boolean;
+  updatedFocusClosure: Set<number> | null;
+  updatedCacheFocusList: number[] | undefined;
+} {
   if (!focusList || focusList.length === 0) {
-    return { result: true, updatedCacheFocusList: cacheFocusList };
+    return {
+      result: true,
+      updatedFocusClosure: focusClosure,
+      updatedCacheFocusList: cacheFocusList,
+    };
   }
 
   // Issue #1100: Check if the focus list matches the cached focus list.
   let currentCacheFocusList = cacheFocusList;
+  let currentClosure = focusClosure;
   if (!isFocusListMatch(currentCacheFocusList, focusList)) {
-    cacheFocus.clear();
+    currentClosure = null;
     currentCacheFocusList = [...focusList];
   }
 
-  if (cacheFocus.has(index)) {
-    return {
-      result: cacheFocus.get(index) as boolean,
-      updatedCacheFocusList: currentCacheFocusList,
-    };
+  // Build the closure if not yet computed for this focus list.
+  if (currentClosure === null) {
+    currentClosure = buildFocusClosure(creature, caches, focusList);
   }
 
-  if (checked.has(index)) {
-    cacheFocus.set(index, false);
-    return { result: false, updatedCacheFocusList: currentCacheFocusList };
-  }
+  return {
+    result: currentClosure.has(index),
+    updatedFocusClosure: currentClosure,
+    updatedCacheFocusList: currentCacheFocusList,
+  };
+}
 
-  checked.add(index);
+/**
+ * Builds the complete focus closure using iterative BFS.
+ *
+ * Issue #1443: Replaces recursive DFS with iterative BFS.
+ * Starting from focus neurons, walks downstream via outward connections
+ * to find all reachable neurons. Also includes neurons with self-connections,
+ * matching the original recursive behaviour.
+ */
+function buildFocusClosure(
+  creature: Creature,
+  caches: TopologyCaches,
+  focusList: number[],
+): Set<number> {
+  const closure = new Set<number>();
+  const queue: number[] = [];
 
-  for (let pos = 0; pos < focusList.length; pos++) {
-    const focusIndex = focusList[pos];
-
-    if (index === focusIndex) {
-      cacheFocus.set(index, true);
-      return { result: true, updatedCacheFocusList: currentCacheFocusList };
-    }
-
-    const toList = inwardConnections(creature, caches, index);
-
-    for (let i = toList.length; i--;) {
-      const checkIndx: number = toList[i].from;
-      if (checkIndx === index) {
-        cacheFocus.set(index, true);
-        return { result: true, updatedCacheFocusList: currentCacheFocusList };
-      }
-
-      const sub = inFocus(
-        creature,
-        caches,
-        cacheFocus,
-        currentCacheFocusList,
-        checkIndx,
-        focusList,
-        checked,
-      );
-      currentCacheFocusList = sub.updatedCacheFocusList;
-      if (sub.result) {
-        cacheFocus.set(index, true);
-        return { result: true, updatedCacheFocusList: currentCacheFocusList };
-      }
+  // Seed the BFS with focus neurons.
+  for (let i = 0; i < focusList.length; i++) {
+    const focusIdx = focusList[i];
+    if (!closure.has(focusIdx)) {
+      closure.add(focusIdx);
+      queue.push(focusIdx);
     }
   }
 
-  cacheFocus.set(index, false);
-  return { result: false, updatedCacheFocusList: currentCacheFocusList };
+  // Add neurons with self-connections (matches original recursive behaviour
+  // where self-connected neurons are always considered in focus).
+  for (let i = 0; i < creature.synapses.length; i++) {
+    const synapse = creature.synapses[i];
+    if (synapse.from === synapse.to && !closure.has(synapse.from)) {
+      closure.add(synapse.from);
+      queue.push(synapse.from);
+    }
+  }
+
+  // BFS: walk downstream via outward connections.
+  let head = 0;
+  while (head < queue.length) {
+    const current = queue[head++];
+    const outward = outwardConnections(creature, caches, current);
+    for (let i = 0; i < outward.length; i++) {
+      const target = outward[i].to;
+      if (!closure.has(target)) {
+        closure.add(target);
+        queue.push(target);
+      }
+    }
+  }
+
+  return closure;
 }
 
 /**
