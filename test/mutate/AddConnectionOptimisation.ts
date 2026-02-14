@@ -171,8 +171,8 @@ Deno.test("AddConnection: mutation still works correctly with optimisation", () 
   creatureValidate(creature);
 });
 
-Deno.test("AddConnection: performance with large creature", () => {
-  // Create a creature with many neurons to test performance
+Deno.test("AddConnection: mutation works correctly with large creature", () => {
+  // Create a creature with many neurons to test mutation behaviour at scale
   const creature = new Creature(10, 5);
   creatureValidate(creature);
 
@@ -181,24 +181,24 @@ Deno.test("AddConnection: performance with large creature", () => {
     addNeuron.mutate();
   }
 
-  const startTime = performance.now();
+  const initialSynapseCount = creature.synapses.length;
 
   const addConnection = new AddConnection(creature);
+  let connectionsAdded = 0;
   for (let i = 100; i--;) {
-    addConnection.mutate();
+    if (addConnection.mutate()) {
+      connectionsAdded++;
+    }
   }
 
-  const endTime = performance.now();
-  const elapsed = endTime - startTime;
-
-  // Creature should still be valid
+  // Creature should still be valid after many mutations
   creatureValidate(creature);
 
-  // Log performance for visibility (not a hard assertion as it depends on machine)
-  console.log(
-    `AddConnection: 100 mutations on ${creature.neurons.length} neurons took ${
-      elapsed.toFixed(2)
-    }ms`,
+  // Synapse count should reflect added connections
+  assertEquals(
+    creature.synapses.length,
+    initialSynapseCount + connectionsAdded,
+    "Synapse count should match initial count plus added connections",
   );
 });
 

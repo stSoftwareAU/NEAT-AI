@@ -292,39 +292,29 @@ Deno.test("ScoreCacheWeightBias: multiple score calculations with different erro
   );
 });
 
-Deno.test("ScoreCacheWeightBias: performance - caching should avoid redundant iterations", () => {
+Deno.test("ScoreCacheWeightBias: cache should persist across many calculations with varying errors", () => {
   const creature = createLargeCreature();
 
-  // Calculate score multiple times and time it
-  const iterations = 100;
-
-  // First calculation (builds cache)
-  const start1 = performance.now();
+  // First calculation builds the cache
   calculate(creature, 0.1, 0.0001);
-  const firstCalculationTime = performance.now() - start1;
+  const cachedComponents = creature.cachedScoreComponents;
 
-  // Subsequent calculations (should use cache)
-  const start2 = performance.now();
-  for (let i = 0; i < iterations - 1; i++) {
-    // Simulate what happens in fitness evaluation - only error changes
-    calculate(creature, 0.1 + i * 0.001, 0.0001);
-  }
-  const cachedCalculationsTime = performance.now() - start2;
-
-  const avgCachedTime = cachedCalculationsTime / (iterations - 1);
-
-  // Cached calculations should be faster than first calculation
-  // (This is a soft assertion - we just verify caching is working)
-  console.log(
-    `First calculation: ${firstCalculationTime.toFixed(3)}ms, ` +
-      `Avg cached: ${avgCachedTime.toFixed(3)}ms`,
+  assertNotEquals(
+    cachedComponents,
+    undefined,
+    "Cache should exist after first calculation",
   );
 
-  // The cache should be reused across all calculations
-  assertNotEquals(
+  // Subsequent calculations with different errors should reuse the same cache
+  for (let i = 0; i < 99; i++) {
+    calculate(creature, 0.1 + i * 0.001, 0.0001);
+  }
+
+  // The cache reference should remain the same (not recreated)
+  assertEquals(
     creature.cachedScoreComponents,
-    undefined,
-    "Cache should exist after multiple calculations",
+    cachedComponents,
+    "Cache should be reused across all calculations when structure is unchanged",
   );
 });
 
