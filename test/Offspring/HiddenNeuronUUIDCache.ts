@@ -137,18 +137,18 @@ Deno.test("geneticCompatibility uses cached hiddenNeuronUUIDs", () => {
   assertEquals(compatibility, 1);
 });
 
-Deno.test("getHiddenNeuronUUIDs cache is invalidated on connect", () => {
+Deno.test("getHiddenNeuronUUIDs cache is preserved on connect", () => {
   const hiddenUUIDs = ["hidden-1"];
   const creature = makeCreatureWithHiddenNeurons(hiddenUUIDs);
 
   const result1 = creature.getHiddenNeuronUUIDs();
 
-  // Adding a new connection should invalidate the cache
-  // (even though hidden neurons haven't changed, the structure has)
+  // Issue #1445: Adding a connection does not change the set of neurons,
+  // so hiddenNeuronUUIDs should be preserved (same reference).
   creature.connect(1, creature.neurons.length - 1, 0.3);
 
   const result2 = creature.getHiddenNeuronUUIDs();
 
-  // Should return a new Set instance after structure change
-  assertEquals(result1 !== result2, true);
+  // Should return the same Set instance — connect only changes connections
+  assertEquals(result1 === result2, true);
 });
