@@ -1,16 +1,18 @@
 ## Summary
 
 Make `evolve_SIN_function` and `evolve SIN + COS` tests less flaky by using
-deterministic seeded random data and allowing multiple retry attempts. Closes #1455.
+deterministic seeded random data and allowing multiple retry attempts. Closes
+#1455.
 
 The tests were flaky because:
+
 1. **Non-deterministic training data** - `Math.random()` produced different
    training sets each run, causing inconsistent convergence behaviour.
 2. **No retry attempts** - evolution has inherent stochasticity beyond the
    training data; a single attempt is insufficient for reliable results.
 
-The fix follows the pattern already established by the `evolve_Bigger_than` test,
-which uses `seededRandom()` and 3 attempts.
+The fix follows the pattern already established by the `evolve_Bigger_than`
+test, which uses `seededRandom()` and 3 attempts.
 
 ## Evidence
 
