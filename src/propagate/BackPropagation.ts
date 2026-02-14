@@ -10,8 +10,10 @@ export type BackPropagationArguments = {
   disableRandomSamples: boolean;
 
   /**
-   * The amount of previous generations if not set it'll be a random number between 1-100.
-   * The higher number of generations the lower the learning rate
+   * The amount of previous generations if not set it'll be a random number between 1-10.
+   * The higher number of generations the more dampening applied to weight/bias updates.
+   * Issue #1436: Reduced from 1-100 and capped in weight/bias calculation to
+   * prevent excessive inertia that slows training convergence.
    */
   generations: number;
 
@@ -82,8 +84,10 @@ export function createBackPropagationConfig(
   const config: BackPropagationArguments = {
     disableRandomSamples: options?.disableRandomSamples ?? false,
 
+    // Issue #1436: Reduce default range from 1-100 to 1-10 to avoid
+    // excessive generational dampening that slows training convergence.
     generations: Math.max(
-      options?.generations ?? Math.floor(rng.random() * 100) + 1,
+      options?.generations ?? Math.floor(rng.random() * 10) + 1,
       0,
     ),
 

@@ -83,9 +83,16 @@ export function calculateBias(
     const ns = neuron.creature.state.node(neuron.index);
 
     if (!ns.noChange && ns.count) {
+      // Issue #1436: Cap effective generations to avoid overwhelming the
+      // gradient signal. Without this cap, high config.generations values
+      // create excessive bias inertia that slows convergence.
+      const effectiveGenerations = Math.min(
+        config.generations,
+        ns.count * 2,
+      );
       const totalBias = ns.totalAdjustedBias +
-        (neuron.bias * config.generations);
-      const samples = ns.count + config.generations;
+        (neuron.bias * effectiveGenerations);
+      const samples = ns.count + effectiveGenerations;
 
       const adjustedBias = totalBias / samples;
 
