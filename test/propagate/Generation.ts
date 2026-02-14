@@ -127,5 +127,8 @@ Deno.test("Generation Weight", () => {
     config2,
   );
 
-  assertAlmostEquals(w2, 0.92, 0.1, `Weight: ${w2.toFixed(3)}`);
+  // Issue #1436: With generational dampening cap, effective generations is
+  // min(10, 1*2) = 2, so the weight moves further from the original (1.0)
+  // toward the gradient target (~0.1). averageWeight = (0.1+2.0)/3 = 0.7
+  assertAlmostEquals(w2, 0.7, 0.1, `Weight: ${w2.toFixed(3)}`);
 });

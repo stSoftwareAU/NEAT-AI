@@ -127,7 +127,15 @@ export function calculateWeight(
         positiveWeight * cs.countPositiveActivations +
         negativeWeight * cs.countNegativeActivations;
 
-      const generations = config.generations + cs.count - totalActivationCount;
+      // Issue #1436: Cap effective generations to avoid overwhelming the
+      // gradient signal. Without this cap, high config.generations values
+      // create excessive weight inertia that slows convergence.
+      const rawGenerations = config.generations + cs.count -
+        totalActivationCount;
+      const generations = Math.min(
+        rawGenerations,
+        totalActivationCount * 2,
+      );
       const totalGenerationalWeight = c.weight * generations;
 
       // Blend adjusted and generational weights.
