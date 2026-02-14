@@ -185,8 +185,18 @@ export class Creature implements CreatureInternal {
     this.neurons.length = 0;
   }
 
+  /**
+   * Clears topology caches after structural changes.
+   *
+   * Issue #1445: Selective cache invalidation by mutation type.
+   * When called with valid from/to indices (connection-only change),
+   * hiddenNeuronUUIDs is preserved because adding/removing a connection
+   * does not change the set of neurons.
+   */
   public clearCache(from: number = -1, to: number = -1) {
     if (from === -1 || to === -1) {
+      // Full invalidation: clears everything including hiddenNeuronUUIDs.
+      // Used when neurons are added/removed or structure is fully rebuilt.
       this._topoCaches.cacheTo.clear();
       this._topoCaches.cacheFrom.clear();
       this._topoCaches.cacheSelf.clear();
@@ -197,16 +207,37 @@ export class Creature implements CreatureInternal {
       this._topoCaches.availableConnectionsCache = null;
       this.topologyHash = undefined;
     } else {
+      // Connection-only invalidation: preserves hiddenNeuronUUIDs.
+      // Adding/removing a connection does not change the set of neurons,
+      // so the UUID set remains valid.
       this._topoCaches.cacheTo.delete(to);
       this._topoCaches.cacheFrom.delete(from);
       this._topoCaches.cacheSelf.delete(from);
       this._topoCaches.synapsesIndexedByTo = null;
       this._topoCaches.inwardCacheMissCount = 0;
       this._topoCaches.connectionSet = null;
-      this._topoCaches.hiddenNeuronUUIDs = null;
       this._topoCaches.availableConnectionsCache = null;
       this.topologyHash = undefined;
     }
+    this.invalidateScoreCache();
+  }
+
+  /**
+   * Clears connection-related caches without invalidating hiddenNeuronUUIDs.
+   *
+   * Issue #1445: Used by batch connect/disconnect operations that change
+   * connections but not the set of neurons. This avoids unnecessary
+   * rebuilds of the hiddenNeuronUUIDs set.
+   */
+  private clearConnectionCaches() {
+    this._topoCaches.cacheTo.clear();
+    this._topoCaches.cacheFrom.clear();
+    this._topoCaches.cacheSelf.clear();
+    this._topoCaches.synapsesIndexedByTo = null;
+    this._topoCaches.inwardCacheMissCount = 0;
+    this._topoCaches.connectionSet = null;
+    this._topoCaches.availableConnectionsCache = null;
+    this.topologyHash = undefined;
     this.invalidateScoreCache();
   }
 
@@ -497,8 +528,8 @@ export class Creature implements CreatureInternal {
       this.synapses.push(connection);
     }
 
+    // Issue #1445: clearCache(from, to) already calls invalidateScoreCache()
     this.clearCache(from, to);
-    this.invalidateScoreCache();
     return connection;
   }
 
@@ -506,8 +537,8 @@ export class Creature implements CreatureInternal {
     const indx = topology.binarySearchSynapse(this, from, to);
     if (indx !== -1) {
       this.synapses.splice(indx, 1);
+      // Issue #1445: clearCache(from, to) already calls invalidateScoreCache()
       this.clearCache(from, to);
-      this.invalidateScoreCache();
     }
   }
 
@@ -554,8 +585,9 @@ export class Creature implements CreatureInternal {
       }
     }
 
-    this.clearCache();
-    this.invalidateScoreCache();
+    // Issue #1445: Preserve hiddenNeuronUUIDs — batch connect only changes
+    // connections, not the set of neurons.
+    this.clearConnectionCaches();
   }
 
   disconnectBatch(pairs: Array<{ from: number; to: number }>): void {
@@ -574,8 +606,9 @@ export class Creature implements CreatureInternal {
       this.synapses.splice(idx, 1);
     }
 
-    this.clearCache();
-    this.invalidateScoreCache();
+    // Issue #1445: Preserve hiddenNeuronUUIDs — batch disconnect only changes
+    // connections, not the set of neurons.
+    this.clearConnectionCaches();
   }
 
   // ── Focus ──────────────────────────────────────────────────────────────
