@@ -66,6 +66,7 @@ interface CreatureOptions {
  * Issue #1023: Performance optimisation for large creatures.
  * Issue #1011: Cache weight/bias statistics incrementally.
  * Issue #1045: Added totalWeightBias and countWeightBias for incremental updates.
+ * Issue #1442: Added secondMaxWeightBias for O(1) max recovery.
  */
 export interface CachedScoreComponents {
   /** Number of hidden neurons (neurons.length - input - output) */
@@ -86,6 +87,12 @@ export interface CachedScoreComponents {
    * Issue #1045: Required for incremental updates.
    */
   countWeightBias: number;
+  /**
+   * Second-highest absolute value among all weights and biases.
+   * Issue #1442: Enables O(1) max recovery when the current max is reduced,
+   * avoiding an O(n) full scan of all synapses and neurons.
+   */
+  secondMaxWeightBias: number;
 }
 
 /**

@@ -134,7 +134,9 @@ function computeAndCacheScoreComponents(
 
   // Issue #1011: Calculate max/avg weight/bias in the same pass as complexity penalty
   // This avoids a separate full iteration over synapses and neurons.
+  // Issue #1442: Also track second-max for O(1) max recovery.
   let maxWeightBias = 0;
+  let secondMaxWeightBias = 0;
   let totalWeightBias = 0;
   let countWeightBias = 0;
 
@@ -147,7 +149,12 @@ function computeAndCacheScoreComponents(
       `Weight: ${synapse.weight} is not finite`,
     );
     const w = Math.abs(synapse.weight);
-    if (w > maxWeightBias) maxWeightBias = w;
+    if (w > maxWeightBias) {
+      secondMaxWeightBias = maxWeightBias;
+      maxWeightBias = w;
+    } else if (w > secondMaxWeightBias) {
+      secondMaxWeightBias = w;
+    }
     totalWeightBias += w;
     countWeightBias++;
   }
@@ -161,7 +168,12 @@ function computeAndCacheScoreComponents(
 
     assert(Number.isFinite(neuron.bias), `Bias: ${neuron.bias} is not finite`);
     const b = Math.abs(neuron.bias);
-    if (b > maxWeightBias) maxWeightBias = b;
+    if (b > maxWeightBias) {
+      secondMaxWeightBias = maxWeightBias;
+      maxWeightBias = b;
+    } else if (b > secondMaxWeightBias) {
+      secondMaxWeightBias = b;
+    }
     totalWeightBias += b;
     countWeightBias++;
   }
@@ -189,6 +201,7 @@ function computeAndCacheScoreComponents(
 
   // Cache the computed values
   // Issue #1045: Also cache total and count for incremental updates
+  // Issue #1442: Also cache secondMaxWeightBias for O(1) max recovery
   const cached: CachedScoreComponents = {
     hiddenNeuronCount,
     squashComplexityPenalty,
@@ -196,6 +209,7 @@ function computeAndCacheScoreComponents(
     avgWeightBias,
     totalWeightBias,
     countWeightBias,
+    secondMaxWeightBias,
   };
   creature.cachedScoreComponents = cached;
 
@@ -272,16 +286,42 @@ export function updateScoreForWeightChange(
   // Update the average
   const newAvg = newTotal / cached.countWeightBias;
 
-  // Update the max - this requires more care
-  // If newAbs is greater than current max, use newAbs
-  // If oldAbs was the max and newAbs is smaller, we need to recalculate
+  // Update the max and secondMax
+  // Issue #1442: Use secondMax for O(1) max recovery when possible.
+  // secondMax < 0 means it is stale and cannot be trusted.
   let newMax = cached.maxWeightBias;
+  let newSecondMax = cached.secondMaxWeightBias;
+
   if (newAbs > newMax) {
+    // New value exceeds current max
+    newSecondMax = newMax;
     newMax = newAbs;
   } else if (oldAbs === cached.maxWeightBias && newAbs < oldAbs) {
-    // The old value was the max and is now smaller, need to find new max
-    // This is the slow path, but it's rare
-    newMax = findNewMaxWeightBias(creature, oldWeight, newWeight);
+    // The old value was the max and is now smaller
+    if (newSecondMax >= 0) {
+      // Use the runner-up to avoid a full scan (O(1) instead of O(n))
+      if (newAbs >= newSecondMax) {
+        newMax = newAbs;
+      } else {
+        newMax = newSecondMax;
+      }
+      // secondMax is consumed; mark as stale
+      newSecondMax = -1;
+    } else {
+      // secondMax is stale, must scan to find new max and secondMax
+      const result = scanMaxForWeightChange(creature, oldWeight, newWeight);
+      newMax = result.max;
+      newSecondMax = result.secondMax;
+    }
+  } else {
+    // Invalidate secondMax if the old value matched it and was reduced
+    if (oldAbs === newSecondMax && newAbs < oldAbs) {
+      newSecondMax = -1;
+    }
+    // Track new runner-up values
+    if (newSecondMax >= 0 && newAbs > newSecondMax && newAbs < newMax) {
+      newSecondMax = newAbs;
+    }
   }
 
   // Update the cache with new values
@@ -290,6 +330,7 @@ export function updateScoreForWeightChange(
     maxWeightBias: newMax,
     avgWeightBias: newAvg,
     totalWeightBias: newTotal,
+    secondMaxWeightBias: newSecondMax,
   };
 
   // Calculate penalty with new values
@@ -339,16 +380,42 @@ export function updateScoreForBiasChange(
   // Update the average
   const newAvg = newTotal / cached.countWeightBias;
 
-  // Update the max - this requires more care
-  // If newAbs is greater than current max, use newAbs
-  // If oldAbs was the max and newAbs is smaller, we need to recalculate
+  // Update the max and secondMax
+  // Issue #1442: Use secondMax for O(1) max recovery when possible.
+  // secondMax < 0 means it is stale and cannot be trusted.
   let newMax = cached.maxWeightBias;
+  let newSecondMax = cached.secondMaxWeightBias;
+
   if (newAbs > newMax) {
+    // New value exceeds current max
+    newSecondMax = newMax;
     newMax = newAbs;
   } else if (oldAbs === cached.maxWeightBias && newAbs < oldAbs) {
-    // The old value was the max and is now smaller, need to find new max
-    // This is the slow path, but it's rare
-    newMax = findNewMaxWeightBiasForBias(creature, oldBias, newBias);
+    // The old value was the max and is now smaller
+    if (newSecondMax >= 0) {
+      // Use the runner-up to avoid a full scan (O(1) instead of O(n))
+      if (newAbs >= newSecondMax) {
+        newMax = newAbs;
+      } else {
+        newMax = newSecondMax;
+      }
+      // secondMax is consumed; mark as stale
+      newSecondMax = -1;
+    } else {
+      // secondMax is stale, must scan to find new max and secondMax
+      const result = scanMaxForBiasChange(creature, oldBias, newBias);
+      newMax = result.max;
+      newSecondMax = result.secondMax;
+    }
+  } else {
+    // Invalidate secondMax if the old value matched it and was reduced
+    if (oldAbs === newSecondMax && newAbs < oldAbs) {
+      newSecondMax = -1;
+    }
+    // Track new runner-up values
+    if (newSecondMax >= 0 && newAbs > newSecondMax && newAbs < newMax) {
+      newSecondMax = newAbs;
+    }
   }
 
   // Update the cache with new values
@@ -357,6 +424,7 @@ export function updateScoreForBiasChange(
     maxWeightBias: newMax,
     avgWeightBias: newAvg,
     totalWeightBias: newTotal,
+    secondMaxWeightBias: newSecondMax,
   };
 
   // Calculate penalty with new values
@@ -364,22 +432,30 @@ export function updateScoreForBiasChange(
   return calculateScore(error, creature, penalty, growthCost);
 }
 
+/** Result of scanning for new max and second-max values. */
+interface MaxScanResult {
+  max: number;
+  secondMax: number;
+}
+
 /**
- * Finds the new maximum weight/bias after a weight change when the old value
- * was the previous maximum.
+ * Scans all weights and biases to find the new max and second-max after a
+ * weight change when the old value was the previous maximum.
  * Issue #1045: Helper for incremental updates.
+ * Issue #1442: Also returns secondMax to avoid future full scans.
  *
  * @param creature - The creature
  * @param oldWeight - The previous weight (being replaced)
  * @param newWeight - The new weight
- * @returns The new maximum
+ * @returns The new max and second-max values
  */
-function findNewMaxWeightBias(
+function scanMaxForWeightChange(
   creature: Creature,
   oldWeight: number,
   newWeight: number,
-): number {
-  let newMax = Math.abs(newWeight);
+): MaxScanResult {
+  let max = Math.abs(newWeight);
+  let secondMax = 0;
 
   // Check all synapses
   const synapses = creature.synapses;
@@ -388,41 +464,58 @@ function findNewMaxWeightBias(
     // Skip the synapse with the old weight (it's being replaced)
     if (w === oldWeight) continue;
     const absW = Math.abs(w);
-    if (absW > newMax) newMax = absW;
+    if (absW > max) {
+      secondMax = max;
+      max = absW;
+    } else if (absW > secondMax) {
+      secondMax = absW;
+    }
   }
 
   // Check all non-input neuron biases
   const neurons = creature.neurons;
   for (let i = creature.input, len = neurons.length; i < len; i++) {
     const absB = Math.abs(neurons[i].bias);
-    if (absB > newMax) newMax = absB;
+    if (absB > max) {
+      secondMax = max;
+      max = absB;
+    } else if (absB > secondMax) {
+      secondMax = absB;
+    }
   }
 
-  return newMax;
+  return { max, secondMax };
 }
 
 /**
- * Finds the new maximum weight/bias after a bias change when the old value
- * was the previous maximum.
+ * Scans all weights and biases to find the new max and second-max after a
+ * bias change when the old value was the previous maximum.
  * Issue #1045: Helper for incremental updates.
+ * Issue #1442: Also returns secondMax to avoid future full scans.
  *
  * @param creature - The creature
  * @param oldBias - The previous bias (being replaced)
  * @param newBias - The new bias
- * @returns The new maximum
+ * @returns The new max and second-max values
  */
-function findNewMaxWeightBiasForBias(
+function scanMaxForBiasChange(
   creature: Creature,
   oldBias: number,
   newBias: number,
-): number {
-  let newMax = Math.abs(newBias);
+): MaxScanResult {
+  let max = Math.abs(newBias);
+  let secondMax = 0;
 
   // Check all synapses
   const synapses = creature.synapses;
   for (let i = 0, len = synapses.length; i < len; i++) {
     const absW = Math.abs(synapses[i].weight);
-    if (absW > newMax) newMax = absW;
+    if (absW > max) {
+      secondMax = max;
+      max = absW;
+    } else if (absW > secondMax) {
+      secondMax = absW;
+    }
   }
 
   // Check all non-input neuron biases
@@ -432,8 +525,13 @@ function findNewMaxWeightBiasForBias(
     // Skip the neuron with the old bias (it's being replaced)
     if (b === oldBias) continue;
     const absB = Math.abs(b);
-    if (absB > newMax) newMax = absB;
+    if (absB > max) {
+      secondMax = max;
+      max = absB;
+    } else if (absB > secondMax) {
+      secondMax = absB;
+    }
   }
 
-  return newMax;
+  return { max, secondMax };
 }
