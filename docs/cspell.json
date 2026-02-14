@@ -216,6 +216,7 @@
     "invertibility",
     "favor",
     "topo",
-    "checkpointing"
+    "checkpointing",
+    "stochasticity"
   ]
 }
