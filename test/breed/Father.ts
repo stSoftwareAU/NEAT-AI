@@ -179,6 +179,70 @@ Deno.test("Genetic Integrity - Multiple Matching Neurons", () => {
   assertEquals(fatherActual, fatherExpected);
 });
 
+Deno.test("Consistent key generation with shuffled synapses", () => {
+  // Issue #1444: Verify that synapse order does not affect the key map output.
+  // This ensures the consolidated key generation is order-independent.
+  const father: CreatureExport = {
+    neurons: [
+      { type: "hidden", uuid: "father-a", squash: "TANH", bias: 0.1 },
+      { type: "hidden", uuid: "father-b", squash: "TANH", bias: 0.2 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-1", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "father-a", weight: 0.5 },
+      { fromUUID: "father-a", toUUID: "father-b", weight: 0.5 },
+      { fromUUID: "father-b", toUUID: "output-0", weight: 0.5 },
+      { fromUUID: "father-b", toUUID: "output-1", weight: 0.5 },
+    ],
+    input: 2,
+    output: 2,
+  };
+
+  const mother: CreatureExport = {
+    neurons: [
+      { type: "hidden", uuid: "mother-a", squash: "TANH", bias: 0.15 },
+      { type: "hidden", uuid: "mother-b", squash: "TANH", bias: 0.25 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-1", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "mother-a", weight: 0.6 },
+      { fromUUID: "mother-a", toUUID: "mother-b", weight: 0.6 },
+      { fromUUID: "mother-b", toUUID: "output-0", weight: 0.6 },
+      { fromUUID: "mother-b", toUUID: "output-1", weight: 0.6 },
+    ],
+    input: 2,
+    output: 2,
+  };
+
+  // Get result with original synapse order
+  const result1 = createCompatibleFather(mother, father);
+
+  // Create copies with reversed synapse order
+  const fatherReversed: CreatureExport = {
+    ...father,
+    synapses: [...father.synapses].reverse(),
+  };
+  const motherReversed: CreatureExport = {
+    ...mother,
+    synapses: [...mother.synapses].reverse(),
+  };
+
+  // Reversed synapse order should produce the same UUID mapping
+  const result2 = createCompatibleFather(motherReversed, fatherReversed);
+
+  // Both results should have the same neuron UUIDs (the mapping should be identical)
+  assertEquals(result1.neurons.length, result2.neurons.length);
+  for (let i = 0; i < result1.neurons.length; i++) {
+    assertEquals(result1.neurons[i].uuid, result2.neurons[i].uuid);
+  }
+
+  // Both should create valid creatures
+  Creature.fromJSON(result1).validate();
+  Creature.fromJSON(result2).validate();
+});
+
 Deno.test("Genetic Integrity - No Matching Neurons", () => {
   const father = makeFather();
   Creature.fromJSON(father).validate();
