@@ -47,6 +47,12 @@ export {
   wasmVersion,
 } from "./WasmStandaloneFunctions.ts";
 
+// Issue #1475 - Typed interface for WASM compiled network
+export type {
+  WasmCompiledNetwork,
+  WasmCompiledNetworkConstructor,
+} from "./WasmCompiledNetwork.ts";
+
 // Issue #1405 - WasmCreatureActivation class and trace types from WasmActivation
 export {
   WasmCreatureActivation,

@@ -11,18 +11,17 @@
  */
 
 import { getLogger } from "../utils/Logger.ts";
+import type { WasmCompiledNetworkConstructor } from "./WasmCompiledNetwork.ts";
 
 // deno-lint-ignore no-explicit-any
 type WasmModule = any;
-// deno-lint-ignore no-explicit-any
-type CompiledNetworkClass = any;
 
 // ---------------------------------------------------------------------------
 // Module-level state
 // ---------------------------------------------------------------------------
 
 let wasmModule: WasmModule | null = null;
-let compiledNetworkClass: CompiledNetworkClass | null = null;
+let compiledNetworkClass: WasmCompiledNetworkConstructor | null = null;
 let initPromise: Promise<boolean> | null = null;
 
 // Standalone function pointers
@@ -254,7 +253,9 @@ export function isWasmActivationAvailable(): boolean {
 // Function pointer getters (used by WasmStandaloneFunctions and WasmCreatureActivation)
 // ---------------------------------------------------------------------------
 
-export function getCompiledNetworkClass(): CompiledNetworkClass | null {
+export function getCompiledNetworkClass():
+  | WasmCompiledNetworkConstructor
+  | null {
   return compiledNetworkClass;
 }
 
