@@ -24,6 +24,7 @@ to console methods).
 ## Evidence
 
 This is a backend/code-only change with no UI. Verified by:
+
 - `grep -r "console\." src/ --include="*.ts"` shows only Logger.ts references
 - All 3635 tests pass
 - `quality.sh` passes cleanly (fmt, lint, type-check, tests)
