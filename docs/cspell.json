@@ -217,6 +217,8 @@
     "favor",
     "topo",
     "checkpointing",
-    "stochasticity"
+    "stochasticity",
+    "Δeffect",
+    "Δweight"
   ]
 }

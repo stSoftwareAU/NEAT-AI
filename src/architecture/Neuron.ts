@@ -46,6 +46,7 @@ import {
   adjustedWeight,
   calculateWeight,
 } from "../propagate/Weight.ts";
+import { coordinateBackpropUpdates } from "../propagate/BackpropCoordination.ts";
 import type { DiscoverRecord } from "./ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
 import { noChangePropagate } from "./NoChangePropagate.ts";
@@ -589,16 +590,61 @@ export class Neuron implements TagsInterface, NeuronInternal {
   propagateUpdate(config: BackPropagationConfig) {
     const state = this.creature.state;
     const toList = this.creature.inwardConnections(this.index);
-    for (let i = toList.length; i--;) {
+
+    // Issue #1471: Calculate candidate weights and bias, then coordinate
+    // opposing changes before applying them. We collect the source
+    // activations so the coordination can compare the actual effect
+    // of weight changes (delta × activation) against bias changes.
+    //
+    // Coordination is skipped when the factor is 1.0 (no reduction)
+    // or when there are too few accumulated samples for reliable
+    // cancellation detection.
+    const coordinationEnabled = config.biasWeightCoordinationFactor < 1;
+
+    const currentWeights: number[] = [];
+    const candidateWeights: number[] = [];
+    const sourceActivations: number[] = [];
+    let minSynapseCount = Infinity;
+    for (let i = 0; i < toList.length; i++) {
       const c = toList[i];
       const cs = state.connection(c.from, c.to);
-      const aWeight = calculateWeight(cs, c, config);
-      c.weight = aWeight;
+      currentWeights.push(c.weight);
+      candidateWeights.push(calculateWeight(cs, c, config));
+      if (coordinationEnabled) {
+        sourceActivations.push(state.activations[c.from]);
+        if (cs.count < minSynapseCount) minSynapseCount = cs.count;
+      }
     }
 
-    const aBias = calculateBias(this, config);
+    const candidateBias = calculateBias(this, config);
 
-    this.bias = aBias;
+    // Only coordinate when we have enough accumulated samples for
+    // reliable cancellation detection. With very few samples, the
+    // gradient signals are too noisy for coordination to help.
+    // Require at least one full batch of samples.
+    const MIN_SAMPLES_FOR_COORDINATION = Math.max(config.batchSize, 4);
+    if (
+      coordinationEnabled && minSynapseCount >= MIN_SAMPLES_FOR_COORDINATION
+    ) {
+      const coordinated = coordinateBackpropUpdates(
+        this.bias,
+        candidateBias,
+        currentWeights,
+        candidateWeights,
+        sourceActivations,
+        config.biasWeightCoordinationFactor,
+      );
+
+      for (let i = 0; i < toList.length; i++) {
+        toList[i].weight = coordinated.weights[i];
+      }
+      this.bias = coordinated.bias;
+    } else {
+      for (let i = 0; i < toList.length; i++) {
+        toList[i].weight = candidateWeights[i];
+      }
+      this.bias = candidateBias;
+    }
   }
 
   /**
