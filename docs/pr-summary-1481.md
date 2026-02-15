@@ -11,7 +11,7 @@ reducing total overhead to O(n). Closes #1481.
 Benchmark results (`deno bench bench/FitnessQueueDequeue.ts`):
 
 | Population size | Array.shift() | Index pointer | Speedup |
-|-----------------|---------------|---------------|---------|
+| --------------- | ------------- | ------------- | ------- |
 | 100 items       | 1.1 µs        | 178.2 ns      | 6.45x   |
 | 1,000 items     | 16.4 µs       | 2.2 µs        | 7.44x   |
 | 10,000 items    | 163.3 µs      | 21.4 µs       | 7.65x   |
@@ -27,4 +27,5 @@ O(n) algorithmic difference.
   - Empty population handled correctly
   - Single creature with multiple workers
 - All existing tests pass (3,638 tests, 0 failures)
-- Added `bench/FitnessQueueDequeue.ts` benchmark comparing shift vs index-pointer
+- Added `bench/FitnessQueueDequeue.ts` benchmark comparing shift vs
+  index-pointer
