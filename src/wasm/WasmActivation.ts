@@ -15,6 +15,8 @@ import type { Creature } from "../Creature.ts";
 import { WasmError } from "../errors/WasmError.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { compileCreatureToWasm } from "./CompileToWasm.ts";
+import type { CompiledCreatureData } from "./CompileToWasm.ts";
+import type { WasmCompiledNetwork } from "./WasmCompiledNetwork.ts";
 import {
   getCompiledNetworkClass,
   getCrossEntropySumBatchPackedFn,
@@ -24,7 +26,6 @@ import {
   getMseSumBatchPackedFn,
   getMsleSumBatchPackedFn,
 } from "./WasmModuleLoader.ts";
-import type { CompiledCreatureData } from "./CompileToWasm.ts";
 
 /**
  * Trace entry from WASM activation
@@ -67,15 +68,17 @@ export interface WasmTraceResult {
  * method compatible with the JS-based activation.
  */
 export class WasmCreatureActivation {
-  // deno-lint-ignore no-explicit-any
-  private network: any;
+  private network: WasmCompiledNetwork;
   private numInputs: number;
   private numOutputs: number;
   private freed = false;
   private needsResetWhenStateless = true;
 
-  // deno-lint-ignore no-explicit-any
-  private constructor(network: any, numInputs: number, numOutputs: number) {
+  private constructor(
+    network: WasmCompiledNetwork,
+    numInputs: number,
+    numOutputs: number,
+  ) {
     this.network = network;
     this.numInputs = numInputs;
     this.numOutputs = numOutputs;

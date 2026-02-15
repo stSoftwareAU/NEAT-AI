@@ -22,10 +22,9 @@ import type { WorkerHandler } from "../src/multithreading/workers/WorkerHandler.
  */
 class BenchMockWorker {
   private busyCount = 0;
-  // deno-lint-ignore no-explicit-any
-  private idleListeners: any[] = [];
+  private idleListeners: ((worker: BenchMockWorker) => void)[] = [];
 
-  addIdleListener(callback: unknown): void {
+  addIdleListener(callback: (worker: BenchMockWorker) => void): void {
     this.idleListeners.push(callback);
   }
 
