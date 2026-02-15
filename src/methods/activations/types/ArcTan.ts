@@ -1,3 +1,4 @@
+import { ActivationError } from "../../../errors/ActivationError.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
@@ -59,8 +60,11 @@ export class ArcTan implements ActivationInterface, UnSquashInterface {
 
     const value = Math.tan(activation);
     if (!Number.isFinite(value)) {
-      throw new Error(
+      throw new ActivationError(
         `ArcTan unSquash(${activation}) → non-finite result: ${value}`,
+        "NON_FINITE_RESULT",
+        "ArcTan",
+        activation,
       );
     }
 
