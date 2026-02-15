@@ -32,7 +32,7 @@ import type { CostInterface } from "./CostInterface.ts";
  * const target = new Float32Array([1, -1, 1]); // True labels
  * const output = new Float32Array([0.8, -0.3, 1.2]); // Predictions
  * const error = hinge.calculate(target, output);
- * console.log(error); // Hinge loss
+ * getLogger().info(error); // Hinge loss
  * ```
  */
 export class HINGE implements CostInterface {

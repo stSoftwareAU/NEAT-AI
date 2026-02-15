@@ -32,7 +32,7 @@ import type { CostInterface } from "./CostInterface.ts";
  * const target = new Float32Array([100, 200, 300]);
  * const output = new Float32Array([95, 210, 285]);
  * const error = mape.calculate(target, output);
- * console.log(error); // Mean absolute percentage error
+ * getLogger().info(error); // Mean absolute percentage error
  * ```
  */
 export class MAPE implements CostInterface {

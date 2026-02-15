@@ -26,7 +26,7 @@ import { getLogger } from "../utils/Logger.ts";
  * const breed = new Breed(genus, config);
  * const offspring = breed.breed();
  * if (offspring) {
- *   console.log("New offspring created");
+ *   getLogger().info("New offspring created");
  * }
  * ```
  */

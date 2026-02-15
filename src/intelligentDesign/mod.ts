@@ -43,7 +43,7 @@
  *     "./training-data",
  *     currentScore,
  *   );
- *   console.log(message);
+ *   getLogger().info(message);
  *   await safeWriteJson("./best.json", creature);
  * }
  * ```

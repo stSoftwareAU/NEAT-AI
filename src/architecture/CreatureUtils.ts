@@ -61,7 +61,7 @@ export class CreatureUtil {
    * @example
    * ```ts
    * const uuid = CreatureUtil.makeUUID(creature);
-   * console.log(`Creature UUID: ${uuid}`);
+   * getLogger().info(`Creature UUID: ${uuid}`);
    * ```
    */
   static makeUUID(creature: Creature): string {
@@ -128,7 +128,7 @@ export class CreatureUtil {
    * @example
    * ```ts
    * const hash = CreatureUtil.getTopologyHash(creature);
-   * console.log(`Creature topology hash: ${hash}`);
+   * getLogger().info(`Creature topology hash: ${hash}`);
    * ```
    */
   static getTopologyHash(creature: Creature): string {
