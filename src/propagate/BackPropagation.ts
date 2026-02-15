@@ -71,6 +71,14 @@ export type BackPropagationArguments = {
 
   /** Number of iterations between warm restarts. Default 10, minimum 2. */
   warmRestartPeriod: number;
+
+  /**
+   * Issue #1471: Reduction factor for bias-weight coordination.
+   * When bias and weight updates oppose each other, the smaller opposing
+   * change is scaled by this factor (0..1). Default 0.2 matches fine-tuning.
+   * Set to 1.0 to disable coordination (all changes pass through).
+   */
+  biasWeightCoordinationFactor: number;
 };
 
 export type BackPropagationOptions = Partial<BackPropagationArguments>;
@@ -155,6 +163,13 @@ export function createBackPropagationConfig(
       1,
     ),
     warmRestartPeriod: Math.max(options?.warmRestartPeriod ?? 10, 2),
+    biasWeightCoordinationFactor: Math.min(
+      Math.max(
+        options?.biasWeightCoordinationFactor ?? 0.2,
+        0,
+      ),
+      1,
+    ),
   };
 
   return Object.freeze(config);
