@@ -219,6 +219,7 @@
     "checkpointing",
     "stochasticity",
     "Δeffect",
-    "Δweight"
+    "Δweight",
+    "superlinearly"
   ]
 }

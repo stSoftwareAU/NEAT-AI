@@ -62,11 +62,13 @@ export class Fitness {
 
     // Issue #1289: Work-stealing pattern - each worker continuously pulls
     // creatures from the shared queue until it is empty.
+    // Issue #1481: Use index pointer instead of Array.shift() for O(1) dequeue.
     const queue = [...uniqueQueue];
+    let front = 0;
 
     const processNext = async (worker: WorkerHandler): Promise<void> => {
-      const creature = queue.shift();
-      if (!creature) return;
+      if (front >= queue.length) return;
+      const creature = queue[front++];
 
       const responseData = await worker.evaluate(creature, this.feedbackLoop);
       if (!responseData.evaluate) {
