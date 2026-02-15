@@ -26,7 +26,7 @@ import { getCachedDistance, setCachedDistance } from "./DistanceCache.ts";
  * ```ts
  * const compatibility = geneticCompatibility(father, mother);
  * if (compatibility > 0.5) {
- *   console.log("Creatures are genetically compatible for breeding");
+ *   getLogger().info("Creatures are genetically compatible for breeding");
  * }
  * ```
  */

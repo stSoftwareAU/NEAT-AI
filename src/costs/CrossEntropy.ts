@@ -33,7 +33,7 @@ import type { CostInterface } from "./CostInterface.ts";
  * const target = new Float32Array([1, 0, 1]); // True labels
  * const output = new Float32Array([0.9, 0.1, 0.8]); // Predicted probabilities
  * const error = ce.calculate(target, output);
- * console.log(error); // Cross entropy loss
+ * getLogger().info(error); // Cross entropy loss
  * ```
  */
 export class CrossEntropy implements CostInterface {

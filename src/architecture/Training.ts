@@ -33,7 +33,7 @@ import { CreatureUtil } from "./CreatureUtils.ts";
  * @example
  * ```ts
  * const dataResult = dataFiles("./training-data", { disableRandomSamples: false });
- * console.log(`Found ${dataResult.files.length} training files`);
+ * getLogger().info(`Found ${dataResult.files.length} training files`);
  * ```
  */
 export function dataFiles(dataDir: string, options: TrainOptions = {}) {
@@ -84,7 +84,7 @@ export function dataFiles(dataDir: string, options: TrainOptions = {}) {
  *   iterations: 10,
  *   targetError: 0.01,
  * }, Costs.find("MSE"));
- * console.log(`Training completed with error: ${result.error}`);
+ * getLogger().info(`Training completed with error: ${result.error}`);
  * ```
  */
 export function trainDir(

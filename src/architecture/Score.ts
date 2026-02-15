@@ -22,7 +22,7 @@ import { getLogger } from "../utils/Logger.ts";
  * @example
  * ```ts
  * const score = calculate(creature, 0.1, 0.0001);
- * console.log(`Creature score: ${score}`);
+ * getLogger().info(`Creature score: ${score}`);
  * ```
  */
 export function calculate(
@@ -64,7 +64,7 @@ export function calculate(
  * @example
  * ```ts
  * const penalty = valuePenalty(10.5);
- * console.log(`Penalty for value 10.5: ${penalty}`);
+ * getLogger().info(`Penalty for value 10.5: ${penalty}`);
  * ```
  */
 export function valuePenalty(value: number): number {

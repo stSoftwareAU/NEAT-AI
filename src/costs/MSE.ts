@@ -30,7 +30,7 @@ import type { CostInterface } from "./CostInterface.ts";
  * const target = new Float32Array([1.0, 2.0, 3.0]);
  * const output = new Float32Array([0.9, 2.1, 2.8]);
  * const error = mse.calculate(target, output);
- * console.log(error); // Average squared error
+ * getLogger().info(error); // Average squared error
  * ```
  */
 export class MSE implements CostInterface {

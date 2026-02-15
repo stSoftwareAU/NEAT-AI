@@ -90,7 +90,6 @@ export class IF
 
     functionBody += this.inlineActivation(neuron);
     functionBody += `return { activation:a[${neuron.index}], value:0 };`;
-    // console.info(functionBody);
     const foundFunction = findActivationFunction(functionBody, cache);
     if (foundFunction) {
       return foundFunction;

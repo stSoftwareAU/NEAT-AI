@@ -33,7 +33,7 @@ import type { CostInterface } from "./CostInterface.ts";
  * const target = new Float32Array([1, 10, 100]);
  * const output = new Float32Array([0.9, 11, 95]);
  * const error = msle.calculate(target, output);
- * console.log(error); // Mean squared logarithmic error
+ * getLogger().info(error); // Mean squared logarithmic error
  * ```
  */
 export class MSLE implements CostInterface {

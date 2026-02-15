@@ -19,7 +19,7 @@ import type { Approach } from "../NEAT/LogApproach.ts";
  * ```ts
  * const restoredCreature = restoreSource(creature);
  * if (restoredCreature) {
- *   console.log("Creature restored from memetic data");
+ *   getLogger().info("Creature restored from memetic data");
  * }
  * ```
  */

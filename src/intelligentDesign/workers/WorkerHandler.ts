@@ -143,7 +143,7 @@ async function loadWasmActivationInitPayloadOrThrow(): Promise<
  * ```ts
  * const worker = new WorkerHandler();
  * const result = await worker.score(creature, neuronUUID, dataDir, options);
- * console.log(`Score: ${result.score?.score}`);
+ * getLogger().info(`Score: ${result.score?.score}`);
  * worker.terminate();
  * ```
  */

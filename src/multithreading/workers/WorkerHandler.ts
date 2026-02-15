@@ -384,7 +384,7 @@ export function isWasmActivationPayloadAvailable(): boolean {
  * ```ts
  * const worker = new WorkerHandler("./data", "MSE", false);
  * const result = await worker.evaluate(creature, false);
- * console.log(`Evaluation error: ${result.evaluate?.error}`);
+ * getLogger().info(`Evaluation error: ${result.evaluate?.error}`);
  * ```
  */
 export class WorkerHandler {
