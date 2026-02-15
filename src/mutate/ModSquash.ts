@@ -6,11 +6,13 @@ export class ModActivation extends AbstractMutationOperator {
     const index = this.selectRandomNonInputNeuronIndex(focusList);
     if (index === -1) return false;
 
-    const changed = this.creature.neurons[index].mutate(
+    const neuron = this.creature.neurons[index];
+    const changed = neuron.mutate(
       Mutation.MOD_SQUASH.name,
     );
 
     if (changed) {
+      neuron.fix();
       delete this.creature.memetic;
     }
     return changed;
