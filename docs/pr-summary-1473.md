@@ -6,18 +6,18 @@ Closes #1473
 
 Decomposes `DiscoveryCandidates.ts` (2,227 lines) into 5 focused,
 single-responsibility modules following the extraction pattern established by
-the DiscoverStructure.ts refactoring (Issue #1472). The original file is
-reduced to a 387-line coordinator that delegates to extracted functions.
+the DiscoverStructure.ts refactoring (Issue #1472). The original file is reduced
+to a 387-line coordinator that delegates to extracted functions.
 
 ## Extracted Modules
 
-| Module                    | Lines | Responsibility                                                              |
-| ------------------------- | ----- | --------------------------------------------------------------------------- |
-| `CombinedCandidates.ts`   | 845   | Multi-step combination strategies, phase-2 scoring, candidate pruning       |
-| `CandidateApplication.ts` | 615   | Validation, applying candidate changes to creatures, forward-only enforcement |
-| `CandidateCreation.ts`    | 483   | Single-step candidate builders (neurons, synapses, squash, removal)         |
-| `CandidateDescriptions.ts`| 155   | Emoji selection and human-readable description generation                   |
-| `CandidateScoring.ts`     | 77    | Weighted-average expected improvement calculations                          |
+| Module                     | Lines | Responsibility                                                                |
+| -------------------------- | ----- | ----------------------------------------------------------------------------- |
+| `CombinedCandidates.ts`    | 845   | Multi-step combination strategies, phase-2 scoring, candidate pruning         |
+| `CandidateApplication.ts`  | 615   | Validation, applying candidate changes to creatures, forward-only enforcement |
+| `CandidateCreation.ts`     | 483   | Single-step candidate builders (neurons, synapses, squash, removal)           |
+| `CandidateDescriptions.ts` | 155   | Emoji selection and human-readable description generation                     |
+| `CandidateScoring.ts`      | 77    | Weighted-average expected improvement calculations                            |
 
 ## Design Decisions
 
@@ -35,7 +35,8 @@ reduced to a 387-line coordinator that delegates to extracted functions.
 
 ## Evidence
 
-- `DiscoveryCandidates.ts`: 2,227 → 387 lines (83% reduction, well under 600 target)
+- `DiscoveryCandidates.ts`: 2,227 → 387 lines (83% reduction, well under 600
+  target)
 - All 3,823 tests pass (0 failures)
 - `quality.sh` passes cleanly (fmt, lint, type-check, all tests)
 - No external import paths changed (re-exports preserve backward compatibility)
