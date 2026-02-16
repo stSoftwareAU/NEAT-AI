@@ -1,8 +1,8 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-# Ensure deno is in PATH (common install locations)
-export PATH="$HOME/.deno/bin:$PATH"
+# Ensure deno and cargo are in PATH (common install locations)
+export PATH="$HOME/.deno/bin:$HOME/.cargo/bin:$PATH"
 
 # --- Flag parsing ---
 SKIP_TESTS=false
@@ -176,7 +176,7 @@ if [ "$RUN_BASH_CHECK" = true ]; then
     else
       echo "✅ $f"
     fi
-  done < <(find . -name "*.sh" -type f)
+  done < <(find . -name "*.sh" -type f -not -path "./.git/*" -not -path "*/target/*")
 
   if [ $fail -eq 1 ]; then
     echo "❌ Bash script syntax errors found"

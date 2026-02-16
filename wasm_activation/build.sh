@@ -2,11 +2,16 @@
 # Build script for WASM activation module
 # Issue #1116 - WASM prototype for creature activation
 # Issue #1166 - Auto-update wasm-pack to latest version
+# Issue #1489 - Learnings from NEAT-AI-Discovery runlib.sh
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
+
+# Source shared Rust toolchain validation
+# shellcheck source=../scripts/rustlib.sh
+source "$SCRIPT_DIR/../scripts/rustlib.sh"
 
 echo "Building WASM activation module..."
 
@@ -45,6 +50,15 @@ check_and_update_wasm_pack() {
         echo "wasm-pack is already up to date."
     fi
 }
+
+# Ensure Rust toolchain is available and meets minimum version
+require_rust_tools
+
+# Ensure the wasm32-unknown-unknown target is installed
+if ! rustup target list --installed 2>/dev/null | grep -q wasm32-unknown-unknown; then
+    echo "Adding wasm32-unknown-unknown target..." >&2
+    rustup target add wasm32-unknown-unknown >&2
+fi
 
 # Check and update wasm-pack before building
 check_and_update_wasm_pack
