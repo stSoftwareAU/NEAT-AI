@@ -220,6 +220,12 @@
     "stochasticity",
     "Δeffect",
     "Δweight",
-    "superlinearly"
+    "superlinearly",
+    "rustc",
+    "rustlib",
+    "Rustlib",
+    "MSRV",
+    "sourceable",
+    "pipefail"
   ]
 }
