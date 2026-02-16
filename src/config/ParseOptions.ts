@@ -6,6 +6,8 @@
  * happen once in createNeatConfig. NeatConfig is always valid after creation.
  */
 
+import { ConfigurationError } from "../errors/ConfigurationError.ts";
+
 export interface NumberConstraints {
   /** Minimum value (inclusive). */
   min?: number;
@@ -26,7 +28,7 @@ export interface NumberConstraints {
  * @param defaultValue - Value to use when undefined/absent
  * @param constraints - Optional min, max, integer constraints
  * @returns Parsed, validated number
- * @throws Error with clear message when value fails to parse or is out of range
+ * @throws ConfigurationError with clear message when value fails to parse or is out of range
  */
 export function parseNumber(
   fieldName: string,
@@ -42,20 +44,23 @@ export function parseNumber(
   if (typeof value === "string") {
     num = Number(value);
     if (!Number.isFinite(num) || value.trim() === "") {
-      throw new Error(
+      throw new ConfigurationError(
         `${fieldName} must be a number, got: ${JSON.stringify(value)}`,
+        "NOT_FINITE",
       );
     }
   } else if (typeof value === "number") {
     num = value;
     if (!Number.isFinite(num)) {
-      throw new Error(
+      throw new ConfigurationError(
         `${fieldName} must be a finite number, got: ${value}`,
+        "NOT_FINITE",
       );
     }
   } else {
-    throw new Error(
+    throw new ConfigurationError(
       `${fieldName} must be a number or string, got: ${typeof value}`,
+      "INVALID_TYPE",
     );
   }
 
@@ -67,8 +72,9 @@ export function parseNumber(
 
   if (constraints?.integer) {
     if (!Number.isInteger(num)) {
-      throw new Error(
+      throw new ConfigurationError(
         `${fieldName} must be an integer, got: ${num}`,
+        "NOT_INTEGER",
       );
     }
   }
@@ -77,16 +83,18 @@ export function parseNumber(
     const rangeMsg = constraints.max !== undefined
       ? `between ${constraints.min} and ${constraints.max}`
       : `at least ${constraints.min}`;
-    throw new Error(
+    throw new ConfigurationError(
       `${fieldName} must be ${rangeMsg}, got: ${num}`,
+      "OUT_OF_RANGE",
     );
   }
 
   if (
     constraints?.minExclusive !== undefined && num <= constraints.minExclusive
   ) {
-    throw new Error(
+    throw new ConfigurationError(
       `${fieldName} must be greater than ${constraints.minExclusive}, got: ${num}`,
+      "OUT_OF_RANGE",
     );
   }
 
@@ -94,8 +102,9 @@ export function parseNumber(
     const rangeMsg = constraints.min !== undefined
       ? `between ${constraints.min} and ${constraints.max}`
       : `at most ${constraints.max}`;
-    throw new Error(
+    throw new ConfigurationError(
       `${fieldName} must be ${rangeMsg}, got: ${num}`,
+      "OUT_OF_RANGE",
     );
   }
 
@@ -121,22 +130,25 @@ export function parseDiscoverySampleRate(
   if (typeof value === "string") {
     num = Number(value);
     if (!Number.isFinite(num) || value.trim() === "") {
-      throw new Error(
+      throw new ConfigurationError(
         `Discovery sample rate must be -1 (disabled) or between 0 and 1, got: ${
           JSON.stringify(value)
         }`,
+        "OUT_OF_RANGE",
       );
     }
   } else if (typeof value === "number") {
     num = value;
     if (!Number.isFinite(num)) {
-      throw new Error(
+      throw new ConfigurationError(
         `Discovery sample rate must be -1 (disabled) or between 0 and 1, got: ${num}`,
+        "NOT_FINITE",
       );
     }
   } else {
-    throw new Error(
+    throw new ConfigurationError(
       `Discovery sample rate must be a number or string, got: ${typeof value}`,
+      "INVALID_TYPE",
     );
   }
 
@@ -152,7 +164,8 @@ export function parseDiscoverySampleRate(
   if (num >= 0 && num <= 1) {
     return num;
   }
-  throw new Error(
+  throw new ConfigurationError(
     `Discovery sample rate must be -1 (disabled) or between 0 and 1, got: ${num}`,
+    "OUT_OF_RANGE",
   );
 }
