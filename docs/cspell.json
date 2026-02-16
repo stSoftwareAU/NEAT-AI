@@ -226,6 +226,9 @@
     "Rustlib",
     "MSRV",
     "sourceable",
-    "pipefail"
+    "pipefail",
+    "groupinstall",
+    "tlsv",
+    "dialog"
   ]
 }
