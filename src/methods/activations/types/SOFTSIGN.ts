@@ -1,3 +1,4 @@
+import { ActivationError } from "../../../errors/ActivationError.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
@@ -57,7 +58,12 @@ export class SOFTSIGN implements ActivationInterface, UnSquashInterface {
    */
   derivative(x: number): number {
     if (!Number.isFinite(x)) {
-      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
+      throw new ActivationError(
+        `Non-finite input to ${this.getName()}.derivative: ${x}`,
+        "NON_FINITE_INPUT",
+        this.getName(),
+        x,
+      );
     }
     const denom = 1 + Math.abs(x);
     return 1 / (denom * denom);

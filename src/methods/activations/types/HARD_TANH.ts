@@ -1,3 +1,4 @@
+import { ActivationError } from "../../../errors/ActivationError.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
@@ -51,7 +52,12 @@ export class HARD_TANH implements ActivationInterface, UnSquashInterface {
    */
   derivative(x: number): number {
     if (!Number.isFinite(x)) {
-      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
+      throw new ActivationError(
+        `Non-finite input to ${this.getName()}.derivative: ${x}`,
+        "NON_FINITE_INPUT",
+        this.getName(),
+        x,
+      );
     }
     return x > -1 && x < 1 ? 1 : 0;
   }

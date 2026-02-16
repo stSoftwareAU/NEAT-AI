@@ -1,3 +1,4 @@
+import { ActivationError } from "../../../errors/ActivationError.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
@@ -80,8 +81,11 @@ export class LogSigmoid implements ActivationInterface, UnSquashInterface {
    */
   derivative(x: number): number {
     if (!Number.isFinite(x)) {
-      throw new Error(
+      throw new ActivationError(
         `${this.getName()}.derivative received non-finite input: ${x}`,
+        "NON_FINITE_INPUT",
+        this.getName(),
+        x,
       );
     }
     // At very negative x, exp(-x) blows up; we avoid overflow by returning 0 early.

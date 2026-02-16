@@ -1,3 +1,4 @@
+import { ActivationError } from "../../../errors/ActivationError.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
@@ -62,7 +63,12 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
 
   derivative(x: number): number {
     if (!Number.isFinite(x)) {
-      throw new Error(`Non-finite input to ${this.getName()}.derivative: ${x}`);
+      throw new ActivationError(
+        `Non-finite input to ${this.getName()}.derivative: ${x}`,
+        "NON_FINITE_INPUT",
+        this.getName(),
+        x,
+      );
     }
 
     const d = 1 / (1 + Math.exp(-x)); // sigmoid(x)

@@ -1,3 +1,4 @@
+import { ActivationError } from "../../../errors/ActivationError.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
@@ -58,8 +59,11 @@ export class ReLU6 implements ActivationInterface, UnSquashInterface {
    */
   derivative(x: number): number {
     if (!Number.isFinite(x)) {
-      throw new Error(
+      throw new ActivationError(
         `${this.getName()}.derivative received non-finite input: ${x}`,
+        "NON_FINITE_INPUT",
+        this.getName(),
+        x,
       );
     }
 

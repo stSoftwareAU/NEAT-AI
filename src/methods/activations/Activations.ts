@@ -1,4 +1,5 @@
 import { assert } from "@std/assert";
+import { ActivationError } from "../../errors/ActivationError.ts";
 import { HYPOT } from "../../deprecated/HYPOT.ts";
 import { HYPOTv2 } from "../../deprecated/HYPOTv2.ts";
 import { MEAN } from "../../deprecated/MEAN.ts";
@@ -81,7 +82,12 @@ export class Activations {
   ): AbstractActivationInterface {
     const activation = this.MAP.get(name);
     if (activation === undefined) {
-      throw new Error(`Unknown activation: ${name}`);
+      throw new ActivationError(
+        `Unknown activation: ${name}`,
+        "UNKNOWN_ACTIVATION",
+        name,
+        0,
+      );
     }
     return activation as AbstractActivationInterface;
   }

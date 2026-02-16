@@ -1,4 +1,5 @@
 import { assert } from "@std/assert";
+import { ActivationError } from "../../../errors/ActivationError.ts";
 import type { SimplifyBiasInterface } from "../../../optimize/SimplifyBiasInterface.ts";
 import { ActivationRange } from "../../../propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
@@ -93,8 +94,11 @@ export class SINE
 
   derivative(x: number): number {
     if (!Number.isFinite(x)) {
-      throw new Error(
+      throw new ActivationError(
         `${this.getName()}.derivative received non-finite input: ${x}`,
+        "NON_FINITE_INPUT",
+        this.getName(),
+        x,
       );
     }
 
