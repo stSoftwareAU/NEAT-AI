@@ -143,10 +143,6 @@ export class Creature implements CreatureInternal {
 
   DEBUG: boolean = getGlobalDebug();
 
-  /** @deprecated Use PREBUILD_SYNAPSE_THRESHOLD from creature/CreatureTopology.ts */
-  public static readonly PREBUILD_SYNAPSE_THRESHOLD =
-    topology.PREBUILD_SYNAPSE_THRESHOLD;
-
   constructor(
     input: number,
     output: number,
