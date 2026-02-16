@@ -6,7 +6,7 @@
 
 import type { RequestData } from "../WorkerHandler.ts";
 import type { ResponseData } from "../ResponseData.ts";
-import { setSkipWasmAutoInit } from "../../../globalAccessors.ts";
+import { setSkipWasmAutoInit } from "@globalAccessors";
 
 // Issue #1263: WASM activation is mandatory. For the library's internal worker
 // system, workers receive the WASM payload from the parent during init, so we

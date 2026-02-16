@@ -9,12 +9,12 @@
  * https://en.wikipedia.org/wiki/Inverse_trigonometric_functions#Arccosine
  */
 import { assert } from "@std/assert";
-import type { SimplifyBiasInterface } from "../../../optimize/SimplifyBiasInterface.ts";
-import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import type { SimplifyBiasInterface } from "@optimize/SimplifyBiasInterface.ts";
+import { ActivationRange } from "@propagate/ActivationRange.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
-import { ErrorHelper } from "../../../propagate/ErrorHelper.ts";
+import { ErrorHelper } from "@propagate/ErrorHelper.ts";
 
 export class Cosine
   implements ActivationInterface, UnSquashInterface, SimplifyBiasInterface {

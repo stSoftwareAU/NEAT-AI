@@ -6,7 +6,7 @@
  */
 
 import { addTag, removeTag, type TagsInterface } from "@stsoftware/tags/mod";
-import { CreatureUtil } from "../../../mod.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   cleanupMemeticForRemovedNeuron,
   cleanupOrphanedNeurons,
