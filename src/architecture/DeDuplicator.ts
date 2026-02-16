@@ -110,13 +110,18 @@ export class DeDuplicator {
       }
     }
 
-    // Third pass: Remove duplicates
-    for (let removeIndx = toRemove.length; removeIndx--;) {
-      const indx = toRemove[removeIndx];
-      creatures.splice(indx, 1);
-    }
-
+    // Third pass: Remove duplicates using in-place filter (Issue #1477)
+    // Uses a Set of indices for O(n) removal instead of O(n*d) splice loop
     if (toRemove.length > 0) {
+      const removeSet = new Set(toRemove);
+      let writeIndex = 0;
+      for (let readIndex = 0; readIndex < creatures.length; readIndex++) {
+        if (!removeSet.has(readIndex)) {
+          creatures[writeIndex++] = creatures[readIndex];
+        }
+      }
+      creatures.length = writeIndex;
+
       const end = Date.now();
       const difference = format(end - start, {
         ignoreZero: true,
