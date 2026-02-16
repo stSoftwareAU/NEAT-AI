@@ -229,6 +229,9 @@
     "pipefail",
     "groupinstall",
     "tlsv",
-    "dialog"
+    "dialog",
+    "dedup",
+    "upsert",
+    "upserts"
   ]
 }
