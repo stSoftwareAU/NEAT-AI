@@ -1,29 +1,29 @@
-import { CreatureUtil } from "../../../architecture/CreatureUtils.ts";
-import type { DiscoverRecord } from "../../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { Neuron } from "../../../architecture/Neuron.ts";
-import { Mutation } from "../../../NEAT/Mutation.ts";
-import { findActivationFunction } from "../../../optimize/FunctionCache.ts";
-import type { InlineActivationInterface } from "../../../optimize/InlineActivationInterface.ts";
-import type { MakeActivationFunctionInterface } from "../../../optimize/MakeActivationFunctionInterface.ts";
-import { makeSynapsesValue } from "../../../optimize/makeSynapsesValue.ts";
-import { ActivationRange } from "../../../propagate/ActivationRange.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import { findActivationFunction } from "@optimize/FunctionCache.ts";
+import type { InlineActivationInterface } from "@optimize/InlineActivationInterface.ts";
+import type { MakeActivationFunctionInterface } from "@optimize/MakeActivationFunctionInterface.ts";
+import { makeSynapsesValue } from "@optimize/makeSynapsesValue.ts";
+import { ActivationRange } from "@propagate/ActivationRange.ts";
 import {
   type BackPropagationConfig,
   limitValue,
   toValue,
-} from "../../../propagate/BackPropagation.ts";
-import { accumulateBias, adjustedBias } from "../../../propagate/Bias.ts";
+} from "@propagate/BackPropagation.ts";
+import { accumulateBias, adjustedBias } from "@propagate/Bias.ts";
 import {
   buildRecordElasticLinks,
   constrainAndRedistributeRecordShares,
   distributeRecordError,
-} from "../../../propagate/RecordElasticity.ts";
-import type { SparseConfig } from "../../../propagate/sparse/SparseConfig.ts";
-import { accumulateWeight, adjustedWeight } from "../../../propagate/Weight.ts";
+} from "@propagate/RecordElasticity.ts";
+import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import { accumulateWeight, adjustedWeight } from "@propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
 import { IDENTITY } from "../types/IDENTITY.ts";
-import { getRandomNumberGenerator } from "../../../utils/RandomNumberGenerator.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 export class IF
   implements
