@@ -4,6 +4,7 @@ import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
 import { editParentByIndex } from "../breed/EditParentByIndex.ts";
 import { geneticCompatibility } from "../breed/GeneticCompatibility.ts";
 import { Creature } from "../Creature.ts";
+import { TopologyError } from "../errors/TopologyError.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import {
   getMajorVersion,
@@ -156,7 +157,10 @@ export class Offspring {
                 }
               }
               if (!fromNeuron) {
-                throw new Error(`Can't find ${connection.fromUUID}`);
+                throw new TopologyError(
+                  `Can't find ${connection.fromUUID}`,
+                  "MISSING_NEURON",
+                );
               }
 
               neuronMap.set(fromNeuron.uuid, fromNeuron);
@@ -171,7 +175,10 @@ export class Offspring {
             }
           }
         } else {
-          throw new Error(`Can't find connections for ${uuid}`);
+          throw new TopologyError(
+            `Can't find connections for ${uuid}`,
+            "MISSING_NEURON",
+          );
         }
       }
     } while (addedMissing);
@@ -184,13 +191,19 @@ export class Offspring {
       if (!tmpUUIDs.has(neuron.uuid)) {
         const connections = connectionsMap.get(neuron.uuid);
         if (!connections) {
-          throw new Error(`Can't find connections for ${neuron.uuid}`);
+          throw new TopologyError(
+            `Can't find connections for ${neuron.uuid}`,
+            "MISSING_NEURON",
+          );
         }
         tmpUUIDs.add(neuron.uuid);
         connections.forEach((connection) => {
           const fromNeuron = neuronMap.get(connection.fromUUID);
           if (!fromNeuron) {
-            throw new Error(`Can't find ${connection.fromUUID}`);
+            throw new TopologyError(
+              `Can't find ${connection.fromUUID}`,
+              "MISSING_NEURON",
+            );
           } else if (fromNeuron.type !== "input") {
             cloneNode(fromNeuron);
           }
@@ -212,7 +225,7 @@ export class Offspring {
       if (node !== undefined) {
         cloneNode(node);
       } else {
-        throw new Error(`Can't find output-${indx}`);
+        throw new TopologyError(`Can't find output-${indx}`, "MISSING_NEURON");
       }
     }
 
@@ -265,7 +278,10 @@ export class Offspring {
       if (neuron.type !== "input") {
         const connections = connectionsMap.get(neuron.uuid);
         if (!connections) {
-          throw new Error(`Can't find connections for ${neuron.uuid}`);
+          throw new TopologyError(
+            `Can't find connections for ${neuron.uuid}`,
+            "MISSING_NEURON",
+          );
         }
         connections.forEach((c) => {
           const fromIndx = indxMap.get(c.fromUUID);
@@ -287,13 +303,15 @@ export class Offspring {
                   });
                 }
               } else {
-                throw new Error(
+                throw new TopologyError(
                   `Can't connect to ${toType} neuron at indx=${toIndx} of type ${toType}!`,
+                  "INVALID_CONNECTION",
                 );
               }
             } else {
-              throw new Error(
+              throw new TopologyError(
                 `${neuron.ID()} fromIndx=${fromIndx} > toIndx=${toIndx}`,
+                "INVALID_CONNECTION",
               );
             }
           }
@@ -401,13 +419,14 @@ export class Offspring {
 
             // If BOTH parents are 4.x, this is a bug in the breeding logic
             if (bothParentsFourX) {
-              throw new Error(
+              throw new TopologyError(
                 `[Offspring] CRITICAL: Both parents are 4.x but offspring has recurrent connections. ` +
                   `This is a bug in the breeding logic that must be fixed. ` +
                   `Mother: ${mother.uuid} (${mother.semanticVersion}), ` +
                   `Father: ${father.uuid} (${father.semanticVersion}). ` +
                   `Error=${error.name}: ${error.message}. ` +
                   `Violations: ${violations.join(" | ")}`,
+                "INVALID_CONNECTION",
               );
             }
 
@@ -533,23 +552,29 @@ export class Offspring {
       }
 
       if (a.uuid === b.uuid) {
-        throw new Error(`Duplicate uuid ${a.uuid}`);
+        throw new TopologyError(`Duplicate uuid ${a.uuid}`, "DUPLICATE_UUID");
       }
       let indxA = firstMap.get(a.uuid);
       if (indxA === undefined) {
         indxA = secondMap.get(a.uuid);
-        if (indxA === undefined) throw new Error(`Can't find ${a.uuid}`);
+        if (indxA === undefined) {
+          throw new TopologyError(`Can't find ${a.uuid}`, "MISSING_NEURON");
+        }
         indxA += 0.1;
       }
 
       let indxB = firstMap.get(b.uuid);
       if (indxB === undefined) {
         indxB = secondMap.get(b.uuid);
-        if (indxB === undefined) throw new Error(`Can't find ${b.uuid}`);
+        if (indxB === undefined) {
+          throw new TopologyError(`Can't find ${b.uuid}`, "MISSING_NEURON");
+        }
         indxB += 0.1;
       }
 
-      if (indxA === indxB) throw new Error(`Duplicate index ${indxA}`);
+      if (indxA === indxB) {
+        throw new TopologyError(`Duplicate index ${indxA}`, "DUPLICATE_UUID");
+      }
 
       return indxA - indxB;
     });
@@ -572,8 +597,9 @@ export class Offspring {
             } else if (secondIndx !== undefined) {
               indx = secondIndx;
             } else {
-              throw new Error(
+              throw new TopologyError(
                 `Can't find ${uuid} in father or mother creatures!`,
+                "MISSING_NEURON",
               );
             }
             connectionsMap.get(uuid)?.forEach((connection) => {
@@ -630,9 +656,13 @@ export class Offspring {
         return a.index - b.index;
       } else {
         const aIndx = childMap.get(a.uuid);
-        if (aIndx === undefined) throw new Error(`Can't find ${a.uuid}`);
+        if (aIndx === undefined) {
+          throw new TopologyError(`Can't find ${a.uuid}`, "MISSING_NEURON");
+        }
         const bIndx = childMap.get(b.uuid);
-        if (bIndx === undefined) throw new Error(`Can't find ${b.uuid}`);
+        if (bIndx === undefined) {
+          throw new TopologyError(`Can't find ${b.uuid}`, "MISSING_NEURON");
+        }
 
         /*
          * Sort by index in child array, if not input or output.

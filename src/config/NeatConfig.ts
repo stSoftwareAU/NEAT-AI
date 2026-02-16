@@ -1,4 +1,5 @@
 import type { NeatOptionsInput } from "./NeatOptions.ts";
+import { ConfigurationError } from "../errors/ConfigurationError.ts";
 import { getGlobalDebug } from "../globalAccessors.ts";
 import {
   DEFAULT_RUST_FLUSH_BYTES,
@@ -850,9 +851,10 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
 
   // Cross-field validation for quantum step config
   if (config.quantumStep.maxStep < config.quantumStep.minStep) {
-    throw new Error(
+    throw new ConfigurationError(
       `Quantum step maxStep must be >= minStep. ` +
         `maxStep: ${config.quantumStep.maxStep}, minStep: ${config.quantumStep.minStep}`,
+      "CROSS_FIELD_VALIDATION",
     );
   }
 
@@ -861,30 +863,33 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     config.fineTunePopulation.maxPopulationFraction <
       config.fineTunePopulation.minPopulationFraction
   ) {
-    throw new Error(
+    throw new ConfigurationError(
       `Fine-tune population maxPopulationFraction must be >= minPopulationFraction. ` +
         `maxPopulationFraction: ${config.fineTunePopulation.maxPopulationFraction}, ` +
         `minPopulationFraction: ${config.fineTunePopulation.minPopulationFraction}`,
+      "CROSS_FIELD_VALIDATION",
     );
   }
   if (
     config.fineTunePopulation.basePopulationFraction <
       config.fineTunePopulation.minPopulationFraction
   ) {
-    throw new Error(
+    throw new ConfigurationError(
       `Fine-tune population basePopulationFraction must be >= minPopulationFraction. ` +
         `basePopulationFraction: ${config.fineTunePopulation.basePopulationFraction}, ` +
         `minPopulationFraction: ${config.fineTunePopulation.minPopulationFraction}`,
+      "CROSS_FIELD_VALIDATION",
     );
   }
   if (
     config.fineTunePopulation.basePopulationFraction >
       config.fineTunePopulation.maxPopulationFraction
   ) {
-    throw new Error(
+    throw new ConfigurationError(
       `Fine-tune population basePopulationFraction must be <= maxPopulationFraction. ` +
         `basePopulationFraction: ${config.fineTunePopulation.basePopulationFraction}, ` +
         `maxPopulationFraction: ${config.fineTunePopulation.maxPopulationFraction}`,
+      "CROSS_FIELD_VALIDATION",
     );
   }
 
@@ -895,8 +900,9 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
 function validate(config: NeatArguments) {
   // Cross-field validation not covered by parseNumber
   if (config.feedbackLoop === true && config.disableRandomSamples === false) {
-    throw new Error(
+    throw new ConfigurationError(
       "Feedback Loop, Disable Random Samples must be set together",
+      "CROSS_FIELD_VALIDATION",
     );
   }
 
@@ -904,9 +910,10 @@ function validate(config: NeatArguments) {
   if (
     adaptiveThresholds.large <= adaptiveThresholds.medium
   ) {
-    throw new Error(
+    throw new ConfigurationError(
       `Adaptive mutation large threshold must be greater than medium threshold. ` +
         `Large: ${adaptiveThresholds.large}, Medium: ${adaptiveThresholds.medium}`,
+      "CROSS_FIELD_VALIDATION",
     );
   }
 
@@ -915,23 +922,26 @@ function validate(config: NeatArguments) {
     plateauDetection.rapidImprovementRate <=
       plateauDetection.minImprovementRate
   ) {
-    throw new Error(
+    throw new ConfigurationError(
       `Plateau detection rapidImprovementRate must be greater than minImprovementRate. ` +
         `rapidImprovementRate: ${plateauDetection.rapidImprovementRate}, minImprovementRate: ${plateauDetection.minImprovementRate}`,
+      "CROSS_FIELD_VALIDATION",
     );
   }
 
   if (!Array.isArray(config.discoveryFocusNeuronUUIDs)) {
-    throw new Error(
+    throw new ConfigurationError(
       "Discovery focus neuron UUIDs must be an array when provided.",
+      "INVALID_TYPE",
     );
   }
   for (const uuid of config.discoveryFocusNeuronUUIDs) {
     if (typeof uuid !== "string" || uuid.trim().length === 0) {
-      throw new Error(
+      throw new ConfigurationError(
         `Discovery focus neuron UUIDs must be non-empty strings, found: ${
           String(uuid)
         }`,
+        "INVALID_TYPE",
       );
     }
   }

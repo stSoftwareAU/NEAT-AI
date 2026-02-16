@@ -1,5 +1,6 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
+import { TopologyError } from "../errors/TopologyError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 
 const MAX_NEURON_UUID_LENGTH = 256;
@@ -186,8 +187,9 @@ export function creatureValidate(
         stats.input++;
         const toList = creature.inwardConnections(indx);
         if (toList.length > 0) {
-          throw new Error(
+          throw new TopologyError(
             `'input' neuron ${neuron.ID()} has inward connections: ${toList.length}`,
+            "INVALID_CONNECTION",
           );
         }
         break;
@@ -197,13 +199,15 @@ export function creatureValidate(
         const toList = creature.inwardConnections(indx);
         if (toList.length > 0) {
           debugWrite(creature);
-          throw new Error(
+          throw new TopologyError(
             `'${neuron.type}' neuron ${neuron.ID()} has inward connections: ${toList.length}`,
+            "INVALID_CONNECTION",
           );
         }
         if (neuron.squash) {
-          throw new Error(
+          throw new TopologyError(
             `Node ${neuron.ID()} '${neuron.type}' has squash: ${neuron.squash}`,
+            "INVALID_SQUASH",
           );
         }
         const fromList = creature.outwardConnections(indx);
@@ -234,13 +238,15 @@ export function creatureValidate(
           );
         }
         if (neuron.bias === undefined) {
-          throw new Error(
+          throw new TopologyError(
             `hidden neuron ${neuron.ID()} should have a bias was: ${neuron.bias}`,
+            "INVALID_STATE",
           );
         }
         if (!Number.isFinite(neuron.bias)) {
-          throw new Error(
+          throw new TopologyError(
             `${neuron.ID()}) hidden neuron should have a finite bias was: ${neuron.bias}`,
+            "INVALID_STATE",
           );
         }
 
@@ -254,7 +260,10 @@ export function creatureValidate(
         break;
       }
       default:
-        throw new Error(`${neuron.ID()}) Invalid type: ${neuron.type}`);
+        throw new TopologyError(
+          `${neuron.ID()}) Invalid type: ${neuron.type}`,
+          "INVALID_NEURON_TYPE",
+        );
     }
 
     if (neuron.index !== indx) {
@@ -265,7 +274,10 @@ export function creatureValidate(
     }
 
     if (neuron.creature !== creature) {
-      throw new Error(`node ${neuron.ID()} creature mismatch`);
+      throw new TopologyError(
+        `node ${neuron.ID()} creature mismatch`,
+        "INVALID_STATE",
+      );
     }
   });
 
@@ -277,8 +289,9 @@ export function creatureValidate(
   }
 
   if (stats.output !== creature.output) {
-    throw new Error(
+    throw new TopologyError(
       `Expected ${creature.output} output neurons found: ${stats.output}`,
+      "INVALID_STATE",
     );
   }
 
@@ -289,7 +302,10 @@ export function creatureValidate(
     const toNode = creature.neurons[c.to];
 
     if (toNode.type === "input") {
-      throw new Error(indx + ") connection points to an input node");
+      throw new TopologyError(
+        indx + ") connection points to an input node",
+        "INVALID_CONNECTION",
+      );
     }
 
     if (forwardOnly && c.from === c.to) {
@@ -303,20 +319,22 @@ export function creatureValidate(
     }
 
     if (c.from < lastFrom) {
-      throw new Error(indx + ") synapses not sorted");
+      throw new TopologyError(indx + ") synapses not sorted", "SORT_FAILURE");
     } else if (c.from > lastFrom) {
       lastTo = -1;
     }
 
     if (c.from === lastFrom) {
       if (c.to < lastTo) {
-        throw new Error(
+        throw new TopologyError(
           indx + ") synapses not sorted " + c.from + "->" + c.to +
             " last to: " + lastTo,
+          "SORT_FAILURE",
         );
       } else if (c.to === lastTo) {
-        throw new Error(
+        throw new TopologyError(
           indx + ") duplicate self connection synapse " + c.from + "->" + c.to,
+          "INVALID_CONNECTION",
         );
       }
     }

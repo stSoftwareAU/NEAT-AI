@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import { addTags, removeTag, type TagsInterface } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
+import { TopologyError } from "../errors/TopologyError.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
@@ -129,15 +130,16 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
     if (type !== "input") {
       if (type !== "output" && type !== "hidden" && type !== "constant") {
-        throw new Error("invalid type: " + type);
+        throw new TopologyError("invalid type: " + type, "INVALID_NEURON_TYPE");
       }
 
       this.bias = bias;
 
       if (type === "constant") {
         if (squash) {
-          throw new Error(
+          throw new TopologyError(
             "constants should not have a squash was: " + squash,
+            "INVALID_SQUASH",
           );
         }
       } else {
@@ -159,15 +161,24 @@ export class Neuron implements TagsInterface, NeuronInternal {
   public validate() {
     if (this.type === "output" || this.type === "hidden") {
       if (!this.squash) {
-        throw new Error(`Missing squash for ${this.type} neuron`);
+        throw new TopologyError(
+          `Missing squash for ${this.type} neuron`,
+          "MISSING_SQUASH",
+        );
       }
     } else {
       if (this.squash) {
-        throw new Error(`Unexpected squash for ${this.type} neuron`);
+        throw new TopologyError(
+          `Unexpected squash for ${this.type} neuron`,
+          "INVALID_SQUASH",
+        );
       }
 
       if (this.squashMethodCache) {
-        throw new Error(`Unexpected squashMethodCache for ${this.type} neuron`);
+        throw new TopologyError(
+          `Unexpected squashMethodCache for ${this.type} neuron`,
+          "INVALID_STATE",
+        );
       }
     }
   }
@@ -981,10 +992,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
         getLogger().error(
           `❌ CRITICAL: Neuron ${this.uuid} has ${discoverRecord.errors.length} errors - likely infinite recursion!`,
         );
-        throw new Error(
+        throw new TopologyError(
           `Excessive error accumulation detected on neuron ${this.uuid}. ` +
             `Got ${discoverRecord.errors.length} errors. ` +
             `This suggests infinite recursion in backpropagation.`,
+          "EXCESSIVE_ERRORS",
         );
       }
     }
@@ -1176,10 +1188,16 @@ export class Neuron implements TagsInterface, NeuronInternal {
    */
   mutate(method: string): boolean {
     if (typeof method !== "string") {
-      throw new Error("Mutate method wrong type: " + (typeof method));
+      throw new TopologyError(
+        "Mutate method wrong type: " + (typeof method),
+        "INVALID_STATE",
+      );
     }
     if (this.type === "input") {
-      throw new Error("Mutate on wrong node type: " + this.type);
+      throw new TopologyError(
+        "Mutate on wrong node type: " + this.type,
+        "INVALID_NEURON_TYPE",
+      );
     }
     let changed = false;
     switch (method) {
@@ -1189,7 +1207,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
           case "output":
             break;
           default:
-            throw new Error(`Can't modify activation for type ${this.type}`);
+            throw new TopologyError(
+              `Can't modify activation for type ${this.type}`,
+              "INVALID_NEURON_TYPE",
+            );
         }
         const tmpSquash = Activations.pickRandomSquash(this.squash);
 
@@ -1218,7 +1239,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
         break;
       }
       default:
-        throw new Error("Unknown mutate method: " + method);
+        throw new TopologyError(
+          "Unknown mutate method: " + method,
+          "INVALID_STATE",
+        );
     }
     if (changed) {
       delete this.creature.uuid;
@@ -1240,7 +1264,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
    */
   exportJSON(): NeuronExport {
     if (this.type === "input") {
-      throw new Error(`Should not be exporting 'input'`);
+      throw new TopologyError(
+        `Should not be exporting 'input'`,
+        "INVALID_NEURON_TYPE",
+      );
     } else if (this.type === "constant") {
       return {
         type: this.type,
