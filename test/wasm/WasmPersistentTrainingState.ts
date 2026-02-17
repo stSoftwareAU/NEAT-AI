@@ -475,16 +475,16 @@ Deno.test("PersistentTrainingState-MatchesBatch4Way", () => {
  * Verify persistent bias state matches the batch 4-way approach.
  */
 Deno.test("PersistentTrainingState-BiasMatchesBatch4Way", () => {
-  const targetPres = [2.0, -1.5, 0.8, 3.0];
-  const pres = [1.0, -0.5, 0.2, 2.5];
+  const targetPreAct = [2.0, -1.5, 0.8, 3.0];
+  const preAct = [1.0, -0.5, 0.2, 2.5];
   const biases = [0.5, -0.3, 1.2, 0.0];
 
   // Batch approach (existing)
   const batchStates = Array.from({ length: 4 }, () => new NeuronState());
   accumulateBiasBatch4Way(
     batchStates,
-    targetPres,
-    pres,
+    targetPreAct,
+    preAct,
     biases,
     config,
   );
@@ -493,7 +493,7 @@ Deno.test("PersistentTrainingState-BiasMatchesBatch4Way", () => {
   const wasInit = initTrainingState(0, 4);
   if (!wasInit) return;
 
-  wasmAccumulateBiasPersistent4Way(0, targetPres, pres, biases, config);
+  wasmAccumulateBiasPersistent4Way(0, targetPreAct, preAct, biases, config);
 
   for (let i = 0; i < 4; i++) {
     const persistent = readNeuronState(i);
@@ -600,9 +600,9 @@ Deno.test("PersistentTrainingState-MemoryFreed", () => {
 });
 
 /**
- * Verify reinit works correctly after free.
+ * Verify reinitialisation works correctly after free.
  */
-Deno.test("PersistentTrainingState-ReinitAfterFree", () => {
+Deno.test("PersistentTrainingState-ReinitialiseAfterFree", () => {
   // First epoch
   let wasInit = initTrainingState(4, 2);
   if (!wasInit) return;
@@ -627,8 +627,8 @@ Deno.test("PersistentTrainingState-ReinitAfterFree", () => {
     return;
   }
 
-  // Should be zeroed after reinit
-  assertEquals(s0[0], 0, "count should be 0 after reinit");
+  // Should be zeroed after reinitialisation
+  assertEquals(s0[0], 0, "count should be 0 after reinitialisation");
 
   freeTrainingState();
 });
