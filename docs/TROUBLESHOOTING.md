@@ -256,6 +256,34 @@ tests in parallel with a large heap.
 - In CI, the `coverage.yaml` workflow automatically retries with 50% memory and
   no parallelism if the first attempt exits with code 143.
 
+### Memory leak detection tests
+
+Issue #1505 added automated tests that verify WASM resources are properly
+reclaimed throughout the activation lifecycle. These tests live in `test/wasm/`:
+
+| Test File                  | What It Verifies                                                                                                                       |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `WasmMemoryLifecycle.ts`   | `disposeWasm()` clears cached state; repeated activate/dispose cycles produce consistent output; LRU eviction respects capacity bounds |
+| `WorkerMemoryIsolation.ts` | Workers activate and terminate cleanly; multiple spawn/terminate cycles succeed; worker disposal does not affect parent WASM state     |
+| `FFICleanupLifecycle.ts`   | Repeated FFI calls with `free_discovery_result()` cleanup succeed; library close/reopen cycles work (requires Rust discovery library)  |
+
+**Running the tests:**
+
+```bash
+# Run all memory lifecycle tests
+deno test --allow-all test/wasm/WasmMemoryLifecycle.ts test/wasm/WorkerMemoryIsolation.ts
+
+# Run FFI cleanup tests (requires discovery library)
+deno test --allow-all test/wasm/FFICleanupLifecycle.ts
+```
+
+**Detecting regressions:** If a change removes `disposeWasm()` calls or breaks
+the LRU eviction logic, these tests will fail because:
+
+- Creatures will retain `cachedWasmActivation` after disposal
+- The LRU cache count will exceed the configured maximum
+- Evicted creatures will not have their WASM resources freed
+
 ### Discovery memory tuning
 
 For discovery workloads, tune these options to control peak memory:
