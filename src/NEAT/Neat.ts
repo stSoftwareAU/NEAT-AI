@@ -763,8 +763,7 @@ export class Neat {
     );
 
     // The population is already sorted in the desired order
-    for (let indx = 0; indx < this.population.length; indx++) {
-      const creature = this.population[indx];
+    for (const creature of this.population) {
       assert(creature.uuid, "UUID missing");
       assert(creature.score, "Score missing");
       assert(
@@ -1260,8 +1259,7 @@ export class Neat {
     const genus = new Genus();
 
     // The population is already sorted in the desired order
-    for (let i = 0; i < this.population.length; i++) {
-      const creature = this.population[i];
+    for (const creature of this.population) {
       CreatureUtil.makeUUID(creature);
       genus.addCreature(creature);
     }

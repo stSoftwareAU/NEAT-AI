@@ -17,8 +17,7 @@ export function editParentByIndex(
   const parentNeuronSet = new Set<string>();
   parent.neurons.forEach((n) => parentNeuronSet.add(n.uuid));
 
-  for (let index = 0; index < targetExport.neurons.length; index++) {
-    const targetNeuron = targetExport.neurons[index];
+  for (const targetNeuron of targetExport.neurons) {
     if (targetNeuron.type === "hidden") {
       if (!parentNeuronSet.has(targetNeuron.uuid)) {
         const currentUUID = targetNeuron.uuid;

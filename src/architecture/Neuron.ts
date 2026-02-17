@@ -616,8 +616,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     const candidateWeights: number[] = [];
     const sourceActivations: number[] = [];
     let minSynapseCount = Infinity;
-    for (let i = 0; i < toList.length; i++) {
-      const c = toList[i];
+    for (const c of toList) {
       const cs = state.connection(c.from, c.to);
       currentWeights.push(c.weight);
       candidateWeights.push(calculateWeight(cs, c, config));

@@ -272,8 +272,7 @@ export class Creature implements CreatureInternal {
       let lastStartIndx = 0;
       let lastEndIndx = this.neurons.length - 1;
 
-      for (let i = 0; i < options.layers.length; i++) {
-        const layer = options.layers[i];
+      for (const layer of options.layers) {
         for (let j = 0; j < layer.count; j++) {
           let tmpSquash = layer.squash ?? "*";
           if (tmpSquash === "*") {

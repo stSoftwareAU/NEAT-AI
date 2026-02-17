@@ -352,8 +352,7 @@ export class Offspring {
 
     if (fixAliases) {
       const fixed = offspring.exportJSON();
-      for (let i = 0; i < fixed.neurons.length; i++) {
-        const n = fixed.neurons[i];
+      for (const n of fixed.neurons) {
         const alias = getTag(n, "alias");
         if (alias) {
           removeTag(n, "alias");

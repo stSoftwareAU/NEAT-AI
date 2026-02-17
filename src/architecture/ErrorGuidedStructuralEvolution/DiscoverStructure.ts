@@ -661,9 +661,9 @@ export class DiscoverStructure {
       this.rustBinaryFilePaths.add(binaryFilePath);
     }
 
-    for (let i = 0; i < effectiveTrainingData.length; i++) {
-      const record = effectiveTrainingData[i];
-
+    let sampleIndex = 0;
+    for (const record of effectiveTrainingData) {
+      sampleIndex++;
       try {
         assert(
           isWasmActivationAvailable(),
@@ -705,9 +705,7 @@ export class DiscoverStructure {
           error instanceof Error && error.message.includes("Excessive record()")
         ) {
           getLogger().error(
-            `❌ Error occurred while processing sample ${
-              i + 1
-            }/${trainingData.length}`,
+            `❌ Error occurred while processing sample ${sampleIndex}/${trainingData.length}`,
           );
           getLogger().error(
             `   Total samples accumulated so far: ${this.rustAccumulatedData.length}`,

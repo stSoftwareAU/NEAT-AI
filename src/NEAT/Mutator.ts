@@ -298,11 +298,10 @@ export class Mutator {
 
     // Pre-compute weight/bias count for weighted selection (Issue #1009)
     let weightBiasCount = 0;
-    for (let i = 0; i < candidates.length; i++) {
-      const name = candidates[i].name;
+    for (const candidate of candidates) {
       if (
-        name === Mutation.MOD_BIAS.name ||
-        name === Mutation.MOD_WEIGHT.name
+        candidate.name === Mutation.MOD_BIAS.name ||
+        candidate.name === Mutation.MOD_WEIGHT.name
       ) {
         weightBiasCount++;
       }
