@@ -401,6 +401,35 @@ export class Creature implements CreatureInternal {
     return activation.activateWasm(this, input, effectiveFeedbackLoop);
   }
 
+  /**
+   * Activate without caching the WASM CompiledNetwork on this creature.
+   *
+   * Issue #1504: Use this in data-generation workloads that touch many creatures
+   * but only activate each one a small number of times. The CompiledNetwork is
+   * freed immediately after use, preventing WASM heap build-up.
+   *
+   * If the creature already has a cached activation it is reused (and kept).
+   */
+  activateEphemeral(
+    input: Float32Array,
+    feedbackLoop: boolean = false,
+  ): Float32Array {
+    for (let i = 0; i < input.length; i++) {
+      if (!Number.isFinite(input[i])) {
+        throw new Error(
+          `Input observation at index ${i} must be a finite number, got ${
+            input[i]
+          }`,
+        );
+      }
+    }
+    const effectiveFeedbackLoop = this.forwardOnly === true
+      ? false
+      : feedbackLoop;
+    activation.requireWasmOrThrow(this);
+    return activation.activateEphemeral(this, input, effectiveFeedbackLoop);
+  }
+
   /** @internal Expose preparedNeurons flag for activation module */
   get preparedNeurons(): boolean {
     return this.state.preparedNeurons;
