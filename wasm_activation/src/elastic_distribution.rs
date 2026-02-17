@@ -264,7 +264,12 @@ pub fn distribute_elastic_error(
     weights: &[f32],
     plank_constant: f32,
 ) -> Vec<f32> {
-    apply_distribute_elastic_error(error, activations, safe_zone_factors, weights, plank_constant)
+    let plank = if plank_constant.is_finite() && plank_constant > 0.0 {
+        plank_constant
+    } else {
+        PLANK_CONSTANT
+    };
+    apply_distribute_elastic_error(error, activations, safe_zone_factors, weights, plank)
 }
 
 #[cfg(test)]
