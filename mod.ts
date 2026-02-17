@@ -217,6 +217,21 @@ export type {
 } from "./src/NEAT/PlateauDetector.ts";
 
 /**
+ * WASM Cache Control
+ *
+ * Issue #1338, #1504: Control the WASM activation LRU cache size and query
+ * occupancy. Data-generation workloads that touch many creatures should lower
+ * the cache cap (e.g. 64–128) to reduce WASM heap retention.
+ *
+ * @see {@link module:src/wasm/WasmCreatureActivationLRU}
+ */
+export {
+  getCachedWasmActivationCount,
+  getMaxCachedWasmCreatureActivations,
+  setMaxCachedWasmCreatureActivations,
+} from "./src/wasm/WasmCreatureActivationLRU.ts";
+
+/**
  * WASM preload for workers (Issue #1285)
  *
  * Call {@link fetchWasmForWorkers} in the main thread before spawning workers

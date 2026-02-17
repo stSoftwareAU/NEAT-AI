@@ -90,7 +90,9 @@ export {
 } from "./WasmCompilationCache.ts";
 
 // Issue #1338 - Bound cached WASM activations under memory pressure
+// Issue #1504 - Added getCachedWasmActivationCount for cache diagnostics
 export {
+  getCachedWasmActivationCount,
   getMaxCachedWasmCreatureActivations,
   setMaxCachedWasmCreatureActivations,
 } from "./WasmCreatureActivationLRU.ts";
