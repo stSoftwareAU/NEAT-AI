@@ -10,6 +10,7 @@ import type { Creature } from "../Creature.ts";
 import type { SparseConfigLike } from "../propagate/sparse/SparseConfigLike.ts";
 import {
   compileCreatureToWasm,
+  type CompiledCreatureData,
   getOrCompileWasmModule,
   isWasmActivationAvailable,
   resolveWasmSquashName,
@@ -144,6 +145,72 @@ export function activateWasm(
 
   noteWasmCreatureActivationUse(creature);
   return creature.cachedWasmActivation.activateWithState(input, feedbackLoop);
+}
+
+/**
+ * Activate the creature without caching the CompiledNetwork instance.
+ *
+ * Issue #1504: For data-generation workloads that touch thousands of creatures
+ * but only activate each one once or twice, caching a CompiledNetwork on every
+ * creature wastes WASM heap memory. This function compiles, activates, and
+ * immediately frees the WASM instance so it does not contribute to memory
+ * pressure.
+ *
+ * If the creature already has a cached activation it is reused (and kept),
+ * so mixing ephemeral and cached calls on the same creature is safe.
+ */
+export function activateEphemeral(
+  creature: Creature,
+  input: Float32Array,
+  feedbackLoop: boolean,
+): Float32Array {
+  // If the creature already has a cached WASM activation, reuse it.
+  if (creature.cachedWasmActivation) {
+    return creature.cachedWasmActivation.activateWithState(
+      input,
+      feedbackLoop,
+    );
+  }
+
+  // Compile a one-shot activation that is freed immediately after use.
+  const compiled: CompiledCreatureData = compileCreatureToWasm(creature);
+  const activation = WasmCreatureActivation.create(compiled);
+
+  if (!activation) {
+    // Best-effort eviction and retry.
+    evictOldestWasmCreatureActivations(64);
+    const retryActivation = WasmCreatureActivation.create(compiled);
+    if (!retryActivation) {
+      throw new Error(
+        "WASM ephemeral activation failed to instantiate CompiledNetwork",
+      );
+    }
+    try {
+      const major = Number.parseInt(
+        creature.semanticVersion.split(".")[0] ?? "0",
+        10,
+      );
+      const forwardOnlyGuaranteed = Number.isFinite(major) && major >= 4 &&
+        creature.forwardOnly === true;
+      retryActivation.setNeedsResetWhenStateless(!forwardOnlyGuaranteed);
+      return retryActivation.activateWithState(input, feedbackLoop);
+    } finally {
+      retryActivation.free();
+    }
+  }
+
+  try {
+    const major = Number.parseInt(
+      creature.semanticVersion.split(".")[0] ?? "0",
+      10,
+    );
+    const forwardOnlyGuaranteed = Number.isFinite(major) && major >= 4 &&
+      creature.forwardOnly === true;
+    activation.setNeedsResetWhenStateless(!forwardOnlyGuaranteed);
+    return activation.activateWithState(input, feedbackLoop);
+  } finally {
+    activation.free();
+  }
 }
 
 /**

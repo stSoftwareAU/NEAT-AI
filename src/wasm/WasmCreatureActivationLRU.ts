@@ -111,6 +111,16 @@ export function noteWasmCreatureActivationUse(creature: Creature): void {
 }
 
 /**
+ * Get the current number of entries in the LRU cache.
+ *
+ * Issue #1504: Allows callers to observe cache occupancy for diagnostics
+ * and to verify that ephemeral activations do not inflate the cache.
+ */
+export function getCachedWasmActivationCount(): number {
+  return entries.size;
+}
+
+/**
  * Apply memory-pressure relief by evicting up to `count` old entries immediately.
  *
  * Intended for use when instantiation fails (likely OOM) and a retry might succeed.
