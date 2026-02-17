@@ -1,0 +1,56 @@
+# Upgrades Cargo.toml dependency version constraints on pull requests.
+# Targets wasm_activation/Cargo.toml. Runs only on PR; pushes updates to the PR branch.
+name: Upgrade Cargo Dependencies
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  upgrade:
+    name: Upgrade and push to PR branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-edit
+        run: cargo install cargo-edit
+
+      - name: Upgrade dependencies
+        run: |
+          cargo upgrade --manifest-path wasm_activation/Cargo.toml --dry-run 2>&1 | tee upgrade-dry-run.txt || true
+          cargo upgrade --manifest-path wasm_activation/Cargo.toml 2>&1 | tee upgrade.log || true
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet -- wasm_activation/Cargo.toml wasm_activation/Cargo.lock; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No wasm_activation Cargo dependency changes."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- wasm_activation/Cargo.toml wasm_activation/Cargo.lock
+          fi
+
+      - name: Update Cargo.lock
+        if: steps.changes.outputs.changed == 'true'
+        run: cargo update --manifest-path wasm_activation/Cargo.toml
+
+      - name: Commit and push to PR branch
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add wasm_activation/Cargo.toml
+          [ -f wasm_activation/Cargo.lock ] && git add wasm_activation/Cargo.lock || true
+          git commit -m "chore: upgrade wasm_activation Cargo.toml dependencies to latest compatible versions"
+          git push origin HEAD
