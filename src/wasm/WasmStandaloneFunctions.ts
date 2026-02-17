@@ -22,6 +22,7 @@ import {
   getCalculateErrorFn,
   getCalculateWeightWasmFn,
   getDerivativeFn,
+  getDistributeElasticErrorFn,
   getFusedErrorDistributionFn,
   getGetRangeFn,
   getLimitRangeFn,
@@ -177,6 +178,27 @@ export function wasmFusedErrorDistribution(
   const perLinkError = flat.subarray(1 + count, 1 + 2 * count);
 
   return { error, safeZoneFactors, perLinkError };
+}
+
+/**
+ * Issue #1519 - Standalone WASM elastic error distribution.
+ *
+ * Distributes `error` across links proportional to activation² × safeZoneFactor,
+ * with weight-based fallback when activations are near zero, and equal split
+ * as a last resort.
+ *
+ * Returns the error shares as a Float32Array, or undefined if WASM is unavailable.
+ */
+export function wasmDistributeElasticError(
+  error: number,
+  activations: Float32Array,
+  safeZoneFactors: Float32Array,
+  weights: Float32Array,
+  plankConstant: number,
+): Float32Array | undefined {
+  const fn = getDistributeElasticErrorFn();
+  if (!fn) return undefined;
+  return fn(error, activations, safeZoneFactors, weights, plankConstant);
 }
 
 /**

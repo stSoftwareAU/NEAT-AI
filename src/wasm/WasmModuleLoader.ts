@@ -127,6 +127,17 @@ let validateRangeFn:
 let limitRangeFn: ((squashType: number, value: number) => number) | null = null;
 let versionFn: (() => string) | null = null;
 
+// Issue #1519 - Standalone elastic error distribution
+let distributeElasticErrorFn:
+  | ((
+    error: number,
+    activations: Float32Array,
+    safeZoneFactors: Float32Array,
+    weights: Float32Array,
+    plankConstant: number,
+  ) => Float32Array)
+  | null = null;
+
 // Issue #1518 - Accumulation function pointers
 let accumulateWeightBatch4WayFn:
   | ((
@@ -227,6 +238,8 @@ function assignFunctionPointers(module: WasmModule): void {
   validateRangeFn = module.validate_range;
   limitRangeFn = module.limit_range;
   versionFn = module.version;
+  // Issue #1519 - Standalone elastic error distribution
+  distributeElasticErrorFn = module.distribute_elastic_error;
   // Issue #1518 - Accumulation functions
   accumulateWeightBatch4WayFn = module.accumulate_weight_batch_4way;
   accumulateWeightBatch8WayFn = module.accumulate_weight_batch_8way;
@@ -408,6 +421,11 @@ export function getLimitRangeFn(): typeof limitRangeFn {
 
 export function getVersionFn(): typeof versionFn {
   return versionFn;
+}
+
+// Issue #1519 - Elastic error distribution getter
+export function getDistributeElasticErrorFn(): typeof distributeElasticErrorFn {
+  return distributeElasticErrorFn;
 }
 
 // Issue #1518 - Accumulation function pointer getters

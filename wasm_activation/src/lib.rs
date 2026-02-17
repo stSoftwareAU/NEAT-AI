@@ -17,6 +17,7 @@ use wasm_bindgen::prelude::*;
 // Module declarations
 mod accumulate;
 mod derivative;
+mod elastic_distribution;
 mod error;
 mod fused_error;
 mod loss;
@@ -32,6 +33,9 @@ mod unsquash;
 pub use network::{CompiledNetwork, NeuronData, SynapseData};
 pub use squash::SquashType;
 pub use synapse_type::SynapseType;
+
+// Re-export elastic distribution (Issue #1519)
+pub use elastic_distribution::distribute_elastic_error;
 
 // Re-export accumulation functions (Issue #1518)
 pub use accumulate::{
