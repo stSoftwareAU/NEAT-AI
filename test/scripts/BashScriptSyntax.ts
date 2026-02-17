@@ -79,7 +79,7 @@ Deno.test("scripts/rustlib.sh exports require_rust_tools function", async () => 
   const cmd = new Deno.Command("bash", {
     args: [
       "-c",
-      "source scripts/rustlib.sh && type require_rust_tools | head -1",
+      "source scripts/rustlib.sh && type require_rust_tools",
     ],
     stdout: "piped",
     stderr: "piped",
@@ -87,8 +87,9 @@ Deno.test("scripts/rustlib.sh exports require_rust_tools function", async () => 
   const { code, stdout } = await cmd.output();
   const output = new TextDecoder().decode(stdout).trim();
   assertEquals(code, 0, "require_rust_tools should be a defined function");
+  const firstLine = output.split("\n")[0];
   assert(
-    output.includes("function"),
-    `Expected function declaration, got: ${output}`,
+    firstLine.includes("function"),
+    `Expected function declaration, got: ${firstLine}`,
   );
 });
