@@ -199,10 +199,12 @@ export function calculateLearningRate(
       return config.initialLearningRate *
         Math.pow(config.learningRateDecay, iteration);
     case "adaptive": {
-      // Adaptive strategy: adjust learning rate based on actual error feedback.
-      // When error is improving => maintain the current rate.
-      // When error stagnates  => increase the rate to escape the plateau.
-      // When error worsens    => reduce the rate to avoid overshooting.
+      // Issue #1480: Adaptive strategy with error-proportional scaling.
+      // Two components:
+      //   1. Direction adjustment: boost when improving/stagnating, reduce when worsening.
+      //   2. Magnitude scaling: larger steps when error is large (far from optimum),
+      //      smaller steps when error is small (fine-tuning region), inspired by
+      //      QuantumStepConfig's adaptive step sizing in fine-tuning.
       const baseRate = config.initialLearningRate;
 
       // Apply a slower decay than the pure decay strategy
@@ -210,6 +212,7 @@ export function calculateLearningRate(
       const adaptiveFactor = Math.pow(adaptiveDecay, iteration);
 
       let errorAdjustment = 1;
+      let magnitudeScale = 1;
       if (
         errorFeedback &&
         Number.isFinite(errorFeedback.previousError) &&
@@ -231,9 +234,18 @@ export function calculateLearningRate(
           // The worse the ratio, the more we reduce (down to 0.5x).
           errorAdjustment = Math.max(0.5, 1.0 / errorRatio);
         }
+
+        // Issue #1480: Error-magnitude scaling.
+        // Uses the same normalisation as fine-tuning's QuantumStepConfig:
+        //   normalisedError = |error| / (1 + |error|)  => bounded in [0, 1)
+        // When error is large, magnitudeScale approaches 2.0 (bigger steps).
+        // When error is small, magnitudeScale approaches 1.0 (conservative steps).
+        const absError = Math.abs(errorFeedback.currentError);
+        const normalisedError = absError / (1 + absError);
+        magnitudeScale = 1 + normalisedError;
       }
 
-      return baseRate * adaptiveFactor * errorAdjustment;
+      return baseRate * adaptiveFactor * errorAdjustment * magnitudeScale;
     }
     case "warm_restart": {
       // Issue #1437: Cosine annealing with warm restarts.
