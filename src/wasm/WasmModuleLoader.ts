@@ -214,6 +214,69 @@ let calculateBiasWasmFn:
   ) => number)
   | null = null;
 
+// Issue #1522 - Persistent training state function pointers
+let initTrainingStateFn:
+  | ((numSynapses: number, numNeurons: number) => void)
+  | null = null;
+let resetTrainingStateFn: (() => void) | null = null;
+let freeTrainingStateFn: (() => void) | null = null;
+let readSynapseStateFn:
+  | ((index: number) => Float64Array)
+  | null = null;
+let readNeuronStateFn:
+  | ((index: number) => Float64Array)
+  | null = null;
+let readAllSynapseStateFn: (() => Float64Array) | null = null;
+let readAllNeuronStateFn: (() => Float64Array) | null = null;
+let accumulateWeightPersistent4WayFn:
+  | ((
+    startIndex: number,
+    currentWeights: Float64Array,
+    targetValues: Float64Array,
+    activations: Float64Array,
+    plankConstant: number,
+    learningRate: number,
+    maxWeightAdjScale: number,
+    limitWeightScale: number,
+  ) => void)
+  | null = null;
+let accumulateWeightPersistent8WayFn:
+  | ((
+    startIndex: number,
+    currentWeights: Float64Array,
+    targetValues: Float64Array,
+    activations: Float64Array,
+    plankConstant: number,
+    learningRate: number,
+    maxWeightAdjScale: number,
+    limitWeightScale: number,
+  ) => void)
+  | null = null;
+let accumulateBiasPersistent4WayFn:
+  | ((
+    startIndex: number,
+    targetPreActivations: Float64Array,
+    preActivations: Float64Array,
+    currentBiases: Float64Array,
+    plankConstant: number,
+    learningRate: number,
+    maxBiasAdjScale: number,
+    limitBiasScale: number,
+  ) => void)
+  | null = null;
+let accumulateBiasPersistent8WayFn:
+  | ((
+    startIndex: number,
+    targetPreActivations: Float64Array,
+    preActivations: Float64Array,
+    currentBiases: Float64Array,
+    plankConstant: number,
+    learningRate: number,
+    maxBiasAdjScale: number,
+    limitBiasScale: number,
+  ) => void)
+  | null = null;
+
 // ---------------------------------------------------------------------------
 // Helpers to populate function pointers from a module
 // ---------------------------------------------------------------------------
@@ -247,6 +310,18 @@ function assignFunctionPointers(module: WasmModule): void {
   accumulateBiasBatch8WayFn = module.accumulate_bias_batch_8way;
   calculateWeightWasmFn = module.calculate_weight;
   calculateBiasWasmFn = module.calculate_bias;
+  // Issue #1522 - Persistent training state functions
+  initTrainingStateFn = module.init_training_state;
+  resetTrainingStateFn = module.reset_training_state;
+  freeTrainingStateFn = module.free_training_state;
+  readSynapseStateFn = module.read_synapse_state;
+  readNeuronStateFn = module.read_neuron_state;
+  readAllSynapseStateFn = module.read_all_synapse_state;
+  readAllNeuronStateFn = module.read_all_neuron_state;
+  accumulateWeightPersistent4WayFn = module.accumulate_weight_persistent_4way;
+  accumulateWeightPersistent8WayFn = module.accumulate_weight_persistent_8way;
+  accumulateBiasPersistent4WayFn = module.accumulate_bias_persistent_4way;
+  accumulateBiasPersistent8WayFn = module.accumulate_bias_persistent_8way;
 }
 
 // ---------------------------------------------------------------------------
@@ -451,4 +526,49 @@ export function getCalculateWeightWasmFn(): typeof calculateWeightWasmFn {
 
 export function getCalculateBiasWasmFn(): typeof calculateBiasWasmFn {
   return calculateBiasWasmFn;
+}
+
+// Issue #1522 - Persistent training state function pointer getters
+export function getInitTrainingStateFn(): typeof initTrainingStateFn {
+  return initTrainingStateFn;
+}
+
+export function getResetTrainingStateFn(): typeof resetTrainingStateFn {
+  return resetTrainingStateFn;
+}
+
+export function getFreeTrainingStateFn(): typeof freeTrainingStateFn {
+  return freeTrainingStateFn;
+}
+
+export function getReadSynapseStateFn(): typeof readSynapseStateFn {
+  return readSynapseStateFn;
+}
+
+export function getReadNeuronStateFn(): typeof readNeuronStateFn {
+  return readNeuronStateFn;
+}
+
+export function getReadAllSynapseStateFn(): typeof readAllSynapseStateFn {
+  return readAllSynapseStateFn;
+}
+
+export function getReadAllNeuronStateFn(): typeof readAllNeuronStateFn {
+  return readAllNeuronStateFn;
+}
+
+export function getAccumulateWeightPersistent4WayFn(): typeof accumulateWeightPersistent4WayFn {
+  return accumulateWeightPersistent4WayFn;
+}
+
+export function getAccumulateWeightPersistent8WayFn(): typeof accumulateWeightPersistent8WayFn {
+  return accumulateWeightPersistent8WayFn;
+}
+
+export function getAccumulateBiasPersistent4WayFn(): typeof accumulateBiasPersistent4WayFn {
+  return accumulateBiasPersistent4WayFn;
+}
+
+export function getAccumulateBiasPersistent8WayFn(): typeof accumulateBiasPersistent8WayFn {
+  return accumulateBiasPersistent8WayFn;
 }

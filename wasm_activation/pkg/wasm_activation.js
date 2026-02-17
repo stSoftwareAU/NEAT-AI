@@ -360,6 +360,109 @@ export function accumulate_bias_batch_8way(
 }
 
 /**
+ * Accumulate bias adjustments for 4 neurons into persistent state.
+ *
+ * Same arithmetic as `accumulate_bias_batch_4way`, but results are
+ * accumulated directly into the persistent state buffer.
+ *
+ * # Arguments
+ * * `start_index` - Index of the first neuron in the state buffer
+ * * `target_pre_activations` - 4 target pre-activation values
+ * * `pre_activations` - 4 current pre-activation values
+ * * `current_biases` - 4 current neuron biases
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate for bias adjustment
+ * * `max_bias_adj_scale` - Maximum bias adjustment scale
+ * * `limit_bias_scale` - Global bias scale limit
+ * @param {number} start_index
+ * @param {Float64Array} target_pre_activations
+ * @param {Float64Array} pre_activations
+ * @param {Float64Array} current_biases
+ * @param {number} plank_constant
+ * @param {number} learning_rate
+ * @param {number} max_bias_adj_scale
+ * @param {number} limit_bias_scale
+ */
+export function accumulate_bias_persistent_4way(
+  start_index,
+  target_pre_activations,
+  pre_activations,
+  current_biases,
+  plank_constant,
+  learning_rate,
+  max_bias_adj_scale,
+  limit_bias_scale,
+) {
+  const ptr0 = passArrayF64ToWasm0(
+    target_pre_activations,
+    wasm.__wbindgen_malloc,
+  );
+  const len0 = WASM_VECTOR_LEN;
+  const ptr1 = passArrayF64ToWasm0(pre_activations, wasm.__wbindgen_malloc);
+  const len1 = WASM_VECTOR_LEN;
+  const ptr2 = passArrayF64ToWasm0(current_biases, wasm.__wbindgen_malloc);
+  const len2 = WASM_VECTOR_LEN;
+  wasm.accumulate_bias_persistent_4way(
+    start_index,
+    ptr0,
+    len0,
+    ptr1,
+    len1,
+    ptr2,
+    len2,
+    plank_constant,
+    learning_rate,
+    max_bias_adj_scale,
+    limit_bias_scale,
+  );
+}
+
+/**
+ * Accumulate bias adjustments for 8 neurons into persistent state.
+ * @param {number} start_index
+ * @param {Float64Array} target_pre_activations
+ * @param {Float64Array} pre_activations
+ * @param {Float64Array} current_biases
+ * @param {number} plank_constant
+ * @param {number} learning_rate
+ * @param {number} max_bias_adj_scale
+ * @param {number} limit_bias_scale
+ */
+export function accumulate_bias_persistent_8way(
+  start_index,
+  target_pre_activations,
+  pre_activations,
+  current_biases,
+  plank_constant,
+  learning_rate,
+  max_bias_adj_scale,
+  limit_bias_scale,
+) {
+  const ptr0 = passArrayF64ToWasm0(
+    target_pre_activations,
+    wasm.__wbindgen_malloc,
+  );
+  const len0 = WASM_VECTOR_LEN;
+  const ptr1 = passArrayF64ToWasm0(pre_activations, wasm.__wbindgen_malloc);
+  const len1 = WASM_VECTOR_LEN;
+  const ptr2 = passArrayF64ToWasm0(current_biases, wasm.__wbindgen_malloc);
+  const len2 = WASM_VECTOR_LEN;
+  wasm.accumulate_bias_persistent_8way(
+    start_index,
+    ptr0,
+    len0,
+    ptr1,
+    len1,
+    ptr2,
+    len2,
+    plank_constant,
+    learning_rate,
+    max_bias_adj_scale,
+    limit_bias_scale,
+  );
+}
+
+/**
  * Issue #1518 - Batch weight accumulation for 4 synapses.
  *
  * Processes 4 synapses in a single WASM call, returning a packed f64 array
@@ -464,6 +567,104 @@ export function accumulate_weight_batch_8way(
   var v4 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
   wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
   return v4;
+}
+
+/**
+ * Accumulate weight adjustments for 4 synapses into persistent state.
+ *
+ * Same arithmetic as `accumulate_weight_batch_4way`, but results are
+ * accumulated directly into the persistent state buffer rather than
+ * being returned to JavaScript.
+ *
+ * # Arguments
+ * * `start_index` - Index of the first synapse in the state buffer
+ * * `current_weights` - 4 current synapse weights
+ * * `target_values` - 4 target values for weight calculation
+ * * `activations` - 4 activation values from source neurons
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate for weight adjustment
+ * * `max_weight_adj_scale` - Maximum weight adjustment scale
+ * * `limit_weight_scale` - Global weight scale limit
+ * @param {number} start_index
+ * @param {Float64Array} current_weights
+ * @param {Float64Array} target_values
+ * @param {Float64Array} activations
+ * @param {number} plank_constant
+ * @param {number} learning_rate
+ * @param {number} max_weight_adj_scale
+ * @param {number} limit_weight_scale
+ */
+export function accumulate_weight_persistent_4way(
+  start_index,
+  current_weights,
+  target_values,
+  activations,
+  plank_constant,
+  learning_rate,
+  max_weight_adj_scale,
+  limit_weight_scale,
+) {
+  const ptr0 = passArrayF64ToWasm0(current_weights, wasm.__wbindgen_malloc);
+  const len0 = WASM_VECTOR_LEN;
+  const ptr1 = passArrayF64ToWasm0(target_values, wasm.__wbindgen_malloc);
+  const len1 = WASM_VECTOR_LEN;
+  const ptr2 = passArrayF64ToWasm0(activations, wasm.__wbindgen_malloc);
+  const len2 = WASM_VECTOR_LEN;
+  wasm.accumulate_weight_persistent_4way(
+    start_index,
+    ptr0,
+    len0,
+    ptr1,
+    len1,
+    ptr2,
+    len2,
+    plank_constant,
+    learning_rate,
+    max_weight_adj_scale,
+    limit_weight_scale,
+  );
+}
+
+/**
+ * Accumulate weight adjustments for 8 synapses into persistent state.
+ * @param {number} start_index
+ * @param {Float64Array} current_weights
+ * @param {Float64Array} target_values
+ * @param {Float64Array} activations
+ * @param {number} plank_constant
+ * @param {number} learning_rate
+ * @param {number} max_weight_adj_scale
+ * @param {number} limit_weight_scale
+ */
+export function accumulate_weight_persistent_8way(
+  start_index,
+  current_weights,
+  target_values,
+  activations,
+  plank_constant,
+  learning_rate,
+  max_weight_adj_scale,
+  limit_weight_scale,
+) {
+  const ptr0 = passArrayF64ToWasm0(current_weights, wasm.__wbindgen_malloc);
+  const len0 = WASM_VECTOR_LEN;
+  const ptr1 = passArrayF64ToWasm0(target_values, wasm.__wbindgen_malloc);
+  const len1 = WASM_VECTOR_LEN;
+  const ptr2 = passArrayF64ToWasm0(activations, wasm.__wbindgen_malloc);
+  const len2 = WASM_VECTOR_LEN;
+  wasm.accumulate_weight_persistent_8way(
+    start_index,
+    ptr0,
+    len0,
+    ptr1,
+    len1,
+    ptr2,
+    len2,
+    plank_constant,
+    learning_rate,
+    max_weight_adj_scale,
+    limit_weight_scale,
+  );
 }
 
 /**
@@ -784,6 +985,15 @@ export function distribute_elastic_error(
 }
 
 /**
+ * Free all training state memory.
+ *
+ * Call this when training is complete to release WASM linear memory.
+ */
+export function free_training_state() {
+  wasm.free_training_state();
+}
+
+/**
  * Issue #1377 - Fused backward pass error distribution.
  *
  * Combines calculateError + safeZoneAdjustment + elastic error distribution
@@ -873,6 +1083,24 @@ export function get_range(squash_type) {
 }
 
 /**
+ * Get the number of neurons in the current training state.
+ * @returns {number}
+ */
+export function get_training_state_num_neurons() {
+  const ret = wasm.get_training_state_num_neurons();
+  return ret >>> 0;
+}
+
+/**
+ * Get the number of synapses in the current training state.
+ * @returns {number}
+ */
+export function get_training_state_num_synapses() {
+  const ret = wasm.get_training_state_num_synapses();
+  return ret >>> 0;
+}
+
+/**
  * Fused activate + Hinge Loss calculation for batch scoring.
  *
  * Hinge formula per record: Σmax(0, 1 - target * output)
@@ -913,6 +1141,22 @@ export function hinge_sum_batch_packed(
     forward_only,
   );
   return ret;
+}
+
+/**
+ * Initialise persistent training state for an epoch.
+ *
+ * Allocates and zeroes the synapse and neuron state arrays in WASM linear
+ * memory. Call this once at the start of each training epoch.
+ *
+ * # Arguments
+ * * `num_synapses` - Number of synapses in the network
+ * * `num_neurons` - Number of neurons in the network
+ * @param {number} num_synapses
+ * @param {number} num_neurons
+ */
+export function init_training_state(num_synapses, num_neurons) {
+  wasm.init_training_state(num_synapses, num_neurons);
 }
 
 /**
@@ -1107,6 +1351,76 @@ export function msle_sum_batch_packed(
     forward_only,
   );
   return ret;
+}
+
+/**
+ * Read all neuron state as a bulk f64 array.
+ *
+ * Returns the entire neuron state buffer (num_neurons × 3 values).
+ * More efficient than calling `read_neuron_state` per neuron.
+ * @returns {Float64Array}
+ */
+export function read_all_neuron_state() {
+  const ret = wasm.read_all_neuron_state();
+  var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+  wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+  return v1;
+}
+
+/**
+ * Read all synapse state as a bulk f64 array.
+ *
+ * Returns the entire synapse state buffer (num_synapses × 7 values).
+ * More efficient than calling `read_synapse_state` per synapse.
+ * @returns {Float64Array}
+ */
+export function read_all_synapse_state() {
+  const ret = wasm.read_all_synapse_state();
+  var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+  wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+  return v1;
+}
+
+/**
+ * Read the persistent state for a single neuron.
+ *
+ * Returns a packed f64 array with 3 values:
+ *   [count, totalBias, totalAdjustedBias]
+ * @param {number} index
+ * @returns {Float64Array}
+ */
+export function read_neuron_state(index) {
+  const ret = wasm.read_neuron_state(index);
+  var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+  wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+  return v1;
+}
+
+/**
+ * Read the persistent state for a single synapse.
+ *
+ * Returns a packed f64 array with 7 values:
+ *   [count, totalPositiveActivation, totalNegativeActivation,
+ *    countPositiveActivations, countNegativeActivations,
+ *    totalPositiveAdjustedValue, totalNegativeAdjustedValue]
+ * @param {number} index
+ * @returns {Float64Array}
+ */
+export function read_synapse_state(index) {
+  const ret = wasm.read_synapse_state(index);
+  var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+  wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+  return v1;
+}
+
+/**
+ * Reset all training state to zero without deallocating.
+ *
+ * More efficient than `init_training_state` when the network size
+ * hasn't changed — avoids reallocation.
+ */
+export function reset_training_state() {
+  wasm.reset_training_state();
 }
 
 /**

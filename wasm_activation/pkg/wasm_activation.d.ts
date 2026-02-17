@@ -188,6 +188,47 @@ export function accumulate_bias_batch_8way(
 ): Float64Array;
 
 /**
+ * Accumulate bias adjustments for 4 neurons into persistent state.
+ *
+ * Same arithmetic as `accumulate_bias_batch_4way`, but results are
+ * accumulated directly into the persistent state buffer.
+ *
+ * # Arguments
+ * * `start_index` - Index of the first neuron in the state buffer
+ * * `target_pre_activations` - 4 target pre-activation values
+ * * `pre_activations` - 4 current pre-activation values
+ * * `current_biases` - 4 current neuron biases
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate for bias adjustment
+ * * `max_bias_adj_scale` - Maximum bias adjustment scale
+ * * `limit_bias_scale` - Global bias scale limit
+ */
+export function accumulate_bias_persistent_4way(
+  start_index: number,
+  target_pre_activations: Float64Array,
+  pre_activations: Float64Array,
+  current_biases: Float64Array,
+  plank_constant: number,
+  learning_rate: number,
+  max_bias_adj_scale: number,
+  limit_bias_scale: number,
+): void;
+
+/**
+ * Accumulate bias adjustments for 8 neurons into persistent state.
+ */
+export function accumulate_bias_persistent_8way(
+  start_index: number,
+  target_pre_activations: Float64Array,
+  pre_activations: Float64Array,
+  current_biases: Float64Array,
+  plank_constant: number,
+  learning_rate: number,
+  max_bias_adj_scale: number,
+  limit_bias_scale: number,
+): void;
+
+/**
  * Issue #1518 - Batch weight accumulation for 4 synapses.
  *
  * Processes 4 synapses in a single WASM call, returning a packed f64 array
@@ -233,6 +274,48 @@ export function accumulate_weight_batch_8way(
   max_weight_adj_scale: number,
   limit_weight_scale: number,
 ): Float64Array;
+
+/**
+ * Accumulate weight adjustments for 4 synapses into persistent state.
+ *
+ * Same arithmetic as `accumulate_weight_batch_4way`, but results are
+ * accumulated directly into the persistent state buffer rather than
+ * being returned to JavaScript.
+ *
+ * # Arguments
+ * * `start_index` - Index of the first synapse in the state buffer
+ * * `current_weights` - 4 current synapse weights
+ * * `target_values` - 4 target values for weight calculation
+ * * `activations` - 4 activation values from source neurons
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate for weight adjustment
+ * * `max_weight_adj_scale` - Maximum weight adjustment scale
+ * * `limit_weight_scale` - Global weight scale limit
+ */
+export function accumulate_weight_persistent_4way(
+  start_index: number,
+  current_weights: Float64Array,
+  target_values: Float64Array,
+  activations: Float64Array,
+  plank_constant: number,
+  learning_rate: number,
+  max_weight_adj_scale: number,
+  limit_weight_scale: number,
+): void;
+
+/**
+ * Accumulate weight adjustments for 8 synapses into persistent state.
+ */
+export function accumulate_weight_persistent_8way(
+  start_index: number,
+  current_weights: Float64Array,
+  target_values: Float64Array,
+  activations: Float64Array,
+  plank_constant: number,
+  learning_rate: number,
+  max_weight_adj_scale: number,
+  limit_weight_scale: number,
+): void;
 
 /**
  * Issue #1518 - Calculate the finalised bias after accumulation.
@@ -418,6 +501,13 @@ export function distribute_elastic_error(
 ): Float32Array;
 
 /**
+ * Free all training state memory.
+ *
+ * Call this when training is complete to release WASM linear memory.
+ */
+export function free_training_state(): void;
+
+/**
  * Issue #1377 - Fused backward pass error distribution.
  *
  * Combines calculateError + safeZoneAdjustment + elastic error distribution
@@ -461,6 +551,16 @@ export function fused_error_distribution(
 export function get_range(squash_type: number): Float32Array;
 
 /**
+ * Get the number of neurons in the current training state.
+ */
+export function get_training_state_num_neurons(): number;
+
+/**
+ * Get the number of synapses in the current training state.
+ */
+export function get_training_state_num_synapses(): number;
+
+/**
  * Fused activate + Hinge Loss calculation for batch scoring.
  *
  * Hinge formula per record: Σmax(0, 1 - target * output)
@@ -483,6 +583,21 @@ export function hinge_sum_batch_packed(
   num_outputs: number,
   forward_only: boolean,
 ): number;
+
+/**
+ * Initialise persistent training state for an epoch.
+ *
+ * Allocates and zeroes the synapse and neuron state arrays in WASM linear
+ * memory. Call this once at the start of each training epoch.
+ *
+ * # Arguments
+ * * `num_synapses` - Number of synapses in the network
+ * * `num_neurons` - Number of neurons in the network
+ */
+export function init_training_state(
+  num_synapses: number,
+  num_neurons: number,
+): void;
 
 /**
  * Clamp a value to the valid range for an activation function
@@ -595,6 +710,48 @@ export function msle_sum_batch_packed(
   num_outputs: number,
   forward_only: boolean,
 ): number;
+
+/**
+ * Read all neuron state as a bulk f64 array.
+ *
+ * Returns the entire neuron state buffer (num_neurons × 3 values).
+ * More efficient than calling `read_neuron_state` per neuron.
+ */
+export function read_all_neuron_state(): Float64Array;
+
+/**
+ * Read all synapse state as a bulk f64 array.
+ *
+ * Returns the entire synapse state buffer (num_synapses × 7 values).
+ * More efficient than calling `read_synapse_state` per synapse.
+ */
+export function read_all_synapse_state(): Float64Array;
+
+/**
+ * Read the persistent state for a single neuron.
+ *
+ * Returns a packed f64 array with 3 values:
+ *   [count, totalBias, totalAdjustedBias]
+ */
+export function read_neuron_state(index: number): Float64Array;
+
+/**
+ * Read the persistent state for a single synapse.
+ *
+ * Returns a packed f64 array with 7 values:
+ *   [count, totalPositiveActivation, totalNegativeActivation,
+ *    countPositiveActivations, countNegativeActivations,
+ *    totalPositiveAdjustedValue, totalNegativeAdjustedValue]
+ */
+export function read_synapse_state(index: number): Float64Array;
+
+/**
+ * Reset all training state to zero without deallocating.
+ *
+ * More efficient than `init_training_state` when the network size
+ * hasn't changed — avoids reallocation.
+ */
+export function reset_training_state(): void;
 
 /**
  * Standalone safe zone adjustment function for testing
@@ -836,6 +993,67 @@ export interface InitOutput {
   readonly unsquash: (a: number, b: number, c: number) => number;
   readonly validate_range: (a: number, b: number) => number;
   readonly version: () => [number, number];
+  readonly accumulate_bias_persistent_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly accumulate_bias_persistent_8way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly accumulate_weight_persistent_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly accumulate_weight_persistent_8way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly free_training_state: () => void;
+  readonly get_training_state_num_neurons: () => number;
+  readonly get_training_state_num_synapses: () => number;
+  readonly init_training_state: (a: number, b: number) => void;
+  readonly read_all_neuron_state: () => [number, number];
+  readonly read_all_synapse_state: () => [number, number];
+  readonly read_neuron_state: (a: number) => [number, number];
+  readonly read_synapse_state: (a: number) => [number, number];
+  readonly reset_training_state: () => void;
   readonly accumulate_bias_batch_4way: (
     a: number,
     b: number,
