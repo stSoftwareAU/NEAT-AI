@@ -663,7 +663,6 @@ export class DiscoverStructure {
 
     for (let i = 0; i < effectiveTrainingData.length; i++) {
       const record = effectiveTrainingData[i];
-
       try {
         assert(
           isWasmActivationAvailable(),

@@ -84,8 +84,7 @@ export class AddConnection extends AbstractMutationOperator {
     const neurons = this.creature.neurons;
     const availablePairs = this.creature.getAvailableConnections(focusList);
 
-    for (let i = 0; i < availablePairs.length; i++) {
-      const [fromIndx, toIndx] = availablePairs[i];
+    for (const [fromIndx, toIndx] of availablePairs) {
       const neuronFrom = neurons[fromIndx];
       const neuronTo = neurons[toIndx];
       // `fromIndx`/`toIndx` are the canonical neuron indices from the cache.

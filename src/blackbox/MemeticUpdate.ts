@@ -48,8 +48,7 @@ export function memeticUpdate(
   const weightsMap = new Map<string, Map<string, number>>();
 
   const foundSet = new Set<string>();
-  for (let i = 0; i < parentExport.synapses.length; i++) {
-    const synapse = parentExport.synapses[i];
+  for (const synapse of parentExport.synapses) {
     let weights = weightsMap.get(synapse.fromUUID);
     if (weights === undefined) {
       weights = new Map();
@@ -61,8 +60,7 @@ export function memeticUpdate(
 
   const childExport = child.exportJSON();
 
-  for (let i = 0; i < childExport.synapses.length; i++) {
-    const synapse = childExport.synapses[i];
+  for (const synapse of childExport.synapses) {
     foundSet.delete(`${synapse.fromUUID}-${synapse.toUUID}`);
 
     const fromWeights = weightsMap.get(synapse.fromUUID);

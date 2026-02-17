@@ -333,8 +333,7 @@ export class MAXIMUM
     let mainNeuron;
     let mainWeight;
     let mainSafeZone = 0;
-    for (let indx = 0; indx < toList.length; indx++) {
-      const c = toList[indx];
+    for (const c of toList) {
       if (c.from === c.to) continue;
 
       const fromNeuron = neuron.creature.neurons[c.from];

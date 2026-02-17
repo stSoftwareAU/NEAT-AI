@@ -548,8 +548,7 @@ function buildFocusClosure(
   const queue: number[] = [];
 
   // Seed the BFS with focus neurons.
-  for (let i = 0; i < focusList.length; i++) {
-    const focusIdx = focusList[i];
+  for (const focusIdx of focusList) {
     if (!closure.has(focusIdx)) {
       closure.add(focusIdx);
       queue.push(focusIdx);
@@ -558,8 +557,7 @@ function buildFocusClosure(
 
   // Add neurons with self-connections (matches original recursive behaviour
   // where self-connected neurons are always considered in focus).
-  for (let i = 0; i < creature.synapses.length; i++) {
-    const synapse = creature.synapses[i];
+  for (const synapse of creature.synapses) {
     if (synapse.from === synapse.to && !closure.has(synapse.from)) {
       closure.add(synapse.from);
       queue.push(synapse.from);
@@ -571,8 +569,8 @@ function buildFocusClosure(
   while (head < queue.length) {
     const current = queue[head++];
     const outward = outwardConnections(creature, caches, current);
-    for (let i = 0; i < outward.length; i++) {
-      const target = outward[i].to;
+    for (const connection of outward) {
+      const target = connection.to;
       if (!closure.has(target)) {
         closure.add(target);
         queue.push(target);

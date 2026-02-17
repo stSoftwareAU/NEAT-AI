@@ -150,8 +150,7 @@ export function compactCreature(
   // This is behaviour-preserving for summed pre-activation squashes (the default),
   // but it is NOT safe for aggregation squashes because they treat each inbound
   // value specially (eg MAXIMUM uses Math.max over inbound values).
-  for (let i = 0; i < compactCreature.neurons.length; i++) {
-    const neuron = compactCreature.neurons[i];
+  for (const neuron of compactCreature.neurons) {
     if (neuron.type !== "hidden") continue;
     if (neuron.squash !== COMPLEMENT.NAME) continue;
 
