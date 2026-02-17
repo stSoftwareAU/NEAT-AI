@@ -1,11 +1,16 @@
 ## Summary
 
-Modernise C-style `for` loops to `for...of` where the loop index is only used for element access. Closes #1488.
+Modernise C-style `for` loops to `for...of` where the loop index is only used
+for element access. Closes #1488.
 
-Converted 19 loops across 14 files from `for (let i = 0; i < array.length; i++)` to `for (const element of array)`, following the scoping rules in the issue:
+Converted 19 loops across 14 files from `for (let i = 0; i < array.length; i++)`
+to `for (const element of array)`, following the scoping rules in the issue:
 
-- Only replaced loops where the index was solely used for `array[i]` element access
-- Kept loops where the index is used for arithmetic, parallel array access, array mutation, string construction, or in performance-critical paths (WASM, propagation, SIMD batching)
+- Only replaced loops where the index was solely used for `array[i]` element
+  access
+- Kept loops where the index is used for arithmetic, parallel array access,
+  array mutation, string construction, or in performance-critical paths (WASM,
+  propagation, SIMD batching)
 
 ### Files changed
 
@@ -25,7 +30,9 @@ Converted 19 loops across 14 files from `for (let i = 0; i < array.length; i++)`
 
 ### Loops intentionally kept as C-style
 
-Many loops (~100+) were reviewed and deliberately kept because they fall outside scope:
+Many loops (~100+) were reviewed and deliberately kept because they fall outside
+scope:
+
 - Index used in error messages or diagnostics
 - Index used as a value (e.g., building UUID maps, `input-${i}`)
 - Parallel array access (e.g., `a[i]` and `b[i]` in same loop)
@@ -36,7 +43,8 @@ Many loops (~100+) were reviewed and deliberately kept because they fall outside
 
 ## Evidence
 
-This is a pure refactoring change with no visual or performance impact. All 3859 existing tests pass, confirming identical behaviour.
+This is a pure refactoring change with no visual or performance impact. All 3859
+existing tests pass, confirming identical behaviour.
 
 ## Test Plan
 
