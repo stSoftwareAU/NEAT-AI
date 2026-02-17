@@ -476,6 +476,31 @@ export function derivative_batch_4way(
 ): Float32Array;
 
 /**
+ * Issue #1519 - WASM-exported standalone elastic error distribution.
+ *
+ * Distributes `error` across links proportional to activation² × safeZoneFactor,
+ * with weight-based fallback when activations are near zero, and equal split
+ * as a last resort.
+ *
+ * # Arguments
+ * * `error` - The error value to distribute
+ * * `activations` - Float32Array of link activation values
+ * * `safe_zone_factors` - Float32Array of safe zone factors (0-1)
+ * * `weights` - Float32Array of synapse weights (for fallback)
+ * * `plank_constant` - Threshold for floating-point comparisons
+ *
+ * # Returns
+ * Vec<f32> of error shares, one per link. Sum equals `error`.
+ */
+export function distribute_elastic_error(
+  error: number,
+  activations: Float32Array,
+  safe_zone_factors: Float32Array,
+  weights: Float32Array,
+  plank_constant: number,
+): Float32Array;
+
+/**
  * Free all training state memory.
  *
  * Call this when training is complete to release WASM linear memory.
@@ -968,67 +993,6 @@ export interface InitOutput {
   readonly unsquash: (a: number, b: number, c: number) => number;
   readonly validate_range: (a: number, b: number) => number;
   readonly version: () => [number, number];
-  readonly accumulate_bias_persistent_4way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly accumulate_bias_persistent_8way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly accumulate_weight_persistent_4way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly accumulate_weight_persistent_8way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly free_training_state: () => void;
-  readonly get_training_state_num_neurons: () => number;
-  readonly get_training_state_num_synapses: () => number;
-  readonly init_training_state: (a: number, b: number) => void;
-  readonly read_all_neuron_state: () => [number, number];
-  readonly read_all_synapse_state: () => [number, number];
-  readonly read_neuron_state: (a: number) => [number, number];
-  readonly read_synapse_state: (a: number) => [number, number];
-  readonly reset_training_state: () => void;
   readonly accumulate_bias_batch_4way: (
     a: number,
     b: number,
@@ -1103,6 +1067,77 @@ export interface InitOutput {
     l: number,
     m: number,
   ) => number;
+  readonly distribute_elastic_error: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+  ) => [number, number];
+  readonly accumulate_bias_persistent_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly accumulate_bias_persistent_8way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly accumulate_weight_persistent_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly accumulate_weight_persistent_8way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly free_training_state: () => void;
+  readonly get_training_state_num_neurons: () => number;
+  readonly get_training_state_num_synapses: () => number;
+  readonly init_training_state: (a: number, b: number) => void;
+  readonly read_all_neuron_state: () => [number, number];
+  readonly read_all_synapse_state: () => [number, number];
+  readonly read_neuron_state: (a: number) => [number, number];
+  readonly read_synapse_state: (a: number) => [number, number];
+  readonly reset_training_state: () => void;
   readonly __wbindgen_externrefs: WebAssembly.Table;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;

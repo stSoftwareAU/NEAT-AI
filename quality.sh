@@ -7,6 +7,7 @@ export PATH="$HOME/.deno/bin:$HOME/.cargo/bin:$PATH"
 # --- Flag parsing ---
 SKIP_TESTS=false
 SKIP_DISCOVERY=false
+SKIP_WASM=false
 LINT_ONLY=false
 CHECK_ONLY=false
 DRY_RUN=false
@@ -16,24 +17,26 @@ show_help() {
 Usage: ./quality.sh [OPTIONS]
 
 Pre-commit quality gate that runs formatting, linting, type-checking,
-discovery build, and all tests.
+discovery build, WASM build, and all tests.
 
 Options:
   --help, -h          Show this help message and exit
   --skip-tests        Skip test execution
   --skip-discovery    Skip discovery library build and verification
+  --skip-wasm         Skip WASM activation build and Rust tests
   --lint-only         Only run formatting + linting (includes bash check)
   --check-only        Only run type-checking (deno check)
   --dry-run           Show which steps would run without executing them
 
 Steps (default, all enabled):
-  [1/7] Updating dependencies
-  [2/7] Formatting code
-  [3/7] Linting
-  [4/7] Checking bash scripts
-  [5/7] Type-checking
-  [6/7] Building discovery library
-  [7/7] Running tests
+  [1/8] Updating dependencies
+  [2/8] Formatting code
+  [3/8] Linting
+  [4/8] Checking bash scripts
+  [5/8] Type-checking
+  [6/8] Building discovery library
+  [7/8] Building WASM activation module (Rust build + tests)
+  [8/8] Running tests
 
 Exit codes:
   0   All steps passed
@@ -46,6 +49,7 @@ Examples:
   ./quality.sh --lint-only              # Format + lint only
   ./quality.sh --check-only             # Type-check only
   ./quality.sh --skip-tests --skip-discovery  # Combine skip flags
+  ./quality.sh --skip-wasm                    # Skip WASM build (e.g. no Rust)
 HELP
 }
 
@@ -60,6 +64,9 @@ for arg in "$@"; do
       ;;
     --skip-discovery)
       SKIP_DISCOVERY=true
+      ;;
+    --skip-wasm)
+      SKIP_WASM=true
       ;;
     --lint-only)
       LINT_ONLY=true
@@ -115,6 +122,14 @@ if [ "$SKIP_DISCOVERY" = true ]; then
   RUN_DISCOVERY=false
 fi
 
+RUN_WASM=true
+if [ "$SKIP_WASM" = true ]; then
+  RUN_WASM=false
+fi
+if [ "$LINT_ONLY" = true ] || [ "$CHECK_ONLY" = true ]; then
+  RUN_WASM=false
+fi
+
 # --- Count active steps for progress numbering ---
 TOTAL=0
 [ "$RUN_DEPS" = true ] && TOTAL=$((TOTAL + 1))
@@ -123,6 +138,7 @@ TOTAL=0
 [ "$RUN_BASH_CHECK" = true ] && TOTAL=$((TOTAL + 1))
 [ "$RUN_TYPE_CHECK" = true ] && TOTAL=$((TOTAL + 1))
 [ "$RUN_DISCOVERY" = true ] && TOTAL=$((TOTAL + 1))
+[ "$RUN_WASM" = true ] && TOTAL=$((TOTAL + 1))
 [ "$RUN_TESTS" = true ] && TOTAL=$((TOTAL + 1))
 
 STEP=0
@@ -143,6 +159,7 @@ if [ "$DRY_RUN" = true ]; then
   [ "$RUN_BASH_CHECK" = true ] && progress "Checking bash scripts..."
   [ "$RUN_TYPE_CHECK" = true ] && progress "Type-checking..."
   [ "$RUN_DISCOVERY" = true ] && progress "Building discovery library..."
+  [ "$RUN_WASM" = true ] && progress "Building WASM activation module..."
   [ "$RUN_TESTS" = true ] && progress "Running tests..."
   echo ""
   echo "Total: $TOTAL steps"
@@ -227,6 +244,20 @@ if [ "$RUN_DISCOVERY" = true ]; then
     fi
     exit 1
   fi
+fi
+
+if [ "$RUN_WASM" = true ]; then
+  progress "Building WASM activation module (Rust build + tests)..."
+  if [[ -f ./wasm_activation/build.sh ]]; then
+    ./wasm_activation/build.sh
+  else
+    echo "❌ wasm_activation/build.sh not found" >&2
+    exit 1
+  fi
+  (cd wasm_activation && cargo test 2>&1) || {
+    echo "❌ WASM activation Rust tests failed" >&2
+    exit 1
+  }
 fi
 
 if [ "$RUN_TESTS" = true ]; then

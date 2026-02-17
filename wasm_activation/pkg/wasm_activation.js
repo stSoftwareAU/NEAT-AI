@@ -934,6 +934,57 @@ export function derivative_batch_4way(squash_type, x0, x1, x2, x3) {
 }
 
 /**
+ * Issue #1519 - WASM-exported standalone elastic error distribution.
+ *
+ * Distributes `error` across links proportional to activation² × safeZoneFactor,
+ * with weight-based fallback when activations are near zero, and equal split
+ * as a last resort.
+ *
+ * # Arguments
+ * * `error` - The error value to distribute
+ * * `activations` - Float32Array of link activation values
+ * * `safe_zone_factors` - Float32Array of safe zone factors (0-1)
+ * * `weights` - Float32Array of synapse weights (for fallback)
+ * * `plank_constant` - Threshold for floating-point comparisons
+ *
+ * # Returns
+ * Vec<f32> of error shares, one per link. Sum equals `error`.
+ * @param {number} error
+ * @param {Float32Array} activations
+ * @param {Float32Array} safe_zone_factors
+ * @param {Float32Array} weights
+ * @param {number} plank_constant
+ * @returns {Float32Array}
+ */
+export function distribute_elastic_error(
+  error,
+  activations,
+  safe_zone_factors,
+  weights,
+  plank_constant,
+) {
+  const ptr0 = passArrayF32ToWasm0(activations, wasm.__wbindgen_malloc);
+  const len0 = WASM_VECTOR_LEN;
+  const ptr1 = passArrayF32ToWasm0(safe_zone_factors, wasm.__wbindgen_malloc);
+  const len1 = WASM_VECTOR_LEN;
+  const ptr2 = passArrayF32ToWasm0(weights, wasm.__wbindgen_malloc);
+  const len2 = WASM_VECTOR_LEN;
+  const ret = wasm.distribute_elastic_error(
+    error,
+    ptr0,
+    len0,
+    ptr1,
+    len1,
+    ptr2,
+    len2,
+    plank_constant,
+  );
+  var v4 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+  wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+  return v4;
+}
+
+/**
  * Free all training state memory.
  *
  * Call this when training is complete to release WASM linear memory.

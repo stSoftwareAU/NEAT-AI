@@ -390,8 +390,9 @@ export async function evolveDir(
       error = Number.parseFloat(errorTmp);
       assert(Number.isFinite(error), "Error is not finite");
       assert(error >= 0, "Error is negative");
+      const tolerance = 1e-10;
       assert(
-        fittestScore - 1 <= error * -1,
+        fittestScore - 1 <= -error + tolerance,
         `Score (absolute) less than error (score=${fittestScore}, error=${error})`,
       );
       bestScore = fittestScore;

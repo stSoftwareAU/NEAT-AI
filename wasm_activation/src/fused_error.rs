@@ -109,10 +109,39 @@ pub fn apply_fused_error_distribution(
     }
 
     if denom <= PLANK_CONSTANT {
-        // Fallback: equal split (early training, all activations near zero)
-        let per = error / (count as f32);
-        for _ in 0..count {
-            result.push(per);
+        // Issue #1519 - Weight-based fallback when activations are near zero.
+        // Links with larger weights carry more influence and should absorb
+        // proportionally more error (weight²).
+        let mut weight_denom: f32 = 0.0;
+        let mut weight_scores = Vec::with_capacity(count);
+        for i in 0..count {
+            let w = synapse_weights[i];
+            let w2 = if w.is_finite() { w * w } else { 0.0 };
+            weight_scores.push(w2);
+            weight_denom += w2;
+        }
+
+        if weight_denom > PLANK_CONSTANT {
+            let mut sum: f32 = 0.0;
+            let mut best_idx: usize = 0;
+            for i in 0..count {
+                let share = error * (weight_scores[i] / weight_denom);
+                result.push(share);
+                sum += share;
+                if weight_scores[i] > weight_scores[best_idx] {
+                    best_idx = i;
+                }
+            }
+            let residue = error - sum;
+            if residue.abs() > PLANK_CONSTANT {
+                result[1 + count + best_idx] += residue;
+            }
+        } else {
+            // Last resort: equal split when both activations and weights are zero.
+            let per = error / (count as f32);
+            for _ in 0..count {
+                result.push(per);
+            }
         }
     } else {
         // Distribute proportionally to scores
