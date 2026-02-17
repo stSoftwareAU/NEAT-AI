@@ -150,8 +150,10 @@ Deno.test("calculateLearningRate - adaptive boosts when error improves", () => {
   const lr = calculateLearningRate(config, 0, feedback);
   const base = config.initialLearningRate;
 
-  // With 50% improvement ratio < 0.95, adjustment = 1.1
-  assertAlmostEquals(lr, base * 1.1, 1e-9);
+  // Issue #1480: With 50% improvement ratio < 0.95, direction adjustment = 1.1
+  // Magnitude scale = 1 + (0.5 / 1.5) = 4/3
+  const magnitudeScale = 1 + 0.5 / (1 + 0.5);
+  assertAlmostEquals(lr, base * 1.1 * magnitudeScale, 1e-9);
 });
 
 Deno.test("calculateLearningRate - adaptive increases on stagnation", () => {
@@ -169,8 +171,10 @@ Deno.test("calculateLearningRate - adaptive increases on stagnation", () => {
   const lr = calculateLearningRate(config, 0, feedback);
   const base = config.initialLearningRate;
 
-  // Stagnation => adjustment = 1.3
-  assertAlmostEquals(lr, base * 1.3, 1e-9);
+  // Issue #1480: Stagnation => direction adjustment = 1.3
+  // Magnitude scale = 1 + (0.97 / 1.97)
+  const magnitudeScale = 1 + 0.97 / (1 + 0.97);
+  assertAlmostEquals(lr, base * 1.3 * magnitudeScale, 1e-9);
 });
 
 Deno.test("calculateLearningRate - adaptive reduces when error worsens", () => {
@@ -188,8 +192,10 @@ Deno.test("calculateLearningRate - adaptive reduces when error worsens", () => {
   const lr = calculateLearningRate(config, 0, feedback);
   const base = config.initialLearningRate;
 
-  // Worsened => adjustment = max(0.5, 1/2) = 0.5
-  assertAlmostEquals(lr, base * 0.5, 1e-9);
+  // Issue #1480: Worsened => direction adjustment = max(0.5, 1/2) = 0.5
+  // Magnitude scale = 1 + (2.0 / 3.0) = 5/3
+  const magnitudeScale = 1 + 2.0 / (1 + 2.0);
+  assertAlmostEquals(lr, base * 0.5 * magnitudeScale, 1e-9);
 });
 
 Deno.test("calculateLearningRate - adaptive without feedback uses base decay", () => {
