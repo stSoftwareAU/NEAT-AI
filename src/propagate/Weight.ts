@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import type { CreatureState } from "../architecture/CreatureState.ts";
 import type { Synapse } from "../architecture/Synapse.ts";
+import { wasmCalculateWeight } from "../wasm/WasmStandaloneFunctions.ts";
 import type { BackPropagationConfig } from "./BackPropagation.ts";
 import type { SynapseState } from "./SynapseState.ts";
 
@@ -98,6 +99,24 @@ export function calculateWeight(
   if (config.disableWeightAdjustment) {
     return c.weight;
   }
+
+  // Issue #1518: Try WASM first
+  const wasmResult = wasmCalculateWeight(cs, c.weight, config);
+  if (wasmResult !== undefined) {
+    return wasmResult;
+  }
+
+  return calculateWeightTS(cs, c, config);
+}
+
+/**
+ * TypeScript fallback for weight calculation.
+ */
+function calculateWeightTS(
+  cs: SynapseState,
+  c: Synapse,
+  config: BackPropagationConfig,
+) {
   if (cs.count) {
     // Ensure there is meaningful data to adjust the weights.
     if (
@@ -107,11 +126,11 @@ export function calculateWeight(
       // Compute adjusted weights for positive and negative contributions.
       const positiveWeight = cs.totalPositiveActivation > config.plankConstant
         ? cs.totalPositiveAdjustedValue / cs.totalPositiveActivation
-        : 0; // Default to 0 if no positive activations.
+        : 0;
 
       const negativeWeight = cs.totalNegativeActivation > config.plankConstant
         ? cs.totalNegativeAdjustedValue / (cs.totalNegativeActivation * -1)
-        : 0; // Default to 0 if no negative activations.
+        : 0;
 
       // Blend these weights based on their relative counts.
       const totalActivationCount = cs.countPositiveActivations +
@@ -127,9 +146,7 @@ export function calculateWeight(
         positiveWeight * cs.countPositiveActivations +
         negativeWeight * cs.countNegativeActivations;
 
-      // Issue #1436: Cap effective generations to avoid overwhelming the
-      // gradient signal. Without this cap, high config.generations values
-      // create excessive weight inertia that slows convergence.
+      // Issue #1436: Cap effective generations
       const rawGenerations = config.generations + cs.count -
         totalActivationCount;
       const generations = Math.min(
@@ -138,7 +155,6 @@ export function calculateWeight(
       );
       const totalGenerationalWeight = c.weight * generations;
 
-      // Blend adjusted and generational weights.
       const averageWeight =
         (synapseAverageWeightTotal + totalGenerationalWeight) /
         (totalActivationCount + generations);
@@ -147,7 +163,6 @@ export function calculateWeight(
     }
   }
 
-  // If no significant activations, return the current weight.
   return c.weight;
 }
 
@@ -191,8 +206,8 @@ export function limitWeight(
  * Issue #1214 - Batch weight accumulation for 4 synapses simultaneously.
  * Issue #1314 - Non-finite values are skipped to prevent state corruption.
  *
- * Processes 4 synapses in a single call, enabling potential SIMD optimisation
- * by V8 when processing mini-batches during backpropagation.
+ * Processes 4 synapses in a single call, enabling SIMD optimisation
+ * via V8 when processing mini-batches during backpropagation.
  *
  * @param currentWeights Array of 4 current synapse weights
  * @param csArray Array of 4 SynapseState objects to accumulate into
@@ -209,13 +224,11 @@ export function accumulateWeightBatch4Way(
 ) {
   const plankConstant = config.plankConstant;
 
-  // Process all 4 synapses - enables V8 SIMD optimisation with typed arrays
   for (let i = 0; i < 4; i++) {
     const activation = activations[i];
     const currentWeight = currentWeights[i];
     const targetValue = targetValues[i];
 
-    // Issue #1314: Skip non-finite values
     if (
       !Number.isFinite(activation) ||
       !Number.isFinite(currentWeight) ||
@@ -229,30 +242,23 @@ export function accumulateWeightBatch4Way(
     const sign = Math.sign(activation) || 1;
     let tmpActivation = activation;
 
-    // Prevent division issues with small activation values.
     if (Math.abs(tmpActivation) < plankConstant) {
       tmpActivation = plankConstant * sign;
     }
 
-    // Adjust the target value if it's too small.
     const tmpValue = Math.abs(targetValue) > plankConstant
       ? targetValue
       : plankConstant * Math.sign(targetValue);
 
-    // Calculate a preliminary weight based on the adjusted values.
     const tmpWeight = tmpValue / tmpActivation;
 
-    // Issue #1314: Skip if calculated weight is non-finite
     if (!Number.isFinite(tmpWeight)) {
       continue;
     }
 
-    // Adjust the weight with limiting.
     const adjustedLimitedWeight = limitWeight(tmpWeight, currentWeight, config);
 
-    // Adjust weights based on the difference.
     if (Math.abs(activation) > plankConstant) {
-      // Track positive and negative activations separately.
       if (activation > 0) {
         cs.totalPositiveActivation += activation;
         cs.totalPositiveAdjustedValue += adjustedLimitedWeight * activation;
@@ -264,7 +270,6 @@ export function accumulateWeightBatch4Way(
       }
     }
 
-    // Increment the count after processing the adjustment.
     cs.count++;
   }
 }
@@ -273,9 +278,8 @@ export function accumulateWeightBatch4Way(
  * Issue #1214 - Batch weight accumulation for 8 synapses simultaneously.
  * Issue #1314 - Non-finite values are skipped to prevent state corruption.
  *
- * Processes 8 synapses in a single call, enabling potential SIMD optimisation
- * by V8 when processing mini-batches during backpropagation.
- * Uses two parallel 4-way operations for better cache utilisation.
+ * Processes 8 synapses in a single call, enabling SIMD optimisation
+ * via V8 when processing mini-batches during backpropagation.
  *
  * @param currentWeights Array of 8 current synapse weights
  * @param csArray Array of 8 SynapseState objects to accumulate into
@@ -292,13 +296,11 @@ export function accumulateWeightBatch8Way(
 ) {
   const plankConstant = config.plankConstant;
 
-  // Process all 8 synapses - enables V8 SIMD optimisation with typed arrays
   for (let i = 0; i < 8; i++) {
     const activation = activations[i];
     const currentWeight = currentWeights[i];
     const targetValue = targetValues[i];
 
-    // Issue #1314: Skip non-finite values
     if (
       !Number.isFinite(activation) ||
       !Number.isFinite(currentWeight) ||
@@ -312,30 +314,23 @@ export function accumulateWeightBatch8Way(
     const sign = Math.sign(activation) || 1;
     let tmpActivation = activation;
 
-    // Prevent division issues with small activation values.
     if (Math.abs(tmpActivation) < plankConstant) {
       tmpActivation = plankConstant * sign;
     }
 
-    // Adjust the target value if it's too small.
     const tmpValue = Math.abs(targetValue) > plankConstant
       ? targetValue
       : plankConstant * Math.sign(targetValue);
 
-    // Calculate a preliminary weight based on the adjusted values.
     const tmpWeight = tmpValue / tmpActivation;
 
-    // Issue #1314: Skip if calculated weight is non-finite
     if (!Number.isFinite(tmpWeight)) {
       continue;
     }
 
-    // Adjust the weight with limiting.
     const adjustedLimitedWeight = limitWeight(tmpWeight, currentWeight, config);
 
-    // Adjust weights based on the difference.
     if (Math.abs(activation) > plankConstant) {
-      // Track positive and negative activations separately.
       if (activation > 0) {
         cs.totalPositiveActivation += activation;
         cs.totalPositiveAdjustedValue += adjustedLimitedWeight * activation;
@@ -347,7 +342,6 @@ export function accumulateWeightBatch8Way(
       }
     }
 
-    // Increment the count after processing the adjustment.
     cs.count++;
   }
 }

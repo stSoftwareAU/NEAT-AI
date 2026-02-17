@@ -33,8 +33,14 @@ export {
 // Issue #1405 - Standalone WASM functions from WasmStandaloneFunctions
 export {
   type FusedErrorDistributionResult,
+  wasmAccumulateBiasBatch4Way,
+  wasmAccumulateBiasBatch8Way,
+  wasmAccumulateWeightBatch4Way,
+  wasmAccumulateWeightBatch8Way,
   type WasmActivationRange,
+  wasmCalculateBias,
   wasmCalculateError,
+  wasmCalculateWeight,
   wasmDerivative,
   wasmFusedErrorDistribution,
   wasmGetRange,
