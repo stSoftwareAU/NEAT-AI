@@ -9,16 +9,14 @@ export function discover(mum: Creature, child: Creature) {
   if (mum.neurons.length !== child.neurons.length) return;
   if (mum.synapses.length !== child.synapses.length) return;
   const uuidSquashMap = new Map<string, string>();
-  for (let i = 0; i < mum.neurons.length; i++) {
-    const mumNeuron = mum.neurons[i];
+  for (const mumNeuron of mum.neurons) {
     uuidSquashMap.set(
       mumNeuron.uuid,
       mumNeuron.squash ? mumNeuron.squash : "OTHER",
     );
   }
 
-  for (let i = 0; i < child.neurons.length; i++) {
-    const childNeuron = child.neurons[i];
+  for (const childNeuron of child.neurons) {
     const mumSquash = uuidSquashMap.get(childNeuron.uuid);
     if (!mumSquash) {
       return;
@@ -29,15 +27,13 @@ export function discover(mum: Creature, child: Creature) {
     }
   }
   const mumSynapseSet = new Set<string>();
-  for (let i = 0; i < mum.synapses.length; i++) {
-    const mumSynapse = mum.synapses[i];
+  for (const mumSynapse of mum.synapses) {
     mumSynapseSet.add(
       mum.neurons[mumSynapse.from].uuid + "->" +
         mum.neurons[mumSynapse.to].uuid,
     );
   }
-  for (let i = 0; i < child.synapses.length; i++) {
-    const childSynapse = child.synapses[i];
+  for (const childSynapse of child.synapses) {
     const key = child.neurons[childSynapse.from].uuid + "->" +
       child.neurons[childSynapse.to].uuid;
     if (!mumSynapseSet.has(key)) {

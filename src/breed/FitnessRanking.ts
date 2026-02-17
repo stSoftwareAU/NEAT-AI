@@ -56,8 +56,7 @@ export class FitnessRanking {
     let lastScore = Number.POSITIVE_INFINITY;
     let sorted = true;
 
-    for (let i = 0; i < population.length; i++) {
-      const creature = population[i];
+    for (const creature of population) {
       assert(creature.uuid, "Creature UUID is undefined");
 
       const score = this.extractScore(creature);
@@ -160,8 +159,7 @@ export class FitnessRanking {
     const random = rng.random() * this.adjustedTotalFitness;
     let value = 0;
 
-    for (let i = 0; i < this.sortedPopulation.length; i++) {
-      const creature = this.sortedPopulation[i];
+    for (const creature of this.sortedPopulation) {
       value += this.scoreMap.get(creature.uuid!)! + adjustFitness;
       if (random < value) {
         return creature;

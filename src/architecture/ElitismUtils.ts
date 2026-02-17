@@ -45,8 +45,7 @@ export function sortCreaturesByScore(creatures: Creature[]): Creature[] {
 export function logVerbose(creatures: Creature[]): number {
   let totalScore = 0;
 
-  for (let indx = 0; indx < creatures.length; indx++) {
-    const creature = creatures[indx];
+  for (const creature of creatures) {
     const score = creature.score;
     assert(score !== undefined, "Creature must have a score");
     totalScore += score;
