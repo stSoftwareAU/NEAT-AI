@@ -401,6 +401,26 @@ export class Creature implements CreatureInternal {
     return activation.activateWasm(this, input, effectiveFeedbackLoop);
   }
 
+  /**
+   * Activate the creature and immediately dispose WASM resources afterwards.
+   *
+   * Issue #1504: For data-generation workloads where each creature is activated
+   * once (or rarely), retaining cached `CompiledNetwork` instances wastes WASM
+   * heap memory. This method behaves identically to `activate()` but frees the
+   * WASM activation immediately after producing the result, so it does not
+   * contribute to LRU cache pressure.
+   */
+  activateSingleUse(
+    input: Float32Array,
+    feedbackLoop: boolean = false,
+  ): Float32Array {
+    try {
+      return this.activate(input, feedbackLoop);
+    } finally {
+      this.disposeWasm();
+    }
+  }
+
   /** @internal Expose preparedNeurons flag for activation module */
   get preparedNeurons(): boolean {
     return this.state.preparedNeurons;

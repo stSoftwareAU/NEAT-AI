@@ -97,6 +97,16 @@ export function getMaxCachedWasmCreatureActivations(): number {
 }
 
 /**
+ * Get the current number of tracked WASM activation entries.
+ *
+ * Issue #1504: Observability for data-gen workloads to monitor WASM cache pressure.
+ * Note: this counts LRU entries; some may reference GC'd creatures (stale WeakRefs).
+ */
+export function getCachedWasmActivationCount(): number {
+  return entries.size;
+}
+
+/**
  * Record usage of a creature's cached WASM activation and evict if needed.
  *
  * Call this after a creature successfully acquires/uses `cachedWasmActivation`.

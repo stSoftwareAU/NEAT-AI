@@ -226,6 +226,30 @@ export type {
 export { fetchWasmForWorkers } from "./src/multithreading/workers/WorkerHandler.ts";
 
 /**
+ * WASM Activation Cache Management (Issue #1504)
+ *
+ * For data-generation workloads that activate many creatures only once,
+ * reducing the WASM cache cap prevents excessive memory retention.
+ *
+ * Recommended settings for data-gen workloads: 64–128.
+ *
+ * @example
+ * ```ts
+ * import { setMaxCachedWasmCreatureActivations } from "./mod.ts";
+ * // Reduce WASM cache for data-generation workloads
+ * setMaxCachedWasmCreatureActivations(64);
+ * ```
+ *
+ * Alternatively, use `creature.activateSingleUse(input)` which automatically
+ * disposes the WASM activation after each call, avoiding cache pressure entirely.
+ */
+export {
+  getCachedWasmActivationCount,
+  getMaxCachedWasmCreatureActivations,
+  setMaxCachedWasmCreatureActivations,
+} from "./src/wasm/WasmCreatureActivationLRU.ts";
+
+/**
  * Structured Logger
  *
  * Issue #1398: Configurable logging abstraction. Consumers can inject a custom
