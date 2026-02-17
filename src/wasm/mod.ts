@@ -95,6 +95,25 @@ export {
   type WasmCacheStats,
 } from "./WasmCompilationCache.ts";
 
+// Issue #1522 - Persistent training state in WASM linear memory
+export {
+  bulkUnpackNeuronState,
+  bulkUnpackSynapseState,
+  freeTrainingState,
+  initTrainingState,
+  readAllNeuronState,
+  readAllSynapseState,
+  readNeuronState,
+  readSynapseState,
+  resetTrainingState,
+  unpackNeuronState,
+  unpackSynapseState,
+  wasmAccumulateBiasPersistent4Way,
+  wasmAccumulateBiasPersistent8Way,
+  wasmAccumulateWeightPersistent4Way,
+  wasmAccumulateWeightPersistent8Way,
+} from "./WasmTrainingState.ts";
+
 // Issue #1338 - Bound cached WASM activations under memory pressure
 // Issue #1504 - Added getCachedWasmActivationCount for cache diagnostics
 export {

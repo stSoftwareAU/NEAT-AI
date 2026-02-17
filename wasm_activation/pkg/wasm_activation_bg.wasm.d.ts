@@ -146,6 +146,67 @@ export const squash: (a: number, b: number) => number;
 export const unsquash: (a: number, b: number, c: number) => number;
 export const validate_range: (a: number, b: number) => number;
 export const version: () => [number, number];
+export const accumulate_bias_persistent_4way: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+  g: number,
+  h: number,
+  i: number,
+  j: number,
+  k: number,
+) => void;
+export const accumulate_bias_persistent_8way: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+  g: number,
+  h: number,
+  i: number,
+  j: number,
+  k: number,
+) => void;
+export const accumulate_weight_persistent_4way: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+  g: number,
+  h: number,
+  i: number,
+  j: number,
+  k: number,
+) => void;
+export const accumulate_weight_persistent_8way: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+  g: number,
+  h: number,
+  i: number,
+  j: number,
+  k: number,
+) => void;
+export const free_training_state: () => void;
+export const get_training_state_num_neurons: () => number;
+export const get_training_state_num_synapses: () => number;
+export const init_training_state: (a: number, b: number) => void;
+export const read_all_neuron_state: () => [number, number];
+export const read_all_synapse_state: () => [number, number];
+export const read_neuron_state: (a: number) => [number, number];
+export const read_synapse_state: (a: number) => [number, number];
+export const reset_training_state: () => void;
 export const accumulate_bias_batch_4way: (
   a: number,
   b: number,

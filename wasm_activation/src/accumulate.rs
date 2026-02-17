@@ -110,7 +110,7 @@ fn limit_bias(
 ///
 /// Returns the 7 delta values to add to the SynapseState fields.
 #[inline(always)]
-fn accumulate_weight_single(
+pub(crate) fn accumulate_weight_single(
     current_weight: f64,
     target_value: f64,
     activation: f64,
@@ -292,7 +292,7 @@ pub fn accumulate_weight_batch_8way(
 ///
 /// Returns (count_delta, total_bias_delta, total_adjusted_bias_delta).
 #[inline(always)]
-fn accumulate_bias_single(
+pub(crate) fn accumulate_bias_single(
     target_pre_activation: f64,
     pre_activation: f64,
     current_bias: f64,
