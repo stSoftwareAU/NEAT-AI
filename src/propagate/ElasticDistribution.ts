@@ -17,8 +17,12 @@
  * - If nothing is movable (all scores ~0), we fall back to an equal split so we
  *   still break symmetry (eg. when activations are all zero early in training).
  *
+ * Issue #1519 - Added WASM acceleration path using struct-of-arrays layout.
+ *
  * Australian English: "normalise", "behaviour".
  */
+import { wasmDistributeElasticError } from "../wasm/WasmStandaloneFunctions.ts";
+
 export type ElasticLink = Readonly<{
   activation: number;
   safeZoneFactor: number;
@@ -34,11 +38,50 @@ export function distributeElasticError(
   }>,
 ): number[] {
   const plankConstant = options?.plankConstant ?? 1e-12;
+  const count = links.length;
 
-  if (!Number.isFinite(error) || links.length === 0) {
-    return new Array(links.length).fill(0);
+  if (!Number.isFinite(error) || count === 0) {
+    return new Array(count).fill(0);
   }
 
+  // Issue #1519 - Try WASM path first: convert to struct-of-arrays layout
+  const activations = new Float64Array(count);
+  const safeZoneFactors = new Float64Array(count);
+  const weights = new Float64Array(count);
+
+  for (let i = 0; i < count; i++) {
+    const link = links[i];
+    activations[i] = link.activation;
+    safeZoneFactors[i] = link.safeZoneFactor;
+    weights[i] = link.weight ?? Number.NaN;
+  }
+
+  const wasmResult = wasmDistributeElasticError(
+    error,
+    activations,
+    safeZoneFactors,
+    weights,
+    plankConstant,
+  );
+
+  if (wasmResult !== undefined) {
+    return Array.from(wasmResult);
+  }
+
+  // TypeScript fallback when WASM is unavailable
+  return distributeElasticErrorTS(
+    error,
+    links,
+    plankConstant,
+  );
+}
+
+/** Pure TypeScript implementation (fallback when WASM is unavailable). */
+function distributeElasticErrorTS(
+  error: number,
+  links: ReadonlyArray<ElasticLink>,
+  plankConstant: number,
+): number[] {
   const scores = new Array<number>(links.length);
   let denom = 0;
   for (let i = 0; i < links.length; i++) {

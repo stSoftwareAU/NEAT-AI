@@ -42,6 +42,7 @@ export {
   wasmCalculateError,
   wasmCalculateWeight,
   wasmDerivative,
+  wasmDistributeElasticError,
   wasmFusedErrorDistribution,
   wasmGetRange,
   wasmLimitRange,

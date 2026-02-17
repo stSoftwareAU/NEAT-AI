@@ -17,6 +17,7 @@ use wasm_bindgen::prelude::*;
 // Module declarations
 mod accumulate;
 mod derivative;
+mod elastic_distribution;
 mod error;
 mod fused_error;
 mod loss;
@@ -48,6 +49,7 @@ pub use loss::{
 
 // Internal module imports for standalone functions
 use derivative::apply_derivative;
+use elastic_distribution::wasm_distribute_elastic_error;
 use error::apply_calculate_error;
 use fused_error::apply_fused_error_distribution;
 use range::{apply_get_range, apply_limit_range, apply_validate_range};
@@ -171,6 +173,31 @@ pub fn fused_error_distribution(
         upstream_activations,
         synapse_weights,
     )
+}
+
+/// Issue #1519 - Standalone elastic error distribution in WASM.
+///
+/// Distributes error across links proportionally to activation² × safeZoneFactor,
+/// with weight-based and equal-split fallbacks.
+///
+/// # Arguments
+/// * `error` - The total error to distribute
+/// * `activations` - Flat f64 array of per-link activation values
+/// * `safe_zone_factors` - Flat f64 array of per-link safe zone factors
+/// * `weights` - Flat f64 array of per-link weights (use NaN if unavailable)
+/// * `plank_constant` - Threshold for near-zero comparisons
+///
+/// # Returns
+/// `Vec<f64>` of per-link error shares that sum to `error`.
+#[wasm_bindgen]
+pub fn distribute_elastic_error(
+    error: f64,
+    activations: &[f64],
+    safe_zone_factors: &[f64],
+    weights: &[f64],
+    plank_constant: f64,
+) -> Vec<f64> {
+    wasm_distribute_elastic_error(error, activations, safe_zone_factors, weights, plank_constant)
 }
 
 /// Standalone calculate error function for testing

@@ -22,6 +22,7 @@ import {
   getCalculateErrorFn,
   getCalculateWeightWasmFn,
   getDerivativeFn,
+  getDistributeElasticErrorFn,
   getFusedErrorDistributionFn,
   getGetRangeFn,
   getLimitRangeFn,
@@ -225,6 +226,30 @@ export function wasmVersion(): string {
     return "not loaded";
   }
   return fn();
+}
+
+// ---------------------------------------------------------------------------
+// Issue #1519 - WASM elastic error distribution
+// ---------------------------------------------------------------------------
+
+/**
+ * Issue #1519 - Distribute error across links via WASM.
+ *
+ * Uses struct-of-arrays layout for better data locality in WASM linear memory.
+ * Returns the distributed error shares, or undefined if WASM is unavailable
+ * (caller should fall back to TypeScript implementation).
+ */
+export function wasmDistributeElasticError(
+  error: number,
+  activations: Float64Array,
+  safeZoneFactors: Float64Array,
+  weights: Float64Array,
+  plankConstant: number,
+): Float64Array | undefined {
+  const fn = getDistributeElasticErrorFn();
+  if (!fn) return undefined;
+
+  return fn(error, activations, safeZoneFactors, weights, plankConstant);
 }
 
 // ---------------------------------------------------------------------------
