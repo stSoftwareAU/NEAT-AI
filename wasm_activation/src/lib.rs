@@ -15,6 +15,7 @@
 use wasm_bindgen::prelude::*;
 
 // Module declarations
+mod accumulate;
 mod derivative;
 mod error;
 mod fused_error;
@@ -31,6 +32,13 @@ mod unsquash;
 pub use network::{CompiledNetwork, NeuronData, SynapseData};
 pub use squash::SquashType;
 pub use synapse_type::SynapseType;
+
+// Re-export accumulation functions (Issue #1518)
+pub use accumulate::{
+    accumulate_bias_batch_4way, accumulate_bias_batch_8way,
+    accumulate_weight_batch_4way, accumulate_weight_batch_8way,
+    calculate_bias, calculate_weight,
+};
 
 // Re-export loss functions (these are #[wasm_bindgen] functions)
 pub use loss::{

@@ -127,6 +127,82 @@ let validateRangeFn:
 let limitRangeFn: ((squashType: number, value: number) => number) | null = null;
 let versionFn: (() => string) | null = null;
 
+// Issue #1518 - Accumulation function pointers
+let accumulateWeightBatch4WayFn:
+  | ((
+    currentWeights: Float64Array,
+    targetValues: Float64Array,
+    activations: Float64Array,
+    plankConstant: number,
+    learningRate: number,
+    maxWeightAdjScale: number,
+    limitWeightScale: number,
+  ) => Float64Array)
+  | null = null;
+let accumulateWeightBatch8WayFn:
+  | ((
+    currentWeights: Float64Array,
+    targetValues: Float64Array,
+    activations: Float64Array,
+    plankConstant: number,
+    learningRate: number,
+    maxWeightAdjScale: number,
+    limitWeightScale: number,
+  ) => Float64Array)
+  | null = null;
+let accumulateBiasBatch4WayFn:
+  | ((
+    targetPreActivations: Float64Array,
+    preActivations: Float64Array,
+    currentBiases: Float64Array,
+    plankConstant: number,
+    learningRate: number,
+    maxBiasAdjScale: number,
+    limitBiasScale: number,
+  ) => Float64Array)
+  | null = null;
+let accumulateBiasBatch8WayFn:
+  | ((
+    targetPreActivations: Float64Array,
+    preActivations: Float64Array,
+    currentBiases: Float64Array,
+    plankConstant: number,
+    learningRate: number,
+    maxBiasAdjScale: number,
+    limitBiasScale: number,
+  ) => Float64Array)
+  | null = null;
+let calculateWeightWasmFn:
+  | ((
+    count: number,
+    totalPositiveActivation: number,
+    totalNegativeActivation: number,
+    countPositive: number,
+    countNegative: number,
+    totalPositiveAdjustedValue: number,
+    totalNegativeAdjustedValue: number,
+    currentWeight: number,
+    generations: number,
+    plankConstant: number,
+    learningRate: number,
+    maxWeightAdjScale: number,
+    limitWeightScale: number,
+  ) => number)
+  | null = null;
+let calculateBiasWasmFn:
+  | ((
+    count: number,
+    totalAdjustedBias: number,
+    currentBias: number,
+    noChange: boolean,
+    generations: number,
+    plankConstant: number,
+    learningRate: number,
+    maxBiasAdjScale: number,
+    limitBiasScale: number,
+  ) => number)
+  | null = null;
+
 // ---------------------------------------------------------------------------
 // Helpers to populate function pointers from a module
 // ---------------------------------------------------------------------------
@@ -151,6 +227,13 @@ function assignFunctionPointers(module: WasmModule): void {
   validateRangeFn = module.validate_range;
   limitRangeFn = module.limit_range;
   versionFn = module.version;
+  // Issue #1518 - Accumulation functions
+  accumulateWeightBatch4WayFn = module.accumulate_weight_batch_4way;
+  accumulateWeightBatch8WayFn = module.accumulate_weight_batch_8way;
+  accumulateBiasBatch4WayFn = module.accumulate_bias_batch_4way;
+  accumulateBiasBatch8WayFn = module.accumulate_bias_batch_8way;
+  calculateWeightWasmFn = module.calculate_weight;
+  calculateBiasWasmFn = module.calculate_bias;
 }
 
 // ---------------------------------------------------------------------------
@@ -325,4 +408,29 @@ export function getLimitRangeFn(): typeof limitRangeFn {
 
 export function getVersionFn(): typeof versionFn {
   return versionFn;
+}
+
+// Issue #1518 - Accumulation function pointer getters
+export function getAccumulateWeightBatch4WayFn(): typeof accumulateWeightBatch4WayFn {
+  return accumulateWeightBatch4WayFn;
+}
+
+export function getAccumulateWeightBatch8WayFn(): typeof accumulateWeightBatch8WayFn {
+  return accumulateWeightBatch8WayFn;
+}
+
+export function getAccumulateBiasBatch4WayFn(): typeof accumulateBiasBatch4WayFn {
+  return accumulateBiasBatch4WayFn;
+}
+
+export function getAccumulateBiasBatch8WayFn(): typeof accumulateBiasBatch8WayFn {
+  return accumulateBiasBatch8WayFn;
+}
+
+export function getCalculateWeightWasmFn(): typeof calculateWeightWasmFn {
+  return calculateWeightWasmFn;
+}
+
+export function getCalculateBiasWasmFn(): typeof calculateBiasWasmFn {
+  return calculateBiasWasmFn;
 }

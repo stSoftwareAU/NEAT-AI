@@ -143,6 +143,129 @@ export class CompiledNetwork {
 }
 
 /**
+ * Issue #1518 - Batch bias accumulation for 4 neurons.
+ *
+ * Processes 4 neurons in a single WASM call, returning a packed f64 array
+ * with 3 values per neuron (12 total). The caller unpacks these into the
+ * corresponding NeuronState objects.
+ *
+ * # Arguments
+ * * `target_pre_activations` - 4 target pre-activation values
+ * * `pre_activations` - 4 current pre-activation values
+ * * `current_biases` - 4 current neuron biases
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate for bias adjustment
+ * * `max_bias_adj_scale` - Maximum bias adjustment scale
+ * * `limit_bias_scale` - Global bias scale limit
+ *
+ * # Returns
+ * Float64Array with 12 values (3 per neuron):
+ *   [count, totalBias, totalAdjustedBias] × 4
+ */
+export function accumulate_bias_batch_4way(
+  target_pre_activations: Float64Array,
+  pre_activations: Float64Array,
+  current_biases: Float64Array,
+  plank_constant: number,
+  learning_rate: number,
+  max_bias_adj_scale: number,
+  limit_bias_scale: number,
+): Float64Array;
+
+/**
+ * Issue #1518 - Batch bias accumulation for 8 neurons.
+ *
+ * Same as 4-way but processes 8 neurons. Returns 24 f64 values.
+ */
+export function accumulate_bias_batch_8way(
+  target_pre_activations: Float64Array,
+  pre_activations: Float64Array,
+  current_biases: Float64Array,
+  plank_constant: number,
+  learning_rate: number,
+  max_bias_adj_scale: number,
+  limit_bias_scale: number,
+): Float64Array;
+
+/**
+ * Issue #1518 - Batch weight accumulation for 4 synapses.
+ *
+ * Processes 4 synapses in a single WASM call, returning a packed f64 array
+ * with 7 values per synapse (28 total). The caller unpacks these into the
+ * corresponding SynapseState objects.
+ *
+ * # Arguments
+ * * `current_weights` - 4 current synapse weights
+ * * `target_values` - 4 target values for weight calculation
+ * * `activations` - 4 activation values from source neurons
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate for weight adjustment
+ * * `max_weight_adj_scale` - Maximum weight adjustment scale
+ * * `limit_weight_scale` - Global weight scale limit
+ *
+ * # Returns
+ * Float64Array with 28 values (7 per synapse):
+ *   [count, totalPositiveActivation, totalNegativeActivation,
+ *    countPositiveActivations, countNegativeActivations,
+ *    totalPositiveAdjustedValue, totalNegativeAdjustedValue] × 4
+ */
+export function accumulate_weight_batch_4way(
+  current_weights: Float64Array,
+  target_values: Float64Array,
+  activations: Float64Array,
+  plank_constant: number,
+  learning_rate: number,
+  max_weight_adj_scale: number,
+  limit_weight_scale: number,
+): Float64Array;
+
+/**
+ * Issue #1518 - Batch weight accumulation for 8 synapses.
+ *
+ * Same as 4-way but processes 8 synapses. Returns 56 f64 values.
+ */
+export function accumulate_weight_batch_8way(
+  current_weights: Float64Array,
+  target_values: Float64Array,
+  activations: Float64Array,
+  plank_constant: number,
+  learning_rate: number,
+  max_weight_adj_scale: number,
+  limit_weight_scale: number,
+): Float64Array;
+
+/**
+ * Issue #1518 - Calculate the finalised bias after accumulation.
+ *
+ * Mirrors the TypeScript `calculateBias()` function.
+ *
+ * # Arguments
+ * * `count` - Total accumulation count
+ * * `total_adjusted_bias` - Sum of limited biases
+ * * `current_bias` - The neuron's current bias
+ * * `no_change` - Whether the neuron has flagged no change
+ * * `generations` - Config generations value
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate
+ * * `max_bias_adj_scale` - Maximum bias adjustment scale
+ * * `limit_bias_scale` - Global bias scale limit
+ *
+ * # Returns
+ * The calculated bias
+ */
+export function calculate_bias(
+  count: number,
+  total_adjusted_bias: number,
+  current_bias: number,
+  no_change: boolean,
+  generations: number,
+  plank_constant: number,
+  learning_rate: number,
+  max_bias_adj_scale: number,
+  limit_bias_scale: number,
+): number;
+
+/**
  * Standalone calculate error function for testing
  * Issue #1141 - WASM Migration Phase 9
  *
@@ -179,6 +302,47 @@ export function calculate_error_batch_4way(
   target_activations: Float32Array,
   current_values: Float32Array,
 ): Float32Array;
+
+/**
+ * Issue #1518 - Calculate the finalised weight after accumulation.
+ *
+ * Mirrors the TypeScript `calculateWeight()` function. Performs the
+ * weighted averaging with positive/negative tracking and generation-based
+ * inertia.
+ *
+ * # Arguments
+ * * `count` - Total accumulation count
+ * * `total_positive_activation` - Sum of positive activations
+ * * `total_negative_activation` - Sum of |negative activations|
+ * * `count_positive` - Number of positive activations
+ * * `count_negative` - Number of negative activations
+ * * `total_positive_adjusted_value` - Sum of limited weight × positive activation
+ * * `total_negative_adjusted_value` - Sum of limited weight × negative activation
+ * * `current_weight` - The synapse's current weight
+ * * `generations` - Config generations value
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate
+ * * `max_weight_adj_scale` - Maximum weight adjustment scale
+ * * `limit_weight_scale` - Global weight scale limit
+ *
+ * # Returns
+ * The calculated average weight
+ */
+export function calculate_weight(
+  count: number,
+  total_positive_activation: number,
+  total_negative_activation: number,
+  count_positive: number,
+  count_negative: number,
+  total_positive_adjusted_value: number,
+  total_negative_adjusted_value: number,
+  current_weight: number,
+  generations: number,
+  plank_constant: number,
+  learning_rate: number,
+  max_weight_adj_scale: number,
+  limit_weight_scale: number,
+): number;
 
 /**
  * Fused activate + Cross Entropy calculation for batch scoring.
@@ -647,6 +811,80 @@ export interface InitOutput {
   readonly unsquash: (a: number, b: number, c: number) => number;
   readonly validate_range: (a: number, b: number) => number;
   readonly version: () => [number, number];
+  readonly accumulate_bias_batch_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+  ) => [number, number];
+  readonly accumulate_bias_batch_8way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+  ) => [number, number];
+  readonly accumulate_weight_batch_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+  ) => [number, number];
+  readonly accumulate_weight_batch_8way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+  ) => [number, number];
+  readonly calculate_bias: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+  ) => number;
+  readonly calculate_weight: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+    l: number,
+    m: number,
+  ) => number;
   readonly __wbindgen_externrefs: WebAssembly.Table;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;

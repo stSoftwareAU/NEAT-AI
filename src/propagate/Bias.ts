@@ -1,5 +1,6 @@
 import type { NeuronState } from "../architecture/CreatureState.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
+import { wasmCalculateBias } from "../wasm/WasmStandaloneFunctions.ts";
 import type { BackPropagationConfig } from "./BackPropagation.ts";
 
 /**
@@ -83,6 +84,19 @@ export function calculateBias(
     const ns = neuron.creature.state.node(neuron.index);
 
     if (!ns.noChange && ns.count) {
+      // Issue #1518: Try WASM first
+      const wasmResult = wasmCalculateBias(
+        ns.count,
+        ns.totalAdjustedBias,
+        neuron.bias,
+        !!ns.noChange,
+        config,
+      );
+      if (wasmResult !== undefined) {
+        return wasmResult;
+      }
+
+      // TypeScript fallback
       // Issue #1436: Cap effective generations to avoid overwhelming the
       // gradient signal. Without this cap, high config.generations values
       // create excessive bias inertia that slows convergence.
@@ -147,8 +161,8 @@ export function limitBias(
  * Issue #1214 - Batch bias accumulation for 4 neurons simultaneously.
  * Issue #1314 - Non-finite values are skipped to prevent state corruption.
  *
- * Processes 4 neurons in a single call, enabling potential SIMD optimisation
- * by V8 when processing mini-batches during backpropagation.
+ * Processes 4 neurons in a single call, enabling SIMD optimisation
+ * via V8 when processing mini-batches during backpropagation.
  *
  * @param nsArray Array of 4 NeuronState objects to accumulate into
  * @param targetPreActivationValues Array of 4 target pre-activation values
@@ -163,13 +177,11 @@ export function accumulateBiasBatch4Way(
   currentBiases: number[],
   config: BackPropagationConfig,
 ) {
-  // Process all 4 neurons - enables V8 SIMD optimisation with typed arrays
   for (let i = 0; i < 4; i++) {
     const targetPreActivation = targetPreActivationValues[i];
     const preActivation = preActivationValues[i];
     const currentBias = currentBiases[i];
 
-    // Issue #1314: Skip non-finite values
     if (
       !Number.isFinite(targetPreActivation) ||
       !Number.isFinite(preActivation) ||
@@ -199,9 +211,8 @@ export function accumulateBiasBatch4Way(
  * Issue #1214 - Batch bias accumulation for 8 neurons simultaneously.
  * Issue #1314 - Non-finite values are skipped to prevent state corruption.
  *
- * Processes 8 neurons in a single call, enabling potential SIMD optimisation
- * by V8 when processing mini-batches during backpropagation.
- * Uses two parallel 4-way operations for better cache utilisation.
+ * Processes 8 neurons in a single call, enabling SIMD optimisation
+ * via V8 when processing mini-batches during backpropagation.
  *
  * @param nsArray Array of 8 NeuronState objects to accumulate into
  * @param targetPreActivationValues Array of 8 target pre-activation values
@@ -216,13 +227,11 @@ export function accumulateBiasBatch8Way(
   currentBiases: number[],
   config: BackPropagationConfig,
 ) {
-  // Process all 8 neurons - enables V8 SIMD optimisation with typed arrays
   for (let i = 0; i < 8; i++) {
     const targetPreActivation = targetPreActivationValues[i];
     const preActivation = preActivationValues[i];
     const currentBias = currentBiases[i];
 
-    // Issue #1314: Skip non-finite values
     if (
       !Number.isFinite(targetPreActivation) ||
       !Number.isFinite(preActivation) ||
