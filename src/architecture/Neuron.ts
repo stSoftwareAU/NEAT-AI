@@ -24,11 +24,13 @@ import {
 } from "../propagate/BackPropagation.ts";
 // Issue #1143 - WASM backpropagation integration
 // Issue #1377 - Fused backward pass error distribution in WASM
+// Issue #1520 - Fused backprop inner loop
 import {
   calculateError as wasmCalculateError,
   fusedErrorDistribution,
   squash as wasmSquash,
 } from "../wasm/ActivationMethods.ts";
+import { wasmFusedBackpropNeuron } from "../wasm/WasmStandaloneFunctions.ts";
 import { getSquashType, SquashType } from "../wasm/SquashType.ts";
 import {
   accumulateBias,
@@ -842,6 +844,15 @@ export class Neuron implements TagsInterface, NeuronInternal {
           });
         }
 
+        // Issue #1520 - Phase 1: Recursive propagation and data collection.
+        // Collect eligible synapse data for the fused WASM call.
+        const fusedCurrentWeights = buf.fusedCurrentWeights;
+        const fusedTargetValues = buf.fusedTargetValues;
+        const fusedImprovedActivations = buf.fusedImprovedActivations;
+        // Maps fused array index → inwardList index for unpacking results.
+        let eligibleCount = 0;
+        const eligibleIndices = buf.fusedEligibleIndices;
+
         for (let indx = 0; indx < listLength; indx++) {
           const c = inwardList[indx];
           const { from, to } = c;
@@ -897,18 +908,73 @@ export class Neuron implements TagsInterface, NeuronInternal {
             updateNeeded &&
             Math.abs(improvedFromActivation) > config.plankConstant
           ) {
-            const cs = state.connection(from, to);
-            accumulateWeight(
-              c.weight,
-              cs,
-              targetFromValue,
-              improvedFromActivation,
-              config,
-            );
-            const aWeight = adjustedWeight(state, c, config);
+            // Collect data for fused WASM call
+            fusedCurrentWeights[eligibleCount] = c.weight;
+            fusedTargetValues[eligibleCount] = targetFromValue;
+            fusedImprovedActivations[eligibleCount] = improvedFromActivation;
+            eligibleIndices[eligibleCount] = indx;
+            eligibleCount++;
+          }
+        }
 
-            const improvedFromValue = improvedFromActivation * aWeight;
-            improvedValue += improvedFromValue;
+        // Issue #1520 - Phase 2: Fused weight accumulation in WASM.
+        // Bias accumulation is deferred to the post-loop code because it
+        // depends on improvedValue, which is computed from adjusted weights.
+        if (updateNeeded && eligibleCount > 0) {
+          const fusedResult = wasmFusedBackpropNeuron(
+            fusedCurrentWeights.subarray(0, eligibleCount),
+            fusedTargetValues.subarray(0, eligibleCount),
+            fusedImprovedActivations.subarray(0, eligibleCount),
+            config,
+            0, // targetPreActivation (unused - bias handled separately)
+            0, // preActivation (unused - bias handled separately)
+            0, // currentBias (unused - bias handled separately)
+          );
+
+          if (fusedResult) {
+            // Unpack weight deltas into SynapseState objects
+            const wd = fusedResult.weightDeltas;
+            for (let i = 0; i < eligibleCount; i++) {
+              const base = i * 7;
+              const count = wd[base];
+              if (count > 0) {
+                const inwardIdx = eligibleIndices[i];
+                const c = inwardList[inwardIdx];
+                const cs = state.connection(c.from, c.to);
+                cs.count += count;
+                cs.totalPositiveActivation += wd[base + 1];
+                cs.totalNegativeActivation += wd[base + 2];
+                cs.countPositiveActivations += wd[base + 3];
+                cs.countNegativeActivations += wd[base + 4];
+                cs.totalPositiveAdjustedValue += wd[base + 5];
+                cs.totalNegativeAdjustedValue += wd[base + 6];
+              }
+            }
+
+            // Compute improvedValue from adjusted weights
+            for (let i = 0; i < eligibleCount; i++) {
+              const inwardIdx = eligibleIndices[i];
+              const c = inwardList[inwardIdx];
+              const aWeight = adjustedWeight(state, c, config);
+              const improvedFromActivation = fusedImprovedActivations[i];
+              improvedValue += improvedFromActivation * aWeight;
+            }
+          } else {
+            // Fallback: WASM unavailable, use individual TS calls
+            for (let i = 0; i < eligibleCount; i++) {
+              const inwardIdx = eligibleIndices[i];
+              const c = inwardList[inwardIdx];
+              const cs = state.connection(c.from, c.to);
+              accumulateWeight(
+                c.weight,
+                cs,
+                fusedTargetValues[i],
+                fusedImprovedActivations[i],
+                config,
+              );
+              const aWeight = adjustedWeight(state, c, config);
+              improvedValue += fusedImprovedActivations[i] * aWeight;
+            }
           }
         }
 

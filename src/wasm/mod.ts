@@ -32,6 +32,7 @@ export {
 
 // Issue #1405 - Standalone WASM functions from WasmStandaloneFunctions
 export {
+  type FusedBackpropNeuronResult,
   type FusedErrorDistributionResult,
   wasmAccumulateBiasBatch4Way,
   wasmAccumulateBiasBatch8Way,
@@ -42,6 +43,7 @@ export {
   wasmCalculateError,
   wasmCalculateWeight,
   wasmDerivative,
+  wasmFusedBackpropNeuron,
   wasmFusedErrorDistribution,
   wasmGetRange,
   wasmLimitRange,

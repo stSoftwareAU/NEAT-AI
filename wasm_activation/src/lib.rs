@@ -19,6 +19,7 @@ mod accumulate;
 mod derivative;
 mod elastic_distribution;
 mod error;
+mod fused_backprop;
 mod fused_error;
 mod loss;
 mod network;
@@ -37,6 +38,9 @@ pub use synapse_type::SynapseType;
 
 // Re-export elastic distribution (Issue #1519)
 pub use elastic_distribution::distribute_elastic_error;
+
+// Re-export fused backprop (Issue #1520)
+pub use fused_backprop::fused_backprop_neuron;
 
 // Re-export accumulation functions (Issue #1518)
 pub use accumulate::{

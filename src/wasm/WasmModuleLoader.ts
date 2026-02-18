@@ -214,6 +214,24 @@ let calculateBiasWasmFn:
   ) => number)
   | null = null;
 
+// Issue #1520 - Fused backprop inner loop
+let fusedBackpropNeuronFn:
+  | ((
+    currentWeights: Float64Array,
+    targetValues: Float64Array,
+    activations: Float64Array,
+    plankConstant: number,
+    learningRate: number,
+    maxWeightAdjScale: number,
+    limitWeightScale: number,
+    targetPreActivation: number,
+    preActivation: number,
+    currentBias: number,
+    maxBiasAdjScale: number,
+    limitBiasScale: number,
+  ) => Float64Array)
+  | null = null;
+
 // Issue #1522 - Persistent training state function pointers
 let initTrainingStateFn:
   | ((numSynapses: number, numNeurons: number) => void)
@@ -310,6 +328,8 @@ function assignFunctionPointers(module: WasmModule): void {
   accumulateBiasBatch8WayFn = module.accumulate_bias_batch_8way;
   calculateWeightWasmFn = module.calculate_weight;
   calculateBiasWasmFn = module.calculate_bias;
+  // Issue #1520 - Fused backprop inner loop
+  fusedBackpropNeuronFn = module.fused_backprop_neuron;
   // Issue #1522 - Persistent training state functions
   initTrainingStateFn = module.init_training_state;
   resetTrainingStateFn = module.reset_training_state;
@@ -526,6 +546,11 @@ export function getCalculateWeightWasmFn(): typeof calculateWeightWasmFn {
 
 export function getCalculateBiasWasmFn(): typeof calculateBiasWasmFn {
   return calculateBiasWasmFn;
+}
+
+// Issue #1520 - Fused backprop inner loop getter
+export function getFusedBackpropNeuronFn(): typeof fusedBackpropNeuronFn {
+  return fusedBackpropNeuronFn;
 }
 
 // Issue #1522 - Persistent training state function pointer getters

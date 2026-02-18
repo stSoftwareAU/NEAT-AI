@@ -29,6 +29,14 @@ export interface BackpropBufferSet {
   fusedActivations: Float32Array;
   /** Synapse weights for WASM. */
   fusedWeights: Float32Array;
+  /** Issue #1520 - Current weights for fused backprop WASM call. */
+  fusedCurrentWeights: Float64Array;
+  /** Issue #1520 - Target values for fused backprop WASM call. */
+  fusedTargetValues: Float64Array;
+  /** Issue #1520 - Improved activations for fused backprop WASM call. */
+  fusedImprovedActivations: Float64Array;
+  /** Issue #1520 - Maps fused array index → inwardList index. */
+  fusedEligibleIndices: number[];
   /** Current allocated capacity. */
   capacity: number;
 }
@@ -87,6 +95,10 @@ export class BackpropBuffers {
       fusedHintValues: new Float32Array(capacity),
       fusedActivations: new Float32Array(capacity),
       fusedWeights: new Float32Array(capacity),
+      fusedCurrentWeights: new Float64Array(capacity),
+      fusedTargetValues: new Float64Array(capacity),
+      fusedImprovedActivations: new Float64Array(capacity),
+      fusedEligibleIndices: new Array<number>(capacity),
       capacity,
     };
   }
@@ -100,6 +112,10 @@ export class BackpropBuffers {
     buf.fusedHintValues = new Float32Array(newCapacity);
     buf.fusedActivations = new Float32Array(newCapacity);
     buf.fusedWeights = new Float32Array(newCapacity);
+    buf.fusedCurrentWeights = new Float64Array(newCapacity);
+    buf.fusedTargetValues = new Float64Array(newCapacity);
+    buf.fusedImprovedActivations = new Float64Array(newCapacity);
+    buf.fusedEligibleIndices = new Array<number>(newCapacity);
     buf.capacity = newCapacity;
     return buf;
   }

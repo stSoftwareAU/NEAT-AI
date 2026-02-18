@@ -2,286 +2,40 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const __wbg_compilednetwork_free: (a: number, b: number) => void;
-export const compilednetwork_activate: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-) => [number, number];
-export const compilednetwork_activate_and_trace: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-) => [number, number];
-export const compilednetwork_activate_and_trace_batch_4way: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-) => [number, number];
-export const compilednetwork_activate_into: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: any,
-) => void;
-export const compilednetwork_activate_view: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-) => any;
-export const compilednetwork_new: (
-  a: number,
-  b: number,
-) => [number, number, number];
+export const compilednetwork_activate: (a: number, b: number, c: number, d: number) => [number, number];
+export const compilednetwork_activate_and_trace: (a: number, b: number, c: number, d: number) => [number, number];
+export const compilednetwork_activate_and_trace_batch_4way: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+export const compilednetwork_activate_into: (a: number, b: number, c: number, d: number, e: number, f: any) => void;
+export const compilednetwork_activate_view: (a: number, b: number, c: number, d: number) => any;
+export const compilednetwork_new: (a: number, b: number) => [number, number, number];
 export const compilednetwork_num_inputs: (a: number) => number;
 export const compilednetwork_num_neurons: (a: number) => number;
 export const compilednetwork_num_synapses: (a: number) => number;
 export const compilednetwork_reset_state: (a: number) => void;
-export const cross_entropy_sum_batch_packed: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-) => number;
-export const hinge_sum_batch_packed: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-) => number;
-export const mae_sum_batch_packed: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-) => number;
-export const mape_sum_batch_packed: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-) => number;
-export const mse_sum_batch_packed: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-) => number;
-export const msle_sum_batch_packed: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-) => number;
-export const calculate_error: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-) => number;
-export const calculate_error_batch_4way: (
-  a: number,
-  b: any,
-  c: any,
-  d: any,
-) => any;
+export const cross_entropy_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+export const hinge_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+export const mae_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+export const mape_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+export const mse_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+export const msle_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+export const calculate_error: (a: number, b: number, c: number, d: number) => number;
+export const calculate_error_batch_4way: (a: number, b: any, c: any, d: any) => any;
 export const derivative: (a: number, b: number) => number;
-export const derivative_batch_4way: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-) => any;
-export const fused_error_distribution: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-  g: number,
-  h: number,
-  i: number,
-  j: number,
-  k: number,
-  l: number,
-) => [number, number];
+export const derivative_batch_4way: (a: number, b: number, c: number, d: number, e: number) => any;
+export const fused_error_distribution: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => [number, number];
 export const get_range: (a: number) => any;
 export const limit_range: (a: number, b: number) => number;
-export const safe_zone_adjustment: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-) => number;
-export const safe_zone_adjustment_batch: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-  g: number,
-) => [number, number];
+export const safe_zone_adjustment: (a: number, b: number, c: number, d: number) => number;
+export const safe_zone_adjustment_batch: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
 export const squash: (a: number, b: number) => number;
 export const unsquash: (a: number, b: number, c: number) => number;
 export const validate_range: (a: number, b: number) => number;
 export const version: () => [number, number];
-export const accumulate_bias_batch_4way: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-  g: number,
-  h: number,
-  i: number,
-  j: number,
-) => [number, number];
-export const accumulate_bias_batch_8way: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-  g: number,
-  h: number,
-  i: number,
-  j: number,
-) => [number, number];
-export const accumulate_weight_batch_4way: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-  g: number,
-  h: number,
-  i: number,
-  j: number,
-) => [number, number];
-export const accumulate_weight_batch_8way: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-  g: number,
-  h: number,
-  i: number,
-  j: number,
-) => [number, number];
-export const calculate_bias: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-  g: number,
-  h: number,
-  i: number,
-) => number;
-export const calculate_weight: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-  g: number,
-  h: number,
-  i: number,
-  j: number,
-  k: number,
-  l: number,
-  m: number,
-) => number;
-export const distribute_elastic_error: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-  g: number,
-  h: number,
-) => [number, number];
-export const accumulate_bias_persistent_4way: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-  g: number,
-  h: number,
-  i: number,
-  j: number,
-  k: number,
-) => void;
-export const accumulate_bias_persistent_8way: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-  g: number,
-  h: number,
-  i: number,
-  j: number,
-  k: number,
-) => void;
-export const accumulate_weight_persistent_4way: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-  g: number,
-  h: number,
-  i: number,
-  j: number,
-  k: number,
-) => void;
-export const accumulate_weight_persistent_8way: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-  g: number,
-  h: number,
-  i: number,
-  j: number,
-  k: number,
-) => void;
+export const accumulate_bias_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+export const accumulate_bias_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+export const accumulate_weight_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+export const accumulate_weight_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+export const distribute_elastic_error: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
 export const free_training_state: () => void;
 export const get_training_state_num_neurons: () => number;
 export const get_training_state_num_synapses: () => number;
@@ -291,6 +45,13 @@ export const read_all_synapse_state: () => [number, number];
 export const read_neuron_state: (a: number) => [number, number];
 export const read_synapse_state: (a: number) => [number, number];
 export const reset_training_state: () => void;
+export const accumulate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
+export const accumulate_bias_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
+export const accumulate_weight_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
+export const accumulate_weight_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
+export const calculate_bias: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => number;
+export const calculate_weight: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => number;
+export const fused_backprop_neuron: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number) => [number, number];
 export const __wbindgen_externrefs: WebAssembly.Table;
 export const __wbindgen_malloc: (a: number, b: number) => number;
 export const __wbindgen_free: (a: number, b: number, c: number) => void;

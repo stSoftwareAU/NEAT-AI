@@ -23,6 +23,7 @@ import {
   getCalculateWeightWasmFn,
   getDerivativeFn,
   getDistributeElasticErrorFn,
+  getFusedBackpropNeuronFn,
   getFusedErrorDistributionFn,
   getGetRangeFn,
   getLimitRangeFn,
@@ -488,4 +489,66 @@ export function wasmCalculateBias(
     config.maximumBiasAdjustmentScale,
     config.limitBiasScale,
   );
+}
+
+// ---------------------------------------------------------------------------
+// Issue #1520 - Fused backprop inner loop
+// ---------------------------------------------------------------------------
+
+/**
+ * Issue #1520 - Result from fused backprop neuron inner loop.
+ */
+export interface FusedBackpropNeuronResult {
+  /** Weight delta arrays (7 values per synapse) */
+  weightDeltas: Float64Array;
+  /** Bias deltas: [count, totalBias, totalAdjustedBias] */
+  biasCount: number;
+  biasTotalBias: number;
+  biasTotalAdjustedBias: number;
+}
+
+/**
+ * Issue #1520 - Fused backprop inner loop for a single neuron via WASM.
+ *
+ * Combines weight accumulation for all inbound synapses and bias accumulation
+ * into a single WASM call, eliminating S+1 boundary crossings.
+ *
+ * Returns the result, or undefined if WASM is unavailable.
+ */
+export function wasmFusedBackpropNeuron(
+  currentWeights: Float64Array,
+  targetValues: Float64Array,
+  activations: Float64Array,
+  config: BackPropagationConfig,
+  targetPreActivation: number,
+  preActivation: number,
+  currentBias: number,
+): FusedBackpropNeuronResult | undefined {
+  const fn = getFusedBackpropNeuronFn();
+  if (!fn) return undefined;
+
+  const result = fn(
+    currentWeights,
+    targetValues,
+    activations,
+    config.plankConstant,
+    config.learningRate,
+    config.maximumWeightAdjustmentScale,
+    config.limitWeightScale,
+    targetPreActivation,
+    preActivation,
+    currentBias,
+    config.maximumBiasAdjustmentScale,
+    config.limitBiasScale,
+  );
+
+  const n = currentWeights.length;
+  const biasBase = 7 * n;
+
+  return {
+    weightDeltas: result,
+    biasCount: result[biasBase],
+    biasTotalBias: result[biasBase + 1],
+    biasTotalAdjustedBias: result[biasBase + 2],
+  };
 }
