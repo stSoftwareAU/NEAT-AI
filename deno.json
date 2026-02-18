@@ -60,5 +60,8 @@
       ]
     }
   },
-  "lock": false
+  "lock": false,
+  "exclude": [
+    ".analysis"
+  ]
 }
