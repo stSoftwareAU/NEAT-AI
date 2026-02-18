@@ -456,6 +456,11 @@ export async function evolveDir(
   }
   workers.length = 0;
 
+  // Issue #1509: Await background replay queue completion before returning.
+  // Without this, callers that delete the data directory after evolveDir()
+  // returns may cause NotFound errors in still-running replay workers.
+  await neat.discoveryReplayQueue.waitForCompletion();
+
   if (bestCreature) {
     creature.loadFrom(bestCreature, config.debug);
   }
