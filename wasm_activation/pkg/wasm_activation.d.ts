@@ -428,6 +428,25 @@ export function calculate_weight(
 ): number;
 
 /**
+ * Batch-compute abs-sum, max, and second-max over weight and bias arrays.
+ *
+ * Returns a `Float64Array` with 4 elements:
+ *   [total_abs, count, max_abs, second_max_abs]
+ *
+ * The caller provides flat arrays of synapse weights and non-input neuron
+ * biases. This replaces the inner loops of `computeAndCacheScoreComponents`
+ * in `Score.ts`.
+ *
+ * # Arguments
+ * * `weights` - flat f64 array of synapse weights
+ * * `biases` - flat f64 array of non-input neuron biases
+ */
+export function compute_score_components(
+  weights: Float64Array,
+  biases: Float64Array,
+): Float64Array;
+
+/**
  * Fused activate + Cross Entropy calculation for batch scoring.
  *
  * Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
@@ -796,6 +815,46 @@ export function safe_zone_adjustment_batch(
 ): Float32Array;
 
 /**
+ * Scan all weights and biases to find the new max and second-max after a
+ * bias change. The bias at `exclude_idx` is excluded (it is being
+ * replaced); `new_bias` is included instead.
+ *
+ * Returns a `Float64Array` with 2 elements: [max, second_max].
+ *
+ * # Arguments
+ * * `weights` - flat f64 array of all synapse weights
+ * * `biases` - flat f64 array of all non-input neuron biases
+ * * `exclude_idx` - index in `biases` to skip (the old bias)
+ * * `new_bias` - the replacement bias value
+ */
+export function scan_max_bias(
+  weights: Float64Array,
+  biases: Float64Array,
+  exclude_idx: number,
+  new_bias: number,
+): Float64Array;
+
+/**
+ * Scan all weights and biases to find the new max and second-max after a
+ * weight change. The weight at `exclude_idx` is excluded (it is being
+ * replaced); `new_weight` is included instead.
+ *
+ * Returns a `Float64Array` with 2 elements: [max, second_max].
+ *
+ * # Arguments
+ * * `weights` - flat f64 array of all synapse weights
+ * * `biases` - flat f64 array of all non-input neuron biases
+ * * `exclude_idx` - index in `weights` to skip (the old weight)
+ * * `new_weight` - the replacement weight value
+ */
+export function scan_max_weight(
+  weights: Float64Array,
+  biases: Float64Array,
+  exclude_idx: number,
+  new_weight: number,
+): Float64Array;
+
+/**
  * Standalone squash function for testing
  */
 export function squash(squash_type: number, value: number): number;
@@ -993,6 +1052,77 @@ export interface InitOutput {
   readonly unsquash: (a: number, b: number, c: number) => number;
   readonly validate_range: (a: number, b: number) => number;
   readonly version: () => [number, number];
+  readonly accumulate_bias_persistent_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly accumulate_bias_persistent_8way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly accumulate_weight_persistent_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly accumulate_weight_persistent_8way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly distribute_elastic_error: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+  ) => [number, number];
+  readonly free_training_state: () => void;
+  readonly get_training_state_num_neurons: () => number;
+  readonly get_training_state_num_synapses: () => number;
+  readonly init_training_state: (a: number, b: number) => void;
+  readonly read_all_neuron_state: () => [number, number];
+  readonly read_all_synapse_state: () => [number, number];
+  readonly read_neuron_state: (a: number) => [number, number];
+  readonly read_synapse_state: (a: number) => [number, number];
+  readonly reset_training_state: () => void;
   readonly accumulate_bias_batch_4way: (
     a: number,
     b: number,
@@ -1067,77 +1197,28 @@ export interface InitOutput {
     l: number,
     m: number,
   ) => number;
-  readonly distribute_elastic_error: (
+  readonly compute_score_components: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => any;
+  readonly scan_max_bias: (
     a: number,
     b: number,
     c: number,
     d: number,
     e: number,
     f: number,
-    g: number,
-    h: number,
-  ) => [number, number];
-  readonly accumulate_bias_persistent_4way: (
+  ) => any;
+  readonly scan_max_weight: (
     a: number,
     b: number,
     c: number,
     d: number,
     e: number,
     f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly accumulate_bias_persistent_8way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly accumulate_weight_persistent_4way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly accumulate_weight_persistent_8way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly free_training_state: () => void;
-  readonly get_training_state_num_neurons: () => number;
-  readonly get_training_state_num_synapses: () => number;
-  readonly init_training_state: (a: number, b: number) => void;
-  readonly read_all_neuron_state: () => [number, number];
-  readonly read_all_synapse_state: () => [number, number];
-  readonly read_neuron_state: (a: number) => [number, number];
-  readonly read_synapse_state: (a: number) => [number, number];
-  readonly reset_training_state: () => void;
+  ) => any;
   readonly __wbindgen_externrefs: WebAssembly.Table;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;

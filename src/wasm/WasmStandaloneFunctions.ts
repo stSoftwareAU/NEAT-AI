@@ -21,6 +21,7 @@ import {
   getCalculateBiasWasmFn,
   getCalculateErrorFn,
   getCalculateWeightWasmFn,
+  getComputeScoreComponentsFn,
   getDerivativeFn,
   getDistributeElasticErrorFn,
   getFusedErrorDistributionFn,
@@ -28,6 +29,8 @@ import {
   getLimitRangeFn,
   getSafeZoneAdjustmentBatchFn,
   getSafeZoneAdjustmentFn,
+  getScanMaxBiasFn,
+  getScanMaxWeightFn,
   getSquashFn,
   getUnsquashFn,
   getValidateRangeFn,
@@ -488,4 +491,83 @@ export function wasmCalculateBias(
     config.maximumBiasAdjustmentScale,
     config.limitBiasScale,
   );
+}
+
+// ---------------------------------------------------------------------------
+// Issue #1521 - WASM batch score computation
+// ---------------------------------------------------------------------------
+
+/** Result of WASM compute_score_components. */
+export interface WasmScoreComponents {
+  totalWeightBias: number;
+  countWeightBias: number;
+  maxWeightBias: number;
+  secondMaxWeightBias: number;
+}
+
+/**
+ * Issue #1521 - Batch-compute abs-sum, max, and second-max over weight and
+ * bias arrays via WASM.
+ *
+ * Uses f64 precision to match JavaScript `number` semantics.
+ * Returns the score components, or undefined if WASM is unavailable.
+ */
+export function wasmComputeScoreComponents(
+  weights: Float64Array,
+  biases: Float64Array,
+): WasmScoreComponents | undefined {
+  const fn = getComputeScoreComponentsFn();
+  if (!fn) return undefined;
+
+  const result = fn(weights, biases);
+  return {
+    totalWeightBias: result[0],
+    countWeightBias: result[1],
+    maxWeightBias: result[2],
+    secondMaxWeightBias: result[3],
+  };
+}
+
+/** Result of WASM scan_max_weight / scan_max_bias. */
+export interface WasmMaxScanResult {
+  max: number;
+  secondMax: number;
+}
+
+/**
+ * Issue #1521 - Scan all weights and biases to find new max and second-max
+ * after a weight change, via WASM.
+ *
+ * Returns the result, or undefined if WASM is unavailable.
+ */
+export function wasmScanMaxWeight(
+  weights: Float64Array,
+  biases: Float64Array,
+  excludeIdx: number,
+  newWeight: number,
+): WasmMaxScanResult | undefined {
+  const fn = getScanMaxWeightFn();
+  if (!fn) return undefined;
+
+  const result = fn(weights, biases, excludeIdx, newWeight);
+  return { max: result[0], secondMax: result[1] };
+}
+
+/**
+ * Issue #1521 - Scan all weights and biases to find new max and second-max
+ * after a bias change, via WASM.
+ *
+ * Returns the result, or undefined if WASM is unavailable.
+ */
+export function wasmScanMaxBias(
+  weights: Float64Array,
+  biases: Float64Array,
+  excludeIdx: number,
+  newBias: number,
+): WasmMaxScanResult | undefined {
+  const fn = getScanMaxBiasFn();
+  if (!fn) return undefined;
+
+  const result = fn(weights, biases, excludeIdx, newBias);
+  return { max: result[0], secondMax: result[1] };
 }

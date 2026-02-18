@@ -858,6 +858,32 @@ export function calculate_weight(
 }
 
 /**
+ * Batch-compute abs-sum, max, and second-max over weight and bias arrays.
+ *
+ * Returns a `Float64Array` with 4 elements:
+ *   [total_abs, count, max_abs, second_max_abs]
+ *
+ * The caller provides flat arrays of synapse weights and non-input neuron
+ * biases. This replaces the inner loops of `computeAndCacheScoreComponents`
+ * in `Score.ts`.
+ *
+ * # Arguments
+ * * `weights` - flat f64 array of synapse weights
+ * * `biases` - flat f64 array of non-input neuron biases
+ * @param {Float64Array} weights
+ * @param {Float64Array} biases
+ * @returns {Float64Array}
+ */
+export function compute_score_components(weights, biases) {
+  const ptr0 = passArrayF64ToWasm0(weights, wasm.__wbindgen_malloc);
+  const len0 = WASM_VECTOR_LEN;
+  const ptr1 = passArrayF64ToWasm0(biases, wasm.__wbindgen_malloc);
+  const len1 = WASM_VECTOR_LEN;
+  const ret = wasm.compute_score_components(ptr0, len0, ptr1, len1);
+  return ret;
+}
+
+/**
  * Fused activate + Cross Entropy calculation for batch scoring.
  *
  * Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
@@ -1493,6 +1519,67 @@ export function safe_zone_adjustment_batch(
 }
 
 /**
+ * Scan all weights and biases to find the new max and second-max after a
+ * bias change. The bias at `exclude_idx` is excluded (it is being
+ * replaced); `new_bias` is included instead.
+ *
+ * Returns a `Float64Array` with 2 elements: [max, second_max].
+ *
+ * # Arguments
+ * * `weights` - flat f64 array of all synapse weights
+ * * `biases` - flat f64 array of all non-input neuron biases
+ * * `exclude_idx` - index in `biases` to skip (the old bias)
+ * * `new_bias` - the replacement bias value
+ * @param {Float64Array} weights
+ * @param {Float64Array} biases
+ * @param {number} exclude_idx
+ * @param {number} new_bias
+ * @returns {Float64Array}
+ */
+export function scan_max_bias(weights, biases, exclude_idx, new_bias) {
+  const ptr0 = passArrayF64ToWasm0(weights, wasm.__wbindgen_malloc);
+  const len0 = WASM_VECTOR_LEN;
+  const ptr1 = passArrayF64ToWasm0(biases, wasm.__wbindgen_malloc);
+  const len1 = WASM_VECTOR_LEN;
+  const ret = wasm.scan_max_bias(ptr0, len0, ptr1, len1, exclude_idx, new_bias);
+  return ret;
+}
+
+/**
+ * Scan all weights and biases to find the new max and second-max after a
+ * weight change. The weight at `exclude_idx` is excluded (it is being
+ * replaced); `new_weight` is included instead.
+ *
+ * Returns a `Float64Array` with 2 elements: [max, second_max].
+ *
+ * # Arguments
+ * * `weights` - flat f64 array of all synapse weights
+ * * `biases` - flat f64 array of all non-input neuron biases
+ * * `exclude_idx` - index in `weights` to skip (the old weight)
+ * * `new_weight` - the replacement weight value
+ * @param {Float64Array} weights
+ * @param {Float64Array} biases
+ * @param {number} exclude_idx
+ * @param {number} new_weight
+ * @returns {Float64Array}
+ */
+export function scan_max_weight(weights, biases, exclude_idx, new_weight) {
+  const ptr0 = passArrayF64ToWasm0(weights, wasm.__wbindgen_malloc);
+  const len0 = WASM_VECTOR_LEN;
+  const ptr1 = passArrayF64ToWasm0(biases, wasm.__wbindgen_malloc);
+  const len1 = WASM_VECTOR_LEN;
+  const ret = wasm.scan_max_weight(
+    ptr0,
+    len0,
+    ptr1,
+    len1,
+    exclude_idx,
+    new_weight,
+  );
+  return ret;
+}
+
+/**
  * Standalone squash function for testing
  * @param {number} squash_type
  * @param {number} value
@@ -1583,7 +1670,14 @@ function __wbg_get_imports() {
       const ret = new Float32Array(arg0 >>> 0);
       return ret;
     },
+    __wbg_new_with_length_6523745c0bd32809: function (arg0) {
+      const ret = new Float64Array(arg0 >>> 0);
+      return ret;
+    },
     __wbg_set_index_41955224420ba3c6: function (arg0, arg1, arg2) {
+      arg0[arg1 >>> 0] = arg2;
+    },
+    __wbg_set_index_78a85f2e336ce120: function (arg0, arg1, arg2) {
       arg0[arg1 >>> 0] = arg2;
     },
     __wbindgen_cast_0000000000000001: function (arg0, arg1) {

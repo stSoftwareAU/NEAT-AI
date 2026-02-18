@@ -27,6 +27,7 @@ mod safe_zone;
 mod simd;
 mod squash;
 mod synapse_type;
+mod score_scan;
 mod training_state;
 mod unsquash;
 
@@ -54,6 +55,9 @@ pub use training_state::{
     read_all_neuron_state, read_all_synapse_state,
     read_neuron_state, read_synapse_state, reset_training_state,
 };
+
+// Re-export score scan functions (Issue #1521)
+pub use score_scan::{compute_score_components, scan_max_bias, scan_max_weight};
 
 // Re-export loss functions (these are #[wasm_bindgen] functions)
 pub use loss::{

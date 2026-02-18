@@ -2,6 +2,11 @@ import { assert } from "@std/assert";
 import type { CachedScoreComponents, Creature } from "../Creature.ts";
 import { SEMANTIC_MAJOR_VERSION } from "../upgrade/Upgrade.ts";
 import { getLogger } from "../utils/Logger.ts";
+import {
+  wasmComputeScoreComponents,
+  wasmScanMaxBias,
+  wasmScanMaxWeight,
+} from "../wasm/WasmStandaloneFunctions.ts";
 
 /**
  * Calculates the fitness score for a creature based on its error and complexity.
@@ -109,11 +114,39 @@ function calculatePenalty(max: number, avg: number): number {
 }
 
 /**
+ * Extracts flat Float64Array of synapse weights from a creature.
+ * Issue #1521: Helper for WASM score scan functions.
+ */
+function extractWeights(creature: Creature): Float64Array {
+  const synapses = creature.synapses;
+  const weights = new Float64Array(synapses.length);
+  for (let i = 0, len = synapses.length; i < len; i++) {
+    weights[i] = synapses[i].weight;
+  }
+  return weights;
+}
+
+/**
+ * Extracts flat Float64Array of non-input neuron biases from a creature.
+ * Issue #1521: Helper for WASM score scan functions.
+ */
+function extractBiases(creature: Creature): Float64Array {
+  const neurons = creature.neurons;
+  const numBiases = neurons.length - creature.input;
+  const biases = new Float64Array(numBiases);
+  for (let i = 0; i < numBiases; i++) {
+    biases[i] = neurons[creature.input + i].bias;
+  }
+  return biases;
+}
+
+/**
  * Computes and caches structure-dependent score components.
  * Issue #1023: Performance optimisation for large creatures.
  * Issue #1043: Uses Neuron.getComplexityPenalty() to leverage per-neuron caching.
  * Issue #1011: Also caches max/avg weight/bias statistics to avoid redundant
  * iterations over synapses and neurons.
+ * Issue #1521: Uses WASM/SIMD for batch weight/bias statistics when available.
  *
  * @param creature - The creature to compute components for
  * @returns Cached score components
@@ -132,50 +165,71 @@ function computeAndCacheScoreComponents(
   // when setSquash() is called.
   let squashComplexityPenalty = 0;
 
-  // Issue #1011: Calculate max/avg weight/bias in the same pass as complexity penalty
-  // This avoids a separate full iteration over synapses and neurons.
-  // Issue #1442: Also track second-max for O(1) max recovery.
-  let maxWeightBias = 0;
-  let secondMaxWeightBias = 0;
-  let totalWeightBias = 0;
-  let countWeightBias = 0;
-
-  // Iterate over synapses to gather weight statistics
-  const synapses = creature.synapses;
-  for (let i = 0, len = synapses.length; i < len; i++) {
-    const synapse = synapses[i];
-    assert(
-      Number.isFinite(synapse.weight),
-      `Weight: ${synapse.weight} is not finite`,
-    );
-    const w = Math.abs(synapse.weight);
-    if (w > maxWeightBias) {
-      secondMaxWeightBias = maxWeightBias;
-      maxWeightBias = w;
-    } else if (w > secondMaxWeightBias) {
-      secondMaxWeightBias = w;
-    }
-    totalWeightBias += w;
-    countWeightBias++;
-  }
-
-  // Iterate over non-input neurons to gather bias statistics and complexity penalty
+  // Squash complexity must be computed in TS (depends on neuron type registry)
   const neurons = creature.neurons;
   const endIndex = neurons.length;
   for (let indx = creature.input; indx < endIndex; indx++) {
-    const neuron = neurons[indx];
-    squashComplexityPenalty += neuron.getComplexityPenalty();
+    squashComplexityPenalty += neurons[indx].getComplexityPenalty();
+  }
 
-    assert(Number.isFinite(neuron.bias), `Bias: ${neuron.bias} is not finite`);
-    const b = Math.abs(neuron.bias);
-    if (b > maxWeightBias) {
-      secondMaxWeightBias = maxWeightBias;
-      maxWeightBias = b;
-    } else if (b > secondMaxWeightBias) {
-      secondMaxWeightBias = b;
+  // Issue #1521: Try WASM/SIMD for batch weight/bias statistics
+  let maxWeightBias: number;
+  let secondMaxWeightBias: number;
+  let totalWeightBias: number;
+  let countWeightBias: number;
+
+  const weights = extractWeights(creature);
+  const biases = extractBiases(creature);
+  const wasmResult = wasmComputeScoreComponents(weights, biases);
+
+  if (wasmResult) {
+    totalWeightBias = wasmResult.totalWeightBias;
+    countWeightBias = wasmResult.countWeightBias;
+    maxWeightBias = wasmResult.maxWeightBias;
+    secondMaxWeightBias = wasmResult.secondMaxWeightBias;
+  } else {
+    // Fallback: compute in TypeScript
+    maxWeightBias = 0;
+    secondMaxWeightBias = 0;
+    totalWeightBias = 0;
+    countWeightBias = 0;
+
+    // Iterate over synapses to gather weight statistics
+    const synapses = creature.synapses;
+    for (let i = 0, len = synapses.length; i < len; i++) {
+      const synapse = synapses[i];
+      assert(
+        Number.isFinite(synapse.weight),
+        `Weight: ${synapse.weight} is not finite`,
+      );
+      const w = Math.abs(synapse.weight);
+      if (w > maxWeightBias) {
+        secondMaxWeightBias = maxWeightBias;
+        maxWeightBias = w;
+      } else if (w > secondMaxWeightBias) {
+        secondMaxWeightBias = w;
+      }
+      totalWeightBias += w;
+      countWeightBias++;
     }
-    totalWeightBias += b;
-    countWeightBias++;
+
+    // Iterate over non-input neurons to gather bias statistics
+    for (let indx = creature.input; indx < endIndex; indx++) {
+      const neuron = neurons[indx];
+      assert(
+        Number.isFinite(neuron.bias),
+        `Bias: ${neuron.bias} is not finite`,
+      );
+      const b = Math.abs(neuron.bias);
+      if (b > maxWeightBias) {
+        secondMaxWeightBias = maxWeightBias;
+        maxWeightBias = b;
+      } else if (b > secondMaxWeightBias) {
+        secondMaxWeightBias = b;
+      }
+      totalWeightBias += b;
+      countWeightBias++;
+    }
   }
 
   assert(countWeightBias > 0, "Count is 0");
@@ -443,6 +497,7 @@ interface MaxScanResult {
  * weight change when the old value was the previous maximum.
  * Issue #1045: Helper for incremental updates.
  * Issue #1442: Also returns secondMax to avoid future full scans.
+ * Issue #1521: Uses WASM/SIMD when available.
  *
  * @param creature - The creature
  * @param oldWeight - The previous weight (being replaced)
@@ -454,11 +509,28 @@ function scanMaxForWeightChange(
   oldWeight: number,
   newWeight: number,
 ): MaxScanResult {
+  // Issue #1521: Try WASM scan
+  const synapses = creature.synapses;
+  const excludeIdx = synapses.findIndex((s) => s.weight === oldWeight);
+  if (excludeIdx >= 0) {
+    const weights = extractWeights(creature);
+    const biases = extractBiases(creature);
+    const wasmResult = wasmScanMaxWeight(
+      weights,
+      biases,
+      excludeIdx,
+      newWeight,
+    );
+    if (wasmResult) {
+      return { max: wasmResult.max, secondMax: wasmResult.secondMax };
+    }
+  }
+
+  // Fallback: TypeScript scan
   let max = Math.abs(newWeight);
   let secondMax = 0;
 
   // Check all synapses
-  const synapses = creature.synapses;
   for (let i = 0, len = synapses.length; i < len; i++) {
     const w = synapses[i].weight;
     // Skip the synapse with the old weight (it's being replaced)
@@ -492,6 +564,7 @@ function scanMaxForWeightChange(
  * bias change when the old value was the previous maximum.
  * Issue #1045: Helper for incremental updates.
  * Issue #1442: Also returns secondMax to avoid future full scans.
+ * Issue #1521: Uses WASM/SIMD when available.
  *
  * @param creature - The creature
  * @param oldBias - The previous bias (being replaced)
@@ -503,6 +576,21 @@ function scanMaxForBiasChange(
   oldBias: number,
   newBias: number,
 ): MaxScanResult {
+  // Issue #1521: Try WASM scan
+  const neurons = creature.neurons;
+  const biasOffset = neurons.slice(creature.input).findIndex((n) =>
+    n.bias === oldBias
+  );
+  if (biasOffset >= 0) {
+    const weights = extractWeights(creature);
+    const biases = extractBiases(creature);
+    const wasmResult = wasmScanMaxBias(weights, biases, biasOffset, newBias);
+    if (wasmResult) {
+      return { max: wasmResult.max, secondMax: wasmResult.secondMax };
+    }
+  }
+
+  // Fallback: TypeScript scan
   let max = Math.abs(newBias);
   let secondMax = 0;
 
@@ -519,7 +607,6 @@ function scanMaxForBiasChange(
   }
 
   // Check all non-input neuron biases
-  const neurons = creature.neurons;
   for (let i = creature.input, len = neurons.length; i < len; i++) {
     const b = neurons[i].bias;
     // Skip the neuron with the old bias (it's being replaced)

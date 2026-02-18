@@ -277,6 +277,27 @@ let accumulateBiasPersistent8WayFn:
   ) => void)
   | null = null;
 
+// Issue #1521 - Score scan function pointers
+let computeScoreComponentsFn:
+  | ((weights: Float64Array, biases: Float64Array) => Float64Array)
+  | null = null;
+let scanMaxWeightFn:
+  | ((
+    weights: Float64Array,
+    biases: Float64Array,
+    excludeIdx: number,
+    newWeight: number,
+  ) => Float64Array)
+  | null = null;
+let scanMaxBiasFn:
+  | ((
+    weights: Float64Array,
+    biases: Float64Array,
+    excludeIdx: number,
+    newBias: number,
+  ) => Float64Array)
+  | null = null;
+
 // ---------------------------------------------------------------------------
 // Helpers to populate function pointers from a module
 // ---------------------------------------------------------------------------
@@ -322,6 +343,10 @@ function assignFunctionPointers(module: WasmModule): void {
   accumulateWeightPersistent8WayFn = module.accumulate_weight_persistent_8way;
   accumulateBiasPersistent4WayFn = module.accumulate_bias_persistent_4way;
   accumulateBiasPersistent8WayFn = module.accumulate_bias_persistent_8way;
+  // Issue #1521 - Score scan functions
+  computeScoreComponentsFn = module.compute_score_components;
+  scanMaxWeightFn = module.scan_max_weight;
+  scanMaxBiasFn = module.scan_max_bias;
 }
 
 // ---------------------------------------------------------------------------
@@ -571,4 +596,17 @@ export function getAccumulateBiasPersistent4WayFn(): typeof accumulateBiasPersis
 
 export function getAccumulateBiasPersistent8WayFn(): typeof accumulateBiasPersistent8WayFn {
   return accumulateBiasPersistent8WayFn;
+}
+
+// Issue #1521 - Score scan function pointer getters
+export function getComputeScoreComponentsFn(): typeof computeScoreComponentsFn {
+  return computeScoreComponentsFn;
+}
+
+export function getScanMaxWeightFn(): typeof scanMaxWeightFn {
+  return scanMaxWeightFn;
+}
+
+export function getScanMaxBiasFn(): typeof scanMaxBiasFn {
+  return scanMaxBiasFn;
 }
