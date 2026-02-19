@@ -2,6 +2,7 @@
  * WASM Compilation Cache Tests
  *
  * Issue #1301 - Performance: WASM creature compilation caching
+ * Issue #1539 - Perf: O(1) LRU eviction and buffer pooling
  *
  * These tests verify:
  * 1. Cache returns same module for creatures with identical topologies
@@ -9,6 +10,9 @@
  * 3. LRU eviction works correctly when cache is full
  * 4. Cache invalidation works on structural mutations
  * 5. Cache hit/miss statistics are tracked correctly
+ * 6. LRU eviction order is correct (evicts least recently used, not arbitrary)
+ * 7. Repeated cache hits produce correct activation results
+ * 8. Reducing cache size triggers correct eviction count
  */
 
 import {
@@ -300,6 +304,136 @@ Deno.test("WasmCompilationCache: cache statistics track correctly", () => {
 
   creature.dispose();
   clone.dispose();
+});
+
+Deno.test("WasmCompilationCache: LRU evicts correct entry after access reorder", () => {
+  clearWasmCompilationCache();
+  const originalSize = setWasmCompilationCacheSize(3);
+
+  try {
+    // Create 4 creatures with different topologies (A, B, C, D)
+    const creatures = [
+      createTestCreature(3, 2, [{ count: 2, squash: "TANH" }]), // A
+      createTestCreature(3, 2, [{ count: 3, squash: "TANH" }]), // B
+      createTestCreature(3, 2, [{ count: 4, squash: "TANH" }]), // C
+      createTestCreature(3, 2, [{ count: 5, squash: "TANH" }]), // D
+    ];
+
+    // Insert A, B, C (fills cache to capacity)
+    getOrCompileWasmModule(creatures[0]); // A (miss)
+    getOrCompileWasmModule(creatures[1]); // B (miss)
+    getOrCompileWasmModule(creatures[2]); // C (miss)
+
+    // Access A again, making B the least recently used
+    getOrCompileWasmModule(creatures[0]); // A (hit — moves to MRU)
+
+    let stats = getWasmCompilationCacheStats();
+    assertEquals(stats.hits, 1, "Should have 1 hit after re-accessing A");
+    assertEquals(stats.size, 3, "Cache should still have 3 entries");
+
+    // Insert D — should evict B (the LRU), not A or C
+    getOrCompileWasmModule(creatures[3]); // D (miss — triggers eviction)
+
+    stats = getWasmCompilationCacheStats();
+    assertEquals(stats.evictions, 1, "Should have 1 eviction");
+    assertEquals(stats.size, 3, "Cache should still have 3 entries");
+
+    // B was evicted, so accessing it should be a miss
+    const prevMisses = stats.misses;
+    getOrCompileWasmModule(creatures[1]); // B (miss — was evicted)
+
+    stats = getWasmCompilationCacheStats();
+    assertEquals(
+      stats.misses,
+      prevMisses + 1,
+      "B should be a cache miss (was evicted)",
+    );
+
+    // A should still be cached (it was accessed recently)
+    const prevHits = stats.hits;
+    getOrCompileWasmModule(creatures[0]); // A (hit — still cached)
+
+    stats = getWasmCompilationCacheStats();
+    assertEquals(stats.hits, prevHits + 1, "A should still be cached");
+
+    for (const creature of creatures) {
+      creature.dispose();
+    }
+  } finally {
+    setWasmCompilationCacheSize(originalSize);
+  }
+});
+
+Deno.test("WasmCompilationCache: repeated hits produce correct activation results", () => {
+  clearWasmCompilationCache();
+
+  const creature = createTestCreature(3, 2, [{ count: 4, squash: "TANH" }]);
+  const input = new Float32Array([0.5, -0.3, 0.8]);
+
+  // First activation (cache miss)
+  const module1 = getOrCompileWasmModule(creature);
+  assertExists(module1, "First module should exist");
+  const output1 = module1.activate(input);
+
+  // Second activation (cache hit — uses buffer from pool or fresh copy)
+  const module2 = getOrCompileWasmModule(creature);
+  assertExists(module2, "Second module should exist");
+  const output2 = module2.activate(input);
+
+  // Third activation (cache hit — may reuse pooled buffer)
+  const module3 = getOrCompileWasmModule(creature);
+  assertExists(module3, "Third module should exist");
+  const output3 = module3.activate(input);
+
+  // All activations with same creature and input should produce identical output
+  assertEquals(output1.length, output2.length, "Output lengths should match");
+  assertEquals(output2.length, output3.length, "Output lengths should match");
+  for (let i = 0; i < output1.length; i++) {
+    assertEquals(
+      output1[i],
+      output2[i],
+      `Output[${i}] should match between 1st and 2nd activation`,
+    );
+    assertEquals(
+      output2[i],
+      output3[i],
+      `Output[${i}] should match between 2nd and 3rd activation`,
+    );
+  }
+
+  module1.free();
+  module2.free();
+  module3.free();
+  creature.dispose();
+});
+
+Deno.test("WasmCompilationCache: reducing cache size triggers correct evictions", () => {
+  clearWasmCompilationCache();
+
+  // Fill cache with 5 entries
+  const creatures = [];
+  for (let i = 0; i < 5; i++) {
+    const c = createTestCreature(3, 2, [{ count: 2 + i, squash: "TANH" }]);
+    creatures.push(c);
+    getOrCompileWasmModule(c);
+  }
+
+  let stats = getWasmCompilationCacheStats();
+  assertEquals(stats.size, 5, "Cache should have 5 entries");
+  assertEquals(stats.evictions, 0, "No evictions yet");
+
+  // Reduce cache size to 2 — should trigger 3 evictions
+  setWasmCompilationCacheSize(2);
+
+  stats = getWasmCompilationCacheStats();
+  assertEquals(stats.size, 2, "Cache should have 2 entries after resize");
+  assertEquals(stats.evictions, 3, "Should have 3 evictions from resize");
+
+  // Restore default and clean up
+  setWasmCompilationCacheSize(100);
+  for (const creature of creatures) {
+    creature.dispose();
+  }
 });
 
 Deno.test("WasmCompilationCache: works with minimal creatures", () => {
