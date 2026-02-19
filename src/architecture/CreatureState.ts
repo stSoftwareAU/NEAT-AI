@@ -48,6 +48,24 @@ export class NeuronState implements NeuronStateInterface {
   }
 
   /**
+   * Resets all fields to their default values in place,
+   * avoiding the need to allocate a new NeuronState object.
+   * Issue #1537: In-place reset for flat array storage.
+   */
+  reset() {
+    this.count = 0;
+    this.totalBias = 0;
+    this.totalAdjustedBias = 0;
+    this.batchBias = undefined;
+    this.hintValue = 0;
+    this.maximumActivation = -Infinity;
+    this.minimumActivation = Infinity;
+    this.totalActivation = 0;
+    this.noChange = undefined;
+    this.totalErrorAbsolute = 0;
+  }
+
+  /**
    * Traces an activation value, updating the min/max and total.
    *
    * Issue #1314 - Non-finite activation values are skipped to prevent
@@ -72,7 +90,12 @@ export class NeuronState implements NeuronStateInterface {
 }
 
 export class CreatureState {
-  private nodeMap;
+  /**
+   * Pre-allocated flat array of NeuronState objects indexed by neuron position.
+   * Issue #1537: Replaces Map<number, NeuronState> for O(1) access without
+   * hashing overhead. Array elements are reset in place via NeuronState.reset().
+   */
+  private nodeArray: NeuronState[];
   private connectionMap;
   private creature;
   public activations: Float32Array = new Float32Array(0);
@@ -92,12 +115,16 @@ export class CreatureState {
 
   constructor(creature: Creature) {
     this.creature = creature;
-    this.nodeMap = new Map<number, NeuronState>();
+    const neuronCount = creature.neurons?.length ?? 0;
+    this.nodeArray = new Array<NeuronState>(neuronCount);
+    for (let i = 0; i < neuronCount; i++) {
+      this.nodeArray[i] = new NeuronState();
+    }
     this.connectionMap = new Map<number, Map<number, SynapseState>>();
     // Start with a reasonable default size that will auto-resize if needed.
     // The creature's neurons array may not be populated yet at construction time
     // (class properties are initialised before the constructor runs).
-    const initialCapacity = creature.neurons?.length ?? 16;
+    const initialCapacity = neuronCount || 16;
     this.cacheAdjustedActivation = new DenseNumberMap(initialCapacity);
   }
 
@@ -120,16 +147,14 @@ export class CreatureState {
   }
 
   node(indx: number): NeuronState {
-    const state = this.nodeMap.get(indx);
-
+    let state = this.nodeArray[indx];
     if (state !== undefined) {
       return state;
-    } else {
-      const tmpState = new NeuronState();
-
-      this.nodeMap.set(indx, tmpState);
-      return tmpState;
     }
+    // Grow the array if the index is beyond the pre-allocated size
+    state = new NeuronState();
+    this.nodeArray[indx] = state;
+    return state;
   }
 
   makeActivation(input: Float32Array, feedbackLoop: boolean): Float32Array {
@@ -153,9 +178,11 @@ export class CreatureState {
    */
   collectNeuronErrors(): Map<string, NeuronStateInterface> {
     const errors = new Map<string, NeuronStateInterface>();
-    for (const [indx, state] of this.nodeMap) {
-      if (state.totalErrorAbsolute > 0) {
-        const neuron = this.creature.neurons[indx];
+    const len = this.nodeArray.length;
+    for (let i = 0; i < len; i++) {
+      const state = this.nodeArray[i];
+      if (state !== undefined && state.totalErrorAbsolute > 0) {
+        const neuron = this.creature.neurons[i];
         if (neuron && neuron.uuid) {
           errors.set(neuron.uuid, state);
         }
@@ -166,7 +193,14 @@ export class CreatureState {
 
   clear() {
     this.preparedNeurons = false;
-    this.nodeMap.clear();
+    // Replace each NeuronState with a fresh instance rather than resetting
+    // in place. External code (e.g. traceJSON) may hold references to the
+    // old NeuronState objects and expects their accumulated values to remain.
+    // Issue #1537: Flat array still provides O(1) lookup without Map hashing.
+    const len = this.nodeArray.length;
+    for (let i = 0; i < len; i++) {
+      this.nodeArray[i] = new NeuronState();
+    }
     this.connectionMap.clear();
   }
 }
