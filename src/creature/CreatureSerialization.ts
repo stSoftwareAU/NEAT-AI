@@ -83,6 +83,11 @@ export function loadFrom(
   creature.uuid = (json as CreatureInternal).uuid;
   if (json.semanticVersion) {
     creature.semanticVersion = json.semanticVersion;
+    const major = Number.parseInt(
+      json.semanticVersion.split(".")[0] ?? "0",
+      10,
+    );
+    creature.cachedMajorVersion = Number.isFinite(major) ? major : 0;
   }
   creature.forwardOnly = (json as CreatureExport).forwardOnly;
 

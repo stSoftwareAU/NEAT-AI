@@ -135,6 +135,13 @@ export class Creature implements CreatureInternal {
   public cachedScoreComponents?: CachedScoreComponents;
   public topologyHash?: string;
 
+  /**
+   * Cached parsed major version number from semanticVersion.
+   * Issue #1535: Avoids re-parsing the version string on every activation.
+   * @internal
+   */
+  cachedMajorVersion: number;
+
   // WASM activation state (managed by CreatureActivation module)
   /** @internal */
   cachedWasmActivation?: WasmCreatureActivation;
@@ -142,6 +149,15 @@ export class Creature implements CreatureInternal {
   wasmEligibilityCache?: boolean;
 
   DEBUG: boolean = getGlobalDebug();
+
+  /**
+   * Whether this creature is guaranteed forward-only based on its
+   * semantic version (major >= 4) and forwardOnly flag.
+   * Issue #1535: Cached derivation avoids re-parsing semanticVersion per activation.
+   */
+  get forwardOnlyGuaranteed(): boolean {
+    return this.cachedMajorVersion >= 4 && this.forwardOnly === true;
+  }
 
   constructor(
     input: number,
@@ -160,7 +176,8 @@ export class Creature implements CreatureInternal {
       this.semanticVersion.split(".")[0] ?? "0",
       10,
     );
-    this.forwardOnly = Number.isFinite(major) && major >= 4 ? true : undefined;
+    this.cachedMajorVersion = Number.isFinite(major) ? major : 0;
+    this.forwardOnly = this.cachedMajorVersion >= 4 ? true : undefined;
 
     if (!options.lazyInitialization) {
       this.initialize(options);
