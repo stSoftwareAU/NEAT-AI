@@ -117,10 +117,9 @@ export function compileCreatureToWasm(
   // Write each non-input neuron
   for (let i = numInputs; i < numNeurons; i++) {
     const neuron = creature.neurons[i];
+    // Issue #1536: inwardConnections() returns results sorted by `from`,
+    // so no .slice().sort() is needed.
     const inwardList = creature.inwardConnections(i);
-
-    // Sort by from index for consistent ordering
-    const sortedInward = inwardList.slice().sort((a, b) => a.from - b.from);
 
     // Write bias (f64)
     view.setFloat64(offset, neuron.bias ?? 0, true);
@@ -137,11 +136,11 @@ export function compileCreatureToWasm(
     offset += 1;
 
     // Write num_synapses (u16)
-    view.setUint16(offset, sortedInward.length, true);
+    view.setUint16(offset, inwardList.length, true);
     offset += 2;
 
     // Write each synapse
-    for (const synapse of sortedInward) {
+    for (const synapse of inwardList) {
       // Write from_index (u16)
       view.setUint16(offset, synapse.from, true);
       offset += 2;

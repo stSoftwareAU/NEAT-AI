@@ -277,24 +277,23 @@ function applyWasmTraceData(
     const inwardList = creature.inwardConnections(neuronIdx);
     if (inwardList.length === 0) continue;
 
-    const sortedInward = inwardList.slice().sort((a, b) => a.from - b.from);
     const squash = neuron.squash ?? "IDENTITY";
 
     if (squash === "MINIMUM" || squash === "MAXIMUM") {
       const winningLocalIdx = Math.round(entry.traceInfo);
-      for (const c of sortedInward) {
+      for (const c of inwardList) {
         const cs = creature.state.connection(c.from, c.to);
         if (cs.used === undefined) cs.used = false;
       }
-      if (winningLocalIdx >= 0 && winningLocalIdx < sortedInward.length) {
-        const winningConnection = sortedInward[winningLocalIdx];
+      if (winningLocalIdx >= 0 && winningLocalIdx < inwardList.length) {
+        const winningConnection = inwardList[winningLocalIdx];
         creature.state.connection(winningConnection.from, winningConnection.to)
           .used = true;
       }
     } else if (squash === "IF") {
       const positiveBranch = entry.traceInfo > 0.5;
       if (positiveBranch) {
-        for (const c of sortedInward) {
+        for (const c of inwardList) {
           const cs = creature.state.connection(c.from, c.to);
           switch (c.type) {
             case "condition":
@@ -306,7 +305,7 @@ function applyWasmTraceData(
           }
         }
       } else {
-        for (const c of sortedInward) {
+        for (const c of inwardList) {
           if (c.type === "negative") {
             creature.state.connection(c.from, c.to).used = true;
           }
