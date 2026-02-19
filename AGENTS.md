@@ -52,6 +52,8 @@ src/                    # Source code
   compact/              # Network compaction and optimisation
   config/               # Configuration and options (NeatOptions, NeatConfig)
   costs/                # Cost/fitness functions
+  creature/             # Creature behaviour modules (activation, mutation, serialisation, training)
+  deprecated/           # Deprecated activation functions (HYPOT, HYPOTv2, MEAN)
   discovery/            # Discovery integration (Rust FFI bridge)
   errors/               # Error types
   intelligentDesign/    # Intelligent Design squash optimisation
@@ -162,7 +164,8 @@ This script runs the following steps by default:
 4. Checks bash script syntax
 5. Type-checks (`deno check`)
 6. Builds the Rust discovery library (if `../NEAT-AI-Discovery` exists)
-7. Runs all tests in parallel with leak detection
+7. Builds the WASM activation module (Rust build + tests)
+8. Runs all tests in parallel with leak detection
 
 ### Optional Flags
 
@@ -170,6 +173,7 @@ This script runs the following steps by default:
 ./quality.sh --help            # Show usage and step descriptions
 ./quality.sh --skip-tests      # Skip test execution
 ./quality.sh --skip-discovery  # Skip discovery library build and verification
+./quality.sh --skip-wasm       # Skip WASM activation module build
 ./quality.sh --lint-only       # Only run formatting + linting (includes bash check)
 ./quality.sh --check-only      # Only run type-checking (deno check)
 ./quality.sh --dry-run         # Show which steps would run without executing them

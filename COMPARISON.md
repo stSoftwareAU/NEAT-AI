@@ -509,8 +509,9 @@ algorithm instead of standard crossover.
 2. **Slower Convergence**: Evolutionary search is slower than pure gradient
    descent
 3. **Limited Scalability**: Struggles with very large networks. In production,
-   we're maxing out around 500 hidden neurons and 16,000 synapses. We're hoping
-   our new `discoveryDir` feature will help push past this limitation.
+   we're maxing out around 500 hidden neurons and 16,000 synapses. The
+   `discoveryDir` feature helps push past this by finding structural
+   improvements incrementally.
 4. **No Transfer Learning**: Each problem typically starts from scratch (see
    [Transfer Learning](#transfer-learning-support) section for explanation)
 5. **Sequential Processing**: Less efficient for pure parallel computation than

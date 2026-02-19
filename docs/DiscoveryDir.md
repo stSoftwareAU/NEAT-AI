@@ -116,17 +116,17 @@ discovery window is open:
    newest JSON files.
 2. Ensure liveness markers are updated (e.g. touching `.run.pid` each iteration)
    so orchestration can detect stalled workers.
-3. Launch the discovery scan with the desired overrides:
+3. Launch the discovery scan with the desired overrides (your own entry script):
 
    ```bash
    deno run \
      --v8-flags=--max-old-space-size=8192 \
      --allow-read --allow-write --allow-net --allow-ffi --allow-env \
-     src/Discovery/Scan.ts \
+     your-discovery-worker.ts \
      --directory="/srv/example.com/samples" \
      --dataDir="/srv/example.com/discovery-data" \
      --targetFile="/srv/example.com/outbox/${HOSTNAME}-${USER}.json" \
-    --discoveryRecordTimeOutMinutes=15 \
+     --discoveryRecordTimeOutMinutes=15 \
      --discoveryBatchSize=25 \
      --discoverySampleRate=0.01
    ```

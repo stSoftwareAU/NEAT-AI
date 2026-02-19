@@ -164,6 +164,8 @@ Data is transferred to GPU as:
 - `GpuHelpfulSample` - Activation and error pairs
 - Results returned as `HelpfulContribution` or `HarmfulContribution`
 
-## Date
+## History
 
-2 Jan 2025
+- **2 Jan 2025**: Initial GPU batching improvements for synapse evaluation.
+- GPU acceleration is actively maintained as part of the NEAT-AI-Discovery Rust
+  module.
