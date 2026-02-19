@@ -441,11 +441,9 @@ This is normal! Not every iteration finds an improvement:
 
 ### "Improvements make score worse"
 
-There's a bug in weight initialization (as of 23-Nov-2025):
-
-- Synapse candidates show -7.5% degradation
-- This is a known issue being investigated
-- The re-scoring phase should filter out degrading candidates automatically
+Occasionally a candidate that looked promising during analysis degrades when
+re-scored on the full dataset. The re-scoring phase automatically filters out
+degrading candidates, so no action is needed — the system self-corrects.
 
 ### "Analysis timing out"
 
@@ -480,6 +478,10 @@ Discovery will analyze these neurons first before doing weighted selection.
 
 ## See Also
 
-- `docs/DISCOVERY_API.md` - Programmatic API reference
-- `src/config/NeatOptions.ts` - All configuration options
-- `test/ErrorGuidedStructuralEvolution/` - Example test code
+- [API Reference — Discovery](API_REFERENCE.md#7-discovery-api) — Programmatic
+  API reference
+- [DiscoveryDir Integration Guide](DiscoveryDir.md) — Technical API reference
+  for `Creature.discoveryDir()`
+- [Configuration Guide — Discovery](CONFIGURATION_GUIDE.md#discovery-parameters)
+  — All discovery configuration options
+- `src/config/NeatOptions.ts` — All configuration options (source of truth)

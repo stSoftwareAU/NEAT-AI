@@ -131,7 +131,8 @@ The quality gate runs:
 4. Bash script syntax checks
 5. Type checking (`deno check`)
 6. Discovery library build (if `../NEAT-AI-Discovery` exists)
-7. All tests in parallel with leak detection
+7. WASM activation module build (Rust build + tests)
+8. All tests in parallel with leak detection
 
 Keep running `./quality.sh` until it passes cleanly.
 
@@ -357,14 +358,19 @@ For the complete set of conventions, see [AGENTS.md](./AGENTS.md).
 ```
 src/                    # Source code
   architecture/         # Core neural network architecture
+  breed/                # Crossover and breeding algorithms
+  compact/              # Network compaction and optimisation
   config/               # Configuration and options
   costs/                # Cost/fitness functions
+  creature/             # Creature behaviour modules
   discovery/            # Discovery integration (Rust FFI bridge)
   errors/               # Error types
+  intelligentDesign/    # Intelligent Design squash optimisation
   methods/              # Activation functions (squash implementations)
   mutate/               # Mutation operators
   NEAT/                 # Core NEAT algorithm
   propagate/            # Backpropagation
+  wasm/                 # WASM activation bridge
 test/                   # Tests (mirrors src/ structure)
 bench/                  # Benchmarks
 docs/                   # Extended documentation

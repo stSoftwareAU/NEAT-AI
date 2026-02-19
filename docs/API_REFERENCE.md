@@ -171,31 +171,31 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 
 #### Core Fields
 
-| Field            | Type                  | Default        | Description                              |
-| ---------------- | --------------------- | -------------- | ---------------------------------------- |
-| `costName`       | `CostName`            | `"MSE"`        | Cost function name                       |
-| `populationSize` | `number`              | `50`           | Target population size                   |
-| `iterations`     | `number`              | `1000`         | Maximum evolution generations            |
-| `targetError`    | `number`              | `0.05`         | Stop when error falls below this         |
-| `mutationRate`   | `number`              | `0.5`          | Probability of mutation (0–1)            |
-| `mutationAmount` | `number`              | `1`            | Mutation magnitude scale                 |
-| `elitism`        | `number`              | `0.2`          | Fraction of top performers to retain     |
-| `selection`      | `SelectionInterface`  | `TOURNAMENT`   | Selection strategy                       |
-| `mutation`       | `MutationInterface[]` | `Mutation.FFW` | Allowed mutation types                   |
-| `threads`        | `number`              | `1`            | Worker threads for parallel evaluation   |
-| `verbose`        | `boolean`             | `false`        | Enable debug logging                     |
-| `log`            | `number`              | `100`          | Log status every N generations (0 = off) |
+| Field            | Type                  | Default                         | Description                                                |
+| ---------------- | --------------------- | ------------------------------- | ---------------------------------------------------------- |
+| `costName`       | `CostName`            | `"MSE"`                         | Cost function name                                         |
+| `populationSize` | `number`              | `50`                            | Target population size (min: 2)                            |
+| `iterations`     | `number`              | `MAX_SAFE_INTEGER`              | Maximum evolution generations                              |
+| `targetError`    | `number`              | `0.05`                          | Stop when error falls below this (0–1)                     |
+| `mutationRate`   | `number`              | `0.3`                           | Probability of mutation (>0.001)                           |
+| `mutationAmount` | `number`              | `1`                             | Number of changes per gene during mutation (min: 1)        |
+| `elitism`        | `number`              | `1`                             | Top-performing creatures retained each generation (min: 1) |
+| `selection`      | `SelectionInterface`  | Random                          | Selection strategy (randomly chosen each run)              |
+| `mutation`       | `MutationInterface[]` | `Mutation.FFW`                  | Allowed mutation types                                     |
+| `threads`        | `number`              | `navigator.hardwareConcurrency` | Worker threads for parallel evaluation                     |
+| `verbose`        | `boolean`             | `false`                         | Enable debug logging                                       |
+| `log`            | `number`              | `0`                             | Log status every N generations (0 = off, 1 if verbose)     |
 
 #### Training Fields
 
-| Field                          | Type     | Default | Description                                |
-| ------------------------------ | -------- | ------- | ------------------------------------------ |
-| `trainPerGen`                  | `number` | `1`     | Backpropagation iterations per generation  |
-| `trainingBatchSize`            | `number` | `32`    | Samples per training batch                 |
-| `trainingSampleRate`           | `number` | `1.0`   | Fraction of data used per training pass    |
-| `maximumBiasAdjustmentScale`   | `number` | `10`    | Max bias change per backpropagation step   |
-| `maximumWeightAdjustmentScale` | `number` | `10`    | Max weight change per backpropagation step |
-| `sparseRatio`                  | `number` | `0.2`   | Neuron selection ratio for sparse updates  |
+| Field                          | Type     | Default           | Description                                |
+| ------------------------------ | -------- | ----------------- | ------------------------------------------ |
+| `trainPerGen`                  | `number` | `1`               | Backpropagation iterations per generation  |
+| `trainingBatchSize`            | `number` | `100`             | Samples per training batch                 |
+| `trainingSampleRate`           | `number` | `1.0`             | Fraction of data used per training pass    |
+| `maximumBiasAdjustmentScale`   | `number` | `1`               | Max bias change per backpropagation step   |
+| `maximumWeightAdjustmentScale` | `number` | `1`               | Max weight change per backpropagation step |
+| `sparseRatio`                  | `number` | `random * random` | Neuron selection ratio for sparse updates  |
 
 #### Network Constraints
 
@@ -213,19 +213,19 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 | `discoverySampleRate`             | `number` | `0.2`   | Fraction of data for discovery (20%)         |
 | `discoveryRecordTimeOutMinutes`   | `number` | `5`     | Minutes for discovery recording phase        |
 | `discoveryAnalysisTimeoutMinutes` | `number` | `10`    | Minutes for discovery analysis               |
-| `discoveryBatchSize`              | `number` | `256`   | Samples per discovery analysis batch         |
+| `discoveryBatchSize`              | `number` | `128`   | Samples per discovery analysis batch         |
 | `discoveryMaxNeurons`             | `number` | `6`     | Max neurons analysed per discovery iteration |
 
 #### Evolution Fields
 
-| Field                             | Type     | Default | Description                                    |
-| --------------------------------- | -------- | ------- | ---------------------------------------------- |
-| `timeoutMinutes`                  | `number` | `0`     | Evolution timeout (0 = unlimited)              |
-| `focusRate`                       | `number` | `0`     | Attention weight for focus list observations   |
-| `globalBreedingRate`              | `number` | `0.5`   | Cross-species vs within-species breeding ratio |
-| `geneticCompatibilityThreshold`   | `number` | `1.3`   | Genetic distance threshold for speciation      |
-| `creativeThinkingConnectionCount` | `number` | `1`     | New connections during creative thinking       |
-| `dataSetPartitionBreak`           | `number` | `2000`  | Records per dataset file partition             |
+| Field                             | Type     | Default  | Description                                    |
+| --------------------------------- | -------- | -------- | ---------------------------------------------- |
+| `timeoutMinutes`                  | `number` | `0`      | Evolution timeout (0 = unlimited)              |
+| `focusRate`                       | `number` | `0.25`   | Attention weight for focus list observations   |
+| `globalBreedingRate`              | `number` | `random` | Cross-species vs within-species breeding ratio |
+| `geneticCompatibilityThreshold`   | `number` | `0.3`    | Genetic distance threshold for speciation      |
+| `creativeThinkingConnectionCount` | `number` | `1`      | New connections during creative thinking       |
+| `dataSetPartitionBreak`           | `number` | `2000`   | Records per dataset file partition             |
 
 #### Reproducibility Fields
 
@@ -315,8 +315,8 @@ used internally after defaults are applied.
 | Field                    | Type     | Default | Description                                 |
 | ------------------------ | -------- | ------- | ------------------------------------------- |
 | `minPopulationFraction`  | `number` | `0.1`   | Minimum population fraction for fine-tuning |
-| `maxPopulationFraction`  | `number` | `0.5`   | Maximum population fraction for fine-tuning |
-| `basePopulationFraction` | `number` | `0.3`   | Base population fraction                    |
+| `maxPopulationFraction`  | `number` | `0.4`   | Maximum population fraction for fine-tuning |
+| `basePopulationFraction` | `number` | `0.2`   | Base population fraction                    |
 | `successRateWindow`      | `number` | `10`    | Window for success rate tracking            |
 
 ##### `adaptiveMutationThresholds` — AdaptiveMutationThresholds
@@ -331,7 +331,7 @@ used internally after defaults are applied.
 
 ## 3. Activation Functions
 
-NEAT-AI provides 37 activation functions (called "squash" functions). The
+NEAT-AI provides 38 activation functions (called "squash" functions). The
 library uses WASM for all activation computation.
 
 ```typescript
@@ -379,7 +379,10 @@ Higher priority means more likely to be selected.
 | **BIPOLAR**         |    0     | {-1, 1}        | Binary symmetric threshold                |
 | **HYPOT**           |    0     | Special        | Euclidean distance                        |
 | **HYPOTv2**         |    0     | Special        | Euclidean distance (variant)              |
+| **SQRT**            |    1     | [0, +Inf)      | Square root transform                     |
+| **SQUARE**          |    1     | [0, +Inf)      | Quadratic transform                       |
 | **MAXIMUM**         |    0     | Special        | Max of inputs                             |
+| **MEAN**            |    0     | (-Inf, +Inf)   | Mean of inputs (deprecated)               |
 | **MINIMUM**         |    0     | Special        | Min of inputs                             |
 
 For detailed backpropagation strategy notes, see
@@ -541,7 +544,7 @@ const options: NeatOptions = {
   iterations: 500,
   targetError: 0.01,
   mutationRate: 0.3,
-  elitism: 0.2,
+  elitism: 2,
   threads: 4,
   seed: 42, // Reproducible evolution
 };
@@ -622,7 +625,7 @@ Discovery is configured via `NeatOptions` fields:
 - `discoverySampleRate` (default `0.2`): Fraction of training data used
 - `discoveryRecordTimeOutMinutes` (default `5`): Recording phase timeout
 - `discoveryAnalysisTimeoutMinutes` (default `10`): Analysis phase timeout
-- `discoveryBatchSize` (default `256`): Samples per batch
+- `discoveryBatchSize` (default `128`): Samples per batch
 - `discoveryMaxNeurons` (default `6`): Max neurons per iteration
 
 ### DiscoveryEvaluationSummary
@@ -833,6 +836,28 @@ const result = await creature.evolveDir("./data", {
 Workers handle evaluation, training, discovery, and breeding in parallel. If a
 worker fails to initialise (e.g. in restricted environments), it falls back to
 direct (in-process) execution automatically.
+
+### WASM Cache Control
+
+The library caches compiled WASM network instances for performance. Control the
+cache size to manage memory:
+
+```typescript
+import {
+  getCachedWasmActivationCount,
+  getMaxCachedWasmCreatureActivations,
+  setMaxCachedWasmCreatureActivations,
+} from "@stsoftware/neat-ai";
+
+// Check current cache usage
+const count = getCachedWasmActivationCount();
+
+// Get the maximum cache size (default: 512)
+const max = getMaxCachedWasmCreatureActivations();
+
+// Reduce cache size if memory is tight
+setMaxCachedWasmCreatureActivations(256);
+```
 
 ---
 

@@ -89,9 +89,12 @@ This README captures:
 | HYPOT           | ❌         | ⚠️ Conditional                      | ⚠️ Inversion unknown           |   ⬇ 0    | 🟰 Either      | ❌ Not suitable as squash; expensive and odd behaviour                                           | ❓   |
 | HYPOTv2         | ❌         | ⚠️ Same                             | ⚠️ Same                        |   ⬇ 0    | 🟰 Either      | ❌ Not suitable as squash; expensive and odd behaviour                                           | ❓   |
 | MAXIMUM         | ❌         | ❌ Flat in some regions             | ⚠️ Needs guessing              |   ⬇ 0    | 🟰 Either      | ❌ Flat plateaus, no gradient flow                                                               | ❓   |
+| MEAN            | ❌         | ❌ Multi-input mean                 | ❌ Not invertible              |   ⬇ 0    | 🔍 Foggy       | ❌ Deprecated — a normal neuron can replicate this behaviour. `mutationProbability = 0`.         | ❓   |
 | MINIMUM         | ❌         | ❌ Flat                             | ⚠️ Needs guessing              |   ⬇ 0    | 🟰 Either      | ❌ Flat plateaus, no gradient flow                                                               | ❓   |
-| BIPOLAR         | ❌         | ❌ Often flat                       | ⚠️ Roughly invertible          |   ⬇ 0    | 🟰 Either      | ❌ Harsh transition, poor learning, rarely used in practice                                      | 🟩   |
+| SQRT            | ✅         | ⚠️ Slope infinite at 0              | ✅ Square to invert            |    1     | 🟰 Either      | Use derivative when x > 0; fallback to unSquash near zero. Safe zone fades outside [0.01, 10].   | 🟩   |
+| SQUARE          | ✅         | ⚠️ Slope zero at x=0                | ✅ Square root to invert       |    1     | 🟰 Either      | Use derivative when abs(x) > 0; fallback near zero. Safe zone fades outside [-5, 5].             | 🟩   |
 | BIPOLAR_SIGMOID | ✅         | ✅ Stable in center, fades at edges | ✅ Invertible                  |    1     | 🟰 Either      | Use derivative for mid-range; fallback to unSquash + clamp to avoid huge errors near ±1.         | 🟩   |
+| BIPOLAR         | ❌         | ❌ Often flat                       | ⚠️ Roughly invertible          |   ⬇ 0    | 🟰 Either      | ❌ Harsh transition, poor learning, rarely used in practice                                      | 🟩   |
 
 ---
 
