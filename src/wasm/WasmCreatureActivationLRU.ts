@@ -13,21 +13,36 @@
  * - We only keep `WeakRef`s to avoid preventing GC.
  * - Eviction is conservative and only runs when the configured cap is exceeded.
  * - Evicting a creature's cached activation is safe: it is recreated lazily on next use.
+ *
+ * Issue #1534: Uses a doubly-linked list + Map for O(1) lookup, insertion,
+ * move-to-head, and tail eviction — replacing the previous O(n) linear scan.
  */
 
 import type { Creature } from "../Creature.ts";
 
-interface LruEntry {
+/** A node in the doubly-linked LRU list. */
+interface LruNode {
+  readonly id: number;
   ref: WeakRef<Creature>;
-  lastAccess: number;
+  prev: LruNode | null;
+  next: LruNode | null;
 }
 
+/** Sentinel head node — most recently used entries are near the head. */
+let head: LruNode | null = null;
+/** Sentinel tail node — least recently used entries are at the tail. */
+let tail: LruNode | null = null;
+
 const finaliser = new FinalizationRegistry<number>((id) => {
-  entries.delete(id);
+  const node = nodeById.get(id);
+  if (node) {
+    removeNode(node);
+    nodeById.delete(id);
+  }
 });
 
 const idByCreature = new WeakMap<Creature, number>();
-const entries = new Map<number, LruEntry>();
+const nodeById = new Map<number, LruNode>();
 let nextId = 1;
 
 // Default cap: keep memory bounded for inference/data-gen workloads without
@@ -44,38 +59,72 @@ function getOrAssignId(creature: Creature): number {
   return id;
 }
 
+/** Remove a node from the doubly-linked list (O(1)). */
+function removeNode(node: LruNode): void {
+  const prev = node.prev;
+  const next = node.next;
+
+  if (prev) {
+    prev.next = next;
+  } else {
+    head = next;
+  }
+
+  if (next) {
+    next.prev = prev;
+  } else {
+    tail = prev;
+  }
+
+  node.prev = null;
+  node.next = null;
+}
+
+/** Move/insert a node to the head of the list (most recently used). */
+function moveToHead(node: LruNode): void {
+  // Already at head — nothing to do.
+  if (head === node) return;
+
+  // Unlink from current position if already in the list.
+  if (node.prev || node.next || tail === node) {
+    removeNode(node);
+  }
+
+  // Insert at head.
+  node.next = head;
+  node.prev = null;
+  if (head) {
+    head.prev = node;
+  }
+  head = node;
+
+  if (!tail) {
+    tail = node;
+  }
+}
+
+/** Evict the tail (oldest) entry, calling disposeWasm on it. Returns true if evicted. */
+function evictTail(): boolean {
+  if (!tail) return false;
+
+  const node = tail;
+  removeNode(node);
+  nodeById.delete(node.id);
+
+  const creature = node.ref.deref();
+  if (!creature) return true;
+
+  try {
+    creature.disposeWasm();
+  } catch {
+    // Best-effort eviction; ignore failures.
+  }
+  return true;
+}
+
 function evictIfNeeded(): void {
-  while (entries.size > maxCachedWasmActivations) {
-    let oldestId: number | null = null;
-    let oldestTime = Infinity;
-
-    for (const [id, entry] of entries) {
-      if (entry.lastAccess < oldestTime) {
-        oldestTime = entry.lastAccess;
-        oldestId = id;
-      }
-    }
-
-    if (oldestId === null) return;
-
-    const entry = entries.get(oldestId);
-    if (!entry) {
-      entries.delete(oldestId);
-      continue;
-    }
-
-    const creature = entry.ref.deref();
-    entries.delete(oldestId);
-
-    if (!creature) {
-      continue;
-    }
-
-    try {
-      creature.disposeWasm();
-    } catch {
-      // Best-effort eviction; ignore failures.
-    }
+  while (nodeById.size > maxCachedWasmActivations) {
+    if (!evictTail()) return;
   }
 }
 
@@ -100,13 +149,29 @@ export function getMaxCachedWasmCreatureActivations(): number {
  * Record usage of a creature's cached WASM activation and evict if needed.
  *
  * Call this after a creature successfully acquires/uses `cachedWasmActivation`.
+ *
+ * Issue #1534: When the entry already exists, moves the node to the head in O(1)
+ * without allocating a new object or WeakRef.
  */
 export function noteWasmCreatureActivationUse(creature: Creature): void {
   const id = getOrAssignId(creature);
-  entries.set(id, {
-    ref: new WeakRef(creature),
-    lastAccess: performance.now(),
-  });
+
+  const existing = nodeById.get(id);
+  if (existing) {
+    // Move existing entry to head — no allocation needed.
+    moveToHead(existing);
+  } else {
+    // New entry: create node, insert at head.
+    const node: LruNode = {
+      id,
+      ref: new WeakRef(creature),
+      prev: null,
+      next: null,
+    };
+    nodeById.set(id, node);
+    moveToHead(node);
+  }
+
   evictIfNeeded();
 }
 
@@ -117,7 +182,7 @@ export function noteWasmCreatureActivationUse(creature: Creature): void {
  * and to verify that ephemeral activations do not inflate the cache.
  */
 export function getCachedWasmActivationCount(): number {
-  return entries.size;
+  return nodeById.size;
 }
 
 /**
@@ -127,29 +192,7 @@ export function getCachedWasmActivationCount(): number {
  */
 export function evictOldestWasmCreatureActivations(count: number): void {
   const target = Math.max(0, Math.floor(count));
-  if (target === 0) return;
-
-  for (let i = 0; i < target && entries.size > 0; i++) {
-    let oldestId: number | null = null;
-    let oldestTime = Infinity;
-
-    for (const [id, entry] of entries) {
-      if (entry.lastAccess < oldestTime) {
-        oldestTime = entry.lastAccess;
-        oldestId = id;
-      }
-    }
-
-    if (oldestId === null) return;
-
-    const entry = entries.get(oldestId);
-    entries.delete(oldestId);
-    const creature = entry?.ref.deref();
-    if (!creature) continue;
-    try {
-      creature.disposeWasm();
-    } catch {
-      // Ignore
-    }
+  for (let i = 0; i < target; i++) {
+    if (!evictTail()) return;
   }
 }
