@@ -9,6 +9,7 @@ import type { TrainOptions } from "../config/TrainOptions.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import {
+  type BackPropagationArguments,
   calculateLearningRate,
   createBackPropagationConfig,
   type ErrorFeedback,
@@ -194,6 +195,13 @@ function trainDirBinary(
     outgoingSynapsesMap,
   );
 
+  // Issue #1540: Pre-allocate a mutable iteration config and update in place
+  // each iteration, avoiding Object.freeze + spread allocation per iteration.
+  const iterationConfig: BackPropagationArguments = { ...backPropConfig };
+
+  // Issue #1540: Scratch buffer for index shuffling, reused across files.
+  let scratchIndexes: Int32Array | null = null;
+
   while (true) {
     // Issue #1388: Pass error feedback to the adaptive learning rate strategy.
     const errorFeedback: ErrorFeedback | undefined =
@@ -210,11 +218,9 @@ function trainDirBinary(
     iteration++;
     const startTS = Date.now();
     let lastTS = startTS;
-    const iterationConfig = createBackPropagationConfig({
-      ...backPropConfig,
-      generations: backPropConfig.generations + iteration,
-      learningRate: currentLearningRate, // Use dynamic learning rate
-    });
+    // Issue #1540: Mutate in place instead of creating a frozen copy.
+    iterationConfig.generations = backPropConfig.generations + iteration;
+    iterationConfig.learningRate = currentLearningRate;
 
     let counter = 0;
     let totalRecords = 0;
@@ -238,22 +244,27 @@ function trainDirBinary(
           }
           const len = Math.ceil(fileRecords * trainingSampleRate);
 
-          // Pre-allocate array and use direct assignment instead of Int32Array.from
-          const tmpIndexes = new Int32Array(fileRecords);
+          // Issue #1540: Reuse scratch buffer across files to avoid
+          // allocating a new Int32Array per file.
+          if (!scratchIndexes || scratchIndexes.length < fileRecords) {
+            scratchIndexes = new Int32Array(fileRecords);
+          }
           for (let i = 0; i < fileRecords; i++) {
-            tmpIndexes[i] = i;
+            scratchIndexes[i] = i;
           }
 
+          // Use a subarray view of the exact file size for shuffling
+          const indexView = scratchIndexes.subarray(0, fileRecords);
+
           if (!options.disableRandomSamples && !feedbackLoop) {
-            CreatureUtil.shuffle(tmpIndexes);
+            CreatureUtil.shuffle(indexView);
           }
 
           // Create sorted array directly instead of slice + sort
-          // Ensure we don't copy more elements than exist in tmpIndexes
-          const actualLen = Math.min(len, tmpIndexes.length);
+          const actualLen = Math.min(len, fileRecords);
           const selectedIndexes = new Int32Array(actualLen);
           for (let i = 0; i < actualLen; i++) {
-            selectedIndexes[i] = tmpIndexes[i];
+            selectedIndexes[i] = indexView[i];
           }
           selectedIndexes.sort((a, b) => a - b);
 
@@ -412,7 +423,8 @@ function trainDirBinary(
       lastTraceJSON = bestTraceJSON;
     } else {
       // Issue #1388: Collect neuron error data before clearing state.
-      // This feeds into error-guided sparse neuron selection for the next iteration.
+      // Issue #1540: Skip collection entirely when sparseRatio === 1 (all neurons
+      // selected), avoiding both collectNeuronErrors() and SparseConfig rebuild.
       const neuronErrors = backPropConfig.sparseRatio < 1
         ? creature.state.collectNeuronErrors()
         : undefined;
