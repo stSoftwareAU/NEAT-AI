@@ -402,8 +402,8 @@ export class Neat {
       );
     }
 
-    // Create a new frozen config with the dynamic timeout override
-    const discoveryConfig = createNeatConfig({
+    // Issue #1538: Use lightweight frozen override instead of full createNeatConfig()
+    const discoveryConfig: NeatConfig = Object.freeze({
       ...this.config,
       discoveryRecordTimeOutMinutes: effectiveTimeout,
     });
@@ -980,15 +980,16 @@ export class Neat {
     const breed = new Breed(genus, this.config);
 
     // Issue #1039: Apply plateau stagnation response - increase mutation rate
+    // Issue #1538: Use lightweight frozen override instead of full createNeatConfig()
     const mutationMultiplier = this.plateauDetector.getMutationMultiplier();
-    let mutatorConfig = this.config;
+    let mutatorConfig: NeatConfig = this.config;
     if (mutationMultiplier > 1.0) {
       // Create a modified config with increased mutation rate
       const adjustedMutationRate = Math.min(
         this.config.mutationRate * mutationMultiplier,
         1.0, // Cap at 100%
       );
-      mutatorConfig = createNeatConfig({
+      mutatorConfig = Object.freeze({
         ...this.config,
         mutationRate: adjustedMutationRate,
       });

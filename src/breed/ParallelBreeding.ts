@@ -1,7 +1,7 @@
-import { Creature, type NeatOptions } from "../../mod.ts";
+import { Creature } from "../../mod.ts";
 import { Offspring } from "../architecture/Offspring.ts";
 import { discover } from "../blackbox/Discover.ts";
-import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
+import type { NeatConfig } from "../config/NeatConfig.ts";
 import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import type { Genus } from "../NEAT/Genus.ts";
 import { FitnessRanking } from "./FitnessRanking.ts";
@@ -25,6 +25,7 @@ interface ParentPair {
  *    or using Promise.all with queueMicrotask (fallback)
  *
  * Issue #1026: Parallelise breeding loop using worker pool.
+ * Issue #1538: Cache NeatConfig per generation instead of re-creating per batch.
  *
  * Key features:
  * - Pre-selects all parent pairs before breeding
@@ -47,8 +48,12 @@ interface ParentPair {
 export class ParallelBreeding {
   /** The genus containing the population to breed from */
   readonly genus: Genus;
-  /** Configuration options for breeding operations */
-  readonly options: NeatOptions;
+
+  /**
+   * Cached NeatConfig used directly without re-parsing (Issue #1538).
+   */
+  private readonly config: NeatConfig;
+
   /** Optional worker pool for true parallel breeding */
   private readonly workers?: WorkerHandler[];
 
@@ -56,12 +61,12 @@ export class ParallelBreeding {
    * Creates a new ParallelBreeding instance.
    *
    * @param genus - The genus containing the population
-   * @param config - NEAT configuration options
+   * @param config - NEAT configuration (used directly, no re-parsing)
    * @param workers - Optional worker pool for parallel breeding
    */
   constructor(genus: Genus, config: NeatConfig, workers?: WorkerHandler[]) {
     this.genus = genus;
-    this.options = { ...config };
+    this.config = config;
     this.workers = workers;
   }
 
@@ -69,7 +74,7 @@ export class ParallelBreeding {
    * Breeds a batch of offspring in parallel.
    *
    * This method:
-   * 1. Pre-selects all parent pairs using FitnessRanking
+   * 1. Pre-selects all parent pairs using a single FitnessRanking (Issue #1538)
    * 2. Creates offspring in parallel using workers (if available) or main thread
    * 3. Filters out failed breeding attempts
    *
@@ -81,7 +86,7 @@ export class ParallelBreeding {
       return [];
     }
 
-    const config = createNeatConfig(this.options);
+    const config = this.config;
 
     // Pre-compute fitness ranking once for the entire batch
     const populationRanking = new FitnessRanking(this.genus.population);
