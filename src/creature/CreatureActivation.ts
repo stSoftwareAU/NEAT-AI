@@ -132,14 +132,8 @@ export function activateWasm(
       );
     }
 
-    const major = Number.parseInt(
-      creature.semanticVersion.split(".")[0] ?? "0",
-      10,
-    );
-    const forwardOnlyGuaranteed = Number.isFinite(major) && major >= 4 &&
-      creature.forwardOnly === true;
     creature.cachedWasmActivation.setNeedsResetWhenStateless(
-      !forwardOnlyGuaranteed,
+      !creature.forwardOnlyGuaranteed,
     );
   }
 
@@ -186,13 +180,9 @@ export function activateEphemeral(
       );
     }
     try {
-      const major = Number.parseInt(
-        creature.semanticVersion.split(".")[0] ?? "0",
-        10,
+      retryActivation.setNeedsResetWhenStateless(
+        !creature.forwardOnlyGuaranteed,
       );
-      const forwardOnlyGuaranteed = Number.isFinite(major) && major >= 4 &&
-        creature.forwardOnly === true;
-      retryActivation.setNeedsResetWhenStateless(!forwardOnlyGuaranteed);
       return retryActivation.activateWithState(input, feedbackLoop);
     } finally {
       retryActivation.free();
@@ -200,13 +190,7 @@ export function activateEphemeral(
   }
 
   try {
-    const major = Number.parseInt(
-      creature.semanticVersion.split(".")[0] ?? "0",
-      10,
-    );
-    const forwardOnlyGuaranteed = Number.isFinite(major) && major >= 4 &&
-      creature.forwardOnly === true;
-    activation.setNeedsResetWhenStateless(!forwardOnlyGuaranteed);
+    activation.setNeedsResetWhenStateless(!creature.forwardOnlyGuaranteed);
     return activation.activateWithState(input, feedbackLoop);
   } finally {
     activation.free();
@@ -374,12 +358,7 @@ export async function evaluateDir(
   let count = 0;
 
   const costName = cost.getName();
-  const major = Number.parseInt(
-    creature.semanticVersion.split(".")[0] ?? "0",
-    10,
-  );
-  const forwardOnlyGuaranteed = Number.isFinite(major) && major >= 4 &&
-    creature.forwardOnly === true;
+  const forwardOnlyGuaranteed = creature.forwardOnlyGuaranteed;
 
   const effectiveFeedbackLoop = forwardOnlyGuaranteed ? false : feedbackLoop;
 
