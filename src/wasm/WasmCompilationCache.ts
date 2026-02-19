@@ -228,8 +228,9 @@ class WasmCompilationCacheImpl {
     // Write each non-input neuron's structural data
     for (let i = numInputs; i < numNeurons; i++) {
       const neuron = creature.neurons[i];
+      // Issue #1536: inwardConnections() returns results sorted by `from`,
+      // so no .slice().sort() is needed.
       const inwardList = creature.inwardConnections(i);
-      const sortedInward = inwardList.slice().sort((a, b) => a.from - b.from);
 
       const neuronInfo: NeuronInfo = {
         biasOffset: offset,
@@ -251,11 +252,11 @@ class WasmCompilationCacheImpl {
       offset += 1;
 
       // Write num_synapses
-      view.setUint16(offset, sortedInward.length, true);
+      view.setUint16(offset, inwardList.length, true);
       offset += 2;
 
       // Write each synapse's structural data
-      for (const synapse of sortedInward) {
+      for (const synapse of inwardList) {
         // Write from_index
         view.setUint16(offset, synapse.from, true);
         offset += 2;
@@ -312,13 +313,13 @@ class WasmCompilationCacheImpl {
       // Update bias
       view.setFloat64(neuronInfo.biasOffset, neuron.bias ?? 0, true);
 
-      // Update weights
+      // Issue #1536: inwardConnections() returns results sorted by `from`,
+      // so no .slice().sort() is needed.
       const inwardList = creature.inwardConnections(neuronIdx);
-      const sortedInward = inwardList.slice().sort((a, b) => a.from - b.from);
 
-      for (let j = 0; j < sortedInward.length; j++) {
+      for (let j = 0; j < inwardList.length; j++) {
         const weightOffset = neuronInfo.weightOffsets[j];
-        view.setFloat64(weightOffset, sortedInward[j].weight, true);
+        view.setFloat64(weightOffset, inwardList[j].weight, true);
       }
     }
 
