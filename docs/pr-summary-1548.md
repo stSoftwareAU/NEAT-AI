@@ -23,8 +23,7 @@ feature.
 `docs/DISCOVERY_API.md` with working links to actual docs, updated
 troubleshooting.
 
-**DiscoveryDir.md** — Removed reference to non-existent
-`src/Discovery/Scan.ts`.
+**DiscoveryDir.md** — Removed reference to non-existent `src/Discovery/Scan.ts`.
 
 **GPU_ACCELERATION.md** — Replaced bare date with a History section.
 
@@ -35,8 +34,8 @@ backpropagation strategy table.
 
 This is a documentation-only change — no code was modified. Verification was
 performed by reading the actual source code in `src/config/NeatConfig.ts`,
-`src/methods/activations/Activations.ts`, `quality.sh`, and the `src/`
-directory structure, then cross-referencing every claim in the docs.
+`src/methods/activations/Activations.ts`, `quality.sh`, and the `src/` directory
+structure, then cross-referencing every claim in the docs.
 
 Quality checks pass: `./quality.sh --lint-only` and
 `./quality.sh --skip-tests --skip-discovery` both succeed.
