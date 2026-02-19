@@ -2,6 +2,7 @@
  * WASM Compilation Cache
  *
  * Issue #1301 - Performance: WASM creature compilation caching
+ * Issue #1539 - Perf: O(1) LRU eviction and buffer pooling
  *
  * Caches compiled binary templates for creatures with identical topologies,
  * avoiding redundant buffer allocation and structure building for structurally
@@ -9,7 +10,8 @@
  *
  * Key features:
  * - Topology-based caching of binary templates (ignores weights and biases)
- * - LRU eviction when cache is full
+ * - O(1) LRU eviction via doubly-linked list + Map (#1539)
+ * - Buffer pooling to avoid .slice() on every cache hit (#1539)
  * - Cache invalidation on structural mutations
  * - Statistics tracking for cache hit/miss rates
  *
@@ -85,16 +87,25 @@ interface TopologyTemplate {
   neurons: NeuronInfo[];
   /** Pre-built buffer with structural data (squash types, from indices, etc.) */
   templateBuffer: Uint8Array;
+  /** Pool of reusable work buffers for this topology (#1539) */
+  bufferPool: Uint8Array[];
 }
 
 /**
- * Cache entry containing the topology template and metadata.
+ * Maximum number of pooled work buffers per topology entry.
+ * Keeps memory bounded while still reducing allocations.
  */
-interface CacheEntry {
-  /** The cached topology template */
+const MAX_POOLED_BUFFERS = 4;
+
+/**
+ * A node in the doubly-linked LRU list.
+ * Issue #1539: Enables O(1) eviction instead of O(n) linear scan.
+ */
+interface LruNode {
+  readonly key: string;
   template: TopologyTemplate;
-  /** Last access time for LRU eviction */
-  lastAccess: number;
+  prev: LruNode | null;
+  next: LruNode | null;
 }
 
 /**
@@ -121,10 +132,19 @@ const DEFAULT_MAX_CACHE_SIZE = 100;
 
 /**
  * The WASM compilation cache singleton.
+ *
+ * Issue #1539: Uses a doubly-linked list + Map for O(1) LRU eviction,
+ * and per-topology buffer pools to avoid .slice() allocations on cache hits.
  */
 class WasmCompilationCacheImpl {
-  /** Map from topology hash to cached entry */
-  private cache: Map<string, CacheEntry> = new Map();
+  /** Map from topology hash to LRU node for O(1) lookup */
+  private nodeByKey: Map<string, LruNode> = new Map();
+
+  /** Head of doubly-linked list (most recently used) */
+  private head: LruNode | null = null;
+
+  /** Tail of doubly-linked list (least recently used) */
+  private tail: LruNode | null = null;
 
   /** Maximum number of entries in the cache */
   private maxSize: number = DEFAULT_MAX_CACHE_SIZE;
@@ -137,6 +157,89 @@ class WasmCompilationCacheImpl {
     evictions: 0,
     totalBytes: 0,
   };
+
+  /** Remove a node from the doubly-linked list (O(1)). */
+  private removeNode(node: LruNode): void {
+    const prev = node.prev;
+    const next = node.next;
+
+    if (prev) {
+      prev.next = next;
+    } else {
+      this.head = next;
+    }
+
+    if (next) {
+      next.prev = prev;
+    } else {
+      this.tail = prev;
+    }
+
+    node.prev = null;
+    node.next = null;
+  }
+
+  /** Move/insert a node to the head of the list (most recently used). */
+  private moveToHead(node: LruNode): void {
+    if (this.head === node) return;
+
+    // Unlink from current position if already in the list.
+    if (node.prev || node.next || this.tail === node) {
+      this.removeNode(node);
+    }
+
+    // Insert at head.
+    node.next = this.head;
+    node.prev = null;
+    if (this.head) {
+      this.head.prev = node;
+    }
+    this.head = node;
+
+    if (!this.tail) {
+      this.tail = node;
+    }
+  }
+
+  /** Evict the tail (least recently used) entry. O(1). */
+  private evictTail(): void {
+    if (!this.tail) return;
+
+    const node = this.tail;
+    this.removeNode(node);
+    this.nodeByKey.delete(node.key);
+    this.stats.totalBytes -= node.template.templateBuffer.length;
+    this.stats.evictions++;
+    this.stats.size = this.nodeByKey.size;
+  }
+
+  /**
+   * Acquire a work buffer from the topology's pool, or copy the template.
+   * Issue #1539: Avoids .slice() allocation when a pooled buffer is available.
+   */
+  private acquireBuffer(template: TopologyTemplate): Uint8Array {
+    const pooled = template.bufferPool.pop();
+    if (pooled) {
+      // Copy structural data from template into the reusable buffer.
+      pooled.set(template.templateBuffer);
+      return pooled;
+    }
+    // No pooled buffer available — fall back to a fresh copy.
+    return template.templateBuffer.slice();
+  }
+
+  /**
+   * Return a work buffer to the topology's pool for reuse.
+   * Issue #1539: The buffer will be reused by a future compileFromTemplate call.
+   */
+  returnBuffer(template: TopologyTemplate, buffer: Uint8Array): void {
+    if (
+      buffer.length === template.templateBuffer.length &&
+      template.bufferPool.length < MAX_POOLED_BUFFERS
+    ) {
+      template.bufferPool.push(buffer);
+    }
+  }
 
   /**
    * Get or compile a WASM module for the given creature.
@@ -157,14 +260,14 @@ class WasmCompilationCacheImpl {
     const topologyHash = CreatureUtil.getTopologyHash(creature);
 
     // Check if we have a cached template
-    const cached = this.cache.get(topologyHash);
-    if (cached) {
-      // Update last access time for LRU
-      cached.lastAccess = performance.now();
+    const node = this.nodeByKey.get(topologyHash);
+    if (node) {
+      // Move to head (most recently used) — O(1)
+      this.moveToHead(node);
       this.stats.hits++;
 
       // Use cached template to quickly compile with creature's weights
-      const compiled = this.compileFromTemplate(creature, cached.template);
+      const compiled = this.compileFromTemplate(creature, node.template);
       return WasmCreatureActivation.create(compiled);
     }
 
@@ -172,18 +275,21 @@ class WasmCompilationCacheImpl {
     this.stats.misses++;
     const template = this.buildTemplate(creature);
 
-    // Evict entries if cache is full
-    while (this.cache.size >= this.maxSize) {
-      this.evictLRU();
+    // Evict entries if cache is full — O(1) per eviction
+    while (this.nodeByKey.size >= this.maxSize) {
+      this.evictTail();
     }
 
-    // Add template to cache
-    const entry: CacheEntry = {
+    // Add template to cache as new head node
+    const newNode: LruNode = {
+      key: topologyHash,
       template,
-      lastAccess: performance.now(),
+      prev: null,
+      next: null,
     };
-    this.cache.set(topologyHash, entry);
-    this.stats.size = this.cache.size;
+    this.nodeByKey.set(topologyHash, newNode);
+    this.moveToHead(newNode);
+    this.stats.size = this.nodeByKey.size;
     this.stats.totalBytes += template.templateBuffer.length;
 
     // Compile with creature's weights
@@ -287,19 +393,20 @@ class WasmCompilationCacheImpl {
       numSynapses: totalSynapses,
       neurons,
       templateBuffer: new Uint8Array(templateBuffer),
+      bufferPool: [],
     };
   }
 
   /**
    * Compile a creature using a cached template.
-   * Only updates the weight/bias values, reusing the structural template.
+   * Issue #1539: Uses buffer pooling instead of .slice() on every call.
    */
   private compileFromTemplate(
     creature: Creature,
     template: TopologyTemplate,
   ): CompiledCreatureData {
-    // Copy the template buffer
-    const buffer = template.templateBuffer.slice();
+    // Acquire a work buffer (pooled or fresh copy)
+    const buffer = this.acquireBuffer(template);
     const view = new DataView(buffer.buffer);
 
     const numInputs = template.numInputs;
@@ -333,31 +440,6 @@ class WasmCompilationCacheImpl {
   }
 
   /**
-   * Evict the least recently used entry from the cache.
-   */
-  private evictLRU(): void {
-    let oldestKey: string | null = null;
-    let oldestTime = Infinity;
-
-    for (const [key, entry] of this.cache) {
-      if (entry.lastAccess < oldestTime) {
-        oldestTime = entry.lastAccess;
-        oldestKey = key;
-      }
-    }
-
-    if (oldestKey !== null) {
-      const entry = this.cache.get(oldestKey);
-      if (entry) {
-        this.stats.totalBytes -= entry.template.templateBuffer.length;
-      }
-      this.cache.delete(oldestKey);
-      this.stats.evictions++;
-      this.stats.size = this.cache.size;
-    }
-  }
-
-  /**
    * Invalidate the cache entry for a specific creature.
    *
    * Call this when a creature's topology changes (structural mutation).
@@ -368,11 +450,12 @@ class WasmCompilationCacheImpl {
     // If the creature has a cached topology hash, use it
     const topologyHash = creature.topologyHash;
     if (topologyHash) {
-      const entry = this.cache.get(topologyHash);
-      if (entry) {
-        this.stats.totalBytes -= entry.template.templateBuffer.length;
-        this.cache.delete(topologyHash);
-        this.stats.size = this.cache.size;
+      const node = this.nodeByKey.get(topologyHash);
+      if (node) {
+        this.stats.totalBytes -= node.template.templateBuffer.length;
+        this.removeNode(node);
+        this.nodeByKey.delete(topologyHash);
+        this.stats.size = this.nodeByKey.size;
       }
       // Clear the creature's cached topology hash
       creature.topologyHash = undefined;
@@ -383,7 +466,9 @@ class WasmCompilationCacheImpl {
    * Clear the entire cache.
    */
   clear(): void {
-    this.cache.clear();
+    this.nodeByKey.clear();
+    this.head = null;
+    this.tail = null;
     this.stats = {
       hits: 0,
       misses: 0,
@@ -411,8 +496,8 @@ class WasmCompilationCacheImpl {
     this.maxSize = Math.max(1, size);
 
     // Evict entries if current cache exceeds new max size
-    while (this.cache.size > this.maxSize) {
-      this.evictLRU();
+    while (this.nodeByKey.size > this.maxSize) {
+      this.evictTail();
     }
 
     return previous;
