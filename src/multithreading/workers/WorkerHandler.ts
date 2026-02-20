@@ -15,6 +15,7 @@ import type {
 } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { NeatConfig } from "../../config/NeatConfig.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
+import type { WasmCacheConfig } from "../../config/WasmCacheConfig.ts";
 import { getLogger } from "../../utils/Logger.ts";
 import { MockWorker } from "./MockWorker.ts";
 
@@ -65,6 +66,14 @@ export interface RequestData {
      * uses the same WASM activation implementation as the main thread.
      */
     wasmActivation?: WasmActivationInitPayload;
+    /**
+     * Issue #1567: Optional WASM cache configuration to apply at startup.
+     *
+     * When provided, the worker will set its LRU cache caps to match the
+     * main thread configuration, preventing mismatches between main-thread
+     * and worker-side cache sizing.
+     */
+    wasmCache?: WasmCacheConfig;
   };
   /** Creature evaluation request */
   evaluate?: {
@@ -94,6 +103,21 @@ export interface RequestData {
     /** NEAT configuration (frozen, concrete values) */
     config: NeatConfig;
   };
+  /**
+   * Issue #1567: Dynamically update WASM cache caps in a running worker.
+   *
+   * Allows the main thread to reduce cache limits under memory pressure
+   * without restarting workers.
+   */
+  configureCache?: WasmCacheConfig;
+  /**
+   * Issue #1567: Request current cache statistics from the worker.
+   *
+   * When true, the worker responds with its current cache occupancy
+   * and configured limits, giving the main thread visibility into
+   * worker-side memory consumption.
+   */
+  requestCacheStats?: boolean;
   /** Creature breeding request (Issue #1026) */
   breed?: {
     /** JSON string representation of the mother creature */
@@ -188,6 +212,26 @@ export interface ResponseData {
      * the current fittest (which may have evolved during the discovery process).
      */
     improvedCreature?: CreatureExport;
+  };
+  /**
+   * Issue #1567: Response after applying cache configuration.
+   */
+  configureCache?: {
+    /** Status of the configuration change */
+    status: string;
+  };
+  /**
+   * Issue #1567: Worker cache statistics response.
+   */
+  cacheStats?: {
+    /** Current number of entries in the activation LRU cache */
+    activationCacheCount: number;
+    /** Configured maximum for activation LRU cache */
+    activationCacheMax: number;
+    /** Current number of entries in the compilation cache */
+    compilationCacheSize: number;
+    /** Configured maximum for compilation cache */
+    compilationCacheMax: number;
   };
   /** Breeding response (Issue #1026) */
   breed?: {
@@ -412,12 +456,15 @@ export class WorkerHandler {
    * @param dataSetDir - Directory containing the dataset
    * @param costName - Name of the cost function to use
    * @param direct - Whether to use direct (mock) worker or Web Worker
+   * @param customCost - Optional custom cost function file path
+   * @param wasmCache - Issue #1567: Optional WASM cache configuration to propagate to the worker
    */
   constructor(
     dataSetDir: string,
     costName: CostName,
     direct: boolean,
     customCost?: { filePath: string },
+    wasmCache?: WasmCacheConfig,
   ) {
     let rejectInitError: ((err: Error) => void) | null = null;
     const initErrorPromise: Promise<never> = new Promise((_, reject) => {
@@ -514,6 +561,7 @@ export class WorkerHandler {
           customCostData,
           discoveryVerbose,
           wasmActivation: wasmPayload,
+          wasmCache,
         },
       };
 
@@ -774,6 +822,41 @@ export class WorkerHandler {
     json.neurons = null;
     // @ts-ignore - clearing to help GC
     json.synapses = null;
+
+    return this.makePromiseDeferred(data);
+  }
+
+  /**
+   * Dynamically update WASM cache caps in the worker.
+   *
+   * Issue #1567: Allows the main thread to adjust worker cache limits
+   * at runtime, e.g. under memory pressure.
+   *
+   * @param config - Cache configuration to apply
+   * @returns Promise resolving to the response data
+   */
+  configureCache(config: WasmCacheConfig) {
+    const data: RequestData = {
+      taskID: this.taskID++,
+      configureCache: config,
+    };
+
+    return this.makePromiseDeferred(data);
+  }
+
+  /**
+   * Request current cache statistics from the worker.
+   *
+   * Issue #1567: Gives the main thread visibility into worker-side
+   * cache occupancy and configured limits.
+   *
+   * @returns Promise resolving to the response data with cache stats
+   */
+  requestCacheStats() {
+    const data: RequestData = {
+      taskID: this.taskID++,
+      requestCacheStats: true,
+    };
 
     return this.makePromiseDeferred(data);
   }

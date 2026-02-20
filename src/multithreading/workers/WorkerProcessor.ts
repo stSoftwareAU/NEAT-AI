@@ -10,8 +10,14 @@ import type { CostInterface } from "../../costs/CostInterface.ts";
 import { Creature } from "../../Creature.ts";
 import { writeDiagnostics } from "../../utils/Diagnostics.ts";
 import {
+  getCachedWasmActivationCount,
+  getMaxCachedWasmCreatureActivations,
+  getWasmCompilationCacheMaxSize,
+  getWasmCompilationCacheStats,
   initWasmActivationSync,
   isWasmActivationAvailable,
+  setMaxCachedWasmCreatureActivations,
+  setWasmCompilationCacheSize,
 } from "../../wasm/mod.ts";
 import type { RequestData, ResponseData } from "./WorkerHandler.ts";
 import { getLogger } from "../../utils/Logger.ts";
@@ -204,12 +210,55 @@ export class WorkerProcessor {
         data.initialize.wasmActivation,
       );
 
+      // Issue #1567: Apply WASM cache configuration from main thread.
+      if (data.initialize.wasmCache) {
+        const wc = data.initialize.wasmCache;
+        if (wc.maxCachedActivations !== undefined) {
+          setMaxCachedWasmCreatureActivations(wc.maxCachedActivations);
+        }
+        if (wc.compilationCacheSize !== undefined) {
+          setWasmCompilationCacheSize(wc.compilationCacheSize);
+        }
+      }
+
       this.dataSetDir = data.initialize.dataSetDir;
       return {
         taskID: data.taskID,
         duration: Date.now() - start,
         initialize: {
           status: "OK",
+        },
+      };
+    } else if (data.configureCache) {
+      // Issue #1567: Dynamically update WASM cache caps.
+      if (data.configureCache.maxCachedActivations !== undefined) {
+        setMaxCachedWasmCreatureActivations(
+          data.configureCache.maxCachedActivations,
+        );
+      }
+      if (data.configureCache.compilationCacheSize !== undefined) {
+        setWasmCompilationCacheSize(
+          data.configureCache.compilationCacheSize,
+        );
+      }
+      return {
+        taskID: data.taskID,
+        duration: Date.now() - start,
+        configureCache: {
+          status: "OK",
+        },
+      };
+    } else if (data.requestCacheStats) {
+      // Issue #1567: Report cache statistics to the main thread.
+      const compilationStats = getWasmCompilationCacheStats();
+      return {
+        taskID: data.taskID,
+        duration: Date.now() - start,
+        cacheStats: {
+          activationCacheCount: getCachedWasmActivationCount(),
+          activationCacheMax: getMaxCachedWasmCreatureActivations(),
+          compilationCacheSize: compilationStats.size,
+          compilationCacheMax: getWasmCompilationCacheMaxSize(),
         },
       };
     } else if (data.evaluate) {

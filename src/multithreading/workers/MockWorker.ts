@@ -60,6 +60,17 @@ export class MockWorker implements WorkerInterface {
         errorResponse.echo = {
           message: `Error: ${error?.message || String(error)}`,
         };
+      } else if (data.configureCache) {
+        errorResponse.configureCache = {
+          status: `ERROR: ${error?.message || String(error)}`,
+        };
+      } else if (data.requestCacheStats) {
+        errorResponse.cacheStats = {
+          activationCacheCount: 0,
+          activationCacheMax: 0,
+          compilationCacheSize: 0,
+          compilationCacheMax: 0,
+        };
       } else if (data.initialize) {
         errorResponse.initialize = {
           status: "ERROR",

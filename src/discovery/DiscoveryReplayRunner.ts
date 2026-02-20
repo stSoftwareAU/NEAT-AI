@@ -690,11 +690,13 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
         const setupStart = diagnosticsEnabled ? performance.now() : 0;
         for (let i = 0; i < workerCount; i++) {
           const preferDirect = workerCount === 1;
+          // Issue #1567: Propagate WASM cache limits to worker threads.
           let w = new WorkerHandler(
             dataDir,
             config.costName as CostName,
             preferDirect,
             config.customCost,
+            config.wasmCache,
           );
           try {
             // Warm worker sequentially to avoid cold-cache download storms and
@@ -717,6 +719,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
                 config.costName as CostName,
                 true,
                 config.customCost,
+                config.wasmCache,
               );
               // deno-lint-ignore no-await-in-loop
               await w.waitUntilReady();
