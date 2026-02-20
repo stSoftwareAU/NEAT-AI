@@ -31,6 +31,7 @@ and a reference for the later Rust/WASM optimisation. Closes #1554.
 ## Evidence
 
 This is a backend/library change with no visual output. Verified by:
+
 - 27 new unit tests all passing
 - All 4218 existing tests pass unchanged
 - `./quality.sh` passes cleanly (fmt, lint, type-check, tests)
@@ -38,6 +39,7 @@ This is a backend/library change with no visual output. Verified by:
 ## Test Plan
 
 ### PredictionErrorComputation tests (12 tests)
+
 - Prediction for identity neuron equals weighted sum
 - Prediction for output neuron uses inward connections
 - Error is actual minus predicted
@@ -52,6 +54,7 @@ This is a backend/library change with no visual output. Verified by:
 - No hidden neurons (direct input-to-output)
 
 ### PredictiveCodingInference tests (15 tests)
+
 - Energy decreases over iterations
 - Converges on consistent network
 - Early stopping when energy below threshold
