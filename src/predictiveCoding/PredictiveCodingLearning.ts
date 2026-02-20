@@ -101,13 +101,17 @@ export function computeWeightGradients(
   const biasGradients: BiasGradient[] = [];
 
   // Pre-resolve squash functions and derivatives for each neuron.
+  // Guard: aggregate activations (IF, MAXIMUM, etc.) implement
+  // NeuronActivationInterface, not ActivationInterface, so they lack
+  // scalar squash()/derivative() methods. Treat those as null (identity).
   const squashFunctions = new Map<number, ActivationInterface | null>();
   for (let i = 0; i < creature.neurons.length; i++) {
     const neuron = creature.neurons[i];
     if (neuron.squash) {
+      const found = Activations.find(neuron.squash);
       squashFunctions.set(
         i,
-        Activations.find(neuron.squash) as ActivationInterface,
+        "squash" in found ? (found as ActivationInterface) : null,
       );
     } else {
       squashFunctions.set(i, null);

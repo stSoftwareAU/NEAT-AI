@@ -19,6 +19,8 @@ import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 import { BufferPool } from "../utils/BufferPool.ts";
 import type { CreatureExport, CreatureTrace } from "./CreatureInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
+import { trainWithPredictiveCoding } from "../predictiveCoding/PredictiveCodingTrainer.ts";
+import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../config/PredictiveCodingConfig.ts";
 
 /**
  * Scans a data directory for binary training files.
@@ -101,7 +103,68 @@ export function trainDir(
     "No binary files found in the data directory",
   );
 
+  // Issue #1556: Delegate to Predictive Coding trainer when enabled.
+  if (options.predictiveCoding?.enabled) {
+    return trainDirPredictiveCoding(
+      creature,
+      dataResult.files,
+      options,
+      cost,
+    );
+  }
+
   return trainDirBinary(creature, dataResult.files, options, cost);
+}
+
+/**
+ * Issue #1556: Trains a creature using Predictive Coding local learning rules.
+ * Returns a TrainingResult compatible with the standard training pipeline.
+ */
+function trainDirPredictiveCoding(
+  creature: Creature,
+  binaryFiles: string[],
+  options: TrainOptions,
+  cost: CostInterface,
+): TrainingResult {
+  const pcOverrides = options.predictiveCoding!;
+  const pcConfig = {
+    ...DEFAULT_PREDICTIVE_CODING_CONFIG,
+    ...pcOverrides,
+  };
+  const iterations = Math.max(options.iterations ? options.iterations : 2, 1);
+  const targetError =
+    options.targetError !== undefined && Number.isFinite(options.targetError)
+      ? Math.max(options.targetError, 0.000_000_1)
+      : 0.05;
+
+  const uuid = CreatureUtil.makeUUID(creature);
+  const ID = uuid.substring(Math.max(0, uuid.length - 8));
+
+  const pcResult = trainWithPredictiveCoding(
+    creature,
+    binaryFiles,
+    pcConfig,
+    cost,
+    {
+      iterations,
+      targetError,
+      log: options.log,
+    },
+  );
+
+  const feedbackLoop = options.feedbackLoop ?? false;
+  let compact = compactUnused(creature.traceJSON(), 1e-7);
+  if (!compact) {
+    compact = Creature.fromJSON(creature.exportJSON()).compact(feedbackLoop);
+  }
+
+  return {
+    ID,
+    iteration: pcResult.iterations,
+    error: pcResult.error,
+    trace: creature.traceJSON(),
+    compact: compact ? compact.exportJSON() : undefined,
+  };
 }
 
 function fp(percentage: number) {

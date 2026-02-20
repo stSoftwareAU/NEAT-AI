@@ -108,13 +108,17 @@ export function runInference(
   }
 
   // Pre-resolve squash functions for each neuron with a derivative.
+  // Guard: aggregate activations (IF, MAXIMUM, etc.) implement
+  // NeuronActivationInterface, not ActivationInterface, so they lack
+  // scalar squash()/derivative() methods. Treat those as null (identity).
   const squashFunctions = new Array<ActivationInterface | null>(neuronCount);
   for (let i = 0; i < neuronCount; i++) {
     const neuron = creature.neurons[i];
     if (neuron.squash) {
-      squashFunctions[i] = Activations.find(
-        neuron.squash,
-      ) as ActivationInterface;
+      const found = Activations.find(neuron.squash);
+      squashFunctions[i] = "squash" in found
+        ? (found as ActivationInterface)
+        : null;
     } else {
       squashFunctions[i] = null;
     }
