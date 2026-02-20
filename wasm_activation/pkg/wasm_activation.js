@@ -1650,7 +1650,7 @@ export function version() {
 function __wbg_get_imports() {
   const import0 = {
     __proto__: null,
-    __wbg___wbindgen_copy_to_typed_array_fc0809a4dec43528: function (
+    __wbg___wbindgen_copy_to_typed_array_d890e64da9979794: function (
       arg0,
       arg1,
       arg2,
@@ -1659,25 +1659,25 @@ function __wbg_get_imports() {
         getArrayU8FromWasm0(arg0, arg1),
       );
     },
-    __wbg___wbindgen_throw_be289d5034ed271b: function (arg0, arg1) {
+    __wbg___wbindgen_throw_f1861aae416df39d: function (arg0, arg1) {
       throw new Error(getStringFromWasm0(arg0, arg1));
     },
-    __wbg_get_index_80a69050a46aaf91: function (arg0, arg1) {
+    __wbg_get_index_cbcf3915631d28c1: function (arg0, arg1) {
       const ret = arg0[arg1 >>> 0];
       return ret;
     },
-    __wbg_new_with_length_63f2683cc2521026: function (arg0) {
-      const ret = new Float32Array(arg0 >>> 0);
-      return ret;
-    },
-    __wbg_new_with_length_6523745c0bd32809: function (arg0) {
+    __wbg_new_with_length_3f677068a7f081a9: function (arg0) {
       const ret = new Float64Array(arg0 >>> 0);
       return ret;
     },
-    __wbg_set_index_41955224420ba3c6: function (arg0, arg1, arg2) {
+    __wbg_new_with_length_b3b6338734e1a628: function (arg0) {
+      const ret = new Float32Array(arg0 >>> 0);
+      return ret;
+    },
+    __wbg_set_index_8b9e33a420a69e88: function (arg0, arg1, arg2) {
       arg0[arg1 >>> 0] = arg2;
     },
-    __wbg_set_index_78a85f2e336ce120: function (arg0, arg1, arg2) {
+    __wbg_set_index_a950b51b9ffccdcc: function (arg0, arg1, arg2) {
       arg0[arg1 >>> 0] = arg2;
     },
     __wbindgen_cast_0000000000000001: function (arg0, arg1) {
