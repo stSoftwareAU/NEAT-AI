@@ -34,7 +34,8 @@ unit tests and the full quality gate (4249 tests pass).
 ## Test Plan
 
 - Added `test/multithreading/WorkerCacheConfiguration.ts` with 7 tests:
-  - `configure-cache` and `request-cache-stats` payloads survive `structuredClone`
+  - `configure-cache` and `request-cache-stats` payloads survive
+    `structuredClone`
   - `WorkerProcessor` correctly handles `configureCache` messages
   - `WorkerProcessor` correctly handles `requestCacheStats` messages
   - Cache limits are verified to update after `configureCache`
