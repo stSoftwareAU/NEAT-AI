@@ -254,5 +254,6 @@ In our production workloads, the default is feed-forward/forward-only.
 - **docs/CONFIGURATION_GUIDE.md** - Complete configuration options reference
 - **docs/BACKPROP_ELASTICITY.md** - Elastic backpropagation explanation
 - **docs/INTELLIGENT_DESIGN.md** - Intelligent Design squash optimisation guide
+- **docs/PREDICTIVE_CODING.md** - Predictive Coding architecture design
 - **docs/TROUBLESHOOTING.md** - Common issues and solutions
 - **src/methods/activations/README.md** - Activation function strategy reference
