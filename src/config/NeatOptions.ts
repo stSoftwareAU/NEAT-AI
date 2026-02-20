@@ -10,6 +10,7 @@ import type { PredictiveCodingConfig } from "./PredictiveCodingConfig.ts";
 import type { QuantumStepConfig } from "./QuantumStepConfig.ts";
 import type { StabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
 import type { BiasRegularisationConfig } from "./BiasRegularisationConfig.ts";
+import type { WasmCacheConfig } from "./WasmCacheConfig.ts";
 import type { WeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
@@ -78,6 +79,7 @@ export type NeatOptions =
     | "ensembleDiversity"
     | "quantumStep"
     | "fineTunePopulation"
+    | "wasmCache"
     | "logger"
     | "rng"
   >
@@ -102,6 +104,8 @@ export type NeatOptions =
     quantumStep?: QuantumStepConfig;
     /** Partial overrides for fine-tune population configuration (defaults applied if not specified) */
     fineTunePopulation?: FineTunePopulationConfig;
+    /** Partial overrides for WASM cache configuration (defaults applied if not specified) */
+    wasmCache?: WasmCacheConfig;
     /**
      * Custom logger instance. When provided, all NEAT-AI log output is
      * routed through this logger instead of the default console logger.
@@ -165,6 +169,7 @@ export type NeatOptionsInput =
     | "ensembleDiversity"
     | "quantumStep"
     | "fineTunePopulation"
+    | "wasmCache"
     | "logger"
     | "logLevel"
     | "seed"
@@ -188,6 +193,7 @@ export type NeatOptionsInput =
     ensembleDiversity?: CoerceNumeric<EnsembleDiversityConfig>;
     quantumStep?: CoerceNumeric<QuantumStepConfig>;
     fineTunePopulation?: CoerceNumeric<FineTunePopulationConfig>;
+    wasmCache?: CoerceNumeric<WasmCacheConfig>;
     /** Custom logger instance (not coerced — functions cannot come from CLI). */
     logger?: Logger;
     /** Log level filter for the default console logger. */

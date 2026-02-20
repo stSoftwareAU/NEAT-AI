@@ -43,6 +43,10 @@ import {
   type RequiredBiasRegularisationConfig,
 } from "./BiasRegularisationConfig.ts";
 import {
+  DEFAULT_WASM_CACHE_CONFIG,
+  type RequiredWasmCacheConfig,
+} from "./WasmCacheConfig.ts";
+import {
   DEFAULT_WEIGHT_REGULARISATION_CONFIG,
   type RequiredWeightRegularisationConfig,
 } from "./WeightRegularisationConfig.ts";
@@ -816,6 +820,33 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
           { minExclusive: 0 },
         ),
       } as RequiredPredictiveCodingConfig;
+    })(),
+    // Issue #1566: WASM cache sizing configuration
+    wasmCache: (() => {
+      const overrides = opts.wasmCache as
+        | Record<string, unknown>
+        | undefined;
+      const d = DEFAULT_WASM_CACHE_CONFIG;
+      const populationSize = parseNumber(
+        "Population Size",
+        opts.populationSize,
+        50,
+        { integer: true, min: 2 },
+      );
+      return {
+        maxCachedActivations: parseNumber(
+          "WASM cache maxCachedActivations",
+          overrides?.maxCachedActivations,
+          populationSize * 2,
+          { integer: true, min: 1 },
+        ),
+        compilationCacheSize: parseNumber(
+          "WASM cache compilationCacheSize",
+          overrides?.compilationCacheSize,
+          d.compilationCacheSize,
+          { integer: true, min: 1 },
+        ),
+      } as RequiredWasmCacheConfig;
     })(),
     // Issue #1330: Adaptive quantum step sizing for memetic fine-tuning
     quantumStep: (() => {
