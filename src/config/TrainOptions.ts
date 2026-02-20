@@ -1,4 +1,5 @@
 import type { BackPropagationArguments } from "../propagate/BackPropagation.ts";
+import type { PredictiveCodingConfig } from "./PredictiveCodingConfig.ts";
 
 export interface TrainArguments extends BackPropagationArguments {
   /** If set to n, will output the training status every n iterations (log : 1 will log every iteration) */
@@ -30,6 +31,15 @@ export interface TrainArguments extends BackPropagationArguments {
    * More information: https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html
    */
   feedbackLoop: boolean;
+
+  /**
+   * Predictive Coding configuration.
+   *
+   * Issue #1556: When predictiveCoding.enabled is true, training uses
+   * local Hebbian learning rules driven by prediction error minimisation
+   * instead of standard backpropagation.
+   */
+  predictiveCoding: PredictiveCodingConfig;
 }
 
 export type TrainOptions = Partial<TrainArguments>;

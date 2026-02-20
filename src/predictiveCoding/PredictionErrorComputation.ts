@@ -52,9 +52,14 @@ export function computePrediction(
   }
 
   // Apply the neuron's squash (activation) function.
+  // Guard: aggregate activations (IF, MAXIMUM, etc.) implement
+  // NeuronActivationInterface, not ActivationInterface, so they lack
+  // a scalar squash() method. Fall through to identity for those.
   if (neuron.squash) {
-    const activation = Activations.find(neuron.squash) as ActivationInterface;
-    return activation.squash(weightedSum);
+    const activation = Activations.find(neuron.squash);
+    if ("squash" in activation) {
+      return (activation as ActivationInterface).squash(weightedSum);
+    }
   }
 
   return weightedSum;
