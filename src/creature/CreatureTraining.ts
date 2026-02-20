@@ -325,11 +325,13 @@ export async function evolveDir(
 
   for (let i = threads; i--;) {
     const preferDirect = threads === 1;
+    // Issue #1567: Propagate WASM cache limits to worker threads.
     let w = new WorkerHandler(
       dataSetDir,
       config.costName,
       preferDirect,
       config.customCost,
+      config.wasmCache,
     );
     try {
       // deno-lint-ignore no-await-in-loop
@@ -350,6 +352,7 @@ export async function evolveDir(
           config.costName,
           true,
           config.customCost,
+          config.wasmCache,
         );
         // deno-lint-ignore no-await-in-loop
         await w.waitUntilReady();

@@ -10,6 +10,7 @@ import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvo
 import { calculate as calculateScore } from "../architecture/Score.ts";
 import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
 import type { NeatOptions } from "../config/NeatOptions.ts";
+import type { WasmCacheConfig } from "../config/WasmCacheConfig.ts";
 import type { CostName } from "../Costs.ts";
 import type { Creature } from "../Creature.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
@@ -44,6 +45,8 @@ export interface DiscoveryRunnerWorkerFactoryArgs {
   costName: CostName;
   direct: boolean;
   customCost?: { filePath: string };
+  /** Issue #1567: WASM cache configuration to propagate to the worker. */
+  wasmCache?: WasmCacheConfig;
 }
 
 export type DiscoveryRunnerWorkerFactory = (
@@ -66,6 +69,7 @@ const DEFAULT_WORKER_FACTORY: DiscoveryRunnerWorkerFactory = (args) =>
     args.costName,
     args.direct,
     args.customCost,
+    args.wasmCache,
   );
 
 const DEFAULT_RUST_CHECK = () => isRustDiscoveryEnabled();
@@ -179,11 +183,13 @@ export class DiscoveryRunner {
       const workersStart = performance.now();
       for (let i = 0; i < workerCount; i++) {
         const preferDirect = workerCount === 1;
+        // Issue #1567: Propagate WASM cache limits to worker threads.
         let worker = this.#workerFactory({
           dataDir,
           costName: config.costName,
           direct: preferDirect,
           customCost: config.customCost,
+          wasmCache: config.wasmCache,
         });
         // Avoid a cold-cache download storm by warming workers sequentially when supported.
         // (Custom workerFactory implementations may not expose this method.)
@@ -207,6 +213,7 @@ export class DiscoveryRunner {
                 costName: config.costName,
                 direct: true,
                 customCost: config.customCost,
+                wasmCache: config.wasmCache,
               });
               if (typeof worker.waitUntilReady === "function") {
                 // deno-lint-ignore no-await-in-loop

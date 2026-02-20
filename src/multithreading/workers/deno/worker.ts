@@ -85,6 +85,20 @@ workerHandler.onmessage = async function (message: { data: RequestData }) {
           error instanceof Error ? error.message : String(error)
         }`,
       };
+    } else if (message.data.configureCache) {
+      errorResponse.configureCache = {
+        status: `ERROR: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      };
+    } else if (message.data.requestCacheStats) {
+      // Cache stats request failed — return zeroed stats.
+      errorResponse.cacheStats = {
+        activationCacheCount: 0,
+        activationCacheMax: 0,
+        compilationCacheSize: 0,
+        compilationCacheMax: 0,
+      };
     } else if (message.data.initialize) {
       errorResponse.initialize = {
         status: "ERROR",
