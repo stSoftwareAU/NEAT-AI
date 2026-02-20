@@ -41,6 +41,8 @@ import {
 } from "../discovery/DiscoveryReplayRunner.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { setMaxCachedWasmCreatureActivations } from "../wasm/WasmCreatureActivationLRU.ts";
+import { setWasmCompilationCacheSize } from "../wasm/WasmCompilationCache.ts";
 
 /**
  * Propagate expected values backward through the network for all output neurons.
@@ -309,6 +311,10 @@ export async function evolveDir(
 
   const start = Date.now();
   const config = createNeatConfig(options);
+
+  // Issue #1566: Apply WASM cache caps from config before training starts.
+  setMaxCachedWasmCreatureActivations(config.wasmCache.maxCachedActivations);
+  setWasmCompilationCacheSize(config.wasmCache.compilationCacheSize);
 
   const endTimeMS = config.timeoutMinutes
     ? start + Math.max(1, config.timeoutMinutes) * 60000

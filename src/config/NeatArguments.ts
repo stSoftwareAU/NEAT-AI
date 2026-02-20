@@ -17,6 +17,7 @@ import type { RequiredBiasRegularisationConfig } from "./BiasRegularisationConfi
 import type { Logger } from "../utils/Logger.ts";
 import type { RandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import type { RequiredPredictiveCodingConfig } from "./PredictiveCodingConfig.ts";
+import type { RequiredWasmCacheConfig } from "./WasmCacheConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 
 /**
@@ -547,6 +548,15 @@ export interface NeatArguments {
    * prediction errors.
    */
   predictiveCoding: RequiredPredictiveCodingConfig;
+
+  /**
+   * WASM cache sizing configuration.
+   *
+   * Issue #1566: Controls the LRU caps for creature activation caching
+   * and compilation template caching. Default `maxCachedActivations`
+   * scales with `populationSize` to avoid eviction churn.
+   */
+  wasmCache: RequiredWasmCacheConfig;
 
   /**
    * Structured logger instance for NEAT-AI output.
