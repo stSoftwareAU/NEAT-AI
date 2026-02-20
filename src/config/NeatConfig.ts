@@ -27,6 +27,10 @@ import {
 import type { NeatArguments } from "./NeatArguments.ts";
 import { parseDiscoverySampleRate, parseNumber } from "./ParseOptions.ts";
 import {
+  DEFAULT_PREDICTIVE_CODING_CONFIG,
+  type RequiredPredictiveCodingConfig,
+} from "./PredictiveCodingConfig.ts";
+import {
   DEFAULT_QUANTUM_STEP_CONFIG,
   type RequiredQuantumStepConfig,
 } from "./QuantumStepConfig.ts";
@@ -776,6 +780,42 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
           { min: 0, max: 1 },
         ),
       } as RequiredEnsembleDiversityConfig;
+    })(),
+    // Issue #1553: Predictive Coding configuration
+    predictiveCoding: (() => {
+      const overrides = opts.predictiveCoding as
+        | Record<string, unknown>
+        | undefined;
+      const d = DEFAULT_PREDICTIVE_CODING_CONFIG;
+      return {
+        enabled: typeof overrides?.enabled === "boolean"
+          ? overrides.enabled
+          : d.enabled,
+        inferenceSteps: parseNumber(
+          "Predictive Coding inferenceSteps",
+          overrides?.inferenceSteps,
+          d.inferenceSteps,
+          { integer: true, min: 1 },
+        ),
+        inferenceRate: parseNumber(
+          "Predictive Coding inferenceRate",
+          overrides?.inferenceRate,
+          d.inferenceRate,
+          { minExclusive: 0 },
+        ),
+        learningRate: parseNumber(
+          "Predictive Coding learningRate",
+          overrides?.learningRate,
+          d.learningRate,
+          { minExclusive: 0 },
+        ),
+        energyThreshold: parseNumber(
+          "Predictive Coding energyThreshold",
+          overrides?.energyThreshold,
+          d.energyThreshold,
+          { minExclusive: 0 },
+        ),
+      } as RequiredPredictiveCodingConfig;
     })(),
     // Issue #1330: Adaptive quantum step sizing for memetic fine-tuning
     quantumStep: (() => {

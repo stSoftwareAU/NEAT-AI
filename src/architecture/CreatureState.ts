@@ -15,6 +15,27 @@ export interface NeuronStateInterface {
   totalActivation?: number;
   noChange?: boolean;
   totalErrorAbsolute?: number;
+
+  /**
+   * Top-down prediction from Predictive Coding inference.
+   * Only populated when PC mode is enabled.
+   * Issue #1553.
+   */
+  prediction?: number;
+
+  /**
+   * Prediction error from Predictive Coding inference.
+   * Only populated when PC mode is enabled.
+   * Issue #1553.
+   */
+  predictionError?: number;
+
+  /**
+   * Latent value from Predictive Coding inference.
+   * Only populated when PC mode is enabled.
+   * Issue #1553.
+   */
+  latentValue?: number;
 }
 
 export class NeuronState implements NeuronStateInterface {
@@ -35,6 +56,11 @@ export class NeuronState implements NeuronStateInterface {
 
   public noChange?: boolean;
   public totalErrorAbsolute: number;
+
+  /** Issue #1553: Predictive Coding fields (only populated when PC mode is enabled). */
+  public prediction?: number;
+  public predictionError?: number;
+  public latentValue?: number;
 
   constructor() {
     this.count = 0;
@@ -63,6 +89,9 @@ export class NeuronState implements NeuronStateInterface {
     this.totalActivation = 0;
     this.noChange = undefined;
     this.totalErrorAbsolute = 0;
+    this.prediction = undefined;
+    this.predictionError = undefined;
+    this.latentValue = undefined;
   }
 
   /**

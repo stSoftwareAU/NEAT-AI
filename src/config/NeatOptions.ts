@@ -6,6 +6,7 @@ import type { EnsembleDiversityConfig } from "./EnsembleDiversityConfig.ts";
 import type { FineTunePopulationConfig } from "./FineTunePopulationConfig.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
 import type { PlateauDetectionConfig } from "../NEAT/PlateauDetector.ts";
+import type { PredictiveCodingConfig } from "./PredictiveCodingConfig.ts";
 import type { QuantumStepConfig } from "./QuantumStepConfig.ts";
 import type { StabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
 import type { BiasRegularisationConfig } from "./BiasRegularisationConfig.ts";
@@ -70,6 +71,7 @@ export type NeatOptions =
     | "discoveryMinCandidatesPerCategory"
     | "adaptiveMutationThresholds"
     | "plateauDetection"
+    | "predictiveCoding"
     | "stabilityAdaptation"
     | "weightRegularisation"
     | "biasRegularisation"
@@ -86,6 +88,8 @@ export type NeatOptions =
     adaptiveMutationThresholds?: AdaptiveMutationThresholds;
     /** Partial overrides for plateau detection configuration (defaults applied if not specified) */
     plateauDetection?: PlateauDetectionConfig;
+    /** Partial overrides for Predictive Coding configuration (defaults applied if not specified) */
+    predictiveCoding?: PredictiveCodingConfig;
     /** Partial overrides for stability adaptation configuration (defaults applied if not specified) */
     stabilityAdaptation?: StabilityAdaptationConfig;
     /** Partial overrides for weight regularisation configuration (defaults applied if not specified) */
@@ -154,6 +158,7 @@ export type NeatOptionsInput =
     | "discoveryMinCandidatesPerCategory"
     | "adaptiveMutationThresholds"
     | "plateauDetection"
+    | "predictiveCoding"
     | "stabilityAdaptation"
     | "weightRegularisation"
     | "biasRegularisation"
@@ -176,6 +181,7 @@ export type NeatOptionsInput =
     >;
     adaptiveMutationThresholds?: CoerceNumeric<AdaptiveMutationThresholds>;
     plateauDetection?: CoerceNumeric<PlateauDetectionConfig>;
+    predictiveCoding?: CoerceNumeric<PredictiveCodingConfig>;
     stabilityAdaptation?: CoerceNumeric<StabilityAdaptationConfig>;
     weightRegularisation?: CoerceNumeric<WeightRegularisationConfig>;
     biasRegularisation?: CoerceNumeric<BiasRegularisationConfig>;
