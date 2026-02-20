@@ -1194,6 +1194,10 @@ export class Neat {
       this.additionalGenerationCount = 1;
     }
 
+    // Issue #1568: Save reference to old population before replacement
+    // so we can dispose creatures that are not carried forward.
+    const oldPopulation = this.population;
+
     this.population = [
       ...elitists,
       ...trainedPopulation,
@@ -1208,6 +1212,17 @@ export class Neat {
     // newPopulation, dnaPopulation) in a single operation, reducing overhead
     // compared to the previous two-pass approach.
     deDuplicator.perform(this.population);
+
+    // Issue #1568: Explicitly dispose old population creatures that were not
+    // carried forward. This frees WASM heap allocations deterministically
+    // rather than waiting for the FinalizationRegistry / GC to clean up.
+    // Elitists are carried forward into the new population, so we skip those.
+    const carriedForward = new Set(this.population);
+    for (const creature of oldPopulation) {
+      if (!carriedForward.has(creature)) {
+        creature.dispose();
+      }
+    }
 
     return {
       fittest: fittest,
