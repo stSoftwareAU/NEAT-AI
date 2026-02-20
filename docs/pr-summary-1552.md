@@ -14,8 +14,8 @@ implementation roadmap, and academic references. Closes #1552.
      dynamics, local learning rules, relationship to free energy principle and
      elastic backpropagation
   2. Architecture Design — mapping onto Neuron/Synapse/Creature, state
-     extensions, weight symmetry decision, inference settling algorithm,
-     Hebbian learning rule, TypeScript vs Rust/WASM component allocation
+     extensions, weight symmetry decision, inference settling algorithm, Hebbian
+     learning rule, TypeScript vs Rust/WASM component allocation
   3. Integration Strategy — optional training mode, configuration design
      following established patterns, backward compatibility guarantees,
      Discovery integration
