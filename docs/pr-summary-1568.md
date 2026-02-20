@@ -10,9 +10,9 @@ linger in the GC queue. WASM heap allocations were only freed when the
 delayed under memory pressure.
 
 Now, before returning from `evolve()`, the old population is compared against
-the new population using object identity. Creatures not carried forward
-(i.e. not elitists) are explicitly disposed, freeing WASM heap allocations,
-clearing caches, and nulling internal references immediately.
+the new population using object identity. Creatures not carried forward (i.e.
+not elitists) are explicitly disposed, freeing WASM heap allocations, clearing
+caches, and nulling internal references immediately.
 
 ## Changes
 
