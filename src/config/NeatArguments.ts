@@ -16,6 +16,7 @@ import type { RequiredQuantumStepConfig } from "./QuantumStepConfig.ts";
 import type { RequiredBiasRegularisationConfig } from "./BiasRegularisationConfig.ts";
 import type { Logger } from "../utils/Logger.ts";
 import type { RandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import type { RequiredPredictiveCodingConfig } from "./PredictiveCodingConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 
 /**
@@ -537,6 +538,15 @@ export interface NeatArguments {
    * - successRateWindow: Number of recent generations to consider (default: 10)
    */
   fineTunePopulation: RequiredFineTunePopulationConfig;
+
+  /**
+   * Predictive Coding configuration.
+   *
+   * Issue #1553: Neuroscience-inspired learning framework where each layer
+   * generates top-down predictions and learning is driven by minimising
+   * prediction errors.
+   */
+  predictiveCoding: RequiredPredictiveCodingConfig;
 
   /**
    * Structured logger instance for NEAT-AI output.
