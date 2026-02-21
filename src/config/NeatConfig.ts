@@ -55,6 +55,10 @@ import {
   type RequiredWeightRegularisationConfig,
 } from "./WeightRegularisationConfig.ts";
 import {
+  DEFAULT_WORKER_THREAD_CAP_CONFIG,
+  type RequiredWorkerThreadCapConfig,
+} from "./WorkerThreadCapConfig.ts";
+import {
   createConsoleLogger,
   type Logger,
   setLogger,
@@ -180,10 +184,53 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
   }
 
   const defaultThreads = Math.max(1, navigator.hardwareConcurrency ?? 1);
-  const threads = parseNumber("Threads", opts.threads, defaultThreads, {
+  let threads = parseNumber("Threads", opts.threads, defaultThreads, {
     integer: true,
     min: 1,
   });
+
+  // Issue #1569: Parse worker thread cap config and apply memory-based capping
+  const workerThreadCap: RequiredWorkerThreadCapConfig = (() => {
+    const overrides = opts.workerThreadCap as
+      | Record<string, unknown>
+      | undefined;
+    const d = DEFAULT_WORKER_THREAD_CAP_CONFIG;
+    return {
+      maxMemoryMB: parseNumber(
+        "Worker thread cap maxMemoryMB",
+        overrides?.maxMemoryMB,
+        d.maxMemoryMB,
+        { min: 0 },
+      ),
+      estimatedMemoryPerWorkerMB: parseNumber(
+        "Worker thread cap estimatedMemoryPerWorkerMB",
+        overrides?.estimatedMemoryPerWorkerMB,
+        d.estimatedMemoryPerWorkerMB,
+        { min: 1 },
+      ),
+    } as RequiredWorkerThreadCapConfig;
+  })();
+
+  if (workerThreadCap.maxMemoryMB > 0) {
+    const memoryBasedMax = Math.max(
+      1,
+      Math.floor(
+        workerThreadCap.maxMemoryMB /
+          workerThreadCap.estimatedMemoryPerWorkerMB,
+      ),
+    );
+    if (memoryBasedMax < threads) {
+      const originalThreads = threads;
+      threads = memoryBasedMax;
+      // Logging happens after logger is created; defer via a flag
+      // We use console.warn here because the logger is not yet initialised
+      console.warn(
+        `[NEAT-AI] Worker thread count capped from ${originalThreads} to ${threads} ` +
+          `based on memory budget (maxMemoryMB: ${workerThreadCap.maxMemoryMB}, ` +
+          `estimatedMemoryPerWorkerMB: ${workerThreadCap.estimatedMemoryPerWorkerMB})`,
+      );
+    }
+  }
 
   const config: NeatArguments = {
     creativeThinkingConnectionCount: parseNumber(
@@ -877,6 +924,8 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
         ),
       } as RequiredMemoryConfig;
     })(),
+    // Issue #1569: Worker thread cap based on available memory
+    workerThreadCap,
     // Issue #1330: Adaptive quantum step sizing for memetic fine-tuning
     quantumStep: (() => {
       const overrides = opts.quantumStep as
@@ -957,6 +1006,19 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
         `warningThreshold: ${config.memory.warningThreshold}`,
       "CROSS_FIELD_VALIDATION",
     );
+  }
+
+  // Cross-field validation for worker thread cap config
+  if (config.workerThreadCap.maxMemoryMB > 0) {
+    const estimatedUsage = config.threads *
+      config.workerThreadCap.estimatedMemoryPerWorkerMB;
+    if (estimatedUsage > config.workerThreadCap.maxMemoryMB) {
+      console.warn(
+        `[NEAT-AI] Warning: threads (${config.threads}) * estimatedMemoryPerWorkerMB ` +
+          `(${config.workerThreadCap.estimatedMemoryPerWorkerMB}) = ${estimatedUsage} MB ` +
+          `exceeds maxMemoryMB (${config.workerThreadCap.maxMemoryMB})`,
+      );
+    }
   }
 
   // Cross-field validation for quantum step config
