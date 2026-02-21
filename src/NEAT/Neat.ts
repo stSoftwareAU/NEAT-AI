@@ -44,6 +44,7 @@ import {
 } from "./DiscoveryReplayQueue.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { checkMemoryAndEvict, logMemoryUsage } from "./MemoryMonitor.ts";
 
 /**
  * NEAT (NeuroEvolution of Augmenting Topologies) implementation.
@@ -1223,6 +1224,14 @@ export class Neat {
         creature.dispose();
       }
     }
+
+    // Issue #1565: Proactive heap memory monitoring and graduated cache eviction.
+    // Checked once per generation after old population disposal.
+    const memoryResult = checkMemoryAndEvict(
+      this.config.memory,
+      getLogger(),
+    );
+    logMemoryUsage(memoryResult, getLogger());
 
     return {
       fittest: fittest,

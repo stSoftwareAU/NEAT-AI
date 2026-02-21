@@ -43,6 +43,10 @@ import {
   type RequiredBiasRegularisationConfig,
 } from "./BiasRegularisationConfig.ts";
 import {
+  DEFAULT_MEMORY_CONFIG,
+  type RequiredMemoryConfig,
+} from "./MemoryConfig.ts";
+import {
   DEFAULT_WASM_CACHE_CONFIG,
   type RequiredWasmCacheConfig,
 } from "./WasmCacheConfig.ts";
@@ -848,6 +852,31 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
         ),
       } as RequiredWasmCacheConfig;
     })(),
+    // Issue #1565: Proactive heap memory monitoring and cache eviction
+    memory: (() => {
+      const overrides = opts.memory as
+        | Record<string, unknown>
+        | undefined;
+      const d = DEFAULT_MEMORY_CONFIG;
+      const enabled = overrides?.enabled !== undefined
+        ? Boolean(overrides.enabled)
+        : d.enabled;
+      return {
+        enabled,
+        warningThreshold: parseNumber(
+          "Memory warningThreshold",
+          overrides?.warningThreshold,
+          d.warningThreshold,
+          { min: 0, max: 1 },
+        ),
+        criticalThreshold: parseNumber(
+          "Memory criticalThreshold",
+          overrides?.criticalThreshold,
+          d.criticalThreshold,
+          { min: 0, max: 1 },
+        ),
+      } as RequiredMemoryConfig;
+    })(),
     // Issue #1330: Adaptive quantum step sizing for memetic fine-tuning
     quantumStep: (() => {
       const overrides = opts.quantumStep as
@@ -919,6 +948,16 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
 
   // Issue #1398: Set the global logger so code without config access can use it
   setLogger(config.logger);
+
+  // Cross-field validation for memory monitoring config
+  if (config.memory.criticalThreshold < config.memory.warningThreshold) {
+    throw new ConfigurationError(
+      `Memory criticalThreshold must be >= warningThreshold. ` +
+        `criticalThreshold: ${config.memory.criticalThreshold}, ` +
+        `warningThreshold: ${config.memory.warningThreshold}`,
+      "CROSS_FIELD_VALIDATION",
+    );
+  }
 
   // Cross-field validation for quantum step config
   if (config.quantumStep.maxStep < config.quantumStep.minStep) {

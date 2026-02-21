@@ -101,6 +101,72 @@ Deno.test("NEAT/NeatConfigCoverage - discoveryReplayConcurrency rejects non-posi
   }
 });
 
+Deno.test("NEAT/NeatConfigCoverage - memory config defaults", () => {
+  const config = createNeatConfig({});
+  assertEquals(config.memory.enabled, true);
+  assertEquals(config.memory.warningThreshold, 0.70);
+  assertEquals(config.memory.criticalThreshold, 0.85);
+});
+
+Deno.test("NEAT/NeatConfigCoverage - memory config partial override", () => {
+  const config = createNeatConfig({
+    memory: { warningThreshold: 0.60 },
+  });
+  assertEquals(config.memory.enabled, true);
+  assertEquals(config.memory.warningThreshold, 0.60);
+  assertEquals(config.memory.criticalThreshold, 0.85);
+});
+
+Deno.test("NEAT/NeatConfigCoverage - memory config full override", () => {
+  const config = createNeatConfig({
+    memory: {
+      enabled: false,
+      warningThreshold: 0.50,
+      criticalThreshold: 0.75,
+    },
+  });
+  assertEquals(config.memory.enabled, false);
+  assertEquals(config.memory.warningThreshold, 0.50);
+  assertEquals(config.memory.criticalThreshold, 0.75);
+});
+
+Deno.test("NEAT/NeatConfigCoverage - memory config cross-field validation (critical < warning throws)", () => {
+  try {
+    createNeatConfig({
+      memory: {
+        warningThreshold: 0.90,
+        criticalThreshold: 0.60,
+      },
+    });
+    fail(
+      "Expected createNeatConfig() to throw when criticalThreshold < warningThreshold",
+    );
+  } catch (e) {
+    assertEquals(
+      (e as Error).message.includes("criticalThreshold"),
+      true,
+      `Error should mention criticalThreshold: ${(e as Error).message}`,
+    );
+  }
+});
+
+Deno.test("NEAT/NeatConfigCoverage - memory config warningThreshold out of range throws", () => {
+  try {
+    createNeatConfig({
+      memory: { warningThreshold: 1.5 },
+    });
+    fail(
+      "Expected createNeatConfig() to throw for warningThreshold > 1",
+    );
+  } catch (e) {
+    assertEquals(
+      (e as Error).message.includes("Memory warningThreshold"),
+      true,
+      `Error should mention Memory warningThreshold: ${(e as Error).message}`,
+    );
+  }
+});
+
 Deno.test("NEAT/NeatConfigCoverage - discoveryReplayConcurrency default path when verify enabled", () => {
   // This is a lightweight smoke check to execute the defaulting logic.
   const config = createNeatConfig({
