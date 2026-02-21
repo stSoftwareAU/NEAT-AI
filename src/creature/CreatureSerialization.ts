@@ -25,6 +25,9 @@ import type {
 import { upgradeOne } from "../upgrade/UpgradeOne.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 
+/** Keys that must never be copied from untrusted data to prevent prototype pollution. */
+const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 /**
  * Convert the creature to a JSON export object.
  */
@@ -129,7 +132,16 @@ export function loadFrom(
     n.index = pos;
 
     if ((jn as NeuronTrace).trace) {
-      Object.assign(state.node(n.index), (jn as NeuronTrace).trace);
+      const target = state.node(n.index) as unknown as Record<string, unknown>;
+      const source = (jn as NeuronTrace).trace as unknown as Record<
+        string,
+        unknown
+      >;
+      for (const key of Object.keys(source)) {
+        if (!UNSAFE_KEYS.has(key)) {
+          target[key] = source[key];
+        }
+      }
     }
 
     uuidMap.set(n.uuid, pos);
@@ -179,10 +191,19 @@ export function loadFrom(
     }
 
     if ((synapse as SynapseTrace).trace) {
-      Object.assign(
-        state.connection(tmpSynapse.from, tmpSynapse.to),
-        (synapse as SynapseTrace).trace,
-      );
+      const target = state.connection(
+        tmpSynapse.from,
+        tmpSynapse.to,
+      ) as unknown as Record<string, unknown>;
+      const source = (synapse as SynapseTrace).trace as unknown as Record<
+        string,
+        unknown
+      >;
+      for (const key of Object.keys(source)) {
+        if (!UNSAFE_KEYS.has(key)) {
+          target[key] = source[key];
+        }
+      }
     }
   }
 
