@@ -146,6 +146,39 @@ export const squash: (a: number, b: number) => number;
 export const unsquash: (a: number, b: number, c: number) => number;
 export const validate_range: (a: number, b: number) => number;
 export const version: () => [number, number];
+export const __wbg_predictivecodingengine_free: (a: number, b: number) => void;
+export const predictivecodingengine_infer_batch_wasm: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+  g: number,
+  h: number,
+) => [number, number];
+export const predictivecodingengine_infer_wasm: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+) => [number, number];
+export const predictivecodingengine_new: (
+  a: number,
+  b: number,
+) => [number, number, number];
+export const predictivecodingengine_num_inputs: (a: number) => number;
+export const predictivecodingengine_num_neurons: (a: number) => number;
+export const predictivecodingengine_num_outputs: (a: number) => number;
+export const predictivecodingengine_compute_gradients_wasm: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+) => [number, number];
 export const accumulate_bias_persistent_4way: (
   a: number,
   b: number,

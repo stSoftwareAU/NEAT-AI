@@ -249,6 +249,198 @@ if (Symbol.dispose) {
 }
 
 /**
+ * The Predictive Coding inference engine.
+ *
+ * Holds the network topology and configuration for running the iterative
+ * inference (settling) loop. The engine is constructed once from a creature's
+ * topology and can be reused for multiple inference calls.
+ */
+export class PredictiveCodingEngine {
+  __destroy_into_raw() {
+    const ptr = this.__wbg_ptr;
+    this.__wbg_ptr = 0;
+    PredictiveCodingEngineFinalization.unregister(this);
+    return ptr;
+  }
+  free() {
+    const ptr = this.__destroy_into_raw();
+    wasm.__wbg_predictivecodingengine_free(ptr, 0);
+  }
+  /**
+   * Computes weight and bias gradients from settled inference state.
+   *
+   * # Arguments
+   * * `latents` - Float32Array of settled latent values (length = num_neurons).
+   * * `errors` - Float32Array of prediction errors for non-input neurons.
+   * * `learning_rate` - The learning rate for weight updates.
+   *
+   * # Returns
+   * Packed Float32Array:
+   * - [0]: num_non_inputs (number of bias deltas)
+   * - [1]: num_weight_entries (number of weight delta triples)
+   * - [2..2+num_non_inputs): bias deltas
+   * - [2+num_non_inputs..]: weight delta triples (neuron_rel_idx, conn_local_idx, delta)
+   * @param {Float32Array} latents
+   * @param {Float32Array} errors
+   * @param {number} learning_rate
+   * @returns {Float32Array}
+   */
+  compute_gradients_wasm(latents, errors, learning_rate) {
+    const ptr0 = passArrayF32ToWasm0(latents, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF32ToWasm0(errors, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.predictivecodingengine_compute_gradients_wasm(
+      this.__wbg_ptr,
+      ptr0,
+      len0,
+      ptr1,
+      len1,
+      learning_rate,
+    );
+    var v3 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v3;
+  }
+  /**
+   * Runs inference on a batch of samples.
+   *
+   * Input format: packed Float32Array [input0..., input1..., ...]
+   * Each input has `input_size` elements.
+   *
+   * Result format: packed with per-record length headers (same as
+   * activate_and_trace_batch_4way pattern):
+   * - [0..num_samples): per-record lengths
+   * - Then each record in infer_wasm format
+   * @param {Float32Array} inputs
+   * @param {number} input_size
+   * @param {number} num_samples
+   * @param {Float32Array | null | undefined} targets
+   * @param {number} target_size
+   * @returns {Float32Array}
+   */
+  infer_batch_wasm(inputs, input_size, num_samples, targets, target_size) {
+    const ptr0 = passArrayF32ToWasm0(inputs, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    var ptr1 = isLikeNone(targets)
+      ? 0
+      : passArrayF32ToWasm0(targets, wasm.__wbindgen_malloc);
+    var len1 = WASM_VECTOR_LEN;
+    const ret = wasm.predictivecodingengine_infer_batch_wasm(
+      this.__wbg_ptr,
+      ptr0,
+      len0,
+      input_size,
+      num_samples,
+      ptr1,
+      len1,
+      target_size,
+    );
+    var v3 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v3;
+  }
+  /**
+   * Runs inference and returns a packed result array.
+   *
+   * Input format: Float32Array of input values.
+   * Optional targets: Float32Array of target values for output neurons.
+   *
+   * Result format (Float32Array):
+   * - [0]: steps_used (as f32)
+   * - [1]: final_energy
+   * - [2]: converged (1.0 = true, 0.0 = false)
+   * - [3]: num_neurons
+   * - [4]: num_non_inputs
+   * - [5]: energy_history_length
+   * - [6..6+num_neurons): latent values
+   * - [6+num_neurons..6+num_neurons+num_non_inputs): predictions
+   * - [6+num_neurons+num_non_inputs..6+num_neurons+2*num_non_inputs): errors
+   * - [remaining]: energy history
+   * @param {Float32Array} input
+   * @param {Float32Array | null} [targets]
+   * @returns {Float32Array}
+   */
+  infer_wasm(input, targets) {
+    const ptr0 = passArrayF32ToWasm0(input, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    var ptr1 = isLikeNone(targets)
+      ? 0
+      : passArrayF32ToWasm0(targets, wasm.__wbindgen_malloc);
+    var len1 = WASM_VECTOR_LEN;
+    const ret = wasm.predictivecodingengine_infer_wasm(
+      this.__wbg_ptr,
+      ptr0,
+      len0,
+      ptr1,
+      len1,
+    );
+    var v3 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v3;
+  }
+  /**
+   * Creates a new PredictiveCodingEngine from serialised topology data.
+   *
+   * Data format (all values little-endian):
+   * - u32: num_inputs
+   * - u32: num_outputs
+   * - u32: num_neurons_total (including inputs)
+   * - u32: inference_steps
+   * - f32: inference_rate
+   * - f32: energy_threshold
+   * - For each non-input neuron:
+   *   - f32: bias
+   *   - u8: squash_type
+   *   - u8: is_hidden (1 = hidden, 0 = output)
+   *   - u16: num_connections
+   *   - For each connection:
+   *     - u16: from_index
+   *     - f32: weight (as 4 bytes, little-endian)
+   * @param {Uint8Array} data
+   */
+  constructor(data) {
+    const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.predictivecodingengine_new(ptr0, len0);
+    if (ret[2]) {
+      throw takeFromExternrefTable0(ret[1]);
+    }
+    this.__wbg_ptr = ret[0] >>> 0;
+    PredictiveCodingEngineFinalization.register(this, this.__wbg_ptr, this);
+    return this;
+  }
+  /**
+   * Get the number of input neurons.
+   * @returns {number}
+   */
+  get num_inputs() {
+    const ret = wasm.predictivecodingengine_num_inputs(this.__wbg_ptr);
+    return ret >>> 0;
+  }
+  /**
+   * Get the number of neurons in the engine.
+   * @returns {number}
+   */
+  get num_neurons() {
+    const ret = wasm.predictivecodingengine_num_neurons(this.__wbg_ptr);
+    return ret >>> 0;
+  }
+  /**
+   * Get the number of output neurons.
+   * @returns {number}
+   */
+  get num_outputs() {
+    const ret = wasm.predictivecodingengine_num_outputs(this.__wbg_ptr);
+    return ret >>> 0;
+  }
+}
+if (Symbol.dispose) {
+  PredictiveCodingEngine.prototype[Symbol.dispose] =
+    PredictiveCodingEngine.prototype.free;
+}
+
+/**
  * Issue #1518 - Batch bias accumulation for 4 neurons.
  *
  * Processes 4 neurons in a single WASM call, returning a packed f64 array
@@ -1712,6 +1904,12 @@ const CompiledNetworkFinalization =
     : new FinalizationRegistry((ptr) =>
       wasm.__wbg_compilednetwork_free(ptr >>> 0, 1)
     );
+const PredictiveCodingEngineFinalization =
+  (typeof FinalizationRegistry === "undefined")
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry((ptr) =>
+      wasm.__wbg_predictivecodingengine_free(ptr >>> 0, 1)
+    );
 
 function _assertClass(instance, klass) {
   if (!(instance instanceof klass)) {
@@ -1769,6 +1967,10 @@ function getUint8ArrayMemory0() {
     cachedUint8ArrayMemory0 = new Uint8Array(wasm.memory.buffer);
   }
   return cachedUint8ArrayMemory0;
+}
+
+function isLikeNone(x) {
+  return x === undefined || x === null;
 }
 
 function passArray8ToWasm0(arg, malloc) {

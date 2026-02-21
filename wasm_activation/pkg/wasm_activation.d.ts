@@ -143,6 +143,107 @@ export class CompiledNetwork {
 }
 
 /**
+ * The Predictive Coding inference engine.
+ *
+ * Holds the network topology and configuration for running the iterative
+ * inference (settling) loop. The engine is constructed once from a creature's
+ * topology and can be reused for multiple inference calls.
+ */
+export class PredictiveCodingEngine {
+  free(): void;
+  [Symbol.dispose](): void;
+  /**
+   * Computes weight and bias gradients from settled inference state.
+   *
+   * # Arguments
+   * * `latents` - Float32Array of settled latent values (length = num_neurons).
+   * * `errors` - Float32Array of prediction errors for non-input neurons.
+   * * `learning_rate` - The learning rate for weight updates.
+   *
+   * # Returns
+   * Packed Float32Array:
+   * - [0]: num_non_inputs (number of bias deltas)
+   * - [1]: num_weight_entries (number of weight delta triples)
+   * - [2..2+num_non_inputs): bias deltas
+   * - [2+num_non_inputs..]: weight delta triples (neuron_rel_idx, conn_local_idx, delta)
+   */
+  compute_gradients_wasm(
+    latents: Float32Array,
+    errors: Float32Array,
+    learning_rate: number,
+  ): Float32Array;
+  /**
+   * Runs inference on a batch of samples.
+   *
+   * Input format: packed Float32Array [input0..., input1..., ...]
+   * Each input has `input_size` elements.
+   *
+   * Result format: packed with per-record length headers (same as
+   * activate_and_trace_batch_4way pattern):
+   * - [0..num_samples): per-record lengths
+   * - Then each record in infer_wasm format
+   */
+  infer_batch_wasm(
+    inputs: Float32Array,
+    input_size: number,
+    num_samples: number,
+    targets: Float32Array | null | undefined,
+    target_size: number,
+  ): Float32Array;
+  /**
+   * Runs inference and returns a packed result array.
+   *
+   * Input format: Float32Array of input values.
+   * Optional targets: Float32Array of target values for output neurons.
+   *
+   * Result format (Float32Array):
+   * - [0]: steps_used (as f32)
+   * - [1]: final_energy
+   * - [2]: converged (1.0 = true, 0.0 = false)
+   * - [3]: num_neurons
+   * - [4]: num_non_inputs
+   * - [5]: energy_history_length
+   * - [6..6+num_neurons): latent values
+   * - [6+num_neurons..6+num_neurons+num_non_inputs): predictions
+   * - [6+num_neurons+num_non_inputs..6+num_neurons+2*num_non_inputs): errors
+   * - [remaining]: energy history
+   */
+  infer_wasm(input: Float32Array, targets?: Float32Array | null): Float32Array;
+  /**
+   * Creates a new PredictiveCodingEngine from serialised topology data.
+   *
+   * Data format (all values little-endian):
+   * - u32: num_inputs
+   * - u32: num_outputs
+   * - u32: num_neurons_total (including inputs)
+   * - u32: inference_steps
+   * - f32: inference_rate
+   * - f32: energy_threshold
+   * - For each non-input neuron:
+   *   - f32: bias
+   *   - u8: squash_type
+   *   - u8: is_hidden (1 = hidden, 0 = output)
+   *   - u16: num_connections
+   *   - For each connection:
+   *     - u16: from_index
+   *     - f32: weight (as 4 bytes, little-endian)
+   */
+  constructor(data: Uint8Array);
+  /**
+   * Get the number of input neurons.
+   */
+  readonly num_inputs: number;
+  /**
+   * Get the number of neurons in the engine.
+   */
+  readonly num_neurons: number;
+  /**
+   * Get the number of output neurons.
+   */
+  readonly num_outputs: number;
+}
+
+/**
  * Issue #1518 - Batch bias accumulation for 4 neurons.
  *
  * Processes 4 neurons in a single WASM call, returning a packed f64 array
@@ -1052,6 +1153,39 @@ export interface InitOutput {
   readonly unsquash: (a: number, b: number, c: number) => number;
   readonly validate_range: (a: number, b: number) => number;
   readonly version: () => [number, number];
+  readonly __wbg_predictivecodingengine_free: (a: number, b: number) => void;
+  readonly predictivecodingengine_infer_batch_wasm: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+  ) => [number, number];
+  readonly predictivecodingengine_infer_wasm: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+  ) => [number, number];
+  readonly predictivecodingengine_new: (
+    a: number,
+    b: number,
+  ) => [number, number, number];
+  readonly predictivecodingengine_num_inputs: (a: number) => number;
+  readonly predictivecodingengine_num_neurons: (a: number) => number;
+  readonly predictivecodingengine_num_outputs: (a: number) => number;
+  readonly predictivecodingengine_compute_gradients_wasm: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => [number, number];
   readonly accumulate_bias_persistent_4way: (
     a: number,
     b: number,
