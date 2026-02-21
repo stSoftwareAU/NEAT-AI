@@ -13,6 +13,8 @@ import { ModBias } from "../mutate/ModBias.ts";
 import { ModActivation as ModSquash } from "../mutate/ModSquash.ts";
 import { ModWeight } from "../mutate/ModWeight.ts";
 import type { RadioactiveInterface } from "../mutate/RadioactiveInterface.ts";
+import { computeMutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
+import type { MutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
 import { SubBackCon } from "../mutate/SubBackCon.ts";
 import { SubConnection } from "../mutate/SubConnection.ts";
 import { SubNeuron } from "../mutate/SubNeuron.ts";
@@ -154,6 +156,13 @@ export class Mutator {
         // Only clear focus cache when the focus list changes between mutations.
         let lastFocusList: number[] | undefined;
 
+        // Issue #1557: Compute prediction-error-guided mutation bias when
+        // Predictive Coding is enabled. The bias is computed once per creature
+        // and reused across all mutation rounds for that creature.
+        const mutationBias = this.config.predictiveCoding.enabled
+          ? computeMutationBias(creature)
+          : undefined;
+
         for (let j = this.config.mutationAmount; j--;) {
           const mutationMethod = this.selectMutationMethod(creature);
 
@@ -173,6 +182,7 @@ export class Mutator {
             creature,
             mutationMethod,
             currentFocusList,
+            mutationBias,
           );
           if (flag) {
             changed = true;
@@ -453,10 +463,14 @@ export class Mutator {
    * @param {string} method.name - The name of the mutation method.
    * @param {number[]} [focusList] - The list of focus indices.
    */
+  /**
+   * Issue #1557: Accepts optional MutationBias to guide structural mutations.
+   */
   public mutateCreature(
     creature: Creature,
     method: { name: string },
     focusList?: number[],
+    mutationBias?: MutationBias,
   ): boolean {
     assert(method.name, "Mutate name is required");
     const startUUID = CreatureUtil.makeUUID(creature);
@@ -482,7 +496,7 @@ export class Mutator {
     // significantly reducing object allocations during evolution.
     const mutator = this.getMutatorInstance(creature, method.name);
 
-    const changed = mutator.mutate(focusList);
+    const changed = mutator.mutate(focusList, mutationBias);
 
     if (!changed && (!focusList || focusList.length === 0)) {
       getLogger().info(
