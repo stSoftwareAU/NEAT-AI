@@ -2,6 +2,11 @@ import { assert } from "@std/assert";
 import type { ConnectionOptions } from "../ConnectionOptions.ts";
 import type { Creature } from "../Creature.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
+import type { MutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
+import {
+  neuronBiasToIndexWeights,
+  selectWeightedIndex,
+} from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
 import { Synapse } from "../architecture/Synapse.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { getMajorVersion } from "../upgrade/Upgrade.ts";
@@ -22,9 +27,31 @@ export class AddConnection extends AbstractMutationOperator {
    * @param options - The options for the connection.
    * @param options.weightScale - A scaling factor for the weight of the connection.
    */
-  public override mutate(focusList?: number[], options: ConnectionOptions = {
-    weightScale: 1,
-  }): boolean {
+  /**
+   * Issue #1557: Accepts optional MutationBias for prediction-error-guided
+   * connection selection. When provided, neuron pairs where at least one
+   * neuron has high prediction error are more likely to be connected.
+   *
+   * The second parameter accepts either ConnectionOptions (for backward
+   * compatibility with direct callers) or MutationBias (from the Mutator).
+   */
+  public override mutate(
+    focusList?: number[],
+    optionsOrBias?: ConnectionOptions | MutationBias,
+    extraBias?: MutationBias,
+  ): boolean {
+    // Disambiguate the overloaded second parameter.
+    let options: ConnectionOptions = { weightScale: 1 };
+    let mutationBias: MutationBias | undefined;
+
+    if (optionsOrBias) {
+      if ("weightScale" in optionsOrBias) {
+        options = optionsOrBias as ConnectionOptions;
+        mutationBias = extraBias;
+      } else if ("neuronWeights" in optionsOrBias) {
+        mutationBias = optionsOrBias as MutationBias;
+      }
+    }
     // Create an array of all uncreated connections.
     //
     // When the creature is explicitly marked as forward-only, we must only
@@ -97,9 +124,33 @@ export class AddConnection extends AbstractMutationOperator {
       return false;
     }
 
-    const pair = available[
-      Math.floor(getRandomNumberGenerator().random() * available.length)
-    ];
+    // Issue #1557: Use prediction-error-weighted selection when bias is available.
+    // Weight each candidate pair by the maximum prediction error of the two neurons.
+    let pair: [number, number, Neuron, Neuron];
+    if (mutationBias && mutationBias.neuronWeights.size > 0) {
+      const biasIndexWeights = neuronBiasToIndexWeights(
+        mutationBias,
+        this.creature,
+      );
+      // Build per-pair weight as max(fromWeight, toWeight).
+      const pairWeights = new Map<number, number>();
+      for (let i = 0; i < available.length; i++) {
+        const [fromIdx, toIdx] = available[i];
+        const fromW = biasIndexWeights.get(fromIdx) ?? 0;
+        const toW = biasIndexWeights.get(toIdx) ?? 0;
+        pairWeights.set(i, Math.max(fromW, toW));
+      }
+      const pairCandidates = Array.from(
+        { length: available.length },
+        (_, i) => i,
+      );
+      const selectedIndex = selectWeightedIndex(pairCandidates, pairWeights);
+      pair = available[selectedIndex];
+    } else {
+      pair = available[
+        Math.floor(getRandomNumberGenerator().random() * available.length)
+      ];
+    }
     const fromIndex = pair[0];
     const toIndex = pair[1];
 

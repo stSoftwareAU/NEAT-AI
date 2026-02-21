@@ -2,6 +2,11 @@ import { assert } from "@std/assert";
 import { CreatureUtil } from "../../mod.ts";
 import type { Creature } from "../Creature.ts";
 import { Neuron } from "../architecture/Neuron.ts";
+import type { MutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
+import {
+  neuronBiasToIndexWeights,
+  selectWeightedIndex,
+} from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
 import { Synapse } from "../architecture/Synapse.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
@@ -39,8 +44,15 @@ export function pickOutwardTargetNeuronIndex(
 export class AddNeuron extends AbstractMutationOperator {
   /**
    * Add a neuron to the network.
+   *
+   * Issue #1557: When mutationBias is provided, source and target neuron
+   * selection is weighted by prediction error — neurons with higher error
+   * are more likely to be selected as connection endpoints.
    */
-  protected performMutation(focusList?: number[]): boolean {
+  protected performMutation(
+    focusList?: number[],
+    mutationBias?: MutationBias,
+  ): boolean {
     const creature = this.creature;
     const rng = getRandomNumberGenerator();
     const startUUID = CreatureUtil.makeUUID(creature);
@@ -69,15 +81,22 @@ export class AddNeuron extends AbstractMutationOperator {
     // This provides O(n) candidate filtering instead of potentially O(12*n)
     // rejection loops when focus list is small relative to network size.
 
+    // Issue #1557: Convert mutation bias to index-based weights for selection.
+    const biasIndexWeights = mutationBias
+      ? neuronBiasToIndexWeights(mutationBias, creature)
+      : undefined;
+
     const fromIndex = this.selectSourceCandidate(
       creature,
       neuron.index,
       focusList,
+      biasIndexWeights,
     );
     const toIndex = this.selectTargetCandidate(
       creature,
       neuron.index,
       focusList,
+      biasIndexWeights,
     );
 
     // Create inward connection (from source to new neuron)
@@ -310,6 +329,7 @@ export class AddNeuron extends AbstractMutationOperator {
     creature: Creature,
     neuronIndex: number,
     focusList?: number[],
+    biasWeights?: Map<number, number>,
   ): number {
     // Source candidates must have index < neuronIndex (to connect TO the new neuron)
     // Build list of candidates that are in focus
@@ -336,7 +356,12 @@ export class AddNeuron extends AbstractMutationOperator {
       return -1;
     }
 
-    // Direct random selection from valid candidates
+    // Issue #1557: Use weighted selection when prediction error bias is available.
+    if (biasWeights && biasWeights.size > 0) {
+      return selectWeightedIndex(sourceCandidates, biasWeights);
+    }
+
+    // Default: uniform random selection from valid candidates.
     return sourceCandidates[
       Math.floor(getRandomNumberGenerator().random() * sourceCandidates.length)
     ];
@@ -357,6 +382,7 @@ export class AddNeuron extends AbstractMutationOperator {
     creature: Creature,
     neuronIndex: number,
     focusList?: number[],
+    biasWeights?: Map<number, number>,
   ): number {
     // Target candidates must have index >= neuronIndex (to connect FROM the new neuron)
     // Build list of candidates that are in focus
@@ -382,7 +408,12 @@ export class AddNeuron extends AbstractMutationOperator {
       return -1;
     }
 
-    // Direct random selection from valid candidates
+    // Issue #1557: Use weighted selection when prediction error bias is available.
+    if (biasWeights && biasWeights.size > 0) {
+      return selectWeightedIndex(targetCandidates, biasWeights);
+    }
+
+    // Default: uniform random selection from valid candidates.
     return targetCandidates[
       Math.floor(getRandomNumberGenerator().random() * targetCandidates.length)
     ];

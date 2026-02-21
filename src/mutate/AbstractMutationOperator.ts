@@ -1,4 +1,5 @@
 import type { Creature } from "../Creature.ts";
+import type { MutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
 
@@ -22,18 +23,26 @@ export abstract class AbstractMutationOperator implements RadioactiveInterface {
   /**
    * Implements RadioactiveInterface.mutate().
    * Delegates to the subclass-specific `performMutation()`.
+   *
+   * Issue #1557: Accepts optional MutationBias from Predictive Coding
+   * prediction errors. When provided, mutation operators can use weighted
+   * selection to concentrate structural changes on high-error regions.
    */
-  public mutate(focusList?: number[]): boolean {
-    return this.performMutation(focusList);
+  public mutate(focusList?: number[], mutationBias?: MutationBias): boolean {
+    return this.performMutation(focusList, mutationBias);
   }
 
   /**
    * Subclasses implement this with their mutation-specific logic.
    *
    * @param focusList - Optional list of neuron indices to focus on.
+   * @param mutationBias - Optional prediction-error-guided mutation bias (Issue #1557).
    * @returns true if the mutation changed the creature, false otherwise.
    */
-  protected abstract performMutation(focusList?: number[]): boolean;
+  protected abstract performMutation(
+    focusList?: number[],
+    mutationBias?: MutationBias,
+  ): boolean;
 
   /**
    * Selects a random hidden neuron index, respecting focus list constraints.
