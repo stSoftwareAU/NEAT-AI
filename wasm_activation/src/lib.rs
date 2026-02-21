@@ -22,6 +22,8 @@ mod error;
 mod fused_error;
 mod loss;
 mod network;
+mod pc_inference;
+mod pc_learning;
 mod range;
 mod safe_zone;
 mod simd;
@@ -33,6 +35,7 @@ mod unsquash;
 
 // Re-export public types and structs
 pub use network::{CompiledNetwork, NeuronData, SynapseData};
+pub use pc_inference::PredictiveCodingEngine;
 pub use squash::SquashType;
 pub use synapse_type::SynapseType;
 
