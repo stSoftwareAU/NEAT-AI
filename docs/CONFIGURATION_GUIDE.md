@@ -572,24 +572,24 @@ Pass as `fineTunePopulation` in options.
 
 ## Worker Thread Cap
 
-Cap worker thread count based on available memory (Issue #1569). This is
-opt-in — when `maxMemoryMB` is not set (or 0), behaviour is unchanged.
+Cap worker thread count based on available memory (Issue #1569). This is opt-in
+— when `maxMemoryMB` is not set (or 0), behaviour is unchanged.
 
 ```ts
 const config = createNeatConfig({
   threads: 16,
   workerThreadCap: {
-    maxMemoryMB: 8192,              // 8 GB memory budget
-    estimatedMemoryPerWorkerMB: 2048 // 2 GB per worker (default)
-  }
+    maxMemoryMB: 8192, // 8 GB memory budget
+    estimatedMemoryPerWorkerMB: 2048, // 2 GB per worker (default)
+  },
 });
 // Effective threads = min(16, floor(8192 / 2048)) = 4
 ```
 
-| Field | Default | Min | Description |
-|---|---|---|---|
-| `maxMemoryMB` | 0 (disabled) | 0 | Total memory budget in MB for worker threads |
-| `estimatedMemoryPerWorkerMB` | 2048 | 1 | Estimated memory per worker in MB |
+| Field                        | Default      | Min | Description                                  |
+| ---------------------------- | ------------ | --- | -------------------------------------------- |
+| `maxMemoryMB`                | 0 (disabled) | 0   | Total memory budget in MB for worker threads |
+| `estimatedMemoryPerWorkerMB` | 2048         | 1   | Estimated memory per worker in MB            |
 
 When `maxMemoryMB > 0`, the effective thread count is:
 `min(threads, max(1, floor(maxMemoryMB / estimatedMemoryPerWorkerMB)))`.
