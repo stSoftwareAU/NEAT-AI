@@ -258,6 +258,8 @@
     "Mrsic",
     "latents",
     "nulling",
-    "predictivecodingengine"
+    "predictivecodingengine",
+    "Deserialise",
+    "deserialises"
   ]
 }
