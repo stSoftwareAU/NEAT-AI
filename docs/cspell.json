@@ -257,6 +257,7 @@
     "Emde",
     "Mrsic",
     "latents",
-    "nulling"
+    "nulling",
+    "predictivecodingengine"
   ]
 }
