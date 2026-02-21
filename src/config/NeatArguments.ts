@@ -17,6 +17,7 @@ import type { RequiredBiasRegularisationConfig } from "./BiasRegularisationConfi
 import type { Logger } from "../utils/Logger.ts";
 import type { RandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import type { RequiredPredictiveCodingConfig } from "./PredictiveCodingConfig.ts";
+import type { RequiredMemoryConfig } from "./MemoryConfig.ts";
 import type { RequiredWasmCacheConfig } from "./WasmCacheConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 
@@ -557,6 +558,14 @@ export interface NeatArguments {
    * scales with `populationSize` to avoid eviction churn.
    */
   wasmCache: RequiredWasmCacheConfig;
+
+  /**
+   * Heap memory monitoring configuration.
+   *
+   * Issue #1565: Proactive heap monitoring with graduated pressure
+   * responses (warning vs critical) to evict WASM caches before OOM.
+   */
+  memory: RequiredMemoryConfig;
 
   /**
    * Structured logger instance for NEAT-AI output.
