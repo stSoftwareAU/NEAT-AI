@@ -13,6 +13,7 @@ import type { BiasRegularisationConfig } from "./BiasRegularisationConfig.ts";
 import type { MemoryConfig } from "./MemoryConfig.ts";
 import type { WasmCacheConfig } from "./WasmCacheConfig.ts";
 import type { WeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
+import type { WorkerThreadCapConfig } from "./WorkerThreadCapConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
 export type CoerceNumeric<T> = T extends number ? number | string
@@ -82,6 +83,7 @@ export type NeatOptions =
     | "fineTunePopulation"
     | "wasmCache"
     | "memory"
+    | "workerThreadCap"
     | "logger"
     | "rng"
   >
@@ -110,6 +112,8 @@ export type NeatOptions =
     wasmCache?: WasmCacheConfig;
     /** Partial overrides for memory monitoring configuration (defaults applied if not specified) */
     memory?: MemoryConfig;
+    /** Partial overrides for worker thread cap configuration (defaults applied if not specified) */
+    workerThreadCap?: WorkerThreadCapConfig;
     /**
      * Custom logger instance. When provided, all NEAT-AI log output is
      * routed through this logger instead of the default console logger.
@@ -175,6 +179,7 @@ export type NeatOptionsInput =
     | "fineTunePopulation"
     | "wasmCache"
     | "memory"
+    | "workerThreadCap"
     | "logger"
     | "logLevel"
     | "seed"
@@ -200,6 +205,7 @@ export type NeatOptionsInput =
     fineTunePopulation?: CoerceNumeric<FineTunePopulationConfig>;
     wasmCache?: CoerceNumeric<WasmCacheConfig>;
     memory?: CoerceNumeric<MemoryConfig>;
+    workerThreadCap?: CoerceNumeric<WorkerThreadCapConfig>;
     /** Custom logger instance (not coerced — functions cannot come from CLI). */
     logger?: Logger;
     /** Log level filter for the default console logger. */

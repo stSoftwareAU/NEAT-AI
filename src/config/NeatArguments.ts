@@ -20,6 +20,7 @@ import type { RequiredPredictiveCodingConfig } from "./PredictiveCodingConfig.ts
 import type { RequiredMemoryConfig } from "./MemoryConfig.ts";
 import type { RequiredWasmCacheConfig } from "./WasmCacheConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
+import type { RequiredWorkerThreadCapConfig } from "./WorkerThreadCapConfig.ts";
 
 /**
  * Concrete, fully-populated configuration shape used internally after defaults
@@ -566,6 +567,15 @@ export interface NeatArguments {
    * responses (warning vs critical) to evict WASM caches before OOM.
    */
   memory: RequiredMemoryConfig;
+
+  /**
+   * Worker thread cap configuration based on available memory.
+   *
+   * Issue #1569: When `maxMemoryMB` is set, the effective thread count
+   * is capped to `floor(maxMemoryMB / estimatedMemoryPerWorkerMB)`.
+   * When `maxMemoryMB` is 0 (default), no cap is applied.
+   */
+  workerThreadCap: RequiredWorkerThreadCapConfig;
 
   /**
    * Structured logger instance for NEAT-AI output.
