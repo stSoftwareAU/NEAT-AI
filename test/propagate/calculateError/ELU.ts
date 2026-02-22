@@ -2,7 +2,7 @@ import { assert, assertAlmostEquals } from "@std/assert";
 import { ELU } from "../../../src/methods/activations/types/ELU.ts";
 import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
 
-function check(
+function checkDerivativePath(
   squashFunction: ActivationInterface,
   currentValue: number,
   targetValue: number,
@@ -27,15 +27,29 @@ function check(
 Deno.test("ELU.calculateError: positive region", () => {
   const squashFunction = new ELU();
 
-  check(squashFunction, 1, 2);
+  checkDerivativePath(squashFunction, 1, 2);
 });
 
 Deno.test("ELU.calculateError: negative region", () => {
-  check(new ELU(), -2, -1.5);
+  checkDerivativePath(new ELU(), -2, -1.5);
 });
 
 Deno.test("ELU.calculateError: fallback at low x", () => {
-  check(new ELU(), -10, -9.9);
+  // At x=-10, derivative ≈ exp(-10) ≈ 4.5e-5 which is below the
+  // vanishing gradient threshold (1e-2). The fallback uses unSquash
+  // to compute targetInput - currentInput instead of rawError / slope.
+  // This prevents exploding errors. See issue #1588.
+  const elu = new ELU();
+  const currentValue = -10;
+  const targetValue = -9.9;
+  const act = elu.squash(currentValue);
+  const target = elu.squash(targetValue);
+
+  const error = elu.calculateError(act, target, currentValue);
+
+  assert(Number.isFinite(error), `Error should be finite, got ${error}`);
+  // unSquash-based error: targetInput - currentInput ≈ -9.9 - (-10) = 0.1
+  assertAlmostEquals(error, targetValue - currentValue, 0.01);
 });
 
 Deno.test("ELU.calculateError: perfect match", () => {

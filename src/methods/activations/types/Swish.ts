@@ -100,13 +100,13 @@ export class Swish implements ActivationInterface, UnSquashInterface {
    *   f(x) = x * sigmoid(x) = x / (1 + e^(-x))
    *
    * Strategy:
-   *   ✅ Always use derivative — smooth and non-zero
-   *   ❌ No inverse; do not use unSquash
+   *   ✅ Use derivative when slope is healthy
+   *   🥽 Fallback to unSquash when derivative vanishes (large negative x)
    *   🔒 Clamp result to prevent exploding updates
    *
    * Notes:
-   *   - Swish has no dead zones
-   *   - Suitable for deep networks with stable training
+   *   - Swish derivative vanishes for large negative x
+   *   - Fallback prevents exploding/zero error in saturation regions
    */
   calculateError(
     currentActivation: number,
@@ -117,7 +117,14 @@ export class Swish implements ActivationInterface, UnSquashInterface {
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
     const slope = this.derivative(currentValue);
-    const error = rawError / slope;
+
+    let error: number;
+    if (Math.abs(slope) > 1e-2) {
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation);
+      error = targetValue - currentValue;
+    }
 
     return ErrorHelper.calculateClampedError(error);
   }

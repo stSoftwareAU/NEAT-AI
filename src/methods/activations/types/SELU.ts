@@ -85,13 +85,13 @@ export class SELU implements ActivationInterface, UnSquashInterface {
    *        = λ * α * e^x              if x < 0
    *
    * Strategy:
-   *   ✅ Always use derivative — slope is always finite and non-zero
-   *   ❌ No fallback required
+   *   ✅ Use derivative when slope is healthy
+   *   🥽 Fallback to unSquash when derivative vanishes (very negative x)
    *   🔒 Clamp result to avoid extreme weight updates
    *
    * Notes:
-   *   - Derivative is cheap and exact
-   *   - No dead zones — suitable for stable back propagation
+   *   - SELU derivative vanishes for very negative x (λ * α * exp(x) → 0)
+   *   - Fallback prevents exploding/zero error in saturation regions
    */
   calculateError(
     currentActivation: number,
@@ -102,7 +102,14 @@ export class SELU implements ActivationInterface, UnSquashInterface {
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
     const slope = this.derivative(currentValue);
-    const error = rawError / slope;
+
+    let error: number;
+    if (slope > 1e-2) {
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation);
+      error = targetValue - currentValue;
+    }
 
     return ErrorHelper.calculateClampedError(error);
   }

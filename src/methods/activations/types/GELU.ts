@@ -105,14 +105,13 @@ export class GELU implements ActivationInterface, UnSquashInterface {
    *   f(x) ≈ 0.5 * x * (1 + tanh(√(2/π) * (x + 0.044715 * x³)))
    *
    * Strategy:
-   *   ✅ Always use derivative — smooth and nonzero
-   *   ❌ No fallback — inverse does not exist in closed form
+   *   ✅ Use derivative when slope is healthy
+   *   🥽 Fallback to unSquash when derivative vanishes (extreme inputs)
    *   🔒 Clamp result to prevent large updates
    *
    * Notes:
-   *   - GELU derivative is stable and behaves well across input space
-   *   - No risk of slope = 0 in typical input ranges
-   *   - Derivative is faster than unSquash and only option
+   *   - GELU derivative vanishes for large negative x
+   *   - Fallback prevents exploding/zero error in saturation regions
    */
   calculateError(
     currentActivation: number,
@@ -123,7 +122,14 @@ export class GELU implements ActivationInterface, UnSquashInterface {
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
     const slope = this.derivative(currentValue);
-    const error = rawError / slope;
+
+    let error: number;
+    if (Math.abs(slope) > 1e-2) {
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation);
+      error = targetValue - currentValue;
+    }
 
     return ErrorHelper.calculateClampedError(error);
   }
