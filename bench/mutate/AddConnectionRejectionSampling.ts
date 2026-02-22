@@ -9,12 +9,13 @@ import { AddConnection } from "../../src/mutate/AddConnection.ts";
  * the O(N²) available-connections list construction.
  *
  * Each iteration creates a fresh creature to ensure the available-connections
- * cache is not pre-populated.
+ * cache is not pre-populated — this is the scenario where rejection sampling
+ * provides the greatest benefit.
  */
 
 Deno.bench(
-  "AddConnection rejection sampling: sparse (5i, 3o, 5h)",
-  { group: "rejectionSampling" },
+  "AddConnection: sparse (5i, 3o, 5h)",
+  { group: "addConnection" },
   () => {
     const creature = new Creature(5, 3, { layers: [{ count: 5 }] });
     creature.forwardOnly = true;
@@ -24,8 +25,8 @@ Deno.bench(
 );
 
 Deno.bench(
-  "AddConnection rejection sampling: medium (10i, 5o, 15h)",
-  { group: "rejectionSampling" },
+  "AddConnection: medium (10i, 5o, 15h)",
+  { group: "addConnection" },
   () => {
     const creature = new Creature(10, 5, { layers: [{ count: 15 }] });
     creature.forwardOnly = true;
@@ -35,8 +36,8 @@ Deno.bench(
 );
 
 Deno.bench(
-  "AddConnection rejection sampling: large (20i, 10o, 30h)",
-  { group: "rejectionSampling" },
+  "AddConnection: large (20i, 10o, 30h)",
+  { group: "addConnection" },
   () => {
     const creature = new Creature(20, 10, { layers: [{ count: 30 }] });
     creature.forwardOnly = true;
@@ -46,8 +47,8 @@ Deno.bench(
 );
 
 Deno.bench(
-  "AddConnection rejection sampling: very large (50i, 20o, 80h)",
-  { group: "rejectionSampling" },
+  "AddConnection: very large (50i, 20o, 80h)",
+  { group: "addConnection" },
   () => {
     const creature = new Creature(50, 20, { layers: [{ count: 80 }] });
     creature.forwardOnly = true;
