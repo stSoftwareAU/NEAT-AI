@@ -65,7 +65,7 @@ export class ELU implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for ELU (Exponential Linear Unit) using derivative only.
+   * Calculates error for ELU (Exponential Linear Unit).
    *
    * Summary:
    *   f(x) = x              if x ≥ 0
@@ -75,13 +75,13 @@ export class ELU implements ActivationInterface, UnSquashInterface {
    *        = f(x) + α       if x < 0
    *
    * Strategy:
-   *   ✅ Always use derivative — slope is always defined and non-zero
-   *   ❌ No fallback required
+   *   ✅ Use derivative when slope is healthy
+   *   🥽 Fallback to unSquash when derivative vanishes (very negative x)
    *   🔒 Clamp result to prevent extreme values
    *
    * Notes:
-   *   - ELU is smooth and avoids dead zones like ReLU.
-   *   - UnSquash is complex and unnecessary; derivative is fast and safe.
+   *   - ELU derivative vanishes for very negative x (α * exp(x) → 0)
+   *   - Fallback prevents exploding/zero error in saturation regions
    */
   calculateError(
     currentActivation: number,
@@ -92,7 +92,14 @@ export class ELU implements ActivationInterface, UnSquashInterface {
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
     const slope = this.derivative(currentValue);
-    const error = rawError / slope;
+
+    let error: number;
+    if (slope > 1e-2) {
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation);
+      error = targetValue - currentValue;
+    }
 
     return ErrorHelper.calculateClampedError(error);
   }

@@ -96,19 +96,19 @@ export class Mish implements ActivationInterface, UnSquashInterface {
   }
 
   /**
-   * Calculates error for Mish activation using derivative only.
+   * Calculates error for Mish activation.
    *
    * Summary:
    *   f(x) = x * tanh(ln(1 + e^x))  (i.e., x * tanh(softplus(x)))
    *
    * Strategy:
-   *   ✅ Always use derivative — smooth and defined across ℝ
-   *   ❌ No fallback — inverse is not defined
+   *   ✅ Use derivative when slope is healthy
+   *   🥽 Fallback to unSquash when derivative vanishes (large negative x)
    *   🔒 Clamp result to prevent extreme values
    *
    * Notes:
    *   - Mish is non-monotonic near 0, but that does not affect derivative-based learning
-   *   - Use caution in extreme tails to avoid exploding weights
+   *   - Derivative vanishes for large negative x; fallback prevents exploding/zero error
    */
   calculateError(
     currentActivation: number,
@@ -119,7 +119,14 @@ export class Mish implements ActivationInterface, UnSquashInterface {
     if (Math.abs(rawError) < ERROR_EPSILON) return 0;
 
     const slope = this.derivative(currentValue);
-    const error = rawError / slope;
+
+    let error: number;
+    if (slope > 1e-2) {
+      error = rawError / slope;
+    } else {
+      const targetValue = this.unSquash(targetActivation);
+      error = targetValue - currentValue;
+    }
 
     return ErrorHelper.calculateClampedError(error);
   }
