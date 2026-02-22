@@ -77,6 +77,8 @@ Deno.test("Forward-only: mutation upgrades semanticVersion 2.x.x → 3.0.0 when 
   let mutated = false;
   for (let attempt = 0; attempt < 50; attempt++) {
     if (mutator.mutateCreature(creature, Mutation.MOD_WEIGHT)) {
+      // Issue #1583: fix/validate batched — call repair after mutation.
+      mutator.repairAfterMutation(creature);
       mutated = true;
       break;
     }
@@ -105,6 +107,8 @@ Deno.test("Forward-only: semanticVersion is never downgraded (e.g. 4.1.2 stays 4
   let mutated = false;
   for (let attempt = 0; attempt < 50; attempt++) {
     if (mutator.mutateCreature(creature, Mutation.MOD_WEIGHT)) {
+      // Issue #1583: fix/validate batched — call repair after mutation.
+      mutator.repairAfterMutation(creature);
       mutated = true;
       break;
     }

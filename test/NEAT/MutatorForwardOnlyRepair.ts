@@ -24,8 +24,10 @@ Deno.test(
       b,
     ) => (a.from === b.from ? a.to - b.to : a.from - b.from));
 
-    // Trigger the forward-only validation path by running a harmless mutation.
+    // Trigger the forward-only validation path by running a harmless mutation,
+    // then repair (Issue #1583: fix/validate batched).
     mutator.mutateCreature(creature, { name: "MOD_WEIGHT" }, undefined);
+    mutator.repairAfterMutation(creature);
 
     creature.validate({ forwardOnly: true });
     assert(

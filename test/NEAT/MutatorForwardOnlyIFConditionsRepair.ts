@@ -53,8 +53,9 @@ Deno.test(
     creature.forwardOnly = true;
     creature.semanticVersion = "2.0.0";
 
-    // Act: run a harmless mutation to trigger the repair+validation path.
+    // Act: run a harmless mutation, then repair (Issue #1583: fix/validate batched).
     mutator.mutateCreature(creature, { name: "MOD_WEIGHT" }, undefined);
+    mutator.repairAfterMutation(creature);
 
     // Assert: creature remains valid forward-only and IF invariants are satisfied.
     creature.validate({ forwardOnly: true });
