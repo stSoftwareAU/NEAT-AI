@@ -1,6 +1,5 @@
 import { assert } from "@std/assert";
 import type { ConnectionOptions } from "../ConnectionOptions.ts";
-import type { Creature } from "../Creature.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
 import type { MutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
 import {
@@ -9,15 +8,7 @@ import {
 } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
 import { Synapse } from "../architecture/Synapse.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import { getMajorVersion } from "../upgrade/Upgrade.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
-
-function bumpToFourIfForwardOnlyConfirmed(creature: Creature): void {
-  const major = getMajorVersion(creature.semanticVersion);
-  if (major === 2 || major === 3) {
-    creature.semanticVersion = "4.0.0";
-  }
-}
 
 export class AddConnection extends AbstractMutationOperator {
   /**
@@ -61,37 +52,12 @@ export class AddConnection extends AbstractMutationOperator {
     const enforceForwardOnly = this.creature.forwardOnly === true;
 
     if (enforceForwardOnly) {
-      const major = getMajorVersion(this.creature.semanticVersion);
-      // Fail fast for 4.x+ (hard invariant). For pre-4.x we repair and continue,
-      // because forward-only is not yet a hard guarantee until validated+upgraded.
-      try {
-        this.creature.validate({ forwardOnly: true });
-        bumpToFourIfForwardOnlyConfirmed(this.creature);
-      } catch (e) {
-        const error = e as Error;
-        if (major >= 4) {
-          throw new Error(
-            `[AddConnection] CRITICAL: 4.x forward-only creature is invalid before mutation: ` +
-              `${error.name} - ${error.message}`,
-          );
-        }
-
-        if (
-          error.name === "SELF_CONNECTION" || error.name === "RECURSIVE_SYNAPSE"
-        ) {
-          // Australian English: forward-only pre-4.x may temporarily be invalid; repair it
-          // so we can continue evolution and only lock the invariant once confirmed.
-          this.creature.fix({ forwardOnly: true });
-          this.creature.validate({ forwardOnly: true });
-          bumpToFourIfForwardOnlyConfirmed(this.creature);
-        } else {
-          throw e;
-        }
-      }
+      // Issue #1584: Pre-mutation validate() removed — Mutator.repairAfterMutation()
+      // handles fix + validate after the full mutation batch.
 
       // Forward-only invariant: neuron indices must be consistent.
       //
-      // Rationale:if `neuron.index` does not match its
+      // Rationale: if `neuron.index` does not match its
       // position in the `creature.neurons[]` array, the creature is corrupted.
       // In forward-only mode we must fail fast rather than attempting to
       // continue in a partially-valid state.
@@ -166,33 +132,10 @@ export class AddConnection extends AbstractMutationOperator {
     const weight = Synapse.randomWeight(options.weightScale);
 
     this.creature.connect(fromIndex, toIndex, weight);
-    if (enforceForwardOnly) {
-      // Validation is useful. For 4.x+ this is a hard failure; for pre-4.x we can
-      // repair and continue, then bump to 4.x once forward-only is confirmed.
-      const major = getMajorVersion(this.creature.semanticVersion);
-      try {
-        this.creature.validate({ forwardOnly: true });
-        bumpToFourIfForwardOnlyConfirmed(this.creature);
-      } catch (e) {
-        const error = e as Error;
-        if (major >= 4) {
-          throw new Error(
-            `[AddConnection] CRITICAL: 4.x forward-only creature became invalid after mutation: ` +
-              `${error.name} - ${error.message}`,
-          );
-        }
 
-        if (
-          error.name === "SELF_CONNECTION" || error.name === "RECURSIVE_SYNAPSE"
-        ) {
-          this.creature.fix({ forwardOnly: true });
-          this.creature.validate({ forwardOnly: true });
-          bumpToFourIfForwardOnlyConfirmed(this.creature);
-        } else {
-          throw e;
-        }
-      }
-    }
+    // Issue #1584: Post-mutation validate() removed — Mutator.repairAfterMutation()
+    // handles fix, validate, and version upgrade after the full mutation batch.
+
     delete this.creature.memetic;
     return true;
   }
