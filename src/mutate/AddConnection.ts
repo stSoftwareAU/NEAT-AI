@@ -10,6 +10,13 @@ import { Synapse } from "../architecture/Synapse.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
+/**
+ * Maximum number of rejection sampling attempts before falling back to
+ * the full available-connections list. Keeps the expected cost well
+ * below the O(N²) full-scan for sparse networks.
+ */
+const MAX_REJECTION_ATTEMPTS = 20;
+
 export class AddConnection extends AbstractMutationOperator {
   /**
    * Add a connection between two neurons.
@@ -43,24 +50,11 @@ export class AddConnection extends AbstractMutationOperator {
         mutationBias = optionsOrBias as MutationBias;
       }
     }
-    // Create an array of all uncreated connections.
-    //
-    // When the creature is explicitly marked as forward-only, we must only
-    // consider forward-only (feed-forward) index pairs. This must not rely on
-    // semantic versions.
-    const available: [number, number, Neuron, Neuron][] = [];
+
     const enforceForwardOnly = this.creature.forwardOnly === true;
 
     if (enforceForwardOnly) {
-      // Issue #1584: Pre-mutation validate() removed — Mutator.repairAfterMutation()
-      // handles fix + validate after the full mutation batch.
-
       // Forward-only invariant: neuron indices must be consistent.
-      //
-      // Rationale: if `neuron.index` does not match its
-      // position in the `creature.neurons[]` array, the creature is corrupted.
-      // In forward-only mode we must fail fast rather than attempting to
-      // continue in a partially-valid state.
       for (let i = 0; i < this.creature.neurons.length; i++) {
         if (this.creature.neurons[i].index !== i) {
           throw new Error(
@@ -71,18 +65,104 @@ export class AddConnection extends AbstractMutationOperator {
       }
     }
 
-    // Issue #1098: Use cached available connections to avoid O(n²) iteration.
-    // The cache is invalidated when structure changes (connect/disconnect/fix).
-    // Issue #1036: getAvailableConnections uses Set-based O(1) connection lookup.
+    // Issue #1587: Use rejection sampling for the simple case (no focusList,
+    // no mutationBias). Randomly pick (from, to) pairs and check validity
+    // in O(1) instead of building the full O(N²) available-connections list.
+    const hasFocus = focusList !== undefined && focusList.length > 0;
+    const hasBias = mutationBias !== undefined &&
+      mutationBias.neuronWeights.size > 0;
+
+    if (!hasFocus && !hasBias) {
+      const result = this.tryRejectionSampling(options);
+      if (result !== undefined) {
+        return result;
+      }
+      // Rejection sampling exhausted attempts — fall through to full scan.
+    }
+
+    // Full scan path: build the complete available-connections list.
+    // Used when rejection sampling fails (dense network), or when
+    // focusList/mutationBias requires weighted selection over all candidates.
+    return this.fullScanMutate(
+      focusList,
+      options,
+      mutationBias,
+      enforceForwardOnly,
+    );
+  }
+
+  /**
+   * Issue #1587: Rejection sampling — randomly pick neuron pairs and check
+   * if they form a valid new connection. Returns `true` if a connection was
+   * added, `false` if no connections are possible (fully connected), or
+   * `undefined` if sampling was exhausted and the caller should fall back
+   * to the full scan.
+   */
+  private tryRejectionSampling(
+    options: ConnectionOptions,
+  ): boolean | undefined {
+    const neurons = this.creature.neurons;
+    const inputCount = this.creature.input;
+    const neuronCount = neurons.length;
+    const rng = getRandomNumberGenerator();
+
+    // Build list of valid "to" neuron indices (exclude constant neurons
+    // and input neurons, which cannot be targets).
+    const validToIndices: number[] = [];
+    for (let i = inputCount; i < neuronCount; i++) {
+      if (neurons[i].type !== "constant") {
+        validToIndices.push(i);
+      }
+    }
+
+    if (validToIndices.length === 0) {
+      return false;
+    }
+
+    for (let attempt = 0; attempt < MAX_REJECTION_ATTEMPTS; attempt++) {
+      // Pick a random "to" neuron from valid targets.
+      const toIndex =
+        validToIndices[Math.floor(rng.random() * validToIndices.length)];
+
+      // Pick a random "from" neuron with forward ordering (from < to),
+      // matching the constraint used by computeAvailableConnections().
+      if (toIndex === 0) continue;
+      const fromIndex = Math.floor(rng.random() * toIndex);
+
+      // Check if this connection already exists (O(1) lookup).
+      if (this.creature.hasConnection(fromIndex, toIndex)) {
+        continue;
+      }
+
+      // Valid pair found — create the connection.
+      const weight = Synapse.randomWeight(options.weightScale);
+      this.creature.connect(fromIndex, toIndex, weight);
+      delete this.creature.memetic;
+      return true;
+    }
+
+    // Exhausted attempts — signal caller to fall back to full scan.
+    return undefined;
+  }
+
+  /**
+   * Original full-scan approach: builds the complete list of available
+   * connections and selects from it. Used as fallback from rejection
+   * sampling, and always used when focusList or mutationBias is active.
+   */
+  private fullScanMutate(
+    focusList: number[] | undefined,
+    options: ConnectionOptions,
+    mutationBias: MutationBias | undefined,
+    enforceForwardOnly: boolean,
+  ): boolean {
     const neurons = this.creature.neurons;
     const availablePairs = this.creature.getAvailableConnections(focusList);
 
+    const available: [number, number, Neuron, Neuron][] = [];
     for (const [fromIndx, toIndx] of availablePairs) {
       const neuronFrom = neurons[fromIndx];
       const neuronTo = neurons[toIndx];
-      // `fromIndx`/`toIndx` are the canonical neuron indices from the cache.
-      // Do not use `neuron.index` here - it can be corrupted in bad exports and
-      // would allow accidental backward connections.
       available.push([fromIndx, toIndx, neuronFrom, neuronTo]);
     }
 
@@ -91,14 +171,12 @@ export class AddConnection extends AbstractMutationOperator {
     }
 
     // Issue #1557: Use prediction-error-weighted selection when bias is available.
-    // Weight each candidate pair by the maximum prediction error of the two neurons.
     let pair: [number, number, Neuron, Neuron];
     if (mutationBias && mutationBias.neuronWeights.size > 0) {
       const biasIndexWeights = neuronBiasToIndexWeights(
         mutationBias,
         this.creature,
       );
-      // Build per-pair weight as max(fromWeight, toWeight).
       const pairWeights = new Map<number, number>();
       for (let i = 0; i < available.length; i++) {
         const [fromIdx, toIdx] = available[i];
@@ -121,8 +199,6 @@ export class AddConnection extends AbstractMutationOperator {
     const toIndex = pair[1];
 
     if (enforceForwardOnly) {
-      // Defensive guard: forward-only creatures must never gain recurrent
-      // connections.
       assert(
         fromIndex < toIndex,
         `[AddConnection] Forward-only violation: attempted to connect ${fromIndex} -> ${toIndex}`,
@@ -130,12 +206,7 @@ export class AddConnection extends AbstractMutationOperator {
     }
 
     const weight = Synapse.randomWeight(options.weightScale);
-
     this.creature.connect(fromIndex, toIndex, weight);
-
-    // Issue #1584: Post-mutation validate() removed — Mutator.repairAfterMutation()
-    // handles fix, validate, and version upgrade after the full mutation batch.
-
     delete this.creature.memetic;
     return true;
   }
