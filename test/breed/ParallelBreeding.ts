@@ -1,12 +1,13 @@
 /**
  * Tests for parallel breeding functionality.
  *
- * Issue #1026: Parallelize breeding loop using worker pool.
+ * Issue #1026: Parallelise breeding loop using worker pool.
+ * Issue #1585: Fix parallel breeding recursion.
  *
  * These tests verify:
  * 1. ParallelBreeding produces valid offspring
  * 2. ParallelBreeding maintains population diversity
- * 3. ParallelBreeding performance improves with multiple workers
+ * 3. Worker-based breeding uses iterative (non-recursive) processing
  */
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
@@ -15,6 +16,8 @@ import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { ParallelBreeding } from "../../src/breed/ParallelBreeding.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { Offspring } from "../../src/architecture/Offspring.ts";
+import type { WorkerHandler } from "../../src/multithreading/workers/WorkerHandler.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -321,5 +324,153 @@ Deno.test("ParallelBreeding - handles forwardOnly configuration", async () => {
         "Forward-only offspring should not have backward connections",
       );
     }
+  }
+});
+
+/**
+ * Creates a mock worker that breeds on the main thread.
+ * Used to test the worker-based breeding path without real workers.
+ *
+ * Issue #1585: Verify iterative worker breeding produces correct results.
+ */
+function createMockWorker(): WorkerHandler {
+  return {
+    breed(
+      mother: Creature,
+      father: Creature,
+      geneticCompatibilityThreshold: number,
+      forwardOnly: boolean,
+    ) {
+      try {
+        const child = Offspring.breed(mother, father, {
+          geneticCompatibilityThreshold,
+          forwardOnly,
+        });
+
+        if (child) {
+          return Promise.resolve({
+            taskID: 0,
+            breed: {
+              success: true,
+              offspring: JSON.stringify(child.exportJSON()),
+            },
+          });
+        }
+      } catch {
+        // Breeding can fail - this is expected
+      }
+
+      return Promise.resolve({
+        taskID: 0,
+        breed: { success: false },
+      });
+    },
+  } as unknown as WorkerHandler;
+}
+
+Deno.test("ParallelBreeding - worker path produces valid offspring", async () => {
+  const { genus } = createTestPopulation(50, 5, 2);
+  const config = createNeatConfig({
+    populationSize: 50,
+    geneticCompatibilityThreshold: 0.3,
+  });
+
+  // Use 3 mock workers to exercise the worker breeding path
+  const mockWorkers = [
+    createMockWorker(),
+    createMockWorker(),
+    createMockWorker(),
+  ];
+  const parallelBreeding = new ParallelBreeding(genus, config, mockWorkers);
+
+  const offspring = await parallelBreeding.breedBatch(30);
+
+  assert(offspring.length > 0, "Worker breeding should produce offspring");
+
+  for (const child of offspring) {
+    child.validate();
+    assertEquals(child.input, 5, "Offspring should have correct input count");
+    assertEquals(child.output, 2, "Offspring should have correct output count");
+  }
+});
+
+Deno.test("ParallelBreeding - worker path handles large batch without stack overflow", async () => {
+  // Issue #1585: Verify that breeding a large number of offspring with workers
+  // does not cause stack overflow due to recursive processNext calls.
+  const { genus } = createTestPopulation(50, 5, 2);
+  const config = createNeatConfig({
+    populationSize: 50,
+    geneticCompatibilityThreshold: 0.3,
+  });
+
+  // Use 2 mock workers processing a large batch
+  const mockWorkers = [createMockWorker(), createMockWorker()];
+  const parallelBreeding = new ParallelBreeding(genus, config, mockWorkers);
+
+  // Request a large batch - this would risk stack overflow with recursive approach
+  // at very high counts. With iterative approach, this should work fine.
+  const offspring = await parallelBreeding.breedBatch(500);
+
+  // All offspring should be valid
+  for (const child of offspring) {
+    child.validate();
+    assertEquals(child.input, 5, "Offspring should have correct input count");
+    assertEquals(child.output, 2, "Offspring should have correct output count");
+  }
+});
+
+Deno.test("ParallelBreeding - worker path distributes work across all workers", async () => {
+  const { genus } = createTestPopulation(30, 5, 2);
+  const config = createNeatConfig({
+    populationSize: 30,
+    geneticCompatibilityThreshold: 0.3,
+  });
+
+  // Track how many times each mock worker is called
+  const callCounts = [0, 0, 0];
+  const mockWorkers = callCounts.map((_, index) => {
+    return {
+      breed(
+        mother: Creature,
+        father: Creature,
+        geneticCompatibilityThreshold: number,
+        forwardOnly: boolean,
+      ) {
+        callCounts[index]++;
+        try {
+          const child = Offspring.breed(mother, father, {
+            geneticCompatibilityThreshold,
+            forwardOnly,
+          });
+
+          if (child) {
+            return Promise.resolve({
+              taskID: 0,
+              breed: {
+                success: true,
+                offspring: JSON.stringify(child.exportJSON()),
+              },
+            });
+          }
+        } catch {
+          // Breeding can fail
+        }
+        return Promise.resolve({
+          taskID: 0,
+          breed: { success: false },
+        });
+      },
+    } as unknown as WorkerHandler;
+  });
+
+  const parallelBreeding = new ParallelBreeding(genus, config, mockWorkers);
+  await parallelBreeding.breedBatch(20);
+
+  // Each worker should have been called at least once
+  for (let i = 0; i < callCounts.length; i++) {
+    assert(
+      callCounts[i] > 0,
+      `Worker ${i} should have been called at least once, got ${callCounts[i]}`,
+    );
   }
 });
