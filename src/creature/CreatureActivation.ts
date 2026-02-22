@@ -17,6 +17,7 @@ import {
   WasmCreatureActivation,
 } from "../wasm/mod.ts";
 import {
+  deregisterWasmCreatureActivation,
   evictOldestWasmCreatureActivations,
   noteWasmCreatureActivationUse,
 } from "../wasm/WasmCreatureActivationLRU.ts";
@@ -94,6 +95,9 @@ export function disposeWasm(creature: Creature): void {
     creature.cachedWasmActivation = undefined;
   }
   creature.wasmEligibilityCache = undefined;
+  // Issue #1581: Remove the creature from the LRU cache so it no longer
+  // counts against the cap after manual disposal.
+  deregisterWasmCreatureActivation(creature);
 }
 
 /** Prepare non-input neurons for activation. */

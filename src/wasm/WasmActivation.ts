@@ -540,6 +540,10 @@ export class WasmCreatureActivation {
     if (this.network) {
       this.network.free();
     }
+    // Issue #1581: Nullify the WASM network reference so the underlying
+    // WebAssembly.Instance and its linear memory ArrayBuffer become eligible
+    // for GC. Without this, the JS wrapper retains the freed WASM object.
+    this.network = undefined as unknown as WasmCompiledNetwork;
     this.freed = true;
   }
 

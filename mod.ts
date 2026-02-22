@@ -219,13 +219,16 @@ export type {
 /**
  * WASM Cache Control
  *
- * Issue #1338, #1504: Control the WASM activation LRU cache size and query
- * occupancy. Data-generation workloads that touch many creatures should lower
- * the cache cap (e.g. 64–128) to reduce WASM heap retention.
+ * Issue #1338, #1504, #1581: Control the WASM activation LRU cache size, query
+ * occupancy, and flush all cached entries. Data-generation workloads that touch
+ * many creatures should lower the cache cap (e.g. 64–128) to reduce WASM heap
+ * retention, and call {@link disposeAllCachedWasmActivations} between training
+ * runs to fully free WASM linear memory.
  *
  * @see {@link module:src/wasm/WasmCreatureActivationLRU}
  */
 export {
+  disposeAllCachedWasmActivations,
   getCachedWasmActivationCount,
   getMaxCachedWasmCreatureActivations,
   setMaxCachedWasmCreatureActivations,

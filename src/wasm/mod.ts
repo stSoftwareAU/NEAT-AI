@@ -117,6 +117,7 @@ export {
 // Issue #1338 - Bound cached WASM activations under memory pressure
 // Issue #1504 - Added getCachedWasmActivationCount for cache diagnostics
 export {
+  disposeAllCachedWasmActivations,
   getCachedWasmActivationCount,
   getMaxCachedWasmCreatureActivations,
   setMaxCachedWasmCreatureActivations,

@@ -1008,48 +1008,31 @@ export type InitInput =
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
-  readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
-  readonly compilednetwork_activate: (
+  readonly __wbg_predictivecodingengine_free: (a: number, b: number) => void;
+  readonly predictivecodingengine_infer_batch_wasm: (
     a: number,
     b: number,
     c: number,
     d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
   ) => [number, number];
-  readonly compilednetwork_activate_and_trace: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-  ) => [number, number];
-  readonly compilednetwork_activate_and_trace_batch_4way: (
+  readonly predictivecodingengine_infer_wasm: (
     a: number,
     b: number,
     c: number,
     d: number,
     e: number,
   ) => [number, number];
-  readonly compilednetwork_activate_into: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: any,
-  ) => void;
-  readonly compilednetwork_activate_view: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-  ) => any;
-  readonly compilednetwork_new: (
+  readonly predictivecodingengine_new: (
     a: number,
     b: number,
   ) => [number, number, number];
-  readonly compilednetwork_num_inputs: (a: number) => number;
-  readonly compilednetwork_num_neurons: (a: number) => number;
-  readonly compilednetwork_num_synapses: (a: number) => number;
-  readonly compilednetwork_reset_state: (a: number) => void;
+  readonly predictivecodingengine_num_inputs: (a: number) => number;
+  readonly predictivecodingengine_num_neurons: (a: number) => number;
+  readonly predictivecodingengine_num_outputs: (a: number) => number;
   readonly cross_entropy_sum_batch_packed: (
     a: number,
     b: number,
@@ -1098,6 +1081,48 @@ export interface InitOutput {
     e: number,
     f: number,
   ) => number;
+  readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
+  readonly compilednetwork_activate: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => [number, number];
+  readonly compilednetwork_activate_and_trace: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => [number, number];
+  readonly compilednetwork_activate_and_trace_batch_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+  ) => [number, number];
+  readonly compilednetwork_activate_into: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: any,
+  ) => void;
+  readonly compilednetwork_activate_view: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => any;
+  readonly compilednetwork_new: (
+    a: number,
+    b: number,
+  ) => [number, number, number];
+  readonly compilednetwork_num_inputs: (a: number) => number;
+  readonly compilednetwork_num_neurons: (a: number) => number;
+  readonly compilednetwork_num_synapses: (a: number) => number;
+  readonly compilednetwork_reset_state: (a: number) => void;
   readonly calculate_error: (
     a: number,
     b: number,
@@ -1153,31 +1178,6 @@ export interface InitOutput {
   readonly unsquash: (a: number, b: number, c: number) => number;
   readonly validate_range: (a: number, b: number) => number;
   readonly version: () => [number, number];
-  readonly __wbg_predictivecodingengine_free: (a: number, b: number) => void;
-  readonly predictivecodingengine_infer_batch_wasm: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-  ) => [number, number];
-  readonly predictivecodingengine_infer_wasm: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-  ) => [number, number];
-  readonly predictivecodingengine_new: (
-    a: number,
-    b: number,
-  ) => [number, number, number];
-  readonly predictivecodingengine_num_inputs: (a: number) => number;
-  readonly predictivecodingengine_num_neurons: (a: number) => number;
-  readonly predictivecodingengine_num_outputs: (a: number) => number;
   readonly predictivecodingengine_compute_gradients_wasm: (
     a: number,
     b: number,
