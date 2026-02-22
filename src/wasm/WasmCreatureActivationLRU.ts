@@ -196,3 +196,38 @@ export function evictOldestWasmCreatureActivations(count: number): void {
     if (!evictTail()) return;
   }
 }
+
+/**
+ * Flush the entire WASM LRU cache and dispose all entries.
+ *
+ * Issue #1581: Provides a bulk cleanup API for use between training runs
+ * or prefixes, ensuring all cached WASM linear memory is freed.
+ *
+ * @returns The number of entries disposed.
+ */
+export function disposeAllCachedWasmActivations(): number {
+  let disposed = 0;
+  while (tail) {
+    evictTail();
+    disposed++;
+  }
+  return disposed;
+}
+
+/**
+ * Remove a creature from the LRU cache without calling disposeWasm.
+ *
+ * Issue #1581: When a creature is manually disposed (e.g. via `creature.dispose()`),
+ * its LRU node should be removed so it no longer counts against the cache cap.
+ * The caller is responsible for having already called disposeWasm.
+ */
+export function deregisterWasmCreatureActivation(creature: Creature): void {
+  const id = idByCreature.get(creature);
+  if (id === undefined) return;
+
+  const node = nodeById.get(id);
+  if (node) {
+    removeNode(node);
+    nodeById.delete(id);
+  }
+}
