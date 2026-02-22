@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import { removeTag } from "@stsoftware/tags/mod";
-import { Creature, CreatureUtil, Mutation } from "../../mod.ts";
+import { type Creature, CreatureUtil, Mutation } from "../../mod.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { discover } from "../blackbox/Discover.ts";
 import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
@@ -147,8 +147,9 @@ export class Mutator {
         const creature = creatures[i];
         let original: Creature | undefined;
         if (creature.score !== undefined || creature.memetic) {
-          original = Creature.fromJSON(creature.exportJSON());
-          original.score = creature.score;
+          // Issue #1586: Use shallowClone() instead of JSON serialisation
+          // for a 2-3x performance improvement during evolution.
+          original = creature.shallowClone();
         }
         let changed = false;
 
