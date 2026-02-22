@@ -129,7 +129,10 @@ export class ParallelBreeding {
    * Breeds offspring using the worker pool.
    *
    * Distributes breeding tasks across available workers using a work-stealing
-   * pattern for optimal load balancing.
+   * pattern with iterative loops for optimal load balancing.
+   *
+   * Issue #1585: Replaced recursive processNext with while loop to avoid
+   * stack overflow and reduce memory usage for large populations.
    *
    * @param parentPairs - Array of parent pairs to breed
    * @param config - NEAT configuration
@@ -144,50 +147,54 @@ export class ParallelBreeding {
     const results: (Creature | undefined)[] = new Array(parentPairs.length);
     let resultIndex = 0;
 
-    // Work-stealing pattern: each worker processes tasks from the queue
-    const processNext = async (
+    // Work-stealing pattern: each worker iteratively processes tasks from the queue
+    const processQueue = async (
       worker: WorkerHandler,
     ): Promise<void> => {
-      const pair = queue.shift();
-      if (!pair) return;
+      while (queue.length > 0) {
+        const pair = queue.shift();
+        if (!pair) break;
 
-      const currentIndex = resultIndex++;
+        const currentIndex = resultIndex++;
 
-      try {
-        const response = await worker.breed(
-          pair.mother,
-          pair.father,
-          config.geneticCompatibilityThreshold,
-          config.feedbackLoop !== true, // forwardOnly
-        );
+        try {
+          // Each worker must await sequentially to implement work-stealing:
+          // a worker finishes one task before grabbing the next from the queue.
+          // deno-lint-ignore no-await-in-loop
+          const response = await worker.breed(
+            pair.mother,
+            pair.father,
+            config.geneticCompatibilityThreshold,
+            config.feedbackLoop !== true, // forwardOnly
+          );
 
-        if (response.breed?.success && response.breed.offspring) {
-          const child = Creature.fromJSON(JSON.parse(response.breed.offspring));
+          if (response.breed?.success && response.breed.offspring) {
+            const child = Creature.fromJSON(
+              JSON.parse(response.breed.offspring),
+            );
 
-          // Apply memetic discovery on the main thread
-          if (child && !child.memetic) {
-            discover(pair.mother, child);
+            // Apply memetic discovery on the main thread
+            if (child && !child.memetic) {
+              discover(pair.mother, child);
+            }
+
+            results[currentIndex] = child;
+          } else {
+            results[currentIndex] = undefined;
           }
-
-          results[currentIndex] = child;
-        } else {
+        } catch (error) {
+          getLogger().warn(
+            `[ParallelBreeding] Worker breeding failed: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
           results[currentIndex] = undefined;
         }
-      } catch (error) {
-        getLogger().warn(
-          `[ParallelBreeding] Worker breeding failed: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-        results[currentIndex] = undefined;
       }
-
-      // Process next task if available
-      await processNext(worker);
     };
 
     // Start all workers processing the queue
-    await Promise.all(workers.map((worker) => processNext(worker)));
+    await Promise.all(workers.map((worker) => processQueue(worker)));
 
     return results;
   }
