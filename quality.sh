@@ -248,6 +248,8 @@ fi
 
 if [ "$RUN_WASM" = true ]; then
   progress "Building WASM activation module (Rust build + tests)..."
+  # Treat Rust warnings as errors (align with NEAT-AI-Discovery quality.sh).
+  export RUSTFLAGS="-D warnings"
   if [[ -f ./wasm_activation/build.sh ]]; then
     ./wasm_activation/build.sh
   else

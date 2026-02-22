@@ -76,6 +76,9 @@ export function applyWarningResponse(logger: Logger): void {
   );
 }
 
+/** Call count for critical response; used to throttle log noise when stuck at critical. */
+let _criticalResponseLogCount = 0;
+
 /**
  * Apply the critical-level response: aggressively clear all non-essential
  * caches and attempt garbage collection.
@@ -92,10 +95,14 @@ export function applyCriticalResponse(logger: Logger): void {
   // Reset compilation cache to minimum size
   setWasmCompilationCacheSize(1);
 
-  logger.warn(
-    `[MemoryMonitor] Critical-level response: cleared all WASM caches, ` +
-      `activation cap reduced to 1, compilation cache cleared`,
-  );
+  // Throttle repeated critical messages (e.g. when heap stays high for many generations).
+  _criticalResponseLogCount++;
+  if (_criticalResponseLogCount % 10 === 1) {
+    logger.warn(
+      `[MemoryMonitor] Critical-level response: cleared all WASM caches, ` +
+        `activation cap reduced to 1, compilation cache cleared`,
+    );
+  }
 }
 
 /**

@@ -17,8 +17,7 @@
 use wasm_bindgen::prelude::*;
 
 use crate::derivative::apply_derivative;
-use crate::pc_inference::{PcConnection, PcNeuron, PredictiveCodingEngine};
-use crate::squash::SquashType;
+use crate::pc_inference::PredictiveCodingEngine;
 
 /// Gradient result containing weight and bias deltas.
 #[derive(Clone, Debug)]
@@ -135,8 +134,8 @@ impl PredictiveCodingEngine {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::pc_inference::PredictiveCodingEngine;
+    use crate::pc_inference::{PcConnection, PcNeuron, PredictiveCodingEngine};
+    use crate::squash::SquashType;
 
     /// Helper: simple network for gradient testing.
     /// 1 input → 1 output (Identity, bias=0.5, weight=2.0).

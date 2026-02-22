@@ -104,6 +104,9 @@ export class Neat {
   /** Data directory for discovery replay (Issue #997) */
   private dataDir?: string;
 
+  /** Count of critical-level evictions; used to throttle memory log noise (Issue #1565). */
+  private _memoryCriticalEvictionCount?: number;
+
   /**
    * Creates a new NEAT instance for evolving neural networks.
    *
@@ -1231,7 +1234,19 @@ export class Neat {
       this.config.memory,
       getLogger(),
     );
-    logMemoryUsage(memoryResult, getLogger());
+    // Only log when we took action (evicted), to avoid flooding when heap is normal.
+    // When stuck at critical, throttle to every 10th eviction to reduce log noise.
+    if (memoryResult.evicted) {
+      if (memoryResult.pressureLevel !== "critical") {
+        logMemoryUsage(memoryResult, getLogger());
+      } else {
+        this._memoryCriticalEvictionCount =
+          (this._memoryCriticalEvictionCount ?? 0) + 1;
+        if (this._memoryCriticalEvictionCount % 10 === 1) {
+          logMemoryUsage(memoryResult, getLogger());
+        }
+      }
+    }
 
     return {
       fittest: fittest,
