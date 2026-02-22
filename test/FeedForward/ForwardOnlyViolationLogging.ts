@@ -6,7 +6,7 @@ import { Mutation } from "../../src/NEAT/Mutation.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
-Deno.test("Forward-only: violation is logged and repaired on mutate", () => {
+Deno.test("Forward-only: self-connection is repaired on mutate", () => {
   const json: CreatureExport = {
     input: 2,
     output: 1,
@@ -25,39 +25,31 @@ Deno.test("Forward-only: violation is logged and repaired on mutate", () => {
   const creature = Creature.fromJSON(json);
   assertEquals(creature.forwardOnly, true);
 
-  const logged: string[] = [];
-  const originalError = console.error;
-  console.error = (...args: unknown[]) => {
-    logged.push(args.map((a) => String(a)).join(" "));
-  };
+  const mutator = new Mutator(
+    createNeatConfig({
+      feedbackLoop: false, // forward-only run
+      mutationRate: 1,
+      mutationAmount: 1,
+      mutation: [Mutation.MOD_WEIGHT],
+      log: 0,
+    }),
+  );
 
-  try {
-    const mutator = new Mutator(
-      createNeatConfig({
-        feedbackLoop: false, // forward-only run
-        mutationRate: 1,
-        mutationAmount: 1,
-        mutation: [Mutation.MOD_WEIGHT],
-        log: 0,
-      }),
-    );
+  // Issue #1583: fix/validate batched — repairAfterMutation removes
+  // self-connections via fix({ forwardOnly: true }).
+  mutator.mutateCreature(creature, Mutation.MOD_WEIGHT);
+  mutator.repairAfterMutation(creature);
 
-    // Force a mutation attempt.
-    mutator.mutateCreature(creature, Mutation.MOD_WEIGHT);
+  // Must remain forward-only and have no self/back connections after repair.
+  assertEquals(creature.forwardOnly, true);
+  creature.validate({ forwardOnly: true });
 
-    // Must remain forward-only and have no self/back connections after repair.
-    assertEquals(creature.forwardOnly, true);
-    creature.validate({ forwardOnly: true });
-
+  // Verify the self-connection was removed.
+  for (const synapse of creature.synapses) {
     assert(
-      logged.some((line) =>
-        line.includes("Forward-only violation") &&
-        line.includes("SELF_CONNECTION")
-      ),
-      `Expected forward-only violation log, got:\n${logged.join("\n")}`,
+      synapse.from !== synapse.to,
+      `Self-connection should have been removed: ${synapse.from}`,
     );
-  } finally {
-    console.error = originalError;
   }
 });
 

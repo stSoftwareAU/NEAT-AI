@@ -27,14 +27,17 @@ Deno.test("Forward-only: unexpected validation errors are re-thrown during mutat
     throw err;
   };
 
+  // Issue #1583: fix/validate is now in repairAfterMutation(), not mutateCreature().
+  mutator.mutateCreature(creature, Mutation.MOD_WEIGHT);
+
   let thrown: Error | undefined;
   try {
-    mutator.mutateCreature(creature, Mutation.MOD_WEIGHT);
+    mutator.repairAfterMutation(creature);
   } catch (e) {
     thrown = e as Error;
   }
 
-  assert(thrown, "Expected mutateCreature() to throw");
+  assert(thrown, "Expected repairAfterMutation() to throw");
   assertEquals(thrown.name, "MEMETIC");
   assertEquals(thrown.message, "Injected validation error");
 });

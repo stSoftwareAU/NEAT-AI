@@ -38,6 +38,7 @@ Deno.test("MutatorBehavioural: mutation produces valid creatures after ADD_NODE"
     CreatureUtil.makeUUID(creature);
 
     mutator.mutateCreature(creature, Mutation.ADD_NODE);
+    mutator.repairAfterMutation(creature);
 
     // Creature must pass validation
     creatureValidate(creature);
@@ -55,6 +56,7 @@ Deno.test("MutatorBehavioural: mutation produces valid creatures after ADD_CONN"
     CreatureUtil.makeUUID(creature);
 
     mutator.mutateCreature(creature, Mutation.ADD_CONN);
+    mutator.repairAfterMutation(creature);
 
     creatureValidate(creature);
     assertEquals(creature.input, 3, "Input preserved after ADD_CONN");
@@ -71,6 +73,7 @@ Deno.test("MutatorBehavioural: mutation produces valid creatures after SUB_NODE"
     CreatureUtil.makeUUID(creature);
 
     mutator.mutateCreature(creature, Mutation.SUB_NODE);
+    mutator.repairAfterMutation(creature);
 
     creatureValidate(creature);
     assertEquals(creature.input, 3, "Input preserved after SUB_NODE");
@@ -87,6 +90,7 @@ Deno.test("MutatorBehavioural: mutation produces valid creatures after SUB_CONN"
     CreatureUtil.makeUUID(creature);
 
     mutator.mutateCreature(creature, Mutation.SUB_CONN);
+    mutator.repairAfterMutation(creature);
 
     creatureValidate(creature);
   }
@@ -101,6 +105,7 @@ Deno.test("MutatorBehavioural: mutation produces valid creatures across all FFW 
     CreatureUtil.makeUUID(creature);
 
     mutator.mutateCreature(creature, mutation);
+    mutator.repairAfterMutation(creature);
 
     creatureValidate(creature);
     assertEquals(creature.input, 4, `Input preserved after ${mutation.name}`);
@@ -262,6 +267,8 @@ Deno.test("MutatorBehavioural: forward-only constraint preserved across multiple
   for (let i = 0; i < 50; i++) {
     const method = mutator.selectMutationMethod(creature);
     mutator.mutateCreature(creature, method);
+    // Issue #1583: fix/validate deferred — call repair before checking.
+    mutator.repairAfterMutation(creature);
 
     // Verify all synapses go forward
     for (const synapse of creature.synapses) {
@@ -294,6 +301,7 @@ Deno.test("MutatorBehavioural: semantic version 4.x enforces forward-only for we
     CreatureUtil.makeUUID(creature);
 
     mutator.mutateCreature(creature, mutation);
+    mutator.repairAfterMutation(creature);
 
     // 4.x creatures must always be forward-only after non-topological mutations
     for (const synapse of creature.synapses) {

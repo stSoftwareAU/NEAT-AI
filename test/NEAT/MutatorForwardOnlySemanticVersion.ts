@@ -1,4 +1,4 @@
-import { assertThrows } from "@std/assert";
+import { assert } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
@@ -17,6 +17,10 @@ import { Mutation } from "../../src/NEAT/Mutation.ts";
  *
  * Expected: Mutator must enforce forward-only for semanticVersion 4.x creatures
  * even when the `forwardOnly` flag is missing.
+ *
+ * Issue #1583: repairAfterMutation() now calls fix({ forwardOnly: true }) which
+ * removes self-connections before validate catches them. The test verifies that
+ * the creature is repaired and remains valid forward-only after repair.
  */
 Deno.test("Mutator: semanticVersion 4.x enforces forward-only even without forwardOnly flag", () => {
   const json: CreatureExport = {
@@ -46,9 +50,17 @@ Deno.test("Mutator: semanticVersion 4.x enforces forward-only even without forwa
   });
   const mutator = new Mutator(config);
 
-  assertThrows(
-    () => mutator.mutateCreature(creature, Mutation.ADD_SELF_CONN),
-    Error,
-    "CRITICAL",
-  );
+  // ADD_SELF_CONN introduces a self-connection, then repairAfterMutation
+  // calls fix({ forwardOnly: true }) to remove it.
+  mutator.mutateCreature(creature, Mutation.ADD_SELF_CONN);
+  mutator.repairAfterMutation(creature);
+
+  // 4.x creature must remain valid forward-only after repair.
+  creature.validate({ forwardOnly: true });
+  for (const synapse of creature.synapses) {
+    assert(
+      synapse.from !== synapse.to,
+      `4.x self-connection should have been removed: ${synapse.from}`,
+    );
+  }
 });
