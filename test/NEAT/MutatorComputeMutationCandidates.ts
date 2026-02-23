@@ -191,19 +191,37 @@ Deno.test("ComputeMutationCandidates: MOD_WEIGHT and MOD_BIAS are always candida
   );
 });
 
-Deno.test("ComputeMutationCandidates: cache is cleared properly", () => {
-  const config = createConfig();
+Deno.test("ComputeMutationCandidates: selection adapts to changed creature state", () => {
+  const config = createConfig({ mutation: [...Mutation.FFW] });
   const mutator = new Mutator(config);
 
+  // Start with a creature that has hidden neurons — structural mutations available
   const creature = new Creature(3, 2, { layers: [{ count: 5 }] });
 
-  // Select a method to populate cache
-  mutator.selectMutationMethod(creature);
+  const selectedBefore = new Set<string>();
+  for (let i = 0; i < 500; i++) {
+    const method = mutator.selectMutationMethod(creature);
+    selectedBefore.add(method.name);
+  }
 
-  // Clear cache
-  mutator.clearMutationCache();
+  // Structural mutations like SUB_NODE should be available with hidden neurons
+  assert(
+    selectedBefore.has("SUB_NODE"),
+    "SUB_NODE should be selectable when hidden neurons exist",
+  );
 
-  // Should still work after cache clear
-  const method = mutator.selectMutationMethod(creature);
-  assert(method !== undefined, "Should work after cache clear");
+  // Create a minimal creature with no hidden neurons
+  const minimalCreature = new Creature(3, 2);
+
+  const selectedAfter = new Set<string>();
+  for (let i = 0; i < 500; i++) {
+    const method = mutator.selectMutationMethod(minimalCreature);
+    selectedAfter.add(method.name);
+  }
+
+  // SUB_NODE should NOT be selected for a creature with no hidden neurons
+  assert(
+    !selectedAfter.has("SUB_NODE"),
+    "SUB_NODE should not be selectable when no hidden neurons exist",
+  );
 });

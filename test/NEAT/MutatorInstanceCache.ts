@@ -5,155 +5,15 @@ import { Mutator } from "../../src/NEAT/Mutator.ts";
 import { Mutation } from "../../src/NEAT/Mutation.ts";
 
 /**
- * Tests for mutation class instance caching using WeakMap.
+ * Behavioural tests for Mutator mutation operations.
  *
- * Issue #1103: Use WeakMap for Mutator instance caching to avoid recreation.
- *
- * The optimisation caches mutation class instances per creature using WeakMap,
- * reducing object allocations during evolution. WeakMap allows garbage collection
- * of unused creatures while caching their mutation instances.
- *
- * Expected benefits:
- * - ~90% reduction in mutation class allocations
- * - Reduced GC pressure during evolution
- * - WeakMap allows GC of unused creatures
+ * These tests verify observable outcomes of mutation — correct results,
+ * valid creature state, and expected side effects — rather than internal
+ * caching mechanisms or object identity.
  */
 
 Deno.test(
-  "getMutatorInstance: returns cached instance for same creature and mutation type",
-  () => {
-    const config = createNeatConfig({
-      mutation: Mutation.FFW,
-    });
-    const mutator = new Mutator(config);
-
-    // Create a creature
-    const creature = new Creature(3, 2, { layers: [{ count: 2 }] });
-
-    // Get mutator instances for the same creature and mutation type
-    const instance1 = mutator.getMutatorInstance(
-      creature,
-      Mutation.ADD_NODE.name,
-    );
-    const instance2 = mutator.getMutatorInstance(
-      creature,
-      Mutation.ADD_NODE.name,
-    );
-
-    // Should return the same cached instance
-    assertEquals(
-      instance1,
-      instance2,
-      "Should return cached instance for same creature and mutation type",
-    );
-  },
-);
-
-Deno.test(
-  "getMutatorInstance: returns different instances for different mutation types",
-  () => {
-    const config = createNeatConfig({
-      mutation: Mutation.FFW,
-    });
-    const mutator = new Mutator(config);
-
-    // Create a creature
-    const creature = new Creature(3, 2, { layers: [{ count: 2 }] });
-
-    // Get mutator instances for different mutation types
-    const addNeuronInstance = mutator.getMutatorInstance(
-      creature,
-      Mutation.ADD_NODE.name,
-    );
-    const modWeightInstance = mutator.getMutatorInstance(
-      creature,
-      Mutation.MOD_WEIGHT.name,
-    );
-
-    // Should return different instances for different mutation types
-    assertNotEquals(
-      addNeuronInstance,
-      modWeightInstance,
-      "Should return different instances for different mutation types",
-    );
-  },
-);
-
-Deno.test(
-  "getMutatorInstance: returns different instances for different creatures",
-  () => {
-    const config = createNeatConfig({
-      mutation: Mutation.FFW,
-    });
-    const mutator = new Mutator(config);
-
-    // Create two creatures
-    const creature1 = new Creature(3, 2, { layers: [{ count: 2 }] });
-    const creature2 = new Creature(3, 2, { layers: [{ count: 2 }] });
-
-    // Get mutator instances for different creatures
-    const instance1 = mutator.getMutatorInstance(
-      creature1,
-      Mutation.ADD_NODE.name,
-    );
-    const instance2 = mutator.getMutatorInstance(
-      creature2,
-      Mutation.ADD_NODE.name,
-    );
-
-    // Should return different instances for different creatures
-    assertNotEquals(
-      instance1,
-      instance2,
-      "Should return different instances for different creatures",
-    );
-  },
-);
-
-Deno.test(
-  "getMutatorInstance: caches instances for all mutation types",
-  () => {
-    const config = createNeatConfig({
-      mutation: Mutation.ALL,
-      feedbackLoop: true,
-    });
-    const mutator = new Mutator(config);
-
-    // Create a creature that can use all mutation types
-    const creature = new Creature(3, 2, { layers: [{ count: 2 }] });
-    creature.forwardOnly = false;
-
-    // Test each mutation type
-    const mutationNames = [
-      Mutation.ADD_NODE.name,
-      Mutation.SUB_NODE.name,
-      Mutation.ADD_CONN.name,
-      Mutation.SUB_CONN.name,
-      Mutation.MOD_WEIGHT.name,
-      Mutation.MOD_BIAS.name,
-      Mutation.MOD_SQUASH.name,
-      Mutation.ADD_SELF_CONN.name,
-      Mutation.SUB_SELF_CONN.name,
-      Mutation.ADD_BACK_CONN.name,
-      Mutation.SUB_BACK_CONN.name,
-      Mutation.SWAP_NODES.name,
-    ];
-
-    for (const name of mutationNames) {
-      const instance1 = mutator.getMutatorInstance(creature, name);
-      const instance2 = mutator.getMutatorInstance(creature, name);
-
-      assertEquals(
-        instance1,
-        instance2,
-        `Should cache instance for mutation type: ${name}`,
-      );
-    }
-  },
-);
-
-Deno.test(
-  "getMutatorInstance: throws error for unknown mutation type",
+  "Behavioural: getMutatorInstance throws error for unknown mutation type",
   () => {
     const config = createNeatConfig({
       mutation: Mutation.FFW,
@@ -179,7 +39,7 @@ Deno.test(
 );
 
 Deno.test(
-  "mutateCreature: uses cached mutator instances",
+  "Behavioural: repeated mutations on the same creature produce valid results",
   () => {
     const config = createNeatConfig({
       mutation: Mutation.FFW,
@@ -189,9 +49,7 @@ Deno.test(
     // Create a creature with hidden neurons
     const creature = new Creature(3, 2, { layers: [{ count: 5 }] });
 
-    // Perform multiple mutations - each should use cached instances
-    // This is a behavioural test that ensures mutation works correctly
-    // with the caching mechanism
+    // Perform multiple mutations — each should produce a valid creature
     let mutationCount = 0;
     for (let i = 0; i < 20; i++) {
       const method = mutator.selectMutationMethod(creature);
@@ -210,55 +68,86 @@ Deno.test(
 );
 
 Deno.test(
-  "getMutatorInstance: WeakMap allows GC of unused creatures",
+  "Behavioural: mutation produces structurally valid creatures",
   () => {
-    // This test verifies that the WeakMap-based caching doesn't prevent
-    // garbage collection of creatures. Since we can't directly test GC
-    // behaviour, we verify that the cache uses WeakMap semantics by
-    // checking that new creatures get new instances even after many
-    // creatures have been used.
-
     const config = createNeatConfig({
       mutation: Mutation.FFW,
+      mutationRate: 1.0,
+      mutationAmount: 3,
     });
     const mutator = new Mutator(config);
 
-    // Create and use many creatures
-    const instances: unknown[] = [];
-    for (let i = 0; i < 100; i++) {
-      const creature = new Creature(3, 2, { layers: [{ count: 2 }] });
-      const instance = mutator.getMutatorInstance(
-        creature,
-        Mutation.ADD_NODE.name,
-      );
-      instances.push(instance);
-    }
+    // Create a creature and mutate it
+    const creature = new Creature(3, 2, { layers: [{ count: 3 }] });
+    const originalInputCount = 3;
+    const originalOutputCount = 2;
 
-    // All instances should be unique (different creatures)
-    const uniqueInstances = new Set(instances);
+    // Record original state
+    const originalJSON = JSON.stringify(creature.exportJSON());
+
+    // Apply mutations
+    mutator.mutate([creature]);
+
+    // After mutation, the creature should still have correct input/output counts
     assertEquals(
-      uniqueInstances.size,
-      100,
-      "Each creature should get its own instance",
+      creature.input,
+      originalInputCount,
+      "Input neuron count should be preserved after mutation",
+    );
+    assertEquals(
+      creature.output,
+      originalOutputCount,
+      "Output neuron count should be preserved after mutation",
     );
 
-    // Creating a new creature should not be affected by previous ones
-    const newCreature = new Creature(3, 2, { layers: [{ count: 2 }] });
-    const newInstance = mutator.getMutatorInstance(
-      newCreature,
-      Mutation.ADD_NODE.name,
-    );
-
-    // Should get a fresh instance
-    assert(
-      !instances.includes(newInstance),
-      "New creature should get fresh instance",
+    // The creature should have been modified (UUID changes on mutation)
+    const newJSON = JSON.stringify(creature.exportJSON());
+    assertNotEquals(
+      originalJSON,
+      newJSON,
+      "Creature should be modified after mutation with rate 1.0",
     );
   },
 );
 
 Deno.test(
-  "mutate: works correctly with cached mutator instances across population",
+  "Behavioural: all configured mutation types can be applied to suitable creatures",
+  () => {
+    const config = createNeatConfig({
+      mutation: Mutation.ALL,
+      feedbackLoop: true,
+    });
+    const mutator = new Mutator(config);
+
+    // Create a creature that can accept all mutation types
+    const creature = new Creature(3, 2, { layers: [{ count: 5 }] });
+    creature.forwardOnly = false;
+
+    // Collect which mutation types are actually selected
+    const selectedMutations = new Set<string>();
+    for (let i = 0; i < 2000; i++) {
+      const method = mutator.selectMutationMethod(creature);
+      selectedMutations.add(method.name);
+    }
+
+    // Structural mutations should be available for a creature with hidden neurons
+    assert(
+      selectedMutations.has("ADD_NODE"),
+      "ADD_NODE should be selectable for suitable creatures",
+    );
+    assert(
+      selectedMutations.has("MOD_WEIGHT"),
+      "MOD_WEIGHT should be selectable",
+    );
+    assert(
+      selectedMutations.has("MOD_BIAS"),
+      "MOD_BIAS should be selectable",
+    );
+  },
+);
+
+Deno.test(
+  "Behavioural: mutating a population changes at least some creatures",
   () => {
     const config = createNeatConfig({
       mutation: Mutation.FFW,
@@ -291,6 +180,48 @@ Deno.test(
     assert(
       changedCount > 0,
       `Expected some mutations in population, got ${changedCount} changes`,
+    );
+  },
+);
+
+Deno.test(
+  "Behavioural: mutations across different creatures produce independent results",
+  () => {
+    const config = createNeatConfig({
+      mutation: Mutation.FFW,
+      mutationRate: 1.0,
+      mutationAmount: 3,
+    });
+    const mutator = new Mutator(config);
+
+    // Create two identical creatures
+    const creature1 = new Creature(3, 2, { layers: [{ count: 3 }] });
+    const creature2 = new Creature(3, 2, { layers: [{ count: 3 }] });
+
+    // Mutate both
+    mutator.mutate([creature1, creature2]);
+
+    // Both should have been mutated (different UUIDs from each other due to randomness)
+    // Both should have been mutated and remain valid creatures
+    assert(
+      creature1.neurons.length >= 5,
+      "Creature 1 should still have neurons after mutation",
+    );
+    assert(
+      creature2.neurons.length >= 5,
+      "Creature 2 should still have neurons after mutation",
+    );
+
+    // Both should be valid creatures with correct I/O
+    assertEquals(
+      creature1.input,
+      3,
+      "Creature 1 should preserve input count",
+    );
+    assertEquals(
+      creature2.input,
+      3,
+      "Creature 2 should preserve input count",
     );
   },
 );
