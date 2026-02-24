@@ -9,180 +9,31 @@
  * 2. Validating structural candidates with early-exit on first invalid
  * 3. Caching common validation results across candidates
  *
- * The batch validator is designed to improve the discovery phase performance
- * by 15-25% through reduced redundant validation work and better cache utilisation.
+ * Type definitions and grouping logic extracted to BatchValidatorTypes.ts.
  */
 
 import type { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { getMajorVersion } from "../upgrade/Upgrade.ts";
-import type {
-  DiscoveryCandidate,
-  DiscoveryChangeType,
-} from "./DiscoveryCandidates.ts";
+import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
+import { EnhancedDiscoveryValidator } from "./EnhancedDiscoveryValidator.ts";
 import {
-  type EnhancedBrittlenessOptions,
-  EnhancedDiscoveryValidator,
-  type EnhancedHoldoutOptions,
-  type EnhancedValidationResult,
-} from "./EnhancedDiscoveryValidator.ts";
+  type BatchValidationResult,
+  type BatchValidationStats,
+  type BatchValidatorOptions,
+  groupCandidatesByType,
+  type ValidationCacheEntry,
+} from "./BatchValidatorTypes.ts";
 
-/**
- * Result of a batch validation for a single candidate.
- */
-export interface BatchValidationResult {
-  /** The candidate that was validated */
-  candidate: DiscoveryCandidate;
-  /** Whether the candidate passed validation */
-  valid: boolean;
-  /** Error message if validation failed */
-  error?: string;
-  /** Whether this result came from the cache */
-  cached?: boolean;
-  /** Result from enhanced validation (if enabled) */
-  enhancedResult?: EnhancedValidationResult;
-}
-
-/**
- * Cache entry for validation results.
- */
-export interface ValidationCacheEntry {
-  /** Hash of the creature structure for cache key generation */
-  structureHash: string;
-  /** Whether the creature passed validation */
-  valid: boolean;
-  /** Error message if validation failed */
-  error?: string;
-  /** Timestamp when cached */
-  cachedAt: number;
-}
-
-/**
- * Statistics from batch validation.
- */
-export interface BatchValidationStats {
-  /** Total number of validations performed */
-  totalValidations: number;
-  /** Number of candidates that passed validation */
-  validCount: number;
-  /** Number of candidates that failed validation */
-  invalidCount: number;
-  /** Number of cache hits */
-  cacheHits: number;
-  /** Number of cache misses */
-  cacheMisses: number;
-  /** Number of structural candidates validated */
-  structuralCount: number;
-  /** Number of weight-only candidates validated */
-  weightOnlyCount: number;
-  /** Whether early exit was triggered */
-  earlyExitTriggered: boolean;
-  /** Number of candidates rejected by enhanced validation */
-  enhancedRejectionCount: number;
-}
-
-/**
- * Options for the batch validator.
- */
-export interface BatchValidatorOptions {
-  /** Whether feedback loops are enabled (recurrent mode) */
-  feedbackLoop?: boolean;
-  /** Whether to exit early on first structural validation failure */
-  earlyExitOnStructuralFailure?: boolean;
-  /** Maximum cache size before pruning */
-  maxCacheSize?: number;
-  /** Holdout validation options (Issue #1308) */
-  holdout?: EnhancedHoldoutOptions;
-  /** Brittleness scoring options (Issue #1308) */
-  brittleness?: EnhancedBrittlenessOptions;
-  /** Enable verbose logging for enhanced validation */
-  verbose?: boolean;
-  /** Data directory for enhanced validation */
-  dataDir?: string;
-}
-
-/**
- * Grouped candidates by type for batch processing.
- */
-export interface GroupedCandidates {
-  /** Candidates that involve structural changes (add/remove neurons/synapses) */
-  structural: DiscoveryCandidate[];
-  /** Candidates that only involve weight/bias changes (squash changes) */
-  weightOnly: DiscoveryCandidate[];
-}
-
-/**
- * Structural change types that modify the network topology.
- */
-const STRUCTURAL_CHANGE_TYPES: Set<DiscoveryChangeType> = new Set([
-  "add-synapses",
-  "add-neurons",
-  "coordinated-structural",
-  "remove-synapse",
-  "remove-neuron",
-  "remove-low-impact",
-  "combo-add-remove",
-  "combo-all",
-  "combo-best-of-category",
-  "combo-successful",
-]);
-
-/**
- * Weight-only change types that don't modify topology.
- */
-const WEIGHT_ONLY_CHANGE_TYPES: Set<DiscoveryChangeType> = new Set([
-  "change-squash",
-  "combo-add-change",
-]);
-
-/**
- * Group discovery candidates by type for efficient batch processing.
- *
- * Structural changes (add/remove neurons/synapses) are grouped separately
- * from weight-only changes (squash changes) because they have different
- * validation requirements and failure patterns.
- *
- * @param candidates - The candidates to group
- * @returns Grouped candidates by type
- */
-export function groupCandidatesByType(
-  candidates: DiscoveryCandidate[],
-): GroupedCandidates {
-  const structural: DiscoveryCandidate[] = [];
-  const weightOnly: DiscoveryCandidate[] = [];
-
-  for (const candidate of candidates) {
-    const changeType = candidate.change.type;
-    if (STRUCTURAL_CHANGE_TYPES.has(changeType)) {
-      structural.push(candidate);
-    } else if (WEIGHT_ONLY_CHANGE_TYPES.has(changeType)) {
-      weightOnly.push(candidate);
-    } else {
-      // Default to structural for unknown types (safer)
-      structural.push(candidate);
-    }
-  }
-
-  return { structural, weightOnly };
-}
-
-/**
- * Generate a simple structure hash for cache key generation.
- *
- * This hash captures the essential structural characteristics that affect
- * validation, without being overly expensive to compute.
- */
-function generateStructureHash(creature: Creature): string {
-  const neuronCount = creature.neurons.length;
-  const synapseCount = creature.synapses.length;
-  const version = creature.semanticVersion;
-  const forwardOnly = creature.forwardOnly === true;
-
-  // Include UUID if available for more precise caching
-  const uuid = creature.uuid ?? "no-uuid";
-
-  return `${neuronCount}:${synapseCount}:${version}:${forwardOnly}:${uuid}`;
-}
+// Re-export for backward compatibility.
+export type {
+  BatchValidationResult,
+  BatchValidationStats,
+  BatchValidatorOptions,
+  GroupedCandidates,
+  ValidationCacheEntry,
+} from "./BatchValidatorTypes.ts";
+export { groupCandidatesByType } from "./BatchValidatorTypes.ts";
 
 /**
  * Batch Discovery Validator
@@ -229,14 +80,6 @@ export class BatchDiscoveryValidator {
 
   /**
    * Validate a batch of discovery candidates.
-   *
-   * Candidates are grouped by type and validated in optimal order:
-   * 1. Structural candidates first (with optional early-exit on failure)
-   * 2. Weight-only candidates second
-   *
-   * @param baseCreature - The base creature the candidates are derived from
-   * @param candidates - The candidates to validate
-   * @returns Validation results for each candidate
    */
   validateBatch(
     baseCreature: Creature,
@@ -280,13 +123,6 @@ export class BatchDiscoveryValidator {
 
   /**
    * Validate a batch of discovery candidates with enhanced validation.
-   *
-   * Runs enhanced validation (holdout/brittleness) on candidates that
-   * pass basic structural validation.
-   *
-   * @param baseCreature - The base creature the candidates are derived from
-   * @param candidates - The candidates to validate
-   * @returns Validation results for each candidate
    */
   validateBatchWithEnhanced(
     baseCreature: Creature,
@@ -458,7 +294,6 @@ export class BatchDiscoveryValidator {
     baseCreature: Creature,
     candidateCreature: Creature,
   ): boolean {
-    // If either creature is 4.x+, forward-only is a hard invariant
     const baseMajor = getMajorVersion(baseCreature.semanticVersion);
     const candidateMajor = getMajorVersion(candidateCreature.semanticVersion);
 
@@ -466,7 +301,6 @@ export class BatchDiscoveryValidator {
       return true;
     }
 
-    // If either is explicitly forward-only, enforce it
     if (
       baseCreature.forwardOnly === true ||
       candidateCreature.forwardOnly === true
@@ -474,7 +308,6 @@ export class BatchDiscoveryValidator {
       return true;
     }
 
-    // If feedback loop is disabled, use forward-only validation
     if (this.#options.feedbackLoop !== true) {
       return true;
     }
@@ -500,7 +333,6 @@ export class BatchDiscoveryValidator {
     valid: boolean,
     error?: string,
   ): void {
-    // Prune cache if it's too large
     if (this.#cache.size >= this.#options.maxCacheSize) {
       this.#pruneCache();
     }
@@ -517,7 +349,6 @@ export class BatchDiscoveryValidator {
    * Prune oldest cache entries.
    */
   #pruneCache(): void {
-    // Remove the oldest 25% of entries
     const entriesToRemove = Math.floor(this.#options.maxCacheSize * 0.25);
     const entries = [...this.#cache.entries()]
       .sort((a, b) => a[1].cachedAt - b[1].cachedAt);
@@ -575,15 +406,20 @@ export class BatchDiscoveryValidator {
 }
 
 /**
+ * Generate a simple structure hash for cache key generation.
+ */
+function generateStructureHash(creature: Creature): string {
+  const neuronCount = creature.neurons.length;
+  const synapseCount = creature.synapses.length;
+  const version = creature.semanticVersion;
+  const forwardOnly = creature.forwardOnly === true;
+  const uuid = creature.uuid ?? "no-uuid";
+
+  return `${neuronCount}:${synapseCount}:${version}:${forwardOnly}:${uuid}`;
+}
+
+/**
  * Validate multiple candidates in a single batch operation.
- *
- * This is a convenience function that creates a BatchDiscoveryValidator
- * and validates all candidates.
- *
- * @param baseCreature - The base creature
- * @param candidates - The candidates to validate
- * @param options - Validation options
- * @returns Array of validation results
  */
 export function validateDiscoveryCandidatesBatch(
   baseCreature: Creature,
@@ -596,14 +432,6 @@ export function validateDiscoveryCandidatesBatch(
 
 /**
  * Validate multiple candidates with enhanced validation (holdout/brittleness).
- *
- * This is a convenience function that creates a BatchDiscoveryValidator
- * and validates all candidates including enhanced validation.
- *
- * @param baseCreature - The base creature
- * @param candidates - The candidates to validate
- * @param options - Validation options (must include dataDir for enhanced validation)
- * @returns Array of validation results
  */
 export function validateDiscoveryCandidatesBatchWithEnhanced(
   baseCreature: Creature,
