@@ -66,7 +66,7 @@ check_and_update_wasm_pack
 # Treat warnings as errors (align with NEAT-AI-Discovery quality.sh).
 # SIMD flags (+simd128,+relaxed-simd) are set in .cargo/config.toml for
 # wasm32-unknown-unknown only, to avoid "not a recognized feature for this
-# target" when Cargo builds host crates (build scripts, proc-macros).
+# target" when Cargo builds host crates (build scripts, procedural macros).
 export RUSTFLAGS="-D warnings"
 
 # Build the WASM module with wasm-pack (preferred) or cargo
