@@ -354,9 +354,7 @@ export function propagate(
     }
 
     if (updateNeeded) {
-      if (targetValue === undefined) {
-        targetValue = toValue(neuron, targetActivation, ns.hintValue);
-      }
+      targetValue = toValue(neuron, targetActivation, ns.hintValue);
 
       accumulateBias(
         ns,
