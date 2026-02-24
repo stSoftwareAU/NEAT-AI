@@ -1,5 +1,12 @@
+/**
+ * NeatConfig.ts - NEAT configuration factory and constants.
+ *
+ * Issue #1599: Refactored from 1,120 lines into a ~500-line factory.
+ * Sub-config parsing is delegated to NeatConfigParsers.ts and
+ * cross-field validation to NeatConfigValidation.ts.
+ */
+
 import type { NeatOptionsInput } from "./NeatOptions.ts";
-import { ConfigurationError } from "../errors/ConfigurationError.ts";
 import { getGlobalDebug } from "../globalAccessors.ts";
 import {
   DEFAULT_RUST_FLUSH_BYTES,
@@ -7,57 +14,9 @@ import {
 } from "../architecture/ErrorGuidedStructuralEvolution/constants.ts";
 import { Selection, type SelectionInterface } from "../methods/Selection.ts";
 import { Mutation } from "../NEAT/Mutation.ts";
-import {
-  DEFAULT_PLATEAU_DETECTION,
-  type RequiredPlateauDetectionConfig,
-} from "../NEAT/PlateauDetector.ts";
-import {
-  DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS,
-  type RequiredAdaptiveMutationThresholds,
-} from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
-import {
-  DEFAULT_ENSEMBLE_DIVERSITY_CONFIG,
-  type RequiredEnsembleDiversityConfig,
-} from "./EnsembleDiversityConfig.ts";
-import {
-  DEFAULT_FINE_TUNE_POPULATION_CONFIG,
-  type RequiredFineTunePopulationConfig,
-} from "./FineTunePopulationConfig.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
 import { parseDiscoverySampleRate, parseNumber } from "./ParseOptions.ts";
-import {
-  DEFAULT_PREDICTIVE_CODING_CONFIG,
-  type RequiredPredictiveCodingConfig,
-} from "./PredictiveCodingConfig.ts";
-import {
-  DEFAULT_QUANTUM_STEP_CONFIG,
-  type RequiredQuantumStepConfig,
-} from "./QuantumStepConfig.ts";
-import {
-  DEFAULT_STABILITY_ADAPTATION_CONFIG,
-  type RequiredStabilityAdaptationConfig,
-} from "./StabilityAdaptationConfig.ts";
-import {
-  DEFAULT_BIAS_REGULARISATION_CONFIG,
-  type RequiredBiasRegularisationConfig,
-} from "./BiasRegularisationConfig.ts";
-import {
-  DEFAULT_MEMORY_CONFIG,
-  type RequiredMemoryConfig,
-} from "./MemoryConfig.ts";
-import {
-  DEFAULT_WASM_CACHE_CONFIG,
-  type RequiredWasmCacheConfig,
-} from "./WasmCacheConfig.ts";
-import {
-  DEFAULT_WEIGHT_REGULARISATION_CONFIG,
-  type RequiredWeightRegularisationConfig,
-} from "./WeightRegularisationConfig.ts";
-import {
-  DEFAULT_WORKER_THREAD_CAP_CONFIG,
-  type RequiredWorkerThreadCapConfig,
-} from "./WorkerThreadCapConfig.ts";
 import {
   createConsoleLogger,
   type Logger,
@@ -70,9 +29,28 @@ import {
   setRandomNumberGenerator,
 } from "../utils/RandomNumberGenerator.ts";
 
+// Extracted sub-config parsers
+import {
+  parseAdaptiveMutationThresholds,
+  parseBiasRegularisation,
+  parseDiscoveryMinCandidates,
+  parseEnsembleDiversity,
+  parseFineTunePopulation,
+  parseMemoryConfig,
+  parsePlateauDetection,
+  parsePredictiveCoding,
+  parseQuantumStep,
+  parseStabilityAdaptation,
+  parseWasmCache,
+  parseWeightRegularisation,
+  parseWorkerThreadCap,
+} from "./NeatConfigParsers.ts";
+
+// Extracted cross-field validation
+import { validateNeatConfig } from "./NeatConfigValidation.ts";
+
 /**
  * Default cost of growth value used when not specified in options.
- * This is the single source of truth for the default costOfGrowth.
  */
 export const DEFAULT_COST_OF_GROWTH = 0.000_000_1;
 
@@ -81,8 +59,6 @@ export const DEFAULT_COST_OF_GROWTH = 0.000_000_1;
  *
  * Issue #1386: Increased from 0.05 (5%) to 0.2 (20%) so that the Rust
  * discovery engine has 4x more data points to base structural decisions on.
- * A larger sample improves the statistical significance of candidate rankings
- * and reduces the chance of missing important edge cases.
  */
 export const DEFAULT_DISCOVERY_SAMPLE_RATE = 0.2;
 
@@ -91,8 +67,7 @@ export const DEFAULT_DISCOVERY_SAMPLE_RATE = 0.2;
  * advances to analysis.
  *
  * Issue #1386: Increased from 1 minute to 5 minutes to accommodate the higher
- * default sample rate. At ~700 records/sec, 5 minutes allows recording ~210k
- * samples, which is sufficient for a 20% sample of a 1M-record dataset.
+ * default sample rate.
  */
 export const DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES = 5;
 
@@ -103,20 +78,16 @@ export const MIN_COST_OF_GROWTH = 0.000_000_000_1;
 
 /**
  * Minimum allowed discovery analysis timeout in minutes.
- * The Rust library requires at least 3 seconds (0.05 minutes).
  */
 export const MIN_ANALYSIS_TIMEOUT_MINUTES = 0.05; // 3 seconds
 
 /**
  * Maximum allowed discovery analysis timeout in minutes.
- * The Rust library allows up to 1 hour (60 minutes).
  */
 export const MAX_ANALYSIS_TIMEOUT_MINUTES = 60; // 1 hour
 
 /**
  * Default minimum candidates per discovery category.
- * These values reflect the current behaviour where diversity selection
- * picks at least 1 from each category, and removal candidates sample 3.
  */
 export const DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY: Required<
   DiscoveryMinCandidatesPerCategory
@@ -128,7 +99,7 @@ export const DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY: Required<
 };
 
 /**
- * Interface for NEAT (NeuroEvolution of Augmenting Topologies) training options.
+ * Interface for NEAT training options.
  * Provides a read-only configuration object for the NEAT algorithm.
  */
 export type NeatConfig = Readonly<NeatArguments>;
@@ -136,25 +107,8 @@ export type NeatConfig = Readonly<NeatArguments>;
 /**
  * Creates a validated NEAT configuration from user options.
  *
- * This function takes partial user options and fills in default values
- * to create a complete, validated configuration for the NEAT algorithm.
- * It handles selection strategy randomization and validates all parameters
- * to ensure they are within acceptable ranges.
- *
- * @param options - Partial configuration options from the user. Numeric options
- * (e.g. trainingSampleRate, targetError, populationSize) accept string or number,
- * so CLI-derived values can be passed without pre-parsing (Issue #1280).
+ * @param options - Partial configuration options from the user
  * @returns A frozen, validated NEAT configuration object
- * @throws {Error} When configuration parameters are invalid (parse/validation happens here)
- *
- * @example
- * ```ts
- * const config = createNeatConfig({
- *   populationSize: 100,
- *   mutationRate: 0.3,
- *   costName: "MSE"
- * });
- * ```
  */
 export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
   const opts = options as Record<string, unknown>;
@@ -190,26 +144,9 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
   });
 
   // Issue #1569: Parse worker thread cap config and apply memory-based capping
-  const workerThreadCap: RequiredWorkerThreadCapConfig = (() => {
-    const overrides = opts.workerThreadCap as
-      | Record<string, unknown>
-      | undefined;
-    const d = DEFAULT_WORKER_THREAD_CAP_CONFIG;
-    return {
-      maxMemoryMB: parseNumber(
-        "Worker thread cap maxMemoryMB",
-        overrides?.maxMemoryMB,
-        d.maxMemoryMB,
-        { min: 0 },
-      ),
-      estimatedMemoryPerWorkerMB: parseNumber(
-        "Worker thread cap estimatedMemoryPerWorkerMB",
-        overrides?.estimatedMemoryPerWorkerMB,
-        d.estimatedMemoryPerWorkerMB,
-        { min: 1 },
-      ),
-    } as RequiredWorkerThreadCapConfig;
-  })();
+  const workerThreadCap = parseWorkerThreadCap(
+    opts.workerThreadCap as Record<string, unknown> | undefined,
+  );
 
   if (workerThreadCap.maxMemoryMB > 0) {
     const memoryBasedMax = Math.max(
@@ -222,8 +159,6 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     if (memoryBasedMax < threads) {
       const originalThreads = threads;
       threads = memoryBasedMax;
-      // Logging happens after logger is created; defer via a flag
-      // We use console.warn here because the logger is not yet initialised
       console.warn(
         `[NEAT-AI] Worker thread count capped from ${originalThreads} to ${threads} ` +
           `based on memory budget (maxMemoryMB: ${workerThreadCap.maxMemoryMB}, ` +
@@ -231,6 +166,13 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       );
     }
   }
+
+  const populationSize = parseNumber(
+    "Population Size",
+    opts.populationSize,
+    50,
+    { integer: true, min: 2 },
+  );
 
   const config: NeatArguments = {
     creativeThinkingConnectionCount: parseNumber(
@@ -276,9 +218,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       "Cost of growth",
       opts.costOfGrowth,
       DEFAULT_COST_OF_GROWTH,
-      {
-        min: 0,
-      },
+      { min: 0 },
     ),
 
     iterations: parseNumber(
@@ -288,10 +228,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       { min: 0 },
     ),
 
-    populationSize: parseNumber("Population Size", opts.populationSize, 50, {
-      integer: true,
-      min: 2,
-    }),
+    populationSize,
     elitism: parseNumber("Elitism", opts.elitism, 1, {
       integer: true,
       min: 1,
@@ -301,10 +238,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       "Max Connections",
       opts.maxConns,
       Number.MAX_SAFE_INTEGER,
-      {
-        integer: true,
-        min: 1,
-      },
+      { integer: true, min: 1 },
     ),
     maximumNumberOfNodes: parseNumber(
       "Maximum Number of Nodes",
@@ -374,10 +308,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
           "Global breeding rate",
           opts.globalBreedingRate,
           rng.random(),
-          {
-            min: 0,
-            max: 1,
-          },
+          { min: 0, max: 1 },
         ),
         1,
       ),
@@ -455,13 +386,10 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     discoveryDisableCleanup: options.discoveryDisableCleanup ?? false,
     discoveryBaseDirectory: options.discoveryBaseDirectory,
     discoverySkipRecordPhase: options.discoverySkipRecordPhase ?? false,
-    // Issue #997: discoveryCacheDir provides a base directory for discovery caching.
-    // Empty strings are treated as undefined (not provided).
     discoveryCacheDir:
       options.discoveryCacheDir && options.discoveryCacheDir.trim()
         ? options.discoveryCacheDir.trim()
         : undefined,
-    // Issue #997: Derive failure/success cache dirs from discoveryCacheDir if not explicitly set.
     discoveryFailureCacheDir: (() => {
       if (options.discoveryFailureCacheDir) {
         return options.discoveryFailureCacheDir;
@@ -527,594 +455,61 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       1,
       { min: 0 },
     ),
-    discoveryMinCandidatesPerCategory: (() => {
-      const overrides = opts.discoveryMinCandidatesPerCategory as
-        | Record<
-          string,
-          unknown
-        >
-        | undefined;
-      const d = DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY;
-      return {
-        addNeurons: parseNumber(
-          "Discovery min candidates addNeurons",
-          overrides?.addNeurons,
-          d.addNeurons,
-          { integer: true, min: 0 },
-        ),
-        addSynapses: parseNumber(
-          "Discovery min candidates addSynapses",
-          overrides?.addSynapses,
-          d.addSynapses,
-          { integer: true, min: 0 },
-        ),
-        changeSquash: parseNumber(
-          "Discovery min candidates changeSquash",
-          overrides?.changeSquash,
-          d.changeSquash,
-          { integer: true, min: 0 },
-        ),
-        removeLowImpact: parseNumber(
-          "Discovery min candidates removeLowImpact",
-          overrides?.removeLowImpact,
-          d.removeLowImpact,
-          { integer: true, min: 0 },
-        ),
-      } as Required<DiscoveryMinCandidatesPerCategory>;
-    })(),
-    adaptiveMutationThresholds: (() => {
-      const overrides = opts.adaptiveMutationThresholds as
-        | Record<
-          string,
-          unknown
-        >
-        | undefined;
-      const d = DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS;
-      return {
-        medium: parseNumber(
-          "Adaptive mutation medium threshold",
-          overrides?.medium,
-          d.medium,
-          { integer: true, min: 1 },
-        ),
-        large: parseNumber(
-          "Adaptive mutation large threshold",
-          overrides?.large,
-          d.large,
-          { integer: true, min: 1 },
-        ),
-        largeTopologyWeight: parseNumber(
-          "Adaptive mutation largeTopologyWeight",
-          overrides?.largeTopologyWeight,
-          d.largeTopologyWeight,
-          { min: 0, max: 1 },
-        ),
-      } as RequiredAdaptiveMutationThresholds;
-    })(),
-    plateauDetection: (() => {
-      const overrides = opts.plateauDetection as
+
+    // Delegated sub-config parsing
+    discoveryMinCandidatesPerCategory: parseDiscoveryMinCandidates(
+      opts.discoveryMinCandidatesPerCategory as
         | Record<string, unknown>
-        | undefined;
-      const d = DEFAULT_PLATEAU_DETECTION;
-      return {
-        windowSize: parseNumber(
-          "Plateau detection windowSize",
-          overrides?.windowSize,
-          d.windowSize,
-          { integer: true, min: 1 },
-        ),
-        minImprovementRate: parseNumber(
-          "Plateau detection minImprovementRate",
-          overrides?.minImprovementRate,
-          d.minImprovementRate,
-          { min: 0, max: 1 },
-        ),
-        rapidImprovementRate: parseNumber(
-          "Plateau detection rapidImprovementRate",
-          overrides?.rapidImprovementRate,
-          d.rapidImprovementRate,
-          { min: 0, max: 1 },
-        ),
-        responseMutationMultiplier: parseNumber(
-          "Plateau detection responseMutationMultiplier",
-          overrides?.responseMutationMultiplier,
-          d.responseMutationMultiplier,
-          { min: 1 },
-        ),
-        responseImprovementMultiplier: parseNumber(
-          "Plateau detection responseImprovementMultiplier",
-          overrides?.responseImprovementMultiplier,
-          d.responseImprovementMultiplier,
-          { min: 0, max: 1 },
-        ),
-        enabled: typeof overrides?.enabled === "boolean"
-          ? overrides.enabled
-          : d.enabled,
-      } as RequiredPlateauDetectionConfig;
-    })(),
-    // Issue #1307: Stability-based mutation adaptation configuration
-    stabilityAdaptation: (() => {
-      const overrides = opts.stabilityAdaptation as
+        | undefined,
+    ),
+    adaptiveMutationThresholds: parseAdaptiveMutationThresholds(
+      opts.adaptiveMutationThresholds as
         | Record<string, unknown>
-        | undefined;
-      const d = DEFAULT_STABILITY_ADAPTATION_CONFIG;
-      return {
-        enabled: typeof overrides?.enabled === "boolean"
-          ? overrides.enabled
-          : d.enabled,
-        stabilityWindowSize: parseNumber(
-          "Stability adaptation windowSize",
-          overrides?.stabilityWindowSize,
-          d.stabilityWindowSize,
-          { integer: true, min: 1 },
-        ),
-        brittlenessThreshold: parseNumber(
-          "Stability adaptation brittlenessThreshold",
-          overrides?.brittlenessThreshold,
-          d.brittlenessThreshold,
-          { min: 0, max: 1 },
-        ),
-        brittleReductionFactor: parseNumber(
-          "Stability adaptation brittleReductionFactor",
-          overrides?.brittleReductionFactor,
-          d.brittleReductionFactor,
-          { min: 0, max: 1 },
-        ),
-        stableBoostFactor: parseNumber(
-          "Stability adaptation stableBoostFactor",
-          overrides?.stableBoostFactor,
-          d.stableBoostFactor,
-          { min: 1 },
-        ),
-        stableBoostThreshold: parseNumber(
-          "Stability adaptation stableBoostThreshold",
-          overrides?.stableBoostThreshold,
-          d.stableBoostThreshold,
-          { min: 0, max: 1 },
-        ),
-        selectionStabilityWeight: parseNumber(
-          "Stability adaptation selectionStabilityWeight",
-          overrides?.selectionStabilityWeight,
-          d.selectionStabilityWeight,
-          { min: 0, max: 1 },
-        ),
-        adaptiveSelectionWeight: typeof overrides?.adaptiveSelectionWeight ===
-            "boolean"
-          ? overrides.adaptiveSelectionWeight
-          : d.adaptiveSelectionWeight,
-        topologyMutationReductionForBrittle: parseNumber(
-          "Stability adaptation topologyMutationReductionForBrittle",
-          overrides?.topologyMutationReductionForBrittle,
-          d.topologyMutationReductionForBrittle,
-          { min: 0, max: 1 },
-        ),
-        trackPerMutationType: typeof overrides?.trackPerMutationType ===
-            "boolean"
-          ? overrides.trackPerMutationType
-          : d.trackPerMutationType,
-      } as RequiredStabilityAdaptationConfig;
-    })(),
-    // Issue #1309: Weight regularisation during mutation
-    weightRegularisation: (() => {
-      const overrides = opts.weightRegularisation as
-        | Record<string, unknown>
-        | undefined;
-      const d = DEFAULT_WEIGHT_REGULARISATION_CONFIG;
-      return {
-        enabled: typeof overrides?.enabled === "boolean"
-          ? overrides.enabled
-          : d.enabled,
-        maxAbsoluteWeight: parseNumber(
-          "Weight regularisation maxAbsoluteWeight",
-          overrides?.maxAbsoluteWeight,
-          d.maxAbsoluteWeight,
-          { min: 0.001 },
-        ),
-        maxWeightChange: parseNumber(
-          "Weight regularisation maxWeightChange",
-          overrides?.maxWeightChange,
-          d.maxWeightChange,
-          { min: 0.001 },
-        ),
-        l2Strength: parseNumber(
-          "Weight regularisation l2Strength",
-          overrides?.l2Strength,
-          d.l2Strength,
-          { min: 0, max: 1 },
-        ),
-        preferSmallChanges: typeof overrides?.preferSmallChanges === "boolean"
-          ? overrides.preferSmallChanges
-          : d.preferSmallChanges,
-        smallChangeScale: parseNumber(
-          "Weight regularisation smallChangeScale",
-          overrides?.smallChangeScale,
-          d.smallChangeScale,
-          { min: 0, max: 1 },
-        ),
-      } as RequiredWeightRegularisationConfig;
-    })(),
-    // Issue #1416: Bias regularisation during mutation
-    biasRegularisation: (() => {
-      const overrides = opts.biasRegularisation as
-        | Record<string, unknown>
-        | undefined;
-      const d = DEFAULT_BIAS_REGULARISATION_CONFIG;
-      return {
-        enabled: typeof overrides?.enabled === "boolean"
-          ? overrides.enabled
-          : d.enabled,
-        maxAbsoluteBias: parseNumber(
-          "Bias regularisation maxAbsoluteBias",
-          overrides?.maxAbsoluteBias,
-          d.maxAbsoluteBias,
-          { min: 0.001 },
-        ),
-        maxBiasChange: parseNumber(
-          "Bias regularisation maxBiasChange",
-          overrides?.maxBiasChange,
-          d.maxBiasChange,
-          { min: 0.001 },
-        ),
-        l2Strength: parseNumber(
-          "Bias regularisation l2Strength",
-          overrides?.l2Strength,
-          d.l2Strength,
-          { min: 0, max: 1 },
-        ),
-        preferSmallChanges: typeof overrides?.preferSmallChanges === "boolean"
-          ? overrides.preferSmallChanges
-          : d.preferSmallChanges,
-        smallChangeScale: parseNumber(
-          "Bias regularisation smallChangeScale",
-          overrides?.smallChangeScale,
-          d.smallChangeScale,
-          { min: 0, max: 1 },
-        ),
-      } as RequiredBiasRegularisationConfig;
-    })(),
-    // Issue #1310: Ensemble diversity scoring for species
-    ensembleDiversity: (() => {
-      const overrides = opts.ensembleDiversity as
-        | Record<string, unknown>
-        | undefined;
-      const d = DEFAULT_ENSEMBLE_DIVERSITY_CONFIG;
-      return {
-        enabled: typeof overrides?.enabled === "boolean"
-          ? overrides.enabled
-          : d.enabled,
-        diversityWeight: parseNumber(
-          "Ensemble diversity diversityWeight",
-          overrides?.diversityWeight,
-          d.diversityWeight,
-          { min: 0, max: 1 },
-        ),
-        weightVarianceWeight: parseNumber(
-          "Ensemble diversity weightVarianceWeight",
-          overrides?.weightVarianceWeight,
-          d.weightVarianceWeight,
-          { min: 0, max: 1 },
-        ),
-        squashEntropyWeight: parseNumber(
-          "Ensemble diversity squashEntropyWeight",
-          overrides?.squashEntropyWeight,
-          d.squashEntropyWeight,
-          { min: 0, max: 1 },
-        ),
-        topologyDiversityWeight: parseNumber(
-          "Ensemble diversity topologyDiversityWeight",
-          overrides?.topologyDiversityWeight,
-          d.topologyDiversityWeight,
-          { min: 0, max: 1 },
-        ),
-        protectDiverseLowPerformers:
-          typeof overrides?.protectDiverseLowPerformers === "boolean"
-            ? overrides.protectDiverseLowPerformers
-            : d.protectDiverseLowPerformers,
-        diversityProtectionThreshold: parseNumber(
-          "Ensemble diversity diversityProtectionThreshold",
-          overrides?.diversityProtectionThreshold,
-          d.diversityProtectionThreshold,
-          { min: 0, max: 1 },
-        ),
-        crossSpeciesBreedingThreshold: parseNumber(
-          "Ensemble diversity crossSpeciesBreedingThreshold",
-          overrides?.crossSpeciesBreedingThreshold,
-          d.crossSpeciesBreedingThreshold,
-          { min: 0, max: 1 },
-        ),
-        lowDiversityThreshold: parseNumber(
-          "Ensemble diversity lowDiversityThreshold",
-          overrides?.lowDiversityThreshold,
-          d.lowDiversityThreshold,
-          { min: 0, max: 1 },
-        ),
-        diverseParentPreferenceWeight: parseNumber(
-          "Ensemble diversity diverseParentPreferenceWeight",
-          overrides?.diverseParentPreferenceWeight,
-          d.diverseParentPreferenceWeight,
-          { min: 0, max: 1 },
-        ),
-      } as RequiredEnsembleDiversityConfig;
-    })(),
-    // Issue #1553: Predictive Coding configuration
-    predictiveCoding: (() => {
-      const overrides = opts.predictiveCoding as
-        | Record<string, unknown>
-        | undefined;
-      const d = DEFAULT_PREDICTIVE_CODING_CONFIG;
-      return {
-        enabled: typeof overrides?.enabled === "boolean"
-          ? overrides.enabled
-          : d.enabled,
-        inferenceSteps: parseNumber(
-          "Predictive Coding inferenceSteps",
-          overrides?.inferenceSteps,
-          d.inferenceSteps,
-          { integer: true, min: 1 },
-        ),
-        inferenceRate: parseNumber(
-          "Predictive Coding inferenceRate",
-          overrides?.inferenceRate,
-          d.inferenceRate,
-          { minExclusive: 0 },
-        ),
-        learningRate: parseNumber(
-          "Predictive Coding learningRate",
-          overrides?.learningRate,
-          d.learningRate,
-          { minExclusive: 0 },
-        ),
-        energyThreshold: parseNumber(
-          "Predictive Coding energyThreshold",
-          overrides?.energyThreshold,
-          d.energyThreshold,
-          { minExclusive: 0 },
-        ),
-      } as RequiredPredictiveCodingConfig;
-    })(),
-    // Issue #1566: WASM cache sizing configuration
-    wasmCache: (() => {
-      const overrides = opts.wasmCache as
-        | Record<string, unknown>
-        | undefined;
-      const d = DEFAULT_WASM_CACHE_CONFIG;
-      const populationSize = parseNumber(
-        "Population Size",
-        opts.populationSize,
-        50,
-        { integer: true, min: 2 },
-      );
-      return {
-        maxCachedActivations: parseNumber(
-          "WASM cache maxCachedActivations",
-          overrides?.maxCachedActivations,
-          populationSize * 2,
-          { integer: true, min: 1 },
-        ),
-        compilationCacheSize: parseNumber(
-          "WASM cache compilationCacheSize",
-          overrides?.compilationCacheSize,
-          d.compilationCacheSize,
-          { integer: true, min: 1 },
-        ),
-      } as RequiredWasmCacheConfig;
-    })(),
-    // Issue #1565: Proactive heap memory monitoring and cache eviction
-    memory: (() => {
-      const overrides = opts.memory as
-        | Record<string, unknown>
-        | undefined;
-      const d = DEFAULT_MEMORY_CONFIG;
-      const enabled = overrides?.enabled !== undefined
-        ? Boolean(overrides.enabled)
-        : d.enabled;
-      return {
-        enabled,
-        warningThreshold: parseNumber(
-          "Memory warningThreshold",
-          overrides?.warningThreshold,
-          d.warningThreshold,
-          { min: 0, max: 1 },
-        ),
-        criticalThreshold: parseNumber(
-          "Memory criticalThreshold",
-          overrides?.criticalThreshold,
-          d.criticalThreshold,
-          { min: 0, max: 1 },
-        ),
-      } as RequiredMemoryConfig;
-    })(),
-    // Issue #1569: Worker thread cap based on available memory
+        | undefined,
+    ),
+    plateauDetection: parsePlateauDetection(
+      opts.plateauDetection as Record<string, unknown> | undefined,
+    ),
+    stabilityAdaptation: parseStabilityAdaptation(
+      opts.stabilityAdaptation as Record<string, unknown> | undefined,
+    ),
+    weightRegularisation: parseWeightRegularisation(
+      opts.weightRegularisation as Record<string, unknown> | undefined,
+    ),
+    biasRegularisation: parseBiasRegularisation(
+      opts.biasRegularisation as Record<string, unknown> | undefined,
+    ),
+    ensembleDiversity: parseEnsembleDiversity(
+      opts.ensembleDiversity as Record<string, unknown> | undefined,
+    ),
+    predictiveCoding: parsePredictiveCoding(
+      opts.predictiveCoding as Record<string, unknown> | undefined,
+    ),
+    wasmCache: parseWasmCache(
+      opts.wasmCache as Record<string, unknown> | undefined,
+      populationSize,
+    ),
+    memory: parseMemoryConfig(
+      opts.memory as Record<string, unknown> | undefined,
+    ),
     workerThreadCap,
-    // Issue #1330: Adaptive quantum step sizing for memetic fine-tuning
-    quantumStep: (() => {
-      const overrides = opts.quantumStep as
-        | Record<string, unknown>
-        | undefined;
-      const d = DEFAULT_QUANTUM_STEP_CONFIG;
-      return {
-        minStep: parseNumber(
-          "Quantum step minStep",
-          overrides?.minStep,
-          d.minStep,
-          { min: 0.000_000_000_001 },
-        ),
-        maxStep: parseNumber(
-          "Quantum step maxStep",
-          overrides?.maxStep,
-          d.maxStep,
-          { min: 0.000_000_000_001 },
-        ),
-        errorScale: parseNumber(
-          "Quantum step errorScale",
-          overrides?.errorScale,
-          d.errorScale,
-          { min: 0 },
-        ),
-      } as RequiredQuantumStepConfig;
-    })(),
-    // Issue #1323: Adaptive fine-tuning population sizing
-    fineTunePopulation: (() => {
-      const overrides = opts.fineTunePopulation as
-        | Record<string, unknown>
-        | undefined;
-      const d = DEFAULT_FINE_TUNE_POPULATION_CONFIG;
-      return {
-        minPopulationFraction: parseNumber(
-          "Fine-tune population minPopulationFraction",
-          overrides?.minPopulationFraction,
-          d.minPopulationFraction,
-          { min: 0, max: 1 },
-        ),
-        maxPopulationFraction: parseNumber(
-          "Fine-tune population maxPopulationFraction",
-          overrides?.maxPopulationFraction,
-          d.maxPopulationFraction,
-          { min: 0, max: 1 },
-        ),
-        basePopulationFraction: parseNumber(
-          "Fine-tune population basePopulationFraction",
-          overrides?.basePopulationFraction,
-          d.basePopulationFraction,
-          { min: 0, max: 1 },
-        ),
-        successRateWindow: parseNumber(
-          "Fine-tune population successRateWindow",
-          overrides?.successRateWindow,
-          d.successRateWindow,
-          { integer: true, min: 1 },
-        ),
-      } as RequiredFineTunePopulationConfig;
-    })(),
-    // Issue #1398: Structured logging configuration
+    quantumStep: parseQuantumStep(
+      opts.quantumStep as Record<string, unknown> | undefined,
+    ),
+    fineTunePopulation: parseFineTunePopulation(
+      opts.fineTunePopulation as Record<string, unknown> | undefined,
+    ),
     logger: (() => {
       if (options.logger) return options.logger;
       return createConsoleLogger(options.logLevel ?? "info");
     })() as Logger,
-    // Issue #1400: Reproducible random number generation
     rng,
   };
 
-  // Issue #1398: Set the global logger so code without config access can use it
+  // Issue #1398: Set the global logger
   setLogger(config.logger);
 
-  // Cross-field validation for memory monitoring config
-  if (config.memory.criticalThreshold < config.memory.warningThreshold) {
-    throw new ConfigurationError(
-      `Memory criticalThreshold must be >= warningThreshold. ` +
-        `criticalThreshold: ${config.memory.criticalThreshold}, ` +
-        `warningThreshold: ${config.memory.warningThreshold}`,
-      "CROSS_FIELD_VALIDATION",
-    );
-  }
-
-  // Cross-field validation for worker thread cap config
-  if (config.workerThreadCap.maxMemoryMB > 0) {
-    const estimatedUsage = config.threads *
-      config.workerThreadCap.estimatedMemoryPerWorkerMB;
-    if (estimatedUsage > config.workerThreadCap.maxMemoryMB) {
-      console.warn(
-        `[NEAT-AI] Warning: threads (${config.threads}) * estimatedMemoryPerWorkerMB ` +
-          `(${config.workerThreadCap.estimatedMemoryPerWorkerMB}) = ${estimatedUsage} MB ` +
-          `exceeds maxMemoryMB (${config.workerThreadCap.maxMemoryMB})`,
-      );
-    }
-  }
-
-  // Cross-field validation for quantum step config
-  if (config.quantumStep.maxStep < config.quantumStep.minStep) {
-    throw new ConfigurationError(
-      `Quantum step maxStep must be >= minStep. ` +
-        `maxStep: ${config.quantumStep.maxStep}, minStep: ${config.quantumStep.minStep}`,
-      "CROSS_FIELD_VALIDATION",
-    );
-  }
-
-  // Cross-field validation for fine-tune population config
-  if (
-    config.fineTunePopulation.maxPopulationFraction <
-      config.fineTunePopulation.minPopulationFraction
-  ) {
-    throw new ConfigurationError(
-      `Fine-tune population maxPopulationFraction must be >= minPopulationFraction. ` +
-        `maxPopulationFraction: ${config.fineTunePopulation.maxPopulationFraction}, ` +
-        `minPopulationFraction: ${config.fineTunePopulation.minPopulationFraction}`,
-      "CROSS_FIELD_VALIDATION",
-    );
-  }
-  if (
-    config.fineTunePopulation.basePopulationFraction <
-      config.fineTunePopulation.minPopulationFraction
-  ) {
-    throw new ConfigurationError(
-      `Fine-tune population basePopulationFraction must be >= minPopulationFraction. ` +
-        `basePopulationFraction: ${config.fineTunePopulation.basePopulationFraction}, ` +
-        `minPopulationFraction: ${config.fineTunePopulation.minPopulationFraction}`,
-      "CROSS_FIELD_VALIDATION",
-    );
-  }
-  if (
-    config.fineTunePopulation.basePopulationFraction >
-      config.fineTunePopulation.maxPopulationFraction
-  ) {
-    throw new ConfigurationError(
-      `Fine-tune population basePopulationFraction must be <= maxPopulationFraction. ` +
-        `basePopulationFraction: ${config.fineTunePopulation.basePopulationFraction}, ` +
-        `maxPopulationFraction: ${config.fineTunePopulation.maxPopulationFraction}`,
-      "CROSS_FIELD_VALIDATION",
-    );
-  }
-
-  validate(config);
+  // Cross-field validation
+  validateNeatConfig(config);
   return Object.freeze(config);
-}
-
-function validate(config: NeatArguments) {
-  // Cross-field validation not covered by parseNumber
-  if (config.feedbackLoop === true && config.disableRandomSamples === false) {
-    throw new ConfigurationError(
-      "Feedback Loop, Disable Random Samples must be set together",
-      "CROSS_FIELD_VALIDATION",
-    );
-  }
-
-  const adaptiveThresholds = config.adaptiveMutationThresholds;
-  if (
-    adaptiveThresholds.large <= adaptiveThresholds.medium
-  ) {
-    throw new ConfigurationError(
-      `Adaptive mutation large threshold must be greater than medium threshold. ` +
-        `Large: ${adaptiveThresholds.large}, Medium: ${adaptiveThresholds.medium}`,
-      "CROSS_FIELD_VALIDATION",
-    );
-  }
-
-  const plateauDetection = config.plateauDetection;
-  if (
-    plateauDetection.rapidImprovementRate <=
-      plateauDetection.minImprovementRate
-  ) {
-    throw new ConfigurationError(
-      `Plateau detection rapidImprovementRate must be greater than minImprovementRate. ` +
-        `rapidImprovementRate: ${plateauDetection.rapidImprovementRate}, minImprovementRate: ${plateauDetection.minImprovementRate}`,
-      "CROSS_FIELD_VALIDATION",
-    );
-  }
-
-  if (!Array.isArray(config.discoveryFocusNeuronUUIDs)) {
-    throw new ConfigurationError(
-      "Discovery focus neuron UUIDs must be an array when provided.",
-      "INVALID_TYPE",
-    );
-  }
-  for (const uuid of config.discoveryFocusNeuronUUIDs) {
-    if (typeof uuid !== "string" || uuid.trim().length === 0) {
-      throw new ConfigurationError(
-        `Discovery focus neuron UUIDs must be non-empty strings, found: ${
-          String(uuid)
-        }`,
-        "INVALID_TYPE",
-      );
-    }
-  }
 }
