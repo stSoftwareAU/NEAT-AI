@@ -260,6 +260,7 @@
     "nulling",
     "predictivecodingengine",
     "Deserialise",
-    "deserialises"
+    "deserialises",
+    "proc"
   ]
 }
