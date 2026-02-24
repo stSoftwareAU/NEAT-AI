@@ -5,6 +5,7 @@
  * under 500 lines and each module focused on a single responsibility.
  */
 
+import type { Neuron } from "../architecture/Neuron.ts";
 import type { DiscoverRecord } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
@@ -77,8 +78,8 @@ export function record(
   } else {
     const targetActivation = squashMethod.range.limit(requestedActivation);
 
-    let currentValue = discoverRecord.value;
-    if (Number.isFinite(currentValue) === false) {
+    let currentValue: number | undefined = discoverRecord.value;
+    if (currentValue === undefined || Number.isFinite(currentValue) === false) {
       currentValue = neuron.bias;
       if (neuron.type !== "constant") {
         for (let indx = 0; indx < listLength; indx++) {
@@ -102,7 +103,7 @@ export function record(
         neuron.squash!,
         currentActivation,
         targetActivation,
-        currentValue!,
+        currentValue,
       );
     }
 
