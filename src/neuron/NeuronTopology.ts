@@ -158,7 +158,6 @@ export function mutate(neuron: Neuron, method: string): boolean {
       "INVALID_NEURON_TYPE",
     );
   }
-  let changed = false;
   switch (method) {
     case Mutation.MOD_SQUASH.name: {
       switch (neuron.type) {
@@ -176,7 +175,6 @@ export function mutate(neuron: Neuron, method: string): boolean {
       neuron.setSquash(tmpSquash);
 
       removeTag(neuron, "CRISPR");
-      changed = true;
       break;
     }
     case Mutation.MOD_BIAS.name: {
@@ -194,7 +192,6 @@ export function mutate(neuron: Neuron, method: string): boolean {
         quantum;
 
       neuron.bias += modification;
-      changed = true;
       break;
     }
     default:
@@ -203,9 +200,7 @@ export function mutate(neuron: Neuron, method: string): boolean {
         "INVALID_STATE",
       );
   }
-  if (changed) {
-    delete neuron.creature.uuid;
-    neuron.creature.state.preparedNeurons = false;
-  }
-  return changed;
+  delete neuron.creature.uuid;
+  neuron.creature.state.preparedNeurons = false;
+  return true;
 }
