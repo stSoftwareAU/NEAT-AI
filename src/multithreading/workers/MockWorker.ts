@@ -1,13 +1,10 @@
-import type {
-  RequestData,
-  ResponseData,
-  WorkerInterface,
-} from "./WorkerHandler.ts";
+import type { WorkerInterface } from "../../workers/WorkerInterface.ts";
+import type { RequestData, ResponseData } from "./WorkerHandler.ts";
 
 import { WorkerProcessor } from "./WorkerProcessor.ts";
 import { getLogger } from "../../utils/Logger.ts";
 
-export class MockWorker implements WorkerInterface {
+export class MockWorker implements WorkerInterface<RequestData> {
   private callBack: EventListener | null = null;
 
   addEventListener(

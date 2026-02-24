@@ -1,7 +1,3 @@
-import type { RequestData, WorkerInterface } from "./WorkerHandler.ts";
-import type { ResponseData } from "./ResponseData.ts";
-import { WorkerProcessor } from "./WorkerProcessor.ts";
-
 /**
  * In-process (direct) worker for Intelligent Design scoring.
  *
@@ -12,7 +8,12 @@ import { WorkerProcessor } from "./WorkerProcessor.ts";
  * The interface matches the minimal `WorkerInterface` contract expected by
  * `WorkerHandler`.
  */
-export class MockWorker implements WorkerInterface {
+import type { WorkerInterface } from "../../workers/WorkerInterface.ts";
+import type { RequestData } from "./WorkerHandler.ts";
+import type { ResponseData } from "./ResponseData.ts";
+import { WorkerProcessor } from "./WorkerProcessor.ts";
+
+export class MockWorker implements WorkerInterface<RequestData> {
   private callBack: EventListener | null = null;
   private processor = new WorkerProcessor();
 
