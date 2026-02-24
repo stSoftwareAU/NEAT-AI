@@ -5,7 +5,6 @@
  * under 500 lines and each module focused on a single responsibility.
  */
 
-import { assert } from "@std/assert";
 import type { Neuron } from "../architecture/Neuron.ts";
 import type { DiscoverRecord } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
