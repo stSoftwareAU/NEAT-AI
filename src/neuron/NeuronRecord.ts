@@ -44,7 +44,6 @@ export function record(
       activation: currentActivation,
       errors: [],
     };
-    assert(discoverRecord !== undefined);
     discoverMap.set(neuron.uuid, discoverRecord);
   }
 
