@@ -121,8 +121,11 @@ export function makeFunction(
 export function prepare(
   neuron: Neuron,
   functionCache: FunctionCache,
-): NeuronActivationInterface | ActivationInterface | UnSquashInterface |
-  undefined {
+):
+  | NeuronActivationInterface
+  | ActivationInterface
+  | UnSquashInterface
+  | undefined {
   if (neuron.type === "constant") {
     neuron.activateAndTraceNeuron = () => activateConstant(neuron);
     neuron.activateNeuron = () => activateConstant(neuron);

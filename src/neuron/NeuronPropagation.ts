@@ -27,7 +27,6 @@ import {
 import { coordinateBackpropUpdates } from "../propagate/BackpropCoordination.ts";
 import { noChangePropagate } from "../architecture/NoChangePropagate.ts";
 import {
-  calculateError as wasmCalculateError,
   fusedErrorDistribution,
   squash as wasmSquash,
 } from "../wasm/ActivationMethods.ts";
@@ -429,8 +428,9 @@ export function rawAdjustedActivation(
     if (
       (squashMethod as NeuronActivationInterface).activateAndTrace !== undefined
     ) {
-      const activation =
-        (squashMethod as NeuronActivationInterface).activate(neuron);
+      const activation = (squashMethod as NeuronActivationInterface).activate(
+        neuron,
+      );
       squashMethod.range.validate(activation);
       return activation;
     } else {

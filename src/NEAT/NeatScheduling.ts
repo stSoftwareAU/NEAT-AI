@@ -8,7 +8,7 @@
 import { assert } from "@std/assert";
 import { blue } from "@std/fmt/colors";
 import { ensureDirSync } from "@std/fs";
-import { addTag, getTag, removeTag } from "@stsoftware/tags/mod";
+import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
@@ -134,9 +134,7 @@ export function scheduleDiscovery(
         getLogger().info(
           `[Neat] Built improved creature from discovery ${
             blue(uuid.substring(Math.max(0, uuid.length - 8)))
-          } with ${
-            r.discover.addHelpfulSynapses?.length ?? 0
-          } synapses added`,
+          } with ${r.discover.addHelpfulSynapses?.length ?? 0} synapses added`,
         );
       }
     }
@@ -390,9 +388,7 @@ export function logReplaySummary(
         const description = candidate.description ?? candidate.key ?? "";
         const scoreDelta = candidate.scoreDelta?.toFixed(6) ?? "N/A";
         getLogger().info(
-          `  - [${kind}] ${
-            blue(changeType)
-          }: ${description} (+${scoreDelta})`,
+          `  - [${kind}] ${blue(changeType)}: ${description} (+${scoreDelta})`,
         );
       }
     }

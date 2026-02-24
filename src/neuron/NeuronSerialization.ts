@@ -8,7 +8,10 @@
 import { addTags } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
 import { Neuron } from "../architecture/Neuron.ts";
-import type { NeuronExport, NeuronInternal } from "../architecture/NeuronInterfaces.ts";
+import type {
+  NeuronExport,
+  NeuronInternal,
+} from "../architecture/NeuronInterfaces.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
 
 /**

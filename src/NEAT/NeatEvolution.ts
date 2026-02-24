@@ -377,9 +377,7 @@ function processCompletedResults(
     if (neat.config.verbose) {
       getLogger().info(
         `Training ${blue(r.train.ID)} completed ${
-          r.duration
-            ? "after " + format(r.duration, { ignoreZero: true })
-            : ""
+          r.duration ? "after " + format(r.duration, { ignoreZero: true }) : ""
         }`,
       );
     }

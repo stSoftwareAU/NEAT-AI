@@ -26,7 +26,10 @@ import type { CrisprInterface } from "../reconstruct/CRISPR.ts";
 import { Genus } from "./Genus.ts";
 import { Mutator } from "./Mutator.ts";
 import { PlateauDetector } from "./PlateauDetector.ts";
-import { DiscoveryReplayQueue } from "./DiscoveryReplayQueue.ts";
+import {
+  type DiscoveryReplayDirResult,
+  DiscoveryReplayQueue,
+} from "./DiscoveryReplayQueue.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
@@ -301,7 +304,11 @@ export class Neat {
     scheduling.scheduleTraining(this, creature, trainingTimeOutMinutes);
   }
 
-  async evolve(
+  logReplaySummary(result: DiscoveryReplayDirResult) {
+    scheduling.logReplaySummary(this.config, result);
+  }
+
+  evolve(
     previousFittest?: Creature,
   ): Promise<{
     fittest: Creature;

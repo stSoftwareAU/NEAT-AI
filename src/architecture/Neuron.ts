@@ -10,7 +10,7 @@
  * - NeuronSerialization.ts - JSON import/export
  */
 
-import { addTags, type TagsInterface } from "@stsoftware/tags/mod";
+import type { TagsInterface } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
