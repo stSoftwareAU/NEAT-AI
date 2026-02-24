@@ -63,11 +63,11 @@ fi
 # Check and update wasm-pack before building
 check_and_update_wasm_pack
 
-# Issue #1178 - Enable SIMD support for WASM
-# simd128 enables 128-bit SIMD operations for vectorized activation
-# Issue #1197 - Enable relaxed-simd for FMA (fused multiply-add) optimization
 # Treat warnings as errors (align with NEAT-AI-Discovery quality.sh).
-export RUSTFLAGS="-D warnings -C target-feature=+simd128,+relaxed-simd"
+# SIMD flags (+simd128,+relaxed-simd) are set in .cargo/config.toml for
+# wasm32-unknown-unknown only, to avoid "not a recognized feature for this
+# target" when Cargo builds host crates (build scripts, proc-macros).
+export RUSTFLAGS="-D warnings"
 
 # Build the WASM module with wasm-pack (preferred) or cargo
 if command -v wasm-pack &> /dev/null; then
