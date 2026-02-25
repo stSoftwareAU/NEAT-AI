@@ -10,31 +10,12 @@
  */
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
-import { Creature } from "../../src/Creature.ts";
+import type { Creature } from "../../src/Creature.ts";
 import type { DiscoveryRunnerWorker } from "../../src/discovery/DiscoveryRunner.ts";
 import { DiscoveryRunner } from "../../src/discovery/DiscoveryRunner.ts";
-
-function makeBaseCreature() {
-  const creature = Creature.fromJSON({
-    input: 2,
-    output: 1,
-    neurons: [
-      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-1", weight: 0.5 },
-      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.5 },
-      { fromUUID: "input-1", toUUID: "output-0", weight: -0.25 },
-    ],
-  });
-  creature.validate();
-  CreatureUtil.makeUUID(creature);
-  return creature;
-}
+import { makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
 class FakeWorker implements DiscoveryRunnerWorker {
   #discoverResult: DiscoverResult;

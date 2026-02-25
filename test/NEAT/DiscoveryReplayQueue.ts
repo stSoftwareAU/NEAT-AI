@@ -1,13 +1,12 @@
 import { assertEquals, assertExists } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { Creature } from "../../src/Creature.ts";
 import type { DiscoveryReplayDirResult } from "../../src/discovery/DiscoveryReplayRunner.ts";
-import { Creature } from "../../src/Creature.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import {
   DiscoveryReplayQueue,
   type DiscoveryReplayQueueDeps,
 } from "../../src/NEAT/DiscoveryReplayQueue.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
+import { makeForwardOnlyCreature as makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
 /**
  * Tests for DiscoveryReplayQueue (Issue #997).
@@ -15,23 +14,6 @@ import type { NeatOptions } from "../../src/config/NeatOptions.ts";
  * The DiscoveryReplayQueue handles non-blocking background replay of
  * cached discoveries against the current fittest creature.
  */
-
-function makeBaseCreature(): Creature {
-  const base: CreatureExport = {
-    input: 1,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.2 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
-    ],
-  };
-  return Creature.fromJSON(base);
-}
 
 Deno.test("DiscoveryReplayQueue - schedules replay when new fittest is detected", async () => {
   const creature = makeBaseCreature();

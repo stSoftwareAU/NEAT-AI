@@ -9,31 +9,9 @@
  */
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { stub } from "@std/testing/mock";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import type { DiscoveryReplayDirResult } from "../../src/discovery/DiscoveryReplayRunner.ts";
-import { Creature } from "../../src/Creature.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { Neat } from "../../src/NEAT/Neat.ts";
-
-/**
- * Creates a base creature for testing.
- */
-function makeBaseCreature(): Creature {
-  const base: CreatureExport = {
-    input: 1,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.2 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
-    ],
-  };
-  return Creature.fromJSON(base);
-}
+import { makeForwardOnlyCreature as makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
 /**
  * Creates a minimal Neat instance for testing logReplaySummary

@@ -8,24 +8,7 @@ import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { CoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
-
-function makeSimpleCreature(): Creature {
-  const creature = Creature.fromJSON({
-    input: 2,
-    output: 1,
-    neurons: [
-      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-1", weight: 0.5 },
-      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.5 },
-    ],
-  });
-  creature.validate();
-  CreatureUtil.makeUUID(creature);
-  return creature;
-}
+import { makeSimpleCreature } from "../fixtures/SimpleCreatures.ts";
 
 function makeCandidate(
   changeType: string,
