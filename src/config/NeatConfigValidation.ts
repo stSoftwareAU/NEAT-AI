@@ -16,6 +16,15 @@ import type { NeatArguments } from "./NeatArguments.ts";
  * individually valid but mutually inconsistent.
  */
 export function validateNeatConfig(config: NeatArguments): void {
+  // Issue #1614: elitism must be strictly less than populationSize
+  if (config.elitism >= config.populationSize) {
+    throw new ConfigurationError(
+      `elitism must be less than populationSize. ` +
+        `elitism: ${config.elitism}, populationSize: ${config.populationSize}`,
+      "CROSS_FIELD_VALIDATION",
+    );
+  }
+
   // Cross-field validation for memory monitoring config
   if (config.memory.criticalThreshold < config.memory.warningThreshold) {
     throw new ConfigurationError(
