@@ -1,13 +1,10 @@
 import { assertEquals } from "@std/assert";
 import { join } from "@std/path/join";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../src/Creature.ts";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CandidateSynapse,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { CandidateNeuron } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { buildDiscoveryCandidates } from "../../src/discovery/DiscoveryCandidates.ts";
 import { buildCacheKey } from "../../src/discovery/FailureCache.ts";
 import { closeRustLibrary } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
@@ -16,23 +13,7 @@ import {
   listSuccessEntriesSync,
   recordSuccessSync,
 } from "../../src/discovery/SuccessCache.ts";
-
-function makeBaseCreature(): Creature {
-  const base: CreatureExport = {
-    input: 1,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.2 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
-    ],
-  };
-  return Creature.fromJSON(base);
-}
+import { makeForwardOnlyCreature as makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
 function makeAddSynapseCandidate(): CandidateSynapse {
   return {
