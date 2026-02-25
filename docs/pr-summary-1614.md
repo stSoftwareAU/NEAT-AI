@@ -4,6 +4,7 @@ Add runtime validation for NeatOptions configuration to catch invalid values at
 config creation time rather than deep in the training loop. Closes #1614.
 
 Changes:
+
 - **mutationRate upper bound**: Added `max: 1` constraint so values like `1.5`
   are rejected immediately with a clear `ConfigurationError`
 - **elitism < populationSize**: Added cross-field validation ensuring elitism
@@ -15,8 +16,8 @@ Changes:
 
 ## Evidence
 
-This is a backend configuration validation change with no UI component.
-All 4222 tests pass including the 17 new validation tests.
+This is a backend configuration validation change with no UI component. All 4222
+tests pass including the 17 new validation tests.
 
 ## Test Plan
 
