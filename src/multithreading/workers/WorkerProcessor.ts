@@ -14,11 +14,10 @@ import {
   getMaxCachedWasmCreatureActivations,
   getWasmCompilationCacheMaxSize,
   getWasmCompilationCacheStats,
-  initWasmActivationSync,
-  isWasmActivationAvailable,
   setMaxCachedWasmCreatureActivations,
   setWasmCompilationCacheSize,
 } from "../../wasm/mod.ts";
+import { initialiseWasmActivationFromPayload } from "../../workers/WasmWorkerInit.ts";
 import type { RequestData, ResponseData } from "./WorkerHandler.ts";
 import { getLogger } from "../../utils/Logger.ts";
 
@@ -98,49 +97,6 @@ export class WorkerProcessor {
 
   private wasmInitAttempted = false;
 
-  private async initialiseWasmActivationFromPayload(
-    payload: NonNullable<RequestData["initialize"]>["wasmActivation"],
-  ): Promise<void> {
-    if (this.wasmInitAttempted) return;
-    this.wasmInitAttempted = true;
-
-    // If already initialised, nothing to do.
-    if (isWasmActivationAvailable()) return;
-
-    // WASM is mandatory. If the parent did not supply the init payload, fail fast
-    // so the worker does not accept jobs that are guaranteed to fail later.
-    if (!payload) {
-      throw new Error(
-        "Worker WASM activation payload missing (WASM is required). " +
-          "Call fetchWasmForWorkers() before spawning workers, or ensure the NEAT-AI " +
-          "package includes `wasm_activation/pkg`.",
-      );
-    }
-
-    // Import wasm-bindgen glue from the provided source to avoid file reads.
-    const jsModuleUrl = `data:application/javascript;charset=utf-8,${
-      encodeURIComponent(payload.jsSource)
-    }`;
-    const jsBindings = await import(jsModuleUrl);
-
-    const ok = initWasmActivationSync(jsBindings, payload.wasmBinary);
-    if (ok) return;
-
-    // Defensive: if an async auto-init is in flight (e.g. env-driven module-load init),
-    // the sync init intentionally fails fast to avoid re-entrancy into wasm-bindgen.
-    // In that case, wait briefly for the in-flight init to finish before failing.
-    // Issue #1260: WASM is built in-repo and published; use short deadline to fail fast.
-    const deadlineMs = Date.now() + 2_000;
-    while (Date.now() < deadlineMs) {
-      if (isWasmActivationAvailable()) return;
-      // deno-lint-ignore no-await-in-loop -- deliberate polling backoff
-      await new Promise((r) => setTimeout(r, 50));
-    }
-
-    if (isWasmActivationAvailable()) return;
-    throw new Error("Worker WASM activation init failed");
-  }
-
   /**
    * Loads a custom cost function from a file path using dynamic import.
    * This allows external programs to provide custom cost functions without
@@ -203,12 +159,14 @@ export class WorkerProcessor {
         this.cost = Costs.find(data.initialize.costName);
       }
 
-      // Explicit worker startup init (production parity):
-      // initialise WASM activation once per worker, using payload supplied by
-      // the parent, so worker-side training/evaluation uses WASM.
-      await this.initialiseWasmActivationFromPayload(
-        data.initialize.wasmActivation,
-      );
+      // Issue #1600: Use shared WASM init utility.
+      if (!this.wasmInitAttempted) {
+        this.wasmInitAttempted = true;
+        await initialiseWasmActivationFromPayload(
+          data.initialize.wasmActivation,
+          true,
+        );
+      }
 
       // Issue #1567: Apply WASM cache configuration from main thread.
       if (data.initialize.wasmCache) {

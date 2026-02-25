@@ -1,18 +1,14 @@
 /**
  * Worker processor for Intelligent Design scoring operations.
  *
- * This processor handles scoring requests using `Creature.scoreDir()`.
+ * Issue #1600: Uses shared WASM init from src/workers/WasmWorkerInit.ts.
  *
  * @module
  */
 
 import { addTag } from "@stsoftware/tags/mod";
-import { assert } from "@std/assert";
 import { Creature } from "../../Creature.ts";
-import {
-  initWasmActivationSync,
-  isWasmActivationAvailable,
-} from "../../wasm/mod.ts";
+import { initialiseWasmActivationFromPayload } from "../../workers/WasmWorkerInit.ts";
 import type { RequestData } from "./WorkerHandler.ts";
 import type { ResponseData } from "./ResponseData.ts";
 
@@ -21,42 +17,6 @@ import type { ResponseData } from "./ResponseData.ts";
  */
 export class WorkerProcessor {
   private wasmInitAttempted = false;
-
-  private async initialiseWasmActivationFromPayload(
-    payload: RequestData["initialize"] | undefined,
-  ): Promise<void> {
-    if (!payload) return;
-    if (this.wasmInitAttempted) return;
-    this.wasmInitAttempted = true;
-
-    if (isWasmActivationAvailable()) return;
-
-    const jsModuleUrl = `data:application/javascript;charset=utf-8,${
-      encodeURIComponent(payload.wasmActivation.jsSource)
-    }`;
-    const jsBindings = await import(jsModuleUrl);
-
-    const ok = initWasmActivationSync(
-      jsBindings,
-      payload.wasmActivation.wasmBinary,
-    );
-    if (ok) return;
-
-    // Defensive: avoid deadlock/race if module-level async auto-init is in-flight.
-    // Sync init fails fast in that case; wait briefly for the in-flight init.
-    // Issue #1260: WASM is built in-repo and published; use short deadline to fail fast.
-    const deadlineMs = Date.now() + 2_000;
-    while (Date.now() < deadlineMs) {
-      if (isWasmActivationAvailable()) return;
-      // deno-lint-ignore no-await-in-loop -- deliberate polling backoff
-      await new Promise((r) => setTimeout(r, 50));
-    }
-
-    assert(
-      isWasmActivationAvailable(),
-      "Intelligent Design worker WASM activation init failed",
-    );
-  }
 
   /**
    * Processes a scoring request.
@@ -67,7 +27,14 @@ export class WorkerProcessor {
   async process(data: RequestData): Promise<ResponseData> {
     const start = Date.now();
     if (data.initialize) {
-      await this.initialiseWasmActivationFromPayload(data.initialize);
+      // Issue #1600: Use shared WASM init utility.
+      if (!this.wasmInitAttempted) {
+        this.wasmInitAttempted = true;
+        await initialiseWasmActivationFromPayload(
+          data.initialize.wasmActivation,
+          true,
+        );
+      }
       return {
         taskID: data.taskID,
         duration: Date.now() - start,

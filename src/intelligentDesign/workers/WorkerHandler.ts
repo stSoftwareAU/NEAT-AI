@@ -1,8 +1,7 @@
 /**
  * Worker handler for Intelligent Design scoring operations.
  *
- * This handler manages communication with worker threads that score creatures
- * using `Creature.scoreDir()`. It supports custom cost functions via NeatOptions.
+ * Extends WorkerHandlerBase for shared lifecycle management (Issue #1600).
  *
  * @module
  */
@@ -12,18 +11,19 @@ import type { Creature } from "../../Creature.ts";
 import type { NeatOptions } from "../../config/NeatOptions.ts";
 import type { ResponseData } from "./ResponseData.ts";
 import { MockWorker } from "./MockWorker.ts";
-import { getLogger } from "../../utils/Logger.ts";
+import {
+  getInitTimeoutMs,
+  WorkerHandlerBase,
+} from "../../workers/WorkerHandlerBase.ts";
+import type { WorkerInterface } from "../../workers/WorkerInterface.ts";
+import {
+  loadWasmActivationInitPayloadAsync,
+} from "../../workers/WasmActivationPayload.ts";
 
-export interface WasmActivationInitPayload {
-  /**
-   * The wasm-bindgen JS glue code as source text.
-   * This is imported by the worker via a `data:` URL so workers don't need
-   * filesystem reads to boot WASM.
-   */
-  jsSource: string;
-  /** Raw `wasm_activation_bg.wasm` bytes. */
-  wasmBinary: Uint8Array;
-}
+// Re-export shared type for backwards compatibility.
+export type {
+  WasmActivationInitPayload,
+} from "../../workers/WasmActivationPayload.ts";
 
 /**
  * Data structure for requests sent to scoring workers.
@@ -33,7 +33,8 @@ export interface RequestData {
   taskID: number;
   /** Initialization request (sent once per worker) */
   initialize?: {
-    wasmActivation: WasmActivationInitPayload;
+    wasmActivation:
+      import("../../workers/WasmActivationPayload.ts").WasmActivationInitPayload;
   };
   /** Score request data */
   score?: {
@@ -48,96 +49,13 @@ export interface RequestData {
   };
 }
 
-interface WorkerEventListener {
-  (worker: WorkerHandler): void;
-}
-
-/**
- * Interface for worker implementations.
- */
-export interface WorkerInterface {
-  addEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | AddEventListenerOptions,
-  ): void;
-
-  postMessage(data: RequestData): void;
-  terminate(): void;
-}
-
-let globalWorkerID = 0;
-
-let cachedWasmActivationInitPayload: WasmActivationInitPayload | null = null;
-let inFlightWasmActivationPayload: Promise<WasmActivationInitPayload> | null =
-  null;
-
-async function loadWasmActivationInitPayloadOrThrow(): Promise<
-  WasmActivationInitPayload
-> {
-  if (cachedWasmActivationInitPayload) return cachedWasmActivationInitPayload;
-  if (inFlightWasmActivationPayload) return await inFlightWasmActivationPayload;
-
-  inFlightWasmActivationPayload = (async () => {
-    // Hard requirement: WASM activation must exist for Intelligent Design scoring.
-    const wasmBaseUrl = new URL(
-      "../../../wasm_activation/pkg/",
-      import.meta.url,
-    );
-
-    let jsSource: string;
-    let wasmBinary: Uint8Array;
-
-    // Handle both local file system and JSR package URLs
-    if (wasmBaseUrl.protocol === "file:") {
-      // Local file system - use async file reads
-      const jsUrl = new URL("wasm_activation.js", wasmBaseUrl);
-      const wasmUrl = new URL("wasm_activation_bg.wasm", wasmBaseUrl);
-      jsSource = await Deno.readTextFile(jsUrl.pathname);
-      wasmBinary = await Deno.readFile(wasmUrl.pathname);
-    } else {
-      // JSR package URL (http/https) - fetch the files
-      const jsUrl = new URL("wasm_activation.js", wasmBaseUrl);
-      const wasmUrl = new URL("wasm_activation_bg.wasm", wasmBaseUrl);
-
-      const [jsResponse, wasmResponse] = await Promise.all([
-        fetch(jsUrl.href),
-        fetch(wasmUrl.href),
-      ]);
-
-      if (!jsResponse.ok) {
-        throw new Error(
-          `Failed to load wasm_activation.js from ${jsUrl.href}: ${jsResponse.status} ${jsResponse.statusText}`,
-        );
-      }
-      if (!wasmResponse.ok) {
-        throw new Error(
-          `Failed to load wasm_activation_bg.wasm from ${wasmUrl.href}: ${wasmResponse.status} ${wasmResponse.statusText}`,
-        );
-      }
-
-      jsSource = await jsResponse.text();
-      wasmBinary = new Uint8Array(await wasmResponse.arrayBuffer());
-    }
-
-    cachedWasmActivationInitPayload = {
-      jsSource,
-      wasmBinary,
-    };
-    return cachedWasmActivationInitPayload;
-  })().finally(() => {
-    inFlightWasmActivationPayload = null;
-  });
-
-  return await inFlightWasmActivationPayload;
-}
+// Re-export WorkerInterface for backwards compatibility.
+export type { WorkerInterface } from "../../workers/WorkerInterface.ts";
 
 /**
  * Manages communication with worker threads for parallel scoring operations.
  *
- * This class handles the creation, communication, and lifecycle management
- * of worker threads used for scoring creatures during Intelligent Design
- * squash improvement scans.
+ * Extends WorkerHandlerBase for shared lifecycle management (Issue #1600).
  *
  * @example
  * ```ts
@@ -147,25 +65,8 @@ async function loadWasmActivationInitPayloadOrThrow(): Promise<
  * worker.terminate();
  * ```
  */
-export class WorkerHandler {
-  /** The underlying worker implementation */
-  private worker: WorkerInterface;
-
-  /** Counter for generating unique task IDs */
-  private taskID = 1;
-  /** Unique identifier for this worker instance */
-  private workerID = ++globalWorkerID;
-  /** Number of currently executing tasks */
-  private busyCount = 0;
-  /** Map of task IDs to their callback functions */
-  private callbacks = new Map<number, CallableFunction>();
-  /** Listeners to notify when worker becomes idle */
-  private idleListeners: WorkerEventListener[] = [];
-  /** Promise that resolves once the worker is initialized */
-  private ready: Promise<ResponseData>;
-  /** Captured worker error during initialization (if any). */
-  private initWorkerError?: Error;
-
+export class WorkerHandler
+  extends WorkerHandlerBase<RequestData, ResponseData> {
   /**
    * Creates a new WorkerHandler instance.
    */
@@ -176,169 +77,62 @@ export class WorkerHandler {
     });
 
     const workerUrl = new URL("./deno/worker.ts", import.meta.url).href;
-    this.worker = direct ? new MockWorker() : new Worker(
-      workerUrl,
-      {
-        type: "module",
-        name: "id-worker-" + this.workerID,
-      },
-    );
-    const captureInitError = (err: Error) => {
-      if (!this.initWorkerError) this.initWorkerError = err;
+
+    let capturedInitError: Error | undefined;
+    const onInitError = (err: Error) => {
+      if (!capturedInitError) capturedInitError = err;
       rejectInitError?.(err);
       rejectInitError = null;
     };
-    if (!direct) {
-      this.worker.addEventListener("error", (e) => {
-        const ev = e as ErrorEvent;
-        const msg = [
-          `ID worker error event during init (workerID=${this.workerID})`,
-          `script=${workerUrl}`,
-          ev.message ? `message=${ev.message}` : null,
-          ev.filename ? `file=${ev.filename}:${ev.lineno}:${ev.colno}` : null,
-        ].filter(Boolean).join(" | ");
-        const err = new Error(msg, { cause: ev.error });
-        captureInitError(err);
-        getLogger().error(msg, ev.error ?? ev);
-      });
-      this.worker.addEventListener("messageerror", (e) => {
-        const msg =
-          `ID worker messageerror event during init (workerID=${this.workerID}) | script=${workerUrl}`;
-        const err = new Error(msg, { cause: e });
-        captureInitError(err);
-        getLogger().error(msg, e);
-      });
-    }
 
-    this.worker.addEventListener("message", (message) => {
-      const me = message as MessageEvent;
+    const worker = WorkerHandlerBase.createWorkerOrMock<RequestData>(
+      direct,
+      workerUrl,
+      "id-worker-" + (++WorkerHandler.nextWorkerIDForConstruction),
+      () => new MockWorker() as unknown as WorkerInterface<RequestData>,
+      onInitError,
+    );
 
-      this.callback(me.data as ResponseData);
+    const INIT_RESPONSE_TIMEOUT_MS = getInitTimeoutMs();
+
+    // Deferred init pattern: super() must be called before `this` is available.
+    let resolveInitReady!: (value: ResponseData) => void;
+    let rejectInitReady!: (err: Error) => void;
+    const initReady = new Promise<ResponseData>((resolve, reject) => {
+      resolveInitReady = resolve;
+      rejectInitReady = reject;
     });
 
-    // Load WASM activation payload (async for JSR package URLs).
-    // Issue #1260: Timeout so we fail fast if worker never responds (e.g. worker crash on init).
-    const INIT_RESPONSE_TIMEOUT_MS = (() => {
-      try {
-        const v = Deno.env.get("NEAT_AI_WORKER_INIT_TIMEOUT_MS");
-        if (v === null || v === undefined || v === "") return 60_000;
-        const n = parseInt(v, 10);
-        return Number.isFinite(n) && n >= 1000 ? n : 60_000;
-      } catch {
-        return 60_000;
-      }
-    })();
-    this.ready = loadWasmActivationInitPayloadOrThrow().then(
+    super(worker, initReady);
+
+    this.initWorkerError = capturedInitError;
+
+    // Async initialisation.
+    loadWasmActivationInitPayloadAsync().then(
       (wasmActivation) => {
         const initReq: RequestData = {
           taskID: this.taskID++,
           initialize: { wasmActivation },
         };
-        const initSequence = async (): Promise<ResponseData> =>
-          await new Promise<ResponseData>((resolve, reject) => {
-            const timeoutId = setTimeout(
-              () =>
-                reject(
-                  new Error(
-                    `ID worker init: no response after ${
-                      INIT_RESPONSE_TIMEOUT_MS / 1000
-                    }s. Worker may have crashed or be stuck loading WASM.${
-                      this.initWorkerError
-                        ? ` First worker error: ${this.initWorkerError.message}`
-                        : ""
-                    }`,
-                  ),
-                ),
-              INIT_RESPONSE_TIMEOUT_MS,
-            );
-            this.makePromise(initReq).then(
-              (r) => {
-                clearTimeout(timeoutId);
-                resolve(r);
-              },
-              (err) => {
-                clearTimeout(timeoutId);
-                reject(err);
-              },
-            );
-          });
-
-        return Promise.race([initSequence(), initErrorPromise]).finally(() => {
-          rejectInitError = null;
-        });
+        return this.createInitSequence(
+          initReq,
+          initErrorPromise,
+          INIT_RESPONSE_TIMEOUT_MS,
+        );
       },
     ).then((result) => {
+      rejectInitError = null;
       assert(
         result.initialize?.status === "OK" && !result.error,
         result.error?.message ??
           "Intelligent Design worker initialization failed",
       );
       return result;
-    });
+    }).then(resolveInitReady, rejectInitReady);
   }
 
-  /**
-   * Wait until the worker has completed initialization.
-   *
-   * Useful to avoid cold-cache download storms when creating many workers.
-   */
-  waitUntilReady(): Promise<void> {
-    return this.ready.then(() => undefined);
-  }
-
-  /**
-   * Checks if the worker is currently busy with tasks.
-   *
-   * @returns True if the worker has pending tasks, false otherwise
-   */
-  isBusy(): boolean {
-    return this.busyCount > 0;
-  }
-
-  /**
-   * Adds a listener to be notified when the worker becomes idle.
-   *
-   * @param callback - Function to call when worker becomes idle
-   */
-  addIdleListener(callback: WorkerEventListener) {
-    this.idleListeners.push(callback);
-  }
-
-  private callback(data: ResponseData) {
-    const call = this.callbacks.get(data.taskID);
-    assert(call, "No callback");
-    call(data);
-    this.callbacks.delete(data.taskID);
-  }
-
-  private makePromise(data: RequestData) {
-    this.busyCount++;
-    const p = new Promise<ResponseData>((resolve) => {
-      const call = (result: ResponseData) => {
-        this.busyCount--;
-
-        resolve(result);
-
-        if (!this.isBusy()) {
-          this.idleListeners.forEach((listener) => listener(this));
-        }
-      };
-
-      this.callbacks.set(data.taskID, call);
-    });
-
-    this.worker.postMessage(data);
-
-    return p;
-  }
-
-  /**
-   * Terminates the worker.
-   */
-  terminate() {
-    this.worker.terminate();
-    this.idleListeners.length = 0;
-  }
+  /** Static counter used during construction (before super assigns workerID). */
+  private static nextWorkerIDForConstruction = 0;
 
   /**
    * Sends a score request to the worker.
