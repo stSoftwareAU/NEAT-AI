@@ -326,12 +326,17 @@ export async function evolveDir(
   for (let i = threads; i--;) {
     const preferDirect = threads === 1;
     // Issue #1567: Propagate WASM cache limits to worker threads.
+    // Issue #1620: Propagate output range constraints to worker threads.
+    const outputRanges = config.outputRanges.length > 0
+      ? config.outputRanges
+      : undefined;
     let w = new WorkerHandler(
       dataSetDir,
       config.costName,
       preferDirect,
       config.customCost,
       config.wasmCache,
+      outputRanges,
     );
     try {
       // deno-lint-ignore no-await-in-loop
@@ -353,6 +358,7 @@ export async function evolveDir(
           true,
           config.customCost,
           config.wasmCache,
+          outputRanges,
         );
         // deno-lint-ignore no-await-in-loop
         await w.waitUntilReady();

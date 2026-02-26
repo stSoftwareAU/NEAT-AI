@@ -29,6 +29,11 @@ import {
   setRandomNumberGenerator,
 } from "../utils/RandomNumberGenerator.ts";
 
+import {
+  DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT,
+  type RequiredOutputRange,
+} from "./OutputRangeConfig.ts";
+
 // Extracted sub-config parsers
 import {
   parseAdaptiveMutationThresholds,
@@ -500,6 +505,22 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     fineTunePopulation: parseFineTunePopulation(
       opts.fineTunePopulation as Record<string, unknown> | undefined,
     ),
+    // Issue #1620: Parse and resolve output range constraints
+    outputRanges: (() => {
+      const raw = options.outputRanges;
+      if (!raw || raw.length === 0) return [] as RequiredOutputRange[];
+      return raw.map((r) => ({
+        min: parseNumber("Output range min", r.min, 0, {}),
+        max: parseNumber("Output range max", r.max, 0, {}),
+        penaltyWeight: parseNumber(
+          "Output range penaltyWeight",
+          r.penaltyWeight,
+          DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT,
+          { min: 0 },
+        ),
+      } as RequiredOutputRange));
+    })(),
+
     logger: (() => {
       if (options.logger) return options.logger;
       return createConsoleLogger(options.logLevel ?? "info");

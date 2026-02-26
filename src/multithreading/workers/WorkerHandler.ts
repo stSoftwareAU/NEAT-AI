@@ -14,6 +14,7 @@ import type {
   CandidateSynapse,
 } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { NeatConfig } from "../../config/NeatConfig.ts";
+import type { RequiredOutputRange } from "../../config/OutputRangeConfig.ts";
 import type { TrainOptions } from "../../config/TrainOptions.ts";
 import type { WasmCacheConfig } from "../../config/WasmCacheConfig.ts";
 import { getLogger } from "../../utils/Logger.ts";
@@ -83,6 +84,13 @@ export interface RequestData {
      * and worker-side cache sizing.
      */
     wasmCache?: WasmCacheConfig;
+    /**
+     * Issue #1620: Optional per-output range constraints.
+     *
+     * When provided, the worker applies an additive penalty to the
+     * evaluation error for outputs that fall outside the specified ranges.
+     */
+    outputRanges?: ReadonlyArray<RequiredOutputRange>;
   };
   /** Creature evaluation request */
   evaluate?: {
@@ -276,6 +284,7 @@ export class WorkerHandler
    * @param direct - Whether to use direct (mock) worker or Web Worker
    * @param customCost - Optional custom cost function file path
    * @param wasmCache - Issue #1567: Optional WASM cache configuration to propagate to the worker
+   * @param outputRanges - Issue #1620: Optional per-output range constraints for fitness penalty
    */
   constructor(
     dataSetDir: string,
@@ -283,6 +292,7 @@ export class WorkerHandler
     direct: boolean,
     customCost?: { filePath: string },
     wasmCache?: WasmCacheConfig,
+    outputRanges?: ReadonlyArray<RequiredOutputRange>,
   ) {
     let rejectInitError: ((err: Error) => void) | null = null;
     const initErrorPromise: Promise<never> = new Promise((_, reject) => {
@@ -354,6 +364,9 @@ export class WorkerHandler
           discoveryVerbose,
           wasmActivation: wasmPayload,
           wasmCache,
+          outputRanges: outputRanges && outputRanges.length > 0
+            ? outputRanges
+            : undefined,
         },
       };
 

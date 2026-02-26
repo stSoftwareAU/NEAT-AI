@@ -22,6 +22,8 @@ import {
   noteWasmCreatureActivationUse,
 } from "../wasm/WasmCreatureActivationLRU.ts";
 import type { CostInterface } from "../costs/CostInterface.ts";
+import type { RequiredOutputRange } from "../config/OutputRangeConfig.ts";
+import { calculateOutputRangePenalty } from "../architecture/OutputRangePenalty.ts";
 import { dataFiles } from "../architecture/Training.ts";
 import { getLogger } from "../utils/Logger.ts";
 
@@ -347,6 +349,7 @@ export async function evaluateDir(
   dataDir: string,
   cost: CostInterface,
   feedbackLoop: boolean,
+  outputRanges?: ReadonlyArray<RequiredOutputRange>,
 ): Promise<{ error: number }> {
   const dataResult = dataFiles(dataDir);
   assert(dataResult.files.length > 0, "No data files found");
@@ -410,7 +413,12 @@ export async function evaluateDir(
     "MSLE",
     "HINGE",
   ] as const;
-  const useFusedWasm = forwardOnlyGuaranteed &&
+  // Issue #1620: Disable fused WASM when output range constraints are active,
+  // because the fused path does not expose per-record outputs needed to
+  // compute the range penalty.
+  const hasOutputRanges = outputRanges !== undefined &&
+    outputRanges.length > 0;
+  const useFusedWasm = !hasOutputRanges && forwardOnlyGuaranteed &&
     supportedFusedCosts.includes(
       costName as typeof supportedFusedCosts[number],
     );
@@ -477,6 +485,12 @@ export async function evaluateDir(
             effectiveFeedbackLoop,
           );
           error += cost.calculate(target, outputBuffer);
+
+          // Issue #1620: Additive penalty for out-of-range outputs.
+          if (hasOutputRanges) {
+            error += calculateOutputRangePenalty(outputBuffer, outputRanges!);
+          }
+
           count++;
         }
       }

@@ -7,6 +7,7 @@ import type {
 import { trainDir } from "../../architecture/Training.ts";
 import { Costs } from "../../Costs.ts";
 import type { CostInterface } from "../../costs/CostInterface.ts";
+import type { RequiredOutputRange } from "../../config/OutputRangeConfig.ts";
 import { Creature } from "../../Creature.ts";
 import { writeDiagnostics } from "../../utils/Diagnostics.ts";
 import {
@@ -95,6 +96,9 @@ export class WorkerProcessor {
 
   private cost?: CostInterface;
 
+  /** Issue #1620: Per-output range constraints for fitness penalty. */
+  private outputRanges?: ReadonlyArray<RequiredOutputRange>;
+
   private wasmInitAttempted = false;
 
   /**
@@ -180,6 +184,12 @@ export class WorkerProcessor {
       }
 
       this.dataSetDir = data.initialize.dataSetDir;
+
+      // Issue #1620: Store output range constraints for evaluation penalty.
+      if (data.initialize.outputRanges) {
+        this.outputRanges = data.initialize.outputRanges;
+      }
+
       return {
         taskID: data.taskID,
         duration: Date.now() - start,
@@ -232,6 +242,7 @@ export class WorkerProcessor {
           this.dataSetDir,
           this.cost,
           data.evaluate.feedbackLoop,
+          this.outputRanges,
         );
 
         return {
