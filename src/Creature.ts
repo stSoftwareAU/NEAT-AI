@@ -748,8 +748,17 @@ export class Creature implements CreatureInternal {
     dataDir: string,
     cost: CostInterface,
     feedbackLoop: boolean,
+    outputRanges?: ReadonlyArray<
+      import("./config/OutputRangeConfig.ts").RequiredOutputRange
+    >,
   ): Promise<{ error: number }> {
-    return activation.evaluateDir(this, dataDir, cost, feedbackLoop);
+    return activation.evaluateDir(
+      this,
+      dataDir,
+      cost,
+      feedbackLoop,
+      outputRanges,
+    );
   }
 
   // ── Mutation ───────────────────────────────────────────────────────────

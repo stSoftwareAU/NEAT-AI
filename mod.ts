@@ -61,6 +61,22 @@ export type {
 } from "./src/config/NeatOptions.ts";
 
 /**
+ * Output Range Constraints
+ *
+ * Issue #1620: Per-output range constraints for evolution. When specified,
+ * creatures that produce outputs outside these ranges receive a fitness
+ * penalty proportional to the excess.
+ *
+ * @see {@link module:src/config/OutputRangeConfig}
+ */
+export type {
+  OutputRange,
+  RequiredOutputRange,
+} from "./src/config/OutputRangeConfig.ts";
+export { DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT } from "./src/config/OutputRangeConfig.ts";
+export { calculateOutputRangePenalty } from "./src/architecture/OutputRangePenalty.ts";
+
+/**
  * Cost Interface
  *
  * This interface defines the contract for cost functions used in neural network training.

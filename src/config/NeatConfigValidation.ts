@@ -125,6 +125,25 @@ export function validateNeatConfig(config: NeatArguments): void {
     );
   }
 
+  // Issue #1620: Output range constraint validation
+  for (let i = 0; i < config.outputRanges.length; i++) {
+    const range = config.outputRanges[i];
+    if (range.max < range.min) {
+      throw new ConfigurationError(
+        `Output range [${i}]: max must be >= min. ` +
+          `min: ${range.min}, max: ${range.max}`,
+        "CROSS_FIELD_VALIDATION",
+      );
+    }
+    if (range.penaltyWeight < 0) {
+      throw new ConfigurationError(
+        `Output range [${i}]: penaltyWeight must be >= 0. ` +
+          `penaltyWeight: ${range.penaltyWeight}`,
+        "CROSS_FIELD_VALIDATION",
+      );
+    }
+  }
+
   // Discovery focus neuron UUID validation
   if (!Array.isArray(config.discoveryFocusNeuronUUIDs)) {
     throw new ConfigurationError(

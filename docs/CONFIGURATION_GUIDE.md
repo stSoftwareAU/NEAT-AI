@@ -25,6 +25,7 @@ CLI arguments or environment variables without pre-parsing.
 - [Quantum Step](#quantum-step)
 - [Fine-Tune Population](#fine-tune-population)
 - [Worker Thread Cap](#worker-thread-cap)
+- [Output Range Constraints](#output-range-constraints)
 - [Logging and Reproducibility](#logging-and-reproducibility)
 - [Validation Rules](#validation-rules)
 - [Recipes](#recipes)
@@ -595,6 +596,46 @@ When `maxMemoryMB > 0`, the effective thread count is:
 `min(threads, max(1, floor(maxMemoryMB / estimatedMemoryPerWorkerMB)))`.
 
 A warning is logged when the thread count is capped.
+
+---
+
+## Output Range Constraints
+
+Issue #1620: Constrain evolution outputs to domain-specific ranges. When
+`outputRanges` is set, creatures whose outputs fall outside the specified
+`[min, max]` range receive a quadratic fitness penalty proportional to the
+excess, normalised by the range span.
+
+```ts
+const config = createNeatConfig({
+  outputRanges: [
+    { min: -0.35, max: 0.35 }, // 1st output: ±35%
+    { min: -0.50, max: 0.50, penaltyWeight: 2 }, // 2nd output: ±50%, double penalty
+  ],
+});
+```
+
+Each element maps to one output neuron, in order. Outputs without a
+corresponding entry are unconstrained.
+
+| Field           | Default | Min | Description                                           |
+| --------------- | ------- | --- | ----------------------------------------------------- |
+| `min`           | —       | —   | Minimum expected output value (inclusive)             |
+| `max`           | —       | —   | Maximum expected output value (inclusive, must ≥ min) |
+| `penaltyWeight` | 1.0     | 0   | Multiplier for the out-of-range penalty               |
+
+**Penalty formula** (per output, per record):
+
+```
+penalty = penaltyWeight × (excess / rangeSpan)²
+```
+
+where `excess = max(0, min - value) + max(0, value - max)` and
+`rangeSpan = max - min`. The penalty is added to the evaluation error before
+averaging, so it directly reduces the creature's fitness score.
+
+When `outputRanges` is not specified (or empty), existing behaviour is
+completely unchanged.
 
 ---
 

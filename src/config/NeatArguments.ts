@@ -20,6 +20,7 @@ import type { RequiredPredictiveCodingConfig } from "./PredictiveCodingConfig.ts
 import type { RequiredMemoryConfig } from "./MemoryConfig.ts";
 import type { RequiredWasmCacheConfig } from "./WasmCacheConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
+import type { RequiredOutputRange } from "./OutputRangeConfig.ts";
 import type { RequiredWorkerThreadCapConfig } from "./WorkerThreadCapConfig.ts";
 
 /**
@@ -596,4 +597,13 @@ export interface NeatArguments {
    * compatibility.
    */
   rng: RandomNumberGenerator;
+
+  /**
+   * Optional per-output range constraints.
+   *
+   * Issue #1620: When specified, creatures that produce outputs outside these
+   * ranges receive a fitness penalty proportional to the excess. Each element
+   * corresponds to one output neuron, in order.
+   */
+  outputRanges: ReadonlyArray<RequiredOutputRange>;
 }

@@ -13,6 +13,7 @@ import type { BiasRegularisationConfig } from "./BiasRegularisationConfig.ts";
 import type { MemoryConfig } from "./MemoryConfig.ts";
 import type { WasmCacheConfig } from "./WasmCacheConfig.ts";
 import type { WeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
+import type { OutputRange } from "./OutputRangeConfig.ts";
 import type { WorkerThreadCapConfig } from "./WorkerThreadCapConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
@@ -84,6 +85,7 @@ export type NeatOptions =
     | "wasmCache"
     | "memory"
     | "workerThreadCap"
+    | "outputRanges"
     | "logger"
     | "rng"
   >
@@ -114,6 +116,14 @@ export type NeatOptions =
     memory?: MemoryConfig;
     /** Partial overrides for worker thread cap configuration (defaults applied if not specified) */
     workerThreadCap?: WorkerThreadCapConfig;
+    /**
+     * Optional per-output range constraints (Issue #1620).
+     *
+     * When specified, creatures that produce outputs outside these ranges
+     * receive a fitness penalty proportional to the excess. Each element
+     * corresponds to one output neuron, in order.
+     */
+    outputRanges?: readonly OutputRange[];
     /**
      * Custom logger instance. When provided, all NEAT-AI log output is
      * routed through this logger instead of the default console logger.
@@ -180,6 +190,7 @@ export type NeatOptionsInput =
     | "wasmCache"
     | "memory"
     | "workerThreadCap"
+    | "outputRanges"
     | "logger"
     | "logLevel"
     | "seed"
@@ -206,6 +217,8 @@ export type NeatOptionsInput =
     wasmCache?: CoerceNumeric<WasmCacheConfig>;
     memory?: CoerceNumeric<MemoryConfig>;
     workerThreadCap?: CoerceNumeric<WorkerThreadCapConfig>;
+    /** Per-output range constraints (Issue #1620). Numeric fields coerced from CLI. */
+    outputRanges?: readonly CoerceNumeric<OutputRange>[];
     /** Custom logger instance (not coerced — functions cannot come from CLI). */
     logger?: Logger;
     /** Log level filter for the default console logger. */
