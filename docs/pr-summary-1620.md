@@ -23,7 +23,7 @@ proportional to the excess, normalised by the range span. Closes #1620.
 ```ts
 const options: NeatOptions = {
   outputRanges: [
-    { min: -0.35, max: 0.35 },                  // 1st output: ±35%
+    { min: -0.35, max: 0.35 }, // 1st output: ±35%
     { min: -0.50, max: 0.50, penaltyWeight: 2 }, // 2nd output: ±50%, double penalty
   ],
 };
@@ -32,15 +32,19 @@ const options: NeatOptions = {
 ## Evidence
 
 This is a backend/config change with no UI. Verified via:
-- 11 unit tests for penalty calculation (`test/architecture/OutputRangePenalty.ts`)
-- 9 unit tests for config parsing and validation (`test/config/OutputRangeConfig.ts`)
+
+- 11 unit tests for penalty calculation
+  (`test/architecture/OutputRangePenalty.ts`)
+- 9 unit tests for config parsing and validation
+  (`test/config/OutputRangeConfig.ts`)
 - 3 integration tests verifying end-to-end worker pipeline behaviour
   (`test/architecture/OutputRangeIntegration.ts`)
 - All 4245 existing tests pass unchanged
 
 ## Test Plan
 
-- `test/architecture/OutputRangePenalty.ts` — Unit tests for `calculateOutputRangePenalty()`:
+- `test/architecture/OutputRangePenalty.ts` — Unit tests for
+  `calculateOutputRangePenalty()`:
   - No penalty for in-range outputs and exact boundaries
   - Correct penalty for outputs below min and above max
   - `penaltyWeight` scaling
