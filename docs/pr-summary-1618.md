@@ -14,8 +14,8 @@ and code examples. Closes #1618.
      `stabilityAdaptation`, `ensembleDiversity`, and `costOfGrowth`
   2. **Training Is Slow** — covers `threads`, `workerThreadCap`,
      `trainingSampleRate`, `trainPerGen`, and `discoverySampleRate`
-  3. **Memory Issues During Training** — covers `memory` (MemoryMonitor),
-     WASM cache sizing, `populationSize`, and V8 heap allocation
+  3. **Memory Issues During Training** — covers `memory` (MemoryMonitor), WASM
+     cache sizing, `populationSize`, and V8 heap allocation
   4. **Discovery Not Finding Improvements** — covers discovery timeouts,
      `costOfGrowth`, `discoveryMinCandidatesPerCategory`, and dataset tuning
   5. **Creatures Producing NaN or Infinity** — covers input normalisation,
@@ -27,8 +27,8 @@ and code examples. Closes #1618.
 ## Evidence
 
 This is a documentation-only change with no code modifications. No UI, no
-performance impact, and no tests to run. Verified with `./quality.sh --lint-only`
-(formatting and linting pass cleanly).
+performance impact, and no tests to run. Verified with
+`./quality.sh --lint-only` (formatting and linting pass cleanly).
 
 ## Test Plan
 
