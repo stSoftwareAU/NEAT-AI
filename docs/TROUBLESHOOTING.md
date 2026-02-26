@@ -3,13 +3,519 @@
 This guide covers common issues encountered when using or contributing to
 NEAT-AI. Each section describes the symptoms, likely causes, and solutions.
 
+The first part of this guide provides **diagnostic decision trees** for common
+training problems. Each tree walks you through a structured diagnosis: what to
+check, how to check it, and what to change.
+
 ## Table of Contents
 
+- [Diagnostic Decision Trees](#diagnostic-decision-trees)
+  - [Fitness Plateau](#fitness-plateau)
+  - [Training Is Slow](#training-is-slow)
+  - [Memory Issues During Training](#memory-issues-during-training)
+  - [Discovery Not Finding Improvements](#discovery-not-finding-improvements)
+  - [Creatures Producing NaN or Infinity](#creatures-producing-nan-or-infinity)
 - [WASM Issues](#wasm-issues)
 - [Discovery Library](#discovery-library)
 - [Memory Management](#memory-management)
 - [CI Failures](#ci-failures)
 - [Configuration](#configuration)
+
+---
+
+## Diagnostic Decision Trees
+
+These decision trees help you diagnose common training issues. Start at the top
+of the relevant tree and follow the branches based on what you observe.
+
+### Fitness Plateau
+
+**Symptom:** Fitness stops improving — the best creature's error remains flat
+across generations.
+
+```
+Fitness not improving
+│
+├─ Is plateauDetection enabled?
+│  │
+│  ├─ NO → Enable it (see Step 1 below)
+│  │
+│  └─ YES → Is the plateau detector triggering?
+│     │     (Check logs for mutation multiplier changes)
+│     │
+│     ├─ NO → Lower minImprovementRate (see Step 2)
+│     │
+│     └─ YES, but still stuck
+│        │
+│        ├─ Check mutationRate (see Step 3)
+│        ├─ Check population diversity (see Step 4)
+│        └─ Check costOfGrowth (see Step 5)
+```
+
+**Step 1 — Enable plateau detection:**
+
+```typescript
+const config = createNeatConfig({
+  plateauDetection: {
+    enabled: true,
+    windowSize: 10, // Generations to consider
+    minImprovementRate: 0.001, // Below this = plateau
+    responseMutationMultiplier: 2.0, // Boost mutation on plateau
+  },
+});
+```
+
+The `PlateauDetector` tracks fitness over a sliding window and increases the
+mutation rate when improvement stalls, helping the population escape local
+optima.
+
+**Step 2 — Adjust plateau sensitivity:**
+
+If the detector is not triggering despite flat fitness, lower
+`minImprovementRate`:
+
+```typescript
+plateauDetection: {
+  enabled: true,
+  minImprovementRate: 0.0001, // More sensitive (default: 0.001)
+  windowSize: 15,              // Wider window to detect slow drifts
+}
+```
+
+**Step 3 — Check mutation rate:**
+
+A `mutationRate` that is too low prevents exploration. A rate that is too high
+disrupts good solutions.
+
+- **Too low** (< 0.1): Increase to `0.3` (default) or higher
+- **Too high** (> 0.7): Reduce to `0.3`–`0.5`
+- Consider enabling `stabilityAdaptation` to auto-tune per creature:
+
+```typescript
+stabilityAdaptation: {
+  enabled: true,
+  brittlenessThreshold: 0.3,
+  brittleReductionFactor: 0.5,
+  stableBoostFactor: 1.3,
+}
+```
+
+**Step 4 — Check population diversity:**
+
+Low diversity means the population has converged prematurely.
+
+- **Increase `populationSize`**: Larger populations maintain more diversity (try
+  `100`–`200` for production runs)
+- **Enable ensemble diversity scoring:**
+
+```typescript
+ensembleDiversity: {
+  enabled: true,
+  diversityWeight: 0.15,
+  protectDiverseLowPerformers: true,
+}
+```
+
+- **Lower `geneticCompatibilityThreshold`** (default: `0.3`) to create more
+  species and preserve niche exploration
+
+**Step 5 — Check `costOfGrowth`:**
+
+If `costOfGrowth` is too high, evolution avoids adding neurons and synapses,
+limiting the network's capacity. Try reducing it:
+
+```typescript
+costOfGrowth: 0.00000001, // Lower than default 0.0000001
+```
+
+Set to `0` to remove the growth penalty entirely and let fitness alone drive
+structural decisions.
+
+---
+
+### Training Is Slow
+
+**Symptom:** Each generation takes a long time, or evolution progresses too
+slowly overall.
+
+```
+Training is slow
+│
+├─ Is WASM activation working?
+│  │
+│  ├─ NO / Error messages → See "WASM Issues" section below
+│  │
+│  └─ YES
+│     │
+│     ├─ Check worker thread count (Step 1)
+│     ├─ Check dataset size vs population size (Step 2)
+│     └─ Check discovery overhead (Step 3)
+```
+
+**Step 1 — Check worker threads:**
+
+Verify how many threads are being used. By default, NEAT-AI uses
+`navigator.hardwareConcurrency` (all available CPU cores).
+
+```typescript
+// Check effective thread count
+const config = createNeatConfig({
+  threads: 8, // Explicit thread count
+  verbose: true, // Log thread allocation
+});
+```
+
+If you have limited memory, the `workerThreadCap` can automatically reduce
+threads:
+
+```typescript
+workerThreadCap: {
+  maxMemoryMB: 8192,              // 8 GB memory budget
+  estimatedMemoryPerWorkerMB: 2048, // 2 GB per worker (default)
+}
+// Effective threads = min(threads, floor(8192 / 2048)) = 4
+```
+
+Check logs for "thread count capped" warnings — this indicates your thread count
+was reduced due to memory constraints.
+
+**Step 2 — Check dataset size vs population size:**
+
+Large datasets with large populations multiply compute per generation:
+
+- **Reduce `trainingSampleRate`** to use a fraction of the dataset per
+  generation (stochastic training):
+  ```typescript
+  trainingSampleRate: 0.5, // Use 50% of data each generation (default: 1)
+  ```
+- **Reduce `populationSize`** for prototyping — start with `10`–`30`
+- **Reduce `trainPerGen`** to `0` if you want evolution-only (no
+  backpropagation):
+  ```typescript
+  trainPerGen: 0, // Disable per-generation backpropagation
+  ```
+
+**Step 3 — Check discovery overhead:**
+
+Discovery (structural analysis via Rust FFI) can be time-consuming. If you do
+not need structural improvements:
+
+```typescript
+discoverySampleRate: -1, // Disable discovery entirely
+```
+
+If discovery is needed but slow, tune its time budgets:
+
+```typescript
+discoveryRecordTimeOutMinutes: 3,   // Reduce from default 5
+discoveryAnalysisTimeoutMinutes: 5, // Reduce from default 10
+```
+
+---
+
+### Memory Issues During Training
+
+**Symptom:** Out-of-memory errors, process killed (exit code 143/137), or
+performance degrades over long runs.
+
+```
+Memory issues
+│
+├─ Is MemoryMonitor enabled?
+│  │
+│  ├─ NO → Enable it (Step 1)
+│  │
+│  └─ YES → Is it triggering warning/critical responses?
+│     │
+│     ├─ Warnings only → Adjust thresholds (Step 2)
+│     │
+│     └─ Critical / OOM
+│        │
+│        ├─ Check WASM cache size (Step 3)
+│        ├─ Check population size (Step 4)
+│        └─ Check V8 heap allocation (Step 5)
+```
+
+**Step 1 — Enable `MemoryMonitor`:**
+
+The `MemoryMonitor` proactively evicts caches before the heap fills up. It is
+enabled by default but can be configured:
+
+```typescript
+memory: {
+  enabled: true,
+  warningThreshold: 0.70,   // Start cache eviction at 70% heap usage
+  criticalThreshold: 0.85,  // Aggressive cleanup at 85% heap usage
+}
+```
+
+At **warning level** (70%), the monitor halves the WASM activation cache and
+evicts the oldest quarter of entries. At **critical level** (85%), it reduces
+the cache to a single entry and clears the compilation cache.
+
+**Step 2 — Adjust `MemoryMonitor` thresholds:**
+
+If warnings trigger too frequently, your workload may need more headroom:
+
+```typescript
+memory: {
+  warningThreshold: 0.60,   // Trigger earlier to prevent spikes
+  criticalThreshold: 0.75,  // More aggressive critical threshold
+}
+```
+
+**Step 3 — Check WASM cache size:**
+
+The WASM activation cache stores compiled creature networks. Reduce the limit
+for memory-constrained environments:
+
+```typescript
+import { setMaxCachedWasmCreatureActivations } from "neat-ai/wasm";
+setMaxCachedWasmCreatureActivations(256); // Default: 512
+```
+
+**Step 4 — Check population size:**
+
+Each creature consumes memory for its network structure, activation state, and
+WASM compilation. Reduce `populationSize` if memory is tight:
+
+```typescript
+populationSize: 30, // Reduce from default 50
+```
+
+Also consider limiting network complexity:
+
+```typescript
+maxConns: 100,            // Limit connections
+maximumNumberOfNodes: 30, // Limit neurons
+```
+
+**Step 5 — Check V8 heap allocation:**
+
+Increase the V8 heap size for large workloads:
+
+```bash
+deno run --v8-flags=--max-old-space-size=8192 your_script.ts
+```
+
+Or reduce parallelism to lower peak memory:
+
+```typescript
+threads: 4, // Fewer concurrent workers
+```
+
+See the [Memory Management](#memory-management) section below for more details
+on V8 heap configuration and OOM recovery.
+
+---
+
+### Discovery Not Finding Improvements
+
+**Symptom:** Discovery runs complete but no structural improvements are applied
+to the population.
+
+```
+Discovery not finding improvements
+│
+├─ Is discovery enabled?
+│  │
+│  ├─ NO → discoverySampleRate is -1; set to 0.2 (default)
+│  │
+│  └─ YES
+│     │
+│     ├─ Is the Rust discovery library loaded?
+│     │  │
+│     │  ├─ NO → See "Discovery Library" section below
+│     │  │
+│     │  └─ YES
+│     │     │
+│     │     ├─ Check timeout settings (Step 1)
+│     │     ├─ Check costOfGrowth (Step 2)
+│     │     ├─ Check minimum candidates (Step 3)
+│     │     └─ Check dataset representativeness (Step 4)
+```
+
+**Step 1 — Check timeout settings:**
+
+Discovery has two phases — recording and analysis. If either times out too
+early, the analysis may not produce useful candidates.
+
+```typescript
+discoveryRecordTimeOutMinutes: 10,  // More time for recording (default: 5)
+discoveryAnalysisTimeoutMinutes: 20, // More time for analysis (default: 10)
+discoverySampleRate: 0.3,            // Sample more data (default: 0.2)
+```
+
+Also check the replay timeout if caching is enabled:
+
+```typescript
+discoveryReplayTimeoutMinutes: 10,  // More time for replay (default: 5)
+discoveryReplayMinTimeMinutes: 0.5, // Lower min-time threshold (default: 1)
+```
+
+**Step 2 — Check `costOfGrowth`:**
+
+A high `costOfGrowth` penalises structural changes, meaning discovery candidates
+that add neurons or synapses may be rejected because their complexity penalty
+outweighs the fitness gain.
+
+```typescript
+costOfGrowth: 0.00000001, // Lower penalty (default: 0.0000001)
+```
+
+**Step 3 — Check minimum candidates per category:**
+
+Ensure discovery produces enough candidates in each category:
+
+```typescript
+discoveryMinCandidatesPerCategory: {
+  addNeurons: 2,      // Default: 1
+  addSynapses: 2,     // Default: 1
+  changeSquash: 2,    // Default: 1
+  removeLowImpact: 5, // Default: 3
+}
+```
+
+Increase `discoveryMaxNeurons` to analyse more neurons per iteration:
+
+```typescript
+discoveryMaxNeurons: 10, // Default: 6
+```
+
+**Step 4 — Check dataset representativeness:**
+
+Discovery analyses error patterns in the training data. If the dataset is too
+small, too noisy, or not representative of the problem domain:
+
+- **Increase `discoverySampleRate`** to give the analyser more data:
+  ```typescript
+  discoverySampleRate: 0.5, // 50% of records (default: 0.2)
+  ```
+- **Increase `discoveryBatchSize`** for more observations per batch:
+  ```typescript
+  discoveryBatchSize: 256, // Default: 128
+  ```
+- Ensure your training dataset adequately covers the input space — discovery
+  cannot find structural improvements if the data does not expose the weaknesses
+  in the current network topology
+
+---
+
+### Creatures Producing NaN or Infinity
+
+**Symptom:** Creature activations return `NaN` or `Infinity` values, or training
+produces `NaN` errors.
+
+```
+NaN / Infinity in outputs
+│
+├─ Where does it occur?
+│  │
+│  ├─ During activation
+│  │  │
+│  │  ├─ Check input normalisation (Step 1)
+│  │  └─ Check activation functions (Step 2)
+│  │
+│  ├─ During backpropagation
+│  │  │
+│  │  ├─ Check weight bounds (Step 3)
+│  │  └─ Check bias bounds (Step 4)
+│  │
+│  └─ After mutation
+│     │
+│     └─ Enable regularisation (Step 5)
+```
+
+**Step 1 — Check input normalisation:**
+
+Extreme input values can cause numerical overflow in activation functions.
+Ensure your inputs are normalised to a reasonable range (typically `[-1, 1]` or
+`[0, 1]`).
+
+Common mistakes:
+
+- Raw pixel values (0–255) instead of normalised (0–1)
+- Unscaled financial data (prices in thousands)
+- Missing values represented as large numbers
+
+**Step 2 — Check activation functions:**
+
+Some activation functions are more susceptible to numerical issues:
+
+- **`Exponential`**: Can produce `Infinity` for large positive inputs
+- **`TAN`**: Unbounded; can produce very large values near asymptotes
+- **`SQRT`**: Returns `NaN` for negative inputs (though NEAT-AI guards this)
+- **`Cube`**: x³ grows rapidly for large inputs
+
+Safer alternatives for hidden neurons include `LOGISTIC`, `TANH`, `ReLU`,
+`LeakyReLU`, `Mish`, or `Swish`. These are bounded or grow linearly.
+
+NEAT-AI's `ActivationRange` clamps outputs to prevent `Infinity` propagation,
+but persistent `NaN` values indicate the root cause needs fixing.
+
+**Step 3 — Check weight bounds:**
+
+Weight regularisation is enabled by default and prevents extreme weight values:
+
+```typescript
+weightRegularisation: {
+  enabled: true,             // Default: true
+  maxAbsoluteWeight: 100,    // Maximum absolute weight (default: 100)
+  maxWeightChange: 10,       // Maximum change per mutation (default: 10)
+  preferSmallChanges: true,  // Bias towards smaller changes (default: true)
+}
+```
+
+If you have disabled weight regularisation, re-enable it. If `NaN` persists with
+regularisation enabled, lower the bounds:
+
+```typescript
+weightRegularisation: {
+  maxAbsoluteWeight: 50,  // Tighter bound
+  maxWeightChange: 5,     // Smaller mutations
+}
+```
+
+**Step 4 — Check bias bounds:**
+
+Bias regularisation mirrors weight regularisation:
+
+```typescript
+biasRegularisation: {
+  enabled: true,           // Default: true
+  maxAbsoluteBias: 100,    // Maximum absolute bias (default: 100)
+  maxBiasChange: 10,       // Maximum change per mutation (default: 10)
+  preferSmallChanges: true,
+}
+```
+
+Lower `maxAbsoluteBias` and `maxBiasChange` if biases are causing exploding
+activations:
+
+```typescript
+biasRegularisation: {
+  maxAbsoluteBias: 50,
+  maxBiasChange: 5,
+}
+```
+
+**Step 5 — Enable regularisation and stability adaptation:**
+
+If `NaN`/`Infinity` occurs after mutations, the stability adaptation system can
+detect and reduce mutations for brittle creatures:
+
+```typescript
+stabilityAdaptation: {
+  enabled: true,
+  brittlenessThreshold: 0.3,      // Fraction of bad outcomes to trigger
+  brittleReductionFactor: 0.5,    // Halve mutation rate for brittle creatures
+  topologyMutationReductionForBrittle: 0.3, // Reduce structural mutations
+}
+```
+
+Combined with weight and bias regularisation (both enabled by default), this
+prevents the feedback loop where extreme values produce `NaN`, which then
+corrupts further calculations.
 
 ---
 
