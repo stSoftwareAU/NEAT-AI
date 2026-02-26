@@ -248,6 +248,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     ),
     mutationRate: parseNumber("Mutation Rate", opts.mutationRate, 0.3, {
       minExclusive: 0.001,
+      max: 1,
     }),
 
     mutationAmount: parseNumber("Mutation Amount", opts.mutationAmount, 1, {
