@@ -59,6 +59,10 @@ export interface CreatureInternal extends CreatureCommon {
 
 /**
  * Export representation of a creature, including its synapses and neurons.
+ *
+ * The JSON schema for this format is defined in `docs/snapshot-schema.json`.
+ * Use `validateCreatureExport()` from `src/utils/validateCreatureExport.ts`
+ * for runtime validation.
  */
 export interface CreatureExport extends CreatureCommon {
   /** List of synapses in the creature. */

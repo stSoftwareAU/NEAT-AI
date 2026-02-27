@@ -1,3 +1,6 @@
+/**
+ * @see docs/snapshot-schema.json for the JSON schema describing the export format.
+ */
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
