@@ -526,6 +526,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       return createConsoleLogger(options.logLevel ?? "info");
     })() as Logger,
     rng,
+    onTrainingEvent: options.onTrainingEvent,
   };
 
   // Issue #1398: Set the global logger

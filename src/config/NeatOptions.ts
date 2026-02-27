@@ -1,5 +1,6 @@
 import type { Logger, LogLevel } from "../utils/Logger.ts";
 import type { RandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import type { TrainingEventCallback } from "./TrainingEvent.ts";
 import type { AdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { EnsembleDiversityConfig } from "./EnsembleDiversityConfig.ts";
@@ -88,6 +89,7 @@ export type NeatOptions =
     | "outputRanges"
     | "logger"
     | "rng"
+    | "onTrainingEvent"
   >
   & {
     /** Partial overrides for minimum candidates per category (defaults applied if not specified) */
@@ -154,6 +156,16 @@ export type NeatOptions =
      * Takes precedence over `seed` when both are provided.
      */
     rng?: RandomNumberGenerator;
+    /**
+     * Optional callback for structured training lifecycle events.
+     *
+     * Issue #1615: When provided, this callback is invoked for each
+     * lifecycle event (generation completion, plateau detection, discovery
+     * outcomes, memory pressure, species adjustments). The callback is
+     * fire-and-forget; exceptions are silently caught. When not provided,
+     * no event overhead is incurred.
+     */
+    onTrainingEvent?: TrainingEventCallback;
   };
 
 /**
@@ -195,6 +207,7 @@ export type NeatOptionsInput =
     | "logLevel"
     | "seed"
     | "rng"
+    | "onTrainingEvent"
   >
   & {
     [K in NumericOptionKeys]?: NonNullable<NeatOptions[K]> extends number
@@ -227,4 +240,6 @@ export type NeatOptionsInput =
     seed?: number | string;
     /** Custom RNG instance (not coerced — functions cannot come from CLI). */
     rng?: RandomNumberGenerator;
+    /** Optional callback for structured training lifecycle events (Issue #1615). */
+    onTrainingEvent?: TrainingEventCallback;
   };

@@ -16,6 +16,7 @@ import type { RequiredQuantumStepConfig } from "./QuantumStepConfig.ts";
 import type { RequiredBiasRegularisationConfig } from "./BiasRegularisationConfig.ts";
 import type { Logger } from "../utils/Logger.ts";
 import type { RandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import type { TrainingEventCallback } from "./TrainingEvent.ts";
 import type { RequiredPredictiveCodingConfig } from "./PredictiveCodingConfig.ts";
 import type { RequiredMemoryConfig } from "./MemoryConfig.ts";
 import type { RequiredWasmCacheConfig } from "./WasmCacheConfig.ts";
@@ -606,4 +607,14 @@ export interface NeatArguments {
    * corresponds to one output neuron, in order.
    */
   outputRanges: ReadonlyArray<RequiredOutputRange>;
+
+  /**
+   * Optional callback for structured training lifecycle events.
+   *
+   * Issue #1615: When provided, this callback is invoked for each lifecycle
+   * event (generation completion, plateau detection, discovery outcomes,
+   * memory pressure, species adjustments). When not provided, no event
+   * overhead is incurred.
+   */
+  onTrainingEvent?: TrainingEventCallback;
 }

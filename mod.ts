@@ -291,3 +291,23 @@ export {
   setRandomNumberGenerator,
 } from "./src/utils/RandomNumberGenerator.ts";
 export type { RandomNumberGenerator } from "./src/utils/RandomNumberGenerator.ts";
+
+/**
+ * Structured Training Events
+ *
+ * Issue #1615: Structured event logging for training lifecycle. Register
+ * an `onTrainingEvent` callback in NeatOptions to receive typed events
+ * for generation completion, plateau detection, discovery outcomes,
+ * memory pressure, and species adjustments.
+ *
+ * @see {@link module:src/config/TrainingEvent}
+ */
+export type {
+  DiscoveryCompleteEvent,
+  GenerationCompleteEvent,
+  MemoryPressureEvent,
+  PlateauDetectedEvent,
+  SpeciesAdjustedEvent,
+  TrainingEvent,
+  TrainingEventCallback,
+} from "./src/config/TrainingEvent.ts";
