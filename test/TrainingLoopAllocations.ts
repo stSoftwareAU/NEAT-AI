@@ -174,9 +174,9 @@ Deno.test(
 
     try {
       const options: TrainOptions = {
-        iterations: 100,
+        iterations: 500,
         disableRandomSamples: true,
-        learningRate: 0.05,
+        learningRate: 0.1,
         targetError: 0.001,
       };
 
