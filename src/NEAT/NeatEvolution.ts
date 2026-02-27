@@ -31,6 +31,7 @@ import { getLogger } from "../utils/Logger.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import type { Neat } from "./Neat.ts";
 import { logReplaySummary } from "./NeatScheduling.ts";
+import { emitTrainingEvent } from "./TrainingEventEmitter.ts";
 
 /**
  * Evaluates, selects, breeds and mutates the population.
@@ -74,6 +75,14 @@ export async function evolve(
   if (neat.population.length === 0) {
     getLogger().warn("All creatures died, using zombies");
   }
+
+  // Issue #1615: Emit species_adjusted event
+  emitTrainingEvent(neat.config.onTrainingEvent, {
+    kind: "species_adjusted",
+    timestamp: new Date().toISOString(),
+    speciesCount: genus.speciesMap.size,
+    compatibilityThreshold: neat.config.geneticCompatibilityThreshold,
+  });
 
   const numberOfElitists = neat.config.elitism > 1
     ? neat.config.elitism
@@ -341,6 +350,16 @@ export async function evolve(
         logMemoryUsage(memoryResult, getLogger());
       }
     }
+
+    // Issue #1615: Emit memory_pressure event
+    emitTrainingEvent(neat.config.onTrainingEvent, {
+      kind: "memory_pressure",
+      timestamp: new Date().toISOString(),
+      heapUsed: memoryResult.heapUsed,
+      heapLimit: memoryResult.heapTotal,
+      evicted: true,
+      pressureLevel: memoryResult.pressureLevel as "warning" | "critical",
+    });
   }
 
   return {
@@ -439,6 +458,18 @@ function processCompletedResults(
   for (let i = neat.discoveryComplete.length; i--;) {
     const r = neat.discoveryComplete[i];
     assert(r.discover, "No discovery found");
+
+    // Issue #1615: Emit discovery_complete event
+    const outcome = r.discover.improvedCreature ? "improved" : "no_change";
+    emitTrainingEvent(neat.config.onTrainingEvent, {
+      kind: "discovery_complete",
+      timestamp: new Date().toISOString(),
+      outcome: outcome as "improved" | "no_change" | "timeout",
+      candidateCount: (r.discover.addHelpfulSynapses?.length ?? 0) +
+        (r.discover.removeHarmfulSynapse ? 1 : 0) +
+        (r.discover.candidateSquashes?.length ?? 0),
+      elapsedMs: r.duration ?? 0,
+    });
 
     if (r.discover.improvedCreature) {
       const discoveredCreature = Creature.fromJSON(

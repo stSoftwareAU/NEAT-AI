@@ -43,6 +43,7 @@ import { getLogger } from "../utils/Logger.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { setMaxCachedWasmCreatureActivations } from "../wasm/WasmCreatureActivationLRU.ts";
 import { setWasmCompilationCacheSize } from "../wasm/WasmCompilationCache.ts";
+import { emitTrainingEvent } from "../NEAT/TrainingEventEmitter.ts";
 
 /**
  * Propagate expected values backward through the network for all output neurons.
@@ -420,6 +421,32 @@ export async function evolveDir(
     const timedOut = endTimeMS ? now > endTimeMS : false;
 
     generation++;
+
+    // Issue #1615: Emit generation_complete event
+    const generationElapsedMs = now -
+      (generation === 1 ? start : iterationStartMS);
+    emitTrainingEvent(config.onTrainingEvent, {
+      kind: "generation_complete",
+      timestamp: new Date().toISOString(),
+      generation,
+      bestFitness: fittestScore,
+      averageFitness: result.averageScore,
+      populationSize: neat.population.length,
+      elapsedMs: generationElapsedMs,
+    });
+
+    // Issue #1615: Emit plateau_detected event when on plateau
+    if (result.plateau.onPlateau) {
+      emitTrainingEvent(config.onTrainingEvent, {
+        kind: "plateau_detected",
+        timestamp: new Date().toISOString(),
+        generation,
+        stagnationCount: result.plateau.generationsOnPlateau,
+        plateauThreshold: config.plateauDetection.windowSize,
+        improvementRate: result.plateau.improvementRate,
+        mutationMultiplier: result.plateau.mutationMultiplier,
+      });
+    }
 
     const completed = interrupted || timedOut || error <= targetError ||
       generation >= iterations;
