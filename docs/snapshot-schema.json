@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/stSoftwareAU/NEAT-AI/blob/Develop/docs/snapshot-schema.json",
+  "title": "NEAT-AI Creature Export",
+  "description": "Schema for the NEAT-AI creature export (snapshot) format. This format is used for serialising creatures to JSON for persistence, visualisation (e.g. NEAT-AI-Explore), and inter-process communication. Validate with: import Ajv from 'ajv'; const ajv = new Ajv(); const validate = ajv.compile(schema); validate(snapshot);",
+  "type": "object",
+  "required": ["neurons", "synapses", "input", "output"],
+  "additionalProperties": false,
+  "properties": {
+    "semanticVersion": {
+      "type": "string",
+      "description": "Semantic version of the creature format (e.g. '1.0.0'). Used for migration and upgrade logic."
+    },
+    "forwardOnly": {
+      "type": "boolean",
+      "description": "When true, indicates a feed-forward topology with no recurrent (self-loop or backward) connections."
+    },
+    "input": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of input neurons in the creature. Input neurons are implicit and not listed in the neurons array."
+    },
+    "output": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of output neurons in the creature."
+    },
+    "neurons": {
+      "type": "array",
+      "description": "Array of non-input neurons (hidden, output, and constant). Input neurons are implicit based on the 'input' count.",
+      "items": {
+        "$ref": "#/$defs/neuron"
+      }
+    },
+    "synapses": {
+      "type": "array",
+      "description": "Array of connections between neurons, each carrying a weight.",
+      "items": {
+        "$ref": "#/$defs/synapse"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "description": "Optional metadata tags attached to the creature (e.g. error, score, training approach).",
+      "items": {
+        "$ref": "#/$defs/tag"
+      }
+    },
+    "memetic": {
+      "$ref": "#/$defs/memetic",
+      "description": "Optional memetic evolution state tracking weights, biases, and ancestry across generations."
+    }
+  },
+  "$defs": {
+    "neuron": {
+      "type": "object",
+      "description": "A non-input neuron in the creature network.",
+      "required": ["type", "uuid", "bias"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["hidden", "output", "constant"],
+          "description": "The role of this neuron: 'hidden' for intermediate processing, 'output' for final results, 'constant' for fixed-value bias neurons."
+        },
+        "uuid": {
+          "type": "string",
+          "description": "Unique identifier for the neuron. Output neurons use 'output-N' format; hidden/constant neurons use UUIDs or descriptive names."
+        },
+        "bias": {
+          "type": "number",
+          "description": "Bias value added to the neuron's weighted input sum before the activation function is applied."
+        },
+        "squash": {
+          "type": "string",
+          "description": "Activation (squash) function name applied to this neuron (e.g. 'LOGISTIC', 'ReLU6', 'TANH', 'IF', 'GAUSSIAN', 'SELU'). Omitted when using the default activation."
+        },
+        "tags": {
+          "type": "array",
+          "description": "Optional metadata tags attached to this neuron.",
+          "items": {
+            "$ref": "#/$defs/tag"
+          }
+        }
+      }
+    },
+    "synapse": {
+      "type": "object",
+      "description": "A weighted connection between two neurons in the creature network.",
+      "required": ["fromUUID", "toUUID", "weight"],
+      "additionalProperties": false,
+      "properties": {
+        "fromUUID": {
+          "type": "string",
+          "description": "UUID of the source (pre-synaptic) neuron. Input neurons use 'input-N' format."
+        },
+        "toUUID": {
+          "type": "string",
+          "description": "UUID of the destination (post-synaptic) neuron."
+        },
+        "weight": {
+          "type": "number",
+          "description": "Connection weight multiplied with the source neuron's output."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["positive", "negative", "condition"],
+          "description": "Optional constraint on the synapse: 'positive' clamps weight >= 0, 'negative' clamps weight <= 0, 'condition' marks a conditional input for IF-type neurons."
+        },
+        "tags": {
+          "type": "array",
+          "description": "Optional metadata tags attached to this synapse.",
+          "items": {
+            "$ref": "#/$defs/tag"
+          }
+        }
+      }
+    },
+    "tag": {
+      "type": "object",
+      "description": "A name-value metadata pair used to annotate creatures, neurons, or synapses.",
+      "required": ["name", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Tag identifier (e.g. 'error', 'score', 'approach', 'trainID')."
+        },
+        "value": {
+          "type": "string",
+          "description": "Tag value as a string. Numeric values are stored as their string representation."
+        }
+      }
+    },
+    "memeticWeight": {
+      "type": "object",
+      "description": "A single weight record in the memetic evolution state.",
+      "required": ["toUUID", "weight"],
+      "additionalProperties": false,
+      "properties": {
+        "toUUID": {
+          "type": "string",
+          "description": "UUID of the destination neuron for this weight."
+        },
+        "weight": {
+          "type": "number",
+          "description": "The weight value at this generation."
+        }
+      }
+    },
+    "memeticAncestorSnapshot": {
+      "type": "object",
+      "description": "A snapshot of memetic state from a previous generation, used to track evolution of weights and biases.",
+      "required": ["generation", "weights", "biases", "score"],
+      "additionalProperties": false,
+      "properties": {
+        "generation": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The generation number when this snapshot was taken."
+        },
+        "weights": {
+          "$ref": "#/$defs/memeticWeights",
+          "description": "Weight state at this generation, keyed by source neuron UUID."
+        },
+        "biases": {
+          "$ref": "#/$defs/memeticBiases",
+          "description": "Bias state at this generation, keyed by neuron UUID."
+        },
+        "score": {
+          "type": "number",
+          "description": "Fitness score at this generation."
+        }
+      }
+    },
+    "memeticWeights": {
+      "type": "object",
+      "description": "Map of source neuron UUID to an array of weight records.",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/memeticWeight"
+        }
+      }
+    },
+    "memeticBiases": {
+      "type": "object",
+      "description": "Map of neuron UUID to its bias value at a given generation.",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "memetic": {
+      "type": "object",
+      "description": "Memetic evolution state tracking the current generation's weights and biases, plus an optional ancestry buffer.",
+      "required": ["generation", "weights", "biases", "score"],
+      "additionalProperties": false,
+      "properties": {
+        "generation": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current generation number for memetic evolution."
+        },
+        "weights": {
+          "$ref": "#/$defs/memeticWeights",
+          "description": "Current weight state, keyed by source neuron UUID."
+        },
+        "biases": {
+          "$ref": "#/$defs/memeticBiases",
+          "description": "Current bias state, keyed by neuron UUID."
+        },
+        "score": {
+          "type": "number",
+          "description": "Current fitness score."
+        },
+        "ancestry": {
+          "type": "array",
+          "description": "Optional circular buffer of ancestor snapshots, ordered from most recent to oldest. Limited to 3 entries by default.",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/memeticAncestorSnapshot"
+          }
+        }
+      }
+    }
+  }
+}
