@@ -130,7 +130,7 @@ Deno.test("DistanceCache - stats track hits and misses", () => {
   const stats = getDistanceCacheStats();
   assertEquals(stats.hits, 2);
   assertEquals(stats.misses, 1);
-  assertEquals(stats.size, 1);
+  assertEquals(stats.currentSize, 1);
   clearDistanceCache();
 });
 

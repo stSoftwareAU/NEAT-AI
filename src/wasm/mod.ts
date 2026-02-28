@@ -116,9 +116,12 @@ export {
 
 // Issue #1338 - Bound cached WASM activations under memory pressure
 // Issue #1504 - Added getCachedWasmActivationCount for cache diagnostics
+// Issue #1616 - Added getWasmActivationLruStats and resetWasmActivationLruStats
 export {
   disposeAllCachedWasmActivations,
   getCachedWasmActivationCount,
   getMaxCachedWasmCreatureActivations,
+  getWasmActivationLruStats,
+  resetWasmActivationLruStats,
   setMaxCachedWasmCreatureActivations,
 } from "./WasmCreatureActivationLRU.ts";

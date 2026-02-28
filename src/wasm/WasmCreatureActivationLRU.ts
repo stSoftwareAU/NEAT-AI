@@ -18,6 +18,7 @@
  * move-to-head, and tail eviction — replacing the previous O(n) linear scan.
  */
 
+import type { CacheStats } from "../cache/CacheStats.ts";
 import type { Creature } from "../Creature.ts";
 
 /** A node in the doubly-linked LRU list. */
@@ -48,6 +49,11 @@ let nextId = 1;
 // Default cap: keep memory bounded for inference/data-gen workloads without
 // noticeably impacting typical NEAT populations.
 let maxCachedWasmActivations = 512;
+
+// Issue #1616: Diagnostic counters for cache performance tuning.
+let activationHits = 0;
+let activationMisses = 0;
+let activationEvictions = 0;
 
 function getOrAssignId(creature: Creature): number {
   const existing = idByCreature.get(creature);
@@ -110,6 +116,7 @@ function evictTail(): boolean {
   const node = tail;
   removeNode(node);
   nodeById.delete(node.id);
+  activationEvictions++;
 
   const creature = node.ref.deref();
   if (!creature) return true;
@@ -160,7 +167,9 @@ export function noteWasmCreatureActivationUse(creature: Creature): void {
   if (existing) {
     // Move existing entry to head — no allocation needed.
     moveToHead(existing);
+    activationHits++;
   } else {
+    activationMisses++;
     // New entry: create node, insert at head.
     const node: LruNode = {
       id,
@@ -230,4 +239,33 @@ export function deregisterWasmCreatureActivation(creature: Creature): void {
     removeNode(node);
     nodeById.delete(id);
   }
+}
+
+/**
+ * Return diagnostic statistics for the WASM activation LRU cache.
+ *
+ * Issue #1616: Enables users to assess cache effectiveness and tune
+ * the cache cap via {@link setMaxCachedWasmCreatureActivations}.
+ */
+export function getWasmActivationLruStats(): CacheStats {
+  return {
+    name: "WASM Activation LRU",
+    hits: activationHits,
+    misses: activationMisses,
+    evictions: activationEvictions,
+    currentSize: nodeById.size,
+    maxSize: maxCachedWasmActivations,
+  };
+}
+
+/**
+ * Reset the diagnostic counters for the WASM activation LRU cache.
+ *
+ * Issue #1616: Useful for isolating statistics to a specific training
+ * run or measurement window.
+ */
+export function resetWasmActivationLruStats(): void {
+  activationHits = 0;
+  activationMisses = 0;
+  activationEvictions = 0;
 }
