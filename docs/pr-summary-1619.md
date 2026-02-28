@@ -2,7 +2,8 @@
 
 Add pre-built configuration presets for common NEAT training scenarios. With 50+
 configuration keys in `NeatOptions`, new users face a steep learning curve.
-These presets provide tested starting points for typical use cases. Closes #1619.
+These presets provide tested starting points for typical use cases. Closes
+#1619.
 
 Four presets are defined and exported from the public API:
 
