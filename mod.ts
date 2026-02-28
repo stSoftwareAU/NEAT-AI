@@ -327,3 +327,26 @@ export type {
   TrainingEvent,
   TrainingEventCallback,
 } from "./src/config/TrainingEvent.ts";
+
+/**
+ * Configuration Presets
+ *
+ * Issue #1619: Pre-built configuration presets for common training
+ * scenarios. Each preset is a `NeatOptions` object that can be spread
+ * into user configuration:
+ *
+ * ```ts
+ * const config = createNeatConfig({
+ *   ...QUICK_START_PRESET,
+ *   populationSize: 25, // override preset value
+ * });
+ * ```
+ *
+ * @see {@link module:src/presets/Presets}
+ */
+export {
+  DISCOVERY_FOCUSED_PRESET,
+  LARGE_NETWORK_PRESET,
+  MEMORY_CONSTRAINED_PRESET,
+  QUICK_START_PRESET,
+} from "./src/presets/Presets.ts";
