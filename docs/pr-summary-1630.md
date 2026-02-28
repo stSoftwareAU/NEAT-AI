@@ -1,37 +1,37 @@
 ## Summary
 
-Investigated whether migrating backpropagation gradient computation to
-Rust/WASM would improve performance. Created comprehensive benchmarks measuring
-the full backprop pass across different network sizes (44–223 neurons,
-204–2280 synapses). **Result: negative — no meaningful improvement possible.**
-Closes #1630.
+Investigated whether migrating backpropagation gradient computation to Rust/WASM
+would improve performance. Created comprehensive benchmarks measuring the full
+backprop pass across different network sizes (44–223 neurons, 204–2280
+synapses). **Result: negative — no meaningful improvement possible.** Closes
+#1630.
 
 ## Benchmark Results
 
 ### Full Backpropagation Pass (per training sample)
 
 | Network | Neurons | Synapses | Time/iter (avg) |
-|---------|---------|----------|-----------------|
+| ------- | ------- | -------- | --------------- |
 | Small   | 44      | 204      | 123.2 µs        |
 | Medium  | 117     | 910      | 4.8 ms          |
 | Large   | 223     | 2,280    | 167.5 ms        |
 
 ### Where Time is Spent (Medium Network)
 
-| Component | Time | % of Total |
-|-----------|------|------------|
-| Full propagate (error + accumulate) | 4.7 ms | 100% |
-| Error distribution only (no accumulate) | 4.3 ms | 91% |
-| Weight/bias accumulation overhead | ~0.4 ms | ~9% |
-| WASM boundary crossings (estimated) | ~15 µs | ~0.3% |
+| Component                               | Time    | % of Total |
+| --------------------------------------- | ------- | ---------- |
+| Full propagate (error + accumulate)     | 4.7 ms  | 100%       |
+| Error distribution only (no accumulate) | 4.3 ms  | 91%        |
+| Weight/bias accumulation overhead       | ~0.4 ms | ~9%        |
+| WASM boundary crossings (estimated)     | ~15 µs  | ~0.3%      |
 
 ### WASM Boundary Crossing Overhead (from Issue #1375 benchmark)
 
-| Metric | Value |
-|--------|-------|
-| Per WASM call overhead | ~10 ns |
-| 6,600 calls (800N + 5000S) total | 65.6 µs |
-| TS arithmetic vs WASM scalar | 13.1x faster in TS |
+| Metric                           | Value              |
+| -------------------------------- | ------------------ |
+| Per WASM call overhead           | ~10 ns             |
+| 6,600 calls (800N + 5000S) total | 65.6 µs            |
+| TS arithmetic vs WASM scalar     | 13.1x faster in TS |
 
 ### Environment
 
