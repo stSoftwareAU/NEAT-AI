@@ -2,6 +2,7 @@ import {
   cleanupMemeticForRemovedSynapse,
   cleanupOrphanedNeurons,
 } from "../compact/CompactUtils.ts";
+import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
@@ -31,12 +32,50 @@ export class SubConnection extends AbstractMutationOperator {
       neuronIndexMap.set(neuron.uuid, idx++);
     }
 
+    // Build a set of IF neuron UUIDs and count their connection types,
+    // so we don't remove a connection that would leave an IF neuron invalid.
+    const ifNeuronUUIDs = new Set<string>();
+    for (const neuron of exportJSON.neurons) {
+      if (neuron.squash === "IF") {
+        ifNeuronUUIDs.add(neuron.uuid);
+      }
+    }
+
+    // Count connection types per IF neuron
+    const ifConnectionCounts = new Map<
+      string,
+      { condition: number; positive: number; negative: number }
+    >();
+    if (ifNeuronUUIDs.size > 0) {
+      for (const uuid of ifNeuronUUIDs) {
+        ifConnectionCounts.set(uuid, {
+          condition: 0,
+          positive: 0,
+          negative: 0,
+        });
+      }
+      for (const synapse of exportJSON.synapses) {
+        const counts = ifConnectionCounts.get(synapse.toUUID);
+        if (counts) {
+          const synapseType = synapse.type ?? "positive";
+          if (synapseType === "condition") counts.condition++;
+          else if (synapseType === "negative") counts.negative++;
+          else counts.positive++;
+        }
+      }
+    }
+
     for (const synapse of exportJSON.synapses) {
       const fromIdx = neuronIndexMap.get(synapse.fromUUID);
       const toIdx = neuronIndexMap.get(synapse.toUUID);
 
       // Only consider forward connections (to > from)
       if (fromIdx !== undefined && toIdx !== undefined && toIdx > fromIdx) {
+        // Skip if removing this connection would break an IF neuron's invariants
+        if (this.wouldBreakIfNeuron(synapse, ifConnectionCounts)) {
+          continue;
+        }
+
         // Check focus list using transitive focus checking
         // A neuron is in focus if it's directly in the focus list OR if any of
         // its upstream connected neurons are in focus
@@ -83,5 +122,24 @@ export class SubConnection extends AbstractMutationOperator {
     this.creature.loadFrom(exportJSON, false);
 
     return true;
+  }
+
+  /** Check if removing a synapse would leave an IF neuron without required connections. */
+  private wouldBreakIfNeuron(
+    synapse: SynapseExport,
+    ifConnectionCounts: Map<
+      string,
+      { condition: number; positive: number; negative: number }
+    >,
+  ): boolean {
+    const counts = ifConnectionCounts.get(synapse.toUUID);
+    if (!counts) return false;
+
+    const synapseType = synapse.type ?? "positive";
+    if (synapseType === "condition" && counts.condition <= 1) return true;
+    if (synapseType === "positive" && counts.positive <= 1) return true;
+    if (synapseType === "negative" && counts.negative <= 1) return true;
+
+    return false;
   }
 }
