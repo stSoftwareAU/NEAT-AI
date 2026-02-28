@@ -247,8 +247,24 @@ export {
   disposeAllCachedWasmActivations,
   getCachedWasmActivationCount,
   getMaxCachedWasmCreatureActivations,
+  getWasmActivationLruStats,
+  resetWasmActivationLruStats,
   setMaxCachedWasmCreatureActivations,
 } from "./src/wasm/WasmCreatureActivationLRU.ts";
+
+/**
+ * Cache Diagnostics
+ *
+ * Issue #1616: Unified cache diagnostics API. Call {@link getCacheStats}
+ * to retrieve hit/miss rates, eviction counts, and size metrics for all
+ * instrumented caches. Use these metrics to tune cache configuration
+ * (e.g. WasmCacheConfig, distance cache size) for your workload.
+ *
+ * @see {@link module:src/cache/CacheStats}
+ * @see {@link module:src/cache/getCacheStats}
+ */
+export type { CacheStats } from "./src/cache/CacheStats.ts";
+export { getCacheStats } from "./src/cache/getCacheStats.ts";
 
 /**
  * WASM preload for workers (Issue #1285)

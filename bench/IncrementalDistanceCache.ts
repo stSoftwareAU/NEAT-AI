@@ -215,7 +215,7 @@ for (let i = 0; i < population.length; i++) {
 
 const warmStats = getDistanceCacheStats();
 console.log(
-  `After warm-up: cache size=${warmStats.size}, hits=${warmStats.hits}, misses=${warmStats.misses}`,
+  `After warm-up: cache size=${warmStats.currentSize}, hits=${warmStats.hits}, misses=${warmStats.misses}`,
 );
 
 Deno.bench({

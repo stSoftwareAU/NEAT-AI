@@ -10,6 +10,8 @@
  * distance(A, B) and distance(B, A) share a single entry.
  */
 
+import type { CacheStats } from "../cache/CacheStats.ts";
+
 const DEFAULT_MAX_SIZE = 10_000;
 
 /** Cached distance entry with access tracking for LRU eviction. */
@@ -34,6 +36,7 @@ let accessCounter = 0;
 // Counters for diagnostics / benchmarking
 let hits = 0;
 let misses = 0;
+let evictions = 0;
 
 /**
  * Look up a cached distance for the given creature UUID pair.
@@ -76,6 +79,7 @@ export function clearDistanceCache(): void {
   cache.clear();
   hits = 0;
   misses = 0;
+  evictions = 0;
   accessCounter = 0;
 }
 
@@ -104,13 +108,19 @@ export function getDistanceCacheSize(): number {
 
 /**
  * Return cache hit/miss statistics for diagnostics.
+ *
+ * Issue #1616: Returns a full {@link CacheStats} object for unified
+ * cache diagnostics.
  */
-export function getDistanceCacheStats(): {
-  hits: number;
-  misses: number;
-  size: number;
-} {
-  return { hits, misses, size: cache.size };
+export function getDistanceCacheStats(): CacheStats {
+  return {
+    name: "Distance Cache",
+    hits,
+    misses,
+    evictions,
+    currentSize: cache.size,
+    maxSize: maxSize,
+  };
 }
 
 /**
@@ -130,5 +140,6 @@ function evictIfNeeded(): void {
 
     if (oldestKey === null) break;
     cache.delete(oldestKey);
+    evictions++;
   }
 }
