@@ -262,6 +262,7 @@
     "Deserialise",
     "deserialises",
     "proc",
-    "writable"
+    "writable",
+    "memcpy"
   ]
 }
