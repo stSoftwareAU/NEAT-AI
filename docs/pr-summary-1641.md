@@ -7,8 +7,8 @@ topological ordering. Closes #1641.
 
 The recursive backpropagation traversal revisits neurons multiple times when
 they have multiple downstream connections. In densely connected NEAT networks,
-this creates combinatorial explosion — neurons in large networks were visited
-up to 3373 times (697x average) in a single backward pass.
+this creates combinatorial explosion — neurons in large networks were visited up
+to 3373 times (697x average) in a single backward pass.
 
 ### Solution
 
@@ -28,15 +28,15 @@ processing, then distributed to upstream connections in a single pass.
    recursive approach's count behaviour, where each downstream path increments
    `cs.count` / `ns.count`.
 
-3. **Custom propagate fallback** — Neurons with specialised backpropagation
-   (IF, MAXIMUM, MINIMUM squash functions) delegate to their custom propagate
+3. **Custom propagate fallback** — Neurons with specialised backpropagation (IF,
+   MAXIMUM, MINIMUM squash functions) delegate to their custom propagate
    methods, which handle their own traversal internally.
 
 ### New Files
 
-- `src/propagate/TopologicalOrder.ts` — Computes reverse topological order
-  using Kahn's algorithm. Handles self-loops, disconnected neurons, and
-  recurrent connections (cycles appended at end).
+- `src/propagate/TopologicalOrder.ts` — Computes reverse topological order using
+  Kahn's algorithm. Handles self-loops, disconnected neurons, and recurrent
+  connections (cycles appended at end).
 - `src/propagate/TopologicalBackpropagation.ts` — Iterative backpropagation
   using topological ordering. Replaces the recursive loop in CreatureTraining.
 - `bench/RevisitDiagnostic.ts` — Diagnostic script measuring neuron revisit
@@ -44,8 +44,8 @@ processing, then distributed to upstream connections in a single pass.
 
 ### Modified Files
 
-- `src/creature/CreatureTraining.ts` — Calls `propagateTopological()` instead
-  of the recursive per-output loop.
+- `src/creature/CreatureTraining.ts` — Calls `propagateTopological()` instead of
+  the recursive per-output loop.
 - `test/propagate/SingleNeuron.ts` — TwoSame test tolerance increased from 0.5
   to 0.7. The topological approach averages error signals from multiple outputs
   rather than processing them sequentially, producing a slightly different
@@ -65,19 +65,19 @@ processing, then distributed to upstream connections in a single pass.
 
 **Before (recursive traversal):**
 
-| Network Size             | Propagate Only |
-| ------------------------ | -------------- |
-| Small (44N, 204S)        | 122.3 µs       |
-| Medium (117N, 910S)      | 4.9 ms         |
-| Large (223N, 2280S)      | 166.7 ms       |
+| Network Size        | Propagate Only |
+| ------------------- | -------------- |
+| Small (44N, 204S)   | 122.3 µs       |
+| Medium (117N, 910S) | 4.9 ms         |
+| Large (223N, 2280S) | 166.7 ms       |
 
 **After (topological ordering):**
 
-| Network Size             | Propagate Only | Speedup  |
-| ------------------------ | -------------- | -------- |
-| Small (44N, 204S)        | 53.6 µs        | 2.3x     |
-| Medium (117N, 910S)      | 244.7 µs       | 20.0x    |
-| Large (223N, 2280S)      | 693.9 µs       | 240.4x   |
+| Network Size        | Propagate Only | Speedup |
+| ------------------- | -------------- | ------- |
+| Small (44N, 204S)   | 53.6 µs        | 2.3x    |
+| Medium (117N, 910S) | 244.7 µs       | 20.0x   |
+| Large (223N, 2280S) | 693.9 µs       | 240.4x  |
 
 ### Analysis
 
