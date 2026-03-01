@@ -85,13 +85,12 @@ export function propagateTopological(
 
     const activation = adjustedActivation(neuron, config);
     const squashMethod = neuron.findSquash();
-    const downstreamCount = targetDeltaCount[neuronIndex];
-
-    // Use the average delta for error distribution. This matches the
-    // per-visit error magnitude from the recursive approach, where each
-    // downstream path contributes one visit with its own error.
-    const averageDelta = targetDeltaSum[neuronIndex] / downstreamCount;
-    const requestedActivation = activation + averageDelta;
+    // Use the summed delta for error distribution. In standard
+    // backpropagation, gradients from multiple downstream paths are summed,
+    // not averaged. This preserves gradient magnitude for highly-connected
+    // neurons. (Issue #1651)
+    const totalDelta = targetDeltaSum[neuronIndex];
+    const requestedActivation = activation + totalDelta;
     const targetActivation = squashMethod.range.limit(requestedActivation);
 
     const rawErrorAbs = Math.abs(targetActivation - activation);
@@ -275,22 +274,18 @@ export function propagateTopological(
           }
 
           // Accumulate weight using the current forward-pass activation.
-          // Repeat downstreamCount times to match the recursive approach's
-          // count behaviour, where each downstream path increments cs.count.
           if (
             updateNeeded &&
             Math.abs(fromActivation) > config.plankConstant
           ) {
             const cs = state.connection(from, to);
-            for (let rep = 0; rep < downstreamCount; rep++) {
-              accumulateWeight(
-                c.weight,
-                cs,
-                targetFromValue,
-                fromActivation,
-                config,
-              );
-            }
+            accumulateWeight(
+              c.weight,
+              cs,
+              targetFromValue,
+              fromActivation,
+              config,
+            );
             const aWeight = adjustedWeight(state, c, config);
             const improvedFromValue = fromActivation * aWeight;
             improvedValue += improvedFromValue;
@@ -302,18 +297,13 @@ export function propagateTopological(
 
       if (updateNeeded) {
         const targetValue = toValue(neuron, targetActivation, ns.hintValue);
-
-        // Repeat downstreamCount times to match the recursive approach's
-        // count behaviour, where each downstream path increments the count.
-        for (let rep = 0; rep < downstreamCount; rep++) {
-          accumulateBias(
-            ns,
-            targetValue,
-            improvedValue,
-            currentBias,
-            config,
-          );
-        }
+        accumulateBias(
+          ns,
+          targetValue,
+          improvedValue,
+          currentBias,
+          config,
+        );
 
         const aBias = adjustedBias(neuron, config);
         limitedActivation = wasmSquash(
