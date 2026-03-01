@@ -372,3 +372,165 @@ Deno.test("TopologicalBackpropagation - deep network converges", () => {
     `Error should decrease: initial=${initialError}, final=${finalError}`,
   );
 });
+
+Deno.test("TopologicalBackpropagation - fan-out gradient scales with downstream count", () => {
+  // Issue #1651 - A neuron feeding N downstream paths should receive N× the
+  // error signal of one feeding 1 path (given equal per-path error).
+  //
+  // Network with 1 downstream output:
+  //   Input → H1 → Output-0
+  //
+  // Network with 3 downstream outputs:
+  //   Input → H1 → Output-0
+  //              → Output-1
+  //              → Output-2
+  //
+  // Both use identical weights, inputs, and per-output target deltas.
+  // The 3-output network should accumulate ~3× the weight change on the
+  // input→H1 synapse compared to the 1-output network.
+
+  const singleOutputJson: CreatureExport = {
+    input: 1,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "h1", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "h1", weight: 1.0 },
+      { fromUUID: "h1", toUUID: "output-0", weight: 1.0 },
+    ],
+  };
+
+  const tripleOutputJson: CreatureExport = {
+    input: 1,
+    output: 3,
+    neurons: [
+      { type: "hidden", uuid: "h1", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-1", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-2", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "h1", weight: 1.0 },
+      { fromUUID: "h1", toUUID: "output-0", weight: 1.0 },
+      { fromUUID: "h1", toUUID: "output-1", weight: 1.0 },
+      { fromUUID: "h1", toUUID: "output-2", weight: 1.0 },
+    ],
+  };
+
+  const configOpts = {
+    generations: 1,
+    learningRate: 0.1,
+    plankConstant: 1e-12,
+    maximumWeightAdjustmentScale: 10,
+    maximumBiasAdjustmentScale: 10,
+    disableRandomSamples: true,
+    batchSize: 1,
+  };
+
+  const input = new Float32Array([1.0]);
+  // Each output requests the same delta (target = 1.1 when activation is 1.0).
+  const singleTarget = new Float32Array([1.1]);
+  const tripleTarget = new Float32Array([1.1, 1.1, 1.1]);
+
+  // Train the single-output network.
+  const singleCreature = Creature.fromJSON(singleOutputJson);
+  const singleConfig = createBackPropagationConfig(configOpts);
+  const singleSparse = new SparseConfig(singleOutputJson, singleConfig);
+
+  singleCreature.activateAndTrace(input, false, singleSparse);
+  singleCreature.propagate(singleTarget, singleConfig, singleSparse);
+  singleCreature.applyLearnings(singleConfig, singleSparse);
+
+  const singleWeightChange = Math.abs(
+    singleCreature.synapses[0].weight - 1.0,
+  );
+
+  // Train the triple-output network.
+  const tripleCreature = Creature.fromJSON(tripleOutputJson);
+  const tripleConfig = createBackPropagationConfig(configOpts);
+  const tripleSparse = new SparseConfig(tripleOutputJson, tripleConfig);
+
+  tripleCreature.activateAndTrace(input, false, tripleSparse);
+  tripleCreature.propagate(tripleTarget, tripleConfig, tripleSparse);
+  tripleCreature.applyLearnings(tripleConfig, tripleSparse);
+
+  const tripleWeightChange = Math.abs(
+    tripleCreature.synapses[0].weight - 1.0,
+  );
+
+  // The triple-output network should have ~3× the weight change,
+  // since 3 downstream paths each contribute the same error signal.
+  // With averaging, the ratio would be ~1. With correct summing, ~3.
+  assert(
+    singleWeightChange > 0,
+    `Single output should produce a weight change, got ${singleWeightChange}`,
+  );
+  const ratio = tripleWeightChange / singleWeightChange;
+  assert(
+    ratio > 2.0,
+    `Fan-out gradient ratio should be ~3 (sum), got ${ratio} (averaging would give ~1)`,
+  );
+});
+
+Deno.test("TopologicalBackpropagation - fan-out convergence improved", () => {
+  // Issue #1651 - A fan-out network should converge well when gradients
+  // are properly summed. This verifies that wider networks (more downstream
+  // connections) benefit from correct gradient accumulation.
+  const json: CreatureExport = {
+    input: 2,
+    output: 4,
+    neurons: [
+      { type: "hidden", uuid: "h1", squash: "TANH", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-1", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-2", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-3", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "h1", weight: 0.5 },
+      { fromUUID: "input-1", toUUID: "h1", weight: 0.3 },
+      { fromUUID: "h1", toUUID: "output-0", weight: 0.4 },
+      { fromUUID: "h1", toUUID: "output-1", weight: 0.5 },
+      { fromUUID: "h1", toUUID: "output-2", weight: 0.3 },
+      { fromUUID: "h1", toUUID: "output-3", weight: 0.6 },
+    ],
+  };
+  const creature = Creature.fromJSON(json);
+  const config = createBackPropagationConfig({
+    generations: 1,
+    learningRate: 0.05,
+    plankConstant: 1e-7,
+    maximumWeightAdjustmentScale: 1,
+    maximumBiasAdjustmentScale: 1,
+    disableRandomSamples: true,
+    batchSize: 1,
+  });
+  const sparseConfig = new SparseConfig(json, config);
+
+  const input = new Float32Array([0.5, 0.8]);
+  const target = new Float32Array([0.2, 0.3, 0.1, 0.4]);
+
+  const initialResult = creature.activate(input);
+  let initialError = 0;
+  for (let i = 0; i < target.length; i++) {
+    initialError += Math.abs(initialResult[i] - target[i]);
+  }
+
+  for (let i = 0; i < 50; i++) {
+    creature.activateAndTrace(input, false, sparseConfig);
+    creature.propagate(target, config, sparseConfig);
+  }
+  creature.applyLearnings(config, sparseConfig);
+
+  const finalResult = creature.activate(input);
+  let finalError = 0;
+  for (let i = 0; i < target.length; i++) {
+    finalError += Math.abs(finalResult[i] - target[i]);
+  }
+  assert(
+    finalError < initialError,
+    `Fan-out network error should decrease: initial=${initialError}, final=${finalError}`,
+  );
+});

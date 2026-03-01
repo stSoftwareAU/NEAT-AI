@@ -104,16 +104,20 @@ Deno.test("OneAndDone", () => {
     JSON.stringify(creature.exportJSON(), null, 1),
   );
 
+  // Issue #1651: Tolerance increased from 0.7 to 0.9 because gradient
+  // summing (instead of averaging) changes the convergence path for neurons
+  // with multiple downstream connections. The hidden neuron feeds 2 outputs,
+  // so it now receives the summed gradient from both paths.
   assertAlmostEquals(
     actual[0],
     expected[0],
-    0.7,
+    0.9,
     `0: ${actual[0].toFixed(3)} ${expected[0].toFixed(3)}`,
   );
   assertAlmostEquals(
     actual[1],
     expected[1],
-    0.7,
+    0.9,
     `0: ${actual[1].toFixed(3)} ${expected[1].toFixed(3)}`,
   );
 });
