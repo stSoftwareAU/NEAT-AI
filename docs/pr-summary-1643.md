@@ -18,37 +18,38 @@ scans and cache invalidation per connection, totalling O(n²) for n connections.
 ### Changes
 
 **`src/Creature.ts` — `initialize()` method:**
-- Replace individual `connect()` calls with direct `Synapse` pushes followed
-  by a single `sort()` — avoids O(n) linear scan, `splice()`, and
-  `clearCache()` per connection
+
+- Replace individual `connect()` calls with direct `Synapse` pushes followed by
+  a single `sort()` — avoids O(n) linear scan, `splice()`, and `clearCache()`
+  per connection
 - Replace full `fix()` call with targeted `neuron.fix()` loop + single
-  `makeUUID()` — eliminates duplicate merging, disconnected neuron removal,
-  and one of the two `exportJSON()` calls that are unnecessary for fresh
+  `makeUUID()` — eliminates duplicate merging, disconnected neuron removal, and
+  one of the two `exportJSON()` calls that are unnecessary for fresh
   construction
 
 ### Benchmark results
 
-| Creature size | Before | After | Speedup |
-|---|---|---|---|
-| Small (23 neurons, 115 synapses) | 280.7 µs | 151.4 µs | **1.85x** |
-| Medium (110 neurons, 2,800 synapses) | 6.3 ms | 3.4 ms | **1.85x** |
-| Large (520 neurons, 57,000 synapses) | 156.7 ms | 84.6 ms | **1.85x** |
+| Creature size                        | Before   | After    | Speedup   |
+| ------------------------------------ | -------- | -------- | --------- |
+| Small (23 neurons, 115 synapses)     | 280.7 µs | 151.4 µs | **1.85x** |
+| Medium (110 neurons, 2,800 synapses) | 6.3 ms   | 3.4 ms   | **1.85x** |
+| Large (520 neurons, 57,000 synapses) | 156.7 ms | 84.6 ms  | **1.85x** |
 
 Consistent ~1.85x speedup across all creature sizes. The `fromJSON`
 reconstruction path is unaffected (already optimal).
 
 ### Profiling breakdown (large creature, pre-optimisation)
 
-| Component | Time | Percentage |
-|---|---|---|
-| `fix()` (including 2× `makeUUID`/`exportJSON`) | ~147 ms | 94% |
-| Neuron + synapse creation | ~10 ms | 6% |
-| **Total** | **~157 ms** | **100%** |
+| Component                                      | Time        | Percentage |
+| ---------------------------------------------- | ----------- | ---------- |
+| `fix()` (including 2× `makeUUID`/`exportJSON`) | ~147 ms     | 94%        |
+| Neuron + synapse creation                      | ~10 ms      | 6%         |
+| **Total**                                      | **~157 ms** | **100%**   |
 
 ## Evidence
 
-This is a backend performance change with no UI impact. Evidence is provided
-via `Deno.bench()` benchmarks in `bench/CreatureConstruction.ts`.
+This is a backend performance change with no UI impact. Evidence is provided via
+`Deno.bench()` benchmarks in `bench/CreatureConstruction.ts`.
 
 ## Test Plan
 
