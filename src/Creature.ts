@@ -51,6 +51,7 @@ import type {
   DiscoveryReplayDirResult,
   DiscoveryReplayRunnerLike,
 } from "./discovery/DiscoveryReplayRunner.ts";
+import { CreatureUtil } from "./architecture/CreatureUtils.ts";
 
 interface CreatureOptions {
   semanticVersion?: string;
@@ -308,11 +309,14 @@ export class Creature implements CreatureInternal {
           this.neurons.push(neuron);
         }
 
+        // Issue #1643: Push synapses directly instead of using connect()
+        // to avoid per-connection O(n) insertion scan and cache invalidation.
+        // Connections are added in sorted order (ascending from, then to).
         const tmpOutput = this.output;
         this.output = 0;
         for (let k = lastStartIndx; k <= lastEndIndx; k++) {
           for (let l = lastEndIndx + 1; l < this.neurons.length; l++) {
-            this.connect(k, l, Synapse.randomWeight());
+            this.synapses.push(new Synapse(k, l, Synapse.randomWeight()));
           }
         }
         this.output = tmpOutput;
@@ -341,7 +345,7 @@ export class Creature implements CreatureInternal {
 
       for (let k = lastStartIndx; k <= lastEndIndx; k++) {
         for (let l = lastEndIndx + 1; l < this.neurons.length; l++) {
-          this.connect(k, l, Synapse.randomWeight());
+          this.synapses.push(new Synapse(k, l, Synapse.randomWeight()));
         }
       }
     } else {
@@ -363,13 +367,28 @@ export class Creature implements CreatureInternal {
         for (let j = this.input; j < this.output + this.input; j++) {
           const weight = getRandomNumberGenerator().random() * this.input *
             Math.sqrt(2 / this.input);
-          this.connect(i, j, weight);
+          this.synapses.push(new Synapse(i, j, weight));
         }
       }
     }
 
+    // Issue #1643: Sort synapses once after bulk insertion instead of
+    // maintaining sorted order per-connection via connect().
+    this.synapses.sort((a, b) => {
+      if (a.from !== b.from) return a.from - b.from;
+      return a.to - b.to;
+    });
+
     if (fixNeeded) {
-      this.fix();
+      // Issue #1643: Fresh construction has no duplicate synapses and no
+      // disconnected neurons, so the full fix() (which calls makeUUID() +
+      // exportJSON() twice) is unnecessary overhead. Only neuron.fix()
+      // is needed to initialise squash-related state, plus a single
+      // makeUUID() call to establish the creature's identity.
+      for (const neuron of this.neurons) {
+        neuron.fix();
+      }
+      CreatureUtil.makeUUID(this);
     }
   }
 
