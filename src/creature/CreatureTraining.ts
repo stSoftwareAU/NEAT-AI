@@ -25,7 +25,7 @@ import {
   type BackPropagationConfig,
   createBackPropagationConfig,
 } from "../propagate/BackPropagation.ts";
-import { BackpropBuffers } from "../propagate/BackpropBuffers.ts";
+import { propagateTopological } from "../propagate/TopologicalBackpropagation.ts";
 import { buildOutgoingSynapsesMap } from "../propagate/sparse/CalculatePathsToOutput.ts";
 import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 import { BufferPool } from "../utils/BufferPool.ts";
@@ -47,6 +47,10 @@ import { emitTrainingEvent } from "../NEAT/TrainingEventEmitter.ts";
 
 /**
  * Propagate expected values backward through the network for all output neurons.
+ *
+ * Issue #1641: Uses iterative topological ordering instead of recursive
+ * traversal. Each neuron is visited exactly once, eliminating the
+ * combinatorial explosion of revisits in densely connected networks.
  */
 export function propagate(
   creature: Creature,
@@ -54,24 +58,7 @@ export function propagate(
   config: BackPropagationConfig,
   sparseConfig: SparseConfig,
 ): void {
-  creature.state.cacheAdjustedActivation.clear();
-
-  // Issue #1379: Lazily initialise reusable backward pass buffers.
-  if (creature.state.backpropBuffers === undefined) {
-    creature.state.backpropBuffers = new BackpropBuffers();
-  }
-
-  const neurons = creature.neurons;
-  const lastOutputIndx = neurons.length - creature.output;
-
-  for (let indx = creature.output; indx--;) {
-    const nodeIndex = lastOutputIndx + indx;
-    const n = neurons[nodeIndex];
-
-    if (sparseConfig.propagateNeeded(n.uuid)) {
-      n.propagate(expected[indx], config, sparseConfig);
-    }
-  }
+  propagateTopological(creature, expected, config, sparseConfig);
 }
 
 /**
