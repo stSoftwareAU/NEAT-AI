@@ -1,15 +1,15 @@
 ## Summary
 
-Remove redundant `downstreamCount` repetition loops in topological backpropagation
-and add tests verifying accumulation counts reflect actual training samples.
-Closes #1652.
+Remove redundant `downstreamCount` repetition loops in topological
+backpropagation and add tests verifying accumulation counts reflect actual
+training samples. Closes #1652.
 
 The `downstreamCount` repetition loops (which artificially inflated
 `SynapseState.count` and `NeuronState.count` by repeating accumulation calls
 once per downstream connection) were already removed as part of the
 complementary error signal summing fix (#1651/#1664). This PR adds dedicated
-tests that verify the accumulation counts are correct and will catch any
-future regression.
+tests that verify the accumulation counts are correct and will catch any future
+regression.
 
 ### Changes
 
@@ -36,6 +36,7 @@ This is a backend logic fix with no UI changes.
 ## Test Plan
 
 - Added `AccumulationCounts - synapse count equals training samples not fan-out`
-- Added `AccumulationCounts - neuron bias count equals training samples not fan-out`
+- Added
+  `AccumulationCounts - neuron bias count equals training samples not fan-out`
 - Added `AccumulationCounts - fan-out does not inflate counts vs single output`
 - Added `AccumulationCounts - output synapse counts match training samples`
