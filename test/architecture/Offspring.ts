@@ -8,6 +8,7 @@
 
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../mod.ts";
+import type { ConnectionRef } from "../../src/architecture/Offspring.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
 import type { SynapseInternal } from "../../src/architecture/SynapseInterfaces.ts";
 
@@ -206,21 +207,14 @@ Deno.test("Offspring.sortNeurons - keeps input before hidden before output", () 
 
   // Create a child array replicating the mother's structure
   const child = [...creature.neurons];
-  const connectionsMap = new Map<
-    string,
-    Array<{ fromUUID: string; toUUID: string; weight: number }>
-  >();
+  const connectionsMap = new Map<string, ConnectionRef>();
 
   for (const neuron of creature.neurons) {
     if (neuron.type !== "input") {
       const conns = creature.inwardConnections(neuron.index);
       connectionsMap.set(
         neuron.uuid,
-        conns.map((c) => ({
-          fromUUID: creature.neurons[c.from].uuid,
-          toUUID: creature.neurons[c.to].uuid,
-          weight: c.weight,
-        })),
+        { parent: creature, synapses: conns },
       );
     }
   }

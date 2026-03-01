@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
+import type { ConnectionRef } from "../../src/architecture/Offspring.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
-import type { SynapseExport } from "../../src/architecture/SynapseInterfaces.ts";
 
 function makeMum() {
   const json: CreatureExport = {
@@ -164,14 +164,14 @@ Deno.test(
     const dad = makeDad();
     const child = makeChild();
 
-    const connectionsMap = new Map<string, SynapseExport[]>();
+    const connectionsMap = new Map<string, ConnectionRef>();
 
     for (const node of child.neurons) {
       if (node.type !== "input") {
         const connections = child.inwardConnections(node.index);
         connectionsMap.set(
           node.uuid,
-          Offspring.cloneConnections(child, connections),
+          { parent: child, synapses: connections },
         );
       }
     }
