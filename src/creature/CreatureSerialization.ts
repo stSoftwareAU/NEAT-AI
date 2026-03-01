@@ -29,6 +29,28 @@ import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 /**
+ * Safely copies own properties from source to target, skipping prototype-polluting keys.
+ *
+ * Uses Object.defineProperty instead of bracket assignment so that static analysis
+ * tools (CodeQL) can verify that Object.prototype is never modified.
+ */
+function safeAssignProperties(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): void {
+  for (const key of Object.keys(source)) {
+    if (!UNSAFE_KEYS.has(key)) {
+      Object.defineProperty(target, key, {
+        value: source[key],
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+    }
+  }
+}
+
+/**
  * Convert the creature to a JSON export object.
  */
 export function exportJSON(creature: Creature): CreatureExport {
@@ -137,11 +159,7 @@ export function loadFrom(
         string,
         unknown
       >;
-      for (const key of Object.keys(source)) {
-        if (!UNSAFE_KEYS.has(key)) {
-          target[key] = source[key];
-        }
-      }
+      safeAssignProperties(target, source);
     }
 
     uuidMap.set(n.uuid, pos);
@@ -199,11 +217,7 @@ export function loadFrom(
         string,
         unknown
       >;
-      for (const key of Object.keys(source)) {
-        if (!UNSAFE_KEYS.has(key)) {
-          target[key] = source[key];
-        }
-      }
+      safeAssignProperties(target, source);
     }
   }
 

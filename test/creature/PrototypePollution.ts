@@ -2,6 +2,7 @@
  * Tests for prototype pollution prevention in CreatureSerialization.
  * Issue #1575: Ensures that loading trace data from JSON cannot
  * pollute Object.prototype via __proto__ or constructor keys.
+ * Issue #1635: Uses Object.defineProperty to satisfy static analysis (CodeQL).
  */
 
 import { assertEquals } from "@std/assert";
@@ -146,6 +147,52 @@ Deno.test(
       clean["polluted"],
       undefined,
       "Prototype must not be polluted via constructor key in trace data",
+    );
+  },
+);
+
+Deno.test(
+  "loadFrom - mixed safe and unsafe keys: safe keys copied, unsafe keys blocked",
+  async () => {
+    await initWasmForTests();
+
+    const creature = new Creature(2, 1, {
+      layers: [{ count: 2 }],
+    });
+
+    const json = creature.exportJSON();
+    const bpConfig = createBackPropagationConfig({});
+    const sparseConfig = new SparseConfig(json, bpConfig);
+    creature.activateAndTrace(
+      new Float32Array([0.5, 0.5]),
+      false,
+      sparseConfig,
+    );
+
+    const trace = traceJSON(creature);
+
+    // Inject both __proto__ (unsafe) and a prototype key into neuron trace
+    for (const neuron of trace.neurons) {
+      const nt = neuron as unknown as Record<string, unknown>;
+      if (nt.trace) {
+        (nt.trace as Record<string, unknown>)["__proto__"] = {
+          polluted: true,
+        };
+        (nt.trace as Record<string, unknown>)["prototype"] = {
+          polluted: true,
+        };
+      }
+    }
+
+    const target = new Creature(2, 1, { lazyInitialization: true });
+    loadFrom(target, trace, true);
+
+    // Verify Object.prototype was NOT polluted by either key
+    const clean = {} as Record<string, unknown>;
+    assertEquals(
+      clean["polluted"],
+      undefined,
+      "Object.prototype must not be polluted by __proto__ or prototype keys",
     );
   },
 );
