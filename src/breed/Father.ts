@@ -1,7 +1,6 @@
 import type { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 /**
  * Lightweight neuron info needed for compatibility check.
@@ -171,27 +170,20 @@ export function createCompatibleFather(
   const motherKeyMap = generateNeuronKeyMap(mother);
   const fatherKeyMap = generateNeuronKeyMap(father);
 
-  // Step 1: Identify matching neurons by composite key and populate the UUID mapping
+  // Step 1: Identify matching neurons by composite key and populate the UUID mapping.
+  // Issue #1644: Direct Map lookup O(1) replaces Array.from().filter() O(n) per key.
   motherKeyMap.forEach((motherNeuron, motherKey) => {
-    const matchingFatherNeurons = Array.from(fatherKeyMap.entries())
-      .filter(([fatherKey]) => fatherKey === motherKey)
-      .map(([, fatherNeuron]) => fatherNeuron);
+    const matchingFatherNeuron = fatherKeyMap.get(motherKey);
 
     // Only map UUIDs that are not already present in the father and have not been used
     if (
-      matchingFatherNeurons.length > 0 &&
+      matchingFatherNeuron &&
       !fatherUUIDs.has(motherNeuron.uuid) &&
       !usedMotherUUIDs.has(motherNeuron.uuid)
     ) {
-      // Randomly select one matching father neuron for the mapping
-      const rng = getRandomNumberGenerator();
-      const selectedFatherNeuron = matchingFatherNeurons[
-        Math.floor(rng.random() * matchingFatherNeurons.length)
-      ];
-
-      uuidMapping.set(selectedFatherNeuron.uuid, motherNeuron.uuid);
+      uuidMapping.set(matchingFatherNeuron.uuid, motherNeuron.uuid);
       usedMotherUUIDs.add(motherNeuron.uuid);
-      usedFatherUUIDs.add(selectedFatherNeuron.uuid);
+      usedFatherUUIDs.add(matchingFatherNeuron.uuid);
     }
   });
 
@@ -282,25 +274,18 @@ export function createCompatibleFatherFromCreatures(
   const motherKeyMap = generateNeuronKeyMapFromCreature(mother);
   const fatherKeyMap = generateNeuronKeyMapFromCreature(father);
 
-  // Step 1: Identify matching neurons by composite key and populate the UUID mapping
+  // Step 1: Identify matching neurons by composite key and populate the UUID mapping.
+  // Issue #1644: Direct Map lookup O(1) replaces Array.from().filter() O(n) per key.
   motherKeyMap.forEach((motherNeuron, motherKey) => {
-    const matchingFatherNeurons = Array.from(fatherKeyMap.entries())
-      .filter(([fatherKey]) => fatherKey === motherKey)
-      .map(([, fatherNeuron]) => fatherNeuron);
+    const matchingFatherNeuron = fatherKeyMap.get(motherKey);
 
     // Only map UUIDs that are not already present in the father and have not been used
     if (
-      matchingFatherNeurons.length > 0 &&
+      matchingFatherNeuron &&
       !fatherUUIDs.has(motherNeuron.uuid) &&
       !usedMotherUUIDs.has(motherNeuron.uuid)
     ) {
-      // Randomly select one matching father neuron for the mapping
-      const rng = getRandomNumberGenerator();
-      const selectedFatherNeuron = matchingFatherNeurons[
-        Math.floor(rng.random() * matchingFatherNeurons.length)
-      ];
-
-      uuidMapping.set(selectedFatherNeuron.uuid, motherNeuron.uuid);
+      uuidMapping.set(matchingFatherNeuron.uuid, motherNeuron.uuid);
       usedMotherUUIDs.add(motherNeuron.uuid);
     }
   });
