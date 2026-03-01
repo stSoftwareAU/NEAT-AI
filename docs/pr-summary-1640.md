@@ -22,9 +22,9 @@ numbers from Apple M4 Pro benchmarks.
 
 ## Evidence
 
-This is a documentation-only change with no visual or performance impact.
-The tests verify that the code behaviours described in the guide (WASM
-activation, shallowClone equivalence, creature validation) remain accurate.
+This is a documentation-only change with no visual or performance impact. The
+tests verify that the code behaviours described in the guide (WASM activation,
+shallowClone equivalence, creature validation) remain accurate.
 
 ## Test Plan
 
