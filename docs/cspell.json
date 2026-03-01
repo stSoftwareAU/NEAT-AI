@@ -261,6 +261,7 @@
     "predictivecodingengine",
     "Deserialise",
     "deserialises",
-    "proc"
+    "proc",
+    "writable"
   ]
 }
