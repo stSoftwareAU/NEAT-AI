@@ -15,7 +15,7 @@ export function accumulateBias(
   targetPreActivationValue: number,
   preActivationValue: number,
   currentBias: number,
-  config: BackPropagationConfig,
+  _config: BackPropagationConfig,
 ) {
   // Issue #1314: Guard against non-finite inputs that would produce non-finite bias
   if (
@@ -43,7 +43,8 @@ export function accumulateBias(
 
   ns.count++;
   ns.totalBias += targetBias;
-  ns.totalAdjustedBias += limitBias(targetBias, currentBias, config);
+  // Issue #1653: Accumulate raw target bias; limitBias applied in calculateBias.
+  ns.totalAdjustedBias += targetBias;
 }
 
 export function adjustedBias(
@@ -175,7 +176,7 @@ export function accumulateBiasBatch4Way(
   targetPreActivationValues: number[],
   preActivationValues: number[],
   currentBiases: number[],
-  config: BackPropagationConfig,
+  _config: BackPropagationConfig,
 ) {
   for (let i = 0; i < 4; i++) {
     const targetPreActivation = targetPreActivationValues[i];
@@ -203,7 +204,8 @@ export function accumulateBiasBatch4Way(
     const ns = nsArray[i];
     ns.count++;
     ns.totalBias += targetBias;
-    ns.totalAdjustedBias += limitBias(targetBias, currentBias, config);
+    // Issue #1653: Accumulate raw target bias; limitBias applied in calculateBias.
+    ns.totalAdjustedBias += targetBias;
   }
 }
 
@@ -225,7 +227,7 @@ export function accumulateBiasBatch8Way(
   targetPreActivationValues: number[],
   preActivationValues: number[],
   currentBiases: number[],
-  config: BackPropagationConfig,
+  _config: BackPropagationConfig,
 ) {
   for (let i = 0; i < 8; i++) {
     const targetPreActivation = targetPreActivationValues[i];
@@ -253,6 +255,7 @@ export function accumulateBiasBatch8Way(
     const ns = nsArray[i];
     ns.count++;
     ns.totalBias += targetBias;
-    ns.totalAdjustedBias += limitBias(targetBias, currentBias, config);
+    // Issue #1653: Accumulate raw target bias; limitBias applied in calculateBias.
+    ns.totalAdjustedBias += targetBias;
   }
 }
