@@ -240,7 +240,6 @@ export function propagateTopological(
           const fromNeuron = neurons[from];
           const fromActivation = fromActivationCache[indx];
           const fromWeight = fromWeightCache[indx];
-          if (Math.abs(fromWeight) <= config.plankConstant) continue;
 
           const fromValue = fromValueCache[indx];
           const thisLinkError = perLinkError[indx] ?? 0;
@@ -253,7 +252,14 @@ export function propagateTopological(
             sparseConfig.propagateNeeded(fromNeuron.uuid) &&
             Math.abs(targetFromValue - fromValue) > config.plankConstant
           ) {
-            const targetFromActivation = targetFromValue / fromWeight;
+            // Issue #1654: Use a minimum effective weight for the division to
+            // avoid instability, rather than skipping entirely. This allows
+            // error to propagate through near-zero-weight connections so they
+            // can recover via backpropagation.
+            const effectiveWeight = Math.abs(fromWeight) > config.plankConstant
+              ? fromWeight
+              : config.plankConstant * (Math.sign(fromWeight) || 1);
+            const targetFromActivation = targetFromValue / effectiveWeight;
             const safeZoneFactor = safeZoneFactorCache[indx] ?? 1;
             if (Number.isFinite(safeZoneFactor) && safeZoneFactor > 0) {
               const fromSquash = fromNeuron.findSquash();
