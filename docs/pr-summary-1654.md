@@ -24,6 +24,7 @@ instability. Closes #1654.
 ## Evidence
 
 This is a backend logic fix with no UI changes. Verified by:
+
 - All 4326 tests pass (0 failures)
 - New zero-weight recovery tests demonstrate the fix
 - Existing convergence tests show no regression
@@ -31,10 +32,12 @@ This is a backend logic fix with no UI changes. Verified by:
 ## Test Plan
 
 Added `test/propagate/ZeroWeightRecovery.ts` with 3 tests:
+
 - **near-zero weight develops non-zero weight**: Verifies a synapse starting at
   weight 1e-10 recovers to a meaningful value through backpropagation
 - **error propagates through zero-weight connection**: Verifies a network with
   an initially zero-weight input→hidden connection converges over multiple
   training cycles
 - **no NaN or Infinity from near-zero weights**: Verifies numerical stability
-  with multiple near-zero weights — all outputs and synapse weights remain finite
+  with multiple near-zero weights — all outputs and synapse weights remain
+  finite
