@@ -1,12 +1,12 @@
 /**
- * Tests for learning rate scheduling improvements (Issue #1437).
+ * Tests for learning rate scheduling improvements (Issue #1437, #1656).
  *
  * Verifies:
  * - Sensible default learning rate (0.01) instead of random initialisation
- * - Warm restart strategy for escaping local minima
+ * - Warm restart strategy using cosine annealing (SGDR) for escaping local minima
  * - Default learning rate is predictable and effective
  *
- * Closes #1437
+ * Closes #1437, Closes #1656
  */
 import {
   assertAlmostEquals,
@@ -144,6 +144,88 @@ Deno.test("LearningRateScheduling - warm_restart rate stays positive", () => {
       `Rate at iteration ${i} should not exceed initial`,
     );
   }
+});
+
+Deno.test("LearningRateScheduling - warm_restart uses cosine annealing schedule", () => {
+  // Issue #1656: Warm restart should use cosine annealing (SGDR) instead of
+  // exponential decay. The formula is:
+  //   lr = lr_min + 0.5 * (lr_max - lr_min) * (1 + cos(π * T_cur / T_i))
+  const config = createBackPropagationConfig({
+    learningRateStrategy: "warm_restart",
+    initialLearningRate: 0.1,
+    learningRateDecay: 0.5,
+    warmRestartPeriod: 10,
+  });
+
+  const lrMax = 0.1;
+  const lrMin = lrMax * Math.pow(0.5, 10);
+
+  // At iteration 0: should be at lrMax (cos(0) = 1)
+  const lr0 = calculateLearningRate(config, 0);
+  const expected0 = lrMin + 0.5 * (lrMax - lrMin) * (1 + Math.cos(0));
+  assertAlmostEquals(
+    lr0,
+    expected0,
+    1e-9,
+    "Should match cosine formula at start",
+  );
+  assertAlmostEquals(lr0, lrMax, 1e-9, "Should equal lrMax at start");
+
+  // At mid-period (iteration 5): should be at midpoint
+  const lr5 = calculateLearningRate(config, 5);
+  const expected5 = lrMin +
+    0.5 * (lrMax - lrMin) * (1 + Math.cos(Math.PI * 5 / 10));
+  assertAlmostEquals(
+    lr5,
+    expected5,
+    1e-9,
+    "Should match cosine formula at mid-period",
+  );
+
+  // Cosine decays slowly at first, then accelerates - verify this property
+  const lr1 = calculateLearningRate(config, 1);
+  const lr9 = calculateLearningRate(config, 9);
+  const dropFirst = lr0 - lr1;
+  const dropLast = lr8(config) - lr9;
+
+  // First step should drop less than last step (slow start, fast end)
+  assertGreater(
+    dropLast,
+    dropFirst,
+    "Cosine should decay slowly at first and faster near the end",
+  );
+});
+
+// Helper to get lr at iteration 8
+function lr8(
+  config: ReturnType<typeof createBackPropagationConfig>,
+): number {
+  return calculateLearningRate(config, 8);
+}
+
+Deno.test("LearningRateScheduling - warm_restart cosine reaches minimum at end of period", () => {
+  // Issue #1656: At the end of a period (just before restart), the learning
+  // rate should be at lr_min = initialLearningRate * decay^period.
+  const config = createBackPropagationConfig({
+    learningRateStrategy: "warm_restart",
+    initialLearningRate: 0.1,
+    learningRateDecay: 0.5,
+    warmRestartPeriod: 4,
+  });
+
+  const lrMax = 0.1;
+
+  // At position 0: should be lrMax
+  const lr0 = calculateLearningRate(config, 0);
+  assertAlmostEquals(lr0, lrMax, 1e-9);
+
+  // Rate should decrease through the period
+  const lr3 = calculateLearningRate(config, 3);
+  assertGreater(lr0, lr3, "Should decrease through period");
+
+  // At iteration 4 (start of next period): should reset to lrMax
+  const lr4 = calculateLearningRate(config, 4);
+  assertAlmostEquals(lr4, lrMax, 1e-9, "Should reset at period boundary");
 });
 
 // ---------------------------------------------------------------------------

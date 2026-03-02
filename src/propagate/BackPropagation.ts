@@ -248,14 +248,18 @@ export function calculateLearningRate(
       return baseRate * adaptiveFactor * errorAdjustment * magnitudeScale;
     }
     case "warm_restart": {
-      // Issue #1437: Cosine annealing with warm restarts.
-      // The learning rate decays within each period, then resets to
-      // initialLearningRate at the start of each new period. This helps
-      // escape local minima by periodically boosting the learning rate.
+      // Issue #1656: Cosine annealing with warm restarts (SGDR).
+      // Uses the cosine schedule from Loshchilov & Hutter (2017):
+      //   lr = lr_min + 0.5 * (lr_max - lr_min) * (1 + cos(π * T_cur / T_i))
+      // Decays slowly at first (exploration), accelerates in the middle,
+      // and slows near the minimum (fine-tuning), before resetting.
       const period = config.warmRestartPeriod;
       const positionInPeriod = iteration % period;
-      return config.initialLearningRate *
-        Math.pow(config.learningRateDecay, positionInPeriod);
+      const lrMax = config.initialLearningRate;
+      const lrMin = lrMax * Math.pow(config.learningRateDecay, period);
+      return lrMin +
+        0.5 * (lrMax - lrMin) *
+          (1 + Math.cos(Math.PI * positionInPeriod / period));
     }
     default:
       return config.learningRate;
