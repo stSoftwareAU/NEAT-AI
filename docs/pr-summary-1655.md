@@ -5,9 +5,10 @@ backpropagation training (issue #1655). Benchmarked logarithmic and square-root
 growth against the current linear schedule (`base + iteration`) on a
 production-sized creature (960 neurons, 18,300 synapses) over 60 iterations.
 
-**Conclusion**: The existing linear schedule with the #1436 effective-generations
-cap (`Math.min(rawGenerations, totalActivationCount * 2)`) already prevents
-excessive inertia. Alternative schedules provided no meaningful improvement.
+**Conclusion**: The existing linear schedule with the #1436
+effective-generations cap (`Math.min(rawGenerations, totalActivationCount * 2)`)
+already prevents excessive inertia. Alternative schedules provided no meaningful
+improvement.
 
 Closes #1655.
 
@@ -31,11 +32,11 @@ Iter | Linear (base+iter)        | Log2 (base+log2)          | Sqrt (base+sqrt)
 
 ### Summary
 
-| Schedule | Final Error | Improvement |
-|----------|-------------|-------------|
-| Linear (current) | 5.4035218501 | 0.8507% |
-| Logarithmic | 5.4045914507 | 0.8310% |
-| Square root | 5.4045671824 | 0.8315% |
+| Schedule         | Final Error  | Improvement |
+| ---------------- | ------------ | ----------- |
+| Linear (current) | 5.4035218501 | 0.8507%     |
+| Logarithmic      | 5.4045914507 | 0.8310%     |
+| Square root      | 5.4045671824 | 0.8315%     |
 
 ### Key Finding
 
