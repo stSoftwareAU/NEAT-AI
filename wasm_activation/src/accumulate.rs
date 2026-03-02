@@ -115,9 +115,9 @@ pub(crate) fn accumulate_weight_single(
     target_value: f64,
     activation: f64,
     plank_constant: f64,
-    learning_rate: f64,
-    max_weight_adj_scale: f64,
-    limit_weight_scale: f64,
+    _learning_rate: f64,
+    _max_weight_adj_scale: f64,
+    _limit_weight_scale: f64,
 ) -> (f64, f64, f64, f64, f64, f64, f64) {
     // Skip non-finite values
     if !current_weight.is_finite() || !target_value.is_finite() || !activation.is_finite() {
@@ -159,14 +159,8 @@ pub(crate) fn accumulate_weight_single(
         return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     }
 
-    let adjusted_limited_weight = limit_weight(
-        tmp_weight,
-        current_weight,
-        plank_constant,
-        learning_rate,
-        max_weight_adj_scale,
-        limit_weight_scale,
-    );
+    // Issue #1653: Store raw target weight — learning rate is applied once
+    // in calculate_weight, not here during accumulation.
 
     // Track positive and negative activations separately
     let mut d_pos_act: f64 = 0.0;
@@ -179,11 +173,11 @@ pub(crate) fn accumulate_weight_single(
     if activation.abs() > plank_constant {
         if activation > 0.0 {
             d_pos_act = activation;
-            d_pos_adj = adjusted_limited_weight * activation;
+            d_pos_adj = tmp_weight * activation;
             d_cnt_pos = 1.0;
         } else if activation < 0.0 {
             d_neg_act = activation.abs();
-            d_neg_adj = adjusted_limited_weight * activation;
+            d_neg_adj = tmp_weight * activation;
             d_cnt_neg = 1.0;
         }
     }
@@ -296,10 +290,10 @@ pub(crate) fn accumulate_bias_single(
     target_pre_activation: f64,
     pre_activation: f64,
     current_bias: f64,
-    plank_constant: f64,
-    learning_rate: f64,
-    max_bias_adj_scale: f64,
-    limit_bias_scale: f64,
+    _plank_constant: f64,
+    _learning_rate: f64,
+    _max_bias_adj_scale: f64,
+    _limit_bias_scale: f64,
 ) -> (f64, f64, f64) {
     // Skip non-finite values
     if !target_pre_activation.is_finite()
@@ -319,16 +313,9 @@ pub(crate) fn accumulate_bias_single(
         return (0.0, 0.0, 0.0);
     }
 
-    let limited = limit_bias(
-        target_bias,
-        current_bias,
-        plank_constant,
-        learning_rate,
-        max_bias_adj_scale,
-        limit_bias_scale,
-    );
-
-    (1.0, target_bias, limited)
+    // Issue #1653: Store raw target bias — learning rate is applied once
+    // in calculate_bias, not here during accumulation.
+    (1.0, target_bias, target_bias)
 }
 
 /// Issue #1518 - Batch bias accumulation for 4 neurons.

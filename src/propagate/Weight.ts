@@ -50,19 +50,17 @@ export function accumulateWeight(
     return;
   }
 
-  // Adjust the weight with limiting.
-  const adjustedLimitedWeight = limitWeight(tmpWeight, currentWeight, config);
-
-  // Adjust weights based on the difference.
+  // Issue #1653: Store raw target weight — learning rate is applied once
+  // in calculateWeight, not here during accumulation.
   if (Math.abs(activation) > config.plankConstant) {
     // Track positive and negative activations separately.
     if (activation > 0) {
       cs.totalPositiveActivation += activation;
-      cs.totalPositiveAdjustedValue += adjustedLimitedWeight * activation;
+      cs.totalPositiveAdjustedValue += tmpWeight * activation;
       cs.countPositiveActivations++;
     } else if (activation < 0) {
       cs.totalNegativeActivation += Math.abs(activation);
-      cs.totalNegativeAdjustedValue += adjustedLimitedWeight * activation;
+      cs.totalNegativeAdjustedValue += tmpWeight * activation;
       cs.countNegativeActivations++;
     }
   }
@@ -256,16 +254,15 @@ export function accumulateWeightBatch4Way(
       continue;
     }
 
-    const adjustedLimitedWeight = limitWeight(tmpWeight, currentWeight, config);
-
+    // Issue #1653: Store raw target weight — learning rate applied in calculateWeight
     if (Math.abs(activation) > plankConstant) {
       if (activation > 0) {
         cs.totalPositiveActivation += activation;
-        cs.totalPositiveAdjustedValue += adjustedLimitedWeight * activation;
+        cs.totalPositiveAdjustedValue += tmpWeight * activation;
         cs.countPositiveActivations++;
       } else if (activation < 0) {
         cs.totalNegativeActivation += Math.abs(activation);
-        cs.totalNegativeAdjustedValue += adjustedLimitedWeight * activation;
+        cs.totalNegativeAdjustedValue += tmpWeight * activation;
         cs.countNegativeActivations++;
       }
     }
@@ -328,16 +325,15 @@ export function accumulateWeightBatch8Way(
       continue;
     }
 
-    const adjustedLimitedWeight = limitWeight(tmpWeight, currentWeight, config);
-
+    // Issue #1653: Store raw target weight — learning rate applied in calculateWeight
     if (Math.abs(activation) > plankConstant) {
       if (activation > 0) {
         cs.totalPositiveActivation += activation;
-        cs.totalPositiveAdjustedValue += adjustedLimitedWeight * activation;
+        cs.totalPositiveAdjustedValue += tmpWeight * activation;
         cs.countPositiveActivations++;
       } else if (activation < 0) {
         cs.totalNegativeActivation += Math.abs(activation);
-        cs.totalNegativeAdjustedValue += adjustedLimitedWeight * activation;
+        cs.totalNegativeAdjustedValue += tmpWeight * activation;
         cs.countNegativeActivations++;
       }
     }
