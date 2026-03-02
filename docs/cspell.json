@@ -263,6 +263,9 @@
     "deserialises",
     "proc",
     "writable",
-    "memcpy"
+    "memcpy",
+    "SGDR",
+    "Loshchilov",
+    "Hutter"
   ]
 }
