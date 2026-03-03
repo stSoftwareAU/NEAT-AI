@@ -525,7 +525,7 @@ export class Creature implements CreatureInternal {
     topology.bulkLoadInwardConnections(this, this._topoCaches);
   }
 
-  public getConnectionSet(): Set<string> {
+  public getConnectionSet(): Set<number> {
     return topology.getConnectionSet(this, this._topoCaches);
   }
 
