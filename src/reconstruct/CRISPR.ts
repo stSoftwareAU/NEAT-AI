@@ -139,12 +139,24 @@ export class CRISPR {
   ): CrisprInterface {
     const crispr: CrisprInterface = JSON.parse(JSON.stringify(dna));
 
-    if (crispr.synapses) {
-      for (const key in aliases) {
-        const value = aliases[key];
+    for (const key in aliases) {
+      const value = aliases[key];
+
+      if (crispr.neurons) {
+        crispr.neurons.forEach((neuron) => {
+          if (neuron.uuid === key) {
+            neuron.uuid = value;
+          }
+        });
+      }
+
+      if (crispr.synapses) {
         crispr.synapses.forEach((synapse) => {
           if (synapse.fromUUID === key) {
             synapse.fromUUID = value;
+          }
+          if (synapse.toUUID === key) {
+            synapse.toUUID = value;
           }
         });
       }
