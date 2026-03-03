@@ -58,6 +58,15 @@ export interface NeatArguments {
   /** List of DNA segments to attempt to inject */
   CRISPRs: CrisprInterface[];
 
+  /**
+   * Maximum number of CRISPRs to attempt per generation.
+   *
+   * Issue #1669: CRISPRs cycle across generations instead of being
+   * permanently consumed. This option controls how many are tried
+   * each generation. Defaults to 1 for backward compatibility.
+   */
+  maxCRISPRsPerGeneration: number;
+
   /** Custom cost function to use instead of predefined cost functions */
   customCost?: { filePath: string };
 

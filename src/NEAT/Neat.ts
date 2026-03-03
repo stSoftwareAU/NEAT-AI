@@ -66,8 +66,14 @@ export class Neat {
   readonly endTimeTS: number;
   /** Current population of creatures */
   population: Creature[];
-  /** Available CRISPR modifications for targeted evolution */
-  CRISPRs: CrisprInterface[];
+  /** Available CRISPR modifications for targeted evolution (read-only after init) */
+  readonly CRISPRs: CrisprInterface[];
+
+  /**
+   * Current index into the CRISPRs array for round-robin cycling.
+   * Issue #1669: Tracks which CRISPR to try next across generations.
+   */
+  crisprIndex = 0;
   /** Plateau detector for fitness stagnation detection (Issue #1039) */
   readonly plateauDetector: PlateauDetector;
 

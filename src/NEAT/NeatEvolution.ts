@@ -212,17 +212,26 @@ export async function evolve(
     }
   }
 
+  // Issue #1669: Cycle through CRISPRs instead of permanently consuming them.
+  // cleaveDNA() has a built-in idempotency guard (CRISPR tags on neurons/synapses)
+  // that prevents the same DNA from being applied twice to the same creature.
   const dnaPopulation = [];
 
-  if (neat.CRISPRs.length) {
-    const crispr = new CRISPR(fittest);
-    while (neat.CRISPRs.length > 0) {
-      const dna = neat.CRISPRs.pop()!;
+  if (neat.CRISPRs.length > 0) {
+    const maxPerGen = neat.config.maxCRISPRsPerGeneration;
+    let applied = 0;
+    let checked = 0;
 
+    while (applied < maxPerGen && checked < neat.CRISPRs.length) {
+      const dna = neat.CRISPRs[neat.crisprIndex % neat.CRISPRs.length];
+      neat.crisprIndex = (neat.crisprIndex + 1) % neat.CRISPRs.length;
+      checked++;
+
+      const crispr = new CRISPR(fittest);
       const enhanced = crispr.cleaveDNA(dna);
       if (enhanced.uuid !== fittest.uuid) {
         dnaPopulation.push(enhanced);
-        break;
+        applied++;
       }
     }
   }

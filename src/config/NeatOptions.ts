@@ -62,7 +62,8 @@ type NumericOptionKeys =
   | "discoveryReplayMaxTriples"
   | "discoveryReplayConcurrency"
   | "discoveryReplayTimeoutMinutes"
-  | "discoveryReplayMinTimeMinutes";
+  | "discoveryReplayMinTimeMinutes"
+  | "maxCRISPRsPerGeneration";
 
 /**
  * Options for NEAT configuration.
