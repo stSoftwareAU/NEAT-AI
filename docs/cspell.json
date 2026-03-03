@@ -267,6 +267,8 @@
     "SGDR",
     "Loshchilov",
     "Hutter",
-    "microbenchmark"
+    "microbenchmark",
+    "crisprs",
+    "retryable"
   ]
 }
