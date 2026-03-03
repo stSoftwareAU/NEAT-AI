@@ -25,9 +25,9 @@ import { initWasmForTests } from "../_initWasm.ts";
 
 function makeCaches(): TopologyCaches {
   return {
-    cacheTo: new Map(),
-    cacheFrom: new Map(),
-    cacheSelf: new Map(),
+    cacheTo: [],
+    cacheFrom: [],
+    cacheSelf: [],
     synapsesIndexedByTo: null,
     connectionSet: null,
     availableConnectionsCache: null,

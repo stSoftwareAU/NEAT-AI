@@ -13,9 +13,9 @@ import type { Synapse } from "../architecture/Synapse.ts";
  * Stored on the Creature instance and passed to topology functions.
  */
 export interface TopologyCaches {
-  cacheTo: Map<number, Synapse[]>;
-  cacheFrom: Map<number, Synapse[]>;
-  cacheSelf: Map<number, Synapse[]>;
+  cacheTo: (Synapse[] | undefined)[];
+  cacheFrom: (Synapse[] | undefined)[];
+  cacheSelf: (Synapse[] | undefined)[];
   synapsesIndexedByTo: Synapse[] | null;
   connectionSet: Set<number> | null;
   availableConnectionsCache: [number, number][] | null;
@@ -43,7 +43,7 @@ export function selfConnection(
   caches: TopologyCaches,
   indx: number,
 ): Synapse | null {
-  let results = caches.cacheSelf.get(indx);
+  let results = caches.cacheSelf[indx];
   if (results === undefined) {
     results = [];
     const tmpList = creature.synapses;
@@ -53,7 +53,7 @@ export function selfConnection(
         results.push(c);
       }
     }
-    caches.cacheSelf.set(indx, results);
+    caches.cacheSelf[indx] = results;
   }
   return results.length > 0 ? results[0] : null;
 }
@@ -68,10 +68,10 @@ export function inwardConnections(
   caches: TopologyCaches,
   toIndx: number,
 ): Synapse[] {
-  let results = caches.cacheTo.get(toIndx);
+  let results = caches.cacheTo[toIndx];
   if (results === undefined) {
     results = lookupInwardConnections(creature, caches, toIndx);
-    caches.cacheTo.set(toIndx, results);
+    caches.cacheTo[toIndx] = results;
   }
   return results;
 }
@@ -206,8 +206,8 @@ export function bulkLoadInwardConnections(
 
   const cacheTo = caches.cacheTo;
   for (let indx = 0, len = creature.neurons.length; indx < len; indx++) {
-    if (!cacheTo.has(indx)) {
-      cacheTo.set(indx, []);
+    if (cacheTo[indx] === undefined) {
+      cacheTo[indx] = [];
     }
   }
 
@@ -215,7 +215,7 @@ export function bulkLoadInwardConnections(
   for (let i = 0, len = index.length; i < len; i++) {
     const synapse = index[i];
     const to = synapse.to;
-    const tmpResults = cacheTo.get(to);
+    const tmpResults = cacheTo[to];
     if (tmpResults) {
       tmpResults.push(synapse);
     }
@@ -350,7 +350,7 @@ export function outwardConnections(
   caches: TopologyCaches,
   fromIndx: number,
 ): Synapse[] {
-  let results = caches.cacheFrom.get(fromIndx);
+  let results = caches.cacheFrom[fromIndx];
   if (results === undefined) {
     const startIndex = binarySearchForStartIndex(creature, fromIndx);
 
@@ -368,7 +368,7 @@ export function outwardConnections(
       results = [];
     }
 
-    caches.cacheFrom.set(fromIndx, results);
+    caches.cacheFrom[fromIndx] = results;
   }
   return results;
 }
