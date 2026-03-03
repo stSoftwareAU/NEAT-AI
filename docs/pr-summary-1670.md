@@ -6,8 +6,8 @@ Expand CRISPR test coverage for 10 previously untested code paths, covering
 
 ## Evidence
 
-All 4395 tests pass (including 10 new tests) via `./quality.sh`. No UI changes
-— this is a test-only change verified by test output.
+All 4395 tests pass (including 10 new tests) via `./quality.sh`. No UI changes —
+this is a test-only change verified by test output.
 
 ## Test Plan
 
