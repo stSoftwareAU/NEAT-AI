@@ -121,6 +121,8 @@ export { Mutation } from "./src/NEAT/Mutation.ts";
  * @see {@link module:src/reconstruct/CRISPR}
  */
 export { CRISPR, type CrisprInterface } from "./src/reconstruct/CRISPR.ts";
+export { CrisprError } from "./src/errors/CrisprError.ts";
+export type { CrisprErrorCode } from "./src/errors/CrisprError.ts";
 export { validateDNA } from "./src/reconstruct/validateDNA.ts";
 
 /**

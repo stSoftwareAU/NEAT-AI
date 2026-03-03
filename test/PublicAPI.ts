@@ -15,6 +15,7 @@ import {
   Creature,
   CreatureUtil,
   CRISPR,
+  CrisprError,
   DEFAULT_PLATEAU_DETECTION,
   fetchWasmForWorkers,
   formatErrorDelta,
@@ -81,6 +82,13 @@ Deno.test("Public API: CRISPR constructor works", () => {
   const creature = new Creature(2, 1);
   const crispr = new CRISPR(creature);
   assert(crispr !== undefined);
+});
+
+Deno.test("Public API: CrisprError is exported and constructable", () => {
+  const error = new CrisprError("test", "INVALID_DNA");
+  assertEquals(error.name, "CrisprError");
+  assertEquals(error.code, "INVALID_DNA");
+  assert(error instanceof Error);
 });
 
 Deno.test("Public API: Costs.find returns built-in cost functions", () => {

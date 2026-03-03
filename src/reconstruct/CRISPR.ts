@@ -1,8 +1,8 @@
-import { assert } from "@std/assert";
 import { addTag, getTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { CreatureUtil, Upgrade } from "../../mod.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import { Creature } from "../Creature.ts";
+import { CrisprError } from "../errors/CrisprError.ts";
 import {
   getMajorVersion,
   upgradeSemanticVersionIfForwardOnlyConfirmed,
@@ -261,14 +261,18 @@ export class CRISPR {
         ? s.toRelative + adjustIndx
         : undefined;
 
-      assert(
-        from !== undefined && Number.isFinite(from) && from >= 0,
-        `Invalid connection (from): ${from}`,
-      );
-      assert(
-        to !== undefined && Number.isFinite(to) && to >= 0,
-        `Invalid connection (to): ${to}`,
-      );
+      if (from === undefined || !Number.isFinite(from) || from < 0) {
+        throw new CrisprError(
+          `Invalid connection (from): ${from}`,
+          "INVALID_CONNECTION",
+        );
+      }
+      if (to === undefined || !Number.isFinite(to) || to < 0) {
+        throw new CrisprError(
+          `Invalid connection (to): ${to}`,
+          "INVALID_CONNECTION",
+        );
+      }
 
       const currentSynapse = tmpCreature.getSynapse(from, to);
       if (!currentSynapse) {
@@ -297,12 +301,16 @@ export class CRISPR {
 
     if (dna.neurons) {
       dna.neurons.forEach((neuron) => {
-        assert(neuron.type !== "output", "Cannot insert output neurons");
+        if (neuron.type === "output") {
+          throw new CrisprError("Cannot insert output neurons", "INVALID_DNA");
+        }
       });
 
       const neurons: Neuron[] = [];
       tmpCreature.neurons.forEach((neuron, indx) => {
-        assert(neuron.uuid, "Missing uuid");
+        if (!neuron.uuid) {
+          throw new CrisprError("Missing uuid", "MISSING_UUID");
+        }
         if (neuron.type !== "output") {
           uuidMap.set(neuron.uuid, indx);
           neurons.push(neuron);
@@ -353,38 +361,51 @@ export class CRISPR {
 
     tmpCreature.clearCache();
     dna.synapses.forEach((c) => {
-      assert(
-        c.fromRelative === undefined && c.toRelative === undefined,
-        "Cannot insert relative synapses",
-      );
+      if (c.fromRelative !== undefined || c.toRelative !== undefined) {
+        throw new CrisprError("Cannot insert relative synapses", "INVALID_DNA");
+      }
 
-      assert(
-        c.from === undefined,
-        "Cannot insert static index (from) synapses",
-      );
-      assert(c.to === undefined, "Cannot insert static index (to) synapses");
+      if (c.from !== undefined) {
+        throw new CrisprError(
+          "Cannot insert static index (from) synapses",
+          "INVALID_DNA",
+        );
+      }
+      if (c.to !== undefined) {
+        throw new CrisprError(
+          "Cannot insert static index (to) synapses",
+          "INVALID_DNA",
+        );
+      }
 
-      assert(
-        c.fromUUID !== undefined && c.toUUID !== undefined,
-        "Missing UUID for synapse",
-      );
+      if (c.fromUUID === undefined || c.toUUID === undefined) {
+        throw new CrisprError("Missing UUID for synapse", "INVALID_DNA");
+      }
     });
 
     dna.synapses.forEach((s) => {
-      assert(s.fromUUID !== undefined, "Missing fromUUID");
+      if (s.fromUUID === undefined) {
+        throw new CrisprError("Missing fromUUID", "MISSING_UUID");
+      }
       const fromIndx = uuidMap.get(s.fromUUID);
-      assert(
-        fromIndx !== undefined,
-        "Invalid connection (from): " + JSON.stringify(s),
-      );
+      if (fromIndx === undefined) {
+        throw new CrisprError(
+          "Invalid connection (from): " + JSON.stringify(s),
+          "MISSING_UUID",
+        );
+      }
 
-      assert(s.toUUID !== undefined, "Missing toUUID");
+      if (s.toUUID === undefined) {
+        throw new CrisprError("Missing toUUID", "MISSING_UUID");
+      }
       const toIndx = uuidMap.get(s.toUUID);
 
-      assert(
-        toIndx !== undefined,
-        "Invalid connection (to): " + JSON.stringify(s),
-      );
+      if (toIndx === undefined) {
+        throw new CrisprError(
+          "Invalid connection (to): " + JSON.stringify(s),
+          "MISSING_UUID",
+        );
+      }
 
       const currentSynapse = tmpCreature.getSynapse(fromIndx, toIndx);
       if (!currentSynapse) {
@@ -424,7 +445,9 @@ export class CRISPR {
     const enforceForwardOnly = this.creature.forwardOnly === true ||
       getMajorVersion(this.creature.semanticVersion) >= 4;
     this.creature.neurons.forEach((neuron) => {
-      assert(neuron.uuid !== undefined, "missing uuid");
+      if (neuron.uuid === undefined) {
+        throw new CrisprError("missing uuid", "MISSING_UUID");
+      }
 
       const id = getTag(neuron, "CRISPR");
 
@@ -447,10 +470,18 @@ export class CRISPR {
 
     const dnaClean = Upgrade.CRISPR(dna);
     let modifiedCreature: Creature;
-    if (dnaClean.mode === "insert") {
-      modifiedCreature = this.insert(dnaClean);
-    } else {
-      modifiedCreature = this.append(dnaClean);
+    try {
+      if (dnaClean.mode === "insert") {
+        modifiedCreature = this.insert(dnaClean);
+      } else {
+        modifiedCreature = this.append(dnaClean);
+      }
+    } catch (e) {
+      if (e instanceof CrisprError) {
+        getLogger().warn(`CRISPR ${dna.id}: ${e.code} — ${e.message}`);
+        return this.creature;
+      }
+      throw e;
     }
 
     delete modifiedCreature.uuid;
@@ -481,13 +512,27 @@ export class CRISPR {
         modifiedCreature.validate();
       }
     } catch (e) {
-      const name = `.CRISPR-ERROR-${dna.id}.json`;
-      Deno.writeTextFileSync(
-        name,
-        JSON.stringify(modifiedCreature.exportJSON(), null, 1),
-      );
+      if (e instanceof CrisprError) {
+        // Expected operational errors — log and return the original creature.
+        getLogger().warn(
+          `CRISPR ${dna.id}: ${e.code} — ${e.message}`,
+        );
+        return this.creature;
+      }
 
-      getLogger().warn(`Invalid creature saved to ${name}`, e);
+      // Unexpected errors — log the invalid creature for debugging, then
+      // return the original creature. The JSON is logged rather than written
+      // to the working directory so core logic has no file-system side effects.
+      const creatureJSON = JSON.stringify(
+        modifiedCreature.exportJSON(),
+        null,
+        1,
+      );
+      getLogger().warn(
+        `CRISPR ${dna.id}: unexpected error during validation.\n` +
+          `Creature JSON:\n${creatureJSON}`,
+        e,
+      );
       return this.creature;
     }
 
