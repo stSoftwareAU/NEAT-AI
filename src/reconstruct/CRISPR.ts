@@ -8,6 +8,7 @@ import {
   upgradeSemanticVersionIfForwardOnlyConfirmed,
 } from "../upgrade/Upgrade.ts";
 import { getLogger } from "../utils/Logger.ts";
+import { validateDNA } from "./validateDNA.ts";
 
 /**
  * Interface representing the structure of the CRISPR modification data.
@@ -403,6 +404,8 @@ export class CRISPR {
    * @returns The modified creature or undefined if no modifications were applied.
    */
   cleaveDNA(dna: CrisprInterface): Creature {
+    validateDNA(dna);
+
     let alreadyProcessed = false;
 
     const uuid = CreatureUtil.makeUUID(this.creature);
