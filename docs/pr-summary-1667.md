@@ -13,5 +13,6 @@ including the 3 new tests and the existing `editAliases` test.
 
 - `editAliases rewrites toUUID` — alias applied to `toUUID` synapse field
 - `editAliases rewrites neuron uuid` — alias applied to neuron `uuid` field
-- `editAliases no-op when alias matches nothing` — unmatched alias leaves DNA unchanged
+- `editAliases no-op when alias matches nothing` — unmatched alias leaves DNA
+  unchanged
 - Existing `editAliases` test continues to pass unchanged
