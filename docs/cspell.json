@@ -266,6 +266,7 @@
     "memcpy",
     "SGDR",
     "Loshchilov",
-    "Hutter"
+    "Hutter",
+    "microbenchmark"
   ]
 }
