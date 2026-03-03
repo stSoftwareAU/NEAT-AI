@@ -115,9 +115,9 @@ export class Creature implements CreatureInternal {
 
   // Topology caches (managed by CreatureTopology module)
   private _topoCaches: TopologyCaches = {
-    cacheTo: new Map(),
-    cacheFrom: new Map(),
-    cacheSelf: new Map(),
+    cacheTo: [],
+    cacheFrom: [],
+    cacheSelf: [],
     synapsesIndexedByTo: null,
     connectionSet: null,
     availableConnectionsCache: null,
@@ -212,9 +212,9 @@ export class Creature implements CreatureInternal {
     if (from === -1 || to === -1) {
       // Full invalidation: clears everything including hiddenNeuronUUIDs.
       // Used when neurons are added/removed or structure is fully rebuilt.
-      this._topoCaches.cacheTo.clear();
-      this._topoCaches.cacheFrom.clear();
-      this._topoCaches.cacheSelf.clear();
+      this._topoCaches.cacheTo = [];
+      this._topoCaches.cacheFrom = [];
+      this._topoCaches.cacheSelf = [];
       this._topoCaches.synapsesIndexedByTo = null;
       this._topoCaches.inwardCacheMissCount = 0;
       this._topoCaches.connectionSet = null;
@@ -225,9 +225,9 @@ export class Creature implements CreatureInternal {
       // Connection-only invalidation: preserves hiddenNeuronUUIDs.
       // Adding/removing a connection does not change the set of neurons,
       // so the UUID set remains valid.
-      this._topoCaches.cacheTo.delete(to);
-      this._topoCaches.cacheFrom.delete(from);
-      this._topoCaches.cacheSelf.delete(from);
+      this._topoCaches.cacheTo[to] = undefined;
+      this._topoCaches.cacheFrom[from] = undefined;
+      this._topoCaches.cacheSelf[from] = undefined;
       this._topoCaches.synapsesIndexedByTo = null;
       this._topoCaches.inwardCacheMissCount = 0;
       this._topoCaches.connectionSet = null;
@@ -245,9 +245,9 @@ export class Creature implements CreatureInternal {
    * rebuilds of the hiddenNeuronUUIDs set.
    */
   private clearConnectionCaches() {
-    this._topoCaches.cacheTo.clear();
-    this._topoCaches.cacheFrom.clear();
-    this._topoCaches.cacheSelf.clear();
+    this._topoCaches.cacheTo = [];
+    this._topoCaches.cacheFrom = [];
+    this._topoCaches.cacheSelf = [];
     this._topoCaches.synapsesIndexedByTo = null;
     this._topoCaches.inwardCacheMissCount = 0;
     this._topoCaches.connectionSet = null;
