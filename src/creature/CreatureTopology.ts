@@ -17,7 +17,7 @@ export interface TopologyCaches {
   cacheFrom: Map<number, Synapse[]>;
   cacheSelf: Map<number, Synapse[]>;
   synapsesIndexedByTo: Synapse[] | null;
-  connectionSet: Set<string> | null;
+  connectionSet: Set<number> | null;
   availableConnectionsCache: [number, number][] | null;
   hiddenNeuronUUIDs: Set<string> | null;
   inwardCacheMissCount: number;
@@ -223,19 +223,22 @@ export function bulkLoadInwardConnections(
 }
 
 /**
- * Builds and returns a Set of existing connections as "from-to" strings.
- * Enables O(1) lookup for connection existence checks.
+ * Builds and returns a Set of existing connections as numeric keys.
+ * Encodes (from, to) as `from * neuronCount + to` for O(1) lookup
+ * without string allocation.
  * Issue #1036: Performance optimisation for ADD_CONNECTION mutation.
+ * Issue #1659: Replaced string keys with numeric keys.
  */
 export function getConnectionSet(
   creature: Creature,
   caches: TopologyCaches,
-): Set<string> {
+): Set<number> {
   if (caches.connectionSet === null) {
-    caches.connectionSet = new Set<string>();
+    const neuronCount = creature.neurons.length;
+    caches.connectionSet = new Set<number>();
     for (let i = 0, len = creature.synapses.length; i < len; i++) {
       const synapse = creature.synapses[i];
-      caches.connectionSet.add(`${synapse.from}-${synapse.to}`);
+      caches.connectionSet.add(synapse.from * neuronCount + synapse.to);
     }
   }
   return caches.connectionSet;
@@ -244,6 +247,7 @@ export function getConnectionSet(
 /**
  * Checks if a connection exists between two neurons in O(1) time.
  * Issue #1036: Performance optimisation for ADD_CONNECTION mutation.
+ * Issue #1659: Uses numeric key encoding.
  */
 export function hasConnection(
   creature: Creature,
@@ -251,7 +255,8 @@ export function hasConnection(
   from: number,
   to: number,
 ): boolean {
-  return getConnectionSet(creature, caches).has(`${from}-${to}`);
+  const neuronCount = creature.neurons.length;
+  return getConnectionSet(creature, caches).has(from * neuronCount + to);
 }
 
 /**
@@ -321,7 +326,7 @@ function computeAvailableConnections(
     for (let toIndx = startTo; toIndx < neuronCount; toIndx++) {
       const neuronTo = neurons[toIndx];
       if (neuronTo.type === "constant") continue;
-      const key = `${fromIndx}-${toIndx}`;
+      const key = fromIndx * neuronCount + toIndx;
       if (!connSet.has(key)) {
         available.push([fromIndx, toIndx]);
       }
