@@ -215,11 +215,11 @@ export class Neuron implements TagsInterface, NeuronInternal {
   }
 
   activateNeuron(): { activation: number; value: number } {
-    throw new Error("Not implemented");
+    throw new TopologyError("Not implemented", "INVALID_STATE");
   }
 
   activateAndTraceNeuron(): { activation: number; value: number } {
-    throw new Error("Not implemented");
+    throw new TopologyError("Not implemented", "INVALID_STATE");
   }
 
   applyLearnings(): boolean {

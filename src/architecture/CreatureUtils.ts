@@ -1,5 +1,6 @@
 import { generate as generateV5Sync } from "./SyncV5.ts";
 import type { Creature } from "../Creature.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 /**
@@ -70,7 +71,10 @@ export class CreatureUtil {
     }
 
     if (!creature.synapses || !creature.neurons) {
-      throw new Error("Not a creature: " + (typeof creature));
+      throw new ValidationError(
+        "Not a creature: " + (typeof creature),
+        "OTHER",
+      );
     }
     const holdDebug = creature.DEBUG;
     try {
@@ -137,7 +141,10 @@ export class CreatureUtil {
     }
 
     if (!creature.synapses || !creature.neurons) {
-      throw new Error("Not a creature: " + (typeof creature));
+      throw new ValidationError(
+        "Not a creature: " + (typeof creature),
+        "OTHER",
+      );
     }
 
     const holdDebug = creature.DEBUG;

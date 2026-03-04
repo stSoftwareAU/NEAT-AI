@@ -35,6 +35,8 @@ import type { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
 import type { SparseConfigLike } from "./propagate/sparse/SparseConfigLike.ts";
 import type { WasmCreatureActivation } from "./wasm/mod.ts";
 import { getRandomNumberGenerator } from "./utils/RandomNumberGenerator.ts";
+import { ActivationError } from "./errors/ActivationError.ts";
+import { TopologyError } from "./errors/TopologyError.ts";
 
 // Extracted modules
 import * as activation from "./creature/CreatureActivation.ts";
@@ -401,10 +403,13 @@ export class Creature implements CreatureInternal {
   ): Float32Array {
     for (let i = 0; i < input.length; i++) {
       if (!Number.isFinite(input[i])) {
-        throw new Error(
+        throw new ActivationError(
           `Input observation at index ${i} must be a finite number, got ${
             input[i]
           }`,
+          "NON_FINITE_INPUT",
+          "input",
+          input[i],
         );
       }
     }
@@ -423,10 +428,13 @@ export class Creature implements CreatureInternal {
   activate(input: Float32Array, feedbackLoop: boolean = false): Float32Array {
     for (let i = 0; i < input.length; i++) {
       if (!Number.isFinite(input[i])) {
-        throw new Error(
+        throw new ActivationError(
           `Input observation at index ${i} must be a finite number, got ${
             input[i]
           }`,
+          "NON_FINITE_INPUT",
+          "input",
+          input[i],
         );
       }
     }
@@ -452,10 +460,13 @@ export class Creature implements CreatureInternal {
   ): Float32Array {
     for (let i = 0; i < input.length; i++) {
       if (!Number.isFinite(input[i])) {
-        throw new Error(
+        throw new ActivationError(
           `Input observation at index ${i} must be a finite number, got ${
             input[i]
           }`,
+          "NON_FINITE_INPUT",
+          "input",
+          input[i],
         );
       }
     }
@@ -618,7 +629,10 @@ export class Creature implements CreatureInternal {
     for (const conn of connections) {
       const key = `${conn.from}-${conn.to}`;
       if (batchSet.has(key)) {
-        throw new Error(`Duplicate connection in batch: ${key} already exists`);
+        throw new TopologyError(
+          `Duplicate connection in batch: ${key} already exists`,
+          "INVALID_CONNECTION",
+        );
       }
       batchSet.add(key);
     }
@@ -626,8 +640,9 @@ export class Creature implements CreatureInternal {
     for (const conn of connections) {
       const existing = topology.binarySearchSynapse(this, conn.from, conn.to);
       if (existing !== -1) {
-        throw new Error(
+        throw new TopologyError(
           `Connection ${conn.from}->${conn.to} already exists in creature`,
+          "INVALID_CONNECTION",
         );
       }
     }
