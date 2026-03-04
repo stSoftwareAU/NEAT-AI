@@ -85,6 +85,7 @@
     "Backpropagated",
     "favorable",
     "cleanup",
+    "cleanups",
     "pred",
     "softmax",
     "thresholding",
