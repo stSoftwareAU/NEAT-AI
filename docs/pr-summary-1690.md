@@ -7,13 +7,20 @@ or NEAT-AI-Discovery. Closes #1690.
 
 These source files were never imported by any production code:
 
-- `src/NEAT/AdaptiveMutationRate.ts` - Stability-based mutation adaptation (Issue #1307), never integrated
-- `src/architecture/CompactSynapseStore.ts` - Struct-of-arrays synapse storage (Issue #1662), never integrated
-- `src/architecture/TrainingMetrics.ts` - Training metrics collector, never integrated
-- `src/breed/EnsembleDiversityScoring.ts` - Ensemble diversity scoring (Issue #1310), never integrated
-- `src/breed/StabilityAwareSelection.ts` - Stability-aware parent selection (Issue #1307), never integrated
-- `src/utils/validateCreatureExport.ts` - Creature export schema validator, never used in production
-- `src/wasm/WasmPredictiveCoding.ts` - WASM predictive coding engine interface (Issue #1560), never integrated
+- `src/NEAT/AdaptiveMutationRate.ts` - Stability-based mutation adaptation
+  (Issue #1307), never integrated
+- `src/architecture/CompactSynapseStore.ts` - Struct-of-arrays synapse storage
+  (Issue #1662), never integrated
+- `src/architecture/TrainingMetrics.ts` - Training metrics collector, never
+  integrated
+- `src/breed/EnsembleDiversityScoring.ts` - Ensemble diversity scoring (Issue
+  #1310), never integrated
+- `src/breed/StabilityAwareSelection.ts` - Stability-aware parent selection
+  (Issue #1307), never integrated
+- `src/utils/validateCreatureExport.ts` - Creature export schema validator,
+  never used in production
+- `src/wasm/WasmPredictiveCoding.ts` - WASM predictive coding engine interface
+  (Issue #1560), never integrated
 
 ### Dead test/bench files removed (8 files)
 
@@ -35,9 +42,10 @@ not used by either consumer:
 
 - `applyNeuronChanges`, `safeWriteText`, `safeWriteTextSync`
 - `WorkerProcessor as IntelligentDesignWorkerProcessor`
-- Types: `ApplyTacitKnowledgeOptions`, `ImproveSquashOptions`, `ImproveSquashResult`,
-  `RequestData as IntelligentDesignRequestData`, `ResponseData as IntelligentDesignResponseData`,
-  `TacitKnowledgeResult`, `WorkerInterface as IntelligentDesignWorkerInterface`
+- Types: `ApplyTacitKnowledgeOptions`, `ImproveSquashOptions`,
+  `ImproveSquashResult`, `RequestData as IntelligentDesignRequestData`,
+  `ResponseData as IntelligentDesignResponseData`, `TacitKnowledgeResult`,
+  `WorkerInterface as IntelligentDesignWorkerInterface`
 
 Note: The underlying code remains available internally; only the unused public
 re-exports were removed.
@@ -45,8 +53,10 @@ re-exports were removed.
 ### Minor cleanups
 
 - Made `bumpToFourIfForwardOnlyConfirmed()` and `shouldEnforceForwardOnly()` in
-  `src/discovery/CandidateApplication.ts` non-exported (only used within the same file)
-- Removed stale comment referencing deleted `validateCreatureExport` in `CreatureInterfaces.ts`
+  `src/discovery/CandidateApplication.ts` non-exported (only used within the
+  same file)
+- Removed stale comment referencing deleted `validateCreatureExport` in
+  `CreatureInterfaces.ts`
 - Updated `test/intelligentDesign/Exports.ts` to match the reduced public API
 
 ## Evidence
