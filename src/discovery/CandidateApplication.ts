@@ -37,7 +37,7 @@ import {
  * forward-only, even if no repair was needed, so downstream logic treats
  * structurally identical creatures consistently.
  */
-export function bumpToFourIfForwardOnlyConfirmed(creature: Creature): void {
+function bumpToFourIfForwardOnlyConfirmed(creature: Creature): void {
   const major = getMajorVersion(creature.semanticVersion);
   if (major === 2 || major === 3) {
     creature.semanticVersion = "4.0.0";
@@ -50,7 +50,7 @@ export function bumpToFourIfForwardOnlyConfirmed(creature: Creature): void {
  * - If `forwardOnly` is true, we must reject recurrent connections.
  * - If the creature is 4.x+, forward-only is a hard invariant.
  */
-export function shouldEnforceForwardOnly(creature: Creature): boolean {
+function shouldEnforceForwardOnly(creature: Creature): boolean {
   return creature.forwardOnly === true ||
     getMajorVersion(creature.semanticVersion) >= 4;
 }
