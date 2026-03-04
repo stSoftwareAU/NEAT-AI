@@ -133,11 +133,15 @@ export class WasmCreatureActivation {
    */
   activate(input: Float32Array): Float32Array {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
     if (input.length !== this.numInputs) {
-      throw new Error(
+      throw new WasmError(
         `Input length ${input.length} does not match expected ${this.numInputs}`,
+        "ACTIVATION_FAILED",
       );
     }
     return this.network.activate(input, this.numOutputs);
@@ -152,11 +156,15 @@ export class WasmCreatureActivation {
    */
   activateView(input: Float32Array): Float32Array {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
     if (input.length !== this.numInputs) {
-      throw new Error(
+      throw new WasmError(
         `Input length ${input.length} does not match expected ${this.numInputs}`,
+        "ACTIVATION_FAILED",
       );
     }
     if (typeof this.network.activate_view !== "function") {
@@ -171,16 +179,21 @@ export class WasmCreatureActivation {
    */
   activateInto(input: Float32Array, output: Float32Array): void {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
     if (input.length !== this.numInputs) {
-      throw new Error(
+      throw new WasmError(
         `Input length ${input.length} does not match expected ${this.numInputs}`,
+        "ACTIVATION_FAILED",
       );
     }
     if (output.length !== this.numOutputs) {
-      throw new Error(
+      throw new WasmError(
         `Output buffer length ${output.length} does not match expected ${this.numOutputs}`,
+        "ACTIVATION_FAILED",
       );
     }
     this.network.activate_into(input, output);
@@ -196,7 +209,10 @@ export class WasmCreatureActivation {
     feedbackLoop: boolean,
   ): void {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
     if (
       !feedbackLoop && this.needsResetWhenStateless &&
@@ -215,7 +231,10 @@ export class WasmCreatureActivation {
     feedbackLoop: boolean,
   ): Float32Array {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
     if (
       !feedbackLoop && this.needsResetWhenStateless &&
@@ -242,11 +261,15 @@ export class WasmCreatureActivation {
    */
   activateAndTrace(input: Float32Array): WasmTraceResult {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
     if (input.length !== this.numInputs) {
-      throw new Error(
+      throw new WasmError(
         `Input length ${input.length} does not match expected ${this.numInputs}`,
+        "ACTIVATION_FAILED",
       );
     }
 
@@ -290,7 +313,10 @@ export class WasmCreatureActivation {
     feedbackLoop: boolean,
   ): WasmTraceResult {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
     if (
       !feedbackLoop && this.needsResetWhenStateless &&
@@ -308,15 +334,19 @@ export class WasmCreatureActivation {
     inputs: [Float32Array, Float32Array, Float32Array, Float32Array],
   ): [WasmTraceResult, WasmTraceResult, WasmTraceResult, WasmTraceResult] {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
 
     for (let i = 0; i < 4; i++) {
       if (inputs[i].length !== this.numInputs) {
-        throw new Error(
+        throw new WasmError(
           `Input ${i} length ${
             inputs[i].length
           } does not match expected ${this.numInputs}`,
+          "ACTIVATION_FAILED",
         );
       }
     }
@@ -398,7 +428,10 @@ export class WasmCreatureActivation {
     feedbackLoop: boolean,
   ): [WasmTraceResult, WasmTraceResult, WasmTraceResult, WasmTraceResult] {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
     if (
       !feedbackLoop && this.needsResetWhenStateless &&
@@ -418,7 +451,10 @@ export class WasmCreatureActivation {
     forwardOnly: boolean,
   ): number {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
     const fn = getMseSumBatchPackedFn();
     if (!fn) {
@@ -436,7 +472,10 @@ export class WasmCreatureActivation {
     forwardOnly: boolean,
   ): number {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
     const fn = getMaeSumBatchPackedFn();
     if (!fn) {
@@ -454,7 +493,10 @@ export class WasmCreatureActivation {
     forwardOnly: boolean,
   ): number {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
     const fn = getCrossEntropySumBatchPackedFn();
     if (!fn) {
@@ -472,7 +514,10 @@ export class WasmCreatureActivation {
     forwardOnly: boolean,
   ): number {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
     const fn = getMapeSumBatchPackedFn();
     if (!fn) {
@@ -490,7 +535,10 @@ export class WasmCreatureActivation {
     forwardOnly: boolean,
   ): number {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
     const fn = getMsleSumBatchPackedFn();
     if (!fn) {
@@ -508,7 +556,10 @@ export class WasmCreatureActivation {
     forwardOnly: boolean,
   ): number {
     if (this.freed) {
-      throw new Error("WasmCreatureActivation has been freed");
+      throw new WasmError(
+        "WasmCreatureActivation has been freed",
+        "ACTIVATION_FAILED",
+      );
     }
     const fn = getHingeSumBatchPackedFn();
     if (!fn) {
