@@ -12,7 +12,6 @@ Deno.test("mod.ts exports Intelligent Design symbols", async () => {
 
   assertEquals(typeof neat.scanForSquashImprovements, "function");
   assertEquals(typeof neat.combineImprovements, "function");
-  assertEquals(typeof neat.applyNeuronChanges, "function");
   assertEquals(typeof neat.IntelligentDesignWorkerHandler, "function");
 });
 

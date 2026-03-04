@@ -187,7 +187,6 @@ export type { DiscoveryEvaluationSummary } from "./src/discovery/DiscoveryRunner
  */
 export {
   alternativeSquashes,
-  applyNeuronChanges,
   cleanKnowledge,
   combineImprovements,
   combineKnowledge,
@@ -197,23 +196,13 @@ export {
   makeModifiedCreatureWithPrevious,
   safeWriteJson,
   safeWriteJsonSync,
-  safeWriteText,
-  safeWriteTextSync,
   scanForSquashImprovements,
   shuffle,
   WorkerHandler as IntelligentDesignWorkerHandler,
-  WorkerProcessor as IntelligentDesignWorkerProcessor,
 } from "./src/intelligentDesign/mod.ts";
 export type {
-  ApplyTacitKnowledgeOptions,
   BestNeuronSquash,
-  ImproveSquashOptions,
-  ImproveSquashResult,
-  RequestData as IntelligentDesignRequestData,
-  ResponseData as IntelligentDesignResponseData,
   TacitKnowledgeMap,
-  TacitKnowledgeResult,
-  WorkerInterface as IntelligentDesignWorkerInterface,
 } from "./src/intelligentDesign/mod.ts";
 
 /**
