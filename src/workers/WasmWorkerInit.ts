@@ -10,6 +10,7 @@
  * @module
  */
 
+import { WasmError } from "../errors/WasmError.ts";
 import {
   initWasmActivationSync,
   isWasmActivationAvailable,
@@ -35,10 +36,11 @@ export async function initialiseWasmActivationFromPayload(
 
   if (!payload) {
     if (wasmRequired) {
-      throw new Error(
+      throw new WasmError(
         "Worker WASM activation payload missing (WASM is required). " +
           "Call fetchWasmForWorkers() before spawning workers, or ensure the NEAT-AI " +
           "package includes `wasm_activation/pkg`.",
+        "MODULE_NOT_LOADED",
       );
     }
     return;
@@ -65,5 +67,8 @@ export async function initialiseWasmActivationFromPayload(
   }
 
   if (isWasmActivationAvailable()) return;
-  throw new Error("Worker WASM activation init failed");
+  throw new WasmError(
+    "Worker WASM activation init failed",
+    "MODULE_NOT_LOADED",
+  );
 }

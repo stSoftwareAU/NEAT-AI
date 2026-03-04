@@ -8,6 +8,8 @@
  * @module
  */
 
+import { WasmError } from "../errors/WasmError.ts";
+
 /**
  * Payload for bootstrapping WASM activation inside a worker.
  *
@@ -93,10 +95,11 @@ export async function loadWasmActivationInitPayloadAsync(): Promise<
         const wasmErr = !wasmRes.ok
           ? `${wasmUrl.href}: ${wasmRes.status} ${wasmRes.statusText}`
           : null;
-        throw new Error(
+        throw new WasmError(
           `WASM activation payload could not be loaded. ${
             [jsErr, wasmErr].filter(Boolean).join("; ")
           }`,
+          "MODULE_NOT_LOADED",
         );
       }
       jsSource = await jsRes.text();
