@@ -252,6 +252,8 @@ In our production workloads, the default is feed-forward/forward-only.
 - **docs/DiscoveryDir.md** - Technical API reference for `discoveryDir()`
 - **docs/GPU_ACCELERATION.md** - GPU acceleration details
 - **docs/CONFIGURATION_GUIDE.md** - Complete configuration options reference
+- **docs/PERFORMANCE_TUNING.md** - Performance tuning guide for large-scale
+  training
 - **docs/performance-guide.md** - Performance optimisation guide with WASM
   migration learnings
 - **docs/ACTIVATION_FUNCTIONS.md** - Activation function selection guide
