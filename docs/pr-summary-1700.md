@@ -1,20 +1,20 @@
 ## Summary
 
-Add comprehensive performance tuning guide for large-scale training runs.
-Closes #1700.
+Add comprehensive performance tuning guide for large-scale training runs. Closes
+#1700.
 
 Created `docs/PERFORMANCE_TUNING.md` covering all configurable performance
 parameters with practical recommendations:
 
-- **WASM cache tuning**: `maxCachedActivations` and `compilationCacheSize` sizing
-  guidance
-- **Distance cache tuning**: sizing for different population sizes with benchmark
-  data
+- **WASM cache tuning**: `maxCachedActivations` and `compilationCacheSize`
+  sizing guidance
+- **Distance cache tuning**: sizing for different population sizes with
+  benchmark data
 - **Thread pool configuration**: thread count, memory-based thread capping
 - **Memory management**: heap monitoring thresholds, cache diagnostics with
   `getCacheStats()`
-- **Population size and selection pressure**: trade-off tables, adaptive mutation
-  thresholds
+- **Population size and selection pressure**: trade-off tables, adaptive
+  mutation thresholds
 - **WASM activation**: when WASM excels vs the serialisation wall
 - **Discovery and GPU acceleration**: when to enable/disable, configuration
   parameters
@@ -23,8 +23,8 @@ parameters with practical recommendations:
   model, data set batching strategies
 - **Tuning recipes**: prototyping, production, and maximum exploration
   configurations
-- **Diagnostics and monitoring**: cache stats, worker pool stats, memory pressure
-  detection
+- **Diagnostics and monitoring**: cache stats, worker pool stats, memory
+  pressure detection
 
 Key concepts (LRU cache, work-stealing, island model, memetic evolution) are
 explained at first use. Australian English throughout.
