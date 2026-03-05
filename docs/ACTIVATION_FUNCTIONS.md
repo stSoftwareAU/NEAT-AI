@@ -41,8 +41,8 @@ mutating neurons — higher values mean the function is chosen more frequently.
 
 ### Standard Activation Functions
 
-| Name            | Output Range  | Bounded | Monotonic | Mutation Prob. | Summary                                         |
-| :-------------- | :------------ | :-----: | :-------: | :------------: | :---------------------------------------------- |
+| Name            | Output Range  | Bounded | Monotonic | Mutation Probability | Summary                                         |
+| :-------------- | :------------ | :-----: | :-------: | :------------------: | :---------------------------------------------- |
 | LeakyReLU       | (-inf, inf)   |   No    |    Yes    |       36       | Like ReLU but allows small negative outputs     |
 | Swish           | (~-0.28, inf) |   No    |    No     |       35       | Smooth, self-gated function                     |
 | GELU            | (~-0.17, inf) |   No    |    No     |       34       | Gaussian-weighted smooth activation             |
@@ -81,8 +81,8 @@ mutating neurons — higher values mean the function is chosen more frequently.
 These functions operate on multiple inputs simultaneously, unlike standard
 activation functions that transform a single value.
 
-| Name    | Output Range | Mutation Prob. | Summary                                                     |
-| :------ | :----------- | :------------: | :---------------------------------------------------------- |
+| Name    | Output Range | Mutation Probability | Summary                                                     |
+| :------ | :----------- | :------------------: | :---------------------------------------------------------- |
 | IF      | Varies       |       1        | Conditional: outputs one of two values based on a condition |
 | MAXIMUM | (-inf, inf)  |       1        | Outputs the largest input value plus bias                   |
 | MINIMUM | (-inf, inf)  |       1        | Outputs the smallest input value plus bias                  |
