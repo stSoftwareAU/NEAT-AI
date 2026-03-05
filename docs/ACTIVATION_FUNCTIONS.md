@@ -43,38 +43,38 @@ mutating neurons — higher values mean the function is chosen more frequently.
 
 | Name            | Output Range  | Bounded | Monotonic | Mutation Probability | Summary                                         |
 | :-------------- | :------------ | :-----: | :-------: | :------------------: | :---------------------------------------------- |
-| LeakyReLU       | (-inf, inf)   |   No    |    Yes    |       36       | Like ReLU but allows small negative outputs     |
-| Swish           | (~-0.28, inf) |   No    |    No     |       35       | Smooth, self-gated function                     |
-| GELU            | (~-0.17, inf) |   No    |    No     |       34       | Gaussian-weighted smooth activation             |
-| ELU             | [-1, inf)     |   No    |    Yes    |       33       | Exponential for negatives, linear for positives |
-| SELU            | (-inf, inf)   |   No    |    Yes    |       32       | Self-normalising variant of ELU                 |
-| Mish            | (~-0.31, inf) |   No    |    No     |       31       | Smooth, non-monotonic, self-regularising        |
-| TANH            | (-1, 1)       |   Yes   |    Yes    |       30       | Classic bounded activation                      |
-| LOGISTIC        | (0, 1)        |   Yes   |    Yes    |       25       | Classic sigmoid function                        |
-| Softplus        | (0, inf)      |   No    |    Yes    |       24       | Smooth approximation of ReLU                    |
-| ArcTan          | (-pi/2, pi/2) |   Yes   |    Yes    |       23       | Bounded, smooth, always has non-zero slope      |
-| SOFTSIGN        | (-1, 1)       |   Yes   |    Yes    |       22       | Like tanh but computationally cheaper           |
-| HARD_TANH       | [-1, 1]       |   Yes   |    Yes    |       21       | Clipped linear (alias: CLIPPED)                 |
-| BENT_IDENTITY   | (-inf, inf)   |   No    |    Yes    |       20       | Smooth, always-positive slope                   |
-| SINE            | [-1, 1]       |   Yes   |    No     |       16       | Periodic oscillating function                   |
-| Cosine          | [-1, 1]       |   Yes   |    No     |       15       | Periodic, phase-shifted sine                    |
-| ABSOLUTE        | [0, inf)      |   No    |    No     |       14       | Outputs absolute value of input                 |
-| Cube            | (-inf, inf)   |   No    |    Yes    |       13       | Cubic transformation                            |
-| ISRU            | (-1, 1)       |   Yes   |    Yes    |       12       | Inverse square root unit                        |
-| LogSigmoid      | (-inf, 0)     |   No    |    Yes    |       11       | Logarithm of the sigmoid function               |
-| GAUSSIAN        | (0, 1]        |   Yes   |    No     |       10       | Bell curve centred at zero                      |
-| ReLU            | [0, inf)      |   No    |    Yes    |       5        | Rectified linear unit (alias: RELU)             |
-| ReLU6           | [0, 6]        |   Yes   |    Yes    |       3        | ReLU capped at 6                                |
-| TAN             | (-inf, inf)   |   No    |    Yes    |       2        | Tangent function (has asymptotes)               |
-| Exponential     | (0, inf)      |   No    |    Yes    |       2        | Exponential growth/decay                        |
-| STEP            | {0, 1}        |   Yes   |    Yes    |       2        | Binary step function                            |
-| IDENTITY        | (-inf, inf)   |   No    |    Yes    |       1        | Passes input through unchanged                  |
-| COMPLEMENT      | (-inf, inf)   |   No    |    Yes    |       1        | Returns 1 minus input (alias: INVERSE)          |
-| StdInverse      | (-inf, inf)   |   No    |    No     |       1        | Returns 1 divided by input                      |
-| BIPOLAR_SIGMOID | (-1, 1)       |   Yes   |    Yes    |       1        | Sigmoid scaled to (-1, 1)                       |
-| BIPOLAR         | {-1, 1}       |   Yes   |    Yes    |       1        | Binary: outputs -1 or 1                         |
-| SQRT            | [0, inf)      |   No    |    Yes    |       1        | Square root (zero for negative inputs)          |
-| SQUARE          | [0, inf)      |   No    |    No     |       1        | Squares the input                               |
+| LeakyReLU       | (-inf, inf)   |   No    |    Yes    |          36          | Like ReLU but allows small negative outputs     |
+| Swish           | (~-0.28, inf) |   No    |    No     |          35          | Smooth, self-gated function                     |
+| GELU            | (~-0.17, inf) |   No    |    No     |          34          | Gaussian-weighted smooth activation             |
+| ELU             | [-1, inf)     |   No    |    Yes    |          33          | Exponential for negatives, linear for positives |
+| SELU            | (-inf, inf)   |   No    |    Yes    |          32          | Self-normalising variant of ELU                 |
+| Mish            | (~-0.31, inf) |   No    |    No     |          31          | Smooth, non-monotonic, self-regularising        |
+| TANH            | (-1, 1)       |   Yes   |    Yes    |          30          | Classic bounded activation                      |
+| LOGISTIC        | (0, 1)        |   Yes   |    Yes    |          25          | Classic sigmoid function                        |
+| Softplus        | (0, inf)      |   No    |    Yes    |          24          | Smooth approximation of ReLU                    |
+| ArcTan          | (-pi/2, pi/2) |   Yes   |    Yes    |          23          | Bounded, smooth, always has non-zero slope      |
+| SOFTSIGN        | (-1, 1)       |   Yes   |    Yes    |          22          | Like tanh but computationally cheaper           |
+| HARD_TANH       | [-1, 1]       |   Yes   |    Yes    |          21          | Clipped linear (alias: CLIPPED)                 |
+| BENT_IDENTITY   | (-inf, inf)   |   No    |    Yes    |          20          | Smooth, always-positive slope                   |
+| SINE            | [-1, 1]       |   Yes   |    No     |          16          | Periodic oscillating function                   |
+| Cosine          | [-1, 1]       |   Yes   |    No     |          15          | Periodic, phase-shifted sine                    |
+| ABSOLUTE        | [0, inf)      |   No    |    No     |          14          | Outputs absolute value of input                 |
+| Cube            | (-inf, inf)   |   No    |    Yes    |          13          | Cubic transformation                            |
+| ISRU            | (-1, 1)       |   Yes   |    Yes    |          12          | Inverse square root unit                        |
+| LogSigmoid      | (-inf, 0)     |   No    |    Yes    |          11          | Logarithm of the sigmoid function               |
+| GAUSSIAN        | (0, 1]        |   Yes   |    No     |          10          | Bell curve centred at zero                      |
+| ReLU            | [0, inf)      |   No    |    Yes    |          5           | Rectified linear unit (alias: RELU)             |
+| ReLU6           | [0, 6]        |   Yes   |    Yes    |          3           | ReLU capped at 6                                |
+| TAN             | (-inf, inf)   |   No    |    Yes    |          2           | Tangent function (has asymptotes)               |
+| Exponential     | (0, inf)      |   No    |    Yes    |          2           | Exponential growth/decay                        |
+| STEP            | {0, 1}        |   Yes   |    Yes    |          2           | Binary step function                            |
+| IDENTITY        | (-inf, inf)   |   No    |    Yes    |          1           | Passes input through unchanged                  |
+| COMPLEMENT      | (-inf, inf)   |   No    |    Yes    |          1           | Returns 1 minus input (alias: INVERSE)          |
+| StdInverse      | (-inf, inf)   |   No    |    No     |          1           | Returns 1 divided by input                      |
+| BIPOLAR_SIGMOID | (-1, 1)       |   Yes   |    Yes    |          1           | Sigmoid scaled to (-1, 1)                       |
+| BIPOLAR         | {-1, 1}       |   Yes   |    Yes    |          1           | Binary: outputs -1 or 1                         |
+| SQRT            | [0, inf)      |   No    |    Yes    |          1           | Square root (zero for negative inputs)          |
+| SQUARE          | [0, inf)      |   No    |    No     |          1           | Squares the input                               |
 
 ### Aggregate Functions
 
@@ -83,9 +83,9 @@ activation functions that transform a single value.
 
 | Name    | Output Range | Mutation Probability | Summary                                                     |
 | :------ | :----------- | :------------------: | :---------------------------------------------------------- |
-| IF      | Varies       |       1        | Conditional: outputs one of two values based on a condition |
-| MAXIMUM | (-inf, inf)  |       1        | Outputs the largest input value plus bias                   |
-| MINIMUM | (-inf, inf)  |       1        | Outputs the smallest input value plus bias                  |
+| IF      | Varies       |          1           | Conditional: outputs one of two values based on a condition |
+| MAXIMUM | (-inf, inf)  |          1           | Outputs the largest input value plus bias                   |
+| MINIMUM | (-inf, inf)  |          1           | Outputs the smallest input value plus bias                  |
 
 ### Deprecated Functions
 
