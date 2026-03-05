@@ -129,6 +129,8 @@ For detailed documentation, see the [docs/](./docs/) directory:
   guide to all 30+ activation functions with selection guidance
 - **[Intelligent Design](./docs/INTELLIGENT_DESIGN.md)**: Systematic squash
   function optimisation for hidden neurons
+- **[Performance Tuning](./docs/PERFORMANCE_TUNING.md)**: Tuning WASM caches,
+  thread pools, memory management, and scaling for large-scale training
 - **[Troubleshooting](./docs/TROUBLESHOOTING.md)**: Common issues and solutions
   for WASM, discovery, memory, CI, and configuration
 
