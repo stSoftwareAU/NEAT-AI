@@ -19,6 +19,7 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
 import type { CostInterface } from "../costs/CostInterface.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
 import type { RequiredPredictiveCodingConfig } from "../config/PredictiveCodingConfig.ts";
 import { runInference } from "./PredictiveCodingInference.ts";
 import {
@@ -154,7 +155,10 @@ export function trainWithPredictiveCoding(
     }
 
     if (sampleCount === 0) {
-      throw new Error("No samples were processed during PC training");
+      throw new ValidationError(
+        "No samples were processed during PC training",
+        "OTHER",
+      );
     }
 
     // Step 5: Apply averaged gradients.

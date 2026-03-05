@@ -1,6 +1,8 @@
 import { assertExists } from "@std/assert";
 import { getLogger } from "../utils/Logger.ts";
 import { format } from "@std/fmt/duration";
+import { ConfigurationError } from "../errors/ConfigurationError.ts";
+import { DiscoveryError } from "../errors/DiscoveryError.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import type { DiscoverResult } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
@@ -88,9 +90,10 @@ export class DiscoveryRunner {
   async discoverDir(input: DiscoveryDirInput): Promise<DiscoveryDirResult> {
     // Discovery requires both library and GPU - skip if not available
     if (!this.#rustDiscoveryEnabled()) {
-      throw new Error(
+      throw new DiscoveryError(
         "Discovery requires the NEAT-AI-Discovery Rust library to be available and a GPU to be present. " +
           "Discovery is disabled when either the library or GPU is unavailable.",
+        "LIBRARY_NOT_FOUND",
       );
     }
 
@@ -102,13 +105,15 @@ export class DiscoveryRunner {
       }
     };
     if (config.discoverySampleRate <= 0) {
-      throw new Error(
+      throw new ConfigurationError(
         "Discovery requires a positive discoverySampleRate.",
+        "OUT_OF_RANGE",
       );
     }
     if (config.discoveryRecordTimeOutMinutes <= 0) {
-      throw new Error(
+      throw new ConfigurationError(
         "Discovery requires a positive discoveryRecordTimeOutMinutes setting.",
+        "OUT_OF_RANGE",
       );
     }
 

@@ -111,8 +111,9 @@ export function readCString(ptr: Deno.PointerValue): string {
   while (view.getUint8(length) !== 0) {
     length++;
     if (length >= MAX_C_STRING_BYTES) {
-      throw new Error(
+      throw new DiscoveryError(
         `C string exceeded ${MAX_C_STRING_BYTES} bytes without null terminator`,
+        "FFI_CRASH",
       );
     }
   }
@@ -139,7 +140,10 @@ function getLibraryExtension(): string {
     case "windows":
       return ".dll";
     default:
-      throw new Error(`Unsupported platform: ${platform}`);
+      throw new DiscoveryError(
+        `Unsupported platform: ${platform}`,
+        "LIBRARY_NOT_FOUND",
+      );
   }
 }
 

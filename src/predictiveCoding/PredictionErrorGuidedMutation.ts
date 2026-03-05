@@ -12,6 +12,7 @@
  */
 
 import type { Creature } from "../Creature.ts";
+import { TopologyError } from "../errors/TopologyError.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 /**
@@ -130,7 +131,10 @@ export function selectWeightedIndex(
   weights: Map<number, number>,
 ): number {
   if (candidates.length === 0) {
-    throw new Error("selectWeightedIndex: no candidates provided");
+    throw new TopologyError(
+      "selectWeightedIndex: no candidates provided",
+      "INVALID_STATE",
+    );
   }
 
   const rng = getRandomNumberGenerator();

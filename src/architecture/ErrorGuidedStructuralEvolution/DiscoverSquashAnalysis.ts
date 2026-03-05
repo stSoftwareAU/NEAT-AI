@@ -9,6 +9,7 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../../Creature.ts";
 import { MSE } from "../../costs/MSE.ts";
+import { TopologyError } from "../../errors/TopologyError.ts";
 import type { ActivationInterface } from "../../methods/activations/ActivationInterface.ts";
 import { Activations } from "../../methods/activations/Activations.ts";
 import { getRandomNumberGenerator } from "../../utils/RandomNumberGenerator.ts";
@@ -31,7 +32,7 @@ export function calculateSquashError(
     const idealActivation = idealActivations[i];
     const actualActivation = actualActivations[i];
     if (actualActivation === undefined) {
-      throw new Error("Activation is undefined");
+      throw new TopologyError("Activation is undefined", "INVALID_STATE");
     }
     const error = mse.calculate(
       Float32Array.from([idealActivation]),
@@ -84,12 +85,12 @@ export function findCandidateSquash(
   records.forEach((record) => {
     const value = record.value;
     if (value === undefined) {
-      throw new Error("Value is undefined");
+      throw new TopologyError("Value is undefined", "INVALID_STATE");
     }
     rawValues.push(value);
     const activation = record.activation;
     if (activation === undefined) {
-      throw new Error("Activation is undefined");
+      throw new TopologyError("Activation is undefined", "INVALID_STATE");
     }
     currentActivations.push(activation);
     const errors = record.errors;

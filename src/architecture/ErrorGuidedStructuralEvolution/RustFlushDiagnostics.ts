@@ -12,6 +12,7 @@ import type {
   RustFlushDiagnostics,
   RustFlushMetrics,
 } from "./DiscoverStructureTypes.ts";
+import { DiscoveryError } from "../../errors/DiscoveryError.ts";
 import { getLogger } from "../../utils/Logger.ts";
 
 /**
@@ -168,10 +169,11 @@ export function observeRustTrainingRecord(
         } errors per neuron per sample)`,
       );
       getLogger().error(`Errors array sample (first 10):`, errors.slice(0, 10));
-      throw new Error(
+      throw new DiscoveryError(
         `Data corruption detected: neuron ${uuid} has ${errorCount} errors in a single record, ` +
           `which far exceeds reasonable maximum (${maxReasonableErrorsPerNeuronPerRecord}). ` +
           `During backprop, each neuron should record ONE error per sample. This indicates record() is being called too many times.`,
+        "DATA_CORRUPTION",
       );
     }
 

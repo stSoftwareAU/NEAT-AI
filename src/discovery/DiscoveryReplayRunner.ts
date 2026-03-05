@@ -14,6 +14,7 @@ import type { CostName } from "../Costs.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import { createNeatConfig } from "../config/NeatConfig.ts";
 import type { Creature } from "../Creature.ts";
+import { ConfigurationError } from "../errors/ConfigurationError.ts";
 import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import {
   calculatePriority,
@@ -115,8 +116,9 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
 
     const successCacheDir = config.discoverySuccessCacheDir;
     if (!successCacheDir) {
-      throw new Error(
+      throw new ConfigurationError(
         "discoverySuccessCacheDir must be set to use discoveryReplayDir().",
+        "INVALID_TYPE",
       );
     }
 

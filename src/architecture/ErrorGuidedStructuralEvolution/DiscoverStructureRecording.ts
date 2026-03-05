@@ -7,6 +7,7 @@
 
 import { assert } from "@std/assert";
 import { dirname } from "@std/path";
+import { DiscoveryError } from "../../errors/DiscoveryError.ts";
 import {
   creatureToRustFormat,
   type RustRecordBatchStats,
@@ -429,8 +430,9 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
     }
 
     if (!this.deps.isRustLibraryAvailable()) {
-      throw new Error(
+      throw new DiscoveryError(
         "Rust discovery library must be available when merging discovery chunks.",
+        "LIBRARY_NOT_FOUND",
       );
     }
 
