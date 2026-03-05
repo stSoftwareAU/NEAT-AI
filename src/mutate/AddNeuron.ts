@@ -2,6 +2,7 @@ import { assert } from "@std/assert";
 import { CreatureUtil } from "../../mod.ts";
 import type { Creature } from "../Creature.ts";
 import { Neuron } from "../architecture/Neuron.ts";
+import { TopologyError } from "../errors/TopologyError.ts";
 import type { MutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
 import {
   neuronBiasToIndexWeights,
@@ -151,8 +152,9 @@ export class AddNeuron extends AbstractMutationOperator {
 
     // Ensure we always have a valid target (should never be -1 with our fallbacks)
     if (targetNeuronIndex === -1) {
-      throw new Error(
+      throw new TopologyError(
         "AddNeuron: failed to find a valid outward connection target",
+        "INVALID_CONNECTION",
       );
     }
 
@@ -247,8 +249,9 @@ export class AddNeuron extends AbstractMutationOperator {
               return true;
             }
           }
-          throw new Error(
+          throw new TopologyError(
             "AddNeuron: failed to create outward connection (unexpected: neuron is not connected to any later neuron)",
+            "INVALID_CONNECTION",
           );
         }
       }

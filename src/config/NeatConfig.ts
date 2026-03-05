@@ -19,6 +19,7 @@ import type { NeatArguments } from "./NeatArguments.ts";
 import { parseDiscoverySampleRate, parseNumber } from "./ParseOptions.ts";
 import {
   createConsoleLogger,
+  getLogger,
   type Logger,
   setLogger,
 } from "../utils/Logger.ts";
@@ -164,7 +165,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     if (memoryBasedMax < threads) {
       const originalThreads = threads;
       threads = memoryBasedMax;
-      console.warn(
+      getLogger().warn(
         `[NEAT-AI] Worker thread count capped from ${originalThreads} to ${threads} ` +
           `based on memory budget (maxMemoryMB: ${workerThreadCap.maxMemoryMB}, ` +
           `estimatedMemoryPerWorkerMB: ${workerThreadCap.estimatedMemoryPerWorkerMB})`,

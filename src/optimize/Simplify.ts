@@ -3,6 +3,7 @@ import { type CreatureExport, CreatureUtil } from "../../mod.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { Creature } from "../Creature.ts";
+import { TopologyError } from "../errors/TopologyError.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { isAggregationSquash } from "../methods/activations/SquashUtils.ts";
@@ -257,7 +258,10 @@ export function removeNeuron(
     (neuron: NeuronExport) => neuron.uuid === identityUUID,
   );
   if (!neuronToRemove) {
-    throw new Error(`Neuron not found: ${identityUUID}`);
+    throw new TopologyError(
+      `Neuron not found: ${identityUUID}`,
+      "MISSING_NEURON",
+    );
   }
 
   simplifiedExport.neurons = simplifiedExport.neurons.filter(

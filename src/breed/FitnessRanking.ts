@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import { getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 /**
@@ -46,7 +47,7 @@ export class FitnessRanking {
    */
   constructor(population: Creature[]) {
     if (population.length === 0) {
-      throw new Error("Population cannot be empty");
+      throw new ValidationError("Population cannot be empty", "OTHER");
     }
 
     // Build score map and compute metrics in a single pass
@@ -209,6 +210,6 @@ export class FitnessRanking {
       }
     }
 
-    throw new Error("No parent found in tournament");
+    throw new ValidationError("No parent found in tournament", "OTHER");
   }
 }

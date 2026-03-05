@@ -5,6 +5,8 @@ import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { discover } from "../blackbox/Discover.ts";
 import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
+import { TopologyError } from "../errors/TopologyError.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
 import { AddBackCon } from "../mutate/AddBackCon.ts";
 import { AddConnection } from "../mutate/AddConnection.ts";
 import { AddNeuron } from "../mutate/AddNeuron.ts";
@@ -133,7 +135,10 @@ export class Mutator {
       case Mutation.SWAP_NODES.name:
         return new SwapNeurons(creature);
       default:
-        throw new Error("unknown mutation method: " + methodName);
+        throw new ValidationError(
+          "unknown mutation method: " + methodName,
+          "OTHER",
+        );
     }
   }
 
@@ -393,9 +398,10 @@ export class Mutator {
     const { candidates, weightBiasCount } = cacheEntry;
 
     if (candidates.length === 0) {
-      throw new Error(
+      throw new ValidationError(
         `No valid mutation methods available for creature (semanticVersion=${creature.semanticVersion}, forwardOnly=${forwardOnly}) ` +
           `with config.feedbackLoop=${this.config.feedbackLoop}.`,
+        "OTHER",
       );
     }
 
@@ -539,11 +545,12 @@ export class Mutator {
           // unattended machines) so we can locate the logic that introduced a
           // recurrent connection into a supposedly forward-only creature.
           if (major >= 4) {
-            throw new Error(
+            throw new TopologyError(
               `[Mutator] CRITICAL: forward-only 4.x creature became invalid after mutation: ` +
                 `${error.name} - ${error.message}. ` +
                 `This indicates a corruption bug (recurrent connections must never be introduced). ` +
                 `Violations(sample up to 10): ${violations.join(" | ")}`,
+              "INVALID_STATE",
             );
           }
 

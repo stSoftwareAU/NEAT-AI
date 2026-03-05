@@ -14,6 +14,8 @@
  * `getRandomNumberGenerator().random()`.
  */
 
+import { ValidationError } from "../errors/ValidationError.ts";
+
 /**
  * Random number generator interface.
  *
@@ -205,7 +207,7 @@ class SeededRng implements RandomNumberGenerator {
 
   choice<T>(array: readonly T[]): T {
     if (array.length === 0) {
-      throw new Error("Cannot choose from an empty array");
+      throw new ValidationError("Cannot choose from an empty array", "OTHER");
     }
     return array[this.randomInt(0, array.length - 1)];
   }
@@ -224,7 +226,7 @@ class UnseededRng implements RandomNumberGenerator {
 
   choice<T>(array: readonly T[]): T {
     if (array.length === 0) {
-      throw new Error("Cannot choose from an empty array");
+      throw new ValidationError("Cannot choose from an empty array", "OTHER");
     }
     return array[this.randomInt(0, array.length - 1)];
   }
