@@ -8,6 +8,7 @@
  */
 import type { Creature } from "../../Creature.ts";
 import { CreatureErrorImpactEstimator } from "../../discovery/NeuronErrorImpactEstimator.ts";
+import { TopologyError } from "../../errors/TopologyError.ts";
 import type { NeuronImpactInfo } from "./DiscoverStructureTypes.ts";
 
 /**
@@ -248,6 +249,6 @@ function sanityCheckImpactOrdering(
     const message =
       "Impact ordering sanity check failed: expected output neurons at the top of the list.";
     logFn("error", message, { topSlice });
-    throw new Error(message);
+    throw new TopologyError(message, "INVALID_STATE");
   }
 }

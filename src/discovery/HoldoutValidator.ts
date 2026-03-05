@@ -202,10 +202,8 @@ export class HoldoutValidator {
     creature: Creature,
     holdoutDataDir: string,
   ): HoldoutValidationResult {
+    // Costs.find throws ValidationError if costName is unknown
     const costFunction = Costs.find(this.#options.costName);
-    if (!costFunction) {
-      throw new Error(`Unknown cost function: ${this.#options.costName}`);
-    }
 
     // Load holdout data and compute error
     const records = loadDataFromDir(
@@ -243,10 +241,8 @@ export class HoldoutValidator {
     trainingDataDir: string,
     holdoutDataDir: string,
   ): HoldoutValidationResult {
+    // Costs.find throws ValidationError if costName is unknown
     const costFunction = Costs.find(this.#options.costName);
-    if (!costFunction) {
-      throw new Error(`Unknown cost function: ${this.#options.costName}`);
-    }
 
     // Load and compute errors
     const trainingRecords = loadDataFromDir(

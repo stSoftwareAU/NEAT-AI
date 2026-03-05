@@ -7,6 +7,8 @@
  * binary files, with retry logic for file descriptor limits.
  */
 import { getLogger } from "../../utils/Logger.ts";
+import { DiscoveryError } from "../../errors/DiscoveryError.ts";
+import { TopologyError } from "../../errors/TopologyError.ts";
 import type {
   BinaryRecordIndices,
   DiscoverRecord,
@@ -162,15 +164,19 @@ export async function loadNeuronRecords(
 
   // For non-input neurons, read from Parquet (Rust is required)
   if (!parquetFilePath) {
-    throw new Error(
+    throw new DiscoveryError(
       "Parquet file path not set. Discovery requires the NEAT-AI-Discovery Rust library.",
+      "LIBRARY_NOT_FOUND",
     );
   }
 
   // Extract neuron UUID from identifier (strip .csv extension if present)
   const match = fileName?.match(/^(.+?)(?:\.csv)?$/);
   if (!match) {
-    throw new Error(`Invalid neuron identifier: ${fileName}`);
+    throw new TopologyError(
+      `Invalid neuron identifier: ${fileName}`,
+      "INVALID_STATE",
+    );
   }
   const neuronUUID = match[1];
 
@@ -178,8 +184,9 @@ export async function loadNeuronRecords(
   try {
     await Deno.stat(parquetFilePath);
   } catch {
-    throw new Error(
+    throw new DiscoveryError(
       `Parquet file does not exist: ${parquetFilePath}`,
+      "LIBRARY_NOT_FOUND",
     );
   }
 
@@ -204,10 +211,11 @@ export async function loadNeuronRecords(
     return converted;
   } else {
     // Rust reading failed
-    throw new Error(
+    throw new DiscoveryError(
       `Failed to read discovery records from Parquet: ${
         readResult?.error || "Unknown error"
       }`,
+      "FFI_CRASH",
     );
   }
 }

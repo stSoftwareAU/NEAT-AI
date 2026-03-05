@@ -9,6 +9,7 @@
 
 import { join } from "@std/path/join";
 import { crypto as stdCrypto } from "@std/crypto";
+import { TopologyError } from "../errors/TopologyError.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 
 /**
@@ -165,8 +166,9 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
       // buildDiscoveryCandidates - assert to catch any future code changes.
       const synapseDetails = candidate.change.synapseDetails;
       if (!synapseDetails) {
-        throw new Error(
+        throw new TopologyError(
           "remove-synapse candidate missing synapseDetails - this indicates a bug",
+          "INVALID_STATE",
         );
       }
       parts.push(synapseDetails.fromNeuronUUID, synapseDetails.toNeuronUUID);

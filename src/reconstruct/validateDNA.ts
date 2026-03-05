@@ -1,3 +1,4 @@
+import { CrisprError } from "../errors/CrisprError.ts";
 import type { CrisprInterface } from "./CRISPR.ts";
 
 /**
@@ -9,18 +10,18 @@ import type { CrisprInterface } from "./CRISPR.ts";
  *
  * @param dna - The unknown input to validate as CrisprInterface.
  * @returns The validated CrisprInterface object.
- * @throws {Error} Descriptive error if the DNA is malformed.
+ * @throws {CrisprError} Descriptive error if the DNA is malformed.
  */
 export function validateDNA(dna: unknown): CrisprInterface {
   if (dna === null || typeof dna !== "object") {
-    throw new Error("DNA must be a non-null object");
+    throw new CrisprError("DNA must be a non-null object", "INVALID_DNA");
   }
 
   const obj = dna as Record<string, unknown>;
 
   // Validate id
   if (typeof obj.id !== "string" || obj.id.trim().length === 0) {
-    throw new Error("DNA 'id' must be a non-empty string");
+    throw new CrisprError("DNA 'id' must be a non-empty string", "INVALID_DNA");
   }
 
   // Validate mode — undefined defaults to "append" (matching Upgrade.CRISPR
@@ -28,10 +29,11 @@ export function validateDNA(dna: unknown): CrisprInterface {
   if (
     obj.mode !== undefined && obj.mode !== "insert" && obj.mode !== "append"
   ) {
-    throw new Error(
+    throw new CrisprError(
       `DNA 'mode' must be "insert" or "append", got: ${
         JSON.stringify(obj.mode)
       }`,
+      "INVALID_DNA",
     );
   }
 
@@ -41,7 +43,10 @@ export function validateDNA(dna: unknown): CrisprInterface {
   const neurons = obj.neurons ?? obj.nodes;
   if (neurons !== undefined) {
     if (!Array.isArray(neurons)) {
-      throw new Error("DNA 'neurons' must be an array");
+      throw new CrisprError(
+        "DNA 'neurons' must be an array",
+        "INVALID_DNA",
+      );
     }
 
     for (let i = 0; i < neurons.length; i++) {
@@ -52,7 +57,7 @@ export function validateDNA(dna: unknown): CrisprInterface {
   // Validate synapses (required) — accept both "synapses" and legacy "connections"
   const synapses = obj.synapses ?? obj.connections;
   if (!Array.isArray(synapses)) {
-    throw new Error("DNA 'synapses' must be an array");
+    throw new CrisprError("DNA 'synapses' must be an array", "INVALID_DNA");
   }
 
   for (let i = 0; i < synapses.length; i++) {
@@ -68,34 +73,41 @@ function validateNeuron(
   mode: "insert" | "append",
 ): void {
   if (neuron === null || typeof neuron !== "object") {
-    throw new Error(`Neuron at index ${index} must be a non-null object`);
+    throw new CrisprError(
+      `Neuron at index ${index} must be a non-null object`,
+      "INVALID_DNA",
+    );
   }
 
   const n = neuron as Record<string, unknown>;
 
   if (n.type !== "output" && n.type !== "hidden") {
-    throw new Error(
+    throw new CrisprError(
       `Neuron at index ${index}: 'type' must be "output" or "hidden", got: ${
         JSON.stringify(n.type)
       }`,
+      "INVALID_DNA",
     );
   }
 
   if (mode === "insert" && n.type === "output") {
-    throw new Error(
+    throw new CrisprError(
       `Neuron at index ${index}: insert-mode DNA must not contain output neurons`,
+      "INVALID_DNA",
     );
   }
 
   if (typeof n.squash !== "string" || n.squash.trim().length === 0) {
-    throw new Error(
+    throw new CrisprError(
       `Neuron at index ${index}: 'squash' must be a non-empty string`,
+      "INVALID_DNA",
     );
   }
 
   if (typeof n.bias !== "number" || !Number.isFinite(n.bias)) {
-    throw new Error(
+    throw new CrisprError(
       `Neuron at index ${index}: 'bias' must be a finite number`,
+      "INVALID_DNA",
     );
   }
 }
@@ -106,36 +118,44 @@ function validateSynapse(
   mode: "insert" | "append",
 ): void {
   if (synapse === null || typeof synapse !== "object") {
-    throw new Error(`Synapse at index ${index} must be a non-null object`);
+    throw new CrisprError(
+      `Synapse at index ${index} must be a non-null object`,
+      "INVALID_DNA",
+    );
   }
 
   const s = synapse as Record<string, unknown>;
 
   if (typeof s.weight !== "number" || !Number.isFinite(s.weight)) {
-    throw new Error(
+    throw new CrisprError(
       `Synapse at index ${index}: 'weight' must be a finite number`,
+      "INVALID_DNA",
     );
   }
 
   if (mode === "insert") {
     if (s.from !== undefined) {
-      throw new Error(
+      throw new CrisprError(
         `Synapse at index ${index}: insert-mode DNA must not use 'from' (static index); use 'fromUUID' instead`,
+        "INVALID_DNA",
       );
     }
     if (s.to !== undefined) {
-      throw new Error(
+      throw new CrisprError(
         `Synapse at index ${index}: insert-mode DNA must not use 'to' (static index); use 'toUUID' instead`,
+        "INVALID_DNA",
       );
     }
     if (s.fromRelative !== undefined) {
-      throw new Error(
+      throw new CrisprError(
         `Synapse at index ${index}: insert-mode DNA must not use 'fromRelative'; use 'fromUUID' instead`,
+        "INVALID_DNA",
       );
     }
     if (s.toRelative !== undefined) {
-      throw new Error(
+      throw new CrisprError(
         `Synapse at index ${index}: insert-mode DNA must not use 'toRelative'; use 'toUUID' instead`,
+        "INVALID_DNA",
       );
     }
   }
