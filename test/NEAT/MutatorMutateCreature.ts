@@ -8,6 +8,7 @@ import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { ValidationError } from "../../src/errors/ValidationError.ts";
 import { Mutation } from "../../src/NEAT/Mutation.ts";
 import { Mutator } from "../../src/NEAT/Mutator.ts";
 
@@ -145,7 +146,7 @@ Deno.test("MutatorMutateCreature: SWAP_NODES swaps neurons", () => {
   assertEquals(creature.output, 2);
 });
 
-Deno.test("MutatorMutateCreature: throws on unknown mutation method", () => {
+Deno.test("MutatorMutateCreature: throws ValidationError on unknown mutation method", () => {
   const config = createConfig();
   const mutator = new Mutator(config);
 
@@ -154,7 +155,7 @@ Deno.test("MutatorMutateCreature: throws on unknown mutation method", () => {
 
   assertThrows(
     () => mutator.mutateCreature(creature, { name: "UNKNOWN_MUTATION" }),
-    Error,
+    ValidationError,
     "unknown mutation method",
   );
 });

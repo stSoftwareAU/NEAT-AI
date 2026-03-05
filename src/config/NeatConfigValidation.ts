@@ -6,6 +6,7 @@
  */
 
 import { ConfigurationError } from "../errors/ConfigurationError.ts";
+import { getLogger } from "../utils/Logger.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
 
 /**
@@ -40,7 +41,7 @@ export function validateNeatConfig(config: NeatArguments): void {
     const estimatedUsage = config.threads *
       config.workerThreadCap.estimatedMemoryPerWorkerMB;
     if (estimatedUsage > config.workerThreadCap.maxMemoryMB) {
-      console.warn(
+      getLogger().warn(
         `[NEAT-AI] Warning: threads (${config.threads}) * estimatedMemoryPerWorkerMB ` +
           `(${config.workerThreadCap.estimatedMemoryPerWorkerMB}) = ${estimatedUsage} MB ` +
           `exceeds maxMemoryMB (${config.workerThreadCap.maxMemoryMB})`,

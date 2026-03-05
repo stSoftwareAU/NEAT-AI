@@ -2,6 +2,7 @@ import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../mod.ts";
 import { blue, bold, cyan } from "@std/fmt/colors";
 import { assert } from "@std/assert";
+import { ValidationError } from "../errors/ValidationError.ts";
 import { getLogger } from "../utils/Logger.ts";
 
 // Define a union type for the possible approaches
@@ -127,7 +128,10 @@ export function logApproach(fittest: Creature, previous: Creature) {
           break;
         }
         default: {
-          throw new Error(`Unknown approach '${approach}'`);
+          throw new ValidationError(
+            `Unknown approach '${approach}'`,
+            "OTHER",
+          );
         }
       }
     }

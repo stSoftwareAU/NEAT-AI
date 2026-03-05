@@ -3,6 +3,7 @@ import { addTag } from "@stsoftware/tags/mod";
 import { Creature, CreatureUtil } from "../../mod.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import { FitnessRanking } from "../../src/breed/FitnessRanking.ts";
+import { ValidationError } from "../../src/errors/ValidationError.ts";
 import { Selection } from "../../src/methods/Selection.ts";
 
 /**
@@ -324,12 +325,12 @@ Deno.test("FitnessRanking - handles unsorted population", () => {
   assertEquals(ranking.sortedPopulation[3].score, 1);
 });
 
-Deno.test("FitnessRanking - empty population throws", () => {
+Deno.test("FitnessRanking - empty population throws ValidationError", () => {
   const creatures: Creature[] = [];
 
   assertThrows(
     () => new FitnessRanking(creatures),
-    Error,
+    ValidationError,
     "Population cannot be empty",
   );
 });

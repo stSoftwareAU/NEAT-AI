@@ -4,6 +4,7 @@ import {
   assertNotEquals,
   assertThrows,
 } from "@std/assert";
+import { ValidationError } from "../../src/errors/ValidationError.ts";
 import {
   createSeededRng,
   createUnseededRng,
@@ -69,11 +70,11 @@ Deno.test("SeededRng: choice returns elements from array", () => {
   }
 });
 
-Deno.test("SeededRng: choice throws on empty array", () => {
+Deno.test("SeededRng: choice throws ValidationError on empty array", () => {
   const rng = createSeededRng(1);
   assertThrows(
     () => rng.choice([]),
-    Error,
+    ValidationError,
     "Cannot choose from an empty array",
   );
 });

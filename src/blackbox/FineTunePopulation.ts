@@ -1,5 +1,6 @@
 import { assert } from "@std/assert";
 import { type Creature, CreatureUtil } from "../../mod.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
 import type { Genus } from "../NEAT/Genus.ts";
 import { fineTuneImprovement } from "./FineTune.ts";
 import { Species } from "../NEAT/Species.ts";
@@ -43,13 +44,15 @@ export class FindTunePopulation {
             tmpPreviousFittest = previousFittest;
             tmpFineTunePopulation.push(previousFittest);
           } else if (previousFittest.score > fittest.score) {
-            throw new Error(
+            throw new ValidationError(
               `Previous fittest has a higher score than fittest, this should not happen`,
+              "OTHER",
             );
           }
         } else {
-          throw new Error(
+          throw new ValidationError(
             "Previous fittest has no score, excluded from fine tune population",
+            "OTHER",
           );
         }
 
@@ -77,13 +80,15 @@ export class FindTunePopulation {
             }
             tmpFineTunePopulation.push(creature);
           } else if (creature.score > fittest.score) {
-            throw new Error(
+            throw new ValidationError(
               `Previous fittest has a higher score than fittest, this should not happen`,
+              "OTHER",
             );
           }
         } else {
-          throw new Error(
+          throw new ValidationError(
             `Creature ${creatureUUID} has invalid score`,
+            "OTHER",
           );
         }
 
@@ -214,7 +219,10 @@ export class FindTunePopulation {
             }
           }
         } else {
-          throw new Error(`No species found for key ${speciesKey}`);
+          throw new ValidationError(
+            `No species found for key ${speciesKey}`,
+            "OTHER",
+          );
         }
 
         const extendedFineTunePopSize = fineTunePopSize -
@@ -228,8 +236,9 @@ export class FindTunePopulation {
 
           const extendedPreviousFittest = tmpFineTunePopulation[location];
           if (!extendedPreviousFittest) {
-            throw new Error(
+            throw new ValidationError(
               `No creature found at location ${location} in tmpFineTunePopulation.`,
+              "OTHER",
             );
           }
           assert(extendedPreviousFittest.uuid, "Creature UUID is undefined");

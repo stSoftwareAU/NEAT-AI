@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import type { ConnectionOptions } from "../ConnectionOptions.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
+import { TopologyError } from "../errors/TopologyError.ts";
 import type { MutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
 import {
   neuronBiasToIndexWeights,
@@ -57,9 +58,10 @@ export class AddConnection extends AbstractMutationOperator {
       // Forward-only invariant: neuron indices must be consistent.
       for (let i = 0; i < this.creature.neurons.length; i++) {
         if (this.creature.neurons[i].index !== i) {
-          throw new Error(
+          throw new TopologyError(
             `[AddConnection] Corrupt creature: neuron.index mismatch at neurons[${i}] ` +
               `(neuron.index=${this.creature.neurons[i].index}).`,
+            "INVALID_STATE",
           );
         }
       }
@@ -214,6 +216,6 @@ export class AddConnection extends AbstractMutationOperator {
   protected performMutation(_focusList?: number[]): boolean {
     // AddConnection overrides mutate() directly due to extra options parameter.
     // This method is never called.
-    throw new Error("unreachable");
+    throw new TopologyError("unreachable", "INVALID_STATE");
   }
 }

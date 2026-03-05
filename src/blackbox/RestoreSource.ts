@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../mod.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
 
 /**
@@ -34,8 +35,9 @@ export function restoreSource(creature: Creature): Creature | undefined {
     const bias = memetic.biases[neuronUUID];
     const neuron = restoredCreature.neurons.find((n) => n.uuid === neuronUUID);
     if (!neuron) {
-      throw new Error(
+      throw new ValidationError(
         `Neuron with UUID ${neuronUUID} not found in the creature.`,
+        "OTHER",
       );
     }
     neuron.bias = bias;

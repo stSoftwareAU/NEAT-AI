@@ -1,6 +1,7 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { Costs } from "../src/Costs.ts";
 import type { CostInterface } from "../src/costs/CostInterface.ts";
+import { ValidationError } from "../src/errors/ValidationError.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -62,12 +63,12 @@ Deno.test("Costs.getAvailableCosts - should return all predefined cost functions
   assert(availableCosts.length >= 6, "Should have at least 6 cost functions");
 });
 
-Deno.test("Costs.find - should throw error for unknown cost function", () => {
+Deno.test("Costs.find - should throw ValidationError for unknown cost function", () => {
   assertThrows(
     () => {
       Costs.find("UNKNOWN_COST_FUNCTION");
     },
-    Error,
+    ValidationError,
     "Unknown cost function: UNKNOWN_COST_FUNCTION",
   );
 });
