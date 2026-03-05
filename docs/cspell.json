@@ -270,6 +270,7 @@
     "Hutter",
     "microbenchmark",
     "crisprs",
-    "retryable"
+    "retryable",
+    "compactable"
   ]
 }
