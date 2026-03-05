@@ -432,6 +432,7 @@ export class DiscoveryRunner {
         successCacheDir: config.discoverySuccessCacheDir,
         failureCacheDir,
         verbose: verboseLogging,
+        discoveryCacheConfig: config.discoveryCache,
       });
 
       // Update discoverResult with re-scoring time for potential use in summary

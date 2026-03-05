@@ -22,6 +22,7 @@ import type { RequiredMemoryConfig } from "./MemoryConfig.ts";
 import type { RequiredWasmCacheConfig } from "./WasmCacheConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 import type { RequiredOutputRange } from "./OutputRangeConfig.ts";
+import type { RequiredDiscoveryCacheConfig } from "./DiscoveryCacheConfig.ts";
 import type { RequiredWorkerThreadCapConfig } from "./WorkerThreadCapConfig.ts";
 
 /**
@@ -570,6 +571,14 @@ export interface NeatArguments {
    * scales with `populationSize` to avoid eviction churn.
    */
   wasmCache: RequiredWasmCacheConfig;
+
+  /**
+   * Discovery cache eviction configuration.
+   *
+   * Issue #1701: Controls max entry counts and TTL-based eviction
+   * for the on-disk success and failure discovery caches.
+   */
+  discoveryCache: RequiredDiscoveryCacheConfig;
 
   /**
    * Heap memory monitoring configuration.

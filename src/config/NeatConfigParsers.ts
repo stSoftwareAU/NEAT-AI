@@ -14,6 +14,10 @@ import {
   DEFAULT_BIAS_REGULARISATION_CONFIG,
   type RequiredBiasRegularisationConfig,
 } from "./BiasRegularisationConfig.ts";
+import {
+  DEFAULT_DISCOVERY_CACHE_CONFIG,
+  type RequiredDiscoveryCacheConfig,
+} from "./DiscoveryCacheConfig.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import {
   DEFAULT_ENSEMBLE_DIVERSITY_CONFIG,
@@ -493,6 +497,39 @@ export function parseQuantumStep(
       { min: 0 },
     ),
   } as RequiredQuantumStepConfig;
+}
+
+/** Parse discovery cache eviction configuration (Issue #1701). */
+export function parseDiscoveryCache(
+  overrides: Record<string, unknown> | undefined,
+): RequiredDiscoveryCacheConfig {
+  const d = DEFAULT_DISCOVERY_CACHE_CONFIG;
+  return {
+    successMaxEntries: parseNumber(
+      "Discovery cache successMaxEntries",
+      overrides?.successMaxEntries,
+      d.successMaxEntries,
+      { integer: true, min: 1 },
+    ),
+    failureMaxEntries: parseNumber(
+      "Discovery cache failureMaxEntries",
+      overrides?.failureMaxEntries,
+      d.failureMaxEntries,
+      { integer: true, min: 1 },
+    ),
+    ttlDays: parseNumber(
+      "Discovery cache ttlDays",
+      overrides?.ttlDays,
+      d.ttlDays,
+      { min: 0.001 },
+    ),
+    obsoleteTTLDays: parseNumber(
+      "Discovery cache obsoleteTTLDays",
+      overrides?.obsoleteTTLDays,
+      d.obsoleteTTLDays,
+      { min: 0.001 },
+    ),
+  } as RequiredDiscoveryCacheConfig;
 }
 
 /** Parse fine-tune population configuration (Issue #1323). */

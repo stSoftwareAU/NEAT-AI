@@ -13,8 +13,14 @@ import { calculate as calculateScore } from "../architecture/Score.ts";
 import type { Creature } from "../Creature.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type { DiscoveryRunnerWorker } from "./DiscoveryRunnerTypes.ts";
+import type { RequiredDiscoveryCacheConfig } from "../config/DiscoveryCacheConfig.ts";
+import {
+  logCacheStatistics,
+  pruneCacheSync,
+  pruneObsoleteSync,
+} from "./DiscoveryCacheEviction.ts";
 import { recordFailureSync } from "./FailureCache.ts";
-import { recordSuccessSync } from "./SuccessCache.ts";
+import { getObsoleteDir, recordSuccessSync } from "./SuccessCache.ts";
 
 export interface EvaluationTaskInput {
   kind: "original" | "candidate";
@@ -97,6 +103,7 @@ export function cacheEvaluationResults(params: {
   successCacheDir?: string;
   failureCacheDir?: string;
   verbose: boolean;
+  discoveryCacheConfig?: RequiredDiscoveryCacheConfig;
 }): void {
   const {
     evaluationResults,
@@ -106,6 +113,7 @@ export function cacheEvaluationResults(params: {
     successCacheDir,
     failureCacheDir,
     verbose,
+    discoveryCacheConfig,
   } = params;
 
   if (successCacheDir) {
@@ -166,6 +174,39 @@ export function cacheEvaluationResults(params: {
           cachedFailuresCount === 1 ? "" : "s"
         } to failure cache.`,
       );
+    }
+  }
+
+  // Issue #1701: Prune caches after writing new entries.
+  if (discoveryCacheConfig) {
+    const ttlMs = discoveryCacheConfig.ttlDays * 24 * 60 * 60 * 1000;
+    const obsoleteTTLMs = discoveryCacheConfig.obsoleteTTLDays * 24 * 60 * 60 *
+      1000;
+
+    if (successCacheDir) {
+      const stats = pruneCacheSync(
+        successCacheDir,
+        discoveryCacheConfig.successMaxEntries,
+        ttlMs,
+      );
+      logCacheStatistics("Success cache", stats);
+
+      const obsoleteDir = getObsoleteDir(successCacheDir);
+      const obsoleteEvicted = pruneObsoleteSync(obsoleteDir, obsoleteTTLMs);
+      if (obsoleteEvicted > 0) {
+        getLogger().info(
+          `[DiscoveryCache] Obsolete: evicted ${obsoleteEvicted} archived entries`,
+        );
+      }
+    }
+
+    if (failureCacheDir) {
+      const stats = pruneCacheSync(
+        failureCacheDir,
+        discoveryCacheConfig.failureMaxEntries,
+        ttlMs,
+      );
+      logCacheStatistics("Failure cache", stats);
     }
   }
 }

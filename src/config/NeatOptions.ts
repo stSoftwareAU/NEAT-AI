@@ -12,6 +12,7 @@ import type { QuantumStepConfig } from "./QuantumStepConfig.ts";
 import type { StabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
 import type { BiasRegularisationConfig } from "./BiasRegularisationConfig.ts";
 import type { MemoryConfig } from "./MemoryConfig.ts";
+import type { DiscoveryCacheConfig } from "./DiscoveryCacheConfig.ts";
 import type { WasmCacheConfig } from "./WasmCacheConfig.ts";
 import type { WeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 import type { OutputRange } from "./OutputRangeConfig.ts";
@@ -84,6 +85,7 @@ export type NeatOptions =
     | "ensembleDiversity"
     | "quantumStep"
     | "fineTunePopulation"
+    | "discoveryCache"
     | "wasmCache"
     | "memory"
     | "workerThreadCap"
@@ -113,6 +115,8 @@ export type NeatOptions =
     quantumStep?: QuantumStepConfig;
     /** Partial overrides for fine-tune population configuration (defaults applied if not specified) */
     fineTunePopulation?: FineTunePopulationConfig;
+    /** Partial overrides for discovery cache eviction configuration (defaults applied if not specified) */
+    discoveryCache?: DiscoveryCacheConfig;
     /** Partial overrides for WASM cache configuration (defaults applied if not specified) */
     wasmCache?: WasmCacheConfig;
     /** Partial overrides for memory monitoring configuration (defaults applied if not specified) */
@@ -200,6 +204,7 @@ export type NeatOptionsInput =
     | "ensembleDiversity"
     | "quantumStep"
     | "fineTunePopulation"
+    | "discoveryCache"
     | "wasmCache"
     | "memory"
     | "workerThreadCap"
@@ -228,6 +233,7 @@ export type NeatOptionsInput =
     ensembleDiversity?: CoerceNumeric<EnsembleDiversityConfig>;
     quantumStep?: CoerceNumeric<QuantumStepConfig>;
     fineTunePopulation?: CoerceNumeric<FineTunePopulationConfig>;
+    discoveryCache?: CoerceNumeric<DiscoveryCacheConfig>;
     wasmCache?: CoerceNumeric<WasmCacheConfig>;
     memory?: CoerceNumeric<MemoryConfig>;
     workerThreadCap?: CoerceNumeric<WorkerThreadCapConfig>;
