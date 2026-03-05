@@ -125,6 +125,8 @@ For detailed documentation, see the [docs/](./docs/) directory:
   into saturation
 - **[GPU Acceleration](./docs/GPU_ACCELERATION.md)**: GPU acceleration for
   discovery on macOS using Metal
+- **[Activation Functions Guide](./docs/ACTIVATION_FUNCTIONS.md)**: Complete
+  guide to all 30+ activation functions with selection guidance
 - **[Intelligent Design](./docs/INTELLIGENT_DESIGN.md)**: Systematic squash
   function optimisation for hidden neurons
 - **[Troubleshooting](./docs/TROUBLESHOOTING.md)**: Common issues and solutions
