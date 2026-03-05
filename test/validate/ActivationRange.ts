@@ -19,7 +19,7 @@ Deno.test("ActivationRange-validate", () => {
     } catch (e) {
       const error = e as Error;
       assert(
-        error.name === "Error",
+        error.name === "ActivationError",
         `Unexpected name: ${error.name}`,
       );
     }
@@ -31,7 +31,7 @@ Deno.test("ActivationRange-validate", () => {
     } catch (e) {
       const error = e as Error;
       assert(
-        error.name === "Error",
+        error.name === "ActivationError",
         `Unexpected name: ${error.name}`,
       );
     }
@@ -52,7 +52,7 @@ Deno.test("ActivationRange-limit", () => {
     } catch (e) {
       const error = e as Error;
       assert(
-        error.name === "Error",
+        error.name === "ActivationError",
         `Unexpected name: ${error.name}`,
       );
     }
@@ -65,7 +65,7 @@ Deno.test("ActivationRange-limit", () => {
     } catch (e) {
       const error = e as Error;
       assert(
-        error.name === "Error",
+        error.name === "ActivationError",
         `Unexpected name: ${error.name}`,
       );
     }

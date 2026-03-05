@@ -1,4 +1,5 @@
 import type { NeuronState } from "../architecture/CreatureState.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
 import type { Neuron } from "../architecture/Neuron.ts";
 import { wasmCalculateBias } from "../wasm/WasmStandaloneFunctions.ts";
 import type { BackPropagationConfig } from "./BackPropagation.ts";
@@ -124,7 +125,10 @@ export function limitBias(
   config: BackPropagationConfig,
 ) {
   if (!Number.isFinite(targetBias)) {
-    throw new Error(`Bias must be a finite number, got ${targetBias}`);
+    throw new ValidationError(
+      `Bias must be a finite number, got ${targetBias}`,
+      "OTHER",
+    );
   }
 
   if (Math.abs(targetBias) < config.plankConstant) {

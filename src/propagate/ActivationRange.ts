@@ -1,4 +1,5 @@
 import { assert } from "@std/assert";
+import { ActivationError } from "../errors/ActivationError.ts";
 
 /** Correct the target activation to a possible activation */
 type NormalizeFunction = (targetActivation: number) => number;
@@ -37,7 +38,12 @@ export class ActivationRange {
           hint !== undefined ? `with hint ${hint}` : ""
         }`;
 
-      throw new Error(msg);
+      throw new ActivationError(
+        msg,
+        "NON_FINITE_RESULT",
+        this.name,
+        activation,
+      );
     }
   }
 
@@ -49,8 +55,11 @@ export class ActivationRange {
       } else if (value === -Infinity) {
         value = this.low;
       } else {
-        throw new Error(
+        throw new ActivationError(
           `${this.name}: Activation ${activation} is not finite, rawInput: ${rawInput}`,
+          "NON_FINITE_RESULT",
+          this.name,
+          activation,
         );
       }
     }

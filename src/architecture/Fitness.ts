@@ -1,5 +1,6 @@
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
 import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { calculate as calculateScore } from "./Score.ts";
@@ -72,7 +73,7 @@ export class Fitness {
 
       const responseData = await worker.evaluate(creature, this.feedbackLoop);
       if (!responseData.evaluate) {
-        throw new Error("Invalid response from worker.");
+        throw new ValidationError("Invalid response from worker.", "OTHER");
       }
 
       const error = responseData.evaluate.error;

@@ -3,6 +3,7 @@ import { blue, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import type { CostInterface } from "../costs/CostInterface.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
 import { Creature } from "../Creature.ts";
 import { compactUnused } from "../compact/CompactUnused.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
@@ -452,8 +453,9 @@ function trainDirBinary(
     const error = errorSum / counter;
 
     if (counter === 0) {
-      throw new Error(
+      throw new ValidationError(
         `Training ${blue(ID)} stopped as no samples were processed`,
+        "OTHER",
       );
     }
 

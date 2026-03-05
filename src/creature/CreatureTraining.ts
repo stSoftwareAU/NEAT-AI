@@ -11,6 +11,7 @@ import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
 import { getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
+import { TopologyError } from "../errors/TopologyError.ts";
 import type { DataRecordInterface } from "../architecture/DataSet.ts";
 import { makeDataDir } from "../architecture/DataSet.ts";
 import type { DiscoverRecord } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
@@ -101,10 +102,11 @@ export function record(
     });
 
     if (totalErrors > expectedMax * 10) {
-      throw new Error(
+      throw new TopologyError(
         `Excessive errors detected: ${totalErrors} total errors in single sample ` +
           `(expected ≤${expectedMax}). This indicates record() is being called too many times, ` +
           `causing the performance issue and timeout.`,
+        "EXCESSIVE_ERRORS",
       );
     }
   }

@@ -7,6 +7,7 @@
 
 import { assert, fail } from "@std/assert";
 import type { Creature } from "../Creature.ts";
+import { WasmError } from "../errors/WasmError.ts";
 import type { SparseConfigLike } from "../propagate/sparse/SparseConfigLike.ts";
 import {
   compileCreatureToWasm,
@@ -33,17 +34,19 @@ import { getLogger } from "../utils/Logger.ts";
  */
 export function requireWasmOrThrow(creature: Creature): void {
   if (!isWasmActivationAvailable()) {
-    throw new Error(
+    throw new WasmError(
       "WASM activation could not be loaded. Ensure the NEAT-AI package is installed correctly. " +
         "WASM activation is required.",
+      "MODULE_NOT_LOADED",
     );
   }
   if (!isWasmEligible(creature)) {
     const unsupported = getUnsupportedWasmSquashFunctions(creature);
-    throw new Error(
+    throw new WasmError(
       "This creature uses squash functions not supported by the current backend: " +
         unsupported.join(", ") +
         ". WASM activation is required.",
+      "ACTIVATION_FAILED",
     );
   }
 }
@@ -181,8 +184,9 @@ export function activateEphemeral(
     evictOldestWasmCreatureActivations(64);
     const retryActivation = WasmCreatureActivation.create(compiled);
     if (!retryActivation) {
-      throw new Error(
+      throw new WasmError(
         "WASM ephemeral activation failed to instantiate CompiledNetwork",
+        "ACTIVATION_FAILED",
       );
     }
     try {

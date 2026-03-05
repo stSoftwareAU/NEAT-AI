@@ -1,3 +1,5 @@
+import { ValidationError } from "../errors/ValidationError.ts";
+
 export interface DataRecordInterface {
   input: Float32Array;
   output: Float32Array;
@@ -9,8 +11,9 @@ export function makeDataDir(
   validate?: { input: number; output: number },
 ) {
   if (partitionBreak < 1) {
-    throw new Error(
+    throw new ValidationError(
       `must have a positive partition break was: ${partitionBreak}`,
+      "OTHER",
     );
   }
 
@@ -35,13 +38,15 @@ export function makeDataDir(
       const record = dataSet[pos];
       if (validate) {
         if (record.input.length !== validate.input) {
-          throw new Error(
+          throw new ValidationError(
             `input length mismatch: ${record.input.length} !== ${validate.input}`,
+            "OTHER",
           );
         }
         if (record.output.length !== validate.output) {
-          throw new Error(
+          throw new ValidationError(
             `output length mismatch: ${record.output.length} !== ${validate.output}`,
+            "OTHER",
           );
         }
       }
