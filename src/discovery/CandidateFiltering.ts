@@ -13,6 +13,7 @@ import { getLogger } from "../utils/Logger.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type { DiscoveryChangeType } from "./DiscoveryCandidates.ts";
 import { isCandidateCachedSync } from "./FailureCache.ts";
+import { getSuccessfulRemovalNeuronUUIDs } from "./SuccessCache.ts";
 
 export interface FilterCandidatesForEvaluationDeps {
   /**
@@ -30,6 +31,17 @@ export interface FilterCandidatesForEvaluationDeps {
    * Used for weighted sampling and removal shuffling.
    */
   random?: () => number;
+  /**
+   * Optional discovery success cache directory.
+   * When provided, removal candidates whose neuron UUID appears in the
+   * success cache are deprioritised in favour of novel (untried) candidates.
+   */
+  successCacheDir?: string;
+  /**
+   * Dependency-injected success cache query (defaults to `getSuccessfulRemovalNeuronUUIDs`).
+   * Inject a stub in tests for determinism and to avoid filesystem access.
+   */
+  getSuccessfulRemovalUUIDs?: (dir: string) => Set<string>;
 }
 
 export interface FilterCandidatesForEvaluationDiagnostics {
@@ -45,6 +57,10 @@ export interface FilterCandidatesForEvaluationDiagnostics {
   removalSelection?: {
     poolImpacts: string[];
     selectedImpacts: string[];
+    /** Number of removal candidates not found in the success cache (preferred). */
+    novelCount?: number;
+    /** Number of removal candidates deprioritised due to existing success cache entries. */
+    alreadySuccessfulCount?: number;
   };
 }
 
@@ -252,6 +268,15 @@ export function filterCandidatesForEvaluation(
   diagnostics.categoryDiversity = categoryDiversity;
 
   // Phase 3: select removal candidates from a lowest-impact pool, using injectable RNG.
+  // When a success cache directory is available, deprioritise removal candidates
+  // whose neuron UUID already has a success cache entry, preferring novel candidates.
+  const successCacheDir = deps.successCacheDir;
+  const getSuccessUUIDs = deps.getSuccessfulRemovalUUIDs ??
+    getSuccessfulRemovalNeuronUUIDs;
+  const successfulUUIDs = successCacheDir
+    ? getSuccessUUIDs(successCacheDir)
+    : undefined;
+
   const removalSampleSize = Math.min(
     removalCandidates.length,
     minPerCategory.removeLowImpact,
@@ -261,6 +286,27 @@ export function filterCandidatesForEvaluation(
   if (removalSampleSize > 0) {
     if (removalCandidates.length <= removalSampleSize) {
       selectedRemovalCandidates = removalCandidates;
+
+      // Still record success cache diagnostics when all candidates fit.
+      if (successfulUUIDs) {
+        let novelCount = 0;
+        let alreadySuccessfulCount = 0;
+        for (const c of removalCandidates) {
+          const uuid = c.change.removalCandidate?.neuronUUID ??
+            c.change.harmfulNeuronCandidate?.neuronUUID;
+          if (uuid && successfulUUIDs.has(uuid)) {
+            alreadySuccessfulCount++;
+          } else {
+            novelCount++;
+          }
+        }
+        diagnostics.removalSelection = {
+          poolImpacts: [],
+          selectedImpacts: [],
+          novelCount,
+          alreadySuccessfulCount,
+        };
+      }
     } else {
       const candidatesWithImpact = removalCandidates.map((candidate) => {
         const impactMatch = candidate.change.description?.match(
@@ -277,21 +323,56 @@ export function filterCandidatesForEvaluation(
 
       const poolImpacts = topCandidates.map((c) => c.impact.toExponential(2));
 
-      // Fisher-Yates shuffle on the pool and take the first N.
-      for (let i = topCandidates.length - 1; i > 0; i--) {
-        const j = Math.floor(random() * (i + 1));
-        [topCandidates[i], topCandidates[j]] = [
-          topCandidates[j],
-          topCandidates[i],
-        ];
+      // Partition the pool into novel vs already-successful candidates.
+      let novelPool: typeof topCandidates;
+      let alreadySuccessfulPool: typeof topCandidates;
+      if (successfulUUIDs) {
+        novelPool = [];
+        alreadySuccessfulPool = [];
+        for (const item of topCandidates) {
+          const uuid = item.candidate.change.removalCandidate?.neuronUUID ??
+            item.candidate.change.harmfulNeuronCandidate?.neuronUUID;
+          if (uuid && successfulUUIDs.has(uuid)) {
+            alreadySuccessfulPool.push(item);
+          } else {
+            novelPool.push(item);
+          }
+        }
+      } else {
+        novelPool = topCandidates;
+        alreadySuccessfulPool = [];
       }
 
-      const selectedTop = topCandidates.slice(0, removalSampleSize);
+      // Fisher-Yates shuffle on each pool separately.
+      for (const pool of [novelPool, alreadySuccessfulPool]) {
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(random() * (i + 1));
+          [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+      }
+
+      // Fill from novel candidates first, then fall back to already-successful.
+      const selectedTop: typeof topCandidates = [];
+      for (const item of novelPool) {
+        if (selectedTop.length >= removalSampleSize) break;
+        selectedTop.push(item);
+      }
+      for (const item of alreadySuccessfulPool) {
+        if (selectedTop.length >= removalSampleSize) break;
+        selectedTop.push(item);
+      }
+
       selectedRemovalCandidates = selectedTop.map((s) => s.candidate);
 
       diagnostics.removalSelection = {
         poolImpacts,
         selectedImpacts: selectedTop.map((s) => s.impact.toExponential(2)),
+        ...(successfulUUIDs
+          ? {
+            novelCount: novelPool.length,
+            alreadySuccessfulCount: alreadySuccessfulPool.length,
+          }
+          : {}),
       };
 
       const selectedRemovalSet = new Set(selectedRemovalCandidates);
@@ -440,6 +521,16 @@ export function logFilteringDiagnostics(
         `[DiscoveryRunner] ✓ Selected ${removal.selectedImpacts.length} removal from top ${removal.poolImpacts.length}: [${
           removal.selectedImpacts.join(", ")
         }]`,
+      );
+    }
+
+    // Log success cache deprioritisation summary.
+    if (
+      removal.novelCount !== undefined &&
+      removal.alreadySuccessfulCount !== undefined
+    ) {
+      getLogger().info(
+        `[DiscoveryRunner] Removal candidates: ${removal.novelCount} novel, ${removal.alreadySuccessfulCount} already-successful (deprioritised)`,
       );
     }
   }

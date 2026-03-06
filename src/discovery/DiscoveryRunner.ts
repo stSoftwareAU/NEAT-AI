@@ -560,6 +560,7 @@ export class DiscoveryRunner {
         failureCacheDir,
         isCandidateCached: isCandidateCachedSync,
         random: Math.random,
+        successCacheDir: config.discoverySuccessCacheDir,
       },
     );
 
