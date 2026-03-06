@@ -2,7 +2,7 @@
  * Configuration for discovery cache eviction behaviour.
  *
  * Issue #1701: The on-disk discovery success and failure caches grow
- * unboundedly. This config adds configurable max entry counts and
+ * without bound. This config adds configurable max entry counts and
  * age-based TTL eviction to keep disk usage in check.
  */
 

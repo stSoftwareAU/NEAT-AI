@@ -1,7 +1,7 @@
 ## Summary
 
 Add configurable size limits and TTL-based eviction to the on-disk discovery
-success and failure caches. Previously these caches grew unboundedly; now
+success and failure caches. Previously these caches grew without bound; now
 entries are automatically pruned by age and count after each discovery
 evaluation. Closes #1701.
 

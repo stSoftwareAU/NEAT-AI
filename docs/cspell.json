@@ -271,6 +271,8 @@
     "microbenchmark",
     "crisprs",
     "retryable",
-    "compactable"
+    "compactable",
+    "subdirs",
+    "utime"
   ]
 }
