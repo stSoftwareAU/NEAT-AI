@@ -300,6 +300,71 @@ export function archiveSuccessByKeySync(
   }
 }
 
+/** Subdirectory names for removal-type candidates. */
+const REMOVAL_SUBDIRS = ["remove-low-impact", "remove-neuron"] as const;
+
+/**
+ * Queries the success cache for neuron UUIDs that have already been proven
+ * successful for removal.
+ *
+ * Scans the `remove-low-impact` and `remove-neuron` subdirectories and extracts
+ * the neuron UUID from each cached entry. This provides the foundation for
+ * deprioritising redundant removal candidates that have already succeeded.
+ *
+ * Best-effort: corrupt or unreadable entries are skipped with a warning.
+ *
+ * @param successCacheDir - Root success cache directory path
+ * @returns A `Set<string>` of neuron UUIDs that have already succeeded
+ */
+export function getSuccessfulRemovalNeuronUUIDs(
+  successCacheDir: string,
+): Set<string> {
+  const uuids = new Set<string>();
+
+  for (const subdir of REMOVAL_SUBDIRS) {
+    const dirPath = join(successCacheDir, subdir);
+    let entries: Iterable<Deno.DirEntry>;
+    try {
+      entries = Deno.readDirSync(dirPath);
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        continue;
+      }
+      throw error;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isFile || !entry.name.endsWith(".json")) continue;
+      const filePath = join(dirPath, entry.name);
+      try {
+        const raw = Deno.readTextFileSync(filePath);
+        const parsed = JSON.parse(raw) as SuccessCacheEntry;
+        const rustRequest = parsed?.rustRequest;
+        if (!rustRequest) continue;
+
+        const removalUUID =
+          (rustRequest.removalCandidate as { neuronUUID?: string })
+            ?.neuronUUID;
+        const harmfulUUID =
+          (rustRequest.harmfulNeuronCandidate as { neuronUUID?: string })
+            ?.neuronUUID;
+
+        const uuid = removalUUID ?? harmfulUUID;
+        if (typeof uuid === "string" && uuid.length > 0) {
+          uuids.add(uuid);
+        }
+      } catch (error) {
+        getLogger().warn(
+          `[SuccessCache] Failed to parse removal entry '${filePath}':`,
+          error,
+        );
+      }
+    }
+  }
+
+  return uuids;
+}
+
 /**
  * Lists all cached success entries under a cache directory.
  *
