@@ -39,6 +39,7 @@ import {
 import {
   parseAdaptiveMutationThresholds,
   parseBiasRegularisation,
+  parseDiscoveryCache,
   parseDiscoveryMinCandidates,
   parseEnsembleDiversity,
   parseFineTunePopulation,
@@ -497,6 +498,9 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     ),
     predictiveCoding: parsePredictiveCoding(
       opts.predictiveCoding as Record<string, unknown> | undefined,
+    ),
+    discoveryCache: parseDiscoveryCache(
+      opts.discoveryCache as Record<string, unknown> | undefined,
     ),
     wasmCache: parseWasmCache(
       opts.wasmCache as Record<string, unknown> | undefined,
