@@ -25,6 +25,11 @@ import {
   DEFAULT_RUST_FLUSH_RECORDS,
 } from "./constants.ts";
 import { emptyDirSync, ensureDirSync } from "@std/fs";
+import {
+  cleanOrphanedDiscoveryDirs,
+  createDiscoveryLockFile,
+  removeDiscoveryLockFile,
+} from "../../discovery/DiscoveryCleanup.ts";
 import type {
   BinaryRecordIndices,
   DiscoverRecord,
@@ -180,11 +185,22 @@ export class DiscoverStructureBase {
     this.rustEstimatedBytesPerSample = (200 * nonInputNeuronCount) +
       (4 * (creature.input + creature.output));
 
+    // Clean up orphaned directories from previous crashed processes
+    // before creating our own temp directory.
+    try {
+      cleanOrphanedDiscoveryDirs(baseDir);
+    } catch {
+      // Non-critical — log and continue if cleanup fails
+    }
+
     if (this.skipRecordPhase) {
       ensureDirSync(this.tempDir);
     } else {
       emptyDirSync(this.tempDir);
     }
+
+    // Create a lock file so other processes can identify this directory as active
+    createDiscoveryLockFile(this.tempDir);
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────────
@@ -374,6 +390,9 @@ export class DiscoverStructureBase {
     } catch {
       // Ignore errors during cleanup
     }
+
+    // Remove lock file before directory removal
+    removeDiscoveryLockFile(this.tempDir);
 
     if (this.disableCleanup) {
       if (this.loggingEnabled) {

@@ -177,6 +177,17 @@ export {
 export type { DiscoveryEvaluationSummary } from "./src/discovery/DiscoveryRunner.ts";
 
 /**
+ * Discovery cleanup utilities for orphaned temp directory management.
+ *
+ * Issue #1702: Provides functions to detect and clean up orphaned discovery
+ * temp directories left behind by crashed or killed processes.
+ */
+export {
+  cleanOrphanedDiscoveryDirs,
+  forceCleanAllDiscoveryDirs,
+} from "./src/discovery/DiscoveryCleanup.ts";
+
+/**
  * Intelligent Design Module
  *
  * This module provides utilities for optimising neural network creatures by
