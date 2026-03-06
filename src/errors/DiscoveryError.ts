@@ -13,7 +13,8 @@ export type DiscoveryErrorReason =
   | "FFI_CRASH"
   | "TIMEOUT"
   | "DATA_CORRUPTION"
-  | "INVALID_CREATURE";
+  | "INVALID_CREATURE"
+  | "DISK_SPACE_CRITICAL";
 
 export class DiscoveryError extends Error {
   override readonly name = "DiscoveryError";

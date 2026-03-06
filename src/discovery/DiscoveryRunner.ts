@@ -36,6 +36,7 @@ import type {
   DiscoveryRunnerWorker,
   DiscoveryRunnerWorkerFactory,
 } from "./DiscoveryRunnerTypes.ts";
+import { preFlightDiskSpaceCheck } from "./DiskSpaceMonitor.ts";
 import { isCandidateCachedSync } from "./FailureCache.ts";
 
 // Re-export types and functions that external consumers import from this module.
@@ -115,6 +116,24 @@ export class DiscoveryRunner {
         "Discovery requires a positive discoveryRecordTimeOutMinutes setting.",
         "OUT_OF_RANGE",
       );
+    }
+
+    // Issue #1703: Pre-flight disk space check before starting discovery
+    if (config.discoveryDiskSpace.enabled) {
+      const baseDir = config.discoveryBaseDirectory ?? ".discovery";
+      const canProceed = preFlightDiskSpaceCheck(
+        baseDir,
+        config.discoveryDiskSpace.minFreeDiskMB,
+        config.discoveryDiskSpace.criticalFreeDiskMB,
+      );
+      if (!canProceed) {
+        throw new DiscoveryError(
+          "Discovery aborted due to critically low disk space. " +
+            `Free disk space is below ${config.discoveryDiskSpace.criticalFreeDiskMB} MB threshold. ` +
+            "Free up disk space or adjust discoveryDiskSpace.criticalFreeDiskMB.",
+          "DISK_SPACE_CRITICAL",
+        );
+      }
     }
 
     CreatureUtil.makeUUID(creature);

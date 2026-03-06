@@ -26,6 +26,10 @@ import {
 } from "./RustFlushDiagnostics.ts";
 import { getLogger } from "../../utils/Logger.ts";
 import { DiscoverStructureBase } from "./DiscoverStructureBase.ts";
+import {
+  checkDiskSpace,
+  logDiscoveryDiskUsage,
+} from "../../discovery/DiskSpaceMonitor.ts";
 
 /**
  * Adds recording, chunk management, and flush methods to the
@@ -398,6 +402,15 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
     }
 
     try {
+      // Issue #1703: Runtime disk space check before writing a chunk
+      const diskCheck = checkDiskSpace(this.tempDir, 100);
+      if (!diskCheck.ok) {
+        getLogger().error(
+          `[Discovery] ${diskCheck.message} Aborting chunk flush to prevent I/O failure.`,
+        );
+        return false;
+      }
+
       const chunkDir = this.getNextChunkDir();
       const parquetPath = this.writeRustParquetChunk(chunkDir);
       if (!parquetPath) {
@@ -454,6 +467,9 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
     this.parquetFilePath = mergeResult.outputFile ?? outputFile;
     this.combinedRustAnalysis = undefined;
     this.rustChunkFiles = [];
+
+    // Issue #1703: Log disk usage after recording phase
+    logDiscoveryDiskUsage(this.tempDir, "after recording");
 
     if (!this.disableCleanup) {
       for (const file of chunkFilesToCleanup) {

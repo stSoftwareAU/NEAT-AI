@@ -93,6 +93,19 @@ export function validateNeatConfig(config: NeatArguments): void {
     );
   }
 
+  // Cross-field validation for disk space config (Issue #1703)
+  if (
+    config.discoveryDiskSpace.criticalFreeDiskMB >
+      config.discoveryDiskSpace.minFreeDiskMB
+  ) {
+    throw new ConfigurationError(
+      `Disk space criticalFreeDiskMB must be <= minFreeDiskMB. ` +
+        `criticalFreeDiskMB: ${config.discoveryDiskSpace.criticalFreeDiskMB}, ` +
+        `minFreeDiskMB: ${config.discoveryDiskSpace.minFreeDiskMB}`,
+      "CROSS_FIELD_VALIDATION",
+    );
+  }
+
   // Feedback loop validation
   if (config.feedbackLoop === true && config.disableRandomSamples === false) {
     throw new ConfigurationError(
