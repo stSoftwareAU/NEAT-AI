@@ -273,6 +273,7 @@
     "retryable",
     "compactable",
     "subdirs",
-    "utime"
+    "utime",
+    "statfs"
   ]
 }
