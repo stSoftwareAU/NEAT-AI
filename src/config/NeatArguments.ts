@@ -23,6 +23,7 @@ import type { RequiredWasmCacheConfig } from "./WasmCacheConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 import type { RequiredOutputRange } from "./OutputRangeConfig.ts";
 import type { RequiredDiscoveryCacheConfig } from "./DiscoveryCacheConfig.ts";
+import type { RequiredDiskSpaceConfig } from "./DiskSpaceConfig.ts";
 import type { RequiredWorkerThreadCapConfig } from "./WorkerThreadCapConfig.ts";
 
 /**
@@ -579,6 +580,14 @@ export interface NeatArguments {
    * for the on-disk success and failure discovery caches.
    */
   discoveryCache: RequiredDiscoveryCacheConfig;
+
+  /**
+   * Discovery disk space monitoring configuration.
+   *
+   * Issue #1703: Pre-flight and runtime disk space checks to warn
+   * or abort discovery gracefully when disk space is insufficient.
+   */
+  discoveryDiskSpace: RequiredDiskSpaceConfig;
 
   /**
    * Heap memory monitoring configuration.

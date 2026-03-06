@@ -18,6 +18,10 @@ import {
   DEFAULT_DISCOVERY_CACHE_CONFIG,
   type RequiredDiscoveryCacheConfig,
 } from "./DiscoveryCacheConfig.ts";
+import {
+  DEFAULT_DISK_SPACE_CONFIG,
+  type RequiredDiskSpaceConfig,
+} from "./DiskSpaceConfig.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import {
   DEFAULT_ENSEMBLE_DIVERSITY_CONFIG,
@@ -530,6 +534,30 @@ export function parseDiscoveryCache(
       { min: 0.001 },
     ),
   } as RequiredDiscoveryCacheConfig;
+}
+
+/** Parse discovery disk space monitoring configuration (Issue #1703). */
+export function parseDiskSpaceConfig(
+  overrides: Record<string, unknown> | undefined,
+): RequiredDiskSpaceConfig {
+  const d = DEFAULT_DISK_SPACE_CONFIG;
+  return {
+    enabled: overrides?.enabled !== undefined
+      ? Boolean(overrides.enabled)
+      : d.enabled,
+    minFreeDiskMB: parseNumber(
+      "Disk space minFreeDiskMB",
+      overrides?.minFreeDiskMB,
+      d.minFreeDiskMB,
+      { min: 0 },
+    ),
+    criticalFreeDiskMB: parseNumber(
+      "Disk space criticalFreeDiskMB",
+      overrides?.criticalFreeDiskMB,
+      d.criticalFreeDiskMB,
+      { min: 0 },
+    ),
+  } as RequiredDiskSpaceConfig;
 }
 
 /** Parse fine-tune population configuration (Issue #1323). */

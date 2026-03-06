@@ -41,6 +41,7 @@ import {
   parseBiasRegularisation,
   parseDiscoveryCache,
   parseDiscoveryMinCandidates,
+  parseDiskSpaceConfig,
   parseEnsembleDiversity,
   parseFineTunePopulation,
   parseMemoryConfig,
@@ -501,6 +502,9 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     ),
     discoveryCache: parseDiscoveryCache(
       opts.discoveryCache as Record<string, unknown> | undefined,
+    ),
+    discoveryDiskSpace: parseDiskSpaceConfig(
+      opts.discoveryDiskSpace as Record<string, unknown> | undefined,
     ),
     wasmCache: parseWasmCache(
       opts.wasmCache as Record<string, unknown> | undefined,

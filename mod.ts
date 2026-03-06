@@ -188,6 +188,33 @@ export {
 } from "./src/discovery/DiscoveryCleanup.ts";
 
 /**
+ * Disk Space Monitoring
+ *
+ * Issue #1703: Provides utilities to check disk space before and during
+ * discovery operations, with configurable warning and critical thresholds.
+ */
+export {
+  checkDiskSpace,
+  estimateRequiredDiskSpaceMB,
+  getAvailableDiskSpaceMB,
+  logDiscoveryDiskUsage,
+  measureDirectorySize,
+  preFlightDiskSpaceCheck,
+} from "./src/discovery/DiskSpaceMonitor.ts";
+
+export type {
+  DirectorySizeResult,
+  DiskSpaceCheckResult,
+} from "./src/discovery/DiskSpaceMonitor.ts";
+
+export type {
+  DiskSpaceConfig,
+  RequiredDiskSpaceConfig,
+} from "./src/config/DiskSpaceConfig.ts";
+
+export { DEFAULT_DISK_SPACE_CONFIG } from "./src/config/DiskSpaceConfig.ts";
+
+/**
  * Intelligent Design Module
  *
  * This module provides utilities for optimising neural network creatures by

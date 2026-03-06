@@ -42,6 +42,7 @@ import {
   truncateForLogValue as truncateForLogValueImpl,
 } from "./RustFlushDiagnostics.ts";
 import { getLogger } from "../../utils/Logger.ts";
+import { logDiscoveryDiskUsage } from "../../discovery/DiskSpaceMonitor.ts";
 
 import { logDiscovery } from "./DiscoverLogging.ts";
 import { loadNeuronRecords } from "./DiscoverDataLoading.ts";
@@ -201,6 +202,9 @@ export class DiscoverStructureBase {
 
     // Create a lock file so other processes can identify this directory as active
     createDiscoveryLockFile(this.tempDir);
+
+    // Issue #1703: Log disk usage at discovery start
+    logDiscoveryDiskUsage(this.tempDir, "discovery start");
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────────
@@ -390,6 +394,9 @@ export class DiscoverStructureBase {
     } catch {
       // Ignore errors during cleanup
     }
+
+    // Issue #1703: Log disk usage before cleanup
+    logDiscoveryDiskUsage(this.tempDir, "before cleanup");
 
     // Remove lock file before directory removal
     removeDiscoveryLockFile(this.tempDir);
