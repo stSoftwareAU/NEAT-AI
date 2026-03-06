@@ -10,6 +10,7 @@ import { buildCacheKey } from "../../src/discovery/FailureCache.ts";
 import { closeRustLibrary } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import {
   deleteSuccessSync,
+  getSuccessfulRemovalNeuronUUIDs,
   listSuccessEntriesSync,
   recordSuccessSync,
 } from "../../src/discovery/SuccessCache.ts";
@@ -349,6 +350,189 @@ Deno.test("SuccessCache overwrites corrupt entries (best-effort)", async () => {
     } catch {
       // Ignore cleanup failure in tests.
     }
+  }
+});
+
+Deno.test("getSuccessfulRemovalNeuronUUIDs returns empty set for non-existent directory", () => {
+  const result = getSuccessfulRemovalNeuronUUIDs("/tmp/does-not-exist-neat-ai");
+  assertEquals(result.size, 0);
+});
+
+Deno.test("getSuccessfulRemovalNeuronUUIDs returns empty set for empty directory", async () => {
+  const cacheDir = await Deno.makeTempDir({
+    prefix: "neat-ai-removal-uuids-empty-",
+  });
+  try {
+    const result = getSuccessfulRemovalNeuronUUIDs(cacheDir);
+    assertEquals(result.size, 0);
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
+});
+
+Deno.test("getSuccessfulRemovalNeuronUUIDs extracts neuron UUIDs from removal entries", async () => {
+  const cacheDir = await Deno.makeTempDir({
+    prefix: "neat-ai-removal-uuids-populated-",
+  });
+  try {
+    // Create remove-low-impact entry
+    const removeLowImpactDir = join(cacheDir, "remove-low-impact");
+    await Deno.mkdir(removeLowImpactDir, { recursive: true });
+    await Deno.writeTextFile(
+      join(removeLowImpactDir, "entry1.json"),
+      JSON.stringify({
+        key: "entry1",
+        changeType: "remove-low-impact",
+        rustRequest: {
+          removalCandidate: { neuronUUID: "neuron-aaa-111" },
+        },
+      }),
+    );
+
+    // Create remove-neuron entry
+    const removeNeuronDir = join(cacheDir, "remove-neuron");
+    await Deno.mkdir(removeNeuronDir, { recursive: true });
+    await Deno.writeTextFile(
+      join(removeNeuronDir, "entry2.json"),
+      JSON.stringify({
+        key: "entry2",
+        changeType: "remove-neuron",
+        rustRequest: {
+          harmfulNeuronCandidate: { neuronUUID: "neuron-bbb-222" },
+        },
+      }),
+    );
+
+    const result = getSuccessfulRemovalNeuronUUIDs(cacheDir);
+    assertEquals(result.size, 2);
+    assertEquals(result.has("neuron-aaa-111"), true);
+    assertEquals(result.has("neuron-bbb-222"), true);
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
+});
+
+Deno.test("getSuccessfulRemovalNeuronUUIDs ignores non-removal entries", async () => {
+  const cacheDir = await Deno.makeTempDir({
+    prefix: "neat-ai-removal-uuids-ignore-",
+  });
+  try {
+    // Create add-synapses entry (should be ignored)
+    const addSynapsesDir = join(cacheDir, "add-synapses");
+    await Deno.mkdir(addSynapsesDir, { recursive: true });
+    await Deno.writeTextFile(
+      join(addSynapsesDir, "entry1.json"),
+      JSON.stringify({
+        key: "entry1",
+        changeType: "add-synapses",
+        rustRequest: { synapseCandidate: {} },
+      }),
+    );
+
+    // Create change-squash entry (should be ignored)
+    const changeSquashDir = join(cacheDir, "change-squash");
+    await Deno.mkdir(changeSquashDir, { recursive: true });
+    await Deno.writeTextFile(
+      join(changeSquashDir, "entry1.json"),
+      JSON.stringify({
+        key: "entry1",
+        changeType: "change-squash",
+        rustRequest: { squashCandidate: {} },
+      }),
+    );
+
+    // Create remove-low-impact entry (should be included)
+    const removeLowImpactDir = join(cacheDir, "remove-low-impact");
+    await Deno.mkdir(removeLowImpactDir, { recursive: true });
+    await Deno.writeTextFile(
+      join(removeLowImpactDir, "entry1.json"),
+      JSON.stringify({
+        key: "entry1",
+        changeType: "remove-low-impact",
+        rustRequest: {
+          removalCandidate: { neuronUUID: "neuron-ccc-333" },
+        },
+      }),
+    );
+
+    const result = getSuccessfulRemovalNeuronUUIDs(cacheDir);
+    assertEquals(result.size, 1);
+    assertEquals(result.has("neuron-ccc-333"), true);
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
+});
+
+Deno.test("getSuccessfulRemovalNeuronUUIDs skips corrupt entries gracefully", async () => {
+  const cacheDir = await Deno.makeTempDir({
+    prefix: "neat-ai-removal-uuids-corrupt-",
+  });
+  try {
+    const removeLowImpactDir = join(cacheDir, "remove-low-impact");
+    await Deno.mkdir(removeLowImpactDir, { recursive: true });
+
+    // Corrupt entry
+    await Deno.writeTextFile(
+      join(removeLowImpactDir, "corrupt.json"),
+      "{ this is not valid json",
+    );
+
+    // Valid entry
+    await Deno.writeTextFile(
+      join(removeLowImpactDir, "valid.json"),
+      JSON.stringify({
+        key: "valid",
+        changeType: "remove-low-impact",
+        rustRequest: {
+          removalCandidate: { neuronUUID: "neuron-ddd-444" },
+        },
+      }),
+    );
+
+    const result = getSuccessfulRemovalNeuronUUIDs(cacheDir);
+    assertEquals(result.size, 1);
+    assertEquals(result.has("neuron-ddd-444"), true);
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
+});
+
+Deno.test("getSuccessfulRemovalNeuronUUIDs deduplicates same neuron across directories", async () => {
+  const cacheDir = await Deno.makeTempDir({
+    prefix: "neat-ai-removal-uuids-dedup-",
+  });
+  try {
+    const removeLowImpactDir = join(cacheDir, "remove-low-impact");
+    await Deno.mkdir(removeLowImpactDir, { recursive: true });
+    await Deno.writeTextFile(
+      join(removeLowImpactDir, "entry1.json"),
+      JSON.stringify({
+        key: "entry1",
+        changeType: "remove-low-impact",
+        rustRequest: {
+          removalCandidate: { neuronUUID: "neuron-same-uuid" },
+        },
+      }),
+    );
+
+    const removeNeuronDir = join(cacheDir, "remove-neuron");
+    await Deno.mkdir(removeNeuronDir, { recursive: true });
+    await Deno.writeTextFile(
+      join(removeNeuronDir, "entry2.json"),
+      JSON.stringify({
+        key: "entry2",
+        changeType: "remove-neuron",
+        rustRequest: {
+          harmfulNeuronCandidate: { neuronUUID: "neuron-same-uuid" },
+        },
+      }),
+    );
+
+    const result = getSuccessfulRemovalNeuronUUIDs(cacheDir);
+    assertEquals(result.size, 1);
+    assertEquals(result.has("neuron-same-uuid"), true);
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
   }
 });
 
