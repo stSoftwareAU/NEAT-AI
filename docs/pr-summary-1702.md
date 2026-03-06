@@ -7,9 +7,8 @@ When a discovery process crashes or is killed unexpectedly, its temporary
 directory (`.discovery/{creature-uuid}/`) may be left behind. This PR adds:
 
 - **Lock file mechanism**: Each discovery temp directory now contains a
-  `.discovery.lock` file recording the owning process PID and start time.
-  This allows cleanup logic to distinguish between active and orphaned
-  directories.
+  `.discovery.lock` file recording the owning process PID and start time. This
+  allows cleanup logic to distinguish between active and orphaned directories.
 
 - **Automatic startup cleanup**: On each discovery initialisation, the base
   directory is scanned for orphaned directories older than 24 hours (default
@@ -24,9 +23,9 @@ directory (`.discovery/{creature-uuid}/`) may be left behind. This PR adds:
 
 ## Evidence
 
-This is a backend/infrastructure change with no visual output. All
-functionality is verified through unit tests. The full quality gate
-(4540 tests) passes cleanly.
+This is a backend/infrastructure change with no visual output. All functionality
+is verified through unit tests. The full quality gate (4540 tests) passes
+cleanly.
 
 ## Test Plan
 
