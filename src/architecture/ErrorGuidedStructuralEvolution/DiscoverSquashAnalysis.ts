@@ -19,6 +19,9 @@ import type {
   DiscoverRecord,
 } from "./DiscoverStructureTypes.ts";
 
+/** Module-level MSE instance — the class is stateless so one suffices. */
+const mse = new MSE();
+
 /**
  * Calculates MSE between ideal and actual activations.
  */
@@ -26,18 +29,17 @@ export function calculateSquashError(
   idealActivations: number[],
   actualActivations: number[],
 ): number {
-  const mse = new MSE();
+  const idealBuffer = new Float32Array(1);
+  const actualBuffer = new Float32Array(1);
   let totalError = 0;
   for (let i = 0; i < idealActivations.length; i++) {
-    const idealActivation = idealActivations[i];
     const actualActivation = actualActivations[i];
     if (actualActivation === undefined) {
       throw new TopologyError("Activation is undefined", "INVALID_STATE");
     }
-    const error = mse.calculate(
-      Float32Array.from([idealActivation]),
-      Float32Array.from([actualActivation]),
-    );
+    idealBuffer[0] = idealActivations[i];
+    actualBuffer[0] = actualActivation;
+    const error = mse.calculate(idealBuffer, actualBuffer);
     totalError += error;
   }
 
