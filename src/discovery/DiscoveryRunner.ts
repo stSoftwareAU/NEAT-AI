@@ -54,6 +54,7 @@ export {
 export type {
   DiscoveryDirInput,
   DiscoveryDirResult,
+  DiscoveryImprovement,
   DiscoveryRunnerDeps,
   DiscoveryRunnerLike,
   DiscoveryRunnerWorker,
@@ -436,11 +437,12 @@ export class DiscoveryRunner {
       const evaluationResults = [...phase1Results, ...phase2Results];
       const reScoringTime = phase1Time + phase2Time;
 
-      // Find the best improvement across all candidates (single and combined)
-      const improved = evaluationResults
+      // Issue #1732: Collect ALL successful candidates sorted by score descending
+      const allImprovements = evaluationResults
         .filter((result) => result.kind === "candidate")
         .filter((result) => result.score > original.score)
-        .sort((a, b) => b.score - a.score)[0];
+        .filter((result) => result.candidate !== undefined)
+        .sort((a, b) => b.score - a.score);
 
       // Cache successful and failed candidates to their respective caches
       cacheEvaluationResults({
@@ -466,26 +468,38 @@ export class DiscoveryRunner {
         reScoringTime,
       };
 
-      if (improved && improved.candidate) {
-        const scoreDelta = improved.score - original.score;
-        const description = improved.candidate.change.description
-          ? improved.candidate.change.description
-          : improved.candidate.change.type;
-        const changeType = improved.candidate.change.type;
-        // Concise message format: description already conveys the change type via emoji and text
-        // Score delta uses toPrecision(6) for consistency with other metrics
+      // Helper to build an improvement record from an evaluation result
+      const buildImprovement = (result: typeof allImprovements[0]) => {
+        const candidate = result.candidate!;
+        const scoreDelta = result.score - original.score;
+        const description = candidate.change.description
+          ? candidate.change.description
+          : candidate.change.type;
+        const changeType = candidate.change.type;
         const message = `${description} for ${discoverResult.ID}: Score +${
           scoreDelta.toPrecision(6)
-        } -> ${improved.score.toPrecision(6)}`;
+        } -> ${result.score.toPrecision(6)}`;
 
-        outcome.improvement = {
+        return {
           changeType,
-          error: improved.error,
-          score: improved.score,
+          error: result.error,
+          score: result.score,
           scoreDelta,
           message,
-          creature: improved.candidate.creature.exportJSON(),
+          creature: candidate.creature.exportJSON(),
         };
+      };
+
+      if (allImprovements.length > 0) {
+        // Primary improvement: the best scoring candidate
+        outcome.improvement = buildImprovement(allImprovements[0]);
+
+        // Issue #1732: Additional improvements beyond the primary
+        if (allImprovements.length > 1) {
+          outcome.additionalImprovements = allImprovements.slice(1).map(
+            buildImprovement,
+          );
+        }
       }
 
       const evaluationArtifacts = recordEvaluationSummaries({
