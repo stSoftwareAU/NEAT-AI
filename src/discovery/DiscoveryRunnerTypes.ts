@@ -59,20 +59,33 @@ export interface DiscoveryDirInput {
   options: NeatOptions;
 }
 
+/**
+ * Shape shared by the primary `improvement` and each entry in
+ * `additionalImprovements`.
+ */
+export interface DiscoveryImprovement {
+  changeType: string;
+  error: number;
+  score: number;
+  scoreDelta: number;
+  message: string;
+  creature: CreatureExport;
+}
+
 export interface DiscoveryDirResult {
   discovery: DiscoverResult;
   original: {
     error: number;
     score: number;
   };
-  improvement?: {
-    changeType: string;
-    error: number;
-    score: number;
-    scoreDelta: number;
-    message: string;
-    creature: CreatureExport;
-  };
+  /** The single best improvement (highest score). */
+  improvement?: DiscoveryImprovement;
+  /**
+   * Issue #1732: Additional successful discoveries beyond the primary
+   * improvement, sorted by score descending.  Only populated when two
+   * or more candidates beat the original.
+   */
+  additionalImprovements?: DiscoveryImprovement[];
   evaluations?: DiscoveryEvaluationSummary[];
   candidateArchiveDir?: string;
   reScoringTime?: number; // Time spent re-scoring candidates (ms)
