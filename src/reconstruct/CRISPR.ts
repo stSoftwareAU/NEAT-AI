@@ -3,6 +3,7 @@ import { CreatureUtil, Upgrade } from "../../mod.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import { Creature } from "../Creature.ts";
 import { CrisprError } from "../errors/CrisprError.ts";
+import type { ValidationError } from "../errors/ValidationError.ts";
 import {
   getMajorVersion,
   upgradeSemanticVersionIfForwardOnlyConfirmed,
@@ -495,10 +496,10 @@ export class CRISPR {
         try {
           modifiedCreature.validate({ forwardOnly: true });
         } catch (e) {
-          const error = e as Error;
+          const error = e as ValidationError;
           if (
-            error.name === "SELF_CONNECTION" ||
-            error.name === "RECURSIVE_SYNAPSE"
+            error.reason === "SELF_CONNECTION" ||
+            error.reason === "RECURSIVE_SYNAPSE"
           ) {
             modifiedCreature.fix({ forwardOnly: true });
             modifiedCreature.validate({ forwardOnly: true });

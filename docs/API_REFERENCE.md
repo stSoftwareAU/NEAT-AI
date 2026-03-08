@@ -794,7 +794,9 @@ import { Creature } from "@stsoftware/neat-ai";
 try {
   const creature = Creature.fromJSON(jsonData, true); // validate = true
 } catch (error) {
-  if (error instanceof Error && error.name === "RECURSIVE_SYNAPSE") {
+  if (
+    error instanceof ValidationError && error.reason === "RECURSIVE_SYNAPSE"
+  ) {
     console.error("Network has backward connections in forward-only mode");
   }
 }

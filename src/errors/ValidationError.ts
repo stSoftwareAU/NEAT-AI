@@ -1,3 +1,12 @@
+/**
+ * Typed error for validation failures.
+ *
+ * Consumers can catch `ValidationError` and inspect `reason` to handle
+ * specific failure modes programmatically.
+ *
+ * @module ValidationError
+ */
+
 export type ValidationErrorName =
   | "OTHER"
   | "NO_OUTWARD_CONNECTIONS"
@@ -8,8 +17,11 @@ export type ValidationErrorName =
   | "MEMETIC";
 
 export class ValidationError extends Error {
-  constructor(message: string, name: ValidationErrorName) {
+  override readonly name = "ValidationError";
+  readonly reason: ValidationErrorName;
+
+  constructor(message: string, reason: ValidationErrorName) {
     super(message);
-    this.name = name;
+    this.reason = reason;
   }
 }

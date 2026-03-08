@@ -2,6 +2,7 @@ import { assert, fail } from "@std/assert";
 import { Creature } from "../../mod.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { Synapse } from "../../src/architecture/Synapse.ts";
+import type { ValidationError } from "../../src/errors/ValidationError.ts";
 
 /**
  * Creates a creature with a recursive (backward) synapse for testing.
@@ -24,10 +25,10 @@ Deno.test("feedbackLoop: false rejects recursive synapses", () => {
     creatureValidate(creature, { feedbackLoop: false });
     fail("Expected RECURSIVE_SYNAPSE error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "RECURSIVE_SYNAPSE",
-      `Expected RECURSIVE_SYNAPSE but got: ${error.name}`,
+      error.reason === "RECURSIVE_SYNAPSE",
+      `Expected RECURSIVE_SYNAPSE but got: ${error.reason}`,
     );
   }
 });

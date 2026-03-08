@@ -5,6 +5,7 @@ import { editParentByIndex } from "../breed/EditParentByIndex.ts";
 import { geneticCompatibility } from "../breed/GeneticCompatibility.ts";
 import { Creature } from "../Creature.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
+import type { ValidationError } from "../errors/ValidationError.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import {
   getMajorVersion,
@@ -423,10 +424,10 @@ export class Offspring {
           offspring.validate({ forwardOnly: true });
           upgradeSemanticVersionIfForwardOnlyConfirmed(offspring);
         } catch (e) {
-          const error = e as Error;
+          const error = e as ValidationError;
           if (
-            error.name === "SELF_CONNECTION" ||
-            error.name === "RECURSIVE_SYNAPSE"
+            error.reason === "SELF_CONNECTION" ||
+            error.reason === "RECURSIVE_SYNAPSE"
           ) {
             const violations = offspring.synapses
               .map((s, i) => ({ s, i }))
