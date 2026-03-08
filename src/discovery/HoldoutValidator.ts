@@ -16,7 +16,10 @@
 import type { Creature } from "../Creature.ts";
 import type { DataRecordInterface } from "../architecture/DataSet.ts";
 import { Costs } from "../Costs.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import {
+  createSeededRng,
+  getRandomNumberGenerator,
+} from "../utils/RandomNumberGenerator.ts";
 
 /**
  * Options for holdout validation.
@@ -61,19 +64,6 @@ export interface HoldoutSplit {
 }
 
 /**
- * Simple seeded random number generator for deterministic splitting.
- * Uses a Linear Congruential Generator (LCG) algorithm.
- */
-function createSeededRandom(seed: number): () => number {
-  let state = seed;
-  return () => {
-    // LCG parameters (same as MINSTD)
-    state = (state * 48271) % 2147483647;
-    return state / 2147483647;
-  };
-}
-
-/**
  * Split data into training and holdout sets.
  *
  * @param data - The full dataset to split
@@ -106,9 +96,10 @@ export function splitDataForHoldout(
   const indices = Array.from({ length: data.length }, (_, i) => i);
 
   // Use seeded or standard random for shuffling
-  const random = seed !== undefined
-    ? createSeededRandom(seed)
-    : () => getRandomNumberGenerator().random();
+  const rng = seed !== undefined
+    ? createSeededRng(seed)
+    : getRandomNumberGenerator();
+  const random = () => rng.random();
 
   // Fisher-Yates shuffle
   for (let i = indices.length - 1; i > 0; i--) {

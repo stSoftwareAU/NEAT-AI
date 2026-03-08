@@ -13,7 +13,10 @@
  */
 
 import type { Creature } from "../Creature.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import {
+  createSeededRng,
+  getRandomNumberGenerator,
+} from "../utils/RandomNumberGenerator.ts";
 
 /**
  * Options for brittleness scoring.
@@ -52,19 +55,6 @@ export interface BrittlenessResult {
 }
 
 /**
- * Simple seeded random number generator for deterministic perturbations.
- * Uses a Linear Congruential Generator (LCG) algorithm.
- */
-function createSeededRandom(seed: number): () => number {
-  let state = seed;
-  return () => {
-    // LCG parameters (same as MINSTD)
-    state = (state * 48271) % 2147483647;
-    return state / 2147483647;
-  };
-}
-
-/**
  * Perturb an input vector by adding small random changes.
  *
  * @param input - The original input vector
@@ -77,9 +67,10 @@ export function perturbInput(
   magnitude: number,
   seed?: number,
 ): Float32Array {
-  const random = seed !== undefined
-    ? createSeededRandom(seed)
-    : () => getRandomNumberGenerator().random();
+  const rng = seed !== undefined
+    ? createSeededRng(seed)
+    : getRandomNumberGenerator();
+  const random = () => rng.random();
   const perturbed = new Float32Array(input.length);
 
   for (let i = 0; i < input.length; i++) {
