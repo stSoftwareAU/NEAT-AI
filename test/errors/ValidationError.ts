@@ -14,7 +14,8 @@ Deno.test("ValidationError - OTHER reason", () => {
   const error = new ValidationError("something went wrong", "OTHER");
   assertIsError(error, ValidationError);
   assertEquals(error.message, "something went wrong");
-  assertEquals(error.name, "OTHER");
+  assertEquals(error.name, "ValidationError");
+  assertEquals(error.reason, "OTHER");
 });
 
 Deno.test("ValidationError - NO_OUTWARD_CONNECTIONS reason", () => {
@@ -22,7 +23,8 @@ Deno.test("ValidationError - NO_OUTWARD_CONNECTIONS reason", () => {
     "neuron has no outward connections",
     "NO_OUTWARD_CONNECTIONS",
   );
-  assertEquals(error.name, "NO_OUTWARD_CONNECTIONS");
+  assertEquals(error.name, "ValidationError");
+  assertEquals(error.reason, "NO_OUTWARD_CONNECTIONS");
 });
 
 Deno.test("ValidationError - NO_INWARD_CONNECTIONS reason", () => {
@@ -30,7 +32,8 @@ Deno.test("ValidationError - NO_INWARD_CONNECTIONS reason", () => {
     "neuron has no inward connections",
     "NO_INWARD_CONNECTIONS",
   );
-  assertEquals(error.name, "NO_INWARD_CONNECTIONS");
+  assertEquals(error.name, "ValidationError");
+  assertEquals(error.reason, "NO_INWARD_CONNECTIONS");
 });
 
 Deno.test("ValidationError - IF_CONDITIONS reason", () => {
@@ -38,7 +41,8 @@ Deno.test("ValidationError - IF_CONDITIONS reason", () => {
     "IF conditions are invalid",
     "IF_CONDITIONS",
   );
-  assertEquals(error.name, "IF_CONDITIONS");
+  assertEquals(error.name, "ValidationError");
+  assertEquals(error.reason, "IF_CONDITIONS");
 });
 
 Deno.test("ValidationError - RECURSIVE_SYNAPSE reason", () => {
@@ -46,7 +50,8 @@ Deno.test("ValidationError - RECURSIVE_SYNAPSE reason", () => {
     "recursive synapse detected",
     "RECURSIVE_SYNAPSE",
   );
-  assertEquals(error.name, "RECURSIVE_SYNAPSE");
+  assertEquals(error.name, "ValidationError");
+  assertEquals(error.reason, "RECURSIVE_SYNAPSE");
 });
 
 Deno.test("ValidationError - SELF_CONNECTION reason", () => {
@@ -54,12 +59,14 @@ Deno.test("ValidationError - SELF_CONNECTION reason", () => {
     "self-connection not allowed",
     "SELF_CONNECTION",
   );
-  assertEquals(error.name, "SELF_CONNECTION");
+  assertEquals(error.name, "ValidationError");
+  assertEquals(error.reason, "SELF_CONNECTION");
 });
 
 Deno.test("ValidationError - MEMETIC reason", () => {
   const error = new ValidationError("memetic validation failed", "MEMETIC");
-  assertEquals(error.name, "MEMETIC");
+  assertEquals(error.name, "ValidationError");
+  assertEquals(error.reason, "MEMETIC");
 });
 
 Deno.test("ValidationError - is instanceof Error", () => {
@@ -90,7 +97,8 @@ Deno.test("ValidationError - all reasons are valid", () => {
 
   for (const reason of reasons) {
     const error = new ValidationError(`test: ${reason}`, reason);
-    assertEquals(error.name, reason);
+    assertEquals(error.name, "ValidationError");
+    assertEquals(error.reason, reason);
   }
 });
 
@@ -99,10 +107,18 @@ Deno.test("ValidationError - distinguishable in catch block", () => {
     throw new ValidationError("no connections", "NO_OUTWARD_CONNECTIONS");
   } catch (e) {
     if (e instanceof ValidationError) {
-      assertEquals(e.name, "NO_OUTWARD_CONNECTIONS");
+      assertEquals(e.name, "ValidationError");
+      assertEquals(e.reason, "NO_OUTWARD_CONNECTIONS");
       assertEquals(e.message, "no connections");
     } else {
       throw new Error("Expected ValidationError instance");
     }
   }
+});
+
+Deno.test("ValidationError - API aligned with TopologyError", () => {
+  const error = new ValidationError("test", "OTHER");
+  assertEquals(error.name, "ValidationError");
+  assertEquals(error.reason, "OTHER");
+  assertEquals(error.message, "test");
 });

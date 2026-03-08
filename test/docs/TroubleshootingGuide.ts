@@ -16,6 +16,7 @@ import { Creature, type CreatureExport } from "../../mod.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { Synapse } from "../../src/architecture/Synapse.ts";
+import type { ValidationError } from "../../src/errors/ValidationError.ts";
 import {
   initWasmActivation,
   isWasmActivationAvailable,
@@ -148,11 +149,11 @@ Deno.test(
       creatureValidate(creature, { feedbackLoop: false });
       throw new Error("Expected RECURSIVE_SYNAPSE validation error");
     } catch (e) {
-      const error = e as Error;
+      const error = e as ValidationError;
       assertEquals(
-        error.name,
+        error.reason,
         "RECURSIVE_SYNAPSE",
-        `Expected RECURSIVE_SYNAPSE but got: ${error.name}: ${error.message}`,
+        `Expected RECURSIVE_SYNAPSE but got: ${error.reason}: ${error.message}`,
       );
     }
   },
@@ -180,11 +181,11 @@ Deno.test(
       creatureValidate(creature, { forwardOnly: true });
       throw new Error("Expected SELF_CONNECTION validation error");
     } catch (e) {
-      const error = e as Error;
+      const error = e as ValidationError;
       assertEquals(
-        error.name,
+        error.reason,
         "SELF_CONNECTION",
-        `Expected SELF_CONNECTION but got: ${error.name}: ${error.message}`,
+        `Expected SELF_CONNECTION but got: ${error.reason}: ${error.message}`,
       );
     }
   },
@@ -237,11 +238,11 @@ Deno.test(
       creatureValidate(creature);
       throw new Error("Expected NO_OUTWARD_CONNECTIONS validation error");
     } catch (e) {
-      const error = e as Error;
+      const error = e as ValidationError;
       assertEquals(
-        error.name,
+        error.reason,
         "NO_OUTWARD_CONNECTIONS",
-        `Expected NO_OUTWARD_CONNECTIONS but got: ${error.name}: ${error.message}`,
+        `Expected NO_OUTWARD_CONNECTIONS but got: ${error.reason}: ${error.message}`,
       );
     }
   },
@@ -270,11 +271,11 @@ Deno.test(
       creatureValidate(creature);
       throw new Error("Expected NO_INWARD_CONNECTIONS validation error");
     } catch (e) {
-      const error = e as Error;
+      const error = e as ValidationError;
       assertEquals(
-        error.name,
+        error.reason,
         "NO_INWARD_CONNECTIONS",
-        `Expected NO_INWARD_CONNECTIONS but got: ${error.name}: ${error.message}`,
+        `Expected NO_INWARD_CONNECTIONS but got: ${error.reason}: ${error.message}`,
       );
     }
   },

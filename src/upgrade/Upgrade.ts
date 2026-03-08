@@ -1,5 +1,6 @@
 import { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import type { ValidationError } from "../errors/ValidationError.ts";
 import { writeDiagnostics } from "../utils/Diagnostics.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { upgradeTwo } from "./UpgradeTwo.ts";
@@ -87,17 +88,18 @@ function validateFourX(creature: Creature): void {
     creature.forwardOnly = true;
     return;
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
 
     // Check if this is a forward-only violation that we can attempt to repair.
     if (
-      error.name === "SELF_CONNECTION" || error.name === "RECURSIVE_SYNAPSE"
+      error.reason === "SELF_CONNECTION" ||
+      error.reason === "RECURSIVE_SYNAPSE"
     ) {
       getLogger().warn(
         `[upgrade] WARNING: 4.x creature (UUID: ${
           creature.uuid ?? "unknown"
         }) failed forward-only validation: ` +
-          `${error.name} - ${error.message}. ` +
+          `${error.reason} - ${error.message}. ` +
           `This indicates a bug in our code. Attempting repair...`,
       );
 

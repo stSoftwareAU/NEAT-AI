@@ -52,7 +52,7 @@ export function editParentByIndex(
     child.validate();
   } catch (error) {
     if (error instanceof ValidationError) {
-      if (error.name === "MEMETIC") {
+      if (error.reason === "MEMETIC") {
         delete child.memetic;
         child.fix();
         child.validate();

@@ -390,7 +390,7 @@ Deno.test("MutatorBehavioural: mutation amount controls mutations per creature",
   // Run multiple times and compare average structural change
   let totalChange1 = 0;
   let totalChange5 = 0;
-  const trials = 30;
+  const trials = 100;
 
   for (let t = 0; t < trials; t++) {
     const c1 = new Creature(3, 2, { layers: [{ count: 6 }] });

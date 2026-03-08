@@ -924,7 +924,9 @@ Example of catching and inspecting a validation error:
 try {
   creatureValidate(creature, { feedbackLoop: false });
 } catch (error) {
-  if (error.name === "RECURSIVE_SYNAPSE") {
+  if (
+    error instanceof ValidationError && error.reason === "RECURSIVE_SYNAPSE"
+  ) {
     // Handle forward-only violation
   }
 }

@@ -2,6 +2,7 @@ import { assert, fail } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { Synapse } from "../../src/architecture/Synapse.ts";
+import type { ValidationError } from "../../src/errors/ValidationError.ts";
 
 Deno.test("Neuron length", () => {
   const creature = new Creature(10, 2);
@@ -10,10 +11,10 @@ Deno.test("Neuron length", () => {
     creatureValidate(creature, { neurons: 9 });
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -25,10 +26,10 @@ Deno.test("Neuron length", () => {
     creatureValidate(creature, { neurons: 9 });
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -40,10 +41,10 @@ Deno.test("Input", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -55,10 +56,10 @@ Deno.test("Output", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -99,10 +100,10 @@ Deno.test("Wrong order", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -139,10 +140,10 @@ Deno.test("IF", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "IF_CONDITIONS",
-      `Unexpected name: ${error.name}`,
+      error.reason === "IF_CONDITIONS",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -191,10 +192,10 @@ Deno.test("IF conditions", () => {
     Creature.fromJSON(tmp).validate();
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "IF_CONDITIONS",
-      `Unexpected name: ${error.name}`,
+      error.reason === "IF_CONDITIONS",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 
@@ -204,10 +205,10 @@ Deno.test("IF conditions", () => {
     Creature.fromJSON(tmp).validate();
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "IF_CONDITIONS",
-      `Unexpected name: ${error.name}`,
+      error.reason === "IF_CONDITIONS",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 
@@ -217,10 +218,10 @@ Deno.test("IF conditions", () => {
     Creature.fromJSON(tmp).validate();
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "IF_CONDITIONS",
-      `Unexpected name: ${error.name}`,
+      error.reason === "IF_CONDITIONS",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -232,10 +233,10 @@ Deno.test("No UUID", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -249,10 +250,10 @@ Deno.test("Duplicate UUID", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -267,10 +268,10 @@ Deno.test("UUID too long", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -284,10 +285,10 @@ Deno.test("UUID invalid characters", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -301,10 +302,10 @@ Deno.test("invalid input UUID", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -317,10 +318,10 @@ Deno.test("Bias", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -333,10 +334,10 @@ Deno.test("Output Index", () => {
     creatureValidate(creature);
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -348,10 +349,10 @@ Deno.test("connections length", () => {
     creatureValidate(creature, { connections: 9 });
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -365,10 +366,10 @@ Deno.test("expected index", () => {
     creatureValidate(creature, { connections: 9 });
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -382,10 +383,10 @@ Deno.test("expected index", () => {
     creatureValidate(creature, { connections: 9 });
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -399,10 +400,10 @@ Deno.test("expected index", () => {
     creatureValidate(creature, { connections: 9 });
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "OTHER",
-      `Unexpected name: ${error.name}`,
+      error.reason === "OTHER",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -421,10 +422,10 @@ Deno.test("Recursive", () => {
 
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "RECURSIVE_SYNAPSE",
-      `Unexpected name: ${error.name}`,
+      error.reason === "RECURSIVE_SYNAPSE",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -458,10 +459,10 @@ Deno.test("Forward-only: validate() rejects back connections when enabled", () =
     creature.validate({ forwardOnly: true });
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "RECURSIVE_SYNAPSE",
-      `Unexpected name: ${error.name}`,
+      error.reason === "RECURSIVE_SYNAPSE",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });
@@ -479,10 +480,10 @@ Deno.test("Forward-only: validate() rejects self connections when enabled", () =
     creature.validate({ forwardOnly: true });
     fail("Expected error");
   } catch (e) {
-    const error = e as Error;
+    const error = e as ValidationError;
     assert(
-      error.name === "SELF_CONNECTION",
-      `Unexpected name: ${error.name}`,
+      error.reason === "SELF_CONNECTION",
+      `Unexpected reason: ${error.reason}`,
     );
   }
 });

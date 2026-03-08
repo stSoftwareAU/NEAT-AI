@@ -513,10 +513,10 @@ export class Mutator {
           upgradeSemanticVersionIfForwardOnlyConfirmed(creature);
         }
       } catch (e) {
-        const error = e as Error;
+        const error = e as ValidationError;
         if (
-          error.name === "SELF_CONNECTION" ||
-          error.name === "RECURSIVE_SYNAPSE"
+          error.reason === "SELF_CONNECTION" ||
+          error.reason === "RECURSIVE_SYNAPSE"
         ) {
           const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(
             creature.semanticVersion,
