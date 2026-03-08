@@ -2,6 +2,7 @@ import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
+import { DIAGNOSTICS_DIR } from "../utils/Diagnostics.ts";
 
 const MAX_NEURON_UUID_LENGTH = 256;
 const VALID_NEURON_UUID_PATTERN = /^[A-Za-z0-9-]+$/;
@@ -444,12 +445,11 @@ export function creatureValidate(
 
 function debugWrite(creature: Creature) {
   if (creature.DEBUG) {
-    const directory = ".test";
-    Deno.mkdirSync(directory, { recursive: true });
+    Deno.mkdirSync(DIAGNOSTICS_DIR, { recursive: true });
     try {
       creature.DEBUG = false;
       Deno.writeTextFileSync(
-        `${directory}/creatureValidate.json`,
+        `${DIAGNOSTICS_DIR}/creatureValidate.json`,
         JSON.stringify(creature.exportJSON(), null, 1),
       );
     } finally {
