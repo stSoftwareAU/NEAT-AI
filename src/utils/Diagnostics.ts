@@ -1,6 +1,6 @@
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 
-const DIAGNOSTICS_DIR = ".diagnostics";
+export const DIAGNOSTICS_DIR = ".diagnostics";
 
 /**
  * Options for writing diagnostic files when an error occurs.
