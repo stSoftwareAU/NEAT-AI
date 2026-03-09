@@ -22,6 +22,11 @@ import {
   pruneSuccessfulCandidatesForCombos,
 } from "./DiscoveryCandidates.ts";
 import {
+  aggregateDiscoveryDiagnostics,
+  logDiscoveryDiagnostics,
+  persistDiagnostics,
+} from "./DiscoveryDiagnostics.ts";
+import {
   logEvaluationSummary,
   recordEvaluationSummaries,
 } from "./DiscoveryEvaluationSummary.ts";
@@ -566,6 +571,20 @@ export class DiscoveryRunner {
           discoveryID: discoverResult.ID,
           summaries: evaluationArtifacts.summaries,
         });
+      }
+
+      // Issue #1735: Log per-changeType success/failure diagnostics
+      const candidateDiagnostics = aggregateDiscoveryDiagnostics(
+        evaluationResults,
+        original.score,
+      );
+      logDiscoveryDiagnostics(discoverResult.ID, candidateDiagnostics);
+      if (evaluationArtifacts.archiveDir) {
+        persistDiagnostics(
+          evaluationArtifacts.archiveDir,
+          discoverResult.ID,
+          candidateDiagnostics,
+        );
       }
 
       if (verboseLogging && reScoringTime > 0) {
