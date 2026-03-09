@@ -38,6 +38,7 @@ import type {
 } from "./DiscoveryRunnerTypes.ts";
 import { preFlightDiskSpaceCheck } from "./DiskSpaceMonitor.ts";
 import { isCandidateCachedSync } from "./FailureCache.ts";
+import { supplementFromCache } from "./SupplementFromCache.ts";
 
 // Re-export types and functions that external consumers import from this module.
 export type { DiscoveryEvaluationSummary } from "./DiscoveryEvaluationSummary.ts";
@@ -364,7 +365,10 @@ export class DiscoveryRunner {
       let phase2Results: typeof phase1Results = [];
       let phase2Time = 0;
 
-      if (successfulSingles.length >= 2) {
+      // Issue #1734: Lowered threshold from 2 to 1. When only 1 Phase 1
+      // single succeeds, supplement with historical successes from the
+      // success cache to enable combination building.
+      if (successfulSingles.length >= 1) {
         const phase2Start = performance.now();
 
         // Extract successful candidates for combination and prune to a sensible
@@ -384,18 +388,60 @@ export class DiscoveryRunner {
           scoredSuccessfulCandidates,
         );
 
-        // Build combined candidates from successful singles only
+        // When fewer than 2 Phase 1 successes, supplement with
+        // historically successful candidates from the success cache.
+        let candidatesForCombination = successfulCandidates;
+        if (
+          successfulCandidates.length < 2 &&
+          config.discoverySuccessCacheDir
+        ) {
+          const supplements = supplementFromCache(
+            creature,
+            config.discoverySuccessCacheDir,
+            successfulCandidates,
+          );
+          if (supplements.length > 0) {
+            candidatesForCombination = [
+              ...successfulCandidates,
+              ...supplements,
+            ];
+            verboseLog(
+              `[Phase 2] Supplemented with ${supplements.length} candidate${
+                supplements.length === 1 ? "" : "s"
+              } from success cache.`,
+            );
+          }
+        }
+
+        // Build combined candidates from successful singles
+        // (plus any cache supplements when there was only 1 Phase 1 success)
         const combinedCandidates = buildCombinedFromSuccessful(
           creature,
           discoverResult.ID,
-          successfulCandidates,
+          candidatesForCombination,
         );
 
         if (combinedCandidates.length > 0) {
           verboseLog(
             `[Phase 2] Built ${combinedCandidates.length} combined candidate${
               combinedCandidates.length === 1 ? "" : "s"
-            } from ${successfulSingles.length} successful singles.`,
+            } from ${candidatesForCombination.length} candidate${
+              candidatesForCombination.length === 1 ? "" : "s"
+            } (${successfulSingles.length} Phase 1 success${
+              successfulSingles.length === 1 ? "" : "es"
+            }${
+              candidatesForCombination.length > successfulCandidates.length
+                ? ` + ${
+                  candidatesForCombination.length -
+                  successfulCandidates.length
+                } cache supplement${
+                  candidatesForCombination.length -
+                        successfulCandidates.length === 1
+                    ? ""
+                    : "s"
+                }`
+                : ""
+            }).`,
           );
 
           // Filter combined candidates (apply same thresholds)
@@ -429,7 +475,7 @@ export class DiscoveryRunner {
         markPhase("Phase 2 evaluation (combos)", phase2Start);
       } else {
         verboseLog(
-          `[Phase 2] Skipped - need 2+ successful singles for combination (found ${successfulSingles.length}).`,
+          `[Phase 2] Skipped - need 1+ successful singles for combination (found ${successfulSingles.length}).`,
         );
       }
 
