@@ -300,6 +300,20 @@ export function archiveSuccessByKeySync(
   }
 }
 
+/** Structured detail for a successful neuron removal, used for combination building. */
+export interface SuccessfulRemovalDetail {
+  /** UUID of the neuron that was successfully removed */
+  neuronUUID: string;
+  /** How much the removal improved the score */
+  scoreDelta: number;
+  /** Score of the candidate creature after removal */
+  candidateScore: number;
+  /** Score of the original creature before removal */
+  originalScore: number;
+  /** ISO timestamp of when the success was recorded */
+  timestamp: string;
+}
+
 /** Subdirectory names for removal-type candidates. */
 const REMOVAL_SUBDIRS = ["remove-low-impact", "remove-neuron"] as const;
 
@@ -363,6 +377,101 @@ export function getSuccessfulRemovalNeuronUUIDs(
   }
 
   return uuids;
+}
+
+/**
+ * Queries the success cache for structured details about successful neuron
+ * removals, including score deltas and timestamps for recency weighting.
+ *
+ * This provides richer data than `getSuccessfulRemovalNeuronUUIDs()` so that
+ * cache-informed combination builders can prioritise high-impact removals.
+ *
+ * When multiple entries exist for the same neuron UUID, the entry with the
+ * highest `scoreDelta` is kept (ties broken by `candidateScore`).
+ *
+ * Best-effort: corrupt or incomplete entries are skipped with a warning.
+ *
+ * @param successCacheDir - Root success cache directory path
+ * @returns An array of `SuccessfulRemovalDetail` records, one per unique neuron
+ */
+export function getSuccessfulRemovalDetails(
+  successCacheDir: string,
+): SuccessfulRemovalDetail[] {
+  const bestByUUID = new Map<string, SuccessfulRemovalDetail>();
+
+  for (const subdir of REMOVAL_SUBDIRS) {
+    const dirPath = join(successCacheDir, subdir);
+    let entries: Iterable<Deno.DirEntry>;
+    try {
+      entries = Deno.readDirSync(dirPath);
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        continue;
+      }
+      throw error;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isFile || !entry.name.endsWith(".json")) continue;
+      const filePath = join(dirPath, entry.name);
+      try {
+        const raw = Deno.readTextFileSync(filePath);
+        const parsed = JSON.parse(raw) as SuccessCacheEntry;
+        const rustRequest = parsed?.rustRequest;
+        if (!rustRequest) continue;
+
+        const removalUUID =
+          (rustRequest.removalCandidate as { neuronUUID?: string })
+            ?.neuronUUID;
+        const harmfulUUID =
+          (rustRequest.harmfulNeuronCandidate as { neuronUUID?: string })
+            ?.neuronUUID;
+
+        const uuid = removalUUID ?? harmfulUUID;
+        if (typeof uuid !== "string" || uuid.length === 0) continue;
+
+        const scoreDelta = typeof parsed.scoreDelta === "number"
+          ? parsed.scoreDelta
+          : 0;
+        const candidateScore = typeof parsed.candidateScore === "number"
+          ? parsed.candidateScore
+          : 0;
+        const originalScore = typeof parsed.originalScore === "number"
+          ? parsed.originalScore
+          : 0;
+        const timestamp = typeof parsed.timestamp === "string"
+          ? parsed.timestamp
+          : "";
+
+        const detail: SuccessfulRemovalDetail = {
+          neuronUUID: uuid,
+          scoreDelta,
+          candidateScore,
+          originalScore,
+          timestamp,
+        };
+
+        const existing = bestByUUID.get(uuid);
+        if (!existing) {
+          bestByUUID.set(uuid, detail);
+        } else {
+          const isBetter = scoreDelta > existing.scoreDelta ||
+            (scoreDelta === existing.scoreDelta &&
+              candidateScore > existing.candidateScore);
+          if (isBetter) {
+            bestByUUID.set(uuid, detail);
+          }
+        }
+      } catch (error) {
+        getLogger().warn(
+          `[SuccessCache] Failed to parse removal entry '${filePath}':`,
+          error,
+        );
+      }
+    }
+  }
+
+  return Array.from(bestByUUID.values());
 }
 
 /**
