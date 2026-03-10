@@ -18,9 +18,11 @@ serve the deprioritisation/filtering use case.
 ## Test Plan
 
 New test file `test/discovery/SuccessCacheRemovalDetails.ts` with 8 tests:
+
 - Returns empty array for non-existent directory
 - Returns empty array for empty directory
-- Returns structured data (UUID, scoreDelta, candidateScore, originalScore, timestamp)
+- Returns structured data (UUID, scoreDelta, candidateScore, originalScore,
+  timestamp)
 - Ignores non-removal entries (add-synapses, change-squash)
 - Deduplicates same neuron across directories, keeping best score delta
 - Skips corrupt entries gracefully
