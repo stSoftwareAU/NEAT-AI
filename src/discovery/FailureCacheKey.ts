@@ -160,6 +160,13 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
       break;
     }
 
+    case "cache-informed-removal": {
+      // Multi-neuron removal: use structural signature since multiple neurons
+      // are removed and the combination matters for cache identity.
+      parts.push(buildStructuralSignature(candidate));
+      break;
+    }
+
     case "remove-synapse": {
       // For synapse removal, use from/to UUIDs from synapseDetails.
       // synapseDetails is always set for remove-synapse candidates created by

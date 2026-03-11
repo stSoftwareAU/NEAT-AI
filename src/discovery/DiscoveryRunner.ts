@@ -268,6 +268,7 @@ export class DiscoveryRunner {
         {
           skipCombinedCandidates: true,
           discoveryFailureCacheDir: config.discoveryFailureCacheDir,
+          discoverySuccessCacheDir: config.discoverySuccessCacheDir,
         },
       );
 

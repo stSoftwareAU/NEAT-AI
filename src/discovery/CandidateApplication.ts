@@ -219,7 +219,8 @@ export function applyChangeToCreature(
       }
 
       case "remove-neuron":
-      case "remove-low-impact": {
+      case "remove-low-impact":
+      case "cache-informed-removal": {
         return applyRemoveNeuron(
           creature,
           creatureJSON,

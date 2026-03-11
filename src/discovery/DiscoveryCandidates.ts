@@ -60,6 +60,7 @@ import {
   buildSingleSquashCandidates,
   buildSingleSynapseCandidates,
 } from "./CandidateCreation.ts";
+import { buildCacheInformedRemovalCandidates } from "./CacheInformedRemovalCandidates.ts";
 import {
   buildBestOfCategoryCandidate,
   buildCombinedCandidate,
@@ -76,6 +77,7 @@ export type DiscoveryChangeType =
   | "remove-synapse"
   | "remove-neuron"
   | "remove-low-impact"
+  | "cache-informed-removal"
   | "change-squash"
   | "combo-add-remove"
   | "combo-add-change"
@@ -158,6 +160,13 @@ export interface BuildDiscoveryCandidatesOptions {
    * When provided, validation issues are recorded to an "issues" subdirectory.
    */
   discoveryFailureCacheDir?: string;
+
+  /**
+   * Root directory for the success cache.
+   * When provided, cache-informed multi-neuron removal candidates are built
+   * from historically successful single-neuron removals.
+   */
+  discoverySuccessCacheDir?: string;
 }
 
 /**
@@ -324,6 +333,16 @@ export function buildDiscoveryCandidates(
     ...buildLowImpactRemovalCandidates(
       discovery,
       baseCreature,
+      discoveryFailureCacheDir,
+    ),
+  );
+
+  // --- Cache-informed multi-neuron removal candidates ---
+  candidates.push(
+    ...buildCacheInformedRemovalCandidates(
+      baseCreature,
+      options?.discoverySuccessCacheDir,
+      undefined, // Use default seed
       discoveryFailureCacheDir,
     ),
   );

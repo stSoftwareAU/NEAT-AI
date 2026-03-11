@@ -87,7 +87,7 @@ export function buildCombinedFromSuccessful(
       // Check if this is a removal-only combination
       const isRemovalOnly = appliedTypes.every((t) =>
         t === "remove-low-impact" || t === "remove-neuron" ||
-        t === "remove-synapse"
+        t === "remove-synapse" || t === "cache-informed-removal"
       );
       const description = buildCombinationDescription(
         appliedTypes,
@@ -121,7 +121,8 @@ export function buildCombinedFromSuccessful(
     (c) =>
       c.change.type === "remove-low-impact" ||
       c.change.type === "remove-neuron" ||
-      c.change.type === "remove-synapse",
+      c.change.type === "remove-synapse" ||
+      c.change.type === "cache-informed-removal",
   );
   if (removalCandidates.length >= 2) {
     const removalIndices = removalCandidates.map((c) =>
@@ -142,7 +143,8 @@ export function buildCombinedFromSuccessful(
     (c) =>
       c.change.type !== "remove-low-impact" &&
       c.change.type !== "remove-neuron" &&
-      c.change.type !== "remove-synapse",
+      c.change.type !== "remove-synapse" &&
+      c.change.type !== "cache-informed-removal",
   );
   if (nonRemovalCandidates.length >= 2) {
     const nonRemovalIndices = nonRemovalCandidates.map((c) =>
