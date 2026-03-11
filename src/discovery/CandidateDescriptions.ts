@@ -43,7 +43,8 @@ export function selectCombinationEmoji(types: string[]): string {
   const typeSet = new Set(types);
   const hasRemoval = typeSet.has("remove-low-impact") ||
     typeSet.has("remove-neuron") ||
-    typeSet.has("remove-synapse");
+    typeSet.has("remove-synapse") ||
+    typeSet.has("cache-informed-removal");
   const hasAddition = typeSet.has("add-neurons") || typeSet.has("add-synapses");
   const hasSquashChange = typeSet.has("change-squash");
 
@@ -111,6 +112,7 @@ export function buildCombinationDescription(
         return `${emoji} Changed ${appliedCount} activation functions`;
       case "remove-low-impact":
       case "remove-neuron":
+      case "cache-informed-removal":
         return `${emoji} Pruned ${appliedCount} low-impact neurons`;
       case "remove-synapse":
         return `${emoji} Removed ${appliedCount} synapses`;
@@ -134,7 +136,8 @@ export function buildCombinationDescription(
 
   // Multi-type combinations - describe the overall effect
   const hasRemoval = appliedTypes.some((t) =>
-    t.includes("remove") || t === "remove-low-impact"
+    t.includes("remove") || t === "remove-low-impact" ||
+    t === "cache-informed-removal"
   );
   const hasAddition = appliedTypes.some((t) =>
     t === "add-neurons" || t === "add-synapses"

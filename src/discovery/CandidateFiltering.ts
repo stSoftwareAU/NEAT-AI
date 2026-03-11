@@ -105,7 +105,7 @@ export function filterCandidatesForEvaluation(
 
   const isRemovalType = (type: DiscoveryChangeType): boolean =>
     type === "remove-low-impact" || type === "remove-neuron" ||
-    type === "remove-synapse";
+    type === "remove-synapse" || type === "cache-informed-removal";
 
   // Filter cached candidates first so they never consume slots.
   const nonRemovalCandidates: DiscoveryCandidate[] = [];
