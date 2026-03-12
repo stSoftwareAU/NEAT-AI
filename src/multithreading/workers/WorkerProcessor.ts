@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import { creatureValidate } from "../../architecture/CreatureValidate.ts";
 import { recordDirectory } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
+import { toErrorMessage } from "../../utils/ErrorSerialisation.ts";
 import type {
   DiscoverResult,
 } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
@@ -136,9 +137,7 @@ export class WorkerProcessor {
       // Create an instance of the cost function
       return new CostClass();
     } catch (error) {
-      const errorMessage = error instanceof Error
-        ? error.message
-        : String(error);
+      const errorMessage = toErrorMessage(error);
       throw new Error(
         `Failed to load custom cost function from ${filePath}: ${errorMessage}`,
       );

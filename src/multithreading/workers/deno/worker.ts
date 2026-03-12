@@ -1,6 +1,7 @@
 import type { RequestData, ResponseData } from "../WorkerHandler.ts";
 import { setSkipWasmAutoInit } from "@globalAccessors";
 import { setupWorkerMessageLoop } from "../../../workers/workerEntryPoint.ts";
+import { toErrorMessage } from "../../../utils/ErrorSerialisation.ts";
 
 // Issue #1263: WASM activation is mandatory. For the library's internal worker
 // system, workers receive the WASM payload from the parent during init, so we
@@ -40,15 +41,11 @@ setupWorkerMessageLoop<RequestData, ResponseData>(
       };
     } else if (data.echo) {
       errorResponse.echo = {
-        message: `Error: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        message: `Error: ${toErrorMessage(error)}`,
       };
     } else if (data.configureCache) {
       errorResponse.configureCache = {
-        status: `ERROR: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        status: `ERROR: ${toErrorMessage(error)}`,
       };
     } else if (data.requestCacheStats) {
       errorResponse.cacheStats = {
@@ -60,7 +57,7 @@ setupWorkerMessageLoop<RequestData, ResponseData>(
     } else if (data.initialize) {
       errorResponse.initialize = {
         status: "ERROR",
-        error: error instanceof Error ? error.message : String(error),
+        error: toErrorMessage(error),
       };
     } else if (data.breed) {
       errorResponse.breed = {

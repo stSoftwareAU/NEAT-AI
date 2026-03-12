@@ -12,6 +12,7 @@ import type { WorkerInterface } from "../../workers/WorkerInterface.ts";
 import type { RequestData } from "./WorkerHandler.ts";
 import type { ResponseData } from "./ResponseData.ts";
 import { WorkerProcessor } from "./WorkerProcessor.ts";
+import { toError } from "../../utils/ErrorSerialisation.ts";
 
 export class MockWorker implements WorkerInterface<RequestData> {
   private callBack: EventListener | null = null;
@@ -33,7 +34,7 @@ export class MockWorker implements WorkerInterface<RequestData> {
       me.data = result;
       this.callBack?.(me);
     }).catch((error) => {
-      const err = error instanceof Error ? error : new Error(String(error));
+      const err = toError(error);
       const errorResponse: ResponseData = {
         taskID: data.taskID,
         duration: 0,
