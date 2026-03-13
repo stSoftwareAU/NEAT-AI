@@ -249,6 +249,7 @@ In our production workloads, the default is feed-forward/forward-only.
 - **COMPARISON.md** - Comparison with other AI approaches
 - **docs/API_REFERENCE.md** - Comprehensive public API reference
 - **docs/DISCOVERY_GUIDE.md** - Complete discovery workflow guide
+- **docs/DISCOVERY_ARCHITECTURE.md** - Discovery pipeline internal architecture
 - **docs/DiscoveryDir.md** - Technical API reference for `discoveryDir()`
 - **docs/GPU_ACCELERATION.md** - GPU acceleration details
 - **docs/CONFIGURATION_GUIDE.md** - Complete configuration options reference
