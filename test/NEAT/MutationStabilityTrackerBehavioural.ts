@@ -388,3 +388,165 @@ Deno.test("MutationStabilityTrackerBehavioural: reset clears all tracking state"
     "Per-type history cleared",
   );
 });
+
+// ============================================================================
+// Issue #1749: Additional Edge Cases
+// ============================================================================
+
+Deno.test("MutationStabilityTrackerBehavioural: window size of 1 tracks only latest", () => {
+  const tracker = new MutationStabilityTracker({
+    windowSize: 1,
+    brittlenessThreshold: 0.3,
+  });
+
+  tracker.recordOutcome(MutationOutcome.BRITTLE);
+  assertEquals(
+    tracker.getMetrics().brittlenessRate,
+    1.0,
+    "Only entry should be brittle",
+  );
+
+  tracker.recordOutcome(MutationOutcome.STABLE);
+  assertEquals(
+    tracker.getMetrics().brittlenessRate,
+    0.0,
+    "Previous brittle should have been pushed out of window",
+  );
+  assertEquals(tracker.getMetrics().stabilityRate, 1.0);
+});
+
+Deno.test("MutationStabilityTrackerBehavioural: brittleness at exact threshold", () => {
+  const tracker = new MutationStabilityTracker({
+    windowSize: 10,
+    brittlenessThreshold: 0.3,
+  });
+
+  // Exactly 30% brittle (3 out of 10)
+  for (let i = 0; i < 3; i++) {
+    tracker.recordOutcome(MutationOutcome.BRITTLE);
+  }
+  for (let i = 0; i < 7; i++) {
+    tracker.recordOutcome(MutationOutcome.STABLE);
+  }
+
+  assertEquals(
+    tracker.isBrittle(),
+    true,
+    "Should be brittle at exactly the threshold (>=)",
+  );
+});
+
+Deno.test("MutationStabilityTrackerBehavioural: recordOutcomeWithScores does not reclassify FAILED", () => {
+  const tracker = new MutationStabilityTracker({
+    windowSize: 10,
+    brittlenessThreshold: 0.3,
+    scoreVarianceThreshold: 0.1,
+  });
+
+  // FAILED outcomes should not be reclassified even with high variance
+  tracker.recordOutcomeWithScores(
+    MutationOutcome.FAILED,
+    -0.5,
+    -0.9,
+  );
+
+  const metrics = tracker.getMetrics();
+  assertEquals(metrics.failedCount, 1, "FAILED should remain FAILED");
+  assertEquals(
+    metrics.brittleCount,
+    0,
+    "Should not be reclassified to brittle",
+  );
+});
+
+Deno.test("MutationStabilityTrackerBehavioural: recordOutcomeWithScores handles zero training score", () => {
+  const tracker = new MutationStabilityTracker({
+    windowSize: 10,
+    brittlenessThreshold: 0.3,
+    scoreVarianceThreshold: 0.1,
+  });
+
+  // When training score is near zero, baseline should use 0.0001
+  tracker.recordOutcomeWithScores(
+    MutationOutcome.STABLE,
+    0.0,
+    0.0,
+  );
+
+  const metrics = tracker.getMetrics();
+  // Both scores are 0, so variance is 0, should remain stable
+  assertEquals(metrics.stableCount, 1, "Should remain stable with zero scores");
+});
+
+Deno.test("MutationStabilityTrackerBehavioural: per-type window maintained independently", () => {
+  const tracker = new MutationStabilityTracker({
+    windowSize: 3,
+    brittlenessThreshold: 0.3,
+    trackPerType: true,
+  });
+
+  // Fill ADD_NODE window
+  for (let i = 0; i < 5; i++) {
+    tracker.recordOutcome(MutationOutcome.STABLE, "ADD_NODE");
+  }
+
+  // Fill MOD_WEIGHT window
+  for (let i = 0; i < 2; i++) {
+    tracker.recordOutcome(MutationOutcome.BRITTLE, "MOD_WEIGHT");
+  }
+
+  const addNodeMetrics = tracker.getMetricsForType("ADD_NODE");
+  assertEquals(
+    addNodeMetrics.totalMutations,
+    3,
+    "ADD_NODE should be capped at window size",
+  );
+  assertEquals(addNodeMetrics.stabilityRate, 1.0);
+
+  const modWeightMetrics = tracker.getMetricsForType("MOD_WEIGHT");
+  assertEquals(
+    modWeightMetrics.totalMutations,
+    2,
+    "MOD_WEIGHT should have 2 entries",
+  );
+  assertEquals(modWeightMetrics.brittlenessRate, 1.0);
+});
+
+Deno.test("MutationStabilityTrackerBehavioural: stability score with all brittle", () => {
+  const tracker = new MutationStabilityTracker({
+    windowSize: 10,
+    brittlenessThreshold: 0.3,
+  });
+
+  for (let i = 0; i < 10; i++) {
+    tracker.recordOutcome(MutationOutcome.BRITTLE);
+  }
+
+  const score = tracker.getStabilityScore();
+  // brittle weight = 0.3, so 10 * 0.3 / 10 = 0.3
+  assertEquals(score, 0.3, "All-brittle score should be 0.3");
+});
+
+Deno.test("MutationStabilityTrackerBehavioural: magnitude multiplier interpolates for partial brittleness", () => {
+  const tracker = new MutationStabilityTracker({
+    windowSize: 10,
+    brittlenessThreshold: 0.3,
+    magnitudeReductionFactor: 0.5,
+  });
+
+  // 50% brittle — above threshold but not maximum
+  for (let i = 0; i < 5; i++) {
+    tracker.recordOutcome(MutationOutcome.BRITTLE);
+  }
+  for (let i = 0; i < 5; i++) {
+    tracker.recordOutcome(MutationOutcome.STABLE);
+  }
+
+  const multiplier = tracker.getMutationMagnitudeMultiplier();
+  assertLess(multiplier, 1.0, "Should reduce magnitude");
+  assertGreater(
+    multiplier,
+    0.5,
+    "Should not be at maximum reduction for partial brittleness",
+  );
+});
