@@ -5,6 +5,7 @@ for the discovery pipeline spanning `src/discovery/` (37 files) and
 `src/architecture/ErrorGuidedStructuralEvolution/` (38 files). Closes #1750.
 
 The document covers:
+
 - **Two-phase pipeline architecture** — Phase 1 (single candidate evaluation)
   and Phase 2 (combined candidate evaluation from Phase 1 successes), including
   the threshold change from 2→1 successful singles (#1734)
