@@ -1,4 +1,25 @@
 /**
+ * Default number of bits in the Bloom filter bit array.
+ * 8192 bits (1 KiB) provides a good balance between memory usage
+ * and false positive rate for moderate-sized sets.
+ */
+export const DEFAULT_BLOOM_FILTER_SIZE = 8192;
+
+/**
+ * Default number of hash functions applied per element.
+ * 7 hash functions is near-optimal for many practical configurations
+ * (minimises false positive rate for typical size/item ratios).
+ */
+export const DEFAULT_HASH_COUNT = 7;
+
+/**
+ * Initial hash value for the DJB2 hash algorithm.
+ * 5381 is the conventional seed chosen by Daniel J. Bernstein;
+ * it has good distribution properties for string hashing.
+ */
+export const DJB2_INITIAL_HASH = 5381;
+
+/**
  * BloomFilter - A probabilistic data structure for fast duplicate detection.
  *
  * Bloom filters provide a space-efficient way to test whether an element is
@@ -50,10 +71,13 @@ export class BloomFilter {
    * automatically calculates optimal parameters based on expected
    * items and desired false positive rate.
    *
-   * @param size - The size of the bit array in bits (default: 8192)
-   * @param hashCount - The number of hash functions to use (default: 7)
+   * @param size - The size of the bit array in bits (default: DEFAULT_BLOOM_FILTER_SIZE)
+   * @param hashCount - The number of hash functions to use (default: DEFAULT_HASH_COUNT)
    */
-  constructor(size: number = 8192, hashCount: number = 7) {
+  constructor(
+    size: number = DEFAULT_BLOOM_FILTER_SIZE,
+    hashCount: number = DEFAULT_HASH_COUNT,
+  ) {
     // Ensure size is at least 8 (1 byte)
     this.bitSize = Math.max(8, size);
 
@@ -193,7 +217,7 @@ export class BloomFilter {
    * @returns 32-bit unsigned hash value
    */
   private djb2Hash(data: Uint8Array): number {
-    let hash = 5381;
+    let hash = DJB2_INITIAL_HASH;
     for (let i = 0; i < data.length; i++) {
       hash = ((hash << 5) + hash) + data[i]; // hash * 33 + c
     }

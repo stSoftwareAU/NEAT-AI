@@ -19,7 +19,12 @@ import {
   assertGreater,
   assertLessOrEqual,
 } from "@std/assert";
-import { BloomFilter } from "../../src/utils/BloomFilter.ts";
+import {
+  BloomFilter,
+  DEFAULT_BLOOM_FILTER_SIZE,
+  DEFAULT_HASH_COUNT,
+  DJB2_INITIAL_HASH,
+} from "../../src/utils/BloomFilter.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -229,5 +234,58 @@ Deno.test("BloomFilter - factory method creates optimally sized filter", () => {
   // All added items should be found
   for (let i = 0; i < 500; i++) {
     assert(filter.mayContain(`item-${i}`), `item-${i} should be found`);
+  }
+});
+
+Deno.test("BloomFilter - named constants have expected values", () => {
+  assertEquals(
+    DEFAULT_BLOOM_FILTER_SIZE,
+    8192,
+    "DEFAULT_BLOOM_FILTER_SIZE should be 8192",
+  );
+  assertEquals(
+    DEFAULT_HASH_COUNT,
+    7,
+    "DEFAULT_HASH_COUNT should be 7",
+  );
+  assertEquals(
+    DJB2_INITIAL_HASH,
+    5381,
+    "DJB2_INITIAL_HASH should be 5381",
+  );
+});
+
+Deno.test("BloomFilter - default constructor uses named constants", () => {
+  const filter = new BloomFilter();
+  assertEquals(
+    filter.size,
+    DEFAULT_BLOOM_FILTER_SIZE,
+    "Default filter size should match DEFAULT_BLOOM_FILTER_SIZE",
+  );
+});
+
+Deno.test("BloomFilter - default constructor produces same results as explicit constants", () => {
+  const defaultFilter = new BloomFilter();
+  const explicitFilter = new BloomFilter(
+    DEFAULT_BLOOM_FILTER_SIZE,
+    DEFAULT_HASH_COUNT,
+  );
+
+  // Both should have the same size
+  assertEquals(defaultFilter.size, explicitFilter.size);
+
+  // Both should produce identical results for the same keys
+  const testKeys = ["key-a", "key-b", "key-c"];
+  for (const key of testKeys) {
+    defaultFilter.add(key);
+    explicitFilter.add(key);
+  }
+
+  for (const key of testKeys) {
+    assertEquals(
+      defaultFilter.mayContain(key),
+      explicitFilter.mayContain(key),
+      `Both filters should agree on ${key}`,
+    );
   }
 });
