@@ -17,6 +17,7 @@ CLI arguments or environment variables without pre-parsing.
 - [Discovery Parameters](#discovery-parameters)
 - [Discovery Replay Parameters](#discovery-replay-parameters)
 - [Discovery Caching Parameters](#discovery-caching-parameters)
+- [Discovery Debug Options](#discovery-debug-options)
 - [Adaptive Mutation Thresholds](#adaptive-mutation-thresholds)
 - [Plateau Detection](#plateau-detection)
 - [Stability Adaptation](#stability-adaptation)
@@ -183,6 +184,7 @@ const config = createNeatConfig({
 | `geneticCompatibilityThreshold`   | `number`   | `0.3`                           | Speciation distance threshold (0–1)                          |
 | `sparseRatio`                     | `number`   | `random * random`               | Fraction of neurons selected for sparse activation (0–1)     |
 | `globalBreedingRate`              | `number`   | `random`                        | Ratio of cross-species vs within-species breeding (0–1)      |
+| `maxCRISPRsPerGeneration`         | `integer`  | `1`                             | Maximum CRISPRs applied per generation (min: 1)              |
 
 ### Adjustment Scales
 
@@ -193,17 +195,27 @@ const config = createNeatConfig({
 
 ### Discovery
 
-| Option                            | Type      | Default   | Description                                                         |
-| --------------------------------- | --------- | --------- | ------------------------------------------------------------------- |
-| `discoverySampleRate`             | `number`  | `0.2`     | Fraction of records sampled for structural analysis (-1 to disable) |
-| `discoveryRecordTimeOutMinutes`   | `number`  | `5`       | Maximum minutes for the recording phase                             |
-| `discoveryAnalysisTimeoutMinutes` | `number`  | `10`      | Maximum minutes for the analysis phase (0.05–60)                    |
-| `discoveryBatchSize`              | `integer` | `128`     | Observations per discovery promise                                  |
-| `discoveryBufferSize`             | `number`  | `0`       | Read buffer size in bytes (0 = default)                             |
-| `discoveryRustFlushRecords`       | `integer` | `4096`    | Records accumulated before flushing to Rust                         |
-| `discoveryRustFlushBytes`         | `number`  | `~50 MiB` | Payload size threshold before flushing                              |
-| `discoveryMaxNeurons`             | `integer` | `6`       | Maximum neurons analysed per discovery iteration                    |
-| `discoveryDrainEveryNBatches`     | `integer` | `10`      | Drain promise chains every N batches                                |
+| Option                              | Type      | Default   | Description                                                         |
+| ----------------------------------- | --------- | --------- | ------------------------------------------------------------------- |
+| `discoverySampleRate`               | `number`  | `0.2`     | Fraction of records sampled for structural analysis (-1 to disable) |
+| `discoveryRecordTimeOutMinutes`     | `number`  | `5`       | Maximum minutes for the recording phase                             |
+| `discoveryAnalysisTimeoutMinutes`   | `number`  | `10`      | Maximum minutes for the analysis phase (0.05–60)                    |
+| `discoveryBatchSize`                | `integer` | `128`     | Observations per discovery promise                                  |
+| `discoveryBufferSize`               | `number`  | `0`       | Read buffer size in bytes (0 = default)                             |
+| `discoveryRustFlushRecords`         | `integer` | `4096`    | Records accumulated before flushing to Rust                         |
+| `discoveryRustFlushBytes`           | `number`  | `~50 MiB` | Payload size threshold before flushing                              |
+| `discoveryMaxNeurons`               | `integer` | `6`       | Maximum neurons analysed per discovery iteration                    |
+| `discoveryDrainEveryNBatches`       | `integer` | `10`      | Drain promise chains every N batches                                |
+| `discoveryMinCandidatesPerCategory` | `object`  | see below | Minimum candidates to evaluate per discovery category               |
+
+### Discovery Debug Options
+
+| Option                                     | Type      | Default     | Description                                                               |
+| ------------------------------------------ | --------- | ----------- | ------------------------------------------------------------------------- |
+| `discoveryBaseDirectory`                   | `string`  | `undefined` | Custom base directory for discovery temporary files                       |
+| `discoverySkipRecordPhase`                 | `boolean` | `false`     | Skip recording if parquet files already exist (debug/replay optimisation) |
+| `discoveryDisableCleanup`                  | `boolean` | `false`     | Preserve parquet files after discovery for debugging                      |
+| `discoveryDisableEvaluationSummaryLogging` | `boolean` | `false`     | Disable internal evaluation summary logging                               |
 
 ### Discovery Replay
 
@@ -341,6 +353,14 @@ each creature gets a different sparsity level, promoting diversity.
 Controls the balance between cross-species breeding and within-species breeding.
 Higher values favour more cross-species mating. Randomised by default to
 maintain population diversity.
+
+### `maxCRISPRsPerGeneration`
+
+**Default: 1** | Type: integer | Min: 1
+
+Maximum number of CRISPRs applied per generation. CRISPRs cycle across
+generations instead of being permanently consumed. Increase this value to apply
+multiple CRISPR injections per generation for faster structural convergence.
 
 ---
 
@@ -503,6 +523,14 @@ Min: 1
 
 Bounded concurrency for replay scoring operations.
 
+### `discoveryReplayRescoreBaseline`
+
+**Default: false (true when verify is enabled)** | Type: boolean
+
+When score verification is enabled, controls whether replay should report
+baseline score drift (claimed vs actual) in the result payload. Automatically
+enabled when `discoveryReplayVerifyScores` is `true`.
+
 ---
 
 ## Discovery Caching Parameters
@@ -518,6 +546,44 @@ runs.
 
 **Important:** Delete the cache directory when the training dataset changes
 materially to avoid replaying stale signals.
+
+---
+
+## Discovery Debug Options
+
+These options aid debugging and testing of the discovery pipeline.
+
+### `discoveryBaseDirectory`
+
+**Default: undefined** | Type: string
+
+Custom base directory for discovery temporary files. By default, discovery uses
+`.discovery` in the current working directory. Set this to redirect discovery
+files to a different location for testing or debugging.
+
+### `discoverySkipRecordPhase`
+
+**Default: false** | Type: boolean
+
+When enabled, skips the record phase if parquet files already exist in the
+discovery directory. Useful for debugging to re-run analysis on previously
+recorded data without re-recording.
+
+### `discoveryDisableCleanup`
+
+**Default: false** | Type: boolean
+
+When enabled, preserves discovery temporary files (parquet files) after
+discovery completes instead of cleaning them up. Useful for debugging to examine
+the intermediate discovery data.
+
+### `discoveryDisableEvaluationSummaryLogging`
+
+**Default: false** | Type: boolean
+
+Disables the internal evaluation summary logging. When set to `true`, the
+library will not log the evaluation summary, allowing external code to handle
+logging using the exported formatting utilities.
 
 ---
 
