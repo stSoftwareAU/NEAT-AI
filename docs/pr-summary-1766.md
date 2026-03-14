@@ -11,8 +11,8 @@ Addresses #1766.
   `test/propagate/Minimum.ts`. Both tested MINIMUM activation convergence after
   bias and weight perturbation. The top-level `Minimum.ts` tests a more complex
   architecture (5 inputs, 2 outputs, mixed squash functions) and is the cleaner
-  implementation. The subdirectory version also had code smells: cached test data
-  on disk (`.td.json`), `console.log` output, file I/O for debugging, and a
+  implementation. The subdirectory version also had code smells: cached test
+  data on disk (`.td.json`), `console.log` output, file I/O for debugging, and a
   lenient regression tolerance (0.02).
 
 ## Audit Summary
