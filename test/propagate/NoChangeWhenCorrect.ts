@@ -73,7 +73,7 @@ function makeData() {
   return inputs;
 }
 
-Deno.test("NoChangeWhenCorrect", () => {
+Deno.test("propagation does not alter activations when output already matches target", () => {
   const creature = makeCreature();
   const data = makeData();
 

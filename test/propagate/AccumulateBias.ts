@@ -6,7 +6,7 @@ import {
 } from "../../src/propagate/BackPropagation.ts";
 import { accumulateBias, adjustedBias } from "../../src/propagate/Bias.ts";
 
-Deno.test("AccumulateBias-Standard", () => {
+Deno.test("accumulateBias - positive delta accumulates bias correctly", () => {
   const ns = new NeuronState();
   const config = createBackPropagationConfig({
     generations: 0,
@@ -17,7 +17,7 @@ Deno.test("AccumulateBias-Standard", () => {
   assertAlmostEquals(ns.totalBias, 2, 0.1, JSON.stringify(ns, null, 2));
 });
 
-Deno.test("AccumulateBias-Limited", () => {
+Deno.test("accumulateBias - large delta is clamped by adjustment limit", () => {
   const ns = new NeuronState();
   const config = createBackPropagationConfig({
     generations: 0,
