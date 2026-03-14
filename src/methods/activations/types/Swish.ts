@@ -2,6 +2,7 @@ import { ActivationRange } from "@propagate/ActivationRange.ts";
 import { ErrorHelper } from "@propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
+import { safeZoneAdjustment } from "../SafeZoneAdjustment.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
@@ -129,55 +130,7 @@ export class Swish implements ActivationInterface, UnSquashInterface {
     return ErrorHelper.calculateClampedError(error);
   }
 
-  /**
-   * Swish Safe Zone Adjustment Logic
-   *
-   * Swish combines identity with sigmoid: f(x) = x * sigmoid(x).
-   * It saturates for large |x|, flattening gradients.
-   * This function encourages raw input adjustments only when gradients are strong.
-   *
-   * - Safe zone: x ∈ [−10, 10] — avoid flat sigmoid tails
-   * - Avoid raw input adjustments that push further outside this range
-   * - Consider weight adjustment fallback when weights are far outside [1e-3, 1e3]
-   *   and moving in the correct direction
-   *
-   * @param rawInput Raw pre-activation value
-   * @param error Error signal to propagate
-   * @param weight Connection weight
-   * @returns A number between 0 (avoid propagation) and 1 (safe to propagate)
-   */
   safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
-    if (!Number.isFinite(rawInput)) return 0;
-
-    const absWeight = Math.abs(weight);
-    const minWeight = 1e-3;
-    const maxWeight = 1e3;
-
-    const safeMin = -10;
-    const safeMax = 10;
-    const inSafeRange = rawInput >= safeMin && rawInput <= safeMax;
-
-    const rawGettingWorse = (rawInput < safeMin && error < 0) ||
-      (rawInput > safeMax && error > 0);
-
-    const weightTooSmall = absWeight < minWeight;
-    const weightTooLarge = absWeight > maxWeight;
-    const weightImproving = (weightTooSmall && weight * error > 0) ||
-      (weightTooLarge && weight * error < 0);
-
-    if (!inSafeRange && rawGettingWorse) return 0;
-    if (inSafeRange && (weightTooSmall || weightTooLarge) && weightImproving) {
-      return 0;
-    }
-
-    if (inSafeRange) return 1;
-    if (rawInput > safeMax && rawInput <= safeMax + 10) {
-      return 1 - (rawInput - safeMax) / 10;
-    }
-    if (rawInput < safeMin && rawInput >= safeMin - 10) {
-      return 1 - (safeMin - rawInput) / 10;
-    }
-
-    return 0;
+    return safeZoneAdjustment(rawInput, error, weight, -10, 10);
   }
 }
