@@ -19,8 +19,8 @@ This is the fifth PR in the audit series:
 - **`AccumulateBias.ts`** (deleted): First two tests duplicated `Bias.ts`; the
   unique convergence test was moved to `BiasConvergence.ts`.
 - **`WeightCalculation.ts`** (deleted): `accumulateWeight` and `limitWeight`
-  tests duplicated `Weight.ts`; the unique `calculateWeight` tests were moved
-  to `Weight.ts`.
+  tests duplicated `Weight.ts`; the unique `calculateWeight` tests were moved to
+  `Weight.ts`.
 
 ### Duplicate batch test sections removed:
 
@@ -51,5 +51,6 @@ All tests pass: `ok | 4798 passed (2 steps) | 0 failed`
 ## Test Plan
 
 - Verified all consolidated tests run and pass in their new locations
-- Verified no test coverage was lost (unique tests moved, only duplicates removed)
+- Verified no test coverage was lost (unique tests moved, only duplicates
+  removed)
 - Ran `./quality.sh --skip-discovery --skip-wasm` — all checks pass
