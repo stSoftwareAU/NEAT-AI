@@ -17,17 +17,18 @@ This is the fourth and final PR in the audit series:
 
 - **AccumulateBias.ts**: "AccumulateBias-Standard" → "accumulateBias - positive
   delta accumulates bias correctly"
-- **AccumulateBias.ts**: "AccumulateBias-Limited" → "accumulateBias - large delta
-  is clamped by adjustment limit"
-- **NoChangeWhenCorrect.ts**: "NoChangeWhenCorrect" → "propagation does not alter
-  activations when output already matches target"
+- **AccumulateBias.ts**: "AccumulateBias-Limited" → "accumulateBias - large
+  delta is clamped by adjustment limit"
+- **NoChangeWhenCorrect.ts**: "NoChangeWhenCorrect" → "propagation does not
+  alter activations when output already matches target"
 
 ### Misleading test filename renamed:
 
-- **sparse/BuildSynapseMapBenchmark.ts** → **sparse/BuildSynapseMapCorrectness.ts**:
-  File only contains correctness verification tests (performance benchmarks were
-  previously moved to `bench/`). AGENTS.md guidelines say to avoid "Benchmark" or
-  "Performance" in test file names.
+- **sparse/BuildSynapseMapBenchmark.ts** →
+  **sparse/BuildSynapseMapCorrectness.ts**: File only contains correctness
+  verification tests (performance benchmarks were previously moved to `bench/`).
+  AGENTS.md guidelines say to avoid "Benchmark" or "Performance" in test file
+  names.
 
 ## Evidence
 
