@@ -163,26 +163,29 @@ export function limitBias(
 }
 
 /**
- * Issue #1214 - Batch bias accumulation for 4 neurons simultaneously.
+ * Issue #1760 - Generic batch bias accumulation parameterised by batch size.
+ * Issue #1214 - Batch bias accumulation for N neurons simultaneously.
  * Issue #1314 - Non-finite values are skipped to prevent state corruption.
  *
- * Processes 4 neurons in a single call, enabling SIMD optimisation
+ * Processes `batchSize` neurons in a single call, enabling SIMD optimisation
  * via V8 when processing mini-batches during backpropagation.
  *
- * @param nsArray Array of 4 NeuronState objects to accumulate into
- * @param targetPreActivationValues Array of 4 target pre-activation values
- * @param preActivationValues Array of 4 current pre-activation values
- * @param currentBiases Array of 4 current neuron biases
- * @param config Backpropagation configuration
+ * @param nsArray Array of NeuronState objects to accumulate into
+ * @param targetPreActivationValues Array of target pre-activation values
+ * @param preActivationValues Array of current pre-activation values
+ * @param currentBiases Array of current neuron biases
+ * @param _config Backpropagation configuration
+ * @param batchSize Number of neurons to process
  */
-export function accumulateBiasBatch4Way(
+export function accumulateBiasBatchNWay(
   nsArray: NeuronState[],
   targetPreActivationValues: number[],
   preActivationValues: number[],
   currentBiases: number[],
   _config: BackPropagationConfig,
+  batchSize: number,
 ) {
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < batchSize; i++) {
     const targetPreActivation = targetPreActivationValues[i];
     const preActivation = preActivationValues[i];
     const currentBias = currentBiases[i];
@@ -214,52 +217,43 @@ export function accumulateBiasBatch4Way(
 }
 
 /**
+ * Issue #1214 - Batch bias accumulation for 4 neurons simultaneously.
+ * Delegates to the generic accumulateBiasBatchNWay (issue #1760).
+ */
+export function accumulateBiasBatch4Way(
+  nsArray: NeuronState[],
+  targetPreActivationValues: number[],
+  preActivationValues: number[],
+  currentBiases: number[],
+  config: BackPropagationConfig,
+) {
+  accumulateBiasBatchNWay(
+    nsArray,
+    targetPreActivationValues,
+    preActivationValues,
+    currentBiases,
+    config,
+    4,
+  );
+}
+
+/**
  * Issue #1214 - Batch bias accumulation for 8 neurons simultaneously.
- * Issue #1314 - Non-finite values are skipped to prevent state corruption.
- *
- * Processes 8 neurons in a single call, enabling SIMD optimisation
- * via V8 when processing mini-batches during backpropagation.
- *
- * @param nsArray Array of 8 NeuronState objects to accumulate into
- * @param targetPreActivationValues Array of 8 target pre-activation values
- * @param preActivationValues Array of 8 current pre-activation values
- * @param currentBiases Array of 8 current neuron biases
- * @param config Backpropagation configuration
+ * Delegates to the generic accumulateBiasBatchNWay (issue #1760).
  */
 export function accumulateBiasBatch8Way(
   nsArray: NeuronState[],
   targetPreActivationValues: number[],
   preActivationValues: number[],
   currentBiases: number[],
-  _config: BackPropagationConfig,
+  config: BackPropagationConfig,
 ) {
-  for (let i = 0; i < 8; i++) {
-    const targetPreActivation = targetPreActivationValues[i];
-    const preActivation = preActivationValues[i];
-    const currentBias = currentBiases[i];
-
-    if (
-      !Number.isFinite(targetPreActivation) ||
-      !Number.isFinite(preActivation) ||
-      !Number.isFinite(currentBias)
-    ) {
-      continue;
-    }
-
-    const biasDelta = targetPreActivation - preActivation;
-    if (!Number.isFinite(biasDelta)) {
-      continue;
-    }
-
-    const targetBias = currentBias + biasDelta;
-    if (!Number.isFinite(targetBias)) {
-      continue;
-    }
-
-    const ns = nsArray[i];
-    ns.count++;
-    ns.totalBias += targetBias;
-    // Issue #1653: Accumulate raw target bias; limitBias applied in calculateBias.
-    ns.totalAdjustedBias += targetBias;
-  }
+  accumulateBiasBatchNWay(
+    nsArray,
+    targetPreActivationValues,
+    preActivationValues,
+    currentBiases,
+    config,
+    8,
+  );
 }
