@@ -8,7 +8,7 @@ import { initWasmForTests } from "../../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("large", async () => {
+Deno.test("large network: training error does not regress significantly across iterations", async () => {
   await initWasmForTests();
   const directory = ".test/propagate/large";
   const trainingSet = JSON.parse(

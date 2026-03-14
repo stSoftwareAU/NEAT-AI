@@ -12,7 +12,7 @@ import { initWasmForTests } from "../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("PropagateMinimum", async () => {
+Deno.test("MINIMUM activation: training reduces error after bias and weight perturbation", async () => {
   await initWasmForTests();
   for (let attempts = 0; true; attempts++) {
     const creature = makeCreature();

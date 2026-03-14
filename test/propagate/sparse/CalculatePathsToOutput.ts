@@ -3,7 +3,7 @@ import type { CreatureExport } from "../../../src/architecture/CreatureInterface
 import { Creature } from "../../../src/Creature.ts";
 import { calculatePathsToOutput } from "../../../src/propagate/sparse/CalculatePathsToOutput.ts";
 
-Deno.test("calculatePathsToOutput", () => {
+Deno.test("calculatePathsToOutput returns all downstream neurons from chosen set to outputs", () => {
   const creature = makeCreature();
 
   const chosenSet = new Set<string>();

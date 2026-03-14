@@ -39,7 +39,7 @@ function makeOutput(input: number[]) {
   return [sum];
 }
 
-Deno.test("Constants", () => {
+Deno.test("backprop converges single sample to constant-weighted target", () => {
   for (let attempts = 0; true; attempts++) {
     const creature = makeCreature();
     const traceDir = ".trace";
@@ -112,7 +112,7 @@ Deno.test("Constants", () => {
   }
 });
 
-Deno.test("Constants Same", () => {
+Deno.test("backprop converges repeated identical samples to constant target", () => {
   for (let attempts = 0; true; attempts++) {
     const creature = makeCreature();
 
@@ -183,7 +183,7 @@ Deno.test("Constants Same", () => {
   }
 });
 
-Deno.test("Constants Known Few", () => {
+Deno.test("backprop learns constant-weighted mapping from few known samples", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
   ensureDirSync(traceDir);
@@ -245,7 +245,7 @@ Deno.test("Constants Known Few", () => {
   );
 });
 
-Deno.test("ConstantsMany", async () => {
+Deno.test("backprop converges over many generations with random training samples", async () => {
   await initWasmForTests();
   const traceDir = ".trace/ConstantsMany";
   ensureDirSync(traceDir);

@@ -22,7 +22,7 @@ function setup() {
   Deno.mkdirSync(directory, { recursive: true });
 }
 
-Deno.test("propagate/minimum", () => {
+Deno.test("MINIMUM activation: error does not regress across training iterations on mixed-squash network", () => {
   check();
 });
 

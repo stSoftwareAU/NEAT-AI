@@ -9,7 +9,7 @@ import { initWasmForTests } from "../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("PropagateWeightsIF", async () => {
+Deno.test("IF activation: training reduces error after weight perturbation", async () => {
   await initWasmForTests();
   const creatureA = makeCreature();
   for (let attempts = 0; true; attempts++) {
@@ -109,7 +109,7 @@ Deno.test("PropagateWeightsIF", async () => {
   }
 });
 
-Deno.test("PropagateBiasIF", async () => {
+Deno.test("IF activation: training reduces error and recovers bias after perturbation", async () => {
   await initWasmForTests();
   const creatureA = makeCreature();
   for (let attempts = 0; true; attempts++) {

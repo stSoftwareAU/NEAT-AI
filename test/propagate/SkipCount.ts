@@ -3,7 +3,7 @@ import { Creature, type CreatureExport } from "../../mod.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
-Deno.test("SkipCount", () => {
+Deno.test("propagate skips synapse accumulation when output already matches target", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,

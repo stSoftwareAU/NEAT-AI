@@ -9,7 +9,7 @@ import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("PropagateMaximumSimple", () => {
+Deno.test("MAXIMUM activation: single propagate-update cycle reduces error on simple network", () => {
   const creatureA = makeCreature();
 
   const ts: DataRecordInterface[] = [];

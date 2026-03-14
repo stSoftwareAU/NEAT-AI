@@ -8,7 +8,7 @@ import { train } from "../../TrainTestOnlyUtil.ts";
 
 const directory = ".test/propagate/sparse";
 
-Deno.test("propagate-trace", () => {
+Deno.test("sparse training with low sparseRatio traces only a subset of neurons and synapses", () => {
   setup();
   const creature = makeCreature();
 

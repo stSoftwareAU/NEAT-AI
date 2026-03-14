@@ -10,7 +10,7 @@ import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("PropagateMaximum", () => {
+Deno.test("MAXIMUM activation: training reduces error after bias and weight perturbation", () => {
   const creatureA = makeCreature();
   for (let attempts = 0; true; attempts++) {
     const ts: DataRecordInterface[] = [];

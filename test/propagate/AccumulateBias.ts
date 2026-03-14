@@ -79,7 +79,7 @@ function makeCreature() {
   return creature;
 }
 
-Deno.test("AccumulateBias-average", () => {
+Deno.test("AccumulateBias-convergence: adjustedBias converges to target across diverse bias values", () => {
   let config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
