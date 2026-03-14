@@ -78,7 +78,7 @@ function makeData() {
   return inputs;
 }
 
-Deno.test("PropagateIdentity", () => {
+Deno.test("backprop reduces error after bias perturbation on IDENTITY network", () => {
   const creature = makeCreature();
   const traceDir = ".test/propagateIdentity";
 
@@ -147,7 +147,7 @@ Deno.test("PropagateIdentity", () => {
   }
 });
 
-Deno.test("PropagateIdentityNoRealChange", () => {
+Deno.test("backprop produces minimal change when network nearly matches targets", () => {
   const creature = makeCreature();
   const traceDir = ".test/propagateIdentityNoRealChange";
 

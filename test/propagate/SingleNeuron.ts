@@ -66,7 +66,7 @@ function makeOutput(input: number[]) {
   return output;
 }
 
-Deno.test("OneAndDone", () => {
+Deno.test("single hidden neuron: converges toward target with 100 repeated samples", () => {
   const creature = makeCreature();
   const traceDir = ".trace/OneAndDone";
   ensureDirSync(traceDir);
@@ -125,7 +125,7 @@ Deno.test("OneAndDone", () => {
   );
 });
 
-Deno.test("TwoSame", () => {
+Deno.test("single hidden neuron: converges within tolerance after 2 training samples", () => {
   const traceDir = ".trace/TwoSame";
   ensureDirSync(traceDir);
 
@@ -199,7 +199,7 @@ Deno.test("TwoSame", () => {
   }
 });
 
-Deno.test("ManySame", () => {
+Deno.test("single hidden neuron: converges tightly after 1000 repeated samples", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
   ensureDirSync(traceDir);
@@ -268,7 +268,7 @@ Deno.test("ManySame", () => {
   }
 });
 
-Deno.test("propagateSingleNeuronRandom", () => {
+Deno.test("single hidden neuron: learns mapping from 1000 random training samples", () => {
   const creature = makeCreature();
   Deno.writeTextFileSync(
     ".trace/0-start.json",

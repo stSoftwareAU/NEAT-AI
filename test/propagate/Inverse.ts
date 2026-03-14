@@ -73,7 +73,7 @@ function makeCreature() {
   return creatureA;
 }
 
-Deno.test("propagateInverseRandom", () => {
+Deno.test("INVERSE activation: backprop converges towards original weights and biases after perturbation", () => {
   const creatureA = makeCreature();
   const squash = new COMPLEMENT();
   const ts = [];

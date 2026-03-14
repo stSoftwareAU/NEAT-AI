@@ -74,7 +74,7 @@ function makeCreature() {
   return creatureA;
 }
 
-Deno.test("propagateMultiLevelRandom", () => {
+Deno.test("multi-hidden-layer IDENTITY network: training improves error with random data", () => {
   const creatureA = makeCreature();
 
   const ts = [];
@@ -193,7 +193,7 @@ Deno.test("propagateMultiLevelRandom", () => {
   }
 });
 
-Deno.test("propagateMultiLevelKnownA", async () => {
+Deno.test("multi-hidden-layer IDENTITY network: training improves error with known dataset A", async () => {
   await initWasmForTests();
   const creatureA = makeCreature();
 
@@ -412,7 +412,7 @@ Deno.test("propagateMultiLevelKnownA", async () => {
   }
 });
 
-Deno.test("propagateMultiLevelKnownB", async () => {
+Deno.test("multi-hidden-layer IDENTITY network: training improves error with known dataset B", async () => {
   await initWasmForTests();
   const creatureA = makeCreature();
 

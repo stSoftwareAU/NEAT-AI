@@ -1,50 +1,64 @@
 ## Summary
 
-Second pass audit of all 83 remaining test files in `test/propagate/` to ensure
-they meet quality standards. Addresses #1766.
+Complete audit of all ~86 test files (~500+ test cases) in the propagation
+module (`test/propagate/`). Improved vague test names across 21 files to clearly
+describe the behaviour being verified, and added missing dampening comparison
+assertions to the Generation.ts tests. Addresses #1766.
 
-### Changes
+This is the third PR in the audit series:
 
-1. **SynapseState.ts**: Removed 2 trivial tests that only verified JavaScript
-   object mutability and instance independence (language features, not real
-   behaviour). Kept and improved the name of the constructor defaults test.
+- PR #1787: Consolidated and improved propagation module tests
+- PR #1788: Fixed vague test names, trivial tests, and missing assertions
+- This PR: Final pass - remaining vague test names and missing assertions
 
-2. **Trace.ts**: Renamed 4 vague hyphenated test names to descriptive
-   behavioural names (e.g. "Trace-load-memetic" → "Trace - loads creature with
-   memetic data from JSON").
+## Changes
 
-3. **simple/Simple.ts**: Renamed "Simple" to "simple backpropagation converges
-   after bias and weight perturbation".
+### Vague test names replaced with descriptive behaviour descriptions (21 files):
 
-4. **biasIdentity/Simple.ts**: Renamed "Simple" to "bias-only backpropagation
-   converges with all-IDENTITY squash functions".
+- **AccumulateBias.ts**: "AccumulateBias-average" → describes convergence across
+  diverse biases
+- **Complex.ts**: "Complex Back Propagation" → describes multi-hidden-layer
+  output preservation
+- **Constants.ts**: All 4 tests renamed to describe specific convergence
+  scenarios
+- **Generation.ts**: Renamed + added explicit dampening comparison assertions
+- **IF.ts**: Both tests renamed to describe IF activation error reduction
+- **Identity.ts**: Both tests renamed to describe bias perturbation recovery
+- **Inverse.ts**: Renamed to describe INVERSE activation convergence
+- **Maximum.ts**: Renamed to describe MAXIMUM activation error reduction
+- **MaximumSimple.ts**: Renamed to describe single-cycle error reduction
+- **Minimum.ts**: Renamed to describe MINIMUM activation error reduction
+- **MultiLevel.ts**: All 3 tests renamed to describe multi-layer training
+  behaviour
+- **PI.ts**: All 3 tests renamed with "PI:" prefix and clear descriptions
+- **STEP.ts**: Renamed to describe STEP/TANH neuron interaction
+- **SingleNeuron.ts**: "OneAndDone"/"TwoSame"/"ManySame" → describe convergence
+  with sample counts
+- **SkipCount.ts**: Renamed to describe synapse skip behaviour
+- **bias/Simple.ts**: Renamed to describe bias-only backprop error
+  non-regression
+- **large/Train.ts**: "large" → describes error non-regression on large network
+- **minimum/Minimum.ts**: "propagate/minimum" → describes MINIMUM activation
+  training
+- **sparse/CalculatePathsToOutput.ts**: Renamed to describe downstream path
+  calculation
+- **sparse/ChooseNeurons.ts**: Renamed to describe sparseRatio selection
+  behaviour
+- **sparse/Trace.ts**: Renamed to describe sparse tracing subset behaviour
 
-5. **PI.ts**: Renamed "PI Multiple" to "PI - converges toward PI*input after
-   1000 random training samples".
+### Missing assertions added:
 
-6. **Recorder/TestRecord.ts**: Renamed "record" to "record - playback error
-   remains consistent after recording and replay". Replaced commented-out
-   assertion with real assertions verifying playback error is finite and
-   consistent with recording error.
+- **Generation.ts**: Added explicit assertions verifying that higher generations
+  produce adjustments closer to original values than generation 0 (dampening
+  effect)
 
-### Audit Summary
-
-All 83 test files in `test/propagate/` (including subdirectories `record/`,
-`sparse/`, `bias/`, `biasIdentity/`, `calculateError/`, `large/`, `minimum/`,
-`simple/`, `Recorder/`) were reviewed against the audit criteria:
-
-- **No duplicates remain**: `biasIdentity/Simple.ts` and `bias/Simple.ts` are
-  distinct tests (all-IDENTITY vs mixed squash functions with different topology
-  configurations).
-- **All tests verify behaviour**: No source-grepping or implementation-detail
-  tests found.
-- **All tests have real assertions**: Fixed the one test (TestRecord.ts) that
-  had commented-out assertions.
-- **Test names clearly describe behaviour**: Fixed 7 vague test names across 6
-  files.
-
-## Test Plan
+## Evidence
 
 - All 4824 tests pass
 - `./quality.sh` passes cleanly
-- No production code changes — test-only audit
+
+## Test Plan
+
+- No new test files added; existing tests renamed for clarity
+- Generation.ts: 2 new assertions verify dampening comparison behaviour
+- All existing test logic preserved unchanged
