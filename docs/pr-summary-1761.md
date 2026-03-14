@@ -2,8 +2,8 @@
 
 Standardised multithreading worker error handling to use `toError()` from
 `ErrorSerialisation.ts`, consistent with the intelligent design worker and
-MockWorker patterns. Error responses now preserve error name, message, and
-stack trace instead of losing error details. Addresses #1761.
+MockWorker patterns. Error responses now preserve error name, message, and stack
+trace instead of losing error details. Addresses #1761.
 
 ## Changes
 
