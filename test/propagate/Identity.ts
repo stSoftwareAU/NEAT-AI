@@ -1,7 +1,8 @@
-import { assert, assertAlmostEquals, fail } from "@std/assert";
-import { ensureDirSync } from "@std/fs";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
 import { Costs } from "../../src/Costs.ts";
+import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import { train } from "../TrainTestOnlyUtil.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
@@ -65,175 +66,129 @@ function makeCreature() {
   return creature;
 }
 
-function makeData() {
-  const inputs: number[][] = [];
-
+function makeDataSet(creature: Creature): DataRecordInterface[] {
+  const dataSet: DataRecordInterface[] = [];
   for (let i = 1000; i--;) {
-    inputs.push([
+    const input = new Float32Array([
       Math.random() * 2 - 1,
       Math.random() * 2 - 1,
       Math.random() * 2 - 1,
     ]);
+    const output = creature.activate(input);
+    dataSet.push({
+      input,
+      output: new Float32Array(Array.from(output)),
+    });
   }
-  return inputs;
+  return dataSet;
 }
 
 Deno.test("backprop reduces error after bias perturbation on IDENTITY network", () => {
   const creature = makeCreature();
-  const traceDir = ".test/propagateIdentity";
+  const dataSet = makeDataSet(creature);
 
-  ensureDirSync(traceDir);
+  const cleanError = calculateError(creature, dataSet);
+  assertAlmostEquals(cleanError, 0, 0.0000001);
 
-  Deno.writeTextFileSync(
-    `${traceDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
-  );
+  const exportJSON = creature.exportJSON();
 
-  const inputs = makeData();
-  Deno.writeTextFileSync(
-    `${traceDir}/input.json`,
-    JSON.stringify(inputs, null, 1),
-  );
-
-  const targets: Float32Array[] = new Array(inputs.length);
-  for (let i = inputs.length; i--;) {
-    targets[i] = creature.activate(new Float32Array(inputs[i]));
-  }
-
-  const neuron = creature.neurons.find((n) => n.uuid === "absolute-5");
-  if (!neuron) fail("neuron not found");
-
-  const startError = calculateError(creature, inputs, targets);
-  assertAlmostEquals(startError, 0, 0.0000001);
-  neuron.bias = 0;
-  Deno.writeTextFileSync(
-    `${traceDir}/1-modified.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
-  );
-
-  const modifiedError = calculateError(creature, inputs, targets);
-  const config = createBackPropagationConfig({
-    generations: 0,
-    learningRate: 1,
-    disableRandomSamples: true,
+  // Perturb biases on the exported JSON, then recreate the creature
+  exportJSON.neurons.forEach((neuron, indx) => {
+    neuron.bias = neuron.bias +
+      ((indx % 2 === 0 ? 1 : -1) * 0.1);
   });
 
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
-  for (let i = inputs.length; i--;) {
-    creature.activateAndTrace(new Float32Array(inputs[i]), false, sparseConfig);
-    creature.propagate(new Float32Array(targets[i]), config, sparseConfig);
-  }
+  const modifiedCreature = Creature.fromJSON(exportJSON);
+  modifiedCreature.validate();
 
-  const traced = creature.traceJSON();
-  Deno.writeTextFileSync(
-    `${traceDir}/2-trace.json`,
-    JSON.stringify(traced, null, 1),
+  const modifiedError = calculateError(modifiedCreature, dataSet);
+  assert(
+    modifiedError > 0.0001,
+    `Bias perturbation should create measurable error, got ${modifiedError}`,
   );
 
-  creature.propagateUpdate(config, sparseConfig);
-  Deno.writeTextFileSync(
-    `${traceDir}/3-end.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
-  );
+  const result = train(modifiedCreature, dataSet, {
+    iterations: 100,
+    targetError: 0,
+  });
 
-  const endError = calculateError(creature, inputs, targets);
-  console.info(
-    `error ${endError} should have improved over ${modifiedError}`,
-    config,
+  assert(
+    result.error < modifiedError,
+    `Backprop should reduce error: was ${modifiedError}, now ${result.error}`,
   );
-
-  if (neuron.bias < 0.00001 || neuron.bias > 1) {
-    console.info(`neuron.bias ${neuron.bias} not in range`);
-  }
 });
 
 Deno.test("backprop produces minimal change when network nearly matches targets", () => {
   const creature = makeCreature();
-  const traceDir = ".test/propagateIdentityNoRealChange";
+  const dataSet = makeDataSet(creature);
 
-  ensureDirSync(traceDir);
+  const cleanError = calculateError(creature, dataSet);
+  assertAlmostEquals(cleanError, 0, 0.0000001);
 
-  Deno.writeTextFileSync(
-    `${traceDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
-  );
-
-  const inputs = makeData();
-  Deno.writeTextFileSync(
-    `${traceDir}/input.json`,
-    JSON.stringify(inputs, null, 1),
-  );
-
-  const targets: Float32Array[] = new Array(inputs.length);
-  for (let i = inputs.length; i--;) {
-    targets[i] = creature.activate(new Float32Array(inputs[i]));
-  }
-
-  creature.neurons.forEach((n, indx) => {
-    n.bias += indx % 2 ? 1e-10 : -1e-10;
+  // Tiny perturbation — the network should remain close to optimal
+  const exportJSON = creature.exportJSON();
+  exportJSON.neurons.forEach((neuron, indx) => {
+    neuron.bias = neuron.bias + (indx % 2 ? 1e-10 : -1e-10);
   });
-  creature.synapses.forEach((s, indx) => {
-    s.weight += indx % 2 ? 1e-10 : -1e-10;
+  exportJSON.synapses.forEach((s, indx) => {
+    s.weight = s.weight + (indx % 2 ? 1e-10 : -1e-10);
   });
 
-  Deno.writeTextFileSync(
-    `${traceDir}/1-modified.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
-  );
+  const nearOptimalCreature = Creature.fromJSON(exportJSON);
+  nearOptimalCreature.validate();
 
-  const startError = calculateError(creature, inputs, targets);
-  assertAlmostEquals(startError, 0, 0.0000001);
+  const beforeError = calculateError(nearOptimalCreature, dataSet);
+  assertAlmostEquals(beforeError, 0, 0.0000001);
 
-  const modifiedError = calculateError(creature, inputs, targets);
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
     disableRandomSamples: true,
   });
 
-  console.info(config);
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
-  for (let i = inputs.length; i--;) {
-    creature.activateAndTrace(new Float32Array(inputs[i]), false, sparseConfig);
-    creature.propagate(new Float32Array(targets[i]), config, sparseConfig);
+  const sparseConfig = new SparseConfig(
+    nearOptimalCreature.exportJSON(),
+    config,
+  );
+  for (const item of dataSet) {
+    nearOptimalCreature.activateAndTrace(
+      new Float32Array(item.input),
+      false,
+      sparseConfig,
+    );
+    nearOptimalCreature.propagate(
+      new Float32Array(item.output),
+      config,
+      sparseConfig,
+    );
   }
 
-  const traced = creature.traceJSON();
-  Deno.writeTextFileSync(
-    `${traceDir}/2-trace.json`,
-    JSON.stringify(traced, null, 1),
-  );
+  nearOptimalCreature.propagateUpdate(config, sparseConfig);
 
-  creature.propagateUpdate(config, sparseConfig);
-  Deno.writeTextFileSync(
-    `${traceDir}/3-end.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
-  );
-
-  const endError = calculateError(creature, inputs, targets);
+  const afterError = calculateError(nearOptimalCreature, dataSet);
 
   assertAlmostEquals(
-    modifiedError,
-    endError,
+    beforeError,
+    afterError,
     0.001,
-    `error ${endError} should have changed ${modifiedError}`,
+    `Error should barely change: before ${beforeError}, after ${afterError}`,
   );
 });
 
 function calculateError(
   creature: Creature,
-  inputs: number[][],
-  targets: Float32Array[],
+  dataSet: DataRecordInterface[],
 ) {
   let error = 0;
-  const count = inputs.length;
-  assert(count === targets.length);
+  const count = dataSet.length;
   const mse = Costs.find("MSE");
   for (let i = count; i--;) {
-    const input = new Float32Array(inputs[i]);
-    const target = targets[i];
-    const output = creature.activate(input, false);
-    error += mse.calculate(target, new Float32Array(output));
+    const data = dataSet[i];
+    const output = creature.activate(new Float32Array(data.input), false);
+    error += mse.calculate(
+      new Float32Array(data.output),
+      new Float32Array(output),
+    );
   }
 
   return error / count;
