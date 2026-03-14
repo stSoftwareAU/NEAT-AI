@@ -161,6 +161,20 @@ export interface ResponseData {
   debug?: boolean;
   /** Duration of the operation in milliseconds */
   duration: number;
+  /**
+   * Error details when the worker failed to process the request.
+   *
+   * Issue #1761: Standardised error field consistent with the intelligent
+   * design worker, preserving error name, message, and stack trace.
+   */
+  error?: {
+    /** Error name (when available) */
+    name?: string;
+    /** Error message */
+    message: string;
+    /** Stack trace (when available) */
+    stack?: string;
+  };
   /** Initialization response */
   initialize?: {
     /** Status of the initialization */

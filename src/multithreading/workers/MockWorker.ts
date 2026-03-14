@@ -3,6 +3,7 @@ import type { RequestData, ResponseData } from "./WorkerHandler.ts";
 
 import { WorkerProcessor } from "./WorkerProcessor.ts";
 import { getLogger } from "../../utils/Logger.ts";
+import { toError, toErrorMessage } from "../../utils/ErrorSerialisation.ts";
 
 export class MockWorker implements WorkerInterface<RequestData> {
   private callBack: EventListener | null = null;
@@ -30,23 +31,29 @@ export class MockWorker implements WorkerInterface<RequestData> {
         this.callBack(me);
       }
     }).catch((error) => {
-      getLogger().error("MockWorker processing error:", error);
-      // Create a proper error response with operation-specific error field
+      const err = toError(error);
+      getLogger().error("MockWorker processing error:", err);
+      // Issue #1761: Include standardised error details
       const errorResponse: ResponseData = {
         taskID: data.taskID,
         duration: 0,
+        error: {
+          name: err.name,
+          message: err.message,
+          stack: err.stack,
+        },
       };
 
       // Add operation-specific error field based on request type
       if (data.evaluate) {
         errorResponse.evaluate = {
-          error: Number.POSITIVE_INFINITY, // Use infinity to indicate evaluation failure
+          error: Number.POSITIVE_INFINITY,
         };
       } else if (data.train) {
         errorResponse.train = {
           ID: "error",
           creature: "",
-          error: Number.POSITIVE_INFINITY, // Use infinity to indicate training failure
+          error: Number.POSITIVE_INFINITY,
           trace: "",
         };
       } else if (data.discover) {
@@ -55,11 +62,11 @@ export class MockWorker implements WorkerInterface<RequestData> {
         };
       } else if (data.echo) {
         errorResponse.echo = {
-          message: `Error: ${error?.message || String(error)}`,
+          message: `Error: ${toErrorMessage(error)}`,
         };
       } else if (data.configureCache) {
         errorResponse.configureCache = {
-          status: `ERROR: ${error?.message || String(error)}`,
+          status: `ERROR: ${toErrorMessage(error)}`,
         };
       } else if (data.requestCacheStats) {
         errorResponse.cacheStats = {
@@ -71,9 +78,9 @@ export class MockWorker implements WorkerInterface<RequestData> {
       } else if (data.initialize) {
         errorResponse.initialize = {
           status: "ERROR",
+          error: toErrorMessage(error),
         };
       } else if (data.breed) {
-        // Issue #1026: Handle breeding errors
         errorResponse.breed = {
           success: false,
         };
