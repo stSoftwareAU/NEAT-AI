@@ -1,56 +1,46 @@
 ## Summary
 
-Final consolidation pass on propagation module tests: remove remaining duplicate
-tests, consolidate overlapping test files, and standardise test names to use the
-consistent `topic - descriptive sentence` format. Addresses #1766.
+Remove duplicate WASM batch accumulation test files from the propagation module.
+Addresses #1766.
 
-This is the fifth PR in the audit series:
+`WasmAccumulateBias.ts` (5 tests) and `WasmAccumulateWeight.ts` (5 tests) were
+near-duplicates of `AccumulateBiasBatch.ts` and `AccumulateWeightBatch.ts`
+respectively. Both file pairs called the same `accumulateBiasBatch4Way/8Way` and
+`accumulateWeightBatch4Way/8Way` functions with identical or near-identical test
+data and assertions. The WASM acceleration is dispatched transparently inside
+these batch functions, so the "WASM" tests exercised the exact same code paths
+as the existing batch tests.
+
+The one unique test (`wasmCalculateWeight`) only asserted that the return value
+was finite — this behaviour is already comprehensively tested in `Weight.ts`,
+`WeightConvergence.ts`, `GenerationalDampening.ts`, and
+`SingleLearningRateApplication.ts`.
+
+This is the sixth and final PR in the audit series:
 
 - PR #1787: Consolidated and improved propagation module tests
 - PR #1788: Fixed vague test names, trivial tests, and missing assertions
 - PR #1789: Remaining vague test names and missing assertions
 - PR #1790: Final pass on test names and misleading filename
-- This PR: Remove remaining duplicate tests and standardise batch test names
+- PR #1791: Removed duplicate tests and standardised batch test names
+- This PR: Remove remaining duplicate WASM batch test files
 
-## Changes
+All 85 remaining test files (465+ test cases) in `test/propagate/` were reviewed
+and verified to meet all audit criteria:
 
-### Duplicate test files removed:
-
-- **`AccumulateBias.ts`** (deleted): First two tests duplicated `Bias.ts`; the
-  unique convergence test was moved to `BiasConvergence.ts`.
-- **`WeightCalculation.ts`** (deleted): `accumulateWeight` and `limitWeight`
-  tests duplicated `Weight.ts`; the unique `calculateWeight` tests were moved to
-  `Weight.ts`.
-
-### Duplicate batch test sections removed:
-
-- **`Bias.ts`**: Removed `accumulateBiasBatch4Way` and `accumulateBiasBatch8Way`
-  tests (duplicated with less coverage in `AccumulateBiasBatch.ts`).
-- **`Weight.ts`**: Removed batch 4-way and 8-way tests (duplicated in
-  `AccumulateWeightBatch.ts`).
-
-### Test names standardised (30 tests across 6 files):
-
-Updated from `CamelCase-Hyphenated` to `functionName - descriptive sentence`
-format in: `AccumulateBiasBatch.ts`, `AccumulateBiasBatchNWay.ts`,
-`AccumulateWeightBatch.ts`, `AccumulateWeightBatchNWay.ts`,
-`WasmAccumulateBias.ts`, `WasmAccumulateWeight.ts`.
-
-### Net effect
-
-- 2 test files removed (duplicates)
-- ~443 lines removed (net)
-- 0 tests lost (all unique tests preserved via consolidation)
-- All 4798 tests pass
-- `./quality.sh` passes cleanly
+- No duplicate tests remain
+- All tests verify behaviour, not implementation details
+- All tests are meaningful with real assertions
+- Test names clearly describe the behaviour being verified
 
 ## Evidence
 
-All tests pass: `ok | 4798 passed (2 steps) | 0 failed`
+All 4788 tests pass. `./quality.sh` passes cleanly.
 
 ## Test Plan
 
-- Verified all consolidated tests run and pass in their new locations
-- Verified no test coverage was lost (unique tests moved, only duplicates
-  removed)
-- Ran `./quality.sh --skip-discovery --skip-wasm` — all checks pass
+- Removed `test/propagate/WasmAccumulateBias.ts` (5 duplicate tests)
+- Removed `test/propagate/WasmAccumulateWeight.ts` (5 duplicate tests, 1
+  trivial)
+- Verified no other files import from the removed files
+- Full test suite passes (4788 tests, 0 failures)
