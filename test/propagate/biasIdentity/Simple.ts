@@ -9,7 +9,7 @@ import { train } from "../../TrainTestOnlyUtil.ts";
 
 const directory = ".test/propagate/biasIdentity";
 
-Deno.test("Simple", () => {
+Deno.test("bias-only backpropagation converges with all-IDENTITY squash functions", () => {
   setup();
   const cleanCreature = makeCreature();
 

@@ -132,7 +132,7 @@ Deno.test("PI-single", () => {
   );
 });
 
-Deno.test("PI Multiple", () => {
+Deno.test("PI - converges toward PI*input after 1000 random training samples", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
   ensureDirSync(traceDir);
