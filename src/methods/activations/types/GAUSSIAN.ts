@@ -34,7 +34,7 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
     // Use a safe max X beyond which exp(-x²) under-flows to 0
     const safeX = Math.min(Math.abs(x), 100); // x > ~15 means exp(-x²) ~ 0
 
-    const value = Math.exp(-Math.pow(safeX, 2));
+    const value = Math.exp(-safeX * safeX);
     return this.range.limit(value, x);
   }
 

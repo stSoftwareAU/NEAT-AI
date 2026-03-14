@@ -3,6 +3,7 @@ import { ErrorHelper } from "@propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import { safeZoneAdjustment } from "../SafeZoneAdjustment.ts";
+import { NR_MAX_ITERATIONS, NR_TOLERANCE } from "../NewtonRaphsonConstants.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
@@ -17,8 +18,8 @@ export class Swish implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 35;
 
   public static readonly NAME = "Swish";
-  private static readonly MAX_ITERATIONS = 100;
-  private static readonly EPSILON = 1e-6;
+  private static readonly MAX_ITERATIONS = NR_MAX_ITERATIONS;
+  private static readonly EPSILON = NR_TOLERANCE;
 
   public static readonly rangeStatic: ActivationRange = new ActivationRange(
     Swish.NAME,

@@ -4,6 +4,7 @@ import { ErrorHelper } from "@propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import { safeZoneAdjustment } from "../SafeZoneAdjustment.ts";
+import { NR_MAX_ITERATIONS } from "../NewtonRaphsonConstants.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
@@ -19,7 +20,7 @@ export class Mish implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 31;
 
   public static readonly NAME = "Mish";
-  private static readonly MAX_ITERATIONS = 100;
+  private static readonly MAX_ITERATIONS = NR_MAX_ITERATIONS;
   private static readonly TOLERANCE = 1e-4;
   private static readonly SAFE_LIMIT = Number.MAX_SAFE_INTEGER / 2;
 

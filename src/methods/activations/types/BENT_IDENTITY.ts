@@ -2,6 +2,7 @@ import { ActivationRange } from "@propagate/ActivationRange.ts";
 import { ErrorHelper } from "@propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
+import { NR_MAX_ITERATIONS, NR_TOLERANCE } from "../NewtonRaphsonConstants.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
@@ -15,8 +16,8 @@ import type { UnSquashInterface } from "../UnSquashInterface.ts";
 export class BENT_IDENTITY implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 20;
   public static NAME = "BENT_IDENTITY";
-  private static readonly MAX_ITERATIONS = 100;
-  private static readonly EPSILON = 1e-6;
+  private static readonly MAX_ITERATIONS = NR_MAX_ITERATIONS;
+  private static readonly EPSILON = NR_TOLERANCE;
   private static readonly OVERFLOW_LIMIT = 1e153;
 
   private static rangeStatic: ActivationRange = new ActivationRange(
