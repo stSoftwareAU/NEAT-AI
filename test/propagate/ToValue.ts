@@ -60,7 +60,7 @@ function makeCreature() {
   return creature;
 }
 
-Deno.test("toValue", () => {
+Deno.test("toValue/toActivation - round-trip preserves value for all squash functions", () => {
   const creature = makeCreature();
   const neuron = creature.neurons[3];
 

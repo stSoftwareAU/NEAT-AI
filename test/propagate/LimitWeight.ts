@@ -4,7 +4,7 @@ import {
 } from "../../src/propagate/BackPropagation.ts";
 import { limitWeight } from "../../src/propagate/Weight.ts";
 
-Deno.test("maximumWeightAdjustmentScale", () => {
+Deno.test("limitWeight - clamps adjustment to maximumWeightAdjustmentScale", () => {
   const config = createBackPropagationConfig({
     maximumWeightAdjustmentScale: 0.2,
     learningRate: 1,
@@ -18,7 +18,7 @@ Deno.test("maximumWeightAdjustmentScale", () => {
   assertAlmostEquals(-0.3, weight2, 0.001, `Weight: ${weight.toFixed(3)}`);
 });
 
-Deno.test("maximumWeightAdjustmentScaleV2", () => {
+Deno.test("limitWeight - clamps very large target to adjustment scale", () => {
   const config = createBackPropagationConfig({
     maximumWeightAdjustmentScale: 0.2,
     learningRate: 1,
@@ -28,7 +28,7 @@ Deno.test("maximumWeightAdjustmentScaleV2", () => {
   assertAlmostEquals(0.7, weight, 0.001, `Weight: ${weight.toFixed(3)}`);
 });
 
-Deno.test("limitWeightScale", () => {
+Deno.test("limitWeight - enforces limitWeightScale absolute ceiling", () => {
   const config = createBackPropagationConfig({
     limitWeightScale: 20,
     maximumWeightAdjustmentScale: 10,
