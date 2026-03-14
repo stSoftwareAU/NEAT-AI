@@ -20,7 +20,7 @@ import {
 /**
  * Test that accumulateWeightBatchNWay with batchSize=4 matches accumulateWeightBatch4Way.
  */
-Deno.test("AccumulateWeightBatchNWay-Matches4Way", () => {
+Deno.test("accumulateWeightBatchNWay - batchSize=4 matches accumulateWeightBatch4Way", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -87,7 +87,7 @@ Deno.test("AccumulateWeightBatchNWay-Matches4Way", () => {
 /**
  * Test that accumulateWeightBatchNWay with batchSize=8 matches accumulateWeightBatch8Way.
  */
-Deno.test("AccumulateWeightBatchNWay-Matches8Way", () => {
+Deno.test("accumulateWeightBatchNWay - batchSize=8 matches accumulateWeightBatch8Way", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -146,7 +146,7 @@ Deno.test("AccumulateWeightBatchNWay-Matches8Way", () => {
 /**
  * Test accumulateWeightBatchNWay with batchSize=1 matches a single accumulateWeight call.
  */
-Deno.test("AccumulateWeightBatchNWay-BatchSize1-MatchesSingleCall", () => {
+Deno.test("accumulateWeightBatchNWay - batchSize=1 matches single accumulateWeight call", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -188,7 +188,7 @@ Deno.test("AccumulateWeightBatchNWay-BatchSize1-MatchesSingleCall", () => {
  * Test accumulateWeightBatchNWay with batchSize=6 (non-standard size)
  * matches individual accumulateWeight calls.
  */
-Deno.test("AccumulateWeightBatchNWay-BatchSize6-MatchesSingleCalls", () => {
+Deno.test("accumulateWeightBatchNWay - batchSize=6 matches individual accumulateWeight calls", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -274,7 +274,7 @@ Deno.test("AccumulateWeightBatchNWay-BatchSize6-MatchesSingleCalls", () => {
 /**
  * Test accumulateWeightBatchNWay with non-finite values skips correctly.
  */
-Deno.test("AccumulateWeightBatchNWay-SkipsNonFiniteValues", () => {
+Deno.test("accumulateWeightBatchNWay - skips non-finite values correctly", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -305,7 +305,7 @@ Deno.test("AccumulateWeightBatchNWay-SkipsNonFiniteValues", () => {
 /**
  * Test accumulateWeightBatchNWay with multiple iterations accumulates correctly.
  */
-Deno.test("AccumulateWeightBatchNWay-MultipleIterations-BatchSize3", () => {
+Deno.test("accumulateWeightBatchNWay - multiple iterations with batchSize=3 accumulate correctly", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,

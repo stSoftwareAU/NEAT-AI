@@ -22,7 +22,7 @@ import {
  * Verify the WASM-integrated 4-way batch produces the same results as
  * single calls (WASM is tried first, falls back to TS if unavailable).
  */
-Deno.test("WasmAccumulateWeightBatch4Way-MatchesSingleCalls", () => {
+Deno.test("wasmAccumulateWeightBatch4Way - matches individual TypeScript calls", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -96,7 +96,7 @@ Deno.test("WasmAccumulateWeightBatch4Way-MatchesSingleCalls", () => {
 /**
  * Verify the WASM-integrated 8-way batch produces the same results.
  */
-Deno.test("WasmAccumulateWeightBatch8Way-MatchesSingleCalls", () => {
+Deno.test("wasmAccumulateWeightBatch8Way - matches individual TypeScript calls", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -160,7 +160,7 @@ Deno.test("WasmAccumulateWeightBatch8Way-MatchesSingleCalls", () => {
 /**
  * Test multiple iterations to verify accumulation stability.
  */
-Deno.test("WasmAccumulateWeightBatch4Way-MultipleIterations", () => {
+Deno.test("wasmAccumulateWeightBatch4Way - multiple iterations match TypeScript", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -221,7 +221,7 @@ Deno.test("WasmAccumulateWeightBatch4Way-MultipleIterations", () => {
 /**
  * Test non-finite value handling (Issue #1314).
  */
-Deno.test("WasmAccumulateWeightBatch4Way-NonFiniteValues", () => {
+Deno.test("wasmAccumulateWeightBatch4Way - skips non-finite values like TypeScript", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -266,7 +266,7 @@ Deno.test("WasmAccumulateWeightBatch4Way-NonFiniteValues", () => {
 /**
  * Test calculateWeight with various accumulated states.
  */
-Deno.test("WasmCalculateWeight-MatchesTypeScript", () => {
+Deno.test("wasmCalculateWeight - matches TypeScript calculateWeight", () => {
   const config = createBackPropagationConfig({
     generations: 5,
     learningRate: 0.01,

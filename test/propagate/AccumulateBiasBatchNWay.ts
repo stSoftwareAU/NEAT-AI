@@ -20,7 +20,7 @@ import {
 /**
  * Test that accumulateBiasBatchNWay with batchSize=4 matches accumulateBiasBatch4Way.
  */
-Deno.test("AccumulateBiasBatchNWay-Matches4Way", () => {
+Deno.test("accumulateBiasBatchNWay - batchSize=4 matches accumulateBiasBatch4Way", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -68,7 +68,7 @@ Deno.test("AccumulateBiasBatchNWay-Matches4Way", () => {
 /**
  * Test that accumulateBiasBatchNWay with batchSize=8 matches accumulateBiasBatch8Way.
  */
-Deno.test("AccumulateBiasBatchNWay-Matches8Way", () => {
+Deno.test("accumulateBiasBatchNWay - batchSize=8 matches accumulateBiasBatch8Way", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -125,7 +125,7 @@ Deno.test("AccumulateBiasBatchNWay-Matches8Way", () => {
 /**
  * Test accumulateBiasBatchNWay with batchSize=1 matches a single accumulateBias call.
  */
-Deno.test("AccumulateBiasBatchNWay-BatchSize1-MatchesSingleCall", () => {
+Deno.test("accumulateBiasBatchNWay - batchSize=1 matches single accumulateBias call", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -158,7 +158,7 @@ Deno.test("AccumulateBiasBatchNWay-BatchSize1-MatchesSingleCall", () => {
  * Test accumulateBiasBatchNWay with batchSize=6 (non-standard size)
  * matches individual accumulateBias calls.
  */
-Deno.test("AccumulateBiasBatchNWay-BatchSize6-MatchesSingleCalls", () => {
+Deno.test("accumulateBiasBatchNWay - batchSize=6 matches individual accumulateBias calls", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -221,7 +221,7 @@ Deno.test("AccumulateBiasBatchNWay-BatchSize6-MatchesSingleCalls", () => {
 /**
  * Test accumulateBiasBatchNWay with non-finite values skips correctly.
  */
-Deno.test("AccumulateBiasBatchNWay-SkipsNonFiniteValues", () => {
+Deno.test("accumulateBiasBatchNWay - skips non-finite values correctly", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -252,7 +252,7 @@ Deno.test("AccumulateBiasBatchNWay-SkipsNonFiniteValues", () => {
 /**
  * Test accumulateBiasBatchNWay with multiple iterations accumulates correctly.
  */
-Deno.test("AccumulateBiasBatchNWay-MultipleIterations-BatchSize3", () => {
+Deno.test("accumulateBiasBatchNWay - multiple iterations with batchSize=3 accumulate correctly", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,

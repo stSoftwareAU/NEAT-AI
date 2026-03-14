@@ -21,7 +21,7 @@ import {
  * Verify the WASM-integrated 4-way batch produces the same results as
  * single calls (WASM is tried first, falls back to TS if unavailable).
  */
-Deno.test("WasmAccumulateBiasBatch4Way-MatchesSingleCalls", () => {
+Deno.test("wasmAccumulateBiasBatch4Way - matches individual TypeScript calls", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -72,7 +72,7 @@ Deno.test("WasmAccumulateBiasBatch4Way-MatchesSingleCalls", () => {
 /**
  * Verify the WASM-integrated 8-way batch produces the same results.
  */
-Deno.test("WasmAccumulateBiasBatch8Way-MatchesSingleCalls", () => {
+Deno.test("wasmAccumulateBiasBatch8Way - matches individual TypeScript calls", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -132,7 +132,7 @@ Deno.test("WasmAccumulateBiasBatch8Way-MatchesSingleCalls", () => {
 /**
  * Test multiple iterations to verify accumulation stability.
  */
-Deno.test("WasmAccumulateBiasBatch4Way-MultipleIterations", () => {
+Deno.test("wasmAccumulateBiasBatch4Way - multiple iterations match TypeScript", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -193,7 +193,7 @@ Deno.test("WasmAccumulateBiasBatch4Way-MultipleIterations", () => {
 /**
  * Test non-finite value handling (Issue #1314).
  */
-Deno.test("WasmAccumulateBiasBatch4Way-NonFiniteValues", () => {
+Deno.test("wasmAccumulateBiasBatch4Way - skips non-finite values like TypeScript", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -238,7 +238,7 @@ Deno.test("WasmAccumulateBiasBatch4Way-NonFiniteValues", () => {
 /**
  * Test with bias limiting configuration.
  */
-Deno.test("WasmAccumulateBiasBatch4Way-BiasLimiting", () => {
+Deno.test("wasmAccumulateBiasBatch4Way - bias limiting matches TypeScript", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
