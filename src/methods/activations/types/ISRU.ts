@@ -35,7 +35,7 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
 
   squash(x: number): number {
     if (!Number.isFinite(x)) return 0;
-    const result = x / Math.sqrt(1 + ISRU.ALPHA * Math.pow(x, 2));
+    const result = x / Math.sqrt(1 + ISRU.ALPHA * x * x);
     return this.range.limit(result, x);
   }
 
@@ -48,7 +48,7 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
     );
 
     return safeActivation /
-      Math.sqrt(1 - ISRU.ALPHA * Math.pow(safeActivation, 2));
+      Math.sqrt(1 - ISRU.ALPHA * safeActivation * safeActivation);
   }
 
   /**
@@ -66,7 +66,7 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
     // Prevent division by zero or numerical instability
     if (denom < 1e-12) return 0;
 
-    return Math.pow(denom, -1.5);
+    return 1 / (denom * Math.sqrt(denom));
   }
 
   /**

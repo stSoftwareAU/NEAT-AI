@@ -3,6 +3,7 @@ import { ErrorHelper } from "@propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
 import { safeZoneAdjustment } from "../SafeZoneAdjustment.ts";
+import { NR_MAX_ITERATIONS, NR_TOLERANCE } from "../NewtonRaphsonConstants.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
@@ -19,9 +20,10 @@ export class GELU implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 34;
   public static readonly NAME = "GELU";
   private static readonly CUBIC_COEF = 0.044715;
-  private static readonly MAX_ITERATIONS = 100;
-  private static readonly TOLERANCE = 1e-6;
+  private static readonly MAX_ITERATIONS = NR_MAX_ITERATIONS;
+  private static readonly TOLERANCE = NR_TOLERANCE;
   private static readonly MAX_X = 10;
+  private static readonly SQRT_2_OVER_PI = Math.sqrt(2 / Math.PI);
 
   public readonly range = new ActivationRange(
     GELU.NAME,
@@ -44,7 +46,7 @@ export class GELU implements ActivationInterface, UnSquashInterface {
     const value = 0.5 * x *
       (1 +
         Math.tanh(
-          Math.sqrt(2 / Math.PI) * (x + GELU.CUBIC_COEF * Math.pow(x, 3)),
+          GELU.SQRT_2_OVER_PI * (x + GELU.CUBIC_COEF * x * x * x),
         ));
 
     return this.range.limit(value, x);
@@ -85,12 +87,12 @@ export class GELU implements ActivationInterface, UnSquashInterface {
   }
 
   derivative(x: number): number {
-    const inner = Math.sqrt(2 / Math.PI) * (x + 0.044715 * Math.pow(x, 3));
+    const inner = GELU.SQRT_2_OVER_PI * (x + 0.044715 * x * x * x);
     const tanhInner = Math.tanh(inner);
 
     const cdf = 0.5 * (1 + tanhInner);
     const pdf = (0.5 * x * (1 - tanhInner * tanhInner)) *
-      Math.sqrt(2 / Math.PI) *
+      GELU.SQRT_2_OVER_PI *
       (1 + 3 * 0.044715 * x * x);
 
     const result = cdf + pdf;
