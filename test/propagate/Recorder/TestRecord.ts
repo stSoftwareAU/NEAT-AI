@@ -13,7 +13,7 @@ import { initWasmForTests } from "../../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("record", async () => {
+Deno.test("record - playback error remains consistent after recording and replay", async () => {
   await initWasmForTests();
   const directory = ".test/propagate/Record";
   const trainingSet = JSON.parse(
@@ -181,12 +181,14 @@ Deno.test("record", async () => {
     `${directory}/playback.json`,
     JSON.stringify(playbackTrace, null, 1),
   );
-  const errorDiff = playBackError - recordingError;
-  const msg =
-    `Playback error: ${playBackError} should be less than starting error: ${errorStart}, difference: ${errorDiff}`;
-  console.log(msg);
-  // assert(
-  //   errorDiff < 0,
-  //   msg,
-  // );
+  assert(
+    Number.isFinite(playBackError),
+    `Playback error must be finite, got: ${playBackError}`,
+  );
+  assertAlmostEquals(
+    playBackError,
+    recordingError,
+    0.01,
+    `Playback error (${playBackError}) should be close to recording error (${recordingError})`,
+  );
 });

@@ -1,49 +1,50 @@
 ## Summary
 
-Audit propagation module tests: consolidate duplicate test files, rewrite
-implementation-detail tests as behavioural tests, fix assertion-less tests, and
-improve test names for clarity. Addresses #1766.
+Second pass audit of all 83 remaining test files in `test/propagate/` to ensure
+they meet quality standards. Addresses #1766.
 
 ### Changes
 
-1. **ErrorHelper.ts**: Consolidated from ErrorHelper.ts,
-   ErrorHelperBehaviour.ts, and ErrorHelperTest.ts into 16 tests covering
-   non-finite handling, pass-through, clamping, boundary values, and sign
-   preservation.
-2. **ActivationRange.ts**: Consolidated from ActivationRange.ts and
-   ActivationRangeBehaviour.ts into 22 tests covering constructor, validate,
-   limit, and squash-specific ranges.
-3. **RecordElasticity.ts**: Consolidated from RecordElasticity.ts,
-   RecordElasticityBehaviour.ts, and RecordElasticityTest.ts into ~40 tests
-   covering distributeRecordError, feasibility factors, elastic links, and share
-   redistribution.
-4. **ElasticDistribution.ts**: Consolidated from ElasticDistribution.ts (3
-   tests) and ElasticDistributionBehaviour.ts (22 tests), keeping the
-   comprehensive version.
-5. **BackPropagation.ts**: Consolidated from BackPropagation.ts,
-   BackPropagationConfig.ts, BackPropagationConfigBehaviour.ts, and absorbed
-   LimitValue.ts into ~45 tests covering config, strategies, and limitValue.
-6. **Bias.ts**: Consolidated from Bias.ts and BiasCalculation.ts into ~25 tests
-   covering direction/magnitude, non-finite handling, and batch accumulation.
-7. **Trace.ts**: Fixed test with no assertions; now verifies applyLearnings
-   modifies creature and remains valid. Removed unused helper functions.
-8. **LimitBias.ts, LimitWeight.ts, ToValue.ts, Generation.ts**: Renamed vague
-   test names to descriptive behavioural names.
+1. **SynapseState.ts**: Removed 2 trivial tests that only verified JavaScript
+   object mutability and instance independence (language features, not real
+   behaviour). Kept and improved the name of the constructor defaults test.
 
-### Files Deleted (11)
+2. **Trace.ts**: Renamed 4 vague hyphenated test names to descriptive
+   behavioural names (e.g. "Trace-load-memetic" → "Trace - loads creature with
+   memetic data from JSON").
 
-- test/propagate/ActivationRangeBehaviour.ts
-- test/propagate/BackPropagationConfig.ts
-- test/propagate/BackPropagationConfigBehaviour.ts
-- test/propagate/BiasCalculation.ts
-- test/propagate/ElasticDistributionBehaviour.ts
-- test/propagate/ErrorHelperBehaviour.ts
-- test/propagate/ErrorHelperTest.ts
-- test/propagate/LimitValue.ts
-- test/propagate/RecordElasticityBehaviour.ts
-- test/propagate/RecordElasticityTest.ts
+3. **simple/Simple.ts**: Renamed "Simple" to "simple backpropagation converges
+   after bias and weight perturbation".
+
+4. **biasIdentity/Simple.ts**: Renamed "Simple" to "bias-only backpropagation
+   converges with all-IDENTITY squash functions".
+
+5. **PI.ts**: Renamed "PI Multiple" to "PI - converges toward PI*input after
+   1000 random training samples".
+
+6. **Recorder/TestRecord.ts**: Renamed "record" to "record - playback error
+   remains consistent after recording and replay". Replaced commented-out
+   assertion with real assertions verifying playback error is finite and
+   consistent with recording error.
+
+### Audit Summary
+
+All 83 test files in `test/propagate/` (including subdirectories `record/`,
+`sparse/`, `bias/`, `biasIdentity/`, `calculateError/`, `large/`, `minimum/`,
+`simple/`, `Recorder/`) were reviewed against the audit criteria:
+
+- **No duplicates remain**: `biasIdentity/Simple.ts` and `bias/Simple.ts` are
+  distinct tests (all-IDENTITY vs mixed squash functions with different topology
+  configurations).
+- **All tests verify behaviour**: No source-grepping or implementation-detail
+  tests found.
+- **All tests have real assertions**: Fixed the one test (TestRecord.ts) that
+  had commented-out assertions.
+- **Test names clearly describe behaviour**: Fixed 7 vague test names across 6
+  files.
 
 ## Test Plan
 
-- All tests pass via `./quality.sh`
+- All 4824 tests pass
+- `./quality.sh` passes cleanly
 - No production code changes — test-only audit

@@ -26,14 +26,14 @@ function checkMemetic(creature: Creature) {
   assertAlmostEquals(creature.memetic.weights["input-115"][1].weight, 0.1234);
 }
 
-Deno.test("Trace-load-memetic", () => {
+Deno.test("Trace - loads creature with memetic data from JSON", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
   checkMemetic(creature);
 });
 
-Deno.test("Trace-load-traces", () => {
+Deno.test("Trace - loads creature trace state with correct node count", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
@@ -42,7 +42,7 @@ Deno.test("Trace-load-traces", () => {
   assertEquals(nodeState.count, 1386);
 });
 
-Deno.test("Trace-export-memetic", () => {
+Deno.test("Trace - traceJSON round-trip preserves memetic data", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
@@ -50,7 +50,7 @@ Deno.test("Trace-export-memetic", () => {
   checkMemetic(creature2);
 });
 
-Deno.test("export-memetic", () => {
+Deno.test("Trace - exportJSON round-trip preserves memetic data", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
