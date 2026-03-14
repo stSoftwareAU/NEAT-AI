@@ -5,7 +5,7 @@
  * including message handling, structured clone validation, error responses,
  * and termination.
  */
-import { assertEquals, assertExists } from "@std/assert";
+import { assert, assertEquals, assertExists } from "@std/assert";
 import { MockWorker } from "../../src/multithreading/workers/MockWorker.ts";
 import type {
   RequestData,
@@ -115,6 +115,70 @@ Deno.test("MockWorker: error response for evaluate includes infinity error", asy
   assertEquals(response.taskID, 10);
   assertExists(response.evaluate);
   assertEquals(response.evaluate?.error, Number.POSITIVE_INFINITY);
+
+  worker.terminate();
+});
+
+Deno.test("MockWorker: evaluate error response preserves error details", async () => {
+  const worker = new MockWorker();
+
+  const response = await sendAndReceive(worker, {
+    taskID: 20,
+    evaluate: { creature: "invalid-json", feedbackLoop: false },
+  });
+
+  assertEquals(response.taskID, 20);
+  // Issue #1761: Error responses must include name, message, and stack
+  assertExists(response.error, "error field must be present");
+  assertExists(response.error?.name, "error name must be present");
+  assertExists(response.error?.message, "error message must be present");
+  assert(
+    response.error!.message.length > 0,
+    "error message must not be empty",
+  );
+
+  worker.terminate();
+});
+
+Deno.test("MockWorker: train error response preserves error details", async () => {
+  const worker = new MockWorker();
+
+  const response = await sendAndReceive(worker, {
+    taskID: 21,
+    train: {
+      creature: "invalid-json",
+      options: {} as import("../../src/config/TrainOptions.ts").TrainOptions,
+    },
+  });
+
+  assertEquals(response.taskID, 21);
+  assertExists(response.train);
+  assertEquals(response.train?.error, Number.POSITIVE_INFINITY);
+  // Issue #1761: Error responses must include name, message, and stack
+  assertExists(response.error, "error field must be present");
+  assertExists(response.error?.name, "error name must be present");
+  assertExists(response.error?.message, "error message must be present");
+
+  worker.terminate();
+});
+
+Deno.test("MockWorker: discover error response preserves error details", async () => {
+  const worker = new MockWorker();
+
+  const response = await sendAndReceive(worker, {
+    taskID: 22,
+    discover: {
+      creature: "invalid-json",
+      config: {} as import("../../src/config/NeatConfig.ts").NeatConfig,
+    },
+  });
+
+  assertEquals(response.taskID, 22);
+  assertExists(response.discover);
+  // Issue #1761: Error responses must include name, message, and stack
+  assertExists(response.error, "error field must be present");
+  assertExists(response.error?.name, "error name must be present");
+  assertExists(response.error?.message, "error message must be present");
 
   worker.terminate();
 });
