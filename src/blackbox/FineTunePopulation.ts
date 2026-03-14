@@ -272,16 +272,16 @@ export class FindTunePopulation {
   /* Assuming weightedRandomSelect selects based on score, weighting higher scores more heavily.*/
 
   weightedRandomSelect(creatures: Creature[]) {
-    const totalWeight = creatures.reduce(
-      (sum, creature) => sum + 1 / (creatures.indexOf(creature) + 1),
-      0,
-    );
+    let totalWeight = 0;
+    for (let i = 0; i < creatures.length; i++) {
+      totalWeight += 1 / (i + 1);
+    }
     let random = getRandomNumberGenerator().random() * totalWeight;
 
-    for (const creature of creatures) {
-      random -= 1 / (creatures.indexOf(creature) + 1);
+    for (let i = 0; i < creatures.length; i++) {
+      random -= 1 / (i + 1);
       if (random <= 0) {
-        return creature;
+        return creatures[i];
       }
     }
     return creatures[0]; // Fallback to the first creature if no selection occurs

@@ -56,6 +56,12 @@ export function buildCombinedFromSuccessful(
   // Track unique combinations to avoid duplicates
   const seenCombinations = new Set<string>();
 
+  // Pre-compute index lookup for O(1) candidate-to-index mapping
+  const candidateIndexMap = new Map<DiscoveryCandidate, number>();
+  for (let i = 0; i < successfulCandidates.length; i++) {
+    candidateIndexMap.set(successfulCandidates[i], i);
+  }
+
   // Helper to create a combination key from candidate indices
   const makeCombinationKey = (indices: number[]): string =>
     [...indices].sort((a, b) => a - b).join(",");
@@ -66,7 +72,7 @@ export function buildCombinedFromSuccessful(
   ): DiscoveryCandidate | undefined => {
     let combinedCreature = baseCreature;
     let appliedCount = 0;
-    const appliedTypes: string[] = [];
+    const appliedTypes = new Set<string>();
 
     for (const candidate of candidates) {
       const applied = applyChangeToCreature(
@@ -77,20 +83,19 @@ export function buildCombinedFromSuccessful(
       if (applied && applied !== combinedCreature) {
         combinedCreature = applied;
         appliedCount++;
-        if (!appliedTypes.includes(candidate.change.type)) {
-          appliedTypes.push(candidate.change.type);
-        }
+        appliedTypes.add(candidate.change.type);
       }
     }
 
     if (appliedCount >= 2 && combinedCreature !== baseCreature) {
       // Check if this is a removal-only combination
-      const isRemovalOnly = appliedTypes.every((t) =>
+      const appliedTypesArray = [...appliedTypes];
+      const isRemovalOnly = appliedTypesArray.every((t) =>
         t === "remove-low-impact" || t === "remove-neuron" ||
         t === "remove-synapse" || t === "cache-informed-removal"
       );
       const description = buildCombinationDescription(
-        appliedTypes,
+        appliedTypesArray,
         appliedCount,
         isRemovalOnly,
       );
@@ -126,7 +131,7 @@ export function buildCombinedFromSuccessful(
   );
   if (removalCandidates.length >= 2) {
     const removalIndices = removalCandidates.map((c) =>
-      successfulCandidates.indexOf(c)
+      candidateIndexMap.get(c)!
     );
     const removalKey = makeCombinationKey(removalIndices);
     if (!seenCombinations.has(removalKey)) {
@@ -148,7 +153,7 @@ export function buildCombinedFromSuccessful(
   );
   if (nonRemovalCandidates.length >= 2) {
     const nonRemovalIndices = nonRemovalCandidates.map((c) =>
-      successfulCandidates.indexOf(c)
+      candidateIndexMap.get(c)!
     );
     const nonRemovalKey = makeCombinationKey(nonRemovalIndices);
     if (!seenCombinations.has(nonRemovalKey)) {
