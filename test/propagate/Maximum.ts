@@ -1,14 +1,9 @@
 import { assert, assertAlmostEquals } from "@std/assert";
-import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-
-((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("MAXIMUM activation: training reduces error after bias and weight perturbation", () => {
   const creatureA = makeCreature();
@@ -24,13 +19,6 @@ Deno.test("MAXIMUM activation: training reduces error after bias and weight pert
       });
     }
 
-    const traceDir = ".trace";
-    ensureDirSync(traceDir);
-
-    Deno.writeTextFileSync(
-      ".trace/data.json",
-      JSON.stringify(ts, null, 1),
-    );
     ts.forEach((item) => {
       const result = creatureA.activate(new Float32Array(item.input));
 
@@ -40,11 +28,6 @@ Deno.test("MAXIMUM activation: training reduces error after bias and weight pert
 
     const exportJSON = creatureA.exportJSON();
 
-    Deno.writeTextFileSync(
-      ".trace/A-clean.json",
-      JSON.stringify(exportJSON, null, 1),
-    );
-
     exportJSON.neurons.forEach((node, indx) => {
       node.bias = node.bias +
         ((indx % 2 === 0 ? 1 : -1) * 0.15);
@@ -53,11 +36,6 @@ Deno.test("MAXIMUM activation: training reduces error after bias and weight pert
     exportJSON.synapses.forEach((c, indx) => {
       c.weight = c.weight + ((indx % 2 === 0 ? 1 : -1) * 0.15);
     });
-
-    Deno.writeTextFileSync(
-      ".trace/B-modified.json",
-      JSON.stringify(exportJSON, null, 1),
-    );
 
     const creatureB = Creature.fromJSON(exportJSON);
     creatureB.validate();
@@ -72,45 +50,11 @@ Deno.test("MAXIMUM activation: training reduces error after bias and weight pert
       targetError: errorB - 0.001,
     });
 
-    Deno.writeTextFileSync(
-      ".trace/C-trace.json",
-      JSON.stringify(resultC.trace, null, 1),
-    );
-
-    Deno.writeTextFileSync(
-      ".trace/C-creature.json",
-      JSON.stringify(creatureC.exportJSON(), null, 1),
-    );
-
     const errorC = calculateError(creatureC, ts);
 
     if (attempts < 24) {
       if (errorB <= errorC) continue;
     }
-
-    if (!resultC.trace) throw new Error("No trace");
-    const creatureD = Creature.fromJSON(
-      Creature.fromJSON(resultC.trace).exportJSON(),
-    );
-    const creatureE = Creature.fromJSON(resultC.trace);
-    const config = createBackPropagationConfig({});
-    const sparseConfig = new SparseConfig(creatureE.exportJSON(), config);
-    creatureE.applyLearnings(config, sparseConfig);
-    const errorD = calculateError(creatureD, ts);
-    const errorE = calculateError(creatureE, ts);
-    console.log(
-      `Error: B: ${errorB}, C: ${errorC}, D: ${errorD}, E: ${errorE}`,
-    );
-
-    Deno.writeTextFileSync(
-      ".trace/D-creature.json",
-      JSON.stringify(creatureD.exportJSON(), null, 1),
-    );
-
-    Deno.writeTextFileSync(
-      ".trace/E-creature.json",
-      JSON.stringify(creatureE.exportJSON(), null, 1),
-    );
 
     assert(
       errorB > errorC,
@@ -120,11 +64,6 @@ Deno.test("MAXIMUM activation: training reduces error after bias and weight pert
     assert(
       errorB > resultC.error,
       `Didn't improve error B->C *reported*  start: ${errorB} end: ${resultC.error}`,
-    );
-
-    Deno.writeTextFileSync(
-      ".trace/result.json",
-      JSON.stringify(resultC.trace, null, 1),
     );
 
     break;

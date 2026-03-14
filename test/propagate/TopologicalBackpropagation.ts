@@ -318,6 +318,22 @@ Deno.test("TopologicalBackpropagation - self-loop handled correctly", () => {
   // Should not throw despite self-loop.
   creature.activateAndTrace(input, false, sparseConfig);
   creature.propagate(target, config, sparseConfig);
+
+  // Verify the network state remains finite after propagation with a self-loop
+  for (const synapse of creature.synapses) {
+    assert(
+      Number.isFinite(synapse.weight),
+      `Synapse weight should remain finite after self-loop propagation, got ${synapse.weight}`,
+    );
+  }
+  for (const neuron of creature.neurons) {
+    if (neuron.type !== "input") {
+      assert(
+        Number.isFinite(neuron.bias),
+        `Neuron bias should remain finite after self-loop propagation, got ${neuron.bias}`,
+      );
+    }
+  }
 });
 
 Deno.test("TopologicalBackpropagation - deep network converges", () => {
