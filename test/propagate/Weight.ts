@@ -2,16 +2,18 @@ import {
   assert,
   assertAlmostEquals,
   assertEquals,
+  assertGreater,
+  assertLess,
   assertThrows,
 } from "@std/assert";
 import {
   accumulateWeight,
-  accumulateWeightBatch4Way,
-  accumulateWeightBatch8Way,
+  calculateWeight,
   limitWeight,
 } from "../../src/propagate/Weight.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { SynapseState } from "../../src/propagate/SynapseState.ts";
+import type { Synapse } from "../../src/architecture/Synapse.ts";
 
 function makeConfig(
   overrides?: Record<string, unknown>,
@@ -27,6 +29,13 @@ function makeConfig(
     learningRateStrategy: "fixed",
     ...overrides,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Helper: create a minimal synapse-like object for calculateWeight
+// ---------------------------------------------------------------------------
+function fakeSynapse(weight: number): Synapse {
+  return { weight, from: 0, to: 1 } as Synapse;
 }
 
 // --- accumulateWeight ---
@@ -160,104 +169,52 @@ Deno.test("limitWeight - negative direction", () => {
   assertAlmostEquals(result, -1, 1e-10);
 });
 
-// --- accumulateWeightBatch4Way ---
+// --- calculateWeight ---
 
-Deno.test("accumulateWeightBatch4Way - accumulates 4 synapses", () => {
-  const csArray = Array.from({ length: 4 }, () => new SynapseState());
-  const weights = [0.5, 0.5, 0.5, 0.5];
-  const targets = [1.0, 2.0, 3.0, 4.0];
-  const activations = [1.0, 2.0, 3.0, 4.0];
+Deno.test("calculateWeight - returns original weight when disableWeightAdjustment is true", () => {
+  const config = createBackPropagationConfig({
+    disableWeightAdjustment: true,
+    generations: 0,
+    learningRate: 1,
+  });
+  const cs = new SynapseState();
+  const synapse = fakeSynapse(0.5);
 
-  accumulateWeightBatch4Way(
-    weights,
-    csArray,
-    targets,
-    activations,
-    makeConfig(),
-  );
+  accumulateWeight(0.5, cs, 2.0, 1.0, config);
 
-  for (let i = 0; i < 4; i++) {
-    assertEquals(csArray[i].count, 1);
-    assertEquals(csArray[i].countPositiveActivations, 1);
-  }
+  const result = calculateWeight(cs, synapse, config);
+  assertAlmostEquals(result, 0.5, 1e-9);
 });
 
-Deno.test("accumulateWeightBatch4Way - skips non-finite values per element", () => {
-  const csArray = Array.from({ length: 4 }, () => new SynapseState());
-  const weights = [0.5, NaN, 0.5, 0.5];
-  const targets = [1.0, 2.0, Infinity, 4.0];
-  const activations = [1.0, 2.0, 3.0, NaN];
+Deno.test("calculateWeight - returns original weight when count is zero", () => {
+  const config = createBackPropagationConfig({
+    generations: 0,
+    learningRate: 1,
+  });
+  const cs = new SynapseState();
+  const synapse = fakeSynapse(0.7);
 
-  accumulateWeightBatch4Way(
-    weights,
-    csArray,
-    targets,
-    activations,
-    makeConfig(),
-  );
-
-  assertEquals(csArray[0].count, 1); // valid
-  assertEquals(csArray[1].count, 0); // NaN weight
-  assertEquals(csArray[2].count, 0); // Infinity target
-  assertEquals(csArray[3].count, 0); // NaN activation
+  const result = calculateWeight(cs, synapse, config);
+  assertAlmostEquals(result, 0.7, 1e-9);
 });
 
-Deno.test("accumulateWeightBatch4Way - negative activations tracked separately", () => {
-  const csArray = Array.from({ length: 4 }, () => new SynapseState());
-  const weights = [0.5, 0.5, 0.5, 0.5];
-  const targets = [1.0, 1.0, 1.0, 1.0];
-  const activations = [2.0, -2.0, 3.0, -3.0];
+Deno.test("calculateWeight - blends with generational weight", () => {
+  const config = createBackPropagationConfig({
+    generations: 10,
+    learningRate: 1,
+    maximumWeightAdjustmentScale: 100,
+    limitWeightScale: 100000,
+  });
+  const cs = new SynapseState();
+  const synapse = fakeSynapse(1.0);
 
-  accumulateWeightBatch4Way(
-    weights,
-    csArray,
-    targets,
-    activations,
-    makeConfig(),
-  );
+  // Accumulate with positive activation pointing toward weight=2
+  accumulateWeight(1.0, cs, 2.0, 1.0, config);
 
-  assertEquals(csArray[0].countPositiveActivations, 1);
-  assertEquals(csArray[0].countNegativeActivations, 0);
-  assertEquals(csArray[1].countPositiveActivations, 0);
-  assertEquals(csArray[1].countNegativeActivations, 1);
-});
+  const result = calculateWeight(cs, synapse, config);
 
-// --- accumulateWeightBatch8Way ---
-
-Deno.test("accumulateWeightBatch8Way - accumulates 8 synapses", () => {
-  const csArray = Array.from({ length: 8 }, () => new SynapseState());
-  const weights = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
-  const targets = [1, 2, 3, 4, 5, 6, 7, 8];
-  const activations = [1, 1, 1, 1, 1, 1, 1, 1];
-
-  accumulateWeightBatch8Way(
-    weights,
-    csArray,
-    targets,
-    activations,
-    makeConfig(),
-  );
-
-  for (let i = 0; i < 8; i++) {
-    assertEquals(csArray[i].count, 1);
-  }
-});
-
-Deno.test("accumulateWeightBatch8Way - skips non-finite values selectively", () => {
-  const csArray = Array.from({ length: 8 }, () => new SynapseState());
-  const weights = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
-  const targets = [1, NaN, 3, 4, 5, 6, 7, 8];
-  const activations = [1, 1, 1, 1, 1, 1, 1, 1];
-
-  accumulateWeightBatch8Way(
-    weights,
-    csArray,
-    targets,
-    activations,
-    makeConfig(),
-  );
-
-  assertEquals(csArray[0].count, 1);
-  assertEquals(csArray[1].count, 0); // NaN target skipped
-  assertEquals(csArray[2].count, 1);
+  // With generations=10 and one sample, the result should be blended
+  // between the sample's implied weight (~2) and the original weight (1.0).
+  assertGreater(result, 1.0, "Should shift toward target");
+  assertLess(result, 2.0, "Should not overshoot target");
 });

@@ -20,7 +20,7 @@ import {
  * Test that batch 4-way accumulation produces the same results as
  * calling accumulateBias 4 times individually.
  */
-Deno.test("AccumulateBiasBatch4Way-MatchesSingleCalls", () => {
+Deno.test("accumulateBiasBatch4Way - matches individual accumulateBias calls", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -92,7 +92,7 @@ Deno.test("AccumulateBiasBatch4Way-MatchesSingleCalls", () => {
 /**
  * Test batch 4-way with positive bias deltas.
  */
-Deno.test("AccumulateBiasBatch4Way-PositiveDeltas", () => {
+Deno.test("accumulateBiasBatch4Way - positive deltas accumulate correctly", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -135,7 +135,7 @@ Deno.test("AccumulateBiasBatch4Way-PositiveDeltas", () => {
 /**
  * Test batch 4-way with negative bias deltas.
  */
-Deno.test("AccumulateBiasBatch4Way-NegativeDeltas", () => {
+Deno.test("accumulateBiasBatch4Way - negative deltas accumulate correctly", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -177,7 +177,7 @@ Deno.test("AccumulateBiasBatch4Way-NegativeDeltas", () => {
 /**
  * Test batch 4-way with mixed bias deltas.
  */
-Deno.test("AccumulateBiasBatch4Way-MixedDeltas", () => {
+Deno.test("accumulateBiasBatch4Way - mixed deltas match individual calls", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -240,7 +240,7 @@ Deno.test("AccumulateBiasBatch4Way-MixedDeltas", () => {
 /**
  * Test batch 4-way called multiple times accumulates correctly.
  */
-Deno.test("AccumulateBiasBatch4Way-MultipleIterations", () => {
+Deno.test("accumulateBiasBatch4Way - multiple iterations accumulate correctly", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -323,7 +323,7 @@ Deno.test("AccumulateBiasBatch4Way-MultipleIterations", () => {
  * Test that batch 8-way accumulation produces the same results as
  * calling accumulateBias 8 times individually.
  */
-Deno.test("AccumulateBiasBatch8Way-MatchesSingleCalls", () => {
+Deno.test("accumulateBiasBatch8Way - matches individual accumulateBias calls", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -391,7 +391,7 @@ Deno.test("AccumulateBiasBatch8Way-MatchesSingleCalls", () => {
 /**
  * Test batch 8-way with multiple iterations.
  */
-Deno.test("AccumulateBiasBatch8Way-MultipleIterations", () => {
+Deno.test("accumulateBiasBatch8Way - multiple iterations accumulate correctly", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -462,7 +462,7 @@ Deno.test("AccumulateBiasBatch8Way-MultipleIterations", () => {
 /**
  * Test batch 4-way with bias limiting.
  */
-Deno.test("AccumulateBiasBatch4Way-BiasLimiting", () => {
+Deno.test("accumulateBiasBatch4Way - bias limiting matches individual calls", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -522,7 +522,7 @@ Deno.test("AccumulateBiasBatch4Way-BiasLimiting", () => {
 /**
  * Test batch 4-way with zero deltas (no change).
  */
-Deno.test("AccumulateBiasBatch4Way-ZeroDeltas", () => {
+Deno.test("accumulateBiasBatch4Way - zero deltas preserve current bias", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,

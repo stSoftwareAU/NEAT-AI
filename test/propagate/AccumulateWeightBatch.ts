@@ -20,7 +20,7 @@ import {
  * Test that batch 4-way accumulation produces the same results as
  * calling accumulateWeight 4 times individually.
  */
-Deno.test("AccumulateWeightBatch4Way-MatchesSingleCalls", () => {
+Deno.test("accumulateWeightBatch4Way - matches individual accumulateWeight calls", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -115,7 +115,7 @@ Deno.test("AccumulateWeightBatch4Way-MatchesSingleCalls", () => {
 /**
  * Test batch 4-way with all positive activations.
  */
-Deno.test("AccumulateWeightBatch4Way-AllPositiveActivations", () => {
+Deno.test("accumulateWeightBatch4Way - all positive activations tracked correctly", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -159,7 +159,7 @@ Deno.test("AccumulateWeightBatch4Way-AllPositiveActivations", () => {
 /**
  * Test batch 4-way with all negative activations.
  */
-Deno.test("AccumulateWeightBatch4Way-AllNegativeActivations", () => {
+Deno.test("accumulateWeightBatch4Way - all negative activations tracked correctly", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -203,7 +203,7 @@ Deno.test("AccumulateWeightBatch4Way-AllNegativeActivations", () => {
 /**
  * Test batch 4-way with mixed activations.
  */
-Deno.test("AccumulateWeightBatch4Way-MixedActivations", () => {
+Deno.test("accumulateWeightBatch4Way - mixed activations tracked per synapse", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -244,7 +244,7 @@ Deno.test("AccumulateWeightBatch4Way-MixedActivations", () => {
 /**
  * Test batch 4-way called multiple times accumulates correctly.
  */
-Deno.test("AccumulateWeightBatch4Way-MultipleIterations", () => {
+Deno.test("accumulateWeightBatch4Way - multiple iterations accumulate correctly", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -327,7 +327,7 @@ Deno.test("AccumulateWeightBatch4Way-MultipleIterations", () => {
  * Test that batch 8-way accumulation produces the same results as
  * calling accumulateWeight 8 times individually.
  */
-Deno.test("AccumulateWeightBatch8Way-MatchesSingleCalls", () => {
+Deno.test("accumulateWeightBatch8Way - matches individual accumulateWeight calls", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -418,7 +418,7 @@ Deno.test("AccumulateWeightBatch8Way-MatchesSingleCalls", () => {
 /**
  * Test batch 8-way with multiple iterations.
  */
-Deno.test("AccumulateWeightBatch8Way-MultipleIterations", () => {
+Deno.test("accumulateWeightBatch8Way - multiple iterations accumulate correctly", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -489,7 +489,7 @@ Deno.test("AccumulateWeightBatch8Way-MultipleIterations", () => {
 /**
  * Test batch 4-way with tiny activations below plankConstant threshold.
  */
-Deno.test("AccumulateWeightBatch4Way-TinyActivations", () => {
+Deno.test("accumulateWeightBatch4Way - tiny activations match individual calls", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
@@ -553,7 +553,7 @@ Deno.test("AccumulateWeightBatch4Way-TinyActivations", () => {
 /**
  * Test batch 4-way with weight limiting.
  */
-Deno.test("AccumulateWeightBatch4Way-WeightLimiting", () => {
+Deno.test("accumulateWeightBatch4Way - weight limiting matches individual calls", () => {
   const config = createBackPropagationConfig({
     generations: 0,
     learningRate: 1,
