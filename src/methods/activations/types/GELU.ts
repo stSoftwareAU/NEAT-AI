@@ -2,6 +2,7 @@ import { ActivationRange } from "@propagate/ActivationRange.ts";
 import { ErrorHelper } from "@propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
+import { safeZoneAdjustment } from "../SafeZoneAdjustment.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
@@ -134,51 +135,7 @@ export class GELU implements ActivationInterface, UnSquashInterface {
     return ErrorHelper.calculateClampedError(error);
   }
 
-  /**
-   * GELU (Gaussian Error Linear Unit) Safe Zone Adjustment
-   *
-   * Reasoning:
-   * - GELU transitions smoothly but flattens at extreme values.
-   * - Safe zone for raw input is approximately [-6, 6], beyond which gradients diminish.
-   * - If raw input is out of safe zone and error would worsen it, return 0.
-   * - If weight is outside safe range and adjusting weight would improve, return 0.
-   * - Otherwise fade or return 1.
-   *
-   * @param rawInput - Input to GELU function before activation
-   * @param error - Propagation error
-   * @param weight - Synaptic weight
-   * @returns value between 0 (discourage) and 1 (safe to propagate)
-   */
   safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
-    if (!Number.isFinite(rawInput)) return 0;
-
-    const safeMin = -6;
-    const safeMax = 6;
-    const inSafeRaw = rawInput >= safeMin && rawInput <= safeMax;
-    const rawGettingWorse = (rawInput < safeMin && error < 0) ||
-      (rawInput > safeMax && error > 0);
-
-    const absWeight = Math.abs(weight);
-    const minWeight = 1e-3;
-    const maxWeight = 1e3;
-    const weightTooSmall = absWeight < minWeight;
-    const weightTooLarge = absWeight > maxWeight;
-    const weightImproves = (weightTooSmall && weight * error > 0) ||
-      (weightTooLarge && weight * error < 0);
-
-    if (!inSafeRaw && rawGettingWorse) return 0;
-    if (inSafeRaw && (weightTooSmall || weightTooLarge) && weightImproves) {
-      return 0;
-    }
-
-    if (inSafeRaw) return 1;
-    if (rawInput > safeMax && rawInput <= safeMax + 10) {
-      return 1 - (rawInput - safeMax) / 10;
-    }
-    if (rawInput < safeMin && rawInput >= safeMin - 10) {
-      return 1 - (safeMin - rawInput) / 10;
-    }
-
-    return 0;
+    return safeZoneAdjustment(rawInput, error, weight, -6, 6);
   }
 }

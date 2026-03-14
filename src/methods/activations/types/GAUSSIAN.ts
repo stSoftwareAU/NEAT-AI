@@ -2,6 +2,7 @@ import { ActivationRange } from "@propagate/ActivationRange.ts";
 import { ErrorHelper } from "@propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
+import { safeZoneAdjustment } from "../SafeZoneAdjustment.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
@@ -94,53 +95,7 @@ export class GAUSSIAN implements ActivationInterface, UnSquashInterface {
     return ErrorHelper.calculateClampedError(error);
   }
 
-  /**
-   * GAUSSIAN Safe Zone Adjustment Logic
-   *
-   * The GAUSSIAN activation peaks at x=0 and quickly decays toward 0 for large |x|.
-   * This makes it only effective when the raw input is near 0.
-   *
-   * Strategy:
-   * - Only allow propagation when raw input is close to 0: ∈ [−3, 3]
-   * - If raw input is far and error would push it even further, disallow propagation
-   * - If weight is far out of bounds and error would bring it back toward the safe range, disallow propagation to allow weight fix
-   * - Smooth fade as we move out of ideal zone
-   *
-   * @param rawInput Raw pre-activation input
-   * @param error Back propagated error
-   * @param weight Synapse weight
-   * @returns A float from 0 (don't propagate) to 1 (freely propagate)
-   */
-  safeZoneAdjustment(
-    rawInput: number,
-    error: number,
-    weight: number,
-  ): number {
-    if (!Number.isFinite(rawInput)) return 0;
-
-    const absRaw = Math.abs(rawInput);
-    const absWeight = Math.abs(weight);
-    const minWeight = 1e-3;
-    const maxWeight = 1e3;
-
-    const inSafeZone = absRaw <= 3;
-
-    const rawGettingWorse = (rawInput < -3 && error < 0) ||
-      (rawInput > 3 && error > 0);
-
-    const weightTooSmall = absWeight < minWeight;
-    const weightTooLarge = absWeight > maxWeight;
-    const weightImproving = (weightTooSmall && weight * error > 0) ||
-      (weightTooLarge && weight * error < 0);
-
-    if (!inSafeZone && rawGettingWorse) return 0;
-    if (inSafeZone && (weightTooSmall || weightTooLarge) && weightImproving) {
-      return 0;
-    }
-
-    if (inSafeZone) return 1;
-    if (absRaw <= 6) return 1 - (absRaw - 3) / 3;
-
-    return 0;
+  safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
+    return safeZoneAdjustment(rawInput, error, weight, -3, 3, 3);
   }
 }

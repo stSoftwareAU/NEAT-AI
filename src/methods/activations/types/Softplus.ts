@@ -3,6 +3,7 @@ import { ActivationRange } from "@propagate/ActivationRange.ts";
 import { ErrorHelper } from "@propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
+import { safeZoneAdjustment } from "../SafeZoneAdjustment.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
@@ -113,56 +114,7 @@ export class Softplus implements ActivationInterface, UnSquashInterface {
     return ErrorHelper.calculateClampedError(error);
   }
 
-  /**
-   * Determines whether it's appropriate to propagate error to upstream neurons,
-   * or instead adjust the synaptic weight or bias.
-   *
-   * Softplus: f(x) = log(1 + exp(x))
-   *   - Behaves like ReLU for large x
-   *   - Smooths around 0, flattens for x << 0
-   *
-   * Logic:
-   *   - Safe zone for raw input is [-10, 20].
-   *   - If raw input is outside safe zone and error would worsen it, return 0.
-   *   - If weight is out of safe bounds (too small or too large) and error would bring it back into range, return 0.
-   *   - Otherwise return 1 (or fade between 0–1 near safe zone edges).
-   *
-   * @param rawInput - Raw input to the activation function.
-   * @param error - Error signal.
-   * @param weight - Incoming synapse weight.
-   * @returns A number between 0–1 representing propagation safety.
-   */
   safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
-    if (!Number.isFinite(rawInput)) return 0;
-
-    const safeMin = -10;
-    const safeMax = 20;
-    const inSafeRaw = rawInput >= safeMin && rawInput <= safeMax;
-
-    const rawGettingWorse = (rawInput < safeMin && error < 0) ||
-      (rawInput > safeMax && error > 0);
-
-    const absWeight = Math.abs(weight);
-    const minWeight = 1e-3;
-    const maxWeight = 1e3;
-    const weightTooSmall = absWeight < minWeight;
-    const weightTooLarge = absWeight > maxWeight;
-    const weightImproves = (weightTooSmall && weight * error > 0) ||
-      (weightTooLarge && weight * error < 0);
-
-    if (!inSafeRaw && rawGettingWorse) return 0;
-    if (inSafeRaw && (weightTooSmall || weightTooLarge) && weightImproves) {
-      return 0;
-    }
-
-    if (inSafeRaw) return 1;
-    if (rawInput > safeMax && rawInput <= safeMax + 10) {
-      return 1 - (rawInput - safeMax) / 10;
-    }
-    if (rawInput < safeMin && rawInput >= safeMin - 10) {
-      return 1 - (safeMin - rawInput) / 10;
-    }
-
-    return 0;
+    return safeZoneAdjustment(rawInput, error, weight, -10, 20);
   }
 }
