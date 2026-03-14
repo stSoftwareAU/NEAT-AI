@@ -347,6 +347,18 @@ Deno.test("ABSOLUTE: full confidence for most inputs", () => {
   assertEquals(activation.safeZoneAdjustment(-5, 0.1, 1), 1);
 });
 
+Deno.test("ABSOLUTE: full confidence for near-zero inputs", () => {
+  const activation = Activations.find("ABSOLUTE");
+  if (!hasSafeZone(activation)) return;
+
+  // Near-zero inputs should still have full confidence — the sign ambiguity
+  // at zero does not warrant suppressing the gradient signal.
+  assertEquals(activation.safeZoneAdjustment(0.5, 0.1, 1), 1);
+  assertEquals(activation.safeZoneAdjustment(-0.5, -0.1, 1), 1);
+  assertEquals(activation.safeZoneAdjustment(0.01, 0.1, 1), 1);
+  assertEquals(activation.safeZoneAdjustment(0, 0.1, 1), 1);
+});
+
 Deno.test("ABSOLUTE: zero for extreme input with tiny weight", () => {
   const activation = Activations.find("ABSOLUTE");
   if (!hasSafeZone(activation)) return;
