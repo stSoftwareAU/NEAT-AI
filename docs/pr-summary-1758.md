@@ -2,7 +2,7 @@
 
 Update CONFIGURATION_GUIDE.md with 7 missing configuration parameters that have
 JSDoc in NeatArguments.ts but were not reflected in the user-facing
-documentation. Closes #1758.
+documentation. Addresses #1758.
 
 ### Changes
 
