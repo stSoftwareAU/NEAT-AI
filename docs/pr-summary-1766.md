@@ -40,6 +40,7 @@ All 4788 tests pass. `./quality.sh` passes cleanly.
 ## Test Plan
 
 - Removed `test/propagate/WasmAccumulateBias.ts` (5 duplicate tests)
-- Removed `test/propagate/WasmAccumulateWeight.ts` (5 duplicate tests, 1 trivial)
+- Removed `test/propagate/WasmAccumulateWeight.ts` (5 duplicate tests, 1
+  trivial)
 - Verified no other files import from the removed files
 - Full test suite passes (4788 tests, 0 failures)
