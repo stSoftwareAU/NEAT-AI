@@ -1,23 +1,22 @@
 ## Summary
 
-Final audit of propagation module tests: removed last cross-file duplicate test.
-Addresses #1766.
+Final audit pass on propagation module tests: removed last near-duplicate test
+in MultiLevel.ts. Addresses #1766.
 
 ### Changes
 
-**Cross-file duplicate removed:**
+**Near-duplicate removed:**
 
-- Deleted `test/propagate/minimum/Minimum.ts` — duplicates
-  `test/propagate/Minimum.ts`. Both tested MINIMUM activation convergence after
-  bias and weight perturbation. The top-level `Minimum.ts` tests a more complex
-  architecture (5 inputs, 2 outputs, mixed squash functions) and is the cleaner
-  implementation. The subdirectory version also had code smells: cached test
-  data on disk (`.td.json`), `console.log` output, file I/O for debugging, and a
-  lenient regression tolerance (0.02).
+- Removed "known dataset B" test from `test/propagate/MultiLevel.ts` — it was
+  structurally identical to the "known dataset A" test. Both tested training
+  error improvement on the same multi-hidden-layer IDENTITY network with the
+  same perturbation pattern, differing only in hardcoded data values. The
+  remaining random data test (general convergence) and known dataset A test
+  (deterministic regression with 10000 iterations) provide sufficient coverage.
 
 ## Audit Summary
 
-All 82 test files across `test/propagate/` (root and subdirectories) have been
+All 81 test files across `test/propagate/` (root and subdirectories) have been
 reviewed against the audit criteria:
 
 - **Uniqueness**: No duplicate or near-duplicate tests remain (within scope or
@@ -26,7 +25,7 @@ reviewed against the audit criteria:
 - **Meaningful tests**: All tests have real assertions on real code
 - **Organisation**: Test names clearly describe the behaviour being verified
 
-This is the eleventh and final PR in the audit series:
+This is the twelfth and final PR in the audit series:
 
 - PR #1787: Consolidated and improved propagation module tests
 - PR #1788: Fixed vague test names, trivial tests, and missing assertions
@@ -38,14 +37,15 @@ This is the eleventh and final PR in the audit series:
 - PR #1794: Fixed assertion quality issues
 - PR #1795: Removed duplicate tests, dead code, and missing assertions
 - PR #1796: Removed final commented-out dead code
-- This PR: Removed cross-file duplicate minimum/Minimum.ts
+- PR #1797: Removed cross-file duplicate minimum/Minimum.ts
+- This PR: Removed near-duplicate MultiLevel.ts known dataset B test
 
 ## Evidence
 
-All 4775 tests pass. `./quality.sh` passes cleanly.
+All 4774 tests pass. `./quality.sh` passes cleanly.
 
 ## Test Plan
 
-- Verified the removed test is already covered by `test/propagate/Minimum.ts`
-  which tests the same MINIMUM activation convergence behaviour
-- Full test suite passes (4775 tests, 0 failures)
+- Verified the removed test is already covered by the remaining random data test
+  and known dataset A test in `test/propagate/MultiLevel.ts`
+- Full test suite passes (4774 tests, 0 failures)
