@@ -1,9 +1,9 @@
 ## Summary
 
-Final audit pass on propagation module tests: fixed a broken test in `Identity.ts`
-that had no meaningful assertions and was silently passing due to a WASM activation
-issue (in-place neuron bias mutation doesn't propagate to the WASM engine).
-Addresses #1766.
+Final audit pass on propagation module tests: fixed a broken test in
+`Identity.ts` that had no meaningful assertions and was silently passing due to
+a WASM activation issue (in-place neuron bias mutation doesn't propagate to the
+WASM engine). Addresses #1766.
 
 ## Changes
 
@@ -44,6 +44,7 @@ This is the seventh PR in the audit series:
 
 ## Test Plan
 
-- Verified both Identity.ts tests pass with `deno test --allow-all test/propagate/Identity.ts`
+- Verified both Identity.ts tests pass with
+  `deno test --allow-all test/propagate/Identity.ts`
 - Ran `./quality.sh --lint-only` and `./quality.sh --check-only` — both pass
 - Ran broader `--filter "backprop"` test suite — all 26 tests pass
