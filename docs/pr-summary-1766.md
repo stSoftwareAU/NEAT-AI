@@ -1,46 +1,50 @@
 ## Summary
 
-Remove duplicate WASM batch accumulation test files from the propagation module.
-Addresses #1766.
+Final audit pass on propagation module tests: fixed a broken test in
+`Identity.ts` that had no meaningful assertions and was silently passing due to
+a WASM activation issue (in-place neuron bias mutation doesn't propagate to the
+WASM engine). Addresses #1766.
 
-`WasmAccumulateBias.ts` (5 tests) and `WasmAccumulateWeight.ts` (5 tests) were
-near-duplicates of `AccumulateBiasBatch.ts` and `AccumulateWeightBatch.ts`
-respectively. Both file pairs called the same `accumulateBiasBatch4Way/8Way` and
-`accumulateWeightBatch4Way/8Way` functions with identical or near-identical test
-data and assertions. The WASM acceleration is dispatched transparently inside
-these batch functions, so the "WASM" tests exercised the exact same code paths
-as the existing batch tests.
+## Changes
 
-The one unique test (`wasmCalculateWeight`) only asserted that the return value
-was finite — this behaviour is already comprehensively tested in `Weight.ts`,
-`WeightConvergence.ts`, `GenerationalDampening.ts`, and
-`SingleLearningRateApplication.ts`.
+- **test/propagate/Identity.ts**: Rewrote both tests to use the correct
+  export-modify-recreate pattern (consistent with the rest of the test suite).
+  Test 1 ("backprop reduces error after bias perturbation") previously had NO
+  assertion verifying that error improved — it only printed to console. It also
+  mutated `neuron.bias` in-place, which has no effect on WASM activation. Now it
+  exports JSON, perturbs biases, recreates the creature, trains, and asserts
+  error improvement. Test 2 ("backprop produces minimal change") was similarly
+  cleaned up to use `DataRecordInterface` and clearer variable names.
 
-This is the sixth and final PR in the audit series:
+## Audit Summary
+
+All 83 test files across `test/propagate/` (root and subdirectories) were
+reviewed against the audit criteria:
+
+- **Uniqueness**: No duplicate or near-duplicate tests remain
+- **Behavioural testing**: All tests verify outcomes, not implementation details
+- **Meaningful tests**: All tests have real assertions on real code
+- **Organisation**: Test names clearly describe the behaviour being verified
+
+This is the seventh PR in the audit series:
 
 - PR #1787: Consolidated and improved propagation module tests
 - PR #1788: Fixed vague test names, trivial tests, and missing assertions
 - PR #1789: Remaining vague test names and missing assertions
 - PR #1790: Final pass on test names and misleading filename
 - PR #1791: Removed duplicate tests and standardised batch test names
-- This PR: Remove remaining duplicate WASM batch test files
-
-All 85 remaining test files (465+ test cases) in `test/propagate/` were reviewed
-and verified to meet all audit criteria:
-
-- No duplicate tests remain
-- All tests verify behaviour, not implementation details
-- All tests are meaningful with real assertions
-- Test names clearly describe the behaviour being verified
+- PR #1792: Removed duplicate WASM batch test files
+- This PR: Fixed broken Identity.ts test with missing assertions
 
 ## Evidence
 
-All 4788 tests pass. `./quality.sh` passes cleanly.
+- `deno fmt`, `deno lint`, `deno check` all pass
+- All propagation tests pass (26 backprop-related tests confirmed)
+- Identity.ts tests pass with meaningful assertions
 
 ## Test Plan
 
-- Removed `test/propagate/WasmAccumulateBias.ts` (5 duplicate tests)
-- Removed `test/propagate/WasmAccumulateWeight.ts` (5 duplicate tests, 1
-  trivial)
-- Verified no other files import from the removed files
-- Full test suite passes (4788 tests, 0 failures)
+- Verified both Identity.ts tests pass with
+  `deno test --allow-all test/propagate/Identity.ts`
+- Ran `./quality.sh --lint-only` and `./quality.sh --check-only` — both pass
+- Ran broader `--filter "backprop"` test suite — all 26 tests pass
