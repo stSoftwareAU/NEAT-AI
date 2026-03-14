@@ -86,7 +86,6 @@ Deno.test("backprop converges single sample to constant-weighted target", () => 
     );
     const actualA2 = creature.activate(new Float32Array(inA));
     const diff = Math.abs(expectedA[0] - actualA1[0]);
-    console.info(expectedA, actualA1, actualA2, diff);
 
     Deno.writeTextFileSync(
       ".trace/2.json",
@@ -304,8 +303,6 @@ Deno.test("backprop converges over many generations with random training samples
       creature.clearState();
     }
 
-    const tmpActual = creature.activate(new Float32Array(sampleInput));
-
     actual = creature.activate(new Float32Array(sampleInput));
 
     // deno-lint-ignore no-await-in-loop -- retry loop: each attempt depends on previous
@@ -315,8 +312,7 @@ Deno.test("backprop converges over many generations with random training samples
     );
 
     if (attempt > 121) break;
-    if (Math.abs(expected[0] - tmpActual[0]) <= 1.1) break;
-    console.info(config);
+    if (Math.abs(expected[0] - actual[0]) <= 1.1) break;
   }
 
   assertAlmostEquals(

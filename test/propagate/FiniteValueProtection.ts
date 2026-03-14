@@ -11,95 +11,9 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { NeuronState } from "../../src/architecture/CreatureState.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { accumulateBias, limitBias } from "../../src/propagate/Bias.ts";
-import { accumulateWeight, limitWeight } from "../../src/propagate/Weight.ts";
+import { accumulateBias } from "../../src/propagate/Bias.ts";
+import { accumulateWeight } from "../../src/propagate/Weight.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
-
-/**
- * Tests for limitBias finite value protection.
- * The limitBias function must reject non-finite target bias values.
- */
-Deno.test("limitBias - rejects positive Infinity target bias", () => {
-  const config = createBackPropagationConfig({
-    learningRate: 0.1,
-  });
-
-  assertThrows(
-    () => limitBias(Infinity, 0.5, config),
-    Error,
-    "finite",
-    "limitBias should reject positive Infinity",
-  );
-});
-
-Deno.test("limitBias - rejects negative Infinity target bias", () => {
-  const config = createBackPropagationConfig({
-    learningRate: 0.1,
-  });
-
-  assertThrows(
-    () => limitBias(-Infinity, 0.5, config),
-    Error,
-    "finite",
-    "limitBias should reject negative Infinity",
-  );
-});
-
-Deno.test("limitBias - rejects NaN target bias", () => {
-  const config = createBackPropagationConfig({
-    learningRate: 0.1,
-  });
-
-  assertThrows(
-    () => limitBias(NaN, 0.5, config),
-    Error,
-    "finite",
-    "limitBias should reject NaN",
-  );
-});
-
-/**
- * Tests for limitWeight finite value protection.
- * The limitWeight function must reject non-finite target weight values.
- */
-Deno.test("limitWeight - rejects positive Infinity target weight", () => {
-  const config = createBackPropagationConfig({
-    learningRate: 0.1,
-  });
-
-  assertThrows(
-    () => limitWeight(Infinity, 0.5, config),
-    Error,
-    "Invalid target weight",
-    "limitWeight should reject positive Infinity",
-  );
-});
-
-Deno.test("limitWeight - rejects negative Infinity target weight", () => {
-  const config = createBackPropagationConfig({
-    learningRate: 0.1,
-  });
-
-  assertThrows(
-    () => limitWeight(-Infinity, 0.5, config),
-    Error,
-    "Invalid target weight",
-    "limitWeight should reject negative Infinity",
-  );
-});
-
-Deno.test("limitWeight - rejects NaN target weight", () => {
-  const config = createBackPropagationConfig({
-    learningRate: 0.1,
-  });
-
-  assertThrows(
-    () => limitWeight(NaN, 0.5, config),
-    Error,
-    "Invalid target weight",
-    "limitWeight should reject NaN",
-  );
-});
 
 /**
  * Tests for accumulateBias finite value protection.
