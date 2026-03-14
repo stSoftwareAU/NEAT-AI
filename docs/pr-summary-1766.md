@@ -1,24 +1,25 @@
 ## Summary
 
-Final audit pass on propagation module tests: fixed a broken test in
-`Identity.ts` that had no meaningful assertions and was silently passing due to
-a WASM activation issue (in-place neuron bias mutation doesn't propagate to the
-WASM engine). Addresses #1766.
+Final quality pass on propagation module test audit: fixed remaining assertion
+quality issues across 4 test files found during comprehensive review of all 84
+test files (~455 test cases). Addresses #1766.
 
 ## Changes
 
-- **test/propagate/Identity.ts**: Rewrote both tests to use the correct
-  export-modify-recreate pattern (consistent with the rest of the test suite).
-  Test 1 ("backprop reduces error after bias perturbation") previously had NO
-  assertion verifying that error improved — it only printed to console. It also
-  mutated `neuron.bias` in-place, which has no effect on WASM activation. Now it
-  exports JSON, perturbs biases, recreates the creature, trains, and asserts
-  error improvement. Test 2 ("backprop produces minimal change") was similarly
-  cleaned up to use `DataRecordInterface` and clearer variable names.
+- **ActivationRangeTypedErrors.ts**: Replaced manual
+  `if (ae.reason !== ...) throw new Error(...)` patterns with `assertEquals()`
+  across all 4 tests for consistent, idiomatic assertions
+- **LimitBias.ts**: Fixed assertion message referencing wrong variable (`bias`
+  instead of `bias2`)
+- **Trace.ts**: Removed leftover `console.info(nodeState)` debug output
+- **SingleNeuron.ts**: Fixed test with impossible fail condition (`loop > 12` in
+  a loop running 0–4, making the test a permanent no-op). Replaced with
+  meaningful before/after error comparison verifying that training reduces
+  prediction error
 
 ## Audit Summary
 
-All 83 test files across `test/propagate/` (root and subdirectories) were
+All 84 test files across `test/propagate/` (root and subdirectories) were
 reviewed against the audit criteria:
 
 - **Uniqueness**: No duplicate or near-duplicate tests remain
@@ -26,7 +27,7 @@ reviewed against the audit criteria:
 - **Meaningful tests**: All tests have real assertions on real code
 - **Organisation**: Test names clearly describe the behaviour being verified
 
-This is the seventh PR in the audit series:
+This is the eighth PR in the audit series:
 
 - PR #1787: Consolidated and improved propagation module tests
 - PR #1788: Fixed vague test names, trivial tests, and missing assertions
@@ -34,17 +35,24 @@ This is the seventh PR in the audit series:
 - PR #1790: Final pass on test names and misleading filename
 - PR #1791: Removed duplicate tests and standardised batch test names
 - PR #1792: Removed duplicate WASM batch test files
-- This PR: Fixed broken Identity.ts test with missing assertions
+- PR #1793: Fixed broken Identity.ts test with missing assertions
+- This PR: Fixed assertion quality issues (manual checks, wrong variables, debug
+  output, no-op test)
 
 ## Evidence
 
 - `deno fmt`, `deno lint`, `deno check` all pass
-- All propagation tests pass (26 backprop-related tests confirmed)
-- Identity.ts tests pass with meaningful assertions
+- Full test suite passes (4788 tests, 0 failures)
+- The SingleNeuron.ts fix is the most significant: the original test could never
+  fail because the condition `if (loop > 12)` was unreachable inside a loop
+  bounded to 0–4
 
 ## Test Plan
 
-- Verified both Identity.ts tests pass with
-  `deno test --allow-all test/propagate/Identity.ts`
-- Ran `./quality.sh --lint-only` and `./quality.sh --check-only` — both pass
-- Ran broader `--filter "backprop"` test suite — all 26 tests pass
+- `test/propagate/ActivationRangeTypedErrors.ts` — 4 tests updated to use
+  assertEquals
+- `test/propagate/LimitBias.ts` — assertion message corrected
+- `test/propagate/Trace.ts` — debug output removed
+- `test/propagate/SingleNeuron.ts` — no-op test replaced with meaningful
+  assertion
+- Full test suite (4788 tests) passes

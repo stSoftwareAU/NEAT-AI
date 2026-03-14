@@ -38,7 +38,6 @@ Deno.test("Trace - loads creature trace state with correct node count", () => {
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
   const nodeState = creature.state.node(999);
-  console.info(nodeState);
   assertEquals(nodeState.count, 1386);
 });
 

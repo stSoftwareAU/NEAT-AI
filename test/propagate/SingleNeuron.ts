@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals, fail } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
@@ -270,14 +270,33 @@ Deno.test("single hidden neuron: converges tightly after 1000 repeated samples",
 
 Deno.test("single hidden neuron: learns mapping from 1000 random training samples", () => {
   const creature = makeCreature();
-  Deno.writeTextFileSync(
-    ".trace/0-start.json",
-    JSON.stringify(creature.traceJSON(), null, 1),
-  );
-  const config = createBackPropagationConfig({});
-
   const traceDir = ".trace";
   ensureDirSync(traceDir);
+  Deno.writeTextFileSync(
+    `${traceDir}/0-start.json`,
+    JSON.stringify(creature.traceJSON(), null, 1),
+  );
+
+  // Measure error before training
+  const testInputs = Array.from({ length: 5 }, () => [
+    Math.random() * 2 - 1,
+    Math.random() * 2 - 1,
+    Math.random() * 2 - 1,
+  ]);
+
+  let errorBefore = 0;
+  for (const inD of testInputs) {
+    const expected = makeOutput(inD);
+    const actual = creature.activate(new Float32Array(inD));
+    errorBefore += Math.abs(expected[0] - actual[0]);
+    errorBefore += Math.abs(expected[1] - actual[1]);
+  }
+
+  // Train with 1000 random samples
+  const config = createBackPropagationConfig({
+    learningRate: 0.1,
+    generations: 0,
+  });
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = 0; i < 1_000; i++) {
     const inC = [
@@ -292,24 +311,23 @@ Deno.test("single hidden neuron: learns mapping from 1000 random training sample
   creature.propagateUpdate(config, sparseConfig);
 
   Deno.writeTextFileSync(
-    ".trace/4-done.json",
+    `${traceDir}/4-done.json`,
     JSON.stringify(creature.exportJSON(), null, 1),
   );
 
-  for (let loop = 0; loop < 5; loop++) {
-    const inD = [
-      Math.random() * 2 - 1,
-      Math.random() * 2 - 1,
-      Math.random() * 2 - 1,
-    ];
-    const expectedOutput = makeOutput(inD);
-    const actualOutput = creature.activate(new Float32Array(inD));
-
-    if (
-      Math.abs(expectedOutput[0] - actualOutput[0]) > 0.7 ||
-      Math.abs(expectedOutput[1] - actualOutput[1]) > 0.7
-    ) {
-      if (loop > 12) fail("too many failures");
-    }
+  // Measure error after training - it should have improved
+  let errorAfter = 0;
+  for (const inD of testInputs) {
+    const expected = makeOutput(inD);
+    const actual = creature.activate(new Float32Array(inD));
+    errorAfter += Math.abs(expected[0] - actual[0]);
+    errorAfter += Math.abs(expected[1] - actual[1]);
   }
+
+  assert(
+    errorAfter < errorBefore,
+    `Training should reduce error: before=${errorBefore.toFixed(4)}, after=${
+      errorAfter.toFixed(4)
+    }`,
+  );
 });

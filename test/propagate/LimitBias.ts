@@ -13,7 +13,7 @@ Deno.test("limitBias - clamps adjustment to maximumBiasAdjustmentScale", () => {
   assertAlmostEquals(0.7, bias, 0.001, `Bias: ${bias.toFixed(3)}`);
   const bias2 = limitBias(10, -0.5, config);
 
-  assertAlmostEquals(-0.3, bias2, 0.001, `Bias: ${bias.toFixed(3)}`);
+  assertAlmostEquals(-0.3, bias2, 0.001, `Bias: ${bias2.toFixed(3)}`);
 });
 
 Deno.test("limitBias - clamps large target to adjustment scale with learning rate", () => {
