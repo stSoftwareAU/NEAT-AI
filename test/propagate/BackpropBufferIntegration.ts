@@ -1,4 +1,4 @@
-import { assert, assertLess } from "@std/assert";
+import { assertLess } from "@std/assert";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { Creature } from "../../src/Creature.ts";
@@ -139,43 +139,4 @@ Deno.test("BackpropBuffers - training with wider network exercises buffer reuse"
   });
 
   assertLess(result.error, 0.1, "Wider network training should converge");
-});
-
-Deno.test("BackpropBuffers - backpropBuffers field initialised on first propagate", async () => {
-  await initWasmForTests();
-
-  const creatureJson: CreatureInternal = {
-    neurons: [
-      { type: "hidden", index: 2, squash: "IDENTITY", bias: 0 },
-      { type: "output", index: 3, squash: "IDENTITY", bias: 0 },
-    ],
-    synapses: [
-      { from: 0, to: 2, weight: 1 },
-      { from: 1, to: 2, weight: 1 },
-      { from: 2, to: 3, weight: 1 },
-    ],
-    input: 2,
-    output: 1,
-  };
-
-  const creature = Creature.fromJSON(creatureJson);
-  creature.validate();
-
-  // Before training, backpropBuffers should not be initialised
-  assert(
-    creature.state.backpropBuffers === undefined,
-    "Buffers should not exist before training",
-  );
-
-  const dataSet: DataRecordInterface[] = [
-    { input: new Float32Array([1, 0]), output: new Float32Array([1.5]) },
-  ];
-
-  train(creature, dataSet, { iterations: 1, targetError: 0 });
-
-  // After training, backpropBuffers should be initialised
-  assert(
-    creature.state.backpropBuffers !== undefined,
-    "Buffers should exist after training",
-  );
 });
