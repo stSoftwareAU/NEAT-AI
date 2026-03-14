@@ -53,7 +53,7 @@ function makeCreature() {
   return creature;
 }
 
-Deno.test("Generation BIAS", () => {
+Deno.test("calculateBias - generational dampening reduces bias adjustment", () => {
   const creature = makeCreature();
 
   const outputNode = creature.neurons.find((node) => node.type === "output");
@@ -88,7 +88,7 @@ Deno.test("Generation BIAS", () => {
   assertAlmostEquals(bias2, -0.77, 0.0001, `bias2: ${bias2.toFixed(3)}`);
 });
 
-Deno.test("Generation Weight", () => {
+Deno.test("calculateWeight - generational dampening reduces weight adjustment", () => {
   const creature = makeCreature();
 
   const connection = creature.getSynapse(1, 3);
