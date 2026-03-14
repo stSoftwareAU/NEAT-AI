@@ -1,9 +1,10 @@
 ## Summary
 
-Extracted the shared `safeZoneAdjustment()` logic from 14 activation function files
-into a single shared utility at `src/methods/activations/SafeZoneAdjustment.ts`.
-The utility is configurable via `safeMin`, `safeMax`, and optional `fadeWidth`
-parameters, eliminating all duplicated safe zone logic. Addresses #1759.
+Extracted the shared `safeZoneAdjustment()` logic from 14 activation function
+files into a single shared utility at
+`src/methods/activations/SafeZoneAdjustment.ts`. The utility is configurable via
+`safeMin`, `safeMax`, and optional `fadeWidth` parameters, eliminating all
+duplicated safe zone logic. Addresses #1759.
 
 ## Changes
 
@@ -21,6 +22,7 @@ parameters, eliminating all duplicated safe zone logic. Addresses #1759.
 ## Evidence
 
 All 4884 tests pass including:
+
 - 96 existing `SafeZoneAdjustment.ts` tests (no regressions)
 - 23 new `SharedSafeZoneAdjustment.ts` tests for the shared utility
 
