@@ -35,6 +35,8 @@ missing assertions, cleaned up dead code and global state mutation. Addresses
   `actual` in its place), removed `console.info` calls
 - `test/propagate/BackpropCoordination.ts`: removed global `DEBUG = true`
   mutation that leaked into parallel test runs
+- `test/propagate/Recorder/ReplaySquash.ts`: removed commented-out
+  `console.info` debug line
 
 ## Audit Summary
 
@@ -46,7 +48,7 @@ reviewed against the audit criteria:
 - **Meaningful tests**: All tests have real assertions on real code
 - **Organisation**: Test names clearly describe the behaviour being verified
 
-This is the ninth PR in the audit series:
+This is the tenth PR in the audit series:
 
 - PR #1787: Consolidated and improved propagation module tests
 - PR #1788: Fixed vague test names, trivial tests, and missing assertions
@@ -56,8 +58,8 @@ This is the ninth PR in the audit series:
 - PR #1792: Removed duplicate WASM batch test files
 - PR #1793: Fixed broken Identity.ts test with missing assertions
 - PR #1794: Fixed assertion quality issues
-- This PR: Removed duplicate tests, added missing assertions, cleaned up dead
-  code and global state mutation
+- PR #1795: Removed duplicate tests, dead code, and missing assertions
+- This PR: Final audit — removed last commented-out dead code
 
 ## Evidence
 
