@@ -1,12 +1,13 @@
 ## Summary
 
-Final audit pass on propagation module tests: removed duplicate tests,
-added missing assertions, cleaned up dead code and global state mutation.
-Addresses #1766.
+Final audit pass on propagation module tests: removed duplicate tests, added
+missing assertions, cleaned up dead code and global state mutation. Addresses
+#1766.
 
 ### Changes
 
 **Duplicate tests removed:**
+
 - Deleted `test/propagate/LimitBias.ts` (3 tests) — all scenarios already
   covered by `test/propagate/Bias.ts` limitBias section
 - Deleted `test/propagate/LimitWeight.ts` (3 tests) — all scenarios already
@@ -18,11 +19,13 @@ Addresses #1766.
   `Weight.ts`, and `BiasTypedErrors.ts`
 
 **Missing assertions fixed:**
+
 - `test/propagate/TopologicalBackpropagation.ts` self-loop test: added
-  assertions verifying all synapse weights and neuron biases remain finite
-  after propagation through a self-loop (previously had no assertions)
+  assertions verifying all synapse weights and neuron biases remain finite after
+  propagation through a self-loop (previously had no assertions)
 
 **Dead code and noise removed:**
+
 - `test/propagate/Maximum.ts`: removed unused `creatureD`/`creatureE`
   computations, debug file I/O, `console.log`, and global `DEBUG = true`
 - `test/propagate/Minimum.ts`: same cleanup — removed dead
@@ -30,8 +33,8 @@ Addresses #1766.
   `DEBUG = true`
 - `test/propagate/Constants.ts`: removed dead `tmpActual` variable (used
   `actual` in its place), removed `console.info` calls
-- `test/propagate/BackpropCoordination.ts`: removed global
-  `DEBUG = true` mutation that leaked into parallel test runs
+- `test/propagate/BackpropCoordination.ts`: removed global `DEBUG = true`
+  mutation that leaked into parallel test runs
 
 ## Audit Summary
 
@@ -53,8 +56,8 @@ This is the ninth PR in the audit series:
 - PR #1792: Removed duplicate WASM batch test files
 - PR #1793: Fixed broken Identity.ts test with missing assertions
 - PR #1794: Fixed assertion quality issues
-- This PR: Removed duplicate tests, added missing assertions, cleaned up
-  dead code and global state mutation
+- This PR: Removed duplicate tests, added missing assertions, cleaned up dead
+  code and global state mutation
 
 ## Evidence
 
@@ -62,8 +65,8 @@ All 4776 tests pass. `./quality.sh` passes cleanly.
 
 ## Test Plan
 
-- Verified no tests were broken by deletions (removed tests are already
-  covered by existing tests in `Bias.ts`, `Weight.ts`, `BiasTypedErrors.ts`)
+- Verified no tests were broken by deletions (removed tests are already covered
+  by existing tests in `Bias.ts`, `Weight.ts`, `BiasTypedErrors.ts`)
 - Added meaningful assertions to the self-loop test in
   `TopologicalBackpropagation.ts`
 - Full test suite passes (4776 tests, 0 failures)
