@@ -70,7 +70,7 @@ Deno.test("optimization/MiniBatch - different batch sizes converge to similar er
   );
 });
 
-Deno.test("optimization/MiniBatch - partial batch completes and reduces error", () => {
+Deno.test("optimization/MiniBatch - partial batch (5 samples / batch size 3) trains all samples correctly", () => {
   const creature = Creature.fromJSON({
     neurons: [
       { type: "input", index: 0 },
@@ -93,7 +93,6 @@ Deno.test("optimization/MiniBatch - partial batch completes and reduces error", 
   ];
 
   // Compute initial error: weight=0.5, output = input*0.5
-  // For [1,2,3,4,5] with targets [1,2,3,4,5], MSE = 2.75
   let initialError = 0;
   for (const sample of trainingData) {
     const output = creature.activate(sample.input, false);
@@ -110,11 +109,22 @@ Deno.test("optimization/MiniBatch - partial batch completes and reduces error", 
 
   const result = train(creature, trainingData, options);
 
-  // Training with partial batch (5 samples / batch size 3) should
-  // produce finite error that is less than the initial error
   assert(Number.isFinite(result.error), "Error should be finite");
   assert(
     result.error < initialError,
     `Training should reduce error: got ${result.error}, initial was ${initialError}`,
   );
+
+  // Verify the trained creature produces reasonable outputs for all samples
+  // (weight should have moved towards 1.0 from 0.5)
+  for (const sample of trainingData) {
+    const output = creature.activate(sample.input, false);
+    const sampleError = Math.abs(sample.output[0] - output[0]);
+    assert(
+      sampleError < Math.abs(sample.output[0] * 0.5),
+      `Sample input=${
+        sample.input[0]
+      }: prediction error ${sampleError} should be less than initial`,
+    );
+  }
 });

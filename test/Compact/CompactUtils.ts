@@ -277,8 +277,9 @@ Deno.test("cleanupMemeticForRemovedSynapse - handles missing memetic gracefully"
     synapses: [],
   };
 
-  // Should not throw
   cleanupMemeticForRemovedSynapse(exported, "input-0", "output-0");
+  assertEquals(exported.memetic, undefined, "Memetic should remain absent");
+  assertEquals(exported.synapses.length, 0, "Synapses should be unchanged");
 });
 
 Deno.test("cleanupMemeticForRemovedNeuron - deletes memetic when neuron is in weights", () => {
@@ -379,6 +380,7 @@ Deno.test("cleanupMemeticForRemovedNeuron - handles missing memetic gracefully",
     synapses: [],
   };
 
-  // Should not throw
   cleanupMemeticForRemovedNeuron(exported, "hidden-1");
+  assertEquals(exported.memetic, undefined, "Memetic should remain absent");
+  assertEquals(exported.neurons.length, 1, "Neurons should be unchanged");
 });

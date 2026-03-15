@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
@@ -43,14 +43,25 @@ Deno.test("activate - HYPOTv2 squash applies uniform bias offset before hypotenu
     const actual1 = creature.activateAndTrace(data, false, sparseConfig)[0];
     const actual2 = creature.activateAndTrace(data, false, sparseConfig)[0];
 
-    assertAlmostEquals(actual0, actual1);
-    assertAlmostEquals(actual0, actual2);
-    assert(
-      Math.abs(actual0 - actual2) < 0.000_000_1,
-      "repeated calls should return the same result",
+    assertAlmostEquals(
+      actual0,
+      actual1,
+      0.000_000_1,
+      "activate vs activateAndTrace must agree",
     );
-    const expected = Math.hypot(a - 0.2, b * -1 - 0.2, c - 0.2);
+    assertAlmostEquals(
+      actual0,
+      actual2,
+      0.000_000_1,
+      "repeated activateAndTrace calls must be deterministic",
+    );
 
-    assertAlmostEquals(expected, actual0, 0.000_002, `iteration ${p}`);
+    const expected = Math.hypot(a - 0.2, b * -1 - 0.2, c - 0.2);
+    assertAlmostEquals(
+      expected,
+      actual0,
+      0.000_002,
+      `iteration ${p}: HYPOTv2 output mismatch`,
+    );
   }
 });
