@@ -15,10 +15,10 @@ in `test/mutate/`. Closes #1769.
    mutation" and added assertion that the hidden neuron count actually decreases
    (previously only checked mutation succeeded).
 
-3. **SubConnection.ts** - Rewrote "focus list limits removable connections"
-   test to properly account for transitive focus behaviour and added a new
-   negative test verifying that focus list returns false when no focused
-   connections are eligible.
+3. **SubConnection.ts** - Rewrote "focus list limits removable connections" test
+   to properly account for transitive focus behaviour and added a new negative
+   test verifying that focus list returns false when no focused connections are
+   eligible.
 
 4. **ConnectSplice.ts** - Renamed "correctly inserts at end of synapses array"
    to "correctly inserts and maintains order with higher from-index" (the
@@ -29,8 +29,8 @@ in `test/mutate/`. Closes #1769.
 
 - `test/NEAT/MutatorMutateCreature.ts` and `test/NEAT/MutatorBehavioural.ts`
   test individual mutation operators at the integration level through the
-  Mutator API. These are NOT duplicates — they test the orchestration layer,
-  not individual operators.
+  Mutator API. These are NOT duplicates — they test the orchestration layer, not
+  individual operators.
 
 ## Evidence
 
