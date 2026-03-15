@@ -5,7 +5,6 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { IF } from "../../src/methods/activations/aggregate/IF.ts";
 import { MAXIMUM } from "../../src/methods/activations/aggregate/MAXIMUM.ts";
 import { MINIMUM } from "../../src/methods/activations/aggregate/MINIMUM.ts";
-import { ABSOLUTE } from "../../src/methods/activations/types/ABSOLUTE.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { ReLU } from "../../src/methods/activations/types/ReLU.ts";
@@ -229,20 +228,4 @@ assertCompactionSimplifies(
   [[-2, -2], [-2, 2], [2, -2], [2, 2]],
 );
 
-// Sanity: keep the existing supported ones covered here too (optional redundancy).
-assertCompactionSimplifies(
-  ABSOLUTE.NAME,
-  {
-    neurons: [
-      { uuid: "hidden-0", type: "hidden", squash: ABSOLUTE.NAME, bias: 1e6 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 1e6 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 1e-6 },
-    ],
-    input: 1,
-    output: 1,
-  },
-  [[-3], [-1], [0], [1], [3]],
-);
+// ABSOLUTE is already tested in CompactCreatureSimplifyLargeWeights.ts

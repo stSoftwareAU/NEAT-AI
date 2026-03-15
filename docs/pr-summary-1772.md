@@ -1,117 +1,57 @@
 ## Summary
 
-Third-pass audit of compact and optimisation test files across `test/Compact/`,
+Fourth-pass audit of compact and optimisation test files across `test/Compact/`,
 `test/optimize/`, `test/optimization/`, `test/FeedForward/`, and
-`test/reconstruct/`. Improves test names for clarity, removes debug code,
-strengthens weak assertions, consolidates duplicate tests, and replaces
-console.info/fail patterns with proper assertions. Closes #1772.
+`test/reconstruct/`. Strengthens weak assertions with exact computed values,
+removes a redundant duplicate test, fixes misleading test names, and adds missing
+`warm_restart` strategy coverage. Closes #1772.
 
 ## Changes
 
-### Test names improved (25 files)
+### Weak assertions strengthened (3 files)
 
-**test/Compact/** (7 files) — Renamed vague single-word test names to clearly
-describe behaviour:
+**test/optimization/AdaptiveVsDecay.ts** — Replaced vague "differences found > 0"
+counter with exact computed-value assertions:
+- Asserts both strategies equal 0.1 at iteration 0
+- Asserts decay rate = `0.1 * 0.95` and adaptive rate = `0.1 * sqrt(0.95)` at iteration 1
+- Asserts exact values at iteration 5 using `Math.pow`
+- Renamed test to "adaptive decays slower than pure decay at the same iteration"
 
-- `Cascade.ts`: "CompactCascade" → "compactUnused - behaviour preserved with
-  cascading Cosine/CLIPPED removals"
-- `FixIF.ts`: "FixIF" → "compactUnused - behaviour preserved when IF-type neuron
-  is compacted"
-- `UnusedClipped.ts`: "UnusedClipped" → "compactUnused - behaviour preserved
-  when CLIPPED hidden neuron is removed"
-- `CompactConstant.ts`: "CompactConstants" → "compactUnused - behaviour
-  preserved with constant and IF neurons"
-- `CompactKeepOrder.ts`: "CompactKeepOrder" → "compactUnused - preserves
-  constant neuron ordering and behaviour"
-- `Compact.ts`: 5 tests renamed (removeDanglingHidden, removeFeedbackLoop,
-  CompactSimple, RandomizeCompact, CompactSelf)
+**test/optimization/ErrorFeedbackLearningRate.ts** — Replaced generic bound
+checks with exact formula-derived assertions:
+- Test 4: "still works" → "falls back to decay-based rate"; replaced `isFinite` +
+  `> 0` with `assertAlmostEquals(rate, 0.1 * Math.pow(Math.sqrt(0.95), 5))`
+- Test 5: "stays within reasonable bounds" → "stagnation boosts, worsening
+  reduces"; replaced `<= 2x initial` with exact stagnation/worsening rate formulas
 
-**test/optimize/activate/** (7 files) — Renamed all single-word test names:
+**test/optimization/LearningRateRandomization.ts** — Strengthened assertions:
+- Tests 2-3: replaced `assert(x === "value", ...)` with `assertEquals`
+- Test 4: added missing `warm_restart` strategy check (was only checking 3 of 4
+  strategies); increased sample size from 100 to 200 for reliability
+- Renamed test 4 to "all four strategies appear in random selection"
 
-- "Constant" → "activate - constant neuron contributes correct value to IDENTITY
-  output"
-- "HYPOT" → "activate - HYPOT squash produces correct hypotenuse output"
-- "IF" → "activate - IF squash with condition/positive/negative branches
-  executes correctly"
-- "Maximum" → "activate - MAXIMUM squash selects highest weighted input"
-- "Minimum" → "activate - MINIMUM squash selects lowest weighted input"
-- Plus RELU, HYPOTv2, Constant-max
+### Duplicate test removed (1 file)
 
-**test/optimize/simplify/** (7 files) — Renamed all single-word test names:
+**test/Compact/CompactCreatureSimplifyLargeWeightsSupportedSquashes.ts** — Removed
+redundant ABSOLUTE test (lines 232-248) that duplicated the dedicated test in
+`CompactCreatureSimplifyLargeWeights.ts`. Removed unused ABSOLUTE import.
 
-- "ABSOLUTE" → "simplify - ABSOLUTE squash with mixed activation chain preserves
-  behaviour"
-- "COMPLEMENT -> IDENTITY" → "simplify - COMPLEMENT neuron is converted to
-  IDENTITY with negated weights"
-- "Constant" through "Constant-3" renamed to describe specific scenarios
-- "Cosine", "SINE", "TAN" renamed with descriptive suffixes
-- "IDENTITY", "IDENTITY-simple", "IDENTITY Maximum" renamed
+### Misleading test names fixed (1 file)
 
-**test/FeedForward/MutateActions.ts** — 2 tests renamed:
-
-- "FeedForward only" → "FeedForward mode excludes recurrent mutation methods"
-- "memory enabled" → "FeedbackLoop mode includes recurrent mutation methods"
-
-### Debug code removed (14 files)
-
-Removed `((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;` from:
-
-- `test/Compact/Compact.ts`, `test/Compact/CleanupOrphanedNeurons.ts`
-- `test/optimize/activate/Constant.ts`, `HYPOT.ts`, `HYPOTv2.ts`, `IF.ts`,
-  `Maximum.ts`, `Minimum.ts`, `RELU.ts`
-- `test/optimize/simplify/COMPLEMENT.ts`, `Constant.ts`, `Cosine.ts`,
-  `IDENTITY.ts`, `SINE.ts`, `TAN.ts`
-
-Removed `simplifiedCreature.DEBUG = false;` from
-`test/optimize/simplify/Constant.ts` (3 occurrences).
-
-Removed `b.DEBUG = false; ... b.DEBUG = true;` toggling and
-`console.info("Did not compact")` from `test/Compact/Compact.ts`.
-
-### Assertions improved (5 files)
-
-**test/optimize/activate/** (4 files: Constant, IF, Maximum, Minimum) — Replaced
-`console.info(...) + fail(...)` pattern with `assertAlmostEquals()`. Removed
-unused `delta` variables.
-
-**test/reconstruct/ConnectMissing.ts** — Rewrote as behavioural test:
-
-- Removed UUID-string-parsing "how" test (`fromUUID.split("-")[1]`)
-- Removed `console.log(exported3)`
-- Added proper assertions checking all inputs have synapses
-- Renamed tests to describe behaviour
-
-**test/reconstruct/LegacyFormat.ts** — Strengthened tautological assertions:
-
-- `creature.neurons.length > 0 === true` →
-  `assertEquals(creature.neurons.length, 3)`
-- `result.neurons !== undefined === true` →
-  `assertEquals(result.neurons?.length, 1)`
-
-### Duplicate tests consolidated (1 file)
-
-**test/reconstruct/ValidateDNATypedErrors.ts** — Consolidated from 17
-near-duplicate tests to 4 representative tests. The removed tests duplicated
-`test/CRISPR/ValidateDNA.ts` with only the error type (CrisprError vs Error)
-differing. Kept 4 representative tests covering: null input, non-object input,
-invalid neuron, and invalid synapse.
-
-### Dead code removed
-
-- Removed commented-out code in `test/Compact/Compact.ts`
-  (`// const d = c.compact(); // assert(!d);`)
+**test/optimization/SparseSelection.ts** — Renamed tests to describe actual
+network topology differences:
+- "output-distance converges" → "converges with multi-path hidden layer"
+- "random fallback converges" → "converges with single-path hidden layer"
 
 ## Evidence
 
-4520 tests pass. 1 pre-existing failure in `test/config/NeatArguments.ts`
-(unrelated to this audit — selection default changed from POWER to
-FITNESS_PROPORTIONATE).
+All 4520 tests pass. `./quality.sh` passes cleanly.
 
 ## Test Plan
 
-- Verified all modified tests still pass after renaming
-- Verified debug code removal does not affect test behaviour
-- Verified strengthened assertions correctly test intended behaviour
-- Verified consolidated ValidateDNATypedErrors.ts covers CrisprError type
-  verification (full message coverage retained in test/CRISPR/ValidateDNA.ts)
-- Ran full quality gate: lint, type-check, and all tests pass
+- Verified all strengthened assertions produce correct expected values by
+  matching them to the `calculateLearningRate` implementation formulas
+- Verified ABSOLUTE test coverage is retained in
+  `CompactCreatureSimplifyLargeWeights.ts`
+- Verified warm_restart strategy appears in random selection with 200 samples
+- Ran full quality gate: format, lint, type-check, and all tests pass

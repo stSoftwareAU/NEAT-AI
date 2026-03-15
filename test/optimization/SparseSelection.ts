@@ -3,7 +3,7 @@ import { Creature } from "../../src/Creature.ts";
 import type { TrainOptions } from "../../src/config/TrainOptions.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 
-Deno.test("optimization/SparseSelection - sparse training with output-distance converges", () => {
+Deno.test("optimization/SparseSelection - sparse training converges with multi-path hidden layer", () => {
   const creature = Creature.fromJSON({
     neurons: [
       { type: "input", index: 0 },
@@ -50,7 +50,7 @@ Deno.test("optimization/SparseSelection - sparse training with output-distance c
   );
 });
 
-Deno.test("optimization/SparseSelection - sparse training with random fallback converges", () => {
+Deno.test("optimization/SparseSelection - sparse training converges with single-path hidden layer", () => {
   const creature = Creature.fromJSON({
     neurons: [
       { type: "input", index: 0 },
