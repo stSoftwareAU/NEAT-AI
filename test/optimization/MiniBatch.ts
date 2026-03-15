@@ -70,7 +70,7 @@ Deno.test("optimization/MiniBatch - should accumulate gradients across batch", (
   );
 });
 
-Deno.test("optimization/MiniBatch - should handle partial batches", () => {
+Deno.test("optimization/MiniBatch - partial batch completes and reduces error", () => {
   const creature = Creature.fromJSON({
     neurons: [
       { type: "input", index: 0 },
@@ -83,7 +83,7 @@ Deno.test("optimization/MiniBatch - should handle partial batches", () => {
     output: 1,
   });
 
-  // Create 5 samples but batch size 3 - should handle partial batch
+  // 5 samples with batch size 3 creates a partial batch (3 + 2)
   const trainingData = [
     { input: new Float32Array([1]), output: new Float32Array([1]) },
     { input: new Float32Array([2]), output: new Float32Array([2]) },
@@ -101,6 +101,10 @@ Deno.test("optimization/MiniBatch - should handle partial batches", () => {
 
   const result = train(creature, trainingData, options);
 
-  // Should complete without errors
-  assert(result.error >= 0, "Training should complete without errors");
+  // Training should produce a finite, non-negative error
+  assert(Number.isFinite(result.error), "Error should be finite");
+  assert(result.error >= 0, "Error should be non-negative");
+  // The initial weight (0.5) means identity output will be input*0.5,
+  // so there's significant error. Training should reduce it.
+  assert(result.error < 10, "Training should reduce error from initial state");
 });
