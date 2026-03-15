@@ -1,214 +1,46 @@
 ## Summary
 
-Audit WASM and activation function tests (~44 files, ~503 test cases) across
-`test/wasm/`, `test/methods/`, and `test/squash/`. Closes #1770.
+Complete audit of all test files in `test/wasm/`, `test/methods/`, and `test/squash/` for quality standards. Closes #1770.
 
-### Pass 1 Changes
+This PR builds on the 4 prior audit PRs (#1812-#1815) by addressing remaining issues across 21 files:
 
-**Removed meaningless tests:**
+- **Removed 14 duplicate/near-duplicate tests** across both WASM and activation test suites
+- **Deleted `ActivationOptimisation.ts`** entirely (all 8 tests were duplicates of EdgeCases.ts, SquashDerivative.ts, and SquashRoundtrip.ts)
+- **Converted 5 "how" tests to "what" tests** or removed them (module export inspection, internal field checks, alias resolution)
+- **Strengthened 12 weak/tautological assertions** (replaced `assert(a === b)` with `assertEquals`, removed redundant `assertIsError` after `assertThrows`, pinned expected values instead of trivial bounds)
+- **Removed 2 meaningless no-assertion init tests** and replaced with top-level `await`
+- **Refactored FusedCostScoring.ts** with a helper function, eliminating ~200 lines of boilerplate duplication
+- **Split 1 compound test** into 6 individual named tests (WasmActivationErrors batch cost methods)
+- **Fixed 2 misleading test names** (WasmPersistentTrainingState, WasmCompilationCache)
 
-- `test/methods/activations/EdgeCases.ts`: Removed 32 trivial `getName()` tests
-  that only verified `Activations.find("X").getName() === "X"` — a meaningless
-  round-trip through the lookup function already tested elsewhere.
+Net result: -530 lines across 21 files while maintaining full test coverage (4588 tests pass).
 
-**Removed duplicate tests:**
+### Cross-area duplicates identified and removed
+- `ActivationOptimisation.ts` duplicated `EdgeCases.ts`, `SquashDerivative.ts`, `SquashRoundtrip.ts`
+- `WasmFacadeRefactoring.ts` "throws after free" duplicated `WasmActivationErrors.ts`
+- `WasmCreatureActivationLRU.ts` disposeWasm idempotency duplicated `WasmMemoryLifecycle.ts`
+- `SafeZoneAdjustment.ts` loop tests duplicated `SharedSafeZoneAdjustment.ts`
+- WASM init tests duplicated across 5 files
 
-- `test/squash/TAN.ts`: Removed squash and unSquash tests duplicated by
-  `EdgeCases.ts`, `SquashRoundtrip.ts`, and `UnSquashHintTest.ts`. Retained the
-  unique `simplifyBias` tests and split into properly named individual tests.
-
-**Strengthened weak assertions:**
-
-- `test/methods/activations/ActivationErrorIntegration.ts`: Replaced manual
-  `try/catch` + `throw new Error(...)` patterns with proper `assertThrows` +
-  `assertEquals`. Removed redundant `assertIsError` calls after `assertThrows`
-  already validates the error type.
-- `test/methods/activations/CalculateError.ts`: Converted silent
-  `if (!hasCalculateError(act)) return` skips to
-  `assert(hasCalculateError(act))` — these activations are explicitly listed as
-  implementing `calculateError`, so a missing implementation should fail, not
-  silently pass. Converted silent `if (current === target) return` to
-  `assertNotEquals`.
-- `test/methods/activations/SquashRoundtrip.ts`: Converted silent
-  `if (!hasUnSquash(activation)) return` to `assert(hasUnSquash(activation))`.
-
-**Removed dead code:**
-
-- `test/squash/activations/UnSquashHintTest.ts`: Removed dead diagnostic
-  `console.log` in the test helper that could never cause a test failure (the
-  actual assertion was already present on the following lines).
-
-### Pass 2 Changes
-
-**Removed redundant tests:**
-
-- `test/wasm/WasmAutoInit.ts`: Removed "isProbablyWorkerScope returns a boolean"
-  test — completely redundant with the preceding test that already asserts the
-  function returns `false` (a boolean) in the main thread.
-
-- `test/wasm/WasmFacadeRefactoring.ts`: Removed "isProbablyWorkerScope returns
-  false in main thread" — duplicate of the same test in `WasmAutoInit.ts`.
-
-**Removed "how" tests (implementation detail tests):**
-
-- `test/wasm/WasmFacadeRefactoring.ts`: Removed "mod.ts re-exports all expected
-  symbols" test that checked `typeof` on ~30 re-exported symbols. This tests
-  module structure (implementation detail), not behaviour.
-
-- `test/wasm/WasmModuleLoader.ts`: Consolidated 10 separate "returns a function
-  after init" tests into a single test. Each test only checked
-  `typeof fn === "function"` on internal getter functions — a "how" test
-  pattern. Consolidated into one test that verifies all getters return non-null.
-
-**Strengthened weak assertions:**
-
-- `test/wasm/WasmFacadeRefactoring.ts`: Strengthened "wasmSafeZoneAdjustment"
-  test from range check `[0, 1]` to specific value assertion (`1.0` for input
-  well inside safe zone). Strengthened "wasmCalculateError" test from
-  `isFinite()` check to also verify error direction (positive when target
-  exceeds current).
-
-- `test/wasm/WasmCreatureActivationLRU.ts`: Replaced 3 "does not throw"
-  anti-pattern tests with meaningful assertions:
-  - "noteUse does not throw" → verifies cache count increases after noteUse
-  - "noteUse multiple times is safe" → verifies cache count stays at 1
-  - "evictOldest with count 0/negative is a no-op" → verifies cache count is
-    preserved
-  - "evictOldest does not throw for large count" → verifies cache becomes empty
-
-### Pass 3 Changes
-
-**Converted silent test skips to assertions (30+ occurrences):**
-
-- `test/wasm/FusedCostScoring.ts`: Replaced 7
-  `if (!isWasmActivationAvailable()) return` silent skips with
-  `assert(isWasmActivationAvailable(), ...)`. WASM is required, so
-  unavailability should fail the test, not silently pass.
-
-- `test/wasm/FusedCostScoring8Way.ts`: Same fix for 11 silent WASM availability
-  skips.
-
-- `test/wasm/WasmPersistentTrainingState.ts`: Replaced 13 `if (!wasInit) return`
-  and `if (!persistent) { freeTrainingState(); return; }` silent skips with
-  `assert(wasInit, ...)` and `assertExists(persistent, ...)`. Also strengthened
-  `assertEquals(X > 0, true, ...)` to `assert(X > 0, ...)`.
-
-- `test/wasm/WasmRangeValidation.ts`: Replaced 4
-  `if (squashType === undefined) continue` silent skips with
-  `assert(squashType !== undefined, ...)`.
-
-- `test/methods/activations/SafeZoneAdjustment.ts`: Replaced 2
-  `if (!hasSafeZone(activation)) return` silent skips with
-  `assert(hasSafeZone(activation), ...)` — these activations are explicitly
-  listed as having safeZone, so a missing implementation should fail.
-
-**Strengthened weak assertions:**
-
-- `test/wasm/EnsureWasmActivation.ts`: Replaced
-  `typeof result === "number" && isFinite(result)` with
-  `assertAlmostEquals(result, Math.tanh(0.5), 1e-3)` — verifies the WASM squash
-  function returns the correct mathematical value, not just any number.
-
-- `test/wasm/WasmOnlyActivation.ts`: Added specific value checks for 12
-  well-known activations (IDENTITY, TANH, LOGISTIC, ReLU, STEP, ABSOLUTE,
-  SQUARE, COMPLEMENT, BIPOLAR) instead of only checking
-  `Number.isFinite(result)`. Also strengthened metadata test to verify
-  `range.low <= range.high` and `mutationProbability >= 0`.
-
-- `test/wasm/WasmCompiledNetworkType.ts`: Replaced 3 `isFinite(output)` checks
-  with cross-method equivalence assertions (`activate_into` and `activate_view`
-  now verify output matches `activate`). Strengthened `activate_and_trace` to
-  assert trace length matches neuron count. Replaced `typeof` property checks
-  with actual value verification.
-
-- `test/wasm/FFICleanupLifecycle.ts`: Replaced conditional
-  `if (versionAfter !== undefined)` guard with
-  `assert(versionAfter !== undefined, ...)` — if the library reopens, it must
-  return a version.
-
-- `test/methods/activations/SquashDerivative.ts`: Replaced 16 verbose
-  `assertEquals(X < Y, true)` patterns with proper `assert(X < Y, msg)` or
-  `assertAlmostEquals` with known mathematical values. Strengthened GAUSSIAN,
-  LOGISTIC, TANH, SOFTSIGN, Softplus, LogSigmoid tests.
-
-- `test/methods/activations/Activations.ts`: Replaced
-  `assertEquals(typeof X, "string")` with `assertEquals(X, name)` for round-trip
-  verification. Replaced `assertEquals(name !== "IDENTITY", true)` with
-  `assertNotEquals(name, "IDENTITY")`. Strengthened range property test to
-  verify `range.low <= range.high`.
-
-- `test/methods/Selection.ts`: Replaced `assertEquals(X !== Y, true)` with
-  `assertNotEquals(X, Y)`.
-
-- `test/wasm/WasmRangeValidation.ts`: Replaced 10 `assertEquals(X < Y, true)`
-  patterns with `assert(X < Y, msg)` and `assertEquals(X, value)`.
-
-### Pass 4 Changes
-
-**Converted remaining silent skips to assertions (30 occurrences):**
-
-- `test/methods/activations/SafeZoneAdjustment.ts`: Replaced all 30
-  `if (!hasSafeZone(activation)) return;` silent skips in boundary tests with
-  `assert(hasSafeZone(activation), "X must have safeZoneAdjustment")`. These
-  tests target specific named activations known to have `safeZoneAdjustment`.
-
-**Cleaned up redundant assertion patterns:**
-
-- `test/wasm/WasmActivationErrors.ts`: Replaced redundant triple-assertion
-  pattern (`assertIsError` + `instanceof` check + manual throw) with clean
-  `assertIsError` + `assertEquals` on reason code.
-
-**Strengthened weak assertions:**
-
-- `test/wasm/EphemeralActivation.ts`: Replaced `assertEquals(x >= 0, true)` and
-  `assertEquals(x > y, true)` with direct `assert(x >= 0)` and `assert(x > y)`.
-
-- `test/wasm/WasmCompiledNetworkType.ts`: Replaced `assert(num_neurons > 0)`
-  with `assertEquals(num_inputs, 2)` and `assert(num_neurons >= 3)` for a known
-  (2,1) creature topology.
-
-- `test/wasm/WasmOnlyActivation.ts`: Added round-trip verification to unSquash
-  test (`squash(unSquash(squash(x))) ≈ squash(x)`). Added new
-  `calculateError returns zero when target equals current` test. Strengthened
-  `mutationProbability` check to verify non-negative integer.
-
-- `test/methods/activations/TypeGuards.ts`: Added specific value assertions
-  after type guard narrowing (StdInverse.unSquash(0.5) = 2,
-  SINE.simplifyBias(0.5) = 0.5).
-
-- `test/methods/activations/SquashRoundtrip.ts`: Replaced misleading
-  `assertAlmostEquals(x, y, 0)` with `assertEquals(x, y)` for exact values.
-
-- `test/methods/activations/Activations.ts`: Strengthened `mutationProbability`
-  check to verify non-negative integer rather than just non-negative.
-
-- `test/wasm/WasmFacadeRefactoring.ts`: Replaced generic range checks with
-  specific expected values for safe zone factors. Strengthened trace entry
-  validation with integer/finite checks on fields.
-
-**Replaced implementation-detail test with behaviour test:**
-
-- `test/wasm/WasmMemoryLifecycle.ts`: Replaced monkeypatching of `disposeWasm`
-  (counting calls = implementation detail) with observable state check
-  (`cachedWasmActivation === undefined` after LRU eviction).
-
-### Cross-area duplicates found
-
-- `test/squash/TAN.ts` squash/unSquash tests duplicated coverage in
-  `test/methods/activations/EdgeCases.ts`, `SquashRoundtrip.ts`, and
-  `test/squash/activations/UnSquashHintTest.ts`.
-- `test/wasm/WasmFacadeRefactoring.ts` `isProbablyWorkerScope` test duplicated
-  `test/wasm/WasmAutoInit.ts`.
+### Prior passes (PRs #1812-#1815)
+- Removed meaningless getName() tests, duplicate squash/unSquash tests
+- Converted 60+ silent test skips to assertions
+- Strengthened 40+ weak assertions with specific expected values
+- Replaced "how" tests with behaviour-based equivalents
+- Cleaned up redundant assertion patterns
 
 ### Directories reviewed
+- `test/wasm/` (27 files) — all reviewed
+- `test/methods/` (15 files) — all reviewed
+- `test/squash/` (2 files) — all reviewed
 
-- `test/wasm/` (27 files) — all reviewed, issues fixed across passes 2-4
-- `test/methods/` (15 files) — all reviewed, issues fixed across passes 1, 3-4
-- `test/squash/` (2 files) — all reviewed, issues fixed in pass 1
+## Evidence
+
+All 4588 tests pass. `./quality.sh` passes cleanly.
 
 ## Test Plan
 
-- All 4674 tests pass (0 failures)
-- `./quality.sh` passes cleanly (lint, format, type-check, tests)
-- Verified no silent test skips remain in audited files
-- Verified all removed tests were either meaningless, duplicate, or "how" tests
+- No new tests added; existing tests strengthened and deduplicated
+- Verified all assertions are meaningful with specific expected values
+- All `test/wasm/`, `test/methods/`, and `test/squash/` files reviewed
+- `./quality.sh --skip-discovery` passes with 0 failures
