@@ -5,9 +5,9 @@ compact/optimisation tests. Closes #1772.
 
 All test files in `test/Compact/`, `test/optimize/`, `test/optimization/`,
 `test/FeedForward/`, and `test/reconstruct/` have been reviewed against the
-audit criteria. Previous PRs addressed duplicates, trivial tests, and
-cross-area overlaps. This final pass strengthens the remaining weak assertions
-and improves test names.
+audit criteria. Previous PRs addressed duplicates, trivial tests, and cross-area
+overlaps. This final pass strengthens the remaining weak assertions and improves
+test names.
 
 ### Changes
 
