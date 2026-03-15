@@ -7,7 +7,7 @@
  * @module
  */
 
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Activations } from "../../../src/methods/activations/Activations.ts";
 import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
 
@@ -69,7 +69,7 @@ const ACTIVATIONS_WITH_CALCULATE_ERROR: string[] = [
 for (const name of ACTIVATIONS_WITH_CALCULATE_ERROR) {
   Deno.test(`${name}: calculateError returns 0 when target equals current`, () => {
     const act = findActivation(name);
-    if (!hasCalculateError(act)) return;
+    assert(hasCalculateError(act), `${name} should implement calculateError`);
 
     const activation = act.squash(1);
     const error = act.calculateError(activation, activation, 1);
@@ -80,7 +80,7 @@ for (const name of ACTIVATIONS_WITH_CALCULATE_ERROR) {
 for (const name of ACTIVATIONS_WITH_CALCULATE_ERROR) {
   Deno.test(`${name}: calculateError returns finite number`, () => {
     const act = findActivation(name);
-    if (!hasCalculateError(act)) return;
+    assert(hasCalculateError(act), `${name} should implement calculateError`);
 
     const current = act.squash(0.5);
     const target = act.squash(1);
@@ -96,13 +96,18 @@ for (const name of ACTIVATIONS_WITH_CALCULATE_ERROR) {
 for (const name of ACTIVATIONS_WITH_CALCULATE_ERROR) {
   Deno.test(`${name}: calculateError direction is correct for positive delta`, () => {
     const act = findActivation(name);
-    if (!hasCalculateError(act)) return;
+    assert(hasCalculateError(act), `${name} should implement calculateError`);
 
     const current = act.squash(0);
     const target = act.squash(1);
 
-    // Only test when activations produce distinct values
-    if (current === target) return;
+    // Activations like STEP/BIPOLAR may produce identical outputs for
+    // squash(0) and squash(1), making directional testing inapplicable
+    assertNotEquals(
+      current,
+      target,
+      `${name}: squash(0) and squash(1) should produce distinct values`,
+    );
 
     const error = act.calculateError(current, target, 0);
     // Error should be non-zero (directional)
@@ -112,7 +117,7 @@ for (const name of ACTIVATIONS_WITH_CALCULATE_ERROR) {
 
 Deno.test("LOGISTIC calculateError uses derivative for centre region", () => {
   const act = findActivation("LOGISTIC");
-  if (!hasCalculateError(act)) return;
+  assert(hasCalculateError(act), "LOGISTIC should implement calculateError");
 
   // At x=0, sigmoid is 0.5 with strong slope
   const error = act.calculateError(0.5, 0.7, 0);
@@ -122,7 +127,7 @@ Deno.test("LOGISTIC calculateError uses derivative for centre region", () => {
 
 Deno.test("TANH calculateError uses derivative for centre region", () => {
   const act = findActivation("TANH");
-  if (!hasCalculateError(act)) return;
+  assert(hasCalculateError(act), "TANH should implement calculateError");
 
   // At x=0, tanh is 0 with strong slope
   const error = act.calculateError(0, 0.5, 0);
@@ -132,7 +137,7 @@ Deno.test("TANH calculateError uses derivative for centre region", () => {
 
 Deno.test("IDENTITY calculateError reflects raw error", () => {
   const act = findActivation("IDENTITY");
-  if (!hasCalculateError(act)) return;
+  assert(hasCalculateError(act), "IDENTITY should implement calculateError");
 
   const error = act.calculateError(1, 3, 1);
   assertEquals(Number.isFinite(error), true);
@@ -141,7 +146,7 @@ Deno.test("IDENTITY calculateError reflects raw error", () => {
 
 Deno.test("ReLU calculateError handles active region", () => {
   const act = findActivation("ReLU");
-  if (!hasCalculateError(act)) return;
+  assert(hasCalculateError(act), "ReLU should implement calculateError");
 
   // In active region (x > 0), derivative is 1
   const error = act.calculateError(2, 5, 2);
@@ -151,7 +156,7 @@ Deno.test("ReLU calculateError handles active region", () => {
 
 Deno.test("ReLU calculateError handles dead region", () => {
   const act = findActivation("ReLU");
-  if (!hasCalculateError(act)) return;
+  assert(hasCalculateError(act), "ReLU should implement calculateError");
 
   // In dead region (x <= 0), uses fallback
   const error = act.calculateError(0, 0.5, -1);

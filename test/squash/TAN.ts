@@ -1,20 +1,18 @@
 import { assertAlmostEquals } from "@std/assert";
 import { TAN } from "../../src/methods/activations/types/TAN.ts";
 
-Deno.test("TAN", () => {
+// Squash and unSquash behaviour is covered by:
+//   test/methods/activations/EdgeCases.ts (squash at x=0)
+//   test/methods/activations/SquashRoundtrip.ts (roundtrip within period)
+//   test/squash/activations/UnSquashHintTest.ts (unSquash with hint)
+// This file tests TAN-specific simplifyBias behaviour.
+
+Deno.test("TAN: simplifyBias wraps large multiples of π to equivalent position", () => {
   const tan = new TAN();
+  assertAlmostEquals(tan.simplifyBias(10 * Math.PI), 0);
+});
 
-  // Test squash
-  assertAlmostEquals(tan.squash(0), 0);
-  assertAlmostEquals(tan.squash(Math.PI / 4), 1);
-  assertAlmostEquals(tan.squash(-Math.PI / 4), -1);
-
-  // Test unSquash
-  assertAlmostEquals(tan.unSquash(1), Math.PI / 4); // ~π/4
-  assertAlmostEquals(tan.unSquash(-1), -Math.PI / 4); // ~-π/4
-  assertAlmostEquals(tan.unSquash(1, 5), Math.PI / 4 + Math.PI); // ~π/4 + nearestMultipleOf π close to 5
-
-  // Test simplifyBias
-  assertAlmostEquals(tan.simplifyBias(10 * Math.PI), 0); // Expected: 0 (equivalent position)
-  assertAlmostEquals(tan.simplifyBias(Math.PI / 2), Math.PI / 2); // Expected: π/2
+Deno.test("TAN: simplifyBias preserves values within period", () => {
+  const tan = new TAN();
+  assertAlmostEquals(tan.simplifyBias(Math.PI / 2), Math.PI / 2);
 });
