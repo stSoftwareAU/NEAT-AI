@@ -238,10 +238,10 @@ Deno.test("AddConnection: can use weightScale option", () => {
   for (const synapse of creature.synapses) {
     const key = `${synapse.from}-${synapse.to}`;
     if (!existingFromTo.has(key)) {
-      // With weightScale 0.01, the weight should be small
+      // With weightScale 0.01, the weight magnitude should be very small
       assert(
-        Math.abs(synapse.weight) < 1,
-        `Weight with scale 0.01 should be small, got ${synapse.weight}`,
+        Math.abs(synapse.weight) < 0.1,
+        `Weight with scale 0.01 should be very small, got ${synapse.weight}`,
       );
     }
   }
