@@ -1,22 +1,33 @@
 ## Summary
 
-Final audit pass on mutation operator tests: removes remaining duplicate tests
-from `ModWeightFocus.ts`. Closes #1769.
+Final audit of mutation operator tests: removes Creature API tests misplaced in
+`test/mutate/` and consolidates the unique constant-neuron exclusion test into
+`AvailableConnectionsCache.ts`. Closes #1769.
 
 ### Changes
 
-**Duplicate tests removed (2 total):**
+**AddConnectionOptimisation.ts removed (7 tests → 0):**
 
-- `ModWeightFocus.ts`: Removed "mutate works without focus list" — duplicates
-  `ModWeightBehavioural.ts` tests "successfully modifies a weight" and "weight
-  actually changes value (not a no-op)"
-- `ModWeightFocus.ts`: Removed "returns false when no synapses exist" —
-  duplicates `ModWeightBehavioural.ts` test "returns false when creature has no
-  synapses"
+Six tests tested Creature's `getConnectionSet()`, `hasConnection()`, and
+`getAvailableConnections()` methods — these are Creature API tests, not
+AddConnection mutation behaviour tests. They are already covered by:
 
-### Audit results
+- `test/creature/CreatureTopology.ts` (getConnectionSet, hasConnection)
+- `test/creature/SelectiveCacheInvalidation.ts` (cache invalidation)
 
-All 30 test files (171 test cases) in `test/mutate/` reviewed against criteria:
+The seventh test ("mutation adds connections and maintains validity") was a
+near-duplicate of `AvailableConnectionsCache.ts` test "tracks correctly through
+multiple mutations".
+
+**One unique test moved:**
+
+- "getAvailableConnections excludes constant neurons" moved to
+  `AvailableConnectionsCache.ts` as "excludes constant neurons from targets" —
+  the only test verifying this behaviour.
+
+### Full audit results
+
+All 29 test files (165 test cases) in `test/mutate/` reviewed against criteria:
 
 - **Uniqueness**: No remaining duplicate or near-duplicate tests
 - **Behavioural testing**: All tests verify outcomes, not implementation details
@@ -28,10 +39,13 @@ All 30 test files (171 test cases) in `test/mutate/` reviewed against criteria:
 
 ## Evidence
 
-- All 171 tests in `test/mutate/` pass
+- All 4716 tests pass
 - `./quality.sh --lint-only` and `./quality.sh --check-only` pass
 
 ## Test Plan
 
-- Modified `test/mutate/ModWeightFocus.ts` — removed 2 duplicate tests
+- Removed `test/mutate/AddConnectionOptimisation.ts` — 6 Creature API tests
+  already covered elsewhere, 1 near-duplicate
+- Added "excludes constant neurons from targets" test to
+  `test/mutate/AvailableConnectionsCache.ts`
 - All remaining tests verify behaviour with meaningful assertions

@@ -246,6 +246,39 @@ Deno.test("AvailableConnections: returns valid connections after disconnect and 
   }
 });
 
+Deno.test("AvailableConnections: excludes constant neurons from targets", () => {
+  const json = {
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "constant" as const, uuid: "const-1", bias: 1 },
+      {
+        type: "output" as const,
+        uuid: "output-0",
+        bias: 0,
+        squash: "IDENTITY",
+      },
+    ],
+    synapses: [
+      { fromUUID: "const-1", toUUID: "output-0", weight: 1 },
+    ],
+  };
+
+  const creature = Creature.fromJSON(json, true);
+
+  const available = creature.getAvailableConnections();
+
+  // Should not include any connections TO the constant neuron
+  for (const [, to] of available) {
+    const neuron = creature.neurons[to];
+    assertEquals(
+      neuron.type !== "constant",
+      true,
+      `Should not connect to constant neuron at index ${to}`,
+    );
+  }
+});
+
 Deno.test("AvailableConnections: more connections available after AddNeuron mutation", () => {
   const creature = new Creature(2, 1);
   creatureValidate(creature);
