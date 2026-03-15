@@ -147,16 +147,14 @@ Deno.test("AddNeuron - focus selection should work with restrictive focus list",
   );
 });
 
-Deno.test("AddNeuron - focus selection should use transitive focus checking", () => {
-  // When a focus list is provided, neurons connected to focused neurons
-  // should also be considered (transitive focus)
+Deno.test("AddNeuron - downstream neurons are transitively in focus", () => {
+  // When a focus list targets input 0, downstream connected neurons
+  // should also be considered in focus for mutation selection
   const creature = Creature.fromJSON(createFocusTestNetwork());
 
-  // Focus on input 0 - via transitive focus, hidden neurons downstream
-  // should also be selectable
+  // Focus on input 0 - hidden neurons downstream should be transitively in focus
   const focusList = [0];
 
-  // Verify transitive focus works at the creature level
   assertEquals(
     creature.inFocus(0, focusList),
     true,
@@ -165,22 +163,18 @@ Deno.test("AddNeuron - focus selection should use transitive focus checking", ()
   assertEquals(
     creature.inFocus(3, focusList),
     true,
-    "Hidden 3 transitively in focus",
+    "Hidden 3 transitively in focus (connected from input 0)",
   );
   assertEquals(
     creature.inFocus(4, focusList),
     true,
-    "Hidden 4 transitively in focus",
+    "Hidden 4 transitively in focus (connected from hidden 3)",
   );
   assertEquals(
     creature.inFocus(5, focusList),
     true,
-    "Output 5 transitively in focus",
+    "Output 5 transitively in focus (connected from hidden 3 and 4)",
   );
-
-  // Note: Input 1 and 2 are NOT in focus since focusList only contains [0]
-  // and there are no inward connections to inputs 1 and 2 from focused neurons
-  // (inFocus checks inward connections, not outward)
 });
 
 Deno.test("AddNeuron - should work without focus list (all neurons valid)", () => {

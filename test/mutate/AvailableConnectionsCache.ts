@@ -1,8 +1,8 @@
 /**
- * Tests for issue #1098: Cache available connection pairs for AddConnection mutation
+ * Tests for issue #1098: Available connection tracking for AddConnection mutation.
  *
- * The optimisation caches available connection pairs to avoid recomputing
- * the O(n²) iteration on every AddConnection mutation call.
+ * Verifies that getAvailableConnections() returns correct results
+ * as the creature's topology changes through connect/disconnect/mutation.
  */
 import { assertEquals, assertGreater } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
@@ -12,7 +12,7 @@ import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("AvailableConnectionsCache: available connections update after connect()", () => {
+Deno.test("AvailableConnections: available connections update after connect()", () => {
   const json = {
     input: 2,
     output: 1,
@@ -52,7 +52,7 @@ Deno.test("AvailableConnectionsCache: available connections update after connect
   assertEquals(available2.length, 2);
 });
 
-Deno.test("AvailableConnectionsCache: cache invalidates after disconnect()", () => {
+Deno.test("AvailableConnections: available connections update after disconnect()", () => {
   const json = {
     input: 2,
     output: 1,
@@ -93,7 +93,7 @@ Deno.test("AvailableConnectionsCache: cache invalidates after disconnect()", () 
   assertEquals(available2.length, 3);
 });
 
-Deno.test("AvailableConnectionsCache: multiple mutations with cache", () => {
+Deno.test("AvailableConnections: tracks correctly through multiple mutations", () => {
   const creature = new Creature(3, 2);
   creatureValidate(creature);
 
@@ -133,7 +133,7 @@ Deno.test("AvailableConnectionsCache: multiple mutations with cache", () => {
   creatureValidate(creature);
 });
 
-Deno.test("AvailableConnectionsCache: focus list filtering works with cache", () => {
+Deno.test("AvailableConnections: focus list filters available connections", () => {
   const json = {
     input: 3,
     output: 1,
@@ -187,7 +187,7 @@ Deno.test("AvailableConnectionsCache: focus list filtering works with cache", ()
   }
 });
 
-Deno.test("AvailableConnectionsCache: available connections correct after disconnect and fix", () => {
+Deno.test("AvailableConnections: returns valid connections after disconnect and fix", () => {
   const json = {
     input: 2,
     output: 1,
@@ -246,7 +246,7 @@ Deno.test("AvailableConnectionsCache: available connections correct after discon
   }
 });
 
-Deno.test("AvailableConnectionsCache: cache validates with AddNeuron mutation", () => {
+Deno.test("AvailableConnections: more connections available after AddNeuron mutation", () => {
   const creature = new Creature(2, 1);
   creatureValidate(creature);
 

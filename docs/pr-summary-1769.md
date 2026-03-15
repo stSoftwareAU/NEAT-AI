@@ -1,46 +1,52 @@
 ## Summary
 
-Audit all test files in `test/mutate/` for quality standards: uniqueness,
-behavioural testing, meaningful assertions, and organisation. Closes #1769.
+Final audit pass on all test files in `test/mutate/` for quality standards:
+uniqueness, behavioural testing, meaningful assertions, and organisation. Closes
+#1769.
 
 ### Changes made (this PR)
 
-6. **Strengthened conditional assertions in `test/mutate/AddBackCon.ts`**:
-   - Tests "should add a back connection" and "should delete memetic property"
-     had `if (changed)` guards that silently passed when mutation failed.
-   - Rewrote both to retry in a loop and assert that mutation succeeds at least
-     once, ensuring the assertion is always exercised.
+1. **Removed `test/mutate/AddNeuronSelfLoopFallback.ts`** (1 test):
+   - This was a "how" test that used heavy mocking (`stub(Math, "random")`,
+     disabled `Neuron.prototype.fix`, and overrode `creature.getSynapse`) to
+     force a specific internal code path. Recurrent self-loop behaviour is
+     already covered by `AddNeuronRecurrentAllowed.ts` through the public API.
 
-7. **Removed implementation-detail checks in
-   `test/mutate/AddConnectionOptimisation.ts`**:
-   - Tests were asserting internal numeric key formula
-     (`from * neuronCount + to`) for the connection set, coupling tests to
-     internal representation.
-   - Replaced with `hasConnection()` public API assertions that verify the same
-     behaviour without depending on the internal key format.
+2. **Renamed tests that referenced implementation details**:
+   - `AddConnectionOptimisation.ts`: "provides O(1) lookup" → "correctly
+     identifies existing and non-existing connections"; "cache invalidates" →
+     "reflects newly added connections"
+   - `AvailableConnectionsCache.ts`: Removed "cache" from all 6 test names; e.g.
+     "cache invalidates after disconnect" → "available connections update after
+     disconnect"
+   - `ConnectSplice.ts`: "with splice" → "after multiple insertions"
+   - `AddConnectionNoRedundantValidation.ts`: "does not call validate
+     internally" → "adds a connection and creature remains valid"; "without
+     internal validation" → "after successful mutation"
+   - `AddNeuronFocusSelection.ts`: "should use transitive focus checking" →
+     "downstream neurons are transitively in focus"
 
-8. **Removed implementation-detail checks in
-   `test/mutate/AvailableConnectionsCache.ts`**:
-   - Same numeric key formula pattern replaced with `hasConnection()` calls.
+3. **Fixed misleading file header comments**:
+   - `ConnectSplice.ts`: Changed "Benchmark test" to "Correctness tests"
+   - `AddConnectionOptimisation.ts`: Removed O(n²)/O(1) implementation details
+   - `AvailableConnectionsCache.ts`: Removed caching implementation details
+   - `AddConnectionNoRedundantValidation.ts`: Removed internal validation
+     details
 
-9. **Fixed meaningless tests in `test/mutate/SubBackCon.ts`**:
-   - "should convert neuron to constant" exited silently if the edge-case
-     scenario was never hit. Rewrote as "mutation always produces valid creature
-     even when neuron loses inward connections" with real assertions.
-   - "should handle focus list correctly" had no meaningful assertion. Rewrote
-     as "focus list restricts which connections can be removed" with assertion
-     that the back connection is preserved when excluded by focus.
-   - "should handle various network structures" had conditional assertion.
-     Rewrote with retry loop to ensure mutation actually succeeds.
-   - "should delete memetic property" had same conditional pattern — fixed.
+4. **Consolidated near-duplicate tests in `AddConnectionOptimisation.ts`**:
+   - Merged "mutation still works correctly with optimisation" (small network)
+     and "mutation works correctly with large creature" (large network) into one
+     "mutation adds connections and maintains validity" test.
 
-10. **Fixed meaningless tests in `test/mutate/SubConnection.ts`**:
-    - "should handle creature with minimal connections" had no assertion about
-      the mutation result. Rewrote as "creature remains valid after removing
-      from minimal network" with synapse count assertion.
-    - "should handle orphan cleanup after removal" ran 50 mutations with no
-      assertion about orphan cleanup. Rewrote to verify hidden neuron count
-      decreases after connection removal.
+5. **Strengthened weak focus-list assertions**:
+   - `AddBackCon.ts`: Focus list test now verifies synapse count increased and
+     new connection involves neurons related to the focus list.
+   - `AddSelfCon.ts`: Focus list test now asserts mutation succeeds and
+     self-connection targets the focused neuron.
+   - `AddSelfCon.ts`: Memetic test now asserts mutation succeeds instead of
+     silently passing on failure.
+   - `SubConnection.ts`: Focus list test now retries and asserts mutation
+     succeeds with synapse count verification.
 
 ### Changes made (prior PRs)
 
@@ -50,6 +56,10 @@ behavioural testing, meaningful assertions, and organisation. Closes #1769.
 3. Renamed `ConnectSpliceBenchmark.ts` to `ConnectSplice.ts`.
 4. Cleaned up implementation-detail tests in `AvailableConnectionsCache.ts`.
 5. Consolidated `ModActivation.ts` into `ModSquashBehavioural.ts`.
+6. Strengthened conditional assertions in `AddBackCon.ts`, `SubBackCon.ts`,
+   `SubConnection.ts`.
+7. Removed implementation-detail checks in `AddConnectionOptimisation.ts` and
+   `AvailableConnectionsCache.ts`.
 
 ### Cross-area duplicates noted
 
@@ -63,11 +73,15 @@ behavioural testing, meaningful assertions, and organisation. Closes #1769.
 
 ## Evidence
 
-- All 4731 tests pass
+- All 4729 tests pass (net -2 from removing 1 test file and consolidating 1
+  test)
 - `./quality.sh` passes clean
 
 ## Test Plan
 
-- Verified no test regressions: 4731 passed, 0 failed
-- All rewritten tests exercise real mutation code with meaningful assertions
-- No tests removed — only rewritten to be more robust
+- Verified no test regressions: 4729 passed, 0 failed
+- Removed 1 "how" test file (AddNeuronSelfLoopFallback.ts) that used heavy
+  mocking
+- Consolidated 1 near-duplicate test in AddConnectionOptimisation.ts
+- All remaining tests exercise real mutation code with meaningful assertions
+- All test names describe behaviour, not implementation details

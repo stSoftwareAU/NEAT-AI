@@ -1,7 +1,8 @@
 /**
- * Tests for issue #1036: Performance optimisation for ADD_CONNECTION mutation
+ * Tests for issue #1036: Connection lookup and available connection queries.
  *
- * The optimisation replaces O(n²) connection search with Set-based O(1) lookup.
+ * Verifies that getConnectionSet(), hasConnection(), and
+ * getAvailableConnections() return correct results.
  */
 import { assertEquals, assertGreater } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
@@ -80,7 +81,7 @@ Deno.test("AddConnection: getConnectionSet updates after adding connection", () 
   assertEquals(testCreature.hasConnection(0, 3), true);
 });
 
-Deno.test("AddConnection: hasConnection provides O(1) lookup", () => {
+Deno.test("AddConnection: hasConnection correctly identifies existing and non-existing connections", () => {
   const creature = new Creature(3, 2);
   creatureValidate(creature);
 
@@ -101,7 +102,7 @@ Deno.test("AddConnection: hasConnection provides O(1) lookup", () => {
   assertEquals(creature.hasConnection(3, 0), false); // output to input
 });
 
-Deno.test("AddConnection: hasConnection cache invalidates on structure change", () => {
+Deno.test("AddConnection: hasConnection reflects newly added connections", () => {
   const json = {
     input: 2,
     output: 1,
@@ -139,38 +140,8 @@ Deno.test("AddConnection: hasConnection cache invalidates on structure change", 
   assertEquals(creature.hasConnection(1, 2), true);
 });
 
-Deno.test("AddConnection: mutation still works correctly with optimisation", () => {
-  const creature = new Creature(2, 1);
-  creatureValidate(creature);
-
-  const addNeuron = new AddNeuron(creature);
-  for (let i = 5; i--;) {
-    addNeuron.mutate();
-  }
-
-  const initialSynapseCount = creature.synapses.length;
-
-  const addConnection = new AddConnection(creature);
-  let connectionsAdded = 0;
-  for (let i = 10; i--;) {
-    if (addConnection.mutate()) {
-      connectionsAdded++;
-    }
-  }
-
-  // Should have added some connections
-  assertGreater(connectionsAdded, 0);
-  assertEquals(
-    creature.synapses.length,
-    initialSynapseCount + connectionsAdded,
-  );
-
-  // Creature should still be valid
-  creatureValidate(creature);
-});
-
-Deno.test("AddConnection: mutation works correctly with large creature", () => {
-  // Create a creature with many neurons to test mutation behaviour at scale
+Deno.test("AddConnection: mutation adds connections and maintains validity", () => {
+  // Test with a creature that has many neurons to verify behaviour at scale
   const creature = new Creature(10, 5);
   creatureValidate(creature);
 
@@ -189,8 +160,8 @@ Deno.test("AddConnection: mutation works correctly with large creature", () => {
     }
   }
 
-  // Creature should still be valid after many mutations
-  creatureValidate(creature);
+  // Should have added some connections
+  assertGreater(connectionsAdded, 0);
 
   // Synapse count should reflect added connections
   assertEquals(
@@ -198,6 +169,9 @@ Deno.test("AddConnection: mutation works correctly with large creature", () => {
     initialSynapseCount + connectionsAdded,
     "Synapse count should match initial count plus added connections",
   );
+
+  // Creature should still be valid after many mutations
+  creatureValidate(creature);
 });
 
 Deno.test("AddConnection: getAvailableConnections returns valid pairs", () => {

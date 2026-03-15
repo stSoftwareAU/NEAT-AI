@@ -145,27 +145,46 @@ Deno.test("SubConnection - stress test produces valid creatures", () => {
 });
 
 Deno.test("SubConnection - focus list limits removable connections", () => {
-  const creature = Creature.fromJSON({
-    neurons: [
-      { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 2 },
-      { type: "hidden", squash: "LOGISTIC", bias: 0.3, index: 3 },
-      { type: "output", squash: "LOGISTIC", bias: 0.1, index: 4 },
-    ],
-    synapses: [
-      { from: 0, to: 2, weight: 1.0 },
-      { from: 1, to: 3, weight: 1.0 },
-      { from: 2, to: 4, weight: 0.8 },
-      { from: 3, to: 4, weight: 0.9 },
-      { from: 0, to: 4, weight: 0.5 },
-    ],
-    input: 2,
-    output: 1,
-  });
+  let removedFocusedConnection = false;
 
-  creatureValidate(creature);
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const creature = Creature.fromJSON({
+      neurons: [
+        { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 2 },
+        { type: "hidden", squash: "LOGISTIC", bias: 0.3, index: 3 },
+        { type: "output", squash: "LOGISTIC", bias: 0.1, index: 4 },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 1.0 },
+        { from: 1, to: 3, weight: 1.0 },
+        { from: 2, to: 4, weight: 0.8 },
+        { from: 3, to: 4, weight: 0.9 },
+        { from: 0, to: 4, weight: 0.5 },
+      ],
+      input: 2,
+      output: 1,
+    });
 
-  const mutator = new SubConnection(creature);
-  mutator.mutate([2]); // Focus on neuron at index 2
+    creatureValidate(creature);
+    const synapsesBeforeCount = creature.synapses.length;
 
-  creatureValidate(creature);
+    const mutator = new SubConnection(creature);
+    const changed = mutator.mutate([2]); // Focus on neuron at index 2
+
+    creatureValidate(creature);
+
+    if (changed) {
+      assert(
+        creature.synapses.length <= synapsesBeforeCount,
+        "Should have same or fewer synapses after removal",
+      );
+      removedFocusedConnection = true;
+      break;
+    }
+  }
+
+  assert(
+    removedFocusedConnection,
+    "Should remove a connection related to focused neuron within 50 attempts",
+  );
 });

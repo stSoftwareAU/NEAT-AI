@@ -1,7 +1,6 @@
 /**
- * Issue #1584: Verify that AddConnection works correctly without internal
- * validate() calls. The Mutator.repairAfterMutation() handles validation
- * after the full mutation batch.
+ * Issue #1584: Verify AddConnection correctness for forward-only creatures
+ * and full mutation batch workflows.
  */
 import { assert, assertEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
@@ -105,7 +104,7 @@ Deno.test(
 );
 
 Deno.test(
-  "AddConnection: standalone call does not call validate internally",
+  "AddConnection: standalone call adds a connection and creature remains valid",
   () => {
     const creature = createForwardOnlyCreature();
     const synapseCountBefore = creature.synapses.length;
@@ -132,7 +131,7 @@ Deno.test(
 );
 
 Deno.test(
-  "AddConnection: memetic flag cleared without internal validation",
+  "AddConnection: memetic flag cleared after successful mutation",
   () => {
     const creature = createForwardOnlyCreature();
     creature.memetic = { generation: 1, weights: {}, biases: {}, score: 0.5 };

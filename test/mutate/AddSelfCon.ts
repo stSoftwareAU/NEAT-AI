@@ -128,12 +128,12 @@ Deno.test("AddSelfCon - should delete memetic property after mutation", () => {
   creature.memetic = { test: true } as unknown as typeof creature.memetic;
   creatureValidate(creature);
 
+  // Neuron 2 has no self-connection, so mutation should succeed
   const mutator = new AddSelfCon(creature);
   const changed = mutator.mutate();
 
-  if (changed) {
-    assertEquals(creature.memetic, undefined, "Memetic should be deleted");
-  }
+  assert(changed, "Should successfully add self-connection");
+  assertEquals(creature.memetic, undefined, "Memetic should be deleted");
   creatureValidate(creature);
 });
 
@@ -183,15 +183,16 @@ Deno.test("AddSelfCon - focus list limits available neurons", () => {
 
   creatureValidate(creature);
 
-  // Focus only on neuron at index 2
+  // Focus only on neuron at index 2 — neuron 2 has no self-connection,
+  // so mutation should succeed and target neuron 2 specifically.
   const mutator = new AddSelfCon(creature);
   const changed = mutator.mutate([2]);
 
-  if (changed) {
-    // Verify the self-connection was added to the focused neuron
-    const selfCon = creature.selfConnection(2);
-    assert(selfCon !== null, "Self-connection should be on the focused neuron");
-  }
+  assert(changed, "Should add self-connection to focused neuron");
+
+  // Verify the self-connection was added to the focused neuron
+  const selfCon = creature.selfConnection(2);
+  assert(selfCon !== null, "Self-connection should be on the focused neuron");
 
   creatureValidate(creature);
 });
