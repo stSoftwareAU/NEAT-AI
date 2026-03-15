@@ -1,49 +1,37 @@
 ## Summary
 
-Final audit pass on mutation operator tests: removes remaining duplicate tests,
-fixes a misleading test name, and strengthens weak assertions. Closes #1769.
+Final audit pass on mutation operator tests: removes remaining duplicate tests
+from `ModWeightFocus.ts`. Closes #1769.
 
 ### Changes
 
-**Duplicate tests removed (7 total):**
+**Duplicate tests removed (2 total):**
 
-- `AddConnectionNoRedundantValidation.ts`: Removed 3 tests that duplicated
-  `AddConnectionBehavioural.ts` (forward-only constraint, standalone call,
-  memetic flag)
-- `ModWeightBehavioural.ts`: Removed 2 tests that duplicated
-  `ModWeightRegularisation.ts` (maxAbsoluteWeight and maxWeightChange limits)
-- `SubSelfCon.ts`: Removed 1 stress test that was near-identical to the existing
-  stress test (same topology, same assertions)
+- `ModWeightFocus.ts`: Removed "mutate works without focus list" — duplicates
+  `ModWeightBehavioural.ts` tests "successfully modifies a weight" and "weight
+  actually changes value (not a no-op)"
+- `ModWeightFocus.ts`: Removed "returns false when no synapses exist" —
+  duplicates `ModWeightBehavioural.ts` test "returns false when creature has no
+  synapses"
 
-**Misleading test name fixed:**
+### Audit results
 
-- `ModBiasRegularisation.ts`: Renamed "returns false when no valid neurons exist
-  (with config)" to "skips constant neurons and mutates output neuron (with
-  config)" — the test actually asserts mutation succeeds
+All 30 test files (171 test cases) in `test/mutate/` reviewed against criteria:
 
-**Weak assertions strengthened:**
-
-- `AddConnectionBehavioural.ts`: Tightened weightScale assertion from `< 1` to
-  `< 0.1` (scale is 0.01, so `< 1` was too lenient)
-- `ModBias.ts`: "focus list targets specific neurons" now asserts the
-  non-focused neuron's bias remains unchanged
-- `ModBias.ts`: "handles creature with only output neurons" now verifies the
-  bias value actually changed, not just that `mutate()` returned true
-
-**Cross-area check:** No duplicate mutation operator tests found in `test/NEAT/`
-— the references there are integration tests for broader workflows, not operator
-unit tests.
+- **Uniqueness**: No remaining duplicate or near-duplicate tests
+- **Behavioural testing**: All tests verify outcomes, not implementation details
+- **Meaningful tests**: Every test exercises real code with real assertions
+- **Organisation**: Tests are logically grouped and clearly named
+- **Cross-area overlap**: `test/NEAT/Mutator*.ts` tests mutation at the
+  orchestration level, `test/mutate/` tests operators directly — complementary,
+  not duplicate
 
 ## Evidence
 
-- All 4724 tests pass
-- `./quality.sh` passes cleanly (exit code 0)
+- All 171 tests in `test/mutate/` pass
+- `./quality.sh --lint-only` and `./quality.sh --check-only` pass
 
 ## Test Plan
 
-- Modified tests in `test/mutate/AddConnectionBehavioural.ts`,
-  `test/mutate/AddConnectionNoRedundantValidation.ts`, `test/mutate/ModBias.ts`,
-  `test/mutate/ModBiasRegularisation.ts`, `test/mutate/ModWeightBehavioural.ts`,
-  `test/mutate/SubSelfCon.ts`
-- Net reduction of 7 duplicate tests
+- Modified `test/mutate/ModWeightFocus.ts` — removed 2 duplicate tests
 - All remaining tests verify behaviour with meaningful assertions
