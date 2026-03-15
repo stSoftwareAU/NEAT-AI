@@ -1,60 +1,47 @@
 ## Summary
 
-Audit of all test files in `test/config/`, `test/validate/`, and
-`test/architecture/` (47 files, ~423 test cases) for quality, uniqueness, and
-behavioural testing. Closes #1771.
+Second-pass audit of all test files in `test/config/`, `test/validate/`, and
+`test/architecture/` (46 files, ~400+ test cases) addressing remaining quality
+issues found after PR #1817. Closes #1771.
 
 ### Changes Made
 
-**Duplicates removed (8 duplicate tests):**
+**Duplicate tests removed (10 tests across 3 files):**
 
-- `CreatureValidate.ts`: Removed 2x duplicate "Neuron length" test and 2x
-  duplicate "expected index" tests (kept 1 of each)
-- `ActivationRange.ts`: Removed duplicate loop blocks in both test cases
+- `NeatArguments.ts`: Removed 5 tests that duplicated coverage already in
+  `ConfigurationGuideDefaults.ts` and individual config test files:
+  - "default config has all required top-level fields" (just typeof checks)
+  - "default config has all sub-object configs" (just existence checks)
+  - "sub-object configs match their defaults" (duplicated by individual tests)
+  - "default boolean fields have expected values" (duplicated by ConfigurationGuideDefaults)
+  - "default numeric fields have expected values" (duplicated by ConfigurationGuideDefaults)
+- `NeatConfigParseOptions.ts`: Removed 4 duplicate tests:
+  - "discoverySampleRate default is 0.2" (duplicated by "missing uses default")
+  - "discoveryRecordTimeOutMinutes default is 5" (duplicated by "missing uses default")
+  - "discoverySampleRate explicit override still works" (covered by other tests)
+  - "discoveryRecordTimeOutMinutes explicit override still works" (consolidated)
+- `FeedbackLoopCondition.ts`: Removed "feedbackLoop false rejects recursive
+  synapses" (identical test already in `CreatureValidate.ts`)
 
-**"How" tests rewritten as "what" tests:**
+**"How" tests rewritten as "what" tests (2 tests):**
 
-- `DebugWriteDiagnostics.ts`: Removed file path implementation detail checks
-  (checking `DIAGNOSTICS_DIR` vs `.test` path); now tests the actual validation
-  behaviour (duplicate UUID detection + error message)
+- `LoggerConfig.ts`: Replaced `Object.isFrozen(config)` check with behaviour
+  test that asserts property assignment throws
+- `OutputRangeConfig.ts`: Same `Object.isFrozen` to behaviour test rewrite
 
-**Meaningless/trivial tests removed or replaced:**
+**Assertion quality improved (3 files):**
 
-- `TrainOptions.ts`: Replaced 10 type-only tests (just creating objects and
-  reading properties back) with 3 behavioural tests that exercise actual
-  training via `evolveDataSet`
-- `PredictionNodeState.ts`: Removed entirely — tested a pure TypeScript
-  interface (compile-time, not runtime)
-- Removed 7 "default values are sensible" tests that checked constants against
-  themselves (BiasRegularisation, DiscoveryMinCandidatesPerCategory, DiskSpace,
-  PredictiveCoding, WasmCache)
-- Removed 2 "Required type fills all fields" tests that only checked `typeof`
-  (BiasRegularisation, DiscoveryMinCandidatesPerCategory)
-- Removed duplicate "disabled by default" test in PredictiveCodingConfig
-- Consolidated 3 trivial NeuronStatePredictiveCoding property tests into 1
+- `NeatOptionsRuntimeValidation.ts`: Replaced 3 manual `if/throw` checks
+  with proper `assertEquals` assertions
+- `NeatConfigParseOptions.ts`: Replaced 5 `try/catch/fail` blocks with
+  `assertThrows`/`assertStringIncludes` for cleaner error validation
+- `AdaptiveMutationThresholds.ts`: Replaced 2 `try/catch/fail` blocks with
+  `assertThrows`
 
-**Redundant tests consolidated:**
+**Duplicate tests consolidated (1 test):**
 
-- `FeedbackLoopCondition.ts`: Consolidated 4 near-identical "allows recursive
-  synapses" tests into 1 test covering all variants
-
-**Test names improved:**
-
-- `CreatureValidate.ts`: Renamed 12 tests with descriptive behavioural names
-  (e.g., "Input" → "validate rejects negative input count")
-
-**Assertions fixed:**
-
-- `TrainingEvent.ts`: Replaced no-op `assertStringIncludes(event.kind, "")` with
-  meaningful `assertGreater(event.kind.length, 0)`
-
-**Files not requiring changes (clean):**
-
-- All 18 `test/architecture/` files (except NeuronStatePredictiveCoding and
-  PredictionNodeState) — excellent quality
-- Most `test/config/` files — well-structured config parsing tests
-- `test/validate/CreatureValidate.ts` (remaining tests after dedup) — good
-  validation coverage
+- `ActivationRange.ts`: Merged two near-identical validate rejection tests
+  (with and without neuron index) into a single test
 
 ### Cross-area duplicates
 
@@ -62,14 +49,13 @@ behavioural testing. Closes #1771.
 
 ## Evidence
 
-- All 4565 tests pass
+- All 4555 tests pass
 - `./quality.sh` passes cleanly (lint, format, type-check, tests)
-- Net reduction: 255 lines removed, 13 files changed, 1 file deleted
+- Net reduction: 254 lines removed, 8 files changed
 
 ## Test Plan
 
-- All existing tests in `test/config/`, `test/validate/`, and
+- All 46 test files in `test/config/`, `test/validate/`, and
   `test/architecture/` reviewed
-- Added meaningful tests: `ActivationRange` valid-value and clamping tests,
-  `TrainOptions` behavioural integration tests
-- Verified no regressions: full test suite (4565 tests) passes
+- Verified no regressions: full test suite (4555 tests) passes
+- All remaining tests verify behaviour, not implementation details
