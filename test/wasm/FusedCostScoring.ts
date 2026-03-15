@@ -58,7 +58,7 @@ Deno.test("Fused Cost Scoring: Initialise WASM", async () => {
 });
 
 Deno.test("Fused Cost Scoring: MSE - WASM vs JS equivalence", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -105,7 +105,7 @@ Deno.test("Fused Cost Scoring: MSE - WASM vs JS equivalence", () => {
 });
 
 Deno.test("Fused Cost Scoring: MAE - WASM vs JS equivalence", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -148,7 +148,7 @@ Deno.test("Fused Cost Scoring: MAE - WASM vs JS equivalence", () => {
 });
 
 Deno.test("Fused Cost Scoring: CROSS_ENTROPY - WASM vs JS equivalence", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -191,7 +191,7 @@ Deno.test("Fused Cost Scoring: CROSS_ENTROPY - WASM vs JS equivalence", () => {
 });
 
 Deno.test("Fused Cost Scoring: MAPE - WASM vs JS equivalence", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -234,7 +234,7 @@ Deno.test("Fused Cost Scoring: MAPE - WASM vs JS equivalence", () => {
 });
 
 Deno.test("Fused Cost Scoring: MSLE - WASM vs JS equivalence", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -278,7 +278,7 @@ Deno.test("Fused Cost Scoring: MSLE - WASM vs JS equivalence", () => {
 });
 
 Deno.test("Fused Cost Scoring: HINGE - WASM vs JS equivalence", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -322,7 +322,7 @@ Deno.test("Fused Cost Scoring: HINGE - WASM vs JS equivalence", () => {
 });
 
 Deno.test("Fused Cost Scoring: Empty records returns zero", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();

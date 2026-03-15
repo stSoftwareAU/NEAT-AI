@@ -4,7 +4,12 @@
  * @module
  */
 
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertNotEquals,
+  assertThrows,
+} from "@std/assert";
 import { Activations } from "../../../src/methods/activations/Activations.ts";
 import { ActivationError } from "../../../src/errors/ActivationError.ts";
 
@@ -70,37 +75,36 @@ Deno.test("Activations.list contains all standard activations", () => {
 
 Deno.test("Activations.pickRandomSquash returns a valid activation name", () => {
   const name = Activations.pickRandomSquash();
-  // Should not throw when we look it up
+  // Should not throw when we look it up — and name should round-trip
   const act = Activations.find(name);
-  assertEquals(typeof act.getName(), "string");
+  assertEquals(act.getName(), name);
 });
 
 Deno.test("Activations.pickRandomSquash with exclude omits that name", () => {
   // Run multiple times to increase confidence
   for (let i = 0; i < 20; i++) {
     const name = Activations.pickRandomSquash("IDENTITY");
-    assertEquals(name !== "IDENTITY", true);
+    assertNotEquals(name, "IDENTITY");
   }
 });
 
 Deno.test("All activations have non-negative mutationProbability", () => {
   const list = Activations.list();
   for (const act of list) {
-    assertEquals(
+    assert(
       act.mutationProbability >= 0,
-      true,
-      `${act.getName()} has mutationProbability < 0`,
+      `${act.getName()} has mutationProbability < 0: ${act.mutationProbability}`,
     );
   }
 });
 
-Deno.test("All activations have a range property", () => {
+Deno.test("All activations have a range with valid low and high bounds", () => {
   const list = Activations.list();
   for (const act of list) {
-    assertEquals(
-      act.range !== undefined,
-      true,
-      `${act.getName()} is missing range`,
+    assert(act.range !== undefined, `${act.getName()} is missing range`);
+    assert(
+      act.range.low <= act.range.high,
+      `${act.getName()} range.low (${act.range.low}) > range.high (${act.range.high})`,
     );
   }
 });
