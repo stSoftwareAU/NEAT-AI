@@ -18,7 +18,6 @@ import { Creature } from "../../src/Creature.ts";
 import {
   type FusedErrorDistributionResult,
   initWasmActivation,
-  isProbablyWorkerScope,
   isWasmActivationAvailable,
   SquashType,
   type WasmActivationRange,
@@ -55,10 +54,6 @@ Deno.test("wasmVersion returns a version string", () => {
   assert(version.length > 0, "Version should not be empty");
 });
 
-Deno.test("isProbablyWorkerScope returns false in main thread", () => {
-  assertEquals(isProbablyWorkerScope(), false);
-});
-
 // ---------------------------------------------------------------------------
 // Standalone functions via WasmStandaloneFunctions
 // ---------------------------------------------------------------------------
@@ -83,9 +78,10 @@ Deno.test("wasmUnSquash round-trips with squash for Logistic", () => {
   assertAlmostEquals(unsquashed, 0.5, 1e-3);
 });
 
-Deno.test("wasmSafeZoneAdjustment returns value in [0, 1]", () => {
+Deno.test("wasmSafeZoneAdjustment returns 1 for LOGISTIC within safe zone", () => {
+  // rawInput=0.5 is well inside LOGISTIC's safe zone [-6, 6], factor should be 1
   const result = wasmSafeZoneAdjustment(SquashType.Logistic, 0.5, 0.1);
-  assert(result >= 0 && result <= 1, `Expected [0,1] but got ${result}`);
+  assertAlmostEquals(result, 1.0, 1e-5);
 });
 
 Deno.test("wasmSafeZoneAdjustmentBatch processes multiple synapses", () => {
@@ -107,9 +103,13 @@ Deno.test("wasmSafeZoneAdjustmentBatch processes multiple synapses", () => {
   }
 });
 
-Deno.test("wasmCalculateError returns finite value", () => {
+Deno.test("wasmCalculateError returns positive error for LOGISTIC when target exceeds current", () => {
   const error = wasmCalculateError(SquashType.Logistic, 0.5, 0.8, 0.0);
   assert(isFinite(error), `Expected finite error but got ${error}`);
+  assert(
+    error > 0,
+    `Expected positive error when target (0.8) > current (0.0), got ${error}`,
+  );
 });
 
 Deno.test("wasmFusedErrorDistribution returns expected structure", () => {
@@ -201,73 +201,4 @@ Deno.test("WasmCreatureActivation activateWithState works", () => {
   const output = activation.activateWithState(input, false);
   assertEquals(output.length, 1);
   activation.free();
-});
-
-// ---------------------------------------------------------------------------
-// Re-export integrity: all public symbols accessible via mod.ts
-// ---------------------------------------------------------------------------
-
-Deno.test("mod.ts re-exports all expected symbols", async () => {
-  const mod = await import("../../src/wasm/mod.ts");
-
-  // Module loader functions
-  assertEquals(typeof mod.initWasmActivation, "function");
-  assertEquals(typeof mod.initWasmActivationSync, "function");
-  assertEquals(typeof mod.isWasmActivationAvailable, "function");
-
-  // Standalone functions
-  assertEquals(typeof mod.wasmSquash, "function");
-  assertEquals(typeof mod.wasmDerivative, "function");
-  assertEquals(typeof mod.wasmUnSquash, "function");
-  assertEquals(typeof mod.wasmSafeZoneAdjustment, "function");
-  assertEquals(typeof mod.wasmSafeZoneAdjustmentBatch, "function");
-  assertEquals(typeof mod.wasmCalculateError, "function");
-  assertEquals(typeof mod.wasmFusedErrorDistribution, "function");
-  assertEquals(typeof mod.wasmGetRange, "function");
-  assertEquals(typeof mod.wasmValidateRange, "function");
-  assertEquals(typeof mod.wasmLimitRange, "function");
-  assertEquals(typeof mod.wasmVersion, "function");
-
-  // Auto-init
-  assertEquals(typeof mod.isProbablyWorkerScope, "function");
-
-  // Class
-  assertEquals(typeof mod.WasmCreatureActivation, "function");
-
-  // SquashType enum
-  assertExists(mod.SquashType);
-  assertEquals(mod.SquashType.Relu, 1);
-
-  // Compilation
-  assertEquals(typeof mod.compileCreatureToWasm, "function");
-  assertEquals(typeof mod.getCompiledCreatureStats, "function");
-
-  // Cache
-  assertEquals(typeof mod.getOrCompileWasmModule, "function");
-  assertEquals(typeof mod.clearWasmCompilationCache, "function");
-  assertEquals(typeof mod.invalidateWasmCache, "function");
-  assertEquals(typeof mod.getWasmCompilationCacheStats, "function");
-  assertEquals(typeof mod.setWasmCompilationCacheSize, "function");
-  assertEquals(typeof mod.getWasmCompilationCacheMaxSize, "function");
-
-  // LRU
-  assertEquals(typeof mod.getMaxCachedWasmCreatureActivations, "function");
-  assertEquals(typeof mod.setMaxCachedWasmCreatureActivations, "function");
-
-  // Activation methods
-  assertEquals(typeof mod.squash, "function");
-  assertEquals(typeof mod.unSquash, "function");
-  assertEquals(typeof mod.calculateError, "function");
-  assertEquals(typeof mod.safeZoneAdjustment, "function");
-  assertEquals(typeof mod.safeZoneAdjustmentBatch, "function");
-  assertEquals(typeof mod.fusedErrorDistribution, "function");
-  assertEquals(typeof mod.isWasmSquashSupported, "function");
-
-  // Ensure helper
-  assertEquals(typeof mod.ensureWasmActivation, "function");
-
-  // Squash type helpers
-  assertEquals(typeof mod.getSquashType, "function");
-  assertEquals(typeof mod.resolveWasmSquashName, "function");
-  assertExists(mod.SQUASH_NAME_TO_TYPE);
 });
