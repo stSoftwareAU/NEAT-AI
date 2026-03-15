@@ -158,7 +158,7 @@ function makeChild() {
 }
 
 Deno.test(
-  "Sort Neurons",
+  "Offspring.sortNeurons places inputs first and outputs last",
   () => {
     const mum = makeMum();
     const dad = makeDad();

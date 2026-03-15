@@ -1,5 +1,4 @@
 import { assert } from "@std/assert";
-import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
@@ -143,20 +142,10 @@ function makeDad() {
   return creature;
 }
 
-const testDir = ".test/KeepSynapses";
-
-Deno.test("KeepSynapses", () => {
-  ensureDirSync(testDir);
+Deno.test("Offspring.breed preserves key synapses between shared neurons", () => {
   const mum = makeMum();
-  Deno.writeTextFileSync(
-    `${testDir}/mum.json`,
-    JSON.stringify(mum.exportJSON(), null, 1),
-  );
   const dad = makeDad();
-  Deno.writeTextFileSync(
-    `${testDir}/dad.json`,
-    JSON.stringify(dad.exportJSON(), null, 1),
-  );
+
   for (let i = 0; i < 10; i++) {
     const child = Offspring.breed(mum, dad);
     if (child) check(child);

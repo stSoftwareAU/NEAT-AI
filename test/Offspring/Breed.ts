@@ -11,7 +11,7 @@ import { AddConnection } from "../../src/mutate/AddConnection.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("OffSpring", () => {
+Deno.test("Offspring.breed produces valid offspring from simple creature", () => {
   const creature = Creature.fromJSON({
     "neurons": [{
       "bias": 0,
@@ -61,7 +61,7 @@ Deno.test("OffSpring", () => {
   }
 });
 
-Deno.test("CrossOver", () => {
+Deno.test("Offspring.breed preserves output neuron types during crossover", () => {
   const a = Creature.fromJSON({
     "neurons": [
       {
@@ -158,18 +158,13 @@ Deno.test("CrossOver", () => {
     assertEquals(n.type, "output");
 
     if (n.squash === "IF") {
-      Deno.writeTextFileSync(
-        ".cross_over.json",
-        JSON.stringify(child.exportJSON(), null, 1),
-      );
-
       break;
     }
   }
 });
 
 Deno.test(
-  "Match on UUID",
+  "Offspring.breed carries parent output connections into offspring",
   () => {
     for (let i = 0; i < 12; i++) {
       check();
@@ -291,7 +286,7 @@ function check() {
 }
 
 Deno.test(
-  "Many Outputs",
+  "Offspring.breed handles creatures with many output neurons",
   () => {
     const creature: CreatureInternal = {
       neurons: [
@@ -434,7 +429,7 @@ Deno.test(
 );
 
 Deno.test(
-  "Copy Required Nodes",
+  "Offspring.breed includes required neurons from both parents",
   () => {
     const left = Creature.fromJSON(
       {

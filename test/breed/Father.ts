@@ -266,9 +266,6 @@ Deno.test("Genetic Integrity - No Matching Neurons", () => {
     toUUID: "hidden-0",
     weight: -1.3,
   });
-  console.info(nonMatchingMother);
-  Creature.fromJSON(nonMatchingMother).validate();
-
   Creature.fromJSON(nonMatchingMother).validate();
 
   // The expected output should be the same as the original father since no neurons match

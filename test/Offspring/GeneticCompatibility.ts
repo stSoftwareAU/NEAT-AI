@@ -1,12 +1,7 @@
 import { assert, assertAlmostEquals } from "@std/assert";
-import { emptyDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import { geneticCompatibility } from "../../src/breed/GeneticCompatibility.ts";
-
-const testDir = ".test/GeneticCompatibility";
-emptyDirSync(testDir);
 
 function three(idx: number) {
   const padded = "000" + idx;
@@ -99,26 +94,21 @@ function makeTestCreature(uuidPrefix: string): Creature {
 
   const creature = Creature.fromJSON(json);
   creature.validate();
-  CreatureUtil.makeUUID(creature);
-  Deno.writeTextFileSync(
-    `${testDir}/${uuidPrefix}.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
-  );
   return creature;
 }
 
-Deno.test("Genetic Compatibly Zero percent", () => {
+Deno.test("Genetic Compatibility Zero percent", () => {
   const parent = makeTestCreature("parent");
   const target = makeTestCreature("target");
 
-  const compatibly = geneticCompatibility(parent, target);
+  const compatibility = geneticCompatibility(parent, target);
   assert(
-    compatibly === 0,
-    `Genetic compatibility should be 0 was: ${compatibly}`,
+    compatibility === 0,
+    `Genetic compatibility should be 0 was: ${compatibility}`,
   );
 });
 
-Deno.test("Genetic Compatibly 100 percent", () => {
+Deno.test("Genetic Compatibility 100 percent", () => {
   const parent = makeTestCreature("parent");
   const exportJSON = parent.exportJSON();
 
@@ -147,12 +137,12 @@ Deno.test("Genetic Compatibly 100 percent", () => {
   const target = Creature.fromJSON(exportJSON);
   target.validate();
 
-  const compatibly = geneticCompatibility(parent, target);
+  const compatibility = geneticCompatibility(parent, target);
   assertAlmostEquals(
-    compatibly,
+    compatibility,
     1,
     0.0001,
-    `Genetic compatibility should be 1 was: ${compatibly}`,
+    `Genetic compatibility should be 1 was: ${compatibility}`,
   );
 });
 
