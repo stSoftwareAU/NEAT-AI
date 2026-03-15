@@ -4,29 +4,34 @@
  *
  * Issue #1694
  */
-import { assertIsError } from "@std/assert";
+import { assertEquals, assertIsError } from "@std/assert";
 import { requireWasmOrThrow } from "../../src/creature/CreatureActivation.ts";
 import { Creature } from "../../src/Creature.ts";
 import { WasmError } from "../../src/errors/WasmError.ts";
 
-Deno.test("requireWasmOrThrow - throws WasmError with correct type", () => {
-  // This test verifies the error is a WasmError when WASM is available
-  // but creature uses unsupported squash functions. Since WASM is available
-  // in the test environment, we test the unsupported-squash path by creating
-  // a creature that only uses standard squash functions - this should NOT throw.
+Deno.test("requireWasmOrThrow - does not throw for WASM-eligible creature", () => {
   const creature = new Creature(2, 1);
-  // Standard creature should not throw - WASM supports standard squash functions
-  requireWasmOrThrow(creature); // Should succeed
+  // Standard creature with standard squash functions should not throw
+  requireWasmOrThrow(creature);
+  // If we reach here, the function succeeded without throwing
 });
 
-Deno.test("requireWasmOrThrow - error is WasmError type when thrown", () => {
-  // Verify that WasmError class can be constructed correctly
+Deno.test("WasmError - has correct reason and is catchable by type", () => {
   const err = new WasmError(
-    "test",
+    "WASM module not loaded",
     "MODULE_NOT_LOADED",
   );
   assertIsError(err, WasmError);
-  if (err.reason !== "MODULE_NOT_LOADED") {
-    throw new Error(`Expected reason MODULE_NOT_LOADED, got ${err.reason}`);
-  }
+  assertEquals(err.reason, "MODULE_NOT_LOADED");
+  assertEquals(err.message, "WASM module not loaded");
+});
+
+Deno.test("WasmError - UNSUPPORTED_SQUASH reason is distinct from MODULE_NOT_LOADED", () => {
+  const loadErr = new WasmError("not loaded", "MODULE_NOT_LOADED");
+  const squashErr = new WasmError("bad squash", "UNSUPPORTED_SQUASH");
+
+  assertEquals(loadErr.reason, "MODULE_NOT_LOADED");
+  assertEquals(squashErr.reason, "UNSUPPORTED_SQUASH");
+  assertIsError(loadErr, WasmError);
+  assertIsError(squashErr, WasmError);
 });

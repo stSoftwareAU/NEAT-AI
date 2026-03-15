@@ -147,10 +147,6 @@ Deno.test("WASM scoring: synthetic dataset is finite and roughly matches JS", ()
 
   assert(Number.isFinite(wasmAvg), "WASM average error should be finite");
   assert(Number.isFinite(wasmScore), "WASM score should be finite");
-  assertAlmostEquals(
-    wasmAvg,
-    wasmAvg,
-    0,
-    "sanity: averageError should be stable within a run",
-  );
+  assert(wasmAvg >= 0, "WASM average error should be non-negative");
+  assert(wasmScore <= 1, "WASM score should not exceed 1");
 });

@@ -50,7 +50,6 @@ Deno.test("Score: Weight change should affect score", () => {
       maxConnection = c;
     }
   });
-  console.log(maxConnection);
 
   // Modify weight of a specific connection
   creature.synapses.forEach((c) => {
