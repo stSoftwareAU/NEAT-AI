@@ -281,11 +281,15 @@ Deno.test("CreatureState - collectNeuronErrors empty when no errors", () => {
   assertEquals(errors.size, 0);
 });
 
-Deno.test("CreatureState - cacheAdjustedActivation is a DenseNumberMap", () => {
+Deno.test("CreatureState - cacheAdjustedActivation stores and retrieves values", () => {
   const creature = new Creature(2, 1);
   const state = new CreatureState(creature);
 
-  // Should be initialised and usable
   state.cacheAdjustedActivation.set(0, 1.5);
   assertEquals(state.cacheAdjustedActivation.get(0), 1.5);
+
+  // Verify different indices are independent
+  state.cacheAdjustedActivation.set(1, -0.5);
+  assertEquals(state.cacheAdjustedActivation.get(0), 1.5);
+  assertEquals(state.cacheAdjustedActivation.get(1), -0.5);
 });

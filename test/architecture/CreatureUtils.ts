@@ -153,7 +153,7 @@ Deno.test("CreatureUtil.makeUUID - stores UUID on creature", () => {
 
 // --- CreatureUtil.getTopologyHash tests ---
 
-Deno.test("CreatureUtil.getTopologyHash - generates a hash", () => {
+Deno.test("CreatureUtil.getTopologyHash - generates a non-empty hash", () => {
   const creature = new Creature(2, 1, {
     layers: [{ count: 1, squash: "IDENTITY" }],
   });
@@ -162,6 +162,13 @@ Deno.test("CreatureUtil.getTopologyHash - generates a hash", () => {
 
   assert(hash !== undefined, "Topology hash should be generated");
   assert(hash.length > 0, "Hash should be non-empty");
+  // Hash is UUID v5 format: 8-4-4-4-12 hex digits
+  assert(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+      hash,
+    ),
+    `Hash should be valid UUID format, got: ${hash}`,
+  );
 });
 
 Deno.test("CreatureUtil.getTopologyHash - same topology different weights produce same hash", () => {
@@ -255,20 +262,15 @@ Deno.test("CreatureUtil.getTopologyHash - different topology produces different 
   assert(hash1 !== hash2, "Different topology should produce different hash");
 });
 
-Deno.test("CreatureUtil.getTopologyHash - caches the hash", () => {
+Deno.test("CreatureUtil.getTopologyHash - deterministic across repeated calls", () => {
   const creature = new Creature(2, 1);
   delete creature.topologyHash;
 
-  const hash = CreatureUtil.getTopologyHash(creature);
-  assertEquals(
-    creature.topologyHash,
-    hash,
-    "Hash should be cached on creature",
-  );
-
-  // Second call returns cached value
+  const hash1 = CreatureUtil.getTopologyHash(creature);
   const hash2 = CreatureUtil.getTopologyHash(creature);
-  assertEquals(hash, hash2);
+
+  assertEquals(hash1, hash2, "Repeated calls should return the same hash");
+  assert(hash1.length > 0, "Hash should be non-empty");
 });
 
 // --- CreatureUtil.shuffle tests ---

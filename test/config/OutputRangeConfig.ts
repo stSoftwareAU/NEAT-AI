@@ -97,13 +97,17 @@ Deno.test("OutputRangeConfig - negative ranges are valid", () => {
   assertEquals(config.outputRanges[0].max, -5);
 });
 
-Deno.test("OutputRangeConfig - config is immutable after creation", () => {
+Deno.test("OutputRangeConfig - config rejects property assignment after creation", () => {
   const config = createNeatConfig({
     outputRanges: [
       { min: 0, max: 1 },
     ],
   });
-  assertThrows(() => {
-    (config as Record<string, unknown>).outputRanges = [];
-  });
+  assertThrows(
+    () => {
+      (config as Record<string, unknown>).outputRanges = [];
+    },
+    TypeError,
+    "Cannot assign",
+  );
 });
