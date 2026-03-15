@@ -1,4 +1,4 @@
-import { assert } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
@@ -75,10 +75,15 @@ Deno.test("IF hidden neuron keeps an outward connection after fix", () => {
 
   const hiddenIndex = 3;
   const outwardBefore = creature.outwardConnections(hiddenIndex);
-  assert(
-    outwardBefore.length === 1 &&
-      outwardBefore[0].to === hiddenIndex,
-    "Precondition failed: expected only a self connection before fix()",
+  assertEquals(
+    outwardBefore.length,
+    1,
+    "Precondition: expected exactly one outward connection before fix()",
+  );
+  assertEquals(
+    outwardBefore[0].to,
+    hiddenIndex,
+    "Precondition: the only outward connection should be a self-connection",
   );
 
   creature.fix();
