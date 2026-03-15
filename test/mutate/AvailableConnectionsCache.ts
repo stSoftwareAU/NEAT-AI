@@ -236,13 +236,10 @@ Deno.test("AvailableConnectionsCache: available connections correct after discon
   creatureValidate(creature);
 
   // All returned connections should be forward-only and not already exist
-  const connectionSet = creature.getConnectionSet();
-  const neuronCount = creature.neurons.length;
   for (const [from, to] of available2) {
     assertGreater(to, from, `Connection ${from}->${to} should be forward-only`);
-    const key = from * neuronCount + to;
     assertEquals(
-      connectionSet.has(key),
+      creature.hasConnection(from, to),
       false,
       `Connection ${from}->${to} should not already exist`,
     );

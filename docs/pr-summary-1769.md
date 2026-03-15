@@ -3,67 +3,63 @@
 Audit all test files in `test/mutate/` for quality standards: uniqueness,
 behavioural testing, meaningful assertions, and organisation. Closes #1769.
 
-### Changes made
+### Changes made (this PR)
 
-1. **Removed duplicate `test/mutate/MutationStabilityTracker.ts`** (13 tests) —
-   every test case was a near-duplicate of
-   `test/NEAT/MutationStabilityTrackerBehavioural.ts` (21 tests), which provides
-   strictly more comprehensive coverage.
+6. **Strengthened conditional assertions in `test/mutate/AddBackCon.ts`**:
+   - Tests "should add a back connection" and "should delete memetic property"
+     had `if (changed)` guards that silently passed when mutation failed.
+   - Rewrote both to retry in a loop and assert that mutation succeeds at least
+     once, ensuring the assertion is always exercised.
 
-2. **Consolidated `test/mutate/SwapNodes.ts`** (3 tests) into
-   `test/mutate/SwapNeuronsBehavioural.ts` (7 tests):
-   - `SwapNodes-Constant` and `SwapNodes-Short` were duplicates of the existing
-     "returns false with fewer than 2 hidden neurons" tests.
-   - `SwapNodes-Valid` (UUID recomputation after swap) was a unique, valuable
-     test — merged into `SwapNeuronsBehavioural.ts` as "recomputed UUID changes
-     after successful swap".
-   - Fixed the existing UUID test which was checking a stale cached UUID instead
-     of recomputing it.
+7. **Removed implementation-detail checks in
+   `test/mutate/AddConnectionOptimisation.ts`**:
+   - Tests were asserting internal numeric key formula
+     (`from * neuronCount + to`) for the connection set, coupling tests to
+     internal representation.
+   - Replaced with `hasConnection()` public API assertions that verify the same
+     behaviour without depending on the internal key format.
 
-3. **Renamed `test/mutate/ConnectSpliceBenchmark.ts`** to
-   `test/mutate/ConnectSplice.ts` — per AGENTS.md convention to avoid
-   "Benchmark" in test file names (the file tests correctness, not performance).
-
-4. **Cleaned up implementation-detail tests in
+8. **Removed implementation-detail checks in
    `test/mutate/AvailableConnectionsCache.ts`**:
-   - Removed "returns cached results" test (only assertion was reference
-     equality — an implementation detail).
-   - Removed "isAvailableConnectionsCacheBuilt returns correct state" test
-     (tested internal cache state, not behaviour).
-   - Removed "cache invalidates after clearCache()" test (only tested reference
-     inequality).
-   - Removed reference-inequality assertions from remaining tests; replaced with
-     meaningful behavioural assertions (correct counts, valid connection
-     properties).
+   - Same numeric key formula pattern replaced with `hasConnection()` calls.
 
-5. **Consolidated `test/mutate/ModActivation.ts`** into
-   `test/mutate/ModSquashBehavioural.ts`:
-   - `ModActivation.ts` tested the same operator (ModSquash/ModActivation) as
-     `ModSquashBehavioural.ts` but in a separate file with a poorly named test
-     ("ModActivation-Constant").
-   - The unique constant-neuron scenario was preserved as "ModSquash: modifies
-     non-constant neurons when constant neurons are present" in
-     `ModSquashBehavioural.ts`.
-   - Improved test name to clearly describe the behaviour being verified.
+9. **Fixed meaningless tests in `test/mutate/SubBackCon.ts`**:
+   - "should convert neuron to constant" exited silently if the edge-case
+     scenario was never hit. Rewrote as "mutation always produces valid creature
+     even when neuron loses inward connections" with real assertions.
+   - "should handle focus list correctly" had no meaningful assertion. Rewrote
+     as "focus list restricts which connections can be removed" with assertion
+     that the back connection is preserved when excluded by focus.
+   - "should handle various network structures" had conditional assertion.
+     Rewrote with retry loop to ensure mutation actually succeeds.
+   - "should delete memetic property" had same conditional pattern — fixed.
+
+10. **Fixed meaningless tests in `test/mutate/SubConnection.ts`**:
+    - "should handle creature with minimal connections" had no assertion about
+      the mutation result. Rewrote as "creature remains valid after removing
+      from minimal network" with synapse count assertion.
+    - "should handle orphan cleanup after removal" ran 50 mutations with no
+      assertion about orphan cleanup. Rewrote to verify hidden neuron count
+      decreases after connection removal.
+
+### Changes made (prior PRs)
+
+1. Removed duplicate `test/mutate/MutationStabilityTracker.ts` (13 tests) —
+   superseded by `test/NEAT/MutationStabilityTrackerBehavioural.ts`.
+2. Consolidated `test/mutate/SwapNodes.ts` into `SwapNeuronsBehavioural.ts`.
+3. Renamed `ConnectSpliceBenchmark.ts` to `ConnectSplice.ts`.
+4. Cleaned up implementation-detail tests in `AvailableConnectionsCache.ts`.
+5. Consolidated `ModActivation.ts` into `ModSquashBehavioural.ts`.
 
 ### Cross-area duplicates noted
 
 - `test/NEAT/MutatorMutateCreature.ts` and `test/NEAT/MutatorBehavioural.ts`
-  test individual mutation operators (ADD_NODE, MOD_WEIGHT, etc.) at the
-  integration level. These are NOT duplicates of `test/mutate/` — they test the
-  Mutator orchestration layer, not the individual operators.
-- `test/NEAT/MutationStabilityTrackerBehavioural.ts` fully supersedes the
-  removed `test/mutate/MutationStabilityTracker.ts`.
-
-### Remaining 31 test files
-
-All remaining files in `test/mutate/` were reviewed and found to meet quality
-standards:
-
-- All tests verify behaviour/outcomes, not implementation details
-- All tests have meaningful assertions
-- Test names clearly describe the behaviour being verified
-- No further duplicates found
+  test individual mutation operators at the integration level. These are NOT
+  duplicates — they test the Mutator orchestration layer, not individual
+  operators.
+- `ModWeightRegularisation.ts` and `ModBiasRegularisation.ts` have similar
+  structure but test different operators (ModWeight vs ModBias) with different
+  config types. Not duplicates.
 
 ## Evidence
 
@@ -73,5 +69,5 @@ standards:
 ## Test Plan
 
 - Verified no test regressions: 4731 passed, 0 failed
-- The removed/consolidated tests' coverage is maintained by existing tests in
-  the suite
+- All rewritten tests exercise real mutation code with meaningful assertions
+- No tests removed — only rewritten to be more robust

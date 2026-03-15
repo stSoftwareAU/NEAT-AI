@@ -22,16 +22,11 @@ Deno.test("AddConnection: getConnectionSet returns correct existing connections"
   // That's 3 * 2 = 6 connections
   assertEquals(connectionSet.size, 6);
 
-  // Verify specific connections exist
-  // Input neurons are indices 0, 1, 2
-  // Output neurons are indices 3, 4 (since there are no hidden neurons)
-  // Issue #1659: connectionSet now uses numeric keys (from * neuronCount + to)
-  const neuronCount = creature.neurons.length;
+  // Verify specific connections exist via hasConnection (public API)
   for (let from = 0; from < 3; from++) {
     for (let to = 3; to < 5; to++) {
-      const key = from * neuronCount + to;
       assertEquals(
-        connectionSet.has(key),
+        creature.hasConnection(from, to),
         true,
         `Expected connection ${from}-${to} to exist`,
       );
@@ -81,8 +76,8 @@ Deno.test("AddConnection: getConnectionSet updates after adding connection", () 
   // Get updated connection set (should invalidate cache)
   const updatedSet = testCreature.getConnectionSet();
   assertEquals(updatedSet.size, 3);
-  // Issue #1659: numeric key = from * neuronCount + to = 0 * 4 + 3 = 3
-  assertEquals(updatedSet.has(0 * testCreature.neurons.length + 3), true);
+  // Verify the new connection is reported via the public API
+  assertEquals(testCreature.hasConnection(0, 3), true);
 });
 
 Deno.test("AddConnection: hasConnection provides O(1) lookup", () => {
@@ -244,13 +239,9 @@ Deno.test("AddConnection: getAvailableConnections returns valid pairs", () => {
   assertEquals(available.length, 3);
 
   // Verify that none of the available connections already exist
-  // Issue #1659: connectionSet now uses numeric keys (from * neuronCount + to)
-  const connectionSet = creature.getConnectionSet();
-  const neuronCount2 = creature.neurons.length;
   for (const [from, to] of available) {
-    const key = from * neuronCount2 + to;
     assertEquals(
-      connectionSet.has(key),
+      creature.hasConnection(from, to),
       false,
       `Connection ${from}-${to} should not already exist`,
     );
