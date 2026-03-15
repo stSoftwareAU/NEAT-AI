@@ -311,70 +311,11 @@ Deno.test(
   },
 );
 
-// ---------------------------------------------------------------------------
-// 8. No-match aliases (produces unchanged DNA)
-// ---------------------------------------------------------------------------
-
-Deno.test(
-  "editAliases - non-matching aliases produce unchanged DNA",
-  () => {
-    const dna: CrisprInterface = {
-      id: "no-match-alias-test",
-      mode: "insert",
-      neurons: [
-        { uuid: "neuron-a", type: "hidden", squash: "LOGISTIC", bias: 0 },
-      ],
-      synapses: [
-        { fromUUID: "neuron-a", toUUID: "output-0", weight: 1 },
-      ],
-    };
-
-    const aliases: Record<string, string> = {
-      "completely-unrelated-key": "replacement-value",
-      "another-miss": "other-value",
-    };
-
-    const result = CRISPR.editAliases(dna, aliases);
-
-    // Nothing should have changed.
-    assertEquals(result.neurons![0].uuid, "neuron-a");
-    assertEquals(result.synapses[0].fromUUID, "neuron-a");
-    assertEquals(result.synapses[0].toUUID, "output-0");
-    assertEquals(result.id, "no-match-alias-test");
-  },
-);
+// Tests 8-9 (editAliases no-match / empty aliases) removed as duplicates
+// of equivalent tests in test/CRISPR/Aliases.ts
 
 // ---------------------------------------------------------------------------
-// 9. Empty aliases map
-// ---------------------------------------------------------------------------
-
-Deno.test(
-  "editAliases - empty aliases map produces unchanged DNA",
-  () => {
-    const dna: CrisprInterface = {
-      id: "empty-aliases-test",
-      mode: "insert",
-      neurons: [
-        { uuid: "neuron-b", type: "hidden", squash: "LOGISTIC", bias: 0.5 },
-      ],
-      synapses: [
-        { fromUUID: "neuron-b", toUUID: "output-0", weight: 0.8 },
-      ],
-    };
-
-    const aliases: Record<string, string> = {};
-
-    const result = CRISPR.editAliases(dna, aliases);
-
-    assertEquals(result.neurons![0].uuid, "neuron-b");
-    assertEquals(result.synapses[0].fromUUID, "neuron-b");
-    assertEquals(result.synapses[0].toUUID, "output-0");
-    assertEquals(result.id, "empty-aliases-test");
-  },
-);
-
-// ---------------------------------------------------------------------------
-// 10. CRISPRs survive deepCloneAndShuffle round-trip (NeatOptions integration)
+// 8. CRISPRs survive deepCloneAndShuffle round-trip (NeatOptions integration)
 // ---------------------------------------------------------------------------
 
 Deno.test(

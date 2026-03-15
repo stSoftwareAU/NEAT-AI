@@ -3,8 +3,6 @@ import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { Creature } from "../../src/Creature.ts";
 
 Deno.test("Custom cost function is called during evolution", async () => {
-  console.log("Testing custom cost function during evolution...");
-
   const directory = ".test/customCost";
   Deno.mkdir(directory, { recursive: true });
   const touchFile = `${directory}/.touched`;
@@ -42,17 +40,14 @@ Deno.test("Custom cost function is called during evolution", async () => {
       },
     };
 
-    console.log("Starting evolution with custom cost function...");
     const result = await creature.evolveDataSet(dataSet, options);
-    console.log("Evolution completed:", result);
+    void result;
 
     // Check if the touch file was created
     try {
       const fileInfo = await Deno.stat(touchFile);
-      console.log("✅ Touch file was created at:", fileInfo.mtime);
       assert(fileInfo.size > 0, "Touch file should not be empty");
-    } catch (error) {
-      console.log("❌ Touch file was NOT created:", error);
+    } catch {
       assert(
         false,
         "Custom cost function was not called - touch file not created",
