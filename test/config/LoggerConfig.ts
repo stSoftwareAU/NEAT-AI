@@ -7,13 +7,14 @@ import {
   SILENT_LOGGER,
 } from "../../src/utils/Logger.ts";
 
-Deno.test("LoggerConfig - default logger is created when not specified", () => {
+Deno.test("LoggerConfig - default logger is created and callable", () => {
   const config = createNeatConfig({});
   assert(config.logger !== undefined, "Logger should be defined");
-  assert(typeof config.logger.info === "function");
-  assert(typeof config.logger.warn === "function");
-  assert(typeof config.logger.error === "function");
-  assert(typeof config.logger.debug === "function");
+  // Verify the logger is callable (does not throw)
+  config.logger.info("test");
+  config.logger.warn("test");
+  config.logger.error("test");
+  config.logger.debug("test");
 });
 
 Deno.test("LoggerConfig - custom logger is used when provided", () => {
@@ -120,11 +121,15 @@ Deno.test("LoggerConfig - logLevel is ignored when custom logger is provided", (
   assertEquals(messages, ["debug", "info"]);
 });
 
-Deno.test("LoggerConfig - config is immutable after creation", () => {
+Deno.test("LoggerConfig - config rejects property assignment after creation", () => {
   const config = createNeatConfig({});
-  assertThrows(() => {
-    (config as Record<string, unknown>).logger = {};
-  });
+  assertThrows(
+    () => {
+      (config as Record<string, unknown>).logger = {};
+    },
+    TypeError,
+    "Cannot assign",
+  );
 });
 
 Deno.test("LoggerConfig - default logLevel is info", () => {

@@ -147,11 +147,15 @@ Deno.test("WorkerThreadCapConfig - backwards compatible when not set", () => {
   assertEquals(config.threads, expected);
 });
 
-Deno.test("WorkerThreadCapConfig - config is frozen and immutable", () => {
+Deno.test("WorkerThreadCapConfig - config rejects property assignment after creation", () => {
   const config = createNeatConfig({
     workerThreadCap: { maxMemoryMB: 8192 },
   });
-  assertThrows(() => {
-    (config as Record<string, unknown>).workerThreadCap = {};
-  });
+  assertThrows(
+    () => {
+      (config as Record<string, unknown>).workerThreadCap = {};
+    },
+    TypeError,
+    "Cannot assign",
+  );
 });

@@ -10,7 +10,11 @@
  * - NeuronActivationInterface path (IF-branched network)
  */
 
-import { assertEquals } from "@std/assert";
+import {
+  assertEquals,
+  assertGreaterOrEqual,
+  assertLessOrEqual,
+} from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { noChangePropagate } from "../../src/architecture/NoChangePropagate.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
@@ -135,14 +139,14 @@ Deno.test("noChangePropagate - traces activation value", () => {
   noChangePropagate(outputNeuron, 0.75, config);
 
   // traceActivation updates min/max
-  assertEquals(
-    ns.maximumActivation >= 0.75,
-    true,
+  assertGreaterOrEqual(
+    ns.maximumActivation,
+    0.75,
     "maximumActivation should track traced value",
   );
-  assertEquals(
-    ns.minimumActivation <= 0.75,
-    true,
+  assertLessOrEqual(
+    ns.minimumActivation,
+    0.75,
     "minimumActivation should track traced value",
   );
 });

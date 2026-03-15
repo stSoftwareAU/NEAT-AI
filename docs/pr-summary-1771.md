@@ -1,61 +1,66 @@
 ## Summary
 
-Second-pass audit of all test files in `test/config/`, `test/validate/`, and
+Third-pass audit of all test files in `test/config/`, `test/validate/`, and
 `test/architecture/` (46 files, ~400+ test cases) addressing remaining quality
-issues found after PR #1817. Closes #1771.
+issues found after PRs #1817 and #1818. Closes #1771.
 
 ### Changes Made
 
-**Duplicate tests removed (10 tests across 3 files):**
+**"How" tests rewritten as "what" tests (6 tests across 5 files):**
 
-- `NeatArguments.ts`: Removed 5 tests that duplicated coverage already in
-  `ConfigurationGuideDefaults.ts` and individual config test files:
-  - "default config has all required top-level fields" (just typeof checks)
-  - "default config has all sub-object configs" (just existence checks)
-  - "sub-object configs match their defaults" (duplicated by individual tests)
-  - "default boolean fields have expected values" (duplicated by ConfigurationGuideDefaults)
-  - "default numeric fields have expected values" (duplicated by ConfigurationGuideDefaults)
-- `NeatConfigParseOptions.ts`: Removed 4 duplicate tests:
-  - "discoverySampleRate default is 0.2" (duplicated by "missing uses default")
-  - "discoveryRecordTimeOutMinutes default is 5" (duplicated by "missing uses default")
-  - "discoverySampleRate explicit override still works" (covered by other tests)
-  - "discoveryRecordTimeOutMinutes explicit override still works" (consolidated)
-- `FeedbackLoopCondition.ts`: Removed "feedbackLoop false rejects recursive
-  synapses" (identical test already in `CreatureValidate.ts`)
+- `LoggerConfig.ts`: Replaced `typeof` checks on logger methods with
+  behavioural test that calls each method; renamed immutability test from
+  internal detail to behaviour-focused name with `TypeError`/`"Cannot assign"`
+  assertion
+- `NeatArguments.ts`: Replaced `typeof config.logger.info` and
+  `typeof config.rng.random` checks with actual calls verifying the logger and
+  rng are callable and produce valid results
+- `WorkerThreadCapConfig.ts`: Renamed immutability test and added
+  `TypeError`/`"Cannot assign"` assertion (consistent with LoggerConfig)
+- `OutputRangeConfig.ts`: Same immutability test rename and assertion
+  strengthening
+- `CreatureState.ts`: Renamed "cacheAdjustedActivation is a DenseNumberMap"
+  to "stores and retrieves values" — tests behaviour not type
 
-**"How" tests rewritten as "what" tests (2 tests):**
+**Implementation-detail tests rewritten as behavioural tests (4 tests):**
 
-- `LoggerConfig.ts`: Replaced `Object.isFrozen(config)` check with behaviour
-  test that asserts property assignment throws
-- `OutputRangeConfig.ts`: Same `Object.isFrozen` to behaviour test rewrite
+- `Score.ts`: Rewrote `updateScoreForWeightChange` "basic incremental update"
+  to verify incremental result matches full recalculation (was only checking
+  `Number.isFinite`)
+- `Score.ts`: Rewrote "new weight exceeding max updates max" from checking
+  internal `cachedScoreComponents.maxWeightBias` field to verifying large
+  weight increase lowers score
+- `Score.ts`: Same two rewrites for `updateScoreForBiasChange`
+- `Score.ts`: Rewrote "computes cache if not present" to verify score matches
+  full recalculation (was only checking cache existence)
+- `Score.ts`: Strengthened "uses cached score components on second call" by
+  adding cache-cleared recalculation verification
 
-**Assertion quality improved (3 files):**
+**Assertion anti-patterns fixed (1 file):**
 
-- `NeatOptionsRuntimeValidation.ts`: Replaced 3 manual `if/throw` checks
-  with proper `assertEquals` assertions
-- `NeatConfigParseOptions.ts`: Replaced 5 `try/catch/fail` blocks with
-  `assertThrows`/`assertStringIncludes` for cleaner error validation
-- `AdaptiveMutationThresholds.ts`: Replaced 2 `try/catch/fail` blocks with
-  `assertThrows`
+- `NoChangePropagate.ts`: Replaced `assertEquals(bool, true)` with proper
+  `assertGreaterOrEqual`/`assertLessOrEqual` assertions
 
-**Duplicate tests consolidated (1 test):**
+**Weak assertions strengthened (2 files):**
 
-- `ActivationRange.ts`: Merged two near-identical validate rejection tests
-  (with and without neuron index) into a single test
+- `NeatArguments.ts`: Replaced `assertNotEquals(x, undefined)` with positive
+  assertions (`assert(x.length > 0)`, `assert(rng.random() >= 0)`)
+- `CreatureUtils.ts`: Added UUID format validation to topology hash test;
+  renamed "caches the hash" to "deterministic across repeated calls"
 
 ### Cross-area duplicates
 
-- No cross-area duplicates found between `test/config/` and `test/validate/`
+- No new cross-area duplicates found
 
 ## Evidence
 
 - All 4555 tests pass
 - `./quality.sh` passes cleanly (lint, format, type-check, tests)
-- Net reduction: 254 lines removed, 8 files changed
+- 9 files changed across `test/config/`, `test/architecture/`
 
 ## Test Plan
 
 - All 46 test files in `test/config/`, `test/validate/`, and
-  `test/architecture/` reviewed
+  `test/architecture/` re-reviewed
 - Verified no regressions: full test suite (4555 tests) passes
 - All remaining tests verify behaviour, not implementation details
