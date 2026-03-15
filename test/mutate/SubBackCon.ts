@@ -96,8 +96,10 @@ Deno.test("SubBackCon - should remove back connection successfully", () => {
   );
 });
 
-Deno.test("SubBackCon - should remove completely disconnected hidden neuron", () => {
-  // Create a creature where removing the back connection leaves a neuron disconnected
+Deno.test("SubBackCon - should remove or convert disconnected hidden neuron after mutation", () => {
+  // Create a creature where the hidden neuron's only outward connection
+  // is the back connection. Removing it leaves hidden with no outward path,
+  // so fix() should remove or convert the neuron.
   const creature = Creature.fromJSON({
     neurons: [
       {
@@ -114,11 +116,8 @@ Deno.test("SubBackCon - should remove completely disconnected hidden neuron", ()
       },
     ],
     synapses: [
-      // Only connection to hidden is from input
       { from: 0, to: 2, weight: 1.0 },
-      // Hidden to output - if we remove this, hidden has no outward
       { from: 2, to: 3, weight: 0.8 },
-      // Alternative path to output
       { from: 1, to: 3, weight: 0.9 },
     ],
     input: 2,
@@ -127,24 +126,33 @@ Deno.test("SubBackCon - should remove completely disconnected hidden neuron", ()
 
   creatureValidate(creature);
 
-  // Run mutations until we get the scenario we want
-  let attempts = 0;
-  const maxAttempts = 100;
-  let foundScenario = false;
+  let neuronCleanedUp = false;
 
-  while (attempts < maxAttempts && !foundScenario) {
+  for (let attempts = 0; attempts < 100; attempts++) {
     const testCreature = Creature.fromJSON(creature.exportJSON());
+    const hiddenCountBefore = testCreature.neurons.filter((n) =>
+      n.type === "hidden"
+    ).length;
+
     const mutator = new SubBackCon(testCreature);
     const changed = mutator.mutate();
 
+    creatureValidate(testCreature);
+
     if (changed) {
-      creatureValidate(testCreature);
-      foundScenario = true;
+      const hiddenCountAfter =
+        testCreature.neurons.filter((n) => n.type === "hidden").length;
+      if (hiddenCountAfter < hiddenCountBefore) {
+        neuronCleanedUp = true;
+        break;
+      }
     }
-    attempts++;
   }
 
-  assert(foundScenario, "Should be able to mutate within max attempts");
+  assert(
+    neuronCleanedUp,
+    "Disconnected hidden neuron should be removed or converted after back connection removal",
+  );
 });
 
 Deno.test("SubBackCon - mutation always produces valid creature even when neuron loses inward connections", () => {

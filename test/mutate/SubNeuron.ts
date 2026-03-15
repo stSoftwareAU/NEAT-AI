@@ -57,7 +57,8 @@ Deno.test("SubNeuron - should return false when no removable neurons exist", () 
 });
 
 Deno.test("SubNeuron - should handle cascade removal of orphaned neurons", () => {
-  // Create a chain where removing one neuron orphans another
+  // Create a chain: input->hidden1->hidden2->output, plus direct input->output.
+  // Removing hidden1 orphans hidden2 (no inward connections), so both should go.
   const creature = Creature.fromJSON({
     neurons: [
       { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 2 },
@@ -76,13 +77,33 @@ Deno.test("SubNeuron - should handle cascade removal of orphaned neurons", () =>
 
   creatureValidate(creature);
 
-  // Run multiple attempts to hit the cascade path
+  let cascadeOccurred = false;
   for (let i = 0; i < 50; i++) {
     const testCreature = Creature.fromJSON(creature.exportJSON());
+    const hiddenCountBefore = testCreature.neurons.filter((n) =>
+      n.type === "hidden"
+    ).length;
+
     const mutator = new SubNeuron(testCreature);
-    mutator.mutate();
+    const changed = mutator.mutate();
+
     creatureValidate(testCreature);
+
+    if (changed) {
+      const hiddenCountAfter =
+        testCreature.neurons.filter((n) => n.type === "hidden").length;
+      // If more than one hidden neuron was removed, cascade cleanup occurred
+      if (hiddenCountBefore - hiddenCountAfter > 1) {
+        cascadeOccurred = true;
+        break;
+      }
+    }
   }
+
+  assert(
+    cascadeOccurred,
+    "Should cascade-remove orphaned neurons when removing their only source",
+  );
 });
 
 Deno.test("SubNeuron - stress test produces valid creatures", () => {
@@ -117,29 +138,51 @@ Deno.test("SubNeuron - stress test produces valid creatures", () => {
 });
 
 Deno.test("SubNeuron - focus list limits removable neurons", () => {
-  const creature = Creature.fromJSON({
-    neurons: [
-      { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 2 },
-      { type: "hidden", squash: "LOGISTIC", bias: 0.3, index: 3 },
-      { type: "output", squash: "LOGISTIC", bias: 0.1, index: 4 },
-    ],
-    synapses: [
-      { from: 0, to: 2, weight: 1.0 },
-      { from: 1, to: 3, weight: 1.0 },
-      { from: 2, to: 4, weight: 0.8 },
-      { from: 3, to: 4, weight: 0.9 },
-    ],
-    input: 2,
-    output: 1,
-  });
+  let mutationSucceeded = false;
 
-  creatureValidate(creature);
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const creature = Creature.fromJSON({
+      neurons: [
+        { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 2 },
+        { type: "hidden", squash: "LOGISTIC", bias: 0.3, index: 3 },
+        { type: "output", squash: "LOGISTIC", bias: 0.1, index: 4 },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 1.0 },
+        { from: 1, to: 3, weight: 1.0 },
+        { from: 2, to: 4, weight: 0.8 },
+        { from: 3, to: 4, weight: 0.9 },
+      ],
+      input: 2,
+      output: 1,
+    });
 
-  // Focus only on one neuron
-  const mutator = new SubNeuron(creature);
-  mutator.mutate([2]);
+    creatureValidate(creature);
 
-  creatureValidate(creature);
+    // Focus only on neuron at index 2 — neuron at index 3 should not be removed
+    const mutator = new SubNeuron(creature);
+    const changed = mutator.mutate([2]);
+
+    creatureValidate(creature);
+
+    if (changed) {
+      // Verify the non-focused neuron (index 3) was preserved
+      const hasNeuron3 = creature.neurons.some((n) =>
+        n.type === "hidden" && n.bias === 0.3
+      );
+      assert(
+        hasNeuron3,
+        "Non-focused hidden neuron should be preserved when focus list excludes it",
+      );
+      mutationSucceeded = true;
+      break;
+    }
+  }
+
+  assert(
+    mutationSucceeded,
+    "SubNeuron with focus list should succeed within 50 attempts",
+  );
 });
 
 Deno.test("SubNeuron - can remove constant neurons", () => {
