@@ -8,7 +8,7 @@ import { STEP } from "../../../src/methods/activations/types/STEP.ts";
 import { simplify } from "../../../src/optimize/Simplify.ts";
 import { ReLU6 } from "../../../src/methods/activations/types/ReLU6.ts";
 
-Deno.test("ABSOLUTE", () => {
+Deno.test("simplify - ABSOLUTE squash with mixed activation chain preserves behaviour", () => {
   const directory = ".test/optimize/simplify/ABSOLUTE";
   Deno.mkdirSync(directory, { recursive: true });
 

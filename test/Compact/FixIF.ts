@@ -73,7 +73,7 @@ function makeData() {
   return inputs;
 }
 
-Deno.test("FixIF", () => {
+Deno.test("compactUnused - behaviour preserved when IF-type neuron is compacted", () => {
   const creature = makeCreature();
   const data = makeData();
 

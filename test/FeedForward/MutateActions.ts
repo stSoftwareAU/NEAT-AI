@@ -42,7 +42,7 @@ function makeCreature() {
   return creature;
 }
 
-Deno.test("FeedForward only", () => {
+Deno.test("FeedForward mode excludes recurrent mutation methods", () => {
   const creature = makeCreature();
 
   const config = createNeatConfig({});
@@ -62,7 +62,7 @@ Deno.test("FeedForward only", () => {
   }
 });
 
-Deno.test("memory enabled", () => {
+Deno.test("FeedbackLoop mode includes recurrent mutation methods", () => {
   const creature = makeCreature();
 
   const config = createNeatConfig({

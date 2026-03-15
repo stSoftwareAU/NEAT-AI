@@ -5,9 +5,7 @@ import { simplify } from "../../../src/optimize/Simplify.ts";
 import { TAN } from "../../../src/methods/activations/types/TAN.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
-((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
-
-Deno.test("TAN", () => {
+Deno.test("simplify - TAN squash with varied biases preserves behaviour", () => {
   const directory = ".test/optimize/simplify/TAN";
   Deno.mkdirSync(directory, { recursive: true });
 

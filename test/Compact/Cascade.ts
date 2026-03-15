@@ -52,7 +52,7 @@ function makeData() {
   return inputs;
 }
 
-Deno.test("CompactCascade", () => {
+Deno.test("compactUnused - behaviour preserved with cascading Cosine/CLIPPED removals", () => {
   const traceDir = ".trace/compact/cascade";
   ensureDirSync(traceDir);
   const data = makeData();

@@ -1,12 +1,10 @@
-import { assert, assertAlmostEquals, fail } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 
-((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
-
-Deno.test("Constant", () => {
+Deno.test("activate - constant neuron contributes correct value to IDENTITY output", () => {
   const directory = ".test/optimize/activate/Constant";
   Deno.mkdirSync(directory, { recursive: true });
 
@@ -57,22 +55,11 @@ Deno.test("Constant", () => {
     const expected = a * Math.E + b * -Math.LOG2E + c * Math.SQRT1_2 +
       Math.PI * 2 + Math.LN2;
 
-    const delta = expected - actual0;
-    if (Math.abs(delta) > 0.000_005) {
-      console.info(
-        "Expected: " + expected + ", actual: " + actual0 + ", delta: ",
-        delta,
-        data,
-      );
-      fail(
-        p + ") Expected: " + expected + ", actual: " + actual0 + ", delta: " +
-          delta,
-      );
-    }
+    assertAlmostEquals(expected, actual0, 0.000_005, `iteration ${p}`);
   }
 });
 
-Deno.test("Constant-max", () => {
+Deno.test("activate - constant neuron contributes correct value to MAXIMUM output", () => {
   const directory = ".test/optimize/activate/Constant-max";
   Deno.mkdirSync(directory, { recursive: true });
 
@@ -124,17 +111,6 @@ Deno.test("Constant-max", () => {
       Math.max(a * Math.E, b * -Math.LOG2E, c * Math.SQRT1_2, Math.PI * 2) +
       Math.LN2;
 
-    const delta = expected - actual0;
-    if (Math.abs(delta) > 0.000_005) {
-      console.info(
-        "Expected: " + expected + ", actual: " + actual0 + ", delta: ",
-        delta,
-        data,
-      );
-      fail(
-        p + ") Expected: " + expected + ", actual: " + actual0 + ", delta: " +
-          delta,
-      );
-    }
+    assertAlmostEquals(expected, actual0, 0.000_005, `iteration ${p}`);
   }
 });

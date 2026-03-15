@@ -1,12 +1,10 @@
-import { assert, assertAlmostEquals, fail } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 
-((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
-
-Deno.test("IF", () => {
+Deno.test("activate - IF squash with condition/positive/negative branches executes correctly", () => {
   const json: CreatureExport = {
     neurons: [
       { bias: -Math.LN10, type: "hidden", squash: "IF", uuid: "hidden-0" },
@@ -74,18 +72,7 @@ Deno.test("IF", () => {
     const hidden = (condition > 0 ? b * -1 : (c + d * Math.E)) - Math.LN10;
     const expected = Math.tanh(hidden * Math.PI + Math.SQRT2);
 
-    const delta = expected - actual0;
     // Tolerance relaxed from 1e-6 to 2e-6 to accommodate f32 precision in WASM activation.
-    if (Math.abs(delta) > 0.000_002) {
-      console.info(
-        "Expected: " + expected + ", actual: " + actual0 + ", delta: ",
-        delta,
-        data,
-      );
-      fail(
-        p + ") Expected: " + expected + ", actual: " + actual0 + ", delta: " +
-          delta,
-      );
-    }
+    assertAlmostEquals(expected, actual0, 0.000_002, `iteration ${p}`);
   }
 });

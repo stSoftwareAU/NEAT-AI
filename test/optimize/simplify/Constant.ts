@@ -11,9 +11,7 @@ import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
 import { simplify } from "../../../src/optimize/Simplify.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
-((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
-
-Deno.test("Constant", () => {
+Deno.test("simplify - constant neurons folded into multi-squash network preserving behaviour", () => {
   const directory = ".test/optimize/simplify/Constant";
   Deno.mkdirSync(directory, { recursive: true });
 
@@ -194,7 +192,7 @@ Deno.test("Constant", () => {
   }
 });
 
-Deno.test("Constant-1", () => {
+Deno.test("simplify - constant neuron folded into LOGISTIC hidden layers preserving behaviour", () => {
   const directory = ".test/optimize/simplify/Constant-1";
   Deno.mkdirSync(directory, { recursive: true });
   const json: CreatureExport = {
@@ -263,7 +261,7 @@ Deno.test("Constant-1", () => {
   );
   const simplifiedCreature = simplify(complex);
   assert(simplifiedCreature);
-  simplifiedCreature.DEBUG = false;
+
   Deno.writeTextFileSync(
     `${directory}/simplified.json`,
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
@@ -288,7 +286,7 @@ Deno.test("Constant-1", () => {
   }
 });
 
-Deno.test("Constant-2", () => {
+Deno.test("simplify - multiple minimal-weight constants folded preserving behaviour", () => {
   const directory = ".test/optimize/simplify/Constant-2";
   Deno.mkdirSync(directory, { recursive: true });
   const json: CreatureExport = {
@@ -367,7 +365,7 @@ Deno.test("Constant-2", () => {
   );
   const simplifiedCreature = simplify(complex);
   assert(simplifiedCreature);
-  simplifiedCreature.DEBUG = false;
+
   Deno.writeTextFileSync(
     `${directory}/simplified.json`,
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
@@ -392,7 +390,7 @@ Deno.test("Constant-2", () => {
   }
 });
 
-Deno.test("Constant-3", () => {
+Deno.test("simplify - simple constant propagation to IDENTITY outputs preserving behaviour", () => {
   const directory = ".test/optimize/simplify/Constant-3";
   Deno.mkdirSync(directory, { recursive: true });
   const json: CreatureExport = {
@@ -445,7 +443,7 @@ Deno.test("Constant-3", () => {
   );
   const simplifiedCreature = simplify(complex);
   assert(simplifiedCreature);
-  simplifiedCreature.DEBUG = false;
+
   Deno.writeTextFileSync(
     `${directory}/simplified.json`,
     JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
