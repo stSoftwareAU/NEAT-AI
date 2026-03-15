@@ -161,12 +161,11 @@ Audit WASM and activation function tests (~44 files, ~503 test cases) across
 **Strengthened weak assertions:**
 
 - `test/wasm/EphemeralActivation.ts`: Replaced `assertEquals(x >= 0, true)` and
-  `assertEquals(x > y, true)` with direct `assert(x >= 0)` and
-  `assert(x > y)`.
+  `assertEquals(x > y, true)` with direct `assert(x >= 0)` and `assert(x > y)`.
 
 - `test/wasm/WasmCompiledNetworkType.ts`: Replaced `assert(num_neurons > 0)`
-  with `assertEquals(num_inputs, 2)` and `assert(num_neurons >= 3)` for a
-  known (2,1) creature topology.
+  with `assertEquals(num_inputs, 2)` and `assert(num_neurons >= 3)` for a known
+  (2,1) creature topology.
 
 - `test/wasm/WasmOnlyActivation.ts`: Added round-trip verification to unSquash
   test (`squash(unSquash(squash(x))) ≈ squash(x)`). Added new
