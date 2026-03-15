@@ -1,4 +1,4 @@
-import { assertAlmostEquals, fail } from "@std/assert";
+import { fail } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 
