@@ -188,10 +188,31 @@ Deno.test("AddBackCon - focus list limits available connections", () => {
   });
 
   creatureValidate(creature);
+  const synapsesBeforeCount = creature.synapses.length;
 
   // Only focus on output neuron (index 4), which limits available pairs
   const mutator = new AddBackCon(creature);
-  mutator.mutate([4]);
+  const changed = mutator.mutate([4]);
 
   creatureValidate(creature);
+
+  if (changed) {
+    // If mutation succeeded, a new synapse should have been added
+    assertEquals(
+      creature.synapses.length,
+      synapsesBeforeCount + 1,
+      "Should have one more synapse after successful mutation",
+    );
+
+    // Any new back connection should involve a neuron in focus (or transitively)
+    const newSynapses = creature.synapses.filter(
+      (s) =>
+        s.from === 3 && s.to === 2 || s.from === 4 && s.to === 2 ||
+        s.from === 4 && s.to === 3,
+    );
+    assert(
+      newSynapses.length > 0,
+      "New back connection should involve neurons related to focus list",
+    );
+  }
 });

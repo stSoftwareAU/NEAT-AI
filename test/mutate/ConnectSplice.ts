@@ -1,9 +1,8 @@
 /**
- * Benchmark test for issue #1093: Use splice() instead of slice/spread in connect() method
+ * Correctness tests for connect() method (issue #1093).
  *
- * This test verifies:
- * 1. Correctness: connect() maintains correct synapse ordering
- * 2. Performance: Measures improvement from splice() vs slice/spread approach
+ * Verifies that connect() maintains correct synapse ordering
+ * when inserting at various positions in the synapses array.
  */
 import { assert, assertEquals, assertGreater } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
@@ -32,7 +31,7 @@ function verifySynapseOrdering(creature: Creature): void {
   }
 }
 
-Deno.test("connect(): maintains correct synapse ordering with splice", () => {
+Deno.test("connect(): maintains correct synapse ordering after multiple insertions", () => {
   // Create a minimal creature with controlled structure
   const json = {
     input: 3,
