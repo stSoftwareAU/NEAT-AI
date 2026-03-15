@@ -80,60 +80,68 @@ Audit WASM and activation function tests (~44 files, ~503 test cases) across
 
 **Converted silent test skips to assertions (30+ occurrences):**
 
-- `test/wasm/FusedCostScoring.ts`: Replaced 7 `if (!isWasmActivationAvailable()) return`
-  silent skips with `assert(isWasmActivationAvailable(), ...)`. WASM is required,
-  so unavailability should fail the test, not silently pass.
+- `test/wasm/FusedCostScoring.ts`: Replaced 7
+  `if (!isWasmActivationAvailable()) return` silent skips with
+  `assert(isWasmActivationAvailable(), ...)`. WASM is required, so
+  unavailability should fail the test, not silently pass.
 
-- `test/wasm/FusedCostScoring8Way.ts`: Same fix for 11 silent WASM availability skips.
+- `test/wasm/FusedCostScoring8Way.ts`: Same fix for 11 silent WASM availability
+  skips.
 
-- `test/wasm/WasmPersistentTrainingState.ts`: Replaced 13 `if (!wasInit) return` and
-  `if (!persistent) { freeTrainingState(); return; }` silent skips with
+- `test/wasm/WasmPersistentTrainingState.ts`: Replaced 13 `if (!wasInit) return`
+  and `if (!persistent) { freeTrainingState(); return; }` silent skips with
   `assert(wasInit, ...)` and `assertExists(persistent, ...)`. Also strengthened
   `assertEquals(X > 0, true, ...)` to `assert(X > 0, ...)`.
 
-- `test/wasm/WasmRangeValidation.ts`: Replaced 4 `if (squashType === undefined) continue`
-  silent skips with `assert(squashType !== undefined, ...)`.
+- `test/wasm/WasmRangeValidation.ts`: Replaced 4
+  `if (squashType === undefined) continue` silent skips with
+  `assert(squashType !== undefined, ...)`.
 
 - `test/methods/activations/SafeZoneAdjustment.ts`: Replaced 2
   `if (!hasSafeZone(activation)) return` silent skips with
-  `assert(hasSafeZone(activation), ...)` — these activations are explicitly listed
-  as having safeZone, so a missing implementation should fail.
+  `assert(hasSafeZone(activation), ...)` — these activations are explicitly
+  listed as having safeZone, so a missing implementation should fail.
 
 **Strengthened weak assertions:**
 
-- `test/wasm/EnsureWasmActivation.ts`: Replaced `typeof result === "number" && isFinite(result)`
-  with `assertAlmostEquals(result, Math.tanh(0.5), 1e-3)` — verifies the WASM squash
+- `test/wasm/EnsureWasmActivation.ts`: Replaced
+  `typeof result === "number" && isFinite(result)` with
+  `assertAlmostEquals(result, Math.tanh(0.5), 1e-3)` — verifies the WASM squash
   function returns the correct mathematical value, not just any number.
 
-- `test/wasm/WasmOnlyActivation.ts`: Added specific value checks for 12 well-known
-  activations (IDENTITY, TANH, LOGISTIC, ReLU, STEP, ABSOLUTE, SQUARE, COMPLEMENT,
-  BIPOLAR) instead of only checking `Number.isFinite(result)`. Also strengthened
-  metadata test to verify `range.low <= range.high` and `mutationProbability >= 0`.
+- `test/wasm/WasmOnlyActivation.ts`: Added specific value checks for 12
+  well-known activations (IDENTITY, TANH, LOGISTIC, ReLU, STEP, ABSOLUTE,
+  SQUARE, COMPLEMENT, BIPOLAR) instead of only checking
+  `Number.isFinite(result)`. Also strengthened metadata test to verify
+  `range.low <= range.high` and `mutationProbability >= 0`.
 
-- `test/wasm/WasmCompiledNetworkType.ts`: Replaced 3 `isFinite(output)` checks with
-  cross-method equivalence assertions (`activate_into` and `activate_view` now verify
-  output matches `activate`). Strengthened `activate_and_trace` to assert trace length
-  matches neuron count. Replaced `typeof` property checks with actual value verification.
+- `test/wasm/WasmCompiledNetworkType.ts`: Replaced 3 `isFinite(output)` checks
+  with cross-method equivalence assertions (`activate_into` and `activate_view`
+  now verify output matches `activate`). Strengthened `activate_and_trace` to
+  assert trace length matches neuron count. Replaced `typeof` property checks
+  with actual value verification.
 
-- `test/wasm/FFICleanupLifecycle.ts`: Replaced conditional `if (versionAfter !== undefined)`
-  guard with `assert(versionAfter !== undefined, ...)` — if the library reopens, it
-  must return a version.
+- `test/wasm/FFICleanupLifecycle.ts`: Replaced conditional
+  `if (versionAfter !== undefined)` guard with
+  `assert(versionAfter !== undefined, ...)` — if the library reopens, it must
+  return a version.
 
 - `test/methods/activations/SquashDerivative.ts`: Replaced 16 verbose
   `assertEquals(X < Y, true)` patterns with proper `assert(X < Y, msg)` or
-  `assertAlmostEquals` with known mathematical values. Strengthened GAUSSIAN, LOGISTIC,
-  TANH, SOFTSIGN, Softplus, LogSigmoid tests.
+  `assertAlmostEquals` with known mathematical values. Strengthened GAUSSIAN,
+  LOGISTIC, TANH, SOFTSIGN, Softplus, LogSigmoid tests.
 
-- `test/methods/activations/Activations.ts`: Replaced `assertEquals(typeof X, "string")`
-  with `assertEquals(X, name)` for round-trip verification. Replaced
-  `assertEquals(name !== "IDENTITY", true)` with `assertNotEquals(name, "IDENTITY")`.
-  Strengthened range property test to verify `range.low <= range.high`.
+- `test/methods/activations/Activations.ts`: Replaced
+  `assertEquals(typeof X, "string")` with `assertEquals(X, name)` for round-trip
+  verification. Replaced `assertEquals(name !== "IDENTITY", true)` with
+  `assertNotEquals(name, "IDENTITY")`. Strengthened range property test to
+  verify `range.low <= range.high`.
 
 - `test/methods/Selection.ts`: Replaced `assertEquals(X !== Y, true)` with
   `assertNotEquals(X, Y)`.
 
-- `test/wasm/WasmRangeValidation.ts`: Replaced 10 `assertEquals(X < Y, true)` patterns
-  with `assert(X < Y, msg)` and `assertEquals(X, value)`.
+- `test/wasm/WasmRangeValidation.ts`: Replaced 10 `assertEquals(X < Y, true)`
+  patterns with `assert(X < Y, msg)` and `assertEquals(X, value)`.
 
 ### Cross-area duplicates found
 
