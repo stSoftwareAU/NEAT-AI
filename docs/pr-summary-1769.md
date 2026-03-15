@@ -1,8 +1,8 @@
 ## Summary
 
 Final audit pass on all test files in `test/mutate/` for quality standards:
-uniqueness, behavioural testing, meaningful assertions, and organisation.
-Closes #1769.
+uniqueness, behavioural testing, meaningful assertions, and organisation. Closes
+#1769.
 
 ### Changes made (this PR)
 
@@ -14,28 +14,29 @@ Closes #1769.
 
 2. **Renamed tests that referenced implementation details**:
    - `AddConnectionOptimisation.ts`: "provides O(1) lookup" → "correctly
-     identifies existing and non-existing connections"; "cache invalidates"
-     → "reflects newly added connections"
-   - `AvailableConnectionsCache.ts`: Removed "cache" from all 6 test names;
-     e.g. "cache invalidates after disconnect" → "available connections
-     update after disconnect"
+     identifies existing and non-existing connections"; "cache invalidates" →
+     "reflects newly added connections"
+   - `AvailableConnectionsCache.ts`: Removed "cache" from all 6 test names; e.g.
+     "cache invalidates after disconnect" → "available connections update after
+     disconnect"
    - `ConnectSplice.ts`: "with splice" → "after multiple insertions"
    - `AddConnectionNoRedundantValidation.ts`: "does not call validate
      internally" → "adds a connection and creature remains valid"; "without
      internal validation" → "after successful mutation"
-   - `AddNeuronFocusSelection.ts`: "should use transitive focus checking"
-     → "downstream neurons are transitively in focus"
+   - `AddNeuronFocusSelection.ts`: "should use transitive focus checking" →
+     "downstream neurons are transitively in focus"
 
 3. **Fixed misleading file header comments**:
    - `ConnectSplice.ts`: Changed "Benchmark test" to "Correctness tests"
    - `AddConnectionOptimisation.ts`: Removed O(n²)/O(1) implementation details
    - `AvailableConnectionsCache.ts`: Removed caching implementation details
-   - `AddConnectionNoRedundantValidation.ts`: Removed internal validation details
+   - `AddConnectionNoRedundantValidation.ts`: Removed internal validation
+     details
 
 4. **Consolidated near-duplicate tests in `AddConnectionOptimisation.ts`**:
    - Merged "mutation still works correctly with optimisation" (small network)
-     and "mutation works correctly with large creature" (large network) into
-     one "mutation adds connections and maintains validity" test.
+     and "mutation works correctly with large creature" (large network) into one
+     "mutation adds connections and maintains validity" test.
 
 5. **Strengthened weak focus-list assertions**:
    - `AddBackCon.ts`: Focus list test now verifies synapse count increased and
@@ -72,13 +73,15 @@ Closes #1769.
 
 ## Evidence
 
-- All 4729 tests pass (net -2 from removing 1 test file and consolidating 1 test)
+- All 4729 tests pass (net -2 from removing 1 test file and consolidating 1
+  test)
 - `./quality.sh` passes clean
 
 ## Test Plan
 
 - Verified no test regressions: 4729 passed, 0 failed
-- Removed 1 "how" test file (AddNeuronSelfLoopFallback.ts) that used heavy mocking
+- Removed 1 "how" test file (AddNeuronSelfLoopFallback.ts) that used heavy
+  mocking
 - Consolidated 1 near-duplicate test in AddConnectionOptimisation.ts
 - All remaining tests exercise real mutation code with meaningful assertions
 - All test names describe behaviour, not implementation details
