@@ -7,6 +7,7 @@
  * 3. Squash function actually changes
  * 4. Only non-input neurons are modified
  * 5. Memetic flag is cleared on change
+ * 6. Constant neurons are not modified but non-constant neurons still mutate
  */
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Creature, type CreatureExport, CreatureUtil } from "../../mod.ts";
@@ -217,4 +218,75 @@ Deno.test("ModSquash: input neurons are never modified", () => {
       "Input neuron type should remain 'input'",
     );
   }
+});
+
+Deno.test("ModSquash: modifies non-constant neurons when constant neurons are present", () => {
+  const json: CreatureExport = {
+    neurons: [
+      {
+        type: "constant",
+        uuid: "62f93f73-82bc-47d1-a840-5546eb0971ca",
+        bias: 0.5,
+      },
+      {
+        type: "output",
+        uuid: "output-0",
+        bias: 0,
+        squash: "MAXIMUM",
+      },
+      {
+        type: "output",
+        uuid: "output-1",
+        bias: 0,
+        squash: "MINIMUM",
+      },
+      {
+        type: "output",
+        uuid: "output-2",
+        bias: 0,
+        squash: "LeakyReLU",
+      },
+    ],
+    synapses: [
+      {
+        weight: 1,
+        fromUUID: "62f93f73-82bc-47d1-a840-5546eb0971ca",
+        toUUID: "output-0",
+      },
+      {
+        weight: 1,
+        fromUUID: "input-0",
+        toUUID: "output-0",
+      },
+      {
+        weight: 0.1,
+        fromUUID: "input-0",
+        toUUID: "output-1",
+      },
+      {
+        weight: 0.2,
+        fromUUID: "input-0",
+        toUUID: "output-2",
+      },
+    ],
+    input: 1,
+    output: 3,
+  };
+
+  const creature = Creature.fromJSON(json);
+  creature.validate();
+  const uuid1 = CreatureUtil.makeUUID(creature);
+  const modifier = new ModActivation(creature);
+  for (let i = 100; i--;) {
+    modifier.mutate();
+  }
+
+  delete creature.uuid;
+
+  const uuid2 = CreatureUtil.makeUUID(creature);
+  assertNotEquals(
+    uuid1,
+    uuid2,
+    "UUID should change — non-constant neurons should be mutated",
+  );
 });
