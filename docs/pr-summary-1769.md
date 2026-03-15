@@ -1,8 +1,8 @@
 ## Summary
 
-Final audit of mutation operator tests: removes Creature API tests
-misplaced in `test/mutate/` and consolidates the unique constant-neuron
-exclusion test into `AvailableConnectionsCache.ts`. Closes #1769.
+Final audit of mutation operator tests: removes Creature API tests misplaced in
+`test/mutate/` and consolidates the unique constant-neuron exclusion test into
+`AvailableConnectionsCache.ts`. Closes #1769.
 
 ### Changes
 
@@ -15,15 +15,15 @@ AddConnection mutation behaviour tests. They are already covered by:
 - `test/creature/CreatureTopology.ts` (getConnectionSet, hasConnection)
 - `test/creature/SelectiveCacheInvalidation.ts` (cache invalidation)
 
-The seventh test ("mutation adds connections and maintains validity") was
-a near-duplicate of `AvailableConnectionsCache.ts` test "tracks correctly
-through multiple mutations".
+The seventh test ("mutation adds connections and maintains validity") was a
+near-duplicate of `AvailableConnectionsCache.ts` test "tracks correctly through
+multiple mutations".
 
 **One unique test moved:**
 
 - "getAvailableConnections excludes constant neurons" moved to
-  `AvailableConnectionsCache.ts` as "excludes constant neurons from
-  targets" — the only test verifying this behaviour.
+  `AvailableConnectionsCache.ts` as "excludes constant neurons from targets" —
+  the only test verifying this behaviour.
 
 ### Full audit results
 
@@ -44,8 +44,8 @@ All 29 test files (165 test cases) in `test/mutate/` reviewed against criteria:
 
 ## Test Plan
 
-- Removed `test/mutate/AddConnectionOptimisation.ts` — 6 Creature API
-  tests already covered elsewhere, 1 near-duplicate
+- Removed `test/mutate/AddConnectionOptimisation.ts` — 6 Creature API tests
+  already covered elsewhere, 1 near-duplicate
 - Added "excludes constant neurons from targets" test to
   `test/mutate/AvailableConnectionsCache.ts`
 - All remaining tests verify behaviour with meaningful assertions
