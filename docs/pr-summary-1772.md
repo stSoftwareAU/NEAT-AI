@@ -17,8 +17,8 @@ test/reconstruct/) confirmed:
 - **Test names clearly describe** the behaviour being verified
 - **No timing measurements** (performance.now, Date.now) in any test file
 - **No source-file grepping** or implementation-detail inspection
-- **test/optimize/ and test/optimization/ should remain separate** — they map
-  to different source modules (src/optimize/ for activation simplification vs
+- **test/optimize/ and test/optimization/ should remain separate** — they map to
+  different source modules (src/optimize/ for activation simplification vs
   training strategies in src/propagate/ and src/config/)
 
 ### Changes in this PR
