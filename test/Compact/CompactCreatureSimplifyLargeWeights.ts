@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { compactCreature } from "../../src/compact/CompactCreature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
@@ -44,9 +44,10 @@ Deno.test("compactCreature: simplifies large weights around ABSOLUTE without cha
 
   const creature = Creature.fromJSON(json);
   const beforeMax = maxAbsWeightAndBias(creature);
-  assert(
-    beforeMax >= 1e6,
-    "Sanity check: expected a very large starting value",
+  assertEquals(
+    beforeMax,
+    1e6,
+    "Starting max abs weight/bias should be exactly 1e6",
   );
 
   // Act

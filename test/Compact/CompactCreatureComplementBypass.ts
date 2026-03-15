@@ -35,9 +35,6 @@ Deno.test("compactCreature: bypass COMPLEMENT feeding IDENTITY output (safe alge
   // After bypass we should get:
   // output = (-wHidden*w0)*x0 + (-wHidden*w1 + wDirect)*x1 + (bOut + wHidden*(1 - bHidden))
 
-  const directory = ".test/Compact/CompactCreatureComplementBypass/safe";
-  Deno.mkdirSync(directory, { recursive: true });
-
   const json: CreatureExport = {
     neurons: [
       {
@@ -65,10 +62,6 @@ Deno.test("compactCreature: bypass COMPLEMENT feeding IDENTITY output (safe alge
   };
 
   const creature = Creature.fromJSON(json);
-  Deno.writeTextFileSync(
-    `${directory}/complex.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
-  );
 
   // Act
   const compacted = compactCreature(creature, true);
@@ -78,10 +71,6 @@ Deno.test("compactCreature: bypass COMPLEMENT feeding IDENTITY output (safe alge
   compacted.validate();
 
   const exported = compacted.exportJSON();
-  Deno.writeTextFileSync(
-    `${directory}/compacted.json`,
-    JSON.stringify(exported, null, 1),
-  );
 
   // hidden-0 should be gone
   assertEquals(
@@ -154,9 +143,6 @@ Deno.test("compactCreature: does not bypass COMPLEMENT into aggregate squashes (
 });
 
 Deno.test("compactCreature: bypass COMPLEMENT feeding multiple IDENTITY outputs (safe algebraic fold)", () => {
-  const directory = ".test/Compact/CompactCreatureComplementBypass/multi-safe";
-  Deno.mkdirSync(directory, { recursive: true });
-
   const json: CreatureExport = {
     neurons: [
       {
@@ -191,20 +177,12 @@ Deno.test("compactCreature: bypass COMPLEMENT feeding multiple IDENTITY outputs 
   };
 
   const creature = Creature.fromJSON(json);
-  Deno.writeTextFileSync(
-    `${directory}/complex.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
-  );
 
   const compacted = compactCreature(creature, true);
   assert(compacted, "Expected compaction to occur");
   compacted.validate();
 
   const exported = compacted.exportJSON();
-  Deno.writeTextFileSync(
-    `${directory}/compacted.json`,
-    JSON.stringify(exported, null, 1),
-  );
 
   assertEquals(
     exported.neurons.some((n) => n.uuid === "hidden-0"),

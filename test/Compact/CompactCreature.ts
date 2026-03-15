@@ -66,9 +66,11 @@ Deno.test("compactCreature - preserves forward-only semantics", () => {
   const creature = Creature.fromJSON(json);
   const result = compactCreature(creature, false);
 
-  if (result) {
-    assertEquals(result.forwardOnly, true);
-  }
+  assert(
+    result !== undefined,
+    "Should compact dead neuron in forward-only creature",
+  );
+  assertEquals(result.forwardOnly, true);
 });
 
 Deno.test("compactCreature - COMPLEMENT bypass preserves behaviour", () => {
@@ -96,15 +98,14 @@ Deno.test("compactCreature - COMPLEMENT bypass preserves behaviour", () => {
 
   const result = compactCreature(creature, false);
 
-  if (result) {
-    const compactedOutput = result.activate(testInput);
-    assertAlmostEquals(
-      compactedOutput[0],
-      originalOutput[0],
-      1e-6,
-      "COMPLEMENT bypass should preserve behaviour",
-    );
-  }
+  assert(result !== undefined, "Should compact COMPLEMENT neuron");
+  const compactedOutput = result.activate(testInput);
+  assertAlmostEquals(
+    compactedOutput[0],
+    originalOutput[0],
+    1e-6,
+    "COMPLEMENT bypass should preserve behaviour",
+  );
 });
 
 Deno.test("compactCreature - removes zero-weight synapses", () => {
@@ -124,48 +125,53 @@ Deno.test("compactCreature - removes zero-weight synapses", () => {
   const creature = Creature.fromJSON(json);
   const result = compactCreature(creature, false);
 
-  if (result) {
-    const synapses = result.exportJSON().synapses;
-    const zeroWeightSynapses = synapses.filter((s) => s.weight === 0);
-    assertEquals(
-      zeroWeightSynapses.length,
-      0,
-      "Zero-weight synapses should be removed",
-    );
-  }
+  assert(
+    result !== undefined,
+    "Should compact creature with zero-weight synapse",
+  );
+  const synapses = result.exportJSON().synapses;
+  const zeroWeightSynapses = synapses.filter((s) => s.weight === 0);
+  assertEquals(
+    zeroWeightSynapses.length,
+    0,
+    "Zero-weight synapses should be removed",
+  );
 });
 
-Deno.test("compactCreature - chain compaction with IDENTITY", () => {
-  // Create a chain: input -> h1(IDENTITY) -> output where h1 has one in/one out
-  // and same squash as source — should be compactable
+Deno.test("compactCreature - IDENTITY chain between two same-squash neurons merges into direct synapse", () => {
+  // Chain compaction requires neuron.squash === fromNeuron.squash, so we chain
+  // two IDENTITY hidden neurons: h1 -> h2 -> output. h2 has one inbound
+  // (from h1) and one outbound (to output), so it can be bypassed.
   const json: CreatureExport = {
-    input: 2,
+    input: 1,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "h1", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h1", squash: "IDENTITY", bias: 0.1 },
+      { type: "hidden", uuid: "h2", squash: "IDENTITY", bias: 0 },
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
       { fromUUID: "input-0", toUUID: "h1", weight: 0.5 },
-      { fromUUID: "h1", toUUID: "output-0", weight: 0.8 },
-      { fromUUID: "input-1", toUUID: "output-0", weight: 0.2 },
+      { fromUUID: "h1", toUUID: "h2", weight: 0.8 },
+      { fromUUID: "h2", toUUID: "output-0", weight: 0.6 },
     ],
   };
   const creature = Creature.fromJSON(json);
-  const testInput = new Float32Array([0.6, 0.4]);
+  const testInput = new Float32Array([0.6]);
   const originalOutput = creature.activate(testInput);
 
   const result = compactCreature(creature, false);
 
-  // Whether or not the specific chain compaction triggers,
-  // behaviour should be preserved if compaction occurs
-  if (result) {
-    const compactedOutput = result.activate(testInput);
-    assertAlmostEquals(
-      compactedOutput[0],
-      originalOutput[0],
-      1e-6,
-      "Chain compaction should preserve behaviour",
-    );
-  }
+  assert(
+    result !== undefined,
+    "Should compact IDENTITY chain (h1 -> h2 -> output with matching squash)",
+  );
+  result.validate();
+  const compactedOutput = result.activate(testInput);
+  assertAlmostEquals(
+    compactedOutput[0],
+    originalOutput[0],
+    1e-6,
+    "Chain compaction should preserve behaviour",
+  );
 });

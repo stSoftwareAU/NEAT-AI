@@ -1,55 +1,63 @@
 ## Summary
 
-Fourth-pass audit of compact and optimisation test files across `test/Compact/`,
-`test/optimize/`, `test/optimization/`, `test/FeedForward/`, and
-`test/reconstruct/`. Strengthens weak assertions with exact computed values,
-removes a redundant duplicate test, fixes misleading test names, and adds
-missing `warm_restart` strategy coverage. Closes #1772.
+Fifth-pass audit of compact, optimisation, feed-forward, and optimise test files
+across `test/Compact/`, `test/optimize/`, `test/FeedForward/`, and
+`test/reconstruct/`. Strengthens weak assertions, removes debug file I/O from
+tests, fixes misleading test names, and improves test robustness with explicit
+existence guards. Closes #1772.
 
 ## Changes
 
-### Weak assertions strengthened (3 files)
+### Weak assertions replaced with exact values or proper assertion methods (5 files)
 
-**test/optimization/AdaptiveVsDecay.ts** — Replaced vague "differences found >
-0" counter with exact computed-value assertions:
+**test/Compact/CompactCreature.ts** -- Replaced four `if (result)` conditional
+blocks with `assert(result !== undefined)` so tests fail loudly when compaction
+unexpectedly returns undefined. Rewrote the IDENTITY chain test to use a valid
+two-hidden-neuron topology that actually triggers chain compaction (same-squash
+requirement).
 
-- Asserts both strategies equal 0.1 at iteration 0
-- Asserts decay rate = `0.1 * 0.95` and adaptive rate = `0.1 * sqrt(0.95)` at
-  iteration 1
-- Asserts exact values at iteration 5 using `Math.pow`
-- Renamed test to "adaptive decays slower than pure decay at the same iteration"
+**test/Compact/CompactUnusedFiniteGuard.ts** -- Replaced
+`assertEquals(Number.isFinite(bias), true)` with
+`assertAlmostEquals(bias, 0.65)` matching the exact formula `0.5 + (0.3 * 0.5)`.
 
-**test/optimization/ErrorFeedbackLearningRate.ts** — Replaced generic bound
-checks with exact formula-derived assertions:
+**test/Compact/CompactCreatureSimplifyLargeWeights.ts** -- Replaced
+`assert(beforeMax >= 1e6)` with `assertEquals(beforeMax, 1e6)` for exact value
+check.
 
-- Test 4: "still works" → "falls back to decay-based rate"; replaced
-  `isFinite` + `> 0` with
-  `assertAlmostEquals(rate, 0.1 * Math.pow(Math.sqrt(0.95), 5))`
-- Test 5: "stays within reasonable bounds" → "stagnation boosts, worsening
-  reduces"; replaced `<= 2x initial` with exact stagnation/worsening rate
-  formulas
+**test/Compact/ZeroWeightSynapsePruning.ts** -- Replaced
+`assertEquals(typeof compacted !== "undefined", true)` with
+`assert(compacted !== undefined)` and removed non-null assertion operators.
 
-**test/optimization/LearningRateRandomization.ts** — Strengthened assertions:
-
-- Tests 2-3: replaced `assert(x === "value", ...)` with `assertEquals`
-- Test 4: added missing `warm_restart` strategy check (was only checking 3 of 4
-  strategies); increased sample size from 100 to 200 for reliability
-- Renamed test 4 to "all four strategies appear in random selection"
-
-### Duplicate test removed (1 file)
-
-**test/Compact/CompactCreatureSimplifyLargeWeightsSupportedSquashes.ts** —
-Removed redundant ABSOLUTE test (lines 232-248) that duplicated the dedicated
-test in `CompactCreatureSimplifyLargeWeights.ts`. Removed unused ABSOLUTE
+**test/optimize/FunctionCache.ts** -- Replaced `assert(cache.key.length > 0)`
+with `assertNotEquals(cache.key, "")` and `assert(x !== y)` comparisons with
+`assertNotEquals(x, y)` for clearer failure messages. Removed unused `assert`
 import.
 
-### Misleading test names fixed (1 file)
+### Debug file I/O removed (1 file)
 
-**test/optimization/SparseSelection.ts** — Renamed tests to describe actual
-network topology differences:
+**test/Compact/CompactCreatureComplementBypass.ts** -- Removed
+`Deno.mkdirSync()` and `Deno.writeTextFileSync()` calls that wrote debug JSON
+artifacts to `.test/` directories. These are implementation-detail side effects
+that do not belong in unit tests.
 
-- "output-distance converges" → "converges with multi-path hidden layer"
-- "random fallback converges" → "converges with single-path hidden layer"
+### Misleading test names fixed (2 files)
+
+**test/FeedForward/ForwardOnlySemanticVersion.ts** -- Fixed two test names that
+said "2.x.x -> 3.0.0" but asserted "4.0.0".
+
+**test/FeedForward/AddNeuronForwardOnly.ts** -- Replaced
+`assertEquals(x > y, true)` with `assert(x > y, message)` for clearer failure
+output.
+
+### Test names and assertions improved (2 files)
+
+**test/optimize/makeSynapsesValue.ts** -- Added explicit `assert(synapse)`
+guards before non-null assertion operators. Improved test names to describe the
+specific output format being verified.
+
+**test/FeedForward/ForwardOnlyFlag.ts** -- Replaced
+`assert(exported.forwardOnly === true)` with
+`assertEquals(exported.forwardOnly, true)`.
 
 ## Evidence
 
@@ -57,9 +65,8 @@ All 4520 tests pass. `./quality.sh` passes cleanly.
 
 ## Test Plan
 
-- Verified all strengthened assertions produce correct expected values by
-  matching them to the `calculateLearningRate` implementation formulas
-- Verified ABSOLUTE test coverage is retained in
-  `CompactCreatureSimplifyLargeWeights.ts`
-- Verified warm_restart strategy appears in random selection with 200 samples
+- Verified all strengthened assertions match the implementation formulas
+- Verified IDENTITY chain test uses valid topology that triggers chain
+  compaction
+- Verified debug file I/O removal does not affect test assertions
 - Ran full quality gate: format, lint, type-check, and all tests pass
