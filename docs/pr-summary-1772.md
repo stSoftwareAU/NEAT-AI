@@ -1,44 +1,36 @@
 ## Summary
 
-Final cleanup pass on the compact/optimisation test audit. Removes a trivial
-assertion in `test/reconstruct/ConnectMissing.ts` and updates an outdated issue
-reference comment in `test/Compact/IsAggregationSquash.ts`. Closes #1772.
+Final audit pass on compact/optimisation test files. Closes #1772.
 
-## Audit Summary
+Audited all test files in `test/Compact/`, `test/optimize/`, `test/optimization/`,
+`test/FeedForward/`, and `test/reconstruct/` against the quality criteria:
 
-Comprehensive audit of all test files across the five directories in scope
-(test/Compact/, test/optimize/, test/optimization/, test/FeedForward/,
-test/reconstruct/) confirmed:
+1. **Removed duplicate test file**: `test/FeedForward/MutateActions.ts` — all 3 tests
+   were duplicates of more thorough coverage in `test/NEAT/MutatorComputeMutationCandidates.ts`
+   (which uses 500 iterations vs 100 and covers additional scenarios like semantic version
+   constraints and maximum node limits).
 
-- **No duplicate tests remain** across or within directories
-- **All tests verify behaviour** (outcomes/side effects), not implementation
-  details
-- **All tests are meaningful** with real assertions on real code
-- **Test names clearly describe** the behaviour being verified
-- **No timing measurements** (performance.now, Date.now) in any test file
-- **No source-file grepping** or implementation-detail inspection
-- **test/optimize/ and test/optimization/ should remain separate** — they map to
-  different source modules (src/optimize/ for activation simplification vs
-  training strategies in src/propagate/ and src/config/)
+2. **Fixed inconsistent test pattern**: `test/reconstruct/ValidateDNATypedErrors.ts` —
+   replaced manual try-catch with `assertThrows` for consistency with the other 3 tests
+   in the same file.
 
-### Changes in this PR
+3. **Consolidated trivial tests**: `test/Compact/IsAggregationSquash.ts` — consolidated
+   11 near-identical single-assertion tests into 3 data-driven tests that cover the same
+   cases more concisely.
 
-**test/reconstruct/ConnectMissing.ts** — Removed trivial `assert(uuid1)`
-assertion. `CreatureUtil.makeUUID()` always returns a string, so asserting
-truthiness adds no value. The subsequent `assertEquals(uuid1, uuid2)` already
-provides meaningful verification.
+### Cross-area duplicates found
 
-**test/Compact/IsAggregationSquash.ts** — Updated outdated comment that
-referenced issue #1392 as if the DRY unification was still pending. The shared
-`isAggregationSquash` utility already exists in
-`src/methods/activations/SquashUtils.ts`.
+- `test/FeedForward/MutateActions.ts` duplicated `test/NEAT/MutatorComputeMutationCandidates.ts`
+  and `test/NEAT/MutatorCacheValidMutations.ts` (removed)
+- `test/reconstruct/ValidateDNATypedErrors.ts` overlaps with `test/CRISPR/ValidateDNA.ts`
+  but provides unique error-type and error-code verification (kept)
 
 ## Evidence
-
-All 4520 tests pass. `./quality.sh` passes cleanly.
+- All 4509 tests pass
+- `./quality.sh` passes cleanly
 
 ## Test Plan
-
-- Verified `assert(uuid1)` removal does not weaken test coverage (assertEquals
-  on line 48 already covers the value)
-- Ran full quality gate: format, lint, type-check, and all 4520 tests pass
+- Verified `test/Compact/IsAggregationSquash.ts` consolidated tests cover all original cases
+- Verified `test/reconstruct/ValidateDNATypedErrors.ts` assertThrows pattern works correctly
+- Confirmed `test/NEAT/MutatorComputeMutationCandidates.ts` provides superset coverage of removed `MutateActions.ts`
+- Full test suite passes (4509 tests, 0 failures)
