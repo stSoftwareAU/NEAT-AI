@@ -72,8 +72,8 @@ Audit WASM and activation function tests (~44 files, ~503 test cases) across
   anti-pattern tests with meaningful assertions:
   - "noteUse does not throw" → verifies cache count increases after noteUse
   - "noteUse multiple times is safe" → verifies cache count stays at 1
-  - "evictOldest with count 0/negative is a no-op" → verifies cache count
-    is preserved
+  - "evictOldest with count 0/negative is a no-op" → verifies cache count is
+    preserved
   - "evictOldest does not throw for large count" → verifies cache becomes empty
 
 ### Cross-area duplicates found
