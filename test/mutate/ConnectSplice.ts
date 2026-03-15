@@ -121,7 +121,7 @@ Deno.test("connect(): correctly inserts at beginning of synapses array", () => {
   creatureValidate(creature);
 });
 
-Deno.test("connect(): correctly inserts at end of synapses array", () => {
+Deno.test("connect(): correctly inserts and maintains order with higher from-index", () => {
   // Creature structure:
   // Neurons: input-0 (0), input-1 (1), input-2 (2), hidden-1 (3), output-0 (4)
   const json = {
@@ -150,20 +150,7 @@ Deno.test("connect(): correctly inserts at end of synapses array", () => {
   const creature = Creature.fromJSON(json, true);
   const initialLength = creature.synapses.length;
 
-  // Add connection from hidden-1 (index 3) that goes to end by sort order
-  // Since 3->4 exists, we need a different connection
-  // input-2 (index 2) to output-0 (index 4) would sort after 0->3 but before 3->4
-  // Let's use input-2 to hidden-1 which sorts between input-0->hidden-1 and hidden-1->output-0
-  // Actually, we want something that sorts AFTER 3->4
-  // There are no valid forward connections after 3->4, so let's test push() case
-  // by using the empty synapses path - but that requires location === -1
-
-  // Let's redesign: to test the push() case (location === -1 || location >= length)
-  // we need a connection that either goes at the very end or the array is empty
-  // Since 3->4 is the last possible forward connection, any new connection
-  // will be inserted before it in sorted order, not after
-
-  // Test the push case with input-2 to output-0
+  // Add a connection with a higher from-index that sorts between existing ones
   creature.connect(2, 4, 0.3); // input-2 to output-0 (sorts after 0->3, before 3->4)
 
   assertEquals(creature.synapses.length, initialLength + 1);

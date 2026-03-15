@@ -1,4 +1,4 @@
-import { assert } from "@std/assert";
+import { assert, assertFalse } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { SubConnection } from "../../src/mutate/SubConnection.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
@@ -145,6 +145,11 @@ Deno.test("SubConnection - stress test produces valid creatures", () => {
 });
 
 Deno.test("SubConnection - focus list limits removable connections", () => {
+  // Focus on neuron 2 — SubConnection should only consider connections where
+  // at least one endpoint is in the transitive focus closure of neuron 2.
+  // With no focus list, the mutation returns false on a minimal creature.
+  // With focus on neuron 2, the mutation should succeed (removing a connection
+  // involving neuron 2 or its downstream output).
   let removedFocusedConnection = false;
 
   for (let attempt = 0; attempt < 50; attempt++) {
@@ -169,14 +174,14 @@ Deno.test("SubConnection - focus list limits removable connections", () => {
     const synapsesBeforeCount = creature.synapses.length;
 
     const mutator = new SubConnection(creature);
-    const changed = mutator.mutate([2]); // Focus on neuron at index 2
+    const changed = mutator.mutate([2]);
 
     creatureValidate(creature);
 
     if (changed) {
       assert(
-        creature.synapses.length <= synapsesBeforeCount,
-        "Should have same or fewer synapses after removal",
+        creature.synapses.length < synapsesBeforeCount,
+        "Should have fewer synapses after focused removal",
       );
       removedFocusedConnection = true;
       break;
@@ -187,4 +192,35 @@ Deno.test("SubConnection - focus list limits removable connections", () => {
     removedFocusedConnection,
     "Should remove a connection related to focused neuron within 50 attempts",
   );
+});
+
+Deno.test("SubConnection - focus list returns false when no focused connections are eligible", () => {
+  // Create a creature where the focused neuron has no removable forward
+  // connections, so the mutation should return false
+  const creature = Creature.fromJSON({
+    neurons: [
+      { type: "output", squash: "LOGISTIC", bias: 0.1, index: 2 },
+    ],
+    synapses: [
+      { from: 0, to: 2, weight: 1.0 },
+      { from: 1, to: 2, weight: 0.8 },
+    ],
+    input: 2,
+    output: 1,
+  });
+
+  creatureValidate(creature);
+
+  // Focus on an input neuron (index 0) — its only connections are to the
+  // output which may not be removable in a minimal network
+  const mutator = new SubConnection(creature);
+  // Use an invalid/nonexistent focus index to ensure no eligible connections
+  const changed = mutator.mutate([99]);
+
+  // With a focus index that doesn't match any neuron, nothing should be removed
+  assertFalse(
+    changed,
+    "Should return false when focus list has no matching connections",
+  );
+  creatureValidate(creature);
 });
