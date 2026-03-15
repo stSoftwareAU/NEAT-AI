@@ -13,6 +13,7 @@ Deno.test("ActivationRange validate rejects out-of-range and non-finite values",
   ];
 
   for (const value of invalidValues) {
+    // Without neuron index
     try {
       range.validate(value);
       fail(`Expected error for value ${value}`);
@@ -23,21 +24,8 @@ Deno.test("ActivationRange validate rejects out-of-range and non-finite values",
         `Unexpected name: ${error.name}`,
       );
     }
-  }
-});
 
-Deno.test("ActivationRange validate rejects invalid values with neuron index", () => {
-  const range = Activations.find("CLIPPED").range;
-
-  const invalidValues = [
-    -2,
-    2,
-    NaN,
-    Infinity,
-    -Infinity,
-  ];
-
-  for (const value of invalidValues) {
+    // With neuron index
     try {
       range.validate(value, 1);
       fail(`Expected error for value ${value} with index 1`);
@@ -45,7 +33,7 @@ Deno.test("ActivationRange validate rejects invalid values with neuron index", (
       const error = e as Error;
       assert(
         error.name === "ActivationError",
-        `Unexpected name: ${error.name}`,
+        `Unexpected name for indexed validate: ${error.name}`,
       );
     }
   }

@@ -1,4 +1,4 @@
-import { assertEquals, fail } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import {
   DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS,
 } from "../../src/config/AdaptiveMutationThresholds.ts";
@@ -49,43 +49,31 @@ Deno.test("AdaptiveMutationThresholds - partial overrides keep other defaults", 
 });
 
 Deno.test("AdaptiveMutationThresholds - validation: large must be greater than medium", () => {
-  try {
-    createNeatConfig({
-      adaptiveMutationThresholds: {
-        medium: 100,
-        large: 50, // Less than medium
-      },
-    });
-    fail("Should throw when large <= medium");
-  } catch (e) {
-    assertEquals(
-      (e as Error).message.includes(
-        "large threshold must be greater than medium",
-      ),
-      true,
-      `Error should mention threshold ordering: ${(e as Error).message}`,
-    );
-  }
+  assertThrows(
+    () =>
+      createNeatConfig({
+        adaptiveMutationThresholds: {
+          medium: 100,
+          large: 50, // Less than medium
+        },
+      }),
+    Error,
+    "large threshold must be greater than medium",
+  );
 });
 
 Deno.test("AdaptiveMutationThresholds - validation: equal values are rejected", () => {
-  try {
-    createNeatConfig({
-      adaptiveMutationThresholds: {
-        medium: 100,
-        large: 100, // Equal to medium
-      },
-    });
-    fail("Should throw when large === medium");
-  } catch (e) {
-    assertEquals(
-      (e as Error).message.includes(
-        "large threshold must be greater than medium",
-      ),
-      true,
-      `Error should mention threshold ordering: ${(e as Error).message}`,
-    );
-  }
+  assertThrows(
+    () =>
+      createNeatConfig({
+        adaptiveMutationThresholds: {
+          medium: 100,
+          large: 100, // Equal to medium
+        },
+      }),
+    Error,
+    "large threshold must be greater than medium",
+  );
 });
 
 Deno.test("AdaptiveMutationThresholds - string values are parsed from CLI", () => {
