@@ -88,12 +88,13 @@ Deno.test("Activations.pickRandomSquash with exclude omits that name", () => {
   }
 });
 
-Deno.test("All activations have non-negative mutationProbability", () => {
+Deno.test("All activations have non-negative integer mutationProbability", () => {
   const list = Activations.list();
   for (const act of list) {
     assert(
-      act.mutationProbability >= 0,
-      `${act.getName()} has mutationProbability < 0: ${act.mutationProbability}`,
+      Number.isInteger(act.mutationProbability) &&
+        act.mutationProbability >= 0,
+      `${act.getName()} mutationProbability should be a non-negative integer, got ${act.mutationProbability}`,
     );
   }
 });

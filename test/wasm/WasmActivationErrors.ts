@@ -5,7 +5,7 @@
  * (not generic Error) with the correct reason codes.
  */
 
-import { assertIsError, assertThrows } from "@std/assert";
+import { assertEquals, assertIsError, assertThrows } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { WasmError } from "../../src/errors/WasmError.ts";
 import { WasmCreatureActivation } from "../../src/wasm/WasmActivation.ts";
@@ -33,13 +33,11 @@ Deno.test("WasmActivationErrors: activate throws WasmError after free", () => {
     WasmError,
   );
   assertIsError(err, WasmError);
-  if (err instanceof WasmError) {
-    assertIsError(err, WasmError);
-    const wasmErr = err as WasmError;
-    if (wasmErr.reason !== "ACTIVATION_FAILED") {
-      throw new Error(`Expected ACTIVATION_FAILED, got ${wasmErr.reason}`);
-    }
-  }
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
 });
 
 Deno.test("WasmActivationErrors: activateView throws WasmError after free", () => {

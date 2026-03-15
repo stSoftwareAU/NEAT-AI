@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertAlmostEquals, assertEquals } from "@std/assert";
 import {
   hasSimplifyBias,
   hasUnSquash,
@@ -17,11 +17,17 @@ Deno.test("hasUnSquash returns true for ReLU", () => {
 
 Deno.test("hasUnSquash type guard narrows type correctly", () => {
   const activation = Activations.find("StdInverse");
+  assertEquals(hasUnSquash(activation), true, "StdInverse must have unSquash");
   if (hasUnSquash(activation)) {
-    // After narrowing, unSquash should be callable
+    // After narrowing, unSquash should be callable and return a finite number
     const result = activation.unSquash(0.5);
-    assertEquals(typeof result, "number");
-    assertEquals(Number.isFinite(result), true);
+    assertEquals(
+      Number.isFinite(result),
+      true,
+      `unSquash(0.5) returned non-finite: ${result}`,
+    );
+    // StdInverse.squash(x) = 1/x, so unSquash(0.5) should give 2 (i.e. 1/0.5)
+    assertAlmostEquals(result, 2, 1e-6);
   }
 });
 
@@ -43,9 +49,20 @@ Deno.test("hasSimplifyBias returns false for LOGISTIC", () => {
 
 Deno.test("hasSimplifyBias type guard narrows type correctly", () => {
   const activation = Activations.find("SINE");
+  assertEquals(
+    hasSimplifyBias(activation),
+    true,
+    "SINE must have simplifyBias",
+  );
   if (hasSimplifyBias(activation)) {
-    // After narrowing, simplifyBias should be callable
+    // After narrowing, simplifyBias should be callable and return a finite number
     const result = activation.simplifyBias(0.5);
-    assertEquals(typeof result, "number");
+    assertEquals(
+      Number.isFinite(result),
+      true,
+      `simplifyBias(0.5) returned non-finite: ${result}`,
+    );
+    // 0.5 is within the period, so it should be preserved
+    assertAlmostEquals(result, 0.5, 1e-6);
   }
 });

@@ -95,12 +95,10 @@ Deno.test("wasmSafeZoneAdjustmentBatch processes multiple synapses", () => {
     weights,
   );
   assertEquals(result.length, 2);
-  for (let i = 0; i < result.length; i++) {
-    assert(
-      result[i] >= 0 && result[i] <= 1,
-      `Factor ${i} out of range: ${result[i]}`,
-    );
-  }
+  // ReLU with positive input 0.5 should have full confidence (factor = 1)
+  assertEquals(result[0], 1, "ReLU factor for positive input should be 1");
+  // LOGISTIC with input 0.3 inside safe zone [-6, 6] should also be 1
+  assertEquals(result[1], 1, "LOGISTIC factor inside safe zone should be 1");
 });
 
 Deno.test("wasmCalculateError returns positive error for LOGISTIC when target exceeds current", () => {
@@ -123,9 +121,16 @@ Deno.test("wasmFusedErrorDistribution returns expected structure", () => {
     new Float32Array([0.3]),
     new Float32Array([1.0]),
   );
-  assertExists(result.error);
+  assert(
+    Number.isFinite(result.error),
+    `Expected finite error, got ${result.error}`,
+  );
   assertEquals(result.safeZoneFactors.length, 1);
   assertEquals(result.perLinkError.length, 1);
+  assert(
+    result.safeZoneFactors[0] >= 0 && result.safeZoneFactors[0] <= 1,
+    `safeZoneFactors[0] should be in [0, 1], got ${result.safeZoneFactors[0]}`,
+  );
 });
 
 Deno.test("wasmGetRange returns valid range for Logistic", () => {
@@ -182,11 +187,17 @@ Deno.test("WasmCreatureActivation trace types are accessible", () => {
   assertExists(result.activations);
   assertExists(result.hintValues);
 
-  // WasmTraceEntry type check (structural)
+  // Verify trace entries contain valid numeric data when present
   for (const entry of result.traceEntries) {
-    const _te: WasmTraceEntry = entry;
-    assertExists(_te.neuronRelativeIndex);
-    assertExists(_te.traceInfo);
+    const te: WasmTraceEntry = entry;
+    assert(
+      Number.isInteger(te.neuronRelativeIndex) && te.neuronRelativeIndex >= 0,
+      `neuronRelativeIndex should be a non-negative integer, got ${te.neuronRelativeIndex}`,
+    );
+    assert(
+      Number.isFinite(te.traceInfo),
+      `traceInfo should be finite, got ${te.traceInfo}`,
+    );
   }
 
   activation.free();

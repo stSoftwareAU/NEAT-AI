@@ -94,7 +94,7 @@ Deno.test("WASM-only: squash produces correct values for known activations", () 
   }
 });
 
-Deno.test("WASM-only: unSquash works for all standard activations", () => {
+Deno.test("WASM-only: unSquash produces finite values for all standard activations", () => {
   for (const name of STANDARD_ACTIVATIONS) {
     // Use a value in the activation's range
     const squashed = squash(name, 0.5);
@@ -103,15 +103,44 @@ Deno.test("WASM-only: unSquash works for all standard activations", () => {
       Number.isFinite(result),
       `unSquash(${name}, ${squashed}) returned non-finite: ${result}`,
     );
+    // Re-squash should be close to the original squashed value (f32 tolerance)
+    const reSquashed = squash(name, result);
+    assertAlmostEquals(
+      reSquashed,
+      squashed,
+      1e-2,
+      `${name}: squash(unSquash(squash(0.5))) should round-trip, got ${reSquashed} vs ${squashed}`,
+    );
   }
 });
 
-Deno.test("WASM-only: calculateError works for all standard activations", () => {
+Deno.test("WASM-only: calculateError returns finite values for all standard activations", () => {
   for (const name of STANDARD_ACTIVATIONS) {
     const result = calculateError(name, 0.5, 0.6, 0.5);
     assert(
       Number.isFinite(result),
       `calculateError(${name}) returned non-finite: ${result}`,
+    );
+  }
+});
+
+Deno.test("WASM-only: calculateError returns zero when target equals current activation", () => {
+  const testActivations = ["IDENTITY", "LOGISTIC", "TANH", "ReLU"];
+  for (const name of testActivations) {
+    const currentValue = 0.5;
+    const currentActivation = squash(name, currentValue);
+    // When target equals current activation, error should be zero
+    const result = calculateError(
+      name,
+      currentActivation,
+      currentActivation,
+      currentValue,
+    );
+    assertAlmostEquals(
+      result,
+      0,
+      1e-3,
+      `calculateError(${name}) should be ~0 when target equals current, got ${result}`,
     );
   }
 });
@@ -194,8 +223,9 @@ Deno.test("WASM-only: JS activation classes retain metadata", () => {
       `${name} range.low (${activation.range.low}) > range.high (${activation.range.high})`,
     );
     assert(
-      activation.mutationProbability >= 0,
-      `${name} mutationProbability should be non-negative`,
+      Number.isInteger(activation.mutationProbability) &&
+        activation.mutationProbability >= 0,
+      `${name} mutationProbability should be a non-negative integer, got ${activation.mutationProbability}`,
     );
   }
 });

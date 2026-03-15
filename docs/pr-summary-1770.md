@@ -143,6 +143,56 @@ Audit WASM and activation function tests (~44 files, ~503 test cases) across
 - `test/wasm/WasmRangeValidation.ts`: Replaced 10 `assertEquals(X < Y, true)`
   patterns with `assert(X < Y, msg)` and `assertEquals(X, value)`.
 
+### Pass 4 Changes
+
+**Converted remaining silent skips to assertions (30 occurrences):**
+
+- `test/methods/activations/SafeZoneAdjustment.ts`: Replaced all 30
+  `if (!hasSafeZone(activation)) return;` silent skips in boundary tests with
+  `assert(hasSafeZone(activation), "X must have safeZoneAdjustment")`. These
+  tests target specific named activations known to have `safeZoneAdjustment`.
+
+**Cleaned up redundant assertion patterns:**
+
+- `test/wasm/WasmActivationErrors.ts`: Replaced redundant triple-assertion
+  pattern (`assertIsError` + `instanceof` check + manual throw) with clean
+  `assertIsError` + `assertEquals` on reason code.
+
+**Strengthened weak assertions:**
+
+- `test/wasm/EphemeralActivation.ts`: Replaced `assertEquals(x >= 0, true)` and
+  `assertEquals(x > y, true)` with direct `assert(x >= 0)` and
+  `assert(x > y)`.
+
+- `test/wasm/WasmCompiledNetworkType.ts`: Replaced `assert(num_neurons > 0)`
+  with `assertEquals(num_inputs, 2)` and `assert(num_neurons >= 3)` for a
+  known (2,1) creature topology.
+
+- `test/wasm/WasmOnlyActivation.ts`: Added round-trip verification to unSquash
+  test (`squash(unSquash(squash(x))) ≈ squash(x)`). Added new
+  `calculateError returns zero when target equals current` test. Strengthened
+  `mutationProbability` check to verify non-negative integer.
+
+- `test/methods/activations/TypeGuards.ts`: Added specific value assertions
+  after type guard narrowing (StdInverse.unSquash(0.5) = 2,
+  SINE.simplifyBias(0.5) = 0.5).
+
+- `test/methods/activations/SquashRoundtrip.ts`: Replaced misleading
+  `assertAlmostEquals(x, y, 0)` with `assertEquals(x, y)` for exact values.
+
+- `test/methods/activations/Activations.ts`: Strengthened `mutationProbability`
+  check to verify non-negative integer rather than just non-negative.
+
+- `test/wasm/WasmFacadeRefactoring.ts`: Replaced generic range checks with
+  specific expected values for safe zone factors. Strengthened trace entry
+  validation with integer/finite checks on fields.
+
+**Replaced implementation-detail test with behaviour test:**
+
+- `test/wasm/WasmMemoryLifecycle.ts`: Replaced monkeypatching of `disposeWasm`
+  (counting calls = implementation detail) with observable state check
+  (`cachedWasmActivation === undefined` after LRU eviction).
+
 ### Cross-area duplicates found
 
 - `test/squash/TAN.ts` squash/unSquash tests duplicated coverage in
@@ -153,13 +203,13 @@ Audit WASM and activation function tests (~44 files, ~503 test cases) across
 
 ### Directories reviewed
 
-- `test/wasm/` (27 files) — issues fixed as described above
-- `test/methods/` (15 files) — issues fixed in pass 1
-- `test/squash/` (2 files) — issues fixed in pass 1
+- `test/wasm/` (27 files) — all reviewed, issues fixed across passes 2-4
+- `test/methods/` (15 files) — all reviewed, issues fixed across passes 1, 3-4
+- `test/squash/` (2 files) — all reviewed, issues fixed in pass 1
 
 ## Test Plan
 
-- All 4673 tests pass (0 failures)
+- All 4674 tests pass (0 failures)
 - `./quality.sh` passes cleanly (lint, format, type-check, tests)
 - Verified no silent test skips remain in audited files
 - Verified all removed tests were either meaningless, duplicate, or "how" tests
