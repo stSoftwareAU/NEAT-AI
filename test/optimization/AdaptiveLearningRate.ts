@@ -20,7 +20,9 @@ Deno.test("optimization/AdaptiveLearningRate - decay strategy produces monotonic
   for (let i = 1; i < rates.length; i++) {
     assert(
       rates[i] < rates[i - 1],
-      `Rate at iteration ${i} (${rates[i]}) should be less than at ${i - 1} (${rates[i - 1]})`,
+      `Rate at iteration ${i} (${rates[i]}) should be less than at ${i - 1} (${
+        rates[i - 1]
+      })`,
     );
   }
 
