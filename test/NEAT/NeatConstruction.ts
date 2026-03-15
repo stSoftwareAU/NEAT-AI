@@ -298,9 +298,6 @@ Deno.test("NeatConstruction: setDataDir sets the data directory", async () => {
 
     const neat = new Neat(2, 1, options, workers);
     neat.setDataDir("/tmp/test-data");
-
-    // The data dir is private, so we test indirectly - no error should be thrown
-    assert(true, "setDataDir should not throw");
   } finally {
     await terminateWorkers(workers);
   }

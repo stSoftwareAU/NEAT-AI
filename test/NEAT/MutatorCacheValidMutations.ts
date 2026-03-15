@@ -62,7 +62,7 @@ Deno.test(
 );
 
 Deno.test(
-  "selectMutationMethod: cache key includes neuron and synapse counts",
+  "selectMutationMethod: produces valid mutations for different creature structures",
   () => {
     const config = createNeatConfig({
       mutation: Mutation.FFW,
@@ -153,7 +153,7 @@ Deno.test(
 );
 
 Deno.test(
-  "selectMutationMethod: cache includes forwardOnly flag in key",
+  "selectMutationMethod: produces valid mutations for different forwardOnly settings",
   () => {
     const config = createNeatConfig({
       mutation: Mutation.ALL,
@@ -191,10 +191,8 @@ Deno.test(
 );
 
 Deno.test(
-  "selectMutationMethod: validates calculateMaxSynapses is not called redundantly",
+  "selectMutationMethod: returns valid results across many calls",
   () => {
-    // This is a behavioural test - we verify that the cache works by
-    // calling selectMutationMethod many times and checking it returns valid results
     const config = createNeatConfig({
       mutation: Mutation.FFW,
       maxConns: 1000,
@@ -204,25 +202,15 @@ Deno.test(
     // Create a creature with substantial hidden layer
     const creature = new Creature(10, 5, { layers: [{ count: 20 }] });
 
-    // Call selectMutationMethod 1000 times - with caching this should be fast
-    const startTime = performance.now();
+    // Call selectMutationMethod many times and verify valid results each time
     for (let i = 0; i < 1000; i++) {
       const method = mutator.selectMutationMethod(creature);
-      // Ensure we get a valid result each time
       assertEquals(
         typeof method.name,
         "string",
         "Should return valid mutation method",
       );
     }
-    const elapsedTime = performance.now() - startTime;
-
-    // The test passes if it completes - timing is just informational
-    console.log(
-      `[MutatorCacheValidMutations] 1000 calls completed in ${
-        elapsedTime.toFixed(2)
-      }ms`,
-    );
   },
 );
 

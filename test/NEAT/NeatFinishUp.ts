@@ -65,28 +65,6 @@ Deno.test("finishUp: returns true when no in-progress work and no delays", async
   }
 });
 
-Deno.test("finishUp: sets doNotStartMore flag", async () => {
-  const dataDir = createTestDataDir(2, 1);
-  const workers = createTestWorkers(dataDir);
-
-  try {
-    const options: NeatOptions = {
-      populationSize: 10,
-    };
-
-    const neat = new Neat(2, 1, options, workers);
-
-    // After finishUp, doNotStartMore should prevent scheduling new work
-    neat.finishUp();
-
-    // Verify by checking that scheduleTraining does nothing
-    // (it checks doNotStartMore internally - tested indirectly)
-    assertEquals(true, true, "finishUp should set doNotStartMore");
-  } finally {
-    await terminateWorkers(workers);
-  }
-});
-
 Deno.test("finishUp: returns true on multiple calls with no in-progress work", async () => {
   const dataDir = createTestDataDir(2, 1);
   const workers = createTestWorkers(dataDir);
