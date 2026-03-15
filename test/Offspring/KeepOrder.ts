@@ -1,7 +1,7 @@
+import { assert, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
-import { ensureDirSync } from "@std/fs";
 
 function makeMum() {
   const json: CreatureExport = {
@@ -102,32 +102,38 @@ function makeDad() {
   return creature;
 }
 
-const testDir = ".test/KeepOrder";
-
-Deno.test("KeepOrder", () => {
-  ensureDirSync(testDir);
+Deno.test("Offspring.breed preserves valid neuron ordering", () => {
   const mum = makeMum();
-  Deno.writeTextFileSync(
-    `${testDir}/mum.json`,
-    JSON.stringify(mum.exportJSON(), null, 1),
-  );
   const dad = makeDad();
-  Deno.writeTextFileSync(
-    `${testDir}/dad.json`,
-    JSON.stringify(dad.exportJSON(), null, 1),
-  );
+
+  let successCount = 0;
   for (let i = 0; i < 10; i++) {
     const child = Offspring.breed(mum, dad);
     if (!child) continue;
-    check(child);
+
+    child.validate();
+    successCount++;
+
+    // Verify input neurons come first, then hidden, then output
+    let lastType: "input" | "hidden" | "output" = "input";
+    for (const neuron of child.neurons) {
+      if (neuron.type === "input") {
+        assertEquals(lastType, "input", "Input neurons must come first");
+      } else if (neuron.type === "hidden") {
+        assert(
+          lastType === "input" || lastType === "hidden",
+          "Hidden neurons must come after inputs",
+        );
+        lastType = "hidden";
+      } else if (neuron.type === "output") {
+        lastType = "output";
+      }
+    }
+
+    // Verify offspring has correct dimensions
+    assertEquals(child.input, 3, "Input count preserved");
+    assertEquals(child.output, 2, "Output count preserved");
   }
+
+  assert(successCount > 0, "Should produce at least one valid offspring");
 });
-
-function check(child: Creature) {
-  child.validate();
-
-  Deno.writeTextFileSync(
-    `${testDir}/child.json`,
-    JSON.stringify(child.exportJSON(), null, 1),
-  );
-}

@@ -13,7 +13,7 @@
  * Issue #1236: Removed useJs parameter and JS activation fallback paths.
  */
 
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assert } from "@std/assert";
 import { Costs, Creature } from "../../mod.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import { calculate as calculateScore } from "../../src/architecture/Score.ts";
@@ -147,10 +147,6 @@ Deno.test("WASM scoring: synthetic dataset is finite and roughly matches JS", ()
 
   assert(Number.isFinite(wasmAvg), "WASM average error should be finite");
   assert(Number.isFinite(wasmScore), "WASM score should be finite");
-  assertAlmostEquals(
-    wasmAvg,
-    wasmAvg,
-    0,
-    "sanity: averageError should be stable within a run",
-  );
+  assert(wasmAvg >= 0, "WASM average error should be non-negative");
+  assert(wasmScore <= 1, "WASM score should not exceed 1");
 });

@@ -32,10 +32,6 @@ Deno.test("CompatibleFather-1", () => {
   const fatherExpected = loadExpected(1);
 
   const fatherActual = createCompatibleFather(mother, father);
-  Deno.writeTextFileSync(
-    `./test/breed/samples/.actual.json`,
-    JSON.stringify(fatherActual, null, 1),
-  );
 
   Creature.fromJSON(fatherActual).validate();
 

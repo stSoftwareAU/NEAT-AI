@@ -129,7 +129,7 @@ function createParentsWithSharedNeurons(): {
   return { mother, father };
 }
 
-Deno.test("MapLookupOptimization - breed with many neurons produces valid offspring", () => {
+Deno.test("Offspring.breed -breed with many neurons produces valid offspring", () => {
   const mother = createLargeCreature(50, "mother");
   const father = createLargeCreature(50, "father");
 
@@ -146,7 +146,7 @@ Deno.test("MapLookupOptimization - breed with many neurons produces valid offspr
   }
 });
 
-Deno.test("MapLookupOptimization - correctly finds neurons from either parent", () => {
+Deno.test("Offspring.breed -correctly finds neurons from either parent", () => {
   const { mother, father } = createParentsWithSharedNeurons();
 
   let successfulBreeds = 0;
@@ -180,7 +180,7 @@ Deno.test("MapLookupOptimization - correctly finds neurons from either parent", 
   );
 });
 
-Deno.test("MapLookupOptimization - breeding creatures with shared chain maintains neuron connections", () => {
+Deno.test("Offspring.breed -breeding creatures with shared chain maintains neuron connections", () => {
   // Create creatures with shared neurons to ensure breeding can produce offspring
   const motherJson: CreatureExport = {
     neurons: [
@@ -265,7 +265,7 @@ Deno.test("MapLookupOptimization - breeding creatures with shared chain maintain
   );
 });
 
-Deno.test("MapLookupOptimization - neurons from missing connections are found correctly", () => {
+Deno.test("Offspring.breed -neurons from missing connections are found correctly", () => {
   // This test specifically targets the loop at lines 120-161 where
   // neurons need to be looked up when they're referenced by connections
   // but not yet in the neuronMap

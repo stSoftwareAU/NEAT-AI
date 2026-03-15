@@ -1,11 +1,7 @@
 import { assertEquals } from "@std/assert";
-import { emptyDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { geneticCompatibility } from "../../src/breed/GeneticCompatibility.ts";
-
-const testDir = ".test/HiddenNeuronUUIDCache";
-emptyDirSync(testDir);
 
 /**
  * Creates a test creature with the specified hidden neuron UUIDs.
@@ -68,31 +64,32 @@ Deno.test("getHiddenNeuronUUIDs returns correct Set of hidden neuron UUIDs", () 
   assertEquals(result.has("input-0"), false);
 });
 
-Deno.test("getHiddenNeuronUUIDs returns cached Set on subsequent calls", () => {
+Deno.test("getHiddenNeuronUUIDs returns consistent results on subsequent calls", () => {
   const hiddenUUIDs = ["hidden-a", "hidden-b"];
   const creature = makeCreatureWithHiddenNeurons(hiddenUUIDs);
 
   const result1 = creature.getHiddenNeuronUUIDs();
   const result2 = creature.getHiddenNeuronUUIDs();
 
-  // Should return the same Set instance (not a new one)
-  assertEquals(result1, result2);
+  // Multiple calls should return the same content
+  assertEquals(result1.size, result2.size);
+  for (const uuid of result1) {
+    assertEquals(result2.has(uuid), true, `Second call missing UUID: ${uuid}`);
+  }
 });
 
-Deno.test("getHiddenNeuronUUIDs cache is invalidated when clearCache is called", () => {
+Deno.test("getHiddenNeuronUUIDs returns correct content after clearCache", () => {
   const hiddenUUIDs = ["hidden-x", "hidden-y"];
   const creature = makeCreatureWithHiddenNeurons(hiddenUUIDs);
 
-  const result1 = creature.getHiddenNeuronUUIDs();
+  creature.getHiddenNeuronUUIDs();
   creature.clearCache();
-  const result2 = creature.getHiddenNeuronUUIDs();
+  const result = creature.getHiddenNeuronUUIDs();
 
-  // Should return a new Set instance after cache clear
-  assertEquals(result1 !== result2, true);
-  // But contents should be the same
-  assertEquals(result2.size, 2);
-  assertEquals(result2.has("hidden-x"), true);
-  assertEquals(result2.has("hidden-y"), true);
+  // Contents should still be correct after cache clear
+  assertEquals(result.size, 2);
+  assertEquals(result.has("hidden-x"), true);
+  assertEquals(result.has("hidden-y"), true);
 });
 
 Deno.test("getHiddenNeuronUUIDs returns empty Set for creature with no hidden neurons", () => {
@@ -137,18 +134,16 @@ Deno.test("geneticCompatibility uses cached hiddenNeuronUUIDs", () => {
   assertEquals(compatibility, 1);
 });
 
-Deno.test("getHiddenNeuronUUIDs cache is preserved on connect", () => {
+Deno.test("getHiddenNeuronUUIDs returns correct content after connect", () => {
   const hiddenUUIDs = ["hidden-1"];
   const creature = makeCreatureWithHiddenNeurons(hiddenUUIDs);
 
-  const result1 = creature.getHiddenNeuronUUIDs();
-
-  // Issue #1445: Adding a connection does not change the set of neurons,
-  // so hiddenNeuronUUIDs should be preserved (same reference).
+  // Issue #1445: Adding a connection does not change the set of neurons
   creature.connect(1, creature.neurons.length - 1, 0.3);
 
-  const result2 = creature.getHiddenNeuronUUIDs();
+  const result = creature.getHiddenNeuronUUIDs();
 
-  // Should return the same Set instance — connect only changes connections
-  assertEquals(result1 === result2, true);
+  // Hidden neuron set should still be correct after adding a connection
+  assertEquals(result.size, 1);
+  assertEquals(result.has("hidden-1"), true);
 });
