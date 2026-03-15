@@ -36,15 +36,15 @@ Deno.test("SubConnection - should remove a forward connection", () => {
   creatureValidate(creature);
 });
 
-Deno.test("SubConnection - should handle creature with minimal connections", () => {
-  // Creature with only essential connections
+Deno.test("SubConnection - creature remains valid after removing from minimal network", () => {
+  // Creature with minimal connections — SubConnection may or may not
+  // succeed, but the creature must always remain valid afterwards
   const creature = Creature.fromJSON({
     neurons: [
       { type: "output", squash: "LOGISTIC", bias: 0.1, index: 2 },
     ],
     synapses: [
       { from: 0, to: 2, weight: 1.0 },
-      { from: 1, to: 2, weight: 0.5 },
     ],
     input: 2,
     output: 1,
@@ -52,22 +52,30 @@ Deno.test("SubConnection - should handle creature with minimal connections", () 
 
   creatureValidate(creature);
 
+  const synapseBefore = creature.synapses.length;
   const mutator = new SubConnection(creature);
-  mutator.mutate();
+  const changed = mutator.mutate();
 
-  // May or may not change depending on removal logic
   creatureValidate(creature);
+
+  if (changed) {
+    assert(
+      creature.synapses.length < synapseBefore,
+      "Should have fewer synapses after successful removal",
+    );
+  }
 });
 
-Deno.test("SubConnection - should handle orphan cleanup after removal", () => {
-  // Create creature where removing a connection may orphan a neuron
+Deno.test("SubConnection - orphan neurons are cleaned up after connection removal", () => {
+  // Create creature where removing the only inward connection to the hidden
+  // neuron would orphan it. The cleanup should remove or convert it.
   const creature = Creature.fromJSON({
     neurons: [
       { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 2 },
       { type: "output", squash: "LOGISTIC", bias: 0.1, index: 3 },
     ],
     synapses: [
-      { from: 0, to: 2, weight: 1.0 },
+      { from: 0, to: 2, weight: 1.0 }, // Only inward to hidden
       { from: 2, to: 3, weight: 0.8 },
       { from: 1, to: 3, weight: 0.9 }, // Direct path to output
     ],
@@ -77,13 +85,34 @@ Deno.test("SubConnection - should handle orphan cleanup after removal", () => {
 
   creatureValidate(creature);
 
-  // Run multiple attempts to hit the orphan cleanup path
+  let removedOrConvertedOrphan = false;
   for (let i = 0; i < 50; i++) {
     const testCreature = Creature.fromJSON(creature.exportJSON());
+    const hiddenCountBefore = testCreature.neurons.filter((n) =>
+      n.type === "hidden"
+    ).length;
+
     const mutator = new SubConnection(testCreature);
-    mutator.mutate();
+    const changed = mutator.mutate();
+
     creatureValidate(testCreature);
+
+    if (changed) {
+      const hiddenCountAfter =
+        testCreature.neurons.filter((n) => n.type === "hidden").length;
+      // If the hidden neuron's inward connection was removed, the neuron
+      // should have been cleaned up (removed or converted to constant)
+      if (hiddenCountAfter < hiddenCountBefore) {
+        removedOrConvertedOrphan = true;
+        break;
+      }
+    }
   }
+
+  assert(
+    removedOrConvertedOrphan,
+    "Should clean up orphaned hidden neurons after connection removal",
+  );
 });
 
 Deno.test("SubConnection - stress test produces valid creatures", () => {

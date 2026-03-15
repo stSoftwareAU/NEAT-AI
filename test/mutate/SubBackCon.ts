@@ -147,8 +147,10 @@ Deno.test("SubBackCon - should remove completely disconnected hidden neuron", ()
   assert(foundScenario, "Should be able to mutate within max attempts");
 });
 
-Deno.test("SubBackCon - should convert neuron to constant when no inward connections but has outward", () => {
-  // Create a creature where removing connection leaves a neuron with no inward but has outward
+Deno.test("SubBackCon - mutation always produces valid creature even when neuron loses inward connections", () => {
+  // Create a creature where removing the back connection leaves hidden2 with
+  // no inward connections. After fix(), the creature should still be valid —
+  // hidden2 may be converted to constant or removed entirely.
   const creature = Creature.fromJSON({
     neurons: [
       {
@@ -186,47 +188,33 @@ Deno.test("SubBackCon - should convert neuron to constant when no inward connect
 
   creatureValidate(creature);
 
-  // Find the hidden2 neuron before mutation
-  const hidden2Before = creature.neurons.find((n) => n.index === 3);
-  assert(hidden2Before, "Hidden2 neuron should exist");
-  assertEquals(hidden2Before.type, "hidden");
-
-  // Run mutations until we remove the connection from hidden1 to hidden2
-  let attempts = 0;
-  const maxAttempts = 50;
-
-  while (attempts < maxAttempts) {
+  let mutationSucceeded = false;
+  for (let i = 0; i < 50; i++) {
     const testCreature = Creature.fromJSON(creature.exportJSON());
-    const hidden2BeforeTest = testCreature.neurons.find((n) =>
-      n.uuid === hidden2Before.uuid
-    );
-
     const mutator = new SubBackCon(testCreature);
     const changed = mutator.mutate();
 
-    if (changed) {
-      creatureValidate(testCreature);
+    // Every mutation attempt must leave the creature valid
+    creatureValidate(testCreature);
 
-      // Check if hidden2 still exists and was converted to constant
-      const hidden2After = testCreature.neurons.find((n) =>
-        n.uuid === hidden2Before.uuid
+    if (changed) {
+      mutationSucceeded = true;
+      // After removing a back connection, the creature should still have
+      // at least one path from inputs to outputs
+      assert(
+        testCreature.synapses.length > 0,
+        "Creature should still have synapses after mutation",
       );
-      if (
-        hidden2After && hidden2After.type === "constant" &&
-        hidden2BeforeTest?.type === "hidden"
-      ) {
-        // Successfully converted to constant
-        assertEquals(hidden2After.type, "constant");
-        return;
-      }
     }
-    attempts++;
   }
 
-  // It's okay if we don't hit this scenario - the test is for coverage
+  assert(
+    mutationSucceeded,
+    "Should successfully mutate at least once in 50 attempts",
+  );
 });
 
-Deno.test("SubBackCon - should handle focus list correctly", () => {
+Deno.test("SubBackCon - focus list restricts which connections can be removed", () => {
   const creature = Creature.fromJSON({
     neurons: [
       {
@@ -251,7 +239,7 @@ Deno.test("SubBackCon - should handle focus list correctly", () => {
     synapses: [
       { from: 0, to: 2, weight: 1.0 },
       { from: 1, to: 3, weight: 1.0 },
-      { from: 2, to: 3, weight: 0.7 }, // Back connection
+      { from: 2, to: 3, weight: 0.7 }, // Back connection between hidden neurons
       { from: 2, to: 4, weight: 0.8 },
       { from: 3, to: 4, weight: 0.9 },
     ],
@@ -261,59 +249,83 @@ Deno.test("SubBackCon - should handle focus list correctly", () => {
 
   creatureValidate(creature);
 
-  // Only focus on neurons not involved in the back connection
+  const backConnectionBefore = creature.getSynapse(2, 3);
+  assert(
+    backConnectionBefore !== null,
+    "Back connection 2->3 should exist before mutation",
+  );
+
+  // Focus only on the output neuron (index 4), which is not involved in the
+  // back connection (2->3). The back connection should remain untouched.
   const mutator = new SubBackCon(creature);
-  mutator.mutate([4]); // Only output neuron - result may vary
-
-  // May or may not change depending on the focus list implementation
-  creatureValidate(creature);
-});
-
-Deno.test("SubBackCon - should handle various network structures", () => {
-  // Test with a simple network structure where mutations are well-defined
-  const creature = Creature.fromJSON({
-    neurons: [
-      {
-        type: "hidden",
-        squash: "LOGISTIC",
-        bias: 0.5,
-        index: 2,
-      },
-      {
-        type: "output",
-        squash: "LOGISTIC",
-        bias: 0.1,
-        index: 3,
-      },
-    ],
-    synapses: [
-      // Multiple paths to ensure robustness
-      { from: 0, to: 2, weight: 1.0 },
-      { from: 1, to: 2, weight: 0.8 },
-      { from: 2, to: 3, weight: 0.9 },
-      { from: 0, to: 3, weight: 0.7 }, // Direct path to output
-      { from: 1, to: 3, weight: 0.6 }, // Another direct path
-    ],
-    input: 2,
-    output: 1,
-  });
+  const changed = mutator.mutate([4]);
 
   creatureValidate(creature);
 
-  const synapsesCountBefore = creature.synapses.length;
-
-  // Run mutations
-  const mutator = new SubBackCon(creature);
-  const changed = mutator.mutate();
-
-  if (changed) {
-    creatureValidate(creature);
-    // Should have fewer synapses after successful mutation
+  if (!changed) {
+    // If mutation didn't happen, back connection should still exist
+    const backConnectionAfter = creature.getSynapse(2, 3);
     assert(
-      creature.synapses.length <= synapsesCountBefore,
-      "Should have same or fewer synapses after mutation",
+      backConnectionAfter !== null,
+      "Back connection should be preserved when focus list excludes it",
     );
   }
+});
+
+Deno.test("SubBackCon - removes connection and reduces synapse count", () => {
+  // Test with a network that has multiple paths so removal is always possible
+  let mutationSucceeded = false;
+
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const creature = Creature.fromJSON({
+      neurons: [
+        {
+          type: "hidden",
+          squash: "LOGISTIC",
+          bias: 0.5,
+          index: 2,
+        },
+        {
+          type: "output",
+          squash: "LOGISTIC",
+          bias: 0.1,
+          index: 3,
+        },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 1.0 },
+        { from: 1, to: 2, weight: 0.8 },
+        { from: 2, to: 3, weight: 0.9 },
+        { from: 0, to: 3, weight: 0.7 },
+        { from: 1, to: 3, weight: 0.6 },
+      ],
+      input: 2,
+      output: 1,
+    });
+
+    creatureValidate(creature);
+
+    const synapsesCountBefore = creature.synapses.length;
+
+    const mutator = new SubBackCon(creature);
+    const changed = mutator.mutate();
+
+    creatureValidate(creature);
+
+    if (changed) {
+      assert(
+        creature.synapses.length <= synapsesCountBefore,
+        "Should have same or fewer synapses after mutation",
+      );
+      mutationSucceeded = true;
+      break;
+    }
+  }
+
+  assert(
+    mutationSucceeded,
+    "SubBackCon should succeed at least once in 50 attempts",
+  );
 });
 
 Deno.test("SubBackCon - stress test single mutation per creature", () => {
@@ -365,41 +377,50 @@ Deno.test("SubBackCon - stress test single mutation per creature", () => {
 });
 
 Deno.test("SubBackCon - should delete memetic property after mutation", () => {
-  const creature = Creature.fromJSON({
-    neurons: [
-      {
-        type: "hidden",
-        squash: "LOGISTIC",
-        bias: 0.5,
-        index: 2,
-      },
-      {
-        type: "output",
-        squash: "LOGISTIC",
-        bias: 0.1,
-        index: 3,
-      },
-    ],
-    synapses: [
-      { from: 0, to: 2, weight: 1.0 },
-      { from: 1, to: 2, weight: 0.8 }, // Back connection
-      { from: 2, to: 3, weight: 0.9 },
-    ],
-    input: 2,
-    output: 1,
-  });
+  let mutationSucceeded = false;
 
-  // Set a fake memetic property
-  creature.memetic = { test: true } as unknown as typeof creature.memetic;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const creature = Creature.fromJSON({
+      neurons: [
+        {
+          type: "hidden",
+          squash: "LOGISTIC",
+          bias: 0.5,
+          index: 2,
+        },
+        {
+          type: "output",
+          squash: "LOGISTIC",
+          bias: 0.1,
+          index: 3,
+        },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 1.0 },
+        { from: 1, to: 2, weight: 0.8 }, // Back connection
+        { from: 2, to: 3, weight: 0.9 },
+      ],
+      input: 2,
+      output: 1,
+    });
 
-  creatureValidate(creature);
+    creature.memetic = { test: true } as unknown as typeof creature.memetic;
+    creatureValidate(creature);
 
-  const mutator = new SubBackCon(creature);
-  const changed = mutator.mutate();
+    const mutator = new SubBackCon(creature);
+    const changed = mutator.mutate();
 
-  if (changed) {
-    assertEquals(creature.memetic, undefined, "Memetic should be deleted");
+    creatureValidate(creature);
+
+    if (changed) {
+      assertEquals(creature.memetic, undefined, "Memetic should be deleted");
+      mutationSucceeded = true;
+      break;
+    }
   }
 
-  creatureValidate(creature);
+  assert(
+    mutationSucceeded,
+    "SubBackCon should succeed at least once in 50 attempts",
+  );
 });
