@@ -17,10 +17,12 @@ two-hidden-neuron topology that actually triggers chain compaction (same-squash
 requirement).
 
 **test/Compact/CompactUnusedFiniteGuard.ts** -- Replaced
-`assertEquals(Number.isFinite(bias), true)` with `assertAlmostEquals(bias, 0.65)`
-matching the exact formula `0.5 + (0.3 * 0.5)`.
+`assertEquals(Number.isFinite(bias), true)` with
+`assertAlmostEquals(bias, 0.65)` matching the exact formula `0.5 + (0.3 * 0.5)`.
 
-**test/Compact/CompactCreatureSimplifyLargeWeights.ts** -- Replaced `assert(beforeMax >= 1e6)` with `assertEquals(beforeMax, 1e6)` for exact value check.
+**test/Compact/CompactCreatureSimplifyLargeWeights.ts** -- Replaced
+`assert(beforeMax >= 1e6)` with `assertEquals(beforeMax, 1e6)` for exact value
+check.
 
 **test/Compact/ZeroWeightSynapsePruning.ts** -- Replaced
 `assertEquals(typeof compacted !== "undefined", true)` with
@@ -49,12 +51,13 @@ output.
 
 ### Test names and assertions improved (2 files)
 
-**test/optimize/makeSynapsesValue.ts** -- Added explicit `assert(synapse)` guards
-before non-null assertion operators. Improved test names to describe the specific
-output format being verified.
+**test/optimize/makeSynapsesValue.ts** -- Added explicit `assert(synapse)`
+guards before non-null assertion operators. Improved test names to describe the
+specific output format being verified.
 
 **test/FeedForward/ForwardOnlyFlag.ts** -- Replaced
-`assert(exported.forwardOnly === true)` with `assertEquals(exported.forwardOnly, true)`.
+`assert(exported.forwardOnly === true)` with
+`assertEquals(exported.forwardOnly, true)`.
 
 ## Evidence
 
@@ -63,6 +66,7 @@ All 4520 tests pass. `./quality.sh` passes cleanly.
 ## Test Plan
 
 - Verified all strengthened assertions match the implementation formulas
-- Verified IDENTITY chain test uses valid topology that triggers chain compaction
+- Verified IDENTITY chain test uses valid topology that triggers chain
+  compaction
 - Verified debug file I/O removal does not affect test assertions
 - Ran full quality gate: format, lint, type-check, and all tests pass
