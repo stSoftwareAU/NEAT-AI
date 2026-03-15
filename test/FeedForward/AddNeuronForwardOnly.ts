@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
 
@@ -19,7 +19,10 @@ Deno.test("Forward-only: AddNeuron does not introduce recurrent connections", ()
 
   assertEquals(changed, true);
   assertEquals(creature.neurons.length, beforeNeurons + 1);
-  assertEquals(creature.synapses.length > beforeSynapses, true);
+  assert(
+    creature.synapses.length > beforeSynapses,
+    `Expected more synapses after AddNeuron (before=${beforeSynapses}, after=${creature.synapses.length})`,
+  );
 
   // This is the hard invariant we care about.
   creature.validate({ forwardOnly: true });

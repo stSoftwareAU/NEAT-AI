@@ -7,7 +7,7 @@
  * the creature unchanged.
  */
 
-import { assertEquals } from "@std/assert";
+import { assertAlmostEquals, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
 import { removeNeuron } from "../../src/compact/CompactUnused.ts";
@@ -34,11 +34,12 @@ Deno.test("removeNeuron - normal bias adjustment succeeds", () => {
 
   // Output neuron's bias should be adjusted: 0.5 + (0.3 * 0.5) = 0.65
   const outputNeuron = creature.neurons.find((n) => n.uuid === "output-0");
-  assertEquals(outputNeuron !== undefined, true);
-  assertEquals(
-    Number.isFinite(outputNeuron!.bias),
-    true,
-    `Output bias should be finite, got ${outputNeuron!.bias}`,
+  assertEquals(outputNeuron !== undefined, true, "Output neuron must exist");
+  assertAlmostEquals(
+    outputNeuron!.bias,
+    0.65,
+    1e-12,
+    "Output bias should be 0.5 + (0.3 * 0.5) = 0.65",
   );
 });
 

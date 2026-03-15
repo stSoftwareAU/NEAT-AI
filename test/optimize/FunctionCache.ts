@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "@std/assert";
+import { assertEquals, assertNotEquals } from "@std/assert";
 import {
   findActivationFunction,
   type FunctionCache,
@@ -9,8 +9,7 @@ Deno.test("findActivationFunction - returns undefined on first call (cache miss)
   const result = findActivationFunction("const x = 1;", cache);
 
   assertEquals(result, undefined);
-  // Key should be set after the call
-  assert(cache.key.length > 0, "Cache key should be set");
+  assertNotEquals(cache.key, "", "Cache key should be set after first call");
 });
 
 Deno.test("findActivationFunction - returns cached function on matching body", () => {
@@ -42,7 +41,7 @@ Deno.test("findActivationFunction - clears function on different body", () => {
   // Second call with different body — should invalidate
   const result = findActivationFunction(body2, cache);
   assertEquals(result, undefined);
-  assert(cache.key !== key1, "Key should change for different body");
+  assertNotEquals(cache.key, key1, "Key should change for different body");
   assertEquals(cache.function, undefined);
 });
 
@@ -54,8 +53,9 @@ Deno.test("findActivationFunction - suffix affects cache key", () => {
   findActivationFunction(body, cache1, "LOGISTIC");
   findActivationFunction(body, cache2, "IDENTITY");
 
-  assert(
-    cache1.key !== cache2.key,
+  assertNotEquals(
+    cache1.key,
+    cache2.key,
     "Different suffixes should produce different keys",
   );
 });
@@ -68,8 +68,9 @@ Deno.test("findActivationFunction - same body without and with suffix produces d
   findActivationFunction(body, cache1);
   findActivationFunction(body, cache2, "LOGISTIC");
 
-  assert(
-    cache1.key !== cache2.key,
+  assertNotEquals(
+    cache1.key,
+    cache2.key,
     "No suffix vs suffix should produce different keys",
   );
 });

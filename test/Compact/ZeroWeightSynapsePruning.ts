@@ -1,4 +1,4 @@
-import { assertAlmostEquals, assertEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 
@@ -54,25 +54,28 @@ Deno.test("Compact: prunes zero-weight synapses then removes newly-orphaned neur
   // Without zero-weight pruning inside compaction, this would be undefined because
   // the network remains structurally unchanged (the dead-weight edge keeps the
   // hidden neuron "connected").
-  assertEquals(typeof compacted !== "undefined", true);
+  assert(
+    compacted !== undefined,
+    "Should compact creature with zero-weight dead edge",
+  );
 
-  compacted!.validate();
+  compacted.validate();
 
   // Zero-weight synapse should be removed, which should orphan the hidden neuron,
   // which should then be removed by orphan cleanup.
-  assertEquals(compacted!.neurons.length, beforeNeuronCount - 1);
+  assertEquals(compacted.neurons.length, beforeNeuronCount - 1);
   // We remove:
   // - the zero-weight synapse (hidden-unused -> output-0)
   // - the inbound synapse to the newly removed neuron (input-0 -> hidden-unused)
-  assertEquals(compacted!.synapses.length, beforeSynapseCount - 2);
-  assertEquals(compacted!.synapses.some((s) => s.weight === 0), false);
+  assertEquals(compacted.synapses.length, beforeSynapseCount - 2);
+  assertEquals(compacted.synapses.some((s) => s.weight === 0), false);
   assertEquals(
-    compacted!.neurons.some((n) => n.uuid === "hidden-unused"),
+    compacted.neurons.some((n) => n.uuid === "hidden-unused"),
     false,
   );
 
   for (let i = 0; i < inputs.length; i++) {
-    const after = compacted!.activate(inputs[i]);
+    const after = compacted.activate(inputs[i]);
     assertAlmostEquals(after[0], beforeOutputs[i][0], 0.000_000_1);
   }
 });

@@ -7,7 +7,7 @@ import { Offspring } from "../../src/architecture/Offspring.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
-Deno.test("Forward-only: breeding upgrades semanticVersion 2.x.x → 3.0.0 when validation passes", () => {
+Deno.test("Forward-only: breeding upgrades semanticVersion 2.x.x → 4.0.0 when validation passes", () => {
   const mumJson: CreatureExport = {
     input: 2,
     output: 1,
@@ -58,7 +58,7 @@ Deno.test("Forward-only: breeding upgrades semanticVersion 2.x.x → 3.0.0 when 
   assertEquals(child.semanticVersion, "4.0.0");
 });
 
-Deno.test("Forward-only: mutation upgrades semanticVersion 2.x.x → 3.0.0 when validation passes", () => {
+Deno.test("Forward-only: mutation upgrades semanticVersion 2.x.x → 4.0.0 when validation passes", () => {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
   creature.forwardOnly = true;
   creature.semanticVersion = "2.9.9";
