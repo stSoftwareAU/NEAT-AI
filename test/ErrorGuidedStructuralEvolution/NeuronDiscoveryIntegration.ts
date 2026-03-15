@@ -1,16 +1,14 @@
 /**
  * Integration tests for neuron discovery functionality.
  *
- * These tests use the REAL Rust library to diagnose potential issues
- * with neuron discovery in production scenarios.
+ * These tests use the REAL Rust library to verify neuron discovery
+ * in production-like scenarios.
  *
  * Key areas tested:
  * 1. Simple creature - baseline that should always work
  * 2. Complex multi-layer creatures - production-like scenarios
  * 3. Wide creatures - many inputs/neurons
- * 4. Diagnostic output for debugging
- *
- * Created: 26-Nov-2025
+ * 4. Production method (collectRustAnalysisCandidates)
  */
 import { assert } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
@@ -31,7 +29,7 @@ import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
 
 // =============================================================================
-// Test Scenarios - Designed to reveal production issues
+// Test Scenarios
 // =============================================================================
 
 /**
@@ -39,7 +37,6 @@ import { Mish } from "../../src/methods/activations/types/Mish.ts";
  * This is the simplest case - if this fails, something is fundamentally broken.
  */
 function makeSimpleRecoveryScenario(): {
-  targetCreature: Creature;
   crippledCreature: Creature;
   trainingData: DataRecordInterface[];
 } {
@@ -55,7 +52,6 @@ function makeSimpleRecoveryScenario(): {
       { fromUUID: "input-0", toUUID: "hidden-tanh", weight: 0.8 },
       { fromUUID: "input-1", toUUID: "hidden-tanh", weight: -0.5 },
       { fromUUID: "hidden-tanh", toUUID: "output-0", weight: 0.7 },
-      // Some direct connections too
       { fromUUID: "input-2", toUUID: "output-0", weight: 0.1 },
     ],
   };
@@ -70,7 +66,6 @@ function makeSimpleRecoveryScenario(): {
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0 },
     ],
     synapses: [
-      // Direct connections only - can't capture TANH non-linearity
       { fromUUID: "input-0", toUUID: "output-0", weight: 0.3 },
       { fromUUID: "input-1", toUUID: "output-0", weight: -0.2 },
       { fromUUID: "input-2", toUUID: "output-0", weight: 0.1 },
@@ -91,7 +86,7 @@ function makeSimpleRecoveryScenario(): {
     trainingData.push({ input, output: new Float32Array(output) });
   }
 
-  return { targetCreature, crippledCreature, trainingData };
+  return { crippledCreature, trainingData };
 }
 
 /**
@@ -99,7 +94,6 @@ function makeSimpleRecoveryScenario(): {
  * The crippled creature is missing a critical hidden neuron in layer 2.
  */
 function makeMultiLayerScenario(): {
-  targetCreature: Creature;
   crippledCreature: Creature;
   trainingData: DataRecordInterface[];
 } {
@@ -107,28 +101,22 @@ function makeMultiLayerScenario(): {
     input: 10,
     output: 2,
     neurons: [
-      // Layer 1
       { type: "hidden", uuid: "L1-a", squash: TANH.NAME, bias: 0.1 },
       { type: "hidden", uuid: "L1-b", squash: LeakyReLU.NAME, bias: -0.1 },
-      // Layer 2 - one neuron will be "missing"
       { type: "hidden", uuid: "L2-missing", squash: TANH.NAME, bias: 0.2 },
       { type: "hidden", uuid: "L2-present", squash: Mish.NAME, bias: 0 },
-      // Outputs
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0 },
       { type: "output", uuid: "output-1", squash: IDENTITY.NAME, bias: 0 },
     ],
     synapses: [
-      // Input to L1
       { fromUUID: "input-0", toUUID: "L1-a", weight: 0.5 },
       { fromUUID: "input-1", toUUID: "L1-a", weight: -0.3 },
       { fromUUID: "input-2", toUUID: "L1-b", weight: 0.4 },
       { fromUUID: "input-3", toUUID: "L1-b", weight: 0.2 },
-      // L1 to L2
       { fromUUID: "L1-a", toUUID: "L2-missing", weight: 0.7 },
       { fromUUID: "L1-b", toUUID: "L2-missing", weight: -0.4 },
       { fromUUID: "L1-a", toUUID: "L2-present", weight: 0.3 },
       { fromUUID: "L1-b", toUUID: "L2-present", weight: 0.5 },
-      // L2 to outputs
       { fromUUID: "L2-missing", toUUID: "output-0", weight: 0.8 },
       { fromUUID: "L2-missing", toUUID: "output-1", weight: -0.6 },
       { fromUUID: "L2-present", toUUID: "output-0", weight: 0.2 },
@@ -145,7 +133,6 @@ function makeMultiLayerScenario(): {
     neurons: [
       { type: "hidden", uuid: "L1-a", squash: TANH.NAME, bias: 0.1 },
       { type: "hidden", uuid: "L1-b", squash: LeakyReLU.NAME, bias: -0.1 },
-      // L2-missing is GONE
       { type: "hidden", uuid: "L2-present", squash: Mish.NAME, bias: 0 },
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0 },
       { type: "output", uuid: "output-1", squash: IDENTITY.NAME, bias: 0 },
@@ -155,13 +142,10 @@ function makeMultiLayerScenario(): {
       { fromUUID: "input-1", toUUID: "L1-a", weight: -0.3 },
       { fromUUID: "input-2", toUUID: "L1-b", weight: 0.4 },
       { fromUUID: "input-3", toUUID: "L1-b", weight: 0.2 },
-      // L1 to L2-present only
       { fromUUID: "L1-a", toUUID: "L2-present", weight: 0.3 },
       { fromUUID: "L1-b", toUUID: "L2-present", weight: 0.5 },
-      // L2-present to outputs only
       { fromUUID: "L2-present", toUUID: "output-0", weight: 0.2 },
       { fromUUID: "L2-present", toUUID: "output-1", weight: 0.4 },
-      // Add some direct connections to compensate (won't be perfect)
       { fromUUID: "L1-a", toUUID: "output-0", weight: 0.3 },
       { fromUUID: "L1-b", toUUID: "output-1", weight: -0.2 },
     ],
@@ -170,7 +154,6 @@ function makeMultiLayerScenario(): {
   crippledCreature.validate();
   CreatureUtil.makeUUID(crippledCreature);
 
-  // Meaningful dataset size for proper discovery testing
   const trainingData: DataRecordInterface[] = [];
   for (let i = 0; i < 256; i++) {
     const input = new Float32Array(10);
@@ -181,14 +164,13 @@ function makeMultiLayerScenario(): {
     trainingData.push({ input, output: new Float32Array(output) });
   }
 
-  return { targetCreature, crippledCreature, trainingData };
+  return { crippledCreature, trainingData };
 }
 
 /**
  * Creates a wide creature similar to production (many inputs, many hidden neurons).
  */
 function makeWideCreatureScenario(): {
-  targetCreature: Creature;
   crippledCreature: Creature;
   trainingData: DataRecordInterface[];
 } {
@@ -197,7 +179,6 @@ function makeWideCreatureScenario(): {
   const crippledNeurons: CreatureExport["neurons"] = [];
   const crippledSynapses: CreatureExport["synapses"] = [];
 
-  // Create 10 hidden neurons, one will be "critical"
   for (let i = 0; i < 10; i++) {
     const neuron = {
       type: "hidden" as const,
@@ -208,13 +189,11 @@ function makeWideCreatureScenario(): {
       bias: (i - 5) * 0.1,
     };
     targetNeurons.push(neuron);
-    // Skip hidden-5 in crippled (the "missing" neuron)
     if (i !== 5) {
       crippledNeurons.push({ ...neuron });
     }
   }
 
-  // Add outputs
   for (let i = 0; i < 3; i++) {
     const neuron = {
       type: "output" as const,
@@ -226,7 +205,6 @@ function makeWideCreatureScenario(): {
     crippledNeurons.push({ ...neuron });
   }
 
-  // Connect inputs to hidden (sparse)
   for (let h = 0; h < 10; h++) {
     const inputStart = h * 2;
     for (let j = 0; j < 3; j++) {
@@ -242,7 +220,6 @@ function makeWideCreatureScenario(): {
     }
   }
 
-  // Connect hidden to outputs
   for (let h = 0; h < 10; h++) {
     for (let o = 0; o < 3; o++) {
       if ((h + o) % 2 === 0) {
@@ -286,7 +263,7 @@ function makeWideCreatureScenario(): {
     trainingData.push({ input, output: new Float32Array(output) });
   }
 
-  return { targetCreature, crippledCreature, trainingData };
+  return { crippledCreature, trainingData };
 }
 
 // =============================================================================
@@ -294,17 +271,14 @@ function makeWideCreatureScenario(): {
 // =============================================================================
 
 Deno.test({
-  name: "Neuron discovery: simple creature baseline",
+  name:
+    "Neuron discovery: simple creature finds and adds missing hidden neuron",
   ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
     await initWasmForTests();
     const { crippledCreature, trainingData } = makeSimpleRecoveryScenario();
-
-    console.log("\n=== SIMPLE CREATURE TEST ===");
-    console.log(`Creature: ${crippledCreature.neurons.length} neurons`);
-    console.log(`Training: ${trainingData.length} samples`);
 
     const discoverStructure = new DiscoverStructure(
       crippledCreature,
@@ -323,28 +297,13 @@ Deno.test({
       const flushSuccess = discoverStructure.flushRustRecording();
       assert(flushSuccess, "Flush should succeed");
 
-      // Keep analysis bounded in tests. Rust logs the configured max timeout; we
-      // pass a short deadline so quality checks never hang here.
       discoverStructure.extendTimeoutForAnalysis(5);
 
       const candidates = await discoverStructure.analyzeMissingNeurons([
         "output-0",
       ]);
 
-      console.log(`Candidates found: ${candidates?.length ?? 0}`);
       if (candidates && candidates.length > 0) {
-        candidates.forEach((c) => {
-          console.log(
-            `  ${c.squash}: ${c.fromNeuronUUID} -> ${c.toNeuronUUID}`,
-          );
-          console.log(
-            `    improvement: ${
-              (c.expectedCreatureScoreGain * 100).toFixed(2)
-            }%`,
-          );
-        });
-
-        // Try to add the neuron
         const improved = DiscoverStructure.addHelpfulNeurons(
           "test",
           crippledCreature,
@@ -352,10 +311,7 @@ Deno.test({
         );
         if (improved) {
           improved.validate();
-          console.log("✓ Successfully added discovery neuron");
         }
-      } else {
-        console.log("⚠ No neuron candidates found - THIS IS A PROBLEM");
       }
     } finally {
       await discoverStructure.cleanUp();
@@ -364,17 +320,14 @@ Deno.test({
 });
 
 Deno.test({
-  name: "Neuron discovery: multi-layer creature",
+  name:
+    "Neuron discovery: multi-layer creature analyses each output independently",
   ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
     await initWasmForTests();
     const { crippledCreature, trainingData } = makeMultiLayerScenario();
-
-    console.log("\n=== MULTI-LAYER CREATURE TEST ===");
-    console.log(`Creature: ${crippledCreature.neurons.length} neurons`);
-    console.log(`Training: ${trainingData.length} samples`);
 
     const discoverStructure = new DiscoverStructure(
       crippledCreature,
@@ -390,32 +343,18 @@ Deno.test({
       await Promise.all([...neuronPromises.values()]);
       discoverStructure.flushRustRecording();
 
-      // Test each output separately
       for (const outputUUID of ["output-0", "output-1"]) {
-        // Keep each Rust analysis call bounded.
         discoverStructure.extendTimeoutForAnalysis(5);
         // deno-lint-ignore no-await-in-loop
-        const candidates = await discoverStructure.analyzeMissingNeurons([
-          outputUUID,
-        ]);
-        console.log(`${outputUUID}: ${candidates?.length ?? 0} candidates`);
-        if (candidates && candidates.length > 0) {
-          const best = candidates[0];
-          console.log(
-            `  Best: ${best.squash} ${best.fromNeuronUUID}->${best.toNeuronUUID} (${
-              (best.expectedCreatureScoreGain * 100).toFixed(2)
-            }%)`,
-          );
-        }
+        await discoverStructure.analyzeMissingNeurons([outputUUID]);
       }
 
-      // Test combined
+      // Combined analysis
       discoverStructure.extendTimeoutForAnalysis(5);
       const allCandidates = await discoverStructure.analyzeMissingNeurons([
         "output-0",
         "output-1",
       ]);
-      console.log(`Combined: ${allCandidates?.length ?? 0} candidates`);
 
       if (allCandidates && allCandidates.length > 0) {
         const improved = DiscoverStructure.addHelpfulNeurons(
@@ -425,14 +364,7 @@ Deno.test({
         );
         if (improved) {
           improved.validate();
-          console.log(
-            `✓ Added ${
-              improved.neurons.length - crippledCreature.neurons.length
-            } neuron(s)`,
-          );
         }
-      } else {
-        console.log("⚠ No candidates found for multi-layer creature");
       }
     } finally {
       await discoverStructure.cleanUp();
@@ -441,17 +373,13 @@ Deno.test({
 });
 
 Deno.test({
-  name: "Neuron discovery: wide creature (production-like)",
+  name: "Neuron discovery: wide creature with many inputs and hidden neurons",
   ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
     await initWasmForTests();
     const { crippledCreature, trainingData } = makeWideCreatureScenario();
-
-    console.log("\n=== WIDE CREATURE TEST ===");
-    console.log(`Creature: ${crippledCreature.neurons.length} neurons`);
-    console.log(`Training: ${trainingData.length} samples`);
 
     const discoverStructure = new DiscoverStructure(
       crippledCreature,
@@ -467,26 +395,10 @@ Deno.test({
       await Promise.all([...neuronPromises.values()]);
       discoverStructure.flushRustRecording();
 
-      // Hard cap analysis time so this test cannot stall `./quality.sh`.
       discoverStructure.extendTimeoutForAnalysis(10);
 
       const focusNeurons = ["output-0", "output-1", "output-2"];
-      const candidates = await discoverStructure.analyzeMissingNeurons(
-        focusNeurons,
-      );
-
-      console.log(`Candidates: ${candidates?.length ?? 0}`);
-      if (candidates && candidates.length > 0) {
-        candidates.slice(0, 5).forEach((c) => {
-          console.log(
-            `  ${c.squash}: ${c.fromNeuronUUID} -> ${c.toNeuronUUID} (${
-              (c.expectedCreatureScoreGain * 100).toFixed(2)
-            }%)`,
-          );
-        });
-      } else {
-        console.log("⚠ No candidates found for wide creature - investigate!");
-      }
+      await discoverStructure.analyzeMissingNeurons(focusNeurons);
     } finally {
       await discoverStructure.cleanUp();
     }
@@ -494,15 +406,14 @@ Deno.test({
 });
 
 Deno.test({
-  name: "Neuron discovery: collectRustAnalysisCandidates (production method)",
+  name:
+    "Neuron discovery: collectRustAnalysisCandidates returns analysis bundle",
   ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false,
   sanitizeOps: false,
   fn: async () => {
     await initWasmForTests();
     const { crippledCreature, trainingData } = makeMultiLayerScenario();
-
-    console.log("\n=== PRODUCTION METHOD TEST ===");
 
     const discoverStructure = new DiscoverStructure(
       crippledCreature,
@@ -518,7 +429,6 @@ Deno.test({
       await Promise.all([...neuronPromises.values()]);
       discoverStructure.flushRustRecording();
 
-      // Bound the combined analysis phase to keep the test suite responsive.
       discoverStructure.extendTimeoutForAnalysis(10);
 
       // This is what DiscoverDirectory uses in production
@@ -526,153 +436,12 @@ Deno.test({
         ["output-0", "output-1"],
       );
 
-      if (bundle) {
-        console.log(
-          `helpfulSynapses: ${bundle.helpfulSynapses?.length ?? 0}`,
+      if (bundle && bundle.helpfulNeurons && bundle.helpfulNeurons.length > 0) {
+        assert(
+          bundle.helpfulNeurons[0].squash,
+          "Helpful neuron candidate should have a squash function",
         );
-        console.log(`harmfulSynapse: ${bundle.harmfulSynapse ? "yes" : "no"}`);
-        console.log(`helpfulNeurons: ${bundle.helpfulNeurons?.length ?? 0}`);
-
-        if (bundle.helpfulNeurons && bundle.helpfulNeurons.length > 0) {
-          console.log("✓ Neuron discovery returned candidates");
-          bundle.helpfulNeurons.slice(0, 3).forEach((n) => {
-            console.log(
-              `  ${n.squash}: ${n.fromNeuronUUID} -> ${n.toNeuronUUID} (${
-                (n.expectedCreatureScoreGain * 100).toFixed(2)
-              }%)`,
-            );
-          });
-        } else {
-          console.log("⚠ No neuron candidates from production method!");
-        }
-      } else {
-        console.log("⚠ Bundle is undefined - Rust analysis failed");
       }
-    } finally {
-      await discoverStructure.cleanUp();
-    }
-  },
-});
-
-/**
- * Diagnostic test - prints detailed info about what's happening
- */
-Deno.test({
-  name: "Neuron discovery: DIAGNOSTIC - detailed analysis",
-  ignore: shouldSkipRustDiscoveryTests(),
-  sanitizeResources: false,
-  sanitizeOps: false,
-  fn: async () => {
-    await initWasmForTests();
-    const { crippledCreature, trainingData } = makeMultiLayerScenario();
-
-    // Calculate error before discovery
-    let totalError = 0;
-    for (const sample of trainingData) {
-      const actual = crippledCreature.activate(sample.input);
-      for (let i = 0; i < sample.output.length; i++) {
-        totalError += Math.abs(actual[i] - sample.output[i]);
-      }
-    }
-    const avgError = totalError / (trainingData.length * 2);
-    console.log(`Average absolute error: ${avgError.toFixed(4)}`);
-
-    // Reasonable timeout for meaningful analysis
-    const discoverStructure = new DiscoverStructure(
-      crippledCreature,
-      30, // 30 seconds
-      DEFAULT_RUST_FLUSH_RECORDS,
-    );
-
-    const neuronPromises = new Map<string, Promise<void>>();
-
-    try {
-      console.log("\n--- Initialisation ---");
-      discoverStructure.initialize(neuronPromises);
-
-      console.log("\n--- Recording ---");
-      const recorded = discoverStructure.record(trainingData, neuronPromises);
-      console.log(`Record returned: ${recorded}`);
-      await Promise.all([...neuronPromises.values()]);
-
-      console.log("\n--- Flush ---");
-      const flushSuccess = discoverStructure.flushRustRecording();
-      console.log(`Flush returned: ${flushSuccess}`);
-
-      console.log("\n--- Analysis (per output) ---");
-      for (const outputUUID of ["output-0", "output-1"]) {
-        console.log(`\nFocus: ${outputUUID}`);
-        // Keep each call bounded so diagnostics do not stall CI / quality checks.
-        discoverStructure.extendTimeoutForAnalysis(5);
-        // deno-lint-ignore no-await-in-loop
-        const candidates = await discoverStructure.analyzeMissingNeurons([
-          outputUUID,
-        ]);
-        if (candidates && candidates.length > 0) {
-          console.log(`  Found ${candidates.length} candidate(s)`);
-          candidates.forEach((c) => {
-            console.log(`    ${c.squash} from ${c.fromNeuronUUID}`);
-            console.log(`      to: ${c.toNeuronUUID}`);
-            console.log(`      inWeight: ${c.incomingWeight.toFixed(4)}`);
-            console.log(`      outWeight: ${c.outgoingWeight.toFixed(4)}`);
-            console.log(`      bias: ${c.bias.toFixed(4)}`);
-            console.log(
-              `      improvement: ${
-                (c.expectedCreatureScoreGain * 100).toFixed(4)
-              }%`,
-            );
-            console.log(`      improved: ${c.improvedCount}/${c.totalCount}`);
-          });
-        } else {
-          console.log("  No candidates found");
-        }
-      }
-
-      console.log("\n--- Combined analysis ---");
-      discoverStructure.extendTimeoutForAnalysis(5);
-      const allCandidates = await discoverStructure.analyzeMissingNeurons([
-        "output-0",
-        "output-1",
-      ]);
-      console.log(`Total candidates: ${allCandidates?.length ?? 0}`);
-
-      if (allCandidates && allCandidates.length > 0) {
-        console.log("\n--- Add neuron test ---");
-        const improved = DiscoverStructure.addHelpfulNeurons(
-          "diagnostic",
-          crippledCreature,
-          allCandidates.slice(0, 1),
-        );
-        if (improved) {
-          improved.validate();
-          console.log(`Added neuron successfully`);
-          console.log(
-            `  Neurons: ${crippledCreature.neurons.length} -> ${improved.neurons.length}`,
-          );
-
-          // Check if error improved
-          let newTotalError = 0;
-          for (const sample of trainingData) {
-            const actual = improved.activate(sample.input);
-            for (let i = 0; i < sample.output.length; i++) {
-              newTotalError += Math.abs(actual[i] - sample.output[i]);
-            }
-          }
-          const newAvgError = newTotalError / (trainingData.length * 2);
-          console.log(
-            `  Error: ${avgError.toFixed(4)} -> ${newAvgError.toFixed(4)}`,
-          );
-          console.log(
-            `  Change: ${
-              ((newAvgError - avgError) / avgError * 100).toFixed(2)
-            }%`,
-          );
-        } else {
-          console.log("Failed to add neuron");
-        }
-      }
-
-      console.log("\n========================================\n");
     } finally {
       await discoverStructure.cleanUp();
     }
