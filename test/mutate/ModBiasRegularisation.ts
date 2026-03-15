@@ -321,9 +321,8 @@ Deno.test("ModBias - handles negative biases correctly with regularisation", () 
   }
 });
 
-Deno.test("ModBias - returns false when no valid neurons exist (with config)", () => {
-  // Create a creature with only input neurons (no non-input neurons to mutate)
-  // Actually - output neurons can be mutated, so let's use a creature with only constants
+Deno.test("ModBias - skips constant neurons and mutates output neuron (with config)", () => {
+  // Create a creature with a constant neuron and an output neuron.
   const json = {
     input: 2,
     output: 1,
