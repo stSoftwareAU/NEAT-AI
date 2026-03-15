@@ -119,10 +119,22 @@ Deno.test("compactCreature: optimised clone preserves tags on neurons", () => {
 });
 
 Deno.test("compactCreature: optimised clone preserves tags on synapses", () => {
-  // Arrange - create a creature with tagged synapses
+  // Arrange - use an IDENTITY chain (hidden-0 -> hidden-1) that compacts,
+  // with a tagged synapse on input->hidden-0 that survives compaction
   const json: CreatureExport = {
     neurons: [
-      { type: "hidden", uuid: "hidden-0", squash: LOGISTIC.NAME, bias: 0.5 },
+      {
+        type: "hidden",
+        uuid: "hidden-0",
+        squash: IDENTITY.NAME,
+        bias: 0.5,
+      },
+      {
+        type: "hidden",
+        uuid: "hidden-1",
+        squash: IDENTITY.NAME,
+        bias: 0.3,
+      },
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.1 },
     ],
     synapses: [
@@ -132,7 +144,8 @@ Deno.test("compactCreature: optimised clone preserves tags on synapses", () => {
         weight: 0.5,
         tags: [{ name: "synapse-type", value: "input-to-hidden" }],
       },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.6 },
+      { fromUUID: "hidden-0", toUUID: "hidden-1", weight: 0.6 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.7 },
     ],
     input: 1,
     output: 1,
@@ -140,29 +153,37 @@ Deno.test("compactCreature: optimised clone preserves tags on synapses", () => {
 
   const creature = Creature.fromJSON(json);
 
-  // Act
+  // Act - IDENTITY chain should compact
   const compacted = compactCreature(creature, false);
+  assert(compacted, "Network with IDENTITY chain should compact");
 
-  // Assert - no compaction should occur for this simple network
-  // but if it does, tags should be preserved
-  if (compacted) {
-    const exported = compacted.exportJSON();
-    const taggedSynapse = exported.synapses.find(
-      (s) => s.fromUUID === "input-0" && s.toUUID === "hidden-0",
-    );
-    if (taggedSynapse) {
-      assert(taggedSynapse.tags, "Synapse tags should be preserved");
-      assertEquals(taggedSynapse.tags.length, 1);
-      assertEquals(taggedSynapse.tags[0].name, "synapse-type");
-    }
-  }
+  // Assert - tagged synapse should be preserved
+  const exported = compacted.exportJSON();
+  const taggedSynapse = exported.synapses.find(
+    (s) => s.fromUUID === "input-0",
+  );
+  assert(taggedSynapse, "Input synapse should exist after compaction");
+  assert(taggedSynapse.tags, "Synapse tags should be preserved");
+  assertEquals(taggedSynapse.tags.length, 1);
+  assertEquals(taggedSynapse.tags[0].name, "synapse-type");
 });
 
 Deno.test("compactCreature: optimised clone preserves synapse types", () => {
-  // Arrange - create a creature with typed synapses (positive, negative, condition)
+  // Arrange - use an IDENTITY chain that compacts, with typed synapses
   const json: CreatureExport = {
     neurons: [
-      { type: "hidden", uuid: "hidden-0", squash: LOGISTIC.NAME, bias: 0.5 },
+      {
+        type: "hidden",
+        uuid: "hidden-0",
+        squash: IDENTITY.NAME,
+        bias: 0.5,
+      },
+      {
+        type: "hidden",
+        uuid: "hidden-1",
+        squash: IDENTITY.NAME,
+        bias: 0.3,
+      },
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.1 },
     ],
     synapses: [
@@ -172,12 +193,8 @@ Deno.test("compactCreature: optimised clone preserves synapse types", () => {
         weight: 0.5,
         type: "positive",
       },
-      {
-        fromUUID: "hidden-0",
-        toUUID: "output-0",
-        weight: 0.6,
-        type: "negative",
-      },
+      { fromUUID: "hidden-0", toUUID: "hidden-1", weight: 0.6 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.7 },
     ],
     input: 1,
     output: 1,
@@ -185,23 +202,21 @@ Deno.test("compactCreature: optimised clone preserves synapse types", () => {
 
   const creature = Creature.fromJSON(json);
 
-  // Act
+  // Act - IDENTITY chain should compact
   const compacted = compactCreature(creature, false);
+  assert(compacted, "Network with IDENTITY chain should compact");
 
-  // Assert - if compaction occurs, synapse types should be preserved
-  if (compacted) {
-    const exported = compacted.exportJSON();
-    const inputSynapse = exported.synapses.find(
-      (s) => s.fromUUID === "input-0",
-    );
-    if (inputSynapse) {
-      assertEquals(
-        inputSynapse.type,
-        "positive",
-        "Synapse type should be preserved after compaction",
-      );
-    }
-  }
+  // Assert - synapse type should be preserved
+  const exported = compacted.exportJSON();
+  const inputSynapse = exported.synapses.find(
+    (s) => s.fromUUID === "input-0",
+  );
+  assert(inputSynapse, "Input synapse should exist after compaction");
+  assertEquals(
+    inputSynapse.type,
+    "positive",
+    "Synapse type should be preserved after compaction",
+  );
 });
 
 Deno.test("compactCreature: optimised clone preserves forwardOnly flag", () => {

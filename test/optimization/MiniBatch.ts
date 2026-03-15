@@ -92,8 +92,17 @@ Deno.test("optimization/MiniBatch - partial batch completes and reduces error", 
     { input: new Float32Array([5]), output: new Float32Array([5]) },
   ];
 
+  // Compute initial error: weight=0.5, output = input*0.5
+  // For [1,2,3,4,5] with targets [1,2,3,4,5], MSE = 2.75
+  let initialError = 0;
+  for (const sample of trainingData) {
+    const output = creature.activate(sample.input, false);
+    initialError += (sample.output[0] - output[0]) ** 2;
+  }
+  initialError /= trainingData.length;
+
   const options: TrainOptions = {
-    iterations: 1,
+    iterations: 10,
     batchSize: 3,
     learningRate: 0.1,
     targetError: 0.001,
@@ -101,10 +110,11 @@ Deno.test("optimization/MiniBatch - partial batch completes and reduces error", 
 
   const result = train(creature, trainingData, options);
 
-  // Training should produce a finite, non-negative error
+  // Training with partial batch (5 samples / batch size 3) should
+  // produce finite error that is less than the initial error
   assert(Number.isFinite(result.error), "Error should be finite");
-  assert(result.error >= 0, "Error should be non-negative");
-  // The initial weight (0.5) means identity output will be input*0.5,
-  // so there's significant error. Training should reduce it.
-  assert(result.error < 10, "Training should reduce error from initial state");
+  assert(
+    result.error < initialError,
+    `Training should reduce error: got ${result.error}, initial was ${initialError}`,
+  );
 });

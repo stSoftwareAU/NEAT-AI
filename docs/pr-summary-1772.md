@@ -1,78 +1,81 @@
 ## Summary
 
-Audit all test files for compaction and optimisation (~64 files, ~193 test
-cases) across `test/Compact/`, `test/optimize/`, `test/optimization/`,
-`test/FeedForward/`, and `test/reconstruct/`. Removes duplicate tests,
-strengthens weak assertions, and improves test names. Closes #1772.
+Second-pass audit of compact and optimisation test files across `test/Compact/`,
+`test/optimize/`, `test/optimization/`, `test/FeedForward/`, and
+`test/reconstruct/`. Removes remaining duplicates, strengthens weak assertions,
+removes debug logging, and standardises assertion patterns. Closes #1772.
 
 ## Changes
 
-### Duplicate tests removed (8 files deleted)
+### Duplicate tests removed (3 tests across 2 files)
 
-**test/Compact/** — 4 re-export test files that duplicated tests already in
-`CompactUtils.ts`:
+**test/Compact/CompactUtils.ts** — 2 `cleanupOrphanedNeurons` tests that
+duplicated more comprehensive tests already in `CleanupOrphanedNeurons.ts`:
 
-- `DeadSubgraphPruningModule.ts` — duplicated `pruneDeadSubgraphs` tests
-- `MemeticCleanup.ts` — duplicated `cleanupMemeticForRemovedSynapse/Neuron`
-  tests
-- `OrphanedNeuronCleanup.ts` — duplicated `cleanupOrphanedNeurons` tests (unique
-  `cleanupOrphanedNeuronsInCreature` test moved to `CleanupOrphanedNeurons.ts`)
-- `SynapsePruning.ts` — duplicated
-  `mergeDuplicateSynapses`/`pruneZeroWeightSynapses` tests
+- "removes neurons with no outward connections"
+- "converts hidden with no inward to constant"
 
-**test/optimization/** — 4 learning rate test files with weak/meaningless
-assertions, all superseded by `LearningRateVerification.ts`:
+**test/optimization/LearningRateVerification.ts** — Entire file deleted (2
+tests). Both tests duplicated `AdaptiveLearningRate.ts`:
 
-- `LearningRateBugDetection.ts` — self-admitted non-test (`error >= 0`
-  assertion)
-- `LearningRateBugTest.ts` — duplicate with `error >= 0` assertion
-- `LearningRateIntegration.ts` — duplicate with `error >= 0` assertion
-- `LearningRateIntegrationTest.ts` — duplicate with `difference >= 0` assertion
+- "should actually decay learning rate over iterations" — duplicate of "decay
+  strategy produces monotonically decreasing rates"
+- "should use fixed learning rate when strategy is fixed" — duplicate of "fixed
+  strategy returns constant rate across iterations"
 
-**test/optimize/** — 1 duplicate test removed:
+### Near-duplicate test removed (1 test)
 
-- `RELU.ts` "Constant-max" — identical to `Constant.ts` "Constant-max"
+**test/optimization/AdaptiveVsDecay.ts** — "adaptive responds to error feedback"
+removed as near-duplicate of ErrorFeedbackLearningRate.ts "adaptive rate
+increases when error stagnates" (same config, same stagnation scenario).
 
-### Weak assertions strengthened (3 files modified)
+### Weak assertions strengthened (4 files)
 
-- `AdaptiveLearningRate.ts` — replaced weak `error < 1.0` convergence checks
-  with precise `assertAlmostEquals` assertions on calculated learning rates
-- `MiniBatch.ts` — strengthened partial batch test from `error >= 0` to verify
-  finite error and meaningful training reduction
-- `Large.ts` — added determinism check (same input produces identical output)
-  and proper `assertEquals`/`assert` assertions
+**test/Compact/CompactCreatureCloneOptimisation.ts** — 2 tests ("preserves tags
+on synapses", "preserves synapse types") wrapped all assertions in
+`if (compacted)`, silently passing with zero assertions when compaction didn't
+occur. Restructured to use IDENTITY chains guaranteed to compact, with
+unconditional assertions.
 
-### Test names improved
+**test/optimization/MiniBatch.ts** — Replaced meaningless `error >= 0` and weak
+`error < 10` with baseline comparison: compute initial error before training,
+assert trained error is less.
 
-- `SparseSelection.ts` — improved names to describe what is being verified
-- `RELU.ts` — renamed to "RELU activation produces correct clamped output"
-- `Large.ts` — renamed to "large network activation produces finite
-  deterministic output"
+**test/optimization/SparseSelection.ts** — Both tests used weak `error < 1.0`
+with no baseline. Replaced with initial error computation and assertion that
+training reduces error.
 
-### Cross-area duplicates found
+**test/optimize/activate/HYPOTv2.ts** — Replaced manual `if/fail` +
+`console.info` pattern with standard `assertAlmostEquals` (consistent with
+HYPOT.ts and other activate tests).
 
-- `test/Compact/CompactUtils.ts` contained tests that overlapped with
-  `CleanupOrphanedNeurons.ts`, `MergeDuplicateSynapses.ts`, and
-  `ZeroWeightSynapsePruning.ts`. The CompactUtils tests were retained as the
-  canonical versions since they test the public re-export barrel.
-- No cross-area duplicates found between `test/optimize/` and
-  `test/optimization/` — they test different concerns (activation/simplification
-  vs training strategies).
+### Debug logging removed (2 files)
 
-### Directories with no changes needed
+- **AdaptiveVsDecay.ts** — removed 2 `console.log` calls
+- **LearningRateRandomization.ts** — removed 4 `console.log` calls
 
-- `test/FeedForward/` (8 files, 21 tests) — all tests are high-quality
-  behavioural tests
-- `test/reconstruct/` (3 files, 23 tests) — all tests verify outcomes with
-  appropriate assertions
+### Test names improved (2 files)
+
+- **LearningRateRandomization.ts** — "should have reasonable distribution"
+  renamed to "all strategies appear in random selection"
+- **AdaptiveVsDecay.ts** — shortened to "adaptive produces different rates than
+  decay"
+
+### Directories confirmed clean (no changes needed)
+
+- `test/FeedForward/` (8 files, 21 tests) — all high-quality behavioural tests
+- `test/reconstruct/` (3 files, 23 tests) — all verify outcomes with strong
+  assertions
 
 ## Evidence
 
-All 4539 tests pass. `./quality.sh` passes cleanly.
+All 4534 tests pass. `./quality.sh` passes cleanly.
 
 ## Test Plan
 
 - Verified all remaining tests still pass after removing duplicates
 - Verified strengthened assertions correctly test the intended behaviour
-- Verified no test coverage was lost (all removed tests were exact duplicates of
-  retained tests)
+- Verified no test coverage was lost (removed tests were duplicates of retained
+  tests)
+- Ran full quality gate (`./quality.sh --skip-discovery --skip-wasm`): 4534
+  passed, 0 failed
