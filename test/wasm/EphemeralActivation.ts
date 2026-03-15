@@ -151,12 +151,19 @@ Deno.test("getCachedWasmActivationCount: returns current entry count", () => {
   const originalMax = getMaxCachedWasmCreatureActivations();
   setMaxCachedWasmCreatureActivations(512);
   try {
-    // The count should be a non-negative number
+    const creature = createTestCreature();
+    const input = new Float32Array([0.5, 0.8]);
+
+    // Activate so we know at least one entry is in the cache
+    creature.activate(input);
+
     const count = getCachedWasmActivationCount();
     assert(
-      count >= 0,
-      `Count should be non-negative, got ${count}`,
+      count >= 1,
+      `Count should be at least 1 after activating a creature, got ${count}`,
     );
+
+    creature.dispose();
   } finally {
     setMaxCachedWasmCreatureActivations(originalMax);
   }
@@ -169,13 +176,17 @@ Deno.test("getCachedWasmActivationCount: increases after activate", () => {
     const creature = createTestCreature();
     const input = new Float32Array([0.5, 0.8]);
 
+    // Ensure this creature has no cached activation before we start
+    creature.disposeWasm();
+
     const countBefore = getCachedWasmActivationCount();
     creature.activate(input);
     const countAfter = getCachedWasmActivationCount();
 
-    assert(
-      countAfter > countBefore,
-      `Count should increase after activate (was ${countBefore}, now ${countAfter})`,
+    assertEquals(
+      countAfter,
+      countBefore + 1,
+      `Count should increase by exactly 1 after first activate (was ${countBefore}, now ${countAfter})`,
     );
 
     creature.dispose();

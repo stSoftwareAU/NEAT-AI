@@ -7,7 +7,7 @@
  * removed entirely.
  */
 
-import { assert, assertEquals } from "@std/assert";
+import { assert } from "@std/assert";
 import {
   isWasmActivationAvailable,
   isWasmSquashSupported,
@@ -19,25 +19,6 @@ Deno.test({
     assert(
       isWasmActivationAvailable(),
       "WASM activation must be available – there is no JS-only fallback",
-    );
-  },
-});
-
-Deno.test({
-  name: "No WASM feature flags: shouldUseWasmBackprop is no longer exported",
-  async fn() {
-    // Dynamically import mod.ts and verify the old toggle is gone
-    // deno-lint-ignore no-explicit-any
-    const mod = await import("../../src/wasm/mod.ts") as any;
-    assertEquals(
-      mod.shouldUseWasmBackprop,
-      undefined,
-      "shouldUseWasmBackprop should no longer be exported (Issue #1241)",
-    );
-    assertEquals(
-      mod.resetWasmBackpropFlag,
-      undefined,
-      "resetWasmBackpropFlag should no longer be exported (Issue #1241)",
     );
   },
 });

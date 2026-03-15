@@ -9,10 +9,7 @@
 
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Activations } from "../../src/methods/activations/Activations.ts";
-import {
-  initWasmActivation,
-  isWasmActivationAvailable,
-} from "../../src/wasm/WasmModuleLoader.ts";
+import { initWasmActivation } from "../../src/wasm/WasmModuleLoader.ts";
 import {
   wasmGetRange,
   wasmLimitRange,
@@ -63,14 +60,6 @@ const activationToSquashType: Record<string, SquashType> = {
   MAXIMUM: SquashType.Maximum,
   IF: SquashType.If,
 };
-
-Deno.test("WASM Range Validation - Module is available", () => {
-  assertEquals(
-    isWasmActivationAvailable(),
-    true,
-    "WASM module should be available",
-  );
-});
 
 Deno.test("WASM Range Validation - get_range matches TypeScript for all activations", () => {
   // Test bounded activations that should have exact range matches

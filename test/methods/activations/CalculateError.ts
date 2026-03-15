@@ -85,9 +85,8 @@ for (const name of ACTIVATIONS_WITH_CALCULATE_ERROR) {
     const current = act.squash(0.5);
     const target = act.squash(1);
     const error = act.calculateError(current, target, 0.5);
-    assertEquals(
+    assert(
       Number.isFinite(error),
-      true,
       `${name} calculateError returned non-finite: ${error}`,
     );
   });
@@ -121,8 +120,8 @@ Deno.test("LOGISTIC calculateError uses derivative for centre region", () => {
 
   // At x=0, sigmoid is 0.5 with strong slope
   const error = act.calculateError(0.5, 0.7, 0);
-  assertEquals(Number.isFinite(error), true);
-  assertEquals(error > 0, true); // Should push value up
+  assert(Number.isFinite(error));
+  assert(error > 0); // Should push value up
 });
 
 Deno.test("TANH calculateError uses derivative for centre region", () => {
@@ -131,8 +130,8 @@ Deno.test("TANH calculateError uses derivative for centre region", () => {
 
   // At x=0, tanh is 0 with strong slope
   const error = act.calculateError(0, 0.5, 0);
-  assertEquals(Number.isFinite(error), true);
-  assertEquals(error > 0, true);
+  assert(Number.isFinite(error));
+  assert(error > 0);
 });
 
 Deno.test("IDENTITY calculateError reflects raw error", () => {
@@ -140,8 +139,8 @@ Deno.test("IDENTITY calculateError reflects raw error", () => {
   assert(hasCalculateError(act), "IDENTITY should implement calculateError");
 
   const error = act.calculateError(1, 3, 1);
-  assertEquals(Number.isFinite(error), true);
-  assertEquals(error > 0, true);
+  assert(Number.isFinite(error));
+  assert(error > 0);
 });
 
 Deno.test("ReLU calculateError handles active region", () => {
@@ -150,8 +149,8 @@ Deno.test("ReLU calculateError handles active region", () => {
 
   // In active region (x > 0), derivative is 1
   const error = act.calculateError(2, 5, 2);
-  assertEquals(Number.isFinite(error), true);
-  assertEquals(error > 0, true);
+  assert(Number.isFinite(error));
+  assert(error > 0);
 });
 
 Deno.test("ReLU calculateError handles dead region", () => {
@@ -160,5 +159,5 @@ Deno.test("ReLU calculateError handles dead region", () => {
 
   // In dead region (x <= 0), uses fallback
   const error = act.calculateError(0, 0.5, -1);
-  assertEquals(Number.isFinite(error), true);
+  assert(Number.isFinite(error));
 });

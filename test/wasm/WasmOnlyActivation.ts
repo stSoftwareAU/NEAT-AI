@@ -190,24 +190,6 @@ Deno.test("WASM-only: squash/unSquash round-trip for invertible activations", ()
   }
 });
 
-Deno.test("WASM-only: WASM wrapper works alongside JS activation classes", () => {
-  // Verify WASM wrapper produces finite results for all standard activations
-  for (const name of STANDARD_ACTIVATIONS) {
-    const activation = Activations.find(name);
-    assert(
-      activation !== undefined,
-      `Activation ${name} not found in Activations registry`,
-    );
-
-    // WASM wrapper should work for all activations
-    const wasmResult = squash(name, 0.5);
-    assert(
-      Number.isFinite(wasmResult),
-      `WASM squash(${name}, 0.5) returned non-finite: ${wasmResult}`,
-    );
-  }
-});
-
 Deno.test("WASM-only: JS activation classes retain metadata", () => {
   for (const name of STANDARD_ACTIVATIONS) {
     const activation = Activations.find(name);

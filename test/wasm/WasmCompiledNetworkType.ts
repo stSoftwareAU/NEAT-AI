@@ -33,7 +33,6 @@ await initWasmActivation();
 Deno.test("getCompiledNetworkClass returns a typed constructor", () => {
   const ctor: WasmCompiledNetworkConstructor | null = getCompiledNetworkClass();
   assertExists(ctor, "CompiledNetwork constructor should be available");
-  assertEquals(typeof ctor, "function");
 });
 
 Deno.test("WasmCompiledNetworkConstructor creates a valid network", () => {
@@ -49,9 +48,11 @@ Deno.test("WasmCompiledNetworkConstructor creates a valid network", () => {
     network.num_neurons >= 3,
     `Expected at least 3 neurons (2 input + 1 output), got ${network.num_neurons}`,
   );
-  assert(
-    network.num_synapses >= 0,
-    `Synapses should be non-negative, got ${network.num_synapses}`,
+  // Creature(2, 1) connects each of the 2 inputs to the 1 output: 2 synapses
+  assertEquals(
+    network.num_synapses,
+    2,
+    `Expected 2 synapses for a 2-input, 1-output creature, got ${network.num_synapses}`,
   );
 
   network.free();
@@ -181,9 +182,11 @@ Deno.test("WasmCompiledNetwork readonly properties match creature topology", () 
     network.num_neurons >= 5,
     `Expected at least 5 neurons (3 input + 2 output), got ${network.num_neurons}`,
   );
-  assert(
-    network.num_synapses >= 0,
-    `num_synapses should be non-negative, got ${network.num_synapses}`,
+  // Creature(3, 2) connects each of the 3 inputs to each of the 2 outputs: 6 synapses
+  assertEquals(
+    network.num_synapses,
+    6,
+    `Expected 6 synapses for a 3-input, 2-output creature, got ${network.num_synapses}`,
   );
 
   network.free();

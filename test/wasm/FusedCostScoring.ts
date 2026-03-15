@@ -53,18 +53,22 @@ const testRecords = [
   [0.7, 0.3, 0.6, 0.9, 0.2],
 ];
 
-Deno.test("Fused Cost Scoring: Initialise WASM", async () => {
-  await initWasmActivation();
-});
+await initWasmActivation();
 
-Deno.test("Fused Cost Scoring: MSE - WASM vs JS equivalence", () => {
+function testCostEquivalence(
+  costName: string,
+  wasmMethod:
+    | "mseSumBatchPacked"
+    | "maeSumBatchPacked"
+    | "crossEntropySumBatchPacked"
+    | "mapeSumBatchPacked"
+    | "msleSumBatchPacked"
+    | "hingeSumBatchPacked",
+) {
   assert(isWasmActivationAvailable(), "WASM activation must be available");
-
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
-  const cost = Costs.find("MSE");
-
-  // Pack records into Float32Array
+  const cost = Costs.find(costName);
   const valuesPerRecord = creature.input + creature.output;
   const packedRecords = new Float32Array(testRecords.length * valuesPerRecord);
   for (let i = 0; i < testRecords.length; i++) {
@@ -72,20 +76,14 @@ Deno.test("Fused Cost Scoring: MSE - WASM vs JS equivalence", () => {
       packedRecords[i * valuesPerRecord + j] = testRecords[i][j];
     }
   }
-
-  // Compile to WASM
   const compiledData = compileCreatureToWasm(creature);
   const wasmActivation = WasmCreatureActivation.create(compiledData);
   assert(wasmActivation !== null, "WASM activation should be created");
-
-  // WASM fused scoring
-  const wasmSum = wasmActivation.mseSumBatchPacked(
+  const wasmSum = wasmActivation[wasmMethod](
     packedRecords,
     creature.input,
     true,
   );
-
-  // JS per-record scoring
   let jsSum = 0;
   for (const record of testRecords) {
     const inputs = new Float32Array(record.slice(0, creature.input));
@@ -93,232 +91,37 @@ Deno.test("Fused Cost Scoring: MSE - WASM vs JS equivalence", () => {
     const outputs = creature.activate(inputs, false);
     jsSum += cost.calculate(targets, outputs);
   }
-
   assertAlmostEquals(
     wasmSum / testRecords.length,
     jsSum / testRecords.length,
     TOLERANCE,
-    "MSE: WASM fused vs JS should match",
+    `${costName}: WASM fused vs JS should match`,
   );
-
   wasmActivation.free();
+}
+
+Deno.test("Fused Cost Scoring: MSE - WASM vs JS equivalence", () => {
+  testCostEquivalence("MSE", "mseSumBatchPacked");
 });
 
 Deno.test("Fused Cost Scoring: MAE - WASM vs JS equivalence", () => {
-  assert(isWasmActivationAvailable(), "WASM activation must be available");
-
-  const creature = Creature.fromJSON(testCreatureJSON);
-  creature.fix();
-  const cost = Costs.find("MAE");
-
-  const valuesPerRecord = creature.input + creature.output;
-  const packedRecords = new Float32Array(testRecords.length * valuesPerRecord);
-  for (let i = 0; i < testRecords.length; i++) {
-    for (let j = 0; j < valuesPerRecord; j++) {
-      packedRecords[i * valuesPerRecord + j] = testRecords[i][j];
-    }
-  }
-
-  const compiledData = compileCreatureToWasm(creature);
-  const wasmActivation = WasmCreatureActivation.create(compiledData);
-  assert(wasmActivation !== null, "WASM activation should be created");
-
-  const wasmSum = wasmActivation.maeSumBatchPacked(
-    packedRecords,
-    creature.input,
-    true,
-  );
-
-  let jsSum = 0;
-  for (const record of testRecords) {
-    const inputs = new Float32Array(record.slice(0, creature.input));
-    const targets = new Float32Array(record.slice(creature.input));
-    const outputs = creature.activate(inputs, false);
-    jsSum += cost.calculate(targets, outputs);
-  }
-
-  assertAlmostEquals(
-    wasmSum / testRecords.length,
-    jsSum / testRecords.length,
-    TOLERANCE,
-    "MAE: WASM fused vs JS should match",
-  );
-
-  wasmActivation.free();
+  testCostEquivalence("MAE", "maeSumBatchPacked");
 });
 
 Deno.test("Fused Cost Scoring: CROSS_ENTROPY - WASM vs JS equivalence", () => {
-  assert(isWasmActivationAvailable(), "WASM activation must be available");
-
-  const creature = Creature.fromJSON(testCreatureJSON);
-  creature.fix();
-  const cost = Costs.find("CROSS_ENTROPY");
-
-  const valuesPerRecord = creature.input + creature.output;
-  const packedRecords = new Float32Array(testRecords.length * valuesPerRecord);
-  for (let i = 0; i < testRecords.length; i++) {
-    for (let j = 0; j < valuesPerRecord; j++) {
-      packedRecords[i * valuesPerRecord + j] = testRecords[i][j];
-    }
-  }
-
-  const compiledData = compileCreatureToWasm(creature);
-  const wasmActivation = WasmCreatureActivation.create(compiledData);
-  assert(wasmActivation !== null, "WASM activation should be created");
-
-  const wasmSum = wasmActivation.crossEntropySumBatchPacked(
-    packedRecords,
-    creature.input,
-    true,
-  );
-
-  let jsSum = 0;
-  for (const record of testRecords) {
-    const inputs = new Float32Array(record.slice(0, creature.input));
-    const targets = new Float32Array(record.slice(creature.input));
-    const outputs = creature.activate(inputs, false);
-    jsSum += cost.calculate(targets, outputs);
-  }
-
-  assertAlmostEquals(
-    wasmSum / testRecords.length,
-    jsSum / testRecords.length,
-    TOLERANCE,
-    "CROSS_ENTROPY: WASM fused vs JS should match",
-  );
-
-  wasmActivation.free();
+  testCostEquivalence("CROSS_ENTROPY", "crossEntropySumBatchPacked");
 });
 
 Deno.test("Fused Cost Scoring: MAPE - WASM vs JS equivalence", () => {
-  assert(isWasmActivationAvailable(), "WASM activation must be available");
-
-  const creature = Creature.fromJSON(testCreatureJSON);
-  creature.fix();
-  const cost = Costs.find("MAPE");
-
-  const valuesPerRecord = creature.input + creature.output;
-  const packedRecords = new Float32Array(testRecords.length * valuesPerRecord);
-  for (let i = 0; i < testRecords.length; i++) {
-    for (let j = 0; j < valuesPerRecord; j++) {
-      packedRecords[i * valuesPerRecord + j] = testRecords[i][j];
-    }
-  }
-
-  const compiledData = compileCreatureToWasm(creature);
-  const wasmActivation = WasmCreatureActivation.create(compiledData);
-  assert(wasmActivation !== null, "WASM activation should be created");
-
-  const wasmSum = wasmActivation.mapeSumBatchPacked(
-    packedRecords,
-    creature.input,
-    true,
-  );
-
-  let jsSum = 0;
-  for (const record of testRecords) {
-    const inputs = new Float32Array(record.slice(0, creature.input));
-    const targets = new Float32Array(record.slice(creature.input));
-    const outputs = creature.activate(inputs, false);
-    jsSum += cost.calculate(targets, outputs);
-  }
-
-  assertAlmostEquals(
-    wasmSum / testRecords.length,
-    jsSum / testRecords.length,
-    TOLERANCE,
-    "MAPE: WASM fused vs JS should match",
-  );
-
-  wasmActivation.free();
+  testCostEquivalence("MAPE", "mapeSumBatchPacked");
 });
 
 Deno.test("Fused Cost Scoring: MSLE - WASM vs JS equivalence", () => {
-  assert(isWasmActivationAvailable(), "WASM activation must be available");
-
-  const creature = Creature.fromJSON(testCreatureJSON);
-  creature.fix();
-  const cost = Costs.find("MSLE");
-
-  const valuesPerRecord = creature.input + creature.output;
-  const packedRecords = new Float32Array(testRecords.length * valuesPerRecord);
-  for (let i = 0; i < testRecords.length; i++) {
-    for (let j = 0; j < valuesPerRecord; j++) {
-      packedRecords[i * valuesPerRecord + j] = testRecords[i][j];
-    }
-  }
-
-  const compiledData = compileCreatureToWasm(creature);
-  const wasmActivation = WasmCreatureActivation.create(compiledData);
-  assert(wasmActivation !== null, "WASM activation should be created");
-
-  const wasmSum = wasmActivation.msleSumBatchPacked(
-    packedRecords,
-    creature.input,
-    true,
-  );
-
-  let jsSum = 0;
-  for (const record of testRecords) {
-    const inputs = new Float32Array(record.slice(0, creature.input));
-    const targets = new Float32Array(record.slice(creature.input));
-    const outputs = creature.activate(inputs, false);
-    jsSum += cost.calculate(targets, outputs);
-  }
-
-  // MSLE doesn't average per output, so compare sums directly
-  assertAlmostEquals(
-    wasmSum / testRecords.length,
-    jsSum / testRecords.length,
-    TOLERANCE,
-    "MSLE: WASM fused vs JS should match",
-  );
-
-  wasmActivation.free();
+  testCostEquivalence("MSLE", "msleSumBatchPacked");
 });
 
 Deno.test("Fused Cost Scoring: HINGE - WASM vs JS equivalence", () => {
-  assert(isWasmActivationAvailable(), "WASM activation must be available");
-
-  const creature = Creature.fromJSON(testCreatureJSON);
-  creature.fix();
-  const cost = Costs.find("HINGE");
-
-  const valuesPerRecord = creature.input + creature.output;
-  const packedRecords = new Float32Array(testRecords.length * valuesPerRecord);
-  for (let i = 0; i < testRecords.length; i++) {
-    for (let j = 0; j < valuesPerRecord; j++) {
-      packedRecords[i * valuesPerRecord + j] = testRecords[i][j];
-    }
-  }
-
-  const compiledData = compileCreatureToWasm(creature);
-  const wasmActivation = WasmCreatureActivation.create(compiledData);
-  assert(wasmActivation !== null, "WASM activation should be created");
-
-  const wasmSum = wasmActivation.hingeSumBatchPacked(
-    packedRecords,
-    creature.input,
-    true,
-  );
-
-  let jsSum = 0;
-  for (const record of testRecords) {
-    const inputs = new Float32Array(record.slice(0, creature.input));
-    const targets = new Float32Array(record.slice(creature.input));
-    const outputs = creature.activate(inputs, false);
-    jsSum += cost.calculate(targets, outputs);
-  }
-
-  // HINGE doesn't average per output, so compare sums directly
-  assertAlmostEquals(
-    wasmSum / testRecords.length,
-    jsSum / testRecords.length,
-    TOLERANCE,
-    "HINGE: WASM fused vs JS should match",
-  );
-
-  wasmActivation.free();
+  testCostEquivalence("HINGE", "hingeSumBatchPacked");
 });
 
 Deno.test("Fused Cost Scoring: Empty records returns zero", () => {

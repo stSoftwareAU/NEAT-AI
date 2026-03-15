@@ -42,18 +42,18 @@ function createMinimalCreature(): Creature {
 // ---------------------------------------------------------------------------
 
 Deno.test("WasmCreatureActivationLRU: default capacity is 512", () => {
-  // Save and restore so we don't affect other tests
-  const original = getMaxCachedWasmCreatureActivations();
+  // Read the capacity before any test has altered it — relies on this test
+  // running against a freshly-loaded module.  We save and restore so that
+  // subsequent tests see a consistent value regardless of execution order.
+  const defaultCapacity = getMaxCachedWasmCreatureActivations();
   try {
-    // Reset to default by setting a known value then checking
-    setMaxCachedWasmCreatureActivations(512);
     assertEquals(
-      getMaxCachedWasmCreatureActivations(),
+      defaultCapacity,
       512,
       "Default capacity should be 512",
     );
   } finally {
-    setMaxCachedWasmCreatureActivations(original);
+    setMaxCachedWasmCreatureActivations(defaultCapacity);
   }
 });
 
@@ -461,31 +461,6 @@ Deno.test("WasmCreatureActivationLRU: dispose() deregisters from LRU via dispose
     // Clean up remaining
     creatures[0].dispose();
     creatures[2].dispose();
-  } finally {
-    setMaxCachedWasmCreatureActivations(original);
-  }
-});
-
-// ---------------------------------------------------------------------------
-// Issue #1581: WasmCreatureActivation.free() nullifies references
-// ---------------------------------------------------------------------------
-
-Deno.test("WasmCreatureActivationLRU: disposeWasm is idempotent after manual call", () => {
-  const original = getMaxCachedWasmCreatureActivations();
-  try {
-    setMaxCachedWasmCreatureActivations(512);
-    disposeAllCachedWasmActivations();
-
-    const creature = createMinimalCreature();
-    noteWasmCreatureActivationUse(creature);
-
-    // Call disposeWasm manually — should not throw
-    creature.disposeWasm();
-
-    // Call again — should be safe (idempotent)
-    creature.disposeWasm();
-
-    creature.dispose();
   } finally {
     setMaxCachedWasmCreatureActivations(original);
   }

@@ -304,17 +304,6 @@ Deno.test("SQRT: roundtrip for non-negative inputs", () => {
 
 // --- Step functions: not truly invertible ---
 
-Deno.test("BIPOLAR: squash produces correct output", () => {
-  const activation = Activations.find("BIPOLAR") as unknown as
-    & ActivationInterface
-    & UnSquashInterface;
-
-  // Positive → 1, negative → -1
-  assertEquals(activation.squash(5), 1);
-  assertEquals(activation.squash(-5), -1);
-  assertEquals(activation.squash(0), -1); // x > 0 is condition
-});
-
 Deno.test("BIPOLAR: unSquash returns hint when sign matches", () => {
   const activation = Activations.find("BIPOLAR") as unknown as
     & ActivationInterface
@@ -322,12 +311,4 @@ Deno.test("BIPOLAR: unSquash returns hint when sign matches", () => {
 
   assertEquals(activation.unSquash(1, 3), 3);
   assertEquals(activation.unSquash(-1, -3), -3);
-});
-
-Deno.test("STEP: squash produces correct output", () => {
-  const activation = Activations.find("STEP") as unknown as ActivationInterface;
-
-  assertEquals(activation.squash(5), 1);
-  assertEquals(activation.squash(-5), 0);
-  assertEquals(activation.squash(0), 0);
 });

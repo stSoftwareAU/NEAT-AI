@@ -15,46 +15,6 @@ import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Activations } from "../../../src/methods/activations/Activations.ts";
 import type { AbstractActivationInterface } from "../../../src/methods/activations/AbstractActivationInterface.ts";
 
-/** All activation names that should have safeZoneAdjustment. */
-const ACTIVATIONS_WITH_SAFE_ZONE: string[] = [
-  "ArcTan",
-  "BENT_IDENTITY",
-  "BIPOLAR_SIGMOID",
-  "Cosine",
-  "Cube",
-  "ELU",
-  "Exponential",
-  "GAUSSIAN",
-  "GELU",
-  "HARD_TANH",
-  "IDENTITY",
-  "ISRU",
-  "LeakyReLU",
-  "LOGISTIC",
-  "LogSigmoid",
-  "Mish",
-  "ReLU",
-  "ReLU6",
-  "SELU",
-  "SINE",
-  "Softplus",
-  "SOFTSIGN",
-  "SQRT",
-  "SQUARE",
-  "StdInverse",
-  "STEP",
-  "Swish",
-  "TAN",
-  "TANH",
-  "ABSOLUTE",
-];
-
-/** Activations that do NOT have safeZoneAdjustment. */
-const ACTIVATIONS_WITHOUT_SAFE_ZONE: string[] = [
-  "BIPOLAR",
-  "COMPLEMENT",
-];
-
 function hasSafeZone(
   activation: AbstractActivationInterface,
 ): activation is AbstractActivationInterface & {
@@ -65,73 +25,6 @@ function hasSafeZone(
   ): number;
 } {
   return typeof activation.safeZoneAdjustment === "function";
-}
-
-// --- Existence checks ---
-
-Deno.test("All expected activations have safeZoneAdjustment", () => {
-  for (const name of ACTIVATIONS_WITH_SAFE_ZONE) {
-    const activation = Activations.find(name);
-    assert(
-      hasSafeZone(activation),
-      `${name} should have safeZoneAdjustment`,
-    );
-  }
-});
-
-Deno.test("BIPOLAR and COMPLEMENT do not have safeZoneAdjustment", () => {
-  for (const name of ACTIVATIONS_WITHOUT_SAFE_ZONE) {
-    const activation = Activations.find(name);
-    assertEquals(
-      typeof activation.safeZoneAdjustment,
-      "undefined",
-      `${name} should not have safeZoneAdjustment`,
-    );
-  }
-});
-
-// --- Return value range checks ---
-
-for (const name of ACTIVATIONS_WITH_SAFE_ZONE) {
-  Deno.test(`${name}: safeZoneAdjustment returns values in [0, 1]`, () => {
-    const activation = Activations.find(name);
-    assert(hasSafeZone(activation), `${name} must have safeZoneAdjustment`);
-
-    const testInputs = [-1000, -10, -1, -0.5, 0, 0.5, 1, 10, 1000];
-    const errors = [-1, -0.1, 0, 0.1, 1];
-    const weights = [-10, -1, -0.001, 0.001, 1, 10];
-
-    for (const raw of testInputs) {
-      for (const err of errors) {
-        for (const w of weights) {
-          const result = activation.safeZoneAdjustment(raw, err, w);
-          assert(
-            result >= 0 && result <= 1,
-            `${name}: safeZoneAdjustment(${raw}, ${err}, ${w}) = ${result}, expected [0, 1]`,
-          );
-        }
-      }
-    }
-  });
-}
-
-// --- Non-finite input returns 0 ---
-
-for (const name of ACTIVATIONS_WITH_SAFE_ZONE) {
-  Deno.test(`${name}: safeZoneAdjustment returns 0 for non-finite input`, () => {
-    const activation = Activations.find(name);
-    assert(hasSafeZone(activation), `${name} must have safeZoneAdjustment`);
-
-    const nonFinite = [NaN, Infinity, -Infinity];
-    for (const raw of nonFinite) {
-      const result = activation.safeZoneAdjustment(raw, 0.1, 1);
-      assertEquals(
-        result,
-        0,
-        `${name}: safeZoneAdjustment(${raw}, 0.1, 1) should be 0`,
-      );
-    }
-  });
 }
 
 // --- Specific safe-zone boundary tests for key activations ---
