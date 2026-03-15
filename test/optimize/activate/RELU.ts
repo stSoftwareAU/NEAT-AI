@@ -1,4 +1,4 @@
-import { fail } from "@std/assert";
+import { assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 
@@ -28,11 +28,6 @@ Deno.test("activate - RELU produces correct clamped output", () => {
     let expected = a * Math.E + b * -Math.LOG2E + c * Math.SQRT1_2 + Math.LN2;
     if (expected < 0) expected = 0;
 
-    const delta = expected - actual;
-    if (Math.abs(delta) > 0.000_005) {
-      fail(
-        `${p}) Expected: ${expected}, actual: ${actual}, delta: ${delta}`,
-      );
-    }
+    assertAlmostEquals(actual, expected, 0.000_005, `iteration ${p}`);
   }
 });
