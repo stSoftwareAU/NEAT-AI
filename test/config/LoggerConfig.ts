@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import {
   getLogger,
@@ -120,9 +120,11 @@ Deno.test("LoggerConfig - logLevel is ignored when custom logger is provided", (
   assertEquals(messages, ["debug", "info"]);
 });
 
-Deno.test("LoggerConfig - config is frozen with logger", () => {
+Deno.test("LoggerConfig - config is immutable after creation", () => {
   const config = createNeatConfig({});
-  assert(Object.isFrozen(config), "Config should be frozen");
+  assertThrows(() => {
+    (config as Record<string, unknown>).logger = {};
+  });
 });
 
 Deno.test("LoggerConfig - default logLevel is info", () => {

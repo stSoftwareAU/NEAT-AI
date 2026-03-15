@@ -5,7 +5,7 @@
  * time with clear ConfigurationError messages, rather than causing unexpected
  * behaviour deep in the training loop.
  */
-import { assertThrows } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { ConfigurationError } from "../../src/errors/ConfigurationError.ts";
 
@@ -38,16 +38,12 @@ Deno.test("NeatOptions validation - mutationRate 0 throws ConfigurationError", (
 
 Deno.test("NeatOptions validation - mutationRate 1 is valid (upper bound)", () => {
   const config = createNeatConfig({ mutationRate: 1 });
-  if (config.mutationRate !== 1) {
-    throw new Error(`Expected mutationRate 1, got ${config.mutationRate}`);
-  }
+  assertEquals(config.mutationRate, 1);
 });
 
 Deno.test("NeatOptions validation - mutationRate 0.5 is valid", () => {
   const config = createNeatConfig({ mutationRate: 0.5 });
-  if (config.mutationRate !== 0.5) {
-    throw new Error(`Expected mutationRate 0.5, got ${config.mutationRate}`);
-  }
+  assertEquals(config.mutationRate, 0.5);
 });
 
 // --- populationSize validation ---
@@ -97,9 +93,7 @@ Deno.test("NeatOptions validation - elitism > populationSize throws Configuratio
 
 Deno.test("NeatOptions validation - elitism < populationSize is valid", () => {
   const config = createNeatConfig({ populationSize: 10, elitism: 3 });
-  if (config.elitism !== 3) {
-    throw new Error(`Expected elitism 3, got ${config.elitism}`);
-  }
+  assertEquals(config.elitism, 3);
 });
 
 // --- discovery timeout validation ---
