@@ -8,7 +8,7 @@
  * 4. Creature can be exported and re-imported after swap
  * 5. Neuron UUIDs remain stable after swap
  */
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Creature, type CreatureExport, CreatureUtil } from "../../mod.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { SwapNeurons } from "../../src/mutate/SwapNeurons.ts";
@@ -160,22 +160,28 @@ Deno.test("SwapNeurons: can be exported and re-imported after swap", () => {
   assertEquals(reimported.output, creature.output);
 });
 
-Deno.test("SwapNeurons: UUID remains stable after swap (structural identity preserved)", () => {
+Deno.test("SwapNeurons: recomputed UUID changes after successful swap", () => {
   const creature = createSwappableCreature();
   const uuid1 = CreatureUtil.makeUUID(creature);
 
   const swapNeurons = new SwapNeurons(creature);
+  let swapped = false;
   for (let attempt = 0; attempt < 50; attempt++) {
-    if (swapNeurons.mutate()) break;
+    if (swapNeurons.mutate()) {
+      swapped = true;
+      break;
+    }
   }
+  assert(swapped, "Should swap at least once");
 
-  // The creature's UUID should remain unchanged because swap only changes
-  // neuron attributes, which are not part of the structural UUID
-  const uuid2 = creature.uuid;
-  assertEquals(
+  // After a successful swap, the recomputed UUID should differ because
+  // neuron bias/squash values have been permuted
+  delete creature.uuid;
+  const uuid2 = CreatureUtil.makeUUID(creature);
+  assertNotEquals(
     uuid1,
     uuid2,
-    "UUID should remain stable because swap preserves structure",
+    "Recomputed UUID should differ after swap changes neuron attributes",
   );
 });
 
