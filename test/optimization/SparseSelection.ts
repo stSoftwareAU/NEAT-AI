@@ -27,17 +27,27 @@ Deno.test("optimization/SparseSelection - sparse training with output-distance c
     { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
   ];
 
-  // Test with output-distance strategy
+  // Compute initial error before training
+  let initialError = 0;
+  for (const sample of trainingData) {
+    const output = creature.activate(sample.input, false);
+    initialError += (sample.output[0] - output[0]) ** 2;
+  }
+  initialError /= trainingData.length;
+
   const options: TrainOptions = {
     iterations: 5,
-    sparseRatio: 0.5, // Only train 50% of neurons
+    sparseRatio: 0.5,
     targetError: 0.1,
   };
 
   const result = train(creature, trainingData, options);
 
-  // Should converge
-  assert(result.error < 1.0, "Output-distance strategy should converge");
+  assert(Number.isFinite(result.error), "Error should be finite");
+  assert(
+    result.error < initialError,
+    `Sparse training should reduce error: got ${result.error}, initial was ${initialError}`,
+  );
 });
 
 Deno.test("optimization/SparseSelection - sparse training with random fallback converges", () => {
@@ -62,7 +72,14 @@ Deno.test("optimization/SparseSelection - sparse training with random fallback c
     { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
   ];
 
-  // Test with random strategy (default)
+  // Compute initial error before training
+  let initialError = 0;
+  for (const sample of trainingData) {
+    const output = creature.activate(sample.input, false);
+    initialError += (sample.output[0] - output[0]) ** 2;
+  }
+  initialError /= trainingData.length;
+
   const options: TrainOptions = {
     iterations: 5,
     sparseRatio: 0.5,
@@ -71,6 +88,9 @@ Deno.test("optimization/SparseSelection - sparse training with random fallback c
 
   const result = train(creature, trainingData, options);
 
-  // Should converge
-  assert(result.error < 1.0, "Random strategy should converge");
+  assert(Number.isFinite(result.error), "Error should be finite");
+  assert(
+    result.error < initialError,
+    `Sparse training should reduce error: got ${result.error}, initial was ${initialError}`,
+  );
 });

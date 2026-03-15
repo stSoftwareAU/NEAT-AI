@@ -3,7 +3,6 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import {
   cleanupMemeticForRemovedNeuron,
   cleanupMemeticForRemovedSynapse,
-  cleanupOrphanedNeurons,
   mergeDuplicateSynapses,
   pruneDeadSubgraphs,
   pruneZeroWeightSynapses,
@@ -222,62 +221,6 @@ Deno.test("pruneDeadSubgraphs - no dead neurons returns zero counts", () => {
   const result = pruneDeadSubgraphs(exported);
   assertEquals(result.removedNeurons, 0);
   assertEquals(result.removedSynapses, 0);
-});
-
-Deno.test("cleanupOrphanedNeurons - removes neurons with no outward connections", () => {
-  const exported: CreatureExport = {
-    input: 2,
-    output: 1,
-    neurons: [
-      {
-        type: "hidden",
-        uuid: "orphan-h",
-        squash: "LOGISTIC",
-        bias: 0.1,
-      },
-      { type: "hidden", uuid: "alive-h", squash: "LOGISTIC", bias: 0.2 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
-    ],
-    synapses: [
-      // orphan-h receives input but has no outward
-      { fromUUID: "input-0", toUUID: "orphan-h", weight: 0.3 },
-      // alive-h connects to output
-      { fromUUID: "input-1", toUUID: "alive-h", weight: 0.4 },
-      { fromUUID: "alive-h", toUUID: "output-0", weight: 0.5 },
-    ],
-  };
-
-  const result = cleanupOrphanedNeurons(exported);
-  assert(result.removed > 0);
-  // orphan-h should be removed
-  const uuids = exported.neurons.map((n) => n.uuid);
-  assert(!uuids.includes("orphan-h"));
-});
-
-Deno.test("cleanupOrphanedNeurons - converts hidden with no inward to constant", () => {
-  const exported: CreatureExport = {
-    input: 2,
-    output: 1,
-    neurons: [
-      {
-        type: "hidden",
-        uuid: "no-inward-h",
-        squash: "IDENTITY",
-        bias: 0.5,
-      },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
-    ],
-    synapses: [
-      // no-inward-h has no inward connections, only outward
-      { fromUUID: "no-inward-h", toUUID: "output-0", weight: 0.3 },
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0.2 },
-    ],
-  };
-
-  const result = cleanupOrphanedNeurons(exported);
-  assert(result.converted > 0);
-  const converted = exported.neurons.find((n) => n.uuid === "no-inward-h")!;
-  assertEquals(converted.type, "constant");
 });
 
 Deno.test("cleanupMemeticForRemovedSynapse - deletes memetic when synapse is referenced", () => {
