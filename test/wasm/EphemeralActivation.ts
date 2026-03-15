@@ -10,7 +10,7 @@
  * 4. activateEphemeral() works when creature already has a cached activation
  */
 
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import {
   getCachedWasmActivationCount,
@@ -112,9 +112,8 @@ Deno.test("activateEphemeral: works when creature already has a cached activatio
     }
 
     // The cached activation should still be present (not disposed)
-    assertEquals(
+    assert(
       creature.cachedWasmActivation !== undefined,
-      true,
       "Existing cached activation should be preserved",
     );
   } finally {
@@ -154,10 +153,9 @@ Deno.test("getCachedWasmActivationCount: returns current entry count", () => {
   try {
     // The count should be a non-negative number
     const count = getCachedWasmActivationCount();
-    assertEquals(
+    assert(
       count >= 0,
-      true,
-      "Count should be non-negative",
+      `Count should be non-negative, got ${count}`,
     );
   } finally {
     setMaxCachedWasmCreatureActivations(originalMax);
@@ -175,9 +173,8 @@ Deno.test("getCachedWasmActivationCount: increases after activate", () => {
     creature.activate(input);
     const countAfter = getCachedWasmActivationCount();
 
-    assertEquals(
+    assert(
       countAfter > countBefore,
-      true,
       `Count should increase after activate (was ${countBefore}, now ${countAfter})`,
     );
 

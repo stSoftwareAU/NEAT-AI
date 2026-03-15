@@ -44,9 +44,15 @@ Deno.test("WasmCompiledNetworkConstructor creates a valid network", () => {
   const compiled = compileCreatureToWasm(creature);
   const network: WasmCompiledNetwork = new ctor(compiled.data);
 
-  assert(network.num_neurons > 0, "Should have neurons");
-  assert(network.num_inputs > 0, "Should have inputs");
-  assert(network.num_synapses >= 0, "Synapses should be non-negative");
+  assertEquals(network.num_inputs, 2, "Should have 2 inputs");
+  assert(
+    network.num_neurons >= 3,
+    `Expected at least 3 neurons (2 input + 1 output), got ${network.num_neurons}`,
+  );
+  assert(
+    network.num_synapses >= 0,
+    `Synapses should be non-negative, got ${network.num_synapses}`,
+  );
 
   network.free();
 });

@@ -11,7 +11,7 @@
  * @module
  */
 
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Activations } from "../../../src/methods/activations/Activations.ts";
 import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
 import type { UnSquashInterface } from "../../../src/methods/activations/UnSquashInterface.ts";
@@ -310,9 +310,9 @@ Deno.test("BIPOLAR: squash produces correct output", () => {
     & UnSquashInterface;
 
   // Positive → 1, negative → -1
-  assertAlmostEquals(activation.squash(5), 1, 0);
-  assertAlmostEquals(activation.squash(-5), -1, 0);
-  assertAlmostEquals(activation.squash(0), -1, 0); // x > 0 is condition
+  assertEquals(activation.squash(5), 1);
+  assertEquals(activation.squash(-5), -1);
+  assertEquals(activation.squash(0), -1); // x > 0 is condition
 });
 
 Deno.test("BIPOLAR: unSquash returns hint when sign matches", () => {
@@ -320,14 +320,14 @@ Deno.test("BIPOLAR: unSquash returns hint when sign matches", () => {
     & ActivationInterface
     & UnSquashInterface;
 
-  assertAlmostEquals(activation.unSquash(1, 3), 3, 0);
-  assertAlmostEquals(activation.unSquash(-1, -3), -3, 0);
+  assertEquals(activation.unSquash(1, 3), 3);
+  assertEquals(activation.unSquash(-1, -3), -3);
 });
 
 Deno.test("STEP: squash produces correct output", () => {
   const activation = Activations.find("STEP") as unknown as ActivationInterface;
 
-  assertAlmostEquals(activation.squash(5), 1, 0);
-  assertAlmostEquals(activation.squash(-5), 0, 0);
-  assertAlmostEquals(activation.squash(0), 0, 0);
+  assertEquals(activation.squash(5), 1);
+  assertEquals(activation.squash(-5), 0);
+  assertEquals(activation.squash(0), 0);
 });
