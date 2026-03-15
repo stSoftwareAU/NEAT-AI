@@ -3,7 +3,7 @@ import { Creature } from "../../src/Creature.ts";
 import type { TrainOptions } from "../../src/config/TrainOptions.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 
-Deno.test("optimization/MiniBatch - should accumulate gradients across batch", () => {
+Deno.test("optimization/MiniBatch - different batch sizes converge to similar error", () => {
   // Create a simple creature for testing
   const creature = Creature.fromJSON({
     neurons: [
