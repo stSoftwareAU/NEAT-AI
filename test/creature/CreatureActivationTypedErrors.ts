@@ -26,12 +26,12 @@ Deno.test("WasmError - has correct reason and is catchable by type", () => {
   assertEquals(err.message, "WASM module not loaded");
 });
 
-Deno.test("WasmError - UNSUPPORTED_SQUASH reason is distinct from MODULE_NOT_LOADED", () => {
+Deno.test("WasmError - COMPILATION_FAILED reason is distinct from MODULE_NOT_LOADED", () => {
   const loadErr = new WasmError("not loaded", "MODULE_NOT_LOADED");
-  const squashErr = new WasmError("bad squash", "UNSUPPORTED_SQUASH");
+  const compileErr = new WasmError("compile failed", "COMPILATION_FAILED");
 
   assertEquals(loadErr.reason, "MODULE_NOT_LOADED");
-  assertEquals(squashErr.reason, "UNSUPPORTED_SQUASH");
+  assertEquals(compileErr.reason, "COMPILATION_FAILED");
   assertIsError(loadErr, WasmError);
-  assertIsError(squashErr, WasmError);
+  assertIsError(compileErr, WasmError);
 });

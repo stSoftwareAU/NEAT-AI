@@ -13,7 +13,7 @@
  * Issue #1236: Removed useJs parameter and JS activation fallback paths.
  */
 
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assert } from "@std/assert";
 import { Costs, Creature } from "../../mod.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import { calculate as calculateScore } from "../../src/architecture/Score.ts";
