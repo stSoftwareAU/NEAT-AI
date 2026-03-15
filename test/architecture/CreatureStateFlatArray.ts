@@ -16,17 +16,27 @@ import {
   NeuronState,
 } from "../../src/architecture/CreatureState.ts";
 
-Deno.test("CreatureState flat array - node() returns NeuronState for all neuron indices", () => {
+Deno.test("CreatureState flat array - node() returns NeuronState with defaults for all indices", () => {
   const creature = new Creature(2, 1, {
     layers: [{ count: 3, squash: "IDENTITY" }],
   });
   const state = new CreatureState(creature);
 
-  // Every neuron index should return a valid NeuronState
+  // Every neuron index should return a valid NeuronState with defaults
   for (let i = 0; i < creature.neurons.length; i++) {
     const ns = state.node(i);
     assert(ns instanceof NeuronState);
     assertEquals(ns.count, 0, `Neuron ${i} should start with count 0`);
+    assertEquals(
+      ns.totalActivation,
+      0,
+      `Neuron ${i} should start with totalActivation 0`,
+    );
+    assertEquals(
+      ns.totalErrorAbsolute,
+      0,
+      `Neuron ${i} should start with totalErrorAbsolute 0`,
+    );
   }
 });
 

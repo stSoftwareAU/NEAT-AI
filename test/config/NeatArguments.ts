@@ -27,19 +27,20 @@ Deno.test("NeatArguments - optional string fields default to undefined", () => {
   assertEquals(config.discoveryBaseDirectory, undefined);
 });
 
-Deno.test("NeatArguments - mutation array is populated with default mutations", () => {
+Deno.test("NeatArguments - mutation array defaults to FFW mutations", () => {
   const config = createNeatConfig({});
   assert(
     config.mutation.length > 0,
     "Should have at least one default mutation",
   );
+  // Default mutations are Mutation.FFW; verify each has a name
+  for (const m of config.mutation) {
+    assert(m.name.length > 0, "Each mutation should have a non-empty name");
+  }
 });
 
-Deno.test("NeatArguments - selection is always present with a name", () => {
+Deno.test("NeatArguments - selection defaults to POWER", () => {
   const config = createNeatConfig({});
   assertNotEquals(config.selection, undefined);
-  assert(
-    config.selection.name.length > 0,
-    "Selection should have a non-empty name",
-  );
+  assertEquals(config.selection.name, "POWER");
 });

@@ -51,8 +51,8 @@ class MockWorkerHandler {
     const currentCount = this.evaluatedCreatures.get(uuid) || 0;
     this.evaluatedCreatures.set(uuid, currentCount + 1);
 
-    // Simulate some async work
-    await new Promise((resolve) => setTimeout(resolve, 1));
+    // Yield to the event loop without relying on timing
+    await Promise.resolve();
 
     this.busyCount--;
 

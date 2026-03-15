@@ -1,10 +1,10 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 
-Deno.test("NeatOptions - empty options produces valid config", () => {
+Deno.test("NeatOptions - empty options produces config with known defaults", () => {
   const config = createNeatConfig({});
-  assertEquals(typeof config.populationSize, "number");
-  assertEquals(typeof config.mutationRate, "number");
+  assertEquals(config.populationSize, 50);
+  assertEquals(config.mutationRate, 0.3);
 });
 
 Deno.test("NeatOptions - numeric string coercion for top-level fields", () => {
@@ -94,15 +94,29 @@ Deno.test("NeatOptions - Omit list allows partial sub-object overrides", () => {
 Deno.test("NeatOptions - seed option produces deterministic RNG", () => {
   const config1 = createNeatConfig({ seed: 42 });
   const config2 = createNeatConfig({ seed: 42 });
-  // Same seed should produce same first random value
-  assertEquals(config1.rng.random(), config2.rng.random());
+  // Same seed should produce identical sequences
+  const seq1 = [
+    config1.rng.random(),
+    config1.rng.random(),
+    config1.rng.random(),
+  ];
+  const seq2 = [
+    config2.rng.random(),
+    config2.rng.random(),
+    config2.rng.random(),
+  ];
+  assertEquals(seq1, seq2);
+  assertEquals(config1.rng.seeded, true);
 });
 
 Deno.test("NeatOptions - seed accepts string from CLI", () => {
   const config = createNeatConfig({
     seed: "123" as unknown as number,
   });
-  assertEquals(typeof config.rng.random(), "number");
+  assertEquals(config.rng.seeded, true);
+  // Should produce same sequence as numeric seed 123
+  const configNumeric = createNeatConfig({ seed: 123 });
+  assertEquals(config.rng.random(), configNumeric.rng.random());
 });
 
 Deno.test("NeatOptions - logLevel option is accepted", () => {

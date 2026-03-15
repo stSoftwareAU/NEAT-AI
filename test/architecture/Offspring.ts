@@ -87,7 +87,7 @@ Deno.test("Offspring.breed - returns undefined when offspring clones parent", ()
   );
 });
 
-Deno.test("Offspring.breed - offspring has valid synapses", () => {
+Deno.test("Offspring.breed - offspring has valid synapses with finite weights", () => {
   const mum = new Creature(2, 1, {
     layers: [{ count: 2, squash: "IDENTITY" }],
   });
@@ -103,22 +103,26 @@ Deno.test("Offspring.breed - offspring has valid synapses", () => {
 
   if (offspring) {
     assert(offspring.synapses.length > 0, "Offspring should have synapses");
-    // All synapse indices should be in bounds
+    // All synapse indices should be in bounds with finite weights
     for (const s of offspring.synapses) {
       assert(
         s.from >= 0 && s.from < offspring.neurons.length,
-        "from index in bounds",
+        `from index ${s.from} should be in bounds [0, ${offspring.neurons.length})`,
       );
       assert(
         s.to >= 0 && s.to < offspring.neurons.length,
-        "to index in bounds",
+        `to index ${s.to} should be in bounds [0, ${offspring.neurons.length})`,
       );
       assert(s.from <= s.to, "Forward-only: from <= to");
+      assert(
+        Number.isFinite(s.weight),
+        `Synapse weight should be finite, got ${s.weight}`,
+      );
     }
   }
 });
 
-Deno.test("Offspring.breed - offspring gets a UUID", () => {
+Deno.test("Offspring.breed - offspring gets a valid UUID", () => {
   const mum = new Creature(2, 1, {
     layers: [{ count: 2, squash: "IDENTITY" }],
   });
@@ -135,6 +139,11 @@ Deno.test("Offspring.breed - offspring gets a UUID", () => {
   if (offspring) {
     assert(offspring.uuid !== undefined, "Offspring should have a UUID");
     assert(offspring.uuid.length > 0, "UUID should be non-empty");
+    // UUID should contain only valid characters (hex, hyphens)
+    assert(
+      /^[a-f0-9-]+$/i.test(offspring.uuid),
+      `UUID should contain valid characters: ${offspring.uuid}`,
+    );
   }
 });
 

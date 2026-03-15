@@ -39,13 +39,20 @@ Deno.test("ActivationRange validate rejects out-of-range and non-finite values",
   }
 });
 
-Deno.test("ActivationRange validate accepts in-range values", () => {
+Deno.test("ActivationRange validate accepts in-range values without throwing", () => {
   const range = Activations.find("CLIPPED").range;
 
   const validValues = [-1, -0.5, 0, 0.5, 1];
+  let validatedCount = 0;
   for (const value of validValues) {
     range.validate(value);
+    validatedCount++;
   }
+  assertEquals(
+    validatedCount,
+    validValues.length,
+    "All valid values should pass",
+  );
 });
 
 Deno.test("ActivationRange limit rejects NaN", () => {
