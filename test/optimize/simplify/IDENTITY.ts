@@ -8,9 +8,7 @@ import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 import { MAXIMUM } from "../../../src/methods/activations/aggregate/MAXIMUM.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
-((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
-
-Deno.test("IDENTITY", () => {
+Deno.test("simplify - IDENTITY hidden neuron folded into downstream TANH output", () => {
   const directory = ".test/optimize/simplify/IDENTITY";
   Deno.mkdirSync(directory, { recursive: true });
 
@@ -99,7 +97,7 @@ Deno.test("IDENTITY", () => {
   }
 });
 
-Deno.test("IDENTITY-simple", () => {
+Deno.test("simplify - simple IDENTITY chain folded into single output neuron", () => {
   const directory = ".test/optimize/simplify/IDENTITY-simple";
   Deno.mkdirSync(directory, { recursive: true });
 
@@ -165,7 +163,7 @@ Deno.test("IDENTITY-simple", () => {
   }
 });
 
-Deno.test("IDENTITY Maximum", () => {
+Deno.test("simplify - IDENTITY into MAXIMUM output is not simplified (unsafe)", () => {
   const directory = ".test/optimize/simplify/IDENTITY-maximum";
   Deno.mkdirSync(directory, { recursive: true });
 

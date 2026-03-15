@@ -50,7 +50,7 @@ function makeData() {
   return inputs;
 }
 
-Deno.test("UnusedClipped", () => {
+Deno.test("compactUnused - behaviour preserved when CLIPPED hidden neuron is removed", () => {
   const creature = makeCreature();
   const data = makeData();
 

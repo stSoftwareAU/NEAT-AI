@@ -75,7 +75,7 @@ function makeData() {
   return inputs;
 }
 
-Deno.test("CompactConstants", () => {
+Deno.test("compactUnused - behaviour preserved with constant and IF neurons", () => {
   const creature = makeCreature();
   const data = makeData();
 

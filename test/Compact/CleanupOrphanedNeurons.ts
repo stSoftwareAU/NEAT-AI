@@ -7,8 +7,6 @@ import { cleanupOrphanedNeuronsInCreature } from "../../src/compact/OrphanedNeur
 import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 
-((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
-
 Deno.test("cleanupOrphanedNeurons - should remove hidden neuron with no outward connections", () => {
   // Create a creature export with a hidden neuron that has no outward connections
   const creatureExport: CreatureExport = {

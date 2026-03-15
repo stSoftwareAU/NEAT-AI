@@ -79,7 +79,7 @@ function makeData() {
   return inputs;
 }
 
-Deno.test("CompactKeepOrder", () => {
+Deno.test("compactUnused - preserves constant neuron ordering and behaviour", () => {
   const creature = makeCreature();
   const data = makeData();
 

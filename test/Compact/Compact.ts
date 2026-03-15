@@ -7,10 +7,7 @@ import type {
 } from "../../src/architecture/CreatureInterfaces.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
-((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
-
-/** Make sure the compact routine remove hidden nodes with no affect */
-Deno.test("removeDanglingHidden", () => {
+Deno.test("compact - removes hidden neurons with no reachable output path", () => {
   const json: CreatureInternal = {
     neurons: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3 },
@@ -52,7 +49,7 @@ Deno.test("removeDanglingHidden", () => {
   b.validate();
 });
 
-Deno.test("removeFeedbackLoop", () => {
+Deno.test("compact - removes feedback loops when feedbackLoop is false", () => {
   const json: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "hidden-3", squash: "Cosine", bias: 2 },
@@ -97,7 +94,7 @@ Deno.test("removeFeedbackLoop", () => {
   c.validate();
 });
 
-Deno.test("CompactSimple", () => {
+Deno.test("compact - iteratively compacts linear IDENTITY chain preserving behaviour", () => {
   const directory = ".test/CompactSimple";
   Deno.mkdirSync(directory, { recursive: true });
 
@@ -161,12 +158,9 @@ Deno.test("CompactSimple", () => {
   assertAlmostEquals(startOut[1], endOut[1], 0.001);
   assert(endNodes < startNodes);
   assert(endConnections < startConnections);
-
-  // const d = c.compact();
-  // assert(!d);
 });
 
-Deno.test("RandomizeCompact", () => {
+Deno.test("compact - repeated compaction of random multi-layer network converges", () => {
   for (let attempts = 0; true; attempts++) {
     const traceDir = ".trace/RandomizeCompact";
     ensureDirSync(traceDir);
@@ -209,15 +203,12 @@ Deno.test("RandomizeCompact", () => {
     );
     const b = a.compact(false);
     if (!b) {
-      console.info("Did not compact");
       break;
     } else {
-      b.DEBUG = false;
       Deno.writeTextFileSync(
         `${traceDir}/b.json`,
         JSON.stringify(b.exportJSON(), null, 1),
       );
-      b.DEBUG = true;
       b.validate();
       const endNodes = b.neurons.length;
       const endConnections = b.synapses.length;
@@ -244,7 +235,7 @@ Deno.test("RandomizeCompact", () => {
   }
 });
 
-Deno.test("CompactSelf", () => {
+Deno.test("compact - removes self-loops and unused paths preserving behaviour", () => {
   const directory = ".test/CompactSelf";
   Deno.mkdirSync(directory, { recursive: true });
 

@@ -2,9 +2,7 @@ import { fail } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 
-((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
-
-Deno.test("RELU activation produces correct clamped output", () => {
+Deno.test("activate - RELU produces correct clamped output", () => {
   const json: CreatureExport = {
     neurons: [
       { bias: Math.LN2, type: "output", squash: "RELU", uuid: "output-0" },

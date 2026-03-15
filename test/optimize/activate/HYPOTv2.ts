@@ -4,9 +4,7 @@ import type { CreatureExport } from "../../../src/architecture/CreatureInterface
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 
-((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
-
-Deno.test("HYPOTv2", () => {
+Deno.test("activate - HYPOTv2 squash applies per-input bias before hypotenuse", () => {
   const directory = ".test/optimize/activate/HYPOTv2";
   Deno.mkdirSync(directory, { recursive: true });
   const json: CreatureExport = {
