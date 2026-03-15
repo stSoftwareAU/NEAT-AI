@@ -1,33 +1,32 @@
 ## Summary
 
-Final audit pass on compact/optimisation test files. Closes #1772.
+Final audit pass: strengthen weak assertions and improve test names in
+compact/optimisation tests. Closes #1772.
 
-Audited all test files in `test/Compact/`, `test/optimize/`,
-`test/optimization/`, `test/FeedForward/`, and `test/reconstruct/` against the
-quality criteria:
+All test files in `test/Compact/`, `test/optimize/`, `test/optimization/`,
+`test/FeedForward/`, and `test/reconstruct/` have been reviewed against the
+audit criteria. Previous PRs addressed duplicates, trivial tests, and cross-area
+overlaps. This final pass strengthens the remaining weak assertions and improves
+test names.
 
-1. **Removed duplicate test file**: `test/FeedForward/MutateActions.ts` — all 3
-   tests were duplicates of more thorough coverage in
-   `test/NEAT/MutatorComputeMutationCandidates.ts` (which uses 500 iterations vs
-   100 and covers additional scenarios like semantic version constraints and
-   maximum node limits).
+### Changes
 
-2. **Fixed inconsistent test pattern**:
-   `test/reconstruct/ValidateDNATypedErrors.ts` — replaced manual try-catch with
-   `assertThrows` for consistency with the other 3 tests in the same file.
+**CompactCreatureCloneOptimisation.ts** — strengthened two weak assertions and
+improved all 13 test names:
 
-3. **Consolidated trivial tests**: `test/Compact/IsAggregationSquash.ts` —
-   consolidated 11 near-identical single-assertion tests into 3 data-driven
-   tests that cover the same cases more concisely.
+- **Neuron tags test**: Previously only asserted the output neuron exists — it
+  never checked that the tagged neuron's tags survived compaction. Redesigned to
+  use a backward-synapse compaction scenario where the tagged LOGISTIC neuron
+  survives, then verifies the specific tag name and value.
 
-### Cross-area duplicates found
+- **Creature-level tags test**: Previously only asserted `exported.tags` is
+  truthy. Now verifies the specific tag values ("model-version"/"1.0.0" and
+  "training-run"/"experiment-42") are present after compaction.
 
-- `test/FeedForward/MutateActions.ts` duplicated
-  `test/NEAT/MutatorComputeMutationCandidates.ts` and
-  `test/NEAT/MutatorCacheValidMutations.ts` (removed)
-- `test/reconstruct/ValidateDNATypedErrors.ts` overlaps with
-  `test/CRISPR/ValidateDNA.ts` but provides unique error-type and error-code
-  verification (kept)
+- **Test names**: All 13 test names updated from implementation-focused names
+  (e.g. "optimised clone produces independent neuron arrays") to
+  behaviour-focused names (e.g. "compaction does not modify original creature
+  neurons").
 
 ## Evidence
 
@@ -36,10 +35,8 @@ quality criteria:
 
 ## Test Plan
 
-- Verified `test/Compact/IsAggregationSquash.ts` consolidated tests cover all
-  original cases
-- Verified `test/reconstruct/ValidateDNATypedErrors.ts` assertThrows pattern
-  works correctly
-- Confirmed `test/NEAT/MutatorComputeMutationCandidates.ts` provides superset
-  coverage of removed `MutateActions.ts`
+- Modified: `test/Compact/CompactCreatureCloneOptimisation.ts` (13 tests)
+  - Strengthened assertion: neuron tags verified by name/value after compaction
+  - Strengthened assertion: creature-level tags verified by name/value
+  - All test names improved to describe behaviour being verified
 - Full test suite passes (4509 tests, 0 failures)

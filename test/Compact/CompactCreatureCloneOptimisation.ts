@@ -6,13 +6,12 @@ import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
 
 /**
- * Tests for Issue #1015: Performance optimisation of compact operation.
- *
- * These tests verify that the optimised cloning (direct property copy) produces
- * behaviour-equivalent results to the previous JSON.parse(JSON.stringify()) approach.
+ * Tests that compaction produces behaviour-equivalent results without
+ * corrupting the original creature, and that metadata (tags, flags,
+ * semantic version, memetic data) is preserved through compaction.
  */
 
-Deno.test("compactCreature: optimised clone produces independent neuron arrays", () => {
+Deno.test("compactCreature: compaction does not modify original creature neurons", () => {
   // Arrange - create a creature with neurons that will be modified during compaction
   const json: CreatureExport = {
     neurons: [
@@ -46,7 +45,7 @@ Deno.test("compactCreature: optimised clone produces independent neuron arrays",
   );
 });
 
-Deno.test("compactCreature: optimised clone produces independent synapse arrays", () => {
+Deno.test("compactCreature: compaction does not modify original creature synapses", () => {
   // Arrange - create a creature with synapses
   const json: CreatureExport = {
     neurons: [
@@ -80,24 +79,27 @@ Deno.test("compactCreature: optimised clone produces independent synapse arrays"
   );
 });
 
-Deno.test("compactCreature: optimised clone preserves tags on neurons", () => {
-  // Arrange - create a creature with tagged neurons
+Deno.test("compactCreature: preserves neuron tags through compaction", () => {
+  // Arrange - create a creature with a backward synapse and a tagged hidden neuron.
+  // Compacting with feedbackLoop=false strips the backward synapse, triggering
+  // compaction. The tagged hidden neuron (hidden-0) remains live and should
+  // retain its tags.
   const json: CreatureExport = {
     neurons: [
       {
         type: "hidden",
         uuid: "hidden-0",
-        squash: IDENTITY.NAME,
+        squash: LOGISTIC.NAME,
         bias: 0.5,
         tags: [{ name: "custom", value: "neuron-tag" }],
       },
-      { type: "hidden", uuid: "hidden-1", squash: IDENTITY.NAME, bias: 0.3 },
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.1 },
     ],
     synapses: [
       { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
-      { fromUUID: "hidden-0", toUUID: "hidden-1", weight: 0.6 },
-      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.7 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.7 },
+      // Backward synapse that will be removed when feedbackLoop=false
+      { fromUUID: "output-0", toUUID: "hidden-0", weight: 0.3 },
     ],
     input: 1,
     output: 1,
@@ -106,19 +108,21 @@ Deno.test("compactCreature: optimised clone preserves tags on neurons", () => {
 
   const creature = Creature.fromJSON(json);
 
-  // Act
+  // Act - compact with feedbackLoop=false strips backward synapse
   const compacted = compactCreature(creature, false);
-  assert(compacted, "Should have compacted");
+  assert(compacted, "Should have compacted (backward synapse removed)");
 
-  // Assert - tags should be preserved in compacted creature
+  // Assert - the tagged neuron should survive and retain its tags
   const exported = compacted.exportJSON();
-
-  // The output neuron should still exist and have no modification to tags from compaction
-  const outputNeuron = exported.neurons.find((n) => n.uuid === "output-0");
-  assert(outputNeuron, "Output neuron should exist");
+  const taggedNeuron = exported.neurons.find((n) => n.uuid === "hidden-0");
+  assert(taggedNeuron, "Tagged neuron should survive compaction");
+  assert(taggedNeuron.tags, "Neuron tags should be preserved");
+  assertEquals(taggedNeuron.tags.length, 1);
+  assertEquals(taggedNeuron.tags[0].name, "custom");
+  assertEquals(taggedNeuron.tags[0].value, "neuron-tag");
 });
 
-Deno.test("compactCreature: optimised clone preserves tags on synapses", () => {
+Deno.test("compactCreature: preserves synapse tags through compaction", () => {
   // Arrange - use an IDENTITY chain (hidden-0 -> hidden-1) that compacts,
   // with a tagged synapse on input->hidden-0 that survives compaction
   const json: CreatureExport = {
@@ -168,7 +172,7 @@ Deno.test("compactCreature: optimised clone preserves tags on synapses", () => {
   assertEquals(taggedSynapse.tags[0].name, "synapse-type");
 });
 
-Deno.test("compactCreature: optimised clone preserves synapse types", () => {
+Deno.test("compactCreature: preserves synapse types through compaction", () => {
   // Arrange - use an IDENTITY chain that compacts, with typed synapses
   const json: CreatureExport = {
     neurons: [
@@ -219,7 +223,7 @@ Deno.test("compactCreature: optimised clone preserves synapse types", () => {
   );
 });
 
-Deno.test("compactCreature: optimised clone preserves forwardOnly flag", () => {
+Deno.test("compactCreature: preserves forwardOnly flag through compaction", () => {
   // Arrange - create a forward-only creature
   const json: CreatureExport = {
     neurons: [
@@ -252,7 +256,7 @@ Deno.test("compactCreature: optimised clone preserves forwardOnly flag", () => {
   );
 });
 
-Deno.test("compactCreature: optimised clone preserves creature-level tags", () => {
+Deno.test("compactCreature: preserves creature-level tags after compaction", () => {
   // Arrange - create a creature with creature-level tags
   const json: CreatureExport = {
     neurons: [
@@ -279,12 +283,20 @@ Deno.test("compactCreature: optimised clone preserves creature-level tags", () =
   const compacted = compactCreature(creature, false);
   assert(compacted, "Should have compacted");
 
-  // Assert - creature tags should be preserved (though compaction adds its own tags)
+  // Assert - original creature tags should be preserved in the compacted result
   const exported = compacted.exportJSON();
   assert(exported.tags, "Compacted creature should have tags");
+
+  const modelTag = exported.tags.find((t) => t.name === "model-version");
+  assert(modelTag, "model-version tag should be preserved");
+  assertEquals(modelTag.value, "1.0.0");
+
+  const runTag = exported.tags.find((t) => t.name === "training-run");
+  assert(runTag, "training-run tag should be preserved");
+  assertEquals(runTag.value, "experiment-42");
 });
 
-Deno.test("compactCreature: optimised clone - mutation of cloned neurons does not affect original", () => {
+Deno.test("compactCreature: compacting does not mutate original neuron biases", () => {
   // This test verifies that the cloned data is truly independent
   // If shallow copy is done incorrectly, mutating the clone would affect the original
 
@@ -319,7 +331,7 @@ Deno.test("compactCreature: optimised clone - mutation of cloned neurons does no
   );
 });
 
-Deno.test("compactCreature: optimised clone - mutation of cloned synapses does not affect original", () => {
+Deno.test("compactCreature: compacting does not mutate original synapse weights", () => {
   const json: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0.5 },
@@ -351,7 +363,7 @@ Deno.test("compactCreature: optimised clone - mutation of cloned synapses does n
   );
 });
 
-Deno.test("compactCreature: optimised clone preserves memetic data (not modified)", () => {
+Deno.test("compactCreature: preserves memetic data when no compaction occurs", () => {
   // Note: Compaction deletes memetic data intentionally when changes occur,
   // but the clone itself should preserve it if no changes are made
 
@@ -392,7 +404,7 @@ Deno.test("compactCreature: optimised clone preserves memetic data (not modified
   assertEquals(exported.memetic.generation, 5);
 });
 
-Deno.test("compactCreature: optimised clone preserves semanticVersion", () => {
+Deno.test("compactCreature: preserves semanticVersion through compaction", () => {
   const json: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0.5 },
@@ -424,7 +436,7 @@ Deno.test("compactCreature: optimised clone preserves semanticVersion", () => {
   );
 });
 
-Deno.test("compactCreature: optimised clone produces separate object references", () => {
+Deno.test("compactCreature: compacted creature is a separate object from original", () => {
   // This test explicitly verifies object reference independence
 
   const json: CreatureExport = {
@@ -465,7 +477,7 @@ Deno.test("compactCreature: optimised clone produces separate object references"
   );
 });
 
-Deno.test("compactCreature: large network clone correctness verification", () => {
+Deno.test("compactCreature: large IDENTITY chain compacts without corrupting original", () => {
   // Create a larger network with redundant neurons that will be compacted.
   // Uses a chain of IDENTITY neurons which can be collapsed.
 
