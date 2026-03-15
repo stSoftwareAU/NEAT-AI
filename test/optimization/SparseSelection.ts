@@ -3,7 +3,7 @@ import { Creature } from "../../src/Creature.ts";
 import type { TrainOptions } from "../../src/config/TrainOptions.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 
-Deno.test("optimization/SparseSelection - should use output-distance strategy", () => {
+Deno.test("optimization/SparseSelection - sparse training with output-distance converges", () => {
   const creature = Creature.fromJSON({
     neurons: [
       { type: "input", index: 0 },
@@ -40,7 +40,7 @@ Deno.test("optimization/SparseSelection - should use output-distance strategy", 
   assert(result.error < 1.0, "Output-distance strategy should converge");
 });
 
-Deno.test("optimization/SparseSelection - should fallback to random strategy", () => {
+Deno.test("optimization/SparseSelection - sparse training with random fallback converges", () => {
   const creature = Creature.fromJSON({
     neurons: [
       { type: "input", index: 0 },

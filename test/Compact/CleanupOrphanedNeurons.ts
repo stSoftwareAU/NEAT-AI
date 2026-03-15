@@ -3,6 +3,7 @@ import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { cleanupOrphanedNeurons } from "../../src/compact/CompactUtils.ts";
+import { cleanupOrphanedNeuronsInCreature } from "../../src/compact/OrphanedNeuronCleanup.ts";
 import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 
@@ -503,4 +504,30 @@ Deno.test("cleanupOrphanedNeurons - should apply TANH squash function when conve
     0.0001,
     `Constant bias should be TANH-squashed (expected ${expectedSquashedBias}, got ${convertedNeuron?.bias})`,
   );
+});
+
+Deno.test("cleanupOrphanedNeuronsInCreature - removes orphaned neurons from live creature", () => {
+  const json: CreatureExport = {
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "orphan-h", squash: "LOGISTIC", bias: 0.1 },
+      { type: "hidden", uuid: "alive-h", squash: "LOGISTIC", bias: 0.2 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "orphan-h", weight: 0.3 },
+      { fromUUID: "input-1", toUUID: "alive-h", weight: 0.4 },
+      { fromUUID: "alive-h", toUUID: "output-0", weight: 0.5 },
+    ],
+  };
+
+  const creature = Creature.fromJSON(json);
+  const result = cleanupOrphanedNeuronsInCreature(creature);
+
+  // Orphan-h has no outward connections, so it should be removed
+  assertEquals(result.removed > 0, true, "Should remove orphaned neurons");
+
+  // Verify the creature is still valid after cleanup
+  creatureValidate(creature);
 });

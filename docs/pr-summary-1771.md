@@ -9,12 +9,13 @@ assertions and eliminating timing dependencies. Closes #1771.
 **Weak type-only assertions replaced with value assertions (3 files, 7 tests):**
 
 - `NeatOptions.ts`: Replaced `typeof` checks with exact default value assertions
-  (`populationSize === 50`, `mutationRate === 0.3`); strengthened seed determinism
-  test to verify full 3-value sequence; verified `seeded === true` for CLI seed
+  (`populationSize === 50`, `mutationRate === 0.3`); strengthened seed
+  determinism test to verify full 3-value sequence; verified `seeded === true`
+  for CLI seed
 - `TrainOptions.ts`: Replaced `typeof result.error === "number"` with
   `Number.isFinite(result.error)` and `result.error >= 0`; removed trivial
-  `assertGreater(error, -Infinity)`; renamed tests to accurately describe what is
-  verified
+  `assertGreater(error, -Infinity)`; renamed tests to accurately describe what
+  is verified
 - `NeatArguments.ts`: Changed mutation test to verify each mutation has a name;
   changed selection test to assert exact default `"POWER"` instead of string
   length check
