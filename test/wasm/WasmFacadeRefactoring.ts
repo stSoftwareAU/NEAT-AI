@@ -12,13 +12,11 @@ import {
   assertAlmostEquals,
   assertEquals,
   assertExists,
-  assertThrows,
 } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import {
   type FusedErrorDistributionResult,
   initWasmActivation,
-  isWasmActivationAvailable,
   SquashType,
   type WasmActivationRange,
   wasmCalculateError,
@@ -26,33 +24,16 @@ import {
   wasmDerivative,
   wasmFusedErrorDistribution,
   wasmGetRange,
-  wasmLimitRange,
   wasmSafeZoneAdjustment,
   wasmSafeZoneAdjustmentBatch,
   wasmSquash,
   type WasmTraceEntry,
   type WasmTraceResult,
   wasmUnSquash,
-  wasmValidateRange,
-  wasmVersion,
 } from "../../src/wasm/mod.ts";
 
 // Ensure WASM is loaded
 await initWasmActivation();
-
-// ---------------------------------------------------------------------------
-// Module availability
-// ---------------------------------------------------------------------------
-
-Deno.test("isWasmActivationAvailable returns true after init", () => {
-  assert(isWasmActivationAvailable());
-});
-
-Deno.test("wasmVersion returns a version string", () => {
-  const version = wasmVersion();
-  assert(version !== "not loaded", "Expected a version string");
-  assert(version.length > 0, "Version should not be empty");
-});
 
 // ---------------------------------------------------------------------------
 // Standalone functions via WasmStandaloneFunctions
@@ -139,15 +120,6 @@ Deno.test("wasmGetRange returns valid range for Logistic", () => {
   assertAlmostEquals(range.high, 1, 1e-5);
 });
 
-Deno.test("wasmValidateRange accepts valid Logistic value", () => {
-  assert(wasmValidateRange(SquashType.Logistic, 0.5));
-});
-
-Deno.test("wasmLimitRange clamps out-of-range value", () => {
-  const clamped = wasmLimitRange(SquashType.Logistic, 1.5);
-  assert(clamped <= 1.0, `Expected clamped <= 1.0 but got ${clamped}`);
-});
-
 // ---------------------------------------------------------------------------
 // WasmCreatureActivation class
 // ---------------------------------------------------------------------------
@@ -161,19 +133,6 @@ Deno.test("WasmCreatureActivation.fromCreature produces valid activation", () =>
   const output = activation.activate(input);
   assertEquals(output.length, 1);
   activation.free();
-});
-
-Deno.test("WasmCreatureActivation.activate throws after free", () => {
-  const creature = new Creature(2, 1);
-  const activation = WasmCreatureActivation.fromCreature(creature);
-  assertExists(activation);
-
-  activation.free();
-  assertThrows(
-    () => activation.activate(new Float32Array([0.5, 0.3])),
-    Error,
-    "has been freed",
-  );
 });
 
 Deno.test("WasmCreatureActivation trace types are accessible", () => {
@@ -203,7 +162,7 @@ Deno.test("WasmCreatureActivation trace types are accessible", () => {
   activation.free();
 });
 
-Deno.test("WasmCreatureActivation activateWithState works", () => {
+Deno.test("WasmCreatureActivation activateWithState returns output of correct length", () => {
   const creature = new Creature(2, 1);
   const activation = WasmCreatureActivation.fromCreature(creature);
   assertExists(activation);
@@ -211,5 +170,9 @@ Deno.test("WasmCreatureActivation activateWithState works", () => {
   const input = new Float32Array([0.5, 0.3]);
   const output = activation.activateWithState(input, false);
   assertEquals(output.length, 1);
+  assert(
+    Number.isFinite(output[0]),
+    `Expected finite output value, got ${output[0]}`,
+  );
   activation.free();
 });

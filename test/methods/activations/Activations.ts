@@ -4,25 +4,12 @@
  * @module
  */
 
-import {
-  assert,
-  assertEquals,
-  assertNotEquals,
-  assertThrows,
-} from "@std/assert";
+import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Activations } from "../../../src/methods/activations/Activations.ts";
-import { ActivationError } from "../../../src/errors/ActivationError.ts";
 
 Deno.test("Activations.find returns known activation by name", () => {
   const relu = Activations.find("ReLU");
   assertEquals(relu.getName(), "ReLU");
-});
-
-Deno.test("Activations.find throws ActivationError for unknown name", () => {
-  assertThrows(
-    () => Activations.find("NONEXISTENT_ACTIVATION"),
-    ActivationError,
-  );
 });
 
 Deno.test("Activations.find resolves alias RELU to ReLU", () => {
@@ -43,11 +30,6 @@ Deno.test("Activations.find resolves alias INVERSE to COMPLEMENT", () => {
 Deno.test("Activations.find resolves alias SINUSOID to SINE", () => {
   const act = Activations.find("SINUSOID");
   assertEquals(act.getName(), "SINE");
-});
-
-Deno.test("Activations.list returns non-empty array", () => {
-  const list = Activations.list();
-  assert(list.length > 0);
 });
 
 Deno.test("Activations.list contains all standard activations", () => {

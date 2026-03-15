@@ -301,21 +301,11 @@ Deno.test("HARD_TANH squash clips to [-1, 1]", () => {
   assertEquals(act.squash(-2), -1);
 });
 
-Deno.test("HARD_TANH alias CLIPPED works", () => {
-  const act = findActivation("CLIPPED");
-  assertEquals(act.getName(), "HARD_TANH");
-});
-
 // --- SINE ---
 Deno.test("SINE squash returns sin(x)", () => {
   const act = findActivation("SINE");
   assertAlmostEquals(act.squash(0), 0, 1e-10);
   assertAlmostEquals(act.squash(Math.PI / 2), 1, 1e-10);
-});
-
-Deno.test("SINE alias SINUSOID works", () => {
-  const act = findActivation("SINUSOID");
-  assertEquals(act.getName(), "SINE");
 });
 
 // --- Mish ---
@@ -407,6 +397,7 @@ Deno.test("LogSigmoid squash is negative for all x", () => {
 Deno.test("TAN squash returns tan(x) at small values", () => {
   const act = findActivation("TAN");
   assertAlmostEquals(act.squash(0), 0, 1e-10);
+  assertAlmostEquals(act.squash(Math.PI / 4), 1, 1e-10);
 });
 
 // --- StdInverse ---

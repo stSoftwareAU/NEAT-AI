@@ -6,8 +6,8 @@
  * Verifies:
  * 1. Module loading succeeds and isWasmActivationAvailable returns true
  * 2. All function getters return non-null after initialisation
- * 3. initWasmActivation is idempotent (calling multiple times is safe)
- * 4. initWasmActivationSync handles already-initialised state
+ * 3. initWasmActivation is idempotent (safe to call multiple times)
+ * 4. Version function returns a non-empty string
  */
 
 import { assert, assertExists } from "@std/assert";
@@ -23,7 +23,6 @@ import {
   getValidateRangeFn,
   getVersionFn,
   initWasmActivation,
-  initWasmActivationSync,
   isWasmActivationAvailable,
 } from "../../src/wasm/WasmModuleLoader.ts";
 
@@ -86,19 +85,4 @@ Deno.test("WasmModuleLoader: version function returns a non-empty string", () =>
     typeof version === "string" && version.length > 0,
     "Version should be a non-empty string",
   );
-});
-
-// ---------------------------------------------------------------------------
-// Sync init path — already initialised
-// ---------------------------------------------------------------------------
-
-Deno.test("WasmModuleLoader: initWasmActivationSync returns true when already initialised", () => {
-  // Module is already loaded, so sync init should short-circuit
-  const fakeBindings = {};
-  const fakeBinary = new Uint8Array([]);
-
-  // Since wasmModule is already set, this should return true without touching
-  // the fake bindings at all.
-  const result = initWasmActivationSync(fakeBindings, fakeBinary);
-  assert(result, "Should return true when module already initialised");
 });

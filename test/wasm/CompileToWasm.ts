@@ -23,21 +23,13 @@ import {
   getCompiledCreatureStats,
   SynapseTypeCode,
 } from "../../src/wasm/CompileToWasm.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-
-/**
- * Create a simple creature from JSON for controlled testing.
- */
-function makeCreature(json: CreatureExport): Creature {
-  return Creature.fromJSON(json);
-}
 
 // ---------------------------------------------------------------------------
 // Binary layout tests
 // ---------------------------------------------------------------------------
 
 Deno.test("CompileToWasm: header encodes neuron and input counts correctly", () => {
-  const creature = makeCreature({
+  const creature = Creature.fromJSON({
     input: 2,
     output: 1,
     neurons: [
@@ -67,7 +59,7 @@ Deno.test("CompileToWasm: header encodes neuron and input counts correctly", () 
 
 Deno.test("CompileToWasm: bias is encoded as little-endian f64", () => {
   const biasValue = 0.75;
-  const creature = makeCreature({
+  const creature = Creature.fromJSON({
     input: 1,
     output: 1,
     neurons: [
@@ -89,7 +81,7 @@ Deno.test("CompileToWasm: bias is encoded as little-endian f64", () => {
 });
 
 Deno.test("CompileToWasm: zero bias is encoded as zero", () => {
-  const creature = makeCreature({
+  const creature = Creature.fromJSON({
     input: 1,
     output: 1,
     neurons: [
@@ -110,7 +102,7 @@ Deno.test("CompileToWasm: zero bias is encoded as zero", () => {
 });
 
 Deno.test("CompileToWasm: squash type is encoded correctly", () => {
-  const creature = makeCreature({
+  const creature = Creature.fromJSON({
     input: 1,
     output: 1,
     neurons: [
@@ -133,7 +125,7 @@ Deno.test("CompileToWasm: squash type is encoded correctly", () => {
 });
 
 Deno.test("CompileToWasm: synapse count is encoded as u16", () => {
-  const creature = makeCreature({
+  const creature = Creature.fromJSON({
     input: 3,
     output: 1,
     neurons: [
@@ -158,7 +150,7 @@ Deno.test("CompileToWasm: synapse count is encoded as u16", () => {
 });
 
 Deno.test("CompileToWasm: synapse from_index and weight are encoded correctly", () => {
-  const creature = makeCreature({
+  const creature = Creature.fromJSON({
     input: 2,
     output: 1,
     neurons: [
@@ -198,7 +190,7 @@ Deno.test("CompileToWasm: synapse from_index and weight are encoded correctly", 
 });
 
 Deno.test("CompileToWasm: synapse types are encoded correctly", () => {
-  const creature = makeCreature({
+  const creature = Creature.fromJSON({
     input: 3,
     output: 1,
     neurons: [
@@ -262,7 +254,7 @@ Deno.test("CompileToWasm: synapse types are encoded correctly", () => {
 // ---------------------------------------------------------------------------
 
 Deno.test("CompileToWasm: total binary size matches expected layout", () => {
-  const creature = makeCreature({
+  const creature = Creature.fromJSON({
     input: 2,
     output: 2,
     neurons: [
@@ -294,7 +286,7 @@ Deno.test("CompileToWasm: total binary size matches expected layout", () => {
 // ---------------------------------------------------------------------------
 
 Deno.test("CompileToWasm: hidden neurons are compiled correctly", () => {
-  const creature = makeCreature({
+  const creature = Creature.fromJSON({
     input: 2,
     output: 1,
     neurons: [
@@ -328,7 +320,7 @@ Deno.test("CompileToWasm: hidden neurons are compiled correctly", () => {
 // ---------------------------------------------------------------------------
 
 Deno.test("CompileToWasm: constant neuron is_constant flag set to 1", () => {
-  const creature = makeCreature({
+  const creature = Creature.fromJSON({
     input: 1,
     output: 1,
     neurons: [
@@ -368,7 +360,7 @@ Deno.test("CompileToWasm: constant neuron is_constant flag set to 1", () => {
 // ---------------------------------------------------------------------------
 
 Deno.test("CompileToWasm: getCompiledCreatureStats returns correct summary", () => {
-  const creature = makeCreature({
+  const creature = Creature.fromJSON({
     input: 2,
     output: 1,
     neurons: [
@@ -433,7 +425,7 @@ Deno.test("CompileToWasm: SynapseTypeCode values match documented format", () =>
 // ---------------------------------------------------------------------------
 
 Deno.test("CompileToWasm: multiple hidden neurons produce correct synapse totals", () => {
-  const creature = makeCreature({
+  const creature = Creature.fromJSON({
     input: 2,
     output: 1,
     neurons: [

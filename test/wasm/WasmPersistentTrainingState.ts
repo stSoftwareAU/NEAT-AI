@@ -550,9 +550,9 @@ Deno.test("PersistentTrainingState-BulkReadMatchesIndividual", () => {
 });
 
 /**
- * Verify memory is properly freed (no leaks).
+ * Verify the init/free cycle can be repeated without error.
  */
-Deno.test("PersistentTrainingState-MemoryFreed", () => {
+Deno.test("PersistentTrainingState-InitFreeIsRepeatable", () => {
   // Initialise and free multiple times to check for leaks
   for (let cycle = 0; cycle < 10; cycle++) {
     const wasInit = initTrainingState(100, 50);
