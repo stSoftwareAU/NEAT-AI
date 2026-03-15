@@ -1,10 +1,9 @@
 ## Summary
 
-Second-pass audit of compact and optimisation test files across
-`test/Compact/`, `test/optimize/`, `test/optimization/`, `test/FeedForward/`,
-and `test/reconstruct/`. Removes remaining duplicates, strengthens weak
-assertions, removes debug logging, and standardises assertion patterns.
-Closes #1772.
+Second-pass audit of compact and optimisation test files across `test/Compact/`,
+`test/optimize/`, `test/optimization/`, `test/FeedForward/`, and
+`test/reconstruct/`. Removes remaining duplicates, strengthens weak assertions,
+removes debug logging, and standardises assertion patterns. Closes #1772.
 
 ## Changes
 
@@ -12,11 +11,13 @@ Closes #1772.
 
 **test/Compact/CompactUtils.ts** — 2 `cleanupOrphanedNeurons` tests that
 duplicated more comprehensive tests already in `CleanupOrphanedNeurons.ts`:
+
 - "removes neurons with no outward connections"
 - "converts hidden with no inward to constant"
 
 **test/optimization/LearningRateVerification.ts** — Entire file deleted (2
 tests). Both tests duplicated `AdaptiveLearningRate.ts`:
+
 - "should actually decay learning rate over iterations" — duplicate of "decay
   strategy produces monotonically decreasing rates"
 - "should use fixed learning rate when strategy is fixed" — duplicate of "fixed
@@ -24,9 +25,9 @@ tests). Both tests duplicated `AdaptiveLearningRate.ts`:
 
 ### Near-duplicate test removed (1 test)
 
-**test/optimization/AdaptiveVsDecay.ts** — "adaptive responds to error
-feedback" removed as near-duplicate of ErrorFeedbackLearningRate.ts "adaptive
-rate increases when error stagnates" (same config, same stagnation scenario).
+**test/optimization/AdaptiveVsDecay.ts** — "adaptive responds to error feedback"
+removed as near-duplicate of ErrorFeedbackLearningRate.ts "adaptive rate
+increases when error stagnates" (same config, same stagnation scenario).
 
 ### Weak assertions strengthened (4 files)
 
