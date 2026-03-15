@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
@@ -163,10 +163,7 @@ Deno.test("simplify - simple IDENTITY chain folded into single output neuron", (
   }
 });
 
-Deno.test("simplify - IDENTITY into MAXIMUM output is not simplified (unsafe)", () => {
-  const directory = ".test/optimize/simplify/IDENTITY-maximum";
-  Deno.mkdirSync(directory, { recursive: true });
-
+Deno.test("simplify - IDENTITY into MAXIMUM output is not simplified (aggregate squash is unsafe to fold)", () => {
   const json: CreatureExport = {
     neurons: [
       {
@@ -185,13 +182,23 @@ Deno.test("simplify - IDENTITY into MAXIMUM output is not simplified (unsafe)", 
     input: 2,
     output: 1,
   };
-  const complex = Creature.fromJSON(json);
+  const creature = Creature.fromJSON(json);
 
-  const exportCreature = complex.exportJSON();
-  Deno.writeTextFileSync(
-    `${directory}/complex.json`,
-    JSON.stringify(exportCreature, null, 1),
+  // IDENTITY folding into an aggregate squash (MAXIMUM) would change behaviour
+  // because aggregation operates per-synapse — merging synapses alters the
+  // comparison set. simplify() should correctly refuse.
+  const simplifiedCreature = simplify(creature);
+  assertEquals(
+    simplifiedCreature,
+    undefined,
+    "Simplify must not fold IDENTITY into aggregate squash MAXIMUM",
   );
-  const simplifiedCreature = simplify(complex);
-  assert(!simplifiedCreature);
+
+  // Verify the original creature still produces valid output after attempted simplify
+  const exported = creature.exportJSON();
+  assertEquals(
+    exported.neurons.length,
+    2,
+    "Original creature should be unchanged",
+  );
 });

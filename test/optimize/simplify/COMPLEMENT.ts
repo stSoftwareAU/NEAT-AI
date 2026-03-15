@@ -6,7 +6,7 @@ import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
 import { simplify } from "../../../src/optimize/Simplify.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
-Deno.test("simplify - COMPLEMENT neuron is converted to IDENTITY with negated weights", () => {
+Deno.test("simplify - COMPLEMENT neuron produces behaviour-equivalent IDENTITY with negated weights", () => {
   const directory = ".test/optimize/simplify/COMPLEMENT";
   Deno.mkdirSync(directory, { recursive: true });
 

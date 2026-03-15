@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
@@ -47,12 +47,19 @@ Deno.test("activate - MINIMUM squash selects lowest weighted input", () => {
     const actual1 = creature.activateAndTrace(data, false, sparseConfig)[0];
     const actual2 = creature.activateAndTrace(data, false, sparseConfig)[0];
 
-    assertAlmostEquals(actual0, actual1);
-    assertAlmostEquals(actual0, actual2);
-    assert(
-      Math.abs(actual0 - actual2) < 0.00000001,
-      "repeated calls should return the same result",
+    assertAlmostEquals(
+      actual0,
+      actual1,
+      0.000_000_01,
+      "activate vs activateAndTrace must agree",
     );
+    assertAlmostEquals(
+      actual0,
+      actual2,
+      0.000_000_01,
+      "repeated activateAndTrace calls must be deterministic",
+    );
+
     const expected = Math.min(
       a * Math.LN10,
       b * -Math.LN2,

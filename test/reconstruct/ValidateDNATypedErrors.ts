@@ -14,16 +14,17 @@ Deno.test("validateDNA throws CrisprError with INVALID_DNA code for null DNA", (
   assertEquals(error.code, "INVALID_DNA");
 });
 
-Deno.test("validateDNA throws CrisprError for non-object DNA", () => {
-  assertThrows(
+Deno.test("validateDNA throws CrisprError with INVALID_DNA code for non-object DNA", () => {
+  const error = assertThrows(
     () => validateDNA("not-an-object"),
     CrisprError,
     "non-null object",
   );
+  assertEquals(error.code, "INVALID_DNA");
 });
 
-Deno.test("validateDNA throws CrisprError for invalid neuron type", () => {
-  assertThrows(
+Deno.test("validateDNA throws CrisprError with INVALID_DNA code for invalid neuron type", () => {
+  const error = assertThrows(
     () =>
       validateDNA({
         id: "test",
@@ -33,12 +34,14 @@ Deno.test("validateDNA throws CrisprError for invalid neuron type", () => {
     CrisprError,
     "'type' must be",
   );
+  assertEquals(error.code, "INVALID_DNA");
 });
 
-Deno.test("validateDNA throws CrisprError for non-finite weight", () => {
-  assertThrows(
+Deno.test("validateDNA throws CrisprError with INVALID_DNA code for non-finite weight", () => {
+  const error = assertThrows(
     () => validateDNA({ id: "test", synapses: [{ weight: NaN }] }),
     CrisprError,
     "'weight' must be a finite number",
   );
+  assertEquals(error.code, "INVALID_DNA");
 });
