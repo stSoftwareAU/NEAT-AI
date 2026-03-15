@@ -4,7 +4,7 @@
  * Verifies that training options affect actual training behaviour
  * when passed through evolveDataSet.
  */
-import { assertEquals, assertGreater } from "@std/assert";
+import { assert } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { Mutation } from "../../src/NEAT/Mutation.ts";
 
@@ -14,7 +14,7 @@ const simpleDataSet = [
   { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
 ];
 
-Deno.test("TrainOptions - iterations limits training cycles", async () => {
+Deno.test("TrainOptions - iterations=1 completes training and returns finite error", async () => {
   const creature = new Creature(2, 1);
 
   const result = await creature.evolveDataSet(simpleDataSet, {
@@ -25,10 +25,11 @@ Deno.test("TrainOptions - iterations limits training cycles", async () => {
     threads: 1,
   });
 
-  assertEquals(typeof result.error, "number");
+  assert(Number.isFinite(result.error), "Error should be a finite number");
+  assert(result.error >= 0, "Error should be non-negative");
 });
 
-Deno.test("TrainOptions - high targetError stops training early", async () => {
+Deno.test("TrainOptions - high targetError completes with finite error and score", async () => {
   const creature = new Creature(2, 1);
 
   const result = await creature.evolveDataSet(simpleDataSet, {
@@ -39,12 +40,12 @@ Deno.test("TrainOptions - high targetError stops training early", async () => {
     threads: 1,
   });
 
-  // Training should complete and return a numeric error
-  assertEquals(typeof result.error, "number");
-  assertEquals(typeof result.score, "number");
+  assert(Number.isFinite(result.error), "Error should be a finite number");
+  assert(Number.isFinite(result.score), "Score should be a finite number");
+  assert(result.error >= 0, "Error should be non-negative");
 });
 
-Deno.test("TrainOptions - trainingSampleRate accepts fractional values", async () => {
+Deno.test("TrainOptions - trainingSampleRate=0.5 completes training with finite error", async () => {
   const creature = new Creature(2, 1);
 
   const result = await creature.evolveDataSet(simpleDataSet, {
@@ -56,6 +57,6 @@ Deno.test("TrainOptions - trainingSampleRate accepts fractional values", async (
     trainingSampleRate: 0.5,
   });
 
-  assertEquals(typeof result.error, "number");
-  assertGreater(result.error, -Infinity);
+  assert(Number.isFinite(result.error), "Error should be a finite number");
+  assert(result.error >= 0, "Error should be non-negative");
 });

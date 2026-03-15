@@ -116,12 +116,14 @@ Deno.test("NeuronState - traceActivation only with non-finite values leaves defa
 
 // --- CreatureState tests ---
 
-Deno.test("CreatureState - node() lazily creates NeuronState", () => {
+Deno.test("CreatureState - node() lazily creates NeuronState with defaults", () => {
   const creature = new Creature(2, 1);
   const state = new CreatureState(creature);
 
   const ns = state.node(0);
   assert(ns instanceof NeuronState);
+  assertEquals(ns.count, 0);
+  assertEquals(ns.totalActivation, 0);
 
   // Same instance on repeated access
   const ns2 = state.node(0);
@@ -141,12 +143,13 @@ Deno.test("CreatureState - node() creates independent states per index", () => {
   assertEquals(ns1.count, 0);
 });
 
-Deno.test("CreatureState - connection() lazily creates SynapseState", () => {
+Deno.test("CreatureState - connection() lazily creates SynapseState with defaults", () => {
   const creature = new Creature(2, 1);
   const state = new CreatureState(creature);
 
   const cs = state.connection(0, 1);
   assert(cs instanceof SynapseState);
+  assertEquals(cs.count, 0);
 
   // Same instance on repeated access
   const cs2 = state.connection(0, 1);

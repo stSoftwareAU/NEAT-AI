@@ -1,52 +1,52 @@
 ## Summary
 
-Third-pass audit of all test files in `test/config/`, `test/validate/`, and
-`test/architecture/` (46 files, ~400+ test cases) addressing remaining quality
-issues found after PRs #1817 and #1818. Closes #1771.
+Fourth-pass audit of all test files in `test/config/`, `test/validate/`, and
+`test/architecture/` (46 files, ~400+ test cases) strengthening remaining weak
+assertions and eliminating timing dependencies. Closes #1771.
 
 ### Changes Made
 
-**"How" tests rewritten as "what" tests (6 tests across 5 files):**
+**Weak type-only assertions replaced with value assertions (3 files, 7 tests):**
 
-- `LoggerConfig.ts`: Replaced `typeof` checks on logger methods with
-  behavioural test that calls each method; renamed immutability test from
-  internal detail to behaviour-focused name with `TypeError`/`"Cannot assign"`
-  assertion
-- `NeatArguments.ts`: Replaced `typeof config.logger.info` and
-  `typeof config.rng.random` checks with actual calls verifying the logger and
-  rng are callable and produce valid results
-- `WorkerThreadCapConfig.ts`: Renamed immutability test and added
-  `TypeError`/`"Cannot assign"` assertion (consistent with LoggerConfig)
-- `OutputRangeConfig.ts`: Same immutability test rename and assertion
-  strengthening
-- `CreatureState.ts`: Renamed "cacheAdjustedActivation is a DenseNumberMap"
-  to "stores and retrieves values" — tests behaviour not type
+- `NeatOptions.ts`: Replaced `typeof` checks with exact default value assertions
+  (`populationSize === 50`, `mutationRate === 0.3`); strengthened seed determinism
+  test to verify full 3-value sequence; verified `seeded === true` for CLI seed
+- `TrainOptions.ts`: Replaced `typeof result.error === "number"` with
+  `Number.isFinite(result.error)` and `result.error >= 0`; removed trivial
+  `assertGreater(error, -Infinity)`; renamed tests to accurately describe what is
+  verified
+- `NeatArguments.ts`: Changed mutation test to verify each mutation has a name;
+  changed selection test to assert exact default `"POWER"` instead of string
+  length check
 
-**Implementation-detail tests rewritten as behavioural tests (4 tests):**
+**Explicit assertions added (1 file, 1 test):**
 
-- `Score.ts`: Rewrote `updateScoreForWeightChange` "basic incremental update"
-  to verify incremental result matches full recalculation (was only checking
-  `Number.isFinite`)
-- `Score.ts`: Rewrote "new weight exceeding max updates max" from checking
-  internal `cachedScoreComponents.maxWeightBias` field to verifying large
-  weight increase lowers score
-- `Score.ts`: Same two rewrites for `updateScoreForBiasChange`
-- `Score.ts`: Rewrote "computes cache if not present" to verify score matches
-  full recalculation (was only checking cache existence)
-- `Score.ts`: Strengthened "uses cached score components on second call" by
-  adding cache-cleared recalculation verification
+- `ActivationRange.ts`: Added explicit `assertEquals(validatedCount, ...)` to
+  replace implicit "no throw means pass" pattern
 
-**Assertion anti-patterns fixed (1 file):**
+**Duplicate test differentiated (1 file, 1 test):**
 
-- `NoChangePropagate.ts`: Replaced `assertEquals(bool, true)` with proper
-  `assertGreaterOrEqual`/`assertLessOrEqual` assertions
+- `DebugWriteDiagnostics.ts`: Renamed and clarified that this test specifically
+  verifies DEBUG-mode error message content (vs CreatureValidate.ts which tests
+  error reason)
 
-**Weak assertions strengthened (2 files):**
+**Timing removed from tests (1 file):**
 
-- `NeatArguments.ts`: Replaced `assertNotEquals(x, undefined)` with positive
-  assertions (`assert(x.length > 0)`, `assert(rng.random() >= 0)`)
-- `CreatureUtils.ts`: Added UUID format validation to topology hash test;
-  renamed "caches the hash" to "deterministic across repeated calls"
+- `ParallelFitnessEvaluation.ts`: Replaced `setTimeout(resolve, 1)` with
+  `Promise.resolve()` in mock worker to eliminate timing dependency
+
+**instanceof-only assertions strengthened (2 files, 3 tests):**
+
+- `CreatureState.ts`: Added default value assertions (`count === 0`,
+  `totalActivation === 0`) alongside instanceof checks for NeuronState and
+  SynapseState
+- `CreatureStateFlatArray.ts`: Added `totalActivation` and `totalErrorAbsolute`
+  default assertions alongside instanceof check
+
+**Minimal assertions strengthened (1 file, 2 tests):**
+
+- `Offspring.ts`: Added `Number.isFinite(weight)` assertion for synapse weights;
+  added UUID character format validation via regex
 
 ### Cross-area duplicates
 
@@ -56,11 +56,12 @@ issues found after PRs #1817 and #1818. Closes #1771.
 
 - All 4555 tests pass
 - `./quality.sh` passes cleanly (lint, format, type-check, tests)
-- 9 files changed across `test/config/`, `test/architecture/`
+- 9 files changed across `test/config/`, `test/validate/`, `test/architecture/`
 
 ## Test Plan
 
 - All 46 test files in `test/config/`, `test/validate/`, and
   `test/architecture/` re-reviewed
 - Verified no regressions: full test suite (4555 tests) passes
-- All remaining tests verify behaviour, not implementation details
+- All remaining tests verify behaviour with meaningful assertions
+- No timing dependencies remain in test files
