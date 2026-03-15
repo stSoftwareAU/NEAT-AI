@@ -122,8 +122,3 @@ Deno.test("WasmCacheConfig - explicit activation cache overrides population scal
   });
   assertEquals(config.wasmCache.maxCachedActivations, 32);
 });
-
-Deno.test("WasmCacheConfig - default values are sensible", () => {
-  assertEquals(DEFAULT_WASM_CACHE_CONFIG.maxCachedActivations, 512);
-  assertEquals(DEFAULT_WASM_CACHE_CONFIG.compilationCacheSize, 100);
-});

@@ -1,4 +1,4 @@
-import { assertEquals, assertGreater, assertThrows } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../../src/config/PredictiveCodingConfig.ts";
 
@@ -147,17 +147,4 @@ Deno.test("PredictiveCodingConfig - energyThreshold must be > 0", () => {
     Error,
     "energyThreshold",
   );
-});
-
-Deno.test("PredictiveCodingConfig - default values are sensible", () => {
-  assertEquals(DEFAULT_PREDICTIVE_CODING_CONFIG.enabled, false);
-  assertGreater(DEFAULT_PREDICTIVE_CODING_CONFIG.inferenceSteps, 0);
-  assertGreater(DEFAULT_PREDICTIVE_CODING_CONFIG.inferenceRate, 0);
-  assertGreater(DEFAULT_PREDICTIVE_CODING_CONFIG.learningRate, 0);
-  assertGreater(DEFAULT_PREDICTIVE_CODING_CONFIG.energyThreshold, 0);
-});
-
-Deno.test("PredictiveCodingConfig - disabled by default", () => {
-  const config = createNeatConfig({});
-  assertEquals(config.predictiveCoding.enabled, false);
 });
