@@ -1,63 +1,37 @@
 ## Summary
 
-Fifth-pass audit of compact, optimisation, feed-forward, and optimise test files
-across `test/Compact/`, `test/optimize/`, `test/FeedForward/`, and
-`test/reconstruct/`. Strengthens weak assertions, removes debug file I/O from
-tests, fixes misleading test names, and improves test robustness with explicit
-existence guards. Closes #1772.
+Final cleanup pass on the compact/optimisation test audit. Removes a trivial
+assertion in `test/reconstruct/ConnectMissing.ts` and updates an outdated issue
+reference comment in `test/Compact/IsAggregationSquash.ts`. Closes #1772.
 
-## Changes
+## Audit Summary
 
-### Weak assertions replaced with exact values or proper assertion methods (5 files)
+Comprehensive audit of all test files across the five directories in scope
+(test/Compact/, test/optimize/, test/optimization/, test/FeedForward/,
+test/reconstruct/) confirmed:
 
-**test/Compact/CompactCreature.ts** -- Replaced four `if (result)` conditional
-blocks with `assert(result !== undefined)` so tests fail loudly when compaction
-unexpectedly returns undefined. Rewrote the IDENTITY chain test to use a valid
-two-hidden-neuron topology that actually triggers chain compaction (same-squash
-requirement).
+- **No duplicate tests remain** across or within directories
+- **All tests verify behaviour** (outcomes/side effects), not implementation
+  details
+- **All tests are meaningful** with real assertions on real code
+- **Test names clearly describe** the behaviour being verified
+- **No timing measurements** (performance.now, Date.now) in any test file
+- **No source-file grepping** or implementation-detail inspection
+- **test/optimize/ and test/optimization/ should remain separate** — they map to
+  different source modules (src/optimize/ for activation simplification vs
+  training strategies in src/propagate/ and src/config/)
 
-**test/Compact/CompactUnusedFiniteGuard.ts** -- Replaced
-`assertEquals(Number.isFinite(bias), true)` with
-`assertAlmostEquals(bias, 0.65)` matching the exact formula `0.5 + (0.3 * 0.5)`.
+### Changes in this PR
 
-**test/Compact/CompactCreatureSimplifyLargeWeights.ts** -- Replaced
-`assert(beforeMax >= 1e6)` with `assertEquals(beforeMax, 1e6)` for exact value
-check.
+**test/reconstruct/ConnectMissing.ts** — Removed trivial `assert(uuid1)`
+assertion. `CreatureUtil.makeUUID()` always returns a string, so asserting
+truthiness adds no value. The subsequent `assertEquals(uuid1, uuid2)` already
+provides meaningful verification.
 
-**test/Compact/ZeroWeightSynapsePruning.ts** -- Replaced
-`assertEquals(typeof compacted !== "undefined", true)` with
-`assert(compacted !== undefined)` and removed non-null assertion operators.
-
-**test/optimize/FunctionCache.ts** -- Replaced `assert(cache.key.length > 0)`
-with `assertNotEquals(cache.key, "")` and `assert(x !== y)` comparisons with
-`assertNotEquals(x, y)` for clearer failure messages. Removed unused `assert`
-import.
-
-### Debug file I/O removed (1 file)
-
-**test/Compact/CompactCreatureComplementBypass.ts** -- Removed
-`Deno.mkdirSync()` and `Deno.writeTextFileSync()` calls that wrote debug JSON
-artifacts to `.test/` directories. These are implementation-detail side effects
-that do not belong in unit tests.
-
-### Misleading test names fixed (2 files)
-
-**test/FeedForward/ForwardOnlySemanticVersion.ts** -- Fixed two test names that
-said "2.x.x -> 3.0.0" but asserted "4.0.0".
-
-**test/FeedForward/AddNeuronForwardOnly.ts** -- Replaced
-`assertEquals(x > y, true)` with `assert(x > y, message)` for clearer failure
-output.
-
-### Test names and assertions improved (2 files)
-
-**test/optimize/makeSynapsesValue.ts** -- Added explicit `assert(synapse)`
-guards before non-null assertion operators. Improved test names to describe the
-specific output format being verified.
-
-**test/FeedForward/ForwardOnlyFlag.ts** -- Replaced
-`assert(exported.forwardOnly === true)` with
-`assertEquals(exported.forwardOnly, true)`.
+**test/Compact/IsAggregationSquash.ts** — Updated outdated comment that
+referenced issue #1392 as if the DRY unification was still pending. The shared
+`isAggregationSquash` utility already exists in
+`src/methods/activations/SquashUtils.ts`.
 
 ## Evidence
 
@@ -65,8 +39,6 @@ All 4520 tests pass. `./quality.sh` passes cleanly.
 
 ## Test Plan
 
-- Verified all strengthened assertions match the implementation formulas
-- Verified IDENTITY chain test uses valid topology that triggers chain
-  compaction
-- Verified debug file I/O removal does not affect test assertions
-- Ran full quality gate: format, lint, type-check, and all tests pass
+- Verified `assert(uuid1)` removal does not weaken test coverage (assertEquals
+  on line 48 already covers the value)
+- Ran full quality gate: format, lint, type-check, and all 4520 tests pass

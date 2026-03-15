@@ -1,7 +1,7 @@
 /**
- * Tests for the shared isAggregationSquash utility.
- * Issue #1392: DRY - Unify duplicate isAggregationSquash/isAggregationSquashName
- * from CompactCreature.ts and Simplify.ts into a single shared utility.
+ * Tests for the shared isAggregationSquash utility (from SquashUtils.ts).
+ * Issue #1392 (resolved): Unified duplicate isAggregationSquash into a single
+ * shared utility in src/methods/activations/SquashUtils.ts.
  */
 import { assertEquals } from "@std/assert";
 import { isAggregationSquash } from "../../src/methods/activations/SquashUtils.ts";
