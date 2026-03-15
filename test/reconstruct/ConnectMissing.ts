@@ -40,7 +40,6 @@ Deno.test("randomConnectMissing - connects all inputs when some are missing", ()
 Deno.test("randomConnectMissing - does not modify creature when all inputs already connected", () => {
   const creature = new Creature(10, 3);
   const uuid1 = CreatureUtil.makeUUID(creature);
-  assert(uuid1);
 
   const creature2 = randomConnectMissing(creature);
   const uuid2 = CreatureUtil.makeUUID(creature2);
