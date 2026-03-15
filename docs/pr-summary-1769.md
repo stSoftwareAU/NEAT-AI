@@ -1,8 +1,7 @@
 ## Summary
 
-Audit all 34 test files (~380+ test cases) in `test/mutate/` for quality
-standards: uniqueness, behavioural testing, meaningful assertions, and
-organisation. Closes #1769.
+Audit all test files in `test/mutate/` for quality standards: uniqueness,
+behavioural testing, meaningful assertions, and organisation. Closes #1769.
 
 ### Changes made
 
@@ -36,6 +35,16 @@ organisation. Closes #1769.
    - Removed reference-inequality assertions from remaining tests; replaced with
      meaningful behavioural assertions (correct counts, valid connection
      properties).
+
+5. **Consolidated `test/mutate/ModActivation.ts`** into
+   `test/mutate/ModSquashBehavioural.ts`:
+   - `ModActivation.ts` tested the same operator (ModSquash/ModActivation) as
+     `ModSquashBehavioural.ts` but in a separate file with a poorly named test
+     ("ModActivation-Constant").
+   - The unique constant-neuron scenario was preserved as "ModSquash: modifies
+     non-constant neurons when constant neurons are present" in
+     `ModSquashBehavioural.ts`.
+   - Improved test name to clearly describe the behaviour being verified.
 
 ### Cross-area duplicates noted
 
