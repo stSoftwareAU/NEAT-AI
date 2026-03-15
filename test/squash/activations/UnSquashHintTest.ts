@@ -67,12 +67,6 @@ function testUnSquashWithHint(
       `${activation.getName()} squash(${result}) should produce ${act}, got ${resultActivation}`,
     );
 
-    if (Math.abs(result - expected) > tolerance) {
-      activation.unSquash(act, hint);
-      console.log(
-        `${activation.getName()} unSquash(${act}, ${hint}) should be close to ${expected}, got ${result}`,
-      );
-    }
     // Then check that the result is close to the expected value
     assertAlmostEquals(
       result,

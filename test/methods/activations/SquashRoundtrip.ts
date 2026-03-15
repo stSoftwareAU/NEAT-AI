@@ -11,7 +11,7 @@
  * @module
  */
 
-import { assertAlmostEquals } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { Activations } from "../../../src/methods/activations/Activations.ts";
 import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
 import type { UnSquashInterface } from "../../../src/methods/activations/UnSquashInterface.ts";
@@ -141,7 +141,7 @@ const INVERTIBLE_ACTIVATIONS: {
 for (const { name, inputs, tolerance } of INVERTIBLE_ACTIVATIONS) {
   Deno.test(`${name}: squash/unSquash roundtrip`, () => {
     const activation = Activations.find(name);
-    if (!hasUnSquash(activation)) return;
+    assert(hasUnSquash(activation), `${name} should implement unSquash`);
 
     const squashFn = activation as unknown as ActivationInterface;
 
