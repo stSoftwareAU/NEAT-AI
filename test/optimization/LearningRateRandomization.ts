@@ -1,4 +1,4 @@
-import { assert } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 
 Deno.test("optimization/LearningRateRandomization - randomises strategy when not specified", () => {
@@ -25,10 +25,7 @@ Deno.test("optimization/LearningRateRandomization - respects explicit strategy",
     learningRateStrategy: "adaptive",
   });
 
-  assert(
-    config.learningRateStrategy === "adaptive",
-    `Expected 'adaptive' strategy, got: ${config.learningRateStrategy}`,
-  );
+  assertEquals(config.learningRateStrategy, "adaptive");
 });
 
 Deno.test("optimization/LearningRateRandomization - uses fixed when learningRate is set", () => {
@@ -36,37 +33,39 @@ Deno.test("optimization/LearningRateRandomization - uses fixed when learningRate
     learningRate: 0.05,
   });
 
-  assert(
-    config.learningRateStrategy === "fixed",
-    `Expected 'fixed' strategy when learningRate is set, got: ${config.learningRateStrategy}`,
-  );
-  assert(
-    config.learningRate === 0.05,
-    `Expected learningRate to be 0.05, got: ${config.learningRate}`,
-  );
+  assertEquals(config.learningRateStrategy, "fixed");
+  assertEquals(config.learningRate, 0.05);
 });
 
-Deno.test("optimization/LearningRateRandomization - all strategies appear in random selection", () => {
+Deno.test("optimization/LearningRateRandomization - all four strategies appear in random selection", () => {
   const counts: Record<string, number> = {};
 
-  // Sample 100 times
-  for (let i = 0; i < 100; i++) {
+  // Sample 200 times - enough for all four strategies to appear reliably
+  for (let i = 0; i < 200; i++) {
     const config = createBackPropagationConfig({});
     const strategy = config.learningRateStrategy;
     counts[strategy] = (counts[strategy] ?? 0) + 1;
   }
 
-  // Each strategy should appear at least a few times
+  // Each of the four strategies should appear at least a few times
   assert(
     (counts["decay"] ?? 0) > 5,
-    "Should have reasonable number of decay strategies",
+    `Expected decay to appear in random selection, got ${counts["decay"] ?? 0}`,
   );
   assert(
     (counts["adaptive"] ?? 0) > 5,
-    "Should have reasonable number of adaptive strategies",
+    `Expected adaptive to appear in random selection, got ${
+      counts["adaptive"] ?? 0
+    }`,
   );
   assert(
     (counts["fixed"] ?? 0) > 5,
-    "Should have reasonable number of fixed strategies",
+    `Expected fixed to appear in random selection, got ${counts["fixed"] ?? 0}`,
+  );
+  assert(
+    (counts["warm_restart"] ?? 0) > 5,
+    `Expected warm_restart to appear in random selection, got ${
+      counts["warm_restart"] ?? 0
+    }`,
   );
 });
