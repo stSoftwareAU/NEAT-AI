@@ -6,17 +6,12 @@ import { validateDNA } from "../../src/reconstruct/validateDNA.ts";
 // with correct error codes. Full error message coverage is in test/CRISPR/ValidateDNA.ts.
 
 Deno.test("validateDNA throws CrisprError with INVALID_DNA code for null DNA", () => {
-  try {
-    validateDNA(null);
-    throw new Error("Expected validateDNA to throw");
-  } catch (e) {
-    if (!(e instanceof CrisprError)) {
-      throw new Error(
-        `Expected CrisprError but got ${(e as Error).constructor.name}`,
-      );
-    }
-    assertEquals(e.code, "INVALID_DNA");
-  }
+  const error = assertThrows(
+    () => validateDNA(null),
+    CrisprError,
+    "non-null object",
+  );
+  assertEquals(error.code, "INVALID_DNA");
 });
 
 Deno.test("validateDNA throws CrisprError for non-object DNA", () => {
