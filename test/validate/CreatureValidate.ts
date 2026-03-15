@@ -4,7 +4,7 @@ import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { Synapse } from "../../src/architecture/Synapse.ts";
 import type { ValidationError } from "../../src/errors/ValidationError.ts";
 
-Deno.test("Neuron length", () => {
+Deno.test("validate rejects mismatched neuron count", () => {
   const creature = new Creature(10, 2);
   creatureValidate(creature);
   try {
@@ -19,22 +19,7 @@ Deno.test("Neuron length", () => {
   }
 });
 
-Deno.test("Neuron length", () => {
-  const creature = new Creature(10, 2);
-  creatureValidate(creature);
-  try {
-    creatureValidate(creature, { neurons: 9 });
-    fail("Expected error");
-  } catch (e) {
-    const error = e as ValidationError;
-    assert(
-      error.reason === "OTHER",
-      `Unexpected reason: ${error.reason}`,
-    );
-  }
-});
-
-Deno.test("Input", () => {
+Deno.test("validate rejects negative input count", () => {
   const creature = new Creature(10, 2);
   creature.input = -1;
   try {
@@ -49,7 +34,7 @@ Deno.test("Input", () => {
   }
 });
 
-Deno.test("Output", () => {
+Deno.test("validate rejects negative output count", () => {
   const creature = new Creature(10, 2);
   creature.output = -1;
   try {
@@ -64,7 +49,7 @@ Deno.test("Output", () => {
   }
 });
 
-Deno.test("Wrong order", () => {
+Deno.test("validate rejects hidden neuron after output neuron", () => {
   const tmp: CreatureExport = {
     neurons: [
       {
@@ -108,7 +93,7 @@ Deno.test("Wrong order", () => {
   }
 });
 
-Deno.test("IF", () => {
+Deno.test("validate rejects IF neuron without required condition synapses", () => {
   const tmp: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "hidden-0", squash: "IF", bias: 2 },
@@ -148,7 +133,7 @@ Deno.test("IF", () => {
   }
 });
 
-Deno.test("IF conditions", () => {
+Deno.test("validate rejects IF neuron with invalid synapse type combinations", () => {
   const tmp: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "hidden-0", squash: "IF", bias: 2 },
@@ -226,7 +211,7 @@ Deno.test("IF conditions", () => {
   }
 });
 
-Deno.test("No UUID", () => {
+Deno.test("validate rejects neuron with empty UUID", () => {
   const creature = new Creature(10, 2);
   creature.neurons[0].uuid = "";
   try {
@@ -241,7 +226,7 @@ Deno.test("No UUID", () => {
   }
 });
 
-Deno.test("Duplicate UUID", () => {
+Deno.test("validate rejects duplicate UUIDs", () => {
   const creature = new Creature(10, 2, { layers: [{ count: 10 }] });
   creature.DEBUG = true;
   creature.neurons[10].uuid = "A";
@@ -310,7 +295,7 @@ Deno.test("invalid input UUID", () => {
   }
 });
 
-Deno.test("Bias", () => {
+Deno.test("validate rejects infinite bias", () => {
   const creature = new Creature(10, 2, { layers: [{ count: 10 }] });
   creature.DEBUG = true;
   creature.neurons[10].bias = Infinity;
@@ -326,7 +311,7 @@ Deno.test("Bias", () => {
   }
 });
 
-Deno.test("Output Index", () => {
+Deno.test("validate rejects output neuron with out-of-range index in UUID", () => {
   const creature = new Creature(10, 2);
   creature.DEBUG = true;
   creature.neurons[11].uuid = "output-10";
@@ -342,7 +327,7 @@ Deno.test("Output Index", () => {
   }
 });
 
-Deno.test("connections length", () => {
+Deno.test("validate rejects mismatched connection count", () => {
   const creature = new Creature(10, 2);
   creatureValidate(creature);
   try {
@@ -357,24 +342,7 @@ Deno.test("connections length", () => {
   }
 });
 
-Deno.test("expected index", () => {
-  const creature = new Creature(10, 2);
-  creature.DEBUG = true;
-  creatureValidate(creature);
-  creature.neurons[0].index = 10;
-  try {
-    creatureValidate(creature, { connections: 9 });
-    fail("Expected error");
-  } catch (e) {
-    const error = e as ValidationError;
-    assert(
-      error.reason === "OTHER",
-      `Unexpected reason: ${error.reason}`,
-    );
-  }
-});
-
-Deno.test("expected index", () => {
+Deno.test("validate rejects neuron with incorrect index", () => {
   const creature = new Creature(10, 2);
   creature.DEBUG = true;
   creatureValidate(creature);
@@ -391,24 +359,7 @@ Deno.test("expected index", () => {
   }
 });
 
-Deno.test("expected index", () => {
-  const creature = new Creature(10, 2);
-  creature.DEBUG = true;
-  creatureValidate(creature);
-  creature.neurons[0].index = 10;
-  try {
-    creatureValidate(creature, { connections: 9 });
-    fail("Expected error");
-  } catch (e) {
-    const error = e as ValidationError;
-    assert(
-      error.reason === "OTHER",
-      `Unexpected reason: ${error.reason}`,
-    );
-  }
-});
-
-Deno.test("Recursive", () => {
+Deno.test("validate rejects recursive synapse when feedbackLoop is false", () => {
   const creature = new Creature(10, 2, { layers: [{ count: 5 }] });
   creature.DEBUG = true;
   creature.synapses.push(new Synapse(12, 11, 0.5));

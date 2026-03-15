@@ -22,16 +22,6 @@ Deno.test("DiscoveryMinCandidatesPerCategory - defaults are applied", () => {
   );
 });
 
-Deno.test("DiscoveryMinCandidatesPerCategory - default values are sensible", () => {
-  assertEquals(DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY.addNeurons, 1);
-  assertEquals(DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY.addSynapses, 1);
-  assertEquals(DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY.changeSquash, 1);
-  assertEquals(
-    DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY.removeLowImpact,
-    3,
-  );
-});
-
 Deno.test("DiscoveryMinCandidatesPerCategory - custom values override defaults", () => {
   const config = createNeatConfig({
     discoveryMinCandidatesPerCategory: {
@@ -96,14 +86,4 @@ Deno.test("DiscoveryMinCandidatesPerCategory - zero values are allowed", () => {
   assertEquals(config.discoveryMinCandidatesPerCategory.addSynapses, 0);
   assertEquals(config.discoveryMinCandidatesPerCategory.changeSquash, 0);
   assertEquals(config.discoveryMinCandidatesPerCategory.removeLowImpact, 0);
-});
-
-Deno.test("DiscoveryMinCandidatesPerCategory - Required type fills all fields", () => {
-  const config = createNeatConfig({});
-  const cats = config.discoveryMinCandidatesPerCategory;
-  // All fields should be defined (not undefined) in the Required type
-  assertEquals(typeof cats.addNeurons, "number");
-  assertEquals(typeof cats.addSynapses, "number");
-  assertEquals(typeof cats.changeSquash, "number");
-  assertEquals(typeof cats.removeLowImpact, "number");
 });

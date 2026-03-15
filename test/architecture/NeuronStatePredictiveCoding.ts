@@ -1,28 +1,23 @@
 import { assertEquals } from "@std/assert";
 import { NeuronState } from "../../src/architecture/CreatureState.ts";
 
-Deno.test("NeuronState - PC fields are undefined by default", () => {
+Deno.test("NeuronState - reset clears PC fields back to undefined", () => {
   const state = new NeuronState();
+
+  // Initially undefined
   assertEquals(state.prediction, undefined);
   assertEquals(state.predictionError, undefined);
   assertEquals(state.latentValue, undefined);
-});
 
-Deno.test("NeuronState - PC fields can be set and read", () => {
-  const state = new NeuronState();
+  // Set values
   state.prediction = 0.5;
   state.predictionError = 0.1;
   state.latentValue = 0.3;
   assertEquals(state.prediction, 0.5);
   assertEquals(state.predictionError, 0.1);
   assertEquals(state.latentValue, 0.3);
-});
 
-Deno.test("NeuronState - reset clears PC fields", () => {
-  const state = new NeuronState();
-  state.prediction = 0.5;
-  state.predictionError = 0.1;
-  state.latentValue = 0.3;
+  // Reset should clear back to undefined
   state.reset();
   assertEquals(state.prediction, undefined);
   assertEquals(state.predictionError, undefined);

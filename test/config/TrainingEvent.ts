@@ -4,12 +4,7 @@
  * Issue #1615: Verifies that the onTrainingEvent callback receives
  * correctly structured events during evolution.
  */
-import {
-  assert,
-  assertEquals,
-  assertGreater,
-  assertStringIncludes,
-} from "@std/assert";
+import { assert, assertEquals, assertGreater } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { Mutation } from "../../src/NEAT/Mutation.ts";
 import type {
@@ -225,9 +220,10 @@ Deno.test("TrainingEvent - events include all required metadata fields", async (
   // All events should have kind and timestamp
   for (const event of events) {
     assertEquals(typeof event.kind, "string");
-    assertStringIncludes(
-      event.kind,
-      "", // Just verify it's a non-empty string
+    assertGreater(
+      event.kind.length,
+      0,
+      "Event kind should be a non-empty string",
     );
     assertEquals(typeof event.timestamp, "string");
     const parsed = new Date(event.timestamp);
