@@ -70,7 +70,7 @@ Deno.test("WasmCompiledNetwork.activate returns correct output length", () => {
   network.free();
 });
 
-Deno.test("WasmCompiledNetwork.activate_into writes to output buffer", () => {
+Deno.test("WasmCompiledNetwork.activate_into produces same output as activate", () => {
   const ctor = getCompiledNetworkClass();
   assertExists(ctor);
 
@@ -79,14 +79,15 @@ Deno.test("WasmCompiledNetwork.activate_into writes to output buffer", () => {
   const network: WasmCompiledNetwork = new ctor(compiled.data);
 
   const input = new Float32Array([0.5, 0.3]);
-  const output = new Float32Array(1);
-  network.activate_into(input, output);
-  assert(isFinite(output[0]), "Output should be finite");
+  const directOutput = network.activate(input, 1);
+  const intoOutput = new Float32Array(1);
+  network.activate_into(input, intoOutput);
+  assertAlmostEquals(intoOutput[0], directOutput[0], 1e-6);
 
   network.free();
 });
 
-Deno.test("WasmCompiledNetwork.activate_view returns a Float32Array", () => {
+Deno.test("WasmCompiledNetwork.activate_view produces same output as activate", () => {
   const ctor = getCompiledNetworkClass();
   assertExists(ctor);
 
@@ -95,14 +96,15 @@ Deno.test("WasmCompiledNetwork.activate_view returns a Float32Array", () => {
   const network: WasmCompiledNetwork = new ctor(compiled.data);
 
   const input = new Float32Array([0.5, 0.3]);
+  const directOutput = network.activate(input, 1);
   const view = network.activate_view(input, 1);
   assertEquals(view.length, 1);
-  assert(isFinite(view[0]), "View output should be finite");
+  assertAlmostEquals(view[0], directOutput[0], 1e-6);
 
   network.free();
 });
 
-Deno.test("WasmCompiledNetwork.activate_and_trace returns trace data", () => {
+Deno.test("WasmCompiledNetwork.activate_and_trace returns output and neuron data", () => {
   const ctor = getCompiledNetworkClass();
   assertExists(ctor);
 
@@ -112,7 +114,11 @@ Deno.test("WasmCompiledNetwork.activate_and_trace returns trace data", () => {
 
   const input = new Float32Array([0.5, 0.3]);
   const result = network.activate_and_trace(input, 1);
-  assert(result.length > 0, "Trace result should have data");
+  // Trace should include at least one entry per neuron (inputs + hidden + output)
+  assert(
+    result.length >= network.num_neurons,
+    `Trace should have at least ${network.num_neurons} entries, got ${result.length}`,
+  );
 
   network.free();
 });
@@ -155,7 +161,7 @@ Deno.test("WasmCompiledNetwork.activate results match WasmCreatureActivation", (
   activation.free();
 });
 
-Deno.test("WasmCompiledNetwork readonly properties are numbers", () => {
+Deno.test("WasmCompiledNetwork readonly properties match creature topology", () => {
   const ctor = getCompiledNetworkClass();
   assertExists(ctor);
 
@@ -163,10 +169,16 @@ Deno.test("WasmCompiledNetwork readonly properties are numbers", () => {
   const compiled = compileCreatureToWasm(creature);
   const network: WasmCompiledNetwork = new ctor(compiled.data);
 
-  assertEquals(typeof network.num_inputs, "number");
-  assertEquals(typeof network.num_neurons, "number");
-  assertEquals(typeof network.num_synapses, "number");
   assertEquals(network.num_inputs, 3);
+  // num_neurons includes inputs + outputs (at minimum)
+  assert(
+    network.num_neurons >= 5,
+    `Expected at least 5 neurons (3 input + 2 output), got ${network.num_neurons}`,
+  );
+  assert(
+    network.num_synapses >= 0,
+    `num_synapses should be non-negative, got ${network.num_synapses}`,
+  );
 
   network.free();
 });

@@ -95,7 +95,7 @@ Deno.test("BIPOLAR and COMPLEMENT do not have safeZoneAdjustment", () => {
 for (const name of ACTIVATIONS_WITH_SAFE_ZONE) {
   Deno.test(`${name}: safeZoneAdjustment returns values in [0, 1]`, () => {
     const activation = Activations.find(name);
-    if (!hasSafeZone(activation)) return;
+    assert(hasSafeZone(activation), `${name} must have safeZoneAdjustment`);
 
     const testInputs = [-1000, -10, -1, -0.5, 0, 0.5, 1, 10, 1000];
     const errors = [-1, -0.1, 0, 0.1, 1];
@@ -120,7 +120,7 @@ for (const name of ACTIVATIONS_WITH_SAFE_ZONE) {
 for (const name of ACTIVATIONS_WITH_SAFE_ZONE) {
   Deno.test(`${name}: safeZoneAdjustment returns 0 for non-finite input`, () => {
     const activation = Activations.find(name);
-    if (!hasSafeZone(activation)) return;
+    assert(hasSafeZone(activation), `${name} must have safeZoneAdjustment`);
 
     const nonFinite = [NaN, Infinity, -Infinity];
     for (const raw of nonFinite) {

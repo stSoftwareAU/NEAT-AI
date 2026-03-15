@@ -9,7 +9,7 @@
  * 2. JS activation type classes no longer carry duplicate computation methods
  */
 
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Activations } from "../../src/methods/activations/Activations.ts";
 import {
   calculateError,
@@ -56,7 +56,35 @@ const STANDARD_ACTIVATIONS = [
   "TANH",
 ];
 
-Deno.test("WASM-only: squash works for all standard activations", () => {
+Deno.test("WASM-only: squash produces correct values for known activations", () => {
+  // Verify specific known values for key activations
+  const knownValues: [string, number, number, number][] = [
+    // [name, input, expected, tolerance]
+    ["IDENTITY", 0.5, 0.5, 1e-6],
+    ["TANH", 0.5, Math.tanh(0.5), 1e-3],
+    ["LOGISTIC", 0, 0.5, 1e-3],
+    ["ReLU", 0.5, 0.5, 1e-6],
+    ["ReLU", -0.5, 0, 1e-6],
+    ["STEP", 0.5, 1, 1e-6],
+    ["STEP", -0.5, 0, 1e-6],
+    ["ABSOLUTE", -3, 3, 1e-6],
+    ["SQUARE", 3, 9, 1e-3],
+    ["COMPLEMENT", 0.3, 0.7, 1e-3],
+    ["BIPOLAR", 1, 1, 1e-6],
+    ["BIPOLAR", -1, -1, 1e-6],
+  ];
+
+  for (const [name, input, expected, tolerance] of knownValues) {
+    const result = squash(name, input);
+    assertAlmostEquals(
+      result,
+      expected,
+      tolerance,
+      `squash(${name}, ${input}) = ${result}, expected ${expected}`,
+    );
+  }
+
+  // Also verify all standard activations return finite values
   for (const name of STANDARD_ACTIVATIONS) {
     const result = squash(name, 0.5);
     assert(
@@ -155,17 +183,19 @@ Deno.test("WASM-only: JS activation classes retain metadata", () => {
   for (const name of STANDARD_ACTIVATIONS) {
     const activation = Activations.find(name);
 
-    assert(
-      activation.getName() === name,
+    assertEquals(
+      activation.getName(),
+      name,
       `${name}.getName() returned ${activation.getName()}`,
     );
+    assert(activation.range !== undefined, `${name} missing range`);
     assert(
-      activation.range !== undefined,
-      `${name} missing range`,
+      activation.range.low <= activation.range.high,
+      `${name} range.low (${activation.range.low}) > range.high (${activation.range.high})`,
     );
     assert(
-      typeof activation.mutationProbability === "number",
-      `${name} missing mutationProbability`,
+      activation.mutationProbability >= 0,
+      `${name} mutationProbability should be non-negative`,
     );
   }
 });

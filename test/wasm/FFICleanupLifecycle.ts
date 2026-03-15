@@ -86,14 +86,11 @@ Deno.test({
 
     // Reopen by calling get_version again (lazy init)
     const versionAfter = getDiscoveryVersion();
-
-    // If the library is still available, version should match
-    if (versionAfter !== undefined) {
-      assertEquals(
-        versionAfter,
-        versionBefore,
-        "Version should be consistent after library close/reopen",
-      );
-    }
+    assert(versionAfter !== undefined, "Library should reopen after close");
+    assertEquals(
+      versionAfter,
+      versionBefore,
+      "Version should be consistent after library close/reopen",
+    );
   },
 });

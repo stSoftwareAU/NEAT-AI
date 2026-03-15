@@ -9,7 +9,7 @@
  * 3. After calling ensureWasmActivation, the WASM module is usable
  */
 
-import { assert } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import { ensureWasmActivation } from "../../src/wasm/EnsureWasmActivation.ts";
 import {
   getSquashFn,
@@ -49,11 +49,9 @@ Deno.test("EnsureWasmActivation: WASM functions are usable afterwards", async ()
   assert(squashFn !== null, "squash function should be available");
 
   // Verify we can actually call the squash function (TANH = 7)
+  // TANH(0.5) = tanh(0.5) ≈ 0.4621
   const result = squashFn!(7, 0.5);
-  assert(
-    typeof result === "number" && isFinite(result),
-    "squash(TANH, 0.5) should return a finite number",
-  );
+  assertAlmostEquals(result, Math.tanh(0.5), 1e-3, "squash(TANH, 0.5)");
 });
 
 // ---------------------------------------------------------------------------
