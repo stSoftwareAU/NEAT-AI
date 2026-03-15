@@ -7,12 +7,14 @@ test names. Addresses #1768.
 ### Changes made
 
 **Duplicate file removed (1 file, 6 tests):**
+
 - `test/NEAT/MutatorInstanceCache.ts` — entirely redundant. Every test was a
-  near-duplicate of tests in `MutatorBehavioural.ts`, `MutatorMutateCreature.ts`,
-  or `MutatorSelectMutationMethod.ts`. File name was misleading (tested general
-  mutation behaviour, not instance caching).
+  near-duplicate of tests in `MutatorBehavioural.ts`,
+  `MutatorMutateCreature.ts`, or `MutatorSelectMutationMethod.ts`. File name was
+  misleading (tested general mutation behaviour, not instance caching).
 
 **Duplicate tests removed (6 tests across 2 files):**
+
 - `MutatorBehavioural.ts`: Removed 2 `calculateMaxSynapses` tests (exact
   duplicates of tests in the dedicated `MutatorCalculateMaxSynapses.ts` file)
 - `MutatorMutate.ts`: Removed 4 tests — "mutates creatures based on mutation
@@ -22,6 +24,7 @@ test names. Addresses #1768.
   mutation" (misleading name with no relevant assertion)
 
 **Placeholder assertions removed (15 occurrences across 4 files):**
+
 - `NeatFinishUp.ts`: Removed test "sets doNotStartMore flag" — contained
   `assertEquals(true, true)` and was already covered by the "returns false when
   training is in progress" test which explicitly checks `neat.doNotStartMore`
@@ -31,14 +34,17 @@ test names. Addresses #1768.
 - `TrainingEventEmitter.ts`: Removed 2 `assert(true, ...)` placeholders
 
 **Timing API removed (1 test):**
+
 - `MutatorCacheValidMutations.ts`: Removed `performance.now()` usage which
   violates the no-timing-in-tests rule
 
 **Misleading test names fixed (3 tests):**
+
 - `MutatorCacheValidMutations.ts`: Renamed tests whose names referenced internal
   cache implementation details to describe the observable behaviour instead
 
 ### Cross-area duplicates noted
+
 - `MutatorInstanceCache.ts` duplicated tests from `MutatorBehavioural.ts`,
   `MutatorMutateCreature.ts`, and `MutatorSelectMutationMethod.ts`
 - `MutatorBehavioural.ts` calculateMaxSynapses tests duplicated
