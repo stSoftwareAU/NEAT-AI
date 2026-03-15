@@ -17,12 +17,12 @@ describe behaviour:
   cascading Cosine/CLIPPED removals"
 - `FixIF.ts`: "FixIF" → "compactUnused - behaviour preserved when IF-type neuron
   is compacted"
-- `UnusedClipped.ts`: "UnusedClipped" → "compactUnused - behaviour preserved when
-  CLIPPED hidden neuron is removed"
-- `CompactConstant.ts`: "CompactConstants" → "compactUnused - behaviour preserved
-  with constant and IF neurons"
-- `CompactKeepOrder.ts`: "CompactKeepOrder" → "compactUnused - preserves constant
-  neuron ordering and behaviour"
+- `UnusedClipped.ts`: "UnusedClipped" → "compactUnused - behaviour preserved
+  when CLIPPED hidden neuron is removed"
+- `CompactConstant.ts`: "CompactConstants" → "compactUnused - behaviour
+  preserved with constant and IF neurons"
+- `CompactKeepOrder.ts`: "CompactKeepOrder" → "compactUnused - preserves
+  constant neuron ordering and behaviour"
 - `Compact.ts`: 5 tests renamed (removeDanglingHidden, removeFeedbackLoop,
   CompactSimple, RandomizeCompact, CompactSelf)
 
@@ -31,8 +31,8 @@ describe behaviour:
 - "Constant" → "activate - constant neuron contributes correct value to IDENTITY
   output"
 - "HYPOT" → "activate - HYPOT squash produces correct hypotenuse output"
-- "IF" → "activate - IF squash with condition/positive/negative branches executes
-  correctly"
+- "IF" → "activate - IF squash with condition/positive/negative branches
+  executes correctly"
 - "Maximum" → "activate - MAXIMUM squash selects highest weighted input"
 - "Minimum" → "activate - MINIMUM squash selects lowest weighted input"
 - Plus RELU, HYPOTv2, Constant-max
@@ -62,8 +62,8 @@ Removed `((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;` from:
 - `test/optimize/simplify/COMPLEMENT.ts`, `Constant.ts`, `Cosine.ts`,
   `IDENTITY.ts`, `SINE.ts`, `TAN.ts`
 
-Removed `simplifiedCreature.DEBUG = false;` from `test/optimize/simplify/Constant.ts`
-(3 occurrences).
+Removed `simplifiedCreature.DEBUG = false;` from
+`test/optimize/simplify/Constant.ts` (3 occurrences).
 
 Removed `b.DEBUG = false; ... b.DEBUG = true;` toggling and
 `console.info("Did not compact")` from `test/Compact/Compact.ts`.
@@ -83,8 +83,10 @@ unused `delta` variables.
 
 **test/reconstruct/LegacyFormat.ts** — Strengthened tautological assertions:
 
-- `creature.neurons.length > 0 === true` → `assertEquals(creature.neurons.length, 3)`
-- `result.neurons !== undefined === true` → `assertEquals(result.neurons?.length, 1)`
+- `creature.neurons.length > 0 === true` →
+  `assertEquals(creature.neurons.length, 3)`
+- `result.neurons !== undefined === true` →
+  `assertEquals(result.neurons?.length, 1)`
 
 ### Duplicate tests consolidated (1 file)
 

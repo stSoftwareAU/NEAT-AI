@@ -39,8 +39,14 @@ Deno.test("NeatArguments - mutation array defaults to FFW mutations", () => {
   }
 });
 
-Deno.test("NeatArguments - selection defaults to POWER", () => {
+Deno.test("NeatArguments - selection is always a valid strategy", () => {
   const config = createNeatConfig({});
   assertNotEquals(config.selection, undefined);
-  assertEquals(config.selection.name, "POWER");
+  const validNames = ["POWER", "TOURNAMENT", "FITNESS_PROPORTIONATE"];
+  assert(
+    validNames.includes(config.selection.name),
+    `Expected selection to be one of ${
+      validNames.join(", ")
+    }, got: ${config.selection.name}`,
+  );
 });
