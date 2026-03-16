@@ -5,7 +5,7 @@
  * @module
  */
 
-import { assertAlmostEquals, assertEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Activations } from "../../../src/methods/activations/Activations.ts";
 import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
 
@@ -86,10 +86,8 @@ Deno.test("LOGISTIC squash is bounded in (0, 1)", () => {
   const act = findActivation("LOGISTIC");
   const high = act.squash(100);
   const low = act.squash(-100);
-  assertEquals(high <= 1, true);
-  assertEquals(high > 0.99, true);
-  assertEquals(low >= 0, true);
-  assertEquals(low < 0.01, true);
+  assertAlmostEquals(high, 1, 0.01, "LOGISTIC(100) should be near 1");
+  assertAlmostEquals(low, 0, 0.01, "LOGISTIC(-100) should be near 0");
 });
 
 Deno.test("LOGISTIC derivative peaks at x=0", () => {
@@ -97,8 +95,11 @@ Deno.test("LOGISTIC derivative peaks at x=0", () => {
   // f'(0) = 0.5 * 0.5 = 0.25
   assertAlmostEquals(act.derivative!(0), 0.25, 1e-10);
   // Derivative should be smaller away from zero
-  assertEquals(act.derivative!(5) < 0.25, true);
-  assertEquals(act.derivative!(-5) < 0.25, true);
+  assert(act.derivative!(5) < 0.25, "derivative at 5 should be less than peak");
+  assert(
+    act.derivative!(-5) < 0.25,
+    "derivative at -5 should be less than peak",
+  );
 });
 
 // --- TANH ---
@@ -111,17 +112,18 @@ Deno.test("TANH squash is bounded in (-1, 1)", () => {
   const act = findActivation("TANH");
   const high = act.squash(100);
   const low = act.squash(-100);
-  assertEquals(high <= 1, true);
-  assertEquals(high > 0.99, true);
-  assertEquals(low >= -1, true);
-  assertEquals(low < -0.99, true);
+  assertAlmostEquals(high, 1, 0.01, "TANH(100) should be near 1");
+  assertAlmostEquals(low, -1, 0.01, "TANH(-100) should be near -1");
 });
 
 Deno.test("TANH derivative peaks at x=0", () => {
   const act = findActivation("TANH");
   // f'(0) = 1 - tanh(0)^2 = 1
   assertAlmostEquals(act.derivative!(0), 1, 1e-10);
-  assertEquals(act.derivative!(5) < 1, true);
+  assert(
+    act.derivative!(5) < 1,
+    "TANH derivative at 5 should be less than peak",
+  );
 });
 
 // --- GAUSSIAN ---
@@ -132,9 +134,10 @@ Deno.test("GAUSSIAN squash peaks at x=0", () => {
 
 Deno.test("GAUSSIAN squash decays toward 0 for large |x|", () => {
   const act = findActivation("GAUSSIAN");
-  assertEquals(act.squash(5) < 0.01, true);
-  assertEquals(act.squash(-5) < 0.01, true);
-  assertEquals(act.squash(5) >= 0, true);
+  // GAUSSIAN(5) = exp(-25) ≈ 0
+  assertAlmostEquals(act.squash(5), 0, 0.01, "GAUSSIAN(5) should be near 0");
+  assertAlmostEquals(act.squash(-5), 0, 0.01, "GAUSSIAN(-5) should be near 0");
+  assert(act.squash(5) >= 0, "GAUSSIAN output should be non-negative");
 });
 
 Deno.test("GAUSSIAN derivative is 0 at x=0", () => {
@@ -145,7 +148,8 @@ Deno.test("GAUSSIAN derivative is 0 at x=0", () => {
 
 Deno.test("GAUSSIAN derivative is negative for positive x", () => {
   const act = findActivation("GAUSSIAN");
-  assertEquals(act.derivative!(1) < 0, true);
+  // f'(1) = -2 * 1 * exp(-1) ≈ -0.7358
+  assertAlmostEquals(act.derivative!(1), -2 * Math.exp(-1), 1e-6);
 });
 
 // --- SELU ---
@@ -163,8 +167,8 @@ Deno.test("SELU squash returns 0 at x=0", () => {
 
 Deno.test("SELU squash is negative for negative x", () => {
   const act = findActivation("SELU");
-  assertEquals(act.squash(-1) < 0, true);
-  assertEquals(act.squash(-10) < 0, true);
+  assert(act.squash(-1) < 0, "SELU(-1) should be negative");
+  assert(act.squash(-10) < 0, "SELU(-10) should be negative");
 });
 
 Deno.test("SELU derivative equals scale for positive x", () => {
@@ -196,9 +200,9 @@ Deno.test("LeakyReLU squash passes positive values through", () => {
 Deno.test("LeakyReLU squash applies small slope to negative values", () => {
   const act = findActivation("LeakyReLU");
   const val = act.squash(-10);
-  assertEquals(val < 0, true);
+  assert(val < 0, "LeakyReLU(-10) should be negative");
   // Leaky slope should make it much smaller in magnitude than input
-  assertEquals(Math.abs(val) < 10, true);
+  assert(Math.abs(val) < 10, "LeakyReLU(-10) magnitude should be less than 10");
 });
 
 // --- BIPOLAR ---
@@ -240,21 +244,32 @@ Deno.test("SOFTSIGN squash returns x/(1+|x|)", () => {
 
 Deno.test("SOFTSIGN squash is bounded in (-1, 1)", () => {
   const act = findActivation("SOFTSIGN");
-  assertEquals(act.squash(1000) < 1, true);
-  assertEquals(act.squash(-1000) > -1, true);
+  // SOFTSIGN asymptotically approaches ±1 — verify bounds hold
+  const high = act.squash(1000);
+  const low = act.squash(-1000);
+  assert(
+    high > 0 && high < 1,
+    `SOFTSIGN(1000) should be in (0, 1), got ${high}`,
+  );
+  assert(
+    low > -1 && low < 0,
+    `SOFTSIGN(-1000) should be in (-1, 0), got ${low}`,
+  );
+  // Symmetry: SOFTSIGN(-x) = -SOFTSIGN(x)
+  assertAlmostEquals(high, -low, 1e-6, "SOFTSIGN should be antisymmetric");
 });
 
 // --- Softplus ---
 Deno.test("Softplus squash returns ln(1+exp(x))", () => {
   const act = findActivation("Softplus");
   assertAlmostEquals(act.squash(0), Math.log(2), 1e-10);
-  assertEquals(act.squash(0) > 0, true);
+  assert(act.squash(0) > 0, "Softplus(0) should be positive");
 });
 
 Deno.test("Softplus squash is always positive", () => {
   const act = findActivation("Softplus");
-  assertEquals(act.squash(-10) > 0, true);
-  assertEquals(act.squash(10) > 0, true);
+  assert(act.squash(-10) > 0, "Softplus(-10) should be positive");
+  assert(act.squash(10) > 0, "Softplus(10) should be positive");
 });
 
 // --- BENT_IDENTITY ---
@@ -286,21 +301,11 @@ Deno.test("HARD_TANH squash clips to [-1, 1]", () => {
   assertEquals(act.squash(-2), -1);
 });
 
-Deno.test("HARD_TANH alias CLIPPED works", () => {
-  const act = findActivation("CLIPPED");
-  assertEquals(act.getName(), "HARD_TANH");
-});
-
 // --- SINE ---
 Deno.test("SINE squash returns sin(x)", () => {
   const act = findActivation("SINE");
   assertAlmostEquals(act.squash(0), 0, 1e-10);
   assertAlmostEquals(act.squash(Math.PI / 2), 1, 1e-10);
-});
-
-Deno.test("SINE alias SINUSOID works", () => {
-  const act = findActivation("SINUSOID");
-  assertEquals(act.getName(), "SINE");
 });
 
 // --- Mish ---
@@ -382,15 +387,17 @@ Deno.test("Exponential squash returns exp(x)", () => {
 // --- LogSigmoid ---
 Deno.test("LogSigmoid squash is negative for all x", () => {
   const act = findActivation("LogSigmoid");
-  assertEquals(act.squash(0) < 0, true);
-  assertEquals(act.squash(10) < 0, true);
-  assertEquals(act.squash(-10) < 0, true);
+  // LogSigmoid(0) = log(sigmoid(0)) = log(0.5) ≈ -0.6931
+  assertAlmostEquals(act.squash(0), Math.log(0.5), 1e-6);
+  assert(act.squash(10) < 0, "LogSigmoid(10) should be negative");
+  assert(act.squash(-10) < 0, "LogSigmoid(-10) should be negative");
 });
 
 // --- TAN ---
 Deno.test("TAN squash returns tan(x) at small values", () => {
   const act = findActivation("TAN");
   assertAlmostEquals(act.squash(0), 0, 1e-10);
+  assertAlmostEquals(act.squash(Math.PI / 4), 1, 1e-10);
 });
 
 // --- StdInverse ---

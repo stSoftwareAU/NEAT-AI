@@ -1,4 +1,4 @@
-import { assertIsError, assertThrows } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import { ActivationError } from "../../../src/errors/ActivationError.ts";
 import { Activations } from "../../../src/methods/activations/Activations.ts";
 import { ArcTan } from "../../../src/methods/activations/types/ArcTan.ts";
@@ -39,101 +39,72 @@ const derivativeActivations = [
 
 for (const { name, instance } of derivativeActivations) {
   Deno.test(`${name}.derivative(NaN) throws ActivationError`, () => {
-    const error = assertThrows(
+    assertThrows(
       () => instance.derivative(NaN),
       ActivationError,
     );
-    assertIsError(error, ActivationError);
   });
 
   Deno.test(`${name}.derivative(Infinity) throws ActivationError`, () => {
-    const error = assertThrows(
+    assertThrows(
       () => instance.derivative(Infinity),
       ActivationError,
     );
-    assertIsError(error, ActivationError);
   });
 
   Deno.test(`${name}.derivative(-Infinity) throws ActivationError`, () => {
-    const error = assertThrows(
+    assertThrows(
       () => instance.derivative(-Infinity),
       ActivationError,
     );
-    assertIsError(error, ActivationError);
   });
 }
 
 Deno.test("TAN.unSquash(NaN) throws ActivationError", () => {
   const tan = new TAN();
-  const error = assertThrows(
+  assertThrows(
     () => tan.unSquash(NaN),
     ActivationError,
   );
-  assertIsError(error, ActivationError);
 });
 
 Deno.test("TAN.unSquash(Infinity) throws ActivationError", () => {
   const tan = new TAN();
-  const error = assertThrows(
+  assertThrows(
     () => tan.unSquash(Infinity),
     ActivationError,
   );
-  assertIsError(error, ActivationError);
 });
 
 Deno.test("Activations.find() with unknown name throws ActivationError", () => {
-  const error = assertThrows(
+  assertThrows(
     () => Activations.find("NONEXISTENT_ACTIVATION"),
     ActivationError,
   );
-  assertIsError(error, ActivationError);
 });
 
 Deno.test("ActivationError from derivative has correct reason", () => {
   const relu = new ReLU();
-  try {
-    relu.derivative(NaN);
-  } catch (e) {
-    assertIsError(e, ActivationError);
-    if (e instanceof ActivationError) {
-      const ae = e as ActivationError;
-      if (ae.reason !== "NON_FINITE_INPUT") {
-        throw new Error(`Expected NON_FINITE_INPUT, got ${ae.reason}`);
-      }
-      if (ae.activation !== "ReLU") {
-        throw new Error(`Expected ReLU, got ${ae.activation}`);
-      }
-    }
-    return;
-  }
-  throw new Error("Expected ActivationError to be thrown");
+  const error = assertThrows(
+    () => relu.derivative(NaN),
+    ActivationError,
+  );
+  assertEquals(error.reason, "NON_FINITE_INPUT");
+  assertEquals(error.activation, "ReLU");
 });
 
 Deno.test("ActivationError from Activations.find has UNKNOWN_ACTIVATION reason", () => {
-  try {
-    Activations.find("DOES_NOT_EXIST");
-  } catch (e) {
-    assertIsError(e, ActivationError);
-    if (e instanceof ActivationError) {
-      const ae = e as ActivationError;
-      if (ae.reason !== "UNKNOWN_ACTIVATION") {
-        throw new Error(`Expected UNKNOWN_ACTIVATION, got ${ae.reason}`);
-      }
-      if (ae.activation !== "DOES_NOT_EXIST") {
-        throw new Error(`Expected DOES_NOT_EXIST, got ${ae.activation}`);
-      }
-    }
-    return;
-  }
-  throw new Error("Expected ActivationError to be thrown");
+  const error = assertThrows(
+    () => Activations.find("DOES_NOT_EXIST"),
+    ActivationError,
+  );
+  assertEquals(error.reason, "UNKNOWN_ACTIVATION");
+  assertEquals(error.activation, "DOES_NOT_EXIST");
 });
 
-Deno.test("ArcTan - derivative still works for finite inputs", () => {
+Deno.test("ArcTan: derivative still works for finite inputs", () => {
   const arctan = new ArcTan();
   // ArcTan.derivative does not throw for non-finite (returns 0 via formula)
   // but should work normally for finite inputs
-  const d = arctan.derivative(0);
-  if (d !== 1) {
-    throw new Error(`Expected 1, got ${d}`);
-  }
+  assertEquals(arctan.derivative(0), 1);
 });

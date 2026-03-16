@@ -73,7 +73,6 @@ export class ReplaySquash implements ActivationInterface {
     } else {
       this.playbackMap.set(rounded, { sum: targetActivation, count: 1 });
     }
-    // console.info(`Record: ${currentValue} -> ${targetActivation} (${_currentActivation})`);
     return 0;
   }
 }

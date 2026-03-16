@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "@std/assert";
+import { assertEquals } from "@std/assert";
 import { emitTrainingEvent } from "../../src/NEAT/TrainingEventEmitter.ts";
 import type {
   SpeciesAdjustedEvent,
@@ -83,7 +83,6 @@ Deno.test("TrainingEventEmitter: no-op when callback is undefined", () => {
 
   // Should not throw when callback is undefined
   emitTrainingEvent(undefined, event);
-  assert(true, "Should complete without error when callback is undefined");
 });
 
 // ============================================================================
@@ -104,7 +103,6 @@ Deno.test("TrainingEventEmitter: silently catches callback exceptions", () => {
 
   // Should not throw — exception is caught internally
   emitTrainingEvent(throwingCallback, event);
-  assert(true, "Should not propagate callback exception");
 });
 
 Deno.test("TrainingEventEmitter: continues working after callback error", () => {

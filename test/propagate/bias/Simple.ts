@@ -9,7 +9,7 @@ import { train } from "../../TrainTestOnlyUtil.ts";
 
 const directory = ".test/propagate/bias";
 
-Deno.test("Bias-Simple", () => {
+Deno.test("bias-only backprop: error does not regress across training iterations on multi-squash network", () => {
   setup();
   const cleanCreature = makeCreature();
 

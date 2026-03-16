@@ -1,4 +1,3 @@
-import { assert } from "@std/assert";
 import { logReplaySummary } from "../../src/NEAT/NeatScheduling.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import type { DiscoveryReplayDirResult } from "../../src/NEAT/DiscoveryReplayQueue.ts";
@@ -44,7 +43,6 @@ Deno.test("logReplaySummary: handles result with no improvement", () => {
 
   // Should not throw
   logReplaySummary(config, result);
-  assert(true, "Should log without error when no improvement found");
 });
 
 // ============================================================================
@@ -68,7 +66,6 @@ Deno.test("logReplaySummary: handles result with improvement", () => {
   });
 
   logReplaySummary(config, result);
-  assert(true, "Should log improvement without error");
 });
 
 // ============================================================================
@@ -80,7 +77,6 @@ Deno.test("logReplaySummary: handles zero evaluated entries", () => {
   const result = createBaseResult();
 
   logReplaySummary(config, result);
-  assert(true, "Should handle zero evaluations");
 });
 
 Deno.test("logReplaySummary: handles pruned entries", () => {
@@ -91,7 +87,6 @@ Deno.test("logReplaySummary: handles pruned entries", () => {
   });
 
   logReplaySummary(config, result);
-  assert(true, "Should handle pruned entries in summary");
 });
 
 Deno.test("logReplaySummary: handles skipped already-applied entries", () => {
@@ -102,7 +97,6 @@ Deno.test("logReplaySummary: handles skipped already-applied entries", () => {
   });
 
   logReplaySummary(config, result);
-  assert(true, "Should handle already-applied entries");
 });
 
 Deno.test("logReplaySummary: handles skipped not-applicable entries", () => {
@@ -113,7 +107,6 @@ Deno.test("logReplaySummary: handles skipped not-applicable entries", () => {
   });
 
   logReplaySummary(config, result);
-  assert(true, "Should handle not-applicable entries");
 });
 
 Deno.test("logReplaySummary: handles timed-out result", () => {
@@ -124,7 +117,6 @@ Deno.test("logReplaySummary: handles timed-out result", () => {
   });
 
   logReplaySummary(config, result);
-  assert(true, "Should handle timed-out result");
 });
 
 // ============================================================================
@@ -179,7 +171,6 @@ Deno.test("logReplaySummary: verbose mode with successful candidates", () => {
   });
 
   logReplaySummary(config, result);
-  assert(true, "Should log successful candidates in verbose mode");
 });
 
 Deno.test("logReplaySummary: verbose mode with no successful candidates", () => {
@@ -201,7 +192,6 @@ Deno.test("logReplaySummary: verbose mode with no successful candidates", () => 
   });
 
   logReplaySummary(config, result);
-  assert(true, "Should handle verbose mode with no successful candidates");
 });
 
 Deno.test("logReplaySummary: verbose mode with empty evaluations array", () => {
@@ -212,7 +202,6 @@ Deno.test("logReplaySummary: verbose mode with empty evaluations array", () => {
   });
 
   logReplaySummary(config, result);
-  assert(true, "Should handle verbose mode with empty evaluations");
 });
 
 // ============================================================================
@@ -240,5 +229,4 @@ Deno.test("logReplaySummary: handles all summary parts at once", () => {
   });
 
   logReplaySummary(config, result);
-  assert(true, "Should handle all summary parts simultaneously");
 });

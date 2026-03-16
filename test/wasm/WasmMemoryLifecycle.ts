@@ -256,26 +256,28 @@ Deno.test("WasmMemoryLifecycle: evicted creatures have WASM disposed", () => {
   const creatures: Creature[] = [];
   const input = new Float32Array([0.5, 0.8]);
   const N = 20;
-  let disposeCount = 0;
 
   try {
     for (let i = 0; i < N; i++) {
       const creature = createTestCreature();
-      const originalDispose = creature.disposeWasm.bind(creature);
-      creature.disposeWasm = () => {
-        disposeCount++;
-        originalDispose();
-      };
       creatures.push(creature);
       creature.activate(input);
     }
 
-    // With N=20 and max=5, at least N-max creatures should have been evicted
+    // With N=20 and max=5, early creatures should have been evicted
+    // and their cached WASM activation should be undefined
+    let evictedCount = 0;
+    for (const creature of creatures) {
+      if (creature.cachedWasmActivation === undefined) {
+        evictedCount++;
+      }
+    }
+
     assert(
-      disposeCount >= N - MAX_CACHED,
+      evictedCount >= N - MAX_CACHED,
       `At least ${
         N - MAX_CACHED
-      } creatures should have been evicted, got ${disposeCount}`,
+      } creatures should have been evicted (no cached WASM), got ${evictedCount}`,
     );
   } finally {
     setMaxCachedWasmCreatureActivations(originalMax);

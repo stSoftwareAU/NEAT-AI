@@ -45,7 +45,7 @@ function makeInputs() {
   return inputs;
 }
 
-Deno.test("PropagateSTEP", async () => {
+Deno.test("STEP activation: backprop adjusts TANH neuron bias while STEP neuron remains stable", async () => {
   await initWasmForTests();
   const creature = makeCreature();
   const testDir = ".test/propagateSTEP";

@@ -12,14 +12,11 @@ import {
   assertAlmostEquals,
   assertEquals,
   assertExists,
-  assertThrows,
 } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import {
   type FusedErrorDistributionResult,
   initWasmActivation,
-  isProbablyWorkerScope,
-  isWasmActivationAvailable,
   SquashType,
   type WasmActivationRange,
   wasmCalculateError,
@@ -27,37 +24,16 @@ import {
   wasmDerivative,
   wasmFusedErrorDistribution,
   wasmGetRange,
-  wasmLimitRange,
   wasmSafeZoneAdjustment,
   wasmSafeZoneAdjustmentBatch,
   wasmSquash,
   type WasmTraceEntry,
   type WasmTraceResult,
   wasmUnSquash,
-  wasmValidateRange,
-  wasmVersion,
 } from "../../src/wasm/mod.ts";
 
 // Ensure WASM is loaded
 await initWasmActivation();
-
-// ---------------------------------------------------------------------------
-// Module availability
-// ---------------------------------------------------------------------------
-
-Deno.test("isWasmActivationAvailable returns true after init", () => {
-  assert(isWasmActivationAvailable());
-});
-
-Deno.test("wasmVersion returns a version string", () => {
-  const version = wasmVersion();
-  assert(version !== "not loaded", "Expected a version string");
-  assert(version.length > 0, "Version should not be empty");
-});
-
-Deno.test("isProbablyWorkerScope returns false in main thread", () => {
-  assertEquals(isProbablyWorkerScope(), false);
-});
 
 // ---------------------------------------------------------------------------
 // Standalone functions via WasmStandaloneFunctions
@@ -83,9 +59,10 @@ Deno.test("wasmUnSquash round-trips with squash for Logistic", () => {
   assertAlmostEquals(unsquashed, 0.5, 1e-3);
 });
 
-Deno.test("wasmSafeZoneAdjustment returns value in [0, 1]", () => {
+Deno.test("wasmSafeZoneAdjustment returns 1 for LOGISTIC within safe zone", () => {
+  // rawInput=0.5 is well inside LOGISTIC's safe zone [-6, 6], factor should be 1
   const result = wasmSafeZoneAdjustment(SquashType.Logistic, 0.5, 0.1);
-  assert(result >= 0 && result <= 1, `Expected [0,1] but got ${result}`);
+  assertAlmostEquals(result, 1.0, 1e-5);
 });
 
 Deno.test("wasmSafeZoneAdjustmentBatch processes multiple synapses", () => {
@@ -99,17 +76,19 @@ Deno.test("wasmSafeZoneAdjustmentBatch processes multiple synapses", () => {
     weights,
   );
   assertEquals(result.length, 2);
-  for (let i = 0; i < result.length; i++) {
-    assert(
-      result[i] >= 0 && result[i] <= 1,
-      `Factor ${i} out of range: ${result[i]}`,
-    );
-  }
+  // ReLU with positive input 0.5 should have full confidence (factor = 1)
+  assertEquals(result[0], 1, "ReLU factor for positive input should be 1");
+  // LOGISTIC with input 0.3 inside safe zone [-6, 6] should also be 1
+  assertEquals(result[1], 1, "LOGISTIC factor inside safe zone should be 1");
 });
 
-Deno.test("wasmCalculateError returns finite value", () => {
+Deno.test("wasmCalculateError returns positive error for LOGISTIC when target exceeds current", () => {
   const error = wasmCalculateError(SquashType.Logistic, 0.5, 0.8, 0.0);
   assert(isFinite(error), `Expected finite error but got ${error}`);
+  assert(
+    error > 0,
+    `Expected positive error when target (0.8) > current (0.0), got ${error}`,
+  );
 });
 
 Deno.test("wasmFusedErrorDistribution returns expected structure", () => {
@@ -123,24 +102,22 @@ Deno.test("wasmFusedErrorDistribution returns expected structure", () => {
     new Float32Array([0.3]),
     new Float32Array([1.0]),
   );
-  assertExists(result.error);
+  assert(
+    Number.isFinite(result.error),
+    `Expected finite error, got ${result.error}`,
+  );
   assertEquals(result.safeZoneFactors.length, 1);
   assertEquals(result.perLinkError.length, 1);
+  assert(
+    result.safeZoneFactors[0] >= 0 && result.safeZoneFactors[0] <= 1,
+    `safeZoneFactors[0] should be in [0, 1], got ${result.safeZoneFactors[0]}`,
+  );
 });
 
 Deno.test("wasmGetRange returns valid range for Logistic", () => {
   const range: WasmActivationRange = wasmGetRange(SquashType.Logistic);
   assertAlmostEquals(range.low, 0, 1e-5);
   assertAlmostEquals(range.high, 1, 1e-5);
-});
-
-Deno.test("wasmValidateRange accepts valid Logistic value", () => {
-  assert(wasmValidateRange(SquashType.Logistic, 0.5));
-});
-
-Deno.test("wasmLimitRange clamps out-of-range value", () => {
-  const clamped = wasmLimitRange(SquashType.Logistic, 1.5);
-  assert(clamped <= 1.0, `Expected clamped <= 1.0 but got ${clamped}`);
 });
 
 // ---------------------------------------------------------------------------
@@ -158,19 +135,6 @@ Deno.test("WasmCreatureActivation.fromCreature produces valid activation", () =>
   activation.free();
 });
 
-Deno.test("WasmCreatureActivation.activate throws after free", () => {
-  const creature = new Creature(2, 1);
-  const activation = WasmCreatureActivation.fromCreature(creature);
-  assertExists(activation);
-
-  activation.free();
-  assertThrows(
-    () => activation.activate(new Float32Array([0.5, 0.3])),
-    Error,
-    "has been freed",
-  );
-});
-
 Deno.test("WasmCreatureActivation trace types are accessible", () => {
   const creature = new Creature(2, 1);
   const activation = WasmCreatureActivation.fromCreature(creature);
@@ -182,17 +146,23 @@ Deno.test("WasmCreatureActivation trace types are accessible", () => {
   assertExists(result.activations);
   assertExists(result.hintValues);
 
-  // WasmTraceEntry type check (structural)
+  // Verify trace entries contain valid numeric data when present
   for (const entry of result.traceEntries) {
-    const _te: WasmTraceEntry = entry;
-    assertExists(_te.neuronRelativeIndex);
-    assertExists(_te.traceInfo);
+    const te: WasmTraceEntry = entry;
+    assert(
+      Number.isInteger(te.neuronRelativeIndex) && te.neuronRelativeIndex >= 0,
+      `neuronRelativeIndex should be a non-negative integer, got ${te.neuronRelativeIndex}`,
+    );
+    assert(
+      Number.isFinite(te.traceInfo),
+      `traceInfo should be finite, got ${te.traceInfo}`,
+    );
   }
 
   activation.free();
 });
 
-Deno.test("WasmCreatureActivation activateWithState works", () => {
+Deno.test("WasmCreatureActivation activateWithState returns output of correct length", () => {
   const creature = new Creature(2, 1);
   const activation = WasmCreatureActivation.fromCreature(creature);
   assertExists(activation);
@@ -200,74 +170,9 @@ Deno.test("WasmCreatureActivation activateWithState works", () => {
   const input = new Float32Array([0.5, 0.3]);
   const output = activation.activateWithState(input, false);
   assertEquals(output.length, 1);
+  assert(
+    Number.isFinite(output[0]),
+    `Expected finite output value, got ${output[0]}`,
+  );
   activation.free();
-});
-
-// ---------------------------------------------------------------------------
-// Re-export integrity: all public symbols accessible via mod.ts
-// ---------------------------------------------------------------------------
-
-Deno.test("mod.ts re-exports all expected symbols", async () => {
-  const mod = await import("../../src/wasm/mod.ts");
-
-  // Module loader functions
-  assertEquals(typeof mod.initWasmActivation, "function");
-  assertEquals(typeof mod.initWasmActivationSync, "function");
-  assertEquals(typeof mod.isWasmActivationAvailable, "function");
-
-  // Standalone functions
-  assertEquals(typeof mod.wasmSquash, "function");
-  assertEquals(typeof mod.wasmDerivative, "function");
-  assertEquals(typeof mod.wasmUnSquash, "function");
-  assertEquals(typeof mod.wasmSafeZoneAdjustment, "function");
-  assertEquals(typeof mod.wasmSafeZoneAdjustmentBatch, "function");
-  assertEquals(typeof mod.wasmCalculateError, "function");
-  assertEquals(typeof mod.wasmFusedErrorDistribution, "function");
-  assertEquals(typeof mod.wasmGetRange, "function");
-  assertEquals(typeof mod.wasmValidateRange, "function");
-  assertEquals(typeof mod.wasmLimitRange, "function");
-  assertEquals(typeof mod.wasmVersion, "function");
-
-  // Auto-init
-  assertEquals(typeof mod.isProbablyWorkerScope, "function");
-
-  // Class
-  assertEquals(typeof mod.WasmCreatureActivation, "function");
-
-  // SquashType enum
-  assertExists(mod.SquashType);
-  assertEquals(mod.SquashType.Relu, 1);
-
-  // Compilation
-  assertEquals(typeof mod.compileCreatureToWasm, "function");
-  assertEquals(typeof mod.getCompiledCreatureStats, "function");
-
-  // Cache
-  assertEquals(typeof mod.getOrCompileWasmModule, "function");
-  assertEquals(typeof mod.clearWasmCompilationCache, "function");
-  assertEquals(typeof mod.invalidateWasmCache, "function");
-  assertEquals(typeof mod.getWasmCompilationCacheStats, "function");
-  assertEquals(typeof mod.setWasmCompilationCacheSize, "function");
-  assertEquals(typeof mod.getWasmCompilationCacheMaxSize, "function");
-
-  // LRU
-  assertEquals(typeof mod.getMaxCachedWasmCreatureActivations, "function");
-  assertEquals(typeof mod.setMaxCachedWasmCreatureActivations, "function");
-
-  // Activation methods
-  assertEquals(typeof mod.squash, "function");
-  assertEquals(typeof mod.unSquash, "function");
-  assertEquals(typeof mod.calculateError, "function");
-  assertEquals(typeof mod.safeZoneAdjustment, "function");
-  assertEquals(typeof mod.safeZoneAdjustmentBatch, "function");
-  assertEquals(typeof mod.fusedErrorDistribution, "function");
-  assertEquals(typeof mod.isWasmSquashSupported, "function");
-
-  // Ensure helper
-  assertEquals(typeof mod.ensureWasmActivation, "function");
-
-  // Squash type helpers
-  assertEquals(typeof mod.getSquashType, "function");
-  assertEquals(typeof mod.resolveWasmSquashName, "function");
-  assertExists(mod.SQUASH_NAME_TO_TYPE);
 });

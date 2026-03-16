@@ -7,11 +7,10 @@
  * inner loop optimisation.
  */
 
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assertAlmostEquals, assertEquals } from "@std/assert";
 import {
   getSquashType,
   initWasmActivation,
-  isWasmActivationAvailable,
   safeZoneAdjustment,
   safeZoneAdjustmentBatch,
   SquashType,
@@ -22,15 +21,7 @@ import {
 // f32 tolerance for WASM comparisons
 const TOLERANCE = 1e-6;
 
-// Initialise WASM before tests
-Deno.test({
-  name: "SafeZoneAdjustmentBatch: WASM initialisation",
-  async fn() {
-    const result = await initWasmActivation();
-    assert(result, "WASM module should initialise successfully");
-    assert(isWasmActivationAvailable(), "WASM should be available after init");
-  },
-});
+await initWasmActivation();
 
 Deno.test({
   name: "SafeZoneAdjustmentBatch: empty batch returns empty result",
@@ -41,7 +32,7 @@ Deno.test({
       0.1,
       new Float32Array(0),
     );
-    assert(result.length === 0, "Empty batch should return empty result");
+    assertEquals(result.length, 0, "Empty batch should return empty result");
   },
 });
 
@@ -61,7 +52,7 @@ Deno.test({
       new Float32Array([weight]),
     );
 
-    assert(batch.length === 1, "Single-element batch should have length 1");
+    assertEquals(batch.length, 1, "Single-element batch should have length 1");
     assertAlmostEquals(batch[0], scalar, TOLERANCE, "Single-element mismatch");
   },
 });
@@ -110,8 +101,9 @@ Deno.test({
       weights,
     );
 
-    assert(
-      batchResults.length === squashTypes.length,
+    assertEquals(
+      batchResults.length,
+      squashTypes.length,
       `Batch length mismatch: got ${batchResults.length}, expected ${squashTypes.length}`,
     );
 
@@ -365,7 +357,7 @@ Deno.test({
       weights,
     );
 
-    assert(batchResults.length === count, "Batch length should match input");
+    assertEquals(batchResults.length, count, "Batch length should match input");
 
     for (let i = 0; i < count; i++) {
       const scalar = wasmSafeZoneAdjustment(

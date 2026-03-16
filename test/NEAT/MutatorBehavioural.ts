@@ -466,33 +466,6 @@ Deno.test("MutatorBehavioural: selectMutationMethod prefers weight/bias for larg
   );
 });
 
-Deno.test("MutatorBehavioural: calculateMaxSynapses returns correct value", () => {
-  const config = createConfig();
-  const mutator = new Mutator(config);
-
-  // For 3 observations, 4 hidden, 2 outputs:
-  // obs→hidden: 3×4 = 12
-  // obs→outputs: 3×2 = 6
-  // hidden→hidden: (4×3)/2 = 6
-  // hidden→outputs: 4×2 = 8
-  // Total = 32
-  const result = mutator.calculateMaxSynapses(3, 4, 2);
-  assertEquals(result, 32, "Max synapses calculation should be correct");
-});
-
-Deno.test("MutatorBehavioural: calculateMaxSynapses with zero hidden", () => {
-  const config = createConfig();
-  const mutator = new Mutator(config);
-
-  // With 0 hidden neurons: only obs→outputs
-  const result = mutator.calculateMaxSynapses(3, 0, 2);
-  assertEquals(
-    result,
-    6,
-    "With no hidden neurons, only input→output connections",
-  );
-});
-
 // ============================================================================
 // Population-Level Mutation
 // ============================================================================

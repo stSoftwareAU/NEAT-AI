@@ -116,12 +116,14 @@ Deno.test("NeuronState - traceActivation only with non-finite values leaves defa
 
 // --- CreatureState tests ---
 
-Deno.test("CreatureState - node() lazily creates NeuronState", () => {
+Deno.test("CreatureState - node() lazily creates NeuronState with defaults", () => {
   const creature = new Creature(2, 1);
   const state = new CreatureState(creature);
 
   const ns = state.node(0);
   assert(ns instanceof NeuronState);
+  assertEquals(ns.count, 0);
+  assertEquals(ns.totalActivation, 0);
 
   // Same instance on repeated access
   const ns2 = state.node(0);
@@ -141,12 +143,13 @@ Deno.test("CreatureState - node() creates independent states per index", () => {
   assertEquals(ns1.count, 0);
 });
 
-Deno.test("CreatureState - connection() lazily creates SynapseState", () => {
+Deno.test("CreatureState - connection() lazily creates SynapseState with defaults", () => {
   const creature = new Creature(2, 1);
   const state = new CreatureState(creature);
 
   const cs = state.connection(0, 1);
   assert(cs instanceof SynapseState);
+  assertEquals(cs.count, 0);
 
   // Same instance on repeated access
   const cs2 = state.connection(0, 1);
@@ -281,11 +284,15 @@ Deno.test("CreatureState - collectNeuronErrors empty when no errors", () => {
   assertEquals(errors.size, 0);
 });
 
-Deno.test("CreatureState - cacheAdjustedActivation is a DenseNumberMap", () => {
+Deno.test("CreatureState - cacheAdjustedActivation stores and retrieves values", () => {
   const creature = new Creature(2, 1);
   const state = new CreatureState(creature);
 
-  // Should be initialised and usable
   state.cacheAdjustedActivation.set(0, 1.5);
   assertEquals(state.cacheAdjustedActivation.get(0), 1.5);
+
+  // Verify different indices are independent
+  state.cacheAdjustedActivation.set(1, -0.5);
+  assertEquals(state.cacheAdjustedActivation.get(0), 1.5);
+  assertEquals(state.cacheAdjustedActivation.get(1), -0.5);
 });

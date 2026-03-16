@@ -21,7 +21,7 @@ function makeCreature() {
   return creature;
 }
 
-Deno.test("Complex Back Propagation", () => {
+Deno.test("backprop preserves outputs within tolerance on complex multi-hidden-layer network", () => {
   const creature = makeCreature();
   creature.clearState();
 

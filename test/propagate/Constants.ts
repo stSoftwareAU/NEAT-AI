@@ -39,7 +39,7 @@ function makeOutput(input: number[]) {
   return [sum];
 }
 
-Deno.test("Constants", () => {
+Deno.test("backprop converges single sample to constant-weighted target", () => {
   for (let attempts = 0; true; attempts++) {
     const creature = makeCreature();
     const traceDir = ".trace";
@@ -86,7 +86,6 @@ Deno.test("Constants", () => {
     );
     const actualA2 = creature.activate(new Float32Array(inA));
     const diff = Math.abs(expectedA[0] - actualA1[0]);
-    console.info(expectedA, actualA1, actualA2, diff);
 
     Deno.writeTextFileSync(
       ".trace/2.json",
@@ -112,7 +111,7 @@ Deno.test("Constants", () => {
   }
 });
 
-Deno.test("Constants Same", () => {
+Deno.test("backprop converges repeated identical samples to constant target", () => {
   for (let attempts = 0; true; attempts++) {
     const creature = makeCreature();
 
@@ -183,7 +182,7 @@ Deno.test("Constants Same", () => {
   }
 });
 
-Deno.test("Constants Known Few", () => {
+Deno.test("backprop learns constant-weighted mapping from few known samples", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
   ensureDirSync(traceDir);
@@ -245,7 +244,7 @@ Deno.test("Constants Known Few", () => {
   );
 });
 
-Deno.test("ConstantsMany", async () => {
+Deno.test("backprop converges over many generations with random training samples", async () => {
   await initWasmForTests();
   const traceDir = ".trace/ConstantsMany";
   ensureDirSync(traceDir);
@@ -304,8 +303,6 @@ Deno.test("ConstantsMany", async () => {
       creature.clearState();
     }
 
-    const tmpActual = creature.activate(new Float32Array(sampleInput));
-
     actual = creature.activate(new Float32Array(sampleInput));
 
     // deno-lint-ignore no-await-in-loop -- retry loop: each attempt depends on previous
@@ -315,8 +312,7 @@ Deno.test("ConstantsMany", async () => {
     );
 
     if (attempt > 121) break;
-    if (Math.abs(expected[0] - tmpActual[0]) <= 1.1) break;
-    console.info(config);
+    if (Math.abs(expected[0] - actual[0]) <= 1.1) break;
   }
 
   assertAlmostEquals(

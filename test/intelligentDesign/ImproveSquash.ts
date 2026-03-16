@@ -33,18 +33,15 @@ const testCreatureJson: CreatureInternal = {
   output: 1,
 };
 
-Deno.test("shuffle randomises array order", () => {
-  // Use a large enough array that shuffling will almost certainly change order
+Deno.test("shuffle preserves all elements", () => {
   const original = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const copy = [...original];
 
   shuffle(copy);
 
-  // Array should have same elements
+  // Array should have same elements (possibly in different order)
   assertEquals(copy.sort((a, b) => a - b), original);
-
-  // With 10 elements, probability of same order is 1/10! = very low
-  // We won't assert order changed as it could rarely be the same
+  assertEquals(copy.length, original.length);
 });
 
 Deno.test("shuffle returns the same array reference", () => {

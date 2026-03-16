@@ -5,7 +5,7 @@
  * (not generic Error) with the correct reason codes.
  */
 
-import { assertIsError, assertThrows } from "@std/assert";
+import { assertEquals, assertIsError, assertThrows } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { WasmError } from "../../src/errors/WasmError.ts";
 import { WasmCreatureActivation } from "../../src/wasm/WasmActivation.ts";
@@ -32,14 +32,11 @@ Deno.test("WasmActivationErrors: activate throws WasmError after free", () => {
     () => activation.activate(new Float32Array([0.5, 0.3])),
     WasmError,
   );
-  assertIsError(err, WasmError);
-  if (err instanceof WasmError) {
-    assertIsError(err, WasmError);
-    const wasmErr = err as WasmError;
-    if (wasmErr.reason !== "ACTIVATION_FAILED") {
-      throw new Error(`Expected ACTIVATION_FAILED, got ${wasmErr.reason}`);
-    }
-  }
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
 });
 
 Deno.test("WasmActivationErrors: activateView throws WasmError after free", () => {
@@ -49,7 +46,11 @@ Deno.test("WasmActivationErrors: activateView throws WasmError after free", () =
     () => activation.activateView(new Float32Array([0.5, 0.3])),
     WasmError,
   );
-  assertIsError(err, WasmError);
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
 });
 
 Deno.test("WasmActivationErrors: activateInto throws WasmError after free", () => {
@@ -63,7 +64,11 @@ Deno.test("WasmActivationErrors: activateInto throws WasmError after free", () =
       ),
     WasmError,
   );
-  assertIsError(err, WasmError);
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
 });
 
 Deno.test("WasmActivationErrors: activateIntoWithFeedback throws WasmError after free", () => {
@@ -78,7 +83,11 @@ Deno.test("WasmActivationErrors: activateIntoWithFeedback throws WasmError after
       ),
     WasmError,
   );
-  assertIsError(err, WasmError);
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
 });
 
 Deno.test("WasmActivationErrors: activateWithState throws WasmError after free", () => {
@@ -88,7 +97,11 @@ Deno.test("WasmActivationErrors: activateWithState throws WasmError after free",
     () => activation.activateWithState(new Float32Array([0.5, 0.3]), false),
     WasmError,
   );
-  assertIsError(err, WasmError);
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
 });
 
 Deno.test("WasmActivationErrors: activateAndTrace throws WasmError after free", () => {
@@ -98,7 +111,11 @@ Deno.test("WasmActivationErrors: activateAndTrace throws WasmError after free", 
     () => activation.activateAndTrace(new Float32Array([0.5, 0.3])),
     WasmError,
   );
-  assertIsError(err, WasmError);
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
 });
 
 Deno.test("WasmActivationErrors: activateAndTraceWithFeedback throws WasmError after free", () => {
@@ -112,7 +129,11 @@ Deno.test("WasmActivationErrors: activateAndTraceWithFeedback throws WasmError a
       ),
     WasmError,
   );
-  assertIsError(err, WasmError);
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
 });
 
 Deno.test("WasmActivationErrors: activateAndTraceBatch4Way throws WasmError after free", () => {
@@ -128,7 +149,11 @@ Deno.test("WasmActivationErrors: activateAndTraceBatch4Way throws WasmError afte
     () => activation.activateAndTraceBatch4Way(inputs),
     WasmError,
   );
-  assertIsError(err, WasmError);
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
 });
 
 Deno.test("WasmActivationErrors: activateAndTraceBatch4WayWithFeedback throws WasmError after free", () => {
@@ -144,37 +169,100 @@ Deno.test("WasmActivationErrors: activateAndTraceBatch4WayWithFeedback throws Wa
     () => activation.activateAndTraceBatch4WayWithFeedback(inputs, false),
     WasmError,
   );
-  assertIsError(err, WasmError);
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
 });
 
-Deno.test("WasmActivationErrors: batch cost methods throw WasmError after free", () => {
+Deno.test("WasmActivationErrors: mseSumBatchPacked throws WasmError after free", () => {
   const activation = createActivation();
   activation.free();
   const records = new Float32Array([0.5, 0.3, 0.8]);
-
-  assertThrows(
+  const err = assertThrows(
     () => activation.mseSumBatchPacked(records, 2, true),
     WasmError,
   );
-  assertThrows(
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
+});
+
+Deno.test("WasmActivationErrors: maeSumBatchPacked throws WasmError after free", () => {
+  const activation = createActivation();
+  activation.free();
+  const records = new Float32Array([0.5, 0.3, 0.8]);
+  const err = assertThrows(
     () => activation.maeSumBatchPacked(records, 2, true),
     WasmError,
   );
-  assertThrows(
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
+});
+
+Deno.test("WasmActivationErrors: crossEntropySumBatchPacked throws WasmError after free", () => {
+  const activation = createActivation();
+  activation.free();
+  const records = new Float32Array([0.5, 0.3, 0.8]);
+  const err = assertThrows(
     () => activation.crossEntropySumBatchPacked(records, 2, true),
     WasmError,
   );
-  assertThrows(
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
+});
+
+Deno.test("WasmActivationErrors: mapeSumBatchPacked throws WasmError after free", () => {
+  const activation = createActivation();
+  activation.free();
+  const records = new Float32Array([0.5, 0.3, 0.8]);
+  const err = assertThrows(
     () => activation.mapeSumBatchPacked(records, 2, true),
     WasmError,
   );
-  assertThrows(
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
+});
+
+Deno.test("WasmActivationErrors: msleSumBatchPacked throws WasmError after free", () => {
+  const activation = createActivation();
+  activation.free();
+  const records = new Float32Array([0.5, 0.3, 0.8]);
+  const err = assertThrows(
     () => activation.msleSumBatchPacked(records, 2, true),
     WasmError,
   );
-  assertThrows(
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
+  );
+});
+
+Deno.test("WasmActivationErrors: hingeSumBatchPacked throws WasmError after free", () => {
+  const activation = createActivation();
+  activation.free();
+  const records = new Float32Array([0.5, 0.3, 0.8]);
+  const err = assertThrows(
     () => activation.hingeSumBatchPacked(records, 2, true),
     WasmError,
+  );
+  assertEquals(
+    (err as WasmError).reason,
+    "ACTIVATION_FAILED",
+    "Expected ACTIVATION_FAILED reason code",
   );
 });
 

@@ -137,16 +137,32 @@ Deno.test("ModBias - focus list targets specific neurons", () => {
 
   creatureValidate(creature);
 
-  const mutator = new ModBias(creature);
-  mutator.mutate([2]); // Focus only on neuron at index 2
+  // Focus only on neuron at index 2 — bias of neuron 3 should remain unchanged
+  const biasBefore3 = creature.neurons[3].bias;
+  let changed = false;
+  for (let i = 0; i < 50; i++) {
+    const testCreature = Creature.fromJSON(creature.exportJSON());
+    const mutator = new ModBias(testCreature);
+    if (mutator.mutate([2])) {
+      changed = true;
+      assertEquals(
+        testCreature.neurons[3].bias,
+        biasBefore3,
+        "Non-focused neuron's bias should not change",
+      );
+      creatureValidate(testCreature);
+      break;
+    }
+  }
 
-  creatureValidate(creature);
+  assert(changed, "Should mutate focused neuron within 50 attempts");
 });
 
 Deno.test("ModBias - handles creature with only output neurons", () => {
+  const originalBias = 0.5;
   const creature = Creature.fromJSON({
     neurons: [
-      { type: "output", squash: "LOGISTIC", bias: 0.5, index: 2 },
+      { type: "output", squash: "LOGISTIC", bias: originalBias, index: 2 },
     ],
     synapses: [
       { from: 0, to: 2, weight: 1.0 },
@@ -157,17 +173,19 @@ Deno.test("ModBias - handles creature with only output neurons", () => {
 
   creatureValidate(creature);
 
-  let changed = false;
+  let biasChanged = false;
   for (let i = 0; i < 50; i++) {
     const testCreature = Creature.fromJSON(creature.exportJSON());
     const mutator = new ModBias(testCreature);
-    changed = mutator.mutate();
-    if (changed) {
-      creatureValidate(testCreature);
-      break;
+    if (mutator.mutate()) {
+      const newBias = testCreature.neurons[testCreature.input].bias;
+      if (newBias !== originalBias) {
+        biasChanged = true;
+        creatureValidate(testCreature);
+        break;
+      }
     }
   }
 
-  // It should be possible to mutate the output neuron's bias
-  assert(changed, "Should be able to modify output neuron bias");
+  assert(biasChanged, "Output neuron bias should actually change value");
 });

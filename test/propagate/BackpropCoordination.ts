@@ -1,8 +1,6 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { coordinateBackpropUpdates } from "../../src/propagate/BackpropCoordination.ts";
 
-((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
-
 Deno.test(
   "coordinateBackpropUpdates - no changes passes through",
   () => {

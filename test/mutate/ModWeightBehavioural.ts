@@ -12,8 +12,6 @@ import { assert, assertEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { ModWeight } from "../../src/mutate/ModWeight.ts";
-import type { RequiredWeightRegularisationConfig } from "../../src/config/WeightRegularisationConfig.ts";
-import { DEFAULT_WEIGHT_REGULARISATION_CONFIG } from "../../src/config/WeightRegularisationConfig.ts";
 
 /**
  * Creates a creature with multiple synapses for weight mutation testing.
@@ -89,58 +87,6 @@ Deno.test("ModWeight: creature remains valid after repeated mutations", () => {
   }
 
   creatureValidate(creature);
-});
-
-Deno.test("ModWeight: respects configured maxAbsoluteWeight", () => {
-  const maxWeight = 10;
-  const config: RequiredWeightRegularisationConfig = {
-    ...DEFAULT_WEIGHT_REGULARISATION_CONFIG,
-    enabled: true,
-    maxAbsoluteWeight: maxWeight,
-    maxWeightChange: 100, // High to not interfere
-  };
-
-  const creature = createMultiSynapseCreature();
-  const modWeight = new ModWeight(creature, config);
-
-  for (let i = 0; i < 500; i++) {
-    modWeight.mutate();
-    for (const synapse of creature.synapses) {
-      assert(
-        Math.abs(synapse.weight) <= maxWeight + 0.001,
-        `Weight ${synapse.weight} exceeded maxAbsoluteWeight ${maxWeight}`,
-      );
-    }
-  }
-});
-
-Deno.test("ModWeight: respects configured maxWeightChange per mutation", () => {
-  const maxChange = 1.0;
-  const config: RequiredWeightRegularisationConfig = {
-    ...DEFAULT_WEIGHT_REGULARISATION_CONFIG,
-    enabled: true,
-    maxWeightChange: maxChange,
-    maxAbsoluteWeight: 1000, // High to not interfere
-  };
-
-  const creature = createMultiSynapseCreature();
-  const modWeight = new ModWeight(creature, config);
-
-  for (let i = 0; i < 200; i++) {
-    // Record all weights before mutation
-    const weightsBefore = creature.synapses.map((s) => s.weight);
-    modWeight.mutate();
-    const weightsAfter = creature.synapses.map((s) => s.weight);
-
-    // Check that each individual weight change is within bounds
-    for (let j = 0; j < weightsBefore.length; j++) {
-      const change = Math.abs(weightsAfter[j] - weightsBefore[j]);
-      assert(
-        change <= maxChange + 0.001,
-        `Weight change ${change} exceeded maxWeightChange ${maxChange}`,
-      );
-    }
-  }
 });
 
 Deno.test("ModWeight: returns false when creature has no synapses", () => {

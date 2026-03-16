@@ -18,7 +18,12 @@ Deno.test("Creature.fromJSON normalises legacy nodes to neurons", () => {
   } as Record<string, unknown>;
 
   const creature = Creature.fromJSON(legacyJSON as never);
-  assertEquals(creature.neurons.length > 0, true);
+  assertEquals(
+    creature.neurons.length,
+    3,
+    "Should have 3 neurons (input + hidden + output)",
+  );
+  assertEquals(creature.synapses.length, 2, "Should have 2 synapses");
   assertEquals(creature.output, 1);
 });
 
@@ -38,8 +43,16 @@ Deno.test("Creature.fromJSON normalises legacy connections to synapses", () => {
   } as Record<string, unknown>;
 
   const creature = Creature.fromJSON(legacyJSON as never);
-  assertEquals(creature.neurons.length > 0, true);
-  assertEquals(creature.synapses.length, 2);
+  assertEquals(
+    creature.neurons.length,
+    3,
+    "Should have 3 neurons (input + hidden + output)",
+  );
+  assertEquals(
+    creature.synapses.length,
+    2,
+    "Should have 2 synapses from legacy connections",
+  );
 });
 
 Deno.test("Upgrade.CRISPR normalises legacy nodes and connections", () => {
@@ -56,8 +69,15 @@ Deno.test("Upgrade.CRISPR normalises legacy nodes and connections", () => {
 
   const result = Upgrade.CRISPR(legacyCRISPR as never);
 
-  // After normalisation, neurons and synapses should exist
   assertEquals(result.mode, "append");
-  assertEquals(result.neurons !== undefined, true);
-  assertEquals(result.synapses !== undefined, true);
+  assertEquals(
+    result.neurons?.length,
+    1,
+    "Should have 1 neuron from legacy nodes",
+  );
+  assertEquals(
+    result.synapses?.length,
+    1,
+    "Should have 1 synapse from legacy connections",
+  );
 });

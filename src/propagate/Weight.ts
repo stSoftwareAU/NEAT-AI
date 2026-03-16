@@ -203,28 +203,31 @@ export function limitWeight(
 }
 
 /**
- * Issue #1214 - Batch weight accumulation for 4 synapses simultaneously.
+ * Issue #1760 - Generic batch weight accumulation parameterised by batch size.
+ * Issue #1214 - Batch weight accumulation for N synapses simultaneously.
  * Issue #1314 - Non-finite values are skipped to prevent state corruption.
  *
- * Processes 4 synapses in a single call, enabling SIMD optimisation
+ * Processes `batchSize` synapses in a single call, enabling SIMD optimisation
  * via V8 when processing mini-batches during backpropagation.
  *
- * @param currentWeights Array of 4 current synapse weights
- * @param csArray Array of 4 SynapseState objects to accumulate into
- * @param targetValues Array of 4 target values for weight calculation
- * @param activations Array of 4 activation values from source neurons
+ * @param currentWeights Array of current synapse weights
+ * @param csArray Array of SynapseState objects to accumulate into
+ * @param targetValues Array of target values for weight calculation
+ * @param activations Array of activation values from source neurons
  * @param config Backpropagation configuration
+ * @param batchSize Number of synapses to process
  */
-export function accumulateWeightBatch4Way(
+export function accumulateWeightBatchNWay(
   currentWeights: number[],
   csArray: SynapseState[],
   targetValues: number[],
   activations: number[],
   config: BackPropagationConfig,
+  batchSize: number,
 ) {
   const plankConstant = config.plankConstant;
 
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < batchSize; i++) {
     const activation = activations[i];
     const currentWeight = currentWeights[i];
     const targetValue = targetValues[i];
@@ -274,17 +277,29 @@ export function accumulateWeightBatch4Way(
 }
 
 /**
+ * Issue #1214 - Batch weight accumulation for 4 synapses simultaneously.
+ * Delegates to the generic accumulateWeightBatchNWay (issue #1760).
+ */
+export function accumulateWeightBatch4Way(
+  currentWeights: number[],
+  csArray: SynapseState[],
+  targetValues: number[],
+  activations: number[],
+  config: BackPropagationConfig,
+) {
+  accumulateWeightBatchNWay(
+    currentWeights,
+    csArray,
+    targetValues,
+    activations,
+    config,
+    4,
+  );
+}
+
+/**
  * Issue #1214 - Batch weight accumulation for 8 synapses simultaneously.
- * Issue #1314 - Non-finite values are skipped to prevent state corruption.
- *
- * Processes 8 synapses in a single call, enabling SIMD optimisation
- * via V8 when processing mini-batches during backpropagation.
- *
- * @param currentWeights Array of 8 current synapse weights
- * @param csArray Array of 8 SynapseState objects to accumulate into
- * @param targetValues Array of 8 target values for weight calculation
- * @param activations Array of 8 activation values from source neurons
- * @param config Backpropagation configuration
+ * Delegates to the generic accumulateWeightBatchNWay (issue #1760).
  */
 export function accumulateWeightBatch8Way(
   currentWeights: number[],
@@ -293,53 +308,12 @@ export function accumulateWeightBatch8Way(
   activations: number[],
   config: BackPropagationConfig,
 ) {
-  const plankConstant = config.plankConstant;
-
-  for (let i = 0; i < 8; i++) {
-    const activation = activations[i];
-    const currentWeight = currentWeights[i];
-    const targetValue = targetValues[i];
-
-    if (
-      !Number.isFinite(activation) ||
-      !Number.isFinite(currentWeight) ||
-      !Number.isFinite(targetValue)
-    ) {
-      continue;
-    }
-
-    const cs = csArray[i];
-
-    const sign = Math.sign(activation) || 1;
-    let tmpActivation = activation;
-
-    if (Math.abs(tmpActivation) < plankConstant) {
-      tmpActivation = plankConstant * sign;
-    }
-
-    const tmpValue = Math.abs(targetValue) > plankConstant
-      ? targetValue
-      : plankConstant * Math.sign(targetValue);
-
-    const tmpWeight = tmpValue / tmpActivation;
-
-    if (!Number.isFinite(tmpWeight)) {
-      continue;
-    }
-
-    // Issue #1653: Accumulate raw target weight; limitWeight applied in calculateWeight.
-    if (Math.abs(activation) > plankConstant) {
-      if (activation > 0) {
-        cs.totalPositiveActivation += activation;
-        cs.totalPositiveAdjustedValue += tmpWeight * activation;
-        cs.countPositiveActivations++;
-      } else if (activation < 0) {
-        cs.totalNegativeActivation += Math.abs(activation);
-        cs.totalNegativeAdjustedValue += tmpWeight * activation;
-        cs.countNegativeActivations++;
-      }
-    }
-
-    cs.count++;
-  }
+  accumulateWeightBatchNWay(
+    currentWeights,
+    csArray,
+    targetValues,
+    activations,
+    config,
+    8,
+  );
 }

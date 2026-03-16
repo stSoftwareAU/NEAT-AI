@@ -7,12 +7,9 @@
  * TypeScript ActivationRange implementations for all activation functions.
  */
 
-import { assertAlmostEquals, assertEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Activations } from "../../src/methods/activations/Activations.ts";
-import {
-  initWasmActivation,
-  isWasmActivationAvailable,
-} from "../../src/wasm/WasmModuleLoader.ts";
+import { initWasmActivation } from "../../src/wasm/WasmModuleLoader.ts";
 import {
   wasmGetRange,
   wasmLimitRange,
@@ -64,14 +61,6 @@ const activationToSquashType: Record<string, SquashType> = {
   IF: SquashType.If,
 };
 
-Deno.test("WASM Range Validation - Module is available", () => {
-  assertEquals(
-    isWasmActivationAvailable(),
-    true,
-    "WASM module should be available",
-  );
-});
-
 Deno.test("WASM Range Validation - get_range matches TypeScript for all activations", () => {
   // Test bounded activations that should have exact range matches
   const boundedActivations = [
@@ -92,10 +81,7 @@ Deno.test("WASM Range Validation - get_range matches TypeScript for all activati
   for (const name of boundedActivations) {
     const activation = Activations.find(name);
     const squashType = activationToSquashType[name];
-
-    if (squashType === undefined) {
-      continue;
-    }
+    assert(squashType !== undefined, `${name} must have a SquashType mapping`);
 
     const tsRange = activation.range;
     const wasmRange = wasmGetRange(squashType);
@@ -130,18 +116,16 @@ Deno.test("WASM Range Validation - get_range matches TypeScript for all activati
 
   for (const name of unboundedActivations) {
     const squashType = activationToSquashType[name];
-    if (squashType === undefined) continue;
+    assert(squashType !== undefined, `${name} must have a SquashType mapping`);
 
     const wasmRange = wasmGetRange(squashType);
 
-    assertEquals(
+    assert(
       wasmRange.low < -1e30,
-      true,
       `${name}: low bound should be very negative (got ${wasmRange.low})`,
     );
-    assertEquals(
+    assert(
       wasmRange.high > 1e30,
-      true,
       `${name}: high bound should be very positive (got ${wasmRange.high})`,
     );
   }
@@ -157,18 +141,16 @@ Deno.test("WASM Range Validation - get_range matches TypeScript for all activati
 
   for (const name of oneSidedUnbounded) {
     const squashType = activationToSquashType[name];
-    if (squashType === undefined) continue;
+    assert(squashType !== undefined, `${name} must have a SquashType mapping`);
 
     const wasmRange = wasmGetRange(squashType);
 
-    assertEquals(
+    assert(
       wasmRange.low >= 0,
-      true,
       `${name}: low bound should be >= 0 (got ${wasmRange.low})`,
     );
-    assertEquals(
+    assert(
       wasmRange.high > 1e30,
-      true,
       `${name}: high bound should be very positive (got ${wasmRange.high})`,
     );
   }
@@ -311,9 +293,7 @@ Deno.test("WASM Range Validation - limit_range matches TypeScript range.limit()"
     const activation = Activations.find(name);
     const squashType = activationToSquashType[name];
 
-    if (squashType === undefined) {
-      continue;
-    }
+    assert(squashType !== undefined, `${name} must have a SquashType mapping`);
 
     for (const value of finiteTestValues) {
       // Get TypeScript result
@@ -360,14 +340,12 @@ Deno.test("WASM Range Validation - aggregate functions have unbounded ranges", (
     const range = wasmGetRange(squashType);
 
     // Aggregate functions should have unbounded ranges
-    assertEquals(
+    assert(
       range.low < -1e30,
-      true,
       `${SquashType[squashType]} should have very low lower bound`,
     );
-    assertEquals(
+    assert(
       range.high > 1e30,
-      true,
       `${SquashType[squashType]} should have very high upper bound`,
     );
   }
@@ -389,9 +367,8 @@ Deno.test("WASM Range Validation - LogSigmoid has correct range (-inf, 0]", () =
   const range = wasmGetRange(SquashType.LogSigmoid);
 
   // LogSigmoid: output is always negative or zero
-  assertEquals(
+  assert(
     range.low < -1e30,
-    true,
     "LogSigmoid should have very low lower bound",
   );
   assertAlmostEquals(range.high, 0, 1e-5, "LogSigmoid upper bound should be 0");
@@ -402,9 +379,8 @@ Deno.test("WASM Range Validation - ELU has correct range [-1, inf)", () => {
 
   // ELU with alpha=1 has minimum of -1
   assertAlmostEquals(range.low, -1, 1e-5, "ELU lower bound should be -1");
-  assertEquals(
+  assert(
     range.high > 1e30,
-    true,
     "ELU should have very high upper bound",
   );
 });
@@ -430,11 +406,11 @@ Deno.test("WASM Range Validation - Softplus has correct range (0, 100)", () => {
   const range = wasmGetRange(SquashType.Softplus);
 
   // Softplus has a small positive lower bound (1e-15 in TypeScript) and upper bound (100)
-  assertEquals(range.low >= 0, true, "Softplus lower bound should be >= 0");
+  assert(range.low >= 0, "Softplus lower bound should be >= 0");
   // Softplus in TypeScript has upper bound of 100 to prevent overflow
   assertEquals(
-    range.high === 100,
-    true,
+    range.high,
+    100,
     `Softplus upper bound should be 100, got ${range.high}`,
   );
 });

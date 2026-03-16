@@ -194,13 +194,19 @@ Deno.test("calculate - caches score components", () => {
   );
 });
 
-Deno.test("calculate - uses cached score components on second call", () => {
+Deno.test("calculate - repeated calls with same inputs produce same score", () => {
   const creature = makeCreature({ weights: [0.5], biases: [0.1] });
 
   const score1 = calculate(creature, 0.1, 0.001);
-  const score2 = calculate(creature, 0.1, 0.001);
 
-  assertEquals(score1, score2, "Cached calculation should give same result");
+  // Second call uses cached components - should produce identical result
+  const score2 = calculate(creature, 0.1, 0.001);
+  assertEquals(score1, score2, "Same inputs should produce same score");
+
+  // Verify by clearing cache and recalculating from scratch
+  delete creature.cachedScoreComponents;
+  const score3 = calculate(creature, 0.1, 0.001);
+  assertEquals(score1, score3, "Fresh calculation should match cached result");
 });
 
 Deno.test("calculate - zero growth cost produces score near 1 - error", () => {
@@ -218,7 +224,7 @@ Deno.test("calculate - zero growth cost produces score near 1 - error", () => {
 
 // --- updateScoreForWeightChange tests ---
 
-Deno.test("updateScoreForWeightChange - basic incremental update", () => {
+Deno.test("updateScoreForWeightChange - incremental update matches full recalculation", () => {
   const creature = makeCreature({ weights: [0.5, 0.3, 0.7], biases: [0.1] });
   const error = 0.1;
   const growthCost = 0.001;
@@ -230,7 +236,7 @@ Deno.test("updateScoreForWeightChange - basic incremental update", () => {
   const oldWeight = creature.synapses[0].weight;
   creature.synapses[0].weight = 0.8;
 
-  const newScore = updateScoreForWeightChange(
+  const incrementalScore = updateScoreForWeightChange(
     creature,
     error,
     growthCost,
@@ -238,26 +244,39 @@ Deno.test("updateScoreForWeightChange - basic incremental update", () => {
     0.8,
   );
 
-  assert(Number.isFinite(newScore), "Updated score should be finite");
+  // Full recalculation with same weights should match
+  delete creature.cachedScoreComponents;
+  const fullScore = calculate(creature, error, growthCost);
+
+  assertEquals(
+    incrementalScore,
+    fullScore,
+    "Incremental update should match full recalculation",
+  );
 });
 
-Deno.test("updateScoreForWeightChange - new weight exceeding max updates max", () => {
+Deno.test("updateScoreForWeightChange - large weight increase lowers score", () => {
   const creature = makeCreature({ weights: [0.5, 0.3, 0.7], biases: [0.1] });
   const error = 0.1;
   const growthCost = 0.001;
 
-  calculate(creature, error, growthCost);
+  const initialScore = calculate(creature, error, growthCost);
 
   const oldWeight = creature.synapses[0].weight;
   const newWeight = 100; // Much larger than current max
   creature.synapses[0].weight = newWeight;
 
-  updateScoreForWeightChange(creature, error, growthCost, oldWeight, newWeight);
+  const updatedScore = updateScoreForWeightChange(
+    creature,
+    error,
+    growthCost,
+    oldWeight,
+    newWeight,
+  );
 
-  assertEquals(
-    creature.cachedScoreComponents!.maxWeightBias,
-    100,
-    "Max should be updated to new large weight",
+  assert(
+    updatedScore < initialScore,
+    `Large weight should lower score: ${updatedScore} should be < ${initialScore}`,
   );
 });
 
@@ -285,7 +304,7 @@ Deno.test("updateScoreForWeightChange - throws for non-finite weight", () => {
 
 // --- updateScoreForBiasChange tests ---
 
-Deno.test("updateScoreForBiasChange - basic incremental update", () => {
+Deno.test("updateScoreForBiasChange - incremental update matches full recalculation", () => {
   const creature = makeCreature({
     weights: [0.5, 0.3, 0.7],
     biases: [0.1, 0.2],
@@ -298,7 +317,7 @@ Deno.test("updateScoreForBiasChange - basic incremental update", () => {
   const oldBias = creature.neurons[creature.input].bias;
   creature.neurons[creature.input].bias = 0.5;
 
-  const newScore = updateScoreForBiasChange(
+  const incrementalScore = updateScoreForBiasChange(
     creature,
     error,
     growthCost,
@@ -306,26 +325,39 @@ Deno.test("updateScoreForBiasChange - basic incremental update", () => {
     0.5,
   );
 
-  assert(Number.isFinite(newScore), "Updated score should be finite");
+  // Full recalculation with same bias should match
+  delete creature.cachedScoreComponents;
+  const fullScore = calculate(creature, error, growthCost);
+
+  assertEquals(
+    incrementalScore,
+    fullScore,
+    "Incremental update should match full recalculation",
+  );
 });
 
-Deno.test("updateScoreForBiasChange - new bias exceeding max updates max", () => {
+Deno.test("updateScoreForBiasChange - large bias increase lowers score", () => {
   const creature = makeCreature({ weights: [0.5], biases: [0.1] });
   const error = 0.1;
   const growthCost = 0.001;
 
-  calculate(creature, error, growthCost);
+  const initialScore = calculate(creature, error, growthCost);
 
   const oldBias = creature.neurons[creature.input].bias;
   const newBias = 200; // Much larger than current max
   creature.neurons[creature.input].bias = newBias;
 
-  updateScoreForBiasChange(creature, error, growthCost, oldBias, newBias);
+  const updatedScore = updateScoreForBiasChange(
+    creature,
+    error,
+    growthCost,
+    oldBias,
+    newBias,
+  );
 
-  assertEquals(
-    creature.cachedScoreComponents!.maxWeightBias,
-    200,
-    "Max should be updated to new large bias",
+  assert(
+    updatedScore < initialScore,
+    `Large bias should lower score: ${updatedScore} should be < ${initialScore}`,
   );
 });
 
@@ -340,18 +372,26 @@ Deno.test("updateScoreForBiasChange - throws for non-finite bias", () => {
   );
 });
 
-Deno.test("updateScoreForBiasChange - computes cache if not present", () => {
+Deno.test("updateScoreForBiasChange - works without prior calculate call", () => {
   const creature = makeCreature({ weights: [0.5], biases: [0.1] });
 
-  // Don't call calculate first - updateScoreForBiasChange should compute cache
-  const score = updateScoreForBiasChange(creature, 0.1, 0.001, 0.1, 0.2);
-
-  assert(
-    Number.isFinite(score),
-    "Should compute score even without prior cache",
+  // Don't call calculate first - updateScoreForBiasChange should still work
+  creature.neurons[creature.input].bias = 0.2;
+  const incrementalScore = updateScoreForBiasChange(
+    creature,
+    0.1,
+    0.001,
+    0.1,
+    0.2,
   );
-  assert(
-    creature.cachedScoreComponents !== undefined,
-    "Cache should be populated",
+
+  // Verify by full recalculation
+  delete creature.cachedScoreComponents;
+  const fullScore = calculate(creature, 0.1, 0.001);
+
+  assertEquals(
+    incrementalScore,
+    fullScore,
+    "Score without prior cache should match full calculation",
   );
 });

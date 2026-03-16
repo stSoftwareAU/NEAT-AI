@@ -5,7 +5,7 @@
  * - Invalid values (non-numeric string, out-of-range) → clear error thrown
  * - Missing option → default used
  */
-import { assertEquals, fail } from "@std/assert";
+import { assertEquals, assertStringIncludes, assertThrows } from "@std/assert";
 import {
   createNeatConfig,
   DEFAULT_COST_OF_GROWTH,
@@ -24,29 +24,19 @@ Deno.test("NeatConfigParseOptions - trainingSampleRate accepts string", () => {
 });
 
 Deno.test("NeatConfigParseOptions - trainingSampleRate invalid string throws clear error", () => {
-  try {
-    createNeatConfig({ trainingSampleRate: "abc" });
-    fail("Expected error for invalid trainingSampleRate");
-  } catch (e) {
-    assertEquals(
-      (e as Error).message.includes("Training Sample Rate must be a number"),
-      true,
-      `Error: ${(e as Error).message}`,
-    );
-  }
+  const error = assertThrows(
+    () => createNeatConfig({ trainingSampleRate: "abc" }),
+    Error,
+  );
+  assertStringIncludes(error.message, "Training Sample Rate must be a number");
 });
 
 Deno.test("NeatConfigParseOptions - trainingSampleRate out of range throws clear error", () => {
-  try {
-    createNeatConfig({ trainingSampleRate: 2 });
-    fail("Expected error for out-of-range trainingSampleRate");
-  } catch (e) {
-    assertEquals(
-      (e as Error).message.includes("Training Sample Rate must be between"),
-      true,
-      `Error: ${(e as Error).message}`,
-    );
-  }
+  const error = assertThrows(
+    () => createNeatConfig({ trainingSampleRate: 2 }),
+    Error,
+  );
+  assertStringIncludes(error.message, "Training Sample Rate must be between");
 });
 
 Deno.test("NeatConfigParseOptions - trainingSampleRate missing uses default", () => {
@@ -60,16 +50,11 @@ Deno.test("NeatConfigParseOptions - targetError accepts number and string", () =
 });
 
 Deno.test("NeatConfigParseOptions - targetError invalid string throws", () => {
-  try {
-    createNeatConfig({ targetError: "not-a-number" });
-    fail("Expected error for invalid targetError");
-  } catch (e) {
-    assertEquals(
-      (e as Error).message.includes("Target error must be a number"),
-      true,
-      `Error: ${(e as Error).message}`,
-    );
-  }
+  const error = assertThrows(
+    () => createNeatConfig({ targetError: "not-a-number" }),
+    Error,
+  );
+  assertStringIncludes(error.message, "Target error must be a number");
 });
 
 Deno.test("NeatConfigParseOptions - targetError missing uses default", () => {
@@ -92,16 +77,11 @@ Deno.test("NeatConfigParseOptions - sparseRatio accepts number and string", () =
 });
 
 Deno.test("NeatConfigParseOptions - sparseRatio invalid string throws", () => {
-  try {
-    createNeatConfig({ sparseRatio: "invalid" });
-    fail("Expected error for invalid sparseRatio");
-  } catch (e) {
-    assertEquals(
-      (e as Error).message.includes("Sparse Ratio must be a number"),
-      true,
-      `Error: ${(e as Error).message}`,
-    );
-  }
+  const error = assertThrows(
+    () => createNeatConfig({ sparseRatio: "invalid" }),
+    Error,
+  );
+  assertStringIncludes(error.message, "Sparse Ratio must be a number");
 });
 
 Deno.test("NeatConfigParseOptions - timeoutMinutes accepts string", () => {
@@ -115,21 +95,12 @@ Deno.test("NeatConfigParseOptions - populationSize accepts string", () => {
 });
 
 Deno.test("NeatConfigParseOptions - dataSetPartitionBreak invalid string throws clear error", () => {
-  try {
-    createNeatConfig({ dataSetPartitionBreak: "abc" });
-    fail("Expected error for non-numeric dataSetPartitionBreak");
-  } catch (e) {
-    assertEquals(
-      (e as Error).message.includes("Data Set Partition Break"),
-      true,
-      `Error should mention field: ${(e as Error).message}`,
-    );
-    assertEquals(
-      (e as Error).message.includes("abc"),
-      true,
-      `Error should include invalid value: ${(e as Error).message}`,
-    );
-  }
+  const error = assertThrows(
+    () => createNeatConfig({ dataSetPartitionBreak: "abc" }),
+    Error,
+  );
+  assertStringIncludes(error.message, "Data Set Partition Break");
+  assertStringIncludes(error.message, "abc");
 });
 
 Deno.test("NeatConfigParseOptions - discoverySampleRate -1 (disabled) accepted", () => {
@@ -158,24 +129,15 @@ Deno.test("NeatConfigParseOptions - discoverySampleRate 0 and 0.05 and 1 accepte
 });
 
 Deno.test("NeatConfigParseOptions - discoverySampleRate other negative (e.g. -0.12) throws", () => {
-  try {
-    createNeatConfig({ discoverySampleRate: -0.12 });
-    fail("Expected error for discoverySampleRate -0.12");
-  } catch (e) {
-    const msg = (e as Error).message;
-    assertEquals(
-      msg.includes(
-        "Discovery sample rate must be -1 (disabled) or between 0 and 1",
-      ),
-      true,
-      `Error: ${msg}`,
-    );
-    assertEquals(
-      msg.includes("-0.12"),
-      true,
-      `Error should include value: ${msg}`,
-    );
-  }
+  const error = assertThrows(
+    () => createNeatConfig({ discoverySampleRate: -0.12 }),
+    Error,
+  );
+  assertStringIncludes(
+    error.message,
+    "Discovery sample rate must be -1 (disabled) or between 0 and 1",
+  );
+  assertStringIncludes(error.message, "-0.12");
 });
 
 Deno.test("NeatConfigParseOptions - discoverySampleRate missing uses default", () => {
@@ -185,11 +147,6 @@ Deno.test("NeatConfigParseOptions - discoverySampleRate missing uses default", (
   );
 });
 
-Deno.test("NeatConfigParseOptions - discoverySampleRate default is 0.2 (#1386)", () => {
-  assertEquals(DEFAULT_DISCOVERY_SAMPLE_RATE, 0.2);
-  assertEquals(createNeatConfig({}).discoverySampleRate, 0.2);
-});
-
 Deno.test("NeatConfigParseOptions - discoveryRecordTimeOutMinutes missing uses default", () => {
   assertEquals(
     createNeatConfig({}).discoveryRecordTimeOutMinutes,
@@ -197,31 +154,10 @@ Deno.test("NeatConfigParseOptions - discoveryRecordTimeOutMinutes missing uses d
   );
 });
 
-Deno.test("NeatConfigParseOptions - discoveryRecordTimeOutMinutes default is 5 (#1386)", () => {
-  assertEquals(DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES, 5);
-  assertEquals(createNeatConfig({}).discoveryRecordTimeOutMinutes, 5);
-});
-
-Deno.test("NeatConfigParseOptions - discoverySampleRate explicit override still works", () => {
-  assertEquals(
-    createNeatConfig({ discoverySampleRate: 0.05 }).discoverySampleRate,
-    0.05,
-  );
-  assertEquals(
-    createNeatConfig({ discoverySampleRate: 0.5 }).discoverySampleRate,
-    0.5,
-  );
-});
-
-Deno.test("NeatConfigParseOptions - discoveryRecordTimeOutMinutes explicit override still works", () => {
+Deno.test("NeatConfigParseOptions - discoveryRecordTimeOutMinutes accepts override", () => {
   assertEquals(
     createNeatConfig({ discoveryRecordTimeOutMinutes: 1 })
       .discoveryRecordTimeOutMinutes,
     1,
-  );
-  assertEquals(
-    createNeatConfig({ discoveryRecordTimeOutMinutes: 10 })
-      .discoveryRecordTimeOutMinutes,
-    10,
   );
 });

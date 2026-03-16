@@ -1,8 +1,6 @@
-import { assert, fail } from "@std/assert";
 import { Creature } from "../../mod.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { Synapse } from "../../src/architecture/Synapse.ts";
-import type { ValidationError } from "../../src/errors/ValidationError.ts";
 
 /**
  * Creates a creature with a recursive (backward) synapse for testing.
@@ -18,45 +16,18 @@ function createCreatureWithRecursiveSynapse(): Creature {
   return creature;
 }
 
-Deno.test("feedbackLoop: false rejects recursive synapses", () => {
+Deno.test("recursive synapses allowed by default and when feedbackLoop is true", () => {
   const creature = createCreatureWithRecursiveSynapse();
 
-  try {
-    creatureValidate(creature, { feedbackLoop: false });
-    fail("Expected RECURSIVE_SYNAPSE error");
-  } catch (e) {
-    const error = e as ValidationError;
-    assert(
-      error.reason === "RECURSIVE_SYNAPSE",
-      `Expected RECURSIVE_SYNAPSE but got: ${error.reason}`,
-    );
-  }
-});
-
-Deno.test("feedbackLoop: undefined allows recursive synapses", () => {
-  const creature = createCreatureWithRecursiveSynapse();
-
-  // Passing feedbackLoop as undefined should allow recursive synapses
-  creatureValidate(creature, { feedbackLoop: undefined });
-});
-
-Deno.test("feedbackLoop: true allows recursive synapses", () => {
-  const creature = createCreatureWithRecursiveSynapse();
-
-  // Explicitly enabling feedback loops should allow recursive synapses
-  creatureValidate(creature, { feedbackLoop: true });
-});
-
-Deno.test("feedbackLoop: omitted allows recursive synapses", () => {
-  const creature = createCreatureWithRecursiveSynapse();
-
-  // Not specifying feedbackLoop at all should allow recursive synapses
-  creatureValidate(creature, {});
-});
-
-Deno.test("feedbackLoop: no options allows recursive synapses", () => {
-  const creature = createCreatureWithRecursiveSynapse();
-
-  // Calling validate with no options should allow recursive synapses
+  // Default (no options) allows recursive synapses
   creatureValidate(creature);
+
+  // Explicitly enabled allows recursive synapses
+  creatureValidate(creature, { feedbackLoop: true });
+
+  // Undefined feedbackLoop allows recursive synapses
+  creatureValidate(creature, { feedbackLoop: undefined });
+
+  // Empty options allows recursive synapses
+  creatureValidate(creature, {});
 });

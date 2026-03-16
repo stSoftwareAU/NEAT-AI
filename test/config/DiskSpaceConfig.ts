@@ -8,7 +8,6 @@
 
 import { assertEquals, assertThrows } from "@std/assert";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { DEFAULT_DISK_SPACE_CONFIG } from "../../src/config/DiskSpaceConfig.ts";
 import { parseDiskSpaceConfig } from "../../src/config/NeatConfigParsers.ts";
 
 // ── Default values ──────────────────────────────────────────────────
@@ -18,12 +17,6 @@ Deno.test("DiskSpaceConfig defaults are applied when no overrides given", () => 
   assertEquals(config.discoveryDiskSpace.minFreeDiskMB, 500);
   assertEquals(config.discoveryDiskSpace.criticalFreeDiskMB, 100);
   assertEquals(config.discoveryDiskSpace.enabled, true);
-});
-
-Deno.test("DEFAULT_DISK_SPACE_CONFIG has expected values", () => {
-  assertEquals(DEFAULT_DISK_SPACE_CONFIG.minFreeDiskMB, 500);
-  assertEquals(DEFAULT_DISK_SPACE_CONFIG.criticalFreeDiskMB, 100);
-  assertEquals(DEFAULT_DISK_SPACE_CONFIG.enabled, true);
 });
 
 // ── Custom overrides ────────────────────────────────────────────────

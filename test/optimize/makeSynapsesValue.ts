@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { makeSynapsesValue } from "../../src/optimize/makeSynapsesValue.ts";
@@ -23,52 +23,56 @@ function makeTestCreature(): Creature {
   return Creature.fromJSON(json);
 }
 
-Deno.test("makeSynapsesValue - constant neuron returns pre-computed value", () => {
+Deno.test("makeSynapsesValue - constant neuron returns bias * weight as literal", () => {
   const creature = makeTestCreature();
   // Find synapse from const-1 to hidden-1
   const synapse = creature.synapses.find(
     (s) => creature.neurons[s.from].uuid === "const-1",
-  )!;
+  );
+  assert(synapse, "Synapse from const-1 must exist");
   const result = makeSynapsesValue(synapse, creature.neurons);
 
   // const-1 has bias=3, weight=2, so value = 3 * 2 = 6
   assertEquals(result, "6");
 });
 
-Deno.test("makeSynapsesValue - weight 1 returns activation reference only", () => {
+Deno.test("makeSynapsesValue - weight 1 returns activation index without multiplier", () => {
   const creature = makeTestCreature();
   // Find synapse from input-0 with weight=1
   const synapse = creature.synapses.find(
     (s) =>
       creature.neurons[s.from].uuid === "input-0" &&
       s.weight === 1,
-  )!;
+  );
+  assert(synapse, "Synapse from input-0 with weight=1 must exist");
   const result = makeSynapsesValue(synapse, creature.neurons);
 
   assertEquals(result, `a[${synapse.from}]`);
 });
 
-Deno.test("makeSynapsesValue - weight -1 returns negated activation", () => {
+Deno.test("makeSynapsesValue - weight -1 returns negated activation index", () => {
   const creature = makeTestCreature();
   // Find synapse from input-1 with weight=-1
   const synapse = creature.synapses.find(
     (s) =>
       creature.neurons[s.from].uuid === "input-1" &&
       s.weight === -1,
-  )!;
+  );
+  assert(synapse, "Synapse from input-1 with weight=-1 must exist");
   const result = makeSynapsesValue(synapse, creature.neurons);
 
   assertEquals(result, `-a[${synapse.from}]`);
 });
 
-Deno.test("makeSynapsesValue - arbitrary weight returns multiplication", () => {
+Deno.test("makeSynapsesValue - fractional weight returns activation * weight expression", () => {
   const creature = makeTestCreature();
   // Find synapse from hidden-1 to output-0 with weight=0.5
   const synapse = creature.synapses.find(
     (s) =>
       creature.neurons[s.from].uuid === "hidden-1" &&
       s.weight === 0.5,
-  )!;
+  );
+  assert(synapse, "Synapse from hidden-1 with weight=0.5 must exist");
   const result = makeSynapsesValue(synapse, creature.neurons);
 
   assertEquals(result, `a[${synapse.from}]*0.5`);

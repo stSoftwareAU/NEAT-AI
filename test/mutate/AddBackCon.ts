@@ -1,4 +1,4 @@
-import { assertEquals, assertFalse } from "@std/assert";
+import { assert, assertEquals, assertFalse } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { AddBackCon } from "../../src/mutate/AddBackCon.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
@@ -29,68 +29,90 @@ Deno.test("AddBackCon - should return false when no back connections available",
 
 Deno.test("AddBackCon - should add a back connection between hidden neurons", () => {
   // Create creature with two hidden neurons that do not yet connect to each other backwards
-  const creature = Creature.fromJSON({
-    neurons: [
-      { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 2 },
-      { type: "hidden", squash: "LOGISTIC", bias: 0.3, index: 3 },
-      { type: "output", squash: "LOGISTIC", bias: 0.1, index: 4 },
-    ],
-    synapses: [
-      { from: 0, to: 2, weight: 1.0 },
-      { from: 1, to: 3, weight: 1.0 },
-      { from: 2, to: 4, weight: 0.8 },
-      { from: 3, to: 4, weight: 0.9 },
-    ],
-    input: 2,
-    output: 1,
-  });
+  let mutationSucceeded = false;
 
-  creatureValidate(creature);
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const creature = Creature.fromJSON({
+      neurons: [
+        { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 2 },
+        { type: "hidden", squash: "LOGISTIC", bias: 0.3, index: 3 },
+        { type: "output", squash: "LOGISTIC", bias: 0.1, index: 4 },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 1.0 },
+        { from: 1, to: 3, weight: 1.0 },
+        { from: 2, to: 4, weight: 0.8 },
+        { from: 3, to: 4, weight: 0.9 },
+      ],
+      input: 2,
+      output: 1,
+    });
 
-  const synapsesBeforeCount = creature.synapses.length;
+    creatureValidate(creature);
 
-  // AddBackCon adds connections where fromIndx < toIndx but from a higher hidden neuron
-  // In this topology, there are available pairs since neurons 2 and 3 are not fully connected
-  const mutator = new AddBackCon(creature);
-  const changed = mutator.mutate();
+    const synapsesBeforeCount = creature.synapses.length;
 
-  if (changed) {
-    assertEquals(
-      creature.synapses.length,
-      synapsesBeforeCount + 1,
-      "Should have one more synapse after successful mutation",
-    );
+    const mutator = new AddBackCon(creature);
+    const changed = mutator.mutate();
+
+    creatureValidate(creature);
+
+    if (changed) {
+      assertEquals(
+        creature.synapses.length,
+        synapsesBeforeCount + 1,
+        "Should have one more synapse after successful mutation",
+      );
+      mutationSucceeded = true;
+      break;
+    }
   }
-  creatureValidate(creature);
+
+  assert(
+    mutationSucceeded,
+    "AddBackCon should succeed at least once in 50 attempts",
+  );
 });
 
 Deno.test("AddBackCon - should delete memetic property after mutation", () => {
-  const creature = Creature.fromJSON({
-    neurons: [
-      { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 2 },
-      { type: "hidden", squash: "LOGISTIC", bias: 0.3, index: 3 },
-      { type: "output", squash: "LOGISTIC", bias: 0.1, index: 4 },
-    ],
-    synapses: [
-      { from: 0, to: 2, weight: 1.0 },
-      { from: 1, to: 3, weight: 1.0 },
-      { from: 2, to: 4, weight: 0.8 },
-      { from: 3, to: 4, weight: 0.9 },
-    ],
-    input: 2,
-    output: 1,
-  });
+  let mutationSucceeded = false;
 
-  creature.memetic = { test: true } as unknown as typeof creature.memetic;
-  creatureValidate(creature);
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const creature = Creature.fromJSON({
+      neurons: [
+        { type: "hidden", squash: "LOGISTIC", bias: 0.5, index: 2 },
+        { type: "hidden", squash: "LOGISTIC", bias: 0.3, index: 3 },
+        { type: "output", squash: "LOGISTIC", bias: 0.1, index: 4 },
+      ],
+      synapses: [
+        { from: 0, to: 2, weight: 1.0 },
+        { from: 1, to: 3, weight: 1.0 },
+        { from: 2, to: 4, weight: 0.8 },
+        { from: 3, to: 4, weight: 0.9 },
+      ],
+      input: 2,
+      output: 1,
+    });
 
-  const mutator = new AddBackCon(creature);
-  const changed = mutator.mutate();
+    creature.memetic = { test: true } as unknown as typeof creature.memetic;
+    creatureValidate(creature);
 
-  if (changed) {
-    assertEquals(creature.memetic, undefined, "Memetic should be deleted");
+    const mutator = new AddBackCon(creature);
+    const changed = mutator.mutate();
+
+    creatureValidate(creature);
+
+    if (changed) {
+      assertEquals(creature.memetic, undefined, "Memetic should be deleted");
+      mutationSucceeded = true;
+      break;
+    }
   }
-  creatureValidate(creature);
+
+  assert(
+    mutationSucceeded,
+    "AddBackCon should succeed at least once in 50 attempts",
+  );
 });
 
 Deno.test("AddBackCon - should skip constant neurons", () => {
@@ -166,10 +188,31 @@ Deno.test("AddBackCon - focus list limits available connections", () => {
   });
 
   creatureValidate(creature);
+  const synapsesBeforeCount = creature.synapses.length;
 
   // Only focus on output neuron (index 4), which limits available pairs
   const mutator = new AddBackCon(creature);
-  mutator.mutate([4]);
+  const changed = mutator.mutate([4]);
 
   creatureValidate(creature);
+
+  if (changed) {
+    // If mutation succeeded, a new synapse should have been added
+    assertEquals(
+      creature.synapses.length,
+      synapsesBeforeCount + 1,
+      "Should have one more synapse after successful mutation",
+    );
+
+    // Any new back connection should involve a neuron in focus (or transitively)
+    const newSynapses = creature.synapses.filter(
+      (s) =>
+        s.from === 3 && s.to === 2 || s.from === 4 && s.to === 2 ||
+        s.from === 4 && s.to === 3,
+    );
+    assert(
+      newSynapses.length > 0,
+      "New back connection should involve neurons related to focus list",
+    );
+  }
 });

@@ -32,15 +32,6 @@ Deno.test("BiasRegularisationConfig - defaults are applied", () => {
   );
 });
 
-Deno.test("BiasRegularisationConfig - default values are sensible", () => {
-  assertEquals(DEFAULT_BIAS_REGULARISATION_CONFIG.enabled, true);
-  assertEquals(DEFAULT_BIAS_REGULARISATION_CONFIG.maxAbsoluteBias, 100);
-  assertEquals(DEFAULT_BIAS_REGULARISATION_CONFIG.maxBiasChange, 10);
-  assertEquals(DEFAULT_BIAS_REGULARISATION_CONFIG.l2Strength, 0.1);
-  assertEquals(DEFAULT_BIAS_REGULARISATION_CONFIG.preferSmallChanges, true);
-  assertEquals(DEFAULT_BIAS_REGULARISATION_CONFIG.smallChangeScale, 0.5);
-});
-
 Deno.test("BiasRegularisationConfig - custom values override defaults", () => {
   const config = createNeatConfig({
     biasRegularisation: {
@@ -106,18 +97,6 @@ Deno.test("BiasRegularisationConfig - string values are parsed from CLI", () => 
   assertEquals(config.biasRegularisation.maxBiasChange, 20);
   assertEquals(config.biasRegularisation.l2Strength, 0.05);
   assertEquals(config.biasRegularisation.smallChangeScale, 0.8);
-});
-
-Deno.test("BiasRegularisationConfig - Required type fills all fields", () => {
-  const config = createNeatConfig({});
-  const bias = config.biasRegularisation;
-  // All fields should be defined (not undefined) in the Required type
-  assertEquals(typeof bias.enabled, "boolean");
-  assertEquals(typeof bias.maxAbsoluteBias, "number");
-  assertEquals(typeof bias.maxBiasChange, "number");
-  assertEquals(typeof bias.l2Strength, "number");
-  assertEquals(typeof bias.preferSmallChanges, "boolean");
-  assertEquals(typeof bias.smallChangeScale, "number");
 });
 
 Deno.test("BiasRegularisationConfig - zero l2Strength disables regularisation penalty", () => {

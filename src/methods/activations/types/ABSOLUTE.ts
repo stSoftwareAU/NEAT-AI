@@ -112,11 +112,9 @@ export class ABSOLUTE implements ActivationInterface, UnSquashInterface {
     const absInput = Math.abs(rawInput);
     const absWeight = Math.abs(weight);
 
-    // const nearZeroInput = absInput < 1;
     const veryLargeInput = absInput > 1000;
     const tinyWeight = absWeight < 1e-3;
 
-    // if (nearZeroInput) return 0; // raw input is ambiguous
     if (veryLargeInput && tinyWeight) return 0; // raw input extreme, but weight could move
 
     return 1;

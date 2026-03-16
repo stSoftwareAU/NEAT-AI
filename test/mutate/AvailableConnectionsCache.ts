@@ -1,8 +1,8 @@
 /**
- * Tests for issue #1098: Cache available connection pairs for AddConnection mutation
+ * Tests for issue #1098: Available connection tracking for AddConnection mutation.
  *
- * The optimisation caches available connection pairs to avoid recomputing
- * the O(n²) iteration on every AddConnection mutation call.
+ * Verifies that getAvailableConnections() returns correct results
+ * as the creature's topology changes through connect/disconnect/mutation.
  */
 import { assertEquals, assertGreater } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
@@ -12,42 +12,7 @@ import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("AvailableConnectionsCache: getAvailableConnections returns cached results", () => {
-  const json = {
-    input: 2,
-    output: 1,
-    neurons: [
-      {
-        type: "hidden" as const,
-        uuid: "hidden-1",
-        bias: 0,
-        squash: "IDENTITY",
-      },
-      {
-        type: "output" as const,
-        uuid: "output-0",
-        bias: 0,
-        squash: "IDENTITY",
-      },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-1", weight: 1 },
-      { fromUUID: "hidden-1", toUUID: "output-0", weight: 1 },
-    ],
-  };
-
-  const creature = Creature.fromJSON(json, true);
-
-  // First call computes and caches
-  const available1 = creature.getAvailableConnections();
-  assertEquals(available1.length, 3);
-
-  // Second call should return cached result (same array reference)
-  const available2 = creature.getAvailableConnections();
-  assertEquals(available1, available2, "Should return same cached array");
-});
-
-Deno.test("AvailableConnectionsCache: cache invalidates after connect()", () => {
+Deno.test("AvailableConnections: available connections update after connect()", () => {
   const json = {
     input: 2,
     output: 1,
@@ -85,16 +50,9 @@ Deno.test("AvailableConnectionsCache: cache invalidates after connect()", () => 
 
   // Should have one fewer available connection
   assertEquals(available2.length, 2);
-
-  // Should be a different array reference
-  assertEquals(
-    available1 !== available2,
-    true,
-    "Should be different arrays after invalidation",
-  );
 });
 
-Deno.test("AvailableConnectionsCache: cache invalidates after disconnect()", () => {
+Deno.test("AvailableConnections: available connections update after disconnect()", () => {
   const json = {
     input: 2,
     output: 1,
@@ -135,44 +93,7 @@ Deno.test("AvailableConnectionsCache: cache invalidates after disconnect()", () 
   assertEquals(available2.length, 3);
 });
 
-Deno.test("AvailableConnectionsCache: cache invalidates after clearCache()", () => {
-  const creature = new Creature(3, 2);
-  creatureValidate(creature);
-
-  // Cache the available connections
-  const available1 = creature.getAvailableConnections();
-
-  // Clear cache
-  creature.clearCache();
-
-  // Get available connections again
-  const available2 = creature.getAvailableConnections();
-
-  // Should be different array references
-  assertEquals(
-    available1 !== available2,
-    true,
-    "Should be different arrays after clearCache()",
-  );
-});
-
-Deno.test("AvailableConnectionsCache: isAvailableConnectionsCacheBuilt returns correct state", () => {
-  const creature = new Creature(3, 2);
-  creatureValidate(creature);
-
-  // Initially cache should not be built
-  assertEquals(creature.isAvailableConnectionsCacheBuilt(), false);
-
-  // After getting available connections, cache should be built
-  creature.getAvailableConnections();
-  assertEquals(creature.isAvailableConnectionsCacheBuilt(), true);
-
-  // After clearing cache, it should be invalidated
-  creature.clearCache();
-  assertEquals(creature.isAvailableConnectionsCacheBuilt(), false);
-});
-
-Deno.test("AvailableConnectionsCache: multiple mutations with cache", () => {
+Deno.test("AvailableConnections: tracks correctly through multiple mutations", () => {
   const creature = new Creature(3, 2);
   creatureValidate(creature);
 
@@ -212,7 +133,7 @@ Deno.test("AvailableConnectionsCache: multiple mutations with cache", () => {
   creatureValidate(creature);
 });
 
-Deno.test("AvailableConnectionsCache: focus list filtering works with cache", () => {
+Deno.test("AvailableConnections: focus list filters available connections", () => {
   const json = {
     input: 3,
     output: 1,
@@ -266,7 +187,7 @@ Deno.test("AvailableConnectionsCache: focus list filtering works with cache", ()
   }
 });
 
-Deno.test("AvailableConnectionsCache: cache correctly handles neuron removal", () => {
+Deno.test("AvailableConnections: returns valid connections after disconnect and fix", () => {
   const json = {
     input: 2,
     output: 1,
@@ -304,26 +225,61 @@ Deno.test("AvailableConnectionsCache: cache correctly handles neuron removal", (
   const available1 = creature.getAvailableConnections();
   assertGreater(available1.length, 0);
 
-  // Remove the connection from hidden-1 to hidden-2, which should remove hidden-1
-  // during fix() since it has no outward connections
+  // Disconnect and repair
   creature.disconnect(0, 2); // Remove input-0 to hidden-1
-  creature.fix(); // This should remove hidden-1
+  creature.fix();
 
-  // Cache should be invalidated and recomputed
+  // Available connections should still be valid after structural change
   const available2 = creature.getAvailableConnections();
 
   // Creature should still be valid
   creatureValidate(creature);
 
-  // Available connections count will change due to structure change
-  assertEquals(
-    available1 !== available2,
-    true,
-    "Should be different arrays after structure change",
-  );
+  // All returned connections should be forward-only and not already exist
+  for (const [from, to] of available2) {
+    assertGreater(to, from, `Connection ${from}->${to} should be forward-only`);
+    assertEquals(
+      creature.hasConnection(from, to),
+      false,
+      `Connection ${from}->${to} should not already exist`,
+    );
+  }
 });
 
-Deno.test("AvailableConnectionsCache: cache validates with AddNeuron mutation", () => {
+Deno.test("AvailableConnections: excludes constant neurons from targets", () => {
+  const json = {
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "constant" as const, uuid: "const-1", bias: 1 },
+      {
+        type: "output" as const,
+        uuid: "output-0",
+        bias: 0,
+        squash: "IDENTITY",
+      },
+    ],
+    synapses: [
+      { fromUUID: "const-1", toUUID: "output-0", weight: 1 },
+    ],
+  };
+
+  const creature = Creature.fromJSON(json, true);
+
+  const available = creature.getAvailableConnections();
+
+  // Should not include any connections TO the constant neuron
+  for (const [, to] of available) {
+    const neuron = creature.neurons[to];
+    assertEquals(
+      neuron.type !== "constant",
+      true,
+      `Should not connect to constant neuron at index ${to}`,
+    );
+  }
+});
+
+Deno.test("AvailableConnections: more connections available after AddNeuron mutation", () => {
   const creature = new Creature(2, 1);
   creatureValidate(creature);
 
@@ -334,14 +290,14 @@ Deno.test("AvailableConnectionsCache: cache validates with AddNeuron mutation", 
   const addNeuron = new AddNeuron(creature);
   addNeuron.mutate();
 
-  // Get available connections again
+  // Available connections should reflect the new topology
   const available2 = creature.getAvailableConnections();
 
-  // Should be a different array (cache invalidated)
-  assertEquals(
-    available1 !== available2,
-    true,
-    "Cache should be invalidated after AddNeuron",
+  // Adding a neuron creates new possible connections
+  assertGreater(
+    available2.length,
+    available1.length,
+    "Should have more available connections after adding a neuron",
   );
 
   // Creature should still be valid

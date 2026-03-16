@@ -33,7 +33,7 @@ function makeOutput(input: number[]) {
   return [Math.PI * input[1]];
 }
 
-Deno.test("PI-repeat", () => {
+Deno.test("PI: repeated propagate-update cycles converge to PI*input target", () => {
   const creature = makeCreature();
   const traceDir = ".test/PI-repeat";
   ensureDirSync(traceDir);
@@ -72,7 +72,7 @@ Deno.test("PI-repeat", () => {
   assertAlmostEquals(Math.PI, outA2[0], 0.05);
 });
 
-Deno.test("PI-single", () => {
+Deno.test("PI: single propagate-update cycle moves output towards PI*input target", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
   ensureDirSync(traceDir);
@@ -132,7 +132,7 @@ Deno.test("PI-single", () => {
   );
 });
 
-Deno.test("PI Multiple", () => {
+Deno.test("PI: converges toward PI*input after 1000 random training samples", () => {
   const creature = makeCreature();
   const traceDir = ".trace";
   ensureDirSync(traceDir);

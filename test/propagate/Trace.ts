@@ -1,7 +1,5 @@
-import { yellow } from "@std/fmt/colors";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 
@@ -28,23 +26,22 @@ function checkMemetic(creature: Creature) {
   assertAlmostEquals(creature.memetic.weights["input-115"][1].weight, 0.1234);
 }
 
-Deno.test("Trace-load-memetic", () => {
+Deno.test("Trace - loads creature with memetic data from JSON", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
   checkMemetic(creature);
 });
 
-Deno.test("Trace-load-traces", () => {
+Deno.test("Trace - loads creature trace state with correct node count", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
   const nodeState = creature.state.node(999);
-  console.info(nodeState);
   assertEquals(nodeState.count, 1386);
 });
 
-Deno.test("Trace-export-memetic", () => {
+Deno.test("Trace - traceJSON round-trip preserves memetic data", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
@@ -52,7 +49,7 @@ Deno.test("Trace-export-memetic", () => {
   checkMemetic(creature2);
 });
 
-Deno.test("export-memetic", () => {
+Deno.test("Trace - exportJSON round-trip preserves memetic data", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
@@ -60,117 +57,47 @@ Deno.test("export-memetic", () => {
   checkMemetic(creature2);
 });
 
-Deno.test("Trace", () => {
+Deno.test("Trace - applyLearnings modifies creature and remains valid", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
   creature.validate();
-  const json = creature.exportJSON();
+  const jsonBefore = creature.exportJSON();
 
-  stats(json);
   const config = createBackPropagationConfig({
     learningRate: 0.02,
   });
   const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   creature.applyLearnings(config, sparseConfig);
   creature.validate();
-  const json2 = creature.exportJSON();
-  stats(json2);
+  const jsonAfter = creature.exportJSON();
 
-  Deno.writeTextFileSync(
-    "test/data/.learned.json",
-    JSON.stringify(json2, null, 1),
+  // Verify neuron count is preserved (synapses may be pruned)
+  assertEquals(jsonAfter.neurons.length, jsonBefore.neurons.length);
+
+  // Verify that learning modified the creature (weights, biases, or synapse count changed)
+  const structureChanged =
+    jsonAfter.synapses.length !== jsonBefore.synapses.length;
+
+  let valuesChanged = false;
+  if (!structureChanged) {
+    for (let i = 0; i < jsonBefore.synapses.length; i++) {
+      if (jsonBefore.synapses[i].weight !== jsonAfter.synapses[i].weight) {
+        valuesChanged = true;
+        break;
+      }
+    }
+    if (!valuesChanged) {
+      for (let i = 0; i < jsonBefore.neurons.length; i++) {
+        if (jsonBefore.neurons[i].bias !== jsonAfter.neurons[i].bias) {
+          valuesChanged = true;
+          break;
+        }
+      }
+    }
+  }
+  assert(
+    structureChanged || valuesChanged,
+    "applyLearnings should modify at least one weight, bias, or synapse",
   );
 });
-
-function stats(creature: CreatureExport) {
-  const biases: number[] = [];
-  const weights: number[] = [];
-
-  creature.neurons.forEach((neuron) => {
-    if (neuron.bias) {
-      biases.push(neuron.bias);
-    }
-  });
-  creature.synapses.forEach((s) => {
-    if (s.weight) {
-      weights.push(s.weight);
-    }
-  });
-
-  const sortedBiases = [...biases].sort((a, b) => a - b);
-  const sortedWeights = [...weights].sort((a, b) => a - b);
-
-  const biasRange = [
-    quantile(sortedBiases, 0.025),
-    quantile(sortedBiases, 0.975),
-  ];
-
-  console.info(
-    `Bias Min ${yellow(sortedBiases[0].toFixed(3))}, Max: ${
-      yellow(sortedBiases[sortedBiases.length - 1].toFixed(3))
-    }`,
-  );
-  console.info(`Bias range for 95% of data: ${biasRange}`);
-
-  const weightRange = [
-    quantile(sortedWeights, 0.025),
-    quantile(sortedWeights, 0.975),
-  ];
-  console.info(
-    `Weight Min ${yellow(sortedWeights[0].toFixed(3))}, Max: ${
-      yellow(sortedWeights[sortedWeights.length - 1].toFixed(3))
-    }`,
-  );
-  console.info(`Weight range for 95% of data: ${weightRange}`);
-
-  const biasMean = mean(biases);
-  const weightMean = mean(weights);
-
-  const biasMedian = median(sortedBiases);
-  const weightMedian = median(sortedWeights);
-
-  const biasStdDev = stdDev(biases);
-  const weightStdDev = stdDev(weights);
-
-  console.info(`Bias mean: ${biasMean}`);
-  console.info(`Weight mean: ${weightMean}`);
-
-  console.info(`Bias median: ${biasMedian}`);
-  console.info(`Weight median: ${weightMedian}`);
-
-  console.info(`Bias standard deviation: ${biasStdDev}`);
-  console.info(`Weight standard deviation: ${weightStdDev}`);
-}
-
-function mean(arr: number[]): number {
-  return arr.reduce((a, b) => a + b, 0) / arr.length;
-}
-
-function median(arr: number[]): number {
-  const mid = Math.floor(arr.length / 2);
-  const numbs = [...arr].sort((a, b) => a - b);
-  return arr.length % 2 !== 0 ? numbs[mid] : (numbs[mid - 1] + numbs[mid]) / 2;
-}
-
-function stdDev(arr: number[]): number {
-  const arrMean = mean(arr);
-  const sum = arr.reduce((a, b) => a + Math.pow(b - arrMean, 2), 0);
-  return Math.sqrt(sum / (arr.length - 1));
-}
-
-/**
- * Quantiles are points in a distribution that relate to the rank order of values in that distribution. For a sample, you can find any quantile by sorting the sample.
- * The middle value of the sorted sample (middle quantile, 50th percentile) is known as the median. The limits are the minimum and maximum values.
- */
-function quantile(arr: number[], q: number) {
-  const sorted = arr.sort((a, b) => a - b);
-  const pos = (sorted.length - 1) * q;
-  const base = Math.floor(pos);
-  const rest = pos - base;
-  if (sorted[base + 1] !== undefined) {
-    return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
-  } else {
-    return sorted[base];
-  }
-}

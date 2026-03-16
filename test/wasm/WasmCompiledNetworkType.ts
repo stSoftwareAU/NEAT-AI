@@ -33,7 +33,6 @@ await initWasmActivation();
 Deno.test("getCompiledNetworkClass returns a typed constructor", () => {
   const ctor: WasmCompiledNetworkConstructor | null = getCompiledNetworkClass();
   assertExists(ctor, "CompiledNetwork constructor should be available");
-  assertEquals(typeof ctor, "function");
 });
 
 Deno.test("WasmCompiledNetworkConstructor creates a valid network", () => {
@@ -44,9 +43,17 @@ Deno.test("WasmCompiledNetworkConstructor creates a valid network", () => {
   const compiled = compileCreatureToWasm(creature);
   const network: WasmCompiledNetwork = new ctor(compiled.data);
 
-  assert(network.num_neurons > 0, "Should have neurons");
-  assert(network.num_inputs > 0, "Should have inputs");
-  assert(network.num_synapses >= 0, "Synapses should be non-negative");
+  assertEquals(network.num_inputs, 2, "Should have 2 inputs");
+  assert(
+    network.num_neurons >= 3,
+    `Expected at least 3 neurons (2 input + 1 output), got ${network.num_neurons}`,
+  );
+  // Creature(2, 1) connects each of the 2 inputs to the 1 output: 2 synapses
+  assertEquals(
+    network.num_synapses,
+    2,
+    `Expected 2 synapses for a 2-input, 1-output creature, got ${network.num_synapses}`,
+  );
 
   network.free();
 });
@@ -70,7 +77,7 @@ Deno.test("WasmCompiledNetwork.activate returns correct output length", () => {
   network.free();
 });
 
-Deno.test("WasmCompiledNetwork.activate_into writes to output buffer", () => {
+Deno.test("WasmCompiledNetwork.activate_into produces same output as activate", () => {
   const ctor = getCompiledNetworkClass();
   assertExists(ctor);
 
@@ -79,14 +86,15 @@ Deno.test("WasmCompiledNetwork.activate_into writes to output buffer", () => {
   const network: WasmCompiledNetwork = new ctor(compiled.data);
 
   const input = new Float32Array([0.5, 0.3]);
-  const output = new Float32Array(1);
-  network.activate_into(input, output);
-  assert(isFinite(output[0]), "Output should be finite");
+  const directOutput = network.activate(input, 1);
+  const intoOutput = new Float32Array(1);
+  network.activate_into(input, intoOutput);
+  assertAlmostEquals(intoOutput[0], directOutput[0], 1e-6);
 
   network.free();
 });
 
-Deno.test("WasmCompiledNetwork.activate_view returns a Float32Array", () => {
+Deno.test("WasmCompiledNetwork.activate_view produces same output as activate", () => {
   const ctor = getCompiledNetworkClass();
   assertExists(ctor);
 
@@ -95,14 +103,15 @@ Deno.test("WasmCompiledNetwork.activate_view returns a Float32Array", () => {
   const network: WasmCompiledNetwork = new ctor(compiled.data);
 
   const input = new Float32Array([0.5, 0.3]);
+  const directOutput = network.activate(input, 1);
   const view = network.activate_view(input, 1);
   assertEquals(view.length, 1);
-  assert(isFinite(view[0]), "View output should be finite");
+  assertAlmostEquals(view[0], directOutput[0], 1e-6);
 
   network.free();
 });
 
-Deno.test("WasmCompiledNetwork.activate_and_trace returns trace data", () => {
+Deno.test("WasmCompiledNetwork.activate_and_trace returns output and neuron data", () => {
   const ctor = getCompiledNetworkClass();
   assertExists(ctor);
 
@@ -112,7 +121,11 @@ Deno.test("WasmCompiledNetwork.activate_and_trace returns trace data", () => {
 
   const input = new Float32Array([0.5, 0.3]);
   const result = network.activate_and_trace(input, 1);
-  assert(result.length > 0, "Trace result should have data");
+  // Trace should include at least one entry per neuron (inputs + hidden + output)
+  assert(
+    result.length >= network.num_neurons,
+    `Trace should have at least ${network.num_neurons} entries, got ${result.length}`,
+  );
 
   network.free();
 });
@@ -155,7 +168,7 @@ Deno.test("WasmCompiledNetwork.activate results match WasmCreatureActivation", (
   activation.free();
 });
 
-Deno.test("WasmCompiledNetwork readonly properties are numbers", () => {
+Deno.test("WasmCompiledNetwork readonly properties match creature topology", () => {
   const ctor = getCompiledNetworkClass();
   assertExists(ctor);
 
@@ -163,10 +176,18 @@ Deno.test("WasmCompiledNetwork readonly properties are numbers", () => {
   const compiled = compileCreatureToWasm(creature);
   const network: WasmCompiledNetwork = new ctor(compiled.data);
 
-  assertEquals(typeof network.num_inputs, "number");
-  assertEquals(typeof network.num_neurons, "number");
-  assertEquals(typeof network.num_synapses, "number");
   assertEquals(network.num_inputs, 3);
+  // num_neurons includes inputs + outputs (at minimum)
+  assert(
+    network.num_neurons >= 5,
+    `Expected at least 5 neurons (3 input + 2 output), got ${network.num_neurons}`,
+  );
+  // Creature(3, 2) connects each of the 3 inputs to each of the 2 outputs: 6 synapses
+  assertEquals(
+    network.num_synapses,
+    6,
+    `Expected 6 synapses for a 3-input, 2-output creature, got ${network.num_synapses}`,
+  );
 
   network.free();
 });

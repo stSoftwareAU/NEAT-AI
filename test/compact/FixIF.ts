@@ -1,0 +1,145 @@
+import { assertAlmostEquals, fail } from "@std/assert";
+import { ensureDirSync } from "@std/fs";
+import { Creature, type CreatureExport } from "../../mod.ts";
+import { compactUnused } from "../../src/compact/CompactUnused.ts";
+import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+
+function makeCreature() {
+  const json: CreatureExport = {
+    neurons: [
+      { type: "hidden", uuid: "hidden-3", squash: "CLIPPED", bias: 2 },
+      { type: "hidden", uuid: "hidden-4", squash: "IF", bias: 0 },
+
+      {
+        type: "output",
+        squash: "IDENTITY",
+        uuid: "output-0",
+        bias: 1,
+      },
+      {
+        type: "output",
+        squash: "IDENTITY",
+        uuid: "output-1",
+        bias: 0,
+      },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-3", weight: -0.3 },
+      {
+        fromUUID: "input-0",
+        toUUID: "hidden-4",
+        weight: -0.3,
+        type: "condition",
+      },
+      { fromUUID: "input-1", toUUID: "hidden-3", weight: 0.3 },
+      {
+        fromUUID: "input-1",
+        toUUID: "hidden-4",
+        weight: 0.3,
+        type: "positive",
+      },
+
+      { fromUUID: "hidden-3", toUUID: "output-0", weight: 0.6 },
+      {
+        fromUUID: "hidden-3",
+        toUUID: "hidden-4",
+        weight: 0.3,
+        type: "negative",
+      },
+
+      { fromUUID: "hidden-4", toUUID: "output-1", weight: 0.7 },
+      { fromUUID: "input-2", toUUID: "output-1", weight: 0.8 },
+    ],
+    input: 3,
+    output: 2,
+  };
+  const creature = Creature.fromJSON(json);
+  creature.validate();
+
+  return creature;
+}
+
+function makeData() {
+  const inputs: number[][] = [];
+
+  for (let i = 1000; i--;) {
+    inputs.push([
+      Math.random() * 2 - 1,
+      Math.random() * 2 - 1,
+      Math.random() * 2 - 1,
+    ]);
+  }
+  return inputs;
+}
+
+Deno.test("compactUnused - behaviour preserved when IF-type neuron is compacted", () => {
+  const creature = makeCreature();
+  const data = makeData();
+
+  const outputs: Float32Array[] = new Array(data.length);
+  for (let i = data.length; i--;) {
+    outputs[i] = creature.activate(new Float32Array(data[i]), false);
+  }
+
+  const config = createBackPropagationConfig();
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  for (let i = data.length; i--;) {
+    const actual = creature.activateAndTrace(
+      new Float32Array(data[i]),
+      false,
+      sparseConfig,
+    );
+    creature.propagate(new Float32Array(outputs[i]), config, sparseConfig);
+    assertAlmostEquals(
+      actual[0],
+      outputs[i][0],
+      0.000_001,
+      `actual: ${actual[0]}, expected: ${outputs[i][0]}`,
+    );
+    assertAlmostEquals(
+      actual[1],
+      outputs[i][1],
+      0.000_001,
+      `actual: ${actual[1]}, expected: ${outputs[i][1]}`,
+    );
+  }
+
+  const traceDir = ".trace/compact/FixIF";
+  ensureDirSync(traceDir);
+
+  Deno.writeTextFileSync(
+    `${traceDir}/trace.json`,
+    JSON.stringify(creature.traceJSON(), null, 1),
+  );
+
+  const compacted = compactUnused(
+    creature.traceJSON(),
+    config.plankConstant,
+  );
+
+  if (!compacted) {
+    fail("Should have compacted");
+  }
+  Deno.writeTextFileSync(
+    `${traceDir}/compacted.json`,
+    JSON.stringify(compacted.exportJSON(), null, 1),
+  );
+
+  for (let i = data.length; i--;) {
+    const actual = compacted.activate(new Float32Array(data[i]), false);
+
+    assertAlmostEquals(
+      actual[0],
+      outputs[i][0],
+      0.000_001,
+      `actual: ${actual[0]}, expected: ${outputs[i][0]}`,
+    );
+    assertAlmostEquals(
+      actual[1],
+      outputs[i][1],
+      0.000_001,
+      `actual: ${actual[1]}, expected: ${outputs[i][1]}`,
+    );
+  }
+});

@@ -2,6 +2,7 @@ import { ActivationRange } from "@propagate/ActivationRange.ts";
 import { ErrorHelper } from "@propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
+import { safeZoneAdjustment } from "../SafeZoneAdjustment.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
@@ -104,56 +105,8 @@ export class BIPOLAR_SIGMOID implements ActivationInterface, UnSquashInterface {
     return ErrorHelper.calculateClampedError(error);
   }
 
-  /**
-   * BIPOLAR_SIGMOID Safe Zone Adjustment Logic
-   *
-   * The Bipolar Sigmoid function saturates near -1 and +1, where its derivative approaches 0.
-   * Meaningful learning only occurs in the central region, roughly between [-4, 4].
-   *
-   * Strategy:
-   * - If raw input is within [−4, 4], allow full propagation.
-   * - If raw input is outside and the error would worsen saturation, disallow propagation.
-   * - If weight is extreme and adjusting it would improve its magnitude, favour weight update.
-   * - Smoothly fade between 4–8 to prevent abrupt cutoff.
-   *
-   * @param rawInput Raw input before squashing
-   * @param error Backpropagated error signal
-   * @param weight Synapse weight
-   * @returns A float between 0 (don't propagate) and 1 (freely propagate)
-   */
-  safeZoneAdjustment(
-    rawInput: number,
-    error: number,
-    weight: number,
-  ): number {
-    if (!Number.isFinite(rawInput)) return 0;
-
-    const absRaw = Math.abs(rawInput);
-    const absWeight = Math.abs(weight);
-    const minWeight = 1e-3;
-    const maxWeight = 1e3;
-
-    const rawGettingWorse = (rawInput < -4 && error < 0) ||
-      (rawInput > 4 && error > 0);
-
-    const weightTooSmall = absWeight < minWeight;
-    const weightTooLarge = absWeight > maxWeight;
-    const weightImproving = (weightTooSmall && weight * error > 0) ||
-      (weightTooLarge && weight * error < 0);
-
-    if (!Number.isFinite(rawInput)) return 0;
+  safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
     if (!Number.isFinite(weight)) return 0;
-
-    if (!(-4 <= rawInput && rawInput <= 4) && rawGettingWorse) return 0;
-
-    if (-4 <= rawInput && rawInput <= 4) {
-      if ((weightTooSmall || weightTooLarge) && weightImproving) return 0;
-      return 1;
-    }
-
-    // Gradual fade out for raw inputs in [4, 8] or [-8, -4]
-    if (absRaw <= 8) return 1 - (absRaw - 4) / 4;
-
-    return 0;
+    return safeZoneAdjustment(rawInput, error, weight, -4, 4, 4);
   }
 }

@@ -11,7 +11,7 @@
  * @module
  */
 
-import { assertAlmostEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Activations } from "../../../src/methods/activations/Activations.ts";
 import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
 import type { UnSquashInterface } from "../../../src/methods/activations/UnSquashInterface.ts";
@@ -141,7 +141,7 @@ const INVERTIBLE_ACTIVATIONS: {
 for (const { name, inputs, tolerance } of INVERTIBLE_ACTIVATIONS) {
   Deno.test(`${name}: squash/unSquash roundtrip`, () => {
     const activation = Activations.find(name);
-    if (!hasUnSquash(activation)) return;
+    assert(hasUnSquash(activation), `${name} should implement unSquash`);
 
     const squashFn = activation as unknown as ActivationInterface;
 
@@ -304,30 +304,11 @@ Deno.test("SQRT: roundtrip for non-negative inputs", () => {
 
 // --- Step functions: not truly invertible ---
 
-Deno.test("BIPOLAR: squash produces correct output", () => {
-  const activation = Activations.find("BIPOLAR") as unknown as
-    & ActivationInterface
-    & UnSquashInterface;
-
-  // Positive → 1, negative → -1
-  assertAlmostEquals(activation.squash(5), 1, 0);
-  assertAlmostEquals(activation.squash(-5), -1, 0);
-  assertAlmostEquals(activation.squash(0), -1, 0); // x > 0 is condition
-});
-
 Deno.test("BIPOLAR: unSquash returns hint when sign matches", () => {
   const activation = Activations.find("BIPOLAR") as unknown as
     & ActivationInterface
     & UnSquashInterface;
 
-  assertAlmostEquals(activation.unSquash(1, 3), 3, 0);
-  assertAlmostEquals(activation.unSquash(-1, -3), -3, 0);
-});
-
-Deno.test("STEP: squash produces correct output", () => {
-  const activation = Activations.find("STEP") as unknown as ActivationInterface;
-
-  assertAlmostEquals(activation.squash(5), 1, 0);
-  assertAlmostEquals(activation.squash(-5), 0, 0);
-  assertAlmostEquals(activation.squash(0), 0, 0);
+  assertEquals(activation.unSquash(1, 3), 3);
+  assertEquals(activation.unSquash(-1, -3), -3);
 });

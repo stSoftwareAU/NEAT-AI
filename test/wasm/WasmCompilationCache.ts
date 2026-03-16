@@ -217,27 +217,40 @@ Deno.test("WasmCompilationCache: clear removes all entries", () => {
   creature2.dispose();
 });
 
-Deno.test("WasmCompilationCache: topology hash invalidated on mutation", () => {
-  const creature = createTestCreature(3, 2, [{ count: 4, squash: "TANH" }]);
+Deno.test("WasmCompilationCache: invalidateWasmCache causes recompilation on next access", () => {
+  // Use a unique topology (7 hidden neurons) to avoid interference from
+  // parallel tests that share the global compilation cache
+  const creature = createTestCreature(3, 2, [{ count: 7, squash: "LOGISTIC" }]);
 
-  // Get initial topology hash
-  const hash1 = CreatureUtil.getTopologyHash(creature);
-  assertExists(hash1, "Initial hash should exist");
+  // First compile — note the miss count before and after
+  const statsBefore = getWasmCompilationCacheStats();
+  getOrCompileWasmModule(creature);
+  const statsAfterFirst = getWasmCompilationCacheStats();
   assertEquals(
-    creature.topologyHash,
-    hash1,
-    "Hash should be cached on creature",
+    statsAfterFirst.misses,
+    statsBefore.misses + 1,
+    "First compile should be a cache miss",
   );
 
-  // Simulate structural mutation by clearing the hash
-  // (In real mutations, this happens via clearCache())
-  creature.clearCache();
-
-  // The cached topology hash should be invalidated
+  // Second compile with same creature — should be a cache hit
+  getOrCompileWasmModule(creature);
+  const statsAfterHit = getWasmCompilationCacheStats();
   assertEquals(
-    creature.topologyHash,
-    undefined,
-    "Topology hash should be undefined after clearCache",
+    statsAfterHit.hits,
+    statsAfterFirst.hits + 1,
+    "Second compile should be a cache hit",
+  );
+
+  // Invalidate the cache entry (simulates a structural mutation)
+  invalidateWasmCache(creature);
+
+  // Third compile — must be a miss since the cache entry was invalidated
+  getOrCompileWasmModule(creature);
+  const statsAfterInvalidate = getWasmCompilationCacheStats();
+  assertEquals(
+    statsAfterInvalidate.misses,
+    statsAfterHit.misses + 1,
+    "Compile after invalidation should be a cache miss",
   );
 
   creature.dispose();
@@ -449,5 +462,15 @@ Deno.test("WasmCompilationCache: works with minimal creatures", () => {
   const stats = getWasmCompilationCacheStats();
   assertEquals(stats.size, 1, "Cache should have 1 entry");
 
+  // Verify the compiled module actually produces finite output
+  const input = new Float32Array([0.5, -0.3]);
+  const output = module.activate(input);
+  assertEquals(output.length, 1, "Minimal creature should produce 1 output");
+  assert(
+    Number.isFinite(output[0]),
+    `Output should be finite, got ${output[0]}`,
+  );
+
+  module.free();
   creature.dispose();
 });

@@ -4,7 +4,7 @@
  *
  * Issue #1694
  */
-import { assertIsError, assertThrows } from "@std/assert";
+import { assertEquals, assertIsError, assertThrows } from "@std/assert";
 import { ActivationRange } from "../../src/propagate/ActivationRange.ts";
 import { ActivationError } from "../../src/errors/ActivationError.ts";
 
@@ -13,9 +13,11 @@ Deno.test("ActivationRange validate - throws ActivationError for out-of-range va
   const err = assertThrows(() => range.validate(2.0));
   assertIsError(err, ActivationError);
   const ae = err as ActivationError;
-  if (ae.reason !== "NON_FINITE_RESULT") {
-    throw new Error(`Expected reason NON_FINITE_RESULT, got ${ae.reason}`);
-  }
+  assertEquals(
+    ae.reason,
+    "NON_FINITE_RESULT",
+    "Expected NON_FINITE_RESULT reason",
+  );
 });
 
 Deno.test("ActivationRange validate - throws ActivationError for NaN", () => {
@@ -23,9 +25,11 @@ Deno.test("ActivationRange validate - throws ActivationError for NaN", () => {
   const err = assertThrows(() => range.validate(NaN));
   assertIsError(err, ActivationError);
   const ae = err as ActivationError;
-  if (ae.reason !== "NON_FINITE_RESULT") {
-    throw new Error(`Expected reason NON_FINITE_RESULT, got ${ae.reason}`);
-  }
+  assertEquals(
+    ae.reason,
+    "NON_FINITE_RESULT",
+    "Expected NON_FINITE_RESULT reason",
+  );
 });
 
 Deno.test("ActivationRange limit - throws ActivationError for NaN", () => {
@@ -33,9 +37,11 @@ Deno.test("ActivationRange limit - throws ActivationError for NaN", () => {
   const err = assertThrows(() => range.limit(NaN));
   assertIsError(err, ActivationError);
   const ae = err as ActivationError;
-  if (ae.reason !== "NON_FINITE_RESULT") {
-    throw new Error(`Expected reason NON_FINITE_RESULT, got ${ae.reason}`);
-  }
+  assertEquals(
+    ae.reason,
+    "NON_FINITE_RESULT",
+    "Expected NON_FINITE_RESULT reason",
+  );
 });
 
 Deno.test("ActivationRange limit - throws ActivationError for NaN with rawInput", () => {
@@ -43,7 +49,5 @@ Deno.test("ActivationRange limit - throws ActivationError for NaN with rawInput"
   const err = assertThrows(() => range.limit(NaN, 42));
   assertIsError(err, ActivationError);
   const ae = err as ActivationError;
-  if (ae.activation !== "ReLU") {
-    throw new Error(`Expected activation 'ReLU', got '${ae.activation}'`);
-  }
+  assertEquals(ae.activation, "ReLU", "Expected ReLU activation");
 });

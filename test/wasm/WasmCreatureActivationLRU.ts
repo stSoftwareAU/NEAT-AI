@@ -42,18 +42,18 @@ function createMinimalCreature(): Creature {
 // ---------------------------------------------------------------------------
 
 Deno.test("WasmCreatureActivationLRU: default capacity is 512", () => {
-  // Save and restore so we don't affect other tests
-  const original = getMaxCachedWasmCreatureActivations();
+  // Read the capacity before any test has altered it — relies on this test
+  // running against a freshly-loaded module.  We save and restore so that
+  // subsequent tests see a consistent value regardless of execution order.
+  const defaultCapacity = getMaxCachedWasmCreatureActivations();
   try {
-    // Reset to default by setting a known value then checking
-    setMaxCachedWasmCreatureActivations(512);
     assertEquals(
-      getMaxCachedWasmCreatureActivations(),
+      defaultCapacity,
       512,
       "Default capacity should be 512",
     );
   } finally {
-    setMaxCachedWasmCreatureActivations(original);
+    setMaxCachedWasmCreatureActivations(defaultCapacity);
   }
 });
 
@@ -109,14 +109,21 @@ Deno.test("WasmCreatureActivationLRU: capacity is floored to integer", () => {
 // Note usage tests
 // ---------------------------------------------------------------------------
 
-Deno.test("WasmCreatureActivationLRU: noteUse does not throw for valid creature", () => {
+Deno.test("WasmCreatureActivationLRU: noteUse registers creature in cache", () => {
   const original = getMaxCachedWasmCreatureActivations();
   try {
     setMaxCachedWasmCreatureActivations(512);
-    const creature = createMinimalCreature();
+    disposeAllCachedWasmActivations();
 
-    // Should not throw
+    const creature = createMinimalCreature();
+    const before = getCachedWasmActivationCount();
+
     noteWasmCreatureActivationUse(creature);
+
+    assert(
+      getCachedWasmActivationCount() > before,
+      "Cache count should increase after noteUse",
+    );
 
     creature.dispose();
   } finally {
@@ -124,16 +131,25 @@ Deno.test("WasmCreatureActivationLRU: noteUse does not throw for valid creature"
   }
 });
 
-Deno.test("WasmCreatureActivationLRU: noteUse for same creature multiple times is safe", () => {
+Deno.test("WasmCreatureActivationLRU: noteUse for same creature multiple times does not duplicate", () => {
   const original = getMaxCachedWasmCreatureActivations();
   try {
     setMaxCachedWasmCreatureActivations(512);
+    disposeAllCachedWasmActivations();
+
     const creature = createMinimalCreature();
 
-    // Calling noteUse multiple times should update the access time
+    noteWasmCreatureActivationUse(creature);
+    const countAfterFirst = getCachedWasmActivationCount();
+
     noteWasmCreatureActivationUse(creature);
     noteWasmCreatureActivationUse(creature);
-    noteWasmCreatureActivationUse(creature);
+
+    assertEquals(
+      getCachedWasmActivationCount(),
+      countAfterFirst,
+      "Repeated noteUse for same creature should not increase cache count",
+    );
 
     creature.dispose();
   } finally {
@@ -188,20 +204,59 @@ Deno.test("WasmCreatureActivationLRU: eviction triggers disposeWasm on oldest cr
   }
 });
 
-Deno.test("WasmCreatureActivationLRU: evictOldest with count 0 is a no-op", () => {
-  // Should not throw
-  evictOldestWasmCreatureActivations(0);
-});
-
-Deno.test("WasmCreatureActivationLRU: evictOldest with negative count is a no-op", () => {
-  // Should not throw
-  evictOldestWasmCreatureActivations(-5);
-});
-
-Deno.test("WasmCreatureActivationLRU: evictOldest does not throw for large count", () => {
+Deno.test("WasmCreatureActivationLRU: evictOldest with count 0 preserves cache", () => {
   const original = getMaxCachedWasmCreatureActivations();
   try {
     setMaxCachedWasmCreatureActivations(512);
+    disposeAllCachedWasmActivations();
+
+    const creature = createMinimalCreature();
+    noteWasmCreatureActivationUse(creature);
+    const before = getCachedWasmActivationCount();
+
+    evictOldestWasmCreatureActivations(0);
+
+    assertEquals(
+      getCachedWasmActivationCount(),
+      before,
+      "Cache count should be unchanged after evicting 0",
+    );
+
+    creature.dispose();
+  } finally {
+    setMaxCachedWasmCreatureActivations(original);
+  }
+});
+
+Deno.test("WasmCreatureActivationLRU: evictOldest with negative count preserves cache", () => {
+  const original = getMaxCachedWasmCreatureActivations();
+  try {
+    setMaxCachedWasmCreatureActivations(512);
+    disposeAllCachedWasmActivations();
+
+    const creature = createMinimalCreature();
+    noteWasmCreatureActivationUse(creature);
+    const before = getCachedWasmActivationCount();
+
+    evictOldestWasmCreatureActivations(-5);
+
+    assertEquals(
+      getCachedWasmActivationCount(),
+      before,
+      "Cache count should be unchanged after evicting negative count",
+    );
+
+    creature.dispose();
+  } finally {
+    setMaxCachedWasmCreatureActivations(original);
+  }
+});
+
+Deno.test("WasmCreatureActivationLRU: evictOldest with count exceeding cache size empties cache", () => {
+  const original = getMaxCachedWasmCreatureActivations();
+  try {
+    setMaxCachedWasmCreatureActivations(512);
+    disposeAllCachedWasmActivations();
 
     const creatures: Creature[] = [];
 
@@ -211,8 +266,16 @@ Deno.test("WasmCreatureActivationLRU: evictOldest does not throw for large count
       noteWasmCreatureActivationUse(creature);
     }
 
-    // Requesting more evictions than entries should not throw
+    assertEquals(getCachedWasmActivationCount(), 3, "Should have 3 entries");
+
+    // Requesting more evictions than entries should evict all
     evictOldestWasmCreatureActivations(100);
+
+    assertEquals(
+      getCachedWasmActivationCount(),
+      0,
+      "Cache should be empty after evicting more than exist",
+    );
 
     // Clean up
     for (const creature of creatures) {
@@ -398,31 +461,6 @@ Deno.test("WasmCreatureActivationLRU: dispose() deregisters from LRU via dispose
     // Clean up remaining
     creatures[0].dispose();
     creatures[2].dispose();
-  } finally {
-    setMaxCachedWasmCreatureActivations(original);
-  }
-});
-
-// ---------------------------------------------------------------------------
-// Issue #1581: WasmCreatureActivation.free() nullifies references
-// ---------------------------------------------------------------------------
-
-Deno.test("WasmCreatureActivationLRU: disposeWasm is idempotent after manual call", () => {
-  const original = getMaxCachedWasmCreatureActivations();
-  try {
-    setMaxCachedWasmCreatureActivations(512);
-    disposeAllCachedWasmActivations();
-
-    const creature = createMinimalCreature();
-    noteWasmCreatureActivationUse(creature);
-
-    // Call disposeWasm manually — should not throw
-    creature.disposeWasm();
-
-    // Call again — should be safe (idempotent)
-    creature.disposeWasm();
-
-    creature.dispose();
   } finally {
     setMaxCachedWasmCreatureActivations(original);
   }

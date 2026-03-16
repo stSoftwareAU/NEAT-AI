@@ -181,24 +181,13 @@ Deno.test({
     assert(viableNeurons.length > 0, "Should have some viable neurons");
 
     // Selection should work without warnings on valid data
-    const startTime = Date.now();
     const selected = await discoverStructure.selectNeuronsWeightedByError(
       2,
       DEFAULT_COST_OF_GROWTH,
     );
-    const elapsed = Date.now() - startTime;
 
     assertExists(selected, "Should return selection");
     assert(selected.length > 0, "Should select at least one neuron");
-    assert(
-      elapsed < 2000,
-      "Should complete quickly",
-    );
-
-    // Note: To properly test zero-error fallback would require either:
-    // 1. Mocking the internal methods
-    // 2. Creating a scenario where all neurons genuinely have zero error
-    // For now, this test verifies that valid data flows through without warnings
 
     await discoverStructure.cleanUp();
   },

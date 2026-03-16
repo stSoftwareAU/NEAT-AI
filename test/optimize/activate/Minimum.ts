@@ -1,12 +1,10 @@
-import { assert, assertAlmostEquals, fail } from "@std/assert";
+import { assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 
-((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
-
-Deno.test("Minimum", () => {
+Deno.test("activate - MINIMUM squash selects lowest weighted input", () => {
   const directory = ".test/optimize/activate/Minimum";
   Deno.mkdirSync(directory, { recursive: true });
   const json: CreatureExport = {
@@ -49,12 +47,19 @@ Deno.test("Minimum", () => {
     const actual1 = creature.activateAndTrace(data, false, sparseConfig)[0];
     const actual2 = creature.activateAndTrace(data, false, sparseConfig)[0];
 
-    assertAlmostEquals(actual0, actual1);
-    assertAlmostEquals(actual0, actual2);
-    assert(
-      Math.abs(actual0 - actual2) < 0.00000001,
-      "repeated calls should return the same result",
+    assertAlmostEquals(
+      actual0,
+      actual1,
+      0.000_000_01,
+      "activate vs activateAndTrace must agree",
     );
+    assertAlmostEquals(
+      actual0,
+      actual2,
+      0.000_000_01,
+      "repeated activateAndTrace calls must be deterministic",
+    );
+
     const expected = Math.min(
       a * Math.LN10,
       b * -Math.LN2,
@@ -63,17 +68,6 @@ Deno.test("Minimum", () => {
       e * Math.PI,
     ) - Math.E;
 
-    const delta = expected - actual0;
-    if (Math.abs(delta) > 0.000_001) {
-      console.info(
-        "Expected: " + expected + ", actual: " + actual0 + ", delta: ",
-        delta,
-        data,
-      );
-      fail(
-        p + ") Expected: " + expected + ", actual: " + actual0 + ", delta: " +
-          delta,
-      );
-    }
+    assertAlmostEquals(expected, actual0, 0.000_001, `iteration ${p}`);
   }
 });

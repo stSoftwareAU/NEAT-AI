@@ -4,7 +4,7 @@
  * @module
  */
 
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertNotEquals } from "@std/assert";
 import { Selection } from "../../src/methods/Selection.ts";
 
 Deno.test("FITNESS_PROPORTIONATE has correct name", () => {
@@ -22,13 +22,13 @@ Deno.test("TOURNAMENT has correct name and defaults", () => {
   assertEquals(Selection.TOURNAMENT.probability, 0.5);
 });
 
-Deno.test("Selection strategies are distinct objects", () => {
-  assertEquals(
-    Selection.FITNESS_PROPORTIONATE.name !== Selection.POWER.name,
-    true,
+Deno.test("Selection strategies have distinct names", () => {
+  assertNotEquals(
+    Selection.FITNESS_PROPORTIONATE.name,
+    Selection.POWER.name,
   );
-  assertEquals(
-    Selection.POWER.name !== Selection.TOURNAMENT.name,
-    true,
+  assertNotEquals(
+    Selection.POWER.name,
+    Selection.TOURNAMENT.name,
   );
 });

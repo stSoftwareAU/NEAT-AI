@@ -5,7 +5,7 @@
  * including message handling, structured clone validation, error responses,
  * and termination.
  */
-import { assertEquals, assertExists } from "@std/assert";
+import { assert, assertEquals, assertExists } from "@std/assert";
 import { MockWorker } from "../../src/multithreading/workers/MockWorker.ts";
 import type {
   RequestData,
@@ -76,28 +76,21 @@ Deno.test("MockWorker: terminate cleans up resources", () => {
 
 Deno.test("MockWorker: handles multiple sequential messages", async () => {
   const worker = new MockWorker();
-  const responses: ResponseData[] = [];
 
-  worker.addEventListener(
-    "message",
-    ((event: Event) => {
-      const me = event as Event & { data: ResponseData };
-      responses.push(me.data);
-    }) as EventListener,
-  );
+  // Send messages sequentially and await each response
+  const response1 = await sendAndReceive(worker, {
+    taskID: 1,
+    echo: { message: "first", ms: 0 },
+  });
+  const response2 = await sendAndReceive(worker, {
+    taskID: 2,
+    echo: { message: "second", ms: 0 },
+  });
 
-  // Send multiple echo messages
-  worker.postMessage({ taskID: 1, echo: { message: "first", ms: 0 } });
-  worker.postMessage({ taskID: 2, echo: { message: "second", ms: 0 } });
-
-  // Wait for processing
-  await new Promise((r) => setTimeout(r, 200));
-
-  assertEquals(responses.length, 2);
-  assertEquals(responses[0].taskID, 1);
-  assertEquals(responses[0].echo?.message, "first");
-  assertEquals(responses[1].taskID, 2);
-  assertEquals(responses[1].echo?.message, "second");
+  assertEquals(response1.taskID, 1);
+  assertEquals(response1.echo?.message, "first");
+  assertEquals(response2.taskID, 2);
+  assertEquals(response2.echo?.message, "second");
 
   worker.terminate();
 });
@@ -115,6 +108,70 @@ Deno.test("MockWorker: error response for evaluate includes infinity error", asy
   assertEquals(response.taskID, 10);
   assertExists(response.evaluate);
   assertEquals(response.evaluate?.error, Number.POSITIVE_INFINITY);
+
+  worker.terminate();
+});
+
+Deno.test("MockWorker: evaluate error response preserves error details", async () => {
+  const worker = new MockWorker();
+
+  const response = await sendAndReceive(worker, {
+    taskID: 20,
+    evaluate: { creature: "invalid-json", feedbackLoop: false },
+  });
+
+  assertEquals(response.taskID, 20);
+  // Issue #1761: Error responses must include name, message, and stack
+  assertExists(response.error, "error field must be present");
+  assertExists(response.error?.name, "error name must be present");
+  assertExists(response.error?.message, "error message must be present");
+  assert(
+    response.error!.message.length > 0,
+    "error message must not be empty",
+  );
+
+  worker.terminate();
+});
+
+Deno.test("MockWorker: train error response preserves error details", async () => {
+  const worker = new MockWorker();
+
+  const response = await sendAndReceive(worker, {
+    taskID: 21,
+    train: {
+      creature: "invalid-json",
+      options: {} as import("../../src/config/TrainOptions.ts").TrainOptions,
+    },
+  });
+
+  assertEquals(response.taskID, 21);
+  assertExists(response.train);
+  assertEquals(response.train?.error, Number.POSITIVE_INFINITY);
+  // Issue #1761: Error responses must include name, message, and stack
+  assertExists(response.error, "error field must be present");
+  assertExists(response.error?.name, "error name must be present");
+  assertExists(response.error?.message, "error message must be present");
+
+  worker.terminate();
+});
+
+Deno.test("MockWorker: discover error response preserves error details", async () => {
+  const worker = new MockWorker();
+
+  const response = await sendAndReceive(worker, {
+    taskID: 22,
+    discover: {
+      creature: "invalid-json",
+      config: {} as import("../../src/config/NeatConfig.ts").NeatConfig,
+    },
+  });
+
+  assertEquals(response.taskID, 22);
+  assertExists(response.discover);
+  // Issue #1761: Error responses must include name, message, and stack
+  assertExists(response.error, "error field must be present");
+  assertExists(response.error?.name, "error name must be present");
+  assertExists(response.error?.message, "error message must be present");
 
   worker.terminate();
 });

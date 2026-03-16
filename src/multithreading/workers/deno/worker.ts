@@ -1,7 +1,7 @@
 import type { RequestData, ResponseData } from "../WorkerHandler.ts";
 import { setSkipWasmAutoInit } from "@globalAccessors";
 import { setupWorkerMessageLoop } from "../../../workers/workerEntryPoint.ts";
-import { toErrorMessage } from "../../../utils/ErrorSerialisation.ts";
+import { toError, toErrorMessage } from "../../../utils/ErrorSerialisation.ts";
 
 // Issue #1263: WASM activation is mandatory. For the library's internal worker
 // system, workers receive the WASM payload from the parent during init, so we
@@ -16,11 +16,17 @@ const processor = new WorkerProcessor();
 setupWorkerMessageLoop<RequestData, ResponseData>(
   processor,
   (data, error, durationMs) => {
-    getLogger().error("Worker processing error:", error);
-    // Create a proper error response with operation-specific error field
+    const err = toError(error);
+    getLogger().error("Worker processing error:", err);
+    // Issue #1761: Include standardised error details
     const errorResponse: ResponseData = {
       taskID: data.taskID,
       duration: durationMs,
+      error: {
+        name: err.name,
+        message: err.message,
+        stack: err.stack,
+      },
     };
 
     // Add operation-specific error field based on request type

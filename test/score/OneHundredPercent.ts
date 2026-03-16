@@ -9,7 +9,7 @@ import {
   makeDataDir,
 } from "../../src/architecture/DataSet.ts";
 
-Deno.test("100%", async () => {
+Deno.test("Creature with constant output achieves perfect score on matching dataset", async () => {
   const directory = ".test/optimize/simplify/TAN";
   // deno-lint-ignore no-sync-fn-in-async-fn
   Deno.mkdirSync(directory, { recursive: true });

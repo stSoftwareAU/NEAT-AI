@@ -5,12 +5,12 @@
  *
  * Verifies:
  * 1. Module loading succeeds and isWasmActivationAvailable returns true
- * 2. Function pointer getters return non-null after initialisation
- * 3. initWasmActivation is idempotent (calling multiple times is safe)
- * 4. initWasmActivationSync handles already-initialised state
+ * 2. All function getters return non-null after initialisation
+ * 3. initWasmActivation is idempotent (safe to call multiple times)
+ * 4. Version function returns a non-empty string
  */
 
-import { assert, assertEquals, assertExists } from "@std/assert";
+import { assert, assertExists } from "@std/assert";
 import {
   getCalculateErrorFn,
   getCompiledNetworkClass,
@@ -23,7 +23,6 @@ import {
   getValidateRangeFn,
   getVersionFn,
   initWasmActivation,
-  initWasmActivationSync,
   isWasmActivationAvailable,
 } from "../../src/wasm/WasmModuleLoader.ts";
 
@@ -55,67 +54,27 @@ Deno.test("WasmModuleLoader: initWasmActivation is idempotent", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Function pointer getter tests
+// Function getter tests — all WASM function pointers are populated after init
 // ---------------------------------------------------------------------------
 
-Deno.test("WasmModuleLoader: getSquashFn returns a function after init", () => {
-  const fn = getSquashFn();
-  assertExists(fn, "squash function should be available");
-  assertEquals(typeof fn, "function");
-});
+Deno.test("WasmModuleLoader: all function getters return non-null after init", () => {
+  const getters = [
+    { name: "getSquashFn", fn: getSquashFn },
+    { name: "getDerivativeFn", fn: getDerivativeFn },
+    { name: "getUnsquashFn", fn: getUnsquashFn },
+    { name: "getCalculateErrorFn", fn: getCalculateErrorFn },
+    { name: "getCompiledNetworkClass", fn: getCompiledNetworkClass },
+    { name: "getFusedErrorDistributionFn", fn: getFusedErrorDistributionFn },
+    { name: "getGetRangeFn", fn: getGetRangeFn },
+    { name: "getValidateRangeFn", fn: getValidateRangeFn },
+    { name: "getLimitRangeFn", fn: getLimitRangeFn },
+    { name: "getVersionFn", fn: getVersionFn },
+  ];
 
-Deno.test("WasmModuleLoader: getDerivativeFn returns a function after init", () => {
-  const fn = getDerivativeFn();
-  assertExists(fn, "derivative function should be available");
-  assertEquals(typeof fn, "function");
-});
-
-Deno.test("WasmModuleLoader: getUnsquashFn returns a function after init", () => {
-  const fn = getUnsquashFn();
-  assertExists(fn, "unsquash function should be available");
-  assertEquals(typeof fn, "function");
-});
-
-Deno.test("WasmModuleLoader: getCalculateErrorFn returns a function after init", () => {
-  const fn = getCalculateErrorFn();
-  assertExists(fn, "calculateError function should be available");
-  assertEquals(typeof fn, "function");
-});
-
-Deno.test("WasmModuleLoader: getCompiledNetworkClass returns a constructor after init", () => {
-  const cls = getCompiledNetworkClass();
-  assertExists(cls, "CompiledNetwork class should be available");
-  assertEquals(typeof cls, "function");
-});
-
-Deno.test("WasmModuleLoader: getFusedErrorDistributionFn returns a function after init", () => {
-  const fn = getFusedErrorDistributionFn();
-  assertExists(fn, "fusedErrorDistribution function should be available");
-  assertEquals(typeof fn, "function");
-});
-
-Deno.test("WasmModuleLoader: getGetRangeFn returns a function after init", () => {
-  const fn = getGetRangeFn();
-  assertExists(fn, "getRange function should be available");
-  assertEquals(typeof fn, "function");
-});
-
-Deno.test("WasmModuleLoader: getValidateRangeFn returns a function after init", () => {
-  const fn = getValidateRangeFn();
-  assertExists(fn, "validateRange function should be available");
-  assertEquals(typeof fn, "function");
-});
-
-Deno.test("WasmModuleLoader: getLimitRangeFn returns a function after init", () => {
-  const fn = getLimitRangeFn();
-  assertExists(fn, "limitRange function should be available");
-  assertEquals(typeof fn, "function");
-});
-
-Deno.test("WasmModuleLoader: getVersionFn returns a function after init", () => {
-  const fn = getVersionFn();
-  assertExists(fn, "version function should be available");
-  assertEquals(typeof fn, "function");
+  for (const { name, fn } of getters) {
+    const result = fn();
+    assertExists(result, `${name} should return a non-null value after init`);
+  }
 });
 
 Deno.test("WasmModuleLoader: version function returns a non-empty string", () => {
@@ -126,19 +85,4 @@ Deno.test("WasmModuleLoader: version function returns a non-empty string", () =>
     typeof version === "string" && version.length > 0,
     "Version should be a non-empty string",
   );
-});
-
-// ---------------------------------------------------------------------------
-// Sync init path — already initialised
-// ---------------------------------------------------------------------------
-
-Deno.test("WasmModuleLoader: initWasmActivationSync returns true when already initialised", () => {
-  // Module is already loaded, so sync init should short-circuit
-  const fakeBindings = {};
-  const fakeBinary = new Uint8Array([]);
-
-  // Since wasmModule is already set, this should return true without touching
-  // the fake bindings at all.
-  const result = initWasmActivationSync(fakeBindings, fakeBinary);
-  assert(result, "Should return true when module already initialised");
 });

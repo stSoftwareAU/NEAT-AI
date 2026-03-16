@@ -1,12 +1,9 @@
-import { assert, assertNotEquals } from "@std/assert";
+import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Creature, CreatureUtil } from "../../mod.ts";
 import { randomConnectMissing } from "../../src/reconstruct/ConnectMissing.ts";
-import type { SynapseExport } from "../../src/architecture/SynapseInterfaces.ts";
 
-Deno.test("ConnectMissing", () => {
+Deno.test("randomConnectMissing - connects all inputs when some are missing", () => {
   const creature = new Creature(10, 3);
-  const uuid1 = CreatureUtil.makeUUID(creature);
-  assert(uuid1);
   const exported = creature.exportJSON();
 
   exported.input = 20;
@@ -15,39 +12,41 @@ Deno.test("ConnectMissing", () => {
   const creature3 = randomConnectMissing(creature2);
   const uuid3 = CreatureUtil.makeUUID(creature3);
 
-  assertNotEquals(uuid2, uuid3);
-  delete creature2.uuid;
-  const uuid2b = CreatureUtil.makeUUID(creature2);
-  assert(uuid2b === uuid2);
-  const exported3 = creature3.exportJSON();
-  console.log(exported3);
-
-  assert(exported3.input === 20);
-  const inputMissing = new Set<number>();
-  for (let i = 0; i < exported3.input; i++) {
-    inputMissing.add(i);
-  }
-  exported3.synapses.forEach((synapse: SynapseExport) => {
-    if (synapse.fromUUID.startsWith("input")) {
-      inputMissing.delete(parseInt(synapse.fromUUID.split("-")[1]));
-    }
-  });
-
-  assert(
-    inputMissing.size === 0,
-    `Not all inputs are connected to the brain. ${inputMissing.size} missing inputs: ${
-      Array.from(inputMissing).join(",")
-    }`,
+  assertNotEquals(
+    uuid2,
+    uuid3,
+    "creature should have changed after connecting missing inputs",
   );
+
+  const exported3 = creature3.exportJSON();
+  assertEquals(exported3.input, 20);
+
+  // Verify every input has at least one synapse connected
+  const connectedInputs = new Set<string>();
+  for (const synapse of exported3.synapses) {
+    if (synapse.fromUUID.startsWith("input-")) {
+      connectedInputs.add(synapse.fromUUID);
+    }
+  }
+
+  for (let i = 0; i < exported3.input; i++) {
+    assert(
+      connectedInputs.has(`input-${i}`),
+      `Input ${i} should be connected after randomConnectMissing`,
+    );
+  }
 });
 
-Deno.test("ConnectMissing-All-present", () => {
+Deno.test("randomConnectMissing - does not modify creature when all inputs already connected", () => {
   const creature = new Creature(10, 3);
   const uuid1 = CreatureUtil.makeUUID(creature);
-  assert(uuid1);
 
   const creature2 = randomConnectMissing(creature);
   const uuid2 = CreatureUtil.makeUUID(creature2);
 
-  assert(uuid1 === uuid2);
+  assertEquals(
+    uuid1,
+    uuid2,
+    "UUID should not change when no inputs are missing",
+  );
 });

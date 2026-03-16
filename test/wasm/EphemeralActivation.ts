@@ -10,7 +10,7 @@
  * 4. activateEphemeral() works when creature already has a cached activation
  */
 
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import {
   getCachedWasmActivationCount,
@@ -112,9 +112,8 @@ Deno.test("activateEphemeral: works when creature already has a cached activatio
     }
 
     // The cached activation should still be present (not disposed)
-    assertEquals(
+    assert(
       creature.cachedWasmActivation !== undefined,
-      true,
       "Existing cached activation should be preserved",
     );
   } finally {
@@ -152,13 +151,19 @@ Deno.test("getCachedWasmActivationCount: returns current entry count", () => {
   const originalMax = getMaxCachedWasmCreatureActivations();
   setMaxCachedWasmCreatureActivations(512);
   try {
-    // The count should be a non-negative number
+    const creature = createTestCreature();
+    const input = new Float32Array([0.5, 0.8]);
+
+    // Activate so we know at least one entry is in the cache
+    creature.activate(input);
+
     const count = getCachedWasmActivationCount();
-    assertEquals(
-      count >= 0,
-      true,
-      "Count should be non-negative",
+    assert(
+      count >= 1,
+      `Count should be at least 1 after activating a creature, got ${count}`,
     );
+
+    creature.dispose();
   } finally {
     setMaxCachedWasmCreatureActivations(originalMax);
   }
@@ -171,14 +176,17 @@ Deno.test("getCachedWasmActivationCount: increases after activate", () => {
     const creature = createTestCreature();
     const input = new Float32Array([0.5, 0.8]);
 
+    // Ensure this creature has no cached activation before we start
+    creature.disposeWasm();
+
     const countBefore = getCachedWasmActivationCount();
     creature.activate(input);
     const countAfter = getCachedWasmActivationCount();
 
     assertEquals(
-      countAfter > countBefore,
-      true,
-      `Count should increase after activate (was ${countBefore}, now ${countAfter})`,
+      countAfter,
+      countBefore + 1,
+      `Count should increase by exactly 1 after first activate (was ${countBefore}, now ${countAfter})`,
     );
 
     creature.dispose();

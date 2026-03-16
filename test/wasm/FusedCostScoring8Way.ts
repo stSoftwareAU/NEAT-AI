@@ -73,7 +73,7 @@ Deno.test("8-Way Fused Cost Scoring: Initialise WASM", async () => {
 });
 
 Deno.test("8-Way Fused Cost Scoring: MSE - WASM vs JS equivalence", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -122,7 +122,7 @@ Deno.test("8-Way Fused Cost Scoring: MSE - WASM vs JS equivalence", () => {
 });
 
 Deno.test("8-Way Fused Cost Scoring: MAE - WASM vs JS equivalence", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -167,7 +167,7 @@ Deno.test("8-Way Fused Cost Scoring: MAE - WASM vs JS equivalence", () => {
 });
 
 Deno.test("8-Way Fused Cost Scoring: CROSS_ENTROPY - WASM vs JS equivalence", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -212,7 +212,7 @@ Deno.test("8-Way Fused Cost Scoring: CROSS_ENTROPY - WASM vs JS equivalence", ()
 });
 
 Deno.test("8-Way Fused Cost Scoring: MAPE - WASM vs JS equivalence", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -257,7 +257,7 @@ Deno.test("8-Way Fused Cost Scoring: MAPE - WASM vs JS equivalence", () => {
 });
 
 Deno.test("8-Way Fused Cost Scoring: MSLE - WASM vs JS equivalence", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -303,7 +303,7 @@ Deno.test("8-Way Fused Cost Scoring: MSLE - WASM vs JS equivalence", () => {
 });
 
 Deno.test("8-Way Fused Cost Scoring: HINGE - WASM vs JS equivalence", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -349,7 +349,7 @@ Deno.test("8-Way Fused Cost Scoring: HINGE - WASM vs JS equivalence", () => {
 });
 
 Deno.test("8-Way Fused Cost Scoring: Exact 8 records (boundary condition)", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -394,7 +394,7 @@ Deno.test("8-Way Fused Cost Scoring: Exact 8 records (boundary condition)", () =
 });
 
 Deno.test("8-Way Fused Cost Scoring: 9 records (8 + 1 remainder)", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -439,7 +439,7 @@ Deno.test("8-Way Fused Cost Scoring: 9 records (8 + 1 remainder)", () => {
 });
 
 Deno.test("8-Way Fused Cost Scoring: 11 records (8 + 3 remainder)", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -486,7 +486,7 @@ Deno.test("8-Way Fused Cost Scoring: 11 records (8 + 3 remainder)", () => {
 });
 
 Deno.test("8-Way Fused Cost Scoring: 15 records (8 + 4 + 3 remainder)", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();
@@ -533,7 +533,7 @@ Deno.test("8-Way Fused Cost Scoring: 15 records (8 + 4 + 3 remainder)", () => {
 });
 
 Deno.test("8-Way Fused Cost Scoring: Large dataset (256 records)", () => {
-  if (!isWasmActivationAvailable()) return;
+  assert(isWasmActivationAvailable(), "WASM activation must be available");
 
   const creature = Creature.fromJSON(testCreatureJSON);
   creature.fix();

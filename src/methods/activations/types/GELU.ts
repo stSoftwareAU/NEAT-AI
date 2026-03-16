@@ -2,6 +2,8 @@ import { ActivationRange } from "@propagate/ActivationRange.ts";
 import { ErrorHelper } from "@propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
+import { safeZoneAdjustment } from "../SafeZoneAdjustment.ts";
+import { NR_MAX_ITERATIONS, NR_TOLERANCE } from "../NewtonRaphsonConstants.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
@@ -18,9 +20,10 @@ export class GELU implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 34;
   public static readonly NAME = "GELU";
   private static readonly CUBIC_COEF = 0.044715;
-  private static readonly MAX_ITERATIONS = 100;
-  private static readonly TOLERANCE = 1e-6;
+  private static readonly MAX_ITERATIONS = NR_MAX_ITERATIONS;
+  private static readonly TOLERANCE = NR_TOLERANCE;
   private static readonly MAX_X = 10;
+  private static readonly SQRT_2_OVER_PI = Math.sqrt(2 / Math.PI);
 
   public readonly range = new ActivationRange(
     GELU.NAME,
@@ -43,7 +46,7 @@ export class GELU implements ActivationInterface, UnSquashInterface {
     const value = 0.5 * x *
       (1 +
         Math.tanh(
-          Math.sqrt(2 / Math.PI) * (x + GELU.CUBIC_COEF * Math.pow(x, 3)),
+          GELU.SQRT_2_OVER_PI * (x + GELU.CUBIC_COEF * x * x * x),
         ));
 
     return this.range.limit(value, x);
@@ -84,12 +87,12 @@ export class GELU implements ActivationInterface, UnSquashInterface {
   }
 
   derivative(x: number): number {
-    const inner = Math.sqrt(2 / Math.PI) * (x + 0.044715 * Math.pow(x, 3));
+    const inner = GELU.SQRT_2_OVER_PI * (x + 0.044715 * x * x * x);
     const tanhInner = Math.tanh(inner);
 
     const cdf = 0.5 * (1 + tanhInner);
     const pdf = (0.5 * x * (1 - tanhInner * tanhInner)) *
-      Math.sqrt(2 / Math.PI) *
+      GELU.SQRT_2_OVER_PI *
       (1 + 3 * 0.044715 * x * x);
 
     const result = cdf + pdf;
@@ -134,51 +137,7 @@ export class GELU implements ActivationInterface, UnSquashInterface {
     return ErrorHelper.calculateClampedError(error);
   }
 
-  /**
-   * GELU (Gaussian Error Linear Unit) Safe Zone Adjustment
-   *
-   * Reasoning:
-   * - GELU transitions smoothly but flattens at extreme values.
-   * - Safe zone for raw input is approximately [-6, 6], beyond which gradients diminish.
-   * - If raw input is out of safe zone and error would worsen it, return 0.
-   * - If weight is outside safe range and adjusting weight would improve, return 0.
-   * - Otherwise fade or return 1.
-   *
-   * @param rawInput - Input to GELU function before activation
-   * @param error - Propagation error
-   * @param weight - Synaptic weight
-   * @returns value between 0 (discourage) and 1 (safe to propagate)
-   */
   safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
-    if (!Number.isFinite(rawInput)) return 0;
-
-    const safeMin = -6;
-    const safeMax = 6;
-    const inSafeRaw = rawInput >= safeMin && rawInput <= safeMax;
-    const rawGettingWorse = (rawInput < safeMin && error < 0) ||
-      (rawInput > safeMax && error > 0);
-
-    const absWeight = Math.abs(weight);
-    const minWeight = 1e-3;
-    const maxWeight = 1e3;
-    const weightTooSmall = absWeight < minWeight;
-    const weightTooLarge = absWeight > maxWeight;
-    const weightImproves = (weightTooSmall && weight * error > 0) ||
-      (weightTooLarge && weight * error < 0);
-
-    if (!inSafeRaw && rawGettingWorse) return 0;
-    if (inSafeRaw && (weightTooSmall || weightTooLarge) && weightImproves) {
-      return 0;
-    }
-
-    if (inSafeRaw) return 1;
-    if (rawInput > safeMax && rawInput <= safeMax + 10) {
-      return 1 - (rawInput - safeMax) / 10;
-    }
-    if (rawInput < safeMin && rawInput >= safeMin - 10) {
-      return 1 - (safeMin - rawInput) / 10;
-    }
-
-    return 0;
+    return safeZoneAdjustment(rawInput, error, weight, -6, 6);
   }
 }

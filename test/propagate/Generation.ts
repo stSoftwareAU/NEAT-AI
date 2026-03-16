@@ -1,4 +1,4 @@
-import { assertAlmostEquals } from "@std/assert";
+import { assert, assertAlmostEquals } from "@std/assert";
 import type { CreatureTrace } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
 import {
@@ -53,7 +53,7 @@ function makeCreature() {
   return creature;
 }
 
-Deno.test("Generation BIAS", () => {
+Deno.test("calculateBias - generation 0 produces full adjustment, generation 1 produces dampened adjustment", () => {
   const creature = makeCreature();
 
   const outputNode = creature.neurons.find((node) => node.type === "output");
@@ -86,9 +86,17 @@ Deno.test("Generation BIAS", () => {
   );
 
   assertAlmostEquals(bias2, -0.77, 0.0001, `bias2: ${bias2.toFixed(3)}`);
+
+  // Dampening assertion: generation 1 moves bias less from original (1.0)
+  // than generation 0 does.
+  const originalBias = 1;
+  assert(
+    Math.abs(bias2 - originalBias) < Math.abs(bias - originalBias),
+    `generation 1 adjustment (${bias2}) should be closer to original bias (${originalBias}) than generation 0 (${bias})`,
+  );
 });
 
-Deno.test("Generation Weight", () => {
+Deno.test("calculateWeight - generation 0 produces full adjustment, generation 10 produces dampened adjustment", () => {
   const creature = makeCreature();
 
   const connection = creature.getSynapse(1, 3);
@@ -131,4 +139,12 @@ Deno.test("Generation Weight", () => {
   // min(10, 1*2) = 2, so the weight moves further from the original (1.0)
   // toward the gradient target (~0.1). averageWeight = (0.1+2.0)/3 = 0.7
   assertAlmostEquals(w2, 0.7, 0.1, `Weight: ${w2.toFixed(3)}`);
+
+  // Dampening assertion: generation 10 keeps weight closer to original (1.0)
+  // than generation 0 does.
+  const originalWeight = 1;
+  assert(
+    Math.abs(w2 - originalWeight) < Math.abs(w1 - originalWeight),
+    `generation 10 adjustment (${w2}) should be closer to original weight (${originalWeight}) than generation 0 (${w1})`,
+  );
 });

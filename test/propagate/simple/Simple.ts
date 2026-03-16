@@ -22,7 +22,7 @@ function setup() {
   Deno.mkdirSync(directory, { recursive: true });
 }
 
-Deno.test("Simple", () => {
+Deno.test("simple backpropagation converges after bias and weight perturbation", () => {
   setup();
   const cleanCreature = makeCreature();
 

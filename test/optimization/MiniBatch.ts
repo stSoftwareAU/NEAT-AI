@@ -3,7 +3,7 @@ import { Creature } from "../../src/Creature.ts";
 import type { TrainOptions } from "../../src/config/TrainOptions.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 
-Deno.test("optimization/MiniBatch - should accumulate gradients across batch", () => {
+Deno.test("optimization/MiniBatch - different batch sizes converge to similar error", () => {
   // Create a simple creature for testing
   const creature = Creature.fromJSON({
     neurons: [
@@ -70,7 +70,7 @@ Deno.test("optimization/MiniBatch - should accumulate gradients across batch", (
   );
 });
 
-Deno.test("optimization/MiniBatch - should handle partial batches", () => {
+Deno.test("optimization/MiniBatch - partial batch (5 samples / batch size 3) trains all samples correctly", () => {
   const creature = Creature.fromJSON({
     neurons: [
       { type: "input", index: 0 },
@@ -83,7 +83,7 @@ Deno.test("optimization/MiniBatch - should handle partial batches", () => {
     output: 1,
   });
 
-  // Create 5 samples but batch size 3 - should handle partial batch
+  // 5 samples with batch size 3 creates a partial batch (3 + 2)
   const trainingData = [
     { input: new Float32Array([1]), output: new Float32Array([1]) },
     { input: new Float32Array([2]), output: new Float32Array([2]) },
@@ -92,8 +92,16 @@ Deno.test("optimization/MiniBatch - should handle partial batches", () => {
     { input: new Float32Array([5]), output: new Float32Array([5]) },
   ];
 
+  // Compute initial error: weight=0.5, output = input*0.5
+  let initialError = 0;
+  for (const sample of trainingData) {
+    const output = creature.activate(sample.input, false);
+    initialError += (sample.output[0] - output[0]) ** 2;
+  }
+  initialError /= trainingData.length;
+
   const options: TrainOptions = {
-    iterations: 1,
+    iterations: 10,
     batchSize: 3,
     learningRate: 0.1,
     targetError: 0.001,
@@ -101,6 +109,22 @@ Deno.test("optimization/MiniBatch - should handle partial batches", () => {
 
   const result = train(creature, trainingData, options);
 
-  // Should complete without errors
-  assert(result.error >= 0, "Training should complete without errors");
+  assert(Number.isFinite(result.error), "Error should be finite");
+  assert(
+    result.error < initialError,
+    `Training should reduce error: got ${result.error}, initial was ${initialError}`,
+  );
+
+  // Verify the trained creature produces reasonable outputs for all samples
+  // (weight should have moved towards 1.0 from 0.5)
+  for (const sample of trainingData) {
+    const output = creature.activate(sample.input, false);
+    const sampleError = Math.abs(sample.output[0] - output[0]);
+    assert(
+      sampleError < Math.abs(sample.output[0] * 0.5),
+      `Sample input=${
+        sample.input[0]
+      }: prediction error ${sampleError} should be less than initial`,
+    );
+  }
 });

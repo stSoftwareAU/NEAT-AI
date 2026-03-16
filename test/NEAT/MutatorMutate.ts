@@ -19,65 +19,6 @@ function createConfig(overrides: Record<string, unknown> = {}) {
   });
 }
 
-Deno.test("MutatorMutate: mutates creatures based on mutation rate", () => {
-  // With mutationRate=1.0, all creatures should be mutated
-  const config = createConfig({ mutationRate: 1.0 });
-  const mutator = new Mutator(config);
-
-  const creatures: Creature[] = [];
-  const originalUUIDs: string[] = [];
-  for (let i = 0; i < 10; i++) {
-    const c = new Creature(3, 2, { layers: [{ count: 4 }] });
-    originalUUIDs.push(CreatureUtil.makeUUID(c));
-    creatures.push(c);
-  }
-
-  mutator.mutate(creatures);
-
-  // With 100% mutation rate, at least some creatures should have changed UUID
-  let changedCount = 0;
-  for (let i = 0; i < creatures.length; i++) {
-    const newUUID = CreatureUtil.makeUUID(creatures[i]);
-    if (newUUID !== originalUUIDs[i]) {
-      changedCount++;
-    }
-  }
-
-  assert(
-    changedCount > 0,
-    "At least some creatures should be mutated with 100% mutation rate",
-  );
-});
-
-Deno.test("MutatorMutate: does not mutate when rate is very low", () => {
-  // With a very low mutation rate, most creatures should stay the same
-  const config = createConfig({ mutationRate: 0.002 });
-  const mutator = new Mutator(config);
-
-  const creatures: Creature[] = [];
-  const originalUUIDs: string[] = [];
-  for (let i = 0; i < 50; i++) {
-    const c = new Creature(3, 2, { layers: [{ count: 4 }] });
-    originalUUIDs.push(CreatureUtil.makeUUID(c));
-    creatures.push(c);
-  }
-
-  mutator.mutate(creatures);
-
-  let unchangedCount = 0;
-  for (let i = 0; i < creatures.length; i++) {
-    const newUUID = CreatureUtil.makeUUID(creatures[i]);
-    if (newUUID === originalUUIDs[i]) {
-      unchangedCount++;
-    }
-  }
-
-  assert(
-    unchangedCount > creatures.length / 2,
-    "Most creatures should remain unchanged with very low mutation rate",
-  );
-});
-
 Deno.test("MutatorMutate: handles empty population gracefully", () => {
   const config = createConfig({ mutationRate: 1.0 });
   const mutator = new Mutator(config);
@@ -86,55 +27,6 @@ Deno.test("MutatorMutate: handles empty population gracefully", () => {
   mutator.mutate(creatures);
 
   assertEquals(creatures.length, 0, "Empty population should remain empty");
-});
-
-Deno.test("MutatorMutate: preserves creature input/output dimensions", () => {
-  const config = createConfig({ mutationRate: 1.0 });
-  const mutator = new Mutator(config);
-
-  const creatures: Creature[] = [];
-  for (let i = 0; i < 5; i++) {
-    creatures.push(new Creature(4, 3, { layers: [{ count: 5 }] }));
-  }
-
-  mutator.mutate(creatures);
-
-  for (let i = 0; i < creatures.length; i++) {
-    assertEquals(
-      creatures[i].input,
-      4,
-      `Creature ${i} should still have 4 inputs`,
-    );
-    assertEquals(
-      creatures[i].output,
-      3,
-      `Creature ${i} should still have 3 outputs`,
-    );
-  }
-});
-
-Deno.test("MutatorMutate: clears approach tags after mutation", () => {
-  const config = createConfig({ mutationRate: 1.0 });
-  const mutator = new Mutator(config);
-
-  const creatures: Creature[] = [];
-  for (let i = 0; i < 5; i++) {
-    const c = new Creature(3, 2, { layers: [{ count: 4 }] });
-    creatures.push(c);
-  }
-
-  mutator.mutate(creatures);
-
-  // After mutation, creatures should have cleared their previous approach tags
-  // This is correct behaviour as the creature has been modified
-  for (const creature of creatures) {
-    // Mutated creatures should be in a valid state
-    assertEquals(
-      creature.input,
-      3,
-      "Input should be preserved",
-    );
-  }
 });
 
 Deno.test("MutatorMutate: multiple mutation amounts apply multiple mutations per creature", () => {

@@ -2,6 +2,7 @@ import { ActivationRange } from "@propagate/ActivationRange.ts";
 import { ErrorHelper } from "@propagate/ErrorHelper.ts";
 import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
 import type { ActivationInterface } from "../ActivationInterface.ts";
+import { safeZoneAdjustment } from "../SafeZoneAdjustment.ts";
 import type { UnSquashInterface } from "../UnSquashInterface.ts";
 
 /**
@@ -34,7 +35,7 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
 
   squash(x: number): number {
     if (!Number.isFinite(x)) return 0;
-    const result = x / Math.sqrt(1 + ISRU.ALPHA * Math.pow(x, 2));
+    const result = x / Math.sqrt(1 + ISRU.ALPHA * x * x);
     return this.range.limit(result, x);
   }
 
@@ -47,7 +48,7 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
     );
 
     return safeActivation /
-      Math.sqrt(1 - ISRU.ALPHA * Math.pow(safeActivation, 2));
+      Math.sqrt(1 - ISRU.ALPHA * safeActivation * safeActivation);
   }
 
   /**
@@ -65,7 +66,7 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
     // Prevent division by zero or numerical instability
     if (denom < 1e-12) return 0;
 
-    return Math.pow(denom, -1.5);
+    return 1 / (denom * Math.sqrt(denom));
   }
 
   /**
@@ -102,56 +103,7 @@ export class ISRU implements ActivationInterface, UnSquashInterface {
     return ErrorHelper.calculateClampedError(error);
   }
 
-  /**
-   * ISRU Safe Zone Adjustment Logic
-   *
-   * The ISRU (Inverse Square Root Unit) function saturates at large |x|,
-   * which reduces the effectiveness of gradient descent outside the central region.
-   * This function evaluates whether the current raw input and weight are conducive to effective updates.
-   *
-   * Strategy:
-   * - Prefer propagation if raw input ∈ [−10, 10]
-   * - Avoid propagation if raw input is extreme and the error makes it worse
-   * - If weight is outside [1e-3, 1e3] and the error would reduce its extremity, return 0
-   * - Soft fade when near the boundaries
-   *
-   * @param rawInput Raw value before squashing
-   * @param error Backpropagated error
-   * @param weight Synapse weight
-   * @returns A number between 0 and 1 indicating whether to propagate
-   */
   safeZoneAdjustment(rawInput: number, error: number, weight: number): number {
-    if (!Number.isFinite(rawInput)) return 0;
-
-    const absWeight = Math.abs(weight);
-    const minWeight = 1e-3;
-    const maxWeight = 1e3;
-
-    const safeMin = -10;
-    const safeMax = 10;
-    const inSafeRange = rawInput >= safeMin && rawInput <= safeMax;
-
-    const rawGettingWorse = (rawInput < safeMin && error < 0) ||
-      (rawInput > safeMax && error > 0);
-
-    const weightTooSmall = absWeight < minWeight;
-    const weightTooLarge = absWeight > maxWeight;
-    const weightImproving = (weightTooSmall && weight * error > 0) ||
-      (weightTooLarge && weight * error < 0);
-
-    if (!inSafeRange && rawGettingWorse) return 0;
-    if (inSafeRange && (weightTooSmall || weightTooLarge) && weightImproving) {
-      return 0;
-    }
-
-    if (inSafeRange) return 1;
-    if (rawInput > safeMax && rawInput <= safeMax + 10) {
-      return 1 - (rawInput - safeMax) / 10;
-    }
-    if (rawInput < safeMin && rawInput >= safeMin - 10) {
-      return 1 - (safeMin - rawInput) / 10;
-    }
-
-    return 0;
+    return safeZoneAdjustment(rawInput, error, weight, -10, 10);
   }
 }

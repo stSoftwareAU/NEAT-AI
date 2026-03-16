@@ -84,44 +84,53 @@ Deno.test("optimization/ErrorFeedback - fixed and decay strategies ignore error 
   assertAlmostEquals(decayWithFeedback, decayWithoutFeedback, 1e-12);
 });
 
-Deno.test("optimization/ErrorFeedback - adaptive without error feedback still works", () => {
+Deno.test("optimization/ErrorFeedback - adaptive without error feedback falls back to decay-based rate", () => {
   const config = createBackPropagationConfig({
     learningRateStrategy: "adaptive",
     initialLearningRate: 0.1,
     learningRateDecay: 0.95,
   });
 
-  // Should not throw when called without error feedback (backwards compatible)
+  // Without error feedback, errorAdjustment=1 and magnitudeScale=1
+  // so rate = initialLearningRate * sqrt(learningRateDecay)^iteration
   const rate = calculateLearningRate(config, 5);
-  assert(Number.isFinite(rate), "Rate should be finite");
-  assert(rate > 0, "Rate should be positive");
+  const expected = 0.1 * Math.pow(Math.sqrt(0.95), 5);
+  assertAlmostEquals(rate, expected, 1e-9);
 });
 
-Deno.test("optimization/ErrorFeedback - adaptive rate stays within reasonable bounds", () => {
+Deno.test("optimization/ErrorFeedback - adaptive rate is bounded: stagnation boosts above base, worsening reduces below base", () => {
   const config = createBackPropagationConfig({
     learningRateStrategy: "adaptive",
     initialLearningRate: 0.1,
     learningRateDecay: 0.95,
   });
 
-  // Even with extreme stagnation, rate should not exceed initial rate
+  // Base rate without error feedback (uses decay only)
+  const baseRate = calculateLearningRate(config, 5);
+
+  // Extreme stagnation: error barely changes → rate should be boosted above base
   const extremeStagnation = calculateLearningRate(config, 5, {
     previousError: 0.5,
     currentError: 0.4999999,
   });
-
   assert(
-    extremeStagnation <= config.initialLearningRate * 2,
-    `Rate (${extremeStagnation}) should not exceed 2x initial (${
-      config.initialLearningRate * 2
-    })`,
+    extremeStagnation > baseRate,
+    `Stagnation rate (${extremeStagnation}) should exceed base rate (${baseRate})`,
   );
-  assert(extremeStagnation > 0, "Rate should be positive");
 
-  // Even with worsening error, rate should stay positive
+  // Worsening error: error increased significantly → rate should be reduced below base
   const worseError = calculateLearningRate(config, 5, {
     previousError: 0.1,
     currentError: 0.9,
   });
-  assert(worseError > 0, "Rate should be positive even when error worsens");
+  assert(
+    worseError < baseRate,
+    `Worsening rate (${worseError}) should be below base rate (${baseRate})`,
+  );
+
+  // Both rates should still be positive and finite (bounded)
+  assert(extremeStagnation > 0, "Stagnation rate must be positive");
+  assert(Number.isFinite(extremeStagnation), "Stagnation rate must be finite");
+  assert(worseError > 0, "Worsening rate must be positive");
+  assert(Number.isFinite(worseError), "Worsening rate must be finite");
 });

@@ -44,7 +44,19 @@ export enum SquashType {
   Minimum = 32,
   Maximum = 33,
   If = 34,
-  // Deprecated aggregate functions (WASM parity; remove when possible)
+  /**
+   * Deprecated aggregate functions — retained for backwards compatibility.
+   *
+   * Serialised creatures (JSON) may reference these squash types by name or
+   * numeric value. Removing them would break deserialisation of old creatures.
+   * The upgrade path (see src/upgrade/UpgradeTwo.ts) converts HYPOT/HYPOTv2
+   * neurons to equivalent SQRT+SQUARE+IDENTITY structures, but the enum
+   * values must remain so that the WASM layer can still activate pre-upgrade
+   * creatures. All three have mutationProbability = 0, so they will never be
+   * selected by new mutations.
+   *
+   * Issue #1762 — investigated for removal; kept for backwards compatibility.
+   */
   Hypotenuse = 35, // HYPOT
   HypotenuseV2 = 36, // HYPOTv2
   Mean = 37,
@@ -94,7 +106,7 @@ export const SQUASH_NAME_TO_TYPE: Record<string, SquashType> = {
   "MINIMUM": SquashType.Minimum,
   "MAXIMUM": SquashType.Maximum,
   "IF": SquashType.If,
-  // Deprecated (WASM parity; remove when possible)
+  // Deprecated — retained for backwards compatibility (Issue #1762)
   "HYPOT": SquashType.Hypotenuse,
   "HYPOTv2": SquashType.HypotenuseV2,
   "MEAN": SquashType.Mean,

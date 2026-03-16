@@ -5,7 +5,12 @@
  * equivalent results to the current JS object marshalling approach.
  */
 
-import { assertAlmostEquals, assertEquals } from "@std/assert";
+import {
+  assert,
+  assertAlmostEquals,
+  assertEquals,
+  assertExists,
+} from "@std/assert";
 import {
   createBackPropagationConfig,
 } from "../../src/propagate/BackPropagation.ts";
@@ -61,10 +66,7 @@ Deno.test("PersistentTrainingState-WeightMatchesSingleCalls", () => {
 
   // Persistent WASM
   const wasInit = initTrainingState(4, 0);
-  if (!wasInit) {
-    // WASM not available — skip test gracefully
-    return;
-  }
+  assert(wasInit, "WASM training state must initialise successfully");
 
   wasmAccumulateWeightPersistent4Way(
     0,
@@ -77,10 +79,7 @@ Deno.test("PersistentTrainingState-WeightMatchesSingleCalls", () => {
   // Compare results
   for (let i = 0; i < 4; i++) {
     const persistent = readSynapseState(i);
-    if (!persistent) {
-      freeTrainingState();
-      return; // WASM unavailable
-    }
+    assertExists(persistent, `readSynapseState(${i}) must return data`);
 
     assertEquals(persistent[0], tsStates[i].count, `count[${i}]`);
     assertAlmostEquals(
@@ -146,7 +145,7 @@ Deno.test("PersistentTrainingState-BiasMatchesSingleCalls", () => {
 
   // Persistent WASM
   const wasInit = initTrainingState(0, 4);
-  if (!wasInit) return;
+  assert(wasInit, "WASM training state must initialise successfully");
 
   wasmAccumulateBiasPersistent4Way(
     0,
@@ -158,10 +157,7 @@ Deno.test("PersistentTrainingState-BiasMatchesSingleCalls", () => {
 
   for (let i = 0; i < 4; i++) {
     const persistent = readNeuronState(i);
-    if (!persistent) {
-      freeTrainingState();
-      return;
-    }
+    assertExists(persistent, `readNeuronState(${i}) must return data`);
 
     assertEquals(persistent[0], tsStates[i].count, `count[${i}]`);
     assertAlmostEquals(
@@ -186,7 +182,7 @@ Deno.test("PersistentTrainingState-BiasMatchesSingleCalls", () => {
  */
 Deno.test("PersistentTrainingState-MultipleIterations", () => {
   const wasInit = initTrainingState(4, 0);
-  if (!wasInit) return;
+  assert(wasInit, "WASM training state must initialise successfully");
 
   const tsStates = Array.from({ length: 4 }, () => new SynapseState());
 
@@ -228,10 +224,7 @@ Deno.test("PersistentTrainingState-MultipleIterations", () => {
 
   for (let i = 0; i < 4; i++) {
     const persistent = readSynapseState(i);
-    if (!persistent) {
-      freeTrainingState();
-      return;
-    }
+    assertExists(persistent, `readSynapseState(${i}) must return data`);
 
     assertEquals(persistent[0], tsStates[i].count, `count[${i}]`);
     assertAlmostEquals(
@@ -256,7 +249,7 @@ Deno.test("PersistentTrainingState-MultipleIterations", () => {
  */
 Deno.test("PersistentTrainingState-ResetZeroesState", () => {
   const wasInit = initTrainingState(4, 2);
-  if (!wasInit) return;
+  assert(wasInit, "WASM training state must initialise successfully");
 
   // Accumulate some data
   wasmAccumulateWeightPersistent4Way(
@@ -269,21 +262,15 @@ Deno.test("PersistentTrainingState-ResetZeroesState", () => {
 
   // Verify non-zero
   const before = readSynapseState(0);
-  if (!before) {
-    freeTrainingState();
-    return;
-  }
-  assertEquals(before[0] > 0, true, "count should be > 0 before reset");
+  assertExists(before, "readSynapseState(0) must return data");
+  assert(before[0] > 0, "count should be > 0 before reset");
 
   // Reset
   resetTrainingState();
 
   // Verify zeroed
   const after = readSynapseState(0);
-  if (!after) {
-    freeTrainingState();
-    return;
-  }
+  assertExists(after, "readSynapseState(0) must return data after reset");
   for (let i = 0; i < 7; i++) {
     assertEquals(after[i], 0, `field ${i} should be 0 after reset`);
   }
@@ -296,7 +283,7 @@ Deno.test("PersistentTrainingState-ResetZeroesState", () => {
  */
 Deno.test("PersistentTrainingState-UnpackSynapseState", () => {
   const wasInit = initTrainingState(4, 0);
-  if (!wasInit) return;
+  assert(wasInit, "WASM training state must initialise successfully");
 
   wasmAccumulateWeightPersistent4Way(
     0,
@@ -308,13 +295,9 @@ Deno.test("PersistentTrainingState-UnpackSynapseState", () => {
 
   const cs = new SynapseState();
   const unpacked = unpackSynapseState(0, cs);
+  assert(unpacked, "unpackSynapseState must succeed");
 
-  if (!unpacked) {
-    freeTrainingState();
-    return;
-  }
-
-  assertEquals(cs.count > 0, true, "count should be > 0");
+  assert(cs.count > 0, "count should be > 0");
 
   // Compare with direct read
   const direct = readSynapseState(0)!;
@@ -330,7 +313,7 @@ Deno.test("PersistentTrainingState-UnpackSynapseState", () => {
  */
 Deno.test("PersistentTrainingState-UnpackNeuronState", () => {
   const wasInit = initTrainingState(0, 4);
-  if (!wasInit) return;
+  assert(wasInit, "WASM training state must initialise successfully");
 
   wasmAccumulateBiasPersistent4Way(
     0,
@@ -342,13 +325,9 @@ Deno.test("PersistentTrainingState-UnpackNeuronState", () => {
 
   const ns = new NeuronState();
   const unpacked = unpackNeuronState(0, ns);
+  assert(unpacked, "unpackNeuronState must succeed");
 
-  if (!unpacked) {
-    freeTrainingState();
-    return;
-  }
-
-  assertEquals(ns.count > 0, true, "count should be > 0");
+  assert(ns.count > 0, "count should be > 0");
 
   const direct = readNeuronState(0)!;
   assertEquals(ns.count, direct[0]);
@@ -363,7 +342,7 @@ Deno.test("PersistentTrainingState-UnpackNeuronState", () => {
  */
 Deno.test("PersistentTrainingState-NonFiniteValues", () => {
   const wasInit = initTrainingState(4, 0);
-  if (!wasInit) return;
+  assert(wasInit, "WASM training state must initialise successfully");
 
   wasmAccumulateWeightPersistent4Way(
     0,
@@ -379,10 +358,10 @@ Deno.test("PersistentTrainingState-NonFiniteValues", () => {
   const s2 = readSynapseState(2);
   const s3 = readSynapseState(3);
 
-  if (!s0 || !s1 || !s2 || !s3) {
-    freeTrainingState();
-    return;
-  }
+  assertExists(s0, "readSynapseState(0) must return data");
+  assertExists(s1, "readSynapseState(1) must return data");
+  assertExists(s2, "readSynapseState(2) must return data");
+  assertExists(s3, "readSynapseState(3) must return data");
 
   assertEquals(s0[0], 1, "synapse 0 count should be 1");
   assertEquals(s1[0], 0, "synapse 1 count should be 0 (NaN weight)");
@@ -412,7 +391,7 @@ Deno.test("PersistentTrainingState-MatchesBatch4Way", () => {
 
   // Persistent approach
   const wasInit = initTrainingState(4, 0);
-  if (!wasInit) return;
+  assert(wasInit, "WASM training state must initialise successfully");
 
   wasmAccumulateWeightPersistent4Way(
     0,
@@ -424,10 +403,7 @@ Deno.test("PersistentTrainingState-MatchesBatch4Way", () => {
 
   for (let i = 0; i < 4; i++) {
     const persistent = readSynapseState(i);
-    if (!persistent) {
-      freeTrainingState();
-      return;
-    }
+    assertExists(persistent, `readSynapseState(${i}) must return data`);
 
     assertEquals(persistent[0], batchStates[i].count, `count[${i}]`);
     assertAlmostEquals(
@@ -491,16 +467,13 @@ Deno.test("PersistentTrainingState-BiasMatchesBatch4Way", () => {
 
   // Persistent approach
   const wasInit = initTrainingState(0, 4);
-  if (!wasInit) return;
+  assert(wasInit, "WASM training state must initialise successfully");
 
   wasmAccumulateBiasPersistent4Way(0, targetPreAct, preAct, biases, config);
 
   for (let i = 0; i < 4; i++) {
     const persistent = readNeuronState(i);
-    if (!persistent) {
-      freeTrainingState();
-      return;
-    }
+    assertExists(persistent, `readNeuronState(${i}) must return data`);
 
     assertEquals(persistent[0], batchStates[i].count, `count[${i}]`);
     assertAlmostEquals(
@@ -525,7 +498,7 @@ Deno.test("PersistentTrainingState-BiasMatchesBatch4Way", () => {
  */
 Deno.test("PersistentTrainingState-BulkReadMatchesIndividual", () => {
   const wasInit = initTrainingState(4, 2);
-  if (!wasInit) return;
+  assert(wasInit, "WASM training state must initialise successfully");
 
   wasmAccumulateWeightPersistent4Way(
     0,
@@ -547,10 +520,8 @@ Deno.test("PersistentTrainingState-BulkReadMatchesIndividual", () => {
   const allSynapse = readAllSynapseState();
   const allNeuron = readAllNeuronState();
 
-  if (!allSynapse || !allNeuron) {
-    freeTrainingState();
-    return;
-  }
+  assertExists(allSynapse, "readAllSynapseState must return data");
+  assertExists(allNeuron, "readAllNeuronState must return data");
 
   // Compare with individual reads
   for (let i = 0; i < 4; i++) {
@@ -579,13 +550,13 @@ Deno.test("PersistentTrainingState-BulkReadMatchesIndividual", () => {
 });
 
 /**
- * Verify memory is properly freed (no leaks).
+ * Verify the init/free cycle can be repeated without error.
  */
-Deno.test("PersistentTrainingState-MemoryFreed", () => {
+Deno.test("PersistentTrainingState-InitFreeIsRepeatable", () => {
   // Initialise and free multiple times to check for leaks
   for (let cycle = 0; cycle < 10; cycle++) {
     const wasInit = initTrainingState(100, 50);
-    if (!wasInit) return;
+    assert(wasInit, `WASM training state must initialise (cycle ${cycle})`);
 
     wasmAccumulateWeightPersistent4Way(
       0,
@@ -605,7 +576,7 @@ Deno.test("PersistentTrainingState-MemoryFreed", () => {
 Deno.test("PersistentTrainingState-ReinitialiseAfterFree", () => {
   // First epoch
   let wasInit = initTrainingState(4, 2);
-  if (!wasInit) return;
+  assert(wasInit, "WASM training state must initialise (first epoch)");
 
   wasmAccumulateWeightPersistent4Way(
     0,
@@ -619,13 +590,10 @@ Deno.test("PersistentTrainingState-ReinitialiseAfterFree", () => {
 
   // Second epoch with different size
   wasInit = initTrainingState(8, 4);
-  if (!wasInit) return;
+  assert(wasInit, "WASM training state must initialise (second epoch)");
 
   const s0 = readSynapseState(0);
-  if (!s0) {
-    freeTrainingState();
-    return;
-  }
+  assertExists(s0, "readSynapseState(0) must return data after reinit");
 
   // Should be zeroed after reinitialisation
   assertEquals(s0[0], 0, "count should be 0 after reinitialisation");
