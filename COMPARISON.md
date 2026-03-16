@@ -104,125 +104,146 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
 
 ### Traditional Feedforward Neural Networks
 
-```
-Traditional feedforward (simplified):
+```mermaid
+graph LR
+    I["🔢 Input Layer<br/><i>Fixed size</i>"]
+    H1["⚙️ Hidden Layer 1<br/><i>Fixed size</i>"]
+    H2["⚙️ Hidden Layer 2<br/><i>Fixed size</i>"]
+    O["📊 Output Layer<br/><i>Fixed size</i>"]
 
-    +--------+     +---------+     +---------+     +--------+
-    | Input  | --> | Layer 1 | --> | Layer 2 | --> | Output |
-    +--------+     +---------+     +---------+     +--------+
-       |              |               |               |
-     fixed           fixed           fixed          fixed
-      size           size           size           size
+    I -->|"all-to-all"| H1
+    H1 -->|"all-to-all"| H2
+    H2 -->|"all-to-all"| O
 
-All connections are predetermined; the architecture is fixed:
-- Structure is defined before training
-- Typically all-to-all connections between layers
-- No feedback loops
-- Static topology
+    style I fill:#4A90D9,stroke:#2C5F8A,color:#fff
+    style H1 fill:#7B68EE,stroke:#5A4DBE,color:#fff
+    style H2 fill:#7B68EE,stroke:#5A4DBE,color:#fff
+    style O fill:#E8575A,stroke:#B8444A,color:#fff
 ```
+
+> **Key characteristics:** Structure defined before training · All-to-all
+> connections between layers · No feedback loops · Static topology
 
 **Image Reference**:
 [Feedforward Neural Network](https://en.wikipedia.org/wiki/Feedforward_neural_network)
 
 ### Convolutional Neural Networks (CNNs)
 
-```
-CNN architecture (simplified):
+```mermaid
+graph LR
+    I["🖼️ Input Image<br/><i>Fixed grid</i>"]
+    C["🔍 Convolution Layers<br/><i>Spatial filters</i>"]
+    P["📐 Pooling Layers<br/><i>Downsample</i>"]
+    FC["🧠 Fully Connected<br/><i>Classification</i>"]
 
-    +-------------+     +----------------+     +-------------+     +-------------+
-    | Input image | --> | Conv layers    | --> | Pooling     | --> | FC layers   |
-    |   (grid)    |     |  (filters)     |     | (downsample)|     |(classification)
-    +-------------+     +----------------+     +-------------+     +-------------+
-          |                     |                    |                    |
-        fixed                spatial             downsample         classification
-         grid                filters              features
+    I -->|"shared weights"| C
+    C -->|"feature maps"| P
+    P -->|"flattened"| FC
 
-- Designed for spatial data (images)
-- Shared weights via convolution
-- Approximate translation invariance
-- Fixed architecture per layer type
+    style I fill:#4A90D9,stroke:#2C5F8A,color:#fff
+    style C fill:#F5A623,stroke:#C48418,color:#fff
+    style P fill:#7B68EE,stroke:#5A4DBE,color:#fff
+    style FC fill:#E8575A,stroke:#B8444A,color:#fff
 ```
+
+> **Key characteristics:** Designed for spatial data (images) · Shared weights
+> via convolution · Approximate translation invariance · Fixed architecture per
+> layer type
 
 **Image Reference**:
 [Convolutional Neural Network](https://en.wikipedia.org/wiki/Convolutional_neural_network)
 
 ### Recurrent Neural Networks (RNNs/LSTMs)
 
+```mermaid
+graph TB
+    subgraph T1["⏪ Time t−1"]
+        I1["🔢 Input"]
+        H1["🧠 Hidden State"]
+    end
+    subgraph T2["⏺️ Time t"]
+        I2["🔢 Input"]
+        H2["🧠 Hidden State"]
+    end
+    subgraph T3["⏩ Time t+1"]
+        I3["🔢 Input"]
+        H3["🧠 Hidden State"]
+    end
+    O["📊 Output<br/><i>Per time step</i>"]
+
+    I1 --> H1
+    I2 --> H2
+    I3 --> H3
+    H1 -->|"recurrent"| H2
+    H2 -->|"recurrent"| H3
+    H2 --> O
+
+    style I1 fill:#4A90D9,stroke:#2C5F8A,color:#fff
+    style I2 fill:#4A90D9,stroke:#2C5F8A,color:#fff
+    style I3 fill:#4A90D9,stroke:#2C5F8A,color:#fff
+    style H1 fill:#7B68EE,stroke:#5A4DBE,color:#fff
+    style H2 fill:#7B68EE,stroke:#5A4DBE,color:#fff
+    style H3 fill:#7B68EE,stroke:#5A4DBE,color:#fff
+    style O fill:#E8575A,stroke:#B8444A,color:#fff
+    style T1 fill:#f0f4ff,stroke:#aaa
+    style T2 fill:#f0f4ff,stroke:#aaa
+    style T3 fill:#f0f4ff,stroke:#aaa
 ```
-RNN architecture (unrolled over time):
 
-   time t-1           time t             time t+1
-
-   +-------+         +-------+          +-------+
-   | Input |         | Input |          | Input |
-   +---+---+         +---+---+          +---+---+
-       |                 |                  |
-       v                 v                  v
-   +---------------- Hidden state ----------------+
-   |      (maintains information over time)      |
-   +-------------------+-------------------------+
-                       |
-                 +-----v-----+        (per time step)
-                 |  Output   |
-                 +-----------+
-
-- Processes sequences
-- Maintains a hidden state (memory)
-- Fixed recurrent structure
-- Can suffer from vanishing or exploding gradients
-```
+> **Key characteristics:** Processes sequences · Maintains a hidden state
+> (memory) · Fixed recurrent structure · Can suffer from vanishing or exploding
+> gradients
 
 **Image Reference**:
 [Recurrent Neural Network](https://en.wikipedia.org/wiki/Recurrent_neural_network)
 
 ### Transformer/LLM Architecture
 
-```
-Transformer architecture (simplified encoder block):
+```mermaid
+graph LR
+    I["📝 Input Tokens<br/><i>Sequence + positional encoding</i>"]
+    A["🔗 Multi-Head Attention<br/><i>All-to-all token interactions</i>"]
+    F["⚡ Feed-Forward Network<br/><i>Dense layers per token</i>"]
 
-    +-------------+     +-----------------------+     +-------------+
-    | Input tokens| --> | Multi-head attention  | --> |  FFN (MLP)  |
-    | (sequence)  |     |   (self-attention)    |     |  per token  |
-    +-------------+     +-----------------------+     +-------------+
-          |                        |                         |
-       fixed                 all-to-all                   dense
-      sequence              token interactions           layers
+    I -->|"embed + position"| A
+    A -->|"attended repr."| F
 
-Key features:
-- Self-attention mechanism (all tokens attend to all tokens)
-- Positional encoding for order
-- Multi-head attention
-- Fixed architecture, often at massive scale (billions of parameters)
-- Pre-trained on large corpora, then fine-tuned
+    style I fill:#4A90D9,stroke:#2C5F8A,color:#fff
+    style A fill:#F5A623,stroke:#C48418,color:#fff
+    style F fill:#E8575A,stroke:#B8444A,color:#fff
 ```
+
+> **Key features:** Self-attention mechanism (all tokens attend to all tokens) ·
+> Positional encoding for order · Multi-head attention · Fixed architecture,
+> often at massive scale (billions of parameters) · Pre-trained on large
+> corpora, then fine-tuned
 
 **Image Reference**:
 [Transformer (machine learning model)](https://en.wikipedia.org/wiki/Transformer_(machine_learning_model))
 
 ### NEAT Architecture (Our Implementation)
 
-```
-NEAT architecture (our implementation, simplified):
+```mermaid
+graph LR
+    I["🧬 Input Neurons<br/><i>UUID-based · extensible</i>"]
+    E["🔀 Evolving Topology<br/><i>Dynamic structure</i>"]
+    O["🎯 Output Neurons<br/><i>UUID-based · extensible</i>"]
 
-    +----------------+     +----------------------+     +----------------+
-    | Input neurons  | --> | Evolving topology    | --> | Output neurons |
-    | (UUID-based)   |     | (dynamic structure)  |     | (UUID-based)   |
-    +----------------+     +----------------------+     +----------------+
-            |                          |                          |
-       extensible                grows/shrinks                extensible
-      (can add new             during training              (can add new
-       features)           - connections added/removed        outputs)
-                           - neurons added/pruned
-                           - structure adapts to problem
+    I -->|"connections evolve"| E
+    E -->|"connections evolve"| O
 
-Key differences:
-✓ Topology evolves during training
-✓ Connections can be added/removed dynamically
-✓ Neurons can be added/pruned automatically
-✓ Structure adapts to problem complexity
-✓ No predetermined architecture
-✓ Can handle non-differentiable objectives
+    E -.-|"➕ add neurons"| E
+    E -.-|"✂️ prune neurons"| E
+
+    style I fill:#50C878,stroke:#3A9A5C,color:#fff
+    style E fill:#F5A623,stroke:#C48418,color:#fff
+    style O fill:#50C878,stroke:#3A9A5C,color:#fff
 ```
+
+> **Key differences:** ✓ Topology evolves during training · ✓ Connections can be
+> added/removed dynamically · ✓ Neurons can be added/pruned automatically ·
+> ✓ Structure adapts to problem complexity · ✓ No predetermined architecture ·
+> ✓ Can handle non-differentiable objectives
 
 **Visualization**: See our
 [interactive visualization](https://stsoftwareau.github.io/NEAT-AI/index.html)
