@@ -31,7 +31,7 @@ import {
   SILENT_LOGGER,
   Upgrade,
   upgradeTwo,
-} from "../mod.ts";
+} from "../../mod.ts";
 
 import type {
   CostInterface,
@@ -43,7 +43,7 @@ import type {
   RandomNumberGenerator,
   RequiredPlateauDetectionConfig,
   SynapseExport,
-} from "../mod.ts";
+} from "../../mod.ts";
 
 Deno.test("Public API: Creature constructor creates valid network", () => {
   const creature = new Creature(2, 1);
