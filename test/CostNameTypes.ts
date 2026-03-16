@@ -1,3 +1,4 @@
+import { assert } from "@std/assert";
 import type { NeatOptions } from "../mod.ts";
 import { createNeatConfig } from "../src/config/NeatConfig.ts";
 
@@ -24,6 +25,9 @@ createNeatConfig({ costName: "MAE" });
 // @ts-expect-error - only built-in cost names are allowed
 createNeatConfig({ costName: "CustomCost" });
 
-Deno.test("type-only: NeatOptions.costName is restricted", () => {
-  // Runtime is irrelevant; compilation is the test.
+Deno.test("type-only: NeatOptions.costName accepts valid built-in names", () => {
+  // The real test is that this file compiles with the ts-expect-error
+  // annotations above. The runtime assertion below confirms the config
+  // objects were created without throwing.
+  assert(_validMSE.costName === "MSE", "MSE should be accepted");
 });

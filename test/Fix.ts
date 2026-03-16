@@ -5,7 +5,7 @@ import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("FromFrom", () => {
+Deno.test("fix: is idempotent - second fix does not change creature", () => {
   const json: CreatureInternal = {
     neurons: [
       { type: "hidden", squash: "LOGISTIC", bias: -1, index: 3, uuid: "h1" },
