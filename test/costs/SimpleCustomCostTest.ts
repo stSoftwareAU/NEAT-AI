@@ -3,7 +3,7 @@ import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { Creature } from "../../src/Creature.ts";
 
 Deno.test("Custom cost function is called during evolution", async () => {
-  const directory = ".test/customCost";
+  const directory = ".test/costs/customCost";
   Deno.mkdir(directory, { recursive: true });
   const touchFile = `${directory}/.touched`;
 
@@ -36,7 +36,7 @@ Deno.test("Custom cost function is called during evolution", async () => {
       verbose: true,
       iterations: 2, // Very short for testing
       customCost: {
-        filePath: `${Deno.cwd()}/test/customCost/SimpleTouchTest.ts`,
+        filePath: `${Deno.cwd()}/test/costs/SimpleTouchTest.ts`,
       },
     };
 

@@ -27,7 +27,7 @@ export class SimpleTouchCost implements CostInterface {
 
   private touchFile(): void {
     try {
-      const touchFile = ".test/customCost/.touched";
+      const touchFile = ".test/costs/customCost/.touched";
       Deno.writeTextFileSync(touchFile, new Date().toISOString());
     } catch (error) {
       console.log("Touch failed:", error);
