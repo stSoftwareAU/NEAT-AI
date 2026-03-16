@@ -275,6 +275,8 @@
     "compactable",
     "subdirs",
     "utime",
-    "statfs"
+    "statfs",
+    "reinit",
+    "unassertable"
   ]
 }
