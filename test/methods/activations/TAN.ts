@@ -1,10 +1,10 @@
 import { assertAlmostEquals } from "@std/assert";
-import { TAN } from "../../src/methods/activations/types/TAN.ts";
+import { TAN } from "../../../src/methods/activations/types/TAN.ts";
 
 // Squash and unSquash behaviour is covered by:
 //   test/methods/activations/EdgeCases.ts (squash at x=0)
 //   test/methods/activations/SquashRoundtrip.ts (roundtrip within period)
-//   test/squash/activations/UnSquashHintTest.ts (unSquash with hint)
+//   test/methods/activations/UnSquashHintTest.ts (unSquash with hint)
 // This file tests TAN-specific simplifyBias behaviour.
 
 Deno.test("TAN: simplifyBias wraps large multiples of π to equivalent position", () => {
