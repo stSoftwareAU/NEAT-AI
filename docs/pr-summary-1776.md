@@ -7,6 +7,7 @@ Closes #1776.
 ### Changes Made
 
 **Directory case fixes** (5 directories):
+
 - `test/Compact` -> `test/compact` (matches `src/compact`)
 - `test/Upgrade` -> `test/upgrade` (matches `src/upgrade`)
 - `test/Tag` -> `test/tag` (standardised)
@@ -14,19 +15,23 @@ Closes #1776.
 - `test/FeedForward` -> `test/feedForward` (camelCase convention)
 
 **Directory consolidation** (4 directories removed):
+
 - `test/customCost/` merged into `test/costs/` (related cost function tests)
 - `test/Offspring/` merged into `test/breed/` (breeding tests consolidated)
-- `test/squash/` merged into `test/methods/activations/` (activation function tests)
+- `test/squash/` merged into `test/methods/activations/` (activation function
+  tests)
 - `test/presets/` merged into `test/config/` (configuration tests)
 - `test/disconnect/` merged into `test/creature/` (creature method tests)
 - `test/trace/` merged into `test/creature/` (creature tracing tests)
 
 **Cross-area duplicate resolved**:
-- Removed `test/Offspring/GeneticCompatibility.ts` (4 tests) as a duplicate
-  of the more comprehensive `test/breed/GeneticCompatibilityBehavioural.ts`
-  (8 tests covering all the same scenarios plus additional edge cases)
+
+- Removed `test/Offspring/GeneticCompatibility.ts` (4 tests) as a duplicate of
+  the more comprehensive `test/breed/GeneticCompatibilityBehavioural.ts` (8
+  tests covering all the same scenarios plus additional edge cases)
 
 **Root-level file relocation** (72 files moved):
+
 - Activation tests -> `test/methods/activations/` (13 files)
 - WASM tests -> `test/wasm/` (9 files)
 - Creature lifecycle tests -> `test/creature/` (11 files)
@@ -41,9 +46,10 @@ Closes #1776.
 - Script tests -> `test/scripts/` (1 file)
 
 **Naming consistency fixes**:
+
 - `trainDir_custom_cost.ts` -> `TrainDirCustomCost.ts` (PascalCase)
-- `DiscoverDirectoryPerformanceSummary_test.ts` -> `DiscoverDirectoryPerformanceSummary.ts`
-  (remove non-standard `_test` suffix)
+- `DiscoverDirectoryPerformanceSummary_test.ts` ->
+  `DiscoverDirectoryPerformanceSummary.ts` (remove non-standard `_test` suffix)
 
 ### Directories retained as-is (with rationale)
 
@@ -56,9 +62,9 @@ Closes #1776.
 
 ### Coverage gap analysis
 
-No significant coverage gaps identified. The test suite (4,483 tests across
-642 files) covers all major src/ directories. Minor gaps in `src/deprecated/`
-are expected (deprecated activation functions).
+No significant coverage gaps identified. The test suite (4,483 tests across 642
+files) covers all major src/ directories. Minor gaps in `src/deprecated/` are
+expected (deprecated activation functions).
 
 ## Evidence
 
