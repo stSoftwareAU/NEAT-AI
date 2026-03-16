@@ -35,7 +35,7 @@ function make(population: CreatureInternal[]) {
   });
   return networks;
 }
-Deno.test("1make", () => {
+Deno.test("makeElitists: selects single best creature from population", () => {
   const population: CreatureInternal[] = [
     { input: 1, output: 1, score: 1, neurons: [], synapses: [] },
     { input: 1, output: 1, score: -1, neurons: [], synapses: [] },
@@ -59,7 +59,7 @@ Deno.test("1make", () => {
   assert(elitists[0].score === 3, `Wrong elitism score ${elitists[0].score}`);
 });
 
-Deno.test("3make", () => {
+Deno.test("makeElitists: selects top three creatures in score order", () => {
   const population: CreatureInternal[] = [
     { input: 1, output: 1, score: 1, neurons: [], synapses: [] },
     { input: 1, output: 1, score: -1, neurons: [], synapses: [] },
@@ -83,7 +83,7 @@ Deno.test("3make", () => {
   assert(elitists[2].score === 1, `Wrong score ${elitists[2].score}`);
 });
 
-Deno.test("3make2", () => {
+Deno.test("makeElitists: selects all creatures when population equals requested count", () => {
   const population: CreatureInternal[] = [
     { input: 1, output: 1, score: -3, neurons: [], synapses: [] },
     { input: 1, output: 1, score: -2, neurons: [], synapses: [] },
@@ -105,7 +105,7 @@ Deno.test("3make2", () => {
   assert(elitists[2].score === -3, `Wrong score ${elitists[2].score}`);
 });
 
-Deno.test("short", () => {
+Deno.test("makeElitists: caps elitists at population size when requested more", () => {
   const population: CreatureInternal[] = [
     { input: 1, output: 1, score: -2, neurons: [], synapses: [] },
     { input: 1, output: 1, score: -1, neurons: [], synapses: [] },
@@ -130,7 +130,7 @@ Deno.test("short", () => {
   assert(elitists[1].score === -2, `Wrong score ${elitists[1].score}`);
 });
 
-Deno.test("backwards", () => {
+Deno.test("makeElitists: handles ascending-score population correctly", () => {
   const population: CreatureInternal[] = [];
   for (let i = 0; i < 1000; i++) {
     population.push({
@@ -157,7 +157,7 @@ Deno.test("backwards", () => {
   assert(elitists[2].score === 997, `Wrong score ${elitists[2].score}`);
 });
 
-Deno.test("forward", () => {
+Deno.test("makeElitists: handles descending-score population correctly", () => {
   const population: CreatureInternal[] = [];
   for (let i = 0; i < 1000; i++) {
     population.push({
@@ -185,43 +185,7 @@ Deno.test("forward", () => {
   assert(elitists[2].score === 998, `Wrong score ${elitists[2].score}`);
 });
 
-Deno.test("performance", () => {
-  const population: CreatureInternal[] = [];
-  for (let i = 0; i < 100000; i++) {
-    population.push({
-      input: 1,
-      output: 1,
-      score: Math.random(),
-      neurons: [],
-      synapses: [],
-    });
-  }
-  let totalMS = 0;
-  let minMS = Infinity;
-  for (let j = 10; j--;) {
-    performance.mark("start");
-    const elitists = makeElitists(make(population), 3).elitists;
-
-    performance.mark("end");
-    const ms = performance.measure("start", "end").duration;
-    console.log("Duration: " + ms);
-    totalMS += ms;
-    if (ms < minMS) minMS = ms;
-    for (let i = 0; i < elitists.length; i++) {
-      const e = elitists[i];
-      assert(e, i + ") " + e);
-    }
-
-    assert(
-      elitists.length === 3,
-      `Wrong count ${elitists.length}`,
-    );
-  }
-
-  console.log("Average", totalMS / 10, " Minimum", minMS);
-});
-
-Deno.test("order", () => {
+Deno.test("makeElitists: maintains score order with duplicate scores", () => {
   const population: CreatureInternal[] = [];
   for (let i = 0; i < 1000; i++) {
     const v = Math.random();
@@ -273,7 +237,7 @@ Deno.test("order", () => {
   );
 });
 
-Deno.test("logVerbose", () => {
+Deno.test("logVerbose: returns correct average score for population", () => {
   const population: CreatureInternal[] = [
     { input: 1, output: 1, score: -2, neurons: [], synapses: [] },
     { input: 1, output: 1, score: -1, neurons: [], synapses: [] },

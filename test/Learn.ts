@@ -1,3 +1,4 @@
+import { assert } from "@std/assert";
 import type { DataRecordInterface } from "../src/architecture/DataSet.ts";
 import type { NeatOptions } from "../src/config/NeatOptions.ts";
 import { Creature } from "../src/Creature.ts";
@@ -6,7 +7,7 @@ import { initWasmForTests } from "./_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("Learn", async () => {
+Deno.test("Learn: training completes and returns finite error", async () => {
   await initWasmForTests();
   const nn = Creature.fromJSON(
     {
@@ -74,10 +75,17 @@ Deno.test("Learn", async () => {
     dataSet.push(dr);
   }
 
-  const answersA = nn.activate(new Float32Array([0.1, 0.2]));
-  console.info(answersA);
-  train(nn, dataSet, options);
+  const result = train(nn, dataSet, options);
 
-  const answersB = nn.activate(new Float32Array([0.1, 0.2]));
-  console.info(answersB);
+  nn.validate();
+
+  assert(result !== undefined, "Training should return a result");
+  assert(
+    Number.isFinite(result.error),
+    `Training error should be finite, got: ${result.error}`,
+  );
+  assert(
+    result.error >= 0,
+    `Training error should be non-negative, got: ${result.error}`,
+  );
 });
