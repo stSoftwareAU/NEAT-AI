@@ -76,28 +76,21 @@ Deno.test("MockWorker: terminate cleans up resources", () => {
 
 Deno.test("MockWorker: handles multiple sequential messages", async () => {
   const worker = new MockWorker();
-  const responses: ResponseData[] = [];
 
-  worker.addEventListener(
-    "message",
-    ((event: Event) => {
-      const me = event as Event & { data: ResponseData };
-      responses.push(me.data);
-    }) as EventListener,
-  );
+  // Send messages sequentially and await each response
+  const response1 = await sendAndReceive(worker, {
+    taskID: 1,
+    echo: { message: "first", ms: 0 },
+  });
+  const response2 = await sendAndReceive(worker, {
+    taskID: 2,
+    echo: { message: "second", ms: 0 },
+  });
 
-  // Send multiple echo messages
-  worker.postMessage({ taskID: 1, echo: { message: "first", ms: 0 } });
-  worker.postMessage({ taskID: 2, echo: { message: "second", ms: 0 } });
-
-  // Wait for processing
-  await new Promise((r) => setTimeout(r, 200));
-
-  assertEquals(responses.length, 2);
-  assertEquals(responses[0].taskID, 1);
-  assertEquals(responses[0].echo?.message, "first");
-  assertEquals(responses[1].taskID, 2);
-  assertEquals(responses[1].echo?.message, "second");
+  assertEquals(response1.taskID, 1);
+  assertEquals(response1.echo?.message, "first");
+  assertEquals(response2.taskID, 2);
+  assertEquals(response2.echo?.message, "second");
 
   worker.terminate();
 });

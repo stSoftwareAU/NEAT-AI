@@ -14,7 +14,7 @@ import { SEMANTIC_MAJOR_VERSION, upgrade } from "../../src/upgrade/Upgrade.ts";
  * - forwardOnly: undefined = stay at 2.x (status not yet determined)
  */
 
-Deno.test("SEMANTIC_MAJOR_VERSION should be 3", () => {
+Deno.test("SEMANTIC_MAJOR_VERSION should be 4", () => {
   assertEquals(
     SEMANTIC_MAJOR_VERSION,
     4,

@@ -5,7 +5,7 @@
  * through createNeatConfig(), and that presets can be composed with
  * user overrides via spread syntax.
  */
-import { assertEquals, assertNotEquals } from "@std/assert";
+import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import {
   DISCOVERY_FOCUSED_PRESET,
@@ -152,8 +152,8 @@ Deno.test("Presets can be composed - memory constrained with discovery focus ove
   );
 });
 
-Deno.test("Presets satisfy NeatOptions type", () => {
-  // Verify each preset is a valid Partial<NeatOptions> by passing through config
+Deno.test("Presets satisfy NeatOptions type and produce valid configs", () => {
+  // Verify each preset produces a config with required fields populated
   const presets: NeatOptions[] = [
     QUICK_START_PRESET,
     LARGE_NETWORK_PRESET,
@@ -162,7 +162,9 @@ Deno.test("Presets satisfy NeatOptions type", () => {
   ];
   for (const preset of presets) {
     const config = createNeatConfig({ ...preset });
-    // If we get here without an error, the preset is valid
-    assertNotEquals(config, undefined);
+    // Every config must have a positive population size and iteration count
+    assert(config.populationSize > 0, "populationSize must be positive");
+    assert(config.iterations > 0, "iterations must be positive");
+    assert(config.targetError >= 0, "targetError must be non-negative");
   }
 });
