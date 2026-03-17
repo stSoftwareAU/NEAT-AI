@@ -22,6 +22,7 @@ import type { CreatureExport, CreatureTrace } from "./CreatureInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { trainWithPredictiveCoding } from "../predictiveCoding/PredictiveCodingTrainer.ts";
 import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../config/PredictiveCodingConfig.ts";
+import { applyDropout } from "../propagate/Dropout.ts";
 
 /**
  * Scans a data directory for binary training files.
@@ -365,6 +366,17 @@ function trainDirBinary(
             feedbackLoop,
             sparseConfig,
           );
+
+          // Issue #1860: Apply inverted dropout to hidden neuron activations
+          // during training. Dropout randomly disables neurons to prevent
+          // co-adaptation, providing regularisation against overfitting.
+          if (iterationConfig.dropoutRate > 0) {
+            applyDropout(
+              creature,
+              iterationConfig.dropoutRate,
+              getRandomNumberGenerator(),
+            );
+          }
 
           const sampleError = cost.calculate(
             targetsBuffer,
