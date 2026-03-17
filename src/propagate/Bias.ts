@@ -132,11 +132,11 @@ export function limitBias(
   }
 
   if (Math.abs(targetBias) < config.plankConstant) {
-    return 0;
+    return applyBiasRegularisation(0, config);
   }
 
   if (Math.abs(targetBias - currentBias) < 0.000_000_001) {
-    return currentBias;
+    return applyBiasRegularisation(currentBias, config);
   }
 
   const difference = config.learningRate * (targetBias - currentBias);
@@ -159,7 +159,38 @@ export function limitBias(
     }
   }
 
-  return limitedBias;
+  return applyBiasRegularisation(limitedBias, config);
+}
+
+/**
+ * Issue #1859: Apply L1/L2 bias regularisation (bias decay).
+ *
+ * L2 shrinks biases proportionally to their magnitude: b *= (1 - lr * λ₂)
+ * L1 applies soft-thresholding to drive small biases to zero:
+ *   b -= lr * λ₁ * sign(b), snapping to zero if the penalty exceeds |b|.
+ */
+function applyBiasRegularisation(
+  bias: number,
+  config: BackPropagationConfig,
+): number {
+  let result = bias;
+
+  // L2 regularisation (bias decay)
+  if (config.l2BiasDecay > 0) {
+    result *= 1 - config.learningRate * config.l2BiasDecay;
+  }
+
+  // L1 regularisation (sparsity via soft-thresholding)
+  if (config.l1BiasDecay > 0 && result !== 0) {
+    const l1Penalty = config.learningRate * config.l1BiasDecay;
+    if (l1Penalty >= Math.abs(result)) {
+      result = 0;
+    } else {
+      result -= l1Penalty * Math.sign(result);
+    }
+  }
+
+  return result;
 }
 
 /**
