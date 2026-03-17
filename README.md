@@ -108,31 +108,62 @@ instructions.
 
 For detailed documentation, see the [docs/](./docs/) directory:
 
+### Getting Started
+
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)**: First-time contributor guide with
   development setup and workflow
-- **[AGENTS.md](./AGENTS.md)**: Coding conventions, terminology, and development
-  guidelines
+- **[Configuration Guide](./docs/CONFIGURATION_GUIDE.md)**: Complete reference
+  of all configuration options and presets
+
+### Core Concepts
+
 - **[COMPARISON.md](./COMPARISON.md)**: How NEAT compares to traditional neural
   networks, CNNs, RNNs, and modern LLMs
 - **[Discovery Guide](./docs/DISCOVERY_GUIDE.md)**: Complete guide to
   distributed, multi-machine discovery workflows, including failure/success
   caches, replay, candidate category limits, focus overrides, and the
   cost-of-growth gate
-- **[DiscoveryDir API](./docs/DiscoveryDir.md)**: Technical API reference for
+- **[Intelligent Design](./docs/INTELLIGENT_DESIGN.md)**: Systematic squash
+  function optimisation for hidden neurons
+
+### API & Reference
+
+- **[API Reference](./docs/API_REFERENCE.md)**: Comprehensive public API
+  documentation
+- **[DiscoveryDir API](./docs/DISCOVERY_DIR.md)**: Technical API reference for
   `Creature.discoveryDir()` and data preparation
-- **[Elastic back propagation](./docs/BACKPROP_ELASTICITY.md)**: Why we prefer
+- **[Activation Functions Guide](./docs/ACTIVATION_FUNCTIONS.md)**: Complete
+  guide to all 30+ activation functions with selection guidance
+
+### Advanced Topics
+
+- **[Predictive Coding](./docs/PREDICTIVE_CODING.md)**: Neuroscience-inspired
+  predictive coding training mode
+- **[Predictive Coding Benchmarks](./docs/PREDICTIVE_CODING_BENCHMARKS.md)**:
+  Benchmark results for predictive coding
+- **[Elastic Backpropagation](./docs/BACKPROP_ELASTICITY.md)**: Why we prefer
   minimum-change weight updates and avoid pushing saturated squashes further
   into saturation
 - **[GPU Acceleration](./docs/GPU_ACCELERATION.md)**: GPU acceleration for
   discovery on macOS using Metal
-- **[Activation Functions Guide](./docs/ACTIVATION_FUNCTIONS.md)**: Complete
-  guide to all 30+ activation functions with selection guidance
-- **[Intelligent Design](./docs/INTELLIGENT_DESIGN.md)**: Systematic squash
-  function optimisation for hidden neurons
+- **[WASM Resident Topology](./docs/WASM_RESIDENT_TOPOLOGY.md)**: Feasibility
+  analysis for WASM-resident creature topology
+
+### Operations
+
 - **[Performance Tuning](./docs/PERFORMANCE_TUNING.md)**: Tuning WASM caches,
   thread pools, memory management, and scaling for large-scale training
+- **[Performance Research](./docs/PERFORMANCE_RESEARCH.md)**: WASM migration
+  research and benchmark learnings
 - **[Troubleshooting](./docs/TROUBLESHOOTING.md)**: Common issues and solutions
   for WASM, discovery, memory, CI, and configuration
+
+### For Contributors
+
+- **[AGENTS.md](./AGENTS.md)**: Coding conventions, terminology, and development
+  guidelines
+- **[Discovery Architecture](./docs/DISCOVERY_ARCHITECTURE.md)**: Internal
+  discovery pipeline architecture
 
 ## Contributions
 

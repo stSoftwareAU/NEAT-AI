@@ -483,8 +483,10 @@ Discovery will analyze these neurons first before doing weighted selection.
 
 - [API Reference — Discovery](API_REFERENCE.md#7-discovery-api) — Programmatic
   API reference
-- [DiscoveryDir Integration Guide](DiscoveryDir.md) — Technical API reference
+- [DiscoveryDir Integration Guide](DISCOVERY_DIR.md) — Technical API reference
   for `Creature.discoveryDir()`
 - [Configuration Guide — Discovery](CONFIGURATION_GUIDE.md#discovery-parameters)
   — All discovery configuration options
+- [Discovery Architecture](DISCOVERY_ARCHITECTURE.md) — Internal pipeline
+  architecture (contributor-focused)
 - `src/config/NeatOptions.ts` — All configuration options (source of truth)

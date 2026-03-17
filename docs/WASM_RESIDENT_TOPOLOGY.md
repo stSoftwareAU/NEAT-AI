@@ -331,5 +331,5 @@ This would be a natural evolution from 5.2, not a separate initiative.
 - #1639 — Parent tracking issue for WASM performance series
 - #1641 — Topological ordering optimisation
 - #1644 — Breeding crossover allocation reduction
-- `docs/performance-guide.md` — Performance optimisation guide with WASM
-  migration learnings
+- `docs/PERFORMANCE_RESEARCH.md` — Performance research with WASM migration
+  learnings

@@ -250,13 +250,13 @@ In our production workloads, the default is feed-forward/forward-only.
 - **docs/API_REFERENCE.md** - Comprehensive public API reference
 - **docs/DISCOVERY_GUIDE.md** - Complete discovery workflow guide
 - **docs/DISCOVERY_ARCHITECTURE.md** - Discovery pipeline internal architecture
-- **docs/DiscoveryDir.md** - Technical API reference for `discoveryDir()`
+- **docs/DISCOVERY_DIR.md** - Technical API reference for `discoveryDir()`
 - **docs/GPU_ACCELERATION.md** - GPU acceleration details
 - **docs/CONFIGURATION_GUIDE.md** - Complete configuration options reference
 - **docs/PERFORMANCE_TUNING.md** - Performance tuning guide for large-scale
   training
-- **docs/performance-guide.md** - Performance optimisation guide with WASM
-  migration learnings
+- **docs/PERFORMANCE_RESEARCH.md** - Performance research with WASM migration
+  learnings
 - **docs/ACTIVATION_FUNCTIONS.md** - Activation function selection guide
 - **docs/BACKPROP_ELASTICITY.md** - Elastic backpropagation explanation
 - **docs/INTELLIGENT_DESIGN.md** - Intelligent Design squash optimisation guide

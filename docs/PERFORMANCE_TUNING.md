@@ -365,9 +365,8 @@ WASM is effective for tight numerical loops with high arithmetic intensity:
 
 The serialisation wall means that graph-structure manipulation (breeding,
 crossover) and trivially fast operations (rejection sampling) do not benefit
-from WASM migration. See
-[Performance Optimisation Guide](./performance-guide.md) for detailed benchmark
-results.
+from WASM migration. See [Performance Research](./PERFORMANCE_RESEARCH.md) for
+detailed benchmark results.
 
 **Practical impact**: You do not need to configure WASM for these operations —
 they remain in TypeScript automatically. The key tuning parameter is the WASM
@@ -731,8 +730,8 @@ pressure event.
 
 - [Configuration Guide](./CONFIGURATION_GUIDE.md) — Complete reference for all
   configuration options
-- [Performance Optimisation Guide](./performance-guide.md) — WASM migration
-  learnings and benchmark results
+- [Performance Research](./PERFORMANCE_RESEARCH.md) — WASM migration learnings
+  and benchmark results
 - [Discovery Guide](./DISCOVERY_GUIDE.md) — Distributed discovery workflows
 - [GPU Acceleration](./GPU_ACCELERATION.md) — GPU setup for discovery
 - [Backprop Elasticity](./BACKPROP_ELASTICITY.md) — Elastic backpropagation

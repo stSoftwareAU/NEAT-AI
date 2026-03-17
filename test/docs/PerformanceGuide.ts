@@ -1,5 +1,5 @@
 /**
- * Issue #1640: Tests verifying behaviours documented in docs/performance-guide.md.
+ * Issue #1640: Tests verifying behaviours documented in docs/PERFORMANCE_RESEARCH.md.
  *
  * Each test exercises real code paths related to the performance optimisation
  * strategies described in the guide, ensuring the guide stays accurate as the

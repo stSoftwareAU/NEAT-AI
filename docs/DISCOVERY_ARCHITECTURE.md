@@ -4,7 +4,7 @@ This document describes the internal architecture of the discovery pipeline —
 how modules interconnect, the two-phase evaluation strategy, cache architecture,
 and candidate lifecycle. For user-facing configuration and distributed setup
 guidance, see [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md) and
-[DiscoveryDir.md](DiscoveryDir.md).
+[DISCOVERY_DIR.md](DISCOVERY_DIR.md).
 
 ## Pipeline Overview
 
@@ -623,7 +623,7 @@ candidates rather than analysis targets.
 
 - [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md) — User guide: distributed setup,
   configuration, best practices
-- [DiscoveryDir.md](DiscoveryDir.md) — Integration guide: API reference for
+- [DISCOVERY_DIR.md](DISCOVERY_DIR.md) — Integration guide: API reference for
   `Creature.discoveryDir()`
 - [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) — All configuration options
   including discovery parameters
