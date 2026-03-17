@@ -1,10 +1,10 @@
-# Predictive Coding Benchmarks
+# 📊 Predictive Coding Benchmarks
 
 Results from the Predictive Coding (PC) benchmark and validation suite.
 
 Issue #1558 | Part of #1549
 
-## Methodology
+## 🔬 Methodology
 
 All benchmarks run on:
 
@@ -17,12 +17,18 @@ Benchmarks use `Deno.bench()` with default warm-up and iteration settings. Each
 benchmark creates fresh creatures with random initial weights to avoid selection
 bias.
 
-## 1. Training Convergence
+> [!NOTE]
+> All benchmarks were run on an Apple M4 Pro using Deno 2.6.10. Results will
+> differ on other hardware and runtimes. The relative comparisons between
+> methods (e.g., PC vs standard backprop) are more meaningful than the absolute
+> timings, which are hardware-specific.
+
+## 1. 📈 Training Convergence
 
 Compares PC training against standard elastic backpropagation on simple problems
 with 20 training iterations.
 
-### XOR Problem (2 inputs, 4 hidden neurons, 1 output)
+### 🧩 XOR Problem (2 inputs, 4 hidden neurons, 1 output)
 
 | Method            | time/iter (avg) | iter/s |
 | ----------------- | --------------- | ------ |
@@ -33,7 +39,7 @@ with 20 training iterations.
 slightly slower per iteration due to the inference settling loop, but the
 difference is modest (~8%).
 
-### Regression (2 inputs, 6 hidden neurons, 1 output, 8 samples)
+### 📉 Regression (2 inputs, 6 hidden neurons, 1 output, 8 samples)
 
 | Method            | time/iter (avg) | iter/s |
 | ----------------- | --------------- | ------ |
@@ -46,12 +52,19 @@ backpropagation. This is expected and consistent with PC theory — the benefit
 comes from improved gradient quality on larger, deeper networks where backprop
 signal degradation is significant.
 
-## 2. Inference and Learning Speed
+> [!TIP]
+> PC's overhead on small problems (8–80% slower per iteration) is acceptable
+> given the improved gradient quality it provides on larger and deeper networks.
+> For networks with 30+ neurons or 2+ layers, PC's benefits in update direction
+> correctness outweigh the settling cost — especially once the Rust/WASM
+> inference engine (#1560) is in place.
+
+## 2. ⚡ Inference and Learning Speed
 
 Measures raw PC inference, gradient computation, and weight update speed across
 different network sizes.
 
-### PC Inference Settling (50 steps, threshold 1e-6)
+### 🔄 PC Inference Settling (50 steps, threshold 1e-6)
 
 | Network Size | Neurons | Synapses | time/iter (avg) | Relative |
 | ------------ | ------- | -------- | --------------- | -------- |
@@ -64,7 +77,14 @@ expected. Each inference step recomputes predictions and errors for all
 non-input neurons. For large networks, the inner loop dominates. This motivates
 the Rust/WASM inference engine (#1560) for production use.
 
-### Gradient Computation
+> [!WARNING]
+> Inference settling time scales super-linearly with network size. A large
+> network (93 neurons, 2,090 synapses) is ~847x slower than a small one (7
+> neurons) at 50 settling steps. Do not use the TypeScript PC prototype for
+> production training of large or medium networks — the Rust/WASM engine (#1560)
+> is required for acceptable performance.
+
+### 📐 Gradient Computation
 
 | Network Size      | time/iter (avg) | Relative |
 | ----------------- | --------------- | -------- |
@@ -76,7 +96,7 @@ the Rust/WASM inference engine (#1560) for production use.
 single pass over synapses (no iteration). The scaling is dominated by the number
 of synapses (quadratic in dense layers).
 
-### Hebbian Weight Update
+### 🧬 Hebbian Weight Update
 
 | Network Size      | time/iter (avg) | Relative |
 | ----------------- | --------------- | -------- |
@@ -88,11 +108,11 @@ of synapses (quadratic in dense layers).
 deltas with constraint enforcement. Even for large networks (93 neurons, 2,090
 synapses), updates complete in under 60 us.
 
-## 3. Structural Evolution
+## 3. 🏗️ Structural Evolution
 
 Measures PC training cost across different network topologies.
 
-### Topology Efficiency (10 iterations, XOR data)
+### 🔢 Topology Efficiency (10 iterations, XOR data)
 
 | Topology                | Hidden | time/iter (avg) | Relative |
 | ----------------------- | ------ | --------------- | -------- |
@@ -106,24 +126,24 @@ consistent with PC theory — deeper hierarchies require more settling iteration
 The two-layer network is 4.5x slower despite having only 3x more hidden neurons
 than the single-layer baseline.
 
-## 4. Mathematical Validation Summary
+## 4. ✅ Mathematical Validation Summary
 
 The validation test suite (`test/predictiveCoding/validation/`) confirms:
 
-### Energy Monotonicity
+### 📉 Energy Monotonicity
 
 - Energy decreases monotonically during inference for IDENTITY, LOGISTIC, and
   TANH activation functions.
 - Verified with tolerance of 1e-10 for numerical precision.
 
-### Gradient Correctness
+### 🎯 Gradient Correctness
 
 - PC Hebbian weight gradients match the analytical formula:
   `dW(j->i) = f'(a_i) * epsilon_i * x_j`
 - Verified for both IDENTITY (f'=1) and LOGISTIC (f'=sigma*(1-sigma)) activation
   functions.
 
-### Backprop Equivalence
+### 🔗 Backprop Equivalence
 
 - PC weight update direction matches backpropagation gradient direction on
   feedforward networks (positive correlation in update direction).
@@ -132,12 +152,19 @@ The validation test suite (`test/predictiveCoding/validation/`) confirms:
 - This is consistent with Millidge et al. (2022c): "Predictive Coding
   Approximates Backprop Along Arbitrary Computation Graphs".
 
-### Prediction Error Computation
+### ⚙️ Prediction Error Computation
 
 - Energy is exactly zero when latent values equal predictions.
 - Total energy correctly implements E = 0.5 * sum(epsilon^2).
 
-## 5. Backward Compatibility
+> [!NOTE]
+> The mathematical validation suite confirms that PC is implemented correctly:
+> energy decreases monotonically during settling, gradients match the analytical
+> formula, and weight update directions agree with backpropagation. These
+> properties are necessary (though not sufficient) to ensure PC training
+> converges reliably on real problems.
+
+## 5. 🔒 Backward Compatibility
 
 Validation tests confirm:
 
@@ -148,7 +175,13 @@ Validation tests confirm:
 - Default PC config has `enabled: false`.
 - Creatures without PC history can be trained with PC enabled.
 
-## Conclusions
+> [!TIP]
+> Backward compatibility is fully preserved. Existing creatures serialised
+> without PC state can be loaded and trained with PC enabled, and vice versa.
+> The `enabled: false` default means no existing pipelines are affected unless
+> PC is explicitly opted in via configuration.
+
+## 🏁 Conclusions
 
 1. **PC works correctly**: Mathematical validation confirms energy minimisation,
    correct gradients, and backprop-equivalent update directions.
@@ -167,7 +200,7 @@ Validation tests confirm:
 5. **PC training reduces error**: Validation confirms that PC weight updates
    move weights in the correct direction, reducing output error.
 
-## References
+## 📖 References
 
 - Millidge, B., Seth, A., & Buckley, C. L. (2022c). "Predictive Coding
   Approximates Backprop Along Arbitrary Computation Graphs."

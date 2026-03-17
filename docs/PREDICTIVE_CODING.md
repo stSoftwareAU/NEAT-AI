@@ -1,4 +1,4 @@
-# Predictive Coding Architecture Design
+# 🧠 Predictive Coding Architecture Design
 
 This document describes the architecture for integrating **Predictive Coding**
 (PC) as an optional training mode in NEAT-AI. It serves as the blueprint for all
@@ -8,9 +8,9 @@ Part of [#1549](https://github.com/stSoftwareAU/NEAT-AI/issues/1549).
 
 ---
 
-## 1. Background & Theory
+## 1. 🔬 Background & Theory
 
-### What is Predictive Coding?
+### 🧩 What is Predictive Coding?
 
 Predictive coding is a neuroscience-inspired learning framework in which every
 layer of a hierarchical network maintains a **generative model** of the layer
@@ -24,7 +24,13 @@ predictions downward, and lower layers send prediction errors upward. Learning
 consists of adjusting weights to minimise these prediction errors across the
 entire hierarchy.
 
-### Core Energy Function
+> [!NOTE]
+> Predictive coding originates from neuroscience (Rao & Ballard, 1999) and
+> models how the brain may process sensory information. The key insight is that
+> the brain continuously generates predictions about inputs and only propagates
+> **errors** in those predictions — not the raw signal itself.
+
+### ⚡ Core Energy Function
 
 The objective that a PC network minimises is the **total prediction error
 energy**:
@@ -39,7 +45,7 @@ Here \(x^{(l)}\) is the activity at layer \(l\), \(W^{(l)}\) are the top-down
 prediction weights, and \(f\) is a nonlinear activation function (squash in
 NEAT-AI terminology).
 
-### Two-Timescale Dynamics
+### ⏱️ Two-Timescale Dynamics
 
 PC operates on two distinct timescales (Bogacz, 2017):
 
@@ -66,7 +72,7 @@ PC operates on two distinct timescales (Bogacz, 2017):
    neurons — no global error signal or weight transport is required (Whittington
    & Bogacz, 2017).
 
-### Local Learning vs Global Backpropagation
+### 🔗 Local Learning vs Global Backpropagation
 
 A key attraction of PC for NEAT-AI is that weight updates are **purely local**.
 Each synapse update depends only on:
@@ -85,7 +91,13 @@ This locality property maps naturally onto NEAT-AI's architecture, where each
 `Neuron` already manages its own state and each `Synapse` connects exactly two
 neurons.
 
-### Relationship to the Free Energy Principle
+> [!TIP]
+> The locality of PC weight updates is a natural fit for NEAT-AI's per-neuron
+> and per-synapse architecture. No global gradient signal is needed — each
+> `Synapse` can compute its own update using only the prediction error at its
+> target neuron and the activity of its source neuron.
+
+### 🌐 Relationship to the Free Energy Principle
 
 PC can be understood as a special case of the **free energy principle**
 (Friston, 2018): the network minimises variational free energy, which
@@ -95,7 +107,7 @@ prediction errors above (Bogacz, 2017). This connects NEAT-AI's PC extension to
 a broader theoretical framework encompassing active inference and Bayesian brain
 theories.
 
-### Relationship to Elastic Backpropagation
+### 🔄 Relationship to Elastic Backpropagation
 
 NEAT-AI's existing elastic backpropagation (see `docs/BACKPROP_ELASTICITY.md`)
 already shares structural similarities with PC:
@@ -114,9 +126,9 @@ hidden neurons, particularly in deep or recurrent topologies.
 
 ---
 
-## 2. Architecture Design
+## 2. 🏗️ Architecture Design
 
-### 2.1 Mapping PC onto NEAT-AI's Existing Architecture
+### 2.1 🗺️ Mapping PC onto NEAT-AI's Existing Architecture
 
 NEAT-AI's core architecture consists of:
 
@@ -128,7 +140,7 @@ NEAT-AI's core architecture consists of:
 | `CreatureState` | `src/architecture/CreatureState.ts` | Extended with PC-specific per-neuron buffers                   |
 | `NeuronState`   | `src/architecture/CreatureState.ts` | Extended with prediction error and target fields               |
 
-#### How Layers Map
+#### 🔢 How Layers Map
 
 NEAT networks are not strictly layered — they are arbitrary directed graphs
 (with optional recurrent connections). For PC, we define a neuron's **depth** as
@@ -147,7 +159,7 @@ In NEAT-AI's variable-topology networks, depth is computed during
 `Creature.prepare()` using topological sorting (already performed for
 feedforward activation ordering).
 
-### 2.2 Prediction Nodes vs Error Nodes
+### 2.2 🧮 Prediction Nodes vs Error Nodes
 
 **Decision: Extend existing neurons with additional state rather than creating
 new node types.**
@@ -186,7 +198,7 @@ pcPredictionWeight?: number; // Top-down prediction weight (may differ from
                              // feedforward weight, or may be shared)
 ```
 
-### 2.3 Weight Symmetry Decision
+### 2.3 ⚖️ Weight Symmetry Decision
 
 **Decision: Use shared (symmetric) weights for the initial implementation.**
 
@@ -205,7 +217,14 @@ neuron \(i\) uses the **transpose** of the existing feedforward synapse weight.
 A future phase may introduce separate prediction weights if experiments show
 benefit.
 
-### 2.4 PC Inference (Iterative Settling)
+> [!NOTE]
+> Using symmetric (shared) weights between feedforward and feedback paths halves
+> memory requirements and is theoretically grounded — Whittington & Bogacz
+> (2017) showed that tied weights cause PC to approximate backpropagation. This
+> is the chosen starting point; separate prediction weights may be explored in a
+> future phase.
+
+### 2.4 🔄 PC Inference (Iterative Settling)
 
 The inference loop runs **before** weight updates, for each training sample:
 
@@ -248,7 +267,7 @@ This integrates with the existing forward activation path:
   WASM/Rust implementation.
 - Step 5 stores results in the existing `CreatureState` structure.
 
-### 2.5 PC Learning (Weight Updates)
+### 2.5 📚 PC Learning (Weight Updates)
 
 After inference has settled, weights are updated using the local Hebbian rule:
 
@@ -268,7 +287,7 @@ This replaces or complements the elastic backpropagation step
 `Neuron.propagateUpdate()` mechanism for applying accumulated weight/bias
 changes can be reused — the only difference is **how** the deltas are computed.
 
-### 2.6 Integration with Existing Forward Activation
+### 2.6 🔌 Integration with Existing Forward Activation
 
 The activation pipeline remains unchanged when PC is disabled:
 
@@ -304,7 +323,7 @@ flowchart LR
 PC settling occurs **between** the initial activation and scoring. The settled
 activations become the "true" activations used for fitness evaluation.
 
-### 2.7 TypeScript vs Rust/WASM Decision
+### 2.7 ⚙️ TypeScript vs Rust/WASM Decision
 
 | Component                          | Language                 | Rationale                                                                           |
 | ---------------------------------- | ------------------------ | ----------------------------------------------------------------------------------- |
@@ -325,11 +344,18 @@ The TypeScript side calls these through the existing WASM bridge pattern
 (`src/wasm/`), adding new wrapper functions in a `PredictiveCodingWasm.ts`
 module.
 
+> [!WARNING]
+> The PC inference inner loop is the critical performance bottleneck. For large
+> networks (90+ neurons), each settling step is O(N + S) and with up to 50
+> iterations this is up to 50x the cost of a single forward pass. The Rust/WASM
+> implementation is essential for production use — the TypeScript prototype
+> should only be used for testing and validation on small networks.
+
 ---
 
-## 3. Integration Strategy
+## 3. 🔧 Integration Strategy
 
-### 3.1 PC as an Optional Training Mode
+### 3.1 🔒 PC as an Optional Training Mode
 
 **Principle: PC is strictly opt-in. When disabled (the default), all existing
 behaviour is unchanged.**
@@ -359,7 +385,7 @@ Steps 1, 3, 4, 5, and 6 remain entirely unchanged. The creature's fitness is
 still evaluated using standard WASM activation — PC only affects how weight
 updates are computed during training.
 
-### 3.2 Configuration Design
+### 3.2 🛠️ Configuration Design
 
 Following the established config pattern (see `src/config/` for examples like
 `BiasRegularisationConfig.ts`):
@@ -422,7 +448,7 @@ export const DEFAULT_PREDICTIVE_CODING_CONFIG: RequiredPredictiveCodingConfig =
 5. Cross-field validation (e.g., `inferenceRate` must be positive) goes after
    config object creation, before `validate()`
 
-### 3.3 Backward Compatibility Guarantees
+### 3.3 ✅ Backward Compatibility Guarantees
 
 - **Default off**: `DEFAULT_PREDICTIVE_CODING_CONFIG.enabled = false` ensures no
   existing behaviour changes unless explicitly opted in.
@@ -435,7 +461,7 @@ export const DEFAULT_PREDICTIVE_CODING_CONFIG: RequiredPredictiveCodingConfig =
 - **All existing tests must pass**: Every PR in the implementation roadmap must
   pass the full test suite (2000+ tests) without modification to existing tests.
 
-### 3.4 How PC Prediction Errors Enhance Structural Evolution
+### 3.4 🔍 How PC Prediction Errors Enhance Structural Evolution
 
 NEAT-AI's Discovery system (`src/architecture/ErrorGuidedStructuralEvolution/`)
 uses per-neuron error signals to propose structural mutations. PC provides
@@ -459,9 +485,9 @@ fields.
 
 ---
 
-## 4. Implementation Roadmap
+## 4. 🗓️ Implementation Roadmap
 
-### Phase 1: Configuration and State Infrastructure
+### 🧱 Phase 1: Configuration and State Infrastructure
 
 **Goal**: Add PC configuration and extend creature state without changing any
 runtime behaviour.
@@ -482,7 +508,7 @@ runtime behaviour.
 - `src/config/NeatConfig.ts` (modified)
 - `src/architecture/CreatureState.ts` (modified)
 
-### Phase 2: TypeScript PC Inference Prototype
+### 🔬 Phase 2: TypeScript PC Inference Prototype
 
 **Goal**: Implement PC inference (settling) in TypeScript as a working
 prototype.
@@ -503,7 +529,7 @@ prototype.
 - `src/propagate/PredictiveCoding.ts` (new)
 - `src/creature/CreatureTraining.ts` (modified)
 
-### Phase 3: Rust/WASM PC Inference
+### ⚡ Phase 3: Rust/WASM PC Inference
 
 **Goal**: Port the PC inference hot loop to Rust/WASM for production
 performance.
@@ -523,7 +549,7 @@ performance.
 - `wasm_activation/src/lib.rs` (modified — re-export new modules)
 - `src/wasm/PredictiveCodingWasm.ts` (new)
 
-### Phase 4: Discovery Integration
+### 🔍 Phase 4: Discovery Integration
 
 **Goal**: Feed PC prediction errors into the structural evolution pipeline.
 
@@ -541,7 +567,7 @@ performance.
 - `src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts` (modified)
 - NEAT-AI-Discovery repo (separate PRs)
 
-### Phase 5: Complement Mode and Advanced Features
+### 🚀 Phase 5: Complement Mode and Advanced Features
 
 **Goal**: Enable PC and elastic backprop to work together, and add adaptive
 settling.
@@ -556,7 +582,7 @@ settling.
 - **Depends on**: Phase 4
 - **Result**: Full PC integration with all NEAT-AI training modes
 
-### Dependency Graph
+### 📊 Dependency Graph
 
 ```mermaid
 flowchart TD
@@ -574,7 +600,7 @@ flowchart TD
 Each phase produces a working, tested PR. Phases are strictly sequential — each
 depends on the previous one being merged and passing all tests.
 
-### Performance Considerations
+### ⚡ Performance Considerations
 
 The PC inference loop is the critical performance bottleneck:
 
@@ -591,9 +617,16 @@ The PC inference loop is the critical performance bottleneck:
 - **Early convergence**: The convergence threshold allows settling to stop early
   when prediction errors are already small, avoiding unnecessary iterations.
 
+> [!TIP]
+> Early convergence detection is an important optimisation. When prediction
+> errors are already small (e.g., after weight updates stabilise), the settling
+> loop can terminate well before `maxInferenceIterations` — reducing per-sample
+> cost significantly. Tuning `convergenceThreshold` is worthwhile when
+> optimising for throughput.
+
 ---
 
-## 5. References
+## 5. 📖 References
 
 - Bogacz, R. (2017). A tutorial on the free-energy framework for modelling
   perception and learning. _Journal of Mathematical Psychology_, 76, 198–211.
@@ -681,7 +714,7 @@ The PC inference loop is the critical performance bottleneck:
 
 ---
 
-## Further Reading
+## 📚 Further Reading
 
 - Wikipedia:
   [Predictive coding](https://en.wikipedia.org/wiki/Predictive_coding)

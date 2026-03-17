@@ -1,11 +1,16 @@
-# Intelligent Design
+# 🧠 Intelligent Design
 
 Intelligent Design is a technique for optimising neural network creatures by
 systematically testing different squash (activation) functions for each hidden
 neuron. Unlike random mutation, Intelligent Design methodically explores the
 activation function space and remembers successful substitutions for future use.
 
-## Overview
+> [!NOTE]
+> Intelligent Design is distinct from random mutation — it performs a
+> systematic, exhaustive scan of the activation function space and persists its
+> discoveries as tacit knowledge for reuse across future runs.
+
+## 📋 Overview
 
 The Intelligent Design workflow consists of two main phases:
 
@@ -17,9 +22,9 @@ The Intelligent Design workflow consists of two main phases:
 2. **Tacit Knowledge Application**: Apply previously discovered neuron-to-squash
    mappings ("tacit knowledge") to accelerate future improvement cycles.
 
-## Key Concepts
+## 🔑 Key Concepts
 
-### Tacit Knowledge
+### 💡 Tacit Knowledge
 
 Tacit knowledge is a mapping from neuron UUID to squash function name. When a
 squash substitution improves a creature's score, this mapping is stored and can
@@ -30,7 +35,12 @@ be reapplied in future runs:
 - **Hive Knowledge**: Shared knowledge across multiple machines, typically
   stored in a version-controlled repository.
 
-### Alternative Squashes
+> [!TIP]
+> Use hive knowledge to share discoveries across a team or a cluster of
+> machines. Local knowledge always takes precedence over hive knowledge, so
+> per-machine overrides are safe and straightforward.
+
+### 🔀 Alternative Squashes
 
 When a neuron shows improvement with the target squash, Intelligent Design
 automatically tries alternative squash functions from a curated list. This
@@ -45,7 +55,7 @@ The alternative squashes are organised into tiers:
 - **Tier 3 (Specialised)**: SINE, Cosine, ABSOLUTE, Cube, ISRU, LogSigmoid,
   GAUSSIAN
 
-### Safe File Writing
+### 🛡️ Safe File Writing
 
 To prevent data corruption, all file writes use atomic operations:
 
@@ -55,9 +65,9 @@ To prevent data corruption, all file writes use atomic operations:
 This ensures that the target file is never in a partial or corrupted state,
 which is critical when storing trained models.
 
-## Usage
+## 🚀 Usage
 
-### Basic Squash Improvement Scan
+### 🔬 Basic Squash Improvement Scan
 
 ```typescript
 import {
@@ -93,7 +103,7 @@ if (result.improvements.size > 0) {
 }
 ```
 
-### Applying Tacit Knowledge
+### 📚 Applying Tacit Knowledge
 
 ```typescript
 import {
@@ -125,7 +135,7 @@ console.log(
 );
 ```
 
-### Using Workers for Parallel Scoring
+### ⚡ Using Workers for Parallel Scoring
 
 ```typescript
 import { IntelligentDesignWorkerHandler } from "@stsoftware/neat-ai";
@@ -147,9 +157,9 @@ const results = await Promise.all(promises);
 workers.forEach((w) => w.terminate());
 ```
 
-## Configuration Options
+## ⚙️ Configuration Options
 
-### Squash Improvement Options
+### 📊 Squash Improvement Options
 
 | Option            | Type        | Default       | Description                               |
 | ----------------- | ----------- | ------------- | ----------------------------------------- |
@@ -165,7 +175,12 @@ workers.forEach((w) => w.terminate());
 | `epsilon`         | number      | 1e-8          | Epsilon for score comparison              |
 | `onProgress`      | function    | undefined     | Callback for progress updates             |
 
-## Integration with External Workflows
+> [!WARNING]
+> The default `timeoutMs` of 3,600,000 ms (1 hour) may not be sufficient for
+> large creatures with many hidden neurons. Increase this value when running
+> exhaustive scans on complex models to avoid premature termination.
+
+## 🔗 Integration with External Workflows
 
 Intelligent Design is designed to work with external orchestration scripts:
 
@@ -176,25 +191,30 @@ Intelligent Design is designed to work with external orchestration scripts:
 This separation allows the core logic to remain generic while domain-specific
 concerns (training data preparation, repository layout) are handled externally.
 
-### Data Flow
+### 🔄 Data Flow
 
 ```mermaid
 flowchart TD
-  runner["Runner Script"] --> cli["Intelligent Design CLI"]
-  cli --> readModel["Read model JSON"]
-  cli --> readHive["Read hive knowledge"]
-  cli --> scoreCall["scoreDir with NeatOptions"]
-  readModel --> neatId["NEAT-AI intelligentDesign core"]
+  runner["🏃 Runner Script"]:::external --> cli["🖥️ Intelligent Design CLI"]:::cli
+  cli --> readModel["📂 Read model JSON"]:::io
+  cli --> readHive["🐝 Read hive knowledge"]:::io
+  cli --> scoreCall["📐 scoreDir with NeatOptions"]:::io
+  readModel --> neatId["🧠 NEAT-AI intelligentDesign core"]:::core
   readHive --> neatId
   scoreCall --> neatId
-  neatId --> writeModel["Write improved model"]
-  neatId --> writeHive["Write updated knowledge"]
-  runner --> checkin["Check-in Script"]
+  neatId --> writeModel["💾 Write improved model"]:::io
+  neatId --> writeHive["📝 Write updated knowledge"]:::io
+  runner --> checkin["✅ Check-in Script"]:::external
   writeModel --> checkin
   writeHive --> checkin
+
+  classDef external fill:#4a90d9,stroke:#2c5f8a,color:#fff
+  classDef cli fill:#7b68ee,stroke:#4b3fa0,color:#fff
+  classDef core fill:#e67e22,stroke:#a04000,color:#fff
+  classDef io fill:#27ae60,stroke:#1a7a40,color:#fff
 ```
 
-## Best Practices
+## ✅ Best Practices
 
 1. **Start with high-tier squashes**: GELU, Swish, and LeakyReLU typically
    produce the best results.
