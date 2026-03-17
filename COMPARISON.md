@@ -467,7 +467,7 @@ algorithm instead of standard crossover.
 
 - Pre-built neural network layers (Dense, Conv2D, LSTM, etc.)
 - Automatic differentiation (computes gradients automatically)
-- Optimizers (Adam, SGD, etc.) with proven hyperparameters
+- Optimisers (Adam, SGD, etc.) with proven hyperparameters
 - Data loaders and preprocessing utilities
 - Model serialisation formats (SavedModel, ONNX, etc.)
 - Visualisation tools (TensorBoard, etc.)
