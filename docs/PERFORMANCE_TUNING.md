@@ -1,4 +1,4 @@
-# Performance Tuning Guide for Large-Scale Training
+# ⚡ Performance Tuning Guide for Large-Scale Training
 
 This guide explains how to tune NEAT-AI for large-scale training runs. It covers
 every configurable performance parameter, explains when to enable or disable
@@ -26,7 +26,7 @@ every option.
 
 ---
 
-## Key Concepts
+## 🧠 Key Concepts
 
 Before diving into configuration, here are the core concepts referenced
 throughout this guide.
@@ -56,7 +56,7 @@ topologies, this conversion can take longer than the computation itself.
 
 ---
 
-## WASM Cache Tuning
+## 🗄️ WASM Cache Tuning
 
 NEAT-AI compiles neural network topologies into WASM modules for fast
 activation. Two caches prevent repeated compilation.
@@ -87,6 +87,12 @@ eviction, the module must be recompiled next time it is needed.
   [Diagnostics](#diagnostics-and-monitoring)). A high eviction rate means the
   cache is too small for your workload.
 
+> [!TIP]
+> When using memetic evolution, set `maxCachedActivations` to
+> `populationSize * 3` rather than the default `populationSize * 2`.
+> Backpropagation generates modified weight copies that differ structurally from
+> their parent topology, increasing the effective working set of cached modules.
+
 ### WASM Compilation Cache (`wasmCache.compilationCacheSize`)
 
 This cache holds compiled topology templates — the intermediate step before a
@@ -104,7 +110,7 @@ full activation module is created.
   cross-species breeding.
 - A value lower than 50 is rarely useful.
 
-### Configuration Example
+### ⚙️ Configuration Example
 
 ```typescript
 const config = createNeatConfig({
@@ -118,7 +124,7 @@ const config = createNeatConfig({
 
 ---
 
-## Distance Cache Tuning
+## 📏 Distance Cache Tuning
 
 The distance cache stores genetic compatibility scores between pairs of
 creatures. These scores determine which creatures belong to the same species.
@@ -151,9 +157,16 @@ during speciation) are nearly free.
   cache hit rate drops. Expect ~64% hit rate with 20% turnover versus ~100% for
   stable populations.
 
+> [!NOTE]
+> The distance cache uses UUID pairs as keys. Creatures that are eliminated and
+> replaced each generation will never yield a cache hit for their pairings,
+> which is why high turnover reduces hit rates significantly. If your problem
+> involves aggressive culling, consider raising `distanceCache.maxSize` beyond
+> the default.
+
 ---
 
-## Thread Pool Configuration
+## 🧵 Thread Pool Configuration
 
 NEAT-AI uses a work-stealing thread pool to parallelise evaluation, breeding,
 and mutation across CPU cores.
@@ -198,6 +211,12 @@ workers than your system can sustain.
   `estimatedMemoryPerWorkerMB: 2048` caps threads at 27, leaving headroom for
   the main process and OS.
 
+> [!WARNING]
+> Do not omit `workerThreadCap` on production machines with large populations.
+> Without a memory budget, NEAT-AI will attempt to launch one thread per logical
+> core. On a 32-core machine with a population of 500, this can exceed available
+> RAM and result in an out-of-memory crash mid-training run.
+
 ```typescript
 const config = createNeatConfig({
   threads: 32,
@@ -210,7 +229,7 @@ const config = createNeatConfig({
 
 ---
 
-## Memory Management
+## 🧩 Memory Management
 
 ### Heap Memory Monitoring (`memory`)
 
@@ -244,6 +263,12 @@ out of memory.
   that is too large (reduce `maxCachedActivations`) or too many worker threads
   (enable `workerThreadCap`).
 
+> [!WARNING]
+> Raising `memory.criticalThreshold` above 0.90 is dangerous on systems that run
+> other processes. The critical threshold is a last-ditch defence; if the heap
+> breaches it and there is nothing left to evict, the process will crash. Always
+> leave at least 10–15% headroom below your system's physical memory limit.
+
 ### Understanding Cache Diagnostics
 
 Use `getCacheStats()` to inspect cache health at any point during training:
@@ -273,7 +298,7 @@ for (const cache of stats) {
 
 ---
 
-## Population Size and Selection Pressure
+## 👥 Population Size and Selection Pressure
 
 Population size is the single most impactful parameter for training performance.
 Larger populations explore more of the solution space but cost proportionally
@@ -283,7 +308,7 @@ more compute per generation.
 | ---------------- | ------- | ---------------------------------- |
 | `populationSize` | `50`    | Number of creatures per generation |
 
-### Trade-offs
+### ⚖️ Trade-offs
 
 | Population size | Exploration | Compute cost          | Memory    | Best for                              |
 | --------------- | ----------- | --------------------- | --------- | ------------------------------------- |
@@ -323,7 +348,7 @@ performers. Higher pressure means faster convergence but risks losing diversity.
 - **Adaptive mutation** adjusts these automatically based on creature size — see
   [Adaptive Mutation Thresholds](#adaptive-mutation-thresholds) below.
 
-### Adaptive Mutation Thresholds
+### 🔄 Adaptive Mutation Thresholds
 
 Large creatures (many neurons) are more fragile — random topology changes are
 more likely to be destructive. NEAT-AI automatically reduces topology mutation
@@ -346,7 +371,7 @@ rates for large creatures.
 
 ---
 
-## When to Enable WASM Activation
+## 🚀 When to Enable WASM Activation
 
 WASM activation is always enabled in NEAT-AI — it is required for all forward
 passes. However, understanding when WASM provides the greatest benefit helps
@@ -365,9 +390,8 @@ WASM is effective for tight numerical loops with high arithmetic intensity:
 
 The serialisation wall means that graph-structure manipulation (breeding,
 crossover) and trivially fast operations (rejection sampling) do not benefit
-from WASM migration. See
-[Performance Optimisation Guide](./performance-guide.md) for detailed benchmark
-results.
+from WASM migration. See [Performance Research](./PERFORMANCE_RESEARCH.md) for
+detailed benchmark results.
 
 **Practical impact**: You do not need to configure WASM for these operations —
 they remain in TypeScript automatically. The key tuning parameter is the WASM
@@ -375,7 +399,7 @@ cache size (see [WASM Cache Tuning](#wasm-cache-tuning)).
 
 ---
 
-## Discovery and GPU Acceleration
+## 🔍 Discovery and GPU Acceleration
 
 Discovery is NEAT-AI's error-guided structural evolution, powered by the
 [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) Rust
@@ -400,7 +424,13 @@ extension with optional GPU acceleration via Metal (macOS).
   are applied.
 - **Disable discovery** by setting `discoverySampleRate: -1`.
 
-### Discovery Configuration
+> [!TIP]
+> For data sets exceeding 100,000 records, set `discoverySampleRate` to
+> 0.05–0.10. Sampling 5–10% is typically sufficient for structural analysis and
+> avoids the significant memory overhead of recording full-dataset activations
+> before each Rust analysis phase.
+
+### ⚙️ Discovery Configuration
 
 | Parameter                         | Default | Description                                               |
 | --------------------------------- | ------- | --------------------------------------------------------- |
@@ -420,7 +450,7 @@ extension with optional GPU acceleration via Metal (macOS).
 - **For memory-constrained systems**, reduce `discoveryBatchSize` to 64 and
   lower `discoveryRustFlushRecords` to flush data to Rust more frequently.
 
-### GPU Acceleration
+### 🖥️ GPU Acceleration
 
 GPU acceleration (Metal on macOS) speeds up the discovery analysis phase. See
 [GPU Acceleration Guide](./GPU_ACCELERATION.md) for setup details.
@@ -433,7 +463,7 @@ second — the GPU kernel launch overhead exceeds the computation time.
 
 ---
 
-## Memetic Evolution (Backpropagation + Evolution)
+## 🧬 Memetic Evolution (Backpropagation + Evolution)
 
 Memetic evolution combines evolutionary search with gradient-based
 backpropagation to fine-tune weights and biases within evolved network
@@ -454,7 +484,7 @@ structures.
   local minima. If backpropagation consistently makes creatures worse, consider
   reducing or disabling it.
 
-### Key Backpropagation Parameters
+### 🔧 Key Backpropagation Parameters
 
 | Parameter                              | Default         | Description                                          |
 | -------------------------------------- | --------------- | ---------------------------------------------------- |
@@ -498,9 +528,9 @@ fails. This is tracked over a rolling window of recent generations.
 
 ---
 
-## Scaling Patterns
+## 📐 Scaling Patterns
 
-### Single Machine: Thread Pool Sizing
+### 🖥️ Single Machine: Thread Pool Sizing
 
 For a single machine, the primary scaling lever is the thread pool size combined
 with memory management.
@@ -536,7 +566,7 @@ const config = createNeatConfig({
 });
 ```
 
-### Multi-Machine: Island Model Configuration
+### 🌐 Multi-Machine: Island Model Configuration
 
 For training across multiple machines, NEAT-AI supports the island model pattern
 where independent populations evolve separately and periodically exchange their
@@ -569,7 +599,7 @@ best creatures.
   mutation rates or different discovery settings to explore the solution space
   more broadly.
 
-### Data Set Sizing and Batch Strategies
+### 📦 Data Set Sizing and Batch Strategies
 
 Large data sets affect both training time and memory consumption.
 
@@ -590,7 +620,7 @@ Large data sets affect both training time and memory consumption.
 
 ---
 
-## Tuning Recipes
+## 🍳 Tuning Recipes
 
 ### Recipe: Prototyping (Fast Iteration)
 
@@ -661,7 +691,7 @@ const config = createNeatConfig({
 
 ---
 
-## Diagnostics and Monitoring
+## 📊 Diagnostics and Monitoring
 
 ### Cache Statistics
 
@@ -711,7 +741,7 @@ The work-stealing thread pool tracks its own performance:
 - **Many idle workers**: The population is too small to saturate the thread
   pool. Either reduce threads or increase population size.
 
-### Memory Pressure Events
+### 🚨 Memory Pressure Events
 
 When heap usage crosses the warning or critical threshold, NEAT-AI automatically
 evicts cache entries. You can detect this by monitoring cache statistics over
@@ -725,14 +755,20 @@ pressure event.
 3. Lower `memory.warningThreshold` to trigger eviction earlier and more gently.
 4. Reduce `discoveryBatchSize` to lower peak memory during discovery.
 
+> [!NOTE]
+> A sudden drop in `currentSize` across multiple caches at the same time is a
+> reliable indicator of a memory pressure event. If you observe this pattern
+> regularly, consider it a signal to revisit your thread count and cache sizing
+> rather than simply raising the thresholds.
+
 ---
 
-## Further Reading
+## 📚 Further Reading
 
 - [Configuration Guide](./CONFIGURATION_GUIDE.md) — Complete reference for all
   configuration options
-- [Performance Optimisation Guide](./performance-guide.md) — WASM migration
-  learnings and benchmark results
+- [Performance Research](./PERFORMANCE_RESEARCH.md) — WASM migration learnings
+  and benchmark results
 - [Discovery Guide](./DISCOVERY_GUIDE.md) — Distributed discovery workflows
 - [GPU Acceleration](./GPU_ACCELERATION.md) — GPU setup for discovery
 - [Backprop Elasticity](./BACKPROP_ELASTICITY.md) — Elastic backpropagation

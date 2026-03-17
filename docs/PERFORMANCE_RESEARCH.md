@@ -1,4 +1,4 @@
-# Performance Optimisation Guide
+# 🔬 Performance Optimisation Guide
 
 This guide captures learnings from systematic performance investigations in
 NEAT-AI, including several WASM migration experiments and TypeScript-level
@@ -7,7 +7,13 @@ strategies are likely to succeed and which are not worth pursuing.
 
 All benchmarks were run on Apple M4 Pro, Deno 2.7.x (aarch64-apple-darwin).
 
-## When WASM Migration Works
+> [!NOTE]
+> All benchmark figures in this guide were measured on Apple M4 Pro running Deno
+> 2.7.x (aarch64-apple-darwin). Absolute timings will differ on other hardware,
+> but the relative ratios between approaches (e.g., serialisation overhead vs.
+> computation time) are consistent across platforms.
+
+## ✅ When WASM Migration Works
 
 WASM migration is effective for **tight numerical loops** with high arithmetic
 intensity relative to data marshalling cost. The existing WASM coverage in
@@ -25,7 +31,7 @@ numerical format (typed arrays), the computation is CPU-intensive, and the
 result is a similarly compact numerical output. The JS↔WASM boundary crossing
 cost (~100–500 ns) is negligible relative to the computation time.
 
-## When WASM Migration Does NOT Work
+## ❌ When WASM Migration Does NOT Work
 
 Four systematic investigations
 ([#1630](https://github.com/stSoftwareAU/NEAT-AI/issues/1630),
@@ -35,7 +41,7 @@ Four systematic investigations
 remaining TypeScript hotspots to Rust/WASM. All four yielded negative results,
 producing valuable learnings.
 
-### Graph-Structure Manipulation (Breeding/Crossover)
+### 🕸️ Graph-Structure Manipulation (Breeding/Crossover)
 
 **Investigation:** [#1632](https://github.com/stSoftwareAU/NEAT-AI/issues/1632)
 
@@ -58,7 +64,7 @@ even pure TypeScript allocation optimisations (eliminating thousands of
 intermediate objects) yielded only ~1–2% improvement, because V8's generational
 garbage collector handles short-lived objects efficiently.
 
-### Trivially Fast Operations (Rejection Sampling, Compatibility Scoring)
+### ⚡ Trivially Fast Operations (Rejection Sampling, Compatibility Scoring)
 
 **Investigations:**
 [#1631](https://github.com/stSoftwareAU/NEAT-AI/issues/1631),
@@ -75,7 +81,14 @@ more than the computation being migrated.
 | WASM call (pre-serialised) | 48 µs   | Just the WASM function       |
 | Serialisation overhead     | 70.5 µs | Extracting topology for WASM |
 
-### Cache-Dominated Paths
+> [!WARNING]
+> Do not assume WASM is faster simply because it runs closer to the metal. For
+> operations that complete in under 2 µs in TypeScript, the serialisation
+> overhead alone is 35–50x higher than the original computation. Always
+> benchmark end-to-end (including serialisation), not just the isolated WASM
+> function call.
+
+### 🗄️ Cache-Dominated Paths
 
 **Investigation:** [#1633](https://github.com/stSoftwareAU/NEAT-AI/issues/1633)
 
@@ -93,7 +106,7 @@ Cache hit rates are high: 100% for stable populations, ~64% with 20% population
 turnover. At 66 ns per cache hit, migrating to WASM would actually be slower
 than the cached TypeScript path.
 
-### Sequential Graph Traversal (Backpropagation Orchestration)
+### 🔗 Sequential Graph Traversal (Backpropagation Orchestration)
 
 **Investigation:** [#1630](https://github.com/stSoftwareAU/NEAT-AI/issues/1630)
 
@@ -113,12 +126,12 @@ eliminated the largest per-neuron boundary crossing overhead. The remaining 91%
 of time is in recursive TypeScript graph traversal that cannot be parallelised
 or offloaded without moving the entire creature state into WASM.
 
-## What DOES Work for Optimisation
+## 📈 What DOES Work for Optimisation
 
 The most effective optimisations in NEAT-AI have been TypeScript-level
 algorithmic improvements.
 
-### Batching Expensive Operations
+### 🗂️ Batching Expensive Operations
 
 **PR:** [#1590](https://github.com/stSoftwareAU/NEAT-AI/pull/1590) (from
 [#1583](https://github.com/stSoftwareAU/NEAT-AI/issues/1583))
@@ -139,7 +152,7 @@ improvement:
 Topology cache rebuilds and graph traversal are expensive; doing them once
 instead of N times gives linear speedup.
 
-### Removing Redundant Work
+### 🧹 Removing Redundant Work
 
 **PR:** [#1591](https://github.com/stSoftwareAU/NEAT-AI/pull/1591) (from
 [#1584](https://github.com/stSoftwareAU/NEAT-AI/issues/1584))
@@ -156,7 +169,7 @@ Eliminating duplicate `validate()` calls in `AddConnection.mutate()` yielded
 **Lesson:** Audit call chains for repeated validation, caching, or
 initialisation that could be eliminated.
 
-### Better Cloning Strategies
+### 🐑 Better Cloning Strategies
 
 **PR:** [#1593](https://github.com/stSoftwareAU/NEAT-AI/pull/1593) (from
 [#1586](https://github.com/stSoftwareAU/NEAT-AI/issues/1586))
@@ -173,7 +186,14 @@ in-process mutation backup yielded 2.4–3.5x improvement:
 **Lesson:** JSON round-tripping is expensive. When data stays in-process,
 structured cloning or shallow copies avoid serialisation overhead entirely.
 
-### Better Algorithms
+> [!TIP]
+> JSON round-tripping (`exportJSON` → `fromJSON`) should only be used when
+> persisting creatures to disk or sending them across a worker boundary. For all
+> in-process operations (mutation backups, speciation copies), prefer
+> `shallowClone()` — it is 2.4–3.5x faster and avoids the full
+> serialisation/deserialisation cycle.
+
+### 🎲 Better Algorithms
 
 **PR:** [#1594](https://github.com/stSoftwareAU/NEAT-AI/pull/1594) (from
 [#1587](https://github.com/stSoftwareAU/NEAT-AI/issues/1587))
@@ -193,7 +213,7 @@ algorithms that exploit sparsity outperform exhaustive enumeration. The
 rejection sampling approach finds valid connections in 1–2 attempts, eliminating
 full list construction.
 
-## The Serialisation Wall
+## 🧱 The Serialisation Wall
 
 The JS↔WASM boundary crossing cost is the primary barrier for migrating
 remaining operations. The pattern is consistent across all negative-result
@@ -209,7 +229,7 @@ investigations:
 The net result is that serialisation overhead cancels out WASM compute gains for
 all remaining non-numerical operations.
 
-### Future Directions
+### 🔭 Future Directions
 
 Future performance gains from WASM require **architectural changes** rather than
 piecemeal migration:
@@ -225,7 +245,7 @@ These are significant architectural changes that would affect the entire
 codebase and should be evaluated carefully against the complexity they
 introduce.
 
-## Decision Framework
+## 🧭 Decision Framework
 
 When considering a performance optimisation, use this checklist:
 
@@ -245,8 +265,22 @@ When considering a performance optimisation, use this checklist:
 - [ ] An algorithmic improvement (better data structure, probabilistic method)
       could reduce complexity class
 
-### Measure before committing:
+### 🧪 Measure before committing:
 
 - [ ] Create a benchmark that isolates the operation being optimised
 - [ ] Measure both the computation and any serialisation/boundary overhead
 - [ ] A negative result is a valuable result — document it and move on
+
+> [!NOTE]
+> Negative benchmark results are first-class contributions. When a WASM
+> migration attempt yields no improvement, documenting the serialisation
+> overhead and the measured timings saves future contributors from repeating the
+> same investigation. See the four linked issues above as examples of
+> well-documented negative results.
+
+## 📚 See Also
+
+- [Performance Tuning](./PERFORMANCE_TUNING.md) — Operational tuning guide for
+  WASM caches, thread pools, memory management, and scaling
+- [Configuration Guide](./CONFIGURATION_GUIDE.md) — Complete reference of all
+  configuration options

@@ -1,10 +1,15 @@
-# AGENTS.md - Coding Guidelines for NEAT-AI
+# 🤖 AGENTS.md - Coding Guidelines for NEAT-AI
 
 This file is the single source of truth for coding conventions, project
 terminology, and development workflows in the NEAT-AI repository. All
 contributors (human and AI) should follow these guidelines.
 
-## Terminology
+> [!NOTE]
+> This document is intended for both human contributors and AI coding agents.
+> When in doubt, follow the conventions described here rather than assuming
+> defaults from other projects.
+
+## 📖 Terminology
 
 We keep the tone playful, but every nickname maps to a mainstream
 machine-learning idea:
@@ -30,9 +35,9 @@ machine-learning idea:
 If you spot another fun label, expect it to be backed by a reference to the
 standard term the first time it appears.
 
-## Project Architecture
+## 🏗️ Project Architecture
 
-### Technology Stack
+### ⚙️ Technology Stack
 
 - **TypeScript** on **Deno 2.x** for the core library
 - **WASM** (required) for activation/scoring - initialised automatically, no
@@ -42,7 +47,7 @@ standard term the first time it appears.
   GPU-accelerated structural analysis
 - **Metal** (macOS) for GPU compute shaders via `wgpu`
 
-### Directory Structure
+### 📂 Directory Structure
 
 ```
 src/                    # Source code
@@ -74,15 +79,15 @@ wasm_activation/        # WASM activation module (Rust source + pkg)
 scripts/                # Utility scripts
 ```
 
-### Key Files
+### 🗝️ Key Files
 
 - `mod.ts` - Public API entry point
 - `deno.json` - Deno configuration, dependencies, lint rules
 - `quality.sh` - Pre-commit quality gate (lint, format, type-check, test)
 
-## Coding Conventions
+## 📝 Coding Conventions
 
-### Language
+### 🌏 Language
 
 Use **Australian English** spelling throughout code, comments, and
 documentation:
@@ -91,7 +96,11 @@ documentation:
 - optimise, normalise, analyse, summarise
 - licence (noun), license (verb)
 
-### Style
+> [!TIP]
+> If you are unsure whether a spelling is Australian English, prefer the `-ise`
+> suffix over `-ize`, and `-our` over `-or` (e.g., `optimise`, `colour`).
+
+### 🎨 Style
 
 - Follow the Deno lint rules configured in `deno.json` (recommended + jsr tags)
 - Use `deno fmt` for formatting
@@ -101,7 +110,7 @@ documentation:
 - Prefer smaller, focused files over large monolithic ones (Single
   Responsibility Principle)
 
-### Testing
+### 🧪 Testing
 
 #### Unit Tests vs Benchmarks
 
@@ -116,7 +125,12 @@ documentation:
 - Do not reduce iteration counts to make "performance tests" faster — move them
   to `bench/` instead.
 
-#### "What" Tests (Good) vs "How" Tests (Bad)
+> [!WARNING]
+> Using timing APIs (`performance.now()`, `Date.now()`) inside `test/` files
+> will cause flaky, unreliable results because tests run in parallel. Move any
+> performance-sensitive checks to `bench/`.
+
+#### ✅ "What" Tests (Good) vs ❌ "How" Tests (Bad)
 
 Every test should be a **"what" test**: it exercises real code with test data
 and asserts on the **outcome** (return values, side effects, error conditions).
@@ -135,26 +149,36 @@ identical. For example, switching from quicksort to mergesort should not break
 any unit test — the result is the same. If you need to verify performance
 characteristics (e.g., that a cache makes things faster), write a benchmark.
 
-#### Conventions
+> [!NOTE]
+> A good rule of thumb: if your test would still pass after a complete internal
+> rewrite that produces the same outputs, it is a "what" test. If it would
+> break, it is a "how" test — reconsider it.
+
+#### 📋 Conventions
 
 - Tests use `Deno.test()` with `@std/assert` imports
 - Test files live under `test/` and are included via `deno.json`
 - Name test files after the functionality they verify, not after performance
   characteristics (avoid "Benchmark" or "Performance" in test file names)
 
-### Error Handling
+### ⚠️ Error Handling
 
 - Use typed errors from `src/errors/`
 - Fail fast on configuration errors
 - Use `ValidationError` for structural validation
 
-## Quality Gate
+## 🔧 Quality Gate
 
 Before committing, run:
 
 ```bash
 ./quality.sh
 ```
+
+> [!TIP]
+> Run `./quality.sh` before every commit. It covers linting, formatting,
+> type-checking, WASM build, and all tests in one step — no need to run them
+> individually.
 
 This script runs the following steps by default:
 
@@ -167,7 +191,7 @@ This script runs the following steps by default:
 7. Builds the WASM activation module (Rust build + tests)
 8. Runs all tests in parallel with leak detection
 
-### Optional Flags
+### 🚩 Optional Flags
 
 ```bash
 ./quality.sh --help            # Show usage and step descriptions
@@ -181,14 +205,14 @@ This script runs the following steps by default:
 
 Flags can be combined, e.g. `./quality.sh --skip-tests --skip-discovery`.
 
-### Deployment Checklist
+### 🚀 Deployment Checklist
 
 1. Run `./quality.sh` in both NEAT-AI and NEAT-AI-Discovery repositories
 2. Increment version in `deno.json` (NEAT-AI) or `Cargo.toml`
    (NEAT-AI-Discovery)
 3. Verify all tests pass before committing
 
-## Activation / WASM
+## ⚡ Activation / WASM
 
 Activation uses WASM (required). The library initialises the WASM backend
 automatically; callers do not need to call any init function or set environment
@@ -196,13 +220,17 @@ variables. This works transparently in both the main thread and Deno Worker
 contexts. If WASM cannot be loaded, activation/scoring fails fast with an
 actionable error.
 
-## Rust Discovery Module
+> [!NOTE]
+> No manual WASM initialisation is required. The library handles this
+> automatically in all supported contexts.
+
+## 🦀 Rust Discovery Module
 
 The Rust FFI extension shipped via
 [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) provides
 GPU-accelerated structural hints used by `discoveryDir()`.
 
-### Setup
+### 🛠️ Setup
 
 1. Clone and build:
 
@@ -226,10 +254,15 @@ GPU-accelerated structural hints used by `discoveryDir()`.
 4. Guard discovery calls with `isRustDiscoveryEnabled()` so controllers fail
    fast when the module is unavailable.
 
+> [!WARNING]
+> If `NEAT_RUST_DISCOVERY_OPTIONAL` is not set and the library cannot be
+> resolved, the worker will abort. Only set this flag in environments where
+> skipping discovery is an acceptable fallback.
+
 When the library cannot be resolved, set `NEAT_RUST_DISCOVERY_OPTIONAL=true` in
 environments where skipping discovery should not abort the worker.
 
-## Feed-forward vs Recurrent Connections
+## 🔄 Feed-forward vs Recurrent Connections
 
 NEAT-AI supports two topology styles:
 
@@ -240,7 +273,7 @@ NEAT-AI supports two topology styles:
 
 In our production workloads, the default is feed-forward/forward-only.
 
-## Documentation Layout
+## 📚 Documentation Layout
 
 - **README.md** - Human-readable project overview, features, and quick start
 - **CONTRIBUTING.md** - First-time contributor guide with development setup and
@@ -250,16 +283,17 @@ In our production workloads, the default is feed-forward/forward-only.
 - **docs/API_REFERENCE.md** - Comprehensive public API reference
 - **docs/DISCOVERY_GUIDE.md** - Complete discovery workflow guide
 - **docs/DISCOVERY_ARCHITECTURE.md** - Discovery pipeline internal architecture
-- **docs/DiscoveryDir.md** - Technical API reference for `discoveryDir()`
+- **docs/DISCOVERY_DIR.md** - Technical API reference for `discoveryDir()`
 - **docs/GPU_ACCELERATION.md** - GPU acceleration details
 - **docs/CONFIGURATION_GUIDE.md** - Complete configuration options reference
 - **docs/PERFORMANCE_TUNING.md** - Performance tuning guide for large-scale
   training
-- **docs/performance-guide.md** - Performance optimisation guide with WASM
-  migration learnings
+- **docs/PERFORMANCE_RESEARCH.md** - Performance research with WASM migration
+  learnings
 - **docs/ACTIVATION_FUNCTIONS.md** - Activation function selection guide
 - **docs/BACKPROP_ELASTICITY.md** - Elastic backpropagation explanation
 - **docs/INTELLIGENT_DESIGN.md** - Intelligent Design squash optimisation guide
 - **docs/PREDICTIVE_CODING.md** - Predictive Coding architecture design
 - **docs/TROUBLESHOOTING.md** - Common issues and solutions
+- **docs/archive/pr-summaries/** - Archived PR summary files (historical)
 - **src/methods/activations/README.md** - Activation function strategy reference

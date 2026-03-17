@@ -1,49 +1,46 @@
-# Discovery Pipeline Internal Architecture
+# 🏗️ Discovery Pipeline Internal Architecture
 
 This document describes the internal architecture of the discovery pipeline —
 how modules interconnect, the two-phase evaluation strategy, cache architecture,
 and candidate lifecycle. For user-facing configuration and distributed setup
 guidance, see [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md) and
-[DiscoveryDir.md](DiscoveryDir.md).
+[DISCOVERY_DIR.md](DISCOVERY_DIR.md).
 
-## Pipeline Overview
+> [!NOTE]
+> This document is contributor-focused. For user-facing configuration and
+> distributed setup guidance, refer to [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md).
+> For the integration API, refer to [DISCOVERY_DIR.md](DISCOVERY_DIR.md).
+
+## 🔄 Pipeline Overview
 
 The discovery pipeline is a **two-phase, cache-aware structural evolution
 system** that proposes, filters, evaluates, and caches candidate improvements to
 neural network topology. Each iteration targets small incremental gains
 (typically 0.5–3%) that compound over repeated runs.
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                        Discovery Pipeline                           │
-│                                                                     │
-│  ┌─────────────┐    ┌──────────────┐    ┌─────────────────────────┐ │
-│  │   Rust FFI   │───▶│  Candidate   │───▶│      Phase 1            │ │
-│  │  Recording   │    │  Creation    │    │  Single Evaluation      │ │
-│  │  & Analysis  │    │  & Filtering │    │  (parallel via workers) │ │
-│  └─────────────┘    └──────────────┘    └──────────┬──────────────┘ │
-│                                                     │                │
-│                           ┌─────────────────────────▼──────────┐    │
-│                           │           Caching                   │    │
-│                           │  Success Cache ◀──▶ Failure Cache   │    │
-│                           └─────────────────────────┬──────────┘    │
-│                                                     │                │
-│                                          ┌──────────▼──────────┐    │
-│                                          │      Phase 2         │    │
-│                                          │  Combined Evaluation │    │
-│                                          │  (from Phase 1 wins) │    │
-│                                          └──────────┬──────────┘    │
-│                                                     │                │
-│                                          ┌──────────▼──────────┐    │
-│                                          │   Best Improvement   │    │
-│                                          │   Selection          │    │
-│                                          └─────────────────────┘    │
-└──────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    classDef rust fill:#e07b53,stroke:#c0392b,color:#fff
+    classDef candidate fill:#3498db,stroke:#2980b9,color:#fff
+    classDef phase fill:#2ecc71,stroke:#27ae60,color:#fff
+    classDef cache fill:#f39c12,stroke:#e67e22,color:#fff
+    classDef result fill:#9b59b6,stroke:#8e44ad,color:#fff
+
+    subgraph pipeline["Discovery Pipeline"]
+        A["Rust FFI\nRecording & Analysis"]:::rust
+        B["Candidate\nCreation & Filtering"]:::candidate
+        C["Phase 1\nSingle Evaluation\n(parallel via workers)"]:::phase
+        D["Caching\nSuccess Cache &harr; Failure Cache"]:::cache
+        E["Phase 2\nCombined Evaluation\n(from Phase 1 wins)"]:::phase
+        F["Best Improvement\nSelection"]:::result
+
+        A --> B --> C --> D --> E --> F
+    end
 ```
 
-## Two-Phase Evaluation Strategy
+## 📊 Two-Phase Evaluation Strategy
 
-### Phase 1: Single Candidate Evaluation
+### 🔍 Phase 1: Single Candidate Evaluation
 
 Phase 1 evaluates individual structural changes proposed by the Rust analysis
 engine. Each candidate represents a single atomic modification to the creature.
@@ -76,15 +73,16 @@ engine. Each candidate represents a single atomic modification to the creature.
 8. **Result caching** — Successful candidates (score > original) go to the
    success cache; failures go to the failure cache.
 
-### Phase 2: Combined Candidate Evaluation
+### 🔗 Phase 2: Combined Candidate Evaluation
 
 Phase 2 builds multi-step combinations from Phase 1 successes, targeting
 **epistatic improvements** — cases where individual changes are marginal but
 combinations are powerful.
 
-**Entry threshold:** Phase 2 requires at least **1 successful single** from
-Phase 1. This threshold was lowered from 2 in enhancement #1734 to capture more
-combination opportunities.
+> [!NOTE]
+> **Entry threshold:** Phase 2 requires at least **1 successful single** from
+> Phase 1. This threshold was lowered from 2 in enhancement #1734 to capture
+> more combination opportunities.
 
 **Supplementation:** When Phase 1 produces only 1 success, the pipeline
 supplements with up to 5 historical successes from the success cache
@@ -101,193 +99,271 @@ the current creature and checked against already-applied changes.
 | Pairwise        | Every pair of successful candidates      |
 | Triple          | Every triple (when pool is large enough) |
 
-**Exclusion rule:** Coordinated-structural candidates are never combined with
-other candidates — they are already epistatic groups designed to be applied
-atomically.
+> [!WARNING]
+> **Exclusion rule:** Coordinated-structural candidates are never combined with
+> other candidates — they are already epistatic groups designed to be applied
+> atomically. Combining them with other candidates may produce invalid
+> structural configurations.
 
 After building, Phase 2 candidates pass through the same filtering and
 evaluation pipeline as Phase 1. Results are cached identically.
 
-### Final Selection
+### 🏆 Final Selection
 
 All Phase 1 and Phase 2 improvements are pooled, sorted by score (descending),
 and the best is returned as the primary improvement. Remaining improvements are
 available as `additionalImprovements`.
 
-## Module Dependency Map
+## 🗺️ Module Dependency Map
 
 ### `src/discovery/` — Pipeline Orchestration (37 files)
 
-```
-DiscoveryRunner.ts                    ← Main orchestrator (entry point: discoverDir)
-├── DiscoveryRunnerTypes.ts           ← Pipeline I/O types
-├── DiscoveryRunnerEvaluation.ts      ← Batch evaluation + cache recording
-│
-├── DiscoveryCandidates.ts            ← Candidate building coordinator
-│   ├── CandidateCreation.ts          ← Single-step candidate builders
-│   │   └── CandidateApplicationOps.ts ← Low-level structural operations
-│   ├── CombinedCandidates.ts         ← Multi-step combination builders
-│   │   └── CombinedCandidateBuilders.ts ← Per-category combination logic
-│   ├── CombinedFromSuccessful.ts     ← Phase 2 combination orchestrator
-│   ├── CacheInformedRemovalCandidates.ts ← Multi-removal from cache (#1731)
-│   ├── SupplementFromCache.ts        ← Historical success supplementation (#1734)
-│   └── CandidateApplication.ts       ← Validate-then-fix strategy
-│
-├── CandidateFiltering.ts             ← Slot allocation, diversity, weighted sampling
-├── CandidateScoring.ts               ← Expected improvement calculations
-├── CandidateDescriptions.ts          ← Human-readable descriptions & emoji
-│
-├── SuccessCache.ts                   ← Successful candidate storage + metadata (#1733)
-├── FailureCache.ts                   ← Failed candidate lookup & storage
-├── FailureCacheKey.ts                ← Deterministic cache key generation
-├── FailureCacheTypes.ts              ← Cache type definitions
-├── FailureCacheDiagnostics.ts        ← Cache analysis & prediction tracing
-├── DiscoveryCacheEviction.ts         ← Cache pruning & retention policies
-│
-├── DiscoveryDiagnostics.ts           ← Per-changeType success/failure rates (#1735)
-├── DiscoveryEvaluationSummary.ts     ← Per-candidate evaluation records
-├── DiscoveryFormatting.ts            ← Formatting utilities
-├── DiscoveryPostValidate.ts          ← Post-evaluation validation
-│
-├── ReplayEntryApplication.ts         ← Reconstruct candidates from cache entries
-├── ReplayHelpers.ts                  ← Cache replay utilities
-├── DiscoveryReplayRunner.ts          ← Replay orchestration
-├── DiscoveryReplayRunnerTypes.ts     ← Replay type definitions
-│
-├── PriorityDiscoveryQueue.ts         ← Task queue management
-├── BrittlenessScorer.ts              ← Robustness scoring
-├── NeuronErrorImpactEstimator.ts     ← Error impact estimation
-├── DiskSpaceMonitor.ts               ← Pre-flight disk space checks
-├── DiscoveryTimeout.ts               ← Timeout management
-└── DiscoveryCleanup.ts               ← Post-run cleanup
-```
+```mermaid
+graph TD
+    classDef orchestrator fill:#e07b53,stroke:#c0392b,color:#fff
+    classDef candidates fill:#3498db,stroke:#2980b9,color:#fff
+    classDef filtering fill:#2ecc71,stroke:#27ae60,color:#fff
+    classDef cache fill:#f39c12,stroke:#e67e22,color:#fff
+    classDef diagnostics fill:#9b59b6,stroke:#8e44ad,color:#fff
+    classDef replay fill:#1abc9c,stroke:#16a085,color:#fff
+    classDef utilities fill:#34495e,stroke:#2c3e50,color:#fff
 
-### `src/architecture/ErrorGuidedStructuralEvolution/` — Rust FFI & Structure Operations (38 files)
+    DR["DiscoveryRunner.ts\nMain orchestrator"]:::orchestrator
+    DRT["DiscoveryRunnerTypes.ts\nPipeline I/O types"]:::orchestrator
+    DRE["DiscoveryRunnerEvaluation.ts\nBatch evaluation + cache recording"]:::orchestrator
 
-```
-RustDiscovery.ts                      ← Barrel re-export for Rust FFI
-├── RustDiscoveryTypes.ts             ← Complete FFI type definitions
-├── RustDiscoveryInput.ts             ← Creature → Rust format conversion
-├── RustDiscoveryLibrary.ts           ← Library loading & availability checks
-└── RustDiscoveryOperations.ts        ← FFI call wrappers (record, analyse, merge)
+    DR --> DRT & DRE
 
-DiscoverStructure.ts                  ← Facade / coordinator
-├── DiscoverStructureAnalysis.ts      ← Analysis phase layer
-├── DiscoverStructureRecording.ts     ← Recording phase layer
-├── DiscoverStructureBase.ts          ← Base class
-├── DiscoverStructureTypes.ts         ← Discovery type definitions
-│
-├── DiscoveryApplication.ts           ← Barrel re-export for application ops
-│   ├── DiscoverySynapseOps.ts        ← Synapse add/remove operations
-│   ├── DiscoveryNeuronAddition.ts    ← Neuron insertion & squash changes
-│   ├── DiscoveryNeuronRemoval.ts     ← Neuron removal with bias compensation
-│   └── DiscoveryValidation.ts        ← Validation & issue recording
-│
-├── ApplyCoordinatedStructuralCandidate.ts ← Epistatic group application
-├── CoordinatedStructuralCandidate.ts  ← Coordinated operation types
-├── DiscoverResult.ts                  ← FFI result wrapper
-│
-├── DataRecorder.ts                    ← Training data recording orchestration
-├── DataRecorderRecording.ts           ← Recording phase
-├── DataRecorderAnalysis.ts            ← Post-recording analysis phase
-├── DiscoverDirectory.ts               ← Discovery directory management
-├── DiscoverDataLoading.ts             ← Discovery data loading
-│
-├── FocusSelection.ts                  ← Focus neuron ranking & selection
-├── FocusSelectionRanking.ts           ← Ranking algorithm
-├── FocusSelectionWeighting.ts         ← Weight computation
-├── NeuronImpact.ts                    ← Neuron impact analysis
-│
-├── RustAnalysisCache.ts               ← Analysis result caching
-├── RustFlushDiagnostics.ts            ← Flush operation diagnostics
-├── SubmitDiscoveryRecordBatch.ts      ← Batch recording submission
-├── DiscoveryPerformance.ts            ← Performance metrics
-│
-├── DiscoverDiagnosticFormatting.ts    ← Diagnostic output formatting
-├── DiscoverLogging.ts                 ← Logging utilities
-├── DiscoverLoggingCore.ts             ← Core logging
-├── PhaseDiagnostics.ts                ← Phase-specific diagnostics
-└── constants.ts                       ← Pipeline constants
+    subgraph candidates["Candidate Building"]
+        DC["DiscoveryCandidates.ts\nCandidate building coordinator"]:::candidates
+        CC["CandidateCreation.ts\nSingle-step builders"]:::candidates
+        CAO["CandidateApplicationOps.ts\nLow-level structural ops"]:::candidates
+        CMB["CombinedCandidates.ts\nMulti-step combination builders"]:::candidates
+        CMBB["CombinedCandidateBuilders.ts\nPer-category combination logic"]:::candidates
+        CFS["CombinedFromSuccessful.ts\nPhase 2 combination orchestrator"]:::candidates
+        CIR["CacheInformedRemovalCandidates.ts\nMulti-removal from cache"]:::candidates
+        SFC["SupplementFromCache.ts\nHistorical success supplementation"]:::candidates
+        CA["CandidateApplication.ts\nValidate-then-fix strategy"]:::candidates
+
+        DC --> CC --> CAO
+        DC --> CMB --> CMBB
+        DC --> CFS & CIR & SFC & CA
+    end
+
+    subgraph filtering["Candidate Filtering & Scoring"]
+        CF["CandidateFiltering.ts\nSlot allocation, diversity, weighted sampling"]:::filtering
+        CS["CandidateScoring.ts\nExpected improvement calculations"]:::filtering
+        CD["CandidateDescriptions.ts\nHuman-readable descriptions"]:::filtering
+    end
+
+    subgraph caching["Cache Layer"]
+        SC["SuccessCache.ts\nSuccessful candidate storage"]:::cache
+        FC["FailureCache.ts\nFailed candidate lookup & storage"]:::cache
+        FCK["FailureCacheKey.ts\nDeterministic cache key generation"]:::cache
+        FCT["FailureCacheTypes.ts\nCache type definitions"]:::cache
+        FCD["FailureCacheDiagnostics.ts\nCache analysis & prediction tracing"]:::cache
+        DCE["DiscoveryCacheEviction.ts\nCache pruning & retention"]:::cache
+
+        FC --> FCK & FCT & FCD
+    end
+
+    subgraph diag["Diagnostics & Validation"]
+        DD["DiscoveryDiagnostics.ts\nPer-changeType success/failure rates"]:::diagnostics
+        DES["DiscoveryEvaluationSummary.ts\nPer-candidate evaluation records"]:::diagnostics
+        DF["DiscoveryFormatting.ts\nFormatting utilities"]:::diagnostics
+        DPV["DiscoveryPostValidate.ts\nPost-evaluation validation"]:::diagnostics
+    end
+
+    subgraph replayGroup["Replay System"]
+        REA["ReplayEntryApplication.ts\nReconstruct candidates from cache"]:::replay
+        RH["ReplayHelpers.ts\nCache replay utilities"]:::replay
+        DRR["DiscoveryReplayRunner.ts\nReplay orchestration"]:::replay
+        DRRT["DiscoveryReplayRunnerTypes.ts\nReplay type definitions"]:::replay
+
+        DRR --> REA & RH & DRRT
+    end
+
+    subgraph utils["Utilities"]
+        PDQ["PriorityDiscoveryQueue.ts\nTask queue management"]:::utilities
+        BS["BrittlenessScorer.ts\nRobustness scoring"]:::utilities
+        NEI["NeuronErrorImpactEstimator.ts\nError impact estimation"]:::utilities
+        DSM["DiskSpaceMonitor.ts\nPre-flight disk space checks"]:::utilities
+        DT["DiscoveryTimeout.ts\nTimeout management"]:::utilities
+        DCL["DiscoveryCleanup.ts\nPost-run cleanup"]:::utilities
+    end
+
+    DR --> DC
+    DR --> CF & CS & CD
+    DR --> SC & FC & DCE
+    DR --> DD & DES & DF & DPV
+    DR --> DRR
+    DR --> PDQ & BS & NEI & DSM & DT & DCL
 ```
 
-### Cross-Directory Data Flow
+### 🦀 `src/architecture/ErrorGuidedStructuralEvolution/` — Rust FFI & Structure Operations (38 files)
 
-```
-src/architecture/ErrorGuidedStructuralEvolution/
-    RustDiscoveryOperations.ts
-        recordDiscovery()  ──▶  Parquet files on disk
-        analyzeParallel()  ──▶  DiscoverResult (suggestions)
-    DiscoverStructure.ts
-        addHelpfulSynapses(), addHelpfulNeurons(), changeSquash()
-        removeLowImpactNeuron(), removeHarmfulNeuron()
-            │
-            ▼
-src/discovery/
-    DiscoveryCandidates.ts
-        buildDiscoveryCandidates(creature, discoveryResult)
-            │
-            ▼
-    CandidateFiltering.ts
-        filterCandidatesForEvaluation(candidates, failureCache)
-            │
-            ▼
-    DiscoveryRunnerEvaluation.ts
-        evaluateDiscoveryTasks(candidates, workers)
-            │
-            ▼
-    SuccessCache.ts / FailureCache.ts
-        cacheEvaluationResults(results)
+```mermaid
+graph TD
+    classDef ffi fill:#e07b53,stroke:#c0392b,color:#fff
+    classDef structure fill:#3498db,stroke:#2980b9,color:#fff
+    classDef application fill:#2ecc71,stroke:#27ae60,color:#fff
+    classDef recording fill:#f39c12,stroke:#e67e22,color:#fff
+    classDef focus fill:#9b59b6,stroke:#8e44ad,color:#fff
+    classDef perf fill:#1abc9c,stroke:#16a085,color:#fff
+    classDef logging fill:#34495e,stroke:#2c3e50,color:#fff
+
+    subgraph rustFFI["Rust FFI Layer"]
+        RD["RustDiscovery.ts\nBarrel re-export"]:::ffi
+        RDT["RustDiscoveryTypes.ts\nComplete FFI type definitions"]:::ffi
+        RDI["RustDiscoveryInput.ts\nCreature to Rust format conversion"]:::ffi
+        RDL["RustDiscoveryLibrary.ts\nLibrary loading & availability"]:::ffi
+        RDO["RustDiscoveryOperations.ts\nFFI call wrappers"]:::ffi
+
+        RD --> RDT & RDI & RDL & RDO
+    end
+
+    subgraph structureDisc["Structure Discovery"]
+        DS["DiscoverStructure.ts\nFacade / coordinator"]:::structure
+        DSA["DiscoverStructureAnalysis.ts\nAnalysis phase layer"]:::structure
+        DSR["DiscoverStructureRecording.ts\nRecording phase layer"]:::structure
+        DSB["DiscoverStructureBase.ts\nBase class"]:::structure
+        DST["DiscoverStructureTypes.ts\nDiscovery type definitions"]:::structure
+
+        DS --> DSA & DSR & DSB & DST
+    end
+
+    subgraph appOps["Application Operations"]
+        DAP["DiscoveryApplication.ts\nBarrel re-export"]:::application
+        DSO["DiscoverySynapseOps.ts\nSynapse add/remove"]:::application
+        DNA["DiscoveryNeuronAddition.ts\nNeuron insertion & squash changes"]:::application
+        DNR["DiscoveryNeuronRemoval.ts\nNeuron removal with bias compensation"]:::application
+        DV["DiscoveryValidation.ts\nValidation & issue recording"]:::application
+
+        DAP --> DSO & DNA & DNR & DV
+    end
+
+    ACSC["ApplyCoordinatedStructuralCandidate.ts\nEpistatic group application"]:::structure
+    CSC["CoordinatedStructuralCandidate.ts\nCoordinated operation types"]:::structure
+    DRS["DiscoverResult.ts\nFFI result wrapper"]:::structure
+
+    subgraph dataRec["Data Recording"]
+        DRC["DataRecorder.ts\nRecording orchestration"]:::recording
+        DRR["DataRecorderRecording.ts\nRecording phase"]:::recording
+        DRA["DataRecorderAnalysis.ts\nPost-recording analysis"]:::recording
+        DDR["DiscoverDirectory.ts\nDirectory management"]:::recording
+        DDL["DiscoverDataLoading.ts\nData loading"]:::recording
+
+        DRC --> DRR & DRA & DDR & DDL
+    end
+
+    subgraph focusSel["Focus Selection"]
+        FS["FocusSelection.ts\nFocus neuron ranking & selection"]:::focus
+        FSR["FocusSelectionRanking.ts\nRanking algorithm"]:::focus
+        FSW["FocusSelectionWeighting.ts\nWeight computation"]:::focus
+        NI["NeuronImpact.ts\nNeuron impact analysis"]:::focus
+
+        FS --> FSR & FSW & NI
+    end
+
+    subgraph perfCache["Performance & Caching"]
+        RAC["RustAnalysisCache.ts\nAnalysis result caching"]:::perf
+        RFD["RustFlushDiagnostics.ts\nFlush operation diagnostics"]:::perf
+        SDB["SubmitDiscoveryRecordBatch.ts\nBatch recording submission"]:::perf
+        DP["DiscoveryPerformance.ts\nPerformance metrics"]:::perf
+    end
+
+    subgraph loggingGroup["Logging & Diagnostics"]
+        DDF["DiscoverDiagnosticFormatting.ts\nDiagnostic output formatting"]:::logging
+        DLG["DiscoverLogging.ts\nLogging utilities"]:::logging
+        DLC["DiscoverLoggingCore.ts\nCore logging"]:::logging
+        PD["PhaseDiagnostics.ts\nPhase-specific diagnostics"]:::logging
+        CON["constants.ts\nPipeline constants"]:::logging
+
+        DLG --> DLC
+    end
+
+    DS --> DAP & ACSC & CSC & DRS
+    DS --> DRC & FS
+    DS --> RAC & RFD & SDB & DP
+    DS --> DDF & DLG & PD & CON
 ```
 
-## Candidate Lifecycle
+### 🔀 Cross-Directory Data Flow
+
+```mermaid
+flowchart TD
+    classDef arch fill:#e07b53,stroke:#c0392b,color:#fff
+    classDef disc fill:#3498db,stroke:#2980b9,color:#fff
+    classDef cache fill:#2ecc71,stroke:#27ae60,color:#fff
+    classDef data fill:#f39c12,stroke:#e67e22,color:#fff
+
+    subgraph archDir["src/architecture/ErrorGuidedStructuralEvolution/"]
+        RDO["RustDiscoveryOperations.ts"]:::arch
+        PQ["recordDiscovery() &rarr; Parquet files on disk"]:::data
+        AP["analyzeParallel() &rarr; DiscoverResult (suggestions)"]:::data
+        DST["DiscoverStructure.ts\naddHelpfulSynapses(), addHelpfulNeurons()\nchangeSquash(), removeLowImpactNeuron()\nremoveHarmfulNeuron()"]:::arch
+
+        RDO --> PQ & AP
+        AP --> DST
+    end
+
+    subgraph discDir["src/discovery/"]
+        DCB["DiscoveryCandidates.ts\nbuildDiscoveryCandidates(creature, discoveryResult)"]:::disc
+        CFL["CandidateFiltering.ts\nfilterCandidatesForEvaluation(candidates, failureCache)"]:::disc
+        DRE["DiscoveryRunnerEvaluation.ts\nevaluateDiscoveryTasks(candidates, workers)"]:::disc
+        CER["SuccessCache.ts / FailureCache.ts\ncacheEvaluationResults(results)"]:::cache
+    end
+
+    DST --> DCB --> CFL --> DRE --> CER
+```
+
+## 🔁 Candidate Lifecycle
 
 Each discovery candidate follows a defined lifecycle from creation through to
 caching:
 
-```
-                  ┌─────────────────────────┐
-                  │  1. CREATION             │
-                  │  Rust analysis suggests  │
-                  │  a structural change     │
-                  └────────────┬────────────┘
-                               │
-                  ┌────────────▼────────────┐
-                  │  2. APPLICATION          │
-                  │  Change applied to a     │
-                  │  clone of base creature  │
-                  │  (validate-then-fix)     │
-                  └────────────┬────────────┘
-                               │
-                  ┌────────────▼────────────┐
-                  │  3. FILTERING            │
-                  │  Failure cache lookup    │──── Cached failure? Skip.
-                  │  Category diversity      │
-                  │  Weighted sampling       │──── Not selected? Discard.
-                  └────────────┬────────────┘
-                               │
-                  ┌────────────▼────────────┐
-                  │  4. EVALUATION           │
-                  │  Score on training data  │
-                  │  via worker thread       │
-                  └────────────┬────────────┘
-                               │
-                  ┌────────────▼────────────┐
-                  │  5. CACHING              │
-                  │  Success → success cache │
-                  │  Failure → failure cache │
-                  └────────────┬────────────┘
-                               │
-            ┌──────────────────┼──────────────────┐
-            │                                      │
-┌───────────▼───────────┐           ┌──────────────▼──────────┐
-│ 6a. COMBINATION       │           │ 6b. SELECTION            │
-│ (Phase 2)             │           │ Best improvement         │
-│ Combined with other   │           │ returned to caller       │
-│ successful singles    │           │                          │
-└───────────────────────┘           └─────────────────────────┘
+```mermaid
+stateDiagram-v2
+    classDef creation fill:#3498db,stroke:#2980b9,color:#fff
+    classDef application fill:#2ecc71,stroke:#27ae60,color:#fff
+    classDef filtering fill:#f39c12,stroke:#e67e22,color:#fff
+    classDef evaluation fill:#9b59b6,stroke:#8e44ad,color:#fff
+    classDef caching fill:#e74c3c,stroke:#c0392b,color:#fff
+    classDef outcome fill:#1abc9c,stroke:#16a085,color:#fff
+    classDef skip fill:#95a5a6,stroke:#7f8c8d,color:#333
+
+    state "1. CREATION\nRust analysis suggests\na structural change" as S1
+    state "2. APPLICATION\nChange applied to a clone\nof base creature\n(validate-then-fix)" as S2
+    state "3. FILTERING\nFailure cache lookup\nCategory diversity\nWeighted sampling" as S3
+    state "4. EVALUATION\nScore on training data\nvia worker thread" as S4
+    state "5. CACHING\nSuccess &rarr; success cache\nFailure &rarr; failure cache" as S5
+    state "Cached failure? Skip." as Skip
+    state "Not selected? Discard." as Discard
+    state "6a. COMBINATION (Phase 2)\nCombined with other\nsuccessful singles" as S6a
+    state "6b. SELECTION\nBest improvement\nreturned to caller" as S6b
+
+    [*] --> S1
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4 : passes
+    S3 --> Skip
+    S3 --> Discard
+    S4 --> S5
+    S5 --> S6a
+    S5 --> S6b
+    S6a --> [*]
+    S6b --> [*]
+
+    class S1 creation
+    class S2 application
+    class S3 filtering
+    class S4 evaluation
+    class S5 caching
+    class S6a,S6b outcome
+    class Skip,Discard skip
 ```
 
-### Change Types
+### 🗂️ Change Types
 
 | Change Type              | Source          | Description                                       |
 | ------------------------ | --------------- | ------------------------------------------------- |
@@ -304,7 +380,7 @@ caching:
 | `combo-add-change`       | Phase 1         | Combined addition + squash change                 |
 | `combo-best-of-category` | Phase 2         | Best candidate from each category                 |
 
-### Validate-Then-Fix Strategy
+### 🛡️ Validate-Then-Fix Strategy
 
 When a structural change is applied to a creature clone, the pipeline uses a
 two-step validation approach:
@@ -314,13 +390,14 @@ two-step validation approach:
 2. **Fix as fallback** — If validation fails, call `fix()` to repair structural
    issues. This indicates a bug in the modification logic worth investigating.
 
-Creatures at version 2.x/3.x are upgraded to 4.x when forward-only topology is
-confirmed. Version 4.x+ creatures enforce strict forward-only connection
-ordering.
+> [!TIP]
+> Creatures at version 2.x/3.x are upgraded to 4.x when forward-only topology is
+> confirmed. Version 4.x+ creatures enforce strict forward-only connection
+> ordering, which improves both performance and determinism.
 
-## Cache Architecture
+## 💾 Cache Architecture
 
-### Success Cache
+### ✅ Success Cache
 
 The success cache stores candidates that improved the creature's score. Each
 entry preserves enough information to **replay** the candidate on a future
@@ -328,24 +405,40 @@ creature.
 
 **Directory structure:**
 
-```
-{successCacheDir}/
-├── add-neurons/
-│   └── {hash}.json
-├── add-synapses/
-│   └── {hash}.json
-├── change-squash/
-│   └── {hash}.json
-├── remove-neuron/
-│   └── {hash}.json
-├── remove-low-impact/
-│   └── {hash}.json
-├── remove-synapse/
-│   └── {hash}.json
-├── cache-informed-removal/
-│   └── {hash}.json
-└── coordinated-structural/
-    └── {hash}.json
+```mermaid
+graph TD
+    classDef root fill:#9b59b6,stroke:#8e44ad,color:#fff
+    classDef dir fill:#3498db,stroke:#2980b9,color:#fff
+    classDef file fill:#2ecc71,stroke:#27ae60,color:#fff
+
+    ROOT["{successCacheDir}/"]:::root
+    AN["add-neurons/"]:::dir
+    AS["add-synapses/"]:::dir
+    CQ["change-squash/"]:::dir
+    RN["remove-neuron/"]:::dir
+    RLI["remove-low-impact/"]:::dir
+    RS["remove-synapse/"]:::dir
+    CIR["cache-informed-removal/"]:::dir
+    CS["coordinated-structural/"]:::dir
+
+    ANF["{hash}.json"]:::file
+    ASF["{hash}.json"]:::file
+    CQF["{hash}.json"]:::file
+    RNF["{hash}.json"]:::file
+    RLIF["{hash}.json"]:::file
+    RSF["{hash}.json"]:::file
+    CIRF["{hash}.json"]:::file
+    CSF["{hash}.json"]:::file
+
+    ROOT --> AN & AS & CQ & RN & RLI & RS & CIR & CS
+    AN --> ANF
+    AS --> ASF
+    CQ --> CQF
+    RN --> RNF
+    RLI --> RLIF
+    RS --> RSF
+    CIR --> CIRF
+    CS --> CSF
 ```
 
 **Entry metadata** (enhanced in #1733):
@@ -375,7 +468,7 @@ creature.
 - `getSuccessfulRemovalDetails()` — Returns structured details including score
   delta and timing for better prioritisation (#1733).
 
-### Failure Cache
+### ❌ Failure Cache
 
 The failure cache prevents re-evaluation of candidates known to produce no
 improvement. Lookups happen **before** evaluation slot allocation, so cached
@@ -389,10 +482,13 @@ failures never waste worker time.
 - Exception: `combo-successful` **is** cached because it is keyed by the
   resulting creature structure, not the combination recipe.
 
-**Entry metadata** includes prediction diagnostics — comparing expected vs
-actual improvement to calibrate the Rust analysis engine's predictions.
+> [!NOTE]
+> **Entry metadata** includes prediction diagnostics — comparing expected vs
+> actual improvement to calibrate the Rust analysis engine's predictions. This
+> data helps surface systematic over- or under-estimation patterns in the
+> analysis layer.
 
-### Cache Key Generation
+### 🔑 Cache Key Generation
 
 Cache keys are designed to be **structurally stable** across evolutionary weight
 drift while remaining discriminative enough to avoid false collisions.
@@ -409,7 +505,7 @@ exponent bucket (`-3`), producing the same cache key. This prevents cache
 explosion from incremental weight drift across training iterations while still
 distinguishing structurally different candidates.
 
-### Cache-Informed Candidate Building
+### 🧠 Cache-Informed Candidate Building
 
 Introduced in #1731, this feature proactively builds **multi-neuron removal
 candidates** during Phase 1 by consulting historical success cache data.
@@ -427,7 +523,7 @@ candidates** during Phase 1 by consulting historical success cache data.
 This bridges Phase 1 and the success cache — enabling multi-removal exploration
 without waiting for Phase 2 combination building.
 
-### Cache Eviction
+### 🗑️ Cache Eviction
 
 `DiscoveryCacheEviction.ts` manages cache size and retention:
 
@@ -437,7 +533,7 @@ without waiting for Phase 2 combination building.
   no longer relevant.
 - **Statistics logging** reports cache state for operational monitoring.
 
-## Candidate Filtering Detail
+## 🎛️ Candidate Filtering Detail
 
 `CandidateFiltering.ts` implements a multi-stage slot allocation strategy that
 balances **evaluation budget** against **exploration breadth**.
@@ -464,7 +560,7 @@ present in the success cache, encouraging exploration of untested removals.
 **Slot budget:** Total evaluation slots scale with available workers:
 `maxCandidates = max(2 × threadCount, categoryCount)`.
 
-## Discovery Diagnostics
+## 📈 Discovery Diagnostics
 
 Introduced in #1735, per-change-type diagnostics track evaluation outcomes
 across the pipeline.
@@ -479,13 +575,13 @@ across the pipeline.
 **Output:** Summary table logged at the end of each discovery run. Optionally
 persisted to `{archiveDir}/diagnostics.json` for trend analysis across runs.
 
-## Rust FFI Bridge
+## 🦀 Rust FFI Bridge
 
 The Rust FFI layer connects TypeScript to the
 [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) library
 for GPU-accelerated structural analysis.
 
-### FFI Operations
+### 🖥️ FFI Operations
 
 | Function                  | Purpose                                          |
 | ------------------------- | ------------------------------------------------ |
@@ -495,14 +591,14 @@ for GPU-accelerated structural analysis.
 | `rankFocusNeurons()`      | Rank neurons by error impact for focus selection |
 | `mergeDiscoveryParquet()` | Merge multiple Parquet files                     |
 
-### Data Conversion
+### 🔄 Data Conversion
 
 `creatureToRustFormat()` converts a Creature instance to the FFI-compatible
 `RustRecordInput` format. This includes validation of data sizes and error
 counts — corrupt data (error counts exceeding `sampleCount × outputCount × 2`)
 is flagged with warnings.
 
-### Library Management
+### 📦 Library Management
 
 - `isRustDiscoveryEnabled()` checks both library availability **and** GPU
   availability.
@@ -510,7 +606,13 @@ is flagged with warnings.
 - `getDiscoveryVersion()` returns the cached Rust library version string.
 - Library loading is dynamic via Deno FFI (`.dylib` / `.so` / `.dll`).
 
-### Focus Neuron Selection
+> [!WARNING]
+> `isRustDiscoveryEnabled()` requires **both** the native library to be loadable
+> **and** a compatible GPU to be present. If only `isRustLibraryAvailable()`
+> returns `true`, analysis will fall back to CPU mode, which may significantly
+> increase analysis duration.
+
+### 🎯 Focus Neuron Selection
 
 Before analysis, the pipeline selects which neurons to focus on. Selection uses
 weighted random sampling based on:
@@ -525,7 +627,7 @@ weighted random sampling based on:
 Low-impact neurons (impact < costOfGrowth) are flagged separately as removal
 candidates rather than analysis targets.
 
-## Related Issues
+## 🔗 Related Issues
 
 - **#1731** — Cache-informed multi-neuron removal building during Phase 1
 - **#1733** — Extended success cache metadata for better combination
@@ -535,11 +637,11 @@ candidates rather than analysis targets.
 - **#1735** — Per-change-type discovery diagnostics (success rates, score
   deltas)
 
-## See Also
+## 📚 See Also
 
 - [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md) — User guide: distributed setup,
   configuration, best practices
-- [DiscoveryDir.md](DiscoveryDir.md) — Integration guide: API reference for
+- [DISCOVERY_DIR.md](DISCOVERY_DIR.md) — Integration guide: API reference for
   `Creature.discoveryDir()`
 - [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) — All configuration options
   including discovery parameters

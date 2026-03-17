@@ -1,10 +1,10 @@
-# Activation Functions Guide
+# ⚡ Activation Functions Guide
 
 This guide covers all activation functions available in NEAT-AI, helps you
 understand their characteristics, and provides guidance on selecting the right
 function for your use case.
 
-## What Is an Activation Function?
+## 🧠 What Is an Activation Function?
 
 An activation function (called a **squash** function in NEAT-AI) transforms a
 neuron's raw input into its output value. Without activation functions, a neural
@@ -16,7 +16,7 @@ flexible than traditional neural networks, where all neurons in a layer
 typically share the same function. NEAT's topology evolution can discover which
 activation works best for each neuron's role in the network.
 
-### Key Terms
+### 📖 Key Terms
 
 - **Squash function**: NEAT-AI's term for an activation function.
 - **Vanishing gradient**: A problem where the derivative (slope) of an
@@ -33,13 +33,13 @@ activation works best for each neuron's role in the network.
 
 ---
 
-## Overview Table
+## 📊 Overview Table
 
 The table below lists every activation function available in NEAT-AI. **Mutation
 probability** controls how often NEAT's evolution selects a function when
 mutating neurons — higher values mean the function is chosen more frequently.
 
-### Standard Activation Functions
+### ⚡ Standard Activation Functions
 
 | Name            | Output Range  | Bounded | Monotonic | Mutation Probability | Summary                                         |
 | :-------------- | :------------ | :-----: | :-------: | :------------------: | :---------------------------------------------- |
@@ -76,7 +76,7 @@ mutating neurons — higher values mean the function is chosen more frequently.
 | SQRT            | [0, inf)      |   No    |    Yes    |          1           | Square root (zero for negative inputs)          |
 | SQUARE          | [0, inf)      |   No    |    No     |          1           | Squares the input                               |
 
-### Aggregate Functions
+### 🔗 Aggregate Functions
 
 These functions operate on multiple inputs simultaneously, unlike standard
 activation functions that transform a single value.
@@ -87,11 +87,17 @@ activation functions that transform a single value.
 | MAXIMUM | (-inf, inf)  |          1           | Outputs the largest input value plus bias                   |
 | MINIMUM | (-inf, inf)  |          1           | Outputs the smallest input value plus bias                  |
 
-### Deprecated Functions
+### 🗄️ Deprecated Functions
 
 These functions have a mutation probability of **0**, meaning NEAT will never
 select them for new neurons. They remain available for backward compatibility
 with existing trained models.
+
+> [!WARNING]
+> The deprecated functions below (HYPOT, HYPOTv2, MEAN) will never be assigned
+> to neurons by NEAT's evolution. If you load a model that uses them, they will
+> continue to function correctly, but you should plan to migrate away from them
+> in future training runs.
 
 | Name    | Output Range | Replacement                | Why Deprecated                                      |
 | :------ | :----------- | :------------------------- | :-------------------------------------------------- |
@@ -101,11 +107,11 @@ with existing trained models.
 
 ---
 
-## Categories
+## 🗂️ Categories
 
-### By Output Range
+### 📏 By Output Range
 
-#### Bounded Functions (Fixed Output Range)
+#### ✅ Bounded Functions (Fixed Output Range)
 
 These functions constrain their output to a known range, which can be useful for
 output layers where you need values in a specific interval.
@@ -135,7 +141,7 @@ output layers where you need values in a specific interval.
 - **ArcTan** — Output in (-pi/2, pi/2), approximately (-1.57, 1.57)
 - **BIPOLAR** — Hard binary, outputs exactly -1 or 1
 
-#### Unbounded Functions (No Output Limit)
+#### ♾️ Unbounded Functions (No Output Limit)
 
 These functions can produce arbitrarily large (or small) outputs.
 
@@ -164,7 +170,7 @@ These functions can produce arbitrarily large (or small) outputs.
 - **LogSigmoid** — Always negative, approaches 0 from below
 - **StdInverse** — Reciprocal of input
 
-### By Differentiability
+### 🔢 By Differentiability
 
 **Smooth and differentiable everywhere** (best for gradient-based learning):
 
@@ -182,11 +188,17 @@ learning):
 
 - STEP (derivative is zero everywhere except at x=0), BIPOLAR (same issue)
 
+> [!NOTE]
+> NEAT-AI uses both evolutionary search and gradient-based memetic learning.
+> Functions with zero derivatives (STEP, BIPOLAR) can still evolve via mutation
+> and crossover, but they will not benefit from the memetic learning pass,
+> making evolution slower and less efficient for those neurons.
+
 ---
 
-## Selection Guidance
+## 🎯 Selection Guidance
 
-### Output Layer Recommendations
+### 🖥️ Output Layer Recommendations
 
 The activation function for your output layer should match the type of problem
 you are solving.
@@ -201,7 +213,7 @@ you are solving.
 | Regression (bounded, -1 to 1)      | TANH                        | Symmetric bounded output                       |
 | Time series / sequence prediction  | IDENTITY, TANH              | Depends on target range                        |
 
-### Hidden Layer Recommendations
+### 🔀 Hidden Layer Recommendations
 
 For hidden layers, the goal is to maintain healthy gradient flow throughout the
 network while introducing useful non-linearity.
@@ -253,7 +265,7 @@ network while introducing useful non-linearity.
 | Exponential    | Output grows rapidly, can cause overflow            |
 | SQRT / SQUARE  | Limited applicability, can cause numerical issues   |
 
-### Functions That Work Well with NEAT's Topology Evolution
+### 🧬 Functions That Work Well with NEAT's Topology Evolution
 
 NEAT evolves both the network's structure (topology) and its weights
 simultaneously. Some activation functions are better suited to this evolutionary
@@ -285,14 +297,14 @@ process than others.
 
 ---
 
-## Intelligent Design Integration
+## 🤖 Intelligent Design Integration
 
 **Intelligent Design** is NEAT-AI's automated system for optimising which
 activation function each neuron uses. Instead of relying solely on random
 mutation to find good activation functions, Intelligent Design methodically
 tests alternatives and remembers what works.
 
-### How It Works
+### ⚙️ How It Works
 
 1. **Scan phase**: For each hidden neuron, Intelligent Design temporarily
    replaces its activation function with a target function and scores the
@@ -311,7 +323,7 @@ tests alternatives and remembers what works.
    — a mapping from neuron identity to optimal activation function. This
    knowledge can be reused across training runs and shared between machines.
 
-### When to Use Intelligent Design vs Manual Selection
+### 🔧 When to Use Intelligent Design vs Manual Selection
 
 | Scenario                             | Approach                                                               |
 | :----------------------------------- | :--------------------------------------------------------------------- |
@@ -321,7 +333,13 @@ tests alternatives and remembers what works.
 | Distributed training across machines | Share tacit knowledge via hive files for consistent optimisation       |
 | Quick prototyping                    | Manual selection of top-tier functions (GELU, Swish, LeakyReLU)        |
 
-### Example Usage
+### 💡 Example Usage
+
+> [!TIP]
+> After an initial training run, `scanForSquashImprovements` can meaningfully
+> boost model performance by systematically testing each neuron's activation
+> function. It is most effective once the network topology has stabilised — run
+> it as a final refinement step rather than during early evolution.
 
 ```typescript
 import { scanForSquashImprovements } from "@stsoftware/neat-ai";
@@ -344,7 +362,7 @@ For full details on the Intelligent Design API and workflow, see the
 
 ---
 
-## Aliases
+## 🏷️ Aliases
 
 Some activation functions have alternative names for convenience:
 
@@ -357,7 +375,7 @@ Some activation functions have alternative names for convenience:
 
 ---
 
-## Further Reading
+## 📚 Further Reading
 
 - [Activation Function (Wikipedia)](https://en.wikipedia.org/wiki/Activation_function)
   — General background on activation functions in neural networks

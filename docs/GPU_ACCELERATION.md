@@ -1,28 +1,33 @@
-# GPU Acceleration for Discovery on macOS
+# 🖥️ GPU Acceleration for Discovery on macOS
 
-## Overview
+## 🔍 Overview
 
 The NEAT-AI Discovery Rust library **already supports GPU acceleration** on
 macOS using Metal via the `wgpu` crate. GPU acceleration is automatically
 enabled for Mac systems (`darwin`) and uses Metal under the hood for
 high-performance compute operations.
 
-## Current GPU Implementation
+> [!NOTE]
+> GPU acceleration is enabled by default on macOS (`darwin`) and requires no
+> additional configuration. All modern Macs with Apple Silicon or recent
+> AMD/Intel GPUs are supported via Metal.
 
-### What's Already GPU-Accelerated
+## ⚡ Current GPU Implementation
+
+### ✅ What's Already GPU-Accelerated
 
 1. **Synapse Analysis** - Both helpful and harmful synapse evaluation use GPU
    compute shaders
 2. **Neuron Analysis** - The helpful statistics calculation uses GPU, though
    activation function evaluation still runs on CPU
 
-### GPU Technology Stack
+### 🧰 GPU Technology Stack
 
 - **wgpu 0.19** - Cross-platform GPU abstraction layer
 - **Metal** - Apple's GPU API (used automatically on macOS)
 - **Compute Shaders** - WGSL shaders for parallel processing
 
-## Verifying GPU Usage
+## 🔎 Verifying GPU Usage
 
 ### Method 1: Check Logs
 
@@ -49,6 +54,11 @@ This will print:
 - Device initialisation status
 - Any fallback to CPU
 
+> [!TIP]
+> Enable `NEAT_AI_DISCOVERY_GPU_DEBUG=1` during initial setup to confirm that
+> Metal is being picked up correctly. You can disable it once GPU usage is
+> verified.
+
 ### Method 3: Check Return Values
 
 The Rust analysis functions return a `gpuUsed` boolean field indicating whether
@@ -63,11 +73,11 @@ if (result.gpuUsed) {
 }
 ```
 
-## Performance Considerations
+## 📊 Performance Considerations
 
-### GPU Utilization Improvements (2 Jan 2025)
+### ⚡ GPU Utilisation Improvements (2 Jan 2025)
 
-The code now batches multiple GPU operations together to improve utilization:
+The code now batches multiple GPU operations together to improve utilisation:
 
 - **Batched Evaluation**: Multiple synapse evaluations are collected and
   submitted together in batches of 32
@@ -76,7 +86,7 @@ The code now batches multiple GPU operations together to improve utilization:
 - **Reduced Idle Time**: GPU spends less time waiting for CPU to prepare the
   next operation
 
-### Why It Might Still Be Slow
+### 🐢 Why It Might Still Be Slow
 
 Even with GPU acceleration, discovery can be CPU-bound due to:
 
@@ -86,7 +96,7 @@ Even with GPU acceleration, discovery can be CPU-bound due to:
 3. **Memory Transfers** - Copying data between CPU and GPU memory
 4. **Small Workloads** - GPU overhead may not be worth it for small datasets
 
-### Current GPU Usage
+### 🖥️ Current GPU Usage
 
 The implementation uses GPU for:
 
@@ -94,16 +104,16 @@ The implementation uses GPU for:
 - ✅ Harmful synapse statistics (parallel evaluation)
 - ❌ Neuron activation function evaluation (still CPU-bound)
 
-### Future Optimisation Opportunities
+### 🚀 Future Optimisation Opportunities
 
 - Move activation function evaluation to GPU
 - Batch harmful synapse evaluations as well
 - Optimise memory transfers with buffer reuse
 - Use async GPU execution to overlap CPU/GPU work
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
-### GPU Not Being Used
+### ❌ GPU Not Being Used
 
 If you see "using CPU fallback" in logs:
 
@@ -116,7 +126,13 @@ If you see "using CPU fallback" in logs:
    cargo build --release
    ```
 
-### Performance Issues
+> [!WARNING]
+> If GPU initialisation fails and `requireGpu` is set to `true`, the discovery
+> process will exit with an error rather than silently falling back to CPU. Set
+> `requireGpu: false` if you need a CPU fallback in environments without Metal
+> support.
+
+### 🐌 Performance Issues
 
 If GPU is active but still slow:
 
@@ -125,9 +141,9 @@ If GPU is active but still slow:
    being utilised
 3. **Check Other Bottlenecks**: Parquet I/O, TypeScript processing, etc.
 
-## Configuration
+## ⚙️ Configuration
 
-### Requiring GPU (Default on Mac)
+### 🔒 Requiring GPU (Default on Mac)
 
 On macOS, GPU is required by default:
 
@@ -138,7 +154,7 @@ requireGpu: Deno.build.os === "darwin"; // true on Mac
 If GPU initialisation fails and `requireGpu` is true, discovery will fail with
 an error. If false, it falls back to CPU.
 
-### Disabling GPU Requirement
+### 🔓 Disabling GPU Requirement
 
 To allow CPU fallback even on Mac:
 
@@ -146,9 +162,9 @@ To allow CPU fallback even on Mac:
 requireGpu: false; // Will use GPU if available, but fall back to CPU
 ```
 
-## Technical Details
+## 🔬 Technical Details
 
-### GPU Compute Shaders
+### 💻 GPU Compute Shaders
 
 The GPU uses two compute shaders:
 
@@ -157,14 +173,14 @@ The GPU uses two compute shaders:
 
 Both use workgroup size of 256 threads for parallel processing.
 
-### Memory Layout
+### 🗂️ Memory Layout
 
 Data is transferred to GPU as:
 
 - `GpuHelpfulSample` - Activation and error pairs
 - Results returned as `HelpfulContribution` or `HarmfulContribution`
 
-## History
+## 📅 History
 
 - **2 Jan 2025**: Initial GPU batching improvements for synapse evaluation.
 - GPU acceleration is actively maintained as part of the NEAT-AI-Discovery Rust

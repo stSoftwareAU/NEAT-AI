@@ -1,4 +1,4 @@
-# Configuration Guide
+# ⚙️ Configuration Guide
 
 This guide documents all NEAT-AI configuration options, their default values,
 and when to adjust them. Configuration is passed via `NeatOptionsInput` to
@@ -8,7 +8,13 @@ read-only `NeatConfig`.
 Numeric options accept `number | string` so values can be passed directly from
 CLI arguments or environment variables without pre-parsing.
 
-## Table of Contents
+> [!TIP]
+> If you are new to NEAT-AI, start with the
+> [Configuration Presets](#configuration-presets) section. The built-in presets
+> cover the most common scenarios and are a faster path to a working
+> configuration than assembling options from scratch.
+
+## 📋 Table of Contents
 
 - [Configuration Presets](#configuration-presets)
 - [Quick Reference](#quick-reference)
@@ -34,7 +40,7 @@ CLI arguments or environment variables without pre-parsing.
 
 ---
 
-## Configuration Presets
+## 🚀 Configuration Presets
 
 Issue #1619: NEAT-AI ships pre-built configuration presets for common training
 scenarios. Each preset is a `NeatOptions` object that can be spread into your
@@ -49,7 +55,7 @@ const config = createNeatConfig({
 });
 ```
 
-### Available Presets
+### 📊 Available Presets
 
 | Preset                      | Population | Discovery | Timeout | Use Case                                   |
 | --------------------------- | ---------- | --------- | ------- | ------------------------------------------ |
@@ -58,7 +64,7 @@ const config = createNeatConfig({
 | `MEMORY_CONSTRAINED_PRESET` | 20         | Disabled  | 30 min  | Limited-memory environments, CI/CD runners |
 | `DISCOVERY_FOCUSED_PRESET`  | 100        | 50%       | 3 hrs   | Finding novel architectures, research      |
 
-### Quick Start
+### ⚡ Quick Start
 
 Small population, fast iterations, good for learning and prototyping. Discovery
 is disabled for speed.
@@ -76,7 +82,7 @@ const config = createNeatConfig({
 **Settings:** `populationSize: 10`, `iterations: 100`, `targetError: 0.1`,
 `discoverySampleRate: -1`, `timeoutMinutes: 5`
 
-### Large Network
+### 🔬 Large Network
 
 Higher population with discovery, plateau detection, stability adaptation, and
 ensemble diversity enabled. Suitable for complex problems requiring larger
@@ -95,7 +101,7 @@ const config = createNeatConfig({
 `discoverySampleRate: 0.3`, `timeoutMinutes: 120`, plateau detection enabled,
 stability adaptation enabled, ensemble diversity enabled
 
-### Memory Constrained
+### 💾 Memory Constrained
 
 Conservative resource usage for limited-memory environments. Uses fewer threads,
 smaller populations, and disables discovery.
@@ -114,7 +120,7 @@ const config = createNeatConfig({
 **Settings:** `populationSize: 20`, `threads: 2`, `trainingBatchSize: 50`,
 `discoverySampleRate: -1`, `timeoutMinutes: 30`
 
-### Discovery Focused
+### 🔭 Discovery Focused
 
 Aggressive structural evolution with higher sample rates, more neurons analysed
 per iteration, and longer timeouts. Suitable for finding novel architectures.
@@ -132,7 +138,7 @@ const config = createNeatConfig({
 `discoveryMaxNeurons: 12`, `costOfGrowth: 0.00000001`, `timeoutMinutes: 180`,
 plateau detection enabled
 
-### Composing Presets
+### 🔀 Composing Presets
 
 Presets can be composed by spreading multiple presets or mixing with custom
 overrides. Later values take precedence:
@@ -155,9 +161,9 @@ const config = createNeatConfig({
 
 ---
 
-## Quick Reference
+## 📊 Quick Reference
 
-### Core Evolution
+### 🧬 Core Evolution
 
 | Option                            | Type       | Default                         | Description                                                  |
 | --------------------------------- | ---------- | ------------------------------- | ------------------------------------------------------------ |
@@ -186,14 +192,14 @@ const config = createNeatConfig({
 | `globalBreedingRate`              | `number`   | `random`                        | Ratio of cross-species vs within-species breeding (0–1)      |
 | `maxCRISPRsPerGeneration`         | `integer`  | `1`                             | Maximum CRISPRs applied per generation (min: 1)              |
 
-### Adjustment Scales
+### 🔧 Adjustment Scales
 
 | Option                         | Type     | Default | Description                                               |
 | ------------------------------ | -------- | ------- | --------------------------------------------------------- |
 | `maximumBiasAdjustmentScale`   | `number` | `1`     | Maximum bias adjustment per training iteration (min: 0)   |
 | `maximumWeightAdjustmentScale` | `number` | `1`     | Maximum weight adjustment per training iteration (min: 0) |
 
-### Discovery
+### 🔍 Discovery
 
 | Option                              | Type      | Default   | Description                                                         |
 | ----------------------------------- | --------- | --------- | ------------------------------------------------------------------- |
@@ -208,7 +214,7 @@ const config = createNeatConfig({
 | `discoveryDrainEveryNBatches`       | `integer` | `10`      | Drain promise chains every N batches                                |
 | `discoveryMinCandidatesPerCategory` | `object`  | see below | Minimum candidates to evaluate per discovery category               |
 
-### Discovery Debug Options
+### 🐛 Discovery Debug Options
 
 | Option                                     | Type      | Default     | Description                                                               |
 | ------------------------------------------ | --------- | ----------- | ------------------------------------------------------------------------- |
@@ -217,7 +223,7 @@ const config = createNeatConfig({
 | `discoveryDisableCleanup`                  | `boolean` | `false`     | Preserve parquet files after discovery for debugging                      |
 | `discoveryDisableEvaluationSummaryLogging` | `boolean` | `false`     | Disable internal evaluation summary logging                               |
 
-### Discovery Replay
+### 🔄 Discovery Replay
 
 | Option                           | Type      | Default                                          | Description                                        |
 | -------------------------------- | --------- | ------------------------------------------------ | -------------------------------------------------- |
@@ -231,7 +237,7 @@ const config = createNeatConfig({
 | `discoveryReplayRescoreBaseline` | `boolean` | `false` (`true` when verify enabled)             | Report baseline score drift                        |
 | `discoveryReplayDiagnostics`     | `boolean` | `false`                                          | Record timing diagnostics for replay               |
 
-### Discovery Min Candidates Per Category
+### 📂 Discovery Min Candidates Per Category
 
 | Option            | Type      | Default | Description                                       |
 | ----------------- | --------- | ------- | ------------------------------------------------- |
@@ -242,7 +248,7 @@ const config = createNeatConfig({
 
 ---
 
-## Core Evolution Parameters
+## 🧬 Core Evolution Parameters
 
 ### `populationSize`
 
@@ -328,8 +334,11 @@ Enables recurrent (feedback) connections, allowing the network to maintain
 internal state across activations. Required for time-series tasks. When
 disabled, the network operates in forward-only mode.
 
-**Important:** When `feedbackLoop` is `true`, `disableRandomSamples` must also
-be `true` (this is enforced by validation).
+> [!WARNING]
+> When `feedbackLoop` is `true`, `disableRandomSamples` must also be `true`.
+> This constraint is enforced by validation and `createNeatConfig()` will throw
+> if violated. See [Validation Rules](#validation-rules) for the full list of
+> enforced constraints.
 
 ### `geneticCompatibilityThreshold`
 
@@ -364,7 +373,7 @@ multiple CRISPR injections per generation for faster structural convergence.
 
 ---
 
-## Training Parameters
+## 🏋️ Training Parameters
 
 These parameters control backpropagation training within each generation.
 
@@ -404,13 +413,19 @@ for production environments where runs must complete within a time budget.
 
 ---
 
-## Discovery Parameters
+## 🔍 Discovery Parameters
 
 Discovery uses the Rust FFI extension for GPU-accelerated structural analysis.
 It proposes structural improvements (add neurons, add synapses, change
 activation functions, remove low-impact elements) based on error patterns.
 
 Set `discoverySampleRate` to `-1` to disable discovery entirely.
+
+> [!NOTE]
+> Discovery requires a Rust FFI extension and will only activate when
+> `discoverySampleRate` is greater than `0`. When running in environments
+> without the native extension (e.g., some CI runners), set
+> `discoverySampleRate: -1` to avoid runtime errors.
 
 ### `discoverySampleRate`
 
@@ -471,7 +486,7 @@ memory buildup.
 
 ---
 
-## Discovery Replay Parameters
+## 🔄 Discovery Replay Parameters
 
 When discovery caching is enabled, successful discoveries can be replayed
 against newer fittest creatures to re-apply structural improvements.
@@ -533,7 +548,7 @@ enabled when `discoveryReplayVerifyScores` is `true`.
 
 ---
 
-## Discovery Caching Parameters
+## 💾 Discovery Caching Parameters
 
 These optional parameters enable caching of discovery results across evolution
 runs.
@@ -544,12 +559,14 @@ runs.
 | `discoveryFailureCacheDir` | `string` | `{discoveryCacheDir}/failure` | Directory for caching failed candidates     |
 | `discoverySuccessCacheDir` | `string` | `{discoveryCacheDir}/success` | Directory for caching successful candidates |
 
-**Important:** Delete the cache directory when the training dataset changes
-materially to avoid replaying stale signals.
+> [!WARNING]
+> Delete the cache directory when the training dataset changes materially.
+> Replaying cached discoveries against a substantially different dataset can
+> introduce stale structural signals that degrade training quality.
 
 ---
 
-## Discovery Debug Options
+## 🐛 Discovery Debug Options
 
 These options aid debugging and testing of the discovery pipeline.
 
@@ -587,7 +604,7 @@ logging using the exported formatting utilities.
 
 ---
 
-## Adaptive Mutation Thresholds
+## 🎛️ Adaptive Mutation Thresholds
 
 Controls mutation strategy based on creature size. Large creatures have massive
 search spaces where structural mutations (ADD_NODE, ADD_CONNECTION) rarely
@@ -612,7 +629,7 @@ Pass as `adaptiveMutationThresholds` in options.
 
 ---
 
-## Plateau Detection
+## 📉 Plateau Detection
 
 Detects fitness stagnation and applies responses to escape local optima.
 Disabled by default.
@@ -633,7 +650,7 @@ Pass as `plateauDetection` in options.
 
 ---
 
-## Stability Adaptation
+## 🧪 Stability Adaptation
 
 Adapts mutation rates based on validation stability, tracking mutation outcomes
 per creature and adjusting strategies for brittle offspring. Disabled by
@@ -656,7 +673,7 @@ Pass as `stabilityAdaptation` in options.
 
 ---
 
-## Weight Regularisation
+## ⚖️ Weight Regularisation
 
 Prevents extreme weight values during mutation that cause brittleness. **Enabled
 by default.**
@@ -674,7 +691,7 @@ Pass as `weightRegularisation` in options.
 
 ---
 
-## Bias Regularisation
+## ⚖️ Bias Regularisation
 
 Prevents extreme bias values during mutation that cause exploding activations.
 **Enabled by default.** Mirrors the weight regularisation approach.
@@ -692,7 +709,7 @@ Pass as `biasRegularisation` in options.
 
 ---
 
-## Ensemble Diversity
+## 🌈 Ensemble Diversity
 
 Encourages species diversity to avoid over-reliance on "brilliant but brittle"
 high-performers. Disabled by default.
@@ -714,7 +731,7 @@ Pass as `ensembleDiversity` in options.
 
 ---
 
-## Quantum Step
+## ⚛️ Quantum Step
 
 Controls adaptive step sizing during memetic fine-tuning. Larger steps are used
 when far from the optimum; smaller steps when fine-tuning near convergence.
@@ -737,7 +754,7 @@ effectiveStep = baseStep × (1 + errorScale × normalisedError)
 
 ---
 
-## Fine-Tune Population
+## 👥 Fine-Tune Population
 
 Dynamically adjusts the fine-tuning population size based on recent success
 rates. When fine-tuning produces improvements, more resources are allocated.
@@ -759,7 +776,7 @@ Pass as `fineTunePopulation` in options.
 
 ---
 
-## Worker Thread Cap
+## 🧵 Worker Thread Cap
 
 Cap worker thread count based on available memory (Issue #1569). This is opt-in
 — when `maxMemoryMB` is not set (or 0), behaviour is unchanged.
@@ -787,7 +804,7 @@ A warning is logged when the thread count is capped.
 
 ---
 
-## Output Range Constraints
+## 📐 Output Range Constraints
 
 Issue #1620: Constrain evolution outputs to domain-specific ranges. When
 `outputRanges` is set, creatures whose outputs fall outside the specified
@@ -827,7 +844,7 @@ completely unchanged.
 
 ---
 
-## Logging and Reproducibility
+## 📝 Logging and Reproducibility
 
 ### `log`
 
@@ -859,6 +876,13 @@ operations (mutation, selection, breeding, shuffling) use a deterministic
 xoshiro256** PRNG. Two runs with the same seed and configuration produce
 identical results.
 
+> [!TIP]
+> Always set `seed`, `sparseRatio`, and `globalBreedingRate` to fixed values
+> when running reproducibility experiments. Both `sparseRatio` and
+> `globalBreedingRate` default to random values, which will produce different
+> results between runs even when a `seed` is provided if these are left as
+> defaults.
+
 ### `rng`
 
 **Default: undefined** | Type: RandomNumberGenerator
@@ -868,7 +892,7 @@ are provided.
 
 ---
 
-## Validation Rules
+## ✅ Validation Rules
 
 `createNeatConfig()` validates all parameters and throws on invalid
 configurations. Key rules:
@@ -896,9 +920,9 @@ configurations. Key rules:
 
 ---
 
-## Recipes
+## 🍳 Recipes
 
-### Fast Prototyping
+### ⚡ Fast Prototyping
 
 Small population, quick iterations to validate an approach:
 
@@ -913,7 +937,7 @@ const config = createNeatConfig({
 });
 ```
 
-### Production Training
+### 🏭 Production Training
 
 Large population with discovery enabled for thorough structural optimisation:
 
@@ -943,7 +967,7 @@ const config = createNeatConfig({
 });
 ```
 
-### Research / Reproducibility
+### 🔬 Research / Reproducibility
 
 Seeded PRNG for deterministic, reproducible experiments:
 
@@ -959,7 +983,7 @@ const config = createNeatConfig({
 });
 ```
 
-### Time-Series / Recurrent
+### 🔁 Time-Series / Recurrent
 
 Enable feedback loops for sequential data:
 
@@ -973,7 +997,7 @@ const config = createNeatConfig({
 });
 ```
 
-### Minimal Complexity
+### 🪶 Minimal Complexity
 
 Favour simpler networks with aggressive growth penalties:
 
@@ -986,3 +1010,10 @@ const config = createNeatConfig({
   targetError: 0.05,
 });
 ```
+
+## 👀 See Also
+
+- [Performance Tuning](./PERFORMANCE_TUNING.md) — Operational guide for WASM
+  caches, thread pools, memory management, and scaling
+- [Performance Research](./PERFORMANCE_RESEARCH.md) — WASM migration research
+  and benchmark learnings

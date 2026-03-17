@@ -1,6 +1,6 @@
-# NEAT vs Traditional Neural Networks and Modern LLMs: A Comprehensive Comparison
+# 📊 NEAT vs Traditional Neural Networks and Modern LLMs: A Comprehensive Comparison
 
-## Overview
+## 🔍 Overview
 
 This document compares our NEAT-AI implementation with traditional neural
 network architectures (feedforward, CNN, RNN) and modern Large Language Models
@@ -8,16 +8,16 @@ network architectures (feedforward, CNN, RNN) and modern Large Language Models
 our approaches, our unique innovations, and identifies shortcomings that
 represent future work opportunities.
 
-**Note**: You don't need to be an expert in neural networks or the NEAT
-algorithm to get value from this comparison. We start with a high-level
-introduction to NEAT and only assume basic familiarity with ML concepts. It aims
-to stay accurate and links to authoritative sources whenever new ideas are
-introduced.
+> [!NOTE]
+> You don't need to be an expert in neural networks or the NEAT algorithm to get
+> value from this comparison. We start with a high-level introduction to NEAT
+> and only assume basic familiarity with ML concepts. It aims to stay accurate
+> and links to authoritative sources whenever new ideas are introduced.
 
 For project terminology (Creatures, Memetic evolution, CRISPR injections,
 Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
 
-## Table of Contents
+## 📋 Table of Contents
 
 1. [What We've Implemented](#what-weve-implemented)
 2. [Architectural Comparison](#architectural-comparison)
@@ -28,9 +28,9 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
 7. [Shortcomings and Future Work](#shortcomings-and-future-work)
 8. [References and Further Reading](#references-and-further-reading)
 
-## What We've Implemented
+## 🧬 What We've Implemented
 
-### Core NEAT Algorithm
+### 🔬 Core NEAT Algorithm
 
 - ✅ **Evolutionary Topology Search**: Networks evolve their structure through
   genetic operations (mutation, crossover)
@@ -43,7 +43,7 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
   - Crossover: Breeding between compatible parents
   - Selection: Multiple strategies (fitness proportionate, tournament, power)
 
-### Training Methods
+### 🎓 Training Methods
 
 - ✅ **Backpropagation**: Full gradient-based weight optimisation implemented
   with:
@@ -65,7 +65,7 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
 - ✅ **Early Stopping**: Enhanced early stopping with patience and improvement
   thresholds
 
-### Unique Features
+### ✨ Unique Features
 
 - ✅ **UUID-Based Indexing**: Extensible observations without restarting
   evolution—new input features can be added dynamically by extending NEAT's
@@ -100,136 +100,163 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
   squashes that enable different network behaviours, akin to the broader family
   of [activation functions](https://en.wikipedia.org/wiki/Activation_function).
 
-## Architectural Comparison
+## 🏗️ Architectural Comparison
 
-### Traditional Feedforward Neural Networks
+### 🧠 Traditional Feedforward Neural Networks
 
+```mermaid
+graph LR
+    I["🔢 Input Layer<br/><i>Fixed size</i>"]
+    H1["⚙️ Hidden Layer 1<br/><i>Fixed size</i>"]
+    H2["⚙️ Hidden Layer 2<br/><i>Fixed size</i>"]
+    O["📊 Output Layer<br/><i>Fixed size</i>"]
+
+    I -->|"all-to-all"| H1
+    H1 -->|"all-to-all"| H2
+    H2 -->|"all-to-all"| O
+
+    style I fill:#4A90D9,stroke:#2C5F8A,color:#fff,stroke-width:2px
+    style H1 fill:#7B68EE,stroke:#5A4DBE,color:#fff,stroke-width:2px
+    style H2 fill:#7B68EE,stroke:#5A4DBE,color:#fff,stroke-width:2px
+    style O fill:#E8575A,stroke:#B8444A,color:#fff,stroke-width:2px
 ```
-Traditional feedforward (simplified):
 
-    +--------+     +---------+     +---------+     +--------+
-    | Input  | --> | Layer 1 | --> | Layer 2 | --> | Output |
-    +--------+     +---------+     +---------+     +--------+
-       |              |               |               |
-     fixed           fixed           fixed          fixed
-      size           size           size           size
-
-All connections are predetermined; the architecture is fixed:
-- Structure is defined before training
-- Typically all-to-all connections between layers
-- No feedback loops
-- Static topology
-```
+> **Key characteristics:** Structure defined before training · All-to-all
+> connections between layers · No feedback loops · Static topology
 
 **Image Reference**:
 [Feedforward Neural Network](https://en.wikipedia.org/wiki/Feedforward_neural_network)
 
-### Convolutional Neural Networks (CNNs)
+### 🖼️ Convolutional Neural Networks (CNNs)
 
+```mermaid
+graph LR
+    I["🖼️ Input Image<br/><i>Fixed grid</i>"]
+    C["🔍 Convolution Layers<br/><i>Spatial filters</i>"]
+    P["📐 Pooling Layers<br/><i>Downsample</i>"]
+    FC["🧠 Fully Connected<br/><i>Classification</i>"]
+    OUT["🏷️ Predictions<br/><i>Class scores</i>"]
+
+    I -->|"shared weights"| C
+    C -->|"feature maps"| P
+    P -->|"flattened"| FC
+    FC -->|"softmax"| OUT
+
+    style I fill:#4A90D9,stroke:#2C5F8A,color:#fff,stroke-width:2px
+    style C fill:#F5A623,stroke:#C48418,color:#fff,stroke-width:2px
+    style P fill:#7B68EE,stroke:#5A4DBE,color:#fff,stroke-width:2px
+    style FC fill:#48A999,stroke:#2E7A6E,color:#fff,stroke-width:2px
+    style OUT fill:#E8575A,stroke:#B8444A,color:#fff,stroke-width:2px
 ```
-CNN architecture (simplified):
 
-    +-------------+     +----------------+     +-------------+     +-------------+
-    | Input image | --> | Conv layers    | --> | Pooling     | --> | FC layers   |
-    |   (grid)    |     |  (filters)     |     | (downsample)|     |(classification)
-    +-------------+     +----------------+     +-------------+     +-------------+
-          |                     |                    |                    |
-        fixed                spatial             downsample         classification
-         grid                filters              features
-
-- Designed for spatial data (images)
-- Shared weights via convolution
-- Approximate translation invariance
-- Fixed architecture per layer type
-```
+> **Key characteristics:** Designed for spatial data (images) · Shared weights
+> via convolution · Approximate translation invariance · Fixed architecture per
+> layer type
 
 **Image Reference**:
 [Convolutional Neural Network](https://en.wikipedia.org/wiki/Convolutional_neural_network)
 
-### Recurrent Neural Networks (RNNs/LSTMs)
+### 🔄 Recurrent Neural Networks (RNNs/LSTMs)
 
+```mermaid
+graph TB
+    subgraph T1["⏪ Time t−1"]
+        I1["🔢 Input"]
+        H1["🧠 Hidden State"]
+    end
+    subgraph T2["⏺️ Time t"]
+        I2["🔢 Input"]
+        H2["🧠 Hidden State"]
+    end
+    subgraph T3["⏩ Time t+1"]
+        I3["🔢 Input"]
+        H3["🧠 Hidden State"]
+    end
+    O["📊 Output<br/><i>Per time step</i>"]
+
+    I1 --> H1
+    I2 --> H2
+    I3 --> H3
+    H1 -->|"recurrent"| H2
+    H2 -->|"recurrent"| H3
+    H2 --> O
+
+    style I1 fill:#4A90D9,stroke:#2C5F8A,color:#fff,stroke-width:2px
+    style I2 fill:#4A90D9,stroke:#2C5F8A,color:#fff,stroke-width:2px
+    style I3 fill:#4A90D9,stroke:#2C5F8A,color:#fff,stroke-width:2px
+    style H1 fill:#7B68EE,stroke:#5A4DBE,color:#fff,stroke-width:2px
+    style H2 fill:#7B68EE,stroke:#5A4DBE,color:#fff,stroke-width:2px
+    style H3 fill:#7B68EE,stroke:#5A4DBE,color:#fff,stroke-width:2px
+    style O fill:#E8575A,stroke:#B8444A,color:#fff,stroke-width:2px
+    style T1 fill:#eef2ff,stroke:#7B68EE,stroke-width:1px
+    style T2 fill:#eef2ff,stroke:#7B68EE,stroke-width:1px
+    style T3 fill:#eef2ff,stroke:#7B68EE,stroke-width:1px
 ```
-RNN architecture (unrolled over time):
 
-   time t-1           time t             time t+1
-
-   +-------+         +-------+          +-------+
-   | Input |         | Input |          | Input |
-   +---+---+         +---+---+          +---+---+
-       |                 |                  |
-       v                 v                  v
-   +---------------- Hidden state ----------------+
-   |      (maintains information over time)      |
-   +-------------------+-------------------------+
-                       |
-                 +-----v-----+        (per time step)
-                 |  Output   |
-                 +-----------+
-
-- Processes sequences
-- Maintains a hidden state (memory)
-- Fixed recurrent structure
-- Can suffer from vanishing or exploding gradients
-```
+> **Key characteristics:** Processes sequences · Maintains a hidden state
+> (memory) · Fixed recurrent structure · Can suffer from vanishing or exploding
+> gradients
 
 **Image Reference**:
 [Recurrent Neural Network](https://en.wikipedia.org/wiki/Recurrent_neural_network)
 
-### Transformer/LLM Architecture
+### 🤖 Transformer/LLM Architecture
 
+```mermaid
+graph LR
+    I["📝 Input Tokens<br/><i>Sequence + positional encoding</i>"]
+    A["🔗 Multi-Head Attention<br/><i>All-to-all token interactions</i>"]
+    F["⚡ Feed-Forward Network<br/><i>Dense layers per token</i>"]
+    O["💬 Output Logits<br/><i>Next token probabilities</i>"]
+
+    I -->|"embed + position"| A
+    A -->|"attended repr."| F
+    F -->|"layer norm"| O
+
+    style I fill:#4A90D9,stroke:#2C5F8A,color:#fff,stroke-width:2px
+    style A fill:#F5A623,stroke:#C48418,color:#fff,stroke-width:2px
+    style F fill:#9B59B6,stroke:#7D3C98,color:#fff,stroke-width:2px
+    style O fill:#E8575A,stroke:#B8444A,color:#fff,stroke-width:2px
 ```
-Transformer architecture (simplified encoder block):
 
-    +-------------+     +-----------------------+     +-------------+
-    | Input tokens| --> | Multi-head attention  | --> |  FFN (MLP)  |
-    | (sequence)  |     |   (self-attention)    |     |  per token  |
-    +-------------+     +-----------------------+     +-------------+
-          |                        |                         |
-       fixed                 all-to-all                   dense
-      sequence              token interactions           layers
-
-Key features:
-- Self-attention mechanism (all tokens attend to all tokens)
-- Positional encoding for order
-- Multi-head attention
-- Fixed architecture, often at massive scale (billions of parameters)
-- Pre-trained on large corpora, then fine-tuned
-```
+> **Key features:** Self-attention mechanism (all tokens attend to all tokens) ·
+> Positional encoding for order · Multi-head attention · Fixed architecture,
+> often at massive scale (billions of parameters) · Pre-trained on large
+> corpora, then fine-tuned
 
 **Image Reference**:
 [Transformer (machine learning model)](https://en.wikipedia.org/wiki/Transformer_(machine_learning_model))
 
-### NEAT Architecture (Our Implementation)
+### 🧬 NEAT Architecture (Our Implementation)
 
-```
-NEAT architecture (our implementation, simplified):
+```mermaid
+graph LR
+    I["🧬 Input Neurons<br/><i>UUID-based · extensible</i>"]
+    E["🔀 Evolving Topology<br/><i>Dynamic structure</i>"]
+    O["🎯 Output Neurons<br/><i>UUID-based · extensible</i>"]
 
-    +----------------+     +----------------------+     +----------------+
-    | Input neurons  | --> | Evolving topology    | --> | Output neurons |
-    | (UUID-based)   |     | (dynamic structure)  |     | (UUID-based)   |
-    +----------------+     +----------------------+     +----------------+
-            |                          |                          |
-       extensible                grows/shrinks                extensible
-      (can add new             during training              (can add new
-       features)           - connections added/removed        outputs)
-                           - neurons added/pruned
-                           - structure adapts to problem
+    I -->|"connections evolve"| E
+    E -->|"connections evolve"| O
 
-Key differences:
-✓ Topology evolves during training
-✓ Connections can be added/removed dynamically
-✓ Neurons can be added/pruned automatically
-✓ Structure adapts to problem complexity
-✓ No predetermined architecture
-✓ Can handle non-differentiable objectives
+    E -.-|"➕ add neurons"| E
+    E -.-|"✂️ prune neurons"| E
+
+    style I fill:#50C878,stroke:#3A9A5C,color:#fff,stroke-width:2px
+    style E fill:#F5A623,stroke:#C48418,color:#fff,stroke-width:3px
+    style O fill:#50C878,stroke:#3A9A5C,color:#fff,stroke-width:2px
 ```
 
-**Visualization**: See our
-[interactive visualization](https://stsoftwareau.github.io/NEAT-AI/index.html)
+> **Key differences:** ✓ Topology evolves during training · ✓ Connections can be
+> added/removed dynamically · ✓ Neurons can be added/pruned automatically · ✓
+> Structure adapts to problem complexity · ✓ No predetermined architecture · ✓
+> Can handle non-differentiable objectives
 
-## Training Paradigms
+**Visualisation**: See our
+[interactive visualisation](https://stsoftwareau.github.io/NEAT-AI/index.html)
 
-### Traditional Neural Networks
+## 🎓 Training Paradigms
+
+### 🧠 Traditional Neural Networks
 
 **Training Approach**:
 
@@ -245,7 +272,7 @@ Key differences:
 - Fast convergence with gradient descent
 - Proven scalability to billions of parameters
 - Rich ecosystem of tools and frameworks
-- Highly optimized for GPU parallel processing
+- Highly optimised for GPU parallel processing
 
 **Weaknesses**:
 
@@ -255,7 +282,7 @@ Key differences:
 - Limited interpretability (black box)
 - Rigid input/output dimensions
 
-### NEAT (Our Implementation)
+### 🧬 NEAT (Our Implementation)
 
 **Training Approach**:
 
@@ -289,9 +316,9 @@ Key differences:
 - Each problem typically starts from scratch
 - Less efficient for pure parallel processing
 
-## Our Unique Approaches
+## ✨ Our Unique Approaches
 
-### 1. Memetic Evolution (Hybrid Evolution + Backpropagation)
+### 1. 🧬 Memetic Evolution (Hybrid Evolution + Backpropagation)
 
 **What It Is**: A hybrid approach that records successful weight patterns from
 the fittest creatures and reuses them in future generations.
@@ -317,15 +344,15 @@ faster than pure backpropagation because:
 **Reference**: See Feature #9 in [README.md](./README.md) and
 [Memetic Algorithms](https://en.wikipedia.org/wiki/Memetic_algorithm)
 
-### 2. Error-Guided Structural Evolution
+### 2. ⚡ Error-Guided Structural Evolution
 
-**What It Is**: GPU-accelerated discovery that analyzes neuron activations and
+**What It Is**: GPU-accelerated discovery that analyses neuron activations and
 errors to suggest beneficial structural changes.
 
 **How It Works**:
 
 1. During training, we record neuron activations and errors
-2. The Rust discovery engine (GPU-accelerated) analyzes this data
+2. The Rust discovery engine (GPU-accelerated) analyses this data
 3. It identifies:
    - Helpful synapses that should be added
    - Harmful synapses that should be removed
@@ -351,7 +378,7 @@ without manual architecture tweaking.
 **Reference**: See Feature #10 in [README.md](./README.md) and
 [GPU_ACCELERATION.md](./GPU_ACCELERATION.md)
 
-### 3. UUID-Based Extensible Observations
+### 3. 🔑 UUID-Based Extensible Observations
 
 **What It Is**: Neurons are identified by UUIDs rather than numeric indices,
 allowing dynamic addition of input/output features.
@@ -375,10 +402,15 @@ cross-island breeding that would have failed with numeric indexing.
 
 **Reference**: See Feature #1 in [README.md](./README.md)
 
-### 4. Distributed Evolution with Centralized Combination
+### 4. 🌐 Distributed Evolution with Centralised Combination
 
 **What It Is**: Evolution can run on multiple independent nodes, with
 best-of-breed creatures combined on a central controller.
+
+> [!TIP]
+> UUID-based indexing makes distributed combination possible: creatures evolved
+> on different machines share a common neuron-identity scheme, so cross-island
+> breeding works without index remapping.
 
 **How It Works**:
 
@@ -392,7 +424,7 @@ distributed approach enables larger populations and faster evolution.
 
 **Reference**: See Feature #2 in [README.md](./README.md)
 
-### 5. CRISPR Gene Injection
+### 5. 💉 CRISPR Gene Injection
 
 **What It Is**: Targeted gene insertion during evolution to introduce specific
 traits.
@@ -409,7 +441,7 @@ evolutionary process.
 
 **Reference**: See Feature #7 in [README.md](./README.md)
 
-### 6. Grafting for Incompatible Parents
+### 6. 🌿 Grafting for Incompatible Parents
 
 **What It Is**: When parents aren't genetically compatible, we use a grafting
 algorithm instead of standard crossover.
@@ -427,18 +459,18 @@ algorithm instead of standard crossover.
 
 **Reference**: See Feature #8 in [README.md](./README.md)
 
-## Ecosystem Comparison: What We've Built vs Standard Libraries
+## 🔬 Ecosystem Comparison: What We've Built vs Standard Libraries
 
-### Standard ML Libraries (TensorFlow, PyTorch, etc.)
+### 📚 Standard ML Libraries (TensorFlow, PyTorch, etc.)
 
 **What They Provide**:
 
 - Pre-built neural network layers (Dense, Conv2D, LSTM, etc.)
 - Automatic differentiation (computes gradients automatically)
-- Optimizers (Adam, SGD, etc.) with proven hyperparameters
+- Optimisers (Adam, SGD, etc.) with proven hyperparameters
 - Data loaders and preprocessing utilities
-- Model serialization formats (SavedModel, ONNX, etc.)
-- Visualization tools (TensorBoard, etc.)
+- Model serialisation formats (SavedModel, ONNX, etc.)
+- Visualisation tools (TensorBoard, etc.)
 - Pre-trained models (ImageNet, BERT, GPT, etc.)
 - Large community and extensive documentation
 
@@ -450,7 +482,7 @@ algorithm instead of standard crossover.
 - **UUID-Based Extensibility**: Add features without restarting
 - **Memetic Evolution**: Hybrid evolution + backpropagation
 - **Error-Guided Discovery**: GPU-accelerated structural hints
-- **Distributed Evolution**: Multi-machine evolution with centralized
+- **Distributed Evolution**: Multi-machine evolution with centralised
   combination
 - **Unique Activations**: IF, MAX, MIN and other non-standard functions
 - **Genetic Operations**: Speciation, crossover, mutation with historical
@@ -482,9 +514,9 @@ algorithm instead of standard crossover.
 - [Keras](https://keras.io/) - High-level neural networks API
 - [scikit-learn](https://scikit-learn.org/) - Traditional ML library
 
-## Pros and Cons Analysis
+## ⚖️ Pros and Cons Analysis
 
-### NEAT (Our Implementation) - Pros
+### 🧬 NEAT (Our Implementation) - Pros
 
 1. **Automatic Architecture Search**: No need to manually design network
    topology
@@ -503,7 +535,7 @@ algorithm instead of standard crossover.
 8. **Unique Activations**: Supports non-standard functions (IF, MAX, MIN) for
    different behaviours
 
-### NEAT (Our Implementation) - Cons
+### 🧬 NEAT (Our Implementation) - Cons
 
 1. **Computational Cost**: Population-based training requires more resources
 2. **Slower Convergence**: Evolutionary search is slower than pure gradient
@@ -523,32 +555,33 @@ algorithm instead of standard crossover.
    yet implemented. See [Unsupervised Learning](#unsupervised-learning) section
    for clarification.
 7. **Hyperparameter Sensitivity**: Many parameters to tune, though our
-   implementation addresses this by randomizing hyperparameters each evolution
+   implementation addresses this by randomising hyperparameters each evolution
    run (which works well in practice - see note below)
 8. **GPU Support Limited**: Currently only Metal (macOS), not CUDA/OpenCL
 
-**Note on Hyperparameters**: Our implementation actually handles hyperparameter
-sensitivity well by randomising values each evolution run. In one of our
-production deployments, 20+ machines constantly loop with random
-hyperparameters, and the fittest creatures are checked into a shared population
-pool at the end of each run. This approach has worked effectively for that
-workload without manual tuning, but it is not a universal guarantee.
+> [!TIP]
+> Our implementation handles hyperparameter sensitivity well by randomising
+> values each evolution run. In one of our production deployments, 20+ machines
+> constantly loop with random hyperparameters, and the fittest creatures are
+> checked into a shared population pool at the end of each run. This approach
+> has worked effectively for that workload without manual tuning, but it is not
+> a universal guarantee.
 
-### Traditional Neural Networks - Pros
+### 🧠 Traditional Neural Networks - Pros
 
 1. **Fast Training**: Gradient descent converges quickly with proper learning
    rates
 2. **Proven Scalability**: Can handle billions of parameters (e.g., GPT-3,
    GPT-4)
 3. **Transfer Learning**: Pre-trained models can be fine-tuned for new tasks
-4. **Efficient Inference**: Highly optimized for production deployment
+4. **Efficient Inference**: Highly optimised for production deployment
 5. **Rich Ecosystem**: Extensive tooling (TensorFlow, PyTorch, etc.) - see
    [Ecosystem Comparison](#ecosystem-comparison) below
-6. **Parallel Processing**: Highly optimized for GPU parallel computation
-7. **Mature Techniques**: Well-understood regularization, optimization methods
+6. **Parallel Processing**: Highly optimised for GPU parallel computation
+7. **Mature Techniques**: Well-understood regularisation, optimisation methods
 8. **Industry Standard**: Widely used and supported
 
-### Traditional Neural Networks - Cons
+### 🧠 Traditional Neural Networks - Cons
 
 1. **Fixed Architecture**: Requires manual design and tuning
 2. **Gradient Dependency**: Requires differentiable loss functions
@@ -558,17 +591,22 @@ workload without manual tuning, but it is not a universal guarantee.
 6. **Rigid Inputs**: Adding features requires retraining from scratch
 7. **Architecture Search**: Manual or separate NAS (Neural Architecture Search)
    needed
-8. **Overfitting**: Requires careful regularization for generalization
+8. **Overfitting**: Requires careful regularisation for generalisation
 
-## Shortcomings and Future Work
+## 🚧 Shortcomings and Future Work
 
 This section identifies gaps in our implementation compared to state-of-the-art
 approaches. These represent opportunities for future development and can serve
 as a task list.
 
-### High Priority
+> [!NOTE]
+> The items below are listed in rough priority order. High-priority gaps have
+> the greatest impact on practical usability; low-priority items are
+> enhancements that would broaden the library's reach.
 
-#### 1. Transfer Learning Support
+### 🔴 High Priority
+
+#### 1. 🔁 Transfer Learning Support
 
 **Current State**: Each problem starts from scratch. No mechanism to transfer
 learned structures or weights between related tasks.
@@ -577,9 +615,9 @@ learned structures or weights between related tasks.
 model trained on one task and reusing it (or parts of it) for a related task.
 For example:
 
-- Train a network to recognize cats, then fine-tune it to recognize dogs
+- Train a network to recognise cats, then fine-tune it to recognise dogs
 - Train on a large dataset, then fine-tune on a smaller related dataset
-- Use pre-trained weights as initialization for a new task
+- Use pre-trained weights as initialisation for a new task
 
 **How It Works in Traditional ML**:
 
@@ -599,7 +637,7 @@ For example:
 - Multi-task learning capabilities
 - Pre-trained creature "checkpoints" that can be shared
 
-**Impact**: Faster convergence on related tasks, better utilization of previous
+**Impact**: Faster convergence on related tasks, better utilisation of previous
 work, ability to build on top of successful creatures
 
 **References**:
@@ -615,19 +653,20 @@ work, ability to build on top of successful creatures
 - [Transfer Learning Tutorial](https://www.tensorflow.org/tutorials/images/transfer_learning) -
   TensorFlow practical guide
 
-#### 2. Unsupervised Learning
+#### 2. 🔓 Unsupervised Learning
 
 **Current State**: While evolution itself doesn't require labelled data for the
 algorithm to work, NEAT is typically used for supervised learning tasks where
 you need labelled data to compute fitness scores. True unsupervised learning
 (learning patterns from unlabelled data) is not yet implemented.
 
-**Clarification**: Evolution is "unsupervised" in the sense that the algorithm
-doesn't need gradients or labelled examples to guide weight updates. However,
-you still typically need labelled data to compute fitness scores (e.g., "how
-well did this creature predict the target?"). True unsupervised learning in ML
-means learning patterns, representations, or structures from unlabelled data
-without any target labels.
+> [!NOTE]
+> Evolution is "unsupervised" in the sense that the algorithm doesn't need
+> gradients or labelled examples to guide weight updates. However, you still
+> typically need labelled data to compute fitness scores (e.g., "how well did
+> this creature predict the target?"). True unsupervised learning in ML means
+> learning patterns, representations, or structures from unlabelled data without
+> any target labels.
 
 **What's Missing**:
 
@@ -650,7 +689,7 @@ without any target labels.
 - [Unsupervised Learning Explained](https://en.wikipedia.org/wiki/Unsupervised_learning) -
   Wikipedia
 
-#### 3. Attention Mechanisms
+#### 3. 👁️ Attention Mechanisms
 
 **Current State**: No built-in attention mechanisms for sequence tasks.
 
@@ -672,17 +711,22 @@ without any target labels.
 - [Attention Mechanisms in Neural Networks](https://distill.pub/2016/augmented-rnns/) -
   Olah & Carter (2016)
 
-#### 4. Batch Processing Optimization
+#### 4. ⚡ Batch Processing Optimisation
 
 **Current State**: Sequential creature evaluation. While we have batch gradient
 descent for backprop, creature activation is still largely sequential.
+
+> [!WARNING]
+> Without true parallel batch activation, training throughput on large datasets
+> is significantly constrained. This is one of the most impactful performance
+> improvements available.
 
 **What's Missing**:
 
 - True parallel batch activation across population
 - Vectorized operations for multiple creatures
 - GPU-accelerated forward passes
-- Batch inference optimization
+- Batch inference optimisation
 
 **Impact**: Faster training on large datasets, better GPU utilisation
 
@@ -693,11 +737,11 @@ descent for backprop, creature activation is still largely sequential.
 - [Efficient Batch Processing](https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html) -
   PyTorch Optimization Guide
 
-### Medium Priority
+### 🟡 Medium Priority
 
-#### 5. Multi-Task Learning
+#### 5. 🎯 Multi-Task Learning
 
-**Current State**: Single objective optimization. Each creature optimizes for
+**Current State**: Single objective optimisation. Each creature optimises for
 one task.
 
 **What's Missing**:
@@ -715,11 +759,17 @@ one task.
 - [Multi-Objective Optimization](https://en.wikipedia.org/wiki/Multi-objective_optimization) -
   Wikipedia
 
-#### 6. Advanced Regularization Techniques
+#### 6. 🛡️ Advanced Regularisation Techniques
 
 **Current State**: Basic pruning and cost-of-growth penalty. We have sparse
 training which is similar to dropout (randomly selects neurons to update), but
 not exactly the same mechanism.
+
+> [!NOTE]
+> Our `sparseRatio` parameter selects a subset of neurons to update during
+> training. This is conceptually similar to dropout but operates differently: we
+> select neurons to update rather than randomly disabling them during the
+> forward pass.
 
 **What We Have**:
 
@@ -733,13 +783,13 @@ not exactly the same mechanism.
 
 - True dropout (randomly disable neurons during forward pass, use all during
   inference)
-- Batch normalization evolution
-- L1/L2 weight regularization
+- Batch normalisation evolution
+- L1/L2 weight regularisation
 - Early stopping with validation sets (we have early stopping, but could enhance
   with validation)
 - Cross-validation support
 
-**Impact**: Better generalization, reduced overfitting
+**Impact**: Better generalisation, reduced overfitting
 
 **References**:
 
@@ -750,7 +800,7 @@ not exactly the same mechanism.
 - [Regularization in Deep Learning](https://www.deeplearningbook.org/contents/regularization.html) -
   Deep Learning Book
 
-#### 7. Hyperparameter Evolution
+#### 7. 🔧 Hyperparameter Evolution
 
 **Current State**: Manual hyperparameter tuning required.
 
@@ -758,7 +808,7 @@ not exactly the same mechanism.
 
 - Evolution of learning rates, mutation rates
 - Adaptive population sizing
-- Self-tuning regularization parameters
+- Self-tuning regularisation parameters
 - Meta-learning for hyperparameters
 
 **Impact**: Reduced manual tuning, better default configurations
@@ -769,16 +819,21 @@ not exactly the same mechanism.
   Bengio (2012)
 - [AutoML](https://www.automl.org/) - AutoML Research
 
-#### 8. Cross-Platform GPU Support
+#### 8. 🖥️ Cross-Platform GPU Support
 
 **Current State**: macOS Metal only for GPU acceleration.
+
+> [!WARNING]
+> GPU acceleration is currently macOS-only (Metal). Linux and Windows users
+> running NVIDIA or AMD hardware will not benefit from GPU-accelerated discovery
+> until CUDA or cross-platform support is added.
 
 **What's Missing**:
 
 - CUDA support for NVIDIA GPUs
 - OpenCL support for cross-platform
 - Vulkan support
-- CPU fallback optimization
+- CPU fallback optimisation
 
 **Impact**: Broader hardware support, better performance on more systems
 
@@ -788,18 +843,18 @@ not exactly the same mechanism.
 - [OpenCL Specification](https://www.khronos.org/opencl/)
 - [wgpu Documentation](https://wgpu.rs/) - Cross-platform GPU abstraction
 
-### Low Priority
+### 🟢 Low Priority
 
-#### 9. Advanced Interpretability Tools
+#### 9. 🔍 Advanced Interpretability Tools
 
-**Current State**: Basic visualization of network structure.
+**Current State**: Basic visualisation of network structure.
 
 **What's Missing**:
 
-- Activation visualization
+- Activation visualisation
 - Feature importance analysis
-- Evolutionary path visualization
-- Decision boundary visualization
+- Evolutionary path visualisation
+- Decision boundary visualisation
 - Saliency maps
 
 **Impact**: Better understanding of evolved solutions, debugging capabilities
@@ -811,9 +866,9 @@ not exactly the same mechanism.
 - [Visualizing Neural Networks](https://distill.pub/2017/feature-visualization/) -
   Olah et al. (2017)
 
-#### 10. Standard Format Export
+#### 10. 📦 Standard Format Export
 
-**Current State**: Custom JSON format for creature serialization.
+**Current State**: Custom JSON format for creature serialisation.
 
 **What's Missing**:
 
@@ -831,7 +886,7 @@ not exactly the same mechanism.
 - [CoreML](https://developer.apple.com/machine-learning/core-ml/) - Apple
   Documentation
 
-#### 11. Reinforcement Learning Support
+#### 11. 🕹️ Reinforcement Learning Support
 
 **Current State**: Primarily supervised learning focus.
 
@@ -852,7 +907,7 @@ not exactly the same mechanism.
 - [Policy Gradient Methods](https://arxiv.org/abs/1704.06440) - Schulman et al.
   (2017)
 
-#### 12. Time Series and Sequence Modeling
+#### 12. 📈 Time Series and Sequence Modelling
 
 **Current State**: Feedforward focus, limited sequence handling.
 
@@ -872,9 +927,9 @@ not exactly the same mechanism.
 - [Sequence to Sequence Learning](https://arxiv.org/abs/1409.3215) - Sutskever
   et al. (2014)
 
-## References and Further Reading
+## 📚 References and Further Reading
 
-### NEAT Algorithm
+### 🧬 NEAT Algorithm
 
 - [Original NEAT Paper](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf) -
   Stanley & Miikkulainen (2002) - **Foundational paper**
@@ -885,7 +940,7 @@ not exactly the same mechanism.
 - [NEAT Algorithm Explained](https://www.youtube.com/watch?v=3fzjfNV4vYo) -
   Visual explanation
 
-### Traditional Neural Networks
+### 🧠 Traditional Neural Networks
 
 - [Deep Learning Book](https://www.deeplearningbook.org/) - Goodfellow, Bengio,
   Courville - **Comprehensive textbook**
@@ -896,7 +951,7 @@ not exactly the same mechanism.
 - [Gradient Descent Optimization](https://ruder.io/optimizing-gradient-descent/) -
   Sebastian Ruder's blog
 
-### Modern LLMs and Transformers
+### 🤖 Modern LLMs and Transformers
 
 - [Attention Is All You Need](https://arxiv.org/abs/1706.03762) - Vaswani et al.
   (2017) - **Transformer paper**
@@ -906,7 +961,7 @@ not exactly the same mechanism.
 - [GPT Paper](https://cdn.openai.com/research-covers/language-unsupervised/language_understanding_paper.pdf) -
   Radford et al. (2018)
 
-### Memetic Algorithms
+### 🧬 Memetic Algorithms
 
 - [Memetic Algorithms](https://en.wikipedia.org/wiki/Memetic_algorithm) -
   Wikipedia overview
@@ -915,7 +970,7 @@ not exactly the same mechanism.
 - [Hybrid Evolutionary Algorithms](https://www.springer.com/gp/book/9783540732194) -
   Raidl (2008)
 
-### GPU Acceleration
+### ⚡ GPU Acceleration
 
 - [Metal Performance Shaders](https://developer.apple.com/metal/Metal-Performance-Shaders-Framework/) -
   Apple Documentation
@@ -925,7 +980,7 @@ not exactly the same mechanism.
 - [GPU Computing](https://en.wikipedia.org/wiki/General-purpose_computing_on_graphics_processing_units) -
   Wikipedia
 
-### Neuroevolution
+### 🔬 Neuroevolution
 
 - [Neuroevolution: A Different Kind of Deep Learning](https://www.oreilly.com/radar/neuroevolution-a-different-kind-of-deep-learning/) -
   O'Reilly article
@@ -933,7 +988,7 @@ not exactly the same mechanism.
   al. (2017)
 - [Large-Scale Evolution](https://arxiv.org/abs/1703.00548) - Real et al. (2017)
 
-### Machine Learning Fundamentals
+### 📖 Machine Learning Fundamentals
 
 - [Machine Learning Course](https://www.coursera.org/learn/machine-learning) -
   Andrew Ng (Coursera)
@@ -941,7 +996,7 @@ not exactly the same mechanism.
 - [3Blue1Brown Neural Networks](https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi) -
   Visual explanations
 
-## Conclusion
+## 🏁 Conclusion
 
 NEAT offers unique advantages in automatic architecture search and adaptive
 learning, but historically suffered from computational inefficiency and

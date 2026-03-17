@@ -1,4 +1,4 @@
-# NEAT Neural Network for DenoJS
+# 🧬 NEAT Neural Network for DenoJS
 
 <p align="left">
   <img width="100" height="100" src="docs/logo.png" align="right">
@@ -8,7 +8,7 @@ This project is a practical implementation of a neural network based on the NEAT
 For project terminology, coding conventions, and development guidelines, see
 [AGENTS.md](./AGENTS.md).
 
-## Feature Highlights
+## ✨ Feature Highlights
 
 1. **Extendable Observations**: Input and output features are identified by
    stable UUIDs in the exported representation, rather than only by positional
@@ -34,9 +34,10 @@ For project terminology, coding conventions, and development guidelines, see
    utilised efficiently by calling the `activate` function. This runs a single
    forward pass that maps inputs to outputs.
 
-   **Activation uses WASM (required).** The library initialises the WASM backend
-   automatically; callers do not need to call any init function or set
-   environment variables.
+   > [!NOTE]
+   > **Activation uses WASM (required).** The library initialises the WASM
+   > backend automatically; callers do not need to call any init function or set
+   > environment variables.
 
 5. **Unique Squash Functions**: Supports unique squash functions such as IF, MAX
    and MIN, offering a wider range of potential solutions. More about
@@ -64,10 +65,11 @@ For project terminology, coding conventions, and development guidelines, see
     Discovery runs typically find improvements of 0.5-3% per run that accumulate
     over many iterations.
 
-    **Note**: Relies entirely on the
-    [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) Rust
-    extension library. If the library is not available, the discovery phase is
-    skipped; there is no TypeScript fallback.
+    > [!WARNING]
+    > Relies entirely on the
+    > [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery)
+    > Rust extension library. If the library is not available, the discovery
+    > phase is skipped; there is no TypeScript fallback.
 
 11. **[Visualisation](https://stsoftwareau.github.io/NEAT-AI/index.html)**
 
@@ -83,7 +85,7 @@ For project terminology, coding conventions, and development guidelines, see
     discovery workflows that accumulate small improvements over time, see the
     [Discovery Guide](./docs/DISCOVERY_GUIDE.md).
 
-## Quick Start
+## 🚀 Quick Start
 
 ```typescript
 // Single discovery iteration
@@ -98,52 +100,88 @@ if (result.improvement) {
 }
 ```
 
-## Usage
+> [!TIP]
+> For distributed, multi-machine workflows that accumulate small improvements
+> over time, see the [Discovery Guide](./docs/DISCOVERY_GUIDE.md) for a complete
+> walkthrough.
+
+## 💻 Usage
 
 This project is designed to be used in a DenoJS environment. Please refer to the
 [DenoJS documentation](https://deno.land/manual) for setup and usage
 instructions.
 
-## Documentation
+## 📚 Documentation
 
 For detailed documentation, see the [docs/](./docs/) directory:
 
+### 🚀 Getting Started
+
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)**: First-time contributor guide with
   development setup and workflow
-- **[AGENTS.md](./AGENTS.md)**: Coding conventions, terminology, and development
-  guidelines
+- **[Configuration Guide](./docs/CONFIGURATION_GUIDE.md)**: Complete reference
+  of all configuration options and presets
+
+### 🧠 Core Concepts
+
 - **[COMPARISON.md](./COMPARISON.md)**: How NEAT compares to traditional neural
   networks, CNNs, RNNs, and modern LLMs
 - **[Discovery Guide](./docs/DISCOVERY_GUIDE.md)**: Complete guide to
   distributed, multi-machine discovery workflows, including failure/success
   caches, replay, candidate category limits, focus overrides, and the
   cost-of-growth gate
-- **[DiscoveryDir API](./docs/DiscoveryDir.md)**: Technical API reference for
+- **[Intelligent Design](./docs/INTELLIGENT_DESIGN.md)**: Systematic squash
+  function optimisation for hidden neurons
+
+### 🔧 API & Reference
+
+- **[API Reference](./docs/API_REFERENCE.md)**: Comprehensive public API
+  documentation
+- **[DiscoveryDir API](./docs/DISCOVERY_DIR.md)**: Technical API reference for
   `Creature.discoveryDir()` and data preparation
-- **[Elastic back propagation](./docs/BACKPROP_ELASTICITY.md)**: Why we prefer
+- **[Activation Functions Guide](./docs/ACTIVATION_FUNCTIONS.md)**: Complete
+  guide to all 30+ activation functions with selection guidance
+
+### 🔬 Advanced Topics
+
+- **[Predictive Coding](./docs/PREDICTIVE_CODING.md)**: Neuroscience-inspired
+  predictive coding training mode
+- **[Predictive Coding Benchmarks](./docs/PREDICTIVE_CODING_BENCHMARKS.md)**:
+  Benchmark results for predictive coding
+- **[Elastic Backpropagation](./docs/BACKPROP_ELASTICITY.md)**: Why we prefer
   minimum-change weight updates and avoid pushing saturated squashes further
   into saturation
 - **[GPU Acceleration](./docs/GPU_ACCELERATION.md)**: GPU acceleration for
   discovery on macOS using Metal
-- **[Activation Functions Guide](./docs/ACTIVATION_FUNCTIONS.md)**: Complete
-  guide to all 30+ activation functions with selection guidance
-- **[Intelligent Design](./docs/INTELLIGENT_DESIGN.md)**: Systematic squash
-  function optimisation for hidden neurons
+- **[WASM Resident Topology](./docs/WASM_RESIDENT_TOPOLOGY.md)**: Feasibility
+  analysis for WASM-resident creature topology
+
+### ⚡ Operations
+
 - **[Performance Tuning](./docs/PERFORMANCE_TUNING.md)**: Tuning WASM caches,
   thread pools, memory management, and scaling for large-scale training
+- **[Performance Research](./docs/PERFORMANCE_RESEARCH.md)**: WASM migration
+  research and benchmark learnings
 - **[Troubleshooting](./docs/TROUBLESHOOTING.md)**: Common issues and solutions
   for WASM, discovery, memory, CI, and configuration
 
-## Contributions
+### 🤝 For Contributors
+
+- **[AGENTS.md](./AGENTS.md)**: Coding conventions, terminology, and development
+  guidelines
+- **[Discovery Architecture](./docs/DISCOVERY_ARCHITECTURE.md)**: Internal
+  discovery pipeline architecture
+
+## 🤝 Contributions
 
 Contributions are welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for
 development setup, workflow, and guidelines. Please submit a pull request or
 open an issue to discuss potential changes/additions.
 
-## License
+## ⚖️ Licence
 
-This project is licensed under the terms of the Apache License 2.0. For the full
-license text, please see [LICENSE](./LICENSE)
+This project is licensed under the terms of the Apache Licence 2.0. For the full
+licence text, please see [LICENSE](./LICENSE)
 
 [![Built with the Deno Standard Library](https://raw.githubusercontent.com/denoland/deno_std/main/badge.svg)](https://deno.land/std)
 

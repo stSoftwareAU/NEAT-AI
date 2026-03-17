@@ -1,4 +1,4 @@
-## Elastic back propagation (minimum-change + safe-zone aware)
+## 🔄 Elastic Back Propagation (minimum-change + safe-zone aware)
 
 This project uses a value-solving form of back propagation.
 
@@ -7,10 +7,16 @@ Instead of only using chain-rule gradients everywhere, we often compute a
 synapse weights** to move the neuron toward that target.
 
 This works well for many squashes, but it can behave poorly near **saturation**
-(or near non-invertible regions) unless we actively avoid “forcing” already
+(or near non-invertible regions) unless we actively avoid "forcing" already
 immovable neurons.
 
-### Training vs recording (Explorer / discovery)
+> [!NOTE]
+> Elastic back propagation is designed to favour low-cost learning paths by
+> preferring plastic (unsaturated) synapses over those that are already at their
+> activation boundary. This improves training stability and helps the network
+> avoid chasing meaningless error outliers.
+
+### 🧪 Training vs Recording (Explorer / Discovery)
 
 There are two related flows:
 
@@ -21,10 +27,10 @@ There are two related flows:
 
 Both flows now apply the same core idea:
 
-- Prefer “plastic” paths
+- Prefer "plastic" paths
 - Treat saturated paths as a last resort
 
-### The core problem: saturation and inverse targets
+### ⚠️ The Core Problem: Saturation and Inverse Targets
 
 Some squashes have bounded activation ranges:
 
@@ -33,19 +39,25 @@ Some squashes have bounded activation ranges:
 - **LOGISTIC**: activation range is \((0, 1)\)
 - **HARD_TANH / ReLU6 / STEP**: piecewise and/or clipped regions
 
-If a neuron is already saturated and the training target is “at the boundary”,
+If a neuron is already saturated and the training target is "at the boundary",
 an inverse (`unSquash`) can imply an _enormous_ change in raw input for only a
 tiny change in activation.
 
 That can create large value-space errors which then:
 
 - dominate per-neuron traces in Explorer
-- cause discovery focus selection to “chase” meaningless outliers
+- cause discovery focus selection to "chase" meaningless outliers
 - slow evolution due to excessive error magnitudes
 
-### The fix: allocate error where it is cheapest to change
+> [!WARNING]
+> Saturation-driven outlier errors can severely distort the discovery process.
+> Without safe-zone awareness, a single saturated neuron may absorb a
+> disproportionate share of the error signal, causing the optimiser to focus on
+> the wrong part of the network.
 
-When a neuron has many inbound synapses, we treat the neuron’s pre-activation
+### 🧮 The Fix: Allocate Error Where It Is Cheapest to Change
+
+When a neuron has many inbound synapses, we treat the neuron's pre-activation
 as:
 
 \[ v = b + \sum_i (w_i \cdot a_i) \]
@@ -62,10 +74,10 @@ Then:
 
 - `share_i = error * score_i / Σ(score)`
 
-This is “elasticity”: links that can move the neuron with smaller weight changes
+This is "elasticity": links that can move the neuron with smaller weight changes
 absorb more of the required value change.
 
-### Safe-zone awareness (don’t push saturated parents further)
+### 🛡️ Safe-Zone Awareness (Don't Push Saturated Parents Further)
 
 Many squashes implement `safeZoneAdjustment(rawInput, error, weight)` which
 returns a factor in \([0,1]\). It is designed to:
@@ -73,13 +85,19 @@ returns a factor in \([0,1]\). It is designed to:
 - **prefer** updates when the neuron is in its strong-gradient region
 - **reduce** or **block** updates that push a saturated neuron further into
   saturation
-- optionally allow “recovery” when the error would move the neuron back toward
+- optionally allow "recovery" when the error would move the neuron back toward
   the centre
 
-Important: `rawInput` here means the neuron’s **pre-squash value**, not a single
+> [!TIP]
+> The `rawInput` parameter to `safeZoneAdjustment` is the neuron's **pre-squash
+> value**, not a single synapse contribution. Using the full pre-squash value
+> lets the squash function accurately determine whether the neuron is in a
+> safe-gradient region or approaching saturation.
+
+Important: `rawInput` here means the neuron's **pre-squash value**, not a single
 synapse contribution.
 
-### Your example (why we prefer changing other parts)
+### 📊 Your Example (Why We Prefer Changing Other Parts)
 
 Scenario:
 
@@ -105,7 +123,7 @@ ReLU_hidden ------------------ w2 -----------------> output-0
 What we _do not_ want:
 
 ```text
-Try to “force” ArcTan(output-0) further positive
+Try to "force" ArcTan(output-0) further positive
 even though it is already near +π/2.
 ```
 
@@ -117,10 +135,10 @@ and de-emphasise parents that are saturated (safeZoneFactor ≈ 0).
 ```
 
 So, if `ArcTan(output-0)` is saturated, its safe-zone factor reduces the share
-of the error that we try to push “through” it. That shifts the learning pressure
+of the error that we try to push "through" it. That shifts the learning pressure
 toward other inbound synapses or upstream neurons that are _not_ saturated.
 
-### About LeakyReLU (negative region)
+### 📈 About LeakyReLU (Negative Region)
 
 LeakyReLU does **not** have a hard saturation like ArcTan/TANH/LOGISTIC. Its
 slope is:
@@ -128,7 +146,7 @@ slope is:
 - `1` for \(x \ge 0\)
 - `α` for \(x < 0\) (eg. 0.01)
 
-So it can still learn in the negative region, but it’s “stiffer” there.
+So it can still learn in the negative region, but it's "stiffer" there.
 
 With elastic backprop + safe-zones:
 
@@ -136,7 +154,7 @@ With elastic backprop + safe-zones:
 - we can **resist** updates that push raw input more negative when it is already
   far negative
 
-### Where to look in code
+### 🗂️ Where to Look in Code
 
 - Elastic distribution helper: `src/propagate/ElasticDistribution.ts`
 - Back propagation application: `src/architecture/Neuron.ts`
