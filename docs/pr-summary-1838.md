@@ -17,8 +17,8 @@ WASM_RESIDENT_TOPOLOGY.md
 
 ### Styling Applied
 
-- 🎯 Added relevant emojis to all section headings (🧬 genetics, 🧠 neural,
-  ⚡ performance, 🔧 configuration, 🐛 troubleshooting, etc.)
+- 🎯 Added relevant emojis to all section headings (🧬 genetics, 🧠 neural, ⚡
+  performance, 🔧 configuration, 🐛 troubleshooting, etc.)
 - 📊 Added GitHub admonitions (`> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`) where
   appropriate throughout all files
 - 🎨 Enhanced mermaid diagram colours with `classDef` and `style` directives
