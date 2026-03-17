@@ -282,6 +282,7 @@
     "DRRT",
     "ACSC",
     "RLIF",
+    "CIRF",
     "diag",
     "Logits",
     "repr",
