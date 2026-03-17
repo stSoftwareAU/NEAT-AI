@@ -5,7 +5,9 @@
 Current version only
 
 > [!NOTE]
-> Only the current version of this project receives security updates. If you are using an older version, please upgrade to benefit from the latest security fixes.
+> Only the current version of this project receives security updates. If you are
+> using an older version, please upgrade to benefit from the latest security
+> fixes.
 
 ## ⚠️ Reporting a Vulnerability
 
@@ -13,7 +15,9 @@ If you discover a security vulnerability in this project, please report it
 responsibly by following these steps:
 
 > [!WARNING]
-> Do **not** create a public GitHub issue for security vulnerabilities. Responsible disclosure helps protect all users of this project while a fix is developed and coordinated.
+> Do **not** create a public GitHub issue for security vulnerabilities.
+> Responsible disclosure helps protect all users of this project while a fix is
+> developed and coordinated.
 
 ### 📋 Reporting Process
 
@@ -32,7 +36,8 @@ responsibly by following these steps:
 - **Resolution**: We aim to resolve critical vulnerabilities within 30 days
 
 > [!TIP]
-> If you have not received an acknowledgment within 48 hours, please follow up to ensure your report was received.
+> If you have not received an acknowledgment within 48 hours, please follow up
+> to ensure your report was received.
 
 ### 📬 What to Expect
 

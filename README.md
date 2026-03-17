@@ -35,8 +35,8 @@ For project terminology, coding conventions, and development guidelines, see
    forward pass that maps inputs to outputs.
 
    > [!NOTE]
-   > **Activation uses WASM (required).** The library initialises the WASM backend
-   > automatically; callers do not need to call any init function or set
+   > **Activation uses WASM (required).** The library initialises the WASM
+   > backend automatically; callers do not need to call any init function or set
    > environment variables.
 
 5. **Unique Squash Functions**: Supports unique squash functions such as IF, MAX
@@ -67,9 +67,9 @@ For project terminology, coding conventions, and development guidelines, see
 
     > [!WARNING]
     > Relies entirely on the
-    > [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) Rust
-    > extension library. If the library is not available, the discovery phase is
-    > skipped; there is no TypeScript fallback.
+    > [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery)
+    > Rust extension library. If the library is not available, the discovery
+    > phase is skipped; there is no TypeScript fallback.
 
 11. **[Visualisation](https://stsoftwareau.github.io/NEAT-AI/index.html)**
 
@@ -101,8 +101,9 @@ if (result.improvement) {
 ```
 
 > [!TIP]
-> For distributed, multi-machine workflows that accumulate small improvements over
-> time, see the [Discovery Guide](./docs/DISCOVERY_GUIDE.md) for a complete walkthrough.
+> For distributed, multi-machine workflows that accumulate small improvements
+> over time, see the [Discovery Guide](./docs/DISCOVERY_GUIDE.md) for a complete
+> walkthrough.
 
 ## 💻 Usage
 

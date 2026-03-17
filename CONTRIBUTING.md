@@ -75,8 +75,8 @@ The Rust FFI extension provides GPU-accelerated structural analysis. It is
 optional — tests and the core library work without it.
 
 > [!TIP]
-> If you are not working on discovery-related features, you can safely skip
-> this section. All core tests pass without the Rust FFI extension.
+> If you are not working on discovery-related features, you can safely skip this
+> section. All core tests pass without the Rust FFI extension.
 
 1. Clone and build alongside NEAT-AI:
 

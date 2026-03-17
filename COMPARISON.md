@@ -247,9 +247,9 @@ graph LR
 ```
 
 > **Key differences:** ✓ Topology evolves during training · ✓ Connections can be
-> added/removed dynamically · ✓ Neurons can be added/pruned automatically ·
-> ✓ Structure adapts to problem complexity · ✓ No predetermined architecture ·
-> ✓ Can handle non-differentiable objectives
+> added/removed dynamically · ✓ Neurons can be added/pruned automatically · ✓
+> Structure adapts to problem complexity · ✓ No predetermined architecture · ✓
+> Can handle non-differentiable objectives
 
 **Visualisation**: See our
 [interactive visualisation](https://stsoftwareau.github.io/NEAT-AI/index.html)
@@ -730,7 +730,6 @@ descent for backprop, creature activation is still largely sequential.
 
 **Impact**: Faster training on large datasets, better GPU utilisation
 
-
 **References**:
 
 - [Batch Normalization](https://arxiv.org/abs/1502.03167) - Ioffe & Szegedy
@@ -768,8 +767,8 @@ not exactly the same mechanism.
 
 > [!NOTE]
 > Our `sparseRatio` parameter selects a subset of neurons to update during
-> training. This is conceptually similar to dropout but operates differently:
-> we select neurons to update rather than randomly disabling them during the
+> training. This is conceptually similar to dropout but operates differently: we
+> select neurons to update rather than randomly disabling them during the
 > forward pass.
 
 **What We Have**:
@@ -826,8 +825,8 @@ not exactly the same mechanism.
 
 > [!WARNING]
 > GPU acceleration is currently macOS-only (Metal). Linux and Windows users
-> running NVIDIA or AMD hardware will not benefit from GPU-accelerated
-> discovery until CUDA or cross-platform support is added.
+> running NVIDIA or AMD hardware will not benefit from GPU-accelerated discovery
+> until CUDA or cross-platform support is added.
 
 **What's Missing**:
 
