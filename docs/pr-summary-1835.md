@@ -6,8 +6,8 @@ diagrams with colours and styling. Closes #1835.
 Five diagrams were converted:
 
 1. **Discovery Pipeline Overview** — flowchart with colour-coded stages
-2. **Module Dependency Map (src/discovery/)** — graph showing 37 file dependencies
-   grouped by responsibility
+2. **Module Dependency Map (src/discovery/)** — graph showing 37 file
+   dependencies grouped by responsibility
 3. **Module Dependency Map (src/architecture/)** — graph showing 38 file
    dependencies grouped by layer
 4. **Cross-Directory Data Flow** — flowchart showing data movement between
@@ -16,8 +16,8 @@ Five diagrams were converted:
    creation, application, filtering, evaluation, caching, and final outcome
 6. **Success Cache Directory Structure** — tree diagram showing cache layout
 
-All box-drawing characters have been removed. Australian English spelling is used
-throughout. Mermaid diagrams use `classDef` styling for colour-coded nodes.
+All box-drawing characters have been removed. Australian English spelling is
+used throughout. Mermaid diagrams use `classDef` styling for colour-coded nodes.
 
 ## Evidence
 

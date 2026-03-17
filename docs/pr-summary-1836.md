@@ -13,12 +13,13 @@ DISCOVERY_GUIDE.md, and PREDICTIVE_CODING.md. Closes #1836.
   multi-machine architecture diagram from box-drawing characters to a mermaid
   flowchart with subgraphs and styled nodes
 - **PREDICTIVE_CODING.md**: Converted the Dependency Graph (Phase 1-5) and the
-  Integration Pipeline diagram to mermaid flowcharts. Algorithm pseudocode blocks
-  are retained as code blocks since mermaid is not a better representation for
-  detailed pseudocode with mathematical notation
+  Integration Pipeline diagram to mermaid flowcharts. Algorithm pseudocode
+  blocks are retained as code blocks since mermaid is not a better
+  representation for detailed pseudocode with mathematical notation
 
 All mermaid diagrams use colours and styling, Australian English spelling, and
-render correctly on GitHub. No box-drawing characters remain in diagram contexts.
+render correctly on GitHub. No box-drawing characters remain in diagram
+contexts.
 
 ## Evidence
 
