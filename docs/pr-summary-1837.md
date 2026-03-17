@@ -21,7 +21,8 @@ documentation. Closes #1837.
 3. **Added cross-references** between related docs:
    - `PERFORMANCE_TUNING.md` ↔ `PERFORMANCE_RESEARCH.md`
    - `DISCOVERY_GUIDE.md` ↔ `DISCOVERY_ARCHITECTURE.md`
-   - `CONFIGURATION_GUIDE.md` ↔ `PERFORMANCE_TUNING.md` / `PERFORMANCE_RESEARCH.md`
+   - `CONFIGURATION_GUIDE.md` ↔ `PERFORMANCE_TUNING.md` /
+     `PERFORMANCE_RESEARCH.md`
 
 4. **Renamed files** for naming consistency:
    - `performance-guide.md` → `PERFORMANCE_RESEARCH.md`
