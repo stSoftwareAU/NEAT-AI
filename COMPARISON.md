@@ -64,6 +64,12 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
   sizes
 - ✅ **Early Stopping**: Enhanced early stopping with patience and improvement
   thresholds
+- ✅ **Predictive Coding**: Optional training paradigm based on
+  [Rao & Ballard (1999)](https://www.nature.com/articles/nn0199_79) that uses
+  iterative inference settling and local Hebbian learning rules. Configurable
+  via `PredictiveCodingConfig` with inference steps, learning rate, and energy
+  convergence thresholds. See [PREDICTIVE_CODING.md](./docs/PREDICTIVE_CODING.md)
+  for architecture details.
 
 ### ✨ Unique Features
 
@@ -96,6 +102,17 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
   analysis using compute shaders, aligning with Apple's
   [Metal Performance Shaders](https://developer.apple.com/metal/Metal-Performance-Shaders-Framework/)
   guidance.
+- ✅ **Discovery Caching**: Success and failure caching for discovery candidates
+  with age-based and size-based eviction, cache-informed multi-neuron removal
+  candidates, and supplemental candidate building from historical data.
+- ✅ **Disk Space Monitoring**: Pre-flight and runtime disk space checks during
+  discovery to gracefully warn or abort when disk space is insufficient.
+- ✅ **Ensemble Diversity**: `EnsembleDiversityConfig` scores creatures within
+  species by weight variance, squash entropy, and topology diversity to reduce
+  reliance on brilliant-but-brittle solutions.
+- ✅ **Adaptive Quantum Steps**: `QuantumStepConfig` provides adaptive step
+  sizing during memetic fine-tuning—larger steps when far from the optimum and
+  smaller steps during convergence.
 - ✅ **Unique Activation Functions**: IF, MAX, MIN, and other non-standard
   squashes that enable different network behaviours, akin to the broader family
   of [activation functions](https://en.wikipedia.org/wiki/Activation_function).
@@ -459,6 +476,58 @@ algorithm instead of standard crossover.
 
 **Reference**: See Feature #8 in [README.md](./README.md)
 
+### 7. 🧠 Predictive Coding Training
+
+**What It Is**: An optional training paradigm based on predictive coding theory
+([Rao & Ballard, 1999](https://www.nature.com/articles/nn0199_79)) that
+minimises prediction error through iterative inference settling and local
+Hebbian learning rules.
+
+**How It Works**:
+
+1. Input and target values are clamped to the network
+2. An iterative settling loop runs inference, adjusting latent values to
+   minimise prediction error energy (E = ½ Σ ε²)
+3. Once settled, local Hebbian weight updates are computed: ΔW = η · f'(a) · ε · x
+4. Updates are applied with symmetric (shared) weights rather than separate
+   prediction weights
+
+**Why It's Unique**: Predictive coding uses only local information for learning
+(pre- and post-synaptic activity), which aligns naturally with NEAT's
+neuron-centric topology. It provides an alternative to standard backpropagation
+that may generalise differently on certain problem types.
+
+**Configuration**: Controlled via `PredictiveCodingConfig` with parameters for
+inference steps, inference rate, learning rate, and energy convergence
+threshold. Disabled by default.
+
+**Reference**: See [PREDICTIVE_CODING.md](./docs/PREDICTIVE_CODING.md) for the
+full architecture design.
+
+### 8. 🔍 Discovery Caching and Disk Space Management
+
+**What It Is**: A suite of enhancements to the discovery pipeline that cache
+evaluation results, inform future candidate building from historical data, and
+monitor disk space to prevent failures.
+
+**How It Works**:
+
+- **Success Cache**: Persists discovery candidates that improved a creature's
+  score, allowing re-application of known wins to the current fittest creature
+- **Failure Cache**: Caches candidates that failed to improve, preventing
+  redundant re-evaluation with smart bucketing by weight order-of-magnitude
+- **Cache Eviction**: Age-based (TTL) and size-based eviction prevents
+  unbounded cache growth
+- **Cache-Informed Candidates**: Historical successes inform multi-neuron
+  removal combinations and supplement Phase 2 candidate building
+- **Disk Space Monitoring**: Pre-flight checks with configurable critical and
+  warning thresholds prevent opaque I/O failures during long-running discovery
+
+**Why It's Unique**: Most neuroevolution implementations treat each structural
+search independently. Our caching layer allows the discovery pipeline to learn
+from its own history, building on previous successes and avoiding repeated
+failures.
+
 ## 🔬 Ecosystem Comparison: What We've Built vs Standard Libraries
 
 ### 📚 Standard ML Libraries (TensorFlow, PyTorch, etc.)
@@ -555,8 +624,10 @@ algorithm instead of standard crossover.
    yet implemented. See [Unsupervised Learning](#unsupervised-learning) section
    for clarification.
 7. **Hyperparameter Sensitivity**: Many parameters to tune, though our
-   implementation addresses this by randomising hyperparameters each evolution
-   run (which works well in practice - see note below)
+   implementation addresses this with adaptive mechanisms
+   (`AdaptiveMutationThresholds`, `PlateauDetector`, `StabilityAdaptationConfig`)
+   and by randomising hyperparameters each evolution run (which works well in
+   practice - see note below)
 8. **GPU Support Limited**: Currently only Metal (macOS), not CUDA/OpenCL
 
 > [!TIP]
@@ -713,18 +784,28 @@ you need labelled data to compute fitness scores. True unsupervised learning
 
 #### 4. ⚡ Batch Processing Optimisation
 
-**Current State**: Sequential creature evaluation. While we have batch gradient
-descent for backprop, creature activation is still largely sequential.
+**Current State**: We have batch processing for discovery candidate validation,
+but creature activation during training is still largely sequential.
+
+**What We Have**:
+
+- **Batch Discovery Validation**: `BatchDiscoveryValidator` validates multiple
+  discovery candidates in a single call with type-based grouping (structural
+  vs weight-only), result caching, early-exit on structural failure, and
+  detailed validation statistics. This significantly reduces redundant
+  validation during the discovery pipeline.
+- **Mini-Batch Gradient Descent**: Configurable batch sizes for
+  backpropagation weight updates.
 
 > [!WARNING]
-> Without true parallel batch activation, training throughput on large datasets
-> is significantly constrained. This is one of the most impactful performance
-> improvements available.
+> Without true parallel batch activation across the full population, training
+> throughput on large datasets is significantly constrained. This is one of the
+> most impactful performance improvements available.
 
-**What's Missing**:
+**What's Still Missing**:
 
-- True parallel batch activation across population
-- Vectorized operations for multiple creatures
+- True parallel batch activation across the full population
+- Vectorised operations for multiple creatures simultaneously
 - GPU-accelerated forward passes
 - Batch inference optimisation
 
@@ -761,9 +842,9 @@ one task.
 
 #### 6. 🛡️ Advanced Regularisation Techniques
 
-**Current State**: Basic pruning and cost-of-growth penalty. We have sparse
-training which is similar to dropout (randomly selects neurons to update), but
-not exactly the same mechanism.
+**Current State**: We have several regularisation mechanisms including sparse
+training, pruning, cost-of-growth penalty, and configurable weight/bias
+regularisation with L2 support.
 
 > [!NOTE]
 > Our `sparseRatio` parameter selects a subset of neurons to update during
@@ -778,13 +859,18 @@ not exactly the same mechanism.
   rather than randomly disabling them)
 - **Neuron Pruning**: Automatic removal of non-contributing neurons
 - **Cost-of-Growth**: Penalty for network size
+- **Weight Regularisation**: `WeightRegularisationConfig` provides hard absolute
+  limits, per-mutation change limits, L2 regularisation (biasing weights towards
+  zero), and a small-change preference to prevent extreme weight values
+- **Bias Regularisation**: `BiasRegularisationConfig` mirrors weight
+  regularisation for neuron biases, preventing extreme bias values that cause
+  exploding activations
 
 **What's Missing**:
 
 - True dropout (randomly disable neurons during forward pass, use all during
   inference)
 - Batch normalisation evolution
-- L1/L2 weight regularisation
 - Early stopping with validation sets (we have early stopping, but could enhance
   with validation)
 - Cross-validation support
@@ -802,11 +888,28 @@ not exactly the same mechanism.
 
 #### 7. 🔧 Hyperparameter Evolution
 
-**Current State**: Manual hyperparameter tuning required.
+**Current State**: Several adaptive hyperparameter mechanisms exist, though
+full meta-learning is not yet implemented.
 
-**What's Missing**:
+**What We Have**:
 
-- Evolution of learning rates, mutation rates
+- **Adaptive Mutation Thresholds**: `AdaptiveMutationThresholds` adjusts the
+  ratio of topology vs weight/bias mutations based on creature size (neuron
+  count). Large creatures (≥300 neurons) receive 90% weight/bias mutations
+  and only 10% topology expansion, with linear interpolation for medium
+  creatures (100–299 neurons).
+- **Plateau Detection**: `PlateauDetector` monitors fitness improvement rates
+  across generations and adapts mutation rates—doubling the mutation multiplier
+  when on a plateau and reducing it during rapid improvement to escape local
+  optima.
+- **Stability Adaptation**: `StabilityAdaptationConfig` adapts mutation rates
+  and breeding selection based on creature validation stability. Brittle
+  creatures (high failure rate) receive reduced mutations, while stable
+  creatures receive a boost. Stability can also influence parent selection.
+
+**What's Still Missing**:
+
+- Full evolution of learning rates across generations
 - Adaptive population sizing
 - Self-tuning regularisation parameters
 - Meta-learning for hyperparameters
@@ -909,14 +1012,26 @@ not exactly the same mechanism.
 
 #### 12. 📈 Time Series and Sequence Modelling
 
-**Current State**: Feedforward focus, limited sequence handling.
+**Current State**: Primarily feedforward, but basic recurrent/time-series
+support exists via the `feedbackLoop` configuration.
 
-**What's Missing**:
+**What We Have**:
 
-- Recurrent connection evolution
-- LSTM/GRU-like structures
+- **Feedback Loop**: The `feedbackLoop` option in `NeatArguments` enables
+  recurrent connections (self-loops and backward connections), where the
+  previous activation result feeds back into the next interaction. When
+  enabled, recurrent mutation operations (`ADD_BACK_CONN`, `ADD_SELF_CONN`,
+  etc.) become available, allowing networks to evolve memory-like structures
+  suitable for time-series forecasting. See the
+  [NARX feedback neural networks](https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html)
+  reference for the underlying concept.
+
+**What's Still Missing**:
+
+- LSTM/GRU-like gated structures
 - Temporal convolution evolution
 - Sequence-to-sequence architectures
+- Advanced temporal attention mechanisms
 
 **Impact**: Better handling of time series, natural language, sequential data
 
@@ -1001,9 +1116,11 @@ not exactly the same mechanism.
 NEAT offers unique advantages in automatic architecture search and adaptive
 learning, but historically suffered from computational inefficiency and
 scalability limitations. Our implementation addresses many of these through GPU
-acceleration, memetic evolution, and error-guided discovery. However, gaps
-remain in transfer learning, unsupervised learning, and attention mechanisms
-that represent opportunities for future development.
+acceleration, memetic evolution, error-guided discovery with intelligent
+caching, predictive coding, adaptive hyperparameter mechanisms, and
+weight/bias regularisation. However, gaps remain in transfer learning,
+unsupervised learning, and attention mechanisms that represent opportunities
+for future development.
 
 The choice between NEAT and traditional neural networks depends on:
 
