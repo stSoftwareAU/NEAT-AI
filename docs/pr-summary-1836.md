@@ -11,11 +11,11 @@ DISCOVERY_GUIDE.md, and PREDICTIVE_CODING.md. Closes #1836.
   colour-coded node classes and emoji icons
 - **DISCOVERY_GUIDE.md**: Converted the Distributed Discovery Swarm
   multi-machine architecture diagram from box-drawing characters to a mermaid
-  flowchart with subgraphs and styled nodes
-- **PREDICTIVE_CODING.md**: Converted the Dependency Graph (Phase 1-5) and the
-  Integration Pipeline diagram to mermaid flowcharts. Algorithm pseudocode
-  blocks are retained as code blocks since mermaid is not a better
-  representation for detailed pseudocode with mathematical notation
+  flowchart with subgraphs and styled nodes. Converted the Real-World Results
+  ASCII table to a proper markdown table
+- **PREDICTIVE_CODING.md**: Converted the Dependency Graph (Phase 1-5), the
+  Integration Pipeline diagram, the PC Inference (Settling) algorithm, and the
+  PC Weight Update algorithm to mermaid flowcharts with colour-coded nodes
 
 All mermaid diagrams use colours and styling, Australian English spelling, and
 render correctly on GitHub. No box-drawing characters remain in diagram

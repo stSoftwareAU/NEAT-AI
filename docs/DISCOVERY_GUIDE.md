@@ -356,23 +356,20 @@ echo "Discovery loop completed"
 
 ### Example: 100 Discovery Iterations
 
-```
-Iteration  Score      Delta    Cumulative
-─────────────────────────────────────────
-0          0.4000     -        0%
-10         0.4048     +1.2%    +1.2%
-20         0.4089     +1.0%    +2.2%
-30         0.4142     +1.3%    +3.6%
-...
-80         0.4523     +0.8%    +13.1%
-90         0.4589     +1.5%    +14.7%
-100        0.4651     +1.4%    +16.3%
+| Iteration | Score  | Delta | Cumulative |
+| --------- | ------ | ----- | ---------- |
+| 0         | 0.4000 | —     | 0%         |
+| 10        | 0.4048 | +1.2% | +1.2%      |
+| 20        | 0.4089 | +1.0% | +2.2%      |
+| 30        | 0.4142 | +1.3% | +3.6%      |
+| …         | …      | …     | …          |
+| 80        | 0.4523 | +0.8% | +13.1%     |
+| 90        | 0.4589 | +1.5% | +14.7%     |
+| 100       | 0.4651 | +1.4% | +16.3%     |
 
-Summary: 100 iterations, 16.3% total improvement
-Average per iteration: 0.16%
-Best single iteration: 1.5%
-Iterations with improvement: 73/100 (73% success rate)
-```
+**Summary:** 100 iterations, 16.3% total improvement — average 0.16% per
+iteration, best single iteration 1.5%, 73/100 iterations found improvements (73%
+success rate).
 
 ### Timeline
 
