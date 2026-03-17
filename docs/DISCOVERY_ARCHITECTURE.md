@@ -1,4 +1,4 @@
-# Discovery Pipeline Internal Architecture
+# 🏗️ Discovery Pipeline Internal Architecture
 
 This document describes the internal architecture of the discovery pipeline —
 how modules interconnect, the two-phase evaluation strategy, cache architecture,
@@ -6,7 +6,12 @@ and candidate lifecycle. For user-facing configuration and distributed setup
 guidance, see [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md) and
 [DISCOVERY_DIR.md](DISCOVERY_DIR.md).
 
-## Pipeline Overview
+> [!NOTE]
+> This document is contributor-focused. For user-facing configuration and
+> distributed setup guidance, refer to [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md).
+> For the integration API, refer to [DISCOVERY_DIR.md](DISCOVERY_DIR.md).
+
+## 🔄 Pipeline Overview
 
 The discovery pipeline is a **two-phase, cache-aware structural evolution
 system** that proposes, filters, evaluates, and caches candidate improvements to
@@ -33,9 +38,9 @@ flowchart TD
     end
 ```
 
-## Two-Phase Evaluation Strategy
+## 📊 Two-Phase Evaluation Strategy
 
-### Phase 1: Single Candidate Evaluation
+### 🔍 Phase 1: Single Candidate Evaluation
 
 Phase 1 evaluates individual structural changes proposed by the Rust analysis
 engine. Each candidate represents a single atomic modification to the creature.
@@ -68,15 +73,16 @@ engine. Each candidate represents a single atomic modification to the creature.
 8. **Result caching** — Successful candidates (score > original) go to the
    success cache; failures go to the failure cache.
 
-### Phase 2: Combined Candidate Evaluation
+### 🔗 Phase 2: Combined Candidate Evaluation
 
 Phase 2 builds multi-step combinations from Phase 1 successes, targeting
 **epistatic improvements** — cases where individual changes are marginal but
 combinations are powerful.
 
-**Entry threshold:** Phase 2 requires at least **1 successful single** from
-Phase 1. This threshold was lowered from 2 in enhancement #1734 to capture more
-combination opportunities.
+> [!NOTE]
+> **Entry threshold:** Phase 2 requires at least **1 successful single** from
+> Phase 1. This threshold was lowered from 2 in enhancement #1734 to capture
+> more combination opportunities.
 
 **Supplementation:** When Phase 1 produces only 1 success, the pipeline
 supplements with up to 5 historical successes from the success cache
@@ -93,20 +99,22 @@ the current creature and checked against already-applied changes.
 | Pairwise        | Every pair of successful candidates      |
 | Triple          | Every triple (when pool is large enough) |
 
-**Exclusion rule:** Coordinated-structural candidates are never combined with
-other candidates — they are already epistatic groups designed to be applied
-atomically.
+> [!WARNING]
+> **Exclusion rule:** Coordinated-structural candidates are never combined with
+> other candidates — they are already epistatic groups designed to be applied
+> atomically. Combining them with other candidates may produce invalid
+> structural configurations.
 
 After building, Phase 2 candidates pass through the same filtering and
 evaluation pipeline as Phase 1. Results are cached identically.
 
-### Final Selection
+### 🏆 Final Selection
 
 All Phase 1 and Phase 2 improvements are pooled, sorted by score (descending),
 and the best is returned as the primary improvement. Remaining improvements are
 available as `additionalImprovements`.
 
-## Module Dependency Map
+## 🗺️ Module Dependency Map
 
 ### `src/discovery/` — Pipeline Orchestration (37 files)
 
@@ -192,7 +200,7 @@ graph TD
     DR --> PDQ & BS & NEI & DSM & DT & DCL
 ```
 
-### `src/architecture/ErrorGuidedStructuralEvolution/` — Rust FFI & Structure Operations (38 files)
+### 🦀 `src/architecture/ErrorGuidedStructuralEvolution/` — Rust FFI & Structure Operations (38 files)
 
 ```mermaid
 graph TD
@@ -280,7 +288,7 @@ graph TD
     DS --> DDF & DLG & PD & CON
 ```
 
-### Cross-Directory Data Flow
+### 🔀 Cross-Directory Data Flow
 
 ```mermaid
 flowchart TD
@@ -309,7 +317,7 @@ flowchart TD
     DST --> DCB --> CFL --> DRE --> CER
 ```
 
-## Candidate Lifecycle
+## 🔁 Candidate Lifecycle
 
 Each discovery candidate follows a defined lifecycle from creation through to
 caching:
@@ -355,7 +363,7 @@ stateDiagram-v2
     class Skip,Discard skip
 ```
 
-### Change Types
+### 🗂️ Change Types
 
 | Change Type              | Source          | Description                                       |
 | ------------------------ | --------------- | ------------------------------------------------- |
@@ -372,7 +380,7 @@ stateDiagram-v2
 | `combo-add-change`       | Phase 1         | Combined addition + squash change                 |
 | `combo-best-of-category` | Phase 2         | Best candidate from each category                 |
 
-### Validate-Then-Fix Strategy
+### 🛡️ Validate-Then-Fix Strategy
 
 When a structural change is applied to a creature clone, the pipeline uses a
 two-step validation approach:
@@ -382,13 +390,14 @@ two-step validation approach:
 2. **Fix as fallback** — If validation fails, call `fix()` to repair structural
    issues. This indicates a bug in the modification logic worth investigating.
 
-Creatures at version 2.x/3.x are upgraded to 4.x when forward-only topology is
-confirmed. Version 4.x+ creatures enforce strict forward-only connection
-ordering.
+> [!TIP]
+> Creatures at version 2.x/3.x are upgraded to 4.x when forward-only topology is
+> confirmed. Version 4.x+ creatures enforce strict forward-only connection
+> ordering, which improves both performance and determinism.
 
-## Cache Architecture
+## 💾 Cache Architecture
 
-### Success Cache
+### ✅ Success Cache
 
 The success cache stores candidates that improved the creature's score. Each
 entry preserves enough information to **replay** the candidate on a future
@@ -459,7 +468,7 @@ graph TD
 - `getSuccessfulRemovalDetails()` — Returns structured details including score
   delta and timing for better prioritisation (#1733).
 
-### Failure Cache
+### ❌ Failure Cache
 
 The failure cache prevents re-evaluation of candidates known to produce no
 improvement. Lookups happen **before** evaluation slot allocation, so cached
@@ -473,10 +482,13 @@ failures never waste worker time.
 - Exception: `combo-successful` **is** cached because it is keyed by the
   resulting creature structure, not the combination recipe.
 
-**Entry metadata** includes prediction diagnostics — comparing expected vs
-actual improvement to calibrate the Rust analysis engine's predictions.
+> [!NOTE]
+> **Entry metadata** includes prediction diagnostics — comparing expected vs
+> actual improvement to calibrate the Rust analysis engine's predictions. This
+> data helps surface systematic over- or under-estimation patterns in the
+> analysis layer.
 
-### Cache Key Generation
+### 🔑 Cache Key Generation
 
 Cache keys are designed to be **structurally stable** across evolutionary weight
 drift while remaining discriminative enough to avoid false collisions.
@@ -493,7 +505,7 @@ exponent bucket (`-3`), producing the same cache key. This prevents cache
 explosion from incremental weight drift across training iterations while still
 distinguishing structurally different candidates.
 
-### Cache-Informed Candidate Building
+### 🧠 Cache-Informed Candidate Building
 
 Introduced in #1731, this feature proactively builds **multi-neuron removal
 candidates** during Phase 1 by consulting historical success cache data.
@@ -511,7 +523,7 @@ candidates** during Phase 1 by consulting historical success cache data.
 This bridges Phase 1 and the success cache — enabling multi-removal exploration
 without waiting for Phase 2 combination building.
 
-### Cache Eviction
+### 🗑️ Cache Eviction
 
 `DiscoveryCacheEviction.ts` manages cache size and retention:
 
@@ -521,7 +533,7 @@ without waiting for Phase 2 combination building.
   no longer relevant.
 - **Statistics logging** reports cache state for operational monitoring.
 
-## Candidate Filtering Detail
+## 🎛️ Candidate Filtering Detail
 
 `CandidateFiltering.ts` implements a multi-stage slot allocation strategy that
 balances **evaluation budget** against **exploration breadth**.
@@ -548,7 +560,7 @@ present in the success cache, encouraging exploration of untested removals.
 **Slot budget:** Total evaluation slots scale with available workers:
 `maxCandidates = max(2 × threadCount, categoryCount)`.
 
-## Discovery Diagnostics
+## 📈 Discovery Diagnostics
 
 Introduced in #1735, per-change-type diagnostics track evaluation outcomes
 across the pipeline.
@@ -563,13 +575,13 @@ across the pipeline.
 **Output:** Summary table logged at the end of each discovery run. Optionally
 persisted to `{archiveDir}/diagnostics.json` for trend analysis across runs.
 
-## Rust FFI Bridge
+## 🦀 Rust FFI Bridge
 
 The Rust FFI layer connects TypeScript to the
 [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) library
 for GPU-accelerated structural analysis.
 
-### FFI Operations
+### 🖥️ FFI Operations
 
 | Function                  | Purpose                                          |
 | ------------------------- | ------------------------------------------------ |
@@ -579,14 +591,14 @@ for GPU-accelerated structural analysis.
 | `rankFocusNeurons()`      | Rank neurons by error impact for focus selection |
 | `mergeDiscoveryParquet()` | Merge multiple Parquet files                     |
 
-### Data Conversion
+### 🔄 Data Conversion
 
 `creatureToRustFormat()` converts a Creature instance to the FFI-compatible
 `RustRecordInput` format. This includes validation of data sizes and error
 counts — corrupt data (error counts exceeding `sampleCount × outputCount × 2`)
 is flagged with warnings.
 
-### Library Management
+### 📦 Library Management
 
 - `isRustDiscoveryEnabled()` checks both library availability **and** GPU
   availability.
@@ -594,7 +606,13 @@ is flagged with warnings.
 - `getDiscoveryVersion()` returns the cached Rust library version string.
 - Library loading is dynamic via Deno FFI (`.dylib` / `.so` / `.dll`).
 
-### Focus Neuron Selection
+> [!WARNING]
+> `isRustDiscoveryEnabled()` requires **both** the native library to be loadable
+> **and** a compatible GPU to be present. If only `isRustLibraryAvailable()`
+> returns `true`, analysis will fall back to CPU mode, which may significantly
+> increase analysis duration.
+
+### 🎯 Focus Neuron Selection
 
 Before analysis, the pipeline selects which neurons to focus on. Selection uses
 weighted random sampling based on:
@@ -609,7 +627,7 @@ weighted random sampling based on:
 Low-impact neurons (impact < costOfGrowth) are flagged separately as removal
 candidates rather than analysis targets.
 
-## Related Issues
+## 🔗 Related Issues
 
 - **#1731** — Cache-informed multi-neuron removal building during Phase 1
 - **#1733** — Extended success cache metadata for better combination
@@ -619,7 +637,7 @@ candidates rather than analysis targets.
 - **#1735** — Per-change-type discovery diagnostics (success rates, score
   deltas)
 
-## See Also
+## 📚 See Also
 
 - [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md) — User guide: distributed setup,
   configuration, best practices

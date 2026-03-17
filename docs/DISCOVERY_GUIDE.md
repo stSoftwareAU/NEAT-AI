@@ -1,26 +1,26 @@
-# Discovery: Continuous Incremental Improvement
+# 🔍 Discovery: Continuous Incremental Improvement
 
-## Overview
+## 📖 Overview
 
 Discovery is designed for **continuous, incremental improvements** to neural
 networks through automated structure analysis. Each discovery iteration finds
 small improvements (typically 1-3%), which accumulate over time through repeated
 iterations.
 
-⚠️ **Important**: Discovery is NOT about finding large 10%+ improvements in a
-single run. It's about finding many small 1-2% improvements that compound over
-time.
+> [!IMPORTANT]
+> Discovery is NOT about finding large 10%+ improvements in a single run. It's
+> about finding many small 1-2% improvements that compound over time.
 
-## How Discovery Works
+## ⚙️ How Discovery Works
 
-### The Incremental Improvement Model
+### 📈 The Incremental Improvement Model
 
 1. **Small Steps**: Each discovery run finds 0-3% improvement
 2. **Continuous Process**: Runs repeatedly on the current best creature
 3. **Compound Growth**: Small improvements accumulate over many iterations
 4. **Distributed Swarm**: Multiple machines work in parallel
 
-### Typical Results Per Run
+### 🎯 Typical Results Per Run
 
 ```
 ✅ Excellent: 2-3% improvement (rare but happens)
@@ -31,9 +31,9 @@ time.
 
 **Never expect**: 10%+ improvement in a single run (unrealistic)
 
-## Architecture: Distributed Discovery Swarm
+## 🏗️ Architecture: Distributed Discovery Swarm
 
-### Multi-Machine Setup
+### 🖥️ Multi-Machine Setup
 
 ```mermaid
 flowchart TD
@@ -61,7 +61,7 @@ flowchart TD
     style pool fill:#f0e6ff,stroke:#8e44ad,color:#333
 ```
 
-### Workflow Loop (Per Machine)
+### 🔄 Workflow Loop (Per Machine)
 
 ```typescript
 while (true) {
@@ -91,9 +91,9 @@ while (true) {
 }
 ```
 
-## Configuration
+## 🛠️ Configuration
 
-### Production-Tuned Defaults
+### ⚡ Production-Tuned Defaults
 
 These defaults are tuned for continuous incremental discovery:
 
@@ -108,7 +108,7 @@ const options: NeatOptions = {
   // Cost of growth penalty (each synapse/neuron must earn back this cost)
   costOfGrowth: 0.001, // Default: candidates must reduce error > 0.001 per synapse
 
-  // Analyze 6 neurons per iteration (balances speed vs thoroughness)
+  // Analyse 6 neurons per iteration (balances speed vs thoroughness)
   discoveryMaxNeurons: 6,
 
   // Sample 5% of data (faster while maintaining statistical validity)
@@ -116,7 +116,7 @@ const options: NeatOptions = {
 };
 ```
 
-### Selection Strategy: Cost-Benefit Analysis
+### 💰 Selection Strategy: Cost-Benefit Analysis
 
 Discovery uses a single acceptance rule:
 
@@ -141,7 +141,7 @@ Each candidate that adds structural complexity must satisfy:
 If multiple candidates are profitable:
 
 - ✅ **Select the candidate with the largest net improvement**
-- This maximizes progress per iteration
+- This maximises progress per iteration
 
 Example:
 
@@ -161,7 +161,7 @@ Example:
 // Result: Choose the candidate with the largest net improvement
 ```
 
-## Example: Distributed Discovery Script
+## 💻 Example: Distributed Discovery Script
 
 This example shows a simplified version of a production discovery worker:
 
@@ -315,7 +315,7 @@ if (import.meta.main) {
 }
 ```
 
-## Shell Script Example
+## 🐚 Shell Script Example
 
 A simplified version of a discovery worker shell script:
 
@@ -335,7 +335,7 @@ echo "Starting continuous discovery for ${TIMEOUT_MINUTES} minutes"
 while [[ $(date +%s) -lt ${end_time} ]]; do
   # Sync creature pool from git
   (cd "${REPO_PATH}" && git pull --rebase)
-  
+
   # Run discovery
   deno run \\
     --allow-read --allow-write --allow-net --allow-ffi --allow-env \\
@@ -344,7 +344,7 @@ while [[ $(date +%s) -lt ${end_time} ]]; do
     --dataDir="${DATA_DIR}" \\
     --discoveryRecordTimeOutMinutes=1 \\
     --discoveryAnalysisTimeoutMinutes=10
-  
+
   # Brief pause
   sleep 5
 done
@@ -352,9 +352,9 @@ done
 echo "Discovery loop completed"
 ```
 
-## Real-World Results
+## 📊 Real-World Results
 
-### Example: 100 Discovery Iterations
+### 📉 Example: 100 Discovery Iterations
 
 | Iteration | Score  | Delta | Cumulative |
 | --------- | ------ | ----- | ---------- |
@@ -371,7 +371,7 @@ echo "Discovery loop completed"
 iteration, best single iteration 1.5%, 73/100 iterations found improvements (73%
 success rate).
 
-### Timeline
+### ⏱️ Timeline
 
 - **Single iteration**: 12-15 minutes (1 min recording + 10 min analysis +
   overhead)
@@ -379,9 +379,15 @@ success rate).
 - **100 iterations**: 20-25 hours
 - **With 5 machines**: 4-5 hours for 100 iterations
 
-## Best Practices
+> [!TIP]
+> Running discovery on 5 machines simultaneously reduces wall-clock time for 100
+> iterations from 20-25 hours down to 4-5 hours. Each machine independently
+> searches the candidate space, so the speedup is approximately linear with the
+> number of machines added.
 
-### 1. Use Multiple Machines
+## ✅ Best Practices
+
+### 1. 🖥️ Use Multiple Machines
 
 Run discovery on multiple machines simultaneously:
 
@@ -389,7 +395,7 @@ Run discovery on multiple machines simultaneously:
 - Improvements are shared through the creature pool
 - Linear speedup: 5 machines = 5x faster overall progress
 
-### 2. Continuous Operation
+### 2. 🔁 Continuous Operation
 
 Discovery works best when run continuously:
 
@@ -397,15 +403,15 @@ Discovery works best when run continuously:
 - Small improvements compound over time
 - Each machine should loop indefinitely
 
-### 3. Fresh Training Data
+### 3. 🗄️ Fresh Training Data
 
 Regenerate training data periodically:
 
 - Prevents overfitting to specific samples
-- Discovers generalizable improvements
+- Discovers generalisable improvements
 - Recommendation: New data every 5-10 iterations
 
-### 4. Monitor Progress
+### 4. 📈 Monitor Progress
 
 Track cumulative improvements:
 
@@ -423,7 +429,7 @@ Track cumulative improvements:
 }
 ```
 
-### 5. Git-Based Creature Pool
+### 5. 🌿 Git-Based Creature Pool
 
 Use git for coordination:
 
@@ -432,7 +438,7 @@ Use git for coordination:
 - ✅ Works across network
 - ✅ Easy to inspect progress
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
 ### "No improvements found"
 
@@ -441,6 +447,11 @@ This is normal! Not every iteration finds an improvement:
 - **Expected**: 60-80% of iterations find improvements
 - **If < 50%**: Check if threshold is too high
 - **If 0%**: Check if discovery is working at all
+
+> [!NOTE]
+> A 0% improvement rate across many consecutive iterations often indicates that
+> the current creature topology is near a local optimum. Try introducing fresh
+> training data or increasing `discoveryMaxNeurons` to broaden the search.
 
 ### "Improvements make score worse"
 
@@ -461,14 +472,20 @@ options.discoveryAnalysisTimeoutMinutes = 15; // or higher
 Reduce thoroughness for speed:
 
 ```typescript
-options.discoveryMaxNeurons = 3; // Analyze fewer neurons
+options.discoveryMaxNeurons = 3; // Analyse fewer neurons
 options.discoverySampleRate = 0.02; // Sample less data (2%)
 options.discoveryRecordTimeOutMinutes = 0.5; // Shorter recording (30 sec)
 ```
 
-## Advanced: Focus Neurons
+> [!WARNING]
+> Reducing `discoverySampleRate` below 0.02 (2%) can significantly reduce the
+> statistical reliability of improvement estimates. Candidates that appear
+> profitable at very low sample rates may not generalise to the full dataset,
+> leading to wasted check-ins and potential score regressions.
 
-Prioritize specific neurons for analysis:
+## 🎯 Advanced: Focus Neurons
+
+Prioritise specific neurons for analysis:
 
 ```typescript
 options.discoveryFocusNeuronUUIDs = [
@@ -477,9 +494,9 @@ options.discoveryFocusNeuronUUIDs = [
 ];
 ```
 
-Discovery will analyze these neurons first before doing weighted selection.
+Discovery will analyse these neurons first before doing weighted selection.
 
-## See Also
+## 📚 See Also
 
 - [API Reference — Discovery](API_REFERENCE.md#7-discovery-api) — Programmatic
   API reference

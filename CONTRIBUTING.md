@@ -1,4 +1,4 @@
-# Contributing to NEAT-AI
+# 🤝 Contributing to NEAT-AI
 
 Thank you for your interest in contributing to NEAT-AI! This guide covers
 everything you need to get started — from setting up your development
@@ -7,9 +7,9 @@ environment to submitting a pull request.
 For coding conventions, terminology, and architecture details, see
 [AGENTS.md](./AGENTS.md).
 
-## Quick Start
+## 🚀 Quick Start
 
-### Prerequisites
+### 📋 Prerequisites
 
 - **Deno 2.x** — Install from [deno.land](https://deno.land/) or via:
 
@@ -27,7 +27,7 @@ For coding conventions, terminology, and architecture details, see
   [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) FFI
   extension locally. Install via [rustup](https://rustup.rs/).
 
-### Setup
+### 🔧 Setup
 
 1. **Clone the repository**
 
@@ -51,11 +51,15 @@ For coding conventions, terminology, and architecture details, see
    deno test test/path/to/test.ts
    ```
 
-### WASM Activation Module
+### ⚙️ WASM Activation Module
 
 The WASM activation backend is **required** and ships pre-built in
 `wasm_activation/pkg/`. The library initialises it automatically — no manual
 init or environment variables needed.
+
+> [!NOTE]
+> You only need to rebuild the WASM module from source if you are modifying the
+> Rust activation code itself. Most contributors can skip this step entirely.
 
 To rebuild WASM from source (requires
 [wasm-pack](https://rustwasm.github.io/wasm-pack/)):
@@ -65,10 +69,14 @@ cd wasm_activation
 wasm-pack build --target deno
 ```
 
-### Rust Discovery Library (Optional)
+### 🦀 Rust Discovery Library (Optional)
 
 The Rust FFI extension provides GPU-accelerated structural analysis. It is
 optional — tests and the core library work without it.
+
+> [!TIP]
+> If you are not working on discovery-related features, you can safely skip
+> this section. All core tests pass without the Rust FFI extension.
 
 1. Clone and build alongside NEAT-AI:
 
@@ -89,9 +97,9 @@ optional — tests and the core library work without it.
    deno run --allow-env --allow-ffi --allow-read scripts/check_discovery.ts
    ```
 
-## Development Workflow
+## 🔄 Development Workflow
 
-### 1. Create a Branch
+### 1. 🌿 Create a Branch
 
 Branch from `Develop` (the main branch):
 
@@ -101,7 +109,7 @@ git pull origin Develop
 git checkout -b your-branch-name
 ```
 
-### 2. Write Failing Tests First (TDD)
+### 2. 🧪 Write Failing Tests First (TDD)
 
 Follow test-driven development:
 
@@ -110,14 +118,18 @@ Follow test-driven development:
 3. Implement the change to make the test pass.
 4. Refactor if needed, keeping all tests green.
 
-### 3. Implement the Change
+> [!TIP]
+> Writing the test first clarifies the expected behaviour before implementation
+> begins, leading to cleaner, more focused code.
+
+### 3. 💻 Implement the Change
 
 - Follow the conventions in [AGENTS.md](./AGENTS.md).
 - Use **Australian English** spelling (colour, behaviour, organisation, favour,
   optimise, normalise, analyse, centre, metre).
 - Run `deno fmt` and `deno lint --fix` regularly.
 
-### 4. Run the Quality Gate
+### 4. ✅ Run the Quality Gate
 
 ```bash
 ./quality.sh
@@ -134,6 +146,10 @@ The quality gate runs:
 7. WASM activation module build (Rust build + tests)
 8. All tests in parallel with leak detection
 
+> [!WARNING]
+> Do not submit a pull request until `./quality.sh` passes cleanly. The CI
+> pipeline runs the same checks and will block merging if any step fails.
+
 Keep running `./quality.sh` until it passes cleanly.
 
 For faster iteration, you can skip specific steps:
@@ -145,21 +161,21 @@ For faster iteration, you can skip specific steps:
 ./quality.sh --check-only      # Only type-check
 ```
 
-### 5. Submit a Pull Request
+### 5. 📬 Submit a Pull Request
 
 - Target the `Develop` branch.
 - Use the PR title format: `Topic: Description (#issue)`
 - Include a clear summary and test plan in the PR body.
 
-## Testing
+## 🧪 Testing
 
-### Conventions
+### 📐 Conventions
 
 - Tests use `Deno.test()` with `@std/assert` imports.
 - Test files live under `test/` and mirror the `src/` directory structure.
 - All 2000+ tests run **in parallel** — never rely on timing or execution order.
 
-### What to Test
+### 🎯 What to Test
 
 Write **"what" tests** that exercise real code and assert on outcomes:
 
@@ -178,18 +194,23 @@ Avoid **"how" tests** that check implementation details:
 - Do not grep source files for patterns or keywords.
 - Do not check function bodies, line counts, or documentation content.
 
-### Unit Tests vs Benchmarks
+### ⏱️ Unit Tests vs Benchmarks
 
 - **Unit tests** (`test/`) verify correctness. Never use timing APIs
   (`performance.now()`, `Date.now()`, etc.) in tests.
 - **Benchmarks** (`bench/`) measure performance. Use `Deno.bench()` or
   `performance.now()` here.
 
-## Adding Configuration
+> [!NOTE]
+> Timing-based assertions in unit tests create flaky tests that fail
+> unpredictably under different system loads. Keep timing logic strictly within
+> `bench/`.
+
+## ➕ Adding Configuration
 
 When adding a new configuration option, follow the established pattern:
 
-### Step 1: Create the Config File
+### Step 1: 📄 Create the Config File
 
 Create `src/config/FooConfig.ts`:
 
@@ -228,7 +249,7 @@ export const DEFAULT_FOO_CONFIG: RequiredFooConfig = {
 };
 ```
 
-### Step 2: Add to NeatArguments
+### Step 2: 🔗 Add to NeatArguments
 
 In `src/config/NeatArguments.ts`, add a `RequiredFooConfig` field:
 
@@ -236,7 +257,7 @@ In `src/config/NeatArguments.ts`, add a `RequiredFooConfig` field:
 fooConfig: RequiredFooConfig;
 ```
 
-### Step 3: Add to NeatOptions
+### Step 3: 🔗 Add to NeatOptions
 
 In `src/config/NeatOptions.ts`:
 
@@ -244,7 +265,7 @@ In `src/config/NeatOptions.ts`:
 2. For CLI-compatible options, wrap numeric fields with `CoerceNumeric<>`.
 3. Add the config name to both `Omit` lists.
 
-### Step 4: Parse in NeatConfig
+### Step 4: 🔍 Parse in NeatConfig
 
 In `src/config/NeatConfig.ts`, parse numeric values using the IIFE pattern:
 
@@ -263,22 +284,22 @@ const fooConfig: RequiredFooConfig = (() => {
 })();
 ```
 
-### Step 5: Validate
+### Step 5: ✅ Validate
 
 Add cross-field validation after the config object is created, before
 `validate()` is called.
 
-### Step 6: Add Tests
+### Step 6: 🧪 Add Tests
 
 Create `test/config/FooConfig.ts` with tests for default values, custom
 overrides, and validation errors.
 
-## Adding Activation Functions
+## ⚡ Adding Activation Functions
 
 Activation functions (called "squash" functions in NEAT-AI) follow a strategy
 pattern. See `src/methods/activations/README.md` for the full reference.
 
-### Step 1: Create the Implementation
+### Step 1: 💡 Create the Implementation
 
 Create a new file in `src/methods/activations/` implementing the
 `ActivationInterface`:
@@ -288,7 +309,7 @@ Create a new file in `src/methods/activations/` implementing the
 - **`unSquash(x)`** — The inverse (if invertible).
 - **`range()`** — Returns `{ low, high }` output bounds.
 
-### Step 2: Add Tests
+### Step 2: 🧪 Add Tests
 
 Create tests under `test/` that verify:
 
@@ -297,20 +318,20 @@ Create tests under `test/` that verify:
 - Edge cases (zero, negative, large values).
 - The function integrates correctly with the activation system.
 
-### Step 3: Register the Activation
+### Step 3: 📝 Register the Activation
 
 Register the new activation in the activation system so it is available for
 mutation selection. Set an appropriate priority weight (1–10) based on the
 function's practical usefulness.
 
-### Step 4: Update Documentation
+### Step 4: 📚 Update Documentation
 
 Add an entry to `src/methods/activations/README.md` following the existing
 format — include priority, invertibility, and backpropagation strategy.
 
-## Code Style
+## 🎨 Code Style
 
-### Australian English
+### 🇦🇺 Australian English
 
 All code, comments, and documentation use Australian English spelling:
 
@@ -327,7 +348,12 @@ All code, comments, and documentation use Australian English spelling:
 | licence (noun) | license      |
 | license (verb) | license      |
 
-### Key Lint Rules
+> [!NOTE]
+> Spell-checkers default to American English. Configure your editor to use
+> Australian or British English to avoid false positives on correctly spelt
+> words.
+
+### 🔍 Key Lint Rules
 
 The project enforces these lint rules (configured in `deno.json`):
 
@@ -353,7 +379,7 @@ The project enforces these lint rules (configured in `deno.json`):
 
 For the complete set of conventions, see [AGENTS.md](./AGENTS.md).
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 src/                    # Source code
@@ -378,7 +404,7 @@ wasm_activation/        # WASM activation module (Rust source + pkg)
 scripts/                # Utility scripts
 ```
 
-## Getting Help
+## 💬 Getting Help
 
 - Open an [issue](https://github.com/stSoftwareAU/NEAT-AI/issues) for bugs or
   feature requests.

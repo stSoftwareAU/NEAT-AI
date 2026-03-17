@@ -1,4 +1,4 @@
-# DiscoveryDir Integration Guide
+# 📂 DiscoveryDir Integration Guide
 
 The `Creature.discoveryDir()` helper schedules targeted discovery work over a
 sampled dataset and returns the best performing candidate creature together with
@@ -6,7 +6,7 @@ a human-friendly summary. This guide explains how to prepare data, invoke
 discovery, and fold improvements back into your controller workflow without
 referencing private infrastructure.
 
-## Prerequisites
+## 🔧 Prerequisites
 
 - Deno 2.x with `--allow-read`, `--allow-write`, `--allow-env`, and
   `--allow-ffi` permissions enabled for the discovery process.
@@ -29,15 +29,16 @@ export function isRustDiscoveryEnabled(): boolean {
 }
 ```
 
-If `isRustDiscoveryEnabled()` returns `false`, skip the discovery pass or
-surface a configuration error to the operator.
+> [!WARNING]
+> If `isRustDiscoveryEnabled()` returns `false`, skip the discovery pass or
+> surface a configuration error to the operator. There is no TypeScript fallback
+> path; without the Rust module the discovery phase is skipped entirely.
 
 When the analyser is available, neuron discovery currently explores industry
 standard squashes including ReLU, GELU, ELU, SELU, Softplus, LOGISTIC (sigmoid),
-and TANH. There is no TypeScript fallback path; without the Rust module the
-discovery phase is skipped.
+and TANH.
 
-## Coordinated-structural candidates (7-Jan-2026)
+## 🔬 Coordinated-structural candidates (7-Jan-2026)
 
 Some structural improvements are **epistatic**: no single edit helps in
 isolation, but a _group_ of edits helps when applied together. These are
@@ -46,7 +47,7 @@ single ordered ablation then re-scored once on the full training set.
 
 NEAT-AI intentionally treats this as a **stable contract**: as NEAT-AI-Discovery
 (Rust) adds more sophisticated discoveries over time, TypeScript should not need
-new “discovery types”. It should only need to support the evolving **operation
+new "discovery types". It should only need to support the evolving **operation
 vocabulary** and apply the ordered list atomically.
 
 ### Supported operation vocabulary
@@ -67,12 +68,12 @@ respects forward-only ordering. If placement is omitted, NEAT-AI appends the
 neuron, which is safe for recurrent creatures but may be rejected for
 forward-only.
 
-## Data Layout Expectations
+## 📁 Data Layout Expectations
 
 Discovery operates on two directories that can be shared across nodes:
 
 1. **Creature samples** – a directory of JSON exports produced by
-   `Creature.toJSON()` with a `score` tag that reflects each candidate’s
+   `Creature.toJSON()` with a `score` tag that reflects each candidate's
    baseline performance.
 2. **Discovery dataset** – a directory containing the sampled training data used
    exclusively for the discovery phase. The runner never mutates these inputs.
@@ -106,7 +107,12 @@ Key practices drawn from production usage:
   (`*.working`) followed by an atomic rename to avoid zero-length files if the
   host crashes mid-write.
 
-## Operating the Discovery Loop
+> [!TIP]
+> Safe writes using a `*.working` temporary file followed by an atomic rename
+> are strongly recommended in production. Interrupted writes that open the final
+> path directly can leave a zero-length artefact and break downstream fetchers.
+
+## 🔄 Operating the Discovery Loop
 
 A long-running controller typically repeats the following pattern while a
 discovery window is open:
@@ -146,7 +152,7 @@ adapt:
   running any side-effects.
 - Touch `.run.pid` to acknowledge the worker is still alive between iterations.
 
-## Memory Management
+## 💾 Memory Management
 
 - Tune `discoveryRustFlushRecords` to control how many discovery samples are
   buffered in memory before the Rust recorder is flushed. Lowering the value
@@ -157,7 +163,13 @@ adapt:
   most workloads, but busy datasets or constrained workers may benefit from
   smaller chunks coupled with increased batch timeout settings.
 
-## Handling Discovery Results
+> [!NOTE]
+> The default chunk size of 4,096 samples is chosen to balance throughput and
+> peak memory for typical workloads. Adjust `discoveryRustFlushRecords` based on
+> your available heap and dataset characteristics — smaller values reduce memory
+> pressure but increase merge overhead at the end of each run.
+
+## 📊 Handling Discovery Results
 
 `discoveryDir()` returns an object containing baseline metrics, raw discovery
 hints, and any validated improvements. When `result.improvement` is defined:
@@ -178,21 +190,21 @@ refreshed sample or extended timeout.
 ### Error impact estimation
 
 Discovery candidates report an `expectedErrorReduction` field which is now
-normalized to the creature’s total error before being logged or ranked. The
+normalised to the creature's total error before being logged or ranked. The
 estimator walks backwards from each output neuron, distributing error share
 across inbound synapses proportional to their absolute weights (falling back to
 equal splits when weights sum to ~0). A neuron that feeds an output via 100
-equally weighted synapses therefore receives at most `1 / 100` of that output’s
+equally weighted synapses therefore receives at most `1 / 100` of that output's
 error share, and upstream neurons inherit the product of shares along the path.
 
-This normalization prevents large hidden layers from exaggerating their impact
-and keeps the “expected vs actual” comparison realistic even for huge
+This normalisation prevents large hidden layers from exaggerating their impact
+and keeps the "expected vs actual" comparison realistic even for huge
 creatures—particularly those similar to the `GRQ-3-1` sample with hundreds of
 synapses terminating at each output. Consumers of `expectedErrorReduction`
-should rely on the normalized value; no additional scaling is required in
+should rely on the normalised value; no additional scaling is required in
 controllers or dashboards.
 
-## Troubleshooting Checklist
+## 🛠️ Troubleshooting Checklist
 
 - **Rust module not found** – rebuild `NEAT-AI-Discovery` and confirm
   `isRustDiscoveryEnabled()` returns `true`. Use `NEAT_AI_DISCOVERY_LIB_PATH` to
@@ -205,14 +217,14 @@ controllers or dashboards.
   rate. Increasing `discoverySampleRate` or refreshing the sampled data often
   uncovers new mutations for consideration.
 
-## Focus Selection Analysis
+## 🔍 Focus Selection Analysis
 
 Discovery automatically generates JSON analysis files documenting which neurons
 were considered for focus during each selection phase. These files are written
 to `.discovery/focus-analysis/{discoveryID}/` and provide detailed insight into
 the weighted random selection process.
 
-### File Format
+### 📄 File Format
 
 Each focus selection produces a JSON file with the following structure:
 
@@ -250,7 +262,7 @@ Each focus selection produces a JSON file with the following structure:
 }
 ```
 
-### Field Descriptions
+### 📋 Field Descriptions
 
 #### Analysis Metadata
 
@@ -298,7 +310,7 @@ removal if spare re-score workers are available. Each entry includes:
 - **totalError** – Average error magnitude
 - **reason** – Human-readable explanation of why it's flagged
 
-### Interpreting the Analysis
+### 🧠 Interpreting the Analysis
 
 1. **Verify weighted selection is working** – Compare the `weightedScore` values
    to the `selected` flags. Neurons with higher weighted scores should be
@@ -320,7 +332,7 @@ removal if spare re-score workers are available. Each entry includes:
    retries to see if the selection is exploring different neurons or repeatedly
    choosing the same ones (indicating exhausted options).
 
-### File Naming Convention
+### 🗂️ File Naming Convention
 
 - **First selection**: `{timestamp}-focus-selection.json`
 - **Retry selections**: `{timestamp}-focus-selection-retry-{N}.json`
@@ -329,7 +341,7 @@ Multiple retry files in the same discovery run indicate that initial analysis
 attempts did not yield viable candidates, triggering re-selection of different
 focus neurons.
 
-### Using the Analysis
+### 🔎 Using the Analysis
 
 **Debugging no-discovery situations**: When discovery runs for hours without
 finding improvements, examine the focus selection JSON to verify:

@@ -1,9 +1,9 @@
-# WASM-Resident Creature Topology: Feasibility Analysis
+# 🔲 WASM-Resident Creature Topology: Feasibility Analysis
 
 Investigation for [#1642](https://github.com/stSoftwareAU/NEAT-AI/issues/1642),
 part of the WASM performance optimisation series (#1639).
 
-## Executive Summary
+## 📋 Executive Summary
 
 **Recommendation: Defer.**
 
@@ -15,9 +15,14 @@ not serialisation frequency but rather that topology operations are
 bottleneck from serialisation to synchronisation without eliminating it, while
 introducing significant architectural complexity.
 
+> [!NOTE]
+> This analysis is scoped to the current TypeScript/Rust architecture. If the
+> underlying topology representation changes (e.g., typed array topology per
+> Section 5.2), the trade-offs should be re-evaluated.
+
 ---
 
-## 1. Current Topology Usage Patterns
+## 🏗️ 1. Current Topology Usage Patterns
 
 ### 1.1 How Topology Is Structured
 
@@ -60,7 +65,7 @@ predominantly **write-heavy** (mutations, breeding) or **already cached**
 
 ---
 
-## 2. Amortisation Potential
+## ⚡ 2. Amortisation Potential
 
 ### 2.1 The CompiledNetwork Pattern
 
@@ -120,9 +125,15 @@ this:
 In practice, creatures are bred once (as offspring) and then mutated before the
 next generation. The topology changes between uses, resetting any amortisation.
 
+> [!WARNING]
+> Even in best-case scenarios the amortisation ratio of ~3–5:1 is an order of
+> magnitude below the 100:1+ threshold where `CompiledNetwork` becomes
+> worthwhile. Attempting to close this gap with micro-optimisations risks
+> significant engineering effort for marginal returns.
+
 ---
 
-## 3. Architectural Challenges
+## 🔧 3. Architectural Challenges
 
 ### 3.1 Synchronisation Between JS and WASM
 
@@ -208,7 +219,7 @@ well.
 
 ---
 
-## 4. Implementation Effort Estimate
+## 📊 4. Implementation Effort Estimate
 
 ### 4.1 Modules Requiring Modification
 
@@ -239,7 +250,7 @@ introducing subtle synchronisation bugs.
 
 ---
 
-## 5. Alternative Approaches
+## 🔀 5. Alternative Approaches
 
 ### 5.1 Continue TypeScript-Level Optimisations (Recommended)
 
@@ -255,6 +266,13 @@ operations:
 | Rejection sampling (#1587)            | 9–12% faster                  | Days   |
 | Deferred connections (#1644)          | Reduced Map/object allocation | Days   |
 | Topological ordering (#1641)          | Reduced recursive traversal   | Days   |
+
+> [!TIP]
+> TypeScript-level algorithmic improvements have consistently delivered 10–50%+
+> gains with only days of effort. Before investing in WASM residency, exhaust
+> the remaining opportunities in the #1639 series — particularly typed array
+> topology (Section 5.2), which offers a lower-risk path to reduced
+> serialisation cost.
 
 ### 5.2 Typed Array Topology (Intermediate Step)
 
@@ -287,7 +305,7 @@ This would be a natural evolution from 5.2, not a separate initiative.
 
 ---
 
-## 6. Conclusion
+## 🏁 6. Conclusion
 
 ### Key Findings
 
@@ -322,7 +340,7 @@ This would be a natural evolution from 5.2, not a separate initiative.
 
 ---
 
-## References
+## 📚 References
 
 - #1630 — Backpropagation gradient computation WASM investigation
 - #1631 — AddConnection mutation validation WASM investigation

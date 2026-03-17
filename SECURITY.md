@@ -1,15 +1,21 @@
-# Security Policy
+# 🔒 Security Policy
 
-## Supported Versions
+## 🛡️ Supported Versions
 
 Current version only
 
-## Reporting a Vulnerability
+> [!NOTE]
+> Only the current version of this project receives security updates. If you are using an older version, please upgrade to benefit from the latest security fixes.
+
+## ⚠️ Reporting a Vulnerability
 
 If you discover a security vulnerability in this project, please report it
 responsibly by following these steps:
 
-### Reporting Process
+> [!WARNING]
+> Do **not** create a public GitHub issue for security vulnerabilities. Responsible disclosure helps protect all users of this project while a fix is developed and coordinated.
+
+### 📋 Reporting Process
 
 1. **Do not** create a public GitHub issue for security vulnerabilities
 2. Send an email to the project maintainer with details about the vulnerability
@@ -19,20 +25,23 @@ responsibly by following these steps:
    - Potential impact assessment
    - Suggested fix (if available)
 
-### Response Timeline
+### ⏱️ Response Timeline
 
 - **Initial Response**: You can expect an acknowledgment within 48 hours
 - **Status Updates**: We will provide updates on our investigation every 7 days
 - **Resolution**: We aim to resolve critical vulnerabilities within 30 days
 
-### What to Expect
+> [!TIP]
+> If you have not received an acknowledgment within 48 hours, please follow up to ensure your report was received.
+
+### 📬 What to Expect
 
 - **If accepted**: We will work with you to understand the issue, develop a fix,
   and coordinate disclosure
 - **If declined**: We will provide a clear explanation of why the report does
   not qualify as a security vulnerability
 
-### Responsible Disclosure
+### 🤝 Responsible Disclosure
 
 We request that you:
 

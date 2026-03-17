@@ -1,4 +1,4 @@
-# NEAT-AI API Reference
+# 📖 NEAT-AI API Reference
 
 Comprehensive reference for the public API exported from `mod.ts`.
 
@@ -30,9 +30,9 @@ import { Costs, Creature, Mutation, Selection } from "@stsoftware/neat-ai";
 
 ---
 
-## 1. Core Classes
+## 1. 🧬 Core Classes
 
-### Creature
+### 🐛 Creature
 
 The central class representing a neural network (genome) in NEAT.
 
@@ -40,7 +40,7 @@ The central class representing a neural network (genome) in NEAT.
 import { Creature } from "@stsoftware/neat-ai";
 ```
 
-#### Constructor
+#### 🏗️ Constructor
 
 ```typescript
 new Creature(input: number, output: number, options?: {
@@ -56,7 +56,7 @@ new Creature(input: number, output: number, options?: {
 | `options.lazyInitialization` | `boolean` | Skip default wiring (used internally) |
 | `options.semanticVersion`    | `string`  | Version tag for the creature format   |
 
-#### Properties
+#### 📋 Properties
 
 | Property          | Type                            | Description                                       |
 | ----------------- | ------------------------------- | ------------------------------------------------- |
@@ -71,7 +71,7 @@ new Creature(input: number, output: number, options?: {
 | `semanticVersion` | `string`                        | Creature format version                           |
 | `forwardOnly`     | `boolean \| undefined`          | When `true`, no recurrent connections are allowed |
 
-#### Key Methods
+#### 🔧 Key Methods
 
 | Method             | Signature                                                                                   | Description                                                         |
 | ------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -89,13 +89,13 @@ new Creature(input: number, output: number, options?: {
 | `dispose`          | `(): void`                                                                                  | Releases all resources and memory.                                  |
 | `clearCache`       | `(from?: number, to?: number): void`                                                        | Clears internal synapse connection caches.                          |
 
-#### Static Methods
+#### ⚡ Static Methods
 
 | Method     | Signature                                                                  | Description                                                                          |
 | ---------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `fromJSON` | `(json: CreatureInternal \| CreatureExport, validate?: boolean): Creature` | Creates a creature from a JSON object. Handles legacy format upgrades automatically. |
 
-#### Example
+#### 💡 Example
 
 ```typescript
 const creature = new Creature(2, 1);
@@ -108,7 +108,7 @@ const clone = Creature.fromJSON(json);
 
 ---
 
-### CRISPR
+### ✂️ CRISPR
 
 Targeted genetic modifications inspired by CRISPR gene-editing technology.
 Allows hand-crafted injection of neurons and synapses.
@@ -118,20 +118,20 @@ import { CRISPR } from "@stsoftware/neat-ai";
 import type { CrisprInterface } from "@stsoftware/neat-ai";
 ```
 
-#### Constructor
+#### 🏗️ Constructor
 
 ```typescript
 new CRISPR(creature: Creature)
 ```
 
-#### Methods
+#### 🔧 Methods
 
 | Method                 | Signature                                                                  | Description                                            |
 | ---------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------ |
 | `cleaveDNA`            | `(dna: CrisprInterface): Creature`                                         | Applies modifications and returns the edited creature. |
 | `editAliases` (static) | `(dna: CrisprInterface, aliases: Record<string, string>): CrisprInterface` | Replaces neuron UUID aliases in DNA.                   |
 
-#### CrisprInterface
+#### 📐 CrisprInterface
 
 ```typescript
 interface CrisprInterface {
@@ -155,9 +155,9 @@ interface CrisprInterface {
 
 ---
 
-## 2. Configuration
+## 2. ⚙️ Configuration
 
-### NeatOptions
+### ⚙️ NeatOptions
 
 The primary configuration type for the NEAT algorithm. Passed to
 `Creature.evolveDir()`.
@@ -169,7 +169,7 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 `NeatOptionsInput` is identical but accepts `string | number` for numeric fields
 (useful for CLI argument parsing).
 
-#### Core Fields
+#### 🎯 Core Fields
 
 | Field            | Type                  | Default                         | Description                                                |
 | ---------------- | --------------------- | ------------------------------- | ---------------------------------------------------------- |
@@ -186,7 +186,7 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 | `verbose`        | `boolean`             | `false`                         | Enable debug logging                                       |
 | `log`            | `number`              | `0`                             | Log status every N generations (0 = off, 1 if verbose)     |
 
-#### Training Fields
+#### 🎓 Training Fields
 
 | Field                          | Type     | Default           | Description                                |
 | ------------------------------ | -------- | ----------------- | ------------------------------------------ |
@@ -197,7 +197,7 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 | `maximumWeightAdjustmentScale` | `number` | `1`               | Max weight change per backpropagation step |
 | `sparseRatio`                  | `number` | `random * random` | Neuron selection ratio for sparse updates  |
 
-#### Network Constraints
+#### 🔒 Network Constraints
 
 | Field                  | Type      | Default       | Description                           |
 | ---------------------- | --------- | ------------- | ------------------------------------- |
@@ -206,7 +206,7 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 | `maximumNumberOfNodes` | `number`  | `Infinity`    | Maximum hidden neurons allowed        |
 | `costOfGrowth`         | `number`  | `0.000_000_1` | Complexity penalty per synapse/neuron |
 
-#### Discovery Fields
+#### 🔬 Discovery Fields
 
 | Field                             | Type     | Default | Description                                  |
 | --------------------------------- | -------- | ------- | -------------------------------------------- |
@@ -216,7 +216,7 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 | `discoveryBatchSize`              | `number` | `128`   | Samples per discovery analysis batch         |
 | `discoveryMaxNeurons`             | `number` | `6`     | Max neurons analysed per discovery iteration |
 
-#### Evolution Fields
+#### 🧬 Evolution Fields
 
 | Field                             | Type     | Default  | Description                                    |
 | --------------------------------- | -------- | -------- | ---------------------------------------------- |
@@ -227,14 +227,14 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 | `creativeThinkingConnectionCount` | `number` | `1`      | New connections during creative thinking       |
 | `dataSetPartitionBreak`           | `number` | `2000`   | Records per dataset file partition             |
 
-#### Reproducibility Fields
+#### 🎲 Reproducibility Fields
 
 | Field  | Type                    | Default     | Description                            |
 | ------ | ----------------------- | ----------- | -------------------------------------- |
 | `seed` | `number`                | `undefined` | PRNG seed for deterministic evolution  |
 | `rng`  | `RandomNumberGenerator` | `undefined` | Custom RNG instance (overrides `seed`) |
 
-#### Sub-Configuration Objects
+#### 🗂️ Sub-Configuration Objects
 
 These optional objects control advanced features. Each has a `Required*` type
 used internally after defaults are applied.
@@ -329,7 +329,7 @@ used internally after defaults are applied.
 
 ---
 
-## 3. Activation Functions
+## 3. ⚡ Activation Functions
 
 NEAT-AI provides 38 activation functions (called "squash" functions). The
 library uses WASM for all activation computation.
@@ -339,10 +339,15 @@ library uses WASM for all activation computation.
 // The library handles activation internally via WASM
 ```
 
-### Summary Table
+### 📊 Summary Table
 
 Priority controls how often an activation is chosen during random mutation.
 Higher priority means more likely to be selected.
+
+> [!TIP]
+> When in doubt, **LeakyReLU** (priority 10) is the default choice and works
+> well for most general-purpose networks. For deeper architectures, consider
+> **GELU** or **Swish**.
 
 | Activation          | Priority | Range          | Best For                                  |
 | ------------------- | :------: | -------------- | ----------------------------------------- |
@@ -390,7 +395,7 @@ For detailed backpropagation strategy notes, see
 
 ---
 
-## 4. Cost Functions
+## 4. 💰 Cost Functions
 
 Cost functions measure the error between predicted and expected outputs.
 
@@ -399,7 +404,7 @@ import { Costs } from "@stsoftware/neat-ai";
 import type { CostInterface } from "@stsoftware/neat-ai";
 ```
 
-### Built-in Cost Functions
+### 📋 Built-in Cost Functions
 
 | Name              | Class                          | Best For                     | Formula                                 |
 | ----------------- | ------------------------------ | ---------------------------- | --------------------------------------- |
@@ -410,7 +415,7 @@ import type { CostInterface } from "@stsoftware/neat-ai";
 | `"CROSS_ENTROPY"` | Cross Entropy                  | Classification               | `-Sum(y * log(y') + (1-y) * log(1-y'))` |
 | `"HINGE"`         | Hinge Loss                     | SVM / binary classification  | `max(0, 1 - y * y')`                    |
 
-### CostInterface
+### 📐 CostInterface
 
 Custom cost functions implement this interface:
 
@@ -421,7 +426,7 @@ interface CostInterface {
 }
 ```
 
-### Costs Registry
+### 🗂️ Costs Registry
 
 ```typescript
 // Find a cost function by name
@@ -440,13 +445,13 @@ Costs.registerCostFactory("MY_COST", () => new MyCost());
 
 ---
 
-## 5. Training API (Backpropagation)
+## 5. 🎓 Training API (Backpropagation)
 
 NEAT-AI uses elastic backpropagation to train creatures within each generation.
 Training is typically invoked internally by `evolveDir()`, but can be called
 directly for fine-grained control.
 
-### BackPropagationOptions
+### ⚙️ BackPropagationOptions
 
 ```typescript
 interface BackPropagationOptions {
@@ -469,7 +474,7 @@ interface BackPropagationOptions {
 }
 ```
 
-### Direct Training Example
+### 💡 Direct Training Example
 
 ```typescript
 import { Creature } from "@stsoftware/neat-ai";
@@ -486,11 +491,11 @@ creature.activate(input);
 
 ---
 
-## 6. Evolution API
+## 6. 🧬 Evolution API
 
 The main entry point for NEAT evolution.
 
-### Creature.evolveDir()
+### 🔄 Creature.evolveDir()
 
 ```typescript
 async evolveDir(
@@ -516,7 +521,7 @@ async evolveDir(
 - `time` — Elapsed milliseconds
 - `generation` — Number of generations completed
 
-### Dataset Format
+### 📁 Dataset Format
 
 Training data is stored as JSON files in `dataSetDir`, each containing an array
 of samples:
@@ -530,7 +535,7 @@ of samples:
 ]
 ```
 
-### Evolution Example
+### 💡 Evolution Example
 
 ```typescript
 import { Creature } from "@stsoftware/neat-ai";
@@ -553,7 +558,7 @@ const result = await creature.evolveDir("./training-data", options);
 console.log(`Error: ${result.error}, Generations: ${result.generation}`);
 ```
 
-### Selection Strategies
+### 🎯 Selection Strategies
 
 ```typescript
 import { Selection } from "@stsoftware/neat-ai";
@@ -565,7 +570,7 @@ import { Selection } from "@stsoftware/neat-ai";
 | `Selection.POWER`                 | Fitness raised to a power before selection           | `power: 4`                    |
 | `Selection.TOURNAMENT`            | Best of random subset is selected                    | `size: 5`, `probability: 0.5` |
 
-### Mutation Types
+### 🧬 Mutation Types
 
 ```typescript
 import { Mutation } from "@stsoftware/neat-ai";
@@ -595,7 +600,7 @@ import { Mutation } from "@stsoftware/neat-ai";
 
 ---
 
-## 7. Discovery API
+## 7. 🔬 Discovery API
 
 Discovery uses the Rust FFI extension
 ([NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery)) for
@@ -610,7 +615,7 @@ import {
 import type { DiscoveryEvaluationSummary } from "@stsoftware/neat-ai";
 ```
 
-### How Discovery Works
+### 🔍 How Discovery Works
 
 1. The creature records expected vs actual outputs during evaluation
 2. Error data is streamed to the Rust discovery library via FFI
@@ -618,9 +623,15 @@ import type { DiscoveryEvaluationSummary } from "@stsoftware/neat-ai";
    patterns and proposes structural changes
 4. Proposed candidates are evaluated and the best improvement is kept
 
-### Configuration
+### ⚙️ Configuration
 
 Discovery is configured via `NeatOptions` fields:
+
+> [!NOTE]
+> The Discovery API requires the optional
+> [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) Rust
+> FFI extension. Without it, the discovery phase is skipped gracefully and
+> evolution continues normally.
 
 - `discoverySampleRate` (default `0.2`): Fraction of training data used
 - `discoveryRecordTimeOutMinutes` (default `5`): Recording phase timeout
@@ -628,7 +639,7 @@ Discovery is configured via `NeatOptions` fields:
 - `discoveryBatchSize` (default `128`): Samples per batch
 - `discoveryMaxNeurons` (default `6`): Max neurons per iteration
 
-### DiscoveryEvaluationSummary
+### 📊 DiscoveryEvaluationSummary
 
 ```typescript
 interface DiscoveryEvaluationSummary {
@@ -645,7 +656,7 @@ interface DiscoveryEvaluationSummary {
 }
 ```
 
-### Formatting Utilities
+### 🛠️ Formatting Utilities
 
 ```typescript
 // Format an error delta for display
@@ -660,9 +671,9 @@ For a complete guide, see [`docs/DISCOVERY_GUIDE.md`](DISCOVERY_GUIDE.md) and
 
 ---
 
-## 8. Serialisation
+## 8. 💾 Serialisation
 
-### CreatureExport
+### 📤 CreatureExport
 
 The JSON format for serialising and deserialising creatures.
 
@@ -675,7 +686,7 @@ import type {
 } from "@stsoftware/neat-ai";
 ```
 
-#### CreatureExport Structure
+#### 📐 CreatureExport Structure
 
 ```typescript
 interface CreatureExport {
@@ -690,7 +701,7 @@ interface CreatureExport {
 }
 ```
 
-#### NeuronExport Structure
+#### 🧠 NeuronExport Structure
 
 ```typescript
 interface NeuronExport {
@@ -705,7 +716,7 @@ interface NeuronExport {
 Input neurons are implicit (defined by `input` count) and not included in the
 `neurons` array.
 
-#### SynapseExport Structure
+#### 🔗 SynapseExport Structure
 
 ```typescript
 interface SynapseExport {
@@ -717,7 +728,7 @@ interface SynapseExport {
 }
 ```
 
-#### CreatureTrace
+#### 🔍 CreatureTrace
 
 Extends `CreatureExport` with per-neuron and per-synapse trace information from
 the last activation, useful for debugging and analysis.
@@ -729,7 +740,7 @@ interface CreatureTrace extends CreatureExport {
 }
 ```
 
-### Import/Export Example
+### 💡 Import/Export Example
 
 ```typescript
 import { Creature } from "@stsoftware/neat-ai";
@@ -747,7 +758,7 @@ creature.activate(new Float32Array([0.5, 0.5]));
 const trace = creature.traceJSON();
 ```
 
-### Version Upgrades
+### 🔄 Version Upgrades
 
 Legacy creature formats (v0.x, v1.x) are automatically upgraded when loaded via
 `Creature.fromJSON()`. Use `upgradeTwo()` for explicit v2.0.0 migration.
@@ -758,9 +769,9 @@ import { Upgrade, upgradeTwo } from "@stsoftware/neat-ai";
 
 ---
 
-## 9. Error Types
+## 9. ⚠️ Error Types
 
-### ValidationError
+### ❌ ValidationError
 
 Typed error for structural validation failures.
 
@@ -786,7 +797,12 @@ class ValidationError extends Error {
 }
 ```
 
-### Error Handling Patterns
+### 🛡️ Error Handling Patterns
+
+> [!WARNING]
+> Always pass `validate: true` to `Creature.fromJSON()` when loading untrusted
+> or user-supplied creature data. Skipping validation may result in silent
+> failures or corrupt network behaviour during evolution.
 
 ```typescript
 import { Creature } from "@stsoftware/neat-ai";
@@ -804,7 +820,7 @@ try {
 
 ---
 
-## 10. Worker API
+## 10. 🧵 Worker API
 
 Multi-threaded evaluation using Deno workers.
 
@@ -812,18 +828,23 @@ Multi-threaded evaluation using Deno workers.
 import { fetchWasmForWorkers } from "@stsoftware/neat-ai";
 ```
 
-### WASM Preloading
+### ⚡ WASM Preloading
 
 Call `fetchWasmForWorkers()` in the main thread before spawning workers so WASM
 is fetched once and cached. Workers then receive the cached payload instead of
 each fetching separately.
+
+> [!TIP]
+> Call `fetchWasmForWorkers()` once before `evolveDir()` whenever `threads > 1`.
+> This avoids each worker independently fetching and compiling the WASM binary,
+> which can significantly reduce startup time in large-population runs.
 
 ```typescript
 // Main thread — call once before evolveDir() with threads > 1
 await fetchWasmForWorkers();
 ```
 
-### Using Multiple Threads
+### 🔀 Using Multiple Threads
 
 Workers are managed automatically by `Creature.evolveDir()` when `threads > 1`:
 
@@ -839,7 +860,7 @@ Workers handle evaluation, training, discovery, and breeding in parallel. If a
 worker fails to initialise (e.g. in restricted environments), it falls back to
 direct (in-process) execution automatically.
 
-### WASM Cache Control
+### 🗃️ WASM Cache Control
 
 The library caches compiled WASM network instances for performance. Control the
 cache size to manage memory:
@@ -863,7 +884,7 @@ setMaxCachedWasmCreatureActivations(256);
 
 ---
 
-## 11. Intelligent Design
+## 11. 🧠 Intelligent Design
 
 Systematic optimisation of activation functions per neuron via brute-force
 search. Tests alternative squash functions and applies the best combination.
@@ -898,7 +919,7 @@ For a complete guide, see [`docs/INTELLIGENT_DESIGN.md`](INTELLIGENT_DESIGN.md).
 
 ---
 
-## 12. Plateau Detection
+## 12. 📉 Plateau Detection
 
 Detects when evolution stagnates and adjusts mutation rates to help escape local
 optima.
@@ -916,7 +937,7 @@ import type {
 } from "@stsoftware/neat-ai";
 ```
 
-### PlateauDetector
+### 🔍 PlateauDetector
 
 ```typescript
 class PlateauDetector {
@@ -930,7 +951,7 @@ class PlateauDetector {
 }
 ```
 
-### Example
+### 💡 Example
 
 ```typescript
 const detector = new PlateauDetector({
@@ -953,7 +974,7 @@ automatically during evolution.
 
 ---
 
-## 13. Logger
+## 13. 📝 Logger
 
 Structured logging abstraction. Consumers can inject a custom logger via
 NeatOptions or call `setLogger()` globally.
@@ -969,7 +990,7 @@ import {
 import type { Logger, LogLevel } from "@stsoftware/neat-ai";
 ```
 
-### Logger Interface
+### 📐 Logger Interface
 
 ```typescript
 interface Logger {
@@ -982,7 +1003,7 @@ interface Logger {
 type LogLevel = "debug" | "info" | "warn" | "error" | "none";
 ```
 
-### Usage
+### 💡 Usage
 
 ```typescript
 // Get the global logger
@@ -1005,7 +1026,7 @@ const options: NeatOptions = {
 
 ---
 
-## 14. Random Number Generator
+## 14. 🎲 Random Number Generator
 
 Reproducible random number generation with optional seeding.
 
@@ -1020,7 +1041,7 @@ import {
 import type { RandomNumberGenerator } from "@stsoftware/neat-ai";
 ```
 
-### RandomNumberGenerator Interface
+### 📐 RandomNumberGenerator Interface
 
 ```typescript
 interface RandomNumberGenerator {
@@ -1031,7 +1052,7 @@ interface RandomNumberGenerator {
 }
 ```
 
-### Usage
+### 💡 Usage
 
 ```typescript
 // Deterministic evolution with a seed
@@ -1052,9 +1073,9 @@ Seeded RNG uses the xoshiro256** algorithm internally.
 
 ---
 
-## 15. Utilities
+## 15. 🛠️ Utilities
 
-### CreatureUtil
+### 🐛 CreatureUtil
 
 Utility class for working with creatures.
 
@@ -1062,7 +1083,7 @@ Utility class for working with creatures.
 import { CreatureUtil } from "@stsoftware/neat-ai";
 ```
 
-### Upgrade
+### 🔄 Upgrade
 
 Handles version migration of creature formats.
 
@@ -1076,7 +1097,7 @@ const corrected = Upgrade.correct(creatureJson, inputCount);
 const upgradedDna = Upgrade.CRISPR(legacyDna);
 ```
 
-### randomConnectMissing
+### 🔗 randomConnectMissing
 
 Connects neurons that lack required connections.
 
@@ -1086,7 +1107,7 @@ import { randomConnectMissing } from "@stsoftware/neat-ai";
 
 ---
 
-## Further Reading
+## 📚 Further Reading
 
 - [README.md](../README.md) — Project overview and quick start
 - [AGENTS.md](../AGENTS.md) — Development guidelines and conventions

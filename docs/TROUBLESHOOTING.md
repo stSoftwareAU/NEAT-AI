@@ -1,4 +1,4 @@
-# Troubleshooting Guide
+# 🐛 Troubleshooting Guide
 
 This guide covers common issues encountered when using or contributing to
 NEAT-AI. Each section describes the symptoms, likely causes, and solutions.
@@ -23,22 +23,22 @@ check, how to check it, and what to change.
 
 ---
 
-## Diagnostic Decision Trees
+## 🔍 Diagnostic Decision Trees
 
 These decision trees help you diagnose common training issues. Start at the top
 of the relevant tree and follow the branches based on what you observe.
 
-### Fitness Plateau
+### 📉 Fitness Plateau
 
 **Symptom:** Fitness stops improving — the best creature's error remains flat
 across generations.
 
 ```mermaid
 flowchart TD
-    classDef problem fill:#e74c3c,stroke:#c0392b,color:#fff
-    classDef question fill:#3498db,stroke:#2980b9,color:#fff
-    classDef action fill:#2ecc71,stroke:#27ae60,color:#fff
-    classDef check fill:#f39c12,stroke:#e67e22,color:#fff
+    classDef problem fill:#c0392b,stroke:#922b21,color:#fff
+    classDef question fill:#1a6fa8,stroke:#154c78,color:#fff
+    classDef action fill:#1e8449,stroke:#196f3d,color:#fff
+    classDef check fill:#d68910,stroke:#b7770d,color:#fff
 
     A["🔍 Fitness not improving"]:::problem
     B{"Is plateauDetection\nenabled?"}:::question
@@ -135,19 +135,25 @@ costOfGrowth: 0.00000001, // Lower than default 0.0000001
 Set to `0` to remove the growth penalty entirely and let fitness alone drive
 structural decisions.
 
+> [!TIP]
+> If you have already lowered `costOfGrowth` and enabled plateau detection but
+> fitness is still flat, try combining both a lower
+> `geneticCompatibilityThreshold` and a higher `populationSize` — premature
+> convergence is the most common cause of stubborn plateaus.
+
 ---
 
-### Training Is Slow
+### 🐢 Training Is Slow
 
 **Symptom:** Each generation takes a long time, or evolution progresses too
 slowly overall.
 
 ```mermaid
 flowchart TD
-    classDef problem fill:#e74c3c,stroke:#c0392b,color:#fff
-    classDef question fill:#3498db,stroke:#2980b9,color:#fff
-    classDef action fill:#2ecc71,stroke:#27ae60,color:#fff
-    classDef check fill:#f39c12,stroke:#e67e22,color:#fff
+    classDef problem fill:#c0392b,stroke:#922b21,color:#fff
+    classDef question fill:#1a6fa8,stroke:#154c78,color:#fff
+    classDef action fill:#1e8449,stroke:#196f3d,color:#fff
+    classDef check fill:#d68910,stroke:#b7770d,color:#fff
 
     A["🐢 Training is slow"]:::problem
     B{"Is WASM activation\nworking?"}:::question
@@ -220,19 +226,25 @@ discoveryRecordTimeOutMinutes: 3,   // Reduce from default 5
 discoveryAnalysisTimeoutMinutes: 5, // Reduce from default 10
 ```
 
+> [!NOTE]
+> WASM activation is mandatory in NEAT-AI and is the primary performance driver.
+> If WASM is failing to initialise — even silently — training will appear
+> extremely slow or may hang. Always confirm WASM is active before investigating
+> other bottlenecks.
+
 ---
 
-### Memory Issues During Training
+### 💾 Memory Issues During Training
 
 **Symptom:** Out-of-memory errors, process killed (exit code 143/137), or
 performance degrades over long runs.
 
 ```mermaid
 flowchart TD
-    classDef problem fill:#e74c3c,stroke:#c0392b,color:#fff
-    classDef question fill:#3498db,stroke:#2980b9,color:#fff
-    classDef action fill:#2ecc71,stroke:#27ae60,color:#fff
-    classDef check fill:#f39c12,stroke:#e67e22,color:#fff
+    classDef problem fill:#c0392b,stroke:#922b21,color:#fff
+    classDef question fill:#1a6fa8,stroke:#154c78,color:#fff
+    classDef action fill:#1e8449,stroke:#196f3d,color:#fff
+    classDef check fill:#d68910,stroke:#b7770d,color:#fff
 
     A["💾 Memory issues"]:::problem
     B{"Is MemoryMonitor\nenabled?"}:::question
@@ -323,17 +335,17 @@ on V8 heap configuration and OOM recovery.
 
 ---
 
-### Discovery Not Finding Improvements
+### 🔬 Discovery Not Finding Improvements
 
 **Symptom:** Discovery runs complete but no structural improvements are applied
 to the population.
 
 ```mermaid
 flowchart TD
-    classDef problem fill:#e74c3c,stroke:#c0392b,color:#fff
-    classDef question fill:#3498db,stroke:#2980b9,color:#fff
-    classDef action fill:#2ecc71,stroke:#27ae60,color:#fff
-    classDef check fill:#f39c12,stroke:#e67e22,color:#fff
+    classDef problem fill:#c0392b,stroke:#922b21,color:#fff
+    classDef question fill:#1a6fa8,stroke:#154c78,color:#fff
+    classDef action fill:#1e8449,stroke:#196f3d,color:#fff
+    classDef check fill:#d68910,stroke:#b7770d,color:#fff
 
     A["🔬 Discovery not finding\nimprovements"]:::problem
     B{"Is discovery\nenabled?"}:::question
@@ -418,17 +430,17 @@ small, too noisy, or not representative of the problem domain:
 
 ---
 
-### Creatures Producing NaN or Infinity
+### 💥 Creatures Producing NaN or Infinity
 
 **Symptom:** Creature activations return `NaN` or `Infinity` values, or training
 produces `NaN` errors.
 
 ```mermaid
 flowchart TD
-    classDef problem fill:#e74c3c,stroke:#c0392b,color:#fff
-    classDef question fill:#3498db,stroke:#2980b9,color:#fff
-    classDef action fill:#2ecc71,stroke:#27ae60,color:#fff
-    classDef check fill:#f39c12,stroke:#e67e22,color:#fff
+    classDef problem fill:#c0392b,stroke:#922b21,color:#fff
+    classDef question fill:#1a6fa8,stroke:#154c78,color:#fff
+    classDef action fill:#1e8449,stroke:#196f3d,color:#fff
+    classDef check fill:#d68910,stroke:#b7770d,color:#fff
 
     A["💥 NaN / Infinity\nin outputs"]:::problem
     B{"Where does\nit occur?"}:::question
@@ -535,15 +547,21 @@ Combined with weight and bias regularisation (both enabled by default), this
 prevents the feedback loop where extreme values produce `NaN`, which then
 corrupts further calculations.
 
+> [!WARNING]
+> If `NaN` values persist despite enabling all regularisation options, check
+> whether your fitness function itself can produce `NaN` or `Infinity`. A
+> fitness function that divides by zero or takes the logarithm of a non-positive
+> number will corrupt the entire population silently.
+
 ---
 
-## WASM Issues
+## ⚙️ WASM Issues
 
 WASM activation is **mandatory** in NEAT-AI. There is no JavaScript fallback.
 The library initialises the WASM backend automatically; callers do not need to
 call any init function or set environment variables.
 
-### WASM module not found or failed to compile
+### ⚠️ WASM module not found or failed to compile
 
 **Symptoms:**
 
@@ -568,7 +586,7 @@ call any init function or set environment variables.
   cd wasm_activation && ./build.sh
   ```
 
-### WASM module not initialised
+### ⚠️ WASM module not initialised
 
 **Symptoms:**
 
@@ -586,7 +604,7 @@ call any init function or set environment variables.
 - In custom worker setups, ensure `initWasmActivationSync()` is called with the
   correct JS bindings and WASM binary payload before activating creatures.
 
-### WASM in Deno Workers vs Main Thread
+### 🧵 WASM in Deno Workers vs Main Thread
 
 **Main thread:** WASM auto-initialises at module evaluation time. No action
 required.
@@ -608,7 +626,7 @@ and/or `--allow-net` permissions.
 - `Worker init timed out after Ns` — Increase the timeout by setting
   `NEAT_AI_WORKER_INIT_TIMEOUT_MS` (default: 60,000 ms, minimum: 1,000 ms).
 
-### RuntimeError: unreachable
+### 💥 RuntimeError: unreachable
 
 **Symptoms:**
 
@@ -629,13 +647,13 @@ and/or `--allow-net` permissions.
 
 ---
 
-## Discovery Library
+## 🦀 Discovery Library
 
 The [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) Rust
 FFI extension provides GPU-accelerated structural analysis. It is **optional** —
 if unavailable, the discovery phase is skipped.
 
-### Building NEAT-AI-Discovery locally
+### 🔧 Building NEAT-AI-Discovery locally
 
 ```bash
 # Clone into a sibling directory
@@ -649,7 +667,7 @@ cargo build --release
 
 The build script installs the library to `~/.cargo/lib/`.
 
-### Setting NEAT_AI_DISCOVERY_LIB_PATH
+### 🔧 Setting NEAT_AI_DISCOVERY_LIB_PATH
 
 If the library is not in a standard location, set the environment variable:
 
@@ -674,7 +692,7 @@ This can point to either the library file or a directory containing it.
 | Linux    | `libneat_ai_discovery.so`    |
 | Windows  | `libneat_ai_discovery.dll`   |
 
-### Architecture mismatch errors (arm64 vs x86)
+### ⚠️ Architecture mismatch errors (arm64 vs x86)
 
 **Symptoms:**
 
@@ -706,7 +724,7 @@ ldd /path/to/libneat_ai_discovery.so
   deno run --allow-ffi scripts/check_discovery_safe.ts
   ```
 
-### NEAT_RUST_DISCOVERY_OPTIONAL for graceful degradation
+### 💡 NEAT_RUST_DISCOVERY_OPTIONAL for graceful degradation
 
 In environments where discovery is not required (e.g. CI without GPU):
 
@@ -717,7 +735,12 @@ export NEAT_RUST_DISCOVERY_OPTIONAL=true
 Values `"1"`, `"true"`, or `"yes"` (case-insensitive) cause discovery tests to
 skip gracefully rather than fail.
 
-### FFI permission denied
+> [!NOTE]
+> Setting `NEAT_RUST_DISCOVERY_OPTIONAL=true` only affects test behaviour — it
+> does not disable discovery at runtime. If you want to disable discovery during
+> training, set `discoverySampleRate: -1` in your configuration instead.
+
+### 🔐 FFI permission denied
 
 **Symptom:** `FFI permission denied for discovery library`
 
@@ -727,7 +750,7 @@ skip gracefully rather than fail.
 deno run --allow-ffi --allow-read --allow-env your_script.ts
 ```
 
-### No GPU detected
+### 🖥️ No GPU detected
 
 **Symptom:** `Discovery disabled: Rust library loaded but GPU probe failed`
 
@@ -736,9 +759,9 @@ found. Discovery simply will not run. On macOS, ensure Metal is available.
 
 ---
 
-## Memory Management
+## 🧠 Memory Management
 
-### V8 heap size configuration
+### 🔧 V8 heap size configuration
 
 For large populations or long training runs, increase the V8 heap:
 
@@ -748,7 +771,7 @@ deno test --v8-flags=--max-old-space-size=8192 ...
 
 The `quality.sh` script uses 8,192 MB (8 GB) by default.
 
-### Test parallelism and memory pressure
+### ⚠️ Test parallelism and memory pressure
 
 Running tests with `--parallel` uses more memory. If you encounter OOM kills:
 
@@ -763,7 +786,7 @@ Running tests with `--parallel` uses more memory. If you encounter OOM kills:
 3. **Use `--expose-gc`** for explicit garbage collection hints (used by
    `quality.sh`).
 
-### Exit code 143 (SIGTERM / OOM kill)
+### 💀 Exit code 143 (SIGTERM / OOM kill)
 
 **Symptoms:**
 
@@ -780,7 +803,7 @@ tests in parallel with a large heap.
 - In CI, the `coverage.yaml` workflow automatically retries with 50% memory and
   no parallelism if the first attempt exits with code 143.
 
-### Memory leak detection tests
+### 🔬 Memory leak detection tests
 
 Issue #1505 added automated tests that verify WASM resources are properly
 reclaimed throughout the activation lifecycle. These tests live in `test/wasm/`:
@@ -808,7 +831,7 @@ the LRU eviction logic, these tests will fail because:
 - The LRU cache count will exceed the configured maximum
 - Evicted creatures will not have their WASM resources freed
 
-### Discovery memory tuning
+### 📊 Discovery memory tuning
 
 For discovery workloads, tune these options to control peak memory:
 
@@ -822,9 +845,9 @@ Lower values reduce peak memory at the cost of more I/O.
 
 ---
 
-## CI Failures
+## 🔄 CI Failures
 
-### Understanding coverage.yaml
+### 📋 Understanding coverage.yaml
 
 The CI workflow (`coverage.yaml`) uses a two-stage strategy:
 
@@ -848,7 +871,7 @@ The CI workflow (`coverage.yaml`) uses a two-stage strategy:
 | 143       | SIGTERM (OOM kill) | Retry with lower memory |
 | Other     | Unexpected error   | Fail the job            |
 
-### quality.sh failures
+### 🔧 quality.sh failures
 
 The `quality.sh` script runs these steps in order:
 
@@ -866,9 +889,9 @@ provides diagnostic guidance. See the
 
 ---
 
-## Configuration
+## ⚙️ Configuration
 
-### Common invalid option combinations
+### ⚠️ Common invalid option combinations
 
 #### Feedback loop without disabling random samples
 
@@ -921,7 +944,7 @@ createNeatConfig({
 });
 ```
 
-### Understanding ValidationError messages
+### 💡 Understanding ValidationError messages
 
 NEAT-AI uses typed `ValidationError` exceptions with a `name` property
 indicating the category:
@@ -950,7 +973,7 @@ try {
 }
 ```
 
-### Forward-only vs recurrent mode constraints
+### 🔄 Forward-only vs recurrent mode constraints
 
 **Forward-only** (default) rejects:
 
@@ -967,7 +990,7 @@ whether your creature topology matches the configured mode.
 
 ---
 
-## Environment Variables Reference
+## 🌐 Environment Variables Reference
 
 | Variable                          | Default  | Purpose                                             |
 | --------------------------------- | -------- | --------------------------------------------------- |
@@ -979,7 +1002,7 @@ whether your creature topology matches the configured mode.
 
 ---
 
-## Getting Help
+## 🆘 Getting Help
 
 If your issue is not covered here:
 
