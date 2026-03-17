@@ -1,16 +1,25 @@
 ## Summary
 
-Add L1/L2 weight and bias regularisation (weight decay) during backpropagation. Closes #1859.
+Add L1/L2 weight and bias regularisation (weight decay) during backpropagation.
+Closes #1859.
 
 Four new configurable parameters are added to `BackPropagationArguments`:
-- `l1WeightDecay` / `l2WeightDecay` — L1 (sparsity) and L2 (decay) penalties for synapse weights
-- `l1BiasDecay` / `l2BiasDecay` — L1 (sparsity) and L2 (decay) penalties for neuron biases
+
+- `l1WeightDecay` / `l2WeightDecay` — L1 (sparsity) and L2 (decay) penalties for
+  synapse weights
+- `l1BiasDecay` / `l2BiasDecay` — L1 (sparsity) and L2 (decay) penalties for
+  neuron biases
 
 All default to 0 (disabled), preserving backward compatibility. When enabled:
-- **L2** shrinks weights/biases proportionally to magnitude: `w *= (1 - lr * λ)`
-- **L1** applies soft-thresholding, driving small values to zero and snapping to zero when the penalty exceeds the magnitude
 
-Regularisation is applied via extracted helper functions (`applyWeightRegularisation`, `applyBiasRegularisation`) on all return paths of `limitWeight()` and `limitBias()`, ensuring it works both with and without gradient updates, and integrates cleanly with sparse training (`sparseRatio`).
+- **L2** shrinks weights/biases proportionally to magnitude: `w *= (1 - lr * λ)`
+- **L1** applies soft-thresholding, driving small values to zero and snapping to
+  zero when the penalty exceeds the magnitude
+
+Regularisation is applied via extracted helper functions
+(`applyWeightRegularisation`, `applyBiasRegularisation`) on all return paths of
+`limitWeight()` and `limitBias()`, ensuring it works both with and without
+gradient updates, and integrates cleanly with sparse training (`sparseRatio`).
 
 ## Evidence
 
