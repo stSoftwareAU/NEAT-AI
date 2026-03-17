@@ -209,32 +209,35 @@ benefit.
 
 The inference loop runs **before** weight updates, for each training sample:
 
-```
-Algorithm: PC Inference (Settling)
-─────────────────────────────────────────────────
-Input: creature, inputData, targetData (if supervised)
-Config: maxIterations, convergenceThreshold
+```mermaid
+flowchart TD
+    classDef input fill:#3498db,stroke:#2980b9,color:#fff
+    classDef process fill:#2ecc71,stroke:#27ae60,color:#fff
+    classDef decision fill:#f39c12,stroke:#e67e22,color:#fff
+    classDef output fill:#9b59b6,stroke:#8e44ad,color:#fff
+    classDef compute fill:#1abc9c,stroke:#16a085,color:#fff
 
-1. Clamp input neurons to inputData
-2. Run one feedforward pass to initialise hidden/output activations
-3. If supervised: clamp output neurons to targetData
+    A["📥 Clamp input neurons\nto inputData"]:::input
+    B["⚡ Run one feedforward pass\nto initialise hidden/output\nactivations"]:::process
+    C{"Supervised\ntraining?"}:::decision
+    D["🎯 Clamp output neurons\nto targetData"]:::process
+    E["🔄 For each hidden neuron\n(reverse depth order)"]:::compute
+    F["📐 Compute top-down prediction:\npred_i = f(Σ_j w_ji · x_j)"]:::compute
+    G["⚠️ Compute prediction error:\nε_i = x_i - pred_i"]:::compute
+    H["🔧 Update activity:\nx_i ← x_i - η_x · (ε_i - Σ_k w_ik · f' · ε_k)"]:::compute
+    I["📊 Compute total energy:\nE = ½ Σ ‖ε_i‖²"]:::process
+    J{"Converged?\n|E_prev - E| <\nthreshold"}:::decision
+    K{"iteration <\nmaxIterations?"}:::decision
+    L["💾 Store settled activities\nand prediction errors\nin NeuronState"]:::output
 
-4. For iteration = 1 to maxIterations:
-   a. For each hidden neuron (in reverse depth order):
-      - Compute top-down prediction:
-        pred_i = f(Σ_j w_ji · x_j)  where j are downstream neurons
-      - Compute prediction error:
-        ε_i = x_i - pred_i
-      - Update activity:
-        x_i ← x_i - η_x · (ε_i - Σ_k w_ik · f'(·) · ε_k)
-        where k are upstream neurons receiving predictions from i
-
-   b. Compute total energy: E = ½ Σ ||ε_i||²
-
-   c. If |E_prev - E| < convergenceThreshold: break
-
-5. Store settled activities and prediction errors in NeuronState
-─────────────────────────────────────────────────
+    A --> B --> C
+    C -- "YES" --> D --> E
+    C -- "NO" --> E
+    E --> F --> G --> H --> I --> J
+    J -- "YES" --> L
+    J -- "NO" --> K
+    K -- "YES" --> E
+    K -- "NO" --> L
 ```
 
 This integrates with the existing forward activation path:
@@ -249,15 +252,15 @@ This integrates with the existing forward activation path:
 
 After inference has settled, weights are updated using the local Hebbian rule:
 
-```
-Algorithm: PC Weight Update
-─────────────────────────────────────────────────
-For each synapse (i → j):
-  Δw_ij = η_W · ε_j · f(x_i)
+```mermaid
+flowchart LR
+    classDef synapse fill:#3498db,stroke:#2980b9,color:#fff
+    classDef neuron fill:#2ecc71,stroke:#27ae60,color:#fff
 
-For each neuron j:
-  Δb_j = η_W · ε_j
-─────────────────────────────────────────────────
+    S["⚡ For each synapse (i → j):\nΔw_ij = η_W · ε_j · f(x_i)"]:::synapse
+    N["🧠 For each neuron j:\nΔb_j = η_W · ε_j"]:::neuron
+
+    S --> N
 ```
 
 This replaces or complements the elastic backpropagation step
