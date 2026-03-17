@@ -250,3 +250,10 @@ When considering a performance optimisation, use this checklist:
 - [ ] Create a benchmark that isolates the operation being optimised
 - [ ] Measure both the computation and any serialisation/boundary overhead
 - [ ] A negative result is a valuable result — document it and move on
+
+## See Also
+
+- [Performance Tuning](./PERFORMANCE_TUNING.md) — Operational tuning guide for
+  WASM caches, thread pools, memory management, and scaling
+- [Configuration Guide](./CONFIGURATION_GUIDE.md) — Complete reference of all
+  configuration options

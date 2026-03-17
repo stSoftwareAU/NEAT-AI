@@ -986,3 +986,10 @@ const config = createNeatConfig({
   targetError: 0.05,
 });
 ```
+
+## See Also
+
+- [Performance Tuning](./PERFORMANCE_TUNING.md) — Operational guide for WASM
+  caches, thread pools, memory management, and scaling
+- [Performance Research](./PERFORMANCE_RESEARCH.md) — WASM migration research
+  and benchmark learnings
