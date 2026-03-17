@@ -284,6 +284,7 @@
     "RLIF",
     "diag",
     "Logits",
-    "repr"
+    "repr",
+    "CIRF"
   ]
 }
