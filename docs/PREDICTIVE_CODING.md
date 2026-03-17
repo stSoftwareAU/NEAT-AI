@@ -269,11 +269,33 @@ changes can be reused — the only difference is **how** the deltas are computed
 
 The activation pipeline remains unchanged when PC is disabled:
 
-```
-Current:  input → activate() → output → score
-With PC:  input → activate() → PC settle → output → score
-                                  ↓
-                            weight update (local Hebbian)
+```mermaid
+flowchart LR
+    classDef standard fill:#3498db,stroke:#2980b9,color:#fff
+    classDef pc fill:#2ecc71,stroke:#27ae60,color:#fff
+    classDef output fill:#9b59b6,stroke:#8e44ad,color:#fff
+
+    subgraph current["Current Pipeline"]
+        A1["🔢 Input"]:::standard
+        A2["⚡ activate()"]:::standard
+        A3["📊 Output"]:::standard
+        A4["🎯 Score"]:::standard
+        A1 --> A2 --> A3 --> A4
+    end
+
+    subgraph withPC["With Predictive Coding"]
+        B1["🔢 Input"]:::standard
+        B2["⚡ activate()"]:::standard
+        B3["🧠 PC Settle"]:::pc
+        B4["📊 Output"]:::standard
+        B5["🎯 Score"]:::standard
+        B6["📐 Weight Update\n(local Hebbian)"]:::pc
+        B1 --> B2 --> B3 --> B4 --> B5
+        B3 --> B6
+    end
+
+    style current fill:#f0f4ff,stroke:#2980b9,color:#333
+    style withPC fill:#f0fff4,stroke:#27ae60,color:#333
 ```
 
 PC settling occurs **between** the initial activation and scoring. The settled
@@ -533,20 +555,17 @@ settling.
 
 ### Dependency Graph
 
-```
-Phase 1 (Config & State)
-    │
-    ▼
-Phase 2 (TypeScript Prototype)
-    │
-    ▼
-Phase 3 (Rust/WASM)
-    │
-    ▼
-Phase 4 (Discovery Integration)
-    │
-    ▼
-Phase 5 (Complement Mode & Advanced)
+```mermaid
+flowchart TD
+    classDef phase fill:#3498db,stroke:#2980b9,color:#fff
+
+    P1["🧱 Phase 1\nConfig & State"]:::phase
+    P2["🔬 Phase 2\nTypeScript Prototype"]:::phase
+    P3["⚡ Phase 3\nRust/WASM"]:::phase
+    P4["🔍 Phase 4\nDiscovery Integration"]:::phase
+    P5["🚀 Phase 5\nComplement Mode & Advanced"]:::phase
+
+    P1 --> P2 --> P3 --> P4 --> P5
 ```
 
 Each phase produces a working, tested PR. Phases are strictly sequential — each

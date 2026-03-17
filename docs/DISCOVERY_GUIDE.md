@@ -35,24 +35,30 @@ time.
 
 ### Multi-Machine Setup
 
-```
-┌─────────────────────────────────────────────────┐
-│         Shared Creature Pool (Git Repo)        │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐          │
-│  │ Best #1 │ │ Best #2 │ │ Best #3 │ ...      │
-│  │ Score:  │ │ Score:  │ │ Score:  │          │
-│  │ 0.415   │ │ 0.412   │ │ 0.408   │          │
-│  └─────────┘ └─────────┘ └─────────┘          │
-└─────────────────────────────────────────────────┘
-         ↓ fetch          ↓ fetch         ↓ fetch
-    ┌─────────┐      ┌─────────┐     ┌─────────┐
-    │ Mac #1  │      │ Mac #2  │     │ Mac #3  │
-    │         │      │         │     │         │
-    │ Running │      │ Running │     │ Running │
-    │Discovery│      │Discovery│     │Discovery│
-    └─────────┘      └─────────┘     └─────────┘
-         ↓ check-in       ↓ check-in      ↓ check-in
-         (if improved)    (if improved)   (if improved)
+```mermaid
+flowchart TD
+    classDef pool fill:#9b59b6,stroke:#8e44ad,color:#fff
+    classDef creature fill:#3498db,stroke:#2980b9,color:#fff
+    classDef machine fill:#2ecc71,stroke:#27ae60,color:#fff
+
+    subgraph pool["🗃️ Shared Creature Pool (Git Repo)"]
+        B1["🏆 Best #1\nScore: 0.415"]:::creature
+        B2["🥈 Best #2\nScore: 0.412"]:::creature
+        B3["🥉 Best #3\nScore: 0.408"]:::creature
+    end
+
+    M1["🖥️ Mac #1\nRunning Discovery"]:::machine
+    M2["🖥️ Mac #2\nRunning Discovery"]:::machine
+    M3["🖥️ Mac #3\nRunning Discovery"]:::machine
+
+    pool -- "fetch" --> M1
+    pool -- "fetch" --> M2
+    pool -- "fetch" --> M3
+    M1 -- "check-in\n(if improved)" --> pool
+    M2 -- "check-in\n(if improved)" --> pool
+    M3 -- "check-in\n(if improved)" --> pool
+
+    style pool fill:#f0e6ff,stroke:#8e44ad,color:#333
 ```
 
 ### Workflow Loop (Per Machine)

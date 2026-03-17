@@ -33,23 +33,27 @@ of the relevant tree and follow the branches based on what you observe.
 **Symptom:** Fitness stops improving — the best creature's error remains flat
 across generations.
 
-```
-Fitness not improving
-│
-├─ Is plateauDetection enabled?
-│  │
-│  ├─ NO → Enable it (see Step 1 below)
-│  │
-│  └─ YES → Is the plateau detector triggering?
-│     │     (Check logs for mutation multiplier changes)
-│     │
-│     ├─ NO → Lower minImprovementRate (see Step 2)
-│     │
-│     └─ YES, but still stuck
-│        │
-│        ├─ Check mutationRate (see Step 3)
-│        ├─ Check population diversity (see Step 4)
-│        └─ Check costOfGrowth (see Step 5)
+```mermaid
+flowchart TD
+    classDef problem fill:#e74c3c,stroke:#c0392b,color:#fff
+    classDef question fill:#3498db,stroke:#2980b9,color:#fff
+    classDef action fill:#2ecc71,stroke:#27ae60,color:#fff
+    classDef check fill:#f39c12,stroke:#e67e22,color:#fff
+
+    A["🔍 Fitness not improving"]:::problem
+    B{"Is plateauDetection\nenabled?"}:::question
+    C["✅ Enable it\n(see Step 1)"]:::action
+    D{"Is the plateau detector\ntriggering?\n(Check logs for mutation\nmultiplier changes)"}:::question
+    E["⚙️ Lower minImprovementRate\n(see Step 2)"]:::action
+    F["🔧 Check mutationRate\n(see Step 3)"]:::check
+    G["🌱 Check population diversity\n(see Step 4)"]:::check
+    H["📏 Check costOfGrowth\n(see Step 5)"]:::check
+
+    A --> B
+    B -- "NO" --> C
+    B -- "YES" --> D
+    D -- "NO" --> E
+    D -- "YES, but\nstill stuck" --> F & G & H
 ```
 
 **Step 1 — Enable plateau detection:**
@@ -138,18 +142,23 @@ structural decisions.
 **Symptom:** Each generation takes a long time, or evolution progresses too
 slowly overall.
 
-```
-Training is slow
-│
-├─ Is WASM activation working?
-│  │
-│  ├─ NO / Error messages → See "WASM Issues" section below
-│  │
-│  └─ YES
-│     │
-│     ├─ Check worker thread count (Step 1)
-│     ├─ Check dataset size vs population size (Step 2)
-│     └─ Check discovery overhead (Step 3)
+```mermaid
+flowchart TD
+    classDef problem fill:#e74c3c,stroke:#c0392b,color:#fff
+    classDef question fill:#3498db,stroke:#2980b9,color:#fff
+    classDef action fill:#2ecc71,stroke:#27ae60,color:#fff
+    classDef check fill:#f39c12,stroke:#e67e22,color:#fff
+
+    A["🐢 Training is slow"]:::problem
+    B{"Is WASM activation\nworking?"}:::question
+    C["⚠️ See WASM Issues\nsection below"]:::action
+    D["🧵 Check worker thread count\n(Step 1)"]:::check
+    E["📊 Check dataset size vs\npopulation size (Step 2)"]:::check
+    F["🔬 Check discovery overhead\n(Step 3)"]:::check
+
+    A --> B
+    B -- "NO / Error\nmessages" --> C
+    B -- "YES" --> D & E & F
 ```
 
 **Step 1 — Check worker threads:**
@@ -218,22 +227,27 @@ discoveryAnalysisTimeoutMinutes: 5, // Reduce from default 10
 **Symptom:** Out-of-memory errors, process killed (exit code 143/137), or
 performance degrades over long runs.
 
-```
-Memory issues
-│
-├─ Is MemoryMonitor enabled?
-│  │
-│  ├─ NO → Enable it (Step 1)
-│  │
-│  └─ YES → Is it triggering warning/critical responses?
-│     │
-│     ├─ Warnings only → Adjust thresholds (Step 2)
-│     │
-│     └─ Critical / OOM
-│        │
-│        ├─ Check WASM cache size (Step 3)
-│        ├─ Check population size (Step 4)
-│        └─ Check V8 heap allocation (Step 5)
+```mermaid
+flowchart TD
+    classDef problem fill:#e74c3c,stroke:#c0392b,color:#fff
+    classDef question fill:#3498db,stroke:#2980b9,color:#fff
+    classDef action fill:#2ecc71,stroke:#27ae60,color:#fff
+    classDef check fill:#f39c12,stroke:#e67e22,color:#fff
+
+    A["💾 Memory issues"]:::problem
+    B{"Is MemoryMonitor\nenabled?"}:::question
+    C["✅ Enable it\n(Step 1)"]:::action
+    D{"Is it triggering\nwarning/critical\nresponses?"}:::question
+    E["⚙️ Adjust thresholds\n(Step 2)"]:::action
+    F["🗄️ Check WASM cache size\n(Step 3)"]:::check
+    G["👥 Check population size\n(Step 4)"]:::check
+    H["📈 Check V8 heap allocation\n(Step 5)"]:::check
+
+    A --> B
+    B -- "NO" --> C
+    B -- "YES" --> D
+    D -- "Warnings\nonly" --> E
+    D -- "Critical\n/ OOM" --> F & G & H
 ```
 
 **Step 1 — Enable `MemoryMonitor`:**
@@ -314,25 +328,28 @@ on V8 heap configuration and OOM recovery.
 **Symptom:** Discovery runs complete but no structural improvements are applied
 to the population.
 
-```
-Discovery not finding improvements
-│
-├─ Is discovery enabled?
-│  │
-│  ├─ NO → discoverySampleRate is -1; set to 0.2 (default)
-│  │
-│  └─ YES
-│     │
-│     ├─ Is the Rust discovery library loaded?
-│     │  │
-│     │  ├─ NO → See "Discovery Library" section below
-│     │  │
-│     │  └─ YES
-│     │     │
-│     │     ├─ Check timeout settings (Step 1)
-│     │     ├─ Check costOfGrowth (Step 2)
-│     │     ├─ Check minimum candidates (Step 3)
-│     │     └─ Check dataset representativeness (Step 4)
+```mermaid
+flowchart TD
+    classDef problem fill:#e74c3c,stroke:#c0392b,color:#fff
+    classDef question fill:#3498db,stroke:#2980b9,color:#fff
+    classDef action fill:#2ecc71,stroke:#27ae60,color:#fff
+    classDef check fill:#f39c12,stroke:#e67e22,color:#fff
+
+    A["🔬 Discovery not finding\nimprovements"]:::problem
+    B{"Is discovery\nenabled?"}:::question
+    C["✅ discoverySampleRate is -1\nSet to 0.2 (default)"]:::action
+    D{"Is the Rust discovery\nlibrary loaded?"}:::question
+    E["⚠️ See Discovery Library\nsection below"]:::action
+    F["⏱️ Check timeout settings\n(Step 1)"]:::check
+    G["📏 Check costOfGrowth\n(Step 2)"]:::check
+    H["🎯 Check minimum candidates\n(Step 3)"]:::check
+    I["📊 Check dataset\nrepresentativeness (Step 4)"]:::check
+
+    A --> B
+    B -- "NO" --> C
+    B -- "YES" --> D
+    D -- "NO" --> E
+    D -- "YES" --> F & G & H & I
 ```
 
 **Step 1 — Check timeout settings:**
@@ -406,24 +423,25 @@ small, too noisy, or not representative of the problem domain:
 **Symptom:** Creature activations return `NaN` or `Infinity` values, or training
 produces `NaN` errors.
 
-```
-NaN / Infinity in outputs
-│
-├─ Where does it occur?
-│  │
-│  ├─ During activation
-│  │  │
-│  │  ├─ Check input normalisation (Step 1)
-│  │  └─ Check activation functions (Step 2)
-│  │
-│  ├─ During backpropagation
-│  │  │
-│  │  ├─ Check weight bounds (Step 3)
-│  │  └─ Check bias bounds (Step 4)
-│  │
-│  └─ After mutation
-│     │
-│     └─ Enable regularisation (Step 5)
+```mermaid
+flowchart TD
+    classDef problem fill:#e74c3c,stroke:#c0392b,color:#fff
+    classDef question fill:#3498db,stroke:#2980b9,color:#fff
+    classDef action fill:#2ecc71,stroke:#27ae60,color:#fff
+    classDef check fill:#f39c12,stroke:#e67e22,color:#fff
+
+    A["💥 NaN / Infinity\nin outputs"]:::problem
+    B{"Where does\nit occur?"}:::question
+    C["🔢 Check input normalisation\n(Step 1)"]:::check
+    D["⚡ Check activation functions\n(Step 2)"]:::check
+    E["⚖️ Check weight bounds\n(Step 3)"]:::check
+    F["🎚️ Check bias bounds\n(Step 4)"]:::check
+    G["🛡️ Enable regularisation\n(Step 5)"]:::action
+
+    A --> B
+    B -- "During\nactivation" --> C & D
+    B -- "During\nbackpropagation" --> E & F
+    B -- "After\nmutation" --> G
 ```
 
 **Step 1 — Check input normalisation:**
