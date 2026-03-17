@@ -107,6 +107,15 @@ export type BackPropagationArguments = {
    * 0 = disabled (default), higher values = stronger decay.
    */
   l2BiasDecay: number;
+
+  /**
+   * Issue #1860: Dropout regularisation rate (0.0 to 1.0).
+   * During training, this fraction of hidden neurons are randomly disabled
+   * (activations set to zero) with inverted scaling applied to the rest.
+   * During inference, all neurons are active and no dropout is applied.
+   * 0 = disabled (default), typical values 0.1 to 0.5.
+   */
+  dropoutRate: number;
 };
 
 export type BackPropagationOptions = Partial<BackPropagationArguments>;
@@ -212,6 +221,10 @@ export function createBackPropagationConfig(
     ),
     l2BiasDecay: Math.min(
       Math.max(options?.l2BiasDecay ?? 0, 0),
+      1,
+    ),
+    dropoutRate: Math.min(
+      Math.max(options?.dropoutRate ?? 0, 0),
       1,
     ),
   };
