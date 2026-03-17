@@ -277,6 +277,13 @@
     "utime",
     "statfs",
     "reinit",
-    "unassertable"
+    "unassertable",
+    "CMBB",
+    "DRRT",
+    "ACSC",
+    "RLIF",
+    "diag",
+    "Logits",
+    "repr"
   ]
 }
