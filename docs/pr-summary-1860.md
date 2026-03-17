@@ -1,10 +1,10 @@
 ## Summary
 
 Implements true dropout regularisation during training. During training, a
-configurable fraction of hidden neurons are randomly disabled (activations
-set to zero) and remaining activations are scaled by 1/(1-p) using inverted
-dropout. During inference, all neurons are active and no adjustment is
-needed. Closes #1860.
+configurable fraction of hidden neurons are randomly disabled (activations set
+to zero) and remaining activations are scaled by 1/(1-p) using inverted dropout.
+During inference, all neurons are active and no adjustment is needed. Closes
+#1860.
 
 ### What was done
 
@@ -33,8 +33,8 @@ needed. Closes #1860.
   `BackPropagationArguments` with default 0
 - `src/architecture/Training.ts` — Integrated dropout call in training loop
   after `activateAndTrace` and before `propagate`
-- `test/propagate/DropoutRegularisation.ts` — 13 tests covering config,
-  unit behaviour, and training integration
+- `test/propagate/DropoutRegularisation.ts` — 13 tests covering config, unit
+  behaviour, and training integration
 
 ## Evidence
 
@@ -51,5 +51,5 @@ All 4529 tests pass including 13 new dropout-specific tests.
   produces valid finite outputs at inference
 - **Inference determinism**: After training with dropout, inference produces
   identical results on repeated calls (no dropout applied)
-- **Coexistence**: Dropout config works alongside `sparseRatio` and L1/L2
-  weight regularisation
+- **Coexistence**: Dropout config works alongside `sparseRatio` and L1/L2 weight
+  regularisation
