@@ -271,15 +271,20 @@ export function propagateTopological(
             if (Number.isFinite(safeZoneFactor) && safeZoneFactor > 0) {
               const fromSquash = fromNeuron.findSquash();
               const range = fromSquash.range;
-              const eps = 1e-9;
-              const outOfRange = targetFromActivation < range.low - eps ||
-                targetFromActivation > range.high + eps;
-              if (!outOfRange && Number.isFinite(targetFromActivation)) {
+              // Issue #1873: Clamp out-of-range targets to the range boundary
+              // instead of dropping them entirely. This prevents dead gradient
+              // paths through near-zero-weight connections while avoiding
+              // gradient explosion.
+              const clampedTarget = Math.max(
+                range.low,
+                Math.min(range.high, targetFromActivation),
+              );
+              if (Number.isFinite(clampedTarget)) {
                 // Instead of recursing, accumulate the target delta for the
                 // upstream neuron. It will be processed later in the
                 // topological order.
                 if (from >= inputCount) {
-                  targetDeltaSum[from] += targetFromActivation - fromActivation;
+                  targetDeltaSum[from] += clampedTarget - fromActivation;
                   targetDeltaCount[from]++;
                 }
               }

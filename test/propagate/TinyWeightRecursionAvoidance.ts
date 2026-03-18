@@ -1,4 +1,4 @@
-import { assertAlmostEquals } from "@std/assert";
+import { assert } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
@@ -11,7 +11,8 @@ Deno.test(
   () => {
     // Tiny weight -> modest value-space share implies huge requested activation:
     //   targetFromActivation = (w*a + share) / w
-    // For bounded squashes, this is infeasible and should *not* trigger recursion.
+    // For bounded squashes, the target is clamped to the range boundary
+    // (Issue #1873) so a reduced gradient still propagates without explosion.
 
     const creatureJSON: CreatureExport = {
       input: 1,
@@ -33,7 +34,8 @@ Deno.test(
       synapses: [
         { fromUUID: "input-0", toUUID: "logistic-hidden", weight: 1 },
 
-        // Critical: tiny weight into output. This is where recursion explodes.
+        // Critical: tiny weight into output. Previously dropped entirely;
+        // now clamped so a reduced gradient propagates.
         { fromUUID: "logistic-hidden", toUUID: "output-0", weight: 1e-6 },
 
         // Feasible alternative path:
@@ -58,14 +60,16 @@ Deno.test(
     creature.activateAndTrace(new Float32Array([1]), false, sparseConfig);
 
     const hidden = creature.neurons.find((n) => n.uuid === "logistic-hidden")!;
-    const biasBefore = hidden.bias;
 
     // Ask for a big negative output change.
     creature.propagate(new Float32Array([-100]), config, sparseConfig);
     creature.propagateUpdate(config, sparseConfig);
 
-    // If recursion happened through the tiny weight, the hidden bias would
-    // typically move as the solver tries to change activation.
-    assertAlmostEquals(hidden.bias, biasBefore, 1e-12);
+    // With clamped gradient propagation (Issue #1873), the hidden bias may
+    // change but must remain finite — no gradient explosion.
+    assert(
+      Number.isFinite(hidden.bias),
+      `Hidden bias must remain finite, got ${hidden.bias}`,
+    );
   },
 );
