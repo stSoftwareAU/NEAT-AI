@@ -290,6 +290,7 @@
     "opset",
     "elem",
     "Sizer",
-    "unnormalised"
+    "unnormalised",
+    "varint"
   ]
 }
