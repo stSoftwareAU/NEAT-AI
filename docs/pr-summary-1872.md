@@ -1,11 +1,10 @@
 ## Summary
 
 Add optional gradient normalisation for high fan-out neurons in topological
-backpropagation. When `normaliseGradients` is enabled, accumulated error
-signals are divided by `sqrt(targetDeltaCount)` instead of being summed
-directly. This dampens gradient magnification in neurons with many outward
-connections while preserving some scaling — similar to AdaGrad-style
-normalisation. Closes #1872.
+backpropagation. When `normaliseGradients` is enabled, accumulated error signals
+are divided by `sqrt(targetDeltaCount)` instead of being summed directly. This
+dampens gradient magnification in neurons with many outward connections while
+preserving some scaling — similar to AdaGrad-style normalisation. Closes #1872.
 
 ### Changes
 
