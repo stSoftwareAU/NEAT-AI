@@ -1,36 +1,29 @@
 ## Summary
 
-Add targeted test cases exercising back propagation through chains of different
-squash functions to identify corner cases where gradient flow degrades. Closes
-#1870.
+Add targeted test cases exercising backpropagation through chains of different squash functions to identify corner cases where gradient flow degrades. Closes #1870.
+
+The test file `test/propagate/MixedSquashChains.ts` contains 11 tests covering:
+- Multi-layer mixed squash convergence (bounded→bounded, unbounded→bounded, non-differentiable, all-saturating)
+- Saturation chain behaviour (TANH saturated, GAUSSIAN peak, Exponential large derivatives)
+- Gradient magnitude verification across multiple chain types
+- Aggregate function chains (IF, MAXIMUM)
+- Safe zone interaction with mixed upstream squash types
 
 ## Evidence
 
-All 11 new tests pass via `./quality.sh` (4494 total tests, 0 failures).
-
-Test cases cover:
-
-1. **Bounded→Bounded**: TANH → LOGISTIC → BIPOLAR_SIGMOID
-2. **Unbounded→Bounded**: ReLU → TANH → LOGISTIC
-3. **Non-differentiable mixed**: STEP → ReLU → TANH
-4. **Aggregate mixed (IF)**: IF → TANH → ReLU
-5. **Aggregate mixed (MAXIMUM)**: MAXIMUM → LOGISTIC
-6. **All saturating**: LOGISTIC → TANH → LOGISTIC with saturation-zone inputs
-7. **Zero-derivative saturation**: GAUSSIAN → SELU
-8. **Exploding derivative**: Exponential → TANH → LOGISTIC
-9. **Gradient magnitude**: 5-layer TANH→LOGISTIC→BIPOLAR_SIGMOID→ReLU→SELU
-   verifies all weights remain finite and at least some change
-10. **Safe zone interaction**: mixed TANH/ReLU/LOGISTIC feeding single output
-    with wide input range
-11. **Saturated TANH → LOGISTIC boundary**: large biases pushing into saturation
-
-Each convergence test perturbs a known-good network's weights/biases and asserts
-that training reduces error, with retry logic for stochastic robustness.
+All 11 tests pass and verify convergence direction, finite outputs, and gradient flow through the first hidden layer. The full quality gate passes with 4494 tests.
 
 ## Test Plan
 
-- Added `test/propagate/MixedSquashChains.ts` with 11 test cases
-- All tests create small networks, run forward + backward passes, and assert
-  convergence direction or gradient finiteness
-- Tests use Australian English spelling
-- All tests pass via `./quality.sh`
+- `test/propagate/MixedSquashChains.ts` — 11 new test cases:
+  - Mixed chain: bounded→bounded (TANH → LOGISTIC → BIPOLAR_SIGMOID)
+  - Mixed chain: unbounded→bounded (ReLU → TANH → LOGISTIC)
+  - Mixed chain: non-differentiable mixed (STEP → ReLU → TANH)
+  - Mixed chain: all saturating (LOGISTIC → TANH → LOGISTIC) in saturation zones
+  - Saturation: TANH(saturated) → LOGISTIC near boundary
+  - Saturation: GAUSSIAN(peak) → SELU gradient flow
+  - Saturation: Exponential(large) → TANH bounded containment
+  - Gradient magnitude: error at first hidden layer is non-trivial and finite
+  - Aggregate mixed: IF → TANH → output convergence
+  - Aggregate mixed: MAXIMUM → LOGISTIC convergence
+  - Safe zone: mixed squash types compose correctly through connections
