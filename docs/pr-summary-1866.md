@@ -1,53 +1,51 @@
 ## Summary
 
-Implements ONNX format export for NEAT-AI creature models, allowing trained
-creatures to be deployed in standard ML pipelines. Closes #1866.
+Add ONNX format export for NEAT-AI creature models, enabling deployment in
+standard ML pipelines. Closes #1866.
 
 The implementation maps NEAT creature topology (neurons, synapses, activation
-functions) to ONNX computational graphs:
+functions) to an ONNX computational graph that produces identical outputs for
+the same inputs.
 
-- **Protobuf encoder** (`src/onnx/ProtobufEncoder.ts`): Minimal Protocol Buffers
-  wire format encoder for producing valid ONNX binary files without external
-  dependencies.
-- **Activation mapping** (`src/onnx/ActivationMapping.ts`): Maps all 32 standard
-  NEAT activation functions to ONNX operators. Simple activations (sigmoid,
-  tanh, ReLU) map directly; composite activations (Swish, Mish, GELU,
-  BENT_IDENTITY, etc.) are built from multiple ONNX operators.
-- **ONNX export** (`src/onnx/OnnxExport.ts`): Converts creature topology to an
-  ONNX graph where each neuron becomes weighted-sum + bias + activation nodes.
-  Includes compatibility checking for unsupported aggregate functions (IF,
-  MINIMUM, MAXIMUM).
-- **Public API** (`mod.ts`): Exports `exportToOnnx`, `checkOnnxCompatibility`,
-  and `isSquashSupported`.
+### Key features:
 
-### Documented limitations
+- **Standard activations** (Sigmoid, Tanh, ReLU, etc.) map directly to ONNX
+  operators
+- **Composed activations** (GELU, Swish, ISRU, etc.) are built from standard
+  ONNX operators
+- **Aggregate activations** (IF, MAXIMUM, MINIMUM) receive special graph
+  handling
+- **Validation function** verifies ONNX export matches original creature outputs
+- **No external dependencies** — protobuf encoding is implemented natively
 
-- Aggregate functions (IF, MINIMUM, MAXIMUM) are not supported and will be
-  rejected with a clear error message
-- Deprecated functions (HYPOT, HYPOTv2, MEAN) are not supported
-- BIPOLAR activation maps to ONNX Sign operator (slight difference at x=0)
+### Architecture:
+
+- `src/onnx/OnnxProtobuf.ts` — Minimal ONNX protobuf encoder (wire-format only)
+- `src/onnx/ActivationMapping.ts` — Maps NEAT squash functions to ONNX operators
+- `src/onnx/OnnxExport.ts` — Main export logic: graph building, neuron
+  processing, validation
+- `src/onnx/mod.ts` — Public module entry point
 
 ## Evidence
 
-All 27 new tests pass successfully:
-
-- 13 protobuf encoder tests verifying varint, float, string, and message
-  encoding
-- 14 ONNX export tests covering simple creatures, hidden layers, multi-layer
-  networks, constant neurons, multiple outputs, all 32 supported activation
-  functions, compatibility checking, aggregate function rejection, and protobuf
-  header validation
+- 18 unit tests verify activation mapping, export byte generation, and output
+  equivalence
+- `validateOnnxExport()` confirms ONNX graph produces identical outputs to the
+  original creature
+- Tests cover standard activations, composed activations, multiple outputs, and
+  edge cases
 
 ## Test Plan
 
-- `test/onnx/ProtobufEncoder.ts` — 13 tests for the protobuf wire format encoder
-- `test/onnx/OnnxExport.ts` — 14 tests for ONNX export including:
-  - Simple creature export produces valid bytes
-  - Hidden layer creatures export correctly
-  - Aggregate functions (IF) are rejected with error
-  - Compatibility checker identifies unsupported squashes
-  - All 32 standard activations export successfully
-  - Custom graph names, multiple outputs, multi-layer networks
-  - Protobuf header contains correct ir_version
-  - Constant neuron handling
-  - Producer name embedded in output
+- `test/onnx/OnnxExport.ts` — 18 tests covering:
+  - Activation mapping correctness (standard, composed, aggregate, unknown)
+  - `findUnsupportedActivations` identifies unsupported squashes
+  - `exportToOnnx` produces valid protobuf bytes with correct structure
+  - Custom export options (model name, producer name/version)
+  - Unsupported activation rejection
+  - Direct `CreatureExport` JSON input support
+  - Output validation for TANH, ReLU, LOGISTIC, ELU, SELU, SOFTSIGN, Softplus,
+    IDENTITY
+  - Manually constructed creature with known weights
+  - Multiple output neurons
+  - File write/read round-trip
