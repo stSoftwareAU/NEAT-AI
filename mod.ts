@@ -437,3 +437,22 @@ export type {
   CheckpointMetadata,
   PopulationSeedingOptions,
 } from "./src/transfer/mod.ts";
+
+/**
+ * ONNX Export Module
+ *
+ * Issue #1866: Export trained creatures as ONNX models for deployment
+ * in standard ML pipelines. Maps NEAT topology to ONNX computational
+ * graphs with standard operator representations.
+ *
+ * @see {@link module:src/onnx/mod}
+ */
+export {
+  checkOnnxCompatibility,
+  exportToOnnx,
+  isSquashSupported,
+} from "./src/onnx/mod.ts";
+export type {
+  OnnxCompatibilityResult,
+  OnnxExportOptions,
+} from "./src/onnx/mod.ts";
