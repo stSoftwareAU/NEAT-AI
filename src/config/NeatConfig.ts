@@ -48,6 +48,7 @@ import {
   parseFineTunePopulation,
   parseHyperparameterEvolution,
   parseMemoryConfig,
+  parseParallelEvaluation,
   parsePlateauDetection,
   parsePredictiveCoding,
   parseQuantumStep,
@@ -533,6 +534,10 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     // Issue #1865: Parse cross-validation configuration
     crossValidation: parseCrossValidation(
       opts.crossValidation as Record<string, unknown> | undefined,
+    ),
+    // Issue #1862: Parse parallel evaluation configuration
+    parallelEvaluation: parseParallelEvaluation(
+      opts.parallelEvaluation as Record<string, unknown> | undefined,
     ),
     // Issue #1620: Parse and resolve output range constraints
     outputRanges: (() => {

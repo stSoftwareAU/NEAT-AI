@@ -77,6 +77,10 @@ import {
   DEFAULT_CROSS_VALIDATION_CONFIG,
   type RequiredCrossValidationConfig,
 } from "./CrossValidationConfig.ts";
+import {
+  DEFAULT_PARALLEL_EVALUATION_CONFIG,
+  type RequiredParallelEvaluationConfig,
+} from "./ParallelEvaluationConfig.ts";
 
 /** Parse worker thread cap configuration (Issue #1569). */
 export function parseWorkerThreadCap(
@@ -715,4 +719,22 @@ export function parseAdaptivePopulation(
       { minExclusive: 0, max: 1 },
     ),
   } as RequiredAdaptivePopulationConfig;
+}
+
+/** Parse parallel evaluation configuration (Issue #1862). */
+export function parseParallelEvaluation(
+  overrides: Record<string, unknown> | undefined,
+): RequiredParallelEvaluationConfig {
+  const d = DEFAULT_PARALLEL_EVALUATION_CONFIG;
+  return {
+    maxConcurrentEvaluations: parseNumber(
+      "Parallel evaluation maxConcurrentEvaluations",
+      overrides?.maxConcurrentEvaluations,
+      d.maxConcurrentEvaluations,
+      { integer: true, min: 0 },
+    ),
+    topologyGrouping: typeof overrides?.topologyGrouping === "boolean"
+      ? overrides.topologyGrouping
+      : d.topologyGrouping,
+  } as RequiredParallelEvaluationConfig;
 }

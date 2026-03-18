@@ -28,6 +28,7 @@ import type { RequiredWorkerThreadCapConfig } from "./WorkerThreadCapConfig.ts";
 import type { RequiredHyperparameterEvolutionConfig } from "./HyperparameterConfig.ts";
 import type { RequiredAdaptivePopulationConfig } from "./AdaptivePopulationConfig.ts";
 import type { RequiredCrossValidationConfig } from "./CrossValidationConfig.ts";
+import type { RequiredParallelEvaluationConfig } from "./ParallelEvaluationConfig.ts";
 
 /**
  * Concrete, fully-populated configuration shape used internally after defaults
@@ -673,4 +674,14 @@ export interface NeatArguments {
    * improving generalisation and reducing overfitting.
    */
   crossValidation: RequiredCrossValidationConfig;
+
+  /**
+   * Parallel batch creature evaluation configuration.
+   *
+   * Issue #1862: Controls topology-aware grouping and concurrency
+   * limits for population fitness evaluation. Topology grouping
+   * clusters same-structure creatures in the evaluation queue to
+   * maximise WASM compilation cache hits across workers.
+   */
+  parallelEvaluation: RequiredParallelEvaluationConfig;
 }
