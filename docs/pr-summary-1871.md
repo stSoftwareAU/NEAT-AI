@@ -3,9 +3,9 @@
 Added diagnostic tests that measure and verify gradient accumulation behaviour
 for neurons with varying connectivity in NEAT topologies. These tests quantify
 how gradient summing (not averaging) in `TopologicalBackpropagation.ts` causes
-neurons with high fan-out to receive proportionally larger gradient signals,
-and demonstrate the limited gradient reach in large saturated networks.
-Closes #1871.
+neurons with high fan-out to receive proportionally larger gradient signals, and
+demonstrate the limited gradient reach in large saturated networks. Closes
+#1871.
 
 ## Evidence
 
