@@ -5,6 +5,13 @@ interface SynapseCommon {
   weight: number;
   type?: "positive" | "negative" | "condition";
 
+  /**
+   * Issue #1861: When true, this synapse's weight is frozen and will not be
+   * modified by backpropagation or mutation. Used for transfer learning to
+   * preserve learned weights from a pre-trained creature.
+   */
+  frozen?: boolean;
+
   tags?: TagInterface[];
 }
 

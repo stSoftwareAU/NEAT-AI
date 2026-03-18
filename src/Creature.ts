@@ -688,6 +688,59 @@ export class Creature implements CreatureInternal {
     this.clearConnectionCaches();
   }
 
+  // ── Transfer Learning (Issue #1861) ─────────────────────────────────────
+
+  /**
+   * Freezes or unfreezes a neuron's bias.
+   * When frozen, the bias will not be modified by backpropagation or mutation.
+   */
+  setNeuronFrozen(index: number, frozen: boolean): void {
+    const neuron = this.neurons[index];
+    neuron.frozen = frozen ? true : undefined;
+  }
+
+  /**
+   * Freezes or unfreezes a synapse's weight.
+   * When frozen, the weight will not be modified by backpropagation or mutation.
+   */
+  setSynapseFrozen(from: number, to: number, frozen: boolean): void {
+    const synapse = this.getSynapse(from, to);
+    if (synapse) {
+      synapse.frozen = frozen ? true : undefined;
+    }
+  }
+
+  /**
+   * Freezes all hidden neurons and their interconnecting synapses.
+   * Useful for transfer learning where only output weights should be trained.
+   */
+  freezeHiddenLayers(): void {
+    for (const neuron of this.neurons) {
+      if (neuron.type === "hidden") {
+        neuron.frozen = true;
+      }
+    }
+    for (const synapse of this.synapses) {
+      const fromNeuron = this.neurons[synapse.from];
+      const toNeuron = this.neurons[synapse.to];
+      if (fromNeuron.type === "hidden" && toNeuron.type === "hidden") {
+        synapse.frozen = true;
+      }
+    }
+  }
+
+  /**
+   * Unfreezes all neurons and synapses.
+   */
+  unfreezeAll(): void {
+    for (const neuron of this.neurons) {
+      neuron.frozen = undefined;
+    }
+    for (const synapse of this.synapses) {
+      synapse.frozen = undefined;
+    }
+  }
+
   // ── Focus ──────────────────────────────────────────────────────────────
 
   public inFocus(

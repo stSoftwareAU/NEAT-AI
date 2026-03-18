@@ -5,6 +5,13 @@ interface NeuronAbstract extends TagsInterface {
   uuid?: string;
   bias?: number;
   squash?: string;
+
+  /**
+   * Issue #1861: When true, this neuron's bias is frozen and will not be
+   * modified by backpropagation or mutation. Used for transfer learning to
+   * preserve learned biases from a pre-trained creature.
+   */
+  frozen?: boolean;
 }
 
 /**

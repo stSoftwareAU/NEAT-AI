@@ -43,8 +43,8 @@ export class ModWeight extends AbstractMutationOperator {
     let relevantConnections: Synapse[];
 
     if (!focusList || focusList.length === 0) {
-      // No focus - use all connections
-      relevantConnections = this.creature.synapses;
+      // No focus - use all non-frozen connections
+      relevantConnections = this.creature.synapses.filter((s) => !s.frozen);
     } else {
       // Collect synapses connected to focused neurons using indexed lookups
       // This is O(focusList.length * (log n + k)) instead of O(synapses * focusList)
@@ -59,7 +59,7 @@ export class ModWeight extends AbstractMutationOperator {
           seen.add(syn);
         }
       }
-      relevantConnections = Array.from(seen);
+      relevantConnections = Array.from(seen).filter((s) => !s.frozen);
     }
 
     let changed = false;

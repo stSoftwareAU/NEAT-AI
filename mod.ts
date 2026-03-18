@@ -380,3 +380,27 @@ export {
   MEMORY_CONSTRAINED_PRESET,
   QUICK_START_PRESET,
 } from "./src/presets/Presets.ts";
+
+/**
+ * Transfer Learning Module
+ *
+ * Issue #1861: Provides foundational transfer learning support:
+ * - Checkpoint export/import for reusing trained creatures across tasks
+ * - UUID mapping for different input/output configurations
+ * - Weight freezing for fine-tuning imported creatures
+ * - Population seeding with pre-trained creatures
+ *
+ * @see {@link module:src/transfer/mod}
+ */
+export {
+  createSeededPopulation,
+  exportCheckpoint,
+  importCheckpoint,
+} from "./src/transfer/mod.ts";
+export type {
+  CheckpointExportOptions,
+  CheckpointImportOptions,
+  CheckpointInterface,
+  CheckpointMetadata,
+  PopulationSeedingOptions,
+} from "./src/transfer/mod.ts";
