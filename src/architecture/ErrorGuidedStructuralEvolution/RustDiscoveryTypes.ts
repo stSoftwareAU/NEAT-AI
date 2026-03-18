@@ -346,6 +346,8 @@ export interface RustCheckGpuResult {
   backend?: string;
   /** wgpu backend name (legacy alias for `backend`). */
   backendName?: string;
+  /** wgpu backend name as returned by the Rust library. */
+  backend?: string;
   /** GPU adapter/device name, e.g. "Apple M1 Pro". */
   adapterName?: string;
   error?: string;
