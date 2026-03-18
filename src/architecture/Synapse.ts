@@ -32,6 +32,12 @@ export class Synapse implements SynapseInternal {
   /** Weight of the connection */
   public weight: number;
 
+  /**
+   * Issue #1861: When true, this synapse's weight is frozen and will not be
+   * modified by backpropagation or mutation.
+   */
+  public frozen?: boolean;
+
   /** Tags for storing metadata about the synapse */
   public tags?: TagInterface[];
 
@@ -102,6 +108,7 @@ export class Synapse implements SynapseInternal {
       fromUUID: fromUUID,
       toUUID: toUUID,
       type: this.type,
+      frozen: this.frozen ? true : undefined,
       tags: this.tags ? this.tags.slice() : undefined,
     };
 
@@ -119,6 +126,7 @@ export class Synapse implements SynapseInternal {
       from: this.from,
       to: this.to,
       type: this.type,
+      frozen: this.frozen ? true : undefined,
       tags: this.tags ? this.tags.slice() : undefined,
     };
 

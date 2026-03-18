@@ -76,7 +76,7 @@ export function adjustedWeight(
   c: Synapse,
   config: BackPropagationConfig,
 ): number {
-  if (config.disableWeightAdjustment) {
+  if (config.disableWeightAdjustment || c.frozen) {
     return c.weight;
   }
   const cs = creatureState.connection(c.from, c.to);
@@ -96,7 +96,7 @@ export function calculateWeight(
   c: Synapse,
   config: BackPropagationConfig,
 ) {
-  if (config.disableWeightAdjustment) {
+  if (config.disableWeightAdjustment || c.frozen) {
     return c.weight;
   }
 

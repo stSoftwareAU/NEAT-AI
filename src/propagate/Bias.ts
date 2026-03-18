@@ -55,7 +55,7 @@ export function adjustedBias(
   if (neuron.type === "constant") {
     return neuron.bias;
   } else {
-    if (config.disableBiasAdjustment) {
+    if (config.disableBiasAdjustment || neuron.frozen) {
       return neuron.bias;
     }
 
@@ -80,7 +80,7 @@ export function calculateBias(
   if (neuron.type === "constant") {
     return neuron.bias;
   } else {
-    if (config.disableBiasAdjustment) {
+    if (config.disableBiasAdjustment || neuron.frozen) {
       return neuron.bias;
     }
     const ns = neuron.creature.state.node(neuron.index);

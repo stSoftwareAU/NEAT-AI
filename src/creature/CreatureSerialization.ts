@@ -204,6 +204,10 @@ export function loadFrom(
     const tmpSynapse = new Synapse(from!, to!, synapse.weight, synapse.type);
     creature.synapses[i] = tmpSynapse;
 
+    if (synapse.frozen) {
+      tmpSynapse.frozen = true;
+    }
+
     if (synapse.tags) {
       tmpSynapse.tags = synapse.tags.slice();
     }
@@ -344,6 +348,9 @@ export function shallowClone(
       original.squash,
     );
     neuron.index = i;
+    if (original.frozen) {
+      neuron.frozen = true;
+    }
     const originalTags = original.tags as TagInterface[] | undefined;
     if (originalTags) {
       (neuron as { tags: TagInterface[] | undefined }).tags = [
@@ -364,6 +371,9 @@ export function shallowClone(
       original.weight,
       original.type,
     );
+    if (original.frozen) {
+      synapse.frozen = true;
+    }
     if (original.tags) {
       synapse.tags = [...original.tags];
     }

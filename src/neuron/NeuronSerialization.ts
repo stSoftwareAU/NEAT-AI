@@ -28,6 +28,7 @@ export function exportJSON(neuron: Neuron): NeuronExport {
       type: neuron.type,
       uuid: neuron.uuid,
       bias: neuron.bias,
+      frozen: neuron.frozen ? true : undefined,
       tags: neuron.tags ? [...neuron.tags] : undefined,
     };
   } else {
@@ -36,6 +37,7 @@ export function exportJSON(neuron: Neuron): NeuronExport {
       uuid: neuron.uuid,
       bias: neuron.bias,
       squash: neuron.squash,
+      frozen: neuron.frozen ? true : undefined,
       tags: neuron.tags ? [...neuron.tags] : undefined,
     };
   }
@@ -88,6 +90,10 @@ export function fromJSON(
     creature,
     json.squash,
   );
+
+  if (json.frozen) {
+    neuron.frozen = true;
+  }
 
   if (json.tags) {
     addTags(neuron, json);
