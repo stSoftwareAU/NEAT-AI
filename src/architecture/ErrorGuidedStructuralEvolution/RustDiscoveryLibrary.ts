@@ -102,6 +102,23 @@ export interface GpuBackendInfo {
 }
 
 /**
+ * Infers the wgpu backend name from the current platform when the Rust
+ * library does not report it explicitly.
+ */
+function inferPlatformBackend(): string | undefined {
+  switch (Deno.build.os) {
+    case "darwin":
+      return "Metal";
+    case "linux":
+      return "Vulkan";
+    case "windows":
+      return "Dx12";
+    default:
+      return undefined;
+  }
+}
+
+/**
  * Returns the internal Rust library symbols for FFI calls.
  * Only call this after verifying `isRustLibraryAvailable()`.
  */
@@ -502,19 +519,22 @@ export function isRustGpuAvailable(): boolean {
       return false;
     }
 
-    // Cache the backend info from a successful probe
-    // Rust library sends "backend"; also accept legacy "backendName"
-    const resolvedBackend = parsed.backend ?? parsed.backendName;
+    // Cache the backend info from a successful probe.
+    // The Rust library may return the backend name as "backendName", "backend",
+    // or omit it entirely. When omitted, infer from the platform since wgpu
+    // uses a predictable default backend per OS.
+    const resolvedBackendName = parsed.backendName ?? parsed.backend ??
+      inferPlatformBackend();
     cachedGpuBackendInfo = {
       available: true,
-      backendName: resolvedBackend,
+      backendName: resolvedBackendName,
       adapterName: parsed.adapterName,
     };
 
     if (!rustGpuWarningEmitted) {
       rustGpuWarningEmitted = true;
-      const backendDesc = parsed.backendName
-        ? ` via ${parsed.backendName}`
+      const backendDesc = resolvedBackendName
+        ? ` via ${resolvedBackendName}`
         : "";
       const adapterDesc = parsed.adapterName ? ` (${parsed.adapterName})` : "";
       getLogger().info(
@@ -650,9 +670,7 @@ export function getGpuBackendInfo(): GpuBackendInfo {
 
 /**
  * Returns the lowercase wgpu backend name (e.g. "metal", "vulkan", "dx12",
- * "gl") when a GPU is available, or `undefined` when no GPU was detected.
- *
- * This is a convenience wrapper around `getGpuBackendInfo()`.
+ * "gl") when a GPU is available, or `undefined` otherwise.
  */
 export function getRustGpuBackend(): string | undefined {
   const info = getGpuBackendInfo();
