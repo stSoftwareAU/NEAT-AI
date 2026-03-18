@@ -57,6 +57,12 @@ export class CreatureExportBuilder {
       // Deep clone memetic data using JSON.parse/stringify for robust cloning
       json.memetic = JSON.parse(JSON.stringify(memetic));
     }
+
+    // Issue #1863: Export per-creature evolvable hyperparameters
+    if (creature.hyperparameters) {
+      json.hyperparameters = { ...creature.hyperparameters };
+    }
+
     return json;
   }
 }

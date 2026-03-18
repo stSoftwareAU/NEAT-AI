@@ -251,6 +251,7 @@ export class ParallelBreeding {
               geneticCompatibilityThreshold:
                 config.geneticCompatibilityThreshold,
               forwardOnly: config.feedbackLoop !== true,
+              hyperparameterEvolution: config.hyperparameterEvolution,
             },
           );
 

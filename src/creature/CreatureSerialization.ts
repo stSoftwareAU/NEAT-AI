@@ -226,6 +226,10 @@ export function loadFrom(
   }
 
   creature.memetic = json.memetic;
+  // Issue #1863: Load per-creature evolvable hyperparameters
+  creature.hyperparameters = json.hyperparameters
+    ? { ...json.hyperparameters }
+    : undefined;
   creature.clearCache();
 
   if (!isSorted) {
@@ -312,6 +316,11 @@ export function shallowClone(
 
   if (creature.memetic) {
     clone.memetic = { ...creature.memetic };
+  }
+
+  // Issue #1863: Copy per-creature evolvable hyperparameters
+  if (creature.hyperparameters) {
+    clone.hyperparameters = { ...creature.hyperparameters };
   }
 
   if (creature.tags) {

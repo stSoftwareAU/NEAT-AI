@@ -77,6 +77,39 @@ export { DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT } from "./src/config/OutputRangeCon
 export { calculateOutputRangePenalty } from "./src/architecture/OutputRangePenalty.ts";
 
 /**
+ * Hyperparameter Evolution
+ *
+ * Issue #1863: Per-creature evolvable hyperparameters (learning rate,
+ * mutation rates, regularisation strength) subject to mutation and crossover.
+ *
+ * @see {@link module:src/config/HyperparameterConfig}
+ */
+export type {
+  EvolvableHyperparameters,
+  HyperparameterEvolutionConfig,
+  RequiredEvolvableHyperparameters,
+  RequiredHyperparameterEvolutionConfig,
+} from "./src/config/HyperparameterConfig.ts";
+export {
+  DEFAULT_EVOLVABLE_HYPERPARAMETERS,
+  DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,
+} from "./src/config/HyperparameterConfig.ts";
+
+/**
+ * Adaptive Population Sizing
+ *
+ * Issue #1863: Automatically adjust population size based on
+ * diversity metrics and convergence progress.
+ *
+ * @see {@link module:src/config/AdaptivePopulationConfig}
+ */
+export type {
+  AdaptivePopulationConfig,
+  RequiredAdaptivePopulationConfig,
+} from "./src/config/AdaptivePopulationConfig.ts";
+export { DEFAULT_ADAPTIVE_POPULATION_CONFIG } from "./src/config/AdaptivePopulationConfig.ts";
+
+/**
  * Cost Interface
  *
  * This interface defines the contract for cost functions used in neural network training.
