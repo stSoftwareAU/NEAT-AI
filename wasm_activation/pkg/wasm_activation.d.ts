@@ -1178,14 +1178,6 @@ export interface InitOutput {
   readonly predictivecodingengine_num_inputs: (a: number) => number;
   readonly predictivecodingengine_num_neurons: (a: number) => number;
   readonly predictivecodingengine_num_outputs: (a: number) => number;
-  readonly predictivecodingengine_compute_gradients_wasm: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-  ) => [number, number];
   readonly accumulate_bias_persistent_4way: (
     a: number,
     b: number,
@@ -1238,6 +1230,15 @@ export interface InitOutput {
     j: number,
     k: number,
   ) => void;
+  readonly free_training_state: () => void;
+  readonly get_training_state_num_neurons: () => number;
+  readonly get_training_state_num_synapses: () => number;
+  readonly init_training_state: (a: number, b: number) => void;
+  readonly read_all_neuron_state: () => [number, number];
+  readonly read_all_synapse_state: () => [number, number];
+  readonly read_neuron_state: (a: number) => [number, number];
+  readonly read_synapse_state: (a: number) => [number, number];
+  readonly reset_training_state: () => void;
   readonly distribute_elastic_error: (
     a: number,
     b: number,
@@ -1248,15 +1249,14 @@ export interface InitOutput {
     g: number,
     h: number,
   ) => [number, number];
-  readonly free_training_state: () => void;
-  readonly get_training_state_num_neurons: () => number;
-  readonly get_training_state_num_synapses: () => number;
-  readonly init_training_state: (a: number, b: number) => void;
-  readonly read_all_neuron_state: () => [number, number];
-  readonly read_all_synapse_state: () => [number, number];
-  readonly read_neuron_state: (a: number) => [number, number];
-  readonly read_synapse_state: (a: number) => [number, number];
-  readonly reset_training_state: () => void;
+  readonly predictivecodingengine_compute_gradients_wasm: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => [number, number];
   readonly accumulate_bias_batch_4way: (
     a: number,
     b: number,
