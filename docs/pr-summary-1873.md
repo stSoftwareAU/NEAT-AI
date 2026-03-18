@@ -1,39 +1,50 @@
 ## Summary
 
-Improve near-zero weight error propagation stability by clamping out-of-range
-targets to the squash function's range boundary instead of silently dropping
+Improved near-zero weight error propagation stability by clamping out-of-range
+target activations to the squash range boundary instead of silently dropping
 them. Closes #1873.
 
-When a synapse weight is near zero, dividing by the effective weight
-(plankConstant ≈ 1e-7) produces extreme `targetFromActivation` values that fall
-outside the upstream neuron's squash range. Previously these were silently
-dropped via an `outOfRange` check, creating dead gradient paths through
-near-zero-weight connections. In large creatures with many near-zero weight
-synapses, this prevented gradient signal from reaching significant portions of
-the network.
+When a synapse weight is near zero, dividing by the minimum effective weight
+(`plankConstant` = 1e-7) produces a target activation far outside the upstream
+neuron's squash range (e.g., TANH [-1, 1]). Previously, these out-of-range
+targets were dropped entirely, creating dead gradient paths through near-zero
+weight connections. Now they are clamped to the range boundary, propagating a
+reduced gradient instead.
 
-The fix replaces the drop-on-out-of-range behaviour with
-`Math.max(range.low,
-Math.min(range.high, targetFromActivation))`, so a reduced
-gradient always propagates through near-zero-weight connections. This preserves
-all existing finite value protections (Issue #1314) since
-`Number.isFinite(clampedTarget)` is still checked before accumulation.
+### Changes
+
+- **`src/propagate/TopologicalBackpropagation.ts`**: Replaced the out-of-range
+  drop logic with
+  `Math.max(range.low, Math.min(range.high, targetFromActivation))` clamping.
+  The `Number.isFinite()` guard is preserved to maintain Issue #1314 protections
+  against non-finite values.
+
+- **`test/propagate/TinyWeightRecursionAvoidance.ts`**: Updated to reflect the
+  new behaviour — gradient now propagates (clamped) through tiny weights instead
+  of being dropped. The test verifies the bias changes and remains finite.
+
+- **`test/propagate/NearZeroWeightClamping.ts`** (new): 5 tests verifying:
+  - Gradient reaches hidden neurons through near-zero outbound weights
+  - Hidden neuron bias updates via clamped gradient
+  - Gradient flows through deep near-zero weight chains
+  - No gradient explosion from clamped targets
+  - Large creature stability with near-zero weight paths
 
 ## Evidence
 
-- All 4678 tests pass including 573 propagate-specific tests
-- `./quality.sh` passes cleanly
-- No non-finite values introduced (verified by dedicated test)
-- Updated `TinyWeightRecursionAvoidance` test to verify finite bounds instead of
-  zero change, reflecting the intentional new behaviour
+All 4679 tests pass including the new and modified tests. The key tests that
+failed before the fix (proving the bug existed) and pass after:
+
+- `NearZeroWeightClamping - gradient reaches hidden neuron through near-zero outbound weight`
+- `NearZeroWeightClamping - hidden bias updates through near-zero outbound weight`
+- `NearZeroWeightClamping - gradient flows through deep near-zero chain`
 
 ## Test Plan
 
-- Added `test/propagate/NearZeroWeightGradientPropagation.ts` with 4 tests:
-  - Clamped gradient propagates through near-zero weight with TANH
-  - Upstream neuron receives gradient through near-zero weight
-  - No non-finite values from clamped propagation
-  - Multiple near-zero weights do not block all gradient paths
-- Updated `test/propagate/TinyWeightRecursionAvoidance.ts`: assertion changed
-  from exact-zero bias change to finite-value check, since clamped gradient now
-  correctly propagates a reduced signal (documented business logic change)
+- Added `test/propagate/NearZeroWeightClamping.ts` with 5 tests for clamped
+  gradient propagation
+- Modified `test/propagate/TinyWeightRecursionAvoidance.ts` to assert new
+  clamping behaviour (business logic change documented: gradient now propagates
+  through tiny weights instead of being dropped)
+- Existing `test/propagate/ZeroWeightRecovery.ts` tests continue to pass
+- Full `./quality.sh` passes (4679 tests, 0 failures)
