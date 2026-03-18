@@ -210,7 +210,8 @@ class DataRecorder {
     if (!rustEnabled) {
       if (shouldLogDiscovery(this.config)) {
         getLogger().warn(
-          `🔧 Discovery skipped: Rust module or GPU not available. Discovery requires the NEAT-AI-Discovery Rust library to be built and available, and a GPU to be present.`,
+          `🔧 Discovery skipped: Rust discovery library not available. ` +
+            `Install NEAT-AI-Discovery or set NEAT_AI_DISCOVERY_LIB_PATH.`,
         );
       }
       // Return empty result - discovery is skipped

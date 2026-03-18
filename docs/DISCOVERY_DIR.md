@@ -29,10 +29,10 @@ export function isRustDiscoveryEnabled(): boolean {
 }
 ```
 
-> [!WARNING]
-> If `isRustDiscoveryEnabled()` returns `false`, skip the discovery pass or
-> surface a configuration error to the operator. There is no TypeScript fallback
-> path; without the Rust module the discovery phase is skipped entirely.
+> [!NOTE]
+> If `isRustDiscoveryEnabled()` returns `false`, the Rust library is not
+> available and the discovery phase is skipped. When the library is available,
+> GPU acceleration is automatic (Metal/Vulkan/DX12 via wgpu) with CPU fallback.
 
 When the analyser is available, neuron discovery currently explores industry
 standard squashes including ReLU, GELU, ELU, SELU, Softplus, LOGISTIC (sigmoid),
