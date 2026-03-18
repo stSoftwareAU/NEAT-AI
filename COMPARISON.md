@@ -68,8 +68,8 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
   [Rao & Ballard (1999)](https://www.nature.com/articles/nn0199_79) that uses
   iterative inference settling and local Hebbian learning rules. Configurable
   via `PredictiveCodingConfig` with inference steps, learning rate, and energy
-  convergence thresholds. See [PREDICTIVE_CODING.md](./docs/PREDICTIVE_CODING.md)
-  for architecture details.
+  convergence thresholds. See
+  [PREDICTIVE_CODING.md](./docs/PREDICTIVE_CODING.md) for architecture details.
 
 ### ✨ Unique Features
 
@@ -488,7 +488,8 @@ Hebbian learning rules.
 1. Input and target values are clamped to the network
 2. An iterative settling loop runs inference, adjusting latent values to
    minimise prediction error energy (E = ½ Σ ε²)
-3. Once settled, local Hebbian weight updates are computed: ΔW = η · f'(a) · ε · x
+3. Once settled, local Hebbian weight updates are computed: ΔW = η · f'(a) · ε ·
+   x
 4. Updates are applied with symmetric (shared) weights rather than separate
    prediction weights
 
@@ -516,8 +517,8 @@ monitor disk space to prevent failures.
   score, allowing re-application of known wins to the current fittest creature
 - **Failure Cache**: Caches candidates that failed to improve, preventing
   redundant re-evaluation with smart bucketing by weight order-of-magnitude
-- **Cache Eviction**: Age-based (TTL) and size-based eviction prevents
-  unbounded cache growth
+- **Cache Eviction**: Age-based (TTL) and size-based eviction prevents unbounded
+  cache growth
 - **Cache-Informed Candidates**: Historical successes inform multi-neuron
   removal combinations and supplement Phase 2 candidate building
 - **Disk Space Monitoring**: Pre-flight checks with configurable critical and
@@ -625,9 +626,9 @@ failures.
    for clarification.
 7. **Hyperparameter Sensitivity**: Many parameters to tune, though our
    implementation addresses this with adaptive mechanisms
-   (`AdaptiveMutationThresholds`, `PlateauDetector`, `StabilityAdaptationConfig`)
-   and by randomising hyperparameters each evolution run (which works well in
-   practice - see note below)
+   (`AdaptiveMutationThresholds`, `PlateauDetector`,
+   `StabilityAdaptationConfig`) and by randomising hyperparameters each
+   evolution run (which works well in practice - see note below)
 8. **GPU Support Limited**: Currently only Metal (macOS), not CUDA/OpenCL
 
 > [!TIP]
@@ -790,12 +791,12 @@ but creature activation during training is still largely sequential.
 **What We Have**:
 
 - **Batch Discovery Validation**: `BatchDiscoveryValidator` validates multiple
-  discovery candidates in a single call with type-based grouping (structural
-  vs weight-only), result caching, early-exit on structural failure, and
-  detailed validation statistics. This significantly reduces redundant
-  validation during the discovery pipeline.
-- **Mini-Batch Gradient Descent**: Configurable batch sizes for
-  backpropagation weight updates.
+  discovery candidates in a single call with type-based grouping (structural vs
+  weight-only), result caching, early-exit on structural failure, and detailed
+  validation statistics. This significantly reduces redundant validation during
+  the discovery pipeline.
+- **Mini-Batch Gradient Descent**: Configurable batch sizes for backpropagation
+  weight updates.
 
 > [!WARNING]
 > Without true parallel batch activation across the full population, training
@@ -889,16 +890,16 @@ regularisation with L2 support.
 
 #### 7. 🔧 Hyperparameter Evolution
 
-**Current State**: Several adaptive hyperparameter mechanisms exist, though
-full meta-learning is not yet implemented.
+**Current State**: Several adaptive hyperparameter mechanisms exist, though full
+meta-learning is not yet implemented.
 
 **What We Have**:
 
 - **Adaptive Mutation Thresholds**: `AdaptiveMutationThresholds` adjusts the
   ratio of topology vs weight/bias mutations based on creature size (neuron
-  count). Large creatures (≥300 neurons) receive 90% weight/bias mutations
-  and only 10% topology expansion, with linear interpolation for medium
-  creatures (100–299 neurons).
+  count). Large creatures (≥300 neurons) receive 90% weight/bias mutations and
+  only 10% topology expansion, with linear interpolation for medium creatures
+  (100–299 neurons).
 - **Plateau Detection**: `PlateauDetector` monitors fitness improvement rates
   across generations and adapts mutation rates—doubling the mutation multiplier
   when on a plateau and reducing it during rapid improvement to escape local
@@ -930,8 +931,8 @@ full meta-learning is not yet implemented.
 > [!NOTE]
 > GPU acceleration uses the wgpu cross-platform abstraction, which automatically
 > selects the best available backend: Metal on macOS, Vulkan on Linux, and DX12
-> on Windows. When no compatible GPU is detected, discovery gracefully falls back
-> to CPU computation.
+> on Windows. When no compatible GPU is detected, discovery gracefully falls
+> back to CPU computation.
 
 **What's Implemented**:
 
@@ -1027,10 +1028,10 @@ support exists via the `feedbackLoop` configuration.
 
 - **Feedback Loop**: The `feedbackLoop` option in `NeatArguments` enables
   recurrent connections (self-loops and backward connections), where the
-  previous activation result feeds back into the next interaction. When
-  enabled, recurrent mutation operations (`ADD_BACK_CONN`, `ADD_SELF_CONN`,
-  etc.) become available, allowing networks to evolve memory-like structures
-  suitable for time-series forecasting. See the
+  previous activation result feeds back into the next interaction. When enabled,
+  recurrent mutation operations (`ADD_BACK_CONN`, `ADD_SELF_CONN`, etc.) become
+  available, allowing networks to evolve memory-like structures suitable for
+  time-series forecasting. See the
   [NARX feedback neural networks](https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html)
   reference for the underlying concept.
 
@@ -1125,10 +1126,10 @@ NEAT offers unique advantages in automatic architecture search and adaptive
 learning, but historically suffered from computational inefficiency and
 scalability limitations. Our implementation addresses many of these through GPU
 acceleration, memetic evolution, error-guided discovery with intelligent
-caching, predictive coding, adaptive hyperparameter mechanisms, and
-weight/bias regularisation. However, gaps remain in transfer learning,
-unsupervised learning, and attention mechanisms that represent opportunities
-for future development.
+caching, predictive coding, adaptive hyperparameter mechanisms, and weight/bias
+regularisation. However, gaps remain in transfer learning, unsupervised
+learning, and attention mechanisms that represent opportunities for future
+development.
 
 The choice between NEAT and traditional neural networks depends on:
 
