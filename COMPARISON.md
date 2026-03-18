@@ -924,27 +924,34 @@ full meta-learning is not yet implemented.
 
 #### 8. 🖥️ Cross-Platform GPU Support
 
-**Current State**: macOS Metal only for GPU acceleration.
+**Current State**: Cross-platform GPU acceleration via wgpu abstraction layer.
 
-> [!WARNING]
-> GPU acceleration is currently macOS-only (Metal). Linux and Windows users
-> running NVIDIA or AMD hardware will not benefit from GPU-accelerated discovery
-> until CUDA or cross-platform support is added.
+> [!NOTE]
+> GPU acceleration uses the wgpu cross-platform abstraction, which automatically
+> selects the best available backend: Metal on macOS, Vulkan on Linux, and DX12
+> on Windows. When no compatible GPU is detected, discovery gracefully falls back
+> to CPU computation.
+
+**What's Implemented**:
+
+- ✅ Automatic backend selection via wgpu (Metal, Vulkan, DX12, OpenGL)
+- ✅ CPU fallback when no compatible GPU is available
+- ✅ GPU backend detection and reporting (`getGpuBackendInfo()`)
+- ✅ Cross-platform `requireGpu: false` — GPU accelerates but is not required
 
 **What's Missing**:
 
-- CUDA support for NVIDIA GPUs
-- OpenCL support for cross-platform
-- Vulkan support
-- CPU fallback optimisation
+- CUDA support for NVIDIA GPUs (wgpu uses Vulkan on Linux instead)
+- OpenCL support for older hardware
+- Benchmarking across all supported platforms
 
-**Impact**: Broader hardware support, better performance on more systems
+**Impact**: Broader hardware support, discovery works on any platform
 
 **References**:
 
-- [CUDA Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/)
-- [OpenCL Specification](https://www.khronos.org/opencl/)
 - [wgpu Documentation](https://wgpu.rs/) - Cross-platform GPU abstraction
+- [Vulkan Specification](https://www.vulkan.org/)
+- [CUDA Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/)
 
 ### 🟢 Low Priority
 

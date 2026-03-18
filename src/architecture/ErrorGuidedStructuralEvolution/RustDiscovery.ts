@@ -58,6 +58,7 @@ export {
   findRustLibrary,
   findRustLibraryFromOptions,
   getDiscoveryVersion,
+  getGpuBackendInfo,
   isRustDiscoveryEnabled,
   isRustGpuAvailable,
   isRustLibraryAvailable,
@@ -65,6 +66,8 @@ export {
   rustLibraryExists,
   shouldSkipRustDiscoveryTests,
 } from "./RustDiscoveryLibrary.ts";
+
+export type { GpuBackendInfo } from "./RustDiscoveryLibrary.ts";
 
 // FFI operations
 export {

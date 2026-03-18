@@ -77,12 +77,29 @@ let cachedDiscoveryVersion: string | null | undefined = null;
 /**
  * Tristate for rust discovery availability.
  * - "unknown": Not yet checked
- * - true: Library is available AND GPU is available
- * - false: Library is not available OR GPU is not available
+ * - true: Library is available (GPU is optional — provides acceleration)
+ * - false: Library is not available
  */
 type RustDiscoveryEnabledState = "unknown" | true | false;
 
 let rustDiscoveryEnabledState: RustDiscoveryEnabledState = "unknown";
+
+/** Cached GPU backend information from the last successful probe. */
+let cachedGpuBackendInfo: GpuBackendInfo | null = null;
+
+/**
+ * Describes the GPU backend selected by wgpu (if any).
+ */
+export interface GpuBackendInfo {
+  /** Whether a usable GPU was detected. */
+  available: boolean;
+  /** wgpu backend name, e.g. "Metal", "Vulkan", "Dx12", "Gl". */
+  backendName?: string;
+  /** GPU adapter/device name, e.g. "Apple M1 Pro". */
+  adapterName?: string;
+  /** Reason GPU is unavailable (when `available` is false). */
+  reason?: string;
+}
 
 /**
  * Returns the internal Rust library symbols for FFI calls.
@@ -275,6 +292,7 @@ export function closeRustLibrary(): void {
     rustLib = null;
     rustGpuWarningEmitted = false;
     cachedDiscoveryVersion = null;
+    cachedGpuBackendInfo = null;
   }
   // Reset cached discovery state so it will be re-checked on next call
   rustDiscoveryEnabledState = "unknown";
@@ -428,8 +446,9 @@ export function getDiscoveryVersion(): string | undefined {
 /**
  * Checks whether the loaded Rust discovery library reports a usable GPU.
  *
- * Returns false (and logs a warning once) when the probe fails or reports
- * that no GPU is available on this worker.
+ * Returns false (and logs an info message once) when the probe fails or reports
+ * that no GPU is available on this worker. Discovery will still function via
+ * CPU fallback — GPU accelerates analysis but is not required.
  */
 export function isRustGpuAvailable(): boolean {
   if (!isRustLibraryAvailable()) {
@@ -443,9 +462,10 @@ export function isRustGpuAvailable(): boolean {
     if (resultPtr === null) {
       if (!rustGpuWarningEmitted) {
         rustGpuWarningEmitted = true;
-        getLogger().warn(
-          "⚠️  Discovery GPU probe returned a null pointer. " +
-            "Discovery will be disabled on this worker.",
+        cachedGpuBackendInfo = { available: false, reason: "null pointer" };
+        getLogger().info(
+          "ℹ️  Discovery GPU probe returned a null pointer. " +
+            "Discovery will use CPU fallback on this worker.",
         );
       }
       return false;
@@ -460,10 +480,10 @@ export function isRustGpuAvailable(): boolean {
     } catch {
       if (!rustGpuWarningEmitted) {
         rustGpuWarningEmitted = true;
-        getLogger().warn(
-          "⚠️  Discovery GPU probe returned invalid JSON. " +
-            "Discovery will be disabled on this worker.",
-          resultJson,
+        cachedGpuBackendInfo = { available: false, reason: "invalid JSON" };
+        getLogger().info(
+          "ℹ️  Discovery GPU probe returned invalid JSON. " +
+            "Discovery will use CPU fallback on this worker.",
         );
       }
       return false;
@@ -473,21 +493,44 @@ export function isRustGpuAvailable(): boolean {
       if (!rustGpuWarningEmitted) {
         rustGpuWarningEmitted = true;
         const detail = parsed.error ?? "no usable GPU detected";
-        getLogger().warn(
-          "🚧 Discovery disabled: Rust discovery library is loaded but no usable GPU " +
-            `was reported for this worker (${detail}).`,
+        cachedGpuBackendInfo = { available: false, reason: detail };
+        getLogger().info(
+          "ℹ️  No GPU detected — discovery will use CPU fallback " +
+            `(${detail}). GPU accelerates analysis but is not required.`,
         );
       }
       return false;
+    }
+
+    // Cache the backend info from a successful probe
+    cachedGpuBackendInfo = {
+      available: true,
+      backendName: parsed.backendName,
+      adapterName: parsed.adapterName,
+    };
+
+    if (!rustGpuWarningEmitted) {
+      rustGpuWarningEmitted = true;
+      const backendDesc = parsed.backendName
+        ? ` via ${parsed.backendName}`
+        : "";
+      const adapterDesc = parsed.adapterName ? ` (${parsed.adapterName})` : "";
+      getLogger().info(
+        `✅ GPU acceleration enabled${backendDesc}${adapterDesc}.`,
+      );
     }
 
     return true;
   } catch (error) {
     if (!rustGpuWarningEmitted) {
       rustGpuWarningEmitted = true;
-      getLogger().warn(
-        "⚠️  Discovery GPU probe threw an error. Discovery will be disabled " +
-          "on this worker.",
+      cachedGpuBackendInfo = {
+        available: false,
+        reason: String(error),
+      };
+      getLogger().info(
+        "ℹ️  Discovery GPU probe threw an error. " +
+          "Discovery will use CPU fallback on this worker.",
         error,
       );
     }
@@ -511,10 +554,16 @@ const RUST_DISCOVERY_OPTIONAL_ENV = "NEAT_RUST_DISCOVERY_OPTIONAL";
 
 /**
  * Checks if the Rust discovery module is enabled and available.
- * Discovery is an extension that requires both the Rust library AND a GPU.
+ *
+ * Discovery requires the Rust library. GPU acceleration is optional —
+ * when no GPU is detected, the Rust library falls back to CPU computation.
+ * This enables cross-platform discovery on macOS (Metal), Linux (Vulkan),
+ * and Windows (DX12) via the wgpu abstraction layer, with automatic CPU
+ * fallback when no compatible GPU is present.
+ *
  * This function caches the result after the first check for low overhead.
  *
- * @returns true if both library and GPU are available, false otherwise.
+ * @returns true if the Rust library is available, false otherwise.
  */
 export function isRustDiscoveryEnabled(): boolean {
   // Return cached result if already checked
@@ -523,16 +572,18 @@ export function isRustDiscoveryEnabled(): boolean {
   }
 
   try {
-    // First check: Library must be available
+    // Library must be available — GPU is optional (provides acceleration)
     if (!isRustLibraryAvailable()) {
       rustDiscoveryEnabledState = false;
       return false;
     }
 
-    // Second check: GPU must be available (discovery requires GPU)
-    const gpuAvailable = isRustGpuAvailable();
-    rustDiscoveryEnabledState = gpuAvailable;
-    return gpuAvailable;
+    // Probe GPU availability for logging/telemetry — result does not gate
+    // discovery enablement. The Rust library handles CPU fallback internally.
+    isRustGpuAvailable();
+
+    rustDiscoveryEnabledState = true;
+    return true;
   } catch {
     // FFI not allowed or library not available
     rustDiscoveryEnabledState = false;
@@ -562,8 +613,37 @@ export function shouldSkipRustDiscoveryTests(): boolean {
   if (!optional) {
     return false;
   }
-  // Check for availability (library + GPU) for discovery tests
+  // Check for library availability — GPU is optional (CPU fallback is fine)
   return !isRustDiscoveryEnabled();
+}
+
+/**
+ * Returns information about the GPU backend selected by wgpu.
+ *
+ * Call this after `isRustDiscoveryEnabled()` to learn which GPU backend
+ * (Metal, Vulkan, DX12, OpenGL) was selected, or whether CPU fallback is
+ * being used. The result is cached after the first GPU probe.
+ *
+ * @returns GPU backend information, or a "not probed" result if the library
+ *          has not been loaded yet.
+ */
+export function getGpuBackendInfo(): GpuBackendInfo {
+  if (cachedGpuBackendInfo !== null) {
+    return cachedGpuBackendInfo;
+  }
+
+  // If the library isn't available, return unavailable
+  if (!isRustLibraryAvailable()) {
+    return { available: false, reason: "Rust library not loaded" };
+  }
+
+  // Trigger GPU probe (which populates the cache)
+  isRustGpuAvailable();
+
+  return cachedGpuBackendInfo ?? {
+    available: false,
+    reason: "GPU probe did not populate cache",
+  };
 }
 
 /**
