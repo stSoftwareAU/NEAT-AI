@@ -143,8 +143,8 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
 - ✅ **ONNX Format Export**: Exports trained creatures to the
   [ONNX](https://onnx.ai/) binary format for interoperability with standard ML
   tooling. Converts creature topology to ONNX computational graphs with
-  compatibility checking for unsupported features (aggregate functions, recurrent
-  connections).
+  compatibility checking for unsupported features (aggregate functions,
+  recurrent connections).
 - ✅ **Hyperparameter Self-Adaptation**: Per-creature evolvable hyperparameters
   (learning rate, mutation rates, regularisation strength) subject to Gaussian
   mutation and weighted-average crossover, reducing the need for manual
@@ -651,8 +651,8 @@ failures.
    different behaviours
 9. **Transfer Learning**: Checkpoint export/import with UUID-based neuron
    mapping and weight freezing for fine-tuning
-10. **ONNX Export**: Standard format export for interoperability with existing ML
-    pipelines
+10. **ONNX Export**: Standard format export for interoperability with existing
+    ML pipelines
 11. **Comprehensive Regularisation**: Dropout, L1/L2 weight & bias decay, sparse
     training, neuron pruning, and cost-of-growth penalty
 12. **Self-Tuning Hyperparameters**: Per-creature evolvable learning rate,
@@ -682,8 +682,8 @@ failures.
    (`AdaptiveMutationThresholds`), plateau detection (`PlateauDetector`),
    stability adaptation (`StabilityAdaptationConfig`), and randomised
    hyperparameters each evolution run (see note below)
-7. **No Native CUDA**: GPU acceleration uses wgpu (Metal, Vulkan, DX12) with
-   CPU fallback rather than native CUDA for NVIDIA GPUs
+7. **No Native CUDA**: GPU acceleration uses wgpu (Metal, Vulkan, DX12) with CPU
+   fallback rather than native CUDA for NVIDIA GPUs
 
 > [!TIP]
 > Our implementation handles hyperparameter sensitivity well by randomising
@@ -742,10 +742,10 @@ across related tasks with different input/output configurations.
 
 - ✅ **Checkpoint Export/Import**: Save and load pre-trained creatures via the
   `Checkpoint` class with full topology and weight serialisation
-- ✅ **UUID-Based Neuron Mapping**: Creatures with different topologies can share
-  compatible sub-networks through UUID-based matching
-- ✅ **Weight Freezing**: Imported hidden layers can be frozen during fine-tuning
-  (`freezeHidden` option) so only new connections are trained
+- ✅ **UUID-Based Neuron Mapping**: Creatures with different topologies can
+  share compatible sub-networks through UUID-based matching
+- ✅ **Weight Freezing**: Imported hidden layers can be frozen during
+  fine-tuning (`freezeHidden` option) so only new connections are trained
 - ✅ **Population Seeding**: `createSeededPopulation()` initialises a new
   population from pre-trained creatures, enabling transfer across tasks
 
