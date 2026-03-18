@@ -3,9 +3,9 @@
 Diagnostic tests that measure and verify gradient accumulation behaviour for
 neurons with varying connectivity in NEAT topologies. Closes #1871.
 
-In `TopologicalBackpropagation.ts`, error signals from multiple downstream
-paths are summed, not averaged (Issue #1651). These tests quantify the
-resulting gradient scaling imbalance for neurons with different fan-out counts.
+In `TopologicalBackpropagation.ts`, error signals from multiple downstream paths
+are summed, not averaged (Issue #1651). These tests quantify the resulting
+gradient scaling imbalance for neurons with different fan-out counts.
 
 ## Evidence
 
