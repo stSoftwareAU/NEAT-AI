@@ -25,7 +25,7 @@ Deno.test({
     if (info.available) {
       // When GPU is available, backend name should be reported (if supported)
       if (info.backendName) {
-        const validBackends = ["Metal", "Vulkan", "Dx12", "Gl"];
+        const validBackends = ["metal", "vulkan", "dx12", "gl"];
         assertEquals(
           validBackends.includes(info.backendName),
           true,

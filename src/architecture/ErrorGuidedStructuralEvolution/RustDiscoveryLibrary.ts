@@ -503,9 +503,11 @@ export function isRustGpuAvailable(): boolean {
     }
 
     // Cache the backend info from a successful probe
+    // Rust library sends "backend"; also accept legacy "backendName"
+    const resolvedBackend = parsed.backend ?? parsed.backendName;
     cachedGpuBackendInfo = {
       available: true,
-      backendName: parsed.backendName,
+      backendName: resolvedBackend,
       adapterName: parsed.adapterName,
     };
 
@@ -644,6 +646,20 @@ export function getGpuBackendInfo(): GpuBackendInfo {
     available: false,
     reason: "GPU probe did not populate cache",
   };
+}
+
+/**
+ * Returns the lowercase wgpu backend name (e.g. "metal", "vulkan", "dx12",
+ * "gl") when a GPU is available, or `undefined` when no GPU was detected.
+ *
+ * This is a convenience wrapper around `getGpuBackendInfo()`.
+ */
+export function getRustGpuBackend(): string | undefined {
+  const info = getGpuBackendInfo();
+  if (!info.available || !info.backendName) {
+    return undefined;
+  }
+  return info.backendName.toLowerCase();
 }
 
 /**
