@@ -1,13 +1,15 @@
 ## Summary
 
 Add targeted test cases exercising back propagation through chains of different
-squash functions to identify corner cases where gradient flow degrades. Closes #1870.
+squash functions to identify corner cases where gradient flow degrades. Closes
+#1870.
 
 ## Evidence
 
 All 11 new tests pass via `./quality.sh` (4494 total tests, 0 failures).
 
 Test cases cover:
+
 1. **Bounded→Bounded**: TANH → LOGISTIC → BIPOLAR_SIGMOID
 2. **Unbounded→Bounded**: ReLU → TANH → LOGISTIC
 3. **Non-differentiable mixed**: STEP → ReLU → TANH
