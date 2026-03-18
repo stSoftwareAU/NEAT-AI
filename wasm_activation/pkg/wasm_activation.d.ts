@@ -1007,73 +1007,357 @@ export type InitInput =
   | WebAssembly.Module;
 
 export interface InitOutput {
-    readonly memory: WebAssembly.Memory;
-    readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
-    readonly compilednetwork_activate: (a: number, b: number, c: number, d: number) => [number, number];
-    readonly compilednetwork_activate_and_trace: (a: number, b: number, c: number, d: number) => [number, number];
-    readonly compilednetwork_activate_and_trace_batch_4way: (a: number, b: number, c: number, d: number, e: number) => [number, number];
-    readonly compilednetwork_activate_into: (a: number, b: number, c: number, d: number, e: number, f: any) => void;
-    readonly compilednetwork_activate_view: (a: number, b: number, c: number, d: number) => any;
-    readonly compilednetwork_new: (a: number, b: number) => [number, number, number];
-    readonly compilednetwork_num_inputs: (a: number) => number;
-    readonly compilednetwork_num_neurons: (a: number) => number;
-    readonly compilednetwork_num_synapses: (a: number) => number;
-    readonly compilednetwork_reset_state: (a: number) => void;
-    readonly cross_entropy_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly hinge_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly mae_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly mape_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly mse_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly msle_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly calculate_error: (a: number, b: number, c: number, d: number) => number;
-    readonly calculate_error_batch_4way: (a: number, b: any, c: any, d: any) => any;
-    readonly derivative: (a: number, b: number) => number;
-    readonly derivative_batch_4way: (a: number, b: number, c: number, d: number, e: number) => any;
-    readonly fused_error_distribution: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => [number, number];
-    readonly get_range: (a: number) => any;
-    readonly limit_range: (a: number, b: number) => number;
-    readonly safe_zone_adjustment: (a: number, b: number, c: number, d: number) => number;
-    readonly safe_zone_adjustment_batch: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
-    readonly squash: (a: number, b: number) => number;
-    readonly unsquash: (a: number, b: number, c: number) => number;
-    readonly validate_range: (a: number, b: number) => number;
-    readonly version: () => [number, number];
-    readonly __wbg_predictivecodingengine_free: (a: number, b: number) => void;
-    readonly predictivecodingengine_infer_batch_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
-    readonly predictivecodingengine_infer_wasm: (a: number, b: number, c: number, d: number, e: number) => [number, number];
-    readonly predictivecodingengine_new: (a: number, b: number) => [number, number, number];
-    readonly predictivecodingengine_num_inputs: (a: number) => number;
-    readonly predictivecodingengine_num_neurons: (a: number) => number;
-    readonly predictivecodingengine_num_outputs: (a: number) => number;
-    readonly accumulate_bias_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
-    readonly accumulate_bias_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
-    readonly accumulate_weight_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
-    readonly accumulate_weight_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
-    readonly free_training_state: () => void;
-    readonly get_training_state_num_neurons: () => number;
-    readonly get_training_state_num_synapses: () => number;
-    readonly init_training_state: (a: number, b: number) => void;
-    readonly read_all_neuron_state: () => [number, number];
-    readonly read_all_synapse_state: () => [number, number];
-    readonly read_neuron_state: (a: number) => [number, number];
-    readonly read_synapse_state: (a: number) => [number, number];
-    readonly reset_training_state: () => void;
-    readonly distribute_elastic_error: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
-    readonly predictivecodingengine_compute_gradients_wasm: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
-    readonly accumulate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
-    readonly accumulate_bias_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
-    readonly accumulate_weight_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
-    readonly accumulate_weight_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
-    readonly calculate_bias: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => number;
-    readonly calculate_weight: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => number;
-    readonly compute_score_components: (a: number, b: number, c: number, d: number) => any;
-    readonly scan_max_bias: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
-    readonly scan_max_weight: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
-    readonly __wbindgen_externrefs: WebAssembly.Table;
-    readonly __wbindgen_malloc: (a: number, b: number) => number;
-    readonly __wbindgen_free: (a: number, b: number, c: number) => void;
-    readonly __externref_table_dealloc: (a: number) => void;
-    readonly __wbindgen_start: () => void;
+  readonly memory: WebAssembly.Memory;
+  readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
+  readonly compilednetwork_activate: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => [number, number];
+  readonly compilednetwork_activate_and_trace: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => [number, number];
+  readonly compilednetwork_activate_and_trace_batch_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+  ) => [number, number];
+  readonly compilednetwork_activate_into: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: any,
+  ) => void;
+  readonly compilednetwork_activate_view: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => any;
+  readonly compilednetwork_new: (
+    a: number,
+    b: number,
+  ) => [number, number, number];
+  readonly compilednetwork_num_inputs: (a: number) => number;
+  readonly compilednetwork_num_neurons: (a: number) => number;
+  readonly compilednetwork_num_synapses: (a: number) => number;
+  readonly compilednetwork_reset_state: (a: number) => void;
+  readonly cross_entropy_sum_batch_packed: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => number;
+  readonly hinge_sum_batch_packed: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => number;
+  readonly mae_sum_batch_packed: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => number;
+  readonly mape_sum_batch_packed: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => number;
+  readonly mse_sum_batch_packed: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => number;
+  readonly msle_sum_batch_packed: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => number;
+  readonly calculate_error: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => number;
+  readonly calculate_error_batch_4way: (
+    a: number,
+    b: any,
+    c: any,
+    d: any,
+  ) => any;
+  readonly derivative: (a: number, b: number) => number;
+  readonly derivative_batch_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+  ) => any;
+  readonly fused_error_distribution: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+    l: number,
+  ) => [number, number];
+  readonly get_range: (a: number) => any;
+  readonly limit_range: (a: number, b: number) => number;
+  readonly safe_zone_adjustment: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => number;
+  readonly safe_zone_adjustment_batch: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+  ) => [number, number];
+  readonly squash: (a: number, b: number) => number;
+  readonly unsquash: (a: number, b: number, c: number) => number;
+  readonly validate_range: (a: number, b: number) => number;
+  readonly version: () => [number, number];
+  readonly __wbg_predictivecodingengine_free: (a: number, b: number) => void;
+  readonly predictivecodingengine_infer_batch_wasm: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+  ) => [number, number];
+  readonly predictivecodingengine_infer_wasm: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+  ) => [number, number];
+  readonly predictivecodingengine_new: (
+    a: number,
+    b: number,
+  ) => [number, number, number];
+  readonly predictivecodingengine_num_inputs: (a: number) => number;
+  readonly predictivecodingengine_num_neurons: (a: number) => number;
+  readonly predictivecodingengine_num_outputs: (a: number) => number;
+  readonly accumulate_bias_persistent_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly accumulate_bias_persistent_8way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly accumulate_weight_persistent_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly accumulate_weight_persistent_8way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly free_training_state: () => void;
+  readonly get_training_state_num_neurons: () => number;
+  readonly get_training_state_num_synapses: () => number;
+  readonly init_training_state: (a: number, b: number) => void;
+  readonly read_all_neuron_state: () => [number, number];
+  readonly read_all_synapse_state: () => [number, number];
+  readonly read_neuron_state: (a: number) => [number, number];
+  readonly read_synapse_state: (a: number) => [number, number];
+  readonly reset_training_state: () => void;
+  readonly distribute_elastic_error: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+  ) => [number, number];
+  readonly predictivecodingengine_compute_gradients_wasm: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => [number, number];
+  readonly accumulate_bias_batch_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+  ) => [number, number];
+  readonly accumulate_bias_batch_8way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+  ) => [number, number];
+  readonly accumulate_weight_batch_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+  ) => [number, number];
+  readonly accumulate_weight_batch_8way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+  ) => [number, number];
+  readonly calculate_bias: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+  ) => number;
+  readonly calculate_weight: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+    l: number,
+    m: number,
+  ) => number;
+  readonly compute_score_components: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => any;
+  readonly scan_max_bias: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => any;
+  readonly scan_max_weight: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => any;
+  readonly __wbindgen_externrefs: WebAssembly.Table;
+  readonly __wbindgen_malloc: (a: number, b: number) => number;
+  readonly __wbindgen_free: (a: number, b: number, c: number) => void;
+  readonly __externref_table_dealloc: (a: number) => void;
+  readonly __wbindgen_start: () => void;
 }
 
 export type SyncInitInput = BufferSource | WebAssembly.Module;
