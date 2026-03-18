@@ -59,6 +59,7 @@ export {
   findRustLibraryFromOptions,
   getDiscoveryVersion,
   getGpuBackendInfo,
+  getRustGpuBackend,
   isRustDiscoveryEnabled,
   isRustGpuAvailable,
   isRustLibraryAvailable,

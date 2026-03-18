@@ -868,12 +868,13 @@ regularisation with L2 support.
 
 **What's Missing**:
 
-- True dropout (randomly disable neurons during forward pass, use all during
-  inference)
+- ~~True dropout (randomly disable neurons during forward pass, use all during
+  inference)~~ ✅ Implemented (Issue #1860)
 - Batch normalisation evolution
-- Early stopping with validation sets (we have early stopping, but could enhance
-  with validation)
-- Cross-validation support
+- ~~Early stopping with validation sets~~ ✅ Implemented via cross-validation
+  (Issue #1865)
+- ~~Cross-validation support~~ ✅ Implemented (Issue #1865): K-fold
+  cross-validation with configurable fold count, validation-based early stopping
 
 **Impact**: Better generalisation, reduced overfitting
 
