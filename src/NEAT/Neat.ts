@@ -127,6 +127,7 @@ export class Neat {
       this.workers,
       this.config.costOfGrowth,
       this.config.feedbackLoop,
+      this.config.parallelEvaluation,
     );
 
     this.population = [];

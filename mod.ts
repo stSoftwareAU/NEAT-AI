@@ -110,6 +110,21 @@ export type {
 export { DEFAULT_ADAPTIVE_POPULATION_CONFIG } from "./src/config/AdaptivePopulationConfig.ts";
 
 /**
+ * Parallel Batch Creature Evaluation
+ *
+ * Issue #1862: Controls topology-aware grouping and concurrency
+ * limits for population fitness evaluation. Topology grouping
+ * clusters same-structure creatures to maximise WASM cache hits.
+ *
+ * @see {@link module:src/config/ParallelEvaluationConfig}
+ */
+export type {
+  ParallelEvaluationConfig,
+  RequiredParallelEvaluationConfig,
+} from "./src/config/ParallelEvaluationConfig.ts";
+export { DEFAULT_PARALLEL_EVALUATION_CONFIG } from "./src/config/ParallelEvaluationConfig.ts";
+
+/**
  * Cost Interface
  *
  * This interface defines the contract for cost functions used in neural network training.
