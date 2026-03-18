@@ -12,19 +12,20 @@ near-zero-weight connections. In large creatures with many near-zero weight
 synapses, this prevented gradient signal from reaching significant portions of
 the network.
 
-The fix replaces the drop-on-out-of-range behaviour with `Math.max(range.low,
-Math.min(range.high, targetFromActivation))`, so a reduced gradient always
-propagates through near-zero-weight connections. This preserves all existing
-finite value protections (Issue #1314) since `Number.isFinite(clampedTarget)` is
-still checked before accumulation.
+The fix replaces the drop-on-out-of-range behaviour with
+`Math.max(range.low,
+Math.min(range.high, targetFromActivation))`, so a reduced
+gradient always propagates through near-zero-weight connections. This preserves
+all existing finite value protections (Issue #1314) since
+`Number.isFinite(clampedTarget)` is still checked before accumulation.
 
 ## Evidence
 
 - All 4678 tests pass including 573 propagate-specific tests
 - `./quality.sh` passes cleanly
 - No non-finite values introduced (verified by dedicated test)
-- Updated `TinyWeightRecursionAvoidance` test to verify finite bounds instead
-  of zero change, reflecting the intentional new behaviour
+- Updated `TinyWeightRecursionAvoidance` test to verify finite bounds instead of
+  zero change, reflecting the intentional new behaviour
 
 ## Test Plan
 
@@ -34,5 +35,5 @@ still checked before accumulation.
   - No non-finite values from clamped propagation
   - Multiple near-zero weights do not block all gradient paths
 - Updated `test/propagate/TinyWeightRecursionAvoidance.ts`: assertion changed
-  from exact-zero bias change to finite-value check, since clamped gradient
-  now correctly propagates a reduced signal (documented business logic change)
+  from exact-zero bias change to finite-value check, since clamped gradient now
+  correctly propagates a reduced signal (documented business logic change)
