@@ -291,6 +291,9 @@
     "elem",
     "Sizer",
     "unnormalised",
-    "varint"
+    "varint",
+    "varints",
+    "breedable",
+    "submessages"
   ]
 }
