@@ -1,17 +1,24 @@
 ## Summary
 
-Add targeted test cases exercising backpropagation through chains of different squash functions to identify corner cases where gradient flow degrades. Closes #1870.
+Add targeted test cases exercising backpropagation through chains of different
+squash functions to identify corner cases where gradient flow degrades. Closes
+#1870.
 
 The test file `test/propagate/MixedSquashChains.ts` contains 11 tests covering:
-- Multi-layer mixed squash convergence (bounded→bounded, unbounded→bounded, non-differentiable, all-saturating)
-- Saturation chain behaviour (TANH saturated, GAUSSIAN peak, Exponential large derivatives)
+
+- Multi-layer mixed squash convergence (bounded→bounded, unbounded→bounded,
+  non-differentiable, all-saturating)
+- Saturation chain behaviour (TANH saturated, GAUSSIAN peak, Exponential large
+  derivatives)
 - Gradient magnitude verification across multiple chain types
 - Aggregate function chains (IF, MAXIMUM)
 - Safe zone interaction with mixed upstream squash types
 
 ## Evidence
 
-All 11 tests pass and verify convergence direction, finite outputs, and gradient flow through the first hidden layer. The full quality gate passes with 4494 tests.
+All 11 tests pass and verify convergence direction, finite outputs, and gradient
+flow through the first hidden layer. The full quality gate passes with 4494
+tests.
 
 ## Test Plan
 
