@@ -27,7 +27,7 @@ Deno.test({
       if (info.backendName) {
         const validBackends = ["metal", "vulkan", "dx12", "gl"];
         assertEquals(
-          validBackends.includes(info.backendName),
+          validBackends.includes(info.backendName.toLowerCase()),
           true,
           `Backend name "${info.backendName}" should be a valid wgpu backend`,
         );
