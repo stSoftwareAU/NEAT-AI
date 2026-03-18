@@ -1,9 +1,9 @@
 ## Summary
 
-Extends hyperparameter self-adaptation by encoding learning rate, mutation rates,
-weight perturbation scale, and regularisation strength as per-creature evolvable
-parameters. Adds adaptive population sizing based on species diversity metrics.
-Closes #1863.
+Extends hyperparameter self-adaptation by encoding learning rate, mutation
+rates, weight perturbation scale, and regularisation strength as per-creature
+evolvable parameters. Adds adaptive population sizing based on species diversity
+metrics. Closes #1863.
 
 ### What was added
 
@@ -38,10 +38,10 @@ Closes #1863.
 All features are opt-in (disabled by default):
 
 - `hyperparameterEvolution.enabled` — Enables per-creature hyperparameter
-  evolution with configurable bounds for learning rate, weight perturbation,
-  and regularisation strength.
-- `adaptivePopulation.enabled` — Enables diversity-driven population sizing
-  with configurable thresholds, adjustment rate, and min/max fractions.
+  evolution with configurable bounds for learning rate, weight perturbation, and
+  regularisation strength.
+- `adaptivePopulation.enabled` — Enables diversity-driven population sizing with
+  configurable thresholds, adjustment rate, and min/max fractions.
 
 ### Files changed
 
@@ -65,8 +65,13 @@ All features are opt-in (disabled by default):
 
 ### Tests added
 
-- `test/config/HyperparameterConfig.ts` — Config defaults, overrides, CLI coercion
-- `test/config/AdaptivePopulationConfig.ts` — Config defaults, overrides, CLI coercion
-- `test/NEAT/HyperparameterEvolution.ts` — Mutation bounds, crossover blending, diversity
-- `test/NEAT/HyperparameterSerialisation.ts` — Export/import, clone, breeding inheritance
-- `test/NEAT/AdaptivePopulationSizer.ts` — Grow, shrink, stable, bounds, step size
+- `test/config/HyperparameterConfig.ts` — Config defaults, overrides, CLI
+  coercion
+- `test/config/AdaptivePopulationConfig.ts` — Config defaults, overrides, CLI
+  coercion
+- `test/NEAT/HyperparameterEvolution.ts` — Mutation bounds, crossover blending,
+  diversity
+- `test/NEAT/HyperparameterSerialisation.ts` — Export/import, clone, breeding
+  inheritance
+- `test/NEAT/AdaptivePopulationSizer.ts` — Grow, shrink, stable, bounds, step
+  size
