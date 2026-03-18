@@ -89,7 +89,14 @@ export function propagateTopological(
     // backpropagation, gradients from multiple downstream paths are summed,
     // not averaged. This preserves gradient magnitude for highly-connected
     // neurons. (Issue #1651)
-    const totalDelta = targetDeltaSum[neuronIndex];
+    // Issue #1872: When normaliseGradients is enabled, apply sqrt-scaling
+    // to dampen gradient magnification in high fan-out neurons. Dividing
+    // by sqrt(count) preserves some gradient scaling while preventing
+    // extreme accumulation (similar to AdaGrad-style normalisation).
+    const count = targetDeltaCount[neuronIndex];
+    const totalDelta = config.normaliseGradients && count > 1
+      ? targetDeltaSum[neuronIndex] / Math.sqrt(count)
+      : targetDeltaSum[neuronIndex];
     const requestedActivation = activation + totalDelta;
     const targetActivation = squashMethod.range.limit(requestedActivation);
 
