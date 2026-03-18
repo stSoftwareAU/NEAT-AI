@@ -204,6 +204,10 @@ export function loadFrom(
     const tmpSynapse = new Synapse(from!, to!, synapse.weight, synapse.type);
     creature.synapses[i] = tmpSynapse;
 
+    if (synapse.frozen) {
+      tmpSynapse.frozen = true;
+    }
+
     if (synapse.tags) {
       tmpSynapse.tags = synapse.tags.slice();
     }
@@ -222,6 +226,10 @@ export function loadFrom(
   }
 
   creature.memetic = json.memetic;
+  // Issue #1863: Load per-creature evolvable hyperparameters
+  creature.hyperparameters = json.hyperparameters
+    ? { ...json.hyperparameters }
+    : undefined;
   creature.clearCache();
 
   if (!isSorted) {
@@ -310,6 +318,11 @@ export function shallowClone(
     clone.memetic = { ...creature.memetic };
   }
 
+  // Issue #1863: Copy per-creature evolvable hyperparameters
+  if (creature.hyperparameters) {
+    clone.hyperparameters = { ...creature.hyperparameters };
+  }
+
   if (creature.tags) {
     clone.tags = [...creature.tags];
   }
@@ -344,6 +357,9 @@ export function shallowClone(
       original.squash,
     );
     neuron.index = i;
+    if (original.frozen) {
+      neuron.frozen = true;
+    }
     const originalTags = original.tags as TagInterface[] | undefined;
     if (originalTags) {
       (neuron as { tags: TagInterface[] | undefined }).tags = [
@@ -364,6 +380,9 @@ export function shallowClone(
       original.weight,
       original.type,
     );
+    if (original.frozen) {
+      synapse.frozen = true;
+    }
     if (original.tags) {
       synapse.tags = [...original.tags];
     }

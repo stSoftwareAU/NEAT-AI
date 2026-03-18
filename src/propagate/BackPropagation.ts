@@ -79,6 +79,54 @@ export type BackPropagationArguments = {
    * Set to 1.0 to disable coordination (all changes pass through).
    */
   biasWeightCoordinationFactor: number;
+
+  /**
+   * Issue #1859: L1 weight regularisation strength (weight sparsity).
+   * Adds a penalty proportional to |w| that drives small weights to zero.
+   * 0 = disabled (default), higher values = stronger sparsity pressure.
+   */
+  l1WeightDecay: number;
+
+  /**
+   * Issue #1859: L2 weight regularisation strength (weight decay).
+   * Adds a penalty proportional to w² that shrinks all weights toward zero.
+   * 0 = disabled (default), higher values = stronger decay.
+   */
+  l2WeightDecay: number;
+
+  /**
+   * Issue #1859: L1 bias regularisation strength (bias sparsity).
+   * Adds a penalty proportional to |b| that drives small biases to zero.
+   * 0 = disabled (default), higher values = stronger sparsity pressure.
+   */
+  l1BiasDecay: number;
+
+  /**
+   * Issue #1859: L2 bias regularisation strength (bias decay).
+   * Adds a penalty proportional to b² that shrinks all biases toward zero.
+   * 0 = disabled (default), higher values = stronger decay.
+   */
+  l2BiasDecay: number;
+
+  /**
+   * Issue #1860: Dropout regularisation rate (0.0 to 1.0).
+   * During training, this fraction of hidden neurons are randomly disabled
+   * (activations set to zero) with inverted scaling applied to the rest.
+   * During inference, all neurons are active and no dropout is applied.
+   * 0 = disabled (default), typical values 0.1 to 0.5.
+   */
+  dropoutRate: number;
+
+  /**
+   * Issue #1872: Normalise gradient accumulation for high fan-out neurons.
+   * When enabled, accumulated error signals from multiple downstream paths
+   * are divided by sqrt(targetDeltaCount) instead of being summed directly.
+   * This dampens gradient magnification in neurons with many outward
+   * connections while preserving some scaling (similar to AdaGrad-style
+   * normalisation).
+   * false = disabled (default, preserves existing sum behaviour).
+   */
+  normaliseGradients: boolean;
 };
 
 export type BackPropagationOptions = Partial<BackPropagationArguments>;
@@ -170,6 +218,27 @@ export function createBackPropagationConfig(
       ),
       1,
     ),
+    l1WeightDecay: Math.min(
+      Math.max(options?.l1WeightDecay ?? 0, 0),
+      1,
+    ),
+    l2WeightDecay: Math.min(
+      Math.max(options?.l2WeightDecay ?? 0, 0),
+      1,
+    ),
+    l1BiasDecay: Math.min(
+      Math.max(options?.l1BiasDecay ?? 0, 0),
+      1,
+    ),
+    l2BiasDecay: Math.min(
+      Math.max(options?.l2BiasDecay ?? 0, 0),
+      1,
+    ),
+    dropoutRate: Math.min(
+      Math.max(options?.dropoutRate ?? 0, 0),
+      1,
+    ),
+    normaliseGradients: options?.normaliseGradients ?? false,
   };
 
   return Object.freeze(config);

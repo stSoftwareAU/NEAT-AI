@@ -89,7 +89,14 @@ export function propagateTopological(
     // backpropagation, gradients from multiple downstream paths are summed,
     // not averaged. This preserves gradient magnitude for highly-connected
     // neurons. (Issue #1651)
-    const totalDelta = targetDeltaSum[neuronIndex];
+    // Issue #1872: When normaliseGradients is enabled, apply sqrt-scaling
+    // to dampen gradient magnification in high fan-out neurons. Dividing
+    // by sqrt(count) preserves some gradient scaling while preventing
+    // extreme accumulation (similar to AdaGrad-style normalisation).
+    const count = targetDeltaCount[neuronIndex];
+    const totalDelta = config.normaliseGradients && count > 1
+      ? targetDeltaSum[neuronIndex] / Math.sqrt(count)
+      : targetDeltaSum[neuronIndex];
     const requestedActivation = activation + totalDelta;
     const targetActivation = squashMethod.range.limit(requestedActivation);
 
@@ -264,15 +271,20 @@ export function propagateTopological(
             if (Number.isFinite(safeZoneFactor) && safeZoneFactor > 0) {
               const fromSquash = fromNeuron.findSquash();
               const range = fromSquash.range;
-              const eps = 1e-9;
-              const outOfRange = targetFromActivation < range.low - eps ||
-                targetFromActivation > range.high + eps;
-              if (!outOfRange && Number.isFinite(targetFromActivation)) {
+              // Issue #1873: Clamp out-of-range targets to the range boundary
+              // instead of dropping them entirely. This prevents dead gradient
+              // paths through near-zero-weight connections while avoiding
+              // gradient explosion.
+              const clampedTarget = Math.max(
+                range.low,
+                Math.min(range.high, targetFromActivation),
+              );
+              if (Number.isFinite(clampedTarget)) {
                 // Instead of recursing, accumulate the target delta for the
                 // upstream neuron. It will be processed later in the
                 // topological order.
                 if (from >= inputCount) {
-                  targetDeltaSum[from] += targetFromActivation - fromActivation;
+                  targetDeltaSum[from] += clampedTarget - fromActivation;
                   targetDeltaCount[from]++;
                 }
               }

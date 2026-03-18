@@ -43,6 +43,9 @@ export class ModBias extends AbstractMutationOperator {
     if (index === -1) return false;
 
     const neuron = this.creature.neurons[index];
+    // Issue #1861: Skip frozen neurons during mutation
+    if (neuron.frozen) return false;
+
     const oldBias = neuron.bias;
 
     // Calculate the new bias with regularisation

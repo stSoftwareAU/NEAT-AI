@@ -28,6 +28,11 @@ import {
 } from "../upgrade/Upgrade.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { DEFAULT_EVOLVABLE_HYPERPARAMETERS } from "../config/HyperparameterConfig.ts";
+import {
+  createDefaultHyperparameters,
+  mutateHyperparameters,
+} from "./HyperparameterEvolution.ts";
 
 /**
  * Cache entry for valid mutation candidates.
@@ -216,6 +221,22 @@ export class Mutator {
           removeTag(creature, "approach-logged");
           removeTag(creature, "trainID");
           removeTag(creature, "trained");
+
+          // Issue #1863: Mutate per-creature hyperparameters when enabled
+          if (this.config.hyperparameterEvolution.enabled) {
+            const currentParams = creature.hyperparameters
+              ? {
+                ...DEFAULT_EVOLVABLE_HYPERPARAMETERS,
+                ...creature.hyperparameters,
+              }
+              : createDefaultHyperparameters(
+                this.config.hyperparameterEvolution,
+              );
+            creature.hyperparameters = mutateHyperparameters(
+              currentParams,
+              this.config.hyperparameterEvolution,
+            );
+          }
 
           creature.clearState();
           delete creature.memetic;

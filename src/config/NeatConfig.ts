@@ -38,13 +38,17 @@ import {
 // Extracted sub-config parsers
 import {
   parseAdaptiveMutationThresholds,
+  parseAdaptivePopulation,
   parseBiasRegularisation,
+  parseCrossValidation,
   parseDiscoveryCache,
   parseDiscoveryMinCandidates,
   parseDiskSpaceConfig,
   parseEnsembleDiversity,
   parseFineTunePopulation,
+  parseHyperparameterEvolution,
   parseMemoryConfig,
+  parseParallelEvaluation,
   parsePlateauDetection,
   parsePredictiveCoding,
   parseQuantumStep,
@@ -519,6 +523,21 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     ),
     fineTunePopulation: parseFineTunePopulation(
       opts.fineTunePopulation as Record<string, unknown> | undefined,
+    ),
+    // Issue #1863: Parse hyperparameter evolution and adaptive population configs
+    hyperparameterEvolution: parseHyperparameterEvolution(
+      opts.hyperparameterEvolution as Record<string, unknown> | undefined,
+    ),
+    adaptivePopulation: parseAdaptivePopulation(
+      opts.adaptivePopulation as Record<string, unknown> | undefined,
+    ),
+    // Issue #1865: Parse cross-validation configuration
+    crossValidation: parseCrossValidation(
+      opts.crossValidation as Record<string, unknown> | undefined,
+    ),
+    // Issue #1862: Parse parallel evaluation configuration
+    parallelEvaluation: parseParallelEvaluation(
+      opts.parallelEvaluation as Record<string, unknown> | undefined,
     ),
     // Issue #1620: Parse and resolve output range constraints
     outputRanges: (() => {

@@ -18,6 +18,10 @@ import type { WasmCacheConfig } from "./WasmCacheConfig.ts";
 import type { WeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
 import type { OutputRange } from "./OutputRangeConfig.ts";
 import type { WorkerThreadCapConfig } from "./WorkerThreadCapConfig.ts";
+import type { HyperparameterEvolutionConfig } from "./HyperparameterConfig.ts";
+import type { AdaptivePopulationConfig } from "./AdaptivePopulationConfig.ts";
+import type { CrossValidationConfig } from "./CrossValidationConfig.ts";
+import type { ParallelEvaluationConfig } from "./ParallelEvaluationConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
 export type CoerceNumeric<T> = T extends number ? number | string
@@ -91,6 +95,10 @@ export type NeatOptions =
     | "wasmCache"
     | "memory"
     | "workerThreadCap"
+    | "hyperparameterEvolution"
+    | "adaptivePopulation"
+    | "crossValidation"
+    | "parallelEvaluation"
     | "outputRanges"
     | "logger"
     | "rng"
@@ -127,6 +135,14 @@ export type NeatOptions =
     memory?: MemoryConfig;
     /** Partial overrides for worker thread cap configuration (defaults applied if not specified) */
     workerThreadCap?: WorkerThreadCapConfig;
+    /** Partial overrides for hyperparameter evolution configuration (defaults applied if not specified) */
+    hyperparameterEvolution?: HyperparameterEvolutionConfig;
+    /** Partial overrides for adaptive population sizing configuration (defaults applied if not specified) */
+    adaptivePopulation?: AdaptivePopulationConfig;
+    /** Partial overrides for cross-validation configuration (defaults applied if not specified) */
+    crossValidation?: CrossValidationConfig;
+    /** Partial overrides for parallel evaluation configuration (defaults applied if not specified) */
+    parallelEvaluation?: ParallelEvaluationConfig;
     /**
      * Optional per-output range constraints (Issue #1620).
      *
@@ -213,6 +229,10 @@ export type NeatOptionsInput =
     | "wasmCache"
     | "memory"
     | "workerThreadCap"
+    | "hyperparameterEvolution"
+    | "adaptivePopulation"
+    | "crossValidation"
+    | "parallelEvaluation"
     | "outputRanges"
     | "logger"
     | "logLevel"
@@ -243,6 +263,12 @@ export type NeatOptionsInput =
     wasmCache?: CoerceNumeric<WasmCacheConfig>;
     memory?: CoerceNumeric<MemoryConfig>;
     workerThreadCap?: CoerceNumeric<WorkerThreadCapConfig>;
+    hyperparameterEvolution?: CoerceNumeric<HyperparameterEvolutionConfig>;
+    adaptivePopulation?: CoerceNumeric<AdaptivePopulationConfig>;
+    /** Cross-validation configuration (Issue #1865). Numeric fields coerced from CLI. */
+    crossValidation?: CoerceNumeric<CrossValidationConfig>;
+    /** Parallel evaluation configuration (Issue #1862). Numeric fields coerced from CLI. */
+    parallelEvaluation?: CoerceNumeric<ParallelEvaluationConfig>;
     /** Per-output range constraints (Issue #1620). Numeric fields coerced from CLI. */
     outputRanges?: readonly CoerceNumeric<OutputRange>[];
     /** Custom logger instance (not coerced — functions cannot come from CLI). */

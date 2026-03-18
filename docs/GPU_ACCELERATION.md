@@ -1,16 +1,22 @@
-# 🖥️ GPU Acceleration for Discovery on macOS
+# 🖥️ GPU Acceleration for Discovery
 
 ## 🔍 Overview
 
-The NEAT-AI Discovery Rust library **already supports GPU acceleration** on
-macOS using Metal via the `wgpu` crate. GPU acceleration is automatically
-enabled for Mac systems (`darwin`) and uses Metal under the hood for
-high-performance compute operations.
+The NEAT-AI Discovery Rust library supports **cross-platform GPU acceleration**
+via the `wgpu` crate. The wgpu abstraction layer automatically selects the best
+available GPU backend for the current platform:
+
+- **macOS**: Metal
+- **Linux**: Vulkan
+- **Windows**: DX12
+
+When no compatible GPU is detected, discovery gracefully falls back to CPU
+computation. GPU accelerates analysis but is not required.
 
 > [!NOTE]
-> GPU acceleration is enabled by default on macOS (`darwin`) and requires no
-> additional configuration. All modern Macs with Apple Silicon or recent
-> AMD/Intel GPUs are supported via Metal.
+> GPU acceleration is automatic and requires no platform-specific configuration.
+> The `wgpu` abstraction handles backend selection. Use `getGpuBackendInfo()` to
+> check which backend was selected.
 
 ## ⚡ Current GPU Implementation
 
@@ -23,22 +29,49 @@ high-performance compute operations.
 
 ### 🧰 GPU Technology Stack
 
-- **wgpu 0.19** - Cross-platform GPU abstraction layer
-- **Metal** - Apple's GPU API (used automatically on macOS)
+- **wgpu** - Cross-platform GPU abstraction layer
+- **Metal** - Apple's GPU API (selected automatically on macOS)
+- **Vulkan** - Cross-platform GPU API (selected automatically on Linux)
+- **DX12** - Microsoft's GPU API (selected automatically on Windows)
 - **Compute Shaders** - WGSL shaders for parallel processing
+
+### 🌐 Cross-Platform Backend Selection
+
+The wgpu library automatically selects the best available backend. No
+platform-specific code is needed in the TypeScript layer:
+
+```typescript
+// GPU is preferred but not required — CPU fallback is automatic
+requireGpu: false;
+```
+
+Use the `getGpuBackendInfo()` function to query which backend was selected:
+
+```typescript
+import { getGpuBackendInfo } from "./RustDiscovery.ts";
+
+const info = getGpuBackendInfo();
+if (info.available) {
+  console.log(`GPU: ${info.backendName} (${info.adapterName})`);
+} else {
+  console.log(`CPU fallback: ${info.reason}`);
+}
+```
 
 ## 🔎 Verifying GPU Usage
 
 ### Method 1: Check Logs
 
-When discovery runs with logging enabled, you'll now see messages like:
+When discovery runs with logging enabled, you'll see messages like:
 
 ```
+✅ GPU acceleration enabled via Metal (Apple M1 Pro).
 Rust synapse analysis using GPU (X helpful, Y harmful candidates)
 Rust neuron analysis using GPU (Z candidates)
 ```
 
-If you see "using CPU fallback" instead, the GPU failed to initialise.
+If you see "CPU fallback" instead, the GPU was not available — discovery still
+works, just without GPU acceleration.
 
 ### Method 2: Enable Debug Mode
 
@@ -52,12 +85,13 @@ This will print:
 
 - GPU adapter information
 - Device initialisation status
+- Backend selection details
 - Any fallback to CPU
 
 > [!TIP]
 > Enable `NEAT_AI_DISCOVERY_GPU_DEBUG=1` during initial setup to confirm that
-> Metal is being picked up correctly. You can disable it once GPU usage is
-> verified.
+> the correct GPU backend is being selected. You can disable it once GPU usage
+> is verified.
 
 ### Method 3: Check Return Values
 
@@ -69,8 +103,20 @@ const result = analyzeSynapses(input);
 if (result.gpuUsed) {
   console.log("GPU acceleration is active!");
 } else {
-  console.warn("Falling back to CPU - check GPU availability");
+  console.info("Using CPU fallback — discovery still works");
 }
+```
+
+### Method 4: Query Backend Info
+
+Use `getGpuBackendInfo()` for detailed backend information:
+
+```typescript
+const info = getGpuBackendInfo();
+// info.available: boolean
+// info.backendName: "Metal" | "Vulkan" | "Dx12" | "Gl" | undefined
+// info.adapterName: e.g. "Apple M1 Pro" | undefined
+// info.reason: string (when unavailable) | undefined
 ```
 
 ## 📊 Performance Considerations
@@ -115,63 +161,66 @@ The implementation uses GPU for:
 
 ### ❌ GPU Not Being Used
 
-If you see "using CPU fallback" in logs:
+If you see "CPU fallback" in logs:
 
-1. **Check Metal Support**: Ensure your Mac supports Metal (all modern Macs do)
+1. **Check GPU Drivers**: Ensure Vulkan drivers are installed (Linux) or that
+   Metal is supported (macOS)
 2. **Check Permissions**: Some systems may require GPU access permissions
-3. **Check wgpu Version**: Ensure `wgpu = "0.19"` in `Cargo.toml`
-4. **Rebuild**: After updating Rust code, rebuild the library:
+3. **Rebuild**: After updating Rust code, rebuild the library:
    ```bash
    cd NEAT-AI-Discovery
    cargo build --release
    ```
+4. **Query Backend**: Use `getGpuBackendInfo()` to see the specific reason GPU
+   is unavailable
 
-> [!WARNING]
-> If GPU initialisation fails and `requireGpu` is set to `true`, the discovery
-> process will exit with an error rather than silently falling back to CPU. Set
-> `requireGpu: false` if you need a CPU fallback in environments without Metal
-> support.
+> [!NOTE]
+> Discovery works without GPU — it just runs slower using CPU computation. GPU
+> acceleration is automatic when available but never required.
 
 ### 🐌 Performance Issues
 
 If GPU is active but still slow:
 
 1. **Check Dataset Size**: GPU benefits increase with larger datasets
-2. **Monitor GPU Usage**: Use Activity Monitor or `gpuStats` to verify GPU is
-   being utilised
+2. **Monitor GPU Usage**: Use Activity Monitor (macOS), `nvidia-smi` (Linux), or
+   Task Manager (Windows) to verify GPU is being utilised
 3. **Check Other Bottlenecks**: Parquet I/O, TypeScript processing, etc.
 
 ## ⚙️ Configuration
 
-### 🔒 Requiring GPU (Default on Mac)
+### 🔓 CPU Fallback (Default)
 
-On macOS, GPU is required by default:
+GPU acceleration is preferred but not required on all platforms:
 
 ```typescript
-requireGpu: Deno.build.os === "darwin"; // true on Mac
+requireGpu: false; // Uses GPU if available, falls back to CPU otherwise
 ```
 
-If GPU initialisation fails and `requireGpu` is true, discovery will fail with
-an error. If false, it falls back to CPU.
+Discovery will use the best available GPU via wgpu's automatic backend
+selection, and fall back to CPU when no compatible GPU is present.
 
-### 🔓 Disabling GPU Requirement
+### 🔒 Requiring GPU
 
-To allow CPU fallback even on Mac:
+To force GPU and fail if unavailable (not recommended for cross-platform):
 
 ```typescript
-requireGpu: false; // Will use GPU if available, but fall back to CPU
+requireGpu: true; // Will fail if no GPU is available
 ```
 
 ## 🔬 Technical Details
 
 ### 💻 GPU Compute Shaders
 
-The GPU uses two compute shaders:
+The GPU uses WGSL compute shaders:
 
 1. **Helpful Synapse Shader** - Evaluates which synapses would help reduce error
 2. **Harmful Synapse Shader** - Evaluates which existing synapses are harmful
+3. **Activation Shader** - Evaluates neuron activation contributions
+4. **ReLU Shader** - Specialised ReLU activation evaluation
+5. **Bias Shader** - Evaluates bias adjustments
 
-Both use workgroup size of 256 threads for parallel processing.
+All use workgroup size of 256 threads for parallel processing.
 
 ### 🗂️ Memory Layout
 
@@ -182,6 +231,9 @@ Data is transferred to GPU as:
 
 ## 📅 History
 
+- **18 Mar 2026**: Cross-platform GPU support via wgpu abstraction (#1864).
+  Automatic backend selection (Metal/Vulkan/DX12), CPU fallback, and backend
+  detection via `getGpuBackendInfo()`.
 - **2 Jan 2025**: Initial GPU batching improvements for synapse evaluation.
 - GPU acceleration is actively maintained as part of the NEAT-AI-Discovery Rust
   module.

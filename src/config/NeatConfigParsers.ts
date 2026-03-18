@@ -65,6 +65,22 @@ import {
   type RequiredPlateauDetectionConfig,
 } from "../NEAT/PlateauDetector.ts";
 import { DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY } from "./NeatConfig.ts";
+import {
+  DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,
+  type RequiredHyperparameterEvolutionConfig,
+} from "./HyperparameterConfig.ts";
+import {
+  DEFAULT_ADAPTIVE_POPULATION_CONFIG,
+  type RequiredAdaptivePopulationConfig,
+} from "./AdaptivePopulationConfig.ts";
+import {
+  DEFAULT_CROSS_VALIDATION_CONFIG,
+  type RequiredCrossValidationConfig,
+} from "./CrossValidationConfig.ts";
+import {
+  DEFAULT_PARALLEL_EVALUATION_CONFIG,
+  type RequiredParallelEvaluationConfig,
+} from "./ParallelEvaluationConfig.ts";
 
 /** Parse worker thread cap configuration (Issue #1569). */
 export function parseWorkerThreadCap(
@@ -591,4 +607,134 @@ export function parseFineTunePopulation(
       { integer: true, min: 1 },
     ),
   } as RequiredFineTunePopulationConfig;
+}
+
+/** Parse hyperparameter evolution configuration (Issue #1863). */
+export function parseHyperparameterEvolution(
+  overrides: Record<string, unknown> | undefined,
+): RequiredHyperparameterEvolutionConfig {
+  const d = DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG;
+  return {
+    enabled: typeof overrides?.enabled === "boolean"
+      ? overrides.enabled
+      : d.enabled,
+    minLearningRate: parseNumber(
+      "Hyperparameter evolution minLearningRate",
+      overrides?.minLearningRate,
+      d.minLearningRate,
+      { minExclusive: 0, max: 1 },
+    ),
+    maxLearningRate: parseNumber(
+      "Hyperparameter evolution maxLearningRate",
+      overrides?.maxLearningRate,
+      d.maxLearningRate,
+      { minExclusive: 0, max: 1 },
+    ),
+    minWeightPerturbation: parseNumber(
+      "Hyperparameter evolution minWeightPerturbation",
+      overrides?.minWeightPerturbation,
+      d.minWeightPerturbation,
+      { minExclusive: 0 },
+    ),
+    maxWeightPerturbation: parseNumber(
+      "Hyperparameter evolution maxWeightPerturbation",
+      overrides?.maxWeightPerturbation,
+      d.maxWeightPerturbation,
+      { minExclusive: 0 },
+    ),
+    maxRegularisationStrength: parseNumber(
+      "Hyperparameter evolution maxRegularisationStrength",
+      overrides?.maxRegularisationStrength,
+      d.maxRegularisationStrength,
+      { min: 0 },
+    ),
+    mutationStdDev: parseNumber(
+      "Hyperparameter evolution mutationStdDev",
+      overrides?.mutationStdDev,
+      d.mutationStdDev,
+      { minExclusive: 0, max: 1 },
+    ),
+  } as RequiredHyperparameterEvolutionConfig;
+}
+
+/** Parse cross-validation configuration (Issue #1865). */
+export function parseCrossValidation(
+  overrides: Record<string, unknown> | undefined,
+): RequiredCrossValidationConfig {
+  const d = DEFAULT_CROSS_VALIDATION_CONFIG;
+  return {
+    enabled: typeof overrides?.enabled === "boolean"
+      ? overrides.enabled
+      : d.enabled,
+    folds: parseNumber(
+      "Cross-validation folds",
+      overrides?.folds,
+      d.folds,
+      { integer: true, min: 1, max: 20 },
+    ),
+    validationEarlyStopping:
+      typeof overrides?.validationEarlyStopping === "boolean"
+        ? overrides.validationEarlyStopping
+        : d.validationEarlyStopping,
+  } as RequiredCrossValidationConfig;
+}
+
+/** Parse adaptive population sizing configuration (Issue #1863). */
+export function parseAdaptivePopulation(
+  overrides: Record<string, unknown> | undefined,
+): RequiredAdaptivePopulationConfig {
+  const d = DEFAULT_ADAPTIVE_POPULATION_CONFIG;
+  return {
+    enabled: typeof overrides?.enabled === "boolean"
+      ? overrides.enabled
+      : d.enabled,
+    minPopulationFraction: parseNumber(
+      "Adaptive population minPopulationFraction",
+      overrides?.minPopulationFraction,
+      d.minPopulationFraction,
+      { minExclusive: 0, max: 1 },
+    ),
+    maxPopulationFraction: parseNumber(
+      "Adaptive population maxPopulationFraction",
+      overrides?.maxPopulationFraction,
+      d.maxPopulationFraction,
+      { min: 1 },
+    ),
+    lowDiversityThreshold: parseNumber(
+      "Adaptive population lowDiversityThreshold",
+      overrides?.lowDiversityThreshold,
+      d.lowDiversityThreshold,
+      { min: 0, max: 1 },
+    ),
+    highDiversityThreshold: parseNumber(
+      "Adaptive population highDiversityThreshold",
+      overrides?.highDiversityThreshold,
+      d.highDiversityThreshold,
+      { min: 0, max: 1 },
+    ),
+    adjustmentRate: parseNumber(
+      "Adaptive population adjustmentRate",
+      overrides?.adjustmentRate,
+      d.adjustmentRate,
+      { minExclusive: 0, max: 1 },
+    ),
+  } as RequiredAdaptivePopulationConfig;
+}
+
+/** Parse parallel evaluation configuration (Issue #1862). */
+export function parseParallelEvaluation(
+  overrides: Record<string, unknown> | undefined,
+): RequiredParallelEvaluationConfig {
+  const d = DEFAULT_PARALLEL_EVALUATION_CONFIG;
+  return {
+    maxConcurrentEvaluations: parseNumber(
+      "Parallel evaluation maxConcurrentEvaluations",
+      overrides?.maxConcurrentEvaluations,
+      d.maxConcurrentEvaluations,
+      { integer: true, min: 0 },
+    ),
+    topologyGrouping: typeof overrides?.topologyGrouping === "boolean"
+      ? overrides.topologyGrouping
+      : d.topologyGrouping,
+  } as RequiredParallelEvaluationConfig;
 }

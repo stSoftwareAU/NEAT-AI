@@ -45,7 +45,8 @@ standard term the first time it appears.
 - **Rust** FFI extension
   ([NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery)) for
   GPU-accelerated structural analysis
-- **Metal** (macOS) for GPU compute shaders via `wgpu`
+- **wgpu** for cross-platform GPU compute shaders (Metal on macOS, Vulkan on
+  Linux, DX12 on Windows) with CPU fallback
 
 ### 📂 Directory Structure
 

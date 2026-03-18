@@ -122,7 +122,7 @@ export function ensureRustCombinedAnalysis(
     maxNeuronCandidates: includeNeuron
       ? Math.max(25, focusList.length * 5)
       : undefined,
-    requireGpu: Deno.build.os === "darwin",
+    requireGpu: false,
     analysisDeadlineMs,
     focusNeuronErrorShares,
   };

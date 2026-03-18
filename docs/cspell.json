@@ -286,6 +286,14 @@
     "diag",
     "Logits",
     "repr",
-    "CIRF"
+    "CIRF",
+    "opset",
+    "elem",
+    "Sizer",
+    "unnormalised",
+    "varint",
+    "varints",
+    "breedable",
+    "submessages"
   ]
 }

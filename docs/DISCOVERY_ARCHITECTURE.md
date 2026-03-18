@@ -600,17 +600,19 @@ is flagged with warnings.
 
 ### 📦 Library Management
 
-- `isRustDiscoveryEnabled()` checks both library availability **and** GPU
-  availability.
+- `isRustDiscoveryEnabled()` checks library availability. GPU is optional — the
+  Rust library falls back to CPU when no compatible GPU is present.
 - `isRustLibraryAvailable()` checks library loading only.
+- `isRustGpuAvailable()` checks whether a GPU backend (Metal/Vulkan/DX12) is
+  available for acceleration.
+- `getGpuBackendInfo()` returns details about the selected GPU backend.
 - `getDiscoveryVersion()` returns the cached Rust library version string.
 - Library loading is dynamic via Deno FFI (`.dylib` / `.so` / `.dll`).
 
-> [!WARNING]
-> `isRustDiscoveryEnabled()` requires **both** the native library to be loadable
-> **and** a compatible GPU to be present. If only `isRustLibraryAvailable()`
-> returns `true`, analysis will fall back to CPU mode, which may significantly
-> increase analysis duration.
+> [!NOTE]
+> `isRustDiscoveryEnabled()` requires the native library to be loadable. GPU
+> acceleration is automatic via wgpu (Metal on macOS, Vulkan on Linux, DX12 on
+> Windows) but not required — CPU fallback is always available.
 
 ### 🎯 Focus Neuron Selection
 

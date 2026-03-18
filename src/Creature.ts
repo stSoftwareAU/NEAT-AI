@@ -26,6 +26,7 @@ import { Neuron } from "./architecture/Neuron.ts";
 import { Synapse } from "./architecture/Synapse.ts";
 import type { SynapseInternal } from "./architecture/SynapseInterfaces.ts";
 import type { MemeticInterface } from "./blackbox/MemeticInterface.ts";
+import type { EvolvableHyperparameters } from "./config/HyperparameterConfig.ts";
 import { compactCreature } from "./compact/CompactCreature.ts";
 import type { NeatOptions } from "./config/NeatOptions.ts";
 import type { CostInterface } from "./costs/CostInterface.ts";
@@ -113,6 +114,7 @@ export class Creature implements CreatureInternal {
   score?: number;
   synapses: Synapse[];
   memetic?: MemeticInterface;
+  hyperparameters?: EvolvableHyperparameters;
   readonly state: CreatureState = new CreatureState(this);
 
   // Topology caches (managed by CreatureTopology module)
@@ -686,6 +688,59 @@ export class Creature implements CreatureInternal {
     // Issue #1445: Preserve hiddenNeuronUUIDs — batch disconnect only changes
     // connections, not the set of neurons.
     this.clearConnectionCaches();
+  }
+
+  // ── Transfer Learning (Issue #1861) ─────────────────────────────────────
+
+  /**
+   * Freezes or unfreezes a neuron's bias.
+   * When frozen, the bias will not be modified by backpropagation or mutation.
+   */
+  setNeuronFrozen(index: number, frozen: boolean): void {
+    const neuron = this.neurons[index];
+    neuron.frozen = frozen ? true : undefined;
+  }
+
+  /**
+   * Freezes or unfreezes a synapse's weight.
+   * When frozen, the weight will not be modified by backpropagation or mutation.
+   */
+  setSynapseFrozen(from: number, to: number, frozen: boolean): void {
+    const synapse = this.getSynapse(from, to);
+    if (synapse) {
+      synapse.frozen = frozen ? true : undefined;
+    }
+  }
+
+  /**
+   * Freezes all hidden neurons and their interconnecting synapses.
+   * Useful for transfer learning where only output weights should be trained.
+   */
+  freezeHiddenLayers(): void {
+    for (const neuron of this.neurons) {
+      if (neuron.type === "hidden") {
+        neuron.frozen = true;
+      }
+    }
+    for (const synapse of this.synapses) {
+      const fromNeuron = this.neurons[synapse.from];
+      const toNeuron = this.neurons[synapse.to];
+      if (fromNeuron.type === "hidden" && toNeuron.type === "hidden") {
+        synapse.frozen = true;
+      }
+    }
+  }
+
+  /**
+   * Unfreezes all neurons and synapses.
+   */
+  unfreezeAll(): void {
+    for (const neuron of this.neurons) {
+      neuron.frozen = undefined;
+    }
+    for (const synapse of this.synapses) {
+      synapse.frozen = undefined;
+    }
   }
 
   // ── Focus ──────────────────────────────────────────────────────────────

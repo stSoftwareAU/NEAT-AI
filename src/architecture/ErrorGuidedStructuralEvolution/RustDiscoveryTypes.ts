@@ -334,10 +334,20 @@ export interface RustRankFocusResult {
 /**
  * Reports the outcome of the Rust GPU availability probe invoked during
  * discovery setup.
+ *
+ * When the Rust library supports it, the probe also reports which wgpu
+ * backend was selected (Metal, Vulkan, DX12, OpenGL) and the adapter name,
+ * enabling cross-platform GPU diagnostics.
  */
 export interface RustCheckGpuResult {
   success: boolean;
   gpuAvailable: boolean;
+  /** wgpu backend name, e.g. "metal", "vulkan", "dx12", "gl". */
+  backend?: string;
+  /** wgpu backend name (legacy alias for `backend`). */
+  backendName?: string;
+  /** GPU adapter/device name, e.g. "Apple M1 Pro". */
+  adapterName?: string;
   error?: string;
 }
 

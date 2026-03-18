@@ -120,6 +120,7 @@ export class Breed {
       {
         geneticCompatibilityThreshold: config.geneticCompatibilityThreshold,
         forwardOnly: config.feedbackLoop !== true,
+        hyperparameterEvolution: config.hyperparameterEvolution,
       },
     );
 

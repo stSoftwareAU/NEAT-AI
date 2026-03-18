@@ -64,6 +64,29 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
   sizes
 - ✅ **Early Stopping**: Enhanced early stopping with patience and improvement
   thresholds
+- ✅ **Predictive Coding**: Optional training paradigm based on
+  [Rao & Ballard (1999)](https://www.nature.com/articles/nn0199_79) that uses
+  iterative inference settling and local Hebbian learning rules. Configurable
+  via `PredictiveCodingConfig` with inference steps, learning rate, and energy
+  convergence thresholds. See
+  [PREDICTIVE_CODING.md](./docs/PREDICTIVE_CODING.md) for architecture details.
+- ✅ **Dropout Regularisation**: True
+  [inverted dropout](https://arxiv.org/abs/1207.0580) during training—randomly
+  disables a configurable fraction of hidden neurons per forward pass and scales
+  remaining activations by 1/(1−p) so inference runs unchanged. Input and output
+  neurons are never dropped.
+- ✅ **L1/L2 Weight & Bias Regularisation**: During backpropagation, applies L2
+  weight decay (`w *= (1 − lr·λ₂)`) and L1 soft-thresholding to drive small
+  weights to exactly zero, promoting sparsity. Mirrors the same decay for
+  biases.
+- ✅ **K-Fold Cross-Validation**: Splits training data into k folds, trains on
+  k−1 folds and validates on the held-out fold. Fitness is the average
+  validation error across all folds, reducing overfitting and producing more
+  robust fitness estimates. Configurable fold count (1–20) with automatic
+  fallback to single-split when data is insufficient.
+- ✅ **Gradient Accumulation Normalisation**: Optional sqrt-scaling for gradient
+  accumulation in high fan-out neurons, preventing neurons with many downstream
+  connections from receiving disproportionately large error signals.
 
 ### ✨ Unique Features
 
@@ -92,13 +115,46 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
   vary during training, echoing established
   [network pruning](https://en.wikipedia.org/wiki/Pruning_(neural_networks))
   practice.
-- ✅ **GPU-Accelerated Discovery**: Metal (macOS) GPU support for structural
-  analysis using compute shaders, aligning with Apple's
-  [Metal Performance Shaders](https://developer.apple.com/metal/Metal-Performance-Shaders-Framework/)
-  guidance.
+- ✅ **GPU-Accelerated Discovery**: Cross-platform GPU support via
+  [wgpu](https://wgpu.rs/) abstraction—Metal on macOS, Vulkan on Linux, DX12 on
+  Windows—with automatic CPU fallback when no compatible GPU is detected.
+- ✅ **Discovery Caching**: Success and failure caching for discovery candidates
+  with age-based and size-based eviction, cache-informed multi-neuron removal
+  candidates, and supplemental candidate building from historical data.
+- ✅ **Disk Space Monitoring**: Pre-flight and runtime disk space checks during
+  discovery to gracefully warn or abort when disk space is insufficient.
+- ✅ **Ensemble Diversity**: `EnsembleDiversityConfig` scores creatures within
+  species by weight variance, squash entropy, and topology diversity to reduce
+  reliance on brilliant-but-brittle solutions.
+- ✅ **Adaptive Quantum Steps**: `QuantumStepConfig` provides adaptive step
+  sizing during memetic fine-tuning—larger steps when far from the optimum and
+  smaller steps during convergence.
 - ✅ **Unique Activation Functions**: IF, MAX, MIN, and other non-standard
   squashes that enable different network behaviours, akin to the broader family
   of [activation functions](https://en.wikipedia.org/wiki/Activation_function).
+- ✅ **Improved Aggregate Gradient Flow**: MAXIMUM and MINIMUM aggregate
+  functions distribute partial error signals to runner-up connections within a
+  proximity threshold (15%), preventing dead gradient paths while preserving
+  dominance of the winning connection.
+- ✅ **Transfer Learning**: Checkpoint export/import system with UUID-based
+  neuron and synapse mapping between creatures with different input/output
+  configurations. Supports weight freezing for fine-tuning imported hidden
+  layers and population seeding with pre-trained creatures.
+- ✅ **ONNX Format Export**: Exports trained creatures to the
+  [ONNX](https://onnx.ai/) binary format for interoperability with standard ML
+  tooling. Converts creature topology to ONNX computational graphs with
+  compatibility checking for unsupported features (aggregate functions,
+  recurrent connections).
+- ✅ **Hyperparameter Self-Adaptation**: Per-creature evolvable hyperparameters
+  (learning rate, mutation rates, regularisation strength) subject to Gaussian
+  mutation and weighted-average crossover, reducing the need for manual
+  hyperparameter tuning.
+- ✅ **Adaptive Population Sizing**: Automatically adjusts population size based
+  on species diversity metrics—growing the population when diversity is low
+  (premature convergence) and shrinking it during high-diversity stagnation.
+- ✅ **Parallel Batch Creature Evaluation**: Topology-aware grouping clusters
+  same-structure creatures in the evaluation queue to maximise WASM compilation
+  cache hits across workers, with configurable concurrency limits.
 
 ## 🏗️ Architectural Comparison
 
@@ -296,6 +352,11 @@ graph LR
 - **Error-Guided Discovery**: GPU-accelerated structural hints based on error
   analysis
 - **Population-Based**: Evolves multiple networks simultaneously
+- **Regularisation**: Dropout, L1/L2 weight & bias decay, sparse training,
+  neuron pruning, and cost-of-growth penalty
+- **Cross-Validation**: K-fold validation for robust fitness estimation
+- **Transfer Learning**: Checkpoint export/import with weight freezing for
+  fine-tuning on related tasks
 
 **Strengths**:
 
@@ -307,13 +368,14 @@ graph LR
   new data arrives), with the degree of catastrophic forgetting depending on how
   you construct and refresh your training data
 - Can trace evolutionary history
+- Transfer learning via checkpoint export/import with UUID-based neuron mapping
+- ONNX export for interoperability with standard ML tooling
 
 **Weaknesses**:
 
 - More computationally expensive (population-based)
 - Slower convergence than pure gradient descent
 - Limited scalability compared to massive transformers
-- Each problem typically starts from scratch
 - Less efficient for pure parallel processing
 
 ## ✨ Our Unique Approaches
@@ -459,6 +521,59 @@ algorithm instead of standard crossover.
 
 **Reference**: See Feature #8 in [README.md](./README.md)
 
+### 7. 🧠 Predictive Coding Training
+
+**What It Is**: An optional training paradigm based on predictive coding theory
+([Rao & Ballard, 1999](https://www.nature.com/articles/nn0199_79)) that
+minimises prediction error through iterative inference settling and local
+Hebbian learning rules.
+
+**How It Works**:
+
+1. Input and target values are clamped to the network
+2. An iterative settling loop runs inference, adjusting latent values to
+   minimise prediction error energy (E = ½ Σ ε²)
+3. Once settled, local Hebbian weight updates are computed: ΔW = η · f'(a) · ε ·
+   x
+4. Updates are applied with symmetric (shared) weights rather than separate
+   prediction weights
+
+**Why It's Unique**: Predictive coding uses only local information for learning
+(pre- and post-synaptic activity), which aligns naturally with NEAT's
+neuron-centric topology. It provides an alternative to standard backpropagation
+that may generalise differently on certain problem types.
+
+**Configuration**: Controlled via `PredictiveCodingConfig` with parameters for
+inference steps, inference rate, learning rate, and energy convergence
+threshold. Disabled by default.
+
+**Reference**: See [PREDICTIVE_CODING.md](./docs/PREDICTIVE_CODING.md) for the
+full architecture design.
+
+### 8. 🔍 Discovery Caching and Disk Space Management
+
+**What It Is**: A suite of enhancements to the discovery pipeline that cache
+evaluation results, inform future candidate building from historical data, and
+monitor disk space to prevent failures.
+
+**How It Works**:
+
+- **Success Cache**: Persists discovery candidates that improved a creature's
+  score, allowing re-application of known wins to the current fittest creature
+- **Failure Cache**: Caches candidates that failed to improve, preventing
+  redundant re-evaluation with smart bucketing by weight order-of-magnitude
+- **Cache Eviction**: Age-based (TTL) and size-based eviction prevents unbounded
+  cache growth
+- **Cache-Informed Candidates**: Historical successes inform multi-neuron
+  removal combinations and supplement Phase 2 candidate building
+- **Disk Space Monitoring**: Pre-flight checks with configurable critical and
+  warning thresholds prevent opaque I/O failures during long-running discovery
+
+**Why It's Unique**: Most neuroevolution implementations treat each structural
+search independently. Our caching layer allows the discovery pipeline to learn
+from its own history, building on previous successes and avoiding repeated
+failures.
+
 ## 🔬 Ecosystem Comparison: What We've Built vs Standard Libraries
 
 ### 📚 Standard ML Libraries (TensorFlow, PyTorch, etc.)
@@ -495,8 +610,8 @@ algorithm instead of standard crossover.
   and training
 - **Standard Libraries**: Fixed architectures, transfer learning from
   pre-trained models
-- **Our Library**: Dynamic architectures, each problem starts fresh (see
-  [Transfer Learning](#transfer-learning-support) in the future work section)
+- **Our Library**: Dynamic architectures with transfer learning via checkpoint
+  export/import, and ONNX export for interoperability
 
 **When to Use Each**:
 
@@ -534,6 +649,14 @@ algorithm instead of standard crossover.
    (exploitation)
 8. **Unique Activations**: Supports non-standard functions (IF, MAX, MIN) for
    different behaviours
+9. **Transfer Learning**: Checkpoint export/import with UUID-based neuron
+   mapping and weight freezing for fine-tuning
+10. **ONNX Export**: Standard format export for interoperability with existing
+    ML pipelines
+11. **Comprehensive Regularisation**: Dropout, L1/L2 weight & bias decay, sparse
+    training, neuron pruning, and cost-of-growth penalty
+12. **Self-Tuning Hyperparameters**: Per-creature evolvable learning rate,
+    mutation rates, and regularisation strength
 
 ### 🧬 NEAT (Our Implementation) - Cons
 
@@ -544,20 +667,23 @@ algorithm instead of standard crossover.
    we're maxing out around 500 hidden neurons and 16,000 synapses. The
    `discoveryDir` feature helps push past this by finding structural
    improvements incrementally.
-4. **No Transfer Learning**: Each problem typically starts from scratch (see
-   [Transfer Learning](#transfer-learning-support) section for explanation)
-5. **Sequential Processing**: Less efficient for pure parallel computation than
-   fixed architectures
-6. **Limited Unsupervised Learning**: While evolution itself doesn't require
+4. **Sequential Processing**: Less efficient for pure parallel computation than
+   fixed architectures, though topology-aware parallel batch evaluation helps
+5. **Limited Unsupervised Learning**: While evolution itself doesn't require
    labelled data for the algorithm, NEAT is typically used for supervised
    learning tasks where you need labelled data to compute fitness. True
    unsupervised learning (clustering, autoencoders, generative models) is not
    yet implemented. See [Unsupervised Learning](#unsupervised-learning) section
    for clarification.
-7. **Hyperparameter Sensitivity**: Many parameters to tune, though our
-   implementation addresses this by randomising hyperparameters each evolution
-   run (which works well in practice - see note below)
-8. **GPU Support Limited**: Currently only Metal (macOS), not CUDA/OpenCL
+6. **Hyperparameter Sensitivity**: Many parameters to tune, though our
+   implementation now addresses this with per-creature hyperparameter
+   self-adaptation (evolvable learning rate, mutation rates, and regularisation
+   strength), adaptive population sizing, adaptive mutation thresholds
+   (`AdaptiveMutationThresholds`), plateau detection (`PlateauDetector`),
+   stability adaptation (`StabilityAdaptationConfig`), and randomised
+   hyperparameters each evolution run (see note below)
+7. **No Native CUDA**: GPU acceleration uses wgpu (Metal, Vulkan, DX12) with CPU
+   fallback rather than native CUDA for NVIDIA GPUs
 
 > [!TIP]
 > Our implementation handles hyperparameter sensitivity well by randomising
@@ -608,37 +734,25 @@ as a task list.
 
 #### 1. 🔁 Transfer Learning Support
 
-**Current State**: Each problem starts from scratch. No mechanism to transfer
-learned structures or weights between related tasks.
+**Current State**: ✅ Implemented (Issue #1861). Checkpoint export/import system
+with UUID-based neuron and synapse mapping enables reuse of trained creatures
+across related tasks with different input/output configurations.
 
-**What Transfer Learning Is**: Transfer learning is the practice of taking a
-model trained on one task and reusing it (or parts of it) for a related task.
-For example:
+**What We Have**:
 
-- Train a network to recognise cats, then fine-tune it to recognise dogs
-- Train on a large dataset, then fine-tune on a smaller related dataset
-- Use pre-trained weights as initialisation for a new task
+- ✅ **Checkpoint Export/Import**: Save and load pre-trained creatures via the
+  `Checkpoint` class with full topology and weight serialisation
+- ✅ **UUID-Based Neuron Mapping**: Creatures with different topologies can
+  share compatible sub-networks through UUID-based matching
+- ✅ **Weight Freezing**: Imported hidden layers can be frozen during
+  fine-tuning (`freezeHidden` option) so only new connections are trained
+- ✅ **Population Seeding**: `createSeededPopulation()` initialises a new
+  population from pre-trained creatures, enabling transfer across tasks
 
-**How It Works in Traditional ML**:
+**What's Still Missing**:
 
-1. **Pre-training**: Train a model on a large, general dataset (e.g., ImageNet
-   for images)
-2. **Feature Extraction**: Use the learned features/weights as a starting point
-3. **Fine-tuning**: Continue training on the new task with a smaller learning
-   rate
-4. **Transfer**: The model leverages knowledge from the original task
-
-**What's Missing in Our Implementation**:
-
-- Ability to save and load pre-trained creatures for reuse
-- Fine-tuning mechanisms for related tasks (continue evolution with pre-trained
-  weights)
 - Knowledge distillation from larger to smaller networks
 - Multi-task learning capabilities
-- Pre-trained creature "checkpoints" that can be shared
-
-**Impact**: Faster convergence on related tasks, better utilisation of previous
-work, ability to build on top of successful creatures
 
 **References**:
 
@@ -650,8 +764,6 @@ work, ability to build on top of successful creatures
   Yosinski et al. (2014) - Explains feature transferability
 - [Knowledge Distillation](https://arxiv.org/abs/1503.02531) - Hinton et al.
   (2015) - Distilling knowledge from large to small models
-- [Transfer Learning Tutorial](https://www.tensorflow.org/tutorials/images/transfer_learning) -
-  TensorFlow practical guide
 
 #### 2. 🔓 Unsupervised Learning
 
@@ -713,18 +825,27 @@ you need labelled data to compute fitness scores. True unsupervised learning
 
 #### 4. ⚡ Batch Processing Optimisation
 
-**Current State**: Sequential creature evaluation. While we have batch gradient
-descent for backprop, creature activation is still largely sequential.
+**Current State**: Parallel batch creature evaluation with topology-aware
+grouping is implemented (Issue #1862), along with batch discovery validation and
+mini-batch gradient descent.
 
-> [!WARNING]
-> Without true parallel batch activation, training throughput on large datasets
-> is significantly constrained. This is one of the most impactful performance
-> improvements available.
+**What We Have**:
 
-**What's Missing**:
+- ✅ **Parallel Batch Creature Evaluation**: `ParallelEvaluationConfig` provides
+  topology-aware grouping that clusters same-structure creatures in the
+  evaluation queue to maximise WASM compilation cache hits across workers, with
+  configurable concurrency limits via `maxConcurrentEvaluations`.
+- **Batch Discovery Validation**: `BatchDiscoveryValidator` validates multiple
+  discovery candidates in a single call with type-based grouping (structural vs
+  weight-only), result caching, early-exit on structural failure, and detailed
+  validation statistics. This significantly reduces redundant validation during
+  the discovery pipeline.
+- **Mini-Batch Gradient Descent**: Configurable batch sizes for backpropagation
+  weight updates.
 
-- True parallel batch activation across population
-- Vectorized operations for multiple creatures
+**What's Still Missing**:
+
+- Vectorised operations for multiple creatures simultaneously
 - GPU-accelerated forward passes
 - Batch inference optimisation
 
@@ -761,33 +882,32 @@ one task.
 
 #### 6. 🛡️ Advanced Regularisation Techniques
 
-**Current State**: Basic pruning and cost-of-growth penalty. We have sparse
-training which is similar to dropout (randomly selects neurons to update), but
-not exactly the same mechanism.
-
-> [!NOTE]
-> Our `sparseRatio` parameter selects a subset of neurons to update during
-> training. This is conceptually similar to dropout but operates differently: we
-> select neurons to update rather than randomly disabling them during the
-> forward pass.
+**Current State**: Comprehensive regularisation suite including dropout, L1/L2
+weight & bias decay, sparse training, pruning, cost-of-growth penalty, and
+cross-validation.
 
 **What We Have**:
 
+- ✅ **Dropout**: True inverted dropout (Issue #1860)—randomly disables hidden
+  neurons during training, scales remaining activations by 1/(1−p), uses all
+  neurons during inference
+- ✅ **L1/L2 Weight & Bias Regularisation**: L2 weight decay biases towards
+  smaller values; L1 soft-thresholding drives small weights/biases to exactly
+  zero for sparsity (Issue #1859). Applied during backpropagation via
+  `WeightRegularisationConfig` and `BiasRegularisationConfig`.
+- ✅ **Cross-Validation**: K-fold cross-validation (Issue #1865) with
+  configurable fold count, validation-based early stopping, and automatic
+  fallback to single-split when data is insufficient
 - **Sparse Training**: Configurable `sparseRatio` that selects a subset of
-  neurons to update during training (similar to dropout, but we select neurons
-  rather than randomly disabling them)
+  neurons to update during training
 - **Neuron Pruning**: Automatic removal of non-contributing neurons
 - **Cost-of-Growth**: Penalty for network size
+- **Hard Limits**: Per-mutation change limits and maximum absolute weight/bias
+  values
 
-**What's Missing**:
+**What's Still Missing**:
 
-- True dropout (randomly disable neurons during forward pass, use all during
-  inference)
 - Batch normalisation evolution
-- L1/L2 weight regularisation
-- Early stopping with validation sets (we have early stopping, but could enhance
-  with validation)
-- Cross-validation support
 
 **Impact**: Better generalisation, reduced overfitting
 
@@ -802,14 +922,38 @@ not exactly the same mechanism.
 
 #### 7. 🔧 Hyperparameter Evolution
 
-**Current State**: Manual hyperparameter tuning required.
+**Current State**: Per-creature hyperparameter self-adaptation with adaptive
+population sizing is implemented (Issue #1863), complementing the existing
+adaptive mutation mechanisms.
 
-**What's Missing**:
+**What We Have**:
 
-- Evolution of learning rates, mutation rates
-- Adaptive population sizing
-- Self-tuning regularisation parameters
-- Meta-learning for hyperparameters
+- ✅ **Per-Creature Hyperparameter Self-Adaptation**: Learning rate, mutation
+  rates, and regularisation strength are encoded as evolvable per-creature
+  parameters (Issue #1863). Gaussian mutation and weighted-average crossover
+  allow each creature to carry its own optimised hyperparameters, reducing the
+  need for manual tuning.
+- ✅ **Adaptive Population Sizing**: `AdaptivePopulationConfig` automatically
+  adjusts population size based on species diversity metrics (Issue #1863)—
+  growing when diversity is low (premature convergence) and shrinking during
+  high-diversity stagnation.
+- **Adaptive Mutation Thresholds**: `AdaptiveMutationThresholds` adjusts the
+  ratio of topology vs weight/bias mutations based on creature size (neuron
+  count). Large creatures (≥300 neurons) receive 90% weight/bias mutations and
+  only 10% topology expansion, with linear interpolation for medium creatures
+  (100–299 neurons).
+- **Plateau Detection**: `PlateauDetector` monitors fitness improvement rates
+  across generations and adapts mutation rates—doubling the mutation multiplier
+  when on a plateau and reducing it during rapid improvement to escape local
+  optima.
+- **Stability Adaptation**: `StabilityAdaptationConfig` adapts mutation rates
+  and breeding selection based on creature validation stability. Brittle
+  creatures (high failure rate) receive reduced mutations, while stable
+  creatures receive a boost. Stability can also influence parent selection.
+
+**What's Still Missing**:
+
+- Meta-learning for hyperparameters (learning to learn across tasks)
 
 **Impact**: Reduced manual tuning, better default configurations
 
@@ -821,27 +965,34 @@ not exactly the same mechanism.
 
 #### 8. 🖥️ Cross-Platform GPU Support
 
-**Current State**: macOS Metal only for GPU acceleration.
+**Current State**: Cross-platform GPU acceleration via wgpu abstraction layer.
 
-> [!WARNING]
-> GPU acceleration is currently macOS-only (Metal). Linux and Windows users
-> running NVIDIA or AMD hardware will not benefit from GPU-accelerated discovery
-> until CUDA or cross-platform support is added.
+> [!NOTE]
+> GPU acceleration uses the wgpu cross-platform abstraction, which automatically
+> selects the best available backend: Metal on macOS, Vulkan on Linux, and DX12
+> on Windows. When no compatible GPU is detected, discovery gracefully falls
+> back to CPU computation.
+
+**What's Implemented**:
+
+- ✅ Automatic backend selection via wgpu (Metal, Vulkan, DX12, OpenGL)
+- ✅ CPU fallback when no compatible GPU is available
+- ✅ GPU backend detection and reporting (`getGpuBackendInfo()`)
+- ✅ Cross-platform `requireGpu: false` — GPU accelerates but is not required
 
 **What's Missing**:
 
-- CUDA support for NVIDIA GPUs
-- OpenCL support for cross-platform
-- Vulkan support
-- CPU fallback optimisation
+- CUDA support for NVIDIA GPUs (wgpu uses Vulkan on Linux instead)
+- OpenCL support for older hardware
+- Benchmarking across all supported platforms
 
-**Impact**: Broader hardware support, better performance on more systems
+**Impact**: Broader hardware support, discovery works on any platform
 
 **References**:
 
-- [CUDA Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/)
-- [OpenCL Specification](https://www.khronos.org/opencl/)
 - [wgpu Documentation](https://wgpu.rs/) - Cross-platform GPU abstraction
+- [Vulkan Specification](https://www.vulkan.org/)
+- [CUDA Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/)
 
 ### 🟢 Low Priority
 
@@ -868,11 +1019,19 @@ not exactly the same mechanism.
 
 #### 10. 📦 Standard Format Export
 
-**Current State**: Custom JSON format for creature serialisation.
+**Current State**: ✅ ONNX export implemented (Issue #1866). Custom JSON format
+remains for internal serialisation.
 
-**What's Missing**:
+**What We Have**:
 
-- ONNX export for interoperability
+- ✅ **ONNX Export**: Converts creature topology to ONNX computational graphs
+  with each neuron mapped to weighted sum → bias addition → activation function.
+  Includes compatibility checking via `checkOnnxCompatibility()` for unsupported
+  features (aggregate functions like IF/MINIMUM/MAXIMUM and recurrent
+  connections).
+
+**What's Still Missing**:
+
 - TensorFlow Lite export for mobile
 - CoreML export for Apple devices
 - PyTorch model conversion
@@ -909,14 +1068,26 @@ not exactly the same mechanism.
 
 #### 12. 📈 Time Series and Sequence Modelling
 
-**Current State**: Feedforward focus, limited sequence handling.
+**Current State**: Primarily feedforward, but basic recurrent/time-series
+support exists via the `feedbackLoop` configuration.
 
-**What's Missing**:
+**What We Have**:
 
-- Recurrent connection evolution
-- LSTM/GRU-like structures
+- **Feedback Loop**: The `feedbackLoop` option in `NeatArguments` enables
+  recurrent connections (self-loops and backward connections), where the
+  previous activation result feeds back into the next interaction. When enabled,
+  recurrent mutation operations (`ADD_BACK_CONN`, `ADD_SELF_CONN`, etc.) become
+  available, allowing networks to evolve memory-like structures suitable for
+  time-series forecasting. See the
+  [NARX feedback neural networks](https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html)
+  reference for the underlying concept.
+
+**What's Still Missing**:
+
+- LSTM/GRU-like gated structures
 - Temporal convolution evolution
 - Sequence-to-sequence architectures
+- Advanced temporal attention mechanisms
 
 **Impact**: Better handling of time series, natural language, sequential data
 
@@ -1000,10 +1171,14 @@ not exactly the same mechanism.
 
 NEAT offers unique advantages in automatic architecture search and adaptive
 learning, but historically suffered from computational inefficiency and
-scalability limitations. Our implementation addresses many of these through GPU
-acceleration, memetic evolution, and error-guided discovery. However, gaps
-remain in transfer learning, unsupervised learning, and attention mechanisms
-that represent opportunities for future development.
+scalability limitations. Our implementation addresses many of these through
+cross-platform GPU acceleration, memetic evolution, error-guided discovery with
+intelligent caching, predictive coding, per-creature hyperparameter
+self-adaptation, comprehensive regularisation (dropout, L1/L2 weight & bias
+decay), transfer learning via checkpoint export/import, ONNX format export,
+k-fold cross-validation, and parallel batch creature evaluation. Remaining gaps
+in unsupervised learning and attention mechanisms represent opportunities for
+future development.
 
 The choice between NEAT and traditional neural networks depends on:
 
@@ -1013,15 +1188,16 @@ The choice between NEAT and traditional neural networks depends on:
   - You require lifelong learning
   - You want to add features incrementally
   - You need interpretable evolution
+  - You want to transfer learned structures via checkpoint export/import
 
 - **Use Traditional NNs when**:
   - You need fast training on large datasets
   - You have proven architectures (CNNs for images, Transformers for language)
-  - You require transfer learning from pre-trained models
   - You need maximum scalability (billions of parameters)
   - You want industry-standard tooling
 
 Our implementation bridges these worlds, making NEAT more practical while
 preserving its unique advantages. The hybrid approach of evolution +
-backpropagation, combined with memetic learning and error-guided discovery,
-creates a powerful alternative to purely gradient-based methods.
+backpropagation, combined with memetic learning, error-guided discovery,
+transfer learning, and ONNX interoperability, creates a powerful alternative to
+purely gradient-based methods.

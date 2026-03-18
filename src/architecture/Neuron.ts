@@ -75,6 +75,12 @@ export class Neuron implements TagsInterface, NeuronInternal {
    */
   private squashTypeCache?: number;
 
+  /**
+   * Issue #1861: When true, this neuron's bias is frozen and will not be
+   * modified by backpropagation or mutation.
+   */
+  public frozen?: boolean;
+
   /** Index position of the neuron in the creature's neuron array */
   public index: number;
   /** Tags for storing metadata about the neuron */

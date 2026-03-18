@@ -77,6 +77,54 @@ export { DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT } from "./src/config/OutputRangeCon
 export { calculateOutputRangePenalty } from "./src/architecture/OutputRangePenalty.ts";
 
 /**
+ * Hyperparameter Evolution
+ *
+ * Issue #1863: Per-creature evolvable hyperparameters (learning rate,
+ * mutation rates, regularisation strength) subject to mutation and crossover.
+ *
+ * @see {@link module:src/config/HyperparameterConfig}
+ */
+export type {
+  EvolvableHyperparameters,
+  HyperparameterEvolutionConfig,
+  RequiredEvolvableHyperparameters,
+  RequiredHyperparameterEvolutionConfig,
+} from "./src/config/HyperparameterConfig.ts";
+export {
+  DEFAULT_EVOLVABLE_HYPERPARAMETERS,
+  DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,
+} from "./src/config/HyperparameterConfig.ts";
+
+/**
+ * Adaptive Population Sizing
+ *
+ * Issue #1863: Automatically adjust population size based on
+ * diversity metrics and convergence progress.
+ *
+ * @see {@link module:src/config/AdaptivePopulationConfig}
+ */
+export type {
+  AdaptivePopulationConfig,
+  RequiredAdaptivePopulationConfig,
+} from "./src/config/AdaptivePopulationConfig.ts";
+export { DEFAULT_ADAPTIVE_POPULATION_CONFIG } from "./src/config/AdaptivePopulationConfig.ts";
+
+/**
+ * Parallel Batch Creature Evaluation
+ *
+ * Issue #1862: Controls topology-aware grouping and concurrency
+ * limits for population fitness evaluation. Topology grouping
+ * clusters same-structure creatures to maximise WASM cache hits.
+ *
+ * @see {@link module:src/config/ParallelEvaluationConfig}
+ */
+export type {
+  ParallelEvaluationConfig,
+  RequiredParallelEvaluationConfig,
+} from "./src/config/ParallelEvaluationConfig.ts";
+export { DEFAULT_PARALLEL_EVALUATION_CONFIG } from "./src/config/ParallelEvaluationConfig.ts";
+
+/**
  * Cost Interface
  *
  * This interface defines the contract for cost functions used in neural network training.
@@ -380,3 +428,46 @@ export {
   MEMORY_CONSTRAINED_PRESET,
   QUICK_START_PRESET,
 } from "./src/presets/Presets.ts";
+
+/**
+ * Transfer Learning Module
+ *
+ * Issue #1861: Provides foundational transfer learning support:
+ * - Checkpoint export/import for reusing trained creatures across tasks
+ * - UUID mapping for different input/output configurations
+ * - Weight freezing for fine-tuning imported creatures
+ * - Population seeding with pre-trained creatures
+ *
+ * @see {@link module:src/transfer/mod}
+ */
+export {
+  createSeededPopulation,
+  exportCheckpoint,
+  importCheckpoint,
+} from "./src/transfer/mod.ts";
+export type {
+  CheckpointExportOptions,
+  CheckpointImportOptions,
+  CheckpointInterface,
+  CheckpointMetadata,
+  PopulationSeedingOptions,
+} from "./src/transfer/mod.ts";
+
+/**
+ * ONNX Export Module
+ *
+ * Issue #1866: Export trained creatures as ONNX models for deployment
+ * in standard ML pipelines. Maps NEAT topology to ONNX computational
+ * graphs with standard operator representations.
+ *
+ * @see {@link module:src/onnx/mod}
+ */
+export {
+  checkOnnxCompatibility,
+  exportToOnnx,
+  isSquashSupported,
+} from "./src/onnx/mod.ts";
+export type {
+  OnnxCompatibilityResult,
+  OnnxExportOptions,
+} from "./src/onnx/mod.ts";

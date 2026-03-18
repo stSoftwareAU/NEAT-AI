@@ -4,6 +4,9 @@ import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
 import { editParentByIndex } from "../breed/EditParentByIndex.ts";
 import { geneticCompatibility } from "../breed/GeneticCompatibility.ts";
 import { Creature } from "../Creature.ts";
+import type { RequiredHyperparameterEvolutionConfig } from "../config/HyperparameterConfig.ts";
+import { DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG } from "../config/HyperparameterConfig.ts";
+import { crossoverHyperparameters } from "../NEAT/HyperparameterEvolution.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
 import type { ValidationError } from "../errors/ValidationError.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
@@ -47,6 +50,7 @@ export class Offspring {
     options: {
       geneticCompatibilityThreshold?: number;
       forwardOnly?: boolean;
+      hyperparameterEvolution?: RequiredHyperparameterEvolutionConfig;
     } = {},
   ): Creature | undefined {
     const rng = getRandomNumberGenerator();
@@ -397,6 +401,25 @@ export class Offspring {
     } else if (father.memetic) {
       const memetic = memeticUpdate(father, offspring);
       offspring.memetic = memetic;
+    }
+
+    // Issue #1863: Crossover per-creature hyperparameters
+    const hpConfig = options.hyperparameterEvolution ??
+      DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG;
+    if (hpConfig.enabled) {
+      offspring.hyperparameters = crossoverHyperparameters(
+        mum.hyperparameters,
+        dad.hyperparameters,
+        hpConfig,
+      );
+    } else if (mum.hyperparameters || dad.hyperparameters) {
+      // Preserve hyperparameters even when evolution is disabled,
+      // inheriting from the fitter parent (mother).
+      offspring.hyperparameters = mum.hyperparameters
+        ? { ...mum.hyperparameters }
+        : dad.hyperparameters
+        ? { ...dad.hyperparameters }
+        : undefined;
     }
 
     try {

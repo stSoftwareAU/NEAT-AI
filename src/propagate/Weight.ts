@@ -76,7 +76,7 @@ export function adjustedWeight(
   c: Synapse,
   config: BackPropagationConfig,
 ): number {
-  if (config.disableWeightAdjustment) {
+  if (config.disableWeightAdjustment || c.frozen) {
     return c.weight;
   }
   const cs = creatureState.connection(c.from, c.to);
@@ -96,7 +96,7 @@ export function calculateWeight(
   c: Synapse,
   config: BackPropagationConfig,
 ) {
-  if (config.disableWeightAdjustment) {
+  if (config.disableWeightAdjustment || c.frozen) {
     return c.weight;
   }
 
@@ -177,11 +177,11 @@ export function limitWeight(
 
   // Prevent exceedingly small weights.
   if (Math.abs(targetWeight) < config.plankConstant) {
-    return 0;
+    return applyWeightRegularisation(0, config);
   }
 
   if (Math.abs(targetWeight - currentWeight) < config.plankConstant) {
-    return currentWeight;
+    return applyWeightRegularisation(currentWeight, config);
   }
 
   // Calculate and apply the difference with learning rate.
@@ -199,7 +199,38 @@ export function limitWeight(
     limitedWeight = Math.sign(limitedWeight) * config.limitWeightScale;
   }
 
-  return limitedWeight;
+  return applyWeightRegularisation(limitedWeight, config);
+}
+
+/**
+ * Issue #1859: Apply L1/L2 weight regularisation (weight decay).
+ *
+ * L2 shrinks weights proportionally to their magnitude: w *= (1 - lr * λ₂)
+ * L1 applies soft-thresholding to drive small weights to zero:
+ *   w -= lr * λ₁ * sign(w), snapping to zero if the penalty exceeds |w|.
+ */
+function applyWeightRegularisation(
+  weight: number,
+  config: BackPropagationConfig,
+): number {
+  let result = weight;
+
+  // L2 regularisation (weight decay)
+  if (config.l2WeightDecay > 0) {
+    result *= 1 - config.learningRate * config.l2WeightDecay;
+  }
+
+  // L1 regularisation (sparsity via soft-thresholding)
+  if (config.l1WeightDecay > 0 && result !== 0) {
+    const l1Penalty = config.learningRate * config.l1WeightDecay;
+    if (l1Penalty >= Math.abs(result)) {
+      result = 0;
+    } else {
+      result -= l1Penalty * Math.sign(result);
+    }
+  }
+
+  return result;
 }
 
 /**
