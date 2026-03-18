@@ -286,6 +286,10 @@
     "diag",
     "Logits",
     "repr",
-    "CIRF"
+    "CIRF",
+    "opset",
+    "elem",
+    "Sizer",
+    "unnormalised"
   ]
 }
