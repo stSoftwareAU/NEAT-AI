@@ -426,18 +426,55 @@ export class IF
     let improvedValue = currentBias;
 
     const listLength = inward.length;
-    const indices = Int32Array.from({ length: listLength }, (_, i) => i); // Create an array of indices
+    const indices = Int32Array.from({ length: listLength }, (_, i) => i);
 
     if (!config.disableRandomSamples) {
       CreatureUtil.shuffle(indices);
     }
 
-    const errorPerLink = error /
-      (condition > 0 ? positiveCount : negativeCount);
+    // Issue #1874: Compute activation-magnitude-weighted error shares
+    // instead of equal distribution. Connections with larger activation
+    // magnitudes absorb proportionally more error, consistent with the
+    // elastic distribution used by standard neurons.
+    const eligibleCount = condition > 0 ? positiveCount : negativeCount;
+    const errorShares = new Float64Array(listLength);
+    let totalMagnitude = 0;
+
+    for (let i = listLength; i--;) {
+      const c = inward[i];
+      if (c.from === c.to) continue;
+      if (c.type === "condition") continue;
+      if (c.type === "positive" && condition <= 0) continue;
+      if (c.type === "negative" && condition > 0) continue;
+
+      const fromActivation = activations[c.from];
+      const fromWeight = adjustedWeight(state, c, config);
+      const magnitude = Math.abs(fromWeight * fromActivation);
+      errorShares[i] = magnitude;
+      totalMagnitude += magnitude;
+    }
+
+    // Distribute error proportionally to magnitude, or equally as fallback
+    if (totalMagnitude > config.plankConstant) {
+      for (let i = listLength; i--;) {
+        errorShares[i] = error * (errorShares[i] / totalMagnitude);
+      }
+    } else {
+      const equalShare = eligibleCount > 0 ? error / eligibleCount : 0;
+      for (let i = listLength; i--;) {
+        const c = inward[i];
+        if (c.from === c.to) continue;
+        if (c.type === "condition") continue;
+        if (c.type === "positive" && condition <= 0) continue;
+        if (c.type === "negative" && condition > 0) continue;
+        errorShares[i] = equalShare;
+      }
+    }
+
     // Iterate over the shuffled indices
     for (let i = listLength; i--;) {
       const indx = indices[i];
-      let thisPerLinkError = errorPerLink;
+      const linkError = errorShares[indx];
 
       const c = inward[indx];
 
@@ -456,8 +493,9 @@ export class IF
 
       let improvedFromActivation = fromActivation;
       let targetFromActivation = fromActivation;
-      const targetFromValue = fromValue + errorPerLink;
+      const targetFromValue = fromValue + linkError;
       let improvedFromValue = fromValue;
+      let thisPerLinkError = linkError;
       if (
         fromWeight &&
         fromNeuron.type !== "input" &&

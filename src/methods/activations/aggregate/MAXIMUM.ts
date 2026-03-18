@@ -211,6 +211,15 @@ export class MAXIMUM
       let mainConnection;
       let mainActivation;
       let mainFromNeuron;
+
+      // Issue #1874: Collect all connection values for proximity-based
+      // gradient distribution to non-winning connections.
+      const connectionInfo: {
+        c: typeof inward[0];
+        fromActivation: number;
+        fromValue: number;
+      }[] = [];
+
       for (let indx = inward.length; indx--;) {
         const c = inward[indx];
 
@@ -220,6 +229,9 @@ export class MAXIMUM
 
         const fromWeight = adjustedWeight(state, c, config);
         const fromValue = fromWeight * fromActivation;
+
+        connectionInfo.push({ c, fromActivation, fromValue });
+
         if (fromValue > tmpValue) {
           tmpValue = fromValue;
           mainConnection = c;
@@ -292,6 +304,36 @@ export class MAXIMUM
         aWeight;
 
       improvedValue = improvedAdjustedFromValue + currentBias;
+
+      // Issue #1874: Partial gradient flow to non-winning connections.
+      // Connections whose values are close to the winner receive a small
+      // fraction of the error signal via weight accumulation. This prevents
+      // dead gradient paths while keeping the winner dominant.
+      if (connectionInfo.length > 1) {
+        const LEAK_FRACTION = 0.15;
+        const range = Math.max(Math.abs(tmpValue), config.plankConstant);
+        const threshold = range * 0.2;
+
+        for (const info of connectionInfo) {
+          if (info.c === mainConnection) continue;
+          const distance = tmpValue - info.fromValue;
+          if (distance >= 0 && distance <= threshold) {
+            const proximity = 1 - (distance / threshold);
+            const leakError = error * LEAK_FRACTION * proximity;
+            if (Math.abs(leakError) > config.plankConstant) {
+              const cs = state.connection(info.c.from, info.c.to);
+              const targetValue = info.fromValue + leakError;
+              accumulateWeight(
+                info.c.weight,
+                cs,
+                targetValue,
+                info.fromActivation,
+                config,
+              );
+            }
+          }
+        }
+      }
     }
 
     const ns = neuron.creature.state.node(neuron.index);
