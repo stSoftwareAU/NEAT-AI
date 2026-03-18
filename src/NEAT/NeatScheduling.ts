@@ -220,6 +220,7 @@ export function scheduleTraining(
     feedbackLoop: neat.config.feedbackLoop,
     sparseRatio: neat.config.sparseRatio,
     predictiveCoding: neat.config.predictiveCoding,
+    crossValidation: neat.config.crossValidation,
   };
 
   const p = w.train(creature, trainOptions).then((r) => {

@@ -27,6 +27,7 @@ import type { RequiredDiskSpaceConfig } from "./DiskSpaceConfig.ts";
 import type { RequiredWorkerThreadCapConfig } from "./WorkerThreadCapConfig.ts";
 import type { RequiredHyperparameterEvolutionConfig } from "./HyperparameterConfig.ts";
 import type { RequiredAdaptivePopulationConfig } from "./AdaptivePopulationConfig.ts";
+import type { RequiredCrossValidationConfig } from "./CrossValidationConfig.ts";
 
 /**
  * Concrete, fully-populated configuration shape used internally after defaults
@@ -663,4 +664,13 @@ export interface NeatArguments {
    * based on diversity metrics and convergence progress.
    */
   adaptivePopulation: RequiredAdaptivePopulationConfig;
+
+  /**
+   * Cross-validation configuration for fitness evaluation.
+   *
+   * Issue #1865: When enabled, training data is split into k folds
+   * and fitness is evaluated as the average across held-out folds,
+   * improving generalisation and reducing overfitting.
+   */
+  crossValidation: RequiredCrossValidationConfig;
 }

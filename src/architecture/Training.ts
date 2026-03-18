@@ -23,6 +23,7 @@ import { CreatureUtil } from "./CreatureUtils.ts";
 import { trainWithPredictiveCoding } from "../predictiveCoding/PredictiveCodingTrainer.ts";
 import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../config/PredictiveCodingConfig.ts";
 import { applyDropout } from "../propagate/Dropout.ts";
+import { trainWithCrossValidation } from "./CrossValidationTrainer.ts";
 
 /**
  * Scans a data directory for binary training files.
@@ -115,6 +116,21 @@ export function trainDir(
     );
   }
 
+  // Issue #1865: Delegate to cross-validation trainer when enabled.
+  if (options.crossValidation?.enabled) {
+    const folds = options.crossValidation.folds ?? 5;
+    const validationEarlyStopping =
+      options.crossValidation.validationEarlyStopping ?? true;
+    return trainWithCrossValidation(
+      creature,
+      dataDir,
+      options,
+      cost,
+      folds,
+      validationEarlyStopping,
+    );
+  }
+
   return trainDirBinary(creature, dataResult.files, options, cost);
 }
 
@@ -182,6 +198,28 @@ interface TrainingResult {
   error: number;
   trace: CreatureTrace;
   compact: CreatureExport | undefined;
+}
+
+/**
+ * Trains a creature on a single data directory (no cross-validation).
+ *
+ * Issue #1865: Exposed as a named export so CrossValidationTrainer
+ * can call it for each fold without recursion.
+ */
+export function trainDirSingleFold(
+  creature: Creature,
+  dataDir: string,
+  options: TrainOptions,
+  cost: CostInterface,
+): TrainingResult {
+  const dataResult = dataFiles(dataDir, options);
+
+  assert(
+    dataResult.files.length > 0,
+    "No binary files found in the data directory",
+  );
+
+  return trainDirBinary(creature, dataResult.files, options, cost);
 }
 
 function trainDirBinary(

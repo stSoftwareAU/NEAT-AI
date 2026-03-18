@@ -1,4 +1,5 @@
 import type { BackPropagationArguments } from "../propagate/BackPropagation.ts";
+import type { CrossValidationConfig } from "./CrossValidationConfig.ts";
 import type { PredictiveCodingConfig } from "./PredictiveCodingConfig.ts";
 
 export interface TrainArguments extends BackPropagationArguments {
@@ -40,6 +41,15 @@ export interface TrainArguments extends BackPropagationArguments {
    * instead of standard backpropagation.
    */
   predictiveCoding: PredictiveCodingConfig;
+
+  /**
+   * Cross-validation configuration.
+   *
+   * Issue #1865: When enabled, training data is split into k folds.
+   * The creature is trained on k-1 folds and validated on the held-out
+   * fold. Fitness is the average validation error across all folds.
+   */
+  crossValidation: CrossValidationConfig;
 }
 
 export type TrainOptions = Partial<TrainArguments>;

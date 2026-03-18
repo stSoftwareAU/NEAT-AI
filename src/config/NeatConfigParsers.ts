@@ -73,6 +73,10 @@ import {
   DEFAULT_ADAPTIVE_POPULATION_CONFIG,
   type RequiredAdaptivePopulationConfig,
 } from "./AdaptivePopulationConfig.ts";
+import {
+  DEFAULT_CROSS_VALIDATION_CONFIG,
+  type RequiredCrossValidationConfig,
+} from "./CrossValidationConfig.ts";
 
 /** Parse worker thread cap configuration (Issue #1569). */
 export function parseWorkerThreadCap(
@@ -647,6 +651,28 @@ export function parseHyperparameterEvolution(
       { minExclusive: 0, max: 1 },
     ),
   } as RequiredHyperparameterEvolutionConfig;
+}
+
+/** Parse cross-validation configuration (Issue #1865). */
+export function parseCrossValidation(
+  overrides: Record<string, unknown> | undefined,
+): RequiredCrossValidationConfig {
+  const d = DEFAULT_CROSS_VALIDATION_CONFIG;
+  return {
+    enabled: typeof overrides?.enabled === "boolean"
+      ? overrides.enabled
+      : d.enabled,
+    folds: parseNumber(
+      "Cross-validation folds",
+      overrides?.folds,
+      d.folds,
+      { integer: true, min: 1, max: 20 },
+    ),
+    validationEarlyStopping:
+      typeof overrides?.validationEarlyStopping === "boolean"
+        ? overrides.validationEarlyStopping
+        : d.validationEarlyStopping,
+  } as RequiredCrossValidationConfig;
 }
 
 /** Parse adaptive population sizing configuration (Issue #1863). */

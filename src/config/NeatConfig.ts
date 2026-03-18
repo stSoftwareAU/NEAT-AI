@@ -40,6 +40,7 @@ import {
   parseAdaptiveMutationThresholds,
   parseAdaptivePopulation,
   parseBiasRegularisation,
+  parseCrossValidation,
   parseDiscoveryCache,
   parseDiscoveryMinCandidates,
   parseDiskSpaceConfig,
@@ -528,6 +529,10 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     ),
     adaptivePopulation: parseAdaptivePopulation(
       opts.adaptivePopulation as Record<string, unknown> | undefined,
+    ),
+    // Issue #1865: Parse cross-validation configuration
+    crossValidation: parseCrossValidation(
+      opts.crossValidation as Record<string, unknown> | undefined,
     ),
     // Issue #1620: Parse and resolve output range constraints
     outputRanges: (() => {
