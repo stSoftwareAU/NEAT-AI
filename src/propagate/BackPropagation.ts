@@ -116,6 +116,17 @@ export type BackPropagationArguments = {
    * 0 = disabled (default), typical values 0.1 to 0.5.
    */
   dropoutRate: number;
+
+  /**
+   * Issue #1872: Normalise gradient accumulation for high fan-out neurons.
+   * When enabled, accumulated error signals from multiple downstream paths
+   * are divided by sqrt(targetDeltaCount) instead of being summed directly.
+   * This dampens gradient magnification in neurons with many outward
+   * connections while preserving some scaling (similar to AdaGrad-style
+   * normalisation).
+   * false = disabled (default, preserves existing sum behaviour).
+   */
+  normaliseGradients: boolean;
 };
 
 export type BackPropagationOptions = Partial<BackPropagationArguments>;
@@ -227,6 +238,7 @@ export function createBackPropagationConfig(
       Math.max(options?.dropoutRate ?? 0, 0),
       1,
     ),
+    normaliseGradients: options?.normaliseGradients ?? false,
   };
 
   return Object.freeze(config);
