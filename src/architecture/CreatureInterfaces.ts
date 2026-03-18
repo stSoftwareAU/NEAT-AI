@@ -10,6 +10,7 @@ import type {
   NeuronTrace,
 } from "./NeuronInterfaces.ts";
 import type { MemeticInterface } from "../blackbox/MemeticInterface.ts";
+import type { EvolvableHyperparameters } from "../config/HyperparameterConfig.ts";
 
 /**
  * Common properties shared by all creature interfaces.
@@ -38,6 +39,14 @@ interface CreatureCommon extends TagsInterface {
 
   /** Semantic version of the creature */
   semanticVersion?: string;
+
+  /**
+   * Per-creature evolvable hyperparameters.
+   *
+   * Issue #1863: When hyperparameter evolution is enabled, these values
+   * are subject to mutation and crossover like other genes.
+   */
+  hyperparameters?: EvolvableHyperparameters;
 }
 
 /**

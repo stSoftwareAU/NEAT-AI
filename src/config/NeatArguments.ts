@@ -25,6 +25,8 @@ import type { RequiredOutputRange } from "./OutputRangeConfig.ts";
 import type { RequiredDiscoveryCacheConfig } from "./DiscoveryCacheConfig.ts";
 import type { RequiredDiskSpaceConfig } from "./DiskSpaceConfig.ts";
 import type { RequiredWorkerThreadCapConfig } from "./WorkerThreadCapConfig.ts";
+import type { RequiredHyperparameterEvolutionConfig } from "./HyperparameterConfig.ts";
+import type { RequiredAdaptivePopulationConfig } from "./AdaptivePopulationConfig.ts";
 
 /**
  * Concrete, fully-populated configuration shape used internally after defaults
@@ -644,4 +646,21 @@ export interface NeatArguments {
    * overhead is incurred.
    */
   onTrainingEvent?: TrainingEventCallback;
+
+  /**
+   * Per-creature hyperparameter evolution configuration.
+   *
+   * Issue #1863: When enabled, learning rate, mutation rates, and
+   * regularisation strength are encoded as per-creature evolvable
+   * parameters subject to mutation and crossover.
+   */
+  hyperparameterEvolution: RequiredHyperparameterEvolutionConfig;
+
+  /**
+   * Adaptive population sizing configuration.
+   *
+   * Issue #1863: When enabled, automatically adjusts population size
+   * based on diversity metrics and convergence progress.
+   */
+  adaptivePopulation: RequiredAdaptivePopulationConfig;
 }

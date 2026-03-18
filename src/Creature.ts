@@ -26,6 +26,7 @@ import { Neuron } from "./architecture/Neuron.ts";
 import { Synapse } from "./architecture/Synapse.ts";
 import type { SynapseInternal } from "./architecture/SynapseInterfaces.ts";
 import type { MemeticInterface } from "./blackbox/MemeticInterface.ts";
+import type { EvolvableHyperparameters } from "./config/HyperparameterConfig.ts";
 import { compactCreature } from "./compact/CompactCreature.ts";
 import type { NeatOptions } from "./config/NeatOptions.ts";
 import type { CostInterface } from "./costs/CostInterface.ts";
@@ -113,6 +114,7 @@ export class Creature implements CreatureInternal {
   score?: number;
   synapses: Synapse[];
   memetic?: MemeticInterface;
+  hyperparameters?: EvolvableHyperparameters;
   readonly state: CreatureState = new CreatureState(this);
 
   // Topology caches (managed by CreatureTopology module)
