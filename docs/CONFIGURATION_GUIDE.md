@@ -34,6 +34,11 @@ CLI arguments or environment variables without pre-parsing.
 - [Fine-Tune Population](#fine-tune-population)
 - [Worker Thread Cap](#worker-thread-cap)
 - [Output Range Constraints](#output-range-constraints)
+- [Data Fuzzing](#data-fuzzing)
+- [Cross-Validation](#cross-validation)
+- [Hyperparameter Evolution](#hyperparameter-evolution)
+- [Adaptive Population Sizing](#adaptive-population-sizing)
+- [Parallel Evaluation](#parallel-evaluation)
 - [Logging and Reproducibility](#logging-and-reproducibility)
 - [Validation Rules](#validation-rules)
 - [Recipes](#recipes)
@@ -191,6 +196,37 @@ const config = createNeatConfig({
 | `sparseRatio`                     | `number`   | `random * random`               | Fraction of neurons selected for sparse activation (0–1)     |
 | `globalBreedingRate`              | `number`   | `random`                        | Ratio of cross-species vs within-species breeding (0–1)      |
 | `maxCRISPRsPerGeneration`         | `integer`  | `1`                             | Maximum CRISPRs applied per generation (min: 1)              |
+
+### 🎲 Data Fuzzing & Training Robustness
+
+| Option                                    | Type                      | Default      | Description                            |
+| ----------------------------------------- | ------------------------- | ------------ | -------------------------------------- |
+| `dataFuzzing.enabled`                     | `boolean`                 | `false`      | Enable training data noise injection   |
+| `dataFuzzing.inputNoiseScale`             | `number`                  | `0.01`       | Input noise magnitude (0–1)            |
+| `dataFuzzing.outputNoiseScale`            | `number`                  | `0`          | Output noise for label smoothing (0–1) |
+| `dataFuzzing.noiseType`                   | `"gaussian" \| "uniform"` | `"gaussian"` | Noise distribution type                |
+| `crossValidation.enabled`                 | `boolean`                 | `false`      | Enable k-fold cross-validation         |
+| `crossValidation.folds`                   | `integer`                 | `5`          | Number of folds (1–20)                 |
+| `crossValidation.validationEarlyStopping` | `boolean`                 | `true`       | Use validation fold for early stopping |
+
+### 🧬 Hyperparameter Evolution & Adaptive Population
+
+| Option                                      | Type      | Default  | Description                                        |
+| ------------------------------------------- | --------- | -------- | -------------------------------------------------- |
+| `hyperparameterEvolution.enabled`           | `boolean` | `false`  | Enable per-creature hyperparameter self-adaptation |
+| `hyperparameterEvolution.minLearningRate`   | `number`  | `0.0001` | Lower bound for evolved learning rate              |
+| `hyperparameterEvolution.maxLearningRate`   | `number`  | `0.1`    | Upper bound for evolved learning rate              |
+| `hyperparameterEvolution.mutationStdDev`    | `number`  | `0.1`    | Gaussian std dev for hyperparameter mutation       |
+| `adaptivePopulation.enabled`                | `boolean` | `false`  | Enable diversity-based population sizing           |
+| `adaptivePopulation.lowDiversityThreshold`  | `number`  | `0.3`    | Diversity below this grows population              |
+| `adaptivePopulation.highDiversityThreshold` | `number`  | `0.8`    | Diversity above this may shrink population         |
+
+### ⚡ Parallel Evaluation
+
+| Option                                        | Type      | Default | Description                                       |
+| --------------------------------------------- | --------- | ------- | ------------------------------------------------- |
+| `parallelEvaluation.topologyGrouping`         | `boolean` | `true`  | Group same-topology creatures for WASM cache hits |
+| `parallelEvaluation.maxConcurrentEvaluations` | `integer` | `0`     | Max workers for evaluation (0 = all)              |
 
 ### 🔧 Adjustment Scales
 
@@ -844,6 +880,185 @@ completely unchanged.
 
 ---
 
+## 🎲 Data Fuzzing
+
+Issue #1900: Training data fuzzing (noise injection) is a regularisation
+technique that prevents networks from memorising exact training examples. Each
+training iteration adds small random perturbations to inputs and optionally to
+outputs, forcing the network to learn robust patterns rather than overfitting to
+specific data points.
+
+Pass as `dataFuzzing` in options.
+
+```ts
+const config = createNeatConfig({
+  dataFuzzing: {
+    enabled: true,
+    inputNoiseScale: 0.02, // slightly noisier than default
+    outputNoiseScale: 0.005, // gentle label smoothing
+    noiseType: "gaussian",
+  },
+});
+```
+
+| Option             | Type                      | Default      | Description                                                                |
+| ------------------ | ------------------------- | ------------ | -------------------------------------------------------------------------- |
+| `enabled`          | `boolean`                 | `false`      | Whether data fuzzing is active                                             |
+| `inputNoiseScale`  | `number`                  | `0.01`       | Standard deviation (Gaussian) or half-width (uniform) of input noise (0–1) |
+| `outputNoiseScale` | `number`                  | `0`          | Noise on target outputs for label smoothing — 0 means disabled (0–1)       |
+| `noiseType`        | `"gaussian" \| "uniform"` | `"gaussian"` | Distribution used for noise generation                                     |
+
+> [!TIP]
+> Start with the defaults (`inputNoiseScale: 0.01`, `outputNoiseScale: 0`) and
+> increase gradually. Too much noise slows convergence; too little has no
+> regularisation effect. Gaussian noise is generally preferred because it
+> concentrates most perturbations near zero.
+
+---
+
+## 🔀 Cross-Validation
+
+Issue #1865: K-fold cross-validation evaluates creatures on held-out data folds
+during evolution, reducing overfitting to a single train/test split. Each
+generation, training data is divided into `k` folds; the creature trains on
+`k-1` folds and is evaluated on the remaining fold. The validation error guides
+early stopping and selection.
+
+Pass as `crossValidation` in options.
+
+```ts
+const config = createNeatConfig({
+  crossValidation: {
+    enabled: true,
+    folds: 5,
+    validationEarlyStopping: true,
+  },
+});
+```
+
+| Option                    | Type      | Default | Description                                                                  |
+| ------------------------- | --------- | ------- | ---------------------------------------------------------------------------- |
+| `enabled`                 | `boolean` | `false` | Whether cross-validation is enabled                                          |
+| `folds`                   | `integer` | `5`     | Number of folds — 1 preserves single-split behaviour (1–20)                  |
+| `validationEarlyStopping` | `boolean` | `true`  | Use validation fold performance for early stopping instead of training error |
+
+> [!TIP]
+> 5 folds is a good starting point. Higher fold counts give more reliable
+> estimates at the cost of more training time per generation. When
+> `validationEarlyStopping` is enabled, backpropagation stops when the
+> validation fold error stops improving, which helps prevent overfitting.
+
+---
+
+## 🧬 Hyperparameter Evolution
+
+Issue #1863: Instead of using fixed hyperparameters for the entire population,
+each creature carries its own learning rate, mutation rates, and regularisation
+strength. These evolve alongside topology and weights — creatures whose
+hyperparameters suit the problem achieve higher fitness and propagate their
+settings to offspring.
+
+Pass as `hyperparameterEvolution` in options.
+
+```ts
+const config = createNeatConfig({
+  hyperparameterEvolution: {
+    enabled: true,
+    minLearningRate: 0.0001,
+    maxLearningRate: 0.1,
+  },
+});
+```
+
+### Bounds Configuration
+
+| Option                      | Type      | Default  | Description                                                 |
+| --------------------------- | --------- | -------- | ----------------------------------------------------------- |
+| `enabled`                   | `boolean` | `false`  | Whether per-creature hyperparameter evolution is active     |
+| `minLearningRate`           | `number`  | `0.0001` | Lower bound for per-creature learning rate                  |
+| `maxLearningRate`           | `number`  | `0.1`    | Upper bound for per-creature learning rate                  |
+| `minWeightPerturbation`     | `number`  | `0.1`    | Lower bound for weight perturbation scale                   |
+| `maxWeightPerturbation`     | `number`  | `2.0`    | Upper bound for weight perturbation scale                   |
+| `maxRegularisationStrength` | `number`  | `0.1`    | Upper bound for L1/L2 regularisation strength               |
+| `mutationStdDev`            | `number`  | `0.1`    | Standard deviation for Gaussian mutation of hyperparameters |
+
+### Per-Creature Hyperparameters
+
+Each creature evolves these values within the configured bounds:
+
+| Hyperparameter             | Default | Description                                        |
+| -------------------------- | ------- | -------------------------------------------------- |
+| `learningRate`             | `0.01`  | Backpropagation learning rate                      |
+| `addNeuronRate`            | `0.1`   | Probability of adding a neuron during mutation     |
+| `addConnectionRate`        | `0.2`   | Probability of adding a connection during mutation |
+| `weightPerturbationScale`  | `1.0`   | Weight perturbation magnitude scaling factor       |
+| `l1RegularisationStrength` | `0`     | L1 regularisation strength for backpropagation     |
+| `l2RegularisationStrength` | `0`     | L2 regularisation strength for backpropagation     |
+
+---
+
+## 📊 Adaptive Population Sizing
+
+Issue #1863: Automatically adjusts population size based on species diversity
+metrics. When diversity drops below a threshold the population grows to
+encourage exploration. When diversity is high and fitness is stagnating, the
+population can shrink to focus resources on the most promising individuals.
+
+Pass as `adaptivePopulation` in options.
+
+```ts
+const config = createNeatConfig({
+  populationSize: 100, // starting size
+  adaptivePopulation: {
+    enabled: true,
+    minPopulationFraction: 0.5, // never below 50 creatures
+    maxPopulationFraction: 2.0, // can grow up to 200 creatures
+  },
+});
+```
+
+| Option                   | Type      | Default | Description                                                               |
+| ------------------------ | --------- | ------- | ------------------------------------------------------------------------- |
+| `enabled`                | `boolean` | `false` | Whether adaptive population sizing is active                              |
+| `minPopulationFraction`  | `number`  | `0.5`   | Minimum population as a fraction of `populationSize` (0–1)                |
+| `maxPopulationFraction`  | `number`  | `2.0`   | Maximum population as a fraction of `populationSize`                      |
+| `lowDiversityThreshold`  | `number`  | `0.3`   | Diversity level below which population grows (0–1)                        |
+| `highDiversityThreshold` | `number`  | `0.8`   | Diversity level above which population may shrink during stagnation (0–1) |
+| `adjustmentRate`         | `number`  | `0.1`   | Maximum population change per generation as a fraction (0–1)              |
+
+---
+
+## ⚡ Parallel Evaluation
+
+Issue #1862: Controls how creatures are distributed across workers during
+fitness evaluation. Topology-aware grouping ensures creatures with identical
+network structure are evaluated on the same worker, maximising WASM compilation
+cache hits and improving evaluation throughput.
+
+Pass as `parallelEvaluation` in options.
+
+```ts
+const config = createNeatConfig({
+  parallelEvaluation: {
+    topologyGrouping: true, // default
+    maxConcurrentEvaluations: 4, // cap at 4 workers for evaluation
+  },
+});
+```
+
+| Option                     | Type      | Default   | Description                                                     |
+| -------------------------- | --------- | --------- | --------------------------------------------------------------- |
+| `topologyGrouping`         | `boolean` | `true`    | Group creatures by topology hash to improve WASM cache hit rate |
+| `maxConcurrentEvaluations` | `integer` | `0` (all) | Maximum workers for evaluation — 0 means use all available      |
+
+> [!TIP]
+> Keep `topologyGrouping` enabled unless you have a specific reason to disable
+> it. Topology grouping improves WASM cache utilisation by batching same-shape
+> creatures together. Set `maxConcurrentEvaluations` when you need to reserve
+> workers for concurrent training or discovery tasks.
+
+---
+
 ## 📝 Logging and Reproducibility
 
 ### `log`
@@ -1008,6 +1223,47 @@ const config = createNeatConfig({
   maximumNumberOfNodes: 20,
   populationSize: 50,
   targetError: 0.05,
+});
+```
+
+### 🛡️ Maximum Generalisation
+
+Combine noise injection and cross-validation to fight overfitting:
+
+```ts
+const config = createNeatConfig({
+  populationSize: 100,
+  iterations: 5_000,
+  targetError: 0.02,
+  dataFuzzing: {
+    enabled: true,
+    inputNoiseScale: 0.02,
+    noiseType: "gaussian",
+  },
+  crossValidation: {
+    enabled: true,
+    folds: 5,
+  },
+});
+```
+
+### 🧬 Self-Tuning Evolution
+
+Let hyperparameters and population size evolve alongside the creatures:
+
+```ts
+const config = createNeatConfig({
+  populationSize: 100,
+  iterations: 10_000,
+  targetError: 0.01,
+  hyperparameterEvolution: {
+    enabled: true,
+  },
+  adaptivePopulation: {
+    enabled: true,
+    lowDiversityThreshold: 0.3,
+    highDiversityThreshold: 0.8,
+  },
 });
 ```
 
