@@ -1,5 +1,6 @@
 import type { BackPropagationArguments } from "../propagate/BackPropagation.ts";
 import type { CrossValidationConfig } from "./CrossValidationConfig.ts";
+import type { DataFuzzingConfig } from "./DataFuzzingConfig.ts";
 import type { PredictiveCodingConfig } from "./PredictiveCodingConfig.ts";
 
 export interface TrainArguments extends BackPropagationArguments {
@@ -50,6 +51,14 @@ export interface TrainArguments extends BackPropagationArguments {
    * fold. Fitness is the average validation error across all folds.
    */
   crossValidation: CrossValidationConfig;
+
+  /**
+   * Data fuzzing (noise injection) configuration.
+   *
+   * Issue #1900: When enabled, small random perturbations are added
+   * to training data each iteration to prevent memorisation.
+   */
+  dataFuzzing: DataFuzzingConfig;
 }
 
 export type TrainOptions = Partial<TrainArguments>;
