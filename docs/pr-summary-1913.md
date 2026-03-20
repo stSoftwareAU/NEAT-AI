@@ -11,7 +11,8 @@ PC-specific tags. Closes #1913.
 ## Evidence
 
 - 7 new tests in `test/predictiveCoding/PredictiveCodingTags.ts` verify:
-  - Tags are present after PC training (approach, energy, inference steps, changed)
+  - Tags are present after PC training (approach, energy, inference steps,
+    changed)
   - Tags survive JSON export/import round-trip
   - Tags are added to compact output
   - Standard backprop does NOT add PC-specific tags
