@@ -5,30 +5,30 @@ loop to reduce precision and prevent networks from memorising exact training
 examples. Quantisation rounds continuous values to a finite set of discrete
 levels, forcing the network to learn robust mappings. Closes #1901.
 
-This is the deterministic complement to data fuzzing (#1900) — both can be
-used together for stronger memorisation prevention.
+This is the deterministic complement to data fuzzing (#1900) — both can be used
+together for stronger memorisation prevention.
 
 ## Changes
 
 - **`src/config/DataQuantisationConfig.ts`** — New config following the
   three-type pattern (interface, Required type, defaults). Fields: `enabled`,
-  `inputLevels` (2–65536, default 256), `outputLevels` (0 or 2–65536,
-  default 0 = disabled).
+  `inputLevels` (2–65536, default 256), `outputLevels` (0 or 2–65536, default 0
+  = disabled).
 - **`src/propagate/DataQuantisation.ts`** — `quantiseBuffer()` utility that
-  quantises a Float32Array in-place by mapping [min, max] to evenly spaced
-  bin centres.
+  quantises a Float32Array in-place by mapping [min, max] to evenly spaced bin
+  centres.
 - **`src/config/NeatArguments.ts`** — Added `dataQuantisation` field.
 - **`src/config/NeatOptions.ts`** — Added to both `NeatOptions` and
   `NeatOptionsInput` types with `CoerceNumeric<>` for CLI support.
-- **`src/config/NeatConfigParsers.ts`** — Added `parseDataQuantisation()`
-  parser with validation.
+- **`src/config/NeatConfigParsers.ts`** — Added `parseDataQuantisation()` parser
+  with validation.
 - **`src/config/NeatConfig.ts`** — Wired parser into `createNeatConfig()`.
 - **`src/config/TrainOptions.ts`** — Added `dataQuantisation` to
   `TrainArguments`.
 - **`src/architecture/Training.ts`** — Applied quantisation in
   `trainDirBinary()` after buffer copy and before fuzzing/activation.
-- **`src/predictiveCoding/PredictiveCodingTrainer.ts`** — Applied
-  quantisation in `trainWithPredictiveCoding()` data loop.
+- **`src/predictiveCoding/PredictiveCodingTrainer.ts`** — Applied quantisation
+  in `trainWithPredictiveCoding()` data loop.
 
 ## Evidence
 
