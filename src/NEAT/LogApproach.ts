@@ -9,6 +9,8 @@ import { getLogger } from "../utils/Logger.ts";
 export type Approach =
   | "fine"
   | "trained"
+  | "predictive-coding"
+  | "predictive-coding-compact"
   | "simplified"
   | "compact"
   | "backtrack"

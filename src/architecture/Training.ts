@@ -20,7 +20,10 @@ import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 import { BufferPool } from "../utils/BufferPool.ts";
 import type { CreatureExport, CreatureTrace } from "./CreatureInterfaces.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
-import { trainWithPredictiveCoding } from "../predictiveCoding/PredictiveCodingTrainer.ts";
+import {
+  trainWithPredictiveCoding,
+} from "../predictiveCoding/PredictiveCodingTrainer.ts";
+import { addTag } from "@stsoftware/tags/mod";
 import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../config/PredictiveCodingConfig.ts";
 import { applyDropout } from "../propagate/Dropout.ts";
 import { applyNoise } from "../propagate/DataFuzzing.ts";
@@ -188,12 +191,31 @@ function trainDirPredictiveCoding(
     compact = Creature.fromJSON(creature.exportJSON()).compact(feedbackLoop);
   }
 
+  // Issue #1913: Add trace tags indicating Predictive Coding was used.
+  const trace = creature.traceJSON();
+  addTag(trace, "approach", "predictive-coding");
+  addTag(trace, "pc-energy", String(pcResult.averageEnergy));
+  addTag(trace, "pc-inference-steps", String(pcResult.averageInferenceSteps));
+  addTag(trace, "pc-changed", String(pcResult.changed));
+
+  const compactExport = compact ? compact.exportJSON() : undefined;
+  if (compactExport) {
+    addTag(compactExport, "approach", "predictive-coding");
+    addTag(compactExport, "pc-energy", String(pcResult.averageEnergy));
+    addTag(
+      compactExport,
+      "pc-inference-steps",
+      String(pcResult.averageInferenceSteps),
+    );
+    addTag(compactExport, "pc-changed", String(pcResult.changed));
+  }
+
   return {
     ID,
     iteration: pcResult.iterations,
     error: pcResult.error,
-    trace: creature.traceJSON(),
-    compact: compact ? compact.exportJSON() : undefined,
+    trace,
+    compact: compactExport,
   };
 }
 
