@@ -66,12 +66,12 @@ Deno.test("MAXIMUM: non-winner connections close to winner receive gradient", ()
   const creature = Creature.fromJSON(creatureJson);
   creature.validate();
 
-  // Generate training data where both hidden neurons have similar activations
+  // Generate deterministic training data where both hidden neurons have similar activations
   // so the non-winner is close to the winner
   const ts: DataRecordInterface[] = [];
   for (let i = 0; i < 50; i++) {
     // Both inputs similar so the weighted values are close
-    const v = 0.5 + Math.random() * 0.5;
+    const v = 0.5 + (i / 49) * 0.5;
     const input = [v, v + 0.01]; // Very close values
     const output = creature.activate(new Float32Array(input));
     // Modify the target slightly to create an error signal
