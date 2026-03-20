@@ -624,6 +624,44 @@ The PC inference loop is the critical performance bottleneck:
 > cost significantly. Tuning `convergenceThreshold` is worthwhile when
 > optimising for throughput.
 
+### 🔧 Adaptive Scaling for Complex Creatures (Issue #1915)
+
+Default PC configuration values are tuned for small networks (~5-10 hidden
+neurons). On complex creatures with 30-90+ hidden neurons, three issues prevent
+convergence:
+
+1. **Energy threshold too tight**: Total energy `E = ½ Σ ε²` sums over all
+   non-input neurons. With 90+ error terms, the default threshold `1e-6` is
+   unreachable — inference exhausts all steps without converging.
+2. **Inference rate not scaled for connectivity**: Large gradient sums from many
+   downstream neurons cause oscillation or divergence at the default `0.05`
+   rate.
+3. **Learning rate too conservative**: The default `0.001` produces
+   imperceptible weight changes when spread across many parameters.
+
+The adaptive scaling module (`src/predictiveCoding/AdaptiveScaling.ts`)
+automatically adjusts these parameters based on network topology:
+
+| Parameter         | Scaling                  | Rationale                                              |
+| ----------------- | ------------------------ | ------------------------------------------------------ |
+| `inferenceRate`   | `÷ √(hiddenCount / 10)`  | Prevents oscillation from large gradient sums          |
+| `energyThreshold` | `× (nonInputCount / 10)` | Makes convergence achievable with more error terms     |
+| `learningRate`    | `× √(hiddenCount / 10)`  | Keeps weight updates meaningful across many parameters |
+
+Scaling is only applied when the network has more than 10 hidden neurons. For
+small networks, the configured values are used as-is.
+
+Additionally, inference gradients are normalised by their L2 norm (capped at
+1.0) to prevent divergence in deep topologies where gradient magnitudes can
+explode.
+
+> [!TIP]
+> With adaptive scaling, the default PC configuration works well on creatures
+> with 30-90+ hidden neurons without manual tuning. If you need finer control,
+> the explicit configuration values are scaled relative to the defaults, so
+> setting `inferenceRate: 0.1` on a 40-neuron creature will produce an effective
+> rate of approximately `0.1 / √4 = 0.05`.
+
 ---
 
 ## 5. 📖 References
