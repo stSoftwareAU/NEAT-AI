@@ -410,7 +410,24 @@ function processCompletedResults(
       );
     }
 
-    addTag(json, "approach", "trained" as Approach);
+    // Issue #1913: Preserve PC approach tag from trace if present.
+    const traceJSON = r.train.trace ? JSON.parse(r.train.trace) : null;
+    const pcApproach = traceJSON ? getTag(traceJSON, "approach") : null;
+    const isPC = pcApproach === "predictive-coding";
+
+    addTag(
+      json,
+      "approach",
+      (isPC ? "predictive-coding" : "trained") as Approach,
+    );
+    if (isPC && traceJSON) {
+      const pcEnergy = getTag(traceJSON, "pc-energy");
+      const pcSteps = getTag(traceJSON, "pc-inference-steps");
+      const pcChanged = getTag(traceJSON, "pc-changed");
+      if (pcEnergy) addTag(json, "pc-energy", pcEnergy);
+      if (pcSteps) addTag(json, "pc-inference-steps", pcSteps);
+      if (pcChanged) addTag(json, "pc-changed", pcChanged);
+    }
     delete json.memetic;
     removeTag(json, "approach-logged");
     addTag(json, "trainID", r.train.ID);
@@ -438,7 +455,20 @@ function processCompletedResults(
         );
       }
 
-      addTag(compactJSON, "approach", "compact" as Approach);
+      // Issue #1913: Preserve PC approach on compact variant too.
+      addTag(
+        compactJSON,
+        "approach",
+        (isPC ? "predictive-coding-compact" : "compact") as Approach,
+      );
+      if (isPC && traceJSON) {
+        const pcEnergy = getTag(traceJSON, "pc-energy");
+        const pcSteps = getTag(traceJSON, "pc-inference-steps");
+        const pcChanged = getTag(traceJSON, "pc-changed");
+        if (pcEnergy) addTag(compactJSON, "pc-energy", pcEnergy);
+        if (pcSteps) addTag(compactJSON, "pc-inference-steps", pcSteps);
+        if (pcChanged) addTag(compactJSON, "pc-changed", pcChanged);
+      }
       delete compactJSON.memetic;
       removeTag(compactJSON, "approach-logged");
       addTag(compactJSON, "trainID", r.train.ID);
