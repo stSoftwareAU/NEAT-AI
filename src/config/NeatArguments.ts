@@ -29,6 +29,7 @@ import type { RequiredHyperparameterEvolutionConfig } from "./HyperparameterConf
 import type { RequiredAdaptivePopulationConfig } from "./AdaptivePopulationConfig.ts";
 import type { RequiredCrossValidationConfig } from "./CrossValidationConfig.ts";
 import type { RequiredDataFuzzingConfig } from "./DataFuzzingConfig.ts";
+import type { RequiredDataQuantisationConfig } from "./DataQuantisationConfig.ts";
 import type { RequiredParallelEvaluationConfig } from "./ParallelEvaluationConfig.ts";
 
 /**
@@ -684,6 +685,15 @@ export interface NeatArguments {
    * improve generalisation.
    */
   dataFuzzing: RequiredDataFuzzingConfig;
+
+  /**
+   * Data quantisation configuration.
+   *
+   * Issue #1901: When enabled, training data values are quantised to
+   * a fixed number of discrete levels to prevent memorisation.
+   * Deterministic complement to fuzzing (#1900).
+   */
+  dataQuantisation: RequiredDataQuantisationConfig;
 
   /**
    * Parallel batch creature evaluation configuration.

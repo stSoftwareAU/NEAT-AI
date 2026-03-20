@@ -1,6 +1,7 @@
 import type { BackPropagationArguments } from "../propagate/BackPropagation.ts";
 import type { CrossValidationConfig } from "./CrossValidationConfig.ts";
 import type { DataFuzzingConfig } from "./DataFuzzingConfig.ts";
+import type { DataQuantisationConfig } from "./DataQuantisationConfig.ts";
 import type { PredictiveCodingConfig } from "./PredictiveCodingConfig.ts";
 
 export interface TrainArguments extends BackPropagationArguments {
@@ -59,6 +60,14 @@ export interface TrainArguments extends BackPropagationArguments {
    * to training data each iteration to prevent memorisation.
    */
   dataFuzzing: DataFuzzingConfig;
+
+  /**
+   * Data quantisation configuration.
+   *
+   * Issue #1901: When enabled, training data values are quantised to
+   * a fixed number of discrete levels to prevent memorisation.
+   */
+  dataQuantisation: DataQuantisationConfig;
 }
 
 export type TrainOptions = Partial<TrainArguments>;
