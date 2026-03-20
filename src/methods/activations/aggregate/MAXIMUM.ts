@@ -125,6 +125,10 @@ export class MAXIMUM
     const fromList = neuron.creature.inwardConnections(neuron.index);
     let usedState: SynapseState | null = null;
     const activations = state.activations;
+
+    // Issue #1874: Collect connection values for proximity-based usage marking.
+    const connectionValues: { cs: SynapseState; value: number }[] = [];
+
     for (let i = 0, len = fromList.length; i < len; i++) {
       const c = fromList[i];
       const { from, to, weight } = c;
@@ -132,6 +136,7 @@ export class MAXIMUM
       if (cs.used === undefined) cs.used = false;
 
       const value = activations[from] * weight;
+      connectionValues.push({ cs, value });
       if (value > tmpValue) {
         tmpValue = value;
         usedState = cs;
@@ -139,6 +144,22 @@ export class MAXIMUM
     }
 
     usedState!.used = true;
+
+    // Issue #1874: Mark close runner-up connections as used, consistent with
+    // the gradient leak logic in propagate. This prevents applyLearnings from
+    // disconnecting connections that receive partial gradient flow.
+    if (connectionValues.length > 1) {
+      const range = Math.max(Math.abs(tmpValue), 1e-12);
+      const threshold = range * 0.2;
+      for (const info of connectionValues) {
+        if (info.cs === usedState) continue;
+        // For MAXIMUM, runner-ups are below the winner
+        const distance = tmpValue - info.value;
+        if (distance >= 0 && distance <= threshold) {
+          info.cs.used = true;
+        }
+      }
+    }
 
     const value = tmpValue + neuron.bias;
 
