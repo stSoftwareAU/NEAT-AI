@@ -42,6 +42,7 @@ import {
   parseBiasRegularisation,
   parseCrossValidation,
   parseDataFuzzing,
+  parseDataQuantisation,
   parseDiscoveryCache,
   parseDiscoveryMinCandidates,
   parseDiskSpaceConfig,
@@ -539,6 +540,10 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     // Issue #1900: Parse data fuzzing configuration
     dataFuzzing: parseDataFuzzing(
       opts.dataFuzzing as Record<string, unknown> | undefined,
+    ),
+    // Issue #1901: Parse data quantisation configuration
+    dataQuantisation: parseDataQuantisation(
+      opts.dataQuantisation as Record<string, unknown> | undefined,
     ),
     // Issue #1862: Parse parallel evaluation configuration
     parallelEvaluation: parseParallelEvaluation(

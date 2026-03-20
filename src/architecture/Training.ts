@@ -24,10 +24,15 @@ import { trainWithPredictiveCoding } from "../predictiveCoding/PredictiveCodingT
 import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../config/PredictiveCodingConfig.ts";
 import { applyDropout } from "../propagate/Dropout.ts";
 import { applyNoise } from "../propagate/DataFuzzing.ts";
+import { quantiseBuffer } from "../propagate/DataQuantisation.ts";
 import {
   DEFAULT_DATA_FUZZING_CONFIG,
   type RequiredDataFuzzingConfig,
 } from "../config/DataFuzzingConfig.ts";
+import {
+  DEFAULT_DATA_QUANTISATION_CONFIG,
+  type RequiredDataQuantisationConfig,
+} from "../config/DataQuantisationConfig.ts";
 import { trainWithCrossValidation } from "./CrossValidationTrainer.ts";
 
 /**
@@ -173,6 +178,7 @@ function trainDirPredictiveCoding(
       targetError,
       log: options.log,
       dataFuzzing: options.dataFuzzing,
+      dataQuantisation: options.dataQuantisation,
     },
   );
 
@@ -280,6 +286,13 @@ function trainDirBinary(
     ...DEFAULT_DATA_FUZZING_CONFIG,
     ...options.dataFuzzing,
   };
+
+  // Issue #1901: Resolve data quantisation configuration.
+  const quantisationConfig: RequiredDataQuantisationConfig = {
+    ...DEFAULT_DATA_QUANTISATION_CONFIG,
+    ...options.dataQuantisation,
+  };
+
   const rng = getRandomNumberGenerator();
 
   const indxMap = new Map<string, Set<number>>();
@@ -411,6 +424,14 @@ function trainDirBinary(
           // This reduces allocation overhead in the hot training loop.
           observationsBuffer.set(recordArray.subarray(0, creature.input));
           targetsBuffer.set(recordArray.subarray(creature.input));
+
+          // Issue #1901: Apply data quantisation to prevent memorisation.
+          if (quantisationConfig.enabled) {
+            quantiseBuffer(observationsBuffer, quantisationConfig.inputLevels);
+            if (quantisationConfig.outputLevels > 0) {
+              quantiseBuffer(targetsBuffer, quantisationConfig.outputLevels);
+            }
+          }
 
           // Issue #1900: Apply data fuzzing (noise injection) to prevent memorisation.
           if (fuzzingConfig.enabled) {
