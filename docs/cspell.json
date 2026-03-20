@@ -294,6 +294,7 @@
     "varint",
     "varints",
     "breedable",
-    "submessages"
+    "submessages",
+    "Tikhonov"
   ]
 }
