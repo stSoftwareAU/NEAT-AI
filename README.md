@@ -85,6 +85,34 @@ For project terminology, coding conventions, and development guidelines, see
     discovery workflows that accumulate small improvements over time, see the
     [Discovery Guide](./docs/DISCOVERY_GUIDE.md).
 
+15. **Training Data Fuzzing**: Noise injection during training prevents
+    creatures from memorising exact training examples. Gaussian or uniform
+    perturbations are added to inputs (and optionally outputs for
+    [label smoothing](https://en.wikipedia.org/wiki/Label_smoothing)) each
+    iteration, encouraging robust generalisation.
+
+16. **K-Fold Cross-Validation**: Built-in
+    [k-fold cross-validation](https://en.wikipedia.org/wiki/Cross-validation_(statistics))
+    evaluates creatures on held-out data folds during evolution, reducing
+    overfitting to a single train/test split.
+
+17. **Hyperparameter Self-Adaptation**: Each creature carries its own learning
+    rate, mutation rates, and regularisation strength. These evolve alongside
+    topology and weights — creatures with better-suited hyperparameters achieve
+    higher fitness and propagate their settings, inspired by
+    [self-adaptive evolution strategies](https://en.wikipedia.org/wiki/Evolution_strategy).
+
+18. **Transfer Learning**: Export trained creatures as checkpoints with
+    metadata, import them into new tasks with UUID mapping for different
+    input/output configurations, and seed populations with pre-trained creatures
+    for [transfer learning](https://en.wikipedia.org/wiki/Transfer_learning)
+    across related problems.
+
+19. **ONNX Export**: Export trained creatures to the [ONNX](https://onnx.ai/)
+    (Open Neural Network Exchange) format for deployment in standard ML
+    inference pipelines, bridging the gap between neuroevolution and production
+    deployment.
+
 ## 🚀 Quick Start
 
 ```typescript

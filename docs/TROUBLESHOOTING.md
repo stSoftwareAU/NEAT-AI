@@ -20,6 +20,9 @@ check, how to check it, and what to change.
 - [Memory Management](#memory-management)
 - [CI Failures](#ci-failures)
 - [Configuration](#configuration)
+- [Data Fuzzing and Regularisation](#data-fuzzing-and-regularisation)
+- [Hyperparameter Evolution](#hyperparameter-evolution)
+- [ONNX Export Issues](#onnx-export-issues)
 
 ---
 
@@ -987,6 +990,69 @@ and backward connections, which is useful for time-series behaviours.
 
 If you see unexpected `RECURSIVE_SYNAPSE` or `SELF_CONNECTION` errors, check
 whether your creature topology matches the configured mode.
+
+---
+
+## 🎲 Data Fuzzing and Regularisation
+
+### Noise injection does not seem to help
+
+- **Check noise scale:** If `inputNoiseScale` is too small (e.g. `0.001`), the
+  perturbations may not be meaningful enough to regularise. Try increasing to
+  `0.02`–`0.05`.
+- **Check noise scale is not too large:** If `inputNoiseScale` is above `0.1`,
+  you may be injecting so much noise that the signal is overwhelmed. Start small
+  and increase gradually.
+- **Consider combining with cross-validation:** Noise injection works best when
+  paired with `crossValidation` to get a more reliable estimate of
+  generalisation performance.
+
+### Training converges more slowly with fuzzing enabled
+
+This is expected — noise injection deliberately makes the training task harder
+to prevent memorisation. If convergence is unacceptably slow, reduce
+`inputNoiseScale` or increase `iterations`/`timeoutMinutes`.
+
+### Cross-validation increases training time significantly
+
+Each generation evaluates creatures `k` times (once per fold). If training time
+is a concern, reduce `folds` from the default of 5 to 3, or increase
+`timeoutMinutes` to allow more time for the additional evaluations.
+
+---
+
+## 🧬 Hyperparameter Evolution
+
+### Evolved hyperparameters cluster around extreme values
+
+- **Check bounds:** If `minLearningRate` and `maxLearningRate` are too far
+  apart, evolution may oscillate between extremes. Narrow the range.
+- **Reduce mutation magnitude:** Lower `mutationStdDev` from `0.1` to `0.05` for
+  more gradual adaptation.
+- **Increase population size:** Hyperparameter evolution benefits from larger
+  populations to maintain diversity in the hyperparameter gene pool.
+
+---
+
+## 📤 ONNX Export Issues
+
+### `checkOnnxCompatibility` reports unsupported squashes
+
+The ONNX format does not support NEAT-AI's aggregate functions (IF, MINIMUM,
+MAXIMUM) or deprecated functions (HYPOT, HYPOTv2, MEAN). If your creature uses
+these, consider:
+
+- Running **Intelligent Design** with restricted squash lists that exclude
+  unsupported functions
+- Retraining with `activations` limited to ONNX-compatible functions (e.g. TANH,
+  SIGMOID, RELU, LOGISTIC)
+
+### Exported ONNX model produces different outputs
+
+Small floating-point differences (< 1e-10) are expected due to different
+computation order and precision between the WASM-based activation in NEAT-AI and
+standard ONNX runtimes. If differences are larger, check for recurrent
+connections — ONNX export does not support feedback loops.
 
 ---
 

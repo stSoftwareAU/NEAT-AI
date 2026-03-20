@@ -28,6 +28,8 @@ import type { RequiredWorkerThreadCapConfig } from "./WorkerThreadCapConfig.ts";
 import type { RequiredHyperparameterEvolutionConfig } from "./HyperparameterConfig.ts";
 import type { RequiredAdaptivePopulationConfig } from "./AdaptivePopulationConfig.ts";
 import type { RequiredCrossValidationConfig } from "./CrossValidationConfig.ts";
+import type { RequiredDataFuzzingConfig } from "./DataFuzzingConfig.ts";
+import type { RequiredDataQuantisationConfig } from "./DataQuantisationConfig.ts";
 import type { RequiredParallelEvaluationConfig } from "./ParallelEvaluationConfig.ts";
 
 /**
@@ -674,6 +676,24 @@ export interface NeatArguments {
    * improving generalisation and reducing overfitting.
    */
   crossValidation: RequiredCrossValidationConfig;
+
+  /**
+   * Data fuzzing (noise injection) configuration.
+   *
+   * Issue #1900: When enabled, small random perturbations are added
+   * to training data each iteration to prevent memorisation and
+   * improve generalisation.
+   */
+  dataFuzzing: RequiredDataFuzzingConfig;
+
+  /**
+   * Data quantisation configuration.
+   *
+   * Issue #1901: When enabled, training data values are quantised to
+   * a fixed number of discrete levels to prevent memorisation.
+   * Deterministic complement to fuzzing (#1900).
+   */
+  dataQuantisation: RequiredDataQuantisationConfig;
 
   /**
    * Parallel batch creature evaluation configuration.

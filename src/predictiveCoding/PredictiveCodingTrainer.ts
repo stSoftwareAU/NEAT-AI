@@ -30,6 +30,19 @@ import {
   type WeightGradients,
 } from "./PredictiveCodingLearning.ts";
 import { getLogger } from "../utils/Logger.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import {
+  type DataFuzzingConfig,
+  DEFAULT_DATA_FUZZING_CONFIG,
+  type RequiredDataFuzzingConfig,
+} from "../config/DataFuzzingConfig.ts";
+import {
+  type DataQuantisationConfig,
+  DEFAULT_DATA_QUANTISATION_CONFIG,
+  type RequiredDataQuantisationConfig,
+} from "../config/DataQuantisationConfig.ts";
+import { applyNoise } from "../propagate/DataFuzzing.ts";
+import { quantiseBuffer } from "../propagate/DataQuantisation.ts";
 
 /**
  * Result from Predictive Coding training.
@@ -70,9 +83,25 @@ export function trainWithPredictiveCoding(
     iterations: number;
     targetError: number;
     log?: number;
+    dataFuzzing?: DataFuzzingConfig;
+    dataQuantisation?: DataQuantisationConfig;
   },
 ): PCTrainingResult {
   const { iterations, targetError } = options;
+
+  // Issue #1900: Resolve data fuzzing configuration.
+  const fuzzingConfig: RequiredDataFuzzingConfig = {
+    ...DEFAULT_DATA_FUZZING_CONFIG,
+    ...options.dataFuzzing,
+  };
+
+  // Issue #1901: Resolve data quantisation configuration.
+  const quantisationConfig: RequiredDataQuantisationConfig = {
+    ...DEFAULT_DATA_QUANTISATION_CONFIG,
+    ...options.dataQuantisation,
+  };
+
+  const rng = getRandomNumberGenerator();
   const valuesCount = creature.input + creature.output;
   const BYTES_PER_RECORD = valuesCount * 4;
 
@@ -108,6 +137,35 @@ export function trainWithPredictiveCoding(
           // Extract input and target from record.
           observationsBuffer.set(recordArray.subarray(0, creature.input));
           targetsBuffer.set(recordArray.subarray(creature.input));
+
+          // Issue #1901: Apply data quantisation to prevent memorisation.
+          if (quantisationConfig.enabled) {
+            quantiseBuffer(
+              observationsBuffer,
+              quantisationConfig.inputLevels,
+            );
+            if (quantisationConfig.outputLevels > 0) {
+              quantiseBuffer(targetsBuffer, quantisationConfig.outputLevels);
+            }
+          }
+
+          // Issue #1900: Apply data fuzzing (noise injection) to prevent memorisation.
+          if (fuzzingConfig.enabled) {
+            applyNoise(
+              observationsBuffer,
+              fuzzingConfig.inputNoiseScale,
+              fuzzingConfig.noiseType,
+              rng,
+            );
+            if (fuzzingConfig.outputNoiseScale > 0) {
+              applyNoise(
+                targetsBuffer,
+                fuzzingConfig.outputNoiseScale,
+                fuzzingConfig.noiseType,
+                rng,
+              );
+            }
+          }
 
           // Convert targets to Float64 for PC inference.
           for (let j = 0; j < creature.output; j++) {

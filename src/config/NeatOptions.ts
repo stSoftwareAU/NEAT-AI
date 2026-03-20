@@ -21,6 +21,8 @@ import type { WorkerThreadCapConfig } from "./WorkerThreadCapConfig.ts";
 import type { HyperparameterEvolutionConfig } from "./HyperparameterConfig.ts";
 import type { AdaptivePopulationConfig } from "./AdaptivePopulationConfig.ts";
 import type { CrossValidationConfig } from "./CrossValidationConfig.ts";
+import type { DataFuzzingConfig } from "./DataFuzzingConfig.ts";
+import type { DataQuantisationConfig } from "./DataQuantisationConfig.ts";
 import type { ParallelEvaluationConfig } from "./ParallelEvaluationConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
@@ -98,6 +100,8 @@ export type NeatOptions =
     | "hyperparameterEvolution"
     | "adaptivePopulation"
     | "crossValidation"
+    | "dataFuzzing"
+    | "dataQuantisation"
     | "parallelEvaluation"
     | "outputRanges"
     | "logger"
@@ -141,6 +145,10 @@ export type NeatOptions =
     adaptivePopulation?: AdaptivePopulationConfig;
     /** Partial overrides for cross-validation configuration (defaults applied if not specified) */
     crossValidation?: CrossValidationConfig;
+    /** Partial overrides for data fuzzing configuration (defaults applied if not specified) */
+    dataFuzzing?: DataFuzzingConfig;
+    /** Partial overrides for data quantisation configuration (defaults applied if not specified) */
+    dataQuantisation?: DataQuantisationConfig;
     /** Partial overrides for parallel evaluation configuration (defaults applied if not specified) */
     parallelEvaluation?: ParallelEvaluationConfig;
     /**
@@ -232,6 +240,8 @@ export type NeatOptionsInput =
     | "hyperparameterEvolution"
     | "adaptivePopulation"
     | "crossValidation"
+    | "dataFuzzing"
+    | "dataQuantisation"
     | "parallelEvaluation"
     | "outputRanges"
     | "logger"
@@ -267,6 +277,10 @@ export type NeatOptionsInput =
     adaptivePopulation?: CoerceNumeric<AdaptivePopulationConfig>;
     /** Cross-validation configuration (Issue #1865). Numeric fields coerced from CLI. */
     crossValidation?: CoerceNumeric<CrossValidationConfig>;
+    /** Data fuzzing configuration (Issue #1900). Numeric fields coerced from CLI. */
+    dataFuzzing?: CoerceNumeric<DataFuzzingConfig>;
+    /** Data quantisation configuration (Issue #1901). Numeric fields coerced from CLI. */
+    dataQuantisation?: CoerceNumeric<DataQuantisationConfig>;
     /** Parallel evaluation configuration (Issue #1862). Numeric fields coerced from CLI. */
     parallelEvaluation?: CoerceNumeric<ParallelEvaluationConfig>;
     /** Per-output range constraints (Issue #1620). Numeric fields coerced from CLI. */
