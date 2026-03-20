@@ -7,6 +7,7 @@ import {
 Deno.test({
   name: "rust discovery library must be available when FFI tests run",
   ignore: shouldSkipRustDiscoveryTests(),
+  sanitizeResources: false,
   fn: () => {
     try {
       assertRustDiscoveryAvailable();

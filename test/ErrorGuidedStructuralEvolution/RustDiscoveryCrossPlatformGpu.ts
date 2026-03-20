@@ -22,6 +22,7 @@ const KNOWN_BACKENDS = ["metal", "vulkan", "dx12", "gl"];
 Deno.test({
   name: "discovery enabled with library available (CPU fallback supported)",
   ignore: shouldSkipRustDiscoveryTests(),
+  sanitizeResources: false,
   fn: () => {
     try {
       // When the Rust library is available, discovery should be enabled

@@ -39,7 +39,9 @@ export class ModBias extends AbstractMutationOperator {
    * Mutates a neuron bias with optional regularisation.
    */
   protected performMutation(focusList?: number[]): boolean {
-    const index = this.selectRandomNonInputNeuronIndex(focusList);
+    const index = focusList && focusList.length > 0
+      ? this.selectRandomNonInputNeuronIndex(focusList, 12, 12)
+      : this.selectRandomNonInputNeuronIndex(focusList);
     if (index === -1) return false;
 
     const neuron = this.creature.neurons[index];
