@@ -572,8 +572,6 @@ export function isRustLibraryAvailable(): boolean {
   return loadRustLibrary();
 }
 
-const RUST_DISCOVERY_OPTIONAL_ENV = "NEAT_RUST_DISCOVERY_OPTIONAL";
-
 /**
  * Checks if the Rust discovery module is enabled and available.
  *
@@ -614,28 +612,14 @@ export function isRustDiscoveryEnabled(): boolean {
 }
 
 /**
- * Returns true when discovery tests should be skipped (Rust library absent and
- * not explicitly required), false otherwise.
+ * Returns true when discovery tests should be skipped (Rust library absent),
+ * false otherwise.
+ *
+ * Discovery is always optional — the Rust library already probes for GPU
+ * availability internally. When the library is not present, tests are
+ * skipped gracefully without requiring any environment variable.
  */
 export function shouldSkipRustDiscoveryTests(): boolean {
-  const optional = (() => {
-    try {
-      const value = Deno.env.get(RUST_DISCOVERY_OPTIONAL_ENV);
-      if (!value) {
-        return false;
-      }
-      const normalized = value.trim().toLowerCase();
-      return normalized === "1" || normalized === "true" ||
-        normalized === "yes";
-    } catch {
-      return false;
-    }
-  })();
-
-  if (!optional) {
-    return false;
-  }
-  // Check for library availability — GPU is optional (CPU fallback is fine)
   return !isRustDiscoveryEnabled();
 }
 

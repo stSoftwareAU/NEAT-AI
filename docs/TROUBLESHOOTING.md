@@ -727,21 +727,15 @@ ldd /path/to/libneat_ai_discovery.so
   deno run --allow-ffi scripts/check_discovery_safe.ts
   ```
 
-### 💡 NEAT_RUST_DISCOVERY_OPTIONAL for graceful degradation
+### 💡 Discovery is always optional
 
-In environments where discovery is not required (e.g. CI without GPU):
-
-```bash
-export NEAT_RUST_DISCOVERY_OPTIONAL=true
-```
-
-Values `"1"`, `"true"`, or `"yes"` (case-insensitive) cause discovery tests to
-skip gracefully rather than fail.
+Discovery tests skip gracefully when the Rust library is not available — no
+environment variable is required. The library already probes for GPU
+availability internally and falls back to CPU when no GPU is present.
 
 > [!NOTE]
-> Setting `NEAT_RUST_DISCOVERY_OPTIONAL=true` only affects test behaviour — it
-> does not disable discovery at runtime. If you want to disable discovery during
-> training, set `discoverySampleRate: -1` in your configuration instead.
+> If you want to disable discovery during training, set
+> `discoverySampleRate: -1` in your configuration instead.
 
 ### 🔐 FFI permission denied
 
@@ -1058,13 +1052,12 @@ connections — ONNX export does not support feedback loops.
 
 ## 🌐 Environment Variables Reference
 
-| Variable                          | Default  | Purpose                                             |
-| --------------------------------- | -------- | --------------------------------------------------- |
-| `NEAT_AI_DISCOVERY_LIB_PATH`      | _(none)_ | Override discovery library location                 |
-| `NEAT_RUST_DISCOVERY_OPTIONAL`    | `false`  | Skip discovery tests gracefully when library absent |
-| `NEAT_AI_WORKER_INIT_TIMEOUT_MS`  | `60000`  | Worker initialisation timeout (ms)                  |
-| `NEAT_AI_DISCOVERY_VERBOSE`       | _(none)_ | Enable verbose discovery logging in workers         |
-| `NEAT_AI_DISCOVERY_DETERMINISTIC` | _(none)_ | Force deterministic discovery (testing)             |
+| Variable                          | Default  | Purpose                                     |
+| --------------------------------- | -------- | ------------------------------------------- |
+| `NEAT_AI_DISCOVERY_LIB_PATH`      | _(none)_ | Override discovery library location         |
+| `NEAT_AI_WORKER_INIT_TIMEOUT_MS`  | `60000`  | Worker initialisation timeout (ms)          |
+| `NEAT_AI_DISCOVERY_VERBOSE`       | _(none)_ | Enable verbose discovery logging in workers |
+| `NEAT_AI_DISCOVERY_DETERMINISTIC` | _(none)_ | Force deterministic discovery (testing)     |
 
 ---
 

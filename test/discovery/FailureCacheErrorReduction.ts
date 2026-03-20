@@ -34,61 +34,66 @@ function makeCandidate(
   };
 }
 
-Deno.test("recordFailure computes actualErrorReduction when originalError is provided", async () => {
-  const tempDir = await Deno.makeTempDir();
+Deno.test({
+  name:
+    "recordFailure computes actualErrorReduction when originalError is provided",
+  sanitizeResources: false,
+  fn: async () => {
+    const tempDir = await Deno.makeTempDir();
 
-  try {
-    const creature = makeSimpleCreature();
-    const candidate: DiscoveryCandidate = {
-      creature,
-      change: {
-        type: "add-neurons",
-        description: "Add neuron test",
-        expectedErrorReduction: 0.05, // Expected 5% reduction
-        neuronDetails: {
-          fromNeuronUUID: "input-0",
-          toNeuronUUID: "output-0",
-          incomingWeight: 0.5,
-          outgoingWeight: -0.3,
-          bias: 0.1,
-          squash: "TANH",
+    try {
+      const creature = makeSimpleCreature();
+      const candidate: DiscoveryCandidate = {
+        creature,
+        change: {
+          type: "add-neurons",
+          description: "Add neuron test",
+          expectedErrorReduction: 0.05, // Expected 5% reduction
+          neuronDetails: {
+            fromNeuronUUID: "input-0",
+            toNeuronUUID: "output-0",
+            incomingWeight: 0.5,
+            outgoingWeight: -0.3,
+            bias: 0.1,
+            squash: "TANH",
+          },
         },
-      },
-    };
+      };
 
-    // Record failure with originalError provided
-    // originalError = 0.6, candidateError = 0.58
-    // actualErrorReduction = 0.6 - 0.58 = 0.02 (positive means improvement)
-    await recordFailure(tempDir, candidate, {
-      originalScore: 0.5,
-      candidateScore: 0.48,
-      scoreDelta: -0.02,
-      error: 0.58,
-      originalError: 0.6,
-    });
+      // Record failure with originalError provided
+      // originalError = 0.6, candidateError = 0.58
+      // actualErrorReduction = 0.6 - 0.58 = 0.02 (positive means improvement)
+      await recordFailure(tempDir, candidate, {
+        originalScore: 0.5,
+        candidateScore: 0.48,
+        scoreDelta: -0.02,
+        error: 0.58,
+        originalError: 0.6,
+      });
 
-    // Read the cache file to verify actualErrorReduction was stored
-    const key = buildCacheKey(candidate);
-    const filePath = `${tempDir}/add-neurons/${key}.json`;
-    const content = await Deno.readTextFile(filePath);
-    const parsed = JSON.parse(content);
+      // Read the cache file to verify actualErrorReduction was stored
+      const key = buildCacheKey(candidate);
+      const filePath = `${tempDir}/add-neurons/${key}.json`;
+      const content = await Deno.readTextFile(filePath);
+      const parsed = JSON.parse(content);
 
-    // Verify both expected and actual error reduction are present
-    assertEquals(
-      parsed.expectedErrorReduction,
-      0.05,
-      "Expected error reduction should be stored",
-    );
-    assertAlmostEquals(
-      parsed.actualErrorReduction,
-      0.02,
-      1e-9,
-      "Actual error reduction should be computed and stored (0.6 - 0.58 = 0.02)",
-    );
-  } finally {
-    await Deno.remove(tempDir, { recursive: true });
-    closeRustLibrary();
-  }
+      // Verify both expected and actual error reduction are present
+      assertEquals(
+        parsed.expectedErrorReduction,
+        0.05,
+        "Expected error reduction should be stored",
+      );
+      assertAlmostEquals(
+        parsed.actualErrorReduction,
+        0.02,
+        1e-9,
+        "Actual error reduction should be computed and stored (0.6 - 0.58 = 0.02)",
+      );
+    } finally {
+      await Deno.remove(tempDir, { recursive: true });
+      closeRustLibrary();
+    }
+  },
 });
 
 Deno.test("recordFailure omits actualErrorReduction when originalError is not provided", async () => {

@@ -255,13 +255,10 @@ GPU-accelerated structural hints used by `discoveryDir()`.
 4. Guard discovery calls with `isRustDiscoveryEnabled()` so controllers fail
    fast when the module is unavailable.
 
-> [!WARNING]
-> If `NEAT_RUST_DISCOVERY_OPTIONAL` is not set and the library cannot be
-> resolved, the worker will abort. Only set this flag in environments where
-> skipping discovery is an acceptable fallback.
-
-When the library cannot be resolved, set `NEAT_RUST_DISCOVERY_OPTIONAL=true` in
-environments where skipping discovery should not abort the worker.
+> [!NOTE]
+> Discovery is always optional. When the library cannot be resolved, tests are
+> skipped gracefully and discovery is disabled — no environment variable is
+> required.
 
 ## 🔄 Feed-forward vs Recurrent Connections
 
