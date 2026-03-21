@@ -29,6 +29,7 @@ import {
 } from "./PredictionErrorComputation.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import { computeEffectiveConfig } from "./AdaptiveScaling.ts";
 
 /**
  * Result returned by the inference settling loop.
@@ -124,6 +125,9 @@ export function runInference(
     }
   }
 
+  // Issue #1915: Apply adaptive scaling for complex creatures.
+  const effective = computeEffectiveConfig(creature, config);
+
   // Step 2: Iterative settling loop.
   const energyHistory: number[] = [];
   let converged = false;
@@ -138,8 +142,8 @@ export function runInference(
   for (let t = 0; t < config.inferenceSteps; t++) {
     stepsUsed = t + 1;
 
-    // Check convergence before updating.
-    if (energy <= config.energyThreshold) {
+    // Check convergence using the adaptive energy threshold.
+    if (energy <= effective.energyThreshold) {
       converged = true;
       break;
     }
@@ -154,7 +158,13 @@ export function runInference(
     //   w(l→m) is the weight of the connection from l to m
     //   squash'(v_m) is the derivative of m's squash at the current value
     //   v_m is the weighted input sum to neuron m
-    for (const hiddenIdx of hiddenIndices) {
+    //
+    // Issue #1915: Collect all gradients first, then normalise before applying,
+    // to prevent vanishing/exploding updates in deep topologies.
+    const gradients = new Float64Array(hiddenIndices.length);
+
+    for (let h = 0; h < hiddenIndices.length; h++) {
+      const hiddenIdx = hiddenIndices[h];
       const hiddenError = nodeStates.get(hiddenIdx);
       if (!hiddenError) continue;
 
@@ -184,8 +194,25 @@ export function runInference(
         gradient -= synapse.weight * targetState.error * derivative;
       }
 
-      // Update latent value: x(l) -= η * ∂E/∂x(l).
-      latents[hiddenIdx] -= config.inferenceRate * gradient;
+      gradients[h] = gradient;
+    }
+
+    // Issue #1915: Normalise gradient vector to prevent
+    // divergence in deep topologies with large gradient sums.
+    let gradientNormSq = 0;
+    for (let h = 0; h < gradients.length; h++) {
+      gradientNormSq += gradients[h] * gradients[h];
+    }
+    const gradientNorm = Math.sqrt(gradientNormSq);
+    const MAX_GRADIENT_NORM = 1.0;
+    const scale = gradientNorm > MAX_GRADIENT_NORM
+      ? MAX_GRADIENT_NORM / gradientNorm
+      : 1.0;
+
+    // Apply scaled gradients using the adaptive inference rate.
+    for (let h = 0; h < hiddenIndices.length; h++) {
+      latents[hiddenIndices[h]] -= effective.inferenceRate * scale *
+        gradients[h];
     }
 
     // Re-clamp input neurons (should already be clamped, but be safe).

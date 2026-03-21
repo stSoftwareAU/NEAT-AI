@@ -31,6 +31,7 @@ import {
 } from "./PredictiveCodingLearning.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { computeEffectiveConfig } from "./AdaptiveScaling.ts";
 import {
   type DataFuzzingConfig,
   DEFAULT_DATA_FUZZING_CONFIG,
@@ -99,6 +100,13 @@ export function trainWithPredictiveCoding(
   const quantisationConfig: RequiredDataQuantisationConfig = {
     ...DEFAULT_DATA_QUANTISATION_CONFIG,
     ...options.dataQuantisation,
+  };
+
+  // Issue #1915: Apply adaptive learning rate scaling for complex creatures.
+  const effective = computeEffectiveConfig(creature, pcConfig);
+  const effectivePCConfig = {
+    ...pcConfig,
+    learningRate: effective.learningRate,
   };
 
   const rng = getRandomNumberGenerator();
@@ -192,10 +200,11 @@ export function trainWithPredictiveCoding(
           sampleCount++;
 
           // Step 4: Compute gradients from settled inference state.
+          // Issue #1915: Use effective config with adaptive learning rate.
           const gradients = computeWeightGradients(
             creature,
             inferenceResult,
-            pcConfig,
+            effectivePCConfig,
           );
 
           // Accumulate gradients.

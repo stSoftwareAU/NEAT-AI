@@ -2,6 +2,7 @@ import {
   cleanupMemeticForRemovedNeuron,
   cleanupOrphanedNeurons,
 } from "../compact/CompactUtils.ts";
+import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
@@ -80,6 +81,10 @@ export class SubNeuron extends AbstractMutationOperator {
     // Clean up memetic data for the removed neuron
     cleanupMemeticForRemovedNeuron(exportJSON, selectedNeuronUUID);
 
+    // Clean up IF neurons left in an invalid state after neuron removal.
+    // IF neurons require at least one condition, positive, and negative connection.
+    this.cleanupInvalidIfNeurons(exportJSON);
+
     // Clean up any neurons that have become orphaned (no outward connections)
     // This handles cascade removal when removing a neuron leaves others dangling
     cleanupOrphanedNeurons(exportJSON);
@@ -90,5 +95,54 @@ export class SubNeuron extends AbstractMutationOperator {
     this.creature.loadFrom(exportJSON, false);
 
     return true;
+  }
+
+  /**
+   * Remove IF neurons that have lost required connection types.
+   * IF neurons need at least one condition, one positive, and one negative
+   * inward connection. When a neuron is removed and its synapses are deleted,
+   * IF neurons may lose required connections and become invalid.
+   */
+  private cleanupInvalidIfNeurons(exportJSON: CreatureExport): void {
+    let changed: boolean;
+    do {
+      changed = false;
+      const invalidUUIDs = new Set<string>();
+
+      // Find IF neurons and check their connection types
+      for (const neuron of exportJSON.neurons) {
+        if (neuron.squash !== "IF") continue;
+
+        let hasCondition = false;
+        let hasPositive = false;
+        let hasNegative = false;
+
+        for (const synapse of exportJSON.synapses) {
+          if (synapse.toUUID !== neuron.uuid) continue;
+          const synapseType = synapse.type ?? "positive";
+          if (synapseType === "condition") hasCondition = true;
+          else if (synapseType === "positive") hasPositive = true;
+          else if (synapseType === "negative") hasNegative = true;
+        }
+
+        if (!hasCondition || !hasPositive || !hasNegative) {
+          invalidUUIDs.add(neuron.uuid);
+        }
+      }
+
+      if (invalidUUIDs.size > 0) {
+        // Remove invalid IF neurons and their synapses
+        exportJSON.synapses = exportJSON.synapses.filter(
+          (s) => !invalidUUIDs.has(s.fromUUID) && !invalidUUIDs.has(s.toUUID),
+        );
+        exportJSON.neurons = exportJSON.neurons.filter(
+          (n) => !invalidUUIDs.has(n.uuid),
+        );
+        for (const uuid of invalidUUIDs) {
+          cleanupMemeticForRemovedNeuron(exportJSON, uuid);
+        }
+        changed = true;
+      }
+    } while (changed);
   }
 }
