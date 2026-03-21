@@ -683,6 +683,19 @@ function trainDirBinary(
           remainingNeuronUUIDs.add(n.uuid);
         }
 
+        // Build a map of creature neuron properties for trace sync.
+        const creatureNeuronProps = new Map<
+          string,
+          { squash?: string; bias: number; type: string }
+        >();
+        for (const n of bestCreatureJSON.neurons) {
+          creatureNeuronProps.set(n.uuid, {
+            squash: n.squash,
+            bias: n.bias,
+            type: n.type,
+          });
+        }
+
         bestTraceJSON = {
           ...bestTraceJSON,
           synapses: bestTraceJSON.synapses.filter((s) =>
@@ -690,7 +703,16 @@ function trainDirBinary(
           ),
           neurons: bestTraceJSON.neurons.filter((n) =>
             remainingNeuronUUIDs.has(n.uuid)
-          ),
+          ).map((n) => {
+            // Sync neuron properties (squash, bias, type) with the
+            // cleaned creature. applyLearnings can change squash types
+            // (e.g. IF → IDENTITY) which must be reflected in the trace.
+            const props = creatureNeuronProps.get(n.uuid);
+            if (props) {
+              return { ...n, squash: props.squash, bias: props.bias };
+            }
+            return n;
+          }),
         };
       }
 

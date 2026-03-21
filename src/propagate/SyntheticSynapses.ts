@@ -95,13 +95,20 @@ export function generateSyntheticSynapses(
   }
 
   // Pre-compute which neuron indices are invalid targets:
-  // constant neurons, input neurons, and frozen neurons.
+  // constant neurons, input neurons, frozen neurons, and aggregate neurons.
+  // Aggregate neurons (IF, MAXIMUM, MINIMUM) have special structural
+  // requirements (typed connections) and their applyLearnings can
+  // disconnect connections and change squash types, so adding untyped
+  // synthetic connections to them is architecturally unsound.
+  const AGGREGATE_SQUASHES = new Set(["IF", "MAXIMUM", "MINIMUM"]);
   const skipTargets = new Set<number>();
   for (let i = 0; i < creature.neurons.length; i++) {
     const neuron = creature.neurons[i];
     if (neuron.type === "constant" || neuron.type === "input") {
       skipTargets.add(i);
     } else if (neuron.frozen) {
+      skipTargets.add(i);
+    } else if (neuron.squash && AGGREGATE_SQUASHES.has(neuron.squash)) {
       skipTargets.add(i);
     }
   }
