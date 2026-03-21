@@ -10,6 +10,7 @@ leverages existing `disconnectBatch()` for efficient batch removal and
 `cleanupOrphanedNeuronsInCreature()` for orphan handling (cascade-safe).
 
 Safety rules enforced:
+
 - Typed synapses (IF condition/positive/negative) are never removed
 - Output neurons always retain at least one inward connection
 - Orphaned hidden neurons are converted to constants or removed entirely

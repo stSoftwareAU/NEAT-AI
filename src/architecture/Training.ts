@@ -37,6 +37,8 @@ import {
   type RequiredDataQuantisationConfig,
 } from "../config/DataQuantisationConfig.ts";
 import { trainWithCrossValidation } from "./CrossValidationTrainer.ts";
+import { generateSyntheticSynapses } from "../propagate/SyntheticSynapses.ts";
+import { removeSyntheticSynapses } from "../propagate/RemoveSyntheticSynapses.ts";
 
 /**
  * Scans a data directory for binary training files.
@@ -314,6 +316,17 @@ function trainDirBinary(
     ...DEFAULT_DATA_QUANTISATION_CONFIG,
     ...options.dataQuantisation,
   };
+
+  // Issue #1923: Generate synthetic synapses before backpropagation.
+  // This adds dense inter-layer connections so backpropagation can
+  // discover useful pathways that NEAT's evolution may not have found.
+  let syntheticKeys: Set<string> | undefined;
+  if (options.syntheticSynapses) {
+    const synResult = generateSyntheticSynapses(creature);
+    syntheticKeys = synResult.syntheticKeys;
+    // Invalidate WASM/state caches after structural change.
+    creature.clearState();
+  }
 
   const rng = getRandomNumberGenerator();
 
@@ -644,6 +657,43 @@ function trainDirBinary(
       if (iterations > 1) {
         creature.loadFrom(bestCreatureJSON, false); // If not called via the worker.
       }
+
+      // Issue #1923: Remove synthetic synapses after training completes.
+      // Near-zero synthetic synapses are pruned; meaningful ones retained.
+      if (syntheticKeys && syntheticKeys.size > 0) {
+        removeSyntheticSynapses(
+          creature,
+          syntheticKeys,
+          iterationConfig.plankConstant,
+        );
+        // Invalidate caches after structural change.
+        creature.clearState();
+
+        // Update bestCreatureJSON to reflect the cleaned creature.
+        bestCreatureJSON = creature.exportJSON();
+
+        // Filter bestTraceJSON to match the cleaned creature structure.
+        // Build a set of remaining synapse keys and neuron UUIDs.
+        const remainingSynapseKeys = new Set<string>();
+        for (const s of bestCreatureJSON.synapses) {
+          remainingSynapseKeys.add(`${s.fromUUID}->${s.toUUID}`);
+        }
+        const remainingNeuronUUIDs = new Set<string>();
+        for (const n of bestCreatureJSON.neurons) {
+          remainingNeuronUUIDs.add(n.uuid);
+        }
+
+        bestTraceJSON = {
+          ...bestTraceJSON,
+          synapses: bestTraceJSON.synapses.filter((s) =>
+            remainingSynapseKeys.has(`${s.fromUUID}->${s.toUUID}`)
+          ),
+          neurons: bestTraceJSON.neurons.filter((n) =>
+            remainingNeuronUUIDs.has(n.uuid)
+          ),
+        };
+      }
+
       bestTraceJSON.neurons.forEach((n) => {
         if (!sparseConfig.traceNeeded(n.uuid)) {
           delete (n as { trace?: unknown }).trace;
