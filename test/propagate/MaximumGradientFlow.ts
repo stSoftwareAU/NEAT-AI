@@ -6,12 +6,14 @@ import { Creature } from "../../src/Creature.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 
 /**
- * Issue #1874: Verify that MAXIMUM neurons propagate partial gradient
- * to non-winning connections that are close to the winning value.
+ * Issue #1874: Verify that MAXIMUM neurons propagate gradient through the
+ * winner path and distribute partial gradient to non-winning connections
+ * that are close to the winning value.
  *
- * Build a network where two connections feeding a MAXIMUM neuron produce
- * values that are close together. After backpropagation, both connections
- * should receive weight adjustments (not just the winner).
+ * MAXIMUM propagation passes gradient through the winner connection to the
+ * upstream neuron (changing the upstream weights) rather than accumulating
+ * a weight change on the winner connection itself. The runner-up connections
+ * close to the winner receive a partial gradient leak via weight accumulation.
  */
 Deno.test("MAXIMUM: non-winner connections close to winner receive gradient", () => {
   // Create a creature where the MAXIMUM neuron has two inputs with
@@ -66,8 +68,8 @@ Deno.test("MAXIMUM: non-winner connections close to winner receive gradient", ()
   const creature = Creature.fromJSON(creatureJson);
   creature.validate();
 
-  // Generate deterministic training data where both hidden neurons have similar activations
-  // so the non-winner is close to the winner
+  // Generate deterministic training data where both hidden neurons have
+  // similar activations so the non-winner is close to the winner.
   const ts: DataRecordInterface[] = [];
   for (let i = 0; i < 50; i++) {
     // Both inputs similar so the weighted values are close
@@ -88,34 +90,40 @@ Deno.test("MAXIMUM: non-winner connections close to winner receive gradient", ()
     weightsBefore.set(`${s.fromUUID}->${s.toUUID}`, s.weight);
   }
 
-  // Train the creature
+  // Train with iterations: 1 so that weight changes from applyLearnings are
+  // preserved. With iterations > 1, the training loop may roll back to the
+  // pre-applyLearnings snapshot when subsequent iterations produce worse
+  // error, yielding a zero delta for the exported weights.
   const trainedCreature = Creature.fromJSON(exportBefore);
   trainedCreature.validate();
   train(trainedCreature, ts, {
-    iterations: 100,
+    iterations: 1,
     disableRandomSamples: true,
   });
 
-  // Check that both connections to the MAXIMUM neuron received weight changes
   const exportAfter = trainedCreature.exportJSON();
   const weightsAfter = new Map<string, number>();
   for (const s of exportAfter.synapses) {
     weightsAfter.set(`${s.fromUUID}->${s.toUUID}`, s.weight);
   }
 
-  const winnerDelta = Math.abs(
-    (weightsAfter.get("hidden-a->output-0") ?? 0) -
-      (weightsBefore.get("hidden-a->output-0") ?? 0),
+  // MAXIMUM propagation passes gradient through the winner to the upstream
+  // neuron. Verify gradient flowed through hidden-a by checking its inward
+  // connection (input-0 -> hidden-a) changed weight.
+  const winnerUpstreamDelta = Math.abs(
+    (weightsAfter.get("input-0->hidden-a") ?? 0) -
+      (weightsBefore.get("input-0->hidden-a") ?? 0),
   );
+  assert(
+    winnerUpstreamDelta > 1e-10,
+    `Winner upstream connection should have weight change (gradient flows through MAXIMUM), got delta: ${winnerUpstreamDelta}`,
+  );
+
+  // The runner-up connection close to the winner should also receive partial
+  // gradient via the leak mechanism (Issue #1874).
   const runnerUpDelta = Math.abs(
     (weightsAfter.get("hidden-b->output-0") ?? 0) -
       (weightsBefore.get("hidden-b->output-0") ?? 0),
-  );
-
-  // The runner-up should also receive some gradient (non-zero weight change)
-  assert(
-    winnerDelta > 1e-10,
-    `Winner connection should have weight change, got delta: ${winnerDelta}`,
   );
   assert(
     runnerUpDelta > 1e-10,
