@@ -29,6 +29,7 @@ import { Costs, Creature, Mutation, Selection } from "@stsoftware/neat-ai";
 15. [Utilities](#15-utilities)
 16. [Transfer Learning](#16-transfer-learning)
 17. [ONNX Export](#17-onnx-export)
+18. [Synthetic Synapses](#18-synthetic-synapses)
 
 ---
 
@@ -475,6 +476,20 @@ interface BackPropagationOptions {
   learningRateDecay?: number; // Decay factor (default: 0.95)
 }
 ```
+
+### 🧬 TrainOptions — Additional Training Fields
+
+The full `TrainOptions` interface extends `BackPropagationOptions` with these
+additional fields (all optional):
+
+| Field               | Type                     | Default  | Description                                                                                                                                                 |
+| ------------------- | ------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `syntheticSynapses` | `boolean`                | `false`  | Generate dense inter-layer synapses before backpropagation, then prune near-zero ones after training. See [§18 Synthetic Synapses](#18-synthetic-synapses). |
+| `predictiveCoding`  | `PredictiveCodingConfig` | disabled | Use local Hebbian learning rules instead of standard backpropagation.                                                                                       |
+| `crossValidation`   | `CrossValidationConfig`  | disabled | Split data into k folds for cross-validated training.                                                                                                       |
+| `dataFuzzing`       | `DataFuzzingConfig`      | disabled | Inject noise into training data each iteration to prevent memorisation.                                                                                     |
+| `dataQuantisation`  | `DataQuantisationConfig` | disabled | Quantise training data values to discrete levels.                                                                                                           |
+| `feedbackLoop`      | `boolean`                | `false`  | Feed previous output back as input for time-series tasks.                                                                                                   |
 
 ### 💡 Direct Training Example
 
@@ -1238,6 +1253,119 @@ Deno.writeFileSync("model.onnx", onnxBytes);
 > [!WARNING]
 > Recurrent connections (feedback loops) are not supported in ONNX export.
 > Creatures must use feed-forward topology only.
+
+---
+
+## 18. 🧪 Synthetic Synapses
+
+Issue #1919: Synthetic synapses address a key weakness of NEAT's incremental
+topology growth — newly evolved networks often have sparse inter-layer
+connectivity compared to conventional dense neural networks. Synthetic synapses
+temporarily densify the network during backpropagation, giving gradient descent
+a richer search space to discover useful connections.
+
+### Lifecycle
+
+The synthetic synapse lifecycle has three phases, all handled automatically when
+`syntheticSynapses: true` is set in the training options:
+
+1. **Generation** — Before backpropagation begins, `generateSyntheticSynapses()`
+   computes a topological layer assignment for every neuron and adds zero-weight
+   synapses between each pair of adjacent layers. Existing connections, constant
+   neurons, and frozen neurons are skipped.
+2. **Training** — Standard backpropagation runs with the additional synthetic
+   synapses present. Useful connections are trained to non-trivial weights;
+   unhelpful ones remain near zero.
+3. **Pruning** — After training completes, `removeSyntheticSynapses()` removes
+   any synthetic synapse whose absolute weight remains below a threshold
+   (default: `plankConstant`, 1e-7). Synthetic synapses trained to meaningful
+   weights are retained as permanent connections. Orphaned neurons are cleaned
+   up automatically.
+
+### Enabling Synthetic Synapses
+
+Synthetic synapses are opt-in. Set `syntheticSynapses: true` in the training
+options passed to `evolveDir()`:
+
+```typescript
+const result = await creature.evolveDir(dataDir, {
+  costName: "MSE",
+  iterations: 100,
+  syntheticSynapses: true, // Enable synthetic synapse generation
+});
+```
+
+### Internal Functions
+
+These functions are used internally by the training pipeline and are not
+exported from `mod.ts`. They are documented here for architectural reference.
+
+#### `generateSyntheticSynapses(creature, options?)`
+
+Adds zero-weight synapses between neurons in adjacent topological layers.
+
+| Parameter  | Type                       | Description                               |
+| ---------- | -------------------------- | ----------------------------------------- |
+| `creature` | `Creature`                 | The creature to modify (mutated in place) |
+| `options`  | `SyntheticSynapsesOptions` | Optional generation limits                |
+
+**`SyntheticSynapsesOptions`**:
+
+| Field          | Type     | Default | Description                                                                                                      |
+| -------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------- |
+| `maxPerTarget` | `number` | `50`    | Maximum synthetic connections per target neuron per layer pair. Prevents combinatorial explosion on wide layers. |
+
+**Returns:** `SyntheticSynapsesResult`
+
+| Field           | Type          | Description                                         |
+| --------------- | ------------- | --------------------------------------------------- |
+| `addedCount`    | `number`      | Number of synthetic synapses added                  |
+| `syntheticKeys` | `Set<string>` | Set of `"fromIndex-toIndex"` keys for later cleanup |
+| `skippedCount`  | `number`      | Connections skipped due to the per-target cap       |
+
+#### `removeSyntheticSynapses(creature, syntheticKeys, threshold?)`
+
+Prunes near-zero synthetic synapses after training. Synthetic synapses that have
+been trained to non-trivial weights are retained as permanent connections.
+
+| Parameter       | Type          | Default | Description                                     |
+| --------------- | ------------- | ------- | ----------------------------------------------- |
+| `creature`      | `Creature`    |         | The creature to prune (mutated in place)        |
+| `syntheticKeys` | `Set<string>` |         | Keys returned by `generateSyntheticSynapses()`  |
+| `threshold`     | `number`      | `1e-7`  | Maximum absolute weight to consider "near zero" |
+
+**Safety rules:**
+
+- Typed synapses (IF condition/positive/negative) are never removed
+- Output neurons always retain at least one inward connection
+- Orphaned neurons are iteratively cleaned up (converted to constant or removed)
+
+**Returns:** `RemoveSyntheticSynapsesResult`
+
+| Field              | Type     | Description                                              |
+| ------------------ | -------- | -------------------------------------------------------- |
+| `removed`          | `number` | Number of synthetic synapses removed                     |
+| `orphansRemoved`   | `number` | Number of orphaned neurons removed entirely              |
+| `orphansConverted` | `number` | Number of orphaned hidden neurons converted to constants |
+
+#### `computeLayerAssignments(creature)`
+
+Computes topological layer assignments for all neurons using longest-path
+distance from input neurons.
+
+| Parameter  | Type       | Description                            |
+| ---------- | ---------- | -------------------------------------- |
+| `creature` | `Creature` | The creature whose topology to analyse |
+
+**Returns:** `Map<number, number[]>` — maps layer number to an array of neuron
+indices in that layer.
+
+**Layer assignment rules:**
+
+- Input and constant neurons → layer 0
+- Hidden neurons → layer based on longest path from inputs
+- Output neurons → always placed in the final layer
+- Recurrent connections and self-loops are ignored
 
 ---
 

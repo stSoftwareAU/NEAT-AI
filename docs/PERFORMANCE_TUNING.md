@@ -19,6 +19,7 @@ every option.
 - [When to Enable WASM Activation](#when-to-enable-wasm-activation)
 - [Discovery and GPU Acceleration](#discovery-and-gpu-acceleration)
 - [Memetic Evolution (Backpropagation + Evolution)](#memetic-evolution-backpropagation--evolution)
+- [Synthetic Synapse Training](#synthetic-synapse-training)
 - [Scaling Patterns](#scaling-patterns)
 - [Tuning Recipes](#tuning-recipes)
 - [Diagnostics and Monitoring](#diagnostics-and-monitoring)
@@ -525,6 +526,67 @@ fails. This is tracked over a rolling window of recent generations.
   is highly effective (smooth fitness landscapes, continuous outputs).
 - **Decrease `maxPopulationFraction` to 0.2** for problems where evolution is
   the primary driver (discrete outputs, deceptive landscapes).
+
+---
+
+## 🧪 Synthetic Synapse Training
+
+Synthetic synapses temporarily densify the network during backpropagation by
+adding zero-weight connections between adjacent topological layers. After
+training, near-zero connections are pruned and only useful ones are retained.
+
+### When to Enable Synthetic Synapses
+
+- **Sparse early-evolution networks**: When NEAT has not yet evolved dense
+  inter-layer connectivity, synthetic synapses give backpropagation more
+  connections to optimise, often finding useful pathways that mutation alone
+  would take many generations to discover.
+- **Problems requiring dense connectivity**: Tasks where the solution benefits
+  from many inter-layer connections (similar to conventional dense neural
+  networks).
+
+### When to Disable Synthetic Synapses
+
+- **Already-dense networks**: If evolution has already built dense connectivity,
+  the overhead of adding and pruning synthetic synapses may outweigh the
+  benefit.
+- **Very small networks**: Networks with fewer than 10 neurons have limited
+  layer structure; synthetic synapses add little value.
+- **Memory-constrained environments**: Synthetic synapses temporarily increase
+  the network size. At production scale (~1,000 neurons), expect a ~3.3x
+  expansion in synapse count during training.
+
+### Performance Implications
+
+Synthetic synapse generation and pruning add overhead to each training session:
+
+| Phase      | Typical Cost (production scale) | Description                                         |
+| ---------- | ------------------------------- | --------------------------------------------------- |
+| Generation | ~90 ms                          | Computing layers and adding zero-weight synapses    |
+| Pruning    | ~380 ms                         | Removing near-zero synapses and cleaning up orphans |
+| Overall    | ~4.6x baseline                  | Full training lifecycle overhead                    |
+
+The overhead is a fixed cost per training session, not per iteration. For
+training runs with many backpropagation iterations, the per-iteration overhead
+is negligible.
+
+### Tuning the Per-Target Cap
+
+The `maxPerTarget` parameter (default: 50) limits how many synthetic connections
+each target neuron receives from a single source layer. This prevents
+combinatorial explosion on wide networks.
+
+- **Lower values** (e.g., 20–30): Reduce memory usage and generation time at the
+  cost of sparser coverage.
+- **Higher values** (e.g., 80–100): Provide denser coverage but increase memory
+  and training time.
+- **Default (50)**: A good balance for production-sized creatures (~1,000
+  neurons).
+
+> [!TIP]
+> The `maxPerTarget` cap uses evenly-spaced sampling across the source layer,
+> ensuring good coverage even when the cap is well below the source layer size.
+> In most cases, the default of 50 is sufficient.
 
 ---
 
