@@ -98,16 +98,19 @@ export class SubNeuron extends AbstractMutationOperator {
   }
 
   /**
-   * Remove IF neurons that have lost required connection types.
+   * Handle IF neurons that have lost required connection types.
    * IF neurons need at least one condition, one positive, and one negative
    * inward connection. When a neuron is removed and its synapses are deleted,
    * IF neurons may lose required connections and become invalid.
+   *
+   * Output neurons are never removed — their squash is changed to IDENTITY
+   * instead. Only hidden/constant IF neurons are removed entirely.
    */
   private cleanupInvalidIfNeurons(exportJSON: CreatureExport): void {
     let changed: boolean;
     do {
       changed = false;
-      const invalidUUIDs = new Set<string>();
+      const removableUUIDs = new Set<string>();
 
       // Find IF neurons and check their connection types
       for (const neuron of exportJSON.neurons) {
@@ -126,19 +129,32 @@ export class SubNeuron extends AbstractMutationOperator {
         }
 
         if (!hasCondition || !hasPositive || !hasNegative) {
-          invalidUUIDs.add(neuron.uuid);
+          if (neuron.type === "output") {
+            // Output neurons must never be removed. Demote to IDENTITY
+            // and clear synapse types so they work as standard connections.
+            neuron.squash = "IDENTITY";
+            for (const synapse of exportJSON.synapses) {
+              if (synapse.toUUID === neuron.uuid && synapse.type) {
+                delete synapse.type;
+              }
+            }
+          } else {
+            removableUUIDs.add(neuron.uuid);
+          }
         }
       }
 
-      if (invalidUUIDs.size > 0) {
-        // Remove invalid IF neurons and their synapses
+      if (removableUUIDs.size > 0) {
+        // Remove invalid hidden/constant IF neurons and their synapses
         exportJSON.synapses = exportJSON.synapses.filter(
-          (s) => !invalidUUIDs.has(s.fromUUID) && !invalidUUIDs.has(s.toUUID),
+          (s) =>
+            !removableUUIDs.has(s.fromUUID) &&
+            !removableUUIDs.has(s.toUUID),
         );
         exportJSON.neurons = exportJSON.neurons.filter(
-          (n) => !invalidUUIDs.has(n.uuid),
+          (n) => !removableUUIDs.has(n.uuid),
         );
-        for (const uuid of invalidUUIDs) {
+        for (const uuid of removableUUIDs) {
           cleanupMemeticForRemovedNeuron(exportJSON, uuid);
         }
         changed = true;

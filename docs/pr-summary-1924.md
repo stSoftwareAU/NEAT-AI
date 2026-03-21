@@ -16,25 +16,25 @@ sampling for good coverage. This reduces synthetic synapses from ~160,000 to
 
 ### Benchmark results
 
-| Operation | Time (avg) | Notes |
-|-----------|-----------|-------|
-| Generate synthetic synapses (capped) | 88.2 ms | Production scale, default cap=50 |
-| Remove synthetic synapses | 383.0 ms | Includes generation + removal |
-| Full lifecycle (generate + train 1 iter + remove) | 1.1 s | Well within 120s limit |
-| Baseline training (no synthetics) | 242.1 ms | For comparison |
+| Operation                                         | Time (avg) | Notes                            |
+| ------------------------------------------------- | ---------- | -------------------------------- |
+| Generate synthetic synapses (capped)              | 88.2 ms    | Production scale, default cap=50 |
+| Remove synthetic synapses                         | 383.0 ms   | Includes generation + removal    |
+| Full lifecycle (generate + train 1 iter + remove) | 1.1 s      | Well within 120s limit           |
+| Baseline training (no synthetics)                 | 242.1 ms   | For comparison                   |
 
 Full lifecycle overhead: ~4.6x baseline — acceptable for the connectivity
 benefits synthetic synapses provide.
 
 ### Memory estimate
 
-| Metric | Value |
-|--------|-------|
-| Original synapses | 19,653 |
-| Synthetic added (capped) | 45,203 |
-| Skipped (capped) | 95,366 |
-| Total synapses | 64,856 |
-| Expansion ratio | 3.3x |
+| Metric                      | Value  |
+| --------------------------- | ------ |
+| Original synapses           | 19,653 |
+| Synthetic added (capped)    | 45,203 |
+| Skipped (capped)            | 95,366 |
+| Total synapses              | 64,856 |
+| Expansion ratio             | 3.3x   |
 | Estimated additional memory | 3.8 MB |
 
 ### Correctness validation
@@ -68,5 +68,6 @@ Apple M4 Pro, Deno 2.7.7. All 4,833+ tests pass with these changes.
   - Remove after generation
   - Full lifecycle (generate + train + remove)
   - Baseline training (no synthetics)
-- Extracted shared utilities to `test/propagate/large/ProductionScaleCreature.ts`
+- Extracted shared utilities to
+  `test/propagate/large/ProductionScaleCreature.ts`
 - Existing 33 synthetic synapse tests continue to pass unchanged
