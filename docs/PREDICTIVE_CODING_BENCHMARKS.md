@@ -2,7 +2,7 @@
 
 Results from the Predictive Coding (PC) benchmark and validation suite.
 
-Issue #1558 | Part of #1549
+Issue #1558 | Part of #1549 | Complex creature results from #1914 and #1915
 
 ## 🔬 Methodology
 
@@ -181,6 +181,82 @@ Validation tests confirm:
 > The `enabled: false` default means no existing pipelines are affected unless
 > PC is explicitly opted in via configuration.
 
+## 6. 🧬 Complex Creature Results (30+ Neurons)
+
+Issue #1914 and #1915 extended PC validation to production-representative
+creatures with 30+ hidden neurons, multiple layers, and mixed activation
+functions. These results demonstrate that PC with adaptive scaling (Issue #1915)
+produces measurable improvement on non-trivial networks.
+
+### 🏗️ Test Topology
+
+The complex creature topology mirrors production-scale workloads:
+
+- **Inputs**: 4
+- **Hidden layers**: 4 (12 → 10 → 8 → 6 neurons)
+- **Total hidden neurons**: 36
+- **Outputs**: 2
+- **Activation functions**: Mixed (TANH, LOGISTIC, ReLU, IDENTITY, SELU, Swish)
+- **Connectivity**: Fully connected between adjacent layers plus skip
+  connections
+
+A second topology tests a production-representative GRQ-cluster pattern with 50+
+neurons and forward-only connections.
+
+### 📊 PC vs Standard Backprop on Complex Creatures
+
+| Metric                          | Standard Backprop | Predictive Coding | Notes                                 |
+| ------------------------------- | ----------------- | ----------------- | ------------------------------------- |
+| Inference converges             | N/A               | ✅ Yes            | Energy decreases monotonically        |
+| Non-zero weight gradients       | ✅                | ✅                | Both methods produce updates          |
+| Error decreases over iterations | ✅                | ✅                | PC matches backprop on convergence    |
+| Trace tags present              | ❌                | ✅                | PC adds `approach`, `pc-energy`, etc. |
+
+### 🔬 Key Findings for Complex Creatures
+
+1. **Adaptive scaling is essential**: Without adaptive scaling (Issue #1915), PC
+   produces no measurable improvement on 30+ neuron creatures. The default
+   `energyThreshold` of `1e-6` is unreachable when 36+ error terms contribute to
+   total energy, causing inference to exhaust all steps without converging.
+
+2. **Inference converges with adaptive scaling**: With adaptive scaling, the
+   energy threshold is relaxed proportionally to network size, and inference
+   converges within the step budget. Energy decreases monotonically during
+   settling, confirming the mathematical properties hold on complex topologies.
+
+3. **Mixed activations work**: PC correctly handles creatures using mixed
+   activation functions (TANH, LOGISTIC, ReLU, IDENTITY, SELU, Swish) across
+   different layers. The derivative computation adapts per-neuron.
+
+4. **Forward-only and recurrent topologies**: Both topology styles converge
+   under PC training, though forward-only networks settle more predictably.
+
+5. **Production-representative topologies**: The GRQ-cluster topology (50+
+   neurons) demonstrates that PC with adaptive scaling produces valid trace tags
+   and measurable weight changes on realistic workloads.
+
+### ⚙️ Configuration Tuning Findings (Issue #1915)
+
+The adaptive scaling module resolves three problems identified during complex
+creature testing:
+
+| Problem                     | Root Cause                                       | Solution                                |
+| --------------------------- | ------------------------------------------------ | --------------------------------------- |
+| Inference never converges   | `energyThreshold` too tight for many error terms | Scale threshold by `nonInputCount / 10` |
+| Oscillation during settling | `inferenceRate` too high for large gradient sums | Scale rate by `1 / √(hiddenCount / 10)` |
+| No weight changes           | `learningRate` too conservative for many params  | Scale rate by `√(hiddenCount / 10)`     |
+
+Additionally, **gradient normalisation** (L2 norm capped at 1.0) was added to
+prevent divergence in deep topologies where gradient magnitudes can explode.
+
+> [!TIP]
+> For production use with complex creatures, rely on the default PC
+> configuration with adaptive scaling. Manual parameter tuning is typically
+> unnecessary — the scaling module adjusts parameters based on network topology
+> automatically.
+
+---
+
 ## 🏁 Conclusions
 
 1. **PC works correctly**: Mathematical validation confirms energy minimisation,
@@ -199,6 +275,17 @@ Validation tests confirm:
 
 5. **PC training reduces error**: Validation confirms that PC weight updates
    move weights in the correct direction, reducing output error.
+
+6. **Adaptive scaling enables complex creatures**: Without adaptive scaling, PC
+   produces no gains on networks with 30+ hidden neurons. The scaling module
+   (Issue #1915) automatically adjusts `inferenceRate`, `energyThreshold`, and
+   `learningRate` based on network topology, making PC effective on
+   production-representative creatures with 36–50+ neurons.
+
+7. **Mixed activations and deep topologies work**: PC with adaptive scaling and
+   gradient normalisation handles mixed activation functions and multi-layer
+   topologies correctly, producing monotonic energy decrease and measurable
+   weight updates.
 
 ## 📖 References
 
