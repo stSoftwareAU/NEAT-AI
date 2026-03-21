@@ -68,6 +68,19 @@ export interface TrainArguments extends BackPropagationArguments {
    * a fixed number of discrete levels to prevent memorisation.
    */
   dataQuantisation: DataQuantisationConfig;
+
+  /**
+   * Enable synthetic synapse generation during training.
+   *
+   * Issue #1923: When true, dense inter-layer synapses are generated
+   * before backpropagation begins. After training, near-zero synthetic
+   * synapses are pruned and orphaned neurons cleaned up. This allows
+   * backpropagation to discover useful connections that NEAT's
+   * evolutionary process may not have found.
+   *
+   * Default: false (opt-in)
+   */
+  syntheticSynapses: boolean;
 }
 
 export type TrainOptions = Partial<TrainArguments>;
