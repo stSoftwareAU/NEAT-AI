@@ -295,6 +295,10 @@
     "varints",
     "breedable",
     "submessages",
-    "Tikhonov"
+    "Tikhonov",
+    "blowup",
+    "densify",
+    "densifies",
+    "densification"
   ]
 }
