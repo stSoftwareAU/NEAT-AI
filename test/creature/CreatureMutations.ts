@@ -39,6 +39,10 @@ function checkMutation(method: { name: string }) {
   for (let i = 6; i--;) {
     if (mutator.mutateCreature(creature, Mutation.ADD_SELF_CONN)) break;
   }
+  // Issue #1583: mutateCreature() no longer calls fix() internally.
+  // Repair the creature before validating to ensure structural invariants
+  // (e.g. IF neurons having all required connection types) are restored.
+  mutator.repairAfterMutation(creature);
   creatureValidate(creature);
   const originalOutput = [];
   const sparseConfig = new SparseConfig(
@@ -60,6 +64,7 @@ function checkMutation(method: { name: string }) {
   for (let i = 12; i--;) {
     if (mutator.mutateCreature(creature, method)) break;
   }
+  mutator.repairAfterMutation(creature);
   const json2 = JSON.stringify(creature.exportJSON(), null, 1);
 
   if (json1 === json2) {
