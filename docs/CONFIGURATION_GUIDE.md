@@ -221,6 +221,12 @@ const config = createNeatConfig({
 | `adaptivePopulation.lowDiversityThreshold`  | `number`  | `0.3`    | Diversity below this grows population              |
 | `adaptivePopulation.highDiversityThreshold` | `number`  | `0.8`    | Diversity above this may shrink population         |
 
+### 🧪 Synthetic Synapses
+
+| Option              | Type      | Default | Description                                                |
+| ------------------- | --------- | ------- | ---------------------------------------------------------- |
+| `syntheticSynapses` | `boolean` | `false` | Generate dense inter-layer synapses before backpropagation |
+
 ### ⚡ Parallel Evaluation
 
 | Option                                        | Type      | Default | Description                                       |
@@ -446,6 +452,27 @@ Higher values allow more aggressive weight updates.
 
 Maximum total minutes for the training loop. Set to `0` for unlimited. Useful
 for production environments where runs must complete within a time budget.
+
+### `syntheticSynapses`
+
+**Default: false** | Type: boolean
+
+When enabled, dense zero-weight synapses are generated between adjacent
+topological layers before backpropagation begins. After training, synthetic
+synapses whose weights remain near zero are pruned, and any that have been
+trained to meaningful weights are retained as permanent connections. This allows
+backpropagation to discover useful connections that NEAT's evolutionary process
+may not have found.
+
+A per-target cap of 50 connections per target neuron per layer pair prevents
+combinatorial explosion on wide networks. Orphaned neurons are cleaned up
+automatically after pruning.
+
+> [!TIP]
+> Synthetic synapses are most beneficial for networks with sparse inter-layer
+> connectivity — typically early in evolution when NEAT has not yet built dense
+> connections between layers. For already-dense networks, the overhead may
+> outweigh the benefit.
 
 ---
 

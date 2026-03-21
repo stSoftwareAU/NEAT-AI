@@ -113,6 +113,14 @@ For project terminology, coding conventions, and development guidelines, see
     inference pipelines, bridging the gap between neuroevolution and production
     deployment.
 
+20. **Synthetic Synapse Training**: Temporarily densifies inter-layer
+    connectivity during backpropagation by adding zero-weight synapses between
+    adjacent topological layers. After training, near-zero synapses are pruned
+    and only the useful connections are retained — addressing NEAT's inherent
+    weakness of sparse connectivity compared to conventional
+    [dense layers](https://en.wikipedia.org/wiki/Dense_layer). Opt-in via
+    `syntheticSynapses: true` in the training configuration.
+
 ## 🚀 Quick Start
 
 ```typescript

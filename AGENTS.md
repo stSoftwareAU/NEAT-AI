@@ -31,6 +31,15 @@ machine-learning idea:
   Rust FFI extension to propose structural improvements.
 - **Intelligent Design** is a technique for systematically testing different
   squash functions for each hidden neuron.
+- **Synthetic synapses** are temporary zero-weight connections added between
+  adjacent topological layers before backpropagation. They give gradient descent
+  a richer search space — similar to
+  [layer densification](https://en.wikipedia.org/wiki/Dense_layer) in
+  conventional deep learning — and are pruned back to only the useful ones after
+  training.
+- **Layer assignment** is the topological ordering of neurons into discrete
+  layers based on longest-path distance from input neurons, used by synthetic
+  synapse generation to determine which neuron pairs are in adjacent layers.
 
 If you spot another fun label, expect it to be backed by a reference to the
 standard term the first time it appears.
