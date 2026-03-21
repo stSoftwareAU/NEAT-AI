@@ -664,7 +664,226 @@ explode.
 
 ---
 
-## 5. 📖 References
+## 5. ✅ Production Validation
+
+Once Predictive Coding is enabled in your training pipeline, you can verify that
+it is active and working by inspecting the **trace tags** attached to training
+outputs. These tags were introduced in Issue #1913.
+
+### 🏷️ Trace Tags
+
+When PC training runs, the following tags are added to both the `trace` and
+`compact` exports:
+
+| Tag                  | Type   | Meaning                                                                 |
+| -------------------- | ------ | ----------------------------------------------------------------------- |
+| `approach`           | string | Set to `"predictive-coding"` when PC was used for training              |
+| `pc-energy`          | string | Average total prediction error energy at convergence across all samples |
+| `pc-inference-steps` | string | Average number of inference settling steps used per sample              |
+| `pc-changed`         | string | Whether weights were modified during training (`"true"` or `"false"`)   |
+
+**How to verify PC is active:**
+
+1. Enable PC in your training configuration:
+   ```typescript
+   const options = {
+     predictiveCoding: { enabled: true },
+     // ... other options
+   };
+   ```
+
+2. After training completes, inspect the trace output for the `approach` tag:
+   ```typescript
+   import { getTag } from "@stsoftware/tags/mod";
+
+   const approach = getTag(trace, "approach");
+   // Should be "predictive-coding" if PC was used
+   ```
+
+3. Check the energy and inference steps to confirm settling occurred:
+   ```typescript
+   const energy = parseFloat(getTag(trace, "pc-energy") ?? "NaN");
+   const steps = parseFloat(getTag(trace, "pc-inference-steps") ?? "NaN");
+   // energy should be a small positive number
+   // steps should be between 1 and inferenceSteps (default: 50)
+   ```
+
+> [!TIP]
+> If `approach` is absent or not `"predictive-coding"`, PC did not run. Check
+> that `predictiveCoding.enabled` is `true` in your configuration. Standard
+> backpropagation does not add any PC-specific tags.
+
+### 🔍 Interpreting Tag Values
+
+- **`pc-energy` is high (> 1.0)**: The network may need more inference steps or
+  a lower `energyThreshold`. For complex creatures (30+ neurons), adaptive
+  scaling handles this automatically — see the Configuration Guide below.
+
+- **`pc-inference-steps` equals `inferenceSteps`**: Inference did not converge
+  before the step limit. Consider increasing `inferenceSteps` or relaxing
+  `energyThreshold`. For complex creatures, adaptive scaling adjusts the
+  threshold automatically.
+
+- **`pc-changed` is `"false"`**: No weights were updated. This can happen if
+  prediction errors are already minimal or the `learningRate` is too low.
+
+---
+
+## 6. ⚙️ Configuration Guide
+
+### 🔧 Configuration Parameters
+
+| Parameter         | Default | Description                                             |
+| ----------------- | ------- | ------------------------------------------------------- |
+| `enabled`         | `false` | Whether PC training mode is active                      |
+| `inferenceSteps`  | `50`    | Maximum settling iterations per sample                  |
+| `inferenceRate`   | `0.05`  | Learning rate for inference (activity) updates          |
+| `learningRate`    | `0.001` | Learning rate for Hebbian weight updates                |
+| `energyThreshold` | `1e-6`  | Convergence threshold for total prediction error energy |
+
+### 📏 Recommended Settings by Network Size
+
+The default configuration is tuned for small networks. For larger networks,
+**adaptive scaling** (Issue #1915) automatically adjusts parameters based on
+network topology. You can use the defaults and rely on adaptive scaling, or
+manually tune for specific use cases.
+
+#### Small Networks (< 10 hidden neurons)
+
+Use the defaults — no tuning required:
+
+```typescript
+const options = {
+  predictiveCoding: { enabled: true },
+};
+```
+
+Adaptive scaling does not activate for networks at or below 10 hidden neurons.
+
+#### Medium Networks (10–50 hidden neurons)
+
+Adaptive scaling activates automatically. The effective parameters are:
+
+| Parameter         | Effective Value                     | Example (30 hidden) |
+| ----------------- | ----------------------------------- | ------------------- |
+| `inferenceRate`   | `configured ÷ √(hiddenCount / 10)`  | ~0.029              |
+| `energyThreshold` | `configured × (nonInputCount / 10)` | ~4e-6               |
+| `learningRate`    | `configured × √(hiddenCount / 10)`  | ~0.0017             |
+
+No manual configuration is typically needed. If you want finer control:
+
+```typescript
+const options = {
+  predictiveCoding: {
+    enabled: true,
+    inferenceSteps: 50, // Default is usually sufficient
+    inferenceRate: 0.05, // Will be scaled down automatically
+    learningRate: 0.001, // Will be scaled up automatically
+  },
+};
+```
+
+#### Large Networks (50+ hidden neurons)
+
+Adaptive scaling is essential for large networks. The scaling factors become
+more pronounced:
+
+| Parameter         | Example (80 hidden) |
+| ----------------- | ------------------- |
+| `inferenceRate`   | ~0.018              |
+| `energyThreshold` | ~9e-6               |
+| `learningRate`    | ~0.0028             |
+
+For very large networks, you may also want to increase inference steps:
+
+```typescript
+const options = {
+  predictiveCoding: {
+    enabled: true,
+    inferenceSteps: 80, // More steps for deeper hierarchies
+  },
+};
+```
+
+> [!NOTE]
+> Adaptive scaling preserves the _relative_ meaning of your configured values.
+> Setting `inferenceRate: 0.1` on a 40-neuron creature produces an effective
+> rate of approximately `0.1 / √4 = 0.05`. The scaling ensures convergence
+> without requiring per-topology manual tuning.
+
+### 🔗 Relationship Between Parameters and Network Complexity
+
+- **`inferenceRate` and connectivity**: Large gradient sums from many downstream
+  neurons can cause oscillation at high inference rates. Adaptive scaling
+  reduces the rate proportionally to `√(hiddenCount / 10)`.
+
+- **`inferenceSteps` and depth**: Deeper hierarchies require more settling
+  iterations for prediction errors to propagate across layers. Multi-layer
+  networks may need 50–80 steps, while single-layer networks converge in 10–20.
+
+- **`energyThreshold` and neuron count**: Total energy `E = ½ Σ ε²` sums over
+  all non-input neurons. With more neurons, even small per-neuron errors
+  accumulate to a high total. Adaptive scaling relaxes the threshold in
+  proportion to `nonInputCount / 10`.
+
+- **`learningRate` and parameter count**: Weight updates are distributed across
+  all synapses. More synapses means each individual update has less impact.
+  Adaptive scaling increases the rate proportionally to `√(hiddenCount / 10)`.
+
+Additionally, inference gradients are normalised by their L2 norm (capped at
+1.0) to prevent divergence in deep topologies where gradient magnitudes can
+explode.
+
+---
+
+## 7. 🔧 Troubleshooting
+
+### PC Shows No Improvement
+
+If PC training produces no measurable improvement over standard backpropagation:
+
+1. **Check that PC is actually running**: Verify the `approach` trace tag is
+   `"predictive-coding"` (see Production Validation above).
+
+2. **Check `pc-changed`**: If `"false"`, the Hebbian weight updates produced no
+   changes. This may indicate:
+   - `learningRate` is too low — try increasing it (e.g., `0.01`).
+   - Prediction errors are already minimal — the network may already be
+     well-trained.
+
+3. **Check `pc-inference-steps`**: If it equals `inferenceSteps` (the maximum),
+   inference is not converging. For complex creatures (30+ neurons), adaptive
+   scaling should handle this. If not:
+   - Increase `inferenceSteps` (e.g., `80` or `100`).
+   - Relax `energyThreshold` (e.g., `1e-4`).
+
+4. **Check network size**: For creatures with 30+ hidden neurons, ensure you are
+   using the default configuration — adaptive scaling activates automatically.
+   Overriding with manually tuned small-network values may prevent convergence.
+
+5. **Check activation functions**: PC works best with smooth, differentiable
+   activation functions (LOGISTIC, TANH). Step-like or discontinuous functions
+   may produce poor prediction error gradients.
+
+### PC is Slower Than Expected
+
+- **Inference dominates cost**: The settling loop is the bottleneck, not
+  gradient computation or weight updates. Reducing `inferenceSteps` is the most
+  effective way to reduce per-sample training time.
+- **Large networks**: For networks with 90+ neurons, each settling step is O(N +
+  S). Consider the Rust/WASM inference engine for production workloads.
+
+### Energy Does Not Decrease During Settling
+
+- **Inference rate too high**: The rate may cause overshooting. Adaptive scaling
+  should handle this for complex creatures, but if using manual values, try
+  reducing `inferenceRate`.
+- **Non-smooth activations**: Some activation functions may not produce
+  well-behaved energy gradients. Prefer LOGISTIC or TANH for PC-trained neurons.
+
+---
+
+## 8. 📖 References
 
 - Bogacz, R. (2017). A tutorial on the free-energy framework for modelling
   perception and learning. _Journal of Mathematical Psychology_, 76, 198–211.
