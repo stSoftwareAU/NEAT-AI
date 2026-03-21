@@ -6,8 +6,14 @@ import { Creature } from "../../src/Creature.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 
 /**
- * Issue #1874: Verify that MINIMUM neurons propagate partial gradient
- * to non-winning connections that are close to the winning value.
+ * Issue #1874: Verify that MINIMUM neurons propagate gradient through the
+ * winner path and distribute partial gradient to non-winning connections
+ * that are close to the winning value.
+ *
+ * MINIMUM propagation passes gradient through the winner connection to the
+ * upstream neuron (changing the upstream weights) rather than accumulating
+ * a weight change on the winner connection itself. The runner-up connections
+ * close to the winner receive a partial gradient leak via weight accumulation.
  */
 Deno.test("MINIMUM: non-winner connections close to winner receive gradient", () => {
   const creatureJson: CreatureExport = {
@@ -60,7 +66,8 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
   const creature = Creature.fromJSON(creatureJson);
   creature.validate();
 
-  // Generate deterministic training data where both hidden neurons have similar activations
+  // Generate deterministic training data where both hidden neurons have
+  // similar activations so the non-winner is close to the winner.
   const ts: DataRecordInterface[] = [];
   for (let i = 0; i < 50; i++) {
     const v = 0.5 + (i / 49) * 0.5;
@@ -79,11 +86,14 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
     weightsBefore.set(`${s.fromUUID}->${s.toUUID}`, s.weight);
   }
 
-  // Train the creature
+  // Train with iterations: 1 so that weight changes from applyLearnings are
+  // preserved. With iterations > 1, the training loop may roll back to the
+  // pre-applyLearnings snapshot when subsequent iterations produce worse
+  // error, yielding a zero delta for the exported weights.
   const trainedCreature = Creature.fromJSON(exportBefore);
   trainedCreature.validate();
   train(trainedCreature, ts, {
-    iterations: 100,
+    iterations: 1,
     disableRandomSamples: true,
   });
 
@@ -93,18 +103,24 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
     weightsAfter.set(`${s.fromUUID}->${s.toUUID}`, s.weight);
   }
 
-  const winnerDelta = Math.abs(
-    (weightsAfter.get("hidden-a->output-0") ?? 0) -
-      (weightsBefore.get("hidden-a->output-0") ?? 0),
+  // MINIMUM propagation passes gradient through the winner to the upstream
+  // neuron. With weight 0.95, hidden-b produces the minimum value, making
+  // it the winner. Verify gradient flowed through hidden-b by checking its
+  // inward connection (input-1 -> hidden-b) changed weight.
+  const winnerUpstreamDelta = Math.abs(
+    (weightsAfter.get("input-1->hidden-b") ?? 0) -
+      (weightsBefore.get("input-1->hidden-b") ?? 0),
   );
-  const runnerUpDelta = Math.abs(
-    (weightsAfter.get("hidden-b->output-0") ?? 0) -
-      (weightsBefore.get("hidden-b->output-0") ?? 0),
+  assert(
+    winnerUpstreamDelta > 1e-10,
+    `Winner upstream connection should have weight change (gradient flows through MINIMUM), got delta: ${winnerUpstreamDelta}`,
   );
 
-  assert(
-    winnerDelta > 1e-10,
-    `Winner connection should have weight change, got delta: ${winnerDelta}`,
+  // The runner-up connection close to the winner should also receive partial
+  // gradient via the leak mechanism (Issue #1874).
+  const runnerUpDelta = Math.abs(
+    (weightsAfter.get("hidden-a->output-0") ?? 0) -
+      (weightsBefore.get("hidden-a->output-0") ?? 0),
   );
   assert(
     runnerUpDelta > 1e-10,
