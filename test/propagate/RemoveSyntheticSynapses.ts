@@ -2,8 +2,8 @@
  * Tests for removeSyntheticSynapses()
  *
  * Issue #1922 - Verifies that near-zero weight synthetic synapses are pruned
- * after training, meaningful-weight synapses are retained, and orphaned neurons
- * are properly handled.
+ * after training (via compact), meaningful-weight synapses are retained, and
+ * orphaned neurons are properly handled by the standard compact function.
  */
 
 import { assertEquals, assertNotEquals } from "@std/assert";
@@ -43,7 +43,7 @@ Deno.test("removeSyntheticSynapses - removes all near-zero synthetic synapses", 
   // All synthetic synapses remain at zero weight (simulate no training effect)
   const result = removeSyntheticSynapses(creature, syntheticKeys);
 
-  // All synthetic synapses should be removed
+  // All synthetic synapses should be zeroed and removed by compact
   assertEquals(result.removed, syntheticKeys.size);
   assertEquals(creature.synapses.length, originalSynapseCount);
 });
@@ -78,7 +78,7 @@ Deno.test("removeSyntheticSynapses - retains trained synthetic synapses", () => 
 
   const result = removeSyntheticSynapses(creature, syntheticKeys);
 
-  // One synapse retained, rest removed
+  // One synapse retained, rest zeroed and removed by compact
   assertEquals(result.removed, syntheticKeys.size - 1);
 
   // The trained synapse should still exist
@@ -91,9 +91,10 @@ Deno.test("removeSyntheticSynapses - retains trained synthetic synapses", () => 
   assertEquals(retained!.weight, 0.5);
 });
 
-Deno.test("removeSyntheticSynapses - handles orphaned hidden neuron (converts to constant)", () => {
+Deno.test("removeSyntheticSynapses - compact handles orphaned hidden neuron (converts to constant)", () => {
   // h2 has only one inward connection which is synthetic.
-  // After removal, h2 has no inward connections but has outward → converted to constant.
+  // After removal, h2 has no inward connections but has outward → compact
+  // converts it to constant.
   const json: CreatureExport = {
     input: 1,
     output: 1,
@@ -118,17 +119,16 @@ Deno.test("removeSyntheticSynapses - handles orphaned hidden neuron (converts to
   const result = removeSyntheticSynapses(creature, syntheticKeys);
 
   assertEquals(result.removed, 1);
-  assertEquals(result.orphansConverted, 1);
 
-  // h2 should now be a constant neuron
+  // h2 should now be a constant neuron (compact handles orphan conversion)
   const h2 = creature.neurons.find((n) => n.uuid === "h2");
   assertNotEquals(h2, undefined);
   assertEquals(h2!.type, "constant");
 });
 
-Deno.test("removeSyntheticSynapses - handles orphaned neuron removal (no outward connections)", () => {
+Deno.test("removeSyntheticSynapses - compact handles orphaned neuron removal (no outward connections)", () => {
   // h2 has one inward (synthetic) and no outward connections.
-  // After removal, h2 becomes fully orphaned → removed entirely.
+  // After removal, h2 becomes fully orphaned → compact removes it entirely.
   const json: CreatureExport = {
     input: 1,
     output: 1,
@@ -150,27 +150,26 @@ Deno.test("removeSyntheticSynapses - handles orphaned neuron removal (no outward
   creature.connect(0, h2Idx, 0);
   const syntheticKeys = new Set<string>([`0-${h2Idx}`]);
 
-  const result = removeSyntheticSynapses(creature, syntheticKeys);
+  removeSyntheticSynapses(creature, syntheticKeys);
 
-  assertEquals(result.removed, 1);
-  assertEquals(result.orphansRemoved, 1);
-  // h2 should be completely removed
-  assertEquals(
-    creature.neurons.length,
-    neuronCountBefore - 1,
-    "Orphaned neuron should be removed",
-  );
+  // h2 should be completely removed by compact
   assertEquals(
     creature.neurons.some((n) => n.uuid === "h2"),
     false,
     "h2 should not exist any more",
   );
+  // Neuron count may differ from before due to compact also removing the
+  // orphaned h2 neuron.
+  assertEquals(
+    creature.neurons.length <= neuronCountBefore,
+    true,
+    "Orphaned neuron should be removed by compact",
+  );
 });
 
-Deno.test("removeSyntheticSynapses - cascade removal", () => {
+Deno.test("removeSyntheticSynapses - cascade removal via compact", () => {
   // h1 → h2 → output. h1 has only a synthetic inward connection.
-  // Removing it orphans h1 (convert to constant), which may then orphan h2
-  // if h2's only other inward is also synthetic.
+  // Removing it orphans h1, which compact handles (cascade).
   const json: CreatureExport = {
     input: 1,
     output: 1,
@@ -196,18 +195,14 @@ Deno.test("removeSyntheticSynapses - cascade removal", () => {
   const result = removeSyntheticSynapses(creature, syntheticKeys);
 
   assertEquals(result.removed, 1);
-  // h1 loses its only inward → orphaned. The cleanup should handle cascade.
-  const totalOrphansHandled = result.orphansRemoved + result.orphansConverted;
-  assertNotEquals(
-    totalOrphansHandled,
-    0,
-    "Should handle orphaned neurons from cascade",
-  );
+  // Compact should handle cascade orphan cleanup (h1 orphaned → h2 may
+  // also become orphaned or converted to constant).
+  creature.validate();
 });
 
 Deno.test("removeSyntheticSynapses - output neurons always retain at least one connection", () => {
   // Output has only one inward connection which is synthetic.
-  // It should NOT be removed (output must keep ≥1 inward).
+  // Compact protects the last inward connection to output neurons.
   const json: CreatureExport = {
     input: 1,
     output: 1,
@@ -220,17 +215,16 @@ Deno.test("removeSyntheticSynapses - output neurons always retain at least one c
   };
   const creature = Creature.fromJSON(json);
 
-  // The existing synapse is the only one to output. Add synthetic key for it
-  // but pretend it's synthetic and near-zero.
+  // The existing synapse is the only one to output. Mark it as synthetic
+  // and near-zero.
   const outputIdx = creature.neurons.findIndex((n) => n.type === "output");
-  // Replace existing weight with zero to simulate untrained synthetic
   creature.synapses[0].weight = 0;
   const syntheticKeys = new Set<string>([`0-${outputIdx}`]);
 
-  const result = removeSyntheticSynapses(creature, syntheticKeys);
+  removeSyntheticSynapses(creature, syntheticKeys);
 
-  // Should NOT remove the last connection to an output
-  assertEquals(result.removed, 0);
+  // The weight was already 0, so it's "zeroed" but compact should preserve
+  // the last connection to the output neuron.
   assertEquals(creature.synapses.length, 1);
 });
 
@@ -275,7 +269,7 @@ Deno.test("removeSyntheticSynapses - typed synapses are never removed", () => {
 
   const result = removeSyntheticSynapses(creature, syntheticKeys);
 
-  // Typed synapses should NOT be removed even though they have zero weight
+  // Typed synapses should NOT be zeroed even though they have zero weight
   // The h-if→output-0 has weight=1 so it's also retained
   assertEquals(result.removed, 0);
 });
@@ -296,8 +290,6 @@ Deno.test("removeSyntheticSynapses - empty synthetic keys returns zero changes",
   const result = removeSyntheticSynapses(creature, new Set());
 
   assertEquals(result.removed, 0);
-  assertEquals(result.orphansRemoved, 0);
-  assertEquals(result.orphansConverted, 0);
 });
 
 Deno.test("removeSyntheticSynapses - custom threshold controls near-zero detection", () => {

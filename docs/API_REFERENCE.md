@@ -1338,15 +1338,13 @@ been trained to non-trivial weights are retained as permanent connections.
 
 - Typed synapses (IF condition/positive/negative) are never removed
 - Output neurons always retain at least one inward connection
-- Orphaned neurons are iteratively cleaned up (converted to constant or removed)
+- Orphaned neurons are handled by the standard compact function (DRY)
 
 **Returns:** `RemoveSyntheticSynapsesResult`
 
-| Field              | Type     | Description                                              |
-| ------------------ | -------- | -------------------------------------------------------- |
-| `removed`          | `number` | Number of synthetic synapses removed                     |
-| `orphansRemoved`   | `number` | Number of orphaned neurons removed entirely              |
-| `orphansConverted` | `number` | Number of orphaned hidden neurons converted to constants |
+| Field     | Type     | Description                                              |
+| --------- | -------- | -------------------------------------------------------- |
+| `removed` | `number` | Number of synthetic synapses zeroed (removed by compact) |
 
 #### `computeLayerAssignments(creature)`
 
