@@ -24,9 +24,43 @@
 
 use wasm_bindgen::prelude::*;
 
+/// Apply L1/L2 weight regularisation (weight decay).
+///
+/// Issue #1859/#1953: Mirrors the TypeScript `applyWeightRegularisation()`.
+/// L2 shrinks weights proportionally: w *= (1 - lr * λ₂)
+/// L1 applies soft-thresholding: w -= lr * λ₁ * sign(w), snapping to zero
+/// if the penalty exceeds |w|.
+#[inline(always)]
+fn apply_weight_regularisation(
+    weight: f64,
+    learning_rate: f64,
+    l1_weight_decay: f64,
+    l2_weight_decay: f64,
+) -> f64 {
+    let mut result = weight;
+
+    // L2 regularisation (weight decay)
+    if l2_weight_decay > 0.0 {
+        result *= 1.0 - learning_rate * l2_weight_decay;
+    }
+
+    // L1 regularisation (sparsity via soft-thresholding)
+    if l1_weight_decay > 0.0 && result != 0.0 {
+        let l1_penalty = learning_rate * l1_weight_decay;
+        if l1_penalty >= result.abs() {
+            result = 0.0;
+        } else {
+            result -= l1_penalty * result.signum();
+        }
+    }
+
+    result
+}
+
 /// Limit a weight within the configured bounds.
 ///
 /// Mirrors the TypeScript `limitWeight()` function exactly.
+/// Issue #1953: Now includes L1/L2 regularisation.
 #[inline(always)]
 fn limit_weight(
     target_weight: f64,
@@ -35,14 +69,16 @@ fn limit_weight(
     learning_rate: f64,
     max_weight_adj_scale: f64,
     limit_weight_scale: f64,
+    l1_weight_decay: f64,
+    l2_weight_decay: f64,
 ) -> f64 {
     // Prevent exceedingly small weights.
     if target_weight.abs() < plank_constant {
-        return 0.0;
+        return apply_weight_regularisation(0.0, learning_rate, l1_weight_decay, l2_weight_decay);
     }
 
     if (target_weight - current_weight).abs() < plank_constant {
-        return current_weight;
+        return apply_weight_regularisation(current_weight, learning_rate, l1_weight_decay, l2_weight_decay);
     }
 
     // Calculate and apply the difference with learning rate.
@@ -60,12 +96,46 @@ fn limit_weight(
         limited_weight = if limited_weight > 0.0 { limit_weight_scale } else { -limit_weight_scale };
     }
 
-    limited_weight
+    apply_weight_regularisation(limited_weight, learning_rate, l1_weight_decay, l2_weight_decay)
+}
+
+/// Apply L1/L2 bias regularisation (bias decay).
+///
+/// Issue #1859/#1953: Mirrors the TypeScript `applyBiasRegularisation()`.
+/// L2 shrinks biases proportionally: b *= (1 - lr * λ₂)
+/// L1 applies soft-thresholding: b -= lr * λ₁ * sign(b), snapping to zero
+/// if the penalty exceeds |b|.
+#[inline(always)]
+fn apply_bias_regularisation(
+    bias: f64,
+    learning_rate: f64,
+    l1_bias_decay: f64,
+    l2_bias_decay: f64,
+) -> f64 {
+    let mut result = bias;
+
+    // L2 regularisation (bias decay)
+    if l2_bias_decay > 0.0 {
+        result *= 1.0 - learning_rate * l2_bias_decay;
+    }
+
+    // L1 regularisation (sparsity via soft-thresholding)
+    if l1_bias_decay > 0.0 && result != 0.0 {
+        let l1_penalty = learning_rate * l1_bias_decay;
+        if l1_penalty >= result.abs() {
+            result = 0.0;
+        } else {
+            result -= l1_penalty * result.signum();
+        }
+    }
+
+    result
 }
 
 /// Limit a bias within the configured bounds.
 ///
 /// Mirrors the TypeScript `limitBias()` function exactly.
+/// Issue #1953: Now includes L1/L2 regularisation.
 #[inline(always)]
 fn limit_bias(
     target_bias: f64,
@@ -74,14 +144,16 @@ fn limit_bias(
     learning_rate: f64,
     max_bias_adj_scale: f64,
     limit_bias_scale: f64,
+    l1_bias_decay: f64,
+    l2_bias_decay: f64,
 ) -> f64 {
     // Prevent exceedingly small biases.
     if target_bias.abs() < plank_constant {
-        return 0.0;
+        return apply_bias_regularisation(0.0, learning_rate, l1_bias_decay, l2_bias_decay);
     }
 
     if (target_bias - current_bias).abs() < 0.000_000_001 {
-        return current_bias;
+        return apply_bias_regularisation(current_bias, learning_rate, l1_bias_decay, l2_bias_decay);
     }
 
     let difference = learning_rate * (target_bias - current_bias);
@@ -103,7 +175,7 @@ fn limit_bias(
         }
     }
 
-    limited_bias
+    apply_bias_regularisation(limited_bias, learning_rate, l1_bias_decay, l2_bias_decay)
 }
 
 /// Process a single weight accumulation item.
@@ -421,6 +493,8 @@ pub fn accumulate_bias_batch_8way(
 /// * `learning_rate` - Learning rate
 /// * `max_weight_adj_scale` - Maximum weight adjustment scale
 /// * `limit_weight_scale` - Global weight scale limit
+/// * `l1_weight_decay` - L1 regularisation strength (Issue #1953)
+/// * `l2_weight_decay` - L2 regularisation strength (Issue #1953)
 ///
 /// # Returns
 /// The calculated average weight
@@ -439,6 +513,8 @@ pub fn calculate_weight(
     learning_rate: f64,
     max_weight_adj_scale: f64,
     limit_weight_scale: f64,
+    l1_weight_decay: f64,
+    l2_weight_decay: f64,
 ) -> f64 {
     if count <= 0.0 {
         return current_weight;
@@ -489,6 +565,8 @@ pub fn calculate_weight(
         learning_rate,
         max_weight_adj_scale,
         limit_weight_scale,
+        l1_weight_decay,
+        l2_weight_decay,
     )
 }
 
@@ -506,6 +584,8 @@ pub fn calculate_weight(
 /// * `learning_rate` - Learning rate
 /// * `max_bias_adj_scale` - Maximum bias adjustment scale
 /// * `limit_bias_scale` - Global bias scale limit
+/// * `l1_bias_decay` - L1 regularisation strength (Issue #1953)
+/// * `l2_bias_decay` - L2 regularisation strength (Issue #1953)
 ///
 /// # Returns
 /// The calculated bias
@@ -520,6 +600,8 @@ pub fn calculate_bias(
     learning_rate: f64,
     max_bias_adj_scale: f64,
     limit_bias_scale: f64,
+    l1_bias_decay: f64,
+    l2_bias_decay: f64,
 ) -> f64 {
     if no_change || count <= 0.0 {
         return current_bias;
@@ -539,6 +621,8 @@ pub fn calculate_bias(
         learning_rate,
         max_bias_adj_scale,
         limit_bias_scale,
+        l1_bias_decay,
+        l2_bias_decay,
     )
 }
 
@@ -549,18 +633,18 @@ mod tests {
     #[test]
     fn test_limit_weight_basic() {
         // Weight below plank constant should return 0
-        let result = limit_weight(1e-8, 0.0, 1e-7, 1.0, 1.0, 100000.0);
+        let result = limit_weight(1e-8, 0.0, 1e-7, 1.0, 1.0, 100000.0, 0.0, 0.0);
         assert_eq!(result, 0.0);
 
         // Small difference should return current weight
-        let result = limit_weight(1.0, 1.0 + 1e-8, 1e-7, 1.0, 1.0, 100000.0);
+        let result = limit_weight(1.0, 1.0 + 1e-8, 1e-7, 1.0, 1.0, 100000.0, 0.0, 0.0);
         assert_eq!(result, 1.0 + 1e-8);
     }
 
     #[test]
     fn test_limit_weight_clamping() {
         // Weight exceeding limit_weight_scale should be clamped
-        let result = limit_weight(200000.0, 0.0, 1e-7, 1.0, 1.0, 100000.0);
+        let result = limit_weight(200000.0, 0.0, 1e-7, 1.0, 1.0, 100000.0, 0.0, 0.0);
         // max_weight_adj_scale is 1.0, so limited to current + 1.0 = 1.0
         assert!(result.abs() <= 100000.0);
     }
@@ -568,8 +652,42 @@ mod tests {
     #[test]
     fn test_limit_bias_basic() {
         // Bias below plank constant should return 0
-        let result = limit_bias(1e-8, 0.0, 1e-7, 1.0, 1.0, 10000.0);
+        let result = limit_bias(1e-8, 0.0, 1e-7, 1.0, 1.0, 10000.0, 0.0, 0.0);
         assert_eq!(result, 0.0);
+    }
+
+    #[test]
+    fn test_weight_l2_regularisation() {
+        // Issue #1953: L2 decay should shrink weight proportionally
+        let result = limit_weight(5.0, 5.0 + 1e-8, 1e-7, 0.1, 1.0, 100000.0, 0.0, 0.01);
+        // L2: result *= (1 - 0.1 * 0.01) = 0.999, so ~4.995
+        assert!(result < 5.0);
+        assert!(result > 4.99);
+    }
+
+    #[test]
+    fn test_weight_l1_regularisation() {
+        // Issue #1953: L1 decay should apply soft-thresholding
+        let result = limit_weight(0.5, 0.5 + 1e-8, 1e-7, 0.1, 1.0, 100000.0, 0.1, 0.0);
+        // L1: result -= 0.1 * 0.1 * sign(0.5) = 0.5 - 0.01 = 0.49
+        assert!(result < 0.5);
+        assert!(result > 0.48);
+    }
+
+    #[test]
+    fn test_bias_l2_regularisation() {
+        // Issue #1953: L2 decay should shrink bias proportionally
+        let result = limit_bias(5.0, 5.0 + 1e-8, 1e-7, 0.1, 1.0, 10000.0, 0.0, 0.01);
+        assert!(result < 5.0);
+        assert!(result > 4.99);
+    }
+
+    #[test]
+    fn test_bias_l1_regularisation() {
+        // Issue #1953: L1 decay should apply soft-thresholding
+        let result = limit_bias(0.5, 0.5 + 1e-8, 1e-7, 0.1, 1.0, 10000.0, 0.1, 0.0);
+        assert!(result < 0.5);
+        assert!(result > 0.48);
     }
 
     #[test]
@@ -677,9 +795,24 @@ mod tests {
             1.0,   // learning_rate
             1.0,   // max_weight_adj_scale
             100000.0, // limit_weight_scale
+            0.0,   // l1_weight_decay
+            0.0,   // l2_weight_decay
         );
 
         assert!(result.is_finite());
+    }
+
+    #[test]
+    fn test_calculate_weight_with_l2_decay() {
+        // Issue #1953: calculate_weight should apply L2 regularisation
+        let without_decay = calculate_weight(
+            1.0, 1.0, 0.0, 1.0, 0.0, 2.0, 0.0, 0.5, 0.0, 1e-7, 1.0, 1.0, 100000.0, 0.0, 0.0,
+        );
+        let with_decay = calculate_weight(
+            1.0, 1.0, 0.0, 1.0, 0.0, 2.0, 0.0, 0.5, 0.0, 1e-7, 1.0, 1.0, 100000.0, 0.0, 0.01,
+        );
+        // L2 decay should produce a smaller absolute result
+        assert!(with_decay.abs() <= without_decay.abs());
     }
 
     #[test]
@@ -694,15 +827,29 @@ mod tests {
             1.0,   // learning_rate
             1.0,   // max_bias_adj_scale
             10000.0, // limit_bias_scale
+            0.0,   // l1_bias_decay
+            0.0,   // l2_bias_decay
         );
 
         assert!(result.is_finite());
     }
 
     #[test]
+    fn test_calculate_bias_with_l2_decay() {
+        // Issue #1953: calculate_bias should apply L2 regularisation
+        let without_decay = calculate_bias(
+            1.0, 1.5, 0.5, false, 0.0, 1e-7, 1.0, 1.0, 10000.0, 0.0, 0.0,
+        );
+        let with_decay = calculate_bias(
+            1.0, 1.5, 0.5, false, 0.0, 1e-7, 1.0, 1.0, 10000.0, 0.0, 0.01,
+        );
+        assert!(with_decay.abs() <= without_decay.abs());
+    }
+
+    #[test]
     fn test_calculate_bias_no_change() {
         let result = calculate_bias(
-            10.0, 15.0, 0.5, true, 5.0, 1e-7, 1.0, 1.0, 10000.0,
+            10.0, 15.0, 0.5, true, 5.0, 1e-7, 1.0, 1.0, 10000.0, 0.0, 0.0,
         );
         assert_eq!(result, 0.5); // Should return current_bias
     }
@@ -710,7 +857,7 @@ mod tests {
     #[test]
     fn test_calculate_bias_zero_count() {
         let result = calculate_bias(
-            0.0, 0.0, 0.5, false, 5.0, 1e-7, 1.0, 1.0, 10000.0,
+            0.0, 0.0, 0.5, false, 5.0, 1e-7, 1.0, 1.0, 10000.0, 0.0, 0.0,
         );
         assert_eq!(result, 0.5); // Should return current_bias
     }

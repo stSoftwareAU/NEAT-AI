@@ -4,12 +4,10 @@ import {
   assertEquals,
   assertGreater,
   assertLess,
-  assertThrows,
 } from "@std/assert";
 import {
   accumulateWeight,
   calculateWeight,
-  limitWeight,
 } from "../../src/propagate/Weight.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { SynapseState } from "../../src/propagate/SynapseState.ts";
@@ -111,65 +109,8 @@ Deno.test("accumulateWeight - multiple accumulations", () => {
   assertEquals(cs.countNegativeActivations, 1);
 });
 
-// --- limitWeight ---
-
-Deno.test("limitWeight - applies learning rate to difference", () => {
-  const config = makeConfig({ learningRate: 0.1 });
-  // targetWeight=1.5, currentWeight=0.5, diff=0.1*1.0=0.1 => 0.5+0.1=0.6
-  const result = limitWeight(1.5, 0.5, config);
-  assertAlmostEquals(result, 0.6, 1e-10);
-});
-
-Deno.test("limitWeight - returns 0 for tiny target weight", () => {
-  const config = makeConfig({ plankConstant: 1e-7 });
-  const result = limitWeight(1e-8, 0, config);
-  assertEquals(result, 0);
-});
-
-Deno.test("limitWeight - returns currentWeight when difference is tiny", () => {
-  const config = makeConfig({ plankConstant: 1e-7 });
-  const result = limitWeight(0.5 + 1e-8, 0.5, config);
-  assertEquals(result, 0.5);
-});
-
-Deno.test("limitWeight - throws on non-finite targetWeight", () => {
-  const config = makeConfig();
-  assertThrows(() => limitWeight(NaN, 0.5, config));
-  assertThrows(() => limitWeight(Infinity, 0.5, config));
-});
-
-Deno.test("limitWeight - throws on non-finite currentWeight", () => {
-  const config = makeConfig();
-  assertThrows(() => limitWeight(0.5, NaN, config));
-});
-
-Deno.test("limitWeight - clamps large adjustment", () => {
-  const config = makeConfig({
-    learningRate: 1,
-    maximumWeightAdjustmentScale: 2,
-  });
-  const result = limitWeight(100, 0, config);
-  assertAlmostEquals(result, 2, 1e-10);
-});
-
-Deno.test("limitWeight - enforces limitWeightScale", () => {
-  const config = makeConfig({
-    learningRate: 1,
-    maximumWeightAdjustmentScale: 100_000,
-    limitWeightScale: 5,
-  });
-  const result = limitWeight(50, 0, config);
-  assertEquals(Math.abs(result), 5);
-});
-
-Deno.test("limitWeight - negative direction", () => {
-  const config = makeConfig({ learningRate: 0.5 });
-  // targetWeight=-2, currentWeight=0, diff=0.5*(-2)=-1 => 0+(-1)=-1
-  const result = limitWeight(-2, 0, config);
-  assertAlmostEquals(result, -1, 1e-10);
-});
-
 // --- calculateWeight ---
+// Issue #1953: limitWeight tests removed — TS fallback eliminated, WASM is mandatory.
 
 Deno.test("calculateWeight - returns original weight when disableWeightAdjustment is true", () => {
   const config = createBackPropagationConfig({

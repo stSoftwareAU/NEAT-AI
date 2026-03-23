@@ -436,17 +436,19 @@ export function wasmAccumulateBiasBatch8Way(
 }
 
 /**
- * Issue #1518 - Calculate finalised weight via WASM.
+ * Issue #1518/#1953 - Calculate finalised weight via WASM.
  *
- * Returns the calculated weight, or undefined if WASM is unavailable.
+ * WASM is mandatory. Throws WasmError if the module is not loaded.
  */
 export function wasmCalculateWeight(
   cs: SynapseState,
   currentWeight: number,
   config: BackPropagationConfig,
-): number | undefined {
+): number {
   const fn = getCalculateWeightWasmFn();
-  if (!fn) return undefined;
+  if (!fn) {
+    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
+  }
 
   return fn(
     cs.count,
@@ -462,13 +464,15 @@ export function wasmCalculateWeight(
     config.learningRate,
     config.maximumWeightAdjustmentScale,
     config.limitWeightScale,
+    config.l1WeightDecay,
+    config.l2WeightDecay,
   );
 }
 
 /**
- * Issue #1518 - Calculate finalised bias via WASM.
+ * Issue #1518/#1953 - Calculate finalised bias via WASM.
  *
- * Returns the calculated bias, or undefined if WASM is unavailable.
+ * WASM is mandatory. Throws WasmError if the module is not loaded.
  */
 export function wasmCalculateBias(
   count: number,
@@ -476,9 +480,11 @@ export function wasmCalculateBias(
   currentBias: number,
   noChange: boolean,
   config: BackPropagationConfig,
-): number | undefined {
+): number {
   const fn = getCalculateBiasWasmFn();
-  if (!fn) return undefined;
+  if (!fn) {
+    throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
+  }
 
   return fn(
     count,
@@ -490,6 +496,8 @@ export function wasmCalculateBias(
     config.learningRate,
     config.maximumBiasAdjustmentScale,
     config.limitBiasScale,
+    config.l1BiasDecay,
+    config.l2BiasDecay,
   );
 }
 

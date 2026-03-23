@@ -1,21 +1,20 @@
 /**
  * Consolidated tests for Bias — verifying accumulateBias direction and
- * magnitude, limitBias boundary conditions and clamping, and batch
- * accumulation functions.
+ * magnitude, and batch accumulation functions.
+ *
+ * Issue #1953: limitBias tests removed — TS fallback eliminated, WASM is mandatory.
  *
  * Merged from Bias.ts and BiasCalculation.ts as part of Issue #1766
  * (propagation module test audit).
  */
 import {
-  assert,
   assertAlmostEquals,
   assertEquals,
   assertGreater,
   assertLess,
-  assertThrows,
 } from "@std/assert";
 import { NeuronState } from "../../src/architecture/CreatureState.ts";
-import { accumulateBias, limitBias } from "../../src/propagate/Bias.ts";
+import { accumulateBias } from "../../src/propagate/Bias.ts";
 import {
   type BackPropagationConfig,
   createBackPropagationConfig,
@@ -149,107 +148,5 @@ Deno.test("accumulateBias - skips NaN currentBias", () => {
   assertEquals(ns.count, 0);
 });
 
-// ---------------------------------------------------------------------------
-// limitBias - learning rate and clamping
-// ---------------------------------------------------------------------------
-
-Deno.test("limitBias - applies learning rate to difference", () => {
-  const config = makeConfig({ learningRate: 0.1 });
-  // targetBias=1.5, currentBias=0.5, diff=1.0, learnt=0.5+0.1*1.0=0.6
-  const result = limitBias(1.5, 0.5, config);
-  assertAlmostEquals(result, 0.6, 1e-10);
-});
-
-Deno.test("limitBias - learning rate scales adjustment", () => {
-  const config = createBackPropagationConfig({
-    learningRate: 0.5,
-    maximumBiasAdjustmentScale: 100,
-    limitBiasScale: 100000,
-  });
-  // target=3, current=1, diff=2, scaled=0.5*2=1 => result=2
-  const result = limitBias(3, 1, config);
-  assertAlmostEquals(result, 2, 1e-9);
-});
-
-// ---------------------------------------------------------------------------
-// limitBias - tiny values and thresholds
-// ---------------------------------------------------------------------------
-
-Deno.test("limitBias - returns 0 for tiny target bias", () => {
-  const config = makeConfig({ plankConstant: 1e-7 });
-  const result = limitBias(1e-8, 0, config);
-  assertEquals(result, 0);
-});
-
-Deno.test("limitBias - returns currentBias when difference is tiny", () => {
-  const config = makeConfig();
-  const result = limitBias(0.5 + 1e-10, 0.5, config);
-  assertEquals(result, 0.5);
-});
-
-// ---------------------------------------------------------------------------
-// limitBias - adjustment scale clamping
-// ---------------------------------------------------------------------------
-
-Deno.test("limitBias - clamps large positive adjustment", () => {
-  const config = makeConfig({
-    learningRate: 1,
-    maximumBiasAdjustmentScale: 2,
-  });
-  const result = limitBias(100, 0, config);
-  assertAlmostEquals(result, 2, 1e-10);
-});
-
-Deno.test("limitBias - clamps large negative adjustment", () => {
-  const config = makeConfig({
-    learningRate: 1,
-    maximumBiasAdjustmentScale: 2,
-  });
-  const result = limitBias(-100, 0, config);
-  assertAlmostEquals(result, -2, 1e-10);
-});
-
-Deno.test("limitBias - large gradient clamped to maximumBiasAdjustmentScale", () => {
-  const config = createBackPropagationConfig({
-    learningRate: 0.5,
-    maximumBiasAdjustmentScale: 1,
-    limitBiasScale: 10000,
-  });
-  const result = limitBias(1000, 0, config);
-  assertAlmostEquals(result, 1, 1e-9);
-});
-
-// ---------------------------------------------------------------------------
-// limitBias - limitBiasScale enforcement
-// ---------------------------------------------------------------------------
-
-Deno.test("limitBias - enforces limitBiasScale ceiling", () => {
-  const config = makeConfig({
-    learningRate: 1,
-    maximumBiasAdjustmentScale: 100_000,
-    limitBiasScale: 5,
-  });
-  const result = limitBias(50, 0, config);
-  assert(Math.abs(result) <= 5, `Expected |result| <= 5, got ${result}`);
-});
-
-Deno.test("limitBias - enforces limitBiasScale negative floor", () => {
-  const config = createBackPropagationConfig({
-    learningRate: 1,
-    maximumBiasAdjustmentScale: 100,
-    limitBiasScale: 5,
-  });
-  const result = limitBias(-10, -4, config);
-  assertLess(result, -4, "Should move toward negative target");
-});
-
-// ---------------------------------------------------------------------------
-// limitBias - non-finite rejection
-// ---------------------------------------------------------------------------
-
-Deno.test("limitBias - throws on non-finite targetBias", () => {
-  const config = makeConfig();
-  assertThrows(() => limitBias(NaN, 0.5, config));
-  assertThrows(() => limitBias(Infinity, 0.5, config));
-  assertThrows(() => limitBias(-Infinity, 0, config), Error, "finite");
-});
+// Issue #1953: limitBias tests removed — TS fallback eliminated, WASM is mandatory.
+// The limit/regularisation logic is now tested via Rust unit tests in accumulate.rs.
