@@ -38,6 +38,7 @@ import type { WasmCreatureActivation } from "./wasm/mod.ts";
 import { getRandomNumberGenerator } from "./utils/RandomNumberGenerator.ts";
 import { ActivationError } from "./errors/ActivationError.ts";
 import { TopologyError } from "./errors/TopologyError.ts";
+import { TypedTopology } from "./architecture/TypedTopology.ts";
 
 // Extracted modules
 import * as activation from "./creature/CreatureActivation.ts";
@@ -153,6 +154,13 @@ export class Creature implements CreatureInternal {
   /** @internal */
   wasmEligibilityCache?: boolean;
 
+  /**
+   * Cached typed array topology snapshot.
+   * Issue #1957: Invalidated on any structural change (clearCache).
+   * @internal
+   */
+  private cachedTypedTopology?: TypedTopology;
+
   DEBUG: boolean = getGlobalDebug();
 
   /**
@@ -213,6 +221,9 @@ export class Creature implements CreatureInternal {
    * does not change the set of neurons.
    */
   public clearCache(from: number = -1, to: number = -1) {
+    // Issue #1957: Invalidate typed topology cache on any structural change
+    this.cachedTypedTopology = undefined;
+
     if (from === -1 || to === -1) {
       // Full invalidation: clears everything including hiddenNeuronUUIDs.
       // Used when neurons are added/removed or structure is fully rebuilt.
@@ -249,6 +260,8 @@ export class Creature implements CreatureInternal {
    * rebuilds of the hiddenNeuronUUIDs set.
    */
   private clearConnectionCaches() {
+    // Issue #1957: Invalidate typed topology on connection changes
+    this.cachedTypedTopology = undefined;
     this._topoCaches.cacheTo = [];
     this._topoCaches.cacheFrom = [];
     this._topoCaches.cacheSelf = [];
@@ -513,6 +526,19 @@ export class Creature implements CreatureInternal {
   }
 
   // ── Topology ───────────────────────────────────────────────────────────
+
+  /**
+   * Build (or return cached) typed array topology snapshot.
+   *
+   * Issue #1957: Typed array topology for reduced GC pressure and
+   * WASM-compatible memcpy serialisation.
+   */
+  buildTypedTopology(): TypedTopology {
+    if (!this.cachedTypedTopology) {
+      this.cachedTypedTopology = TypedTopology.fromCreature(this);
+    }
+    return this.cachedTypedTopology;
+  }
 
   selfConnection(indx: number): SynapseInternal | null {
     return topology.selfConnection(this, this._topoCaches, indx);
