@@ -26,6 +26,7 @@ import {
   pruneZeroWeightSynapses,
 } from "./CompactUtils.ts";
 import { mergeParallelIdentityBridges } from "./ParallelIdentityMerge.ts";
+import { mergeParallelBridges } from "./ParallelBridgeMerge.ts";
 
 /**
  * Creates a shallow clone of a CreatureExport, copying neurons and synapses
@@ -339,6 +340,14 @@ export function compactCreature(
   // to the same target into a single IDENTITY neuron with merged weights.
   const parallelResult = mergeParallelIdentityBridges(compactCreature);
   if (parallelResult.removedNeurons > 0) {
+    didCompact = true;
+  }
+
+  // Issue #1948: Extend parallel merging to other compatible squash functions.
+  // Currently supports COMPLEMENT (converted to IDENTITY before merging).
+  // See SquashUtils.isParallelMergeableSquash() for the full analysis.
+  const extendedParallelResult = mergeParallelBridges(compactCreature);
+  if (extendedParallelResult.removedNeurons > 0) {
     didCompact = true;
   }
 
