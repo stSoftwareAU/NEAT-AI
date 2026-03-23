@@ -667,6 +667,50 @@ export function calculate_bias(count, total_adjusted_bias, current_bias, no_chan
 }
 
 /**
+ * Issue #1960 - Batch calculate_bias for 4 neurons in a single WASM call.
+ *
+ * Amortises boundary crossing overhead by processing 4 bias calculations
+ * at once. Each neuron provides 4 state values packed into a single
+ * Float64Array, plus shared config scalars. The noChange flags are passed
+ * as a separate Uint8Array (0 = false, nonzero = true).
+ *
+ * # Arguments
+ * * `packed_state` - 12 f64 values: 3 per neuron ×4
+ *   Per neuron: [count, totalAdjustedBias, currentBias]
+ * * `no_change_flags` - 4 u8 values: 0 = false, nonzero = true
+ * * `generations` - Config generations value
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate
+ * * `max_bias_adj_scale` - Maximum bias adjustment scale
+ * * `limit_bias_scale` - Global bias scale limit
+ * * `l1_bias_decay` - L1 regularisation strength
+ * * `l2_bias_decay` - L2 regularisation strength
+ *
+ * # Returns
+ * Float64Array with 4 calculated biases
+ * @param {Float64Array} packed_state
+ * @param {Uint8Array} no_change_flags
+ * @param {number} generations
+ * @param {number} plank_constant
+ * @param {number} learning_rate
+ * @param {number} max_bias_adj_scale
+ * @param {number} limit_bias_scale
+ * @param {number} l1_bias_decay
+ * @param {number} l2_bias_decay
+ * @returns {Float64Array}
+ */
+export function calculate_bias_batch_4way(packed_state, no_change_flags, generations, plank_constant, learning_rate, max_bias_adj_scale, limit_bias_scale, l1_bias_decay, l2_bias_decay) {
+    const ptr0 = passArrayF64ToWasm0(packed_state, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(no_change_flags, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.calculate_bias_batch_4way(ptr0, len0, ptr1, len1, generations, plank_constant, learning_rate, max_bias_adj_scale, limit_bias_scale, l1_bias_decay, l2_bias_decay);
+    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v3;
+}
+
+/**
  * Standalone calculate error function for testing
  * Issue #1141 - WASM Migration Phase 9
  *
@@ -756,6 +800,46 @@ export function calculate_error_batch_4way(squash_type, current_activations, tar
 export function calculate_weight(count, total_positive_activation, total_negative_activation, count_positive, count_negative, total_positive_adjusted_value, total_negative_adjusted_value, current_weight, generations, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale, l1_weight_decay, l2_weight_decay) {
     const ret = wasm.calculate_weight(count, total_positive_activation, total_negative_activation, count_positive, count_negative, total_positive_adjusted_value, total_negative_adjusted_value, current_weight, generations, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale, l1_weight_decay, l2_weight_decay);
     return ret;
+}
+
+/**
+ * Issue #1960 - Batch calculate_weight for 4 synapses in a single WASM call.
+ *
+ * Amortises boundary crossing overhead by processing 4 weight calculations
+ * at once. Each synapse provides 8 state values (count through currentWeight)
+ * packed into a single Float64Array, plus shared config scalars.
+ *
+ * # Arguments
+ * * `packed_state` - 32 f64 values: 8 per synapse ×4
+ *   Per synapse: [count, totalPosAct, totalNegAct, countPos, countNeg,
+ *                 totalPosAdj, totalNegAdj, currentWeight]
+ * * `generations` - Config generations value
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate
+ * * `max_weight_adj_scale` - Maximum weight adjustment scale
+ * * `limit_weight_scale` - Global weight scale limit
+ * * `l1_weight_decay` - L1 regularisation strength
+ * * `l2_weight_decay` - L2 regularisation strength
+ *
+ * # Returns
+ * Float64Array with 4 calculated weights
+ * @param {Float64Array} packed_state
+ * @param {number} generations
+ * @param {number} plank_constant
+ * @param {number} learning_rate
+ * @param {number} max_weight_adj_scale
+ * @param {number} limit_weight_scale
+ * @param {number} l1_weight_decay
+ * @param {number} l2_weight_decay
+ * @returns {Float64Array}
+ */
+export function calculate_weight_batch_4way(packed_state, generations, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale, l1_weight_decay, l2_weight_decay) {
+    const ptr0 = passArrayF64ToWasm0(packed_state, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.calculate_weight_batch_4way(ptr0, len0, generations, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale, l1_weight_decay, l2_weight_decay);
+    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v2;
 }
 
 /**
@@ -1584,6 +1668,39 @@ export function validate_topology(from_indices, to_indices) {
     var v3 = getArrayI32FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
     return v3;
+}
+
+/**
+ * Issue #1960 - Batch topology validation for multiple creatures.
+ *
+ * Validates multiple topologies in a single WASM call to amortise boundary
+ * crossing overhead. Each topology's from/to indices are concatenated, with
+ * a lengths array specifying where each topology's data ends.
+ *
+ * # Arguments
+ * * `all_from_indices` - Concatenated from indices for all topologies
+ * * `all_to_indices` - Concatenated to indices for all topologies
+ * * `lengths` - Number of synapses per topology (used to split the arrays)
+ *
+ * # Returns
+ * Int32Array of length 2×N (N = number of topologies):
+ *   `[error_code_0, synapse_index_0, error_code_1, synapse_index_1, ...]`
+ * @param {Uint32Array} all_from_indices
+ * @param {Uint32Array} all_to_indices
+ * @param {Uint32Array} lengths
+ * @returns {Int32Array}
+ */
+export function validate_topology_batch(all_from_indices, all_to_indices, lengths) {
+    const ptr0 = passArray32ToWasm0(all_from_indices, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray32ToWasm0(all_to_indices, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray32ToWasm0(lengths, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.validate_topology_batch(ptr0, len0, ptr1, len1, ptr2, len2);
+    var v4 = getArrayI32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v4;
 }
 
 /**

@@ -360,6 +360,31 @@ export function accumulate_weight_persistent_8way(start_index: number, current_w
 export function calculate_bias(count: number, total_adjusted_bias: number, current_bias: number, no_change: boolean, generations: number, plank_constant: number, learning_rate: number, max_bias_adj_scale: number, limit_bias_scale: number, l1_bias_decay: number, l2_bias_decay: number): number;
 
 /**
+ * Issue #1960 - Batch calculate_bias for 4 neurons in a single WASM call.
+ *
+ * Amortises boundary crossing overhead by processing 4 bias calculations
+ * at once. Each neuron provides 4 state values packed into a single
+ * Float64Array, plus shared config scalars. The noChange flags are passed
+ * as a separate Uint8Array (0 = false, nonzero = true).
+ *
+ * # Arguments
+ * * `packed_state` - 12 f64 values: 3 per neuron ×4
+ *   Per neuron: [count, totalAdjustedBias, currentBias]
+ * * `no_change_flags` - 4 u8 values: 0 = false, nonzero = true
+ * * `generations` - Config generations value
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate
+ * * `max_bias_adj_scale` - Maximum bias adjustment scale
+ * * `limit_bias_scale` - Global bias scale limit
+ * * `l1_bias_decay` - L1 regularisation strength
+ * * `l2_bias_decay` - L2 regularisation strength
+ *
+ * # Returns
+ * Float64Array with 4 calculated biases
+ */
+export function calculate_bias_batch_4way(packed_state: Float64Array, no_change_flags: Uint8Array, generations: number, plank_constant: number, learning_rate: number, max_bias_adj_scale: number, limit_bias_scale: number, l1_bias_decay: number, l2_bias_decay: number): Float64Array;
+
+/**
  * Standalone calculate error function for testing
  * Issue #1141 - WASM Migration Phase 9
  *
@@ -415,6 +440,30 @@ export function calculate_error_batch_4way(squash_type: number, current_activati
  * The calculated average weight
  */
 export function calculate_weight(count: number, total_positive_activation: number, total_negative_activation: number, count_positive: number, count_negative: number, total_positive_adjusted_value: number, total_negative_adjusted_value: number, current_weight: number, generations: number, plank_constant: number, learning_rate: number, max_weight_adj_scale: number, limit_weight_scale: number, l1_weight_decay: number, l2_weight_decay: number): number;
+
+/**
+ * Issue #1960 - Batch calculate_weight for 4 synapses in a single WASM call.
+ *
+ * Amortises boundary crossing overhead by processing 4 weight calculations
+ * at once. Each synapse provides 8 state values (count through currentWeight)
+ * packed into a single Float64Array, plus shared config scalars.
+ *
+ * # Arguments
+ * * `packed_state` - 32 f64 values: 8 per synapse ×4
+ *   Per synapse: [count, totalPosAct, totalNegAct, countPos, countNeg,
+ *                 totalPosAdj, totalNegAdj, currentWeight]
+ * * `generations` - Config generations value
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate
+ * * `max_weight_adj_scale` - Maximum weight adjustment scale
+ * * `limit_weight_scale` - Global weight scale limit
+ * * `l1_weight_decay` - L1 regularisation strength
+ * * `l2_weight_decay` - L2 regularisation strength
+ *
+ * # Returns
+ * Float64Array with 4 calculated weights
+ */
+export function calculate_weight_batch_4way(packed_state: Float64Array, generations: number, plank_constant: number, learning_rate: number, max_weight_adj_scale: number, limit_weight_scale: number, l1_weight_decay: number, l2_weight_decay: number): Float64Array;
 
 /**
  * Issue #1959 - Compute reverse topological order for backpropagation.
@@ -937,6 +986,24 @@ export function validate_range(squash_type: number, activation: number): boolean
 export function validate_topology(from_indices: Uint32Array, to_indices: Uint32Array): Int32Array;
 
 /**
+ * Issue #1960 - Batch topology validation for multiple creatures.
+ *
+ * Validates multiple topologies in a single WASM call to amortise boundary
+ * crossing overhead. Each topology's from/to indices are concatenated, with
+ * a lengths array specifying where each topology's data ends.
+ *
+ * # Arguments
+ * * `all_from_indices` - Concatenated from indices for all topologies
+ * * `all_to_indices` - Concatenated to indices for all topologies
+ * * `lengths` - Number of synapses per topology (used to split the arrays)
+ *
+ * # Returns
+ * Int32Array of length 2×N (N = number of topologies):
+ *   `[error_code_0, synapse_index_0, error_code_1, synapse_index_1, ...]`
+ */
+export function validate_topology_batch(all_from_indices: Uint32Array, all_to_indices: Uint32Array, lengths: Uint32Array): Int32Array;
+
+/**
  * Version information
  */
 export function version(): string;
@@ -989,6 +1056,7 @@ export interface InitOutput {
     readonly scan_max_bias: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
     readonly scan_max_weight: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
     readonly validate_topology: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly validate_topology_batch: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly accumulate_bias_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly accumulate_bias_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly accumulate_weight_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
@@ -1003,13 +1071,15 @@ export interface InitOutput {
     readonly read_neuron_state: (a: number) => [number, number];
     readonly read_synapse_state: (a: number) => [number, number];
     readonly reset_training_state: () => void;
-    readonly predictivecodingengine_compute_gradients_wasm: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly accumulate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
     readonly accumulate_bias_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
     readonly accumulate_weight_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
     readonly accumulate_weight_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
     readonly calculate_bias: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => number;
+    readonly calculate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number];
     readonly calculate_weight: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number) => number;
+    readonly calculate_weight_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number];
+    readonly predictivecodingengine_compute_gradients_wasm: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;

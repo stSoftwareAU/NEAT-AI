@@ -308,6 +308,42 @@ let accumulateBiasPersistent8WayFn:
   ) => void)
   | null = null;
 
+// Issue #1960 - Batch calculate weight/bias function pointers
+let calculateWeightBatch4WayFn:
+  | ((
+    packedState: Float64Array,
+    generations: number,
+    plankConstant: number,
+    learningRate: number,
+    maxWeightAdjScale: number,
+    limitWeightScale: number,
+    l1WeightDecay: number,
+    l2WeightDecay: number,
+  ) => Float64Array)
+  | null = null;
+let calculateBiasBatch4WayFn:
+  | ((
+    packedState: Float64Array,
+    noChangeFlags: Uint8Array,
+    generations: number,
+    plankConstant: number,
+    learningRate: number,
+    maxBiasAdjScale: number,
+    limitBiasScale: number,
+    l1BiasDecay: number,
+    l2BiasDecay: number,
+  ) => Float64Array)
+  | null = null;
+
+// Issue #1960 - Batch topology validation function pointer
+let validateTopologyBatchFn:
+  | ((
+    allFromIndices: Uint32Array,
+    allToIndices: Uint32Array,
+    lengths: Uint32Array,
+  ) => Int32Array)
+  | null = null;
+
 // Issue #1521 - Score scan function pointers
 let computeScoreComponentsFn:
   | ((weights: Float64Array, biases: Float64Array) => Float64Array)
@@ -380,6 +416,10 @@ function assignFunctionPointers(module: WasmModule): void {
   accumulateWeightPersistent8WayFn = module.accumulate_weight_persistent_8way;
   accumulateBiasPersistent4WayFn = module.accumulate_bias_persistent_4way;
   accumulateBiasPersistent8WayFn = module.accumulate_bias_persistent_8way;
+  // Issue #1960 - Batch calculate weight/bias and topology validation
+  calculateWeightBatch4WayFn = module.calculate_weight_batch_4way;
+  calculateBiasBatch4WayFn = module.calculate_bias_batch_4way;
+  validateTopologyBatchFn = module.validate_topology_batch;
   // Issue #1521 - Score scan functions
   computeScoreComponentsFn = module.compute_score_components;
   scanMaxWeightFn = module.scan_max_weight;
@@ -664,4 +704,17 @@ export function getScanAvailableConnectionsFn(): typeof scanAvailableConnections
 
 export function getComputeReverseTopologicalOrderFn(): typeof computeReverseTopologicalOrderFn {
   return computeReverseTopologicalOrderFn;
+}
+
+// Issue #1960 - Batch operation function pointer getters
+export function getCalculateWeightBatch4WayFn(): typeof calculateWeightBatch4WayFn {
+  return calculateWeightBatch4WayFn;
+}
+
+export function getCalculateBiasBatch4WayFn(): typeof calculateBiasBatch4WayFn {
+  return calculateBiasBatch4WayFn;
+}
+
+export function getValidateTopologyBatchFn(): typeof validateTopologyBatchFn {
+  return validateTopologyBatchFn;
 }
