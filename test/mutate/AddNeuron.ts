@@ -126,7 +126,7 @@ Deno.test("AddNeuron - should skip constant neurons when inserting", () => {
     creatureValidate(testCreature);
 
     // The constant neuron should still be present
-    const constNeuron = testCreature.neurons.find((n) => n.uuid === "const-1");
+    const constNeuron = testCreature.neurons.find((n) => n.id === 9032);
     assert(constNeuron, "Constant neuron should still exist");
     assertEquals(constNeuron.type, "constant");
   }
@@ -252,7 +252,7 @@ Deno.test("AddNeuron - should create outward connection when needed", () => {
           const outward = testCreature.outwardConnections(neuron.index);
           assert(
             outward.length > 0,
-            `Hidden neuron ${neuron.uuid} should have outward connections`,
+            `Hidden neuron ${neuron.id} should have outward connections`,
           );
         }
       }

@@ -502,12 +502,15 @@ export async function scanForSquashImprovements(
                         altPath,
                         alternativeRes.score.creature,
                       );
-                      bestNeuronSquashMap.set(Number(alternativeRes.score.uuid), {
-                        squash: altSquash,
-                        score: alternativeRes.score.score,
-                        path: altPath,
-                        message: alternativeMessage,
-                      });
+                      bestNeuronSquashMap.set(
+                        Number(alternativeRes.score.uuid),
+                        {
+                          squash: altSquash,
+                          score: alternativeRes.score.score,
+                          path: altPath,
+                          message: alternativeMessage,
+                        },
+                      );
 
                       // Remove the previous best file
                       await removeFile(currentNeuronBest.path);

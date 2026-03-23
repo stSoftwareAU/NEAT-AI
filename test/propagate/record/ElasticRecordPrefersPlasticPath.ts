@@ -53,8 +53,8 @@ Deno.test("record: prefers plastic paths over saturated ArcTan parents", () => {
   // parent out of saturation (which implies a massive raw-value move).
   const discoverMap = creature.record(new Float32Array([0]));
 
-  const arctanRec = discoverMap.get("hidden-arctan");
-  const reluRec = discoverMap.get("hidden-relu");
+  const arctanRec = discoverMap.get(20181232);
+  const reluRec = discoverMap.get(328081);
 
   // Expect the relu path to be the one we recurse into.
   assert(reluRec, "Expected record entry for hidden-relu");

@@ -88,7 +88,7 @@ Deno.test({
       60,
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
@@ -109,11 +109,11 @@ Deno.test({
     for (const neuron of viableNeurons) {
       assert(
         Number.isFinite(neuron.totalError),
-        `Neuron ${neuron.uuid} has non-finite error: ${neuron.totalError}`,
+        `Neuron ${neuron.id} has non-finite error: ${neuron.totalError}`,
       );
       assert(
         neuron.totalError >= 0,
-        `Neuron ${neuron.uuid} has negative error: ${neuron.totalError}`,
+        `Neuron ${neuron.id} has negative error: ${neuron.totalError}`,
       );
     }
 
@@ -147,7 +147,7 @@ Deno.test({
       60,
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
     discoverStructure.initialize(neuronPromisesMap);
 
     // Create scenario with errors so we get non-zero totals first

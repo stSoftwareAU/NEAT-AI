@@ -25,13 +25,13 @@ function makeDeterministicCreatureExport() {
   // - one hidden neuron starts as TANH (to be scanned)
   // - all other hidden neurons are already GELU (filtered out)
   const first = hiddenNeurons[0];
-  assertExists(first.uuid);
+  assertExists(first.id);
   for (const n of hiddenNeurons) {
     n.squash = "GELU";
   }
   first.squash = "TANH";
 
-  return { exported, hiddenUUID: first.uuid };
+  return { exported, hiddenUUID: first.id };
 }
 
 Deno.test("scanForSquashImprovements records improvement then upgrades via alternative squash", async () => {
@@ -46,7 +46,8 @@ Deno.test("scanForSquashImprovements records improvement then upgrades via alter
   const fakeWorker = {
     score(creature: Creature, uuid: string): Promise<ResponseData> {
       const json = creature.exportJSON();
-      const neuron = json.neurons.find((n) => n.uuid === uuid);
+// @ts-ignore
+      const neuron = json.neurons.find((n) => n.id === id);
       const squash = neuron?.squash;
 
       const score = squash === "Swish" ? 2.0 : squash === "GELU" ? 1.5 : 0.5;

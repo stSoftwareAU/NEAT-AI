@@ -25,7 +25,7 @@ Deno.test("findCandidateSquash throws TopologyError when record value is undefin
     () =>
       findCandidateSquash(
         creature,
-        "hidden-1",
+        "hidden-1" as unknown as number,
         [{
           activation: 0.5,
           value: undefined as unknown as number,
@@ -47,7 +47,7 @@ Deno.test("findCandidateSquash throws TopologyError when record activation is un
     () =>
       findCandidateSquash(
         creature,
-        "hidden-1",
+        "hidden-1" as unknown as number,
         [{
           activation: undefined as unknown as number,
           value: 0.5,

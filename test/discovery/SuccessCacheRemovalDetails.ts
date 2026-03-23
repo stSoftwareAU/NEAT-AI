@@ -294,7 +294,7 @@ Deno.test("getSuccessfulRemovalDetails skips entries without neuron ID", async (
         scoreDelta: 0.1,
         error: 0.9,
         rustRequest: {
-          removalCandidate: { neuronId: "not-a-number" },
+          removalCandidate: { neuronId: 7000 },
         },
       }),
     );

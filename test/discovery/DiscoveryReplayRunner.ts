@@ -45,7 +45,7 @@ Deno.test("DiscoveryReplayRunner prunes stale successes and prefers best combo",
     changeType: "remove-neuron",
     rustRequest: {
       harmfulNeuronCandidate: {
-        neuronUUID: "does-not-exist",
+        neuronId: 7000,
         errorMagnitude: 0,
         expectedCreatureScoreGain: 0,
         sampleCount: 0,
@@ -68,7 +68,7 @@ Deno.test("DiscoveryReplayRunner prunes stale successes and prefers best combo",
       // We return explicit scores to avoid coupling tests to the score formula.
       // The runner should compare scores directly.
       const id = c.uuid ?? "";
-      if (id === "base") return Promise.resolve({ error: 0, score: 0.5 });
+      if (id === "") return Promise.resolve({ error: 0, score: 0.5 });
       if (id.includes("-k1") && id.includes("-k2")) {
         return Promise.resolve({ error: 0, score: 0.65 }); // combo best
       }
@@ -175,7 +175,7 @@ Deno.test("DiscoveryReplayRunner completes normally with sufficient timeout", as
     },
     evaluateError: (c) => {
       const id = c.uuid ?? "";
-      if (id === "base") return Promise.resolve({ error: 0.5, score: 0.5 });
+      if (id === "") return Promise.resolve({ error: 0.5, score: 0.5 });
       if (id.endsWith("-k1")) {
         return Promise.resolve({ error: 0.4, score: 0.6 });
       }
@@ -222,7 +222,7 @@ Deno.test("DiscoveryReplayRunner works without timeout (undefined)", async () =>
     },
     evaluateError: (c) => {
       const id = c.uuid ?? "";
-      if (id === "base") return Promise.resolve({ error: 0.5, score: 0.5 });
+      if (id === "") return Promise.resolve({ error: 0.5, score: 0.5 });
       if (id.endsWith("-k1")) {
         return Promise.resolve({ error: 0.4, score: 0.6 });
       }

@@ -117,7 +117,7 @@ Deno.test({
      * and adding a synapse to cause random noise.
      */
     const exportedJSON = targetCreature.exportJSON();
-    exportedJSON.neurons.find((neuron) => neuron.uuid === "hidden-3")!.squash =
+    exportedJSON.neurons.find((neuron) => neuron.id === 5003)!.squash =
       TANH.NAME; // Change the squash function
     exportedJSON.synapses.push({
       fromUUID: "input-44",
@@ -136,7 +136,7 @@ Deno.test({
       60,
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
     assert(recorded, "Record should succeed");
@@ -150,7 +150,7 @@ Deno.test({
 
     const candidateSquashes = await discoverStructure
       .analyzeSelectedNeuronsSquashes([
-        "hidden-3",
+        "hidden-3" as unknown as number,
       ]);
 
     assert(candidateSquashes, "Should have discovered a squash improvement");
@@ -168,7 +168,7 @@ Deno.test({
     const betterCreatureJSON = betterCreature.exportJSON();
 
     const adjustedSquash = betterCreatureJSON.neurons.find((neuron) =>
-      neuron.uuid === "hidden-3"
+      neuron.id === 5003
     )!
       .squash;
 

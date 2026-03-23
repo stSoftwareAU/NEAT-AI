@@ -36,7 +36,7 @@ Deno.test("CRISPR: rejects backward synapse injection for 4.x forward-only creat
     mode: "append",
     synapses: [
       // Backward edge by index order: output -> hidden.
-      { fromUUID: "output-0", toUUID: "hidden-0", weight: 0.1 },
+      { fromId: -1, toId: 5000, weight: 0.1 },
     ],
   };
 
@@ -47,10 +47,10 @@ Deno.test("CRISPR: rejects backward synapse injection for 4.x forward-only creat
   mutated.validate({ forwardOnly: true });
 
   const synapseKeys = mutated.exportJSON().synapses.map((s) =>
-    `${s.fromUUID}->${s.toUUID}`
+    `${s.fromId}->${s.toId}`
   );
   assertEquals(
-    synapseKeys.includes("output-0->hidden-0"),
+    synapseKeys.includes(String(9418)),
     false,
     "Backward synapse should not be present",
   );

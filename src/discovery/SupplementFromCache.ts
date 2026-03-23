@@ -57,7 +57,7 @@ function isEntryRelevantToCreature(
       const c = req.synapseCandidate as
         | { fromNeuronId?: number; toNeuronId?: number }
         | undefined;
-      if (c?.fromNeuronId == null || c?.toNeuronId == null) return false;
+      if (c?.fromNeuronId === null || c?.fromNeuronId === undefined || c?.toNeuronId === null || c?.toNeuronId === undefined) return false;
       return neuronIds.has(c.fromNeuronId) &&
         neuronIds.has(c.toNeuronId);
     }
@@ -65,25 +65,25 @@ function isEntryRelevantToCreature(
       const c = req.neuronCandidate as
         | { fromNeuronId?: number; toNeuronId?: number }
         | undefined;
-      if (c?.fromNeuronId == null || c?.toNeuronId == null) return false;
+      if (c?.fromNeuronId === null || c?.fromNeuronId === undefined || c?.toNeuronId === null || c?.toNeuronId === undefined) return false;
       return neuronIds.has(c.fromNeuronId) &&
         neuronIds.has(c.toNeuronId);
     }
     case "change-squash": {
       const c = req.squashCandidate as { neuronId?: number } | undefined;
-      if (c?.neuronId == null) return false;
+      if (c?.neuronId === null || c?.neuronId === undefined) return false;
       return neuronIds.has(c.neuronId);
     }
     case "remove-low-impact": {
       const c = req.removalCandidate as { neuronId?: number } | undefined;
-      if (c?.neuronId == null) return false;
+      if (c?.neuronId === null || c?.neuronId === undefined) return false;
       return neuronIds.has(c.neuronId);
     }
     case "remove-neuron": {
       const c = req.harmfulNeuronCandidate as
         | { neuronId?: number }
         | undefined;
-      if (c?.neuronId == null) return false;
+      if (c?.neuronId === null || c?.neuronId === undefined) return false;
       return neuronIds.has(c.neuronId);
     }
     case "remove-synapse": {
@@ -91,7 +91,7 @@ function isEntryRelevantToCreature(
         req.synapseDetails) as
           | { fromNeuronId?: number; toNeuronId?: number }
           | undefined;
-      if (c?.fromNeuronId == null || c?.toNeuronId == null) return false;
+      if (c?.fromNeuronId === null || c?.fromNeuronId === undefined || c?.toNeuronId === null || c?.toNeuronId === undefined) return false;
       return neuronIds.has(c.fromNeuronId) &&
         neuronIds.has(c.toNeuronId);
     }

@@ -50,11 +50,12 @@ function makeTestCreature() {
  */
 function makeSquashCandidate(
   baseJSON: ReturnType<Creature["exportJSON"]>,
-  neuronUUID: string,
+  neuronId: string,
   newSquash: string,
 ): DiscoveryCandidate {
   const json = structuredClone(baseJSON);
-  const neuron = json.neurons.find((n) => n.uuid === neuronUUID);
+  // @ts-ignore: test with legacy string neuron IDs
+  const neuron = json.neurons.find((n) => n.id === neuronId);
   if (neuron) neuron.squash = newSquash;
   const creature = Creature.fromJSON(json);
   delete creature.uuid;
@@ -64,9 +65,10 @@ function makeSquashCandidate(
     creature,
     change: {
       type: "change-squash",
-      description: `Changed ${neuronUUID} to ${newSquash}`,
+      description: `Changed ${neuronId} to ${newSquash}`,
       squashCandidate: {
-        neuronUUID,
+        // @ts-ignore: test with legacy string neuron IDs
+        neuronId,
         previousSquash: "IDENTITY",
         squash: newSquash,
         expectedCreatureScoreGain: 0.1,
@@ -98,8 +100,10 @@ function makeAddSynapseCandidate(
       type: "add-synapses",
       description: `Added synapse ${fromUUID} -> ${toUUID}`,
       synapseCandidate: {
-        fromNeuronUUID: fromUUID,
-        toNeuronUUID: toUUID,
+        // @ts-ignore: test with legacy string neuron IDs
+        fromNeuronId: fromUUID,
+        // @ts-ignore: test with legacy string neuron IDs
+        toNeuronId: toUUID,
         weight,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,

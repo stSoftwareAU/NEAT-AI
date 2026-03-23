@@ -18,8 +18,8 @@ import { makeForwardOnlyCreature as makeBaseCreature } from "../fixtures/SimpleC
 
 function makeAddSynapseCandidate(): CandidateSynapse {
   return {
-    fromNeuronUUID: "input-0",
-    toNeuronUUID: "output-0",
+    fromNeuronId: 0,
+    toNeuronId: -1,
     weight: 0.5,
     targetNeuronImpact: 1,
     expectedCreatureErrorReduction: 0.01,
@@ -35,8 +35,8 @@ function makeAddNeuronCandidatesWithKeyCollision(): CandidateNeuron[] {
   // buckets weights/biases by exponent only (e.g. 0.11 and 0.19 are both e-1).
   return [
     {
-      fromNeuronUUID: "input-0",
-      toNeuronUUID: "output-0",
+      fromNeuronId: 0,
+      toNeuronId: -1,
       incomingWeight: 0.11,
       outgoingWeight: 0.12,
       squash: "TANH",
@@ -49,8 +49,8 @@ function makeAddNeuronCandidatesWithKeyCollision(): CandidateNeuron[] {
       comment: "success-cache-collision-a",
     },
     {
-      fromNeuronUUID: "input-0",
-      toNeuronUUID: "output-0",
+      fromNeuronId: 0,
+      toNeuronId: -1,
       incomingWeight: 0.19,
       outgoingWeight: 0.18,
       squash: "TANH",

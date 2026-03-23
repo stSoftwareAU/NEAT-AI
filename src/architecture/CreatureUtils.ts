@@ -82,12 +82,12 @@ export class CreatureUtil {
       const json = creature.exportJSON();
 
       // Sort neurons and synapses for consistent UUID generation
-      json.neurons.sort((a, b) => a.id - b.id);
+      json.neurons.sort((a, b) => a.id! - b.id!);
       json.synapses.sort((a, b) => {
         if (a.fromId === b.fromId) {
-          return a.toId - b.toId;
+          return a.toId! - b.toId!;
         } else {
-          return a.fromId - b.fromId;
+          return a.fromId! - b.fromId!;
         }
       });
 
@@ -160,7 +160,7 @@ export class CreatureUtil {
       }));
 
       // Sort neurons by ID for consistent hash generation
-      topologyNeurons.sort((a, b) => a.id - b.id);
+      topologyNeurons.sort((a, b) => a.id! - b.id!);
 
       // Extract topology-only information from synapses (ignoring weight and tags)
       const topologySynapses = json.synapses.map((s) => ({
@@ -171,9 +171,9 @@ export class CreatureUtil {
       // Sort synapses for consistent hash generation
       topologySynapses.sort((a, b) => {
         if (a.fromId === b.fromId) {
-          return a.toId - b.toId;
+          return a.toId! - b.toId!;
         } else {
-          return a.fromId - b.fromId;
+          return a.fromId! - b.fromId!;
         }
       });
 

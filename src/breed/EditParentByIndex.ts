@@ -10,7 +10,7 @@ export function editParentByIndex(
   const targetExport = target.exportJSON();
 
   const targetSet = new Set<number>();
-  targetExport.neurons.forEach((n) => targetSet.add(n.id));
+  targetExport.neurons.forEach((n) => targetSet.add(n.id!));
 
   let parentIndx = 0;
 
@@ -20,16 +20,16 @@ export function editParentByIndex(
   for (let index = 0; index < targetExport.neurons.length; index++) {
     const targetNeuron = targetExport.neurons[index];
     if (targetNeuron.type === "hidden") {
-      if (!parentNeuronSet.has(targetNeuron.id)) {
-        const currentId = targetNeuron.id;
+      if (!parentNeuronSet.has(targetNeuron.id!)) {
+        const currentId = targetNeuron.id!;
         while (parentIndx < parentExport.neurons.length) {
           const parentNeuron = parentExport.neurons[parentIndx];
           parentIndx++;
           if (
-            parentNeuron.type === "hidden" && !targetSet.has(parentNeuron.id)
+            parentNeuron.type === "hidden" && !targetSet.has(parentNeuron.id!)
           ) {
-            (targetNeuron as { id: number }).id = parentNeuron.id;
-            targetSet.add(parentNeuron.id);
+            (targetNeuron as { id: number }).id = parentNeuron.id!;
+            targetSet.add(parentNeuron.id!);
             addTag(targetNeuron, "alias", String(currentId));
             addTag(targetNeuron, "approach", "graft");
             targetExport.synapses.forEach((synapse) => {

@@ -24,13 +24,13 @@ Deno.test("WorkerProcessor: discover response includes coordinated structural ca
     operations: [
       {
         type: "removeSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "output-0",
+        fromNeuronId: 0,
+        toNeuronId: -1,
       },
       {
         type: "addSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "output-0",
+        fromNeuronId: 0,
+        toNeuronId: -1,
         weight: 0.5,
       },
     ],
@@ -65,14 +65,14 @@ Deno.test("WorkerProcessor: buildDiscoverResponsePayload maps all optional field
     expectedCreatureScoreGain: 0.123,
     operations: [{
       type: "removeSynapse",
-      fromNeuronUuid: "input-0",
-      toNeuronUuid: "output-0",
+      fromNeuronId: 0,
+      toNeuronId: -1,
     }],
   };
 
   const helpfulSynapse: CandidateSynapse = {
-    fromNeuronUUID: "input-0",
-    toNeuronUUID: "output-0",
+    fromNeuronId: 0,
+    toNeuronId: -1,
     weight: 0.5,
     targetNeuronImpact: 1,
     expectedCreatureErrorReduction: 0.01,
@@ -82,8 +82,8 @@ Deno.test("WorkerProcessor: buildDiscoverResponsePayload maps all optional field
   };
 
   const helpfulNeuron: CandidateNeuron = {
-    fromNeuronUUID: "input-0",
-    toNeuronUUID: "output-0",
+    fromNeuronId: 0,
+    toNeuronId: -1,
     incomingWeight: 0.1,
     outgoingWeight: 0.2,
     squash: "IDENTITY",
@@ -96,8 +96,8 @@ Deno.test("WorkerProcessor: buildDiscoverResponsePayload maps all optional field
   };
 
   const harmfulSynapse: CandidateSynapse = {
-    fromNeuronUUID: "input-0",
-    toNeuronUUID: "hidden-0",
+    fromNeuronId: 0,
+    toNeuronId: 5000,
     weight: -0.5,
     targetNeuronImpact: 1,
     expectedCreatureErrorReduction: -0.01,
@@ -107,7 +107,7 @@ Deno.test("WorkerProcessor: buildDiscoverResponsePayload maps all optional field
   };
 
   const harmfulNeuron: CandidateHarmfulNeuron = {
-    neuronUUID: "hidden-0",
+    neuronId: 5000,
     errorMagnitude: 1,
     expectedCreatureScoreGain: 0.01,
     sampleCount: 1,
@@ -115,14 +115,14 @@ Deno.test("WorkerProcessor: buildDiscoverResponsePayload maps all optional field
   };
 
   const removal: RemovalCandidate = {
-    neuronUUID: "hidden-1",
+    neuronId: 5001,
     totalError: 1,
     impact: 0.0001,
     reason: "test",
   };
 
   const squash: CandidateSquash = {
-    neuronUUID: "output-0",
+    neuronId: -1,
     previousSquash: "IDENTITY",
     squash: "TANH",
     expectedCreatureScoreGain: 0.01,
@@ -146,10 +146,10 @@ Deno.test("WorkerProcessor: buildDiscoverResponsePayload maps all optional field
   assertEquals(payload.ID, "test-discover-all-fields");
 
   // Arrays should be copied (not aliased) so caller can't mutate the worker's result arrays.
-  assertEquals(payload.addHelpfulSynapses?.[0].toNeuronUUID, "output-0");
+  assertEquals(payload.addHelpfulSynapses?.[0].toNeuronId, -1);
   assertEquals(payload.addHelpfulSynapses === result.addHelpfulSynapses, false);
 
-  assertEquals(payload.addHelpfulNeurons?.[0].toNeuronUUID, "output-0");
+  assertEquals(payload.addHelpfulNeurons?.[0].toNeuronId, -1);
   assertEquals(payload.addHelpfulNeurons === result.addHelpfulNeurons, false);
 
   assertEquals(
@@ -162,9 +162,9 @@ Deno.test("WorkerProcessor: buildDiscoverResponsePayload maps all optional field
     false,
   );
 
-  assertEquals(payload.removeHarmfulSynapse?.toNeuronUUID, "hidden-0");
-  assertEquals(payload.removeHarmfulNeurons?.[0].neuronUUID, "hidden-0");
-  assertEquals(payload.removalCandidates?.[0].neuronUUID, "hidden-1");
+  assertEquals(payload.removeHarmfulSynapse?.toNeuronId, 5000);
+  assertEquals(payload.removeHarmfulNeurons?.[0].neuronId, 5000);
+  assertEquals(payload.removalCandidates?.[0].neuronId, 5001);
   assertEquals(payload.candidateSquashes?.[0].squash, "TANH");
 });
 

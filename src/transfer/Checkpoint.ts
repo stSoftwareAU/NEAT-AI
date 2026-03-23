@@ -280,8 +280,8 @@ function remapCreatureForTask(
 
   // Remap neurons: keep hidden neurons as-is, remap outputs
   const remappedNeurons = source.neurons.map((n) => {
-    if (n.type === "output" && sourceOutputIds.has(n.id)) {
-      const targetId = outputMap.get(n.id);
+    if (n.type === "output" && sourceOutputIds.has(n.id!)) {
+      const targetId = outputMap.get(n.id!);
       if (targetId) {
         return { ...n, id: targetId };
       }
@@ -310,8 +310,8 @@ function remapCreatureForTask(
 
   // Remap synapses: update UUIDs for inputs and outputs
   const remappedSynapses = source.synapses.map((s) => {
-    let fromId = s.fromId;
-    let toId = s.toId;
+    let fromId = s.fromId!;
+    let toId = s.toId!;
 
     // Remap source input UUID to target input UUID
     if (sourceInputIds.has(fromId)) {
@@ -321,14 +321,14 @@ function remapCreatureForTask(
     }
 
     // Remap source output UUID to target output UUID
-    if (sourceOutputIds.has(toId)) {
-      const mapped = outputMap.get(toId);
+    if (sourceOutputIds.has(toId!)) {
+      const mapped = outputMap.get(toId!);
       if (!mapped) return null; // Source output not in target
       toId = mapped;
     }
 
-    if (sourceOutputIds.has(fromId)) {
-      const mapped = outputMap.get(fromId);
+    if (sourceOutputIds.has(fromId!)) {
+      const mapped = outputMap.get(fromId!);
       if (!mapped) return null;
       fromId = mapped;
     }

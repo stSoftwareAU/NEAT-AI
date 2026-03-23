@@ -56,7 +56,7 @@ export function discover(mum: Creature, child: Creature) {
     const childNeuron = childExport.neurons[i];
 
     if (mumNeuron.bias !== childNeuron.bias) {
-      memetic.biases[mumNeuron.id] = mumNeuron.bias;
+      memetic.biases[mumNeuron.id!] = mumNeuron.bias;
     }
   }
 
@@ -65,12 +65,12 @@ export function discover(mum: Creature, child: Creature) {
     const childSynapse = childExport.synapses[i];
 
     if (mumSynapse.weight !== childSynapse.weight) {
-      if (!memetic.weights[mumSynapse.fromId]) {
-        memetic.weights[mumSynapse.fromId] = [];
+      if (!memetic.weights[mumSynapse.fromId!]) {
+        memetic.weights[mumSynapse.fromId!] = [];
       }
 
-      memetic.weights[mumSynapse.fromId].push({
-        toId: mumSynapse.toId,
+      memetic.weights[mumSynapse.fromId!].push({
+        toId: mumSynapse.toId!,
         weight: mumSynapse.weight,
       });
     }

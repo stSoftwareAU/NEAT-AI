@@ -31,12 +31,12 @@ export function pruneDeadSubgraphs(
   // Build reverse adjacency: toId -> set(fromId)
   const incoming = new Map<number, Set<number>>();
   for (const synapse of creatureExport.synapses) {
-    let set = incoming.get(synapse.toId);
+    let set = incoming.get(synapse.toId!);
     if (!set) {
       set = new Set<number>();
-      incoming.set(synapse.toId, set);
+      incoming.set(synapse.toId!, set);
     }
-    set.add(synapse.fromId);
+    set.add(synapse.fromId!);
   }
 
   // Seed BFS from all outputs.
@@ -44,8 +44,8 @@ export function pruneDeadSubgraphs(
   const queue: number[] = [];
   for (const neuron of creatureExport.neurons) {
     if (neuron.type === "output") {
-      canReachOutput.add(neuron.id);
-      queue.push(neuron.id);
+      canReachOutput.add(neuron.id!);
+      queue.push(neuron.id!);
     }
   }
 
@@ -65,8 +65,8 @@ export function pruneDeadSubgraphs(
   const toRemove = new Set<number>();
   for (const neuron of creatureExport.neurons) {
     if (neuron.type === "hidden" || neuron.type === "constant") {
-      if (!canReachOutput.has(neuron.id)) {
-        toRemove.add(neuron.id);
+      if (!canReachOutput.has(neuron.id!)) {
+        toRemove.add(neuron.id!);
       }
     }
   }
@@ -77,10 +77,10 @@ export function pruneDeadSubgraphs(
 
   const beforeSynapses = creatureExport.synapses.length;
   creatureExport.neurons = creatureExport.neurons.filter((n) =>
-    !toRemove.has(n.id)
+    !toRemove.has(n.id!)
   );
   creatureExport.synapses = creatureExport.synapses.filter((s) =>
-    !toRemove.has(s.fromId) && !toRemove.has(s.toId)
+    !toRemove.has(s.fromId!) && !toRemove.has(s.toId!)
   );
 
   // Structure changed, so cached memetic references are no longer trustworthy.

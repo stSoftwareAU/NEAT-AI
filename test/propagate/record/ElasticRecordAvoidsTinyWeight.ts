@@ -47,8 +47,8 @@ Deno.test("record: avoids attributing error to tiny-weight links", () => {
   // Current output ≈ (1000 * 1e-6) + (1 * 1) = 1.001. Target 0 => error ~ -1.001.
   const discoverMap = creature.record(new Float32Array([0]));
 
-  const tiny = discoverMap.get("parent-tiny");
-  const big = discoverMap.get("parent-big");
+  const tiny = discoverMap.get("parent-tiny" as unknown as number);
+  const big = discoverMap.get("parent-big" as unknown as number);
 
   assert(big, "Expected record entry for parent-big");
 

@@ -116,7 +116,7 @@ Deno.test("DiscoveryReplayRunner archives obsolete entries instead of deleting",
     },
     evaluateError: (c) => {
       const id = c.uuid ?? "";
-      if (id === "base") return Promise.resolve({ error: 0, score: 0.5 });
+      if (id === "") return Promise.resolve({ error: 0, score: 0.5 });
       if (id.endsWith("-k1")) return Promise.resolve({ error: 0, score: 0.6 }); // success
       if (id.endsWith("-k2")) return Promise.resolve({ error: 0, score: 0.49 }); // obsolete
       return Promise.resolve({ error: 0, score: 0.5 });

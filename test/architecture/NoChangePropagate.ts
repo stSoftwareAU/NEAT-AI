@@ -154,7 +154,7 @@ Deno.test("noChangePropagate - traces activation value", () => {
 Deno.test("noChangePropagate - recursively propagates to upstream hidden neurons (standard path)", () => {
   const creature = makeIdentityCreature();
   const outputNeuron = creature.neurons[creature.neurons.length - 1];
-  const hiddenNeuron = creature.neurons.find((n) => n.uuid === "hidden-0")!;
+  const hiddenNeuron = creature.neurons.find((n) => n.id === 5000)!;
   const hiddenNS = creature.state.node(hiddenNeuron.index);
 
   assertEquals(
@@ -175,7 +175,7 @@ Deno.test("noChangePropagate - recursively propagates to upstream hidden neurons
 Deno.test("noChangePropagate - short-circuits when noChange already true", () => {
   const creature = makeIdentityCreature();
   const outputNeuron = creature.neurons[creature.neurons.length - 1];
-  const hiddenNeuron = creature.neurons.find((n) => n.uuid === "hidden-0")!;
+  const hiddenNeuron = creature.neurons.find((n) => n.id === 5000)!;
   const hiddenNS = creature.state.node(hiddenNeuron.index);
 
   // Pre-mark hidden as noChange
@@ -199,7 +199,7 @@ Deno.test("noChangePropagate - does not recurse into input neurons", () => {
 
   // Input neurons have type "input" — noChangePropagate skips them
   // Just verify it doesn't throw when the upstream is an input
-  const hiddenNeuron = creature.neurons.find((n) => n.uuid === "hidden-0")!;
+  const hiddenNeuron = creature.neurons.find((n) => n.id === 5000)!;
 
   noChangePropagate(hiddenNeuron, 0.5, config);
 
@@ -211,7 +211,7 @@ Deno.test("noChangePropagate - does not recurse into input neurons", () => {
 
 Deno.test("noChangePropagate - IF neuron takes NeuronActivationInterface branch", () => {
   const creature = makeIfCreature();
-  const ifNeuron = creature.neurons.find((n) => n.uuid === "hidden-if")!;
+  const ifNeuron = creature.neurons.find((n) => n.id === 8240)!;
   const ns = creature.state.node(ifNeuron.index);
 
   assertEquals(ns.noChange, undefined, "should not be noChange before call");
@@ -227,7 +227,7 @@ Deno.test("noChangePropagate - IF neuron takes NeuronActivationInterface branch"
 Deno.test("noChangePropagate - output with IF upstream recursively marks IF as noChange", () => {
   const creature = makeIfCreature();
   const outputNeuron = creature.neurons[creature.neurons.length - 1];
-  const ifNeuron = creature.neurons.find((n) => n.uuid === "hidden-if")!;
+  const ifNeuron = creature.neurons.find((n) => n.id === 8240)!;
   const ifNS = creature.state.node(ifNeuron.index);
 
   noChangePropagate(outputNeuron, 0.5, config);
@@ -260,8 +260,8 @@ Deno.test("noChangePropagate - propagates through multi-layer chain", () => {
   initState(creature);
 
   const outNeuron = creature.neurons[creature.neurons.length - 1];
-  const h1 = creature.neurons.find((n) => n.uuid === "h1")!;
-  const h2 = creature.neurons.find((n) => n.uuid === "h2")!;
+  const h1 = creature.neurons.find((n) => n.id === 9436)!;
+  const h2 = creature.neurons.find((n) => n.id === 9207)!;
 
   noChangePropagate(outNeuron, 0.5, config);
 

@@ -12,7 +12,7 @@ Deno.test(
 
     const params = {
       dataSet: [data],
-      neuronPromisesMap: new Map<string, Promise<void>>(),
+      neuronPromisesMap: new Map<number, Promise<void>>(),
       selectedIndices: [123],
     };
 
@@ -25,7 +25,7 @@ Deno.test(
     const discoverStructure = {
       record: (
         trainingData: DataRecordInterface[],
-        _neuronPromisesMap: Map<string, Promise<void>>,
+        _neuronPromisesMap: Map<number, Promise<void>>,
         _binaryFilePath?: string,
         recordIndices?: number[],
         options?: Readonly<{ allowGraceAfterTimeout?: boolean }>,
@@ -69,7 +69,7 @@ Deno.test("submitDiscoveryRecordBatch: clears buffers when record() returns true
 
   const params = {
     dataSet: [data],
-    neuronPromisesMap: new Map<string, Promise<void>>(),
+    neuronPromisesMap: new Map<number, Promise<void>>(),
     selectedIndices: [123],
   };
 

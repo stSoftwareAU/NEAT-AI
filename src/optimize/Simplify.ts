@@ -21,27 +21,27 @@ export function simplify(creature: Creature): Creature | undefined {
   exported = simplifyComplementToIdentity(exported);
   const neuronsMap = new Map<number, NeuronExport>();
   exported.neurons.forEach((neuron) => {
-    neuronsMap.set(neuron.id, neuron);
+    neuronsMap.set(neuron.id!, neuron);
   });
   const synapseMap = new Map<number, Map<number, SynapseExport>>();
   exported.synapses.forEach((synapse) => {
-    let fromMap = synapseMap.get(synapse.fromId);
+    let fromMap = synapseMap.get(synapse.fromId!);
     if (!fromMap) {
       fromMap = new Map<number, SynapseExport>();
-      synapseMap.set(synapse.fromId, fromMap);
+      synapseMap.set(synapse.fromId!, fromMap);
     }
-    fromMap.set(synapse.toId, synapse);
+    fromMap.set(synapse.toId!, synapse);
   });
   const dependantSquashes = new Map<number, Set<string>>();
   exported.neurons.forEach((neuron) => {
-    let set = dependantSquashes.get(neuron.id);
+    let set = dependantSquashes.get(neuron.id!);
     if (!set) {
       set = new Set<string>();
-      dependantSquashes.set(neuron.id, set);
+      dependantSquashes.set(neuron.id!, set);
     }
 
-    synapseMap.get(neuron.id)?.forEach((synapse) => {
-      const fromNeuron = neuronsMap.get(synapse.toId);
+    synapseMap.get(neuron.id!)?.forEach((synapse) => {
+      const fromNeuron = neuronsMap.get(synapse.toId!);
       if (fromNeuron) {
         set.add(fromNeuron.squash ?? "NONE");
       }
@@ -50,14 +50,14 @@ export function simplify(creature: Creature): Creature | undefined {
   const identityIds: number[] = [];
   exported.neurons.forEach((neuron) => {
     if (neuron.squash === IDENTITY.NAME && neuron.type === "hidden") {
-      const dependants = dependantSquashes.get(neuron.id);
+      const dependants = dependantSquashes.get(neuron.id!);
 
       if (dependants) {
         const aggregateSquash = Array.from(dependants).some((squash) => {
           return isAggregationSquash(squash);
         });
         if (!aggregateSquash) {
-          identityIds.push(neuron.id);
+          identityIds.push(neuron.id!);
         }
       }
     }
@@ -120,22 +120,22 @@ function simplifyComplementToIdentity(
 export function removeKnownSign(exported: CreatureExport) {
   const neuronMap = new Map<number, NeuronExport>();
   exported.neurons.forEach((neuron) => {
-    neuronMap.set(neuron.id, neuron);
+    neuronMap.set(neuron.id!, neuron);
   });
   const synapseMap = new Map<number, Map<number, number>>();
   exported.synapses.forEach((synapse) => {
-    let fromMap = synapseMap.get(synapse.toId);
+    let fromMap = synapseMap.get(synapse.toId!);
     if (!fromMap) {
       fromMap = new Map<number, number>();
-      synapseMap.set(synapse.toId, fromMap);
+      synapseMap.set(synapse.toId!, fromMap);
     }
-    fromMap.set(synapse.fromId, synapse.weight);
+    fromMap.set(synapse.fromId!, synapse.weight);
   });
   for (const neuron of exported.neurons) {
     if (neuron.type === "hidden") {
       if (neuron.squash === ABSOLUTE.NAME || neuron.squash === ReLU.NAME) {
         let allNonNegative = true;
-        const fromMap = synapseMap.get(neuron.id);
+        const fromMap = synapseMap.get(neuron.id!);
 
         if (fromMap) {
           const UUIDs = [...fromMap.keys()];
@@ -161,7 +161,7 @@ export function removeKnownSign(exported: CreatureExport) {
           }
 
           if (allNonNegative) {
-            return removeNeuron(exported, neuron.id);
+            return removeNeuron(exported, neuron.id!);
           }
         }
       }
@@ -174,30 +174,30 @@ export function removeKnownSign(exported: CreatureExport) {
 function simplifyConstants(exported: CreatureExport) {
   const neuronMap = new Map<number, NeuronExport>();
   exported.neurons.forEach((neuron) => {
-    neuronMap.set(neuron.id, neuron);
+    neuronMap.set(neuron.id!, neuron);
   });
   const synapseFromMap = new Map<number, Map<number, number>>();
   exported.synapses.forEach((synapse) => {
-    let fromMap = synapseFromMap.get(synapse.fromId);
+    let fromMap = synapseFromMap.get(synapse.fromId!);
     if (!fromMap) {
       fromMap = new Map<number, number>();
-      synapseFromMap.set(synapse.fromId, fromMap);
+      synapseFromMap.set(synapse.fromId!, fromMap);
     }
-    fromMap.set(synapse.toId, synapse.weight);
+    fromMap.set(synapse.toId!, synapse.weight);
   });
   const synapseToMap = new Map<number, Set<number>>();
   exported.synapses.forEach((synapse) => {
-    let toSet = synapseToMap.get(synapse.toId);
+    let toSet = synapseToMap.get(synapse.toId!);
     if (!toSet) {
       toSet = new Set<number>();
-      synapseToMap.set(synapse.toId, toSet);
+      synapseToMap.set(synapse.toId!, toSet);
     }
-    toSet.add(synapse.fromId);
+    toSet.add(synapse.fromId!);
   });
 
   for (const neuron of exported.neurons) {
     if (neuron.type === "constant") {
-      const toMap = synapseFromMap.get(neuron.id);
+      const toMap = synapseFromMap.get(neuron.id!);
 
       if (toMap) {
         const UUIDs = [...toMap.keys()];
@@ -211,16 +211,16 @@ function simplifyConstants(exported: CreatureExport) {
               toMap.delete(uuid)!;
 
               exported.synapses = exported.synapses.filter((synapse) =>
-                synapse.fromId !== neuron.id || synapse.toId !== uuid
+                synapse.fromId !== neuron.id! || synapse.toId! !== uuid
               );
               exported.neurons = exported.neurons.filter((neuron) =>
                 neuron.type !== "constant" ||
-                synapseFromMap.get(neuron.id)?.size !== 0
+                synapseFromMap.get(neuron.id!)?.size !== 0
               );
 
-              const fromSet = synapseToMap.get(targetNeuron.id);
+              const fromSet = synapseToMap.get(targetNeuron.id!);
               if (fromSet) {
-                fromSet.delete(neuron.id);
+                fromSet.delete(neuron.id!);
                 if (fromSet.size === 0 && targetNeuron.type === "hidden") {
                   (targetNeuron as { type: string }).type = "constant";
 
@@ -251,7 +251,7 @@ export function removeNeuron(
   const simplifiedExport: CreatureExport = JSON.parse(JSON.stringify(exported));
   const neuronMap = new Map<number, NeuronExport>();
   simplifiedExport.neurons.forEach((neuron: NeuronExport) => {
-    neuronMap.set(neuron.id, neuron);
+    neuronMap.set(neuron.id!, neuron);
   });
 
   const neuronToRemove = simplifiedExport.neurons.find(
@@ -273,12 +273,12 @@ export function removeNeuron(
 
   const synapseMap = new Map<number, Map<number, SynapseExport>>();
   simplifiedExport.synapses.forEach((synapse) => {
-    let fromMap = synapseMap.get(synapse.fromId);
+    let fromMap = synapseMap.get(synapse.fromId!);
     if (!fromMap) {
       fromMap = new Map<number, SynapseExport>();
-      synapseMap.set(synapse.fromId, fromMap);
+      synapseMap.set(synapse.fromId!, fromMap);
     }
-    fromMap.set(synapse.toId, synapse);
+    fromMap.set(synapse.toId!, synapse);
   });
 
   simplifiedExport.synapses.forEach((outerSynapse) => {
@@ -287,27 +287,27 @@ export function removeNeuron(
         if (innerSynapse.fromId === identityId) {
           const adjustedWeight = outerSynapse.weight * innerSynapse.weight;
 
-          const duplicate = synapseMap.get(outerSynapse.fromId)?.get(
-            innerSynapse.toId,
+          const duplicate = synapseMap.get(outerSynapse.fromId!)?.get(
+            innerSynapse.toId!,
           );
 
           if (!duplicate) {
             newSynapses.push({
               weight: adjustedWeight,
-              fromId: outerSynapse.fromId,
-              toId: innerSynapse.toId,
+              fromId: outerSynapse.fromId!,
+              toId: innerSynapse.toId!,
             });
           } else {
             duplicate.weight = adjustedWeight + duplicate.weight;
           }
 
-          const targetNeuron = neuronMap.get(innerSynapse.toId);
-          if (targetNeuron && !adjustedBiases.has(innerSynapse.toId)) {
+          const targetNeuron = neuronMap.get(innerSynapse.toId!);
+          if (targetNeuron && !adjustedBiases.has(innerSynapse.toId!)) {
             // Adjust bias using the weight sign
             const biasAdjustment = neuronToRemove.bias * innerSynapse.weight;
             const bias = targetNeuron!.bias + biasAdjustment;
             targetNeuron!.bias = bias;
-            adjustedBiases.add(innerSynapse.toId);
+            adjustedBiases.add(innerSynapse.toId!);
           }
         }
       });
@@ -315,8 +315,7 @@ export function removeNeuron(
   });
 
   simplifiedExport.synapses = simplifiedExport.synapses.filter(
-    (synapse) =>
-      synapse.toId !== identityId && synapse.fromId !== identityId,
+    (synapse) => synapse.toId !== identityId && synapse.fromId !== identityId,
   );
 
   simplifiedExport.synapses = simplifiedExport.synapses.concat(newSynapses);

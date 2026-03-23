@@ -108,9 +108,9 @@ export function buildSingleNeuronCandidates(
 
     // Find the newly added neuron by comparing with base creature
     const addedNeuron = creature.neurons.find(
-      (n) => n.id != null && !baseNeuronIds.has(n.id),
+      (n) => n.id !== null && n.id !== undefined && !baseNeuronIds.has(n.id),
     );
-    const addedNeuronShortID = addedNeuron?.id != null
+    const addedNeuronShortID = addedNeuron?.id !== null && addedNeuron?.id !== undefined
       ? shortID(String(addedNeuron.id))
       : undefined;
 
@@ -172,9 +172,7 @@ export function buildSingleSquashCandidates(
       continue;
     }
 
-    const neuron = baseCreature.neurons.find((n) =>
-      n.id === squash.neuronId
-    );
+    const neuron = baseCreature.neurons.find((n) => n.id === squash.neuronId);
     const oldSquash = neuron?.squash;
 
     const scaledExpected = getExpected?.(squash);

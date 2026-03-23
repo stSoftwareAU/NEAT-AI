@@ -62,7 +62,7 @@ function shouldEnforceForwardOnly(creature: Creature): boolean {
  * creature's internal indices, offset by `input`.
  */
 export function buildIdToIndexMap(
-  creatureJSON: { input: number; neurons: Array<{ id: number }> },
+  creatureJSON: { input: number; neurons: Array<{ id?: number }> },
 ): Map<number, number> {
   const idToIndex = new Map<number, number>();
   const inputCount = creatureJSON.input ?? 0;
@@ -72,7 +72,7 @@ export function buildIdToIndexMap(
   }
 
   for (let i = 0; i < creatureJSON.neurons.length; i++) {
-    idToIndex.set(creatureJSON.neurons[i].id, inputCount + i);
+    idToIndex.set(creatureJSON.neurons[i].id!, inputCount + i);
   }
 
   return idToIndex;

@@ -206,9 +206,9 @@ Deno.test("IF activation: training reduces error and recovers bias after perturb
       JSON.stringify(resultC.trace, null, 1),
     );
 
-    const aHidden1 = creatureA.neurons.find((node) => node.uuid === "hidden-1");
-    const bHidden1 = creatureB.neurons.find((node) => node.uuid === "hidden-1");
-    const cHidden1 = creatureC.neurons.find((node) => node.uuid === "hidden-1");
+    const aHidden1 = creatureA.neurons.find((node) => node.id === 5001);
+    const bHidden1 = creatureB.neurons.find((node) => node.id === 5001);
+    const cHidden1 = creatureC.neurons.find((node) => node.id === 5001);
 
     const diffAB = Math.abs((aHidden1?.bias ?? 0) - (bHidden1?.bias ?? 0));
     const diffAC = Math.abs((aHidden1?.bias ?? 0) - (cHidden1?.bias ?? 0));

@@ -30,17 +30,17 @@ function makeOptions(overrides: Partial<NeatOptions> = {}): NeatOptions {
 }
 
 // Helper to create a base creature with a removable hidden neuron
-function makeCreatureWithRemovableNeuron(neuronUUID: string) {
+function makeCreatureWithRemovableNeuron(neuronId: string) {
   const creature = Creature.fromJSON({
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: neuronUUID, squash: "IDENTITY", bias: 0.001 },
+      { type: "hidden", uuid: neuronId, squash: "IDENTITY", bias: 0.001 },
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: neuronUUID, weight: 0.0001 },
-      { fromUUID: neuronUUID, toUUID: "output-0", weight: 0.0001 },
+      { fromUUID: "input-0", toUUID: neuronId, weight: 0.0001 },
+      { fromUUID: neuronId, toUUID: "output-0", weight: 0.0001 },
       { fromUUID: "input-1", toUUID: "output-0", weight: 0.5 },
     ],
   });
@@ -112,7 +112,8 @@ Deno.test(
       removeHarmfulNeurons: undefined,
       removalCandidates: [
         {
-          neuronUUID: fullUUID,
+          // @ts-ignore: test with legacy string neuronId
+          neuronId: fullUUID,
           totalError: 0.1,
           impact: 1e-13,
           reason: "low-impact",
@@ -166,7 +167,8 @@ Deno.test(
       removeHarmfulNeurons: undefined,
       removalCandidates: [
         {
-          neuronUUID: fullUUID,
+          // @ts-ignore: test with legacy string neuronId
+          neuronId: fullUUID,
           totalError: 0.1,
           impact: 1e-14,
           reason: "low-impact",
@@ -214,7 +216,8 @@ Deno.test(
       removeHarmfulNeurons: undefined,
       removalCandidates: [
         {
-          neuronUUID: fullUUID,
+          // @ts-ignore: test with legacy string neuronId
+          neuronId: fullUUID,
           totalError: 0.1,
           impact: 1e-14,
           reason: "low-impact",

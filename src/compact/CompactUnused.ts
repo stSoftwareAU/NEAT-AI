@@ -20,16 +20,16 @@ export function compactUnused(
   const neuronScale = new Map<number, number>();
   const synapseCount = new Map<number, number>();
   traced.synapses.forEach((synapse) => {
-    let counter: number = synapseCount.get(synapse.toId) || 0;
+    let counter: number = synapseCount.get(synapse.toId!) || 0;
     counter++;
-    synapseCount.set(synapse.toId, counter);
+    synapseCount.set(synapse.toId!, counter);
 
-    let maxScale: number = neuronScale.get(synapse.fromId) || 0;
+    let maxScale: number = neuronScale.get(synapse.fromId!) || 0;
     const scale = Math.abs(synapse.weight);
     if (scale > maxScale) {
       maxScale = scale;
     }
-    neuronScale.set(synapse.fromId, maxScale);
+    neuronScale.set(synapse.fromId!, maxScale);
   });
   const indices = Int32Array.from(
     { length: traced.neurons.length },
@@ -45,9 +45,9 @@ export function compactUnused(
     const neuron = traced.neurons[indices[i]];
     if (neuron.type !== "hidden") continue;
     if (neuron.trace && neuron.trace.count >= 1) {
-      const counter = synapseCount.get(neuron.id);
+      const counter = synapseCount.get(neuron.id!);
       assert(counter !== undefined, "Counter should not be undefined");
-      const maxScale = neuronScale.get(neuron.id);
+      const maxScale = neuronScale.get(neuron.id!);
       assert(maxScale !== undefined, "Max Scale should not be undefined");
 
       const neuronEffect = Math.abs(
@@ -80,7 +80,7 @@ export function compactUnused(
 
     if (
       removeNeuron(
-        neuronForRemoval.id,
+        neuronForRemoval.id!,
         compacted,
         averageActivation,
       )

@@ -198,8 +198,8 @@ export function getNeuronsToTest(
   return creatureExport.neurons.filter(
     (n: NeuronExport) =>
       n.type === "hidden" &&
-      combinedKnowledge[n.id] &&
-      n.squash !== combinedKnowledge[n.id],
+      combinedKnowledge[n.id!] &&
+      n.squash !== combinedKnowledge[n.id!],
   );
 }
 

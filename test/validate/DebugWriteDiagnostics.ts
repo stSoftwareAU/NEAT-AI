@@ -16,8 +16,8 @@ Deno.test("validate with DEBUG includes diagnostic detail in error message", () 
   // Force a duplicate UUID to trigger the validation error
   const hiddenNeuron = creature.neurons[creature.input + 1];
   assert(hiddenNeuron, "Expected a hidden neuron");
-  const duplicatedUUID = creature.neurons[0].uuid;
-  hiddenNeuron.uuid = duplicatedUUID;
+  const duplicatedUUID = creature.neurons[0].id;
+  hiddenNeuron.id = duplicatedUUID;
 
   try {
     creature.validate();

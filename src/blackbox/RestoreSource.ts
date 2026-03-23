@@ -33,7 +33,9 @@ export function restoreSource(creature: Creature): Creature | undefined {
   // Restore biases from memetic
   for (const neuronId in memetic.biases) {
     const bias = memetic.biases[neuronId];
-    const neuron = restoredCreature.neurons.find((n) => n.id === Number(neuronId));
+    const neuron = restoredCreature.neurons.find((n) =>
+      n.id === Number(neuronId)
+    );
     if (!neuron) {
       throw new ValidationError(
         `Neuron with UUID ${neuronId} not found in the creature.`,

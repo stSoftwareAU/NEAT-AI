@@ -25,7 +25,7 @@ Deno.test("WorkerProcessor.process returns score payload and tags exported creat
     const request: RequestData = {
       taskID: 42,
       score: {
-        uuid: hidden.uuid,
+        uuid: String(hidden.id),
         creature: JSON.stringify(exported, null, 1),
         dataDir: ".",
         options: {},
@@ -37,7 +37,7 @@ Deno.test("WorkerProcessor.process returns score payload and tags exported creat
 
     assertEquals(response.taskID, 42);
     assertExists(response.score);
-    assertEquals(response.score.uuid, hidden.uuid);
+    assertEquals(response.score.uuid, String(hidden.id));
     assertEquals(response.score.score, 123.456);
     assertEquals(response.score.error, 0.789);
 

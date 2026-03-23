@@ -30,7 +30,7 @@ Deno.test(
       operations: [
         {
           type: "addNeuron",
-          neuronUuid: "hidden-0",
+          neuronId: 5000,
           neuronType: "hidden",
           squash: TANH.NAME,
           bias: 0.5,
@@ -41,7 +41,7 @@ Deno.test(
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
     const exported = mutated.exportJSON();
 
-    const neuron = exported.neurons.find((n) => n.uuid === "hidden-0");
+    const neuron = exported.neurons.find((n) => n.id === 5000);
     assertEquals(neuron?.squash, TANH.NAME);
     assertEquals(neuron?.bias, 0.5);
     assertEquals(exported.neurons.length, base.neurons.length);
@@ -68,23 +68,23 @@ Deno.test(
       operations: [
         {
           type: "addNeuron",
-          neuronUuid: "hidden-appended",
+          neuronId: 6000,
           neuronType: "hidden",
           squash: IDENTITY.NAME,
           bias: 0.0,
-          insertBeforeNeuronUuid: "does-not-exist",
+          insertBeforeNeuronId: "does-not-exist" as unknown as number,
         },
         // Keep the neuron alive: a lone hidden neuron will be removed by `fix()`.
         {
           type: "addSynapse",
-          fromNeuronUuid: "input-0",
-          toNeuronUuid: "hidden-appended",
+          fromNeuronId: 0,
+          toNeuronId: 6000,
           weight: 1.0,
         },
         {
           type: "addSynapse",
-          fromNeuronUuid: "hidden-appended",
-          toNeuronUuid: "output-0",
+          fromNeuronId: 6000,
+          toNeuronId: -1,
           weight: 0.5,
         },
       ],
@@ -95,17 +95,17 @@ Deno.test(
 
     assertEquals(exported.neurons.length, base.neurons.length + 1);
     assertEquals(exported.neurons.at(0)?.uuid, "hidden-appended");
-    assertEquals(exported.neurons.at(1)?.uuid, "output-0");
+    assertEquals(exported.neurons.at(1)?.uuid, String(-1));
     assertEquals(
       exported.synapses.some((s) =>
-        s.fromUUID === "input-0" && s.toUUID === "hidden-appended" &&
+        s.fromId === 0 && s.toId === 13167106390 &&
         s.weight === 1.0
       ),
       true,
     );
     assertEquals(
       exported.synapses.some((s) =>
-        s.fromUUID === "hidden-appended" && s.toUUID === "output-0" &&
+        s.fromId === 13167106390 && s.toId === -1 &&
         s.weight === 0.5
       ),
       true,
@@ -137,7 +137,7 @@ Deno.test(
       operations: [
         {
           type: "changeSquash",
-          neuronUuid: "hidden-0",
+          neuronId: 5000,
           squash: TANH.NAME,
         },
       ],
@@ -147,7 +147,7 @@ Deno.test(
     const exported = mutated.exportJSON();
 
     assertEquals(
-      exported.neurons.find((n) => n.uuid === "hidden-0")?.squash,
+      exported.neurons.find((n) => n.id === 5000)?.squash,
       TANH.NAME,
     );
   },
@@ -177,7 +177,7 @@ Deno.test(
       operations: [
         {
           type: "setBias",
-          neuronUuid: "hidden-0",
+          neuronId: 5000,
           bias: -0.25,
         },
       ],
@@ -187,7 +187,7 @@ Deno.test(
     const exported = mutated.exportJSON();
 
     assertEquals(
-      exported.neurons.find((n) => n.uuid === "hidden-0")?.bias,
+      exported.neurons.find((n) => n.id === 5000)?.bias,
       -0.25,
     );
   },
@@ -217,7 +217,7 @@ Deno.test(
       operations: [
         {
           type: "removeNeuron",
-          neuronUuid: "missing-neuron",
+          neuronId: 7000,
         },
       ],
     };
@@ -228,7 +228,7 @@ Deno.test(
     assertEquals(exported.neurons.length, base.neurons.length);
     assertEquals(exported.synapses.length, base.synapses.length);
     assertEquals(
-      exported.neurons.some((n) => n.uuid === "missing-neuron"),
+      exported.neurons.some((n) => n.id === 9346),
       false,
     );
   },

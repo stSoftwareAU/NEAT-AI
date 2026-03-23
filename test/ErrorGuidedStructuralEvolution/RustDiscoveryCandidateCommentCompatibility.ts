@@ -42,8 +42,8 @@ Deno.test(
       );
 
       const neuronJson = JSON.stringify({
-        sourceNeuronUuid: "input-0",
-        targetNeuronUuid: "output-0",
+        sourceNeuronId: "input-0",
+        targetNeuronId: "output-0",
         incomingWeight: 0.42,
         outgoingWeight: -0.13,
         squash: "TANH",
@@ -66,8 +66,8 @@ Deno.test(
       );
 
       const synapseJson = JSON.stringify({
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "output-0",
+        fromNeuronUuid: 0,
+        toNeuronUuid: -1,
         weight: 0.99,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0.0,
@@ -105,8 +105,8 @@ Deno.test(
       );
 
       const neuronJson = JSON.stringify({
-        sourceNeuronUuid: "input-0",
-        targetNeuronUuid: "output-0",
+        sourceNeuronId: "input-0",
+        targetNeuronId: "output-0",
         incomingWeight: 0.42,
         outgoingWeight: -0.13,
         squash: "TANH",
@@ -125,8 +125,8 @@ Deno.test(
       assertEquals(mappedNeuron.comment, undefined);
 
       const synapseJson = JSON.stringify({
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "output-0",
+        fromNeuronUuid: 0,
+        toNeuronUuid: -1,
         weight: 0.99,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0.0,

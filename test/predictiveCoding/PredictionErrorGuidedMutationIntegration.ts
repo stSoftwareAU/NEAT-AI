@@ -71,9 +71,9 @@ Deno.test(
     );
 
     // hidden0 (large error) should have highest weight among hidden neurons
-    const hidden0UUID = creature.neurons[3].uuid;
-    const hidden1UUID = creature.neurons[4].uuid;
-    const hidden2UUID = creature.neurons[5].uuid;
+    const hidden0UUID = creature.neurons[3].id;
+    const hidden1UUID = creature.neurons[4].id;
+    const hidden2UUID = creature.neurons[5].id;
 
     const w0 = bias!.neuronWeights.get(hidden0UUID)!;
     const w1 = bias!.neuronWeights.get(hidden1UUID)!;

@@ -115,7 +115,7 @@ Deno.test("Serialisation round-trip preserves integer neuron IDs", () => {
   }
 });
 
-Deno.test("Breeding offspring uses integer neuron IDs", () => {
+Deno.test("Breeding offspring uses integer neuron IDs", async () => {
   const { Offspring } = await import("../../src/architecture/Offspring.ts");
 
   const mum = new Creature(2, 1, {
@@ -129,15 +129,14 @@ Deno.test("Breeding offspring uses integer neuron IDs", () => {
   if (child) {
     for (const neuron of child.neurons) {
       assertEquals(
-        typeof neuron.id,
-        "number",
+        typeof neuron.id, "number",
         `Offspring neuron should have numeric id, got ${typeof neuron.id}`,
       );
     }
   }
 });
 
-Deno.test("Genetic compatibility works with integer IDs", () => {
+Deno.test("Genetic compatibility works with integer IDs", async () => {
   const { geneticCompatibility } = await import(
     "../../src/breed/GeneticCompatibility.ts"
   );

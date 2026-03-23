@@ -6,7 +6,7 @@ import { Neuron } from "../../src/architecture/Neuron.ts";
 Deno.test("Neuron constructor throws TopologyError for invalid type", () => {
   const creature = new Creature(2, 1);
   const error = assertThrows(
-    () => new Neuron("test-1", "bogus" as "hidden", 0, creature),
+    () => new Neuron("test-1" as unknown as number, "bogus" as "hidden", 0, creature),
     TopologyError,
   );
   assertIsError(error, TopologyError);
@@ -15,7 +15,7 @@ Deno.test("Neuron constructor throws TopologyError for invalid type", () => {
 Deno.test("Neuron constructor throws TopologyError for constant with squash", () => {
   const creature = new Creature(2, 1);
   const error = assertThrows(
-    () => new Neuron("test-1", "constant", 0, creature, "TANH"),
+    () => new Neuron("test-1" as unknown as number, "constant", 0, creature, "TANH"),
     TopologyError,
   );
   assertIsError(error, TopologyError);
@@ -23,7 +23,7 @@ Deno.test("Neuron constructor throws TopologyError for constant with squash", ()
 
 Deno.test("Neuron.validate throws TopologyError for missing squash on hidden", () => {
   const creature = new Creature(2, 1);
-  const neuron = new Neuron("test-1", "hidden", 0, creature, "TANH");
+  const neuron = new Neuron("test-1" as unknown as number, "hidden", 0, creature, "TANH");
   neuron.index = 2;
   // Force squash to be undefined to trigger validation error
   (neuron as unknown as { squash: undefined }).squash = undefined;
@@ -36,7 +36,7 @@ Deno.test("Neuron.validate throws TopologyError for missing squash on hidden", (
 
 Deno.test("Neuron.exportJSON throws TopologyError for input type", () => {
   const creature = new Creature(2, 1);
-  const neuron = new Neuron("input-0", "input", Infinity, creature);
+  const neuron = new Neuron("input-0" as unknown as number, "input", Infinity, creature);
   neuron.index = 0;
   const error = assertThrows(
     () => neuron.exportJSON(),
@@ -47,7 +47,7 @@ Deno.test("Neuron.exportJSON throws TopologyError for input type", () => {
 
 Deno.test("Neuron.mutate throws TopologyError for input node", () => {
   const creature = new Creature(2, 1);
-  const neuron = new Neuron("input-0", "input", Infinity, creature);
+  const neuron = new Neuron("input-0" as unknown as number, "input", Infinity, creature);
   neuron.index = 0;
   const error = assertThrows(
     () => neuron.mutate("SUB_NODE"),

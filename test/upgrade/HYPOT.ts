@@ -22,7 +22,7 @@ Deno.test("HYPOT upgrade removes deprecated squash and produces valid creature",
 
   upgraded.neurons.forEach((neuron) => {
     if (neuron.squash === HYPOT.NAME) {
-      fail(`Didn't remove HYPOT ${neuron.uuid}`);
+      fail(`Didn't remove HYPOT ${neuron.id}`);
     }
   });
 });

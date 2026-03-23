@@ -25,14 +25,14 @@ function makeCreature() {
       },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-3", weight: -0.3 },
-      { fromUUID: "input-1", toUUID: "hidden-3", weight: 0.3 },
+      { fromUUID: "input-0", toId: 5003, weight: -0.3 },
+      { fromUUID: "input-1", toId: 5003, weight: 0.3 },
 
-      { fromUUID: "hidden-3", toUUID: "hidden-4", weight: -0.5 },
-      { fromUUID: "hidden-4", toUUID: "output-0", weight: 0.6 },
+      { fromUUID: "hidden-3", toId: 5004, weight: -0.5 },
+      { fromUUID: "hidden-4", toId: -1, weight: 0.6 },
 
-      { fromUUID: "hidden-4", toUUID: "output-1", weight: 0.7 },
-      { fromUUID: "input-2", toUUID: "output-1", weight: 0.8 },
+      { fromUUID: "hidden-4", toId: -2, weight: 0.7 },
+      { fromUUID: "input-2", toId: -2, weight: 0.8 },
     ],
     input: 3,
     output: 2,
@@ -50,8 +50,8 @@ function makeMum() {
     generation: 1,
     weights: {},
     biases: {
-      "hidden-3": 3.1,
-      "hidden-4": 2.1,
+      5003: 3.1,
+      5004: 2.1,
     },
     score: -0.2,
   };
@@ -81,15 +81,15 @@ Deno.test("memetic preserved", () => {
       const childExport = child.exportJSON();
       console.log(JSON.stringify(childExport, null, 2));
       const synapse = childExport.synapses.find((s) =>
-        s.fromUUID === "input-2" && s.toUUID === "output-1"
+        s.fromId === 2 && s.toId === -2
       );
 
       assert(synapse, "Synapse should exist");
       if (synapse.weight === 0.456) {
-        const input2Weights = child.memetic.weights["input-2"];
+        const input2Weights = child.memetic.weights[2];
         assert(input2Weights, "Should have previous weight");
-        const output1Weight = input2Weights.find((w) =>
-          w.toUUID === "output-1"
+        const output1Weight = input2Weights.find((w: { toId: number; weight: number }) =>
+          w.toId === -2
         );
         assert(output1Weight !== undefined, "Should have previous weight");
         assertAlmostEquals(

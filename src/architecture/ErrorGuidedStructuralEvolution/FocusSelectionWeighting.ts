@@ -328,9 +328,8 @@ export async function selectNeuronsWeightedByError(
     );
     getLogger().error(
       `   Neuron weighted summary: ${
-        weightedValues.slice(0, 5).map((n) =>
-          `${n.id}: weight=${n.weight}`
-        ).join(", ")
+        weightedValues.slice(0, 5).map((n) => `${n.id}: weight=${n.weight}`)
+          .join(", ")
       }...`,
     );
     getLogger().warn(

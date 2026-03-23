@@ -32,14 +32,14 @@ export function applyAddSynapses(
 ): Creature | undefined {
   // Find synapses in candidate that don't exist in creature
   const existingSynapses = new Set(
-    creatureJSON.synapses.map((s: { fromId: number; toId: number }) =>
+    creatureJSON.synapses.map((s) =>
       `${s.fromId}->${s.toId}`
     ),
   );
   // Build set of existing neuron IDs to validate synapse endpoints
   // Include input neurons (not in neurons array but referenced by index)
   const existingNeurons = new Set(
-    creatureJSON.neurons.map((n: { id: number }) => n.id),
+    creatureJSON.neurons.map((n) => n.id),
   );
   const inputCount = creatureJSON.input ?? 0;
   for (let i = 0; i < inputCount; i++) {
@@ -48,14 +48,14 @@ export function applyAddSynapses(
   // Only add synapses where BOTH endpoints exist in current creature
   // (handles combinations where neurons were removed by prior steps)
   const newSynapses = candidateJSON.synapses.filter(
-    (s: { fromId: number; toId: number }) =>
-      !existingSynapses.has(`${s.fromId}->${s.toId}`) &&
-      existingNeurons.has(s.fromId) &&
-      existingNeurons.has(s.toId) &&
+    (s) =>
+      !existingSynapses.has(`${s.fromId!}->${s.toId!}`) &&
+      existingNeurons.has(s.fromId!) &&
+      existingNeurons.has(s.toId!) &&
       (!enforceForwardOnly ||
         (() => {
-          const from = idToIndex?.get(s.fromId);
-          const to = idToIndex?.get(s.toId);
+          const from = idToIndex?.get(s.fromId!);
+          const to = idToIndex?.get(s.toId!);
           // Forward-only: reject self-loops and back connections.
           return from !== undefined && to !== undefined && from < to;
         })()),
@@ -77,10 +77,10 @@ export function applyAddNeurons(
 ): Creature | undefined {
   // Find neurons in candidate that don't exist in creature
   const existingNeurons = new Set(
-    creatureJSON.neurons.map((n: { id: number }) => n.id),
+    creatureJSON.neurons.map((n) => n.id),
   );
   const candidateNeurons = candidateJSON.neurons.filter(
-    (n: { type: string; id: number }) =>
+    (n) =>
       n.type === "hidden" && !existingNeurons.has(n.id),
   );
   if (candidateNeurons.length === 0) return undefined;
@@ -124,12 +124,12 @@ export function applyAddNeurons(
   const inserted = new Set<number>();
   const mergedNeurons: typeof creatureJSON.neurons = [];
   for (const neuron of creatureJSON.neurons) {
-    const toInsert = anchorToNewNeurons.get(neuron.id);
+    const toInsert = anchorToNewNeurons.get(neuron.id!);
     if (toInsert && toInsert.length > 0) {
       for (const newNeuron of toInsert) {
-        if (inserted.has(newNeuron.id)) continue;
+        if (inserted.has(newNeuron.id!)) continue;
         mergedNeurons.push(newNeuron);
-        inserted.add(newNeuron.id);
+        inserted.add(newNeuron.id!);
       }
     }
     mergedNeurons.push(neuron);
@@ -138,24 +138,24 @@ export function applyAddNeurons(
   // Any remaining new neurons (eg, anchor was removed by a prior combo step)
   // are inserted before the first output to keep outputs contiguous.
   const remaining = candidateNeurons.filter(
-    (n: { id: number }) => !inserted.has(n.id),
+    (n) => !inserted.has(n.id!),
   );
   if (remaining.length > 0) {
     const firstOutputIndex = mergedNeurons.findIndex(
-      (n: { type: string }) => n.type === "output",
+      (n) => n.type === "output",
     );
     const insertAt = firstOutputIndex >= 0
       ? firstOutputIndex
       : mergedNeurons.length;
     mergedNeurons.splice(insertAt, 0, ...remaining);
-    for (const neuron of remaining) inserted.add(neuron.id);
+    for (const neuron of remaining) inserted.add(neuron.id!);
   }
 
   creatureJSON.neurons = mergedNeurons;
 
   // Update existing neurons set to include newly added neurons and input neurons
   const updatedNeurons = new Set(
-    creatureJSON.neurons.map((n: { id: number }) => n.id),
+    creatureJSON.neurons.map((n) => n.id),
   );
   const inputCount = creatureJSON.input ?? 0;
   for (let i = 0; i < inputCount; i++) {
@@ -169,14 +169,14 @@ export function applyAddNeurons(
   // Find synapses connected to these new neurons
   // Only include synapses where BOTH endpoints exist in current creature
   const newSynapses = candidateJSON.synapses.filter(
-    (s: { fromId: number; toId: number }) =>
-      (newNeuronIds.has(s.fromId) || newNeuronIds.has(s.toId)) &&
-      updatedNeurons.has(s.fromId) &&
-      updatedNeurons.has(s.toId) &&
+    (s) =>
+      (newNeuronIds.has(s.fromId!) || newNeuronIds.has(s.toId!)) &&
+      updatedNeurons.has(s.fromId!) &&
+      updatedNeurons.has(s.toId!) &&
       (!enforceForwardOnly ||
         (() => {
-          const from = idToIndexAfterInsertion?.get(s.fromId);
-          const to = idToIndexAfterInsertion?.get(s.toId);
+          const from = idToIndexAfterInsertion?.get(s.fromId!);
+          const to = idToIndexAfterInsertion?.get(s.toId!);
           // Forward-only: reject self-loops and back connections.
           return from !== undefined && to !== undefined && from < to;
         })()),
@@ -243,17 +243,17 @@ export function applyRemoveSynapse(
 ): Creature | undefined {
   // Find synapses that were in base but removed in candidate
   const baseSynapses = new Set(
-    baseJSON.synapses.map((s: { fromId: number; toId: number }) =>
+    baseJSON.synapses.map((s) =>
       `${s.fromId}->${s.toId}`
     ),
   );
   const candidateSynapses = new Set(
-    candidateJSON.synapses.map((s: { fromId: number; toId: number }) =>
+    candidateJSON.synapses.map((s) =>
       `${s.fromId}->${s.toId}`
     ),
   );
   const creatureSynapses = new Set(
-    creatureJSON.synapses.map((s: { fromId: number; toId: number }) =>
+    creatureJSON.synapses.map((s) =>
       `${s.fromId}->${s.toId}`
     ),
   );
@@ -266,13 +266,13 @@ export function applyRemoveSynapse(
   // Also add reconnection synapses: new in candidate but not in creature
   // These maintain connectivity after removal
   const toAdd = candidateJSON.synapses.filter(
-    (s: { fromId: number; toId: number }) =>
-      !baseSynapses.has(`${s.fromId}->${s.toId}`) &&
-      !creatureSynapses.has(`${s.fromId}->${s.toId}`) &&
+    (s) =>
+      !baseSynapses.has(`${s.fromId!}->${s.toId!}`) &&
+      !creatureSynapses.has(`${s.fromId!}->${s.toId!}`) &&
       (!enforceForwardOnly ||
         (() => {
-          const from = idToIndex?.get(s.fromId);
-          const to = idToIndex?.get(s.toId);
+          const from = idToIndex?.get(s.fromId!);
+          const to = idToIndex?.get(s.toId!);
           return from !== undefined && to !== undefined && from < to;
         })()),
   );
@@ -280,7 +280,7 @@ export function applyRemoveSynapse(
   if (toRemove.size === 0 && toAdd.length === 0) return undefined;
 
   creatureJSON.synapses = creatureJSON.synapses.filter(
-    (s: { fromId: number; toId: number }) =>
+    (s) =>
       !toRemove.has(`${s.fromId}->${s.toId}`),
   );
 
@@ -309,20 +309,20 @@ export function applyRemoveNeuron(
 ): Creature | undefined {
   // Find neurons that were in base but removed in candidate
   const baseNeurons = new Set(
-    baseJSON.neurons.filter((n: { type: string }) => n.type === "hidden").map(
-      (n: { id: number }) => n.id,
+    baseJSON.neurons.filter((n) => n.type === "hidden").map(
+      (n) => n.id,
     ),
   );
   const candidateNeurons = new Set(
-    candidateJSON.neurons.map((n: { id: number }) => n.id),
+    candidateJSON.neurons.map((n) => n.id),
   );
   const baseSynapses = new Set(
-    baseJSON.synapses.map((s: { fromId: number; toId: number }) =>
+    baseJSON.synapses.map((s) =>
       `${s.fromId}->${s.toId}`
     ),
   );
   const creatureSynapses = new Set(
-    creatureJSON.synapses.map((s: { fromId: number; toId: number }) =>
+    creatureJSON.synapses.map((s) =>
       `${s.fromId}->${s.toId}`
     ),
   );
@@ -334,22 +334,22 @@ export function applyRemoveNeuron(
 
   // First, apply the removals
   creatureJSON.neurons = creatureJSON.neurons.filter(
-    (n: { id: number }) => !toRemove.has(n.id),
+    (n) => !toRemove.has(n.id),
   );
   creatureJSON.synapses = creatureJSON.synapses.filter(
-    (s: { fromId: number; toId: number }) =>
+    (s) =>
       !toRemove.has(s.fromId) && !toRemove.has(s.toId),
   );
 
   // Clean up memetic data for removed neurons
   for (const neuronId of toRemove) {
-    cleanupMemeticForRemovedNeuron(creatureJSON, neuronId);
+    cleanupMemeticForRemovedNeuron(creatureJSON, neuronId!);
   }
 
   // Build set of remaining neuron IDs for synapse validation
   // Include input neurons (not in neurons array but referenced by index)
   const remainingNeurons = new Set(
-    creatureJSON.neurons.map((n: { id: number }) => n.id),
+    creatureJSON.neurons.map((n) => n.id),
   );
   const inputCount = creatureJSON.input ?? 0;
   for (let i = 0; i < inputCount; i++) {
@@ -362,15 +362,15 @@ export function applyRemoveNeuron(
 
   // Add reconnection synapses: new in candidate but not in creature
   const toAdd = candidateJSON.synapses.filter(
-    (s: { fromId: number; toId: number }) =>
-      !baseSynapses.has(`${s.fromId}->${s.toId}`) &&
-      !creatureSynapses.has(`${s.fromId}->${s.toId}`) &&
-      remainingNeurons.has(s.fromId) &&
-      remainingNeurons.has(s.toId) &&
+    (s) =>
+      !baseSynapses.has(`${s.fromId!}->${s.toId!}`) &&
+      !creatureSynapses.has(`${s.fromId!}->${s.toId!}`) &&
+      remainingNeurons.has(s.fromId!) &&
+      remainingNeurons.has(s.toId!) &&
       (!enforceForwardOnly ||
         (() => {
-          const from = idToIndexAfterRemovals?.get(s.fromId);
-          const to = idToIndexAfterRemovals?.get(s.toId);
+          const from = idToIndexAfterRemovals?.get(s.fromId!);
+          const to = idToIndexAfterRemovals?.get(s.toId!);
           return from !== undefined && to !== undefined && from < to;
         })()),
   );

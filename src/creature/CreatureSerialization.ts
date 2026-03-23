@@ -132,12 +132,17 @@ export function loadFrom(
 
   creature.clearState();
   const state = creature.state;
+  // Issue #1958: Support both new integer IDs and legacy string UUIDs.
+  // The idMap uses number keys for new format, and legacyUuidMap handles
+  // string UUIDs from old-format JSON data for backward compatibility.
   const idMap = new Map<number, number>();
+  const legacyUuidMap = new Map<string, number>();
 
   let i = json.input;
   while (i--) {
     const neuronId = inputNeuronId(i);
     idMap.set(neuronId, i);
+    legacyUuidMap.set(`input-${i}`, i);
     const n = new Neuron(neuronId, "input", 0, creature);
     n.index = i;
     creature.neurons[i] = n;
@@ -151,8 +156,19 @@ export function loadFrom(
     const jn = neurons[i];
     if (jn.type === "input") continue;
 
+    // deno-lint-ignore no-explicit-any
+    const raw = jn as any;
+
     if (jn.type === "output") {
-      (jn as { id: number }).id = outputNeuronId(outputIndex++);
+      const outId = outputNeuronId(outputIndex++);
+      (jn as { id: number }).id = outId;
+      // Legacy: if there was a string uuid, map it for synapse resolution
+      if (typeof raw.uuid === "string") {
+        legacyUuidMap.set(raw.uuid, pos);
+      }
+    } else if (jn.id === undefined && typeof raw.uuid === "string") {
+      // Legacy format: convert string UUID to integer ID
+      legacyUuidMap.set(raw.uuid, pos);
     }
 
     const n = Neuron.fromJSON(jn, creature);
@@ -179,15 +195,29 @@ export function loadFrom(
   for (let i = 0; i < synapseCount; i++) {
     const synapse = synapses[i];
     const se = synapse as SynapseExport;
-    const from = se.fromId !== undefined
-      ? idMap.get(se.fromId)
-      : (synapse as SynapseInternal).from;
+    // deno-lint-ignore no-explicit-any
+    const rawSyn = synapse as any;
+
+    // Issue #1958: Support both new integer IDs and legacy string UUIDs
+    let from: number | undefined;
+    if (se.fromId !== undefined) {
+      from = idMap.get(se.fromId);
+    } else if (typeof rawSyn.fromUUID === "string") {
+      from = legacyUuidMap.get(rawSyn.fromUUID);
+    } else {
+      from = (synapse as SynapseInternal).from;
+    }
 
     assert(from !== undefined, "FROM is undefined");
 
-    const to = se.toId !== undefined
-      ? idMap.get(se.toId)
-      : (synapse as SynapseInternal).to;
+    let to: number | undefined;
+    if (se.toId !== undefined) {
+      to = idMap.get(se.toId);
+    } else if (typeof rawSyn.toUUID === "string") {
+      to = legacyUuidMap.get(rawSyn.toUUID);
+    } else {
+      to = (synapse as SynapseInternal).to;
+    }
 
     if (to === undefined) {
       fail(

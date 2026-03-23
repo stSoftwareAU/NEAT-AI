@@ -318,7 +318,7 @@ Deno.test("Creature.propagate - handles extreme activation values without crashi
       assertEquals(
         Number.isFinite(neuron.bias),
         true,
-        `Neuron ${neuron.uuid} bias should remain finite, got ${neuron.bias}`,
+        `Neuron ${neuron.id} bias should remain finite, got ${neuron.bias}`,
       );
     }
   }

@@ -87,7 +87,7 @@ Deno.test("MAXIMUM: non-winner connections close to winner receive gradient", ()
   const exportBefore = creature.exportJSON();
   const weightsBefore = new Map<string, number>();
   for (const s of exportBefore.synapses) {
-    weightsBefore.set(`${s.fromUUID}->${s.toUUID}`, s.weight);
+    weightsBefore.set(`${s.fromId}->${s.toId}`, s.weight);
   }
 
   // Train with iterations: 1 so that weight changes from applyLearnings are
@@ -104,15 +104,15 @@ Deno.test("MAXIMUM: non-winner connections close to winner receive gradient", ()
   const exportAfter = trainedCreature.exportJSON();
   const weightsAfter = new Map<string, number>();
   for (const s of exportAfter.synapses) {
-    weightsAfter.set(`${s.fromUUID}->${s.toUUID}`, s.weight);
+    weightsAfter.set(`${s.fromId}->${s.toId}`, s.weight);
   }
 
   // MAXIMUM propagation passes gradient through the winner to the upstream
   // neuron. Verify gradient flowed through hidden-a by checking its inward
   // connection (input-0 -> hidden-a) changed weight.
   const winnerUpstreamDelta = Math.abs(
-    (weightsAfter.get("input-0->hidden-a") ?? 0) -
-      (weightsBefore.get("input-0->hidden-a") ?? 0),
+    (weightsAfter.get(String(9139)) ?? 0) -
+      (weightsBefore.get(String(9139)) ?? 0),
   );
   assert(
     winnerUpstreamDelta > 1e-10,
@@ -122,8 +122,8 @@ Deno.test("MAXIMUM: non-winner connections close to winner receive gradient", ()
   // The runner-up connection close to the winner should also receive partial
   // gradient via the leak mechanism (Issue #1874).
   const runnerUpDelta = Math.abs(
-    (weightsAfter.get("hidden-b->output-0") ?? 0) -
-      (weightsBefore.get("hidden-b->output-0") ?? 0),
+    (weightsAfter.get(String(9172)) ?? 0) -
+      (weightsBefore.get(String(9172)) ?? 0),
   );
   assert(
     runnerUpDelta > 1e-10,

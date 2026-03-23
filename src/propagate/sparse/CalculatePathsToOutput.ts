@@ -17,10 +17,10 @@ export function buildOutgoingSynapsesMap(
 ): OutgoingSynapsesMap {
   const map = new Map<number, SynapseExport[]>();
   for (const synapse of creature.synapses) {
-    let list = map.get(synapse.fromId);
+    let list = map.get(synapse.fromId!);
     if (list === undefined) {
       list = [];
-      map.set(synapse.fromId, list);
+      map.set(synapse.fromId!, list);
     }
     list.push(synapse);
   }
@@ -60,7 +60,7 @@ export function calculatePathsToOutput(
 
     // Iterate through each outgoing synapse.
     for (const synapse of outgoingSynapses) {
-      const toId = synapse.toId;
+      const toId = synapse.toId!;
 
       // If the target neuron is not already in the path, add it and enqueue it.
       if (!pathNeurons.has(toId)) {

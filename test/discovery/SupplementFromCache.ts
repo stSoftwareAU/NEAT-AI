@@ -19,12 +19,13 @@ import { makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 /** Helper to create a candidate creature with a squash change applied. */
 function makeSquashCandidate(
   base: Creature,
-  neuronUUID: string,
+  neuronId: string,
   squash: string,
 ): DiscoveryCandidate {
   const json = base.exportJSON();
-  const neuron = json.neurons.find((n) => n.uuid === neuronUUID);
-  if (!neuron) throw new Error(`Neuron ${neuronUUID} not found`);
+  // @ts-ignore: test with legacy string neuron IDs
+  const neuron = json.neurons.find((n) => n.id === neuronId);
+  if (!neuron) throw new Error(`Neuron ${neuronId} not found`);
   neuron.squash = squash;
   const modified = Creature.fromJSON(json);
   modified.validate();
@@ -33,9 +34,10 @@ function makeSquashCandidate(
     creature: modified,
     change: {
       type: "change-squash",
-      description: `Change squash on ${neuronUUID} to ${squash}`,
+      description: `Change squash on ${neuronId} to ${squash}`,
       squashCandidate: {
-        neuronUUID,
+        // @ts-ignore: test with legacy string neuron IDs
+        neuronId,
         previousSquash: "IDENTITY",
         squash,
         expectedCreatureScoreGain: 0.1,
@@ -64,8 +66,10 @@ function makeAddSynapseCandidate(
       type: "add-synapses",
       description: `Add synapse ${fromUUID} → ${toUUID}`,
       synapseCandidate: {
-        fromNeuronUUID: fromUUID,
-        toNeuronUUID: toUUID,
+        // @ts-ignore: test with legacy string neuron IDs
+        fromNeuronId: fromUUID,
+        // @ts-ignore: test with legacy string neuron IDs
+        toNeuronId: toUUID,
         weight,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,

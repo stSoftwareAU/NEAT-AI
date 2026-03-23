@@ -162,7 +162,7 @@ function addMissingSynapses(
     toIndexById.set(i, i);
   }
   for (let i = 0; i < to.neurons.length; i++) {
-    toIndexById.set(to.neurons[i].id, to.input + i);
+    toIndexById.set(to.neurons[i].id!, to.input + i);
   }
 
   const toNeuronsMap = new Map<
@@ -170,12 +170,12 @@ function addMissingSynapses(
     { type: string; squash?: string } | null
   >();
   to.neurons.forEach((n) => {
-    toNeuronsMap.set(n.id, n);
+    toNeuronsMap.set(n.id!, n);
   });
 
   const fromNeuronsMap = new Map<number, NeuronExport>();
   from.neurons.forEach((n) => {
-    fromNeuronsMap.set(n.id, n);
+    fromNeuronsMap.set(n.id!, n);
   });
 
   for (let indx = 0; indx < to.input; indx++) {
@@ -189,23 +189,23 @@ function addMissingSynapses(
   });
 
   from.synapses.forEach((s) => {
-    if (toNeuronsMap.has(s.fromId) && toNeuronsMap.has(s.toId)) {
+    if (toNeuronsMap.has(s.fromId!) && toNeuronsMap.has(s.toId!)) {
       if (forwardOnly) {
-        const fromIndex = toIndexById.get(s.fromId);
-        const toIndex = toIndexById.get(s.toId);
+        const fromIndex = toIndexById.get(s.fromId!);
+        const toIndex = toIndexById.get(s.toId!);
         // If we cannot resolve indices, do not attempt to add the synapse.
         if (fromIndex === undefined || toIndex === undefined) return;
         // Reject self-loops and backward/recurrent connections in forward-only mode.
         if (fromIndex >= toIndex) return;
       }
-      if (!synapsesSet.has(`${s.fromId}->${s.toId}`)) {
+      if (!synapsesSet.has(`${s.fromId!}->${s.toId!}`)) {
         const toSynapse: SynapseExport = JSON.parse(JSON.stringify(s));
         toSynapse.weight = 0;
         to.synapses.push(toSynapse);
-        const neuron = toNeuronsMap.get(s.toId);
+        const neuron = toNeuronsMap.get(s.toId!);
         if (neuron) {
           if (neuron.type === "constant") {
-            const fromNeuron = fromNeuronsMap.get(s.toId);
+            const fromNeuron = fromNeuronsMap.get(s.toId!);
             if (fromNeuron) {
               neuron.squash = fromNeuron.squash;
             }
@@ -266,7 +266,7 @@ function tuneRandomize(
   const idNodeMap = new Map<number, NeuronExport>();
 
   previousJSON.neurons.forEach((n) => {
-    idNodeMap.set(n.id, n);
+    idNodeMap.set(n.id!, n);
   });
 
   // Build a lookup for previous synapses by (fromId, toId)
@@ -283,7 +283,7 @@ function tuneRandomize(
 
   for (let i = fittestJSON.neurons.length; i--;) {
     const fittestNeuron = fittestJSON.neurons[i];
-    const previousNeuron = idNodeMap.get(fittestNeuron.id);
+    const previousNeuron = idNodeMap.get(fittestNeuron.id!);
 
     if (previousNeuron && fittestNeuron.squash === previousNeuron.squash) {
       let momentumFactor: number | undefined;
@@ -291,7 +291,7 @@ function tuneRandomize(
       if (existingMemetic?.ancestry && existingMemetic.ancestry.length > 0) {
         const momentum = calculateTrajectoryMomentum(
           existingMemetic,
-          fittestNeuron.id,
+          fittestNeuron.id!,
           undefined,
           true,
         );
@@ -310,7 +310,7 @@ function tuneRandomize(
         suggestedDirection,
         adaptiveParams,
       );
-      candidateBiases.set(fittestNeuron.id, {
+      candidateBiases.set(fittestNeuron.id!, {
         original: fittestNeuron.bias,
         candidate: result.changed ? result.value : fittestNeuron.bias,
         previousBias: previousNeuron.bias,
@@ -333,7 +333,7 @@ function tuneRandomize(
 
   for (let i = fittestJSON.synapses.length; i--;) {
     const fittestSynapse = fittestJSON.synapses[i];
-    const key = `${fittestSynapse.fromId}->${fittestSynapse.toId}`;
+    const key = `${fittestSynapse.fromId!}->${fittestSynapse.toId!}`;
     const previousSynapse = previousSynapseMap.get(key);
 
     if (previousSynapse) {
@@ -342,8 +342,8 @@ function tuneRandomize(
       if (existingMemetic?.ancestry && existingMemetic.ancestry.length > 0) {
         const momentum = calculateTrajectoryMomentum(
           existingMemetic,
-          fittestSynapse.fromId,
-          fittestSynapse.toId,
+          fittestSynapse.fromId!,
+          fittestSynapse.toId!,
           false,
         );
         if (momentum) {
@@ -364,18 +364,18 @@ function tuneRandomize(
 
       const entry = {
         synapseIndex: i,
-        fromId: fittestSynapse.fromId,
-        toId: fittestSynapse.toId,
+        fromId: fittestSynapse.fromId!,
+        toId: fittestSynapse.toId!,
         original: fittestSynapse.weight,
         candidate: result.changed ? result.value : fittestSynapse.weight,
         previousWeight: previousSynapse.weight,
       };
 
-      const existing = candidateWeights.get(fittestSynapse.toId);
+      const existing = candidateWeights.get(fittestSynapse.toId!);
       if (existing) {
         existing.push(entry);
       } else {
-        candidateWeights.set(fittestSynapse.toId, [entry]);
+        candidateWeights.set(fittestSynapse.toId!, [entry]);
       }
     }
   }

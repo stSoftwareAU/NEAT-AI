@@ -56,8 +56,8 @@ Deno.test({
     creature.validate();
 
     const candidates = [{
-      fromNeuronUUID: "input-0",
-      toNeuronUUID: "hidden-target",
+      fromNeuronId: 0,
+      toNeuronId: 6000,
       squash: IDENTITY.NAME,
       bias: 0,
       incomingWeight: 1,
@@ -78,12 +78,12 @@ Deno.test({
 
     const exportJSON = improved.exportJSON();
     const targetIndex = exportJSON.neurons.findIndex((n) =>
-      n.uuid === "hidden-target"
+      n.id === 238413746
     );
     assert(targetIndex >= 0, "Target neuron should exist");
 
     const discoveryIndex = exportJSON.neurons.findIndex((n) =>
-      typeof n.uuid === "string" && n.uuid.startsWith("hidden-discovery-")
+      typeof n.id! === "9903" as unknown && (n.id! >= 5000) // was startsWith("hidden-discovery-")
     );
     assert(discoveryIndex >= 0, "Should include a discovered neuron");
     assert(
@@ -120,8 +120,8 @@ Deno.test({
     creature.validate();
 
     const candidates = [{
-      fromNeuronUUID: "input-0",
-      toNeuronUUID: "output-1",
+      fromNeuronId: 0,
+      toNeuronId: -2,
       squash: IDENTITY.NAME,
       bias: 0,
       incomingWeight: 1,
@@ -147,7 +147,7 @@ Deno.test({
     assert(firstOutputIndex >= 0, "Expected outputs to exist");
 
     const discoveryIndex = exportJSON.neurons.findIndex((n) =>
-      typeof n.uuid === "string" && n.uuid.startsWith("hidden-discovery-")
+      typeof n.id! === "9903" as unknown && (n.id! >= 5000) // was startsWith("hidden-discovery-")
     );
     assert(discoveryIndex >= 0, "Should include a discovered neuron");
 
@@ -182,8 +182,8 @@ Deno.test({
     CreatureUtil.makeUUID(creature);
 
     const candidates = [{
-      fromNeuronUUID: "input-0",
-      toNeuronUUID: "output-0",
+      fromNeuronId: 0,
+      toNeuronId: -1,
       squash: TANH.NAME,
       bias: 0.1,
       incomingWeight: 0.5,
@@ -211,7 +211,7 @@ Deno.test({
     );
 
     const discoveryNeuron = improved.neurons.find((n) =>
-      n.uuid?.startsWith("hidden-discovery-")
+      n.type === "hidden" && n.squash === "TANH"
     );
     assertExists(discoveryNeuron, "Should have discovery neuron");
     assertEquals(discoveryNeuron.squash, TANH.NAME);

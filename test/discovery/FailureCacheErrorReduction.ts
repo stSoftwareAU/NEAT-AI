@@ -50,8 +50,8 @@ Deno.test({
           description: "Add neuron test",
           expectedErrorReduction: 0.05, // Expected 5% reduction
           neuronDetails: {
-            fromNeuronUUID: "input-0",
-            toNeuronUUID: "output-0",
+            fromNeuronId: 0,
+            toNeuronId: -1,
             incomingWeight: 0.5,
             outgoingWeight: -0.3,
             bias: 0.1,
@@ -287,8 +287,8 @@ Deno.test("extractTargetNeuronInfo finds neuron using shortID for add-synapses",
   // After fix: result should contain the target neuron info
   assert(result !== undefined, "Should find target neuron using shortID");
   assertEquals(
-    result!.uuid,
-    fullTargetUUID,
+    result!.id,
+    fullTargetUUID as unknown as number,
     "Should return full UUID, not shortID",
   );
   assertEquals(result!.squash, "TANH", "Should return correct squash function");
@@ -380,7 +380,7 @@ Deno.test("recordFailure includes removalCandidate in rustRequest for remove-low
 
     // Create a RemovalCandidate as Rust would return it
     const removalCandidate: RemovalCandidate = {
-      neuronUUID: "hidden-1",
+      neuronId: 5001,
       totalError: 5.0,
       impact: 0.00861,
       reason:
@@ -423,9 +423,9 @@ Deno.test("recordFailure includes removalCandidate in rustRequest for remove-low
       "rustRequest.removalCandidate should be present",
     );
     assertEquals(
-      parsed.rustRequest.removalCandidate.neuronUUID,
+      parsed.rustRequest.removalCandidate.neuronId,
       "hidden-1",
-      "removalCandidate.neuronUUID should match",
+      "removalCandidate.neuronId should match",
     );
     assertEquals(
       parsed.rustRequest.removalCandidate.totalError,
@@ -466,7 +466,7 @@ Deno.test("recordFailure includes harmfulNeuronCandidate in rustRequest for remo
 
     // Create a CandidateHarmfulNeuron as would be produced during analysis
     const harmfulNeuronCandidate: CandidateHarmfulNeuron = {
-      neuronUUID: "hidden-1",
+      neuronId: 5001,
       errorMagnitude: 1.5e11,
       expectedCreatureScoreGain: 0.05,
       sampleCount: 100,
@@ -511,9 +511,9 @@ Deno.test("recordFailure includes harmfulNeuronCandidate in rustRequest for remo
       "rustRequest.harmfulNeuronCandidate should be present",
     );
     assertEquals(
-      parsed.rustRequest.harmfulNeuronCandidate.neuronUUID,
+      parsed.rustRequest.harmfulNeuronCandidate.neuronId,
       "hidden-1",
-      "harmfulNeuronCandidate.neuronUUID should match",
+      "harmfulNeuronCandidate.neuronId should match",
     );
     assertEquals(
       parsed.rustRequest.harmfulNeuronCandidate.errorMagnitude,
@@ -553,8 +553,8 @@ Deno.test("recordFailure includes harmfulSynapseCandidate in rustRequest for rem
 
     // Create a CandidateSynapse as would be produced during harmful synapse analysis
     const harmfulSynapseCandidate: CandidateSynapse = {
-      fromNeuronUUID: "input-0",
-      toNeuronUUID: "hidden-1",
+      fromNeuronId: 0,
+      toNeuronId: 5001,
       weight: -0.5,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -572,8 +572,8 @@ Deno.test("recordFailure includes harmfulSynapseCandidate in rustRequest for rem
           harmfulSynapseCandidate.expectedCreatureScoreGain,
         sampleSize: harmfulSynapseCandidate.totalCount,
         synapseDetails: {
-          fromNeuronUUID: harmfulSynapseCandidate.fromNeuronUUID,
-          toNeuronUUID: harmfulSynapseCandidate.toNeuronUUID,
+          fromNeuronId: harmfulSynapseCandidate.fromNeuronId,
+          toNeuronId: harmfulSynapseCandidate.toNeuronId,
         },
         harmfulSynapseCandidate,
       },
@@ -603,14 +603,14 @@ Deno.test("recordFailure includes harmfulSynapseCandidate in rustRequest for rem
       "rustRequest.harmfulSynapseCandidate should be present",
     );
     assertEquals(
-      parsed.rustRequest.harmfulSynapseCandidate.fromNeuronUUID,
+      parsed.rustRequest.harmfulSynapseCandidate.fromNeuronId,
       "input-0",
-      "harmfulSynapseCandidate.fromNeuronUUID should match",
+      "harmfulSynapseCandidate.fromNeuronId should match",
     );
     assertEquals(
-      parsed.rustRequest.harmfulSynapseCandidate.toNeuronUUID,
+      parsed.rustRequest.harmfulSynapseCandidate.toNeuronId,
       "hidden-1",
-      "harmfulSynapseCandidate.toNeuronUUID should match",
+      "harmfulSynapseCandidate.toNeuronId should match",
     );
     assertEquals(
       parsed.rustRequest.harmfulSynapseCandidate.weight,

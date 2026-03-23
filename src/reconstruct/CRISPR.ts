@@ -421,8 +421,8 @@ export class CRISPR {
     });
 
     exportJSON.synapses.forEach((synapse) => {
-      const fromIndx = idMap.get(synapse.fromId);
-      const toIndx = idMap.get(synapse.toId);
+      const fromIndx = idMap.get(synapse.fromId!);
+      const toIndx = idMap.get(synapse.toId!);
 
       if (fromIndx !== undefined && toIndx !== undefined) {
         if (tmpCreature.getSynapse(fromIndx, toIndx) === null) {

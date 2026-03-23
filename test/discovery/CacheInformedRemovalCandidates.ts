@@ -57,7 +57,7 @@ function makeBaseCreature(): Creature {
  * Creates a success cache directory with removal entries for the given neuron UUIDs.
  */
 async function createSuccessCache(
-  neuronUUIDs: string[],
+  neuronIds: string[],
   options?: { scoreDelta?: number; timestamp?: string },
 ): Promise<string> {
   const cacheDir = await Deno.makeTempDir({
@@ -66,7 +66,7 @@ async function createSuccessCache(
   const removeLowImpactDir = join(cacheDir, "remove-low-impact");
   await Deno.mkdir(removeLowImpactDir, { recursive: true });
 
-  const writePromises = neuronUUIDs.map((uuid, i) =>
+  const writePromises = neuronIds.map((uuid, i) =>
     Deno.writeTextFile(
       join(removeLowImpactDir, `entry-${i}.json`),
       JSON.stringify({
@@ -78,7 +78,7 @@ async function createSuccessCache(
         error: 0.5,
         timestamp: options?.timestamp ?? "2025-01-15T10:00:00.000Z",
         rustRequest: {
-          removalCandidate: { neuronUUID: uuid },
+          removalCandidate: { neuronId: uuid },
         },
       }),
     )
@@ -166,10 +166,10 @@ Deno.test("buildCacheInformedRemovalCandidates - builds pair candidate from two 
       );
 
       // Verify the removed neurons are actually gone
-      const neuronUUIDs = candidate.creature.neurons.map((n) => n.uuid);
+      const neuronIds = candidate.creature.neurons.map((n) => n.id);
       // At least one of the cached neurons should be removed
       const removedCount = ["hidden-1", "hidden-2"].filter(
-        (uuid) => !neuronUUIDs.includes(uuid),
+        (uuid) => !neuronIds.includes(uuid as unknown as number),
       ).length;
       assert(
         removedCount >= 2,

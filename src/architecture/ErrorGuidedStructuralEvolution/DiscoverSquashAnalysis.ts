@@ -341,9 +341,7 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
       const currentActivations: number[] = [];
       const idealActivations: number[] = [];
 
-      const neuron = creature.neurons.find((neuron) =>
-        neuron.id === neuronId
-      );
+      const neuron = creature.neurons.find((neuron) => neuron.id === neuronId);
       if (!neuron) return undefined;
 
       const currentSquash = neuron.squash;

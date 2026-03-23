@@ -6,14 +6,14 @@ import { calculatePathsToOutput } from "../../../src/propagate/sparse/CalculateP
 Deno.test("calculatePathsToOutput returns all downstream neurons from chosen set to outputs", () => {
   const creature = makeCreature();
 
-  const chosenSet = new Set<string>();
+  const chosenSet: Set<any> = new Set();
   chosenSet.add("hidden-3");
   chosenSet.add("output-1");
 
   const paths = calculatePathsToOutput(chosenSet, creature.exportJSON());
 
   console.log(paths);
-  const expectedPaths = new Set<string>();
+  const expectedPaths: Set<any> = new Set();
   expectedPaths.add("hidden-3");
   expectedPaths.add("hidden-4");
   expectedPaths.add("output-1");

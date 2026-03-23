@@ -189,12 +189,12 @@ Deno.test("Offspring.cloneConnections - converts internal to export format", () 
   assertEquals(exported.length, internalConns.length);
   for (let i = 0; i < exported.length; i++) {
     assertEquals(
-      exported[i].fromUUID,
-      creature.neurons[internalConns[i].from].uuid,
+      exported[i].fromId,
+      creature.neurons[internalConns[i].from].id,
     );
     assertEquals(
-      exported[i].toUUID,
-      creature.neurons[internalConns[i].to].uuid,
+      exported[i].toId,
+      creature.neurons[internalConns[i].to].id,
     );
     assertEquals(exported[i].weight, internalConns[i].weight);
   }
@@ -216,13 +216,13 @@ Deno.test("Offspring.sortNeurons - keeps input before hidden before output", () 
 
   // Create a child array replicating the mother's structure
   const child = [...creature.neurons];
-  const connectionsMap = new Map<string, ConnectionRef>();
+  const connectionsMap = new Map<number, ConnectionRef>();
 
   for (const neuron of creature.neurons) {
     if (neuron.type !== "input") {
       const conns = creature.inwardConnections(neuron.index);
       connectionsMap.set(
-        neuron.uuid,
+        neuron.id,
         { parent: creature, synapses: conns },
       );
     }

@@ -69,9 +69,7 @@ export function addHelpfulNeurons(
     // (activation looks like zero at that stage).
     const fromIndex = candidate.fromNeuronId < creature.input
       ? -1
-      : exportJSON.neurons.findIndex((n) =>
-        n.id === candidate.fromNeuronId
-      );
+      : exportJSON.neurons.findIndex((n) => n.id === candidate.fromNeuronId);
     const toIndex = exportJSON.neurons.findIndex((n) =>
       n.id === candidate.toNeuronId
     );

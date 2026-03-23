@@ -82,10 +82,10 @@ Deno.test(
     const expected = new Float32Array([0]);
     const map = creature.record(expected);
 
-    const victimRec = map.get("abs-victim");
+    const victimRec = map.get("abs-victim" as unknown as number);
     assert(victimRec, "expected a discovery record for abs-victim");
 
-    const altRec = map.get("id-alt");
+    const altRec = map.get("id-alt" as unknown as number);
     assert(altRec, "expected a discovery record for id-alt");
 
     // Key assertion: abs-victim starts feasible. After redistribution, it may

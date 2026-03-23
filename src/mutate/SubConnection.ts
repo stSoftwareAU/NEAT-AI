@@ -29,7 +29,7 @@ export class SubConnection extends AbstractMutationOperator {
     }
     // Then exported neurons
     for (const neuron of exportJSON.neurons) {
-      neuronIndexMap.set(neuron.id, idx++);
+      neuronIndexMap.set(neuron.id!, idx++);
     }
 
     // Build a set of IF neuron UUIDs and count their connection types,
@@ -37,7 +37,7 @@ export class SubConnection extends AbstractMutationOperator {
     const ifNeuronIds = new Set<number>();
     for (const neuron of exportJSON.neurons) {
       if (neuron.squash === "IF") {
-        ifNeuronIds.add(neuron.id);
+        ifNeuronIds.add(neuron.id!);
       }
     }
 
@@ -55,7 +55,7 @@ export class SubConnection extends AbstractMutationOperator {
         });
       }
       for (const synapse of exportJSON.synapses) {
-        const counts = ifConnectionCounts.get(synapse.toId);
+        const counts = ifConnectionCounts.get(synapse.toId!);
         if (counts) {
           const synapseType = synapse.type ?? "positive";
           if (synapseType === "condition") counts.condition++;
@@ -66,8 +66,8 @@ export class SubConnection extends AbstractMutationOperator {
     }
 
     for (const synapse of exportJSON.synapses) {
-      const fromIdx = neuronIndexMap.get(synapse.fromId);
-      const toIdx = neuronIndexMap.get(synapse.toId);
+      const fromIdx = neuronIndexMap.get(synapse.fromId!);
+      const toIdx = neuronIndexMap.get(synapse.toId!);
 
       // Only consider forward connections (to > from)
       if (fromIdx !== undefined && toIdx !== undefined && toIdx > fromIdx) {
@@ -83,7 +83,7 @@ export class SubConnection extends AbstractMutationOperator {
           this.creature.inFocus(toIdx, focusList);
 
         if (inFocus) {
-          possible.push({ fromId: synapse.fromId, toId: synapse.toId });
+          possible.push({ fromId: synapse.fromId!, toId: synapse.toId! });
         }
       }
     }
@@ -99,8 +99,7 @@ export class SubConnection extends AbstractMutationOperator {
 
     // Remove the selected synapse
     exportJSON.synapses = exportJSON.synapses.filter(
-      (s) =>
-        s.fromId !== randomConn.fromId || s.toId !== randomConn.toId,
+      (s) => s.fromId !== randomConn.fromId || s.toId !== randomConn.toId,
     );
 
     // Clean up memetic data for the removed synapse
@@ -132,7 +131,7 @@ export class SubConnection extends AbstractMutationOperator {
       { condition: number; positive: number; negative: number }
     >,
   ): boolean {
-    const counts = ifConnectionCounts.get(synapse.toId);
+    const counts = ifConnectionCounts.get(synapse.toId!);
     if (!counts) return false;
 
     const synapseType = synapse.type ?? "positive";

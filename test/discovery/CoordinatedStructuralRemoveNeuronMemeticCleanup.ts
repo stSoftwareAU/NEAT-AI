@@ -20,10 +20,10 @@ Deno.test(
         { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
       ],
       synapses: [
-        { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.2 },
-        { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
+        { fromUUID: "input-0", toId: 5000, weight: 0.2 },
+        { fromUUID: "hidden-0", toId: -1, weight: 0.25 },
         // Preserve a valid topology after removal (output still has an inbound edge).
-        { fromUUID: "input-0", toUUID: "output-0", weight: 0.05 },
+        { fromUUID: "input-0", toId: -1, weight: 0.05 },
       ],
       memetic: {
         generation: 1,
@@ -31,7 +31,7 @@ Deno.test(
         // Empty weights keeps this test focused on the missing neuron-level cleanup.
         weights: {},
         biases: {
-          "hidden-0": 0.1,
+          5000: 0.1,
         },
       },
     };
@@ -43,7 +43,7 @@ Deno.test(
       operations: [
         {
           type: "removeNeuron",
-          neuronUuid: "hidden-0",
+          neuronId: 5000,
         },
       ],
     };
@@ -51,7 +51,7 @@ Deno.test(
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
     const exported = mutated.exportJSON();
 
-    assertEquals(exported.neurons.some((n) => n.uuid === "hidden-0"), false);
+    assertEquals(exported.neurons.some((n) => n.id === 5000), false);
     assertEquals(exported.memetic, undefined);
     assertEquals(exported.semanticVersion, "3.2.1");
   },

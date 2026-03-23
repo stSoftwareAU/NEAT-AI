@@ -75,7 +75,7 @@ Deno.test({
       60,
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
@@ -96,7 +96,7 @@ Deno.test({
 
     // Calculate potential error reduction for each neuron
     const neuronsWithPotential = allViableNeurons.map((n) => ({
-      uuid: n.uuid,
+      uuid: n.id,
       totalError: n.totalError,
       impact: n.impact,
       potentialErrorReduction: n.totalError * n.impact,
@@ -211,7 +211,7 @@ Deno.test({
       60,
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);

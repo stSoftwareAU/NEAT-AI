@@ -26,11 +26,11 @@ Deno.test("FromUUID", () => {
   let foundFromToA = false;
   let foundFromToB = false;
   exported.synapses.forEach((synapse) => {
-    if (synapse.fromUUID === "input-299" && synapse.toUUID === "output-0") {
+    if (synapse.fromId === 299 && synapse.toId === -1) {
       foundFromToA = true;
       assertAlmostEquals(synapse.weight, 0.123);
     }
-    if (synapse.fromUUID === "input-123" && synapse.toUUID === "output-0") {
+    if (synapse.fromId === 123 && synapse.toId === -1) {
       foundFromToB = true;
       assertAlmostEquals(synapse.weight, 0.456);
     }

@@ -535,8 +535,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
         this.creature,
         neuronId,
         records,
-        (id, derivativeMap) =>
-          this.calculateNeuronImpact(id, derivativeMap),
+        (id, derivativeMap) => this.calculateNeuronImpact(id, derivativeMap),
         this.loggingEnabled,
         (level, message, details) => this.log(level, message, details),
       );

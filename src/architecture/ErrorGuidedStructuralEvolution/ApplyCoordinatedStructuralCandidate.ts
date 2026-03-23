@@ -18,7 +18,7 @@ function buildIdToIndexMap(creature: CreatureExport): Map<number, number> {
     idToIndex.set(i, i);
   }
   for (let i = 0; i < creature.neurons.length; i++) {
-    idToIndex.set(creature.neurons[i].id, inputCount + i);
+    idToIndex.set(creature.neurons[i].id!, inputCount + i);
   }
   return idToIndex;
 }
@@ -156,7 +156,7 @@ export function applyCoordinatedStructuralCandidate(
         const removedEdges: Array<{ fromId: number; toId: number }> = [];
         for (const s of next.synapses) {
           if (s.fromId === neuronId || s.toId === neuronId) {
-            removedEdges.push({ fromId: s.fromId, toId: s.toId });
+            removedEdges.push({ fromId: s.fromId!, toId: s.toId! });
           }
         }
         next.synapses = next.synapses.filter((s) =>
@@ -220,7 +220,7 @@ export function applyCoordinatedStructuralCandidate(
         for (let i = 0; i < inputCount; i++) {
           existingNeuronIds.add(i);
         }
-        for (const n of next.neurons) existingNeuronIds.add(n.id);
+        for (const n of next.neurons) existingNeuronIds.add(n.id!);
         if (
           !existingNeuronIds.has(op.fromNeuronId) ||
           !existingNeuronIds.has(op.toNeuronId)

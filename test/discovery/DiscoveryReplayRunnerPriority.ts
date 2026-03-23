@@ -61,7 +61,7 @@ Deno.test("DiscoveryReplayRunner processes entries in priority order (highest sc
     },
     evaluateError: (c) => {
       const id = c.uuid ?? "";
-      if (id !== "base") {
+      if (id !== "9998" as unknown) {
         // Extract the entry key from the UUID
         const keyMatch = id.match(/-(\w+)$/);
         if (keyMatch) {
@@ -70,7 +70,7 @@ Deno.test("DiscoveryReplayRunner processes entries in priority order (highest sc
       }
 
       // All candidates succeed to verify ordering
-      if (id === "base") return Promise.resolve({ error: 0.5, score: 0.5 });
+      if (id === "") return Promise.resolve({ error: 0.5, score: 0.5 });
       return Promise.resolve({ error: 0.3, score: 0.7 });
     },
   });
@@ -122,7 +122,7 @@ Deno.test("DiscoveryReplayRunner prioritises by scoreDelta when selecting best i
     },
     evaluateError: (c) => {
       const id = c.uuid ?? "";
-      if (id === "base") return Promise.resolve({ error: 0.5, score: 0.5 });
+      if (id === "") return Promise.resolve({ error: 0.5, score: 0.5 });
       // Both actually improve, but by different amounts matching their scoreDelta
       if (id.endsWith("-small")) {
         return Promise.resolve({ error: 0.49, score: 0.51 });
@@ -175,7 +175,7 @@ Deno.test("DiscoveryReplayRunner evaluations include priority information", asyn
     },
     evaluateError: (c) => {
       const id = c.uuid ?? "";
-      if (id === "base") return Promise.resolve({ error: 0.5, score: 0.5 });
+      if (id === "") return Promise.resolve({ error: 0.5, score: 0.5 });
       if (id.endsWith("-k1")) {
         return Promise.resolve({ error: 0.4, score: 0.6 });
       }
@@ -239,7 +239,7 @@ Deno.test("DiscoveryReplayRunner sorts entries by scoreDelta before processing",
     },
     evaluateError: (c) => {
       const id = c.uuid ?? "";
-      if (id === "base") return Promise.resolve({ error: 0.5, score: 0.5 });
+      if (id === "") return Promise.resolve({ error: 0.5, score: 0.5 });
       // All improve equally
       return Promise.resolve({ error: 0.4, score: 0.6 });
     },

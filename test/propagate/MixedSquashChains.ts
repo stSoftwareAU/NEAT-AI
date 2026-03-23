@@ -416,7 +416,7 @@ Deno.test("Gradient magnitude: error at first hidden layer is non-trivial and fi
     // should have changed (indicating gradient reached it).
     const exportedJson = creature.exportJSON();
     const firstSynapse = exportedJson.synapses.find(
-      (s) => s.toUUID === "h0",
+      (s) => s.toId === 9859,
     );
     assert(
       firstSynapse !== undefined,
@@ -551,7 +551,7 @@ Deno.test("Safe zone: mixed squash types compose correctly through connections",
   for (const synapse of exported.synapses) {
     assert(
       Number.isFinite(synapse.weight),
-      `Synapse ${synapse.fromUUID}→${synapse.toUUID} weight is not finite: ${synapse.weight}`,
+      `Synapse ${synapse.fromId}→${synapse.toId} weight is not finite: ${synapse.weight}`,
     );
   }
 

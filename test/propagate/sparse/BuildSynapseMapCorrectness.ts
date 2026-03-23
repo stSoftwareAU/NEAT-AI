@@ -27,6 +27,7 @@ Deno.test("buildSynapseMap - correctness verification", () => {
   // Run the function multiple times to ensure consistent results
   const results: Set<string>[] = [];
   for (let i = 0; i < 5; i++) {
+    // @ts-ignore: test with legacy string neuron IDs
     results.push(new Set(chooseNeurons(creatureExport, config)));
   }
 
@@ -34,13 +35,13 @@ Deno.test("buildSynapseMap - correctness verification", () => {
   const validNeuronUUIDs = new Set(
     creatureExport.neurons
       .filter((n) => n.type === "hidden" || n.type === "output")
-      .map((n) => n.uuid),
+      .map((n) => n.id),
   );
 
   for (const result of results) {
     for (const uuid of result) {
       assert(
-        validNeuronUUIDs.has(uuid),
+        validNeuronUUIDs.has(uuid as unknown as number),
         `Result contains invalid neuron UUID: ${uuid}`,
       );
     }

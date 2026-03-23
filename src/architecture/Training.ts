@@ -680,7 +680,7 @@ function trainDirBinary(
         }
         const remainingNeuronIds = new Set<number>();
         for (const n of bestCreatureJSON.neurons) {
-          remainingNeuronIds.add(n.id);
+          remainingNeuronIds.add(n.id!);
         }
 
         // Build a map of creature neuron properties for trace sync.
@@ -689,7 +689,7 @@ function trainDirBinary(
           { squash?: string; bias: number; type: string }
         >();
         for (const n of bestCreatureJSON.neurons) {
-          creatureNeuronProps.set(n.id, {
+          creatureNeuronProps.set(n.id!, {
             squash: n.squash,
             bias: n.bias,
             type: n.type,
@@ -702,12 +702,12 @@ function trainDirBinary(
             remainingSynapseKeys.has(`${s.fromId}->${s.toId}`)
           ),
           neurons: bestTraceJSON.neurons.filter((n) =>
-            remainingNeuronIds.has(n.id)
+            remainingNeuronIds.has(n.id!)
           ).map((n) => {
             // Sync neuron properties (squash, bias, type) with the
             // cleaned creature. applyLearnings can change squash types
             // (e.g. IF → IDENTITY) which must be reflected in the trace.
-            const props = creatureNeuronProps.get(n.id);
+            const props = creatureNeuronProps.get(n.id!);
             if (props) {
               return { ...n, squash: props.squash, bias: props.bias };
             }
@@ -717,12 +717,12 @@ function trainDirBinary(
       }
 
       bestTraceJSON.neurons.forEach((n) => {
-        if (!sparseConfig.traceNeeded(n.id)) {
+        if (!sparseConfig.traceNeeded(n.id!)) {
           delete (n as { trace?: unknown }).trace;
         }
       });
       bestTraceJSON.synapses.forEach((s) => {
-        if (!sparseConfig.traceNeeded(s.toId)) {
+        if (!sparseConfig.traceNeeded(s.toId!)) {
           delete (s as { trace?: unknown }).trace;
         }
       });

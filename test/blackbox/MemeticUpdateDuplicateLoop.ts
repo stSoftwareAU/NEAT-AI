@@ -17,8 +17,8 @@ function createTestCreature(): CreatureExport {
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-1", weight: 0.5 },
-      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.8 },
+      { fromUUID: "input-0", toId: 5001, weight: 0.5 },
+      { fromUUID: "hidden-1", toId: -1, weight: 0.8 },
     ],
   };
 }
@@ -36,9 +36,11 @@ Deno.test("memeticUpdate - detects bias changes between parent and child", () =>
   const result = memeticUpdate(parent, child);
   assert(result, "Should return a MemeticInterface");
   assert(result.biases, "Should have biases object");
+  // The hidden neuron is at index 2 (after 2 inputs), use its numeric ID
+  const hiddenId = parent.neurons[2].id;
   assert(
-    result.biases["hidden-1"] !== undefined,
-    "Should track bias change for hidden-1",
+    result.biases[hiddenId] !== undefined,
+    "Should track bias change for hidden neuron",
   );
 });
 
@@ -71,8 +73,8 @@ Deno.test("memeticUpdate - returns undefined when neuron counts differ", () => {
     bias: 0.3,
   });
   childJSON.synapses.push(
-    { fromUUID: "hidden-1", toUUID: "hidden-2", weight: 0.5 },
-    { fromUUID: "hidden-2", toUUID: "output-0", weight: 0.4 },
+    { fromUUID: "hidden-1", toId: 5002, weight: 0.5 },
+    { fromUUID: "hidden-2", toId: -1, weight: 0.4 },
   );
   const child = Creature.fromJSON(childJSON);
 
@@ -108,9 +110,9 @@ Deno.test("memeticUpdate - preserves existing memetic data", () => {
   const existingMemetic: MemeticInterface = {
     generation: 1,
     score: 0.5,
-    biases: { "hidden-1": 0.3 },
+    biases: { 5001: 0.3 },
     weights: {
-      "input-0": [{ toUUID: "hidden-1", weight: 0.4 }],
+      0: [{ toId: 5001, weight: 0.4 }],
     },
   };
   parent.memetic = existingMemetic;
@@ -123,7 +125,7 @@ Deno.test("memeticUpdate - preserves existing memetic data", () => {
   assert(result, "Should return a MemeticInterface");
   // The existing memetic biases should be preserved
   assertEquals(
-    result.biases?.["hidden-1"],
+    result.biases?.[5001],
     0.3,
     "Should preserve existing memetic bias data",
   );

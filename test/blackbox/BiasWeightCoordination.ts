@@ -10,13 +10,13 @@ Deno.test(
   "coordinateBiasWeightAdjustments - returns empty when no changes",
   () => {
     const plan: NeuronAdjustmentPlan = {
-      neuronUUID: "hidden-1",
+      neuronId: 5001,
       originalBias: 0.5,
       candidateBias: 0.5, // No change
       synapses: [
         {
-          fromUUID: "input-0",
-          toUUID: "hidden-1",
+          fromId: 0,
+          toId: 5001,
           originalWeight: 0.3,
           candidateWeight: 0.3, // No change
         },
@@ -33,7 +33,7 @@ Deno.test(
   "coordinateBiasWeightAdjustments - passes through bias-only change",
   () => {
     const plan: NeuronAdjustmentPlan = {
-      neuronUUID: "hidden-1",
+      neuronId: 5001,
       originalBias: 0.5,
       candidateBias: 0.6,
       synapses: [],
@@ -49,13 +49,13 @@ Deno.test(
   "coordinateBiasWeightAdjustments - passes through weight-only change",
   () => {
     const plan: NeuronAdjustmentPlan = {
-      neuronUUID: "hidden-1",
+      neuronId: 5001,
       originalBias: 0.5,
       candidateBias: 0.5, // No bias change
       synapses: [
         {
-          fromUUID: "input-0",
-          toUUID: "hidden-1",
+          fromId: 0,
+          toId: 5001,
           originalWeight: 0.3,
           candidateWeight: 0.4, // Weight changed
         },
@@ -84,19 +84,19 @@ Deno.test(
     // When both bias and weights change, coordination should ensure a meaningful
     // net effect rather than allowing changes to cancel out
     const plan: NeuronAdjustmentPlan = {
-      neuronUUID: "hidden-1",
+      neuronId: 5001,
       originalBias: 1.0,
       candidateBias: 1.1, // Bias increased by 0.1
       synapses: [
         {
-          fromUUID: "input-0",
-          toUUID: "hidden-1",
+          fromId: 0,
+          toId: 5001,
           originalWeight: 0.5,
           candidateWeight: 0.6, // Weight also changed
         },
         {
-          fromUUID: "input-1",
-          toUUID: "hidden-1",
+          fromId: 1,
+          toId: 5001,
           originalWeight: -0.3,
           candidateWeight: -0.2, // Another weight changed
         },
@@ -124,13 +124,13 @@ Deno.test(
     // The coordinated adjustments should use both bias and weights
     // to distribute the desired effect
     const plan: NeuronAdjustmentPlan = {
-      neuronUUID: "hidden-1",
+      neuronId: 5001,
       originalBias: 0.0,
       candidateBias: 0.2, // Significant bias change
       synapses: [
         {
-          fromUUID: "input-0",
-          toUUID: "hidden-1",
+          fromId: 0,
+          toId: 5001,
           originalWeight: 1.0,
           candidateWeight: 1.05,
         },
@@ -153,19 +153,19 @@ Deno.test(
   "coordinateBiasWeightAdjustments - preserves all synapse metadata",
   () => {
     const plan: NeuronAdjustmentPlan = {
-      neuronUUID: "hidden-1",
+      neuronId: 5001,
       originalBias: 0.5,
       candidateBias: 0.6,
       synapses: [
         {
-          fromUUID: "input-0",
-          toUUID: "hidden-1",
+          fromId: 0,
+          toId: 5001,
           originalWeight: 0.3,
           candidateWeight: 0.4,
         },
         {
-          fromUUID: "input-1",
-          toUUID: "hidden-1",
+          fromId: 1,
+          toId: 5001,
           originalWeight: -0.5,
           candidateWeight: -0.4,
         },
@@ -179,18 +179,15 @@ Deno.test(
       "Should return all synapses",
     );
     assertEquals(
-      result.adjustedWeights[0].fromUUID,
-      "input-0",
+      result.adjustedWeights[0].fromId, 0,
       "Should preserve fromUUID",
     );
     assertEquals(
-      result.adjustedWeights[0].toUUID,
-      "hidden-1",
+      result.adjustedWeights[0].toId, 5001,
       "Should preserve toUUID",
     );
     assertEquals(
-      result.adjustedWeights[1].fromUUID,
-      "input-1",
+      result.adjustedWeights[1].fromId, 1,
       "Should preserve second fromUUID",
     );
   },
@@ -200,13 +197,13 @@ Deno.test(
   "coordinateBiasWeightAdjustments - handles single synapse coordination",
   () => {
     const plan: NeuronAdjustmentPlan = {
-      neuronUUID: "output-0",
+      neuronId: -1,
       originalBias: 1.0,
       candidateBias: 1.5, // Large bias change
       synapses: [
         {
-          fromUUID: "hidden-1",
-          toUUID: "output-0",
+          fromId: 5001,
+          toId: -1,
           originalWeight: 2.0,
           candidateWeight: 2.3, // Weight also changing
         },
@@ -226,19 +223,19 @@ Deno.test(
   "coordinateBiasWeightAdjustments - results are finite numbers",
   () => {
     const plan: NeuronAdjustmentPlan = {
-      neuronUUID: "hidden-1",
+      neuronId: 5001,
       originalBias: 0.5,
       candidateBias: 0.7,
       synapses: [
         {
-          fromUUID: "input-0",
-          toUUID: "hidden-1",
+          fromId: 0,
+          toId: 5001,
           originalWeight: 0.0,
           candidateWeight: 0.1,
         },
         {
-          fromUUID: "input-1",
-          toUUID: "hidden-1",
+          fromId: 1,
+          toId: 5001,
           originalWeight: 0.0,
           candidateWeight: -0.05,
         },
@@ -257,7 +254,7 @@ Deno.test(
   "coordinateBiasWeightAdjustments - no synapses with changed bias works",
   () => {
     const plan: NeuronAdjustmentPlan = {
-      neuronUUID: "output-0",
+      neuronId: -1,
       originalBias: 0.0,
       candidateBias: 0.1,
       synapses: [],
@@ -280,19 +277,19 @@ Deno.test(
     // When a synapse has no candidate change, coordination should not
     // force it to change unless redistribution is needed
     const plan: NeuronAdjustmentPlan = {
-      neuronUUID: "hidden-1",
+      neuronId: 5001,
       originalBias: 0.5,
       candidateBias: 0.6, // Only bias changes
       synapses: [
         {
-          fromUUID: "input-0",
-          toUUID: "hidden-1",
+          fromId: 0,
+          toId: 5001,
           originalWeight: 0.3,
           candidateWeight: 0.3, // No change
         },
         {
-          fromUUID: "input-1",
-          toUUID: "hidden-1",
+          fromId: 1,
+          toId: 5001,
           originalWeight: -0.5,
           candidateWeight: -0.4, // Changed
         },
@@ -316,19 +313,19 @@ Deno.test(
     // Bias increases (+0.5) while net weight change is negative (-0.6)
     // These oppose each other. Coordination should reduce the smaller force.
     const plan: NeuronAdjustmentPlan = {
-      neuronUUID: "hidden-1",
+      neuronId: 5001,
       originalBias: 1.0,
       candidateBias: 1.5, // Bias increases by +0.5 (smaller opposing force)
       synapses: [
         {
-          fromUUID: "input-0",
-          toUUID: "hidden-1",
+          fromId: 0,
+          toId: 5001,
           originalWeight: 0.8,
           candidateWeight: 0.5, // Weight decreases by -0.3
         },
         {
-          fromUUID: "input-1",
-          toUUID: "hidden-1",
+          fromId: 1,
+          toId: 5001,
           originalWeight: 0.5,
           candidateWeight: 0.2, // Weight decreases by -0.3
         },
@@ -366,19 +363,19 @@ Deno.test(
     // Bias increases (+0.3) and net weight change is also positive (+0.5)
     // These are aligned and should reinforce each other - pass through
     const plan: NeuronAdjustmentPlan = {
-      neuronUUID: "hidden-1",
+      neuronId: 5001,
       originalBias: 1.0,
       candidateBias: 1.3, // Bias increases by +0.3
       synapses: [
         {
-          fromUUID: "input-0",
-          toUUID: "hidden-1",
+          fromId: 0,
+          toId: 5001,
           originalWeight: 0.5,
           candidateWeight: 0.8, // Weight increases by +0.3
         },
         {
-          fromUUID: "input-1",
-          toUUID: "hidden-1",
+          fromId: 1,
+          toId: 5001,
           originalWeight: 0.2,
           candidateWeight: 0.4, // Weight increases by +0.2
         },
@@ -413,13 +410,13 @@ Deno.test(
     // Bias decreases by -0.8 (larger) while net weight increases by +0.3 (smaller)
     // Weights are the smaller opposing force and should be reduced
     const plan: NeuronAdjustmentPlan = {
-      neuronUUID: "hidden-1",
+      neuronId: 5001,
       originalBias: 2.0,
       candidateBias: 1.2, // Bias decreases by -0.8 (larger opposing force)
       synapses: [
         {
-          fromUUID: "input-0",
-          toUUID: "hidden-1",
+          fromId: 0,
+          toId: 5001,
           originalWeight: 0.5,
           candidateWeight: 0.8, // Weight increases by +0.3 (smaller opposing force)
         },

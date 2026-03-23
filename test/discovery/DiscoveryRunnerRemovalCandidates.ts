@@ -110,7 +110,7 @@ Deno.test(
       removeHarmfulNeurons: undefined,
       removalCandidates: [
         {
-          neuronUUID: "hidden-low-impact",
+          neuronId: 6000,
           totalError: 5.0,
           impact: 0.001, // Very low impact (0.1%)
           reason: "High error but very low impact - candidate for removal",
@@ -124,7 +124,7 @@ Deno.test(
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
       const hasHiddenNeuron = json.neurons.some(
-        (n) => n.uuid === "hidden-low-impact",
+        (n) => n.id === 9121,
       );
       // Removal may slightly increase error, but improves score via complexity reduction
       return hasHiddenNeuron ? baselineError : baselineError + 0.001;

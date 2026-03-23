@@ -79,8 +79,8 @@ Deno.test({
       const discoveryResult: DiscoverResult = {
         ID: "CACHE_FAILURES_TEST",
         addHelpfulSynapses: [{
-          fromNeuronUUID: "input-1",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: 1,
+          toNeuronId: 5001,
           weight: 0.45,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -162,8 +162,8 @@ Deno.test({
       const discoveryResult: DiscoverResult = {
         ID: "SKIP_CACHED_TEST",
         addHelpfulSynapses: [{
-          fromNeuronUUID: "input-1",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: 1,
+          toNeuronId: 5001,
           weight: 0.45,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -183,7 +183,7 @@ Deno.test({
         // Count evaluations (excluding original which has no candidate)
         const json = creature.exportJSON();
         const hasTestSynapse = json.synapses.some((s) =>
-          s.fromUUID === "input-1" && s.toUUID === "hidden-1" &&
+          s.fromId === 1 && s.toId === 5001 &&
           Math.abs(s.weight - 0.45) < 1e-6
         );
         if (hasTestSynapse) {
@@ -268,7 +268,7 @@ Deno.test({
         removalCandidates: undefined,
         candidateSquashes: [
           {
-            neuronUUID: "hidden-1",
+            neuronId: 5001,
             previousSquash: "IDENTITY",
             squash: "TANH", // Change hidden-1's squash to TANH
             expectedCreatureScoreGain: 0.3,
@@ -276,7 +276,7 @@ Deno.test({
             currentError: 0.5,
           },
           {
-            neuronUUID: "output-0",
+            neuronId: -1,
             previousSquash: "IDENTITY",
             squash: "LOGISTIC", // Change output's squash to LOGISTIC
             expectedCreatureScoreGain: 0.3,
@@ -293,11 +293,11 @@ Deno.test({
 
         // Check for TANH on hidden-1
         const hasTanh = json.neurons.some((n) =>
-          n.uuid === "hidden-1" && n.squash === "TANH"
+          n.id === 5001 && n.squash === "TANH"
         );
         // Check for LOGISTIC on output-0
         const hasLogistic = json.neurons.some((n) =>
-          n.uuid === "output-0" && n.squash === "LOGISTIC"
+          n.id === -1 && n.squash === "LOGISTIC"
         );
 
         // Track combined candidate evaluations (both squash changes present)
@@ -372,8 +372,8 @@ Deno.test({
       const discoveryResult: DiscoverResult = {
         ID: "NO_CACHE_SUCCESS_TEST",
         addHelpfulSynapses: [{
-          fromNeuronUUID: "input-1",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: 1,
+          toNeuronId: 5001,
           weight: 0.45,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -392,7 +392,7 @@ Deno.test({
       const computeError = (creature: Creature) => {
         const json = creature.exportJSON();
         const hasTestSynapse = json.synapses.some((s) =>
-          s.fromUUID === "input-1" && s.toUUID === "hidden-1" &&
+          s.fromId === 1 && s.toId === 5001 &&
           Math.abs(s.weight - 0.45) < 1e-6
         );
         return hasTestSynapse ? 0.3 : 0.5; // Synapse improves things

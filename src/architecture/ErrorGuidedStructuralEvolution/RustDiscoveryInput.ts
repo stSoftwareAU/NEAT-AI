@@ -26,8 +26,8 @@ export function creatureToRustFormat(creature: {
     bias?: number;
   }>;
   synapses: Array<{
-    fromId: number;
-    toId: number;
+    fromId?: number;
+    toId?: number;
     weight: number;
   }>;
   input: number;
@@ -41,8 +41,8 @@ export function creatureToRustFormat(creature: {
       bias: n.bias || 0,
     })),
     synapses: creature.synapses.map((s) => ({
-      from_uuid: String(s.fromId),
-      to_uuid: String(s.toId),
+      from_uuid: String(s.fromId!),
+      to_uuid: String(s.toId!),
       weight: s.weight,
     })),
     input: creature.input,

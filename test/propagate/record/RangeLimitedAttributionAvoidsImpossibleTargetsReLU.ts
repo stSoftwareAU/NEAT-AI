@@ -66,10 +66,10 @@ Deno.test(
     const expected = new Float32Array([-100]);
     const map = creature.record(expected);
 
-    const reluRec = map.get("relu-hidden");
+    const reluRec = map.get("relu-hidden" as unknown as number);
     assert(reluRec, "expected a discovery record for relu-hidden");
 
-    const idRec = map.get("id-hidden");
+    const idRec = map.get("id-hidden" as unknown as number);
     assert(idRec, "expected a discovery record for id-hidden");
 
     // Key assertion: we should not request an impossible negative target from
@@ -151,10 +151,10 @@ Deno.test(
     const expected = new Float32Array([-100]);
     const map = creature.record(expected);
 
-    const relu6Rec = map.get("relu6-hidden");
+    const relu6Rec = map.get("relu6-hidden" as unknown as number);
     assert(relu6Rec, "expected a discovery record for relu6-hidden");
 
-    const idRec = map.get("id-hidden");
+    const idRec = map.get("id-hidden" as unknown as number);
     assert(idRec, "expected a discovery record for id-hidden");
 
     assertEquals(

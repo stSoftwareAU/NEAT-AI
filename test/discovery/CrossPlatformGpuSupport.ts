@@ -68,7 +68,7 @@ Deno.test("requireGpu is false in ensureRustCombinedAnalysis (cross-platform)", 
     },
     undefined,
     undefined,
-    ["hidden-1"],
+    [5001],
     true,
     false,
     () => {},
@@ -90,8 +90,8 @@ Deno.test("CPU fallback: analysis succeeds with gpuUsed=false", () => {
     neuronGpuUsed: false,
     helpfulSynapses: [
       {
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-1",
+        fromNeuronUuid: "0",
+        toNeuronUuid: "5001",
         weight: 0.3,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0.1,
@@ -127,8 +127,8 @@ Deno.test("GPU acceleration: analysis reports gpuUsed=true", () => {
     neuronGpuUsed: true,
     helpfulSynapses: [
       {
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-1",
+        fromNeuronUuid: "0",
+        toNeuronUuid: "5001",
         weight: 0.3,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0.1,
@@ -284,7 +284,7 @@ Deno.test("discovery enabled without GPU: analysis uses CPU fallback", async () 
     },
     undefined,
     undefined,
-    ["hidden-1"],
+    [5001],
     true,
     true,
     () => {},
@@ -313,7 +313,7 @@ Deno.test("discovery disabled when library unavailable", () => {
     },
     undefined,
     undefined,
-    ["hidden-1"],
+    [5001],
     true,
     true,
     () => {},
@@ -328,11 +328,11 @@ Deno.test("discovery disabled when library unavailable", () => {
 });
 
 Deno.test("combined analysis cache key is stable", () => {
-  const key1 = buildCombinedAnalysisKey("/tmp/data.parquet", ["n1", "n2"]);
-  const key2 = buildCombinedAnalysisKey("/tmp/data.parquet", ["n1", "n2"]);
+  const key1 = buildCombinedAnalysisKey("/tmp/data.parquet", [1, 2]);
+  const key2 = buildCombinedAnalysisKey("/tmp/data.parquet", [1, 2]);
   assertEquals(key1, key2);
 
-  const key3 = buildCombinedAnalysisKey("/tmp/other.parquet", ["n1", "n2"]);
+  const key3 = buildCombinedAnalysisKey("/tmp/other.parquet", [1, 2]);
   assertEquals(
     key1 !== key3,
     true,

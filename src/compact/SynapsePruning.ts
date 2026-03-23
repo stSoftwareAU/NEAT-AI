@@ -79,10 +79,10 @@ export function pruneZeroWeightSynapses(
     // Note: CreatureExport.neurons does not include input neurons (they are implicit),
     // so `neuron.type` cannot be "input" here.
     if (neuron.squash === "IF") {
-      ifNeuronIds.add(neuron.id);
+      ifNeuronIds.add(neuron.id!);
     }
     if (neuron.type === "output") {
-      outputNeuronIds.add(neuron.id);
+      outputNeuronIds.add(neuron.id!);
     }
   }
 
@@ -95,7 +95,7 @@ export function pruneZeroWeightSynapses(
     if (s.type) return true;
 
     // Extra safety: never prune a zero-weight synapse that targets an IF neuron.
-    if (ifNeuronIds.has(s.toId)) return true;
+    if (ifNeuronIds.has(s.toId!)) return true;
 
     return false;
   };
@@ -105,8 +105,8 @@ export function pruneZeroWeightSynapses(
     if (!Number.isFinite(s.weight)) continue;
     if (!shouldAlwaysKeep(s)) continue;
     inboundKeptCountsByTo.set(
-      s.toId,
-      (inboundKeptCountsByTo.get(s.toId) ?? 0) + 1,
+      s.toId!,
+      (inboundKeptCountsByTo.get(s.toId!) ?? 0) + 1,
     );
   }
 
@@ -124,10 +124,10 @@ export function pruneZeroWeightSynapses(
     // - not targeting an IF neuron
     //
     // Prune it, unless it's the last inbound connection to an output neuron.
-    if (outputNeuronIds.has(s.toId)) {
-      const inboundKept = inboundKeptCountsByTo.get(s.toId) ?? 0;
-      if (inboundKept === 0 && !preservedZeroInboundForOutput.has(s.toId)) {
-        preservedZeroInboundForOutput.add(s.toId);
+    if (outputNeuronIds.has(s.toId!)) {
+      const inboundKept = inboundKeptCountsByTo.get(s.toId!) ?? 0;
+      if (inboundKept === 0 && !preservedZeroInboundForOutput.has(s.toId!)) {
+        preservedZeroInboundForOutput.add(s.toId!);
         return true;
       }
     }

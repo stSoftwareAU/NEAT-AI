@@ -65,7 +65,7 @@ export function extractActualCreatureChanges(
       neuron.squash // Skip neurons without squash (shouldn't happen for hidden)
     ) {
       addedNeurons.push({
-        id: neuron.id,
+        id: neuron.id!,
         squash: neuron.squash,
         bias: neuron.bias,
       });
@@ -78,8 +78,8 @@ export function extractActualCreatureChanges(
     const key = `${synapse.fromId}->${synapse.toId}`;
     if (!baseSynapseKeys.has(key)) {
       addedSynapses.push({
-        fromId: synapse.fromId,
-        toId: synapse.toId,
+        fromId: synapse.fromId!,
+        toId: synapse.toId!,
         weight: synapse.weight,
       });
     }
@@ -88,8 +88,8 @@ export function extractActualCreatureChanges(
   // Find removed neurons (in base but not in candidate)
   const removedNeuronIds: number[] = [];
   for (const neuron of baseJSON.neurons) {
-    if (!candidateNeuronIds.has(neuron.id) && neuron.type === "hidden") {
-      removedNeuronIds.push(neuron.id);
+    if (!candidateNeuronIds.has(neuron.id!) && neuron.type === "hidden") {
+      removedNeuronIds.push(neuron.id!);
     }
   }
 
@@ -182,7 +182,7 @@ export function extractTargetNeuronInfo(
     }
   }
 
-  if (targetId == null) return undefined;
+  if (targetId === null || targetId === undefined) return undefined;
 
   // Find the neuron in the base creature.
   const neuron = baseCreature.neurons.find((n) => n.id === targetId);

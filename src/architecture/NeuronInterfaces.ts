@@ -9,6 +9,8 @@ interface NeuronAbstract extends TagsInterface {
    * Hidden/constant neurons: monotonically increasing positive integer
    */
   id?: number;
+  /** @deprecated Legacy UUID string field. Use `id` instead. (Issue #1958) */
+  uuid?: string;
   bias?: number;
   squash?: string;
 
@@ -27,8 +29,12 @@ interface NeuronAbstract extends TagsInterface {
 export interface NeuronExport extends NeuronAbstract {
   /** The type of neuron - hidden, output, or constant */
   readonly type: "hidden" | "output" | "constant";
-  /** Integer identifier for the neuron (Issue #1958) */
-  readonly id: number;
+  /**
+   * Integer identifier for the neuron (Issue #1958).
+   * Optional for backward compatibility with legacy UUID-format data;
+   * new exports always include this field.
+   */
+  readonly id?: number;
   /** Bias value for the neuron */
   bias: number;
   /** Activation function name for the neuron */

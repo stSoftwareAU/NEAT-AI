@@ -20,8 +20,8 @@ export function randomConnectMissing(creature: Creature): Creature {
     inputMissing.add(i);
   }
   exported.synapses.forEach((synapse: SynapseExport) => {
-    if (synapse.fromId >= 0 && synapse.fromId < exported.input) {
-      inputMissing.delete(synapse.fromId);
+    if (synapse.fromId! >= 0 && synapse.fromId! < exported.input) {
+      inputMissing.delete(synapse.fromId!);
     }
   });
 

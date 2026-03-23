@@ -69,10 +69,10 @@ export function removeHarmfulNeuron(
 
   // First pass: accumulate all synapse weights for each target neuron
   outgoingSynapses.forEach((synapse) => {
-    const currentWeightSum = weightSums.get(synapse.toId) || 0;
+    const currentWeightSum = weightSums.get(synapse.toId!) || 0;
     // Sum up weights for all synapses to the same target
     weightSums.set(
-      synapse.toId,
+      synapse.toId!,
       currentWeightSum + synapse.weight,
     );
   });
@@ -204,15 +204,13 @@ export function removeLowImpactNeuron(
       for (const synapse of outgoing) {
         if (synapse.toId === removalCandidate.neuronId) continue;
         weightSumsByTarget.set(
-          synapse.toId,
-          (weightSumsByTarget.get(synapse.toId) ?? 0) + synapse.weight,
+          synapse.toId!,
+          (weightSumsByTarget.get(synapse.toId!) ?? 0) + synapse.weight,
         );
       }
 
       for (const [targetId, weightSum] of weightSumsByTarget) {
-        const target = simplifiedExport.neurons.find((n) =>
-          n.id === targetId
-        );
+        const target = simplifiedExport.neurons.find((n) => n.id === targetId);
         if (!target) continue;
         target.bias = (target.bias ?? 0) + (weightSum * meanActivation);
       }

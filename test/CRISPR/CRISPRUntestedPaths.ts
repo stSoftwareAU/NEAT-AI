@@ -52,12 +52,12 @@ Deno.test(
       id: "validation-fallback-test",
       mode: "insert",
       neurons: [
-        { uuid: "new-hidden", type: "hidden", squash: "LOGISTIC", bias: 0 },
+        { id: 9342, type: "hidden", squash: "LOGISTIC", bias: 0 },
       ],
       synapses: [
         {
-          fromUUID: "does-not-exist",
-          toUUID: "new-hidden",
+          fromId: 9254,
+          toId: 9342,
           weight: 0.5,
         },
       ],
@@ -93,10 +93,10 @@ Deno.test(
       id: "already-applied-dna",
       mode: "insert",
       neurons: [
-        { uuid: "extra-hidden", type: "hidden", squash: "LOGISTIC", bias: 1 },
+        { id: 9749, type: "hidden", squash: "LOGISTIC", bias: 1 },
       ],
       synapses: [
-        { fromUUID: "h1", toUUID: "extra-hidden", weight: 0.7 },
+        { fromId: 9677, toId: 9749, weight: 0.7 },
       ],
     };
 
@@ -125,7 +125,7 @@ Deno.test(
       id: "no-change-dna",
       mode: "insert",
       synapses: [
-        { fromUUID: "input-0", toUUID: "h1", weight: 0.5 },
+        { fromId: 0, toId: 9677, weight: 0.5 },
       ],
     };
 
@@ -150,15 +150,15 @@ Deno.test(
     const crispr = new CRISPR(creature);
 
     // Insert a neuron with UUID "h1" which already exists.
-    // The insert code checks `uuidMap.has(dnaNeuron.uuid)` and skips if true.
+    // The insert code checks `uuidMap.has(dnaNeuron.id)` and skips if true.
     const dna: CrisprInterface = {
       id: "duplicate-uuid-insert",
       mode: "insert",
       neurons: [
-        { uuid: "h1", type: "hidden", squash: "LOGISTIC", bias: 99 },
+        { id: 9677, type: "hidden", squash: "LOGISTIC", bias: 99 },
       ],
       synapses: [
-        { fromUUID: "input-0", toUUID: "h1", weight: 0.9 },
+        { fromId: 0, toId: 9677, weight: 0.9 },
       ],
     };
 
@@ -168,7 +168,7 @@ Deno.test(
     // The duplicate neuron should not have been added; only the existing one
     // should be present. The bias of the existing "h1" neuron should be
     // unchanged (0, not 99).
-    const h1Neurons = result.neurons.filter((n) => n.uuid === "h1");
+    const h1Neurons = result.neurons.filter((n) => n.id === 9436);
     assertEquals(h1Neurons.length, 1);
     assertEquals(h1Neurons[0].bias, 0);
   },
@@ -191,7 +191,7 @@ Deno.test(
         { type: "output", squash: "IDENTITY", bias: 0 },
       ],
       synapses: [
-        { fromUUID: "h1", toUUID: "output-0", weight: 0.5 },
+        { fromId: 9677, toId: -1, weight: 0.5 },
       ],
     };
 
@@ -226,7 +226,7 @@ Deno.test(
     const crispr = new TestCRISPR(creature);
 
     // Append DNA with a hidden neuron whose UUID "h1" already exists. The
-    // append code checks `UUIDs.has(dnaNeuron.uuid)` and calls
+    // append code checks `UUIDs.has(dnaNeuron.id)` and calls
     // `crypto.randomUUID()` when true, so the colliding neuron gets a new UUID.
     // We also include output neurons to build a valid topology.
     const dna: CrisprInterface = {
@@ -234,7 +234,7 @@ Deno.test(
       mode: "append",
       neurons: [
         {
-          uuid: "h1",
+          id: 9677,
           type: "hidden",
           squash: "LOGISTIC",
           bias: 0.7,
@@ -245,14 +245,14 @@ Deno.test(
       synapses: [
         { from: 0, toRelative: 1000, weight: 0.4 },
         { fromRelative: 1000, toRelative: 1001, weight: 0.6 },
-        { fromUUID: "h1", toRelative: 1001, weight: 0.3 },
+        { fromId: 9677, toRelative: 1001, weight: 0.3 },
       ],
     };
 
     const result = crispr.testAppend(dna);
 
     // The original "h1" should still exist.
-    const h1Neurons = result.neurons.filter((n) => n.uuid === "h1");
+    const h1Neurons = result.neurons.filter((n) => n.id === 9436);
     assertEquals(h1Neurons.length, 1, "Original h1 should still exist once");
 
     // There should be a CRISPR-tagged neuron with a different UUID (not "h1")
@@ -267,8 +267,7 @@ Deno.test(
     );
     for (const neuron of crisprTaggedHidden) {
       assertNotEquals(
-        neuron.uuid,
-        "h1",
+        neuron.id, 9436,
         "UUID should have been re-assigned due to collision",
       );
     }
@@ -327,14 +326,14 @@ Deno.test(
         mode: "insert",
         neurons: [
           {
-            uuid: "alpha-h1",
+            id: 8001,
             type: "hidden",
             squash: "LOGISTIC",
             bias: 0.3,
           },
         ],
         synapses: [
-          { fromUUID: "input-0", toUUID: "alpha-h1", weight: 0.5 },
+          { fromId: 0, toId: 8001, weight: 0.5 },
         ],
       },
       {
@@ -361,7 +360,7 @@ Deno.test(
     const alpha = cloned.find((d) => d.id === "dna-alpha")!;
     assertEquals(alpha.mode, "insert");
     assertEquals(alpha.neurons!.length, 1);
-    assertEquals(alpha.neurons![0].uuid, "alpha-h1");
+    assertEquals(alpha.neurons![0].id, 8001);
     assertEquals(alpha.synapses.length, 1);
 
     const beta = cloned.find((d) => d.id === "dna-beta")!;

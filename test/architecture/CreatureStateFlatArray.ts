@@ -143,8 +143,8 @@ Deno.test("CreatureState flat array - collectNeuronErrors iterates all neurons c
 
   // Should only include neurons with errors > 0
   assertEquals(errors.size, 2);
-  assert(errors.has(creature.neurons[2].uuid));
-  assert(errors.has(creature.neurons[4].uuid));
+  assert(errors.has(creature.neurons[2].id));
+  assert(errors.has(creature.neurons[4].id));
 });
 
 Deno.test("CreatureState flat array - node() works after clear() and re-access", () => {

@@ -32,10 +32,22 @@ export interface SynapseInternal extends SynapseCommon {
  * Issue #1958: Uses integer neuron IDs instead of UUID strings.
  */
 export interface SynapseExport extends SynapseCommon {
-  /** Integer ID of the source neuron */
-  fromId: number;
-  /** Integer ID of the destination neuron */
-  toId: number;
+  /**
+   * Integer ID of the source neuron (Issue #1958).
+   * Optional for backward compatibility with legacy UUID-format data;
+   * new exports always include this field.
+   */
+  fromId?: number;
+  /**
+   * Integer ID of the destination neuron (Issue #1958).
+   * Optional for backward compatibility with legacy UUID-format data;
+   * new exports always include this field.
+   */
+  toId?: number;
+  /** @deprecated Legacy UUID string field. Use `fromId` instead. (Issue #1958) */
+  fromUUID?: string;
+  /** @deprecated Legacy UUID string field. Use `toId` instead. (Issue #1958) */
+  toUUID?: string;
 }
 
 /**

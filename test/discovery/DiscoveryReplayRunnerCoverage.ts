@@ -48,8 +48,8 @@ Deno.test("DiscoveryReplayRunner: default applyEntry replays singles, then all-s
   creature.uuid = "base";
 
   const addSynapse: CandidateSynapse = {
-    fromNeuronUUID: "input-0",
-    toNeuronUUID: "output-0",
+    fromNeuronId: 0,
+    toNeuronId: -1,
     weight: 0.5,
     targetNeuronImpact: 1,
     expectedCreatureErrorReduction: 0.01,
@@ -60,7 +60,7 @@ Deno.test("DiscoveryReplayRunner: default applyEntry replays singles, then all-s
   };
 
   const changeSquash: CandidateSquash = {
-    neuronUUID: "hidden-0",
+    neuronId: 5000,
     previousSquash: IDENTITY.NAME,
     squash: TANH.NAME,
     expectedCreatureScoreGain: 0.01,
@@ -84,9 +84,9 @@ Deno.test("DiscoveryReplayRunner: default applyEntry replays singles, then all-s
     evaluateError: (c) => {
       const exported = c.exportJSON();
       const hasDirect = exported.synapses.some((s) =>
-        s.fromUUID === "input-0" && s.toUUID === "output-0"
+        s.fromId === 0 && s.toId === -1
       );
-      const hidden0 = c.neurons.find((n) => n.uuid === "hidden-0");
+      const hidden0 = c.neurons.find((n) => n.id === 5000);
       const hasTanh = hidden0?.squash === TANH.NAME;
 
       // Baseline: 0.5
@@ -141,8 +141,8 @@ Deno.test("DiscoveryReplayRunner: skips already-applied add-synapses candidates"
   creature.uuid = "base";
 
   const addSynapse: CandidateSynapse = {
-    fromNeuronUUID: "input-0",
-    toNeuronUUID: "output-0",
+    fromNeuronId: 0,
+    toNeuronId: -1,
     weight: 0.5,
     targetNeuronImpact: 1,
     expectedCreatureErrorReduction: 0.01,
@@ -195,7 +195,7 @@ Deno.test("DiscoveryReplayRunner: prunes stale candidates (remove-low-impact + r
   creature.uuid = "base";
 
   const removal: RemovalCandidate = {
-    neuronUUID: "neuron-X",
+    neuronId: 7000,
     totalError: 1,
     impact: 0.0001,
     reason: "test",
@@ -203,8 +203,8 @@ Deno.test("DiscoveryReplayRunner: prunes stale candidates (remove-low-impact + r
   };
 
   const removeSynapseDetails = {
-    fromNeuronUUID: "neuron-T",
-    toNeuronUUID: "output-0",
+    fromNeuronId: 6002,
+    toNeuronId: -1,
   };
 
   const eRemoval = makeEntry("low-impact", "remove-low-impact", {
@@ -221,9 +221,9 @@ Deno.test("DiscoveryReplayRunner: prunes stale candidates (remove-low-impact + r
     evaluateError: (c) => {
       // If we removed neuron-X or removed neuron-T->output-0, call it worse.
       const exported = c.exportJSON();
-      const hasX = c.neurons.some((n) => n.uuid === "neuron-X");
+      const hasX = c.neurons.some((n) => n.id === 9440);
       const hasTSyn = exported.synapses.some((s) =>
-        s.fromUUID === "neuron-T" && s.toUUID === "output-0"
+        s.fromId === 9839 && s.toId === -1
       );
       const score = hasX && hasTSyn ? 0.5 : 0.4;
       return Promise.resolve({ error: 0, score });
@@ -262,8 +262,8 @@ Deno.test("DiscoveryReplayRunner: add-neurons already-applied detection matches 
   creature.uuid = "base";
 
   const neuronDetails = {
-    fromNeuronUUID: "input-0",
-    toNeuronUUID: "output-0",
+    fromNeuronId: 0,
+    toNeuronId: -1,
     incomingWeight: 0.12,
     outgoingWeight: 0.34,
     bias: 0.001,
@@ -271,8 +271,8 @@ Deno.test("DiscoveryReplayRunner: add-neurons already-applied detection matches 
   };
 
   const neuronCandidate: CandidateNeuron = {
-    fromNeuronUUID: "input-0",
-    toNeuronUUID: "output-0",
+    fromNeuronId: 0,
+    toNeuronId: -1,
     incomingWeight: 0.12,
     outgoingWeight: 0.34,
     squash: IDENTITY.NAME,
@@ -330,13 +330,13 @@ Deno.test("DiscoveryReplayRunner: coordinated-structural candidate can be replay
     operations: [
       {
         type: "removeSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-0",
+        fromNeuronId: 0,
+        toNeuronId: 5000,
       },
       {
         type: "addSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-0",
+        fromNeuronId: 0,
+        toNeuronId: 5000,
         weight: 0.9,
       },
     ],
@@ -351,7 +351,7 @@ Deno.test("DiscoveryReplayRunner: coordinated-structural candidate can be replay
     evaluateError: (c) => {
       const exported = c.exportJSON();
       const updated = exported.synapses.find((s) =>
-        s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+        s.fromId === 0 && s.toId === 5000
       );
       const score = updated && Math.abs(updated.weight - 0.9) < 1e-12
         ? 0.6

@@ -189,8 +189,8 @@ export function cleanupOrphanedNeurons(
     const neuronsWithOutwardConnections = new Set<number>();
     const neuronsWithInwardConnections = new Set<number>();
     for (const synapse of creatureExport.synapses) {
-      neuronsWithOutwardConnections.add(synapse.fromId);
-      neuronsWithInwardConnections.add(synapse.toId);
+      neuronsWithOutwardConnections.add(synapse.fromId!);
+      neuronsWithInwardConnections.add(synapse.toId!);
     }
 
     // First pass: Convert hidden neurons with no inward connections (but have outward) to constants
@@ -198,8 +198,8 @@ export function cleanupOrphanedNeurons(
       const neuron = creatureExport.neurons[i];
       if (neuron.type === "hidden") {
         if (
-          !neuronsWithInwardConnections.has(neuron.id) &&
-          neuronsWithOutwardConnections.has(neuron.id)
+          !neuronsWithInwardConnections.has(neuron.id!) &&
+          neuronsWithOutwardConnections.has(neuron.id!)
         ) {
           // Has outward connections but no inward - convert to constant
           // A hidden neuron with bias X and squash function outputs squash(0 + X)
@@ -225,7 +225,7 @@ export function cleanupOrphanedNeurons(
           }
           creatureExport.neurons[i] = {
             type: "constant",
-            id: neuron.id,
+            id: neuron.id!,
             bias: constantBias,
           };
           totalConverted++;
@@ -238,8 +238,8 @@ export function cleanupOrphanedNeurons(
     const orphanedIds: number[] = [];
     for (const neuron of creatureExport.neurons) {
       if (neuron.type === "hidden" || neuron.type === "constant") {
-        if (!neuronsWithOutwardConnections.has(neuron.id)) {
-          orphanedIds.push(neuron.id);
+        if (!neuronsWithOutwardConnections.has(neuron.id!)) {
+          orphanedIds.push(neuron.id!);
         }
       }
     }
@@ -254,12 +254,12 @@ export function cleanupOrphanedNeurons(
 
       // Remove orphaned neurons
       creatureExport.neurons = creatureExport.neurons.filter(
-        (n) => !orphanSet.has(n.id),
+        (n) => !orphanSet.has(n.id!),
       );
 
       // Remove synapses that connect TO orphaned neurons
       creatureExport.synapses = creatureExport.synapses.filter(
-        (s) => !orphanSet.has(s.toId),
+        (s) => !orphanSet.has(s.toId!),
       );
 
       totalRemoved += orphanedIds.length;

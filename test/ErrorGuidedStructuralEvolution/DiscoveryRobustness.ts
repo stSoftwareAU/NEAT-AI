@@ -131,7 +131,7 @@ Deno.test({
       5, // Reduced from 60s to 5s for faster tests
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
@@ -163,11 +163,11 @@ Deno.test({
     for (const neuron of viableNeurons) {
       assert(
         Number.isFinite(neuron.totalError),
-        `Neuron ${neuron.uuid} should have finite error, got ${neuron.totalError}`,
+        `Neuron ${neuron.id} should have finite error, got ${neuron.totalError}`,
       );
       assert(
         neuron.totalError >= 0,
-        `Neuron ${neuron.uuid} should have non-negative error`,
+        `Neuron ${neuron.id} should have non-negative error`,
       );
     }
 
@@ -194,7 +194,7 @@ Deno.test({
       5, // Reduced from 60s to 5s for faster tests
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
@@ -250,7 +250,7 @@ Deno.test({
       0.1,
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
@@ -334,7 +334,7 @@ Deno.test({
       5, // Reduced from 60s to 5s for faster tests
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
@@ -390,7 +390,7 @@ Deno.test({
       0.1,
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
@@ -468,7 +468,7 @@ Deno.test({
       5, // Reduced from 60s to 5s for faster tests
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
 

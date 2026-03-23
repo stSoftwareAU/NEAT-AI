@@ -74,10 +74,10 @@ Deno.test("STEP activation: backprop adjusts TANH neuron bias while STEP neuron 
     outputs[i] = creature.activate(new Float32Array(inputs[i]));
   }
 
-  const stepNeuron = creature.neurons.find((n) => n.uuid === "step-1");
+  const stepNeuron = creature.neurons.find((n) => n.id === 9110);
   if (!stepNeuron) throw new Error("neuron not found");
 
-  const neuron = creature.neurons.find((n) => n.uuid === "tanh-1");
+  const neuron = creature.neurons.find((n) => n.id === 9820);
   if (!neuron) throw new Error("neuron not found");
 
   neuron.bias = 0.5;

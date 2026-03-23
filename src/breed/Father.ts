@@ -108,7 +108,7 @@ function generateNeuronKeyMapFromCreature(
 
   for (const neuron of neurons) {
     if (neuron.type === "hidden") {
-      const key = buildNeuronKey(neuron.id, synapseMaps);
+      const key = buildNeuronKey(neuron.id!, synapseMaps);
       keyMap.set(key, {
         id: neuron.id,
         type: neuron.type,
@@ -133,13 +133,13 @@ function generateNeuronKeyMap(
 
   const synapseMaps = buildSynapseMaps(
     synapses.length,
-    (i) => synapses[i].fromId,
-    (i) => synapses[i].toId,
+    (i) => synapses[i].fromId!,
+    (i) => synapses[i].toId!,
   );
 
   for (const neuron of creature.neurons) {
     if (neuron.type === "hidden") {
-      const key = buildNeuronKey(neuron.id, synapseMaps);
+      const key = buildNeuronKey(neuron.id!, synapseMaps);
       keyMap.set(key, neuron);
     }
   }
@@ -156,13 +156,13 @@ export function createCompatibleFather(
   const usedFatherIds = new Set<number>();
 
   // Create a set of all IDs in the mother's neurons
-  const motherIds = new Set(mother.neurons.map((neuron) => neuron.id));
+  const motherIds = new Set(mother.neurons.map((neuron) => neuron.id!));
 
   // Create a set of all IDs in the father's neurons
-  const fatherIds = new Set(father.neurons.map((neuron) => neuron.id));
+  const fatherIds = new Set(father.neurons.map((neuron) => neuron.id!));
 
   // Optimization: If all father's neurons' IDs are in the mother, return the father as-is
-  if (father.neurons.every((neuron) => motherIds.has(neuron.id))) {
+  if (father.neurons.every((neuron) => motherIds.has(neuron.id!))) {
     return father;
   }
 
@@ -178,22 +178,22 @@ export function createCompatibleFather(
     // Only map IDs that are not already present in the father and have not been used
     if (
       matchingFatherNeuron &&
-      !fatherIds.has(motherNeuron.id) &&
-      !usedMotherIds.has(motherNeuron.id)
+      !fatherIds.has(motherNeuron.id!) &&
+      !usedMotherIds.has(motherNeuron.id!)
     ) {
-      idMapping.set(matchingFatherNeuron.id, motherNeuron.id);
-      usedMotherIds.add(motherNeuron.id);
-      usedFatherIds.add(matchingFatherNeuron.id);
+      idMapping.set(matchingFatherNeuron.id!, motherNeuron.id!);
+      usedMotherIds.add(motherNeuron.id!);
+      usedFatherIds.add(matchingFatherNeuron.id!);
     }
   });
 
   // Step 2: Apply ID mappings to neurons, maintaining the original order
   const newNeurons = father.neurons.map((fatherNeuron) => {
-    const newId = idMapping.get(fatherNeuron.id);
+    const newId = idMapping.get(fatherNeuron.id!);
     if (newId) {
       return {
         ...fatherNeuron,
-        uuid: newId,
+        id: newId,
       };
     }
     return fatherNeuron;
@@ -201,9 +201,9 @@ export function createCompatibleFather(
 
   // Step 3: Apply ID mappings to synapses
   const newSynapses = father.synapses.map((synapse) => {
-    const updatedFromUUID = idMapping.get(synapse.fromId) ||
-      synapse.fromId;
-    const updatedToUUID = idMapping.get(synapse.toId) || synapse.toId;
+    const updatedFromUUID = idMapping.get(synapse.fromId!) ||
+      synapse.fromId!;
+    const updatedToUUID = idMapping.get(synapse.toId!) || synapse.toId!;
     return {
       ...synapse,
       fromId: updatedFromUUID,

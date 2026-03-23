@@ -28,12 +28,13 @@ Deno.test("removeNeuron - normal bias adjustment succeeds", () => {
     output: 1,
   };
   const creature = Creature.fromJSON(json);
+  const hiddenId = creature.neurons.find((n) => n.type === "hidden")!.id;
 
-  const result = removeNeuron("hidden-0", creature, 0.5);
+  const result = removeNeuron(hiddenId, creature, 0.5);
   assertEquals(result, true, "Normal removal should succeed");
 
   // Output neuron's bias should be adjusted: 0.5 + (0.3 * 0.5) = 0.65
-  const outputNeuron = creature.neurons.find((n) => n.uuid === "output-0");
+  const outputNeuron = creature.neurons.find((n) => n.id === -1);
   assertEquals(outputNeuron !== undefined, true, "Output neuron must exist");
   assertAlmostEquals(
     outputNeuron!.bias,
@@ -62,10 +63,11 @@ Deno.test("removeNeuron - returns false when bias addition overflows to Infinity
     output: 1,
   };
   const creature = Creature.fromJSON(json);
+  const hiddenId = creature.neurons.find((n) => n.type === "hidden")!.id;
 
   // activation=1 means adjustedBias = MAX_VALUE * 1 = MAX_VALUE
   // newBias = MAX_VALUE/2 + MAX_VALUE = Infinity
-  const result = removeNeuron("hidden-0", creature, 1);
+  const result = removeNeuron(hiddenId, creature, 1);
   assertEquals(result, false, "Removal should be rejected when bias overflows");
 });
 
@@ -83,10 +85,11 @@ Deno.test("removeNeuron - returns false when activation is NaN", () => {
     output: 1,
   };
   const creature = Creature.fromJSON(json);
+  const hiddenId = creature.neurons.find((n) => n.type === "hidden")!.id;
 
   // NaN activation means adjustedBias = 0.5 * NaN = NaN
   // newBias = 0 + NaN = NaN (not finite)
-  const result = removeNeuron("hidden-0", creature, NaN);
+  const result = removeNeuron(hiddenId, creature, NaN);
   assertEquals(
     result,
     false,
@@ -115,23 +118,24 @@ Deno.test("removeNeuron - multiple synapses: no partial bias corruption on failu
     output: 2,
   };
   const creature = Creature.fromJSON(json);
+  const hiddenId = creature.neurons.find((n) => n.type === "hidden")!.id;
 
   const output0Before =
-    creature.neurons.find((n) => n.uuid === "output-0")!.bias;
+    creature.neurons.find((n) => n.id === -1)!.bias;
   const output1Before =
-    creature.neurons.find((n) => n.uuid === "output-1")!.bias;
+    creature.neurons.find((n) => n.id === -2)!.bias;
 
   // activation=Number.MAX_VALUE means:
   //   output-0: 0.5 * MAX_VALUE = finite (large but finite)
   //   output-1: MAX_VALUE * MAX_VALUE = Infinity
-  const result = removeNeuron("hidden-0", creature, Number.MAX_VALUE);
+  const result = removeNeuron(hiddenId, creature, Number.MAX_VALUE);
   assertEquals(result, false, "Removal should be rejected");
 
   // Both output biases must remain unchanged (no partial corruption)
   const output0After =
-    creature.neurons.find((n) => n.uuid === "output-0")!.bias;
+    creature.neurons.find((n) => n.id === -1)!.bias;
   const output1After =
-    creature.neurons.find((n) => n.uuid === "output-1")!.bias;
+    creature.neurons.find((n) => n.id === -2)!.bias;
 
   assertEquals(
     output0After,

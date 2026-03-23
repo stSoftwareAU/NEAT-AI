@@ -27,7 +27,7 @@ export function chooseNeurons(
         .filter((neuron) =>
           neuron.type === "hidden" || neuron.type === "output"
         )
-        .map((neuron) => neuron.id),
+        .map((neuron) => neuron.id!),
     );
     return Object.freeze(allNeurons);
   }
@@ -61,7 +61,7 @@ export function chooseNeurons(
   // Select the initial neurons up to the required number.
   const hasErrorData = neuronErrors !== undefined && neuronErrors.size > 0;
   for (let i = 0; i < numberOfNeuronsToSelect; i++) {
-    const neuronId = eligibleNeurons[i].id;
+    const neuronId = eligibleNeurons[i].id!;
     // When error-guided, add directly to selectedNeurons to guarantee
     // high-error neurons are included (they are sorted first).
     if (hasErrorData) {
@@ -108,7 +108,7 @@ export function chooseNeurons(
  * neurons that have similar error levels to maintain exploration diversity.
  */
 function errorGuidedSort(
-  neurons: { id: number; type: string }[],
+  neurons: { id?: number; type: string }[],
   neuronErrors: ReadonlyMap<number, NeuronStateInterface>,
 ): void {
   // First shuffle to break ties randomly
@@ -116,8 +116,8 @@ function errorGuidedSort(
 
   // Then stable-sort by descending error (high error neurons first)
   neurons.sort((a, b) => {
-    const errorA = neuronErrors.get(a.id)?.totalErrorAbsolute ?? 0;
-    const errorB = neuronErrors.get(b.id)?.totalErrorAbsolute ?? 0;
+    const errorA = neuronErrors.get(a.id!)?.totalErrorAbsolute ?? 0;
+    const errorB = neuronErrors.get(b.id!)?.totalErrorAbsolute ?? 0;
     return errorB - errorA;
   });
 }
@@ -137,29 +137,29 @@ function buildSynapseMap(creature: CreatureExport): Map<number, Set<number>> {
   const validNeurons = new Set<number>();
   creature.neurons.forEach((neuron) => {
     if (neuron.type === "hidden" || neuron.type === "output") {
-      validNeurons.add(neuron.id);
+      validNeurons.add(neuron.id!);
     }
   });
 
   const synapseMap = new Map<number, Set<number>>();
 
   creature.synapses.forEach((synapse) => {
-    const fromValid = validNeurons.has(synapse.fromId);
-    const toValid = validNeurons.has(synapse.toId);
+    const fromValid = validNeurons.has(synapse.fromId!);
+    const toValid = validNeurons.has(synapse.toId!);
 
     // Only process synapses where both endpoints are valid neurons
     if (fromValid && toValid) {
       // Add fromUUID -> toUUID connection
-      if (!synapseMap.has(synapse.fromId)) {
-        synapseMap.set(synapse.fromId, new Set());
+      if (!synapseMap.has(synapse.fromId!)) {
+        synapseMap.set(synapse.fromId!, new Set());
       }
-      synapseMap.get(synapse.fromId)!.add(synapse.toId);
+      synapseMap.get(synapse.fromId!)!.add(synapse.toId!);
 
       // Add toUUID -> fromUUID connection (bidirectional for neighbour lookup)
-      if (!synapseMap.has(synapse.toId)) {
-        synapseMap.set(synapse.toId, new Set());
+      if (!synapseMap.has(synapse.toId!)) {
+        synapseMap.set(synapse.toId!, new Set());
       }
-      synapseMap.get(synapse.toId)!.add(synapse.fromId);
+      synapseMap.get(synapse.toId!)!.add(synapse.fromId!);
     }
   });
 

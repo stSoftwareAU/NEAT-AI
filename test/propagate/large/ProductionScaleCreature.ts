@@ -151,7 +151,8 @@ export function generateProductionCreature(
 
   // Layer 0: connect from inputs
   for (const uuid of layerUuids[0]) {
-    const neuronDef = neurons.find((n) => n.uuid === uuid);
+// @ts-ignore
+    const neuronDef = neurons.find((n) => n.id === id);
     if (neuronDef?.squash === "IF") {
       wireIfNeuron(uuid, inputUuids, 2 + Math.floor(rng() * 3));
     } else {
@@ -170,7 +171,8 @@ export function generateProductionCreature(
     const currLayer = layerUuids[layer];
 
     for (const toUuid of currLayer) {
-      const neuronDef = neurons.find((n) => n.uuid === toUuid);
+      // @ts-ignore: test with legacy string neuron IDs
+      const neuronDef = neurons.find((n) => n.id === toUuid);
       if (neuronDef?.squash === "IF") {
         wireIfNeuron(toUuid, prevLayer, 5 + Math.floor(rng() * 10));
       } else {

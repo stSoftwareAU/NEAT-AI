@@ -98,9 +98,7 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
             const b = typeof o.bias === "number" ? formatWeight(o.bias) : "?";
             return `addNeuron:${o.neuronId ?? "?"}:type${
               o.neuronType ?? "?"
-            }:s${o.squash ?? "?"}:b${b}:before${
-              o.insertBeforeNeuronId ?? "-"
-            }`;
+            }:s${o.squash ?? "?"}:b${b}:before${o.insertBeforeNeuronId ?? "-"}`;
           }
           if (t === "removeNeuron") {
             const o = op as { neuronId?: number };
@@ -178,7 +176,10 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
           "INVALID_STATE",
         );
       }
-      parts.push(String(synapseDetails.fromNeuronId), String(synapseDetails.toNeuronId));
+      parts.push(
+        String(synapseDetails.fromNeuronId),
+        String(synapseDetails.toNeuronId),
+      );
       break;
     }
 
@@ -223,7 +224,7 @@ function buildStructuralSignature(candidate: DiscoveryCandidate): string {
   // Filter to hidden and output neurons, then sort by ID for determinism
   const relevantNeurons = exported.neurons
     .filter((n) => n.type === "hidden" || n.type === "output")
-    .sort((a, b) => a.id - b.id);
+    .sort((a, b) => a.id! - b.id!);
 
   for (const neuron of relevantNeurons) {
     sigParts.push(
@@ -241,9 +242,7 @@ function buildStructuralSignature(candidate: DiscoveryCandidate): string {
 
   for (const synapse of sortedSynapses) {
     sigParts.push(
-      `s:${synapse.fromId}->${synapse.toId}:${
-        formatWeight(synapse.weight)
-      }`,
+      `s:${synapse.fromId}->${synapse.toId}:${formatWeight(synapse.weight)}`,
     );
   }
 

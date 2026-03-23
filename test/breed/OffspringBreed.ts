@@ -243,11 +243,11 @@ function check() {
 
   const toList2 = n2.inwardConnections(7);
 
-  const UUIDs = new Set<string>();
+  const UUIDs = new Set<number>();
   toList2.forEach((c) => {
     if (n2.neurons[c.from].type === "output") {
-      const uuid = n2.neurons[c.from].uuid;
-      UUIDs.add(uuid ? uuid : "unknown");
+      const id = n2.neurons[c.from].id;
+      UUIDs.add(id);
     }
   });
 
@@ -259,11 +259,11 @@ function check() {
   const n3 = Offspring.breed(n1, n2);
 
   if (n3) {
-    const outputUUID = creature.neurons[2].uuid;
+    const outputUUID = creature.neurons[2].id;
 
     let outputIndex = -1;
     n3.neurons.forEach((n, idx) => {
-      if (n.uuid === outputUUID) {
+      if (n.id === outputUUID) {
         outputIndex = idx;
       }
     });
@@ -271,7 +271,7 @@ function check() {
     const toList3 = n3.inwardConnections(outputIndex);
 
     toList3.forEach((c) => {
-      const uuid = n3.neurons[c.from].uuid;
+      const uuid = n3.neurons[c.from].id;
       if (uuid) {
         UUIDs.delete(uuid);
       }
@@ -598,13 +598,13 @@ function checkChild(child: Creature) {
   let bBranchFound = false;
   let cBranchFound = false;
   json.neurons.forEach((n) => {
-    if (n.uuid === "A1" || n.uuid === "A0") {
+    if (n.id === 9923 || n.id === 9067) {
       aBranchFound = true;
     }
-    if (n.uuid === "B") {
+    if (n.id === 9899) {
       bBranchFound = true;
     }
-    if (n.uuid === "C1" || n.uuid === "C0") {
+    if (n.id === 9143 || n.id === 9017) {
       cBranchFound = true;
     }
   });

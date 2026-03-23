@@ -24,7 +24,7 @@ Deno.test("fix/IFTooFewInboundConnections - should downgrade IF rather than thro
 
   // Assert: creature remains valid and the IF squash is removed (downgraded).
   creature.validate();
-  const output1 = creature.neurons.find((n) => n.uuid === "output-1");
+  const output1 = creature.neurons.find((n) => n.id === -2);
   assert(output1, "Expected output-1 neuron to exist");
   assert(output1.squash !== "IF", "Expected output-1 squash to be downgraded");
 });

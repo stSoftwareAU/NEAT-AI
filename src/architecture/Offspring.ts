@@ -20,7 +20,10 @@ import { getLogger } from "../utils/Logger.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { Neuron } from "./Neuron.ts";
-import { isOutputNeuronId, outputIndexFromId, outputNeuronId } from "./NeuronId.ts";
+import {
+  outputIndexFromId,
+  outputNeuronId,
+} from "./NeuronId.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 
 class OffspringError extends Error {
@@ -246,7 +249,10 @@ export class Offspring {
       if (node !== undefined) {
         cloneNode(node);
       } else {
-        throw new TopologyError(`Can't find output neuron ${indx}`, "MISSING_NEURON");
+        throw new TopologyError(
+          `Can't find output neuron ${indx}`,
+          "MISSING_NEURON",
+        );
       }
     }
 
@@ -600,7 +606,10 @@ export class Offspring {
       }
 
       if (a.id === b.id) {
-        throw new TopologyError(`Duplicate neuron id ${a.id}`, "DUPLICATE_UUID");
+        throw new TopologyError(
+          `Duplicate neuron id ${a.id}`,
+          "DUPLICATE_UUID",
+        );
       }
       let indxA = firstMap.get(a.id);
       if (indxA === undefined) {

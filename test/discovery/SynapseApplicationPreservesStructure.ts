@@ -71,8 +71,8 @@ function makeValidCreatureWithGap(): {
   // The "missing" synapse we want to add: input-0 -> hidden-B
   // This is a valid connection that doesn't exist yet.
   const missingSynapse: CandidateSynapse = {
-    fromNeuronUUID: "input-0",
-    toNeuronUUID: "hidden-B",
+    fromNeuronId: 0,
+    toNeuronId: 6001,
     weight: 0.75,
     targetNeuronImpact: 1.0,
     expectedCreatureErrorReduction: 0,
@@ -112,8 +112,8 @@ Deno.test({
     // Verify the synapse was added
     const exported = result.exportJSON();
     const addedSynapse = exported.synapses.find((s) =>
-      s.fromUUID === missingSynapse.fromNeuronUUID &&
-      s.toUUID === missingSynapse.toNeuronUUID
+      s.fromId === missingSynapse.fromNeuronId &&
+      s.toId === missingSynapse.toNeuronId
     );
     assertExists(
       addedSynapse,
@@ -217,8 +217,8 @@ Deno.test({
     const singleSynapseCandidate = synapseCandidates.find((c) => {
       const exported = c.creature.exportJSON();
       return exported.synapses.some((s) =>
-        s.fromUUID === missingSynapse.fromNeuronUUID &&
-        s.toUUID === missingSynapse.toNeuronUUID
+        s.fromId === missingSynapse.fromNeuronId &&
+        s.toId === missingSynapse.toNeuronId
       );
     });
     assertExists(
@@ -240,8 +240,8 @@ Deno.test({
 
     // Try to add a synapse that already exists
     const duplicateSynapse: CandidateSynapse = {
-      fromNeuronUUID: "input-0",
-      toNeuronUUID: "hidden-A", // This connection already exists
+      fromNeuronId: 0,
+      toNeuronId: 6000, // This connection already exists
       weight: 0.99,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -287,8 +287,8 @@ Deno.test({
     const mixedSynapses: CandidateSynapse[] = [
       missingSynapse, // Valid - should be added
       {
-        fromNeuronUUID: "input-0",
-        toNeuronUUID: "hidden-A", // Duplicate - should be skipped
+        fromNeuronId: 0,
+        toNeuronId: 6000, // Duplicate - should be skipped
         weight: 0.99,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -297,8 +297,8 @@ Deno.test({
         totalCount: 6,
       },
       {
-        fromNeuronUUID: "input-1",
-        toNeuronUUID: "non-existent-neuron", // Invalid target - should be skipped
+        fromNeuronId: 1,
+        toNeuronId: 6002, // Invalid target - should be skipped
         weight: 0.5,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -331,8 +331,8 @@ Deno.test({
 
     // Verify the correct synapse was added
     const addedSynapse = exported.synapses.find((s) =>
-      s.fromUUID === missingSynapse.fromNeuronUUID &&
-      s.toUUID === missingSynapse.toNeuronUUID
+      s.fromId === missingSynapse.fromNeuronId &&
+      s.toId === missingSynapse.toNeuronId
     );
     assertExists(addedSynapse, "The valid synapse should be added");
   },
@@ -363,8 +363,8 @@ Deno.test({
 
     // Synapse should still exist after fix()
     const synapseAfterFix = afterFix.synapses.find((s) =>
-      s.fromUUID === missingSynapse.fromNeuronUUID &&
-      s.toUUID === missingSynapse.toNeuronUUID
+      s.fromId === missingSynapse.fromNeuronId &&
+      s.toId === missingSynapse.toNeuronId
     );
     assertExists(synapseAfterFix, "Synapse should still exist after fix()");
 
@@ -411,8 +411,8 @@ Deno.test({
 
     // Verify the synapse was added correctly
     const addedSynapse = exported.synapses.find((s) =>
-      s.fromUUID === missingSynapse.fromNeuronUUID &&
-      s.toUUID === missingSynapse.toNeuronUUID
+      s.fromId === missingSynapse.fromNeuronId &&
+      s.toId === missingSynapse.toNeuronId
     );
     assertExists(addedSynapse, "The new synapse should exist");
     assertEquals(addedSynapse.weight, missingSynapse.weight);

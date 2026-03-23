@@ -33,13 +33,13 @@ Deno.test(
       operations: [
         {
           type: "removeSynapse",
-          fromNeuronUuid: "input-0",
-          toNeuronUuid: "output-0",
+          fromNeuronId: 0,
+          toNeuronId: -1,
         },
         {
           type: "addSynapse",
-          fromNeuronUuid: "input-0",
-          toNeuronUuid: "output-0",
+          fromNeuronId: 0,
+          toNeuronId: -1,
           weight: 0.02,
         },
       ],
@@ -48,7 +48,7 @@ Deno.test(
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
     const exported = mutated.exportJSON();
     const synapse = exported.synapses.find((s) =>
-      s.fromUUID === "input-0" && s.toUUID === "output-0"
+      s.fromId === 0 && s.toId === -1
     );
     assertExists(synapse);
     assertEquals(synapse.weight, 0.02);
