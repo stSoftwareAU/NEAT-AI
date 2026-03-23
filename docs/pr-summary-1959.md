@@ -39,8 +39,8 @@ function has a TypeScript fallback for environments without WASM.
 - `test/wasm/WasmTopologyOps.ts` — 21 tests:
   - 9 topology validation tests (valid, self-connection, backward, sort errors,
     duplicates, empty, WASM/TS equivalence)
-  - 5 connection scanning tests (correct slots, exclusions, constant neuron skip,
-    TS equivalence, CreatureTopology equivalence)
+  - 5 connection scanning tests (correct slots, exclusions, constant neuron
+    skip, TS equivalence, CreatureTopology equivalence)
   - 7 topological order tests (output-first ordering, input exclusion, TS
     equivalence, constant neuron handling, completeness, empty creature)
 - Rust unit tests in `wasm_activation/src/topology_ops.rs` — 11 tests

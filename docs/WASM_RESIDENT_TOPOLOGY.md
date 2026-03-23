@@ -299,8 +299,8 @@ have been migrated to WASM/Rust:
 
 - **Topology validation** (`validate_topology`) — Forward-only checks: synapse
   sorting, self-connection detection, backward connection detection
-- **Connection availability scanning** (`scan_available_connections`) — Finds all
-  forward-only connection slots not yet occupied
+- **Connection availability scanning** (`scan_available_connections`) — Finds
+  all forward-only connection slots not yet occupied
 - **Neuron dependency analysis** (`compute_reverse_topological_order`) — Kahn's
   algorithm for reverse topological order (backpropagation ordering)
 
@@ -309,11 +309,13 @@ wasm-bindgen slice passing — no custom binary serialisation required. Each
 function has a TypeScript fallback so the system works without WASM.
 
 Convenience methods on `TypedTopology`:
+
 - `validateForwardOnly()` — WASM-accelerated forward-only validation
 - `scanAvailableConnections()` — WASM-accelerated connection scanning
 - `computeReverseTopologicalOrder()` — WASM-accelerated topological ordering
 
 Implementation files:
+
 - `wasm_activation/src/topology_ops.rs` — Rust WASM functions
 - `src/wasm/WasmTopologyOps.ts` — TypeScript wrappers with fallbacks
 - `test/wasm/WasmTopologyOps.ts` — 21 tests verifying WASM/TS equivalence
