@@ -759,6 +759,41 @@ export function calculate_weight(count, total_positive_activation, total_negativ
 }
 
 /**
+ * Issue #1959 - Compute reverse topological order for backpropagation.
+ *
+ * Uses Kahn's algorithm on the forward connection graph. Returns neuron
+ * indices ordered with output neurons first, hidden neurons after their
+ * downstream consumers. Input and constant neurons are excluded.
+ *
+ * For recurrent networks with cycles, neurons remaining after the
+ * topological sort are appended at the end.
+ *
+ * # Arguments
+ * * `from_indices` - Uint32Array of synapse source indices
+ * * `to_indices` - Uint32Array of synapse destination indices
+ * * `num_neurons` - Total number of neurons
+ * * `num_inputs` - Number of input neurons
+ *
+ * # Returns
+ * Uint32Array of neuron indices in reverse topological order
+ * @param {Uint32Array} from_indices
+ * @param {Uint32Array} to_indices
+ * @param {number} num_neurons
+ * @param {number} num_inputs
+ * @returns {Uint32Array}
+ */
+export function compute_reverse_topological_order(from_indices, to_indices, num_neurons, num_inputs) {
+    const ptr0 = passArray32ToWasm0(from_indices, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray32ToWasm0(to_indices, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.compute_reverse_topological_order(ptr0, len0, ptr1, len1, num_neurons, num_inputs);
+    var v3 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v3;
+}
+
+/**
  * Batch-compute abs-sum, max, and second-max over weight and bias arrays.
  *
  * Returns a `Float64Array` with 4 elements:
@@ -1372,6 +1407,44 @@ export function safe_zone_adjustment_batch(squash_types, raw_inputs, error, weig
 }
 
 /**
+ * Issue #1959 - Scan for available forward-only connection slots.
+ *
+ * Computes all `(from, to)` pairs where `from < to`, `to >= num_inputs`,
+ * the target neuron is not constant, and no connection already exists.
+ *
+ * Uses a flat boolean array for O(1) connection existence checks,
+ * which is more cache-friendly than a hash set for WASM linear memory.
+ *
+ * # Arguments
+ * * `from_indices` - Uint32Array of existing synapse source indices
+ * * `to_indices` - Uint32Array of existing synapse destination indices
+ * * `is_constant` - Uint8Array flag per neuron (1 = constant, 0 = not)
+ * * `num_neurons` - Total number of neurons
+ * * `num_inputs` - Number of input neurons
+ *
+ * # Returns
+ * Uint32Array of flattened `[from, to, from, to, ...]` pairs
+ * @param {Uint32Array} from_indices
+ * @param {Uint32Array} to_indices
+ * @param {Uint8Array} is_constant
+ * @param {number} num_neurons
+ * @param {number} num_inputs
+ * @returns {Uint32Array}
+ */
+export function scan_available_connections(from_indices, to_indices, is_constant, num_neurons, num_inputs) {
+    const ptr0 = passArray32ToWasm0(from_indices, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray32ToWasm0(to_indices, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(is_constant, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.scan_available_connections(ptr0, len0, ptr1, len1, ptr2, len2, num_neurons, num_inputs);
+    var v4 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v4;
+}
+
+/**
  * Scan all weights and biases to find the new max and second-max after a
  * bias change. The bias at `exclude_idx` is excluded (it is being
  * replaced); `new_bias` is included instead.
@@ -1477,6 +1550,43 @@ export function validate_range(squash_type, activation) {
 }
 
 /**
+ * Issue #1959 - Validate topology synapse ordering and forward-only constraints.
+ *
+ * Checks that synapses are sorted (ascending from, then ascending to within
+ * the same from), contain no self-connections, and contain no backward
+ * connections (from > to).
+ *
+ * Operates directly on typed arrays from TypedTopology without custom
+ * binary serialisation — wasm-bindgen passes the arrays as slices.
+ *
+ * # Arguments
+ * * `from_indices` - Uint32Array of source neuron indices per synapse
+ * * `to_indices` - Uint32Array of destination neuron indices per synapse
+ *
+ * # Returns
+ * Int32Array of length 2: `[error_code, synapse_index]`
+ * - error_code 0 = valid topology
+ * - error_code 1 = self-connection at synapse_index
+ * - error_code 2 = backward connection at synapse_index
+ * - error_code 3 = from indices not sorted at synapse_index
+ * - error_code 4 = to indices not sorted within same from at synapse_index
+ * - error_code 5 = duplicate connection at synapse_index
+ * @param {Uint32Array} from_indices
+ * @param {Uint32Array} to_indices
+ * @returns {Int32Array}
+ */
+export function validate_topology(from_indices, to_indices) {
+    const ptr0 = passArray32ToWasm0(from_indices, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray32ToWasm0(to_indices, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.validate_topology(ptr0, len0, ptr1, len1);
+    var v3 = getArrayI32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v3;
+}
+
+/**
  * Version information
  * @returns {string}
  */
@@ -1569,6 +1679,16 @@ function getArrayF64FromWasm0(ptr, len) {
     return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
 }
 
+function getArrayI32FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getInt32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+
+function getArrayU32FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+
 function getArrayU8FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
@@ -1590,9 +1710,25 @@ function getFloat64ArrayMemory0() {
     return cachedFloat64ArrayMemory0;
 }
 
+let cachedInt32ArrayMemory0 = null;
+function getInt32ArrayMemory0() {
+    if (cachedInt32ArrayMemory0 === null || cachedInt32ArrayMemory0.byteLength === 0) {
+        cachedInt32ArrayMemory0 = new Int32Array(wasm.memory.buffer);
+    }
+    return cachedInt32ArrayMemory0;
+}
+
 function getStringFromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return decodeText(ptr, len);
+}
+
+let cachedUint32ArrayMemory0 = null;
+function getUint32ArrayMemory0() {
+    if (cachedUint32ArrayMemory0 === null || cachedUint32ArrayMemory0.byteLength === 0) {
+        cachedUint32ArrayMemory0 = new Uint32Array(wasm.memory.buffer);
+    }
+    return cachedUint32ArrayMemory0;
 }
 
 let cachedUint8ArrayMemory0 = null;
@@ -1605,6 +1741,13 @@ function getUint8ArrayMemory0() {
 
 function isLikeNone(x) {
     return x === undefined || x === null;
+}
+
+function passArray32ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 4, 4) >>> 0;
+    getUint32ArrayMemory0().set(arg, ptr / 4);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
 }
 
 function passArray8ToWasm0(arg, malloc) {
@@ -1656,6 +1799,8 @@ function __wbg_finalize_init(instance, module) {
     wasmModule = module;
     cachedFloat32ArrayMemory0 = null;
     cachedFloat64ArrayMemory0 = null;
+    cachedInt32ArrayMemory0 = null;
+    cachedUint32ArrayMemory0 = null;
     cachedUint8ArrayMemory0 = null;
     wasm.__wbindgen_start();
     return wasm;

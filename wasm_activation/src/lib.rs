@@ -31,6 +31,7 @@ mod squash;
 mod synapse_type;
 mod score_scan;
 mod topological_backprop;
+mod topology_ops;
 mod training_state;
 mod unsquash;
 
@@ -62,6 +63,11 @@ pub use training_state::{
 
 // Re-export topological backpropagation (Issue #1954)
 pub use topological_backprop::propagate_topological;
+
+// Re-export topology operations (Issue #1959)
+pub use topology_ops::{
+    compute_reverse_topological_order, scan_available_connections, validate_topology,
+};
 
 // Re-export score scan functions (Issue #1521)
 pub use score_scan::{compute_score_components, scan_max_bias, scan_max_weight};

@@ -132,6 +132,28 @@ let propagateTopologicalFn:
   | ((data: Uint8Array) => Float64Array)
   | null = null;
 
+// Issue #1959 - Selective WASM residency for read-heavy topology operations
+let validateTopologyFn:
+  | ((fromIndices: Uint32Array, toIndices: Uint32Array) => Int32Array)
+  | null = null;
+let scanAvailableConnectionsFn:
+  | ((
+    fromIndices: Uint32Array,
+    toIndices: Uint32Array,
+    isConstant: Uint8Array,
+    numNeurons: number,
+    numInputs: number,
+  ) => Uint32Array)
+  | null = null;
+let computeReverseTopologicalOrderFn:
+  | ((
+    fromIndices: Uint32Array,
+    toIndices: Uint32Array,
+    numNeurons: number,
+    numInputs: number,
+  ) => Uint32Array)
+  | null = null;
+
 // Issue #1519 - Standalone elastic error distribution
 let distributeElasticErrorFn:
   | ((
@@ -333,6 +355,10 @@ function assignFunctionPointers(module: WasmModule): void {
   versionFn = module.version;
   // Issue #1954 - Topological backpropagation loop
   propagateTopologicalFn = module.propagate_topological;
+  // Issue #1959 - Selective WASM residency for read-heavy topology operations
+  validateTopologyFn = module.validate_topology;
+  scanAvailableConnectionsFn = module.scan_available_connections;
+  computeReverseTopologicalOrderFn = module.compute_reverse_topological_order;
   // Issue #1519 - Standalone elastic error distribution
   distributeElasticErrorFn = module.distribute_elastic_error;
   // Issue #1518 - Accumulation functions
@@ -625,4 +651,17 @@ export function getScanMaxBiasFn(): typeof scanMaxBiasFn {
 // Issue #1954 - Topological backpropagation getter
 export function getPropagateTopologicalFn(): typeof propagateTopologicalFn {
   return propagateTopologicalFn;
+}
+
+// Issue #1959 - Topology operation getters
+export function getValidateTopologyFn(): typeof validateTopologyFn {
+  return validateTopologyFn;
+}
+
+export function getScanAvailableConnectionsFn(): typeof scanAvailableConnectionsFn {
+  return scanAvailableConnectionsFn;
+}
+
+export function getComputeReverseTopologicalOrderFn(): typeof computeReverseTopologicalOrderFn {
+  return computeReverseTopologicalOrderFn;
 }
