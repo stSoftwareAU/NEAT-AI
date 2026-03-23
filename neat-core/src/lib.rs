@@ -9,6 +9,7 @@
 
 // Core computation modules
 pub mod accumulate;
+pub mod creature;
 pub mod derivative;
 pub mod elastic_distribution;
 pub mod error;
@@ -27,6 +28,10 @@ pub mod training_state;
 pub mod unsquash;
 
 // Re-export key types for convenience
+pub use creature::{
+    compile_creature, parse_creature_json, parse_squash_name, parse_synapse_type, CreatureExport,
+    NeuronExport, SynapseExport,
+};
 pub use network::{CompiledNetwork, NeuronData, SynapseData};
 pub use pc_inference::PredictiveCodingEngine;
 pub use squash::SquashType;

@@ -7,6 +7,7 @@ description = "Shared computation library for NEAT-AI neural network operations.
 [lib]
 crate-type = ["lib"]
 
-# No dependencies - pure Rust computation.
 # This crate must NOT depend on wasm-bindgen or js-sys.
 [dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
