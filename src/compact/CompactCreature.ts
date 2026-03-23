@@ -25,6 +25,7 @@ import {
   pruneDeadSubgraphs,
   pruneZeroWeightSynapses,
 } from "./CompactUtils.ts";
+import { mergeParallelIdentityBridges } from "./ParallelIdentityMerge.ts";
 
 /**
  * Creates a shallow clone of a CreatureExport, copying neurons and synapses
@@ -332,6 +333,13 @@ export function compactCreature(
         break; // restart the loop after each mutation
       }
     }
+  }
+
+  // Issue #1947: Merge parallel IDENTITY bridge neurons that all connect
+  // to the same target into a single IDENTITY neuron with merged weights.
+  const parallelResult = mergeParallelIdentityBridges(compactCreature);
+  if (parallelResult.removedNeurons > 0) {
+    didCompact = true;
   }
 
   /** If not feedback loop, remove synapses that are going backwards */
