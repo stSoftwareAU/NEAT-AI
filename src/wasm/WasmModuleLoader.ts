@@ -198,6 +198,8 @@ let calculateWeightWasmFn:
     learningRate: number,
     maxWeightAdjScale: number,
     limitWeightScale: number,
+    l1WeightDecay: number,
+    l2WeightDecay: number,
   ) => number)
   | null = null;
 let calculateBiasWasmFn:
@@ -211,6 +213,8 @@ let calculateBiasWasmFn:
     learningRate: number,
     maxBiasAdjScale: number,
     limitBiasScale: number,
+    l1BiasDecay: number,
+    l2BiasDecay: number,
   ) => number)
   | null = null;
 
