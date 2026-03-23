@@ -8,7 +8,7 @@
  * - `getRandomNumberGenerator()` returns the active RNG instance
  * - `setRandomNumberGenerator(rng)` replaces the global instance
  * - `createSeededRng(seed)` creates a seeded (deterministic) instance
- * - `createUnseededRng()` creates an unseeded instance backed by `Math.random()`
+ * - `createUnseededRng()` creates an unseeded instance backed by `crypto.getRandomValues()`
  *
  * All code that previously called `Math.random()` should instead call
  * `getRandomNumberGenerator().random()`.
@@ -217,7 +217,13 @@ class UnseededRng implements RandomNumberGenerator {
   readonly seeded = false;
 
   random(): number {
-    return Math.random();
+    // Use crypto.getRandomValues for a secure random float in [0, 1).
+    // Two 32-bit values give 53 bits of precision, matching u64ToFloat.
+    const buffer = new Uint32Array(2);
+    crypto.getRandomValues(buffer);
+    const hi32 = buffer[0] >>> 0;
+    const lo21 = (buffer[1] >>> 11) >>> 0;
+    return (hi32 * 2_097_152 + lo21) / 9_007_199_254_740_992;
   }
 
   randomInt(min: number, max: number): number {
@@ -267,7 +273,7 @@ export function createSeededRng(seed: number): RandomNumberGenerator {
 }
 
 /**
- * Creates an unseeded RNG backed by `Math.random()`.
+ * Creates an unseeded RNG backed by `crypto.getRandomValues()`.
  *
  * This is the default behaviour for backward compatibility.
  */
