@@ -40,7 +40,7 @@ export enum SynapseTypeCode {
 /**
  * Map synapse type string to SynapseTypeCode
  */
-function getSynapseTypeCode(
+export function getSynapseTypeCode(
   synapseType: "positive" | "negative" | "condition" | undefined,
 ): SynapseTypeCode {
   switch (synapseType) {

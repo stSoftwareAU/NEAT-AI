@@ -203,6 +203,16 @@ export { Upgrade } from "./src/reconstruct/Upgrade.ts";
 export { randomConnectMissing } from "./src/reconstruct/ConnectMissing.ts";
 
 /**
+ * Typed Array Topology
+ *
+ * Issue #1957: Typed array representation of creature topology for reduced
+ * GC pressure and WASM-compatible memcpy serialisation.
+ *
+ * @see {@link module:src/architecture/TypedTopology}
+ */
+export { TypedTopology } from "./src/architecture/TypedTopology.ts";
+
+/**
  * Neuron Class
  */
 export { type NeuronExport } from "./src/architecture/NeuronInterfaces.ts";
