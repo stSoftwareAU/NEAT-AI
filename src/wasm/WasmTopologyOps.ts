@@ -12,7 +12,9 @@
 import type { TypedTopology } from "../architecture/TypedTopology.ts";
 import {
   getComputeReverseTopologicalOrderFn,
+  getDetectCyclesFn,
   getScanAvailableConnectionsFn,
+  getValidateStructuralIntegrityFn,
   getValidateTopologyFn,
 } from "./WasmModuleLoader.ts";
 
@@ -34,8 +36,52 @@ export const TOPOLOGY_SORT_ERROR_TO = 4;
 export const TOPOLOGY_DUPLICATE_CONNECTION = 5;
 
 // ---------------------------------------------------------------------------
+// Constants — structural integrity error codes (must match Rust topology_ops.rs)
+// Issue #1961
+// ---------------------------------------------------------------------------
+
+/** Structural integrity is valid. */
+export const STRUCTURAL_VALID = 0;
+/** A synapse targets an input neuron. */
+export const STRUCTURAL_SYNAPSE_TARGETS_INPUT = 1;
+/** A constant neuron has inward connections. */
+export const STRUCTURAL_CONSTANT_HAS_INWARD = 2;
+/** A hidden neuron has no inward connections. */
+export const STRUCTURAL_HIDDEN_NO_INWARD = 3;
+/** A hidden neuron has no outward connections. */
+export const STRUCTURAL_HIDDEN_NO_OUTWARD = 4;
+/** A non-input neuron has a non-finite bias. */
+export const STRUCTURAL_BIAS_NOT_FINITE = 5;
+/** An IF neuron has fewer than 3 inward connections. */
+export const STRUCTURAL_IF_TOO_FEW_INWARD = 6;
+/** An IF neuron is missing a condition synapse. */
+export const STRUCTURAL_IF_MISSING_CONDITION = 7;
+/** An IF neuron is missing a positive synapse. */
+export const STRUCTURAL_IF_MISSING_POSITIVE = 8;
+/** An IF neuron is missing a negative synapse. */
+export const STRUCTURAL_IF_MISSING_NEGATIVE = 9;
+
+/** Squash type code for IF (must match SquashType enum). */
+const IF_SQUASH_TYPE = 34;
+/** Synapse type codes (must match SynapseTypeCode enum). */
+const SYNAPSE_CONDITION = 1;
+const SYNAPSE_NEGATIVE = 2;
+const SYNAPSE_POSITIVE = 3;
+const SYNAPSE_STANDARD = 0;
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+/** Result of structural integrity validation. Issue #1961. */
+export interface StructuralValidationResult {
+  /** Whether the structure is valid. */
+  valid: boolean;
+  /** Error code (0 = valid, see STRUCTURAL_* constants). */
+  errorCode: number;
+  /** Index of the neuron or synapse where the error was found (0 if valid). */
+  neuronIndex: number;
+}
 
 /** Result of a forward-only topology validation. */
 export interface TopologyValidationResult {
@@ -306,4 +352,289 @@ export function computeReverseTopologicalOrderTS(
   }
 
   return result;
+}
+
+// ===========================================================================
+// 4. Structural Integrity Validation (Issue #1961)
+// ===========================================================================
+
+/**
+ * Validate structural integrity of a typed topology.
+ * Uses WASM when available, falls back to TypeScript.
+ *
+ * Checks:
+ * - No synapse targets an input neuron
+ * - Constant neurons have no inward connections
+ * - Hidden neurons have at least 1 inward and 1 outward connection
+ * - Non-input neuron biases are finite
+ * - IF neurons have at least 3 inward connections with
+ *   condition, positive, and negative synapse types
+ */
+export function validateStructuralIntegrity(
+  topology: TypedTopology,
+): StructuralValidationResult {
+  const wasmFn = getValidateStructuralIntegrityFn();
+  if (wasmFn) {
+    const result = wasmFn(
+      topology.fromIndices,
+      topology.toIndices,
+      topology.isConstant,
+      topology.squashTypes,
+      topology.biases,
+      topology.numInputs,
+      topology.numOutputs,
+      topology.synapseTypes,
+    );
+    return {
+      valid: result[0] === STRUCTURAL_VALID,
+      errorCode: result[0],
+      neuronIndex: result[1],
+    };
+  }
+  return validateStructuralIntegrityTS(
+    topology.fromIndices,
+    topology.toIndices,
+    topology.isConstant,
+    topology.squashTypes,
+    topology.biases,
+    topology.numInputs,
+    topology.numOutputs,
+    topology.synapseTypes,
+  );
+}
+
+/**
+ * TypeScript fallback for structural integrity validation.
+ * Issue #1961.
+ */
+export function validateStructuralIntegrityTS(
+  fromIndices: Uint32Array,
+  toIndices: Uint32Array,
+  isConstant: Uint8Array,
+  squashTypes: Uint8Array,
+  biases: Float64Array,
+  numInputs: number,
+  numOutputs: number,
+  synapseTypes?: Uint8Array,
+): StructuralValidationResult {
+  const numNeurons = biases.length;
+  const numSynapses = fromIndices.length;
+
+  // Check no synapse targets an input neuron
+  for (let i = 0; i < numSynapses; i++) {
+    if (toIndices[i] < numInputs) {
+      return {
+        valid: false,
+        errorCode: STRUCTURAL_SYNAPSE_TARGETS_INPUT,
+        neuronIndex: toIndices[i],
+      };
+    }
+  }
+
+  // Count inward and outward connections per non-input neuron
+  const inwardCount = new Uint32Array(numNeurons);
+  const outwardCount = new Uint32Array(numNeurons);
+
+  for (let i = 0; i < numSynapses; i++) {
+    outwardCount[fromIndices[i]]++;
+    inwardCount[toIndices[i]]++;
+  }
+
+  // Validate each non-input neuron
+  const hiddenStart = numInputs;
+  const outputStart = numNeurons - numOutputs;
+
+  for (let i = hiddenStart; i < numNeurons; i++) {
+    const isOutput = i >= outputStart;
+    const isConst = isConstant[i] === 1;
+
+    // Check bias is finite for non-input neurons
+    if (!isConst) {
+      const bias = biases[i];
+      if (!Number.isFinite(bias)) {
+        return {
+          valid: false,
+          errorCode: STRUCTURAL_BIAS_NOT_FINITE,
+          neuronIndex: i,
+        };
+      }
+    }
+
+    // Constant neuron checks
+    if (isConst) {
+      if (inwardCount[i] > 0) {
+        return {
+          valid: false,
+          errorCode: STRUCTURAL_CONSTANT_HAS_INWARD,
+          neuronIndex: i,
+        };
+      }
+      continue;
+    }
+
+    // Hidden neuron checks (not output, not constant)
+    if (!isOutput) {
+      if (inwardCount[i] === 0) {
+        return {
+          valid: false,
+          errorCode: STRUCTURAL_HIDDEN_NO_INWARD,
+          neuronIndex: i,
+        };
+      }
+      if (outwardCount[i] === 0) {
+        return {
+          valid: false,
+          errorCode: STRUCTURAL_HIDDEN_NO_OUTWARD,
+          neuronIndex: i,
+        };
+      }
+    }
+
+    // IF neuron validation
+    if (squashTypes[i] === IF_SQUASH_TYPE) {
+      if (inwardCount[i] < 3) {
+        return {
+          valid: false,
+          errorCode: STRUCTURAL_IF_TOO_FEW_INWARD,
+          neuronIndex: i,
+        };
+      }
+
+      // Check for required synapse types among inward connections
+      if (synapseTypes) {
+        let hasCondition = false;
+        let hasPositive = false;
+        let hasNegative = false;
+
+        for (let s = 0; s < numSynapses; s++) {
+          if (toIndices[s] !== i) continue;
+          const st = synapseTypes[s];
+          if (st === SYNAPSE_CONDITION) hasCondition = true;
+          if (st === SYNAPSE_POSITIVE || st === SYNAPSE_STANDARD) {
+            hasPositive = true;
+          }
+          if (st === SYNAPSE_NEGATIVE) hasNegative = true;
+        }
+
+        if (!hasCondition) {
+          return {
+            valid: false,
+            errorCode: STRUCTURAL_IF_MISSING_CONDITION,
+            neuronIndex: i,
+          };
+        }
+        if (!hasPositive) {
+          return {
+            valid: false,
+            errorCode: STRUCTURAL_IF_MISSING_POSITIVE,
+            neuronIndex: i,
+          };
+        }
+        if (!hasNegative) {
+          return {
+            valid: false,
+            errorCode: STRUCTURAL_IF_MISSING_NEGATIVE,
+            neuronIndex: i,
+          };
+        }
+      }
+    }
+  }
+
+  return { valid: true, errorCode: STRUCTURAL_VALID, neuronIndex: 0 };
+}
+
+// ===========================================================================
+// 5. Cycle Detection (Issue #1961)
+// ===========================================================================
+
+/**
+ * Detect whether the topology contains cycles among non-input neurons.
+ * Uses WASM when available, falls back to TypeScript.
+ *
+ * A topology has a cycle if Kahn's algorithm cannot process all non-input
+ * neurons — the remaining neurons form at least one cycle.
+ */
+export function detectCycles(topology: TypedTopology): boolean {
+  const wasmFn = getDetectCyclesFn();
+  if (wasmFn) {
+    return wasmFn(
+      topology.fromIndices,
+      topology.toIndices,
+      topology.numNeurons,
+      topology.numInputs,
+    ) !== 0;
+  }
+  return detectCyclesTS(
+    topology.fromIndices,
+    topology.toIndices,
+    topology.numNeurons,
+    topology.numInputs,
+  );
+}
+
+/**
+ * TypeScript fallback for cycle detection using Kahn's algorithm.
+ * Issue #1961.
+ *
+ * Returns true if any cycle exists among non-input neurons.
+ */
+export function detectCyclesTS(
+  fromIndices: Uint32Array,
+  toIndices: Uint32Array,
+  numNeurons: number,
+  numInputs: number,
+): boolean {
+  // Build in-degree counts for non-input neurons.
+  // Only count edges from other non-input neurons — edges from inputs
+  // cannot participate in cycles, so they are excluded.
+  const inDegree = new Int32Array(numNeurons);
+
+  for (let i = 0; i < fromIndices.length; i++) {
+    const from = fromIndices[i];
+    const to = toIndices[i];
+    if (from === to) continue;
+    if (from >= numInputs && to >= numInputs) {
+      inDegree[to]++;
+    }
+  }
+
+  // Start with non-input neurons that have zero in-degree from non-input sources
+  const queue: number[] = [];
+  for (let i = numInputs; i < numNeurons; i++) {
+    if (inDegree[i] === 0) {
+      queue.push(i);
+    }
+  }
+
+  let processed = 0;
+  let head = 0;
+
+  while (head < queue.length) {
+    const idx = queue[head++];
+    processed++;
+
+    // For each outgoing edge from this neuron, decrement target's in-degree
+    for (let s = 0; s < fromIndices.length; s++) {
+      if (fromIndices[s] !== idx) continue;
+      const to = toIndices[s];
+      if (to === idx) continue;
+      if (to < numInputs) continue;
+
+      inDegree[to]--;
+      if (inDegree[to] === 0) {
+        queue.push(to);
+      }
+    }
+  }
+
+  // Check for self-loops explicitly
+  for (let i = 0; i < fromIndices.length; i++) {
+    if (fromIndices[i] === toIndices[i] && fromIndices[i] >= numInputs) {
+      return true;
+    }
+  }
+
+  const nonInputCount = numNeurons - numInputs;
+  return processed < nonInputCount;
 }

@@ -3,6 +3,23 @@ import type { Creature } from "../Creature.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 import { DIAGNOSTICS_DIR } from "../utils/Diagnostics.ts";
+import { TypedTopology } from "./TypedTopology.ts";
+import {
+  STRUCTURAL_BIAS_NOT_FINITE,
+  STRUCTURAL_CONSTANT_HAS_INWARD,
+  STRUCTURAL_HIDDEN_NO_INWARD,
+  STRUCTURAL_HIDDEN_NO_OUTWARD,
+  STRUCTURAL_IF_MISSING_CONDITION,
+  STRUCTURAL_IF_MISSING_NEGATIVE,
+  STRUCTURAL_IF_MISSING_POSITIVE,
+  STRUCTURAL_IF_TOO_FEW_INWARD,
+  STRUCTURAL_SYNAPSE_TARGETS_INPUT,
+  TOPOLOGY_BACKWARD_CONNECTION,
+  TOPOLOGY_DUPLICATE_CONNECTION,
+  TOPOLOGY_SELF_CONNECTION,
+  TOPOLOGY_SORT_ERROR_FROM,
+  TOPOLOGY_SORT_ERROR_TO,
+} from "../wasm/WasmTopologyOps.ts";
 
 const MAX_NEURON_UUID_LENGTH = 256;
 const VALID_NEURON_UUID_PATTERN = /^[A-Za-z0-9-]+$/;
@@ -364,6 +381,69 @@ export function creatureValidate(
           " expected: " +
           options.connections,
         "OTHER",
+      );
+    }
+  }
+
+  // Issue #1961 — WASM-accelerated topology validation for forward-only creatures.
+  // Delegates forward-only checks, structural integrity, and cycle detection
+  // to Rust/WASM (with TypeScript fallback).
+  if (forwardOnly) {
+    const topo = TypedTopology.fromCreature(creature);
+
+    // Forward-only topology validation (sort order, self-connections, backward connections)
+    const topoResult = topo.validateForwardOnly();
+    if (!topoResult.valid) {
+      debugWrite(creature);
+      const messages: Record<number, string> = {
+        [TOPOLOGY_SELF_CONNECTION]: "Self-connection",
+        [TOPOLOGY_BACKWARD_CONNECTION]: "Backward connection",
+        [TOPOLOGY_SORT_ERROR_FROM]: "From indices not sorted",
+        [TOPOLOGY_SORT_ERROR_TO]: "To indices not sorted",
+        [TOPOLOGY_DUPLICATE_CONNECTION]: "Duplicate connection",
+      };
+      throw new TopologyError(
+        `WASM topology validation failed: ${
+          messages[topoResult.errorCode] ?? "unknown"
+        } at synapse ${topoResult.synapseIndex}`,
+        "INVALID_CONNECTION",
+      );
+    }
+
+    // Structural integrity validation
+    const structResult = topo.validateStructuralIntegrity();
+    if (!structResult.valid) {
+      debugWrite(creature);
+      const messages: Record<number, string> = {
+        [STRUCTURAL_SYNAPSE_TARGETS_INPUT]: "Synapse targets input neuron",
+        [STRUCTURAL_CONSTANT_HAS_INWARD]:
+          "Constant neuron has inward connections",
+        [STRUCTURAL_HIDDEN_NO_INWARD]:
+          "Hidden neuron has no inward connections",
+        [STRUCTURAL_HIDDEN_NO_OUTWARD]:
+          "Hidden neuron has no outward connections",
+        [STRUCTURAL_BIAS_NOT_FINITE]: "Non-finite bias",
+        [STRUCTURAL_IF_TOO_FEW_INWARD]:
+          "IF neuron has too few inward connections",
+        [STRUCTURAL_IF_MISSING_CONDITION]:
+          "IF neuron missing condition synapse",
+        [STRUCTURAL_IF_MISSING_POSITIVE]: "IF neuron missing positive synapse",
+        [STRUCTURAL_IF_MISSING_NEGATIVE]: "IF neuron missing negative synapse",
+      };
+      throw new ValidationError(
+        `WASM structural validation failed: ${
+          messages[structResult.errorCode] ?? "unknown"
+        } at neuron ${structResult.neuronIndex}`,
+        "OTHER",
+      );
+    }
+
+    // Cycle detection — forward-only creatures must be acyclic
+    if (topo.detectCycles()) {
+      debugWrite(creature);
+      throw new TopologyError(
+        "Forward-only creature contains cycles",
+        "INVALID_CONNECTION",
       );
     }
   }

@@ -14,10 +14,15 @@
 import type { Creature } from "../Creature.ts";
 import { getSquashType } from "../wasm/SquashType.ts";
 import { getSynapseTypeCode } from "../wasm/CompileToWasm.ts";
-import type { TopologyValidationResult } from "../wasm/WasmTopologyOps.ts";
+import type {
+  StructuralValidationResult,
+  TopologyValidationResult,
+} from "../wasm/WasmTopologyOps.ts";
 import {
   computeReverseTopologicalOrder as wasmComputeOrder,
+  detectCycles as wasmDetectCycles,
   scanAvailableConnections as wasmScanAvailable,
+  validateStructuralIntegrity as wasmValidateStructural,
   validateTopology as wasmValidate,
 } from "../wasm/WasmTopologyOps.ts";
 
@@ -273,5 +278,26 @@ export class TypedTopology {
    */
   computeReverseTopologicalOrder(): number[] {
     return wasmComputeOrder(this);
+  }
+
+  /**
+   * Validate structural integrity of the topology.
+   *
+   * Issue #1961: Uses WASM when available, falls back to TypeScript.
+   * Checks connection counts, bias finiteness, constant neuron
+   * constraints, hidden neuron connectivity, and IF neuron requirements.
+   */
+  validateStructuralIntegrity(): StructuralValidationResult {
+    return wasmValidateStructural(this);
+  }
+
+  /**
+   * Detect whether the topology contains cycles among non-input neurons.
+   *
+   * Issue #1961: Uses WASM when available, falls back to TypeScript.
+   * Returns true if any cycle exists (including self-loops).
+   */
+  detectCycles(): boolean {
+    return wasmDetectCycles(this);
   }
 }
