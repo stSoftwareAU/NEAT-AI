@@ -24,6 +24,7 @@ pub mod score_scan;
 pub mod simd;
 pub mod squash;
 pub mod synapse_type;
+pub mod training_data;
 pub mod training_state;
 pub mod unsquash;
 
@@ -36,6 +37,11 @@ pub use network::{CompiledNetwork, NeuronData, SynapseData};
 pub use pc_inference::PredictiveCodingEngine;
 pub use squash::SquashType;
 pub use synapse_type::SynapseType;
+pub use training_data::{
+    find_bin_files, read_dir as read_training_dir, read_file as read_training_file,
+    SeekingRecordReader, TrainingDataConfig, TrainingDataError, TrainingDataIterator,
+    TrainingRecord,
+};
 
 // Re-export core functions
 pub use accumulate::{
