@@ -27,6 +27,7 @@ import {
 } from "./CompactUtils.ts";
 import { mergeParallelIdentityBridges } from "./ParallelIdentityMerge.ts";
 import { mergeParallelBridges } from "./ParallelBridgeMerge.ts";
+import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
 
 /**
  * Creates a shallow clone of a CreatureExport, copying neurons and synapses
@@ -221,14 +222,21 @@ export function compactCreature(
         const existing = compactCreature.synapses.find((s) =>
           s.fromUUID === inConn.fromUUID && s.toUUID === outConn.toUUID
         );
+        // Issue #1972: Preserve tags from both inbound and outbound synapses.
+        const mergedTags = mergeTagsByNameValue(inConn.tags, outConn.tags);
         if (existing) {
           existing.weight += newWeight;
+          if (mergedTags) {
+            existing.tags = mergeTagsByNameValue(existing.tags, mergedTags);
+          }
         } else {
-          compactCreature.synapses.push({
+          const newSynapse: SynapseExport = {
             fromUUID: inConn.fromUUID,
             toUUID: outConn.toUUID,
             weight: newWeight,
-          });
+          };
+          if (mergedTags) newSynapse.tags = mergedTags;
+          compactCreature.synapses.push(newSynapse);
         }
       }
     }
@@ -303,12 +311,17 @@ export function compactCreature(
           (s) => s !== inConn && s !== outConn,
         );
 
+        // Issue #1972: Preserve tags from both merged synapses.
+        const chainMergedTags = mergeTagsByNameValue(inConn.tags, outConn.tags);
+
         // Add new synapse directly connecting fromNeuron to toNeuron
-        compactCreature.synapses.push({
+        const chainSynapse: SynapseExport = {
           weight: combinedWeight,
           fromUUID: fromNeuron.uuid,
           toUUID: toNeuron.uuid,
-        });
+        };
+        if (chainMergedTags) chainSynapse.tags = chainMergedTags;
+        compactCreature.synapses.push(chainSynapse);
 
         // Remove neuron from neurons list
         compactCreature.neurons = compactCreature.neurons.filter((n) =>

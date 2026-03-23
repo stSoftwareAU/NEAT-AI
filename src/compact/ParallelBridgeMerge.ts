@@ -3,6 +3,7 @@ import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { isParallelMergeableSquash } from "../methods/activations/SquashUtils.ts";
+import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
 
 /**
  * Result of the parallel bridge neuron merge pass.
@@ -174,6 +175,12 @@ export function mergeParallelBridges(
       // Redirect the inbound synapse to point at the kept neuron.
       removedInConn.toUUID = kept.uuid;
       removedInConn.weight = newWeight;
+
+      // Issue #1972: Merge neuron tags from removed neurons onto kept neuron.
+      const mergedNeuronTags = mergeTagsByNameValue(kept.tags, removed.tags);
+      if (mergedNeuronTags) {
+        kept.tags = mergedNeuronTags;
+      }
 
       uuidsToRemove.add(removed.uuid);
     }

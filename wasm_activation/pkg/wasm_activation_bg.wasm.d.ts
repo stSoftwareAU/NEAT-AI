@@ -171,14 +171,6 @@ export const predictivecodingengine_new: (
 export const predictivecodingengine_num_inputs: (a: number) => number;
 export const predictivecodingengine_num_neurons: (a: number) => number;
 export const predictivecodingengine_num_outputs: (a: number) => number;
-export const predictivecodingengine_compute_gradients_wasm: (
-  a: number,
-  b: number,
-  c: number,
-  d: number,
-  e: number,
-  f: number,
-) => [number, number];
 export const accumulate_bias_persistent_4way: (
   a: number,
   b: number,
@@ -231,6 +223,15 @@ export const accumulate_weight_persistent_8way: (
   j: number,
   k: number,
 ) => void;
+export const free_training_state: () => void;
+export const get_training_state_num_neurons: () => number;
+export const get_training_state_num_synapses: () => number;
+export const init_training_state: (a: number, b: number) => void;
+export const read_all_neuron_state: () => [number, number];
+export const read_all_synapse_state: () => [number, number];
+export const read_neuron_state: (a: number) => [number, number];
+export const read_synapse_state: (a: number) => [number, number];
+export const reset_training_state: () => void;
 export const distribute_elastic_error: (
   a: number,
   b: number,
@@ -241,15 +242,14 @@ export const distribute_elastic_error: (
   g: number,
   h: number,
 ) => [number, number];
-export const free_training_state: () => void;
-export const get_training_state_num_neurons: () => number;
-export const get_training_state_num_synapses: () => number;
-export const init_training_state: (a: number, b: number) => void;
-export const read_all_neuron_state: () => [number, number];
-export const read_all_synapse_state: () => [number, number];
-export const read_neuron_state: (a: number) => [number, number];
-export const read_synapse_state: (a: number) => [number, number];
-export const reset_training_state: () => void;
+export const predictivecodingengine_compute_gradients_wasm: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+) => [number, number];
 export const accumulate_bias_batch_4way: (
   a: number,
   b: number,
