@@ -44,9 +44,7 @@ Deno.test("simplify - COMPLEMENT neuron produces behaviour-equivalent IDENTITY w
     JSON.stringify(simplifiedExport, null, 1),
   );
 
-  const outputNeuron = simplifiedExport.neurons.find((n) =>
-    n.id === -1
-  );
+  const outputNeuron = simplifiedExport.neurons.find((n) => n.id === -1);
   assert(outputNeuron);
   assertEquals(outputNeuron.squash, IDENTITY.NAME);
   assertAlmostEquals(outputNeuron.bias, 0.75, 0.000_000_1);

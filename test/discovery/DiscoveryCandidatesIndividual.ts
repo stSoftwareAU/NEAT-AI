@@ -332,8 +332,9 @@ Deno.test(
       "Best-of-category combo should include the top synapse candidate",
     );
 
-    const discoveryNeuron = exported.neurons.find((neuron) =>
-      (neuron.id! >= 5000) // was startsWith("hidden-discovery-")
+    const discoveryNeuron = exported.neurons.find((
+      neuron,
+    ) => (neuron.id! >= 5000) // was startsWith("hidden-discovery-")
     );
     assert(discoveryNeuron, "Expected discovery neuron to be present.");
     assertEquals(
@@ -342,9 +343,7 @@ Deno.test(
       "Best discovery neuron should dictate squash for injected neuron.",
     );
 
-    const hidden2 = exported.neurons.find((neuron) =>
-      neuron.id === 5002
-    );
+    const hidden2 = exported.neurons.find((neuron) => neuron.id === 5002);
     assert(hidden2, "Hidden neuron 2 should exist.");
     assertEquals(
       hidden2?.squash,
@@ -468,8 +467,7 @@ Deno.test("buildDiscoveryCandidates includes helpful neuron suggestions", () => 
   const addedNeuron = findCandidate(candidates, "add-neurons");
   const exported = addedNeuron.creature.exportJSON();
 
-  const discoveryNeuron = exported.neurons.find((neuron) =>
-    (neuron.id! >= 5000) // was startsWith("hidden-discovery-")
+  const discoveryNeuron = exported.neurons.find((neuron) => (neuron.id! >= 5000) // was startsWith("hidden-discovery-")
   );
   assert(discoveryNeuron, "Expected a discovered neuron to be added.");
   assertEquals(discoveryNeuron?.squash, neuronCandidate.squash);
@@ -578,7 +576,8 @@ Deno.test(
       { candidate: slotA[1], scoreDelta: 0.002 },
       {
         candidate: addNeuronCandidates.find((c) =>
-          c.change.neuronDetails?.fromNeuronId === "input-1" as unknown as number &&
+          c.change.neuronDetails?.fromNeuronId ===
+            "input-1" as unknown as number &&
           c.change.neuronDetails?.toNeuronId === "hidden-2" as unknown as number
         )!,
         scoreDelta: 0.0005,

@@ -351,7 +351,8 @@ Deno.test("bias trajectory should be analysed separately", () => {
   };
 
   const biasTrajectory = analyseWeightTrajectory(
-    memetic, 5003,
+    memetic,
+    5003,
     undefined,
     true,
   );

@@ -19,7 +19,11 @@ Deno.test("Input neurons have integer IDs matching their index", () => {
   const creature = new Creature(3, 2);
   for (let i = 0; i < creature.input; i++) {
     const neuron = creature.neurons[i];
-    assertEquals(typeof neuron.id, "number", "Input neuron ID should be a number");
+    assertEquals(
+      typeof neuron.id,
+      "number",
+      "Input neuron ID should be a number",
+    );
     assertEquals(neuron.id, i, `Input neuron ${i} should have id=${i}`);
   }
 });
@@ -29,7 +33,11 @@ Deno.test("Output neurons have negative integer IDs", () => {
   const outputStart = creature.neurons.length - creature.output;
   for (let i = 0; i < creature.output; i++) {
     const neuron = creature.neurons[outputStart + i];
-    assertEquals(typeof neuron.id, "number", "Output neuron ID should be a number");
+    assertEquals(
+      typeof neuron.id,
+      "number",
+      "Output neuron ID should be a number",
+    );
     assertEquals(
       neuron.id,
       outputNeuronId(i),
@@ -54,7 +62,11 @@ Deno.test("Hidden neurons have positive integer IDs >= 1_000_000", () => {
   });
   for (const neuron of creature.neurons) {
     if (neuron.type === "hidden") {
-      assertEquals(typeof neuron.id, "number", "Hidden neuron ID should be a number");
+      assertEquals(
+        typeof neuron.id,
+        "number",
+        "Hidden neuron ID should be a number",
+      );
       assertEquals(
         neuron.id >= 1_000_000,
         true,
@@ -95,11 +107,23 @@ Deno.test("Serialisation round-trip preserves integer neuron IDs", () => {
 
   // Verify export uses integer IDs
   for (const neuron of exported.neurons) {
-    assertEquals(typeof neuron.id, "number", "Exported neuron should have numeric id");
+    assertEquals(
+      typeof neuron.id,
+      "number",
+      "Exported neuron should have numeric id",
+    );
   }
   for (const synapse of exported.synapses) {
-    assertEquals(typeof synapse.fromId, "number", "Synapse fromId should be numeric");
-    assertEquals(typeof synapse.toId, "number", "Synapse toId should be numeric");
+    assertEquals(
+      typeof synapse.fromId,
+      "number",
+      "Synapse fromId should be numeric",
+    );
+    assertEquals(
+      typeof synapse.toId,
+      "number",
+      "Synapse toId should be numeric",
+    );
   }
 
   // Round-trip: load back and verify
@@ -129,7 +153,8 @@ Deno.test("Breeding offspring uses integer neuron IDs", async () => {
   if (child) {
     for (const neuron of child.neurons) {
       assertEquals(
-        typeof neuron.id, "number",
+        typeof neuron.id,
+        "number",
         `Offspring neuron should have numeric id, got ${typeof neuron.id}`,
       );
     }
@@ -148,5 +173,9 @@ Deno.test("Genetic compatibility works with integer IDs", async () => {
 
   // Same structure should be fully compatible
   const compatibility = geneticCompatibility(a, b);
-  assertEquals(compatibility, 1, "Identical creatures should have compatibility 1");
+  assertEquals(
+    compatibility,
+    1,
+    "Identical creatures should have compatibility 1",
+  );
 });

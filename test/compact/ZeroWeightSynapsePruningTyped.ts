@@ -55,9 +55,7 @@ Deno.test("pruneZeroWeightSynapses: keeps typed synapses, protects IF targets, a
     false,
   );
   assertEquals(
-    exportJSON.synapses.some((s) =>
-      s.toId === -1 && s.weight === 0.3
-    ),
+    exportJSON.synapses.some((s) => s.toId === -1 && s.weight === 0.3),
     true,
   );
   assertEquals(

@@ -292,8 +292,7 @@ Deno.test("cleanupOrphanedNeurons - simulates remove-low-impact scenario from is
     (n) => n.id !== 9610,
   );
   creatureExport.synapses = creatureExport.synapses.filter(
-    (s) =>
-      s.toId !== 9610 && s.fromId !== 9610,
+    (s) => s.toId !== 9610 && s.fromId !== 9610,
   );
 
   // Without cleanup, this would be invalid because feeder-hidden

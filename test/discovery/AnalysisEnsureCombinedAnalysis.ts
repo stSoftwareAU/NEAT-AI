@@ -101,7 +101,7 @@ Deno.test("analyzeSelectedNeurons calls analyzeParallel to populate cache", asyn
 
     // Call analyzeSelectedNeurons directly
     await structure.analyzeSelectedNeurons(["hidden-1" as unknown as number]);
-// @ts-ignore: test with string IDs
+    // @ts-ignore: test with string IDs
 
     assert(
       analyzeParallelCalled,
@@ -180,7 +180,7 @@ Deno.test("analyzeMissingNeurons calls analyzeParallel to populate cache", async
 
     // Call analyzeMissingNeurons directly
     await structure.analyzeMissingNeurons(["output-0" as unknown as number]);
-// @ts-ignore: test with string IDs
+    // @ts-ignore: test with string IDs
 
     assert(
       analyzeParallelCalled,
@@ -255,8 +255,10 @@ Deno.test("analyzeSelectedNeuronsForRemoval calls analyzeParallel to populate ca
     structure.flushRustRecording();
 
     // Call analyzeSelectedNeuronsForRemoval directly
-    await structure.analyzeSelectedNeuronsForRemoval(["output-0" as unknown as number]);
-// @ts-ignore: test with string IDs
+    await structure.analyzeSelectedNeuronsForRemoval([
+      "output-0" as unknown as number,
+    ]);
+    // @ts-ignore: test with string IDs
 
     assert(
       analyzeParallelCalled,

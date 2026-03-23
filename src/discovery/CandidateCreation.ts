@@ -110,9 +110,10 @@ export function buildSingleNeuronCandidates(
     const addedNeuron = creature.neurons.find(
       (n) => n.id !== null && n.id !== undefined && !baseNeuronIds.has(n.id),
     );
-    const addedNeuronShortID = addedNeuron?.id !== null && addedNeuron?.id !== undefined
-      ? shortID(String(addedNeuron.id))
-      : undefined;
+    const addedNeuronShortID =
+      addedNeuron?.id !== null && addedNeuron?.id !== undefined
+        ? shortID(String(addedNeuron.id))
+        : undefined;
 
     entries.push({
       creature,

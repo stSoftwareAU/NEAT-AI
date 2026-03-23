@@ -335,7 +335,7 @@ Deno.test("applyRemoveSynapse - removes synapse that was in base but not candida
 
   assert(result !== undefined, "should return a creature");
   const exported = result!.exportJSON();
-  const synapseKeys = exported.synapses.map(
+  const _synapseKeys = exported.synapses.map(
     (s) => `${s.fromId}->${s.toId}`,
   );
   assert(

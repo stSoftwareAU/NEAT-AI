@@ -77,9 +77,7 @@ Deno.test({
     assertExists(improved, "Should create improved creature");
 
     const exportJSON = improved.exportJSON();
-    const targetIndex = exportJSON.neurons.findIndex((n) =>
-      n.id === 238413746
-    );
+    const targetIndex = exportJSON.neurons.findIndex((n) => n.id === 238413746);
     assert(targetIndex >= 0, "Target neuron should exist");
 
     const discoveryIndex = exportJSON.neurons.findIndex((n) =>

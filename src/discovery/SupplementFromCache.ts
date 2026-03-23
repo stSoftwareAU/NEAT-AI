@@ -57,7 +57,10 @@ function isEntryRelevantToCreature(
       const c = req.synapseCandidate as
         | { fromNeuronId?: number; toNeuronId?: number }
         | undefined;
-      if (c?.fromNeuronId === null || c?.fromNeuronId === undefined || c?.toNeuronId === null || c?.toNeuronId === undefined) return false;
+      if (
+        c?.fromNeuronId === null || c?.fromNeuronId === undefined ||
+        c?.toNeuronId === null || c?.toNeuronId === undefined
+      ) return false;
       return neuronIds.has(c.fromNeuronId) &&
         neuronIds.has(c.toNeuronId);
     }
@@ -65,7 +68,10 @@ function isEntryRelevantToCreature(
       const c = req.neuronCandidate as
         | { fromNeuronId?: number; toNeuronId?: number }
         | undefined;
-      if (c?.fromNeuronId === null || c?.fromNeuronId === undefined || c?.toNeuronId === null || c?.toNeuronId === undefined) return false;
+      if (
+        c?.fromNeuronId === null || c?.fromNeuronId === undefined ||
+        c?.toNeuronId === null || c?.toNeuronId === undefined
+      ) return false;
       return neuronIds.has(c.fromNeuronId) &&
         neuronIds.has(c.toNeuronId);
     }
@@ -91,7 +97,10 @@ function isEntryRelevantToCreature(
         req.synapseDetails) as
           | { fromNeuronId?: number; toNeuronId?: number }
           | undefined;
-      if (c?.fromNeuronId === null || c?.fromNeuronId === undefined || c?.toNeuronId === null || c?.toNeuronId === undefined) return false;
+      if (
+        c?.fromNeuronId === null || c?.fromNeuronId === undefined ||
+        c?.toNeuronId === null || c?.toNeuronId === undefined
+      ) return false;
       return neuronIds.has(c.fromNeuronId) &&
         neuronIds.has(c.toNeuronId);
     }

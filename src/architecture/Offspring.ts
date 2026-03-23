@@ -20,10 +20,7 @@ import { getLogger } from "../utils/Logger.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { Neuron } from "./Neuron.ts";
-import {
-  outputIndexFromId,
-  outputNeuronId,
-} from "./NeuronId.ts";
+import { outputIndexFromId, outputNeuronId } from "./NeuronId.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 
 class OffspringError extends Error {

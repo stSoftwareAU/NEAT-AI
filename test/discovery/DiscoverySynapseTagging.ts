@@ -42,9 +42,7 @@ Deno.test("Discovery addHelpfulSynapses tags new synapses and tags survive expor
   assert(updated);
 
   const exported = updated.exportJSON();
-  const added = exported.synapses.find((s) =>
-    s.fromId === 1 && s.toId === -1
-  );
+  const added = exported.synapses.find((s) => s.fromId === 1 && s.toId === -1);
   assert(added, "Expected the helpful synapse to be added");
 
   // Tag names are strings and values are persisted via JSON.

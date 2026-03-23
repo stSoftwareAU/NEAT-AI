@@ -222,7 +222,8 @@ Deno.test(
           "Alias should reference the original target ID",
         );
         assertEquals(
-          neuron.id, 5040,
+          neuron.id,
+          5040,
           "ID should be remapped to parent's hidden neuron ID",
         );
       }
@@ -245,11 +246,13 @@ Deno.test(
     // The target's "target-syn1" should now be "parent-syn1"
     for (const synapse of childExport.synapses) {
       assertNotEquals(
-        synapse.fromId, 6050,
+        synapse.fromId,
+        6050,
         "Synapses should not reference the old target UUID in fromUUID",
       );
       assertNotEquals(
-        synapse.toId, 6050,
+        synapse.toId,
+        6050,
         "Synapses should not reference the old target UUID in toUUID",
       );
     }

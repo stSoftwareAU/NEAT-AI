@@ -36,7 +36,11 @@ Deno.test("applyNeuronChanges updates neuron squashes, tags changes, and tags sc
       string,
       { squash: string; score: number; error: number }
     >();
-    neuronSquashMap.set(String(first.id), { squash: "Swish", score: 2, error: 1 });
+    neuronSquashMap.set(String(first.id), {
+      squash: "Swish",
+      score: 2,
+      error: 1,
+    });
     neuronSquashMap.set(second.uuid, { squash: "GELU", score: 2, error: 1 }); // unchanged
 
     // @ts-ignore: test with legacy string neuron IDs

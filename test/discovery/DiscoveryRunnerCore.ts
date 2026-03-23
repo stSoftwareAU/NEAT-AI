@@ -274,9 +274,7 @@ Deno.test("DiscoveryRunner evaluates coordinated-structural candidates as a sing
   let sawCoordinatedEvaluation = false;
   const worker = new FakeWorker(discoveryResult, (creature) => {
     const exported = creature.exportJSON();
-    const syn = exported.synapses.find((s) =>
-      s.fromId === 1 && s.toId === -1
-    );
+    const syn = exported.synapses.find((s) => s.fromId === 1 && s.toId === -1);
 
     if (syn && Math.abs(syn.weight - 0.75) < 1e-12) {
       sawCoordinatedEvaluation = true;

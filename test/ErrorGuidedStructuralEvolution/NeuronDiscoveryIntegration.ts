@@ -345,8 +345,8 @@ Deno.test({
 
       for (const outputUUID of ["output-0", "output-1"]) {
         discoverStructure.extendTimeoutForAnalysis(5);
-        // deno-lint-ignore no-await-in-loop
         // @ts-ignore: test with legacy string neuron IDs
+        // deno-lint-ignore no-await-in-loop
         await discoverStructure.analyzeMissingNeurons([outputUUID]);
       }
 
@@ -399,7 +399,7 @@ Deno.test({
       discoverStructure.extendTimeoutForAnalysis(10);
 
       const focusNeurons = ["output-0", "output-1", "output-2"];
-// @ts-ignore: test with legacy string IDs
+      // @ts-ignore: test with legacy string IDs
       await discoverStructure.analyzeMissingNeurons(focusNeurons);
     } finally {
       await discoverStructure.cleanUp();
@@ -437,8 +437,8 @@ Deno.test({
       const bundle = discoverStructure.collectRustAnalysisCandidates(
         // @ts-ignore: test with legacy string neuron IDs
         ["output-0" as unknown as number, " as unknown as numberoutput-1"],
-// @ts-ignore: test with string IDs
-// @ts-ignore: test with string IDs
+        // @ts-ignore: test with string IDs
+        // @ts-ignore: test with string IDs
       );
 
       if (bundle && bundle.helpfulNeurons && bundle.helpfulNeurons.length > 0) {

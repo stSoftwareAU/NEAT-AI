@@ -107,6 +107,8 @@ Deno.test("scanForSquashImprovements uses injected safe writers (async + sync pa
   assertEquals(removes[0], writesAsync[0].path);
 
   // Final improvement path should be the alternative squash.
-  const improvement = result.improvements.get("neuron-hidden-atomic-1" as unknown as number);
+  const improvement = result.improvements.get(
+    "neuron-hidden-atomic-1" as unknown as number,
+  );
   assertEquals(improvement?.path, writesSync[0].path);
 });

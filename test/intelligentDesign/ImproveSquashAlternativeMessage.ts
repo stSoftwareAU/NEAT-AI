@@ -35,7 +35,7 @@ Deno.test("scanForSquashImprovements: alternative improvement message reports ta
   const fakeWorker = {
     score(creature: Creature, uuid: string): Promise<ResponseData> {
       const json = creature.exportJSON();
-// @ts-ignore
+      // @ts-ignore: Legacy string neuron UUID format
       const neuron = json.neurons.find((n) => n.id === id);
       const squash = neuron?.squash;
 

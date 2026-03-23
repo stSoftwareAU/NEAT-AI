@@ -44,7 +44,10 @@ Deno.test("compactCreature - removes dead hidden neuron", () => {
   assert(result !== undefined, "Should compact dead neuron");
   const neurons = result!.exportJSON().neurons;
   // After compaction, the dead hidden neuron should be removed
-  assert(neurons.every((n) => n.type === "output"), "Dead neuron should be removed");
+  assert(
+    neurons.every((n) => n.type === "output"),
+    "Dead neuron should be removed",
+  );
 });
 
 Deno.test("compactCreature - preserves forward-only semantics", () => {

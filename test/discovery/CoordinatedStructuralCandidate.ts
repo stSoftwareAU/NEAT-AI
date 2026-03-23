@@ -50,9 +50,7 @@ Deno.test("applyCoordinatedStructuralCandidate: remove/remove/add updates synaps
 
   // Noisy input->output removed.
   assertEquals(
-    exported.synapses.some((s) =>
-      s.fromId === 0 && s.toId === -1
-    ),
+    exported.synapses.some((s) => s.fromId === 0 && s.toId === -1),
     false,
   );
 
@@ -192,9 +190,7 @@ Deno.test("applyCoordinatedStructuralCandidate: forward-only rejects back-connec
   const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
   const exported = mutated.exportJSON();
   assertEquals(
-    exported.synapses.some((s) =>
-      s.fromId === -1 && s.toId === 5000
-    ),
+    exported.synapses.some((s) => s.fromId === -1 && s.toId === 5000),
     false,
   );
 });
@@ -269,9 +265,7 @@ Deno.test("applyCoordinatedStructuralCandidate: addNeuron can insert before a ta
   const exported = mutated.exportJSON();
 
   // Neuron should exist and appear before output-0 in forward-only ordering.
-  const idxHidden = exported.neurons.findIndex((n) =>
-    n.id === 76839481494
-  );
+  const idxHidden = exported.neurons.findIndex((n) => n.id === 76839481494);
   const idxOutput = exported.neurons.findIndex((n) => n.id === -1);
   assertEquals(idxHidden >= 0, true);
   assertEquals(idxOutput >= 0, true);
@@ -326,15 +320,11 @@ Deno.test("applyCoordinatedStructuralCandidate: removeNeuron deletes neuron and 
 
   assertEquals(exported.neurons.some((n) => n.id === 5000), false);
   assertEquals(
-    exported.synapses.some((s) =>
-      s.fromId === 0 && s.toId === 5000
-    ),
+    exported.synapses.some((s) => s.fromId === 0 && s.toId === 5000),
     false,
   );
   assertEquals(
-    exported.synapses.some((s) =>
-      s.fromId === 5000 && s.toId === -1
-    ),
+    exported.synapses.some((s) => s.fromId === 5000 && s.toId === -1),
     false,
   );
 });
@@ -465,9 +455,7 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight is no-op if synapse do
 
   // Synapse should not exist (wasn't in original).
   assertEquals(
-    exported.synapses.some((s) =>
-      s.fromId === 0 && s.toId === -1
-    ),
+    exported.synapses.some((s) => s.fromId === 0 && s.toId === -1),
     false,
   );
 

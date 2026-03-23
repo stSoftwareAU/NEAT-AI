@@ -88,9 +88,9 @@ Deno.test("memetic preserved", () => {
       if (synapse.weight === 0.456) {
         const input2Weights = child.memetic.weights[2];
         assert(input2Weights, "Should have previous weight");
-        const output1Weight = input2Weights.find((w: { toId: number; weight: number }) =>
-          w.toId === -2
-        );
+        const output1Weight = input2Weights.find((
+          w: { toId: number; weight: number },
+        ) => w.toId === -2);
         assert(output1Weight !== undefined, "Should have previous weight");
         assertAlmostEquals(
           output1Weight.weight,

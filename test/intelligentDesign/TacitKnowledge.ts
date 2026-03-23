@@ -52,8 +52,14 @@ Deno.test("getValidNeuronSquashes returns map of hidden neurons", () => {
 
   // Should have 2 hidden neurons
   assertEquals(validNeurons.size, 2);
-  assertEquals(validNeurons.get("neuron-hidden-1" as unknown as number), "TANH");
-  assertEquals(validNeurons.get("neuron-hidden-2" as unknown as number), "GELU");
+  assertEquals(
+    validNeurons.get("neuron-hidden-1" as unknown as number),
+    "TANH",
+  );
+  assertEquals(
+    validNeurons.get("neuron-hidden-2" as unknown as number),
+    "GELU",
+  );
 });
 
 Deno.test("combineKnowledge merges with local taking precedence", () => {
@@ -75,7 +81,7 @@ Deno.test("combineKnowledge merges with local taking precedence", () => {
 });
 
 Deno.test("cleanKnowledge removes entries for non-existent neurons", () => {
-  const validNeurons = new Map<any, string>();
+  const validNeurons = new Map<string, string>();
   validNeurons.set("neuron-1", "TANH");
   validNeurons.set("neuron-2", "GELU");
 
@@ -113,7 +119,7 @@ Deno.test("getNeuronsToTest returns neurons with different squash than knowledge
 
   // Create knowledge suggesting a different squash
   const knowledge: TacitKnowledgeMap = {
-// @ts-ignore: test with legacy string keys
+    // @ts-ignore: test with legacy string keys
     "neuron-hidden-1": "Swish", // Different from TANH
     "neuron-hidden-2": "GELU", // Same as current, should not be included
   };
@@ -130,7 +136,7 @@ Deno.test("getNeuronsToTest returns empty when knowledge matches current squash"
 
   // Create knowledge with the same squashes
   const knowledge: TacitKnowledgeMap = {
-// @ts-ignore: test with legacy string keys
+    // @ts-ignore: test with legacy string keys
     "neuron-hidden-1": "TANH",
     "neuron-hidden-2": "GELU",
   };

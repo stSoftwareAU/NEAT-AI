@@ -129,9 +129,7 @@ Deno.test(
       "Combined candidate should include the beneficial synapse.",
     );
 
-    const hidden1 = exported.neurons.find((neuron) =>
-      neuron.id === 5001
-    );
+    const hidden1 = exported.neurons.find((neuron) => neuron.id === 5001);
     assert(hidden1, "Hidden neuron should exist after combination.");
     assertEquals(
       hidden1?.squash,
@@ -219,9 +217,7 @@ Deno.test(
     // The original base creature has hidden-1 -> output-0 with weight 0.2
     // Expected bias adjustment: weight * averageActivation = 0.2 * 0.75 = 0.15
     // Original output-0 bias: 0.1, so new bias should be approximately 0.1 + 0.15 = 0.25
-    const output0 = exported.neurons.find((neuron) =>
-      neuron.id === -1
-    );
+    const output0 = exported.neurons.find((neuron) => neuron.id === -1);
     assert(output0, "Output neuron 0 should still exist");
     assert(
       Math.abs(output0.bias - 0.25) < 0.01,
@@ -480,9 +476,7 @@ Deno.test(
     );
 
     // Verify squash function is changed
-    const hidden1 = exported.neurons.find((neuron) =>
-      neuron.id === 5001
-    );
+    const hidden1 = exported.neurons.find((neuron) => neuron.id === 5001);
     assert(hidden1, "Hidden neuron 1 should still exist");
     assertEquals(
       hidden1.squash,

@@ -42,7 +42,10 @@ export class CreatureErrorImpactEstimator {
    * share multiplied by the fraction carried by the requested inbound synapse.
    */
   getSynapseShare(fromId?: number | null, toId?: number | null): number {
-    if (fromId === null || fromId === undefined || toId === null || toId === undefined) return 0;
+    if (
+      fromId === null || fromId === undefined || toId === null ||
+      toId === undefined
+    ) return 0;
     const toIndex = this.#findNeuronIndex(toId);
     const fromIndex = this.#findNeuronIndex(fromId);
     if (toIndex === undefined || fromIndex === undefined) return 0;

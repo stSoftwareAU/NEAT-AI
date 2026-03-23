@@ -156,9 +156,7 @@ Deno.test(
     assertEquals(
       hiddenNeurons.length,
       3,
-      `Should have 3 hidden neurons (A, B, D). Found: ${
-        neuronIds.join(", ")
-      }`,
+      `Should have 3 hidden neurons (A, B, D). Found: ${neuronIds.join(", ")}`,
     );
   },
 );
@@ -173,9 +171,7 @@ Deno.test(
     // The new neuron must be inserted BEFORE hidden-A; otherwise hidden-A can't receive
     // hidden-D's activation during the forward pass.
     const addNeuronsJSON = structuredClone(baseJSON);
-    const targetIndex = addNeuronsJSON.neurons.findIndex((n) =>
-      n.id === 8001
-    );
+    const targetIndex = addNeuronsJSON.neurons.findIndex((n) => n.id === 8001);
     assert(targetIndex >= 0, "Expected hidden-A to exist in base creature");
 
     addNeuronsJSON.neurons.splice(targetIndex, 0, {
@@ -448,9 +444,7 @@ Deno.test(
     // hidden-D before hidden-E before hidden-A, otherwise hidden-D -> hidden-E
     // becomes a backward edge and breaks forward-pass ordering.
     const addNeuronsJSON = structuredClone(baseJSON);
-    const targetIndex = addNeuronsJSON.neurons.findIndex((n) =>
-      n.id === 8001
-    );
+    const targetIndex = addNeuronsJSON.neurons.findIndex((n) => n.id === 8001);
     assert(targetIndex >= 0, "Expected hidden-A to exist in base creature");
 
     // Insert the chain in the intended (candidate) order.
@@ -619,9 +613,7 @@ Deno.test(
     assertExists(combo, "Should have a combo-successful candidate");
 
     const comboJSON = combo.creature.exportJSON();
-    const synapseKeys = comboJSON.synapses.map((s) =>
-      `${s.fromId}->${s.toId}`
-    );
+    const synapseKeys = comboJSON.synapses.map((s) => `${s.fromId}->${s.toId}`);
 
     // Critical assertion: added synapse should exist
     assertEquals(

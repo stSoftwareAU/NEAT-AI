@@ -120,10 +120,8 @@ Deno.test("removeNeuron - multiple synapses: no partial bias corruption on failu
   const creature = Creature.fromJSON(json);
   const hiddenId = creature.neurons.find((n) => n.type === "hidden")!.id;
 
-  const output0Before =
-    creature.neurons.find((n) => n.id === -1)!.bias;
-  const output1Before =
-    creature.neurons.find((n) => n.id === -2)!.bias;
+  const output0Before = creature.neurons.find((n) => n.id === -1)!.bias;
+  const output1Before = creature.neurons.find((n) => n.id === -2)!.bias;
 
   // activation=Number.MAX_VALUE means:
   //   output-0: 0.5 * MAX_VALUE = finite (large but finite)
@@ -132,10 +130,8 @@ Deno.test("removeNeuron - multiple synapses: no partial bias corruption on failu
   assertEquals(result, false, "Removal should be rejected");
 
   // Both output biases must remain unchanged (no partial corruption)
-  const output0After =
-    creature.neurons.find((n) => n.id === -1)!.bias;
-  const output1After =
-    creature.neurons.find((n) => n.id === -2)!.bias;
+  const output0After = creature.neurons.find((n) => n.id === -1)!.bias;
+  const output1After = creature.neurons.find((n) => n.id === -2)!.bias;
 
   assertEquals(
     output0After,

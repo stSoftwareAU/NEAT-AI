@@ -24,7 +24,10 @@ Deno.test("randomConnectMissing - connects all inputs when some are missing", ()
   // Verify every input has at least one synapse connected
   const connectedInputs = new Set<string>();
   for (const synapse of exported3.synapses) {
-    if (synapse.fromId! !== undefined && String(synapse.fromId!!).startsWith("input-")) {
+    if (
+      synapse.fromId! !== undefined &&
+      String(synapse.fromId!).startsWith("input-")
+    ) {
       connectedInputs.add(String(synapse.fromId));
     }
   }

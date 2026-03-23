@@ -49,9 +49,7 @@ Deno.test("mergeDuplicateSynapses: merges same from/to/type (sums weights), pres
   // Should now have 3 synapses: merged output edge, merged condition edge, and positive edge.
   assertEquals(exportJSON.synapses.length, 3);
 
-  const out = exportJSON.synapses.find((s) =>
-    s.fromId === 0 && s.toId === -1
-  );
+  const out = exportJSON.synapses.find((s) => s.fromId === 0 && s.toId === -1);
   assertEquals(out?.weight, 0.3);
 
   const condition = exportJSON.synapses.find((s) =>

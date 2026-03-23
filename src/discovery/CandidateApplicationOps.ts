@@ -32,9 +32,7 @@ export function applyAddSynapses(
 ): Creature | undefined {
   // Find synapses in candidate that don't exist in creature
   const existingSynapses = new Set(
-    creatureJSON.synapses.map((s) =>
-      `${s.fromId}->${s.toId}`
-    ),
+    creatureJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
   );
   // Build set of existing neuron IDs to validate synapse endpoints
   // Include input neurons (not in neurons array but referenced by index)
@@ -80,8 +78,7 @@ export function applyAddNeurons(
     creatureJSON.neurons.map((n) => n.id),
   );
   const candidateNeurons = candidateJSON.neurons.filter(
-    (n) =>
-      n.type === "hidden" && !existingNeurons.has(n.id),
+    (n) => n.type === "hidden" && !existingNeurons.has(n.id),
   );
   if (candidateNeurons.length === 0) return undefined;
 
@@ -199,7 +196,7 @@ export function applyChangeSquash(
   // Apply ONLY the intended squash change for this candidate.
   const targetId = candidate.change.squashCandidate?.neuronId;
   const targetSquash = candidate.change.squashCandidate?.squash;
-  if (targetId != null && targetSquash) {
+  if (targetId !== null && targetId !== undefined && targetSquash) {
     let changed = false;
     for (const neuron of creatureJSON.neurons) {
       if (neuron.id !== targetId) continue;
@@ -243,19 +240,13 @@ export function applyRemoveSynapse(
 ): Creature | undefined {
   // Find synapses that were in base but removed in candidate
   const baseSynapses = new Set(
-    baseJSON.synapses.map((s) =>
-      `${s.fromId}->${s.toId}`
-    ),
+    baseJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
   );
   const candidateSynapses = new Set(
-    candidateJSON.synapses.map((s) =>
-      `${s.fromId}->${s.toId}`
-    ),
+    candidateJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
   );
   const creatureSynapses = new Set(
-    creatureJSON.synapses.map((s) =>
-      `${s.fromId}->${s.toId}`
-    ),
+    creatureJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
   );
 
   // Synapses to remove: existed in base but not in candidate
@@ -280,14 +271,17 @@ export function applyRemoveSynapse(
   if (toRemove.size === 0 && toAdd.length === 0) return undefined;
 
   creatureJSON.synapses = creatureJSON.synapses.filter(
-    (s) =>
-      !toRemove.has(`${s.fromId}->${s.toId}`),
+    (s) => !toRemove.has(`${s.fromId}->${s.toId}`),
   );
 
   // Clean up memetic data for removed synapses
   for (const synapseKey of toRemove) {
     const [fromIdStr, toIdStr] = synapseKey.split("->");
-    cleanupMemeticForRemovedSynapse(creatureJSON, Number(fromIdStr), Number(toIdStr));
+    cleanupMemeticForRemovedSynapse(
+      creatureJSON,
+      Number(fromIdStr),
+      Number(toIdStr),
+    );
   }
 
   creatureJSON.synapses.push(...toAdd);
@@ -317,14 +311,10 @@ export function applyRemoveNeuron(
     candidateJSON.neurons.map((n) => n.id),
   );
   const baseSynapses = new Set(
-    baseJSON.synapses.map((s) =>
-      `${s.fromId}->${s.toId}`
-    ),
+    baseJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
   );
   const creatureSynapses = new Set(
-    creatureJSON.synapses.map((s) =>
-      `${s.fromId}->${s.toId}`
-    ),
+    creatureJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
   );
 
   // Neurons to remove: existed in base (as hidden) but not in candidate
@@ -337,8 +327,7 @@ export function applyRemoveNeuron(
     (n) => !toRemove.has(n.id),
   );
   creatureJSON.synapses = creatureJSON.synapses.filter(
-    (s) =>
-      !toRemove.has(s.fromId) && !toRemove.has(s.toId),
+    (s) => !toRemove.has(s.fromId) && !toRemove.has(s.toId),
   );
 
   // Clean up memetic data for removed neurons

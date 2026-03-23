@@ -179,15 +179,18 @@ Deno.test(
       "Should return all synapses",
     );
     assertEquals(
-      result.adjustedWeights[0].fromId, 0,
+      result.adjustedWeights[0].fromId,
+      0,
       "Should preserve fromUUID",
     );
     assertEquals(
-      result.adjustedWeights[0].toId, 5001,
+      result.adjustedWeights[0].toId,
+      5001,
       "Should preserve toUUID",
     );
     assertEquals(
-      result.adjustedWeights[1].fromId, 1,
+      result.adjustedWeights[1].fromId,
+      1,
       "Should preserve second fromUUID",
     );
   },

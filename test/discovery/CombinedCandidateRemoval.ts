@@ -293,9 +293,7 @@ Deno.test(
 
     // Remove candidate 1
     const remove1Json = structuredClone(baseJSON);
-    remove1Json.neurons = remove1Json.neurons.filter((n) =>
-      n.id !== 8002
-    );
+    remove1Json.neurons = remove1Json.neurons.filter((n) => n.id !== 8002);
     remove1Json.synapses = remove1Json.synapses.filter(
       (s) => s.fromId !== 8002 && s.toId !== 8002,
     );
@@ -318,9 +316,7 @@ Deno.test(
 
     // Remove candidate 2
     const remove2Json = structuredClone(baseJSON);
-    remove2Json.neurons = remove2Json.neurons.filter((n) =>
-      n.id !== 8003
-    );
+    remove2Json.neurons = remove2Json.neurons.filter((n) => n.id !== 8003);
     remove2Json.synapses = remove2Json.synapses.filter(
       (s) => s.fromId !== 8003 && s.toId !== 8003,
     );
@@ -421,9 +417,7 @@ Deno.test(
     const baseJSON = base.exportJSON();
 
     // Verify base structure: input-1 -> hidden-B -> hidden-D -> output-0
-    const baseSynapses = baseJSON.synapses.map((s) =>
-      `${s.fromId}->${s.toId}`
-    );
+    const baseSynapses = baseJSON.synapses.map((s) => `${s.fromId}->${s.toId}`);
     assert(
       baseSynapses.includes(String(9312)),
       "Base should have input-1->hidden-B synapse",

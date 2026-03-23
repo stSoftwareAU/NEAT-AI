@@ -39,7 +39,8 @@ Deno.test("chooseNeurons - clustering with sparseRatio < 1", () => {
       creature.exportJSON(),
     );
     const hasClusteredNeighbour = Array.from(neighbours).some(
-      (neighbourUUID) => selectedNeurons.has(neighbourUUID as unknown as number),
+      (neighbourUUID) =>
+        selectedNeurons.has(neighbourUUID as unknown as number),
     );
     assert(
       hasClusteredNeighbour,

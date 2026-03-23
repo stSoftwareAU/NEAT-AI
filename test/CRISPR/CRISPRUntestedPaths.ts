@@ -267,7 +267,8 @@ Deno.test(
     );
     for (const neuron of crisprTaggedHidden) {
       assertNotEquals(
-        neuron.id, 9436,
+        neuron.id,
+        9436,
         "UUID should have been re-assigned due to collision",
       );
     }

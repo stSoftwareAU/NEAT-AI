@@ -50,9 +50,7 @@ Deno.test(
     assertEquals(exported.neurons.some((n) => n.id === 8002), false);
     assertEquals(exported.neurons.some((n) => n.id === 8001), false);
     assertEquals(
-      exported.synapses.some((s) =>
-        s.fromId === 0 && s.toId === 8001
-      ),
+      exported.synapses.some((s) => s.fromId === 0 && s.toId === 8001),
       false,
     );
   },

@@ -222,7 +222,8 @@ Deno.test(
     );
 
     const slotA = addSynapseCandidates.filter((c) =>
-      c.change.synapseCandidate?.fromNeuronId === "input-2" as unknown as number &&
+      c.change.synapseCandidate?.fromNeuronId ===
+        "input-2" as unknown as number &&
       c.change.synapseCandidate?.toNeuronId === "hidden-1" as unknown as number
     );
     assertEquals(
@@ -237,8 +238,10 @@ Deno.test(
       { candidate: slotA[1], scoreDelta: 0.003 },
       {
         candidate: addSynapseCandidates.find((c) =>
-          c.change.synapseCandidate?.fromNeuronId === "input-3" as unknown as number &&
-          c.change.synapseCandidate?.toNeuronId === "hidden-2" as unknown as number
+          c.change.synapseCandidate?.fromNeuronId ===
+            "input-3" as unknown as number &&
+          c.change.synapseCandidate?.toNeuronId ===
+            "hidden-2" as unknown as number
         )!,
         scoreDelta: 0.002,
       },
@@ -251,7 +254,8 @@ Deno.test(
     );
     const keptSlotA = pruned.find((c) =>
       c.change.type === "add-synapses" &&
-      c.change.synapseCandidate?.fromNeuronId === "input-2" as unknown as number &&
+      c.change.synapseCandidate?.fromNeuronId ===
+        "input-2" as unknown as number &&
       c.change.synapseCandidate?.toNeuronId === "hidden-1" as unknown as number
     );
     assert(keptSlotA, "Expected the input-2→hidden-1 slot to be kept");

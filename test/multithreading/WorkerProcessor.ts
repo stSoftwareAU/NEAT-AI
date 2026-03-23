@@ -55,7 +55,10 @@ Deno.test("buildDiscoverResponsePayload: copies arrays to break reference sharin
   const payload = buildDiscoverResponsePayload(result);
   assertExists(payload.removalCandidates);
   assertEquals(payload.removalCandidates!.length, 1);
-  assertEquals(payload.removalCandidates![0].neuronId, "n1" as unknown as number);
+  assertEquals(
+    payload.removalCandidates![0].neuronId,
+    "n1" as unknown as number,
+  );
 
   // Should be a new array (spread copy), not the same reference
   assertEquals(

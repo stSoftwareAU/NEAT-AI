@@ -151,7 +151,7 @@ export function generateProductionCreature(
 
   // Layer 0: connect from inputs
   for (const uuid of layerUuids[0]) {
-// @ts-ignore
+    // @ts-ignore: Legacy string neuron UUID format
     const neuronDef = neurons.find((n) => n.id === id);
     if (neuronDef?.squash === "IF") {
       wireIfNeuron(uuid, inputUuids, 2 + Math.floor(rng() * 3));
