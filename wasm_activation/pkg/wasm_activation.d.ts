@@ -417,6 +417,27 @@ export function calculate_error_batch_4way(squash_type: number, current_activati
 export function calculate_weight(count: number, total_positive_activation: number, total_negative_activation: number, count_positive: number, count_negative: number, total_positive_adjusted_value: number, total_negative_adjusted_value: number, current_weight: number, generations: number, plank_constant: number, learning_rate: number, max_weight_adj_scale: number, limit_weight_scale: number, l1_weight_decay: number, l2_weight_decay: number): number;
 
 /**
+ * Issue #1959 - Compute reverse topological order for backpropagation.
+ *
+ * Uses Kahn's algorithm on the forward connection graph. Returns neuron
+ * indices ordered with output neurons first, hidden neurons after their
+ * downstream consumers. Input and constant neurons are excluded.
+ *
+ * For recurrent networks with cycles, neurons remaining after the
+ * topological sort are appended at the end.
+ *
+ * # Arguments
+ * * `from_indices` - Uint32Array of synapse source indices
+ * * `to_indices` - Uint32Array of synapse destination indices
+ * * `num_neurons` - Total number of neurons
+ * * `num_inputs` - Number of input neurons
+ *
+ * # Returns
+ * Uint32Array of neuron indices in reverse topological order
+ */
+export function compute_reverse_topological_order(from_indices: Uint32Array, to_indices: Uint32Array, num_neurons: number, num_inputs: number): Uint32Array;
+
+/**
  * Batch-compute abs-sum, max, and second-max over weight and bias arrays.
  *
  * Returns a `Float64Array` with 4 elements:
@@ -808,6 +829,27 @@ export function safe_zone_adjustment(squash_type: number, raw_input: number, err
 export function safe_zone_adjustment_batch(squash_types: Uint8Array, raw_inputs: Float32Array, error: number, weights: Float32Array): Float32Array;
 
 /**
+ * Issue #1959 - Scan for available forward-only connection slots.
+ *
+ * Computes all `(from, to)` pairs where `from < to`, `to >= num_inputs`,
+ * the target neuron is not constant, and no connection already exists.
+ *
+ * Uses a flat boolean array for O(1) connection existence checks,
+ * which is more cache-friendly than a hash set for WASM linear memory.
+ *
+ * # Arguments
+ * * `from_indices` - Uint32Array of existing synapse source indices
+ * * `to_indices` - Uint32Array of existing synapse destination indices
+ * * `is_constant` - Uint8Array flag per neuron (1 = constant, 0 = not)
+ * * `num_neurons` - Total number of neurons
+ * * `num_inputs` - Number of input neurons
+ *
+ * # Returns
+ * Uint32Array of flattened `[from, to, from, to, ...]` pairs
+ */
+export function scan_available_connections(from_indices: Uint32Array, to_indices: Uint32Array, is_constant: Uint8Array, num_neurons: number, num_inputs: number): Uint32Array;
+
+/**
  * Scan all weights and biases to find the new max and second-max after a
  * bias change. The bias at `exclude_idx` is excluded (it is being
  * replaced); `new_bias` is included instead.
@@ -870,6 +912,31 @@ export function unsquash(squash_type: number, activation: number, hint: number):
 export function validate_range(squash_type: number, activation: number): boolean;
 
 /**
+ * Issue #1959 - Validate topology synapse ordering and forward-only constraints.
+ *
+ * Checks that synapses are sorted (ascending from, then ascending to within
+ * the same from), contain no self-connections, and contain no backward
+ * connections (from > to).
+ *
+ * Operates directly on typed arrays from TypedTopology without custom
+ * binary serialisation — wasm-bindgen passes the arrays as slices.
+ *
+ * # Arguments
+ * * `from_indices` - Uint32Array of source neuron indices per synapse
+ * * `to_indices` - Uint32Array of destination neuron indices per synapse
+ *
+ * # Returns
+ * Int32Array of length 2: `[error_code, synapse_index]`
+ * - error_code 0 = valid topology
+ * - error_code 1 = self-connection at synapse_index
+ * - error_code 2 = backward connection at synapse_index
+ * - error_code 3 = from indices not sorted at synapse_index
+ * - error_code 4 = to indices not sorted within same from at synapse_index
+ * - error_code 5 = duplicate connection at synapse_index
+ */
+export function validate_topology(from_indices: Uint32Array, to_indices: Uint32Array): Int32Array;
+
+/**
  * Version information
  */
 export function version(): string;
@@ -916,12 +983,17 @@ export interface InitOutput {
     readonly predictivecodingengine_num_inputs: (a: number) => number;
     readonly predictivecodingengine_num_neurons: (a: number) => number;
     readonly predictivecodingengine_num_outputs: (a: number) => number;
-    readonly distribute_elastic_error: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
+    readonly compute_reverse_topological_order: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
+    readonly compute_score_components: (a: number, b: number, c: number, d: number) => any;
+    readonly scan_available_connections: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
+    readonly scan_max_bias: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
+    readonly scan_max_weight: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
+    readonly validate_topology: (a: number, b: number, c: number, d: number) => [number, number];
     readonly accumulate_bias_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly accumulate_bias_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly accumulate_weight_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly accumulate_weight_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
-    readonly compute_score_components: (a: number, b: number, c: number, d: number) => any;
+    readonly distribute_elastic_error: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
     readonly free_training_state: () => void;
     readonly get_training_state_num_neurons: () => number;
     readonly get_training_state_num_synapses: () => number;
@@ -931,8 +1003,6 @@ export interface InitOutput {
     readonly read_neuron_state: (a: number) => [number, number];
     readonly read_synapse_state: (a: number) => [number, number];
     readonly reset_training_state: () => void;
-    readonly scan_max_bias: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
-    readonly scan_max_weight: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
     readonly predictivecodingengine_compute_gradients_wasm: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly accumulate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
     readonly accumulate_bias_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];

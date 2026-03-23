@@ -14,6 +14,12 @@
 import type { Creature } from "../Creature.ts";
 import { getSquashType } from "../wasm/SquashType.ts";
 import { getSynapseTypeCode } from "../wasm/CompileToWasm.ts";
+import type { TopologyValidationResult } from "../wasm/WasmTopologyOps.ts";
+import {
+  computeReverseTopologicalOrder as wasmComputeOrder,
+  scanAvailableConnections as wasmScanAvailable,
+  validateTopology as wasmValidate,
+} from "../wasm/WasmTopologyOps.ts";
 
 /**
  * Immutable typed array snapshot of a creature's topology.
@@ -235,5 +241,37 @@ export class TypedTopology {
     }
 
     return new Uint8Array(buffer);
+  }
+
+  /**
+   * Validate forward-only topology constraints.
+   *
+   * Issue #1959: Uses WASM when available, falls back to TypeScript.
+   * Checks synapse sorting, self-connections, and backward connections.
+   */
+  validateForwardOnly(): TopologyValidationResult {
+    return wasmValidate(this);
+  }
+
+  /**
+   * Scan for available forward-only connection slots.
+   *
+   * Issue #1959: Uses WASM when available, falls back to TypeScript.
+   * Returns all (from, to) pairs where from < to, to >= numInputs,
+   * target is not constant, and no connection exists.
+   */
+  scanAvailableConnections(): [number, number][] {
+    return wasmScanAvailable(this);
+  }
+
+  /**
+   * Compute reverse topological order for backpropagation.
+   *
+   * Issue #1959: Uses WASM when available, falls back to TypeScript.
+   * Returns neuron indices with output neurons first, hidden neurons
+   * after their downstream consumers. Input neurons are excluded.
+   */
+  computeReverseTopologicalOrder(): number[] {
+    return wasmComputeOrder(this);
   }
 }

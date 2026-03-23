@@ -292,16 +292,33 @@ This would:
 
 **Estimated effort: 2–3 weeks**, lower risk than full WASM residency.
 
-### 5.3 Selective WASM Residency (Future)
+### 5.3 Selective WASM Residency (Implemented — #1959)
 
-If typed array topology proves successful, specific read-heavy operations could
-be moved to WASM:
+With typed array topology in place (#1957), three read-heavy topology operations
+have been migrated to WASM/Rust:
 
-- Topology validation (forward-only checks)
-- Connection availability scanning
-- Neuron dependency analysis
+- **Topology validation** (`validate_topology`) — Forward-only checks: synapse
+  sorting, self-connection detection, backward connection detection
+- **Connection availability scanning** (`scan_available_connections`) — Finds
+  all forward-only connection slots not yet occupied
+- **Neuron dependency analysis** (`compute_reverse_topological_order`) — Kahn's
+  algorithm for reverse topological order (backpropagation ordering)
 
-This would be a natural evolution from 5.2, not a separate initiative.
+These operations accept typed arrays directly from `TypedTopology` via
+wasm-bindgen slice passing — no custom binary serialisation required. Each
+function has a TypeScript fallback so the system works without WASM.
+
+Convenience methods on `TypedTopology`:
+
+- `validateForwardOnly()` — WASM-accelerated forward-only validation
+- `scanAvailableConnections()` — WASM-accelerated connection scanning
+- `computeReverseTopologicalOrder()` — WASM-accelerated topological ordering
+
+Implementation files:
+
+- `wasm_activation/src/topology_ops.rs` — Rust WASM functions
+- `src/wasm/WasmTopologyOps.ts` — TypeScript wrappers with fallbacks
+- `test/wasm/WasmTopologyOps.ts` — 21 tests verifying WASM/TS equivalence
 
 ---
 
@@ -349,5 +366,7 @@ This would be a natural evolution from 5.2, not a separate initiative.
 - #1639 — Parent tracking issue for WASM performance series
 - #1641 — Topological ordering optimisation
 - #1644 — Breeding crossover allocation reduction
+- #1957 — Typed array topology implementation
+- #1959 — Selective WASM residency for read-heavy topology operations
 - `docs/PERFORMANCE_RESEARCH.md` — Performance research with WASM migration
   learnings
