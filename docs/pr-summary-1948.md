@@ -1,7 +1,7 @@
 ## Summary
 
-Extend parallel bridge neuron merging to support COMPLEMENT squash functions
-in addition to IDENTITY. Closes #1948.
+Extend parallel bridge neuron merging to support COMPLEMENT squash functions in
+addition to IDENTITY. Closes #1948.
 
 COMPLEMENT (`f(x) = 1 - x`) is an affine function that can be algebraically
 converted to IDENTITY: `1 - (w*x + b) = (-w)*x + (1 - b)`. After conversion,
@@ -12,14 +12,15 @@ explicitly excluded.
 
 ### Changes
 
-- **`src/methods/activations/SquashUtils.ts`**: Added `isParallelMergeableSquash()`
-  utility with comprehensive analysis documenting which squash functions support
-  parallel merging and why.
+- **`src/methods/activations/SquashUtils.ts`**: Added
+  `isParallelMergeableSquash()` utility with comprehensive analysis documenting
+  which squash functions support parallel merging and why.
 - **`src/compact/ParallelBridgeMerge.ts`** (new): Generalised parallel bridge
   merge that handles both IDENTITY and COMPLEMENT neurons. COMPLEMENT neurons
   are converted to IDENTITY in-place before merging.
-- **`src/compact/CompactCreature.ts`**: Integrated the new `mergeParallelBridges()`
-  into the compaction pipeline after the existing IDENTITY-only pass.
+- **`src/compact/CompactCreature.ts`**: Integrated the new
+  `mergeParallelBridges()` into the compaction pipeline after the existing
+  IDENTITY-only pass.
 - **`test/compact/ParallelBridgeMerge.ts`** (new): 11 tests covering COMPLEMENT
   merging, weight/bias calculation, mixed squash rejection, and explicit
   non-mergeability tests for LOGISTIC, TANH, ReLU, ABSOLUTE, and MAXIMUM.
