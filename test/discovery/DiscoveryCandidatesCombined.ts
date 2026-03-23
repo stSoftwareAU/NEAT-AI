@@ -1,6 +1,12 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+
+// Integer IDs for neurons in the baseline creature (from UUID hashing):
+// hidden-1 → 1775329650, hidden-2 → 1775329649
+// output-0 → -1, output-1 → -2
+const ID_HIDDEN_1 = 1775329650;
+const ID_HIDDEN_2 = 1775329649;
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CandidateHarmfulNeuron,
@@ -54,7 +60,7 @@ Deno.test(
   () => {
     const base = makeBaselineCreature();
     const helpfulSynapses: CandidateSynapse[] = [{
-      fromNeuronId: 5002,
+      fromNeuronId: ID_HIDDEN_2,
       toNeuronId: -1,
       weight: 0.9,
       targetNeuronImpact: 1.0,
@@ -65,7 +71,7 @@ Deno.test(
     }];
     const removeCandidate: CandidateSynapse = {
       fromNeuronId: 0,
-      toNeuronId: 5001,
+      toNeuronId: ID_HIDDEN_1,
       weight: 0.1,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -74,8 +80,8 @@ Deno.test(
       totalCount: 6,
     };
     const neuronCandidate: CandidateNeuron = {
-      fromNeuronId: 2,
-      toNeuronId: 5002,
+      fromNeuronId: ID_HIDDEN_1,
+      toNeuronId: -1,
       incomingWeight: 0.33,
       outgoingWeight: -0.22,
       squash: TANH.NAME,
@@ -87,7 +93,7 @@ Deno.test(
       totalCount: 8,
     };
     const squashCandidate: CandidateSquash = {
-      neuronId: 5001,
+      neuronId: ID_HIDDEN_1,
       previousSquash: IDENTITY.NAME,
       squash: Mish.NAME,
       expectedCreatureScoreGain: 0.21,
@@ -129,7 +135,9 @@ Deno.test(
       "Combined candidate should include the beneficial synapse.",
     );
 
-    const hidden1 = exported.neurons.find((neuron) => neuron.id === 5001);
+    const hidden1 = exported.neurons.find((neuron) =>
+      neuron.id === ID_HIDDEN_1
+    );
     assert(hidden1, "Hidden neuron should exist after combination.");
     assertEquals(
       hidden1?.squash,
@@ -171,7 +179,7 @@ Deno.test(
   () => {
     const base = makeBaselineCreature();
     const harmfulNeuron: CandidateHarmfulNeuron = {
-      neuronId: 5001,
+      neuronId: ID_HIDDEN_1,
       errorMagnitude: 1.5e11, // Above 1e10 threshold
       expectedCreatureScoreGain: 0.85,
       sampleCount: 100,
@@ -280,7 +288,7 @@ Deno.test(
     CreatureUtil.makeUUID(testCreature);
 
     const harmfulNeuron: CandidateHarmfulNeuron = {
-      neuronId: 5001,
+      neuronId: ID_HIDDEN_1,
       errorMagnitude: 1.5e11,
       expectedCreatureScoreGain: 0.85,
       sampleCount: 100,
@@ -351,7 +359,7 @@ Deno.test(
     const base = makeBaselineCreature();
     const helpfulSynapses: CandidateSynapse[] = [{
       fromNeuronId: 2,
-      toNeuronId: 5002,
+      toNeuronId: ID_HIDDEN_2,
       weight: 0.88,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -361,7 +369,7 @@ Deno.test(
     }];
     const removeSynapse: CandidateSynapse = {
       fromNeuronId: 0,
-      toNeuronId: 5001,
+      toNeuronId: ID_HIDDEN_1,
       weight: -0.5,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -433,7 +441,7 @@ Deno.test(
     const base = makeBaselineCreature();
     const helpfulSynapses: CandidateSynapse[] = [{
       fromNeuronId: 3,
-      toNeuronId: 5002,
+      toNeuronId: ID_HIDDEN_2,
       weight: 0.77,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -442,7 +450,7 @@ Deno.test(
       totalCount: 7,
     }];
     const squashChanges: CandidateSquash[] = [{
-      neuronId: 5001,
+      neuronId: ID_HIDDEN_1,
       previousSquash: IDENTITY.NAME,
       squash: TANH.NAME,
       expectedCreatureScoreGain: 0.35,
@@ -476,7 +484,9 @@ Deno.test(
     );
 
     // Verify squash function is changed
-    const hidden1 = exported.neurons.find((neuron) => neuron.id === 5001);
+    const hidden1 = exported.neurons.find((neuron) =>
+      neuron.id === ID_HIDDEN_1
+    );
     assert(hidden1, "Hidden neuron 1 should still exist");
     assertEquals(
       hidden1.squash,

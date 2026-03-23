@@ -1,5 +1,6 @@
 import type { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 
 export interface PruneDeadSubgraphsResult {
@@ -28,6 +29,7 @@ export interface PruneDeadSubgraphsResult {
 export function pruneDeadSubgraphs(
   creatureExport: CreatureExport,
 ): PruneDeadSubgraphsResult {
+  normaliseCreatureExport(creatureExport);
   // Build reverse adjacency: toId -> set(fromId)
   const incoming = new Map<number, Set<number>>();
   for (const synapse of creatureExport.synapses) {

@@ -1,4 +1,5 @@
 import type { CreatureExport } from "../../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../../architecture/NormaliseCreatureExport.ts";
 import type { NeuronStateInterface } from "../../architecture/CreatureState.ts";
 import type { BackPropagationConfig } from "../BackPropagation.ts";
 import { getRandomNumberGenerator } from "../../utils/RandomNumberGenerator.ts";
@@ -20,6 +21,7 @@ export function chooseNeurons(
   config: BackPropagationConfig,
   neuronErrors?: ReadonlyMap<number, NeuronStateInterface>,
 ): Readonly<Set<number>> {
+  normaliseCreatureExport(creature);
   // Handle the special case where sparseRatio is 1.
   if (config.sparseRatio === 1) {
     const allNeurons = new Set(

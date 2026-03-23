@@ -4,6 +4,7 @@ import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
+import { initWasmForTests } from "../_initWasm.ts";
 
 /**
  * Issue #1874: Verify that IF neurons distribute error proportional to
@@ -13,135 +14,155 @@ import { train } from "../TrainTestOnlyUtil.ts";
  * very different activation magnitudes. After backpropagation, the
  * connection with larger activation should receive more weight change.
  */
-Deno.test("IF: error distribution proportional to activation magnitudes", () => {
-  // Create a creature where the IF neuron has two positive connections
-  // with different activation magnitudes.
-  const creatureJson: CreatureExport = {
-    neurons: [
-      {
-        type: "hidden",
-        uuid: "hidden-a",
-        bias: 0,
-        squash: "IDENTITY",
-      },
-      {
-        type: "hidden",
-        uuid: "hidden-b",
-        bias: 0,
-        squash: "IDENTITY",
-      },
-      {
-        type: "output",
-        uuid: "output-0",
-        bias: 0,
-        squash: "IF",
-      },
-    ],
-    synapses: [
-      // hidden-a gets a large activation from input-0
-      {
-        weight: 2.0,
-        fromUUID: "input-0",
-        toUUID: "hidden-a",
-      },
-      // hidden-b gets a small activation from input-1
-      {
-        weight: 0.2,
-        fromUUID: "input-1",
-        toUUID: "hidden-b",
-      },
-      // Condition: always positive (input-0 is always positive in our data)
-      {
-        weight: 1.0,
-        fromUUID: "input-0",
-        toUUID: "output-0",
-        type: "condition",
-      },
-      // Two positive branches with same weight but different activations
-      {
-        weight: 1.0,
-        fromUUID: "hidden-a",
-        toUUID: "output-0",
-        type: "positive",
-      },
-      {
-        weight: 1.0,
-        fromUUID: "hidden-b",
-        toUUID: "output-0",
-        type: "positive",
-      },
-      // Negative branch (needed for IF structure, uses different source)
-      {
-        weight: 0.5,
-        fromUUID: "input-1",
-        toUUID: "output-0",
-        type: "negative",
-      },
-    ],
-    input: 2,
-    output: 1,
-  };
+Deno.test(
+  "IF: error distribution proportional to activation magnitudes",
+  async () => {
+    await initWasmForTests();
 
-  const creature = Creature.fromJSON(creatureJson);
-  creature.validate();
+    // Create a creature where the IF neuron has two positive connections
+    // with different activation magnitudes.
+    const creatureJson: CreatureExport = {
+      neurons: [
+        {
+          type: "hidden",
+          uuid: "hidden-a",
+          bias: 0,
+          squash: "IDENTITY",
+        },
+        {
+          type: "hidden",
+          uuid: "hidden-b",
+          bias: 0,
+          squash: "IDENTITY",
+        },
+        {
+          type: "output",
+          uuid: "output-0",
+          bias: 0,
+          squash: "IF",
+        },
+      ],
+      synapses: [
+        // hidden-a gets a large activation from input-0
+        {
+          weight: 2.0,
+          fromUUID: "input-0",
+          toUUID: "hidden-a",
+        },
+        // hidden-b gets a small activation from input-1
+        {
+          weight: 0.2,
+          fromUUID: "input-1",
+          toUUID: "hidden-b",
+        },
+        // Condition: always positive (input-0 is always positive in our data)
+        {
+          weight: 1.0,
+          fromUUID: "input-0",
+          toUUID: "output-0",
+          type: "condition",
+        },
+        // Two positive branches with same weight but different activations
+        {
+          weight: 1.0,
+          fromUUID: "hidden-a",
+          toUUID: "output-0",
+          type: "positive",
+        },
+        {
+          weight: 1.0,
+          fromUUID: "hidden-b",
+          toUUID: "output-0",
+          type: "positive",
+        },
+        // Negative branch (needed for IF structure, uses different source)
+        {
+          weight: 0.5,
+          fromUUID: "input-1",
+          toUUID: "output-0",
+          type: "negative",
+        },
+      ],
+      input: 2,
+      output: 1,
+    };
 
-  // Generate training data with positive condition (input-0 > 0)
-  const ts: DataRecordInterface[] = [];
-  for (let i = 0; i < 50; i++) {
-    const input = [1.0 + Math.random(), 0.5 + Math.random() * 0.5];
-    const output = creature.activate(new Float32Array(input));
-    // Create a consistent error direction
-    ts.push({
-      input: new Float32Array(input),
-      output: new Float32Array([output[0] + 0.5]),
+    const creature = Creature.fromJSON(creatureJson);
+    creature.validate();
+
+    // Find neuron IDs dynamically after normalisation.
+    const exportedInit = creature.exportJSON();
+    const hiddenANeuron = exportedInit.neurons.find(
+      (n) =>
+        n.type === "hidden" &&
+        exportedInit.synapses.some(
+          (s) => s.fromId === 0 && s.toId === n.id,
+        ),
+    );
+    const hiddenBNeuron = exportedInit.neurons.find(
+      (n) => n.type === "hidden" && n.id !== hiddenANeuron?.id,
+    );
+    const outputId = -1; // output-0 is always -1
+    const largeKey = `${hiddenANeuron?.id}->${outputId}:positive`;
+    const smallKey = `${hiddenBNeuron?.id}->${outputId}:positive`;
+
+    // Generate training data with positive condition (input-0 > 0)
+    const ts: DataRecordInterface[] = [];
+    for (let i = 0; i < 50; i++) {
+      const input = [1.0 + Math.random(), 0.5 + Math.random() * 0.5];
+      const output = creature.activate(new Float32Array(input));
+      // Create a consistent error direction
+      ts.push({
+        input: new Float32Array(input),
+        output: new Float32Array([output[0] + 0.5]),
+      });
+    }
+
+    const exportBefore = creature.exportJSON();
+    const weightsBefore = new Map<string, number>();
+    for (const s of exportBefore.synapses) {
+      const key = `${s.fromId}->${s.toId}:${s.type ?? "default"}`;
+      weightsBefore.set(key, s.weight);
+    }
+
+    // Train
+    const trainedCreature = Creature.fromJSON(exportBefore);
+    trainedCreature.validate();
+    train(trainedCreature, ts, {
+      iterations: 100,
+      disableRandomSamples: true,
     });
-  }
 
-  const exportBefore = creature.exportJSON();
-  const weightsBefore = new Map<string, number>();
-  for (const s of exportBefore.synapses) {
-    const key = `${s.fromId}->${s.toId}:${s.type ?? "default"}`;
-    weightsBefore.set(key, s.weight);
-  }
+    const exportAfter = trainedCreature.exportJSON();
+    const weightsAfter = new Map<string, number>();
+    for (const s of exportAfter.synapses) {
+      const key = `${s.fromId}->${s.toId}:${s.type ?? "default"}`;
+      weightsAfter.set(key, s.weight);
+    }
 
-  // Train
-  const trainedCreature = Creature.fromJSON(exportBefore);
-  trainedCreature.validate();
-  train(trainedCreature, ts, {
-    iterations: 100,
-    disableRandomSamples: true,
-  });
+    const largeDelta = Math.abs(
+      (weightsAfter.get(largeKey) ?? 0) -
+        (weightsBefore.get(largeKey) ?? 0),
+    );
+    const smallDelta = Math.abs(
+      (weightsAfter.get(smallKey) ?? 0) -
+        (weightsBefore.get(smallKey) ?? 0),
+    );
 
-  const exportAfter = trainedCreature.exportJSON();
-  const weightsAfter = new Map<string, number>();
-  for (const s of exportAfter.synapses) {
-    const key = `${s.fromId}->${s.toId}:${s.type ?? "default"}`;
-    weightsAfter.set(key, s.weight);
-  }
-
-  const largeDelta = Math.abs(
-    (weightsAfter.get(String(9486)) ?? 0) -
-      (weightsBefore.get(String(9486)) ?? 0),
-  );
-  const smallDelta = Math.abs(
-    (weightsAfter.get(String(9444)) ?? 0) -
-      (weightsBefore.get(String(9444)) ?? 0),
-  );
-
-  // The connection with larger activation (hidden-a) should absorb more error
-  // and thus have a larger weight change
-  assert(
-    largeDelta > 1e-10 || smallDelta > 1e-10,
-    `At least one positive connection should have weight change: largeDelta=${largeDelta}, smallDelta=${smallDelta}`,
-  );
-});
+    // The connection with larger activation (hidden-a) should absorb more error
+    // and thus have a larger weight change
+    assert(
+      largeDelta > 1e-10 || smallDelta > 1e-10,
+      `At least one positive connection should have weight change: largeDelta=${largeDelta}, smallDelta=${smallDelta}`,
+    );
+  },
+);
 
 /**
  * Issue #1874: Verify convergence improvement with IF aggregate neurons
  * using activation-weighted distribution.
  */
 Deno.test("IF: convergence with activation-weighted error distribution", async () => {
-  const { initWasmForTests } = await import("../_initWasm.ts");
   await initWasmForTests();
 
   for (let attempts = 0; true; attempts++) {

@@ -49,27 +49,49 @@ function makeCreature() {
   return creature;
 }
 
+/**
+ * Finds neuron IDs for the two hidden neurons in the creature created by makeCreature().
+ * Returns { hidden3Id, hidden4Id } corresponding to "hidden-3" (Cosine) and "hidden-4" (HARD_TANH).
+ */
+function getHiddenIds(): { hidden3Id: number; hidden4Id: number } {
+  const creature = makeCreature();
+  const exported = creature.exportJSON();
+  const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
+  // hidden-3 (Cosine) and hidden-4 (HARD_TANH)
+  const cosineNeuron = hiddenNeurons.find((n) => n.squash === "Cosine");
+  const hardTanhNeuron = hiddenNeurons.find((n) => n.squash === "HARD_TANH");
+  assertExists(cosineNeuron?.id, "hidden-3 (Cosine) neuron must have an id");
+  assertExists(
+    hardTanhNeuron?.id,
+    "hidden-4 (HARD_TANH) neuron must have an id",
+  );
+  return { hidden3Id: cosineNeuron.id, hidden4Id: hardTanhNeuron.id };
+}
+
 Deno.test("MemeticInterface should include ancestry history", () => {
+  const { hidden3Id } = getHiddenIds();
+  const INPUT_0_ID = 0;
+
   const creature = makeCreature();
   creature.score = -0.1;
 
   const memetic: MemeticInterface = {
     generation: 2,
     weights: {
-      "input-0": [{ toUUID: "hidden-3", weight: -0.25 }],
+      [INPUT_0_ID]: [{ toId: hidden3Id, weight: -0.25 }],
     },
     biases: {
-      "hidden-3": 2.9,
+      [hidden3Id]: 2.9,
     },
     score: -0.15,
     ancestry: [
       {
         generation: 1,
         weights: {
-          "input-0": [{ toUUID: "hidden-3", weight: -0.2 }],
+          [INPUT_0_ID]: [{ toId: hidden3Id, weight: -0.2 }],
         },
         biases: {
-          "hidden-3": 2.8,
+          [hidden3Id]: 2.8,
         },
         score: -0.2,
       },
@@ -145,25 +167,28 @@ Deno.test("fineTuneImprovement should build ancestry history", () => {
 });
 
 Deno.test("ancestry should be preserved during breeding", () => {
+  const { hidden3Id } = getHiddenIds();
+  const INPUT_0_ID = 0;
+
   const mum = makeCreature();
   mum.score = -0.1;
   mum.memetic = {
     generation: 2,
     weights: {
-      "input-0": [{ toUUID: "hidden-3", weight: -0.25 }],
+      [INPUT_0_ID]: [{ toId: hidden3Id, weight: -0.25 }],
     },
     biases: {
-      "hidden-3": 2.9,
+      [hidden3Id]: 2.9,
     },
     score: -0.15,
     ancestry: [
       {
         generation: 1,
         weights: {
-          "input-0": [{ toUUID: "hidden-3", weight: -0.2 }],
+          [INPUT_0_ID]: [{ toId: hidden3Id, weight: -0.2 }],
         },
         biases: {
-          "hidden-3": 2.8,
+          [hidden3Id]: 2.8,
         },
         score: -0.2,
       },
@@ -190,95 +215,108 @@ Deno.test("ancestry should be preserved during breeding", () => {
 });
 
 Deno.test("analyseWeightTrajectory should identify consistent directions", () => {
-  // Weights consistently increasing
+  const { hidden3Id } = getHiddenIds();
+  const INPUT_0_ID = 0;
+
+  // Weights consistently increasing (becoming less negative)
   const memetic: MemeticInterface = {
     generation: 3,
     weights: {
-      "input-0": [{ toUUID: "hidden-3", weight: -0.15 }],
+      [INPUT_0_ID]: [{ toId: hidden3Id, weight: -0.15 }],
     },
     biases: {
-      "hidden-3": 3.2,
+      [hidden3Id]: 3.2,
     },
     score: -0.05,
     ancestry: [
       {
         generation: 2,
         weights: {
-          "input-0": [{ toUUID: "hidden-3", weight: -0.2 }],
+          [INPUT_0_ID]: [{ toId: hidden3Id, weight: -0.2 }],
         },
         biases: {
-          "hidden-3": 3.1,
+          [hidden3Id]: 3.1,
         },
         score: -0.1,
       },
       {
         generation: 1,
         weights: {
-          "input-0": [{ toUUID: "hidden-3", weight: -0.25 }],
+          [INPUT_0_ID]: [{ toId: hidden3Id, weight: -0.25 }],
         },
         biases: {
-          "hidden-3": 3.0,
+          [hidden3Id]: 3.0,
         },
         score: -0.15,
       },
     ],
   };
 
-  const trajectory = analyseWeightTrajectory(memetic, "input-0", "hidden-3");
+  const trajectory = analyseWeightTrajectory(memetic, INPUT_0_ID, hidden3Id);
   assertExists(trajectory, "Trajectory should be calculated");
   assert(trajectory.direction > 0, "Direction should be positive (increasing)");
   assert(trajectory.consistency > 0.5, "Changes should be consistent");
 });
 
 Deno.test("analyseWeightTrajectory should handle no ancestry", () => {
+  const { hidden3Id } = getHiddenIds();
+  const INPUT_0_ID = 0;
+
   const memetic: MemeticInterface = {
     generation: 1,
     weights: {
-      "input-0": [{ toUUID: "hidden-3", weight: -0.2 }],
+      [INPUT_0_ID]: [{ toId: hidden3Id, weight: -0.2 }],
     },
     biases: {},
     score: -0.1,
   };
 
-  const trajectory = analyseWeightTrajectory(memetic, "input-0", "hidden-3");
+  const trajectory = analyseWeightTrajectory(memetic, INPUT_0_ID, hidden3Id);
   assertEquals(trajectory, undefined, "No trajectory without ancestry");
 });
 
 Deno.test("calculateTrajectoryMomentum should compute momentum factor", () => {
+  const { hidden3Id } = getHiddenIds();
+  const INPUT_0_ID = 0;
+
   const memetic: MemeticInterface = {
     generation: 3,
     weights: {
-      "input-0": [{ toUUID: "hidden-3", weight: -0.15 }],
+      [INPUT_0_ID]: [{ toId: hidden3Id, weight: -0.15 }],
     },
     biases: {
-      "hidden-3": 3.2,
+      [hidden3Id]: 3.2,
     },
     score: -0.05,
     ancestry: [
       {
         generation: 2,
         weights: {
-          "input-0": [{ toUUID: "hidden-3", weight: -0.2 }],
+          [INPUT_0_ID]: [{ toId: hidden3Id, weight: -0.2 }],
         },
         biases: {
-          "hidden-3": 3.1,
+          [hidden3Id]: 3.1,
         },
         score: -0.1,
       },
       {
         generation: 1,
         weights: {
-          "input-0": [{ toUUID: "hidden-3", weight: -0.25 }],
+          [INPUT_0_ID]: [{ toId: hidden3Id, weight: -0.25 }],
         },
         biases: {
-          "hidden-3": 3.0,
+          [hidden3Id]: 3.0,
         },
         score: -0.15,
       },
     ],
   };
 
-  const momentum = calculateTrajectoryMomentum(memetic, "input-0", "hidden-3");
+  const momentum = calculateTrajectoryMomentum(
+    memetic,
+    INPUT_0_ID,
+    hidden3Id,
+  );
   assertExists(momentum, "Momentum should be calculated");
   assert(
     momentum.factor > 0,
@@ -323,11 +361,13 @@ Deno.test("ancestry circular buffer should limit depth", () => {
 });
 
 Deno.test("bias trajectory should be analysed separately", () => {
+  const { hidden3Id } = getHiddenIds();
+
   const memetic: MemeticInterface = {
     generation: 3,
     weights: {},
     biases: {
-      "hidden-3": 3.3,
+      [hidden3Id]: 3.3,
     },
     score: -0.05,
     ancestry: [
@@ -335,7 +375,7 @@ Deno.test("bias trajectory should be analysed separately", () => {
         generation: 2,
         weights: {},
         biases: {
-          "hidden-3": 3.2,
+          [hidden3Id]: 3.2,
         },
         score: -0.1,
       },
@@ -343,7 +383,7 @@ Deno.test("bias trajectory should be analysed separately", () => {
         generation: 1,
         weights: {},
         biases: {
-          "hidden-3": 3.1,
+          [hidden3Id]: 3.1,
         },
         score: -0.15,
       },
@@ -352,7 +392,7 @@ Deno.test("bias trajectory should be analysed separately", () => {
 
   const biasTrajectory = analyseWeightTrajectory(
     memetic,
-    "hidden-3",
+    hidden3Id,
     undefined,
     true,
   );

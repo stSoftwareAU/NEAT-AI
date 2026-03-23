@@ -5,6 +5,14 @@ import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralE
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
+// Integer IDs for hidden neurons (deterministicIdFromUuid).
+const HIDDEN_DIRECT_ID = 1041673428; // "hidden-direct"
+const HIDDEN_CHAIN_1_ID = 1168156994; // "hidden-chain-1"
+const HIDDEN_CHAIN_2_ID = 1168156995; // "hidden-chain-2"
+const HIDDEN_CHAIN_3_ID = 1168156996; // "hidden-chain-3"
+const HIDDEN_UNBOUNDED_ID = 1117657025; // "hidden-unbounded"
+const HIDDEN_TANH_ID = 890998550; // "hidden-tanh"
+
 Deno.test("Focus selection accounts for squashing function bounds on downstream paths", () => {
   // Create a network with two paths to output:
   // Path A: input-0 -> hidden-direct -> output-0 (weight 1.0, IDENTITY squash)
@@ -58,18 +66,20 @@ Deno.test("Focus selection accounts for squashing function bounds on downstream 
 
   // Calculate impact for each hidden neuron using the actual implementation
   // deno-lint-ignore no-explicit-any
-  const directImpact = (discover as any).calculateNeuronImpact("hidden-direct");
+  const directImpact = (discover as any).calculateNeuronImpact(
+    HIDDEN_DIRECT_ID,
+  );
   // deno-lint-ignore no-explicit-any
   const chain1Impact = (discover as any).calculateNeuronImpact(
-    "hidden-chain-1",
+    HIDDEN_CHAIN_1_ID,
   );
   // deno-lint-ignore no-explicit-any
   const chain2Impact = (discover as any).calculateNeuronImpact(
-    "hidden-chain-2",
+    HIDDEN_CHAIN_2_ID,
   );
   // deno-lint-ignore no-explicit-any
   const chain3Impact = (discover as any).calculateNeuronImpact(
-    "hidden-chain-3",
+    HIDDEN_CHAIN_3_ID,
   );
 
   // hidden-direct has unbounded path to output (all IDENTITY) but shares the
@@ -149,10 +159,10 @@ Deno.test("Focus selection correctly weights neurons by squash-bounded impact", 
 
   // deno-lint-ignore no-explicit-any
   const unboundedImpact = (discover as any).calculateNeuronImpact(
-    "hidden-unbounded",
+    HIDDEN_UNBOUNDED_ID,
   );
   // deno-lint-ignore no-explicit-any
-  const tanhImpact = (discover as any).calculateNeuronImpact("hidden-tanh");
+  const tanhImpact = (discover as any).calculateNeuronImpact(HIDDEN_TANH_ID);
 
   // IDENTITY has derivative of 1.0, TANH at x=5 has derivative ~0.0001
   // So even though both have weight 1.0 to output, the TANH neuron's

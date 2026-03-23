@@ -594,17 +594,21 @@ function checkChild(child: Creature) {
 
   const json = child.exportJSON();
 
+  // IDs are deterministic integers derived from UUID strings:
+  // A0 → 1002063, A1 → 1002064
+  // B → 1000066
+  // C0 → 1002125, C1 → 1002126
   let aBranchFound = false;
   let bBranchFound = false;
   let cBranchFound = false;
   json.neurons.forEach((n) => {
-    if (n.id === 9923 || n.id === 9067) {
+    if (n.id === 1002063 || n.id === 1002064) {
       aBranchFound = true;
     }
-    if (n.id === 9899) {
+    if (n.id === 1000066) {
       bBranchFound = true;
     }
-    if (n.id === 9143 || n.id === 9017) {
+    if (n.id === 1002125 || n.id === 1002126) {
       cBranchFound = true;
     }
   });

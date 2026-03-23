@@ -9,6 +9,7 @@
 
 import { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { nextNeuronId } from "../architecture/NeuronId.ts";
 import type {
   CheckpointInterface,
@@ -139,6 +140,7 @@ export function importCheckpoint(
   checkpoint: CheckpointInterface,
   options?: CheckpointImportOptions,
 ): Creature {
+  normaliseCreatureExport(checkpoint.creature);
   const sourceCreature = checkpoint.creature;
   const targetInputCount = options?.targetInputCount ?? sourceCreature.input;
   const targetOutputCount = options?.targetOutputCount ?? sourceCreature.output;

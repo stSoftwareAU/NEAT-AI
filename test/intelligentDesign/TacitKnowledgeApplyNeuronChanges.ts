@@ -33,7 +33,7 @@ Deno.test("applyNeuronChanges updates neuron squashes, tags changes, and tags sc
     second.squash = "GELU";
 
     const neuronSquashMap = new Map<
-      string,
+      number,
       { squash: string; score: number; error: number }
     >();
     neuronSquashMap.set(first.id, { squash: "Swish", score: 2, error: 1 });

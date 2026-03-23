@@ -1,23 +1,23 @@
 {
   "id": "Adjust for proximity and trend",
   "mode": "insert",
-  "nodes": [
+  "neurons": [
     {
-      "uuid": "proximity-check-00001",
+      "id": 8001,
       "bias": 0,
       "type": "hidden",
       "squash": "STEP",
       "comment": "Outputs 1 if input > 0; Inverted to trigger if ≤ 0 by using negative weight"
     },
     {
-      "uuid": "trend-check-00002",
+      "id": 8002,
       "bias": 0,
       "type": "hidden",
       "squash": "STEP",
       "comment": "Outputs 1 if input > 0; Configured to trigger if < 0 by using negative weight"
     },
     {
-      "uuid": "adjustment-node-00003",
+      "id": 8003,
       "bias": 0,
       "type": "hidden",
       "squash": "IDENTITY",
@@ -26,32 +26,32 @@
   ],
   "synapses": [
     {
-      "fromUUID": "input-0",
-      "toUUID": "proximity-check-00001",
+      "fromId": 0,
+      "toId": 8001,
       "weight": -1,
       "comment": "Negative weight to trigger on ≤ 0"
     },
     {
-      "fromUUID": "input-1",
-      "toUUID": "trend-check-00002",
+      "fromId": 1,
+      "toId": 8002,
       "weight": -1,
       "comment": "Negative weight to trigger on < 0"
     },
     {
-      "fromUUID": "proximity-check-00001",
-      "toUUID": "adjustment-node-00003",
+      "fromId": 8001,
+      "toId": 8003,
       "weight": 1,
       "comment": "Passes adjustment trigger"
     },
     {
-      "fromUUID": "trend-check-00002",
-      "toUUID": "adjustment-node-00003",
+      "fromId": 8002,
+      "toId": 8003,
       "weight": 1,
       "comment": "Passes adjustment trigger"
     },
     {
-      "fromUUID": "adjustment-node-00003",
-      "toUUID": "output-0",
+      "fromId": 8003,
+      "toId": -1,
       "weight": -0.000006,
       "comment": "Negative weight to reduce the output value when conditions are met"
     }

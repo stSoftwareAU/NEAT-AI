@@ -1,4 +1,5 @@
 import type { CreatureExport } from "../../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../../architecture/NormaliseCreatureExport.ts";
 import type { SynapseExport } from "../../architecture/SynapseInterfaces.ts";
 
 /** Outgoing synapse map: fromId -> synapses originating from that neuron. */
@@ -42,6 +43,7 @@ export function calculatePathsToOutput(
   creature: CreatureExport,
   outgoingSynapsesMap?: OutgoingSynapsesMap,
 ): Readonly<Set<number>> {
+  normaliseCreatureExport(creature);
   const map = outgoingSynapsesMap ?? buildOutgoingSynapsesMap(creature);
 
   // Create a set to keep track of all neurons that are part of the paths.

@@ -249,14 +249,14 @@ export class CRISPR {
     }
     tmpCreature.clearCache();
     dna.synapses.forEach((s) => {
-      const from = s.fromId
+      const from = s.fromId !== undefined
         ? UUIDs.get(s.fromId)
         : s.from !== undefined
         ? s.from
         : s.fromRelative !== undefined
         ? s.fromRelative + adjustIndx
         : undefined;
-      const to = s.toId
+      const to = s.toId !== undefined
         ? UUIDs.get(s.toId)
         : s.to !== undefined
         ? s.to
@@ -311,7 +311,7 @@ export class CRISPR {
 
       const neurons: Neuron[] = [];
       tmpCreature.neurons.forEach((neuron, indx) => {
-        if (!neuron.id) {
+        if (neuron.id === undefined) {
           throw new CrisprError("Missing id", "MISSING_UUID");
         }
         if (neuron.type !== "output") {
@@ -321,8 +321,10 @@ export class CRISPR {
       });
 
       dna.neurons.forEach((dnaNeuron) => {
-        if (!dnaNeuron.id || !idMap.has(dnaNeuron.id)) {
-          const uuid = dnaNeuron.id ? dnaNeuron.id : nextNeuronId();
+        if (dnaNeuron.id === undefined || !idMap.has(dnaNeuron.id)) {
+          const uuid = dnaNeuron.id !== undefined
+            ? dnaNeuron.id
+            : nextNeuronId();
           const indx = idMap.size;
 
           const neuron = new Neuron(

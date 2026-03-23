@@ -12,12 +12,22 @@ import {
   buildCombinedFromSuccessful,
   type DiscoveryCandidate,
 } from "../../src/discovery/DiscoveryCandidates.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+
+// Integer IDs for neurons used in these tests (from UUID hashing):
+// hidden-A = 1775329634, hidden-B = 1775329633, hidden-C = 1775329632
+// hidden-D = 1775329631, output-0 = -1
+
+const ID_HIDDEN_A = 1775329634;
+const ID_HIDDEN_B = 1775329633;
+const ID_HIDDEN_C = 1775329632;
+const ID_HIDDEN_D = 1775329631;
 
 /**
  * Creates a test creature with multiple low-impact neurons for removal testing.
  */
 function makeRemovalTestCreature() {
-  const creature = Creature.fromJSON({
+  const json = {
     input: 2,
     output: 1,
     neurons: [
@@ -35,7 +45,13 @@ function makeRemovalTestCreature() {
       { fromUUID: "hidden-C", toUUID: "output-0", weight: 0.5 },
       { fromUUID: "hidden-D", toUUID: "output-0", weight: 0.5 },
     ],
-  });
+  };
+  normaliseCreatureExport(
+    json as Parameters<typeof normaliseCreatureExport>[0],
+  );
+  const creature = Creature.fromJSON(
+    json as Parameters<typeof Creature.fromJSON>[0],
+  );
   creature.validate();
   CreatureUtil.makeUUID(creature);
   return creature;
@@ -55,15 +71,15 @@ Deno.test(
     // Candidate 1: Remove hidden-B
     const removeBJson = structuredClone(baseJSON);
     removeBJson.neurons = removeBJson.neurons.filter(
-      (n) => n.id !== 8002,
+      (n) => n.id !== ID_HIDDEN_B,
     );
     removeBJson.synapses = removeBJson.synapses.filter(
-      (s) => s.fromId !== 8002 && s.toId !== 8002,
+      (s) => s.fromId !== ID_HIDDEN_B && s.toId !== ID_HIDDEN_B,
     );
     // Reconnect: input-1 now goes directly to hidden-D
     removeBJson.synapses.push({
-      fromUUID: "input-1",
-      toUUID: "hidden-D",
+      fromId: 1,
+      toId: ID_HIDDEN_D,
       weight: 0.5,
     });
     const removeBCreature = Creature.fromJSON(removeBJson);
@@ -82,15 +98,15 @@ Deno.test(
     // Candidate 2: Remove hidden-C
     const removeCJson = structuredClone(baseJSON);
     removeCJson.neurons = removeCJson.neurons.filter(
-      (n) => n.id !== 8003,
+      (n) => n.id !== ID_HIDDEN_C,
     );
     removeCJson.synapses = removeCJson.synapses.filter(
-      (s) => s.fromId !== 8003 && s.toId !== 8003,
+      (s) => s.fromId !== ID_HIDDEN_C && s.toId !== ID_HIDDEN_C,
     );
     // Reconnect: hidden-A now goes directly to output
     removeCJson.synapses.push({
-      fromUUID: "hidden-A",
-      toUUID: "output-0",
+      fromId: ID_HIDDEN_A,
+      toId: -1,
       weight: 0.3,
     });
     const removeCCreature = Creature.fromJSON(removeCJson);
@@ -109,15 +125,15 @@ Deno.test(
     // Candidate 3: Remove hidden-D
     const removeDJson = structuredClone(baseJSON);
     removeDJson.neurons = removeDJson.neurons.filter(
-      (n) => n.id !== 8004,
+      (n) => n.id !== ID_HIDDEN_D,
     );
     removeDJson.synapses = removeDJson.synapses.filter(
-      (s) => s.fromId !== 8004 && s.toId !== 8004,
+      (s) => s.fromId !== ID_HIDDEN_D && s.toId !== ID_HIDDEN_D,
     );
     // Reconnect: hidden-B now goes directly to output
     removeDJson.synapses.push({
-      fromUUID: "hidden-B",
-      toUUID: "output-0",
+      fromId: ID_HIDDEN_B,
+      toId: -1,
       weight: 0.3,
     });
     const removeDCreature = Creature.fromJSON(removeDJson);
@@ -159,21 +175,21 @@ Deno.test(
 
     // All three neurons (B, C, D) should be removed
     assertEquals(
-      neuronIds.includes(8002),
+      neuronIds.includes(ID_HIDDEN_B),
       false,
       `Removed neuron hidden-B should not exist. Found neurons: ${
         neuronIds.join(", ")
       }`,
     );
     assertEquals(
-      neuronIds.includes(8003),
+      neuronIds.includes(ID_HIDDEN_C),
       false,
       `Removed neuron hidden-C should not exist. Found neurons: ${
         neuronIds.join(", ")
       }`,
     );
     assertEquals(
-      neuronIds.includes(8004),
+      neuronIds.includes(ID_HIDDEN_D),
       false,
       `Removed neuron hidden-D should not exist. Found neurons: ${
         neuronIds.join(", ")
@@ -182,7 +198,7 @@ Deno.test(
 
     // Only hidden-A should remain
     assertEquals(
-      neuronIds.includes(8001),
+      neuronIds.includes(ID_HIDDEN_A),
       true,
       "Original neuron hidden-A should exist",
     );
@@ -212,8 +228,8 @@ Deno.test(
     // Create add-synapses candidate
     const addSynapseJson = structuredClone(baseJSON);
     addSynapseJson.synapses.push({
-      fromUUID: "input-0",
-      toUUID: "hidden-B",
+      fromId: 0,
+      toId: ID_HIDDEN_B,
       weight: 0.3,
     });
     const addSynapseCreature = Creature.fromJSON(addSynapseJson);
@@ -231,7 +247,7 @@ Deno.test(
 
     // Create change-squash candidate
     const changeSquashJson = structuredClone(baseJSON);
-    const hiddenA = changeSquashJson.neurons.find((n) => n.id === 8001);
+    const hiddenA = changeSquashJson.neurons.find((n) => n.id === ID_HIDDEN_A);
     if (hiddenA) hiddenA.squash = "TANH";
     const changeSquashCreature = Creature.fromJSON(changeSquashJson);
     delete changeSquashCreature.uuid;
@@ -293,13 +309,15 @@ Deno.test(
 
     // Remove candidate 1
     const remove1Json = structuredClone(baseJSON);
-    remove1Json.neurons = remove1Json.neurons.filter((n) => n.id !== 8002);
+    remove1Json.neurons = remove1Json.neurons.filter(
+      (n) => n.id !== ID_HIDDEN_B,
+    );
     remove1Json.synapses = remove1Json.synapses.filter(
-      (s) => s.fromId !== 8002 && s.toId !== 8002,
+      (s) => s.fromId !== ID_HIDDEN_B && s.toId !== ID_HIDDEN_B,
     );
     remove1Json.synapses.push({
-      fromUUID: "input-1",
-      toUUID: "hidden-D",
+      fromId: 1,
+      toId: ID_HIDDEN_D,
       weight: 0.5,
     });
     const remove1Creature = Creature.fromJSON(remove1Json);
@@ -316,13 +334,15 @@ Deno.test(
 
     // Remove candidate 2
     const remove2Json = structuredClone(baseJSON);
-    remove2Json.neurons = remove2Json.neurons.filter((n) => n.id !== 8003);
+    remove2Json.neurons = remove2Json.neurons.filter(
+      (n) => n.id !== ID_HIDDEN_C,
+    );
     remove2Json.synapses = remove2Json.synapses.filter(
-      (s) => s.fromId !== 8003 && s.toId !== 8003,
+      (s) => s.fromId !== ID_HIDDEN_C && s.toId !== ID_HIDDEN_C,
     );
     remove2Json.synapses.push({
-      fromUUID: "hidden-A",
-      toUUID: "output-0",
+      fromId: ID_HIDDEN_A,
+      toId: -1,
       weight: 0.3,
     });
     const remove2Creature = Creature.fromJSON(remove2Json);
@@ -340,8 +360,8 @@ Deno.test(
     // Add synapse candidate
     const addJson = structuredClone(baseJSON);
     addJson.synapses.push({
-      fromUUID: "input-0",
-      toUUID: "hidden-B",
+      fromId: 0,
+      toId: ID_HIDDEN_B,
       weight: 0.3,
     });
     const addCreature = Creature.fromJSON(addJson);
@@ -410,16 +430,16 @@ Deno.test(
   "buildCombinedFromSuccessful: reconnection synapses from input neurons are preserved",
   () => {
     // This test verifies that reconnection synapses originating from input neurons
-    // (e.g., input-0 -> hidden-X) are correctly preserved when combining removal candidates.
+    // (e.g., input-1 -> hidden-D) are correctly preserved when combining removal candidates.
     // Bug: remainingNeurons set was missing input neurons, causing these synapses to be dropped.
 
     const base = makeRemovalTestCreature();
     const baseJSON = base.exportJSON();
 
-    // Verify base structure: input-1 -> hidden-B -> hidden-D -> output-0
+    // Verify base structure contains input-1 -> hidden-B synapse (fromId=1, toId=ID_HIDDEN_B)
     const baseSynapses = baseJSON.synapses.map((s) => `${s.fromId}->${s.toId}`);
     assert(
-      baseSynapses.includes(String(9312)),
+      baseSynapses.includes(`1->${ID_HIDDEN_B}`),
       "Base should have input-1->hidden-B synapse",
     );
 
@@ -427,15 +447,15 @@ Deno.test(
     // The reconnection synapse goes FROM input-1 (an input neuron) TO hidden-D
     const removeBJson = structuredClone(baseJSON);
     removeBJson.neurons = removeBJson.neurons.filter(
-      (n) => n.id !== 8002,
+      (n) => n.id !== ID_HIDDEN_B,
     );
     removeBJson.synapses = removeBJson.synapses.filter(
-      (s) => s.fromId !== 8002 && s.toId !== 8002,
+      (s) => s.fromId !== ID_HIDDEN_B && s.toId !== ID_HIDDEN_B,
     );
     // Critical reconnection synapse: input-1 -> hidden-D (bypasses removed hidden-B)
     removeBJson.synapses.push({
-      fromUUID: "input-1",
-      toUUID: "hidden-D",
+      fromId: 1,
+      toId: ID_HIDDEN_D,
       weight: 0.5,
     });
     const removeBCreature = Creature.fromJSON(removeBJson);
@@ -455,14 +475,14 @@ Deno.test(
     // The reconnection synapse goes FROM hidden-A TO output-0
     const removeCJson = structuredClone(baseJSON);
     removeCJson.neurons = removeCJson.neurons.filter(
-      (n) => n.id !== 8003,
+      (n) => n.id !== ID_HIDDEN_C,
     );
     removeCJson.synapses = removeCJson.synapses.filter(
-      (s) => s.fromId !== 8003 && s.toId !== 8003,
+      (s) => s.fromId !== ID_HIDDEN_C && s.toId !== ID_HIDDEN_C,
     );
     removeCJson.synapses.push({
-      fromUUID: "hidden-A",
-      toUUID: "output-0",
+      fromId: ID_HIDDEN_A,
+      toId: -1,
       weight: 0.3,
     });
     const removeCCreature = Creature.fromJSON(removeCJson);
@@ -496,30 +516,30 @@ Deno.test(
       `${s.fromId}->${s.toId}`
     );
 
-    // The critical assertion: reconnection synapse from input-1 should exist
+    // The critical assertion: reconnection synapse from input-1 -> hidden-D should exist
     assert(
-      comboSynapses.includes(String(9012)),
+      comboSynapses.includes(`1->${ID_HIDDEN_D}`),
       `Reconnection synapse from input neuron (input-1->hidden-D) should be preserved. ` +
         `Found synapses: ${comboSynapses.join(", ")}`,
     );
 
     // Also verify hidden-A->output-0 reconnection is preserved
     assert(
-      comboSynapses.includes(String(9839)),
+      comboSynapses.includes(`${ID_HIDDEN_A}->-1`),
       `Reconnection synapse (hidden-A->output-0) should be preserved. ` +
         `Found synapses: ${comboSynapses.join(", ")}`,
     );
 
     // Verify both neurons were removed
     const hiddenNeurons = comboJSON.neurons.filter((n) => n.type === "hidden");
-    const hiddenUUIDs = hiddenNeurons.map((n) => n.id);
+    const hiddenIds = hiddenNeurons.map((n) => n.id);
     assertEquals(
-      hiddenUUIDs.includes(8002),
+      hiddenIds.includes(ID_HIDDEN_B),
       false,
       "hidden-B should be removed",
     );
     assertEquals(
-      hiddenUUIDs.includes(8003),
+      hiddenIds.includes(ID_HIDDEN_C),
       false,
       "hidden-C should be removed",
     );

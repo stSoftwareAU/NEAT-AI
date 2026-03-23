@@ -82,10 +82,12 @@ Deno.test(
     const expected = new Float32Array([0]);
     const map = creature.record(expected);
 
-    const victimRec = map.get("abs-victim" as unknown as number);
+    // Neuron IDs are deterministic integers derived from UUID strings:
+    // abs-victim → 403140227, id-alt → 1196117065
+    const victimRec = map.get(403140227);
     assert(victimRec, "expected a discovery record for abs-victim");
 
-    const altRec = map.get("id-alt" as unknown as number);
+    const altRec = map.get(1196117065);
     assert(altRec, "expected a discovery record for id-alt");
 
     // Key assertion: abs-victim starts feasible. After redistribution, it may

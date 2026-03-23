@@ -19,10 +19,14 @@ import {
   applyRemoveSynapse,
 } from "../../src/discovery/CandidateApplicationOps.ts";
 import { buildIdToIndexMap } from "../../src/discovery/CandidateApplication.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+
+// Integer IDs for the neurons used in these tests (derived from UUID hashing)
+// hidden-1 → 1775329650, hidden-new → 29715267, output-0 → -1
 
 /** Base creature JSON: 2 inputs, 1 hidden, 1 output. */
 function makeBaseJSON(): CreatureExport {
-  return {
+  const json: CreatureExport = {
     input: 2,
     output: 1,
     neurons: [
@@ -34,11 +38,13 @@ function makeBaseJSON(): CreatureExport {
       { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.5 },
     ],
   };
+  normaliseCreatureExport(json);
+  return json;
 }
 
 /** Candidate JSON with an extra synapse from input-1 → hidden-1. */
 function makeCandidateWithExtraSynapse(): CreatureExport {
-  return {
+  const json: CreatureExport = {
     input: 2,
     output: 1,
     neurons: [
@@ -51,11 +57,13 @@ function makeCandidateWithExtraSynapse(): CreatureExport {
       { fromUUID: "input-1", toUUID: "hidden-1", weight: 0.3 },
     ],
   };
+  normaliseCreatureExport(json);
+  return json;
 }
 
 /** Candidate JSON with an extra neuron and synapses. */
 function makeCandidateWithExtraNeuron(): CreatureExport {
-  return {
+  const json: CreatureExport = {
     input: 2,
     output: 1,
     neurons: [
@@ -70,6 +78,8 @@ function makeCandidateWithExtraNeuron(): CreatureExport {
       { fromUUID: "hidden-new", toUUID: "output-0", weight: 0.6 },
     ],
   };
+  normaliseCreatureExport(json);
+  return json;
 }
 
 // --- applyAddSynapses ---
@@ -119,11 +129,12 @@ Deno.test("applyAddSynapses - enforces forward-only when requested", () => {
   const uuidToIndex = buildIdToIndexMap(creatureJSON);
 
   // Candidate has a backward synapse (output-0 → hidden-1)
+  const base = makeBaseJSON();
   const candidateJSON: CreatureExport = {
-    ...makeBaseJSON(),
+    ...base,
     synapses: [
-      ...makeBaseJSON().synapses,
-      { fromUUID: "output-0", toUUID: "hidden-1", weight: 0.2 },
+      ...base.synapses,
+      { fromId: -1, toId: 1775329650, weight: 0.2 },
     ],
   };
 
@@ -144,11 +155,12 @@ Deno.test("applyAddSynapses - enforces forward-only when requested", () => {
 
 Deno.test("applyAddSynapses - skips synapse with non-existent endpoint", () => {
   const creatureJSON = makeBaseJSON();
+  const base = makeBaseJSON();
   const candidateJSON: CreatureExport = {
-    ...makeBaseJSON(),
+    ...base,
     synapses: [
-      ...makeBaseJSON().synapses,
-      { fromUUID: "nonexistent", toUUID: "hidden-1", weight: 0.2 },
+      ...base.synapses,
+      { fromId: 9999999, toId: 1775329650, weight: 0.2 },
     ],
   };
 
@@ -175,13 +187,10 @@ Deno.test("applyAddNeurons - adds new hidden neuron from candidate", () => {
 
   assert(result !== undefined, "should return a creature");
   const exported = result!.exportJSON();
-  const neuronIds = exported.neurons.map(
-    // deno-lint-ignore no-explicit-any
-    (n: any) => n.uuid ?? n.id,
-  );
+  const neuronIds = exported.neurons.map((n) => n.id);
   assert(
-    neuronIds.includes(String(17617)),
-    "should contain the newly added neuron",
+    neuronIds.includes(29715267),
+    "should contain the newly added neuron (hidden-new id=29715267)",
   );
 });
 
@@ -227,7 +236,7 @@ Deno.test("applyChangeSquash - changes squash for target neuron", () => {
 
   const creatureJSON = makeBaseJSON();
   const candidateJSON = makeBaseJSON();
-  // Change hidden-1's squash in candidate
+  // Change hidden-1's squash in candidate (id=1775329650)
   candidateJSON.neurons[0].squash = "TANH";
 
   const candidate: DiscoveryCandidate = {
@@ -236,7 +245,7 @@ Deno.test("applyChangeSquash - changes squash for target neuron", () => {
       type: "change-squash",
       description: "test",
       squashCandidate: {
-        neuronId: 5001,
+        neuronId: 1775329650,
         previousSquash: "IDENTITY",
         squash: "TANH",
         expectedCreatureScoreGain: 0.05,
@@ -255,7 +264,7 @@ Deno.test("applyChangeSquash - changes squash for target neuron", () => {
 
   assert(result !== undefined, "should return a creature");
   // Find the hidden neuron and check its squash
-  const hiddenNeuron = result!.neurons.find((n) => n.id === 5001);
+  const hiddenNeuron = result!.neurons.find((n) => n.id === 1775329650);
   assert(hiddenNeuron, "should find hidden neuron");
   assertEquals(
     hiddenNeuron!.squash,
@@ -278,7 +287,7 @@ Deno.test("applyChangeSquash - returns original creature when squash already mat
       type: "change-squash",
       description: "test",
       squashCandidate: {
-        neuronId: 5001,
+        neuronId: 1775329650,
         previousSquash: "IDENTITY",
         squash: "IDENTITY", // Same as current
         expectedCreatureScoreGain: 0.05,
@@ -310,18 +319,18 @@ Deno.test("applyRemoveSynapse - removes synapse that was in base but not candida
   const baseJSON = makeBaseJSON();
   const creatureJSON = makeBaseJSON();
 
-  // Candidate is missing hidden-1 → output-0 synapse
+  // Candidate is missing hidden-1 → output-0 synapse (1775329650 → -1)
   const candidateJSON: CreatureExport = {
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { id: 1775329650, type: "hidden", squash: "IDENTITY", bias: 0 },
+      { id: -1, type: "output", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-1", weight: 0.5 },
+      { fromId: 0, toId: 1775329650, weight: 0.5 },
       // hidden-1 → output-0 removed; direct input-0 → output-0 reconnection added
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0.25 },
+      { fromId: 0, toId: -1, weight: 0.25 },
     ],
   };
 
@@ -372,15 +381,15 @@ Deno.test("applyRemoveNeuron - removes hidden neuron that was in base but not ca
   const creature = Creature.fromJSON(makeBaseJSON());
   creature.validate();
 
-  // Candidate has hidden-1 removed with a direct reconnection
+  // Candidate has hidden-1 (id=1775329650) removed with a direct reconnection
   const candidateJSON: CreatureExport = {
     input: 2,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { id: -1, type: "output", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0.25 },
+      { fromId: 0, toId: -1, weight: 0.25 },
     ],
   };
 
@@ -395,13 +404,10 @@ Deno.test("applyRemoveNeuron - removes hidden neuron that was in base but not ca
 
   assert(result !== undefined, "should return a creature");
   const exported = result!.exportJSON();
-  const neuronIds = exported.neurons.map(
-    // deno-lint-ignore no-explicit-any
-    (n: any) => n.uuid ?? n.id,
-  );
+  const neuronIds = exported.neurons.map((n) => n.id);
   assert(
-    !neuronIds.includes(String(5001)),
-    "removed neuron should be gone",
+    !neuronIds.includes(1775329650),
+    "removed neuron (hidden-1) should be gone",
   );
 });
 
@@ -439,7 +445,8 @@ Deno.test("buildIdToIndexMap - maps input and hidden/output UUIDs correctly", ()
   assertEquals(uuidToIndex.get(1), 1);
 
   // Hidden/output neurons: offset by input count (2)
-  assertEquals(uuidToIndex.get(5001), 2);
+  // hidden-1 has id=1775329650, output-0 has id=-1
+  assertEquals(uuidToIndex.get(1775329650), 2);
   assertEquals(uuidToIndex.get(-1), 3);
 });
 
@@ -448,7 +455,7 @@ Deno.test("buildIdToIndexMap - handles creature with no inputs", () => {
     input: 0,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { id: -1, type: "output", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [],
   };

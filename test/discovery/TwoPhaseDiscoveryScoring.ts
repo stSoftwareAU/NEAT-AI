@@ -17,6 +17,10 @@ import type { DiscoveryRunnerWorker } from "../../src/discovery/DiscoveryRunner.
 import { DiscoveryRunner } from "../../src/discovery/DiscoveryRunner.ts";
 import { makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
+// Integer IDs for neurons in makeBaseCreature (deterministicIdFromUuid).
+const HIDDEN_1_ID = 1775329650; // "hidden-1"
+const OUTPUT_0_ID = -1; // "output-0"
+
 class FakeWorker implements DiscoveryRunnerWorker {
   #discoverResult: DiscoverResult;
   #computeError: (creature: Creature) => number;
@@ -85,7 +89,7 @@ Deno.test(
 
     const helpfulSynapse = {
       fromNeuronId: 1,
-      toNeuronId: 5001,
+      toNeuronId: HIDDEN_1_ID,
       weight: 0.45,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -94,8 +98,8 @@ Deno.test(
       totalCount: 6,
     };
     const helpfulNeuron = {
-      fromNeuronId: 0,
-      toNeuronId: 5001,
+      fromNeuronId: HIDDEN_1_ID,
+      toNeuronId: OUTPUT_0_ID,
       incomingWeight: 0.4,
       outgoingWeight: -0.3,
       squash: "TANH",
@@ -108,7 +112,7 @@ Deno.test(
     };
     // This squash change doesn't actually help in this scenario
     const unhelpfulSquash = {
-      neuronId: 5001,
+      neuronId: HIDDEN_1_ID,
       previousSquash: "IDENTITY",
       squash: "STEP",
       targetNeuronImpact: 1.0,
@@ -156,7 +160,7 @@ Deno.test(
       );
 
       // Check for unhelpful squash (hidden-1 changed to STEP)
-      const hidden1 = neurons.find((neuron) => neuron.id === 5001);
+      const hidden1 = neurons.find((neuron) => neuron.id === HIDDEN_1_ID);
       const hasUnhelpfulSquash = hidden1?.squash === "STEP";
 
       // Assign errors based on what changes are present:
@@ -242,7 +246,7 @@ Deno.test(
 
     const helpfulSynapse = {
       fromNeuronId: 1,
-      toNeuronId: 5001,
+      toNeuronId: HIDDEN_1_ID,
       weight: 0.45,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -302,7 +306,7 @@ Deno.test(
 
     const helpfulSynapse = {
       fromNeuronId: 1,
-      toNeuronId: 5001,
+      toNeuronId: HIDDEN_1_ID,
       weight: 0.45,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -312,8 +316,8 @@ Deno.test(
     };
     // This neuron doesn't help
     const unhelpfulNeuron = {
-      fromNeuronId: 0,
-      toNeuronId: 5001,
+      fromNeuronId: HIDDEN_1_ID,
+      toNeuronId: OUTPUT_0_ID,
       incomingWeight: 0.4,
       outgoingWeight: -0.3,
       squash: "TANH",
@@ -411,7 +415,7 @@ Deno.test(
 
     const helpfulSynapse = {
       fromNeuronId: 1,
-      toNeuronId: 5001,
+      toNeuronId: HIDDEN_1_ID,
       weight: 0.45,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -420,7 +424,7 @@ Deno.test(
       totalCount: 6,
     };
     const helpfulSquash = {
-      neuronId: 5001,
+      neuronId: HIDDEN_1_ID,
       previousSquash: "IDENTITY",
       squash: "TANH",
       targetNeuronImpact: 1.0,
@@ -449,7 +453,7 @@ Deno.test(
         Math.abs(synapse.weight - helpfulSynapse.weight) < 1e-6
       );
 
-      const hidden1 = json.neurons.find((neuron) => neuron.id === 5001);
+      const hidden1 = json.neurons.find((neuron) => neuron.id === HIDDEN_1_ID);
       const hasHelpfulSquash = hidden1?.squash === "TANH";
 
       // Combined is best

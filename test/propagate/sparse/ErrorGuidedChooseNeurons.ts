@@ -18,17 +18,18 @@ Deno.test("chooseNeurons: error-guided selection prefers high-error neurons", ()
   const creatureJSON = creature.exportJSON();
 
   // Build neuron error data: assign high error to a few specific neurons
-  const neuronErrors = new Map<string, NeuronStateInterface>();
+  const neuronErrors = new Map<number, NeuronStateInterface>();
   const hiddenNeurons = creatureJSON.neurons.filter(
     (n) => n.type === "hidden" || n.type === "output",
   );
 
   // Give a few neurons very high error
-  const highErrorUUIDs = new Set<string>();
+  const highErrorIds = new Set<number>();
   for (let i = 0; i < Math.min(3, hiddenNeurons.length); i++) {
-    const uuid = hiddenNeurons[i].id;
-    highErrorUUIDs.add(uuid);
-    neuronErrors.set(uuid, {
+    const neuronId = hiddenNeurons[i].id;
+    if (neuronId === undefined) continue;
+    highErrorIds.add(neuronId);
+    neuronErrors.set(neuronId, {
       count: 100,
       totalBias: 0,
       totalAdjustedBias: 0,
@@ -41,8 +42,9 @@ Deno.test("chooseNeurons: error-guided selection prefers high-error neurons", ()
 
   // Give remaining neurons very low error
   for (let i = 3; i < hiddenNeurons.length; i++) {
-    const uuid = hiddenNeurons[i].id;
-    neuronErrors.set(uuid, {
+    const neuronId = hiddenNeurons[i].id;
+    if (neuronId === undefined) continue;
+    neuronErrors.set(neuronId, {
       count: 100,
       totalBias: 0,
       totalAdjustedBias: 0,
@@ -57,8 +59,8 @@ Deno.test("chooseNeurons: error-guided selection prefers high-error neurons", ()
 
   // High-error neurons should be preferentially selected
   let highErrorSelected = 0;
-  for (const uuid of highErrorUUIDs) {
-    if (result.has(uuid)) {
+  for (const neuronId of highErrorIds) {
+    if (result.has(neuronId)) {
       highErrorSelected++;
     }
   }
@@ -108,7 +110,7 @@ Deno.test("chooseNeurons: sparseRatio 1 returns all neurons regardless of errors
   });
 
   // Even with neuron errors, sparseRatio=1 should select all
-  const neuronErrors = new Map<string, NeuronStateInterface>();
+  const neuronErrors = new Map<number, NeuronStateInterface>();
   const result = chooseNeurons(creature.exportJSON(), config, neuronErrors);
 
   const validNeurons = creature.neurons.filter((neuron) =>

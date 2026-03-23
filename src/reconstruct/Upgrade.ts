@@ -2,7 +2,42 @@ import { assert } from "@std/assert";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import { outputNeuronId } from "../architecture/NeuronId.ts";
 import type { CrisprInterface } from "./CRISPR.ts";
+
+/**
+ * Deterministic integer ID from a UUID string.
+ * Duplicated to avoid circular imports. Must produce the same values
+ * as NeuronSerialization.deterministicIdFromUuid.
+ */
+function deterministicIdFromUuid(uuid: string): number {
+  let hash = 0;
+  for (let i = 0; i < uuid.length; i++) {
+    const chr = uuid.charCodeAt(i);
+    hash = ((hash << 5) - hash + chr) | 0;
+  }
+  return 1_000_000 + Math.abs(hash % 1_999_000_000);
+}
+
+/**
+ * Resolve a legacy UUID string to an integer neuron ID.
+ * Handles `input-X`, `output-X`, and arbitrary UUID strings.
+ */
+function resolveUuid(
+  uuid: string,
+  neuronUuidMap: Map<string, number>,
+): number {
+  const inputMatch = uuid.match(/^input-(\d+)$/);
+  if (inputMatch) return parseInt(inputMatch[1], 10);
+
+  const outputMatch = uuid.match(/^output-(\d+)$/);
+  if (outputMatch) return outputNeuronId(parseInt(outputMatch[1], 10));
+
+  const mapped = neuronUuidMap.get(uuid);
+  if (mapped !== undefined) return mapped;
+
+  return deterministicIdFromUuid(uuid);
+}
 
 /**
  * Upgrade class providing static methods to correct and apply CRISPR modifications to creatures.
@@ -59,6 +94,29 @@ export class Upgrade {
 
     // Ensure mode is set to "insert" or "append"
     if (dnaClean.mode !== "insert") dnaClean.mode = "append";
+
+    // Issue #1958: Convert legacy UUID fields to integer IDs
+    const neuronUuidMap = new Map<string, number>();
+    if (dnaClean.neurons) {
+      for (const neuron of dnaClean.neurons) {
+        // deno-lint-ignore no-explicit-any
+        const rawN = neuron as any;
+        if (typeof rawN.uuid === "string" && neuron.id === undefined) {
+          neuron.id = deterministicIdFromUuid(rawN.uuid);
+          neuronUuidMap.set(rawN.uuid, neuron.id);
+        }
+      }
+    }
+    for (const synapse of dnaClean.synapses) {
+      // deno-lint-ignore no-explicit-any
+      const rawS = synapse as any;
+      if (typeof rawS.fromUUID === "string" && synapse.fromId === undefined) {
+        synapse.fromId = resolveUuid(rawS.fromUUID, neuronUuidMap);
+      }
+      if (typeof rawS.toUUID === "string" && synapse.toId === undefined) {
+        synapse.toId = resolveUuid(rawS.toUUID, neuronUuidMap);
+      }
+    }
 
     return dnaClean;
   }

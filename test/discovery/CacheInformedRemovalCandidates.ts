@@ -17,6 +17,16 @@ import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import { buildCacheInformedRemovalCandidates } from "../../src/discovery/CacheInformedRemovalCandidates.ts";
 
+// Integer IDs for hidden neurons in makeBaseCreature (deterministicIdFromUuid).
+const HIDDEN_1_ID = 1775329650; // "hidden-1"
+const HIDDEN_2_ID = 1775329649; // "hidden-2"
+const HIDDEN_3_ID = 1775329648; // "hidden-3"
+const HIDDEN_4_ID = 1775329647; // "hidden-4"
+// These IDs do not exist in makeBaseCreature (for testing filtering).
+const NONEXISTENT_1_ID = 669785211; // "nonexistent-1"
+const NONEXISTENT_2_ID = 669785210; // "nonexistent-2"
+const NONEXISTENT_99_ID = 743495244; // "nonexistent-99"
+
 /**
  * Creates a baseline creature with multiple hidden neurons for testing
  * multi-neuron removal.
@@ -54,10 +64,10 @@ function makeBaseCreature(): Creature {
 }
 
 /**
- * Creates a success cache directory with removal entries for the given neuron UUIDs.
+ * Creates a success cache directory with removal entries for the given integer neuron IDs.
  */
 async function createSuccessCache(
-  neuronIds: string[],
+  neuronIds: number[],
   options?: { scoreDelta?: number; timestamp?: string },
 ): Promise<string> {
   const cacheDir = await Deno.makeTempDir({
@@ -66,7 +76,7 @@ async function createSuccessCache(
   const removeLowImpactDir = join(cacheDir, "remove-low-impact");
   await Deno.mkdir(removeLowImpactDir, { recursive: true });
 
-  const writePromises = neuronIds.map((uuid, i) =>
+  const writePromises = neuronIds.map((id, i) =>
     Deno.writeTextFile(
       join(removeLowImpactDir, `entry-${i}.json`),
       JSON.stringify({
@@ -78,7 +88,7 @@ async function createSuccessCache(
         error: 0.5,
         timestamp: options?.timestamp ?? "2025-01-15T10:00:00.000Z",
         rustRequest: {
-          removalCandidate: { neuronId: uuid },
+          removalCandidate: { neuronId: id },
         },
       }),
     )
@@ -121,7 +131,7 @@ Deno.test("buildCacheInformedRemovalCandidates - returns empty for empty cache d
 // --- Single neuron in cache (need at least 2 for combinations) ---
 
 Deno.test("buildCacheInformedRemovalCandidates - returns empty when only one neuron in cache", async () => {
-  const cacheDir = await createSuccessCache(["hidden-1"]);
+  const cacheDir = await createSuccessCache([HIDDEN_1_ID]);
   try {
     const base = makeBaseCreature();
     const result = buildCacheInformedRemovalCandidates(base, cacheDir);
@@ -135,8 +145,8 @@ Deno.test("buildCacheInformedRemovalCandidates - returns empty when only one neu
 
 Deno.test("buildCacheInformedRemovalCandidates - returns empty when cached neurons not in creature", async () => {
   const cacheDir = await createSuccessCache([
-    "nonexistent-1",
-    "nonexistent-2",
+    NONEXISTENT_1_ID,
+    NONEXISTENT_2_ID,
   ]);
   try {
     const base = makeBaseCreature();
@@ -150,7 +160,7 @@ Deno.test("buildCacheInformedRemovalCandidates - returns empty when cached neuro
 // --- Two neurons in cache (pair combination) ---
 
 Deno.test("buildCacheInformedRemovalCandidates - builds pair candidate from two cached neurons", async () => {
-  const cacheDir = await createSuccessCache(["hidden-1", "hidden-2"]);
+  const cacheDir = await createSuccessCache([HIDDEN_1_ID, HIDDEN_2_ID]);
   try {
     const base = makeBaseCreature();
     const result = buildCacheInformedRemovalCandidates(base, cacheDir);
@@ -168,8 +178,8 @@ Deno.test("buildCacheInformedRemovalCandidates - builds pair candidate from two 
       // Verify the removed neurons are actually gone
       const neuronIds = candidate.creature.neurons.map((n) => n.id);
       // At least one of the cached neurons should be removed
-      const removedCount = ["hidden-1", "hidden-2"].filter(
-        (uuid) => !neuronIds.includes(uuid as unknown as number),
+      const removedCount = [HIDDEN_1_ID, HIDDEN_2_ID].filter(
+        (id) => !neuronIds.includes(id),
       ).length;
       assert(
         removedCount >= 2,
@@ -185,9 +195,9 @@ Deno.test("buildCacheInformedRemovalCandidates - builds pair candidate from two 
 
 Deno.test("buildCacheInformedRemovalCandidates - builds pair and triple candidates from three cached neurons", async () => {
   const cacheDir = await createSuccessCache([
-    "hidden-1",
-    "hidden-2",
-    "hidden-3",
+    HIDDEN_1_ID,
+    HIDDEN_2_ID,
+    HIDDEN_3_ID,
   ]);
   try {
     const base = makeBaseCreature();
@@ -220,9 +230,9 @@ Deno.test("buildCacheInformedRemovalCandidates - builds pair and triple candidat
 
 Deno.test("buildCacheInformedRemovalCandidates - filters to neurons existing in creature", async () => {
   const cacheDir = await createSuccessCache([
-    "hidden-1",
-    "nonexistent-99",
-    "hidden-2",
+    HIDDEN_1_ID,
+    NONEXISTENT_99_ID,
+    HIDDEN_2_ID,
   ]);
   try {
     const base = makeBaseCreature();
@@ -242,10 +252,10 @@ Deno.test("buildCacheInformedRemovalCandidates - filters to neurons existing in 
 
 Deno.test("buildCacheInformedRemovalCandidates - produces reproducible results with same seed", async () => {
   const cacheDir = await createSuccessCache([
-    "hidden-1",
-    "hidden-2",
-    "hidden-3",
-    "hidden-4",
+    HIDDEN_1_ID,
+    HIDDEN_2_ID,
+    HIDDEN_3_ID,
+    HIDDEN_4_ID,
   ]);
   try {
     const base = makeBaseCreature();
@@ -273,9 +283,9 @@ Deno.test("buildCacheInformedRemovalCandidates - produces reproducible results w
 
 Deno.test("buildCacheInformedRemovalCandidates - all candidates have cache-informed-removal type", async () => {
   const cacheDir = await createSuccessCache([
-    "hidden-1",
-    "hidden-2",
-    "hidden-3",
+    HIDDEN_1_ID,
+    HIDDEN_2_ID,
+    HIDDEN_3_ID,
   ]);
   try {
     const base = makeBaseCreature();

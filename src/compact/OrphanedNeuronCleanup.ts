@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import type { Synapse } from "../architecture/Synapse.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
@@ -177,6 +178,7 @@ export function removeHiddenNeuron(creature: Creature, indx: number) {
 export function cleanupOrphanedNeurons(
   creatureExport: CreatureExport,
 ): CleanupOrphanedResult {
+  normaliseCreatureExport(creatureExport);
   let totalRemoved = 0;
   let totalConverted = 0;
   let changedThisPass: boolean;

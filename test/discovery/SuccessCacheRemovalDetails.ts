@@ -285,7 +285,7 @@ Deno.test("getSuccessfulRemovalDetails skips entries without neuron ID", async (
       }),
     );
 
-    // Entry with NaN neuronId
+    // Entry with string neuronId (not a number, should be skipped)
     await Deno.writeTextFile(
       join(removeLowImpactDir, "nan-id.json"),
       JSON.stringify({
@@ -294,7 +294,7 @@ Deno.test("getSuccessfulRemovalDetails skips entries without neuron ID", async (
         scoreDelta: 0.1,
         error: 0.9,
         rustRequest: {
-          removalCandidate: { neuronId: 7000 },
+          removalCandidate: { neuronId: "old-string-uuid" },
         },
       }),
     );

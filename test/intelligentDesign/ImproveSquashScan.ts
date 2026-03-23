@@ -46,8 +46,9 @@ Deno.test("scanForSquashImprovements records improvement then upgrades via alter
   const fakeWorker = {
     score(creature: Creature, uuid: string): Promise<ResponseData> {
       const json = creature.exportJSON();
-      // @ts-ignore: Legacy string neuron UUID format
-      const neuron = json.neurons.find((n) => n.id === id);
+      // Look up the target neuron by its numeric ID (uuid is the string form)
+      const neuronId = Number(uuid);
+      const neuron = json.neurons.find((n) => n.id === neuronId);
       const squash = neuron?.squash;
 
       const score = squash === "Swish" ? 2.0 : squash === "GELU" ? 1.5 : 0.5;

@@ -12,6 +12,13 @@ import { TANH } from "../../src/methods/activations/types/TANH.ts";
 import { DiscoveryReplayRunner } from "../../src/discovery/DiscoveryReplayRunner.ts";
 import type { SuccessCacheEntry } from "../../src/discovery/SuccessCache.ts";
 
+// Integer IDs for neurons used in these tests (from UUID hashing):
+// hidden-0 → 1775329651
+// neuron-X → 1338473150, neuron-T → 1338473146
+const ID_HIDDEN_0 = 1775329651;
+const ID_NEURON_X = 1338473150;
+const ID_NEURON_T = 1338473146;
+
 function makeEntry(
   key: string,
   changeType: string,
@@ -60,7 +67,7 @@ Deno.test("DiscoveryReplayRunner: default applyEntry replays singles, then all-s
   };
 
   const changeSquash: CandidateSquash = {
-    neuronId: 5000,
+    neuronId: ID_HIDDEN_0,
     previousSquash: IDENTITY.NAME,
     squash: TANH.NAME,
     expectedCreatureScoreGain: 0.01,
@@ -86,7 +93,7 @@ Deno.test("DiscoveryReplayRunner: default applyEntry replays singles, then all-s
       const hasDirect = exported.synapses.some((s) =>
         s.fromId === 0 && s.toId === -1
       );
-      const hidden0 = c.neurons.find((n) => n.id === 5000);
+      const hidden0 = c.neurons.find((n) => n.id === ID_HIDDEN_0);
       const hasTanh = hidden0?.squash === TANH.NAME;
 
       // Baseline: 0.5
@@ -195,7 +202,7 @@ Deno.test("DiscoveryReplayRunner: prunes stale candidates (remove-low-impact + r
   creature.uuid = "base";
 
   const removal: RemovalCandidate = {
-    neuronId: 7000,
+    neuronId: ID_NEURON_X,
     totalError: 1,
     impact: 0.0001,
     reason: "test",
@@ -203,7 +210,7 @@ Deno.test("DiscoveryReplayRunner: prunes stale candidates (remove-low-impact + r
   };
 
   const removeSynapseDetails = {
-    fromNeuronId: 6002,
+    fromNeuronId: ID_NEURON_T,
     toNeuronId: -1,
   };
 
@@ -221,9 +228,9 @@ Deno.test("DiscoveryReplayRunner: prunes stale candidates (remove-low-impact + r
     evaluateError: (c) => {
       // If we removed neuron-X or removed neuron-T->output-0, call it worse.
       const exported = c.exportJSON();
-      const hasX = c.neurons.some((n) => n.id === 9440);
+      const hasX = c.neurons.some((n) => n.id === ID_NEURON_X);
       const hasTSyn = exported.synapses.some((s) =>
-        s.fromId === 9839 && s.toId === -1
+        s.fromId === ID_NEURON_T && s.toId === -1
       );
       const score = hasX && hasTSyn ? 0.5 : 0.4;
       return Promise.resolve({ error: 0, score });
@@ -331,12 +338,12 @@ Deno.test("DiscoveryReplayRunner: coordinated-structural candidate can be replay
       {
         type: "removeSynapse",
         fromNeuronId: 0,
-        toNeuronId: 5000,
+        toNeuronId: ID_HIDDEN_0,
       },
       {
         type: "addSynapse",
         fromNeuronId: 0,
-        toNeuronId: 5000,
+        toNeuronId: ID_HIDDEN_0,
         weight: 0.9,
       },
     ],
@@ -351,7 +358,7 @@ Deno.test("DiscoveryReplayRunner: coordinated-structural candidate can be replay
     evaluateError: (c) => {
       const exported = c.exportJSON();
       const updated = exported.synapses.find((s) =>
-        s.fromId === 0 && s.toId === 5000
+        s.fromId === 0 && s.toId === ID_HIDDEN_0
       );
       const score = updated && Math.abs(updated.weight - 0.9) < 1e-12
         ? 0.6

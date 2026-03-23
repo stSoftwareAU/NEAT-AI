@@ -9,6 +9,22 @@ import { DiscoveryRunner } from "../../src/discovery/DiscoveryRunner.ts";
 import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
 import { makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
+// Integer IDs for neurons (from UUID hashing):
+// hidden-0 → 1775329651, hidden-1 → 1775329650, ..., hidden-9 → 1775329642
+const HIDDEN_IDS = [
+  1775329651, // hidden-0
+  1775329650, // hidden-1
+  1775329649, // hidden-2
+  1775329648, // hidden-3
+  1775329647, // hidden-4
+  1775329646, // hidden-5
+  1775329645, // hidden-6
+  1775329644, // hidden-7
+  1775329643, // hidden-8
+  1775329642, // hidden-9
+];
+const ID_HIDDEN_1 = 1775329650; // hidden-1 (used in makeBaseCreature)
+
 class FakeWorker implements DiscoveryRunnerWorker {
   #discoverResult: DiscoverResult;
   #computeError: (creature: Creature) => number;
@@ -118,9 +134,8 @@ Deno.test(
       removeHarmfulSynapse: undefined,
       removeHarmfulNeurons: undefined,
       // Create 10 removal candidates (matching our creature's hidden neurons)
-      // @ts-ignore: test with legacy string neuronIds
       removalCandidates: Array.from({ length: 10 }, (_, i) => ({
-        neuronId: `hidden-${i}` as unknown as number,
+        neuronId: HIDDEN_IDS[i],
         totalError: 0.1,
         impact: 1e-15 * (i + 1), // Different impacts for sorting
         reason: "low-impact",
@@ -178,9 +193,12 @@ Deno.test(
     // Track how many add-neurons candidates are evaluated
     let addNeuronsEvaluated = 0;
 
-    // Create discovery result with many add-neurons candidates
+    // Create discovery result with many add-neurons candidates.
+    // Use hidden neurons (HIDDEN_IDS[i]) as fromNeuronId — input neuron IDs (0,1,...)
+    // are not in existingNeuronIds and would be silently skipped.
+    // Each candidate needs a unique fromNeuronId→toNeuronId key.
     const addHelpfulNeurons = Array.from({ length: 10 }, (_, i) => ({
-      fromNeuronId: i % 2,
+      fromNeuronId: HIDDEN_IDS[i],
       toNeuronId: -1,
       squash: "RELU" as const,
       incomingWeight: 0.5 + i * 0.01,
@@ -203,7 +221,41 @@ Deno.test(
       candidateSquashes: undefined,
     };
 
-    const baseCreature = makeBaseCreature();
+    // Build a creature with 10 hidden neurons (hidden-0..hidden-9) so that
+    // all 10 addHelpfulNeurons candidates have valid fromNeuronId entries.
+    const neurons: Array<{
+      type: "hidden" | "output";
+      uuid: string;
+      squash: string;
+      bias: number;
+    }> = Array.from({ length: 10 }, (_, i) => ({
+      type: "hidden" as const,
+      uuid: `hidden-${i}`,
+      squash: "RELU",
+      bias: 0.1,
+    }));
+    neurons.push({
+      type: "output",
+      uuid: "output-0",
+      squash: "IDENTITY",
+      bias: 0,
+    });
+    const synapses = [
+      ...Array.from({ length: 10 }, (_, i) => [
+        { fromUUID: "input-0", toUUID: `hidden-${i}`, weight: 1e-12 },
+        { fromUUID: `hidden-${i}`, toUUID: "output-0", weight: 1e-12 },
+      ]).flat(),
+      { fromUUID: "input-1", toUUID: "output-0", weight: 1.0 },
+    ];
+    const baseCreature = Creature.fromJSON({
+      input: 2,
+      output: 1,
+      neurons,
+      synapses,
+    });
+    baseCreature.validate();
+    CreatureUtil.makeUUID(baseCreature);
+
     const baseNeuronCount = baseCreature.exportJSON().neurons.length;
 
     const computeError = (_creature: Creature) => 0.5;
@@ -298,9 +350,8 @@ Deno.test(
       removeHarmfulSynapse: undefined,
       removeHarmfulNeurons: undefined,
       // Create 10 removal candidates (matching our creature's hidden neurons)
-      // @ts-ignore: test with legacy string neuronIds
       removalCandidates: Array.from({ length: 10 }, (_, i) => ({
-        neuronId: `hidden-${i}` as unknown as number,
+        neuronId: HIDDEN_IDS[i],
         totalError: 0.1,
         impact: 1e-15 * (i + 1),
         reason: "low-impact",
@@ -362,7 +413,7 @@ Deno.test({
         ID: "CACHE_TYPE_LOGGING_TEST",
         addHelpfulSynapses: [{
           fromNeuronId: 1,
-          toNeuronId: 5001,
+          toNeuronId: ID_HIDDEN_1,
           weight: 0.45,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -375,7 +426,7 @@ Deno.test({
         removeHarmfulNeurons: undefined,
         removalCandidates: undefined,
         candidateSquashes: [{
-          neuronId: 5001,
+          neuronId: ID_HIDDEN_1,
           previousSquash: "IDENTITY",
           squash: "TANH",
           expectedCreatureScoreGain: 0.3,
@@ -465,7 +516,7 @@ Deno.test({
         ID: "CACHE_DIR_PASSTHROUGH_TEST",
         addHelpfulSynapses: [{
           fromNeuronId: 1,
-          toNeuronId: 5001,
+          toNeuronId: ID_HIDDEN_1,
           weight: 0.45,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,

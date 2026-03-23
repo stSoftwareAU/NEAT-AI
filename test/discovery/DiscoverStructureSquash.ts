@@ -11,6 +11,10 @@ import { Activations } from "../../src/methods/activations/Activations.ts";
 import { STEP } from "../../src/methods/activations/types/STEP.ts";
 import { ActivationRange } from "../../src/propagate/ActivationRange.ts";
 
+// Integer IDs computed from deterministic UUID hash.
+const ID_HIDDEN_STEP = 891010353; // "hidden-step"
+const ID_HIDDEN_CHAIN = 1836654946; // "hidden-chain"
+
 class LookupActivation implements ActivationInterface {
   public readonly range: ActivationRange;
   public mutationProbability = 1;
@@ -77,14 +81,14 @@ Deno.test("squash estimates are computed in activation domain", () => {
 
   const internal = discover as unknown as {
     findCandidateSquash: (
-      neuronId: string,
+      neuronId: number,
       recs: DiscoverRecord[],
     ) => CandidateSquash | undefined;
     tempDir: string;
   };
 
   try {
-    const candidate = internal.findCandidateSquash("hidden-step", records);
+    const candidate = internal.findCandidateSquash(ID_HIDDEN_STEP, records);
     assert(candidate, "Expected a squash candidate to be suggested.");
     assertAlmostEquals(candidate.currentError, 1, 1e-6);
   } finally {
@@ -144,14 +148,14 @@ Deno.test("squash estimates scale by neuron impact to avoid inflated expectation
 
   const internal = discover as unknown as {
     findCandidateSquash: (
-      neuronId: string,
+      neuronId: number,
       recs: DiscoverRecord[],
     ) => CandidateSquash | undefined;
     tempDir: string;
   };
 
   try {
-    const candidate = internal.findCandidateSquash("hidden-chain", records);
+    const candidate = internal.findCandidateSquash(ID_HIDDEN_CHAIN, records);
     assert(
       candidate,
       "Expected diluted chain neuron to return a squash candidate.",

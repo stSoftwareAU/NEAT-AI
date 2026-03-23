@@ -17,6 +17,12 @@ import type { CandidateSynapse } from "../../src/architecture/ErrorGuidedStructu
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { buildDiscoveryCandidates } from "../../src/discovery/DiscoveryCandidates.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+
+// Integer IDs for neurons used in these tests (from UUID hashing):
+// hidden-A → 1775329634, hidden-B → 1775329633, output-0 → -1
+const ID_HIDDEN_A = 1775329634;
+const ID_HIDDEN_B = 1775329633;
 
 /**
  * Creates a valid creature with a specific structure where we can test
@@ -64,6 +70,9 @@ function makeValidCreatureWithGap(): {
     ],
   };
 
+  normaliseCreatureExport(
+    exportJSON as Parameters<typeof normaliseCreatureExport>[0],
+  );
   const creature = Creature.fromJSON(exportJSON);
   creature.validate();
   CreatureUtil.makeUUID(creature);
@@ -72,7 +81,7 @@ function makeValidCreatureWithGap(): {
   // This is a valid connection that doesn't exist yet.
   const missingSynapse: CandidateSynapse = {
     fromNeuronId: 0,
-    toNeuronId: 6001,
+    toNeuronId: ID_HIDDEN_B,
     weight: 0.75,
     targetNeuronImpact: 1.0,
     expectedCreatureErrorReduction: 0,
@@ -238,10 +247,10 @@ Deno.test({
     const { creature } = makeValidCreatureWithGap();
     const originalSynapseCount = creature.exportJSON().synapses.length;
 
-    // Try to add a synapse that already exists
+    // Try to add a synapse that already exists: input-0 → hidden-A
     const duplicateSynapse: CandidateSynapse = {
       fromNeuronId: 0,
-      toNeuronId: 6000, // This connection already exists
+      toNeuronId: ID_HIDDEN_A, // This connection already exists
       weight: 0.99,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -288,7 +297,7 @@ Deno.test({
       missingSynapse, // Valid - should be added
       {
         fromNeuronId: 0,
-        toNeuronId: 6000, // Duplicate - should be skipped
+        toNeuronId: ID_HIDDEN_A, // Duplicate (input-0 → hidden-A exists) - should be skipped
         weight: 0.99,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -298,7 +307,7 @@ Deno.test({
       },
       {
         fromNeuronId: 1,
-        toNeuronId: 6002, // Invalid target - should be skipped
+        toNeuronId: 9999999, // Invalid target (non-existent neuron) - should be skipped
         weight: 0.5,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,

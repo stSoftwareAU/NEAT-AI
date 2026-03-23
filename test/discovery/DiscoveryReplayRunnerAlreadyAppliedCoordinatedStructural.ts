@@ -5,6 +5,9 @@ import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { DiscoveryReplayRunner } from "../../src/discovery/DiscoveryReplayRunner.ts";
 import type { SuccessCacheEntry } from "../../src/discovery/SuccessCache.ts";
 
+// Integer ID for hidden-0 neuron (from UUID hash of "hidden-0")
+const ID_HIDDEN_0 = 1775329651;
+
 Deno.test(
   "DiscoveryReplayRunner skips coordinated-structural entries that already appear applied",
   async () => {
@@ -60,7 +63,7 @@ Deno.test(
       },
       evaluateError: (creature) => {
         // Replay always evaluates the baseline creature once.
-        if (creature.uuid === "") {
+        if (creature.uuid === "base") {
           return Promise.resolve({ error: 0, score: 0.5 });
         }
         throw new Error(
@@ -122,7 +125,7 @@ Deno.test(
             {
               type: "setWeight",
               fromNeuronId: 0,
-              toNeuronId: 5000,
+              toNeuronId: ID_HIDDEN_0,
               weight: 0.006,
             },
           ],
@@ -140,7 +143,7 @@ Deno.test(
       },
       evaluateError: (creature) => {
         // Replay always evaluates the baseline creature once.
-        if (creature.uuid === "") {
+        if (creature.uuid === "base") {
           return Promise.resolve({ error: 0, score: 0.5 });
         }
         throw new Error(
@@ -202,12 +205,12 @@ Deno.test(
             {
               type: "removeSynapse",
               fromNeuronId: 0,
-              toNeuronId: 5000,
+              toNeuronId: ID_HIDDEN_0,
             },
             {
               type: "setWeight",
               fromNeuronId: 0,
-              toNeuronId: 5000,
+              toNeuronId: ID_HIDDEN_0,
               weight: 0.006,
             },
           ],
@@ -225,7 +228,7 @@ Deno.test(
       },
       evaluateError: (creature) => {
         // Replay always evaluates the baseline creature once.
-        if (creature.uuid === "") {
+        if (creature.uuid === "base") {
           return Promise.resolve({ error: 0, score: 0.5 });
         }
         throw new Error(

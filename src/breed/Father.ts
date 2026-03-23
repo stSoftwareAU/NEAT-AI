@@ -1,5 +1,6 @@
 import type { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 
 /**
@@ -151,6 +152,8 @@ export function createCompatibleFather(
   mother: CreatureExport,
   father: CreatureExport,
 ): CreatureExport {
+  normaliseCreatureExport(mother);
+  normaliseCreatureExport(father);
   const idMapping = new Map<number, number>();
   const usedMotherIds = new Set<number>();
   const usedFatherIds = new Set<number>();

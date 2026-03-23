@@ -40,11 +40,13 @@ Deno.test("combineImprovements returns the single improvement file contents", as
     const path = `${TEST_DIR}/one.json`;
     await Deno.writeTextFile(path, JSON.stringify(exported, null, 1));
 
+    // Use a dummy numeric neuron ID for this single-improvement test.
+    const dummyNeuronId = 999001;
     const improvements = new Map<
-      string,
+      number,
       { squash: string; score: number; path: string; message: string }
     >();
-    improvements.set("neuron-uuid", {
+    improvements.set(dummyNeuronId, {
       squash: "GELU",
       score: 2,
       path,
@@ -84,7 +86,7 @@ Deno.test("combineImprovements returns combined creature when combined score bea
     await Deno.writeTextFile(pathB, JSON.stringify(exported, null, 1));
 
     const improvements = new Map<
-      string,
+      number,
       { squash: string; score: number; path: string; message: string }
     >();
     improvements.set(firstHidden.id, {
@@ -93,7 +95,7 @@ Deno.test("combineImprovements returns combined creature when combined score bea
       path: pathA,
       message: "A",
     });
-    // Use a second neuron UUID to force the "combine" path (size > 1).
+    // Use a second neuron ID to force the "combine" path (size > 1).
     improvements.set(secondHidden.id, {
       squash: "Swish",
       score: 4,
@@ -144,7 +146,7 @@ Deno.test("combineImprovements falls back to best individual when marriage fails
     await Deno.writeTextFile(pathB, JSON.stringify(exported, null, 1));
 
     const improvements = new Map<
-      string,
+      number,
       { squash: string; score: number; path: string; message: string }
     >();
     improvements.set(firstHidden.id, {

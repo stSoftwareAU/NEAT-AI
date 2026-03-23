@@ -53,8 +53,10 @@ Deno.test("record: prefers plastic paths over saturated ArcTan parents", () => {
   // parent out of saturation (which implies a massive raw-value move).
   const discoverMap = creature.record(new Float32Array([0]));
 
-  const arctanRec = discoverMap.get(20181232);
-  const reluRec = discoverMap.get(328081);
+  // Neuron IDs are deterministic integers derived from UUID strings:
+  // hidden-arctan → 1119681710, hidden-relu → 891054337
+  const arctanRec = discoverMap.get(1119681710);
+  const reluRec = discoverMap.get(891054337);
 
   // Expect the relu path to be the one we recurse into.
   assert(reluRec, "Expected record entry for hidden-relu");

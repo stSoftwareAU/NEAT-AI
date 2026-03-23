@@ -16,6 +16,9 @@ import {
 } from "../../src/discovery/SuccessCache.ts";
 import { makeForwardOnlyCreature as makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
+// Integer ID for hidden-0 in makeForwardOnlyCreature (deterministicIdFromUuid("hidden-0")).
+const HIDDEN_0_ID = 1775329651;
+
 function makeAddSynapseCandidate(): CandidateSynapse {
   return {
     fromNeuronId: 0,
@@ -33,9 +36,10 @@ function makeAddSynapseCandidate(): CandidateSynapse {
 function makeAddNeuronCandidatesWithKeyCollision(): CandidateNeuron[] {
   // Two candidates that intentionally collide under buildCacheKey() because it
   // buckets weights/biases by exponent only (e.g. 0.11 and 0.19 are both e-1).
+  // Both insert a neuron in the hidden-0 → output-0 synapse.
   return [
     {
-      fromNeuronId: 0,
+      fromNeuronId: HIDDEN_0_ID,
       toNeuronId: -1,
       incomingWeight: 0.11,
       outgoingWeight: 0.12,
@@ -49,7 +53,7 @@ function makeAddNeuronCandidatesWithKeyCollision(): CandidateNeuron[] {
       comment: "success-cache-collision-a",
     },
     {
-      fromNeuronId: 0,
+      fromNeuronId: HIDDEN_0_ID,
       toNeuronId: -1,
       incomingWeight: 0.19,
       outgoingWeight: 0.18,

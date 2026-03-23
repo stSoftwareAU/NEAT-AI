@@ -1,4 +1,5 @@
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
 
 export interface PruneZeroWeightSynapsesResult {
@@ -24,6 +25,7 @@ export interface MergeDuplicateSynapsesResult {
 export function mergeDuplicateSynapses(
   creatureExport: CreatureExport,
 ): MergeDuplicateSynapsesResult {
+  normaliseCreatureExport(creatureExport);
   const seen = new Map<string, number>(); // key -> index of first occurrence
   const mergedSynapses: typeof creatureExport.synapses = [];
   let mergedCount = 0;
@@ -70,6 +72,7 @@ export function mergeDuplicateSynapses(
 export function pruneZeroWeightSynapses(
   creatureExport: CreatureExport,
 ): PruneZeroWeightSynapsesResult {
+  normaliseCreatureExport(creatureExport);
   // IF neurons require at least 3 inward connections with specific typed roles
   // (condition/positive/negative). Even if a weight is zero, dropping a typed
   // synapse can invalidate the structure and break activation semantics.

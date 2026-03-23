@@ -110,7 +110,7 @@ Deno.test("memeticUpdate - preserves existing memetic data", () => {
     score: 0.5,
     biases: { [1775329650]: 0.3 },
     weights: {
-      [0]: [{ toUUID: "hidden-1", weight: 0.4 }],
+      [0]: [{ toId: 1775329650, weight: 0.4 }],
     },
   };
   parent.memetic = existingMemetic;

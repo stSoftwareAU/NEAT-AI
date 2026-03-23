@@ -55,9 +55,14 @@ Deno.test({
     });
     creature.validate();
 
+    // Look up the actual integer ID assigned to the hidden neuron
+    const hiddenTargetId = creature.neurons.find((n) =>
+      n.type === "hidden"
+    )!.id;
+
     const candidates = [{
       fromNeuronId: 0,
-      toNeuronId: 6000,
+      toNeuronId: hiddenTargetId,
       squash: IDENTITY.NAME,
       bias: 0,
       incomingWeight: 1,
@@ -77,11 +82,16 @@ Deno.test({
     assertExists(improved, "Should create improved creature");
 
     const exportJSON = improved.exportJSON();
-    const targetIndex = exportJSON.neurons.findIndex((n) => n.id === 238413746);
+    // Find the original target neuron by its known integer ID
+    const targetIndex = exportJSON.neurons.findIndex((n) =>
+      n.id === hiddenTargetId
+    );
     assert(targetIndex >= 0, "Target neuron should exist");
 
-    const discoveryIndex = exportJSON.neurons.findIndex((n) =>
-      typeof n.id! === "9903" as unknown && (n.id! >= 5000) // was startsWith("hidden-discovery-")
+    // The newly added discovery neuron is the hidden neuron inserted before the target.
+    // It should have a different id from the original target and appear before it.
+    const discoveryIndex = exportJSON.neurons.findIndex((n, i) =>
+      i < targetIndex && n.type === "hidden" && n.id !== hiddenTargetId
     );
     assert(discoveryIndex >= 0, "Should include a discovered neuron");
     assert(
@@ -144,8 +154,9 @@ Deno.test({
     );
     assert(firstOutputIndex >= 0, "Expected outputs to exist");
 
+    // The newly discovered neuron is a hidden neuron with id >= 1_000_000
     const discoveryIndex = exportJSON.neurons.findIndex((n) =>
-      typeof n.id! === "9903" as unknown && (n.id! >= 5000) // was startsWith("hidden-discovery-")
+      n.type === "hidden" && n.id !== undefined && n.id >= 1_000_000
     );
     assert(discoveryIndex >= 0, "Should include a discovered neuron");
 

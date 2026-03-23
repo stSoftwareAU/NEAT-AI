@@ -1,5 +1,6 @@
 import { assert } from "@std/assert";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { isParallelMergeableSquash } from "../methods/activations/SquashUtils.ts";
@@ -44,6 +45,9 @@ export interface ParallelBridgeMergeResult {
 export function mergeParallelBridges(
   exported: CreatureExport,
 ): ParallelBridgeMergeResult {
+  // Ensure integer id/fromId/toId fields are populated (supports legacy UUID format).
+  normaliseCreatureExport(exported);
+
   // Build connection maps.
   const inwardConnections = new Map<number, SynapseExport[]>();
   const outwardConnections = new Map<number, SynapseExport[]>();

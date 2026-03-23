@@ -13,18 +13,20 @@ function checkMemetic(creature: Creature) {
   assert(creature.memetic.generation === 6);
   assert(creature.memetic.score === 0.47133930519315353);
   assert(creature.memetic.biases);
+  // After UUID→integer migration, bias key "552c68d3-6ea2-4e0c-a6bb-d7d1b0ad2661" → 675812961
   assertAlmostEquals(
-    creature.memetic
-      .biases["552c68d3-6ea2-4e0c-a6bb-d7d1b0ad2661" as unknown as number],
+    creature.memetic.biases[675812961],
     0.0001412,
   );
   assert(creature.memetic.weights);
-  assert(creature.memetic.weights["input-115" as unknown as number]);
+  // After UUID→integer migration, weight key "input-115" (input neuron index 115) → 115
+  assert(creature.memetic.weights[115]);
+  // "115b0169-65c3-4c87-9904-316bae966a6f" → 855726674
   assert(
-    creature.memetic.weights["input-115" as unknown as number][1].toId === 9761,
+    creature.memetic.weights[115][1].toId === 855726674,
   );
   assertAlmostEquals(
-    creature.memetic.weights["input-115" as unknown as number][1].weight,
+    creature.memetic.weights[115][1].weight,
     0.1234,
   );
 }

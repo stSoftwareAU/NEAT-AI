@@ -43,6 +43,10 @@ export function addHelpfulNeurons(
   const existingNeuronIds = new Set(
     exportJSON.neurons.map((neuron) => neuron.id),
   );
+  // Input neurons are not in exportJSON.neurons but are valid source neurons
+  for (let i = 0; i < creature.input; i++) {
+    existingNeuronIds.add(i);
+  }
   const processedKeys = new Set<string>();
   const addedNeuronIds: number[] = [];
   const appliedCandidates: CandidateNeuron[] = [];

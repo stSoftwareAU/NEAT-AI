@@ -22,6 +22,9 @@ function traceAllConfig(creature: Creature): SparseConfig {
   return new SparseConfig(creature.exportJSON(), config);
 }
 
+// Integer ID for "step-hidden" neuron (deterministicIdFromUuid("step-hidden")).
+const STEP_HIDDEN_ID = 1990278773;
+
 // =============================================================================
 // Basic Recording Tests
 // =============================================================================
@@ -61,7 +64,7 @@ Deno.test("STEP recording: errors stored as numeric arrays", () => {
   const expected = new Float32Array([0]);
   const discoverMap = creature.record(expected);
 
-  const record = discoverMap.get("step-hidden" as unknown as number);
+  const record = discoverMap.get(STEP_HIDDEN_ID);
   assert(record, "expected a discovery record for step-hidden");
 
   const { errors } = record;
@@ -301,7 +304,7 @@ Deno.test("STEP recording: hidden neuron receives propagated error", () => {
   const discoverMap = creature.record(expected);
 
   // Verify hidden neuron has a record
-  const hiddenRecord = discoverMap.get("step-hidden" as unknown as number);
+  const hiddenRecord = discoverMap.get(STEP_HIDDEN_ID);
   assert(hiddenRecord, "expected a discovery record for step-hidden");
 
   // Verify errors were recorded

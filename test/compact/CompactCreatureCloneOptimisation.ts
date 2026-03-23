@@ -377,10 +377,10 @@ Deno.test("compactCreature: preserves memetic data when no compaction occurs", (
     memetic: {
       generation: 5,
       weights: {
-        "input-0": [{ toUUID: "output-0", weight: 0.6 }],
+        [0]: [{ toId: -1, weight: 0.6 }],
       },
       biases: {
-        "output-0": 0.2,
+        [-1]: 0.2,
       },
       score: 0.95,
     },

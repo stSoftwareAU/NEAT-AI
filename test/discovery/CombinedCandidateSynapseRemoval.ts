@@ -56,7 +56,7 @@ Deno.test(
       (s) => !(s.fromId === 1775329634 && s.toId === 1775329633),
     );
     const removeSynapse1Creature = Creature.fromJSON(removeSynapse1Json);
-    delete removeSynapse1Creature.id;
+    delete removeSynapse1Creature.uuid;
     removeSynapse1Creature.fix();
     CreatureUtil.makeUUID(removeSynapse1Creature);
 
@@ -74,7 +74,7 @@ Deno.test(
       (s) => !(s.fromId === 1775329633 && s.toId === 1775329634),
     );
     const removeSynapse2Creature = Creature.fromJSON(removeSynapse2Json);
-    delete removeSynapse2Creature.id;
+    delete removeSynapse2Creature.uuid;
     removeSynapse2Creature.fix();
     CreatureUtil.makeUUID(removeSynapse2Creature);
 

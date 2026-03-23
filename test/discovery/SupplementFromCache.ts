@@ -16,14 +16,20 @@ import { recordSuccessSync } from "../../src/discovery/SuccessCache.ts";
 import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
 import { makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
+// Deterministic integer ID for "hidden-1" (from deterministicIdFromUuid)
+const HIDDEN_1_ID = 1775329650;
+// Input neuron IDs
+const INPUT_0_ID = 0;
+// Output neuron ID
+const OUTPUT_0_ID = -1;
+
 /** Helper to create a candidate creature with a squash change applied. */
 function makeSquashCandidate(
   base: Creature,
-  neuronId: string,
+  neuronId: number,
   squash: string,
 ): DiscoveryCandidate {
   const json = base.exportJSON();
-  // @ts-ignore: test with legacy string neuron IDs
   const neuron = json.neurons.find((n) => n.id === neuronId);
   if (!neuron) throw new Error(`Neuron ${neuronId} not found`);
   neuron.squash = squash;
@@ -36,7 +42,6 @@ function makeSquashCandidate(
       type: "change-squash",
       description: `Change squash on ${neuronId} to ${squash}`,
       squashCandidate: {
-        // @ts-ignore: test with legacy string neuron IDs
         neuronId,
         previousSquash: "IDENTITY",
         squash,
@@ -51,12 +56,12 @@ function makeSquashCandidate(
 /** Helper to create a candidate with an added synapse. */
 function makeAddSynapseCandidate(
   base: Creature,
-  fromUUID: string,
-  toUUID: string,
+  fromId: number,
+  toId: number,
   weight: number,
 ): DiscoveryCandidate {
   const json = base.exportJSON();
-  json.synapses.push({ fromUUID, toUUID, weight });
+  json.synapses.push({ fromId, toId, weight });
   const modified = Creature.fromJSON(json);
   modified.validate();
   CreatureUtil.makeUUID(modified);
@@ -64,12 +69,10 @@ function makeAddSynapseCandidate(
     creature: modified,
     change: {
       type: "add-synapses",
-      description: `Add synapse ${fromUUID} → ${toUUID}`,
+      description: `Add synapse ${fromId} → ${toId}`,
       synapseCandidate: {
-        // @ts-ignore: test with legacy string neuron IDs
-        fromNeuronId: fromUUID,
-        // @ts-ignore: test with legacy string neuron IDs
-        toNeuronId: toUUID,
+        fromNeuronId: fromId,
+        toNeuronId: toId,
         weight,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -108,7 +111,7 @@ Deno.test({
       const base = makeBaseCreature();
 
       // Record a squash change candidate in the cache
-      const squashCandidate = makeSquashCandidate(base, "hidden-1", "TANH");
+      const squashCandidate = makeSquashCandidate(base, HIDDEN_1_ID, "TANH");
       recordSuccessSync(tmpDir, squashCandidate, {
         originalScore: -0.5,
         candidateScore: -0.4,
@@ -141,7 +144,7 @@ Deno.test(
       const base = makeBaseCreature();
 
       // Record a squash change to TANH in the cache
-      const squashCandidate = makeSquashCandidate(base, "hidden-1", "TANH");
+      const squashCandidate = makeSquashCandidate(base, HIDDEN_1_ID, "TANH");
       recordSuccessSync(tmpDir, squashCandidate, {
         originalScore: -0.5,
         candidateScore: -0.4,
@@ -173,7 +176,7 @@ Deno.test(
       const base = makeBaseCreature();
 
       // Record a squash change for a neuron that exists in the base creature
-      const squashCandidate = makeSquashCandidate(base, "hidden-1", "TANH");
+      const squashCandidate = makeSquashCandidate(base, HIDDEN_1_ID, "TANH");
       recordSuccessSync(tmpDir, squashCandidate, {
         originalScore: -0.5,
         candidateScore: -0.4,
@@ -228,7 +231,7 @@ Deno.test(
       const base = makeBaseCreature();
 
       // Record a squash change in the cache
-      const squashCandidate = makeSquashCandidate(base, "hidden-1", "TANH");
+      const squashCandidate = makeSquashCandidate(base, HIDDEN_1_ID, "TANH");
       recordSuccessSync(tmpDir, squashCandidate, {
         originalScore: -0.5,
         candidateScore: -0.4,
@@ -259,7 +262,7 @@ Deno.test({
       const base = makeBaseCreature();
 
       // Record multiple candidates in the cache
-      const squashCandidate = makeSquashCandidate(base, "hidden-1", "TANH");
+      const squashCandidate = makeSquashCandidate(base, HIDDEN_1_ID, "TANH");
       recordSuccessSync(tmpDir, squashCandidate, {
         originalScore: -0.5,
         candidateScore: -0.4,
@@ -269,8 +272,8 @@ Deno.test({
 
       const synapseCandidate = makeAddSynapseCandidate(
         base,
-        "input-0",
-        "output-0",
+        INPUT_0_ID,
+        OUTPUT_0_ID,
         0.3,
       );
       recordSuccessSync(tmpDir, synapseCandidate, {
@@ -299,7 +302,7 @@ Deno.test({
       const base = makeBaseCreature();
 
       // Record two candidates with different score deltas
-      const squashCandidate = makeSquashCandidate(base, "hidden-1", "TANH");
+      const squashCandidate = makeSquashCandidate(base, HIDDEN_1_ID, "TANH");
       recordSuccessSync(tmpDir, squashCandidate, {
         originalScore: -0.5,
         candidateScore: -0.4,
@@ -309,8 +312,8 @@ Deno.test({
 
       const synapseCandidate = makeAddSynapseCandidate(
         base,
-        "input-0",
-        "output-0",
+        INPUT_0_ID,
+        OUTPUT_0_ID,
         0.3,
       );
       recordSuccessSync(tmpDir, synapseCandidate, {

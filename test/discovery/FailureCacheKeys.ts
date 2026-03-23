@@ -276,20 +276,22 @@ Deno.test("buildCacheKey includes neuron details for add-neurons candidates", ()
 
 Deno.test("buildCacheKey handles remove-low-impact candidates", () => {
   const creature = makeSimpleCreature();
+  // hidden-1 ID from deterministicIdFromUuid("hidden-1")
+  const HIDDEN_1_ID = 1775329650;
   const candidate: DiscoveryCandidate = {
     creature,
     change: {
       type: "remove-low-impact",
-      description: "Remove low-impact neuron hidden-1 (impact: 1.23e-10)",
+      description: `Remove low-impact neuron ${HIDDEN_1_ID} (impact: 1.23e-10)`,
     },
   };
 
   const key = buildCacheKey(candidate);
   assert(key.includes("remove-low-impact"), "Key should include change type");
-  // The key should extract the neuron UUID from description
+  // The key should extract the neuron ID from description
   assert(
-    key.includes(String(5001)),
-    "Key should include neuron UUID from description",
+    key.includes(String(HIDDEN_1_ID)),
+    "Key should include neuron ID from description",
   );
 });
 

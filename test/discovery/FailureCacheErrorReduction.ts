@@ -4,7 +4,6 @@ import {
   extractTargetNeuronInfo,
   recordFailure,
 } from "../../src/discovery/FailureCache.ts";
-import { shortID } from "../../src/discovery/DiscoveryCandidates.ts";
 import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
@@ -244,17 +243,16 @@ Deno.test("recordFailure omits actualErrorReduction when candidateError is Infin
   }
 });
 
-Deno.test("extractTargetNeuronInfo finds neuron using shortID for add-synapses", () => {
-  // Bug: extractTargetNeuronInfo extracts shortID from description but compares
-  // using exact match (===) against full UUIDs. This test verifies the fix
-  // uses endsWith() to match short IDs against full UUIDs.
+Deno.test("extractTargetNeuronInfo finds neuron using integer ID for add-synapses", () => {
+  // Post-migration: extractTargetNeuronInfo extracts the integer neuron ID from
+  // the description using regex /-> (\d+)/ and looks up the neuron by that integer ID.
+  // deterministicIdFromUuid("3e979317-989f-4c5c-8272-02fd85be94a8") = 1434298466
 
   const fullTargetUUID = "3e979317-989f-4c5c-8272-02fd85be94a8";
-  const fullSourceUUID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
-  const targetShortID = shortID(fullTargetUUID); // "85be94a8"
-  const sourceShortID = shortID(fullSourceUUID);
+  // Expected integer ID for the target neuron
+  const TARGET_ID = 1434298466;
 
-  // Create creature with full UUIDs
+  // Create creature with UUID (will get integer ID via deterministicIdFromUuid)
   const creature = Creature.fromJSON({
     input: 2,
     output: 1,
@@ -270,26 +268,24 @@ Deno.test("extractTargetNeuronInfo finds neuron using shortID for add-synapses",
   creature.validate();
   CreatureUtil.makeUUID(creature);
 
-  // Create add-synapses candidate with shortID in description (as buildDiscoveryCandidates does)
+  // Create add-synapses candidate with integer IDs in description (post-migration format)
   const candidate: DiscoveryCandidate = {
     creature,
     change: {
       type: "add-synapses",
-      description:
-        `🔗 Added helpful synapse ${sourceShortID} -> ${targetShortID}`,
+      description: `🔗 Added helpful synapse 0 -> ${TARGET_ID}`,
     },
   };
 
-  // Extract target neuron info - this should find the neuron despite using shortID
+  // Extract target neuron info - this should find the neuron using integer ID
   const result = extractTargetNeuronInfo(candidate, creature);
 
-  // Before fix: result would be undefined because shortID !== fullUUID
-  // After fix: result should contain the target neuron info
-  assert(result !== undefined, "Should find target neuron using shortID");
+  // Should find the target neuron by its integer ID
+  assert(result !== undefined, "Should find target neuron using integer ID");
   assertEquals(
     result!.id,
-    fullTargetUUID as unknown as number,
-    "Should return full UUID, not shortID",
+    TARGET_ID,
+    "Should return correct integer neuron ID",
   );
   assertEquals(result!.squash, "TANH", "Should return correct squash function");
 });
@@ -424,7 +420,7 @@ Deno.test("recordFailure includes removalCandidate in rustRequest for remove-low
     );
     assertEquals(
       parsed.rustRequest.removalCandidate.neuronId,
-      "hidden-1",
+      5001,
       "removalCandidate.neuronId should match",
     );
     assertEquals(
@@ -512,7 +508,7 @@ Deno.test("recordFailure includes harmfulNeuronCandidate in rustRequest for remo
     );
     assertEquals(
       parsed.rustRequest.harmfulNeuronCandidate.neuronId,
-      "hidden-1",
+      5001,
       "harmfulNeuronCandidate.neuronId should match",
     );
     assertEquals(
@@ -604,12 +600,12 @@ Deno.test("recordFailure includes harmfulSynapseCandidate in rustRequest for rem
     );
     assertEquals(
       parsed.rustRequest.harmfulSynapseCandidate.fromNeuronId,
-      "input-0",
+      0,
       "harmfulSynapseCandidate.fromNeuronId should match",
     );
     assertEquals(
       parsed.rustRequest.harmfulSynapseCandidate.toNeuronId,
-      "hidden-1",
+      5001,
       "harmfulSynapseCandidate.toNeuronId should match",
     );
     assertEquals(

@@ -27,6 +27,7 @@ import type {
   SynapseInternal,
   SynapseTrace,
 } from "../architecture/SynapseInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { upgradeOne } from "../upgrade/UpgradeOne.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 
@@ -110,6 +111,11 @@ export function loadFrom(
   json: CreatureInternal | CreatureExport,
   validate: boolean,
 ): void {
+  // Issue #1958: Ensure legacy CreatureExport JSON has integer IDs populated.
+  // This writes back id/fromId/toId to the source JSON so that any
+  // subsequent use of the same object (e.g. SparseConfig) works correctly.
+  normaliseCreatureExport(json as CreatureExport);
+
   creature.uuid = (json as CreatureInternal).uuid;
   if (json.semanticVersion) {
     creature.semanticVersion = json.semanticVersion;

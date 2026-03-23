@@ -1,5 +1,6 @@
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { type CreatureExport, CreatureUtil } from "../../mod.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { Creature } from "../Creature.ts";
@@ -118,6 +119,7 @@ function simplifyComplementToIdentity(
 }
 
 export function removeKnownSign(exported: CreatureExport) {
+  normaliseCreatureExport(exported);
   const neuronMap = new Map<number, NeuronExport>();
   exported.neurons.forEach((neuron) => {
     neuronMap.set(neuron.id!, neuron);
@@ -248,6 +250,7 @@ export function removeNeuron(
   exported: CreatureExport,
   identityId: number,
 ): CreatureExport {
+  normaliseCreatureExport(exported);
   const simplifiedExport: CreatureExport = JSON.parse(JSON.stringify(exported));
   const neuronMap = new Map<number, NeuronExport>();
   simplifiedExport.neurons.forEach((neuron: NeuronExport) => {

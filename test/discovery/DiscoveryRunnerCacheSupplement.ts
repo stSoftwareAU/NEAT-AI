@@ -8,6 +8,9 @@
 
 import { assert, assertEquals, assertExists } from "@std/assert";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+
+// Integer ID for hidden-1 neuron in makeBaseCreature() (from UUID hash of "hidden-1")
+const ID_HIDDEN_1 = 1775329650;
 import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import { Creature } from "../../src/Creature.ts";
@@ -82,7 +85,7 @@ Deno.test({
       // discovery run that found changing squash to TANH improved score).
       const cacheJson = base.exportJSON();
       const cacheNeuron = cacheJson.neurons.find(
-        (n) => n.id === 5001,
+        (n) => n.id === ID_HIDDEN_1,
       );
       if (!cacheNeuron) throw new Error("hidden-1 not found");
       cacheNeuron.squash = "TANH";
@@ -96,7 +99,7 @@ Deno.test({
           type: "change-squash",
           description: "Change squash on hidden-1 to TANH",
           squashCandidate: {
-            neuronId: 5001,
+            neuronId: ID_HIDDEN_1,
             previousSquash: "IDENTITY",
             squash: "TANH",
             expectedCreatureScoreGain: 0.1,
@@ -138,7 +141,7 @@ Deno.test({
       const computeError = (creature: Creature) => {
         const json = creature.exportJSON();
         const synapses = json.synapses;
-        const hidden1Squash = json.neurons.find((n) => n.id === 5001)
+        const hidden1Squash = json.neurons.find((n) => n.id === ID_HIDDEN_1)
           ?.squash;
 
         const hasHelpful = synapses.some((synapse) =>

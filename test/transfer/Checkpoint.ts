@@ -128,12 +128,10 @@ Deno.test("importCheckpoint - UUID mapping between tasks", async () => {
 
   const checkpoint = exportCheckpoint(creature);
 
-  // Use explicit UUID mapping
+  // Use explicit UUID mapping (numeric IDs: input-0 -> 0, input-1 -> 1)
   const inputMapping = new Map<number, number>();
-  // @ts-ignore: test with legacy string neuron IDs
-  inputMapping.set(String(0), String(0));
-  // @ts-ignore: test with legacy string neuron IDs
-  inputMapping.set(String(1), String(1));
+  inputMapping.set(0, 0);
+  inputMapping.set(1, 1);
 
   const imported = importCheckpoint(checkpoint, {
     inputIdMapping: inputMapping,
@@ -187,21 +185,20 @@ Deno.test("checkpoint export includes frozen neuron/synapse keys", async () => {
     layers: [{ count: 2, squash: "TANH" }],
   });
 
-  const hiddenUUIDs: string[] = [];
+  const hiddenIds: number[] = [];
   for (const n of creature.neurons) {
     if (n.type === "hidden") {
-      hiddenUUIDs.push(String(n.id));
+      hiddenIds.push(n.id);
     }
   }
 
   const checkpoint = exportCheckpoint(creature, {
-    // @ts-ignore: test with legacy string IDs
-    frozenNeuronIds: hiddenUUIDs,
+    frozenNeuronIds: hiddenIds,
     frozenSynapseKeys: ["input-0->output-0"],
   });
 
   assertExists(checkpoint.frozenNeuronIds);
-  assertEquals(checkpoint.frozenNeuronIds!.length, hiddenUUIDs.length);
+  assertEquals(checkpoint.frozenNeuronIds!.length, hiddenIds.length);
   assertExists(checkpoint.frozenSynapseKeys);
   assertEquals(checkpoint.frozenSynapseKeys!.length, 1);
 });
@@ -508,12 +505,10 @@ Deno.test("importCheckpoint - explicit UUID mapping works", async () => {
 
   const checkpoint = exportCheckpoint(creature);
 
-  // Map source inputs to different target input positions
+  // Map source inputs to different target input positions (numeric IDs)
   const inputMapping = new Map<number, number>();
-  // @ts-ignore: test with legacy string neuron IDs
-  inputMapping.set(String(0), String(1)); // swap
-  // @ts-ignore: test with legacy string neuron IDs
-  inputMapping.set(String(1), String(0)); // swap
+  inputMapping.set(0, 1); // swap input-0 to position 1
+  inputMapping.set(1, 0); // swap input-1 to position 0
 
   const imported = importCheckpoint(checkpoint, {
     inputIdMapping: inputMapping,

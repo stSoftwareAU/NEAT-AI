@@ -93,8 +93,10 @@ Deno.test("removeSynapse removes an existing synapse", async () => {
   await initWasmForTests();
   const creature = makeTestCreature();
 
+  // hidden-1 (uuid "hidden-1") → id 1775329650, which connects to output -1
+  const hiddenOneId = creature.neurons.find((n) => n.type === "hidden")!.id;
   const candidate: CandidateSynapse = {
-    fromNeuronId: 5001,
+    fromNeuronId: hiddenOneId,
     toNeuronId: -1,
     weight: 0.25,
     targetNeuronImpact: 1.0,
@@ -117,9 +119,13 @@ Deno.test("removeSynapse returns null for non-existent synapse", async () => {
   await initWasmForTests();
   const creature = makeTestCreature();
 
+  // A synapse between two hidden neurons doesn't exist in this creature
+  const hiddenIds = creature.neurons.filter((n) => n.type === "hidden").map((
+    n,
+  ) => n.id);
   const candidate: CandidateSynapse = {
-    fromNeuronId: 5000,
-    toNeuronId: 5001, // This synapse doesn't exist
+    fromNeuronId: hiddenIds[0],
+    toNeuronId: hiddenIds[1], // This synapse doesn't exist
     weight: 0.5,
     targetNeuronImpact: 1.0,
     expectedCreatureErrorReduction: 0.01,
@@ -143,9 +149,12 @@ Deno.test("addHelpfulSynapses adds a new synapse", async () => {
   await initWasmForTests();
   const creature = makeTestCreature();
 
+  // hidden-1 (second hidden) is not yet connected from input-1
+  const secondHiddenId =
+    creature.neurons.filter((n) => n.type === "hidden")[1].id;
   const candidate: CandidateSynapse = {
     fromNeuronId: 0,
-    toNeuronId: 5001, // New connection
+    toNeuronId: secondHiddenId, // New connection
     weight: 0.4,
     targetNeuronImpact: 0.8,
     expectedCreatureErrorReduction: 0.02,
@@ -166,9 +175,11 @@ Deno.test("addHelpfulSynapses skips already existing synapse", async () => {
   await initWasmForTests();
   const creature = makeTestCreature();
 
+  // input-0 -> hidden-0 already exists
+  const firstHiddenId = creature.neurons.find((n) => n.type === "hidden")!.id;
   const candidate: CandidateSynapse = {
     fromNeuronId: 0,
-    toNeuronId: 5000, // Already exists
+    toNeuronId: firstHiddenId, // Already exists
     weight: 0.5,
     targetNeuronImpact: 1.0,
     expectedCreatureErrorReduction: 0.01,
@@ -192,8 +203,9 @@ Deno.test("changeSquash modifies neuron squash function", async () => {
   await initWasmForTests();
   const creature = makeTestCreature();
 
+  const firstHiddenId = creature.neurons.find((n) => n.type === "hidden")!.id;
   const candidate: CandidateSquash = {
-    neuronId: 5000,
+    neuronId: firstHiddenId,
     previousSquash: IDENTITY.NAME,
     squash: LOGISTIC.NAME,
     expectedCreatureScoreGain: 0.03,
@@ -203,7 +215,7 @@ Deno.test("changeSquash modifies neuron squash function", async () => {
 
   const result = changeSquash("test-id", creature, [candidate]);
   assert(result !== undefined, "should return a modified creature");
-  const modifiedNeuron = result!.neurons.find((n) => n.id === 5000);
+  const modifiedNeuron = result!.neurons.find((n) => n.id === firstHiddenId);
   assert(modifiedNeuron !== undefined, "hidden-0 should exist");
   assertEquals(modifiedNeuron!.squash, LOGISTIC.NAME);
 });
@@ -253,8 +265,10 @@ Deno.test("removeHarmfulNeuron removes a hidden neuron", async () => {
   const creature = makeTestCreature();
   const originalNeuronCount = creature.neurons.length;
 
+  const secondHiddenId =
+    creature.neurons.filter((n) => n.type === "hidden")[1].id;
   const candidate: CandidateHarmfulNeuron = {
-    neuronId: 5001,
+    neuronId: secondHiddenId,
     errorMagnitude: 0.5,
     expectedCreatureScoreGain: 0.05,
     sampleCount: 100,
@@ -268,7 +282,7 @@ Deno.test("removeHarmfulNeuron removes a hidden neuron", async () => {
     "should have fewer neurons",
   );
   assertEquals(
-    result!.neurons.find((n) => n.id === 5001),
+    result!.neurons.find((n) => n.id === secondHiddenId),
     undefined,
   );
 });

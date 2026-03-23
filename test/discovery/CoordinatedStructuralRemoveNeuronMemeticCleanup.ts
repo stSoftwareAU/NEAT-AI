@@ -1,14 +1,16 @@
 import { assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import type { CoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import { applyCoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
+// Integer ID for hidden-0 (deterministicIdFromUuid).
+const HIDDEN_0_ID = 1775329651; // "hidden-0"
+
 Deno.test(
   "applyCoordinatedStructuralCandidate: removeNeuron cleans memetic references to avoid MEMETIC validation errors",
   () => {
-    const base: CreatureExport = {
+    const creature = Creature.fromJSON({
       input: 1,
       output: 1,
       forwardOnly: true,
@@ -20,10 +22,10 @@ Deno.test(
         { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
       ],
       synapses: [
-        { fromUUID: "input-0", toId: 5000, weight: 0.2 },
-        { fromUUID: "hidden-0", toId: -1, weight: 0.25 },
+        { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.2 },
+        { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
         // Preserve a valid topology after removal (output still has an inbound edge).
-        { fromUUID: "input-0", toId: -1, weight: 0.05 },
+        { fromUUID: "input-0", toUUID: "output-0", weight: 0.05 },
       ],
       memetic: {
         generation: 1,
@@ -31,11 +33,10 @@ Deno.test(
         // Empty weights keeps this test focused on the missing neuron-level cleanup.
         weights: {},
         biases: {
-          5000: 0.1,
+          [HIDDEN_0_ID]: 0.1,
         },
       },
-    };
-    const creature = Creature.fromJSON(base);
+    });
 
     const candidate: CoordinatedStructuralCandidate = {
       type: "coordinated_structural",
@@ -43,7 +44,7 @@ Deno.test(
       operations: [
         {
           type: "removeNeuron",
-          neuronId: 5000,
+          neuronId: HIDDEN_0_ID,
         },
       ],
     };
@@ -51,7 +52,7 @@ Deno.test(
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
     const exported = mutated.exportJSON();
 
-    assertEquals(exported.neurons.some((n) => n.id === 5000), false);
+    assertEquals(exported.neurons.some((n) => n.id === HIDDEN_0_ID), false);
     assertEquals(exported.memetic, undefined);
     assertEquals(exported.semanticVersion, "3.2.1");
   },

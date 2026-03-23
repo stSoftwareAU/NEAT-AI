@@ -35,8 +35,9 @@ Deno.test("scanForSquashImprovements: alternative improvement message reports ta
   const fakeWorker = {
     score(creature: Creature, uuid: string): Promise<ResponseData> {
       const json = creature.exportJSON();
-      // @ts-ignore: Legacy string neuron UUID format
-      const neuron = json.neurons.find((n) => n.id === id);
+      // Look up the target neuron by its numeric ID (uuid is the string form)
+      const neuronId = Number(uuid);
+      const neuron = json.neurons.find((n) => n.id === neuronId);
       const squash = neuron?.squash;
 
       // Ensure targetSquash is a mild improvement, and altSquash is the best.

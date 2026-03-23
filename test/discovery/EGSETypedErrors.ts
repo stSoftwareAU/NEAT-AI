@@ -6,6 +6,9 @@ import {
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts";
 import { makeSimpleCreature } from "../fixtures/SimpleCreatures.ts";
 
+// Integer ID for hidden-1 in makeSimpleCreature (deterministicIdFromUuid("hidden-1")).
+const HIDDEN_1_ID = 1775329650;
+
 Deno.test("calculateSquashError throws TopologyError when activation is undefined", () => {
   assertThrows(
     () =>
@@ -25,7 +28,7 @@ Deno.test("findCandidateSquash throws TopologyError when record value is undefin
     () =>
       findCandidateSquash(
         creature,
-        "hidden-1" as unknown as number,
+        HIDDEN_1_ID,
         [{
           activation: 0.5,
           value: undefined as unknown as number,
@@ -47,7 +50,7 @@ Deno.test("findCandidateSquash throws TopologyError when record activation is un
     () =>
       findCandidateSquash(
         creature,
-        "hidden-1" as unknown as number,
+        HIDDEN_1_ID,
         [{
           activation: undefined as unknown as number,
           value: 0.5,

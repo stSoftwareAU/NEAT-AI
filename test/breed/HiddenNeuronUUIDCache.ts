@@ -56,10 +56,12 @@ Deno.test("getHiddenNeuronIds returns correct Set of hidden neuron UUIDs", () =>
 
   const result = creature.getHiddenNeuronIds();
 
+  // IDs are deterministic integers derived from the UUID strings
+  // hidden-1 → 1775329650, hidden-2 → 1775329649, hidden-3 → 1775329648
   assertEquals(result.size, 3);
-  assertEquals(result.has(5001), true);
-  assertEquals(result.has(5002), true);
-  assertEquals(result.has(5003), true);
+  assertEquals(result.has(1775329650), true);
+  assertEquals(result.has(1775329649), true);
+  assertEquals(result.has(1775329648), true);
   assertEquals(result.has(-1), false);
   assertEquals(result.has(0), false);
 });
@@ -87,9 +89,10 @@ Deno.test("getHiddenNeuronIds returns correct content after clearCache", () => {
   const result = creature.getHiddenNeuronIds();
 
   // Contents should still be correct after cache clear
+  // hidden-x → 1775329579, hidden-y → 1775329578
   assertEquals(result.size, 2);
-  assertEquals(result.has(8024), true);
-  assertEquals(result.has(8025), true);
+  assertEquals(result.has(1775329579), true);
+  assertEquals(result.has(1775329578), true);
 });
 
 Deno.test("getHiddenNeuronIds returns empty Set for creature with no hidden neurons", () => {
@@ -144,6 +147,7 @@ Deno.test("getHiddenNeuronIds returns correct content after connect", () => {
   const result = creature.getHiddenNeuronIds();
 
   // Hidden neuron set should still be correct after adding a connection
+  // hidden-1 → 1775329650
   assertEquals(result.size, 1);
-  assertEquals(result.has(5001), true);
+  assertEquals(result.has(1775329650), true);
 });
