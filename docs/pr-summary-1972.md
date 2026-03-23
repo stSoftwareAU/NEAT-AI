@@ -26,8 +26,8 @@ dropped during compaction.
 5. **Parallel bridge merge** (`ParallelBridgeMerge.ts`): Tags from removed
    neurons are merged onto the kept neuron.
 
-All fixes use the existing `mergeTagsByNameValue()` utility to de-duplicate
-tags by `{name, value}` equality.
+All fixes use the existing `mergeTagsByNameValue()` utility to de-duplicate tags
+by `{name, value}` equality.
 
 ## Evidence
 
