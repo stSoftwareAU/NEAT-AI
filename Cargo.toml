@@ -1,7 +1,7 @@
 # Cargo workspace for NEAT-AI Rust crates
 # Issue #1964 - Extract shared Rust library crate from wasm_activation
 [workspace]
-members = ["neat-core", "wasm_activation"]
+members = ["neat-core", "rust_scorer", "wasm_activation"]
 resolver = "2"
 
 [profile.release]

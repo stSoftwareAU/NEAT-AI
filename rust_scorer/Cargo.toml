@@ -1,0 +1,18 @@
+[package]
+name = "rust_scorer"
+version = "0.1.0"
+edition = "2024"
+description = "Native CLI binary for scoring NEAT-AI creatures against training data."
+
+[[bin]]
+name = "rust_scorer"
+path = "src/main.rs"
+
+[dependencies]
+neat-core = { path = "../neat-core" }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"
