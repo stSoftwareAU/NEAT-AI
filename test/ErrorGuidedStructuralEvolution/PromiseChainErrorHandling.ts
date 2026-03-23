@@ -85,7 +85,7 @@ Deno.test({
       makeStubDeps(),
     );
 
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
 

@@ -43,7 +43,7 @@ Deno.test("Creature.record: ArcTan near-saturation target does not explode value
   // value-space errors that dominate Explorer MSE.
   const expected = new Float32Array([upper - 1e-12]);
   const map = creature.record(expected);
-  const rec = map.get("output-0");
+  const rec = map.get(-1);
   assert(rec, "Expected a record for output-0");
 
   const err = rec.errors[0];

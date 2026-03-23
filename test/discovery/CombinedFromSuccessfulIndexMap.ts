@@ -47,10 +47,10 @@ Deno.test(
     // Removal candidate: remove hidden-B
     const removeBJson = structuredClone(baseJSON);
     removeBJson.neurons = removeBJson.neurons.filter(
-      (n) => n.uuid !== "hidden-B",
+      (n) => n.id !== 8002,
     );
     removeBJson.synapses = removeBJson.synapses.filter(
-      (s) => s.fromUUID !== "hidden-B" && s.toUUID !== "hidden-B",
+      (s) => s.fromId !== 8002 && s.toId !== 8002,
     );
     removeBJson.synapses.push({
       fromUUID: "input-1",
@@ -76,7 +76,7 @@ Deno.test(
 
     // Change squash candidate
     const squashJson = structuredClone(baseJSON);
-    const hiddenA = squashJson.neurons.find((n) => n.uuid === "hidden-A");
+    const hiddenA = squashJson.neurons.find((n) => n.id === 8001);
     if (hiddenA) hiddenA.squash = "TANH";
     const squashCreature = Creature.fromJSON(squashJson);
     delete squashCreature.uuid;
@@ -145,10 +145,10 @@ Deno.test(
     // Create two removal candidates of the same type
     const removeBJson = structuredClone(baseJSON);
     removeBJson.neurons = removeBJson.neurons.filter(
-      (n) => n.uuid !== "hidden-B",
+      (n) => n.id !== 8002,
     );
     removeBJson.synapses = removeBJson.synapses.filter(
-      (s) => s.fromUUID !== "hidden-B" && s.toUUID !== "hidden-B",
+      (s) => s.fromId !== 8002 && s.toId !== 8002,
     );
     removeBJson.synapses.push({
       fromUUID: "input-1",
@@ -162,10 +162,10 @@ Deno.test(
 
     const removeCJson = structuredClone(baseJSON);
     removeCJson.neurons = removeCJson.neurons.filter(
-      (n) => n.uuid !== "hidden-C",
+      (n) => n.id !== 8003,
     );
     removeCJson.synapses = removeCJson.synapses.filter(
-      (s) => s.fromUUID !== "hidden-C" && s.toUUID !== "hidden-C",
+      (s) => s.fromId !== 8003 && s.toId !== 8003,
     );
     removeCJson.synapses.push({
       fromUUID: "hidden-A",

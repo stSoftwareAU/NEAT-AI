@@ -170,7 +170,7 @@ export async function loadNeuronRecords(
     );
   }
 
-  // Extract neuron UUID from identifier (strip .csv extension if present)
+  // Extract neuron id string from identifier (strip .csv extension if present)
   const match = fileName?.match(/^(.+?)(?:\.csv)?$/);
   if (!match) {
     throw new TopologyError(
@@ -178,7 +178,7 @@ export async function loadNeuronRecords(
       "INVALID_STATE",
     );
   }
-  const neuronUUID = match[1];
+  const neuronIdStr = match[1];
 
   // Verify Parquet file exists before reading
   try {
@@ -193,7 +193,7 @@ export async function loadNeuronRecords(
   // Read from Parquet via Rust FFI
   const readResult = deps.readDiscoveryRecords({
     parquet_file: parquetFilePath,
-    neuron_uuid: neuronUUID,
+    neuron_uuid: neuronIdStr,
   });
 
   if (readResult && readResult.success && readResult.records) {

@@ -32,11 +32,11 @@ export interface CheckpointMetadata {
   /** Number of output neurons in the source task */
   sourceOutputCount: number;
 
-  /** UUIDs of input neurons in the source task (for mapping) */
-  sourceInputUUIDs: string[];
+  /** IDs of input neurons in the source task (for mapping) */
+  sourceInputIds: number[];
 
-  /** UUIDs of output neurons in the source task (for mapping) */
-  sourceOutputUUIDs: string[];
+  /** IDs of output neurons in the source task (for mapping) */
+  sourceOutputIds: number[];
 }
 
 /**
@@ -55,8 +55,8 @@ export interface CheckpointInterface {
   /** Metadata about the source task and training history */
   metadata: CheckpointMetadata;
 
-  /** Optional list of neuron UUIDs whose weights are frozen */
-  frozenNeuronUUIDs?: string[];
+  /** Optional list of neuron IDs whose weights are frozen */
+  frozenNeuronIds?: number[];
 
   /** Optional list of synapse keys (fromUUID->toUUID) whose weights are frozen */
   frozenSynapseKeys?: string[];

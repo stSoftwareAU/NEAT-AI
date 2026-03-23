@@ -239,15 +239,15 @@ Deno.test("Public API: CreatureExport type has expected shape", () => {
 
   // Check neuron shape
   const neuron: NeuronExport = json.neurons[0];
-  assert(typeof neuron.uuid === "string");
+  assert(typeof neuron.id === "number");
   assert(typeof neuron.type === "string");
   assert(typeof neuron.bias === "number");
 
   // Check synapse shape
   if (json.synapses.length > 0) {
     const synapse: SynapseExport = json.synapses[0];
-    assert(typeof synapse.fromUUID === "string");
-    assert(typeof synapse.toUUID === "string");
+    assert(typeof synapse.fromId === "number");
+    assert(typeof synapse.toId === "number");
     assert(typeof synapse.weight === "number");
   }
 });

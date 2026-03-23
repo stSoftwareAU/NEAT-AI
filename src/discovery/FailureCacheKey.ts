@@ -67,53 +67,51 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
           const t = (op as { type?: string }).type;
           if (t === "removeSynapse") {
             const o = op as {
-              fromNeuronUuid?: string;
-              toNeuronUuid?: string;
+              fromNeuronId?: number;
+              toNeuronId?: number;
             };
-            return `removeSynapse:${o.fromNeuronUuid ?? "?"}->${
-              o.toNeuronUuid ?? "?"
+            return `removeSynapse:${o.fromNeuronId ?? "?"}->${
+              o.toNeuronId ?? "?"
             }`;
           }
           if (t === "addSynapse") {
             const o = op as {
-              fromNeuronUuid?: string;
-              toNeuronUuid?: string;
+              fromNeuronId?: number;
+              toNeuronId?: number;
               weight?: number;
             };
             const w = typeof o.weight === "number"
               ? formatWeight(o.weight)
               : "?";
-            return `addSynapse:${o.fromNeuronUuid ?? "?"}->${
-              o.toNeuronUuid ?? "?"
+            return `addSynapse:${o.fromNeuronId ?? "?"}->${
+              o.toNeuronId ?? "?"
             }:w${w}`;
           }
           if (t === "addNeuron") {
             const o = op as {
-              neuronUuid?: string;
+              neuronId?: number;
               neuronType?: string;
               squash?: string;
               bias?: number;
-              insertBeforeNeuronUuid?: string;
+              insertBeforeNeuronId?: number;
             };
             const b = typeof o.bias === "number" ? formatWeight(o.bias) : "?";
-            return `addNeuron:${o.neuronUuid ?? "?"}:type${
+            return `addNeuron:${o.neuronId ?? "?"}:type${
               o.neuronType ?? "?"
-            }:s${o.squash ?? "?"}:b${b}:before${
-              o.insertBeforeNeuronUuid ?? "-"
-            }`;
+            }:s${o.squash ?? "?"}:b${b}:before${o.insertBeforeNeuronId ?? "-"}`;
           }
           if (t === "removeNeuron") {
-            const o = op as { neuronUuid?: string };
-            return `removeNeuron:${o.neuronUuid ?? "?"}`;
+            const o = op as { neuronId?: number };
+            return `removeNeuron:${o.neuronId ?? "?"}`;
           }
           if (t === "changeSquash") {
-            const o = op as { neuronUuid?: string; squash?: string };
-            return `changeSquash:${o.neuronUuid ?? "?"}:s${o.squash ?? "?"}`;
+            const o = op as { neuronId?: number; squash?: string };
+            return `changeSquash:${o.neuronId ?? "?"}:s${o.squash ?? "?"}`;
           }
           if (t === "setBias") {
-            const o = op as { neuronUuid?: string; bias?: number };
+            const o = op as { neuronId?: number; bias?: number };
             const b = typeof o.bias === "number" ? formatWeight(o.bias) : "?";
-            return `setBias:${o.neuronUuid ?? "?"}:b${b}`;
+            return `setBias:${o.neuronId ?? "?"}:b${b}`;
           }
           return JSON.stringify(op);
         }).join("|");
@@ -129,8 +127,8 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
       const details = candidate.change.neuronDetails;
       if (details) {
         parts.push(
-          details.fromNeuronUUID,
-          details.toNeuronUUID,
+          String(details.fromNeuronId),
+          String(details.toNeuronId),
           details.squash,
           formatWeight(details.incomingWeight),
           formatWeight(details.outgoingWeight),
@@ -145,14 +143,14 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
 
     case "remove-low-impact":
     case "remove-neuron": {
-      // For neuron removal, prefer the neuron UUID from description.
+      // For neuron removal, prefer the neuron ID from description.
       // If removal failed once, it won't succeed until the creature structure changes
       // significantly (at which point the cache should be cleared anyway).
-      const uuidMatch = candidate.change.description?.match(
-        /neuron\s+([a-zA-Z0-9_-]+)/i,
+      const idMatch = candidate.change.description?.match(
+        /neuron\s+(\d+)/i,
       );
-      if (uuidMatch) {
-        parts.push(uuidMatch[1]);
+      if (idMatch) {
+        parts.push(idMatch[1]);
       } else {
         // Fallback: use structural signature to avoid cache collisions
         parts.push(buildStructuralSignature(candidate));
@@ -178,7 +176,10 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
           "INVALID_STATE",
         );
       }
-      parts.push(synapseDetails.fromNeuronUUID, synapseDetails.toNeuronUUID);
+      parts.push(
+        String(synapseDetails.fromNeuronId),
+        String(synapseDetails.toNeuronId),
+      );
       break;
     }
 
@@ -212,38 +213,36 @@ function stableShortHash(value: string): string {
  * Builds a structural signature from the creature's neurons and synapses.
  * Uses exponents for weights/biases to group similar structures together.
  *
- * Includes both hidden and output neurons (sorted by UUID for determinism).
+ * Includes both hidden and output neurons (sorted by ID for determinism).
  * Input neurons are excluded as they have no squash/bias.
  */
 function buildStructuralSignature(candidate: DiscoveryCandidate): string {
   const exported = candidate.creature.exportJSON();
   const sigParts: string[] = [];
 
-  // Include neuron signatures (UUID, squash, bias exponent)
-  // Filter to hidden and output neurons, then sort by UUID for determinism
+  // Include neuron signatures (ID, squash, bias exponent)
+  // Filter to hidden and output neurons, then sort by ID for determinism
   const relevantNeurons = exported.neurons
     .filter((n) => n.type === "hidden" || n.type === "output")
-    .sort((a, b) => a.uuid.localeCompare(b.uuid));
+    .sort((a, b) => a.id! - b.id!);
 
   for (const neuron of relevantNeurons) {
     sigParts.push(
-      `n:${neuron.uuid}:${neuron.squash}:${formatWeight(neuron.bias)}`,
+      `n:${neuron.id}:${neuron.squash}:${formatWeight(neuron.bias)}`,
     );
   }
 
   // Include synapse signatures (from->to, weight exponent)
   // Sort for determinism
   const sortedSynapses = [...exported.synapses].sort((a, b) => {
-    const keyA = `${a.fromUUID}->${a.toUUID}`;
-    const keyB = `${b.fromUUID}->${b.toUUID}`;
+    const keyA = `${a.fromId}->${a.toId}`;
+    const keyB = `${b.fromId}->${b.toId}`;
     return keyA.localeCompare(keyB);
   });
 
   for (const synapse of sortedSynapses) {
     sigParts.push(
-      `s:${synapse.fromUUID}->${synapse.toUUID}:${
-        formatWeight(synapse.weight)
-      }`,
+      `s:${synapse.fromId}->${synapse.toId}:${formatWeight(synapse.weight)}`,
     );
   }
 

@@ -33,7 +33,7 @@ export interface CombinedAnalysisCache {
  */
 export function buildCombinedAnalysisKey(
   parquetFilePath: string | null,
-  focusList: readonly string[],
+  focusList: readonly number[],
 ): string {
   const pathKey = parquetFilePath ?? "none";
   return `${pathKey}|${JSON.stringify(focusList)}`;
@@ -45,7 +45,7 @@ export function buildCombinedAnalysisKey(
 export function readRustCombinedAnalysis(
   cache: CombinedAnalysisCache | undefined,
   parquetFilePath: string | null,
-  focusList: string[],
+  focusList: number[],
   needsSynapse: boolean,
   needsNeuron: boolean,
 ): RustAnalyzeAllResult | undefined {
@@ -73,12 +73,12 @@ export function ensureRustCombinedAnalysis(
   deps: DiscoverStructureDeps,
   cache: CombinedAnalysisCache | undefined,
   analysisDeadlineMs: number | undefined,
-  focusList: string[],
+  focusList: number[],
   includeSynapse: boolean,
   includeNeuron: boolean,
   logRustAnalysisUnavailableFn: (
     scope: "synapse" | "neuron",
-    focusList: string[],
+    focusList: number[],
     reason: string,
   ) => void,
 ): {
@@ -115,7 +115,7 @@ export function ensureRustCombinedAnalysis(
   const parallelInput: RustParallelAnalysisInput = {
     parquetFile: parquetFilePath,
     creature: rustCreature,
-    focusNeurons: focusList,
+    focusNeurons: focusList.map(String),
     maxSynapseCandidates: includeSynapse
       ? Math.max(50, focusList.length * 10)
       : undefined,

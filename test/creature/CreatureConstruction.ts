@@ -85,7 +85,7 @@ Deno.test("Fresh construction with random squash assigns valid squash to all neu
     assertGreater(
       neuron.squash!.length,
       0,
-      `Neuron ${i} (${neuron.uuid}) has no squash`,
+      `Neuron ${i} (${neuron.id}) has no squash`,
     );
   }
 });

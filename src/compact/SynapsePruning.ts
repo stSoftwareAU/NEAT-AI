@@ -30,7 +30,7 @@ export function mergeDuplicateSynapses(
 
   for (const synapse of creatureExport.synapses) {
     const typeKey = synapse.type ?? "";
-    const key = `${synapse.fromUUID}->${synapse.toUUID}:${typeKey}`;
+    const key = `${synapse.fromId}->${synapse.toId}:${typeKey}`;
     const existingIndex = seen.get(key);
     if (existingIndex === undefined) {
       seen.set(key, mergedSynapses.length);
@@ -73,21 +73,21 @@ export function pruneZeroWeightSynapses(
   // IF neurons require at least 3 inward connections with specific typed roles
   // (condition/positive/negative). Even if a weight is zero, dropping a typed
   // synapse can invalidate the structure and break activation semantics.
-  const ifNeuronUUIDs = new Set<string>();
-  const outputNeuronUUIDs = new Set<string>();
+  const ifNeuronIds = new Set<number>();
+  const outputNeuronIds = new Set<number>();
   for (const neuron of creatureExport.neurons) {
     // Note: CreatureExport.neurons does not include input neurons (they are implicit),
     // so `neuron.type` cannot be "input" here.
     if (neuron.squash === "IF") {
-      ifNeuronUUIDs.add(neuron.uuid);
+      ifNeuronIds.add(neuron.id!);
     }
     if (neuron.type === "output") {
-      outputNeuronUUIDs.add(neuron.uuid);
+      outputNeuronIds.add(neuron.id!);
     }
   }
 
   const before = creatureExport.synapses.length;
-  const inboundKeptCountsByTo = new Map<string, number>();
+  const inboundKeptCountsByTo = new Map<number, number>();
   const shouldAlwaysKeep = (s: typeof creatureExport.synapses[number]) => {
     if (s.weight !== 0) return true;
 
@@ -95,7 +95,7 @@ export function pruneZeroWeightSynapses(
     if (s.type) return true;
 
     // Extra safety: never prune a zero-weight synapse that targets an IF neuron.
-    if (ifNeuronUUIDs.has(s.toUUID)) return true;
+    if (ifNeuronIds.has(s.toId!)) return true;
 
     return false;
   };
@@ -105,14 +105,14 @@ export function pruneZeroWeightSynapses(
     if (!Number.isFinite(s.weight)) continue;
     if (!shouldAlwaysKeep(s)) continue;
     inboundKeptCountsByTo.set(
-      s.toUUID,
-      (inboundKeptCountsByTo.get(s.toUUID) ?? 0) + 1,
+      s.toId!,
+      (inboundKeptCountsByTo.get(s.toId!) ?? 0) + 1,
     );
   }
 
   // Second pass: filter, preserving the last inbound connection to outputs for
   // structural validity (mirrors Creature.fix() behaviour).
-  const preservedZeroInboundForOutput = new Set<string>();
+  const preservedZeroInboundForOutput = new Set<number>();
   creatureExport.synapses = creatureExport.synapses.filter((s) => {
     if (!Number.isFinite(s.weight)) return false;
     if (shouldAlwaysKeep(s)) return true;
@@ -124,10 +124,10 @@ export function pruneZeroWeightSynapses(
     // - not targeting an IF neuron
     //
     // Prune it, unless it's the last inbound connection to an output neuron.
-    if (outputNeuronUUIDs.has(s.toUUID)) {
-      const inboundKept = inboundKeptCountsByTo.get(s.toUUID) ?? 0;
-      if (inboundKept === 0 && !preservedZeroInboundForOutput.has(s.toUUID)) {
-        preservedZeroInboundForOutput.add(s.toUUID);
+    if (outputNeuronIds.has(s.toId!)) {
+      const inboundKept = inboundKeptCountsByTo.get(s.toId!) ?? 0;
+      if (inboundKept === 0 && !preservedZeroInboundForOutput.has(s.toId!)) {
+        preservedZeroInboundForOutput.add(s.toId!);
         return true;
       }
     }

@@ -18,36 +18,36 @@ export class SubConnection extends AbstractMutationOperator {
     const exportJSON = builder.build();
 
     // List of possible connections that can be removed (forward connections only)
-    const possible: { fromUUID: string; toUUID: string }[] = [];
+    const possible: { fromId: number; toId: number }[] = [];
 
     // Build neuron index map for focus checking
-    const neuronIndexMap = new Map<string, number>();
+    const neuronIndexMap = new Map<number, number>();
     let idx = 0;
     // Input neurons first (implicit, not in export)
     for (let i = 0; i < this.creature.input; i++) {
-      neuronIndexMap.set(`input-${i}`, idx++);
+      neuronIndexMap.set(i, idx++);
     }
     // Then exported neurons
     for (const neuron of exportJSON.neurons) {
-      neuronIndexMap.set(neuron.uuid, idx++);
+      neuronIndexMap.set(neuron.id!, idx++);
     }
 
     // Build a set of IF neuron UUIDs and count their connection types,
     // so we don't remove a connection that would leave an IF neuron invalid.
-    const ifNeuronUUIDs = new Set<string>();
+    const ifNeuronIds = new Set<number>();
     for (const neuron of exportJSON.neurons) {
       if (neuron.squash === "IF") {
-        ifNeuronUUIDs.add(neuron.uuid);
+        ifNeuronIds.add(neuron.id!);
       }
     }
 
     // Count connection types per IF neuron
     const ifConnectionCounts = new Map<
-      string,
+      number,
       { condition: number; positive: number; negative: number }
     >();
-    if (ifNeuronUUIDs.size > 0) {
-      for (const uuid of ifNeuronUUIDs) {
+    if (ifNeuronIds.size > 0) {
+      for (const uuid of ifNeuronIds) {
         ifConnectionCounts.set(uuid, {
           condition: 0,
           positive: 0,
@@ -55,7 +55,7 @@ export class SubConnection extends AbstractMutationOperator {
         });
       }
       for (const synapse of exportJSON.synapses) {
-        const counts = ifConnectionCounts.get(synapse.toUUID);
+        const counts = ifConnectionCounts.get(synapse.toId!);
         if (counts) {
           const synapseType = synapse.type ?? "positive";
           if (synapseType === "condition") counts.condition++;
@@ -66,8 +66,8 @@ export class SubConnection extends AbstractMutationOperator {
     }
 
     for (const synapse of exportJSON.synapses) {
-      const fromIdx = neuronIndexMap.get(synapse.fromUUID);
-      const toIdx = neuronIndexMap.get(synapse.toUUID);
+      const fromIdx = neuronIndexMap.get(synapse.fromId!);
+      const toIdx = neuronIndexMap.get(synapse.toId!);
 
       // Only consider forward connections (to > from)
       if (fromIdx !== undefined && toIdx !== undefined && toIdx > fromIdx) {
@@ -83,7 +83,7 @@ export class SubConnection extends AbstractMutationOperator {
           this.creature.inFocus(toIdx, focusList);
 
         if (inFocus) {
-          possible.push({ fromUUID: synapse.fromUUID, toUUID: synapse.toUUID });
+          possible.push({ fromId: synapse.fromId!, toId: synapse.toId! });
         }
       }
     }
@@ -99,15 +99,14 @@ export class SubConnection extends AbstractMutationOperator {
 
     // Remove the selected synapse
     exportJSON.synapses = exportJSON.synapses.filter(
-      (s) =>
-        s.fromUUID !== randomConn.fromUUID || s.toUUID !== randomConn.toUUID,
+      (s) => s.fromId !== randomConn.fromId || s.toId !== randomConn.toId,
     );
 
     // Clean up memetic data for the removed synapse
     cleanupMemeticForRemovedSynapse(
       exportJSON,
-      randomConn.fromUUID,
-      randomConn.toUUID,
+      randomConn.fromId,
+      randomConn.toId,
     );
 
     // Clean up any neurons that have become orphaned after synapse removal.
@@ -128,11 +127,11 @@ export class SubConnection extends AbstractMutationOperator {
   private wouldBreakIfNeuron(
     synapse: SynapseExport,
     ifConnectionCounts: Map<
-      string,
+      number,
       { condition: number; positive: number; negative: number }
     >,
   ): boolean {
-    const counts = ifConnectionCounts.get(synapse.toUUID);
+    const counts = ifConnectionCounts.get(synapse.toId!);
     if (!counts) return false;
 
     const synapseType = synapse.type ?? "positive";

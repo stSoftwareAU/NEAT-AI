@@ -71,8 +71,8 @@ Deno.test({
     const originalUUID = CreatureUtil.makeUUID(creature);
 
     const synapseToRemove: CandidateSynapse = {
-      fromNeuronUUID: "hidden-0",
-      toNeuronUUID: "output-0",
+      fromNeuronId: 5000,
+      toNeuronId: -1,
       weight: 0.75,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -110,8 +110,8 @@ Deno.test({
     const creature = makeTestCreature();
 
     const synapseToAdd: CandidateSynapse = {
-      fromNeuronUUID: "input-0",
-      toNeuronUUID: "hidden-1",
+      fromNeuronId: 0,
+      toNeuronId: 5001,
       weight: 0.4,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -146,7 +146,7 @@ Deno.test({
     const creature = makeTestCreature();
 
     const removalCandidate: RemovalCandidate = {
-      neuronUUID: "hidden-1",
+      neuronId: 5001,
       totalError: 0.001,
       impact: 0.0001,
       reason: "low-impact",
@@ -185,8 +185,8 @@ Deno.test({
       // Try to add a synapse that already exists (shouldn't cause validation issue)
       // But this test ensures the infrastructure works
       const synapseToAdd: CandidateSynapse = {
-        fromNeuronUUID: "input-0",
-        toNeuronUUID: "hidden-1",
+        fromNeuronId: 0,
+        toNeuronId: 5001,
         weight: 0.4,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -242,8 +242,8 @@ Deno.test({
         [{
           // This ordering is invalid for our forward-pass evaluation because
           // hidden-1 appears after hidden-0 in the neuron list.
-          fromNeuronUUID: "hidden-1",
-          toNeuronUUID: "hidden-0",
+          fromNeuronId: 5001,
+          toNeuronId: 5000,
           incomingWeight: 0.5,
           outgoingWeight: 0.5,
           squash: IDENTITY.NAME,
@@ -317,8 +317,8 @@ Deno.test({
         "test-1",
         creature,
         {
-          fromNeuronUUID: "hidden-0",
-          toNeuronUUID: "output-0",
+          fromNeuronId: 5000,
+          toNeuronId: -1,
           weight: 0.75,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -334,8 +334,8 @@ Deno.test({
         "test-2",
         creature,
         [{
-          fromNeuronUUID: "input-1",
-          toNeuronUUID: "hidden-0",
+          fromNeuronId: 1,
+          toNeuronId: 5000,
           weight: 0.3,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -351,8 +351,8 @@ Deno.test({
         "test-3",
         creature,
         [{
-          fromNeuronUUID: "input-0",
-          toNeuronUUID: "output-0",
+          fromNeuronId: 0,
+          toNeuronId: -1,
           incomingWeight: 0.5,
           outgoingWeight: 0.5,
           squash: IDENTITY.NAME,
@@ -371,7 +371,7 @@ Deno.test({
         "test-4",
         creature,
         [{
-          neuronUUID: "hidden-0",
+          neuronId: 5000,
           previousSquash: IDENTITY.NAME,
           squash: "TANH",
           expectedCreatureScoreGain: 0.05,
@@ -386,7 +386,7 @@ Deno.test({
         "test-5",
         creature,
         {
-          neuronUUID: "hidden-1",
+          neuronId: 5001,
           errorMagnitude: 1e11,
           expectedCreatureScoreGain: 0.05,
           sampleCount: 100,
@@ -400,7 +400,7 @@ Deno.test({
         "test-6",
         creature,
         {
-          neuronUUID: "hidden-1",
+          neuronId: 5001,
           totalError: 0.001,
           impact: 0.0001,
           reason: "low-impact",

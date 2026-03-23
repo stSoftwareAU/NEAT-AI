@@ -112,7 +112,7 @@ Deno.test("removeSyntheticSynapses - compact handles orphaned hidden neuron (con
   const creature = Creature.fromJSON(json);
 
   // Manually add a synthetic synapse from input-0 to h2
-  const h2Idx = creature.neurons.findIndex((n) => n.uuid === "h2");
+  const h2Idx = creature.neurons.findIndex((n) => n.id === 9207);
   creature.connect(0, h2Idx, 0); // zero-weight synthetic
   const syntheticKeys = new Set<string>([`0-${h2Idx}`]);
 
@@ -121,7 +121,7 @@ Deno.test("removeSyntheticSynapses - compact handles orphaned hidden neuron (con
   assertEquals(result.removed, 1);
 
   // h2 should now be a constant neuron (compact handles orphan conversion)
-  const h2 = creature.neurons.find((n) => n.uuid === "h2");
+  const h2 = creature.neurons.find((n) => n.id === 9207);
   assertNotEquals(h2, undefined);
   assertEquals(h2!.type, "constant");
 });
@@ -146,7 +146,7 @@ Deno.test("removeSyntheticSynapses - compact handles orphaned neuron removal (no
   const neuronCountBefore = creature.neurons.length;
 
   // Add synthetic synapse to h2 (which has no outward connections)
-  const h2Idx = creature.neurons.findIndex((n) => n.uuid === "h2");
+  const h2Idx = creature.neurons.findIndex((n) => n.id === 9207);
   creature.connect(0, h2Idx, 0);
   const syntheticKeys = new Set<string>([`0-${h2Idx}`]);
 
@@ -154,7 +154,7 @@ Deno.test("removeSyntheticSynapses - compact handles orphaned neuron removal (no
 
   // h2 should be completely removed by compact
   assertEquals(
-    creature.neurons.some((n) => n.uuid === "h2"),
+    creature.neurons.some((n) => n.id === 9207),
     false,
     "h2 should not exist any more",
   );
@@ -188,7 +188,7 @@ Deno.test("removeSyntheticSynapses - cascade removal via compact", () => {
   const creature = Creature.fromJSON(json);
 
   // Add synthetic synapse: input-0 → h1
-  const h1Idx = creature.neurons.findIndex((n) => n.uuid === "h1");
+  const h1Idx = creature.neurons.findIndex((n) => n.id === 9436);
   creature.connect(0, h1Idx, 0);
   const syntheticKeys = new Set<string>([`0-${h1Idx}`]);
 
@@ -308,7 +308,7 @@ Deno.test("removeSyntheticSynapses - custom threshold controls near-zero detecti
   const creature = Creature.fromJSON(json);
 
   // Add a synthetic synapse with small but non-trivial weight
-  const h1Idx = creature.neurons.findIndex((n) => n.uuid === "h1");
+  const h1Idx = creature.neurons.findIndex((n) => n.id === 9436);
   creature.connect(1, h1Idx, 0.01); // weight = 0.01
   const syntheticKeys = new Set<string>([`1-${h1Idx}`]);
 

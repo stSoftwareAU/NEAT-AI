@@ -77,7 +77,7 @@ export function propagateTopological(
   for (let i = 0; i < creature.output; i++) {
     const nodeIndex = lastOutputIdx + i;
     const n = neurons[nodeIndex];
-    if (sparseConfig.propagateNeeded(n.uuid)) {
+    if (sparseConfig.propagateNeeded(n.id)) {
       const activation = adjustedActivation(n, config);
       targetDeltaSum[nodeIndex] = expected[i] - activation;
       targetDeltaCount[nodeIndex] = 1;
@@ -92,7 +92,7 @@ export function propagateTopological(
     if (targetDeltaCount[neuronIndex] === 0) continue;
 
     const neuron = neurons[neuronIndex];
-    if (!sparseConfig.propagateNeeded(neuron.uuid)) continue;
+    if (!sparseConfig.propagateNeeded(neuron.id)) continue;
 
     const activation = adjustedActivation(neuron, config);
     const squashMethod = neuron.findSquash();
@@ -122,7 +122,7 @@ export function propagateTopological(
     const ns = state.node(neuronIndex);
     ns.totalErrorAbsolute += rawErrorAbs;
 
-    const updateNeeded = sparseConfig.updateNeeded(neuron.uuid);
+    const updateNeeded = sparseConfig.updateNeeded(neuron.id);
     ns.noChange = updateNeeded === false;
 
     let limitedActivation: number;
@@ -187,7 +187,7 @@ export function propagateTopological(
           if (
             type !== "input" &&
             type !== "constant" &&
-            sparseConfig.propagateNeeded(fromNeuron.uuid)
+            sparseConfig.propagateNeeded(fromNeuron.id)
           ) {
             const fromNS = state.node(from);
             fusedSquashTypes[indx] = fromNeuron.cachedSquashType();
@@ -267,7 +267,7 @@ export function propagateTopological(
           if (
             type !== "input" &&
             type !== "constant" &&
-            sparseConfig.propagateNeeded(fromNeuron.uuid) &&
+            sparseConfig.propagateNeeded(fromNeuron.id) &&
             Math.abs(targetFromValue - fromValue) > config.plankConstant
           ) {
             // Issue #1654: Use a minimum effective weight for the division to

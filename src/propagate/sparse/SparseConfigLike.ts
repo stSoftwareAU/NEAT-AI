@@ -9,7 +9,7 @@
  */
 
 export interface SparseConfigLike {
-  traceNeeded(uuid: string): boolean;
-  propagateNeeded(uuid: string): boolean;
-  updateNeeded(uuid: string): boolean;
+  traceNeeded(id: number): boolean;
+  propagateNeeded(id: number): boolean;
+  updateNeeded(id: number): boolean;
 }

@@ -241,7 +241,7 @@ export interface NeatArguments {
    * Optional ordered list of neuron UUIDs to prioritise during discovery analysis.
    * When provided, discovery focuses on these neurons before performing weighted selection.
    */
-  discoveryFocusNeuronUUIDs: string[];
+  discoveryFocusNeuronUUIDs: number[];
 
   /**
    * Disable the internal evaluation summary logging. When set to true, the library

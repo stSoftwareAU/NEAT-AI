@@ -32,15 +32,15 @@ export function removeSynapse(
 
   // Find the synapse indices in the creature
   const fromNeuron = creature.neurons.find(
-    (n) => n.uuid === worseCandidate.fromNeuronUUID,
+    (n) => n.id === worseCandidate.fromNeuronId,
   );
   const toNeuron = creature.neurons.find(
-    (n) => n.uuid === worseCandidate.toNeuronUUID,
+    (n) => n.id === worseCandidate.toNeuronId,
   );
 
   if (!fromNeuron || !toNeuron) {
     getLogger().warn(
-      `[DiscoverStructure] removeSynapse: neuron(s) not found for synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID}`,
+      `[DiscoverStructure] removeSynapse: neuron(s) not found for synapse ${worseCandidate.fromNeuronId} -> ${worseCandidate.toNeuronId}`,
     );
     return null;
   }
@@ -52,7 +52,7 @@ export function removeSynapse(
   const synapse = creature.getSynapse(fromIndx, toIndx);
   if (!synapse) {
     getLogger().warn(
-      `[DiscoverStructure] removeSynapse: synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID} does not exist in creature`,
+      `[DiscoverStructure] removeSynapse: synapse ${worseCandidate.fromNeuronId} -> ${worseCandidate.toNeuronId} does not exist in creature`,
     );
     return null;
   }
@@ -60,8 +60,8 @@ export function removeSynapse(
   const creatureUUID = CreatureUtil.makeUUID(creature);
   const exportJSON = creature.exportJSON();
   exportJSON.synapses = exportJSON.synapses.filter((s) => {
-    return s.fromUUID !== worseCandidate.fromNeuronUUID ||
-      s.toUUID !== worseCandidate.toNeuronUUID;
+    return s.fromId !== worseCandidate.fromNeuronId ||
+      s.toId !== worseCandidate.toNeuronId;
   });
 
   // Clean up any neurons that have become orphaned after synapse removal.
@@ -93,7 +93,7 @@ export function removeSynapse(
     addTag(tmpCreature, "approach", "discovery" as Approach);
     addTag(tmpCreature, "discoveryID", ID);
     const summary =
-      `☣️ Removed harmful synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID}`;
+      `☣️ Removed harmful synapse ${worseCandidate.fromNeuronId} -> ${worseCandidate.toNeuronId}`;
     addTag(tmpCreature, "Discovery", summary);
     removeTag(tmpCreature, "approach-logged");
 
@@ -102,7 +102,7 @@ export function removeSynapse(
 
   // Synapse existed but removal didn't change UUID
   getLogger().warn(
-    `[DiscoverStructure] removeSynapse: synapse ${worseCandidate.fromNeuronUUID} -> ${worseCandidate.toNeuronUUID} existed but removal had no structural effect`,
+    `[DiscoverStructure] removeSynapse: synapse ${worseCandidate.fromNeuronId} -> ${worseCandidate.toNeuronId} existed but removal had no structural effect`,
   );
   return null;
 }
@@ -130,24 +130,24 @@ export function addHelpfulSynapses(
 
   helpfulSynapses.forEach((bestCandidate) => {
     const foundSynapse = exportJSON.synapses.find((synapse) => {
-      return synapse.fromUUID === bestCandidate.fromNeuronUUID &&
-        synapse.toUUID === bestCandidate.toNeuronUUID;
+      return synapse.fromId === bestCandidate.fromNeuronId &&
+        synapse.toId === bestCandidate.toNeuronId;
     });
 
     if (foundSynapse) {
       getLogger().warn(
-        `[Discovery ${ID}] Synapse ${bestCandidate.fromNeuronUUID} -> ${bestCandidate.toNeuronUUID} already exists, skipping`,
+        `[Discovery ${ID}] Synapse ${bestCandidate.fromNeuronId} -> ${bestCandidate.toNeuronId} already exists, skipping`,
       );
       return;
     }
 
     const foundFromNeuron = exportJSON.neurons.find((neuron) => {
-      return neuron.uuid === bestCandidate.fromNeuronUUID;
+      return neuron.id === bestCandidate.fromNeuronId;
     });
     if (!foundFromNeuron) {
-      if (!bestCandidate.fromNeuronUUID.startsWith("input-")) {
+      if (bestCandidate.fromNeuronId >= creature.input) {
         getLogger().warn(
-          `[Discovery ${ID}] Source neuron ${bestCandidate.fromNeuronUUID} not found, skipping synapse`,
+          `[Discovery ${ID}] Source neuron ${bestCandidate.fromNeuronId} not found, skipping synapse`,
         );
         return;
       }
@@ -155,18 +155,18 @@ export function addHelpfulSynapses(
     const foundToNeuron = exportJSON.neurons.find((neuron) => {
       /** may have converted a hidden neuron to a constant */
       if (neuron.type !== "hidden" && neuron.type !== "output") return false;
-      return neuron.uuid === bestCandidate.toNeuronUUID;
+      return neuron.id === bestCandidate.toNeuronId;
     });
     if (!foundToNeuron) {
       getLogger().warn(
-        `[Discovery ${ID}] Target neuron ${bestCandidate.toNeuronUUID} not found or is not hidden/output, skipping synapse`,
+        `[Discovery ${ID}] Target neuron ${bestCandidate.toNeuronId} not found or is not hidden/output, skipping synapse`,
       );
       return;
     }
 
     const addSynapse = {
-      fromUUID: bestCandidate.fromNeuronUUID,
-      toUUID: bestCandidate.toNeuronUUID,
+      fromId: bestCandidate.fromNeuronId,
+      toId: bestCandidate.toNeuronId,
       weight: bestCandidate.weight,
     };
 
@@ -232,8 +232,8 @@ export function addHelpfulSynapses(
   if (tmpUUID !== creatureUUID && appliedSynapses.length > 0) {
     const exemplar = appliedSynapses[0];
     const summary = appliedSynapses.length === 1
-      ? `🕵🏻‍♂️ Added helpful synapse ${exemplar.fromNeuronUUID} -> ${exemplar.toNeuronUUID}`
-      : `🕵🏻‍♂️ Added ${appliedSynapses.length} helpful synapses (eg ${exemplar.fromNeuronUUID} -> ${exemplar.toNeuronUUID})`;
+      ? `🕵🏻‍♂️ Added helpful synapse ${exemplar.fromNeuronId} -> ${exemplar.toNeuronId}`
+      : `🕵🏻‍♂️ Added ${appliedSynapses.length} helpful synapses (eg ${exemplar.fromNeuronId} -> ${exemplar.toNeuronId})`;
     addTag(tmpCreature, "approach", "discovery" as Approach);
     addTag(tmpCreature, "discoveryID", ID);
     addTag(tmpCreature, "Discovery", summary);

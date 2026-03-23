@@ -77,7 +77,7 @@ Deno.test("squash estimates are computed in activation domain", () => {
 
   const internal = discover as unknown as {
     findCandidateSquash: (
-      neuronUUID: string,
+      neuronId: string,
       recs: DiscoverRecord[],
     ) => CandidateSquash | undefined;
     tempDir: string;
@@ -144,7 +144,7 @@ Deno.test("squash estimates scale by neuron impact to avoid inflated expectation
 
   const internal = discover as unknown as {
     findCandidateSquash: (
-      neuronUUID: string,
+      neuronId: string,
       recs: DiscoverRecord[],
     ) => CandidateSquash | undefined;
     tempDir: string;

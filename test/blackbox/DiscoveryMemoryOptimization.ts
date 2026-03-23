@@ -77,12 +77,12 @@ Deno.test("discovery promise cleanup - simulated with evolveDataSet", async () =
 
 Deno.test("discovery promise map cleanup", () => {
   // Unit test for the promise cleanup pattern
-  const promiseMap = new Map<string, Promise<void>>();
+  const promiseMap = new Map<number, Promise<void>>();
   let completedCount = 0;
 
   // Create promises that complete at different times
   for (let i = 0; i < 10; i++) {
-    const key = `promise-${i}`;
+    const key = i;
     const promise = new Promise<void>((resolve) => {
       setTimeout(() => {
         resolve();
@@ -116,14 +116,14 @@ Deno.test("discovery promise map cleanup", () => {
 
 Deno.test("discovery promise draining prevents unbounded growth", async () => {
   // Test that simulates the promise chain building and draining pattern
-  const promiseMap = new Map<string, Promise<void>>();
+  const promiseMap = new Map<number, Promise<void>>();
   const neuronCount = 50; // Simulate 50 neurons
   const batchCount = 20; // Simulate 20 batches
   const drainEvery = 5; // Drain every 5 batches
 
   // Initialize with resolved promises (like initialize() does)
   for (let i = 0; i < neuronCount; i++) {
-    promiseMap.set(`neuron-${i}`, Promise.resolve());
+    promiseMap.set(i, Promise.resolve());
   }
 
   let maxChainDepth = 0;

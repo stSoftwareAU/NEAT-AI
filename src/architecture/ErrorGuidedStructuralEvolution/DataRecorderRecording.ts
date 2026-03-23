@@ -44,7 +44,7 @@ export async function processDiscoveryFile(
   params: {
     counter: { count: number };
     dataSet: DataRecordInterface[];
-    neuronPromisesMap: Map<string, Promise<void>>;
+    neuronPromisesMap: Map<number, Promise<void>>;
     selectedIndices: number[];
     drainCounter: { count: number };
   },
@@ -250,7 +250,7 @@ export async function runRecordingPhase(
   ctx: RecordingPhaseContext,
   binaryFiles: string[],
   discoverStructure: DiscoverStructure,
-  neuronPromisesMap: Map<string, Promise<void>>,
+  neuronPromisesMap: Map<number, Promise<void>>,
   phaseDiagnostics: PhaseDiagnostics,
   perfStats: DiscoveryPerformanceStats,
   startTime: number,

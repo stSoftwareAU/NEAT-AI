@@ -20,13 +20,13 @@ function makeSingleHiddenCreatureExport() {
 
   // Ensure we only scan a single neuron deterministically.
   const first = hiddenNeurons[0];
-  assertExists(first.uuid);
+  assertExists(first.id);
   for (const n of hiddenNeurons) {
     n.squash = "GELU";
   }
   first.squash = "TANH";
 
-  return { exported, hiddenUUID: first.uuid };
+  return { exported, hiddenUUID: first.id };
 }
 
 Deno.test("scanForSquashImprovements: alternative improvement message reports targetSquash -> altSquash", async () => {
@@ -35,7 +35,8 @@ Deno.test("scanForSquashImprovements: alternative improvement message reports ta
   const fakeWorker = {
     score(creature: Creature, uuid: string): Promise<ResponseData> {
       const json = creature.exportJSON();
-      const neuron = json.neurons.find((n) => n.uuid === uuid);
+      // @ts-ignore: Legacy string neuron UUID format
+      const neuron = json.neurons.find((n) => n.id === id);
       const squash = neuron?.squash;
 
       // Ensure targetSquash is a mild improvement, and altSquash is the best.

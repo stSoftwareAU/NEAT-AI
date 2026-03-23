@@ -30,12 +30,12 @@ Deno.test("TopologicalOrder - simple chain produces output-first order", () => {
   const order = computeReverseTopologicalOrder(creature);
 
   // Output neuron should come first in reverse topological order.
-  const outputIdx = creature.neurons.findIndex((n) => n.uuid === "output-0");
+  const outputIdx = creature.neurons.findIndex((n) => n.id === -1);
   assertEquals(order[0], outputIdx, "Output neuron should be first");
 
   // h2 should come before h1 (h2 is closer to output).
-  const h1Idx = creature.neurons.findIndex((n) => n.uuid === "h1");
-  const h2Idx = creature.neurons.findIndex((n) => n.uuid === "h2");
+  const h1Idx = creature.neurons.findIndex((n) => n.id === 9436);
+  const h2Idx = creature.neurons.findIndex((n) => n.id === 9207);
   const h2OrderPos = order.indexOf(h2Idx);
   const h1OrderPos = order.indexOf(h1Idx);
   assertEquals(
@@ -95,7 +95,7 @@ Deno.test("TopologicalOrder - diamond topology orders correctly", () => {
   const order = computeReverseTopologicalOrder(creature);
 
   // Output neuron should come first.
-  const outputIdx = creature.neurons.findIndex((n) => n.uuid === "output-0");
+  const outputIdx = creature.neurons.findIndex((n) => n.id === -1);
   assertEquals(order[0], outputIdx, "Output neuron should be first");
 
   // All non-input neurons should be included.
@@ -122,9 +122,9 @@ Deno.test("TopologicalOrder - multiple outputs", () => {
   const order = computeReverseTopologicalOrder(creature);
 
   // Both output neurons should come before h1.
-  const h1Idx = creature.neurons.findIndex((n) => n.uuid === "h1");
-  const o1Idx = creature.neurons.findIndex((n) => n.uuid === "output-0");
-  const o2Idx = creature.neurons.findIndex((n) => n.uuid === "output-1");
+  const h1Idx = creature.neurons.findIndex((n) => n.id === 9436);
+  const o1Idx = creature.neurons.findIndex((n) => n.id === -1);
+  const o2Idx = creature.neurons.findIndex((n) => n.id === -2);
 
   const h1Pos = order.indexOf(h1Idx);
   const o1Pos = order.indexOf(o1Idx);
@@ -161,7 +161,7 @@ Deno.test("TopologicalOrder - handles self-loops", () => {
 
   // Should still produce valid order despite self-loop.
   assertEquals(order.length, 2, "Should include all non-input neurons");
-  const outputIdx = creature.neurons.findIndex((n) => n.uuid === "output-0");
+  const outputIdx = creature.neurons.findIndex((n) => n.id === -1);
   assertEquals(order[0], outputIdx, "Output neuron should be first");
 });
 
@@ -244,7 +244,7 @@ Deno.test("TopologicalOrder - recurrent connection handled", () => {
   assertEquals(order.length, 3, "Should include all non-input neurons");
 
   // Output should still come first.
-  const outputIdx = creature.neurons.findIndex((n) => n.uuid === "output-0");
+  const outputIdx = creature.neurons.findIndex((n) => n.id === -1);
   assertEquals(order[0], outputIdx, "Output neuron should be first");
 
   // No duplicates.

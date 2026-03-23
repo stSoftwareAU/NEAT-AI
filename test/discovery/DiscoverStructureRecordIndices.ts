@@ -61,7 +61,7 @@ Deno.test("DiscoverStructure preserves record indices for single binary chunk", 
     },
   );
 
-  const neuronPromises = new Map<string, Promise<void>>();
+  const neuronPromises = new Map<number, Promise<void>>();
 
   try {
     structure.initialize(neuronPromises);
@@ -162,7 +162,7 @@ Deno.test("DiscoverStructure keeps slice offsets across multiple chunk flushes",
     },
   );
 
-  const neuronPromises = new Map<string, Promise<void>>();
+  const neuronPromises = new Map<number, Promise<void>>();
 
   try {
     structure.initialize(neuronPromises);

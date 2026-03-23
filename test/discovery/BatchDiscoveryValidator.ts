@@ -56,8 +56,8 @@ Deno.test(
     const base = makeBaselineCreature();
     const synapses: CandidateSynapse[] = [
       {
-        fromNeuronUUID: "input-2",
-        toNeuronUUID: "hidden-1",
+        fromNeuronId: 2,
+        toNeuronId: 5001,
         weight: 0.99,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -68,8 +68,8 @@ Deno.test(
     ];
     const neurons: CandidateNeuron[] = [
       {
-        fromNeuronUUID: "input-2",
-        toNeuronUUID: "hidden-1",
+        fromNeuronId: 2,
+        toNeuronId: 5001,
         incomingWeight: 0.45,
         outgoingWeight: -0.12,
         squash: TANH.NAME,
@@ -90,7 +90,7 @@ Deno.test(
       removalCandidates: undefined,
       candidateSquashes: [
         {
-          neuronUUID: "hidden-1",
+          neuronId: 5001,
           previousSquash: IDENTITY.NAME,
           squash: TANH.NAME,
           expectedCreatureScoreGain: 0.4,
@@ -134,8 +134,8 @@ Deno.test(
       ID: "BATCH-VALIDATE-TEST",
       addHelpfulSynapses: [
         {
-          fromNeuronUUID: "input-2",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: 2,
+          toNeuronId: 5001,
           weight: 0.5,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -182,8 +182,8 @@ Deno.test(
       ID: "BATCH-CACHE-TEST",
       addHelpfulSynapses: [
         {
-          fromNeuronUUID: "input-2",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: 2,
+          toNeuronId: 5001,
           weight: 0.5,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -192,8 +192,8 @@ Deno.test(
           totalCount: 5,
         },
         {
-          fromNeuronUUID: "input-3",
-          toNeuronUUID: "hidden-2",
+          fromNeuronId: 3,
+          toNeuronId: 5002,
           weight: 0.6,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -290,8 +290,8 @@ Deno.test(
       ID: "BATCH-CATEGORY-TEST",
       addHelpfulSynapses: [
         {
-          fromNeuronUUID: "input-2",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: 2,
+          toNeuronId: 5001,
           weight: 0.5,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -302,8 +302,8 @@ Deno.test(
       ],
       addHelpfulNeurons: [
         {
-          fromNeuronUUID: "input-2",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: 2,
+          toNeuronId: 5001,
           incomingWeight: 0.45,
           outgoingWeight: -0.12,
           squash: TANH.NAME,
@@ -320,7 +320,7 @@ Deno.test(
       removalCandidates: undefined,
       candidateSquashes: [
         {
-          neuronUUID: "hidden-1",
+          neuronId: 5001,
           previousSquash: IDENTITY.NAME,
           squash: TANH.NAME,
           expectedCreatureScoreGain: 0.4,
@@ -370,8 +370,8 @@ Deno.test(
       ID: "FORWARD-ONLY-TEST",
       addHelpfulSynapses: [
         {
-          fromNeuronUUID: "input-2",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: 2,
+          toNeuronId: 5001,
           weight: 0.5,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -419,8 +419,8 @@ Deno.test(
       ID: "STATS-TEST",
       addHelpfulSynapses: [
         {
-          fromNeuronUUID: "input-2",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: 2,
+          toNeuronId: 5001,
           weight: 0.5,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -429,8 +429,8 @@ Deno.test(
           totalCount: 5,
         },
         {
-          fromNeuronUUID: "input-3",
-          toNeuronUUID: "hidden-2",
+          fromNeuronId: 3,
+          toNeuronId: 5002,
           weight: 0.6,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -486,8 +486,8 @@ Deno.test(
       ID: "RESET-TEST",
       addHelpfulSynapses: [
         {
-          fromNeuronUUID: "input-2",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: 2,
+          toNeuronId: 5001,
           weight: 0.5,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -620,8 +620,8 @@ Deno.test(
         ID: "ENHANCED-STATS-TEST",
         addHelpfulSynapses: [
           {
-            fromNeuronUUID: "input-2",
-            toNeuronUUID: "hidden-1",
+            fromNeuronId: 2,
+            toNeuronId: 5001,
             weight: 0.5,
             targetNeuronImpact: 1.0,
             expectedCreatureErrorReduction: 0,
@@ -702,8 +702,8 @@ Deno.test(
         ID: "CONVENIENCE-FUNC-TEST",
         addHelpfulSynapses: [
           {
-            fromNeuronUUID: "input-2",
-            toNeuronUUID: "hidden-1",
+            fromNeuronId: 2,
+            toNeuronId: 5001,
             weight: 0.5,
             targetNeuronImpact: 1.0,
             expectedCreatureErrorReduction: 0,

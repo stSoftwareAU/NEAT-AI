@@ -53,7 +53,7 @@ Deno.test(
     // Create remove-synapse candidate 1: Remove hidden-A -> hidden-B synapse
     const removeSynapse1Json = structuredClone(baseJSON);
     removeSynapse1Json.synapses = removeSynapse1Json.synapses.filter(
-      (s) => !(s.fromUUID === "hidden-A" && s.toUUID === "hidden-B"),
+      (s) => !(s.fromId === 8001 && s.toId === 8002),
     );
     const removeSynapse1Creature = Creature.fromJSON(removeSynapse1Json);
     delete removeSynapse1Creature.uuid;
@@ -71,7 +71,7 @@ Deno.test(
     // Create remove-synapse candidate 2: Remove hidden-B -> hidden-A synapse
     const removeSynapse2Json = structuredClone(baseJSON);
     removeSynapse2Json.synapses = removeSynapse2Json.synapses.filter(
-      (s) => !(s.fromUUID === "hidden-B" && s.toUUID === "hidden-A"),
+      (s) => !(s.fromId === 8002 && s.toId === 8001),
     );
     const removeSynapse2Creature = Creature.fromJSON(removeSynapse2Json);
     delete removeSynapse2Creature.uuid;

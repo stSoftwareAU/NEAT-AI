@@ -14,16 +14,19 @@ function checkMemetic(creature: Creature) {
   assert(creature.memetic.score === 0.47133930519315353);
   assert(creature.memetic.biases);
   assertAlmostEquals(
-    creature.memetic.biases["552c68d3-6ea2-4e0c-a6bb-d7d1b0ad2661"],
+    creature.memetic
+      .biases["552c68d3-6ea2-4e0c-a6bb-d7d1b0ad2661" as unknown as number],
     0.0001412,
   );
   assert(creature.memetic.weights);
-  assert(creature.memetic.weights["input-115"]);
+  assert(creature.memetic.weights["input-115" as unknown as number]);
   assert(
-    creature.memetic.weights["input-115"][1].toUUID ===
-      "115b0169-65c3-4c87-9904-316bae966a6f",
+    creature.memetic.weights["input-115" as unknown as number][1].toId === 9761,
   );
-  assertAlmostEquals(creature.memetic.weights["input-115"][1].weight, 0.1234);
+  assertAlmostEquals(
+    creature.memetic.weights["input-115" as unknown as number][1].weight,
+    0.1234,
+  );
 }
 
 Deno.test("Trace - loads creature with memetic data from JSON", () => {

@@ -21,5 +21,5 @@ Deno.test("fix(): keeps the last zero-weight inbound synapse to an output (struc
 
   assertEquals(creature.synapses.length, 1);
   assertEquals(creature.synapses[0].weight, 0);
-  assertEquals(creature.neurons.some((n) => n.uuid === "output-0"), true);
+  assertEquals(creature.neurons.some((n) => n.id === -1), true);
 });

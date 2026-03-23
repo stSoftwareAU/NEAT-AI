@@ -302,8 +302,8 @@ export function archiveSuccessByKeySync(
 
 /** Structured detail for a successful neuron removal, used for combination building. */
 export interface SuccessfulRemovalDetail {
-  /** UUID of the neuron that was successfully removed */
-  neuronUUID: string;
+  /** Integer ID of the neuron that was successfully removed */
+  neuronId: number;
   /** How much the removal improved the score */
   scoreDelta: number;
   /** Score of the candidate creature after removal */
@@ -318,22 +318,22 @@ export interface SuccessfulRemovalDetail {
 const REMOVAL_SUBDIRS = ["remove-low-impact", "remove-neuron"] as const;
 
 /**
- * Queries the success cache for neuron UUIDs that have already been proven
+ * Queries the success cache for neuron IDs that have already been proven
  * successful for removal.
  *
  * Scans the `remove-low-impact` and `remove-neuron` subdirectories and extracts
- * the neuron UUID from each cached entry. This provides the foundation for
+ * the neuron ID from each cached entry. This provides the foundation for
  * deprioritising redundant removal candidates that have already succeeded.
  *
  * Best-effort: corrupt or unreadable entries are skipped with a warning.
  *
  * @param successCacheDir - Root success cache directory path
- * @returns A `Set<string>` of neuron UUIDs that have already succeeded
+ * @returns A `Set<number>` of neuron IDs that have already succeeded
  */
-export function getSuccessfulRemovalNeuronUUIDs(
+export function getSuccessfulRemovalNeuronIds(
   successCacheDir: string,
-): Set<string> {
-  const uuids = new Set<string>();
+): Set<number> {
+  const ids = new Set<number>();
 
   for (const subdir of REMOVAL_SUBDIRS) {
     const dirPath = join(successCacheDir, subdir);
@@ -356,16 +356,16 @@ export function getSuccessfulRemovalNeuronUUIDs(
         const rustRequest = parsed?.rustRequest;
         if (!rustRequest) continue;
 
-        const removalUUID =
-          (rustRequest.removalCandidate as { neuronUUID?: string })
-            ?.neuronUUID;
-        const harmfulUUID =
-          (rustRequest.harmfulNeuronCandidate as { neuronUUID?: string })
-            ?.neuronUUID;
+        const removalId =
+          (rustRequest.removalCandidate as { neuronId?: number })
+            ?.neuronId;
+        const harmfulId =
+          (rustRequest.harmfulNeuronCandidate as { neuronId?: number })
+            ?.neuronId;
 
-        const uuid = removalUUID ?? harmfulUUID;
-        if (typeof uuid === "string" && uuid.length > 0) {
-          uuids.add(uuid);
+        const id = removalId ?? harmfulId;
+        if (typeof id === "number" && Number.isFinite(id)) {
+          ids.add(id);
         }
       } catch (error) {
         getLogger().warn(
@@ -376,17 +376,17 @@ export function getSuccessfulRemovalNeuronUUIDs(
     }
   }
 
-  return uuids;
+  return ids;
 }
 
 /**
  * Queries the success cache for structured details about successful neuron
  * removals, including score deltas and timestamps for recency weighting.
  *
- * This provides richer data than `getSuccessfulRemovalNeuronUUIDs()` so that
+ * This provides richer data than `getSuccessfulRemovalNeuronIds()` so that
  * cache-informed combination builders can prioritise high-impact removals.
  *
- * When multiple entries exist for the same neuron UUID, the entry with the
+ * When multiple entries exist for the same neuron ID, the entry with the
  * highest `scoreDelta` is kept (ties broken by `candidateScore`).
  *
  * Best-effort: corrupt or incomplete entries are skipped with a warning.
@@ -397,7 +397,7 @@ export function getSuccessfulRemovalNeuronUUIDs(
 export function getSuccessfulRemovalDetails(
   successCacheDir: string,
 ): SuccessfulRemovalDetail[] {
-  const bestByUUID = new Map<string, SuccessfulRemovalDetail>();
+  const bestById = new Map<number, SuccessfulRemovalDetail>();
 
   for (const subdir of REMOVAL_SUBDIRS) {
     const dirPath = join(successCacheDir, subdir);
@@ -420,15 +420,15 @@ export function getSuccessfulRemovalDetails(
         const rustRequest = parsed?.rustRequest;
         if (!rustRequest) continue;
 
-        const removalUUID =
-          (rustRequest.removalCandidate as { neuronUUID?: string })
-            ?.neuronUUID;
-        const harmfulUUID =
-          (rustRequest.harmfulNeuronCandidate as { neuronUUID?: string })
-            ?.neuronUUID;
+        const removalId =
+          (rustRequest.removalCandidate as { neuronId?: number })
+            ?.neuronId;
+        const harmfulId =
+          (rustRequest.harmfulNeuronCandidate as { neuronId?: number })
+            ?.neuronId;
 
-        const uuid = removalUUID ?? harmfulUUID;
-        if (typeof uuid !== "string" || uuid.length === 0) continue;
+        const id = removalId ?? harmfulId;
+        if (typeof id !== "number" || !Number.isFinite(id)) continue;
 
         const scoreDelta = typeof parsed.scoreDelta === "number"
           ? parsed.scoreDelta
@@ -444,22 +444,22 @@ export function getSuccessfulRemovalDetails(
           : "";
 
         const detail: SuccessfulRemovalDetail = {
-          neuronUUID: uuid,
+          neuronId: id,
           scoreDelta,
           candidateScore,
           originalScore,
           timestamp,
         };
 
-        const existing = bestByUUID.get(uuid);
+        const existing = bestById.get(id);
         if (!existing) {
-          bestByUUID.set(uuid, detail);
+          bestById.set(id, detail);
         } else {
           const isBetter = scoreDelta > existing.scoreDelta ||
             (scoreDelta === existing.scoreDelta &&
               candidateScore > existing.candidateScore);
           if (isBetter) {
-            bestByUUID.set(uuid, detail);
+            bestById.set(id, detail);
           }
         }
       } catch (error) {
@@ -471,7 +471,7 @@ export function getSuccessfulRemovalDetails(
     }
   }
 
-  return Array.from(bestByUUID.values());
+  return Array.from(bestById.values());
 }
 
 /**

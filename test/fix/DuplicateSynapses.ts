@@ -18,9 +18,9 @@ function makeCreature(): Creature {
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.25 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0.5 },
+      { fromUUID: "input-0", toId: -1, weight: 0.5 },
       // Duplicate (same from/to). This should be merged, not dropped.
-      { fromUUID: "input-0", toUUID: "output-0", weight: -0.1 },
+      { fromUUID: "input-0", toId: -1, weight: -0.1 },
     ],
     input: 1,
     output: 1,

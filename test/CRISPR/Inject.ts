@@ -95,18 +95,18 @@ async function doAttempt() {
     id: "DNA-USED",
     mode: "insert",
     neurons: [
-      { type: "hidden", uuid: "dna-a", squash: "ABSOLUTE", bias: 3.142 },
+      { type: "hidden", id: 9732, squash: "ABSOLUTE", bias: 3.142 },
     ],
     synapses: [
-      { fromUUID: "input-2", toUUID: "dna-a", weight: 1 },
-      { fromUUID: "dna-a", toUUID: "output-0", weight: 1 },
+      { fromId: 2, toId: 9732, weight: 1 },
+      { fromId: 9732, toId: -1, weight: 1 },
     ],
   };
   const dnaUnused: CrisprInterface = {
     id: "DNA-UNUSED",
     mode: "insert",
     synapses: [
-      { fromUUID: "input-1", toUUID: "output-0", weight: -10000 },
+      { fromId: 1, toId: -1, weight: -10000 },
     ],
   };
 

@@ -20,7 +20,7 @@ function makeConfig(overrides: NeatOptions = {}) {
 }
 
 function makeRemovalCandidate(
-  neuronUUID: string,
+  neuronId: number,
   impact: number,
   type: DiscoveryChangeType = "remove-low-impact",
 ): DiscoveryCandidate {
@@ -31,7 +31,7 @@ function makeRemovalCandidate(
       expectedErrorReduction: 0.01,
       description: `Remove neuron impact: ${impact}`,
       removalCandidate: {
-        neuronUUID,
+        neuronId,
         totalError: 1.0,
         impact,
         reason: "low-impact",
@@ -41,7 +41,7 @@ function makeRemovalCandidate(
 }
 
 function makeHarmfulNeuronCandidate(
-  neuronUUID: string,
+  neuronId: number,
   impact: number,
 ): DiscoveryCandidate {
   return {
@@ -51,7 +51,7 @@ function makeHarmfulNeuronCandidate(
       expectedErrorReduction: 0.01,
       description: `Remove harmful neuron impact: ${impact}`,
       harmfulNeuronCandidate: {
-        neuronUUID,
+        neuronId,
         errorMagnitude: impact,
         expectedCreatureScoreGain: 0.01,
         sampleCount: 100,
@@ -71,23 +71,23 @@ Deno.test("filterCandidatesForEvaluation: novel removal candidates preferred ove
     },
   });
 
-  // 2 novel (uuid-a, uuid-b) and 2 already-successful (uuid-c, uuid-d)
+  // 2 novel (1, 2) and 2 already-successful (3, 4)
   const candidates: DiscoveryCandidate[] = [
-    makeRemovalCandidate("uuid-a", 0.001),
-    makeRemovalCandidate("uuid-b", 0.002),
-    makeRemovalCandidate("uuid-c", 0.001),
-    makeRemovalCandidate("uuid-d", 0.002),
+    makeRemovalCandidate(1, 0.001),
+    makeRemovalCandidate(2, 0.002),
+    makeRemovalCandidate(3, 0.001),
+    makeRemovalCandidate(4, 0.002),
   ];
 
-  const successfulUUIDs = new Set(["uuid-c", "uuid-d"]);
+  const successfulIds = new Set([3, 4]);
 
   const { filtered } = filterCandidatesForEvaluation(candidates, 1, config, {
     successCacheDir: "/tmp/success-cache",
-    getSuccessfulRemovalUUIDs: () => successfulUUIDs,
+    getSuccessfulRemovalIds: () => successfulIds,
     random: () => 0,
   });
 
-  // Should select the 2 novel candidates (uuid-a, uuid-b)
+  // Should select the 2 novel candidates (1, 2)
   const removalFiltered = filtered.filter(
     (c) =>
       c.change.type === "remove-low-impact" ||
@@ -95,13 +95,13 @@ Deno.test("filterCandidatesForEvaluation: novel removal candidates preferred ove
   );
 
   assertEquals(removalFiltered.length, 2);
-  const selectedUUIDs = removalFiltered.map(
-    (c) => c.change.removalCandidate?.neuronUUID,
+  const selectedIds = removalFiltered.map(
+    (c) => c.change.removalCandidate?.neuronId,
   );
-  assert(selectedUUIDs.includes("uuid-a"));
-  assert(selectedUUIDs.includes("uuid-b"));
-  assert(!selectedUUIDs.includes("uuid-c"));
-  assert(!selectedUUIDs.includes("uuid-d"));
+  assert(selectedIds.includes(1));
+  assert(selectedIds.includes(2));
+  assert(!selectedIds.includes(3));
+  assert(!selectedIds.includes(4));
 });
 
 Deno.test("filterCandidatesForEvaluation: already-successful candidates used as fallback when insufficient novel candidates", () => {
@@ -114,18 +114,18 @@ Deno.test("filterCandidatesForEvaluation: already-successful candidates used as 
     },
   });
 
-  // 1 novel (uuid-a) and 2 already-successful (uuid-b, uuid-c)
+  // 1 novel (1) and 2 already-successful (2, 3)
   const candidates: DiscoveryCandidate[] = [
-    makeRemovalCandidate("uuid-a", 0.001),
-    makeRemovalCandidate("uuid-b", 0.001),
-    makeRemovalCandidate("uuid-c", 0.001),
+    makeRemovalCandidate(1, 0.001),
+    makeRemovalCandidate(2, 0.001),
+    makeRemovalCandidate(3, 0.001),
   ];
 
-  const successfulUUIDs = new Set(["uuid-b", "uuid-c"]);
+  const successfulIds = new Set([2, 3]);
 
   const { filtered } = filterCandidatesForEvaluation(candidates, 1, config, {
     successCacheDir: "/tmp/success-cache",
-    getSuccessfulRemovalUUIDs: () => successfulUUIDs,
+    getSuccessfulRemovalIds: () => successfulIds,
     random: () => 0,
   });
 
@@ -150,9 +150,9 @@ Deno.test("filterCandidatesForEvaluation: behaviour unchanged when no success ca
   });
 
   const candidates: DiscoveryCandidate[] = [
-    makeRemovalCandidate("uuid-a", 0.001),
-    makeRemovalCandidate("uuid-b", 0.002),
-    makeRemovalCandidate("uuid-c", 0.001),
+    makeRemovalCandidate(1, 0.001),
+    makeRemovalCandidate(2, 0.002),
+    makeRemovalCandidate(3, 0.001),
   ];
 
   // No successCacheDir provided - should behave like before
@@ -180,13 +180,13 @@ Deno.test("filterCandidatesForEvaluation: diagnostics include novel vs already-s
   });
 
   const candidates: DiscoveryCandidate[] = [
-    makeRemovalCandidate("uuid-a", 0.001),
-    makeRemovalCandidate("uuid-b", 0.002),
-    makeRemovalCandidate("uuid-c", 0.001),
-    makeRemovalCandidate("uuid-d", 0.002),
+    makeRemovalCandidate(1, 0.001),
+    makeRemovalCandidate(2, 0.002),
+    makeRemovalCandidate(3, 0.001),
+    makeRemovalCandidate(4, 0.002),
   ];
 
-  const successfulUUIDs = new Set(["uuid-c", "uuid-d"]);
+  const successfulIds = new Set([3, 4]);
 
   const { diagnostics } = filterCandidatesForEvaluation(
     candidates,
@@ -194,7 +194,7 @@ Deno.test("filterCandidatesForEvaluation: diagnostics include novel vs already-s
     config,
     {
       successCacheDir: "/tmp/success-cache",
-      getSuccessfulRemovalUUIDs: () => successfulUUIDs,
+      getSuccessfulRemovalIds: () => successfulIds,
       random: () => 0,
     },
   );
@@ -215,17 +215,17 @@ Deno.test("filterCandidatesForEvaluation: harmful neuron candidates also deprior
   });
 
   const candidates: DiscoveryCandidate[] = [
-    makeRemovalCandidate("uuid-a", 0.001),
-    makeHarmfulNeuronCandidate("uuid-b", 0.001),
-    makeHarmfulNeuronCandidate("uuid-c", 0.001),
+    makeRemovalCandidate(1, 0.001),
+    makeHarmfulNeuronCandidate(2, 0.001),
+    makeHarmfulNeuronCandidate(3, 0.001),
   ];
 
-  // uuid-c is already successful
-  const successfulUUIDs = new Set(["uuid-c"]);
+  // neuron 3 is already successful
+  const successfulIds = new Set([3]);
 
   const { filtered } = filterCandidatesForEvaluation(candidates, 1, config, {
     successCacheDir: "/tmp/success-cache",
-    getSuccessfulRemovalUUIDs: () => successfulUUIDs,
+    getSuccessfulRemovalIds: () => successfulIds,
     random: () => 0,
   });
 
@@ -236,15 +236,15 @@ Deno.test("filterCandidatesForEvaluation: harmful neuron candidates also deprior
   );
 
   assertEquals(removalFiltered.length, 2);
-  // Should prefer uuid-a and uuid-b (novel) over uuid-c (already successful)
-  const selectedUUIDs = removalFiltered.map(
+  // Should prefer neuron 1 and 2 (novel) over 3 (already successful)
+  const selectedIds = removalFiltered.map(
     (c) =>
-      c.change.removalCandidate?.neuronUUID ??
-        c.change.harmfulNeuronCandidate?.neuronUUID,
+      c.change.removalCandidate?.neuronId ??
+        c.change.harmfulNeuronCandidate?.neuronId,
   );
-  assert(selectedUUIDs.includes("uuid-a"));
-  assert(selectedUUIDs.includes("uuid-b"));
-  assert(!selectedUUIDs.includes("uuid-c"));
+  assert(selectedIds.includes(1));
+  assert(selectedIds.includes(2));
+  assert(!selectedIds.includes(3));
 });
 
 Deno.test("filterCandidatesForEvaluation: no diagnostics novelCount when no successCacheDir", () => {
@@ -258,8 +258,8 @@ Deno.test("filterCandidatesForEvaluation: no diagnostics novelCount when no succ
   });
 
   const candidates: DiscoveryCandidate[] = [
-    makeRemovalCandidate("uuid-a", 0.001),
-    makeRemovalCandidate("uuid-b", 0.002),
+    makeRemovalCandidate(1, 0.001),
+    makeRemovalCandidate(2, 0.002),
   ];
 
   const { diagnostics } = filterCandidatesForEvaluation(

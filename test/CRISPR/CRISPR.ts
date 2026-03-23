@@ -221,9 +221,9 @@ function clean(
     : networkJSON.nodes
     ? networkJSON.nodes
     : [];
-  neurons.forEach((n) => {
-    if (n.uuid && !n.uuid.startsWith("output-")) {
-      delete n.uuid;
+  neurons.forEach((n: Record<string, unknown>) => {
+    if (n.id && typeof n.id === "number" && !(n.id < 0)) {
+      delete n.id;
     }
   });
 }

@@ -260,9 +260,9 @@ export function persistentlyRemoveHarmfulSynapse(
   creature: Creature,
   harmfulSynapse: CandidateSynapse,
 ): Creature {
-  const removalUUID = {
-    from: harmfulSynapse.fromNeuronUUID,
-    to: harmfulSynapse.toNeuronUUID,
+  const removalId = {
+    from: harmfulSynapse.fromNeuronId,
+    to: harmfulSynapse.toNeuronId,
   };
 
   // Keep removing until it's definitely gone (fix() might re-add it)
@@ -275,8 +275,8 @@ export function persistentlyRemoveHarmfulSynapse(
     const exportJSON = currentCreature.exportJSON();
     const originalCount = exportJSON.synapses.length;
     exportJSON.synapses = exportJSON.synapses.filter((synapse) =>
-      !(synapse.fromUUID === removalUUID.from &&
-        synapse.toUUID === removalUUID.to)
+      !(synapse.fromId === removalId.from &&
+        synapse.toId === removalId.to)
     );
 
     if (exportJSON.synapses.length < originalCount) {
@@ -284,8 +284,8 @@ export function persistentlyRemoveHarmfulSynapse(
       // Clean up memetic data for the removed synapse
       cleanupMemeticForRemovedSynapse(
         exportJSON,
-        removalUUID.from,
-        removalUUID.to,
+        removalId.from,
+        removalId.to,
       );
 
       const updated = Creature.fromJSON(exportJSON);
@@ -296,8 +296,8 @@ export function persistentlyRemoveHarmfulSynapse(
       // Verify it's still removed after fix()
       const verifyJSON = updated.exportJSON();
       const stillExists = verifyJSON.synapses.some((synapse) =>
-        synapse.fromUUID === removalUUID.from &&
-        synapse.toUUID === removalUUID.to
+        synapse.fromId === removalId.from &&
+        synapse.toId === removalId.to
       );
 
       if (!stillExists) {

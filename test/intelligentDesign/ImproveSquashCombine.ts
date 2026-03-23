@@ -51,6 +51,7 @@ Deno.test("combineImprovements returns the single improvement file contents", as
       message: "improved",
     });
 
+    // @ts-ignore: test with legacy string neuron IDs
     const result = await combineImprovements(exported, improvements, ".", 1.0);
     assertEquals(result.message, "improved");
     assertEquals(JSON.stringify(result.creature), JSON.stringify(exported));
@@ -75,8 +76,8 @@ Deno.test("combineImprovements returns combined creature when combined score bea
     assertEquals(hiddenNeurons.length > 1, true);
     const firstHidden = hiddenNeurons[0];
     const secondHidden = hiddenNeurons[1];
-    assertExists(firstHidden.uuid);
-    assertExists(secondHidden.uuid);
+    assertExists(firstHidden.id);
+    assertExists(secondHidden.id);
 
     const pathA = `${TEST_DIR}/a.json`;
     const pathB = `${TEST_DIR}/b.json`;
@@ -87,20 +88,21 @@ Deno.test("combineImprovements returns combined creature when combined score bea
       string,
       { squash: string; score: number; path: string; message: string }
     >();
-    improvements.set(firstHidden.uuid, {
+    improvements.set(String(firstHidden.id), {
       squash: "GELU",
       score: 3,
       path: pathA,
       message: "A",
     });
     // Use a second neuron UUID to force the "combine" path (size > 1).
-    improvements.set(secondHidden.uuid, {
+    improvements.set(String(secondHidden.id), {
       squash: "Swish",
       score: 4,
       path: pathB,
       message: "B",
     });
 
+    // @ts-ignore: test with legacy string neuron IDs
     const result = await combineImprovements(exported, improvements, ".", 1.0);
     assertEquals(typeof result.message, "string");
 
@@ -135,8 +137,8 @@ Deno.test("combineImprovements falls back to best individual when marriage fails
     assertEquals(hiddenNeurons.length > 1, true);
     const firstHidden = hiddenNeurons[0];
     const secondHidden = hiddenNeurons[1];
-    assertExists(firstHidden.uuid);
-    assertExists(secondHidden.uuid);
+    assertExists(firstHidden.id);
+    assertExists(secondHidden.id);
 
     const pathA = `${TEST_DIR}/best.json`;
     const pathB = `${TEST_DIR}/worst.json`;
@@ -147,19 +149,20 @@ Deno.test("combineImprovements falls back to best individual when marriage fails
       string,
       { squash: string; score: number; path: string; message: string }
     >();
-    improvements.set(firstHidden.uuid, {
+    improvements.set(String(firstHidden.id), {
       squash: "GELU",
       score: 6,
       path: pathA,
       message: "best",
     });
-    improvements.set(secondHidden.uuid, {
+    improvements.set(String(secondHidden.id), {
       squash: "Swish",
       score: 5,
       path: pathB,
       message: "worse",
     });
 
+    // @ts-ignore: test with legacy string neuron IDs
     const result = await combineImprovements(exported, improvements, ".", 1.0);
     assertEquals(result.message.includes("Marriage failed"), true);
 

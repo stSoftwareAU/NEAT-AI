@@ -22,13 +22,13 @@ function makeSingleHiddenCreatureExport() {
 
   // Ensure we only scan a single neuron for deterministic counts.
   const first = hiddenNeurons[0];
-  assertExists(first.uuid);
+  assertExists(first.id);
   for (const n of hiddenNeurons) {
     n.squash = "GELU";
   }
   first.squash = "TANH";
 
-  return { exported, hiddenUUID: first.uuid };
+  return { exported, hiddenUUID: first.id };
 }
 
 Deno.test("scanForSquashImprovements surfaces worker errors and does not inflate tested count", async () => {
@@ -75,7 +75,7 @@ Deno.test("scanForSquashImprovements surfaces worker errors and does not inflate
   assertEquals(result.tested, 0);
 
   assertEquals(result.errors.length, 1);
-  assertEquals(result.errors[0].uuid, hiddenUUID);
+  assertEquals(result.errors[0].uuid, String(hiddenUUID));
   assertEquals(result.errors[0].stage, "target");
   assertEquals(result.errors[0].message.includes("does not exist"), true);
 

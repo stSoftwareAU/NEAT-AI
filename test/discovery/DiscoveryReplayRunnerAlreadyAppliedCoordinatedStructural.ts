@@ -37,13 +37,13 @@ Deno.test(
           operations: [
             {
               type: "removeSynapse",
-              fromNeuronUuid: "input-0",
-              toNeuronUuid: "output-0",
+              fromNeuronId: 0,
+              toNeuronId: -1,
             },
             {
               type: "addSynapse",
-              fromNeuronUuid: "input-0",
-              toNeuronUuid: "output-0",
+              fromNeuronId: 0,
+              toNeuronId: -1,
               weight: 0.02,
             },
           ],
@@ -60,7 +60,7 @@ Deno.test(
       },
       evaluateError: (creature) => {
         // Replay always evaluates the baseline creature once.
-        if (creature.uuid === "base") {
+        if (creature.uuid === "") {
           return Promise.resolve({ error: 0, score: 0.5 });
         }
         throw new Error(
@@ -121,8 +121,8 @@ Deno.test(
           operations: [
             {
               type: "setWeight",
-              fromNeuronUuid: "input-0",
-              toNeuronUuid: "hidden-0",
+              fromNeuronId: 0,
+              toNeuronId: 5000,
               weight: 0.006,
             },
           ],
@@ -140,7 +140,7 @@ Deno.test(
       },
       evaluateError: (creature) => {
         // Replay always evaluates the baseline creature once.
-        if (creature.uuid === "base") {
+        if (creature.uuid === "") {
           return Promise.resolve({ error: 0, score: 0.5 });
         }
         throw new Error(
@@ -201,13 +201,13 @@ Deno.test(
           operations: [
             {
               type: "removeSynapse",
-              fromNeuronUuid: "input-0",
-              toNeuronUuid: "hidden-0",
+              fromNeuronId: 0,
+              toNeuronId: 5000,
             },
             {
               type: "setWeight",
-              fromNeuronUuid: "input-0",
-              toNeuronUuid: "hidden-0",
+              fromNeuronId: 0,
+              toNeuronId: 5000,
               weight: 0.006,
             },
           ],
@@ -225,7 +225,7 @@ Deno.test(
       },
       evaluateError: (creature) => {
         // Replay always evaluates the baseline creature once.
-        if (creature.uuid === "base") {
+        if (creature.uuid === "") {
           return Promise.resolve({ error: 0, score: 0.5 });
         }
         throw new Error(

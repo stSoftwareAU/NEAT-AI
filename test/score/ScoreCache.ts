@@ -83,7 +83,7 @@ Deno.test("ScoreCache: cache should be invalidated when neuron is added", () => 
   const initialHiddenCount = initialCache!.hiddenNeuronCount;
 
   // Add a hidden neuron manually
-  const newNeuronUUID = crypto.randomUUID();
+  const newNeuronUUID = 42;
   const hiddenNeuronIndex = creature.neurons.length - creature.output;
   creature.neurons.splice(
     hiddenNeuronIndex,

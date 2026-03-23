@@ -1,14 +1,14 @@
 export interface MemeticWeightInterface {
-  toUUID: string;
+  toId: number;
   weight: number;
 }
 
 export interface MemeticBiasInterface {
-  [neuronUUID: string]: number;
+  [neuronId: number]: number;
 }
 
 export interface MemeticWeightsInterface {
-  [fromUUID: string]: MemeticWeightInterface[];
+  [fromId: number]: MemeticWeightInterface[];
 }
 
 /**

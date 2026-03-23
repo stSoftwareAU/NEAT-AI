@@ -43,7 +43,7 @@ Deno.test(
       mode: "append",
       synapses: [
         // A forward-only-safe edge.
-        { fromUUID: "input-0", toUUID: "output-0", weight: 0.1 },
+        { fromId: 0, toId: -1, weight: 0.1 },
       ],
     };
 

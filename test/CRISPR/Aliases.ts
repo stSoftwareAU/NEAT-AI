@@ -6,20 +6,20 @@ Deno.test("editAliases", () => {
     id: "edit test",
     mode: "insert",
     synapses: [{
-      fromUUID: "abc",
-      toUUID: "xyz",
+      fromId: 9762,
+      toId: 9352,
       weight: 1,
     }],
   };
-  const aliases: Record<string, string> = {
-    "abc": "input-1",
+  const aliases: Record<number, number> = {
+    9762: 1,
   };
 
   const result = CRISPR.editAliases(dna, aliases);
 
   assert(result.synapses);
   const synapse = result.synapses[0];
-  assertEquals(synapse.fromUUID, "input-1");
+  assertEquals(synapse.fromId, 1);
 });
 
 Deno.test("editAliases rewrites toUUID", () => {
@@ -27,25 +27,25 @@ Deno.test("editAliases rewrites toUUID", () => {
     id: "toUUID-test",
     mode: "insert",
     synapses: [{
-      fromUUID: "source-1",
-      toUUID: "old-dest",
+      fromId: 9336,
+      toId: 9889,
       weight: 0.5,
     }, {
-      fromUUID: "source-2",
-      toUUID: "unchanged-dest",
+      fromId: 9896,
+      toId: 9880,
       weight: 0.3,
     }],
   };
-  const aliases: Record<string, string> = {
-    "old-dest": "new-dest",
+  const aliases: Record<number, number> = {
+    9889: 9827,
   };
 
   const result = CRISPR.editAliases(dna, aliases);
 
   assert(result.synapses);
-  assertEquals(result.synapses[0].toUUID, "new-dest");
-  assertEquals(result.synapses[0].fromUUID, "source-1");
-  assertEquals(result.synapses[1].toUUID, "unchanged-dest");
+  assertEquals(result.synapses[0].toId, 9827);
+  assertEquals(result.synapses[0].fromId, 9901);
+  assertEquals(result.synapses[1].toId, 9906);
 });
 
 Deno.test("editAliases rewrites neuron uuid", () => {
@@ -53,32 +53,32 @@ Deno.test("editAliases rewrites neuron uuid", () => {
     id: "neuron-uuid-test",
     mode: "insert",
     neurons: [{
-      uuid: "old-neuron-id",
+      id: 9261,
       type: "hidden",
       squash: "LOGISTIC",
       bias: 0,
     }, {
-      uuid: "keep-this-id",
+      id: 9657,
       type: "hidden",
       squash: "LOGISTIC",
       bias: 0.5,
     }],
     synapses: [{
-      fromUUID: "old-neuron-id",
-      toUUID: "keep-this-id",
+      fromId: 9261,
+      toId: 9657,
       weight: 1,
     }],
   };
-  const aliases: Record<string, string> = {
-    "old-neuron-id": "new-neuron-id",
+  const aliases: Record<number, number> = {
+    9261: 9999,
   };
 
   const result = CRISPR.editAliases(dna, aliases);
 
   assert(result.neurons);
-  assertEquals(result.neurons[0].uuid, "new-neuron-id");
-  assertEquals(result.neurons[1].uuid, "keep-this-id");
-  assertEquals(result.synapses[0].fromUUID, "new-neuron-id");
+  assertEquals(result.neurons[0].id, 9999);
+  assertEquals(result.neurons[1].id, 9657);
+  assertEquals(result.synapses[0].fromId, 9999);
 });
 
 Deno.test("editAliases no-op when alias matches nothing", () => {
@@ -86,25 +86,25 @@ Deno.test("editAliases no-op when alias matches nothing", () => {
     id: "no-op-test",
     mode: "insert",
     neurons: [{
-      uuid: "neuron-1",
+      id: 9810,
       type: "hidden",
       squash: "LOGISTIC",
       bias: 0,
     }],
     synapses: [{
-      fromUUID: "neuron-1",
-      toUUID: "output-0",
+      fromId: 9810,
+      toId: -1,
       weight: 1,
     }],
   };
-  const aliases: Record<string, string> = {
-    "nonexistent-key": "some-value",
+  const aliases: Record<number, number> = {
+    99999: 88888,
   };
 
   const result = CRISPR.editAliases(dna, aliases);
 
   assert(result.neurons);
-  assertEquals(result.neurons[0].uuid, "neuron-1");
-  assertEquals(result.synapses[0].fromUUID, "neuron-1");
-  assertEquals(result.synapses[0].toUUID, "output-0");
+  assertEquals(result.neurons[0].id, 9810);
+  assertEquals(result.synapses[0].fromId, 9810);
+  assertEquals(result.synapses[0].toId, -1);
 });

@@ -66,12 +66,13 @@ Deno.test("shuffle handles single element", () => {
 Deno.test("makeModifiedCreatureWithPrevious returns creature and previous squash", () => {
   const creature = Creature.fromJSON(testCreatureJson);
   const exported = creature.exportJSON();
+  const hiddenId = creature.neurons.find((n) => n.type === "hidden")!.id;
 
   const originalSquash = "TANH";
   const newSquash = "Swish";
 
   const result = makeModifiedCreatureWithPrevious(
-    "neuron-hidden-1",
+    hiddenId,
     exported,
     newSquash,
   );
@@ -81,7 +82,7 @@ Deno.test("makeModifiedCreatureWithPrevious returns creature and previous squash
   // Verify the creature has the new squash
   const modifiedExport = result.creature.exportJSON();
   const modifiedNeuron = modifiedExport.neurons.find(
-    (n) => n.uuid === "neuron-hidden-1",
+    (n) => n.type === "hidden",
   );
 
   assertEquals(modifiedNeuron?.squash, newSquash);
@@ -94,15 +95,16 @@ Deno.test("makeModifiedCreatureWithPrevious adds intelligentDesign tag", () => {
   const originalSquash = "TANH";
   const newSquash = "GELU";
 
+  const hiddenId2 = creature.neurons.find((n) => n.type === "hidden")!.id;
   const result = makeModifiedCreatureWithPrevious(
-    "neuron-hidden-1",
+    hiddenId2,
     exported,
     newSquash,
   );
 
   const modifiedExport = result.creature.exportJSON();
   const modifiedNeuron = modifiedExport.neurons.find(
-    (n) => n.uuid === "neuron-hidden-1",
+    (n) => n.type === "hidden",
   );
 
   const tag = modifiedNeuron?.tags?.find((t) => t.name === "intelligentDesign");

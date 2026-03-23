@@ -57,11 +57,11 @@ export function buildCacheInformedRemovalCandidates(
   if (allDetails.length === 0) return [];
 
   // Filter to neurons that still exist in the base creature
-  const creatureNeuronUUIDs = new Set(
-    baseCreature.neurons.map((n) => n.uuid),
+  const creatureNeuronIds = new Set(
+    baseCreature.neurons.map((n) => n.id),
   );
   const matchingDetails = allDetails.filter((d) =>
-    creatureNeuronUUIDs.has(d.neuronUUID)
+    creatureNeuronIds.has(d.neuronId)
   );
 
   if (matchingDetails.length < 2) {
@@ -259,12 +259,12 @@ function buildMultiRemovalCandidate(
   discoveryFailureCacheDir?: string,
 ): DiscoveryCandidate | undefined {
   let creature: Creature = baseCreature;
-  const removedUUIDs: string[] = [];
+  const removedIds: number[] = [];
 
   for (const detail of details) {
     // Check neuron still exists in the (progressively modified) creature
     const neuronExists = creature.neurons.some(
-      (n) => n.uuid === detail.neuronUUID,
+      (n) => n.id === detail.neuronId,
     );
     if (!neuronExists) continue;
 
@@ -272,7 +272,7 @@ function buildMultiRemovalCandidate(
       "cache-informed",
       creature,
       {
-        neuronUUID: detail.neuronUUID,
+        neuronId: detail.neuronId,
         totalError: 0, // Historical; actual impact evaluated at scoring time
         impact: 0, // Historical; not used for bias compensation
         reason: "cache-informed-removal",
@@ -282,20 +282,20 @@ function buildMultiRemovalCandidate(
 
     if (removed) {
       creature = removed;
-      removedUUIDs.push(detail.neuronUUID);
+      removedIds.push(detail.neuronId);
     }
   }
 
   // Need at least 2 successful removals for a multi-neuron candidate
-  if (removedUUIDs.length < 2) return undefined;
+  if (removedIds.length < 2) return undefined;
 
-  const shortUUIDs = removedUUIDs.map((uuid) => shortID(uuid)).join(", ");
+  const shortIds = removedIds.map((id) => shortID(String(id))).join(", ");
   return {
     creature,
     change: {
       type: "cache-informed-removal",
       description:
-        `🗂️ Removed ${removedUUIDs.length} neurons (cache-informed: ${shortUUIDs})`,
+        `🗂️ Removed ${removedIds.length} neurons (cache-informed: ${shortIds})`,
     },
   };
 }

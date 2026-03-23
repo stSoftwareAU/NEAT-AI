@@ -394,7 +394,7 @@ Deno.test("getOrComputeRecordValue - returns existing value from discoverMap", (
 
   const discoverMap = new Map();
   const outputNeuron = creature.neurons[1];
-  discoverMap.set(outputNeuron.uuid, {
+  discoverMap.set(outputNeuron.id, {
     activation: 0.5,
     errors: [],
     value: 42,

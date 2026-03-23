@@ -56,26 +56,26 @@ function shouldEnforceForwardOnly(creature: Creature): boolean {
 }
 
 /**
- * Build a UUID -> neuron index mapping from an exported creature JSON.
+ * Build a neuron ID -> neuron index mapping from an exported creature JSON.
  *
  * Note: `CreatureExport.neurons` excludes input neurons. Its ordering matches the
  * creature's internal indices, offset by `input`.
  */
-export function buildUuidToIndexMap(
-  creatureJSON: { input: number; neurons: Array<{ uuid: string }> },
-): Map<string, number> {
-  const uuidToIndex = new Map<string, number>();
+export function buildIdToIndexMap(
+  creatureJSON: { input: number; neurons: Array<{ id?: number }> },
+): Map<number, number> {
+  const idToIndex = new Map<number, number>();
   const inputCount = creatureJSON.input ?? 0;
 
   for (let i = 0; i < inputCount; i++) {
-    uuidToIndex.set(`input-${i}`, i);
+    idToIndex.set(i, i);
   }
 
   for (let i = 0; i < creatureJSON.neurons.length; i++) {
-    uuidToIndex.set(creatureJSON.neurons[i].uuid, inputCount + i);
+    idToIndex.set(creatureJSON.neurons[i].id!, inputCount + i);
   }
 
-  return uuidToIndex;
+  return idToIndex;
 }
 
 /**
@@ -170,8 +170,8 @@ export function applyChangeToCreature(
   const creatureJSON = creature.exportJSON();
   const baseJSON = baseCreature.exportJSON();
   const enforceForwardOnly = shouldEnforceForwardOnly(creature);
-  const uuidToIndex = enforceForwardOnly
-    ? buildUuidToIndexMap(creatureJSON)
+  const idToIndex = enforceForwardOnly
+    ? buildIdToIndexMap(creatureJSON)
     : undefined;
 
   try {
@@ -187,7 +187,7 @@ export function applyChangeToCreature(
           creatureJSON,
           candidateJSON,
           enforceForwardOnly,
-          uuidToIndex,
+          idToIndex,
         );
       }
 
@@ -214,7 +214,7 @@ export function applyChangeToCreature(
           candidateJSON,
           baseJSON,
           enforceForwardOnly,
-          uuidToIndex,
+          idToIndex,
         );
       }
 

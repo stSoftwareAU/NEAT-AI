@@ -108,7 +108,7 @@ export class HYPOTv2
       if (fromNeuron.type === "hidden") {
         let improvedActivation = fromActivation;
         if (c.to !== c.from) {
-          if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
+          if (sparseConfig.propagateNeeded(fromNeuron.id)) {
             const currentValue = neuron.bias + improvedActivation * c.weight;
             const partialDerivative = currentValue / hypotValue;
             const fromError = error * partialDerivative;
@@ -176,7 +176,7 @@ export class HYPOTv2
   record(
     _neuron: Neuron,
     _requestedActivation: number,
-    _discoverMap: Map<string, DiscoverRecord>,
+    _discoverMap: Map<number, DiscoverRecord>,
   ): void {
     // Do nothing
   }

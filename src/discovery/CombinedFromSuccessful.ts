@@ -307,40 +307,40 @@ function getComboSlotKey(candidate: DiscoveryCandidate): string | undefined {
   const change = candidate.change;
   switch (change.type) {
     case "add-neurons": {
-      const from = change.neuronDetails?.fromNeuronUUID ??
-        change.neuronCandidate?.fromNeuronUUID;
-      const to = change.neuronDetails?.toNeuronUUID ??
-        change.neuronCandidate?.toNeuronUUID;
-      if (!from || !to) return undefined;
+      const from = change.neuronDetails?.fromNeuronId ??
+        change.neuronCandidate?.fromNeuronId;
+      const to = change.neuronDetails?.toNeuronId ??
+        change.neuronCandidate?.toNeuronId;
+      if (from === undefined || to === undefined) return undefined;
       return `add-neurons:${from}->${to}`;
     }
     case "add-synapses": {
-      const from = change.synapseCandidate?.fromNeuronUUID;
-      const to = change.synapseCandidate?.toNeuronUUID;
-      if (!from || !to) return undefined;
+      const from = change.synapseCandidate?.fromNeuronId;
+      const to = change.synapseCandidate?.toNeuronId;
+      if (from === undefined || to === undefined) return undefined;
       return `add-synapses:${from}->${to}`;
     }
     case "remove-synapse": {
       const details = change.synapseDetails;
       if (!details) return undefined;
-      return `remove-synapse:${details.fromNeuronUUID}->${details.toNeuronUUID}`;
+      return `remove-synapse:${details.fromNeuronId}->${details.toNeuronId}`;
     }
     case "remove-low-impact": {
-      const uuid = change.removalCandidate?.neuronUUID ??
+      const id = change.removalCandidate?.neuronId ??
         change.description?.match(/neuron\s+([a-zA-Z0-9_-]+)/i)?.[1];
-      if (!uuid) return undefined;
-      return `remove-neuron:${uuid}`;
+      if (id === undefined) return undefined;
+      return `remove-neuron:${id}`;
     }
     case "remove-neuron": {
-      const uuid = change.harmfulNeuronCandidate?.neuronUUID ??
+      const id = change.harmfulNeuronCandidate?.neuronId ??
         change.description?.match(/neuron\s+([a-zA-Z0-9_-]+)/i)?.[1];
-      if (!uuid) return undefined;
-      return `remove-neuron:${uuid}`;
+      if (id === undefined) return undefined;
+      return `remove-neuron:${id}`;
     }
     case "change-squash": {
-      const uuid = change.squashCandidate?.neuronUUID;
-      if (!uuid) return undefined;
-      return `change-squash:${uuid}`;
+      const id = change.squashCandidate?.neuronId;
+      if (id === undefined) return undefined;
+      return `change-squash:${id}`;
     }
     default:
       return undefined;

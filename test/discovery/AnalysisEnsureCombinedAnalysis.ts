@@ -42,8 +42,8 @@ Deno.test("analyzeSelectedNeurons calls analyzeParallel to populate cache", asyn
   let analyzeParallelCalled = false;
 
   const helpfulSynapse: RustCandidateSynapse = {
-    fromNeuronUuid: "input-1",
-    toNeuronUuid: "hidden-1",
+    fromNeuronUuid: "1",
+    toNeuronUuid: "5001",
     weight: 0.3,
     targetNeuronImpact: 1.0,
     expectedCreatureErrorReduction: 0,
@@ -83,7 +83,7 @@ Deno.test("analyzeSelectedNeurons calls analyzeParallel to populate cache", asyn
     },
   );
 
-  const neuronPromises = new Map<string, Promise<void>>();
+  const neuronPromises = new Map<number, Promise<void>>();
 
   try {
     structure.initialize(neuronPromises);
@@ -100,7 +100,8 @@ Deno.test("analyzeSelectedNeurons calls analyzeParallel to populate cache", asyn
     structure.flushRustRecording();
 
     // Call analyzeSelectedNeurons directly
-    await structure.analyzeSelectedNeurons(["hidden-1"]);
+    await structure.analyzeSelectedNeurons(["hidden-1" as unknown as number]);
+    // @ts-ignore: test with string IDs
 
     assert(
       analyzeParallelCalled,
@@ -161,7 +162,7 @@ Deno.test("analyzeMissingNeurons calls analyzeParallel to populate cache", async
     },
   );
 
-  const neuronPromises = new Map<string, Promise<void>>();
+  const neuronPromises = new Map<number, Promise<void>>();
 
   try {
     structure.initialize(neuronPromises);
@@ -178,7 +179,8 @@ Deno.test("analyzeMissingNeurons calls analyzeParallel to populate cache", async
     structure.flushRustRecording();
 
     // Call analyzeMissingNeurons directly
-    await structure.analyzeMissingNeurons(["output-0"]);
+    await structure.analyzeMissingNeurons(["output-0" as unknown as number]);
+    // @ts-ignore: test with string IDs
 
     assert(
       analyzeParallelCalled,
@@ -195,8 +197,8 @@ Deno.test("analyzeSelectedNeuronsForRemoval calls analyzeParallel to populate ca
   let analyzeParallelCalled = false;
 
   const harmfulSynapse: RustCandidateSynapse = {
-    fromNeuronUuid: "input-1",
-    toNeuronUuid: "output-0",
+    fromNeuronUuid: "1",
+    toNeuronUuid: "-1",
     weight: -0.25,
     targetNeuronImpact: 1.0,
     expectedCreatureErrorReduction: 0,
@@ -236,7 +238,7 @@ Deno.test("analyzeSelectedNeuronsForRemoval calls analyzeParallel to populate ca
     },
   );
 
-  const neuronPromises = new Map<string, Promise<void>>();
+  const neuronPromises = new Map<number, Promise<void>>();
 
   try {
     structure.initialize(neuronPromises);
@@ -253,7 +255,10 @@ Deno.test("analyzeSelectedNeuronsForRemoval calls analyzeParallel to populate ca
     structure.flushRustRecording();
 
     // Call analyzeSelectedNeuronsForRemoval directly
-    await structure.analyzeSelectedNeuronsForRemoval(["output-0"]);
+    await structure.analyzeSelectedNeuronsForRemoval([
+      "output-0" as unknown as number,
+    ]);
+    // @ts-ignore: test with string IDs
 
     assert(
       analyzeParallelCalled,

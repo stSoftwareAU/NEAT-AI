@@ -10,7 +10,7 @@ Deno.test("chooseNeurons - clustering with sparseRatio < 1", () => {
   const validNeurons = new Set<string>();
   creature.neurons.filter((neuron) => {
     if (neuron.type === "hidden" || neuron.type === "output") {
-      validNeurons.add(neuron.uuid);
+      validNeurons.add(String(neuron.id));
     }
   });
 
@@ -20,9 +20,9 @@ Deno.test("chooseNeurons - clustering with sparseRatio < 1", () => {
 
   console.log("Selected neurons:", selectedNeurons);
 
-  selectedNeurons.forEach((neuronUUID) => {
-    if (!validNeurons.has(neuronUUID)) {
-      fail(`${neuronUUID} not a valid neuron`);
+  selectedNeurons.forEach((neuronId) => {
+    if (!validNeurons.has(String(neuronId))) {
+      fail(`${neuronId} not a valid neuron`);
     }
   });
 
@@ -33,17 +33,18 @@ Deno.test("chooseNeurons - clustering with sparseRatio < 1", () => {
   assert(selectedNeurons.size < eligibleNeurons.length);
 
   // Verify that each selected neuron has at least one connected neuron within two steps.
-  selectedNeurons.forEach((neuronUUID) => {
+  selectedNeurons.forEach((neuronId) => {
     const neighbours = getClusteredNeighbours(
-      neuronUUID,
+      String(neuronId),
       creature.exportJSON(),
     );
     const hasClusteredNeighbour = Array.from(neighbours).some(
-      (neighbourUUID) => selectedNeurons.has(neighbourUUID),
+      (neighbourUUID) =>
+        selectedNeurons.has(neighbourUUID as unknown as number),
     );
     assert(
       hasClusteredNeighbour,
-      `Neuron ${neuronUUID} should have a connected neighbour`,
+      `Neuron ${neuronId} should have a connected neighbour`,
     );
   });
 });
@@ -59,7 +60,7 @@ Deno.test("chooseNeurons - sparseRatio 1 selects all eligible neurons", () => {
   const expectedNeurons = new Set(
     creature.neurons
       .filter((neuron) => neuron.type === "hidden" || neuron.type === "output")
-      .map((neuron) => neuron.uuid),
+      .map((neuron) => neuron.id),
   );
   assertEquals(selectedNeurons, expectedNeurons);
 });
@@ -113,36 +114,36 @@ function makeCreature(): Creature {
 // Helper function to find clustered neighbours within two steps for testing purposes.
 // Uses index pointer instead of Array.shift() for O(1) dequeue operations.
 function getClusteredNeighbours(
-  neuronUUID: string,
+  neuronId: string,
   creature: CreatureExport,
 ): Set<string> {
   const synapseMap = new Map<string, Set<string>>();
 
   creature.synapses.forEach((synapse) => {
-    if (!synapseMap.has(synapse.fromUUID)) {
-      synapseMap.set(synapse.fromUUID, new Set());
+    if (!synapseMap.has(String(synapse.fromId))) {
+      synapseMap.set(String(synapse.fromId), new Set());
     }
-    if (!synapseMap.has(synapse.toUUID)) {
-      synapseMap.set(synapse.toUUID, new Set());
+    if (!synapseMap.has(String(synapse.toId))) {
+      synapseMap.set(String(synapse.toId), new Set());
     }
-    synapseMap.get(synapse.fromUUID)!.add(synapse.toUUID);
-    synapseMap.get(synapse.toUUID)!.add(synapse.fromUUID); // bidirectional for clustering
+    synapseMap.get(String(synapse.fromId))!.add(String(synapse.toId));
+    synapseMap.get(String(synapse.toId))!.add(String(synapse.fromId)); // bidirectional for clustering
   });
 
   // Perform BFS to find neighbours within two steps.
   const visited = new Set<string>();
-  const queue = [{ neuronUUID, depth: 0 }];
+  const queue = [{ neuronId, depth: 0 }];
   let front = 0;
 
   while (front < queue.length) {
-    const { neuronUUID: current, depth } = queue[front++];
+    const { neuronId: current, depth } = queue[front++];
     if (depth >= 2) continue;
 
     const neighbours = synapseMap.get(current)!;
     for (const neighbour of neighbours) {
       if (!visited.has(neighbour)) {
         visited.add(neighbour);
-        queue.push({ neuronUUID: neighbour, depth: depth + 1 });
+        queue.push({ neuronId: neighbour, depth: depth + 1 });
       }
     }
   }

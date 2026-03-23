@@ -72,9 +72,9 @@ Deno.test("backprop: LeakyReLU safe zone can divert elastic error away from far-
 
   // The direct input-1 -> output-0 weight should absorb most/all change.
   // Expected: targetFromValue = 1 + (-10) = -9, activation=1 => weight≈-9.
-  const hidden0 = creature.neurons.find((n) => n.uuid === "hidden-0")!;
-  const output0 = creature.neurons.find((n) => n.uuid === "output-0")!;
-  const input1 = creature.neurons.find((n) => n.uuid === "input-1")!;
+  const hidden0 = creature.neurons.find((n) => n.id === 5000)!;
+  const output0 = creature.neurons.find((n) => n.id === -1)!;
+  const input1 = creature.neurons.find((n) => n.id === 1)!;
 
   const wHiddenToOut =
     creature.getSynapse(hidden0.index, output0.index)!.weight;

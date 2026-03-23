@@ -180,9 +180,9 @@ Deno.test(
       // Record original synapse UUIDs for comparison.
       const originalSynapseKeys = new Set<string>();
       for (const syn of baseCreature.synapses) {
-        const fromUUID = baseCreature.neurons[syn.from]?.uuid ??
+        const fromUUID = baseCreature.neurons[syn.from]?.id ??
           `input-${syn.from}`;
-        const toUUID = baseCreature.neurons[syn.to]?.uuid ?? `unknown`;
+        const toUUID = baseCreature.neurons[syn.to]?.id ?? `unknown`;
         originalSynapseKeys.add(`${fromUUID}->${toUUID}`);
       }
 
@@ -195,9 +195,9 @@ Deno.test(
 
       const newConnections: string[] = [];
       for (const syn of traceCreature.synapses) {
-        const fromUUID = traceCreature.neurons[syn.from]?.uuid ??
+        const fromUUID = traceCreature.neurons[syn.from]?.id ??
           `input-${syn.from}`;
-        const toUUID = traceCreature.neurons[syn.to]?.uuid ?? `unknown`;
+        const toUUID = traceCreature.neurons[syn.to]?.id ?? `unknown`;
         const key = `${fromUUID}->${toUUID}`;
         if (!originalSynapseKeys.has(key)) {
           newConnections.push(key);

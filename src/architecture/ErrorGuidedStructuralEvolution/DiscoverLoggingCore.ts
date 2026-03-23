@@ -53,9 +53,9 @@ export function logFocusSelectionDetails(
   loggingEnabled: boolean,
   discoveryID: string,
   scope: "synapse" | "neuron",
-  focusList: string[],
+  focusList: number[],
   lastFocusSelection: FocusSelectionSummary | undefined,
-  focusSelectionKeyFn: (list: readonly string[]) => string,
+  focusSelectionKeyFn: (list: readonly number[]) => string,
 ): void {
   const summary = lastFocusSelection;
   const focusKey = focusSelectionKeyFn(focusList);
@@ -75,8 +75,8 @@ export function logFocusSelectionDetails(
     Math.min(5, summary.neurons.length),
   ).map((entry) =>
     entry.weight !== undefined
-      ? `${entry.uuid} (weight ${entry.weight.toFixed(4)})`
-      : entry.uuid
+      ? `${entry.id} (weight ${entry.weight.toFixed(4)})`
+      : String(entry.id)
   );
   const suffix = summary.neurons.length > displayEntries.length ? ", …" : "";
   const totalInfo = summary.totalWeight !== undefined
@@ -99,9 +99,9 @@ export function logRustNoImprovement(
   loggingEnabled: boolean,
   discoveryID: string,
   scope: "synapse" | "neuron",
-  focusList: string[],
+  focusList: number[],
   lastFocusSelection: FocusSelectionSummary | undefined,
-  focusSelectionKeyFn: (list: readonly string[]) => string,
+  focusSelectionKeyFn: (list: readonly number[]) => string,
   diagnostics?: RustSynapseDiagnostic[] | RustNeuronDiagnostic[],
 ): void {
   const preview = focusList.length > 10
@@ -131,10 +131,10 @@ export function logRustAnalysisUnavailable(
   loggingEnabled: boolean,
   discoveryID: string,
   scope: "synapse" | "neuron",
-  focusList: string[],
+  focusList: number[],
   reason: string,
   lastFocusSelection: FocusSelectionSummary | undefined,
-  focusSelectionKeyFn: (list: readonly string[]) => string,
+  focusSelectionKeyFn: (list: readonly number[]) => string,
 ): void {
   if (focusList.length === 0) {
     return;

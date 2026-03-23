@@ -65,8 +65,8 @@ Deno.test({
       );
       const firstHidden = hiddenNeurons[0];
       const secondHidden = hiddenNeurons[1];
-      assertExists(firstHidden.uuid, "First hidden neuron should have UUID");
-      assertExists(secondHidden.uuid, "Second hidden neuron should have UUID");
+      assertExists(firstHidden.id, "First hidden neuron should have UUID");
+      assertExists(secondHidden.id, "Second hidden neuron should have UUID");
 
       // Write improvement files (the creature JSON that would be loaded for
       // the single-improvement fallback path).
@@ -79,14 +79,14 @@ Deno.test({
       const dataSet = makeSimpleDataSet();
       dataSetDir = makeDataDir(dataSet, dataSet.length);
 
-      const improvements = new Map<string, BestNeuronSquash>();
-      improvements.set(firstHidden.uuid, {
+      const improvements = new Map<number, BestNeuronSquash>();
+      improvements.set(firstHidden.id, {
         squash: "GELU",
         score: -Infinity,
         path: pathA,
         message: "A: LOGISTIC -> GELU",
       });
-      improvements.set(secondHidden.uuid, {
+      improvements.set(secondHidden.id, {
         squash: "Swish",
         score: -Infinity,
         path: pathB,
@@ -141,8 +141,8 @@ Deno.test({
       );
       const firstHidden = hiddenNeurons[0];
       const secondHidden = hiddenNeurons[1];
-      assertExists(firstHidden.uuid);
-      assertExists(secondHidden.uuid);
+      assertExists(firstHidden.id);
+      assertExists(secondHidden.id);
 
       const pathA = `${TEST_DIR}/best.json`;
       const pathB = `${TEST_DIR}/worst.json`;
@@ -153,14 +153,14 @@ Deno.test({
       const dataSet = makeSimpleDataSet();
       dataSetDir = makeDataDir(dataSet, dataSet.length);
 
-      const improvements = new Map<string, BestNeuronSquash>();
-      improvements.set(firstHidden.uuid, {
+      const improvements = new Map<number, BestNeuronSquash>();
+      improvements.set(firstHidden.id, {
         squash: "GELU",
         score: Infinity, // Force fallback — combined score cannot beat Infinity
         path: pathA,
         message: "best",
       });
-      improvements.set(secondHidden.uuid, {
+      improvements.set(secondHidden.id, {
         squash: "Swish",
         score: Infinity - 1,
         path: pathB,

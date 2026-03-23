@@ -16,7 +16,7 @@ export function submitDiscoveryRecordBatch(
   discoverStructure: Readonly<{
     record: (
       trainingData: DataRecordInterface[],
-      neuronPromisesMap: Map<string, Promise<void>>,
+      neuronPromisesMap: Map<number, Promise<void>>,
       binaryFilePath?: string,
       recordIndices?: number[],
       options?: Readonly<{ allowGraceAfterTimeout?: boolean }>,
@@ -24,7 +24,7 @@ export function submitDiscoveryRecordBatch(
   }>,
   params: Readonly<{
     dataSet: DataRecordInterface[];
-    neuronPromisesMap: Map<string, Promise<void>>;
+    neuronPromisesMap: Map<number, Promise<void>>;
     selectedIndices: number[];
   }>,
   filePath: string,

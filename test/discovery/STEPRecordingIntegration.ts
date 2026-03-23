@@ -61,7 +61,7 @@ Deno.test("STEP recording: errors stored as numeric arrays", () => {
   const expected = new Float32Array([0]);
   const discoverMap = creature.record(expected);
 
-  const record = discoverMap.get("step-hidden");
+  const record = discoverMap.get("step-hidden" as unknown as number);
   assert(record, "expected a discovery record for step-hidden");
 
   const { errors } = record;
@@ -107,7 +107,7 @@ Deno.test("STEP recording: error magnitude when crossing from 0 to 1", () => {
   const expected = new Float32Array([1]);
   const discoverMap = creature.record(expected);
 
-  const record = discoverMap.get("output-0");
+  const record = discoverMap.get(-1);
   assert(record, "expected a discovery record for output-0");
 
   // Verify activation was recorded correctly
@@ -153,7 +153,7 @@ Deno.test("STEP recording: error magnitude when crossing from 1 to 0", () => {
   const expected = new Float32Array([0]);
   const discoverMap = creature.record(expected);
 
-  const record = discoverMap.get("output-0");
+  const record = discoverMap.get(-1);
   assert(record, "expected a discovery record for output-0");
 
   // Verify activation was recorded correctly
@@ -201,7 +201,7 @@ Deno.test("STEP recording: zero error when already on correct side (positive)", 
   const expected = new Float32Array([1]);
   const discoverMap = creature.record(expected);
 
-  const record = discoverMap.get("output-0");
+  const record = discoverMap.get(-1);
   assert(record, "expected a discovery record for output-0");
 
   // Verify activation was recorded correctly
@@ -245,7 +245,7 @@ Deno.test("STEP recording: zero error when already on correct side (negative)", 
   const expected = new Float32Array([0]);
   const discoverMap = creature.record(expected);
 
-  const record = discoverMap.get("output-0");
+  const record = discoverMap.get(-1);
   assert(record, "expected a discovery record for output-0");
 
   // Verify activation was recorded correctly
@@ -301,7 +301,7 @@ Deno.test("STEP recording: hidden neuron receives propagated error", () => {
   const discoverMap = creature.record(expected);
 
   // Verify hidden neuron has a record
-  const hiddenRecord = discoverMap.get("step-hidden");
+  const hiddenRecord = discoverMap.get("step-hidden" as unknown as number);
   assert(hiddenRecord, "expected a discovery record for step-hidden");
 
   // Verify errors were recorded
@@ -346,7 +346,7 @@ Deno.test("STEP recording: at threshold (x=0)", () => {
   const expected = new Float32Array([1]);
   const discoverMap = creature.record(expected);
 
-  const record = discoverMap.get("output-0");
+  const record = discoverMap.get(-1);
   assert(record, "expected a discovery record for output-0");
 
   assertAlmostEquals(record.activation, 0, 1e-10, "activation should be 0");
@@ -394,7 +394,7 @@ Deno.test("STEP recording: extreme values are clamped (prevents exploding discov
   const expected = new Float32Array([1]);
   const discoverMap = creature.record(expected);
 
-  const record = discoverMap.get("output-0");
+  const record = discoverMap.get(-1);
   assert(record, "expected a discovery record for output-0");
 
   assert(record.errors.length > 0, "should have at least one error");
@@ -443,7 +443,7 @@ Deno.test("BIPOLAR recording: extreme values are clamped (prevents exploding dis
   const expected = new Float32Array([-1]);
   const discoverMap = creature.record(expected);
 
-  const record = discoverMap.get("output-0");
+  const record = discoverMap.get(-1);
   assert(record, "expected a discovery record for output-0");
 
   assert(record.errors.length > 0, "should have at least one error");
@@ -495,7 +495,7 @@ Deno.test("STEP recording: consistent errors across multiple activations", () =>
     const expected = new Float32Array([tc.expected]);
     const discoverMap = creature.record(expected);
 
-    const record = discoverMap.get("output-0");
+    const record = discoverMap.get(-1);
     assert(record, `expected a discovery record for input=${tc.input}`);
 
     assert(record.errors.length > 0, "should have at least one error");

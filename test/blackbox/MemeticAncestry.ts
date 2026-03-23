@@ -31,14 +31,14 @@ function makeCreature() {
       },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-3", weight: -0.3 },
-      { fromUUID: "input-1", toUUID: "hidden-3", weight: 0.3 },
+      { fromUUID: "input-0", toId: 5003, weight: -0.3 },
+      { fromUUID: "input-1", toId: 5003, weight: 0.3 },
 
-      { fromUUID: "hidden-3", toUUID: "hidden-4", weight: -0.5 },
-      { fromUUID: "hidden-4", toUUID: "output-0", weight: 0.6 },
+      { fromUUID: "hidden-3", toId: 5004, weight: -0.5 },
+      { fromUUID: "hidden-4", toId: -1, weight: 0.6 },
 
-      { fromUUID: "hidden-4", toUUID: "output-1", weight: 0.7 },
-      { fromUUID: "input-2", toUUID: "output-1", weight: 0.8 },
+      { fromUUID: "hidden-4", toId: -2, weight: 0.7 },
+      { fromUUID: "input-2", toId: -2, weight: 0.8 },
     ],
     input: 3,
     output: 2,
@@ -56,20 +56,20 @@ Deno.test("MemeticInterface should include ancestry history", () => {
   const memetic: MemeticInterface = {
     generation: 2,
     weights: {
-      "input-0": [{ toUUID: "hidden-3", weight: -0.25 }],
+      0: [{ toId: 5003, weight: -0.25 }],
     },
     biases: {
-      "hidden-3": 2.9,
+      5003: 2.9,
     },
     score: -0.15,
     ancestry: [
       {
         generation: 1,
         weights: {
-          "input-0": [{ toUUID: "hidden-3", weight: -0.2 }],
+          0: [{ toId: 5003, weight: -0.2 }],
         },
         biases: {
-          "hidden-3": 2.8,
+          5003: 2.8,
         },
         score: -0.2,
       },
@@ -150,20 +150,20 @@ Deno.test("ancestry should be preserved during breeding", () => {
   mum.memetic = {
     generation: 2,
     weights: {
-      "input-0": [{ toUUID: "hidden-3", weight: -0.25 }],
+      0: [{ toId: 5003, weight: -0.25 }],
     },
     biases: {
-      "hidden-3": 2.9,
+      5003: 2.9,
     },
     score: -0.15,
     ancestry: [
       {
         generation: 1,
         weights: {
-          "input-0": [{ toUUID: "hidden-3", weight: -0.2 }],
+          0: [{ toId: 5003, weight: -0.2 }],
         },
         biases: {
-          "hidden-3": 2.8,
+          5003: 2.8,
         },
         score: -0.2,
       },
@@ -194,37 +194,37 @@ Deno.test("analyseWeightTrajectory should identify consistent directions", () =>
   const memetic: MemeticInterface = {
     generation: 3,
     weights: {
-      "input-0": [{ toUUID: "hidden-3", weight: -0.15 }],
+      0: [{ toId: 5003, weight: -0.15 }],
     },
     biases: {
-      "hidden-3": 3.2,
+      5003: 3.2,
     },
     score: -0.05,
     ancestry: [
       {
         generation: 2,
         weights: {
-          "input-0": [{ toUUID: "hidden-3", weight: -0.2 }],
+          0: [{ toId: 5003, weight: -0.2 }],
         },
         biases: {
-          "hidden-3": 3.1,
+          5003: 3.1,
         },
         score: -0.1,
       },
       {
         generation: 1,
         weights: {
-          "input-0": [{ toUUID: "hidden-3", weight: -0.25 }],
+          0: [{ toId: 5003, weight: -0.25 }],
         },
         biases: {
-          "hidden-3": 3.0,
+          5003: 3.0,
         },
         score: -0.15,
       },
     ],
   };
 
-  const trajectory = analyseWeightTrajectory(memetic, "input-0", "hidden-3");
+  const trajectory = analyseWeightTrajectory(memetic, 0, 5003);
   assertExists(trajectory, "Trajectory should be calculated");
   assert(trajectory.direction > 0, "Direction should be positive (increasing)");
   assert(trajectory.consistency > 0.5, "Changes should be consistent");
@@ -234,13 +234,13 @@ Deno.test("analyseWeightTrajectory should handle no ancestry", () => {
   const memetic: MemeticInterface = {
     generation: 1,
     weights: {
-      "input-0": [{ toUUID: "hidden-3", weight: -0.2 }],
+      0: [{ toId: 5003, weight: -0.2 }],
     },
     biases: {},
     score: -0.1,
   };
 
-  const trajectory = analyseWeightTrajectory(memetic, "input-0", "hidden-3");
+  const trajectory = analyseWeightTrajectory(memetic, 0, 5003);
   assertEquals(trajectory, undefined, "No trajectory without ancestry");
 });
 
@@ -248,37 +248,37 @@ Deno.test("calculateTrajectoryMomentum should compute momentum factor", () => {
   const memetic: MemeticInterface = {
     generation: 3,
     weights: {
-      "input-0": [{ toUUID: "hidden-3", weight: -0.15 }],
+      0: [{ toId: 5003, weight: -0.15 }],
     },
     biases: {
-      "hidden-3": 3.2,
+      5003: 3.2,
     },
     score: -0.05,
     ancestry: [
       {
         generation: 2,
         weights: {
-          "input-0": [{ toUUID: "hidden-3", weight: -0.2 }],
+          0: [{ toId: 5003, weight: -0.2 }],
         },
         biases: {
-          "hidden-3": 3.1,
+          5003: 3.1,
         },
         score: -0.1,
       },
       {
         generation: 1,
         weights: {
-          "input-0": [{ toUUID: "hidden-3", weight: -0.25 }],
+          0: [{ toId: 5003, weight: -0.25 }],
         },
         biases: {
-          "hidden-3": 3.0,
+          5003: 3.0,
         },
         score: -0.15,
       },
     ],
   };
 
-  const momentum = calculateTrajectoryMomentum(memetic, "input-0", "hidden-3");
+  const momentum = calculateTrajectoryMomentum(memetic, 0, 5003);
   assertExists(momentum, "Momentum should be calculated");
   assert(
     momentum.factor > 0,
@@ -327,7 +327,7 @@ Deno.test("bias trajectory should be analysed separately", () => {
     generation: 3,
     weights: {},
     biases: {
-      "hidden-3": 3.3,
+      5003: 3.3,
     },
     score: -0.05,
     ancestry: [
@@ -335,7 +335,7 @@ Deno.test("bias trajectory should be analysed separately", () => {
         generation: 2,
         weights: {},
         biases: {
-          "hidden-3": 3.2,
+          5003: 3.2,
         },
         score: -0.1,
       },
@@ -343,7 +343,7 @@ Deno.test("bias trajectory should be analysed separately", () => {
         generation: 1,
         weights: {},
         biases: {
-          "hidden-3": 3.1,
+          5003: 3.1,
         },
         score: -0.15,
       },
@@ -352,7 +352,7 @@ Deno.test("bias trajectory should be analysed separately", () => {
 
   const biasTrajectory = analyseWeightTrajectory(
     memetic,
-    "hidden-3",
+    5003,
     undefined,
     true,
   );

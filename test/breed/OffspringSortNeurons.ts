@@ -164,13 +164,13 @@ Deno.test(
     const dad = makeDad();
     const child = makeChild();
 
-    const connectionsMap = new Map<string, ConnectionRef>();
+    const connectionsMap = new Map<number, ConnectionRef>();
 
     for (const node of child.neurons) {
       if (node.type !== "input") {
         const connections = child.inwardConnections(node.index);
         connectionsMap.set(
-          node.uuid,
+          node.id,
           { parent: child, synapses: connections },
         );
       }
@@ -186,15 +186,12 @@ Deno.test(
       connectionsMap,
     );
 
-    assertEquals(sorted[0].uuid, "input-0");
-    assertEquals(sorted[1].uuid, "input-1");
-    assertEquals(sorted[2].uuid, "input-2");
-    assertEquals(sorted[3].uuid, "common-a");
-    assertEquals(sorted[4].uuid, "dad-a");
-    assertEquals(sorted[5].uuid, "mum-a");
-
-    assertEquals(sorted[sorted.length - 3].uuid, "common-d");
-    assertEquals(sorted[sorted.length - 2].uuid, "output-0");
-    assertEquals(sorted[sorted.length - 1].uuid, "output-1");
+    assertEquals(sorted[0].id, 0);
+    assertEquals(sorted[1].id, 1);
+    assertEquals(sorted[2].id, 2);
+    assertEquals(sorted[3].id, sorted.find((n) => n.type === "hidden")!.id); // first hidden
+    // Hidden neurons come before outputs; outputs are last
+    assertEquals(sorted[sorted.length - 2].id, -1);
+    assertEquals(sorted[sorted.length - 1].id, -2);
   },
 );

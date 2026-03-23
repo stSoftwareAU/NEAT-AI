@@ -83,7 +83,7 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
   const exportBefore = creature.exportJSON();
   const weightsBefore = new Map<string, number>();
   for (const s of exportBefore.synapses) {
-    weightsBefore.set(`${s.fromUUID}->${s.toUUID}`, s.weight);
+    weightsBefore.set(`${s.fromId}->${s.toId}`, s.weight);
   }
 
   // Train with iterations: 1 so that weight changes from applyLearnings are
@@ -100,7 +100,7 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
   const exportAfter = trainedCreature.exportJSON();
   const weightsAfter = new Map<string, number>();
   for (const s of exportAfter.synapses) {
-    weightsAfter.set(`${s.fromUUID}->${s.toUUID}`, s.weight);
+    weightsAfter.set(`${s.fromId}->${s.toId}`, s.weight);
   }
 
   // MINIMUM propagation passes gradient through the winner to the upstream
@@ -108,8 +108,8 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
   // it the winner. Verify gradient flowed through hidden-b by checking its
   // inward connection (input-1 -> hidden-b) changed weight.
   const winnerUpstreamDelta = Math.abs(
-    (weightsAfter.get("input-1->hidden-b") ?? 0) -
-      (weightsBefore.get("input-1->hidden-b") ?? 0),
+    (weightsAfter.get(String(9431)) ?? 0) -
+      (weightsBefore.get(String(9431)) ?? 0),
   );
   assert(
     winnerUpstreamDelta > 1e-10,
@@ -119,8 +119,8 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
   // The runner-up connection close to the winner should also receive partial
   // gradient via the leak mechanism (Issue #1874).
   const runnerUpDelta = Math.abs(
-    (weightsAfter.get("hidden-a->output-0") ?? 0) -
-      (weightsBefore.get("hidden-a->output-0") ?? 0),
+    (weightsAfter.get(String(9109)) ?? 0) -
+      (weightsBefore.get(String(9109)) ?? 0),
   );
   assert(
     runnerUpDelta > 1e-10,

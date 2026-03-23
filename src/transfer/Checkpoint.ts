@@ -9,6 +9,7 @@
 
 import { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { nextNeuronId } from "../architecture/NeuronId.ts";
 import type {
   CheckpointInterface,
   CheckpointMetadata,
@@ -27,10 +28,10 @@ export interface CheckpointExportOptions {
   /** Number of generations trained */
   generations?: number;
 
-  /** Neuron UUIDs to mark as frozen in the checkpoint */
-  frozenNeuronUUIDs?: string[];
+  /** Neuron IDs to mark as frozen in the checkpoint */
+  frozenNeuronIds?: number[];
 
-  /** Synapse keys (fromUUID->toUUID) to mark as frozen */
+  /** Synapse keys (fromId->toId) to mark as frozen */
   frozenSynapseKeys?: string[];
 }
 
@@ -46,17 +47,17 @@ export function exportCheckpoint(
 ): CheckpointInterface {
   const creatureExport = creature.exportJSON();
 
-  // Collect input UUIDs
-  const sourceInputUUIDs: string[] = [];
+  // Collect input IDs
+  const sourceInputIds: number[] = [];
   for (let i = 0; i < creature.input; i++) {
-    sourceInputUUIDs.push(creature.neurons[i].uuid);
+    sourceInputIds.push(creature.neurons[i].id);
   }
 
-  // Collect output UUIDs
-  const sourceOutputUUIDs: string[] = [];
+  // Collect output IDs
+  const sourceOutputIds: number[] = [];
   for (const neuron of creature.neurons) {
     if (neuron.type === "output") {
-      sourceOutputUUIDs.push(neuron.uuid);
+      sourceOutputIds.push(neuron.id);
     }
   }
 
@@ -68,8 +69,8 @@ export function exportCheckpoint(
     generations: options?.generations,
     sourceInputCount: creature.input,
     sourceOutputCount: creature.output,
-    sourceInputUUIDs,
-    sourceOutputUUIDs,
+    sourceInputIds,
+    sourceOutputIds,
   };
 
   const checkpoint: CheckpointInterface = {
@@ -78,8 +79,8 @@ export function exportCheckpoint(
     metadata,
   };
 
-  if (options?.frozenNeuronUUIDs && options.frozenNeuronUUIDs.length > 0) {
-    checkpoint.frozenNeuronUUIDs = [...options.frozenNeuronUUIDs];
+  if (options?.frozenNeuronIds && options.frozenNeuronIds.length > 0) {
+    checkpoint.frozenNeuronIds = [...options.frozenNeuronIds];
   }
 
   if (options?.frozenSynapseKeys && options.frozenSynapseKeys.length > 0) {
@@ -98,14 +99,14 @@ export interface CheckpointImportOptions {
    * Keys are source UUIDs, values are target UUIDs.
    * If not provided, inputs are mapped by position.
    */
-  inputUUIDMapping?: Map<string, string>;
+  inputIdMapping?: Map<number, number>;
 
   /**
    * UUID mapping from source output UUIDs to target output UUIDs.
    * Keys are source UUIDs, values are target UUIDs.
    * If not provided, outputs are mapped by position.
    */
-  outputUUIDMapping?: Map<string, string>;
+  outputIdMapping?: Map<number, number>;
 
   /**
    * Number of inputs in the target task.
@@ -146,8 +147,8 @@ export function importCheckpoint(
   if (
     targetInputCount === sourceCreature.input &&
     targetOutputCount === sourceCreature.output &&
-    !options?.inputUUIDMapping &&
-    !options?.outputUUIDMapping
+    !options?.inputIdMapping &&
+    !options?.outputIdMapping
   ) {
     const creature = Creature.fromJSON(sourceCreature, true);
     applyFreezeFlags(creature, checkpoint, options);
@@ -160,8 +161,8 @@ export function importCheckpoint(
     checkpoint.metadata,
     targetInputCount,
     targetOutputCount,
-    options?.inputUUIDMapping,
-    options?.outputUUIDMapping,
+    options?.inputIdMapping,
+    options?.outputIdMapping,
   );
 
   const creature = Creature.fromJSON(remapped, true);
@@ -177,21 +178,21 @@ function applyFreezeFlags(
   checkpoint: CheckpointInterface,
   options?: CheckpointImportOptions,
 ): void {
-  const frozenNeuronUUIDs = new Set<string>(
-    checkpoint.frozenNeuronUUIDs ?? [],
+  const frozenNeuronIds = new Set<number>(
+    checkpoint.frozenNeuronIds ?? [],
   );
 
   if (options?.freezeHidden) {
     for (const neuron of creature.neurons) {
       if (neuron.type === "hidden") {
-        frozenNeuronUUIDs.add(neuron.uuid);
+        frozenNeuronIds.add(neuron.id);
       }
     }
   }
 
   // Apply frozen flags to neurons
   for (const neuron of creature.neurons) {
-    if (frozenNeuronUUIDs.has(neuron.uuid)) {
+    if (frozenNeuronIds.has(neuron.id)) {
       creature.setNeuronFrozen(neuron.index, true);
     }
   }
@@ -200,9 +201,9 @@ function applyFreezeFlags(
   if (checkpoint.frozenSynapseKeys) {
     const synapseKeySet = new Set(checkpoint.frozenSynapseKeys);
     for (const synapse of creature.synapses) {
-      const fromUUID = creature.neurons[synapse.from].uuid;
-      const toUUID = creature.neurons[synapse.to].uuid;
-      const key = `${fromUUID}->${toUUID}`;
+      const fromId = creature.neurons[synapse.from].id;
+      const toId = creature.neurons[synapse.to].id;
+      const key = `${fromId}->${toId}`;
       if (synapseKeySet.has(key)) {
         creature.setSynapseFrozen(synapse.from, synapse.to, true);
       }
@@ -236,14 +237,14 @@ function remapCreatureForTask(
   metadata: CheckpointMetadata,
   targetInputCount: number,
   targetOutputCount: number,
-  inputUUIDMapping?: Map<string, string>,
-  outputUUIDMapping?: Map<string, string>,
+  inputIdMapping?: Map<number, number>,
+  outputIdMapping?: Map<number, number>,
 ): CreatureExport {
   // Build input UUID mapping (source UUID -> target UUID)
-  const inputMap = new Map<string, string>();
-  if (inputUUIDMapping) {
-    for (const [sourceUUID, targetUUID] of inputUUIDMapping) {
-      inputMap.set(sourceUUID, targetUUID);
+  const inputMap = new Map<number, number>();
+  if (inputIdMapping) {
+    for (const [sourceUUID, targetId] of inputIdMapping) {
+      inputMap.set(sourceUUID, targetId);
     }
   } else {
     // Default: map by position for overlapping inputs
@@ -252,15 +253,15 @@ function remapCreatureForTask(
       targetInputCount,
     );
     for (let i = 0; i < overlapInputs; i++) {
-      inputMap.set(`input-${i}`, `input-${i}`);
+      inputMap.set(metadata.sourceInputIds[i], i);
     }
   }
 
   // Build output UUID mapping (source UUID -> target UUID)
-  const outputMap = new Map<string, string>();
-  if (outputUUIDMapping) {
-    for (const [sourceUUID, targetUUID] of outputUUIDMapping) {
-      outputMap.set(sourceUUID, targetUUID);
+  const outputMap = new Map<number, number>();
+  if (outputIdMapping) {
+    for (const [sourceUUID, targetId] of outputIdMapping) {
+      outputMap.set(sourceUUID, targetId);
     }
   } else {
     // Default: map by position for overlapping outputs
@@ -269,20 +270,20 @@ function remapCreatureForTask(
       targetOutputCount,
     );
     for (let i = 0; i < overlapOutputs; i++) {
-      outputMap.set(`output-${i}`, `output-${i}`);
+      outputMap.set(metadata.sourceOutputIds[i], metadata.sourceOutputIds[i]);
     }
   }
 
   // Collect the set of source input UUIDs to know which synapses to remap
-  const sourceInputUUIDs = new Set(metadata.sourceInputUUIDs);
-  const sourceOutputUUIDs = new Set(metadata.sourceOutputUUIDs);
+  const sourceInputIds = new Set(metadata.sourceInputIds);
+  const sourceOutputIds = new Set(metadata.sourceOutputIds);
 
   // Remap neurons: keep hidden neurons as-is, remap outputs
   const remappedNeurons = source.neurons.map((n) => {
-    if (n.type === "output" && sourceOutputUUIDs.has(n.uuid)) {
-      const targetUUID = outputMap.get(n.uuid);
-      if (targetUUID) {
-        return { ...n, uuid: targetUUID };
+    if (n.type === "output" && sourceOutputIds.has(n.id!)) {
+      const targetId = outputMap.get(n.id!);
+      if (targetId) {
+        return { ...n, id: targetId };
       }
       // Output not in target - will be removed
       return null;
@@ -292,46 +293,47 @@ function remapCreatureForTask(
 
   // Add new output neurons for target outputs not in source
   const existingOutputUUIDs = new Set(
-    remappedNeurons.filter((n) => n.type === "output").map((n) => n.uuid),
+    remappedNeurons.filter((n) => n.type === "output").map((n) => n.id),
   );
   for (let i = 0; i < targetOutputCount; i++) {
-    const targetUUID = `output-${i}`;
-    if (!existingOutputUUIDs.has(targetUUID)) {
+    if (existingOutputUUIDs.size < targetOutputCount) {
+      const newId = nextNeuronId();
       remappedNeurons.push({
         type: "output",
-        uuid: targetUUID,
+        id: newId,
         bias: 0,
         squash: "LOGISTIC",
       });
+      existingOutputUUIDs.add(newId);
     }
   }
 
   // Remap synapses: update UUIDs for inputs and outputs
   const remappedSynapses = source.synapses.map((s) => {
-    let fromUUID = s.fromUUID;
-    let toUUID = s.toUUID;
+    let fromId = s.fromId!;
+    let toId = s.toId!;
 
     // Remap source input UUID to target input UUID
-    if (sourceInputUUIDs.has(fromUUID)) {
-      const mapped = inputMap.get(fromUUID);
+    if (sourceInputIds.has(fromId)) {
+      const mapped = inputMap.get(fromId);
       if (!mapped) return null; // Source input not in target
-      fromUUID = mapped;
+      fromId = mapped;
     }
 
     // Remap source output UUID to target output UUID
-    if (sourceOutputUUIDs.has(toUUID)) {
-      const mapped = outputMap.get(toUUID);
+    if (sourceOutputIds.has(toId!)) {
+      const mapped = outputMap.get(toId!);
       if (!mapped) return null; // Source output not in target
-      toUUID = mapped;
+      toId = mapped;
     }
 
-    if (sourceOutputUUIDs.has(fromUUID)) {
-      const mapped = outputMap.get(fromUUID);
+    if (sourceOutputIds.has(fromId!)) {
+      const mapped = outputMap.get(fromId!);
       if (!mapped) return null;
-      fromUUID = mapped;
+      fromId = mapped;
     }
 
-    return { ...s, fromUUID, toUUID };
+    return { ...s, fromId, toId };
   }).filter((s) => s !== null);
 
   return {

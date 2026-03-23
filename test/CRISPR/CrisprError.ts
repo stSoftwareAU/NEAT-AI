@@ -61,7 +61,7 @@ Deno.test("CrisprError - insert with missing fromUUID returns original creature"
     id: "test-missing-from-uuid",
     mode: "insert",
     synapses: [
-      { fromUUID: "nonexistent-uuid", toUUID: "h1", weight: 0.3 },
+      { fromId: 9970, toId: 9677, weight: 0.3 },
     ],
   };
 
@@ -78,7 +78,7 @@ Deno.test("CrisprError - insert with missing toUUID returns original creature", 
     id: "test-missing-to-uuid",
     mode: "insert",
     synapses: [
-      { fromUUID: "h1", toUUID: "nonexistent-uuid", weight: 0.3 },
+      { fromId: 9677, toId: 9970, weight: 0.3 },
     ],
   };
 
@@ -97,7 +97,7 @@ Deno.test("CrisprError - append with invalid from connection returns original cr
       { type: "output", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "does-not-exist", to: 0, weight: 0.5 },
+      { fromId: 9254, to: 0, weight: 0.5 },
     ],
   };
 
@@ -117,7 +117,7 @@ Deno.test("CrisprError - append with invalid to connection returns original crea
       { type: "output", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { from: 0, toUUID: "does-not-exist", weight: 0.5 },
+      { from: 0, toId: 9254, weight: 0.5 },
     ],
   };
 
@@ -152,7 +152,7 @@ Deno.test("CrisprError - insert throws INVALID_DNA for output neurons", () => {
       { type: "output", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "h1", toUUID: "output-0", weight: 0.3 },
+      { fromId: 9677, toId: -1, weight: 0.3 },
     ],
   };
 
@@ -190,7 +190,7 @@ Deno.test("CrisprError - insert throws INVALID_DNA for static from index", () =>
     id: "test-insert-static-from",
     mode: "insert",
     synapses: [
-      { from: 0, toUUID: "h1", weight: 0.3 },
+      { from: 0, toId: 9677, weight: 0.3 },
     ],
   };
 
@@ -228,7 +228,7 @@ Deno.test("CrisprError - insert throws MISSING_UUID when fromUUID not found", ()
     id: "test-insert-missing-from",
     mode: "insert",
     synapses: [
-      { fromUUID: "nonexistent", toUUID: "h1", weight: 0.3 },
+      { fromId: 9890, toId: 9677, weight: 0.3 },
     ],
   };
 
@@ -247,7 +247,7 @@ Deno.test("CrisprError - insert throws MISSING_UUID when toUUID not found", () =
     id: "test-insert-missing-to",
     mode: "insert",
     synapses: [
-      { fromUUID: "h1", toUUID: "nonexistent", weight: 0.3 },
+      { fromId: 9677, toId: 9890, weight: 0.3 },
     ],
   };
 
@@ -269,7 +269,7 @@ Deno.test("CrisprError - append throws INVALID_CONNECTION for unresolvable from"
       { type: "output", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "does-not-exist", weight: 0.5 },
+      { fromId: 9254, weight: 0.5 },
     ],
   };
 
@@ -291,7 +291,7 @@ Deno.test("CrisprError - append throws INVALID_CONNECTION for unresolvable to", 
       { type: "output", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { from: 0, toUUID: "does-not-exist", weight: 0.5 },
+      { from: 0, toId: 9254, weight: 0.5 },
     ],
   };
 
@@ -312,10 +312,10 @@ Deno.test("CrisprError - cleaveDNA returns original creature on operational Cris
     id: "test-operational-error",
     mode: "insert",
     neurons: [
-      { type: "hidden", squash: "LOGISTIC", bias: 0, uuid: "new-h" },
+      { type: "hidden", squash: "LOGISTIC", bias: 0, id: 9804 },
     ],
     synapses: [
-      { fromUUID: "nonexistent", toUUID: "new-h", weight: 0.3 },
+      { fromId: 9890, toId: 9804, weight: 0.3 },
     ],
   };
 

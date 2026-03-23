@@ -33,7 +33,7 @@ Deno.test("discovery records store errors as numeric arrays", () => {
   const expected = new Float32Array([0]);
   const discoverMap = creature.record(expected);
 
-  const record = discoverMap.get("output-0");
+  const record = discoverMap.get(-1);
   assert(record, "expected a discovery record for output-0");
 
   const { errors } = record as unknown as { errors: unknown };

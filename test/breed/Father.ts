@@ -1,7 +1,6 @@
 import { assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { createCompatibleFather } from "../../src/breed/Father.ts";
-import type { SynapseExport } from "../../src/architecture/SynapseInterfaces.ts";
 import type { NeuronExport } from "../../src/architecture/NeuronInterfaces.ts";
 import { Creature } from "../../mod.ts";
 
@@ -79,12 +78,12 @@ Deno.test("CompatibleFather", () => {
   const father = makeFather();
   const mother = makeMother();
   const fatherExpected = JSON.parse(JSON.stringify(father));
-  fatherExpected.neurons[0].uuid = "mother-3";
-  fatherExpected.synapses.forEach((synapse: SynapseExport) => {
-    if (synapse.fromUUID === "father-3") synapse.fromUUID = "mother-3";
+  fatherExpected.neurons[0].id = "mother-3";
+  fatherExpected.synapses.forEach((synapse: Record<string, unknown>) => {
+    if (synapse.fromId === 9317) synapse.fromId = "mother-3";
   });
-  fatherExpected.synapses.forEach((synapse: SynapseExport) => {
-    if (synapse.toUUID === "father-3") synapse.toUUID = "mother-3";
+  fatherExpected.synapses.forEach((synapse: Record<string, unknown>) => {
+    if (synapse.toId === 9317) synapse.toId = "mother-3";
   });
   const fatherActual = createCompatibleFather(mother, father);
 
@@ -166,11 +165,11 @@ Deno.test("Genetic Integrity - Multiple Matching Neurons", () => {
   const fatherExpected = JSON.parse(JSON.stringify(father));
 
   // Apply changes to match the mother's neuron UUIDs in the expected output
-  fatherExpected.neurons[0].uuid = "mother-3"; // The original change
+  fatherExpected.neurons[0].id = "mother-3"; // The original change
 
-  fatherExpected.synapses.forEach((synapse: SynapseExport) => {
-    if (synapse.fromUUID === "father-3") synapse.fromUUID = "mother-3";
-    if (synapse.toUUID === "father-3") synapse.toUUID = "mother-3";
+  fatherExpected.synapses.forEach((synapse: Record<string, unknown>) => {
+    if (synapse.fromId === 9317) synapse.fromId = "mother-3";
+    if (synapse.toId === 9317) synapse.toId = "mother-3";
   });
 
   const fatherActual = createCompatibleFather(mother, father);
@@ -235,7 +234,7 @@ Deno.test("Consistent key generation with shuffled synapses", () => {
   // Both results should have the same neuron UUIDs (the mapping should be identical)
   assertEquals(result1.neurons.length, result2.neurons.length);
   for (let i = 0; i < result1.neurons.length; i++) {
-    assertEquals(result1.neurons[i].uuid, result2.neurons[i].uuid);
+    assertEquals(result1.neurons[i].id, result2.neurons[i].id);
   }
 
   // Both should create valid creatures
@@ -255,9 +254,10 @@ Deno.test("Genetic Integrity - No Matching Neurons", () => {
     bias: 1.2,
   });
 
-  nonMatchingMother.synapses.forEach((synapse: SynapseExport) => {
-    if (synapse.fromUUID === "input-0") {
-      synapse.fromUUID = "hidden-0";
+  // deno-lint-ignore no-explicit-any
+  nonMatchingMother.synapses.forEach((synapse: any) => {
+    if (synapse.fromId === 0) {
+      synapse.fromId = 5000;
     }
   });
 

@@ -189,8 +189,8 @@ Deno.test("DiscoveryRunner evaluates synapse candidates correctly", async () => 
   const discoveryResult: DiscoverResult = {
     ID: "SYNAPSE_EVAL_TEST",
     addHelpfulSynapses: [{
-      fromNeuronUUID: "input-1",
-      toNeuronUUID: "hidden-1",
+      fromNeuronId: 1,
+      toNeuronId: 5001,
       weight: 0.45,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -210,7 +210,7 @@ Deno.test("DiscoveryRunner evaluates synapse candidates correctly", async () => 
     (creature: Creature) => {
       const json = creature.exportJSON();
       const hasHelpful = json.synapses.some((synapse) =>
-        synapse.fromUUID === "input-1" && synapse.toUUID === "hidden-1" &&
+        synapse.fromId === 1 && synapse.toId === 5001 &&
         Math.abs(synapse.weight - 0.45) < 1e-6
       );
       return hasHelpful ? 0.99 : 1.0;
@@ -253,8 +253,8 @@ Deno.test("DiscoveryRunner evaluates neuron candidates correctly", async () => {
   const errorReduction = baseError * (expectedImprovementPct / 100);
 
   const neuronCandidate = {
-    fromNeuronUUID: "input-1",
-    toNeuronUUID: "hidden-1",
+    fromNeuronId: 1,
+    toNeuronId: 5001,
     incomingWeight: 0.45,
     outgoingWeight: -0.3,
     squash: "TANH",
@@ -282,7 +282,7 @@ Deno.test("DiscoveryRunner evaluates neuron candidates correctly", async () => {
       const json = creature.exportJSON();
       // Check for the added neuron by finding its incoming synapse
       const incomingSynapse = json.synapses.find((synapse) =>
-        synapse.fromUUID === neuronCandidate.fromNeuronUUID &&
+        synapse.fromId === neuronCandidate.fromNeuronId &&
         Math.abs(synapse.weight - neuronCandidate.incomingWeight) < 1e-6
       );
       const hasNeuron = incomingSynapse !== undefined;
@@ -339,8 +339,8 @@ Deno.test("DiscoveryRunner passes discovery focus neurons to worker", async () =
   try {
     const options = makeOptions({ verbose: true });
     (options as Record<string, unknown>).discoveryFocusNeuronUUIDs = [
-      "hidden-target",
-      "hidden-support",
+      100,
+      200,
     ];
 
     await runner.discoverDir({
@@ -353,7 +353,7 @@ Deno.test("DiscoveryRunner passes discovery focus neurons to worker", async () =
     assertEquals(
       (worker.lastDiscoverOptions as Record<string, unknown>)
         .discoveryFocusNeuronUUIDs,
-      ["hidden-target", "hidden-support"],
+      [100, 200],
     );
   } finally {
     // nothing
@@ -493,7 +493,8 @@ Deno.test(
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
       const hasNewNeuron = json.neurons.some((neuron) =>
-        neuron.uuid === newNeuronUUID
+        // @ts-ignore: test with legacy string neuron IDs
+        neuron.id === newNeuronUUID
       );
       return hasNewNeuron ? 0.3 : 0.5;
     };
@@ -605,7 +606,7 @@ Deno.test(
     ): DiscoveryCandidate[] => {
       const json = cloneCreatureJSON(baseCreature);
       json.synapses = json.synapses.map((synapse) =>
-        synapse.fromUUID === "hidden-1" && synapse.toUUID === "output-0"
+        synapse.fromId === 5001 && synapse.toId === -1
           ? { ...synapse, weight: synapse.weight + tinyDelta }
           : synapse
       );
@@ -626,7 +627,7 @@ Deno.test(
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
       const hasTinyUpdate = json.synapses.some((synapse) =>
-        synapse.fromUUID === "hidden-1" && synapse.toUUID === "output-0" &&
+        synapse.fromId === 5001 && synapse.toId === -1 &&
         Math.abs(synapse.weight - (0.5 + tinyDelta)) < 1e-10
       );
       return hasTinyUpdate ? baselineError - tinyDelta : baselineError;

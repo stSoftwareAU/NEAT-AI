@@ -213,7 +213,7 @@ Deno.test("validate rejects IF neuron with invalid synapse type combinations", (
 
 Deno.test("validate rejects neuron with empty UUID", () => {
   const creature = new Creature(10, 2);
-  creature.neurons[0].uuid = "";
+  creature.neurons[0].id = "" as unknown as number;
   try {
     creatureValidate(creature);
     fail("Expected error");
@@ -229,8 +229,8 @@ Deno.test("validate rejects neuron with empty UUID", () => {
 Deno.test("validate rejects duplicate UUIDs", () => {
   const creature = new Creature(10, 2, { layers: [{ count: 10 }] });
   creature.DEBUG = true;
-  creature.neurons[10].uuid = "A";
-  creature.neurons[11].uuid = "A";
+  creature.neurons[10].id = "A" as unknown as number;
+  creature.neurons[11].id = "A" as unknown as number;
   try {
     creatureValidate(creature);
     fail("Expected error");
@@ -248,7 +248,8 @@ Deno.test("UUID too long", () => {
   creature.DEBUG = true;
   const hiddenIndex = creature.input;
   const longSuffix = "x".repeat(300);
-  creature.neurons[hiddenIndex].uuid = `hidden-${longSuffix}`;
+  // @ts-ignore: test with legacy string neuron IDs
+  creature.neurons[hiddenIndex].id = `hidden-${longSuffix}`;
   try {
     creatureValidate(creature);
     fail("Expected error");
@@ -265,7 +266,7 @@ Deno.test("UUID invalid characters", () => {
   const creature = new Creature(10, 2, { layers: [{ count: 10 }] });
   creature.DEBUG = true;
   const hiddenIndex = creature.input;
-  creature.neurons[hiddenIndex].uuid = "hidden uuid";
+  creature.neurons[hiddenIndex].id = "hidden uuid" as unknown as number;
   try {
     creatureValidate(creature);
     fail("Expected error");
@@ -281,7 +282,7 @@ Deno.test("UUID invalid characters", () => {
 Deno.test("invalid input UUID", () => {
   const creature = new Creature(10, 2, { layers: [{ count: 10 }] });
   creature.DEBUG = true;
-  creature.neurons[0].uuid = "input-1000";
+  creature.neurons[0].id = "input-1000" as unknown as number;
 
   try {
     creatureValidate(creature);
@@ -314,7 +315,7 @@ Deno.test("validate rejects infinite bias", () => {
 Deno.test("validate rejects output neuron with out-of-range index in UUID", () => {
   const creature = new Creature(10, 2);
   creature.DEBUG = true;
-  creature.neurons[11].uuid = "output-10";
+  creature.neurons[11].id = "output-10" as unknown as number;
   try {
     creatureValidate(creature);
     fail("Expected error");

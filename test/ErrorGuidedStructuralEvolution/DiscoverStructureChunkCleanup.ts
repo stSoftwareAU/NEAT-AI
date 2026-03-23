@@ -116,7 +116,7 @@ Deno.test({
       { baseDirectory: baseDir },
     );
 
-    const neuronPromises = new Map<string, Promise<void>>();
+    const neuronPromises = new Map<number, Promise<void>>();
     discovery.initialize(neuronPromises);
 
     const samples = makeTwoSamples();
@@ -208,7 +208,7 @@ Deno.test({
       { baseDirectory: baseDir, disableCleanup: true },
     );
 
-    const neuronPromises = new Map<string, Promise<void>>();
+    const neuronPromises = new Map<number, Promise<void>>();
     discovery.initialize(neuronPromises);
 
     const samples = makeTwoSamples();

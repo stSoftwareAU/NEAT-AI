@@ -40,7 +40,7 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
 
   public record(
     trainingData: DataRecordInterface[],
-    _neuronPromisesMap: Map<string, Promise<void>>,
+    _neuronPromisesMap: Map<number, Promise<void>>,
     binaryFilePath?: string,
     recordIndices?: number[],
     options?: Readonly<{
@@ -127,9 +127,9 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
         this.assertWasmActivation();
 
         const traceAll = {
-          traceNeeded: (_uuid: string) => true,
-          propagateNeeded: (_uuid: string) => true,
-          updateNeeded: (_uuid: string) => true,
+          traceNeeded: (_id: number) => true,
+          propagateNeeded: (_id: number) => true,
+          updateNeeded: (_id: number) => true,
         };
         this.creature.activateAndTrace(
           record.input,
@@ -142,7 +142,7 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
         this.rustAccumulatedNeuronData.push(discoverMap);
         this.rustAccumulatedEstimatedBytes += this.rustEstimatedBytesPerSample;
 
-        for (const [uuid, rec] of discoverMap) {
+        for (const [id, rec] of discoverMap) {
           let sumAbs = 0;
           for (const err of rec.errors) {
             if (Number.isFinite(err)) {
@@ -150,10 +150,10 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
             }
           }
           if (sumAbs > 0) {
-            const prev = this.recordedNeuronTotalAbsError.get(uuid) ?? 0;
-            this.recordedNeuronTotalAbsError.set(uuid, prev + sumAbs);
-          } else if (!this.recordedNeuronTotalAbsError.has(uuid)) {
-            this.recordedNeuronTotalAbsError.set(uuid, 0);
+            const prev = this.recordedNeuronTotalAbsError.get(id) ?? 0;
+            this.recordedNeuronTotalAbsError.set(id, prev + sumAbs);
+          } else if (!this.recordedNeuronTotalAbsError.has(id)) {
+            this.recordedNeuronTotalAbsError.set(id, 0);
           }
         }
       } catch (error) {
@@ -232,7 +232,7 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
       const discoverMap = this.rustAccumulatedNeuronData[index];
 
       const neuronData = nonInputNeurons.map((neuron) => {
-        const discoverRecord = discoverMap.get(neuron.uuid) || {
+        const discoverRecord = discoverMap.get(neuron.id) || {
           activation: this.creature.state.activations[neuron.index],
           errors: [] as number[],
         };
@@ -240,7 +240,7 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
         const errors = discoverRecord.errors.filter(Number.isFinite);
 
         return {
-          neuron_uuid: neuron.uuid,
+          neuron_uuid: String(neuron.id),
           activation: discoverRecord.activation,
           value: discoverRecord.value,
           errors: errors,

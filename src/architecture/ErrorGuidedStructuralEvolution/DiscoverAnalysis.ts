@@ -8,6 +8,7 @@
  */
 import type {
   CoordinatedStructuralCandidate,
+  CoordinatedStructuralOperation,
 } from "./CoordinatedStructuralCandidate.ts";
 import type {
   CandidateAnalysisBundle,
@@ -18,6 +19,8 @@ import type {
   RustAnalyzeAllResult,
   RustCandidateNeuron,
   RustCandidateSynapse,
+  RustCoordinatedStructuralCandidate,
+  RustCoordinatedStructuralOperation,
   RustNeuronDiagnostic,
   RustSynapseDiagnostic,
 } from "./RustDiscovery.ts";
@@ -29,8 +32,8 @@ export function mapRustCandidate(
   candidate: RustCandidateSynapse,
 ): CandidateSynapse {
   return {
-    fromNeuronUUID: candidate.fromNeuronUuid,
-    toNeuronUUID: candidate.toNeuronUuid,
+    fromNeuronId: Number(candidate.fromNeuronUuid),
+    toNeuronId: Number(candidate.toNeuronUuid),
     weight: candidate.weight,
     targetNeuronImpact: candidate.targetNeuronImpact,
     expectedCreatureErrorReduction: candidate.expectedCreatureErrorReduction,
@@ -49,8 +52,8 @@ export function mapRustNeuronCandidate(
   candidate: RustCandidateNeuron,
 ): CandidateNeuron {
   return {
-    fromNeuronUUID: candidate.sourceNeuronUuid,
-    toNeuronUUID: candidate.targetNeuronUuid,
+    fromNeuronId: Number(candidate.sourceNeuronUuid),
+    toNeuronId: Number(candidate.targetNeuronUuid),
     incomingWeight: candidate.incomingWeight,
     outgoingWeight: candidate.outgoingWeight,
     squash: candidate.squash,
@@ -69,14 +72,14 @@ export function mapRustNeuronCandidate(
  * Generates key string for synapse candidate dedup.
  */
 export function candidateKey(candidate: CandidateSynapse): string {
-  return `${candidate.fromNeuronUUID}->${candidate.toNeuronUUID}`;
+  return `${candidate.fromNeuronId}->${candidate.toNeuronId}`;
 }
 
 /**
  * Generates key string for neuron candidate dedup.
  */
 export function neuronCandidateKey(candidate: CandidateNeuron): string {
-  return `${candidate.fromNeuronUUID}->${candidate.toNeuronUUID}`;
+  return `${candidate.fromNeuronId}->${candidate.toNeuronId}`;
 }
 
 /**
@@ -127,15 +130,15 @@ export function upsertNeuronDiscovery(
 export function filterTopSynapseCandidates(
   candidates: CandidateSynapse[],
 ): CandidateSynapse[] {
-  const grouped = new Map<string, CandidateSynapse>();
+  const grouped = new Map<number, CandidateSynapse>();
   candidates.forEach((candidate) => {
-    const existing = grouped.get(candidate.toNeuronUUID);
+    const existing = grouped.get(candidate.toNeuronId);
     if (
       !existing ||
       candidate.expectedCreatureScoreGain >
         existing.expectedCreatureScoreGain
     ) {
-      grouped.set(candidate.toNeuronUUID, candidate);
+      grouped.set(candidate.toNeuronId, candidate);
     }
   });
   return Array.from(grouped.values());
@@ -147,15 +150,15 @@ export function filterTopSynapseCandidates(
 export function filterTopNeuronCandidates(
   candidates: CandidateNeuron[],
 ): CandidateNeuron[] {
-  const grouped = new Map<string, CandidateNeuron>();
+  const grouped = new Map<number, CandidateNeuron>();
   candidates.forEach((candidate) => {
-    const existing = grouped.get(candidate.toNeuronUUID);
+    const existing = grouped.get(candidate.toNeuronId);
     if (
       !existing ||
       candidate.expectedCreatureScoreGain >
         existing.expectedCreatureScoreGain
     ) {
-      grouped.set(candidate.toNeuronUUID, candidate);
+      grouped.set(candidate.toNeuronId, candidate);
     }
   });
   return Array.from(grouped.values()).sort((a, b) =>
@@ -268,6 +271,45 @@ export function tryRustHelpfulNeurons(
 }
 
 /**
+ * Maps a single Rust coordinated operation (string UUIDs) to the TS type (number IDs).
+ */
+function mapRustCoordinatedOp(
+  op: RustCoordinatedStructuralOperation,
+): CoordinatedStructuralOperation {
+  switch (op.type) {
+    case "removeSynapse":
+      return {
+        type: op.type,
+        fromNeuronId: Number(op.fromNeuronUuid),
+        toNeuronId: Number(op.toNeuronUuid),
+      };
+    case "addSynapse":
+      return {
+        type: op.type,
+        fromNeuronId: Number(op.fromNeuronUuid),
+        toNeuronId: Number(op.toNeuronUuid),
+        weight: op.weight,
+      };
+    default:
+      return op as CoordinatedStructuralOperation;
+  }
+}
+
+/**
+ * Maps a Rust coordinated structural candidate to the TS type.
+ */
+function mapRustCoordinatedCandidate(
+  rc: RustCoordinatedStructuralCandidate,
+): CoordinatedStructuralCandidate {
+  return {
+    type: rc.type,
+    operations: rc.operations.map(mapRustCoordinatedOp),
+    expectedCreatureScoreGain: rc.expectedCreatureScoreGain,
+    comment: rc.comment,
+  };
+}
+
+/**
  * Reads coordinated structural candidates from Rust analysis.
  */
 export function tryRustCoordinatedStructuralCandidates(
@@ -283,7 +325,7 @@ export function tryRustCoordinatedStructuralCandidates(
     return [];
   }
 
-  return [...candidates].sort((a, b) =>
+  return candidates.map(mapRustCoordinatedCandidate).sort((a, b) =>
     (b.expectedCreatureScoreGain ?? 0) - (a.expectedCreatureScoreGain ?? 0)
   );
 }
@@ -293,7 +335,7 @@ export function tryRustCoordinatedStructuralCandidates(
  */
 export function collectRustAnalysisCandidates(
   combinedResult: RustAnalyzeAllResult | undefined,
-  _focusList: string[],
+  _focusList: number[],
   logRustNoImprovementFn: (
     scope: "synapse" | "neuron",
     diagnostics?: RustSynapseDiagnostic[] | RustNeuronDiagnostic[],

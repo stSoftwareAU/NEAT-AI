@@ -136,25 +136,25 @@ function validateSynapse(
   if (mode === "insert") {
     if (s.from !== undefined) {
       throw new CrisprError(
-        `Synapse at index ${index}: insert-mode DNA must not use 'from' (static index); use 'fromUUID' instead`,
+        `Synapse at index ${index}: insert-mode DNA must not use 'from' (static index); use 'fromId' instead`,
         "INVALID_DNA",
       );
     }
     if (s.to !== undefined) {
       throw new CrisprError(
-        `Synapse at index ${index}: insert-mode DNA must not use 'to' (static index); use 'toUUID' instead`,
+        `Synapse at index ${index}: insert-mode DNA must not use 'to' (static index); use 'toId' instead`,
         "INVALID_DNA",
       );
     }
     if (s.fromRelative !== undefined) {
       throw new CrisprError(
-        `Synapse at index ${index}: insert-mode DNA must not use 'fromRelative'; use 'fromUUID' instead`,
+        `Synapse at index ${index}: insert-mode DNA must not use 'fromRelative'; use 'fromId' instead`,
         "INVALID_DNA",
       );
     }
     if (s.toRelative !== undefined) {
       throw new CrisprError(
-        `Synapse at index ${index}: insert-mode DNA must not use 'toRelative'; use 'toUUID' instead`,
+        `Synapse at index ${index}: insert-mode DNA must not use 'toRelative'; use 'toId' instead`,
         "INVALID_DNA",
       );
     }

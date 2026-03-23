@@ -676,20 +676,20 @@ function trainDirBinary(
         // Build a set of remaining synapse keys and neuron UUIDs.
         const remainingSynapseKeys = new Set<string>();
         for (const s of bestCreatureJSON.synapses) {
-          remainingSynapseKeys.add(`${s.fromUUID}->${s.toUUID}`);
+          remainingSynapseKeys.add(`${s.fromId}->${s.toId}`);
         }
-        const remainingNeuronUUIDs = new Set<string>();
+        const remainingNeuronIds = new Set<number>();
         for (const n of bestCreatureJSON.neurons) {
-          remainingNeuronUUIDs.add(n.uuid);
+          remainingNeuronIds.add(n.id!);
         }
 
         // Build a map of creature neuron properties for trace sync.
         const creatureNeuronProps = new Map<
-          string,
+          number,
           { squash?: string; bias: number; type: string }
         >();
         for (const n of bestCreatureJSON.neurons) {
-          creatureNeuronProps.set(n.uuid, {
+          creatureNeuronProps.set(n.id!, {
             squash: n.squash,
             bias: n.bias,
             type: n.type,
@@ -699,15 +699,15 @@ function trainDirBinary(
         bestTraceJSON = {
           ...bestTraceJSON,
           synapses: bestTraceJSON.synapses.filter((s) =>
-            remainingSynapseKeys.has(`${s.fromUUID}->${s.toUUID}`)
+            remainingSynapseKeys.has(`${s.fromId}->${s.toId}`)
           ),
           neurons: bestTraceJSON.neurons.filter((n) =>
-            remainingNeuronUUIDs.has(n.uuid)
+            remainingNeuronIds.has(n.id!)
           ).map((n) => {
             // Sync neuron properties (squash, bias, type) with the
             // cleaned creature. applyLearnings can change squash types
             // (e.g. IF → IDENTITY) which must be reflected in the trace.
-            const props = creatureNeuronProps.get(n.uuid);
+            const props = creatureNeuronProps.get(n.id!);
             if (props) {
               return { ...n, squash: props.squash, bias: props.bias };
             }
@@ -717,12 +717,12 @@ function trainDirBinary(
       }
 
       bestTraceJSON.neurons.forEach((n) => {
-        if (!sparseConfig.traceNeeded(n.uuid)) {
+        if (!sparseConfig.traceNeeded(n.id!)) {
           delete (n as { trace?: unknown }).trace;
         }
       });
       bestTraceJSON.synapses.forEach((s) => {
-        if (!sparseConfig.traceNeeded(s.toUUID)) {
+        if (!sparseConfig.traceNeeded(s.toId!)) {
           delete (s as { trace?: unknown }).trace;
         }
       });

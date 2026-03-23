@@ -282,7 +282,7 @@ export class MINIMUM
       let targetFromActivation = mainActivation!;
       let improvedFromActivation = targetFromActivation;
       const fromValue = fromWeightAdjusted * mainActivation!;
-      if (sparseConfig.propagateNeeded(mainFromNeuron!.uuid)) {
+      if (sparseConfig.propagateNeeded(mainFromNeuron!.id)) {
         const targetFromValue = fromValue + error;
         const fromType = mainFromNeuron!.type;
         if (
@@ -379,7 +379,7 @@ export class MINIMUM
   record(
     neuron: Neuron,
     requestedActivation: number,
-    discoverMap: Map<string, DiscoverRecord>,
+    discoverMap: Map<number, DiscoverRecord>,
   ): void {
     const toList = neuron.creature.inwardConnections(neuron.index);
 

@@ -17,7 +17,7 @@ import type { NeuronImpactInfo } from "./DiscoverStructureTypes.ts";
  * modulated by activation function derivatives.
  *
  * @param creature - The creature containing the neuron
- * @param neuronUUID - The UUID of the neuron to calculate impact for
+ * @param neuronId - The id of the neuron to calculate impact for
  * @param neuronImpactEstimator - Estimator instance (will be created if undefined)
  * @param neuronIndexMap - Index map (will be created if undefined)
  * @param derivativeMap - Optional map of average derivatives to account for saturation
@@ -25,25 +25,25 @@ import type { NeuronImpactInfo } from "./DiscoverStructureTypes.ts";
  */
 export function calculateNeuronImpact(
   creature: Creature,
-  neuronUUID: string,
+  neuronId: number,
   neuronImpactEstimator: CreatureErrorImpactEstimator | undefined,
-  neuronIndexMap: Map<string, number> | undefined,
-  derivativeMap?: Map<string, number>,
+  neuronIndexMap: Map<number, number> | undefined,
+  derivativeMap?: Map<number, number>,
 ): {
   impact: number;
   estimator: CreatureErrorImpactEstimator;
-  indexMap: Map<string, number>;
+  indexMap: Map<number, number>;
 } {
   if (!neuronImpactEstimator) {
     neuronImpactEstimator = new CreatureErrorImpactEstimator(creature);
   }
   if (!neuronIndexMap) {
-    neuronIndexMap = new Map<string, number>();
+    neuronIndexMap = new Map<number, number>();
     creature.neurons.forEach((neuron, index) => {
-      neuronIndexMap!.set(neuron.uuid, index);
+      neuronIndexMap!.set(neuron.id, index);
     });
   }
-  const share = neuronImpactEstimator.getNeuronShare(neuronUUID);
+  const share = neuronImpactEstimator.getNeuronShare(neuronId);
   if (!Number.isFinite(share) || share <= 0) {
     return {
       impact: 0,
@@ -51,60 +51,60 @@ export function calculateNeuronImpact(
       indexMap: neuronIndexMap,
     };
   }
-  let derivative = derivativeMap?.get(neuronUUID);
+  let derivative = derivativeMap?.get(neuronId);
   if (derivative === undefined) {
-    derivative = computeSquashDerivative(creature, neuronUUID);
+    derivative = computeSquashDerivative(creature, neuronId);
   }
   const derivativeFactor = Number.isFinite(derivative)
     ? Math.max(derivative, 0)
     : 1;
-  const downstreamCache = new Map<string, number>();
+  const downstreamCache = new Map<number, number>();
   const computeDownstreamFactor = (
-    uuid: string,
-    path: Set<string>,
+    id: number,
+    path: Set<number>,
   ): number => {
-    if (downstreamCache.has(uuid)) {
-      return downstreamCache.get(uuid)!;
+    if (downstreamCache.has(id)) {
+      return downstreamCache.get(id)!;
     }
-    const index = neuronIndexMap!.get(uuid);
+    const index = neuronIndexMap!.get(id);
     if (index === undefined) {
       return 1;
     }
     const neuron = creature.neurons[index];
     if (neuron.type === "output") {
-      downstreamCache.set(uuid, 1);
+      downstreamCache.set(id, 1);
       return 1;
     }
     const outward = creature.outwardConnections(index);
     if (!outward || outward.length === 0) {
-      downstreamCache.set(uuid, 1);
+      downstreamCache.set(id, 1);
       return 1;
     }
     let maxProduct = 0;
     for (const synapse of outward) {
       const toNeuron = creature.neurons[synapse.to];
       if (!toNeuron) continue;
-      if (path.has(toNeuron.uuid)) {
+      if (path.has(toNeuron.id)) {
         continue;
       }
-      path.add(toNeuron.uuid);
-      const downstreamDerivative = derivativeMap?.get(toNeuron.uuid) ??
-        computeSquashDerivative(creature, toNeuron.uuid);
-      const childFactor = computeDownstreamFactor(toNeuron.uuid, path);
-      path.delete(toNeuron.uuid);
+      path.add(toNeuron.id);
+      const downstreamDerivative = derivativeMap?.get(toNeuron.id) ??
+        computeSquashDerivative(creature, toNeuron.id);
+      const childFactor = computeDownstreamFactor(toNeuron.id, path);
+      path.delete(toNeuron.id);
       const product = Math.max(0, downstreamDerivative) * childFactor;
       if (product > maxProduct) {
         maxProduct = product;
       }
     }
     const factor = maxProduct > 0 ? Math.min(1, maxProduct) : 0;
-    downstreamCache.set(uuid, factor);
+    downstreamCache.set(id, factor);
     return factor;
   };
 
   const downstreamFactor = computeDownstreamFactor(
-    neuronUUID,
-    new Set<string>([neuronUUID]),
+    neuronId,
+    new Set<number>([neuronId]),
   );
 
   const impact = Math.min(1, share * derivativeFactor * downstreamFactor);
@@ -121,9 +121,9 @@ export function calculateNeuronImpact(
  */
 export function computeSquashDerivative(
   creature: Creature,
-  neuronUUID: string,
+  neuronId: number,
 ): number {
-  const neuron = creature.neurons.find((n) => n.uuid === neuronUUID);
+  const neuron = creature.neurons.find((n) => n.id === neuronId);
   if (!neuron || neuron.type === "input" || neuron.type === "constant") {
     return 1.0;
   }
@@ -168,7 +168,7 @@ export function computeSquashDerivative(
 export function listNeuronsByImpact(
   creature: Creature,
   neuronImpactEstimator: CreatureErrorImpactEstimator | undefined,
-  neuronIndexMap: Map<string, number> | undefined,
+  neuronIndexMap: Map<number, number> | undefined,
   logFn: (
     level: "debug" | "info" | "warn" | "error",
     message: string,
@@ -177,7 +177,7 @@ export function listNeuronsByImpact(
 ): {
   entries: NeuronImpactInfo[];
   estimator: CreatureErrorImpactEstimator;
-  indexMap: Map<string, number>;
+  indexMap: Map<number, number>;
 } {
   let currentEstimator = neuronImpactEstimator;
   let currentIndexMap = neuronIndexMap;
@@ -187,14 +187,14 @@ export function listNeuronsByImpact(
     .map((neuron) => {
       const result = calculateNeuronImpact(
         creature,
-        neuron.uuid,
+        neuron.id,
         currentEstimator,
         currentIndexMap,
       );
       currentEstimator = result.estimator;
       currentIndexMap = result.indexMap;
       return {
-        uuid: neuron.uuid,
+        id: neuron.id,
         neuronType: neuron.type,
         impact: result.impact,
       };
@@ -214,7 +214,7 @@ export function listNeuronsByImpact(
     if (a.neuronType !== b.neuronType) {
       return a.neuronType === "output" ? -1 : 1;
     }
-    return a.uuid.localeCompare(b.uuid);
+    return a.id - b.id;
   });
 
   sanityCheckImpactOrdering(creature, entries, logFn);

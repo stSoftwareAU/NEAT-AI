@@ -18,7 +18,8 @@ Deno.test("creatureValidate - output UUID mismatch produces clean message", () =
 
   // Corrupt the output neuron UUID to trigger the invalid output UUID error
   const outputNeuron = creature.neurons[creature.neurons.length - 1];
-  outputNeuron.uuid = "wrong-uuid";
+  // deno-lint-ignore no-explicit-any
+  (outputNeuron as any).id = "wrong-uuid";
 
   let caught: Error | undefined;
   try {

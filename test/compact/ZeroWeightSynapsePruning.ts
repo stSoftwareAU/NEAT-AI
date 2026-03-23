@@ -70,7 +70,7 @@ Deno.test("Compact: prunes zero-weight synapses then removes newly-orphaned neur
   assertEquals(compacted.synapses.length, beforeSynapseCount - 2);
   assertEquals(compacted.synapses.some((s) => s.weight === 0), false);
   assertEquals(
-    compacted.neurons.some((n) => n.uuid === "hidden-unused"),
+    compacted.neurons.some((n) => n.id === 256296634),
     false,
   );
 

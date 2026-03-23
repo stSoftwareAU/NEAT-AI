@@ -61,8 +61,8 @@ Deno.test("record(IF): prefers plastic positive-branch paths over saturated ArcT
   creature.activateAndTrace(new Float32Array([1, 1]), false, sparseConfig);
 
   const discoverMap = creature.record(new Float32Array([0]));
-  const arctanRec = discoverMap.get("hidden-arctan");
-  const reluRec = discoverMap.get("hidden-relu");
+  const arctanRec = discoverMap.get(20181232);
+  const reluRec = discoverMap.get(328081);
 
   assert(reluRec, "Expected record entry for hidden-relu");
 

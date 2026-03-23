@@ -45,8 +45,8 @@ Deno.test(
     // Request a large negative output so the error is strongly negative.
     const map = creature.record(new Float32Array([-10]));
 
-    const swishRec = map.get("swish-hidden");
-    const idRec = map.get("id-hidden");
+    const swishRec = map.get("swish-hidden" as unknown as number);
+    const idRec = map.get("id-hidden" as unknown as number);
 
     assert(swishRec, "expected a discovery record for swish-hidden");
     assert(idRec, "expected a discovery record for id-hidden");

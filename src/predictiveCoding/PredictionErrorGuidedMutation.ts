@@ -23,7 +23,7 @@ import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
  */
 export interface MutationBias {
   /** Neuron UUID → normalised mutation probability weight. */
-  neuronWeights: Map<string, number>;
+  neuronWeights: Map<number, number>;
 
   /**
    * Synapse key → normalised mutation probability weight.
@@ -67,7 +67,7 @@ export function computeMutationBias(
   }
 
   // Compute neuron weights from absolute errors.
-  const neuronWeights = new Map<string, number>();
+  const neuronWeights = new Map<number, number>();
   let totalNeuronWeight = 0;
 
   for (const [_index, absError] of rawErrors) {
@@ -82,7 +82,7 @@ export function computeMutationBias(
     const weight = totalNeuronWeight > 0
       ? absError / totalNeuronWeight
       : uniformNeuronWeight;
-    neuronWeights.set(neuron.uuid, weight);
+    neuronWeights.set(neuron.id, weight);
   }
 
   // Compute synapse weights from connected neuron errors.
@@ -181,7 +181,7 @@ export function neuronBiasToIndexWeights(
   const indexWeights = new Map<number, number>();
   for (let i = 0; i < creature.neurons.length; i++) {
     const neuron = creature.neurons[i];
-    const weight = bias.neuronWeights.get(neuron.uuid);
+    const weight = bias.neuronWeights.get(neuron.id);
     if (weight !== undefined) {
       indexWeights.set(i, weight);
     }

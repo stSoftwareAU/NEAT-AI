@@ -28,7 +28,7 @@ import {
 export function record(
   neuron: Neuron,
   requestedActivation: number,
-  discoverMap: Map<string, DiscoverRecord>,
+  discoverMap: Map<number, DiscoverRecord>,
 ): void {
   const squashMethod = neuron.findSquash();
   const inwardList = neuron.creature.inwardConnections(neuron.index);
@@ -36,31 +36,31 @@ export function record(
   const state = neuron.creature.state;
   const currentActivation = state.activations[neuron.index];
 
-  let discoverRecord = discoverMap.get(neuron.uuid);
+  let discoverRecord = discoverMap.get(neuron.id);
   const isNewRecord = discoverRecord === undefined;
   if (discoverRecord === undefined) {
     discoverRecord = {
       activation: currentActivation,
       errors: [],
     };
-    discoverMap.set(neuron.uuid, discoverRecord);
+    discoverMap.set(neuron.id, discoverRecord);
   }
 
   // DIAGNOSTIC: Log if we're accumulating excessive errors
   // Note: Errors accumulate from all paths (correct behaviour), but recursion should only happen once
   if (!isNewRecord && discoverRecord.errors.length > 200) {
     getLogger().warn(
-      `⚠️  PERFORMANCE: Neuron ${neuron.uuid} has ${discoverRecord.errors.length} accumulated errors`,
+      `⚠️  PERFORMANCE: Neuron ${neuron.id} has ${discoverRecord.errors.length} accumulated errors`,
     );
     getLogger().warn(
       `  Type: ${neuron.type}, Inward connections: ${listLength}`,
     );
     if (discoverRecord.errors.length > 500) {
       getLogger().error(
-        `❌ CRITICAL: Neuron ${neuron.uuid} has ${discoverRecord.errors.length} errors - likely infinite recursion!`,
+        `❌ CRITICAL: Neuron ${neuron.id} has ${discoverRecord.errors.length} errors - likely infinite recursion!`,
       );
       throw new TopologyError(
-        `Excessive error accumulation detected on neuron ${neuron.uuid}. ` +
+        `Excessive error accumulation detected on neuron ${neuron.id}. ` +
           `Got ${discoverRecord.errors.length} errors. ` +
           `This suggests infinite recursion in backpropagation.`,
         "EXCESSIVE_ERRORS",

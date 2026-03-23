@@ -72,7 +72,7 @@ Deno.test("DiscoverStructure.record aborts when timeout already expired", () => 
     undefined,
     STUB_DEPS,
   );
-  const neuronPromises = new Map<string, Promise<void>>();
+  const neuronPromises = new Map<number, Promise<void>>();
   discoverStructure.initialize(neuronPromises);
 
   // Force timeout to be in the past before recording begins.

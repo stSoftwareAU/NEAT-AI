@@ -188,13 +188,13 @@ Deno.test("buildCacheKey: coordinated-structural key is stable and order-sensiti
     operations: [
       {
         type: "removeSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-1",
+        fromNeuronId: 0,
+        toNeuronId: 5001,
       },
       {
         type: "addSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-1",
+        fromNeuronId: 0,
+        toNeuronId: 5001,
         weight: 0.9,
       },
     ],
@@ -206,14 +206,14 @@ Deno.test("buildCacheKey: coordinated-structural key is stable and order-sensiti
       // Same ops but different order.
       {
         type: "addSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-1",
+        fromNeuronId: 0,
+        toNeuronId: 5001,
         weight: 0.9,
       },
       {
         type: "removeSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-1",
+        fromNeuronId: 0,
+        toNeuronId: 5001,
       },
     ],
   };
@@ -257,8 +257,8 @@ Deno.test("buildCacheKey includes neuron details for add-neurons candidates", ()
       type: "add-neurons",
       description: "Add neuron",
       neuronDetails: {
-        fromNeuronUUID: "input-0",
-        toNeuronUUID: "output-0",
+        fromNeuronId: 0,
+        toNeuronId: -1,
         incomingWeight: 0.5,
         outgoingWeight: -0.3,
         bias: 0.1,
@@ -269,8 +269,8 @@ Deno.test("buildCacheKey includes neuron details for add-neurons candidates", ()
 
   const key = buildCacheKey(candidate);
   assert(key.includes("add-neurons"), "Key should include change type");
-  assert(key.includes("input-0"), "Key should include from neuron UUID");
-  assert(key.includes("output-0"), "Key should include to neuron UUID");
+  assert(key.includes("0"), "Key should include from neuron UUID");
+  assert(key.includes(String(-1)), "Key should include to neuron UUID");
   assert(key.includes("TANH"), "Key should include squash function");
 });
 
@@ -288,7 +288,7 @@ Deno.test("buildCacheKey handles remove-low-impact candidates", () => {
   assert(key.includes("remove-low-impact"), "Key should include change type");
   // The key should extract the neuron UUID from description
   assert(
-    key.includes("hidden-1"),
+    key.includes(String(5001)),
     "Key should include neuron UUID from description",
   );
 });
@@ -428,14 +428,14 @@ Deno.test("buildCacheKey works for remove-synapse with synapseDetails", () => {
     creature: creature1,
     change: {
       type: "remove-synapse",
-      synapseDetails: { fromNeuronUUID: "input-0", toNeuronUUID: "hidden-1" },
+      synapseDetails: { fromNeuronId: 0, toNeuronId: 5001 },
     },
   };
   const candidate2: DiscoveryCandidate = {
     creature: creature2,
     change: {
       type: "remove-synapse",
-      synapseDetails: { fromNeuronUUID: "hidden-1", toNeuronUUID: "output-0" },
+      synapseDetails: { fromNeuronId: 5001, toNeuronId: -1 },
     },
   };
 
@@ -444,6 +444,6 @@ Deno.test("buildCacheKey works for remove-synapse with synapseDetails", () => {
 
   assert(key1 !== key2, "Different synapses should have different cache keys");
   assert(key1.includes("remove-synapse"), "Key should include type");
-  assert(key1.includes("input-0"), "Key should include fromNeuronUUID");
-  assert(key1.includes("hidden-1"), "Key should include toNeuronUUID");
+  assert(key1.includes("0"), "Key should include fromNeuronId");
+  assert(key1.includes(String(5001)), "Key should include toNeuronId");
 });

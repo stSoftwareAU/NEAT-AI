@@ -59,7 +59,7 @@ Deno.test({
       60,
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
@@ -148,7 +148,7 @@ Deno.test({
       60,
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
@@ -254,7 +254,7 @@ Deno.test({
       60,
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);

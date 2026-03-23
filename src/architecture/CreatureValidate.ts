@@ -21,8 +21,7 @@ import {
   TOPOLOGY_SORT_ERROR_TO,
 } from "../wasm/WasmTopologyOps.ts";
 
-const MAX_NEURON_UUID_LENGTH = 256;
-const VALID_NEURON_UUID_PATTERN = /^[A-Za-z0-9-]+$/;
+const MAX_NEURON_ID = 2_147_483_647; // int32 max
 
 /**
  * Validate the creature
@@ -82,39 +81,33 @@ export function creatureValidate(
   };
 
   let outputIndx = 0;
-  const UUIDs = new Set<string>();
+  const neuronIds = new Set<number>();
   creature.neurons.forEach((neuron, indx) => {
-    const uuid = neuron.uuid;
-    if (!uuid) {
-      throw new ValidationError(`${neuron.ID()}) no UUID`, "OTHER");
+    const id = neuron.id;
+    if (id === undefined || id === null) {
+      throw new ValidationError(`${neuron.ID()}) no id`, "OTHER");
     }
-    if (uuid.length > MAX_NEURON_UUID_LENGTH) {
+    // Issue #1958: Output neurons have negative IDs (-(outputIndex + 1))
+    if (!Number.isInteger(id) || id > MAX_NEURON_ID) {
       debugWrite(creature);
       throw new ValidationError(
-        `${neuron.ID()}) UUID length ${uuid.length} exceeds maximum allowed ${MAX_NEURON_UUID_LENGTH}`,
+        `${neuron.ID()}) invalid neuron id: ${id}`,
         "OTHER",
       );
     }
-    if (!VALID_NEURON_UUID_PATTERN.test(uuid)) {
-      debugWrite(creature);
-      throw new ValidationError(
-        `${neuron.ID()}) invalid UUID characters: ${uuid}`,
-        "OTHER",
-      );
-    }
-    if (UUIDs.has(uuid)) {
+    if (neuronIds.has(id)) {
       debugWrite(creature);
 
       throw new ValidationError(
-        `${neuron.ID()}) duplicate UUID: ${uuid}`,
+        `${neuron.ID()}) duplicate neuron id: ${id}`,
         "OTHER",
       );
     }
-    if (uuid.startsWith("input-")) {
-      if (uuid !== "input-" + indx) {
+    if (neuron.type === "input") {
+      if (id !== indx) {
         debugWrite(creature);
         throw new ValidationError(
-          `${neuron.ID()}) invalid input UUID: ${uuid}`,
+          `${neuron.ID()}) invalid input neuron id: ${id}`,
           "OTHER",
         );
       }
@@ -128,19 +121,11 @@ export function creatureValidate(
     }
 
     if (neuron.type === "output") {
-      const expectedUUID = `output-${outputIndx}`;
       outputIndx++;
-      if (uuid !== expectedUUID) {
-        debugWrite(creature);
-        throw new ValidationError(
-          `${uuid}) invalid output UUID: ${uuid}`,
-          "OTHER",
-        );
-      }
     } else if (outputIndx) {
       debugWrite(creature);
       throw new ValidationError(
-        `${uuid}) type ${neuron.type} after output neuron`,
+        `${id}) type ${neuron.type} after output neuron`,
         "OTHER",
       );
     }
@@ -149,11 +134,11 @@ export function creatureValidate(
       debugWrite(creature);
 
       throw new ValidationError(
-        `${uuid}) input neuron after the maximum input neurons`,
+        `${id}) input neuron after the maximum input neurons`,
         "OTHER",
       );
     }
-    UUIDs.add(uuid);
+    neuronIds.add(id);
 
     if (neuron.squash === "IF" && indx > 2) {
       const toList = creature.inwardConnections(indx);
@@ -450,69 +435,69 @@ export function creatureValidate(
 
   if (creature.memetic) {
     const memetic = creature.memetic;
-    const uuidMap = new Map<string, number>();
+    const idMap = new Map<number, number>();
     creature.neurons.forEach((n, indx) => {
-      assert(n.uuid);
-      uuidMap.set(n.uuid, indx);
+      assert(n.id !== undefined);
+      idMap.set(n.id, indx);
     });
 
     const synapsesSet = new Set<string>();
     creature.synapses.forEach((s) => {
       synapsesSet.add(
-        `${creature.neurons[s.from].uuid}->${creature.neurons[s.to].uuid}`,
+        `${creature.neurons[s.from].id}->${creature.neurons[s.to].id}`,
       );
     });
 
-    for (const neuronUUID in memetic.biases) {
-      const neuronIndex = uuidMap.get(neuronUUID);
+    for (const neuronId in memetic.biases) {
+      const neuronIndex = idMap.get(Number(neuronId));
       if (neuronIndex === undefined) {
         throw new ValidationError(
-          `Neuron with UUID ${neuronUUID} not found in the creature.`,
+          `Neuron with id ${neuronId} not found in the creature.`,
           "MEMETIC",
         );
       }
     }
-    for (const synapseUUID in memetic.weights) {
-      const synapseIndex = uuidMap.get(synapseUUID);
+    for (const synapseId in memetic.weights) {
+      const synapseIndex = idMap.get(Number(synapseId));
       if (synapseIndex === undefined) {
         throw new ValidationError(
-          `Synapse with UUID ${synapseUUID} not found in the creature.`,
+          `Synapse with id ${synapseId} not found in the creature.`,
           "MEMETIC",
         );
       }
 
-      const memeticWeights = memetic.weights[synapseUUID];
+      const memeticWeights = memetic.weights[synapseId];
       if (!Array.isArray(memeticWeights)) {
         throw new ValidationError(
-          `Synapse with UUID ${synapseUUID} has invalid weights.`,
+          `Synapse with id ${synapseId} has invalid weights.`,
           "MEMETIC",
         );
       }
       memeticWeights.forEach((weight, indx) => {
-        if (weight.toUUID === undefined) {
+        if (weight.toId === undefined) {
           throw new ValidationError(
-            `Memetic from UUID ${synapseUUID} to UUID ${weight.toUUID} is invalid.`,
+            `Memetic from id ${synapseId} to id ${weight.toId} is invalid.`,
             "MEMETIC",
           );
         }
         if (weight.weight === undefined) {
           throw new ValidationError(
-            `Memetic from UUID ${synapseUUID} to UUID ${weight.toUUID} has invalid weight at index ${indx}.`,
+            `Memetic from id ${synapseId} to id ${weight.toId} has invalid weight at index ${indx}.`,
             "MEMETIC",
           );
         }
-        const toIndex = uuidMap.get(weight.toUUID);
+        const toIndex = idMap.get(weight.toId);
 
         if (toIndex === undefined) {
           throw new ValidationError(
-            `Memetic from UUID ${synapseUUID} has no valid neuron.`,
+            `Memetic from id ${synapseId} has no valid neuron.`,
             "MEMETIC",
           );
         }
-        if (!synapsesSet.has(`${synapseUUID}->${weight.toUUID}`)) {
+        if (!synapsesSet.has(`${synapseId}->${weight.toId}`)) {
           debugWrite(creature);
           throw new ValidationError(
-            `Memetic from UUID ${synapseUUID} to UUID ${weight.toUUID} has no matching synapses.`,
+            `Memetic from id ${synapseId} to id ${weight.toId} has no matching synapses.`,
             "MEMETIC",
           );
         }

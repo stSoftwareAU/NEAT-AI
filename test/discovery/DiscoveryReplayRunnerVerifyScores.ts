@@ -120,7 +120,7 @@ Deno.test("DiscoveryReplayRunner: rejects stale 'better by cache metadata' candi
     },
     evaluateError: (c) => {
       const id = c.uuid ?? "";
-      if (id === "base") return Promise.resolve({ error: 0.2, score: 0.5 });
+      if (id === "") return Promise.resolve({ error: 0.2, score: 0.5 });
       if (id.endsWith("-stale")) {
         return Promise.resolve({ error: 0.21, score: 0.49 });
       }
@@ -178,7 +178,7 @@ Deno.test("DiscoveryReplayRunner: considers all-removals combo as a separate out
     },
     evaluateError: (c) => {
       const id = c.uuid ?? "";
-      if (id === "base") return Promise.resolve({ error: 0.1, score: 1.0 });
+      if (id === "") return Promise.resolve({ error: 0.1, score: 1.0 });
 
       // Singles: all succeed.
       if (id.endsWith("-r1")) {
@@ -259,7 +259,7 @@ Deno.test("DiscoveryReplayRunner: concurrency does not change which verified imp
     },
     evaluateError: async (c) => {
       const id = c.uuid ?? "";
-      if (id === "base") return { error: 0.1, score: 1.0 };
+      if (id === "") return { error: 0.1, score: 1.0 };
       if (id.endsWith("-a")) {
         // Slower on purpose so concurrency changes completion order.
         await delay(20);

@@ -71,8 +71,8 @@ Deno.test("CreativeThinkingClone: shallowClone produces equivalent structure to 
   // Verify neuron properties match
   for (let i = 0; i < shallowClone.neurons.length; i++) {
     assertEquals(
-      shallowClone.neurons[i].uuid,
-      jsonClone.neurons[i].uuid,
+      shallowClone.neurons[i].id,
+      jsonClone.neurons[i].id,
       `Neuron ${i} UUID should match`,
     );
     assertEquals(
@@ -121,7 +121,7 @@ Deno.test("CreativeThinkingClone: deleting memetic from clone does not affect or
   creatureValidate(original);
 
   // Get a real neuron UUID from the creature for the memetic data
-  const hiddenNeuronUUID = original.neurons[original.input].uuid;
+  const hiddenNeuronUUID = original.neurons[original.input].id;
   original.memetic = {
     generation: 5,
     weights: {},
@@ -216,7 +216,7 @@ Deno.test("CreativeThinkingClone: full creative thinking workflow preserves orig
   creatureValidate(fittest);
 
   // Use real neuron UUIDs for the memetic data
-  const hiddenNeuronUUID = fittest.neurons[fittest.input].uuid;
+  const hiddenNeuronUUID = fittest.neurons[fittest.input].id;
   fittest.memetic = {
     generation: 15,
     weights: {},

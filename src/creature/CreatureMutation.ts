@@ -170,7 +170,7 @@ export function fix(
         if (creature.DEBUG) {
           getLogger().debug(
             `fix() removing disconnected neuron ${pos} ${
-              creature.neurons[pos].uuid
+              creature.neurons[pos].id
             }`,
           );
         }

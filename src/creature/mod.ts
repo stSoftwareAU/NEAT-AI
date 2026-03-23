@@ -27,7 +27,7 @@ export {
   findInsertionPoint,
   getAvailableConnections,
   getConnectionSet,
-  getHiddenNeuronUUIDs,
+  getHiddenNeuronIds,
   getSynapse,
   hasConnection,
   inFocus,

@@ -44,7 +44,7 @@ function cloneCreatureExport(source: CreatureExport): CreatureExport {
   const neurons: NeuronExport[] = source.neurons.map((n) => {
     const cloned: NeuronExport = {
       type: n.type,
-      uuid: n.uuid,
+      id: n.id,
       bias: n.bias,
     };
     if (n.squash !== undefined) cloned.squash = n.squash;
@@ -57,8 +57,8 @@ function cloneCreatureExport(source: CreatureExport): CreatureExport {
   // Clone synapses with shallow copy of each synapse object
   const synapses: SynapseExport[] = source.synapses.map((s) => {
     const cloned: SynapseExport = {
-      fromUUID: s.fromUUID,
-      toUUID: s.toUUID,
+      fromId: s.fromId,
+      toId: s.toId,
       weight: s.weight,
     };
     if (s.type !== undefined) cloned.type = s.type;
@@ -113,27 +113,27 @@ export function compactCreature(
   const compactCreature = cloneCreatureExport(startExport);
 
   // Pre-allocate neuronMap with expected size for better performance
-  const neuronMap = new Map<string, NeuronExport>(
-    compactCreature.neurons.map((neuron) => [neuron.uuid, neuron]),
+  const neuronMap = new Map<number, NeuronExport>(
+    compactCreature.neurons.map((neuron) => [neuron.id!, neuron]),
   );
 
   // Pre-allocate connection maps and build in a single pass
-  const inwardConnections = new Map<string, SynapseExport[]>();
-  const outwardConnections = new Map<string, SynapseExport[]>();
+  const inwardConnections = new Map<number, SynapseExport[]>();
+  const outwardConnections = new Map<number, SynapseExport[]>();
 
   for (const synapse of compactCreature.synapses) {
-    const outList = outwardConnections.get(synapse.fromUUID);
+    const outList = outwardConnections.get(synapse.fromId!);
     if (outList) {
       outList.push(synapse);
     } else {
-      outwardConnections.set(synapse.fromUUID, [synapse]);
+      outwardConnections.set(synapse.fromId!, [synapse]);
     }
 
-    const inList = inwardConnections.get(synapse.toUUID);
+    const inList = inwardConnections.get(synapse.toId!);
     if (inList) {
       inList.push(synapse);
     } else {
-      inwardConnections.set(synapse.toUUID, [synapse]);
+      inwardConnections.set(synapse.toId!, [synapse]);
     }
   }
 
@@ -156,34 +156,34 @@ export function compactCreature(
     if (neuron.type !== "hidden") continue;
     if (neuron.squash !== COMPLEMENT.NAME) continue;
 
-    const indexByUUID = new Map<string, number>();
+    const indexByUUID = new Map<number, number>();
     for (let j = 0; j < compactCreature.neurons.length; j++) {
-      indexByUUID.set(compactCreature.neurons[j].uuid, j);
+      indexByUUID.set(compactCreature.neurons[j].id!, j);
     }
 
-    const inConns = inwardConnections.get(neuron.uuid) || [];
-    const outConns = outwardConnections.get(neuron.uuid) || [];
+    const inConns = inwardConnections.get(neuron.id!) || [];
+    const outConns = outwardConnections.get(neuron.id!) || [];
     if (inConns.length === 0) continue;
     if (outConns.length === 0) continue;
 
     // Conservative: only bypass when *all* downstream neurons are non-aggregate.
     // (We could partially bypass some outbounds while keeping the neuron for
     // aggregate consumers, but that is more complex and not required here.)
-    const toNeurons = outConns.map((c) => neuronMap.get(c.toUUID));
+    const toNeurons = outConns.map((c) => neuronMap.get(c.toId!));
     if (toNeurons.some((n) => !n)) continue;
     if (toNeurons.some((n) => isAggregationSquash(n!.squash))) continue;
 
     // Avoid introducing self-loops or invalid forward-only edges via bypass.
     let unsafe = false;
     for (const outConn of outConns) {
-      if (outConn.toUUID === neuron.uuid) {
+      if (outConn.toId === neuron.id!) {
         unsafe = true;
         break;
       }
 
       for (const inConn of inConns) {
         if (
-          inConn.fromUUID === outConn.toUUID || inConn.fromUUID === neuron.uuid
+          inConn.fromId === outConn.toId || inConn.fromId === neuron.id!
         ) {
           unsafe = true;
           break;
@@ -192,8 +192,8 @@ export function compactCreature(
         // If this creature is forward-only and feedbackLoop=false, avoid creating
         // any backward synapses during bypass.
         if (!feedbackLoop && creature.forwardOnly === true) {
-          const fromIndex = indexByUUID.get(inConn.fromUUID);
-          const toIndex = indexByUUID.get(outConn.toUUID);
+          const fromIndex = indexByUUID.get(inConn.fromId!);
+          const toIndex = indexByUUID.get(outConn.toId!);
           if (
             fromIndex !== undefined && toIndex !== undefined &&
             fromIndex > toIndex
@@ -209,7 +209,7 @@ export function compactCreature(
     if (unsafe) continue;
 
     for (const outConn of outConns) {
-      const toNeuron = neuronMap.get(outConn.toUUID)!;
+      const toNeuron = neuronMap.get(outConn.toId!)!;
 
       // Bias fold into downstream: bB += wAB*(1 - bA)
       toNeuron.bias += outConn.weight * (1 - neuron.bias);
@@ -219,14 +219,14 @@ export function compactCreature(
         const newWeight = (-outConn.weight) * inConn.weight;
 
         const existing = compactCreature.synapses.find((s) =>
-          s.fromUUID === inConn.fromUUID && s.toUUID === outConn.toUUID
+          s.fromId === inConn.fromId! && s.toId === outConn.toId!
         );
         if (existing) {
           existing.weight += newWeight;
         } else {
           compactCreature.synapses.push({
-            fromUUID: inConn.fromUUID,
-            toUUID: outConn.toUUID,
+            fromId: inConn.fromId!,
+            toId: outConn.toId!,
             weight: newWeight,
           });
         }
@@ -235,24 +235,24 @@ export function compactCreature(
 
     // Remove the COMPLEMENT neuron and all of its incident synapses.
     compactCreature.synapses = compactCreature.synapses.filter((s) =>
-      s.fromUUID !== neuron.uuid && s.toUUID !== neuron.uuid
+      s.fromId !== neuron.id! && s.toId !== neuron.id!
     );
     compactCreature.neurons = compactCreature.neurons.filter((n) =>
-      n.uuid !== neuron.uuid
+      n.id !== neuron.id!
     );
-    neuronMap.delete(neuron.uuid);
+    neuronMap.delete(neuron.id!);
 
     // Rebuild inward/outward maps after changes.
     inwardConnections.clear();
     outwardConnections.clear();
     compactCreature.synapses.forEach((synapse) => {
       outwardConnections.set(
-        synapse.fromUUID,
-        (outwardConnections.get(synapse.fromUUID) || []).concat(synapse),
+        synapse.fromId!,
+        (outwardConnections.get(synapse.fromId!) || []).concat(synapse),
       );
       inwardConnections.set(
-        synapse.toUUID,
-        (inwardConnections.get(synapse.toUUID) || []).concat(synapse),
+        synapse.toId!,
+        (inwardConnections.get(synapse.toId!) || []).concat(synapse),
       );
     });
 
@@ -263,15 +263,15 @@ export function compactCreature(
   for (const neuron of compactCreature.neurons) {
     if (neuron.type !== "hidden") continue;
 
-    const inConns = inwardConnections.get(neuron.uuid) || [];
-    const outConns = outwardConnections.get(neuron.uuid) || [];
+    const inConns = inwardConnections.get(neuron.id!) || [];
+    const outConns = outwardConnections.get(neuron.id!) || [];
 
     if (inConns.length === 1 && outConns.length === 1) {
       const [inConn] = inConns;
       const [outConn] = outConns;
 
-      const fromNeuron = neuronMap.get(inConn.fromUUID);
-      const toNeuron = neuronMap.get(outConn.toUUID);
+      const fromNeuron = neuronMap.get(inConn.fromId!);
+      const toNeuron = neuronMap.get(outConn.toId!);
 
       if (
         fromNeuron &&
@@ -279,11 +279,11 @@ export function compactCreature(
         neuron.squash === fromNeuron.squash &&
         (neuron.squash === IDENTITY.NAME ||
           neuron.squash === LOGISTIC.NAME) &&
-        inConn.fromUUID !== neuron.uuid &&
-        outConn.toUUID !== neuron.uuid
+        inConn.fromId !== neuron.id! &&
+        outConn.toId !== neuron.id!
       ) {
         const existingSynapse = compactCreature.synapses.find(
-          (s) => s.fromUUID === fromNeuron.uuid && s.toUUID === toNeuron.uuid,
+          (s) => s.fromId === fromNeuron.id! && s.toId === toNeuron.id!,
         );
 
         if (existingSynapse) continue; // Skip compaction if synapse already exists
@@ -306,27 +306,27 @@ export function compactCreature(
         // Add new synapse directly connecting fromNeuron to toNeuron
         compactCreature.synapses.push({
           weight: combinedWeight,
-          fromUUID: fromNeuron.uuid,
-          toUUID: toNeuron.uuid,
+          fromId: fromNeuron.id!,
+          toId: toNeuron.id!,
         });
 
         // Remove neuron from neurons list
         compactCreature.neurons = compactCreature.neurons.filter((n) =>
-          n.uuid !== neuron.uuid
+          n.id !== neuron.id!
         );
-        neuronMap.delete(neuron.uuid);
+        neuronMap.delete(neuron.id!);
 
         // Rebuild inward and outward maps after changes
         inwardConnections.clear();
         outwardConnections.clear();
         compactCreature.synapses.forEach((synapse) => {
           outwardConnections.set(
-            synapse.fromUUID,
-            (outwardConnections.get(synapse.fromUUID) || []).concat(synapse),
+            synapse.fromId!,
+            (outwardConnections.get(synapse.fromId!) || []).concat(synapse),
           );
           inwardConnections.set(
-            synapse.toUUID,
-            (inwardConnections.get(synapse.toUUID) || []).concat(synapse),
+            synapse.toId!,
+            (inwardConnections.get(synapse.toId!) || []).concat(synapse),
           );
         });
 
@@ -354,9 +354,9 @@ export function compactCreature(
   /** If not feedback loop, remove synapses that are going backwards */
   if (!feedbackLoop) {
     // Create a map of neuron UUIDs to their indices for quick lookup
-    const neuronIndexMap = new Map<string, number>();
+    const neuronIndexMap = new Map<number, number>();
     compactCreature.neurons.forEach((neuron, index) => {
-      neuronIndexMap.set(neuron.uuid, index);
+      neuronIndexMap.set(neuron.id!, index);
     });
 
     // Create a set of synapses to remove
@@ -364,8 +364,8 @@ export function compactCreature(
 
     // Check each synapse
     compactCreature.synapses.forEach((synapse) => {
-      const fromIndex = neuronIndexMap.get(synapse.fromUUID);
-      const toIndex = neuronIndexMap.get(synapse.toUUID);
+      const fromIndex = neuronIndexMap.get(synapse.fromId!);
+      const toIndex = neuronIndexMap.get(synapse.toId!);
 
       // If the source neuron appears later in the array than the target neuron
       if (
@@ -483,11 +483,11 @@ function simplifyLargeWeights(exported: CreatureExport): boolean {
   // is purely a performance guard.
   const IMBALANCE_RATIO = 1_000;
 
-  const inward = new Map<string, SynapseExport[]>();
-  const outward = new Map<string, SynapseExport[]>();
+  const inward = new Map<number, SynapseExport[]>();
+  const outward = new Map<number, SynapseExport[]>();
   for (const s of exported.synapses) {
-    outward.set(s.fromUUID, (outward.get(s.fromUUID) ?? []).concat(s));
-    inward.set(s.toUUID, (inward.get(s.toUUID) ?? []).concat(s));
+    outward.set(s.fromId!, (outward.get(s.fromId!) ?? []).concat(s));
+    inward.set(s.toId!, (inward.get(s.toId!) ?? []).concat(s));
   }
 
   let changed = false;
@@ -497,8 +497,8 @@ function simplifyLargeWeights(exported: CreatureExport): boolean {
     if (neuron.type !== "hidden") continue;
     if (!neuron.squash || !candidateSquashes.has(neuron.squash)) continue;
 
-    const inConns = inward.get(neuron.uuid) ?? [];
-    const outConns = outward.get(neuron.uuid) ?? [];
+    const inConns = inward.get(neuron.id!) ?? [];
+    const outConns = outward.get(neuron.id!) ?? [];
     if (inConns.length === 0) continue;
     if (outConns.length === 0) continue;
 

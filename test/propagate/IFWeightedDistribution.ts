@@ -100,7 +100,7 @@ Deno.test("IF: error distribution proportional to activation magnitudes", () => 
   const exportBefore = creature.exportJSON();
   const weightsBefore = new Map<string, number>();
   for (const s of exportBefore.synapses) {
-    const key = `${s.fromUUID}->${s.toUUID}:${s.type ?? "default"}`;
+    const key = `${s.fromId}->${s.toId}:${s.type ?? "default"}`;
     weightsBefore.set(key, s.weight);
   }
 
@@ -115,17 +115,17 @@ Deno.test("IF: error distribution proportional to activation magnitudes", () => 
   const exportAfter = trainedCreature.exportJSON();
   const weightsAfter = new Map<string, number>();
   for (const s of exportAfter.synapses) {
-    const key = `${s.fromUUID}->${s.toUUID}:${s.type ?? "default"}`;
+    const key = `${s.fromId}->${s.toId}:${s.type ?? "default"}`;
     weightsAfter.set(key, s.weight);
   }
 
   const largeDelta = Math.abs(
-    (weightsAfter.get("hidden-a->output-0:positive") ?? 0) -
-      (weightsBefore.get("hidden-a->output-0:positive") ?? 0),
+    (weightsAfter.get(String(9486)) ?? 0) -
+      (weightsBefore.get(String(9486)) ?? 0),
   );
   const smallDelta = Math.abs(
-    (weightsAfter.get("hidden-b->output-0:positive") ?? 0) -
-      (weightsBefore.get("hidden-b->output-0:positive") ?? 0),
+    (weightsAfter.get(String(9444)) ?? 0) -
+      (weightsBefore.get(String(9444)) ?? 0),
   );
 
   // The connection with larger activation (hidden-a) should absorb more error

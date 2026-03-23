@@ -222,13 +222,13 @@ Deno.test("Gradient accumulation - weight update magnitude: high vs low fan-out"
   // Record original weights for the two key synapses.
   const lowFanSynapseIdx = creature.synapses.findIndex(
     (s) =>
-      creature.neurons[s.from].uuid === "input-0" &&
-      creature.neurons[s.to].uuid === "low-fan",
+      creature.neurons[s.from].id === 0 &&
+      creature.neurons[s.to].id === 9376,
   );
   const highFanSynapseIdx = creature.synapses.findIndex(
     (s) =>
-      creature.neurons[s.from].uuid === "input-0" &&
-      creature.neurons[s.to].uuid === "high-fan",
+      creature.neurons[s.from].id === 0 &&
+      creature.neurons[s.to].id === 9244,
   );
 
   assert(lowFanSynapseIdx >= 0, "Should find low-fan synapse");
@@ -719,8 +719,8 @@ Deno.test("Gradient accumulation - symmetric fan-out yields similar error", () =
   creature.propagate(new Float32Array([0.5]), config, sparseConfig);
 
   // Find sym-a and sym-b neuron indices.
-  const symAIdx = creature.neurons.findIndex((n) => n.uuid === "sym-a");
-  const symBIdx = creature.neurons.findIndex((n) => n.uuid === "sym-b");
+  const symAIdx = creature.neurons.findIndex((n) => n.id === 9293);
+  const symBIdx = creature.neurons.findIndex((n) => n.id === 9277);
   assert(symAIdx >= 0, "Should find sym-a neuron");
   assert(symBIdx >= 0, "Should find sym-b neuron");
 

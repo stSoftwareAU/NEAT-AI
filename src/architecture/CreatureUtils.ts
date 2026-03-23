@@ -82,12 +82,12 @@ export class CreatureUtil {
       const json = creature.exportJSON();
 
       // Sort neurons and synapses for consistent UUID generation
-      json.neurons.sort((a, b) => a.uuid.localeCompare(b.uuid));
+      json.neurons.sort((a, b) => a.id! - b.id!);
       json.synapses.sort((a, b) => {
-        if (a.fromUUID === b.fromUUID) {
-          return a.toUUID.localeCompare(b.toUUID);
+        if (a.fromId === b.fromId) {
+          return a.toId! - b.toId!;
         } else {
-          return a.fromUUID.localeCompare(b.fromUUID);
+          return a.fromId! - b.fromId!;
         }
       });
 
@@ -154,26 +154,26 @@ export class CreatureUtil {
 
       // Extract topology-only information from neurons (ignoring bias and tags)
       const topologyNeurons = json.neurons.map((n) => ({
-        uuid: n.uuid,
+        id: n.id,
         type: n.type,
         squash: n.squash || "",
       }));
 
-      // Sort neurons by UUID for consistent hash generation
-      topologyNeurons.sort((a, b) => a.uuid.localeCompare(b.uuid));
+      // Sort neurons by ID for consistent hash generation
+      topologyNeurons.sort((a, b) => a.id! - b.id!);
 
       // Extract topology-only information from synapses (ignoring weight and tags)
       const topologySynapses = json.synapses.map((s) => ({
-        fromUUID: s.fromUUID,
-        toUUID: s.toUUID,
+        fromId: s.fromId,
+        toId: s.toId,
       }));
 
       // Sort synapses for consistent hash generation
       topologySynapses.sort((a, b) => {
-        if (a.fromUUID === b.fromUUID) {
-          return a.toUUID.localeCompare(b.toUUID);
+        if (a.fromId === b.fromId) {
+          return a.toId! - b.toId!;
         } else {
-          return a.fromUUID.localeCompare(b.fromUUID);
+          return a.fromId! - b.fromId!;
         }
       });
 
