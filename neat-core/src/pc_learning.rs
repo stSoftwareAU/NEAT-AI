@@ -14,8 +14,6 @@
 //! Matches the TypeScript reference implementation in
 //! src/predictiveCoding/PredictiveCodingLearning.ts.
 
-use wasm_bindgen::prelude::*;
-
 use crate::derivative::apply_derivative;
 use crate::pc_inference::PredictiveCodingEngine;
 
@@ -79,10 +77,9 @@ impl PredictiveCodingEngine {
 }
 
 // ---------------------------------------------------------------------------
-// WASM bindings for gradient computation
+// Packed gradient computation
 // ---------------------------------------------------------------------------
 
-#[wasm_bindgen]
 impl PredictiveCodingEngine {
     /// Computes weight and bias gradients from settled inference state.
     ///
@@ -97,7 +94,6 @@ impl PredictiveCodingEngine {
     /// - [1]: num_weight_entries (number of weight delta triples)
     /// - [2..2+num_non_inputs): bias deltas
     /// - [2+num_non_inputs..]: weight delta triples (neuron_rel_idx, conn_local_idx, delta)
-    #[wasm_bindgen]
     pub fn compute_gradients_wasm(
         &self,
         latents: &[f32],

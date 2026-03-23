@@ -3,9 +3,6 @@
 //! This module provides the CompiledNetwork struct which represents a neural network
 //! compiled for efficient activation in WASM. Issue #1116, #1121, #1125, #1173, #1175, #1177.
 
-use js_sys::Float32Array;
-use wasm_bindgen::prelude::*;
-
 use crate::range::apply_limit_range;
 use crate::simd::{
     weighted_sum_no_bias_simd, weighted_sum_of_squares_simd, weighted_sum_of_squares_v2_simd,
@@ -62,27 +59,25 @@ pub struct SynapseData {
 ///
 /// This compact format minimises memory access and enables efficient iteration.
 /// Issue #1175 - Uses typed structs for better cache locality and compiler optimisation.
-#[wasm_bindgen]
 pub struct CompiledNetwork {
     /// Total number of neurons (including input)
-    pub(crate) num_neurons: usize,
+    pub num_neurons: usize,
     /// Number of input neurons
-    pub(crate) num_inputs: usize,
+    pub num_inputs: usize,
     /// Neuron metadata using typed struct for cache efficiency
-    pub(crate) neurons: Vec<NeuronData>,
+    pub neurons: Vec<NeuronData>,
     /// Synapse data using typed struct for cache efficiency
-    pub(crate) synapses: Vec<SynapseData>,
+    pub synapses: Vec<SynapseData>,
     /// Activation buffer - reused across calls
-    pub(crate) activations: Vec<f32>,
+    pub activations: Vec<f32>,
     /// Pre-allocated buffer for hint values in activate_and_trace
     /// Issue #1173 - Pre-allocate Vec<f32> buffers in CompiledNetwork struct
-    pub(crate) hint_values_buffer: Vec<f32>,
+    pub hint_values_buffer: Vec<f32>,
     /// Pre-allocated buffer for trace data in activate_and_trace
     /// Issue #1173 - Eliminates heap allocation per call
-    pub(crate) trace_data_buffer: Vec<f32>,
+    pub trace_data_buffer: Vec<f32>,
 }
 
-#[wasm_bindgen]
 impl CompiledNetwork {
     /// Reset non-input activations to 0.0.
     ///
@@ -90,7 +85,6 @@ impl CompiledNetwork {
     /// `feedbackLoop=false` (stateless activation). Without this, the reused
     /// activation buffer can leak state between calls, effectively behaving
     /// like a feedback loop.
-    #[wasm_bindgen]
     pub fn reset_state(&mut self) {
         for i in self.num_inputs..self.num_neurons {
             self.activations[i] = 0.0;
@@ -112,10 +106,9 @@ impl CompiledNetwork {
     ///     - u8: synapse_type
     ///     - u8: padding
     ///     - f64: weight
-    #[wasm_bindgen(constructor)]
-    pub fn new(data: &[u8]) -> Result<CompiledNetwork, JsValue> {
+    pub fn new(data: &[u8]) -> Result<CompiledNetwork, String> {
         if data.len() < 8 {
-            return Err(JsValue::from_str("Data too short for header"));
+            return Err("Data too short for header".to_string());
         }
 
         let num_neurons = u32::from_le_bytes([data[0], data[1], data[2], data[3]]) as usize;
@@ -129,7 +122,7 @@ impl CompiledNetwork {
         for _ in num_inputs..num_neurons {
             // Neuron header is 12 bytes with f64 bias.
             if offset + 12 > data.len() {
-                return Err(JsValue::from_str("Data too short for neuron"));
+                return Err("Data too short for neuron".to_string());
             }
 
             let bias = f64::from_le_bytes([
@@ -152,7 +145,7 @@ impl CompiledNetwork {
             for _ in 0..num_synapse {
                 // Synapse record is 12 bytes with f64 weight.
                 if offset + 12 > data.len() {
-                    return Err(JsValue::from_str("Data too short for synapse"));
+                    return Err("Data too short for synapse".to_string());
                 }
 
                 let from_index = u16::from_le_bytes([data[offset], data[offset + 1]]) as u32;
@@ -209,7 +202,6 @@ impl CompiledNetwork {
     /// Returns the output values
     /// Issue #1175 - Uses typed structs for better cache locality
     /// Issue #1177 - Inlines common squash functions to avoid function call overhead
-    #[wasm_bindgen]
     pub fn activate(&mut self, input: &[f32], num_outputs: usize) -> Vec<f32> {
         // Copy input values to activation buffer
         let input_len = input.len().min(self.num_inputs);
@@ -360,25 +352,6 @@ impl CompiledNetwork {
         output_slice.to_vec()
     }
 
-    /// Activate the network and return a zero-copy Float32Array view over WASM memory.
-    ///
-    /// IMPORTANT: The returned Float32Array aliases the network's internal activation buffer.
-    /// It will be overwritten by subsequent activations of the same network instance.
-    ///
-    /// This is intended for high-throughput scoring where the caller consumes outputs
-    /// immediately and does not retain references across calls.
-    #[wasm_bindgen]
-    pub fn activate_view(&mut self, input: &[f32], num_outputs: usize) -> Float32Array {
-        // Reuse the normal activation path (f32 accumulation)
-        let _ = self.activate(input, num_outputs);
-
-        let output_start = self.num_neurons - num_outputs;
-        let output_slice = &self.activations[output_start..];
-        // SAFETY: `output_slice` points into self.activations, which is stable and
-        // not reallocated after construction. JS must not hold the view across calls.
-        unsafe { Float32Array::view(output_slice) }
-    }
-
     /// Activate the network with the given input values, writing to a pre-allocated output buffer
     /// Issue #1171 - Avoids per-call Float32Array allocation overhead
     ///
@@ -392,7 +365,6 @@ impl CompiledNetwork {
     ///
     /// # Panics
     /// Panics if the output buffer length doesn't match num_outputs
-    #[wasm_bindgen]
     pub fn activate_into(&mut self, input: &[f32], output: &mut [f32]) {
         let num_outputs = output.len();
 
@@ -545,19 +517,16 @@ impl CompiledNetwork {
     }
 
     /// Get the number of neurons in the network
-    #[wasm_bindgen(getter)]
     pub fn num_neurons(&self) -> usize {
         self.num_neurons
     }
 
     /// Get the number of input neurons
-    #[wasm_bindgen(getter)]
     pub fn num_inputs(&self) -> usize {
         self.num_inputs
     }
 
     /// Get the number of synapses in the network
-    #[wasm_bindgen(getter)]
     pub fn num_synapses(&self) -> usize {
         self.synapses.len()
     }
@@ -584,7 +553,6 @@ impl CompiledNetwork {
     ///     - For MINIMUM/MAXIMUM: winning_local_synapse_index (as f32)
     ///     - For IF: branch_taken (1.0 = positive, 0.0 = negative)
     ///   - Terminated by -1.0
-    #[wasm_bindgen]
     pub fn activate_and_trace(&mut self, input: &[f32], num_outputs: usize) -> Vec<f32> {
         // Copy input values to activation buffer
         let input_len = input.len().min(self.num_inputs);
@@ -824,7 +792,6 @@ impl CompiledNetwork {
     /// # Returns
     /// Four Vec<f32>, one per record. Each has the same format as `activate_and_trace`:
     /// [outputs..., activations..., hints..., trace_data...]
-    #[wasm_bindgen]
     pub fn activate_and_trace_batch_4way(
         &self,
         inputs: &[f32],

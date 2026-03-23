@@ -5,4 +5,9 @@ logback.log
 !.gitignore
 coverage/
 !.github
+!.cargo
 on/
+
+# Cargo workspace build artefacts (Issue #1964)
+/target/
+/Cargo.lock

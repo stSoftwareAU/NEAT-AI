@@ -2,7 +2,7 @@
 name = "wasm_activation"
 version = "0.1.0"
 edition = "2024"
-description = "WASM module for NEAT-AI creature activation - prototype for Issue #1116"
+description = "WASM bindings for NEAT-AI creature activation - delegates to neat-core for computation"
 
 [lib]
 crate-type = ["cdylib"]
@@ -10,13 +10,7 @@ crate-type = ["cdylib"]
 [dependencies]
 wasm-bindgen = "0.2.114"
 js-sys = "0.3.91"
-
-[profile.release]
-opt-level = 3
-lto = true
-
-[profile.release.package."*"]
-opt-level = 3
+neat-core = { path = "../neat-core" }
 
 # Issue #1178 - WASM SIMD support
 # Note: SIMD is enabled via RUSTFLAGS in build.sh, not here.

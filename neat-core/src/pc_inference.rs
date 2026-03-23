@@ -17,8 +17,6 @@
 //! Matches the TypeScript reference implementation in
 //! src/predictiveCoding/PredictiveCodingInference.ts within f32 precision.
 
-use wasm_bindgen::prelude::*;
-
 use crate::derivative::apply_derivative;
 use crate::squash::{apply_squash, SquashType};
 
@@ -80,18 +78,17 @@ pub struct PcInferenceResult {
 /// Holds the network topology and configuration for running the iterative
 /// inference (settling) loop. The engine is constructed once from a creature's
 /// topology and can be reused for multiple inference calls.
-#[wasm_bindgen]
 pub struct PredictiveCodingEngine {
     /// Total number of neurons (including inputs).
-    pub(crate) num_neurons: usize,
+    pub num_neurons: usize,
     /// Number of input neurons.
-    pub(crate) num_inputs: usize,
+    pub num_inputs: usize,
     /// Number of output neurons.
-    pub(crate) num_outputs: usize,
+    pub num_outputs: usize,
     /// Non-input neuron metadata.
-    pub(crate) neurons: Vec<PcNeuron>,
+    pub neurons: Vec<PcNeuron>,
     /// Inward connections (synapses) for all non-input neurons, packed.
-    pub(crate) connections: Vec<PcConnection>,
+    pub connections: Vec<PcConnection>,
     /// Outward connections from each neuron (indexed by full neuron index).
     /// Each entry is a list of (target_neuron_index, weight).
     outward_connections: Vec<Vec<PcOutwardConnection>>,
@@ -341,11 +338,6 @@ impl PredictiveCodingEngine {
     }
 }
 
-// ---------------------------------------------------------------------------
-// WASM bindings
-// ---------------------------------------------------------------------------
-
-#[wasm_bindgen]
 impl PredictiveCodingEngine {
     /// Creates a new PredictiveCodingEngine from serialised topology data.
     ///
@@ -364,10 +356,9 @@ impl PredictiveCodingEngine {
     ///   - For each connection:
     ///     - u16: from_index
     ///     - f32: weight (as 4 bytes, little-endian)
-    #[wasm_bindgen(constructor)]
-    pub fn new(data: &[u8]) -> Result<PredictiveCodingEngine, JsValue> {
+    pub fn new(data: &[u8]) -> Result<PredictiveCodingEngine, String> {
         if data.len() < 24 {
-            return Err(JsValue::from_str("Data too short for PC engine header"));
+            return Err("Data too short for PC engine header".to_string());
         }
 
         let num_inputs =
@@ -390,7 +381,7 @@ impl PredictiveCodingEngine {
 
         for _ in 0..num_non_inputs {
             if offset + 8 > data.len() {
-                return Err(JsValue::from_str("Data too short for PC neuron"));
+                return Err("Data too short for PC neuron".to_string());
             }
 
             let bias = f32::from_le_bytes([
@@ -409,7 +400,7 @@ impl PredictiveCodingEngine {
 
             for _ in 0..num_conn {
                 if offset + 6 > data.len() {
-                    return Err(JsValue::from_str("Data too short for PC connection"));
+                    return Err("Data too short for PC connection".to_string());
                 }
 
                 let from = u16::from_le_bytes([data[offset], data[offset + 1]]) as usize;
@@ -460,7 +451,6 @@ impl PredictiveCodingEngine {
     /// - [6+num_neurons..6+num_neurons+num_non_inputs): predictions
     /// - [6+num_neurons+num_non_inputs..6+num_neurons+2*num_non_inputs): errors
     /// - [remaining]: energy history
-    #[wasm_bindgen]
     pub fn infer_wasm(&self, input: &[f32], targets: Option<Vec<f32>>) -> Vec<f32> {
         let tgt_ref = targets.as_deref();
         let result = self.infer(input, tgt_ref);
@@ -505,7 +495,6 @@ impl PredictiveCodingEngine {
     /// activate_and_trace_batch_4way pattern):
     /// - [0..num_samples): per-record lengths
     /// - Then each record in infer_wasm format
-    #[wasm_bindgen]
     pub fn infer_batch_wasm(
         &self,
         inputs: &[f32],
@@ -575,19 +564,16 @@ impl PredictiveCodingEngine {
     }
 
     /// Get the number of neurons in the engine.
-    #[wasm_bindgen(getter)]
     pub fn num_neurons(&self) -> usize {
         self.num_neurons
     }
 
     /// Get the number of input neurons.
-    #[wasm_bindgen(getter)]
     pub fn num_inputs(&self) -> usize {
         self.num_inputs
     }
 
     /// Get the number of output neurons.
-    #[wasm_bindgen(getter)]
     pub fn num_outputs(&self) -> usize {
         self.num_outputs
     }
