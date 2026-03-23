@@ -1,0 +1,8 @@
+# Cargo configuration for NEAT-AI workspace
+# Issue #1964 - SIMD feature flags for cross-target compilation
+
+# Enable WASM SIMD128 and relaxed-SIMD for the wasm32 target only.
+# This avoids "not a recognised feature for this target" errors when
+# Cargo builds host-side crates (build scripts, procedural macros).
+[target.wasm32-unknown-unknown]
+rustflags = ["-Ctarget-feature=+simd128,+relaxed-simd"]

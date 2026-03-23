@@ -6,8 +6,6 @@
 //! 2. Weight-based fallback when activations are near zero
 //! 3. Share calculation with floating-point residue redistribution
 
-use wasm_bindgen::prelude::*;
-
 /// Planck constant for floating-point comparisons (matches TypeScript default).
 const PLANK_CONSTANT: f32 = 1e-12;
 
@@ -256,7 +254,6 @@ pub fn apply_distribute_elastic_error(
 ///
 /// # Returns
 /// Vec<f32> of error shares, one per link. Sum equals `error`.
-#[wasm_bindgen]
 pub fn distribute_elastic_error(
     error: f32,
     activations: &[f32],

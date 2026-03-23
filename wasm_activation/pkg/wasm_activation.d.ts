@@ -2,1362 +2,279 @@
 /* eslint-disable */
 
 /**
- * Compiled network data structure
+ * WASM binding wrapper around `neat_core::CompiledNetwork`.
  *
- * Format (Issue #1125 - updated to support aggregate functions):
- * - Header: [num_neurons: u32, num_inputs: u32]
- * - Neuron data: For each neuron after inputs:
- *   - [bias: f64, squash_type: u8, is_constant: u8, num_synapses: u16]
- *   - Connections: [from_index: u16, synapse_type: u8, padding: u8, weight: f64] * num_connections
- *
- * Synapse types (for IF activation):
- *   - 0: Standard/Positive (used in weighted sum or as positive branch for IF)
- *   - 1: Condition (for IF: summed to determine branch)
- *   - 2: Negative (for IF: used when condition <= 0)
- *   - 3: Positive (explicit, same as Standard for IF)
- *
- * This compact format minimises memory access and enables efficient iteration.
- * Issue #1175 - Uses typed structs for better cache locality and compiler optimisation.
+ * This struct holds the pure-Rust network and exposes its methods via
+ * `#[wasm_bindgen]` for JavaScript consumption.
  */
 export class CompiledNetwork {
-  free(): void;
-  [Symbol.dispose](): void;
-  /**
-   * Activate the network with the given input values
-   * Returns the output values
-   * Issue #1175 - Uses typed structs for better cache locality
-   * Issue #1177 - Inlines common squash functions to avoid function call overhead
-   */
-  activate(input: Float32Array, num_outputs: number): Float32Array;
-  /**
-   * Activate the network with tracing for backpropagation support
-   * Issue #1121 - WASM Migration Phase 4: activateAndTrace
-   * Issue #1173 - Pre-allocate Vec<f32> buffers in CompiledNetwork struct
-   * Issue #1175 - Uses typed structs for better cache locality
-   * Issue #1177 - Inlines common squash functions to avoid function call overhead
-   *
-   * Returns a combined result containing:
-   * - Output activation values (num_outputs floats)
-   * - All non-input neuron activations (for state.activations)
-   * - Pre-squash values (hintValues) for all non-input neurons
-   * - Trace data for aggregate functions
-   *
-   * The result format is a Float32Array:
-   * - [0..num_outputs): output activation values
-   * - [num_outputs..num_outputs+num_non_inputs): post-squash activations
-   * - [num_outputs+num_non_inputs..num_outputs+2*num_non_inputs): pre-squash values (hintValues)
-   * - [num_outputs+2*num_non_inputs..]: trace data encoded as:
-   *   - For each non-input neuron with aggregate squash:
-   *     - neuron_index (as f32, relative to input count)
-   *     - For MINIMUM/MAXIMUM: winning_local_synapse_index (as f32)
-   *     - For IF: branch_taken (1.0 = positive, 0.0 = negative)
-   *   - Terminated by -1.0
-   */
-  activate_and_trace(input: Float32Array, num_outputs: number): Float32Array;
-  /**
-   * Issue #1212 - Batch activate and trace for 4 records simultaneously.
-   *
-   * Processes 4 input records through the network in parallel, capturing trace
-   * data for backpropagation. Uses SIMD via `weighted_sum_simd_4records()` for
-   * standard squash functions.
-   *
-   * # Arguments
-   * * `inputs` - Packed input array: [input0..., input1..., input2..., input3...]
-   * * `input_size` - Number of input values per record
-   * * `num_outputs` - Number of output neurons
-   *
-   * # Returns
-   * Four Vec<f32>, one per record. Each has the same format as `activate_and_trace`:
-   * [outputs..., activations..., hints..., trace_data...]
-   */
-  activate_and_trace_batch_4way(
-    inputs: Float32Array,
-    input_size: number,
-    num_outputs: number,
-  ): Float32Array;
-  /**
-   * Activate the network with the given input values, writing to a pre-allocated output buffer
-   * Issue #1171 - Avoids per-call Float32Array allocation overhead
-   *
-   * This method writes directly to the caller's output buffer instead of allocating
-   * a new Float32Array on each call. For repeated activations (e.g., scoring millions
-   * of records), this eliminates allocation overhead and GC pressure.
-   *
-   * # Arguments
-   * * `input` - Input values slice
-   * * `output` - Pre-allocated output buffer to write results into
-   *
-   * # Panics
-   * Panics if the output buffer length doesn't match num_outputs
-   */
-  activate_into(input: Float32Array, output: Float32Array): void;
-  /**
-   * Activate the network and return a zero-copy Float32Array view over WASM memory.
-   *
-   * IMPORTANT: The returned Float32Array aliases the network's internal activation buffer.
-   * It will be overwritten by subsequent activations of the same network instance.
-   *
-   * This is intended for high-throughput scoring where the caller consumes outputs
-   * immediately and does not retain references across calls.
-   */
-  activate_view(input: Float32Array, num_outputs: number): Float32Array;
-  /**
-   * Create a new compiled network from serialised data
-   *
-   * Data format (all values little-endian):
-   * - u32: num_neurons
-   * - u32: num_inputs
-   * - For each non-input neuron:
-   *   - f32: bias
-   *   - u8: squash_type
-   *   - u8: is_constant (0 or 1)
-   *   - u16: num_synapses
-   *   - For each synapse:
-   *     - u16: from_index
-   *     - u8: synapse_type
-   *     - u8: padding
-   *     - f64: weight
-   */
-  constructor(data: Uint8Array);
-  /**
-   * Reset non-input activations to 0.0.
-   *
-   * This is important for parity with the JS implementation when
-   * `feedbackLoop=false` (stateless activation). Without this, the reused
-   * activation buffer can leak state between calls, effectively behaving
-   * like a feedback loop.
-   */
-  reset_state(): void;
-  /**
-   * Get the number of input neurons
-   */
-  readonly num_inputs: number;
-  /**
-   * Get the number of neurons in the network
-   */
-  readonly num_neurons: number;
-  /**
-   * Get the number of synapses in the network
-   */
-  readonly num_synapses: number;
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * Activate the network with the given input values.
+     */
+    activate(input: Float32Array, num_outputs: number): Float32Array;
+    /**
+     * Activate the network and return outputs + trace data.
+     */
+    activate_and_trace(input: Float32Array, num_outputs: number): Float32Array;
+    /**
+     * Batch activate 4 records simultaneously and return all outputs + trace data.
+     */
+    activate_and_trace_batch_4way(inputs: Float32Array, input_size: number, num_outputs: number): Float32Array;
+    /**
+     * Activate writing directly to a pre-allocated output buffer.
+     */
+    activate_into(input: Float32Array, output: Float32Array): void;
+    /**
+     * Activate the network and return a zero-copy Float32Array view over WASM memory.
+     *
+     * IMPORTANT: The returned Float32Array aliases the network's internal activation buffer.
+     * It will be overwritten by subsequent activations of the same network instance.
+     */
+    activate_view(input: Float32Array, num_outputs: number): Float32Array;
+    /**
+     * Create a new compiled network from serialised data.
+     */
+    constructor(data: Uint8Array);
+    /**
+     * Reset non-input activations to 0.0.
+     */
+    reset_state(): void;
+    /**
+     * Number of input neurons.
+     */
+    readonly num_inputs: number;
+    /**
+     * Number of neurons (including input).
+     */
+    readonly num_neurons: number;
+    /**
+     * Number of synapses.
+     */
+    readonly num_synapses: number;
 }
 
 /**
- * The Predictive Coding inference engine.
- *
- * Holds the network topology and configuration for running the iterative
- * inference (settling) loop. The engine is constructed once from a creature's
- * topology and can be reused for multiple inference calls.
+ * WASM binding wrapper around `neat_core::PredictiveCodingEngine`.
  */
 export class PredictiveCodingEngine {
-  free(): void;
-  [Symbol.dispose](): void;
-  /**
-   * Computes weight and bias gradients from settled inference state.
-   *
-   * # Arguments
-   * * `latents` - Float32Array of settled latent values (length = num_neurons).
-   * * `errors` - Float32Array of prediction errors for non-input neurons.
-   * * `learning_rate` - The learning rate for weight updates.
-   *
-   * # Returns
-   * Packed Float32Array:
-   * - [0]: num_non_inputs (number of bias deltas)
-   * - [1]: num_weight_entries (number of weight delta triples)
-   * - [2..2+num_non_inputs): bias deltas
-   * - [2+num_non_inputs..]: weight delta triples (neuron_rel_idx, conn_local_idx, delta)
-   */
-  compute_gradients_wasm(
-    latents: Float32Array,
-    errors: Float32Array,
-    learning_rate: number,
-  ): Float32Array;
-  /**
-   * Runs inference on a batch of samples.
-   *
-   * Input format: packed Float32Array [input0..., input1..., ...]
-   * Each input has `input_size` elements.
-   *
-   * Result format: packed with per-record length headers (same as
-   * activate_and_trace_batch_4way pattern):
-   * - [0..num_samples): per-record lengths
-   * - Then each record in infer_wasm format
-   */
-  infer_batch_wasm(
-    inputs: Float32Array,
-    input_size: number,
-    num_samples: number,
-    targets: Float32Array | null | undefined,
-    target_size: number,
-  ): Float32Array;
-  /**
-   * Runs inference and returns a packed result array.
-   *
-   * Input format: Float32Array of input values.
-   * Optional targets: Float32Array of target values for output neurons.
-   *
-   * Result format (Float32Array):
-   * - [0]: steps_used (as f32)
-   * - [1]: final_energy
-   * - [2]: converged (1.0 = true, 0.0 = false)
-   * - [3]: num_neurons
-   * - [4]: num_non_inputs
-   * - [5]: energy_history_length
-   * - [6..6+num_neurons): latent values
-   * - [6+num_neurons..6+num_neurons+num_non_inputs): predictions
-   * - [6+num_neurons+num_non_inputs..6+num_neurons+2*num_non_inputs): errors
-   * - [remaining]: energy history
-   */
-  infer_wasm(input: Float32Array, targets?: Float32Array | null): Float32Array;
-  /**
-   * Creates a new PredictiveCodingEngine from serialised topology data.
-   *
-   * Data format (all values little-endian):
-   * - u32: num_inputs
-   * - u32: num_outputs
-   * - u32: num_neurons_total (including inputs)
-   * - u32: inference_steps
-   * - f32: inference_rate
-   * - f32: energy_threshold
-   * - For each non-input neuron:
-   *   - f32: bias
-   *   - u8: squash_type
-   *   - u8: is_hidden (1 = hidden, 0 = output)
-   *   - u16: num_connections
-   *   - For each connection:
-   *     - u16: from_index
-   *     - f32: weight (as 4 bytes, little-endian)
-   */
-  constructor(data: Uint8Array);
-  /**
-   * Get the number of input neurons.
-   */
-  readonly num_inputs: number;
-  /**
-   * Get the number of neurons in the engine.
-   */
-  readonly num_neurons: number;
-  /**
-   * Get the number of output neurons.
-   */
-  readonly num_outputs: number;
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * Compute gradients and return packed result.
+     */
+    compute_gradients_wasm(latents: Float32Array, errors: Float32Array, learning_rate: number): Float32Array;
+    /**
+     * Batch inference for multiple samples.
+     */
+    infer_batch_wasm(inputs: Float32Array, input_size: number, num_samples: number, targets: Float32Array | null | undefined, target_size: number): Float32Array;
+    /**
+     * Run inference (iterative settling) and return packed results.
+     */
+    infer_wasm(input: Float32Array, targets?: Float32Array | null): Float32Array;
+    /**
+     * Create a new Predictive Coding engine from serialised data.
+     */
+    constructor(data: Uint8Array);
+    readonly num_inputs: number;
+    readonly num_neurons: number;
+    readonly num_outputs: number;
 }
 
-/**
- * Issue #1518 - Batch bias accumulation for 4 neurons.
- *
- * Processes 4 neurons in a single WASM call, returning a packed f64 array
- * with 3 values per neuron (12 total). The caller unpacks these into the
- * corresponding NeuronState objects.
- *
- * # Arguments
- * * `target_pre_activations` - 4 target pre-activation values
- * * `pre_activations` - 4 current pre-activation values
- * * `current_biases` - 4 current neuron biases
- * * `plank_constant` - Minimum unit threshold
- * * `learning_rate` - Learning rate for bias adjustment
- * * `max_bias_adj_scale` - Maximum bias adjustment scale
- * * `limit_bias_scale` - Global bias scale limit
- *
- * # Returns
- * Float64Array with 12 values (3 per neuron):
- *   [count, totalBias, totalAdjustedBias] × 4
- */
-export function accumulate_bias_batch_4way(
-  target_pre_activations: Float64Array,
-  pre_activations: Float64Array,
-  current_biases: Float64Array,
-  plank_constant: number,
-  learning_rate: number,
-  max_bias_adj_scale: number,
-  limit_bias_scale: number,
-): Float64Array;
+export function accumulate_bias_batch_4way(target_pre_activations: Float64Array, pre_activations: Float64Array, current_biases: Float64Array, plank_constant: number, learning_rate: number, max_bias_adj_scale: number, limit_bias_scale: number): Float64Array;
+
+export function accumulate_bias_batch_8way(target_pre_activations: Float64Array, pre_activations: Float64Array, current_biases: Float64Array, plank_constant: number, learning_rate: number, max_bias_adj_scale: number, limit_bias_scale: number): Float64Array;
+
+export function accumulate_bias_persistent_4way(start_index: number, target_pre_activations: Float64Array, pre_activations: Float64Array, current_biases: Float64Array, plank_constant: number, learning_rate: number, max_bias_adj_scale: number, limit_bias_scale: number): void;
+
+export function accumulate_bias_persistent_8way(start_index: number, target_pre_activations: Float64Array, pre_activations: Float64Array, current_biases: Float64Array, plank_constant: number, learning_rate: number, max_bias_adj_scale: number, limit_bias_scale: number): void;
+
+export function accumulate_weight_batch_4way(current_weights: Float64Array, target_values: Float64Array, activations: Float64Array, plank_constant: number, learning_rate: number, max_weight_adj_scale: number, limit_weight_scale: number): Float64Array;
+
+export function accumulate_weight_batch_8way(current_weights: Float64Array, target_values: Float64Array, activations: Float64Array, plank_constant: number, learning_rate: number, max_weight_adj_scale: number, limit_weight_scale: number): Float64Array;
+
+export function accumulate_weight_persistent_4way(start_index: number, current_weights: Float64Array, target_values: Float64Array, activations: Float64Array, plank_constant: number, learning_rate: number, max_weight_adj_scale: number, limit_weight_scale: number): void;
+
+export function accumulate_weight_persistent_8way(start_index: number, current_weights: Float64Array, target_values: Float64Array, activations: Float64Array, plank_constant: number, learning_rate: number, max_weight_adj_scale: number, limit_weight_scale: number): void;
+
+export function calculate_bias(count: number, total_adjusted_bias: number, current_bias: number, no_change: boolean, generations: number, plank_constant: number, learning_rate: number, max_bias_adj_scale: number, limit_bias_scale: number): number;
 
 /**
- * Issue #1518 - Batch bias accumulation for 8 neurons.
- *
- * Same as 4-way but processes 8 neurons. Returns 24 f64 values.
+ * Calculate the error in value-space for backpropagation.
  */
-export function accumulate_bias_batch_8way(
-  target_pre_activations: Float64Array,
-  pre_activations: Float64Array,
-  current_biases: Float64Array,
-  plank_constant: number,
-  learning_rate: number,
-  max_bias_adj_scale: number,
-  limit_bias_scale: number,
-): Float64Array;
+export function calculate_error(squash_type: number, current_activation: number, target_activation: number, current_value: number): number;
 
 /**
- * Accumulate bias adjustments for 4 neurons into persistent state.
- *
- * Same arithmetic as `accumulate_bias_batch_4way`, but results are
- * accumulated directly into the persistent state buffer.
- *
- * # Arguments
- * * `start_index` - Index of the first neuron in the state buffer
- * * `target_pre_activations` - 4 target pre-activation values
- * * `pre_activations` - 4 current pre-activation values
- * * `current_biases` - 4 current neuron biases
- * * `plank_constant` - Minimum unit threshold
- * * `learning_rate` - Learning rate for bias adjustment
- * * `max_bias_adj_scale` - Maximum bias adjustment scale
- * * `limit_bias_scale` - Global bias scale limit
+ * Batch error calculation for 4 records simultaneously.
  */
-export function accumulate_bias_persistent_4way(
-  start_index: number,
-  target_pre_activations: Float64Array,
-  pre_activations: Float64Array,
-  current_biases: Float64Array,
-  plank_constant: number,
-  learning_rate: number,
-  max_bias_adj_scale: number,
-  limit_bias_scale: number,
-): void;
+export function calculate_error_batch_4way(squash_type: number, current_activations: Float32Array, target_activations: Float32Array, current_values: Float32Array): Float32Array;
+
+export function calculate_weight(count: number, total_positive_activation: number, total_negative_activation: number, count_positive: number, count_negative: number, total_positive_adjusted_value: number, total_negative_adjusted_value: number, current_weight: number, generations: number, plank_constant: number, learning_rate: number, max_weight_adj_scale: number, limit_weight_scale: number): number;
+
+export function compute_score_components(weights: Float64Array, biases: Float64Array): Float64Array;
+
+export function cross_entropy_sum_batch_packed(network: CompiledNetwork, records: Float32Array, input_size: number, num_outputs: number, forward_only: boolean): number;
 
 /**
- * Accumulate bias adjustments for 8 neurons into persistent state.
- */
-export function accumulate_bias_persistent_8way(
-  start_index: number,
-  target_pre_activations: Float64Array,
-  pre_activations: Float64Array,
-  current_biases: Float64Array,
-  plank_constant: number,
-  learning_rate: number,
-  max_bias_adj_scale: number,
-  limit_bias_scale: number,
-): void;
-
-/**
- * Issue #1518 - Batch weight accumulation for 4 synapses.
- *
- * Processes 4 synapses in a single WASM call, returning a packed f64 array
- * with 7 values per synapse (28 total). The caller unpacks these into the
- * corresponding SynapseState objects.
- *
- * # Arguments
- * * `current_weights` - 4 current synapse weights
- * * `target_values` - 4 target values for weight calculation
- * * `activations` - 4 activation values from source neurons
- * * `plank_constant` - Minimum unit threshold
- * * `learning_rate` - Learning rate for weight adjustment
- * * `max_weight_adj_scale` - Maximum weight adjustment scale
- * * `limit_weight_scale` - Global weight scale limit
- *
- * # Returns
- * Float64Array with 28 values (7 per synapse):
- *   [count, totalPositiveActivation, totalNegativeActivation,
- *    countPositiveActivations, countNegativeActivations,
- *    totalPositiveAdjustedValue, totalNegativeAdjustedValue] × 4
- */
-export function accumulate_weight_batch_4way(
-  current_weights: Float64Array,
-  target_values: Float64Array,
-  activations: Float64Array,
-  plank_constant: number,
-  learning_rate: number,
-  max_weight_adj_scale: number,
-  limit_weight_scale: number,
-): Float64Array;
-
-/**
- * Issue #1518 - Batch weight accumulation for 8 synapses.
- *
- * Same as 4-way but processes 8 synapses. Returns 56 f64 values.
- */
-export function accumulate_weight_batch_8way(
-  current_weights: Float64Array,
-  target_values: Float64Array,
-  activations: Float64Array,
-  plank_constant: number,
-  learning_rate: number,
-  max_weight_adj_scale: number,
-  limit_weight_scale: number,
-): Float64Array;
-
-/**
- * Accumulate weight adjustments for 4 synapses into persistent state.
- *
- * Same arithmetic as `accumulate_weight_batch_4way`, but results are
- * accumulated directly into the persistent state buffer rather than
- * being returned to JavaScript.
- *
- * # Arguments
- * * `start_index` - Index of the first synapse in the state buffer
- * * `current_weights` - 4 current synapse weights
- * * `target_values` - 4 target values for weight calculation
- * * `activations` - 4 activation values from source neurons
- * * `plank_constant` - Minimum unit threshold
- * * `learning_rate` - Learning rate for weight adjustment
- * * `max_weight_adj_scale` - Maximum weight adjustment scale
- * * `limit_weight_scale` - Global weight scale limit
- */
-export function accumulate_weight_persistent_4way(
-  start_index: number,
-  current_weights: Float64Array,
-  target_values: Float64Array,
-  activations: Float64Array,
-  plank_constant: number,
-  learning_rate: number,
-  max_weight_adj_scale: number,
-  limit_weight_scale: number,
-): void;
-
-/**
- * Accumulate weight adjustments for 8 synapses into persistent state.
- */
-export function accumulate_weight_persistent_8way(
-  start_index: number,
-  current_weights: Float64Array,
-  target_values: Float64Array,
-  activations: Float64Array,
-  plank_constant: number,
-  learning_rate: number,
-  max_weight_adj_scale: number,
-  limit_weight_scale: number,
-): void;
-
-/**
- * Issue #1518 - Calculate the finalised bias after accumulation.
- *
- * Mirrors the TypeScript `calculateBias()` function.
- *
- * # Arguments
- * * `count` - Total accumulation count
- * * `total_adjusted_bias` - Sum of limited biases
- * * `current_bias` - The neuron's current bias
- * * `no_change` - Whether the neuron has flagged no change
- * * `generations` - Config generations value
- * * `plank_constant` - Minimum unit threshold
- * * `learning_rate` - Learning rate
- * * `max_bias_adj_scale` - Maximum bias adjustment scale
- * * `limit_bias_scale` - Global bias scale limit
- *
- * # Returns
- * The calculated bias
- */
-export function calculate_bias(
-  count: number,
-  total_adjusted_bias: number,
-  current_bias: number,
-  no_change: boolean,
-  generations: number,
-  plank_constant: number,
-  learning_rate: number,
-  max_bias_adj_scale: number,
-  limit_bias_scale: number,
-): number;
-
-/**
- * Standalone calculate error function for testing
- * Issue #1141 - WASM Migration Phase 9
- *
- * Calculates the error in value-space for backpropagation.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `current_activation` - The neuron's current output (after squash)
- * * `target_activation` - The desired output
- * * `current_value` - The pre-squash value (hint for unSquash)
- */
-export function calculate_error(
-  squash_type: number,
-  current_activation: number,
-  target_activation: number,
-  current_value: number,
-): number;
-
-/**
- * Issue #1213 - Batch error calculation for 4 records simultaneously.
- *
- * Returns a Float32Array with 4 error values computed for backpropagation.
- * This provides significant performance improvements during mini-batch training.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `current_activations` - Float32Array of 4 current activation values
- * * `target_activations` - Float32Array of 4 target activation values
- * * `current_values` - Float32Array of 4 pre-squash values (hints for unSquash)
- */
-export function calculate_error_batch_4way(
-  squash_type: number,
-  current_activations: Float32Array,
-  target_activations: Float32Array,
-  current_values: Float32Array,
-): Float32Array;
-
-/**
- * Issue #1518 - Calculate the finalised weight after accumulation.
- *
- * Mirrors the TypeScript `calculateWeight()` function. Performs the
- * weighted averaging with positive/negative tracking and generation-based
- * inertia.
- *
- * # Arguments
- * * `count` - Total accumulation count
- * * `total_positive_activation` - Sum of positive activations
- * * `total_negative_activation` - Sum of |negative activations|
- * * `count_positive` - Number of positive activations
- * * `count_negative` - Number of negative activations
- * * `total_positive_adjusted_value` - Sum of limited weight × positive activation
- * * `total_negative_adjusted_value` - Sum of limited weight × negative activation
- * * `current_weight` - The synapse's current weight
- * * `generations` - Config generations value
- * * `plank_constant` - Minimum unit threshold
- * * `learning_rate` - Learning rate
- * * `max_weight_adj_scale` - Maximum weight adjustment scale
- * * `limit_weight_scale` - Global weight scale limit
- *
- * # Returns
- * The calculated average weight
- */
-export function calculate_weight(
-  count: number,
-  total_positive_activation: number,
-  total_negative_activation: number,
-  count_positive: number,
-  count_negative: number,
-  total_positive_adjusted_value: number,
-  total_negative_adjusted_value: number,
-  current_weight: number,
-  generations: number,
-  plank_constant: number,
-  learning_rate: number,
-  max_weight_adj_scale: number,
-  limit_weight_scale: number,
-): number;
-
-/**
- * Batch-compute abs-sum, max, and second-max over weight and bias arrays.
- *
- * Returns a `Float64Array` with 4 elements:
- *   [total_abs, count, max_abs, second_max_abs]
- *
- * The caller provides flat arrays of synapse weights and non-input neuron
- * biases. This replaces the inner loops of `computeAndCacheScoreComponents`
- * in `Score.ts`.
- *
- * # Arguments
- * * `weights` - flat f64 array of synapse weights
- * * `biases` - flat f64 array of non-input neuron biases
- */
-export function compute_score_components(
-  weights: Float64Array,
-  biases: Float64Array,
-): Float64Array;
-
-/**
- * Fused activate + Cross Entropy calculation for batch scoring.
- *
- * Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
- * Output values are clamped to [1e-15, 1-1e-15] to prevent log(0).
- *
- * # Arguments
- * * `network` - The compiled network to activate
- * * `records` - Packed array of `[inputs..., targets...]` records
- * * `input_size` - Number of inputs per record
- * * `num_outputs` - Number of outputs per record
- * * `forward_only` - If true, skip reset_state() (for forward-only networks)
- *
- * # Returns
- * Sum of per-record Cross Entropy errors (divide by record count for mean)
- */
-export function cross_entropy_sum_batch_packed(
-  network: CompiledNetwork,
-  records: Float32Array,
-  input_size: number,
-  num_outputs: number,
-  forward_only: boolean,
-): number;
-
-/**
- * Standalone derivative function for testing
- * Issue #1138 - WASM Migration Phase 6
+ * Standalone derivative function for testing.
  */
 export function derivative(squash_type: number, value: number): number;
 
 /**
- * Issue #1213 - Batch derivative computation for 4 values simultaneously.
- *
- * Returns a Float32Array with 4 derivative values computed in parallel using SIMD.
- * This provides significant performance improvements during backpropagation.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `x0, x1, x2, x3` - The 4 input values to compute derivatives for
+ * Batch derivative computation for 4 values simultaneously.
  */
-export function derivative_batch_4way(
-  squash_type: number,
-  x0: number,
-  x1: number,
-  x2: number,
-  x3: number,
-): Float32Array;
+export function derivative_batch_4way(squash_type: number, x0: number, x1: number, x2: number, x3: number): Float32Array;
 
-/**
- * Issue #1519 - WASM-exported standalone elastic error distribution.
- *
- * Distributes `error` across links proportional to activation² × safeZoneFactor,
- * with weight-based fallback when activations are near zero, and equal split
- * as a last resort.
- *
- * # Arguments
- * * `error` - The error value to distribute
- * * `activations` - Float32Array of link activation values
- * * `safe_zone_factors` - Float32Array of safe zone factors (0-1)
- * * `weights` - Float32Array of synapse weights (for fallback)
- * * `plank_constant` - Threshold for floating-point comparisons
- *
- * # Returns
- * Vec<f32> of error shares, one per link. Sum equals `error`.
- */
-export function distribute_elastic_error(
-  error: number,
-  activations: Float32Array,
-  safe_zone_factors: Float32Array,
-  weights: Float32Array,
-  plank_constant: number,
-): Float32Array;
+export function distribute_elastic_error(error: number, activations: Float32Array, safe_zone_factors: Float32Array, weights: Float32Array, plank_constant: number): Float32Array;
 
-/**
- * Free all training state memory.
- *
- * Call this when training is complete to release WASM linear memory.
- */
 export function free_training_state(): void;
 
 /**
- * Issue #1377 - Fused backward pass error distribution.
- *
- * Combines calculateError + safeZoneAdjustment + elastic error distribution
- * into a single WASM call, eliminating S+1 boundary crossings per neuron.
- *
- * # Arguments
- * * `neuron_squash_type` - The SquashType of the neuron being propagated through
- * * `neuron_activation` - The neuron's current output (after squash)
- * * `neuron_target_activation` - The desired output for this neuron
- * * `neuron_hint_value` - The pre-squash value for this neuron
- * * `upstream_squash_types` - Packed u8 array of upstream neuron squash types
- * * `upstream_hint_values` - Float32Array of upstream pre-squash values
- * * `upstream_activations` - Float32Array of upstream neuron activations
- * * `synapse_weights` - Float32Array of inbound synapse weights
- *
- * # Returns
- * Float32Array with layout: [error, safeZone_0..N, perLinkError_0..N]
- * Total length: 1 + 2*N where N is the number of synapses.
+ * Fused backward pass error distribution.
  */
-export function fused_error_distribution(
-  neuron_squash_type: number,
-  neuron_activation: number,
-  neuron_target_activation: number,
-  neuron_hint_value: number,
-  upstream_squash_types: Uint8Array,
-  upstream_hint_values: Float32Array,
-  upstream_activations: Float32Array,
-  synapse_weights: Float32Array,
-): Float32Array;
+export function fused_error_distribution(neuron_squash_type: number, neuron_activation: number, neuron_target_activation: number, neuron_hint_value: number, upstream_squash_types: Uint8Array, upstream_hint_values: Float32Array, upstream_activations: Float32Array, synapse_weights: Float32Array): Float32Array;
 
 /**
- * Get the range (low, high) for an activation function
- * Issue #1142 - WASM Migration Phase 10
- *
- * Returns a Float32Array with two elements: [low, high]
- * representing the valid output range for the activation function.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
+ * Get the range (low, high) for an activation function.
  */
 export function get_range(squash_type: number): Float32Array;
 
-/**
- * Get the number of neurons in the current training state.
- */
 export function get_training_state_num_neurons(): number;
 
-/**
- * Get the number of synapses in the current training state.
- */
 export function get_training_state_num_synapses(): number;
 
-/**
- * Fused activate + Hinge Loss calculation for batch scoring.
- *
- * Hinge formula per record: Σmax(0, 1 - target * output)
- * Note: Unlike MSE/MAE, Hinge does NOT divide by number of outputs per record.
- *
- * # Arguments
- * * `network` - The compiled network to activate
- * * `records` - Packed array of `[inputs..., targets...]` records
- * * `input_size` - Number of inputs per record
- * * `num_outputs` - Number of outputs per record
- * * `forward_only` - If true, skip reset_state() (for forward-only networks)
- *
- * # Returns
- * Sum of per-record Hinge errors (divide by record count for mean)
- */
-export function hinge_sum_batch_packed(
-  network: CompiledNetwork,
-  records: Float32Array,
-  input_size: number,
-  num_outputs: number,
-  forward_only: boolean,
-): number;
+export function hinge_sum_batch_packed(network: CompiledNetwork, records: Float32Array, input_size: number, num_outputs: number, forward_only: boolean): number;
+
+export function init_training_state(num_synapses: number, num_neurons: number): void;
 
 /**
- * Initialise persistent training state for an epoch.
- *
- * Allocates and zeroes the synapse and neuron state arrays in WASM linear
- * memory. Call this once at the start of each training epoch.
- *
- * # Arguments
- * * `num_synapses` - Number of synapses in the network
- * * `num_neurons` - Number of neurons in the network
- */
-export function init_training_state(
-  num_synapses: number,
-  num_neurons: number,
-): void;
-
-/**
- * Clamp a value to the valid range for an activation function
- * Issue #1142 - WASM Migration Phase 10
- *
- * Returns the value clamped to the valid range for the specified
- * activation function. Infinity values are clamped to the bounds.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `value` - The value to clamp
+ * Clamp a value to the valid range for an activation function.
  */
 export function limit_range(squash_type: number, value: number): number;
 
-/**
- * Fused activate + MAE (Mean Absolute Error) calculation for batch scoring.
- *
- * Like `mse_sum_batch_packed`, this processes a batch of `[inputs..., targets...]` records
- * in a single WASM call, returning the sum of per-record MAE errors.
- *
- * MAE formula per record: (1/n) * Σ|target - output|
- *
- * # Arguments
- * * `network` - The compiled network to activate
- * * `records` - Packed array of `[inputs..., targets...]` records
- * * `input_size` - Number of inputs per record
- * * `num_outputs` - Number of outputs per record
- * * `forward_only` - If true, skip reset_state() (for forward-only networks)
- *
- * # Returns
- * Sum of per-record MAE errors (divide by record count for mean)
- */
-export function mae_sum_batch_packed(
-  network: CompiledNetwork,
-  records: Float32Array,
-  input_size: number,
-  num_outputs: number,
-  forward_only: boolean,
-): number;
+export function mae_sum_batch_packed(network: CompiledNetwork, records: Float32Array, input_size: number, num_outputs: number, forward_only: boolean): number;
 
-/**
- * Fused activate + MAPE (Mean Absolute Percentage Error) calculation for batch scoring.
- *
- * MAPE formula per record: (1/n) * Σ|(output - target) / max(target, ε)|
- *
- * # Arguments
- * * `network` - The compiled network to activate
- * * `records` - Packed array of `[inputs..., targets...]` records
- * * `input_size` - Number of inputs per record
- * * `num_outputs` - Number of outputs per record
- * * `forward_only` - If true, skip reset_state() (for forward-only networks)
- *
- * # Returns
- * Sum of per-record MAPE errors (divide by record count for mean)
- */
-export function mape_sum_batch_packed(
-  network: CompiledNetwork,
-  records: Float32Array,
-  input_size: number,
-  num_outputs: number,
-  forward_only: boolean,
-): number;
+export function mape_sum_batch_packed(network: CompiledNetwork, records: Float32Array, input_size: number, num_outputs: number, forward_only: boolean): number;
 
-/**
- * Fused activate + MSE (Mean Squared Error) calculation for batch scoring.
- *
- * This is a scoring fast-path designed to minimise JS/WASM boundary crossings:
- * - Each record is laid out as: [inputs..., targets...]
- * - `input_size` must match the number of input floats in each record.
- * - `num_outputs` must match the number of target/output floats in each record.
- *
- * Returns the **sum** of per-record MSE values (not averaged over records).
- *
- * When `forward_only=true`, we skip clearing `network.activations` between records
- * because v4+ forward-only creatures guarantee there are no recurrent/back edges.
- * When `forward_only=false`, we must call `reset_state()` each record to preserve
- * stateless semantics (`feedbackLoop=false`) and avoid state leakage.
- *
- * Issue #118x - Fuse activate + MSE for scoring performance.
- * Issue #1202 - Use 4-record SIMD batching for forward-only networks.
- */
-export function mse_sum_batch_packed(
-  network: CompiledNetwork,
-  records: Float32Array,
-  input_size: number,
-  num_outputs: number,
-  forward_only: boolean,
-): number;
+export function mse_sum_batch_packed(network: CompiledNetwork, records: Float32Array, input_size: number, num_outputs: number, forward_only: boolean): number;
 
-/**
- * Fused activate + MSLE (Mean Squared Logarithmic Error) calculation for batch scoring.
- *
- * MSLE formula per record: Σ(log(max(target, ε)) - log(max(output, ε)))
- * Note: Unlike MSE/MAE, MSLE does NOT divide by number of outputs per record.
- *
- * # Arguments
- * * `network` - The compiled network to activate
- * * `records` - Packed array of `[inputs..., targets...]` records
- * * `input_size` - Number of inputs per record
- * * `num_outputs` - Number of outputs per record
- * * `forward_only` - If true, skip reset_state() (for forward-only networks)
- *
- * # Returns
- * Sum of per-record MSLE errors (divide by record count for mean)
- */
-export function msle_sum_batch_packed(
-  network: CompiledNetwork,
-  records: Float32Array,
-  input_size: number,
-  num_outputs: number,
-  forward_only: boolean,
-): number;
+export function msle_sum_batch_packed(network: CompiledNetwork, records: Float32Array, input_size: number, num_outputs: number, forward_only: boolean): number;
 
-/**
- * Read all neuron state as a bulk f64 array.
- *
- * Returns the entire neuron state buffer (num_neurons × 3 values).
- * More efficient than calling `read_neuron_state` per neuron.
- */
 export function read_all_neuron_state(): Float64Array;
 
-/**
- * Read all synapse state as a bulk f64 array.
- *
- * Returns the entire synapse state buffer (num_synapses × 7 values).
- * More efficient than calling `read_synapse_state` per synapse.
- */
 export function read_all_synapse_state(): Float64Array;
 
-/**
- * Read the persistent state for a single neuron.
- *
- * Returns a packed f64 array with 3 values:
- *   [count, totalBias, totalAdjustedBias]
- */
 export function read_neuron_state(index: number): Float64Array;
 
-/**
- * Read the persistent state for a single synapse.
- *
- * Returns a packed f64 array with 7 values:
- *   [count, totalPositiveActivation, totalNegativeActivation,
- *    countPositiveActivations, countNegativeActivations,
- *    totalPositiveAdjustedValue, totalNegativeAdjustedValue]
- */
 export function read_synapse_state(index: number): Float64Array;
 
-/**
- * Reset all training state to zero without deallocating.
- *
- * More efficient than `init_training_state` when the network size
- * hasn't changed — avoids reallocation.
- */
 export function reset_training_state(): void;
 
 /**
- * Standalone safe zone adjustment function for testing
- * Issue #1140 - WASM Migration Phase 8
- *
- * Returns a float from 0 (not safe) to 1 (fully safe) indicating how useful it is
- * to backpropagate through a neuron based on saturation levels.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `raw_input` - The raw input value before squashing
- * * `error` - The error value from backpropagation
- * * `weight` - The synapse weight (use NaN if not applicable)
+ * Safe zone adjustment for backpropagation saturation detection.
  */
-export function safe_zone_adjustment(
-  squash_type: number,
-  raw_input: number,
-  error: number,
-  weight: number,
-): number;
+export function safe_zone_adjustment(squash_type: number, raw_input: number, error: number, weight: number): number;
 
 /**
- * Issue #1376 - Batch safe zone adjustment for backward pass inner loop.
- *
- * Processes multiple safe zone adjustments in a single WASM call, eliminating
- * per-synapse boundary crossing overhead (~8.7ns each).
- *
- * # Arguments
- * * `squash_types` - Packed u8 array of squash type enum values
- * * `raw_inputs` - Float32Array of pre-squash values for upstream neurons
- * * `error` - The provisional error per link (same for all synapses)
- * * `weights` - Float32Array of synapse weights
- *
- * # Returns
- * Float32Array of safe zone factors (0.0 to 1.0), one per synapse
+ * Batch safe zone adjustment.
  */
-export function safe_zone_adjustment_batch(
-  squash_types: Uint8Array,
-  raw_inputs: Float32Array,
-  error: number,
-  weights: Float32Array,
-): Float32Array;
+export function safe_zone_adjustment_batch(squash_types: Uint8Array, raw_inputs: Float32Array, error: number, weights: Float32Array): Float32Array;
+
+export function scan_max_bias(weights: Float64Array, biases: Float64Array, exclude_idx: number, new_bias: number): Float64Array;
+
+export function scan_max_weight(weights: Float64Array, biases: Float64Array, exclude_idx: number, new_weight: number): Float64Array;
 
 /**
- * Scan all weights and biases to find the new max and second-max after a
- * bias change. The bias at `exclude_idx` is excluded (it is being
- * replaced); `new_bias` is included instead.
- *
- * Returns a `Float64Array` with 2 elements: [max, second_max].
- *
- * # Arguments
- * * `weights` - flat f64 array of all synapse weights
- * * `biases` - flat f64 array of all non-input neuron biases
- * * `exclude_idx` - index in `biases` to skip (the old bias)
- * * `new_bias` - the replacement bias value
- */
-export function scan_max_bias(
-  weights: Float64Array,
-  biases: Float64Array,
-  exclude_idx: number,
-  new_bias: number,
-): Float64Array;
-
-/**
- * Scan all weights and biases to find the new max and second-max after a
- * weight change. The weight at `exclude_idx` is excluded (it is being
- * replaced); `new_weight` is included instead.
- *
- * Returns a `Float64Array` with 2 elements: [max, second_max].
- *
- * # Arguments
- * * `weights` - flat f64 array of all synapse weights
- * * `biases` - flat f64 array of all non-input neuron biases
- * * `exclude_idx` - index in `weights` to skip (the old weight)
- * * `new_weight` - the replacement weight value
- */
-export function scan_max_weight(
-  weights: Float64Array,
-  biases: Float64Array,
-  exclude_idx: number,
-  new_weight: number,
-): Float64Array;
-
-/**
- * Standalone squash function for testing
+ * Standalone squash function for testing.
  */
 export function squash(squash_type: number, value: number): number;
 
 /**
- * Standalone unsquash function for testing
- * Issue #1139 - WASM Migration Phase 7
- *
- * Computes the inverse of the specified activation function at the given activation value.
- * The hint parameter guides the inverse for ambiguous or non-invertible functions.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `activation` - The squashed activation value to invert
- * * `hint` - A hint value to guide the inverse (use NaN or pass the original input value)
+ * Compute the inverse of the specified activation function.
  */
-export function unsquash(
-  squash_type: number,
-  activation: number,
-  hint: number,
-): number;
+export function unsquash(squash_type: number, activation: number, hint: number): number;
 
 /**
- * Validate that an activation value is within the valid range
- * Issue #1142 - WASM Migration Phase 10
- *
- * Returns true if the activation is within the valid range for the
- * specified activation function, false otherwise.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `activation` - The activation value to validate
+ * Validate that an activation value is within the valid range.
  */
-export function validate_range(
-  squash_type: number,
-  activation: number,
-): boolean;
+export function validate_range(squash_type: number, activation: number): boolean;
 
 /**
- * Version information
+ * Version information.
  */
 export function version(): string;
 
-export type InitInput =
-  | RequestInfo
-  | URL
-  | Response
-  | BufferSource
-  | WebAssembly.Module;
+export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
-  readonly memory: WebAssembly.Memory;
-  readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
-  readonly compilednetwork_activate: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-  ) => [number, number];
-  readonly compilednetwork_activate_and_trace: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-  ) => [number, number];
-  readonly compilednetwork_activate_and_trace_batch_4way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-  ) => [number, number];
-  readonly compilednetwork_activate_into: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: any,
-  ) => void;
-  readonly compilednetwork_activate_view: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-  ) => any;
-  readonly compilednetwork_new: (
-    a: number,
-    b: number,
-  ) => [number, number, number];
-  readonly compilednetwork_num_inputs: (a: number) => number;
-  readonly compilednetwork_num_neurons: (a: number) => number;
-  readonly compilednetwork_num_synapses: (a: number) => number;
-  readonly compilednetwork_reset_state: (a: number) => void;
-  readonly cross_entropy_sum_batch_packed: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-  ) => number;
-  readonly hinge_sum_batch_packed: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-  ) => number;
-  readonly mae_sum_batch_packed: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-  ) => number;
-  readonly mape_sum_batch_packed: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-  ) => number;
-  readonly mse_sum_batch_packed: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-  ) => number;
-  readonly msle_sum_batch_packed: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-  ) => number;
-  readonly calculate_error: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-  ) => number;
-  readonly calculate_error_batch_4way: (
-    a: number,
-    b: any,
-    c: any,
-    d: any,
-  ) => any;
-  readonly derivative: (a: number, b: number) => number;
-  readonly derivative_batch_4way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-  ) => any;
-  readonly fused_error_distribution: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-    l: number,
-  ) => [number, number];
-  readonly get_range: (a: number) => any;
-  readonly limit_range: (a: number, b: number) => number;
-  readonly safe_zone_adjustment: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-  ) => number;
-  readonly safe_zone_adjustment_batch: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-  ) => [number, number];
-  readonly squash: (a: number, b: number) => number;
-  readonly unsquash: (a: number, b: number, c: number) => number;
-  readonly validate_range: (a: number, b: number) => number;
-  readonly version: () => [number, number];
-  readonly __wbg_predictivecodingengine_free: (a: number, b: number) => void;
-  readonly predictivecodingengine_infer_batch_wasm: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-  ) => [number, number];
-  readonly predictivecodingengine_infer_wasm: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-  ) => [number, number];
-  readonly predictivecodingengine_new: (
-    a: number,
-    b: number,
-  ) => [number, number, number];
-  readonly predictivecodingengine_num_inputs: (a: number) => number;
-  readonly predictivecodingengine_num_neurons: (a: number) => number;
-  readonly predictivecodingengine_num_outputs: (a: number) => number;
-  readonly predictivecodingengine_compute_gradients_wasm: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-  ) => [number, number];
-  readonly accumulate_bias_persistent_4way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly accumulate_bias_persistent_8way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly accumulate_weight_persistent_4way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly accumulate_weight_persistent_8way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly distribute_elastic_error: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-  ) => [number, number];
-  readonly free_training_state: () => void;
-  readonly get_training_state_num_neurons: () => number;
-  readonly get_training_state_num_synapses: () => number;
-  readonly init_training_state: (a: number, b: number) => void;
-  readonly read_all_neuron_state: () => [number, number];
-  readonly read_all_synapse_state: () => [number, number];
-  readonly read_neuron_state: (a: number) => [number, number];
-  readonly read_synapse_state: (a: number) => [number, number];
-  readonly reset_training_state: () => void;
-  readonly accumulate_bias_batch_4way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-  ) => [number, number];
-  readonly accumulate_bias_batch_8way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-  ) => [number, number];
-  readonly accumulate_weight_batch_4way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-  ) => [number, number];
-  readonly accumulate_weight_batch_8way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-  ) => [number, number];
-  readonly calculate_bias: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-  ) => number;
-  readonly calculate_weight: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-    l: number,
-    m: number,
-  ) => number;
-  readonly compute_score_components: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-  ) => any;
-  readonly scan_max_bias: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-  ) => any;
-  readonly scan_max_weight: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-  ) => any;
-  readonly __wbindgen_externrefs: WebAssembly.Table;
-  readonly __wbindgen_malloc: (a: number, b: number) => number;
-  readonly __wbindgen_free: (a: number, b: number, c: number) => void;
-  readonly __externref_table_dealloc: (a: number) => void;
-  readonly __wbindgen_start: () => void;
+    readonly memory: WebAssembly.Memory;
+    readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
+    readonly __wbg_predictivecodingengine_free: (a: number, b: number) => void;
+    readonly accumulate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
+    readonly accumulate_bias_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
+    readonly accumulate_bias_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+    readonly accumulate_bias_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+    readonly accumulate_weight_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
+    readonly accumulate_weight_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
+    readonly accumulate_weight_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+    readonly accumulate_weight_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+    readonly calculate_bias: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => number;
+    readonly calculate_error: (a: number, b: number, c: number, d: number) => number;
+    readonly calculate_error_batch_4way: (a: number, b: any, c: any, d: any) => any;
+    readonly calculate_weight: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => number;
+    readonly compilednetwork_activate: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly compilednetwork_activate_and_trace: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly compilednetwork_activate_and_trace_batch_4way: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+    readonly compilednetwork_activate_into: (a: number, b: number, c: number, d: number, e: number, f: any) => void;
+    readonly compilednetwork_activate_view: (a: number, b: number, c: number, d: number) => any;
+    readonly compilednetwork_new: (a: number, b: number) => [number, number, number];
+    readonly compilednetwork_num_inputs: (a: number) => number;
+    readonly compilednetwork_num_neurons: (a: number) => number;
+    readonly compilednetwork_num_synapses: (a: number) => number;
+    readonly compilednetwork_reset_state: (a: number) => void;
+    readonly compute_score_components: (a: number, b: number, c: number, d: number) => any;
+    readonly cross_entropy_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly derivative: (a: number, b: number) => number;
+    readonly derivative_batch_4way: (a: number, b: number, c: number, d: number, e: number) => any;
+    readonly distribute_elastic_error: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
+    readonly free_training_state: () => void;
+    readonly fused_error_distribution: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => [number, number];
+    readonly get_range: (a: number) => any;
+    readonly get_training_state_num_neurons: () => number;
+    readonly get_training_state_num_synapses: () => number;
+    readonly hinge_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly init_training_state: (a: number, b: number) => void;
+    readonly limit_range: (a: number, b: number) => number;
+    readonly mae_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly mape_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly mse_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly msle_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly predictivecodingengine_compute_gradients_wasm: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
+    readonly predictivecodingengine_infer_batch_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
+    readonly predictivecodingengine_infer_wasm: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+    readonly predictivecodingengine_new: (a: number, b: number) => [number, number, number];
+    readonly predictivecodingengine_num_inputs: (a: number) => number;
+    readonly predictivecodingengine_num_neurons: (a: number) => number;
+    readonly predictivecodingengine_num_outputs: (a: number) => number;
+    readonly read_all_neuron_state: () => [number, number];
+    readonly read_all_synapse_state: () => [number, number];
+    readonly read_neuron_state: (a: number) => [number, number];
+    readonly read_synapse_state: (a: number) => [number, number];
+    readonly reset_training_state: () => void;
+    readonly safe_zone_adjustment: (a: number, b: number, c: number, d: number) => number;
+    readonly safe_zone_adjustment_batch: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
+    readonly scan_max_bias: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
+    readonly scan_max_weight: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
+    readonly squash: (a: number, b: number) => number;
+    readonly unsquash: (a: number, b: number, c: number) => number;
+    readonly validate_range: (a: number, b: number) => number;
+    readonly version: () => [number, number];
+    readonly __wbindgen_externrefs: WebAssembly.Table;
+    readonly __wbindgen_malloc: (a: number, b: number) => number;
+    readonly __wbindgen_free: (a: number, b: number, c: number) => void;
+    readonly __externref_table_dealloc: (a: number) => void;
+    readonly __wbindgen_start: () => void;
 }
 
 export type SyncInitInput = BufferSource | WebAssembly.Module;
@@ -1370,9 +287,7 @@ export type SyncInitInput = BufferSource | WebAssembly.Module;
  *
  * @returns {InitOutput}
  */
-export function initSync(
-  module: { module: SyncInitInput } | SyncInitInput,
-): InitOutput;
+export function initSync(module: { module: SyncInitInput } | SyncInitInput): InitOutput;
 
 /**
  * If `module_or_path` is {RequestInfo} or {URL}, makes a request and
@@ -1382,9 +297,4 @@ export function initSync(
  *
  * @returns {Promise<InitOutput>}
  */
-export default function __wbg_init(
-  module_or_path?:
-    | { module_or_path: InitInput | Promise<InitInput> }
-    | InitInput
-    | Promise<InitInput>,
-): Promise<InitOutput>;
+export default function __wbg_init (module_or_path?: { module_or_path: InitInput | Promise<InitInput> } | InitInput | Promise<InitInput>): Promise<InitOutput>;

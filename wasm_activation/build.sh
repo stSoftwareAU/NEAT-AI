@@ -3,6 +3,7 @@
 # Issue #1116 - WASM prototype for creature activation
 # Issue #1166 - Auto-update wasm-pack to latest version
 # Issue #1489 - Learnings from NEAT-AI-Discovery runlib.sh
+# Issue #1964 - Updated for Cargo workspace structure (neat-core + wasm_activation)
 
 set -euo pipefail
 
@@ -89,10 +90,16 @@ else
     mkdir -p pkg
 
     # Generate JS bindings with wasm-bindgen
+    # With workspace, target/ lives at the workspace root (parent directory)
+    local wasm_file="../target/wasm32-unknown-unknown/release/wasm_activation.wasm"
+    if [[ ! -f "$wasm_file" ]]; then
+        # Fallback: check local target/ for non-workspace builds
+        wasm_file="target/wasm32-unknown-unknown/release/wasm_activation.wasm"
+    fi
     wasm-bindgen \
         --target web \
         --out-dir pkg \
-        target/wasm32-unknown-unknown/release/wasm_activation.wasm
+        "$wasm_file"
 fi
 
 # Optimise the WASM if wasm-opt is available
@@ -119,9 +126,9 @@ compute_fingerprint() {
         return 1
     fi
 
-    # Hash the key input files. Keep this list small and stable.
-    # (If you add more Rust files, update this list.)
-    cat Cargo.toml src/lib.rs build.sh | eval "$hasher" | awk '{print $1}'
+    # Hash the key input files including the neat-core dependency.
+    # Issue #1964 - Include neat-core sources in fingerprint.
+    cat Cargo.toml src/lib.rs build.sh ../neat-core/Cargo.toml ../neat-core/src/lib.rs | eval "$hasher" | awk '{print $1}'
 }
 
 # Write fingerprint file for workflow guards.

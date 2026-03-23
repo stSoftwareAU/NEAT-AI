@@ -22,8 +22,6 @@
 //! Output array (3 f64s per item):
 //!   [count, total_bias, total_adjusted_bias]
 
-use wasm_bindgen::prelude::*;
-
 /// Limit a weight within the configured bounds.
 ///
 /// Mirrors the TypeScript `limitWeight()` function exactly.
@@ -110,7 +108,7 @@ fn limit_bias(
 ///
 /// Returns the 7 delta values to add to the SynapseState fields.
 #[inline(always)]
-pub(crate) fn accumulate_weight_single(
+pub fn accumulate_weight_single(
     current_weight: f64,
     target_value: f64,
     activation: f64,
@@ -204,7 +202,6 @@ pub(crate) fn accumulate_weight_single(
 ///   [count, totalPositiveActivation, totalNegativeActivation,
 ///    countPositiveActivations, countNegativeActivations,
 ///    totalPositiveAdjustedValue, totalNegativeAdjustedValue] × 4
-#[wasm_bindgen]
 pub fn accumulate_weight_batch_4way(
     current_weights: &[f64],
     target_values: &[f64],
@@ -244,7 +241,6 @@ pub fn accumulate_weight_batch_4way(
 /// Issue #1518 - Batch weight accumulation for 8 synapses.
 ///
 /// Same as 4-way but processes 8 synapses. Returns 56 f64 values.
-#[wasm_bindgen]
 pub fn accumulate_weight_batch_8way(
     current_weights: &[f64],
     target_values: &[f64],
@@ -285,7 +281,7 @@ pub fn accumulate_weight_batch_8way(
 ///
 /// Returns (count_delta, total_bias_delta, total_adjusted_bias_delta).
 #[inline(always)]
-pub(crate) fn accumulate_bias_single(
+pub fn accumulate_bias_single(
     target_pre_activation: f64,
     pre_activation: f64,
     current_bias: f64,
@@ -334,7 +330,6 @@ pub(crate) fn accumulate_bias_single(
 /// # Returns
 /// Float64Array with 12 values (3 per neuron):
 ///   [count, totalBias, totalAdjustedBias] × 4
-#[wasm_bindgen]
 pub fn accumulate_bias_batch_4way(
     target_pre_activations: &[f64],
     pre_activations: &[f64],
@@ -369,7 +364,6 @@ pub fn accumulate_bias_batch_4way(
 /// Issue #1518 - Batch bias accumulation for 8 neurons.
 ///
 /// Same as 4-way but processes 8 neurons. Returns 24 f64 values.
-#[wasm_bindgen]
 pub fn accumulate_bias_batch_8way(
     target_pre_activations: &[f64],
     pre_activations: &[f64],
@@ -424,7 +418,6 @@ pub fn accumulate_bias_batch_8way(
 ///
 /// # Returns
 /// The calculated average weight
-#[wasm_bindgen]
 pub fn calculate_weight(
     count: f64,
     total_positive_activation: f64,
@@ -509,7 +502,6 @@ pub fn calculate_weight(
 ///
 /// # Returns
 /// The calculated bias
-#[wasm_bindgen]
 pub fn calculate_bias(
     count: f64,
     total_adjusted_bias: f64,

@@ -1,7 +1,7 @@
-//! WASM batch score computation functions for large networks.
+//! Batch score computation functions for large networks.
 //!
 //! Issue #1521 - Migrates full-scan score computation paths from TypeScript to
-//! Rust/WASM. These functions are called when the score cache is cold or when
+//! Rust. These functions are called when the score cache is cold or when
 //! the tracked second-maximum becomes stale after structural mutations.
 //!
 //! Three exported functions:
@@ -14,9 +14,7 @@
 //!   excluding one index.
 //!
 //! All functions use f64 precision to match JavaScript `number` semantics,
-//! ensuring parity between WASM and TypeScript code paths.
-
-use wasm_bindgen::prelude::*;
+//! ensuring parity between Rust and TypeScript code paths.
 
 // ---------------------------------------------------------------------------
 // compute_score_components
@@ -24,8 +22,8 @@ use wasm_bindgen::prelude::*;
 
 /// Batch-compute abs-sum, max, and second-max over weight and bias arrays.
 ///
-/// Returns a `Float64Array` with 4 elements:
-///   [total_abs, count, max_abs, second_max_abs]
+/// Returns a tuple with 4 elements:
+///   (total_abs, count, max_abs, second_max_abs)
 ///
 /// The caller provides flat arrays of synapse weights and non-input neuron
 /// biases. This replaces the inner loops of `computeAndCacheScoreComponents`
@@ -34,21 +32,7 @@ use wasm_bindgen::prelude::*;
 /// # Arguments
 /// * `weights` - flat f64 array of synapse weights
 /// * `biases` - flat f64 array of non-input neuron biases
-#[wasm_bindgen]
-pub fn compute_score_components(weights: &[f64], biases: &[f64]) -> js_sys::Float64Array {
-    let (total, count, max, second_max) = compute_score_components_inner(weights, biases);
-
-    let result = js_sys::Float64Array::new_with_length(4);
-    result.set_index(0, total);
-    result.set_index(1, count as f64);
-    result.set_index(2, max);
-    result.set_index(3, second_max);
-    result
-}
-
-/// Inner implementation for compute_score_components.
-/// Returns (total_abs, count, max_abs, second_max_abs).
-fn compute_score_components_inner(weights: &[f64], biases: &[f64]) -> (f64, usize, f64, f64) {
+pub fn compute_score_components(weights: &[f64], biases: &[f64]) -> (f64, usize, f64, f64) {
     let mut total: f64 = 0.0;
     let mut max: f64 = 0.0;
     let mut second_max: f64 = 0.0;
@@ -64,7 +48,7 @@ fn compute_score_components_inner(weights: &[f64], biases: &[f64]) -> (f64, usiz
 }
 
 /// Accumulate absolute-value sum, max, and second-max from a slice.
-fn accumulate_abs_stats(values: &[f64], total: &mut f64, max: &mut f64, second_max: &mut f64) {
+pub fn accumulate_abs_stats(values: &[f64], total: &mut f64, max: &mut f64, second_max: &mut f64) {
     for &v in values {
         let a = v.abs();
         *total += a;
@@ -85,29 +69,14 @@ fn accumulate_abs_stats(values: &[f64], total: &mut f64, max: &mut f64, second_m
 /// weight change. The weight at `exclude_idx` is excluded (it is being
 /// replaced); `new_weight` is included instead.
 ///
-/// Returns a `Float64Array` with 2 elements: [max, second_max].
+/// Returns a tuple with 2 elements: (max, second_max).
 ///
 /// # Arguments
 /// * `weights` - flat f64 array of all synapse weights
 /// * `biases` - flat f64 array of all non-input neuron biases
 /// * `exclude_idx` - index in `weights` to skip (the old weight)
 /// * `new_weight` - the replacement weight value
-#[wasm_bindgen]
 pub fn scan_max_weight(
-    weights: &[f64],
-    biases: &[f64],
-    exclude_idx: usize,
-    new_weight: f64,
-) -> js_sys::Float64Array {
-    let (max, second_max) = scan_max_excluding_weight(weights, biases, exclude_idx, new_weight);
-
-    let result = js_sys::Float64Array::new_with_length(2);
-    result.set_index(0, max);
-    result.set_index(1, second_max);
-    result
-}
-
-fn scan_max_excluding_weight(
     weights: &[f64],
     biases: &[f64],
     exclude_idx: usize,
@@ -152,29 +121,14 @@ fn scan_max_excluding_weight(
 /// bias change. The bias at `exclude_idx` is excluded (it is being
 /// replaced); `new_bias` is included instead.
 ///
-/// Returns a `Float64Array` with 2 elements: [max, second_max].
+/// Returns a tuple with 2 elements: (max, second_max).
 ///
 /// # Arguments
 /// * `weights` - flat f64 array of all synapse weights
 /// * `biases` - flat f64 array of all non-input neuron biases
 /// * `exclude_idx` - index in `biases` to skip (the old bias)
 /// * `new_bias` - the replacement bias value
-#[wasm_bindgen]
 pub fn scan_max_bias(
-    weights: &[f64],
-    biases: &[f64],
-    exclude_idx: usize,
-    new_bias: f64,
-) -> js_sys::Float64Array {
-    let (max, second_max) = scan_max_excluding_bias(weights, biases, exclude_idx, new_bias);
-
-    let result = js_sys::Float64Array::new_with_length(2);
-    result.set_index(0, max);
-    result.set_index(1, second_max);
-    result
-}
-
-fn scan_max_excluding_bias(
     weights: &[f64],
     biases: &[f64],
     exclude_idx: usize,
@@ -224,7 +178,7 @@ mod tests {
         let weights = [1.0f64, -2.0, 3.0, -4.0];
         let biases = [0.5f64, -1.5];
 
-        let (total, count, max, second_max) = compute_score_components_inner(&weights, &biases);
+        let (total, count, max, second_max) = compute_score_components(&weights, &biases);
 
         assert_eq!(count, 6);
         assert!((total - 12.0).abs() < 1e-10, "total={}", total);
@@ -241,7 +195,7 @@ mod tests {
         let weights: [f64; 0] = [];
         let biases = [2.0f64, -3.0];
 
-        let (total, count, max, second_max) = compute_score_components_inner(&weights, &biases);
+        let (total, count, max, second_max) = compute_score_components(&weights, &biases);
 
         assert_eq!(count, 2);
         assert!((total - 5.0).abs() < 1e-10);
@@ -254,7 +208,7 @@ mod tests {
         let weights = [5.0f64, -1.0];
         let biases: [f64; 0] = [];
 
-        let (total, count, max, second_max) = compute_score_components_inner(&weights, &biases);
+        let (total, count, max, second_max) = compute_score_components(&weights, &biases);
 
         assert_eq!(count, 2);
         assert!((total - 6.0).abs() < 1e-10);
@@ -267,7 +221,7 @@ mod tests {
         let weights = [7.0f64];
         let biases: [f64; 0] = [];
 
-        let (total, count, max, second_max) = compute_score_components_inner(&weights, &biases);
+        let (total, count, max, second_max) = compute_score_components(&weights, &biases);
 
         assert_eq!(count, 1);
         assert!((total - 7.0).abs() < 1e-10);
@@ -280,7 +234,7 @@ mod tests {
         let weights: Vec<f64> = (1..=10).map(|x| x as f64 * 0.5).collect();
         let biases = [-3.0f64, 2.5, -1.0, 0.5, -4.0];
 
-        let (total, count, max, second_max) = compute_score_components_inner(&weights, &biases);
+        let (total, count, max, second_max) = compute_score_components(&weights, &biases);
 
         assert_eq!(count, 15);
         assert!((total - 38.5).abs() < 1e-10, "total={}", total);
@@ -297,7 +251,7 @@ mod tests {
         let weights = [1.0f64, -5.0, 3.0, -2.0];
         let biases = [0.5f64, -1.0];
 
-        let (max, second_max) = scan_max_excluding_weight(&weights, &biases, 1, 0.1);
+        let (max, second_max) = scan_max_weight(&weights, &biases, 1, 0.1);
 
         assert!((max - 3.0).abs() < 1e-10, "max={}", max);
         assert!(
@@ -312,7 +266,7 @@ mod tests {
         let weights = [1.0f64, -2.0];
         let biases = [0.5f64, -7.0, 3.0];
 
-        let (max, second_max) = scan_max_excluding_bias(&weights, &biases, 1, 0.2);
+        let (max, second_max) = scan_max_bias(&weights, &biases, 1, 0.2);
 
         assert!((max - 3.0).abs() < 1e-10, "max={}", max);
         assert!(
@@ -327,7 +281,7 @@ mod tests {
         let weights = [1.0f64, 2.0, 3.0];
         let biases = [0.5f64];
 
-        let (max, second_max) = scan_max_excluding_weight(&weights, &biases, 0, 10.0);
+        let (max, second_max) = scan_max_weight(&weights, &biases, 0, 10.0);
 
         assert!((max - 10.0).abs() < 1e-10, "max={}", max);
         assert!(

@@ -6,8 +6,6 @@
 //!
 //! Issue #118x, #1202, #1209 - Batch scoring optimisations.
 
-use wasm_bindgen::prelude::*;
-
 use crate::network::CompiledNetwork;
 use crate::range::apply_limit_range;
 use crate::simd::{weighted_sum_simd_4records, weighted_sum_simd_8records};
@@ -545,7 +543,6 @@ macro_rules! batch_8way_activation {
 ///
 /// Issue #118x - Fuse activate + MSE for scoring performance.
 /// Issue #1202 - Use 4-record SIMD batching for forward-only networks.
-#[wasm_bindgen]
 pub fn mse_sum_batch_packed(
     network: &mut CompiledNetwork,
     records: &[f32],
@@ -1699,7 +1696,6 @@ fn hinge_sum_batch_8way(
 ///
 /// # Returns
 /// Sum of per-record MAE errors (divide by record count for mean)
-#[wasm_bindgen]
 pub fn mae_sum_batch_packed(
     network: &mut CompiledNetwork,
     records: &[f32],
@@ -1775,7 +1771,6 @@ pub fn mae_sum_batch_packed(
 ///
 /// # Returns
 /// Sum of per-record Cross Entropy errors (divide by record count for mean)
-#[wasm_bindgen]
 pub fn cross_entropy_sum_batch_packed(
     network: &mut CompiledNetwork,
     records: &[f32],
@@ -1854,7 +1849,6 @@ pub fn cross_entropy_sum_batch_packed(
 ///
 /// # Returns
 /// Sum of per-record MAPE errors (divide by record count for mean)
-#[wasm_bindgen]
 pub fn mape_sum_batch_packed(
     network: &mut CompiledNetwork,
     records: &[f32],
@@ -1932,7 +1926,6 @@ pub fn mape_sum_batch_packed(
 ///
 /// # Returns
 /// Sum of per-record MSLE errors (divide by record count for mean)
-#[wasm_bindgen]
 pub fn msle_sum_batch_packed(
     network: &mut CompiledNetwork,
     records: &[f32],
@@ -2005,7 +1998,6 @@ pub fn msle_sum_batch_packed(
 ///
 /// # Returns
 /// Sum of per-record Hinge errors (divide by record count for mean)
-#[wasm_bindgen]
 pub fn hinge_sum_batch_packed(
     network: &mut CompiledNetwork,
     records: &[f32],
