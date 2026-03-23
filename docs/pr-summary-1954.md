@@ -39,11 +39,11 @@ in Rust, with results deserialised back into TypeScript state.
 
 Production-scale network: 1,176 neurons, 19,500 synapses.
 
-| Metric | Baseline | With WASM | Change |
-|--------|----------|-----------|--------|
-| Propagate only | 5.1 ms | 4.7 ms | **-7.8%** |
-| Full backprop | 6.0 ms | 6.3 ms | +5% (noise) |
-| Error only | 3.7 ms | 3.6 ms | -2.7% |
+| Metric         | Baseline | With WASM | Change      |
+| -------------- | -------- | --------- | ----------- |
+| Propagate only | 5.1 ms   | 4.7 ms    | **-7.8%**   |
+| Full backprop  | 6.0 ms   | 6.3 ms    | +5% (noise) |
+| Error only     | 3.7 ms   | 3.6 ms    | -2.7%       |
 
 The propagate-only metric shows a ~8% improvement. The full backprop number
 includes activation (unchanged) and is within measurement noise.
@@ -61,13 +61,13 @@ includes activation (unchanged) and is within measurement noise.
 
 ## Files Changed
 
-| File | Change |
-|------|--------|
-| `wasm_activation/src/topological_backprop.rs` | New: Rust implementation |
-| `wasm_activation/src/lib.rs` | Added module export |
-| `src/propagate/WasmTopologicalBackprop.ts` | New: TS serialisation wrapper |
-| `src/propagate/TopologicalBackpropagation.ts` | Added WASM path dispatch |
-| `src/wasm/WasmModuleLoader.ts` | Added function pointer |
-| `src/wasm/WasmStandaloneFunctions.ts` | Added wrapper function |
-| `test/propagate/WasmTopologicalBackprop.ts` | New: WASM-specific tests |
-| `wasm_activation/pkg/*` | Rebuilt WASM binary |
+| File                                          | Change                        |
+| --------------------------------------------- | ----------------------------- |
+| `wasm_activation/src/topological_backprop.rs` | New: Rust implementation      |
+| `wasm_activation/src/lib.rs`                  | Added module export           |
+| `src/propagate/WasmTopologicalBackprop.ts`    | New: TS serialisation wrapper |
+| `src/propagate/TopologicalBackpropagation.ts` | Added WASM path dispatch      |
+| `src/wasm/WasmModuleLoader.ts`                | Added function pointer        |
+| `src/wasm/WasmStandaloneFunctions.ts`         | Added wrapper function        |
+| `test/propagate/WasmTopologicalBackprop.ts`   | New: WASM-specific tests      |
+| `wasm_activation/pkg/*`                       | Rebuilt WASM binary           |
