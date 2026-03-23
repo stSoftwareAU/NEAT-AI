@@ -33,7 +33,10 @@ function createCreature(
   const synapses: CreatureExport["synapses"] = [];
 
   // Use prefix hash to create non-overlapping ID ranges
-  const prefixHash = Array.from(prefix).reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const prefixHash = Array.from(prefix).reduce(
+    (acc, c) => acc + c.charCodeAt(0),
+    0,
+  );
   const idBase = prefixHash * 1000;
 
   for (let i = 0; i < hiddenCount; i++) {

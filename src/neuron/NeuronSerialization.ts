@@ -80,6 +80,22 @@ export function internalJSON(
 }
 
 /**
+ * Generates a deterministic integer ID from a legacy UUID string.
+ * Uses a simple hash to ensure the same UUID always produces the same ID.
+ * IDs are in the range [1_000_000, 2_000_000_000) to avoid collisions
+ * with input neuron IDs (0+) and output neuron IDs (negative).
+ */
+function deterministicIdFromUuid(uuid: string): number {
+  let hash = 0;
+  for (let i = 0; i < uuid.length; i++) {
+    const chr = uuid.charCodeAt(i);
+    hash = ((hash << 5) - hash + chr) | 0;
+  }
+  // Ensure positive and in range [1_000_000, 2_000_000_000)
+  return 1_000_000 + Math.abs(hash % 1_999_000_000);
+}
+
+/**
  * Convert a JSON object to a Neuron instance.
  * Issue #1958: Uses integer neuron IDs instead of UUID strings.
  */
@@ -90,6 +106,10 @@ export function fromJSON(
   let id: number;
   if (json.id !== undefined) {
     id = json.id;
+    ensureIdAbove(id);
+  } else if (json.uuid) {
+    // Legacy format: generate deterministic ID from UUID string
+    id = deterministicIdFromUuid(json.uuid);
     ensureIdAbove(id);
   } else {
     id = nextNeuronId();
