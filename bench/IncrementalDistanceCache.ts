@@ -32,10 +32,14 @@ function createCreature(
   const neurons: CreatureExport["neurons"] = [];
   const synapses: CreatureExport["synapses"] = [];
 
+  // Use prefix hash to create non-overlapping ID ranges
+  const prefixHash = Array.from(prefix).reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const idBase = prefixHash * 1000;
+
   for (let i = 0; i < hiddenCount; i++) {
     neurons.push({
       type: "hidden",
-      uuid: `${prefix}-h-${i}`,
+      id: idBase + i,
       squash: "TANH",
       bias: 0.1,
     });
@@ -43,7 +47,7 @@ function createCreature(
 
   neurons.push({
     type: "output",
-    uuid: "output-0",
+    id: -1,
     squash: "IDENTITY",
     bias: 0,
   });
@@ -53,8 +57,8 @@ function createCreature(
   for (let i = 0; i < inputCount; i++) {
     for (let j = 0; j < firstLayerSize; j++) {
       synapses.push({
-        fromUUID: `input-${i}`,
-        toUUID: `${prefix}-h-${j}`,
+        fromId: i,
+        toId: idBase + j,
         weight: 0.5,
       });
     }
@@ -63,8 +67,8 @@ function createCreature(
   // Chain hidden neurons
   for (let i = 0; i < hiddenCount - 1; i++) {
     synapses.push({
-      fromUUID: `${prefix}-h-${i}`,
-      toUUID: `${prefix}-h-${i + 1}`,
+      fromId: idBase + i,
+      toId: idBase + i + 1,
       weight: 0.5,
     });
   }
@@ -72,8 +76,8 @@ function createCreature(
   // Last hidden to output
   if (hiddenCount > 0) {
     synapses.push({
-      fromUUID: `${prefix}-h-${hiddenCount - 1}`,
-      toUUID: "output-0",
+      fromId: idBase + hiddenCount - 1,
+      toId: -1,
       weight: 0.5,
     });
   }
@@ -104,11 +108,11 @@ function createPopulation(
     const neurons: CreatureExport["neurons"] = [];
     const synapses: CreatureExport["synapses"] = [];
 
-    // Shared neurons (same UUIDs across creatures)
+    // Shared neurons (same IDs across creatures)
     for (let i = 0; i < sharedCount; i++) {
       neurons.push({
         type: "hidden",
-        uuid: `shared-h-${i}`,
+        id: 5000 + i,
         squash: "TANH",
         bias: 0.1,
       });
@@ -119,7 +123,7 @@ function createPopulation(
     for (let i = 0; i < uniqueCount; i++) {
       neurons.push({
         type: "hidden",
-        uuid: `c${p}-h-${i}`,
+        id: 10000 + p * 1000 + i,
         squash: "TANH",
         bias: 0.1,
       });
@@ -127,7 +131,7 @@ function createPopulation(
 
     neurons.push({
       type: "output",
-      uuid: "output-0",
+      id: -1,
       squash: "IDENTITY",
       bias: 0,
     });
@@ -136,8 +140,8 @@ function createPopulation(
     const inputCount = 5;
     for (let i = 0; i < inputCount; i++) {
       synapses.push({
-        fromUUID: `input-${i}`,
-        toUUID: neurons[0].uuid!,
+        fromId: i,
+        toId: neurons[0].id!,
         weight: 0.5,
       });
     }
@@ -145,16 +149,16 @@ function createPopulation(
     // Chain neurons
     for (let i = 0; i < hiddenCount - 1; i++) {
       synapses.push({
-        fromUUID: neurons[i].uuid!,
-        toUUID: neurons[i + 1].uuid!,
+        fromId: neurons[i].id!,
+        toId: neurons[i + 1].id!,
         weight: 0.5,
       });
     }
 
     // Last to output
     synapses.push({
-      fromUUID: neurons[hiddenCount - 1].uuid!,
-      toUUID: "output-0",
+      fromId: neurons[hiddenCount - 1].id!,
+      toId: -1,
       weight: 0.5,
     });
 
@@ -180,7 +184,7 @@ const population = createPopulation(populationSize, hiddenNeuronCount, 0.5);
 
 // Pre-warm hidden neuron UUID caches
 for (const creature of population) {
-  creature.getHiddenNeuronUUIDs();
+  creature.getHiddenNeuronIds();
 }
 
 console.log(
@@ -248,8 +252,8 @@ Deno.bench({
 
 const creatureA = createCreature(200, "bench-a");
 const creatureB = createCreature(200, "bench-b");
-creatureA.getHiddenNeuronUUIDs();
-creatureB.getHiddenNeuronUUIDs();
+creatureA.getHiddenNeuronIds();
+creatureB.getHiddenNeuronIds();
 
 // Pre-populate cache for the pair
 geneticCompatibility(creatureA, creatureB);

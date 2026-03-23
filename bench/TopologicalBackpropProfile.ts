@@ -63,49 +63,50 @@ function buildNetwork(
 ): CreatureExport {
   const neurons: CreatureExport["neurons"] = [];
   const synapses: CreatureExport["synapses"] = [];
-  const layerUUIDs: string[][] = [];
+  const layerIds: number[][] = [];
 
-  const inputUUIDs = Array.from(
+  const inputIds = Array.from(
     { length: inputCount },
-    (_, i) => `input-${i}`,
+    (_, i) => i,
   );
-  layerUUIDs.push(inputUUIDs);
+  layerIds.push(inputIds);
 
+  let nextHiddenId = 100;
   for (let layerIdx = 0; layerIdx < hiddenLayers.length; layerIdx++) {
     const layerSize = hiddenLayers[layerIdx];
-    const uuids: string[] = [];
+    const ids: number[] = [];
     for (let i = 0; i < layerSize; i++) {
-      const uuid = `hidden-${layerIdx}-${i}`;
-      uuids.push(uuid);
+      const id = nextHiddenId++;
+      ids.push(id);
       neurons.push({
         type: "hidden",
-        uuid,
+        id,
         squash: SQUASH_NAMES[
           Math.floor(Math.abs(random()) * SQUASH_NAMES.length)
         ],
         bias: random() * 0.5,
       });
     }
-    layerUUIDs.push(uuids);
+    layerIds.push(ids);
   }
 
-  const outputUUIDs: string[] = [];
+  const outputIds: number[] = [];
   for (let i = 0; i < outputCount; i++) {
-    const uuid = `output-${i}`;
-    outputUUIDs.push(uuid);
+    const id = -(i + 1);
+    outputIds.push(id);
     neurons.push({
       type: "output",
-      uuid,
+      id,
       squash: "IDENTITY",
       bias: random() * 0.1,
     });
   }
-  layerUUIDs.push(outputUUIDs);
+  layerIds.push(outputIds);
 
-  for (let l = 0; l < layerUUIDs.length - 1; l++) {
-    const fromLayer = layerUUIDs[l];
-    const toLayer = layerUUIDs[l + 1];
-    for (const fromUUID of fromLayer) {
+  for (let l = 0; l < layerIds.length - 1; l++) {
+    const fromLayer = layerIds[l];
+    const toLayer = layerIds[l + 1];
+    for (const fromId of fromLayer) {
       const fanOut = Math.min(maxFanOut, toLayer.length);
       const connected = new Set<number>();
       while (connected.size < fanOut) {
@@ -115,8 +116,8 @@ function buildNetwork(
         if (!connected.has(targetIdx)) {
           connected.add(targetIdx);
           synapses.push({
-            fromUUID,
-            toUUID: toLayer[targetIdx],
+            fromId,
+            toId: toLayer[targetIdx],
             weight: random() * 0.5,
           });
         }
@@ -339,7 +340,7 @@ Deno.bench({
 }, () => {
   const neurons = mediumCreature.neurons;
   for (let i = mediumCreature.input; i < neurons.length; i++) {
-    mediumSparse.propagateNeeded(neurons[i].uuid);
+    mediumSparse.propagateNeeded(neurons[i].id);
   }
 });
 
@@ -349,7 +350,7 @@ Deno.bench({
 }, () => {
   const neurons = largeCreature.neurons;
   for (let i = largeCreature.input; i < neurons.length; i++) {
-    largeSparse.propagateNeeded(neurons[i].uuid);
+    largeSparse.propagateNeeded(neurons[i].id);
   }
 });
 
