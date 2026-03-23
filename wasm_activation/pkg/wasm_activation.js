@@ -967,6 +967,37 @@ export function derivative_batch_4way(squash_type, x0, x1, x2, x3) {
 }
 
 /**
+ * Issue #1961 — Detect whether the topology contains cycles among non-input neurons.
+ *
+ * Uses Kahn's algorithm: if after processing all zero-in-degree neurons
+ * some non-input neurons remain unprocessed, a cycle exists.
+ *
+ * Self-loops are explicitly detected as cycles.
+ *
+ * # Arguments
+ * * `from_indices` - Synapse source indices
+ * * `to_indices` - Synapse destination indices
+ * * `num_neurons` - Total number of neurons
+ * * `num_inputs` - Number of input neurons
+ *
+ * # Returns
+ * 0 if acyclic, 1 if cycles detected
+ * @param {Uint32Array} from_indices
+ * @param {Uint32Array} to_indices
+ * @param {number} num_neurons
+ * @param {number} num_inputs
+ * @returns {number}
+ */
+export function detect_cycles(from_indices, to_indices, num_neurons, num_inputs) {
+    const ptr0 = passArray32ToWasm0(from_indices, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray32ToWasm0(to_indices, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.detect_cycles(ptr0, len0, ptr1, len1, num_neurons, num_inputs);
+    return ret >>> 0;
+}
+
+/**
  * Issue #1519 - WASM-exported standalone elastic error distribution.
  *
  * Distributes `error` across links proportional to activation² × safeZoneFactor,
@@ -1631,6 +1662,58 @@ export function unsquash(squash_type, activation, hint) {
 export function validate_range(squash_type, activation) {
     const ret = wasm.validate_range(squash_type, activation);
     return ret !== 0;
+}
+
+/**
+ * Issue #1961 — Validate structural integrity of a typed topology.
+ *
+ * Checks:
+ * - No synapse targets an input neuron
+ * - Constant neurons have no inward connections
+ * - Hidden neurons have at least 1 inward and 1 outward connection
+ * - Non-input neuron biases are finite
+ * - IF neurons have at least 3 inward connections with
+ *   condition, positive (or standard), and negative synapse types
+ *
+ * # Arguments
+ * * `from_indices` - Synapse source indices
+ * * `to_indices` - Synapse destination indices
+ * * `is_constant` - Per-neuron constant flag (1 = constant)
+ * * `squash_types` - Per-neuron squash type code
+ * * `biases` - Per-neuron bias values (f64)
+ * * `num_inputs` - Number of input neurons
+ * * `num_outputs` - Number of output neurons
+ * * `synapse_types` - Per-synapse type code (condition/positive/negative/standard)
+ *
+ * # Returns
+ * Int32Array of length 2: `[error_code, neuron_or_synapse_index]`
+ * @param {Uint32Array} from_indices
+ * @param {Uint32Array} to_indices
+ * @param {Uint8Array} is_constant
+ * @param {Uint8Array} squash_types
+ * @param {Float64Array} biases
+ * @param {number} num_inputs
+ * @param {number} num_outputs
+ * @param {Uint8Array} synapse_types
+ * @returns {Int32Array}
+ */
+export function validate_structural_integrity(from_indices, to_indices, is_constant, squash_types, biases, num_inputs, num_outputs, synapse_types) {
+    const ptr0 = passArray32ToWasm0(from_indices, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray32ToWasm0(to_indices, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(is_constant, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(squash_types, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ptr4 = passArrayF64ToWasm0(biases, wasm.__wbindgen_malloc);
+    const len4 = WASM_VECTOR_LEN;
+    const ptr5 = passArray8ToWasm0(synapse_types, wasm.__wbindgen_malloc);
+    const len5 = WASM_VECTOR_LEN;
+    const ret = wasm.validate_structural_integrity(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, num_inputs, num_outputs, ptr5, len5);
+    var v7 = getArrayI32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v7;
 }
 
 /**

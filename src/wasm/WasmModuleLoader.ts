@@ -154,6 +154,28 @@ let computeReverseTopologicalOrderFn:
   ) => Uint32Array)
   | null = null;
 
+// Issue #1961 - Structural integrity validation and cycle detection
+let validateStructuralIntegrityFn:
+  | ((
+    fromIndices: Uint32Array,
+    toIndices: Uint32Array,
+    isConstant: Uint8Array,
+    squashTypes: Uint8Array,
+    biases: Float64Array,
+    numInputs: number,
+    numOutputs: number,
+    synapseTypes: Uint8Array,
+  ) => Int32Array)
+  | null = null;
+let detectCyclesFn:
+  | ((
+    fromIndices: Uint32Array,
+    toIndices: Uint32Array,
+    numNeurons: number,
+    numInputs: number,
+  ) => number)
+  | null = null;
+
 // Issue #1519 - Standalone elastic error distribution
 let distributeElasticErrorFn:
   | ((
@@ -395,6 +417,9 @@ function assignFunctionPointers(module: WasmModule): void {
   validateTopologyFn = module.validate_topology;
   scanAvailableConnectionsFn = module.scan_available_connections;
   computeReverseTopologicalOrderFn = module.compute_reverse_topological_order;
+  // Issue #1961 - Structural integrity validation and cycle detection
+  validateStructuralIntegrityFn = module.validate_structural_integrity;
+  detectCyclesFn = module.detect_cycles;
   // Issue #1519 - Standalone elastic error distribution
   distributeElasticErrorFn = module.distribute_elastic_error;
   // Issue #1518 - Accumulation functions
@@ -704,6 +729,15 @@ export function getScanAvailableConnectionsFn(): typeof scanAvailableConnections
 
 export function getComputeReverseTopologicalOrderFn(): typeof computeReverseTopologicalOrderFn {
   return computeReverseTopologicalOrderFn;
+}
+
+// Issue #1961 - Structural integrity and cycle detection getters
+export function getValidateStructuralIntegrityFn(): typeof validateStructuralIntegrityFn {
+  return validateStructuralIntegrityFn;
+}
+
+export function getDetectCyclesFn(): typeof detectCyclesFn {
+  return detectCyclesFn;
 }
 
 // Issue #1960 - Batch operation function pointer getters

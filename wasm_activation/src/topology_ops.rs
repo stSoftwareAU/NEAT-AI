@@ -302,6 +302,250 @@ pub fn validate_topology_batch(
     result
 }
 
+// ===========================================================================
+// Issue #1961 — Structural integrity error codes
+// ===========================================================================
+
+const STRUCTURAL_VALID: i32 = 0;
+const STRUCTURAL_SYNAPSE_TARGETS_INPUT: i32 = 1;
+const STRUCTURAL_CONSTANT_HAS_INWARD: i32 = 2;
+const STRUCTURAL_HIDDEN_NO_INWARD: i32 = 3;
+const STRUCTURAL_HIDDEN_NO_OUTWARD: i32 = 4;
+const STRUCTURAL_BIAS_NOT_FINITE: i32 = 5;
+const STRUCTURAL_IF_TOO_FEW_INWARD: i32 = 6;
+const STRUCTURAL_IF_MISSING_CONDITION: i32 = 7;
+const STRUCTURAL_IF_MISSING_POSITIVE: i32 = 8;
+const STRUCTURAL_IF_MISSING_NEGATIVE: i32 = 9;
+
+/// Squash type code for IF neurons (must match SquashType::If in squash.rs).
+const IF_SQUASH: u8 = 34;
+/// Synapse type codes (must match SynapseType enum in synapse_type.rs).
+const SYN_STANDARD: u8 = 0;
+const SYN_CONDITION: u8 = 1;
+const SYN_NEGATIVE: u8 = 2;
+const SYN_POSITIVE: u8 = 3;
+
+/// Issue #1961 — Validate structural integrity of a typed topology.
+///
+/// Checks:
+/// - No synapse targets an input neuron
+/// - Constant neurons have no inward connections
+/// - Hidden neurons have at least 1 inward and 1 outward connection
+/// - Non-input neuron biases are finite
+/// - IF neurons have at least 3 inward connections with
+///   condition, positive (or standard), and negative synapse types
+///
+/// # Arguments
+/// * `from_indices` - Synapse source indices
+/// * `to_indices` - Synapse destination indices
+/// * `is_constant` - Per-neuron constant flag (1 = constant)
+/// * `squash_types` - Per-neuron squash type code
+/// * `biases` - Per-neuron bias values (f64)
+/// * `num_inputs` - Number of input neurons
+/// * `num_outputs` - Number of output neurons
+/// * `synapse_types` - Per-synapse type code (condition/positive/negative/standard)
+///
+/// # Returns
+/// Int32Array of length 2: `[error_code, neuron_or_synapse_index]`
+#[wasm_bindgen]
+pub fn validate_structural_integrity(
+    from_indices: &[u32],
+    to_indices: &[u32],
+    is_constant: &[u8],
+    squash_types: &[u8],
+    biases: &[f64],
+    num_inputs: u32,
+    num_outputs: u32,
+    synapse_types: &[u8],
+) -> Vec<i32> {
+    let num_neurons = biases.len();
+    let num_synapses = from_indices.len();
+    let input_count = num_inputs as usize;
+    let output_count = num_outputs as usize;
+
+    // Check no synapse targets an input neuron
+    for i in 0..num_synapses {
+        if (to_indices[i] as usize) < input_count {
+            return vec![STRUCTURAL_SYNAPSE_TARGETS_INPUT, to_indices[i] as i32];
+        }
+    }
+
+    // Count inward and outward connections per neuron
+    let mut inward_count = vec![0u32; num_neurons];
+    let mut outward_count = vec![0u32; num_neurons];
+
+    for i in 0..num_synapses {
+        let from = from_indices[i] as usize;
+        let to = to_indices[i] as usize;
+        if from < num_neurons {
+            outward_count[from] += 1;
+        }
+        if to < num_neurons {
+            inward_count[to] += 1;
+        }
+    }
+
+    // Validate each non-input neuron
+    let output_start = num_neurons - output_count;
+
+    for i in input_count..num_neurons {
+        let is_output = i >= output_start;
+        let is_const = i < is_constant.len() && is_constant[i] != 0;
+
+        // Check bias is finite for non-constant, non-input neurons
+        if !is_const {
+            let bias = biases[i];
+            if bias.is_nan() || bias.is_infinite() {
+                return vec![STRUCTURAL_BIAS_NOT_FINITE, i as i32];
+            }
+        }
+
+        // Constant neuron checks
+        if is_const {
+            if inward_count[i] > 0 {
+                return vec![STRUCTURAL_CONSTANT_HAS_INWARD, i as i32];
+            }
+            continue;
+        }
+
+        // Hidden neuron checks (not output, not constant)
+        if !is_output {
+            if inward_count[i] == 0 {
+                return vec![STRUCTURAL_HIDDEN_NO_INWARD, i as i32];
+            }
+            if outward_count[i] == 0 {
+                return vec![STRUCTURAL_HIDDEN_NO_OUTWARD, i as i32];
+            }
+        }
+
+        // IF neuron validation
+        if i < squash_types.len() && squash_types[i] == IF_SQUASH {
+            if inward_count[i] < 3 {
+                return vec![STRUCTURAL_IF_TOO_FEW_INWARD, i as i32];
+            }
+
+            // Check for required synapse types
+            let mut has_condition = false;
+            let mut has_positive = false;
+            let mut has_negative = false;
+
+            for s in 0..num_synapses {
+                if to_indices[s] as usize != i {
+                    continue;
+                }
+                if s < synapse_types.len() {
+                    let st = synapse_types[s];
+                    if st == SYN_CONDITION {
+                        has_condition = true;
+                    }
+                    if st == SYN_POSITIVE || st == SYN_STANDARD {
+                        has_positive = true;
+                    }
+                    if st == SYN_NEGATIVE {
+                        has_negative = true;
+                    }
+                }
+            }
+
+            if !has_condition {
+                return vec![STRUCTURAL_IF_MISSING_CONDITION, i as i32];
+            }
+            if !has_positive {
+                return vec![STRUCTURAL_IF_MISSING_POSITIVE, i as i32];
+            }
+            if !has_negative {
+                return vec![STRUCTURAL_IF_MISSING_NEGATIVE, i as i32];
+            }
+        }
+    }
+
+    vec![STRUCTURAL_VALID, 0]
+}
+
+/// Issue #1961 — Detect whether the topology contains cycles among non-input neurons.
+///
+/// Uses Kahn's algorithm: if after processing all zero-in-degree neurons
+/// some non-input neurons remain unprocessed, a cycle exists.
+///
+/// Self-loops are explicitly detected as cycles.
+///
+/// # Arguments
+/// * `from_indices` - Synapse source indices
+/// * `to_indices` - Synapse destination indices
+/// * `num_neurons` - Total number of neurons
+/// * `num_inputs` - Number of input neurons
+///
+/// # Returns
+/// 0 if acyclic, 1 if cycles detected
+#[wasm_bindgen]
+pub fn detect_cycles(
+    from_indices: &[u32],
+    to_indices: &[u32],
+    num_neurons: u32,
+    num_inputs: u32,
+) -> u32 {
+    let n = num_neurons as usize;
+    let input_count = num_inputs as usize;
+
+    // Check for self-loops first
+    for i in 0..from_indices.len() {
+        if from_indices[i] == to_indices[i] && (from_indices[i] as usize) >= input_count {
+            return 1;
+        }
+    }
+
+    // Build in-degree counts for non-input neurons.
+    // Only count edges from other non-input neurons — edges from inputs
+    // cannot participate in cycles, so they are excluded.
+    let mut in_degree = vec![0i32; n];
+
+    for i in 0..from_indices.len() {
+        let from = from_indices[i] as usize;
+        let to = to_indices[i] as usize;
+        if from == to {
+            continue;
+        }
+        if from >= input_count && to >= input_count && to < n {
+            in_degree[to] += 1;
+        }
+    }
+
+    // Start with non-input neurons that have zero in-degree from non-input sources
+    let mut queue: Vec<usize> = Vec::new();
+    for i in input_count..n {
+        if in_degree[i] == 0 {
+            queue.push(i);
+        }
+    }
+
+    let mut processed = 0usize;
+    let mut head = 0;
+
+    while head < queue.len() {
+        let idx = queue[head];
+        head += 1;
+        processed += 1;
+
+        // Decrement in-degree for outgoing edges to non-input neurons
+        for s in 0..from_indices.len() {
+            if from_indices[s] as usize != idx {
+                continue;
+            }
+            let to = to_indices[s] as usize;
+            if to == idx || to < input_count || to >= n {
+                continue;
+            }
+            in_degree[to] -= 1;
+            if in_degree[to] == 0 {
+                queue.push(to);
+            }
+        }
+    }
+
+    let non_input_count = n - input_count;
+    if processed < non_input_count { 1 } else { 0 }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -460,5 +704,207 @@ mod tests {
 
         let result = validate_topology_batch(&all_from, &all_to, &lengths);
         assert_eq!(result.len(), 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // Issue #1961 — Structural integrity tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_structural_valid() {
+        // 2 inputs, 1 hidden, 1 output: 0->2, 1->2, 2->3
+        let from = [0u32, 1, 2];
+        let to = [2u32, 2, 3];
+        let is_const = [0u8, 0, 0, 0];
+        let squash = [0u8, 0, 1, 7]; // hidden=ReLU, output=TANH
+        let biases = [0.0f64, 0.0, 0.5, -0.3];
+        let syn_types = [0u8, 0, 0];
+
+        let result = validate_structural_integrity(
+            &from, &to, &is_const, &squash, &biases, 2, 1, &syn_types,
+        );
+        assert_eq!(result[0], STRUCTURAL_VALID);
+    }
+
+    #[test]
+    fn test_structural_synapse_targets_input() {
+        let from = [0u32, 2];
+        let to = [1u32, 3]; // to=1 is input (numInputs=2)
+        let is_const = [0u8, 0, 0, 0];
+        let squash = [0u8, 0, 1, 7];
+        let biases = [0.0f64, 0.0, 0.5, -0.3];
+        let syn_types = [0u8, 0];
+
+        let result = validate_structural_integrity(
+            &from, &to, &is_const, &squash, &biases, 2, 1, &syn_types,
+        );
+        assert_eq!(result[0], STRUCTURAL_SYNAPSE_TARGETS_INPUT);
+    }
+
+    #[test]
+    fn test_structural_constant_has_inward() {
+        // input-0 -> constant (idx 2) is invalid
+        let from = [0u32, 2];
+        let to = [2u32, 3];
+        let is_const = [0u8, 0, 1, 0]; // idx 2 is constant
+        let squash = [0u8, 0, 0, 7];
+        let biases = [0.0f64, 0.0, 1.0, -0.3];
+        let syn_types = [0u8, 0];
+
+        let result = validate_structural_integrity(
+            &from, &to, &is_const, &squash, &biases, 2, 1, &syn_types,
+        );
+        assert_eq!(result[0], STRUCTURAL_CONSTANT_HAS_INWARD);
+    }
+
+    #[test]
+    fn test_structural_hidden_no_inward() {
+        // hidden (idx 2) has outward only
+        let from = [2u32];
+        let to = [3u32];
+        let is_const = [0u8, 0, 0, 0];
+        let squash = [0u8, 0, 1, 7];
+        let biases = [0.0f64, 0.0, 0.5, -0.3];
+        let syn_types = [0u8];
+
+        let result = validate_structural_integrity(
+            &from, &to, &is_const, &squash, &biases, 2, 1, &syn_types,
+        );
+        assert_eq!(result[0], STRUCTURAL_HIDDEN_NO_INWARD);
+    }
+
+    #[test]
+    fn test_structural_hidden_no_outward() {
+        // hidden (idx 2) has inward only, input-1 -> output directly
+        let from = [0u32, 1];
+        let to = [2u32, 3];
+        let is_const = [0u8, 0, 0, 0];
+        let squash = [0u8, 0, 1, 7];
+        let biases = [0.0f64, 0.0, 0.5, -0.3];
+        let syn_types = [0u8, 0];
+
+        let result = validate_structural_integrity(
+            &from, &to, &is_const, &squash, &biases, 2, 1, &syn_types,
+        );
+        assert_eq!(result[0], STRUCTURAL_HIDDEN_NO_OUTWARD);
+    }
+
+    #[test]
+    fn test_structural_bias_not_finite() {
+        let from = [0u32, 2];
+        let to = [2u32, 3];
+        let is_const = [0u8, 0, 0, 0];
+        let squash = [0u8, 0, 1, 7];
+        let biases = [0.0f64, 0.0, f64::INFINITY, -0.3];
+        let syn_types = [0u8, 0];
+
+        let result = validate_structural_integrity(
+            &from, &to, &is_const, &squash, &biases, 2, 1, &syn_types,
+        );
+        assert_eq!(result[0], STRUCTURAL_BIAS_NOT_FINITE);
+    }
+
+    #[test]
+    fn test_structural_bias_nan() {
+        let from = [0u32, 2];
+        let to = [2u32, 3];
+        let is_const = [0u8, 0, 0, 0];
+        let squash = [0u8, 0, 1, 7];
+        let biases = [0.0f64, 0.0, f64::NAN, -0.3];
+        let syn_types = [0u8, 0];
+
+        let result = validate_structural_integrity(
+            &from, &to, &is_const, &squash, &biases, 2, 1, &syn_types,
+        );
+        assert_eq!(result[0], STRUCTURAL_BIAS_NOT_FINITE);
+    }
+
+    #[test]
+    fn test_structural_if_too_few_inward() {
+        // IF neuron (idx 3) with only 2 inward connections
+        let from = [0u32, 1, 3];
+        let to = [3u32, 3, 4];
+        let is_const = [0u8, 0, 0, 0, 0];
+        let squash = [0u8, 0, 0, IF_SQUASH, 0]; // idx 3 = IF
+        let biases = [0.0f64, 0.0, 0.0, 0.0, 0.0];
+        let syn_types = [SYN_CONDITION, SYN_POSITIVE, 0];
+
+        let result = validate_structural_integrity(
+            &from, &to, &is_const, &squash, &biases, 3, 1, &syn_types,
+        );
+        assert_eq!(result[0], STRUCTURAL_IF_TOO_FEW_INWARD);
+    }
+
+    #[test]
+    fn test_structural_if_missing_negative() {
+        // IF neuron (idx 3) with 3 inward but no negative
+        let from = [0u32, 1, 2, 3];
+        let to = [3u32, 3, 3, 4];
+        let is_const = [0u8, 0, 0, 0, 0];
+        let squash = [0u8, 0, 0, IF_SQUASH, 0];
+        let biases = [0.0f64, 0.0, 0.0, 0.0, 0.0];
+        let syn_types = [SYN_CONDITION, SYN_POSITIVE, SYN_POSITIVE, 0];
+
+        let result = validate_structural_integrity(
+            &from, &to, &is_const, &squash, &biases, 3, 1, &syn_types,
+        );
+        assert_eq!(result[0], STRUCTURAL_IF_MISSING_NEGATIVE);
+    }
+
+    #[test]
+    fn test_structural_if_valid() {
+        // IF neuron (idx 3) with proper condition/positive/negative
+        let from = [0u32, 1, 2, 3];
+        let to = [3u32, 3, 3, 4];
+        let is_const = [0u8, 0, 0, 0, 0];
+        let squash = [0u8, 0, 0, IF_SQUASH, 0];
+        let biases = [0.0f64, 0.0, 0.0, 0.0, 0.0];
+        let syn_types = [SYN_CONDITION, SYN_POSITIVE, SYN_NEGATIVE, 0];
+
+        let result = validate_structural_integrity(
+            &from, &to, &is_const, &squash, &biases, 3, 1, &syn_types,
+        );
+        assert_eq!(result[0], STRUCTURAL_VALID);
+    }
+
+    // -----------------------------------------------------------------------
+    // Issue #1961 — Cycle detection tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_detect_cycles_acyclic() {
+        let from = [0u32, 1, 2];
+        let to = [2u32, 2, 3];
+        assert_eq!(detect_cycles(&from, &to, 4, 2), 0);
+    }
+
+    #[test]
+    fn test_detect_cycles_with_cycle() {
+        // 2->3 and 3->2 form a cycle
+        let from = [0u32, 1, 2, 3];
+        let to = [2u32, 3, 3, 2];
+        assert_eq!(detect_cycles(&from, &to, 4, 2), 1);
+    }
+
+    #[test]
+    fn test_detect_cycles_self_loop() {
+        let from = [0u32, 2];
+        let to = [2u32, 2]; // self-loop
+        assert_eq!(detect_cycles(&from, &to, 3, 1), 1);
+    }
+
+    #[test]
+    fn test_detect_cycles_longer_cycle() {
+        // 3->4, 4->5, 5->3 form a 3-node cycle
+        let from = [0u32, 1, 2, 3, 4, 5];
+        let to = [3u32, 4, 5, 4, 5, 3];
+        assert_eq!(detect_cycles(&from, &to, 7, 3), 1);
+    }
+
+    #[test]
+    fn test_detect_cycles_empty() {
+        let from: [u32; 0] = [];
+        let to: [u32; 0] = [];
+        assert_eq!(detect_cycles(&from, &to, 3, 2), 0);
     }
 }

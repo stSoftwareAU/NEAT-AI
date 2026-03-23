@@ -539,6 +539,25 @@ export function derivative(squash_type: number, value: number): number;
 export function derivative_batch_4way(squash_type: number, x0: number, x1: number, x2: number, x3: number): Float32Array;
 
 /**
+ * Issue #1961 — Detect whether the topology contains cycles among non-input neurons.
+ *
+ * Uses Kahn's algorithm: if after processing all zero-in-degree neurons
+ * some non-input neurons remain unprocessed, a cycle exists.
+ *
+ * Self-loops are explicitly detected as cycles.
+ *
+ * # Arguments
+ * * `from_indices` - Synapse source indices
+ * * `to_indices` - Synapse destination indices
+ * * `num_neurons` - Total number of neurons
+ * * `num_inputs` - Number of input neurons
+ *
+ * # Returns
+ * 0 if acyclic, 1 if cycles detected
+ */
+export function detect_cycles(from_indices: Uint32Array, to_indices: Uint32Array, num_neurons: number, num_inputs: number): number;
+
+/**
  * Issue #1519 - WASM-exported standalone elastic error distribution.
  *
  * Distributes `error` across links proportional to activation² × safeZoneFactor,
@@ -961,6 +980,32 @@ export function unsquash(squash_type: number, activation: number, hint: number):
 export function validate_range(squash_type: number, activation: number): boolean;
 
 /**
+ * Issue #1961 — Validate structural integrity of a typed topology.
+ *
+ * Checks:
+ * - No synapse targets an input neuron
+ * - Constant neurons have no inward connections
+ * - Hidden neurons have at least 1 inward and 1 outward connection
+ * - Non-input neuron biases are finite
+ * - IF neurons have at least 3 inward connections with
+ *   condition, positive (or standard), and negative synapse types
+ *
+ * # Arguments
+ * * `from_indices` - Synapse source indices
+ * * `to_indices` - Synapse destination indices
+ * * `is_constant` - Per-neuron constant flag (1 = constant)
+ * * `squash_types` - Per-neuron squash type code
+ * * `biases` - Per-neuron bias values (f64)
+ * * `num_inputs` - Number of input neurons
+ * * `num_outputs` - Number of output neurons
+ * * `synapse_types` - Per-synapse type code (condition/positive/negative/standard)
+ *
+ * # Returns
+ * Int32Array of length 2: `[error_code, neuron_or_synapse_index]`
+ */
+export function validate_structural_integrity(from_indices: Uint32Array, to_indices: Uint32Array, is_constant: Uint8Array, squash_types: Uint8Array, biases: Float64Array, num_inputs: number, num_outputs: number, synapse_types: Uint8Array): Int32Array;
+
+/**
  * Issue #1959 - Validate topology synapse ordering and forward-only constraints.
  *
  * Checks that synapses are sorted (ascending from, then ascending to within
@@ -1050,11 +1095,13 @@ export interface InitOutput {
     readonly predictivecodingengine_num_inputs: (a: number) => number;
     readonly predictivecodingengine_num_neurons: (a: number) => number;
     readonly predictivecodingengine_num_outputs: (a: number) => number;
-    readonly compute_reverse_topological_order: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly compute_score_components: (a: number, b: number, c: number, d: number) => any;
-    readonly scan_available_connections: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
     readonly scan_max_bias: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
     readonly scan_max_weight: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
+    readonly compute_reverse_topological_order: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
+    readonly detect_cycles: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly scan_available_connections: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
+    readonly validate_structural_integrity: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number) => [number, number];
     readonly validate_topology: (a: number, b: number, c: number, d: number) => [number, number];
     readonly validate_topology_batch: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly accumulate_bias_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
