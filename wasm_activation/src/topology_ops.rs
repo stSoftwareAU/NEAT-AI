@@ -254,6 +254,54 @@ pub fn compute_reverse_topological_order(
     result
 }
 
+/// Issue #1960 - Batch topology validation for multiple creatures.
+///
+/// Validates multiple topologies in a single WASM call to amortise boundary
+/// crossing overhead. Each topology's from/to indices are concatenated, with
+/// a lengths array specifying where each topology's data ends.
+///
+/// # Arguments
+/// * `all_from_indices` - Concatenated from indices for all topologies
+/// * `all_to_indices` - Concatenated to indices for all topologies
+/// * `lengths` - Number of synapses per topology (used to split the arrays)
+///
+/// # Returns
+/// Int32Array of length 2×N (N = number of topologies):
+///   `[error_code_0, synapse_index_0, error_code_1, synapse_index_1, ...]`
+#[wasm_bindgen]
+pub fn validate_topology_batch(
+    all_from_indices: &[u32],
+    all_to_indices: &[u32],
+    lengths: &[u32],
+) -> Vec<i32> {
+    let num_topologies = lengths.len();
+    let mut result = vec![0i32; num_topologies * 2];
+    let mut offset: usize = 0;
+
+    for t in 0..num_topologies {
+        let len = lengths[t] as usize;
+        let end = offset + len;
+
+        if end > all_from_indices.len() || end > all_to_indices.len() {
+            result[t * 2] = SORT_ERROR_FROM;
+            result[t * 2 + 1] = 0;
+            offset = end;
+            continue;
+        }
+
+        let from_slice = &all_from_indices[offset..end];
+        let to_slice = &all_to_indices[offset..end];
+        let single_result = validate_topology(from_slice, to_slice);
+
+        result[t * 2] = single_result[0];
+        result[t * 2 + 1] = single_result[1];
+
+        offset = end;
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -376,5 +424,41 @@ mod tests {
         assert!(pos_of(6) < pos_of(4)); // output-0 before h-1
         assert!(pos_of(6) < pos_of(3)); // output-0 before h-0
         assert!(pos_of(7) < pos_of(5)); // output-1 before h-2
+    }
+
+    #[test]
+    fn test_validate_topology_batch_multiple_valid() {
+        // Two valid topologies concatenated
+        let all_from = [0, 1, 2, 0, 2]; // topo1: [0,1,2], topo2: [0,2]
+        let all_to = [2, 2, 3, 2, 3];   // topo1: [2,2,3], topo2: [2,3]
+        let lengths = [3, 2];
+
+        let result = validate_topology_batch(&all_from, &all_to, &lengths);
+        assert_eq!(result.len(), 4);
+        assert_eq!(result[0], VALID);  // topo1 error_code
+        assert_eq!(result[2], VALID);  // topo2 error_code
+    }
+
+    #[test]
+    fn test_validate_topology_batch_mixed_valid_invalid() {
+        // First valid, second has backward connection
+        let all_from = [0, 1, 2, 3]; // topo1: [0,1,2], topo2: [3]
+        let all_to = [2, 2, 3, 1];   // topo1: [2,2,3], topo2: [1] (backward!)
+        let lengths = [3, 1];
+
+        let result = validate_topology_batch(&all_from, &all_to, &lengths);
+        assert_eq!(result.len(), 4);
+        assert_eq!(result[0], VALID);              // topo1 valid
+        assert_eq!(result[2], BACKWARD_CONNECTION); // topo2 backward
+    }
+
+    #[test]
+    fn test_validate_topology_batch_empty() {
+        let all_from: [u32; 0] = [];
+        let all_to: [u32; 0] = [];
+        let lengths: [u32; 0] = [];
+
+        let result = validate_topology_batch(&all_from, &all_to, &lengths);
+        assert_eq!(result.len(), 0);
     }
 }

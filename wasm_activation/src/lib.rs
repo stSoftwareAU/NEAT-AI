@@ -44,11 +44,12 @@ pub use synapse_type::SynapseType;
 // Re-export elastic distribution (Issue #1519)
 pub use elastic_distribution::distribute_elastic_error;
 
-// Re-export accumulation functions (Issue #1518)
+// Re-export accumulation functions (Issue #1518, #1960)
 pub use accumulate::{
     accumulate_bias_batch_4way, accumulate_bias_batch_8way,
     accumulate_weight_batch_4way, accumulate_weight_batch_8way,
-    calculate_bias, calculate_weight,
+    calculate_bias, calculate_bias_batch_4way,
+    calculate_weight, calculate_weight_batch_4way,
 };
 
 // Re-export persistent training state functions (Issue #1522)
@@ -64,9 +65,10 @@ pub use training_state::{
 // Re-export topological backpropagation (Issue #1954)
 pub use topological_backprop::propagate_topological;
 
-// Re-export topology operations (Issue #1959)
+// Re-export topology operations (Issue #1959, #1960)
 pub use topology_ops::{
     compute_reverse_topological_order, scan_available_connections, validate_topology,
+    validate_topology_batch,
 };
 
 // Re-export score scan functions (Issue #1521)

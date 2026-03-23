@@ -626,6 +626,119 @@ pub fn calculate_bias(
     )
 }
 
+/// Issue #1960 - Batch calculate_weight for 4 synapses in a single WASM call.
+///
+/// Amortises boundary crossing overhead by processing 4 weight calculations
+/// at once. Each synapse provides 8 state values (count through currentWeight)
+/// packed into a single Float64Array, plus shared config scalars.
+///
+/// # Arguments
+/// * `packed_state` - 32 f64 values: 8 per synapse ×4
+///   Per synapse: [count, totalPosAct, totalNegAct, countPos, countNeg,
+///                 totalPosAdj, totalNegAdj, currentWeight]
+/// * `generations` - Config generations value
+/// * `plank_constant` - Minimum unit threshold
+/// * `learning_rate` - Learning rate
+/// * `max_weight_adj_scale` - Maximum weight adjustment scale
+/// * `limit_weight_scale` - Global weight scale limit
+/// * `l1_weight_decay` - L1 regularisation strength
+/// * `l2_weight_decay` - L2 regularisation strength
+///
+/// # Returns
+/// Float64Array with 4 calculated weights
+#[wasm_bindgen]
+pub fn calculate_weight_batch_4way(
+    packed_state: &[f64],
+    generations: f64,
+    plank_constant: f64,
+    learning_rate: f64,
+    max_weight_adj_scale: f64,
+    limit_weight_scale: f64,
+    l1_weight_decay: f64,
+    l2_weight_decay: f64,
+) -> Vec<f64> {
+    let mut result = vec![0.0_f64; 4];
+
+    for i in 0..4 {
+        let base = i * 8;
+        result[i] = calculate_weight(
+            packed_state[base],     // count
+            packed_state[base + 1], // total_positive_activation
+            packed_state[base + 2], // total_negative_activation
+            packed_state[base + 3], // count_positive
+            packed_state[base + 4], // count_negative
+            packed_state[base + 5], // total_positive_adjusted_value
+            packed_state[base + 6], // total_negative_adjusted_value
+            packed_state[base + 7], // current_weight
+            generations,
+            plank_constant,
+            learning_rate,
+            max_weight_adj_scale,
+            limit_weight_scale,
+            l1_weight_decay,
+            l2_weight_decay,
+        );
+    }
+
+    result
+}
+
+/// Issue #1960 - Batch calculate_bias for 4 neurons in a single WASM call.
+///
+/// Amortises boundary crossing overhead by processing 4 bias calculations
+/// at once. Each neuron provides 4 state values packed into a single
+/// Float64Array, plus shared config scalars. The noChange flags are passed
+/// as a separate Uint8Array (0 = false, nonzero = true).
+///
+/// # Arguments
+/// * `packed_state` - 12 f64 values: 3 per neuron ×4
+///   Per neuron: [count, totalAdjustedBias, currentBias]
+/// * `no_change_flags` - 4 u8 values: 0 = false, nonzero = true
+/// * `generations` - Config generations value
+/// * `plank_constant` - Minimum unit threshold
+/// * `learning_rate` - Learning rate
+/// * `max_bias_adj_scale` - Maximum bias adjustment scale
+/// * `limit_bias_scale` - Global bias scale limit
+/// * `l1_bias_decay` - L1 regularisation strength
+/// * `l2_bias_decay` - L2 regularisation strength
+///
+/// # Returns
+/// Float64Array with 4 calculated biases
+#[wasm_bindgen]
+pub fn calculate_bias_batch_4way(
+    packed_state: &[f64],
+    no_change_flags: &[u8],
+    generations: f64,
+    plank_constant: f64,
+    learning_rate: f64,
+    max_bias_adj_scale: f64,
+    limit_bias_scale: f64,
+    l1_bias_decay: f64,
+    l2_bias_decay: f64,
+) -> Vec<f64> {
+    let mut result = vec![0.0_f64; 4];
+
+    for i in 0..4 {
+        let base = i * 3;
+        let no_change = no_change_flags.get(i).copied().unwrap_or(0) != 0;
+        result[i] = calculate_bias(
+            packed_state[base],     // count
+            packed_state[base + 1], // total_adjusted_bias
+            packed_state[base + 2], // current_bias
+            no_change,
+            generations,
+            plank_constant,
+            learning_rate,
+            max_bias_adj_scale,
+            limit_bias_scale,
+            l1_bias_decay,
+            l2_bias_decay,
+        );
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

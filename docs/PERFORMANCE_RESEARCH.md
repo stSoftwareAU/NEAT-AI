@@ -237,13 +237,14 @@ piecemeal migration:
 - **WASM-resident creature state** — keeping the neural network topology in WASM
   memory permanently, eliminating per-operation serialisation
 - **Batch API design** — grouping multiple operations into single WASM calls to
-  amortise boundary crossing cost
+  amortise boundary crossing cost (implemented in #1960: `calculateWeightBatch4Way`,
+  `calculateBiasBatch4Way`, `validateTopologyBatch`)
 - **Typed array topology** — replacing `Map<string, Neuron>` with indexed arrays
-  that can be shared directly with WASM via `SharedArrayBuffer`
+  that can be shared directly with WASM via `SharedArrayBuffer` (implemented in
+  #1957: `TypedTopology`)
 
-These are significant architectural changes that would affect the entire
-codebase and should be evaluated carefully against the complexity they
-introduce.
+The batch API (#1960) and typed array topology (#1957) are now implemented.
+WASM-resident creature state remains as a potential future optimisation.
 
 ## 🧭 Decision Framework
 
