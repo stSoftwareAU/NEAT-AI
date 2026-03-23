@@ -30,6 +30,7 @@ mod simd;
 mod squash;
 mod synapse_type;
 mod score_scan;
+mod topological_backprop;
 mod training_state;
 mod unsquash;
 
@@ -58,6 +59,9 @@ pub use training_state::{
     read_all_neuron_state, read_all_synapse_state,
     read_neuron_state, read_synapse_state, reset_training_state,
 };
+
+// Re-export topological backpropagation (Issue #1954)
+pub use topological_backprop::propagate_topological;
 
 // Re-export score scan functions (Issue #1521)
 pub use score_scan::{compute_score_components, scan_max_bias, scan_max_weight};

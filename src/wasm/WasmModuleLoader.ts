@@ -127,6 +127,11 @@ let validateRangeFn:
 let limitRangeFn: ((squashType: number, value: number) => number) | null = null;
 let versionFn: (() => string) | null = null;
 
+// Issue #1954 - Topological backpropagation loop
+let propagateTopologicalFn:
+  | ((data: Uint8Array) => Float64Array)
+  | null = null;
+
 // Issue #1519 - Standalone elastic error distribution
 let distributeElasticErrorFn:
   | ((
@@ -326,6 +331,8 @@ function assignFunctionPointers(module: WasmModule): void {
   validateRangeFn = module.validate_range;
   limitRangeFn = module.limit_range;
   versionFn = module.version;
+  // Issue #1954 - Topological backpropagation loop
+  propagateTopologicalFn = module.propagate_topological;
   // Issue #1519 - Standalone elastic error distribution
   distributeElasticErrorFn = module.distribute_elastic_error;
   // Issue #1518 - Accumulation functions
@@ -613,4 +620,9 @@ export function getScanMaxWeightFn(): typeof scanMaxWeightFn {
 
 export function getScanMaxBiasFn(): typeof scanMaxBiasFn {
   return scanMaxBiasFn;
+}
+
+// Issue #1954 - Topological backpropagation getter
+export function getPropagateTopologicalFn(): typeof propagateTopologicalFn {
+  return propagateTopologicalFn;
 }

@@ -27,6 +27,7 @@ import {
   getFusedErrorDistributionFn,
   getGetRangeFn,
   getLimitRangeFn,
+  getPropagateTopologicalFn,
   getSafeZoneAdjustmentBatchFn,
   getSafeZoneAdjustmentFn,
   getScanMaxBiasFn,
@@ -578,4 +579,24 @@ export function wasmScanMaxBias(
 
   const result = fn(weights, biases, excludeIdx, newBias);
   return { max: result[0], secondMax: result[1] };
+}
+
+// ---------------------------------------------------------------------------
+// Issue #1954 - Topological backpropagation in WASM
+// ---------------------------------------------------------------------------
+
+/**
+ * Issue #1954 - Run the full topological backpropagation loop in WASM.
+ *
+ * Takes a packed binary buffer containing all network state and returns
+ * a packed Float64Array with updated neuron/synapse accumulation state.
+ *
+ * Returns undefined if WASM is unavailable.
+ */
+export function wasmPropagateTopological(
+  data: Uint8Array,
+): Float64Array | undefined {
+  const fn = getPropagateTopologicalFn();
+  if (!fn) return undefined;
+  return fn(data);
 }
