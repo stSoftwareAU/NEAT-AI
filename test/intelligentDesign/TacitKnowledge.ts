@@ -81,9 +81,9 @@ Deno.test("combineKnowledge merges with local taking precedence", () => {
 });
 
 Deno.test("cleanKnowledge removes entries for non-existent neurons", () => {
-  const validNeurons = new Map<string, string>();
-  validNeurons.set("neuron-1", "TANH");
-  validNeurons.set("neuron-2", "GELU");
+  const validNeurons = new Map<number, string>();
+  validNeurons.set(7001, "TANH");
+  validNeurons.set(7002, "GELU");
 
   const local: TacitKnowledgeMap = {
     7001: "Swish",

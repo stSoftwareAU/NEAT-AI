@@ -254,9 +254,10 @@ Deno.test("Genetic Integrity - No Matching Neurons", () => {
     bias: 1.2,
   });
 
-  nonMatchingMother.synapses.forEach((synapse: Record<string, unknown>) => {
+  // deno-lint-ignore no-explicit-any
+  nonMatchingMother.synapses.forEach((synapse: any) => {
     if (synapse.fromId === 0) {
-      synapse.fromId = "hidden-0";
+      synapse.fromId = 5000;
     }
   });
 
