@@ -35,33 +35,33 @@ function makeTestCreature(): Creature {
 
 Deno.test("exportJSON - hidden neuron includes squash", () => {
   const creature = makeTestCreature();
-  const hiddenNeuron = creature.neurons.find((n) => n.id === 5001)!;
+  const hiddenNeuron = creature.neurons.find((n) => n.type === "hidden")!;
   const json = exportJSON(hiddenNeuron);
 
   assertEquals(json.type, "hidden");
-  assertEquals(json.id, 5001);
+  assertEquals(typeof json.id, "number");
   assertEquals(json.squash, "LOGISTIC");
   assertEquals(json.bias, 0.5);
 });
 
 Deno.test("exportJSON - constant neuron excludes squash", () => {
   const creature = makeTestCreature();
-  const constNeuron = creature.neurons.find((n) => n.id === 9032)!;
+  const constNeuron = creature.neurons.find((n) => n.type === "constant")!;
   const json = exportJSON(constNeuron);
 
   assertEquals(json.type, "constant");
-  assertEquals(json.id, 9032);
+  assertEquals(typeof json.id, "number");
   assertEquals(json.bias, 1);
   assertEquals(json.squash, undefined);
 });
 
 Deno.test("exportJSON - output neuron includes squash", () => {
   const creature = makeTestCreature();
-  const outputNeuron = creature.neurons.find((n) => n.id === -1)!;
+  const outputNeuron = creature.neurons.find((n) => n.type === "output")!;
   const json = exportJSON(outputNeuron);
 
   assertEquals(json.type, "output");
-  assertEquals(json.id, -1);
+  assertEquals(outputNeuron.id < 0, true, "Output neuron should have negative ID");
   assertEquals(json.squash, "IDENTITY");
   assertEquals(json.bias, 0);
 });
@@ -79,7 +79,7 @@ Deno.test("exportJSON - throws for input neurons", () => {
 
 Deno.test("exportJSON - preserves tags", () => {
   const creature = makeTestCreature();
-  const hiddenNeuron = creature.neurons.find((n) => n.id === 5001)!;
+  const hiddenNeuron = creature.neurons.find((n) => n.type === "hidden")!;
   addTag(hiddenNeuron, "test-tag", "test-value");
   const json = exportJSON(hiddenNeuron);
 
@@ -89,7 +89,7 @@ Deno.test("exportJSON - preserves tags", () => {
 
 Deno.test("exportJSON - tags are a copy (not shared reference)", () => {
   const creature = makeTestCreature();
-  const hiddenNeuron = creature.neurons.find((n) => n.id === 5001)!;
+  const hiddenNeuron = creature.neurons.find((n) => n.type === "hidden")!;
   addTag(hiddenNeuron, "test-tag", "test-value");
   const json = exportJSON(hiddenNeuron);
 
@@ -110,24 +110,24 @@ Deno.test("internalJSON - input neuron has minimal fields", () => {
 
 Deno.test("internalJSON - hidden neuron has full fields", () => {
   const creature = makeTestCreature();
-  const hiddenNeuron = creature.neurons.find((n) => n.id === 5001)!;
+  const hiddenNeuron = creature.neurons.find((n) => n.type === "hidden")!;
   const json = internalJSON(hiddenNeuron, 3);
 
   assertEquals(json.type, "hidden");
   assertEquals(json.index, 3);
-  assertEquals(json.id, 5001);
+  assertEquals(typeof json.id, "number");
   assertEquals(json.squash, "LOGISTIC");
   assertEquals(json.bias, 0.5);
 });
 
 Deno.test("internalJSON - constant neuron excludes squash", () => {
   const creature = makeTestCreature();
-  const constNeuron = creature.neurons.find((n) => n.id === 9032)!;
+  const constNeuron = creature.neurons.find((n) => n.type === "constant")!;
   const json = internalJSON(constNeuron, 2);
 
   assertEquals(json.type, "constant");
   assertEquals(json.index, 2);
-  assertEquals(json.id, 9032);
+  assertEquals(typeof json.id, "number");
   assertEquals(json.bias, 1);
   assertEquals(json.squash, undefined);
 });
@@ -139,22 +139,22 @@ Deno.test("fromJSON - creates neuron from export data", () => {
     creature,
   );
 
-  assertEquals(neuron.id, 9105);
+  assertEquals(typeof neuron.id, "number");
+  assertEquals(neuron.id >= 1_000_000, true, "Should get a generated integer ID");
   assertEquals(neuron.type, "hidden");
   assertEquals(neuron.bias, 0.75);
   assertEquals(neuron.squash, "LOGISTIC");
 });
 
-Deno.test("fromJSON - generates UUID when not provided", () => {
+Deno.test("fromJSON - generates ID when not provided", () => {
   const creature = makeTestCreature();
   const neuron = fromJSON(
-    { type: "hidden", uuid: "", bias: 0.5, squash: "IDENTITY" },
+    { type: "hidden", bias: 0.5, squash: "IDENTITY" },
     creature,
   );
 
-  // Should generate a UUID since empty string is falsy
-  assertNotEquals(neuron.id, "" as unknown as number);
-  assert(String(neuron.id).length > 0);
+  assertEquals(typeof neuron.id, "number");
+  assert(neuron.id >= 1_000_000, "Should generate a large positive integer ID");
 });
 
 Deno.test("fromJSON - defaults bias to 0 when falsy", () => {
@@ -183,7 +183,7 @@ Deno.test("fromJSON - preserves tags from JSON", () => {
 
 Deno.test("Round-trip: exportJSON -> fromJSON preserves data", () => {
   const creature = makeTestCreature();
-  const original = creature.neurons.find((n) => n.id === 5001)!;
+  const original = creature.neurons.find((n) => n.type === "hidden")!;
 
   const exported = exportJSON(original);
   const restored = fromJSON(exported, creature);

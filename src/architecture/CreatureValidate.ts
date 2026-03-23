@@ -87,7 +87,8 @@ export function creatureValidate(
     if (id === undefined || id === null) {
       throw new ValidationError(`${neuron.ID()}) no id`, "OTHER");
     }
-    if (!Number.isInteger(id) || id < 0 || id > MAX_NEURON_ID) {
+    // Issue #1958: Output neurons have negative IDs (-(outputIndex + 1))
+    if (!Number.isInteger(id) || id > MAX_NEURON_ID) {
       debugWrite(creature);
       throw new ValidationError(
         `${neuron.ID()}) invalid neuron id: ${id}`,

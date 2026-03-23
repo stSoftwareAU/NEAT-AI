@@ -126,7 +126,7 @@ Deno.test("AddNeuron - should skip constant neurons when inserting", () => {
     creatureValidate(testCreature);
 
     // The constant neuron should still be present
-    const constNeuron = testCreature.neurons.find((n) => n.id === 9032);
+    const constNeuron = testCreature.neurons.find((n) => n.type === "constant");
     assert(constNeuron, "Constant neuron should still exist");
     assertEquals(constNeuron.type, "constant");
   }
