@@ -69,7 +69,7 @@ Deno.test(
         sparseConfig,
       );
 
-      const arcTan = creature.neurons.find((n) => n.id === 9492)!;
+      const arcTan = creature.neurons.find((n) => n.id === 178738794)!;
       const output = creature.neurons.find((n) => n.id === -1)!;
       const synapse = creature.getSynapse(arcTan.index, output.index)!;
       const wBefore = synapse.weight;

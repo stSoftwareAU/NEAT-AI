@@ -27,7 +27,7 @@ Deno.test("makeSynapsesValue - constant neuron returns bias * weight as literal"
   const creature = makeTestCreature();
   // Find synapse from const-1 to hidden-1
   const synapse = creature.synapses.find(
-    (s) => creature.neurons[s.from].id === 9032,
+    (s) => creature.neurons[s.from].id === 952513159,
   );
   assert(synapse, "Synapse from const-1 must exist");
   const result = makeSynapsesValue(synapse, creature.neurons);
@@ -69,7 +69,7 @@ Deno.test("makeSynapsesValue - fractional weight returns activation * weight exp
   // Find synapse from hidden-1 to output-0 with weight=0.5
   const synapse = creature.synapses.find(
     (s) =>
-      creature.neurons[s.from].id === 5001 &&
+      creature.neurons[s.from].id === 1775329650 &&
       s.weight === 0.5,
   );
   assert(synapse, "Synapse from hidden-1 with weight=0.5 must exist");

@@ -38,12 +38,12 @@ Deno.test("LayerAssignment - simple chain assigns correct layers", () => {
   assertEquals(layer0[0], 0); // input-0
 
   // Layer 1 should contain h1
-  const h1Idx = creature.neurons.findIndex((n) => n.id === 9436);
+  const h1Idx = creature.neurons.findIndex((n) => n.id === 1003273);
   const layer1 = layers.get(1)!;
   assertEquals(layer1.includes(h1Idx), true);
 
   // Layer 2 should contain h2
-  const h2Idx = creature.neurons.findIndex((n) => n.id === 9207);
+  const h2Idx = creature.neurons.findIndex((n) => n.id === 1003274);
   const layer2 = layers.get(2)!;
   assertEquals(layer2.includes(h2Idx), true);
 
@@ -157,8 +157,8 @@ Deno.test("LayerAssignment - skip connections assign longest path", () => {
   const maxLayer = Math.max(...layers.keys());
   assertEquals(maxLayer, 3);
 
-  const h1Idx = creature.neurons.findIndex((n) => n.id === 9436);
-  const h2Idx = creature.neurons.findIndex((n) => n.id === 9207);
+  const h1Idx = creature.neurons.findIndex((n) => n.id === 1003273);
+  const h2Idx = creature.neurons.findIndex((n) => n.id === 1003274);
   assertEquals(layers.get(1)!.includes(h1Idx), true);
   assertEquals(layers.get(2)!.includes(h2Idx), true);
 });
@@ -181,7 +181,7 @@ Deno.test("LayerAssignment - self-loops are ignored", () => {
   const layers = computeLayerAssignments(creature);
 
   assertEquals(layers.size, 3);
-  const h1Idx = creature.neurons.findIndex((n) => n.id === 9436);
+  const h1Idx = creature.neurons.findIndex((n) => n.id === 1003273);
   assertEquals(layers.get(1)!.includes(h1Idx), true);
 });
 
@@ -205,8 +205,8 @@ Deno.test("LayerAssignment - recurrent connections are ignored for layering", ()
   const creature = Creature.fromJSON(json);
   const layers = computeLayerAssignments(creature);
 
-  const h1Idx = creature.neurons.findIndex((n) => n.id === 9436);
-  const h2Idx = creature.neurons.findIndex((n) => n.id === 9207);
+  const h1Idx = creature.neurons.findIndex((n) => n.id === 1003273);
+  const h2Idx = creature.neurons.findIndex((n) => n.id === 1003274);
 
   // H1 should be in a lower layer than H2, despite the back-edge
   const h1Layer = findLayerForNeuron(layers, h1Idx);
@@ -236,7 +236,7 @@ Deno.test("LayerAssignment - constant neurons are in layer 0", () => {
   const creature = Creature.fromJSON(json);
   const layers = computeLayerAssignments(creature);
 
-  const constIdx = creature.neurons.findIndex((n) => n.id === 9032);
+  const constIdx = creature.neurons.findIndex((n) => n.id === 952513159);
   const layer0 = layers.get(0)!;
   assertEquals(layer0.includes(constIdx), true, "Constant neuron in layer 0");
 });
@@ -266,9 +266,9 @@ Deno.test("LayerAssignment - diamond topology uses longest path", () => {
   const creature = Creature.fromJSON(json);
   const layers = computeLayerAssignments(creature);
 
-  const h1Idx = creature.neurons.findIndex((n) => n.id === 9436);
-  const h2Idx = creature.neurons.findIndex((n) => n.id === 9207);
-  const h3Idx = creature.neurons.findIndex((n) => n.id === 9577);
+  const h1Idx = creature.neurons.findIndex((n) => n.id === 1003273);
+  const h2Idx = creature.neurons.findIndex((n) => n.id === 1003274);
+  const h3Idx = creature.neurons.findIndex((n) => n.id === 1003275);
 
   assertEquals(layers.get(1)!.includes(h1Idx), true, "h1 in layer 1");
   assertEquals(layers.get(1)!.includes(h2Idx), true, "h2 in layer 1");
@@ -301,7 +301,7 @@ Deno.test("LayerAssignment - asymmetric paths use longest path", () => {
   const creature = Creature.fromJSON(json);
   const layers = computeLayerAssignments(creature);
 
-  const h2Idx = creature.neurons.findIndex((n) => n.id === 9207);
+  const h2Idx = creature.neurons.findIndex((n) => n.id === 1003274);
   const h2Layer = findLayerForNeuron(layers, h2Idx);
   // H2 should be layer 2 (longest path: input→h1→h2), not layer 1 (input→h2)
   assertEquals(h2Layer, 2, "h2 should be at layer 2 via longest path");
@@ -383,7 +383,7 @@ Deno.test("LayerAssignment - disconnected hidden neuron gets a valid layer", () 
 
   // Disconnected neuron should still be assigned somewhere
   const disconnectedIdx = creature.neurons.findIndex(
-    (n) => n.id === 9108,
+    (n) => n.id === 1557855680,
   );
   const disconnectedLayer = findLayerForNeuron(layers, disconnectedIdx);
   assertNotEquals(
@@ -515,8 +515,8 @@ Deno.test("LayerAssignment - forward-only creature with multiple inputs to same 
   const creature = Creature.fromJSON(json);
   const layers = computeLayerAssignments(creature);
 
-  const h1Idx = creature.neurons.findIndex((n) => n.id === 9436);
-  const h2Idx = creature.neurons.findIndex((n) => n.id === 9207);
+  const h1Idx = creature.neurons.findIndex((n) => n.id === 1003273);
+  const h2Idx = creature.neurons.findIndex((n) => n.id === 1003274);
 
   // Both hidden neurons should be in layer 1
   assertEquals(layers.get(1)!.includes(h1Idx), true, "h1 in layer 1");

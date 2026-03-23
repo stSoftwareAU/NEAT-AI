@@ -13,7 +13,7 @@ import { CrisprError } from "../../src/errors/CrisprError.ts";
 function makeCreature(): Creature {
   const json: CreatureInternal = {
     neurons: [
-      { type: "hidden", squash: "LOGISTIC", bias: 0, index: 2, uuid: "h1" },
+      { type: "hidden", squash: "LOGISTIC", bias: 0, index: 2, id: 1003273 },
       { type: "output", squash: "IDENTITY", bias: 0, index: 3 },
     ],
     synapses: [
@@ -61,7 +61,7 @@ Deno.test("CrisprError - insert with missing fromUUID returns original creature"
     id: "test-missing-from-uuid",
     mode: "insert",
     synapses: [
-      { fromId: 9970, toId: 9677, weight: 0.3 },
+      { fromId: 576206823, toId: 1003273, weight: 0.3 },
     ],
   };
 
@@ -78,7 +78,7 @@ Deno.test("CrisprError - insert with missing toUUID returns original creature", 
     id: "test-missing-to-uuid",
     mode: "insert",
     synapses: [
-      { fromId: 9677, toId: 9970, weight: 0.3 },
+      { fromId: 1003273, toId: 576206823, weight: 0.3 },
     ],
   };
 
@@ -97,7 +97,7 @@ Deno.test("CrisprError - append with invalid from connection returns original cr
       { type: "output", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromId: 9254, to: 0, weight: 0.5 },
+      { fromId: 1928511767, to: 0, weight: 0.5 },
     ],
   };
 
@@ -117,7 +117,7 @@ Deno.test("CrisprError - append with invalid to connection returns original crea
       { type: "output", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { from: 0, toId: 9254, weight: 0.5 },
+      { from: 0, toId: 1928511767, weight: 0.5 },
     ],
   };
 
@@ -152,7 +152,7 @@ Deno.test("CrisprError - insert throws INVALID_DNA for output neurons", () => {
       { type: "output", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromId: 9677, toId: -1, weight: 0.3 },
+      { fromId: 1003273, toId: -1, weight: 0.3 },
     ],
   };
 
@@ -190,7 +190,7 @@ Deno.test("CrisprError - insert throws INVALID_DNA for static from index", () =>
     id: "test-insert-static-from",
     mode: "insert",
     synapses: [
-      { from: 0, toId: 9677, weight: 0.3 },
+      { from: 0, toId: 1003273, weight: 0.3 },
     ],
   };
 
@@ -228,7 +228,7 @@ Deno.test("CrisprError - insert throws MISSING_UUID when fromUUID not found", ()
     id: "test-insert-missing-from",
     mode: "insert",
     synapses: [
-      { fromId: 9890, toId: 9677, weight: 0.3 },
+      { fromId: 487454369, toId: 1003273, weight: 0.3 },
     ],
   };
 
@@ -247,7 +247,7 @@ Deno.test("CrisprError - insert throws MISSING_UUID when toUUID not found", () =
     id: "test-insert-missing-to",
     mode: "insert",
     synapses: [
-      { fromId: 9677, toId: 9890, weight: 0.3 },
+      { fromId: 1003273, toId: 487454369, weight: 0.3 },
     ],
   };
 
@@ -269,7 +269,7 @@ Deno.test("CrisprError - append throws INVALID_CONNECTION for unresolvable from"
       { type: "output", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromId: 9254, weight: 0.5 },
+      { fromId: 1928511767, weight: 0.5 },
     ],
   };
 
@@ -291,7 +291,7 @@ Deno.test("CrisprError - append throws INVALID_CONNECTION for unresolvable to", 
       { type: "output", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { from: 0, toId: 9254, weight: 0.5 },
+      { from: 0, toId: 1928511767, weight: 0.5 },
     ],
   };
 
@@ -312,10 +312,10 @@ Deno.test("CrisprError - cleaveDNA returns original creature on operational Cris
     id: "test-operational-error",
     mode: "insert",
     neurons: [
-      { type: "hidden", squash: "LOGISTIC", bias: 0, id: 9804 },
+      { type: "hidden", squash: "LOGISTIC", bias: 0, id: 105712059 },
     ],
     synapses: [
-      { fromId: 9890, toId: 9804, weight: 0.3 },
+      { fromId: 487454369, toId: 105712059, weight: 0.3 },
     ],
   };
 

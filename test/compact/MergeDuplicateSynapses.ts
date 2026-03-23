@@ -14,19 +14,19 @@ Deno.test("mergeDuplicateSynapses: merges same from/to/type (sums weights), pres
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: -1, weight: 0.5 },
-      { fromUUID: "input-0", toId: -1, weight: -0.2, tags: [tagB] },
+      { fromUUID: "input-0", toUUID: "output-0", weight: 0.5 },
+      { fromUUID: "input-0", toUUID: "output-0", weight: -0.2, tags: [tagB] },
       // Typed duplicates should merge with same type only.
       {
         fromUUID: "input-0",
-        toId: 5000,
+        toUUID: "hidden-0",
         weight: 0.1,
         type: "condition",
         tags: [tagA],
       },
       {
         fromUUID: "input-0",
-        toId: 5000,
+        toUUID: "hidden-0",
         weight: 0.2,
         type: "condition",
         tags: [tagB],
@@ -34,7 +34,7 @@ Deno.test("mergeDuplicateSynapses: merges same from/to/type (sums weights), pres
       // Different type should remain separate.
       {
         fromUUID: "input-0",
-        toId: 5000,
+        toUUID: "hidden-0",
         weight: 0.3,
         type: "positive",
       },
@@ -49,11 +49,13 @@ Deno.test("mergeDuplicateSynapses: merges same from/to/type (sums weights), pres
   // Should now have 3 synapses: merged output edge, merged condition edge, and positive edge.
   assertEquals(exportJSON.synapses.length, 3);
 
-  const out = exportJSON.synapses.find((s) => s.fromId === 0 && s.toId === -1);
+  const out = exportJSON.synapses.find((s) =>
+    s.fromUUID === "input-0" && s.toUUID === "output-0"
+  );
   assertEquals(out?.weight, 0.3);
 
   const condition = exportJSON.synapses.find((s) =>
-    s.fromId === 0 && s.toId === 5000 &&
+    s.fromUUID === "input-0" && s.toUUID === "hidden-0" &&
     s.type === "condition"
   );
   assertAlmostEquals(condition?.weight ?? 0, 0.3);
@@ -61,7 +63,7 @@ Deno.test("mergeDuplicateSynapses: merges same from/to/type (sums weights), pres
   assertEquals(tagValues, new Set(["a", "b"]));
 
   const positive = exportJSON.synapses.find((s) =>
-    s.fromId === 0 && s.toId === 5000 && s.type === "positive"
+    s.fromUUID === "input-0" && s.toUUID === "hidden-0" && s.type === "positive"
   );
   assertEquals(positive?.weight, 0.3);
 });

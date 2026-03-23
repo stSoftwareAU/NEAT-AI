@@ -36,10 +36,10 @@ function createSwappableCreature(): Creature {
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: 5001, weight: 0.5 },
-      { fromUUID: "input-1", toId: 5002, weight: 0.6 },
-      { fromUUID: "hidden-1", toId: -1, weight: 0.8 },
-      { fromUUID: "hidden-2", toId: -1, weight: 0.7 },
+      { fromUUID: "input-0", toUUID: "hidden-1", weight: 0.5 },
+      { fromUUID: "input-1", toUUID: "hidden-2", weight: 0.6 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.8 },
+      { fromUUID: "hidden-2", toUUID: "output-0", weight: 0.7 },
     ],
   };
   return Creature.fromJSON(json);
@@ -107,8 +107,8 @@ Deno.test("SwapNeurons: returns false with fewer than 2 hidden neurons", () => {
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: 5001, weight: 0.5 },
-      { fromUUID: "hidden-1", toId: -1, weight: 0.8 },
+      { fromUUID: "input-0", toUUID: "hidden-1", weight: 0.5 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.8 },
     ],
   };
 
@@ -134,7 +134,7 @@ Deno.test("SwapNeurons: returns false with no hidden neurons", () => {
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: -1, weight: 0.5 },
+      { fromUUID: "input-0", toUUID: "output-0", weight: 0.5 },
     ],
   };
 

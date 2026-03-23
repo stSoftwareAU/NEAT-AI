@@ -58,7 +58,7 @@ Deno.test(
       sparseConfig,
     );
 
-    const arcTan = creature.neurons.find((n) => n.id === 9492)!;
+    const arcTan = creature.neurons.find((n) => n.id === 178738794)!;
     const arcTanBiasBefore = arcTan.bias;
     const output = creature.neurons.find((n) => n.id === -1)!;
     const input0 = creature.neurons.find((n) => n.id === 0)!;

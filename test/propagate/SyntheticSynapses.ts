@@ -168,7 +168,7 @@ Deno.test("SyntheticSynapses - skips frozen neurons as targets", () => {
   assertEquals(result.addedCount, 1);
 
   // Verify the frozen neuron received no new synapses
-  const frozenIdx = creature.neurons.findIndex((n) => n.id === 9579);
+  const frozenIdx = creature.neurons.findIndex((n) => n.id === 881523173);
   const synapsesToFrozen = creature.synapses.filter(
     (s) => s.to === frozenIdx,
   );

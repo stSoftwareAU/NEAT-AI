@@ -50,18 +50,18 @@ function createTestCreature(): Creature {
       },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: 5001, weight: 0.5 },
-      { fromUUID: "input-1", toId: 5001, weight: 0.3 },
-      { fromUUID: "input-2", toId: 5001, weight: 0.4 },
-      { fromUUID: "input-0", toId: 5002, weight: 0.6 },
-      { fromUUID: "input-1", toId: 5002, weight: 0.2 },
-      { fromUUID: "input-3", toId: 5002, weight: 0.1 },
-      { fromUUID: "input-2", toId: -1, weight: 0.15 },
-      { fromUUID: "input-3", toId: -1, weight: 0.25 },
-      { fromUUID: "hidden-1", toId: -1, weight: 0.8 },
-      { fromUUID: "input-2", toId: -2, weight: 0.35 },
-      { fromUUID: "input-3", toId: -2, weight: 0.45 },
-      { fromUUID: "hidden-2", toId: -2, weight: 0.7 },
+      { fromUUID: "input-0", toUUID: "hidden-1", weight: 0.5 },
+      { fromUUID: "input-1", toUUID: "hidden-1", weight: 0.3 },
+      { fromUUID: "input-2", toUUID: "hidden-1", weight: 0.4 },
+      { fromUUID: "input-0", toUUID: "hidden-2", weight: 0.6 },
+      { fromUUID: "input-1", toUUID: "hidden-2", weight: 0.2 },
+      { fromUUID: "input-3", toUUID: "hidden-2", weight: 0.1 },
+      { fromUUID: "input-2", toUUID: "output-0", weight: 0.15 },
+      { fromUUID: "input-3", toUUID: "output-0", weight: 0.25 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.8 },
+      { fromUUID: "input-2", toUUID: "output-1", weight: 0.35 },
+      { fromUUID: "input-3", toUUID: "output-1", weight: 0.45 },
+      { fromUUID: "hidden-2", toUUID: "output-1", weight: 0.7 },
     ],
   };
   return Creature.fromJSON(json);
@@ -117,11 +117,11 @@ Deno.test("ModSquash: assigned squash is always a valid activation function", ()
       if (neuron.type === "hidden" || neuron.type === "output") {
         assert(
           neuron.squash !== undefined && neuron.squash !== null,
-          `Neuron ${neuron.id} has undefined/null squash`,
+          `Neuron ${neuron.uuid} has undefined/null squash`,
         );
         assert(
           typeof neuron.squash === "string" && neuron.squash.length > 0,
-          `Neuron ${neuron.id} has invalid squash: ${neuron.squash}`,
+          `Neuron ${neuron.uuid} has invalid squash: ${neuron.squash}`,
         );
       }
     }
@@ -251,22 +251,22 @@ Deno.test("ModSquash: modifies non-constant neurons when constant neurons are pr
       {
         weight: 1,
         fromUUID: "62f93f73-82bc-47d1-a840-5546eb0971ca",
-        toId: -1,
+        toUUID: "output-0",
       },
       {
         weight: 1,
         fromUUID: "input-0",
-        toId: -1,
+        toUUID: "output-0",
       },
       {
         weight: 0.1,
         fromUUID: "input-0",
-        toId: -2,
+        toUUID: "output-1",
       },
       {
         weight: 0.2,
         fromUUID: "input-0",
-        toId: -3,
+        toUUID: "output-2",
       },
     ],
     input: 1,

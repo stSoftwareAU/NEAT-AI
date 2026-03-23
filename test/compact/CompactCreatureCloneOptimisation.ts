@@ -20,9 +20,9 @@ Deno.test("compactCreature: compaction does not modify original creature neurons
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: 5000, weight: 0.5 },
-      { fromUUID: "hidden-0", toId: 5001, weight: 0.6 },
-      { fromUUID: "hidden-1", toId: -1, weight: 0.7 },
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+      { fromUUID: "hidden-0", toUUID: "hidden-1", weight: 0.6 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.7 },
     ],
     input: 1,
     output: 1,
@@ -53,10 +53,10 @@ Deno.test("compactCreature: compaction does not modify original creature synapse
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: 5000, weight: 0.5 },
-      { fromUUID: "hidden-0", toId: -1, weight: 0.6 },
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.6 },
       // Backward synapse that will be removed without feedbackLoop
-      { fromUUID: "output-0", toId: 5000, weight: 0.3 },
+      { fromUUID: "output-0", toUUID: "hidden-0", weight: 0.3 },
     ],
     input: 1,
     output: 1,
@@ -96,10 +96,10 @@ Deno.test("compactCreature: preserves neuron tags through compaction", () => {
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: 5000, weight: 0.5 },
-      { fromUUID: "hidden-0", toId: -1, weight: 0.7 },
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.7 },
       // Backward synapse that will be removed when feedbackLoop=false
-      { fromUUID: "output-0", toId: 5000, weight: 0.3 },
+      { fromUUID: "output-0", toUUID: "hidden-0", weight: 0.3 },
     ],
     input: 1,
     output: 1,
@@ -114,7 +114,7 @@ Deno.test("compactCreature: preserves neuron tags through compaction", () => {
 
   // Assert - the tagged neuron should survive and retain its tags
   const exported = compacted.exportJSON();
-  const taggedNeuron = exported.neurons.find((n) => n.id === 5000);
+  const taggedNeuron = exported.neurons.find((n) => n.id === 1775329651);
   assert(taggedNeuron, "Tagged neuron should survive compaction");
   assert(taggedNeuron.tags, "Neuron tags should be preserved");
   assertEquals(taggedNeuron.tags.length, 1);
@@ -144,12 +144,12 @@ Deno.test("compactCreature: preserves synapse tags through compaction", () => {
     synapses: [
       {
         fromUUID: "input-0",
-        toId: 5000,
+        toUUID: "hidden-0",
         weight: 0.5,
         tags: [{ name: "synapse-type", value: "input-to-hidden" }],
       },
-      { fromUUID: "hidden-0", toId: 5001, weight: 0.6 },
-      { fromUUID: "hidden-1", toId: -1, weight: 0.7 },
+      { fromUUID: "hidden-0", toUUID: "hidden-1", weight: 0.6 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.7 },
     ],
     input: 1,
     output: 1,
@@ -193,12 +193,12 @@ Deno.test("compactCreature: preserves synapse types through compaction", () => {
     synapses: [
       {
         fromUUID: "input-0",
-        toId: 5000,
+        toUUID: "hidden-0",
         weight: 0.5,
         type: "positive",
       },
-      { fromUUID: "hidden-0", toId: 5001, weight: 0.6 },
-      { fromUUID: "hidden-1", toId: -1, weight: 0.7 },
+      { fromUUID: "hidden-0", toUUID: "hidden-1", weight: 0.6 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.7 },
     ],
     input: 1,
     output: 1,
@@ -232,9 +232,9 @@ Deno.test("compactCreature: preserves forwardOnly flag through compaction", () =
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: 5000, weight: 0.5 },
-      { fromUUID: "hidden-0", toId: 5001, weight: 0.6 },
-      { fromUUID: "hidden-1", toId: -1, weight: 0.7 },
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+      { fromUUID: "hidden-0", toUUID: "hidden-1", weight: 0.6 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.7 },
     ],
     input: 1,
     output: 1,
@@ -265,9 +265,9 @@ Deno.test("compactCreature: preserves creature-level tags after compaction", () 
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: 5000, weight: 0.5 },
-      { fromUUID: "hidden-0", toId: 5001, weight: 0.6 },
-      { fromUUID: "hidden-1", toId: -1, weight: 0.7 },
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+      { fromUUID: "hidden-0", toUUID: "hidden-1", weight: 0.6 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.7 },
     ],
     input: 1,
     output: 1,
@@ -307,9 +307,9 @@ Deno.test("compactCreature: compacting does not mutate original neuron biases", 
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: 5000, weight: 0.5 },
-      { fromUUID: "hidden-0", toId: 5001, weight: 0.6 },
-      { fromUUID: "hidden-1", toId: -1, weight: 0.7 },
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+      { fromUUID: "hidden-0", toUUID: "hidden-1", weight: 0.6 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.7 },
     ],
     input: 1,
     output: 1,
@@ -339,9 +339,9 @@ Deno.test("compactCreature: compacting does not mutate original synapse weights"
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: 5000, weight: 0.5 },
-      { fromUUID: "hidden-0", toId: 5001, weight: 0.6 },
-      { fromUUID: "hidden-1", toId: -1, weight: 0.7 },
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+      { fromUUID: "hidden-0", toUUID: "hidden-1", weight: 0.6 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.7 },
     ],
     input: 1,
     output: 1,
@@ -371,16 +371,16 @@ Deno.test("compactCreature: preserves memetic data when no compaction occurs", (
     neurons: [
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.1 },
     ],
-    synapses: [{ fromUUID: "input-0", toId: -1, weight: 0.5 }],
+    synapses: [{ fromUUID: "input-0", toUUID: "output-0", weight: 0.5 }],
     input: 1,
     output: 1,
     memetic: {
       generation: 5,
       weights: {
-        0: [{ toId: -1, weight: 0.6 }],
+        "input-0": [{ toUUID: "output-0", weight: 0.6 }],
       },
       biases: {
-        [-1]: 0.2,
+        "output-0": 0.2,
       },
       score: 0.95,
     },
@@ -412,9 +412,9 @@ Deno.test("compactCreature: preserves semanticVersion through compaction", () =>
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: 5000, weight: 0.5 },
-      { fromUUID: "hidden-0", toId: 5001, weight: 0.6 },
-      { fromUUID: "hidden-1", toId: -1, weight: 0.7 },
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+      { fromUUID: "hidden-0", toUUID: "hidden-1", weight: 0.6 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.7 },
     ],
     input: 1,
     output: 1,
@@ -446,9 +446,9 @@ Deno.test("compactCreature: compacted creature is a separate object from origina
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: 5000, weight: 0.5 },
-      { fromUUID: "hidden-0", toId: 5001, weight: 0.6 },
-      { fromUUID: "hidden-1", toId: -1, weight: 0.7 },
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+      { fromUUID: "hidden-0", toUUID: "hidden-1", weight: 0.6 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.7 },
     ],
     input: 1,
     output: 1,
@@ -505,7 +505,7 @@ Deno.test("compactCreature: large IDENTITY chain compacts without corrupting ori
   // Create synapses in a chain pattern that allows compaction
   synapses.push({
     fromUUID: "input-0",
-    toId: 5000,
+    toUUID: "hidden-0",
     weight: 1.0,
   });
 
@@ -519,7 +519,7 @@ Deno.test("compactCreature: large IDENTITY chain compacts without corrupting ori
 
   synapses.push({
     fromUUID: "hidden-19",
-    toId: -1,
+    toUUID: "output-0",
     weight: 1.0,
   });
 

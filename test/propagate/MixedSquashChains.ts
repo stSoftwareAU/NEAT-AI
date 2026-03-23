@@ -416,7 +416,7 @@ Deno.test("Gradient magnitude: error at first hidden layer is non-trivial and fi
     // should have changed (indicating gradient reached it).
     const exportedJson = creature.exportJSON();
     const firstSynapse = exportedJson.synapses.find(
-      (s) => s.toId === 9859,
+      (s) => s.toId === 1003272,
     );
     assert(
       firstSynapse !== undefined,

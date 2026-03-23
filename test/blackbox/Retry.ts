@@ -26,14 +26,14 @@ function makeCreature() {
       },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: 5003, weight: -0.3 },
-      { fromUUID: "input-1", toId: 5003, weight: 0.3 },
+      { fromUUID: "input-0", toUUID: "hidden-3", weight: -0.3 },
+      { fromUUID: "input-1", toUUID: "hidden-3", weight: 0.3 },
 
-      { fromUUID: "hidden-3", toId: 5004, weight: -0.5 },
-      { fromUUID: "hidden-4", toId: -1, weight: 0.6 },
+      { fromUUID: "hidden-3", toUUID: "hidden-4", weight: -0.5 },
+      { fromUUID: "hidden-4", toUUID: "output-0", weight: 0.6 },
 
-      { fromUUID: "hidden-4", toId: -2, weight: 0.7 },
-      { fromUUID: "input-2", toId: -2, weight: 0.8 },
+      { fromUUID: "hidden-4", toUUID: "output-1", weight: 0.7 },
+      { fromUUID: "input-2", toUUID: "output-1", weight: 0.8 },
     ],
     input: 3,
     output: 2,

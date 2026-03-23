@@ -73,8 +73,8 @@ Deno.test(
     );
     assertNotEquals(actual[0], 0, "sanity: output should be non-zero");
 
-    const arcTan = creature.neurons.find((n) => n.id === 9492)!;
-    const tanh = creature.neurons.find((n) => n.id === 9932)!;
+    const arcTan = creature.neurons.find((n) => n.id === 178738794)!;
+    const tanh = creature.neurons.find((n) => n.id === 116329198)!;
     const arcTanBiasBefore = arcTan.bias;
     const tanhBiasBefore = tanh.bias;
 

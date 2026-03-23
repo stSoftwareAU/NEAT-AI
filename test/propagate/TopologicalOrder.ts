@@ -34,8 +34,8 @@ Deno.test("TopologicalOrder - simple chain produces output-first order", () => {
   assertEquals(order[0], outputIdx, "Output neuron should be first");
 
   // h2 should come before h1 (h2 is closer to output).
-  const h1Idx = creature.neurons.findIndex((n) => n.id === 9436);
-  const h2Idx = creature.neurons.findIndex((n) => n.id === 9207);
+  const h1Idx = creature.neurons.findIndex((n) => n.id === 1003273);
+  const h2Idx = creature.neurons.findIndex((n) => n.id === 1003274);
   const h2OrderPos = order.indexOf(h2Idx);
   const h1OrderPos = order.indexOf(h1Idx);
   assertEquals(
@@ -122,7 +122,7 @@ Deno.test("TopologicalOrder - multiple outputs", () => {
   const order = computeReverseTopologicalOrder(creature);
 
   // Both output neurons should come before h1.
-  const h1Idx = creature.neurons.findIndex((n) => n.id === 9436);
+  const h1Idx = creature.neurons.findIndex((n) => n.id === 1003273);
   const o1Idx = creature.neurons.findIndex((n) => n.id === -1);
   const o2Idx = creature.neurons.findIndex((n) => n.id === -2);
 
