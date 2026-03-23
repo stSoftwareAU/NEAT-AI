@@ -6,33 +6,54 @@ import {
   calculatePathsToOutput,
 } from "../../../src/propagate/sparse/CalculatePathsToOutput.ts";
 
-Deno.test("buildOutgoingSynapsesMap groups synapses by fromUUID", () => {
+Deno.test("buildOutgoingSynapsesMap groups synapses by fromId", () => {
   const creature = makeCreature();
   const json = creature.exportJSON();
   const map = buildOutgoingSynapsesMap(json);
 
+  // Find actual neuron IDs from loaded creature
+  const hidden3 = creature.neurons.find((n) =>
+    n.type === "hidden" && n.squash === "BIPOLAR_SIGMOID"
+  )!;
+  const hidden4 = creature.neurons.find((n) =>
+    n.type === "hidden" && n.squash === "ReLU6"
+  )!;
+  const output0 = creature.neurons.find((n) =>
+    n.type === "output" && n.squash === "IDENTITY"
+  )!;
+  const output1 = creature.neurons.find((n) =>
+    n.type === "output" && n.squash === "TANH"
+  )!;
+  const output3 = creature.neurons.find((n) =>
+    n.type === "output" && n.squash === "Mish"
+  )!;
+
   // hidden-3 has outgoing synapses to hidden-4, output-1
-  const hidden3Outgoing = map.get(5003);
+  const hidden3Outgoing = map.get(hidden3.id);
   assertEquals(hidden3Outgoing !== undefined, true);
-  const hidden3Targets = hidden3Outgoing!.map((s) => s.toId).sort();
-  // @ts-ignore: test with legacy string IDs
-  assertEquals(hidden3Targets, ["hidden-4", "output-1"].sort());
+  const hidden3Targets = hidden3Outgoing!.map((s) => s.toId!).sort();
+  assertEquals(hidden3Targets, [hidden4.id, output1.id].sort());
 
   // hidden-4 has outgoing synapses to output-0, output-1, output-3
-  const hidden4Outgoing = map.get(5004);
+  const hidden4Outgoing = map.get(hidden4.id);
   assertEquals(hidden4Outgoing !== undefined, true);
-  const hidden4Targets = hidden4Outgoing!.map((s) => s.toId).sort();
-  // @ts-ignore: test with legacy string IDs
-  assertEquals(hidden4Targets, ["output-0", "output-1", "output-3"].sort());
+  const hidden4Targets = hidden4Outgoing!.map((s) => s.toId!).sort();
+  assertEquals(hidden4Targets, [output0.id, output1.id, output3.id].sort());
 });
 
 Deno.test("calculatePathsToOutput with cached map matches uncached", () => {
   const creature = makeCreature();
   const json = creature.exportJSON();
 
-  const chosenSet: Set<string> = new Set();
-  chosenSet.add("hidden-3");
-  chosenSet.add("output-1");
+  // Find actual neuron IDs from loaded creature
+  const hidden3 = creature.neurons.find((n) =>
+    n.type === "hidden" && n.squash === "BIPOLAR_SIGMOID"
+  )!;
+  const output1 = creature.neurons.find((n) =>
+    n.type === "output" && n.squash === "TANH"
+  )!;
+
+  const chosenSet = new Set<number>([hidden3.id, output1.id]);
 
   // Without cached map (builds internally)
   const pathsUncached = calculatePathsToOutput(chosenSet, json);
@@ -49,18 +70,32 @@ Deno.test("calculatePathsToOutput with cached map finds correct paths", () => {
   const json = creature.exportJSON();
   const cachedMap = buildOutgoingSynapsesMap(json);
 
-  const chosenSet: Set<string> = new Set();
-  chosenSet.add("hidden-3");
-  chosenSet.add("output-1");
+  const hidden3 = creature.neurons.find((n) =>
+    n.type === "hidden" && n.squash === "BIPOLAR_SIGMOID"
+  )!;
+  const hidden4 = creature.neurons.find((n) =>
+    n.type === "hidden" && n.squash === "ReLU6"
+  )!;
+  const output0 = creature.neurons.find((n) =>
+    n.type === "output" && n.squash === "IDENTITY"
+  )!;
+  const output1 = creature.neurons.find((n) =>
+    n.type === "output" && n.squash === "TANH"
+  )!;
+  const output3 = creature.neurons.find((n) =>
+    n.type === "output" && n.squash === "Mish"
+  )!;
 
+  const chosenSet = new Set<number>([hidden3.id, output1.id]);
   const paths = calculatePathsToOutput(chosenSet, json, cachedMap);
 
-  const expectedPaths: Set<string> = new Set();
-  expectedPaths.add("hidden-3");
-  expectedPaths.add("hidden-4");
-  expectedPaths.add("output-1");
-  expectedPaths.add("output-0");
-  expectedPaths.add("output-3");
+  const expectedPaths = new Set<number>([
+    hidden3.id,
+    hidden4.id,
+    output1.id,
+    output0.id,
+    output3.id,
+  ]);
 
   assertEquals(paths, expectedPaths);
 });
@@ -80,7 +115,7 @@ Deno.test("buildOutgoingSynapsesMap handles creature with no synapses", () => {
 });
 
 Deno.test("calculatePathsToOutput with cached map handles isolated neurons", () => {
-  const json: CreatureExport = {
+  const creature = Creature.fromJSON({
     neurons: [
       { type: "hidden", squash: "IDENTITY", uuid: "hidden-0", bias: 0 },
       { type: "output", squash: "IDENTITY", uuid: "output-0", bias: 0 },
@@ -90,15 +125,17 @@ Deno.test("calculatePathsToOutput with cached map handles isolated neurons", () 
     ],
     input: 1,
     output: 1,
-  };
+  });
+  const json = creature.exportJSON();
+  const hiddenNeuron = creature.neurons.find((n) => n.type === "hidden")!;
 
   const cachedMap = buildOutgoingSynapsesMap(json);
-  const selected = new Set([5000]);
+  const selected = new Set([hiddenNeuron.id]);
 
   const paths = calculatePathsToOutput(selected, json, cachedMap);
 
   // hidden-0 has no outgoing synapses, so only itself is in the path
-  assertEquals(paths, new Set([5000]));
+  assertEquals(paths, new Set([hiddenNeuron.id]));
 });
 
 function makeCreature() {
