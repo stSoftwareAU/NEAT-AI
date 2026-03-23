@@ -1,9 +1,4 @@
-import {
-  assert,
-  assertEquals,
-  assertNotEquals,
-  assertThrows,
-} from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
@@ -61,7 +56,11 @@ Deno.test("exportJSON - output neuron includes squash", () => {
   const json = exportJSON(outputNeuron);
 
   assertEquals(json.type, "output");
-  assertEquals(outputNeuron.id < 0, true, "Output neuron should have negative ID");
+  assertEquals(
+    outputNeuron.id < 0,
+    true,
+    "Output neuron should have negative ID",
+  );
   assertEquals(json.squash, "IDENTITY");
   assertEquals(json.bias, 0);
 });
@@ -140,7 +139,11 @@ Deno.test("fromJSON - creates neuron from export data", () => {
   );
 
   assertEquals(typeof neuron.id, "number");
-  assertEquals(neuron.id >= 1_000_000, true, "Should get a generated integer ID");
+  assertEquals(
+    neuron.id >= 1_000_000,
+    true,
+    "Should get a generated integer ID",
+  );
   assertEquals(neuron.type, "hidden");
   assertEquals(neuron.bias, 0.75);
   assertEquals(neuron.squash, "LOGISTIC");
