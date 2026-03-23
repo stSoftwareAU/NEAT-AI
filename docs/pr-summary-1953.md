@@ -21,19 +21,19 @@ enforcing WASM as the single source of truth. Closes #1953.
 
 - **WasmStandaloneFunctions.ts**: `wasmCalculateWeight()` and
   `wasmCalculateBias()` now throw `WasmError` instead of returning `undefined`.
-  Return types updated from `number | undefined` to `number`. Both functions
-  now pass L1/L2 decay config values to the WASM layer.
+  Return types updated from `number | undefined` to `number`. Both functions now
+  pass L1/L2 decay config values to the WASM layer.
 
-- **WasmModuleLoader.ts**: Updated type signatures for
-  `calculateWeightWasmFn` and `calculateBiasWasmFn` to include
-  `l1WeightDecay`/`l2WeightDecay` and `l1BiasDecay`/`l2BiasDecay` parameters.
+- **WasmModuleLoader.ts**: Updated type signatures for `calculateWeightWasmFn`
+  and `calculateBiasWasmFn` to include `l1WeightDecay`/`l2WeightDecay` and
+  `l1BiasDecay`/`l2BiasDecay` parameters.
 
 ### Test changes (documented per policy)
 
 The following test files were **removed** because they exclusively tested
 functions that no longer exist (`limitWeight`, `limitBias`,
-`applyWeightRegularisation`, `applyBiasRegularisation`). The equivalent logic
-is now tested by Rust unit tests in `accumulate.rs`:
+`applyWeightRegularisation`, `applyBiasRegularisation`). The equivalent logic is
+now tested by Rust unit tests in `accumulate.rs`:
 
 - `test/propagate/WeightRegularisation.ts` — tested TS `limitWeight` with L1/L2
 - `test/propagate/BiasRegularisation.ts` — tested TS `limitBias` with L1/L2
