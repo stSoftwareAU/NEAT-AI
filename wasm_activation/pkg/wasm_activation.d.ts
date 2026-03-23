@@ -657,6 +657,83 @@ export function mse_sum_batch_packed(network: CompiledNetwork, records: Float32A
 export function msle_sum_batch_packed(network: CompiledNetwork, records: Float32Array, input_size: number, num_outputs: number, forward_only: boolean): number;
 
 /**
+ * Issue #1954 - Run the full topological backpropagation loop in WASM.
+ *
+ * This replaces ~N per-neuron WASM calls with a single call that processes
+ * all neurons in reverse topological order.
+ *
+ * # Binary input format (packed into `data`)
+ *
+ * ```text
+ * Header (40 bytes):
+ *   u32: neuronCount
+ *   u32: inputCount
+ *   u32: outputCount
+ *   u32: synapseCount
+ *   u32: orderLength
+ *   u32: totalInwardEntries
+ *   f64: plankConstant
+ *   u8:  normaliseGradients (0 or 1)
+ *   [3 bytes padding]
+ *
+ * Per neuron (neuronCount × 20 bytes):
+ *   u8:  squashType
+ *   u8:  neuronType (0=input, 1=hidden, 2=output, 3=constant)
+ *   u8:  propagateNeeded (0 or 1)
+ *   u8:  updateNeeded (0 or 1)
+ *   f32: hintValue
+ *   f32: rangeLow
+ *   f32: rangeHigh
+ *   f32: adjustedActivation
+ *   f32: adjustedBias (for non-input neurons)
+ *
+ * Per synapse (synapseCount × 20 bytes):
+ *   u32: from
+ *   u32: to
+ *   f32: originalWeight
+ *   f32: adjustedWeight
+ *   u8:  isSelfLoop (0 or 1)
+ *   [3 bytes padding]
+ *
+ * Inward mapping (neuronCount × 8 bytes):
+ *   u32: start index into inwardIndices
+ *   u32: count of inward connections
+ *
+ * Inward indices (totalInwardEntries × 4 bytes):
+ *   u32[]: synapse indices
+ *
+ * Reverse topological order (orderLength × 4 bytes):
+ *   u32[]: neuron indices
+ *
+ * Expected outputs (outputCount × 4 bytes):
+ *   f32[]: expected values
+ * ```
+ *
+ * # Return format (packed f64 array)
+ *
+ * ```text
+ * Section 1: Per-neuron results (neuronCount × 7 f64s):
+ *   f64: totalErrorAbsoluteDelta
+ *   f64: cachedActivation (NaN if not set)
+ *   f64: noChange (1.0 = true, 0.0 = false)
+ *   f64: biasCountDelta
+ *   f64: totalBiasDelta
+ *   f64: totalAdjustedBiasDelta
+ *   f64: traceActivation (NaN if not traced)
+ *
+ * Section 2: Per-synapse results (synapseCount × 7 f64s):
+ *   f64: countDelta
+ *   f64: totalPositiveActivation
+ *   f64: totalNegativeActivation
+ *   f64: countPositiveActivations
+ *   f64: countNegativeActivations
+ *   f64: totalPositiveAdjustedValue
+ *   f64: totalNegativeAdjustedValue
+ * ```
+ */
+export function propagate_topological(data: Uint8Array): Float64Array;
+
+/**
  * Read all neuron state as a bulk f64 array.
  *
  * Returns the entire neuron state buffer (num_neurons × 3 values).
@@ -831,6 +908,7 @@ export interface InitOutput {
     readonly unsquash: (a: number, b: number, c: number) => number;
     readonly validate_range: (a: number, b: number) => number;
     readonly version: () => [number, number];
+    readonly propagate_topological: (a: number, b: number) => [number, number];
     readonly __wbg_predictivecodingengine_free: (a: number, b: number) => void;
     readonly predictivecodingengine_infer_batch_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
     readonly predictivecodingengine_infer_wasm: (a: number, b: number, c: number, d: number, e: number) => [number, number];
@@ -838,12 +916,12 @@ export interface InitOutput {
     readonly predictivecodingengine_num_inputs: (a: number) => number;
     readonly predictivecodingengine_num_neurons: (a: number) => number;
     readonly predictivecodingengine_num_outputs: (a: number) => number;
-    readonly predictivecodingengine_compute_gradients_wasm: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
+    readonly distribute_elastic_error: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
     readonly accumulate_bias_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly accumulate_bias_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly accumulate_weight_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly accumulate_weight_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
-    readonly distribute_elastic_error: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
+    readonly compute_score_components: (a: number, b: number, c: number, d: number) => any;
     readonly free_training_state: () => void;
     readonly get_training_state_num_neurons: () => number;
     readonly get_training_state_num_synapses: () => number;
@@ -853,15 +931,15 @@ export interface InitOutput {
     readonly read_neuron_state: (a: number) => [number, number];
     readonly read_synapse_state: (a: number) => [number, number];
     readonly reset_training_state: () => void;
+    readonly scan_max_bias: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
+    readonly scan_max_weight: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
+    readonly predictivecodingengine_compute_gradients_wasm: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly accumulate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
     readonly accumulate_bias_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
     readonly accumulate_weight_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
     readonly accumulate_weight_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
     readonly calculate_bias: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => number;
     readonly calculate_weight: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number) => number;
-    readonly compute_score_components: (a: number, b: number, c: number, d: number) => any;
-    readonly scan_max_bias: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
-    readonly scan_max_weight: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;

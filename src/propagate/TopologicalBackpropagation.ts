@@ -28,10 +28,15 @@ import { SquashType } from "../wasm/SquashType.ts";
 import { adjustedActivation } from "../neuron/NeuronPropagation.ts";
 import { BackpropBuffers } from "./BackpropBuffers.ts";
 import { computeReverseTopologicalOrder } from "./TopologicalOrder.ts";
+import { wasmTopologicalBackprop } from "./WasmTopologicalBackprop.ts";
 
 /**
  * Propagate expected values backward through the network using
  * iterative topological ordering instead of recursive traversal.
+ *
+ * Issue #1954: Attempts to run the entire loop as a single WASM call
+ * to eliminate per-neuron JS↔WASM boundary crossings. Falls back to
+ * the TypeScript implementation if WASM is unavailable.
  *
  * Each neuron is visited exactly once. Error signals from all downstream
  * paths are accumulated before processing, then distributed to upstream
@@ -43,6 +48,12 @@ export function propagateTopological(
   config: BackPropagationConfig,
   sparseConfig: SparseConfig,
 ): void {
+  // Issue #1954: Try WASM path first for the entire loop.
+  if (wasmTopologicalBackprop(creature, expected, config, sparseConfig)) {
+    return;
+  }
+
+  // Fallback: TypeScript implementation.
   creature.state.cacheAdjustedActivation.clear();
 
   if (creature.state.backpropBuffers === undefined) {

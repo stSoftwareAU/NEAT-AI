@@ -1160,6 +1160,92 @@ export function msle_sum_batch_packed(network, records, input_size, num_outputs,
 }
 
 /**
+ * Issue #1954 - Run the full topological backpropagation loop in WASM.
+ *
+ * This replaces ~N per-neuron WASM calls with a single call that processes
+ * all neurons in reverse topological order.
+ *
+ * # Binary input format (packed into `data`)
+ *
+ * ```text
+ * Header (40 bytes):
+ *   u32: neuronCount
+ *   u32: inputCount
+ *   u32: outputCount
+ *   u32: synapseCount
+ *   u32: orderLength
+ *   u32: totalInwardEntries
+ *   f64: plankConstant
+ *   u8:  normaliseGradients (0 or 1)
+ *   [3 bytes padding]
+ *
+ * Per neuron (neuronCount × 20 bytes):
+ *   u8:  squashType
+ *   u8:  neuronType (0=input, 1=hidden, 2=output, 3=constant)
+ *   u8:  propagateNeeded (0 or 1)
+ *   u8:  updateNeeded (0 or 1)
+ *   f32: hintValue
+ *   f32: rangeLow
+ *   f32: rangeHigh
+ *   f32: adjustedActivation
+ *   f32: adjustedBias (for non-input neurons)
+ *
+ * Per synapse (synapseCount × 20 bytes):
+ *   u32: from
+ *   u32: to
+ *   f32: originalWeight
+ *   f32: adjustedWeight
+ *   u8:  isSelfLoop (0 or 1)
+ *   [3 bytes padding]
+ *
+ * Inward mapping (neuronCount × 8 bytes):
+ *   u32: start index into inwardIndices
+ *   u32: count of inward connections
+ *
+ * Inward indices (totalInwardEntries × 4 bytes):
+ *   u32[]: synapse indices
+ *
+ * Reverse topological order (orderLength × 4 bytes):
+ *   u32[]: neuron indices
+ *
+ * Expected outputs (outputCount × 4 bytes):
+ *   f32[]: expected values
+ * ```
+ *
+ * # Return format (packed f64 array)
+ *
+ * ```text
+ * Section 1: Per-neuron results (neuronCount × 7 f64s):
+ *   f64: totalErrorAbsoluteDelta
+ *   f64: cachedActivation (NaN if not set)
+ *   f64: noChange (1.0 = true, 0.0 = false)
+ *   f64: biasCountDelta
+ *   f64: totalBiasDelta
+ *   f64: totalAdjustedBiasDelta
+ *   f64: traceActivation (NaN if not traced)
+ *
+ * Section 2: Per-synapse results (synapseCount × 7 f64s):
+ *   f64: countDelta
+ *   f64: totalPositiveActivation
+ *   f64: totalNegativeActivation
+ *   f64: countPositiveActivations
+ *   f64: countNegativeActivations
+ *   f64: totalPositiveAdjustedValue
+ *   f64: totalNegativeAdjustedValue
+ * ```
+ * @param {Uint8Array} data
+ * @returns {Float64Array}
+ */
+export function propagate_topological(data) {
+    const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.propagate_topological(ptr0, len0);
+    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v2;
+}
+
+/**
  * Read all neuron state as a bulk f64 array.
  *
  * Returns the entire neuron state buffer (num_neurons × 3 values).
