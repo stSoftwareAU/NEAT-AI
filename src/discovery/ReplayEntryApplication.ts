@@ -36,18 +36,18 @@ function safeNumber(value: unknown): number | undefined {
     : undefined;
 }
 
-function isNeuronPresent(creature: Creature, uuid: string): boolean {
-  return creature.neurons.some((n) => n.uuid === uuid);
+function isNeuronPresent(creature: Creature, id: number): boolean {
+  return creature.neurons.some((n) => n.id === id);
 }
 
 function isSynapsePresent(
   creature: Creature,
-  fromUUID: string,
-  toUUID: string,
+  fromId: number,
+  toId: number,
 ): boolean {
   const exported = creature.exportJSON();
   return exported.synapses.some((s) =>
-    s.fromUUID === fromUUID && s.toUUID === toUUID
+    s.fromId === fromId && s.toId === toId
   );
 }
 
@@ -76,26 +76,26 @@ export function isAlreadyApplied(
   // Fast-path: structural removals.
   if (type === "remove-low-impact") {
     const c = req.removalCandidate as RemovalCandidate | undefined;
-    return c?.neuronUUID ? !isNeuronPresent(creature, c.neuronUUID) : false;
+    return c?.neuronId != null ? !isNeuronPresent(creature, c.neuronId) : false;
   }
   if (type === "remove-neuron") {
     const c = req.harmfulNeuronCandidate as CandidateHarmfulNeuron | undefined;
-    return c?.neuronUUID ? !isNeuronPresent(creature, c.neuronUUID) : false;
+    return c?.neuronId != null ? !isNeuronPresent(creature, c.neuronId) : false;
   }
   if (type === "remove-synapse") {
     const c = req.harmfulSynapseCandidate as CandidateSynapse | undefined;
-    if (c?.fromNeuronUUID && c?.toNeuronUUID) {
-      return !isSynapsePresent(creature, c.fromNeuronUUID, c.toNeuronUUID);
+    if (c?.fromNeuronId != null && c?.toNeuronId != null) {
+      return !isSynapsePresent(creature, c.fromNeuronId, c.toNeuronId);
     }
     const details = req.synapseDetails as {
-      fromNeuronUUID?: string;
-      toNeuronUUID?: string;
+      fromNeuronId?: number;
+      toNeuronId?: number;
     } | undefined;
-    if (details?.fromNeuronUUID && details?.toNeuronUUID) {
+    if (details?.fromNeuronId != null && details?.toNeuronId != null) {
       return !isSynapsePresent(
         creature,
-        details.fromNeuronUUID,
-        details.toNeuronUUID,
+        details.fromNeuronId,
+        details.toNeuronId,
       );
     }
     return false;
@@ -103,14 +103,14 @@ export function isAlreadyApplied(
 
   if (type === "add-synapses") {
     const c = req.synapseCandidate as CandidateSynapse | undefined;
-    if (!c?.fromNeuronUUID || !c?.toNeuronUUID) return false;
-    return isSynapsePresent(creature, c.fromNeuronUUID, c.toNeuronUUID);
+    if (c?.fromNeuronId == null || c?.toNeuronId == null) return false;
+    return isSynapsePresent(creature, c.fromNeuronId, c.toNeuronId);
   }
 
   if (type === "change-squash") {
     const c = req.squashCandidate as CandidateSquash | undefined;
-    if (!c?.neuronUUID || !c?.squash) return false;
-    const neuron = creature.neurons.find((n) => n.uuid === c.neuronUUID);
+    if (c?.neuronId == null || !c?.squash) return false;
+    const neuron = creature.neurons.find((n) => n.id === c.neuronId);
     return neuron?.squash === c.squash;
   }
 
@@ -131,26 +131,26 @@ export function isAlreadyApplied(
       string,
       { present: boolean; weight?: number }
     >();
-    const edgeKey = (fromUUID: string, toUUID: string): string =>
-      `${fromUUID}\0${toUUID}`;
+    const edgeKey = (fromId: number, toId: number): string =>
+      `${fromId}\0${toId}`;
 
     for (const op of ops) {
       if (!op || typeof op.type !== "string") return false;
       if (op.type === "removeSynapse") {
-        expectedByEdge.set(edgeKey(op.fromNeuronUuid, op.toNeuronUuid), {
+        expectedByEdge.set(edgeKey(op.fromNeuronId, op.toNeuronId), {
           present: false,
         });
         continue;
       }
       if (op.type === "addSynapse") {
-        expectedByEdge.set(edgeKey(op.fromNeuronUuid, op.toNeuronUuid), {
+        expectedByEdge.set(edgeKey(op.fromNeuronId, op.toNeuronId), {
           present: true,
           weight: op.weight,
         });
         continue;
       }
       if (op.type === "setWeight") {
-        const key = edgeKey(op.fromNeuronUuid, op.toNeuronUuid);
+        const key = edgeKey(op.fromNeuronId, op.toNeuronId);
         const existing = expectedByEdge.get(key);
         // setWeight is a no-op if the synapse doesn't exist. If the edge is
         // already marked as absent (from a prior removeSynapse), leave it absent.
@@ -171,9 +171,11 @@ export function isAlreadyApplied(
 
     const exported = creature.exportJSON();
     for (const [key, expected] of expectedByEdge.entries()) {
-      const [fromUUID, toUUID] = key.split("\0");
+      const [fromIdStr, toIdStr] = key.split("\0");
+      const fromId = Number(fromIdStr);
+      const toId = Number(toIdStr);
       const synapse = exported.synapses.find((s) =>
-        s.fromUUID === fromUUID && s.toUUID === toUUID
+        s.fromId === fromId && s.toId === toId
       );
 
       if (!expected.present) {
@@ -192,16 +194,16 @@ export function isAlreadyApplied(
   if (type === "add-neurons") {
     // Approximate match using the same exponent-bucketing approach as the cache key.
     const details = req.neuronDetails as {
-      fromNeuronUUID?: string;
-      toNeuronUUID?: string;
+      fromNeuronId?: number;
+      toNeuronId?: number;
       incomingWeight?: number;
       outgoingWeight?: number;
       bias?: number;
       squash?: string;
     } | undefined;
-    const fromUUID = details?.fromNeuronUUID;
-    const toUUID = details?.toNeuronUUID;
-    if (!fromUUID || !toUUID) return false;
+    const fromId = details?.fromNeuronId;
+    const toId = details?.toNeuronId;
+    if (fromId == null || toId == null) return false;
 
     const inW = safeNumber(details?.incomingWeight);
     const outW = safeNumber(details?.outgoingWeight);
@@ -227,10 +229,10 @@ export function isAlreadyApplied(
       if (formatWeight(neuron.bias) !== biasExp) continue;
 
       const inSyn = exported.synapses.find((s) =>
-        s.fromUUID === fromUUID && s.toUUID === neuron.uuid
+        s.fromId === fromId && s.toId === neuron.id
       );
       const outSyn = exported.synapses.find((s) =>
-        s.fromUUID === neuron.uuid && s.toUUID === toUUID
+        s.fromId === neuron.id && s.toId === toId
       );
       if (!inSyn || !outSyn) continue;
       if (formatWeight(inSyn.weight) !== inExp) continue;
@@ -297,13 +299,13 @@ export function applyEntryUsingRustRequest(
         (req.harmfulSynapseCandidate as CandidateSynapse | undefined) ??
           (req.synapseCandidate as CandidateSynapse | undefined);
       const details = req.synapseDetails as
-        | { fromNeuronUUID?: string; toNeuronUUID?: string }
+        | { fromNeuronId?: number; toNeuronId?: number }
         | undefined;
       const resolved = synapse ??
-        (details?.fromNeuronUUID && details?.toNeuronUUID
+        (details?.fromNeuronId != null && details?.toNeuronId != null
           ? {
-            fromNeuronUUID: details.fromNeuronUUID,
-            toNeuronUUID: details.toNeuronUUID,
+            fromNeuronId: details.fromNeuronId,
+            toNeuronId: details.toNeuronId,
             weight: 0,
             targetNeuronImpact: 0,
             expectedCreatureErrorReduction: 0,

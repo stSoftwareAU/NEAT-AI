@@ -177,8 +177,8 @@ export function wasmTopologicalBackprop(
       hintValues[i] = ns.hintValue;
     }
 
-    propagateNeeded[i] = sparseConfig.propagateNeeded(n.uuid) ? 1 : 0;
-    updateNeeded[i] = sparseConfig.updateNeeded(n.uuid) ? 1 : 0;
+    propagateNeeded[i] = sparseConfig.propagateNeeded(n.id) ? 1 : 0;
+    updateNeeded[i] = sparseConfig.updateNeeded(n.id) ? 1 : 0;
   }
 
   const adjWeights = new Float32Array(synapseCount);
@@ -442,7 +442,7 @@ function handleSpecialNeuronFallback(
     if (propagateMethod.propagate === undefined) continue;
 
     const ns = state.node(neuronIndex);
-    const upNeeded = sparseConfig.updateNeeded(neuron.uuid);
+    const upNeeded = sparseConfig.updateNeeded(neuron.id);
     ns.noChange = upNeeded === false;
 
     const limitedActivation = propagateMethod.propagate(

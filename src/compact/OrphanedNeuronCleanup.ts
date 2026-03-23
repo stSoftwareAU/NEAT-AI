@@ -18,16 +18,16 @@ export interface CleanupOrphanedResult {
 }
 
 export function createConstantOne(creature: Creature, count: number) {
-  let uuid;
+  let id;
   switch (count) {
     case 1:
-      uuid = "second-one";
+      id = -1001;
       break;
     case 2:
-      uuid = "third-one";
+      id = -1002;
       break;
     default:
-      uuid = "first-one";
+      id = -1000;
   }
   let firstHiddenIndx = -1;
   let foundConstant;
@@ -38,7 +38,7 @@ export function createConstantOne(creature: Creature, count: number) {
         firstHiddenIndx = n.index;
       }
     }
-    if (n.uuid === uuid) {
+    if (n.id === id) {
       assert(n.type === "constant", "Must be a constant");
       foundConstant = n;
       foundConstant.bias = 1;
@@ -51,7 +51,7 @@ export function createConstantOne(creature: Creature, count: number) {
   }
 
   const constantOne = new Neuron(
-    uuid,
+    id,
     "constant",
     1,
     creature,
@@ -74,7 +74,7 @@ export function createConstantOne(creature: Creature, count: number) {
     let firstIndx = -1;
     for (let indx = creature.input; indx < creature.neurons.length; indx++) {
       const n = creature.neurons[indx];
-      if (n.uuid === uuid) {
+      if (n.id === id) {
         if (firstIndx === -1) {
           firstIndx = n.index;
         } else {
@@ -180,17 +180,17 @@ export function cleanupOrphanedNeurons(
   let totalRemoved = 0;
   let totalConverted = 0;
   let changedThisPass: boolean;
-  const allRemovedUUIDs = new Set<string>();
+  const allRemovedIds = new Set<number>();
 
   do {
     changedThisPass = false;
 
     // Build sets for connection analysis
-    const neuronsWithOutwardConnections = new Set<string>();
-    const neuronsWithInwardConnections = new Set<string>();
+    const neuronsWithOutwardConnections = new Set<number>();
+    const neuronsWithInwardConnections = new Set<number>();
     for (const synapse of creatureExport.synapses) {
-      neuronsWithOutwardConnections.add(synapse.fromUUID);
-      neuronsWithInwardConnections.add(synapse.toUUID);
+      neuronsWithOutwardConnections.add(synapse.fromId);
+      neuronsWithInwardConnections.add(synapse.toId);
     }
 
     // First pass: Convert hidden neurons with no inward connections (but have outward) to constants
@@ -198,8 +198,8 @@ export function cleanupOrphanedNeurons(
       const neuron = creatureExport.neurons[i];
       if (neuron.type === "hidden") {
         if (
-          !neuronsWithInwardConnections.has(neuron.uuid) &&
-          neuronsWithOutwardConnections.has(neuron.uuid)
+          !neuronsWithInwardConnections.has(neuron.id) &&
+          neuronsWithOutwardConnections.has(neuron.id)
         ) {
           // Has outward connections but no inward - convert to constant
           // A hidden neuron with bias X and squash function outputs squash(0 + X)
@@ -225,7 +225,7 @@ export function cleanupOrphanedNeurons(
           }
           creatureExport.neurons[i] = {
             type: "constant",
-            uuid: neuron.uuid,
+            id: neuron.id,
             bias: constantBias,
           };
           totalConverted++;
@@ -235,40 +235,40 @@ export function cleanupOrphanedNeurons(
     }
 
     // Second pass: Find and remove neurons with no outward connections
-    const orphanedUUIDs: string[] = [];
+    const orphanedIds: number[] = [];
     for (const neuron of creatureExport.neurons) {
       if (neuron.type === "hidden" || neuron.type === "constant") {
-        if (!neuronsWithOutwardConnections.has(neuron.uuid)) {
-          orphanedUUIDs.push(neuron.uuid);
+        if (!neuronsWithOutwardConnections.has(neuron.id)) {
+          orphanedIds.push(neuron.id);
         }
       }
     }
 
-    if (orphanedUUIDs.length > 0) {
-      const orphanSet = new Set(orphanedUUIDs);
+    if (orphanedIds.length > 0) {
+      const orphanSet = new Set(orphanedIds);
 
       // Track all removed UUIDs for memetic cleanup
-      for (const uuid of orphanedUUIDs) {
-        allRemovedUUIDs.add(uuid);
+      for (const uuid of orphanedIds) {
+        allRemovedIds.add(uuid);
       }
 
       // Remove orphaned neurons
       creatureExport.neurons = creatureExport.neurons.filter(
-        (n) => !orphanSet.has(n.uuid),
+        (n) => !orphanSet.has(n.id),
       );
 
       // Remove synapses that connect TO orphaned neurons
       creatureExport.synapses = creatureExport.synapses.filter(
-        (s) => !orphanSet.has(s.toUUID),
+        (s) => !orphanSet.has(s.toId),
       );
 
-      totalRemoved += orphanedUUIDs.length;
+      totalRemoved += orphanedIds.length;
       changedThisPass = true;
     }
   } while (changedThisPass);
 
   // Delete memetic if any neurons were removed (structure changed)
-  if (allRemovedUUIDs.size > 0) {
+  if (allRemovedIds.size > 0) {
     delete creatureExport.memetic;
   }
 

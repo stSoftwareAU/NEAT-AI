@@ -241,9 +241,9 @@ export function constrainAndRedistributeRecordShares(
 
 export function getOrComputeRecordValue(
   neuron: Neuron,
-  discoverMap: Map<string, DiscoverRecord>,
+  discoverMap: Map<number, DiscoverRecord>,
 ): number {
-  const existing = discoverMap.get(neuron.uuid);
+  const existing = discoverMap.get(neuron.id);
   if (
     existing && typeof existing.value === "number" &&
     Number.isFinite(existing.value)
@@ -271,7 +271,7 @@ export function getOrComputeRecordValue(
   if (existing) {
     existing.value = value;
   } else {
-    discoverMap.set(neuron.uuid, {
+    discoverMap.set(neuron.id, {
       activation: state.activations[neuron.index],
       errors: [],
       value,
@@ -284,7 +284,7 @@ export function getOrComputeRecordValue(
 export function buildRecordElasticLinks(
   neuron: Neuron,
   inward: ReadonlyArray<Synapse>,
-  discoverMap: Map<string, DiscoverRecord>,
+  discoverMap: Map<number, DiscoverRecord>,
   provisionalErrorPerLink: number,
   options?: Readonly<{
     includeInputNodes?: boolean;

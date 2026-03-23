@@ -40,7 +40,7 @@ import * as serialisation from "../neuron/NeuronSerialization.ts";
  *
  * @example
  * ```ts
- * const neuron = new Neuron("hidden-1", "hidden", 0.5, creature, "TANH");
+ * const neuron = new Neuron(1000001, "hidden", 0.5, creature, "TANH");
  * neuron.activateNeuron();
  * ```
  */
@@ -49,8 +49,8 @@ export class Neuron implements TagsInterface, NeuronInternal {
   readonly creature: Creature;
   /** Type of the neuron (input, output, hidden, or constant) */
   type: "input" | "output" | "hidden" | "constant";
-  /** Unique identifier for the neuron */
-  uuid: string;
+  /** Integer identifier for the neuron (Issue #1958) */
+  id: number;
   /** Bias value added to the neuron's input */
   bias: number;
   /** Name of the activation function to apply */
@@ -90,13 +90,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
   private functionCache: FunctionCache = { key: "" };
 
   constructor(
-    uuid: string,
+    id: number,
     type: "input" | "output" | "hidden" | "constant",
     bias: number,
     creature: Creature,
     squash?: string,
   ) {
-    this.uuid = uuid;
+    this.id = id;
     this.type = type;
 
     if (type !== "input") {
@@ -154,7 +154,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
   }
 
   ID(): string {
-    return this.uuid.substring(Math.max(0, this.uuid.length - 8));
+    return String(this.id);
   }
 
   setSquash(name?: string): void {
@@ -251,7 +251,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
   record(
     requestedActivation: number,
-    discoverMap: Map<string, DiscoverRecord>,
+    discoverMap: Map<number, DiscoverRecord>,
   ): void {
     recording.record(this, requestedActivation, discoverMap);
   }

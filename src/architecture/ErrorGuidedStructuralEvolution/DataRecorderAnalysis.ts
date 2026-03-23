@@ -56,8 +56,8 @@ function formatGainPct(gain: number): string {
 function logCandidate(
   discoveryID: string,
   scope: "SYNAPSE" | "NEURON" | "HARMFUL-SYNAPSE" | "HARMFUL-NEURON",
-  from: string,
-  to: string,
+  from: number,
+  to: number,
   gain: number,
   improved: number,
   total: number,
@@ -97,8 +97,8 @@ function logAllCandidates(
     logCandidate(
       discoveryID,
       "SYNAPSE",
-      candidate.fromNeuronUUID,
-      candidate.toNeuronUUID,
+      candidate.fromNeuronId,
+      candidate.toNeuronId,
       candidate.expectedCreatureScoreGain,
       candidate.improvedCount,
       candidate.totalCount,
@@ -109,8 +109,8 @@ function logAllCandidates(
     logCandidate(
       discoveryID,
       "NEURON",
-      candidate.fromNeuronUUID,
-      candidate.toNeuronUUID,
+      candidate.fromNeuronId,
+      candidate.toNeuronId,
       candidate.expectedCreatureScoreGain,
       candidate.improvedCount,
       candidate.totalCount,
@@ -121,8 +121,8 @@ function logAllCandidates(
     logCandidate(
       discoveryID,
       "HARMFUL-SYNAPSE",
-      removeHarmfulSynapse.fromNeuronUUID,
-      removeHarmfulSynapse.toNeuronUUID,
+      removeHarmfulSynapse.fromNeuronId,
+      removeHarmfulSynapse.toNeuronId,
       removeHarmfulSynapse.expectedCreatureScoreGain,
       removeHarmfulSynapse.improvedCount,
       removeHarmfulSynapse.totalCount,
@@ -133,8 +133,8 @@ function logAllCandidates(
     logCandidate(
       discoveryID,
       "HARMFUL-NEURON",
-      candidate.neuronUUID,
-      candidate.neuronUUID,
+      candidate.neuronId,
+      candidate.neuronId,
       candidate.expectedCreatureScoreGain,
       candidate.sampleCount,
       candidate.sampleCount,
@@ -169,7 +169,7 @@ export async function runAnalysisLoop(
   };
 
   // Track attempted neurons to avoid re-analyzing the same ones
-  const attemptedNeurons = new Set<string>();
+  const attemptedNeurons = new Set<number>();
   let retryAttempt = 0;
   const maxRetries = 10; // Reasonable limit to prevent infinite loops
 
@@ -422,7 +422,7 @@ function logSquashResults(
   let squashSummaryText = "";
   if (squashCount > 0 && candidateSquashes) {
     const squashSummary = candidateSquashes.map((candidate) => {
-      return `${candidate.neuronUUID} ${candidate.previousSquash} -> ${candidate.squash} expected: ${
+      return `${candidate.neuronId} ${candidate.previousSquash} -> ${candidate.squash} expected: ${
         (candidate.expectedCreatureScoreGain * 100).toFixed(1)
       }% error: ${candidate.currentError.toFixed(4)} -> ${
         candidate.improvedError.toFixed(4)
@@ -444,7 +444,7 @@ async function runParallelAnalysis(
   discoverStructure: DiscoverStructure,
   perfStats: DiscoveryPerformanceStats,
   phaseDiagnostics: PhaseDiagnostics,
-  newFocusList: string[],
+  newFocusList: number[],
 ): Promise<[
   CandidateNeuron[] | undefined,
   CandidateSynapse[] | undefined,

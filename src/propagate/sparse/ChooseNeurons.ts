@@ -18,8 +18,8 @@ import { getRandomNumberGenerator } from "../../utils/RandomNumberGenerator.ts";
 export function chooseNeurons(
   creature: CreatureExport,
   config: BackPropagationConfig,
-  neuronErrors?: ReadonlyMap<string, NeuronStateInterface>,
-): Readonly<Set<string>> {
+  neuronErrors?: ReadonlyMap<number, NeuronStateInterface>,
+): Readonly<Set<number>> {
   // Handle the special case where sparseRatio is 1.
   if (config.sparseRatio === 1) {
     const allNeurons = new Set(
@@ -27,7 +27,7 @@ export function chooseNeurons(
         .filter((neuron) =>
           neuron.type === "hidden" || neuron.type === "output"
         )
-        .map((neuron) => neuron.uuid),
+        .map((neuron) => neuron.id),
     );
     return Object.freeze(allNeurons);
   }
@@ -55,19 +55,19 @@ export function chooseNeurons(
   }
 
   // Set of chosen neurons and a queue to expand the cluster.
-  const selectedNeurons = new Set<string>();
-  const queue: string[] = [];
+  const selectedNeurons = new Set<number>();
+  const queue: number[] = [];
 
   // Select the initial neurons up to the required number.
   const hasErrorData = neuronErrors !== undefined && neuronErrors.size > 0;
   for (let i = 0; i < numberOfNeuronsToSelect; i++) {
-    const neuronUUID = eligibleNeurons[i].uuid;
+    const neuronId = eligibleNeurons[i].id;
     // When error-guided, add directly to selectedNeurons to guarantee
     // high-error neurons are included (they are sorted first).
     if (hasErrorData) {
-      selectedNeurons.add(neuronUUID);
+      selectedNeurons.add(neuronId);
     }
-    queue.push(neuronUUID);
+    queue.push(neuronId);
   }
 
   // Map from each neuron UUID to the synapses that connect from or to it.
@@ -108,16 +108,16 @@ export function chooseNeurons(
  * neurons that have similar error levels to maintain exploration diversity.
  */
 function errorGuidedSort(
-  neurons: { uuid: string; type: string }[],
-  neuronErrors: ReadonlyMap<string, NeuronStateInterface>,
+  neurons: { id: number; type: string }[],
+  neuronErrors: ReadonlyMap<number, NeuronStateInterface>,
 ): void {
   // First shuffle to break ties randomly
   fisherYatesShuffle(neurons);
 
   // Then stable-sort by descending error (high error neurons first)
   neurons.sort((a, b) => {
-    const errorA = neuronErrors.get(a.uuid)?.totalErrorAbsolute ?? 0;
-    const errorB = neuronErrors.get(b.uuid)?.totalErrorAbsolute ?? 0;
+    const errorA = neuronErrors.get(a.id)?.totalErrorAbsolute ?? 0;
+    const errorB = neuronErrors.get(b.id)?.totalErrorAbsolute ?? 0;
     return errorB - errorA;
   });
 }
@@ -133,33 +133,33 @@ function fisherYatesShuffle<T>(array: T[]): void {
 // Build a map from each neuron to the synapses connected to it.
 // Single-pass optimisation: combines both fromUUID and toUUID processing.
 // See issue #1029 for performance analysis.
-function buildSynapseMap(creature: CreatureExport): Map<string, Set<string>> {
-  const validNeurons = new Set<string>();
+function buildSynapseMap(creature: CreatureExport): Map<number, Set<number>> {
+  const validNeurons = new Set<number>();
   creature.neurons.forEach((neuron) => {
     if (neuron.type === "hidden" || neuron.type === "output") {
-      validNeurons.add(neuron.uuid);
+      validNeurons.add(neuron.id);
     }
   });
 
-  const synapseMap = new Map<string, Set<string>>();
+  const synapseMap = new Map<number, Set<number>>();
 
   creature.synapses.forEach((synapse) => {
-    const fromValid = validNeurons.has(synapse.fromUUID);
-    const toValid = validNeurons.has(synapse.toUUID);
+    const fromValid = validNeurons.has(synapse.fromId);
+    const toValid = validNeurons.has(synapse.toId);
 
     // Only process synapses where both endpoints are valid neurons
     if (fromValid && toValid) {
       // Add fromUUID -> toUUID connection
-      if (!synapseMap.has(synapse.fromUUID)) {
-        synapseMap.set(synapse.fromUUID, new Set());
+      if (!synapseMap.has(synapse.fromId)) {
+        synapseMap.set(synapse.fromId, new Set());
       }
-      synapseMap.get(synapse.fromUUID)!.add(synapse.toUUID);
+      synapseMap.get(synapse.fromId)!.add(synapse.toId);
 
       // Add toUUID -> fromUUID connection (bidirectional for neighbour lookup)
-      if (!synapseMap.has(synapse.toUUID)) {
-        synapseMap.set(synapse.toUUID, new Set());
+      if (!synapseMap.has(synapse.toId)) {
+        synapseMap.set(synapse.toId, new Set());
       }
-      synapseMap.get(synapse.toUUID)!.add(synapse.fromUUID);
+      synapseMap.get(synapse.toId)!.add(synapse.fromId);
     }
   });
 
@@ -170,16 +170,16 @@ function buildSynapseMap(creature: CreatureExport): Map<string, Set<string>> {
 // Uses index pointer instead of Array.shift() for O(1) dequeue operations.
 // See issue #1030 for performance analysis.
 function getConnectedNeurons(
-  neuronUUID: string,
-  synapseMap: Map<string, Set<string>>,
+  neuronId: number,
+  synapseMap: Map<number, Set<number>>,
   steps: number,
-): Set<string> {
-  const connectedNeurons = new Set<string>();
-  const queue = [{ neuronUUID, depth: 0 }];
+): Set<number> {
+  const connectedNeurons = new Set<number>();
+  const queue = [{ neuronId, depth: 0 }];
   let front = 0;
 
   while (front < queue.length) {
-    const { neuronUUID: current, depth } = queue[front++];
+    const { neuronId: current, depth } = queue[front++];
 
     // Stop expanding once we reach the specified depth.
     if (depth >= steps) continue;
@@ -188,7 +188,7 @@ function getConnectedNeurons(
     for (const neighbour of neighbours) {
       if (!connectedNeurons.has(neighbour)) {
         connectedNeurons.add(neighbour);
-        queue.push({ neuronUUID: neighbour, depth: depth + 1 });
+        queue.push({ neuronId: neighbour, depth: depth + 1 });
       }
     }
   }

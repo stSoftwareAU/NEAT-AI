@@ -13,18 +13,18 @@ export function memeticUpdate(
 
   const memetic: MemeticInterface = JSON.parse(JSON.stringify(parent.memetic));
 
-  const squashMap = new Map<string, string>();
-  const biasMap = new Map<string, number>();
+  const squashMap = new Map<number, string>();
+  const biasMap = new Map<number, number>();
 
   for (let i = parent.input; i < parent.neurons.length; i++) {
     const neuron = parent.neurons[i];
-    squashMap.set(neuron.uuid, neuron.squash ?? "NONE");
-    biasMap.set(neuron.uuid, neuron.bias);
+    squashMap.set(neuron.id, neuron.squash ?? "NONE");
+    biasMap.set(neuron.id, neuron.bias);
   }
 
   for (let i = child.input; i < child.neurons.length; i++) {
     const neuron = child.neurons[i];
-    const squash = squashMap.get(neuron.uuid);
+    const squash = squashMap.get(neuron.id);
     if (!squash) {
       return undefined;
     }
@@ -32,42 +32,42 @@ export function memeticUpdate(
     if (childSquash !== squash) {
       return undefined;
     }
-    const parentBias = biasMap.get(neuron.uuid);
+    const parentBias = biasMap.get(neuron.id);
     if (neuron.bias !== parentBias) {
       if (memetic.biases === undefined) {
         memetic.biases = {};
       }
-      if (memetic.biases[neuron.uuid] === undefined) {
-        memetic.biases[neuron.uuid] = neuron.bias;
+      if (memetic.biases[neuron.id] === undefined) {
+        memetic.biases[neuron.id] = neuron.bias;
       }
     }
   }
 
   const parentExport = parent.exportJSON();
 
-  const weightsMap = new Map<string, Map<string, number>>();
+  const weightsMap = new Map<number, Map<number, number>>();
 
   const foundSet = new Set<string>();
   for (const synapse of parentExport.synapses) {
-    let weights = weightsMap.get(synapse.fromUUID);
+    let weights = weightsMap.get(synapse.fromId);
     if (weights === undefined) {
       weights = new Map();
-      weightsMap.set(synapse.fromUUID, weights);
+      weightsMap.set(synapse.fromId, weights);
     }
-    weights.set(synapse.toUUID, synapse.weight);
-    foundSet.add(`${synapse.fromUUID}-${synapse.toUUID}`);
+    weights.set(synapse.toId, synapse.weight);
+    foundSet.add(`${synapse.fromId}-${synapse.toId}`);
   }
 
   const childExport = child.exportJSON();
 
   for (const synapse of childExport.synapses) {
-    foundSet.delete(`${synapse.fromUUID}-${synapse.toUUID}`);
+    foundSet.delete(`${synapse.fromId}-${synapse.toId}`);
 
-    const fromWeights = weightsMap.get(synapse.fromUUID);
+    const fromWeights = weightsMap.get(synapse.fromId);
     if (fromWeights === undefined) {
       return undefined;
     }
-    const weight = fromWeights.get(synapse.toUUID);
+    const weight = fromWeights.get(synapse.toId);
     if (weight === undefined) {
       return undefined;
     }
@@ -77,15 +77,15 @@ export function memeticUpdate(
       if (memetic.weights === undefined) {
         memetic.weights = {};
       }
-      let fromWeights = memetic.weights[synapse.fromUUID];
+      let fromWeights = memetic.weights[synapse.fromId];
       if (fromWeights === undefined) {
         fromWeights = [];
-        memetic.weights[synapse.fromUUID] = fromWeights;
+        memetic.weights[synapse.fromId] = fromWeights;
       }
-      const toWeight = fromWeights.find((w) => w.toUUID === synapse.toUUID);
+      const toWeight = fromWeights.find((w) => w.toId === synapse.toId);
       if (toWeight === undefined) {
-        memetic.weights[synapse.fromUUID].push({
-          toUUID: synapse.toUUID,
+        memetic.weights[synapse.fromId].push({
+          toId: synapse.toId,
           weight: weight,
         });
       }

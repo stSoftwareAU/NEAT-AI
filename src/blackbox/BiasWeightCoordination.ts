@@ -17,10 +17,10 @@
  * Describes a synapse's adjustment plan for coordination.
  */
 export interface SynapseAdjustmentPlan {
-  /** Source neuron UUID */
-  readonly fromUUID: string;
-  /** Destination neuron UUID */
-  readonly toUUID: string;
+  /** Source neuron ID */
+  readonly fromId: number;
+  /** Destination neuron ID */
+  readonly toId: number;
   /** Original weight before quantum adjustment */
   readonly originalWeight: number;
   /** Candidate weight from independent quantum adjustment */
@@ -32,7 +32,7 @@ export interface SynapseAdjustmentPlan {
  */
 export interface NeuronAdjustmentPlan {
   /** UUID of the neuron being adjusted */
-  readonly neuronUUID: string;
+  readonly neuronId: number;
   /** Original bias before quantum adjustment */
   readonly originalBias: number;
   /** Candidate bias from independent quantum adjustment */
@@ -45,10 +45,10 @@ export interface NeuronAdjustmentPlan {
  * Result of coordinated bias-weight adjustment for a single synapse.
  */
 export interface CoordinatedWeightResult {
-  /** Source neuron UUID */
-  readonly fromUUID: string;
-  /** Destination neuron UUID */
-  readonly toUUID: string;
+  /** Source neuron ID */
+  readonly fromId: number;
+  /** Destination neuron ID */
+  readonly toId: number;
   /** Final coordinated weight value */
   readonly weight: number;
 }
@@ -106,8 +106,8 @@ export function coordinateBiasWeightAdjustments(
     return {
       adjustedBias: plan.originalBias,
       adjustedWeights: plan.synapses.map((s) => ({
-        fromUUID: s.fromUUID,
-        toUUID: s.toUUID,
+        fromId: s.fromId,
+        toId: s.toId,
         weight: s.originalWeight,
       })),
       changed: false,
@@ -119,8 +119,8 @@ export function coordinateBiasWeightAdjustments(
     return {
       adjustedBias: plan.candidateBias,
       adjustedWeights: plan.synapses.map((s) => ({
-        fromUUID: s.fromUUID,
-        toUUID: s.toUUID,
+        fromId: s.fromId,
+        toId: s.toId,
         weight: s.candidateWeight,
       })),
       changed: true,
@@ -151,8 +151,8 @@ export function coordinateBiasWeightAdjustments(
       return {
         adjustedBias: plan.originalBias + adjustedBiasDelta,
         adjustedWeights: plan.synapses.map((s) => ({
-          fromUUID: s.fromUUID,
-          toUUID: s.toUUID,
+          fromId: s.fromId,
+          toId: s.toId,
           weight: s.candidateWeight,
         })),
         changed: true,
@@ -164,14 +164,14 @@ export function coordinateBiasWeightAdjustments(
         const delta = weightDeltas[i];
         if (delta === 0) {
           return {
-            fromUUID: s.fromUUID,
-            toUUID: s.toUUID,
+            fromId: s.fromId,
+            toId: s.toId,
             weight: s.originalWeight,
           };
         }
         return {
-          fromUUID: s.fromUUID,
-          toUUID: s.toUUID,
+          fromId: s.fromId,
+          toId: s.toId,
           weight: s.originalWeight + delta * reductionFactor,
         };
       });
@@ -189,8 +189,8 @@ export function coordinateBiasWeightAdjustments(
   return {
     adjustedBias: plan.candidateBias,
     adjustedWeights: plan.synapses.map((s) => ({
-      fromUUID: s.fromUUID,
-      toUUID: s.toUUID,
+      fromId: s.fromId,
+      toId: s.toId,
       weight: s.candidateWeight,
     })),
     changed: true,

@@ -17,6 +17,6 @@ export interface NeuronActivationInterface extends AbstractActivationInterface {
   record(
     neuron: Neuron,
     requestedActivation: number,
-    discoverMap: Map<string, DiscoverRecord>,
+    discoverMap: Map<number, DiscoverRecord>,
   ): void;
 }

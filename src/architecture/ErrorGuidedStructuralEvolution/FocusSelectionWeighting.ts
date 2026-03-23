@@ -20,7 +20,7 @@ import type {
 /**
  * Generates a cache key for focus selection.
  */
-export function focusSelectionKey(focusList: readonly string[]): string {
+export function focusSelectionKey(focusList: readonly number[]): string {
   return focusList.join("|");
 }
 
@@ -31,19 +31,19 @@ export function updateFocusSelectionSummary(
   loggingEnabled: boolean,
   _discoveryID: string,
   mode: FocusSelectionMode,
-  focusNeurons: readonly string[],
+  focusNeurons: readonly number[],
   logFn: (
     level: "debug" | "info" | "warn" | "error",
     message: string,
     details?: unknown,
   ) => void,
-  weightMap?: Map<string, number>,
+  weightMap?: Map<number, number>,
   totalWeight?: number,
   reason = "",
 ): FocusSelectionSummary {
-  const neurons = focusNeurons.map((uuid) => ({
-    uuid,
-    weight: weightMap?.get(uuid),
+  const neurons = focusNeurons.map((id) => ({
+    id,
+    weight: weightMap?.get(id),
   }));
   const summary: FocusSelectionSummary = {
     key: focusSelectionKey(focusNeurons),
@@ -57,8 +57,8 @@ export function updateFocusSelectionSummary(
       entry,
     ) =>
       entry.weight !== undefined
-        ? `${entry.uuid} (weight ${entry.weight.toFixed(4)})`
-        : entry.uuid
+        ? `${entry.id} (weight ${entry.weight.toFixed(4)})`
+        : String(entry.id)
     ).join(", ");
     logFn(
       "info",
@@ -79,7 +79,7 @@ export function writeFocusSelectionAnalysis(
   discoveryID: string,
   loggingEnabled: boolean,
   neuronErrors: NeuronErrorInfo[],
-  selectedUUIDs: Set<string>,
+  selectedIds: Set<number>,
   totalWeightedSum: number,
   selectionMethod: string,
   costOfGrowth: number,
@@ -91,7 +91,7 @@ export function writeFocusSelectionAnalysis(
   retryNumber?: number,
 ): void {
   try {
-    const selectedSet = new Set(selectedUUIDs);
+    const selectedSet = new Set(selectedIds);
 
     // Calculate all metrics for each candidate neuron
     const candidates: FocusNeuronCandidate[] = neuronErrors.map((neuron) => {
@@ -101,13 +101,13 @@ export function writeFocusSelectionAnalysis(
       const weightedScore = potentialErrorReduction * potentialErrorReduction;
 
       return {
-        neuronUuid: neuron.uuid,
+        neuronId: neuron.id,
         totalError: neuron.totalError,
         impact: neuron.impact,
         potentialErrorReduction,
         activationAffectPct,
         weightedScore,
-        selected: selectedSet.has(neuron.uuid),
+        selected: selectedSet.has(neuron.id),
       };
     });
 
@@ -121,7 +121,7 @@ export function writeFocusSelectionAnalysis(
     const lowImpactNeurons: LowImpactNeuron[] = neuronErrors
       .filter((n) => n.impact < lowImpactThreshold)
       .map((n) => ({
-        neuronUuid: n.uuid,
+        neuronId: n.id,
         impact: n.impact,
         activationAffectPct: n.impact * 100,
         totalError: n.totalError,
@@ -137,7 +137,7 @@ export function writeFocusSelectionAnalysis(
       costOfGrowth,
       selectionMethod,
       totalCandidates: candidates.length,
-      selectedCount: selectedUUIDs.size,
+      selectedCount: selectedIds.size,
       totalWeightedSum,
       candidates,
       lowImpactNeurons,
@@ -153,7 +153,7 @@ export function writeFocusSelectionAnalysis(
     if (loggingEnabled) {
       logFn(
         "info",
-        `Wrote focus selection analysis to ${filepath} (${candidates.length} candidates, ${selectedUUIDs.size} selected, ${lowImpactNeurons.length} low-impact)`,
+        `Wrote focus selection analysis to ${filepath} (${candidates.length} candidates, ${selectedIds.size} selected, ${lowImpactNeurons.length} low-impact)`,
       );
     }
   } catch (error) {
@@ -193,7 +193,7 @@ export async function selectNeuronsWeightedByError(
   retryNumber?: number,
   mode: "add" | "remove" = "add",
 ): Promise<{
-  selected: string[];
+  selected: number[];
   focusSelection: FocusSelectionSummary;
 }> {
   const rng = getRandomNumberGenerator();
@@ -257,7 +257,7 @@ export async function selectNeuronsWeightedByError(
     const clampedImprovement = Math.max(netImprovement, EPSILON);
 
     return {
-      uuid: n.uuid,
+      id: n.id,
       raw: clampedImprovement * clampedImprovement,
     };
   });
@@ -280,7 +280,7 @@ export async function selectNeuronsWeightedByError(
     );
   }
   const weightedValues = rawWeights.map((entry) => ({
-    uuid: entry.uuid,
+    id: entry.id,
     weight: entry.raw * scale,
   }));
   const totalWeightedSum = weightedValues.reduce(
@@ -288,22 +288,22 @@ export async function selectNeuronsWeightedByError(
     0,
   );
   const weightMapAll = new Map(
-    weightedValues.map((entry) => [entry.uuid, entry.weight]),
+    weightedValues.map((entry) => [entry.id, entry.weight]),
   );
 
   if (neuronErrors.length <= count) {
-    const uuids = neuronErrors.map((neuron) => neuron.uuid);
+    const ids = neuronErrors.map((neuron) => neuron.id);
     const focusSelection = updateFocusSelectionSummary(
       loggingEnabled,
       discoveryID,
       "all",
-      uuids,
+      ids,
       logFn,
       weightMapAll,
       totalWeightedSum,
       "all viable neurons selected",
     );
-    const selectedSet = new Set(uuids);
+    const selectedSet = new Set(ids);
     writeFocusSelectionAnalysis(
       tempDir,
       discoveryID,
@@ -316,10 +316,10 @@ export async function selectNeuronsWeightedByError(
       logFn,
       retryNumber,
     );
-    return { selected: uuids, focusSelection };
+    return { selected: ids, focusSelection };
   }
 
-  const selectedUUIDs: Set<string> = new Set();
+  const selectedIds: Set<number> = new Set();
 
   // Guard against NaN, Infinity, or zero total weighted sum
   if (!Number.isFinite(totalWeightedSum)) {
@@ -329,7 +329,7 @@ export async function selectNeuronsWeightedByError(
     getLogger().error(
       `   Neuron weighted summary: ${
         weightedValues.slice(0, 5).map((n) =>
-          `${n.uuid.slice(-8)}: weight=${n.weight}`
+          `${n.id}: weight=${n.weight}`
         ).join(", ")
       }...`,
     );
@@ -337,7 +337,7 @@ export async function selectNeuronsWeightedByError(
       `   Falling back to random neuron selection to continue discovery`,
     );
     const shuffled = [...neuronErrors].sort(() => rng.random() - 0.5);
-    const fallback = shuffled.slice(0, count).map((n) => n.uuid);
+    const fallback = shuffled.slice(0, count).map((n) => n.id);
     const focusSelection = updateFocusSelectionSummary(
       loggingEnabled,
       discoveryID,
@@ -370,7 +370,7 @@ export async function selectNeuronsWeightedByError(
     );
     getLogger().warn(`   Falling back to random neuron selection`);
     const shuffled = [...neuronErrors].sort(() => rng.random() - 0.5);
-    const fallback = shuffled.slice(0, count).map((n) => n.uuid);
+    const fallback = shuffled.slice(0, count).map((n) => n.id);
     const focusSelection = updateFocusSelectionSummary(
       loggingEnabled,
       discoveryID,
@@ -404,7 +404,7 @@ export async function selectNeuronsWeightedByError(
   let lastSize = 0;
   const stallThreshold = Math.min(neuronErrors.length * 3, count * 5);
 
-  while (selectedUUIDs.size < count && iterations < maxIterations) {
+  while (selectedIds.size < count && iterations < maxIterations) {
     iterations++;
     const randValue = rng.random() * totalWeightedSum;
     let cumulativeWeight = 0;
@@ -412,30 +412,30 @@ export async function selectNeuronsWeightedByError(
     for (const weighted of weightedValues) {
       cumulativeWeight += weighted.weight;
       if (randValue <= cumulativeWeight) {
-        selectedUUIDs.add(weighted.uuid);
+        selectedIds.add(weighted.id);
         break;
       }
     }
 
-    if (selectedUUIDs.size === lastSize) {
+    if (selectedIds.size === lastSize) {
       stallCount++;
       if (stallCount > stallThreshold) {
         const unselected = neuronErrors
-          .filter((n) => !selectedUUIDs.has(n.uuid))
+          .filter((n) => !selectedIds.has(n.id))
           .sort(() => rng.random() - 0.5);
-        const needed = count - selectedUUIDs.size;
-        unselected.slice(0, needed).forEach((n) => selectedUUIDs.add(n.uuid));
+        const needed = count - selectedIds.size;
+        unselected.slice(0, needed).forEach((n) => selectedIds.add(n.id));
         break;
       }
     } else {
       stallCount = 0;
-      lastSize = selectedUUIDs.size;
+      lastSize = selectedIds.size;
     }
   }
 
   if (iterations >= maxIterations) {
     getLogger().error(
-      `❌ ERROR: Selection reached max iterations (${maxIterations}), only selected ${selectedUUIDs.size}/${count} neurons`,
+      `❌ ERROR: Selection reached max iterations (${maxIterations}), only selected ${selectedIds.size}/${count} neurons`,
     );
     getLogger().error(
       `   This should not happen with the hybrid approach. Please report this.`,
@@ -445,9 +445,9 @@ export async function selectNeuronsWeightedByError(
     );
   }
 
-  const selection = Array.from(selectedUUIDs);
+  const selection = Array.from(selectedIds);
   const weightMap = new Map(
-    weightedValues.map((n) => [n.uuid, n.weight]),
+    weightedValues.map((n) => [n.id, n.weight]),
   );
   const focusSelection = updateFocusSelectionSummary(
     loggingEnabled,
@@ -464,7 +464,7 @@ export async function selectNeuronsWeightedByError(
     discoveryID,
     loggingEnabled,
     neuronErrors,
-    selectedUUIDs,
+    selectedIds,
     totalWeightedSum,
     "weighted",
     costOfGrowth,

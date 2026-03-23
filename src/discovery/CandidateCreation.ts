@@ -62,8 +62,8 @@ export function buildSingleSynapseCandidates(
       change: {
         type: "add-synapses",
         description: `🔗 Added helpful synapse ${
-          shortID(synapse.fromNeuronUUID)
-        } -> ${shortID(synapse.toNeuronUUID)}`,
+          shortID(String(synapse.fromNeuronId))
+        } -> ${shortID(String(synapse.toNeuronId))}`,
         expectedErrorReduction: getExpected?.(synapse),
         sampleSize: synapse.totalCount,
         synapseCandidate: synapse, // Store original Rust response for debugging
@@ -91,7 +91,7 @@ export function buildSingleNeuronCandidates(
   discoveryFailureCacheDir?: string,
 ): DiscoveryCandidate[] {
   if (!neurons || neurons.length === 0) return [];
-  const baseNeuronUUIDs = new Set(baseCreature.neurons.map((n) => n.uuid));
+  const baseNeuronIds = new Set(baseCreature.neurons.map((n) => n.id));
   const entries: DiscoveryCandidate[] = [];
   let skippedCount = 0;
   for (const neuron of neurons) {
@@ -108,10 +108,10 @@ export function buildSingleNeuronCandidates(
 
     // Find the newly added neuron by comparing with base creature
     const addedNeuron = creature.neurons.find(
-      (n) => n.uuid && !baseNeuronUUIDs.has(n.uuid),
+      (n) => n.id != null && !baseNeuronIds.has(n.id),
     );
-    const addedNeuronShortID = addedNeuron?.uuid
-      ? shortID(addedNeuron.uuid)
+    const addedNeuronShortID = addedNeuron?.id != null
+      ? shortID(String(addedNeuron.id))
       : undefined;
 
     entries.push({
@@ -119,14 +119,14 @@ export function buildSingleNeuronCandidates(
       change: {
         type: "add-neurons",
         description: `💡 Added neuron ${
-          shortID(neuron.fromNeuronUUID)
-        } -> ${neuron.squash} -> ${shortID(neuron.toNeuronUUID)}`,
+          shortID(String(neuron.fromNeuronId))
+        } -> ${neuron.squash} -> ${shortID(String(neuron.toNeuronId))}`,
         expectedErrorReduction: getExpected?.(neuron),
         sampleSize: neuron.totalCount,
         neuronDetails: {
           addedNeuronShortID,
-          fromNeuronUUID: neuron.fromNeuronUUID,
-          toNeuronUUID: neuron.toNeuronUUID,
+          fromNeuronId: neuron.fromNeuronId,
+          toNeuronId: neuron.toNeuronId,
           incomingWeight: neuron.incomingWeight,
           outgoingWeight: neuron.outgoingWeight,
           bias: neuron.bias,
@@ -173,7 +173,7 @@ export function buildSingleSquashCandidates(
     }
 
     const neuron = baseCreature.neurons.find((n) =>
-      n.uuid === squash.neuronUUID
+      n.id === squash.neuronId
     );
     const oldSquash = neuron?.squash;
 
@@ -186,7 +186,7 @@ export function buildSingleSquashCandidates(
       change: {
         type: "change-squash",
         description: `🎨 Changed activation function for ${
-          shortID(squash.neuronUUID)
+          shortID(String(squash.neuronId))
         } (${oldSquash} -> ${squash.squash}${improvement})`,
         expectedErrorReduction: scaledExpected,
         squashCandidate: squash, // Store original Rust response for debugging
@@ -225,7 +225,7 @@ export function buildLowImpactRemovalCandidates(
 
   for (const candidate of removalCandidates) {
     const neuronExists = baseCreature.neurons.some(
-      (n) => n.uuid === candidate.neuronUUID,
+      (n) => n.id === candidate.neuronId,
     );
     if (!neuronExists) {
       const reason = "neuron_not_found";
@@ -247,7 +247,7 @@ export function buildLowImpactRemovalCandidates(
         change: {
           type: "remove-low-impact",
           description: `🪶 Removed neuron ${
-            shortID(candidate.neuronUUID)
+            shortID(String(candidate.neuronId))
           } (impact: ${candidate.impact.toExponential(2)})`,
           removalCandidate: candidate,
         },
@@ -291,25 +291,14 @@ function logRemovalDiagnostics(
   );
   const topCandidates = sortedByImpact.slice(0, 10);
   const candidateDetails = topCandidates.map((c) =>
-    `${shortID(c.neuronUUID)}:${c.impact.toExponential(2)}`
+    `${shortID(String(c.neuronId))}:${c.impact.toExponential(2)}`
   ).join(", ");
   getLogger().info(
     `[DiscoveryCandidates] Top ${topCandidates.length} lowest-impact removal candidates: ${candidateDetails}`,
   );
 
-  const testNeuronMatches = removalCandidates.filter((c) =>
-    c.neuronUUID.toLowerCase().includes("candidate") ||
-    c.neuronUUID.toLowerCase().includes("test") ||
-    c.neuronUUID.toLowerCase().includes("removal")
-  );
-  if (testNeuronMatches.length > 0) {
-    getLogger().info(
-      `[DiscoveryCandidates] Found ${testNeuronMatches.length} potential test neuron(s) in removal list: ` +
-        testNeuronMatches.map((c) =>
-          `${c.neuronUUID}:${c.impact.toExponential(2)}`
-        ).join(", "),
-    );
-  }
+  // With integer neuron IDs, there are no string-based "test" markers to check.
+  // This diagnostic block is retained as a no-op placeholder for future use.
 }
 
 /**
@@ -395,7 +384,7 @@ export function buildHarmfulNeuronRemovalCandidate(
     change: {
       type: "remove-neuron",
       description: `💀 Removed harmful neuron ${
-        shortID(mostHarmful.neuronUUID)
+        shortID(String(mostHarmful.neuronId))
       } (error: ${mostHarmful.errorMagnitude.toExponential(2)})`,
       expectedErrorReduction: mostHarmful.expectedCreatureScoreGain,
       sampleSize: mostHarmful.sampleCount,
@@ -440,13 +429,13 @@ export function buildHarmfulSynapseRemovalCandidates(
     change: {
       type: "remove-synapse",
       description: `✂️ Removed harmful synapse ${
-        shortID(removeHarmfulSynapse.fromNeuronUUID)
-      } -> ${shortID(removeHarmfulSynapse.toNeuronUUID)}`,
+        shortID(String(removeHarmfulSynapse.fromNeuronId))
+      } -> ${shortID(String(removeHarmfulSynapse.toNeuronId))}`,
       expectedErrorReduction: getExpectedRemoval(removeHarmfulSynapse),
       sampleSize: removeHarmfulSynapse.totalCount,
       synapseDetails: {
-        fromNeuronUUID: removeHarmfulSynapse.fromNeuronUUID,
-        toNeuronUUID: removeHarmfulSynapse.toNeuronUUID,
+        fromNeuronId: removeHarmfulSynapse.fromNeuronId,
+        toNeuronId: removeHarmfulSynapse.toNeuronId,
       },
       harmfulSynapseCandidate: removeHarmfulSynapse,
     },

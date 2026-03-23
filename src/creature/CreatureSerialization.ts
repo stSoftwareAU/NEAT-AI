@@ -15,6 +15,11 @@ import type {
 } from "../architecture/CreatureInterfaces.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { Neuron } from "../architecture/Neuron.ts";
+import {
+  ensureIdAbove,
+  inputNeuronId,
+  outputNeuronId,
+} from "../architecture/NeuronId.ts";
 import type { NeuronTrace } from "../architecture/NeuronInterfaces.ts";
 import { Synapse } from "../architecture/Synapse.ts";
 import type {
@@ -127,13 +132,13 @@ export function loadFrom(
 
   creature.clearState();
   const state = creature.state;
-  const uuidMap = new Map<string, number>();
+  const idMap = new Map<number, number>();
 
   let i = json.input;
   while (i--) {
-    const key = `input-${i}`;
-    uuidMap.set(key, i);
-    const n = new Neuron(key, "input", 0, creature);
+    const neuronId = inputNeuronId(i);
+    idMap.set(neuronId, i);
+    const n = new Neuron(neuronId, "input", 0, creature);
     n.index = i;
     creature.neurons[i] = n;
   }
@@ -147,11 +152,12 @@ export function loadFrom(
     if (jn.type === "input") continue;
 
     if (jn.type === "output") {
-      (jn as { uuid: string }).uuid = `output-${outputIndex++}`;
+      (jn as { id: number }).id = outputNeuronId(outputIndex++);
     }
 
     const n = Neuron.fromJSON(jn, creature);
     n.index = pos;
+    ensureIdAbove(n.id);
 
     if ((jn as NeuronTrace).trace) {
       const target = state.node(n.index) as unknown as Record<string, unknown>;
@@ -162,7 +168,7 @@ export function loadFrom(
       safeAssignProperties(target, source);
     }
 
-    uuidMap.set(n.uuid, pos);
+    idMap.set(n.id, pos);
     creature.neurons[pos++] = n;
   }
 
@@ -173,19 +179,19 @@ export function loadFrom(
   for (let i = 0; i < synapseCount; i++) {
     const synapse = synapses[i];
     const se = synapse as SynapseExport;
-    const from = se.fromUUID
-      ? uuidMap.get(se.fromUUID)
+    const from = se.fromId !== undefined
+      ? idMap.get(se.fromId)
       : (synapse as SynapseInternal).from;
 
     assert(from !== undefined, "FROM is undefined");
 
-    const to = se.toUUID
-      ? uuidMap.get(se.toUUID)
+    const to = se.toId !== undefined
+      ? idMap.get(se.toId)
       : (synapse as SynapseInternal).to;
 
     if (to === undefined) {
       fail(
-        `TO is undefined: uuid ${se.toUUID}, index ${
+        `TO is undefined: id ${se.toId}, index ${
           (synapse as SynapseInternal).to
         }`,
       );
@@ -336,7 +342,7 @@ export function shallowClone(
 
   for (let i = 0; i < creature.input; i++) {
     const original = creature.neurons[i];
-    const neuron = new Neuron(original.uuid, "input", 0, clone);
+    const neuron = new Neuron(original.id, "input", 0, clone);
     neuron.index = i;
     const originalTags = original.tags as TagInterface[] | undefined;
     if (originalTags) {
@@ -350,7 +356,7 @@ export function shallowClone(
   for (let i = creature.input; i < neuronCount; i++) {
     const original = creature.neurons[i];
     const neuron = new Neuron(
-      original.uuid,
+      original.id,
       original.type,
       original.bias,
       clone,

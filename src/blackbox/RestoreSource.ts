@@ -31,12 +31,12 @@ export function restoreSource(creature: Creature): Creature | undefined {
   const memetic = creature.memetic;
 
   // Restore biases from memetic
-  for (const neuronUUID in memetic.biases) {
-    const bias = memetic.biases[neuronUUID];
-    const neuron = restoredCreature.neurons.find((n) => n.uuid === neuronUUID);
+  for (const neuronId in memetic.biases) {
+    const bias = memetic.biases[neuronId];
+    const neuron = restoredCreature.neurons.find((n) => n.id === Number(neuronId));
     if (!neuron) {
       throw new ValidationError(
-        `Neuron with UUID ${neuronUUID} not found in the creature.`,
+        `Neuron with UUID ${neuronId} not found in the creature.`,
         "OTHER",
       );
     }
@@ -44,17 +44,17 @@ export function restoreSource(creature: Creature): Creature | undefined {
   }
 
   // Restore weights from memetic
-  for (const fromUUID in memetic.weights) {
-    const weightArray = memetic.weights[fromUUID];
+  for (const fromId in memetic.weights) {
+    const weightArray = memetic.weights[fromId];
     weightArray.forEach((weightObj) => {
       let synapse = restoredCreature.synapses.find((s) =>
-        s.fromUUID === fromUUID && s.toUUID === weightObj.toUUID
+        s.fromId === Number(fromId) && s.toId === weightObj.toId
       );
       assert(Number.isFinite(weightObj.weight), "weight must be a number");
       if (!synapse) {
         synapse = {
-          fromUUID: fromUUID,
-          toUUID: weightObj.toUUID,
+          fromId: Number(fromId),
+          toId: weightObj.toId,
           weight: weightObj.weight,
         };
         restoredCreature.synapses.push(synapse);

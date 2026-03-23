@@ -46,19 +46,19 @@ export class SubSelfCon extends AbstractMutationOperator {
       const outwardList = this.creature.outwardConnections(indx);
       if (outwardList.length === 0) {
         getLogger().info(
-          `Remove neuron ${neuron.uuid} as completely disconnected`,
+          `Remove neuron ${neuron.id} as completely disconnected`,
         );
         removeHiddenNeuron(this.creature, indx);
       } else {
         getLogger().info(
-          `Convert neuron ${neuron.uuid} from ${neuron.type} to constant`,
+          `Convert neuron ${neuron.id} from ${neuron.type} to constant`,
         );
         const squash = neuron.findSquash();
         const activation = squash as ActivationInterface;
         if (activation.squash) {
           const constantBias = activation.squash(neuron.bias);
           getLogger().info(
-            `Adjust neuron ${neuron.uuid} bias ${neuron.bias} to ${constantBias}`,
+            `Adjust neuron ${neuron.id} bias ${neuron.bias} to ${constantBias}`,
           );
           neuron.bias = constantBias;
         }

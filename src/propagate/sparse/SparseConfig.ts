@@ -7,8 +7,8 @@ import { chooseNeurons } from "./ChooseNeurons.ts";
 import type { SparseConfigLike } from "./SparseConfigLike.ts";
 
 export class SparseConfig implements SparseConfigLike {
-  private selectedNeurons: Readonly<Set<string>>;
-  private paths: Readonly<Set<string>>;
+  private selectedNeurons: Readonly<Set<number>>;
+  private paths: Readonly<Set<number>>;
 
   /**
    * @param creature The creature topology to build sparse config for.
@@ -24,7 +24,7 @@ export class SparseConfig implements SparseConfigLike {
     creature: CreatureExport,
     config: BackPropagationConfig,
     outgoingSynapsesMap?: OutgoingSynapsesMap,
-    neuronErrors?: ReadonlyMap<string, NeuronStateInterface>,
+    neuronErrors?: ReadonlyMap<number, NeuronStateInterface>,
   ) {
     this.selectedNeurons = chooseNeurons(creature, config, neuronErrors);
     this.paths = calculatePathsToOutput(
@@ -34,15 +34,15 @@ export class SparseConfig implements SparseConfigLike {
     );
   }
 
-  traceNeeded(uuid: string): boolean {
-    return this.selectedNeurons.has(uuid);
+  traceNeeded(id: number): boolean {
+    return this.selectedNeurons.has(id);
   }
 
-  propagateNeeded(uuid: string): boolean {
-    return this.selectedNeurons.has(uuid) || this.paths.has(uuid);
+  propagateNeeded(id: number): boolean {
+    return this.selectedNeurons.has(id) || this.paths.has(id);
   }
 
-  updateNeeded(uuid: string): boolean {
-    return this.selectedNeurons.has(uuid);
+  updateNeeded(id: number): boolean {
+    return this.selectedNeurons.has(id);
   }
 }

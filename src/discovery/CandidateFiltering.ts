@@ -13,7 +13,7 @@ import { getLogger } from "../utils/Logger.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type { DiscoveryChangeType } from "./DiscoveryCandidates.ts";
 import { isCandidateCachedSync } from "./FailureCache.ts";
-import { getSuccessfulRemovalNeuronUUIDs } from "./SuccessCache.ts";
+import { getSuccessfulRemovalNeuronIds } from "./SuccessCache.ts";
 
 export interface FilterCandidatesForEvaluationDeps {
   /**
@@ -33,15 +33,15 @@ export interface FilterCandidatesForEvaluationDeps {
   random?: () => number;
   /**
    * Optional discovery success cache directory.
-   * When provided, removal candidates whose neuron UUID appears in the
+   * When provided, removal candidates whose neuron ID appears in the
    * success cache are deprioritised in favour of novel (untried) candidates.
    */
   successCacheDir?: string;
   /**
-   * Dependency-injected success cache query (defaults to `getSuccessfulRemovalNeuronUUIDs`).
+   * Dependency-injected success cache query (defaults to `getSuccessfulRemovalNeuronIds`).
    * Inject a stub in tests for determinism and to avoid filesystem access.
    */
-  getSuccessfulRemovalUUIDs?: (dir: string) => Set<string>;
+  getSuccessfulRemovalIds?: (dir: string) => Set<number>;
 }
 
 export interface FilterCandidatesForEvaluationDiagnostics {
@@ -269,12 +269,12 @@ export function filterCandidatesForEvaluation(
 
   // Phase 3: select removal candidates from a lowest-impact pool, using injectable RNG.
   // When a success cache directory is available, deprioritise removal candidates
-  // whose neuron UUID already has a success cache entry, preferring novel candidates.
+  // whose neuron ID already has a success cache entry, preferring novel candidates.
   const successCacheDir = deps.successCacheDir;
-  const getSuccessUUIDs = deps.getSuccessfulRemovalUUIDs ??
-    getSuccessfulRemovalNeuronUUIDs;
-  const successfulUUIDs = successCacheDir
-    ? getSuccessUUIDs(successCacheDir)
+  const getSuccessIds = deps.getSuccessfulRemovalIds ??
+    getSuccessfulRemovalNeuronIds;
+  const successfulIds = successCacheDir
+    ? getSuccessIds(successCacheDir)
     : undefined;
 
   const removalSampleSize = Math.min(
@@ -288,13 +288,13 @@ export function filterCandidatesForEvaluation(
       selectedRemovalCandidates = removalCandidates;
 
       // Still record success cache diagnostics when all candidates fit.
-      if (successfulUUIDs) {
+      if (successfulIds) {
         let novelCount = 0;
         let alreadySuccessfulCount = 0;
         for (const c of removalCandidates) {
-          const uuid = c.change.removalCandidate?.neuronUUID ??
-            c.change.harmfulNeuronCandidate?.neuronUUID;
-          if (uuid && successfulUUIDs.has(uuid)) {
+          const id = c.change.removalCandidate?.neuronId ??
+            c.change.harmfulNeuronCandidate?.neuronId;
+          if (id !== undefined && successfulIds.has(id)) {
             alreadySuccessfulCount++;
           } else {
             novelCount++;
@@ -326,13 +326,13 @@ export function filterCandidatesForEvaluation(
       // Partition the pool into novel vs already-successful candidates.
       let novelPool: typeof topCandidates;
       let alreadySuccessfulPool: typeof topCandidates;
-      if (successfulUUIDs) {
+      if (successfulIds) {
         novelPool = [];
         alreadySuccessfulPool = [];
         for (const item of topCandidates) {
-          const uuid = item.candidate.change.removalCandidate?.neuronUUID ??
-            item.candidate.change.harmfulNeuronCandidate?.neuronUUID;
-          if (uuid && successfulUUIDs.has(uuid)) {
+          const id = item.candidate.change.removalCandidate?.neuronId ??
+            item.candidate.change.harmfulNeuronCandidate?.neuronId;
+          if (id !== undefined && successfulIds.has(id)) {
             alreadySuccessfulPool.push(item);
           } else {
             novelPool.push(item);
@@ -367,7 +367,7 @@ export function filterCandidatesForEvaluation(
       diagnostics.removalSelection = {
         poolImpacts,
         selectedImpacts: selectedTop.map((s) => s.impact.toExponential(2)),
-        ...(successfulUUIDs
+        ...(successfulIds
           ? {
             novelCount: novelPool.length,
             alreadySuccessfulCount: alreadySuccessfulPool.length,

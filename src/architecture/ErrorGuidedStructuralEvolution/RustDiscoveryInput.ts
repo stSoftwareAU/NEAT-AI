@@ -20,14 +20,14 @@ import type {
  */
 export function creatureToRustFormat(creature: {
   neurons: Array<{
-    uuid?: string;
+    id?: number;
     type: string;
     squash?: string;
     bias?: number;
   }>;
   synapses: Array<{
-    fromUUID: string;
-    toUUID: string;
+    fromId: number;
+    toId: number;
     weight: number;
   }>;
   input: number;
@@ -35,14 +35,14 @@ export function creatureToRustFormat(creature: {
 }): RustRecordInput["creature"] {
   return {
     neurons: creature.neurons.map((n) => ({
-      uuid: n.uuid || "unknown",
+      uuid: n.id !== undefined ? String(n.id) : "unknown",
       type: n.type,
       squash: n.squash || "IDENTITY",
       bias: n.bias || 0,
     })),
     synapses: creature.synapses.map((s) => ({
-      from_uuid: s.fromUUID,
-      to_uuid: s.toUUID,
+      from_uuid: String(s.fromId),
+      to_uuid: String(s.toId),
       weight: s.weight,
     })),
     input: creature.input,

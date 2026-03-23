@@ -339,8 +339,8 @@ Deno.test("DiscoveryRunner passes discovery focus neurons to worker", async () =
   try {
     const options = makeOptions({ verbose: true });
     (options as Record<string, unknown>).discoveryFocusNeuronUUIDs = [
-      "hidden-target",
-      "hidden-support",
+      100,
+      200,
     ];
 
     await runner.discoverDir({
@@ -353,7 +353,7 @@ Deno.test("DiscoveryRunner passes discovery focus neurons to worker", async () =
     assertEquals(
       (worker.lastDiscoverOptions as Record<string, unknown>)
         .discoveryFocusNeuronUUIDs,
-      ["hidden-target", "hidden-support"],
+      [100, 200],
     );
   } finally {
     // nothing

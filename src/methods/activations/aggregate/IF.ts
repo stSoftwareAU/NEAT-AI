@@ -502,7 +502,7 @@ export class IF
         fromNeuron.type !== "constant"
       ) {
         targetFromActivation = targetFromValue / fromWeight;
-        if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
+        if (sparseConfig.propagateNeeded(fromNeuron.id)) {
           improvedFromActivation = fromNeuron.propagate(
             targetFromActivation,
             config,
@@ -548,7 +548,7 @@ export class IF
   record(
     neuron: Neuron,
     requestedActivation: number,
-    discoverMap: Map<string, DiscoverRecord>,
+    discoverMap: Map<number, DiscoverRecord>,
   ): void {
     const inward = neuron.creature.inwardConnections(neuron.index);
     let condition = 0;

@@ -50,7 +50,7 @@ export function calculateSquashError(
  * Core squash analysis: tries all activation functions, picks best.
  *
  * @param creature - The creature containing the neuron
- * @param neuronUUID - UUID of the neuron to analyse
+ * @param neuronId - id of the neuron to analyse
  * @param records - Discovery records for the neuron
  * @param calculateNeuronImpactFn - Function to calculate neuron impact
  * @param loggingEnabled - Whether verbose logging is enabled
@@ -59,11 +59,11 @@ export function calculateSquashError(
  */
 export function findCandidateSquash(
   creature: Creature,
-  neuronUUID: string,
+  neuronId: number,
   records: DiscoverRecord[],
   calculateNeuronImpactFn: (
-    neuronUUID: string,
-    derivativeMap?: Map<string, number>,
+    neuronId: number,
+    derivativeMap?: Map<number, number>,
   ) => number,
   loggingEnabled: boolean,
   logFn: (
@@ -77,7 +77,7 @@ export function findCandidateSquash(
   const idealActivations: number[] = [];
   const neuronErrors: number[] = [];
 
-  const neuron = creature.neurons.find((neuron) => neuron.uuid === neuronUUID)!;
+  const neuron = creature.neurons.find((neuron) => neuron.id === neuronId)!;
   const currentSquash = neuron.squash;
   assert(currentSquash, "Squash function not found");
   const currentSquashMethod = Activations.find(
@@ -121,7 +121,7 @@ export function findCandidateSquash(
     if (loggingEnabled) {
       logFn(
         "warn",
-        `Skipping squash analysis for neuron ${neuronUUID}: error magnitude (${
+        `Skipping squash analysis for neuron ${neuronId}: error magnitude (${
           baselineError.toExponential(2)
         }) exceeds reasonable threshold (${
           MAX_REASONABLE_SQUASH_ERROR.toExponential(2)
@@ -268,12 +268,12 @@ export function findCandidateSquash(
       : 1.0;
 
     // Create derivativeMap with this neuron's average derivative
-    const derivativeMap = new Map<string, number>();
-    derivativeMap.set(neuronUUID, avgDerivative);
+    const derivativeMap = new Map<number, number>();
+    derivativeMap.set(neuronId, avgDerivative);
 
     // Scale by neuron's impact on output to avoid inflated expectations
     const neuronImpact = calculateNeuronImpactFn(
-      neuronUUID,
+      neuronId,
       derivativeMap,
     );
     const impactScale = Number.isFinite(neuronImpact)
@@ -291,7 +291,7 @@ export function findCandidateSquash(
       neuronErrors.length = 0;
 
       return {
-        neuronUUID,
+        neuronId,
         previousSquash: currentSquash,
         squash: bestSquash,
         expectedCreatureScoreGain: expectedCreatureScoreGain,
@@ -316,7 +316,7 @@ export function findCandidateSquash(
  */
 export async function analyzeSelectedNeuronsForHarmfulRemoval(
   creature: Creature,
-  focusList: string[],
+  focusList: number[],
   loadNeuronRecordsFn: (neuronIdentifier: string) => Promise<DiscoverRecord[]>,
   tempDir: string,
   loggingEnabled: boolean,
@@ -330,10 +330,10 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
 
   const MAX_REASONABLE_SQUASH_ERROR = 1e10;
 
-  const candidatePromises = focusList.map(async (neuronUUID) => {
+  const candidatePromises = focusList.map(async (neuronId) => {
     try {
       const records = await loadNeuronRecordsFn(
-        `${tempDir}/${neuronUUID}`,
+        `${tempDir}/${neuronId}`,
       );
       if (!records || records.length === 0) return undefined;
 
@@ -342,7 +342,7 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
       const idealActivations: number[] = [];
 
       const neuron = creature.neurons.find((neuron) =>
-        neuron.uuid === neuronUUID
+        neuron.id === neuronId
       );
       if (!neuron) return undefined;
 
@@ -402,7 +402,7 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
         );
 
         return {
-          neuronUUID,
+          neuronId,
           errorMagnitude: baselineActivationError,
           expectedCreatureScoreGain: expectedCreatureScoreGain,
           sampleCount: records.length,
@@ -415,7 +415,7 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
       if (loggingEnabled) {
         logFn(
           "error",
-          `Error analyzing neuron ${neuronUUID} for harmful removal: ${error}`,
+          `Error analyzing neuron ${neuronId} for harmful removal: ${error}`,
         );
       }
       return undefined;
@@ -445,7 +445,7 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
     candidates.slice(0, 5).forEach((candidate) => {
       logFn(
         "info",
-        `  - ${candidate.neuronUUID}: error=${
+        `  - ${candidate.neuronId}: error=${
           candidate.errorMagnitude.toExponential(2)
         }, expected creature score gain=${
           (candidate.expectedCreatureScoreGain * 100).toFixed(1)

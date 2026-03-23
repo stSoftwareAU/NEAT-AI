@@ -2,7 +2,13 @@ import type { TagsInterface } from "@stsoftware/tags/mod";
 import type { NeuronStateInterface } from "./CreatureState.ts";
 
 interface NeuronAbstract extends TagsInterface {
-  uuid?: string;
+  /**
+   * Issue #1958: Integer neuron ID replacing UUID strings.
+   * Input neurons: id = inputIndex (0, 1, 2, ...)
+   * Output neurons: id = -(outputIndex + 1) (-1, -2, -3, ...)
+   * Hidden/constant neurons: monotonically increasing positive integer
+   */
+  id?: number;
   bias?: number;
   squash?: string;
 
@@ -21,8 +27,8 @@ interface NeuronAbstract extends TagsInterface {
 export interface NeuronExport extends NeuronAbstract {
   /** The type of neuron - hidden, output, or constant */
   readonly type: "hidden" | "output" | "constant";
-  /** Unique identifier for the neuron */
-  readonly uuid: string;
+  /** Integer identifier for the neuron (Issue #1958) */
+  readonly id: number;
   /** Bias value for the neuron */
   bias: number;
   /** Activation function name for the neuron */
@@ -45,6 +51,6 @@ export interface NeuronInternal extends NeuronAbstract {
  * Extends NeuronExport to include state tracking for debugging and analysis.
  */
 export interface NeuronTrace extends NeuronExport {
-  /** State information for tracing neuron behavior */
+  /** State information for tracing neuron behaviour */
   trace: NeuronStateInterface;
 }

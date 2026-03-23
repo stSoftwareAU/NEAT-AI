@@ -27,8 +27,8 @@ export function listViableNeurons(
   deps: DiscoverStructureDeps,
   loggingEnabled: boolean,
   discoveryID: string,
-  recordedNeuronTotalAbsError: Map<string, number>,
-  calculateNeuronImpactFn: (neuronUUID: string) => number,
+  recordedNeuronTotalAbsError: Map<number, number>,
+  calculateNeuronImpactFn: (neuronId: number) => number,
   logFn: (
     level: "debug" | "info" | "warn" | "error",
     message: string,
@@ -106,8 +106,8 @@ export function listViableNeurons(
  */
 function fallbackViableNeuronsFromRecordedErrors(
   creature: Creature,
-  recordedNeuronTotalAbsError: Map<string, number>,
-  calculateNeuronImpactFn: (neuronUUID: string) => number,
+  recordedNeuronTotalAbsError: Map<number, number>,
+  calculateNeuronImpactFn: (neuronId: number) => number,
   targetCount?: number,
 ): NeuronErrorInfo[] {
   const results: NeuronErrorInfo[] = [];
@@ -115,10 +115,10 @@ function fallbackViableNeuronsFromRecordedErrors(
     if (neuron.type === "input" || neuron.type === "constant") {
       continue;
     }
-    const totalError = recordedNeuronTotalAbsError.get(neuron.uuid) ?? 0;
-    const impact = calculateNeuronImpactFn(neuron.uuid);
+    const totalError = recordedNeuronTotalAbsError.get(neuron.id) ?? 0;
+    const impact = calculateNeuronImpactFn(neuron.id);
     results.push({
-      uuid: neuron.uuid,
+      id: neuron.id,
       totalError: Number.isFinite(totalError) ? totalError : 0,
       impact: Number.isFinite(impact) ? impact : 0,
     });
@@ -251,7 +251,7 @@ function tryRustFocusRanking(
     }
 
     const neurons = result.neurons.map((entry) => ({
-      uuid: entry.neuronUuid,
+      id: Number(entry.neuronUuid),
       totalError: entry.totalError,
       impact: entry.impact,
     }));

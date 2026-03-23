@@ -50,8 +50,8 @@ export interface NeuronStats {
  * so TypeScript should NOT apply additional scaling.
  */
 export interface CandidateSynapse {
-  fromNeuronUUID: string;
-  toNeuronUUID: string;
+  fromNeuronId: number;
+  toNeuronId: number;
   weight: number;
   targetNeuronImpact: number;
   expectedCreatureErrorReduction: number;
@@ -76,7 +76,7 @@ export interface CandidateSynapse {
  * existing neurons rather than adding new connections.
  */
 export interface CandidateSquash {
-  neuronUUID: string;
+  neuronId: number;
   previousSquash: string;
   squash: string;
   expectedCreatureScoreGain: number;
@@ -101,8 +101,8 @@ export interface CandidateSquash {
  * so TypeScript should NOT apply additional scaling.
  */
 export interface CandidateNeuron {
-  fromNeuronUUID: string;
-  toNeuronUUID: string;
+  fromNeuronId: number;
+  toNeuronId: number;
   incomingWeight: number;
   outgoingWeight: number;
   squash: string;
@@ -127,7 +127,7 @@ export interface CandidateNeuron {
  * - expectedCreatureScoreGain: expected score improvement from removal
  */
 export interface CandidateHarmfulNeuron {
-  neuronUUID: string;
+  neuronId: number;
   errorMagnitude: number;
   expectedCreatureScoreGain: number;
   sampleCount: number;
@@ -159,7 +159,7 @@ export interface CandidateAnalysisBundle {
 export type FocusSelectionMode = "weighted" | "forced" | "all" | "random";
 
 export interface FocusSelectionSummaryEntry {
-  uuid: string;
+  id: number;
   weight?: number;
 }
 
@@ -183,7 +183,7 @@ export interface NeuronScanStats {
  * Includes all metrics needed to understand neuron selection and potential.
  */
 export interface FocusNeuronCandidate {
-  neuronUuid: string;
+  neuronId: number;
   totalError: number;
   impact: number;
   potentialErrorReduction: number;
@@ -197,7 +197,7 @@ export interface FocusNeuronCandidate {
  * These neurons contribute little to outputs and might be pruned.
  */
 export interface LowImpactNeuron {
-  neuronUuid: string;
+  neuronId: number;
   impact: number;
   activationAffectPct: number;
   totalError: number;
@@ -226,13 +226,13 @@ export interface FocusSelectionAnalysis {
  * Impact measures how much a neuron affects outputs through its outgoing synapse weights.
  */
 export interface NeuronErrorInfo {
-  uuid: string;
+  id: number;
   totalError: number;
   impact: number;
 }
 
 export interface NeuronImpactInfo {
-  uuid: string;
+  id: number;
   neuronType: string;
   impact: number;
 }

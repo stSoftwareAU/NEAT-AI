@@ -8,6 +8,7 @@
 import { addTags } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
 import { Neuron } from "../architecture/Neuron.ts";
+import { ensureIdAbove, nextNeuronId } from "../architecture/NeuronId.ts";
 import type {
   NeuronExport,
   NeuronInternal,
@@ -16,6 +17,7 @@ import { TopologyError } from "../errors/TopologyError.ts";
 
 /**
  * Converts the neuron to a JSON export object.
+ * Issue #1958: Uses integer neuron IDs instead of UUID strings.
  */
 export function exportJSON(neuron: Neuron): NeuronExport {
   if (neuron.type === "input") {
@@ -26,7 +28,7 @@ export function exportJSON(neuron: Neuron): NeuronExport {
   } else if (neuron.type === "constant") {
     return {
       type: neuron.type,
-      uuid: neuron.uuid,
+      id: neuron.id,
       bias: neuron.bias,
       frozen: neuron.frozen ? true : undefined,
       tags: neuron.tags ? [...neuron.tags] : undefined,
@@ -34,7 +36,7 @@ export function exportJSON(neuron: Neuron): NeuronExport {
   } else {
     return {
       type: neuron.type,
-      uuid: neuron.uuid,
+      id: neuron.id,
       bias: neuron.bias,
       squash: neuron.squash,
       frozen: neuron.frozen ? true : undefined,
@@ -45,6 +47,7 @@ export function exportJSON(neuron: Neuron): NeuronExport {
 
 /**
  * Converts the neuron to an internal JSON format with index.
+ * Issue #1958: Uses integer neuron IDs instead of UUID strings.
  */
 export function internalJSON(
   neuron: Neuron,
@@ -60,7 +63,7 @@ export function internalJSON(
     return {
       type: neuron.type,
       index: indx,
-      uuid: neuron.uuid,
+      id: neuron.id,
       bias: neuron.bias,
       tags: neuron.tags ? [...neuron.tags] : undefined,
     };
@@ -68,7 +71,7 @@ export function internalJSON(
     return {
       type: neuron.type,
       index: indx,
-      uuid: neuron.uuid,
+      id: neuron.id,
       bias: neuron.bias,
       squash: neuron.squash,
       tags: neuron.tags ? [...neuron.tags] : undefined,
@@ -78,13 +81,22 @@ export function internalJSON(
 
 /**
  * Convert a JSON object to a Neuron instance.
+ * Issue #1958: Uses integer neuron IDs instead of UUID strings.
  */
 export function fromJSON(
   json: NeuronExport | NeuronInternal,
   creature: Creature,
 ): Neuron {
+  let id: number;
+  if (json.id !== undefined) {
+    id = json.id;
+    ensureIdAbove(id);
+  } else {
+    id = nextNeuronId();
+  }
+
   const neuron = new Neuron(
-    json.uuid ? json.uuid : crypto.randomUUID(),
+    id,
     json.type,
     json.bias ? json.bias : 0,
     creature,

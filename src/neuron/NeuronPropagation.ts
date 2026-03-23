@@ -107,7 +107,7 @@ export function propagate(
 ): number {
   const activation = adjustedActivation(neuron, config);
   if (
-    sparseConfig.propagateNeeded(neuron.uuid) === false
+    sparseConfig.propagateNeeded(neuron.id) === false
   ) {
     return activation;
   }
@@ -127,7 +127,7 @@ export function propagate(
   const ns = state.node(neuron.index);
   ns.totalErrorAbsolute += rawErrorAbs;
 
-  const updateNeeded = sparseConfig.updateNeeded(neuron.uuid);
+  const updateNeeded = sparseConfig.updateNeeded(neuron.id);
 
   /* this node is not changed if the update is not needed */
   ns.noChange = updateNeeded === false;
@@ -206,7 +206,7 @@ export function propagate(
         if (
           type !== "input" &&
           type !== "constant" &&
-          sparseConfig.propagateNeeded(fromNeuron.uuid)
+          sparseConfig.propagateNeeded(fromNeuron.id)
         ) {
           // Eligible: use actual squash type and hint value
           // Issue #1378: Use pre-computed cached squash type
@@ -303,7 +303,7 @@ export function propagate(
         if (
           type !== "input" &&
           type !== "constant" &&
-          sparseConfig.propagateNeeded(fromNeuron.uuid) &&
+          sparseConfig.propagateNeeded(fromNeuron.id) &&
           Math.abs(targetFromValue - fromValue) > config.plankConstant
         ) {
           const targetFromActivation = targetFromValue / fromWeight;

@@ -48,14 +48,14 @@ export interface MomentumResult {
  * Collects weight values across generations from memetic ancestry.
  *
  * @param memetic - The memetic interface containing ancestry data
- * @param fromUUID - The source UUID of the weight
- * @param toUUID - The target UUID of the weight
+ * @param fromId - The source UUID of the weight
+ * @param toId - The target UUID of the weight
  * @returns Array of weight values from oldest to newest generation, or undefined if not enough data
  */
 function collectWeightValues(
   memetic: MemeticInterface,
-  fromUUID: string,
-  toUUID: string,
+  fromId: number,
+  toId: number,
 ): number[] | undefined {
   const values: number[] = [];
 
@@ -63,9 +63,9 @@ function collectWeightValues(
   if (memetic.ancestry) {
     for (let i = memetic.ancestry.length - 1; i >= 0; i--) {
       const ancestor = memetic.ancestry[i];
-      const weightArray = ancestor.weights[fromUUID];
+      const weightArray = ancestor.weights[fromId];
       if (weightArray) {
-        const weightEntry = weightArray.find((w) => w.toUUID === toUUID);
+        const weightEntry = weightArray.find((w) => w.toId === toId);
         if (weightEntry) {
           values.push(weightEntry.weight);
         }
@@ -74,9 +74,9 @@ function collectWeightValues(
   }
 
   // Add current value
-  const currentWeightArray = memetic.weights[fromUUID];
+  const currentWeightArray = memetic.weights[fromId];
   if (currentWeightArray) {
-    const currentWeight = currentWeightArray.find((w) => w.toUUID === toUUID);
+    const currentWeight = currentWeightArray.find((w) => w.toId === toId);
     if (currentWeight) {
       values.push(currentWeight.weight);
     }
@@ -89,12 +89,12 @@ function collectWeightValues(
  * Collects bias values across generations from memetic ancestry.
  *
  * @param memetic - The memetic interface containing ancestry data
- * @param neuronUUID - The UUID of the neuron
+ * @param neuronId - The UUID of the neuron
  * @returns Array of bias values from oldest to newest generation, or undefined if not enough data
  */
 function collectBiasValues(
   memetic: MemeticInterface,
-  neuronUUID: string,
+  neuronId: number,
 ): number[] | undefined {
   const values: number[] = [];
 
@@ -102,7 +102,7 @@ function collectBiasValues(
   if (memetic.ancestry) {
     for (let i = memetic.ancestry.length - 1; i >= 0; i--) {
       const ancestor = memetic.ancestry[i];
-      const bias = ancestor.biases[neuronUUID];
+      const bias = ancestor.biases[neuronId];
       if (bias !== undefined) {
         values.push(bias);
       }
@@ -110,7 +110,7 @@ function collectBiasValues(
   }
 
   // Add current value
-  const currentBias = memetic.biases[neuronUUID];
+  const currentBias = memetic.biases[neuronId];
   if (currentBias !== undefined) {
     values.push(currentBias);
   }
@@ -122,21 +122,21 @@ function collectBiasValues(
  * Analyses the trajectory of a weight or bias over multiple generations.
  *
  * @param memetic - The memetic interface containing ancestry data
- * @param fromUUID - For weights: the source UUID. For biases: the neuron UUID.
- * @param toUUID - For weights: the target UUID. For biases: undefined.
+ * @param fromId - For weights: the source UUID. For biases: the neuron UUID.
+ * @param toId - For weights: the target UUID. For biases: undefined.
  * @param isBias - Set to true when analysing bias trajectory
  * @returns TrajectoryAnalysis or undefined if not enough history
  */
 export function analyseWeightTrajectory(
   memetic: MemeticInterface,
-  fromUUID: string,
-  toUUID?: string,
+  fromId: number,
+  toId?: number,
   isBias?: boolean,
 ): TrajectoryAnalysis | undefined {
   const values = isBias
-    ? collectBiasValues(memetic, fromUUID)
-    : toUUID
-    ? collectWeightValues(memetic, fromUUID, toUUID)
+    ? collectBiasValues(memetic, fromId)
+    : toId
+    ? collectWeightValues(memetic, fromId, toId)
     : undefined;
 
   if (!values || values.length < 2) {
@@ -181,18 +181,18 @@ export function analyseWeightTrajectory(
  * when weights are consistently moving in the same direction.
  *
  * @param memetic - The memetic interface containing ancestry data
- * @param fromUUID - For weights: the source UUID. For biases: the neuron UUID.
- * @param toUUID - For weights: the target UUID. For biases: undefined.
+ * @param fromId - For weights: the source UUID. For biases: the neuron UUID.
+ * @param toId - For weights: the target UUID. For biases: undefined.
  * @param isBias - Set to true when calculating momentum for bias
  * @returns MomentumResult or undefined if not enough history
  */
 export function calculateTrajectoryMomentum(
   memetic: MemeticInterface,
-  fromUUID: string,
-  toUUID?: string,
+  fromId: number,
+  toId?: number,
   isBias?: boolean,
 ): MomentumResult | undefined {
-  const trajectory = analyseWeightTrajectory(memetic, fromUUID, toUUID, isBias);
+  const trajectory = analyseWeightTrajectory(memetic, fromId, toId, isBias);
 
   if (!trajectory) {
     return undefined;

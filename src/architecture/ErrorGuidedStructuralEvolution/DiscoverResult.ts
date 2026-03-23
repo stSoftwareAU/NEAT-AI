@@ -15,7 +15,7 @@ import type {
  * these are identified by impact < 0.01 AND error > average.
  */
 export interface RemovalCandidate {
-  neuronUUID: string;
+  neuronId: number;
   totalError: number;
   impact: number;
   reason: string;
@@ -39,7 +39,7 @@ export function fromRustRemovalCandidate(
   rust: RustRemovalCandidate,
 ): RemovalCandidate {
   return {
-    neuronUUID: rust.neuronUuid,
+    neuronId: Number(rust.neuronUuid),
     totalError: rust.totalError,
     impact: rust.impact,
     reason: rust.reason,

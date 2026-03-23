@@ -42,9 +42,9 @@ export function geneticCompatibility(
     }
   }
 
-  // Use cached hidden neuron UUIDs for improved performance (Issue #1032)
-  const fatherNeurons = father.getHiddenNeuronUUIDs();
-  const motherNeurons = mother.getHiddenNeuronUUIDs();
+  // Use cached hidden neuron IDs for improved performance (Issue #1032, #1958)
+  const fatherNeurons = father.getHiddenNeuronIds();
+  const motherNeurons = mother.getHiddenNeuronIds();
 
   const smallestNeuronSet = fatherNeurons.size < motherNeurons.size
     ? fatherNeurons

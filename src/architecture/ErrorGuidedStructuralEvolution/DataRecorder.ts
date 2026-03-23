@@ -269,7 +269,7 @@ class DataRecorder {
     if (Array.isArray(focusOverride) && focusOverride.length > 0) {
       discoverStructure.setForcedFocusNeurons(focusOverride);
     }
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
     const initializeStartTime = Date.now();
     discoverStructure.initialize(neuronPromisesMap);

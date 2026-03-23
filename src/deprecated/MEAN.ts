@@ -103,7 +103,7 @@ export class MEAN implements NeuronActivationInterface {
           fromNeuron.type !== "input" &&
           fromNeuron.type !== "constant"
         ) {
-          if (sparseConfig.propagateNeeded(fromNeuron.uuid)) {
+          if (sparseConfig.propagateNeeded(fromNeuron.id)) {
             improvedFromActivation = fromNeuron.propagate(
               targetFromActivation,
               config,
@@ -175,7 +175,7 @@ export class MEAN implements NeuronActivationInterface {
   record(
     _neuron: Neuron,
     _requestedActivation: number,
-    _discoverMap: Map<string, DiscoverRecord>,
+    _discoverMap: Map<number, DiscoverRecord>,
   ): void {
   }
 }

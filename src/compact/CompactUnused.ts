@@ -17,19 +17,19 @@ export function compactUnused(
   const clean = Creature.fromJSON(start.exportJSON());
   const compacted = Creature.fromJSON(clean.exportJSON());
 
-  const neuronScale = new Map<string, number>();
-  const synapseCount = new Map<string, number>();
+  const neuronScale = new Map<number, number>();
+  const synapseCount = new Map<number, number>();
   traced.synapses.forEach((synapse) => {
-    let counter: number = synapseCount.get(synapse.toUUID) || 0;
+    let counter: number = synapseCount.get(synapse.toId) || 0;
     counter++;
-    synapseCount.set(synapse.toUUID, counter);
+    synapseCount.set(synapse.toId, counter);
 
-    let maxScale: number = neuronScale.get(synapse.fromUUID) || 0;
+    let maxScale: number = neuronScale.get(synapse.fromId) || 0;
     const scale = Math.abs(synapse.weight);
     if (scale > maxScale) {
       maxScale = scale;
     }
-    neuronScale.set(synapse.fromUUID, maxScale);
+    neuronScale.set(synapse.fromId, maxScale);
   });
   const indices = Int32Array.from(
     { length: traced.neurons.length },
@@ -45,9 +45,9 @@ export function compactUnused(
     const neuron = traced.neurons[indices[i]];
     if (neuron.type !== "hidden") continue;
     if (neuron.trace && neuron.trace.count >= 1) {
-      const counter = synapseCount.get(neuron.uuid);
+      const counter = synapseCount.get(neuron.id);
       assert(counter !== undefined, "Counter should not be undefined");
-      const maxScale = neuronScale.get(neuron.uuid);
+      const maxScale = neuronScale.get(neuron.id);
       assert(maxScale !== undefined, "Max Scale should not be undefined");
 
       const neuronEffect = Math.abs(
@@ -80,12 +80,12 @@ export function compactUnused(
 
     if (
       removeNeuron(
-        neuronForRemoval.uuid,
+        neuronForRemoval.id,
         compacted,
         averageActivation,
       )
     ) {
-      addTag(compacted, "unused", neuronForRemoval.uuid);
+      addTag(compacted, "unused", String(neuronForRemoval.id));
       try {
         creatureValidate(compacted);
       } catch (e) {
@@ -119,11 +119,11 @@ export function compactUnused(
 }
 
 export function removeNeuron(
-  uuid: string,
+  id: number,
   creature: Creature,
   activation: number,
 ) {
-  const neuron = creature.neurons.find((n) => n.uuid === uuid);
+  const neuron = creature.neurons.find((n) => n.id === id);
   assert(neuron !== undefined, "Neuron should not be undefined");
 
   let useConstant = false;
@@ -156,7 +156,7 @@ export function removeNeuron(
       const connection = creature.getSynapse(constantNeuron.index, synapse.to);
       if (connection) {
         getLogger().info(
-          `compactUnused: ${neuron.uuid} already connected to ${constantNeuron.uuid}`,
+          `compactUnused: ${neuron.id} already connected to ${constantNeuron.id}`,
         );
         if (!synapse.type || !connection.type) {
           let weight = connection.weight;
@@ -168,13 +168,13 @@ export function removeNeuron(
             }
           } else {
             getLogger().warn(
-              `compactUnused: ${neuron.uuid} already connected to ${constantNeuron.uuid} with weight ${connection.weight} required ${synapse.weight}`,
+              `compactUnused: ${neuron.id} already connected to ${constantNeuron.id} with weight ${connection.weight} required ${synapse.weight}`,
             );
             return false;
           }
         } else {
           getLogger().warn(
-            `compactUnused: ${neuron.uuid} already connected to ${constantNeuron.uuid} with type ${connection.type} required ${connection.type}`,
+            `compactUnused: ${neuron.id} already connected to ${constantNeuron.id} with type ${connection.type} required ${connection.type}`,
           );
           return false;
         }
@@ -188,7 +188,7 @@ export function removeNeuron(
       );
       if (connection) {
         getLogger().info(
-          `compactUnused: ${neuron.uuid} already connected to ${constantNeuron.uuid}`,
+          `compactUnused: ${neuron.id} already connected to ${constantNeuron.id}`,
         );
         if (synapse.type) {
           connection.type = synapse.type;
