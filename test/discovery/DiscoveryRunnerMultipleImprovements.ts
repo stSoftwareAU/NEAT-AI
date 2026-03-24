@@ -11,8 +11,8 @@
 import { assert, assertEquals, assertExists } from "@std/assert";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 
-// Integer ID for hidden-1 neuron in makeBaseCreature() (from UUID hash of "hidden-1")
-const ID_HIDDEN_1 = 1775329650;
+// Integer ID for hidden-1 neuron in makeBaseCreature() (explicit id in fixture)
+const ID_HIDDEN_1 = 5001;
 import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import type { Creature } from "../../src/Creature.ts";

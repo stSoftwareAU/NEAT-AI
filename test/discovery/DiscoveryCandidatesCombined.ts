@@ -2,11 +2,11 @@ import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 
-// Integer IDs for neurons in the baseline creature (from UUID hashing):
-// hidden-1 → 1775329650, hidden-2 → 1775329649
+// Integer IDs for neurons in the baseline creature (explicit ids in fixture):
+// hidden-1 → 5001, hidden-2 → 5002
 // output-0 → -1, output-1 → -2
-const ID_HIDDEN_1 = 1775329650;
-const ID_HIDDEN_2 = 1775329649;
+const ID_HIDDEN_1 = 5001;
+const ID_HIDDEN_2 = 5002;
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CandidateHarmfulNeuron,

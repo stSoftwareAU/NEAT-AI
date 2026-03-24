@@ -4,8 +4,8 @@ import { applyCoordinatedStructuralCandidate } from "../../src/architecture/Erro
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
-// Integer ID for hidden-0 (deterministicIdFromUuid).
-const HIDDEN_0_ID = 1775329651; // "hidden-0"
+// Integer ID for hidden-0 (explicit id in fixture).
+const HIDDEN_0_ID = 5000; // "hidden-0"
 
 Deno.test(
   "applyCoordinatedStructuralCandidate: removeNeuron cleans memetic references to avoid MEMETIC validation errors",

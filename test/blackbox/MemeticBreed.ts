@@ -56,8 +56,8 @@ function makeMum() {
     generation: 1,
     weights: {},
     biases: {
-      [1775329648]: 3.1,
-      [1775329647]: 2.1,
+      [5003]: 3.1,
+      [5004]: 2.1,
     },
     score: -0.2,
   };

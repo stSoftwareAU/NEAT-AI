@@ -395,8 +395,8 @@ Deno.test("buildDiscoveryCandidates uses crippled-removal.json for near-zero wei
 
   // Simulate what Rust would return - neuron with near-zero weight synapses
   // has impact below costOfGrowth
-  // candidate-for-removal ID from deterministicIdFromUuid("candidate-for-removal")
-  const CANDIDATE_FOR_REMOVAL_ID = 1611995298;
+  // candidate-for-removal explicit ID from fixture
+  const CANDIDATE_FOR_REMOVAL_ID = 7002;
 
   const discovery: DiscoverResult = {
     ID: "crippled-removal-test",

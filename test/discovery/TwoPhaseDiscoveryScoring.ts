@@ -17,8 +17,8 @@ import type { DiscoveryRunnerWorker } from "../../src/discovery/DiscoveryRunner.
 import { DiscoveryRunner } from "../../src/discovery/DiscoveryRunner.ts";
 import { makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
-// Integer IDs for neurons in makeBaseCreature (deterministicIdFromUuid).
-const HIDDEN_1_ID = 1775329650; // "hidden-1"
+// Integer IDs for neurons in makeBaseCreature (explicit id in fixture).
+const HIDDEN_1_ID = 5001; // "hidden-1"
 const OUTPUT_0_ID = -1; // "output-0"
 
 class FakeWorker implements DiscoveryRunnerWorker {

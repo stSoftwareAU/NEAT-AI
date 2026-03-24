@@ -23,7 +23,7 @@ const HIDDEN_IDS = [
   1775329643, // hidden-8
   1775329642, // hidden-9
 ];
-const ID_HIDDEN_1 = 1775329650; // hidden-1 (used in makeBaseCreature)
+const ID_HIDDEN_1 = 5001; // hidden-1 (explicit id in makeBaseCreature fixture)
 
 class FakeWorker implements DiscoveryRunnerWorker {
   #discoverResult: DiscoverResult;

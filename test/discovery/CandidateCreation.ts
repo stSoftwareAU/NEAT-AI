@@ -196,9 +196,9 @@ Deno.test("buildSingleSquashCandidates - returns empty for empty array", () => {
 
 Deno.test("buildSingleSquashCandidates - builds candidate for valid squash change", () => {
   const base = makeBaseCreature();
-  // hidden-1 ID from deterministicIdFromUuid("hidden-1")
+  // hidden-1 explicit ID from fixture
   const squash: CandidateSquash = {
-    neuronId: 1775329650,
+    neuronId: 5001,
     previousSquash: "IDENTITY",
     squash: "TANH",
     expectedCreatureScoreGain: 0.05,
@@ -220,9 +220,9 @@ Deno.test("buildSingleSquashCandidates - builds candidate for valid squash chang
 
 Deno.test("buildSingleSquashCandidates - includes expected from getExpected", () => {
   const base = makeBaseCreature();
-  // hidden-1 ID from deterministicIdFromUuid("hidden-1")
+  // hidden-1 explicit ID from fixture
   const squash: CandidateSquash = {
-    neuronId: 1775329650,
+    neuronId: 5001,
     previousSquash: "IDENTITY",
     squash: "TANH",
     expectedCreatureScoreGain: 0.05,
@@ -307,8 +307,8 @@ Deno.test("buildLowImpactRemovalCandidates - builds candidate for existing hidde
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
     removalCandidates: [{
-      // hidden-2 ID from deterministicIdFromUuid("hidden-2")
-      neuronId: 1775329649,
+      // hidden-2 explicit ID from fixture
+      neuronId: 5002,
       totalError: 0.01,
       impact: 0.0001,
       reason: "low-impact",
@@ -348,9 +348,9 @@ Deno.test("buildHarmfulNeuronRemovalCandidate - returns undefined for undefined"
 
 Deno.test("buildHarmfulNeuronRemovalCandidate - builds candidate for valid harmful neuron", () => {
   const base = makeBaseCreature();
-  // hidden-1 ID from deterministicIdFromUuid("hidden-1")
+  // hidden-1 explicit ID from fixture
   const harmful: CandidateHarmfulNeuron = {
-    neuronId: 1775329650,
+    neuronId: 5001,
     errorMagnitude: 0.5,
     expectedCreatureScoreGain: 0.1,
     sampleCount: 20,
@@ -413,9 +413,9 @@ Deno.test("buildHarmfulSynapseRemovalCandidates - builds candidate for valid syn
     candidateSquashes: undefined,
   };
 
-  // hidden-2 ID from deterministicIdFromUuid("hidden-2")
+  // hidden-2 explicit ID from fixture
   const harmfulSynapse: CandidateSynapse = {
-    fromNeuronId: 1775329649,
+    fromNeuronId: 5002,
     toNeuronId: -1,
     weight: -0.3,
     targetNeuronImpact: 0.1,

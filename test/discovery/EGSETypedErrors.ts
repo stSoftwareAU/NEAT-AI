@@ -6,8 +6,8 @@ import {
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts";
 import { makeSimpleCreature } from "../fixtures/SimpleCreatures.ts";
 
-// Integer ID for hidden-1 in makeSimpleCreature (deterministicIdFromUuid("hidden-1")).
-const HIDDEN_1_ID = 1775329650;
+// Integer ID for hidden-1 in makeSimpleCreature (explicit id in fixture).
+const HIDDEN_1_ID = 5001;
 
 Deno.test("calculateSquashError throws TopologyError when activation is undefined", () => {
   assertThrows(

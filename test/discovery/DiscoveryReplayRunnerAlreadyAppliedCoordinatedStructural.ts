@@ -5,8 +5,8 @@ import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { DiscoveryReplayRunner } from "../../src/discovery/DiscoveryReplayRunner.ts";
 import type { SuccessCacheEntry } from "../../src/discovery/SuccessCache.ts";
 
-// Integer ID for hidden-0 neuron (from UUID hash of "hidden-0")
-const ID_HIDDEN_0 = 1775329651;
+// Integer ID for hidden-0 neuron (explicit id in fixture)
+const ID_HIDDEN_0 = 5000;
 
 Deno.test(
   "DiscoveryReplayRunner skips coordinated-structural entries that already appear applied",

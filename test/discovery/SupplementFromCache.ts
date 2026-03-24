@@ -16,8 +16,8 @@ import { recordSuccessSync } from "../../src/discovery/SuccessCache.ts";
 import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
 import { makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
-// Deterministic integer ID for "hidden-1" (from deterministicIdFromUuid)
-const HIDDEN_1_ID = 1775329650;
+// Integer ID for hidden-1 neuron in makeBaseCreature() (explicit id in fixture)
+const HIDDEN_1_ID = 5001;
 // Input neuron IDs
 const INPUT_0_ID = 0;
 // Output neuron ID
