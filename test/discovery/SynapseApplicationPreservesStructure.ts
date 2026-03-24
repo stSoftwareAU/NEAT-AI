@@ -41,12 +41,14 @@ function makeValidCreatureWithGap(): {
       {
         type: "hidden",
         uuid: "hidden-A",
+        id: 6000,
         squash: IDENTITY.NAME,
         bias: 0.1,
       },
       {
         type: "hidden",
         uuid: "hidden-B",
+        id: 6001,
         squash: IDENTITY.NAME,
         bias: 0.2,
       },

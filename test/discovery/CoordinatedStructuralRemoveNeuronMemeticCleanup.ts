@@ -18,7 +18,13 @@ Deno.test(
       // calls (which bump to 4.0.0).
       semanticVersion: "3.2.1",
       neurons: [
-        { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
+        {
+          uuid: "hidden-0",
+          id: 5000,
+          type: "hidden",
+          squash: IDENTITY.NAME,
+          bias: 0.1,
+        },
         { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
       ],
       synapses: [

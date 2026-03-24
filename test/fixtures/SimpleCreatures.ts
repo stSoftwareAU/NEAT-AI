@@ -23,7 +23,13 @@ export function makeSimpleCreature(): Creature {
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0 },
+      {
+        type: "hidden",
+        uuid: "hidden-1",
+        id: 5001,
+        squash: "IDENTITY",
+        bias: 0,
+      },
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
@@ -48,7 +54,13 @@ export function makeBaseCreature(): Creature {
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0 },
+      {
+        type: "hidden",
+        uuid: "hidden-1",
+        id: 5001,
+        squash: "IDENTITY",
+        bias: 0,
+      },
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [

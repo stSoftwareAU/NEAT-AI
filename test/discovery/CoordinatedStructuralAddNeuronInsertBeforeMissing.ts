@@ -38,7 +38,7 @@ Deno.test(
     const exported = mutated.exportJSON();
 
     assertEquals(
-      exported.neurons.some((n) => n.id === 9432),
+      exported.neurons.some((n) => n.id === 6000),
       false,
     );
     assertEquals(exported.neurons.length, base.neurons.length);

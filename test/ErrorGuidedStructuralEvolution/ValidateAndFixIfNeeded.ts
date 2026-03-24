@@ -26,28 +26,28 @@ function makeTestCreature(): Creature {
     neurons: [
       {
         type: "hidden",
-        uuid: "hidden-0",
+        id: 5000,
         squash: IDENTITY.NAME,
         bias: 0.1,
       },
       {
         type: "hidden",
-        uuid: "hidden-1",
+        id: 5001,
         squash: IDENTITY.NAME,
         bias: 0.2,
       },
       {
         type: "output",
-        uuid: "output-0",
+        id: -1,
         squash: IDENTITY.NAME,
         bias: 0,
       },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
-      { fromUUID: "input-1", toUUID: "hidden-1", weight: 0.3 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.75 },
-      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.25 },
+      { fromId: 0, toId: 5000, weight: 0.5 },
+      { fromId: 1, toId: 5001, weight: 0.3 },
+      { fromId: 5000, toId: -1, weight: 0.75 },
+      { fromId: 5001, toId: -1, weight: 0.25 },
     ],
   };
 

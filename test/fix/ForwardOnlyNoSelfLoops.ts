@@ -32,5 +32,5 @@ Deno.test("fix({ forwardOnly:true }): never creates self-loops; removes neurons 
   assertEquals(creature.synapses.some((s) => s.from === s.to), false);
 
   // The disconnected hidden neuron should be removed entirely.
-  assertEquals(creature.neurons.some((n) => n.id === 5000), false);
+  assertEquals(creature.neurons.some((n) => n.id === 1775329651), false);
 });

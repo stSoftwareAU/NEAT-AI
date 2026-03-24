@@ -43,7 +43,7 @@ Deno.test("ZeroWeightRecovery - near-zero weight develops non-zero weight", () =
     batchSize: 1,
     trainingMutationRate: 1,
   });
-  const sparseConfig = new SparseConfig(json, config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([1.0]);
   const target = new Float32Array([0.8]);
@@ -98,7 +98,7 @@ Deno.test("ZeroWeightRecovery - error propagates through zero-weight connection"
     batchSize: 1,
     trainingMutationRate: 1,
   });
-  const sparseConfig = new SparseConfig(json, config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([1.0]);
   const target = new Float32Array([0.8]);
@@ -162,7 +162,7 @@ Deno.test("ZeroWeightRecovery - no NaN or Infinity from near-zero weights", () =
     batchSize: 1,
     trainingMutationRate: 1,
   });
-  const sparseConfig = new SparseConfig(json, config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([0.5, 0.8]);
   const target = new Float32Array([0.4]);

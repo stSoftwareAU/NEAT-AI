@@ -1,7 +1,7 @@
 import { addTag, getTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { CreatureUtil, Upgrade } from "../../mod.ts";
 import { Neuron } from "../architecture/Neuron.ts";
-import { nextNeuronId } from "../architecture/NeuronId.ts";
+import { nextNeuronId, outputNeuronId } from "../architecture/NeuronId.ts";
 import { Creature } from "../Creature.ts";
 import { CrisprError } from "../errors/CrisprError.ts";
 import type { ValidationError } from "../errors/ValidationError.ts";
@@ -220,7 +220,7 @@ export class CRISPR {
       dna.neurons.forEach((dnaNeuron) => {
         let uuid: number;
         if (dnaNeuron.type === "output") {
-          uuid = nextNeuronId();
+          uuid = outputNeuronId(outputIndx);
           outputIndx++;
         } else {
           uuid = dnaNeuron.id !== undefined

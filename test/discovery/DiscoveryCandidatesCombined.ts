@@ -28,8 +28,20 @@ function makeBaselineCreature(): Creature {
     input: 4,
     output: 2,
     neurons: [
-      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0 },
-      { type: "hidden", uuid: "hidden-2", squash: "IDENTITY", bias: 0.5 },
+      {
+        type: "hidden",
+        uuid: "hidden-1",
+        id: 5001,
+        squash: "IDENTITY",
+        bias: 0,
+      },
+      {
+        type: "hidden",
+        uuid: "hidden-2",
+        id: 5002,
+        squash: "IDENTITY",
+        bias: 0.5,
+      },
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
       { type: "output", uuid: "output-1", squash: "IDENTITY", bias: -0.2 },
     ],
@@ -276,7 +288,13 @@ Deno.test(
       input: 2,
       output: 1,
       neurons: [
-        { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0 },
+        {
+          type: "hidden",
+          uuid: "hidden-1",
+          id: 5001,
+          squash: "IDENTITY",
+          bias: 0,
+        },
         { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
       ],
       synapses: [

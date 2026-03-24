@@ -104,6 +104,110 @@ export function traceJSON(creature: Creature): CreatureTrace {
 }
 
 /**
+ * Converts legacy UUID-keyed memetic data to use integer neuron IDs.
+ * Issue #1958: Memetic biases/weights may use legacy string UUIDs as keys.
+ */
+function convertMemeticToIntIds(
+  // deno-lint-ignore no-explicit-any
+  memetic: any,
+  creature: Creature,
+  legacyUuidMap: Map<string, number>,
+): typeof memetic {
+  if (!memetic) return memetic;
+
+  // Build a UUID-to-intId map: string UUID → integer neuron ID
+  const uuidToIntId = new Map<string, number>();
+  for (const [uuid, index] of legacyUuidMap) {
+    if (index < creature.neurons.length) {
+      uuidToIntId.set(uuid, creature.neurons[index].id);
+    }
+  }
+
+  const needsConversion = (key: string): boolean => {
+    return isNaN(Number(key)) && uuidToIntId.has(key);
+  };
+
+  // Check if any keys need conversion
+  let hasLegacyKeys = false;
+  if (memetic.biases) {
+    for (const key in memetic.biases) {
+      if (needsConversion(key)) {
+        hasLegacyKeys = true;
+        break;
+      }
+    }
+  }
+  if (!hasLegacyKeys && memetic.weights) {
+    for (const key in memetic.weights) {
+      if (needsConversion(key)) {
+        hasLegacyKeys = true;
+        break;
+      }
+    }
+  }
+
+  if (!hasLegacyKeys) return memetic;
+
+  // Deep clone to avoid mutating the original JSON
+  // deno-lint-ignore no-explicit-any
+  const result: any = JSON.parse(JSON.stringify(memetic));
+
+  // Convert biases keys
+  if (result.biases) {
+    const newBiases: Record<number, number> = {};
+    for (const key in result.biases) {
+      const intId = uuidToIntId.get(key);
+      if (intId !== undefined) {
+        newBiases[intId] = result.biases[key];
+      } else {
+        const numKey = Number(key);
+        if (!isNaN(numKey)) {
+          newBiases[numKey] = result.biases[key];
+        }
+      }
+    }
+    result.biases = newBiases;
+  }
+
+  // Convert weights keys and toUUID/toId inside weight entries
+  if (result.weights) {
+    // deno-lint-ignore no-explicit-any
+    const newWeights: Record<number, any[]> = {};
+    for (const key in result.weights) {
+      const intId = uuidToIntId.get(key);
+      const numericKey = intId !== undefined ? intId : Number(key);
+      if (isNaN(numericKey)) continue;
+
+      // deno-lint-ignore no-explicit-any
+      const entries = result.weights[key].map((entry: any) => {
+        const newEntry = { ...entry };
+        // Convert legacy toUUID to toId
+        if (typeof newEntry.toUUID === "string") {
+          const toIntId = uuidToIntId.get(newEntry.toUUID);
+          if (toIntId !== undefined) {
+            newEntry.toId = toIntId;
+            delete newEntry.toUUID;
+          }
+        }
+        return newEntry;
+      });
+      newWeights[numericKey] = entries;
+    }
+    result.weights = newWeights;
+  }
+
+  // Convert ancestry if present
+  if (result.ancestry && Array.isArray(result.ancestry)) {
+    // deno-lint-ignore no-explicit-any
+    result.ancestry = result.ancestry.map((ancestor: any) => {
+      return convertMemeticToIntIds(ancestor, creature, legacyUuidMap);
+    });
+  }
+
+  return result;
+}
+
+/**
  * Load the creature from a JSON object.
  */
 export function loadFrom(
@@ -172,7 +276,7 @@ export function loadFrom(
       if (typeof raw.uuid === "string") {
         legacyUuidMap.set(raw.uuid, pos);
       }
-    } else if (jn.id === undefined && typeof raw.uuid === "string") {
+    } else if (typeof raw.uuid === "string") {
       // Legacy format: convert string UUID to integer ID
       legacyUuidMap.set(raw.uuid, pos);
     }
@@ -267,7 +371,16 @@ export function loadFrom(
     }
   }
 
-  creature.memetic = json.memetic;
+  // Issue #1958: Convert legacy UUID-keyed memetic data to integer IDs.
+  if (json.memetic && legacyUuidMap.size > 0) {
+    creature.memetic = convertMemeticToIntIds(
+      json.memetic,
+      creature,
+      legacyUuidMap,
+    );
+  } else {
+    creature.memetic = json.memetic;
+  }
   // Issue #1863: Load per-creature evolvable hyperparameters
   creature.hyperparameters = json.hyperparameters
     ? { ...json.hyperparameters }

@@ -24,12 +24,14 @@ function createSparseCreature(): Creature {
       {
         type: "hidden",
         uuid: "hidden-1",
+        id: 5001,
         squash: "LOGISTIC",
         bias: 0.1,
       },
       {
         type: "hidden",
         uuid: "hidden-2",
+        id: 5002,
         squash: "TANH",
         bias: 0.2,
       },
@@ -136,12 +138,14 @@ Deno.test("AddConnection: respects forward-only constraint", () => {
       {
         type: "hidden",
         uuid: "hidden-1",
+        id: 5001,
         squash: "LOGISTIC",
         bias: 0.1,
       },
       {
         type: "hidden",
         uuid: "hidden-2",
+        id: 5002,
         squash: "TANH",
         bias: 0.2,
       },

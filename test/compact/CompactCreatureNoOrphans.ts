@@ -170,7 +170,7 @@ Deno.test("compactCreature: cascade removal of multiple orphaned neurons", () =>
 
   // Both hidden-B and hidden-C should be removed (cascade)
   const hasHiddenB = compacted.neurons.some((n) => n.id === 5002);
-  const hasHiddenC = compacted.neurons.some((n) => n.id === 8003);
+  const hasHiddenC = compacted.neurons.some((n) => n.id === 5003);
   assertEquals(hasHiddenB, false, "hidden-B should be cascade-removed");
   assertEquals(hasHiddenC, false, "hidden-C should be removed");
 });

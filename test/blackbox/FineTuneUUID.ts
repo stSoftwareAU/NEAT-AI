@@ -170,7 +170,7 @@ Deno.test("tune", () => {
     const en = n.exportJSON();
 
     en.neurons.forEach((node) => {
-      if (node.id === 9855) {
+      if (node.id === 1555827657) {
         assertAlmostEquals(node.bias, 0.1, 0.0000001, n.uuid);
       }
 
@@ -182,7 +182,7 @@ Deno.test("tune", () => {
           n.uuid,
         );
       }
-      if (node.id === 9491) {
+      if (node.id === 1400382452) {
         if (Math.abs(node.bias - 0.32) < 0.000001) {
           fail("Should have changed bias from 0.32");
         }
@@ -191,15 +191,15 @@ Deno.test("tune", () => {
 
     en.synapses.forEach((c) => {
       if (
-        c.fromId === 9890 &&
-        c.toId === 9491
+        c.fromId === 885884352 &&
+        c.toId === 1400382452
       ) {
         assertAlmostEquals(c.weight, -0.012398765, 0.000001, JSON.stringify(c));
       }
 
       if (
-        c.fromId === 9855 &&
-        c.toId === 9890
+        c.fromId === 1555827657 &&
+        c.toId === 885884352
       ) {
         assertAlmostEquals(
           c.weight,

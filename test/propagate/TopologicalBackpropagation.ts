@@ -34,7 +34,7 @@ Deno.test("TopologicalBackpropagation - single neuron convergence", () => {
     disableRandomSamples: true,
     batchSize: 1,
   });
-  const sparseConfig = new SparseConfig(json, config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([1.0]);
   const target = new Float32Array([0.8]);
@@ -79,7 +79,7 @@ Deno.test("TopologicalBackpropagation - multi-layer convergence", () => {
     disableRandomSamples: true,
     batchSize: 1,
   });
-  const sparseConfig = new SparseConfig(json, config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([0.5, 0.8]);
   const target = new Float32Array([0.4]);
@@ -133,7 +133,7 @@ Deno.test("TopologicalBackpropagation - diamond topology converges", () => {
     disableRandomSamples: true,
     batchSize: 1,
   });
-  const sparseConfig = new SparseConfig(json, config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([0.7]);
   const target = new Float32Array([0.3]);
@@ -181,7 +181,7 @@ Deno.test("TopologicalBackpropagation - multiple outputs converge", () => {
     disableRandomSamples: true,
     batchSize: 1,
   });
-  const sparseConfig = new SparseConfig(json, config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([0.5, 0.8]);
   const target = new Float32Array([0.3, 0.7]);
@@ -227,7 +227,7 @@ Deno.test("TopologicalBackpropagation - weight updates applied", () => {
     batchSize: 1,
     trainingMutationRate: 1, // Always apply.
   });
-  const sparseConfig = new SparseConfig(json, config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([1.0]);
   const target = new Float32Array([0.8]);
@@ -271,7 +271,7 @@ Deno.test("TopologicalBackpropagation - no error produces no change", () => {
     disableRandomSamples: true,
     batchSize: 1,
   });
-  const sparseConfig = new SparseConfig(json, config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([0.5]);
   // Target matches what the network would produce (input * weight + bias = 0.5 * 1.0 + 0 = 0.5).
@@ -310,7 +310,7 @@ Deno.test("TopologicalBackpropagation - self-loop handled correctly", () => {
     disableRandomSamples: true,
     batchSize: 1,
   });
-  const sparseConfig = new SparseConfig(json, config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([0.7]);
   const target = new Float32Array([0.3]);
@@ -367,7 +367,7 @@ Deno.test("TopologicalBackpropagation - deep network converges", () => {
     disableRandomSamples: true,
     batchSize: 1,
   });
-  const sparseConfig = new SparseConfig(json, config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([0.5, 0.8]);
   const target = new Float32Array([0.2]);
@@ -453,7 +453,10 @@ Deno.test("TopologicalBackpropagation - fan-out gradient scales with downstream 
   // Train the single-output network.
   const singleCreature = Creature.fromJSON(singleOutputJson);
   const singleConfig = createBackPropagationConfig(configOpts);
-  const singleSparse = new SparseConfig(singleOutputJson, singleConfig);
+  const singleSparse = new SparseConfig(
+    singleCreature.exportJSON(),
+    singleConfig,
+  );
 
   singleCreature.activateAndTrace(input, false, singleSparse);
   singleCreature.propagate(singleTarget, singleConfig, singleSparse);
@@ -466,7 +469,10 @@ Deno.test("TopologicalBackpropagation - fan-out gradient scales with downstream 
   // Train the triple-output network.
   const tripleCreature = Creature.fromJSON(tripleOutputJson);
   const tripleConfig = createBackPropagationConfig(configOpts);
-  const tripleSparse = new SparseConfig(tripleOutputJson, tripleConfig);
+  const tripleSparse = new SparseConfig(
+    tripleCreature.exportJSON(),
+    tripleConfig,
+  );
 
   tripleCreature.activateAndTrace(input, false, tripleSparse);
   tripleCreature.propagate(tripleTarget, tripleConfig, tripleSparse);
@@ -523,7 +529,7 @@ Deno.test("TopologicalBackpropagation - fan-out convergence improved", () => {
     disableRandomSamples: true,
     batchSize: 1,
   });
-  const sparseConfig = new SparseConfig(json, config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([0.5, 0.8]);
   const target = new Float32Array([0.2, 0.3, 0.1, 0.4]);

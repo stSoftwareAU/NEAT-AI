@@ -98,7 +98,13 @@ Deno.test(
       output: 1,
       forwardOnly: true,
       neurons: [
-        { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
+        {
+          uuid: "hidden-0",
+          id: 5000,
+          type: "hidden",
+          squash: IDENTITY.NAME,
+          bias: 0.1,
+        },
         { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
       ],
       synapses: [
@@ -178,7 +184,13 @@ Deno.test(
       output: 1,
       forwardOnly: true,
       neurons: [
-        { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
+        {
+          uuid: "hidden-0",
+          id: 5000,
+          type: "hidden",
+          squash: IDENTITY.NAME,
+          bias: 0.1,
+        },
         { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
       ],
       synapses: [

@@ -74,7 +74,7 @@ Deno.test("compactCreature: bypass COMPLEMENT feeding IDENTITY output (safe alge
 
   // hidden-0 should be gone
   assertEquals(
-    exported.neurons.some((n) => n.id === 5000),
+    exported.neurons.some((n) => n.id === 1775329651),
     false,
     "Expected COMPLEMENT neuron to be removed",
   );
@@ -185,7 +185,7 @@ Deno.test("compactCreature: bypass COMPLEMENT feeding multiple IDENTITY outputs 
   const exported = compacted.exportJSON();
 
   assertEquals(
-    exported.neurons.some((n) => n.id === 5000),
+    exported.neurons.some((n) => n.id === 1775329651),
     false,
     "Expected COMPLEMENT neuron to be removed",
   );

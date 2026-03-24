@@ -14,8 +14,14 @@ import {
 function makeCreature() {
   const json: CreatureExport = {
     neurons: [
-      { type: "hidden", uuid: "hidden-3", squash: "Cosine", bias: 3 },
-      { type: "hidden", uuid: "hidden-4", squash: "HARD_TANH", bias: 2 },
+      { type: "hidden", id: 5003, uuid: "hidden-3", squash: "Cosine", bias: 3 },
+      {
+        type: "hidden",
+        id: 5004,
+        uuid: "hidden-4",
+        squash: "HARD_TANH",
+        bias: 2,
+      },
 
       {
         type: "output",

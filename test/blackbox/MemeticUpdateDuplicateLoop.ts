@@ -13,7 +13,13 @@ function createTestCreature(): CreatureExport {
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "hidden-1", squash: "LOGISTIC", bias: 0.5 },
+      {
+        type: "hidden",
+        id: 5001,
+        uuid: "hidden-1",
+        squash: "LOGISTIC",
+        bias: 0.5,
+      },
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
     ],
     synapses: [
@@ -66,6 +72,7 @@ Deno.test("memeticUpdate - returns undefined when neuron counts differ", () => {
   const childJSON = createTestCreature();
   childJSON.neurons.splice(1, 0, {
     type: "hidden",
+    id: 5002,
     uuid: "hidden-2",
     squash: "TANH",
     bias: 0.3,
