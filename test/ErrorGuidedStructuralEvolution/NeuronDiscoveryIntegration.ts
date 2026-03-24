@@ -436,7 +436,7 @@ Deno.test({
       // This is what DiscoverDirectory uses in production
       const bundle = discoverStructure.collectRustAnalysisCandidates(
         // @ts-ignore: test with legacy string neuron IDs
-        ["output-0" as unknown as number, " as unknown as numberoutput-1"],
+        ["output-0" as unknown as number, "output-1" as unknown as number],
         // @ts-ignore: test with string IDs
         // @ts-ignore: test with string IDs
       );
