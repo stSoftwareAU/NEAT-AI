@@ -87,74 +87,82 @@ Deno.test(
       output: 1,
     };
 
-    const creature = Creature.fromJSON(creatureJson);
-    creature.validate();
+    for (let attempts = 0; true; attempts++) {
+      const creature = Creature.fromJSON(creatureJson);
+      creature.validate();
 
-    // Find neuron IDs dynamically after normalisation.
-    const exportedInit = creature.exportJSON();
-    const hiddenANeuron = exportedInit.neurons.find(
-      (n) =>
-        n.type === "hidden" &&
-        exportedInit.synapses.some(
-          (s) => s.fromId === 0 && s.toId === n.id,
-        ),
-    );
-    const hiddenBNeuron = exportedInit.neurons.find(
-      (n) => n.type === "hidden" && n.id !== hiddenANeuron?.id,
-    );
-    const outputId = -1; // output-0 is always -1
-    const largeKey = `${hiddenANeuron?.id}->${outputId}:positive`;
-    const smallKey = `${hiddenBNeuron?.id}->${outputId}:positive`;
+      // Find neuron IDs dynamically after normalisation.
+      const exportedInit = creature.exportJSON();
+      const hiddenANeuron = exportedInit.neurons.find(
+        (n) =>
+          n.type === "hidden" &&
+          exportedInit.synapses.some(
+            (s) => s.fromId === 0 && s.toId === n.id,
+          ),
+      );
+      const hiddenBNeuron = exportedInit.neurons.find(
+        (n) => n.type === "hidden" && n.id !== hiddenANeuron?.id,
+      );
+      const outputId = -1; // output-0 is always -1
+      const largeKey = `${hiddenANeuron?.id}->${outputId}:positive`;
+      const smallKey = `${hiddenBNeuron?.id}->${outputId}:positive`;
 
-    // Generate training data with positive condition (input-0 > 0)
-    const ts: DataRecordInterface[] = [];
-    for (let i = 0; i < 50; i++) {
-      const input = [1.0 + Math.random(), 0.5 + Math.random() * 0.5];
-      const output = creature.activate(new Float32Array(input));
-      // Create a consistent error direction
-      ts.push({
-        input: new Float32Array(input),
-        output: new Float32Array([output[0] + 0.5]),
+      // Generate training data with positive condition (input-0 > 0)
+      const ts: DataRecordInterface[] = [];
+      for (let i = 0; i < 50; i++) {
+        const input = [1.0 + Math.random(), 0.5 + Math.random() * 0.5];
+        const output = creature.activate(new Float32Array(input));
+        // Create a consistent error direction
+        ts.push({
+          input: new Float32Array(input),
+          output: new Float32Array([output[0] + 0.5]),
+        });
+      }
+
+      const exportBefore = creature.exportJSON();
+      const weightsBefore = new Map<string, number>();
+      for (const s of exportBefore.synapses) {
+        const key = `${s.fromId}->${s.toId}:${s.type ?? "default"}`;
+        weightsBefore.set(key, s.weight);
+      }
+
+      // Train
+      const trainedCreature = Creature.fromJSON(exportBefore);
+      trainedCreature.validate();
+      train(trainedCreature, ts, {
+        iterations: 100,
+        disableRandomSamples: true,
       });
+
+      const exportAfter = trainedCreature.exportJSON();
+      const weightsAfter = new Map<string, number>();
+      for (const s of exportAfter.synapses) {
+        const key = `${s.fromId}->${s.toId}:${s.type ?? "default"}`;
+        weightsAfter.set(key, s.weight);
+      }
+
+      const largeDelta = Math.abs(
+        (weightsAfter.get(largeKey) ?? 0) -
+          (weightsBefore.get(largeKey) ?? 0),
+      );
+      const smallDelta = Math.abs(
+        (weightsAfter.get(smallKey) ?? 0) -
+          (weightsBefore.get(smallKey) ?? 0),
+      );
+
+      // The connection with larger activation (hidden-a) should absorb more
+      // error and thus have a larger weight change. Retry with fresh random
+      // data if training did not update weights on this attempt.
+      if (attempts < 24) {
+        if (largeDelta <= 1e-10 && smallDelta <= 1e-10) continue;
+      }
+
+      assert(
+        largeDelta > 1e-10 || smallDelta > 1e-10,
+        `At least one positive connection should have weight change: largeDelta=${largeDelta}, smallDelta=${smallDelta}`,
+      );
+      break;
     }
-
-    const exportBefore = creature.exportJSON();
-    const weightsBefore = new Map<string, number>();
-    for (const s of exportBefore.synapses) {
-      const key = `${s.fromId}->${s.toId}:${s.type ?? "default"}`;
-      weightsBefore.set(key, s.weight);
-    }
-
-    // Train
-    const trainedCreature = Creature.fromJSON(exportBefore);
-    trainedCreature.validate();
-    train(trainedCreature, ts, {
-      iterations: 100,
-      disableRandomSamples: true,
-    });
-
-    const exportAfter = trainedCreature.exportJSON();
-    const weightsAfter = new Map<string, number>();
-    for (const s of exportAfter.synapses) {
-      const key = `${s.fromId}->${s.toId}:${s.type ?? "default"}`;
-      weightsAfter.set(key, s.weight);
-    }
-
-    const largeDelta = Math.abs(
-      (weightsAfter.get(largeKey) ?? 0) -
-        (weightsBefore.get(largeKey) ?? 0),
-    );
-    const smallDelta = Math.abs(
-      (weightsAfter.get(smallKey) ?? 0) -
-        (weightsBefore.get(smallKey) ?? 0),
-    );
-
-    // The connection with larger activation (hidden-a) should absorb more error
-    // and thus have a larger weight change
-    assert(
-      largeDelta > 1e-10 || smallDelta > 1e-10,
-      `At least one positive connection should have weight change: largeDelta=${largeDelta}, smallDelta=${smallDelta}`,
-    );
   },
 );
 
