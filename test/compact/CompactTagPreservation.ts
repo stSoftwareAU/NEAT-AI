@@ -5,6 +5,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { cleanupOrphanedNeurons } from "../../src/compact/OrphanedNeuronCleanup.ts";
 import { mergeParallelIdentityBridges } from "../../src/compact/ParallelIdentityMerge.ts";
 import { mergeParallelBridges } from "../../src/compact/ParallelBridgeMerge.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 
 /**
  * Issue #1972: Compact operations were losing tags on synapses and neurons.
@@ -51,9 +52,10 @@ Deno.test("compact: COMPLEMENT bypass preserves synapse tags on new synapses", (
   assert(compacted, "COMPLEMENT neuron should be bypassed");
 
   // Assert: The new direct synapse should have merged tags from both original synapses
+  // Issue #1958: exported synapses use integer IDs (input-0=0, output-0=-1)
   const exported = compacted.exportJSON();
   const directSynapse = exported.synapses.find(
-    (s) => s.fromUUID === "input-0" && s.toUUID === "output-0",
+    (s) => s.fromId === 0 && s.toId === -1,
   );
   assert(directSynapse, "Direct synapse should exist after bypass");
   assert(directSynapse.tags, "Tags should be preserved on bypassed synapse");
@@ -112,9 +114,10 @@ Deno.test("compact: COMPLEMENT bypass merges tags when adding to existing synaps
   assert(compacted, "COMPLEMENT neuron should be bypassed");
 
   // Assert: Existing synapse should have merged tags
+  // Issue #1958: exported synapses use integer IDs (input-0=0, output-0=-1)
   const exported = compacted.exportJSON();
   const directSynapse = exported.synapses.find(
-    (s) => s.fromUUID === "input-0" && s.toUUID === "output-0",
+    (s) => s.fromId === 0 && s.toId === -1,
   );
   assert(directSynapse, "Direct synapse should exist after bypass");
   assert(directSynapse.tags, "Tags should be merged on existing synapse");
@@ -133,8 +136,8 @@ Deno.test("compact: COMPLEMENT bypass merges tags when adding to existing synaps
 Deno.test("compact: IDENTITY chain merge preserves synapse tags", () => {
   // Arrange: An IDENTITY chain where hidden-1 is merged (hidden-0 and
   // hidden-1 both IDENTITY, hidden-1 has 1 in + 1 out). The merge creates
-  // a new synapse hidden-0→output-0, which should carry merged tags from
-  // both hidden-0→hidden-1 (inConn) and hidden-1→output-0 (outConn).
+  // a new synapse hidden-0->output-0, which should carry merged tags from
+  // both hidden-0->hidden-1 (inConn) and hidden-1->output-0 (outConn).
   // Note: hidden-0 cannot be merged because its fromNeuron is an input
   // (not in neuronMap).
   const json: CreatureExport = {
@@ -182,11 +185,13 @@ Deno.test("compact: IDENTITY chain merge preserves synapse tags", () => {
   const compacted = compactCreature(creature, false);
   assert(compacted, "IDENTITY chain should compact");
 
-  // Assert: The merged synapse (hidden-0→output-0) should carry tags from
+  // Assert: The merged synapse should carry tags from
   // both the inConn and outConn that were merged.
+  // Issue #1958: Use integer IDs for lookup. Find the synapse from
+  // the remaining hidden neuron to output (-1).
   const exported = compacted.exportJSON();
   const mergedSynapse = exported.synapses.find(
-    (s) => s.fromUUID === "hidden-0" && s.toUUID === "output-0",
+    (s) => s.toId === -1 && s.fromId !== 0,
   );
   assert(mergedSynapse, "Merged synapse should exist");
   assert(mergedSynapse.tags, "Tags should be preserved on merged synapse");
@@ -213,7 +218,7 @@ Deno.test("compact: orphaned neuron conversion to constant preserves neuron tags
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      // orphan-0 has outward but no inward connections → will be converted to constant
+      // orphan-0 has outward but no inward connections -> will be converted to constant
       { fromUUID: "orphan-0", toUUID: "output-0", weight: 1.0 },
       { fromUUID: "input-0", toUUID: "output-0", weight: 0.5 },
     ],
@@ -224,10 +229,10 @@ Deno.test("compact: orphaned neuron conversion to constant preserves neuron tags
   // Act: Clean up orphaned neurons
   const result = cleanupOrphanedNeurons(creatureExport);
 
-  // Assert: The neuron should be converted to constant with tags preserved
+  // Assert: The neuron should be converted to constant with tags preserved.
   assertEquals(result.converted, 1, "One neuron should be converted");
   const convertedNeuron = creatureExport.neurons.find(
-    (n) => n.uuid === "orphan-0",
+    (n) => n.type === "constant",
   );
   assert(convertedNeuron, "Converted neuron should exist");
   assertEquals(convertedNeuron.type, "constant");
@@ -269,12 +274,18 @@ Deno.test("compact: parallel IDENTITY bridge merge preserves neuron tags on kept
     output: 1,
   };
 
+  // mergeParallelIdentityBridges does not call normaliseCreatureExport,
+  // so populate integer IDs before calling.
+  normaliseCreatureExport(exported);
+
   // Act
   const result = mergeParallelIdentityBridges(exported);
   assertEquals(result.removedNeurons, 1, "One neuron should be removed");
 
-  // Assert: The kept neuron (bridge-A) should have merged tags
-  const keptNeuron = exported.neurons.find((n) => n.uuid === "bridge-A");
+  // Assert: The kept neuron (bridge-A) should have merged tags.
+  const keptNeuron = exported.neurons.find(
+    (n) => (n as { uuid?: string }).uuid === "bridge-A",
+  );
   assert(keptNeuron, "Kept neuron should exist");
   assert(keptNeuron.tags, "Kept neuron should have tags");
 
@@ -322,12 +333,14 @@ Deno.test("compact: parallel bridge merge preserves neuron tags on kept neuron",
     output: 1,
   };
 
-  // Act
+  // Act (mergeParallelBridges calls normaliseCreatureExport internally)
   const result = mergeParallelBridges(exported);
   assertEquals(result.removedNeurons, 1, "One neuron should be removed");
 
-  // Assert: The kept neuron (bridge-A) should have merged tags
-  const keptNeuron = exported.neurons.find((n) => n.uuid === "bridge-A");
+  // Assert: The kept neuron (bridge-A) should have merged tags.
+  const keptNeuron = exported.neurons.find(
+    (n) => (n as { uuid?: string }).uuid === "bridge-A",
+  );
   assert(keptNeuron, "Kept neuron should exist");
   assert(keptNeuron.tags, "Kept neuron should have tags");
 
@@ -380,14 +393,21 @@ Deno.test("compact: parallel IDENTITY bridge merge preserves synapse tags", () =
     output: 1,
   };
 
+  // mergeParallelIdentityBridges does not call normaliseCreatureExport,
+  // so populate integer IDs before calling.
+  normaliseCreatureExport(exported);
+
   // Act
   const result = mergeParallelIdentityBridges(exported);
   assertEquals(result.removedNeurons, 1, "One neuron should be removed");
 
-  // Assert: Both inbound synapses should retain their tags
+  // Assert: Both inbound synapses should retain their tags.
   // (bridge-B's inbound synapse is redirected to bridge-A, preserving tags)
+  const bridgeAId = exported.neurons.find(
+    (n) => (n as { uuid?: string }).uuid === "bridge-A",
+  )!.id!;
   const synapseA = exported.synapses.find(
-    (s) => s.fromUUID === "input-0" && s.toUUID === "bridge-A",
+    (s) => s.fromId === 0 && s.toId === bridgeAId,
   );
   assert(synapseA, "Synapse from input-0 should exist");
   assert(synapseA.tags, "Synapse A tags should be preserved");
@@ -395,10 +415,13 @@ Deno.test("compact: parallel IDENTITY bridge merge preserves synapse tags", () =
   assertEquals(synapseA.tags[0].value, "A");
 
   const redirectedSynapse = exported.synapses.find(
-    (s) => s.fromUUID === "input-1" && s.toUUID === "bridge-A",
+    (s) => s.fromId === 1 && s.toId === bridgeAId,
   );
   assert(redirectedSynapse, "Redirected synapse should exist");
-  assert(redirectedSynapse.tags, "Redirected synapse tags should be preserved");
+  assert(
+    redirectedSynapse.tags,
+    "Redirected synapse tags should be preserved",
+  );
   assertEquals(redirectedSynapse.tags[0].name, "channel");
   assertEquals(redirectedSynapse.tags[0].value, "B");
 });
@@ -436,9 +459,10 @@ Deno.test("compact: COMPLEMENT bypass preserves neuron tags on remaining neurons
   const compacted = compactCreature(creature, false);
   assert(compacted, "COMPLEMENT neuron should be bypassed");
 
-  // Assert: Output neuron tags should be preserved
+  // Assert: Output neuron tags should be preserved.
+  // Issue #1958: Use integer IDs (output-0 = -1).
   const exported = compacted.exportJSON();
-  const outputNeuron = exported.neurons.find((n) => n.uuid === "output-0");
+  const outputNeuron = exported.neurons.find((n) => n.id === -1);
   assert(outputNeuron, "Output neuron should exist");
   assert(outputNeuron.tags, "Output neuron tags should be preserved");
   assertEquals(outputNeuron.tags[0].name, "role");

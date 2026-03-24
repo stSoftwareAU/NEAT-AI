@@ -53,7 +53,7 @@ Deno.test("NEAT/NeatConfigCoverage - discoveryRustFlushRecords validation (non-p
 Deno.test("NEAT/NeatConfigCoverage - discoveryFocusNeuronUUIDs must be an array", () => {
   try {
     createNeatConfig({
-      discoveryFocusNeuronUUIDs: 123 as unknown as string[],
+      discoveryFocusNeuronUUIDs: 123 as unknown as number[],
     });
     fail(
       "Expected createNeatConfig() to throw for non-array discoveryFocusNeuronUUIDs",
@@ -69,19 +69,19 @@ Deno.test("NEAT/NeatConfigCoverage - discoveryFocusNeuronUUIDs must be an array"
   }
 });
 
-Deno.test("NEAT/NeatConfigCoverage - discoveryFocusNeuronUUIDs entries must be non-empty", () => {
+Deno.test("NEAT/NeatConfigCoverage - discoveryFocusNeuronUUIDs entries must be integers", () => {
   try {
     createNeatConfig({
-      discoveryFocusNeuronUUIDs: [""],
+      discoveryFocusNeuronUUIDs: [""] as unknown as number[],
     });
     fail(
-      "Expected createNeatConfig() to throw for empty discoveryFocusNeuronUUIDs entry",
+      "Expected createNeatConfig() to throw for non-integer discoveryFocusNeuronUUIDs entry",
     );
   } catch (e) {
     assertEquals(
-      (e as Error).message.includes("non-empty strings"),
+      (e as Error).message.includes("integers"),
       true,
-      `Error should mention non-empty strings: ${(e as Error).message}`,
+      `Error should mention integers: ${(e as Error).message}`,
     );
   }
 });

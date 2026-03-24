@@ -8,8 +8,14 @@ import { Offspring } from "../../src/architecture/Offspring.ts";
 function makeCreature() {
   const json: CreatureExport = {
     neurons: [
-      { type: "hidden", uuid: "hidden-3", squash: "Cosine", bias: 3 },
-      { type: "hidden", uuid: "hidden-4", squash: "CLIPPED", bias: 2 },
+      { type: "hidden", id: 5003, uuid: "hidden-3", squash: "Cosine", bias: 3 },
+      {
+        type: "hidden",
+        id: 5004,
+        uuid: "hidden-4",
+        squash: "CLIPPED",
+        bias: 2,
+      },
 
       {
         type: "output",
@@ -50,8 +56,8 @@ function makeMum() {
     generation: 1,
     weights: {},
     biases: {
-      "hidden-3": 3.1,
-      "hidden-4": 2.1,
+      [5003]: 3.1,
+      [5004]: 2.1,
     },
     score: -0.2,
   };
@@ -81,16 +87,14 @@ Deno.test("memetic preserved", () => {
       const childExport = child.exportJSON();
       console.log(JSON.stringify(childExport, null, 2));
       const synapse = childExport.synapses.find((s) =>
-        s.fromUUID === "input-2" && s.toUUID === "output-1"
+        s.fromId === 2 && s.toId === -2
       );
 
       assert(synapse, "Synapse should exist");
       if (synapse.weight === 0.456) {
-        const input2Weights = child.memetic.weights["input-2"];
+        const input2Weights = child.memetic.weights[2];
         assert(input2Weights, "Should have previous weight");
-        const output1Weight = input2Weights.find((w) =>
-          w.toUUID === "output-1"
-        );
+        const output1Weight = input2Weights.find((w) => w.toId === -2);
         assert(output1Weight !== undefined, "Should have previous weight");
         assertAlmostEquals(
           output1Weight.weight,

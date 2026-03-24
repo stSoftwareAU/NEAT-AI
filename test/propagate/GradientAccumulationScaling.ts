@@ -220,15 +220,28 @@ Deno.test("Gradient accumulation - weight update magnitude: high vs low fan-out"
   const target = new Float32Array([0.5]);
 
   // Record original weights for the two key synapses.
+  const lowFanNeuron = creature.neurons.find((n) =>
+    n.type === "hidden" && creature.synapses.some(
+      (s) =>
+        creature.neurons[s.from].type === "input" &&
+        creature.neurons[s.to] === n &&
+        creature.synapses.filter((s2) => creature.neurons[s2.from] === n)
+            .length === 1,
+    )
+  );
+  const highFanNeuron = creature.neurons.find((n) =>
+    n.type === "hidden" && n !== lowFanNeuron &&
+    creature.neurons.some((other) => other !== n && other.type === "hidden")
+  );
   const lowFanSynapseIdx = creature.synapses.findIndex(
     (s) =>
-      creature.neurons[s.from].uuid === "input-0" &&
-      creature.neurons[s.to].uuid === "low-fan",
+      creature.neurons[s.from].type === "input" &&
+      creature.neurons[s.to] === lowFanNeuron,
   );
   const highFanSynapseIdx = creature.synapses.findIndex(
     (s) =>
-      creature.neurons[s.from].uuid === "input-0" &&
-      creature.neurons[s.to].uuid === "high-fan",
+      creature.neurons[s.from].type === "input" &&
+      creature.neurons[s.to] === highFanNeuron,
   );
 
   assert(lowFanSynapseIdx >= 0, "Should find low-fan synapse");
@@ -718,9 +731,11 @@ Deno.test("Gradient accumulation - symmetric fan-out yields similar error", () =
   creature.activateAndTrace(new Float32Array([1.0]), false, sparseConfig);
   creature.propagate(new Float32Array([0.5]), config, sparseConfig);
 
-  // Find sym-a and sym-b neuron indices.
-  const symAIdx = creature.neurons.findIndex((n) => n.uuid === "sym-a");
-  const symBIdx = creature.neurons.findIndex((n) => n.uuid === "sym-b");
+  // Find sym-a and sym-b neuron indices (first two hidden neurons).
+  const symAIdx = creature.neurons.findIndex((n) => n.type === "hidden");
+  const symBIdx = creature.neurons.findIndex((n) =>
+    n.type === "hidden" && creature.neurons.indexOf(n) > symAIdx
+  );
   assert(symAIdx >= 0, "Should find sym-a neuron");
   assert(symBIdx >= 0, "Should find sym-b neuron");
 

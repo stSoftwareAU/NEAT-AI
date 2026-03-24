@@ -1,14 +1,16 @@
 import { assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import type { CoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import { applyCoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
+// Integer ID for hidden-0 (explicit id in fixture).
+const HIDDEN_0_ID = 5000; // "hidden-0"
+
 Deno.test(
   "applyCoordinatedStructuralCandidate: removeNeuron cleans memetic references to avoid MEMETIC validation errors",
   () => {
-    const base: CreatureExport = {
+    const creature = Creature.fromJSON({
       input: 1,
       output: 1,
       forwardOnly: true,
@@ -16,7 +18,13 @@ Deno.test(
       // calls (which bump to 4.0.0).
       semanticVersion: "3.2.1",
       neurons: [
-        { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
+        {
+          uuid: "hidden-0",
+          id: 5000,
+          type: "hidden",
+          squash: IDENTITY.NAME,
+          bias: 0.1,
+        },
         { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
       ],
       synapses: [
@@ -31,11 +39,10 @@ Deno.test(
         // Empty weights keeps this test focused on the missing neuron-level cleanup.
         weights: {},
         biases: {
-          "hidden-0": 0.1,
+          [HIDDEN_0_ID]: 0.1,
         },
       },
-    };
-    const creature = Creature.fromJSON(base);
+    });
 
     const candidate: CoordinatedStructuralCandidate = {
       type: "coordinated_structural",
@@ -43,7 +50,7 @@ Deno.test(
       operations: [
         {
           type: "removeNeuron",
-          neuronUuid: "hidden-0",
+          neuronId: HIDDEN_0_ID,
         },
       ],
     };
@@ -51,7 +58,7 @@ Deno.test(
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
     const exported = mutated.exportJSON();
 
-    assertEquals(exported.neurons.some((n) => n.uuid === "hidden-0"), false);
+    assertEquals(exported.neurons.some((n) => n.id === HIDDEN_0_ID), false);
     assertEquals(exported.memetic, undefined);
     assertEquals(exported.semanticVersion, "3.2.1");
   },

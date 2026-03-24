@@ -45,20 +45,20 @@ export class SubBackCon extends AbstractMutationOperator {
         const outwardList = this.creature.outwardConnections(pair[1]);
         if (outwardList.length === 0) {
           getLogger().info(
-            `Remove neuron ${toNeuron.uuid} as completely disconnected`,
+            `Remove neuron ${toNeuron.id} as completely disconnected`,
           );
           removeHiddenNeuron(this.creature, pair[1]);
           toNeuronRemoved = true;
         } else {
           getLogger().info(
-            `Convert neuron ${toNeuron.uuid} from ${toNeuron.type} to constant`,
+            `Convert neuron ${toNeuron.id} from ${toNeuron.type} to constant`,
           );
           const squash = toNeuron.findSquash();
           const activation = squash as ActivationInterface;
           if (activation.squash) {
             const constantBias = activation.squash(toNeuron.bias);
             getLogger().info(
-              `Adjust neuron ${toNeuron.uuid} bias ${toNeuron.bias} to ${constantBias}`,
+              `Adjust neuron ${toNeuron.id} bias ${toNeuron.bias} to ${constantBias}`,
             );
             toNeuron.bias = constantBias;
           }
@@ -79,7 +79,7 @@ export class SubBackCon extends AbstractMutationOperator {
       const fromNeuron = this.creature.neurons[fromIndex];
       if (fromNeuron.type === "hidden" || fromNeuron.type === "constant") {
         getLogger().info(
-          `Remove neuron ${fromNeuron.uuid} as no longer connected`,
+          `Remove neuron ${fromNeuron.id} as no longer connected`,
         );
         removeHiddenNeuron(this.creature, fromIndex);
       }

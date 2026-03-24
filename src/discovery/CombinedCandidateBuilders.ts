@@ -164,14 +164,14 @@ export function buildCombinedSquashCandidates(
 
   if (changedSquashCreature) {
     const changes = (candidateSquashes || []).map((c) => {
-      const neuron = baseCreature.neurons.find((n) => n.uuid === c.neuronUUID);
+      const neuron = baseCreature.neurons.find((n) => n.id === c.neuronId);
       const oldSquash = neuron?.squash;
       const improvementValue = getExpectedSquash(c);
       const improvement = improvementValue !== undefined
         ? ` expected: ${(improvementValue * 100).toFixed(1)}%`
         : "";
       return `${
-        shortID(c.neuronUUID)
+        shortID(String(c.neuronId))
       } (${oldSquash} -> ${c.squash}${improvement})`;
     });
 

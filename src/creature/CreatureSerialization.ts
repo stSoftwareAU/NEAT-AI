@@ -15,6 +15,11 @@ import type {
 } from "../architecture/CreatureInterfaces.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { Neuron } from "../architecture/Neuron.ts";
+import {
+  ensureIdAbove,
+  inputNeuronId,
+  outputNeuronId,
+} from "../architecture/NeuronId.ts";
 import type { NeuronTrace } from "../architecture/NeuronInterfaces.ts";
 import { Synapse } from "../architecture/Synapse.ts";
 import type {
@@ -22,6 +27,7 @@ import type {
   SynapseInternal,
   SynapseTrace,
 } from "../architecture/SynapseInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { upgradeOne } from "../upgrade/UpgradeOne.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 
@@ -98,6 +104,110 @@ export function traceJSON(creature: Creature): CreatureTrace {
 }
 
 /**
+ * Converts legacy UUID-keyed memetic data to use integer neuron IDs.
+ * Issue #1958: Memetic biases/weights may use legacy string UUIDs as keys.
+ */
+function convertMemeticToIntIds(
+  // deno-lint-ignore no-explicit-any
+  memetic: any,
+  creature: Creature,
+  legacyUuidMap: Map<string, number>,
+): typeof memetic {
+  if (!memetic) return memetic;
+
+  // Build a UUID-to-intId map: string UUID → integer neuron ID
+  const uuidToIntId = new Map<string, number>();
+  for (const [uuid, index] of legacyUuidMap) {
+    if (index < creature.neurons.length) {
+      uuidToIntId.set(uuid, creature.neurons[index].id);
+    }
+  }
+
+  const needsConversion = (key: string): boolean => {
+    return isNaN(Number(key)) && uuidToIntId.has(key);
+  };
+
+  // Check if any keys need conversion
+  let hasLegacyKeys = false;
+  if (memetic.biases) {
+    for (const key in memetic.biases) {
+      if (needsConversion(key)) {
+        hasLegacyKeys = true;
+        break;
+      }
+    }
+  }
+  if (!hasLegacyKeys && memetic.weights) {
+    for (const key in memetic.weights) {
+      if (needsConversion(key)) {
+        hasLegacyKeys = true;
+        break;
+      }
+    }
+  }
+
+  if (!hasLegacyKeys) return memetic;
+
+  // Deep clone to avoid mutating the original JSON
+  // deno-lint-ignore no-explicit-any
+  const result: any = JSON.parse(JSON.stringify(memetic));
+
+  // Convert biases keys
+  if (result.biases) {
+    const newBiases: Record<number, number> = {};
+    for (const key in result.biases) {
+      const intId = uuidToIntId.get(key);
+      if (intId !== undefined) {
+        newBiases[intId] = result.biases[key];
+      } else {
+        const numKey = Number(key);
+        if (!isNaN(numKey)) {
+          newBiases[numKey] = result.biases[key];
+        }
+      }
+    }
+    result.biases = newBiases;
+  }
+
+  // Convert weights keys and toUUID/toId inside weight entries
+  if (result.weights) {
+    // deno-lint-ignore no-explicit-any
+    const newWeights: Record<number, any[]> = {};
+    for (const key in result.weights) {
+      const intId = uuidToIntId.get(key);
+      const numericKey = intId !== undefined ? intId : Number(key);
+      if (isNaN(numericKey)) continue;
+
+      // deno-lint-ignore no-explicit-any
+      const entries = result.weights[key].map((entry: any) => {
+        const newEntry = { ...entry };
+        // Convert legacy toUUID to toId
+        if (typeof newEntry.toUUID === "string") {
+          const toIntId = uuidToIntId.get(newEntry.toUUID);
+          if (toIntId !== undefined) {
+            newEntry.toId = toIntId;
+            delete newEntry.toUUID;
+          }
+        }
+        return newEntry;
+      });
+      newWeights[numericKey] = entries;
+    }
+    result.weights = newWeights;
+  }
+
+  // Convert ancestry if present
+  if (result.ancestry && Array.isArray(result.ancestry)) {
+    // deno-lint-ignore no-explicit-any
+    result.ancestry = result.ancestry.map((ancestor: any) => {
+      return convertMemeticToIntIds(ancestor, creature, legacyUuidMap);
+    });
+  }
+
+  return result;
+}
+
+/**
  * Load the creature from a JSON object.
  */
 export function loadFrom(
@@ -105,6 +215,11 @@ export function loadFrom(
   json: CreatureInternal | CreatureExport,
   validate: boolean,
 ): void {
+  // Issue #1958: Ensure legacy CreatureExport JSON has integer IDs populated.
+  // This writes back id/fromId/toId to the source JSON so that any
+  // subsequent use of the same object (e.g. SparseConfig) works correctly.
+  normaliseCreatureExport(json as CreatureExport);
+
   creature.uuid = (json as CreatureInternal).uuid;
   if (json.semanticVersion) {
     creature.semanticVersion = json.semanticVersion;
@@ -127,13 +242,18 @@ export function loadFrom(
 
   creature.clearState();
   const state = creature.state;
-  const uuidMap = new Map<string, number>();
+  // Issue #1958: Support both new integer IDs and legacy string UUIDs.
+  // The idMap uses number keys for new format, and legacyUuidMap handles
+  // string UUIDs from old-format JSON data for backward compatibility.
+  const idMap = new Map<number, number>();
+  const legacyUuidMap = new Map<string, number>();
 
   let i = json.input;
   while (i--) {
-    const key = `input-${i}`;
-    uuidMap.set(key, i);
-    const n = new Neuron(key, "input", 0, creature);
+    const neuronId = inputNeuronId(i);
+    idMap.set(neuronId, i);
+    legacyUuidMap.set(`input-${i}`, i);
+    const n = new Neuron(neuronId, "input", 0, creature);
     n.index = i;
     creature.neurons[i] = n;
   }
@@ -146,12 +266,24 @@ export function loadFrom(
     const jn = neurons[i];
     if (jn.type === "input") continue;
 
+    // deno-lint-ignore no-explicit-any
+    const raw = jn as any;
+
     if (jn.type === "output") {
-      (jn as { uuid: string }).uuid = `output-${outputIndex++}`;
+      const outId = outputNeuronId(outputIndex++);
+      (jn as { id: number }).id = outId;
+      // Legacy: if there was a string uuid, map it for synapse resolution
+      if (typeof raw.uuid === "string") {
+        legacyUuidMap.set(raw.uuid, pos);
+      }
+    } else if (typeof raw.uuid === "string") {
+      // Legacy format: convert string UUID to integer ID
+      legacyUuidMap.set(raw.uuid, pos);
     }
 
     const n = Neuron.fromJSON(jn, creature);
     n.index = pos;
+    ensureIdAbove(n.id);
 
     if ((jn as NeuronTrace).trace) {
       const target = state.node(n.index) as unknown as Record<string, unknown>;
@@ -162,7 +294,7 @@ export function loadFrom(
       safeAssignProperties(target, source);
     }
 
-    uuidMap.set(n.uuid, pos);
+    idMap.set(n.id, pos);
     creature.neurons[pos++] = n;
   }
 
@@ -173,19 +305,33 @@ export function loadFrom(
   for (let i = 0; i < synapseCount; i++) {
     const synapse = synapses[i];
     const se = synapse as SynapseExport;
-    const from = se.fromUUID
-      ? uuidMap.get(se.fromUUID)
-      : (synapse as SynapseInternal).from;
+    // deno-lint-ignore no-explicit-any
+    const rawSyn = synapse as any;
+
+    // Issue #1958: Support both new integer IDs and legacy string UUIDs
+    let from: number | undefined;
+    if (se.fromId !== undefined) {
+      from = idMap.get(se.fromId);
+    } else if (typeof rawSyn.fromUUID === "string") {
+      from = legacyUuidMap.get(rawSyn.fromUUID);
+    } else {
+      from = (synapse as SynapseInternal).from;
+    }
 
     assert(from !== undefined, "FROM is undefined");
 
-    const to = se.toUUID
-      ? uuidMap.get(se.toUUID)
-      : (synapse as SynapseInternal).to;
+    let to: number | undefined;
+    if (se.toId !== undefined) {
+      to = idMap.get(se.toId);
+    } else if (typeof rawSyn.toUUID === "string") {
+      to = legacyUuidMap.get(rawSyn.toUUID);
+    } else {
+      to = (synapse as SynapseInternal).to;
+    }
 
     if (to === undefined) {
       fail(
-        `TO is undefined: uuid ${se.toUUID}, index ${
+        `TO is undefined: id ${se.toId}, index ${
           (synapse as SynapseInternal).to
         }`,
       );
@@ -225,7 +371,16 @@ export function loadFrom(
     }
   }
 
-  creature.memetic = json.memetic;
+  // Issue #1958: Convert legacy UUID-keyed memetic data to integer IDs.
+  if (json.memetic && legacyUuidMap.size > 0) {
+    creature.memetic = convertMemeticToIntIds(
+      json.memetic,
+      creature,
+      legacyUuidMap,
+    );
+  } else {
+    creature.memetic = json.memetic;
+  }
   // Issue #1863: Load per-creature evolvable hyperparameters
   creature.hyperparameters = json.hyperparameters
     ? { ...json.hyperparameters }
@@ -336,7 +491,7 @@ export function shallowClone(
 
   for (let i = 0; i < creature.input; i++) {
     const original = creature.neurons[i];
-    const neuron = new Neuron(original.uuid, "input", 0, clone);
+    const neuron = new Neuron(original.id, "input", 0, clone);
     neuron.index = i;
     const originalTags = original.tags as TagInterface[] | undefined;
     if (originalTags) {
@@ -350,7 +505,7 @@ export function shallowClone(
   for (let i = creature.input; i < neuronCount; i++) {
     const original = creature.neurons[i];
     const neuron = new Neuron(
-      original.uuid,
+      original.id,
       original.type,
       original.bias,
       clone,

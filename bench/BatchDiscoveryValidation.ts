@@ -52,10 +52,10 @@ function generateDiscoveryResult(
   for (let i = 0; i < synapseCount; i++) {
     const fromIdx = i % inputCount;
     const toIdx = i % hiddenNeurons.length;
-    if (hiddenNeurons[toIdx]?.uuid) {
+    if (hiddenNeurons[toIdx]?.id !== undefined) {
       synapses.push({
-        fromNeuronUUID: `input-${fromIdx}`,
-        toNeuronUUID: hiddenNeurons[toIdx].uuid!,
+        fromNeuronId: fromIdx,
+        toNeuronId: hiddenNeurons[toIdx].id,
         weight: Math.random() * 2 - 1,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -71,10 +71,10 @@ function generateDiscoveryResult(
   for (let i = 0; i < neuronCount; i++) {
     const fromIdx = i % inputCount;
     const toIdx = i % hiddenNeurons.length;
-    if (hiddenNeurons[toIdx]?.uuid) {
+    if (hiddenNeurons[toIdx]?.id !== undefined) {
       neurons.push({
-        fromNeuronUUID: `input-${fromIdx}`,
-        toNeuronUUID: hiddenNeurons[toIdx].uuid!,
+        fromNeuronId: fromIdx,
+        toNeuronId: hiddenNeurons[toIdx].id,
         incomingWeight: Math.random() * 2 - 1,
         outgoingWeight: Math.random() * 2 - 1,
         squash: i % 2 === 0 ? TANH.NAME : Mish.NAME,
@@ -92,9 +92,9 @@ function generateDiscoveryResult(
   const squashCount = Math.floor(candidateCount * 0.3);
   for (let i = 0; i < squashCount; i++) {
     const neuronIdx = i % hiddenNeurons.length;
-    if (hiddenNeurons[neuronIdx]?.uuid) {
+    if (hiddenNeurons[neuronIdx]?.id !== undefined) {
       squashes.push({
-        neuronUUID: hiddenNeurons[neuronIdx].uuid!,
+        neuronId: hiddenNeurons[neuronIdx].id,
         previousSquash: "IDENTITY",
         squash: i % 2 === 0 ? TANH.NAME : Mish.NAME,
         expectedCreatureScoreGain: Math.random() * 0.5,

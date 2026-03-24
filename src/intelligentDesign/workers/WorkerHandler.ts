@@ -60,7 +60,7 @@ export type { WorkerInterface } from "../../workers/WorkerInterface.ts";
  * @example
  * ```ts
  * const worker = new WorkerHandler();
- * const result = await worker.score(creature, neuronUUID, dataDir, options);
+ * const result = await worker.score(creature, neuronId, dataDir, options);
  * getLogger().info(`Score: ${result.score?.score}`);
  * worker.terminate();
  * ```

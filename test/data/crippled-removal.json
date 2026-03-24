@@ -6,7 +6,8 @@
       "type": "hidden",
       "squash": "RELU",
       "bias": 0.5,
-      "uuid": "candidate-for-removal"
+      "uuid": "candidate-for-removal",
+      "id": 7002
     },
     { "type": "output", "squash": "IDENTITY", "bias": 0, "uuid": "output-0" }
   ],

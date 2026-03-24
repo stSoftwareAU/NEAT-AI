@@ -16,23 +16,25 @@ import { train } from "../TrainTestOnlyUtil.ts";
  * close to the winner receive a partial gradient leak via weight accumulation.
  */
 Deno.test("MINIMUM: non-winner connections close to winner receive gradient", () => {
+  const HIDDEN_A = 1_000_000;
+  const HIDDEN_B = 1_000_001;
   const creatureJson: CreatureExport = {
     neurons: [
       {
         type: "hidden",
-        uuid: "hidden-a",
+        id: HIDDEN_A,
         bias: 0,
         squash: "IDENTITY",
       },
       {
         type: "hidden",
-        uuid: "hidden-b",
+        id: HIDDEN_B,
         bias: 0,
         squash: "IDENTITY",
       },
       {
         type: "output",
-        uuid: "output-0",
+        id: -1,
         bias: 0,
         squash: "MINIMUM",
       },
@@ -40,23 +42,23 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
     synapses: [
       {
         weight: 1.0,
-        fromUUID: "input-0",
-        toUUID: "hidden-a",
+        fromId: 0,
+        toId: HIDDEN_A,
       },
       {
         weight: 1.0,
-        fromUUID: "input-1",
-        toUUID: "hidden-b",
+        fromId: 1,
+        toId: HIDDEN_B,
       },
       {
         weight: 1.0,
-        fromUUID: "hidden-a",
-        toUUID: "output-0",
+        fromId: HIDDEN_A,
+        toId: -1,
       },
       {
         weight: 0.95,
-        fromUUID: "hidden-b",
-        toUUID: "output-0",
+        fromId: HIDDEN_B,
+        toId: -1,
       },
     ],
     input: 2,
@@ -81,9 +83,15 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
 
   // Record original weights
   const exportBefore = creature.exportJSON();
+  // With weight 0.95, hidden-b produces the minimum value (winner).
+  // Winner upstream key: input-1 (id=1) -> hidden-b (gradient flows through winner)
+  const winnerUpstreamKey = `1->${HIDDEN_B}`;
+  // Runner-up leak key: hidden-a -> output (partial gradient on the connection to MINIMUM)
+  const runnerUpKey = `${HIDDEN_A}->-1`;
+
   const weightsBefore = new Map<string, number>();
   for (const s of exportBefore.synapses) {
-    weightsBefore.set(`${s.fromUUID}->${s.toUUID}`, s.weight);
+    weightsBefore.set(`${s.fromId}->${s.toId}`, s.weight);
   }
 
   // Train with iterations: 1 so that weight changes from applyLearnings are
@@ -100,7 +108,7 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
   const exportAfter = trainedCreature.exportJSON();
   const weightsAfter = new Map<string, number>();
   for (const s of exportAfter.synapses) {
-    weightsAfter.set(`${s.fromUUID}->${s.toUUID}`, s.weight);
+    weightsAfter.set(`${s.fromId}->${s.toId}`, s.weight);
   }
 
   // MINIMUM propagation passes gradient through the winner to the upstream
@@ -108,8 +116,8 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
   // it the winner. Verify gradient flowed through hidden-b by checking its
   // inward connection (input-1 -> hidden-b) changed weight.
   const winnerUpstreamDelta = Math.abs(
-    (weightsAfter.get("input-1->hidden-b") ?? 0) -
-      (weightsBefore.get("input-1->hidden-b") ?? 0),
+    (weightsAfter.get(winnerUpstreamKey) ?? 0) -
+      (weightsBefore.get(winnerUpstreamKey) ?? 0),
   );
   assert(
     winnerUpstreamDelta > 1e-10,
@@ -119,8 +127,8 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
   // The runner-up connection close to the winner should also receive partial
   // gradient via the leak mechanism (Issue #1874).
   const runnerUpDelta = Math.abs(
-    (weightsAfter.get("hidden-a->output-0") ?? 0) -
-      (weightsBefore.get("hidden-a->output-0") ?? 0),
+    (weightsAfter.get(runnerUpKey) ?? 0) -
+      (weightsBefore.get(runnerUpKey) ?? 0),
   );
   assert(
     runnerUpDelta > 1e-10,
@@ -133,42 +141,45 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
  */
 Deno.test("MINIMUM: convergence with close runner-up connections", () => {
   for (let attempts = 0; true; attempts++) {
+    const HIDDEN_A2 = 1_000_000;
+    const HIDDEN_B2 = 1_000_001;
+    const HIDDEN_C2 = 1_000_002;
     const creatureJson: CreatureExport = {
       neurons: [
         {
           type: "hidden",
-          uuid: "hidden-a",
+          id: HIDDEN_A2,
           bias: 0.1,
           squash: "IDENTITY",
         },
         {
           type: "hidden",
-          uuid: "hidden-b",
+          id: HIDDEN_B2,
           bias: -0.1,
           squash: "IDENTITY",
         },
         {
           type: "hidden",
-          uuid: "hidden-c",
+          id: HIDDEN_C2,
           bias: 0,
           squash: "IDENTITY",
         },
         {
           type: "output",
-          uuid: "output-0",
+          id: -1,
           bias: 0,
           squash: "MINIMUM",
         },
       ],
       synapses: [
-        { weight: 0.8, fromUUID: "input-0", toUUID: "hidden-a" },
-        { weight: 0.6, fromUUID: "input-1", toUUID: "hidden-a" },
-        { weight: 0.7, fromUUID: "input-0", toUUID: "hidden-b" },
-        { weight: 0.5, fromUUID: "input-1", toUUID: "hidden-b" },
-        { weight: 0.3, fromUUID: "input-0", toUUID: "hidden-c" },
-        { weight: 1.0, fromUUID: "hidden-a", toUUID: "output-0" },
-        { weight: 0.95, fromUUID: "hidden-b", toUUID: "output-0" },
-        { weight: 0.5, fromUUID: "hidden-c", toUUID: "output-0" },
+        { weight: 0.8, fromId: 0, toId: HIDDEN_A2 },
+        { weight: 0.6, fromId: 1, toId: HIDDEN_A2 },
+        { weight: 0.7, fromId: 0, toId: HIDDEN_B2 },
+        { weight: 0.5, fromId: 1, toId: HIDDEN_B2 },
+        { weight: 0.3, fromId: 0, toId: HIDDEN_C2 },
+        { weight: 1.0, fromId: HIDDEN_A2, toId: -1 },
+        { weight: 0.95, fromId: HIDDEN_B2, toId: -1 },
+        { weight: 0.5, fromId: HIDDEN_C2, toId: -1 },
       ],
       input: 2,
       output: 1,

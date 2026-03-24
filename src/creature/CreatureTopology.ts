@@ -19,7 +19,8 @@ export interface TopologyCaches {
   synapsesIndexedByTo: Synapse[] | null;
   connectionSet: Set<number> | null;
   availableConnectionsCache: [number, number][] | null;
-  hiddenNeuronUUIDs: Set<string> | null;
+  /** Issue #1958: Cached set of hidden neuron integer IDs */
+  hiddenNeuronIds: Set<number> | null;
   inwardCacheMissCount: number;
 }
 
@@ -260,24 +261,25 @@ export function hasConnection(
 }
 
 /**
- * Builds and returns a cached Set of hidden neuron UUIDs.
+ * Builds and returns a cached Set of hidden neuron integer IDs.
  * Enables O(1) lookup for genetic compatibility checks.
  * Issue #1032: Performance optimisation for genetic compatibility checks.
+ * Issue #1958: Uses integer neuron IDs instead of UUID strings.
  */
-export function getHiddenNeuronUUIDs(
+export function getHiddenNeuronIds(
   creature: Creature,
   caches: TopologyCaches,
-): Set<string> {
-  if (caches.hiddenNeuronUUIDs === null) {
-    caches.hiddenNeuronUUIDs = new Set<string>();
+): Set<number> {
+  if (caches.hiddenNeuronIds === null) {
+    caches.hiddenNeuronIds = new Set<number>();
     for (let i = creature.input, len = creature.neurons.length; i < len; i++) {
       const neuron = creature.neurons[i];
       if (neuron.type === "hidden") {
-        caches.hiddenNeuronUUIDs.add(neuron.uuid);
+        caches.hiddenNeuronIds.add(neuron.id);
       }
     }
   }
-  return caches.hiddenNeuronUUIDs;
+  return caches.hiddenNeuronIds;
 }
 
 /**

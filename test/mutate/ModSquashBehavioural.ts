@@ -27,12 +27,14 @@ function createTestCreature(): Creature {
       {
         type: "hidden",
         uuid: "hidden-1",
+        id: 5001,
         squash: "LOGISTIC",
         bias: 0.1,
       },
       {
         type: "hidden",
         uuid: "hidden-2",
+        id: 5002,
         squash: "TANH",
         bias: 0.2,
       },
@@ -117,11 +119,11 @@ Deno.test("ModSquash: assigned squash is always a valid activation function", ()
       if (neuron.type === "hidden" || neuron.type === "output") {
         assert(
           neuron.squash !== undefined && neuron.squash !== null,
-          `Neuron ${neuron.uuid} has undefined/null squash`,
+          `Neuron ${neuron.id} has undefined/null squash`,
         );
         assert(
           typeof neuron.squash === "string" && neuron.squash.length > 0,
-          `Neuron ${neuron.uuid} has invalid squash: ${neuron.squash}`,
+          `Neuron ${neuron.id} has invalid squash: ${neuron.squash}`,
         );
       }
     }

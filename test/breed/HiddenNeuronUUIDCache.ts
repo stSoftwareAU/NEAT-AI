@@ -50,26 +50,28 @@ function makeCreatureWithHiddenNeurons(
   return Creature.fromJSON(json);
 }
 
-Deno.test("getHiddenNeuronUUIDs returns correct Set of hidden neuron UUIDs", () => {
+Deno.test("getHiddenNeuronIds returns correct Set of hidden neuron UUIDs", () => {
   const hiddenUUIDs = ["hidden-1", "hidden-2", "hidden-3"];
   const creature = makeCreatureWithHiddenNeurons(hiddenUUIDs);
 
-  const result = creature.getHiddenNeuronUUIDs();
+  const result = creature.getHiddenNeuronIds();
 
+  // IDs are deterministic integers derived from the UUID strings
+  // hidden-1 → 1775329650, hidden-2 → 1775329649, hidden-3 → 1775329648
   assertEquals(result.size, 3);
-  assertEquals(result.has("hidden-1"), true);
-  assertEquals(result.has("hidden-2"), true);
-  assertEquals(result.has("hidden-3"), true);
-  assertEquals(result.has("output-0"), false);
-  assertEquals(result.has("input-0"), false);
+  assertEquals(result.has(1775329650), true);
+  assertEquals(result.has(1775329649), true);
+  assertEquals(result.has(1775329648), true);
+  assertEquals(result.has(-1), false);
+  assertEquals(result.has(0), false);
 });
 
-Deno.test("getHiddenNeuronUUIDs returns consistent results on subsequent calls", () => {
+Deno.test("getHiddenNeuronIds returns consistent results on subsequent calls", () => {
   const hiddenUUIDs = ["hidden-a", "hidden-b"];
   const creature = makeCreatureWithHiddenNeurons(hiddenUUIDs);
 
-  const result1 = creature.getHiddenNeuronUUIDs();
-  const result2 = creature.getHiddenNeuronUUIDs();
+  const result1 = creature.getHiddenNeuronIds();
+  const result2 = creature.getHiddenNeuronIds();
 
   // Multiple calls should return the same content
   assertEquals(result1.size, result2.size);
@@ -78,21 +80,22 @@ Deno.test("getHiddenNeuronUUIDs returns consistent results on subsequent calls",
   }
 });
 
-Deno.test("getHiddenNeuronUUIDs returns correct content after clearCache", () => {
+Deno.test("getHiddenNeuronIds returns correct content after clearCache", () => {
   const hiddenUUIDs = ["hidden-x", "hidden-y"];
   const creature = makeCreatureWithHiddenNeurons(hiddenUUIDs);
 
-  creature.getHiddenNeuronUUIDs();
+  creature.getHiddenNeuronIds();
   creature.clearCache();
-  const result = creature.getHiddenNeuronUUIDs();
+  const result = creature.getHiddenNeuronIds();
 
   // Contents should still be correct after cache clear
+  // hidden-x → 1775329579, hidden-y → 1775329578
   assertEquals(result.size, 2);
-  assertEquals(result.has("hidden-x"), true);
-  assertEquals(result.has("hidden-y"), true);
+  assertEquals(result.has(1775329579), true);
+  assertEquals(result.has(1775329578), true);
 });
 
-Deno.test("getHiddenNeuronUUIDs returns empty Set for creature with no hidden neurons", () => {
+Deno.test("getHiddenNeuronIds returns empty Set for creature with no hidden neurons", () => {
   const json: CreatureExport = {
     neurons: [
       {
@@ -114,7 +117,7 @@ Deno.test("getHiddenNeuronUUIDs returns empty Set for creature with no hidden ne
   };
 
   const creature = Creature.fromJSON(json);
-  const result = creature.getHiddenNeuronUUIDs();
+  const result = creature.getHiddenNeuronIds();
 
   assertEquals(result.size, 0);
 });
@@ -124,9 +127,9 @@ Deno.test("geneticCompatibility uses cached hiddenNeuronUUIDs", () => {
   const father = makeCreatureWithHiddenNeurons(sharedUUIDs);
   const mother = makeCreatureWithHiddenNeurons(sharedUUIDs);
 
-  // Call getHiddenNeuronUUIDs to populate the cache
-  father.getHiddenNeuronUUIDs();
-  mother.getHiddenNeuronUUIDs();
+  // Call getHiddenNeuronIds to populate the cache
+  father.getHiddenNeuronIds();
+  mother.getHiddenNeuronIds();
 
   // Genetic compatibility should use the cached Sets
   const compatibility = geneticCompatibility(father, mother);
@@ -134,16 +137,17 @@ Deno.test("geneticCompatibility uses cached hiddenNeuronUUIDs", () => {
   assertEquals(compatibility, 1);
 });
 
-Deno.test("getHiddenNeuronUUIDs returns correct content after connect", () => {
+Deno.test("getHiddenNeuronIds returns correct content after connect", () => {
   const hiddenUUIDs = ["hidden-1"];
   const creature = makeCreatureWithHiddenNeurons(hiddenUUIDs);
 
   // Issue #1445: Adding a connection does not change the set of neurons
   creature.connect(1, creature.neurons.length - 1, 0.3);
 
-  const result = creature.getHiddenNeuronUUIDs();
+  const result = creature.getHiddenNeuronIds();
 
   // Hidden neuron set should still be correct after adding a connection
+  // hidden-1 → 1775329650
   assertEquals(result.size, 1);
-  assertEquals(result.has("hidden-1"), true);
+  assertEquals(result.has(1775329650), true);
 });

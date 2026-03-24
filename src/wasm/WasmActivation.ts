@@ -14,7 +14,6 @@
 import type { Creature } from "../Creature.ts";
 import { WasmError } from "../errors/WasmError.ts";
 import { getLogger } from "../utils/Logger.ts";
-import { compileCreatureToWasm } from "./CompileToWasm.ts";
 import type { CompiledCreatureData } from "./CompileToWasm.ts";
 import type { WasmCompiledNetwork } from "./WasmCompiledNetwork.ts";
 import {
@@ -120,10 +119,21 @@ export class WasmCreatureActivation {
   }
 
   /**
-   * Create a WASM activation wrapper directly from a Creature
+   * Create a WASM activation wrapper directly from a Creature.
+   *
+   * Issue #1957: Uses TypedTopology when available for efficient
+   * typed-array-based WASM binary compilation.
    */
   static fromCreature(creature: Creature): WasmCreatureActivation | null {
-    const compiled = compileCreatureToWasm(creature);
+    const topo = creature.buildTypedTopology();
+    const binaryData = topo.toWasmBinary();
+    const compiled: CompiledCreatureData = {
+      data: binaryData,
+      numNeurons: topo.numNeurons,
+      numInputs: topo.numInputs,
+      numOutputs: topo.numOutputs,
+      numSynapses: topo.numSynapses,
+    };
     return WasmCreatureActivation.create(compiled);
   }
 

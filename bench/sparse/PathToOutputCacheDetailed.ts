@@ -25,34 +25,34 @@ function formatDuration(ms: number): string {
 /** Build outgoing synapse map - this is the part we want to cache */
 function buildOutgoingSynapsesMap(
   creature: CreatureExport,
-): Map<string, SynapseExport[]> {
-  const outgoingSynapsesMap = new Map<string, SynapseExport[]>();
+): Map<number, SynapseExport[]> {
+  const outgoingSynapsesMap = new Map<number, SynapseExport[]>();
   creature.synapses.forEach((synapse) => {
-    if (!outgoingSynapsesMap.has(synapse.fromUUID)) {
-      outgoingSynapsesMap.set(synapse.fromUUID, []);
+    if (!outgoingSynapsesMap.has(synapse.fromId!)) {
+      outgoingSynapsesMap.set(synapse.fromId!, []);
     }
-    outgoingSynapsesMap.get(synapse.fromUUID)!.push(synapse);
+    outgoingSynapsesMap.get(synapse.fromId!)!.push(synapse);
   });
   return outgoingSynapsesMap;
 }
 
 /** BFS using pre-built map - uses queue.shift() (current implementation) */
 function bfsWithShift(
-  selectedNeurons: Readonly<Set<string>>,
-  outgoingSynapsesMap: Map<string, SynapseExport[]>,
-): Set<string> {
-  const pathNeurons = new Set<string>(selectedNeurons);
+  selectedNeurons: Readonly<Set<number>>,
+  outgoingSynapsesMap: Map<number, SynapseExport[]>,
+): Set<number> {
+  const pathNeurons = new Set<number>(selectedNeurons);
   const queue = Array.from(selectedNeurons);
 
   while (queue.length > 0) {
-    const currentNeuronUUID = queue.shift()!;
-    const outgoingSynapses = outgoingSynapsesMap.get(currentNeuronUUID) || [];
+    const currentNeuronId = queue.shift()!;
+    const outgoingSynapses = outgoingSynapsesMap.get(currentNeuronId) || [];
 
     for (const synapse of outgoingSynapses) {
-      const toUUID = synapse.toUUID;
-      if (!pathNeurons.has(toUUID)) {
-        pathNeurons.add(toUUID);
-        queue.push(toUUID);
+      const toId = synapse.toId!;
+      if (!pathNeurons.has(toId)) {
+        pathNeurons.add(toId);
+        queue.push(toId);
       }
     }
   }
@@ -61,22 +61,22 @@ function bfsWithShift(
 
 /** BFS using pre-built map - uses index pointer (optimised) */
 function bfsWithIndexPointer(
-  selectedNeurons: Readonly<Set<string>>,
-  outgoingSynapsesMap: Map<string, SynapseExport[]>,
-): Set<string> {
-  const pathNeurons = new Set<string>(selectedNeurons);
+  selectedNeurons: Readonly<Set<number>>,
+  outgoingSynapsesMap: Map<number, SynapseExport[]>,
+): Set<number> {
+  const pathNeurons = new Set<number>(selectedNeurons);
   const queue = Array.from(selectedNeurons);
   let front = 0;
 
   while (front < queue.length) {
-    const currentNeuronUUID = queue[front++];
-    const outgoingSynapses = outgoingSynapsesMap.get(currentNeuronUUID) || [];
+    const currentNeuronId = queue[front++];
+    const outgoingSynapses = outgoingSynapsesMap.get(currentNeuronId) || [];
 
     for (const synapse of outgoingSynapses) {
-      const toUUID = synapse.toUUID;
-      if (!pathNeurons.has(toUUID)) {
-        pathNeurons.add(toUUID);
-        queue.push(toUUID);
+      const toId = synapse.toId!;
+      if (!pathNeurons.has(toId)) {
+        pathNeurons.add(toId);
+        queue.push(toId);
       }
     }
   }

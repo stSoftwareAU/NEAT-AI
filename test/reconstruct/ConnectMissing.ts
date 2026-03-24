@@ -21,17 +21,22 @@ Deno.test("randomConnectMissing - connects all inputs when some are missing", ()
   const exported3 = creature3.exportJSON();
   assertEquals(exported3.input, 20);
 
-  // Verify every input has at least one synapse connected
-  const connectedInputs = new Set<string>();
+  // Verify every input has at least one synapse connected.
+  // Input neurons have IDs 0..(input-1) (non-negative integers).
+  const connectedInputs = new Set<number>();
   for (const synapse of exported3.synapses) {
-    if (synapse.fromUUID.startsWith("input-")) {
-      connectedInputs.add(synapse.fromUUID);
+    if (
+      synapse.fromId !== undefined &&
+      synapse.fromId >= 0 &&
+      synapse.fromId < exported3.input
+    ) {
+      connectedInputs.add(synapse.fromId);
     }
   }
 
   for (let i = 0; i < exported3.input; i++) {
     assert(
-      connectedInputs.has(`input-${i}`),
+      connectedInputs.has(i),
       `Input ${i} should be connected after randomConnectMissing`,
     );
   }

@@ -20,12 +20,14 @@ Deno.test("WorkerProcessor.process returns score payload and tags exported creat
     const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
     const exported = creature.exportJSON();
     const hidden = exported.neurons.find((n) => n.type === "hidden");
-    assertExists(hidden?.uuid);
+    assertExists(hidden);
+    assertExists(hidden.id, "Hidden neuron must have a numeric id");
 
+    const hiddenIdStr = String(hidden.id);
     const request: RequestData = {
       taskID: 42,
       score: {
-        uuid: hidden.uuid,
+        uuid: hiddenIdStr,
         creature: JSON.stringify(exported, null, 1),
         dataDir: ".",
         options: {},
@@ -37,7 +39,7 @@ Deno.test("WorkerProcessor.process returns score payload and tags exported creat
 
     assertEquals(response.taskID, 42);
     assertExists(response.score);
-    assertEquals(response.score.uuid, hidden.uuid);
+    assertEquals(response.score.uuid, hiddenIdStr);
     assertEquals(response.score.score, 123.456);
     assertEquals(response.score.error, 0.789);
 

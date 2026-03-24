@@ -5,6 +5,11 @@ import { applyCoordinatedStructuralCandidate } from "../../src/architecture/Erro
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+
+// Integer IDs for neurons used in these tests (from UUID hashing):
+// hidden-0 → 1775329651, output-0 → -1
+const ID_HIDDEN_0 = 1775329651;
 
 Deno.test(
   "applyCoordinatedStructuralCandidate: addNeuron updates an existing neuron (idempotent replay)",
@@ -22,6 +27,9 @@ Deno.test(
         { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
       ],
     };
+    normaliseCreatureExport(
+      base as Parameters<typeof normaliseCreatureExport>[0],
+    );
     const creature = Creature.fromJSON(base);
 
     const candidate: CoordinatedStructuralCandidate = {
@@ -30,7 +38,7 @@ Deno.test(
       operations: [
         {
           type: "addNeuron",
-          neuronUuid: "hidden-0",
+          neuronId: ID_HIDDEN_0,
           neuronType: "hidden",
           squash: TANH.NAME,
           bias: 0.5,
@@ -41,7 +49,7 @@ Deno.test(
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
     const exported = mutated.exportJSON();
 
-    const neuron = exported.neurons.find((n) => n.uuid === "hidden-0");
+    const neuron = exported.neurons.find((n) => n.id === ID_HIDDEN_0);
     assertEquals(neuron?.squash, TANH.NAME);
     assertEquals(neuron?.bias, 0.5);
     assertEquals(exported.neurons.length, base.neurons.length);
@@ -60,7 +68,13 @@ Deno.test(
       ],
       synapses: [{ fromUUID: "input-0", toUUID: "output-0", weight: 0.25 }],
     };
+    normaliseCreatureExport(
+      base as Parameters<typeof normaliseCreatureExport>[0],
+    );
     const creature = Creature.fromJSON(base);
+
+    // Use a fixed neuronId that won't conflict with existing neurons.
+    const NEW_NEURON_ID = 6000;
 
     const candidate: CoordinatedStructuralCandidate = {
       type: "coordinated_structural",
@@ -68,23 +82,23 @@ Deno.test(
       operations: [
         {
           type: "addNeuron",
-          neuronUuid: "hidden-appended",
+          neuronId: NEW_NEURON_ID,
           neuronType: "hidden",
           squash: IDENTITY.NAME,
           bias: 0.0,
-          insertBeforeNeuronUuid: "does-not-exist",
+          insertBeforeNeuronId: "does-not-exist" as unknown as number,
         },
         // Keep the neuron alive: a lone hidden neuron will be removed by `fix()`.
         {
           type: "addSynapse",
-          fromNeuronUuid: "input-0",
-          toNeuronUuid: "hidden-appended",
+          fromNeuronId: 0,
+          toNeuronId: NEW_NEURON_ID,
           weight: 1.0,
         },
         {
           type: "addSynapse",
-          fromNeuronUuid: "hidden-appended",
-          toNeuronUuid: "output-0",
+          fromNeuronId: NEW_NEURON_ID,
+          toNeuronId: -1,
           weight: 0.5,
         },
       ],
@@ -93,19 +107,20 @@ Deno.test(
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
     const exported = mutated.exportJSON();
 
+    // New hidden neuron should be inserted before output (-1)
     assertEquals(exported.neurons.length, base.neurons.length + 1);
-    assertEquals(exported.neurons.at(0)?.uuid, "hidden-appended");
-    assertEquals(exported.neurons.at(1)?.uuid, "output-0");
+    assertEquals(exported.neurons.at(0)?.id, NEW_NEURON_ID);
+    assertEquals(exported.neurons.at(1)?.id, -1);
     assertEquals(
       exported.synapses.some((s) =>
-        s.fromUUID === "input-0" && s.toUUID === "hidden-appended" &&
+        s.fromId === 0 && s.toId === NEW_NEURON_ID &&
         s.weight === 1.0
       ),
       true,
     );
     assertEquals(
       exported.synapses.some((s) =>
-        s.fromUUID === "hidden-appended" && s.toUUID === "output-0" &&
+        s.fromId === NEW_NEURON_ID && s.toId === -1 &&
         s.weight === 0.5
       ),
       true,
@@ -129,6 +144,9 @@ Deno.test(
         { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
       ],
     };
+    normaliseCreatureExport(
+      base as Parameters<typeof normaliseCreatureExport>[0],
+    );
     const creature = Creature.fromJSON(base);
 
     const candidate: CoordinatedStructuralCandidate = {
@@ -137,7 +155,7 @@ Deno.test(
       operations: [
         {
           type: "changeSquash",
-          neuronUuid: "hidden-0",
+          neuronId: ID_HIDDEN_0,
           squash: TANH.NAME,
         },
       ],
@@ -147,7 +165,7 @@ Deno.test(
     const exported = mutated.exportJSON();
 
     assertEquals(
-      exported.neurons.find((n) => n.uuid === "hidden-0")?.squash,
+      exported.neurons.find((n) => n.id === ID_HIDDEN_0)?.squash,
       TANH.NAME,
     );
   },
@@ -169,6 +187,9 @@ Deno.test(
         { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
       ],
     };
+    normaliseCreatureExport(
+      base as Parameters<typeof normaliseCreatureExport>[0],
+    );
     const creature = Creature.fromJSON(base);
 
     const candidate: CoordinatedStructuralCandidate = {
@@ -177,7 +198,7 @@ Deno.test(
       operations: [
         {
           type: "setBias",
-          neuronUuid: "hidden-0",
+          neuronId: ID_HIDDEN_0,
           bias: -0.25,
         },
       ],
@@ -187,7 +208,7 @@ Deno.test(
     const exported = mutated.exportJSON();
 
     assertEquals(
-      exported.neurons.find((n) => n.uuid === "hidden-0")?.bias,
+      exported.neurons.find((n) => n.id === ID_HIDDEN_0)?.bias,
       -0.25,
     );
   },
@@ -209,6 +230,9 @@ Deno.test(
         { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
       ],
     };
+    normaliseCreatureExport(
+      base as Parameters<typeof normaliseCreatureExport>[0],
+    );
     const creature = Creature.fromJSON(base);
 
     const candidate: CoordinatedStructuralCandidate = {
@@ -217,7 +241,7 @@ Deno.test(
       operations: [
         {
           type: "removeNeuron",
-          neuronUuid: "missing-neuron",
+          neuronId: 7000, // Does not exist in the creature
         },
       ],
     };
@@ -228,7 +252,7 @@ Deno.test(
     assertEquals(exported.neurons.length, base.neurons.length);
     assertEquals(exported.synapses.length, base.synapses.length);
     assertEquals(
-      exported.neurons.some((n) => n.uuid === "missing-neuron"),
+      exported.neurons.some((n) => n.id === 7000),
       false,
     );
   },

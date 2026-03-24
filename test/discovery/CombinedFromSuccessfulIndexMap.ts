@@ -13,10 +13,19 @@ import {
   buildCombinedFromSuccessful,
   type DiscoveryCandidate,
 } from "../../src/discovery/DiscoveryCandidates.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+
+// Integer IDs for neurons used in these tests (from UUID hashing):
+// hidden-A = 1775329634, hidden-B = 1775329633, hidden-C = 1775329632
+// output-0 = -1
+
+const ID_HIDDEN_A = 1775329634;
+const ID_HIDDEN_B = 1775329633;
+const ID_HIDDEN_C = 1775329632;
 
 /** Creates a test creature with hidden neurons for combination testing. */
 function makeBaseCreature() {
-  const creature = Creature.fromJSON({
+  const json = {
     input: 2,
     output: 1,
     neurons: [
@@ -32,7 +41,13 @@ function makeBaseCreature() {
       { fromUUID: "hidden-B", toUUID: "output-0", weight: 0.4 },
       { fromUUID: "hidden-C", toUUID: "output-0", weight: 0.5 },
     ],
-  });
+  };
+  normaliseCreatureExport(
+    json as Parameters<typeof normaliseCreatureExport>[0],
+  );
+  const creature = Creature.fromJSON(
+    json as Parameters<typeof Creature.fromJSON>[0],
+  );
   creature.validate();
   CreatureUtil.makeUUID(creature);
   return creature;
@@ -47,14 +62,14 @@ Deno.test(
     // Removal candidate: remove hidden-B
     const removeBJson = structuredClone(baseJSON);
     removeBJson.neurons = removeBJson.neurons.filter(
-      (n) => n.uuid !== "hidden-B",
+      (n) => n.id !== ID_HIDDEN_B,
     );
     removeBJson.synapses = removeBJson.synapses.filter(
-      (s) => s.fromUUID !== "hidden-B" && s.toUUID !== "hidden-B",
+      (s) => s.fromId !== ID_HIDDEN_B && s.toId !== ID_HIDDEN_B,
     );
     removeBJson.synapses.push({
-      fromUUID: "input-1",
-      toUUID: "hidden-C",
+      fromId: 1,
+      toId: ID_HIDDEN_C,
       weight: 0.5,
     });
     const removeBCreature = Creature.fromJSON(removeBJson);
@@ -65,8 +80,8 @@ Deno.test(
     // Add synapse candidate
     const addJson = structuredClone(baseJSON);
     addJson.synapses.push({
-      fromUUID: "input-0",
-      toUUID: "hidden-B",
+      fromId: 0,
+      toId: ID_HIDDEN_B,
       weight: 0.2,
     });
     const addCreature = Creature.fromJSON(addJson);
@@ -76,7 +91,7 @@ Deno.test(
 
     // Change squash candidate
     const squashJson = structuredClone(baseJSON);
-    const hiddenA = squashJson.neurons.find((n) => n.uuid === "hidden-A");
+    const hiddenA = squashJson.neurons.find((n) => n.id === ID_HIDDEN_A);
     if (hiddenA) hiddenA.squash = "TANH";
     const squashCreature = Creature.fromJSON(squashJson);
     delete squashCreature.uuid;
@@ -145,14 +160,14 @@ Deno.test(
     // Create two removal candidates of the same type
     const removeBJson = structuredClone(baseJSON);
     removeBJson.neurons = removeBJson.neurons.filter(
-      (n) => n.uuid !== "hidden-B",
+      (n) => n.id !== ID_HIDDEN_B,
     );
     removeBJson.synapses = removeBJson.synapses.filter(
-      (s) => s.fromUUID !== "hidden-B" && s.toUUID !== "hidden-B",
+      (s) => s.fromId !== ID_HIDDEN_B && s.toId !== ID_HIDDEN_B,
     );
     removeBJson.synapses.push({
-      fromUUID: "input-1",
-      toUUID: "hidden-C",
+      fromId: 1,
+      toId: ID_HIDDEN_C,
       weight: 0.5,
     });
     const removeBCreature = Creature.fromJSON(removeBJson);
@@ -162,14 +177,14 @@ Deno.test(
 
     const removeCJson = structuredClone(baseJSON);
     removeCJson.neurons = removeCJson.neurons.filter(
-      (n) => n.uuid !== "hidden-C",
+      (n) => n.id !== ID_HIDDEN_C,
     );
     removeCJson.synapses = removeCJson.synapses.filter(
-      (s) => s.fromUUID !== "hidden-C" && s.toUUID !== "hidden-C",
+      (s) => s.fromId !== ID_HIDDEN_C && s.toId !== ID_HIDDEN_C,
     );
     removeCJson.synapses.push({
-      fromUUID: "hidden-A",
-      toUUID: "output-0",
+      fromId: ID_HIDDEN_A,
+      toId: -1,
       weight: 0.3,
     });
     const removeCCreature = Creature.fromJSON(removeCJson);

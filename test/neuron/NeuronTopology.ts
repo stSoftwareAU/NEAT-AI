@@ -24,7 +24,7 @@ function makeTopologyCreature(): Creature {
 
 Deno.test("mutate - MOD_BIAS modifies the bias", () => {
   const creature = makeTopologyCreature();
-  const hiddenNeuron = creature.neurons.find((n) => n.uuid === "hidden-1")!;
+  const hiddenNeuron = creature.neurons.find((n) => n.type === "hidden")!;
   // Mutate bias multiple times to increase chance of visible change
   let changed = false;
   for (let i = 0; i < 20; i++) {
@@ -43,7 +43,7 @@ Deno.test("mutate - MOD_BIAS modifies the bias", () => {
 
 Deno.test("mutate - MOD_SQUASH changes the squash function", () => {
   const creature = makeTopologyCreature();
-  const hiddenNeuron = creature.neurons.find((n) => n.uuid === "hidden-1")!;
+  const hiddenNeuron = creature.neurons.find((n) => n.type === "hidden")!;
   const originalSquash = hiddenNeuron.squash;
 
   // Try multiple times since random pick might choose same squash
@@ -62,7 +62,7 @@ Deno.test("mutate - MOD_SQUASH changes the squash function", () => {
 
 Deno.test("mutate - MOD_SQUASH works on output neurons", () => {
   const creature = makeTopologyCreature();
-  const outputNeuron = creature.neurons.find((n) => n.uuid === "output-0")!;
+  const outputNeuron = creature.neurons.find((n) => n.id === -1)!;
 
   const result = mutate(outputNeuron, Mutation.MOD_SQUASH.name);
   assert(result, "Mutation should return true");
@@ -81,7 +81,7 @@ Deno.test("mutate - throws for input neurons", () => {
 
 Deno.test("mutate - throws for unknown method", () => {
   const creature = makeTopologyCreature();
-  const hiddenNeuron = creature.neurons.find((n) => n.uuid === "hidden-1")!;
+  const hiddenNeuron = creature.neurons.find((n) => n.type === "hidden")!;
 
   assertThrows(
     () => mutate(hiddenNeuron, "UNKNOWN_METHOD"),
@@ -92,7 +92,7 @@ Deno.test("mutate - throws for unknown method", () => {
 
 Deno.test("mutate - throws for non-string method", () => {
   const creature = makeTopologyCreature();
-  const hiddenNeuron = creature.neurons.find((n) => n.uuid === "hidden-1")!;
+  const hiddenNeuron = creature.neurons.find((n) => n.id === 5001)!;
 
   assertThrows(
     () => mutate(hiddenNeuron, 42 as unknown as string),
@@ -115,7 +115,7 @@ Deno.test("mutate - MOD_SQUASH throws for constant neurons", () => {
     ],
   };
   const creature = Creature.fromJSON(json);
-  const constNeuron = creature.neurons.find((n) => n.uuid === "const-1")!;
+  const constNeuron = creature.neurons.find((n) => n.type === "constant")!;
 
   assertThrows(
     () => mutate(constNeuron, Mutation.MOD_SQUASH.name),
@@ -126,7 +126,7 @@ Deno.test("mutate - MOD_SQUASH throws for constant neurons", () => {
 
 Deno.test("mutate - returns true on success", () => {
   const creature = makeTopologyCreature();
-  const hiddenNeuron = creature.neurons.find((n) => n.uuid === "hidden-1")!;
+  const hiddenNeuron = creature.neurons.find((n) => n.type === "hidden")!;
 
   const result = mutate(hiddenNeuron, Mutation.MOD_BIAS.name);
   assertEquals(result, true);
@@ -135,7 +135,7 @@ Deno.test("mutate - returns true on success", () => {
 Deno.test("mutate - clears creature UUID after mutation", () => {
   const creature = makeTopologyCreature();
   creature.uuid = "test-uuid";
-  const hiddenNeuron = creature.neurons.find((n) => n.uuid === "hidden-1")!;
+  const hiddenNeuron = creature.neurons.find((n) => n.type === "hidden")!;
 
   mutate(hiddenNeuron, Mutation.MOD_BIAS.name);
   assertEquals(creature.uuid, undefined);
@@ -156,7 +156,7 @@ Deno.test("fix - hidden neuron gets inward connection if none", () => {
     ],
   };
   const creature = Creature.fromJSON(json);
-  const hidden = creature.neurons.find((n) => n.uuid === "isolated-h")!;
+  const hidden = creature.neurons.find((n) => n.type === "hidden")!;
 
   fix(hidden);
 
@@ -178,7 +178,7 @@ Deno.test("fix - output neuron gets inward connection if none", () => {
     synapses: [],
   };
   const creature = Creature.fromJSON(json);
-  const output = creature.neurons.find((n) => n.uuid === "output-0")!;
+  const output = creature.neurons.find((n) => n.id === -1)!;
 
   fix(output);
 

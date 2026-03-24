@@ -25,26 +25,26 @@ Deno.test("applyNeuronChanges updates neuron squashes, tags changes, and tags sc
     const second = hiddenNeurons.length > 1
       ? hiddenNeurons[1]
       : hiddenNeurons[0];
-    assertExists(first.uuid);
-    assertExists(second.uuid);
+    assertExists(first.id);
+    assertExists(second.id);
 
     // Ensure one change and one no-op to cover the "continue" branch.
     first.squash = "TANH";
     second.squash = "GELU";
 
     const neuronSquashMap = new Map<
-      string,
+      number,
       { squash: string; score: number; error: number }
     >();
-    neuronSquashMap.set(first.uuid, { squash: "Swish", score: 2, error: 1 });
-    neuronSquashMap.set(second.uuid, { squash: "GELU", score: 2, error: 1 }); // unchanged
+    neuronSquashMap.set(first.id, { squash: "Swish", score: 2, error: 1 });
+    neuronSquashMap.set(second.id, { squash: "GELU", score: 2, error: 1 }); // unchanged
 
     const result = await applyNeuronChanges(exported, neuronSquashMap, ".", {});
 
     assertEquals(result.score, 9.9);
     assertEquals(result.error, 0.01);
 
-    const updated = result.creature.neurons.find((n) => n.uuid === first.uuid);
+    const updated = result.creature.neurons.find((n) => n.id === first.id);
     assertExists(updated);
     assertEquals(updated.squash, "Swish");
 

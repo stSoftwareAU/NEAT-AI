@@ -114,6 +114,13 @@ export {
   wasmAccumulateWeightPersistent8Way,
 } from "./WasmTrainingState.ts";
 
+// Issue #1960 - Batch APIs for amortising WASM boundary crossing
+export {
+  calculateBiasBatch4Way,
+  calculateWeightBatch4Way,
+  validateTopologyBatch,
+} from "./WasmBatchOps.ts";
+
 // Issue #1338 - Bound cached WASM activations under memory pressure
 // Issue #1504 - Added getCachedWasmActivationCount for cache diagnostics
 // Issue #1616 - Added getWasmActivationLruStats and resetWasmActivationLruStats

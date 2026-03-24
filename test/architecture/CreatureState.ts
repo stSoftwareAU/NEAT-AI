@@ -273,7 +273,7 @@ Deno.test("CreatureState - collectNeuronErrors returns only neurons with errors"
 
   // Only neuron at index 2 has errors > 0
   assertEquals(errors.size, 1);
-  assert(errors.has(creature.neurons[2].uuid));
+  assert(errors.has(creature.neurons[2].id));
 });
 
 Deno.test("CreatureState - collectNeuronErrors empty when no errors", () => {

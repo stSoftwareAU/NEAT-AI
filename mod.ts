@@ -203,6 +203,16 @@ export { Upgrade } from "./src/reconstruct/Upgrade.ts";
 export { randomConnectMissing } from "./src/reconstruct/ConnectMissing.ts";
 
 /**
+ * Typed Array Topology
+ *
+ * Issue #1957: Typed array representation of creature topology for reduced
+ * GC pressure and WASM-compatible memcpy serialisation.
+ *
+ * @see {@link module:src/architecture/TypedTopology}
+ */
+export { TypedTopology } from "./src/architecture/TypedTopology.ts";
+
+/**
  * Neuron Class
  */
 export { type NeuronExport } from "./src/architecture/NeuronInterfaces.ts";
@@ -211,6 +221,19 @@ export { type NeuronExport } from "./src/architecture/NeuronInterfaces.ts";
  * Synapse Class
  */
 export { type SynapseExport } from "./src/architecture/SynapseInterfaces.ts";
+
+/**
+ * Normalise Legacy CreatureExport
+ *
+ * Issue #1958: Ensures legacy CreatureExport objects (with UUID strings)
+ * have integer `id`, `fromId`, and `toId` fields populated. Call this
+ * before passing manually-constructed CreatureExport data to functions
+ * that expect integer IDs.
+ */
+export {
+  normaliseCreatureExport,
+  normalised,
+} from "./src/architecture/NormaliseCreatureExport.ts";
 
 /**
  * Upgrade to version 2.0.0

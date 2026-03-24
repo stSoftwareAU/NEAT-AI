@@ -10,7 +10,7 @@ import {
   binarySearchSynapse,
   findInsertionPoint,
   getConnectionSet,
-  getHiddenNeuronUUIDs,
+  getHiddenNeuronIds,
   getSynapse,
   hasConnection,
   inwardConnections,
@@ -31,7 +31,7 @@ function makeCaches(): TopologyCaches {
     synapsesIndexedByTo: null,
     connectionSet: null,
     availableConnectionsCache: null,
-    hiddenNeuronUUIDs: null,
+    hiddenNeuronIds: null,
     inwardCacheMissCount: 0,
   };
 }
@@ -164,7 +164,7 @@ Deno.test("getConnectionSet - returns all connection keys", async () => {
   );
 });
 
-Deno.test("getHiddenNeuronUUIDs - returns hidden neuron UUIDs", async () => {
+Deno.test("getHiddenNeuronIds - returns hidden neuron UUIDs", async () => {
   await initWasmForTests();
   const creature = new Creature(2, 1, {
     layers: [{ count: 3 }],
@@ -172,7 +172,7 @@ Deno.test("getHiddenNeuronUUIDs - returns hidden neuron UUIDs", async () => {
   creatureValidate(creature);
 
   const caches = makeCaches();
-  const uuids = getHiddenNeuronUUIDs(creature, caches);
+  const uuids = getHiddenNeuronIds(creature, caches);
   assertEquals(uuids.size, 3, "Should have 3 hidden neuron UUIDs");
 });
 

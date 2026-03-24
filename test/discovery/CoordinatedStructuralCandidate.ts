@@ -4,6 +4,33 @@ import type { CoordinatedStructuralCandidate } from "../../src/architecture/Erro
 import { applyCoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+
+// Integer IDs for neurons used in these tests (from UUID hashing):
+// hidden-0 = 1775329651, output-0 = -1
+
+const ID_HIDDEN_0 = 1775329651;
+
+function makeBase1(
+  extraSynapses?: { fromId: number; toId: number; weight: number }[],
+): CreatureExport {
+  const json: CreatureExport = {
+    input: 1,
+    output: 1,
+    forwardOnly: true,
+    neurons: [
+      { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
+      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.2 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
+      ...(extraSynapses ?? []),
+    ],
+  };
+  normaliseCreatureExport(json);
+  return json;
+}
 
 Deno.test("applyCoordinatedStructuralCandidate: remove/remove/add updates synapses as a single ordered ablation", () => {
   const base: CreatureExport = {
@@ -20,6 +47,7 @@ Deno.test("applyCoordinatedStructuralCandidate: remove/remove/add updates synaps
       { fromUUID: "input-0", toUUID: "output-0", weight: 0.5 },
     ],
   };
+  normaliseCreatureExport(base);
   const creature = Creature.fromJSON(base);
 
   const candidate: CoordinatedStructuralCandidate = {
@@ -28,18 +56,18 @@ Deno.test("applyCoordinatedStructuralCandidate: remove/remove/add updates synaps
     operations: [
       {
         type: "removeSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "output-0",
+        fromNeuronId: 0,
+        toNeuronId: -1,
       },
       {
         type: "removeSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-0",
+        fromNeuronId: 0,
+        toNeuronId: ID_HIDDEN_0,
       },
       {
         type: "addSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-0",
+        fromNeuronId: 0,
+        toNeuronId: ID_HIDDEN_0,
         weight: 0.9,
       },
     ],
@@ -50,15 +78,13 @@ Deno.test("applyCoordinatedStructuralCandidate: remove/remove/add updates synaps
 
   // Noisy input->output removed.
   assertEquals(
-    exported.synapses.some((s) =>
-      s.fromUUID === "input-0" && s.toUUID === "output-0"
-    ),
+    exported.synapses.some((s) => s.fromId === 0 && s.toId === -1),
     false,
   );
 
   // Trusted input->hidden re-added with new weight.
   const trusted = exported.synapses.find((s) =>
-    s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+    s.fromId === 0 && s.toId === ID_HIDDEN_0
   );
   assertExists(trusted);
   assertEquals(trusted.weight, 0.9);
@@ -66,26 +92,14 @@ Deno.test("applyCoordinatedStructuralCandidate: remove/remove/add updates synaps
   // Downstream synapse preserved.
   assertEquals(
     exported.synapses.some((s) =>
-      s.fromUUID === "hidden-0" && s.toUUID === "output-0" && s.weight === 0.25
+      s.fromId === ID_HIDDEN_0 && s.toId === -1 && s.weight === 0.25
     ),
     true,
   );
 });
 
 Deno.test("applyCoordinatedStructuralCandidate: applying twice is safe (idempotent)", () => {
-  const base: CreatureExport = {
-    input: 1,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.2 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
-    ],
-  };
+  const base = makeBase1();
   const creature = Creature.fromJSON(base);
 
   const candidate: CoordinatedStructuralCandidate = {
@@ -94,13 +108,13 @@ Deno.test("applyCoordinatedStructuralCandidate: applying twice is safe (idempote
     operations: [
       {
         type: "removeSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-0",
+        fromNeuronId: 0,
+        toNeuronId: ID_HIDDEN_0,
       },
       {
         type: "addSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-0",
+        fromNeuronId: 0,
+        toNeuronId: ID_HIDDEN_0,
         weight: 0.9,
       },
     ],
@@ -110,10 +124,10 @@ Deno.test("applyCoordinatedStructuralCandidate: applying twice is safe (idempote
   const twice = applyCoordinatedStructuralCandidate(once, candidate);
 
   const syn1 = once.exportJSON().synapses.find((s) =>
-    s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+    s.fromId === 0 && s.toId === ID_HIDDEN_0
   );
   const syn2 = twice.exportJSON().synapses.find((s) =>
-    s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+    s.fromId === 0 && s.toId === ID_HIDDEN_0
   );
 
   assertExists(syn1);
@@ -136,10 +150,11 @@ Deno.test("applyCoordinatedStructuralCandidate: removeSynapse deletes memetic wh
       score: 123,
       biases: {},
       weights: {
-        "input-0": [{ toUUID: "output-0", weight: 0.99 }],
+        0: [{ toId: -1, weight: 0.99 }],
       },
     },
   };
+  normaliseCreatureExport(base);
   const creature = Creature.fromJSON(base);
 
   const candidate: CoordinatedStructuralCandidate = {
@@ -148,8 +163,8 @@ Deno.test("applyCoordinatedStructuralCandidate: removeSynapse deletes memetic wh
     operations: [
       {
         type: "removeSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "output-0",
+        fromNeuronId: 0,
+        toNeuronId: -1,
       },
     ],
   };
@@ -160,19 +175,7 @@ Deno.test("applyCoordinatedStructuralCandidate: removeSynapse deletes memetic wh
 });
 
 Deno.test("applyCoordinatedStructuralCandidate: forward-only rejects back-connections (addSynapse is skipped)", () => {
-  const base: CreatureExport = {
-    input: 1,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.2 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
-    ],
-  };
+  const base = makeBase1();
   const creature = Creature.fromJSON(base);
 
   // Attempt to add a back-connection output -> hidden (fromIndex > toIndex).
@@ -182,8 +185,8 @@ Deno.test("applyCoordinatedStructuralCandidate: forward-only rejects back-connec
     operations: [
       {
         type: "addSynapse",
-        fromNeuronUuid: "output-0",
-        toNeuronUuid: "hidden-0",
+        fromNeuronId: -1,
+        toNeuronId: ID_HIDDEN_0,
         weight: 0.9,
       },
     ],
@@ -192,9 +195,7 @@ Deno.test("applyCoordinatedStructuralCandidate: forward-only rejects back-connec
   const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
   const exported = mutated.exportJSON();
   assertEquals(
-    exported.synapses.some((s) =>
-      s.fromUUID === "output-0" && s.toUUID === "hidden-0"
-    ),
+    exported.synapses.some((s) => s.fromId === -1 && s.toId === ID_HIDDEN_0),
     false,
   );
 });
@@ -209,6 +210,7 @@ Deno.test("applyCoordinatedStructuralCandidate: empty operations is a no-op retu
     ],
     synapses: [{ fromUUID: "input-0", toUUID: "output-0", weight: 0.25 }],
   };
+  normaliseCreatureExport(base);
   const creature = Creature.fromJSON(base);
 
   const candidate: CoordinatedStructuralCandidate = {
@@ -231,35 +233,38 @@ Deno.test("applyCoordinatedStructuralCandidate: addNeuron can insert before a ta
     ],
     synapses: [{ fromUUID: "input-0", toUUID: "output-0", weight: 0.25 }],
   };
+  normaliseCreatureExport(base);
   const creature = Creature.fromJSON(base);
 
+  // Use a specific neuronId for the new neuron; insertBeforeNeuronId=-1 (output)
+  const newNeuronId = 6000;
   const candidate: CoordinatedStructuralCandidate = {
     type: "coordinated_structural",
     expectedCreatureScoreGain: 0.01,
     operations: [
       {
         type: "removeSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "output-0",
+        fromNeuronId: 0,
+        toNeuronId: -1,
       },
       {
         type: "addNeuron",
-        neuronUuid: "hidden-inserted",
+        neuronId: newNeuronId,
         neuronType: "hidden",
         squash: IDENTITY.NAME,
         bias: 0.0,
-        insertBeforeNeuronUuid: "output-0",
+        insertBeforeNeuronId: -1,
       },
       {
         type: "addSynapse",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-inserted",
+        fromNeuronId: 0,
+        toNeuronId: newNeuronId,
         weight: 1.0,
       },
       {
         type: "addSynapse",
-        fromNeuronUuid: "hidden-inserted",
-        toNeuronUuid: "output-0",
+        fromNeuronId: newNeuronId,
+        toNeuronId: -1,
         weight: 0.5,
       },
     ],
@@ -269,10 +274,14 @@ Deno.test("applyCoordinatedStructuralCandidate: addNeuron can insert before a ta
   const exported = mutated.exportJSON();
 
   // Neuron should exist and appear before output-0 in forward-only ordering.
-  const idxHidden = exported.neurons.findIndex((n) =>
-    n.uuid === "hidden-inserted"
-  );
-  const idxOutput = exported.neurons.findIndex((n) => n.uuid === "output-0");
+  // The actual id assigned may differ from the requested newNeuronId (it gets a UUID-based id).
+  // Find the hidden neuron generically.
+  const hiddenNeuron = exported.neurons.find((n) => n.type === "hidden");
+  assertExists(hiddenNeuron, "A hidden neuron should have been added");
+  const actualHiddenId = hiddenNeuron.id!;
+
+  const idxHidden = exported.neurons.findIndex((n) => n.id === actualHiddenId);
+  const idxOutput = exported.neurons.findIndex((n) => n.id === -1);
   assertEquals(idxHidden >= 0, true);
   assertEquals(idxOutput >= 0, true);
   assertEquals(idxHidden < idxOutput, true);
@@ -280,14 +289,14 @@ Deno.test("applyCoordinatedStructuralCandidate: addNeuron can insert before a ta
   // New synapses should exist.
   assertEquals(
     exported.synapses.some((s) =>
-      s.fromUUID === "input-0" && s.toUUID === "hidden-inserted" &&
+      s.fromId === 0 && s.toId === actualHiddenId &&
       s.weight === 1.0
     ),
     true,
   );
   assertEquals(
     exported.synapses.some((s) =>
-      s.fromUUID === "hidden-inserted" && s.toUUID === "output-0" &&
+      s.fromId === actualHiddenId && s.toId === -1 &&
       s.weight === 0.5
     ),
     true,
@@ -295,19 +304,7 @@ Deno.test("applyCoordinatedStructuralCandidate: addNeuron can insert before a ta
 });
 
 Deno.test("applyCoordinatedStructuralCandidate: removeNeuron deletes neuron and any connected synapses", () => {
-  const base: CreatureExport = {
-    input: 1,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.2 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
-    ],
-  };
+  const base = makeBase1();
   const creature = Creature.fromJSON(base);
 
   const candidate: CoordinatedStructuralCandidate = {
@@ -316,7 +313,7 @@ Deno.test("applyCoordinatedStructuralCandidate: removeNeuron deletes neuron and 
     operations: [
       {
         type: "removeNeuron",
-        neuronUuid: "hidden-0",
+        neuronId: ID_HIDDEN_0,
       },
     ],
   };
@@ -324,17 +321,13 @@ Deno.test("applyCoordinatedStructuralCandidate: removeNeuron deletes neuron and 
   const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
   const exported = mutated.exportJSON();
 
-  assertEquals(exported.neurons.some((n) => n.uuid === "hidden-0"), false);
+  assertEquals(exported.neurons.some((n) => n.id === ID_HIDDEN_0), false);
   assertEquals(
-    exported.synapses.some((s) =>
-      s.fromUUID === "input-0" && s.toUUID === "hidden-0"
-    ),
+    exported.synapses.some((s) => s.fromId === 0 && s.toId === ID_HIDDEN_0),
     false,
   );
   assertEquals(
-    exported.synapses.some((s) =>
-      s.fromUUID === "hidden-0" && s.toUUID === "output-0"
-    ),
+    exported.synapses.some((s) => s.fromId === ID_HIDDEN_0 && s.toId === -1),
     false,
   );
 });
@@ -353,6 +346,7 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight updates existing synap
       { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
     ],
   };
+  normaliseCreatureExport(base);
   const creature = Creature.fromJSON(base);
 
   const candidate: CoordinatedStructuralCandidate = {
@@ -361,8 +355,8 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight updates existing synap
     operations: [
       {
         type: "setWeight",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-0",
+        fromNeuronId: 0,
+        toNeuronId: ID_HIDDEN_0,
         weight: 0.006,
       },
     ],
@@ -373,33 +367,21 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight updates existing synap
   const exported = mutated.exportJSON();
 
   const updated = exported.synapses.find((s) =>
-    s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+    s.fromId === 0 && s.toId === ID_HIDDEN_0
   );
   assertExists(updated);
   assertEquals(updated.weight, 0.006);
 
   // Other synapse should be unchanged.
   const unchanged = exported.synapses.find((s) =>
-    s.fromUUID === "hidden-0" && s.toUUID === "output-0"
+    s.fromId === ID_HIDDEN_0 && s.toId === -1
   );
   assertExists(unchanged);
   assertEquals(unchanged.weight, 0.25);
 });
 
 Deno.test("applyCoordinatedStructuralCandidate: setWeight is idempotent (applying twice is safe)", () => {
-  const base: CreatureExport = {
-    input: 1,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.2 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
-    ],
-  };
+  const base = makeBase1();
   const creature = Creature.fromJSON(base);
 
   const candidate: CoordinatedStructuralCandidate = {
@@ -408,8 +390,8 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight is idempotent (applyin
     operations: [
       {
         type: "setWeight",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-0",
+        fromNeuronId: 0,
+        toNeuronId: ID_HIDDEN_0,
         weight: 0.9,
       },
     ],
@@ -419,10 +401,10 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight is idempotent (applyin
   const twice = applyCoordinatedStructuralCandidate(once, candidate);
 
   const syn1 = once.exportJSON().synapses.find((s) =>
-    s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+    s.fromId === 0 && s.toId === ID_HIDDEN_0
   );
   const syn2 = twice.exportJSON().synapses.find((s) =>
-    s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+    s.fromId === 0 && s.toId === ID_HIDDEN_0
   );
 
   assertExists(syn1);
@@ -432,19 +414,7 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight is idempotent (applyin
 });
 
 Deno.test("applyCoordinatedStructuralCandidate: setWeight is no-op if synapse doesn't exist", () => {
-  const base: CreatureExport = {
-    input: 1,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { uuid: "hidden-0", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.2 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
-    ],
-  };
+  const base = makeBase1();
   const creature = Creature.fromJSON(base);
 
   const candidate: CoordinatedStructuralCandidate = {
@@ -453,8 +423,8 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight is no-op if synapse do
     operations: [
       {
         type: "setWeight",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "output-0",
+        fromNeuronId: 0,
+        toNeuronId: -1,
         weight: 0.9,
       },
     ],
@@ -465,21 +435,19 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight is no-op if synapse do
 
   // Synapse should not exist (wasn't in original).
   assertEquals(
-    exported.synapses.some((s) =>
-      s.fromUUID === "input-0" && s.toUUID === "output-0"
-    ),
+    exported.synapses.some((s) => s.fromId === 0 && s.toId === -1),
     false,
   );
 
   // Existing synapses should be unchanged.
   const unchanged1 = exported.synapses.find((s) =>
-    s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+    s.fromId === 0 && s.toId === ID_HIDDEN_0
   );
   assertExists(unchanged1);
   assertEquals(unchanged1.weight, 0.2);
 
   const unchanged2 = exported.synapses.find((s) =>
-    s.fromUUID === "hidden-0" && s.toUUID === "output-0"
+    s.fromId === ID_HIDDEN_0 && s.toId === -1
   );
   assertExists(unchanged2);
   assertEquals(unchanged2.weight, 0.25);
@@ -505,6 +473,7 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight preserves synapse meta
       { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.25 },
     ],
   };
+  normaliseCreatureExport(base);
   const creature = Creature.fromJSON(base);
 
   const candidate: CoordinatedStructuralCandidate = {
@@ -513,8 +482,8 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight preserves synapse meta
     operations: [
       {
         type: "setWeight",
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "hidden-0",
+        fromNeuronId: 0,
+        toNeuronId: ID_HIDDEN_0,
         weight: 0.9,
       },
     ],
@@ -524,7 +493,7 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight preserves synapse meta
   const exported = mutated.exportJSON();
 
   const updated = exported.synapses.find((s) =>
-    s.fromUUID === "input-0" && s.toUUID === "hidden-0"
+    s.fromId === 0 && s.toId === ID_HIDDEN_0
   );
   assertExists(updated);
   assertEquals(updated.weight, 0.9);

@@ -47,8 +47,10 @@ Deno.test("record: avoids attributing error to tiny-weight links", () => {
   // Current output ≈ (1000 * 1e-6) + (1 * 1) = 1.001. Target 0 => error ~ -1.001.
   const discoverMap = creature.record(new Float32Array([0]));
 
-  const tiny = discoverMap.get("parent-tiny");
-  const big = discoverMap.get("parent-big");
+  // Neuron IDs are deterministic integers derived from UUID strings:
+  // parent-tiny → 970033283, parent-big → 246852835
+  const tiny = discoverMap.get(970033283);
+  const big = discoverMap.get(246852835);
 
   assert(big, "Expected record entry for parent-big");
 

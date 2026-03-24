@@ -44,15 +44,15 @@ Deno.test("parallel bridge merge: two COMPLEMENT bridge neurons are merged", () 
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "h0", squash: "COMPLEMENT", bias: 0 },
-      { type: "hidden", uuid: "h1", squash: "COMPLEMENT", bias: 0 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h0", id: 5000, squash: "COMPLEMENT", bias: 0 },
+      { type: "hidden", uuid: "h1", id: 5001, squash: "COMPLEMENT", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "h0", weight: 0.5 },
-      { fromUUID: "h0", toUUID: "output-0", weight: 2.0 },
-      { fromUUID: "input-1", toUUID: "h1", weight: 0.3 },
-      { fromUUID: "h1", toUUID: "output-0", weight: 1.5 },
+      { fromId: 0, toId: 5000, weight: 0.5 },
+      { fromId: 5000, toId: -1, weight: 2.0 },
+      { fromId: 1, toId: 5001, weight: 0.3 },
+      { fromId: 5001, toId: -1, weight: 1.5 },
     ],
   };
 
@@ -96,15 +96,15 @@ Deno.test("parallel bridge merge: COMPLEMENT weight calculation is correct", () 
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "h0", squash: "COMPLEMENT", bias: 0.1 },
-      { type: "hidden", uuid: "h1", squash: "COMPLEMENT", bias: 0.2 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h0", id: 5000, squash: "COMPLEMENT", bias: 0.1 },
+      { type: "hidden", uuid: "h1", id: 5001, squash: "COMPLEMENT", bias: 0.2 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "h0", weight: 0.5 },
-      { fromUUID: "h0", toUUID: "output-0", weight: 2.0 },
-      { fromUUID: "input-1", toUUID: "h1", weight: 0.3 },
-      { fromUUID: "h1", toUUID: "output-0", weight: 1.5 },
+      { fromId: 0, toId: 5000, weight: 0.5 },
+      { fromId: 5000, toId: -1, weight: 2.0 },
+      { fromId: 1, toId: 5001, weight: 0.3 },
+      { fromId: 5001, toId: -1, weight: 1.5 },
     ],
   };
 
@@ -121,20 +121,20 @@ Deno.test("parallel bridge merge: COMPLEMENT weight calculation is correct", () 
   assertAlmostEquals(kept.bias, 3.0, 1e-12, "Merged bias incorrect");
 
   // Inbound synapses to the kept neuron
-  const inboundToKept = json.synapses.filter((s) => s.toUUID === kept.uuid);
+  const inboundToKept = json.synapses.filter((s) => s.toId === kept.id);
   assertEquals(inboundToKept.length, 2, "Should have 2 inbound synapses");
 
   const wByFrom = new Map(
-    inboundToKept.map((s) => [s.fromUUID, s.weight] as const),
+    inboundToKept.map((s) => [s.fromId, s.weight] as const),
   );
   // input-0 weight: 2.0 * (-0.5) = -1.0
-  assertAlmostEquals(wByFrom.get("input-0") ?? NaN, -1.0, 1e-12);
+  assertAlmostEquals(wByFrom.get(0) ?? NaN, -1.0, 1e-12);
   // input-1 weight: 1.5 * (-0.3) = -0.45
-  assertAlmostEquals(wByFrom.get("input-1") ?? NaN, -0.45, 1e-12);
+  assertAlmostEquals(wByFrom.get(1) ?? NaN, -0.45, 1e-12);
 
   // Outbound synapse from kept to output
   const outboundFromKept = json.synapses.filter(
-    (s) => s.fromUUID === kept.uuid,
+    (s) => s.fromId === kept.id,
   );
   assertEquals(outboundFromKept.length, 1, "Should have 1 outbound synapse");
   assertAlmostEquals(
@@ -153,15 +153,15 @@ Deno.test("parallel bridge merge: mixed IDENTITY and COMPLEMENT are NOT merged t
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "h0", squash: "IDENTITY", bias: 0 },
-      { type: "hidden", uuid: "h1", squash: "COMPLEMENT", bias: 0 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h0", id: 5000, squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h1", id: 5001, squash: "COMPLEMENT", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "h0", weight: 0.5 },
-      { fromUUID: "h0", toUUID: "output-0", weight: 2.0 },
-      { fromUUID: "input-1", toUUID: "h1", weight: 0.3 },
-      { fromUUID: "h1", toUUID: "output-0", weight: 1.5 },
+      { fromId: 0, toId: 5000, weight: 0.5 },
+      { fromId: 5000, toId: -1, weight: 2.0 },
+      { fromId: 1, toId: 5001, weight: 0.3 },
+      { fromId: 5001, toId: -1, weight: 1.5 },
     ],
   };
 
@@ -181,15 +181,15 @@ Deno.test("parallel bridge merge: LOGISTIC neurons are not merged", () => {
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "h0", squash: "LOGISTIC", bias: 0 },
-      { type: "hidden", uuid: "h1", squash: "LOGISTIC", bias: 0 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h0", id: 5000, squash: "LOGISTIC", bias: 0 },
+      { type: "hidden", uuid: "h1", id: 5001, squash: "LOGISTIC", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "h0", weight: 0.5 },
-      { fromUUID: "h0", toUUID: "output-0", weight: 2.0 },
-      { fromUUID: "input-1", toUUID: "h1", weight: 0.3 },
-      { fromUUID: "h1", toUUID: "output-0", weight: 1.5 },
+      { fromId: 0, toId: 5000, weight: 0.5 },
+      { fromId: 5000, toId: -1, weight: 2.0 },
+      { fromId: 1, toId: 5001, weight: 0.3 },
+      { fromId: 5001, toId: -1, weight: 1.5 },
     ],
   };
 
@@ -207,15 +207,15 @@ Deno.test("parallel bridge merge: TANH neurons are not merged", () => {
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "h0", squash: "TANH", bias: 0 },
-      { type: "hidden", uuid: "h1", squash: "TANH", bias: 0 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h0", id: 5000, squash: "TANH", bias: 0 },
+      { type: "hidden", uuid: "h1", id: 5001, squash: "TANH", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "h0", weight: 0.5 },
-      { fromUUID: "h0", toUUID: "output-0", weight: 2.0 },
-      { fromUUID: "input-1", toUUID: "h1", weight: 0.3 },
-      { fromUUID: "h1", toUUID: "output-0", weight: 1.5 },
+      { fromId: 0, toId: 5000, weight: 0.5 },
+      { fromId: 5000, toId: -1, weight: 2.0 },
+      { fromId: 1, toId: 5001, weight: 0.3 },
+      { fromId: 5001, toId: -1, weight: 1.5 },
     ],
   };
 
@@ -234,15 +234,15 @@ Deno.test("parallel bridge merge: ReLU neurons are not merged", () => {
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "h0", squash: "RELU", bias: 0 },
-      { type: "hidden", uuid: "h1", squash: "RELU", bias: 0 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h0", id: 5000, squash: "RELU", bias: 0 },
+      { type: "hidden", uuid: "h1", id: 5001, squash: "RELU", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "h0", weight: 0.5 },
-      { fromUUID: "h0", toUUID: "output-0", weight: 2.0 },
-      { fromUUID: "input-1", toUUID: "h1", weight: 0.3 },
-      { fromUUID: "h1", toUUID: "output-0", weight: 1.5 },
+      { fromId: 0, toId: 5000, weight: 0.5 },
+      { fromId: 5000, toId: -1, weight: 2.0 },
+      { fromId: 1, toId: 5001, weight: 0.3 },
+      { fromId: 5001, toId: -1, weight: 1.5 },
     ],
   };
 
@@ -261,15 +261,15 @@ Deno.test("parallel bridge merge: ABSOLUTE neurons are not merged", () => {
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "h0", squash: "ABSOLUTE", bias: 0 },
-      { type: "hidden", uuid: "h1", squash: "ABSOLUTE", bias: 0 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h0", id: 5000, squash: "ABSOLUTE", bias: 0 },
+      { type: "hidden", uuid: "h1", id: 5001, squash: "ABSOLUTE", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "h0", weight: 0.5 },
-      { fromUUID: "h0", toUUID: "output-0", weight: 2.0 },
-      { fromUUID: "input-1", toUUID: "h1", weight: 0.3 },
-      { fromUUID: "h1", toUUID: "output-0", weight: 1.5 },
+      { fromId: 0, toId: 5000, weight: 0.5 },
+      { fromId: 5000, toId: -1, weight: 2.0 },
+      { fromId: 1, toId: 5001, weight: 0.3 },
+      { fromId: 5001, toId: -1, weight: 1.5 },
     ],
   };
 
@@ -287,15 +287,15 @@ Deno.test("parallel bridge merge: MAXIMUM aggregate neurons are not merged", () 
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "h0", squash: "MAXIMUM", bias: 0 },
-      { type: "hidden", uuid: "h1", squash: "MAXIMUM", bias: 0 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h0", id: 5000, squash: "MAXIMUM", bias: 0 },
+      { type: "hidden", uuid: "h1", id: 5001, squash: "MAXIMUM", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "h0", weight: 0.5 },
-      { fromUUID: "h0", toUUID: "output-0", weight: 2.0 },
-      { fromUUID: "input-1", toUUID: "h1", weight: 0.3 },
-      { fromUUID: "h1", toUUID: "output-0", weight: 1.5 },
+      { fromId: 0, toId: 5000, weight: 0.5 },
+      { fromId: 5000, toId: -1, weight: 2.0 },
+      { fromId: 1, toId: 5001, weight: 0.3 },
+      { fromId: 5001, toId: -1, weight: 1.5 },
     ],
   };
 
@@ -358,18 +358,24 @@ Deno.test("parallel bridge merge: three COMPLEMENT neurons merged correctly", ()
     input: 3,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "h0", squash: "COMPLEMENT", bias: 0.5 },
-      { type: "hidden", uuid: "h1", squash: "COMPLEMENT", bias: -0.3 },
-      { type: "hidden", uuid: "h2", squash: "COMPLEMENT", bias: 0.3 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h0", id: 5000, squash: "COMPLEMENT", bias: 0.5 },
+      {
+        type: "hidden",
+        uuid: "h1",
+        id: 5001,
+        squash: "COMPLEMENT",
+        bias: -0.3,
+      },
+      { type: "hidden", uuid: "h2", id: 5002, squash: "COMPLEMENT", bias: 0.3 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "h0", weight: 1.0 },
-      { fromUUID: "h0", toUUID: "output-0", weight: 0.5 },
-      { fromUUID: "input-1", toUUID: "h1", weight: 2.0 },
-      { fromUUID: "h1", toUUID: "output-0", weight: 0.8 },
-      { fromUUID: "input-2", toUUID: "h2", weight: -1.0 },
-      { fromUUID: "h2", toUUID: "output-0", weight: 1.2 },
+      { fromId: 0, toId: 5000, weight: 1.0 },
+      { fromId: 5000, toId: -1, weight: 0.5 },
+      { fromId: 1, toId: 5001, weight: 2.0 },
+      { fromId: 5001, toId: -1, weight: 0.8 },
+      { fromId: 2, toId: 5002, weight: -1.0 },
+      { fromId: 5002, toId: -1, weight: 1.2 },
     ],
   };
 
@@ -397,15 +403,15 @@ Deno.test("parallel bridge merge: IDENTITY neurons still work as before", () => 
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "h0", squash: "IDENTITY", bias: 0.1 },
-      { type: "hidden", uuid: "h1", squash: "IDENTITY", bias: 0.2 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h0", id: 5000, squash: "IDENTITY", bias: 0.1 },
+      { type: "hidden", uuid: "h1", id: 5001, squash: "IDENTITY", bias: 0.2 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "h0", weight: 0.5 },
-      { fromUUID: "h0", toUUID: "output-0", weight: 2.0 },
-      { fromUUID: "input-1", toUUID: "h1", weight: 0.3 },
-      { fromUUID: "h1", toUUID: "output-0", weight: 1.5 },
+      { fromId: 0, toId: 5000, weight: 0.5 },
+      { fromId: 5000, toId: -1, weight: 2.0 },
+      { fromId: 1, toId: 5001, weight: 0.3 },
+      { fromId: 5001, toId: -1, weight: 1.5 },
     ],
   };
 

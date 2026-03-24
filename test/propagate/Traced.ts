@@ -12,7 +12,7 @@ Deno.test("Traced: compactUnused removes unused neurons from traced creature", (
 
   const config = createBackPropagationConfig();
 
-  const compact = compactUnused(json, config.plankConstant);
+  const compact = compactUnused(creature.traceJSON(), config.plankConstant);
   if (compact) {
     compact.validate();
     assert(

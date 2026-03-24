@@ -162,8 +162,8 @@ Deno.test("createCompatibleFatherFromCreatures - produces functionally equivalen
   assertEquals(optimisedResult.neurons.length, originalResult.neurons.length);
   for (let i = 0; i < optimisedResult.neurons.length; i++) {
     assertEquals(
-      optimisedResult.neurons[i].uuid,
-      originalResult.neurons[i].uuid,
+      optimisedResult.neurons[i].id,
+      originalResult.neurons[i].id,
     );
     assertEquals(
       optimisedResult.neurons[i].type,
@@ -183,12 +183,12 @@ Deno.test("createCompatibleFatherFromCreatures - produces functionally equivalen
   assertEquals(optimisedResult.synapses.length, originalResult.synapses.length);
   for (let i = 0; i < optimisedResult.synapses.length; i++) {
     assertEquals(
-      optimisedResult.synapses[i].fromUUID,
-      originalResult.synapses[i].fromUUID,
+      optimisedResult.synapses[i].fromId,
+      originalResult.synapses[i].fromId,
     );
     assertEquals(
-      optimisedResult.synapses[i].toUUID,
-      originalResult.synapses[i].toUUID,
+      optimisedResult.synapses[i].toId,
+      originalResult.synapses[i].toId,
     );
     assertEquals(
       optimisedResult.synapses[i].weight,

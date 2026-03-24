@@ -5,6 +5,7 @@ import type {
   CreatureExport,
   CreatureInternal,
 } from "../architecture/CreatureInterfaces.ts";
+import { nextNeuronId } from "../architecture/NeuronId.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
 import { SQRT } from "../methods/activations/types/SQRT.ts";
@@ -51,23 +52,23 @@ function removeHYPOT(json: CreatureExport) {
   for (let i = 0; i < neuronsLength; i++) {
     const neuron = neurons[i];
     if (neuron.squash === "HYPOT") {
-      getLogger().info("Replacing HYPOT neuron", neuron.uuid);
+      getLogger().info("Replacing HYPOT neuron", neuron.id);
       changed = true;
       for (let j = 0; j < synapsesLength; j++) {
         const synapse = synapses[j];
-        if (synapse.toUUID === neuron.uuid) {
+        if (synapse.toId === neuron.id) {
           const newNeuron: NeuronExport = {
             type: "hidden",
-            uuid: neuron.uuid + "-" + j,
+            id: nextNeuronId(),
             squash: SQUARE.NAME,
             bias: 0,
           };
 
           neurons.splice(i, 0, newNeuron);
-          synapse.toUUID = newNeuron.uuid;
+          synapse.toId = newNeuron.id;
           const newSynapse: SynapseExport = {
-            fromUUID: newNeuron.uuid,
-            toUUID: neuron.uuid,
+            fromId: newNeuron.id,
+            toId: neuron.id,
             weight: 1,
           };
           synapses.push(newSynapse);
@@ -76,7 +77,7 @@ function removeHYPOT(json: CreatureExport) {
 
       const identityNeuron: NeuronExport = {
         type: "hidden",
-        uuid: neuron.uuid + "-bias",
+        id: nextNeuronId(),
         squash: IDENTITY.NAME,
         bias: neuron.bias,
         tags: [
@@ -91,14 +92,14 @@ function removeHYPOT(json: CreatureExport) {
       neuron.bias = 0;
       for (let j = 0; j < synapses.length; j++) {
         const synapse = synapses[j];
-        if (synapse.fromUUID === neuron.uuid) {
-          synapse.fromUUID = identityNeuron.uuid;
+        if (synapse.fromId === neuron.id) {
+          synapse.fromId = identityNeuron.id;
         }
       }
 
       const identitySynapse: SynapseExport = {
-        fromUUID: neuron.uuid,
-        toUUID: identityNeuron.uuid,
+        fromId: neuron.id,
+        toId: identityNeuron.id,
         weight: 1,
       };
       synapses.push(identitySynapse);
@@ -131,23 +132,23 @@ function removeHYPOTv2(json: CreatureExport) {
   for (let i = 0; i < neuronsLength; i++) {
     const neuron = neurons[i];
     if (neuron.squash === "HYPOTv2") {
-      getLogger().info("Replacing HYPOTv2 neuron", neuron.uuid);
+      getLogger().info("Replacing HYPOTv2 neuron", neuron.id);
       changed = true;
       for (let j = 0; j < synapsesLength; j++) {
         const synapse = synapses[j];
-        if (synapse.toUUID === neuron.uuid) {
+        if (synapse.toId === neuron.id) {
           const newNeuron: NeuronExport = {
             type: "hidden",
-            uuid: neuron.uuid + "-" + j,
+            id: nextNeuronId(),
             squash: SQUARE.NAME,
             bias: neuron.bias,
           };
 
           neurons.splice(i, 0, newNeuron);
-          synapse.toUUID = newNeuron.uuid;
+          synapse.toId = newNeuron.id;
           const newSynapse: SynapseExport = {
-            fromUUID: newNeuron.uuid,
-            toUUID: neuron.uuid,
+            fromId: newNeuron.id,
+            toId: neuron.id,
             weight: 1,
           };
           synapses.push(newSynapse);

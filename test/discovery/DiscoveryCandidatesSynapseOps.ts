@@ -9,9 +9,16 @@ import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralE
 import {
   buildDiscoveryCandidates,
 } from "../../src/discovery/DiscoveryCandidates.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+
+// Integer IDs for neurons in the baseline creature (from UUID hashing):
+// hidden-1 → 1775329650, hidden-2 → 1775329649
+// output-0 → -1, output-1 → -2
+const ID_HIDDEN_1 = 1775329650;
+const ID_HIDDEN_2 = 1775329649;
 
 function makeBaselineCreature(): Creature {
-  const creature = Creature.fromJSON({
+  const json: Parameters<typeof normaliseCreatureExport>[0] = {
     input: 4,
     output: 2,
     neurons: [
@@ -27,7 +34,11 @@ function makeBaselineCreature(): Creature {
       { fromUUID: "hidden-2", toUUID: "output-1", weight: -0.3 },
       { fromUUID: "hidden-1", toUUID: "output-1", weight: 0.05 },
     ],
-  });
+  } as Parameters<typeof normaliseCreatureExport>[0];
+  normaliseCreatureExport(json);
+  const creature = Creature.fromJSON(
+    json as Parameters<typeof Creature.fromJSON>[0],
+  );
   creature.validate();
   CreatureUtil.makeUUID(creature);
   return creature;
@@ -39,8 +50,8 @@ Deno.test(
     const base = makeBaselineCreature();
     // Use an existing synapse from the base creature as the harmful one
     const harmfulSynapse: CandidateSynapse = {
-      fromNeuronUUID: "input-0",
-      toNeuronUUID: "hidden-1",
+      fromNeuronId: 0,
+      toNeuronId: ID_HIDDEN_1,
       weight: -50.0, // Large negative weight simulating harmful synapse
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -73,8 +84,8 @@ Deno.test(
     // Verify the candidate has the harmful synapse removed
     const exported = removeSynapseCandidate.creature.exportJSON();
     const harmfulStillExists = exported.synapses.some((synapse) =>
-      synapse.fromUUID === harmfulSynapse.fromNeuronUUID &&
-      synapse.toUUID === harmfulSynapse.toNeuronUUID
+      synapse.fromId === harmfulSynapse.fromNeuronId &&
+      synapse.toId === harmfulSynapse.toNeuronId
     );
     assertEquals(
       harmfulStillExists,
@@ -108,10 +119,10 @@ Deno.test(
   "removeSynapse returns valid creature when synapse exists",
   () => {
     const base = makeBaselineCreature();
-    // Target an existing synapse in the creature
+    // Target an existing synapse in the creature (input-0 → hidden-1)
     const existingSynapse: CandidateSynapse = {
-      fromNeuronUUID: "input-0",
-      toNeuronUUID: "hidden-1",
+      fromNeuronId: 0,
+      toNeuronId: ID_HIDDEN_1,
       weight: 0.1, // Match existing weight
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -134,8 +145,8 @@ Deno.test(
     // Verify the synapse is actually removed
     const exported = result.exportJSON();
     const synapseStillExists = exported.synapses.some((synapse) =>
-      synapse.fromUUID === existingSynapse.fromNeuronUUID &&
-      synapse.toUUID === existingSynapse.toNeuronUUID
+      synapse.fromId === existingSynapse.fromNeuronId &&
+      synapse.toId === existingSynapse.toNeuronId
     );
     assertEquals(
       synapseStillExists,
@@ -152,10 +163,10 @@ Deno.test(
   "removeSynapse returns null and logs warning when synapse doesn't exist",
   () => {
     const base = makeBaselineCreature();
-    // Target a non-existent synapse
+    // Target a non-existent synapse (input-3 → output-1)
     const nonExistentSynapse: CandidateSynapse = {
-      fromNeuronUUID: "input-3",
-      toNeuronUUID: "output-1",
+      fromNeuronId: 3,
+      toNeuronId: -2,
       weight: 0.5,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -167,8 +178,8 @@ Deno.test(
     // Verify synapse doesn't exist
     const exported = base.exportJSON();
     const exists = exported.synapses.some((synapse) =>
-      synapse.fromUUID === nonExistentSynapse.fromNeuronUUID &&
-      synapse.toUUID === nonExistentSynapse.toNeuronUUID
+      synapse.fromId === nonExistentSynapse.fromNeuronId &&
+      synapse.toId === nonExistentSynapse.toNeuronId
     );
     assertEquals(exists, false, "Precondition: synapse should not exist");
 
@@ -191,10 +202,10 @@ Deno.test(
   "buildDiscoveryCandidates skips remove-synapse candidate when synapse doesn't exist",
   () => {
     const base = makeBaselineCreature();
-    // Use a synapse that doesn't exist in the creature
+    // Use a synapse that doesn't exist in the creature (input-3 → output-1)
     const nonExistentHarmfulSynapse: CandidateSynapse = {
-      fromNeuronUUID: "input-3",
-      toNeuronUUID: "output-1",
+      fromNeuronId: 3,
+      toNeuronId: -2,
       weight: -10.0,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -240,13 +251,13 @@ Deno.test(
       candidateSquashes: undefined,
       removalCandidates: [
         {
-          neuronUUID: "hidden-1",
+          neuronId: ID_HIDDEN_1,
           totalError: 0,
           impact: 1e-11,
           reason: "test-removal-1",
         },
         {
-          neuronUUID: "hidden-2",
+          neuronId: ID_HIDDEN_2,
           totalError: 0,
           impact: 1e-10,
           reason: "test-removal-2",

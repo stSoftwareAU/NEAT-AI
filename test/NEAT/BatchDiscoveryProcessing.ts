@@ -45,8 +45,8 @@ Deno.test(
 
     // Simulate discovery result with helpful synapses
     const helpfulSynapses = [{
-      fromNeuronUUID: "input-0",
-      toNeuronUUID: "output-0",
+      fromNeuronId: 0,
+      toNeuronId: -1,
       weight: 0.8,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0.1,
@@ -68,8 +68,8 @@ Deno.test(
     const exportedJSON = modifiedCreature.exportJSON();
     const hasNewSynapse = exportedJSON.synapses.some(
       (s) =>
-        s.fromUUID === "input-0" &&
-        s.toUUID === "output-0" &&
+        s.fromId === 0 &&
+        s.toId === -1 &&
         Math.abs(s.weight - 0.8) < 1e-6,
     );
     assertEquals(hasNewSynapse, true, "Should have the new synapse added");
@@ -79,8 +79,8 @@ Deno.test(
     const originalExport = baseCreature.exportJSON();
     const originalHasNewSynapse = originalExport.synapses.some(
       (s) =>
-        s.fromUUID === "input-0" &&
-        s.toUUID === "output-0" &&
+        s.fromId === 0 &&
+        s.toId === -1 &&
         Math.abs(s.weight - 0.8) < 1e-6,
     );
     assertEquals(
@@ -103,8 +103,8 @@ Deno.test(
 
     // Simulate discovery result with harmful synapse to remove
     const harmfulSynapse = {
-      fromNeuronUUID: "input-1",
-      toNeuronUUID: "output-0",
+      fromNeuronId: 1,
+      toNeuronId: -1,
       weight: -0.25,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0.1,
@@ -126,8 +126,8 @@ Deno.test(
     const exportedJSON = modifiedCreature.exportJSON();
     const synapseStillExists = exportedJSON.synapses.some(
       (s) =>
-        s.fromUUID === "input-1" &&
-        s.toUUID === "output-0",
+        s.fromId === 1 &&
+        s.toId === -1,
     );
     assertEquals(synapseStillExists, false, "Synapse should be removed");
 

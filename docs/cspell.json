@@ -299,6 +299,9 @@
     "blowup",
     "densify",
     "densifies",
-    "densification"
+    "densification",
+    "nbase",
+    "sbase",
+    "deserialised"
   ]
 }

@@ -57,7 +57,7 @@ Deno.test({
       },
     );
 
-    const neuronPromises = new Map<string, Promise<void>>();
+    const neuronPromises = new Map<number, Promise<void>>();
     discovery.initialize(neuronPromises);
 
     const internals = discovery as unknown as {
@@ -67,8 +67,8 @@ Deno.test({
     };
 
     internals.discoveries = [{
-      fromNeuronUUID: "hidden-0",
-      toNeuronUUID: "output-0",
+      fromNeuronId: 5000,
+      toNeuronId: -1,
       weight: 0.5,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -77,8 +77,8 @@ Deno.test({
       totalCount: 1,
     }];
     internals.neuronDiscoveries = [{
-      fromNeuronUUID: "hidden-0",
-      toNeuronUUID: "output-0",
+      fromNeuronId: 5000,
+      toNeuronId: -1,
       incomingWeight: 0.5,
       outgoingWeight: 0.75,
       squash: IDENTITY.NAME,

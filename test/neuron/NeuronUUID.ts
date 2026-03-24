@@ -54,13 +54,13 @@ Deno.test("generateUUID", () => {
   const n1 = Creature.fromJSON(creature);
 
   n1.neurons.forEach((n) => {
-    assert(n.uuid, "Must have a UUID");
+    assert(n.id !== undefined, "Must have an id");
   });
 
   const j1 = n1.exportJSON();
   const n2 = Creature.fromJSON(j1);
 
   for (let i = 0; i < n1.neurons.length; i++) {
-    assertEquals(n1.neurons[i].uuid, n2.neurons[i].uuid);
+    assertEquals(n1.neurons[i].id, n2.neurons[i].id);
   }
 });

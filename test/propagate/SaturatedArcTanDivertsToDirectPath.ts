@@ -58,10 +58,10 @@ Deno.test(
       sparseConfig,
     );
 
-    const arcTan = creature.neurons.find((n) => n.uuid === "sat-arctan")!;
+    const arcTan = creature.neurons.find((n) => n.id === 178738794)!;
     const arcTanBiasBefore = arcTan.bias;
-    const output = creature.neurons.find((n) => n.uuid === "output-0")!;
-    const input0 = creature.neurons.find((n) => n.uuid === "input-0")!;
+    const output = creature.neurons.find((n) => n.id === -1)!;
+    const input0 = creature.neurons.find((n) => n.id === 0)!;
 
     const wInputToOutBefore = creature.getSynapse(input0.index, output.index)!
       .weight;

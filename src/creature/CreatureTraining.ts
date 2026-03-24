@@ -68,11 +68,11 @@ export function propagate(
 export function record(
   creature: Creature,
   expected: Float32Array,
-): Map<string, DiscoverRecord> {
+): Map<number, DiscoverRecord> {
   const neurons = creature.neurons;
   const lastOutputIndx = neurons.length - creature.output;
 
-  const errorMap = new Map<string, DiscoverRecord>();
+  const errorMap = new Map<number, DiscoverRecord>();
   for (let indx = creature.output; indx--;) {
     const nodeIndex = lastOutputIndx + indx;
     const n = neurons[nodeIndex];
@@ -125,7 +125,7 @@ export function propagateUpdate(
   let didUpdate = false;
   for (let indx = creature.input; indx < creature.neurons.length; indx++) {
     const n = creature.neurons[indx];
-    if (sparseConfig.updateNeeded(n.uuid)) {
+    if (sparseConfig.updateNeeded(n.id)) {
       n.propagateUpdate(config);
       didUpdate = true;
     }
@@ -156,7 +156,7 @@ export function applyLearnings(
   ) {
     if (config.trainingMutationRate > getRandomNumberGenerator().random()) {
       const n = creature.neurons[indx];
-      if (sparseConfig.updateNeeded(n.uuid)) {
+      if (sparseConfig.updateNeeded(n.id)) {
         changed ||= n.applyLearnings();
       }
     }

@@ -45,8 +45,10 @@ Deno.test(
     // Current output ≈ relu6(1) + 0.2 = 1.2. Request far above ReLU6's max.
     const map = creature.record(new Float32Array([20]));
 
-    const relu6Rec = map.get("relu6-hidden");
-    const idRec = map.get("id-hidden");
+    // Neuron IDs are deterministic integers derived from UUID strings:
+    // relu6-hidden → 353379363, id-hidden → 1744656604
+    const relu6Rec = map.get(353379363);
+    const idRec = map.get(1744656604);
 
     assert(relu6Rec, "expected a discovery record for relu6-hidden");
     assert(idRec, "expected a discovery record for id-hidden");

@@ -100,7 +100,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
     costOfGrowth: number,
     retryNumber?: number,
     mode: "add" | "remove" = "add",
-  ): Promise<string[]> {
+  ): Promise<number[]> {
     assert(count > 0, "Count must be greater than 0");
     this.lastFocusSelection = undefined;
 
@@ -185,7 +185,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
   // ── Rust analysis cache (delegates) ─────────────────────────────────
 
   public ensureRustCombinedAnalysis(
-    focusList: string[],
+    focusList: number[],
     includeSynapse: boolean,
     includeNeuron: boolean,
   ): RustAnalyzeAllResult | undefined {
@@ -208,7 +208,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
 
   protected logRustAnalysisUnavailable(
     scope: "synapse" | "neuron",
-    focusList: string[],
+    focusList: number[],
     reason: string,
   ): void {
     logRustAnalysisUnavailableImpl(
@@ -224,7 +224,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
 
   protected logRustNoImprovement(
     scope: "synapse" | "neuron",
-    focusList: string[],
+    focusList: number[],
     diagnostics?:
       | import("./RustDiscovery.ts").RustSynapseDiagnostic[]
       | import("./RustDiscovery.ts").RustNeuronDiagnostic[],
@@ -244,7 +244,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
 
   // deno-lint-ignore require-await
   public async analyzeSelectedNeurons(
-    focusList: string[],
+    focusList: number[],
   ): Promise<CandidateSynapse[] | undefined> {
     if (focusList.length === 0) return Promise.resolve(undefined);
 
@@ -312,7 +312,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
 
   // deno-lint-ignore require-await
   public async analyzeMissingNeurons(
-    focusList: string[],
+    focusList: number[],
   ): Promise<CandidateNeuron[] | undefined> {
     if (focusList.length === 0) return Promise.resolve(undefined);
 
@@ -379,7 +379,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
   }
 
   public collectRustAnalysisCandidates(
-    focusList: string[],
+    focusList: number[],
   ): CandidateAnalysisBundle | undefined {
     const combinedResult = this.ensureRustCombinedAnalysis(
       focusList,
@@ -412,7 +412,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
   // ── Synapse removal (delegates) ─────────────────────────────────────
 
   public analyzeSelectedNeuronsForRemoval(
-    focusList: string[],
+    focusList: number[],
   ): Promise<CandidateSynapse | undefined> {
     if (focusList.length === 0) return Promise.resolve(undefined);
 
@@ -501,7 +501,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
   }
 
   public async analyzeSelectedNeuronsSquashes(
-    focusList: string[],
+    focusList: number[],
   ): Promise<CandidateSquash[] | undefined> {
     if (focusList.length === 0) return undefined;
 
@@ -527,16 +527,15 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       return undefined;
     }
 
-    const candidatePromises = focusList.map(async (neuronUUID) => {
+    const candidatePromises = focusList.map(async (neuronId) => {
       const records = await this.loadNeuronRecords(
-        `${this.tempDir}/${neuronUUID}`,
+        `${this.tempDir}/${neuronId}`,
       );
       return findCandidateSquashImpl(
         this.creature,
-        neuronUUID,
+        neuronId,
         records,
-        (uuid, derivativeMap) =>
-          this.calculateNeuronImpact(uuid, derivativeMap),
+        (id, derivativeMap) => this.calculateNeuronImpact(id, derivativeMap),
         this.loggingEnabled,
         (level, message, details) => this.log(level, message, details),
       );
@@ -550,7 +549,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
   // ── Harmful neuron analysis (delegates) ─────────────────────────────
 
   public async analyzeSelectedNeuronsForHarmfulRemoval(
-    focusList: string[],
+    focusList: number[],
   ): Promise<CandidateHarmfulNeuron[] | undefined> {
     if (focusList.length === 0) return undefined;
 
@@ -601,14 +600,14 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
   }
 
   private findCandidateSquash(
-    neuronUUID: string,
+    neuronId: number,
     records: DiscoverRecord[],
   ): CandidateSquash | undefined {
     return findCandidateSquashImpl(
       this.creature,
-      neuronUUID,
+      neuronId,
       records,
-      (uuid, derivativeMap) => this.calculateNeuronImpact(uuid, derivativeMap),
+      (id, derivativeMap) => this.calculateNeuronImpact(id, derivativeMap),
       this.loggingEnabled,
       (level, message, details) => this.log(level, message, details),
     );

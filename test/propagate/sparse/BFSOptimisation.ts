@@ -28,16 +28,16 @@ function buildSynapseMap(
 
 // Implementation of the optimised BFS using index pointer
 function getConnectedNeuronsOptimised(
-  neuronUUID: string,
+  neuronId: string,
   synapseMap: Map<string, Set<string>>,
   steps: number,
 ): Set<string> {
   const connectedNeurons = new Set<string>();
-  const queue = [{ neuronUUID, depth: 0 }];
+  const queue = [{ neuronId, depth: 0 }];
   let front = 0;
 
   while (front < queue.length) {
-    const { neuronUUID: current, depth } = queue[front++];
+    const { neuronId: current, depth } = queue[front++];
 
     if (depth >= steps) continue;
 
@@ -45,7 +45,7 @@ function getConnectedNeuronsOptimised(
     for (const neighbour of neighbours) {
       if (!connectedNeurons.has(neighbour)) {
         connectedNeurons.add(neighbour);
-        queue.push({ neuronUUID: neighbour, depth: depth + 1 });
+        queue.push({ neuronId: neighbour, depth: depth + 1 });
       }
     }
   }

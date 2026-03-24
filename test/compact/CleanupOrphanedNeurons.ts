@@ -74,8 +74,9 @@ Deno.test("cleanupOrphanedNeurons - should remove hidden neuron with no outward 
 
   // The orphaned neuron should have been removed
   assertEquals(creatureExport.neurons.length, 2);
+  // orphan-hidden-1 → id 217046707
   assertEquals(
-    creatureExport.neurons.find((n) => n.uuid === "orphan-hidden-1"),
+    creatureExport.neurons.find((n) => n.id === 217046707),
     undefined,
     "Orphaned neuron should be removed",
   );
@@ -83,7 +84,7 @@ Deno.test("cleanupOrphanedNeurons - should remove hidden neuron with no outward 
   // The synapse to the orphaned neuron should also be removed
   assertEquals(creatureExport.synapses.length, 2);
   assertEquals(
-    creatureExport.synapses.find((s) => s.toUUID === "orphan-hidden-1"),
+    creatureExport.synapses.find((s) => s.toId === 217046707),
     undefined,
     "Synapse to orphaned neuron should be removed",
   );
@@ -146,11 +147,11 @@ Deno.test("cleanupOrphanedNeurons - should handle cascade removal of orphaned ne
 
   // After cleanup, only output neuron should remain
   assertEquals(creatureExport.neurons.length, 1);
-  assertEquals(creatureExport.neurons[0].uuid, "output-0");
+  assertEquals(creatureExport.neurons[0].id, -1);
 
   // Only the direct input -> output synapse should remain
   assertEquals(creatureExport.synapses.length, 1);
-  assertEquals(creatureExport.synapses[0].toUUID, "output-0");
+  assertEquals(creatureExport.synapses[0].toId, -1);
 
   // Create creature to verify it's valid
   const creature = Creature.fromJSON(creatureExport);
@@ -191,7 +192,7 @@ Deno.test("cleanupOrphanedNeurons - should remove constant neurons with no outwa
 
   // The orphaned constant should have been removed
   assertEquals(creatureExport.neurons.length, 1);
-  assertEquals(creatureExport.neurons[0].uuid, "output-0");
+  assertEquals(creatureExport.neurons[0].id, -1);
 });
 
 Deno.test("cleanupOrphanedNeurons - should not remove output neurons even if no outward connections", () => {
@@ -224,7 +225,7 @@ Deno.test("cleanupOrphanedNeurons - should not remove output neurons even if no 
 
   // Output neuron should still be there
   assertEquals(creatureExport.neurons.length, neuronCountBefore);
-  assertEquals(creatureExport.neurons[0].uuid, "output-0");
+  assertEquals(creatureExport.neurons[0].id, -1);
 });
 
 Deno.test("cleanupOrphanedNeurons - simulates remove-low-impact scenario from issue", () => {
@@ -288,12 +289,12 @@ Deno.test("cleanupOrphanedNeurons - simulates remove-low-impact scenario from is
   creatureValidate(initialCreature);
 
   // Simulate remove-low-impact: remove the low-impact-target neuron
+  // low-impact-target → id 1651657985
   creatureExport.neurons = creatureExport.neurons.filter(
-    (n) => n.uuid !== "low-impact-target",
+    (n) => n.id !== 1651657985,
   );
   creatureExport.synapses = creatureExport.synapses.filter(
-    (s) =>
-      s.toUUID !== "low-impact-target" && s.fromUUID !== "low-impact-target",
+    (s) => s.toId !== 1651657985 && s.fromId !== 1651657985,
   );
 
   // Without cleanup, this would be invalid because feeder-hidden
@@ -316,7 +317,7 @@ Deno.test("cleanupOrphanedNeurons - simulates remove-low-impact scenario from is
 
   // Only output neuron should remain (feeder-hidden should be cleaned up too)
   assertEquals(creatureExport.neurons.length, 1);
-  assertEquals(creatureExport.neurons[0].uuid, "output-0");
+  assertEquals(creatureExport.neurons[0].id, -1);
 });
 
 Deno.test("cleanupOrphanedNeurons - returns correct count of removed neurons", () => {
@@ -423,8 +424,9 @@ Deno.test("cleanupOrphanedNeurons - should apply squash function when converting
   cleanupOrphanedNeurons(creatureExport);
 
   // The hidden neuron should have been converted to a constant
+  // hidden-no-inward → id 1640249334
   const convertedNeuron = creatureExport.neurons.find(
-    (n) => n.uuid === "hidden-no-inward",
+    (n) => n.id === 1640249334,
   );
   assertEquals(
     convertedNeuron?.type,
@@ -492,8 +494,9 @@ Deno.test("cleanupOrphanedNeurons - should apply TANH squash function when conve
   assertEquals(result.removed, 0, "Should have removed 0 neurons");
 
   // Verify the constant neuron has the TANH-squashed bias
+  // hidden-tanh → id 890998550
   const convertedNeuron = creatureExport.neurons.find(
-    (n) => n.uuid === "hidden-tanh",
+    (n) => n.id === 890998550,
   );
   assertEquals(convertedNeuron?.type, "constant");
   assertAlmostEquals(

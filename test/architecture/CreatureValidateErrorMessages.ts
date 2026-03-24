@@ -18,7 +18,8 @@ Deno.test("creatureValidate - output UUID mismatch produces clean message", () =
 
   // Corrupt the output neuron UUID to trigger the invalid output UUID error
   const outputNeuron = creature.neurons[creature.neurons.length - 1];
-  outputNeuron.uuid = "wrong-uuid";
+  // deno-lint-ignore no-explicit-any
+  (outputNeuron as any).id = "wrong-uuid";
 
   let caught: Error | undefined;
   try {
@@ -38,8 +39,8 @@ Deno.test("creatureValidate - output UUID mismatch produces clean message", () =
     `Message should not contain ' + "': ${caught.message}`,
   );
 
-  // The message should follow the format: "${uuid}) invalid output UUID: ${uuid}"
-  assertStringIncludes(caught.message, "wrong-uuid) invalid output UUID:");
+  // The message should follow the format: "${id}) invalid neuron id: ${id}"
+  assertStringIncludes(caught.message, "wrong-uuid) invalid neuron id:");
 });
 
 Deno.test("creatureValidate - non-output after output produces clean message", () => {
@@ -86,17 +87,21 @@ Deno.test("creatureValidate - non-output after output produces clean message", (
 });
 
 Deno.test("creatureValidate - input after max inputs produces clean message", () => {
-  // Create a creature then corrupt a later neuron to type "input"
-  // to trigger the "input neuron after the maximum input neurons" error
+  // Create a creature then corrupt a later neuron to type "input" with a
+  // matching index so validation passes the id check and reaches the
+  // "input neuron after the maximum input neurons" error.
   const creature = new Creature(2, 1, {
     layers: [{ count: 2, squash: "IDENTITY" }],
   });
 
   // The hidden neuron at index creature.input is after the input range.
-  // Setting its type to "input" should trigger the ordering error.
+  // Set both type and id to match the index so the id check passes and
+  // the "after max inputs" check fires.
   const hiddenIndex = creature.input + 1;
   const neuron = creature.neurons[hiddenIndex];
   neuron.type = "input";
+  // deno-lint-ignore no-explicit-any
+  (neuron as any).id = hiddenIndex;
 
   let caught: Error | undefined;
   try {
@@ -116,9 +121,9 @@ Deno.test("creatureValidate - input after max inputs produces clean message", ()
     `Message should not contain ' + "': ${caught.message}`,
   );
 
-  // The message should follow the format: "${uuid}) input neuron after the maximum input neurons"
+  // The message should follow the format: "${id}) input neuron after the maximum input neurons"
   assertStringIncludes(
     caught.message,
-    ") input neuron after the maximum input neurons",
+    `) input neuron after the maximum input neurons`,
   );
 });

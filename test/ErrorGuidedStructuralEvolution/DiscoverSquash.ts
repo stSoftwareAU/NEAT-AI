@@ -117,11 +117,14 @@ Deno.test({
      * and adding a synapse to cause random noise.
      */
     const exportedJSON = targetCreature.exportJSON();
-    exportedJSON.neurons.find((neuron) => neuron.uuid === "hidden-3")!.squash =
-      TANH.NAME; // Change the squash function
+    // hidden-3 UUID generates id 1775329648 - find by type and original squash (LeakyReLU)
+    const hidden3 = exportedJSON.neurons.find((neuron) =>
+      neuron.type === "hidden" && neuron.squash === LeakyReLU.NAME
+    )!;
+    hidden3.squash = TANH.NAME; // Change the squash function
     exportedJSON.synapses.push({
-      fromUUID: "input-44",
-      toUUID: "hidden-3",
+      fromId: 44,
+      toId: hidden3.id!,
       weight: 0.000_001,
     });
 
@@ -136,7 +139,7 @@ Deno.test({
       60,
       DEFAULT_RUST_FLUSH_RECORDS,
     );
-    const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+    const neuronPromisesMap: Map<number, Promise<void>> = new Map();
     discoverStructure.initialize(neuronPromisesMap);
     const recorded = discoverStructure.record(trainingData, neuronPromisesMap);
     assert(recorded, "Record should succeed");
@@ -148,9 +151,11 @@ Deno.test({
       throw new Error("Rust recording flush failed");
     }
 
+    // hidden-3 UUID generates id 1775329648
+    const hidden3Id = hidden3.id!;
     const candidateSquashes = await discoverStructure
       .analyzeSelectedNeuronsSquashes([
-        "hidden-3",
+        hidden3Id,
       ]);
 
     assert(candidateSquashes, "Should have discovered a squash improvement");
@@ -168,7 +173,7 @@ Deno.test({
     const betterCreatureJSON = betterCreature.exportJSON();
 
     const adjustedSquash = betterCreatureJSON.neurons.find((neuron) =>
-      neuron.uuid === "hidden-3"
+      neuron.id === hidden3Id
     )!
       .squash;
 

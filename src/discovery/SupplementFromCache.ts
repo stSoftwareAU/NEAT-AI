@@ -50,50 +50,59 @@ function isEntryRelevantToCreature(
   const req = entry.rustRequest;
   if (!req) return false;
 
-  const neuronUUIDs = new Set(creature.neurons.map((n) => n.uuid));
+  const neuronIds = new Set(creature.neurons.map((n) => n.id));
 
   switch (entry.changeType) {
     case "add-synapses": {
       const c = req.synapseCandidate as
-        | { fromNeuronUUID?: string; toNeuronUUID?: string }
+        | { fromNeuronId?: number; toNeuronId?: number }
         | undefined;
-      if (!c?.fromNeuronUUID || !c?.toNeuronUUID) return false;
-      return neuronUUIDs.has(c.fromNeuronUUID) &&
-        neuronUUIDs.has(c.toNeuronUUID);
+      if (
+        c?.fromNeuronId === null || c?.fromNeuronId === undefined ||
+        c?.toNeuronId === null || c?.toNeuronId === undefined
+      ) return false;
+      return neuronIds.has(c.fromNeuronId) &&
+        neuronIds.has(c.toNeuronId);
     }
     case "add-neurons": {
       const c = req.neuronCandidate as
-        | { fromNeuronUUID?: string; toNeuronUUID?: string }
+        | { fromNeuronId?: number; toNeuronId?: number }
         | undefined;
-      if (!c?.fromNeuronUUID || !c?.toNeuronUUID) return false;
-      return neuronUUIDs.has(c.fromNeuronUUID) &&
-        neuronUUIDs.has(c.toNeuronUUID);
+      if (
+        c?.fromNeuronId === null || c?.fromNeuronId === undefined ||
+        c?.toNeuronId === null || c?.toNeuronId === undefined
+      ) return false;
+      return neuronIds.has(c.fromNeuronId) &&
+        neuronIds.has(c.toNeuronId);
     }
     case "change-squash": {
-      const c = req.squashCandidate as { neuronUUID?: string } | undefined;
-      if (!c?.neuronUUID) return false;
-      return neuronUUIDs.has(c.neuronUUID);
+      const c = req.squashCandidate as { neuronId?: number } | undefined;
+      if (c?.neuronId === null || c?.neuronId === undefined) return false;
+      return neuronIds.has(c.neuronId);
     }
     case "remove-low-impact": {
-      const c = req.removalCandidate as { neuronUUID?: string } | undefined;
-      if (!c?.neuronUUID) return false;
-      return neuronUUIDs.has(c.neuronUUID);
+      const c = req.removalCandidate as { neuronId?: number } | undefined;
+      if (c?.neuronId === null || c?.neuronId === undefined) return false;
+      return neuronIds.has(c.neuronId);
     }
     case "remove-neuron": {
       const c = req.harmfulNeuronCandidate as
-        | { neuronUUID?: string }
+        | { neuronId?: number }
         | undefined;
-      if (!c?.neuronUUID) return false;
-      return neuronUUIDs.has(c.neuronUUID);
+      if (c?.neuronId === null || c?.neuronId === undefined) return false;
+      return neuronIds.has(c.neuronId);
     }
     case "remove-synapse": {
       const c = (req.harmfulSynapseCandidate ?? req.synapseCandidate ??
         req.synapseDetails) as
-          | { fromNeuronUUID?: string; toNeuronUUID?: string }
+          | { fromNeuronId?: number; toNeuronId?: number }
           | undefined;
-      if (!c?.fromNeuronUUID || !c?.toNeuronUUID) return false;
-      return neuronUUIDs.has(c.fromNeuronUUID) &&
-        neuronUUIDs.has(c.toNeuronUUID);
+      if (
+        c?.fromNeuronId === null || c?.fromNeuronId === undefined ||
+        c?.toNeuronId === null || c?.toNeuronId === undefined
+      ) return false;
+      return neuronIds.has(c.fromNeuronId) &&
+        neuronIds.has(c.toNeuronId);
     }
     default:
       return false;
@@ -141,8 +150,8 @@ function buildCandidateFromEntry(
   }
   if (req.synapseDetails) {
     change.synapseDetails = req.synapseDetails as {
-      fromNeuronUUID: string;
-      toNeuronUUID: string;
+      fromNeuronId: number;
+      toNeuronId: number;
     };
   }
   if (req.coordinatedStructuralCandidate) {

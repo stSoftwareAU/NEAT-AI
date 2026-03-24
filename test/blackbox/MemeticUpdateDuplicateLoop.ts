@@ -13,7 +13,13 @@ function createTestCreature(): CreatureExport {
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "hidden-1", squash: "LOGISTIC", bias: 0.5 },
+      {
+        type: "hidden",
+        id: 5001,
+        uuid: "hidden-1",
+        squash: "LOGISTIC",
+        bias: 0.5,
+      },
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
     ],
     synapses: [
@@ -37,7 +43,7 @@ Deno.test("memeticUpdate - detects bias changes between parent and child", () =>
   assert(result, "Should return a MemeticInterface");
   assert(result.biases, "Should have biases object");
   assert(
-    result.biases["hidden-1"] !== undefined,
+    result.biases[5001] !== undefined,
     "Should track bias change for hidden-1",
   );
 });
@@ -66,6 +72,7 @@ Deno.test("memeticUpdate - returns undefined when neuron counts differ", () => {
   const childJSON = createTestCreature();
   childJSON.neurons.splice(1, 0, {
     type: "hidden",
+    id: 5002,
     uuid: "hidden-2",
     squash: "TANH",
     bias: 0.3,
@@ -108,9 +115,9 @@ Deno.test("memeticUpdate - preserves existing memetic data", () => {
   const existingMemetic: MemeticInterface = {
     generation: 1,
     score: 0.5,
-    biases: { "hidden-1": 0.3 },
+    biases: { [5001]: 0.3 },
     weights: {
-      "input-0": [{ toUUID: "hidden-1", weight: 0.4 }],
+      [0]: [{ toId: 5001, weight: 0.4 }],
     },
   };
   parent.memetic = existingMemetic;
@@ -123,7 +130,7 @@ Deno.test("memeticUpdate - preserves existing memetic data", () => {
   assert(result, "Should return a MemeticInterface");
   // The existing memetic biases should be preserved
   assertEquals(
-    result.biases?.["hidden-1"],
+    result.biases?.[5001],
     0.3,
     "Should preserve existing memetic bias data",
   );

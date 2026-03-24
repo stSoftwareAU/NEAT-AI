@@ -33,10 +33,10 @@ export class CreatureExportBuilder {
       tags: tags,
     };
 
-    const uuidMap = new Map<number, string>();
+    const idMap = new Map<number, number>();
     for (let i = neuronsLength; i--;) {
       const neuron = neurons[i];
-      uuidMap.set(i, neuron.uuid ?? `unknown-${i}`);
+      idMap.set(i, neuron.id);
       if (neuron.type === "input") continue;
 
       const tojson = neuron.exportJSON();
@@ -46,7 +46,7 @@ export class CreatureExportBuilder {
 
     for (let i = synapsesLength; i--;) {
       const exportJSON = synapses[i].exportJSON(
-        uuidMap,
+        idMap,
       );
 
       json.synapses[i] = exportJSON;

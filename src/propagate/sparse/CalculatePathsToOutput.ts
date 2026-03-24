@@ -1,8 +1,9 @@
 import type { CreatureExport } from "../../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../../architecture/NormaliseCreatureExport.ts";
 import type { SynapseExport } from "../../architecture/SynapseInterfaces.ts";
 
-/** Outgoing synapse map: fromUUID -> synapses originating from that neuron. */
-export type OutgoingSynapsesMap = ReadonlyMap<string, SynapseExport[]>;
+/** Outgoing synapse map: fromId -> synapses originating from that neuron. */
+export type OutgoingSynapsesMap = ReadonlyMap<number, SynapseExport[]>;
 
 /**
  * Builds a map from each neuron UUID to the synapses that originate from it.
@@ -15,12 +16,12 @@ export type OutgoingSynapsesMap = ReadonlyMap<string, SynapseExport[]>;
 export function buildOutgoingSynapsesMap(
   creature: CreatureExport,
 ): OutgoingSynapsesMap {
-  const map = new Map<string, SynapseExport[]>();
+  const map = new Map<number, SynapseExport[]>();
   for (const synapse of creature.synapses) {
-    let list = map.get(synapse.fromUUID);
+    let list = map.get(synapse.fromId!);
     if (list === undefined) {
       list = [];
-      map.set(synapse.fromUUID, list);
+      map.set(synapse.fromId!, list);
     }
     list.push(synapse);
   }
@@ -38,14 +39,15 @@ export function buildOutgoingSynapsesMap(
  * dequeue operations.
  */
 export function calculatePathsToOutput(
-  selectedNeurons: Readonly<Set<string>>,
+  selectedNeurons: Readonly<Set<number>>,
   creature: CreatureExport,
   outgoingSynapsesMap?: OutgoingSynapsesMap,
-): Readonly<Set<string>> {
+): Readonly<Set<number>> {
+  normaliseCreatureExport(creature);
   const map = outgoingSynapsesMap ?? buildOutgoingSynapsesMap(creature);
 
   // Create a set to keep track of all neurons that are part of the paths.
-  const pathNeurons = new Set<string>(selectedNeurons);
+  const pathNeurons = new Set<number>(selectedNeurons);
 
   // Use a queue with index pointer for BFS starting from selected neurons.
   const queue = Array.from(selectedNeurons);
@@ -60,12 +62,12 @@ export function calculatePathsToOutput(
 
     // Iterate through each outgoing synapse.
     for (const synapse of outgoingSynapses) {
-      const toUUID = synapse.toUUID;
+      const toId = synapse.toId!;
 
       // If the target neuron is not already in the path, add it and enqueue it.
-      if (!pathNeurons.has(toUUID)) {
-        pathNeurons.add(toUUID);
-        queue.push(toUUID);
+      if (!pathNeurons.has(toId)) {
+        pathNeurons.add(toId);
+        queue.push(toId);
       }
     }
   }

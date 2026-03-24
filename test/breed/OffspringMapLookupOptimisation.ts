@@ -157,15 +157,15 @@ Deno.test("Offspring.breed -correctly finds neurons from either parent", () => {
       successfulBreeds++;
 
       // Get all neuron UUIDs in the child
-      const childUUIDs = new Set(child.neurons.map((n) => n.uuid));
+      const childUUIDs = new Set(child.neurons.map((n) => n.id));
 
       // Child should have the output neuron
-      assertEquals(childUUIDs.has("output-0"), true);
+      assertEquals(childUUIDs.has(-1), true);
 
       // Verify UUIDs are properly formed (no undefined or null)
       for (const neuron of child.neurons) {
         assertExists(
-          neuron.uuid,
+          neuron.id,
           `Neuron at index ${neuron.index} has no UUID`,
         );
       }
@@ -240,19 +240,19 @@ Deno.test("Offspring.breed -breeding creatures with shared chain maintains neuro
       successfulBreeds++;
 
       // Verify all synapses reference valid neurons
-      const neuronUUIDs = new Set(child.neurons.map((n) => n.uuid));
+      const neuronIds = new Set(child.neurons.map((n) => n.id));
       const exported = child.exportJSON();
 
       for (const synapse of exported.synapses) {
         assertEquals(
-          neuronUUIDs.has(synapse.fromUUID),
+          neuronIds.has(synapse.fromId!),
           true,
-          `Synapse references non-existent fromUUID: ${synapse.fromUUID}`,
+          `Synapse references non-existent fromId: ${synapse.fromId}`,
         );
         assertEquals(
-          neuronUUIDs.has(synapse.toUUID),
+          neuronIds.has(synapse.toId!),
           true,
-          `Synapse references non-existent toUUID: ${synapse.toUUID}`,
+          `Synapse references non-existent toId: ${synapse.toId}`,
         );
       }
     }
@@ -321,7 +321,7 @@ Deno.test("Offspring.breed -neurons from missing connections are found correctly
 
       // Verify all neurons have valid UUIDs
       for (const neuron of child.neurons) {
-        assertExists(neuron.uuid);
+        assertExists(neuron.id);
       }
     }
   }

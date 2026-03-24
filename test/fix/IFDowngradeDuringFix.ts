@@ -8,7 +8,7 @@ Deno.test("fix/IFDowngradeDuringFix - IF.fix should downgrade when 3rd inbound c
   // `makeRandomConnection()` intentionally avoids sourcing from outputs, so a 3rd
   // inbound connection for an output neuron is impossible here.
   const creature = new Creature(2, 2);
-  const target = creature.neurons.find((n) => n.uuid === "output-1");
+  const target = creature.neurons.find((n) => n.id === -2);
   assert(target, "Expected output-1 neuron to exist");
   assertEquals(creature.inwardConnections(target.index).length, 2);
 
@@ -37,7 +37,7 @@ Deno.test("fix/IFDowngradeDuringFix - IF.fix downgrades non-output neurons to TA
   // output neuron to type 'hidden') purely to exercise the non-output downgrade
   // branch for coverage. We do not call creature.validate() here.
   const creature = new Creature(2, 2);
-  const target = creature.neurons.find((n) => n.uuid === "output-1");
+  const target = creature.neurons.find((n) => n.id === -2);
   assert(target, "Expected output-1 neuron to exist");
   assertEquals(creature.inwardConnections(target.index).length, 2);
 

@@ -114,12 +114,12 @@ Deno.test("record - playback error remains consistent after recording and replay
   ) as ActivationInterface;
   assert(squash, "Worse neuron should have a squash function");
   assert(squash.calculateError, "Must have a calculate error function");
-  const record = new ReplaySquash(worseNeuron.uuid, squash);
+  const record = new ReplaySquash(String(worseNeuron.id), squash);
 
   //"801f2ede-a53a-4b0e-901c-b31c228953cc"
   const exported = creature.exportJSON();
   for (const neuron of exported.neurons) {
-    if (neuron.uuid === worseNeuron.uuid) {
+    if (neuron.id === worseNeuron.id) {
       neuron.squash = record.getName();
     }
   }

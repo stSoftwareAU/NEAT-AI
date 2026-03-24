@@ -17,6 +17,12 @@ import type { CandidateSynapse } from "../../src/architecture/ErrorGuidedStructu
 import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { buildDiscoveryCandidates } from "../../src/discovery/DiscoveryCandidates.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+
+// Integer IDs for neurons used in these tests (explicit ids in fixture):
+// hidden-A → 6000, hidden-B → 6001, output-0 → -1
+const ID_HIDDEN_A = 6000;
+const ID_HIDDEN_B = 6001;
 
 /**
  * Creates a valid creature with a specific structure where we can test
@@ -35,12 +41,14 @@ function makeValidCreatureWithGap(): {
       {
         type: "hidden",
         uuid: "hidden-A",
+        id: 6000,
         squash: IDENTITY.NAME,
         bias: 0.1,
       },
       {
         type: "hidden",
         uuid: "hidden-B",
+        id: 6001,
         squash: IDENTITY.NAME,
         bias: 0.2,
       },
@@ -64,6 +72,9 @@ function makeValidCreatureWithGap(): {
     ],
   };
 
+  normaliseCreatureExport(
+    exportJSON as Parameters<typeof normaliseCreatureExport>[0],
+  );
   const creature = Creature.fromJSON(exportJSON);
   creature.validate();
   CreatureUtil.makeUUID(creature);
@@ -71,8 +82,8 @@ function makeValidCreatureWithGap(): {
   // The "missing" synapse we want to add: input-0 -> hidden-B
   // This is a valid connection that doesn't exist yet.
   const missingSynapse: CandidateSynapse = {
-    fromNeuronUUID: "input-0",
-    toNeuronUUID: "hidden-B",
+    fromNeuronId: 0,
+    toNeuronId: ID_HIDDEN_B,
     weight: 0.75,
     targetNeuronImpact: 1.0,
     expectedCreatureErrorReduction: 0,
@@ -112,8 +123,8 @@ Deno.test({
     // Verify the synapse was added
     const exported = result.exportJSON();
     const addedSynapse = exported.synapses.find((s) =>
-      s.fromUUID === missingSynapse.fromNeuronUUID &&
-      s.toUUID === missingSynapse.toNeuronUUID
+      s.fromId === missingSynapse.fromNeuronId &&
+      s.toId === missingSynapse.toNeuronId
     );
     assertExists(
       addedSynapse,
@@ -217,8 +228,8 @@ Deno.test({
     const singleSynapseCandidate = synapseCandidates.find((c) => {
       const exported = c.creature.exportJSON();
       return exported.synapses.some((s) =>
-        s.fromUUID === missingSynapse.fromNeuronUUID &&
-        s.toUUID === missingSynapse.toNeuronUUID
+        s.fromId === missingSynapse.fromNeuronId &&
+        s.toId === missingSynapse.toNeuronId
       );
     });
     assertExists(
@@ -238,10 +249,10 @@ Deno.test({
     const { creature } = makeValidCreatureWithGap();
     const originalSynapseCount = creature.exportJSON().synapses.length;
 
-    // Try to add a synapse that already exists
+    // Try to add a synapse that already exists: input-0 → hidden-A
     const duplicateSynapse: CandidateSynapse = {
-      fromNeuronUUID: "input-0",
-      toNeuronUUID: "hidden-A", // This connection already exists
+      fromNeuronId: 0,
+      toNeuronId: ID_HIDDEN_A, // This connection already exists
       weight: 0.99,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -287,8 +298,8 @@ Deno.test({
     const mixedSynapses: CandidateSynapse[] = [
       missingSynapse, // Valid - should be added
       {
-        fromNeuronUUID: "input-0",
-        toNeuronUUID: "hidden-A", // Duplicate - should be skipped
+        fromNeuronId: 0,
+        toNeuronId: ID_HIDDEN_A, // Duplicate (input-0 → hidden-A exists) - should be skipped
         weight: 0.99,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -297,8 +308,8 @@ Deno.test({
         totalCount: 6,
       },
       {
-        fromNeuronUUID: "input-1",
-        toNeuronUUID: "non-existent-neuron", // Invalid target - should be skipped
+        fromNeuronId: 1,
+        toNeuronId: 9999999, // Invalid target (non-existent neuron) - should be skipped
         weight: 0.5,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -331,8 +342,8 @@ Deno.test({
 
     // Verify the correct synapse was added
     const addedSynapse = exported.synapses.find((s) =>
-      s.fromUUID === missingSynapse.fromNeuronUUID &&
-      s.toUUID === missingSynapse.toNeuronUUID
+      s.fromId === missingSynapse.fromNeuronId &&
+      s.toId === missingSynapse.toNeuronId
     );
     assertExists(addedSynapse, "The valid synapse should be added");
   },
@@ -363,8 +374,8 @@ Deno.test({
 
     // Synapse should still exist after fix()
     const synapseAfterFix = afterFix.synapses.find((s) =>
-      s.fromUUID === missingSynapse.fromNeuronUUID &&
-      s.toUUID === missingSynapse.toNeuronUUID
+      s.fromId === missingSynapse.fromNeuronId &&
+      s.toId === missingSynapse.toNeuronId
     );
     assertExists(synapseAfterFix, "Synapse should still exist after fix()");
 
@@ -411,8 +422,8 @@ Deno.test({
 
     // Verify the synapse was added correctly
     const addedSynapse = exported.synapses.find((s) =>
-      s.fromUUID === missingSynapse.fromNeuronUUID &&
-      s.toUUID === missingSynapse.toNeuronUUID
+      s.fromId === missingSynapse.fromNeuronId &&
+      s.toId === missingSynapse.toNeuronId
     );
     assertExists(addedSynapse, "The new synapse should exist");
     assertEquals(addedSynapse.weight, missingSynapse.weight);

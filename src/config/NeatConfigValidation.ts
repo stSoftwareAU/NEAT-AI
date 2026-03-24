@@ -166,11 +166,9 @@ export function validateNeatConfig(config: NeatArguments): void {
     );
   }
   for (const uuid of config.discoveryFocusNeuronUUIDs) {
-    if (typeof uuid !== "string" || uuid.trim().length === 0) {
+    if (typeof uuid !== "number" || !Number.isInteger(uuid)) {
       throw new ConfigurationError(
-        `Discovery focus neuron UUIDs must be non-empty strings, found: ${
-          String(uuid)
-        }`,
+        `Discovery focus neuron IDs must be integers, found: ${String(uuid)}`,
         "INVALID_TYPE",
       );
     }

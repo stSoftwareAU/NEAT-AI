@@ -23,6 +23,11 @@ import { creatureValidate } from "./architecture/CreatureValidate.ts";
 import type { DataRecordInterface } from "./architecture/DataSet.ts";
 import type { DiscoverRecord } from "./architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { Neuron } from "./architecture/Neuron.ts";
+import {
+  inputNeuronId,
+  nextNeuronId,
+  outputNeuronId,
+} from "./architecture/NeuronId.ts";
 import { Synapse } from "./architecture/Synapse.ts";
 import type { SynapseInternal } from "./architecture/SynapseInterfaces.ts";
 import type { MemeticInterface } from "./blackbox/MemeticInterface.ts";
@@ -38,6 +43,7 @@ import type { WasmCreatureActivation } from "./wasm/mod.ts";
 import { getRandomNumberGenerator } from "./utils/RandomNumberGenerator.ts";
 import { ActivationError } from "./errors/ActivationError.ts";
 import { TopologyError } from "./errors/TopologyError.ts";
+import { TypedTopology } from "./architecture/TypedTopology.ts";
 
 // Extracted modules
 import * as activation from "./creature/CreatureActivation.ts";
@@ -125,7 +131,7 @@ export class Creature implements CreatureInternal {
     synapsesIndexedByTo: null,
     connectionSet: null,
     availableConnectionsCache: null,
-    hiddenNeuronUUIDs: null,
+    hiddenNeuronIds: null,
     inwardCacheMissCount: 0,
   };
 
@@ -152,6 +158,13 @@ export class Creature implements CreatureInternal {
   cachedWasmActivation?: WasmCreatureActivation;
   /** @internal */
   wasmEligibilityCache?: boolean;
+
+  /**
+   * Cached typed array topology snapshot.
+   * Issue #1957: Invalidated on any structural change (clearCache).
+   * @internal
+   */
+  private cachedTypedTopology?: TypedTopology;
 
   DEBUG: boolean = getGlobalDebug();
 
@@ -209,12 +222,15 @@ export class Creature implements CreatureInternal {
    *
    * Issue #1445: Selective cache invalidation by mutation type.
    * When called with valid from/to indices (connection-only change),
-   * hiddenNeuronUUIDs is preserved because adding/removing a connection
+   * hiddenNeuronIds is preserved because adding/removing a connection
    * does not change the set of neurons.
    */
   public clearCache(from: number = -1, to: number = -1) {
+    // Issue #1957: Invalidate typed topology cache on any structural change
+    this.cachedTypedTopology = undefined;
+
     if (from === -1 || to === -1) {
-      // Full invalidation: clears everything including hiddenNeuronUUIDs.
+      // Full invalidation: clears everything including hiddenNeuronIds.
       // Used when neurons are added/removed or structure is fully rebuilt.
       this._topoCaches.cacheTo = [];
       this._topoCaches.cacheFrom = [];
@@ -222,11 +238,11 @@ export class Creature implements CreatureInternal {
       this._topoCaches.synapsesIndexedByTo = null;
       this._topoCaches.inwardCacheMissCount = 0;
       this._topoCaches.connectionSet = null;
-      this._topoCaches.hiddenNeuronUUIDs = null;
+      this._topoCaches.hiddenNeuronIds = null;
       this._topoCaches.availableConnectionsCache = null;
       this.topologyHash = undefined;
     } else {
-      // Connection-only invalidation: preserves hiddenNeuronUUIDs.
+      // Connection-only invalidation: preserves hiddenNeuronIds.
       // Adding/removing a connection does not change the set of neurons,
       // so the UUID set remains valid.
       this._topoCaches.cacheTo[to] = undefined;
@@ -242,13 +258,15 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Clears connection-related caches without invalidating hiddenNeuronUUIDs.
+   * Clears connection-related caches without invalidating hiddenNeuronIds.
    *
    * Issue #1445: Used by batch connect/disconnect operations that change
    * connections but not the set of neurons. This avoids unnecessary
-   * rebuilds of the hiddenNeuronUUIDs set.
+   * rebuilds of the hiddenNeuronIds set.
    */
   private clearConnectionCaches() {
+    // Issue #1957: Invalidate typed topology on connection changes
+    this.cachedTypedTopology = undefined;
     this._topoCaches.cacheTo = [];
     this._topoCaches.cacheFrom = [];
     this._topoCaches.cacheSelf = [];
@@ -285,7 +303,12 @@ export class Creature implements CreatureInternal {
     let fixNeeded = false;
     for (let i = this.input; i--;) {
       const type = "input";
-      const neuron = new Neuron(`input-${this.input - i - 1}`, type, 0, this);
+      const neuron = new Neuron(
+        inputNeuronId(this.input - i - 1),
+        type,
+        0,
+        this,
+      );
       neuron.index = this.neurons.length;
       this.neurons.push(neuron);
     }
@@ -303,7 +326,7 @@ export class Creature implements CreatureInternal {
             fixNeeded = true;
           }
           const neuron = new Neuron(
-            crypto.randomUUID(),
+            nextNeuronId(),
             "hidden",
             getRandomNumberGenerator().random() * 0.2 - 0.1,
             this,
@@ -337,7 +360,7 @@ export class Creature implements CreatureInternal {
           fixNeeded = true;
         }
         const neuron = new Neuron(
-          `output-${indx}`,
+          outputNeuronId(indx),
           type,
           getRandomNumberGenerator().random() * 0.2 - 0.1,
           this,
@@ -356,7 +379,7 @@ export class Creature implements CreatureInternal {
       for (let indx = 0; indx < this.output; indx++) {
         const type = "output";
         const neuron = new Neuron(
-          `output-${indx}`,
+          outputNeuronId(indx),
           type,
           getRandomNumberGenerator().random() * 0.2 - 0.1,
           this,
@@ -514,6 +537,19 @@ export class Creature implements CreatureInternal {
 
   // ── Topology ───────────────────────────────────────────────────────────
 
+  /**
+   * Build (or return cached) typed array topology snapshot.
+   *
+   * Issue #1957: Typed array topology for reduced GC pressure and
+   * WASM-compatible memcpy serialisation.
+   */
+  buildTypedTopology(): TypedTopology {
+    if (!this.cachedTypedTopology) {
+      this.cachedTypedTopology = TypedTopology.fromCreature(this);
+    }
+    return this.cachedTypedTopology;
+  }
+
   selfConnection(indx: number): SynapseInternal | null {
     return topology.selfConnection(this, this._topoCaches, indx);
   }
@@ -546,8 +582,8 @@ export class Creature implements CreatureInternal {
     return topology.hasConnection(this, this._topoCaches, from, to);
   }
 
-  public getHiddenNeuronUUIDs(): Set<string> {
-    return topology.getHiddenNeuronUUIDs(this, this._topoCaches);
+  public getHiddenNeuronIds(): Set<number> {
+    return topology.getHiddenNeuronIds(this, this._topoCaches);
   }
 
   public getAvailableConnections(focusList?: number[]): [number, number][] {
@@ -664,7 +700,7 @@ export class Creature implements CreatureInternal {
       }
     }
 
-    // Issue #1445: Preserve hiddenNeuronUUIDs — batch connect only changes
+    // Issue #1445: Preserve hiddenNeuronIds — batch connect only changes
     // connections, not the set of neurons.
     this.clearConnectionCaches();
   }
@@ -685,7 +721,7 @@ export class Creature implements CreatureInternal {
       this.synapses.splice(idx, 1);
     }
 
-    // Issue #1445: Preserve hiddenNeuronUUIDs — batch disconnect only changes
+    // Issue #1445: Preserve hiddenNeuronIds — batch disconnect only changes
     // connections, not the set of neurons.
     this.clearConnectionCaches();
   }
@@ -779,7 +815,7 @@ export class Creature implements CreatureInternal {
     training.propagate(this, expected, config, sparseConfig);
   }
 
-  record(expected: Float32Array): Map<string, DiscoverRecord> {
+  record(expected: Float32Array): Map<number, DiscoverRecord> {
     return training.record(this, expected);
   }
 

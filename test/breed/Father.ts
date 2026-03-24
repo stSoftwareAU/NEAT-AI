@@ -1,8 +1,8 @@
 import { assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { createCompatibleFather } from "../../src/breed/Father.ts";
-import type { SynapseExport } from "../../src/architecture/SynapseInterfaces.ts";
 import type { NeuronExport } from "../../src/architecture/NeuronInterfaces.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../mod.ts";
 
 function makeFather() {
@@ -78,14 +78,25 @@ function makeMother() {
 Deno.test("CompatibleFather", () => {
   const father = makeFather();
   const mother = makeMother();
-  const fatherExpected = JSON.parse(JSON.stringify(father));
-  fatherExpected.neurons[0].uuid = "mother-3";
-  fatherExpected.synapses.forEach((synapse: SynapseExport) => {
-    if (synapse.fromUUID === "father-3") synapse.fromUUID = "mother-3";
+
+  // Build expected: normalise a fresh copy of father, then remap father-3's id to mother-3's id.
+  // createCompatibleFather normalises father in-place and returns a new object with remapped ids.
+  const fatherForExpected = makeFather();
+  normaliseCreatureExport(fatherForExpected);
+
+  // father-3 (id=987686466) gets remapped to mother-3 (id=159393431)
+  const fatherThreeId = 987686466;
+  const motherThreeId = 159393431;
+
+  const fatherExpected = JSON.parse(JSON.stringify(fatherForExpected));
+  // Remap neuron id
+  fatherExpected.neurons[0].id = motherThreeId;
+  // Remap synapse fromId/toId
+  fatherExpected.synapses.forEach((synapse: Record<string, unknown>) => {
+    if (synapse.fromId === fatherThreeId) synapse.fromId = motherThreeId;
+    if (synapse.toId === fatherThreeId) synapse.toId = motherThreeId;
   });
-  fatherExpected.synapses.forEach((synapse: SynapseExport) => {
-    if (synapse.toUUID === "father-3") synapse.toUUID = "mother-3";
-  });
+
   const fatherActual = createCompatibleFather(mother, father);
 
   assertEquals(fatherActual, fatherExpected);
@@ -102,8 +113,17 @@ Deno.test("Genetic Integrity - No Changes When Neuron UUID Used Elsewhere", () =
     weight: 0.9,
   });
 
-  // The expected output should be the same as the original father since "father-3" is used elsewhere
-  const fatherExpected = JSON.parse(JSON.stringify(father));
+  // The expected output should be the same as the original father since "father-3" is used elsewhere.
+  // createCompatibleFather normalises father in-place, so we normalise a fresh copy for expected.
+  const fatherForExpected = makeFather();
+  fatherForExpected.synapses.push({
+    fromUUID: "hidden-4",
+    toUUID: "father-3",
+    weight: 0.9,
+  });
+  normaliseCreatureExport(fatherForExpected);
+  const fatherExpected = JSON.parse(JSON.stringify(fatherForExpected));
+
   const fatherActual = createCompatibleFather(mother, father);
 
   assertEquals(fatherActual, fatherExpected);
@@ -162,15 +182,44 @@ Deno.test("Genetic Integrity - Multiple Matching Neurons", () => {
   });
   Creature.fromJSON(mother).validate();
 
-  // Expected outcome
-  const fatherExpected = JSON.parse(JSON.stringify(father));
+  // Build expected: normalise a fresh copy of father (with new neuron), then remap father-3 → mother-3.
+  const fatherForExpected = makeFather();
+  const newNeuronForExpected: NeuronExport = {
+    type: "hidden",
+    uuid: "father-new",
+    squash: "TANH",
+    bias: 4,
+  };
+  const outputIdxForExpected = fatherForExpected.neurons.findIndex((n) =>
+    n.type === "output"
+  );
+  fatherForExpected.neurons.splice(
+    outputIdxForExpected,
+    0,
+    newNeuronForExpected,
+  );
+  fatherForExpected.synapses.push({
+    fromUUID: "input-1",
+    toUUID: "father-new",
+    weight: 0.2,
+  });
+  fatherForExpected.synapses.push({
+    fromUUID: "father-new",
+    toUUID: "output-0",
+    weight: 0.21,
+  });
+  normaliseCreatureExport(fatherForExpected);
 
-  // Apply changes to match the mother's neuron UUIDs in the expected output
-  fatherExpected.neurons[0].uuid = "mother-3"; // The original change
+  const fatherThreeId = 987686466;
+  const motherThreeId = 159393431;
 
-  fatherExpected.synapses.forEach((synapse: SynapseExport) => {
-    if (synapse.fromUUID === "father-3") synapse.fromUUID = "mother-3";
-    if (synapse.toUUID === "father-3") synapse.toUUID = "mother-3";
+  const fatherExpected = JSON.parse(JSON.stringify(fatherForExpected));
+  // Remap father-3 → mother-3 in neurons
+  fatherExpected.neurons[0].id = motherThreeId;
+  // Remap synapse fromId/toId
+  fatherExpected.synapses.forEach((synapse: Record<string, unknown>) => {
+    if (synapse.fromId === fatherThreeId) synapse.fromId = motherThreeId;
+    if (synapse.toId === fatherThreeId) synapse.toId = motherThreeId;
   });
 
   const fatherActual = createCompatibleFather(mother, father);
@@ -232,10 +281,10 @@ Deno.test("Consistent key generation with shuffled synapses", () => {
   // Reversed synapse order should produce the same UUID mapping
   const result2 = createCompatibleFather(motherReversed, fatherReversed);
 
-  // Both results should have the same neuron UUIDs (the mapping should be identical)
+  // Both results should have the same neuron ids (the mapping should be identical)
   assertEquals(result1.neurons.length, result2.neurons.length);
   for (let i = 0; i < result1.neurons.length; i++) {
-    assertEquals(result1.neurons[i].uuid, result2.neurons[i].uuid);
+    assertEquals(result1.neurons[i].id, result2.neurons[i].id);
   }
 
   // Both should create valid creatures
@@ -247,29 +296,32 @@ Deno.test("Genetic Integrity - No Matching Neurons", () => {
   const father = makeFather();
   Creature.fromJSON(father).validate();
 
+  // Create a mother with structurally different neurons so no topology matches.
+  // The original mother-3 is connected input-0 → mother-3 → hidden-4 → outputs.
+  // To prevent matching father-3 (input-0 → father-3 → hidden-4 → outputs),
+  // we change mother-3's inbound to come from input-1 instead of input-0.
   const nonMatchingMother = makeMother();
-  nonMatchingMother.neurons.unshift({
-    type: "hidden",
-    uuid: "hidden-0",
-    squash: "TANH",
-    bias: 1.2,
-  });
-
-  nonMatchingMother.synapses.forEach((synapse: SynapseExport) => {
-    if (synapse.fromUUID === "input-0") {
-      synapse.fromUUID = "hidden-0";
+  // Replace the inbound synapse for mother-3 to use a different input
+  nonMatchingMother.synapses = nonMatchingMother.synapses.map((s) => {
+    if (
+      (s as unknown as Record<string, unknown>).fromUUID === "input-0" &&
+      (s as unknown as Record<string, unknown>).toUUID === "mother-3"
+    ) {
+      return {
+        ...(s as unknown as Record<string, unknown>),
+        fromUUID: "input-1",
+      } as typeof s;
     }
-  });
-
-  nonMatchingMother.synapses.push({
-    fromUUID: "input-0",
-    toUUID: "hidden-0",
-    weight: -1.3,
+    return s;
   });
   Creature.fromJSON(nonMatchingMother).validate();
 
-  // The expected output should be the same as the original father since no neurons match
-  const fatherExpected = JSON.parse(JSON.stringify(father));
+  // The expected output should be the same as the original father since no neurons match.
+  // createCompatibleFather normalises father in-place, so we normalise a fresh copy for expected.
+  const fatherForExpected = makeFather();
+  normaliseCreatureExport(fatherForExpected);
+  const fatherExpected = JSON.parse(JSON.stringify(fatherForExpected));
+
   const fatherActual = createCompatibleFather(nonMatchingMother, father);
 
   Creature.fromJSON(fatherActual).validate();

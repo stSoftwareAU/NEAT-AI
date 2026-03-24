@@ -107,7 +107,7 @@ Deno.test({
         5, // Reduced from 60s to 5s for faster tests
         DEFAULT_RUST_FLUSH_RECORDS,
       );
-      const neuronPromisesMap: Map<string, Promise<void>> = new Map();
+      const neuronPromisesMap: Map<number, Promise<void>> = new Map();
 
       discoverStructure.initialize(neuronPromisesMap);
 

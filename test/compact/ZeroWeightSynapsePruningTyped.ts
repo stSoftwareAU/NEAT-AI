@@ -14,12 +14,12 @@ Deno.test("pruneZeroWeightSynapses: keeps typed synapses, protects IF targets, a
     synapses: [
       // When an output has other inbound connections, a zero-weight, untyped
       // synapse should be pruned.
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0 },
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0.3 },
+      { fromUUID: "input-0", toId: -1, weight: 0 },
+      { fromUUID: "input-0", toId: -1, weight: 0.3 },
 
       // Structural safety: when an output would otherwise have zero inbound
       // connections, preserve the last inbound synapse (even if its weight is 0).
-      { fromUUID: "input-0", toUUID: "output-1", weight: 0 },
+      { fromUUID: "input-0", toId: -2, weight: 0 },
 
       // IF requires typed inbound connections; these must never be pruned.
       {
@@ -46,22 +46,21 @@ Deno.test("pruneZeroWeightSynapses: keeps typed synapses, protects IF targets, a
   // - 1 inbound to output-1 (kept for structural safety) => 1 remains
   // - 3 typed required by IF + 1 untyped zero to IF => 4 remain
   assertEquals(exportJSON.synapses.length, 6);
+  // if-0 hidden neuron gets deterministic integer id 4227520
   assertEquals(
-    exportJSON.synapses.filter((s) => s.toUUID === "if-0").length,
+    exportJSON.synapses.filter((s) => s.toId === 4227520).length,
     4,
   );
   assertEquals(
-    exportJSON.synapses.some((s) => s.toUUID === "output-0" && s.weight === 0),
+    exportJSON.synapses.some((s) => s.toId === -1 && s.weight === 0),
     false,
   );
   assertEquals(
-    exportJSON.synapses.some((s) =>
-      s.toUUID === "output-0" && s.weight === 0.3
-    ),
+    exportJSON.synapses.some((s) => s.toId === -1 && s.weight === 0.3),
     true,
   );
   assertEquals(
-    exportJSON.synapses.some((s) => s.toUUID === "output-1" && s.weight === 0),
+    exportJSON.synapses.some((s) => s.toId === -2 && s.weight === 0),
     true,
   );
 });

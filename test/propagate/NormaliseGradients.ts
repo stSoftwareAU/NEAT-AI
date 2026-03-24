@@ -80,7 +80,7 @@ Deno.test("NormaliseGradients - reduces gradient magnification for high fan-out"
     ...configOpts,
     normaliseGradients: false,
   });
-  const sumSparse = new SparseConfig(json, sumConfig);
+  const sumSparse = new SparseConfig(sumCreature.exportJSON(), sumConfig);
 
   sumCreature.activateAndTrace(input, false, sumSparse);
   sumCreature.propagate(target, sumConfig, sumSparse);
@@ -94,7 +94,7 @@ Deno.test("NormaliseGradients - reduces gradient magnification for high fan-out"
     ...configOpts,
     normaliseGradients: true,
   });
-  const normSparse = new SparseConfig(json, normConfig);
+  const normSparse = new SparseConfig(normCreature.exportJSON(), normConfig);
 
   normCreature.activateAndTrace(input, false, normSparse);
   normCreature.propagate(target, normConfig, normSparse);
@@ -164,7 +164,7 @@ Deno.test("NormaliseGradients - single downstream unaffected", () => {
     ...configOpts,
     normaliseGradients: false,
   });
-  const sumSparse = new SparseConfig(json, sumConfig);
+  const sumSparse = new SparseConfig(sumCreature.exportJSON(), sumConfig);
   sumCreature.activateAndTrace(input, false, sumSparse);
   sumCreature.propagate(target, sumConfig, sumSparse);
   sumCreature.applyLearnings(sumConfig, sumSparse);
@@ -176,7 +176,7 @@ Deno.test("NormaliseGradients - single downstream unaffected", () => {
     ...configOpts,
     normaliseGradients: true,
   });
-  const normSparse = new SparseConfig(json, normConfig);
+  const normSparse = new SparseConfig(normCreature.exportJSON(), normConfig);
   normCreature.activateAndTrace(input, false, normSparse);
   normCreature.propagate(target, normConfig, normSparse);
   normCreature.applyLearnings(normConfig, normSparse);
@@ -254,7 +254,7 @@ Deno.test("NormaliseGradients - improves convergence for skewed topology", () =>
     ...configOpts,
     normaliseGradients: false,
   });
-  const sumSparse = new SparseConfig(json, sumConfig);
+  const sumSparse = new SparseConfig(sumCreature.exportJSON(), sumConfig);
 
   const sumInitial = sumCreature.activate(input);
   let sumInitialError = 0;
@@ -280,7 +280,7 @@ Deno.test("NormaliseGradients - improves convergence for skewed topology", () =>
     ...configOpts,
     normaliseGradients: true,
   });
-  const normSparse = new SparseConfig(json, normConfig);
+  const normSparse = new SparseConfig(normCreature.exportJSON(), normConfig);
 
   const normInitial = normCreature.activate(input);
   let normInitialError = 0;

@@ -48,7 +48,7 @@ Deno.test("makeBaseCreature returns a valid 2-input, 1-output creature with 3 sy
 
   // Verify the direct input-1 → output-0 connection exists
   const directSynapse = json.synapses.find(
-    (s) => s.fromUUID === "input-1" && s.toUUID === "output-0",
+    (s) => s.fromId === 1 && s.toId === -1,
   );
   assert(directSynapse, "should have a direct input-1 → output-0 synapse");
   assertEquals(directSynapse.weight, -0.25);

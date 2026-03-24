@@ -38,29 +38,29 @@ export function mergeParallelIdentityBridges(
   exported: CreatureExport,
 ): ParallelIdentityMergeResult {
   // Build connection maps.
-  const inwardConnections = new Map<string, SynapseExport[]>();
-  const outwardConnections = new Map<string, SynapseExport[]>();
+  const inwardConnections = new Map<number, SynapseExport[]>();
+  const outwardConnections = new Map<number, SynapseExport[]>();
 
   for (const synapse of exported.synapses) {
-    const outList = outwardConnections.get(synapse.fromUUID);
+    const outList = outwardConnections.get(synapse.fromId!);
     if (outList) {
       outList.push(synapse);
     } else {
-      outwardConnections.set(synapse.fromUUID, [synapse]);
+      outwardConnections.set(synapse.fromId!, [synapse]);
     }
 
-    const inList = inwardConnections.get(synapse.toUUID);
+    const inList = inwardConnections.get(synapse.toId!);
     if (inList) {
       inList.push(synapse);
     } else {
-      inwardConnections.set(synapse.toUUID, [synapse]);
+      inwardConnections.set(synapse.toId!, [synapse]);
     }
   }
 
   // Build neuron index map for forward-only checks.
-  const neuronIndexMap = new Map<string, number>();
+  const neuronIndexMap = new Map<number, number>();
   for (let i = 0; i < exported.neurons.length; i++) {
-    neuronIndexMap.set(exported.neurons[i].uuid, i);
+    neuronIndexMap.set(exported.neurons[i].id!, i);
   }
 
   // Identify IDENTITY bridge neurons: hidden, IDENTITY squash, exactly 1 in + 1 out.
@@ -69,13 +69,13 @@ export function mergeParallelIdentityBridges(
     if (neuron.type !== "hidden") continue;
     if (neuron.squash !== "IDENTITY") continue;
 
-    const inConns = inwardConnections.get(neuron.uuid) ?? [];
-    const outConns = outwardConnections.get(neuron.uuid) ?? [];
+    const inConns = inwardConnections.get(neuron.id!) ?? [];
+    const outConns = outwardConnections.get(neuron.id!) ?? [];
 
     if (inConns.length === 1 && outConns.length === 1) {
       // Ensure no self-loops.
-      if (inConns[0].fromUUID === neuron.uuid) continue;
-      if (outConns[0].toUUID === neuron.uuid) continue;
+      if (inConns[0].fromId === neuron.id!) continue;
+      if (outConns[0].toId === neuron.id!) continue;
       bridgeNeurons.push(neuron);
     }
   }
@@ -85,42 +85,42 @@ export function mergeParallelIdentityBridges(
   }
 
   // Group bridge neurons by their outbound target UUID.
-  const groupsByTarget = new Map<string, NeuronExport[]>();
+  const groupsByTarget = new Map<number, NeuronExport[]>();
   for (const neuron of bridgeNeurons) {
-    const outConns = outwardConnections.get(neuron.uuid)!;
-    const targetUUID = outConns[0].toUUID;
-    const group = groupsByTarget.get(targetUUID);
+    const outConns = outwardConnections.get(neuron.id!)!;
+    const targetId = outConns[0].toId!;
+    const group = groupsByTarget.get(targetId);
     if (group) {
       group.push(neuron);
     } else {
-      groupsByTarget.set(targetUUID, [neuron]);
+      groupsByTarget.set(targetId, [neuron]);
     }
   }
 
   let totalRemoved = 0;
 
-  for (const [_targetUUID, group] of groupsByTarget) {
+  for (const [_targetId, group] of groupsByTarget) {
     if (group.length < 2) continue;
 
     // Check for duplicate inbound sources — if two bridge neurons share the
     // same input source, merging would create duplicate synapses to the kept
     // neuron. Skip such groups.
-    const inboundSources = new Set<string>();
+    const inboundSources = new Set<number>();
     let hasDuplicateSource = false;
     for (const neuron of group) {
-      const inConn = (inwardConnections.get(neuron.uuid) ?? [])[0];
-      if (inboundSources.has(inConn.fromUUID)) {
+      const inConn = (inwardConnections.get(neuron.id!) ?? [])[0];
+      if (inboundSources.has(inConn.fromId!)) {
         hasDuplicateSource = true;
         break;
       }
-      inboundSources.add(inConn.fromUUID);
+      inboundSources.add(inConn.fromId!);
     }
     if (hasDuplicateSource) continue;
 
     // Keep the first neuron, merge others into it.
     const kept = group[0];
-    const keptInConn = (inwardConnections.get(kept.uuid) ?? [])[0];
-    const keptOutConn = (outwardConnections.get(kept.uuid) ?? [])[0];
+    const keptInConn = (inwardConnections.get(kept.id!) ?? [])[0];
+    const keptOutConn = (outwardConnections.get(kept.id!) ?? [])[0];
     const toRemove = group.slice(1);
 
     // Calculate merged bias and adjust the kept neuron's outbound weight to 1.
@@ -136,7 +136,7 @@ export function mergeParallelIdentityBridges(
     // Compute merged bias contribution from all neurons in the group.
     let mergedBias = keptOutWeight * kept.bias;
     for (const removed of toRemove) {
-      const removedOutConn = (outwardConnections.get(removed.uuid) ?? [])[0];
+      const removedOutConn = (outwardConnections.get(removed.id!) ?? [])[0];
       mergedBias += removedOutConn.weight * removed.bias;
     }
 
@@ -154,10 +154,10 @@ export function mergeParallelIdentityBridges(
 
     // Redirect inbound synapses from removed neurons to the kept neuron,
     // with adjusted weights.
-    const uuidsToRemove = new Set<string>();
+    const idsToRemove = new Set<number>();
     for (const removed of toRemove) {
-      const removedInConn = (inwardConnections.get(removed.uuid) ?? [])[0];
-      const removedOutConn = (outwardConnections.get(removed.uuid) ?? [])[0];
+      const removedInConn = (inwardConnections.get(removed.id!) ?? [])[0];
+      const removedOutConn = (outwardConnections.get(removed.id!) ?? [])[0];
 
       // New weight for the redirected synapse: w_out_removed * w_in_removed
       const newWeight = removedOutConn.weight * removedInConn.weight;
@@ -167,7 +167,7 @@ export function mergeParallelIdentityBridges(
       );
 
       // Redirect the inbound synapse to point at the kept neuron.
-      removedInConn.toUUID = kept.uuid;
+      removedInConn.toId = kept.id!;
       removedInConn.weight = newWeight;
 
       // Issue #1972: Merge neuron tags from removed neurons onto kept neuron.
@@ -176,18 +176,18 @@ export function mergeParallelIdentityBridges(
         kept.tags = mergedNeuronTags;
       }
 
-      uuidsToRemove.add(removed.uuid);
+      idsToRemove.add(removed.id!);
     }
 
     // Remove outbound synapses of the removed neurons.
     exported.synapses = exported.synapses.filter((s) => {
-      if (uuidsToRemove.has(s.fromUUID)) return false;
+      if (idsToRemove.has(s.fromId!)) return false;
       return true;
     });
 
     // Remove the merged neurons.
     exported.neurons = exported.neurons.filter(
-      (n) => !uuidsToRemove.has(n.uuid),
+      (n) => !idsToRemove.has(n.id!),
     );
 
     totalRemoved += toRemove.length;

@@ -12,7 +12,6 @@ import { bold, cyan, green, yellow } from "@std/fmt/colors";
 import { join } from "@std/path/join";
 import type { Creature } from "../Creature.ts";
 import { getLogger } from "../utils/Logger.ts";
-import { shortID } from "./CandidateDescriptions.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type {
   DiscoveredNeuronDetails,
@@ -308,7 +307,7 @@ export function logSingleSummary(
     const prefix = isBest ? "★ " : "  ";
     getLogger().info(
       `[DiscoveryRunner]     ${prefix}neuron: ` +
-        `from=${shortID(nd.fromNeuronUUID)} to=${shortID(nd.toNeuronUUID)} ` +
+        `from=${nd.fromNeuronId} to=${nd.toNeuronId} ` +
         `squash=${nd.squash} ` +
         `inW=${nd.incomingWeight.toFixed(3)} outW=${
           nd.outgoingWeight.toFixed(3)

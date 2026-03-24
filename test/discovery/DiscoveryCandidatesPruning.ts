@@ -10,6 +10,13 @@ import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 
+// Integer IDs for neurons in makeBaselineCreature (deterministicIdFromUuid).
+// Input neurons: id = inputIndex (0..3), output neurons: id = -(index+1) (-1, -2).
+const HIDDEN_1_ID = 1775329650; // "hidden-1"
+const HIDDEN_2_ID = 1775329649; // "hidden-2"
+const OUTPUT_0_ID = -1; // "output-0"
+const OUTPUT_1_ID = -2; // "output-1"
+
 function makeBaselineCreature(): Creature {
   const creature = Creature.fromJSON({
     input: 4,
@@ -40,8 +47,8 @@ Deno.test(
     const discovery: DiscoverResult = {
       ID: "PHASE1-SINGLES-ONLY",
       addHelpfulSynapses: [{
-        fromNeuronUUID: "input-2",
-        toNeuronUUID: "hidden-1",
+        fromNeuronId: 2,
+        toNeuronId: HIDDEN_1_ID,
         weight: 0.99,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -49,8 +56,8 @@ Deno.test(
         improvedCount: 5,
         totalCount: 6,
       }, {
-        fromNeuronUUID: "input-3",
-        toNeuronUUID: "hidden-2",
+        fromNeuronId: 3,
+        toNeuronId: HIDDEN_2_ID,
         weight: -0.55,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -59,8 +66,8 @@ Deno.test(
         totalCount: 7,
       }],
       addHelpfulNeurons: [{
-        fromNeuronUUID: "input-2",
-        toNeuronUUID: "hidden-1",
+        fromNeuronId: HIDDEN_1_ID,
+        toNeuronId: OUTPUT_0_ID,
         incomingWeight: 0.45,
         outgoingWeight: -0.12,
         squash: TANH.NAME,
@@ -71,8 +78,8 @@ Deno.test(
         improvedCount: 5,
         totalCount: 6,
       }, {
-        fromNeuronUUID: "input-3",
-        toNeuronUUID: "hidden-2",
+        fromNeuronId: HIDDEN_2_ID,
+        toNeuronId: OUTPUT_1_ID,
         incomingWeight: -0.38,
         outgoingWeight: 0.22,
         squash: Mish.NAME,
@@ -87,14 +94,14 @@ Deno.test(
       removeHarmfulNeurons: undefined,
       removalCandidates: undefined,
       candidateSquashes: [{
-        neuronUUID: "hidden-1",
+        neuronId: HIDDEN_1_ID,
         previousSquash: IDENTITY.NAME,
         squash: TANH.NAME,
         expectedCreatureScoreGain: 0.4,
         improvedError: 0.1,
         currentError: 0.2,
       }, {
-        neuronUUID: "hidden-2",
+        neuronId: HIDDEN_2_ID,
         previousSquash: IDENTITY.NAME,
         squash: Mish.NAME,
         expectedCreatureScoreGain: 0.3,
@@ -170,8 +177,8 @@ Deno.test(
       addHelpfulSynapses: [
         // Same from→to slot, two variants with different weights.
         {
-          fromNeuronUUID: "input-2",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: 2,
+          toNeuronId: HIDDEN_1_ID,
           weight: 0.5,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -180,8 +187,8 @@ Deno.test(
           totalCount: 6,
         },
         {
-          fromNeuronUUID: "input-2",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: 2,
+          toNeuronId: HIDDEN_1_ID,
           weight: 0.9,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -191,8 +198,8 @@ Deno.test(
         },
         // Different slot.
         {
-          fromNeuronUUID: "input-3",
-          toNeuronUUID: "hidden-2",
+          fromNeuronId: 3,
+          toNeuronId: HIDDEN_2_ID,
           weight: -0.4,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -222,8 +229,8 @@ Deno.test(
     );
 
     const slotA = addSynapseCandidates.filter((c) =>
-      c.change.synapseCandidate?.fromNeuronUUID === "input-2" &&
-      c.change.synapseCandidate?.toNeuronUUID === "hidden-1"
+      c.change.synapseCandidate?.fromNeuronId === 2 &&
+      c.change.synapseCandidate?.toNeuronId === HIDDEN_1_ID
     );
     assertEquals(
       slotA.length,
@@ -237,8 +244,8 @@ Deno.test(
       { candidate: slotA[1], scoreDelta: 0.003 },
       {
         candidate: addSynapseCandidates.find((c) =>
-          c.change.synapseCandidate?.fromNeuronUUID === "input-3" &&
-          c.change.synapseCandidate?.toNeuronUUID === "hidden-2"
+          c.change.synapseCandidate?.fromNeuronId === 3 &&
+          c.change.synapseCandidate?.toNeuronId === HIDDEN_2_ID
         )!,
         scoreDelta: 0.002,
       },
@@ -251,8 +258,8 @@ Deno.test(
     );
     const keptSlotA = pruned.find((c) =>
       c.change.type === "add-synapses" &&
-      c.change.synapseCandidate?.fromNeuronUUID === "input-2" &&
-      c.change.synapseCandidate?.toNeuronUUID === "hidden-1"
+      c.change.synapseCandidate?.fromNeuronId === 2 &&
+      c.change.synapseCandidate?.toNeuronId === HIDDEN_1_ID
     );
     assert(keptSlotA, "Expected the input-2→hidden-1 slot to be kept");
     assertEquals(
@@ -277,7 +284,7 @@ Deno.test(
       candidateSquashes: [
         // Same neuron, two different squash functions.
         {
-          neuronUUID: "hidden-1",
+          neuronId: HIDDEN_1_ID,
           previousSquash: IDENTITY.NAME,
           squash: TANH.NAME,
           expectedCreatureScoreGain: 0.3,
@@ -285,7 +292,7 @@ Deno.test(
           currentError: 0.2,
         },
         {
-          neuronUUID: "hidden-1",
+          neuronId: HIDDEN_1_ID,
           previousSquash: IDENTITY.NAME,
           squash: Mish.NAME,
           expectedCreatureScoreGain: 0.35,
@@ -294,7 +301,7 @@ Deno.test(
         },
         // Different neuron.
         {
-          neuronUUID: "hidden-2",
+          neuronId: HIDDEN_2_ID,
           previousSquash: IDENTITY.NAME,
           squash: TANH.NAME,
           expectedCreatureScoreGain: 0.2,
@@ -318,7 +325,7 @@ Deno.test(
     );
 
     const slotA = squashCandidates.filter((c) =>
-      c.change.squashCandidate?.neuronUUID === "hidden-1"
+      c.change.squashCandidate?.neuronId === HIDDEN_1_ID
     );
     assertEquals(
       slotA.length,
@@ -332,7 +339,7 @@ Deno.test(
       { candidate: slotA[1], scoreDelta: 0.004 },
       {
         candidate: squashCandidates.find((c) =>
-          c.change.squashCandidate?.neuronUUID === "hidden-2"
+          c.change.squashCandidate?.neuronId === HIDDEN_2_ID
         )!,
         scoreDelta: 0.002,
       },
@@ -345,7 +352,7 @@ Deno.test(
     );
     const keptSlotA = pruned.find((c) =>
       c.change.type === "change-squash" &&
-      c.change.squashCandidate?.neuronUUID === "hidden-1"
+      c.change.squashCandidate?.neuronId === HIDDEN_1_ID
     );
     assert(keptSlotA, "Expected the hidden-1 slot to be kept");
     assertEquals(
@@ -366,8 +373,8 @@ Deno.test(
       ID: "PRUNE-SORT-TEST",
       addHelpfulSynapses: [
         {
-          fromNeuronUUID: "input-2",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: 2,
+          toNeuronId: HIDDEN_1_ID,
           weight: 0.5,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -376,8 +383,8 @@ Deno.test(
           totalCount: 6,
         },
         {
-          fromNeuronUUID: "input-3",
-          toNeuronUUID: "hidden-2",
+          fromNeuronId: 3,
+          toNeuronId: HIDDEN_2_ID,
           weight: -0.4,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -388,8 +395,8 @@ Deno.test(
       ],
       addHelpfulNeurons: [
         {
-          fromNeuronUUID: "input-2",
-          toNeuronUUID: "hidden-2",
+          fromNeuronId: HIDDEN_1_ID,
+          toNeuronId: OUTPUT_1_ID,
           incomingWeight: 0.33,
           outgoingWeight: -0.22,
           squash: TANH.NAME,
@@ -460,8 +467,8 @@ Deno.test(
       ID: "PRUNE-MIXED-TYPES",
       addHelpfulSynapses: [
         {
-          fromNeuronUUID: "input-2",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: 2,
+          toNeuronId: HIDDEN_1_ID,
           weight: 0.5,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -472,8 +479,8 @@ Deno.test(
       ],
       addHelpfulNeurons: [
         {
-          fromNeuronUUID: "input-2",
-          toNeuronUUID: "hidden-1",
+          fromNeuronId: HIDDEN_1_ID,
+          toNeuronId: OUTPUT_0_ID,
           incomingWeight: 0.45,
           outgoingWeight: -0.12,
           squash: TANH.NAME,
@@ -490,7 +497,7 @@ Deno.test(
       removalCandidates: undefined,
       candidateSquashes: [
         {
-          neuronUUID: "hidden-1",
+          neuronId: HIDDEN_1_ID,
           previousSquash: IDENTITY.NAME,
           squash: TANH.NAME,
           expectedCreatureScoreGain: 0.3,

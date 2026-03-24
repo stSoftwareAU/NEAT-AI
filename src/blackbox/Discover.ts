@@ -8,16 +8,16 @@ export function discover(mum: Creature, child: Creature) {
   if (child.score !== undefined) return;
   if (mum.neurons.length !== child.neurons.length) return;
   if (mum.synapses.length !== child.synapses.length) return;
-  const uuidSquashMap = new Map<string, string>();
+  const idSquashMap = new Map<number, string>();
   for (const mumNeuron of mum.neurons) {
-    uuidSquashMap.set(
-      mumNeuron.uuid,
+    idSquashMap.set(
+      mumNeuron.id,
       mumNeuron.squash ? mumNeuron.squash : "OTHER",
     );
   }
 
   for (const childNeuron of child.neurons) {
-    const mumSquash = uuidSquashMap.get(childNeuron.uuid);
+    const mumSquash = idSquashMap.get(childNeuron.id);
     if (!mumSquash) {
       return;
     }
@@ -29,13 +29,13 @@ export function discover(mum: Creature, child: Creature) {
   const mumSynapseSet = new Set<string>();
   for (const mumSynapse of mum.synapses) {
     mumSynapseSet.add(
-      mum.neurons[mumSynapse.from].uuid + "->" +
-        mum.neurons[mumSynapse.to].uuid,
+      mum.neurons[mumSynapse.from].id + "->" +
+        mum.neurons[mumSynapse.to].id,
     );
   }
   for (const childSynapse of child.synapses) {
-    const key = child.neurons[childSynapse.from].uuid + "->" +
-      child.neurons[childSynapse.to].uuid;
+    const key = child.neurons[childSynapse.from].id + "->" +
+      child.neurons[childSynapse.to].id;
     if (!mumSynapseSet.has(key)) {
       return;
     }
@@ -56,7 +56,7 @@ export function discover(mum: Creature, child: Creature) {
     const childNeuron = childExport.neurons[i];
 
     if (mumNeuron.bias !== childNeuron.bias) {
-      memetic.biases[mumNeuron.uuid] = mumNeuron.bias;
+      memetic.biases[mumNeuron.id!] = mumNeuron.bias;
     }
   }
 
@@ -65,12 +65,12 @@ export function discover(mum: Creature, child: Creature) {
     const childSynapse = childExport.synapses[i];
 
     if (mumSynapse.weight !== childSynapse.weight) {
-      if (!memetic.weights[mumSynapse.fromUUID]) {
-        memetic.weights[mumSynapse.fromUUID] = [];
+      if (!memetic.weights[mumSynapse.fromId!]) {
+        memetic.weights[mumSynapse.fromId!] = [];
       }
 
-      memetic.weights[mumSynapse.fromUUID].push({
-        toUUID: mumSynapse.toUUID,
+      memetic.weights[mumSynapse.fromId!].push({
+        toId: mumSynapse.toId!,
         weight: mumSynapse.weight,
       });
     }

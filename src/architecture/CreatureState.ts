@@ -202,18 +202,18 @@ export class CreatureState {
 
   /**
    * Collects per-neuron error data for error-guided sparse selection.
-   * Returns a map from neuron UUID to NeuronStateInterface.
+   * Returns a map from neuron id to NeuronStateInterface.
    * Issue #1388: Error-guided sparse neuron selection.
    */
-  collectNeuronErrors(): Map<string, NeuronStateInterface> {
-    const errors = new Map<string, NeuronStateInterface>();
+  collectNeuronErrors(): Map<number, NeuronStateInterface> {
+    const errors = new Map<number, NeuronStateInterface>();
     const len = this.nodeArray.length;
     for (let i = 0; i < len; i++) {
       const state = this.nodeArray[i];
       if (state !== undefined && state.totalErrorAbsolute > 0) {
         const neuron = this.creature.neurons[i];
-        if (neuron && neuron.uuid) {
-          errors.set(neuron.uuid, state);
+        if (neuron && neuron.id !== undefined) {
+          errors.set(neuron.id, state);
         }
       }
     }

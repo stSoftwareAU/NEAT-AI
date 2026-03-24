@@ -43,8 +43,20 @@ function makeBaseCreature(): Creature {
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "hidden-1", squash: "IDENTITY", bias: 0 },
-      { type: "hidden", uuid: "hidden-2", squash: "IDENTITY", bias: 0.5 },
+      {
+        type: "hidden",
+        uuid: "hidden-1",
+        id: 5001,
+        squash: "IDENTITY",
+        bias: 0,
+      },
+      {
+        type: "hidden",
+        uuid: "hidden-2",
+        id: 5002,
+        squash: "IDENTITY",
+        bias: 0.5,
+      },
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
     ],
     synapses: [
@@ -76,8 +88,8 @@ Deno.test("buildSingleSynapseCandidates - returns empty for empty array", () => 
 Deno.test("buildSingleSynapseCandidates - builds candidate for valid synapse", () => {
   const base = makeBaseCreature();
   const synapse: CandidateSynapse = {
-    fromNeuronUUID: "input-0",
-    toNeuronUUID: "hidden-2",
+    fromNeuronId: 0,
+    toNeuronId: 5002,
     weight: 0.4,
     targetNeuronImpact: 0.1,
     expectedCreatureErrorReduction: 0.05,
@@ -103,8 +115,8 @@ Deno.test("buildSingleSynapseCandidates - builds candidate for valid synapse", (
 Deno.test("buildSingleSynapseCandidates - includes expectedErrorReduction from getExpected", () => {
   const base = makeBaseCreature();
   const synapse: CandidateSynapse = {
-    fromNeuronUUID: "input-0",
-    toNeuronUUID: "hidden-2",
+    fromNeuronId: 0,
+    toNeuronId: 5002,
     weight: 0.4,
     targetNeuronImpact: 0.1,
     expectedCreatureErrorReduction: 0.05,
@@ -143,8 +155,8 @@ Deno.test("buildSingleNeuronCandidates - returns empty for empty array", () => {
 Deno.test("buildSingleNeuronCandidates - builds candidate for valid neuron", () => {
   const base = makeBaseCreature();
   const neuron: CandidateNeuron = {
-    fromNeuronUUID: "input-0",
-    toNeuronUUID: "output-0",
+    fromNeuronId: 0,
+    toNeuronId: -1,
     incomingWeight: 0.5,
     outgoingWeight: 0.3,
     squash: "TANH",
@@ -184,8 +196,9 @@ Deno.test("buildSingleSquashCandidates - returns empty for empty array", () => {
 
 Deno.test("buildSingleSquashCandidates - builds candidate for valid squash change", () => {
   const base = makeBaseCreature();
+  // hidden-1 explicit ID from fixture
   const squash: CandidateSquash = {
-    neuronUUID: "hidden-1",
+    neuronId: 5001,
     previousSquash: "IDENTITY",
     squash: "TANH",
     expectedCreatureScoreGain: 0.05,
@@ -207,8 +220,9 @@ Deno.test("buildSingleSquashCandidates - builds candidate for valid squash chang
 
 Deno.test("buildSingleSquashCandidates - includes expected from getExpected", () => {
   const base = makeBaseCreature();
+  // hidden-1 explicit ID from fixture
   const squash: CandidateSquash = {
-    neuronUUID: "hidden-1",
+    neuronId: 5001,
     previousSquash: "IDENTITY",
     squash: "TANH",
     expectedCreatureScoreGain: 0.05,
@@ -272,7 +286,7 @@ Deno.test("buildLowImpactRemovalCandidates - skips non-existent neuron", () => {
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
     removalCandidates: [{
-      neuronUUID: "nonexistent-neuron",
+      neuronId: 7000,
       totalError: 0.01,
       impact: 0.001,
       reason: "low-impact",
@@ -293,7 +307,8 @@ Deno.test("buildLowImpactRemovalCandidates - builds candidate for existing hidde
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
     removalCandidates: [{
-      neuronUUID: "hidden-2",
+      // hidden-2 explicit ID from fixture
+      neuronId: 5002,
       totalError: 0.01,
       impact: 0.0001,
       reason: "low-impact",
@@ -333,8 +348,9 @@ Deno.test("buildHarmfulNeuronRemovalCandidate - returns undefined for undefined"
 
 Deno.test("buildHarmfulNeuronRemovalCandidate - builds candidate for valid harmful neuron", () => {
   const base = makeBaseCreature();
+  // hidden-1 explicit ID from fixture
   const harmful: CandidateHarmfulNeuron = {
-    neuronUUID: "hidden-1",
+    neuronId: 5001,
     errorMagnitude: 0.5,
     expectedCreatureScoreGain: 0.1,
     sampleCount: 20,
@@ -397,9 +413,10 @@ Deno.test("buildHarmfulSynapseRemovalCandidates - builds candidate for valid syn
     candidateSquashes: undefined,
   };
 
+  // hidden-2 explicit ID from fixture
   const harmfulSynapse: CandidateSynapse = {
-    fromNeuronUUID: "hidden-2",
-    toNeuronUUID: "output-0",
+    fromNeuronId: 5002,
+    toNeuronId: -1,
     weight: -0.3,
     targetNeuronImpact: 0.1,
     expectedCreatureErrorReduction: 0.05,

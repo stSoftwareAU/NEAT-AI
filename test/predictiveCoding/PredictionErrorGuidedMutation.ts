@@ -78,8 +78,8 @@ Deno.test(
     assert(bias !== undefined, "Bias should be defined when errors exist");
 
     // hidden0 (uuid at index 2) should have higher weight than hidden1 (index 3)
-    const hidden0UUID = creature.neurons[2].uuid;
-    const hidden1UUID = creature.neurons[3].uuid;
+    const hidden0UUID = creature.neurons[2].id;
+    const hidden1UUID = creature.neurons[3].id;
 
     const weight0 = bias!.neuronWeights.get(hidden0UUID)!;
     const weight1 = bias!.neuronWeights.get(hidden1UUID)!;
@@ -202,8 +202,8 @@ Deno.test(
     const bias = computeMutationBias(creature);
     assert(bias !== undefined);
 
-    const hidden0UUID = creature.neurons[2].uuid;
-    const hidden1UUID = creature.neurons[3].uuid;
+    const hidden0UUID = creature.neurons[2].id;
+    const hidden1UUID = creature.neurons[3].id;
 
     const weight0 = bias!.neuronWeights.get(hidden0UUID)!;
     const weight1 = bias!.neuronWeights.get(hidden1UUID)!;

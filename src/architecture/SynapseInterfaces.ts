@@ -28,13 +28,26 @@ export interface SynapseInternal extends SynapseCommon {
 
 /**
  * Interface for exporting synapse data to JSON format.
- * Represents a synapse that can be serialized and shared.
+ * Represents a synapse that can be serialised and shared.
+ * Issue #1958: Uses integer neuron IDs instead of UUID strings.
  */
 export interface SynapseExport extends SynapseCommon {
-  /** UUID of the source neuron */
-  fromUUID: string;
-  /** UUID of the destination neuron */
-  toUUID: string;
+  /**
+   * Integer ID of the source neuron (Issue #1958).
+   * Optional for backward compatibility with legacy UUID-format data;
+   * new exports always include this field.
+   */
+  fromId?: number;
+  /**
+   * Integer ID of the destination neuron (Issue #1958).
+   * Optional for backward compatibility with legacy UUID-format data;
+   * new exports always include this field.
+   */
+  toId?: number;
+  /** @deprecated Legacy UUID string field. Use `fromId` instead. (Issue #1958) */
+  fromUUID?: string;
+  /** @deprecated Legacy UUID string field. Use `toId` instead. (Issue #1958) */
+  toUUID?: string;
 }
 
 /**

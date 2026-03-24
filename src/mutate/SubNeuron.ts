@@ -28,18 +28,18 @@ export class SubNeuron extends AbstractMutationOperator {
     }
 
     // Build neuron index map for focus checking
-    const neuronIndexMap = new Map<string, number>();
+    const neuronIndexMap = new Map<number, number>();
     let idx = 0;
     // Input neurons first (implicit, not in export)
     for (let i = 0; i < this.creature.input; i++) {
-      neuronIndexMap.set(`input-${i}`, idx++);
+      neuronIndexMap.set(i, idx++);
     }
     // Then exported neurons
     for (const neuron of exportJSON.neurons) {
-      neuronIndexMap.set(neuron.uuid, idx++);
+      neuronIndexMap.set(neuron.id!, idx++);
     }
 
-    let selectedNeuronUUID: string | undefined;
+    let selectedNeuronId: number | undefined;
 
     for (let attempts = 0; attempts < 24; attempts++) {
       // Select a random removable neuron
@@ -48,7 +48,7 @@ export class SubNeuron extends AbstractMutationOperator {
           getRandomNumberGenerator().random() * removableNeurons.length,
         )
       ];
-      const neuronIdx = neuronIndexMap.get(randomNeuron.uuid);
+      const neuronIdx = neuronIndexMap.get(randomNeuron.id!);
 
       // Check focus list using transitive focus checking (relax after 12 attempts)
       // A neuron is in focus if it's directly in the focus list OR if any of
@@ -59,27 +59,26 @@ export class SubNeuron extends AbstractMutationOperator {
         }
       }
 
-      selectedNeuronUUID = randomNeuron.uuid;
+      selectedNeuronId = randomNeuron.id!;
       break;
     }
 
-    if (!selectedNeuronUUID) {
+    if (!selectedNeuronId) {
       return false;
     }
 
     // Remove all synapses to/from this neuron
     exportJSON.synapses = exportJSON.synapses.filter(
-      (s) =>
-        s.fromUUID !== selectedNeuronUUID && s.toUUID !== selectedNeuronUUID,
+      (s) => s.fromId !== selectedNeuronId && s.toId !== selectedNeuronId,
     );
 
     // Remove the neuron itself
     exportJSON.neurons = exportJSON.neurons.filter(
-      (n) => n.uuid !== selectedNeuronUUID,
+      (n) => n.id !== selectedNeuronId,
     );
 
     // Clean up memetic data for the removed neuron
-    cleanupMemeticForRemovedNeuron(exportJSON, selectedNeuronUUID);
+    cleanupMemeticForRemovedNeuron(exportJSON, selectedNeuronId);
 
     // Clean up IF neurons left in an invalid state after neuron removal.
     // IF neurons require at least one condition, positive, and negative connection.
@@ -110,7 +109,7 @@ export class SubNeuron extends AbstractMutationOperator {
     let changed: boolean;
     do {
       changed = false;
-      const removableUUIDs = new Set<string>();
+      const removableIds = new Set<number>();
 
       // Find IF neurons and check their connection types
       for (const neuron of exportJSON.neurons) {
@@ -121,7 +120,7 @@ export class SubNeuron extends AbstractMutationOperator {
         let hasNegative = false;
 
         for (const synapse of exportJSON.synapses) {
-          if (synapse.toUUID !== neuron.uuid) continue;
+          if (synapse.toId !== neuron.id) continue;
           const synapseType = synapse.type ?? "positive";
           if (synapseType === "condition") hasCondition = true;
           else if (synapseType === "positive") hasPositive = true;
@@ -134,27 +133,27 @@ export class SubNeuron extends AbstractMutationOperator {
             // and clear synapse types so they work as standard connections.
             neuron.squash = "IDENTITY";
             for (const synapse of exportJSON.synapses) {
-              if (synapse.toUUID === neuron.uuid && synapse.type) {
+              if (synapse.toId === neuron.id && synapse.type) {
                 delete synapse.type;
               }
             }
           } else {
-            removableUUIDs.add(neuron.uuid);
+            removableIds.add(neuron.id!);
           }
         }
       }
 
-      if (removableUUIDs.size > 0) {
+      if (removableIds.size > 0) {
         // Remove invalid hidden/constant IF neurons and their synapses
         exportJSON.synapses = exportJSON.synapses.filter(
           (s) =>
-            !removableUUIDs.has(s.fromUUID) &&
-            !removableUUIDs.has(s.toUUID),
+            !removableIds.has(s.fromId!) &&
+            !removableIds.has(s.toId!),
         );
         exportJSON.neurons = exportJSON.neurons.filter(
-          (n) => !removableUUIDs.has(n.uuid),
+          (n) => !removableIds.has(n.id!),
         );
-        for (const uuid of removableUUIDs) {
+        for (const uuid of removableIds) {
           cleanupMemeticForRemovedNeuron(exportJSON, uuid);
         }
         changed = true;

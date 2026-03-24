@@ -55,14 +55,14 @@ Deno.test("SelectiveCacheInvalidation: connect() preserves hiddenNeuronUUIDs cac
   const creature = createTestCreature();
 
   // Build the hiddenNeuronUUIDs cache
-  const uuids1 = creature.getHiddenNeuronUUIDs();
+  const uuids1 = creature.getHiddenNeuronIds();
   assertEquals(uuids1.size, 2, "Should have 2 hidden neuron UUIDs");
 
   // Add a connection (doesn't change neuron set)
   creature.connect(0, 4, 0.5); // input-0 to output-0
 
   // hiddenNeuronUUIDs should still be cached (same object reference)
-  const uuids2 = creature.getHiddenNeuronUUIDs();
+  const uuids2 = creature.getHiddenNeuronIds();
   assertEquals(uuids2.size, 2, "Should still have 2 hidden neuron UUIDs");
   assert(
     uuids1 === uuids2,
@@ -79,14 +79,14 @@ Deno.test("SelectiveCacheInvalidation: disconnect() preserves hiddenNeuronUUIDs 
   creature.connect(0, 3, 0.3); // input-0 to hidden-2
 
   // Build the hiddenNeuronUUIDs cache
-  const uuids1 = creature.getHiddenNeuronUUIDs();
+  const uuids1 = creature.getHiddenNeuronIds();
   assertEquals(uuids1.size, 2, "Should have 2 hidden neuron UUIDs");
 
   // Remove a connection (doesn't change neuron set)
   creature.disconnect(0, 3); // Remove input-0 to hidden-2
 
   // hiddenNeuronUUIDs should still be cached (same object reference)
-  const uuids2 = creature.getHiddenNeuronUUIDs();
+  const uuids2 = creature.getHiddenNeuronIds();
   assertEquals(uuids2.size, 2, "Should still have 2 hidden neuron UUIDs");
   assert(
     uuids1 === uuids2,
@@ -146,7 +146,7 @@ Deno.test("SelectiveCacheInvalidation: full clearCache() invalidates everything"
   const creature = createTestCreature();
 
   // Build all caches
-  const uuids1 = creature.getHiddenNeuronUUIDs();
+  const uuids1 = creature.getHiddenNeuronIds();
   creature.getConnectionSet();
   creature.getAvailableConnections();
   creature.prebuildInwardIndex();
@@ -167,7 +167,7 @@ Deno.test("SelectiveCacheInvalidation: full clearCache() invalidates everything"
   );
 
   // Rebuilding should produce different references
-  const uuids2 = creature.getHiddenNeuronUUIDs();
+  const uuids2 = creature.getHiddenNeuronIds();
   assert(
     uuids1 !== uuids2,
     "hiddenNeuronUUIDs should be a new Set after full clearCache()",
@@ -223,7 +223,7 @@ Deno.test("SelectiveCacheInvalidation: connectBatch() preserves hiddenNeuronUUID
   const creature = createTestCreature();
 
   // Build the hiddenNeuronUUIDs cache
-  const uuids1 = creature.getHiddenNeuronUUIDs();
+  const uuids1 = creature.getHiddenNeuronIds();
   assertEquals(uuids1.size, 2);
 
   // Add batch connections (doesn't change neuron set)
@@ -233,7 +233,7 @@ Deno.test("SelectiveCacheInvalidation: connectBatch() preserves hiddenNeuronUUID
   ]);
 
   // hiddenNeuronUUIDs should still be cached (same reference)
-  const uuids2 = creature.getHiddenNeuronUUIDs();
+  const uuids2 = creature.getHiddenNeuronIds();
   assertEquals(uuids2.size, 2);
   assert(
     uuids1 === uuids2,
@@ -251,7 +251,7 @@ Deno.test("SelectiveCacheInvalidation: disconnectBatch() preserves hiddenNeuronU
   creature.connect(1, 4, 0.3);
 
   // Build the hiddenNeuronUUIDs cache
-  const uuids1 = creature.getHiddenNeuronUUIDs();
+  const uuids1 = creature.getHiddenNeuronIds();
   assertEquals(uuids1.size, 2);
 
   // Remove batch connections
@@ -261,7 +261,7 @@ Deno.test("SelectiveCacheInvalidation: disconnectBatch() preserves hiddenNeuronU
   ]);
 
   // hiddenNeuronUUIDs should still be cached (same reference)
-  const uuids2 = creature.getHiddenNeuronUUIDs();
+  const uuids2 = creature.getHiddenNeuronIds();
   assertEquals(uuids2.size, 2);
   assert(
     uuids1 === uuids2,
@@ -284,7 +284,7 @@ Deno.test("SelectiveCacheInvalidation: many connect/disconnect preserve hiddenNe
   creatureValidate(creature);
 
   // Build and record the UUID set
-  const uuids1 = creature.getHiddenNeuronUUIDs();
+  const uuids1 = creature.getHiddenNeuronIds();
   const uuidCount = uuids1.size;
   assert(uuidCount > 0, "Should have hidden neurons");
 
@@ -295,7 +295,7 @@ Deno.test("SelectiveCacheInvalidation: many connect/disconnect preserve hiddenNe
   for (const [from, to] of toAdd) {
     creature.connect(from, to, 0.1);
     // After each connect, UUID cache should be preserved (same reference)
-    const currentUUIDs = creature.getHiddenNeuronUUIDs();
+    const currentUUIDs = creature.getHiddenNeuronIds();
     assert(
       currentUUIDs === uuids1,
       `UUID cache should be same reference after connecting ${from}->${to}`,
@@ -305,7 +305,7 @@ Deno.test("SelectiveCacheInvalidation: many connect/disconnect preserve hiddenNe
   // Disconnect some
   for (const [from, to] of toAdd) {
     creature.disconnect(from, to);
-    const currentUUIDs = creature.getHiddenNeuronUUIDs();
+    const currentUUIDs = creature.getHiddenNeuronIds();
     assert(
       currentUUIDs === uuids1,
       `UUID cache should be same reference after disconnecting ${from}->${to}`,

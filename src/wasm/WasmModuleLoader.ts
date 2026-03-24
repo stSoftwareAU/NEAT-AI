@@ -127,6 +127,55 @@ let validateRangeFn:
 let limitRangeFn: ((squashType: number, value: number) => number) | null = null;
 let versionFn: (() => string) | null = null;
 
+// Issue #1954 - Topological backpropagation loop
+let propagateTopologicalFn:
+  | ((data: Uint8Array) => Float64Array)
+  | null = null;
+
+// Issue #1959 - Selective WASM residency for read-heavy topology operations
+let validateTopologyFn:
+  | ((fromIndices: Uint32Array, toIndices: Uint32Array) => Int32Array)
+  | null = null;
+let scanAvailableConnectionsFn:
+  | ((
+    fromIndices: Uint32Array,
+    toIndices: Uint32Array,
+    isConstant: Uint8Array,
+    numNeurons: number,
+    numInputs: number,
+  ) => Uint32Array)
+  | null = null;
+let computeReverseTopologicalOrderFn:
+  | ((
+    fromIndices: Uint32Array,
+    toIndices: Uint32Array,
+    numNeurons: number,
+    numInputs: number,
+  ) => Uint32Array)
+  | null = null;
+
+// Issue #1961 - Structural integrity validation and cycle detection
+let validateStructuralIntegrityFn:
+  | ((
+    fromIndices: Uint32Array,
+    toIndices: Uint32Array,
+    isConstant: Uint8Array,
+    squashTypes: Uint8Array,
+    biases: Float64Array,
+    numInputs: number,
+    numOutputs: number,
+    synapseTypes: Uint8Array,
+  ) => Int32Array)
+  | null = null;
+let detectCyclesFn:
+  | ((
+    fromIndices: Uint32Array,
+    toIndices: Uint32Array,
+    numNeurons: number,
+    numInputs: number,
+  ) => number)
+  | null = null;
+
 // Issue #1519 - Standalone elastic error distribution
 let distributeElasticErrorFn:
   | ((
@@ -198,6 +247,8 @@ let calculateWeightWasmFn:
     learningRate: number,
     maxWeightAdjScale: number,
     limitWeightScale: number,
+    l1WeightDecay: number,
+    l2WeightDecay: number,
   ) => number)
   | null = null;
 let calculateBiasWasmFn:
@@ -211,6 +262,8 @@ let calculateBiasWasmFn:
     learningRate: number,
     maxBiasAdjScale: number,
     limitBiasScale: number,
+    l1BiasDecay: number,
+    l2BiasDecay: number,
   ) => number)
   | null = null;
 
@@ -277,6 +330,42 @@ let accumulateBiasPersistent8WayFn:
   ) => void)
   | null = null;
 
+// Issue #1960 - Batch calculate weight/bias function pointers
+let calculateWeightBatch4WayFn:
+  | ((
+    packedState: Float64Array,
+    generations: number,
+    plankConstant: number,
+    learningRate: number,
+    maxWeightAdjScale: number,
+    limitWeightScale: number,
+    l1WeightDecay: number,
+    l2WeightDecay: number,
+  ) => Float64Array)
+  | null = null;
+let calculateBiasBatch4WayFn:
+  | ((
+    packedState: Float64Array,
+    noChangeFlags: Uint8Array,
+    generations: number,
+    plankConstant: number,
+    learningRate: number,
+    maxBiasAdjScale: number,
+    limitBiasScale: number,
+    l1BiasDecay: number,
+    l2BiasDecay: number,
+  ) => Float64Array)
+  | null = null;
+
+// Issue #1960 - Batch topology validation function pointer
+let validateTopologyBatchFn:
+  | ((
+    allFromIndices: Uint32Array,
+    allToIndices: Uint32Array,
+    lengths: Uint32Array,
+  ) => Int32Array)
+  | null = null;
+
 // Issue #1521 - Score scan function pointers
 let computeScoreComponentsFn:
   | ((weights: Float64Array, biases: Float64Array) => Float64Array)
@@ -322,6 +411,15 @@ function assignFunctionPointers(module: WasmModule): void {
   validateRangeFn = module.validate_range;
   limitRangeFn = module.limit_range;
   versionFn = module.version;
+  // Issue #1954 - Topological backpropagation loop
+  propagateTopologicalFn = module.propagate_topological;
+  // Issue #1959 - Selective WASM residency for read-heavy topology operations
+  validateTopologyFn = module.validate_topology;
+  scanAvailableConnectionsFn = module.scan_available_connections;
+  computeReverseTopologicalOrderFn = module.compute_reverse_topological_order;
+  // Issue #1961 - Structural integrity validation and cycle detection
+  validateStructuralIntegrityFn = module.validate_structural_integrity;
+  detectCyclesFn = module.detect_cycles;
   // Issue #1519 - Standalone elastic error distribution
   distributeElasticErrorFn = module.distribute_elastic_error;
   // Issue #1518 - Accumulation functions
@@ -343,6 +441,10 @@ function assignFunctionPointers(module: WasmModule): void {
   accumulateWeightPersistent8WayFn = module.accumulate_weight_persistent_8way;
   accumulateBiasPersistent4WayFn = module.accumulate_bias_persistent_4way;
   accumulateBiasPersistent8WayFn = module.accumulate_bias_persistent_8way;
+  // Issue #1960 - Batch calculate weight/bias and topology validation
+  calculateWeightBatch4WayFn = module.calculate_weight_batch_4way;
+  calculateBiasBatch4WayFn = module.calculate_bias_batch_4way;
+  validateTopologyBatchFn = module.validate_topology_batch;
   // Issue #1521 - Score scan functions
   computeScoreComponentsFn = module.compute_score_components;
   scanMaxWeightFn = module.scan_max_weight;
@@ -609,4 +711,44 @@ export function getScanMaxWeightFn(): typeof scanMaxWeightFn {
 
 export function getScanMaxBiasFn(): typeof scanMaxBiasFn {
   return scanMaxBiasFn;
+}
+
+// Issue #1954 - Topological backpropagation getter
+export function getPropagateTopologicalFn(): typeof propagateTopologicalFn {
+  return propagateTopologicalFn;
+}
+
+// Issue #1959 - Topology operation getters
+export function getValidateTopologyFn(): typeof validateTopologyFn {
+  return validateTopologyFn;
+}
+
+export function getScanAvailableConnectionsFn(): typeof scanAvailableConnectionsFn {
+  return scanAvailableConnectionsFn;
+}
+
+export function getComputeReverseTopologicalOrderFn(): typeof computeReverseTopologicalOrderFn {
+  return computeReverseTopologicalOrderFn;
+}
+
+// Issue #1961 - Structural integrity and cycle detection getters
+export function getValidateStructuralIntegrityFn(): typeof validateStructuralIntegrityFn {
+  return validateStructuralIntegrityFn;
+}
+
+export function getDetectCyclesFn(): typeof detectCyclesFn {
+  return detectCyclesFn;
+}
+
+// Issue #1960 - Batch operation function pointer getters
+export function getCalculateWeightBatch4WayFn(): typeof calculateWeightBatch4WayFn {
+  return calculateWeightBatch4WayFn;
+}
+
+export function getCalculateBiasBatch4WayFn(): typeof calculateBiasBatch4WayFn {
+  return calculateBiasBatch4WayFn;
+}
+
+export function getValidateTopologyBatchFn(): typeof validateTopologyBatchFn {
+  return validateTopologyBatchFn;
 }

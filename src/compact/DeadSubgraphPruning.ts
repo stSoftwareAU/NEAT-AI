@@ -1,5 +1,6 @@
 import type { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 
 export interface PruneDeadSubgraphsResult {
@@ -28,24 +29,25 @@ export interface PruneDeadSubgraphsResult {
 export function pruneDeadSubgraphs(
   creatureExport: CreatureExport,
 ): PruneDeadSubgraphsResult {
-  // Build reverse adjacency: toUUID -> set(fromUUID)
-  const incoming = new Map<string, Set<string>>();
+  normaliseCreatureExport(creatureExport);
+  // Build reverse adjacency: toId -> set(fromId)
+  const incoming = new Map<number, Set<number>>();
   for (const synapse of creatureExport.synapses) {
-    let set = incoming.get(synapse.toUUID);
+    let set = incoming.get(synapse.toId!);
     if (!set) {
-      set = new Set<string>();
-      incoming.set(synapse.toUUID, set);
+      set = new Set<number>();
+      incoming.set(synapse.toId!, set);
     }
-    set.add(synapse.fromUUID);
+    set.add(synapse.fromId!);
   }
 
   // Seed BFS from all outputs.
-  const canReachOutput = new Set<string>();
-  const queue: string[] = [];
+  const canReachOutput = new Set<number>();
+  const queue: number[] = [];
   for (const neuron of creatureExport.neurons) {
     if (neuron.type === "output") {
-      canReachOutput.add(neuron.uuid);
-      queue.push(neuron.uuid);
+      canReachOutput.add(neuron.id!);
+      queue.push(neuron.id!);
     }
   }
 
@@ -54,19 +56,19 @@ export function pruneDeadSubgraphs(
     const current = queue.pop()!;
     const parents = incoming.get(current);
     if (!parents) continue;
-    for (const fromUUID of parents) {
-      if (!canReachOutput.has(fromUUID)) {
-        canReachOutput.add(fromUUID);
-        queue.push(fromUUID);
+    for (const fromId of parents) {
+      if (!canReachOutput.has(fromId)) {
+        canReachOutput.add(fromId);
+        queue.push(fromId);
       }
     }
   }
 
-  const toRemove = new Set<string>();
+  const toRemove = new Set<number>();
   for (const neuron of creatureExport.neurons) {
     if (neuron.type === "hidden" || neuron.type === "constant") {
-      if (!canReachOutput.has(neuron.uuid)) {
-        toRemove.add(neuron.uuid);
+      if (!canReachOutput.has(neuron.id!)) {
+        toRemove.add(neuron.id!);
       }
     }
   }
@@ -77,10 +79,10 @@ export function pruneDeadSubgraphs(
 
   const beforeSynapses = creatureExport.synapses.length;
   creatureExport.neurons = creatureExport.neurons.filter((n) =>
-    !toRemove.has(n.uuid)
+    !toRemove.has(n.id!)
   );
   creatureExport.synapses = creatureExport.synapses.filter((s) =>
-    !toRemove.has(s.fromUUID) && !toRemove.has(s.toUUID)
+    !toRemove.has(s.fromId!) && !toRemove.has(s.toId!)
   );
 
   // Structure changed, so cached memetic references are no longer trustworthy.

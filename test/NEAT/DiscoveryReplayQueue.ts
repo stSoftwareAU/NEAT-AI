@@ -218,7 +218,7 @@ Deno.test("DiscoveryReplayQueue - queues newest fittest when replay in progress"
       replayedCreatures.push(creature.uuid ?? "unknown");
 
       // First replay waits for signal to complete
-      if (creature.uuid === "fittest-1") {
+      if (creature.uuid === "9865" as unknown) {
         await new Promise<void>((resolve) => {
           firstReplayResolve = resolve;
         });

@@ -98,7 +98,7 @@ export class DiscoverStructureBase {
 
   // Rust recording state
   protected rustAccumulatedData: DataRecordInterface[] = [];
-  protected rustAccumulatedNeuronData: Array<Map<string, DiscoverRecord>> = [];
+  protected rustAccumulatedNeuronData: Array<Map<number, DiscoverRecord>> = [];
   protected rustAccumulatedEstimatedBytes = 0;
   protected rustEstimatedBytesPerSample = 0;
   protected rustBinaryFilePath: string | null = null;
@@ -111,10 +111,10 @@ export class DiscoverStructureBase {
   protected rustChunkCounter = 0;
   protected syntheticBinaryMode = false;
   protected deps: DiscoverStructureDeps;
-  protected forcedFocusNeurons: string[] | null = null;
+  protected forcedFocusNeurons: number[] | null = null;
   protected forcedFocusIndex = 0;
   protected neuronImpactEstimator?: CreatureErrorImpactEstimator;
-  protected neuronIndexMap?: Map<string, number>;
+  protected neuronIndexMap?: Map<number, number>;
   protected lastFocusSelection?: FocusSelectionSummary;
   protected cachedMaxOutputError?: { value: number; computedAt: number } =
     undefined;
@@ -123,7 +123,7 @@ export class DiscoverStructureBase {
   protected cachedRemovalCandidates?:
     import("./DiscoverResult.ts").RemovalCandidate[];
   protected combinedRustAnalysis?: CombinedAnalysisCache;
-  protected recordedNeuronTotalAbsError = new Map<string, number>();
+  protected recordedNeuronTotalAbsError = new Map<number, number>();
   protected analysisTimeoutGuardEnabled = true;
   protected disableCleanup = false;
   protected skipRecordPhase = false;
@@ -286,11 +286,9 @@ export class DiscoverStructureBase {
     this.analysisTimeoutGuardEnabled = false;
   }
 
-  public setForcedFocusNeurons(neuronUUIDs: readonly string[]): void {
-    const usable = Array.isArray(neuronUUIDs)
-      ? neuronUUIDs
-        .map((uuid) => typeof uuid === "string" ? uuid.trim() : "")
-        .filter((uuid) => uuid.length > 0)
+  public setForcedFocusNeurons(neuronIds: readonly number[]): void {
+    const usable = Array.isArray(neuronIds)
+      ? neuronIds.filter((id) => typeof id === "number" && Number.isInteger(id))
       : [];
 
     if (usable.length === 0) {
@@ -298,24 +296,24 @@ export class DiscoverStructureBase {
       if (this.loggingEnabled) {
         this.log(
           "warn",
-          "Received empty discoveryFocusNeuronUUIDs override; falling back to weighted selection.",
+          "Received empty discoveryFocusNeuronIds override; falling back to weighted selection.",
         );
       }
       return;
     }
 
-    const validNeuronUUIDs = new Set(
+    const validNeuronIds = new Set(
       this.creature.neurons
         .filter((neuron) => this.isSelectableNeuron(neuron))
-        .map((neuron) => neuron.uuid),
+        .map((neuron) => neuron.id),
     );
 
-    const filtered = usable.filter((uuid) => {
-      const valid = validNeuronUUIDs.has(uuid);
+    const filtered = usable.filter((id) => {
+      const valid = validNeuronIds.has(id);
       if (!valid && this.loggingEnabled) {
         this.log(
           "warn",
-          `Forced focus neuron '${uuid}' is not a selectable hidden/output neuron and will be ignored.`,
+          `Forced focus neuron '${id}' is not a selectable hidden/output neuron and will be ignored.`,
         );
       }
       return valid;
@@ -344,7 +342,7 @@ export class DiscoverStructureBase {
     }
   }
 
-  public initialize(neuronPromisesMap: Map<string, Promise<void>>) {
+  public initialize(neuronPromisesMap: Map<number, Promise<void>>) {
     assert(!this.initialized, "Already initialized");
     this.initialized = true;
 
@@ -355,7 +353,7 @@ export class DiscoverStructureBase {
     this.usingRustDualWrite = true;
 
     this.creature.neurons.forEach((neuron) => {
-      neuronPromisesMap.set(neuron.uuid, Promise.resolve());
+      neuronPromisesMap.set(neuron.id, Promise.resolve());
     });
 
     try {
@@ -462,7 +460,7 @@ export class DiscoverStructureBase {
       let neuronMax = 0;
       try {
         const records = await this.loadNeuronRecords(
-          `${this.tempDir}/${outputNeuron.uuid}`,
+          `${this.tempDir}/${outputNeuron.id}`,
         );
         records.forEach((record) => {
           record.errors.forEach((err) => {
@@ -475,7 +473,7 @@ export class DiscoverStructureBase {
         if (this.loggingEnabled) {
           this.log(
             "debug",
-            `Failed to read output neuron errors for ${outputNeuron.uuid}: ${
+            `Failed to read output neuron errors for ${outputNeuron.id}: ${
               error instanceof Error ? error.message : String(error)
             }`,
           );
@@ -518,12 +516,12 @@ export class DiscoverStructureBase {
   // ── Neuron impact (delegates) ───────────────────────────────────────
 
   protected calculateNeuronImpact(
-    neuronUUID: string,
-    derivativeMap?: Map<string, number>,
+    neuronId: number,
+    derivativeMap?: Map<number, number>,
   ): number {
     const result = calculateNeuronImpact(
       this.creature,
-      neuronUUID,
+      neuronId,
       this.neuronImpactEstimator,
       this.neuronIndexMap,
       derivativeMap,

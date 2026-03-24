@@ -45,8 +45,10 @@ Deno.test(
     // Request a large negative output so the error is strongly negative.
     const map = creature.record(new Float32Array([-10]));
 
-    const swishRec = map.get("swish-hidden");
-    const idRec = map.get("id-hidden");
+    // Neuron IDs are deterministic integers derived from UUID strings:
+    // swish-hidden → 1353997059, id-hidden → 1744656604
+    const swishRec = map.get(1353997059);
+    const idRec = map.get(1744656604);
 
     assert(swishRec, "expected a discovery record for swish-hidden");
     assert(idRec, "expected a discovery record for id-hidden");

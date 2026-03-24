@@ -73,8 +73,8 @@ Deno.test("AddNeuron", () => {
     const addNeuron = new AddNeuron(tmpCreature);
     addNeuron.mutate();
     tmpCreature.validate();
-    assertEquals("skip-me", tmpCreature.neurons[3].uuid);
-    assertEquals("skip-me2", tmpCreature.neurons[4].uuid);
+    assertEquals(tmpCreature.neurons[3].id, creature.neurons[3].id);
+    assertEquals(tmpCreature.neurons[4].id, creature.neurons[4].id);
 
     assertFalse(
       tmpCreature.neurons.length <= creature.neurons.length,

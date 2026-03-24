@@ -66,10 +66,12 @@ Deno.test(
     const expected = new Float32Array([-100]);
     const map = creature.record(expected);
 
-    const reluRec = map.get("relu-hidden");
+    // Neuron IDs are deterministic integers derived from UUID strings:
+    // relu-hidden → 1183754405, id-hidden → 1744656604
+    const reluRec = map.get(1183754405);
     assert(reluRec, "expected a discovery record for relu-hidden");
 
-    const idRec = map.get("id-hidden");
+    const idRec = map.get(1744656604);
     assert(idRec, "expected a discovery record for id-hidden");
 
     // Key assertion: we should not request an impossible negative target from
@@ -151,10 +153,11 @@ Deno.test(
     const expected = new Float32Array([-100]);
     const map = creature.record(expected);
 
-    const relu6Rec = map.get("relu6-hidden");
+    // relu6-hidden → 353379363, id-hidden → 1744656604
+    const relu6Rec = map.get(353379363);
     assert(relu6Rec, "expected a discovery record for relu6-hidden");
 
-    const idRec = map.get("id-hidden");
+    const idRec = map.get(1744656604);
     assert(idRec, "expected a discovery record for id-hidden");
 
     assertEquals(

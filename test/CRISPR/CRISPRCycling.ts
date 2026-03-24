@@ -40,11 +40,11 @@ Deno.test("CRISPR cycling - CRISPRs survive across generations", async () => {
     id: "DNA-SURVIVE-1",
     mode: "insert",
     neurons: [
-      { type: "hidden", uuid: "survive-a", squash: "ABSOLUTE", bias: 0.1 },
+      { type: "hidden", id: 9199, squash: "ABSOLUTE", bias: 0.1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "survive-a", weight: 0.5 },
-      { fromUUID: "survive-a", toUUID: "output-0", weight: 0.5 },
+      { fromId: 0, toId: 9199, weight: 0.5 },
+      { fromId: 9199, toId: -1, weight: 0.5 },
     ],
   };
 
@@ -52,11 +52,11 @@ Deno.test("CRISPR cycling - CRISPRs survive across generations", async () => {
     id: "DNA-SURVIVE-2",
     mode: "insert",
     neurons: [
-      { type: "hidden", uuid: "survive-b", squash: "CLIPPED", bias: 0.2 },
+      { type: "hidden", id: 9870, squash: "CLIPPED", bias: 0.2 },
     ],
     synapses: [
-      { fromUUID: "input-1", toUUID: "survive-b", weight: 0.3 },
-      { fromUUID: "survive-b", toUUID: "output-0", weight: 0.3 },
+      { fromId: 1, toId: 9870, weight: 0.3 },
+      { fromId: 9870, toId: -1, weight: 0.3 },
     ],
   };
 
@@ -118,11 +118,11 @@ Deno.test("CRISPR cycling - failed CRISPR retryable on mutated creature", () => 
     id: "DNA-RETRY",
     mode: "insert",
     neurons: [
-      { type: "hidden", uuid: "retry-neuron", squash: "ABSOLUTE", bias: 1 },
+      { type: "hidden", id: 9008, squash: "ABSOLUTE", bias: 1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "retry-neuron", weight: 1 },
-      { fromUUID: "retry-neuron", toUUID: "output-0", weight: 1 },
+      { fromId: 0, toId: 9008, weight: 1 },
+      { fromId: 9008, toId: -1, weight: 1 },
     ],
   };
 
@@ -180,11 +180,11 @@ Deno.test("CRISPR cycling - default maxCRISPRsPerGeneration is 1", async () => {
     id: "DNA-DEFAULT-1",
     mode: "insert",
     neurons: [
-      { type: "hidden", uuid: "default-a", squash: "ABSOLUTE", bias: 0.1 },
+      { type: "hidden", id: 9095, squash: "ABSOLUTE", bias: 0.1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "default-a", weight: 0.5 },
-      { fromUUID: "default-a", toUUID: "output-0", weight: 0.5 },
+      { fromId: 0, toId: 9095, weight: 0.5 },
+      { fromId: 9095, toId: -1, weight: 0.5 },
     ],
   };
 
@@ -192,11 +192,11 @@ Deno.test("CRISPR cycling - default maxCRISPRsPerGeneration is 1", async () => {
     id: "DNA-DEFAULT-2",
     mode: "insert",
     neurons: [
-      { type: "hidden", uuid: "default-b", squash: "CLIPPED", bias: 0.2 },
+      { type: "hidden", id: 9630, squash: "CLIPPED", bias: 0.2 },
     ],
     synapses: [
-      { fromUUID: "input-1", toUUID: "default-b", weight: 0.3 },
-      { fromUUID: "default-b", toUUID: "output-0", weight: 0.3 },
+      { fromId: 1, toId: 9630, weight: 0.3 },
+      { fromId: 9630, toId: -1, weight: 0.3 },
     ],
   };
 
@@ -245,11 +245,11 @@ Deno.test("CRISPR cycling - multiple CRISPRs per generation", async () => {
     id: "DNA-MULTI-1",
     mode: "insert",
     neurons: [
-      { type: "hidden", uuid: "multi-a", squash: "ABSOLUTE", bias: 0.1 },
+      { type: "hidden", id: 9137, squash: "ABSOLUTE", bias: 0.1 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "multi-a", weight: 0.5 },
-      { fromUUID: "multi-a", toUUID: "output-0", weight: 0.5 },
+      { fromId: 0, toId: 9137, weight: 0.5 },
+      { fromId: 9137, toId: -1, weight: 0.5 },
     ],
   };
 
@@ -257,11 +257,11 @@ Deno.test("CRISPR cycling - multiple CRISPRs per generation", async () => {
     id: "DNA-MULTI-2",
     mode: "insert",
     neurons: [
-      { type: "hidden", uuid: "multi-b", squash: "CLIPPED", bias: 0.2 },
+      { type: "hidden", id: 9510, squash: "CLIPPED", bias: 0.2 },
     ],
     synapses: [
-      { fromUUID: "input-1", toUUID: "multi-b", weight: 0.3 },
-      { fromUUID: "multi-b", toUUID: "output-0", weight: 0.3 },
+      { fromId: 1, toId: 9510, weight: 0.3 },
+      { fromId: 9510, toId: -1, weight: 0.3 },
     ],
   };
 
@@ -354,14 +354,14 @@ Deno.test("CRISPR cycling - round-robin across generations", async () => {
       neurons: [
         {
           type: "hidden",
-          uuid: `round-${i}`,
+          id: 9000 + i,
           squash: "ABSOLUTE",
           bias: 0.1 * (i + 1),
         },
       ],
       synapses: [
-        { fromUUID: "input-0", toUUID: `round-${i}`, weight: 0.1 * (i + 1) },
-        { fromUUID: `round-${i}`, toUUID: "output-0", weight: 0.1 * (i + 1) },
+        { fromId: 0, toId: 9000 + i, weight: 0.1 * (i + 1) },
+        { fromId: 9000 + i, toId: -1, weight: 0.1 * (i + 1) },
       ],
     });
   }

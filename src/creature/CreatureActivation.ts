@@ -257,7 +257,7 @@ export function activateAndTraceWasm(
 
   for (let i = creature.input; i < neurons.length; i++) {
     const n = neurons[i];
-    if (sparseConfig.propagateNeeded(n.uuid)) {
+    if (sparseConfig.propagateNeeded(n.id)) {
       creature.state.node(n.index).hintValue =
         wasmResult.hintValues[i - creature.input];
     }
@@ -282,7 +282,7 @@ function applyWasmTraceData(
     if (neuronIdx >= neurons.length) continue;
 
     const neuron = neurons[neuronIdx];
-    if (!sparseConfig.traceNeeded(neuron.uuid)) continue;
+    if (!sparseConfig.traceNeeded(neuron.id)) continue;
 
     const inwardList = creature.inwardConnections(neuronIdx);
     if (inwardList.length === 0) continue;
@@ -327,7 +327,7 @@ function applyWasmTraceData(
   // For non-aggregate neurons that need tracing, mark all synapses as used
   for (let i = creature.input; i < neurons.length; i++) {
     const n = neurons[i];
-    if (!sparseConfig.traceNeeded(n.uuid)) continue;
+    if (!sparseConfig.traceNeeded(n.id)) continue;
 
     const squash = n.squash ?? "IDENTITY";
     if (squash === "MINIMUM" || squash === "MAXIMUM" || squash === "IF") {

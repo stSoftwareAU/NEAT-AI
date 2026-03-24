@@ -37,20 +37,20 @@ Deno.test("compactCreature: removes orphaned neurons when backward synapses are 
 
   // Manually build neurons in correct order: input, hidden-A, hidden-B, output
   // Input neuron (index 0)
-  const inputNeuron = new Neuron("input-0", "input", 0, creature);
+  const inputNeuron = new Neuron(0, "input", 0, creature);
   inputNeuron.index = 0;
 
   // hidden-A (index 1)
-  const hiddenA = new Neuron("hidden-A", "hidden", 0.1, creature, "IDENTITY");
+  const hiddenA = new Neuron(5001, "hidden", 0.1, creature, "IDENTITY");
   hiddenA.index = 1;
 
   // hidden-B (index 2)
-  const hiddenB = new Neuron("hidden-B", "hidden", 0.2, creature, "IDENTITY");
+  const hiddenB = new Neuron(5002, "hidden", 0.2, creature, "IDENTITY");
   hiddenB.index = 2;
 
   // Output neuron (index 3)
   const outputNeuron = new Neuron(
-    "output-0",
+    -1,
     "output",
     0,
     creature,
@@ -98,7 +98,7 @@ Deno.test("compactCreature: removes orphaned neurons when backward synapses are 
   compacted.validate({ forwardOnly: true }); // Forward-only validation
 
   // hidden-B should still exist (it has a valid outward connection to output)
-  const hasHiddenB = compacted.neurons.some((n) => n.uuid === "hidden-B");
+  const hasHiddenB = compacted.neurons.some((n) => n.id === 5002);
   assertEquals(
     hasHiddenB,
     true,
@@ -126,20 +126,20 @@ Deno.test("compactCreature: cascade removal of multiple orphaned neurons", () =>
   creature.forwardOnly = true;
 
   // Neurons in order: input, hidden-A, hidden-B, hidden-C, output
-  const inputNeuron = new Neuron("input-0", "input", 0, creature);
+  const inputNeuron = new Neuron(0, "input", 0, creature);
   inputNeuron.index = 0;
 
-  const hiddenA = new Neuron("hidden-A", "hidden", 0.1, creature, "IDENTITY");
+  const hiddenA = new Neuron(5001, "hidden", 0.1, creature, "IDENTITY");
   hiddenA.index = 1;
 
-  const hiddenB = new Neuron("hidden-B", "hidden", 0.2, creature, "IDENTITY");
+  const hiddenB = new Neuron(5002, "hidden", 0.2, creature, "IDENTITY");
   hiddenB.index = 2;
 
-  const hiddenC = new Neuron("hidden-C", "hidden", 0.3, creature, "IDENTITY");
+  const hiddenC = new Neuron(5003, "hidden", 0.3, creature, "IDENTITY");
   hiddenC.index = 3;
 
   const outputNeuron = new Neuron(
-    "output-0",
+    -1,
     "output",
     0,
     creature,
@@ -169,8 +169,8 @@ Deno.test("compactCreature: cascade removal of multiple orphaned neurons", () =>
   compacted.validate({ forwardOnly: true });
 
   // Both hidden-B and hidden-C should be removed (cascade)
-  const hasHiddenB = compacted.neurons.some((n) => n.uuid === "hidden-B");
-  const hasHiddenC = compacted.neurons.some((n) => n.uuid === "hidden-C");
+  const hasHiddenB = compacted.neurons.some((n) => n.id === 5002);
+  const hasHiddenC = compacted.neurons.some((n) => n.id === 5003);
   assertEquals(hasHiddenB, false, "hidden-B should be cascade-removed");
   assertEquals(hasHiddenC, false, "hidden-C should be removed");
 });

@@ -59,7 +59,7 @@ Deno.test(
 
     creature.activateAndTrace(new Float32Array([1]), false, sparseConfig);
 
-    const hidden = creature.neurons.find((n) => n.uuid === "logistic-hidden")!;
+    const hidden = creature.neurons.find((n) => n.id === 1974409353)!;
 
     // Ask for a big negative output change.
     creature.propagate(new Float32Array([-100]), config, sparseConfig);

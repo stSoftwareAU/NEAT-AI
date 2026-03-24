@@ -3,9 +3,25 @@ import type { Creature } from "../Creature.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 import { DIAGNOSTICS_DIR } from "../utils/Diagnostics.ts";
+import { TypedTopology } from "./TypedTopology.ts";
+import {
+  STRUCTURAL_BIAS_NOT_FINITE,
+  STRUCTURAL_CONSTANT_HAS_INWARD,
+  STRUCTURAL_HIDDEN_NO_INWARD,
+  STRUCTURAL_HIDDEN_NO_OUTWARD,
+  STRUCTURAL_IF_MISSING_CONDITION,
+  STRUCTURAL_IF_MISSING_NEGATIVE,
+  STRUCTURAL_IF_MISSING_POSITIVE,
+  STRUCTURAL_IF_TOO_FEW_INWARD,
+  STRUCTURAL_SYNAPSE_TARGETS_INPUT,
+  TOPOLOGY_BACKWARD_CONNECTION,
+  TOPOLOGY_DUPLICATE_CONNECTION,
+  TOPOLOGY_SELF_CONNECTION,
+  TOPOLOGY_SORT_ERROR_FROM,
+  TOPOLOGY_SORT_ERROR_TO,
+} from "../wasm/WasmTopologyOps.ts";
 
-const MAX_NEURON_UUID_LENGTH = 256;
-const VALID_NEURON_UUID_PATTERN = /^[A-Za-z0-9-]+$/;
+const MAX_NEURON_ID = 2_147_483_647; // int32 max
 
 /**
  * Validate the creature
@@ -65,39 +81,33 @@ export function creatureValidate(
   };
 
   let outputIndx = 0;
-  const UUIDs = new Set<string>();
+  const neuronIds = new Set<number>();
   creature.neurons.forEach((neuron, indx) => {
-    const uuid = neuron.uuid;
-    if (!uuid) {
-      throw new ValidationError(`${neuron.ID()}) no UUID`, "OTHER");
+    const id = neuron.id;
+    if (id === undefined || id === null) {
+      throw new ValidationError(`${neuron.ID()}) no id`, "OTHER");
     }
-    if (uuid.length > MAX_NEURON_UUID_LENGTH) {
+    // Issue #1958: Output neurons have negative IDs (-(outputIndex + 1))
+    if (!Number.isInteger(id) || id > MAX_NEURON_ID) {
       debugWrite(creature);
       throw new ValidationError(
-        `${neuron.ID()}) UUID length ${uuid.length} exceeds maximum allowed ${MAX_NEURON_UUID_LENGTH}`,
+        `${neuron.ID()}) invalid neuron id: ${id}`,
         "OTHER",
       );
     }
-    if (!VALID_NEURON_UUID_PATTERN.test(uuid)) {
-      debugWrite(creature);
-      throw new ValidationError(
-        `${neuron.ID()}) invalid UUID characters: ${uuid}`,
-        "OTHER",
-      );
-    }
-    if (UUIDs.has(uuid)) {
+    if (neuronIds.has(id)) {
       debugWrite(creature);
 
       throw new ValidationError(
-        `${neuron.ID()}) duplicate UUID: ${uuid}`,
+        `${neuron.ID()}) duplicate neuron id: ${id}`,
         "OTHER",
       );
     }
-    if (uuid.startsWith("input-")) {
-      if (uuid !== "input-" + indx) {
+    if (neuron.type === "input") {
+      if (id !== indx) {
         debugWrite(creature);
         throw new ValidationError(
-          `${neuron.ID()}) invalid input UUID: ${uuid}`,
+          `${neuron.ID()}) invalid input neuron id: ${id}`,
           "OTHER",
         );
       }
@@ -111,19 +121,11 @@ export function creatureValidate(
     }
 
     if (neuron.type === "output") {
-      const expectedUUID = `output-${outputIndx}`;
       outputIndx++;
-      if (uuid !== expectedUUID) {
-        debugWrite(creature);
-        throw new ValidationError(
-          `${uuid}) invalid output UUID: ${uuid}`,
-          "OTHER",
-        );
-      }
     } else if (outputIndx) {
       debugWrite(creature);
       throw new ValidationError(
-        `${uuid}) type ${neuron.type} after output neuron`,
+        `${id}) type ${neuron.type} after output neuron`,
         "OTHER",
       );
     }
@@ -132,11 +134,11 @@ export function creatureValidate(
       debugWrite(creature);
 
       throw new ValidationError(
-        `${uuid}) input neuron after the maximum input neurons`,
+        `${id}) input neuron after the maximum input neurons`,
         "OTHER",
       );
     }
-    UUIDs.add(uuid);
+    neuronIds.add(id);
 
     if (neuron.squash === "IF" && indx > 2) {
       const toList = creature.inwardConnections(indx);
@@ -368,71 +370,134 @@ export function creatureValidate(
     }
   }
 
+  // Issue #1961 — WASM-accelerated topology validation for forward-only creatures.
+  // Delegates forward-only checks, structural integrity, and cycle detection
+  // to Rust/WASM (with TypeScript fallback).
+  if (forwardOnly) {
+    const topo = TypedTopology.fromCreature(creature);
+
+    // Forward-only topology validation (sort order, self-connections, backward connections)
+    const topoResult = topo.validateForwardOnly();
+    if (!topoResult.valid) {
+      debugWrite(creature);
+      const messages: Record<number, string> = {
+        [TOPOLOGY_SELF_CONNECTION]: "Self-connection",
+        [TOPOLOGY_BACKWARD_CONNECTION]: "Backward connection",
+        [TOPOLOGY_SORT_ERROR_FROM]: "From indices not sorted",
+        [TOPOLOGY_SORT_ERROR_TO]: "To indices not sorted",
+        [TOPOLOGY_DUPLICATE_CONNECTION]: "Duplicate connection",
+      };
+      throw new TopologyError(
+        `WASM topology validation failed: ${
+          messages[topoResult.errorCode] ?? "unknown"
+        } at synapse ${topoResult.synapseIndex}`,
+        "INVALID_CONNECTION",
+      );
+    }
+
+    // Structural integrity validation
+    const structResult = topo.validateStructuralIntegrity();
+    if (!structResult.valid) {
+      debugWrite(creature);
+      const messages: Record<number, string> = {
+        [STRUCTURAL_SYNAPSE_TARGETS_INPUT]: "Synapse targets input neuron",
+        [STRUCTURAL_CONSTANT_HAS_INWARD]:
+          "Constant neuron has inward connections",
+        [STRUCTURAL_HIDDEN_NO_INWARD]:
+          "Hidden neuron has no inward connections",
+        [STRUCTURAL_HIDDEN_NO_OUTWARD]:
+          "Hidden neuron has no outward connections",
+        [STRUCTURAL_BIAS_NOT_FINITE]: "Non-finite bias",
+        [STRUCTURAL_IF_TOO_FEW_INWARD]:
+          "IF neuron has too few inward connections",
+        [STRUCTURAL_IF_MISSING_CONDITION]:
+          "IF neuron missing condition synapse",
+        [STRUCTURAL_IF_MISSING_POSITIVE]: "IF neuron missing positive synapse",
+        [STRUCTURAL_IF_MISSING_NEGATIVE]: "IF neuron missing negative synapse",
+      };
+      throw new ValidationError(
+        `WASM structural validation failed: ${
+          messages[structResult.errorCode] ?? "unknown"
+        } at neuron ${structResult.neuronIndex}`,
+        "OTHER",
+      );
+    }
+
+    // Cycle detection — forward-only creatures must be acyclic
+    if (topo.detectCycles()) {
+      debugWrite(creature);
+      throw new TopologyError(
+        "Forward-only creature contains cycles",
+        "INVALID_CONNECTION",
+      );
+    }
+  }
+
   if (creature.memetic) {
     const memetic = creature.memetic;
-    const uuidMap = new Map<string, number>();
+    const idMap = new Map<number, number>();
     creature.neurons.forEach((n, indx) => {
-      assert(n.uuid);
-      uuidMap.set(n.uuid, indx);
+      assert(n.id !== undefined);
+      idMap.set(n.id, indx);
     });
 
     const synapsesSet = new Set<string>();
     creature.synapses.forEach((s) => {
       synapsesSet.add(
-        `${creature.neurons[s.from].uuid}->${creature.neurons[s.to].uuid}`,
+        `${creature.neurons[s.from].id}->${creature.neurons[s.to].id}`,
       );
     });
 
-    for (const neuronUUID in memetic.biases) {
-      const neuronIndex = uuidMap.get(neuronUUID);
+    for (const neuronId in memetic.biases) {
+      const neuronIndex = idMap.get(Number(neuronId));
       if (neuronIndex === undefined) {
         throw new ValidationError(
-          `Neuron with UUID ${neuronUUID} not found in the creature.`,
+          `Neuron with id ${neuronId} not found in the creature.`,
           "MEMETIC",
         );
       }
     }
-    for (const synapseUUID in memetic.weights) {
-      const synapseIndex = uuidMap.get(synapseUUID);
+    for (const synapseId in memetic.weights) {
+      const synapseIndex = idMap.get(Number(synapseId));
       if (synapseIndex === undefined) {
         throw new ValidationError(
-          `Synapse with UUID ${synapseUUID} not found in the creature.`,
+          `Synapse with id ${synapseId} not found in the creature.`,
           "MEMETIC",
         );
       }
 
-      const memeticWeights = memetic.weights[synapseUUID];
+      const memeticWeights = memetic.weights[synapseId];
       if (!Array.isArray(memeticWeights)) {
         throw new ValidationError(
-          `Synapse with UUID ${synapseUUID} has invalid weights.`,
+          `Synapse with id ${synapseId} has invalid weights.`,
           "MEMETIC",
         );
       }
       memeticWeights.forEach((weight, indx) => {
-        if (weight.toUUID === undefined) {
+        if (weight.toId === undefined) {
           throw new ValidationError(
-            `Memetic from UUID ${synapseUUID} to UUID ${weight.toUUID} is invalid.`,
+            `Memetic from id ${synapseId} to id ${weight.toId} is invalid.`,
             "MEMETIC",
           );
         }
         if (weight.weight === undefined) {
           throw new ValidationError(
-            `Memetic from UUID ${synapseUUID} to UUID ${weight.toUUID} has invalid weight at index ${indx}.`,
+            `Memetic from id ${synapseId} to id ${weight.toId} has invalid weight at index ${indx}.`,
             "MEMETIC",
           );
         }
-        const toIndex = uuidMap.get(weight.toUUID);
+        const toIndex = idMap.get(weight.toId);
 
         if (toIndex === undefined) {
           throw new ValidationError(
-            `Memetic from UUID ${synapseUUID} has no valid neuron.`,
+            `Memetic from id ${synapseId} has no valid neuron.`,
             "MEMETIC",
           );
         }
-        if (!synapsesSet.has(`${synapseUUID}->${weight.toUUID}`)) {
+        if (!synapsesSet.has(`${synapseId}->${weight.toId}`)) {
           debugWrite(creature);
           throw new ValidationError(
-            `Memetic from UUID ${synapseUUID} to UUID ${weight.toUUID} has no matching synapses.`,
+            `Memetic from id ${synapseId} to id ${weight.toId} has no matching synapses.`,
             "MEMETIC",
           );
         }

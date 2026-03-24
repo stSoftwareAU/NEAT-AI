@@ -2,7 +2,7 @@
   "id": "from-to",
 
   "synapses": [
-    { "fromUUID": "input-299", "toUUID": "output-0", "weight": 0.123 },
-    { "fromUUID": "input-123", "toUUID": "output-0", "weight": 0.456 }
+    { "fromId": 299, "toId": -1, "weight": 0.123 },
+    { "fromId": 123, "toId": -1, "weight": 0.456 }
   ]
 }

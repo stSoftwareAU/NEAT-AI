@@ -6,7 +6,7 @@
  * directly, which can leave partial/corrupted model files if interrupted mid-write.
  */
 
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertExists } from "@std/assert";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
@@ -107,6 +107,12 @@ Deno.test("scanForSquashImprovements uses injected safe writers (async + sync pa
   assertEquals(removes[0], writesAsync[0].path);
 
   // Final improvement path should be the alternative squash.
-  const improvement = result.improvements.get("neuron-hidden-atomic-1");
+  // Get the actual hidden neuron ID from the test creature.
+  const atomicCreature = Creature.fromJSON(testCreatureJson);
+  const atomicHidden = atomicCreature.exportJSON().neurons.find(
+    (n) => n.type === "hidden",
+  );
+  assertExists(atomicHidden?.id, "Hidden neuron must have an id");
+  const improvement = result.improvements.get(atomicHidden.id);
   assertEquals(improvement?.path, writesSync[0].path);
 });

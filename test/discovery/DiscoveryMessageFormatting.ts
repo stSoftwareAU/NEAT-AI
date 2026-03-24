@@ -19,6 +19,11 @@ import type { DiscoveryRunnerWorker } from "../../src/discovery/DiscoveryRunner.
 import { DiscoveryRunner } from "../../src/discovery/DiscoveryRunner.ts";
 import { shortID } from "../../src/discovery/DiscoveryCandidates.ts";
 
+// Integer IDs for hidden neurons used in these tests (deterministicIdFromUuid).
+const NEURON_ID_1 = 1434298466; // "3e979317-989f-4c5c-8272-02fd85be94a8"
+const NEURON_ID_2 = 1606939036; // "abc12345-def6-7890-ghij-klmnopqrstuv"
+const NEURON_ID_3 = 1140940814; // "test1234-5678-90ab-cdef-ghijklmnopqr"
+
 function makeOptions(overrides: Partial<NeatOptions> = {}): NeatOptions {
   return {
     iterations: 1,
@@ -30,17 +35,17 @@ function makeOptions(overrides: Partial<NeatOptions> = {}): NeatOptions {
 }
 
 // Helper to create a base creature with a removable hidden neuron
-function makeCreatureWithRemovableNeuron(neuronUUID: string) {
+function makeCreatureWithRemovableNeuron(neuronId: string) {
   const creature = Creature.fromJSON({
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: neuronUUID, squash: "IDENTITY", bias: 0.001 },
+      { type: "hidden", uuid: neuronId, squash: "IDENTITY", bias: 0.001 },
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: neuronUUID, weight: 0.0001 },
-      { fromUUID: neuronUUID, toUUID: "output-0", weight: 0.0001 },
+      { fromUUID: "input-0", toUUID: neuronId, weight: 0.0001 },
+      { fromUUID: neuronId, toUUID: "output-0", weight: 0.0001 },
       { fromUUID: "input-1", toUUID: "output-0", weight: 0.5 },
     ],
   });
@@ -99,9 +104,11 @@ class FakeWorker implements DiscoveryRunnerWorker {
 Deno.test(
   "Discovery message uses shortID for remove-low-impact neuron UUID",
   async () => {
-    const fullUUID = "3e979317-989f-4c5c-8272-02fd85be94a8";
-    const expectedShortID = shortID(fullUUID); // Should be "85be94a8"
-    const baseCreature = makeCreatureWithRemovableNeuron(fullUUID);
+    const neuronUUID = "3e979317-989f-4c5c-8272-02fd85be94a8";
+    // After integer ID migration, the neuron's integer ID is NEURON_ID_1.
+    // shortID(String(NEURON_ID_1)) returns the full number (no dashes, < 16 chars).
+    const expectedShortID = shortID(String(NEURON_ID_1));
+    const baseCreature = makeCreatureWithRemovableNeuron(neuronUUID);
     const baseNeuronCount = baseCreature.exportJSON().neurons.length;
 
     const discoveryResult: DiscoverResult = {
@@ -112,7 +119,7 @@ Deno.test(
       removeHarmfulNeurons: undefined,
       removalCandidates: [
         {
-          neuronUUID: fullUUID,
+          neuronId: NEURON_ID_1,
           totalError: 0.1,
           impact: 1e-13,
           reason: "low-impact",
@@ -133,7 +140,7 @@ Deno.test(
       options: makeOptions(),
     });
 
-    // The description in evaluations should use short ID
+    // The description in evaluations should use the integer neuron ID
     const removalEval = result.evaluations?.find(
       (e) => e.changeType === "remove-low-impact" && e.kind === "candidate",
     );
@@ -141,12 +148,12 @@ Deno.test(
     assert(removalEval, "Should have a remove-low-impact evaluation");
     assert(
       removalEval.description?.includes(expectedShortID),
-      `Description should use shortID '${expectedShortID}', got: ${removalEval.description}`,
+      `Description should contain neuron ID '${expectedShortID}', got: ${removalEval.description}`,
     );
     assertEquals(
-      removalEval.description?.includes(fullUUID),
+      removalEval.description?.includes(neuronUUID),
       false,
-      `Description should NOT contain full UUID '${fullUUID}', got: ${removalEval.description}`,
+      `Description should NOT contain UUID '${neuronUUID}', got: ${removalEval.description}`,
     );
   },
 );
@@ -154,8 +161,8 @@ Deno.test(
 Deno.test(
   "Discovery improvement message does not duplicate change type after descriptive text",
   async () => {
-    const fullUUID = "abc12345-def6-7890-ghij-klmnopqrstuv";
-    const baseCreature = makeCreatureWithRemovableNeuron(fullUUID);
+    const neuronUUID = "abc12345-def6-7890-ghij-klmnopqrstuv";
+    const baseCreature = makeCreatureWithRemovableNeuron(neuronUUID);
     const baseNeuronCount = baseCreature.exportJSON().neurons.length;
 
     const discoveryResult: DiscoverResult = {
@@ -166,7 +173,7 @@ Deno.test(
       removeHarmfulNeurons: undefined,
       removalCandidates: [
         {
-          neuronUUID: fullUUID,
+          neuronId: NEURON_ID_2,
           totalError: 0.1,
           impact: 1e-14,
           reason: "low-impact",
@@ -202,8 +209,8 @@ Deno.test(
 Deno.test(
   "Discovery improvement message does not include creature short ID at end",
   async () => {
-    const fullUUID = "test1234-5678-90ab-cdef-ghijklmnopqr";
-    const baseCreature = makeCreatureWithRemovableNeuron(fullUUID);
+    const neuronUUID = "test1234-5678-90ab-cdef-ghijklmnopqr";
+    const baseCreature = makeCreatureWithRemovableNeuron(neuronUUID);
     const baseNeuronCount = baseCreature.exportJSON().neurons.length;
 
     const discoveryResult: DiscoverResult = {
@@ -214,7 +221,7 @@ Deno.test(
       removeHarmfulNeurons: undefined,
       removalCandidates: [
         {
-          neuronUUID: fullUUID,
+          neuronId: NEURON_ID_3,
           totalError: 0.1,
           impact: 1e-14,
           reason: "low-impact",

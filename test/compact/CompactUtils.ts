@@ -13,12 +13,12 @@ Deno.test("mergeDuplicateSynapses - sums weights of duplicate synapses", () => {
     input: 2,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0.3 },
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0.5 },
-      { fromUUID: "input-1", toUUID: "output-0", weight: 0.2 },
+      { fromId: 0, toId: -1, weight: 0.3 },
+      { fromId: 0, toId: -1, weight: 0.5 },
+      { fromId: 1, toId: -1, weight: 0.2 },
     ],
   };
 
@@ -27,7 +27,7 @@ Deno.test("mergeDuplicateSynapses - sums weights of duplicate synapses", () => {
   assertEquals(exported.synapses.length, 2);
 
   const mergedSynapse = exported.synapses.find(
-    (s) => s.fromUUID === "input-0",
+    (s) => s.fromId === 0,
   )!;
   assertEquals(mergedSynapse.weight, 0.8); // 0.3 + 0.5
 });
@@ -37,11 +37,11 @@ Deno.test("mergeDuplicateSynapses - no duplicates returns zero merges", () => {
     input: 2,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0.3 },
-      { fromUUID: "input-1", toUUID: "output-0", weight: 0.5 },
+      { fromId: 0, toId: -1, weight: 0.3 },
+      { fromId: 1, toId: -1, weight: 0.5 },
     ],
   };
 
@@ -55,18 +55,18 @@ Deno.test("mergeDuplicateSynapses - typed synapses are distinct", () => {
     input: 2,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IF", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IF", bias: 0 },
     ],
     synapses: [
       {
-        fromUUID: "input-0",
-        toUUID: "output-0",
+        fromId: 0,
+        toId: -1,
         weight: 0.3,
         type: "condition",
       },
       {
-        fromUUID: "input-0",
-        toUUID: "output-0",
+        fromId: 0,
+        toId: -1,
         weight: 0.5,
         type: "positive",
       },
@@ -83,11 +83,11 @@ Deno.test("mergeDuplicateSynapses - deletes memetic when merging occurs", () => 
     input: 2,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0.3 },
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0.5 },
+      { fromId: 0, toId: -1, weight: 0.3 },
+      { fromId: 0, toId: -1, weight: 0.5 },
     ],
     memetic: { generation: 1, score: 0, biases: {}, weights: {} },
   };
@@ -101,13 +101,19 @@ Deno.test("pruneZeroWeightSynapses - removes zero-weight untyped synapses", () =
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "hidden-0", squash: "LOGISTIC", bias: 0.5 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      {
+        type: "hidden",
+        uuid: "hidden-0",
+        id: 5000,
+        squash: "LOGISTIC",
+        bias: 0.5,
+      },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.3 },
-      { fromUUID: "input-1", toUUID: "hidden-0", weight: 0 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.7 },
+      { fromId: 0, toId: 5000, weight: 0.3 },
+      { fromId: 1, toId: 5000, weight: 0 },
+      { fromId: 5000, toId: -1, weight: 0.7 },
     ],
   };
 
@@ -121,18 +127,18 @@ Deno.test("pruneZeroWeightSynapses - preserves typed zero-weight synapses", () =
     input: 2,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IF", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IF", bias: 0 },
     ],
     synapses: [
       {
-        fromUUID: "input-0",
-        toUUID: "output-0",
+        fromId: 0,
+        toId: -1,
         weight: 0,
         type: "condition",
       },
       {
-        fromUUID: "input-1",
-        toUUID: "output-0",
+        fromId: 1,
+        toId: -1,
         weight: 0.5,
         type: "positive",
       },
@@ -149,10 +155,10 @@ Deno.test("pruneZeroWeightSynapses - preserves last inbound to output", () => {
     input: 1,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0 },
+      { fromId: 0, toId: -1, weight: 0 },
     ],
   };
 
@@ -167,11 +173,11 @@ Deno.test("pruneZeroWeightSynapses - removes non-finite weight synapses", () => 
     input: 2,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "output-0", weight: Infinity },
-      { fromUUID: "input-1", toUUID: "output-0", weight: 0.5 },
+      { fromId: 0, toId: -1, weight: Infinity },
+      { fromId: 1, toId: -1, weight: 0.5 },
     ],
   };
 
@@ -185,16 +191,28 @@ Deno.test("pruneDeadSubgraphs - removes neurons with no path to output", () => {
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "dead-h", squash: "LOGISTIC", bias: 0.1 },
-      { type: "hidden", uuid: "alive-h", squash: "LOGISTIC", bias: 0.2 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      {
+        type: "hidden",
+        uuid: "dead-h",
+        id: 5000,
+        squash: "LOGISTIC",
+        bias: 0.1,
+      },
+      {
+        type: "hidden",
+        uuid: "alive-h",
+        id: 5001,
+        squash: "LOGISTIC",
+        bias: 0.2,
+      },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
       // dead-h has inbound but no path to output
-      { fromUUID: "input-0", toUUID: "dead-h", weight: 0.3 },
+      { fromId: 0, toId: 5000, weight: 0.3 },
       // alive-h has a path to output
-      { fromUUID: "input-1", toUUID: "alive-h", weight: 0.4 },
-      { fromUUID: "alive-h", toUUID: "output-0", weight: 0.5 },
+      { fromId: 1, toId: 5001, weight: 0.4 },
+      { fromId: 5001, toId: -1, weight: 0.5 },
     ],
   };
 
@@ -209,12 +227,12 @@ Deno.test("pruneDeadSubgraphs - no dead neurons returns zero counts", () => {
     input: 2,
     output: 1,
     neurons: [
-      { type: "hidden", uuid: "h1", squash: "LOGISTIC", bias: 0.1 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h1", id: 5000, squash: "LOGISTIC", bias: 0.1 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: "h1", weight: 0.3 },
-      { fromUUID: "h1", toUUID: "output-0", weight: 0.5 },
+      { fromId: 0, toId: 5000, weight: 0.3 },
+      { fromId: 5000, toId: -1, weight: 0.5 },
     ],
   };
 
@@ -228,7 +246,7 @@ Deno.test("cleanupMemeticForRemovedSynapse - deletes memetic when synapse is ref
     input: 1,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [],
     memetic: {
@@ -236,12 +254,12 @@ Deno.test("cleanupMemeticForRemovedSynapse - deletes memetic when synapse is ref
       score: 0,
       biases: {},
       weights: {
-        "input-0": [{ toUUID: "output-0", weight: 0.1 }],
+        0: [{ toId: -1, weight: 0.1 }],
       },
     },
   };
 
-  cleanupMemeticForRemovedSynapse(exported, "input-0", "output-0");
+  cleanupMemeticForRemovedSynapse(exported, 0, -1);
   assertEquals(exported.memetic, undefined);
 });
 
@@ -250,7 +268,7 @@ Deno.test("cleanupMemeticForRemovedSynapse - preserves memetic when synapse not 
     input: 1,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [],
     memetic: {
@@ -258,12 +276,12 @@ Deno.test("cleanupMemeticForRemovedSynapse - preserves memetic when synapse not 
       score: 0,
       biases: {},
       weights: {
-        "input-0": [{ toUUID: "output-0", weight: 0.1 }],
+        0: [{ toId: -1, weight: 0.1 }],
       },
     },
   };
 
-  cleanupMemeticForRemovedSynapse(exported, "other-uuid", "output-0");
+  cleanupMemeticForRemovedSynapse(exported, 9768, -1);
   assert(exported.memetic !== undefined);
 });
 
@@ -272,12 +290,12 @@ Deno.test("cleanupMemeticForRemovedSynapse - handles missing memetic gracefully"
     input: 1,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [],
   };
 
-  cleanupMemeticForRemovedSynapse(exported, "input-0", "output-0");
+  cleanupMemeticForRemovedSynapse(exported, 0, -1);
   assertEquals(exported.memetic, undefined, "Memetic should remain absent");
   assertEquals(exported.synapses.length, 0, "Synapses should be unchanged");
 });
@@ -287,7 +305,7 @@ Deno.test("cleanupMemeticForRemovedNeuron - deletes memetic when neuron is in we
     input: 1,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [],
     memetic: {
@@ -295,12 +313,12 @@ Deno.test("cleanupMemeticForRemovedNeuron - deletes memetic when neuron is in we
       score: 0,
       biases: {},
       weights: {
-        "hidden-1": [{ toUUID: "output-0", weight: 0.1 }],
+        5001: [{ toId: -1, weight: 0.1 }],
       },
     },
   };
 
-  cleanupMemeticForRemovedNeuron(exported, "hidden-1");
+  cleanupMemeticForRemovedNeuron(exported, 5001);
   assertEquals(exported.memetic, undefined);
 });
 
@@ -309,7 +327,7 @@ Deno.test("cleanupMemeticForRemovedNeuron - deletes memetic when neuron is a wei
     input: 1,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [],
     memetic: {
@@ -317,12 +335,12 @@ Deno.test("cleanupMemeticForRemovedNeuron - deletes memetic when neuron is a wei
       score: 0,
       biases: {},
       weights: {
-        "input-0": [{ toUUID: "hidden-1", weight: 0.1 }],
+        0: [{ toId: 5001, weight: 0.1 }],
       },
     },
   };
 
-  cleanupMemeticForRemovedNeuron(exported, "hidden-1");
+  cleanupMemeticForRemovedNeuron(exported, 5001);
   assertEquals(exported.memetic, undefined);
 });
 
@@ -331,7 +349,7 @@ Deno.test("cleanupMemeticForRemovedNeuron - deletes memetic when neuron is in bi
     input: 1,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [],
     memetic: {
@@ -339,12 +357,12 @@ Deno.test("cleanupMemeticForRemovedNeuron - deletes memetic when neuron is in bi
       score: 0,
       weights: {},
       biases: {
-        "hidden-1": 0.1,
+        5001: 0.1,
       },
     },
   };
 
-  cleanupMemeticForRemovedNeuron(exported, "hidden-1");
+  cleanupMemeticForRemovedNeuron(exported, 5001);
   assertEquals(exported.memetic, undefined);
 });
 
@@ -353,7 +371,7 @@ Deno.test("cleanupMemeticForRemovedNeuron - preserves memetic when neuron not re
     input: 1,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [],
     memetic: {
@@ -361,12 +379,12 @@ Deno.test("cleanupMemeticForRemovedNeuron - preserves memetic when neuron not re
       score: 0,
       biases: {},
       weights: {
-        "input-0": [{ toUUID: "output-0", weight: 0.1 }],
+        0: [{ toId: -1, weight: 0.1 }],
       },
     },
   };
 
-  cleanupMemeticForRemovedNeuron(exported, "unrelated-uuid");
+  cleanupMemeticForRemovedNeuron(exported, 9429);
   assert(exported.memetic !== undefined);
 });
 
@@ -375,12 +393,12 @@ Deno.test("cleanupMemeticForRemovedNeuron - handles missing memetic gracefully",
     input: 1,
     output: 1,
     neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [],
   };
 
-  cleanupMemeticForRemovedNeuron(exported, "hidden-1");
+  cleanupMemeticForRemovedNeuron(exported, 5001);
   assertEquals(exported.memetic, undefined, "Memetic should remain absent");
   assertEquals(exported.neurons.length, 1, "Neurons should be unchanged");
 });

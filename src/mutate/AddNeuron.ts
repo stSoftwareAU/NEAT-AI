@@ -2,6 +2,7 @@ import { assert } from "@std/assert";
 import { CreatureUtil } from "../../mod.ts";
 import type { Creature } from "../Creature.ts";
 import { Neuron } from "../architecture/Neuron.ts";
+import { nextNeuronId } from "../architecture/NeuronId.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
 import type { MutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
 import {
@@ -60,7 +61,7 @@ export class AddNeuron extends AbstractMutationOperator {
     delete creature.uuid;
     const forwardOnly = creature.forwardOnly === true;
     const neuron = new Neuron(
-      crypto.randomUUID(),
+      nextNeuronId(),
       "hidden",
       rng.random() * 0.2 - 0.1,
       creature,

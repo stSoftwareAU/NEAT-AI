@@ -35,7 +35,7 @@ Deno.test(
       operations: [
         {
           type: "removeNeuron",
-          neuronUuid: "hidden-b",
+          neuronId: 1775329601,
         },
       ],
     };
@@ -47,12 +47,10 @@ Deno.test(
     assertEquals(mutated.semanticVersion, "3.9.0");
 
     const exported = mutated.exportJSON();
-    assertEquals(exported.neurons.some((n) => n.uuid === "hidden-b"), false);
-    assertEquals(exported.neurons.some((n) => n.uuid === "hidden-a"), false);
+    assertEquals(exported.neurons.some((n) => n.id === 1775329602), false);
+    assertEquals(exported.neurons.some((n) => n.id === 1775329601), false);
     assertEquals(
-      exported.synapses.some((s) =>
-        s.fromUUID === "input-0" && s.toUUID === "hidden-a"
-      ),
+      exported.synapses.some((s) => s.fromId === 0 && s.toId === 1775329601),
       false,
     );
   },

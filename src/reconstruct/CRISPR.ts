@@ -1,6 +1,7 @@
 import { addTag, getTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { CreatureUtil, Upgrade } from "../../mod.ts";
 import { Neuron } from "../architecture/Neuron.ts";
+import { nextNeuronId, outputNeuronId } from "../architecture/NeuronId.ts";
 import { Creature } from "../Creature.ts";
 import { CrisprError } from "../errors/CrisprError.ts";
 import type { ValidationError } from "../errors/ValidationError.ts";
@@ -32,7 +33,7 @@ export interface CrisprInterface extends TagsInterface {
     /**
      * Unique identifier for the neuron.
      */
-    uuid?: string;
+    id?: number;
 
     /**
      * Index position of the neuron in the network.
@@ -77,7 +78,7 @@ export interface CrisprInterface extends TagsInterface {
     /**
      * UUID of the source neuron.
      */
-    fromUUID?: string;
+    fromId?: number;
 
     /**
      * Index of the destination neuron.
@@ -92,7 +93,7 @@ export interface CrisprInterface extends TagsInterface {
     /**
      * UUID of the destination neuron.
      */
-    toUUID?: string;
+    toId?: number;
 
     /**
      * Weight of the synapse.
@@ -136,28 +137,29 @@ export class CRISPR {
    */
   static editAliases(
     dna: CrisprInterface,
-    aliases: Record<string, string>,
+    aliases: Record<number, number>,
   ): CrisprInterface {
     const crispr: CrisprInterface = JSON.parse(JSON.stringify(dna));
 
     for (const key in aliases) {
-      const value = aliases[key];
+      const numericKey = Number(key);
+      const value = aliases[numericKey];
 
       if (crispr.neurons) {
         crispr.neurons.forEach((neuron) => {
-          if (neuron.uuid === key) {
-            neuron.uuid = value;
+          if (neuron.id === numericKey) {
+            neuron.id = value;
           }
         });
       }
 
       if (crispr.synapses) {
         crispr.synapses.forEach((synapse) => {
-          if (synapse.fromUUID === key) {
-            synapse.fromUUID = value;
+          if (synapse.fromId === numericKey) {
+            synapse.fromId = value;
           }
-          if (synapse.toUUID === key) {
-            synapse.toUUID = value;
+          if (synapse.toId === numericKey) {
+            synapse.toId = value;
           }
         });
       }
@@ -173,10 +175,10 @@ export class CRISPR {
    */
   private append(dna: CrisprInterface): Creature {
     const tmpCreature = Creature.fromJSON(this.creature.exportJSON());
-    const UUIDs = new Map<string, number>();
+    const UUIDs = new Map<number, number>();
 
     tmpCreature.neurons.forEach((node) => {
-      UUIDs.set(node.uuid, node.index);
+      UUIDs.set(node.id, node.index);
     });
 
     let adjustIndx = 0;
@@ -197,15 +199,15 @@ export class CRISPR {
             firstNetworkOutputIndex = indx;
           }
           neuron.type = "hidden";
-          if (neuron.uuid?.startsWith("output-")) {
-            const uuid = crypto.randomUUID();
+          if (neuron.id !== undefined && neuron.id < 0) {
+            const uuid = nextNeuronId();
             dna.synapses.forEach((synapse) => {
-              if (synapse.fromUUID === neuron.uuid) {
-                synapse.fromUUID = uuid;
+              if (synapse.fromId === neuron.id) {
+                synapse.fromId = uuid;
               }
             });
 
-            neuron.uuid = uuid;
+            neuron.id = uuid;
             UUIDs.set(uuid, indx);
           }
         }
@@ -216,14 +218,14 @@ export class CRISPR {
 
       let outputIndx = 0;
       dna.neurons.forEach((dnaNeuron) => {
-        let uuid: string;
+        let uuid: number;
         if (dnaNeuron.type === "output") {
-          uuid = `output-${outputIndx}`;
+          uuid = outputNeuronId(outputIndx);
           outputIndx++;
         } else {
-          uuid = dnaNeuron.uuid
-            ? UUIDs.has(dnaNeuron.uuid) ? crypto.randomUUID() : dnaNeuron.uuid
-            : crypto.randomUUID();
+          uuid = dnaNeuron.id !== undefined
+            ? UUIDs.has(dnaNeuron.id) ? nextNeuronId() : dnaNeuron.id
+            : nextNeuronId();
         }
         const indx = dnaNeuron.index !== undefined
           ? dnaNeuron.index + adjustIndx
@@ -247,15 +249,15 @@ export class CRISPR {
     }
     tmpCreature.clearCache();
     dna.synapses.forEach((s) => {
-      const from = s.fromUUID
-        ? UUIDs.get(s.fromUUID)
+      const from = s.fromId !== undefined
+        ? UUIDs.get(s.fromId)
         : s.from !== undefined
         ? s.from
         : s.fromRelative !== undefined
         ? s.fromRelative + adjustIndx
         : undefined;
-      const to = s.toUUID
-        ? UUIDs.get(s.toUUID)
+      const to = s.toId !== undefined
+        ? UUIDs.get(s.toId)
         : s.to !== undefined
         ? s.to
         : s.toRelative !== undefined
@@ -298,7 +300,7 @@ export class CRISPR {
     const tmpCreature = Creature.fromJSON(exportJSON);
     tmpCreature.synapses = [];
 
-    const uuidMap = new Map<string, number>();
+    const idMap = new Map<number, number>();
 
     if (dna.neurons) {
       dna.neurons.forEach((neuron) => {
@@ -309,19 +311,21 @@ export class CRISPR {
 
       const neurons: Neuron[] = [];
       tmpCreature.neurons.forEach((neuron, indx) => {
-        if (!neuron.uuid) {
-          throw new CrisprError("Missing uuid", "MISSING_UUID");
+        if (neuron.id === undefined) {
+          throw new CrisprError("Missing id", "MISSING_UUID");
         }
         if (neuron.type !== "output") {
-          uuidMap.set(neuron.uuid, indx);
+          idMap.set(neuron.id, indx);
           neurons.push(neuron);
         }
       });
 
       dna.neurons.forEach((dnaNeuron) => {
-        if (!dnaNeuron.uuid || !uuidMap.has(dnaNeuron.uuid)) {
-          const uuid = dnaNeuron.uuid ? dnaNeuron.uuid : crypto.randomUUID();
-          const indx = uuidMap.size;
+        if (dnaNeuron.id === undefined || !idMap.has(dnaNeuron.id)) {
+          const uuid = dnaNeuron.id !== undefined
+            ? dnaNeuron.id
+            : nextNeuronId();
+          const indx = idMap.size;
 
           const neuron = new Neuron(
             uuid,
@@ -338,7 +342,7 @@ export class CRISPR {
           }
           neurons.push(neuron);
 
-          uuidMap.set(uuid, indx);
+          idMap.set(uuid, indx);
         }
       });
       for (
@@ -347,16 +351,16 @@ export class CRISPR {
         indx++
       ) {
         const neuron = tmpCreature.neurons[indx];
-        const updatedIndx = uuidMap.size;
+        const updatedIndx = idMap.size;
         neuron.index = updatedIndx;
         neurons.push(neuron);
-        uuidMap.set(neuron.uuid, updatedIndx);
+        idMap.set(neuron.id, updatedIndx);
       }
 
       tmpCreature.neurons = neurons;
     } else {
       tmpCreature.neurons.forEach((neuron, indx) => {
-        uuidMap.set(neuron.uuid, indx);
+        idMap.set(neuron.id, indx);
       });
     }
 
@@ -379,16 +383,16 @@ export class CRISPR {
         );
       }
 
-      if (c.fromUUID === undefined || c.toUUID === undefined) {
+      if (c.fromId === undefined || c.toId === undefined) {
         throw new CrisprError("Missing UUID for synapse", "INVALID_DNA");
       }
     });
 
     dna.synapses.forEach((s) => {
-      if (s.fromUUID === undefined) {
-        throw new CrisprError("Missing fromUUID", "MISSING_UUID");
+      if (s.fromId === undefined) {
+        throw new CrisprError("Missing fromId", "MISSING_UUID");
       }
-      const fromIndx = uuidMap.get(s.fromUUID);
+      const fromIndx = idMap.get(s.fromId);
       if (fromIndx === undefined) {
         throw new CrisprError(
           "Invalid connection (from): " + JSON.stringify(s),
@@ -396,10 +400,10 @@ export class CRISPR {
         );
       }
 
-      if (s.toUUID === undefined) {
-        throw new CrisprError("Missing toUUID", "MISSING_UUID");
+      if (s.toId === undefined) {
+        throw new CrisprError("Missing toId", "MISSING_UUID");
       }
-      const toIndx = uuidMap.get(s.toUUID);
+      const toIndx = idMap.get(s.toId);
 
       if (toIndx === undefined) {
         throw new CrisprError(
@@ -419,8 +423,8 @@ export class CRISPR {
     });
 
     exportJSON.synapses.forEach((synapse) => {
-      const fromIndx = uuidMap.get(synapse.fromUUID);
-      const toIndx = uuidMap.get(synapse.toUUID);
+      const fromIndx = idMap.get(synapse.fromId!);
+      const toIndx = idMap.get(synapse.toId!);
 
       if (fromIndx !== undefined && toIndx !== undefined) {
         if (tmpCreature.getSynapse(fromIndx, toIndx) === null) {
@@ -446,8 +450,8 @@ export class CRISPR {
     const enforceForwardOnly = this.creature.forwardOnly === true ||
       getMajorVersion(this.creature.semanticVersion) >= 4;
     this.creature.neurons.forEach((neuron) => {
-      if (neuron.uuid === undefined) {
-        throw new CrisprError("missing uuid", "MISSING_UUID");
+      if (neuron.id === undefined) {
+        throw new CrisprError("missing id", "MISSING_UUID");
       }
 
       const id = getTag(neuron, "CRISPR");

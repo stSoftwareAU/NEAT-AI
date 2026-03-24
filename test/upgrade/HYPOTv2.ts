@@ -23,7 +23,7 @@ Deno.test("HYPOTv2-small upgrade preserves activation within tolerance", () => {
 
   upgraded.neurons.forEach((neuron) => {
     if (neuron.squash === HYPOTv2.NAME) {
-      fail(`Didn't remove HYPOTv2 ${neuron.uuid}`);
+      fail(`Didn't remove HYPOTv2 ${neuron.id}`);
     }
   });
 
@@ -65,7 +65,7 @@ Deno.test("HYPOTv2 upgrade removes deprecated squash and produces valid creature
 
   upgraded.neurons.forEach((neuron) => {
     if (neuron.squash === HYPOTv2.NAME) {
-      fail(`Didn't remove HYPOTv2 ${neuron.uuid}`);
+      fail(`Didn't remove HYPOTv2 ${neuron.id}`);
     }
   });
 });

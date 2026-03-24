@@ -43,8 +43,8 @@ export interface PredictionDetails {
 
 /** Information about the target neuron */
 export interface TargetNeuronInfo {
-  /** UUID of the target neuron */
-  uuid: string;
+  /** Integer ID of the target neuron */
+  id: number;
   /** Squash function of the target neuron */
   squash: string;
   /** Whether the neuron is at saturation (|activation| > 0.95 for bounded activations) */
@@ -83,15 +83,15 @@ export interface FailureMetadata {
 
 /** Represents the actual neuron state in the creature after changes were applied */
 export interface ActualNeuronState {
-  uuid: string;
+  id: number;
   squash: string;
   bias: number;
 }
 
 /** Represents the actual synapse state in the creature after changes were applied */
 export interface ActualSynapseState {
-  fromUUID: string;
-  toUUID: string;
+  fromId: number;
+  toId: number;
   weight: number;
 }
 
@@ -102,7 +102,7 @@ export interface ActualCreatureChange {
   /** Synapses connected to added neurons (with actual weights after fix()) */
   addedSynapses?: ActualSynapseState[];
   /** Neurons that were removed */
-  removedNeuronUUIDs?: string[];
+  removedNeuronIds?: number[];
   /** Synapses that were removed */
   removedSynapseKeys?: string[];
 }

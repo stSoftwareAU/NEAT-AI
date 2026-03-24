@@ -21,19 +21,19 @@ Deno.test("SparseConfig with cached outgoing map produces consistent results", (
   // Both should agree on propagateNeeded for all neurons.
   for (const neuron of json.neurons) {
     assertEquals(
-      sparseWith.propagateNeeded(neuron.uuid),
-      sparseWithout.propagateNeeded(neuron.uuid),
-      `propagateNeeded differs for ${neuron.uuid}`,
+      sparseWith.propagateNeeded(neuron.id!),
+      sparseWithout.propagateNeeded(neuron.id!),
+      `propagateNeeded differs for ${neuron.id}`,
     );
     assertEquals(
-      sparseWith.traceNeeded(neuron.uuid),
-      sparseWithout.traceNeeded(neuron.uuid),
-      `traceNeeded differs for ${neuron.uuid}`,
+      sparseWith.traceNeeded(neuron.id!),
+      sparseWithout.traceNeeded(neuron.id!),
+      `traceNeeded differs for ${neuron.id}`,
     );
     assertEquals(
-      sparseWith.updateNeeded(neuron.uuid),
-      sparseWithout.updateNeeded(neuron.uuid),
-      `updateNeeded differs for ${neuron.uuid}`,
+      sparseWith.updateNeeded(neuron.id!),
+      sparseWithout.updateNeeded(neuron.id!),
+      `updateNeeded differs for ${neuron.id}`,
     );
   }
 });
@@ -59,9 +59,9 @@ Deno.test("SparseConfig cached outgoing map reusable across multiple configs", (
   // With sparseRatio=1, all neurons are selected - both should agree
   for (const neuron of json.neurons) {
     assertEquals(
-      sparse1.propagateNeeded(neuron.uuid),
-      sparse2.propagateNeeded(neuron.uuid),
-      `propagateNeeded differs for ${neuron.uuid}`,
+      sparse1.propagateNeeded(neuron.id!),
+      sparse2.propagateNeeded(neuron.id!),
+      `propagateNeeded differs for ${neuron.id}`,
     );
   }
 });

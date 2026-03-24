@@ -44,28 +44,28 @@ export function extractActualCreatureChanges(
   const candidateJSON = candidateCreature.exportJSON();
 
   // Build sets for comparison
-  const baseNeuronUUIDs = new Set(baseJSON.neurons.map((n) => n.uuid));
-  const candidateNeuronUUIDs = new Set(
-    candidateJSON.neurons.map((n) => n.uuid),
+  const baseNeuronIds = new Set(baseJSON.neurons.map((n) => n.id));
+  const candidateNeuronIds = new Set(
+    candidateJSON.neurons.map((n) => n.id),
   );
 
   const baseSynapseKeys = new Set(
-    baseJSON.synapses.map((s) => `${s.fromUUID}->${s.toUUID}`),
+    baseJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
   );
   const candidateSynapseKeys = new Set(
-    candidateJSON.synapses.map((s) => `${s.fromUUID}->${s.toUUID}`),
+    candidateJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
   );
 
   // Find added neurons (in candidate but not in base)
   const addedNeurons: ActualNeuronState[] = [];
   for (const neuron of candidateJSON.neurons) {
     if (
-      !baseNeuronUUIDs.has(neuron.uuid) &&
+      !baseNeuronIds.has(neuron.id) &&
       neuron.type === "hidden" &&
       neuron.squash // Skip neurons without squash (shouldn't happen for hidden)
     ) {
       addedNeurons.push({
-        uuid: neuron.uuid,
+        id: neuron.id!,
         squash: neuron.squash,
         bias: neuron.bias,
       });
@@ -75,28 +75,28 @@ export function extractActualCreatureChanges(
   // Find added synapses (in candidate but not in base)
   const addedSynapses: ActualSynapseState[] = [];
   for (const synapse of candidateJSON.synapses) {
-    const key = `${synapse.fromUUID}->${synapse.toUUID}`;
+    const key = `${synapse.fromId}->${synapse.toId}`;
     if (!baseSynapseKeys.has(key)) {
       addedSynapses.push({
-        fromUUID: synapse.fromUUID,
-        toUUID: synapse.toUUID,
+        fromId: synapse.fromId!,
+        toId: synapse.toId!,
         weight: synapse.weight,
       });
     }
   }
 
   // Find removed neurons (in base but not in candidate)
-  const removedNeuronUUIDs: string[] = [];
+  const removedNeuronIds: number[] = [];
   for (const neuron of baseJSON.neurons) {
-    if (!candidateNeuronUUIDs.has(neuron.uuid) && neuron.type === "hidden") {
-      removedNeuronUUIDs.push(neuron.uuid);
+    if (!candidateNeuronIds.has(neuron.id!) && neuron.type === "hidden") {
+      removedNeuronIds.push(neuron.id!);
     }
   }
 
   // Find removed synapses (in base but not in candidate)
   const removedSynapseKeys: string[] = [];
   for (const synapse of baseJSON.synapses) {
-    const key = `${synapse.fromUUID}->${synapse.toUUID}`;
+    const key = `${synapse.fromId}->${synapse.toId}`;
     if (!candidateSynapseKeys.has(key)) {
       removedSynapseKeys.push(key);
     }
@@ -106,7 +106,7 @@ export function extractActualCreatureChanges(
   if (
     addedNeurons.length === 0 &&
     addedSynapses.length === 0 &&
-    removedNeuronUUIDs.length === 0 &&
+    removedNeuronIds.length === 0 &&
     removedSynapseKeys.length === 0
   ) {
     return undefined;
@@ -115,8 +115,8 @@ export function extractActualCreatureChanges(
   return {
     addedNeurons: addedNeurons.length > 0 ? addedNeurons : undefined,
     addedSynapses: addedSynapses.length > 0 ? addedSynapses : undefined,
-    removedNeuronUUIDs: removedNeuronUUIDs.length > 0
-      ? removedNeuronUUIDs
+    removedNeuronIds: removedNeuronIds.length > 0
+      ? removedNeuronIds
       : undefined,
     removedSynapseKeys: removedSynapseKeys.length > 0
       ? removedSynapseKeys
@@ -169,33 +169,29 @@ export function extractTargetNeuronInfo(
   baseCreature: Creature,
 ): TargetNeuronInfo | undefined {
   const change = candidate.change;
-  let targetUUID: string | undefined;
+  let targetId: number | undefined;
 
   // Identify target neuron based on change type
   if (change.type === "add-neurons" && change.neuronDetails) {
-    targetUUID = change.neuronDetails.toNeuronUUID;
+    targetId = change.neuronDetails.toNeuronId;
   } else if (change.type === "add-synapses") {
     // For synapses, extract from description if possible
-    const toMatch = change.description?.match(/-> ([a-zA-Z0-9_-]+)/);
+    const toMatch = change.description?.match(/-> (\d+)/);
     if (toMatch) {
-      targetUUID = toMatch[1];
+      targetId = Number(toMatch[1]);
     }
   }
 
-  if (!targetUUID) return undefined;
+  if (targetId === null || targetId === undefined) return undefined;
 
   // Find the neuron in the base creature.
-  // Note: For add-synapses candidates, targetUUID may be a shortID (last 8 chars)
-  // extracted from the description, so we use endsWith() for matching.
-  const neuron = baseCreature.neurons.find((n) =>
-    n.uuid === targetUUID || n.uuid?.endsWith(targetUUID)
-  );
+  const neuron = baseCreature.neurons.find((n) => n.id === targetId);
   if (!neuron) return undefined;
 
   const squashName = neuron.squash ?? "IDENTITY";
 
   return {
-    uuid: neuron.uuid ?? targetUUID, // Return full UUID from found neuron
+    id: neuron.id,
     squash: squashName,
     // Note: Saturation and stats would need runtime activation data
     // which we don't have access to in this context

@@ -20,6 +20,7 @@ import { getLogger } from "../utils/Logger.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 import { Neuron } from "./Neuron.ts";
+import { outputIndexFromId, outputNeuronId } from "./NeuronId.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
 
 class OffspringError extends Error {
@@ -32,7 +33,7 @@ class OffspringError extends Error {
 /**
  * Issue #1644: Deferred connection reference. Stores a reference to the parent
  * creature and its internal synapse array instead of cloning to SynapseExport
- * objects. UUIDs are resolved on-the-fly via parent.neurons[synapse.from].uuid,
+ * objects. UUIDs are resolved on-the-fly via parent.neurons[synapse.from].id,
  * eliminating thousands of intermediate object allocations.
  */
 export interface ConnectionRef {
@@ -79,16 +80,16 @@ export class Offspring {
       fixAliases = true;
     }
 
-    // Pre-build Maps for O(1) neuron lookup by UUID.
+    // Pre-build Maps for O(1) neuron lookup by integer ID.
     // This replaces O(n) linear .find() searches, improving breeding performance
-    // from O(n²) to O(n) for creatures with many neurons. (Issue #1024)
-    const motherNeuronMap = new Map<string, Neuron>();
+    // from O(n²) to O(n) for creatures with many neurons. (Issue #1024, #1958)
+    const motherNeuronMap = new Map<number, Neuron>();
     for (const neuron of mother.neurons) {
-      motherNeuronMap.set(neuron.uuid, neuron);
+      motherNeuronMap.set(neuron.id, neuron);
     }
-    const fatherNeuronMap = new Map<string, Neuron>();
+    const fatherNeuronMap = new Map<number, Neuron>();
     for (const neuron of father.neurons) {
-      fatherNeuronMap.set(neuron.uuid, neuron);
+      fatherNeuronMap.set(neuron.id, neuron);
     }
 
     // Determine offspring semantic version based on BOTH parents.
@@ -118,19 +119,19 @@ export class Offspring {
     offspring.synapses = [];
     offspring.neurons = [];
 
-    const neuronMap = new Map<string, Neuron>();
+    const neuronMap = new Map<number, Neuron>();
     // Issue #1644: Use deferred connection references instead of cloning to
     // SynapseExport objects. This eliminates thousands of intermediate object
     // allocations by storing references to the parent creature's internal data.
-    const connectionsMap = new Map<string, ConnectionRef>();
+    const connectionsMap = new Map<number, ConnectionRef>();
 
     // Populate neuronMap and connectionsMap with neurons and synapses from both parents
     for (const node of mother.neurons) {
       if (node.type !== "input") {
         const connections = mother.inwardConnections(node.index);
         Offspring.fixType(node, connections);
-        neuronMap.set(node.uuid, node);
-        connectionsMap.set(node.uuid, {
+        neuronMap.set(node.id, node);
+        connectionsMap.set(node.id, {
           parent: mother,
           synapses: connections,
         });
@@ -142,9 +143,9 @@ export class Offspring {
         if (rng.random() >= 0.5) {
           const connections = father.inwardConnections(node.index);
           Offspring.fixType(node, connections);
-          neuronMap.set(node.uuid, node);
+          neuronMap.set(node.id, node);
           connectionsMap.set(
-            node.uuid,
+            node.id,
             { parent: father, synapses: connections },
           );
         }
@@ -155,20 +156,20 @@ export class Offspring {
     let addedMissing;
     do {
       addedMissing = false;
-      for (const uuid of neuronMap.keys()) {
-        const ref = connectionsMap.get(uuid);
+      for (const neuronId of neuronMap.keys()) {
+        const ref = connectionsMap.get(neuronId);
         if (ref) {
           const parentNeurons = ref.parent.neurons;
           for (const synapse of ref.synapses) {
-            const fromUUID = parentNeurons[synapse.from].uuid;
-            let fromNeuron = neuronMap.get(fromUUID);
+            const fromId = parentNeurons[synapse.from].id;
+            let fromNeuron = neuronMap.get(fromId);
             if (!fromNeuron) {
               // Use pre-built Maps for O(1) lookup instead of O(n) .find()
-              const motherNeuron = motherNeuronMap.get(fromUUID);
+              const motherNeuron = motherNeuronMap.get(fromId);
               fromNeuron = motherNeuron;
               let parent = mother;
               if (!fromNeuron || rng.random() >= 0.5) {
-                const fatherNeuron = fatherNeuronMap.get(fromUUID);
+                const fatherNeuron = fatherNeuronMap.get(fromId);
                 if (fatherNeuron) {
                   fromNeuron = fatherNeuron;
                   parent = father;
@@ -176,17 +177,17 @@ export class Offspring {
               }
               if (!fromNeuron) {
                 throw new TopologyError(
-                  `Can't find ${fromUUID}`,
+                  `Can't find ${fromId}`,
                   "MISSING_NEURON",
                 );
               }
 
-              neuronMap.set(fromNeuron.uuid, fromNeuron);
+              neuronMap.set(fromNeuron.id, fromNeuron);
               const parentConnections = parent.inwardConnections(
                 fromNeuron.index,
               );
               connectionsMap.set(
-                fromNeuron.uuid,
+                fromNeuron.id,
                 { parent, synapses: parentConnections },
               );
               addedMissing = true;
@@ -194,7 +195,7 @@ export class Offspring {
           }
         } else {
           throw new TopologyError(
-            `Can't find connections for ${uuid}`,
+            `Can't find connections for ${neuronId}`,
             "MISSING_NEURON",
           );
         }
@@ -203,25 +204,25 @@ export class Offspring {
 
     // Function to clone nodes and create the offspring network
     const tmpNodes: Neuron[] = [];
-    const tmpUUIDs = new Set<string>();
+    const tmpIds = new Set<number>();
 
     function cloneNode(neuron: Neuron) {
-      if (!tmpUUIDs.has(neuron.uuid)) {
-        const ref = connectionsMap.get(neuron.uuid);
+      if (!tmpIds.has(neuron.id)) {
+        const ref = connectionsMap.get(neuron.id);
         if (!ref) {
           throw new TopologyError(
-            `Can't find connections for ${neuron.uuid}`,
+            `Can't find connections for ${neuron.id}`,
             "MISSING_NEURON",
           );
         }
-        tmpUUIDs.add(neuron.uuid);
+        tmpIds.add(neuron.id);
         const parentNeurons = ref.parent.neurons;
         for (const synapse of ref.synapses) {
-          const fromUUID = parentNeurons[synapse.from].uuid;
-          const fromNeuron = neuronMap.get(fromUUID);
+          const fromId = parentNeurons[synapse.from].id;
+          const fromNeuron = neuronMap.get(fromId);
           if (!fromNeuron) {
             throw new TopologyError(
-              `Can't find ${fromUUID}`,
+              `Can't find ${fromId}`,
               "MISSING_NEURON",
             );
           } else if (fromNeuron.type !== "input") {
@@ -236,16 +237,19 @@ export class Offspring {
     for (let indx = 0; indx < mother.input; indx++) {
       const input = mother.neurons[indx];
       tmpNodes.push(input);
-      tmpUUIDs.add(input.uuid);
+      tmpIds.add(input.id);
     }
 
     // Add output neurons
     for (let indx = mother.output; indx--;) {
-      const node = neuronMap.get(`output-${indx}`);
+      const node = neuronMap.get(outputNeuronId(indx));
       if (node !== undefined) {
         cloneNode(node);
       } else {
-        throw new TopologyError(`Can't find output-${indx}`, "MISSING_NEURON");
+        throw new TopologyError(
+          `Can't find output neuron ${indx}`,
+          "MISSING_NEURON",
+        );
       }
     }
 
@@ -265,11 +269,11 @@ export class Offspring {
 
     const tmpNodesLen = tmpNodes.length;
     offspring.neurons.length = tmpNodesLen;
-    const indxMap = new Map<string, number>();
+    const indxMap = new Map<number, number>();
     for (let indx = 0; indx < tmpNodesLen; indx++) {
       const neuron = tmpNodes[indx];
       const newNode = new Neuron(
-        neuron.uuid,
+        neuron.id,
         neuron.type,
         neuron.bias,
         offspring,
@@ -280,7 +284,7 @@ export class Offspring {
 
       newNode.index = indx;
       offspring.neurons[indx] = newNode;
-      indxMap.set(neuron.uuid, indx);
+      indxMap.set(neuron.id, indx);
     }
 
     // Issue #1102: Collect all connections first, then batch connect
@@ -300,19 +304,19 @@ export class Offspring {
 
     for (const neuron of offspring.neurons) {
       if (neuron.type !== "input") {
-        const ref = connectionsMap.get(neuron.uuid);
+        const ref = connectionsMap.get(neuron.id);
         if (!ref) {
           throw new TopologyError(
-            `Can't find connections for ${neuron.uuid}`,
+            `Can't find connections for ${neuron.id}`,
             "MISSING_NEURON",
           );
         }
         const parentNeurons = ref.parent.neurons;
         for (const synapse of ref.synapses) {
-          const fromUUID = parentNeurons[synapse.from].uuid;
-          const toUUID = parentNeurons[synapse.to].uuid;
-          const fromIndx = indxMap.get(fromUUID);
-          const toIndx = indxMap.get(toUUID);
+          const fromId = parentNeurons[synapse.from].id;
+          const toId = parentNeurons[synapse.to].id;
+          const fromIndx = indxMap.get(fromId);
+          const toIndx = indxMap.get(toId);
 
           if (fromIndx !== undefined && toIndx !== undefined) {
             if (fromIndx <= toIndx) {
@@ -383,12 +387,15 @@ export class Offspring {
         const alias = getTag(n, "alias");
         if (alias) {
           removeTag(n, "alias");
-          const oldUUID = n.uuid;
-          (n as { uuid: string }).uuid = alias;
-          fixed.synapses.forEach((s) => {
-            if (s.fromUUID === oldUUID) s.fromUUID = alias;
-            if (s.toUUID === oldUUID) s.toUUID = alias;
-          });
+          const oldId = n.id;
+          const aliasId = Number.parseInt(alias);
+          if (Number.isFinite(aliasId)) {
+            (n as { id: number }).id = aliasId;
+            fixed.synapses.forEach((s) => {
+              if (s.fromId === oldId) s.fromId = aliasId;
+              if (s.toId === oldId) s.toId = aliasId;
+            });
+          }
         }
       }
 
@@ -545,8 +552,8 @@ export class Offspring {
     for (let i = 0; i < len; i++) {
       const connection = connections[i];
       tmpConnections[i] = {
-        fromUUID: neurons[connection.from].uuid,
-        toUUID: neurons[connection.to].uuid,
+        fromId: neurons[connection.from].id,
+        toId: neurons[connection.to].id,
         weight: connection.weight,
         type: connection.type,
         tags: connection.tags,
@@ -560,21 +567,21 @@ export class Offspring {
     child: Neuron[],
     mother: Neuron[],
     father: Neuron[],
-    connectionsMap: Map<string, ConnectionRef>,
+    connectionsMap: Map<number, ConnectionRef>,
   ) {
-    const childMap = new Map<string, number>();
+    const childMap = new Map<number, number>();
 
     // Issue #1644: Build mumMap and seed childMap with inputs in a single pass
-    const mumMap = new Map<string, number>();
+    const mumMap = new Map<number, number>();
     for (let indx = 0; indx < mother.length; indx++) {
       const neuron = mother[indx];
-      mumMap.set(neuron.uuid, indx);
-      if (neuron.type === "input") childMap.set(neuron.uuid, indx);
+      mumMap.set(neuron.id, indx);
+      if (neuron.type === "input") childMap.set(neuron.id, indx);
     }
 
-    const dadMap = new Map<string, number>();
+    const dadMap = new Map<number, number>();
     for (let indx = 0; indx < father.length; indx++) {
-      dadMap.set(father[indx].uuid, indx);
+      dadMap.set(father[indx].id, indx);
     }
 
     let firstMap = mumMap;
@@ -590,29 +597,31 @@ export class Offspring {
         if (b.type !== "output") {
           return 1;
         }
-        return Number.parseInt(a.uuid.substring(7)) -
-          Number.parseInt(b.uuid.substring(7));
+        return outputIndexFromId(a.id) - outputIndexFromId(b.id);
       } else if (b.type === "output") {
         return -1;
       }
 
-      if (a.uuid === b.uuid) {
-        throw new TopologyError(`Duplicate uuid ${a.uuid}`, "DUPLICATE_UUID");
+      if (a.id === b.id) {
+        throw new TopologyError(
+          `Duplicate neuron id ${a.id}`,
+          "DUPLICATE_UUID",
+        );
       }
-      let indxA = firstMap.get(a.uuid);
+      let indxA = firstMap.get(a.id);
       if (indxA === undefined) {
-        indxA = secondMap.get(a.uuid);
+        indxA = secondMap.get(a.id);
         if (indxA === undefined) {
-          throw new TopologyError(`Can't find ${a.uuid}`, "MISSING_NEURON");
+          throw new TopologyError(`Can't find ${a.id}`, "MISSING_NEURON");
         }
         indxA += 0.1;
       }
 
-      let indxB = firstMap.get(b.uuid);
+      let indxB = firstMap.get(b.id);
       if (indxB === undefined) {
-        indxB = secondMap.get(b.uuid);
+        indxB = secondMap.get(b.id);
         if (indxB === undefined) {
-          throw new TopologyError(`Can't find ${b.uuid}`, "MISSING_NEURON");
+          throw new TopologyError(`Can't find ${b.id}`, "MISSING_NEURON");
         }
         indxB += 0.1;
       }
@@ -630,11 +639,11 @@ export class Offspring {
       missing = false;
       for (const neuron of child) {
         if (neuron.type !== "input" && neuron.type !== "output") {
-          const uuid = neuron.uuid;
+          const nId = neuron.id;
 
-          if (!childMap.has(uuid)) {
-            const firstIndx = firstMap.get(uuid);
-            const secondIndx = secondMap.get(uuid);
+          if (!childMap.has(nId)) {
+            const firstIndx = firstMap.get(nId);
+            const secondIndx = secondMap.get(nId);
 
             let indx = 0;
             if (firstIndx !== undefined) {
@@ -643,18 +652,18 @@ export class Offspring {
               indx = secondIndx;
             } else {
               throw new TopologyError(
-                `Can't find ${uuid} in father or mother creatures!`,
+                `Can't find ${nId} in father or mother creatures!`,
                 "MISSING_NEURON",
               );
             }
-            const ref = connectionsMap.get(uuid);
+            const ref = connectionsMap.get(nId);
             if (ref) {
               const parentNeurons = ref.parent.neurons;
               for (const synapse of ref.synapses) {
                 if (indx >= 0) {
-                  const fromUUID = parentNeurons[synapse.from].uuid;
-                  if (!fromUUID.startsWith("input-")) {
-                    const dependantIndx = childMap.get(fromUUID);
+                  const fromNeuron = parentNeurons[synapse.from];
+                  if (fromNeuron.type !== "input") {
+                    const dependantIndx = childMap.get(fromNeuron.id);
                     if (dependantIndx === undefined) {
                       indx = -1;
                     } else if (dependantIndx >= indx) {
@@ -666,17 +675,17 @@ export class Offspring {
             }
             if (indx >= 0) {
               if (usedIndx.has(indx)) {
-                childMap.forEach((childIndx, uuid) => {
+                childMap.forEach((childIndx, nid) => {
                   if (childIndx >= indx) {
                     usedIndx.delete(childIndx);
                     childIndx++;
                     usedIndx.add(childIndx);
                   }
-                  childMap.set(uuid, childIndx);
+                  childMap.set(nid, childIndx);
                 });
               }
               usedIndx.add(indx);
-              childMap.set(uuid, indx);
+              childMap.set(nId, indx);
             } else {
               missing = true;
             }
@@ -695,22 +704,19 @@ export class Offspring {
         if (b.type !== "output") {
           return 1;
         }
-        const aIndx = Number.parseInt(a.uuid.substring(7));
-        const bIndx = Number.parseInt(b.uuid.substring(7));
-
-        return aIndx - bIndx;
+        return outputIndexFromId(a.id) - outputIndexFromId(b.id);
       } else if (b.type === "output") {
         return -1;
       } else if (a.type === "input" && b.type === "input") {
         return a.index - b.index;
       } else {
-        const aIndx = childMap.get(a.uuid);
+        const aIndx = childMap.get(a.id);
         if (aIndx === undefined) {
-          throw new TopologyError(`Can't find ${a.uuid}`, "MISSING_NEURON");
+          throw new TopologyError(`Can't find ${a.id}`, "MISSING_NEURON");
         }
-        const bIndx = childMap.get(b.uuid);
+        const bIndx = childMap.get(b.id);
         if (bIndx === undefined) {
-          throw new TopologyError(`Can't find ${b.uuid}`, "MISSING_NEURON");
+          throw new TopologyError(`Can't find ${b.id}`, "MISSING_NEURON");
         }
 
         /*

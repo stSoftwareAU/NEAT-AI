@@ -31,13 +31,13 @@ Deno.test(
       operations: [
         {
           type: "removeSynapse",
-          fromNeuronUuid: "input-0",
-          toNeuronUuid: "output-0",
+          fromNeuronId: 0,
+          toNeuronId: -1,
         },
         {
           type: "addSynapse",
-          fromNeuronUuid: "input-0",
-          toNeuronUuid: "output-0",
+          fromNeuronId: 0,
+          toNeuronId: -1,
           weight: 0.07451205, // e-2
         },
       ],
@@ -49,8 +49,8 @@ Deno.test(
         specA.operations[0],
         {
           type: "addSynapse",
-          fromNeuronUuid: "input-0",
-          toNeuronUuid: "output-0",
+          fromNeuronId: 0,
+          toNeuronId: -1,
           weight: 0.0999, // also e-2
         },
       ],
@@ -62,8 +62,8 @@ Deno.test(
         specA.operations[0],
         {
           type: "addSynapse",
-          fromNeuronUuid: "input-0",
-          toNeuronUuid: "output-0",
+          fromNeuronId: 0,
+          toNeuronId: -1,
           weight: 0.1001, // e-1
         },
       ],

@@ -157,55 +157,55 @@ function addMissingSynapses(
   // forward-only creatures can share the same neurons but have different index
   // orders. Copying a synapse by UUID across those orderings can create a
   // recurrent/backward connection in the target, corrupting the creature.
-  const toIndexByUUID = new Map<string, number>();
+  const toIndexById = new Map<number, number>();
   for (let i = 0; i < to.input; i++) {
-    toIndexByUUID.set(`input-${i}`, i);
+    toIndexById.set(i, i);
   }
   for (let i = 0; i < to.neurons.length; i++) {
-    toIndexByUUID.set(to.neurons[i].uuid, to.input + i);
+    toIndexById.set(to.neurons[i].id!, to.input + i);
   }
 
   const toNeuronsMap = new Map<
-    string,
+    number,
     { type: string; squash?: string } | null
   >();
   to.neurons.forEach((n) => {
-    toNeuronsMap.set(n.uuid, n);
+    toNeuronsMap.set(n.id!, n);
   });
 
-  const fromNeuronsMap = new Map<string, NeuronExport>();
+  const fromNeuronsMap = new Map<number, NeuronExport>();
   from.neurons.forEach((n) => {
-    fromNeuronsMap.set(n.uuid, n);
+    fromNeuronsMap.set(n.id!, n);
   });
 
   for (let indx = 0; indx < to.input; indx++) {
-    toNeuronsMap.set(`input-${indx}`, null);
+    toNeuronsMap.set(indx, null);
   }
 
   const synapsesSet = new Set<string>();
 
   to.synapses.forEach((s) => {
-    synapsesSet.add(`${s.fromUUID}->${s.toUUID}`);
+    synapsesSet.add(`${s.fromId}->${s.toId}`);
   });
 
   from.synapses.forEach((s) => {
-    if (toNeuronsMap.has(s.fromUUID) && toNeuronsMap.has(s.toUUID)) {
+    if (toNeuronsMap.has(s.fromId!) && toNeuronsMap.has(s.toId!)) {
       if (forwardOnly) {
-        const fromIndex = toIndexByUUID.get(s.fromUUID);
-        const toIndex = toIndexByUUID.get(s.toUUID);
+        const fromIndex = toIndexById.get(s.fromId!);
+        const toIndex = toIndexById.get(s.toId!);
         // If we cannot resolve indices, do not attempt to add the synapse.
         if (fromIndex === undefined || toIndex === undefined) return;
         // Reject self-loops and backward/recurrent connections in forward-only mode.
         if (fromIndex >= toIndex) return;
       }
-      if (!synapsesSet.has(`${s.fromUUID}->${s.toUUID}`)) {
+      if (!synapsesSet.has(`${s.fromId!}->${s.toId!}`)) {
         const toSynapse: SynapseExport = JSON.parse(JSON.stringify(s));
         toSynapse.weight = 0;
         to.synapses.push(toSynapse);
-        const neuron = toNeuronsMap.get(s.toUUID);
+        const neuron = toNeuronsMap.get(s.toId!);
         if (neuron) {
           if (neuron.type === "constant") {
-            const fromNeuron = fromNeuronsMap.get(s.toUUID);
+            const fromNeuron = fromNeuronsMap.get(s.toId!);
             if (fromNeuron) {
               neuron.squash = fromNeuron.squash;
             }
@@ -263,27 +263,27 @@ function tuneRandomize(
     forwardOnly: effectiveForwardOnly,
   });
 
-  const uuidNodeMap = new Map<string, NeuronExport>();
+  const idNodeMap = new Map<number, NeuronExport>();
 
   previousJSON.neurons.forEach((n) => {
-    uuidNodeMap.set(n.uuid, n);
+    idNodeMap.set(n.id!, n);
   });
 
-  // Build a lookup for previous synapses by (fromUUID, toUUID)
+  // Build a lookup for previous synapses by (fromId, toId)
   const previousSynapseMap = new Map<string, SynapseExport>();
   for (const ps of previousJSON.synapses) {
-    previousSynapseMap.set(`${ps.fromUUID}->${ps.toUUID}`, ps);
+    previousSynapseMap.set(`${ps.fromId}->${ps.toId}`, ps);
   }
 
   // Phase 1: Compute candidate bias adjustments per neuron
   const candidateBiases = new Map<
-    string,
+    number,
     { original: number; candidate: number; previousBias: number }
   >();
 
   for (let i = fittestJSON.neurons.length; i--;) {
     const fittestNeuron = fittestJSON.neurons[i];
-    const previousNeuron = uuidNodeMap.get(fittestNeuron.uuid);
+    const previousNeuron = idNodeMap.get(fittestNeuron.id!);
 
     if (previousNeuron && fittestNeuron.squash === previousNeuron.squash) {
       let momentumFactor: number | undefined;
@@ -291,7 +291,7 @@ function tuneRandomize(
       if (existingMemetic?.ancestry && existingMemetic.ancestry.length > 0) {
         const momentum = calculateTrajectoryMomentum(
           existingMemetic,
-          fittestNeuron.uuid,
+          fittestNeuron.id!,
           undefined,
           true,
         );
@@ -310,7 +310,7 @@ function tuneRandomize(
         suggestedDirection,
         adaptiveParams,
       );
-      candidateBiases.set(fittestNeuron.uuid, {
+      candidateBiases.set(fittestNeuron.id!, {
         original: fittestNeuron.bias,
         candidate: result.changed ? result.value : fittestNeuron.bias,
         previousBias: previousNeuron.bias,
@@ -320,11 +320,11 @@ function tuneRandomize(
 
   // Phase 2: Compute candidate weight adjustments, grouped by target neuron
   const candidateWeights = new Map<
-    string,
+    number,
     {
       synapseIndex: number;
-      fromUUID: string;
-      toUUID: string;
+      fromId: number;
+      toId: number;
       original: number;
       candidate: number;
       previousWeight: number;
@@ -333,7 +333,7 @@ function tuneRandomize(
 
   for (let i = fittestJSON.synapses.length; i--;) {
     const fittestSynapse = fittestJSON.synapses[i];
-    const key = `${fittestSynapse.fromUUID}->${fittestSynapse.toUUID}`;
+    const key = `${fittestSynapse.fromId!}->${fittestSynapse.toId!}`;
     const previousSynapse = previousSynapseMap.get(key);
 
     if (previousSynapse) {
@@ -342,8 +342,8 @@ function tuneRandomize(
       if (existingMemetic?.ancestry && existingMemetic.ancestry.length > 0) {
         const momentum = calculateTrajectoryMomentum(
           existingMemetic,
-          fittestSynapse.fromUUID,
-          fittestSynapse.toUUID,
+          fittestSynapse.fromId!,
+          fittestSynapse.toId!,
           false,
         );
         if (momentum) {
@@ -364,18 +364,18 @@ function tuneRandomize(
 
       const entry = {
         synapseIndex: i,
-        fromUUID: fittestSynapse.fromUUID,
-        toUUID: fittestSynapse.toUUID,
+        fromId: fittestSynapse.fromId!,
+        toId: fittestSynapse.toId!,
         original: fittestSynapse.weight,
         candidate: result.changed ? result.value : fittestSynapse.weight,
         previousWeight: previousSynapse.weight,
       };
 
-      const existing = candidateWeights.get(fittestSynapse.toUUID);
+      const existing = candidateWeights.get(fittestSynapse.toId!);
       if (existing) {
         existing.push(entry);
       } else {
-        candidateWeights.set(fittestSynapse.toUUID, [entry]);
+        candidateWeights.set(fittestSynapse.toId!, [entry]);
       }
     }
   }
@@ -384,18 +384,18 @@ function tuneRandomize(
   let changeBiasCount = 0;
   let changeWeightCount = 0;
 
-  for (const [neuronUUID, biasInfo] of candidateBiases) {
-    const weightEntries = candidateWeights.get(neuronUUID) ?? [];
+  for (const [neuronId, biasInfo] of candidateBiases) {
+    const weightEntries = candidateWeights.get(neuronId) ?? [];
 
     const synapsePlans: SynapseAdjustmentPlan[] = weightEntries.map((w) => ({
-      fromUUID: w.fromUUID,
-      toUUID: w.toUUID,
+      fromId: w.fromId,
+      toId: w.toId,
       originalWeight: w.original,
       candidateWeight: w.candidate,
     }));
 
     const plan: NeuronAdjustmentPlan = {
-      neuronUUID,
+      neuronId,
       originalBias: biasInfo.original,
       candidateBias: biasInfo.candidate,
       synapses: synapsePlans,
@@ -407,12 +407,12 @@ function tuneRandomize(
 
     // Apply coordinated bias
     if (coordinated.adjustedBias !== biasInfo.original) {
-      const neuron = fittestJSON.neurons.find((n) => n.uuid === neuronUUID);
+      const neuron = fittestJSON.neurons.find((n) => n.id === neuronId);
       if (neuron) {
         neuron.bias = coordinated.adjustedBias;
         changeBiasCount++;
-        if (!memetic.biases[neuronUUID]) {
-          memetic.biases[neuronUUID] = biasInfo.previousBias;
+        if (!memetic.biases[neuronId]) {
+          memetic.biases[neuronId] = biasInfo.previousBias;
         }
       }
     }
@@ -430,15 +430,15 @@ function tuneRandomize(
           "weight must be a number",
         );
         changeWeightCount++;
-        if (!memetic.weights[weightEntry.fromUUID]) {
-          memetic.weights[weightEntry.fromUUID] = [];
+        if (!memetic.weights[weightEntry.fromId]) {
+          memetic.weights[weightEntry.fromId] = [];
         }
-        const existingWeight = memetic.weights[weightEntry.fromUUID].find(
-          (w) => w.toUUID === weightEntry.toUUID,
+        const existingWeight = memetic.weights[weightEntry.fromId].find(
+          (w) => w.toId === weightEntry.toId,
         );
         if (!existingWeight) {
-          memetic.weights[weightEntry.fromUUID].push({
-            toUUID: weightEntry.toUUID,
+          memetic.weights[weightEntry.fromId].push({
+            toId: weightEntry.toId,
             weight: weightEntry.previousWeight,
           });
         }
@@ -447,8 +447,8 @@ function tuneRandomize(
   }
 
   // Handle weights for neurons that had no bias candidate (e.g., input neurons as targets)
-  for (const [neuronUUID, weightEntries] of candidateWeights) {
-    if (candidateBiases.has(neuronUUID)) continue; // Already coordinated above
+  for (const [neuronId, weightEntries] of candidateWeights) {
+    if (candidateBiases.has(neuronId)) continue; // Already coordinated above
 
     for (const weightEntry of weightEntries) {
       if (weightEntry.candidate !== weightEntry.original) {
@@ -459,15 +459,15 @@ function tuneRandomize(
           "weight must be a number",
         );
         changeWeightCount++;
-        if (!memetic.weights[weightEntry.fromUUID]) {
-          memetic.weights[weightEntry.fromUUID] = [];
+        if (!memetic.weights[weightEntry.fromId]) {
+          memetic.weights[weightEntry.fromId] = [];
         }
-        const existingWeight = memetic.weights[weightEntry.fromUUID].find(
-          (w) => w.toUUID === weightEntry.toUUID,
+        const existingWeight = memetic.weights[weightEntry.fromId].find(
+          (w) => w.toId === weightEntry.toId,
         );
         if (!existingWeight) {
-          memetic.weights[weightEntry.fromUUID].push({
-            toUUID: weightEntry.toUUID,
+          memetic.weights[weightEntry.fromId].push({
+            toId: weightEntry.toId,
             weight: weightEntry.previousWeight,
           });
         }

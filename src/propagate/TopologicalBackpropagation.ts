@@ -28,10 +28,15 @@ import { SquashType } from "../wasm/SquashType.ts";
 import { adjustedActivation } from "../neuron/NeuronPropagation.ts";
 import { BackpropBuffers } from "./BackpropBuffers.ts";
 import { computeReverseTopologicalOrder } from "./TopologicalOrder.ts";
+import { wasmTopologicalBackprop } from "./WasmTopologicalBackprop.ts";
 
 /**
  * Propagate expected values backward through the network using
  * iterative topological ordering instead of recursive traversal.
+ *
+ * Issue #1954: Attempts to run the entire loop as a single WASM call
+ * to eliminate per-neuron JS↔WASM boundary crossings. Falls back to
+ * the TypeScript implementation if WASM is unavailable.
  *
  * Each neuron is visited exactly once. Error signals from all downstream
  * paths are accumulated before processing, then distributed to upstream
@@ -43,6 +48,12 @@ export function propagateTopological(
   config: BackPropagationConfig,
   sparseConfig: SparseConfig,
 ): void {
+  // Issue #1954: Try WASM path first for the entire loop.
+  if (wasmTopologicalBackprop(creature, expected, config, sparseConfig)) {
+    return;
+  }
+
+  // Fallback: TypeScript implementation.
   creature.state.cacheAdjustedActivation.clear();
 
   if (creature.state.backpropBuffers === undefined) {
@@ -66,7 +77,7 @@ export function propagateTopological(
   for (let i = 0; i < creature.output; i++) {
     const nodeIndex = lastOutputIdx + i;
     const n = neurons[nodeIndex];
-    if (sparseConfig.propagateNeeded(n.uuid)) {
+    if (sparseConfig.propagateNeeded(n.id)) {
       const activation = adjustedActivation(n, config);
       targetDeltaSum[nodeIndex] = expected[i] - activation;
       targetDeltaCount[nodeIndex] = 1;
@@ -81,7 +92,7 @@ export function propagateTopological(
     if (targetDeltaCount[neuronIndex] === 0) continue;
 
     const neuron = neurons[neuronIndex];
-    if (!sparseConfig.propagateNeeded(neuron.uuid)) continue;
+    if (!sparseConfig.propagateNeeded(neuron.id)) continue;
 
     const activation = adjustedActivation(neuron, config);
     const squashMethod = neuron.findSquash();
@@ -111,7 +122,7 @@ export function propagateTopological(
     const ns = state.node(neuronIndex);
     ns.totalErrorAbsolute += rawErrorAbs;
 
-    const updateNeeded = sparseConfig.updateNeeded(neuron.uuid);
+    const updateNeeded = sparseConfig.updateNeeded(neuron.id);
     ns.noChange = updateNeeded === false;
 
     let limitedActivation: number;
@@ -176,7 +187,7 @@ export function propagateTopological(
           if (
             type !== "input" &&
             type !== "constant" &&
-            sparseConfig.propagateNeeded(fromNeuron.uuid)
+            sparseConfig.propagateNeeded(fromNeuron.id)
           ) {
             const fromNS = state.node(from);
             fusedSquashTypes[indx] = fromNeuron.cachedSquashType();
@@ -256,7 +267,7 @@ export function propagateTopological(
           if (
             type !== "input" &&
             type !== "constant" &&
-            sparseConfig.propagateNeeded(fromNeuron.uuid) &&
+            sparseConfig.propagateNeeded(fromNeuron.id) &&
             Math.abs(targetFromValue - fromValue) > config.plankConstant
           ) {
             // Issue #1654: Use a minimum effective weight for the division to

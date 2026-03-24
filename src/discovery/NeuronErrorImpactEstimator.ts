@@ -17,13 +17,13 @@ interface InboundConnectionInfo {
  */
 export class CreatureErrorImpactEstimator {
   #creature: Creature;
-  #shares: Map<string, number>;
+  #shares: Map<number, number>;
   #inboundInfo: Map<number, InboundConnectionInfo>;
-  #indexByUUID: Map<string, number>;
+  #indexById: Map<number, number>;
 
   constructor(creature: Creature) {
     this.#creature = creature;
-    this.#indexByUUID = this.#buildIndexMap();
+    this.#indexById = this.#buildIndexMap();
     this.#inboundInfo = this.#buildInboundInfo();
     this.#shares = this.#computeShares();
   }
@@ -32,19 +32,22 @@ export class CreatureErrorImpactEstimator {
    * Returns the share of total creature error that flows through the neuron.
    * Share is in the range [0, 1]. Unknown neurons return 0.
    */
-  getNeuronShare(uuid?: string | null): number {
-    if (!uuid) return 0;
-    return this.#shares.get(uuid) ?? 0;
+  getNeuronShare(id?: number | null): number {
+    if (id === null || id === undefined) return 0;
+    return this.#shares.get(id) ?? 0;
   }
 
   /**
    * Returns the share routed through a specific synapse. This is the neuron's
    * share multiplied by the fraction carried by the requested inbound synapse.
    */
-  getSynapseShare(fromUUID?: string | null, toUUID?: string | null): number {
-    if (!fromUUID || !toUUID) return 0;
-    const toIndex = this.#findNeuronIndex(toUUID);
-    const fromIndex = this.#findNeuronIndex(fromUUID);
+  getSynapseShare(fromId?: number | null, toId?: number | null): number {
+    if (
+      fromId === null || fromId === undefined || toId === null ||
+      toId === undefined
+    ) return 0;
+    const toIndex = this.#findNeuronIndex(toId);
+    const fromIndex = this.#findNeuronIndex(fromId);
     if (toIndex === undefined || fromIndex === undefined) return 0;
     const inbound = this.#inboundInfo.get(toIndex);
     if (!inbound || inbound.connections.length === 0) {
@@ -56,10 +59,10 @@ export class CreatureErrorImpactEstimator {
     if (!connection) return 0;
     const fraction = this.#connectionFraction(inbound, connection.weight);
     if (fraction <= 0) return 0;
-    return this.getNeuronShare(toUUID) * fraction;
+    return this.getNeuronShare(toId) * fraction;
   }
 
-  #computeShares(): Map<string, number> {
+  #computeShares(): Map<number, number> {
     const neurons = this.#creature.neurons;
     if (!neurons || neurons.length === 0) {
       return new Map();
@@ -112,10 +115,10 @@ export class CreatureErrorImpactEstimator {
       propagateShare(outputIndex, baseShare, new Set<number>());
     }
 
-    const shareMap = new Map<string, number>();
+    const shareMap = new Map<number, number>();
     neurons.forEach((neuron, index) => {
       const share = Math.min(1, rawShares[index]);
-      shareMap.set(neuron.uuid, share);
+      shareMap.set(neuron.id, share);
     });
     return shareMap;
   }
@@ -149,14 +152,14 @@ export class CreatureErrorImpactEstimator {
     return 1 / inbound.connections.length;
   }
 
-  #findNeuronIndex(uuid: string): number | undefined {
-    return this.#indexByUUID.get(uuid);
+  #findNeuronIndex(id: number): number | undefined {
+    return this.#indexById.get(id);
   }
 
-  #buildIndexMap(): Map<string, number> {
-    const map = new Map<string, number>();
+  #buildIndexMap(): Map<number, number> {
+    const map = new Map<number, number>();
     this.#creature.neurons.forEach((neuron, index) => {
-      map.set(neuron.uuid, index);
+      map.set(neuron.id, index);
     });
     return map;
   }

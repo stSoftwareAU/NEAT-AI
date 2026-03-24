@@ -28,7 +28,7 @@ function createCreatureWithHiddenNeurons(
   for (let i = 0; i < hiddenNeuronCount; i++) {
     neurons.push({
       type: "hidden",
-      uuid: `${prefix}-hidden-${i}`,
+      id: 1000 + i + (prefix === "creature1" ? 0 : 10000),
       squash: "TANH",
       bias: 0.1,
     });
@@ -37,18 +37,19 @@ function createCreatureWithHiddenNeurons(
   // Add output neurons
   neurons.push({
     type: "output",
-    uuid: "output-0",
+    id: -1,
     squash: "IDENTITY",
     bias: 0,
   });
 
   // Connect inputs to first few hidden neurons
   const firstLayerSize = Math.min(hiddenNeuronCount, 10);
+  const idOffset = prefix === "creature1" ? 0 : 10000;
   for (let i = 0; i < 5; i++) {
     for (let j = 0; j < firstLayerSize; j++) {
       synapses.push({
-        fromUUID: `input-${i}`,
-        toUUID: `${prefix}-hidden-${j}`,
+        fromId: i,
+        toId: 1000 + j + idOffset,
         weight: 0.5,
       });
     }
@@ -57,8 +58,8 @@ function createCreatureWithHiddenNeurons(
   // Chain hidden neurons
   for (let i = 0; i < hiddenNeuronCount - 1; i++) {
     synapses.push({
-      fromUUID: `${prefix}-hidden-${i}`,
-      toUUID: `${prefix}-hidden-${i + 1}`,
+      fromId: 1000 + i + idOffset,
+      toId: 1000 + i + 1 + idOffset,
       weight: 0.5,
     });
   }
@@ -67,8 +68,8 @@ function createCreatureWithHiddenNeurons(
   const lastIdx = hiddenNeuronCount - 1;
   if (lastIdx >= 0) {
     synapses.push({
-      fromUUID: `${prefix}-hidden-${lastIdx}`,
-      toUUID: "output-0",
+      fromId: 1000 + lastIdx + idOffset,
+      toId: -1,
       weight: 0.5,
     });
   }
@@ -89,8 +90,8 @@ function createCreatureWithHiddenNeurons(
  * This is what lines 45-47 previously did.
  */
 function spreadFilterIntersection(
-  setA: Set<string>,
-  setB: Set<string>,
+  setA: Set<number>,
+  setB: Set<number>,
 ): number {
   const smallestSet = setA.size < setB.size ? setA : setB;
   const otherSet = setA.size < setB.size ? setB : setA;
@@ -106,8 +107,8 @@ function spreadFilterIntersection(
  * This is the new approach from issue #1033.
  */
 function directIterationIntersection(
-  setA: Set<string>,
-  setB: Set<string>,
+  setA: Set<number>,
+  setB: Set<number>,
 ): number {
   const smallestSet = setA.size < setB.size ? setA : setB;
   const otherSet = setA.size < setB.size ? setB : setA;
@@ -132,7 +133,7 @@ const sharedSynapses: CreatureExport["synapses"] = [];
 for (let i = 0; i < 250; i++) {
   sharedNeurons.push({
     type: "hidden",
-    uuid: `shared-hidden-${i}`,
+    id: 2000 + i,
     squash: "TANH",
     bias: 0.1,
   });
@@ -140,14 +141,14 @@ for (let i = 0; i < 250; i++) {
 for (let i = 0; i < 250; i++) {
   sharedNeurons.push({
     type: "hidden",
-    uuid: `unique-a-hidden-${i}`,
+    id: 3000 + i,
     squash: "TANH",
     bias: 0.1,
   });
 }
 sharedNeurons.push({
   type: "output",
-  uuid: "output-0",
+  id: -1,
   squash: "IDENTITY",
   bias: 0,
 });
@@ -155,8 +156,8 @@ sharedNeurons.push({
 // Connect inputs to first hidden neurons
 for (let i = 0; i < 5; i++) {
   sharedSynapses.push({
-    fromUUID: `input-${i}`,
-    toUUID: `shared-hidden-0`,
+    fromId: i,
+    toId: 2000,
     weight: 0.5,
   });
 }
@@ -164,26 +165,26 @@ for (let i = 0; i < 5; i++) {
 // Chain neurons
 for (let i = 0; i < 249; i++) {
   sharedSynapses.push({
-    fromUUID: `shared-hidden-${i}`,
-    toUUID: `shared-hidden-${i + 1}`,
+    fromId: 2000 + i,
+    toId: 2000 + i + 1,
     weight: 0.5,
   });
 }
 sharedSynapses.push({
-  fromUUID: `shared-hidden-249`,
-  toUUID: `unique-a-hidden-0`,
+  fromId: 2249,
+  toId: 3000,
   weight: 0.5,
 });
 for (let i = 0; i < 249; i++) {
   sharedSynapses.push({
-    fromUUID: `unique-a-hidden-${i}`,
-    toUUID: `unique-a-hidden-${i + 1}`,
+    fromId: 3000 + i,
+    toId: 3000 + i + 1,
     weight: 0.5,
   });
 }
 sharedSynapses.push({
-  fromUUID: `unique-a-hidden-249`,
-  toUUID: "output-0",
+  fromId: 3249,
+  toId: -1,
   weight: 0.5,
 });
 
@@ -202,7 +203,7 @@ const synapsesB: CreatureExport["synapses"] = [];
 for (let i = 0; i < 250; i++) {
   neuronsB.push({
     type: "hidden",
-    uuid: `shared-hidden-${i}`,
+    id: 2000 + i,
     squash: "TANH",
     bias: 0.1,
   });
@@ -210,14 +211,14 @@ for (let i = 0; i < 250; i++) {
 for (let i = 0; i < 250; i++) {
   neuronsB.push({
     type: "hidden",
-    uuid: `unique-b-hidden-${i}`,
+    id: 4000 + i,
     squash: "TANH",
     bias: 0.1,
   });
 }
 neuronsB.push({
   type: "output",
-  uuid: "output-0",
+  id: -1,
   squash: "IDENTITY",
   bias: 0,
 });
@@ -225,8 +226,8 @@ neuronsB.push({
 // Connect inputs to first hidden neurons
 for (let i = 0; i < 5; i++) {
   synapsesB.push({
-    fromUUID: `input-${i}`,
-    toUUID: `shared-hidden-0`,
+    fromId: i,
+    toId: 2000,
     weight: 0.5,
   });
 }
@@ -234,26 +235,26 @@ for (let i = 0; i < 5; i++) {
 // Chain neurons
 for (let i = 0; i < 249; i++) {
   synapsesB.push({
-    fromUUID: `shared-hidden-${i}`,
-    toUUID: `shared-hidden-${i + 1}`,
+    fromId: 2000 + i,
+    toId: 2000 + i + 1,
     weight: 0.5,
   });
 }
 synapsesB.push({
-  fromUUID: `shared-hidden-249`,
-  toUUID: `unique-b-hidden-0`,
+  fromId: 2249,
+  toId: 4000,
   weight: 0.5,
 });
 for (let i = 0; i < 249; i++) {
   synapsesB.push({
-    fromUUID: `unique-b-hidden-${i}`,
-    toUUID: `unique-b-hidden-${i + 1}`,
+    fromId: 4000 + i,
+    toId: 4000 + i + 1,
     weight: 0.5,
   });
 }
 synapsesB.push({
-  fromUUID: `unique-b-hidden-249`,
-  toUUID: "output-0",
+  fromId: 4249,
+  toId: -1,
   weight: 0.5,
 });
 
@@ -266,12 +267,12 @@ const creatureB = Creature.fromJSON({
 creatureB.validate();
 
 // Get the hidden neuron sets for benchmarking
-const setA = creatureA.getHiddenNeuronUUIDs();
-const setB = creatureB.getHiddenNeuronUUIDs();
+const setA = creatureA.getHiddenNeuronIds();
+const setB = creatureB.getHiddenNeuronIds();
 
 console.log(`Set A size: ${setA.size}, Set B size: ${setB.size}`);
 console.log(
-  `Expected overlap: ~250 neurons (shared-hidden-* UUIDs)`,
+  `Expected overlap: ~250 neurons (shared hidden neuron IDs)`,
 );
 
 // Verify both approaches return the same result

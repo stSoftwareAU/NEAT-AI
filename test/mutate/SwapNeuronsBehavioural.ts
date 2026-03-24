@@ -24,12 +24,14 @@ function createSwappableCreature(): Creature {
       {
         type: "hidden",
         uuid: "hidden-1",
+        id: 5001,
         squash: "LOGISTIC",
         bias: 0.5,
       },
       {
         type: "hidden",
         uuid: "hidden-2",
+        id: 5002,
         squash: "TANH",
         bias: -0.3,
       },
@@ -101,6 +103,7 @@ Deno.test("SwapNeurons: returns false with fewer than 2 hidden neurons", () => {
       {
         type: "hidden",
         uuid: "hidden-1",
+        id: 5001,
         squash: "LOGISTIC",
         bias: 0.5,
       },

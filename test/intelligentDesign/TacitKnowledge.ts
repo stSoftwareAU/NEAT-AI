@@ -50,87 +50,117 @@ Deno.test("getValidNeuronSquashes returns map of hidden neurons", () => {
   const exported = creature.exportJSON();
   const validNeurons = getValidNeuronSquashes(exported);
 
+  // Look up the actual IDs from the exported creature
+  const hidden1 = exported.neurons.find(
+    (n) => n.type === "hidden" && n.squash === "TANH",
+  );
+  const hidden2 = exported.neurons.find(
+    (n) => n.type === "hidden" && n.squash === "GELU",
+  );
+  assertExists(hidden1?.id);
+  assertExists(hidden2?.id);
+
   // Should have 2 hidden neurons
   assertEquals(validNeurons.size, 2);
-  assertEquals(validNeurons.get("neuron-hidden-1"), "TANH");
-  assertEquals(validNeurons.get("neuron-hidden-2"), "GELU");
+  assertEquals(validNeurons.get(hidden1.id), "TANH");
+  assertEquals(validNeurons.get(hidden2.id), "GELU");
 });
 
 Deno.test("combineKnowledge merges with local taking precedence", () => {
   const local: TacitKnowledgeMap = {
-    "neuron-1": "GELU",
-    "neuron-2": "Swish",
+    7001: "GELU",
+    7002: "Swish",
   };
 
   const hive: TacitKnowledgeMap = {
-    "neuron-1": "TANH", // Should be overridden by local
-    "neuron-3": "LeakyReLU",
+    7001: "TANH", // Should be overridden by local
+    7003: "LeakyReLU",
   };
 
   const combined = combineKnowledge(local, hive);
 
-  assertEquals(combined["neuron-1"], "GELU"); // Local wins
-  assertEquals(combined["neuron-2"], "Swish");
-  assertEquals(combined["neuron-3"], "LeakyReLU");
+  assertEquals(combined[7001], "GELU"); // Local wins
+  assertEquals(combined[7002], "Swish");
+  assertEquals(combined[7003], "LeakyReLU");
 });
 
 Deno.test("cleanKnowledge removes entries for non-existent neurons", () => {
-  const validNeurons = new Map<string, string>();
-  validNeurons.set("neuron-1", "TANH");
-  validNeurons.set("neuron-2", "GELU");
+  const validNeurons = new Map<number, string>();
+  validNeurons.set(7001, "TANH");
+  validNeurons.set(7002, "GELU");
 
   const local: TacitKnowledgeMap = {
-    "neuron-1": "Swish",
-    "neuron-99": "GELU", // Doesn't exist
+    7001: "Swish",
+    7099: "GELU", // Doesn't exist
   };
 
   const hive: TacitKnowledgeMap = {
-    "neuron-1": "TANH",
-    "neuron-88": "LeakyReLU", // Doesn't exist
+    7001: "TANH",
+    7088: "LeakyReLU", // Doesn't exist
   };
 
   const cleaned = cleanKnowledge(validNeurons, local, hive);
 
-  // neuron-99 should be removed from local
+  // 7099 should be removed from local
   assertEquals(
-    Object.keys(cleaned.localKnowledge).includes("neuron-99"),
+    Object.keys(cleaned.localKnowledge).includes("7099"),
     false,
   );
 
-  // neuron-88 should be removed from hive
+  // 7088 should be removed from hive
   assertEquals(
-    Object.keys(cleaned.hiveKnowledge).includes("neuron-88"),
+    Object.keys(cleaned.hiveKnowledge).includes("7088"),
     false,
   );
 
-  // neuron-2 should be added to hive (missing neurons get added)
-  assertEquals(cleaned.hiveKnowledge["neuron-2"], "GELU");
+  // 7002 should be added to hive (missing neurons get added)
+  assertEquals(cleaned.hiveKnowledge[7002], "GELU");
 });
 
 Deno.test("getNeuronsToTest returns neurons with different squash than knowledge", () => {
   const creature = Creature.fromJSON(testCreatureJson);
   const exported = creature.exportJSON();
 
+  // Get actual IDs from the exported creature
+  const hidden1 = exported.neurons.find(
+    (n) => n.type === "hidden" && n.squash === "TANH",
+  );
+  const hidden2 = exported.neurons.find(
+    (n) => n.type === "hidden" && n.squash === "GELU",
+  );
+  assertExists(hidden1?.id);
+  assertExists(hidden2?.id);
+
   // Create knowledge suggesting a different squash
   const knowledge: TacitKnowledgeMap = {
-    "neuron-hidden-1": "Swish", // Different from TANH
-    "neuron-hidden-2": "GELU", // Same as current, should not be included
+    [hidden1.id]: "Swish", // Different from TANH
+    [hidden2.id]: "GELU", // Same as current, should not be included
   };
 
   const neuronsToTest = getNeuronsToTest(exported, knowledge);
 
   assertEquals(neuronsToTest.length, 1);
-  assertEquals(neuronsToTest[0].uuid, "neuron-hidden-1");
+  assertEquals(neuronsToTest[0].id, hidden1.id);
 });
 
 Deno.test("getNeuronsToTest returns empty when knowledge matches current squash", () => {
   const creature = Creature.fromJSON(testCreatureJson);
   const exported = creature.exportJSON();
 
+  // Get actual IDs from the exported creature
+  const hidden1 = exported.neurons.find(
+    (n) => n.type === "hidden" && n.squash === "TANH",
+  );
+  const hidden2 = exported.neurons.find(
+    (n) => n.type === "hidden" && n.squash === "GELU",
+  );
+  assertExists(hidden1?.id);
+  assertExists(hidden2?.id);
+
   // Create knowledge with the same squashes
   const knowledge: TacitKnowledgeMap = {
-    "neuron-hidden-1": "TANH",
-    "neuron-hidden-2": "GELU",
+    [hidden1.id]: "TANH",
+    [hidden2.id]: "GELU",
   };
 
   const neuronsToTest = getNeuronsToTest(exported, knowledge);
@@ -142,18 +172,24 @@ Deno.test("makeModifiedCreature changes neuron squash and adds tag", () => {
   const creature = Creature.fromJSON(testCreatureJson);
   const exported = creature.exportJSON();
 
+  // Get the actual ID for neuron-hidden-1 (TANH)
+  const hidden1 = exported.neurons.find(
+    (n) => n.type === "hidden" && n.squash === "TANH",
+  );
+  assertExists(hidden1?.id);
+
   const newSquash = "Swish";
 
   const modified = makeModifiedCreature(
-    "neuron-hidden-1",
+    hidden1.id,
     exported,
     newSquash,
   );
   const modifiedExport = modified.exportJSON();
 
-  // Find the modified neuron
+  // Find the modified neuron by its ID
   const modifiedNeuron = modifiedExport.neurons.find(
-    (n) => n.uuid === "neuron-hidden-1",
+    (n) => n.id === hidden1.id,
   );
   assertExists(modifiedNeuron);
 

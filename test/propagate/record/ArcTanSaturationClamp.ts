@@ -41,7 +41,7 @@ Deno.test("Creature.record: ArcTan saturation does not produce astronomical erro
   // Request an impossible activation well beyond ArcTan's range; it will be clamped.
   const expected = new Float32Array([Math.PI]);
   const map = creature.record(expected);
-  const rec = map.get("output-0");
+  const rec = map.get(-1);
   assert(rec, "Expected a record for output-0");
 
   const err = rec.errors[0];
