@@ -18,15 +18,19 @@ This milestone delivered the following completed work:
 - **#1960**: Batch API design for amortising WASM boundary crossing
 - **#1961**: Topology validation migrated to Rust/WASM
 
-Additionally removed two accidentally committed empty junk files with
-nonsensical names.
+Additionally fixed a flaky Score test that was causing CI failure. The test
+"calculate - large weights increase penalty" had a score difference of only
+~0.00001 due to the `growthCost/100` multiplier, which was lost under WASM on
+CI. Fixed by using deterministic biases and a larger `growthCost`.
 
 ## Evidence
 
-All 4925 tests pass after the merge. Quality gate (`quality.sh`) passes cleanly.
+All 4925 tests pass after the fix. Quality gate (`quality.sh`) passes cleanly.
 
 ## Test Plan
 
+- Modified `test/architecture/Score.ts`: "calculate - large weights increase
+  penalty" now uses deterministic biases and a larger growthCost
 - All existing tests (4925) pass after the merge
 - New tests added during the milestone cover typed topology, integer neuron IDs,
   WASM batch operations, WASM topology operations, WASM structural validation,

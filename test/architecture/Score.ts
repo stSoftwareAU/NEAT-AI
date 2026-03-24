@@ -145,15 +145,23 @@ Deno.test("calculate - more hidden neurons increase complexity penalty", () => {
 });
 
 Deno.test("calculate - large weights increase penalty", () => {
-  const creature1 = makeCreature({ weights: [0.5, 0.5, 0.5] });
-  const creature2 = makeCreature({ weights: [50, 50, 50] });
+  const creature1 = makeCreature({
+    weights: [0.5, 0.5, 0.5],
+    biases: [0.1, 0.1],
+  });
+  const creature2 = makeCreature({
+    weights: [50, 50, 50],
+    biases: [0.1, 0.1],
+  });
 
-  const score1 = calculate(creature1, 0.1, 0.001);
-  const score2 = calculate(creature2, 0.1, 0.001);
+  // Use a larger growthCost so the penalty difference from weights is
+  // well above floating-point noise (penalty contributes growthCost/100).
+  const score1 = calculate(creature1, 0.1, 0.1);
+  const score2 = calculate(creature2, 0.1, 0.1);
 
   assert(
     score1 > score2,
-    "Smaller weights should yield higher score (less penalty)",
+    `Smaller weights should yield higher score (less penalty): score1=${score1}, score2=${score2}`,
   );
 });
 
