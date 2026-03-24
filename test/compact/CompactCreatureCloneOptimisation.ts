@@ -133,7 +133,7 @@ Deno.test("compactCreature: preserves neuron tags through compaction", () => {
 
   // Assert - the tagged neuron should survive and retain its tags
   const exported = compacted.exportJSON();
-  const taggedNeuron = exported.neurons.find((n) => n.id === 1775329651);
+  const taggedNeuron = exported.neurons.find((n) => n.id === 5000);
   assert(taggedNeuron, "Tagged neuron should survive compaction");
   assert(taggedNeuron.tags, "Neuron tags should be preserved");
   assertEquals(taggedNeuron.tags.length, 1);

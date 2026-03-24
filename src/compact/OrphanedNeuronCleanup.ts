@@ -225,11 +225,14 @@ export function cleanupOrphanedNeurons(
               );
             }
           }
-          creatureExport.neurons[i] = {
+          // Issue #1972: Preserve neuron tags when converting to constant.
+          const constantNeuron: typeof creatureExport.neurons[number] = {
             type: "constant",
             id: neuron.id!,
             bias: constantBias,
           };
+          if (neuron.tags) constantNeuron.tags = [...neuron.tags];
+          creatureExport.neurons[i] = constantNeuron;
           totalConverted++;
           changedThisPass = true;
         }
