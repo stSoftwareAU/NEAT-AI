@@ -1,7 +1,7 @@
 # TS → Rust/WASM Migration: Production-scale Performance Results
 
 Issue #1955 — post-migration benchmark results compared against baseline from
-#1952. 
+#1952.
 
 ## Network Configuration
 

@@ -58,7 +58,10 @@ function applyComprehensivePatches(content: string, isCrispr: boolean): string {
   // ===== 1. Method renames =====
   content = content.replace(/\bgetHiddenNeuronUUIDs\b/g, "getHiddenNeuronIds");
   content = content.replace(/\bbuildUuidToIndexMap\b/g, "buildIdToIndexMap");
-  content = content.replace(/\bgetSuccessfulRemovalNeuronUUIDs\b/g, "getSuccessfulRemovalNeuronIds");
+  content = content.replace(
+    /\bgetSuccessfulRemovalNeuronUUIDs\b/g,
+    "getSuccessfulRemovalNeuronIds",
+  );
   content = content.replace(/\bneuronUUIDs\b/g, "neuronIds");
 
   // ===== 2. Property access on objects (dot-access, NOT JSON literal fields) =====
@@ -88,7 +91,10 @@ function applyComprehensivePatches(content: string, isCrispr: boolean): string {
       },
     );
     // Record<string, string> → Record<number, number> for aliases
-    content = content.replace(/Record<string,\s*string>/g, "Record<number, number>");
+    content = content.replace(
+      /Record<string,\s*string>/g,
+      "Record<number, number>",
+    );
   }
 
   // ===== 4. String comparison on numeric fields =====
@@ -303,5 +309,8 @@ console.log(`  Fixed (patched):    ${fixedPatched}`);
 console.log(`  Still failing:      ${stillFailing}`);
 
 if (failedFiles.length > 0) {
-  Deno.writeTextFileSync("/tmp/still_need_manual_fix.txt", failedFiles.join("\n") + "\n");
+  Deno.writeTextFileSync(
+    "/tmp/still_need_manual_fix.txt",
+    failedFiles.join("\n") + "\n",
+  );
 }

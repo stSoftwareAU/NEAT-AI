@@ -46,7 +46,10 @@ function gitShow(ref: string, file: string): string | null {
 
 // For each file, build a per-line map of UUID→wrongId→correctId
 // by comparing the pre-commit and post-commit versions line by line
-function buildLineMapping(oldContent: string, newContent: string): Map<string, number> {
+function buildLineMapping(
+  oldContent: string,
+  newContent: string,
+): Map<string, number> {
   // Use unified diff to align old and new lines
   const oldFile = Deno.makeTempFileSync({ suffix: ".ts" });
   const newFile = Deno.makeTempFileSync({ suffix: ".ts" });
@@ -177,7 +180,10 @@ function fixFile(filePath: string): boolean {
 
     // Replace in field assignment contexts
     content = content.replace(
-      new RegExp(`((?:(?<![a-zA-Z])id|fromId|toId|fromNeuronId|toNeuronId|neuronId)\\s*[:=]\\s*)${escaped}\\b`, "g"),
+      new RegExp(
+        `((?:(?<![a-zA-Z])id|fromId|toId|fromNeuronId|toNeuronId|neuronId)\\s*[:=]\\s*)${escaped}\\b`,
+        "g",
+      ),
       `$1${correctStr}`,
     );
 

@@ -70,7 +70,9 @@ for (const file of changedFiles) {
       for (const line of lines) {
         if (line.startsWith("-")) {
           // Extract ALL UUID-like strings from removed lines
-          const uuidMatches = line.matchAll(/(?:uuid|fromUUID|toUUID):\s*"([^"]+)"/g);
+          const uuidMatches = line.matchAll(
+            /(?:uuid|fromUUID|toUUID):\s*"([^"]+)"/g,
+          );
           for (const m of uuidMatches) removedUuids.push(m[1]);
 
           const propMatches = line.matchAll(/\.uuid\s*===?\s*"([^"]+)"/g);
@@ -84,9 +86,10 @@ for (const file of changedFiles) {
           }
 
           // Record<string, ...> patterns with UUID keys
-          const recordMatches = line.matchAll(/"((?:input-|output-|hidden-)[^"]+)":/g);
+          const recordMatches = line.matchAll(
+            /"((?:input-|output-|hidden-)[^"]+)":/g,
+          );
           for (const m of recordMatches) removedUuids.push(m[1]);
-
         } else if (line.startsWith("+")) {
           // Extract ALL integer IDs from added lines
           const idMatches = line.matchAll(/(?:id|fromId|toId):\s*(-?\d+)/g);
@@ -147,7 +150,9 @@ for (const m of Object.values(allMappings)) {
     if (globalMapping[wrongId] === undefined) {
       globalMapping[wrongId] = correctId;
     } else if (globalMapping[wrongId] !== correctId) {
-      console.warn(`Conflict for ${wrongId}: ${globalMapping[wrongId]} vs ${correctId}`);
+      console.warn(
+        `Conflict for ${wrongId}: ${globalMapping[wrongId]} vs ${correctId}`,
+      );
     }
   }
 }

@@ -67,7 +67,8 @@ function extractUuids(content: string): Map<string, number> {
   }
 
   // Pattern: ["X"] where X looks like a UUID
-  const bracketPattern = /\["((?:input-|output-|hidden-|[a-f0-9]{8}-)[^"]+)"\]/g;
+  const bracketPattern =
+    /\["((?:input-|output-|hidden-|[a-f0-9]{8}-)[^"]+)"\]/g;
   for (const m of content.matchAll(bracketPattern)) {
     const uuid = m[1];
     uuidMap.set(uuid, uuidToId(uuid));
@@ -116,18 +117,26 @@ function buildWrongToCorrectMap(
     for (const line of lines) {
       if (line.startsWith("-")) {
         // Extract UUIDs from removed lines
-        for (const m of line.matchAll(/(?:uuid|fromUUID|toUUID):\s*"([^"]+)"/g)) {
+        for (
+          const m of line.matchAll(/(?:uuid|fromUUID|toUUID):\s*"([^"]+)"/g)
+        ) {
           removedUuids.push(m[1]);
         }
         for (const m of line.matchAll(/\.uuid\s*[!=]==\s*"([^"]+)"/g)) {
           removedUuids.push(m[1]);
         }
-        for (const m of line.matchAll(/\["((?:input-|output-|hidden-|[a-f0-9]{8}-)[^"]+)"\]/g)) {
+        for (
+          const m of line.matchAll(
+            /\["((?:input-|output-|hidden-|[a-f0-9]{8}-)[^"]+)"\]/g,
+          )
+        ) {
           removedUuids.push(m[1]);
         }
       } else if (line.startsWith("+")) {
         // Extract IDs from added lines
-        for (const m of line.matchAll(/(?:(?<!\w)id|fromId|toId):\s*(-?\d+)/g)) {
+        for (
+          const m of line.matchAll(/(?:(?<!\w)id|fromId|toId):\s*(-?\d+)/g)
+        ) {
           addedIds.push(parseInt(m[1]));
         }
         for (const m of line.matchAll(/\.id\s*[!=]==\s*(-?\d+)/g)) {
@@ -192,7 +201,10 @@ function processFile(filePath: string): boolean {
 
     // Replace in id/fromId/toId contexts
     content = content.replace(
-      new RegExp(`((?:(?<!\\w)id|fromId|toId|fromNeuronId|toNeuronId|neuronId):\\s*)${wrongStr}\\b`, "g"),
+      new RegExp(
+        `((?:(?<!\\w)id|fromId|toId|fromNeuronId|toNeuronId|neuronId):\\s*)${wrongStr}\\b`,
+        "g",
+      ),
       `$1${correctStr}`,
     );
 

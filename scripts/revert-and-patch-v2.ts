@@ -58,7 +58,10 @@ function patchFile(filePath: string): boolean {
   // ===== Method renames =====
   content = content.replace(/\bgetHiddenNeuronUUIDs\b/g, "getHiddenNeuronIds");
   content = content.replace(/\bbuildUuidToIndexMap\b/g, "buildIdToIndexMap");
-  content = content.replace(/\bgetSuccessfulRemovalNeuronUUIDs\b/g, "getSuccessfulRemovalNeuronIds");
+  content = content.replace(
+    /\bgetSuccessfulRemovalNeuronUUIDs\b/g,
+    "getSuccessfulRemovalNeuronIds",
+  );
 
   // ===== Property access on OBJECTS (not JSON data) =====
   // These patterns match dot-access: something.uuid, something.fromUUID, something.toUUID
@@ -154,7 +157,8 @@ function patchFile(filePath: string): boolean {
 
   // ===== Remove unused SynapseExport import =====
   const synapseExportUsages = (content.match(/SynapseExport/g) || []).length;
-  const synapseExportImports = (content.match(/import.*SynapseExport/g) || []).length;
+  const synapseExportImports =
+    (content.match(/import.*SynapseExport/g) || []).length;
   if (synapseExportUsages > 0 && synapseExportUsages === synapseExportImports) {
     // Only used in imports - remove
     content = content.replace(

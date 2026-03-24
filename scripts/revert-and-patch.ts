@@ -69,7 +69,10 @@ function patchFile(filePath: string): boolean {
   // -- Method renames --
   content = content.replace(/getHiddenNeuronUUIDs/g, "getHiddenNeuronIds");
   content = content.replace(/buildUuidToIndexMap/g, "buildIdToIndexMap");
-  content = content.replace(/getSuccessfulRemovalNeuronUUIDs/g, "getSuccessfulRemovalNeuronIds");
+  content = content.replace(
+    /getSuccessfulRemovalNeuronUUIDs/g,
+    "getSuccessfulRemovalNeuronIds",
+  );
 
   // -- Property access on Neuron objects (NOT in JSON data) --
   // .uuid access → .id access (but NOT uuid: "X" in JSON)

@@ -57,7 +57,10 @@ function applyApiPatches(content: string, isCrispr: boolean): string {
   // Method renames
   content = content.replace(/\bgetHiddenNeuronUUIDs\b/g, "getHiddenNeuronIds");
   content = content.replace(/\bbuildUuidToIndexMap\b/g, "buildIdToIndexMap");
-  content = content.replace(/\bgetSuccessfulRemovalNeuronUUIDs\b/g, "getSuccessfulRemovalNeuronIds");
+  content = content.replace(
+    /\bgetSuccessfulRemovalNeuronUUIDs\b/g,
+    "getSuccessfulRemovalNeuronIds",
+  );
   content = content.replace(/\bneuronUUIDs\b/g, "neuronIds");
 
   // Property access: .uuid → .id (NOT followed by : which would be JSON field)
@@ -209,6 +212,9 @@ console.log(`  Fixed (HEAD):       ${fixedHead}`);
 console.log(`  Still failing:      ${stillFailing}`);
 
 if (failedFiles.length > 0) {
-  Deno.writeTextFileSync("/tmp/still_need_manual_fix.txt", failedFiles.join("\n") + "\n");
+  Deno.writeTextFileSync(
+    "/tmp/still_need_manual_fix.txt",
+    failedFiles.join("\n") + "\n",
+  );
   console.log(`\nFailed file list: /tmp/still_need_manual_fix.txt`);
 }
