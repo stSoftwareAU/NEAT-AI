@@ -211,7 +211,7 @@ Deno.test(
 Deno.test({
   name:
     "DiscoveryScenario: add neuron between hidden - discovery finds add-neurons candidate",
-  ignore: true, // See: discoverySkipReason(907, "hidden→hidden neuron discovery limited by source ordering — input neurons evaluated first, hidden sources may time out")
+  ignore: true, // See: discoverySkipReason(926, "add-neurons discovery between hidden neurons not yet verified end-to-end")
   fn() {
     // Neuron indices in the crippled creature:
     // 0 = input-0, 1 = input-1, 2 = hidden-A, 3 = hidden-C, 4 = output-0
@@ -262,8 +262,8 @@ Deno.test({
 
     // Log skip reason for reference
     const _skipReason = discoverySkipReason(
-      907,
-      "hidden→hidden neuron discovery limited by source ordering — input neurons evaluated first, hidden sources may time out",
+      926,
+      "add-neurons discovery between hidden neurons not yet verified end-to-end",
     );
   },
 });
