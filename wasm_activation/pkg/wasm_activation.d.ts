@@ -1323,48 +1323,75 @@ export type InitInput =
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
-  readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
-  readonly compilednetwork_activate: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-  ) => [number, number];
-  readonly compilednetwork_activate_and_trace: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-  ) => [number, number];
-  readonly compilednetwork_activate_and_trace_batch_4way: (
+  readonly accumulate_bias_persistent_4way: (
     a: number,
     b: number,
     c: number,
     d: number,
     e: number,
-  ) => [number, number];
-  readonly compilednetwork_activate_into: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: any,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
   ) => void;
-  readonly compilednetwork_activate_view: (
+  readonly accumulate_bias_persistent_8way: (
     a: number,
     b: number,
     c: number,
     d: number,
-  ) => any;
-  readonly compilednetwork_new: (
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly accumulate_weight_persistent_4way: (
     a: number,
     b: number,
-  ) => [number, number, number];
-  readonly compilednetwork_num_inputs: (a: number) => number;
-  readonly compilednetwork_num_neurons: (a: number) => number;
-  readonly compilednetwork_num_synapses: (a: number) => number;
-  readonly compilednetwork_reset_state: (a: number) => void;
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly accumulate_weight_persistent_8way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number,
+    j: number,
+    k: number,
+  ) => void;
+  readonly free_training_state: () => void;
+  readonly get_training_state_num_neurons: () => number;
+  readonly get_training_state_num_synapses: () => number;
+  readonly init_training_state: (a: number, b: number) => void;
+  readonly predictivecodingengine_compute_gradients_wasm: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => [number, number];
+  readonly read_all_neuron_state: () => [number, number];
+  readonly read_all_synapse_state: () => [number, number];
+  readonly read_neuron_state: (a: number) => [number, number];
+  readonly read_synapse_state: (a: number) => [number, number];
+  readonly reset_training_state: () => void;
   readonly cross_entropy_sum_batch_packed: (
     a: number,
     b: number,
@@ -1413,6 +1440,48 @@ export interface InitOutput {
     e: number,
     f: number,
   ) => number;
+  readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
+  readonly compilednetwork_activate: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => [number, number];
+  readonly compilednetwork_activate_and_trace: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => [number, number];
+  readonly compilednetwork_activate_and_trace_batch_4way: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+  ) => [number, number];
+  readonly compilednetwork_activate_into: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: any,
+  ) => void;
+  readonly compilednetwork_activate_view: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+  ) => any;
+  readonly compilednetwork_new: (
+    a: number,
+    b: number,
+  ) => [number, number, number];
+  readonly compilednetwork_num_inputs: (a: number) => number;
+  readonly compilednetwork_num_neurons: (a: number) => number;
+  readonly compilednetwork_num_synapses: (a: number) => number;
+  readonly compilednetwork_reset_state: (a: number) => void;
   readonly calculate_error: (
     a: number,
     b: number,
@@ -1494,28 +1563,6 @@ export interface InitOutput {
   readonly predictivecodingengine_num_inputs: (a: number) => number;
   readonly predictivecodingengine_num_neurons: (a: number) => number;
   readonly predictivecodingengine_num_outputs: (a: number) => number;
-  readonly compute_score_components: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-  ) => any;
-  readonly scan_max_bias: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-  ) => any;
-  readonly scan_max_weight: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-  ) => any;
   readonly compute_reverse_topological_order: (
     a: number,
     b: number,
@@ -1572,58 +1619,12 @@ export interface InitOutput {
     e: number,
     f: number,
   ) => [number, number];
-  readonly accumulate_bias_persistent_4way: (
+  readonly compute_score_components: (
     a: number,
     b: number,
     c: number,
     d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly accumulate_bias_persistent_8way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly accumulate_weight_persistent_4way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
-  readonly accumulate_weight_persistent_8way: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-    g: number,
-    h: number,
-    i: number,
-    j: number,
-    k: number,
-  ) => void;
+  ) => any;
   readonly distribute_elastic_error: (
     a: number,
     b: number,
@@ -1634,15 +1635,22 @@ export interface InitOutput {
     g: number,
     h: number,
   ) => [number, number];
-  readonly free_training_state: () => void;
-  readonly get_training_state_num_neurons: () => number;
-  readonly get_training_state_num_synapses: () => number;
-  readonly init_training_state: (a: number, b: number) => void;
-  readonly read_all_neuron_state: () => [number, number];
-  readonly read_all_synapse_state: () => [number, number];
-  readonly read_neuron_state: (a: number) => [number, number];
-  readonly read_synapse_state: (a: number) => [number, number];
-  readonly reset_training_state: () => void;
+  readonly scan_max_bias: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => any;
+  readonly scan_max_weight: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+  ) => any;
   readonly accumulate_bias_batch_4way: (
     a: number,
     b: number,
@@ -1744,14 +1752,6 @@ export interface InitOutput {
     g: number,
     h: number,
     i: number,
-  ) => [number, number];
-  readonly predictivecodingengine_compute_gradients_wasm: (
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
   ) => [number, number];
   readonly __wbindgen_externrefs: WebAssembly.Table;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
