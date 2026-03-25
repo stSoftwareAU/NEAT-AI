@@ -18,10 +18,18 @@ All 4967 tests pass via `./quality.sh`, including 6 new tests (1 ignored).
 ## Test Plan
 
 New tests in `test/discovery/DiscoveryScenarioCoordinatedStructural.ts`:
-- `coordinated structural - creatures are valid` — validates both whole and crippled creatures
-- `coordinated structural - cripple degrades outputs` — confirms degradation produces different outputs
-- `coordinated structural - tracing captures errors` — verifies error recording pipeline
-- `coordinated structural - same topology, different parameters` — confirms degradation is parametric not structural
-- `coordinated structural - bias was changed` — verifies bias degradation on hidden-A
-- `coordinated structural - multiple degradations confirmed` — confirms both bias and weight degradations
-- `coordinated structural - discovery finds coordinated-structural candidate` (ignored) — mock-based coordinated-structural candidate test
+
+- `coordinated structural - creatures are valid` — validates both whole and
+  crippled creatures
+- `coordinated structural - cripple degrades outputs` — confirms degradation
+  produces different outputs
+- `coordinated structural - tracing captures errors` — verifies error recording
+  pipeline
+- `coordinated structural - same topology, different parameters` — confirms
+  degradation is parametric not structural
+- `coordinated structural - bias was changed` — verifies bias degradation on
+  hidden-A
+- `coordinated structural - multiple degradations confirmed` — confirms both
+  bias and weight degradations
+- `coordinated structural - discovery finds coordinated-structural candidate`
+  (ignored) — mock-based coordinated-structural candidate test
