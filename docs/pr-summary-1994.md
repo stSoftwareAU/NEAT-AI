@@ -23,4 +23,5 @@ hidden-B to hidden-A synapse. Closes #1994.
   - Cripple degrades outputs
   - Tracing captures errors
   - Crippled has fewer synapses
-  - Discovery finds add-synapses candidate (ignored, pending production verification)
+  - Discovery finds add-synapses candidate (ignored, pending production
+    verification)
