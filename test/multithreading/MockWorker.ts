@@ -44,17 +44,18 @@ Deno.test("MockWorker: processes echo message and returns response", async () =>
   worker.terminate();
 });
 
-Deno.test("MockWorker: validates structured clone safety on postMessage", () => {
+Deno.test("MockWorker: validates structured clone safety on postMessage", async () => {
   const worker = new MockWorker();
-  worker.addEventListener("message", () => {});
 
   // structuredClone should succeed for valid RequestData
   const validData: RequestData = {
     taskID: 1,
     echo: { message: "test", ms: 0 },
   };
-  // Should not throw - data is structured-clone safe
-  worker.postMessage(validData);
+  // Should not throw - data is structured-clone safe.
+  // Await the response to avoid leaking the internal setTimeout timer.
+  const response = await sendAndReceive(worker, validData);
+  assertEquals(response.taskID, 1);
 
   worker.terminate();
 });

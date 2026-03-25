@@ -106,7 +106,16 @@ export function removeHarmfulNeuron(
   // the removed neuron are left dangling
   cleanupOrphanedNeurons(simplifiedExport);
 
-  const tmpCreature = Creature.fromJSON(simplifiedExport);
+  let tmpCreature: Creature;
+  try {
+    tmpCreature = Creature.fromJSON(simplifiedExport);
+  } catch (error) {
+    getLogger().warn(
+      `[Discovery ${ID}] removeHarmfulNeuron: Creature.fromJSON failed for neuron ${harmfulNeuron.neuronId}:`,
+      error,
+    );
+    return undefined;
+  }
   // We modified the structure, so we must delete UUID
   delete tmpCreature.uuid;
 
@@ -246,7 +255,16 @@ export function removeLowImpactNeuron(
   const removedNeuronCount = originalNeuronCount -
     simplifiedExport.neurons.length;
 
-  const tmpCreature = Creature.fromJSON(simplifiedExport);
+  let tmpCreature: Creature;
+  try {
+    tmpCreature = Creature.fromJSON(simplifiedExport);
+  } catch (error) {
+    getLogger().warn(
+      `[Discovery ${ID}] removeLowImpactNeuron: Creature.fromJSON failed for neuron ${removalCandidate.neuronId}:`,
+      error,
+    );
+    return undefined;
+  }
   // We modified the structure, so we must delete UUID
   delete tmpCreature.uuid;
 
