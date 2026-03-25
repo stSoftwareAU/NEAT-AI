@@ -264,6 +264,10 @@ fi
 
 if [ "$RUN_TESTS" = true ]; then
   progress "Running tests..."
+  # Limit parallel workers to avoid exceeding the V8 heap budget.
+  # Each worker loads its own WASM module and caches; with the default
+  # (one worker per CPU) the combined footprint can exceed 8 GB.
+  DENO_JOBS="${DENO_JOBS:-4}" \
   NEAT_AI_DISCOVERY_DETERMINISTIC=1 deno test \
     --allow-read \
     --allow-write \
@@ -274,5 +278,6 @@ if [ "$RUN_TESTS" = true ]; then
     --allow-ffi \
     --v8-flags=--max-old-space-size=8192 \
     --parallel \
+    --preload test/_preload.ts \
     --config ./deno.json
 fi
