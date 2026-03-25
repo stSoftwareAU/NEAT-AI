@@ -25,6 +25,7 @@ import {
   pruneDeadSubgraphs,
   pruneZeroWeightSynapses,
 } from "./CompactUtils.ts";
+import { assertValidSynapseReferences } from "../architecture/AssertValidSynapseReferences.ts";
 import { mergeParallelIdentityBridges } from "./ParallelIdentityMerge.ts";
 import { mergeParallelBridges } from "./ParallelBridgeMerge.ts";
 import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
@@ -264,6 +265,11 @@ export function compactCreature(
       );
     });
 
+    assertValidSynapseReferences(
+      compactCreature,
+      "after COMPLEMENT bypass neuron removal",
+    );
+
     didCompact = true;
     break; // One safe bypass per compaction call.
   }
@@ -343,6 +349,11 @@ export function compactCreature(
           );
         });
 
+        assertValidSynapseReferences(
+          compactCreature,
+          "after chain compaction neuron removal",
+        );
+
         didCompact = true;
         break; // restart the loop after each mutation
       }
@@ -394,6 +405,10 @@ export function compactCreature(
       (synapse) => !synapsesToRemove.has(synapse),
     );
     if (synapsesToRemove.size > 0) {
+      assertValidSynapseReferences(
+        compactCreature,
+        "after backward synapse removal",
+      );
       didCompact = true;
     }
   }
@@ -455,6 +470,11 @@ export function compactCreature(
     if (creature.forwardOnly === true) {
       compactCreature.forwardOnly = true;
     }
+
+    assertValidSynapseReferences(
+      compactCreature,
+      "before Creature.fromJSON in compactCreature",
+    );
 
     const c = Creature.fromJSON(compactCreature);
 
