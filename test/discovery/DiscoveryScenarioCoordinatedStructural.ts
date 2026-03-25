@@ -284,7 +284,7 @@ Deno.test(
 Deno.test({
   name:
     "DiscoveryScenario: coordinated structural - discovery finds coordinated-structural candidate",
-  ignore: true, // See: discoverySkipReason(6, "coordinated-structural discovery not yet verified end-to-end in production")
+  ignore: true, // See: discoverySkipReason(929, "coordinated-structural discovery not yet verified end-to-end")
   fn() {
     // Neuron indices in the crippled creature:
     // 0 = input-0, 1 = input-1, 2 = hidden-A, 3 = hidden-B, 4 = hidden-C, 5 = output-0
@@ -360,8 +360,8 @@ Deno.test({
 
     // Log skip reason for reference
     const _skipReason = discoverySkipReason(
-      6,
-      "coordinated-structural discovery not yet verified end-to-end in production",
+      929,
+      "coordinated-structural discovery not yet verified end-to-end",
     );
   },
 });

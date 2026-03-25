@@ -253,7 +253,7 @@ Deno.test(
 Deno.test({
   name:
     "DiscoveryScenario: fan-in synapse patterns - discovery finds add-synapses candidate",
-  ignore: true, // See: discoverySkipReason(908, "fan-in synapse discovery not yet verified in production")
+  ignore: true, // See: discoverySkipReason(928, "fan-in synapse discovery not yet verified end-to-end")
   fn() {
     // Neuron indices in the crippled creature:
     // 0 = input-0, 1 = input-1, 2 = hidden-B, 3 = hidden-A, 4 = output-0
@@ -301,8 +301,8 @@ Deno.test({
 
     // Log skip reason for reference
     const _skipReason = discoverySkipReason(
-      908,
-      "fan-in synapse discovery not yet verified in production",
+      928,
+      "fan-in synapse discovery not yet verified end-to-end",
     );
   },
 });
