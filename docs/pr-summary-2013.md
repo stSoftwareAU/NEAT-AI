@@ -2,15 +2,15 @@
 
 Audit and fix compact operations to prevent invalid creatures (synapses
 referencing non-existent neurons). Added integrity assertions after every
-structural mutation step in `compactCreature()` and 6 new corner-case TDD
-tests. No bugs were found — all assertions pass cleanly. Closes #2013.
+structural mutation step in `compactCreature()` and 6 new corner-case TDD tests.
+No bugs were found — all assertions pass cleanly. Closes #2013.
 
 ## Changes
 
 ### Integrity assertions in `src/compact/CompactCreature.ts`
 
-Added `assertValidSynapseReferences()` calls (from #2012) after each point
-where neurons or synapses are structurally modified:
+Added `assertValidSynapseReferences()` calls (from #2012) after each point where
+neurons or synapses are structurally modified:
 
 - After COMPLEMENT bypass neuron removal
 - After chain compaction neuron removal
