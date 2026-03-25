@@ -5,7 +5,7 @@
  * under 500 lines and each module focused on a single responsibility.
  */
 
-import { assert, fail } from "@std/assert";
+import { fail } from "@std/assert";
 import type { TagInterface } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
 import type {
@@ -318,7 +318,13 @@ export function loadFrom(
       from = (synapse as SynapseInternal).from;
     }
 
-    assert(from !== undefined, "FROM is undefined");
+    if (from === undefined) {
+      fail(
+        `FROM is undefined: fromId ${se.fromId}, fromUUID ${rawSyn.fromUUID}, index ${
+          (synapse as SynapseInternal).from
+        }, synapse[${i}/${synapseCount}], idMap size ${idMap.size}`,
+      );
+    }
 
     let to: number | undefined;
     if (se.toId !== undefined) {
