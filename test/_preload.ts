@@ -16,9 +16,9 @@ import {
   setWasmCompilationCacheSize,
 } from "../src/wasm/WasmCompilationCache.ts";
 
-// Keep at most 32 compiled WASM activations per worker (down from 512).
+// Keep at most 16 compiled WASM activations per worker (down from 512).
 // Evolution runs override this via WasmCacheConfig, so production is unaffected.
-setMaxCachedWasmCreatureActivations(32);
+setMaxCachedWasmCreatureActivations(16);
 
-// Keep at most 16 topology templates per worker (down from 100).
-setWasmCompilationCacheSize(16);
+// Keep at most 8 topology templates per worker (down from 100).
+setWasmCompilationCacheSize(8);
