@@ -15,7 +15,6 @@
  * Part of #1989, closes #1992.
  */
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import {
   assertCrippleDegraded,
@@ -172,13 +171,9 @@ Deno.test({
   name:
     "DiscoveryScenario: change squash TANH→IDENTITY - discovery finds change-squash candidate",
   fn() {
-    // Resolve the deterministic integer ID for the hidden neuron
-    const tmpCrippled = Creature.fromJSON(buildCreature("IDENTITY"));
-    const crippledExport = tmpCrippled.exportJSON();
-    const hiddenANeuron = crippledExport.neurons.find(
-      (n) => n.type === "hidden",
-    );
-    const hiddenAId = hiddenANeuron!.id!;
+    // Neuron IDs are computed via deterministicIdFromUuid:
+    // hidden-A → 1775329634
+    const hiddenAId = 1775329634;
 
     const mockDiscoveryResult = {
       ID: "test-change-squash-tanh-to-identity",
