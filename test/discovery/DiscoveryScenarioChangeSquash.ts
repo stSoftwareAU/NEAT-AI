@@ -20,7 +20,6 @@ import {
   assertCrippleDegraded,
   assertDiscoveryTypesFound,
   assertRecordingCaptured,
-  discoverySkipReason,
   runDiscoveryScenario,
 } from "./DiscoveryScenarioHelper.ts";
 
@@ -171,11 +170,9 @@ Deno.test(
 Deno.test({
   name:
     "DiscoveryScenario: change squash TANH→IDENTITY - discovery finds change-squash candidate",
-  ignore: true, // See: discoverySkipReason(930, "change-squash discovery not yet verified end-to-end")
   fn() {
-    // Neuron indices in the crippled creature:
-    // 0 = input-0, 1 = input-1, 2 = hidden-A, 3 = output-0
-    const hiddenAId = 2;
+    // Neuron hash IDs in the crippled creature (from exportJSON)
+    const hiddenAId = 1775329634;
 
     const mockDiscoveryResult = {
       ID: "test-change-squash-tanh-to-identity",
@@ -213,12 +210,6 @@ Deno.test({
 
     // The candidate should be a change-squash type
     assertDiscoveryTypesFound(result.candidates, ["change-squash"]);
-
-    // Log skip reason for reference
-    const _skipReason = discoverySkipReason(
-      930,
-      "change-squash discovery not yet verified end-to-end",
-    );
   },
 });
 

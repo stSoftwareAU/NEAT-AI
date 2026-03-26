@@ -21,7 +21,6 @@ import {
   assertCrippleDegraded,
   assertDiscoveryTypesFound,
   assertRecordingCaptured,
-  discoverySkipReason,
   runDiscoveryScenario,
 } from "./DiscoveryScenarioHelper.ts";
 
@@ -187,12 +186,11 @@ Deno.test(
 Deno.test({
   name:
     "DiscoveryScenario: add synapse between hidden - discovery finds add-synapses candidate",
-  ignore: true, // See: discoverySkipReason(925, "add-synapses discovery between hidden neurons not yet verified end-to-end")
   fn() {
-    // Neuron indices in the crippled creature:
-    // 0 = input-0, 1 = input-1, 2 = hidden-A, 3 = hidden-B, 4 = output-0
-    const hiddenAId = 2;
-    const hiddenBId = 3;
+    // Neuron IDs are computed via deterministicIdFromUuid:
+    // hidden-A → 1775329634, hidden-B → 1775329633
+    const hiddenAId = 1775329634;
+    const hiddenBId = 1775329633;
 
     const mockDiscoveryResult = {
       ID: "test-add-synapse-between-hidden",
@@ -232,11 +230,5 @@ Deno.test({
 
     // The candidate should be an add-synapses type
     assertDiscoveryTypesFound(result.candidates, ["add-synapses"]);
-
-    // Log skip reason for reference
-    const _skipReason = discoverySkipReason(
-      925,
-      "add-synapses discovery between hidden neurons not yet verified end-to-end",
-    );
   },
 });

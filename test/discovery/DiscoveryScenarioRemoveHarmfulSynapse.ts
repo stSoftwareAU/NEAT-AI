@@ -24,7 +24,6 @@ import {
   assertCrippleDegraded,
   assertDiscoveryTypesFound,
   assertRecordingCaptured,
-  discoverySkipReason,
   runDiscoveryScenario,
 } from "./DiscoveryScenarioHelper.ts";
 
@@ -186,12 +185,10 @@ Deno.test(
 Deno.test({
   name:
     "DiscoveryScenario: remove harmful synapse - discovery finds remove-synapse candidate",
-  ignore: true, // See: discoverySkipReason(927, "remove-synapse discovery not yet verified end-to-end")
   fn() {
-    // Neuron indices in the crippled creature:
-    // 0 = input-0, 1 = input-1, 2 = hidden-A, 3 = hidden-B, 4 = output-0
-    const hiddenAId = 2;
-    const hiddenBId = 3;
+    // Integer neuron IDs derived from UUID hashing of "hidden-A" and "hidden-B"
+    const hiddenAId = 1775329634;
+    const hiddenBId = 1775329633;
 
     const mockDiscoveryResult = {
       ID: "test-remove-harmful-synapse",
@@ -229,11 +226,5 @@ Deno.test({
 
     // The candidate should be a remove-synapse type
     assertDiscoveryTypesFound(result.candidates, ["remove-synapse"]);
-
-    // Log skip reason for reference
-    const _skipReason = discoverySkipReason(
-      927,
-      "remove-synapse discovery not yet verified end-to-end",
-    );
   },
 });

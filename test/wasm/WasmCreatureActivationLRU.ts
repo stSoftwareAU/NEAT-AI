@@ -47,13 +47,13 @@ Deno.test("WasmCreatureActivationLRU: default capacity is 512", () => {
   // subsequent tests see a consistent value regardless of execution order.
   //
   // Note: when the test suite runs with --preload test/_preload.ts the cap
-  // is lowered to 32 to avoid OOM under parallel execution.  Accept either
-  // the source-code default (512) or the preload override (32).
+  // is lowered to 16 to avoid OOM under parallel execution.  Accept either
+  // the source-code default (512) or the preload override (16).
   const defaultCapacity = getMaxCachedWasmCreatureActivations();
   try {
     assert(
-      defaultCapacity === 512 || defaultCapacity === 32,
-      `Default capacity should be 512 (source default) or 32 (test preload), got ${defaultCapacity}`,
+      defaultCapacity === 512 || defaultCapacity === 16,
+      `Default capacity should be 512 (source default) or 16 (test preload), got ${defaultCapacity}`,
     );
   } finally {
     setMaxCachedWasmCreatureActivations(defaultCapacity);

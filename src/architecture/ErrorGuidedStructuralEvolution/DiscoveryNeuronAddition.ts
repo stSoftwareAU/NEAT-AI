@@ -220,16 +220,7 @@ export function addHelpfulNeurons(
   // Integrity check: verify no dangling references before constructing creature
   assertValidSynapseReferences(exportJSON, "addHelpfulNeurons before fromJSON");
 
-  let tmpCreature: Creature;
-  try {
-    tmpCreature = Creature.fromJSON(exportJSON);
-  } catch (error) {
-    getLogger().warn(
-      `[Discovery ${ID}] addHelpfulNeurons: Creature.fromJSON failed:`,
-      error,
-    );
-    return;
-  }
+  const tmpCreature = Creature.fromJSON(exportJSON);
   // We added neurons and synapses to the structure, so we must delete UUID to get a new one
   delete tmpCreature.uuid;
 
@@ -335,16 +326,7 @@ export function changeSquash(
   // Integrity check: verify no dangling references before constructing creature
   assertValidSynapseReferences(exportJSON, "changeSquash before fromJSON");
 
-  let tmpCreature: Creature;
-  try {
-    tmpCreature = Creature.fromJSON(exportJSON);
-  } catch (error) {
-    getLogger().warn(
-      `[Discovery ${ID}] changeSquash: Creature.fromJSON failed:`,
-      error,
-    );
-    return;
-  }
+  const tmpCreature = Creature.fromJSON(exportJSON);
   // We changed squash functions, so we must delete UUID to get a new one
   delete tmpCreature.uuid;
 
