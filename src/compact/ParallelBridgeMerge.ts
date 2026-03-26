@@ -1,4 +1,5 @@
 import { assert } from "@std/assert";
+import { assertValidSynapseReferences } from "../architecture/AssertValidSynapseReferences.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
@@ -201,6 +202,11 @@ export function mergeParallelBridges(
     );
 
     totalRemoved += toRemove.length;
+
+    assertValidSynapseReferences(
+      exported,
+      "after parallel bridge merge",
+    );
 
     // Only merge one group per pass (consistent with other compact passes).
     break;
