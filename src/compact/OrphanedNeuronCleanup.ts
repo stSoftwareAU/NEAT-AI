@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { assertValidSynapseReferences } from "../architecture/AssertValidSynapseReferences.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import type { Synapse } from "../architecture/Synapse.ts";
@@ -262,20 +263,35 @@ export function cleanupOrphanedNeurons(
         (n) => !orphanSet.has(n.id!),
       );
 
-      // Remove synapses that connect TO orphaned neurons
+      // Remove synapses that connect TO or FROM orphaned neurons.
+      // The fromId check is defensive: orphans by definition have no outward
+      // connections, but upstream bugs could leave dangling fromId references.
       creatureExport.synapses = creatureExport.synapses.filter(
-        (s) => !orphanSet.has(s.toId!),
+        (s) => !orphanSet.has(s.toId!) && !orphanSet.has(s.fromId!),
       );
 
       totalRemoved += orphanedIds.length;
       changedThisPass = true;
     }
+
+    // Integrity assertion: verify no dangling synapse references remain
+    // after each iteration of neuron removal and synapse filtering.
+    assertValidSynapseReferences(
+      creatureExport,
+      "cleanupOrphanedNeurons iteration",
+    );
   } while (changedThisPass);
 
   // Delete memetic if any neurons were removed (structure changed)
   if (allRemovedIds.size > 0) {
     delete creatureExport.memetic;
   }
+
+  // Final integrity assertion after all cleanup is complete
+  assertValidSynapseReferences(
+    creatureExport,
+    "cleanupOrphanedNeurons final",
+  );
 
   return { removed: totalRemoved, converted: totalConverted };
 }
