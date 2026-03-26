@@ -26,7 +26,6 @@ import {
   assertCrippleDegraded,
   assertDiscoveryTypesFound,
   assertRecordingCaptured,
-  discoverySkipReason,
   runDiscoveryScenario,
 } from "./DiscoveryScenarioHelper.ts";
 
@@ -284,7 +283,6 @@ Deno.test(
 Deno.test({
   name:
     "DiscoveryScenario: coordinated structural - discovery finds coordinated-structural candidate",
-  ignore: true, // See: discoverySkipReason(929, "coordinated-structural discovery not yet verified end-to-end")
   fn() {
     // Neuron indices in the crippled creature:
     // 0 = input-0, 1 = input-1, 2 = hidden-A, 3 = hidden-B, 4 = hidden-C, 5 = output-0
@@ -356,12 +354,6 @@ Deno.test({
       coordCandidate.change.coordinatedStructuralCandidate.operations.length,
       2,
       "Coordinated candidate should have 2 operations (setBias + setWeight)",
-    );
-
-    // Log skip reason for reference
-    const _skipReason = discoverySkipReason(
-      929,
-      "coordinated-structural discovery not yet verified end-to-end",
     );
   },
 });
