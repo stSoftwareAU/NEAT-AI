@@ -77,16 +77,7 @@ export function removeSynapse(
   // Integrity check: after orphan cleanup, verify no dangling references
   assertValidSynapseReferences(exportJSON, "removeSynapse after cleanup");
 
-  let tmpCreature: Creature;
-  try {
-    tmpCreature = Creature.fromJSON(exportJSON);
-  } catch (error) {
-    getLogger().warn(
-      `[DiscoverStructure] removeSynapse: Creature.fromJSON failed for ${worseCandidate.fromNeuronId} -> ${worseCandidate.toNeuronId}:`,
-      error,
-    );
-    return null;
-  }
+  const tmpCreature = Creature.fromJSON(exportJSON);
   // We modified the structure by filtering synapses, so we must delete UUID
   delete tmpCreature.uuid;
   delete tmpCreature.memetic;
@@ -216,16 +207,7 @@ export function addHelpfulSynapses(
     "addHelpfulSynapses before fromJSON",
   );
 
-  let tmpCreature: Creature;
-  try {
-    tmpCreature = Creature.fromJSON(exportJSON);
-  } catch (error) {
-    getLogger().warn(
-      `[Discovery ${ID}] addHelpfulSynapses: Creature.fromJSON failed:`,
-      error,
-    );
-    return;
-  }
+  const tmpCreature = Creature.fromJSON(exportJSON);
   // We added synapses to the structure, so we must delete UUID to get a new one
   delete tmpCreature.uuid;
 
