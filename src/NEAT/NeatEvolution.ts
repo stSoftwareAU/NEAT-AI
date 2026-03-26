@@ -221,16 +221,18 @@ export async function evolve(
     const maxPerGen = neat.config.maxCRISPRsPerGeneration;
     let applied = 0;
     let checked = 0;
+    let currentBase = fittest;
 
     while (applied < maxPerGen && checked < neat.CRISPRs.length) {
       const dna = neat.CRISPRs[neat.crisprIndex % neat.CRISPRs.length];
       neat.crisprIndex = (neat.crisprIndex + 1) % neat.CRISPRs.length;
       checked++;
 
-      const crispr = new CRISPR(fittest);
+      const crispr = new CRISPR(currentBase);
       const enhanced = crispr.cleaveDNA(dna);
-      if (enhanced.uuid !== fittest.uuid) {
+      if (enhanced.uuid !== currentBase.uuid) {
         dnaPopulation.push(enhanced);
+        currentBase = enhanced;
         applied++;
       }
     }

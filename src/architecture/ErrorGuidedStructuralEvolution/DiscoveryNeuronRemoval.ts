@@ -14,6 +14,7 @@ import type { Approach } from "../../NEAT/LogApproach.ts";
 import type { CandidateHarmfulNeuron } from "./DiscoverStructureTypes.ts";
 import { getLogger } from "../../utils/Logger.ts";
 import { validateAndFixIfNeeded } from "./DiscoveryValidation.ts";
+import { assertValidSynapseReferences } from "../../architecture/AssertValidSynapseReferences.ts";
 
 /**
  * Removes a harmful neuron from the creature efficiently.
@@ -101,10 +102,22 @@ export function removeHarmfulNeuron(
     (neuron) => neuron.id !== harmfulNeuron.neuronId,
   );
 
+  // Integrity check: after removing neuron and its synapses
+  assertValidSynapseReferences(
+    simplifiedExport,
+    "removeHarmfulNeuron after removal",
+  );
+
   // Clean up any neurons that have become orphaned (no outward connections)
   // This prevents validation failures when neurons that only connected to
   // the removed neuron are left dangling
   cleanupOrphanedNeurons(simplifiedExport);
+
+  // Integrity check: after orphan cleanup
+  assertValidSynapseReferences(
+    simplifiedExport,
+    "removeHarmfulNeuron after cleanup",
+  );
 
   let tmpCreature: Creature;
   try {
@@ -238,6 +251,12 @@ export function removeLowImpactNeuron(
     (neuron) => neuron.id !== removalCandidate.neuronId,
   );
 
+  // Integrity check: after removing neuron and its synapses
+  assertValidSynapseReferences(
+    simplifiedExport,
+    "removeLowImpactNeuron after removal",
+  );
+
   // Clean up memetic data for the removed neuron (fixes issue #912)
   // This must be called before validation to prevent MEMETIC errors
   cleanupMemeticForRemovedNeuron(
@@ -249,6 +268,12 @@ export function removeLowImpactNeuron(
   // This prevents validation failures when neurons that only connected to
   // the removed neuron are left dangling
   cleanupOrphanedNeurons(simplifiedExport);
+
+  // Integrity check: after orphan cleanup
+  assertValidSynapseReferences(
+    simplifiedExport,
+    "removeLowImpactNeuron after cleanup",
+  );
 
   const removedSynapseCount = originalSynapseCount -
     simplifiedExport.synapses.length;

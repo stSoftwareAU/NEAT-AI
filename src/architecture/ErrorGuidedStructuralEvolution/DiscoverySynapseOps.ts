@@ -12,6 +12,7 @@ import { memeticUpdate } from "../../blackbox/MemeticUpdate.ts";
 import type { CandidateSynapse } from "./DiscoverStructureTypes.ts";
 import { getLogger } from "../../utils/Logger.ts";
 import { validateAndFixIfNeeded } from "./DiscoveryValidation.ts";
+import { assertValidSynapseReferences } from "../../architecture/AssertValidSynapseReferences.ts";
 
 /**
  * Removes a synapse from the creature if it is determined to be harmful.
@@ -64,11 +65,17 @@ export function removeSynapse(
       s.toId !== worseCandidate.toNeuronId;
   });
 
+  // Integrity check: after filtering synapses, verify no dangling references
+  assertValidSynapseReferences(exportJSON, "removeSynapse after filter");
+
   // Clean up any neurons that have become orphaned after synapse removal.
   // This handles both:
   // - Converting hidden neurons with no inward connections to constants
   // - Removing hidden/constant neurons with no outward connections
   cleanupOrphanedNeurons(exportJSON);
+
+  // Integrity check: after orphan cleanup, verify no dangling references
+  assertValidSynapseReferences(exportJSON, "removeSynapse after cleanup");
 
   let tmpCreature: Creature;
   try {
@@ -202,6 +209,12 @@ export function addHelpfulSynapses(
     );
     return;
   }
+
+  // Integrity check: verify no dangling references before constructing creature
+  assertValidSynapseReferences(
+    exportJSON,
+    "addHelpfulSynapses before fromJSON",
+  );
 
   let tmpCreature: Creature;
   try {
