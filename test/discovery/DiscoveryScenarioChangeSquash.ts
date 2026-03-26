@@ -171,8 +171,7 @@ Deno.test({
   name:
     "DiscoveryScenario: change squash TANH→IDENTITY - discovery finds change-squash candidate",
   fn() {
-    // Neuron IDs are computed via deterministicIdFromUuid:
-    // hidden-A → 1775329634
+    // Neuron hash IDs in the crippled creature (from exportJSON)
     const hiddenAId = 1775329634;
 
     const mockDiscoveryResult = {
