@@ -25,7 +25,6 @@ import {
   assertCrippleDegraded,
   assertDiscoveryTypesFound,
   assertRecordingCaptured,
-  discoverySkipReason,
   runDiscoveryScenario,
 } from "./DiscoveryScenarioHelper.ts";
 
@@ -253,12 +252,11 @@ Deno.test(
 Deno.test({
   name:
     "DiscoveryScenario: fan-in synapse patterns - discovery finds add-synapses candidate",
-  ignore: true, // See: discoverySkipReason(928, "fan-in synapse discovery not yet verified end-to-end")
   fn() {
-    // Neuron indices in the crippled creature:
-    // 0 = input-0, 1 = input-1, 2 = hidden-B, 3 = hidden-A, 4 = output-0
-    const hiddenBId = 2;
-    const hiddenAId = 3;
+    // Neuron IDs are computed via deterministicIdFromUuid:
+    // hidden-A → 1775329634, hidden-B → 1775329633
+    const hiddenBId = 1775329633;
+    const hiddenAId = 1775329634;
 
     const mockDiscoveryResult = {
       ID: "test-fan-in-synapse-patterns",
@@ -298,11 +296,5 @@ Deno.test({
 
     // The candidate should be an add-synapses type
     assertDiscoveryTypesFound(result.candidates, ["add-synapses"]);
-
-    // Log skip reason for reference
-    const _skipReason = discoverySkipReason(
-      928,
-      "fan-in synapse discovery not yet verified end-to-end",
-    );
   },
 });
