@@ -1,16 +1,17 @@
 /**
- * Issue #2005: Discovery operations must not crash when Creature.fromJSON
- * encounters an unresolvable neuron ID.
+ * Issue #2017: Discovery operations must produce structurally valid creatures.
  *
- * The discovery pipeline modifies exported JSON (adding/removing neurons and
- * synapses) before calling Creature.fromJSON. If the modified JSON is invalid
- * (e.g., a synapse references a neuron ID that doesn't exist), the operation
- * should return undefined/null gracefully instead of crashing the process with
- * an uncaught AssertionError.
+ * Pre-validation via assertValidSynapseReferences() catches dangling synapse
+ * references before Creature.fromJSON() is called, so invalid JSON is never
+ * silently swallowed. These tests verify:
+ * 1. Operations correctly skip invalid candidates (non-existent neurons).
+ * 2. Operations produce valid creatures when given valid input.
+ * 3. Creature.fromJSON still provides diagnostics for invalid JSON.
  */
 
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { assertValidSynapseReferences } from "../../src/architecture/AssertValidSynapseReferences.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import {
@@ -74,15 +75,24 @@ function makeTestCreature(): Creature {
   return Creature.fromJSON(exportJSON);
 }
 
+/**
+ * Asserts that a creature has no dangling synapse references.
+ */
+function assertCreatureIntegrity(creature: Creature, context: string): void {
+  const exported = creature.exportJSON();
+  assertValidSynapseReferences(exported, context);
+}
+
+// ===== Invalid candidate tests (early-exit validation) =====
+
 Deno.test(
   "addHelpfulSynapses returns undefined for non-existent source neuron ID",
   async () => {
     await initWasmForTests();
     const creature = makeTestCreature();
 
-    // Candidate references a neuron ID that doesn't exist in the creature
     const candidate: CandidateSynapse = {
-      fromNeuronId: 9999999, // Non-existent neuron
+      fromNeuronId: 9999999,
       toNeuronId: -1,
       weight: 0.5,
       targetNeuronImpact: 1.0,
@@ -107,10 +117,9 @@ Deno.test(
     await initWasmForTests();
     const creature = makeTestCreature();
 
-    // Candidate references a target neuron ID that doesn't exist
     const candidate: CandidateSynapse = {
-      fromNeuronId: 0, // Valid input neuron
-      toNeuronId: 9999999, // Non-existent target neuron
+      fromNeuronId: 0,
+      toNeuronId: 9999999,
       weight: 0.5,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0.01,
@@ -135,7 +144,7 @@ Deno.test(
     const creature = makeTestCreature();
 
     const candidate: CandidateNeuron = {
-      fromNeuronId: 9999999, // Non-existent neuron
+      fromNeuronId: 9999999,
       toNeuronId: -1,
       squash: IDENTITY.NAME,
       bias: 0.1,
@@ -253,12 +262,13 @@ Deno.test(
   },
 );
 
+// ===== Diagnostic test =====
+
 Deno.test(
   "Creature.fromJSON provides diagnostic info when synapse references missing neuron",
   async () => {
     await initWasmForTests();
 
-    // Create a CreatureExport with a synapse referencing a non-existent neuron
     const badExport: CreatureExport = {
       input: 2,
       output: 1,
@@ -279,7 +289,6 @@ Deno.test(
       synapses: [
         { fromId: 0, toId: 1000000, weight: 0.5 },
         { fromId: 1000000, toId: -1, weight: 0.75 },
-        // This synapse references a neuron (9999999) that doesn't exist
         { fromId: 9999999, toId: -1, weight: 0.5 },
       ],
     };
@@ -291,7 +300,6 @@ Deno.test(
       errorMessage = (error as Error).message;
     }
 
-    // Verify the error message includes diagnostic info (fromId value)
     assertEquals(
       errorMessage.includes("FROM is undefined"),
       true,
@@ -305,6 +313,8 @@ Deno.test(
   },
 );
 
+// ===== Candidate builder tests =====
+
 Deno.test(
   "buildSingleSynapseCandidates gracefully skips invalid candidates",
   async () => {
@@ -313,7 +323,7 @@ Deno.test(
 
     const candidates: CandidateSynapse[] = [
       {
-        fromNeuronId: 9999999, // Non-existent — should be skipped
+        fromNeuronId: 9999999,
         toNeuronId: -1,
         weight: 0.5,
         targetNeuronImpact: 1.0,
@@ -323,7 +333,7 @@ Deno.test(
         totalCount: 10,
       },
       {
-        fromNeuronId: 0, // Valid — but target doesn't exist
+        fromNeuronId: 0,
         toNeuronId: 9999999,
         weight: 0.5,
         targetNeuronImpact: 1.0,
@@ -334,7 +344,6 @@ Deno.test(
       },
     ];
 
-    // This should NOT throw — it should skip invalid candidates gracefully
     const results = buildSingleSynapseCandidates(
       "test-id",
       creature,
@@ -352,7 +361,7 @@ Deno.test(
 
     const candidates: CandidateNeuron[] = [
       {
-        fromNeuronId: 9999999, // Non-existent — should be skipped
+        fromNeuronId: 9999999,
         toNeuronId: -1,
         squash: IDENTITY.NAME,
         bias: 0.1,
@@ -366,12 +375,219 @@ Deno.test(
       },
     ];
 
-    // This should NOT throw — it should skip invalid candidates gracefully
     const results = buildSingleNeuronCandidates(
       "test-id",
       creature,
       candidates,
     );
     assertEquals(results.length, 0, "All invalid candidates should be skipped");
+  },
+);
+
+// ===== Valid creature output tests (issue #2017) =====
+
+Deno.test(
+  "removeSynapse produces a structurally valid creature",
+  async () => {
+    await initWasmForTests();
+    const creature = makeTestCreature();
+
+    // Remove the synapse from input(0) -> hidden(1000000)
+    const candidate: CandidateSynapse = {
+      fromNeuronId: 0,
+      toNeuronId: 1000000,
+      weight: 0.5,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0.01,
+      expectedCreatureScoreGain: 0.01,
+      improvedCount: 5,
+      totalCount: 10,
+    };
+
+    const result = removeSynapse("test-valid", creature, candidate);
+
+    if (result !== null) {
+      assertCreatureIntegrity(result, "removeSynapse valid output");
+
+      // The removed synapse should no longer exist
+      const exported = result.exportJSON();
+      const hasSynapse = exported.synapses.some(
+        (s) => s.fromId === 0 && s.toId === 1000000,
+      );
+      assertEquals(hasSynapse, false, "Removed synapse should not exist");
+    }
+  },
+);
+
+Deno.test(
+  "addHelpfulSynapses produces a structurally valid creature",
+  async () => {
+    await initWasmForTests();
+    const creature = makeTestCreature();
+
+    // Add a synapse from input(1) -> hidden(1000000)
+    const candidate: CandidateSynapse = {
+      fromNeuronId: 1,
+      toNeuronId: 1000000,
+      weight: 0.4,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0.01,
+      expectedCreatureScoreGain: 0.01,
+      improvedCount: 5,
+      totalCount: 10,
+    };
+
+    const result = addHelpfulSynapses("test-valid", creature, [candidate]);
+
+    assert(result !== undefined, "Should produce a creature for valid input");
+    assertCreatureIntegrity(result, "addHelpfulSynapses valid output");
+
+    // The new synapse should exist
+    const exported = result.exportJSON();
+    const hasNewSynapse = exported.synapses.some(
+      (s) => s.fromId === 1 && s.toId === 1000000,
+    );
+    assertEquals(hasNewSynapse, true, "New synapse should exist in output");
+  },
+);
+
+Deno.test(
+  "removeHarmfulNeuron produces a structurally valid creature",
+  async () => {
+    await initWasmForTests();
+    const creature = makeTestCreature();
+
+    const candidate: CandidateHarmfulNeuron = {
+      neuronId: 1000000,
+      errorMagnitude: 1e11,
+      averageActivation: 0.1,
+      sampleCount: 100,
+      expectedCreatureScoreGain: 0.05,
+    };
+
+    const result = removeHarmfulNeuron("test-valid", creature, candidate);
+
+    if (result !== undefined) {
+      assertCreatureIntegrity(result, "removeHarmfulNeuron valid output");
+
+      // The removed neuron should not exist as hidden
+      const exported = result.exportJSON();
+      const hasNeuron = exported.neurons.some(
+        (n) => n.id === 1000000 && n.type === "hidden",
+      );
+      assertEquals(
+        hasNeuron,
+        false,
+        "Removed neuron should not exist as hidden",
+      );
+
+      // No synapse should reference the removed neuron
+      for (const synapse of exported.synapses) {
+        assertNotEquals(
+          synapse.fromId,
+          1000000,
+          "No synapse should source from removed neuron",
+        );
+        assertNotEquals(
+          synapse.toId,
+          1000000,
+          "No synapse should target removed neuron",
+        );
+      }
+    }
+  },
+);
+
+Deno.test(
+  "removeLowImpactNeuron produces a structurally valid creature",
+  async () => {
+    await initWasmForTests();
+    const creature = makeTestCreature();
+
+    const candidate = {
+      neuronId: 1000001,
+      totalError: 0.001,
+      impact: 0.001,
+      reason: "low_impact",
+      meanActivation: 0.2,
+    };
+
+    const result = removeLowImpactNeuron("test-valid", creature, candidate);
+
+    if (result !== undefined) {
+      assertCreatureIntegrity(result, "removeLowImpactNeuron valid output");
+
+      const exported = result.exportJSON();
+      const hasNeuron = exported.neurons.some(
+        (n) => n.id === 1000001 && n.type === "hidden",
+      );
+      assertEquals(
+        hasNeuron,
+        false,
+        "Removed neuron should not exist as hidden",
+      );
+    }
+  },
+);
+
+Deno.test(
+  "addHelpfulNeurons produces a structurally valid creature",
+  async () => {
+    await initWasmForTests();
+    const creature = makeTestCreature();
+
+    const candidate: CandidateNeuron = {
+      fromNeuronId: 0,
+      toNeuronId: -1,
+      squash: IDENTITY.NAME,
+      bias: 0.1,
+      incomingWeight: 0.5,
+      outgoingWeight: 0.5,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0.01,
+      expectedCreatureScoreGain: 0.01,
+      improvedCount: 5,
+      totalCount: 10,
+    };
+
+    const result = addHelpfulNeurons("test-valid", creature, [candidate]);
+
+    assert(result !== undefined, "Should produce a creature for valid input");
+    assertCreatureIntegrity(result, "addHelpfulNeurons valid output");
+
+    // The result should have more neurons than the original
+    const originalNeuronCount = creature.exportJSON().neurons.length;
+    const resultNeuronCount = result.exportJSON().neurons.length;
+    assert(
+      resultNeuronCount > originalNeuronCount,
+      "Result should have more neurons than original",
+    );
+  },
+);
+
+Deno.test(
+  "changeSquash produces a structurally valid creature",
+  async () => {
+    await initWasmForTests();
+    const creature = makeTestCreature();
+
+    const candidate: CandidateSquash = {
+      neuronId: 1000000,
+      previousSquash: IDENTITY.NAME,
+      squash: "LOGISTIC",
+      expectedCreatureScoreGain: 0.01,
+      improvedError: 0.005,
+      currentError: 0.01,
+    };
+
+    const result = changeSquash("test-valid", creature, [candidate]);
+
+    assert(result !== undefined, "Should produce a creature for valid input");
+    assertCreatureIntegrity(result, "changeSquash valid output");
+
+    // Verify the squash was actually changed
+    const exported = result.exportJSON();
+    const neuron = exported.neurons.find((n) => n.id === 1000000);
+    assertEquals(neuron?.squash, "LOGISTIC", "Squash should be changed");
   },
 );
