@@ -20,6 +20,7 @@ import {
   recordDiscoveryIssue,
   validateAndFixIfNeeded,
 } from "./DiscoveryValidation.ts";
+import { assertValidSynapseReferences } from "../../architecture/AssertValidSynapseReferences.ts";
 
 /**
  * Adds new neurons to the creature if they improve performance.
@@ -216,6 +217,9 @@ export function addHelpfulNeurons(
     return;
   }
 
+  // Integrity check: verify no dangling references before constructing creature
+  assertValidSynapseReferences(exportJSON, "addHelpfulNeurons before fromJSON");
+
   let tmpCreature: Creature;
   try {
     tmpCreature = Creature.fromJSON(exportJSON);
@@ -327,6 +331,9 @@ export function changeSquash(
     );
     return;
   }
+
+  // Integrity check: verify no dangling references before constructing creature
+  assertValidSynapseReferences(exportJSON, "changeSquash before fromJSON");
 
   let tmpCreature: Creature;
   try {
