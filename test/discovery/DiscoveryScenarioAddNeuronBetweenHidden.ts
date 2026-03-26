@@ -20,11 +20,11 @@
  */
 import { assert, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "../../src/Creature.ts";
 import {
   assertCrippleDegraded,
   assertDiscoveryTypesFound,
   assertRecordingCaptured,
-  discoverySkipReason,
   runDiscoveryScenario,
 } from "./DiscoveryScenarioHelper.ts";
 
@@ -211,12 +211,21 @@ Deno.test(
 Deno.test({
   name:
     "DiscoveryScenario: add neuron between hidden - discovery finds add-neurons candidate",
-  ignore: true, // See: discoverySkipReason(926, "add-neurons discovery between hidden neurons not yet verified end-to-end")
   fn() {
-    // Neuron indices in the crippled creature:
-    // 0 = input-0, 1 = input-1, 2 = hidden-A, 3 = hidden-C, 4 = output-0
-    const hiddenAId = 2;
-    const hiddenCId = 3;
+    // Build the crippled creature to resolve actual neuron IDs (hash-based, not sequential)
+    const tmpCrippled = Creature.fromJSON(CRIPPLED_CREATURE);
+    const crippledExport = tmpCrippled.exportJSON();
+    const hiddenANeuron = crippledExport.neurons.find(
+      (n) => n.type === "hidden" && n.squash === "RELU" && n.bias === 0,
+    );
+    // hidden-C is the second hidden RELU neuron (receives from hidden-A)
+    const hiddenCNeuron = crippledExport.neurons.find(
+      (n) => n.type === "hidden" && n.id !== hiddenANeuron!.id,
+    );
+    assert(hiddenANeuron, "Should find hidden-A neuron in crippled creature");
+    assert(hiddenCNeuron, "Should find hidden-C neuron in crippled creature");
+    const hiddenAId = hiddenANeuron.id!;
+    const hiddenCId = hiddenCNeuron.id!;
 
     const mockDiscoveryResult = {
       ID: "test-add-neuron-between-hidden",
@@ -259,11 +268,5 @@ Deno.test({
 
     // The candidate should be an add-neurons type
     assertDiscoveryTypesFound(result.candidates, ["add-neurons"]);
-
-    // Log skip reason for reference
-    const _skipReason = discoverySkipReason(
-      926,
-      "add-neurons discovery between hidden neurons not yet verified end-to-end",
-    );
   },
 });
