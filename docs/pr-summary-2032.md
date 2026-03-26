@@ -1,8 +1,8 @@
 ## Summary
 
 Enable the previously ignored discovery scenario test for coordinated structural
-candidates. The upstream issue stSoftwareAU/NEAT-AI-Discovery#929 has been resolved,
-so the test now passes. Closes #2032.
+candidates. The upstream issue stSoftwareAU/NEAT-AI-Discovery#929 has been
+resolved, so the test now passes. Closes #2032.
 
 ## Changes
 
