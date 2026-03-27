@@ -21,6 +21,7 @@
     "@std/streams": "jsr:@std/streams@1.0.17",
     "@std/uuid": "jsr:@std/uuid@1.1.0",
     "@std/testing/mock": "jsr:@std/testing@1.0.17/mock",
+    "ajv/2020": "npm:ajv@8.18.0/dist/2020.js",
     "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.13",
     "@architecture/": "./src/architecture/",
     "@errors/": "./src/errors/",
