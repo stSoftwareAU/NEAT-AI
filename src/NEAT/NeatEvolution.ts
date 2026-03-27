@@ -403,7 +403,7 @@ function processCompletedResults(
       continue;
     }
 
-    const json = JSON.parse(r.train.creature);
+    const json = r.train.creature;
     if (neat.config.verbose) {
       getLogger().info(
         `Training ${blue(r.train.ID)} completed ${
@@ -413,7 +413,7 @@ function processCompletedResults(
     }
 
     // Issue #1913: Preserve PC approach tag from trace if present.
-    const traceJSON = r.train.trace ? JSON.parse(r.train.trace) : null;
+    const traceJSON = r.train.trace ?? null;
     const pcApproach = traceJSON ? getTag(traceJSON, "approach") : null;
     const isPC = pcApproach === "predictive-coding";
 
@@ -438,17 +438,15 @@ function processCompletedResults(
     trainedPopulation.push(Creature.fromJSON(json, neat.config.debug));
     if (r.train.backtracked) {
       trainedPopulation.push(
-        Creature.fromJSON(JSON.parse(r.train.backtracked), neat.config.debug),
+        Creature.fromJSON(r.train.backtracked, neat.config.debug),
       );
     }
     if (r.train.forward) {
       trainedPopulation.push(
-        Creature.fromJSON(JSON.parse(r.train.forward), neat.config.debug),
+        Creature.fromJSON(r.train.forward, neat.config.debug),
       );
     }
-    const compactJSON = r.train.compact
-      ? JSON.parse(r.train.compact)
-      : undefined;
+    const compactJSON = r.train.compact ?? undefined;
 
     if (compactJSON) {
       if (neat.config.verbose) {

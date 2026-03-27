@@ -170,7 +170,7 @@ export class ParallelBreeding {
 
           if (response.breed?.success && response.breed.offspring) {
             const child = Creature.fromJSON(
-              JSON.parse(response.breed.offspring),
+              response.breed.offspring,
             );
 
             // Apply memetic discovery on the main thread

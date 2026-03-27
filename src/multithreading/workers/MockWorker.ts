@@ -50,11 +50,14 @@ export class MockWorker implements WorkerInterface<RequestData> {
           error: Number.POSITIVE_INFINITY,
         };
       } else if (data.train) {
+        // Issue #2047: Use empty placeholder objects instead of strings.
+        // These are never consumed because error is POSITIVE_INFINITY.
+        const emptyExport = { input: 0, output: 0, neurons: [], synapses: [] };
         errorResponse.train = {
           ID: "error",
-          creature: "",
+          creature: emptyExport,
           error: Number.POSITIVE_INFINITY,
-          trace: "",
+          trace: { ...emptyExport, neurons: [], synapses: [] },
         };
       } else if (data.discover) {
         errorResponse.discover = {
