@@ -70,7 +70,11 @@ jobs:
           # Capture exit code to check if tests failed (disable exit on error for this command)
           # Only capture stdout to junit.xml, keep stderr separate to avoid corrupting XML
           # Note: -A grants all permissions including --allow-ffi (required for Rust discovery)
-          # Discovery tests gracefully skip when Rust library unavailable via ignore: !isRustDiscoveryEnabled()
+          #
+          # Skipped tests (~35): optional NEAT-AI-Discovery Rust library is not built on this
+          # workflow (see NEAT_RUST_DISCOVERY_OPTIONAL). Tests use ignore: shouldSkipRustDiscoveryTests()
+          # or ignore: !isRustDiscoveryEnabled() — not "disabled" arbitrarily; they run locally when
+          # the library is present. GPU-specific checks live inside the Rust stack (CPU fallback OK).
           set +e
           deno test -A \
             --v8-flags=--max-old-space-size=${V8_MEMORY_MB},--expose-gc \
