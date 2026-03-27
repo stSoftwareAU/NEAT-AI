@@ -372,6 +372,87 @@ Deno.test("updateScoreForBiasChange - throws for non-finite bias", () => {
   );
 });
 
+// --- Issue #2042: Scan path tests (stale secondMax forces full scan) ---
+
+Deno.test("updateScoreForBiasChange - scan path matches full recalculation when secondMax is stale", () => {
+  // Create creature with multiple neurons so the scan has work to do
+  const creature = makeCreature({
+    hiddenCount: 5,
+    weights: [0.5, 0.3, 0.7, 0.2, 0.4, 0.6, 0.8, 0.1, 0.9, 0.35],
+    biases: [10, 0.2, 0.3, 0.4, 0.5],
+  });
+  const error = 0.1;
+  const growthCost = 0.001;
+
+  // Populate cache
+  calculate(creature, error, growthCost);
+
+  // Force secondMax stale so the scan path is triggered
+  creature.cachedScoreComponents!.secondMaxWeightBias = -1;
+
+  // Change the max bias (10) to a small value - triggers scanMaxForBiasChange
+  const oldBias = 10;
+  const newBias = 0.05;
+  creature.neurons[creature.input].bias = newBias;
+
+  const incrementalScore = updateScoreForBiasChange(
+    creature,
+    error,
+    growthCost,
+    oldBias,
+    newBias,
+  );
+
+  // Full recalculation should match
+  delete creature.cachedScoreComponents;
+  const fullScore = calculate(creature, error, growthCost);
+
+  assertEquals(
+    incrementalScore,
+    fullScore,
+    "Scan path bias update should match full recalculation",
+  );
+});
+
+Deno.test("updateScoreForWeightChange - scan path matches full recalculation when secondMax is stale", () => {
+  const creature = makeCreature({
+    hiddenCount: 3,
+    weights: [10, 0.3, 0.7, 0.2, 0.4, 0.6],
+    biases: [0.1, 0.2, 0.3],
+  });
+  const error = 0.1;
+  const growthCost = 0.001;
+
+  // Populate cache
+  calculate(creature, error, growthCost);
+
+  // Force secondMax stale
+  creature.cachedScoreComponents!.secondMaxWeightBias = -1;
+
+  // Change the max weight (10) to a small value - triggers scanMaxForWeightChange
+  const oldWeight = 10;
+  const newWeight = 0.05;
+  creature.synapses[0].weight = newWeight;
+
+  const incrementalScore = updateScoreForWeightChange(
+    creature,
+    error,
+    growthCost,
+    oldWeight,
+    newWeight,
+  );
+
+  // Full recalculation should match
+  delete creature.cachedScoreComponents;
+  const fullScore = calculate(creature, error, growthCost);
+
+  assertEquals(
+    incrementalScore,
+    fullScore,
+    "Scan path weight update should match full recalculation",
+  );
+});
+
 Deno.test("updateScoreForBiasChange - works without prior calculate call", () => {
   const creature = makeCreature({ weights: [0.5], biases: [0.1] });
 
