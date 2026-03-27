@@ -96,25 +96,20 @@ export class Synapse implements SynapseInternal {
 
   /**
    * Converts the synapse to a JSON object for export.
-   * Issue #1958: Uses integer neuron IDs instead of UUID strings.
-   * Issue #2050: Also emits fromUUID/toUUID for backward compatibility.
+   * Wire format uses fromUUID/toUUID; integer indices stay internal (Issue #1958).
    *
-   * @param idMap - Mapping from neuron indices to integer IDs
+   * @param _idMap - Reserved for callers (indices → integer IDs); not serialised
    * @param uuidMap - Mapping from neuron indices to UUID strings
    * @returns JSON representation of the synapse
    */
   exportJSON(
-    idMap: Map<number, number>,
+    _idMap: Map<number, number>,
     uuidMap: Map<number, string>,
   ): SynapseExport {
-    const fromId = idMap.get(this.from) as number;
-    const toId = idMap.get(this.to) as number;
     const json: SynapseExport = {
       weight: this.weight,
       fromUUID: uuidMap.get(this.from),
-      fromId: fromId,
       toUUID: uuidMap.get(this.to),
-      toId: toId,
       type: this.type,
       frozen: this.frozen ? true : undefined,
       tags: this.tags ? this.tags.slice() : undefined,

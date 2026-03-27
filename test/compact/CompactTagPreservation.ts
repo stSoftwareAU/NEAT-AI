@@ -7,6 +7,13 @@ import { mergeParallelIdentityBridges } from "../../src/compact/ParallelIdentity
 import { mergeParallelBridges } from "../../src/compact/ParallelBridgeMerge.ts";
 import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 
+/** Public export omits integer ids; tests that assert on fromId/toId normalise first. */
+function exportNormalised(creature: Creature): CreatureExport {
+  const e = creature.exportJSON();
+  normaliseCreatureExport(e);
+  return e;
+}
+
 /**
  * Issue #1972: Compact operations were losing tags on synapses and neurons.
  *
@@ -52,10 +59,9 @@ Deno.test("compact: COMPLEMENT bypass preserves synapse tags on new synapses", (
   assert(compacted, "COMPLEMENT neuron should be bypassed");
 
   // Assert: The new direct synapse should have merged tags from both original synapses
-  // Issue #1958: exported synapses use integer IDs (input-0=0, output-0=-1)
   const exported = compacted.exportJSON();
   const directSynapse = exported.synapses.find(
-    (s) => s.fromId === 0 && s.toId === -1,
+    (s) => s.fromUUID === "input-0" && s.toUUID === "output-0",
   );
   assert(directSynapse, "Direct synapse should exist after bypass");
   assert(directSynapse.tags, "Tags should be preserved on bypassed synapse");
@@ -114,10 +120,9 @@ Deno.test("compact: COMPLEMENT bypass merges tags when adding to existing synaps
   assert(compacted, "COMPLEMENT neuron should be bypassed");
 
   // Assert: Existing synapse should have merged tags
-  // Issue #1958: exported synapses use integer IDs (input-0=0, output-0=-1)
   const exported = compacted.exportJSON();
   const directSynapse = exported.synapses.find(
-    (s) => s.fromId === 0 && s.toId === -1,
+    (s) => s.fromUUID === "input-0" && s.toUUID === "output-0",
   );
   assert(directSynapse, "Direct synapse should exist after bypass");
   assert(directSynapse.tags, "Tags should be merged on existing synapse");
@@ -187,11 +192,9 @@ Deno.test("compact: IDENTITY chain merge preserves synapse tags", () => {
 
   // Assert: The merged synapse should carry tags from
   // both the inConn and outConn that were merged.
-  // Issue #1958: Use integer IDs for lookup. Find the synapse from
-  // the remaining hidden neuron to output (-1).
   const exported = compacted.exportJSON();
   const mergedSynapse = exported.synapses.find(
-    (s) => s.toId === -1 && s.fromId !== 0,
+    (s) => s.fromUUID === "hidden-0" && s.toUUID === "output-0",
   );
   assert(mergedSynapse, "Merged synapse should exist");
   assert(mergedSynapse.tags, "Tags should be preserved on merged synapse");
@@ -461,7 +464,7 @@ Deno.test("compact: COMPLEMENT bypass preserves neuron tags on remaining neurons
 
   // Assert: Output neuron tags should be preserved.
   // Issue #1958: Use integer IDs (output-0 = -1).
-  const exported = compacted.exportJSON();
+  const exported = exportNormalised(compacted);
   const outputNeuron = exported.neurons.find((n) => n.id === -1);
   assert(outputNeuron, "Output neuron should exist");
   assert(outputNeuron.tags, "Output neuron tags should be preserved");

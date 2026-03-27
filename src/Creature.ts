@@ -132,6 +132,7 @@ export class Creature implements CreatureInternal {
     connectionSet: null,
     availableConnectionsCache: null,
     hiddenNeuronIds: null,
+    hiddenNeuronWireKeys: null,
     inwardCacheMissCount: 0,
   };
 
@@ -222,15 +223,15 @@ export class Creature implements CreatureInternal {
    *
    * Issue #1445: Selective cache invalidation by mutation type.
    * When called with valid from/to indices (connection-only change),
-   * hiddenNeuronIds is preserved because adding/removing a connection
-   * does not change the set of neurons.
+   * hiddenNeuronIds and hiddenNeuronWireKeys are preserved because adding/removing
+   * a connection does not change the set of neurons.
    */
   public clearCache(from: number = -1, to: number = -1) {
     // Issue #1957: Invalidate typed topology cache on any structural change
     this.cachedTypedTopology = undefined;
 
     if (from === -1 || to === -1) {
-      // Full invalidation: clears everything including hiddenNeuronIds.
+      // Full invalidation: clears neuron identity caches.
       // Used when neurons are added/removed or structure is fully rebuilt.
       this._topoCaches.cacheTo = [];
       this._topoCaches.cacheFrom = [];
@@ -239,12 +240,11 @@ export class Creature implements CreatureInternal {
       this._topoCaches.inwardCacheMissCount = 0;
       this._topoCaches.connectionSet = null;
       this._topoCaches.hiddenNeuronIds = null;
+      this._topoCaches.hiddenNeuronWireKeys = null;
       this._topoCaches.availableConnectionsCache = null;
       this.topologyHash = undefined;
     } else {
-      // Connection-only invalidation: preserves hiddenNeuronIds.
-      // Adding/removing a connection does not change the set of neurons,
-      // so the UUID set remains valid.
+      // Connection-only invalidation: preserves hidden neuron identity caches.
       this._topoCaches.cacheTo[to] = undefined;
       this._topoCaches.cacheFrom[from] = undefined;
       this._topoCaches.cacheSelf[from] = undefined;
@@ -258,11 +258,10 @@ export class Creature implements CreatureInternal {
   }
 
   /**
-   * Clears connection-related caches without invalidating hiddenNeuronIds.
+   * Clears connection-related caches without invalidating hidden-neuron identity sets.
    *
    * Issue #1445: Used by batch connect/disconnect operations that change
-   * connections but not the set of neurons. This avoids unnecessary
-   * rebuilds of the hiddenNeuronIds set.
+   * connections but not the set of neurons.
    */
   private clearConnectionCaches() {
     // Issue #1957: Invalidate typed topology on connection changes
@@ -584,6 +583,10 @@ export class Creature implements CreatureInternal {
 
   public getHiddenNeuronIds(): Set<number> {
     return topology.getHiddenNeuronIds(this, this._topoCaches);
+  }
+
+  public getHiddenNeuronWireKeys(): Set<string> {
+    return topology.getHiddenNeuronWireKeys(this, this._topoCaches);
   }
 
   public getAvailableConnections(focusList?: number[]): [number, number][] {
@@ -912,6 +915,11 @@ export class Creature implements CreatureInternal {
 
   exportJSON(): CreatureExport {
     return serialisation.exportJSON(this);
+  }
+
+  /** Wire-only snapshot; omits runtime integer ids (see {@link exportSnapshotJSON}). */
+  exportSnapshotJSON(): CreatureExport {
+    return serialisation.exportSnapshotJSON(this);
   }
 
   traceJSON(): CreatureTrace {

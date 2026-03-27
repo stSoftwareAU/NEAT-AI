@@ -135,9 +135,9 @@ Deno.test("ignoreTags", () => {
 
   assertEquals(uuid3, uuid1, "Alive creature should match was: " + uuid3);
 
-  /** Manually update if needed (Issue #2050: changed when uuid fields were restored in export). */
+  /** Manually update when export identity / makeUUID canonicalisation changes. */
   assert(
-    uuid2 === "99bb4ed2-62b5-50d7-90d6-dd0d29427324",
+    uuid2 === "00b0b465-8e33-5f97-a8c4-197df7a2c289",
     "Wrong UUID was: " + uuid2,
   );
 });

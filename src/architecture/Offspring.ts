@@ -280,6 +280,12 @@ export class Offspring {
         neuron.squash,
       );
 
+      // Hidden/constant: keep parent stable uuid; constructor already assigned a
+      // random uuid if parent had none (new lineage).
+      if (neuron.type === "hidden" || neuron.type === "constant") {
+        newNode.uuid = neuron.uuid ?? newNode.uuid;
+      }
+
       addTags(newNode, neuron);
 
       newNode.index = indx;

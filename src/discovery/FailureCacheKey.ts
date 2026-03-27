@@ -9,6 +9,8 @@
 
 import { join } from "@std/path/join";
 import { crypto as stdCrypto } from "@std/crypto";
+import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 
@@ -217,32 +219,43 @@ function stableShortHash(value: string): string {
  * Input neurons are excluded as they have no squash/bias.
  */
 function buildStructuralSignature(candidate: DiscoveryCandidate): string {
-  const exported = candidate.creature.exportJSON();
+  const exported = structuredClone(
+    candidate.creature.exportJSON(),
+  ) as CreatureExport;
+  normaliseCreatureExport(exported);
   const sigParts: string[] = [];
 
   // Include neuron signatures (ID, squash, bias exponent)
   // Filter to hidden and output neurons, then sort by ID for determinism
   const relevantNeurons = exported.neurons
     .filter((n) => n.type === "hidden" || n.type === "output")
-    .sort((a, b) => a.id! - b.id!);
+    .sort((a, b) => (a as { id: number }).id - (b as { id: number }).id);
 
   for (const neuron of relevantNeurons) {
     sigParts.push(
-      `n:${neuron.id}:${neuron.squash}:${formatWeight(neuron.bias)}`,
+      `n:${(neuron as { id: number }).id}:${neuron.squash}:${
+        formatWeight(neuron.bias)
+      }`,
     );
   }
 
   // Include synapse signatures (from->to, weight exponent)
   // Sort for determinism
   const sortedSynapses = [...exported.synapses].sort((a, b) => {
-    const keyA = `${a.fromId}->${a.toId}`;
-    const keyB = `${b.fromId}->${b.toId}`;
+    const keyA = `${(a as { fromId: number }).fromId}->${
+      (a as { toId: number }).toId
+    }`;
+    const keyB = `${(b as { fromId: number }).fromId}->${
+      (b as { toId: number }).toId
+    }`;
     return keyA.localeCompare(keyB);
   });
 
   for (const synapse of sortedSynapses) {
     sigParts.push(
-      `s:${synapse.fromId}->${synapse.toId}:${formatWeight(synapse.weight)}`,
+      `s:${(synapse as { fromId: number }).fromId}->${
+        (synapse as { toId: number }).toId
+      }:${formatWeight(synapse.weight)}`,
     );
   }
 

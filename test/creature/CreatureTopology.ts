@@ -32,6 +32,7 @@ function makeCaches(): TopologyCaches {
     connectionSet: null,
     availableConnectionsCache: null,
     hiddenNeuronIds: null,
+    hiddenNeuronWireKeys: null,
     inwardCacheMissCount: 0,
   };
 }

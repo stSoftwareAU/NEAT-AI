@@ -15,6 +15,7 @@ export type TopologyErrorReason =
   | "INVALID_STATE"
   | "DUPLICATE_UUID"
   | "MISSING_NEURON"
+  | "MISSING_NEURON_UUID"
   | "SORT_FAILURE"
   | "EXCESSIVE_ERRORS";
 

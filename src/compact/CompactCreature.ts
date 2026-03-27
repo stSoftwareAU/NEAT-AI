@@ -29,6 +29,7 @@ import { assertValidSynapseReferences } from "../architecture/AssertValidSynapse
 import { mergeParallelIdentityBridges } from "./ParallelIdentityMerge.ts";
 import { mergeParallelBridges } from "./ParallelBridgeMerge.ts";
 import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 
 /**
  * Creates a shallow clone of a CreatureExport, copying neurons and synapses
@@ -46,9 +47,10 @@ function cloneCreatureExport(source: CreatureExport): CreatureExport {
   const neurons: NeuronExport[] = source.neurons.map((n) => {
     const cloned: NeuronExport = {
       type: n.type,
-      id: n.id,
       bias: n.bias,
     };
+    if (n.id !== undefined) (cloned as { id?: number }).id = n.id;
+    if (n.uuid !== undefined) (cloned as { uuid?: string }).uuid = n.uuid;
     if (n.squash !== undefined) cloned.squash = n.squash;
     if (n.tags !== undefined) {
       cloned.tags = [...n.tags] as TagInterface[];
@@ -59,10 +61,14 @@ function cloneCreatureExport(source: CreatureExport): CreatureExport {
   // Clone synapses with shallow copy of each synapse object
   const synapses: SynapseExport[] = source.synapses.map((s) => {
     const cloned: SynapseExport = {
-      fromId: s.fromId,
-      toId: s.toId,
       weight: s.weight,
     };
+    if (s.fromId !== undefined) {
+      (cloned as { fromId?: number }).fromId = s.fromId;
+    }
+    if (s.toId !== undefined) (cloned as { toId?: number }).toId = s.toId;
+    if (s.fromUUID !== undefined) cloned.fromUUID = s.fromUUID;
+    if (s.toUUID !== undefined) cloned.toUUID = s.toUUID;
     if (s.type !== undefined) cloned.type = s.type;
     if (s.tags !== undefined) {
       cloned.tags = [...s.tags] as TagInterface[];
@@ -109,6 +115,8 @@ export function compactCreature(
   creature.DEBUG = false;
   const startExport = creature.exportJSON();
   creature.DEBUG = holdDebug;
+  // Public export omits integer ids; compaction logic expects fromId/toId on synapses.
+  normaliseCreatureExport(startExport);
 
   // Issue #1015: Use direct property copy instead of JSON.parse(JSON.stringify())
   // for better performance with large networks.

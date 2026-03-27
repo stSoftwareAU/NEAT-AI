@@ -3,6 +3,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { createCompatibleFather } from "../../src/breed/Father.ts";
 import type { NeuronExport } from "../../src/architecture/NeuronInterfaces.ts";
 import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+import { stripNumericIdsFromCreatureExport } from "../../src/creature/CreatureSerialization.ts";
 import { Creature } from "../../mod.ts";
 
 function makeFather() {
@@ -106,7 +107,10 @@ Deno.test("CompatibleFather", () => {
 
   const fatherActual = createCompatibleFather(mother, father);
 
-  assertEquals(fatherActual, fatherExpected);
+  assertEquals(
+    fatherActual,
+    stripNumericIdsFromCreatureExport(fatherExpected as CreatureExport),
+  );
 });
 
 Deno.test("Genetic Integrity - No Changes When Neuron UUID Used Elsewhere", () => {
@@ -133,7 +137,10 @@ Deno.test("Genetic Integrity - No Changes When Neuron UUID Used Elsewhere", () =
 
   const fatherActual = createCompatibleFather(mother, father);
 
-  assertEquals(fatherActual, fatherExpected);
+  assertEquals(
+    fatherActual,
+    stripNumericIdsFromCreatureExport(fatherExpected as CreatureExport),
+  );
 });
 
 Deno.test("Genetic Integrity - Multiple Matching Neurons", () => {
@@ -238,8 +245,10 @@ Deno.test("Genetic Integrity - Multiple Matching Neurons", () => {
 
   const fatherActual = createCompatibleFather(mother, father);
 
-  // Ensure that the actual result matches the expected result
-  assertEquals(fatherActual, fatherExpected);
+  assertEquals(
+    fatherActual,
+    stripNumericIdsFromCreatureExport(fatherExpected as CreatureExport),
+  );
 });
 
 Deno.test("Consistent key generation with shuffled synapses", () => {
@@ -298,13 +307,95 @@ Deno.test("Consistent key generation with shuffled synapses", () => {
   // Both results should have the same neuron ids (the mapping should be identical)
   assertEquals(result1.neurons.length, result2.neurons.length);
   for (let i = 0; i < result1.neurons.length; i++) {
-    assertEquals(result1.neurons[i].id, result2.neurons[i].id);
+    assertEquals(result1.neurons[i].uuid, result2.neurons[i].uuid);
   }
 
   // Both should create valid creatures
   Creature.fromJSON(result1).validate();
   Creature.fromJSON(result2).validate();
 });
+
+Deno.test(
+  "createCompatibleFather — UUID alignment is index-independent; parent-only UUIDs are fine",
+  () => {
+    // Mother and father list the same shared hidden in different array positions
+    // and use different runtime ids for that uuid (simulates divergent loads).
+    // Each parent also has a hidden uuid the other lacks — normal for breeding.
+    // Parent-only hidden neurons must differ in connectivity from each other, otherwise
+    // connectivity-key matching would merge them (UUID alignment does not run for
+    // uuids present in only one parent).
+    const mother: CreatureExport = {
+      input: 2,
+      output: 1,
+      forwardOnly: true,
+      neurons: [
+        {
+          type: "hidden",
+          uuid: "only-m",
+          squash: "IDENTITY",
+          bias: 0,
+          id: 9_001_001,
+        },
+        {
+          type: "hidden",
+          uuid: "shared-bridge",
+          squash: "IDENTITY",
+          bias: 0,
+          id: 9_001_002,
+        },
+        { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      ],
+      synapses: [
+        { fromUUID: "input-0", toUUID: "only-m", weight: 0.1 },
+        { fromUUID: "input-1", toUUID: "shared-bridge", weight: 0.2 },
+        { fromUUID: "only-m", toUUID: "output-0", weight: 0.3 },
+        { fromUUID: "shared-bridge", toUUID: "output-0", weight: 0.4 },
+      ],
+    };
+
+    const father: CreatureExport = {
+      input: 2,
+      output: 1,
+      forwardOnly: true,
+      neurons: [
+        {
+          type: "hidden",
+          uuid: "shared-bridge",
+          squash: "IDENTITY",
+          bias: 0,
+          id: 9_002_002,
+        },
+        {
+          type: "hidden",
+          uuid: "only-f",
+          squash: "IDENTITY",
+          bias: 0,
+          id: 9_002_003,
+        },
+        { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      ],
+      synapses: [
+        { fromUUID: "input-0", toUUID: "only-f", weight: 0.5 },
+        { fromUUID: "input-1", toUUID: "only-f", weight: 0.55 },
+        { fromUUID: "input-1", toUUID: "shared-bridge", weight: 0.6 },
+        { fromUUID: "only-f", toUUID: "output-0", weight: 0.7 },
+        { fromUUID: "shared-bridge", toUUID: "output-0", weight: 0.8 },
+      ],
+    };
+
+    const adjusted = createCompatibleFather(mother, father);
+    Creature.fromJSON(adjusted).validate();
+
+    const uuids = new Set(
+      adjusted.neurons
+        .filter((n) => n.type === "hidden")
+        .map((n) => n.uuid),
+    );
+    assertEquals(uuids.has("shared-bridge"), true);
+    assertEquals(uuids.has("only-f"), true);
+    assertEquals(uuids.has("only-m"), false);
+  },
+);
 
 Deno.test("Genetic Integrity - No Matching Neurons", () => {
   const father = makeFather();

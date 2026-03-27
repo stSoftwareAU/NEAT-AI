@@ -2,7 +2,7 @@ import { addTag, getTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { CreatureUtil, Upgrade } from "../../mod.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import { nextNeuronId, outputNeuronId } from "../architecture/NeuronId.ts";
-import { Creature } from "../Creature.ts";
+import type { Creature } from "../Creature.ts";
 import { CrisprError } from "../errors/CrisprError.ts";
 import type { ValidationError } from "../errors/ValidationError.ts";
 import {
@@ -126,7 +126,9 @@ export class CRISPR {
    * @param creature - The creature instance to apply modifications on.
    */
   constructor(creature: Creature) {
-    this.creature = Creature.fromJSON(creature.exportJSON());
+    // shallowClone preserves runtime neuron ids; public exportJSON omits ids and
+    // would remap ids on re-import, breaking CRISPR DNA fromId/toId resolution.
+    this.creature = creature.shallowClone();
   }
 
   /**
@@ -174,7 +176,7 @@ export class CRISPR {
    * @returns The modified creature.
    */
   private append(dna: CrisprInterface): Creature {
-    const tmpCreature = Creature.fromJSON(this.creature.exportJSON());
+    const tmpCreature = this.creature.shallowClone();
     const UUIDs = new Map<number, number>();
 
     tmpCreature.neurons.forEach((node) => {
@@ -199,6 +201,9 @@ export class CRISPR {
             firstNetworkOutputIndex = indx;
           }
           neuron.type = "hidden";
+          if (neuron.uuid === undefined) {
+            neuron.uuid = crypto.randomUUID();
+          }
           if (neuron.id !== undefined && neuron.id < 0) {
             const uuid = nextNeuronId();
             dna.synapses.forEach((synapse) => {
@@ -296,8 +301,7 @@ export class CRISPR {
    * @returns The modified creature.
    */
   private insert(dna: CrisprInterface): Creature {
-    const exportJSON = this.creature.exportJSON();
-    const tmpCreature = Creature.fromJSON(exportJSON);
+    const tmpCreature = this.creature.shallowClone();
     tmpCreature.synapses = [];
 
     const idMap = new Map<number, number>();
@@ -422,9 +426,11 @@ export class CRISPR {
       }
     });
 
-    exportJSON.synapses.forEach((synapse) => {
-      const fromIndx = idMap.get(synapse.fromId!);
-      const toIndx = idMap.get(synapse.toId!);
+    this.creature.synapses.forEach((synapse) => {
+      const fromId = this.creature.neurons[synapse.from].id;
+      const toId = this.creature.neurons[synapse.to].id;
+      const fromIndx = idMap.get(fromId);
+      const toIndx = idMap.get(toId);
 
       if (fromIndx !== undefined && toIndx !== undefined) {
         if (tmpCreature.getSynapse(fromIndx, toIndx) === null) {

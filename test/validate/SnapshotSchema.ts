@@ -7,8 +7,9 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "../../src/Creature.ts";
+import { exportSnapshotJSON } from "../../src/creature/CreatureSerialization.ts";
 
 // deno-lint-ignore no-explicit-any
 type SchemaObject = Record<string, any>;
@@ -232,26 +233,31 @@ Deno.test("schema - new dual-format export fields match schema", async () => {
   const schema = await loadSchema();
   const legacy = makeLegacyExport();
   const creature = Creature.fromJSON(legacy);
-  const exported = creature.exportJSON();
+  const exported = exportSnapshotJSON(creature);
 
-  // Neurons should have both uuid and id
+  // Public export: stable uuid endpoints only; integer ids are internal.
   const neuronDef = resolveRef(schema, "#/$defs/neuron");
   for (const n of exported.neurons) {
     const nObj = n as unknown as Record<string, unknown>;
     checkFieldsAllowed(nObj, neuronDef, `exported neuron ${n.uuid}`);
     assert(nObj.uuid !== undefined, "Exported neuron must have uuid");
-    assert(nObj.id !== undefined, "Exported neuron must have id");
+    assert(
+      nObj.id === undefined,
+      "Exported neuron must not include internal id",
+    );
   }
 
-  // Synapses should have both UUID and ID fields
   const synapseDef = resolveRef(schema, "#/$defs/synapse");
   for (const s of exported.synapses) {
     const sObj = s as unknown as Record<string, unknown>;
     checkFieldsAllowed(sObj, synapseDef, "exported synapse");
     assert(sObj.fromUUID !== undefined, "Exported synapse must have fromUUID");
     assert(sObj.toUUID !== undefined, "Exported synapse must have toUUID");
-    assert(sObj.fromId !== undefined, "Exported synapse must have fromId");
-    assert(sObj.toId !== undefined, "Exported synapse must have toId");
+    assert(
+      sObj.fromId === undefined,
+      "Exported synapse must not include fromId",
+    );
+    assert(sObj.toId === undefined, "Exported synapse must not include toId");
   }
 });
 

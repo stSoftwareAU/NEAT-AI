@@ -1,13 +1,13 @@
 /**
- * ExportUUID.ts - Tests for uuid/fromUUID/toUUID restoration in exportJSON.
+ * ExportUUID.ts - Tests for stable uuid / fromUUID / toUUID in exportJSON.
  *
- * Issue #2050: Verify that exportJSON output includes backward-compatible
- * UUID string fields alongside integer IDs.
+ * Public exports identify neurons by stable uuid strings only; integer ids are internal.
  */
 
 import { assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "../../src/Creature.ts";
+import { exportSnapshotJSON } from "../../src/creature/CreatureSerialization.ts";
 
 /** Helper: creates a creature from legacy UUID-format JSON. */
 function makeLegacyCreature(): CreatureExport {
@@ -73,7 +73,7 @@ function makeIntegerIdCreature(): CreatureExport {
 Deno.test("exportJSON - neuron includes uuid field", () => {
   const json = makeLegacyCreature();
   const creature = Creature.fromJSON(json);
-  const exported = creature.exportJSON();
+  const exported = exportSnapshotJSON(creature);
 
   for (const neuron of exported.neurons) {
     assertEquals(
@@ -82,9 +82,9 @@ Deno.test("exportJSON - neuron includes uuid field", () => {
       `Neuron of type '${neuron.type}' must have a uuid string field`,
     );
     assertEquals(
-      typeof neuron.id,
-      "number",
-      `Neuron of type '${neuron.type}' must also have an id number field`,
+      neuron.id,
+      undefined,
+      `Neuron export must not include internal id (type '${neuron.type}')`,
     );
   }
 });
@@ -107,7 +107,7 @@ Deno.test("exportJSON - output neuron uuid follows 'output-N' format", () => {
 Deno.test("exportJSON - synapse includes fromUUID and toUUID fields", () => {
   const json = makeLegacyCreature();
   const creature = Creature.fromJSON(json);
-  const exported = creature.exportJSON();
+  const exported = exportSnapshotJSON(creature);
 
   for (const synapse of exported.synapses) {
     assertEquals(
@@ -120,16 +120,8 @@ Deno.test("exportJSON - synapse includes fromUUID and toUUID fields", () => {
       "string",
       "Synapse must have a toUUID string field",
     );
-    assertEquals(
-      typeof synapse.fromId,
-      "number",
-      "Synapse must also have a fromId number field",
-    );
-    assertEquals(
-      typeof synapse.toId,
-      "number",
-      "Synapse must also have a toId number field",
-    );
+    assertEquals(synapse.fromId, undefined);
+    assertEquals(synapse.toId, undefined);
   }
 });
 
@@ -138,17 +130,15 @@ Deno.test("exportJSON - input neuron references use 'input-N' format in synapse 
   const creature = Creature.fromJSON(json);
   const exported = creature.exportJSON();
 
-  // Find synapses that come from input neurons (fromId >= 0 and < input count)
-  const inputSynapses = exported.synapses.filter(
-    (s) => s.fromId !== undefined && s.fromId >= 0 && s.fromId < json.input,
+  const inputSynapses = exported.synapses.filter((s) =>
+    s.fromUUID?.startsWith("input-")
   );
 
   for (const synapse of inputSynapses) {
-    assertEquals(
-      synapse.fromUUID,
-      `input-${synapse.fromId}`,
-      `Input neuron synapse fromUUID should be 'input-${synapse.fromId}'`,
-    );
+    const m = /^input-(\d+)$/.exec(synapse.fromUUID!);
+    assertEquals(m !== null, true);
+    const idx = Number(m![1]);
+    assertEquals(idx >= 0 && idx < json.input, true);
   }
 });
 
@@ -245,19 +235,54 @@ Deno.test("exportJSON - new creature (integer IDs only) generates deterministic 
   const creature = Creature.fromJSON(json);
   const exported = creature.exportJSON();
 
-  // Hidden neuron should get a deterministic uuid
   const hiddenNeuron = exported.neurons.find((n) => n.type === "hidden");
   assertEquals(typeof hiddenNeuron?.uuid, "string");
   assertEquals(
     hiddenNeuron?.uuid,
-    `neuron-${hiddenNeuron?.id}`,
-    "New hidden neuron should use 'neuron-{id}' uuid format",
+    "legacy-neuron-1000042",
+    "Id-only legacy snapshots use stable legacy-neuron-{id} labels",
   );
 
-  // Output neuron should use output-N format
   const outputNeuron = exported.neurons.find((n) => n.type === "output");
   assertEquals(outputNeuron?.uuid, "output-0");
 });
+
+Deno.test("exportJSON - shallowClone preserves hidden and constant uuids", () => {
+  const creature = Creature.fromJSON(makeLegacyCreature());
+  const clone = creature.shallowClone();
+  const u0 = creature.neurons.filter((n) =>
+    n.type === "hidden" || n.type === "constant"
+  )
+    .map((n) => n.uuid);
+  const u1 = clone.neurons.filter((n) =>
+    n.type === "hidden" || n.type === "constant"
+  )
+    .map((n) => n.uuid);
+  assertEquals(u1, u0);
+});
+
+/**
+ * Issue #2055 (#2050): `neuronUuid()` briefly fell back to `neuron-${neuron.id}`,
+ * which tracked the volatile runtime id and broke stable identity across generations.
+ */
+const SYNTHETIC_NEURON_ID_UUID = /^neuron-\d+$/;
+
+Deno.test(
+  "exportJSON - regression #2050: never synthesise hidden/constant uuid from runtime id",
+  () => {
+    const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+    const exported = creature.exportJSON();
+    for (const n of exported.neurons) {
+      if (n.type === "hidden" || n.type === "constant") {
+        assertEquals(
+          SYNTHETIC_NEURON_ID_UUID.test(n.uuid ?? ""),
+          false,
+          `Hidden/constant wire uuid must not be neuron-{id} (got '${n.uuid}')`,
+        );
+      }
+    }
+  },
+);
 
 Deno.test("exportJSON - round-trip preserves uuid through re-export", () => {
   const originalJson = makeLegacyCreature();

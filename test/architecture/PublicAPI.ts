@@ -166,23 +166,25 @@ Deno.test("Public API: Logger API is functional", () => {
 });
 
 Deno.test("Public API: RandomNumberGenerator is functional", () => {
-  const rng: RandomNumberGenerator = getRandomNumberGenerator();
-  assert(typeof rng.random === "function");
-  const val = rng.random();
-  assert(val >= 0 && val < 1, "random() should return [0, 1)");
+  const previous = getRandomNumberGenerator();
+  try {
+    const rng: RandomNumberGenerator = getRandomNumberGenerator();
+    assert(typeof rng.random === "function");
+    const val = rng.random();
+    assert(val >= 0 && val < 1, "random() should return [0, 1)");
 
-  // Seeded RNG is deterministic
-  const seeded1 = createSeededRng(42);
-  const seeded2 = createSeededRng(42);
-  assertEquals(seeded1.random(), seeded2.random());
-  assertEquals(seeded1.seeded, true);
+    // Seeded RNG is deterministic
+    const seeded1 = createSeededRng(42);
+    const seeded2 = createSeededRng(42);
+    assertEquals(seeded1.random(), seeded2.random());
+    assertEquals(seeded1.seeded, true);
 
-  // Unseeded RNG
-  const unseeded = createUnseededRng();
-  assertEquals(unseeded.seeded, false);
-
-  // Restore
-  setRandomNumberGenerator(createUnseededRng());
+    // Unseeded RNG
+    const unseeded = createUnseededRng();
+    assertEquals(unseeded.seeded, false);
+  } finally {
+    setRandomNumberGenerator(previous);
+  }
 });
 
 Deno.test("Public API: Upgrade class is exported", () => {

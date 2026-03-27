@@ -13,10 +13,12 @@ import { getCachedDistance, setCachedDistance } from "./DistanceCache.ts";
  * The compatibility is calculated as the ratio of matching hidden neurons to the
  * total number of hidden neurons in the smaller creature.
  *
- * Issue #1032: Uses cached hidden neuron UUIDs for improved performance.
+ * Issue #1032: Uses cached hidden-neuron wire keys for improved performance.
  * Issue #1293: Uses distance cache for incremental computation. Since creature
  * UUIDs are deterministic hashes of structure, a cached distance remains valid
  * as long as neither creature's structure has changed.
+ * Issue #1958: Compatibility uses stable `neuron.uuid` strings (not runtime ids),
+ * matching pre-integer-id behaviour.
  *
  * @param father - The first creature for compatibility calculation
  * @param mother - The second creature for compatibility calculation
@@ -42,9 +44,9 @@ export function geneticCompatibility(
     }
   }
 
-  // Use cached hidden neuron IDs for improved performance (Issue #1032, #1958)
-  const fatherNeurons = father.getHiddenNeuronIds();
-  const motherNeurons = mother.getHiddenNeuronIds();
+  // Wire-format identity (uuid), not volatile integer `id` (Issue #1958)
+  const fatherNeurons = father.getHiddenNeuronWireKeys();
+  const motherNeurons = mother.getHiddenNeuronWireKeys();
 
   const smallestNeuronSet = fatherNeurons.size < motherNeurons.size
     ? fatherNeurons

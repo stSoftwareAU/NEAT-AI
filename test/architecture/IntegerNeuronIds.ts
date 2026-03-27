@@ -6,7 +6,10 @@
  * with the new integer ID scheme.
  */
 import { assertEquals, assertNotEquals } from "@std/assert";
+import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../src/Creature.ts";
+import { exportSnapshotJSON } from "../../src/creature/CreatureSerialization.ts";
 import {
   inputNeuronId,
   isOutputNeuronId,
@@ -98,44 +101,50 @@ Deno.test("NeuronId utility functions are consistent", () => {
   assertEquals(outputIndexFromId(-3), 2);
 });
 
-Deno.test("Serialisation round-trip preserves integer neuron IDs", () => {
+Deno.test("Serialisation: public export is uuid-only; round-trip preserves wire uuids", () => {
   const creature = new Creature(2, 1, {
     layers: [{ count: 2, squash: "TANH" }],
   });
 
-  const exported = creature.exportJSON();
+  const exported = exportSnapshotJSON(creature);
 
-  // Verify export uses integer IDs
+  // Public snapshot: stable uuid endpoints only (no numeric id in JSON).
   for (const neuron of exported.neurons) {
     assertEquals(
-      typeof neuron.id,
-      "number",
-      "Exported neuron should have numeric id",
+      (neuron as { id?: number }).id,
+      undefined,
+      "Public export omits runtime id",
     );
+    assertEquals(typeof neuron.uuid, "string");
   }
   for (const synapse of exported.synapses) {
-    assertEquals(
-      typeof synapse.fromId,
-      "number",
-      "Synapse fromId should be numeric",
-    );
-    assertEquals(
-      typeof synapse.toId,
-      "number",
-      "Synapse toId should be numeric",
-    );
+    assertEquals((synapse as { fromId?: number }).fromId, undefined);
+    assertEquals((synapse as { toId?: number }).toId, undefined);
   }
 
-  // Round-trip: load back and verify
+  const normalised = structuredClone(exported) as CreatureExport;
+  normaliseCreatureExport(normalised);
+  for (const neuron of normalised.neurons) {
+    assertEquals(typeof (neuron as { id: number }).id, "number");
+  }
+  for (const synapse of normalised.synapses) {
+    assertEquals(typeof synapse.fromId, "number");
+    assertEquals(typeof synapse.toId, "number");
+  }
+
+  // Round-trip: load back — wire uuids match; hidden ids follow deterministicIdFromUuid
   const restored = Creature.fromJSON(exported);
   assertEquals(restored.neurons.length, creature.neurons.length);
 
   for (let i = 0; i < creature.neurons.length; i++) {
-    assertEquals(
-      restored.neurons[i].id,
-      creature.neurons[i].id,
-      `Neuron ${i} ID should survive round-trip`,
-    );
+    const a = creature.neurons[i];
+    const b = restored.neurons[i];
+    assertEquals(a.type, b.type);
+    if (a.type === "input" || a.type === "output") {
+      assertEquals(b.id, a.id, `Neuron ${i} fixed-scheme id should match`);
+    } else {
+      assertEquals(b.uuid, a.uuid, `Neuron ${i} wire uuid should survive`);
+    }
   }
 });
 
@@ -161,7 +170,7 @@ Deno.test("Breeding offspring uses integer neuron IDs", async () => {
   }
 });
 
-Deno.test("Genetic compatibility works with integer IDs", async () => {
+Deno.test("Genetic compatibility: identical structures score 1", async () => {
   const { geneticCompatibility } = await import(
     "../../src/breed/GeneticCompatibility.ts"
   );

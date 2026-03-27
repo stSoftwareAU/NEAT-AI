@@ -57,14 +57,61 @@ function safeAssignProperties(
 }
 
 /**
- * Convert the creature to a JSON export object.
+ * Removes internal integer neuron/synapse ids from a plain export object.
+ * Prefer {@link exportSnapshotJSON} when starting from a {@link Creature}.
+ */
+export function stripNumericIdsFromCreatureExport(
+  json: CreatureExport,
+): CreatureExport {
+  const clone = structuredClone(json) as CreatureExport;
+  for (const n of clone.neurons) {
+    delete (n as { id?: number }).id;
+  }
+  for (const s of clone.synapses) {
+    delete (s as { fromId?: number }).fromId;
+    delete (s as { toId?: number }).toId;
+  }
+  return clone;
+}
+
+/**
+ * Builds canonical export JSON from the live creature graph (no validation).
+ * This is the serialisation hot path used by evolution and training.
+ */
+function buildCreatureExportJSON(creature: Creature): CreatureExport {
+  const builder = new CreatureExportBuilder(creature);
+  const json = builder.build() as CreatureExport;
+  if (json.memetic) {
+    normaliseCreatureExport(json);
+  }
+  return json;
+}
+
+/**
+ * Canonical creature JSON: wire UUIDs plus resolved runtime `id` / `fromId` /
+ * `toId` from {@link CreatureExportBuilder} (single pass). Memetic payloads
+ * still run through {@link normaliseCreatureExport} when present.
+ *
+ * **Hot-path policy (do not regress):** do **not** add unconditional
+ * `creatureValidate` here. Full validation on every export destroys throughput
+ * in evolution/training. Invariants should be enforced where structures are
+ * produced (mutation, breed, discovery) and in tests; use `creature.DEBUG`
+ * to opt into validation on export during development. Invalid graphs for
+ * `validate` unit tests are built in those tests — not via export.
  */
 export function exportJSON(creature: Creature): CreatureExport {
   if (creature.DEBUG) {
     creatureValidate(creature);
   }
-  const builder = new CreatureExportBuilder(creature);
-  return builder.build();
+  return buildCreatureExportJSON(creature);
+}
+
+/**
+ * Wire-only snapshot JSON: same topology as {@link exportJSON} but omits
+ * numeric neuron and synapse ids (stable uuid endpoints only).
+ */
+export function exportSnapshotJSON(creature: Creature): CreatureExport {
+  return stripNumericIdsFromCreatureExport(exportJSON(creature));
 }
 
 /**
@@ -518,9 +565,8 @@ export function shallowClone(
       original.squash,
     );
     neuron.index = i;
-    // Issue #2050: Preserve legacy UUID through cloning
-    if (original.uuid) {
-      neuron.uuid = original.uuid;
+    if (original.type === "hidden" || original.type === "constant") {
+      neuron.uuid = original.uuid ?? neuron.uuid;
     }
     if (original.frozen) {
       neuron.frozen = true;

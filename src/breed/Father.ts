@@ -1,5 +1,7 @@
 import type { Creature } from "../Creature.ts";
+import type { Neuron } from "../architecture/Neuron.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { stripNumericIdsFromCreatureExport } from "../creature/CreatureSerialization.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import {
   isOutputNeuronId,
@@ -31,13 +33,18 @@ interface SynapseMaps {
 }
 
 /**
- * Builds synapse lookup maps from UUID pairs without allocating a sorted copy.
+ * Builds adjacency lists for connectivity fingerprints (issues #448, #1444, #1644).
  *
- * Issue #1444: Consolidated from two duplicate implementations. Instead of
- * spreading all synapses into a new array and sorting globally (O(n log n) +
- * allocation), this builds maps in O(n) and sorts only the individual
- * per-neuron lists. Since each neuron typically has far fewer connections
- * than the total synapse count, this reduces overall work.
+ * **Procedure is unchanged since the pre–Issue #1958 implementation:** the
+ * same O(n) per-synapse insertion and per-list sort, then `buildNeuronKey`.
+ * Only the endpoint type changed: **wire UUID strings** (`Map<string,
+ * string[]>`) before #1958, **runtime integer ids** (`Map<number, number[]>`)
+ * after — see `git show 0926664c^:src/breed/Father.ts` for the last
+ * UUID-string version. `normaliseCreatureExport` must populate `fromId`/`toId`
+ * on exports before key generation.
+ *
+ * Stable UUID alignment in `createCompatibleFather*` runs **before** key
+ * matching; it does not change how keys are computed.
  */
 function buildSynapseMaps(
   synapseCount: number,
@@ -78,7 +85,8 @@ function buildSynapseMaps(
 }
 
 /**
- * Builds a composite key for a hidden neuron based on its connected synapses.
+ * Composite key: `sortedIncomingIds.join("-") + "|" + sortedOutgoingIds.join("-")`.
+ * Same string shape as pre-#1958 when lists held UUID strings instead of ids.
  */
 function buildNeuronKey(
   id: number,
@@ -153,6 +161,73 @@ function generateNeuronKeyMap(
   return keyMap;
 }
 
+/**
+ * Align hidden/constant neurons by stable wire `uuid` before connectivity-key
+ * matching. Same genome on different machines shares uuids but may have
+ * different runtime ids — uuid alignment is authoritative for lineage.
+ */
+function applyStableUuidAlignmentExport(
+  motherNeurons: CreatureExport["neurons"],
+  fatherNeurons: CreatureExport["neurons"],
+  idMapping: Map<number, number>,
+  usedMotherIds: Set<number>,
+  usedFatherIds: Set<number>,
+  fatherIds: Set<number>,
+): void {
+  const motherByUuid = new Map<string, number>();
+  for (const n of motherNeurons) {
+    if (n.type !== "hidden" && n.type !== "constant") continue;
+    const u = n.uuid;
+    if (typeof u === "string" && u.length > 0 && n.id !== undefined) {
+      motherByUuid.set(u, n.id);
+    }
+  }
+  for (const n of fatherNeurons) {
+    if (n.type !== "hidden" && n.type !== "constant") continue;
+    const u = n.uuid;
+    if (typeof u !== "string" || u.length === 0 || n.id === undefined) continue;
+    const motherId = motherByUuid.get(u);
+    if (motherId === undefined) continue;
+    if (fatherIds.has(motherId)) continue;
+    if (usedMotherIds.has(motherId)) continue;
+    if (usedFatherIds.has(n.id)) continue;
+    idMapping.set(n.id, motherId);
+    usedMotherIds.add(motherId);
+    usedFatherIds.add(n.id);
+  }
+}
+
+function applyStableUuidAlignmentCreatures(
+  motherNeurons: Neuron[],
+  fatherNeurons: Neuron[],
+  idMapping: Map<number, number>,
+  usedMotherIds: Set<number>,
+  usedFatherIds: Set<number>,
+  fatherIds: Set<number>,
+): void {
+  const motherByUuid = new Map<string, number>();
+  for (const n of motherNeurons) {
+    if (n.type !== "hidden" && n.type !== "constant") continue;
+    const u = n.uuid;
+    if (typeof u === "string" && u.length > 0) {
+      motherByUuid.set(u, n.id);
+    }
+  }
+  for (const n of fatherNeurons) {
+    if (n.type !== "hidden" && n.type !== "constant") continue;
+    const u = n.uuid;
+    if (typeof u !== "string" || u.length === 0) continue;
+    const motherId = motherByUuid.get(u);
+    if (motherId === undefined) continue;
+    if (fatherIds.has(motherId)) continue;
+    if (usedMotherIds.has(motherId)) continue;
+    if (usedFatherIds.has(n.id)) continue;
+    idMapping.set(n.id, motherId);
+    usedMotherIds.add(motherId);
+    usedFatherIds.add(n.id);
+  }
+}
+
 export function createCompatibleFather(
   mother: CreatureExport,
   father: CreatureExport,
@@ -169,16 +244,24 @@ export function createCompatibleFather(
   // Create a set of all IDs in the father's neurons
   const fatherIds = new Set(father.neurons.map((neuron) => neuron.id!));
 
-  // Optimization: If all father's neurons' IDs are in the mother, return the father as-is
   if (father.neurons.every((neuron) => motherIds.has(neuron.id!))) {
-    return father;
+    return stripNumericIdsFromCreatureExport(structuredClone(father));
   }
+
+  applyStableUuidAlignmentExport(
+    mother.neurons,
+    father.neurons,
+    idMapping,
+    usedMotherIds,
+    usedFatherIds,
+    fatherIds,
+  );
 
   // Generate neuron key maps for both mother and father, using sorted synapses
   const motherKeyMap = generateNeuronKeyMap(mother);
   const fatherKeyMap = generateNeuronKeyMap(father);
 
-  // Step 1: Identify matching neurons by composite key and populate the UUID mapping.
+  // Step 1b: Identify matching neurons by composite key (connectivity fingerprint).
   // Issue #1644: Direct Map lookup O(1) replaces Array.from().filter() O(n) per key.
   motherKeyMap.forEach((motherNeuron, motherKey) => {
     const matchingFatherNeuron = fatherKeyMap.get(motherKey);
@@ -187,7 +270,8 @@ export function createCompatibleFather(
     if (
       matchingFatherNeuron &&
       !fatherIds.has(motherNeuron.id!) &&
-      !usedMotherIds.has(motherNeuron.id!)
+      !usedMotherIds.has(motherNeuron.id!) &&
+      !usedFatherIds.has(matchingFatherNeuron.id!)
     ) {
       idMapping.set(matchingFatherNeuron.id!, motherNeuron.id!);
       usedMotherIds.add(motherNeuron.id!);
@@ -195,14 +279,18 @@ export function createCompatibleFather(
     }
   });
 
-  // Issue #2050: Build ID-to-UUID maps for resolving uuid fields after remapping.
   const motherIdToUuid = new Map<number, string>();
   for (let i = 0; i < mother.input; i++) {
     motherIdToUuid.set(i, `input-${i}`);
   }
   for (const neuron of mother.neurons) {
-    if (neuron.uuid) {
-      motherIdToUuid.set(neuron.id!, neuron.uuid);
+    if (neuron.type === "output") {
+      motherIdToUuid.set(neuron.id!, `output-${outputIndexFromId(neuron.id!)}`);
+    } else if (neuron.type === "hidden" || neuron.type === "constant") {
+      motherIdToUuid.set(
+        neuron.id!,
+        neuron.uuid ?? `legacy-neuron-${neuron.id}`,
+      );
     }
   }
 
@@ -211,8 +299,13 @@ export function createCompatibleFather(
     fatherIdToUuid.set(i, `input-${i}`);
   }
   for (const neuron of father.neurons) {
-    if (neuron.uuid) {
-      fatherIdToUuid.set(neuron.id!, neuron.uuid);
+    if (neuron.type === "output") {
+      fatherIdToUuid.set(neuron.id!, `output-${outputIndexFromId(neuron.id!)}`);
+    } else if (neuron.type === "hidden" || neuron.type === "constant") {
+      fatherIdToUuid.set(
+        neuron.id!,
+        neuron.uuid ?? `legacy-neuron-${neuron.id}`,
+      );
     }
   }
 
@@ -261,7 +354,7 @@ export function createCompatibleFather(
   };
 
   delete adjustedFather.memetic;
-  return adjustedFather;
+  return stripNumericIdsFromCreatureExport(adjustedFather);
 }
 
 /**
@@ -280,7 +373,6 @@ export function createCompatibleFatherFromCreatures(
 ): CreatureExport {
   const idMapping = new Map<number, number>();
   const usedMotherIds = new Set<number>();
-  // usedFatherIds tracking kept for parity with original algorithm
 
   const motherNeurons = mother.neurons;
   const fatherNeurons = father.neurons;
@@ -312,23 +404,33 @@ export function createCompatibleFatherFromCreatures(
     return father.exportJSON();
   }
 
+  const usedFatherIds = new Set<number>();
+  applyStableUuidAlignmentCreatures(
+    motherNeurons,
+    fatherNeurons,
+    idMapping,
+    usedMotherIds,
+    usedFatherIds,
+    fatherIds,
+  );
+
   // Generate neuron key maps for both mother and father, using Creature objects directly
   const motherKeyMap = generateNeuronKeyMapFromCreature(mother);
   const fatherKeyMap = generateNeuronKeyMapFromCreature(father);
 
-  // Step 1: Identify matching neurons by composite key and populate the UUID mapping.
-  // Issue #1644: Direct Map lookup O(1) replaces Array.from().filter() O(n) per key.
+  // Connectivity-key matching for neurons not aligned by stable uuid above.
   motherKeyMap.forEach((motherNeuron, motherKey) => {
     const matchingFatherNeuron = fatherKeyMap.get(motherKey);
 
-    // Only map IDs that are not already present in the father and have not been used
     if (
       matchingFatherNeuron &&
       !fatherIds.has(motherNeuron.id) &&
-      !usedMotherIds.has(motherNeuron.id)
+      !usedMotherIds.has(motherNeuron.id) &&
+      !usedFatherIds.has(matchingFatherNeuron.id)
     ) {
       idMapping.set(matchingFatherNeuron.id, motherNeuron.id);
       usedMotherIds.add(motherNeuron.id);
+      usedFatherIds.add(matchingFatherNeuron.id);
     }
   });
 
@@ -368,14 +470,13 @@ export function createCompatibleFatherFromCreatures(
     } else if (isOutputNeuronId(newId)) {
       uuid = `output-${outputIndexFromId(newId)}`;
     } else {
-      uuid = neuron.uuid ?? `neuron-${newId}`;
+      uuid = neuron.uuid ?? neuronUuid(neuron);
     }
     combinedIdToUuid.set(newId, uuid);
 
     const exportNeuron: NeuronExport = {
       type: neuron.type as "hidden" | "output" | "constant",
       uuid: uuid,
-      id: newId,
       bias: neuron.bias,
     };
     if (neuron.squash) {
@@ -400,9 +501,7 @@ export function createCompatibleFatherFromCreatures(
 
     const exportSynapse: CreatureExport["synapses"][0] = {
       fromUUID: combinedIdToUuid.get(updatedFromId),
-      fromId: updatedFromId,
       toUUID: combinedIdToUuid.get(updatedToId),
-      toId: updatedToId,
       weight: synapse.weight,
     };
     if (synapse.type) {

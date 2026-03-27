@@ -513,9 +513,21 @@ function debugWrite(creature: Creature) {
     Deno.mkdirSync(DIAGNOSTICS_DIR, { recursive: true });
     try {
       creature.DEBUG = false;
+      let payload: unknown;
+      try {
+        payload = creature.exportJSON();
+      } catch (exportErr) {
+        // Invalid or partially corrupted creatures may not serialise; do not
+        // mask the original ValidationError from creatureValidate().
+        payload = {
+          exportFailed: true,
+          name: exportErr instanceof Error ? exportErr.name : "Error",
+          message: String(exportErr),
+        };
+      }
       Deno.writeTextFileSync(
         `${DIAGNOSTICS_DIR}/creatureValidate.json`,
-        JSON.stringify(creature.exportJSON(), null, 1),
+        JSON.stringify(payload, null, 1),
       );
     } finally {
       creature.DEBUG = true;

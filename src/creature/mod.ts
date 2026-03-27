@@ -28,6 +28,7 @@ export {
   getAvailableConnections,
   getConnectionSet,
   getHiddenNeuronIds,
+  getHiddenNeuronWireKeys,
   getSynapse,
   hasConnection,
   inFocus,

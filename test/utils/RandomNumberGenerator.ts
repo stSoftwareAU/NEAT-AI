@@ -192,10 +192,14 @@ Deno.test("SeededRng: choice with single element", () => {
 });
 
 Deno.test("Global RNG: default is unseeded", () => {
-  // Reset to default
-  const rng = createUnseededRng();
-  setRandomNumberGenerator(rng);
-  assertEquals(getRandomNumberGenerator().seeded, false);
+  const previous = getRandomNumberGenerator();
+  try {
+    const rng = createUnseededRng();
+    setRandomNumberGenerator(rng);
+    assertEquals(getRandomNumberGenerator().seeded, false);
+  } finally {
+    setRandomNumberGenerator(previous);
+  }
 });
 
 Deno.test("SeededRng: interleaved operations are reproducible", () => {

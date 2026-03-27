@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { createCompatibleFather } from "../../src/breed/Father.ts";
+import { stripNumericIdsFromCreatureExport } from "../../src/creature/CreatureSerialization.ts";
 import { Creature } from "../../mod.ts";
 
 function loadCreature(name: string): CreatureExport {
@@ -33,10 +34,15 @@ Deno.test("CompatibleFather-1", () => {
 
   const fatherActual = createCompatibleFather(mother, father);
 
-  Creature.fromJSON(fatherActual).validate();
+  // Validate a clone: fromJSON() runs normaliseCreatureExport() which mutates
+  // JSON and re-injects internal integer ids — not part of the public export.
+  Creature.fromJSON(structuredClone(fatherActual)).validate();
 
   delete fatherActual.tags;
-  assertEquals(fatherActual, fatherExpected);
+  assertEquals(
+    fatherActual,
+    stripNumericIdsFromCreatureExport(structuredClone(fatherExpected)),
+  );
 });
 
 Deno.test("CompatibleFather-2", () => {
@@ -46,9 +52,12 @@ Deno.test("CompatibleFather-2", () => {
 
   const fatherActual = createCompatibleFather(mother, father);
 
-  Creature.fromJSON(fatherActual).validate();
+  Creature.fromJSON(structuredClone(fatherActual)).validate();
 
   delete fatherActual.tags;
 
-  assertEquals(fatherActual, fatherExpected);
+  assertEquals(
+    fatherActual,
+    stripNumericIdsFromCreatureExport(structuredClone(fatherExpected)),
+  );
 });

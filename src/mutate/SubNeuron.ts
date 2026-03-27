@@ -3,6 +3,7 @@ import {
   cleanupOrphanedNeurons,
 } from "../compact/CompactUtils.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
@@ -16,6 +17,8 @@ export class SubNeuron extends AbstractMutationOperator {
     // Use the builder directly to avoid validation (creature may be in an intermediate state)
     const builder = new CreatureExportBuilder(this.creature);
     const exportJSON = builder.build();
+    // Builder emits stable uuid endpoints only; populate runtime ids for editing.
+    normaliseCreatureExport(exportJSON);
 
     // Filter to only hidden and constant neurons (removable)
     const removableNeurons = exportJSON.neurons.filter(
