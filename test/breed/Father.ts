@@ -89,12 +89,19 @@ Deno.test("CompatibleFather", () => {
   const motherThreeId = 159393431;
 
   const fatherExpected = JSON.parse(JSON.stringify(fatherForExpected));
-  // Remap neuron id
+  // Remap neuron id and uuid
   fatherExpected.neurons[0].id = motherThreeId;
-  // Remap synapse fromId/toId
+  fatherExpected.neurons[0].uuid = "mother-3";
+  // Remap synapse fromId/toId and fromUUID/toUUID
   fatherExpected.synapses.forEach((synapse: Record<string, unknown>) => {
-    if (synapse.fromId === fatherThreeId) synapse.fromId = motherThreeId;
-    if (synapse.toId === fatherThreeId) synapse.toId = motherThreeId;
+    if (synapse.fromId === fatherThreeId) {
+      synapse.fromId = motherThreeId;
+      synapse.fromUUID = "mother-3";
+    }
+    if (synapse.toId === fatherThreeId) {
+      synapse.toId = motherThreeId;
+      synapse.toUUID = "mother-3";
+    }
   });
 
   const fatherActual = createCompatibleFather(mother, father);
@@ -214,12 +221,19 @@ Deno.test("Genetic Integrity - Multiple Matching Neurons", () => {
   const motherThreeId = 159393431;
 
   const fatherExpected = JSON.parse(JSON.stringify(fatherForExpected));
-  // Remap father-3 → mother-3 in neurons
+  // Remap father-3 → mother-3 in neurons (id and uuid)
   fatherExpected.neurons[0].id = motherThreeId;
-  // Remap synapse fromId/toId
+  fatherExpected.neurons[0].uuid = "mother-3";
+  // Remap synapse fromId/toId and fromUUID/toUUID
   fatherExpected.synapses.forEach((synapse: Record<string, unknown>) => {
-    if (synapse.fromId === fatherThreeId) synapse.fromId = motherThreeId;
-    if (synapse.toId === fatherThreeId) synapse.toId = motherThreeId;
+    if (synapse.fromId === fatherThreeId) {
+      synapse.fromId = motherThreeId;
+      synapse.fromUUID = "mother-3";
+    }
+    if (synapse.toId === fatherThreeId) {
+      synapse.toId = motherThreeId;
+      synapse.toUUID = "mother-3";
+    }
   });
 
   const fatherActual = createCompatibleFather(mother, father);

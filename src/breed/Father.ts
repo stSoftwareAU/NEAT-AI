@@ -1,7 +1,12 @@
 import type { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
+import {
+  isOutputNeuronId,
+  outputIndexFromId,
+} from "../architecture/NeuronId.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
+import { neuronUuid } from "../neuron/NeuronSerialization.ts";
 
 /**
  * Lightweight neuron info needed for compatibility check.
@@ -190,27 +195,61 @@ export function createCompatibleFather(
     }
   });
 
+  // Issue #2050: Build ID-to-UUID maps for resolving uuid fields after remapping.
+  const motherIdToUuid = new Map<number, string>();
+  for (let i = 0; i < mother.input; i++) {
+    motherIdToUuid.set(i, `input-${i}`);
+  }
+  for (const neuron of mother.neurons) {
+    if (neuron.uuid) {
+      motherIdToUuid.set(neuron.id!, neuron.uuid);
+    }
+  }
+
+  const fatherIdToUuid = new Map<number, string>();
+  for (let i = 0; i < father.input; i++) {
+    fatherIdToUuid.set(i, `input-${i}`);
+  }
+  for (const neuron of father.neurons) {
+    if (neuron.uuid) {
+      fatherIdToUuid.set(neuron.id!, neuron.uuid);
+    }
+  }
+
   // Step 2: Apply ID mappings to neurons, maintaining the original order
   const newNeurons = father.neurons.map((fatherNeuron) => {
     const newId = idMapping.get(fatherNeuron.id!);
     if (newId) {
+      // Use the mother's UUID for remapped neurons
+      const newUuid = motherIdToUuid.get(newId);
       return {
         ...fatherNeuron,
         id: newId,
+        uuid: newUuid ?? fatherNeuron.uuid,
       };
     }
     return fatherNeuron;
   });
 
+  // Build combined ID → UUID map for synapse uuid resolution
+  const combinedIdToUuid = new Map<number, string>(fatherIdToUuid);
+  for (const neuron of newNeurons) {
+    if (neuron.uuid) {
+      combinedIdToUuid.set(neuron.id!, neuron.uuid);
+    }
+  }
+
   // Step 3: Apply ID mappings to synapses
   const newSynapses = father.synapses.map((synapse) => {
-    const updatedFromUUID = idMapping.get(synapse.fromId!) ||
+    const updatedFromId = idMapping.get(synapse.fromId!) ??
       synapse.fromId!;
-    const updatedToUUID = idMapping.get(synapse.toId!) || synapse.toId!;
+    const updatedToId = idMapping.get(synapse.toId!) ?? synapse.toId!;
     return {
       ...synapse,
-      fromId: updatedFromUUID,
-      toId: updatedToUUID,
+      fromId: updatedFromId,
+      toId: updatedToId,
+      fromUUID: combinedIdToUuid.get(updatedFromId) ?? synapse.fromUUID,
+      toUUID: combinedIdToUuid.get(updatedToId) ?? synapse.toUUID,
     };
   });
 
@@ -299,14 +338,43 @@ export function createCompatibleFatherFromCreatures(
     fatherIndexToId[i] = fatherNeurons[i].id;
   }
 
+  // Issue #2050: Build ID-to-UUID map for mother neurons
+  const motherIdToUuid = new Map<number, string>();
+  for (let i = 0; i < mother.input; i++) {
+    motherIdToUuid.set(motherNeurons[i].id, `input-${i}`);
+  }
+  for (const neuron of motherNeurons) {
+    if (neuron.type !== "input") {
+      motherIdToUuid.set(neuron.id, neuron.uuid ?? neuronUuid(neuron));
+    }
+  }
+
   // Step 2: Build the exported neurons with UUID mappings applied
+  // Issue #2050: Build a combined ID → UUID map for synapse uuid resolution
+  const combinedIdToUuid = new Map<number, string>();
+  for (let i = 0; i < father.input; i++) {
+    combinedIdToUuid.set(fatherNeurons[i].id, `input-${i}`);
+  }
+
   const newNeurons: NeuronExport[] = [];
   for (const neuron of fatherNeurons) {
     if (neuron.type === "input") continue;
 
     const newId = idMapping.get(neuron.id) || neuron.id;
+    // Issue #2050: Determine uuid - use mother's uuid for remapped neurons
+    let uuid: string;
+    if (idMapping.has(neuron.id)) {
+      uuid = motherIdToUuid.get(newId) ?? neuronUuid(neuron);
+    } else if (isOutputNeuronId(newId)) {
+      uuid = `output-${outputIndexFromId(newId)}`;
+    } else {
+      uuid = neuron.uuid ?? `neuron-${newId}`;
+    }
+    combinedIdToUuid.set(newId, uuid);
+
     const exportNeuron: NeuronExport = {
       type: neuron.type as "hidden" | "output" | "constant",
+      uuid: uuid,
       id: newId,
       bias: neuron.bias,
     };
@@ -327,12 +395,14 @@ export function createCompatibleFatherFromCreatures(
     const fromId = fatherIndexToId[synapse.from];
     const toId = fatherIndexToId[synapse.to];
 
-    const updatedFromUUID = idMapping.get(fromId) || fromId;
-    const updatedToUUID = idMapping.get(toId) || toId;
+    const updatedFromId = idMapping.get(fromId) || fromId;
+    const updatedToId = idMapping.get(toId) || toId;
 
     const exportSynapse: CreatureExport["synapses"][0] = {
-      fromId: updatedFromUUID,
-      toId: updatedToUUID,
+      fromUUID: combinedIdToUuid.get(updatedFromId),
+      fromId: updatedFromId,
+      toUUID: combinedIdToUuid.get(updatedToId),
+      toId: updatedToId,
       weight: synapse.weight,
     };
     if (synapse.type) {
