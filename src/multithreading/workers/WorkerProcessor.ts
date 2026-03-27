@@ -234,9 +234,7 @@ export class WorkerProcessor {
 
       let creature: Creature | null = null;
       try {
-        creature = Creature.fromJSON(JSON.parse(data.evaluate.creature));
-        /* release some memory*/
-        data.evaluate.creature = "";
+        creature = Creature.fromJSON(data.evaluate.creature);
         const result = await creature.evaluateDir(
           this.dataSetDir,
           this.cost,
@@ -269,12 +267,7 @@ export class WorkerProcessor {
     } else if (data.train) {
       let creature: Creature | null = null;
       try {
-        creature = Creature.fromJSON(
-          JSON.parse(data.train.creature),
-          data.debug,
-        );
-        /* release some memory*/
-        data.train.creature = "";
+        creature = Creature.fromJSON(data.train.creature, data.debug);
 
         assert(this.dataSetDir, "No data dir");
         assert(this.cost, "No cost");
@@ -287,31 +280,20 @@ export class WorkerProcessor {
           this.cost,
         );
         creatureValidate(creature);
-        const json = JSON.stringify(creature.exportJSON());
 
-        const response = {
+        // Issue #2047: Pass CreatureExport objects directly instead of
+        // JSON strings — structured clone handles the deep copy.
+        const response: ResponseData = {
           taskID: data.taskID,
           duration: Date.now() - start,
           train: {
             ID: result.ID,
-            creature: json,
+            creature: creature.exportJSON(),
             error: result.error,
-            trace: JSON.stringify(result.trace),
-            compact: result.compact
-              ? JSON.stringify(result.compact)
-              : undefined,
+            trace: result.trace,
+            compact: result.compact,
           },
         };
-
-        // Immediately clear large objects to help GC
-        if (result.trace) {
-          // @ts-ignore - clearing to help GC
-          result.trace = null;
-        }
-        if (result.compact) {
-          // @ts-ignore - clearing to help GC
-          result.compact = null;
-        }
 
         return response;
       } finally {
@@ -332,10 +314,7 @@ export class WorkerProcessor {
     } else if (data.discover) {
       let creature: Creature | null = null;
       try {
-        creature = Creature.fromJSON(
-          JSON.parse(data.discover.creature),
-          data.debug,
-        );
+        creature = Creature.fromJSON(data.discover.creature, data.debug);
 
         assert(this.dataSetDir, "No data dir");
 
@@ -387,12 +366,8 @@ export class WorkerProcessor {
       let offspring: Creature | undefined = undefined;
 
       try {
-        mother = Creature.fromJSON(JSON.parse(data.breed.mother), data.debug);
-        father = Creature.fromJSON(JSON.parse(data.breed.father), data.debug);
-
-        // Release memory from request data
-        data.breed.mother = "";
-        data.breed.father = "";
+        mother = Creature.fromJSON(data.breed.mother, data.debug);
+        father = Creature.fromJSON(data.breed.father, data.debug);
 
         // Import Offspring dynamically to avoid circular dependencies
         const { Offspring } = await import(
@@ -406,12 +381,11 @@ export class WorkerProcessor {
         });
 
         if (offspring) {
-          const offspringJson = JSON.stringify(offspring.exportJSON());
           return {
             taskID: data.taskID,
             duration: Date.now() - start,
             breed: {
-              offspring: offspringJson,
+              offspring: offspring.exportJSON(),
               success: true,
             },
           };

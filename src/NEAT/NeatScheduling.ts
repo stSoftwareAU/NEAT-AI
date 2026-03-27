@@ -239,7 +239,7 @@ export function scheduleTraining(
       );
       trainingImprovement = false;
     }
-    const trainedCreature = Creature.fromJSON(JSON.parse(r.train.creature));
+    const trainedCreature = Creature.fromJSON(r.train.creature);
     trainedCreature.score = calculateScore(
       trainedCreature,
       r.train.error,
@@ -271,7 +271,7 @@ export function scheduleTraining(
         if (untrainedError) {
           addTag(backtrackedCreature, "untrained-error", untrainedError);
         }
-        r.train.backtracked = JSON.stringify(backtrackedCreature);
+        r.train.backtracked = backtrackedCreature;
       }
       if (forward.length > 0) {
         const forwardCreature = forward[0].exportJSON();
@@ -280,7 +280,7 @@ export function scheduleTraining(
         if (untrainedError) {
           addTag(forwardCreature, "untrained-error", untrainedError);
         }
-        r.train.forward = JSON.stringify(forwardCreature);
+        r.train.forward = forwardCreature;
       }
     } else if (trainingImprovement === false) {
       getLogger().warn(
@@ -295,9 +295,7 @@ export function scheduleTraining(
 
     if (neat.config.traceStore) {
       if (r.train.trace) {
-        const traceNetwork = Creature.fromJSON(
-          JSON.parse(r.train.trace),
-        );
+        const traceNetwork = Creature.fromJSON(r.train.trace);
         CreatureUtil.makeUUID(traceNetwork);
         ensureDirSync(neat.config.traceStore);
         Deno.writeTextFileSync(
@@ -321,9 +319,11 @@ export function scheduleTraining(
       duration: 0,
       train: {
         ID: uuid,
-        creature: JSON.stringify(creature.exportJSON()),
+        creature: creature.exportJSON(),
         error: Number.POSITIVE_INFINITY,
-        trace: "",
+        // Placeholder trace for failed training — never consumed because
+        // error is POSITIVE_INFINITY.
+        trace: creature.traceJSON(),
       },
     });
   });
