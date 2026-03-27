@@ -510,8 +510,15 @@ function scanMaxForWeightChange(
   newWeight: number,
 ): MaxScanResult {
   // Issue #1521: Try WASM scan
+  // Issue #2042: Direct loop avoids closure allocation from findIndex()
   const synapses = creature.synapses;
-  const excludeIdx = synapses.findIndex((s) => s.weight === oldWeight);
+  let excludeIdx = -1;
+  for (let i = 0, len = synapses.length; i < len; i++) {
+    if (synapses[i].weight === oldWeight) {
+      excludeIdx = i;
+      break;
+    }
+  }
   if (excludeIdx >= 0) {
     const weights = extractWeights(creature);
     const biases = extractBiases(creature);
@@ -577,10 +584,15 @@ function scanMaxForBiasChange(
   newBias: number,
 ): MaxScanResult {
   // Issue #1521: Try WASM scan
+  // Issue #2042: Direct loop avoids intermediate array from slice().findIndex()
   const neurons = creature.neurons;
-  const biasOffset = neurons.slice(creature.input).findIndex((n) =>
-    n.bias === oldBias
-  );
+  let biasOffset = -1;
+  for (let i = creature.input; i < neurons.length; i++) {
+    if (neurons[i].bias === oldBias) {
+      biasOffset = i - creature.input;
+      break;
+    }
+  }
   if (biasOffset >= 0) {
     const weights = extractWeights(creature);
     const biases = extractBiases(creature);
