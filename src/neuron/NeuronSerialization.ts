@@ -8,7 +8,12 @@
 import { addTags } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
 import { Neuron } from "../architecture/Neuron.ts";
-import { ensureIdAbove, nextNeuronId } from "../architecture/NeuronId.ts";
+import {
+  ensureIdAbove,
+  isOutputNeuronId,
+  nextNeuronId,
+  outputIndexFromId,
+} from "../architecture/NeuronId.ts";
 import type {
   NeuronExport,
   NeuronInternal,
@@ -16,8 +21,22 @@ import type {
 import { TopologyError } from "../errors/TopologyError.ts";
 
 /**
+ * Issue #2050: Generates a UUID string for a neuron.
+ * - Output neurons: "output-N" where N is the output index
+ * - Hidden/constant with stored uuid: the stored uuid
+ * - Hidden/constant without stored uuid: "neuron-{id}"
+ */
+export function neuronUuid(neuron: Neuron): string {
+  if (isOutputNeuronId(neuron.id)) {
+    return `output-${outputIndexFromId(neuron.id)}`;
+  }
+  return neuron.uuid ?? `neuron-${neuron.id}`;
+}
+
+/**
  * Converts the neuron to a JSON export object.
  * Issue #1958: Uses integer neuron IDs instead of UUID strings.
+ * Issue #2050: Also emits uuid string for backward compatibility.
  */
 export function exportJSON(neuron: Neuron): NeuronExport {
   if (neuron.type === "input") {
@@ -25,9 +44,14 @@ export function exportJSON(neuron: Neuron): NeuronExport {
       `Should not be exporting 'input'`,
       "INVALID_NEURON_TYPE",
     );
-  } else if (neuron.type === "constant") {
+  }
+
+  const uuid = neuronUuid(neuron);
+
+  if (neuron.type === "constant") {
     return {
       type: neuron.type,
+      uuid: uuid,
       id: neuron.id,
       bias: neuron.bias,
       frozen: neuron.frozen ? true : undefined,
@@ -36,6 +60,7 @@ export function exportJSON(neuron: Neuron): NeuronExport {
   } else {
     return {
       type: neuron.type,
+      uuid: uuid,
       id: neuron.id,
       bias: neuron.bias,
       squash: neuron.squash,
@@ -122,6 +147,12 @@ export function fromJSON(
     creature,
     json.squash,
   );
+
+  // Issue #2050: Preserve legacy UUID for round-trip fidelity.
+  // Also preserve uuid from re-imported new-format exports.
+  if (typeof json.uuid === "string") {
+    neuron.uuid = json.uuid;
+  }
 
   if (json.frozen) {
     neuron.frozen = true;
