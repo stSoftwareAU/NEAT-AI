@@ -113,31 +113,45 @@ function calculatePenalty(max: number, avg: number): number {
   return penalty;
 }
 
+// Issue #2046: Pooled Float64Array buffers for extraction functions.
+// Grows as needed (never shrinks), returns a subarray view of the required length.
+// Follows the pre-allocated reusable buffer pattern from WasmStandaloneFunctions.ts.
+// IMPORTANT: Returned views must be used immediately (use-then-discard semantics).
+let _weightsPool = new Float64Array(0);
+let _biasesPool = new Float64Array(0);
+
 /**
  * Extracts flat Float64Array of synapse weights from a creature.
  * Issue #1521: Helper for WASM score scan functions.
+ * Issue #2046: Uses pooled buffer to avoid per-call allocations.
  */
 function extractWeights(creature: Creature): Float64Array {
   const synapses = creature.synapses;
-  const weights = new Float64Array(synapses.length);
-  for (let i = 0, len = synapses.length; i < len; i++) {
-    weights[i] = synapses[i].weight;
+  const len = synapses.length;
+  if (_weightsPool.length < len) {
+    _weightsPool = new Float64Array(len);
   }
-  return weights;
+  for (let i = 0; i < len; i++) {
+    _weightsPool[i] = synapses[i].weight;
+  }
+  return _weightsPool.subarray(0, len);
 }
 
 /**
  * Extracts flat Float64Array of non-input neuron biases from a creature.
  * Issue #1521: Helper for WASM score scan functions.
+ * Issue #2046: Uses pooled buffer to avoid per-call allocations.
  */
 function extractBiases(creature: Creature): Float64Array {
   const neurons = creature.neurons;
   const numBiases = neurons.length - creature.input;
-  const biases = new Float64Array(numBiases);
-  for (let i = 0; i < numBiases; i++) {
-    biases[i] = neurons[creature.input + i].bias;
+  if (_biasesPool.length < numBiases) {
+    _biasesPool = new Float64Array(numBiases);
   }
-  return biases;
+  for (let i = 0; i < numBiases; i++) {
+    _biasesPool[i] = neurons[creature.input + i].bias;
+  }
+  return _biasesPool.subarray(0, numBiases);
 }
 
 /**
