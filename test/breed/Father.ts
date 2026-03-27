@@ -321,7 +321,7 @@ Deno.test(
     // Mother and father list the same shared hidden in different array positions
     // and use different runtime ids for that uuid (simulates divergent loads).
     // Each parent also has a hidden uuid the other lacks — normal for breeding.
-    // Parent-only hiddens must differ in connectivity from each other, otherwise
+    // Parent-only hidden neurons must differ in connectivity from each other, otherwise
     // connectivity-key matching would merge them (UUID alignment does not run for
     // uuids present in only one parent).
     const mother: CreatureExport = {
