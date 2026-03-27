@@ -5,23 +5,194 @@
  * Issue #2052: Ensures the JSON schema contract is enforced programmatically
  * so that any future change to exportJSON output that breaks the schema is
  * caught immediately by the test suite.
+ *
+ * Uses a purpose-built validator against the schema definition rather than
+ * an external npm package, keeping dependencies to standard Deno packages.
  */
 
-import { assert, assertEquals } from "@std/assert";
-// deno-lint-ignore no-explicit-any
-const Ajv2020 = (await import("ajv/2020")).default as any;
+import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 
-/** Load and compile the snapshot schema once. */
+/** Load the snapshot schema once. */
 const schemaText = await Deno.readTextFile(
   new URL("../../docs/snapshot-schema.json", import.meta.url),
 );
 const schema = JSON.parse(schemaText);
+
+/** Collected validation errors. */
+type SchemaErrors = string[];
+
+/**
+ * Resolve a `$ref` pointer (e.g. "#/$defs/neuron") to the referenced
+ * sub-schema within the root schema object.
+ */
 // deno-lint-ignore no-explicit-any
-const ajv = new (Ajv2020 as any)({ strict: false });
-// deno-lint-ignore no-explicit-any
-const validate = (ajv as any).compile(schema);
+function resolveRef(ref: string, root: Record<string, any>): any {
+  const parts = ref.replace(/^#\//, "").split("/");
+  // deno-lint-ignore no-explicit-any
+  let current: any = root;
+  for (const part of parts) {
+    current = current[part];
+    if (current === undefined) {
+      throw new Error(`Cannot resolve $ref: ${ref}`);
+    }
+  }
+  return current;
+}
+
+/**
+ * Validate a value against a JSON Schema 2020-12 sub-schema.
+ * Supports: type, required, properties, additionalProperties, items,
+ * enum, minimum, maxItems, $ref, and additionalProperties (map pattern).
+ */
+function validateSchema(
+  // deno-lint-ignore no-explicit-any
+  value: any,
+  // deno-lint-ignore no-explicit-any
+  subSchema: Record<string, any>,
+  path: string,
+  // deno-lint-ignore no-explicit-any
+  root: Record<string, any>,
+  errors: SchemaErrors,
+): void {
+  // Resolve $ref first
+  if (subSchema["$ref"]) {
+    const resolved = resolveRef(subSchema["$ref"], root);
+    validateSchema(value, resolved, path, root, errors);
+    return;
+  }
+
+  // Type check
+  if (subSchema.type) {
+    const expectedType = subSchema.type;
+    if (expectedType === "integer") {
+      if (typeof value !== "number" || !Number.isInteger(value)) {
+        errors.push(
+          `${path}: expected integer, got ${typeof value} (${value})`,
+        );
+        return;
+      }
+    } else if (expectedType === "number") {
+      if (typeof value !== "number") {
+        errors.push(`${path}: expected number, got ${typeof value}`);
+        return;
+      }
+    } else if (expectedType === "string") {
+      if (typeof value !== "string") {
+        errors.push(`${path}: expected string, got ${typeof value}`);
+        return;
+      }
+    } else if (expectedType === "boolean") {
+      if (typeof value !== "boolean") {
+        errors.push(`${path}: expected boolean, got ${typeof value}`);
+        return;
+      }
+    } else if (expectedType === "array") {
+      if (!Array.isArray(value)) {
+        errors.push(`${path}: expected array, got ${typeof value}`);
+        return;
+      }
+    } else if (expectedType === "object") {
+      if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        errors.push(`${path}: expected object, got ${typeof value}`);
+        return;
+      }
+    }
+  }
+
+  // Enum check
+  if (subSchema.enum) {
+    if (!subSchema.enum.includes(value)) {
+      errors.push(
+        `${path}: value '${value}' not in enum [${subSchema.enum.join(", ")}]`,
+      );
+    }
+  }
+
+  // Minimum check
+  if (subSchema.minimum !== undefined && typeof value === "number") {
+    if (value < subSchema.minimum) {
+      errors.push(
+        `${path}: value ${value} is less than minimum ${subSchema.minimum}`,
+      );
+    }
+  }
+
+  // Object validation
+  if (
+    subSchema.type === "object" && typeof value === "object" && value !== null
+  ) {
+    // Required fields
+    if (subSchema.required) {
+      for (const reqField of subSchema.required) {
+        if (!(reqField in value)) {
+          errors.push(`${path}: missing required field '${reqField}'`);
+        }
+      }
+    }
+
+    // Validate defined properties (skip undefined — not present in JSON)
+    if (subSchema.properties) {
+      for (const [key, propSchema] of Object.entries(subSchema.properties)) {
+        if (key in value && value[key] !== undefined) {
+          validateSchema(
+            value[key],
+            // deno-lint-ignore no-explicit-any
+            propSchema as Record<string, any>,
+            `${path}.${key}`,
+            root,
+            errors,
+          );
+        }
+      }
+    }
+
+    // additionalProperties check (skip undefined — not present in JSON)
+    if (subSchema.additionalProperties !== undefined) {
+      const definedKeys = new Set(
+        subSchema.properties ? Object.keys(subSchema.properties) : [],
+      );
+      for (const key of Object.keys(value)) {
+        if (value[key] === undefined) continue;
+        if (!definedKeys.has(key)) {
+          if (subSchema.additionalProperties === false) {
+            errors.push(`${path}: unexpected additional property '${key}'`);
+          } else if (typeof subSchema.additionalProperties === "object") {
+            // Map pattern (e.g. memeticWeights, memeticBiases)
+            validateSchema(
+              value[key],
+              subSchema.additionalProperties,
+              `${path}.${key}`,
+              root,
+              errors,
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // Array validation
+  if (subSchema.type === "array" && Array.isArray(value)) {
+    if (subSchema.maxItems !== undefined && value.length > subSchema.maxItems) {
+      errors.push(
+        `${path}: array length ${value.length} exceeds maxItems ${subSchema.maxItems}`,
+      );
+    }
+    if (subSchema.items) {
+      for (let i = 0; i < value.length; i++) {
+        validateSchema(
+          value[i],
+          subSchema.items,
+          `${path}[${i}]`,
+          root,
+          errors,
+        );
+      }
+    }
+  }
+}
 
 /**
  * Validates a CreatureExport against the JSON schema and asserts structural
@@ -32,11 +203,13 @@ function assertSchemaValid(
   label: string,
 ): void {
   // --- JSON Schema validation ---
-  const valid = validate(exported);
-  assert(
-    valid,
-    `${label}: exportJSON output does not match snapshot-schema.json — ${
-      JSON.stringify(validate.errors, null, 2)
+  const errors: SchemaErrors = [];
+  validateSchema(exported, schema, "$", schema, errors);
+  assertEquals(
+    errors.length,
+    0,
+    `${label}: exportJSON output does not match snapshot-schema.json —\n${
+      errors.join("\n")
     }`,
   );
 
@@ -47,8 +220,9 @@ function assertSchemaValid(
       "string",
       `${label}: neuron of type '${neuron.type}' is missing uuid`,
     );
-    assert(
-      neuron.uuid!.length > 0,
+    assertNotEquals(
+      neuron.uuid!.length,
+      0,
       `${label}: neuron uuid must not be empty`,
     );
   }
