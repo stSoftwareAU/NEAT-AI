@@ -49,6 +49,10 @@
     "memetic": {
       "$ref": "#/$defs/memetic",
       "description": "Optional memetic evolution state tracking weights, biases, and ancestry across generations."
+    },
+    "hyperparameters": {
+      "$ref": "#/$defs/hyperparameters",
+      "description": "Optional per-creature evolvable hyperparameters (Issue #1863). These evolve alongside topology and weights."
     }
   },
   "$defs": {
@@ -67,6 +71,10 @@
           "type": "string",
           "description": "Unique identifier for the neuron. Output neurons use 'output-N' format; hidden/constant neurons use UUIDs or descriptive names."
         },
+        "id": {
+          "type": "integer",
+          "description": "Integer neuron ID (Issue #1958). Input neurons: inputIndex (0, 1, 2, ...). Output neurons: -(outputIndex + 1) (-1, -2, ...). Hidden/constant: positive integer. Optional for backward compatibility with legacy UUID-only data; new exports always include this field."
+        },
         "bias": {
           "type": "number",
           "description": "Bias value added to the neuron's weighted input sum before the activation function is applied."
@@ -74,6 +82,10 @@
         "squash": {
           "type": "string",
           "description": "Activation (squash) function name applied to this neuron (e.g. 'LOGISTIC', 'ReLU6', 'TANH', 'IF', 'GAUSSIAN', 'SELU'). Omitted when using the default activation."
+        },
+        "frozen": {
+          "type": "boolean",
+          "description": "When true, this neuron's bias is frozen and will not be modified by backpropagation or mutation (Issue #1861). Used for transfer learning."
         },
         "tags": {
           "type": "array",
@@ -98,6 +110,14 @@
           "type": "string",
           "description": "UUID of the destination (post-synaptic) neuron."
         },
+        "fromId": {
+          "type": "integer",
+          "description": "Integer ID of the source neuron (Issue #1958). Optional for backward compatibility; new exports always include this field."
+        },
+        "toId": {
+          "type": "integer",
+          "description": "Integer ID of the destination neuron (Issue #1958). Optional for backward compatibility; new exports always include this field."
+        },
         "weight": {
           "type": "number",
           "description": "Connection weight multiplied with the source neuron's output."
@@ -106,6 +126,10 @@
           "type": "string",
           "enum": ["positive", "negative", "condition"],
           "description": "Optional constraint on the synapse: 'positive' clamps weight >= 0, 'negative' clamps weight <= 0, 'condition' marks a conditional input for IF-type neurons."
+        },
+        "frozen": {
+          "type": "boolean",
+          "description": "When true, this synapse's weight is frozen and will not be modified by backpropagation or mutation (Issue #1861). Used for transfer learning."
         },
         "tags": {
           "type": "array",
@@ -135,12 +159,16 @@
     "memeticWeight": {
       "type": "object",
       "description": "A single weight record in the memetic evolution state.",
-      "required": ["toUUID", "weight"],
+      "required": ["weight"],
       "additionalProperties": false,
       "properties": {
         "toUUID": {
           "type": "string",
-          "description": "UUID of the destination neuron for this weight."
+          "description": "UUID of the destination neuron for this weight. Present in legacy exports."
+        },
+        "toId": {
+          "type": "integer",
+          "description": "Integer ID of the destination neuron (Issue #1958). Present in new exports."
         },
         "weight": {
           "type": "number",
@@ -161,11 +189,11 @@
         },
         "weights": {
           "$ref": "#/$defs/memeticWeights",
-          "description": "Weight state at this generation, keyed by source neuron UUID."
+          "description": "Weight state at this generation, keyed by source neuron UUID or integer ID."
         },
         "biases": {
           "$ref": "#/$defs/memeticBiases",
-          "description": "Bias state at this generation, keyed by neuron UUID."
+          "description": "Bias state at this generation, keyed by neuron UUID or integer ID."
         },
         "score": {
           "type": "number",
@@ -175,7 +203,7 @@
     },
     "memeticWeights": {
       "type": "object",
-      "description": "Map of source neuron UUID to an array of weight records.",
+      "description": "Map of source neuron identifier to an array of weight records. Keys may be UUID strings (legacy) or integer ID strings (new format). In JSON, all keys are strings regardless of whether the ID is conceptually numeric.",
       "additionalProperties": {
         "type": "array",
         "items": {
@@ -185,7 +213,7 @@
     },
     "memeticBiases": {
       "type": "object",
-      "description": "Map of neuron UUID to its bias value at a given generation.",
+      "description": "Map of neuron identifier to its bias value at a given generation. Keys may be UUID strings (legacy) or integer ID strings (new format). In JSON, all keys are strings regardless of whether the ID is conceptually numeric.",
       "additionalProperties": {
         "type": "number"
       }
@@ -203,11 +231,11 @@
         },
         "weights": {
           "$ref": "#/$defs/memeticWeights",
-          "description": "Current weight state, keyed by source neuron UUID."
+          "description": "Current weight state, keyed by source neuron UUID or integer ID."
         },
         "biases": {
           "$ref": "#/$defs/memeticBiases",
-          "description": "Current bias state, keyed by neuron UUID."
+          "description": "Current bias state, keyed by neuron UUID or integer ID."
         },
         "score": {
           "type": "number",
@@ -220,6 +248,37 @@
           "items": {
             "$ref": "#/$defs/memeticAncestorSnapshot"
           }
+        }
+      }
+    },
+    "hyperparameters": {
+      "type": "object",
+      "description": "Per-creature evolvable hyperparameters (Issue #1863). These values evolve alongside topology and weights via mutation and crossover.",
+      "additionalProperties": false,
+      "properties": {
+        "learningRate": {
+          "type": "number",
+          "description": "Per-creature learning rate for backpropagation."
+        },
+        "addNeuronRate": {
+          "type": "number",
+          "description": "Per-creature probability of adding a neuron during mutation. Range: [0, 1]."
+        },
+        "addConnectionRate": {
+          "type": "number",
+          "description": "Per-creature probability of adding a connection during mutation. Range: [0, 1]."
+        },
+        "weightPerturbationScale": {
+          "type": "number",
+          "description": "Per-creature weight perturbation magnitude scaling factor."
+        },
+        "l1RegularisationStrength": {
+          "type": "number",
+          "description": "Per-creature L1 regularisation strength for backpropagation."
+        },
+        "l2RegularisationStrength": {
+          "type": "number",
+          "description": "Per-creature L2 regularisation strength for backpropagation."
         }
       }
     }
