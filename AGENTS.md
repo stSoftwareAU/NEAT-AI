@@ -101,8 +101,8 @@ scripts/                # Utility scripts
   boundaries): use **UUID strings only** — `neuron.uuid` for hidden/constant,
   canonical `input-N` / `output-N` in synapse endpoints, and
   `creature.exportSnapshotJSON()` (wire-only; no numeric `id` / `fromId` /
-  `toId`). `creature.exportJSON()` is the canonical export **with** resolved
-  ids for round-trip and internal use. **Genetic compatibility** uses
+  `toId`). `creature.exportJSON()` is the canonical export **with** resolved ids
+  for round-trip and internal use. **Genetic compatibility** uses
   `getHiddenNeuronWireKeys()` (wire labels), not integer ids.
 
 - **Runtime integer `id`** (`src/architecture/NeuronId.ts`): allowed **only

@@ -102,10 +102,8 @@ function main(): void {
         `Neuron[${i}] type mismatch: reference ${gn.type} vs corrupted ${bn.type}`,
       );
     }
-    const oldUuid =
-      typeof bn.uuid === "string" ? bn.uuid : undefined;
-    const newUuid =
-      typeof gn.uuid === "string" ? gn.uuid : undefined;
+    const oldUuid = typeof bn.uuid === "string" ? bn.uuid : undefined;
+    const newUuid = typeof gn.uuid === "string" ? gn.uuid : undefined;
 
     if (gn.type === "hidden" || gn.type === "constant") {
       if (!newUuid) {
