@@ -176,16 +176,16 @@ Deno.test(
     const fatherExport = father.exportJSON();
 
     // Verify both can be reconstructed from their exports
-    const motherRecon = Creature.fromJSON(motherExport);
-    const fatherRecon = Creature.fromJSON(fatherExport);
+    const motherRestored = Creature.fromJSON(motherExport);
+    const fatherRestored = Creature.fromJSON(fatherExport);
 
-    assertEquals(motherRecon.neurons.length, mother.neurons.length);
-    assertEquals(fatherRecon.neurons.length, father.neurons.length);
+    assertEquals(motherRestored.neurons.length, mother.neurons.length);
+    assertEquals(fatherRestored.neurons.length, father.neurons.length);
 
     mother.dispose();
     father.dispose();
-    motherRecon.dispose();
-    fatherRecon.dispose();
+    motherRestored.dispose();
+    fatherRestored.dispose();
   },
 );
 
