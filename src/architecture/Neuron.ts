@@ -76,6 +76,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
   private squashTypeCache?: number;
 
   /**
+   * Issue #2050: Optional UUID string for backward-compatible JSON export.
+   * Preserved from legacy imports; new neurons leave this undefined and
+   * get a deterministic UUID generated at export time.
+   */
+  public uuid?: string;
+
+  /**
    * Issue #1861: When true, this neuron's bias is frozen and will not be
    * modified by backpropagation or mutation.
    */

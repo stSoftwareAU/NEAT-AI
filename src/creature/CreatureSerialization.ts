@@ -518,6 +518,10 @@ export function shallowClone(
       original.squash,
     );
     neuron.index = i;
+    // Issue #2050: Preserve legacy UUID through cloning
+    if (original.uuid) {
+      neuron.uuid = original.uuid;
+    }
     if (original.frozen) {
       neuron.frozen = true;
     }

@@ -5,6 +5,7 @@ import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import type { Creature } from "../Creature.ts";
+import { neuronUuid } from "../neuron/NeuronSerialization.ts";
 
 export class CreatureExportBuilder {
   private readonly creature: Creature;
@@ -34,11 +35,16 @@ export class CreatureExportBuilder {
     };
 
     const idMap = new Map<number, number>();
+    const uuidMap = new Map<number, string>();
     for (let i = neuronsLength; i--;) {
       const neuron = neurons[i];
       idMap.set(i, neuron.id);
-      if (neuron.type === "input") continue;
+      if (neuron.type === "input") {
+        uuidMap.set(i, `input-${i}`);
+        continue;
+      }
 
+      uuidMap.set(i, neuronUuid(neuron));
       const tojson = neuron.exportJSON();
 
       json.neurons[i - input] = tojson;
@@ -47,6 +53,7 @@ export class CreatureExportBuilder {
     for (let i = synapsesLength; i--;) {
       const exportJSON = synapses[i].exportJSON(
         idMap,
+        uuidMap,
       );
 
       json.synapses[i] = exportJSON;
