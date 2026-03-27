@@ -103,7 +103,10 @@ Deno.test("MockWorker: error response for evaluate includes infinity error", asy
   // should trigger an error response
   const response = await sendAndReceive(worker, {
     taskID: 10,
-    evaluate: { creature: "invalid-json", feedbackLoop: false },
+    evaluate: {
+      creature: { input: 0, output: 0, neurons: [], synapses: [] },
+      feedbackLoop: false,
+    },
   });
 
   assertEquals(response.taskID, 10);
@@ -118,7 +121,10 @@ Deno.test("MockWorker: evaluate error response preserves error details", async (
 
   const response = await sendAndReceive(worker, {
     taskID: 20,
-    evaluate: { creature: "invalid-json", feedbackLoop: false },
+    evaluate: {
+      creature: { input: 0, output: 0, neurons: [], synapses: [] },
+      feedbackLoop: false,
+    },
   });
 
   assertEquals(response.taskID, 20);
@@ -140,7 +146,7 @@ Deno.test("MockWorker: train error response preserves error details", async () =
   const response = await sendAndReceive(worker, {
     taskID: 21,
     train: {
-      creature: "invalid-json",
+      creature: { input: 0, output: 0, neurons: [], synapses: [] },
       options: {} as import("../../src/config/TrainOptions.ts").TrainOptions,
     },
   });
@@ -162,7 +168,7 @@ Deno.test("MockWorker: discover error response preserves error details", async (
   const response = await sendAndReceive(worker, {
     taskID: 22,
     discover: {
-      creature: "invalid-json",
+      creature: { input: 0, output: 0, neurons: [], synapses: [] },
       config: {} as import("../../src/config/NeatConfig.ts").NeatConfig,
     },
   });
@@ -183,8 +189,8 @@ Deno.test("MockWorker: error response for breed includes success=false", async (
   const response = await sendAndReceive(worker, {
     taskID: 11,
     breed: {
-      mother: "invalid",
-      father: "invalid",
+      mother: { input: 0, output: 0, neurons: [], synapses: [] },
+      father: { input: 0, output: 0, neurons: [], synapses: [] },
       geneticCompatibilityThreshold: 0.3,
       forwardOnly: false,
     },

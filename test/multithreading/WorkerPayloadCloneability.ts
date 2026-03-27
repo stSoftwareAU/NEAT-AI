@@ -84,12 +84,12 @@ Deno.test("discovery RequestData with sanitised config can be structured-cloned"
   const data: RequestData = {
     taskID: 1,
     discover: {
-      creature: JSON.stringify({
+      creature: {
         neurons: [],
         synapses: [],
         input: 1,
         output: 1,
-      }),
+      },
       config: sanitised,
     },
   };
@@ -110,12 +110,12 @@ Deno.test("discovery RequestData with unsanitised config fails structuredClone",
   const data: RequestData = {
     taskID: 1,
     discover: {
-      creature: JSON.stringify({
+      creature: {
         neurons: [],
         synapses: [],
         input: 1,
         output: 1,
-      }),
+      },
       config: config,
     },
   };
@@ -138,10 +138,12 @@ Deno.test("all non-discover RequestData variants are structured-clone safe", () 
   };
   assertExists(structuredClone(echoData), "echo payload should be cloneable");
 
+  const emptyCreature = { input: 0, output: 0, neurons: [], synapses: [] };
+
   const evaluateData: RequestData = {
     taskID: 2,
     evaluate: {
-      creature: JSON.stringify({ neurons: [], synapses: [] }),
+      creature: emptyCreature,
       feedbackLoop: false,
     },
   };
@@ -153,7 +155,7 @@ Deno.test("all non-discover RequestData variants are structured-clone safe", () 
   const trainData: RequestData = {
     taskID: 3,
     train: {
-      creature: JSON.stringify({ neurons: [], synapses: [] }),
+      creature: emptyCreature,
       options: { targetError: 0.05, iterations: 10 },
     },
   };
@@ -165,8 +167,8 @@ Deno.test("all non-discover RequestData variants are structured-clone safe", () 
   const breedData: RequestData = {
     taskID: 4,
     breed: {
-      mother: JSON.stringify({ neurons: [], synapses: [] }),
-      father: JSON.stringify({ neurons: [], synapses: [] }),
+      mother: emptyCreature,
+      father: emptyCreature,
       geneticCompatibilityThreshold: 0.3,
       forwardOnly: false,
     },
