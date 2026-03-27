@@ -90,15 +90,22 @@ function validateFourX(creature: Creature): void {
   } catch (e) {
     const error = e as ValidationError;
 
-    // Check if this is a forward-only violation that we can attempt to repair.
-    if (
-      error.reason === "SELF_CONNECTION" ||
-      error.reason === "RECURSIVE_SYNAPSE"
-    ) {
+    // Check if this is a repairable validation error.
+    // Structural issues (disconnected neurons) and forward-only violations
+    // (self/recursive connections) can occur after mutation or breeding.
+    // creature.fix() handles both by removing invalid connections/neurons.
+    const repairableReasons: ReadonlySet<string> = new Set([
+      "SELF_CONNECTION",
+      "RECURSIVE_SYNAPSE",
+      "NO_INWARD_CONNECTIONS",
+      "NO_OUTWARD_CONNECTIONS",
+    ]);
+
+    if (error.reason && repairableReasons.has(error.reason)) {
       getLogger().warn(
         `[upgrade] WARNING: 4.x creature (UUID: ${
           creature.uuid ?? "unknown"
-        }) failed forward-only validation: ` +
+        }) failed validation: ` +
           `${error.reason} - ${error.message}. ` +
           `This indicates a bug in our code. Attempting repair...`,
       );
@@ -116,7 +123,7 @@ function validateFourX(creature: Creature): void {
         },
       });
 
-      // Attempt to repair the creature by removing recurrent connections.
+      // Attempt to repair the creature by fixing structural issues.
       try {
         creature.fix({ forwardOnly: true });
         creatureValidate(creature, { forwardOnly: true });
@@ -126,7 +133,7 @@ function validateFourX(creature: Creature): void {
           `[upgrade] Successfully repaired 4.x creature (UUID: ${
             creature.uuid ?? "unknown"
           }). ` +
-            `Please investigate the source of the recurrent connection.`,
+            `Please investigate the source of the ${error.reason} issue.`,
         );
         return;
       } catch (fixError) {
