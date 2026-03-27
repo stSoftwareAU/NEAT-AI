@@ -81,14 +81,12 @@ export class CreatureUtil {
       creature.DEBUG = false;
       const json = creature.exportJSON();
 
-      // Sort neurons and synapses for consistent UUID generation
-      json.neurons.sort((a, b) => a.id! - b.id!);
+      // Sort by stable wire-format uuid (integer ids are not exported)
+      json.neurons.sort((a, b) => (a.uuid ?? "").localeCompare(b.uuid ?? ""));
       json.synapses.sort((a, b) => {
-        if (a.fromId === b.fromId) {
-          return a.toId! - b.toId!;
-        } else {
-          return a.fromId! - b.fromId!;
-        }
+        const fc = (a.fromUUID ?? "").localeCompare(b.fromUUID ?? "");
+        if (fc !== 0) return fc;
+        return (a.toUUID ?? "").localeCompare(b.toUUID ?? "");
       });
 
       // Remove tags for UUID generation consistency
@@ -152,29 +150,25 @@ export class CreatureUtil {
       creature.DEBUG = false;
       const json = creature.exportJSON();
 
-      // Extract topology-only information from neurons (ignoring bias and tags)
       const topologyNeurons = json.neurons.map((n) => ({
-        id: n.id,
+        uuid: n.uuid,
         type: n.type,
         squash: n.squash || "",
       }));
 
-      // Sort neurons by ID for consistent hash generation
-      topologyNeurons.sort((a, b) => a.id! - b.id!);
+      topologyNeurons.sort((a, b) =>
+        (a.uuid ?? "").localeCompare(b.uuid ?? "")
+      );
 
-      // Extract topology-only information from synapses (ignoring weight and tags)
       const topologySynapses = json.synapses.map((s) => ({
-        fromId: s.fromId,
-        toId: s.toId,
+        fromUUID: s.fromUUID,
+        toUUID: s.toUUID,
       }));
 
-      // Sort synapses for consistent hash generation
       topologySynapses.sort((a, b) => {
-        if (a.fromId === b.fromId) {
-          return a.toId! - b.toId!;
-        } else {
-          return a.fromId! - b.fromId!;
-        }
+        const fc = (a.fromUUID ?? "").localeCompare(b.fromUUID ?? "");
+        if (fc !== 0) return fc;
+        return (a.toUUID ?? "").localeCompare(b.toUUID ?? "");
       });
 
       const topologyData = {

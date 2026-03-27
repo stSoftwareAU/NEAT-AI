@@ -1,15 +1,16 @@
 /**
- * NeuronId.ts - Integer-based neuron identity system.
+ * NeuronId.ts — Runtime integer handles for in-memory graph and WASM paths.
  *
- * Issue #1958: Replaces UUID string-based neuron identifiers with integer IDs
- * to eliminate the UUID-to-index mapping overhead that dominates WASM
- * serialisation cost.
+ * Issue #1958: Integer `id` avoids string hashing in hot loops. See AGENTS.md
+ * ("Neuron identity: wire UUID vs runtime integer `id`"): stable lineage and
+ * all public exports use wire UUIDs; use integers here only where benchmarks
+ * justify the extra complexity.
  *
  * ID scheme:
  * - Input neurons: id = inputIndex (0, 1, 2, ...)
  * - Output neurons: id = -(outputIndex + 1) (-1, -2, -3, ...)
- * - Hidden/constant neurons: monotonically increasing positive integer from
- *   a global counter (starting at 1,000,000 to avoid collision with input IDs)
+ * - Hidden/constant neurons: monotonically increasing from a global counter
+ *   (from 1 000 000) to avoid collision with input ids
  */
 
 /**

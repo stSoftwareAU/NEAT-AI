@@ -3,6 +3,7 @@ import {
   cleanupOrphanedNeurons,
 } from "../compact/CompactUtils.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
@@ -16,6 +17,7 @@ export class SubConnection extends AbstractMutationOperator {
     // Use the builder directly to avoid validation (creature may be in an intermediate state)
     const builder = new CreatureExportBuilder(this.creature);
     const exportJSON = builder.build();
+    normaliseCreatureExport(exportJSON);
 
     // List of possible connections that can be removed (forward connections only)
     const possible: { fromId: number; toId: number }[] = [];

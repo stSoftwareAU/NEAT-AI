@@ -34,7 +34,8 @@ Deno.test("exportJSON - hidden neuron includes squash", () => {
   const json = exportJSON(hiddenNeuron);
 
   assertEquals(json.type, "hidden");
-  assertEquals(typeof json.id, "number");
+  assertEquals(json.uuid, "hidden-1");
+  assertEquals(json.id, undefined);
   assertEquals(json.squash, "LOGISTIC");
   assertEquals(json.bias, 0.5);
 });
@@ -45,7 +46,8 @@ Deno.test("exportJSON - constant neuron excludes squash", () => {
   const json = exportJSON(constNeuron);
 
   assertEquals(json.type, "constant");
-  assertEquals(typeof json.id, "number");
+  assertEquals(json.uuid, "const-1");
+  assertEquals(json.id, undefined);
   assertEquals(json.bias, 1);
   assertEquals(json.squash, undefined);
 });

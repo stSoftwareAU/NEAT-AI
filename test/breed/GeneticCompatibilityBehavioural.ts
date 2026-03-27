@@ -89,6 +89,25 @@ Deno.test("GeneticCompatibility: identical hidden neurons yield 1.0", () => {
   assertAlmostEquals(compatibility, 1.0, 0.001);
 });
 
+Deno.test(
+  "GeneticCompatibility: same wire uuids stay 1.0 even if runtime neuron ids differ",
+  () => {
+    const a = createCreatureWithHiddenNeurons(["hidden-1", "hidden-2"]);
+    const b = createCreatureWithHiddenNeurons(["hidden-1", "hidden-2"]);
+
+    for (const n of a.neurons) {
+      if (n.type === "hidden") n.id = 12_345_678;
+    }
+    for (const n of b.neurons) {
+      if (n.type === "hidden") n.id = 87_654_321;
+    }
+    a.clearCache(-1, -1);
+    b.clearCache(-1, -1);
+
+    assertEquals(geneticCompatibility(a, b), 1);
+  },
+);
+
 Deno.test("GeneticCompatibility: completely different hidden neurons yield 0.0", () => {
   const a = createCreatureWithHiddenNeurons(["hidden-a1", "hidden-a2"]);
   const b = createCreatureWithHiddenNeurons(["hidden-b1", "hidden-b2"]);

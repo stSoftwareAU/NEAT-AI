@@ -33,20 +33,18 @@ export interface SynapseInternal extends SynapseCommon {
  */
 export interface SynapseExport extends SynapseCommon {
   /**
-   * Integer ID of the source neuron (Issue #1958).
-   * Optional for backward compatibility with legacy UUID-format data;
-   * new exports always include this field.
+   * Runtime source neuron id. Normalised from `fromUUID` when loading; omitted
+   * from public serialised snapshots.
    */
   fromId?: number;
   /**
-   * Integer ID of the destination neuron (Issue #1958).
-   * Optional for backward compatibility with legacy UUID-format data;
-   * new exports always include this field.
+   * Runtime destination neuron id. Normalised from `toUUID` when loading;
+   * omitted from public serialised snapshots.
    */
   toId?: number;
-  /** @deprecated Legacy UUID string field. Use `fromId` instead. (Issue #1958) */
+  /** Stable wire-format source endpoint (matches neuron `uuid` / `input-N` / `output-N`). */
   fromUUID?: string;
-  /** @deprecated Legacy UUID string field. Use `toId` instead. (Issue #1958) */
+  /** Stable wire-format destination endpoint. */
   toUUID?: string;
 }
 

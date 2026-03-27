@@ -3,13 +3,11 @@ import type { NeuronStateInterface } from "./CreatureState.ts";
 
 interface NeuronAbstract extends TagsInterface {
   /**
-   * Issue #1958: Integer neuron ID replacing UUID strings.
-   * Input neurons: id = inputIndex (0, 1, 2, ...)
-   * Output neurons: id = -(outputIndex + 1) (-1, -2, -3, ...)
-   * Hidden/constant neurons: monotonically increasing positive integer
+   * Runtime integer id (Issue #1958). Omitted from public exports; not stable
+   * across generations.
    */
   id?: number;
-  /** @deprecated Legacy UUID string field. Use `id` instead. (Issue #1958) */
+  /** Stable wire-format identity for hidden/constant neurons (RFC 4122). */
   uuid?: string;
   bias?: number;
   squash?: string;
@@ -30,9 +28,7 @@ export interface NeuronExport extends NeuronAbstract {
   /** The type of neuron - hidden, output, or constant */
   readonly type: "hidden" | "output" | "constant";
   /**
-   * Integer identifier for the neuron (Issue #1958).
-   * Optional for backward compatibility with legacy UUID-format data;
-   * new exports always include this field.
+   * Internal integer identifier (Issue #1958). Omitted from new exports; use `uuid`.
    */
   readonly id?: number;
   /** Bias value for the neuron */

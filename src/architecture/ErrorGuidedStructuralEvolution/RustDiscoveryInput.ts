@@ -5,6 +5,8 @@
  * for recording batches.
  */
 
+import type { CreatureExport } from "../../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../../architecture/NormaliseCreatureExport.ts";
 import { DiscoveryError } from "../../errors/DiscoveryError.ts";
 import { getLogger } from "../../utils/Logger.ts";
 import type {
@@ -13,40 +15,32 @@ import type {
 } from "./RustDiscoveryTypes.ts";
 
 /**
- * Converts a Creature to the Rust format expected by the discovery module.
+ * Converts a creature export to the Rust format expected by the discovery module.
  *
- * @param creature - The creature to convert
- * @returns The creature in Rust format
+ * Public `exportJSON()` omits integer ids; this clones the export and runs
+ * {@link normaliseCreatureExport} so `id` / `fromId` / `toId` match runtime
+ * resolution (same strings as `String(neuron.id)` on a loaded creature).
  */
-export function creatureToRustFormat(creature: {
-  neurons: Array<{
-    id?: number;
-    type: string;
-    squash?: string;
-    bias?: number;
-  }>;
-  synapses: Array<{
-    fromId?: number;
-    toId?: number;
-    weight: number;
-  }>;
-  input: number;
-  output: number;
-}): RustRecordInput["creature"] {
+export function creatureToRustFormat(
+  creature: CreatureExport,
+): RustRecordInput["creature"] {
+  const json = structuredClone(creature) as CreatureExport;
+  normaliseCreatureExport(json);
+
   return {
-    neurons: creature.neurons.map((n) => ({
-      uuid: n.id !== undefined ? String(n.id) : "unknown",
+    neurons: json.neurons.map((n) => ({
+      uuid: String((n as { id?: number }).id ?? "unknown"),
       type: n.type,
       squash: n.squash || "IDENTITY",
       bias: n.bias || 0,
     })),
-    synapses: creature.synapses.map((s) => ({
-      from_uuid: String(s.fromId!),
-      to_uuid: String(s.toId!),
+    synapses: json.synapses.map((s) => ({
+      from_uuid: String((s as { fromId?: number }).fromId ?? "unknown"),
+      to_uuid: String((s as { toId?: number }).toId ?? "unknown"),
       weight: s.weight,
     })),
-    input: creature.input,
-    output: creature.output,
+    input: json.input,
+    output: json.output,
   };
 }
 

@@ -21,22 +21,26 @@ import type {
 import { TopologyError } from "../errors/TopologyError.ts";
 
 /**
- * Issue #2050: Generates a UUID string for a neuron.
- * - Output neurons: "output-N" where N is the output index
- * - Hidden/constant with stored uuid: the stored uuid
- * - Hidden/constant without stored uuid: "neuron-{id}"
+ * UUID string used in exports and synapse endpoints.
+ * - Output neurons: canonical "output-N" (N = output index)
+ * - Hidden/constant: stable `neuron.uuid` (set at creation or loaded from JSON)
  */
 export function neuronUuid(neuron: Neuron): string {
   if (isOutputNeuronId(neuron.id)) {
     return `output-${outputIndexFromId(neuron.id)}`;
   }
-  return neuron.uuid ?? `neuron-${neuron.id}`;
+  if (neuron.uuid) {
+    return neuron.uuid;
+  }
+  throw new TopologyError(
+    "Hidden or constant neuron is missing a stable uuid",
+    "MISSING_NEURON_UUID",
+  );
 }
 
 /**
  * Converts the neuron to a JSON export object.
- * Issue #1958: Uses integer neuron IDs instead of UUID strings.
- * Issue #2050: Also emits uuid string for backward compatibility.
+ * Wire format uses stable `uuid` only; integer `id` is internal (Issue #1958).
  */
 export function exportJSON(neuron: Neuron): NeuronExport {
   if (neuron.type === "input") {
@@ -52,7 +56,6 @@ export function exportJSON(neuron: Neuron): NeuronExport {
     return {
       type: neuron.type,
       uuid: uuid,
-      id: neuron.id,
       bias: neuron.bias,
       frozen: neuron.frozen ? true : undefined,
       tags: neuron.tags ? [...neuron.tags] : undefined,
@@ -61,7 +64,6 @@ export function exportJSON(neuron: Neuron): NeuronExport {
     return {
       type: neuron.type,
       uuid: uuid,
-      id: neuron.id,
       bias: neuron.bias,
       squash: neuron.squash,
       frozen: neuron.frozen ? true : undefined,
@@ -148,10 +150,15 @@ export function fromJSON(
     json.squash,
   );
 
-  // Issue #2050: Preserve legacy UUID for round-trip fidelity.
-  // Also preserve uuid from re-imported new-format exports.
   if (typeof json.uuid === "string") {
     neuron.uuid = json.uuid;
+  } else if (
+    json.id !== undefined &&
+    (json.type === "hidden" || json.type === "constant")
+  ) {
+    // Legacy snapshots that only stored integer ids: tie a stable label to that id
+    // so the same file always re-imports with the same uuid string.
+    neuron.uuid = `legacy-neuron-${json.id}`;
   }
 
   if (json.frozen) {

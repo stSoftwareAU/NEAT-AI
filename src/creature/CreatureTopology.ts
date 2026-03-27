@@ -21,6 +21,11 @@ export interface TopologyCaches {
   availableConnectionsCache: [number, number][] | null;
   /** Issue #1958: Cached set of hidden neuron integer IDs */
   hiddenNeuronIds: Set<number> | null;
+  /**
+   * Stable wire-format keys for hidden neurons (typically `neuron.uuid`).
+   * Used for genetic compatibility — runtime `id` alone is not a stable gene identity.
+   */
+  hiddenNeuronWireKeys: Set<string> | null;
   inwardCacheMissCount: number;
 }
 
@@ -280,6 +285,27 @@ export function getHiddenNeuronIds(
     }
   }
   return caches.hiddenNeuronIds;
+}
+
+/**
+ * Stable keys for hidden neurons for breeding compatibility (wire `uuid` strings).
+ * Issue #1958: Integer `id` is for runtime speed; gene identity follows `uuid`.
+ */
+export function getHiddenNeuronWireKeys(
+  creature: Creature,
+  caches: TopologyCaches,
+): Set<string> {
+  if (caches.hiddenNeuronWireKeys === null) {
+    caches.hiddenNeuronWireKeys = new Set<string>();
+    for (let i = creature.input, len = creature.neurons.length; i < len; i++) {
+      const neuron = creature.neurons[i];
+      if (neuron.type === "hidden") {
+        const key = neuron.uuid ?? String(neuron.id);
+        caches.hiddenNeuronWireKeys.add(key);
+      }
+    }
+  }
+  return caches.hiddenNeuronWireKeys;
 }
 
 /**

@@ -26,6 +26,7 @@
  * @see {@link module:src/Creature}
  */
 export { Creature } from "./src/Creature.ts";
+export { exportSnapshotJSON } from "./src/creature/CreatureSerialization.ts";
 
 /**
  * Creature Interfaces

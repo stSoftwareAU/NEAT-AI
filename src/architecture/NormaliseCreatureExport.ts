@@ -27,6 +27,18 @@ function deterministicIdFromUuid(uuid: string): number {
   return 1_000_000 + Math.abs(hash % 1_999_000_000);
 }
 
+function isResolvedIds(json: CreatureExport): boolean {
+  for (let i = 0; i < json.synapses.length; i++) {
+    const s = json.synapses[i];
+    if (s.fromId === undefined || s.toId === undefined) return false;
+  }
+  for (let i = 0; i < json.neurons.length; i++) {
+    const n = json.neurons[i];
+    if ((n as { id?: number }).id === undefined) return false;
+  }
+  return true;
+}
+
 /**
  * Ensures every neuron has an `id` field and every synapse has
  * `fromId` / `toId` fields.
@@ -37,6 +49,11 @@ function deterministicIdFromUuid(uuid: string): number {
  * @param json - A CreatureExport that may use legacy UUID fields
  */
 export function normaliseCreatureExport(json: CreatureExport): void {
+  // Round-trip from exportJSON (no memetic): ids already attached in builder — skip.
+  if (!json.memetic && isResolvedIds(json)) {
+    return;
+  }
+
   // Build UUID → integer ID mapping
   const uuidToId = new Map<string, number>();
   // Track incorrect numeric IDs that need remapping (e.g. output neurons

@@ -95,6 +95,34 @@ scripts/                # Utility scripts
 - `deno.json` - Deno configuration, dependencies, lint rules
 - `quality.sh` - Pre-commit quality gate (lint, format, type-check, test)
 
+### Neuron identity: wire UUID vs runtime integer `id` (Issue #1958)
+
+- **Stable identity** (anything that crosses generations, disks, or species
+  boundaries): use **UUID strings only** — `neuron.uuid` for hidden/constant,
+  canonical `input-N` / `output-N` in synapse endpoints, and
+  `creature.exportSnapshotJSON()` (wire-only; no numeric `id` / `fromId` /
+  `toId`). `creature.exportJSON()` is the canonical export **with** resolved
+  ids for round-trip and internal use. **Genetic compatibility** uses
+  `getHiddenNeuronWireKeys()` (wire labels), not integer ids.
+
+- **Runtime integer `id`** (`src/architecture/NeuronId.ts`): allowed **only
+  in-memory** for hot paths (WASM, `Map<number, …>`, internal breeding
+  traversal) where **profiling** shows a material win. Do **not** introduce new
+  integer-keyed surfaces for lineage, export, or user-visible JSON without a
+  benchmark in `bench/` and a short note in the PR.
+
+- **Reference benchmarks** (evidence for keeping internal integer maps):
+  `bench/ParallelBreeding.ts`, `bench/GeneticCompatibilitySetIntersection.ts`,
+  and WASM activation/serialisation paths tied to Issue #1958.
+
+- **Grafting / `createCompatibleFather`**: Hidden and constant neurons are
+  aligned to the mother’s id scheme **by matching stable wire `uuid` first**,
+  then by a connectivity fingerprint (integer neighbour ids) for any remaining
+  neurons. **Cross-machine**: the same saved genome should carry the same uuids;
+  alignment does not depend on neuron array position. When genetic compatibility
+  is below threshold, `editParentByIndex` may still reassign ids by **scan
+  order** — that path is a deliberate fallback for badly mismatched topologies.
+
 ## 📝 Coding Conventions
 
 ### 🌏 Language

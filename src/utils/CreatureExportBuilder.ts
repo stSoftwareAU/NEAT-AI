@@ -45,18 +45,22 @@ export class CreatureExportBuilder {
       }
 
       uuidMap.set(i, neuronUuid(neuron));
-      const tojson = neuron.exportJSON();
+      const tojson = neuron.exportJSON() as NeuronExport & { id: number };
+      tojson.id = neuron.id;
 
       json.neurons[i - input] = tojson;
     }
 
     for (let i = synapsesLength; i--;) {
-      const exportJSON = synapses[i].exportJSON(
-        idMap,
-        uuidMap,
-      );
+      const syn = synapses[i];
+      const synExport = syn.exportJSON(idMap, uuidMap) as SynapseExport & {
+        fromId: number;
+        toId: number;
+      };
+      synExport.fromId = idMap.get(syn.from)!;
+      synExport.toId = idMap.get(syn.to)!;
 
-      json.synapses[i] = exportJSON;
+      json.synapses[i] = synExport;
     }
 
     const memetic = creature.memetic;

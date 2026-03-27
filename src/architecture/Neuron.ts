@@ -76,9 +76,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
   private squashTypeCache?: number;
 
   /**
-   * Issue #2050: Optional UUID string for backward-compatible JSON export.
-   * Preserved from legacy imports; new neurons leave this undefined and
-   * get a deterministic UUID generated at export time.
+   * Stable wire-format identity for hidden/constant neurons (RFC 4122 UUID).
+   * Set in the constructor and preserved through breeding/cloning; loaded from
+   * JSON when present.
    */
   public uuid?: string;
 
@@ -133,6 +133,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
 
     this.creature = creature;
     this.index = -1;
+
+    // Stable wire-format identity: hidden/constant neurons get a random UUID at
+    // birth and keep it across breeding/cloning (Issue #1958 follow-up: integer
+    // `id` is runtime-only and must not define export identity).
+    if (type === "hidden" || type === "constant") {
+      this.uuid = crypto.randomUUID();
+    }
   }
 
   public validate() {

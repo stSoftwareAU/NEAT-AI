@@ -68,13 +68,16 @@ Deno.test("CreativeThinkingClone: shallowClone produces equivalent structure to 
     "Synapse count should match",
   );
 
-  // Verify neuron properties match
+  // Verify neuron properties match (hidden/constant identity is uuid; ids may
+  // differ after JSON round-trip because only uuid is serialised).
   for (let i = 0; i < shallowClone.neurons.length; i++) {
-    assertEquals(
-      shallowClone.neurons[i].id,
-      jsonClone.neurons[i].id,
-      `Neuron ${i} UUID should match`,
-    );
+    const sa = shallowClone.neurons[i];
+    const sb = jsonClone.neurons[i];
+    if (sa.type === "hidden" || sa.type === "constant") {
+      assertEquals(sa.uuid, sb.uuid, `Neuron ${i} stable uuid should match`);
+    } else {
+      assertEquals(sa.id, sb.id, `Neuron ${i} id should match`);
+    }
     assertEquals(
       shallowClone.neurons[i].type,
       jsonClone.neurons[i].type,
