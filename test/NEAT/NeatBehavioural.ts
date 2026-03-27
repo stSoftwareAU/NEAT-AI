@@ -292,7 +292,12 @@ Deno.test("NeatBehavioural: populatePopulation creates correct population size",
 
   try {
     const popSize = 15;
-    const seedCreature = new Creature(3, 2, { layers: [{ count: 4 }] });
+    // 2.x seed: default 0.x is upgraded through upgrade()/tryUpgradeToFour() and
+    // can become 4.x before breed(); validateFourX then rejects broken mutants.
+    const seedCreature = new Creature(3, 2, {
+      layers: [{ count: 4 }],
+      semanticVersion: "2.0.0",
+    });
     const options: NeatOptions = {
       creatures: [seedCreature.exportJSON()],
       populationSize: popSize,
