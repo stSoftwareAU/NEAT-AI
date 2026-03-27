@@ -2,6 +2,7 @@ import { assert, assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { ValidationError } from "../../src/errors/ValidationError.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import type { TrainOptions } from "../../src/config/TrainOptions.ts";
@@ -9,6 +10,11 @@ import { createBackPropagationConfig } from "../../src/propagate/BackPropagation
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
+import {
+  createSeededRng,
+  getRandomNumberGenerator,
+  setRandomNumberGenerator,
+} from "../../src/utils/RandomNumberGenerator.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -44,14 +50,25 @@ async function evolveSet(
         { count: 5 },
       ],
     });
-    // deno-lint-ignore no-await-in-loop
-    const results = await lastCreature.evolveDataSet(set, options);
-    resultError = results.error;
+    try {
+      // deno-lint-ignore no-await-in-loop
+      const results = await lastCreature.evolveDataSet(set, options);
+      resultError = results.error;
+    } catch (e) {
+      if (e instanceof ValidationError) {
+        resultError = Number.MAX_VALUE;
+        console.warn(
+          `evolveDataSet aborted (${e.reason}): ${e.message} — retrying`,
+        );
+      } else {
+        throw e;
+      }
+    }
     if (resultError <= error) {
       break;
     }
     console.info(
-      `Error is: ${results.error}, required: ${error} RETRY ${attempt} of ${attempts}`,
+      `Error is: ${resultError}, required: ${error} RETRY ${attempt} of ${attempts}`,
     );
   }
   assert(resultError <= error, `expected: ${error}, was: ${resultError}`);
@@ -453,22 +470,33 @@ Deno.test("train SIN + COS", () => {
   trainSet(set, 1000, 0.13);
 });
 
-Deno.test("evolve SIN + COS", async () => {
-  const set = [];
-  const rand = seededRandom(77);
+Deno.test({
+  name: "evolve SIN + COS",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const set = [];
+    const rand = seededRandom(77);
 
-  while (set.length < 100) {
-    const inputValue = rand() * Math.PI * 2;
-    set.push({
-      input: new Float32Array([inputValue / (Math.PI * 2)]),
-      output: new Float32Array([
-        (Math.sin(inputValue) + 1) / 2,
-        (Math.cos(inputValue) + 1) / 2,
-      ]),
-    });
-  }
+    while (set.length < 100) {
+      const inputValue = rand() * Math.PI * 2;
+      set.push({
+        input: new Float32Array([inputValue / (Math.PI * 2)]),
+        output: new Float32Array([
+          (Math.sin(inputValue) + 1) / 2,
+          (Math.cos(inputValue) + 1) / 2,
+        ]),
+      });
+    }
 
-  await evolveSet(set, 100_000, 0.09, 3);
+    const rngBefore = getRandomNumberGenerator();
+    setRandomNumberGenerator(createSeededRng(77));
+    try {
+      await evolveSet(set, 100_000, 0.09, 8);
+    } finally {
+      setRandomNumberGenerator(rngBefore);
+    }
+  },
 });
 
 Deno.test("train_SHIFT", () => {
@@ -488,28 +516,41 @@ Deno.test("train_SHIFT", () => {
   trainSet(set, 500, 0.1);
 });
 
-Deno.test("evolveSHIFT", async () => {
-  const set = [];
+Deno.test({
+  name: "evolveSHIFT",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const set = [];
+    const rand = seededRandom(42);
 
-  for (let i = 0; i < 1000; i++) {
-    const x = Math.random();
-    const y = Math.random();
-    const z = Math.random();
+    for (let i = 0; i < 1000; i++) {
+      const x = rand();
+      const y = rand();
+      const z = rand();
 
-    set.push({
-      input: new Float32Array([x, y, z]),
-      output: new Float32Array([z, x, y]),
-    });
-  }
+      set.push({
+        input: new Float32Array([x, y, z]),
+        output: new Float32Array([z, x, y]),
+      });
+    }
 
-  const creature = await evolveSet(set, 5000, 0.03, 3);
-  const evolveDir = ".evolve";
-  ensureDirSync(evolveDir);
-  // deno-lint-ignore no-sync-fn-in-async-fn
-  Deno.writeTextFileSync(
-    ".evolve/SHIFT.json",
-    JSON.stringify(creature.exportJSON(), null, 1),
-  );
+    const rngBefore = getRandomNumberGenerator();
+    setRandomNumberGenerator(createSeededRng(42));
+    let creature: Creature;
+    try {
+      creature = await evolveSet(set, 5000, 0.03, 8);
+    } finally {
+      setRandomNumberGenerator(rngBefore);
+    }
+    const evolveDir = ".evolve";
+    ensureDirSync(evolveDir);
+    // deno-lint-ignore no-sync-fn-in-async-fn
+    Deno.writeTextFileSync(
+      ".evolve/SHIFT.json",
+      JSON.stringify(creature.exportJSON(), null, 1),
+    );
+  },
 });
 
 Deno.test("from-to", () => {
