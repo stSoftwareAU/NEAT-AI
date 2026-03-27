@@ -262,6 +262,16 @@ export function setRandomNumberGenerator(rng: RandomNumberGenerator): void {
 }
 
 /**
+ * Resets the global RNG to a fresh unseeded instance.
+ *
+ * Used by the test preload so each worker starts from a known baseline when
+ * running the suite in parallel.
+ */
+export function resetGlobalRandomNumberGeneratorForTesting(): void {
+  globalRng = new UnseededRng();
+}
+
+/**
  * Creates a deterministic RNG seeded with the given value.
  *
  * Two instances created with the same seed will produce identical sequences.

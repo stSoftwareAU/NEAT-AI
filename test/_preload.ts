@@ -9,6 +9,8 @@
  * the caps so that each worker keeps a bounded working set.
  */
 
+import { resetHiddenNeuronIdCounterForTesting } from "../src/architecture/NeuronId.ts";
+import { resetGlobalRandomNumberGeneratorForTesting } from "../src/utils/RandomNumberGenerator.ts";
 import {
   setMaxCachedWasmCreatureActivations,
 } from "../src/wasm/WasmCreatureActivationLRU.ts";
@@ -22,3 +24,7 @@ setMaxCachedWasmCreatureActivations(16);
 
 // Keep at most 8 topology templates per worker (down from 100).
 setWasmCompilationCacheSize(8);
+
+// Known baseline for globals mutated during tests (RNG, neuron id counter).
+resetGlobalRandomNumberGeneratorForTesting();
+resetHiddenNeuronIdCounterForTesting();

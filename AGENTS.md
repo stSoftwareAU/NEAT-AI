@@ -115,6 +115,13 @@ scripts/                # Utility scripts
   `bench/ParallelBreeding.ts`, `bench/GeneticCompatibilitySetIntersection.ts`,
   and WASM activation/serialisation paths tied to Issue #1958.
 
+- **Serialisation hot path:** `exportJSON` must not run full `creatureValidate`
+  on every call in production — only when `creature.DEBUG` is true.
+  `Creature.fromJSON` / `loadFrom` default to `validate: false` for the same
+  reason. Invariants belong in mutation/breed/discovery and in targeted tests;
+  adding unconditional validation to export/import is a performance regression
+  (see `test/creature/CreatureSerializationPolicy.ts`).
+
 - **Grafting / `createCompatibleFather`**: Hidden and constant neurons are
   aligned to the mother’s id scheme **by matching stable wire `uuid` first**,
   then by a connectivity fingerprint (integer neighbour ids) for any remaining

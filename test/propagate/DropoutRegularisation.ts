@@ -19,6 +19,7 @@ import { initWasmForTests } from "../_initWasm.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 import {
   createSeededRng,
+  getRandomNumberGenerator,
   setRandomNumberGenerator,
 } from "../../src/utils/RandomNumberGenerator.ts";
 
@@ -249,90 +250,101 @@ Deno.test("Dropout config coexists with sparseRatio and L1/L2", () => {
 // ---------------------------------------------------------------------------
 
 Deno.test("Dropout training completes and produces valid outputs", () => {
-  const rng = createSeededRng(42);
-  setRandomNumberGenerator(rng);
+  const previousRng = getRandomNumberGenerator();
+  try {
+    setRandomNumberGenerator(createSeededRng(42));
 
-  const dataSet: DataRecordInterface[] = [];
-  const noiseRng = createSeededRng(99);
+    const dataSet: DataRecordInterface[] = [];
+    const noiseRng = createSeededRng(99);
 
-  // XOR-like patterns with noise to encourage overfitting
-  const patterns = [
-    { input: [0, 0], output: [0] },
-    { input: [0, 1], output: [1] },
-    { input: [1, 0], output: [1] },
-    { input: [1, 1], output: [0] },
-  ];
+    // XOR-like patterns with noise to encourage overfitting
+    const patterns = [
+      { input: [0, 0], output: [0] },
+      { input: [0, 1], output: [1] },
+      { input: [1, 0], output: [1] },
+      { input: [1, 1], output: [0] },
+    ];
 
-  for (let repeat = 0; repeat < 5; repeat++) {
-    for (const p of patterns) {
-      const noise = (noiseRng.random() - 0.5) * 0.1;
-      dataSet.push({
-        input: new Float32Array(
-          p.input.map((v) => v + (noiseRng.random() - 0.5) * 0.05),
-        ),
-        output: new Float32Array([
-          Math.max(0, Math.min(1, p.output[0] + noise)),
-        ]),
-      });
+    for (let repeat = 0; repeat < 5; repeat++) {
+      for (const p of patterns) {
+        const noise = (noiseRng.random() - 0.5) * 0.1;
+        dataSet.push({
+          input: new Float32Array(
+            p.input.map((v) => v + (noiseRng.random() - 0.5) * 0.05),
+          ),
+          output: new Float32Array([
+            Math.max(0, Math.min(1, p.output[0] + noise)),
+          ]),
+        });
+      }
     }
-  }
 
-  // Train WITH dropout
-  const creatureDropout = new Creature(2, 1, {
-    layers: [{ count: 8 }],
-  });
+    // Train WITH dropout
+    const creatureDropout = new Creature(2, 1, {
+      layers: [{ count: 8 }],
+    });
 
-  const dropoutResult = train(creatureDropout, dataSet, {
-    iterations: 10,
-    targetError: 0.001,
-    learningRate: 0.1,
-    learningRateStrategy: "fixed",
-    disableRandomSamples: true,
-    dropoutRate: 0.3,
-  });
+    const dropoutResult = train(creatureDropout, dataSet, {
+      iterations: 10,
+      targetError: 0.001,
+      learningRate: 0.1,
+      learningRateStrategy: "fixed",
+      disableRandomSamples: true,
+      dropoutRate: 0.3,
+    });
 
-  // Should complete training (not crash) and produce finite error
-  assert(Number.isFinite(dropoutResult.error));
+    // Should complete training (not crash) and produce finite error
+    assert(Number.isFinite(dropoutResult.error));
 
-  // Verify inference produces valid outputs after training with dropout
-  for (const p of patterns) {
-    const input = new Float32Array(p.input);
-    const output = creatureDropout.activate(input);
-    assert(Number.isFinite(output[0]), "Dropout creature output is not finite");
+    // Verify inference produces valid outputs after training with dropout
+    for (const p of patterns) {
+      const input = new Float32Array(p.input);
+      const output = creatureDropout.activate(input);
+      assert(
+        Number.isFinite(output[0]),
+        "Dropout creature output is not finite",
+      );
+    }
+  } finally {
+    setRandomNumberGenerator(previousRng);
   }
 });
 
 Deno.test(
   "Inference uses all neurons regardless of training dropout setting",
   () => {
-    const rng = createSeededRng(42);
-    setRandomNumberGenerator(rng);
+    const previousRng = getRandomNumberGenerator();
+    try {
+      setRandomNumberGenerator(createSeededRng(42));
 
-    const creature = new Creature(2, 1, {
-      layers: [{ count: 6 }],
-    });
+      const creature = new Creature(2, 1, {
+        layers: [{ count: 6 }],
+      });
 
-    const dataSet: DataRecordInterface[] = [
-      { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
-      { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
-      { input: new Float32Array([1, 0]), output: new Float32Array([1]) },
-      { input: new Float32Array([1, 1]), output: new Float32Array([0]) },
-    ];
+      const dataSet: DataRecordInterface[] = [
+        { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+        { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
+        { input: new Float32Array([1, 0]), output: new Float32Array([1]) },
+        { input: new Float32Array([1, 1]), output: new Float32Array([0]) },
+      ];
 
-    train(creature, dataSet, {
-      iterations: 5,
-      targetError: 0.01,
-      learningRate: 0.1,
-      learningRateStrategy: "fixed",
-      disableRandomSamples: true,
-      dropoutRate: 0.5,
-    });
+      train(creature, dataSet, {
+        iterations: 5,
+        targetError: 0.01,
+        learningRate: 0.1,
+        learningRateStrategy: "fixed",
+        disableRandomSamples: true,
+        dropoutRate: 0.5,
+      });
 
-    // After training, inference should be deterministic (no dropout applied)
-    const input = new Float32Array([0.5, 0.5]);
-    const result1 = creature.activate(input);
-    const result2 = creature.activate(input);
+      // After training, inference should be deterministic (no dropout applied)
+      const input = new Float32Array([0.5, 0.5]);
+      const result1 = creature.activate(input);
+      const result2 = creature.activate(input);
 
-    assertAlmostEquals(result1[0], result2[0], 1e-9);
+      assertAlmostEquals(result1[0], result2[0], 1e-9);
+    } finally {
+      setRandomNumberGenerator(previousRng);
+    }
   },
 );

@@ -3,6 +3,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
+import { createSeededRng } from "../../src/utils/RandomNumberGenerator.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
@@ -107,9 +108,10 @@ Deno.test(
     const smallKey = `${hiddenBNeuron?.id}->${outputId}:positive`;
 
     // Generate training data with positive condition (input-0 > 0)
+    const dataRng = createSeededRng(18_740);
     const ts: DataRecordInterface[] = [];
     for (let i = 0; i < 50; i++) {
-      const input = [1.0 + Math.random(), 0.5 + Math.random() * 0.5];
+      const input = [1.0 + dataRng.random(), 0.5 + dataRng.random() * 0.5];
       const output = creature.activate(new Float32Array(input));
       // Create a consistent error direction
       ts.push({
@@ -253,12 +255,13 @@ Deno.test("IF: convergence with activation-weighted error distribution", async (
     const creatureA = Creature.fromJSON(creatureJson);
     creatureA.validate();
 
+    const convDataRng = createSeededRng(42_000 + attempts);
     const ts: DataRecordInterface[] = [];
     for (let i = 0; i < 100; i++) {
       const input = [
-        Math.random() * 3 - 1.5,
-        Math.random() * 3 - 1.5,
-        Math.random() * 3 - 1.5,
+        convDataRng.random() * 3 - 1.5,
+        convDataRng.random() * 3 - 1.5,
+        convDataRng.random() * 3 - 1.5,
       ];
       const output = creatureA.activate(new Float32Array(input));
       ts.push({

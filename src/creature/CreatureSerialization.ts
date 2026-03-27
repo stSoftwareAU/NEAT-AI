@@ -75,12 +75,10 @@ export function stripNumericIdsFromCreatureExport(
 }
 
 /**
- * Same JSON shape as {@link exportJSON} but never validates — for diagnostic
- * dumps when the creature may already fail validation.
+ * Builds canonical export JSON from the live creature graph (no validation).
+ * This is the serialisation hot path used by evolution and training.
  */
-export function exportCreatureJSONWithoutValidation(
-  creature: Creature,
-): CreatureExport {
+function buildCreatureExportJSON(creature: Creature): CreatureExport {
   const builder = new CreatureExportBuilder(creature);
   const json = builder.build() as CreatureExport;
   if (json.memetic) {
@@ -93,12 +91,19 @@ export function exportCreatureJSONWithoutValidation(
  * Canonical creature JSON: wire UUIDs plus resolved runtime `id` / `fromId` /
  * `toId` from {@link CreatureExportBuilder} (single pass). Memetic payloads
  * still run through {@link normaliseCreatureExport} when present.
+ *
+ * **Hot-path policy (do not regress):** do **not** add unconditional
+ * `creatureValidate` here. Full validation on every export destroys throughput
+ * in evolution/training. Invariants should be enforced where structures are
+ * produced (mutation, breed, discovery) and in tests; use `creature.DEBUG`
+ * to opt into validation on export during development. Invalid graphs for
+ * `validate` unit tests are built in those tests — not via export.
  */
 export function exportJSON(creature: Creature): CreatureExport {
   if (creature.DEBUG) {
     creatureValidate(creature);
   }
-  return exportCreatureJSONWithoutValidation(creature);
+  return buildCreatureExportJSON(creature);
 }
 
 /**

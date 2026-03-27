@@ -1,6 +1,5 @@
 import { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
-import { exportCreatureJSONWithoutValidation } from "../creature/CreatureSerialization.ts";
 import type { ValidationError } from "../errors/ValidationError.ts";
 import { writeDiagnostics } from "../utils/Diagnostics.ts";
 import { getLogger } from "../utils/Logger.ts";
@@ -107,7 +106,7 @@ function validateFourX(creature: Creature): void {
       writeDiagnostics({
         error,
         prefix: "upgrade-4x-repair",
-        creature: exportCreatureJSONWithoutValidation(creature),
+        creature: creature.exportJSON(),
         context: {
           semanticVersion: creature.semanticVersion,
           uuid: creature.uuid,
@@ -156,7 +155,7 @@ function validateFourX(creature: Creature): void {
     writeDiagnostics({
       error,
       prefix: "upgrade-4x",
-      creature: exportCreatureJSONWithoutValidation(creature),
+      creature: creature.exportJSON(),
       context: {
         semanticVersion: creature.semanticVersion,
         uuid: creature.uuid,

@@ -43,6 +43,16 @@ export function ensureIdAbove(id: number): void {
 }
 
 /**
+ * Resets the hidden-neuron ID counter to its initial value (1_000_000).
+ *
+ * Used by the test preload so parallel workers do not inherit a monotonic
+ * counter advanced by other test files in the same isolate.
+ */
+export function resetHiddenNeuronIdCounterForTesting(): void {
+  _nextId = 1_000_000;
+}
+
+/**
  * Returns the integer ID for an input neuron at the given index.
  *
  * @param inputIndex - The position of the input neuron (0-based)
