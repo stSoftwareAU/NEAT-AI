@@ -31,12 +31,15 @@ import {
 /**
  * Cache entry for valid mutation candidates.
  * Stores both the filtered candidates and pre-computed weight/bias count.
+ * Issue #2045: Also caches non-expansion candidates for large creatures.
  */
 interface MutationCacheEntry {
   /** Filtered mutation methods that are valid for this creature state. */
   candidates: ReadonlyArray<{ name: string }>;
   /** Count of weight/bias mutations in candidates (for weighted selection). */
   weightBiasCount: number;
+  /** Candidates excluding topology expansion mutations (ADD_NODE, ADD_CONN). */
+  nonExpansionCandidates: ReadonlyArray<{ name: string }>;
 }
 
 export class Mutator {
@@ -346,7 +349,12 @@ export class Mutator {
       }
     }
 
-    return { candidates, weightBiasCount };
+    // Issue #2045: Pre-filter non-expansion candidates for large creature path.
+    const nonExpansionCandidates = candidates.filter((c) =>
+      !this.isTopologyExpansionMutation(c.name)
+    );
+
+    return { candidates, weightBiasCount, nonExpansionCandidates };
   }
 
   /**
@@ -410,7 +418,7 @@ export class Mutator {
       this.mutationCache.set(cacheKey, cacheEntry);
     }
 
-    const { candidates, weightBiasCount } = cacheEntry;
+    const { candidates, weightBiasCount, nonExpansionCandidates } = cacheEntry;
 
     if (candidates.length === 0) {
       throw new ValidationError(
@@ -467,13 +475,10 @@ export class Mutator {
       }
     }
 
-    // For large creatures, further filter to exclude topology expansion mutations
-    // unless we explicitly pass the topology weight check above
+    // For large creatures, use cached non-expansion candidates to avoid
+    // topology expansion unless we explicitly passed the topology weight check above.
+    // Issue #2045: Use pre-filtered cache instead of filtering on every call.
     if (neuronCount >= large && largeTopologyWeight < 1.0) {
-      // Build list of non-expansion candidates
-      const nonExpansionCandidates = candidates.filter((c) =>
-        !this.isTopologyExpansionMutation(c.name)
-      );
       if (nonExpansionCandidates.length > 0) {
         return nonExpansionCandidates[
           Math.floor(rng.random() * nonExpansionCandidates.length)
