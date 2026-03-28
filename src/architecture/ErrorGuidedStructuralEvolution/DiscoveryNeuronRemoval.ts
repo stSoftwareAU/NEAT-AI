@@ -5,10 +5,7 @@
 
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
-import {
-  cleanupMemeticForRemovedNeuron,
-  cleanupOrphanedNeurons,
-} from "../../compact/CompactUtils.ts";
+import { cleanupOrphanedNeurons } from "../../compact/CompactUtils.ts";
 import { Creature } from "../../Creature.ts";
 import type { Approach } from "../../NEAT/LogApproach.ts";
 import type { CandidateHarmfulNeuron } from "./DiscoverStructureTypes.ts";
@@ -123,12 +120,10 @@ export function removeHarmfulNeuron(
     "removeHarmfulNeuron after removal",
   );
 
-  // Drop memetic only when it references the removed neuron (same as SubNeuron).
-  cleanupMemeticForRemovedNeuron(simplifiedExport, harmfulNeuronId);
-
   // Clean up any neurons that have become orphaned (no outward connections)
   // This prevents validation failures when neurons that only connected to
   // the removed neuron are left dangling
+  delete simplifiedExport.memetic;
   cleanupOrphanedNeurons(simplifiedExport);
 
   // Integrity check: after orphan cleanup
@@ -162,6 +157,7 @@ export function removeHarmfulNeuron(
       harmfulNeuron.errorMagnitude.toExponential(2)
     }, avg activation: ${averageActivation.toFixed(4)})`;
     addTag(tmpCreature, "Discovery", summary);
+    delete tmpCreature.memetic;
     removeTag(tmpCreature, "approach-logged");
 
     return tmpCreature;
@@ -276,7 +272,8 @@ export function removeLowImpactNeuron(
     "removeLowImpactNeuron after removal",
   );
 
-  cleanupMemeticForRemovedNeuron(simplifiedExport, removalNeuronId);
+  // Drop memetic data after structural removal to avoid stale references.
+  delete simplifiedExport.memetic;
 
   // Clean up any neurons that have become orphaned (no outward connections)
   // This prevents validation failures when neurons that only connected to
@@ -331,6 +328,7 @@ export function removeLowImpactNeuron(
       removalCandidate.totalError.toFixed(4)
     }, impact: ${(removalCandidate.impact * 100).toFixed(2)}%)`;
     addTag(tmpCreature, "Discovery", summary);
+    delete tmpCreature.memetic;
     removeTag(tmpCreature, "approach-logged");
 
     return tmpCreature;
