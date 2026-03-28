@@ -9,19 +9,20 @@ import { assert } from "@std/assert";
 import { blue } from "@std/fmt/colors";
 import { ensureDirSync } from "@std/fs";
 import { addTag, getTag } from "@stsoftware/tags/mod";
-import { Creature } from "@creature";
-import { CreatureUtil } from "@architecture/CreatureUtils.ts";
-import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
-import { isRustDiscoveryEnabled } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
-import { calculate as calculateScore } from "@architecture/Score.ts";
-import { fineTuneImprovement } from "@blackbox/FineTune.ts";
-import type { NeatConfig } from "@config/NeatConfig.ts";
-import type { TrainOptions } from "@config/TrainOptions.ts";
-import { calculateDiscoveryTimeout } from "@discovery/DiscoveryTimeout.ts";
-import type { DiscoveryReplayDirResult } from "@neat/DiscoveryReplayQueue.ts";
-import { getLogger } from "@utils/Logger.ts";
-import type { Neat } from "@neat/Neat.ts";
+import { Creature } from "../Creature.ts";
+import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { CreatureTrace } from "../architecture/CreatureInterfaces.ts";
+import { exportJSONWithRuntimeIds } from "../architecture/PopulateRuntimeIdsFromCreature.ts";
+import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { calculate as calculateScore } from "../architecture/Score.ts";
+import { fineTuneImprovement } from "../blackbox/FineTune.ts";
+import type { NeatConfig } from "../config/NeatConfig.ts";
+import type { TrainOptions } from "../config/TrainOptions.ts";
+import { calculateDiscoveryTimeout } from "../discovery/DiscoveryTimeout.ts";
+import type { DiscoveryReplayDirResult } from "./DiscoveryReplayQueue.ts";
+import { getLogger } from "../utils/Logger.ts";
+import type { Neat } from "./Neat.ts";
 
 /**
  * Schedules structural discovery for a creature on a worker.
@@ -240,7 +241,7 @@ export function scheduleTraining(
       );
       trainingImprovement = false;
     }
-    const trainedCreature = Creature.fromJSON(JSON.parse(r.train.creature));
+    const trainedCreature = Creature.fromJSON(r.train.creature);
     trainedCreature.score = calculateScore(
       trainedCreature,
       r.train.error,
@@ -272,7 +273,7 @@ export function scheduleTraining(
         if (untrainedError) {
           addTag(backtrackedCreature, "untrained-error", untrainedError);
         }
-        r.train.backtracked = JSON.stringify(backtrackedCreature);
+        r.train.backtracked = backtrackedCreature;
       }
       if (forward.length > 0) {
         const forwardCreature = exportJSONWithRuntimeIds(forward[0]);
@@ -281,7 +282,7 @@ export function scheduleTraining(
         if (untrainedError) {
           addTag(forwardCreature, "untrained-error", untrainedError);
         }
-        r.train.forward = JSON.stringify(forwardCreature);
+        r.train.forward = forwardCreature;
       }
     } else if (trainingImprovement === false) {
       getLogger().warn(
@@ -297,7 +298,7 @@ export function scheduleTraining(
     if (neat.config.traceStore) {
       if (r.train.trace) {
         const traceNetwork = Creature.fromJSON(
-          JSON.parse(r.train.trace),
+          r.train.trace,
         );
         CreatureUtil.makeUUID(traceNetwork);
         ensureDirSync(neat.config.traceStore);
@@ -322,9 +323,9 @@ export function scheduleTraining(
       duration: 0,
       train: {
         ID: uuid,
-        creature: JSON.stringify(exportJSONWithRuntimeIds(creature)),
+        creature: exportJSONWithRuntimeIds(creature),
         error: Number.POSITIVE_INFINITY,
-        trace: "",
+        trace: null as unknown as CreatureTrace,
       },
     });
   });
