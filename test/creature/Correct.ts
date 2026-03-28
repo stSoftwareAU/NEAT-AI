@@ -20,10 +20,13 @@ Deno.test("correctExport", () => {
     input: 3,
     output: 1,
   };
-  const json2 = Upgrade.correct(Creature.fromJSON(json).exportJSON(), 5);
+  const json2 = Upgrade.correct(
+    Creature.fromJSON(json).exportInternalJSON(),
+    5,
+  );
   const creature = Creature.fromJSON(json2);
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    creature.exportInternalJSON(),
     createBackPropagationConfig({}),
   );
   for (let p = 0; p < 1000; p++) {

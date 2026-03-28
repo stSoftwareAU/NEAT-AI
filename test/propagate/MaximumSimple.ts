@@ -26,7 +26,7 @@ Deno.test("MAXIMUM activation: single propagate-update cycle reduces error on si
 
   const traceDir = ".trace";
   ensureDirSync(traceDir);
-  const exportJSON = creatureA.exportJSON();
+  const exportJSON = creatureA.exportInternalJSON();
 
   Deno.writeTextFileSync(
     ".trace/A-clean.json",
@@ -57,13 +57,13 @@ Deno.test("MAXIMUM activation: single propagate-update cycle reduces error on si
 
   const errorB = calculateError(creatureB, ts);
 
-  const creatureC = Creature.fromJSON(creatureB.exportJSON());
+  const creatureC = Creature.fromJSON(creatureB.exportInternalJSON());
   const config = createBackPropagationConfig({
     generations: 10,
     learningRate: 0.1,
   });
 
-  const sparseConfig = new SparseConfig(creatureC.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creatureC.exportInternalJSON(), config);
   ts.forEach((item) => {
     creatureC.activateAndTrace(
       new Float32Array(item.input),
@@ -80,11 +80,11 @@ Deno.test("MAXIMUM activation: single propagate-update cycle reduces error on si
 
   creatureC.propagateUpdate(config, sparseConfig);
 
-  const creatureD = Creature.fromJSON(creatureC.exportJSON());
+  const creatureD = Creature.fromJSON(creatureC.exportInternalJSON());
 
   Deno.writeTextFileSync(
     ".trace/D-creature.json",
-    JSON.stringify(creatureD.exportJSON(), null, 1),
+    JSON.stringify(creatureD.exportInternalJSON(), null, 1),
   );
 
   const errorD = calculateError(creatureD, ts);

@@ -30,13 +30,13 @@ Deno.test("TraceAggregateMINIMUM", () => {
   creature.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
   const input = new Float32Array([0.1, 0.2]);
   creature.activate(input);
 
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    creature.exportInternalJSON(),
     createBackPropagationConfig({ sparseRatio: 1 }),
   );
   const aOut = creature.activateAndTrace(input, false, sparseConfig);
@@ -52,7 +52,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
 
   Deno.writeTextFileSync(
     "test/data/.d.json",
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 
@@ -83,13 +83,13 @@ Deno.test("TraceAggregateMAXIMUM", () => {
   creature.validate();
   Deno.writeTextFileSync(
     "test/data/.A.json",
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
   const input = new Float32Array([0.1, 0.2]);
   creature.activate(input);
 
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    creature.exportInternalJSON(),
     createBackPropagationConfig({
       sparseRatio: 1,
     }),
@@ -107,7 +107,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
 
   Deno.writeTextFileSync(
     "test/data/.B.json",
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 
@@ -139,13 +139,13 @@ Deno.test("TraceAggregateIF", () => {
   creature.validate();
   Deno.writeTextFileSync(
     "test/data/.a.json",
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
   const input = new Float32Array([0.1, 0.2]);
   creature.activate(input);
 
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    creature.exportInternalJSON(),
     createBackPropagationConfig({ sparseRatio: 1 }),
   );
 
@@ -162,7 +162,7 @@ Deno.test("TraceAggregateIF", () => {
 
   Deno.writeTextFileSync(
     "test/data/.d.json",
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
   assertAlmostEquals(aOut[0], dOut[0], 0.0001);
 

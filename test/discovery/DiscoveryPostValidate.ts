@@ -12,7 +12,7 @@ Deno.test(
     base.forwardOnly = true;
     base.semanticVersion = "4.0.0";
 
-    const discovered = Creature.fromJSON(base.exportJSON());
+    const discovered = Creature.fromJSON(base.exportInternalJSON());
     discovered.forwardOnly = true;
     discovered.semanticVersion = "4.0.0";
 
@@ -48,7 +48,7 @@ Deno.test(
     base.forwardOnly = true;
     base.semanticVersion = "2.0.0";
 
-    const discovered = Creature.fromJSON(base.exportJSON());
+    const discovered = Creature.fromJSON(base.exportInternalJSON());
     discovered.forwardOnly = true;
     discovered.semanticVersion = "2.0.0";
 
@@ -90,7 +90,7 @@ Deno.test(
 
     // Simulate a discovered creature that lost its semanticVersion during
     // export/import (Australian English: this happens in distributed workflows).
-    const discovered = Creature.fromJSON(base.exportJSON());
+    const discovered = Creature.fromJSON(base.exportInternalJSON());
     discovered.forwardOnly = true;
     discovered.semanticVersion = "2.0.0";
 
@@ -119,7 +119,7 @@ Deno.test(
     base.forwardOnly = false;
     base.semanticVersion = "2.0.0";
 
-    const discovered = Creature.fromJSON(base.exportJSON());
+    const discovered = Creature.fromJSON(base.exportInternalJSON());
     discovered.forwardOnly = false;
     discovered.semanticVersion = "2.0.0";
 

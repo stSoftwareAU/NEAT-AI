@@ -90,7 +90,7 @@ Deno.test("backprop reduces error after bias perturbation on IDENTITY network", 
   const cleanError = calculateError(creature, dataSet);
   assertAlmostEquals(cleanError, 0, 0.0000001);
 
-  const exportJSON = creature.exportJSON();
+  const exportJSON = creature.exportInternalJSON();
 
   // Perturb biases on the exported JSON, then recreate the creature
   exportJSON.neurons.forEach((neuron, indx) => {
@@ -126,7 +126,7 @@ Deno.test("backprop produces minimal change when network nearly matches targets"
   assertAlmostEquals(cleanError, 0, 0.0000001);
 
   // Tiny perturbation — the network should remain close to optimal
-  const exportJSON = creature.exportJSON();
+  const exportJSON = creature.exportInternalJSON();
   exportJSON.neurons.forEach((neuron, indx) => {
     neuron.bias = neuron.bias + (indx % 2 ? 1e-10 : -1e-10);
   });
@@ -147,7 +147,7 @@ Deno.test("backprop produces minimal change when network nearly matches targets"
   });
 
   const sparseConfig = new SparseConfig(
-    nearOptimalCreature.exportJSON(),
+    nearOptimalCreature.exportInternalJSON(),
     config,
   );
   for (const item of dataSet) {

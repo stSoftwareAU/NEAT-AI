@@ -125,7 +125,7 @@ Deno.test(
     creatureValidate(child);
 
     // Should be exportable and re-importable
-    const exported = child.exportJSON();
+    const exported = child.exportInternalJSON();
     const reimported = Creature.fromJSON(exported);
     creatureValidate(reimported);
   },
@@ -135,13 +135,13 @@ Deno.test(
   "editParentByIndex: does not modify original parent",
   () => {
     const parent = createCreatureWithHidden([5020], 2, 1);
-    const parentExportBefore = JSON.stringify(parent.exportJSON());
+    const parentExportBefore = JSON.stringify(parent.exportInternalJSON());
 
     const target = createCreatureWithHidden([6020], 2, 1);
 
     editParentByIndex(parent, target);
 
-    const parentExportAfter = JSON.stringify(parent.exportJSON());
+    const parentExportAfter = JSON.stringify(parent.exportInternalJSON());
     assertEquals(
       parentExportBefore,
       parentExportAfter,
@@ -155,11 +155,11 @@ Deno.test(
   () => {
     const parent = createCreatureWithHidden([5030], 2, 1);
     const target = createCreatureWithHidden([6030], 2, 1);
-    const targetExportBefore = JSON.stringify(target.exportJSON());
+    const targetExportBefore = JSON.stringify(target.exportInternalJSON());
 
     editParentByIndex(parent, target);
 
-    const targetExportAfter = JSON.stringify(target.exportJSON());
+    const targetExportAfter = JSON.stringify(target.exportInternalJSON());
     assertEquals(
       targetExportBefore,
       targetExportAfter,
@@ -180,7 +180,7 @@ Deno.test(
 
     creatureValidate(child);
     // The shared neuron should remain with its original ID
-    const childExport = child.exportJSON();
+    const childExport = child.exportInternalJSON();
     const hiddenNeurons = childExport.neurons.filter((n) =>
       n.type === "hidden"
     );
@@ -200,7 +200,7 @@ Deno.test(
     const target = createCreatureWithHidden([6040], 2, 1);
 
     const child = editParentByIndex(parent, target);
-    const childExport = child.exportJSON();
+    const childExport = child.exportInternalJSON();
 
     // Find the remapped hidden neuron
     const hiddenNeurons = childExport.neurons.filter((n) =>
@@ -240,7 +240,7 @@ Deno.test(
     const target = createCreatureWithHidden([6050], 2, 1);
 
     const child = editParentByIndex(parent, target);
-    const childExport = child.exportJSON();
+    const childExport = child.exportInternalJSON();
 
     // After remapping, synapses should reference the new UUID
     // The target's "target-syn1" should now be "parent-syn1"
@@ -290,7 +290,7 @@ Deno.test(
     const child = editParentByIndex(parent, target);
 
     creatureValidate(child);
-    const childExport = child.exportJSON();
+    const childExport = child.exportInternalJSON();
     const hiddenNeurons = childExport.neurons.filter((n) =>
       n.type === "hidden"
     );
@@ -326,7 +326,7 @@ Deno.test(
     const child = editParentByIndex(parent, target);
 
     creatureValidate(child);
-    const childExport = child.exportJSON();
+    const childExport = child.exportInternalJSON();
     const hiddenIds = childExport.neurons
       .filter((n) => n.type === "hidden")
       .map((n) => n.id);

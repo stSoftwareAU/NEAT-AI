@@ -116,7 +116,7 @@ Deno.test({
      * Create a "crippled" version by changing the squash function of a neuron
      * and adding a synapse to cause random noise.
      */
-    const exportedJSON = targetCreature.exportJSON();
+    const exportedJSON = targetCreature.exportInternalJSON();
     // hidden-3 UUID generates id 1775329648 - find by type and original squash (LeakyReLU)
     const hidden3 = exportedJSON.neurons.find((neuron) =>
       neuron.type === "hidden" && neuron.squash === LeakyReLU.NAME
@@ -170,7 +170,7 @@ Deno.test({
     );
     assert(betterCreature, "Should have discovered a better creature");
     betterCreature.validate();
-    const betterCreatureJSON = betterCreature.exportJSON();
+    const betterCreatureJSON = betterCreature.exportInternalJSON();
 
     const adjustedSquash = betterCreatureJSON.neurons.find((neuron) =>
       neuron.id === hidden3Id

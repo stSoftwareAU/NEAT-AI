@@ -134,7 +134,7 @@ Deno.test(
     const baseError = 0.5;
 
     const computeError = (creature: Creature) => {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
       const synapses = json.synapses;
       const neurons = json.neurons;
 
@@ -265,7 +265,7 @@ Deno.test(
     };
 
     const computeError = (creature: Creature) => {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
       const hasHelpful = json.synapses.some((synapse) =>
         synapse.fromId === 1 &&
         synapse.toId === HIDDEN_1_ID &&
@@ -339,7 +339,7 @@ Deno.test(
     };
 
     const computeError = (creature: Creature) => {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
       const synapses = json.synapses;
       const neurons = json.neurons;
 
@@ -444,7 +444,7 @@ Deno.test(
     };
 
     const computeError = (creature: Creature) => {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
 
       const hasHelpfulSynapse = json.synapses.some((synapse) =>
         synapse.fromId === 1 &&

@@ -83,7 +83,7 @@ Deno.test({
 
       // Record a squash change in the success cache (simulates a previous
       // discovery run that found changing squash to TANH improved score).
-      const cacheJson = base.exportJSON();
+      const cacheJson = base.exportInternalJSON();
       const cacheNeuron = cacheJson.neurons.find(
         (n) => n.id === ID_HIDDEN_1,
       );
@@ -139,7 +139,7 @@ Deno.test({
       };
 
       const computeError = (creature: Creature) => {
-        const json = creature.exportJSON();
+        const json = creature.exportInternalJSON();
         const synapses = json.synapses;
         const hidden1Squash = json.neurons.find((n) => n.id === ID_HIDDEN_1)
           ?.squash;
@@ -237,7 +237,7 @@ Deno.test({
     };
 
     const computeError = (creature: Creature) => {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
       const synapses = json.synapses;
 
       const hasHelpful = synapses.some((synapse) =>

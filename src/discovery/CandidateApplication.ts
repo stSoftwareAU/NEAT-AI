@@ -14,6 +14,7 @@ import {
   applyCoordinatedStructuralCandidate,
 } from "../architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
 import type { Creature } from "../Creature.ts";
+import { exportInternalJSON } from "../creature/CreatureSerialization.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 import { getMajorVersion } from "../upgrade/Upgrade.ts";
 import { getLogger } from "../utils/Logger.ts";
@@ -166,9 +167,9 @@ export function applyChangeToCreature(
   baseCreature: Creature,
 ): Creature | undefined {
   const changeType = candidate.change.type;
-  const candidateJSON = candidate.creature.exportJSON();
-  const creatureJSON = creature.exportJSON();
-  const baseJSON = baseCreature.exportJSON();
+  const candidateJSON = exportInternalJSON(candidate.creature);
+  const creatureJSON = exportInternalJSON(creature);
+  const baseJSON = exportInternalJSON(baseCreature);
   const enforceForwardOnly = shouldEnforceForwardOnly(creature);
   const idToIndex = enforceForwardOnly
     ? buildIdToIndexMap(creatureJSON)

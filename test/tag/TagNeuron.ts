@@ -34,9 +34,9 @@ Deno.test("TagNode", () => {
   };
   const creature = Creature.fromJSON(json);
 
-  const json2 = creature.exportJSON();
+  const json2 = creature.exportInternalJSON();
   const network2 = Creature.fromJSON(json2);
-  const json3 = network2.exportJSON();
+  const json3 = network2.exportInternalJSON();
 
   const tags = json3.neurons[0].tags;
   assert(tags !== undefined, "Should have tags");

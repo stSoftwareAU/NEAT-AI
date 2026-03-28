@@ -27,7 +27,7 @@ import type { Approach } from "../NEAT/LogApproach.ts";
 export function restoreSource(creature: Creature): Creature | undefined {
   if (!creature.memetic) return;
 
-  const restoredCreature = creature.exportJSON();
+  const restoredCreature = creature.exportInternalJSON();
   const memetic = creature.memetic;
 
   // Restore biases from memetic

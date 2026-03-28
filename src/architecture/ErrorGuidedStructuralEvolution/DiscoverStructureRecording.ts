@@ -221,7 +221,7 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
 
     this.creature.validate();
 
-    const creatureExport = this.creature.exportJSON();
+    const creatureExport = this.creature.exportInternalJSON();
     const rustCreature = creatureToRustFormat(creatureExport);
     const pendingSamples = this.rustAccumulatedData.length;
 

@@ -47,7 +47,7 @@ Deno.test("AccumulationCounts - synapse count equals training samples not fan-ou
     disableRandomSamples: true,
     batchSize: 1000, // Large batch to prevent batch resets clearing counts.
   });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
 
   const input = new Float32Array([1.0]);
   const target = new Float32Array([1.1, 1.1, 1.1]);
@@ -107,7 +107,7 @@ Deno.test("AccumulationCounts - neuron bias count equals training samples not fa
     disableRandomSamples: true,
     batchSize: 1000,
   });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
 
   const input = new Float32Array([1.0]);
   const target = new Float32Array([1.1, 1.1, 1.1]);
@@ -182,7 +182,7 @@ Deno.test("AccumulationCounts - fan-out does not inflate counts vs single output
   const singleCreature = Creature.fromJSON(singleJson);
   const singleConfig = createBackPropagationConfig(configOpts);
   const singleSparse = new SparseConfig(
-    singleCreature.exportJSON(),
+    singleCreature.exportInternalJSON(),
     singleConfig,
   );
   for (let i = 0; i < samples; i++) {
@@ -198,7 +198,7 @@ Deno.test("AccumulationCounts - fan-out does not inflate counts vs single output
   const tripleCreature = Creature.fromJSON(tripleJson);
   const tripleConfig = createBackPropagationConfig(configOpts);
   const tripleSparse = new SparseConfig(
-    tripleCreature.exportJSON(),
+    tripleCreature.exportInternalJSON(),
     tripleConfig,
   );
   for (let i = 0; i < samples; i++) {
@@ -263,7 +263,7 @@ Deno.test("AccumulationCounts - output synapse counts match training samples", (
     disableRandomSamples: true,
     batchSize: 1000,
   });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
 
   const input = new Float32Array([1.0]);
   const target = new Float32Array([1.1, 1.1, 1.1]);

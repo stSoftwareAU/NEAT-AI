@@ -36,7 +36,7 @@ Deno.test("BloomFilterDeDuplication - no false negatives", () => {
   };
 
   const neat = new Neat(2, 1, { populationSize: 50 }, []);
-  const exportedCreature = Creature.fromJSON(creature).exportJSON();
+  const exportedCreature = Creature.fromJSON(creature).exportInternalJSON();
 
   // Create population with known duplicates
   const population: Creature[] = [];
@@ -94,7 +94,7 @@ Deno.test("BloomFilterDeDuplication - large population", () => {
   };
 
   const neat = new Neat(3, 1, { populationSize: 200 }, []);
-  const exportedCreature = Creature.fromJSON(creature).exportJSON();
+  const exportedCreature = Creature.fromJSON(creature).exportInternalJSON();
 
   // Create large population with mixed duplicates
   const population: Creature[] = [];
@@ -113,7 +113,9 @@ Deno.test("BloomFilterDeDuplication - large population", () => {
   // Add explicit duplicates of some existing creatures
   for (let i = 0; i < 30; i++) {
     const sourceIndex = i % 50;
-    const clone = Creature.fromJSON(uniqueCreatures[sourceIndex].exportJSON());
+    const clone = Creature.fromJSON(
+      uniqueCreatures[sourceIndex].exportInternalJSON(),
+    );
     population.push(clone);
   }
 
@@ -164,7 +166,7 @@ Deno.test("BloomFilterDeDuplication - small population", () => {
   };
 
   const neat = new Neat(2, 1, { populationSize: 5 }, []);
-  const exportedCreature = Creature.fromJSON(creature).exportJSON();
+  const exportedCreature = Creature.fromJSON(creature).exportInternalJSON();
 
   // Create very small population
   const population: Creature[] = [];
@@ -201,7 +203,7 @@ Deno.test("BloomFilterDeDuplication - all duplicates", () => {
   };
 
   const neat = new Neat(2, 1, { populationSize: 30 }, []);
-  const exportedCreature = Creature.fromJSON(creature).exportJSON();
+  const exportedCreature = Creature.fromJSON(creature).exportInternalJSON();
 
   // Create population where all creatures are identical
   const population: Creature[] = [];
@@ -248,7 +250,7 @@ Deno.test("BloomFilterDeDuplication - multiple perform calls", () => {
   };
 
   const neat = new Neat(2, 1, { populationSize: 20 }, []);
-  const exportedCreature = Creature.fromJSON(creature).exportJSON();
+  const exportedCreature = Creature.fromJSON(creature).exportInternalJSON();
 
   const genus = new Genus();
   const breed = new Breed(genus, neat.config);

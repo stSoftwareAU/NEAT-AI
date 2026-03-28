@@ -31,7 +31,7 @@ class FakeWorker {
       score: {
         uuid,
         score: 1,
-        creature: JSON.stringify(creature.exportJSON(), null, 1),
+        creature: JSON.stringify(creature.exportInternalJSON(), null, 1),
         error: 0,
       },
     });
@@ -74,7 +74,7 @@ const testCreatureJson: CreatureInternal = {
 };
 
 Deno.test("scanForSquashImprovements: terminates workers when throttling surfaces a task rejection", async () => {
-  const creature = Creature.fromJSON(testCreatureJson).exportJSON();
+  const creature = Creature.fromJSON(testCreatureJson).exportInternalJSON();
   const workers: FakeWorker[] = [];
 
   // Fail after the first worker task starts, but delay the rejection so the

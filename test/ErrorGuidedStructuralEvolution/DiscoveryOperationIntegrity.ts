@@ -34,7 +34,7 @@ import { initWasmForTests } from "../_initWasm.ts";
  * Helper: asserts the creature export has no dangling synapse references.
  */
 function assertIntegrity(creature: Creature, context: string): void {
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   assertValidSynapseReferences(exported, context);
 }
 
@@ -103,7 +103,7 @@ Deno.test(
       assertIntegrity(result, "removeSynapse deep cascade");
 
       // Verify no dangling references in exported JSON
-      const exported = result.exportJSON();
+      const exported = result.exportInternalJSON();
       assertValidSynapseReferences(
         exported,
         "removeSynapse deep cascade export",
@@ -186,7 +186,7 @@ Deno.test(
 
       // H1 and H2 should have been cleaned up since their only
       // inward source (HUB) was removed
-      const exported = result.exportJSON();
+      const exported = result.exportInternalJSON();
       const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
 
       // All hidden neurons depended solely on HUB, so they should all be gone
@@ -271,7 +271,7 @@ Deno.test(
     if (result !== undefined) {
       assertIntegrity(result, "removeLowImpactNeuron constant downstream");
 
-      const exported = result.exportJSON();
+      const exported = result.exportInternalJSON();
       assertValidSynapseReferences(
         exported,
         "removeLowImpactNeuron constant downstream export",
@@ -352,7 +352,7 @@ Deno.test(
     if (result !== undefined) {
       assertIntegrity(result, "addHelpfulNeurons output contiguity");
 
-      const exported = result.exportJSON();
+      const exported = result.exportInternalJSON();
       assertValidSynapseReferences(
         exported,
         "addHelpfulNeurons output contiguity export",
@@ -436,7 +436,7 @@ Deno.test(
     if (result !== null) {
       assertIntegrity(result, "removeSynapse self-loop");
 
-      const exported = result.exportJSON();
+      const exported = result.exportInternalJSON();
       assertValidSynapseReferences(
         exported,
         "removeSynapse self-loop export",
@@ -510,7 +510,7 @@ Deno.test(
       assertIntegrity(result1, "removeHarmfulNeuron chain step 1");
 
       // H2 should also have been cleaned up since its only inward source was H1
-      const exported1 = result1.exportJSON();
+      const exported1 = result1.exportInternalJSON();
       const h2Still = exported1.neurons.find((n) => n.id === 1000001);
       const h2IsHidden = h2Still?.type === "hidden";
       // If H2 is still present as hidden, it must have valid connections
@@ -615,7 +615,7 @@ Deno.test(
     if (result !== null) {
       assertIntegrity(result, "removeSynapse 3-deep cascade");
 
-      const exported = result.exportJSON();
+      const exported = result.exportInternalJSON();
       assertValidSynapseReferences(
         exported,
         "removeSynapse 3-deep cascade export",

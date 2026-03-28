@@ -255,8 +255,8 @@ Deno.test(
 
     // 2. Different synaptic weights (hidden-B→hidden-C: 0.8 → 0.05)
     // Export both creatures and compare the hidden-B→hidden-C synapse weight
-    const wholeJSON = result.wholeCreature.exportJSON();
-    const crippledJSON = result.crippledCreature.exportJSON();
+    const wholeJSON = result.wholeCreature.exportInternalJSON();
+    const crippledJSON = result.crippledCreature.exportInternalJSON();
 
     // Find hidden-B→hidden-C synapse by matching the second-to-last neuron connections
     // hidden-B is the second hidden neuron, hidden-C is the third

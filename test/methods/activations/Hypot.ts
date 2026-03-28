@@ -24,7 +24,7 @@ Deno.test("Hypot", () => {
   };
   const creature = Creature.fromJSON(json);
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    creature.exportInternalJSON(),
     createBackPropagationConfig({}),
   );
   for (let p = 0; p < 1000; p++) {

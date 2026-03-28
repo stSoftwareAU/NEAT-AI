@@ -139,7 +139,7 @@ Deno.test("ModSquash: can be exported and re-imported after mutation", () => {
   }
 
   // Round-trip through JSON should work
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   const reimported = Creature.fromJSON(exported);
   creatureValidate(reimported);
 

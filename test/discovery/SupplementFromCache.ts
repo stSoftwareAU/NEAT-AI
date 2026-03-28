@@ -40,7 +40,7 @@ function makeSquashCandidate(
   neuronId: number,
   squash: string,
 ): DiscoveryCandidate {
-  const json = base.exportJSON();
+  const json = base.exportInternalJSON();
   const neuron = json.neurons.find((n) => n.id === neuronId);
   if (!neuron) throw new Error(`Neuron ${neuronId} not found`);
   neuron.squash = squash;
@@ -71,7 +71,7 @@ function makeAddSynapseCandidate(
   toId: number,
   weight: number,
 ): DiscoveryCandidate {
-  const json = base.exportJSON();
+  const json = base.exportInternalJSON();
   json.synapses.push({ fromId, toId, weight });
   const modified = Creature.fromJSON(json);
   modified.validate();

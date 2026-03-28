@@ -44,7 +44,7 @@ Deno.test("activate - IF squash with condition/positive/negative branches execut
   };
   const creature = Creature.fromJSON(json);
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    creature.exportInternalJSON(),
     createBackPropagationConfig({}),
   );
 

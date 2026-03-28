@@ -35,7 +35,7 @@ Deno.test(
     };
 
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-    const exported = mutated.exportJSON();
+    const exported = mutated.exportInternalJSON();
 
     assertEquals(
       exported.neurons.some((n) => n.uuid === "hidden-6000"),

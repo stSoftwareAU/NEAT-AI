@@ -117,7 +117,7 @@ Deno.test("DiscoveryReplayRunner: rejects stale 'better by cache metadata' candi
     archiveEntry: (_dir, entry) =>
       archived.push({ key: entry.key, changeType: entry.changeType }),
     applyEntry: (current, entry) => {
-      const clone = Creature.fromJSON(current.exportJSON());
+      const clone = Creature.fromJSON(current.exportInternalJSON());
       clone.uuid = `${current.uuid}-${entry.key}`;
       return clone;
     },
@@ -175,7 +175,7 @@ Deno.test("DiscoveryReplayRunner: considers all-removals combo as a separate out
   const runner = new DiscoveryReplayRunner({
     listEntries: (_dir) => [remove1, remove2, add1],
     applyEntry: (current, entry) => {
-      const clone = Creature.fromJSON(current.exportJSON());
+      const clone = Creature.fromJSON(current.exportInternalJSON());
       clone.uuid = `${current.uuid}-${entry.key}`;
       return clone;
     },
@@ -255,7 +255,7 @@ Deno.test("DiscoveryReplayRunner: concurrency does not change which verified imp
   const runner = new DiscoveryReplayRunner({
     listEntries: (_dir) => [a, b],
     applyEntry: (current, entry) => {
-      const clone = Creature.fromJSON(current.exportJSON());
+      const clone = Creature.fromJSON(current.exportInternalJSON());
       clone.uuid = `${current.uuid}-${entry.key}`;
       clone.tags = [{ name: "key", value: entry.key }];
       return clone;

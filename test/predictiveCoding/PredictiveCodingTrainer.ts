@@ -209,7 +209,7 @@ Deno.test("PC training reduces error on simple regression task", () => {
 
     // Get initial error.
     const initialResult = trainWithPredictiveCoding(
-      Creature.fromJSON(creature.exportJSON()),
+      Creature.fromJSON(creature.exportInternalJSON()),
       [dataSetDir + "/0.bin"],
       { ...pcConfig, learningRate: 0 }, // zero learning rate = no updates
       Costs.find("MSE"),

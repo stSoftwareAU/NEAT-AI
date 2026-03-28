@@ -22,7 +22,7 @@ Deno.test("activate - HYPOT squash produces correct hypotenuse output", () => {
   };
   const creature = Creature.fromJSON(json);
 
-  const exportCreature = creature.exportJSON();
+  const exportCreature = creature.exportInternalJSON();
   Deno.writeTextFileSync(
     `${directory}/creature.json`,
     JSON.stringify(exportCreature, null, 1),

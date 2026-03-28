@@ -40,7 +40,7 @@ Deno.test(
     const never = new Promise<never>(() => {});
 
     const result = await scanForSquashImprovements({
-      creature: Creature.fromJSON(testCreatureJson).exportJSON(),
+      creature: Creature.fromJSON(testCreatureJson).exportInternalJSON(),
       targetSquash: "GELU",
       outputDir: ".test-intelligent-design-output",
       dataDir: ".test-intelligent-design-data",

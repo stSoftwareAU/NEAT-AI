@@ -58,7 +58,7 @@ Deno.test("DiscoveryReplayRunner processes entries in priority order (highest sc
     listEntries: (_dir) => [lowDelta, medDelta, highDelta], // Unordered input
     archiveEntry: () => {},
     applyEntry: (current, entry) => {
-      const clone = Creature.fromJSON(current.exportJSON());
+      const clone = Creature.fromJSON(current.exportInternalJSON());
       clone.uuid = `${current.uuid ?? "base"}-${entry.key}`;
       return clone;
     },
@@ -119,7 +119,7 @@ Deno.test("DiscoveryReplayRunner prioritises by scoreDelta when selecting best i
     listEntries: (_dir) => [smallImprovement, largeImprovement],
     archiveEntry: () => {},
     applyEntry: (current, entry) => {
-      const clone = Creature.fromJSON(current.exportJSON());
+      const clone = Creature.fromJSON(current.exportInternalJSON());
       clone.uuid = `${current.uuid ?? "base"}-${entry.key}`;
       return clone;
     },
@@ -172,7 +172,7 @@ Deno.test("DiscoveryReplayRunner evaluations include priority information", asyn
     listEntries: (_dir) => [e1, e2],
     archiveEntry: () => {},
     applyEntry: (current, entry) => {
-      const clone = Creature.fromJSON(current.exportJSON());
+      const clone = Creature.fromJSON(current.exportInternalJSON());
       clone.uuid = `${current.uuid ?? "base"}-${entry.key}`;
       return clone;
     },
@@ -236,7 +236,7 @@ Deno.test("DiscoveryReplayRunner sorts entries by scoreDelta before processing",
     listEntries: (_dir) => entries,
     archiveEntry: () => {},
     applyEntry: (current, entry) => {
-      const clone = Creature.fromJSON(current.exportJSON());
+      const clone = Creature.fromJSON(current.exportInternalJSON());
       clone.uuid = `${current.uuid ?? "base"}-${entry.key}`;
       return clone;
     },

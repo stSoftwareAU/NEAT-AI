@@ -352,7 +352,7 @@ function createMockWorker(): WorkerHandler {
             taskID: 0,
             breed: {
               success: true,
-              offspring: JSON.stringify(child.exportJSON()),
+              offspring: JSON.stringify(child.exportInternalJSON()),
             },
           });
         }
@@ -448,7 +448,7 @@ Deno.test("ParallelBreeding - worker path distributes work across all workers", 
               taskID: 0,
               breed: {
                 success: true,
-                offspring: JSON.stringify(child.exportJSON()),
+                offspring: JSON.stringify(child.exportInternalJSON()),
               },
             });
           }

@@ -142,14 +142,14 @@ function recordValidationIssue(
     const originalPath = join(issueDir, "original-creature.json");
     Deno.writeTextFileSync(
       originalPath,
-      JSON.stringify(originalCreature.exportJSON(), null, 2),
+      JSON.stringify(originalCreature.exportInternalJSON(), null, 2),
     );
 
     // Save the invalid creature (before fix)
     const invalidPath = join(issueDir, "invalid-creature.json");
     Deno.writeTextFileSync(
       invalidPath,
-      JSON.stringify(invalidCreature.exportJSON(), null, 2),
+      JSON.stringify(invalidCreature.exportInternalJSON(), null, 2),
     );
 
     // Save the error details
@@ -219,7 +219,7 @@ export function recordDiscoveryIssue(
     const originalPath = join(issueDir, "original-creature.json");
     Deno.writeTextFileSync(
       originalPath,
-      JSON.stringify(originalCreature.exportJSON(), null, 2),
+      JSON.stringify(originalCreature.exportInternalJSON(), null, 2),
     );
 
     const errorPath = join(issueDir, "error.txt");

@@ -12,8 +12,8 @@ import { initWasmForTests } from "../_initWasm.ts";
  * Issue #1095: Performance - Avoid JSON clone in Offspring.breed() parent preparation
  *
  * The breed() method previously used:
- *   const mother = upgrade(Creature.fromJSON(mum.exportJSON()));
- *   let father = upgrade(Creature.fromJSON(dad.exportJSON()));
+ *   const mother = upgrade(Creature.fromJSON(mum.exportInternalJSON()));
+ *   let father = upgrade(Creature.fromJSON(dad.exportInternalJSON()));
  *
  * This creates full JSON clones which is slow for large creatures.
  *
@@ -88,8 +88,8 @@ Deno.test("Offspring.breed() - parent creatures are not modified during breeding
   dad.score = 0.85;
 
   // Record original state
-  const mumJSON = JSON.stringify(mum.exportJSON());
-  const dadJSON = JSON.stringify(dad.exportJSON());
+  const mumJSON = JSON.stringify(mum.exportInternalJSON());
+  const dadJSON = JSON.stringify(dad.exportInternalJSON());
   const mumBiases = mum.neurons.map((n) => n.bias);
   const dadBiases = dad.neurons.map((n) => n.bias);
   const mumWeights = mum.synapses.map((s) => s.weight);
@@ -152,12 +152,12 @@ Deno.test("Offspring.breed() - parent creatures are not modified during breeding
   }
 
   assertEquals(
-    JSON.stringify(mum.exportJSON()),
+    JSON.stringify(mum.exportInternalJSON()),
     mumJSON,
     "Mum export JSON was modified",
   );
   assertEquals(
-    JSON.stringify(dad.exportJSON()),
+    JSON.stringify(dad.exportInternalJSON()),
     dadJSON,
     "Dad export JSON was modified",
   );
@@ -268,7 +268,9 @@ Deno.test("Offspring.breed() - activation equivalence with original implementati
         const output1 = offspring.activate(input.slice() as Float32Array);
 
         // Create a clone of offspring using JSON method
-        const offspringClone = Creature.fromJSON(offspring.exportJSON());
+        const offspringClone = Creature.fromJSON(
+          offspring.exportInternalJSON(),
+        );
         offspringClone.clearState();
         const output2 = offspringClone.activate(input.slice() as Float32Array);
 

@@ -32,7 +32,7 @@ Deno.test("Creature.record: ArcTan near-saturation target does not explode value
     disableRandomSamples: true,
     generations: 0,
   });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
   creature.activateAndTrace(new Float32Array([1]), false, sparseConfig);
 
   // Ask for a target *inside* the valid ArcTan range, but extremely close to +π/2.

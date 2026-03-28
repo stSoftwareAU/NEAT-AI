@@ -68,7 +68,10 @@ Deno.test("compactUnused - behaviour preserved with cascading Cosine/CLIPPED rem
     }
 
     const config = createBackPropagationConfig();
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportInternalJSON(),
+      config,
+    );
     for (let i = data.length; i--;) {
       const actual = creature.activateAndTrace(
         new Float32Array(data[i]),
@@ -105,7 +108,7 @@ Deno.test("compactUnused - behaviour preserved with cascading Cosine/CLIPPED rem
   compacted.validate();
   Deno.writeTextFileSync(
     `${traceDir}/compacted.json`,
-    JSON.stringify(compacted.exportJSON(), null, 1),
+    JSON.stringify(compacted.exportInternalJSON(), null, 1),
   );
 
   for (let i = data.length; i--;) {

@@ -54,7 +54,7 @@ Deno.test("backprop: LeakyReLU safe zone can divert elastic error away from far-
     trainingMutationRate: 0, // keep deterministic (no random mutations)
   });
 
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
 
   // Forward pass with trace so we have correct hintValue (rawInput) for safeZoneAdjustment.
   const actual = creature.activateAndTrace(

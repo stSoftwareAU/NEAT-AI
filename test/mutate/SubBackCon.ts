@@ -129,7 +129,7 @@ Deno.test("SubBackCon - should remove or convert disconnected hidden neuron afte
   let neuronCleanedUp = false;
 
   for (let attempts = 0; attempts < 100; attempts++) {
-    const testCreature = Creature.fromJSON(creature.exportJSON());
+    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
     const hiddenCountBefore = testCreature.neurons.filter((n) =>
       n.type === "hidden"
     ).length;
@@ -198,7 +198,7 @@ Deno.test("SubBackCon - mutation always produces valid creature even when neuron
 
   let mutationSucceeded = false;
   for (let i = 0; i < 50; i++) {
-    const testCreature = Creature.fromJSON(creature.exportJSON());
+    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
     const mutator = new SubBackCon(testCreature);
     const changed = mutator.mutate();
 

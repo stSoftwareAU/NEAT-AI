@@ -44,7 +44,7 @@ Deno.test("NearZeroWeightGradient - clamped gradient propagates through near-zer
     batchSize: 1,
     trainingMutationRate: 1,
   });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
 
   const input = new Float32Array([0.5]);
   const target = new Float32Array([0.5]);
@@ -103,7 +103,7 @@ Deno.test("NearZeroWeightGradient - upstream neuron receives gradient through ne
     batchSize: 1,
     trainingMutationRate: 1,
   });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
 
   const input = new Float32Array([0.7]);
   const target = new Float32Array([0.4]);
@@ -157,7 +157,7 @@ Deno.test("NearZeroWeightGradient - no non-finite values from clamped propagatio
     batchSize: 1,
     trainingMutationRate: 1,
   });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
 
   const input = new Float32Array([0.5, 0.8]);
   const target = new Float32Array([0.4]);
@@ -225,7 +225,7 @@ Deno.test("NearZeroWeightGradient - multiple near-zero weights do not block all 
     batchSize: 1,
     trainingMutationRate: 1,
   });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
 
   const input = new Float32Array([0.5, 0.8]);
   const target = new Float32Array([0.3]);

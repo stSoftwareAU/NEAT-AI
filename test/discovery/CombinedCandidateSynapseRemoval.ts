@@ -48,7 +48,7 @@ Deno.test(
     // Bug: When appliedTypes contains only "remove-synapse", isRemovalOnly is true
     // and the function returns "Pruned N low-impact neurons" instead of "Removed N synapses"
     const base = makeSynapseRemovalTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Create remove-synapse candidate 1: Remove hidden-A -> hidden-B synapse
     const removeSynapse1Json = structuredClone(baseJSON);

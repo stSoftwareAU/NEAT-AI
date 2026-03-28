@@ -39,7 +39,10 @@ Deno.test(
       disableRandomSamples: true,
       generations: 0,
     });
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportInternalJSON(),
+      config,
+    );
     creature.activateAndTrace(new Float32Array([1]), false, sparseConfig);
 
     // Current output ≈ relu6(1) + 0.2 = 1.2. Request far above ReLU6's max.

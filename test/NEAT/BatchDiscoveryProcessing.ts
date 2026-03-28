@@ -65,7 +65,7 @@ Deno.test(
     assertExists(modifiedCreature, "Modified creature should exist");
 
     // Verify the synapse was added
-    const exportedJSON = modifiedCreature.exportJSON();
+    const exportedJSON = modifiedCreature.exportInternalJSON();
     const hasNewSynapse = exportedJSON.synapses.some(
       (s) =>
         s.fromId === 0 &&
@@ -76,7 +76,7 @@ Deno.test(
 
     // Verify the original creature is not modified
     // We need to export JSON to compare because internal synapse references don't have uuid directly
-    const originalExport = baseCreature.exportJSON();
+    const originalExport = baseCreature.exportInternalJSON();
     const originalHasNewSynapse = originalExport.synapses.some(
       (s) =>
         s.fromId === 0 &&
@@ -123,7 +123,7 @@ Deno.test(
     assertExists(modifiedCreature, "Modified creature should exist");
 
     // Verify the synapse was removed
-    const exportedJSON = modifiedCreature.exportJSON();
+    const exportedJSON = modifiedCreature.exportInternalJSON();
     const synapseStillExists = exportedJSON.synapses.some(
       (s) =>
         s.fromId === 1 &&

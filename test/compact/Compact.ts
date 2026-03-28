@@ -126,13 +126,13 @@ Deno.test("compact - iteratively compacts linear IDENTITY chain preserving behav
 
   Deno.writeTextFileSync(
     `${directory}/0-start.json`,
-    JSON.stringify(a.exportJSON(), null, 1),
+    JSON.stringify(a.exportInternalJSON(), null, 1),
   );
   a.fix();
 
   Deno.writeTextFileSync(
     `${directory}/1-fixed.json`,
-    JSON.stringify(a.exportJSON(), null, 1),
+    JSON.stringify(a.exportInternalJSON(), null, 1),
   );
   const midOut = a.activate(input);
 
@@ -146,7 +146,7 @@ Deno.test("compact - iteratively compacts linear IDENTITY chain preserving behav
   c.validate();
   Deno.writeTextFileSync(
     `${directory}/2-end.json`,
-    JSON.stringify(c.exportJSON(), null, 1),
+    JSON.stringify(c.exportInternalJSON(), null, 1),
   );
 
   const endNodes = c.neurons.length;
@@ -199,7 +199,7 @@ Deno.test("compact - repeated compaction of random multi-layer network converges
 
     Deno.writeTextFileSync(
       `${traceDir}/a.json`,
-      JSON.stringify(a.exportJSON(), null, 1),
+      JSON.stringify(a.exportInternalJSON(), null, 1),
     );
     const b = a.compact(false);
     if (!b) {
@@ -207,7 +207,7 @@ Deno.test("compact - repeated compaction of random multi-layer network converges
     } else {
       Deno.writeTextFileSync(
         `${traceDir}/b.json`,
-        JSON.stringify(b.exportJSON(), null, 1),
+        JSON.stringify(b.exportInternalJSON(), null, 1),
       );
       b.validate();
       const endNodes = b.neurons.length;
@@ -280,7 +280,7 @@ Deno.test("compact - removes self-loops and unused paths preserving behaviour", 
 
   Deno.writeTextFileSync(
     `${directory}/0-start.json`,
-    JSON.stringify(a.exportJSON(), null, 1),
+    JSON.stringify(a.exportInternalJSON(), null, 1),
   );
 
   const aOut2 = a.activate(input, false);
@@ -293,7 +293,7 @@ Deno.test("compact - removes self-loops and unused paths preserving behaviour", 
   b.validate();
   Deno.writeTextFileSync(
     `${directory}/1-end.json`,
-    JSON.stringify(b.exportJSON(), null, 1),
+    JSON.stringify(b.exportInternalJSON(), null, 1),
   );
 
   const endNodes = b.neurons.length;

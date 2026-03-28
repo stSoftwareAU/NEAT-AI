@@ -41,7 +41,7 @@ Deno.test("compactCreature: compaction does not modify original creature neurons
   };
 
   const creature = Creature.fromJSON(json);
-  const originalExport = creature.exportJSON();
+  const originalExport = creature.exportInternalJSON();
   const originalNeuronCount = originalExport.neurons.length;
 
   // Act - compact should create an independent copy
@@ -49,7 +49,7 @@ Deno.test("compactCreature: compaction does not modify original creature neurons
   compactCreature(creature, false);
 
   // Assert - original creature's export should be unchanged
-  const afterExport = creature.exportJSON();
+  const afterExport = creature.exportInternalJSON();
   assertEquals(
     afterExport.neurons.length,
     originalNeuronCount,
@@ -81,7 +81,7 @@ Deno.test("compactCreature: compaction does not modify original creature synapse
   };
 
   const creature = Creature.fromJSON(json);
-  const originalExport = creature.exportJSON();
+  const originalExport = creature.exportInternalJSON();
   const originalSynapseCount = originalExport.synapses.length;
 
   // Act - compact without feedback loop should remove backward synapse
@@ -89,7 +89,7 @@ Deno.test("compactCreature: compaction does not modify original creature synapse
   assert(compacted, "Should have compacted");
 
   // Assert - original creature's export should be unchanged
-  const afterExport = creature.exportJSON();
+  const afterExport = creature.exportInternalJSON();
   assertEquals(
     afterExport.synapses.length,
     originalSynapseCount,
@@ -132,7 +132,7 @@ Deno.test("compactCreature: preserves neuron tags through compaction", () => {
   assert(compacted, "Should have compacted (backward synapse removed)");
 
   // Assert - the tagged neuron should survive and retain its tags
-  const exported = compacted.exportJSON();
+  const exported = compacted.exportInternalJSON();
   const taggedNeuron = exported.neurons.find((n) => n.id === 5000);
   assert(taggedNeuron, "Tagged neuron should survive compaction");
   assert(taggedNeuron.tags, "Neuron tags should be preserved");
@@ -183,7 +183,7 @@ Deno.test("compactCreature: preserves synapse tags through compaction", () => {
   assert(compacted, "Network with IDENTITY chain should compact");
 
   // Assert - tagged synapse should be preserved
-  const exported = compacted.exportJSON();
+  const exported = compacted.exportInternalJSON();
   const taggedSynapse = exported.synapses.find(
     (s) => s.fromId === 0,
   );
@@ -234,7 +234,7 @@ Deno.test("compactCreature: preserves synapse types through compaction", () => {
   assert(compacted, "Network with IDENTITY chain should compact");
 
   // Assert - synapse type should be preserved
-  const exported = compacted.exportJSON();
+  const exported = compacted.exportInternalJSON();
   const inputSynapse = exported.synapses.find(
     (s) => s.fromId === 0,
   );
@@ -283,7 +283,7 @@ Deno.test("compactCreature: preserves forwardOnly flag through compaction", () =
   assert(compacted, "Should have compacted");
 
   // Assert - forwardOnly should be preserved
-  const exported = compacted.exportJSON();
+  const exported = compacted.exportInternalJSON();
   assertEquals(
     exported.forwardOnly,
     true,
@@ -331,7 +331,7 @@ Deno.test("compactCreature: preserves creature-level tags after compaction", () 
   assert(compacted, "Should have compacted");
 
   // Assert - original creature tags should be preserved in the compacted result
-  const exported = compacted.exportJSON();
+  const exported = compacted.exportInternalJSON();
   assert(exported.tags, "Compacted creature should have tags");
 
   const modelTag = exported.tags.find((t) => t.name === "model-version");
@@ -375,14 +375,14 @@ Deno.test("compactCreature: compacting does not mutate original neuron biases", 
   };
 
   const creature = Creature.fromJSON(json);
-  const originalBias = creature.exportJSON().neurons[2].bias; // output-0 bias
+  const originalBias = creature.exportInternalJSON().neurons[2].bias; // output-0 bias
 
   // Act - compact will modify the cloned neurons (e.g., bias adjustments)
   const compacted = compactCreature(creature, false);
   assert(compacted, "Should have compacted");
 
   // Assert - original creature should not be affected
-  const afterBias = creature.exportJSON().neurons[2].bias;
+  const afterBias = creature.exportInternalJSON().neurons[2].bias;
   assertEquals(
     afterBias,
     originalBias,
@@ -419,14 +419,14 @@ Deno.test("compactCreature: compacting does not mutate original synapse weights"
   };
 
   const creature = Creature.fromJSON(json);
-  const originalWeight = creature.exportJSON().synapses[0].weight;
+  const originalWeight = creature.exportInternalJSON().synapses[0].weight;
 
   // Act
   const compacted = compactCreature(creature, false);
   assert(compacted, "Should have compacted");
 
   // Assert - original creature should not be affected
-  const afterWeight = creature.exportJSON().synapses[0].weight;
+  const afterWeight = creature.exportInternalJSON().synapses[0].weight;
   assertEquals(
     afterWeight,
     originalWeight,
@@ -470,7 +470,7 @@ Deno.test("compactCreature: preserves memetic data when no compaction occurs", (
   );
 
   // Original memetic should be unchanged
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   assert(exported.memetic, "Original memetic data should exist");
   assertEquals(exported.memetic.generation, 5);
 });
@@ -511,7 +511,7 @@ Deno.test("compactCreature: preserves semanticVersion through compaction", () =>
   assert(compacted, "Should have compacted");
 
   // Assert - semanticVersion should be preserved
-  const exported = compacted.exportJSON();
+  const exported = compacted.exportInternalJSON();
   assertEquals(
     exported.semanticVersion,
     "1.2.3",
@@ -550,14 +550,14 @@ Deno.test("compactCreature: compacted creature is a separate object from origina
   };
 
   const creature = Creature.fromJSON(json);
-  const originalExport = creature.exportJSON();
+  const originalExport = creature.exportInternalJSON();
 
   // Act
   const compacted = compactCreature(creature, false);
   assert(compacted, "Should have compacted");
 
   // Assert - exported arrays should be different object references
-  const compactedExport = compacted.exportJSON();
+  const compactedExport = compacted.exportInternalJSON();
 
   assertNotStrictEquals(
     originalExport.neurons,
@@ -629,7 +629,7 @@ Deno.test("compactCreature: large IDENTITY chain compacts without corrupting ori
 
   const creature = Creature.fromJSON(json);
   creature.validate();
-  const originalNeuronCount = creature.exportJSON().neurons.length;
+  const originalNeuronCount = creature.exportInternalJSON().neurons.length;
 
   // Act - IDENTITY chain should compact
   const compacted = compactCreature(creature, false);
@@ -639,14 +639,14 @@ Deno.test("compactCreature: large IDENTITY chain compacts without corrupting ori
   compacted.validate();
 
   // Compacted should have fewer neurons
-  const compactedExport = compacted.exportJSON();
+  const compactedExport = compacted.exportInternalJSON();
   assert(
     compactedExport.neurons.length < originalNeuronCount,
     "Compaction should reduce neuron count",
   );
 
   // Original should be unchanged
-  const afterExport = creature.exportJSON();
+  const afterExport = creature.exportInternalJSON();
   assertEquals(
     afterExport.neurons.length,
     originalNeuronCount,

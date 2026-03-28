@@ -15,7 +15,7 @@ Deno.test("HYPOTv2-small upgrade preserves activation within tolerance", () => {
 
   start.validate();
 
-  const upgraded = Creature.fromJSON(upgradeTwo(start.exportJSON()));
+  const upgraded = Creature.fromJSON(upgradeTwo(start.exportInternalJSON()));
 
   upgraded.validate();
 
@@ -57,7 +57,7 @@ Deno.test("HYPOTv2 upgrade removes deprecated squash and produces valid creature
 
   start.validate();
 
-  const upgraded = Creature.fromJSON(upgradeTwo(start.exportJSON()));
+  const upgraded = Creature.fromJSON(upgradeTwo(start.exportInternalJSON()));
 
   upgraded.validate();
 

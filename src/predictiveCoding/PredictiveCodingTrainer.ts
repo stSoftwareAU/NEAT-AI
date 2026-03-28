@@ -121,7 +121,7 @@ export function trainWithPredictiveCoding(
   const targetsFloat64 = new Float64Array(creature.output);
 
   let bestError: number | undefined;
-  let bestCreatureJSON = creature.exportJSON();
+  let bestCreatureJSON = creature.exportInternalJSON();
   let averageEnergy = 0;
   let averageInferenceSteps = 0;
   let changed = false;
@@ -257,7 +257,7 @@ export function trainWithPredictiveCoding(
     // Check if this iteration improved the error.
     if (bestError === undefined || error < bestError) {
       bestError = error;
-      bestCreatureJSON = creature.exportJSON();
+      bestCreatureJSON = creature.exportInternalJSON();
     }
 
     // Apply Hebbian updates.

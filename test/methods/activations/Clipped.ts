@@ -19,7 +19,7 @@ Deno.test("CLIPPED", () => {
   };
   const creature = Creature.fromJSON(json);
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    creature.exportInternalJSON(),
     createBackPropagationConfig({}),
   );
 

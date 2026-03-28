@@ -41,7 +41,7 @@ Deno.test("record: avoids attributing error to tiny-weight links", () => {
     disableRandomSamples: true,
     generations: 0,
   });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
   creature.activateAndTrace(new Float32Array([1, 1]), false, sparseConfig);
 
   // Current output ≈ (1000 * 1e-6) + (1 * 1) = 1.001. Target 0 => error ~ -1.001.

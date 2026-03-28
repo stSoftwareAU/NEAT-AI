@@ -52,7 +52,7 @@ Deno.test("CRISPR: rejects backward synapse injection for 4.x forward-only creat
   // under forward-only validation.
   mutated.validate({ forwardOnly: true });
 
-  const synapseKeys = mutated.exportJSON().synapses.map((s) =>
+  const synapseKeys = mutated.exportInternalJSON().synapses.map((s) =>
     `${s.fromId}->${s.toId}`
   );
   assertEquals(

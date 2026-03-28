@@ -63,7 +63,7 @@ export function applyCoordinatedStructuralCandidate(
   creature: Creature,
   candidate: CoordinatedStructuralCandidate,
 ): Creature {
-  const base: CreatureExport = creature.exportJSON();
+  const base: CreatureExport = creature.exportInternalJSON();
   const next: CreatureExport = JSON.parse(
     JSON.stringify(base),
   ) as CreatureExport;

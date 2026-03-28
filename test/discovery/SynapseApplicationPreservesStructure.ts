@@ -100,7 +100,7 @@ Deno.test({
   fn() {
     const { creature, missingSynapse } = makeValidCreatureWithGap();
     const originalUUID = CreatureUtil.makeUUID(creature);
-    const originalSynapseCount = creature.exportJSON().synapses.length;
+    const originalSynapseCount = creature.exportInternalJSON().synapses.length;
 
     // Apply the synapse candidate
     const result = DiscoverStructure.addHelpfulSynapses(
@@ -116,7 +116,7 @@ Deno.test({
     );
 
     // Verify the synapse was added
-    const exported = result.exportJSON();
+    const exported = result.exportInternalJSON();
     const addedSynapse = exported.synapses.find((s) =>
       s.fromUUID === missingSynapse.fromNeuronUuid &&
       s.toUUID === missingSynapse.toNeuronUuid
@@ -168,7 +168,7 @@ Deno.test({
       );
 
       if (result) {
-        results.push(result.exportJSON().synapses.length);
+        results.push(result.exportInternalJSON().synapses.length);
       } else {
         results.push(-1); // Mark as failure
       }
@@ -221,7 +221,7 @@ Deno.test({
 
     // Verify the synapse was actually added to the candidate creature
     const singleSynapseCandidate = synapseCandidates.find((c) => {
-      const exported = c.creature.exportJSON();
+      const exported = c.creature.exportInternalJSON();
       return exported.synapses.some((s) =>
         s.fromUUID === missingSynapse.fromNeuronUuid &&
         s.toUUID === missingSynapse.toNeuronUuid
@@ -242,7 +242,7 @@ Deno.test({
   },
   fn() {
     const { creature } = makeValidCreatureWithGap();
-    const originalSynapseCount = creature.exportJSON().synapses.length;
+    const originalSynapseCount = creature.exportInternalJSON().synapses.length;
 
     // Try to add a synapse that already exists: input-0 → hidden-A
     const duplicateSynapse: CandidateSynapse = {
@@ -272,7 +272,7 @@ Deno.test({
 
     // Verify original creature unchanged
     assertEquals(
-      creature.exportJSON().synapses.length,
+      creature.exportInternalJSON().synapses.length,
       originalSynapseCount,
       "Original creature should not be modified",
     );
@@ -287,7 +287,7 @@ Deno.test({
   },
   fn() {
     const { creature, missingSynapse } = makeValidCreatureWithGap();
-    const originalSynapseCount = creature.exportJSON().synapses.length;
+    const originalSynapseCount = creature.exportInternalJSON().synapses.length;
 
     // Mix of valid new synapse, duplicate synapse, and synapse with non-existent target
     const mixedSynapses: CandidateSynapse[] = [
@@ -326,7 +326,7 @@ Deno.test({
       "Should return creature when at least one valid synapse is added",
     );
 
-    const exported = result.exportJSON();
+    const exported = result.exportInternalJSON();
 
     // Only 1 synapse should be added (the valid one)
     assertEquals(
@@ -363,9 +363,9 @@ Deno.test({
     assertExists(result, "Should return creature with synapse");
 
     // Manually call fix() on the result to verify it doesn't break anything
-    const beforeFix = result.exportJSON();
+    const beforeFix = result.exportInternalJSON();
     result.fix();
-    const afterFix = result.exportJSON();
+    const afterFix = result.exportInternalJSON();
 
     // Synapse should still exist after fix()
     const synapseAfterFix = afterFix.synapses.find((s) =>
@@ -404,7 +404,7 @@ Deno.test({
 
     // If fix() was not called (because validation passed), there should be no
     // "discovery-fix-required" tag on the creature
-    const exported = result.exportJSON();
+    const exported = result.exportInternalJSON();
     const hasFixRequiredTag = exported.tags?.some((t) =>
       typeof t === "object" && "discovery-fix-required" in t
     );

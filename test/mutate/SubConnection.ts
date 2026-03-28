@@ -87,7 +87,7 @@ Deno.test("SubConnection - orphan neurons are cleaned up after connection remova
 
   let removedOrConvertedOrphan = false;
   for (let i = 0; i < 50; i++) {
-    const testCreature = Creature.fromJSON(creature.exportJSON());
+    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
     const hiddenCountBefore = testCreature.neurons.filter((n) =>
       n.type === "hidden"
     ).length;

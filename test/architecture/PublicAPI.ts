@@ -55,7 +55,7 @@ Deno.test("Public API: Creature constructor creates valid network", () => {
 
 Deno.test("Public API: Creature.fromJSON round-trips", () => {
   const original = new Creature(3, 2);
-  const json: CreatureExport = original.exportJSON();
+  const json: CreatureExport = original.exportInternalJSON();
   assertEquals(json.input, 3);
   assertEquals(json.output, 2);
   assert(Array.isArray(json.neurons), "Should have neurons array");
@@ -239,17 +239,17 @@ Deno.test("Public API: CreatureExport type has expected shape", () => {
   assert(Array.isArray(json.neurons));
   assert(Array.isArray(json.synapses));
 
-  // Check neuron shape
+  // Check neuron shape — external export uses UUID, not integer id (Issue #2054)
   const neuron: NeuronExport = json.neurons[0];
-  assert(typeof neuron.id === "number");
+  assert(typeof neuron.uuid === "string");
   assert(typeof neuron.type === "string");
   assert(typeof neuron.bias === "number");
 
-  // Check synapse shape
+  // Check synapse shape — external export uses fromUUID/toUUID (Issue #2054)
   if (json.synapses.length > 0) {
     const synapse: SynapseExport = json.synapses[0];
-    assert(typeof synapse.fromId === "number");
-    assert(typeof synapse.toId === "number");
+    assert(typeof synapse.fromUUID === "string");
+    assert(typeof synapse.toUUID === "string");
     assert(typeof synapse.weight === "number");
   }
 });

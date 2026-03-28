@@ -17,7 +17,7 @@ Deno.test("applyNeuronChanges updates neuron squashes, tags changes, and tags sc
     };
 
     const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
-    const exported = creature.exportJSON();
+    const exported = creature.exportInternalJSON();
     const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
     assertEquals(hiddenNeurons.length > 0, true);
 

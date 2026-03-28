@@ -40,7 +40,7 @@ function makeCreature(): Creature {
  */
 function getH1Id(): number {
   const creature = makeCreature();
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   const h1 = exported.neurons.find((n) => n.type === "hidden");
   assertExists(h1?.id, "h1 hidden neuron must have a numeric id");
   return h1.id;

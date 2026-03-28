@@ -189,7 +189,7 @@ Deno.test("populatePopulation: works with existing population", async () => {
   try {
     const creature1 = new Creature(2, 1, { layers: [{ count: 3 }] });
     const options: NeatOptions = {
-      creatures: [creature1.exportJSON()],
+      creatures: [creature1.exportInternalJSON()],
       populationSize: 10,
     };
 

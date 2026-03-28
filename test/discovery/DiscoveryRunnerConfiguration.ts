@@ -106,7 +106,7 @@ Deno.test(
     baseCreature.validate();
     CreatureUtil.makeUUID(baseCreature);
 
-    const baseNeuronCount = baseCreature.exportJSON().neurons.length;
+    const baseNeuronCount = baseCreature.exportInternalJSON().neurons.length;
 
     // Track which candidates are evaluated
     let removalEvaluated = 0;
@@ -136,7 +136,7 @@ Deno.test(
         // Wrap evaluate to track removal candidates
         const originalEvaluate = worker.evaluate.bind(worker);
         worker.evaluate = async (creature, feedbackLoop) => {
-          const json = creature.exportJSON();
+          const json = creature.exportInternalJSON();
           // Check if it's a removal candidate (fewer neurons than base)
           if (json.neurons.length < baseNeuronCount) {
             removalEvaluated++;
@@ -238,7 +238,7 @@ Deno.test(
     baseCreature.validate();
     CreatureUtil.makeUUID(baseCreature);
 
-    const baseNeuronCount = baseCreature.exportJSON().neurons.length;
+    const baseNeuronCount = baseCreature.exportInternalJSON().neurons.length;
 
     const computeError = (_creature: Creature) => 0.5;
 
@@ -248,7 +248,7 @@ Deno.test(
         const worker = new FakeWorker(discoveryResult, computeError);
         const originalEvaluate = worker.evaluate.bind(worker);
         worker.evaluate = async (creature, feedbackLoop) => {
-          const json = creature.exportJSON();
+          const json = creature.exportInternalJSON();
           // Check if it's an add-neurons candidate (more neurons than base)
           if (json.neurons.length > baseNeuronCount) {
             addNeuronsEvaluated++;
@@ -320,7 +320,7 @@ Deno.test(
     baseCreature.validate();
     CreatureUtil.makeUUID(baseCreature);
 
-    const baseNeuronCount = baseCreature.exportJSON().neurons.length;
+    const baseNeuronCount = baseCreature.exportInternalJSON().neurons.length;
 
     // Track removal candidates evaluated
     let removalEvaluated = 0;
@@ -349,7 +349,7 @@ Deno.test(
         const worker = new FakeWorker(discoveryResult, computeError);
         const originalEvaluate = worker.evaluate.bind(worker);
         worker.evaluate = async (creature, feedbackLoop) => {
-          const json = creature.exportJSON();
+          const json = creature.exportInternalJSON();
           if (json.neurons.length < baseNeuronCount) {
             removalEvaluated++;
           }
@@ -528,7 +528,7 @@ Deno.test({
         capturedOptions = options;
 
         // Return a simple candidate
-        const cloned = Creature.fromJSON(creature.exportJSON());
+        const cloned = Creature.fromJSON(creature.exportInternalJSON());
         CreatureUtil.makeUUID(cloned);
         return [{
           creature: cloned,

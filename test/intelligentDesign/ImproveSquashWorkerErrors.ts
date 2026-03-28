@@ -16,7 +16,7 @@ import type { ResponseData } from "../../src/intelligentDesign/workers/ResponseD
 
 function makeSingleHiddenCreatureExport() {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
   assertEquals(hiddenNeurons.length > 0, true);
 

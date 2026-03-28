@@ -96,7 +96,7 @@ Deno.test("applyAddSynapses - adds new synapse from candidate", () => {
   );
 
   assert(result !== undefined, "should return a creature");
-  const exported = result!.exportJSON();
+  const exported = result!.exportInternalJSON();
   const synapseKeys = exported.synapses.map(
     (s) => `${s.fromId}->${s.toId}`,
   );
@@ -186,7 +186,7 @@ Deno.test("applyAddNeurons - adds new hidden neuron from candidate", () => {
   const result = applyAddNeurons(creatureJSON, candidateJSON, false);
 
   assert(result !== undefined, "should return a creature");
-  const exported = result!.exportJSON();
+  const exported = result!.exportInternalJSON();
   const neuronIds = exported.neurons.map((n) => n.id);
   assert(
     neuronIds.includes(29715267),
@@ -213,7 +213,7 @@ Deno.test("applyAddNeurons - includes synapses connected to new neuron", () => {
   const result = applyAddNeurons(creatureJSON, candidateJSON, false);
 
   assert(result !== undefined, "should return a creature");
-  const exported = result!.exportJSON();
+  const exported = result!.exportInternalJSON();
   const synapseKeys = exported.synapses.map(
     (s) => `${s.fromId}->${s.toId}`,
   );
@@ -343,7 +343,7 @@ Deno.test("applyRemoveSynapse - removes synapse that was in base but not candida
   );
 
   assert(result !== undefined, "should return a creature");
-  const exported = result!.exportJSON();
+  const exported = result!.exportInternalJSON();
   const _synapseKeys = exported.synapses.map(
     (s) => `${s.fromId}->${s.toId}`,
   );
@@ -403,7 +403,7 @@ Deno.test("applyRemoveNeuron - removes hidden neuron that was in base but not ca
   );
 
   assert(result !== undefined, "should return a creature");
-  const exported = result!.exportJSON();
+  const exported = result!.exportInternalJSON();
   const neuronIds = exported.neurons.map((n) => n.id);
   assert(
     !neuronIds.includes(1775329650),

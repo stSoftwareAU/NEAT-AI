@@ -91,7 +91,7 @@ Deno.test("populatePopulation: clones can be exported and re-imported", async ()
 
     // Every creature should be serialisable and deserialisable
     for (const creature of neat.population) {
-      const exported = creature.exportJSON();
+      const exported = creature.exportInternalJSON();
       const reimported = Creature.fromJSON(exported);
 
       assertEquals(reimported.input, creature.input);

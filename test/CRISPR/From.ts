@@ -18,7 +18,7 @@ Deno.test("FromUUID", () => {
 
   creatureB.validate();
 
-  const exported = creatureB.exportJSON();
+  const exported = creatureB.exportInternalJSON();
   Deno.writeTextFileSync(
     "test/data/CRISPR/.actual-from-to.json",
     JSON.stringify(exported, null, 1),
@@ -53,7 +53,7 @@ Deno.test("FromUUID", () => {
 
   assert(foundTag, "Should have found the ID tag");
 
-  const creatureD = Creature.fromJSON(creatureC.exportJSON());
+  const creatureD = Creature.fromJSON(creatureC.exportInternalJSON());
 
   creatureD.validate();
 

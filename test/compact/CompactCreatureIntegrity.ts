@@ -19,7 +19,7 @@ function assertCompactedCreatureValid(
   context: string,
 ): void {
   if (result === undefined) return;
-  const exported = result.exportJSON();
+  const exported = result.exportInternalJSON();
   assertValidSynapseReferences(exported, context);
   result.validate();
 }
@@ -155,7 +155,7 @@ Deno.test("compactCreature integrity: backward synapse removal creating orphans"
   assertCompactedCreatureValid(result, "backward synapse orphan cleanup");
 
   // The backward synapse h2->h1 should be removed — verify no dangling refs
-  const exported = result.exportJSON();
+  const exported = result.exportInternalJSON();
   assertValidSynapseReferences(exported, "backward removal final check");
 });
 

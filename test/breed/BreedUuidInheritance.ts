@@ -109,7 +109,7 @@ Deno.test(
     }
     assert(gen1, "Expected child from breed");
 
-    const reloaded = Creature.fromJSON(gen1.exportJSON());
+    const reloaded = Creature.fromJSON(gen1.exportInternalJSON());
     assertEquals(
       [...hiddenAndConstantWireUuids(gen1)].sort(),
       [...hiddenAndConstantWireUuids(reloaded)].sort(),

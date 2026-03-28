@@ -65,7 +65,7 @@ function createMinimalNeat(
     costOfGrowth: 0,
     elitism: 1,
     populationSize: 2,
-    creatures: [creature.exportJSON()],
+    creatures: [creature.exportInternalJSON()],
     feedbackLoop: options.feedbackLoop ?? false,
   }, []);
 }
@@ -78,7 +78,7 @@ function createMinimalNeat(
  */
 Deno.test("DiscoveryReplayIntegration - creates creature from improvement result", () => {
   const baseCreature = makeBaseCreature();
-  const improvedCreatureExport = baseCreature.exportJSON();
+  const improvedCreatureExport = baseCreature.exportInternalJSON();
 
   // Simulate a replay result with an improvement
   const result: DiscoveryReplayDirResult = {
@@ -126,7 +126,7 @@ Deno.test("DiscoveryReplayIntegration - tags creature with discovery-replay appr
   const baseCreature = makeBaseCreature();
 
   // Create a creature and tag it like the integration code does
-  const replayedCreature = Creature.fromJSON(baseCreature.exportJSON());
+  const replayedCreature = Creature.fromJSON(baseCreature.exportInternalJSON());
   CreatureUtil.makeUUID(replayedCreature);
 
   // This is the exact tagging code from Neat.ts line 1128
@@ -149,7 +149,7 @@ Deno.test("DiscoveryReplayIntegration - tags creature with discovery-replay appr
  */
 Deno.test("DiscoveryReplayIntegration - validates replayed creature", () => {
   const baseCreature = makeBaseCreature();
-  const replayedCreature = Creature.fromJSON(baseCreature.exportJSON());
+  const replayedCreature = Creature.fromJSON(baseCreature.exportInternalJSON());
   CreatureUtil.makeUUID(replayedCreature);
 
   // This should not throw for a valid creature
@@ -185,7 +185,7 @@ Deno.test("DiscoveryReplayIntegration - adds replayed creature to population arr
       score: 0.6,
       scoreDelta: 0.1,
       message: "Improved!",
-      creature: baseCreature.exportJSON(),
+      creature: baseCreature.exportInternalJSON(),
     },
     evaluatedSingles: 1,
     evaluatedCombos: 0,
@@ -240,7 +240,7 @@ Deno.test("DiscoveryReplayIntegration - adds replayed creature to population arr
 Deno.test("DiscoveryReplayIntegration - logs verbose output when creature is added", () => {
   const logged: string[] = [];
   const baseCreature = makeBaseCreature();
-  const replayedCreature = Creature.fromJSON(baseCreature.exportJSON());
+  const replayedCreature = Creature.fromJSON(baseCreature.exportInternalJSON());
   CreatureUtil.makeUUID(replayedCreature);
 
   const infoStub = stub(console, "info", (...args: unknown[]) => {
@@ -382,7 +382,7 @@ Deno.test("DiscoveryReplayIntegration - processes multiple replay results", () =
         score: 0.6,
         scoreDelta: 0.1,
         message: "First improvement",
-        creature: baseCreature.exportJSON(),
+        creature: baseCreature.exportInternalJSON(),
       },
       evaluatedSingles: 1,
       evaluatedCombos: 0,
@@ -408,7 +408,7 @@ Deno.test("DiscoveryReplayIntegration - processes multiple replay results", () =
         score: 0.65,
         scoreDelta: 0.15,
         message: "Third improvement",
-        creature: baseCreature.exportJSON(),
+        creature: baseCreature.exportInternalJSON(),
       },
       evaluatedSingles: 2,
       evaluatedCombos: 1,
@@ -483,7 +483,7 @@ Deno.test("DiscoveryReplayIntegration - calls logReplaySummary for each result",
           score: 0.6,
           scoreDelta: 0.1,
           message: "Improved",
-          creature: makeBaseCreature().exportJSON(),
+          creature: makeBaseCreature().exportInternalJSON(),
         },
         evaluatedSingles: 2,
         evaluatedCombos: 0,
@@ -574,7 +574,7 @@ Deno.test("DiscoveryReplayIntegration - skips verbose logging when verbose is fa
  */
 Deno.test("DiscoveryReplayIntegration - uses replay as fallback key", () => {
   const baseCreature = makeBaseCreature();
-  const replayedCreature = Creature.fromJSON(baseCreature.exportJSON());
+  const replayedCreature = Creature.fromJSON(baseCreature.exportInternalJSON());
   CreatureUtil.makeUUID(replayedCreature);
 
   // Result with undefined key
@@ -587,7 +587,7 @@ Deno.test("DiscoveryReplayIntegration - uses replay as fallback key", () => {
       score: 0.6,
       scoreDelta: 0.1,
       message: "Improved!",
-      creature: baseCreature.exportJSON(),
+      creature: baseCreature.exportInternalJSON(),
     },
     evaluatedSingles: 1,
     evaluatedCombos: 0,
@@ -724,7 +724,7 @@ Deno.test("DiscoveryReplayIntegration - results are cleared after processing", a
           score: 0.6,
           scoreDelta: 0.1,
           message: "Improved!",
-          creature: baseCreature.exportJSON(),
+          creature: baseCreature.exportInternalJSON(),
         },
         evaluatedSingles: 1,
         evaluatedCombos: 0,

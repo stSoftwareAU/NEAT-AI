@@ -56,7 +56,7 @@ Deno.test({
       // Create a creature with multiple hidden neurons so we can combine
       // improvements across them.
       const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
-      const exported = creature.exportJSON();
+      const exported = creature.exportInternalJSON();
 
       const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
       assert(
@@ -132,7 +132,7 @@ Deno.test({
       await Deno.mkdir(TEST_DIR, { recursive: true });
 
       const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
-      const exported = creature.exportJSON();
+      const exported = creature.exportInternalJSON();
 
       const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
       assert(

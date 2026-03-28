@@ -4,7 +4,7 @@ import { randomConnectMissing } from "../../src/reconstruct/ConnectMissing.ts";
 
 Deno.test("randomConnectMissing - connects all inputs when some are missing", () => {
   const creature = new Creature(10, 3);
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
 
   exported.input = 20;
   const creature2 = Creature.fromJSON(exported);
@@ -18,7 +18,7 @@ Deno.test("randomConnectMissing - connects all inputs when some are missing", ()
     "creature should have changed after connecting missing inputs",
   );
 
-  const exported3 = creature3.exportJSON();
+  const exported3 = creature3.exportInternalJSON();
   assertEquals(exported3.input, 20);
 
   // Verify every input has at least one synapse connected.

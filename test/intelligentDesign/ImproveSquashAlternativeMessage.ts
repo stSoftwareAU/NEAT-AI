@@ -14,7 +14,7 @@ import type { ResponseData } from "../../src/intelligentDesign/workers/ResponseD
 
 function makeSingleHiddenCreatureExport() {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
   assertEquals(hiddenNeurons.length > 0, true);
 
@@ -34,7 +34,7 @@ Deno.test("scanForSquashImprovements: alternative improvement message reports ta
 
   const fakeWorker = {
     score(creature: Creature, uuid: string): Promise<ResponseData> {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
       // Look up the target neuron by its numeric ID (uuid is the string form)
       const neuronId = Number(uuid);
       const neuron = json.neurons.find((n) => n.id === neuronId);

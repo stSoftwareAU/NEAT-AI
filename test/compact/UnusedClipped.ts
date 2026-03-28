@@ -65,7 +65,10 @@ Deno.test("compactUnused - behaviour preserved when CLIPPED hidden neuron is rem
 
   for (let attempts = 0; attempts < 240; attempts++) {
     const config = createBackPropagationConfig();
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportInternalJSON(),
+      config,
+    );
     for (let i = data.length; i--;) {
       const actual = creature.activateAndTrace(
         new Float32Array(data[i]),
@@ -103,7 +106,7 @@ Deno.test("compactUnused - behaviour preserved when CLIPPED hidden neuron is rem
   }
   Deno.writeTextFileSync(
     `${traceDir}/compacted.json`,
-    JSON.stringify(compacted.exportJSON(), null, 1),
+    JSON.stringify(compacted.exportInternalJSON(), null, 1),
   );
 
   for (let i = data.length; i--;) {

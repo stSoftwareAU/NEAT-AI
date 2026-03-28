@@ -38,7 +38,7 @@ Deno.test("tune", () => {
   });
 
   const fittest = Creature.fromJSON(
-    previousFittest.exportJSON(),
+    previousFittest.exportInternalJSON(),
   );
   fittest.score = -0.4;
 
@@ -116,7 +116,7 @@ Deno.test("many", () => {
     ],
   });
   const fittest = Creature.fromJSON(
-    previousFittest.exportJSON(),
+    previousFittest.exportInternalJSON(),
   );
 
   fittest.score = -0.4;

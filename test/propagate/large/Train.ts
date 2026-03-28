@@ -26,7 +26,7 @@ Deno.test("large network: training error does not regress significantly across i
   await Deno.mkdir(directory, { recursive: true });
   await Deno.writeTextFile(
     `${directory}/first.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
 
   const cost = Costs.find("MSE");
@@ -49,7 +49,7 @@ Deno.test("large network: training error does not regress significantly across i
   for (let i = 0; i < 6; i++) {
     await Deno.writeTextFile(
       `${directory}/${i}.json`,
-      JSON.stringify(creature.exportJSON(), null, 1),
+      JSON.stringify(creature.exportInternalJSON(), null, 1),
     );
     let results;
     for (let attempts = 0; attempts < 12; attempts++) {

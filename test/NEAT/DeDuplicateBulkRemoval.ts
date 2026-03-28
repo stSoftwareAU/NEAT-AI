@@ -56,7 +56,9 @@ Deno.test("DeDuplicator bulk removal preserves unique creatures", () => {
   // Add many duplicates of the first few creatures (well beyond population size)
   for (let i = 0; i < 30; i++) {
     const sourceIndex = i % 5;
-    creatures.push(Creature.fromJSON(creatures[sourceIndex].exportJSON()));
+    creatures.push(
+      Creature.fromJSON(creatures[sourceIndex].exportInternalJSON()),
+    );
   }
 
   assertEquals(creatures.length, 45);
@@ -99,7 +101,7 @@ Deno.test("DeDuplicator bulk removal handles all-duplicates correctly", () => {
 
   // Add 20 copies of the same creature
   for (let i = 0; i < 20; i++) {
-    creatures.push(Creature.fromJSON(original.exportJSON()));
+    creatures.push(Creature.fromJSON(original.exportInternalJSON()));
   }
 
   const genus = new Genus();
@@ -147,7 +149,7 @@ Deno.test("DeDuplicator preserves array order for non-removed elements", () => {
 
   // Add duplicates that will be over the population size threshold
   for (let i = 0; i < 10; i++) {
-    creatures.push(Creature.fromJSON(creatures[0].exportJSON()));
+    creatures.push(Creature.fromJSON(creatures[0].exportInternalJSON()));
   }
 
   const genus = new Genus();

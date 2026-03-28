@@ -86,7 +86,7 @@ Deno.test(
     try {
       const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
       const options: NeatOptions = {
-        creatures: [seedCreature.exportJSON()],
+        creatures: [seedCreature.exportInternalJSON()],
         populationSize: 10,
       };
 
@@ -159,7 +159,7 @@ Deno.test(
     try {
       const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
       const options: NeatOptions = {
-        creatures: [seedCreature.exportJSON()],
+        creatures: [seedCreature.exportInternalJSON()],
         populationSize: 10,
         elitism: 3,
       };
@@ -196,7 +196,7 @@ Deno.test(
     try {
       const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
       const options: NeatOptions = {
-        creatures: [seedCreature.exportJSON()],
+        creatures: [seedCreature.exportInternalJSON()],
         populationSize: 10,
       };
 
@@ -242,7 +242,7 @@ Deno.test(
     try {
       const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
       const options: NeatOptions = {
-        creatures: [seedCreature.exportJSON()],
+        creatures: [seedCreature.exportInternalJSON()],
         populationSize: 10,
       };
 

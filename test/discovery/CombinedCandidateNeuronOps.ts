@@ -66,7 +66,7 @@ Deno.test(
   "buildCombinedFromSuccessful: add-neurons + remove-neuron preserves added neurons",
   () => {
     const base = makeTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Create "add-neurons" candidate: adds hidden-D
     const addNeuronsJSON = structuredClone(baseJSON);
@@ -141,7 +141,7 @@ Deno.test(
     const combo = combined.find((c) => c.change.type === "combo-successful");
     assertExists(combo, "Should have a combo-successful candidate");
 
-    const comboJSON = combo.creature.exportJSON();
+    const comboJSON = combo.creature.exportInternalJSON();
     const hiddenNeurons = comboJSON.neurons.filter((n) => n.type === "hidden");
     const neuronIds = hiddenNeurons.map((n) => n.id);
 
@@ -188,7 +188,7 @@ Deno.test(
   "buildCombinedFromSuccessful: add-neurons targeting hidden neuron keeps new neuron before target",
   () => {
     const base = makeTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Create "add-neurons" candidate: adds hidden-D and targets hidden-A (a hidden neuron).
     // The new neuron must be inserted BEFORE hidden-A; otherwise hidden-A can't receive
@@ -266,7 +266,7 @@ Deno.test(
     const combo = combined.find((c) => c.change.type === "combo-successful");
     assertExists(combo, "Should have a combo-successful candidate");
 
-    const comboJSON = combo.creature.exportJSON();
+    const comboJSON = combo.creature.exportInternalJSON();
     const indexOf = (id: number) =>
       comboJSON.neurons.findIndex((n) => n.id === id);
 
@@ -294,7 +294,7 @@ Deno.test(
     base.semanticVersion = "4.0.0";
     base.validate({ forwardOnly: true });
 
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Candidate A: adds a *back* connection (hidden-C -> hidden-A). This is illegal in forward-only mode.
     // This simulates a Rust hint that is fine in recurrent mode, but must be rejected/filtered in 4.x.
@@ -367,7 +367,7 @@ Deno.test(
     base.semanticVersion = "4.0.0";
     base.validate({ forwardOnly: true });
 
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Candidate A: add a new neuron, but also (incorrectly) includes a back connection
     // involving that new neuron. In forward-only mode this must be filtered out
@@ -471,7 +471,7 @@ Deno.test(
   "buildCombinedFromSuccessful: add-neurons chain keeps new neurons in candidate order (new -> new -> existing)",
   () => {
     const base = makeTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Create "add-neurons" candidate: adds hidden-D -> hidden-E -> hidden-A chain.
     //
@@ -559,7 +559,7 @@ Deno.test(
     const combo = combined.find((c) => c.change.type === "combo-successful");
     assertExists(combo, "Should have a combo-successful candidate");
 
-    const comboJSON = combo.creature.exportJSON();
+    const comboJSON = combo.creature.exportInternalJSON();
     const indexOf = (id: number) =>
       comboJSON.neurons.findIndex((n) => n.id === id);
 
@@ -586,7 +586,7 @@ Deno.test(
   "buildCombinedFromSuccessful: add-synapses + remove-synapse preserves added synapses",
   () => {
     const base = makeTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Create "add-synapses" candidate: adds input-1 -> hidden-A synapse
     const addSynapsesJSON = structuredClone(baseJSON);
@@ -650,7 +650,7 @@ Deno.test(
     const combo = combined.find((c) => c.change.type === "combo-successful");
     assertExists(combo, "Should have a combo-successful candidate");
 
-    const comboJSON = combo.creature.exportJSON();
+    const comboJSON = combo.creature.exportInternalJSON();
     const synapseKeys = comboJSON.synapses.map((s) => `${s.fromId}->${s.toId}`);
 
     // Critical assertion: added synapse should exist

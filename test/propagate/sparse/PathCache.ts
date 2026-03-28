@@ -7,7 +7,7 @@ import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
 
 Deno.test("SparseConfig with cached outgoing map produces consistent results", () => {
   const creature = makeCreature();
-  const json = creature.exportJSON();
+  const json = creature.exportInternalJSON();
   const config = createBackPropagationConfig({ sparseRatio: 1 });
 
   // Create without cache
@@ -44,7 +44,7 @@ Deno.test("SparseConfig cached outgoing map reusable across multiple configs", (
       Deno.readTextFileSync("test/propagate/large/creature.json"),
     ),
   );
-  const json = creature.exportJSON();
+  const json = creature.exportInternalJSON();
 
   // Build the outgoing synapse map once
   const cachedMap = buildOutgoingSynapsesMap(json);

@@ -16,7 +16,7 @@ Deno.test("Discovery: forward-only legacy can be repaired by stripping recurrent
   original.semanticVersion = "3.0.0";
   original.validate({ forwardOnly: true });
 
-  const modified = Creature.fromJSON(original.exportJSON());
+  const modified = Creature.fromJSON(original.exportInternalJSON());
   const hiddenIndex = modified.input;
   // Inject a recurrent self-loop. `connect()` now guards against creating
   // recurrent links on forward-only creatures, so temporarily clear the flag to
@@ -48,7 +48,7 @@ Deno.test("Discovery: forward-only 4.x repairs by stripping recurrent connection
   original.semanticVersion = "4.0.0";
   original.validate({ forwardOnly: true });
 
-  const modified = Creature.fromJSON(original.exportJSON());
+  const modified = Creature.fromJSON(original.exportInternalJSON());
   const hiddenIndex = modified.input;
   // Inject a recurrent self-loop. `connect()` now guards against creating
   // recurrent links on forward-only creatures, so temporarily clear the flag to

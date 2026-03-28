@@ -396,7 +396,7 @@ Deno.test("PC training reduces error across iterations on complex creature", () 
     };
 
     // Measure initial error (zero learning rate = no weight updates).
-    const baselineCreature = Creature.fromJSON(creature.exportJSON());
+    const baselineCreature = Creature.fromJSON(creature.exportInternalJSON());
     const initialResult = trainWithPredictiveCoding(
       baselineCreature,
       [dataSetDir + "/0.bin"],
@@ -711,7 +711,7 @@ Deno.test("PC training improves on production-representative GRQ-cluster topolog
     };
 
     // Measure baseline error.
-    const baselineCreature = Creature.fromJSON(creature.exportJSON());
+    const baselineCreature = Creature.fromJSON(creature.exportInternalJSON());
     const baseline = trainWithPredictiveCoding(
       baselineCreature,
       [dataSetDir + "/0.bin"],

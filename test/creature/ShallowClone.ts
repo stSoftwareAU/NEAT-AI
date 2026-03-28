@@ -289,11 +289,11 @@ Deno.test("shallowClone - activateAndTrace equivalence", () => {
   creatureValidate(clone);
 
   const sparseConfigOriginal = new SparseConfig(
-    original.exportJSON(),
+    original.exportInternalJSON(),
     createBackPropagationConfig({}),
   );
   const sparseConfigClone = new SparseConfig(
-    clone.exportJSON(),
+    clone.exportInternalJSON(),
     createBackPropagationConfig({}),
   );
 
@@ -336,7 +336,7 @@ Deno.test("shallowClone - structural equivalence with fromJSON", () => {
   addTag(original, "method", "shallow");
 
   const shallowClone = original.shallowClone();
-  const jsonClone = Creature.fromJSON(original.exportJSON());
+  const jsonClone = Creature.fromJSON(original.exportInternalJSON());
   jsonClone.uuid = original.uuid;
   jsonClone.score = original.score;
 
@@ -434,7 +434,7 @@ Deno.test("shallowClone - fittest creature protection: mutation cannot affect or
   creatureValidate(original);
 
   // Record original state
-  const originalJSON = JSON.stringify(original.exportJSON());
+  const originalJSON = JSON.stringify(original.exportInternalJSON());
   const originalBiases = original.neurons.map((n) => n.bias);
   const originalWeights = original.synapses.map((s) => s.weight);
 
@@ -480,7 +480,7 @@ Deno.test("shallowClone - fittest creature protection: mutation cannot affect or
 
     // Verify original export hasn't changed
     assertEquals(
-      JSON.stringify(original.exportJSON()),
+      JSON.stringify(original.exportInternalJSON()),
       originalJSON,
       "Original export JSON was modified",
     );
@@ -494,7 +494,7 @@ Deno.test("shallowClone - fittest creature protection: mutation cannot affect or
 
     // Verify original structure unchanged
     assertEquals(
-      JSON.stringify(original.exportJSON()),
+      JSON.stringify(original.exportInternalJSON()),
       originalJSON,
       "Original structure was modified when clone structure changed",
     );
@@ -517,7 +517,7 @@ Deno.test("shallowClone - fittest creature protection: breeding produces new cre
   creatureValidate(otherCreature);
 
   // Record fittest state
-  const fittestJSON = JSON.stringify(fittest.exportJSON());
+  const fittestJSON = JSON.stringify(fittest.exportInternalJSON());
   const fittestBiases = fittest.neurons.map((n) => n.bias);
   const fittestWeights = fittest.synapses.map((s) => s.weight);
 
@@ -565,7 +565,7 @@ Deno.test("shallowClone - fittest creature protection: breeding produces new cre
   }
 
   assertEquals(
-    JSON.stringify(fittest.exportJSON()),
+    JSON.stringify(fittest.exportInternalJSON()),
     fittestJSON,
     "Fittest export JSON was modified during breeding",
   );
@@ -580,7 +580,7 @@ Deno.test("shallowClone - fittest creature protection: compact operation preserv
   creatureValidate(fittest);
 
   // Record fittest state
-  const fittestJSON = JSON.stringify(fittest.exportJSON());
+  const fittestJSON = JSON.stringify(fittest.exportInternalJSON());
 
   // Create clone and run compact on it (simulating what fineTuneImprovement does)
   const clone = fittest.shallowClone();
@@ -588,7 +588,7 @@ Deno.test("shallowClone - fittest creature protection: compact operation preserv
 
   // Verify fittest is unchanged regardless of compact result
   assertEquals(
-    JSON.stringify(fittest.exportJSON()),
+    JSON.stringify(fittest.exportInternalJSON()),
     fittestJSON,
     "Fittest was modified by compact operation on clone",
   );

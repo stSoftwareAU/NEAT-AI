@@ -8,7 +8,7 @@ import {
 
 Deno.test("buildOutgoingSynapsesMap groups synapses by fromId", () => {
   const creature = makeCreature();
-  const json = creature.exportJSON();
+  const json = creature.exportInternalJSON();
   const map = buildOutgoingSynapsesMap(json);
 
   // Find actual neuron IDs from loaded creature
@@ -43,7 +43,7 @@ Deno.test("buildOutgoingSynapsesMap groups synapses by fromId", () => {
 
 Deno.test("calculatePathsToOutput with cached map matches uncached", () => {
   const creature = makeCreature();
-  const json = creature.exportJSON();
+  const json = creature.exportInternalJSON();
 
   // Find actual neuron IDs from loaded creature
   const hidden3 = creature.neurons.find((n) =>
@@ -67,7 +67,7 @@ Deno.test("calculatePathsToOutput with cached map matches uncached", () => {
 
 Deno.test("calculatePathsToOutput with cached map finds correct paths", () => {
   const creature = makeCreature();
-  const json = creature.exportJSON();
+  const json = creature.exportInternalJSON();
   const cachedMap = buildOutgoingSynapsesMap(json);
 
   const hidden3 = creature.neurons.find((n) =>
@@ -126,7 +126,7 @@ Deno.test("calculatePathsToOutput with cached map handles isolated neurons", () 
     input: 1,
     output: 1,
   });
-  const json = creature.exportJSON();
+  const json = creature.exportInternalJSON();
   const hiddenNeuron = creature.neurons.find((n) => n.type === "hidden")!;
 
   const cachedMap = buildOutgoingSynapsesMap(json);

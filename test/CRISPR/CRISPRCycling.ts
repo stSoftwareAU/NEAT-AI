@@ -296,7 +296,7 @@ Deno.test("CRISPR cycling - multiple CRISPRs per generation", async () => {
     "Both DNA inserts should apply in one generation window",
   );
 
-  const exported = currentBase.exportJSON();
+  const exported = currentBase.exportInternalJSON();
   assert(
     findDNA(exported, dna1.id),
     "DNA1 tag present after first application",
@@ -369,7 +369,7 @@ Deno.test("CRISPR cycling - round-robin across generations", async () => {
 
     // deno-lint-ignore no-await-in-loop
     await baseCreature.evolveDataSet(ds, options);
-    const exported = baseCreature.exportJSON();
+    const exported = baseCreature.exportInternalJSON();
 
     // Count how many distinct CRISPRs were applied
     let appliedCount = 0;

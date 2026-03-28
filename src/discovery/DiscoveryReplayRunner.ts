@@ -505,7 +505,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
           score: best.score,
           scoreDelta,
           message,
-          creature: best.creature.exportJSON(),
+          creature: best.creature.exportInternalJSON(),
         };
         if (verifyScores) {
           result.verifiedImprovement = {
@@ -515,7 +515,7 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
             improved: scoreDelta > 0,
             message:
               `${prefix} Verified improvement for ${shortID}: ${message}`,
-            creature: best.creature.exportJSON(),
+            creature: best.creature.exportInternalJSON(),
           };
         }
       }

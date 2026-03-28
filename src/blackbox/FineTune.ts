@@ -226,8 +226,8 @@ function tuneRandomize(
 ) {
   const effectiveForwardOnly = forwardOnly ?? false;
   const effectiveBacktrack = backtrack ?? false;
-  const previousJSON = previousFittest.exportJSON();
-  const fittestJSON = fittest.exportJSON();
+  const previousJSON = previousFittest.exportInternalJSON();
+  const fittestJSON = fittest.exportInternalJSON();
 
   let memetic: MemeticInterface;
   let existingMemetic: MemeticInterface | undefined;

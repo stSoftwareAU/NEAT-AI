@@ -136,10 +136,10 @@ async function doAttempt() {
     CRISPRs: [dnaUsed, dnaUnused],
     iterations: 10,
   };
-  const evolvedCreature = Creature.fromJSON(baseCreature.exportJSON());
+  const evolvedCreature = Creature.fromJSON(baseCreature.exportInternalJSON());
   await evolvedCreature.evolveDataSet(ds, options);
 
-  const evolvedExport = evolvedCreature.exportJSON();
+  const evolvedExport = evolvedCreature.exportInternalJSON();
   console.info("evolvedExport", JSON.stringify(evolvedExport, null, 2));
 
   const shouldBeUsed = findDNA(evolvedExport, dnaUsed.id);

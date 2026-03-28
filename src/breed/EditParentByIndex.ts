@@ -6,8 +6,8 @@ export function editParentByIndex(
   parent: Creature,
   target: Creature,
 ): Creature {
-  const parentExport = parent.exportJSON();
-  const targetExport = target.exportJSON();
+  const parentExport = parent.exportInternalJSON();
+  const targetExport = target.exportInternalJSON();
 
   const targetSet = new Set<number>();
   targetExport.neurons.forEach((n) => targetSet.add(n.id!));

@@ -61,7 +61,7 @@ function makeCreature() {
  */
 function getHiddenIds(): { hidden3Id: number; hidden4Id: number } {
   const creature = makeCreature();
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
   // hidden-3 (Cosine) and hidden-4 (HARD_TANH)
   const cosineNeuron = hiddenNeurons.find((n) => n.squash === "Cosine");
@@ -106,7 +106,7 @@ Deno.test("MemeticInterface should include ancestry history", () => {
 
   creature.memetic = memetic;
 
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   assertExists(exported.memetic, "Exported creature should have memetic");
   assertExists(exported.memetic.ancestry, "Memetic should have ancestry");
   assertEquals(

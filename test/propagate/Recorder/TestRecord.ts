@@ -31,7 +31,7 @@ Deno.test("record - playback error remains consistent after recording and replay
   await Deno.mkdir(directory, { recursive: true });
   await Deno.writeTextFile(
     `${directory}/first.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
   const cost = Costs.find("MSE");
 
@@ -54,7 +54,7 @@ Deno.test("record - playback error remains consistent after recording and replay
     disableRandomSamples: true,
   });
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    creature.exportInternalJSON(),
     backProductionConfig,
   );
 
@@ -117,7 +117,7 @@ Deno.test("record - playback error remains consistent after recording and replay
   const record = new ReplaySquash(String(worseNeuron.id), squash);
 
   //"801f2ede-a53a-4b0e-901c-b31c228953cc"
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   for (const neuron of exported.neurons) {
     if (neuron.id === worseNeuron.id) {
       neuron.squash = record.getName();

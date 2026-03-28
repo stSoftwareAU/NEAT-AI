@@ -21,7 +21,7 @@ Deno.test("activate - HYPOTv2 squash applies uniform bias offset before hypotenu
   };
   const creature = Creature.fromJSON(json);
 
-  const exportCreature = creature.exportJSON();
+  const exportCreature = creature.exportInternalJSON();
   Deno.writeTextFileSync(
     `${directory}/creature.json`,
     JSON.stringify(exportCreature, null, 1),
