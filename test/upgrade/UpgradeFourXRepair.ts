@@ -3,6 +3,35 @@ import { Creature } from "../../src/Creature.ts";
 import { Synapse } from "../../src/architecture/Synapse.ts";
 import { upgrade } from "../../src/upgrade/Upgrade.ts";
 
+Deno.test(
+  "upgrade(): prunes stale memetic weight toIds before validating 4.x creature",
+  () => {
+    const creature = new Creature(2, 1, { layers: [{ count: 1 }] });
+    creature.semanticVersion = "4.0.0";
+    creature.forwardOnly = true;
+    creature.validate({ forwardOnly: true });
+
+    const hidden = creature.neurons[creature.input];
+    creature.memetic = {
+      generation: 1,
+      score: 0,
+      biases: {},
+      weights: {
+        [hidden.id]: [{ toId: 1_998_066_541, weight: 0.1 }],
+      },
+    };
+
+    const upgraded = upgrade(creature);
+    upgraded.validate({ forwardOnly: true });
+    assertEquals(upgraded.forwardOnly, true);
+    const w = upgraded.memetic?.weights?.[hidden.id];
+    assert(
+      w === undefined || w.length === 0,
+      "orphan memetic weight row should be pruned",
+    );
+  },
+);
+
 /**
  * Test for recursive synapse repair in 4.x creatures.
  *

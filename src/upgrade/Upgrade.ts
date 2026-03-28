@@ -1,5 +1,6 @@
 import { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import { pruneOrphanMemeticReferences } from "../compact/CompactUtils.ts";
 import { exportJSONWithRuntimeIds } from "../architecture/PopulateRuntimeIdsFromCreature.ts";
 import type { ValidationError } from "../errors/ValidationError.ts";
 import { writeDiagnostics } from "../utils/Diagnostics.ts";
@@ -84,6 +85,10 @@ function validateThreeX(creature: Creature): void {
  * See https://github.com/stSoftwareAU/NEAT-AI/issues/956
  */
 function validateFourX(creature: Creature): void {
+  // Breeding/memetics can leave weight rows pointing at removed neurons; prune
+  // before validate so MEMETIC is not misclassified as an unrepaired bug (#2077).
+  pruneOrphanMemeticReferences(creature);
+
   try {
     creatureValidate(creature, { forwardOnly: true });
     creature.forwardOnly = true;
@@ -194,12 +199,14 @@ function tryUpgradeToFour(creature: Creature): Creature {
   // forwardOnly === true - validate it's actually forward-only before upgrading
   if (creature.forwardOnly === true) {
     try {
+      pruneOrphanMemeticReferences(creature);
       creatureValidate(creature, { forwardOnly: true });
       creature.semanticVersion = "4.0.0";
     } catch (_error) {
       // Creature claims to be forward-only but failed validation.
       // Attempt repair first; if repair fails, clear the flag and stay at current version.
       try {
+        pruneOrphanMemeticReferences(creature);
         creature.fix({ forwardOnly: true });
         creatureValidate(creature, { forwardOnly: true });
         creature.semanticVersion = "4.0.0";

@@ -10,8 +10,11 @@ import type { Creature } from "../Creature.ts";
 import type { Synapse } from "../architecture/Synapse.ts";
 import { Synapse as SynapseClass } from "../architecture/Synapse.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import {
+  pruneOrphanMemeticReferences,
+  removeHiddenNeuron,
+} from "../compact/CompactUtils.ts";
 import { cleanupOrphanedNeuronsInCreature } from "../compact/OrphanedNeuronCleanup.ts";
-import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
 import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
@@ -208,6 +211,10 @@ export function fix(
   // connections but no valid inbound source. Reuse the canonical orphan cleanup
   // pass here so fix() repairs those before validation retries.
   cleanupOrphanedNeuronsInCreature(creature);
+
+  // Memetic can still reference removed neurons/synapses after partial repairs;
+  // strict validate (e.g. Neat.populatePopulation) would throw MEMETIC otherwise.
+  pruneOrphanMemeticReferences(creature);
 
   if (forwardOnly) {
     creature.forwardOnly = true;
