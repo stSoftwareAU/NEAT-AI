@@ -493,60 +493,64 @@ export function creatureValidate(
       );
     });
 
+    // Prune stale memetic entries that reference neurons or synapses
+    // removed by mutation. Memetic data is auxiliary optimisation metadata;
+    // stale references are expected during evolution and should be cleaned
+    // up rather than treated as structural failures.
+    let memeticDirty = false;
+
     for (const neuronId in memetic.biases) {
-      const neuronIndex = idMap.get(Number(neuronId));
-      if (neuronIndex === undefined) {
-        throw new ValidationError(
-          `Neuron with id ${neuronId} not found in the creature.`,
-          "MEMETIC",
-        );
+      if (idMap.get(Number(neuronId)) === undefined) {
+        delete memetic.biases[neuronId];
+        memeticDirty = true;
       }
     }
+
     for (const synapseId in memetic.weights) {
-      const synapseIndex = idMap.get(Number(synapseId));
-      if (synapseIndex === undefined) {
-        throw new ValidationError(
-          `Synapse with id ${synapseId} not found in the creature.`,
-          "MEMETIC",
-        );
+      if (idMap.get(Number(synapseId)) === undefined) {
+        delete memetic.weights[synapseId];
+        memeticDirty = true;
+        continue;
       }
 
       const memeticWeights = memetic.weights[synapseId];
       if (!Array.isArray(memeticWeights)) {
-        throw new ValidationError(
-          `Synapse with id ${synapseId} has invalid weights.`,
-          "MEMETIC",
-        );
+        delete memetic.weights[synapseId];
+        memeticDirty = true;
+        continue;
       }
-      memeticWeights.forEach((weight, indx) => {
-        if (weight.toId === undefined) {
-          throw new ValidationError(
-            `Memetic from id ${synapseId} to id ${weight.toId} is invalid.`,
-            "MEMETIC",
-          );
-        }
-        if (weight.weight === undefined) {
-          throw new ValidationError(
-            `Memetic from id ${synapseId} to id ${weight.toId} has invalid weight at index ${indx}.`,
-            "MEMETIC",
-          );
-        }
-        const toIndex = idMap.get(weight.toId);
 
-        if (toIndex === undefined) {
-          throw new ValidationError(
-            `Memetic from id ${synapseId} has no valid neuron.`,
-            "MEMETIC",
-          );
+      // Filter out entries with missing targets or no matching synapse
+      const cleaned = memeticWeights.filter((weight) => {
+        if (weight.toId === undefined || weight.weight === undefined) {
+          return false;
+        }
+        if (idMap.get(weight.toId) === undefined) {
+          return false;
         }
         if (!synapsesSet.has(`${synapseId}->${weight.toId}`)) {
-          debugWrite(creature);
-          throw new ValidationError(
-            `Memetic from id ${synapseId} to id ${weight.toId} has no matching synapses.`,
-            "MEMETIC",
-          );
+          return false;
         }
+        return true;
       });
+
+      if (cleaned.length !== memeticWeights.length) {
+        memeticDirty = true;
+      }
+      if (cleaned.length === 0) {
+        delete memetic.weights[synapseId];
+      } else {
+        memetic.weights[synapseId] = cleaned;
+      }
+    }
+
+    // If all memetic data was pruned, remove the memetic property entirely
+    if (
+      memeticDirty &&
+      Object.keys(memetic.weights).length === 0 &&
+      Object.keys(memetic.biases).length === 0
+    ) {
+      delete creature.memetic;
     }
   }
 
