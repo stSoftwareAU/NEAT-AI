@@ -35,4 +35,5 @@ export type { PruneDeadSubgraphsResult } from "./DeadSubgraphPruning.ts";
 export {
   cleanupMemeticForRemovedNeuron,
   cleanupMemeticForRemovedSynapse,
+  pruneOrphanMemeticReferences,
 } from "./MemeticCleanup.ts";

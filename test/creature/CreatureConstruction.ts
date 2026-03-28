@@ -15,6 +15,7 @@ Deno.test("Fresh construction produces valid creature (no layers)", () => {
 
   assertEquals(creature.input, 3);
   assertEquals(creature.output, 2);
+  assertEquals(creature.semanticVersion, "2.0.0");
   assertEquals(creature.neurons.length, 5);
   // 3 inputs * 2 outputs = 6 connections
   assertEquals(creature.synapses.length, 6);

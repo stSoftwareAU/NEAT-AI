@@ -72,6 +72,15 @@ interface CreatureOptions {
 }
 
 /**
+ * Freshly constructed creatures are modern 2.x genomes by default.
+ *
+ * They are not legacy payloads, so they should not enter the 0.x/1.x upgrade
+ * path. We only promote them to 4.x once forward-only validity is explicitly
+ * confirmed by mutate/breed/discovery flows.
+ */
+export const DEFAULT_NEW_CREATURE_SEMANTIC_VERSION = "2.0.0";
+
+/**
  * Cached score components to avoid recalculating on every score calculation.
  * Issue #1023: Performance optimisation for large creatures.
  * Issue #1011: Cache weight/bias statistics incrementally.
@@ -190,7 +199,8 @@ export class Creature implements CreatureInternal {
 
     this.tags = undefined;
     this.score = undefined;
-    this.semanticVersion = options.semanticVersion ?? "0.0.1";
+    this.semanticVersion = options.semanticVersion ??
+      DEFAULT_NEW_CREATURE_SEMANTIC_VERSION;
     const major = Number.parseInt(
       this.semanticVersion.split(".")[0] ?? "0",
       10,
