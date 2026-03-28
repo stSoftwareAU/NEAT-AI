@@ -22,6 +22,13 @@ import type {
 import {
   applyCoordinatedStructuralCandidate,
 } from "../architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
+import {
+  buildWireToRuntimeIdMap,
+  resolveCandidateNeuronEndpoints,
+  resolveCandidateSynapseEndpoints,
+  resolveCoordinatedEdgeEndpoints,
+  resolveWireToRuntimeId,
+} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import type { Creature } from "../Creature.ts";
 import { formatWeight } from "./FailureCache.ts";
 import type { SuccessCacheEntry } from "./SuccessCache.ts";
@@ -49,6 +56,34 @@ function isSynapsePresent(
   return exported.synapses.some((s) => s.fromId === fromId && s.toId === toId);
 }
 
+function resolveSynapseDetailsEndpoints(
+  creature: Creature,
+  details:
+    | {
+      fromNeuronUuid?: string;
+      toNeuronUuid?: string;
+    }
+    | undefined,
+): { fromId: number; toId: number } | undefined {
+  if (!details) return undefined;
+  const wireToId = buildWireToRuntimeIdMap(creature);
+  if (!details.fromNeuronUuid || !details.toNeuronUuid) {
+    return undefined;
+  }
+  const fromId = resolveWireToRuntimeId(
+    wireToId,
+    details.fromNeuronUuid,
+  );
+  const toId = resolveWireToRuntimeId(
+    wireToId,
+    details.toNeuronUuid,
+  );
+  if (fromId === undefined || toId === undefined) {
+    return undefined;
+  }
+  return { fromId, toId };
+}
+
 function nearlyEqual(a: number, b: number): boolean {
   if (a === b) return true;
   if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
@@ -74,36 +109,49 @@ export function isAlreadyApplied(
   // Fast-path: structural removals.
   if (type === "remove-low-impact") {
     const c = req.removalCandidate as RemovalCandidate | undefined;
-    return c?.neuronId !== null && c?.neuronId !== undefined
-      ? !isNeuronPresent(creature, c.neuronId)
+    if (!c?.neuronUuid) return false;
+    const neuronId = resolveWireToRuntimeId(
+      buildWireToRuntimeIdMap(creature),
+      c.neuronUuid,
+    );
+    return neuronId !== undefined
+      ? !isNeuronPresent(creature, neuronId)
       : false;
   }
   if (type === "remove-neuron") {
     const c = req.harmfulNeuronCandidate as CandidateHarmfulNeuron | undefined;
-    return c?.neuronId !== null && c?.neuronId !== undefined
-      ? !isNeuronPresent(creature, c.neuronId)
+    if (!c?.neuronUuid) return false;
+    const neuronId = resolveWireToRuntimeId(
+      buildWireToRuntimeIdMap(creature),
+      c.neuronUuid,
+    );
+    return neuronId !== undefined
+      ? !isNeuronPresent(creature, neuronId)
       : false;
   }
   if (type === "remove-synapse") {
     const c = req.harmfulSynapseCandidate as CandidateSynapse | undefined;
-    if (
-      c?.fromNeuronId !== null && c?.fromNeuronId !== undefined &&
-      c?.toNeuronId !== null && c?.toNeuronId !== undefined
-    ) {
-      return !isSynapsePresent(creature, c.fromNeuronId, c.toNeuronId);
-    }
-    const details = req.synapseDetails as {
-      fromNeuronId?: number;
-      toNeuronId?: number;
-    } | undefined;
-    if (
-      details?.fromNeuronId !== null && details?.fromNeuronId !== undefined &&
-      details?.toNeuronId !== null && details?.toNeuronId !== undefined
-    ) {
+    const wireToId = buildWireToRuntimeIdMap(creature);
+    const candidateEndpoints = c
+      ? resolveCandidateSynapseEndpoints(wireToId, c)
+      : undefined;
+    if (candidateEndpoints) {
       return !isSynapsePresent(
         creature,
-        details.fromNeuronId,
-        details.toNeuronId,
+        candidateEndpoints.fromId,
+        candidateEndpoints.toId,
+      );
+    }
+    const details = req.synapseDetails as {
+      fromNeuronUuid?: string;
+      toNeuronUuid?: string;
+    } | undefined;
+    const detailEndpoints = resolveSynapseDetailsEndpoints(creature, details);
+    if (detailEndpoints) {
+      return !isSynapsePresent(
+        creature,
+        detailEndpoints.fromId,
+        detailEndpoints.toId,
       );
     }
     return false;
@@ -111,19 +159,28 @@ export function isAlreadyApplied(
 
   if (type === "add-synapses") {
     const c = req.synapseCandidate as CandidateSynapse | undefined;
-    if (
-      c?.fromNeuronId === null || c?.fromNeuronId === undefined ||
-      c?.toNeuronId === null || c?.toNeuronId === undefined
-    ) return false;
-    return isSynapsePresent(creature, c.fromNeuronId, c.toNeuronId);
+    if (!c) return false;
+    const endpoints = resolveCandidateSynapseEndpoints(
+      buildWireToRuntimeIdMap(creature),
+      c,
+    );
+    if (!endpoints) return false;
+    return isSynapsePresent(creature, endpoints.fromId, endpoints.toId);
   }
 
   if (type === "change-squash") {
     const c = req.squashCandidate as CandidateSquash | undefined;
-    if (c?.neuronId === null || c?.neuronId === undefined || !c?.squash) {
+    if (!c?.neuronUuid) {
       return false;
     }
-    const neuron = creature.neurons.find((n) => n.id === c.neuronId);
+    const neuronId = resolveWireToRuntimeId(
+      buildWireToRuntimeIdMap(creature),
+      c.neuronUuid,
+    );
+    if (neuronId === undefined || !c?.squash) {
+      return false;
+    }
+    const neuron = creature.neurons.find((n) => n.id === neuronId);
     return neuron?.squash === c.squash;
   }
 
@@ -146,24 +203,31 @@ export function isAlreadyApplied(
     >();
     const edgeKey = (fromId: number, toId: number): string =>
       `${fromId}\0${toId}`;
+    const wireToId = buildWireToRuntimeIdMap(creature);
 
     for (const op of ops) {
       if (!op || typeof op.type !== "string") return false;
       if (op.type === "removeSynapse") {
-        expectedByEdge.set(edgeKey(op.fromNeuronId, op.toNeuronId), {
+        const endpoints = resolveCoordinatedEdgeEndpoints(wireToId, op);
+        if (!endpoints) return false;
+        expectedByEdge.set(edgeKey(endpoints.fromId, endpoints.toId), {
           present: false,
         });
         continue;
       }
       if (op.type === "addSynapse") {
-        expectedByEdge.set(edgeKey(op.fromNeuronId, op.toNeuronId), {
+        const endpoints = resolveCoordinatedEdgeEndpoints(wireToId, op);
+        if (!endpoints) return false;
+        expectedByEdge.set(edgeKey(endpoints.fromId, endpoints.toId), {
           present: true,
           weight: op.weight,
         });
         continue;
       }
       if (op.type === "setWeight") {
-        const key = edgeKey(op.fromNeuronId, op.toNeuronId);
+        const endpoints = resolveCoordinatedEdgeEndpoints(wireToId, op);
+        if (!endpoints) return false;
+        const key = edgeKey(endpoints.fromId, endpoints.toId);
         const existing = expectedByEdge.get(key);
         // setWeight is a no-op if the synapse doesn't exist. If the edge is
         // already marked as absent (from a prior removeSynapse), leave it absent.
@@ -207,19 +271,22 @@ export function isAlreadyApplied(
   if (type === "add-neurons") {
     // Approximate match using the same exponent-bucketing approach as the cache key.
     const details = req.neuronDetails as {
-      fromNeuronId?: number;
-      toNeuronId?: number;
+      fromNeuronUuid?: string;
+      toNeuronUuid?: string;
       incomingWeight?: number;
       outgoingWeight?: number;
       bias?: number;
       squash?: string;
     } | undefined;
-    const fromId = details?.fromNeuronId;
-    const toId = details?.toNeuronId;
-    if (
-      fromId === null || fromId === undefined || toId === null ||
-      toId === undefined
-    ) return false;
+    const endpoints = details
+      ? resolveCandidateNeuronEndpoints(
+        buildWireToRuntimeIdMap(creature),
+        details as CandidateNeuron,
+      )
+      : undefined;
+    const fromId = endpoints?.fromId;
+    const toId = endpoints?.toId;
+    if (fromId === undefined || toId === undefined) return false;
 
     const inW = safeNumber(details?.incomingWeight);
     const outW = safeNumber(details?.outgoingWeight);
@@ -315,15 +382,18 @@ export function applyEntryUsingRustRequest(
         (req.harmfulSynapseCandidate as CandidateSynapse | undefined) ??
           (req.synapseCandidate as CandidateSynapse | undefined);
       const details = req.synapseDetails as
-        | { fromNeuronId?: number; toNeuronId?: number }
+        | {
+          fromNeuronUuid?: string;
+          toNeuronUuid?: string;
+        }
         | undefined;
       const resolved = synapse ??
-        (details?.fromNeuronId !== null &&
-            details?.fromNeuronId !== undefined &&
-            details?.toNeuronId !== null && details?.toNeuronId !== undefined
+        (details &&
+            details.fromNeuronUuid &&
+            details.toNeuronUuid
           ? {
-            fromNeuronId: details.fromNeuronId,
-            toNeuronId: details.toNeuronId,
+            fromNeuronUuid: details.fromNeuronUuid,
+            toNeuronUuid: details.toNeuronUuid,
             weight: 0,
             targetNeuronImpact: 0,
             expectedCreatureErrorReduction: 0,

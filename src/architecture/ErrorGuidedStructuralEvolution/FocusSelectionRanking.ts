@@ -16,6 +16,8 @@ import type { RemovalCandidate } from "./DiscoverResult.ts";
 import { creatureToRustFormat } from "./RustDiscovery.ts";
 import type { DiscoverStructureDeps } from "./DiscoverStructure.ts";
 import { formatMillis } from "./DiscoverLogging.ts";
+import { buildWireToRuntimeIdMap } from "./DiscoveryWireIdentity.ts";
+import { TopologyError } from "../../errors/TopologyError.ts";
 
 /**
  * Lists neurons sorted by their total error, using Rust focus ranking with fallback.
@@ -160,6 +162,7 @@ function tryRustFocusRanking(
   }
 
   try {
+    const wireToId = buildWireToRuntimeIdMap(creature);
     const rustCreature = creatureToRustFormat(creature.exportJSON());
     const maxResults = Math.max(
       targetCount ?? creature.neurons.length,
@@ -237,9 +240,16 @@ function tryRustFocusRanking(
     // Capture low-impact removal candidates from Rust
     let removalCandidates: RemovalCandidate[] | undefined;
     if (result.removalCandidates && result.removalCandidates.length > 0) {
-      removalCandidates = result.removalCandidates.map(
-        fromRustRemovalCandidate,
-      );
+      removalCandidates = result.removalCandidates.map((candidate) => {
+        const mapped = fromRustRemovalCandidate(candidate);
+        if (wireToId.get(mapped.neuronUuid) === undefined) {
+          throw new TopologyError(
+            `Rust focus ranking returned unknown removal candidate uuid: ${mapped.neuronUuid}`,
+            "MISSING_NEURON_UUID",
+          );
+        }
+        return mapped;
+      });
       if (loggingEnabled) {
         logFn(
           "info",
@@ -250,11 +260,20 @@ function tryRustFocusRanking(
       }
     }
 
-    const neurons = result.neurons.map((entry) => ({
-      id: Number(entry.neuronUuid),
-      totalError: entry.totalError,
-      impact: entry.impact,
-    }));
+    const neurons = result.neurons.map((entry) => {
+      const runtimeId = wireToId.get(entry.neuronUuid);
+      if (runtimeId === undefined) {
+        throw new TopologyError(
+          `Rust focus ranking returned unknown neuron uuid: ${entry.neuronUuid}`,
+          "MISSING_NEURON_UUID",
+        );
+      }
+      return {
+        id: runtimeId,
+        totalError: entry.totalError,
+        impact: entry.impact,
+      };
+    });
 
     return { neurons, scanStats, cachedMaxOutputError, removalCandidates };
   } catch (error) {

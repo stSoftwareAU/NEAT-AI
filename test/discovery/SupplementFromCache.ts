@@ -23,6 +23,17 @@ const INPUT_0_ID = 0;
 // Output neuron ID
 const OUTPUT_0_ID = -1;
 
+function wireUuidForId(base: Creature, neuronId: number): string {
+  if (neuronId >= 0 && neuronId < base.input) {
+    return `input-${neuronId}`;
+  }
+  const neuron = base.exportJSON().neurons.find((n) => n.id === neuronId);
+  if (!neuron?.uuid) {
+    throw new Error(`Neuron ${neuronId} is missing wire uuid`);
+  }
+  return neuron.uuid;
+}
+
 /** Helper to create a candidate creature with a squash change applied. */
 function makeSquashCandidate(
   base: Creature,
@@ -42,7 +53,7 @@ function makeSquashCandidate(
       type: "change-squash",
       description: `Change squash on ${neuronId} to ${squash}`,
       squashCandidate: {
-        neuronId,
+        neuronUuid: wireUuidForId(base, neuronId),
         previousSquash: "IDENTITY",
         squash,
         expectedCreatureScoreGain: 0.1,
@@ -71,8 +82,8 @@ function makeAddSynapseCandidate(
       type: "add-synapses",
       description: `Add synapse ${fromId} → ${toId}`,
       synapseCandidate: {
-        fromNeuronId: fromId,
-        toNeuronId: toId,
+        fromNeuronUuid: wireUuidForId(base, fromId),
+        toNeuronUuid: wireUuidForId(base, toId),
         weight,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,

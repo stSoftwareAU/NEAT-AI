@@ -307,38 +307,38 @@ function getComboSlotKey(candidate: DiscoveryCandidate): string | undefined {
   const change = candidate.change;
   switch (change.type) {
     case "add-neurons": {
-      const from = change.neuronDetails?.fromNeuronId ??
-        change.neuronCandidate?.fromNeuronId;
-      const to = change.neuronDetails?.toNeuronId ??
-        change.neuronCandidate?.toNeuronId;
+      const from = change.neuronDetails?.fromNeuronUuid ??
+        change.neuronCandidate?.fromNeuronUuid;
+      const to = change.neuronDetails?.toNeuronUuid ??
+        change.neuronCandidate?.toNeuronUuid;
       if (from === undefined || to === undefined) return undefined;
       return `add-neurons:${from}->${to}`;
     }
     case "add-synapses": {
-      const from = change.synapseCandidate?.fromNeuronId;
-      const to = change.synapseCandidate?.toNeuronId;
+      const from = change.synapseCandidate?.fromNeuronUuid;
+      const to = change.synapseCandidate?.toNeuronUuid;
       if (from === undefined || to === undefined) return undefined;
       return `add-synapses:${from}->${to}`;
     }
     case "remove-synapse": {
       const details = change.synapseDetails;
       if (!details) return undefined;
-      return `remove-synapse:${details.fromNeuronId}->${details.toNeuronId}`;
+      return `remove-synapse:${details.fromNeuronUuid}->${details.toNeuronUuid}`;
     }
     case "remove-low-impact": {
-      const id = change.removalCandidate?.neuronId ??
+      const id = change.removalCandidate?.neuronUuid ??
         change.description?.match(/neuron\s+([a-zA-Z0-9_-]+)/i)?.[1];
       if (id === undefined) return undefined;
       return `remove-neuron:${id}`;
     }
     case "remove-neuron": {
-      const id = change.harmfulNeuronCandidate?.neuronId ??
+      const id = change.harmfulNeuronCandidate?.neuronUuid ??
         change.description?.match(/neuron\s+([a-zA-Z0-9_-]+)/i)?.[1];
       if (id === undefined) return undefined;
       return `remove-neuron:${id}`;
     }
     case "change-squash": {
-      const id = change.squashCandidate?.neuronId;
+      const id = change.squashCandidate?.neuronUuid;
       if (id === undefined) return undefined;
       return `change-squash:${id}`;
     }

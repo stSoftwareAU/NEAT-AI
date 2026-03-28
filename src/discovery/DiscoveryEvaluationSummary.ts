@@ -307,7 +307,7 @@ export function logSingleSummary(
     const prefix = isBest ? "★ " : "  ";
     getLogger().info(
       `[DiscoveryRunner]     ${prefix}neuron: ` +
-        `from=${nd.fromNeuronId} to=${nd.toNeuronId} ` +
+        `from=${nd.fromNeuronUuid} to=${nd.toNeuronUuid} ` +
         `squash=${nd.squash} ` +
         `inW=${nd.incomingWeight.toFixed(3)} outW=${
           nd.outgoingWeight.toFixed(3)

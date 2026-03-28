@@ -32,8 +32,8 @@ export function mapRustCandidate(
   candidate: RustCandidateSynapse,
 ): CandidateSynapse {
   return {
-    fromNeuronId: Number(candidate.fromNeuronUuid),
-    toNeuronId: Number(candidate.toNeuronUuid),
+    fromNeuronUuid: candidate.fromNeuronUuid,
+    toNeuronUuid: candidate.toNeuronUuid,
     weight: candidate.weight,
     targetNeuronImpact: candidate.targetNeuronImpact,
     expectedCreatureErrorReduction: candidate.expectedCreatureErrorReduction,
@@ -52,8 +52,8 @@ export function mapRustNeuronCandidate(
   candidate: RustCandidateNeuron,
 ): CandidateNeuron {
   return {
-    fromNeuronId: Number(candidate.sourceNeuronUuid),
-    toNeuronId: Number(candidate.targetNeuronUuid),
+    fromNeuronUuid: candidate.sourceNeuronUuid,
+    toNeuronUuid: candidate.targetNeuronUuid,
     incomingWeight: candidate.incomingWeight,
     outgoingWeight: candidate.outgoingWeight,
     squash: candidate.squash,
@@ -72,14 +72,14 @@ export function mapRustNeuronCandidate(
  * Generates key string for synapse candidate dedup.
  */
 export function candidateKey(candidate: CandidateSynapse): string {
-  return `${candidate.fromNeuronId}->${candidate.toNeuronId}`;
+  return `${candidate.fromNeuronUuid}->${candidate.toNeuronUuid}`;
 }
 
 /**
  * Generates key string for neuron candidate dedup.
  */
 export function neuronCandidateKey(candidate: CandidateNeuron): string {
-  return `${candidate.fromNeuronId}->${candidate.toNeuronId}`;
+  return `${candidate.fromNeuronUuid}->${candidate.toNeuronUuid}`;
 }
 
 /**
@@ -130,15 +130,16 @@ export function upsertNeuronDiscovery(
 export function filterTopSynapseCandidates(
   candidates: CandidateSynapse[],
 ): CandidateSynapse[] {
-  const grouped = new Map<number, CandidateSynapse>();
+  const grouped = new Map<string, CandidateSynapse>();
   candidates.forEach((candidate) => {
-    const existing = grouped.get(candidate.toNeuronId);
+    const targetKey = candidate.toNeuronUuid;
+    const existing = grouped.get(targetKey);
     if (
       !existing ||
       candidate.expectedCreatureScoreGain >
         existing.expectedCreatureScoreGain
     ) {
-      grouped.set(candidate.toNeuronId, candidate);
+      grouped.set(targetKey, candidate);
     }
   });
   return Array.from(grouped.values());
@@ -150,15 +151,16 @@ export function filterTopSynapseCandidates(
 export function filterTopNeuronCandidates(
   candidates: CandidateNeuron[],
 ): CandidateNeuron[] {
-  const grouped = new Map<number, CandidateNeuron>();
+  const grouped = new Map<string, CandidateNeuron>();
   candidates.forEach((candidate) => {
-    const existing = grouped.get(candidate.toNeuronId);
+    const targetKey = candidate.toNeuronUuid;
+    const existing = grouped.get(targetKey);
     if (
       !existing ||
       candidate.expectedCreatureScoreGain >
         existing.expectedCreatureScoreGain
     ) {
-      grouped.set(candidate.toNeuronId, candidate);
+      grouped.set(targetKey, candidate);
     }
   });
   return Array.from(grouped.values()).sort((a, b) =>
@@ -280,14 +282,14 @@ function mapRustCoordinatedOp(
     case "removeSynapse":
       return {
         type: op.type,
-        fromNeuronId: Number(op.fromNeuronUuid),
-        toNeuronId: Number(op.toNeuronUuid),
+        fromNeuronUuid: op.fromNeuronUuid,
+        toNeuronUuid: op.toNeuronUuid,
       };
     case "addSynapse":
       return {
         type: op.type,
-        fromNeuronId: Number(op.fromNeuronUuid),
-        toNeuronId: Number(op.toNeuronUuid),
+        fromNeuronUuid: op.fromNeuronUuid,
+        toNeuronUuid: op.toNeuronUuid,
         weight: op.weight,
       };
     default:

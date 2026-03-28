@@ -6,12 +6,16 @@ import type {
   RustCandidateNeuron,
   RustCandidateSynapse,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import type {
+  CandidateNeuron,
+  CandidateSynapse,
+} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 
 type DiscoverStructurePrivateApi = {
   mapRustNeuronCandidate: (
     candidate: RustCandidateNeuron,
-  ) => { comment?: string };
-  mapRustCandidate: (candidate: RustCandidateSynapse) => { comment?: string };
+  ) => CandidateNeuron;
+  mapRustCandidate: (candidate: RustCandidateSynapse) => CandidateSynapse;
 };
 
 function makeCreatureWithUuid(): Creature {
@@ -42,8 +46,8 @@ Deno.test(
       );
 
       const neuronJson = JSON.stringify({
-        sourceNeuronId: "input-0",
-        targetNeuronId: "output-0",
+        sourceNeuronUuid: "input-0",
+        targetNeuronUuid: "output-0",
         incomingWeight: 0.42,
         outgoingWeight: -0.13,
         squash: "TANH",
@@ -64,10 +68,12 @@ Deno.test(
         mappedNeuron.comment,
         "diagnostic: add-neuron suggested due to error spike cluster",
       );
+      assertEquals(mappedNeuron.fromNeuronUuid, "input-0");
+      assertEquals(mappedNeuron.toNeuronUuid, "output-0");
 
       const synapseJson = JSON.stringify({
-        fromNeuronUuid: 0,
-        toNeuronUuid: -1,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "output-0",
         weight: 0.99,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0.0,
@@ -85,6 +91,8 @@ Deno.test(
         mappedSynapse.comment,
         "diagnostic: add-synapse chosen as strongest source",
       );
+      assertEquals(mappedSynapse.fromNeuronUuid, "input-0");
+      assertEquals(mappedSynapse.toNeuronUuid, "output-0");
     } finally {
       Deno.removeSync(baseDirectory, { recursive: true });
     }
@@ -105,8 +113,8 @@ Deno.test(
       );
 
       const neuronJson = JSON.stringify({
-        sourceNeuronId: "input-0",
-        targetNeuronId: "output-0",
+        sourceNeuronUuid: "input-0",
+        targetNeuronUuid: "output-0",
         incomingWeight: 0.42,
         outgoingWeight: -0.13,
         squash: "TANH",
@@ -123,10 +131,12 @@ Deno.test(
         (discoverStructure as unknown as DiscoverStructurePrivateApi)
           .mapRustNeuronCandidate(parsedNeuron);
       assertEquals(mappedNeuron.comment, undefined);
+      assertEquals(mappedNeuron.fromNeuronUuid, "input-0");
+      assertEquals(mappedNeuron.toNeuronUuid, "output-0");
 
       const synapseJson = JSON.stringify({
-        fromNeuronUuid: 0,
-        toNeuronUuid: -1,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "output-0",
         weight: 0.99,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0.0,
@@ -140,6 +150,8 @@ Deno.test(
         (discoverStructure as unknown as DiscoverStructurePrivateApi)
           .mapRustCandidate(parsedSynapse);
       assertEquals(mappedSynapse.comment, undefined);
+      assertEquals(mappedSynapse.fromNeuronUuid, "input-0");
+      assertEquals(mappedSynapse.toNeuronUuid, "output-0");
     } finally {
       Deno.removeSync(baseDirectory, { recursive: true });
     }

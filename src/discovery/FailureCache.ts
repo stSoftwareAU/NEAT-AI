@@ -25,6 +25,10 @@ import {
 } from "./FailureCacheDiagnostics.ts";
 import { buildCacheKey, getCacheFilePath } from "./FailureCacheKey.ts";
 import type { FailureMetadata } from "./FailureCacheTypes.ts";
+import {
+  buildDiscoveryWireRequest,
+  DISCOVERY_WIRE_SCHEMA_VERSION,
+} from "./DiscoveryWireFormat.ts";
 
 // Re-export for backward compatibility.
 export { isPredictionTracingEnabled } from "./FailureCacheDiagnostics.ts";
@@ -138,6 +142,7 @@ function buildCacheEntryPayload(
   const discoveryVersion = getDiscoveryVersion();
 
   const cacheEntry: Record<string, unknown> = {
+    wireSchemaVersion: DISCOVERY_WIRE_SCHEMA_VERSION,
     key: buildCacheKey(candidate),
     changeType: candidate.change.type,
     description: candidate.change.description,
@@ -146,65 +151,18 @@ function buildCacheEntryPayload(
     ...(discoveryVersion ? { discoveryVersion } : {}),
   };
 
-  // Include the original Rust candidate response for debugging
-  if (candidate.change.neuronDetails) {
-    cacheEntry.rustRequest = {
-      neuronDetails: candidate.change.neuronDetails,
-    };
+  if (baseCreature) {
+    cacheEntry.rustRequest = buildDiscoveryWireRequest(baseCreature, candidate);
   }
 
-  if (candidate.change.neuronCandidate) {
-    cacheEntry.rustRequest = {
-      ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
-      neuronCandidate: candidate.change.neuronCandidate,
-    };
-  }
-
-  if (candidate.change.coordinatedStructuralCandidate) {
-    cacheEntry.rustRequest = {
-      ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
-      coordinatedStructuralCandidate:
-        candidate.change.coordinatedStructuralCandidate,
-    };
-  }
-
-  if (candidate.change.synapseCandidate) {
-    cacheEntry.rustRequest = {
-      ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
-      synapseCandidate: candidate.change.synapseCandidate,
-    };
-  }
-
-  if (candidate.change.squashCandidate) {
-    cacheEntry.rustRequest = {
-      ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
-      squashCandidate: candidate.change.squashCandidate,
-    };
-  }
-
-  if (candidate.change.removalCandidate) {
-    cacheEntry.rustRequest = {
-      ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
-      removalCandidate: candidate.change.removalCandidate,
-    };
-  }
-
-  if (candidate.change.harmfulNeuronCandidate) {
-    cacheEntry.rustRequest = {
-      ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
-      harmfulNeuronCandidate: candidate.change.harmfulNeuronCandidate,
-    };
-  }
-
-  if (candidate.change.harmfulSynapseCandidate) {
-    cacheEntry.rustRequest = {
-      ...((cacheEntry.rustRequest as Record<string, unknown>) ?? {}),
-      harmfulSynapseCandidate: candidate.change.harmfulSynapseCandidate,
-    };
-  }
-
-  if (candidate.change.synapseDetails) {
-    cacheEntry.synapseDetails = candidate.change.synapseDetails;
+  if (
+    cacheEntry.rustRequest &&
+    typeof cacheEntry.rustRequest === "object" &&
+    "synapseDetails" in cacheEntry.rustRequest
+  ) {
+    cacheEntry.synapseDetails = (cacheEntry.rustRequest as {
+      synapseDetails?: unknown;
+    }).synapseDetails;
   }
 
   if (candidate.change.expectedErrorReduction !== undefined) {

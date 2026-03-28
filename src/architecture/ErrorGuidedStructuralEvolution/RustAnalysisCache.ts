@@ -17,6 +17,7 @@ import type {
 } from "./RustDiscovery.ts";
 import { creatureToRustFormat } from "./RustDiscovery.ts";
 import type { DiscoverStructureDeps } from "./DiscoverStructure.ts";
+import { buildRuntimeIdToWireMap } from "./DiscoveryWireIdentity.ts";
 
 /**
  * Cached combined analysis result.
@@ -104,18 +105,22 @@ export function ensureRustCombinedAnalysis(
   }
 
   const rustCreature = creatureToRustFormat(creature.exportJSON());
+  const idToWire = buildRuntimeIdToWireMap(creature);
+  const focusWireUuids = focusList.map((id) => idToWire.get(id) ?? String(id));
 
   // Calculate each focus neuron's share of the creature's total error.
   const impactEstimator = new CreatureErrorImpactEstimator(creature);
   const focusNeuronErrorShares: Record<string, number> = {};
-  for (const uuid of focusList) {
-    focusNeuronErrorShares[uuid] = impactEstimator.getNeuronShare(uuid);
+  for (let i = 0; i < focusList.length; i++) {
+    focusNeuronErrorShares[focusWireUuids[i]] = impactEstimator.getNeuronShare(
+      focusList[i],
+    );
   }
 
   const parallelInput: RustParallelAnalysisInput = {
     parquetFile: parquetFilePath,
     creature: rustCreature,
-    focusNeurons: focusList.map(String),
+    focusNeurons: focusWireUuids,
     maxSynapseCandidates: includeSynapse
       ? Math.max(50, focusList.length * 10)
       : undefined,

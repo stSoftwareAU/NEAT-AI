@@ -30,6 +30,7 @@ import {
   checkDiskSpace,
   logDiscoveryDiskUsage,
 } from "../../discovery/DiskSpaceMonitor.ts";
+import { neuronUuid } from "../../neuron/NeuronSerialization.ts";
 
 /**
  * Adds recording, chunk management, and flush methods to the
@@ -240,7 +241,7 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
         const errors = discoverRecord.errors.filter(Number.isFinite);
 
         return {
-          neuron_uuid: String(neuron.id),
+          neuron_uuid: neuronUuid(neuron),
           activation: discoverRecord.activation,
           value: discoverRecord.value,
           errors: errors,

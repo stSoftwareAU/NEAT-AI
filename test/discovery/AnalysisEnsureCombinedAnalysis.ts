@@ -42,8 +42,8 @@ Deno.test("analyzeSelectedNeurons calls analyzeParallel to populate cache", asyn
   let analyzeParallelCalled = false;
 
   const helpfulSynapse: RustCandidateSynapse = {
-    fromNeuronUuid: "1",
-    toNeuronUuid: "5001",
+    fromNeuronUuid: "input-1",
+    toNeuronUuid: "hidden-1",
     weight: 0.3,
     targetNeuronImpact: 1.0,
     expectedCreatureErrorReduction: 0,
@@ -197,8 +197,8 @@ Deno.test("analyzeSelectedNeuronsForRemoval calls analyzeParallel to populate ca
   let analyzeParallelCalled = false;
 
   const harmfulSynapse: RustCandidateSynapse = {
-    fromNeuronUuid: "1",
-    toNeuronUuid: "-1",
+    fromNeuronUuid: "input-1",
+    toNeuronUuid: "output-0",
     weight: -0.25,
     targetNeuronImpact: 1.0,
     expectedCreatureErrorReduction: 0,

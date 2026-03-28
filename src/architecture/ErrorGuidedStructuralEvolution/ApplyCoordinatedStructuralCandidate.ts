@@ -1,5 +1,6 @@
 import type { CreatureExport } from "../CreatureInterfaces.ts";
 import { CreatureUtil } from "../CreatureUtils.ts";
+import { nextNeuronId } from "../NeuronId.ts";
 import { Creature } from "../../Creature.ts";
 import {
   cleanupMemeticForRemovedNeuron,
@@ -10,6 +11,10 @@ import type {
   CoordinatedStructuralCandidate,
   CoordinatedStructuralOperation,
 } from "./CoordinatedStructuralCandidate.ts";
+import {
+  buildWireToRuntimeIdMap,
+  resolveCoordinatedEdgeEndpoints,
+} from "./DiscoveryWireIdentity.ts";
 
 function buildIdToIndexMap(creature: CreatureExport): Map<number, number> {
   const idToIndex = new Map<number, number>();
@@ -67,6 +72,7 @@ export function applyCoordinatedStructuralCandidate(
   if (!Array.isArray(ops) || ops.length === 0) {
     return creature;
   }
+  const wireToId = buildWireToRuntimeIdMap(creature);
 
   // Track removed synapses so a later addSynapse can preserve metadata (type/tags)
   // when a Rust candidate performs a weight adjustment via remove+add.
@@ -87,14 +93,16 @@ export function applyCoordinatedStructuralCandidate(
     switch (op.type) {
       case "addNeuron": {
         // Ensure deterministic idempotency: if neuron already exists, update fields.
+        const runtimeNeuronId = wireToId.get(op.neuronUuid);
         const existingIndex = next.neurons.findIndex((n) =>
-          n.id === op.neuronId
+          n.id === runtimeNeuronId
         );
         if (existingIndex >= 0) {
           // Some exports treat neuron entries as readonly, so replace the object.
           next.neurons[existingIndex] = {
             ...next.neurons[existingIndex],
-            id: op.neuronId,
+            id: runtimeNeuronId,
+            uuid: op.neuronUuid,
             type: op.neuronType,
             squash: op.squash,
             bias: op.bias,
@@ -103,15 +111,17 @@ export function applyCoordinatedStructuralCandidate(
         }
 
         const newNeuron = {
-          id: op.neuronId,
+          id: nextNeuronId(),
+          uuid: op.neuronUuid,
           type: op.neuronType,
           squash: op.squash,
           bias: op.bias,
         };
+        wireToId.set(op.neuronUuid, newNeuron.id);
 
-        if (typeof op.insertBeforeNeuronId === "number") {
+        if (typeof op.insertBeforeNeuronUuid === "string") {
           const beforeIdx = next.neurons.findIndex((n) =>
-            n.id === op.insertBeforeNeuronId
+            n.uuid === op.insertBeforeNeuronUuid
           );
           if (beforeIdx >= 0) {
             next.neurons.splice(beforeIdx, 0, newNeuron);
@@ -144,7 +154,10 @@ export function applyCoordinatedStructuralCandidate(
       }
 
       case "removeNeuron": {
-        const neuronId = op.neuronId;
+        const neuronId = wireToId.get(op.neuronUuid);
+        if (neuronId === undefined) {
+          continue;
+        }
         const beforeNeuronCount = next.neurons.length;
         next.neurons = next.neurons.filter((n) => n.id !== neuronId);
         if (next.neurons.length === beforeNeuronCount) {
@@ -166,28 +179,35 @@ export function applyCoordinatedStructuralCandidate(
           cleanupMemeticForRemovedSynapse(next, e.fromId, e.toId);
         }
         cleanupMemeticForRemovedNeuron(next, neuronId);
+        wireToId.delete(op.neuronUuid);
         continue;
       }
 
       case "changeSquash": {
-        const n = next.neurons.find((x) => x.id === op.neuronId);
+        const neuronId = wireToId.get(op.neuronUuid);
+        const n = next.neurons.find((x) => x.id === neuronId);
         if (n) n.squash = op.squash;
         continue;
       }
 
       case "setBias": {
-        const n = next.neurons.find((x) => x.id === op.neuronId);
+        const neuronId = wireToId.get(op.neuronUuid);
+        const n = next.neurons.find((x) => x.id === neuronId);
         if (n) n.bias = op.bias;
         continue;
       }
 
       case "removeSynapse": {
+        const endpoints = resolveCoordinatedEdgeEndpoints(wireToId, op);
+        if (!endpoints) {
+          continue;
+        }
         const existing = next.synapses.find((s) =>
-          s.fromId === op.fromNeuronId && s.toId === op.toNeuronId
+          s.fromId === endpoints.fromId && s.toId === endpoints.toId
         );
         if (existing) {
           removedSynapseMeta.set(
-            edgeKey(op.fromNeuronId, op.toNeuronId),
+            edgeKey(endpoints.fromId, endpoints.toId),
             {
               type: existing.type,
               tags: existing.tags
@@ -199,21 +219,25 @@ export function applyCoordinatedStructuralCandidate(
         const before = next.synapses.length;
         next.synapses = next.synapses.filter((s) =>
           !(
-            s.fromId === op.fromNeuronId &&
-            s.toId === op.toNeuronId
+            s.fromId === endpoints.fromId &&
+            s.toId === endpoints.toId
           )
         );
         if (next.synapses.length !== before) {
           cleanupMemeticForRemovedSynapse(
             next,
-            op.fromNeuronId,
-            op.toNeuronId,
+            endpoints.fromId,
+            endpoints.toId,
           );
         }
         continue;
       }
 
       case "addSynapse": {
+        const endpoints = resolveCoordinatedEdgeEndpoints(wireToId, op);
+        if (!endpoints) {
+          continue;
+        }
         // Ensure both endpoints exist; avoid crashing on stale ops.
         const existingNeuronIds = new Set<number>();
         const inputCount = next.input ?? 0;
@@ -222,30 +246,32 @@ export function applyCoordinatedStructuralCandidate(
         }
         for (const n of next.neurons) existingNeuronIds.add(n.id!);
         if (
-          !existingNeuronIds.has(op.fromNeuronId) ||
-          !existingNeuronIds.has(op.toNeuronId)
+          !existingNeuronIds.has(endpoints.fromId) ||
+          !existingNeuronIds.has(endpoints.toId)
         ) {
           continue;
         }
 
         if (
-          !canAddForwardOnlySynapse(next, op.fromNeuronId, op.toNeuronId)
+          !canAddForwardOnlySynapse(next, endpoints.fromId, endpoints.toId)
         ) {
           continue;
         }
 
         const existing = next.synapses.find((s) =>
-          s.fromId === op.fromNeuronId && s.toId === op.toNeuronId
+          s.fromId === endpoints.fromId && s.toId === endpoints.toId
         );
         if (existing) {
           existing.weight = op.weight;
         } else {
           const meta = removedSynapseMeta.get(
-            edgeKey(op.fromNeuronId, op.toNeuronId),
+            edgeKey(endpoints.fromId, endpoints.toId),
           );
           next.synapses.push({
-            fromId: op.fromNeuronId,
-            toId: op.toNeuronId,
+            fromId: endpoints.fromId,
+            toId: endpoints.toId,
+            fromUUID: op.fromNeuronUuid,
+            toUUID: op.toNeuronUuid,
             weight: op.weight,
             type: meta?.type,
             tags: meta?.tags ? meta.tags.map((t) => ({ ...t })) : undefined,
@@ -255,8 +281,12 @@ export function applyCoordinatedStructuralCandidate(
       }
 
       case "setWeight": {
+        const endpoints = resolveCoordinatedEdgeEndpoints(wireToId, op);
+        if (!endpoints) {
+          continue;
+        }
         const existing = next.synapses.find((s) =>
-          s.fromId === op.fromNeuronId && s.toId === op.toNeuronId
+          s.fromId === endpoints.fromId && s.toId === endpoints.toId
         );
         if (existing) {
           existing.weight = op.weight;

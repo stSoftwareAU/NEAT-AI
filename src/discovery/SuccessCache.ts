@@ -22,6 +22,11 @@ import { getLogger } from "../utils/Logger.ts";
 import type { Creature } from "../Creature.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import { buildCacheKey, extractActualCreatureChanges } from "./FailureCache.ts";
+import {
+  buildDiscoveryWireRequest,
+  DISCOVERY_WIRE_SCHEMA_VERSION,
+  type DiscoveryWireRequest,
+} from "./DiscoveryWireFormat.ts";
 
 /** Metadata stored alongside cached successes for debugging/analysis */
 export interface SuccessMetadata {
@@ -38,10 +43,11 @@ export interface SuccessMetadata {
 }
 
 export interface SuccessCacheEntry extends SuccessMetadata {
+  wireSchemaVersion: number;
   key: string;
   changeType: string;
   description?: string;
-  rustRequest?: Record<string, unknown>;
+  rustRequest?: DiscoveryWireRequest;
   actualCreatureChange?: unknown;
 }
 
@@ -68,40 +74,10 @@ function getCacheFilePath(
 }
 
 function buildRustRequest(
+  baseCreature: Creature,
   candidate: DiscoveryCandidate,
-): Record<string, unknown> {
-  const request: Record<string, unknown> = {};
-
-  if (candidate.change.neuronDetails) {
-    request.neuronDetails = candidate.change.neuronDetails;
-  }
-  if (candidate.change.neuronCandidate) {
-    request.neuronCandidate = candidate.change.neuronCandidate;
-  }
-  if (candidate.change.coordinatedStructuralCandidate) {
-    request.coordinatedStructuralCandidate =
-      candidate.change.coordinatedStructuralCandidate;
-  }
-  if (candidate.change.synapseCandidate) {
-    request.synapseCandidate = candidate.change.synapseCandidate;
-  }
-  if (candidate.change.squashCandidate) {
-    request.squashCandidate = candidate.change.squashCandidate;
-  }
-  if (candidate.change.removalCandidate) {
-    request.removalCandidate = candidate.change.removalCandidate;
-  }
-  if (candidate.change.harmfulNeuronCandidate) {
-    request.harmfulNeuronCandidate = candidate.change.harmfulNeuronCandidate;
-  }
-  if (candidate.change.harmfulSynapseCandidate) {
-    request.harmfulSynapseCandidate = candidate.change.harmfulSynapseCandidate;
-  }
-  if (candidate.change.synapseDetails) {
-    request.synapseDetails = candidate.change.synapseDetails;
-  }
-
-  return request;
+): DiscoveryWireRequest {
+  return buildDiscoveryWireRequest(baseCreature, candidate);
 }
 
 /**
@@ -152,13 +128,16 @@ export function recordSuccessSync(
 
   const discoveryVersion = getDiscoveryVersion();
   const cacheEntry: SuccessCacheEntry = {
+    wireSchemaVersion: DISCOVERY_WIRE_SCHEMA_VERSION,
     key: buildCacheKey(candidate),
     changeType: candidate.change.type,
     description: candidate.change.description,
     ...metadata,
     timestamp: metadata.timestamp ?? new Date().toISOString(),
     ...(discoveryVersion ? { discoveryVersion } : {}),
-    rustRequest: buildRustRequest(candidate),
+    rustRequest: baseCreature
+      ? buildRustRequest(baseCreature, candidate)
+      : undefined,
   };
 
   if (baseCreature) {
@@ -302,8 +281,8 @@ export function archiveSuccessByKeySync(
 
 /** Structured detail for a successful neuron removal, used for combination building. */
 export interface SuccessfulRemovalDetail {
-  /** Integer ID of the neuron that was successfully removed */
-  neuronId: number;
+  /** Stable uuid of the neuron that was successfully removed */
+  neuronUuid: string;
   /** How much the removal improved the score */
   scoreDelta: number;
   /** Score of the candidate creature after removal */
@@ -318,22 +297,22 @@ export interface SuccessfulRemovalDetail {
 const REMOVAL_SUBDIRS = ["remove-low-impact", "remove-neuron"] as const;
 
 /**
- * Queries the success cache for neuron IDs that have already been proven
+ * Queries the success cache for neuron UUIDs that have already been proven
  * successful for removal.
  *
  * Scans the `remove-low-impact` and `remove-neuron` subdirectories and extracts
- * the neuron ID from each cached entry. This provides the foundation for
+ * the neuron UUID from each cached entry. This provides the foundation for
  * deprioritising redundant removal candidates that have already succeeded.
  *
  * Best-effort: corrupt or unreadable entries are skipped with a warning.
  *
  * @param successCacheDir - Root success cache directory path
- * @returns A `Set<number>` of neuron IDs that have already succeeded
+ * @returns A `Set<string>` of neuron UUIDs that have already succeeded
  */
 export function getSuccessfulRemovalNeuronIds(
   successCacheDir: string,
-): Set<number> {
-  const ids = new Set<number>();
+): Set<string> {
+  const ids = new Set<string>();
 
   for (const subdir of REMOVAL_SUBDIRS) {
     const dirPath = join(successCacheDir, subdir);
@@ -353,19 +332,22 @@ export function getSuccessfulRemovalNeuronIds(
       try {
         const raw = Deno.readTextFileSync(filePath);
         const parsed = JSON.parse(raw) as SuccessCacheEntry;
+        if (parsed?.wireSchemaVersion !== DISCOVERY_WIRE_SCHEMA_VERSION) {
+          continue;
+        }
         const rustRequest = parsed?.rustRequest;
         if (!rustRequest) continue;
 
-        const removalId =
-          (rustRequest.removalCandidate as { neuronId?: number })
-            ?.neuronId;
-        const harmfulId =
-          (rustRequest.harmfulNeuronCandidate as { neuronId?: number })
-            ?.neuronId;
+        const removalUuid =
+          (rustRequest.removalCandidate as { neuronUuid?: string })
+            ?.neuronUuid;
+        const harmfulUuid =
+          (rustRequest.harmfulNeuronCandidate as { neuronUuid?: string })
+            ?.neuronUuid;
 
-        const id = removalId ?? harmfulId;
-        if (typeof id === "number" && Number.isFinite(id)) {
-          ids.add(id);
+        const uuid = removalUuid ?? harmfulUuid;
+        if (typeof uuid === "string" && uuid.length > 0) {
+          ids.add(uuid);
         }
       } catch (error) {
         getLogger().warn(
@@ -386,7 +368,7 @@ export function getSuccessfulRemovalNeuronIds(
  * This provides richer data than `getSuccessfulRemovalNeuronIds()` so that
  * cache-informed combination builders can prioritise high-impact removals.
  *
- * When multiple entries exist for the same neuron ID, the entry with the
+ * When multiple entries exist for the same neuron UUID, the entry with the
  * highest `scoreDelta` is kept (ties broken by `candidateScore`).
  *
  * Best-effort: corrupt or incomplete entries are skipped with a warning.
@@ -397,7 +379,7 @@ export function getSuccessfulRemovalNeuronIds(
 export function getSuccessfulRemovalDetails(
   successCacheDir: string,
 ): SuccessfulRemovalDetail[] {
-  const bestById = new Map<number, SuccessfulRemovalDetail>();
+  const bestByUuid = new Map<string, SuccessfulRemovalDetail>();
 
   for (const subdir of REMOVAL_SUBDIRS) {
     const dirPath = join(successCacheDir, subdir);
@@ -417,18 +399,21 @@ export function getSuccessfulRemovalDetails(
       try {
         const raw = Deno.readTextFileSync(filePath);
         const parsed = JSON.parse(raw) as SuccessCacheEntry;
+        if (parsed?.wireSchemaVersion !== DISCOVERY_WIRE_SCHEMA_VERSION) {
+          continue;
+        }
         const rustRequest = parsed?.rustRequest;
         if (!rustRequest) continue;
 
-        const removalId =
-          (rustRequest.removalCandidate as { neuronId?: number })
-            ?.neuronId;
-        const harmfulId =
-          (rustRequest.harmfulNeuronCandidate as { neuronId?: number })
-            ?.neuronId;
+        const removalUuid =
+          (rustRequest.removalCandidate as { neuronUuid?: string })
+            ?.neuronUuid;
+        const harmfulUuid =
+          (rustRequest.harmfulNeuronCandidate as { neuronUuid?: string })
+            ?.neuronUuid;
 
-        const id = removalId ?? harmfulId;
-        if (typeof id !== "number" || !Number.isFinite(id)) continue;
+        const uuid = removalUuid ?? harmfulUuid;
+        if (typeof uuid !== "string" || uuid.length === 0) continue;
 
         const scoreDelta = typeof parsed.scoreDelta === "number"
           ? parsed.scoreDelta
@@ -444,22 +429,22 @@ export function getSuccessfulRemovalDetails(
           : "";
 
         const detail: SuccessfulRemovalDetail = {
-          neuronId: id,
+          neuronUuid: uuid,
           scoreDelta,
           candidateScore,
           originalScore,
           timestamp,
         };
 
-        const existing = bestById.get(id);
+        const existing = bestByUuid.get(uuid);
         if (!existing) {
-          bestById.set(id, detail);
+          bestByUuid.set(uuid, detail);
         } else {
           const isBetter = scoreDelta > existing.scoreDelta ||
             (scoreDelta === existing.scoreDelta &&
               candidateScore > existing.candidateScore);
           if (isBetter) {
-            bestById.set(id, detail);
+            bestByUuid.set(uuid, detail);
           }
         }
       } catch (error) {
@@ -471,7 +456,7 @@ export function getSuccessfulRemovalDetails(
     }
   }
 
-  return Array.from(bestById.values());
+  return Array.from(bestByUuid.values());
 }
 
 /**
@@ -493,6 +478,7 @@ export function listSuccessEntriesSync(cacheDir: string): SuccessCacheEntry[] {
             Deno.readTextFileSync(filePath),
           ) as SuccessCacheEntry;
           if (
+            parsed?.wireSchemaVersion === DISCOVERY_WIRE_SCHEMA_VERSION &&
             typeof parsed?.key === "string" &&
             typeof parsed?.changeType === "string"
           ) {

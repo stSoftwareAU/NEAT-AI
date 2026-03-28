@@ -12,6 +12,9 @@
  */
 
 import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import {
+  buildWireToRuntimeIdMap,
+} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import type { Creature } from "../Creature.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { createSeededRng } from "../utils/RandomNumberGenerator.ts";
@@ -55,13 +58,14 @@ export function buildCacheInformedRemovalCandidates(
 
   const allDetails = getSuccessfulRemovalDetails(successCacheDir);
   if (allDetails.length === 0) return [];
+  const wireToId = buildWireToRuntimeIdMap(baseCreature);
 
   // Filter to neurons that still exist in the base creature
   const creatureNeuronIds = new Set(
     baseCreature.neurons.map((n) => n.id),
   );
   const matchingDetails = allDetails.filter((d) =>
-    creatureNeuronIds.has(d.neuronId)
+    creatureNeuronIds.has(wireToId.get(d.neuronUuid) ?? Number.NaN)
   );
 
   if (matchingDetails.length < 2) {
@@ -259,12 +263,15 @@ function buildMultiRemovalCandidate(
   discoveryFailureCacheDir?: string,
 ): DiscoveryCandidate | undefined {
   let creature: Creature = baseCreature;
-  const removedIds: number[] = [];
+  const removedUuids: string[] = [];
+  const baseWireToId = buildWireToRuntimeIdMap(baseCreature);
 
   for (const detail of details) {
+    const runtimeId = baseWireToId.get(detail.neuronUuid);
+    if (runtimeId === undefined) continue;
     // Check neuron still exists in the (progressively modified) creature
     const neuronExists = creature.neurons.some(
-      (n) => n.id === detail.neuronId,
+      (n) => n.id === runtimeId,
     );
     if (!neuronExists) continue;
 
@@ -272,7 +279,7 @@ function buildMultiRemovalCandidate(
       "cache-informed",
       creature,
       {
-        neuronId: detail.neuronId,
+        neuronUuid: detail.neuronUuid,
         totalError: 0, // Historical; actual impact evaluated at scoring time
         impact: 0, // Historical; not used for bias compensation
         reason: "cache-informed-removal",
@@ -282,20 +289,20 @@ function buildMultiRemovalCandidate(
 
     if (removed) {
       creature = removed;
-      removedIds.push(detail.neuronId);
+      removedUuids.push(detail.neuronUuid);
     }
   }
 
   // Need at least 2 successful removals for a multi-neuron candidate
-  if (removedIds.length < 2) return undefined;
+  if (removedUuids.length < 2) return undefined;
 
-  const shortIds = removedIds.map((id) => shortID(String(id))).join(", ");
+  const shortIds = removedUuids.map((uuid) => shortID(uuid)).join(", ");
   return {
     creature,
     change: {
       type: "cache-informed-removal",
       description:
-        `🗂️ Removed ${removedIds.length} neurons (cache-informed: ${shortIds})`,
+        `🗂️ Removed ${removedUuids.length} neurons (cache-informed: ${shortIds})`,
     },
   };
 }

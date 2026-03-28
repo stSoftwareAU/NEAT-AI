@@ -56,8 +56,8 @@ function formatGainPct(gain: number): string {
 function logCandidate(
   discoveryID: string,
   scope: "SYNAPSE" | "NEURON" | "HARMFUL-SYNAPSE" | "HARMFUL-NEURON",
-  from: number,
-  to: number,
+  from: string | number,
+  to: string | number,
   gain: number,
   improved: number,
   total: number,
@@ -97,8 +97,8 @@ function logAllCandidates(
     logCandidate(
       discoveryID,
       "SYNAPSE",
-      candidate.fromNeuronId,
-      candidate.toNeuronId,
+      candidate.fromNeuronUuid,
+      candidate.toNeuronUuid,
       candidate.expectedCreatureScoreGain,
       candidate.improvedCount,
       candidate.totalCount,
@@ -109,8 +109,8 @@ function logAllCandidates(
     logCandidate(
       discoveryID,
       "NEURON",
-      candidate.fromNeuronId,
-      candidate.toNeuronId,
+      candidate.fromNeuronUuid,
+      candidate.toNeuronUuid,
       candidate.expectedCreatureScoreGain,
       candidate.improvedCount,
       candidate.totalCount,
@@ -121,8 +121,8 @@ function logAllCandidates(
     logCandidate(
       discoveryID,
       "HARMFUL-SYNAPSE",
-      removeHarmfulSynapse.fromNeuronId,
-      removeHarmfulSynapse.toNeuronId,
+      removeHarmfulSynapse.fromNeuronUuid,
+      removeHarmfulSynapse.toNeuronUuid,
       removeHarmfulSynapse.expectedCreatureScoreGain,
       removeHarmfulSynapse.improvedCount,
       removeHarmfulSynapse.totalCount,
@@ -133,8 +133,8 @@ function logAllCandidates(
     logCandidate(
       discoveryID,
       "HARMFUL-NEURON",
-      candidate.neuronId,
-      candidate.neuronId,
+      candidate.neuronUuid,
+      candidate.neuronUuid,
       candidate.expectedCreatureScoreGain,
       candidate.sampleCount,
       candidate.sampleCount,
@@ -422,7 +422,7 @@ function logSquashResults(
   let squashSummaryText = "";
   if (squashCount > 0 && candidateSquashes) {
     const squashSummary = candidateSquashes.map((candidate) => {
-      return `${candidate.neuronId} ${candidate.previousSquash} -> ${candidate.squash} expected: ${
+      return `${candidate.neuronUuid} ${candidate.previousSquash} -> ${candidate.squash} expected: ${
         (candidate.expectedCreatureScoreGain * 100).toFixed(1)
       }% error: ${candidate.currentError.toFixed(4)} -> ${
         candidate.improvedError.toFixed(4)

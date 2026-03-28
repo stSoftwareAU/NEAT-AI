@@ -17,9 +17,9 @@ import type {
 /**
  * Converts a creature export to the Rust format expected by the discovery module.
  *
- * Public `exportJSON()` omits integer ids; this clones the export and runs
- * {@link normaliseCreatureExport} so `id` / `fromId` / `toId` match runtime
- * resolution (same strings as `String(neuron.id)` on a loaded creature).
+ * Public `exportJSON()` already carries stable wire UUIDs alongside resolved
+ * integer ids. We preserve the wire UUIDs for Rust and only use numeric ids as
+ * a legacy fallback when an older/partial export omitted UUID fields.
  */
 export function creatureToRustFormat(
   creature: CreatureExport,
@@ -29,14 +29,15 @@ export function creatureToRustFormat(
 
   return {
     neurons: json.neurons.map((n) => ({
-      uuid: String((n as { id?: number }).id ?? "unknown"),
+      uuid: n.uuid ?? String((n as { id?: number }).id ?? "unknown"),
       type: n.type,
       squash: n.squash || "IDENTITY",
       bias: n.bias || 0,
     })),
     synapses: json.synapses.map((s) => ({
-      from_uuid: String((s as { fromId?: number }).fromId ?? "unknown"),
-      to_uuid: String((s as { toId?: number }).toId ?? "unknown"),
+      from_uuid: s.fromUUID ??
+        String((s as { fromId?: number }).fromId ?? "unknown"),
+      to_uuid: s.toUUID ?? String((s as { toId?: number }).toId ?? "unknown"),
       weight: s.weight,
     })),
     input: json.input,

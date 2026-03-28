@@ -13,6 +13,7 @@ import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
+import { DISCOVERY_WIRE_SCHEMA_VERSION } from "./DiscoveryWireFormat.ts";
 
 /**
  * Extracts the exponent from a number's scientific notation.
@@ -52,7 +53,10 @@ export function formatWeight(weight: number): string {
  * @returns A string suitable for use as a cache filename
  */
 export function buildCacheKey(candidate: DiscoveryCandidate): string {
-  const parts: string[] = [candidate.change.type];
+  const parts: string[] = [
+    `v${DISCOVERY_WIRE_SCHEMA_VERSION}`,
+    candidate.change.type,
+  ];
 
   // Handle different candidate types
   switch (candidate.change.type) {
@@ -69,51 +73,53 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
           const t = (op as { type?: string }).type;
           if (t === "removeSynapse") {
             const o = op as {
-              fromNeuronId?: number;
-              toNeuronId?: number;
+              fromNeuronUuid?: string;
+              toNeuronUuid?: string;
             };
-            return `removeSynapse:${o.fromNeuronId ?? "?"}->${
-              o.toNeuronId ?? "?"
+            return `removeSynapse:${o.fromNeuronUuid ?? "?"}->${
+              o.toNeuronUuid ?? "?"
             }`;
           }
           if (t === "addSynapse") {
             const o = op as {
-              fromNeuronId?: number;
-              toNeuronId?: number;
+              fromNeuronUuid?: string;
+              toNeuronUuid?: string;
               weight?: number;
             };
             const w = typeof o.weight === "number"
               ? formatWeight(o.weight)
               : "?";
-            return `addSynapse:${o.fromNeuronId ?? "?"}->${
-              o.toNeuronId ?? "?"
+            return `addSynapse:${o.fromNeuronUuid ?? "?"}->${
+              o.toNeuronUuid ?? "?"
             }:w${w}`;
           }
           if (t === "addNeuron") {
             const o = op as {
-              neuronId?: number;
+              neuronUuid?: string;
               neuronType?: string;
               squash?: string;
               bias?: number;
-              insertBeforeNeuronId?: number;
+              insertBeforeNeuronUuid?: string;
             };
             const b = typeof o.bias === "number" ? formatWeight(o.bias) : "?";
-            return `addNeuron:${o.neuronId ?? "?"}:type${
+            return `addNeuron:${o.neuronUuid ?? "?"}:type${
               o.neuronType ?? "?"
-            }:s${o.squash ?? "?"}:b${b}:before${o.insertBeforeNeuronId ?? "-"}`;
+            }:s${o.squash ?? "?"}:b${b}:before${
+              o.insertBeforeNeuronUuid ?? "-"
+            }`;
           }
           if (t === "removeNeuron") {
-            const o = op as { neuronId?: number };
-            return `removeNeuron:${o.neuronId ?? "?"}`;
+            const o = op as { neuronUuid?: string };
+            return `removeNeuron:${o.neuronUuid ?? "?"}`;
           }
           if (t === "changeSquash") {
-            const o = op as { neuronId?: number; squash?: string };
-            return `changeSquash:${o.neuronId ?? "?"}:s${o.squash ?? "?"}`;
+            const o = op as { neuronUuid?: string; squash?: string };
+            return `changeSquash:${o.neuronUuid ?? "?"}:s${o.squash ?? "?"}`;
           }
           if (t === "setBias") {
-            const o = op as { neuronId?: number; bias?: number };
+            const o = op as { neuronUuid?: string; bias?: number };
             const b = typeof o.bias === "number" ? formatWeight(o.bias) : "?";
-            return `setBias:${o.neuronId ?? "?"}:b${b}`;
+            return `setBias:${o.neuronUuid ?? "?"}:b${b}`;
           }
           return JSON.stringify(op);
         }).join("|");
@@ -129,8 +135,8 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
       const details = candidate.change.neuronDetails;
       if (details) {
         parts.push(
-          String(details.fromNeuronId),
-          String(details.toNeuronId),
+          details.fromNeuronUuid ?? "?",
+          details.toNeuronUuid ?? "?",
           details.squash,
           formatWeight(details.incomingWeight),
           formatWeight(details.outgoingWeight),
@@ -145,18 +151,9 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
 
     case "remove-low-impact":
     case "remove-neuron": {
-      // For neuron removal, prefer the neuron ID from description.
-      // If removal failed once, it won't succeed until the creature structure changes
-      // significantly (at which point the cache should be cleared anyway).
-      const idMatch = candidate.change.description?.match(
-        /neuron\s+(\d+)/i,
-      );
-      if (idMatch) {
-        parts.push(idMatch[1]);
-      } else {
-        // Fallback: use structural signature to avoid cache collisions
-        parts.push(buildStructuralSignature(candidate));
-      }
+      const removalUuid = candidate.change.removalCandidate?.neuronUuid ??
+        candidate.change.harmfulNeuronCandidate?.neuronUuid;
+      parts.push(removalUuid ?? buildStructuralSignature(candidate));
       break;
     }
 
@@ -179,8 +176,8 @@ export function buildCacheKey(candidate: DiscoveryCandidate): string {
         );
       }
       parts.push(
-        String(synapseDetails.fromNeuronId),
-        String(synapseDetails.toNeuronId),
+        synapseDetails.fromNeuronUuid ?? "?",
+        synapseDetails.toNeuronUuid ?? "?",
       );
       break;
     }

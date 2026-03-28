@@ -90,8 +90,8 @@ Deno.test("CPU fallback: analysis succeeds with gpuUsed=false", () => {
     neuronGpuUsed: false,
     helpfulSynapses: [
       {
-        fromNeuronUuid: "0",
-        toNeuronUuid: "5001",
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-1",
         weight: 0.3,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0.1,
@@ -127,8 +127,8 @@ Deno.test("GPU acceleration: analysis reports gpuUsed=true", () => {
     neuronGpuUsed: true,
     helpfulSynapses: [
       {
-        fromNeuronUuid: "0",
-        toNeuronUuid: "5001",
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-1",
         weight: 0.3,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0.1,

@@ -15,6 +15,10 @@ import type { CandidateHarmfulNeuron } from "./DiscoverStructureTypes.ts";
 import { getLogger } from "../../utils/Logger.ts";
 import { validateAndFixIfNeeded } from "./DiscoveryValidation.ts";
 import { assertValidSynapseReferences } from "../../architecture/AssertValidSynapseReferences.ts";
+import {
+  buildWireToRuntimeIdMap,
+  resolveSingleNeuronReference,
+} from "./DiscoveryWireIdentity.ts";
 
 /**
  * Removes a harmful neuron from the creature efficiently.
@@ -39,10 +43,19 @@ export function removeHarmfulNeuron(
 
   const creatureUUID = CreatureUtil.makeUUID(creature);
   const exportJSON = creature.exportJSON();
+  const wireToId = buildWireToRuntimeIdMap(creature);
+  const harmfulNeuronId = resolveSingleNeuronReference(
+    wireToId,
+    harmfulNeuron.neuronUuid,
+  );
+  if (harmfulNeuronId === undefined) {
+    return undefined;
+  }
+  const harmfulNeuronLabel = harmfulNeuron.neuronUuid;
 
   // Check if neuron exists
   const neuronToRemove = exportJSON.neurons.find(
-    (neuron) => neuron.id === harmfulNeuron.neuronId,
+    (neuron) => neuron.id === harmfulNeuronId,
   );
   if (!neuronToRemove) {
     return undefined; // Neuron doesn't exist, nothing to remove
@@ -60,7 +73,7 @@ export function removeHarmfulNeuron(
 
   // Find all downstream neurons (neurons that receive input from this neuron)
   const outgoingSynapses = simplifiedExport.synapses.filter(
-    (synapse) => synapse.fromId === harmfulNeuron.neuronId,
+    (synapse) => synapse.fromId === harmfulNeuronId,
   );
 
   // Adjust downstream neurons' biases using average activation * synapse weight
@@ -93,13 +106,13 @@ export function removeHarmfulNeuron(
   // Remove all synapses to/from this neuron
   simplifiedExport.synapses = simplifiedExport.synapses.filter(
     (synapse) =>
-      synapse.fromId !== harmfulNeuron.neuronId &&
-      synapse.toId !== harmfulNeuron.neuronId,
+      synapse.fromId !== harmfulNeuronId &&
+      synapse.toId !== harmfulNeuronId,
   );
 
   // Remove the neuron itself
   simplifiedExport.neurons = simplifiedExport.neurons.filter(
-    (neuron) => neuron.id !== harmfulNeuron.neuronId,
+    (neuron) => neuron.id !== harmfulNeuronId,
   );
 
   // Integrity check: after removing neuron and its synapses
@@ -140,10 +153,9 @@ export function removeHarmfulNeuron(
   if (tmpUUID !== creatureUUID) {
     addTag(tmpCreature, "approach", "discovery" as Approach);
     addTag(tmpCreature, "discoveryID", ID);
-    const summary =
-      `🗑️ Removed harmful neuron ${harmfulNeuron.neuronId} (error: ${
-        harmfulNeuron.errorMagnitude.toExponential(2)
-      }, avg activation: ${averageActivation.toFixed(4)})`;
+    const summary = `🗑️ Removed harmful neuron ${harmfulNeuronLabel} (error: ${
+      harmfulNeuron.errorMagnitude.toExponential(2)
+    }, avg activation: ${averageActivation.toFixed(4)})`;
     addTag(tmpCreature, "Discovery", summary);
     delete tmpCreature.memetic;
     removeTag(tmpCreature, "approach-logged");
@@ -180,10 +192,19 @@ export function removeLowImpactNeuron(
 
   const creatureUUID = CreatureUtil.makeUUID(creature);
   const exportJSON = creature.exportJSON();
+  const wireToId = buildWireToRuntimeIdMap(creature);
+  const removalNeuronId = resolveSingleNeuronReference(
+    wireToId,
+    removalCandidate.neuronUuid,
+  );
+  if (removalNeuronId === undefined) {
+    return undefined;
+  }
+  const removalLabel = removalCandidate.neuronUuid;
 
   // Check if neuron exists
   const neuronToRemove = exportJSON.neurons.find(
-    (neuron) => neuron.id === removalCandidate.neuronId,
+    (neuron) => neuron.id === removalNeuronId,
   );
   if (!neuronToRemove) {
     return undefined; // Neuron doesn't exist, nothing to remove
@@ -209,13 +230,13 @@ export function removeLowImpactNeuron(
   const meanActivation = removalCandidate.meanActivation;
   if (typeof meanActivation === "number" && Number.isFinite(meanActivation)) {
     const outgoing = simplifiedExport.synapses.filter(
-      (synapse) => synapse.fromId === removalCandidate.neuronId,
+      (synapse) => synapse.fromId === removalNeuronId,
     );
 
     if (outgoing.length > 0) {
       const weightSumsByTarget = new Map<number, number>();
       for (const synapse of outgoing) {
-        if (synapse.toId === removalCandidate.neuronId) continue;
+        if (synapse.toId === removalNeuronId) continue;
         weightSumsByTarget.set(
           synapse.toId!,
           (weightSumsByTarget.get(synapse.toId!) ?? 0) + synapse.weight,
@@ -233,13 +254,13 @@ export function removeLowImpactNeuron(
   // Remove all synapses to/from this neuron.
   simplifiedExport.synapses = simplifiedExport.synapses.filter(
     (synapse) =>
-      synapse.fromId !== removalCandidate.neuronId &&
-      synapse.toId !== removalCandidate.neuronId,
+      synapse.fromId !== removalNeuronId &&
+      synapse.toId !== removalNeuronId,
   );
 
   // Remove the neuron itself
   simplifiedExport.neurons = simplifiedExport.neurons.filter(
-    (neuron) => neuron.id !== removalCandidate.neuronId,
+    (neuron) => neuron.id !== removalNeuronId,
   );
 
   // Integrity check: after removing neuron and its synapses
@@ -252,7 +273,7 @@ export function removeLowImpactNeuron(
   // This must be called before validation to prevent MEMETIC errors
   cleanupMemeticForRemovedNeuron(
     simplifiedExport,
-    removalCandidate.neuronId,
+    removalNeuronId,
   );
 
   // Clean up any neurons that have become orphaned (no outward connections)
@@ -304,10 +325,9 @@ export function removeLowImpactNeuron(
 
     addTag(tmpCreature, "approach", "discovery" as Approach);
     addTag(tmpCreature, "discoveryID", ID);
-    const summary =
-      `🪶 Removed low-impact neuron ${removalCandidate.neuronId} (error: ${
-        removalCandidate.totalError.toFixed(4)
-      }, impact: ${(removalCandidate.impact * 100).toFixed(2)}%)`;
+    const summary = `🪶 Removed low-impact neuron ${removalLabel} (error: ${
+      removalCandidate.totalError.toFixed(4)
+    }, impact: ${(removalCandidate.impact * 100).toFixed(2)}%)`;
     addTag(tmpCreature, "Discovery", summary);
     delete tmpCreature.memetic;
     removeTag(tmpCreature, "approach-logged");
@@ -323,7 +343,7 @@ export function removeLowImpactNeuron(
     removalDiagnostics.firstSameUUIDLogged = true;
     getLogger().warn(
       `[DiscoverStructure] removeLowImpactNeuron UUID unchanged after removal:`,
-      `\n  neuronId: ${removalCandidate.neuronId}`,
+      `\n  neuronId: ${removalLabel}`,
       `\n  removedSynapses: ${removedSynapseCount}, removedNeurons: ${removedNeuronCount}`,
       `\n  fix() re-added: synapses=${fixReaddedSynapses}, neurons=${fixReaddedNeurons}`,
       `\n  originalUUID: ${creatureUUID}`,

@@ -32,6 +32,10 @@ import {
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type { Creature } from "../Creature.ts";
 import { persistentlyRemoveHarmfulSynapse } from "./CombinedCandidates.ts";
+import {
+  buildWireToRuntimeIdMap,
+  resolveSingleNeuronReference,
+} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 
 // Re-export RemovalCandidate so callers don't need a separate import
 export type { RemovalCandidate };
@@ -65,8 +69,8 @@ export function buildSingleSynapseCandidates(
       change: {
         type: "add-synapses",
         description: `🔗 Added helpful synapse ${
-          shortID(String(synapse.fromNeuronId))
-        } -> ${shortID(String(synapse.toNeuronId))}`,
+          shortID(synapse.fromNeuronUuid)
+        } -> ${shortID(synapse.toNeuronUuid)}`,
         expectedErrorReduction: getExpected?.(synapse),
         sampleSize: synapse.totalCount,
         synapseCandidate: synapse, // Store original Rust response for debugging
@@ -123,14 +127,14 @@ export function buildSingleNeuronCandidates(
       change: {
         type: "add-neurons",
         description: `💡 Added neuron ${
-          shortID(String(neuron.fromNeuronId))
-        } -> ${neuron.squash} -> ${shortID(String(neuron.toNeuronId))}`,
+          shortID(neuron.fromNeuronUuid)
+        } -> ${neuron.squash} -> ${shortID(neuron.toNeuronUuid)}`,
         expectedErrorReduction: getExpected?.(neuron),
         sampleSize: neuron.totalCount,
         neuronDetails: {
           addedNeuronShortID,
-          fromNeuronId: neuron.fromNeuronId,
-          toNeuronId: neuron.toNeuronId,
+          fromNeuronUuid: neuron.fromNeuronUuid,
+          toNeuronUuid: neuron.toNeuronUuid,
           incomingWeight: neuron.incomingWeight,
           outgoingWeight: neuron.outgoingWeight,
           bias: neuron.bias,
@@ -164,6 +168,7 @@ export function buildSingleSquashCandidates(
   if (!squashes || squashes.length === 0) return [];
   const entries: DiscoveryCandidate[] = [];
   let skippedCount = 0;
+  const wireToId = buildWireToRuntimeIdMap(baseCreature);
   for (const squash of squashes) {
     const creature = DiscoverStructure.changeSquash(
       discoveryID,
@@ -176,7 +181,11 @@ export function buildSingleSquashCandidates(
       continue;
     }
 
-    const neuron = baseCreature.neurons.find((n) => n.id === squash.neuronId);
+    const neuronId = resolveSingleNeuronReference(
+      wireToId,
+      squash.neuronUuid,
+    );
+    const neuron = baseCreature.neurons.find((n) => n.id === neuronId);
     const oldSquash = neuron?.squash;
 
     const scaledExpected = getExpected?.(squash);
@@ -188,7 +197,7 @@ export function buildSingleSquashCandidates(
       change: {
         type: "change-squash",
         description: `🎨 Changed activation function for ${
-          shortID(String(squash.neuronId))
+          shortID(squash.neuronUuid)
         } (${oldSquash} -> ${squash.squash}${improvement})`,
         expectedErrorReduction: scaledExpected,
         squashCandidate: squash, // Store original Rust response for debugging
@@ -219,6 +228,7 @@ export function buildLowImpactRemovalCandidates(
 ): DiscoveryCandidate[] {
   const { removalCandidates } = discovery;
   if (!removalCandidates || removalCandidates.length === 0) return [];
+  const wireToId = buildWireToRuntimeIdMap(baseCreature);
 
   const entries: DiscoveryCandidate[] = [];
   let removalSuccessCount = 0;
@@ -226,8 +236,12 @@ export function buildLowImpactRemovalCandidates(
   const failureReasons: Map<string, number> = new Map();
 
   for (const candidate of removalCandidates) {
+    const resolvedNeuronId = resolveSingleNeuronReference(
+      wireToId,
+      candidate.neuronUuid,
+    );
     const neuronExists = baseCreature.neurons.some(
-      (n) => n.id === candidate.neuronId,
+      (n) => n.id === resolvedNeuronId,
     );
     if (!neuronExists) {
       const reason = "neuron_not_found";
@@ -249,7 +263,7 @@ export function buildLowImpactRemovalCandidates(
         change: {
           type: "remove-low-impact",
           description: `🪶 Removed neuron ${
-            shortID(String(candidate.neuronId))
+            shortID(candidate.neuronUuid)
           } (impact: ${candidate.impact.toExponential(2)})`,
           removalCandidate: candidate,
         },
@@ -293,7 +307,7 @@ function logRemovalDiagnostics(
   );
   const topCandidates = sortedByImpact.slice(0, 10);
   const candidateDetails = topCandidates.map((c) =>
-    `${shortID(String(c.neuronId))}:${c.impact.toExponential(2)}`
+    `${shortID(c.neuronUuid)}:${c.impact.toExponential(2)}`
   ).join(", ");
   getLogger().info(
     `[DiscoveryCandidates] Top ${topCandidates.length} lowest-impact removal candidates: ${candidateDetails}`,
@@ -391,7 +405,7 @@ export function buildHarmfulNeuronRemovalCandidate(
     change: {
       type: "remove-neuron",
       description: `💀 Removed harmful neuron ${
-        shortID(String(mostHarmful.neuronId))
+        shortID(mostHarmful.neuronUuid)
       } (error: ${mostHarmful.errorMagnitude.toExponential(2)})`,
       expectedErrorReduction: mostHarmful.expectedCreatureScoreGain,
       sampleSize: mostHarmful.sampleCount,
@@ -436,13 +450,13 @@ export function buildHarmfulSynapseRemovalCandidates(
     change: {
       type: "remove-synapse",
       description: `✂️ Removed harmful synapse ${
-        shortID(String(removeHarmfulSynapse.fromNeuronId))
-      } -> ${shortID(String(removeHarmfulSynapse.toNeuronId))}`,
+        shortID(removeHarmfulSynapse.fromNeuronUuid)
+      } -> ${shortID(removeHarmfulSynapse.toNeuronUuid)}`,
       expectedErrorReduction: getExpectedRemoval(removeHarmfulSynapse),
       sampleSize: removeHarmfulSynapse.totalCount,
       synapseDetails: {
-        fromNeuronId: removeHarmfulSynapse.fromNeuronId,
-        toNeuronId: removeHarmfulSynapse.toNeuronId,
+        fromNeuronUuid: removeHarmfulSynapse.fromNeuronUuid,
+        toNeuronUuid: removeHarmfulSynapse.toNeuronUuid,
       },
       harmfulSynapseCandidate: removeHarmfulSynapse,
     },

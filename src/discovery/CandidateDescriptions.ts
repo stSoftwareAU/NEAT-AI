@@ -26,27 +26,27 @@ export function describeSingleCoordinatedStructuralOperation(
 ): string {
   switch (op.type) {
     case "removeSynapse":
-      return `✂️ Removed synapse ${shortID(String(op.fromNeuronId))} -> ${
-        shortID(String(op.toNeuronId))
+      return `✂️ Removed synapse ${shortID(op.fromNeuronUuid)} -> ${
+        shortID(op.toNeuronUuid)
       }`;
     case "addSynapse":
-      return `🔗 Added synapse ${shortID(String(op.fromNeuronId))} -> ${
-        shortID(String(op.toNeuronId))
+      return `🔗 Added synapse ${shortID(op.fromNeuronUuid)} -> ${
+        shortID(op.toNeuronUuid)
       }`;
     case "setWeight":
-      return `⚙️ Set synapse weight ${shortID(String(op.fromNeuronId))} -> ${
-        shortID(String(op.toNeuronId))
+      return `⚙️ Set synapse weight ${shortID(op.fromNeuronUuid)} -> ${
+        shortID(op.toNeuronUuid)
       }`;
     case "addNeuron":
-      return `💡 Added neuron ${shortID(String(op.neuronId))} (${op.squash})`;
+      return `💡 Added neuron ${shortID(op.neuronUuid)} (${op.squash})`;
     case "removeNeuron":
-      return `🗑️ Removed neuron ${shortID(String(op.neuronId))}`;
+      return `🗑️ Removed neuron ${shortID(op.neuronUuid)}`;
     case "changeSquash":
       return `🎨 Changed activation for ${
-        shortID(String(op.neuronId))
+        shortID(op.neuronUuid)
       } -> ${op.squash}`;
     case "setBias":
-      return `📐 Set neuron bias ${shortID(String(op.neuronId))}`;
+      return `📐 Set neuron bias ${shortID(op.neuronUuid)}`;
     default:
       return "🧩 Structural change";
   }

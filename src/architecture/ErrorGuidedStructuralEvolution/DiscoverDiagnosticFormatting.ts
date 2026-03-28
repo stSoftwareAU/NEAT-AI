@@ -171,7 +171,7 @@ export function logHelpfulSynapse(
     loggingEnabled,
     discoveryID,
     "info",
-    `Rust discovered beneficial synapse from ${candidate.fromNeuronId} to ${candidate.toNeuronId} with weight ${
+    `Rust discovered beneficial synapse from ${candidate.fromNeuronUuid} to ${candidate.toNeuronUuid} with weight ${
       candidate.weight.toFixed(4)
     }, expected creature score gain ${
       (candidate.expectedCreatureScoreGain * 100).toFixed(1)
@@ -191,7 +191,7 @@ export function logHelpfulNeuron(
     loggingEnabled,
     discoveryID,
     "info",
-    `Rust discovered beneficial ${candidate.squash} neuron linking ${candidate.fromNeuronId} -> ${candidate.toNeuronId} with incoming ${
+    `Rust discovered beneficial ${candidate.squash} neuron linking ${candidate.fromNeuronUuid} -> ${candidate.toNeuronUuid} with incoming ${
       candidate.incomingWeight.toFixed(4)
     } and outgoing ${
       candidate.outgoingWeight.toFixed(4)
@@ -214,7 +214,7 @@ export function logHarmfulSynapse(
     loggingEnabled,
     discoveryID,
     "info",
-    `Rust discovered harmful synapse from ${candidate.fromNeuronId} to ${candidate.toNeuronId}, expected creature score loss ${
+    `Rust discovered harmful synapse from ${candidate.fromNeuronUuid} to ${candidate.toNeuronUuid}, expected creature score loss ${
       harmPercent.toFixed(1)
     }% (${candidate.improvedCount}/${candidate.totalCount} samples)`,
   );
