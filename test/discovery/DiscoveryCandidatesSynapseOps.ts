@@ -11,12 +11,6 @@ import {
 } from "../../src/discovery/DiscoveryCandidates.ts";
 import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 
-// Integer IDs for neurons in the baseline creature (from UUID hashing):
-// hidden-1 → 1775329650, hidden-2 → 1775329649
-// output-0 → -1, output-1 → -2
-const ID_HIDDEN_1 = 1775329650;
-const ID_HIDDEN_2 = 1775329649;
-
 function makeBaselineCreature(): Creature {
   const json: Parameters<typeof normaliseCreatureExport>[0] = {
     input: 4,
@@ -50,8 +44,8 @@ Deno.test(
     const base = makeBaselineCreature();
     // Use an existing synapse from the base creature as the harmful one
     const harmfulSynapse: CandidateSynapse = {
-      fromNeuronId: 0,
-      toNeuronId: ID_HIDDEN_1,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "hidden-1",
       weight: -50.0, // Large negative weight simulating harmful synapse
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -84,8 +78,8 @@ Deno.test(
     // Verify the candidate has the harmful synapse removed
     const exported = removeSynapseCandidate.creature.exportJSON();
     const harmfulStillExists = exported.synapses.some((synapse) =>
-      synapse.fromId === harmfulSynapse.fromNeuronId &&
-      synapse.toId === harmfulSynapse.toNeuronId
+      synapse.fromUUID === harmfulSynapse.fromNeuronUuid &&
+      synapse.toUUID === harmfulSynapse.toNeuronUuid
     );
     assertEquals(
       harmfulStillExists,
@@ -121,8 +115,8 @@ Deno.test(
     const base = makeBaselineCreature();
     // Target an existing synapse in the creature (input-0 → hidden-1)
     const existingSynapse: CandidateSynapse = {
-      fromNeuronId: 0,
-      toNeuronId: ID_HIDDEN_1,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "hidden-1",
       weight: 0.1, // Match existing weight
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -145,8 +139,8 @@ Deno.test(
     // Verify the synapse is actually removed
     const exported = result.exportJSON();
     const synapseStillExists = exported.synapses.some((synapse) =>
-      synapse.fromId === existingSynapse.fromNeuronId &&
-      synapse.toId === existingSynapse.toNeuronId
+      synapse.fromUUID === existingSynapse.fromNeuronUuid &&
+      synapse.toUUID === existingSynapse.toNeuronUuid
     );
     assertEquals(
       synapseStillExists,
@@ -165,8 +159,8 @@ Deno.test(
     const base = makeBaselineCreature();
     // Target a non-existent synapse (input-3 → output-1)
     const nonExistentSynapse: CandidateSynapse = {
-      fromNeuronId: 3,
-      toNeuronId: -2,
+      fromNeuronUuid: "input-3",
+      toNeuronUuid: "output-1",
       weight: 0.5,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -178,8 +172,8 @@ Deno.test(
     // Verify synapse doesn't exist
     const exported = base.exportJSON();
     const exists = exported.synapses.some((synapse) =>
-      synapse.fromId === nonExistentSynapse.fromNeuronId &&
-      synapse.toId === nonExistentSynapse.toNeuronId
+      synapse.fromUUID === nonExistentSynapse.fromNeuronUuid &&
+      synapse.toUUID === nonExistentSynapse.toNeuronUuid
     );
     assertEquals(exists, false, "Precondition: synapse should not exist");
 
@@ -204,8 +198,8 @@ Deno.test(
     const base = makeBaselineCreature();
     // Use a synapse that doesn't exist in the creature (input-3 → output-1)
     const nonExistentHarmfulSynapse: CandidateSynapse = {
-      fromNeuronId: 3,
-      toNeuronId: -2,
+      fromNeuronUuid: "input-3",
+      toNeuronUuid: "output-1",
       weight: -10.0,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -251,13 +245,13 @@ Deno.test(
       candidateSquashes: undefined,
       removalCandidates: [
         {
-          neuronId: ID_HIDDEN_1,
+          neuronUuid: "hidden-1",
           totalError: 0,
           impact: 1e-11,
           reason: "test-removal-1",
         },
         {
-          neuronId: ID_HIDDEN_2,
+          neuronUuid: "hidden-2",
           totalError: 0,
           impact: 1e-10,
           reason: "test-removal-2",

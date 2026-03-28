@@ -56,18 +56,18 @@ Deno.test("applyCoordinatedStructuralCandidate: remove/remove/add updates synaps
     operations: [
       {
         type: "removeSynapse",
-        fromNeuronId: 0,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "output-0",
       },
       {
         type: "removeSynapse",
-        fromNeuronId: 0,
-        toNeuronId: ID_HIDDEN_0,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
       },
       {
         type: "addSynapse",
-        fromNeuronId: 0,
-        toNeuronId: ID_HIDDEN_0,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
         weight: 0.9,
       },
     ],
@@ -108,13 +108,13 @@ Deno.test("applyCoordinatedStructuralCandidate: applying twice is safe (idempote
     operations: [
       {
         type: "removeSynapse",
-        fromNeuronId: 0,
-        toNeuronId: ID_HIDDEN_0,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
       },
       {
         type: "addSynapse",
-        fromNeuronId: 0,
-        toNeuronId: ID_HIDDEN_0,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
         weight: 0.9,
       },
     ],
@@ -163,8 +163,8 @@ Deno.test("applyCoordinatedStructuralCandidate: removeSynapse deletes memetic wh
     operations: [
       {
         type: "removeSynapse",
-        fromNeuronId: 0,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "output-0",
       },
     ],
   };
@@ -185,8 +185,8 @@ Deno.test("applyCoordinatedStructuralCandidate: forward-only rejects back-connec
     operations: [
       {
         type: "addSynapse",
-        fromNeuronId: -1,
-        toNeuronId: ID_HIDDEN_0,
+        fromNeuronUuid: "output-0",
+        toNeuronUuid: "hidden-0",
         weight: 0.9,
       },
     ],
@@ -236,35 +236,34 @@ Deno.test("applyCoordinatedStructuralCandidate: addNeuron can insert before a ta
   normaliseCreatureExport(base);
   const creature = Creature.fromJSON(base);
 
-  // Use a specific neuronId for the new neuron; insertBeforeNeuronId=-1 (output)
-  const newNeuronId = 6000;
+  const newNeuronUuid = "hidden-6000";
   const candidate: CoordinatedStructuralCandidate = {
     type: "coordinated_structural",
     expectedCreatureScoreGain: 0.01,
     operations: [
       {
         type: "removeSynapse",
-        fromNeuronId: 0,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "output-0",
       },
       {
         type: "addNeuron",
-        neuronId: newNeuronId,
+        neuronUuid: newNeuronUuid,
         neuronType: "hidden",
         squash: IDENTITY.NAME,
         bias: 0.0,
-        insertBeforeNeuronId: -1,
+        insertBeforeNeuronUuid: "output-0",
       },
       {
         type: "addSynapse",
-        fromNeuronId: 0,
-        toNeuronId: newNeuronId,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: newNeuronUuid,
         weight: 1.0,
       },
       {
         type: "addSynapse",
-        fromNeuronId: newNeuronId,
-        toNeuronId: -1,
+        fromNeuronUuid: newNeuronUuid,
+        toNeuronUuid: "output-0",
         weight: 0.5,
       },
     ],
@@ -313,7 +312,7 @@ Deno.test("applyCoordinatedStructuralCandidate: removeNeuron deletes neuron and 
     operations: [
       {
         type: "removeNeuron",
-        neuronId: ID_HIDDEN_0,
+        neuronUuid: "hidden-0",
       },
     ],
   };
@@ -355,8 +354,8 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight updates existing synap
     operations: [
       {
         type: "setWeight",
-        fromNeuronId: 0,
-        toNeuronId: ID_HIDDEN_0,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
         weight: 0.006,
       },
     ],
@@ -390,8 +389,8 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight is idempotent (applyin
     operations: [
       {
         type: "setWeight",
-        fromNeuronId: 0,
-        toNeuronId: ID_HIDDEN_0,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
         weight: 0.9,
       },
     ],
@@ -423,8 +422,8 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight is no-op if synapse do
     operations: [
       {
         type: "setWeight",
-        fromNeuronId: 0,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "output-0",
         weight: 0.9,
       },
     ],
@@ -482,8 +481,8 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight preserves synapse meta
     operations: [
       {
         type: "setWeight",
-        fromNeuronId: 0,
-        toNeuronId: ID_HIDDEN_0,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
         weight: 0.9,
       },
     ],

@@ -25,11 +25,11 @@ Deno.test(
       operations: [
         {
           type: "addNeuron",
-          neuronId: 6000,
+          neuronUuid: "hidden-6000",
           neuronType: "hidden",
           squash: IDENTITY.NAME,
           bias: 0,
-          insertBeforeNeuronId: "does-not-exist" as unknown as number,
+          insertBeforeNeuronUuid: "does-not-exist",
         },
       ],
     };
@@ -38,7 +38,7 @@ Deno.test(
     const exported = mutated.exportJSON();
 
     assertEquals(
-      exported.neurons.some((n) => n.id === 6000),
+      exported.neurons.some((n) => n.uuid === "hidden-6000"),
       false,
     );
     assertEquals(exported.neurons.length, base.neurons.length);

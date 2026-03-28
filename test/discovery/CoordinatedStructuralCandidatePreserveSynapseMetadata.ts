@@ -33,13 +33,13 @@ Deno.test(
       operations: [
         {
           type: "removeSynapse",
-          fromNeuronId: 0,
-          toNeuronId: -1,
+          fromNeuronUuid: "input-0",
+          toNeuronUuid: "output-0",
         },
         {
           type: "addSynapse",
-          fromNeuronId: 0,
-          toNeuronId: -1,
+          fromNeuronUuid: "input-0",
+          toNeuronUuid: "output-0",
           weight: 0.02,
         },
       ],

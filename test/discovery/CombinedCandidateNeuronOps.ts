@@ -250,8 +250,8 @@ Deno.test(
         type: "remove-synapse",
         description: "Removed hidden-B -> hidden-C synapse",
         synapseDetails: {
-          fromNeuronId: ID_HIDDEN_B,
-          toNeuronId: ID_HIDDEN_C,
+          fromNeuronUuid: "hidden-B",
+          toNeuronUuid: "hidden-C",
         },
       },
     };
@@ -338,8 +338,8 @@ Deno.test(
         type: "remove-synapse",
         description: "Removed hidden-B -> hidden-C synapse",
         synapseDetails: {
-          fromNeuronId: ID_HIDDEN_B,
-          toNeuronId: ID_HIDDEN_C,
+          fromNeuronUuid: "hidden-B",
+          toNeuronUuid: "hidden-C",
         },
       },
     };
@@ -427,8 +427,8 @@ Deno.test(
         type: "remove-synapse",
         description: "Removed hidden-A -> hidden-C synapse",
         synapseDetails: {
-          fromNeuronId: ID_HIDDEN_A,
-          toNeuronId: ID_HIDDEN_C,
+          fromNeuronUuid: "hidden-A",
+          toNeuronUuid: "hidden-C",
         },
       },
     };
@@ -543,8 +543,8 @@ Deno.test(
         type: "remove-synapse",
         description: "Removed hidden-A -> hidden-C synapse",
         synapseDetails: {
-          fromNeuronId: ID_HIDDEN_A,
-          toNeuronId: ID_HIDDEN_C,
+          fromNeuronUuid: "hidden-A",
+          toNeuronUuid: "hidden-C",
         },
       },
     };
@@ -630,8 +630,8 @@ Deno.test(
         type: "remove-synapse",
         description: "Removed hidden-A -> hidden-C synapse",
         synapseDetails: {
-          fromNeuronId: ID_HIDDEN_A,
-          toNeuronId: ID_HIDDEN_C,
+          fromNeuronUuid: "hidden-A",
+          toNeuronUuid: "hidden-C",
         },
       },
     };
