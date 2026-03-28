@@ -41,6 +41,20 @@ import { trainWithCrossValidation } from "./CrossValidationTrainer.ts";
 import { generateSyntheticSynapses } from "../propagate/SyntheticSynapses.ts";
 import { removeSyntheticSynapses } from "../propagate/RemoveSyntheticSynapses.ts";
 
+/** Resolve canonical wire UUIDs to runtime ids for an export that includes both (internal snapshot). */
+function wireToRuntimeIdFromExport(json: CreatureExport): Map<string, number> {
+  const map = new Map<string, number>();
+  for (let i = 0; i < json.input; i++) {
+    map.set(`input-${i}`, i);
+  }
+  for (const n of json.neurons) {
+    if (typeof n.uuid === "string" && n.id !== undefined) {
+      map.set(n.uuid, n.id);
+    }
+  }
+  return map;
+}
+
 /**
  * Scans a data directory for binary training files.
  *
@@ -676,41 +690,48 @@ function trainDirBinary(
         bestCreatureJSON = exportJSONWithRuntimeIds(creature);
 
         // Filter bestTraceJSON to match the cleaned creature structure.
-        // Build a set of remaining synapse keys and neuron UUIDs.
+        // traceJSON() is UUID-only (Issue #2054); match on wire UUIDs, not runtime ids.
         const remainingSynapseKeys = new Set<string>();
         for (const s of bestCreatureJSON.synapses) {
-          remainingSynapseKeys.add(`${s.fromId}->${s.toId}`);
+          if (typeof s.fromUUID === "string" && typeof s.toUUID === "string") {
+            remainingSynapseKeys.add(`${s.fromUUID}->${s.toUUID}`);
+          }
         }
-        const remainingNeuronIds = new Set<number>();
+        const remainingNeuronUuids = new Set<string>();
         for (const n of bestCreatureJSON.neurons) {
-          remainingNeuronIds.add(n.id!);
+          if (typeof n.uuid === "string") remainingNeuronUuids.add(n.uuid);
         }
 
-        // Build a map of creature neuron properties for trace sync.
+        // Build a map of creature neuron properties for trace sync (keyed by wire uuid).
         const creatureNeuronProps = new Map<
-          number,
+          string,
           { squash?: string; bias: number; type: string }
         >();
         for (const n of bestCreatureJSON.neurons) {
-          creatureNeuronProps.set(n.id!, {
-            squash: n.squash,
-            bias: n.bias,
-            type: n.type,
-          });
+          if (typeof n.uuid === "string") {
+            creatureNeuronProps.set(n.uuid, {
+              squash: n.squash,
+              bias: n.bias,
+              type: n.type,
+            });
+          }
         }
 
         bestTraceJSON = {
           ...bestTraceJSON,
           synapses: bestTraceJSON.synapses.filter((s) =>
-            remainingSynapseKeys.has(`${s.fromId}->${s.toId}`)
+            typeof s.fromUUID === "string" &&
+            typeof s.toUUID === "string" &&
+            remainingSynapseKeys.has(`${s.fromUUID}->${s.toUUID}`)
           ),
           neurons: bestTraceJSON.neurons.filter((n) =>
-            remainingNeuronIds.has(n.id!)
+            typeof n.uuid === "string" && remainingNeuronUuids.has(n.uuid)
           ).map((n) => {
             // Sync neuron properties (squash, bias, type) with the
             // cleaned creature. applyLearnings can change squash types
             // (e.g. IF → IDENTITY) which must be reflected in the trace.
-            const props = creatureNeuronProps.get(n.id!);
+            const uuid = n.uuid as string;
+            const props = creatureNeuronProps.get(uuid);
             if (props) {
               return { ...n, squash: props.squash, bias: props.bias };
             }
@@ -719,13 +740,26 @@ function trainDirBinary(
         };
       }
 
+      const wireToRuntimeId = wireToRuntimeIdFromExport(bestCreatureJSON);
       bestTraceJSON.neurons.forEach((n) => {
-        if (!sparseConfig.traceNeeded(n.id!)) {
+        const uuid = typeof n.uuid === "string" ? n.uuid : undefined;
+        const runtimeId = uuid !== undefined
+          ? wireToRuntimeId.get(uuid)
+          : undefined;
+        if (
+          runtimeId === undefined || !sparseConfig.traceNeeded(runtimeId)
+        ) {
           delete (n as { trace?: unknown }).trace;
         }
       });
       bestTraceJSON.synapses.forEach((s) => {
-        if (!sparseConfig.traceNeeded(s.toId!)) {
+        const toUuid = typeof s.toUUID === "string" ? s.toUUID : undefined;
+        const runtimeId = toUuid !== undefined
+          ? wireToRuntimeId.get(toUuid)
+          : undefined;
+        if (
+          runtimeId === undefined || !sparseConfig.traceNeeded(runtimeId)
+        ) {
           delete (s as { trace?: unknown }).trace;
         }
       });
