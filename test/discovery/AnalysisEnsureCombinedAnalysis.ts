@@ -36,9 +36,21 @@ function makeCreature(): Creature {
   return creature;
 }
 
+function runtimeIdForUuid(creature: Creature, uuid: string): number {
+  const id = creature.exportJSON().neurons.find((neuron) =>
+    neuron.uuid === uuid
+  )
+    ?.id;
+  if (typeof id !== "number") {
+    throw new Error(`Missing runtime id for ${uuid}`);
+  }
+  return id;
+}
+
 Deno.test("analyzeSelectedNeurons calls analyzeParallel to populate cache", async () => {
   await initWasmForTests();
   const creature = makeCreature();
+  const hidden1Id = runtimeIdForUuid(creature, "hidden-1");
   let analyzeParallelCalled = false;
 
   const helpfulSynapse: RustCandidateSynapse = {
@@ -100,8 +112,7 @@ Deno.test("analyzeSelectedNeurons calls analyzeParallel to populate cache", asyn
     structure.flushRustRecording();
 
     // Call analyzeSelectedNeurons directly
-    await structure.analyzeSelectedNeurons(["hidden-1" as unknown as number]);
-    // @ts-ignore: test with string IDs
+    await structure.analyzeSelectedNeurons([hidden1Id]);
 
     assert(
       analyzeParallelCalled,
@@ -115,6 +126,7 @@ Deno.test("analyzeSelectedNeurons calls analyzeParallel to populate cache", asyn
 Deno.test("analyzeMissingNeurons calls analyzeParallel to populate cache", async () => {
   await initWasmForTests();
   const creature = makeCreature();
+  const output0Id = runtimeIdForUuid(creature, "output-0");
   let analyzeParallelCalled = false;
 
   const helpfulNeuron: RustCandidateNeuron = {
@@ -179,8 +191,7 @@ Deno.test("analyzeMissingNeurons calls analyzeParallel to populate cache", async
     structure.flushRustRecording();
 
     // Call analyzeMissingNeurons directly
-    await structure.analyzeMissingNeurons(["output-0" as unknown as number]);
-    // @ts-ignore: test with string IDs
+    await structure.analyzeMissingNeurons([output0Id]);
 
     assert(
       analyzeParallelCalled,
@@ -194,6 +205,7 @@ Deno.test("analyzeMissingNeurons calls analyzeParallel to populate cache", async
 Deno.test("analyzeSelectedNeuronsForRemoval calls analyzeParallel to populate cache", async () => {
   await initWasmForTests();
   const creature = makeCreature();
+  const output0Id = runtimeIdForUuid(creature, "output-0");
   let analyzeParallelCalled = false;
 
   const harmfulSynapse: RustCandidateSynapse = {
@@ -255,10 +267,7 @@ Deno.test("analyzeSelectedNeuronsForRemoval calls analyzeParallel to populate ca
     structure.flushRustRecording();
 
     // Call analyzeSelectedNeuronsForRemoval directly
-    await structure.analyzeSelectedNeuronsForRemoval([
-      "output-0" as unknown as number,
-    ]);
-    // @ts-ignore: test with string IDs
+    await structure.analyzeSelectedNeuronsForRemoval([output0Id]);
 
     assert(
       analyzeParallelCalled,
