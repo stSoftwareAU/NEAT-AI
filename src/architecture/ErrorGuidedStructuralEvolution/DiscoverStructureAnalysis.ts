@@ -57,7 +57,10 @@ import {
   logRustNoImprovement as logRustNoImprovementImpl,
 } from "./DiscoverLogging.ts";
 import { DiscoverStructureRecording } from "./DiscoverStructureRecording.ts";
-import { buildRuntimeIdToWireMap } from "./DiscoveryWireIdentity.ts";
+import {
+  buildRuntimeIdToWireMap,
+  resolveRuntimeIdToWireUuid,
+} from "./DiscoveryWireIdentity.ts";
 
 /**
  * Adds analysis methods to the DiscoverStructure coordinator.
@@ -530,7 +533,16 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
 
     const idToWire = buildRuntimeIdToWireMap(this.creature);
     const candidatePromises = focusList.map(async (neuronId) => {
-      const wireUuid = idToWire.get(neuronId) ?? String(neuronId);
+      const wireUuid = resolveRuntimeIdToWireUuid(idToWire, neuronId);
+      if (!wireUuid) {
+        if (this.loggingEnabled) {
+          this.log(
+            "warn",
+            `Skipping squash analysis for neuron ${neuronId}: missing stable wire uuid`,
+          );
+        }
+        return undefined;
+      }
       const records = await this.loadNeuronRecords(
         `${this.tempDir}/${wireUuid}`,
       );

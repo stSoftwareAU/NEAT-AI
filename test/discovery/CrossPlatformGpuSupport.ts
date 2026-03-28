@@ -4,20 +4,23 @@
  * Issue #1864: Verify GPU backend detection, CPU fallback behaviour,
  * and cross-platform requireGpu logic.
  */
-import { assertEquals, assertExists } from "@std/assert";
+import { assertEquals, assertExists, assertThrows } from "@std/assert";
 import {
   buildCombinedAnalysisKey,
   convertParallelAnalysisResult,
   ensureRustCombinedAnalysis,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustAnalysisCache.ts";
 import type {
+  GpuBackendInfo,
   RustCheckGpuResult,
   RustParallelAnalysisInput,
   RustParallelAnalysisResult,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
-import type { GpuBackendInfo } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { creatureToRustFormat } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { TopologyError } from "../../src/errors/TopologyError.ts";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 function makeCreature(): Creature {
@@ -39,9 +42,18 @@ function makeCreature(): Creature {
   return creature;
 }
 
+function output0Id(creature: Creature): number {
+  const id = creature.exportJSON().neurons.find((neuron) =>
+    neuron.uuid === "output-0"
+  )?.id;
+  assertExists(id, "output-0 should have a runtime id");
+  return id;
+}
+
 Deno.test("requireGpu is false in ensureRustCombinedAnalysis (cross-platform)", async () => {
   await initWasmForTests();
   const creature = makeCreature();
+  const focusId = output0Id(creature);
   let capturedInput: RustParallelAnalysisInput | undefined;
 
   const result = ensureRustCombinedAnalysis(
@@ -68,7 +80,7 @@ Deno.test("requireGpu is false in ensureRustCombinedAnalysis (cross-platform)", 
     },
     undefined,
     undefined,
-    [5001],
+    [focusId],
     true,
     false,
     () => {},
@@ -251,6 +263,7 @@ Deno.test("GpuBackendInfo type represents CPU-fallback state", () => {
 Deno.test("discovery enabled without GPU: analysis uses CPU fallback", async () => {
   await initWasmForTests();
   const creature = makeCreature();
+  const focusId = output0Id(creature);
   let analysisCalled = false;
 
   const result = ensureRustCombinedAnalysis(
@@ -284,7 +297,7 @@ Deno.test("discovery enabled without GPU: analysis uses CPU fallback", async () 
     },
     undefined,
     undefined,
-    [5001],
+    [focusId],
     true,
     true,
     () => {},
@@ -294,11 +307,57 @@ Deno.test("discovery enabled without GPU: analysis uses CPU fallback", async () 
   assertExists(result.result, "Should return result from CPU fallback");
 });
 
-Deno.test("discovery disabled when library unavailable", () => {
+Deno.test("ensureRustCombinedAnalysis skips unresolved focus neurons", async () => {
+  await initWasmForTests();
   let analysisCalled = false;
+  let loggedReason: string | undefined;
 
   const result = ensureRustCombinedAnalysis(
     makeCreature(),
+    "/tmp/test.parquet",
+    {
+      isRustDiscoveryEnabled: () => true,
+      isRustLibraryAvailable: () => true,
+      recordDiscovery: () => ({ success: true, file: "chunk.parquet" }),
+      mergeDiscoveryParquet: () => ({
+        success: true,
+        outputFile: "merged.parquet",
+      }),
+      analyzeParallel: () => {
+        analysisCalled = true;
+        return { success: true };
+      },
+      readDiscoveryRecords: () => ({ success: true, records: [] }),
+    },
+    undefined,
+    undefined,
+    [999999],
+    true,
+    true,
+    (_scope, _focusList, reason) => {
+      loggedReason = reason;
+    },
+  );
+
+  assertEquals(
+    analysisCalled,
+    false,
+    "Rust analysis should not run with unresolved wire identities",
+  );
+  assertEquals(result.result, undefined);
+  assertEquals(
+    loggedReason,
+    "focus neuron 999999 is missing a stable wire uuid for Rust analysis",
+  );
+});
+
+Deno.test("discovery disabled when library unavailable", () => {
+  const creature = makeCreature();
+  const focusId = output0Id(creature);
+  let analysisCalled = false;
+
+  const result = ensureRustCombinedAnalysis(
+    creature,
     "/tmp/test.parquet",
     {
       isRustDiscoveryEnabled: () => false,
@@ -313,7 +372,7 @@ Deno.test("discovery disabled when library unavailable", () => {
     },
     undefined,
     undefined,
-    [5001],
+    [focusId],
     true,
     true,
     () => {},
@@ -325,6 +384,34 @@ Deno.test("discovery disabled when library unavailable", () => {
     "Should not call analysis when library is unavailable",
   );
   assertEquals(result.result, undefined, "Result should be undefined");
+});
+
+Deno.test("creatureToRustFormat rejects missing wire uuids", () => {
+  const invalidExport: CreatureExport = {
+    input: 1,
+    output: 1,
+    neurons: [
+      {
+        id: 42,
+        type: "output",
+        bias: 0,
+        squash: "IDENTITY",
+      },
+    ],
+    synapses: [
+      {
+        fromId: 0,
+        toId: 42,
+        weight: 1,
+      },
+    ],
+  };
+
+  assertThrows(
+    () => creatureToRustFormat(invalidExport),
+    TopologyError,
+    "Rust discovery input requires stable wire uuid",
+  );
 });
 
 Deno.test("combined analysis cache key is stable", () => {
