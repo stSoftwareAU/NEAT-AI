@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
+import { exportJSONWithRuntimeIds } from "../../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { chooseNeurons } from "../../../src/propagate/sparse/ChooseNeurons.ts";
 import type { NeuronStateInterface } from "../../../src/architecture/CreatureState.ts";
@@ -15,7 +16,7 @@ Deno.test("chooseNeurons: error-guided selection prefers high-error neurons", ()
     sparseRatio: 0.05,
   });
 
-  const creatureJSON = creature.exportJSON();
+  const creatureJSON = exportJSONWithRuntimeIds(creature);
 
   // Build neuron error data: assign high error to a few specific neurons
   const neuronErrors = new Map<number, NeuronStateInterface>();
@@ -84,7 +85,7 @@ Deno.test("chooseNeurons: works without neuron errors (backward compatible)", ()
   });
 
   // Call without neuronErrors parameter — should still work
-  const result = chooseNeurons(creature.exportJSON(), config);
+  const result = chooseNeurons(exportJSONWithRuntimeIds(creature), config);
 
   const validNeurons = creature.neurons.filter((neuron) =>
     neuron.type === "hidden" || neuron.type === "output"
@@ -112,7 +113,7 @@ Deno.test("chooseNeurons: sparseRatio 1 returns all neurons regardless of errors
   // Even with neuron errors, sparseRatio=1 should select all
   const neuronErrors = new Map<number, NeuronStateInterface>();
   const result = chooseNeurons(
-    creature.exportJSON(),
+    exportJSONWithRuntimeIds(creature),
     config,
     neuronErrors,
   );

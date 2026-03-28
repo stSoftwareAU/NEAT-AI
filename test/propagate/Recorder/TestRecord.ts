@@ -3,6 +3,7 @@ import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
 import type { NeuronTrace } from "../../../src/architecture/NeuronInterfaces.ts";
 import { Costs } from "../../../src/Costs.ts";
 import { Creature } from "../../../src/Creature.ts";
+import { exportJSONWithRuntimeIds } from "../../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
 import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
 import { Activations } from "../../../src/methods/activations/Activations.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
@@ -117,7 +118,7 @@ Deno.test("record - playback error remains consistent after recording and replay
   const record = new ReplaySquash(String(worseNeuron.id), squash);
 
   //"801f2ede-a53a-4b0e-901c-b31c228953cc"
-  const exported = creature.exportJSON();
+  const exported = exportJSONWithRuntimeIds(creature);
   for (const neuron of exported.neurons) {
     if (neuron.id === worseNeuron.id) {
       neuron.squash = record.getName();

@@ -320,7 +320,10 @@ export function cleanupOrphanedNeuronsInCreature(
   const result = cleanupOrphanedNeurons(exportJSON);
 
   if (result.removed > 0 || result.converted > 0) {
-    creature.loadFrom(exportJSON, true);
+    // This helper is used from repair paths (`fix()`), where the export may be
+    // in an intermediate state until the caller finishes all repair steps.
+    // Let the outer repair/validation flow perform the final strict validate.
+    creature.loadFrom(exportJSON, false);
   }
 
   return result;

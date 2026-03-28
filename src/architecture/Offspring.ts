@@ -8,7 +8,7 @@ import type { RequiredHyperparameterEvolutionConfig } from "../config/Hyperparam
 import { DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG } from "../config/HyperparameterConfig.ts";
 import { crossoverHyperparameters } from "../NEAT/HyperparameterEvolution.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
-import type { ValidationError } from "../errors/ValidationError.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import {
   getMajorVersion,
@@ -502,7 +502,9 @@ export class Offspring {
       return offspring;
     } catch (e) {
       const error = e as Error;
-      const errorName = error.name ? error.name : "ERROR";
+      const errorName = e instanceof ValidationError
+        ? e.reason
+        : (error.name ? error.name : "ERROR");
       switch (errorName) {
         case "RECURSIVE_CONNECTION":
           return undefined;

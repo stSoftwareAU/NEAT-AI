@@ -44,19 +44,21 @@ Deno.test("simplify - COMPLEMENT neuron produces behaviour-equivalent IDENTITY w
     JSON.stringify(simplifiedExport, null, 1),
   );
 
-  const outputNeuron = simplifiedExport.neurons.find((n) => n.id === -1);
+  const outputNeuron = simplifiedExport.neurons.find((n) =>
+    n.uuid === "output-0"
+  );
   assert(outputNeuron);
   assertEquals(outputNeuron.squash, IDENTITY.NAME);
   assertAlmostEquals(outputNeuron.bias, 0.75, 0.000_000_1);
 
   const weightsByFrom = new Map(
     simplifiedExport.synapses
-      .filter((s) => s.toId === -1)
-      .map((s) => [s.fromId, s.weight] as const),
+      .filter((s) => s.toUUID === "output-0")
+      .map((s) => [s.fromUUID, s.weight] as const),
   );
-  assertAlmostEquals(weightsByFrom.get(0) ?? NaN, -0.5, 0.000_000_1);
-  assertAlmostEquals(weightsByFrom.get(1) ?? NaN, 2, 0.000_000_1);
-  assertAlmostEquals(weightsByFrom.get(2) ?? NaN, -1.25, 0.000_000_1);
+  assertAlmostEquals(weightsByFrom.get("input-0") ?? NaN, -0.5, 0.000_000_1);
+  assertAlmostEquals(weightsByFrom.get("input-1") ?? NaN, 2, 0.000_000_1);
+  assertAlmostEquals(weightsByFrom.get("input-2") ?? NaN, -1.25, 0.000_000_1);
 
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, complex.input);

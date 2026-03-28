@@ -98,11 +98,12 @@ Deno.test("compactCreature: removes orphaned neurons when backward synapses are 
   compacted.validate({ forwardOnly: true }); // Forward-only validation
 
   // hidden-B should still exist (it has a valid outward connection to output)
-  const hasHiddenB = compacted.neurons.some((n) => n.id === 5002);
+  const hiddenCount =
+    compacted.neurons.filter((n) => n.type === "hidden").length;
   assertEquals(
-    hasHiddenB,
-    true,
-    "hidden-B should remain (has outward to output)",
+    hiddenCount,
+    2,
+    "Both hidden neurons should remain after backward-edge stripping",
   );
 
   // Verify forward-only semantics preserved

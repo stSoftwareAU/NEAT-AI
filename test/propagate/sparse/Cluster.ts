@@ -1,6 +1,7 @@
 import { assert, assertEquals, fail } from "@std/assert";
 import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../../src/Creature.ts";
+import { exportJSONWithRuntimeIds } from "../../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
 import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
 import { chooseNeurons } from "../../../src/propagate/sparse/ChooseNeurons.ts";
 
@@ -16,7 +17,8 @@ Deno.test("chooseNeurons - clustering with sparseRatio < 1", () => {
 
   // Set sparseRatio to 0.3 (30%) to select a subset of neurons with clustering.
   const config = createBackPropagationConfig({ sparseRatio: 0.3 });
-  const selectedNeurons = chooseNeurons(creature.exportJSON(), config);
+  const creatureJSON = exportJSONWithRuntimeIds(creature);
+  const selectedNeurons = chooseNeurons(creatureJSON, config);
 
   console.log("Selected neurons:", selectedNeurons);
 
@@ -36,7 +38,7 @@ Deno.test("chooseNeurons - clustering with sparseRatio < 1", () => {
   selectedNeurons.forEach((neuronId) => {
     const neighbours = getClusteredNeighbours(
       neuronId,
-      creature.exportJSON(),
+      creatureJSON,
     );
     const hasClusteredNeighbour = Array.from(neighbours).some(
       (neighbourId) => selectedNeurons.has(neighbourId),
@@ -53,7 +55,10 @@ Deno.test("chooseNeurons - sparseRatio 1 selects all eligible neurons", () => {
 
   // Set sparseRatio to 1 to select all eligible neurons.
   const config = createBackPropagationConfig({ sparseRatio: 1 });
-  const selectedNeurons = chooseNeurons(creature.exportJSON(), config);
+  const selectedNeurons = chooseNeurons(
+    exportJSONWithRuntimeIds(creature),
+    config,
+  );
 
   // Verify that all eligible neurons are selected.
   const expectedNeurons = new Set(

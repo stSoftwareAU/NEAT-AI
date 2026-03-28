@@ -83,7 +83,7 @@ Deno.test("propagation does not alter activations when output already matches ta
     outputs[i] = creature.activate(new Float32Array(data[i]), false);
   }
 
-  const config = createBackPropagationConfig();
+  const config = createBackPropagationConfig({ sparseRatio: 1 });
   const sparseConfig = new SparseConfig(
     exportJSONWithRuntimeIds(creature),
     config,
@@ -118,8 +118,7 @@ Deno.test("propagation does not alter activations when output already matches ta
     JSON.stringify(traced, null, 1),
   );
 
-  const hidden3bId = creature.neurons.find((n) => n.uuid === "hidden-3b")?.id;
-  const info = traced.neurons.find((n) => n.id === hidden3bId)?.trace;
+  const info = traced.neurons.find((n) => n.uuid === "hidden-3b")?.trace;
 
   if (!info) {
     fail("hidden-3b should have a trace");

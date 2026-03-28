@@ -3,6 +3,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
+import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
 import { createSeededRng } from "../../src/utils/RandomNumberGenerator.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 import { initWasmForTests } from "../_initWasm.ts";
@@ -92,7 +93,7 @@ Deno.test(
     creature.validate();
 
     // Find neuron IDs dynamically after normalisation.
-    const exportedInit = creature.exportJSON();
+    const exportedInit = exportJSONWithRuntimeIds(creature);
     const hiddenANeuron = exportedInit.neurons.find(
       (n) =>
         n.type === "hidden" &&
@@ -120,7 +121,7 @@ Deno.test(
       });
     }
 
-    const exportBefore = creature.exportJSON();
+    const exportBefore = exportJSONWithRuntimeIds(creature);
     const weightsBefore = new Map<string, number>();
     for (const s of exportBefore.synapses) {
       const key = `${s.fromId}->${s.toId}:${s.type ?? "default"}`;
@@ -135,7 +136,7 @@ Deno.test(
       disableRandomSamples: true,
     });
 
-    const exportAfter = trainedCreature.exportJSON();
+    const exportAfter = exportJSONWithRuntimeIds(trainedCreature);
     const weightsAfter = new Map<string, number>();
     for (const s of exportAfter.synapses) {
       const key = `${s.fromId}->${s.toId}:${s.type ?? "default"}`;
