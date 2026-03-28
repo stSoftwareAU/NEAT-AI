@@ -1,5 +1,9 @@
 import { assertAlmostEquals, assertEquals, assertThrows } from "@std/assert";
-import { calculateSquashError } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts";
+import { Creature } from "../../src/Creature.ts";
+import {
+  analyzeSelectedNeuronsForHarmfulRemoval,
+  calculateSquashError,
+} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts";
 import { TopologyError } from "../../src/errors/TopologyError.ts";
 
 Deno.test("calculateSquashError - returns zero for identical arrays", () => {
@@ -52,3 +56,45 @@ Deno.test("calculateSquashError - handles large arrays", () => {
   // Each element: (0.01)^2 = 0.0001, average should be ~0.0001
   assertAlmostEquals(error, 0.0001, 1e-4);
 });
+
+Deno.test(
+  "analyzeSelectedNeuronsForHarmfulRemoval loads records via wire uuid path",
+  async () => {
+    const creature = Creature.fromJSON({
+      input: 1,
+      output: 1,
+      neurons: [
+        { type: "hidden", uuid: "hidden-target", squash: "IDENTITY", bias: 0 },
+        { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      ],
+      synapses: [
+        { fromUUID: "input-0", toUUID: "hidden-target", weight: 0.5 },
+        { fromUUID: "hidden-target", toUUID: "output-0", weight: 0.5 },
+      ],
+    });
+    const hiddenId = creature.exportJSON().neurons.find((neuron) =>
+      neuron.uuid === "hidden-target"
+    )?.id;
+    assertEquals(typeof hiddenId, "number");
+
+    let loadedPath: string | undefined;
+    const result = await analyzeSelectedNeuronsForHarmfulRemoval(
+      creature,
+      [hiddenId!],
+      (neuronIdentifier: string) => {
+        loadedPath = neuronIdentifier;
+        return Promise.resolve([{
+          value: 1,
+          activation: 1,
+          errors: [1e11],
+        }]);
+      },
+      "/tmp/discovery",
+      false,
+      () => {},
+    );
+
+    assertEquals(loadedPath, "/tmp/discovery/hidden-target");
+    assertEquals(result?.[0]?.neuronUuid, "hidden-target");
+  },
+);

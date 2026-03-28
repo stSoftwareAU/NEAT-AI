@@ -337,8 +337,10 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
 
   const candidatePromises = focusList.map(async (neuronId) => {
     try {
+      const neuronUuid = idToWire.get(neuronId);
+      assert(neuronUuid, `Missing wire uuid for neuron ${neuronId}`);
       const records = await loadNeuronRecordsFn(
-        `${tempDir}/${idToWire.get(neuronId) ?? neuronId}`,
+        `${tempDir}/${neuronUuid}`,
       );
       if (!records || records.length === 0) return undefined;
 
