@@ -37,7 +37,7 @@ function checkMutation(method: { name: string }) {
     mutator.mutateCreature(creature, Mutation.ADD_BACK_CONN);
   }
   for (let i = 6; i--;) {
-    if (mutator.mutateCreature(creature, Mutation.ADD_SELF_CONN)) break;
+    mutator.mutateCreature(creature, Mutation.ADD_SELF_CONN);
   }
   // Issue #1583: mutateCreature() no longer calls fix() internally.
   // Repair the creature before validating to ensure structural invariants
