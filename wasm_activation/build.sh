@@ -127,7 +127,7 @@ compute_fingerprint() {
 # Write fingerprint file for workflow guards.
 FINGERPRINT="$(compute_fingerprint || echo "")"
 if [[ -n "$FINGERPRINT" ]]; then
-    echo "$FINGERPRINT" > pkg/.build-fingerprint
+    echo "$FINGERPRINT" > pkg/build-fingerprint
 fi
 
 # wasm-bindgen/wasm-pack occasionally emits duplicate `export const <name>` entries
@@ -178,7 +178,7 @@ cat > pkg/.gitignore <<'EOF'
 !wasm_activation.d.ts
 !wasm_activation_bg.wasm
 !wasm_activation_bg.wasm.d.ts
-!.build-fingerprint
+!build-fingerprint
 
 # If wasm-pack emits snippets/, keep them too.
 !snippets/
