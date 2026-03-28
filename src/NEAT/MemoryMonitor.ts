@@ -73,19 +73,17 @@ export function applyWarningResponse(logger: Logger): void {
   _warningResponseLogCount++;
   if (_warningResponseLogCount % 10 !== 1) return;
 
+  const evictedNoun = evictCount === 1 ? "entry" : "entries";
+
   if (reducedCap < currentCap) {
     logger.warn(
       `[MemoryMonitor] Warning-level response: reduced activation cache cap ` +
-        `from ${currentCap} to ${reducedCap}, evicted ${evictCount} entr${
-          evictCount === 1 ? "y" : "ies"
-        }`,
+        `from ${currentCap} to ${reducedCap}, evicted ${evictCount} ${evictedNoun}`,
     );
   } else {
     logger.warn(
       `[MemoryMonitor] Warning-level response: activation cache cap already at ` +
-        `minimum (${currentCap}); evicted ${evictCount} oldest entr${
-          evictCount === 1 ? "y" : "ies"
-        }`,
+        `minimum (${currentCap}); evicted ${evictCount} oldest ${evictedNoun}`,
     );
   }
 }
