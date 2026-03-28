@@ -35,7 +35,7 @@ Deno.test(
       operations: [
         {
           type: "removeNeuron",
-          neuronId: 1775329601,
+          neuronUuid: "hidden-b",
         },
       ],
     };

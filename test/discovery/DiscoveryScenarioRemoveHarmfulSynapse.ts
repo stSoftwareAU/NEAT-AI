@@ -186,18 +186,14 @@ Deno.test({
   name:
     "DiscoveryScenario: remove harmful synapse - discovery finds remove-synapse candidate",
   fn() {
-    // Integer neuron IDs derived from UUID hashing of "hidden-A" and "hidden-B"
-    const hiddenAId = 1775329634;
-    const hiddenBId = 1775329633;
-
     const mockDiscoveryResult = {
       ID: "test-remove-harmful-synapse",
       addHelpfulSynapses: undefined,
       addHelpfulNeurons: undefined,
       coordinatedStructuralCandidates: undefined,
       removeHarmfulSynapse: {
-        fromNeuronId: hiddenAId,
-        toNeuronId: hiddenBId,
+        fromNeuronUuid: "hidden-A",
+        toNeuronUuid: "hidden-B",
         weight: -2.0,
         targetNeuronImpact: -0.8,
         expectedCreatureErrorReduction: 0.5,

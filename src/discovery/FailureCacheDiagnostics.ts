@@ -8,6 +8,7 @@
  */
 
 import type { Creature } from "../Creature.ts";
+import { buildRuntimeIdToWireMap } from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import { getLogger } from "../utils/Logger.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type {
@@ -42,6 +43,8 @@ export function extractActualCreatureChanges(
 ): ActualCreatureChange | undefined {
   const baseJSON = baseCreature.exportJSON();
   const candidateJSON = candidateCreature.exportJSON();
+  const baseIdToWire = buildRuntimeIdToWireMap(baseCreature);
+  const candidateIdToWire = buildRuntimeIdToWireMap(candidateCreature);
 
   // Build sets for comparison
   const baseNeuronIds = new Set(baseJSON.neurons.map((n) => n.id));
@@ -64,8 +67,10 @@ export function extractActualCreatureChanges(
       neuron.type === "hidden" &&
       neuron.squash // Skip neurons without squash (shouldn't happen for hidden)
     ) {
+      const uuid = candidateIdToWire.get(neuron.id!);
+      if (!uuid) continue;
       addedNeurons.push({
-        id: neuron.id!,
+        uuid,
         squash: neuron.squash,
         bias: neuron.bias,
       });
@@ -77,28 +82,38 @@ export function extractActualCreatureChanges(
   for (const synapse of candidateJSON.synapses) {
     const key = `${synapse.fromId}->${synapse.toId}`;
     if (!baseSynapseKeys.has(key)) {
+      const fromUuid = candidateIdToWire.get(synapse.fromId!);
+      const toUuid = candidateIdToWire.get(synapse.toId!);
+      if (!fromUuid || !toUuid) continue;
       addedSynapses.push({
-        fromId: synapse.fromId!,
-        toId: synapse.toId!,
+        fromUuid,
+        toUuid,
         weight: synapse.weight,
       });
     }
   }
 
   // Find removed neurons (in base but not in candidate)
-  const removedNeuronIds: number[] = [];
+  const removedNeuronUuids: string[] = [];
   for (const neuron of baseJSON.neurons) {
     if (!candidateNeuronIds.has(neuron.id!) && neuron.type === "hidden") {
-      removedNeuronIds.push(neuron.id!);
+      const uuid = baseIdToWire.get(neuron.id!);
+      if (uuid) {
+        removedNeuronUuids.push(uuid);
+      }
     }
   }
 
   // Find removed synapses (in base but not in candidate)
-  const removedSynapseKeys: string[] = [];
+  const removedSynapseUuids: string[] = [];
   for (const synapse of baseJSON.synapses) {
     const key = `${synapse.fromId}->${synapse.toId}`;
     if (!candidateSynapseKeys.has(key)) {
-      removedSynapseKeys.push(key);
+      const fromUuid = baseIdToWire.get(synapse.fromId!);
+      const toUuid = baseIdToWire.get(synapse.toId!);
+      if (fromUuid && toUuid) {
+        removedSynapseUuids.push(`${fromUuid}->${toUuid}`);
+      }
     }
   }
 
@@ -106,8 +121,8 @@ export function extractActualCreatureChanges(
   if (
     addedNeurons.length === 0 &&
     addedSynapses.length === 0 &&
-    removedNeuronIds.length === 0 &&
-    removedSynapseKeys.length === 0
+    removedNeuronUuids.length === 0 &&
+    removedSynapseUuids.length === 0
   ) {
     return undefined;
   }
@@ -115,11 +130,11 @@ export function extractActualCreatureChanges(
   return {
     addedNeurons: addedNeurons.length > 0 ? addedNeurons : undefined,
     addedSynapses: addedSynapses.length > 0 ? addedSynapses : undefined,
-    removedNeuronIds: removedNeuronIds.length > 0
-      ? removedNeuronIds
+    removedNeuronUuids: removedNeuronUuids.length > 0
+      ? removedNeuronUuids
       : undefined,
-    removedSynapseKeys: removedSynapseKeys.length > 0
-      ? removedSynapseKeys
+    removedSynapseUuids: removedSynapseUuids.length > 0
+      ? removedSynapseUuids
       : undefined,
   };
 }
@@ -169,29 +184,30 @@ export function extractTargetNeuronInfo(
   baseCreature: Creature,
 ): TargetNeuronInfo | undefined {
   const change = candidate.change;
-  let targetId: number | undefined;
+  const idToWire = buildRuntimeIdToWireMap(baseCreature);
+  let targetUuid: string | undefined;
 
   // Identify target neuron based on change type
   if (change.type === "add-neurons" && change.neuronDetails) {
-    targetId = change.neuronDetails.toNeuronId;
+    targetUuid = change.neuronDetails.toNeuronUuid;
   } else if (change.type === "add-synapses") {
-    // For synapses, extract from description if possible
-    const toMatch = change.description?.match(/-> (\d+)/);
-    if (toMatch) {
-      targetId = Number(toMatch[1]);
-    }
+    targetUuid = change.synapseCandidate?.toNeuronUuid;
   }
 
-  if (targetId === null || targetId === undefined) return undefined;
+  if (!targetUuid) return undefined;
 
   // Find the neuron in the base creature.
+  const targetId = Array.from(idToWire.entries()).find(([, uuid]) =>
+    uuid === targetUuid
+  )?.[0];
+  if (targetId === undefined) return undefined;
   const neuron = baseCreature.neurons.find((n) => n.id === targetId);
   if (!neuron) return undefined;
 
   const squashName = neuron.squash ?? "IDENTITY";
 
   return {
-    id: neuron.id,
+    uuid: targetUuid,
     squash: squashName,
     // Note: Saturation and stats would need runtime activation data
     // which we don't have access to in this context

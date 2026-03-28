@@ -16,13 +16,10 @@ import {
 } from "../../src/discovery/SuccessCache.ts";
 import { makeForwardOnlyCreature as makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
-// Integer ID for hidden-0 in makeForwardOnlyCreature (deterministicIdFromUuid("hidden-0")).
-const HIDDEN_0_ID = 1775329651;
-
 function makeAddSynapseCandidate(): CandidateSynapse {
   return {
-    fromNeuronId: 0,
-    toNeuronId: -1,
+    fromNeuronUuid: "input-0",
+    toNeuronUuid: "output-0",
     weight: 0.5,
     targetNeuronImpact: 1,
     expectedCreatureErrorReduction: 0.01,
@@ -39,8 +36,8 @@ function makeAddNeuronCandidatesWithKeyCollision(): CandidateNeuron[] {
   // Both insert a neuron in the hidden-0 → output-0 synapse.
   return [
     {
-      fromNeuronId: HIDDEN_0_ID,
-      toNeuronId: -1,
+      fromNeuronUuid: "hidden-0",
+      toNeuronUuid: "output-0",
       incomingWeight: 0.11,
       outgoingWeight: 0.12,
       squash: "TANH",
@@ -53,8 +50,8 @@ function makeAddNeuronCandidatesWithKeyCollision(): CandidateNeuron[] {
       comment: "success-cache-collision-a",
     },
     {
-      fromNeuronId: HIDDEN_0_ID,
-      toNeuronId: -1,
+      fromNeuronUuid: "hidden-0",
+      toNeuronUuid: "output-0",
       incomingWeight: 0.19,
       outgoingWeight: 0.18,
       squash: "TANH",
@@ -385,10 +382,11 @@ Deno.test("getSuccessfulRemovalNeuronIds extracts neuron IDs from removal entrie
     await Deno.writeTextFile(
       join(removeLowImpactDir, "entry1.json"),
       JSON.stringify({
+        wireSchemaVersion: 2,
         key: "entry1",
         changeType: "remove-low-impact",
         rustRequest: {
-          removalCandidate: { neuronId: 111 },
+          removalCandidate: { neuronUuid: "hidden-111" },
         },
       }),
     );
@@ -399,18 +397,19 @@ Deno.test("getSuccessfulRemovalNeuronIds extracts neuron IDs from removal entrie
     await Deno.writeTextFile(
       join(removeNeuronDir, "entry2.json"),
       JSON.stringify({
+        wireSchemaVersion: 2,
         key: "entry2",
         changeType: "remove-neuron",
         rustRequest: {
-          harmfulNeuronCandidate: { neuronId: 222 },
+          harmfulNeuronCandidate: { neuronUuid: "hidden-222" },
         },
       }),
     );
 
     const result = getSuccessfulRemovalNeuronIds(cacheDir);
     assertEquals(result.size, 2);
-    assertEquals(result.has(111), true);
-    assertEquals(result.has(222), true);
+    assertEquals(result.has("hidden-111"), true);
+    assertEquals(result.has("hidden-222"), true);
   } finally {
     await Deno.remove(cacheDir, { recursive: true });
   }
@@ -427,6 +426,7 @@ Deno.test("getSuccessfulRemovalNeuronIds ignores non-removal entries", async () 
     await Deno.writeTextFile(
       join(addSynapsesDir, "entry1.json"),
       JSON.stringify({
+        wireSchemaVersion: 2,
         key: "entry1",
         changeType: "add-synapses",
         rustRequest: { synapseCandidate: {} },
@@ -439,6 +439,7 @@ Deno.test("getSuccessfulRemovalNeuronIds ignores non-removal entries", async () 
     await Deno.writeTextFile(
       join(changeSquashDir, "entry1.json"),
       JSON.stringify({
+        wireSchemaVersion: 2,
         key: "entry1",
         changeType: "change-squash",
         rustRequest: { squashCandidate: {} },
@@ -451,17 +452,18 @@ Deno.test("getSuccessfulRemovalNeuronIds ignores non-removal entries", async () 
     await Deno.writeTextFile(
       join(removeLowImpactDir, "entry1.json"),
       JSON.stringify({
+        wireSchemaVersion: 2,
         key: "entry1",
         changeType: "remove-low-impact",
         rustRequest: {
-          removalCandidate: { neuronId: 333 },
+          removalCandidate: { neuronUuid: "hidden-333" },
         },
       }),
     );
 
     const result = getSuccessfulRemovalNeuronIds(cacheDir);
     assertEquals(result.size, 1);
-    assertEquals(result.has(333), true);
+    assertEquals(result.has("hidden-333"), true);
   } finally {
     await Deno.remove(cacheDir, { recursive: true });
   }
@@ -485,17 +487,18 @@ Deno.test("getSuccessfulRemovalNeuronIds skips corrupt entries gracefully", asyn
     await Deno.writeTextFile(
       join(removeLowImpactDir, "valid.json"),
       JSON.stringify({
+        wireSchemaVersion: 2,
         key: "valid",
         changeType: "remove-low-impact",
         rustRequest: {
-          removalCandidate: { neuronId: 444 },
+          removalCandidate: { neuronUuid: "hidden-444" },
         },
       }),
     );
 
     const result = getSuccessfulRemovalNeuronIds(cacheDir);
     assertEquals(result.size, 1);
-    assertEquals(result.has(444), true);
+    assertEquals(result.has("hidden-444"), true);
   } finally {
     await Deno.remove(cacheDir, { recursive: true });
   }
@@ -511,10 +514,11 @@ Deno.test("getSuccessfulRemovalNeuronIds deduplicates same neuron ID across dire
     await Deno.writeTextFile(
       join(removeLowImpactDir, "entry1.json"),
       JSON.stringify({
+        wireSchemaVersion: 2,
         key: "entry1",
         changeType: "remove-low-impact",
         rustRequest: {
-          removalCandidate: { neuronId: 999 },
+          removalCandidate: { neuronUuid: "hidden-999" },
         },
       }),
     );
@@ -524,17 +528,18 @@ Deno.test("getSuccessfulRemovalNeuronIds deduplicates same neuron ID across dire
     await Deno.writeTextFile(
       join(removeNeuronDir, "entry2.json"),
       JSON.stringify({
+        wireSchemaVersion: 2,
         key: "entry2",
         changeType: "remove-neuron",
         rustRequest: {
-          harmfulNeuronCandidate: { neuronId: 999 },
+          harmfulNeuronCandidate: { neuronUuid: "hidden-999" },
         },
       }),
     );
 
     const result = getSuccessfulRemovalNeuronIds(cacheDir);
     assertEquals(result.size, 1);
-    assertEquals(result.has(999), true);
+    assertEquals(result.has("hidden-999"), true);
   } finally {
     await Deno.remove(cacheDir, { recursive: true });
   }

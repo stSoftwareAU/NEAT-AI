@@ -99,7 +99,7 @@ Deno.test({
           type: "change-squash",
           description: "Change squash on hidden-1 to TANH",
           squashCandidate: {
-            neuronId: ID_HIDDEN_1,
+            neuronUuid: "hidden-1",
             previousSquash: "IDENTITY",
             squash: "TANH",
             expectedCreatureScoreGain: 0.1,
@@ -121,8 +121,8 @@ Deno.test({
       const discoveryResult: DiscoverResult = {
         ID: "SUPPLEMENT_TEST",
         addHelpfulSynapses: [{
-          fromNeuronId: 0,
-          toNeuronId: -1,
+          fromNeuronUuid: "input-0",
+          toNeuronUuid: "output-0",
           weight: 0.6,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -210,8 +210,8 @@ Deno.test({
     const discoveryResult: DiscoverResult = {
       ID: "TWO_SUCCESSES",
       addHelpfulSynapses: [{
-        fromNeuronId: 0,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "output-0",
         weight: 0.6,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -220,8 +220,8 @@ Deno.test({
         totalCount: 7,
       }],
       removeHarmfulSynapse: {
-        fromNeuronId: 1,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-1",
+        toNeuronUuid: "output-0",
         weight: -0.25,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -290,8 +290,8 @@ Deno.test({
     const discoveryResult: DiscoverResult = {
       ID: "ZERO_SUCCESSES",
       addHelpfulSynapses: [{
-        fromNeuronId: 0,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "output-0",
         weight: 0.6,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,

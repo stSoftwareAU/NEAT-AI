@@ -302,6 +302,7 @@
     "densification",
     "nbase",
     "sbase",
-    "deserialised"
+    "deserialised",
+    "selfloop"
   ]
 }

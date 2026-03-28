@@ -10,15 +10,15 @@
 
 import { assert, assertEquals, assertExists } from "@std/assert";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-
-// Integer ID for hidden-1 neuron in makeBaseCreature() (explicit id in fixture)
-const ID_HIDDEN_1 = 5001;
 import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import type { Creature } from "../../src/Creature.ts";
 import type { DiscoveryRunnerWorker } from "../../src/discovery/DiscoveryRunner.ts";
 import { DiscoveryRunner } from "../../src/discovery/DiscoveryRunner.ts";
 import { makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
+
+/** Wire UUID for the hidden neuron in `makeBaseCreature()` / SimpleCreatures fixture. */
+const HIDDEN_1_UUID = "hidden-1";
 
 class FakeWorker implements DiscoveryRunnerWorker {
   #discoverResult: DiscoverResult;
@@ -83,8 +83,8 @@ Deno.test(
     const discoveryResult: DiscoverResult = {
       ID: "MULTI_IMPROVE",
       addHelpfulSynapses: [{
-        fromNeuronId: 0,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "output-0",
         weight: 0.6,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -93,8 +93,8 @@ Deno.test(
         totalCount: 7,
       }],
       removeHarmfulSynapse: {
-        fromNeuronId: 1,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-1",
+        toNeuronUuid: "output-0",
         weight: -0.25,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -103,7 +103,7 @@ Deno.test(
         totalCount: 7,
       },
       candidateSquashes: [{
-        neuronId: ID_HIDDEN_1,
+        neuronUuid: HIDDEN_1_UUID,
         previousSquash: "IDENTITY",
         squash: "TANH",
         expectedCreatureScoreGain: 0.3,
@@ -119,15 +119,15 @@ Deno.test(
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
       const synapses = json.synapses;
-      const hidden1Squash = json.neurons.find((n) => n.id === ID_HIDDEN_1)
+      const hidden1Squash = json.neurons.find((n) => n.uuid === HIDDEN_1_UUID)
         ?.squash;
 
       const hasHelpful = synapses.some((synapse) =>
-        synapse.fromId === 0 && synapse.toId === -1 &&
+        synapse.fromUUID === "input-0" && synapse.toUUID === "output-0" &&
         Math.abs(synapse.weight - 0.6) < 1e-6
       );
       const removedHarmful = synapses.every((synapse) =>
-        !(synapse.fromId === 1 && synapse.toId === -1)
+        !(synapse.fromUUID === "input-1" && synapse.toUUID === "output-0")
       );
       const changedSquash = hidden1Squash === "TANH";
 
@@ -205,8 +205,8 @@ Deno.test(
     const discoveryResult: DiscoverResult = {
       ID: "SINGLE_IMPROVE",
       addHelpfulSynapses: [{
-        fromNeuronId: 0,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "output-0",
         weight: 0.6,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -215,7 +215,7 @@ Deno.test(
         totalCount: 7,
       }],
       candidateSquashes: [{
-        neuronId: ID_HIDDEN_1,
+        neuronUuid: HIDDEN_1_UUID,
         previousSquash: "IDENTITY",
         squash: "TANH",
         expectedCreatureScoreGain: 0.3,
@@ -233,7 +233,7 @@ Deno.test(
       const synapses = json.synapses;
 
       const hasHelpful = synapses.some((synapse) =>
-        synapse.fromId === 0 && synapse.toId === -1 &&
+        synapse.fromUUID === "input-0" && synapse.toUUID === "output-0" &&
         Math.abs(synapse.weight - 0.6) < 1e-6
       );
 
@@ -297,8 +297,8 @@ Deno.test(
     const discoveryResult: DiscoverResult = {
       ID: "FIELD_CHECK",
       addHelpfulSynapses: [{
-        fromNeuronId: 0,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "output-0",
         weight: 0.6,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -307,7 +307,7 @@ Deno.test(
         totalCount: 7,
       }],
       candidateSquashes: [{
-        neuronId: ID_HIDDEN_1,
+        neuronUuid: HIDDEN_1_UUID,
         previousSquash: "IDENTITY",
         squash: "TANH",
         expectedCreatureScoreGain: 0.3,
@@ -324,11 +324,11 @@ Deno.test(
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
       const synapses = json.synapses;
-      const hidden1Squash = json.neurons.find((n) => n.id === ID_HIDDEN_1)
+      const hidden1Squash = json.neurons.find((n) => n.uuid === HIDDEN_1_UUID)
         ?.squash;
 
       const hasHelpful = synapses.some((synapse) =>
-        synapse.fromId === 0 && synapse.toId === -1 &&
+        synapse.fromUUID === "input-0" && synapse.toUUID === "output-0" &&
         Math.abs(synapse.weight - 0.6) < 1e-6
       );
       const changedSquash = hidden1Squash === "TANH";
@@ -378,8 +378,8 @@ Deno.test(
     const discoveryResult: DiscoverResult = {
       ID: "NO_DUPE",
       addHelpfulSynapses: [{
-        fromNeuronId: 0,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "output-0",
         weight: 0.6,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -388,7 +388,7 @@ Deno.test(
         totalCount: 7,
       }],
       candidateSquashes: [{
-        neuronId: ID_HIDDEN_1,
+        neuronUuid: HIDDEN_1_UUID,
         previousSquash: "IDENTITY",
         squash: "TANH",
         expectedCreatureScoreGain: 0.3,
@@ -396,8 +396,8 @@ Deno.test(
         currentError: 0.1,
       }],
       removeHarmfulSynapse: {
-        fromNeuronId: 1,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-1",
+        toNeuronUuid: "output-0",
         weight: -0.25,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -414,15 +414,15 @@ Deno.test(
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
       const synapses = json.synapses;
-      const hidden1Squash = json.neurons.find((n) => n.id === ID_HIDDEN_1)
+      const hidden1Squash = json.neurons.find((n) => n.uuid === HIDDEN_1_UUID)
         ?.squash;
 
       const hasHelpful = synapses.some((synapse) =>
-        synapse.fromId === 0 && synapse.toId === -1 &&
+        synapse.fromUUID === "input-0" && synapse.toUUID === "output-0" &&
         Math.abs(synapse.weight - 0.6) < 1e-6
       );
       const removedHarmful = synapses.every((synapse) =>
-        !(synapse.fromId === 1 && synapse.toId === -1)
+        !(synapse.fromUUID === "input-1" && synapse.toUUID === "output-0")
       );
       const changedSquash = hidden1Squash === "TANH";
 

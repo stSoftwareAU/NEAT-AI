@@ -41,7 +41,7 @@ export interface FilterCandidatesForEvaluationDeps {
    * Dependency-injected success cache query (defaults to `getSuccessfulRemovalNeuronIds`).
    * Inject a stub in tests for determinism and to avoid filesystem access.
    */
-  getSuccessfulRemovalIds?: (dir: string) => Set<number>;
+  getSuccessfulRemovalIds?: (dir: string) => Set<string>;
 }
 
 export interface FilterCandidatesForEvaluationDiagnostics {
@@ -269,7 +269,7 @@ export function filterCandidatesForEvaluation(
 
   // Phase 3: select removal candidates from a lowest-impact pool, using injectable RNG.
   // When a success cache directory is available, deprioritise removal candidates
-  // whose neuron ID already has a success cache entry, preferring novel candidates.
+  // whose neuron UUID already has a success cache entry, preferring novel candidates.
   const successCacheDir = deps.successCacheDir;
   const getSuccessIds = deps.getSuccessfulRemovalIds ??
     getSuccessfulRemovalNeuronIds;
@@ -292,9 +292,9 @@ export function filterCandidatesForEvaluation(
         let novelCount = 0;
         let alreadySuccessfulCount = 0;
         for (const c of removalCandidates) {
-          const id = c.change.removalCandidate?.neuronId ??
-            c.change.harmfulNeuronCandidate?.neuronId;
-          if (id !== undefined && successfulIds.has(id)) {
+          const uuid = c.change.removalCandidate?.neuronUuid ??
+            c.change.harmfulNeuronCandidate?.neuronUuid;
+          if (uuid !== undefined && successfulIds.has(uuid)) {
             alreadySuccessfulCount++;
           } else {
             novelCount++;
@@ -330,9 +330,9 @@ export function filterCandidatesForEvaluation(
         novelPool = [];
         alreadySuccessfulPool = [];
         for (const item of topCandidates) {
-          const id = item.candidate.change.removalCandidate?.neuronId ??
-            item.candidate.change.harmfulNeuronCandidate?.neuronId;
-          if (id !== undefined && successfulIds.has(id)) {
+          const uuid = item.candidate.change.removalCandidate?.neuronUuid ??
+            item.candidate.change.harmfulNeuronCandidate?.neuronUuid;
+          if (uuid !== undefined && successfulIds.has(uuid)) {
             alreadySuccessfulPool.push(item);
           } else {
             novelPool.push(item);

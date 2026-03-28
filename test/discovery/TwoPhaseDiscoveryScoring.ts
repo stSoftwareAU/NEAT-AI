@@ -17,9 +17,8 @@ import type { DiscoveryRunnerWorker } from "../../src/discovery/DiscoveryRunner.
 import { DiscoveryRunner } from "../../src/discovery/DiscoveryRunner.ts";
 import { makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
-// Integer IDs for neurons in makeBaseCreature (explicit id in fixture).
+// Integer ID for hidden-1 in makeBaseCreature (explicit id in fixture).
 const HIDDEN_1_ID = 5001; // "hidden-1"
-const OUTPUT_0_ID = -1; // "output-0"
 
 class FakeWorker implements DiscoveryRunnerWorker {
   #discoverResult: DiscoverResult;
@@ -88,8 +87,8 @@ Deno.test(
     // Combined creature should only combine A + B (not C).
 
     const helpfulSynapse = {
-      fromNeuronId: 1,
-      toNeuronId: HIDDEN_1_ID,
+      fromNeuronUuid: "input-1",
+      toNeuronUuid: "hidden-1",
       weight: 0.45,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -98,8 +97,8 @@ Deno.test(
       totalCount: 6,
     };
     const helpfulNeuron = {
-      fromNeuronId: HIDDEN_1_ID,
-      toNeuronId: OUTPUT_0_ID,
+      fromNeuronUuid: "hidden-1",
+      toNeuronUuid: "output-0",
       incomingWeight: 0.4,
       outgoingWeight: -0.3,
       squash: "TANH",
@@ -112,7 +111,7 @@ Deno.test(
     };
     // This squash change doesn't actually help in this scenario
     const unhelpfulSquash = {
-      neuronId: HIDDEN_1_ID,
+      neuronUuid: "hidden-1",
       previousSquash: "IDENTITY",
       squash: "STEP",
       targetNeuronImpact: 1.0,
@@ -141,14 +140,14 @@ Deno.test(
 
       // Check for helpful synapse
       const hasHelpfulSynapse = synapses.some((synapse) =>
-        synapse.fromId === helpfulSynapse.fromNeuronId &&
-        synapse.toId === helpfulSynapse.toNeuronId &&
+        synapse.fromId === 1 &&
+        synapse.toId === HIDDEN_1_ID &&
         Math.abs(synapse.weight - helpfulSynapse.weight) < 1e-6
       );
 
       // Check for helpful neuron (look for a new hidden neuron with TANH squash)
       const incomingDiscoverySynapse = synapses.find((synapse) =>
-        synapse.fromId === helpfulNeuron.fromNeuronId &&
+        synapse.fromId === HIDDEN_1_ID &&
         Math.abs(synapse.weight - helpfulNeuron.incomingWeight) < 1e-6
       );
       const discoveredNeuronUUID = incomingDiscoverySynapse?.toId;
@@ -245,8 +244,8 @@ Deno.test(
     // Scenario: Only one candidate improves, so no combination phase
 
     const helpfulSynapse = {
-      fromNeuronId: 1,
-      toNeuronId: HIDDEN_1_ID,
+      fromNeuronUuid: "input-1",
+      toNeuronUuid: "hidden-1",
       weight: 0.45,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -268,8 +267,8 @@ Deno.test(
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
       const hasHelpful = json.synapses.some((synapse) =>
-        synapse.fromId === helpfulSynapse.fromNeuronId &&
-        synapse.toId === helpfulSynapse.toNeuronId &&
+        synapse.fromId === 1 &&
+        synapse.toId === HIDDEN_1_ID &&
         Math.abs(synapse.weight - helpfulSynapse.weight) < 1e-6
       );
       return hasHelpful ? 0.4 : 0.5;
@@ -305,8 +304,8 @@ Deno.test(
     // Only one of multiple candidates improves, so no combination should be attempted
 
     const helpfulSynapse = {
-      fromNeuronId: 1,
-      toNeuronId: HIDDEN_1_ID,
+      fromNeuronUuid: "input-1",
+      toNeuronUuid: "hidden-1",
       weight: 0.45,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -316,8 +315,8 @@ Deno.test(
     };
     // This neuron doesn't help
     const unhelpfulNeuron = {
-      fromNeuronId: HIDDEN_1_ID,
-      toNeuronId: OUTPUT_0_ID,
+      fromNeuronUuid: "hidden-1",
+      toNeuronUuid: "output-0",
       incomingWeight: 0.4,
       outgoingWeight: -0.3,
       squash: "TANH",
@@ -346,14 +345,14 @@ Deno.test(
 
       // Check for synapse (improves)
       const hasHelpfulSynapse = synapses.some((synapse) =>
-        synapse.fromId === helpfulSynapse.fromNeuronId &&
-        synapse.toId === helpfulSynapse.toNeuronId &&
+        synapse.fromId === 1 &&
+        synapse.toId === HIDDEN_1_ID &&
         Math.abs(synapse.weight - helpfulSynapse.weight) < 1e-6
       );
 
       // Check for neuron (doesn't improve, makes it worse)
       const incomingDiscoverySynapse = synapses.find((synapse) =>
-        synapse.fromId === unhelpfulNeuron.fromNeuronId &&
+        synapse.fromId === HIDDEN_1_ID &&
         Math.abs(synapse.weight - unhelpfulNeuron.incomingWeight) < 1e-6
       );
       const discoveredNeuronUUID = incomingDiscoverySynapse?.toId;
@@ -414,8 +413,8 @@ Deno.test(
     // Two candidates individually improve, and combined they're even better
 
     const helpfulSynapse = {
-      fromNeuronId: 1,
-      toNeuronId: HIDDEN_1_ID,
+      fromNeuronUuid: "input-1",
+      toNeuronUuid: "hidden-1",
       weight: 0.45,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -424,7 +423,7 @@ Deno.test(
       totalCount: 6,
     };
     const helpfulSquash = {
-      neuronId: HIDDEN_1_ID,
+      neuronUuid: "hidden-1",
       previousSquash: "IDENTITY",
       squash: "TANH",
       targetNeuronImpact: 1.0,
@@ -448,8 +447,8 @@ Deno.test(
       const json = creature.exportJSON();
 
       const hasHelpfulSynapse = json.synapses.some((synapse) =>
-        synapse.fromId === helpfulSynapse.fromNeuronId &&
-        synapse.toId === helpfulSynapse.toNeuronId &&
+        synapse.fromId === 1 &&
+        synapse.toId === HIDDEN_1_ID &&
         Math.abs(synapse.weight - helpfulSynapse.weight) < 1e-6
       );
 

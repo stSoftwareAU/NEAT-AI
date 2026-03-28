@@ -17,6 +17,10 @@ import {
   type CandidateSynapse,
   DiscoverStructure,
 } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import {
+  buildWireToRuntimeIdMap,
+  resolveCandidateSynapseEndpoints,
+} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import { cleanupMemeticForRemovedSynapse } from "../compact/CompactUtils.ts";
 import { Creature } from "../Creature.ts";
 import type { DiscoverResult } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
@@ -260,10 +264,13 @@ export function persistentlyRemoveHarmfulSynapse(
   creature: Creature,
   harmfulSynapse: CandidateSynapse,
 ): Creature {
-  const removalId = {
-    from: harmfulSynapse.fromNeuronId,
-    to: harmfulSynapse.toNeuronId,
-  };
+  const removalId = resolveCandidateSynapseEndpoints(
+    buildWireToRuntimeIdMap(creature),
+    harmfulSynapse,
+  );
+  if (!removalId) {
+    return creature;
+  }
 
   // Keep removing until it's definitely gone (fix() might re-add it)
   let currentCreature = creature;
@@ -275,8 +282,8 @@ export function persistentlyRemoveHarmfulSynapse(
     const exportJSON = currentCreature.exportJSON();
     const originalCount = exportJSON.synapses.length;
     exportJSON.synapses = exportJSON.synapses.filter((synapse) =>
-      !(synapse.fromId === removalId.from &&
-        synapse.toId === removalId.to)
+      !(synapse.fromId === removalId.fromId &&
+        synapse.toId === removalId.toId)
     );
 
     if (exportJSON.synapses.length < originalCount) {
@@ -284,8 +291,8 @@ export function persistentlyRemoveHarmfulSynapse(
       // Clean up memetic data for the removed synapse
       cleanupMemeticForRemovedSynapse(
         exportJSON,
-        removalId.from,
-        removalId.to,
+        removalId.fromId,
+        removalId.toId,
       );
 
       const updated = Creature.fromJSON(exportJSON);
@@ -296,8 +303,8 @@ export function persistentlyRemoveHarmfulSynapse(
       // Verify it's still removed after fix()
       const verifyJSON = updated.exportJSON();
       const stillExists = verifyJSON.synapses.some((synapse) =>
-        synapse.fromId === removalId.from &&
-        synapse.toId === removalId.to
+        synapse.fromId === removalId.fromId &&
+        synapse.toId === removalId.toId
       );
 
       if (!stillExists) {

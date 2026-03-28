@@ -8,6 +8,7 @@
 import type { CreatureExport } from "../../architecture/CreatureInterfaces.ts";
 import { normaliseCreatureExport } from "../../architecture/NormaliseCreatureExport.ts";
 import { DiscoveryError } from "../../errors/DiscoveryError.ts";
+import { TopologyError } from "../../errors/TopologyError.ts";
 import { getLogger } from "../../utils/Logger.ts";
 import type {
   RustRecordBatchStats,
@@ -17,9 +18,8 @@ import type {
 /**
  * Converts a creature export to the Rust format expected by the discovery module.
  *
- * Public `exportJSON()` omits integer ids; this clones the export and runs
- * {@link normaliseCreatureExport} so `id` / `fromId` / `toId` match runtime
- * resolution (same strings as `String(neuron.id)` on a loaded creature).
+ * Public `exportJSON()` already carries stable wire UUIDs alongside resolved
+ * integer ids. Rust discovery accepts UUID-based wire identities only.
  */
 export function creatureToRustFormat(
   creature: CreatureExport,
@@ -27,16 +27,38 @@ export function creatureToRustFormat(
   const json = structuredClone(creature) as CreatureExport;
   normaliseCreatureExport(json);
 
+  const requireWireUuid = (
+    value: string | undefined,
+    label: string,
+  ): string => {
+    if (typeof value === "string" && value.length > 0) {
+      return value;
+    }
+    throw new TopologyError(
+      `Rust discovery input requires stable wire uuid for ${label}`,
+      "MISSING_NEURON_UUID",
+    );
+  };
+
   return {
     neurons: json.neurons.map((n) => ({
-      uuid: String((n as { id?: number }).id ?? "unknown"),
+      uuid: requireWireUuid(
+        n.uuid,
+        `${n.type} neuron${n.id !== undefined ? ` ${n.id}` : ""}`,
+      ),
       type: n.type,
       squash: n.squash || "IDENTITY",
       bias: n.bias || 0,
     })),
     synapses: json.synapses.map((s) => ({
-      from_uuid: String((s as { fromId?: number }).fromId ?? "unknown"),
-      to_uuid: String((s as { toId?: number }).toId ?? "unknown"),
+      from_uuid: requireWireUuid(
+        s.fromUUID,
+        `synapse source${s.fromId !== undefined ? ` ${s.fromId}` : ""}`,
+      ),
+      to_uuid: requireWireUuid(
+        s.toUUID,
+        `synapse destination${s.toId !== undefined ? ` ${s.toId}` : ""}`,
+      ),
       weight: s.weight,
     })),
     input: json.input,

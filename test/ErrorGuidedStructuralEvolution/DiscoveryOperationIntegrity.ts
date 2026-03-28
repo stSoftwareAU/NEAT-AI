@@ -59,8 +59,20 @@ Deno.test(
       input: 2,
       output: 1,
       neurons: [
-        { type: "hidden", id: 1000000, squash: IDENTITY.NAME, bias: 0 },
-        { type: "hidden", id: 1000001, squash: IDENTITY.NAME, bias: 0 },
+        {
+          type: "hidden",
+          uuid: "cascade-h1",
+          id: 1000000,
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "hidden",
+          uuid: "cascade-h2",
+          id: 1000001,
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
         { type: "output", id: -1, squash: IDENTITY.NAME, bias: 0 },
       ],
       synapses: [
@@ -75,8 +87,8 @@ Deno.test(
 
     // Remove synapse 0 -> H1 (the only inward connection to H1)
     const candidate: CandidateSynapse = {
-      fromNeuronId: 0,
-      toNeuronId: 1000000,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "cascade-h1",
       weight: 1.0,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0.01,
@@ -123,9 +135,27 @@ Deno.test(
       input: 2,
       output: 1,
       neurons: [
-        { type: "hidden", id: 1000000, squash: IDENTITY.NAME, bias: 0.5 },
-        { type: "hidden", id: 1000001, squash: IDENTITY.NAME, bias: 0.1 },
-        { type: "hidden", id: 1000002, squash: IDENTITY.NAME, bias: 0.2 },
+        {
+          type: "hidden",
+          uuid: "hub-neuron",
+          id: 1000000,
+          squash: IDENTITY.NAME,
+          bias: 0.5,
+        },
+        {
+          type: "hidden",
+          uuid: "hub-dep-a",
+          id: 1000001,
+          squash: IDENTITY.NAME,
+          bias: 0.1,
+        },
+        {
+          type: "hidden",
+          uuid: "hub-dep-b",
+          id: 1000002,
+          squash: IDENTITY.NAME,
+          bias: 0.2,
+        },
         { type: "output", id: -1, squash: IDENTITY.NAME, bias: 0 },
       ],
       synapses: [
@@ -142,7 +172,7 @@ Deno.test(
     const creature = Creature.fromJSON(exportJSON);
 
     const candidate: CandidateHarmfulNeuron = {
-      neuronId: 1000000,
+      neuronUuid: "hub-neuron",
       errorMagnitude: 1e11,
       averageActivation: 0.5,
       sampleCount: 100,
@@ -198,8 +228,20 @@ Deno.test(
       input: 2,
       output: 1,
       neurons: [
-        { type: "hidden", id: 1000000, squash: IDENTITY.NAME, bias: 0.01 },
-        { type: "hidden", id: 1000001, squash: IDENTITY.NAME, bias: 0.5 },
+        {
+          type: "hidden",
+          uuid: "li-neuron",
+          id: 1000000,
+          squash: IDENTITY.NAME,
+          bias: 0.01,
+        },
+        {
+          type: "hidden",
+          uuid: "const-downstream",
+          id: 1000001,
+          squash: IDENTITY.NAME,
+          bias: 0.5,
+        },
         { type: "output", id: -1, squash: IDENTITY.NAME, bias: 0 },
       ],
       synapses: [
@@ -213,7 +255,7 @@ Deno.test(
     const creature = Creature.fromJSON(exportJSON);
 
     const candidate: RemovalCandidate = {
-      neuronId: 1000000,
+      neuronUuid: "li-neuron",
       totalError: 0.001,
       impact: 0.001,
       reason: "low_impact",
@@ -290,8 +332,8 @@ Deno.test(
     const creature = Creature.fromJSON(exportJSON);
 
     const candidate: CandidateNeuron = {
-      fromNeuronId: 0,
-      toNeuronId: -2,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "output-1",
       squash: IDENTITY.NAME,
       bias: 0.1,
       incomingWeight: 0.5,
@@ -357,7 +399,13 @@ Deno.test(
       input: 2,
       output: 1,
       neurons: [
-        { type: "hidden", id: 1000000, squash: IDENTITY.NAME, bias: 0.1 },
+        {
+          type: "hidden",
+          uuid: "selfloop-h1",
+          id: 1000000,
+          squash: IDENTITY.NAME,
+          bias: 0.1,
+        },
         { type: "output", id: -1, squash: IDENTITY.NAME, bias: 0 },
       ],
       synapses: [
@@ -373,8 +421,8 @@ Deno.test(
 
     // Remove the only external inward connection to H1
     const candidate: CandidateSynapse = {
-      fromNeuronId: 0,
-      toNeuronId: 1000000,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "selfloop-h1",
       weight: 0.5,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0.01,
@@ -417,8 +465,20 @@ Deno.test(
       input: 2,
       output: 1,
       neurons: [
-        { type: "hidden", id: 1000000, squash: IDENTITY.NAME, bias: 0.3 },
-        { type: "hidden", id: 1000001, squash: IDENTITY.NAME, bias: 0.2 },
+        {
+          type: "hidden",
+          uuid: "seq-chain-h1",
+          id: 1000000,
+          squash: IDENTITY.NAME,
+          bias: 0.3,
+        },
+        {
+          type: "hidden",
+          uuid: "seq-chain-h2",
+          id: 1000001,
+          squash: IDENTITY.NAME,
+          bias: 0.2,
+        },
         { type: "output", id: -1, squash: IDENTITY.NAME, bias: 0 },
       ],
       synapses: [
@@ -433,7 +493,7 @@ Deno.test(
 
     // Remove H1 first
     const candidateH1: CandidateHarmfulNeuron = {
-      neuronId: 1000000,
+      neuronUuid: "seq-chain-h1",
       errorMagnitude: 1e11,
       averageActivation: 0.3,
       sampleCount: 100,
@@ -464,7 +524,7 @@ Deno.test(
 
       // Now try to remove H2 from the result - should be a no-op if already cleaned
       const candidateH2: CandidateHarmfulNeuron = {
-        neuronId: 1000001,
+        neuronUuid: "seq-chain-h2",
         errorMagnitude: 1e11,
         averageActivation: 0.2,
         sampleCount: 100,
@@ -504,9 +564,27 @@ Deno.test(
       input: 2,
       output: 1,
       neurons: [
-        { type: "hidden", id: 1000000, squash: IDENTITY.NAME, bias: 0 },
-        { type: "hidden", id: 1000001, squash: IDENTITY.NAME, bias: 0 },
-        { type: "hidden", id: 1000002, squash: IDENTITY.NAME, bias: 0 },
+        {
+          type: "hidden",
+          uuid: "deep-h1",
+          id: 1000000,
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "hidden",
+          uuid: "deep-h2",
+          id: 1000001,
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
+        {
+          type: "hidden",
+          uuid: "deep-h3",
+          id: 1000002,
+          squash: IDENTITY.NAME,
+          bias: 0,
+        },
         { type: "output", id: -1, squash: IDENTITY.NAME, bias: 0 },
       ],
       synapses: [
@@ -522,8 +600,8 @@ Deno.test(
 
     // Remove H1 -> H2 synapse
     const candidate: CandidateSynapse = {
-      fromNeuronId: 1000000,
-      toNeuronId: 1000001,
+      fromNeuronUuid: "deep-h1",
+      toNeuronUuid: "deep-h2",
       weight: 1.0,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0.01,

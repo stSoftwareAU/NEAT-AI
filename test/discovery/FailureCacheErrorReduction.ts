@@ -49,8 +49,8 @@ Deno.test({
           description: "Add neuron test",
           expectedErrorReduction: 0.05, // Expected 5% reduction
           neuronDetails: {
-            fromNeuronId: 0,
-            toNeuronId: -1,
+            fromNeuronUuid: "input-0",
+            toNeuronUuid: "output-0",
             incomingWeight: 0.5,
             outgoingWeight: -0.3,
             bias: 0.1,
@@ -243,16 +243,10 @@ Deno.test("recordFailure omits actualErrorReduction when candidateError is Infin
   }
 });
 
-Deno.test("extractTargetNeuronInfo finds neuron using integer ID for add-synapses", () => {
-  // Post-migration: extractTargetNeuronInfo extracts the integer neuron ID from
-  // the description using regex /-> (\d+)/ and looks up the neuron by that integer ID.
-  // deterministicIdFromUuid("3e979317-989f-4c5c-8272-02fd85be94a8") = 1434298466
-
+Deno.test("extractTargetNeuronInfo finds neuron using UUID wire fields for add-synapses", () => {
   const fullTargetUUID = "3e979317-989f-4c5c-8272-02fd85be94a8";
-  // Expected integer ID for the target neuron
-  const TARGET_ID = 1434298466;
 
-  // Create creature with UUID (will get integer ID via deterministicIdFromUuid)
+  // Create a creature whose discovery payload addresses the target by wire UUID.
   const creature = Creature.fromJSON({
     input: 2,
     output: 1,
@@ -268,24 +262,32 @@ Deno.test("extractTargetNeuronInfo finds neuron using integer ID for add-synapse
   creature.validate();
   CreatureUtil.makeUUID(creature);
 
-  // Create add-synapses candidate with integer IDs in description (post-migration format)
   const candidate: DiscoveryCandidate = {
     creature,
     change: {
       type: "add-synapses",
-      description: `🔗 Added helpful synapse 0 -> ${TARGET_ID}`,
+      description: `🔗 Added helpful synapse input-0 -> ${fullTargetUUID}`,
+      synapseCandidate: {
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: fullTargetUUID,
+        weight: 0.25,
+        targetNeuronImpact: 1,
+        expectedCreatureErrorReduction: 0.01,
+        expectedCreatureScoreGain: 0.01,
+        improvedCount: 1,
+        totalCount: 1,
+      },
     },
   };
 
-  // Extract target neuron info - this should find the neuron using integer ID
+  // Extract target neuron info via UUID wire fields
   const result = extractTargetNeuronInfo(candidate, creature);
 
-  // Should find the target neuron by its integer ID
-  assert(result !== undefined, "Should find target neuron using integer ID");
+  assert(result !== undefined, "Should find target neuron using UUID");
   assertEquals(
-    result!.id,
-    TARGET_ID,
-    "Should return correct integer neuron ID",
+    result!.uuid,
+    fullTargetUUID,
+    "Should return correct target neuron UUID",
   );
   assertEquals(result!.squash, "TANH", "Should return correct squash function");
 });
@@ -376,7 +378,7 @@ Deno.test("recordFailure includes removalCandidate in rustRequest for remove-low
 
     // Create a RemovalCandidate as Rust would return it
     const removalCandidate: RemovalCandidate = {
-      neuronId: 5001,
+      neuronUuid: "hidden-1",
       totalError: 5.0,
       impact: 0.00861,
       reason:
@@ -419,9 +421,14 @@ Deno.test("recordFailure includes removalCandidate in rustRequest for remove-low
       "rustRequest.removalCandidate should be present",
     );
     assertEquals(
+      parsed.rustRequest.removalCandidate.neuronUuid,
+      "hidden-1",
+      "removalCandidate.neuronUuid should match",
+    );
+    assertEquals(
       parsed.rustRequest.removalCandidate.neuronId,
-      5001,
-      "removalCandidate.neuronId should match",
+      undefined,
+      "removalCandidate.neuronId must not be persisted",
     );
     assertEquals(
       parsed.rustRequest.removalCandidate.totalError,
@@ -438,6 +445,9 @@ Deno.test("recordFailure includes removalCandidate in rustRequest for remove-low
       "High error (5.0000) but very low impact (0.008610) - far from outputs",
       "removalCandidate.reason should match",
     );
+    assertEquals(content.includes('"neuronId"'), false);
+    assertEquals(content.includes('"fromNeuronId"'), false);
+    assertEquals(content.includes('"toNeuronId"'), false);
 
     // Also verify other standard fields are present
     assertEquals(parsed.changeType, "remove-low-impact");
@@ -462,7 +472,7 @@ Deno.test("recordFailure includes harmfulNeuronCandidate in rustRequest for remo
 
     // Create a CandidateHarmfulNeuron as would be produced during analysis
     const harmfulNeuronCandidate: CandidateHarmfulNeuron = {
-      neuronId: 5001,
+      neuronUuid: "hidden-1",
       errorMagnitude: 1.5e11,
       expectedCreatureScoreGain: 0.05,
       sampleCount: 100,
@@ -507,9 +517,14 @@ Deno.test("recordFailure includes harmfulNeuronCandidate in rustRequest for remo
       "rustRequest.harmfulNeuronCandidate should be present",
     );
     assertEquals(
+      parsed.rustRequest.harmfulNeuronCandidate.neuronUuid,
+      "hidden-1",
+      "harmfulNeuronCandidate.neuronUuid should match",
+    );
+    assertEquals(
       parsed.rustRequest.harmfulNeuronCandidate.neuronId,
-      5001,
-      "harmfulNeuronCandidate.neuronId should match",
+      undefined,
+      "harmfulNeuronCandidate.neuronId must not be persisted",
     );
     assertEquals(
       parsed.rustRequest.harmfulNeuronCandidate.errorMagnitude,
@@ -549,8 +564,8 @@ Deno.test("recordFailure includes harmfulSynapseCandidate in rustRequest for rem
 
     // Create a CandidateSynapse as would be produced during harmful synapse analysis
     const harmfulSynapseCandidate: CandidateSynapse = {
-      fromNeuronId: 0,
-      toNeuronId: 5001,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "hidden-1",
       weight: -0.5,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -568,8 +583,8 @@ Deno.test("recordFailure includes harmfulSynapseCandidate in rustRequest for rem
           harmfulSynapseCandidate.expectedCreatureScoreGain,
         sampleSize: harmfulSynapseCandidate.totalCount,
         synapseDetails: {
-          fromNeuronId: harmfulSynapseCandidate.fromNeuronId,
-          toNeuronId: harmfulSynapseCandidate.toNeuronId,
+          fromNeuronUuid: harmfulSynapseCandidate.fromNeuronUuid,
+          toNeuronUuid: harmfulSynapseCandidate.toNeuronUuid,
         },
         harmfulSynapseCandidate,
       },
@@ -599,14 +614,24 @@ Deno.test("recordFailure includes harmfulSynapseCandidate in rustRequest for rem
       "rustRequest.harmfulSynapseCandidate should be present",
     );
     assertEquals(
+      parsed.rustRequest.harmfulSynapseCandidate.fromNeuronUuid,
+      "input-0",
+      "harmfulSynapseCandidate.fromNeuronUuid should match",
+    );
+    assertEquals(
+      parsed.rustRequest.harmfulSynapseCandidate.toNeuronUuid,
+      "hidden-1",
+      "harmfulSynapseCandidate.toNeuronUuid should match",
+    );
+    assertEquals(
       parsed.rustRequest.harmfulSynapseCandidate.fromNeuronId,
-      0,
-      "harmfulSynapseCandidate.fromNeuronId should match",
+      undefined,
+      "harmfulSynapseCandidate.fromNeuronId must not be persisted",
     );
     assertEquals(
       parsed.rustRequest.harmfulSynapseCandidate.toNeuronId,
-      5001,
-      "harmfulSynapseCandidate.toNeuronId should match",
+      undefined,
+      "harmfulSynapseCandidate.toNeuronId must not be persisted",
     );
     assertEquals(
       parsed.rustRequest.harmfulSynapseCandidate.weight,

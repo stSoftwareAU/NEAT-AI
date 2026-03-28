@@ -45,7 +45,7 @@ Deno.test("buildDiscoverResponsePayload: omits undefined candidate arrays", () =
 Deno.test("buildDiscoverResponsePayload: copies arrays to break reference sharing", () => {
   const result = makeMinimalDiscoverResult();
   const removalCandidates = [{
-    neuronId: 1001,
+    neuronUuid: "hidden-1001",
     totalError: 0.5,
     impact: 0.001,
     reason: "low-impact",
@@ -55,7 +55,7 @@ Deno.test("buildDiscoverResponsePayload: copies arrays to break reference sharin
   const payload = buildDiscoverResponsePayload(result);
   assertExists(payload.removalCandidates);
   assertEquals(payload.removalCandidates!.length, 1);
-  assertEquals(payload.removalCandidates![0].neuronId, 1001);
+  assertEquals(payload.removalCandidates![0].neuronUuid, "hidden-1001");
 
   // Should be a new array (spread copy), not the same reference
   assertEquals(

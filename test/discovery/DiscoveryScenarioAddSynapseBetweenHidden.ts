@@ -187,17 +187,12 @@ Deno.test({
   name:
     "DiscoveryScenario: add synapse between hidden - discovery finds add-synapses candidate",
   fn() {
-    // Neuron IDs are computed via deterministicIdFromUuid:
-    // hidden-A → 1775329634, hidden-B → 1775329633
-    const hiddenAId = 1775329634;
-    const hiddenBId = 1775329633;
-
     const mockDiscoveryResult = {
       ID: "test-add-synapse-between-hidden",
       addHelpfulSynapses: [
         {
-          fromNeuronId: hiddenAId,
-          toNeuronId: hiddenBId,
+          fromNeuronUuid: "hidden-A",
+          toNeuronUuid: "hidden-B",
           weight: 0.9,
           targetNeuronImpact: 0.5,
           expectedCreatureErrorReduction: 0.3,

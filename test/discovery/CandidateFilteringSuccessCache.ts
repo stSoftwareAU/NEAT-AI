@@ -20,7 +20,7 @@ function makeConfig(overrides: NeatOptions = {}) {
 }
 
 function makeRemovalCandidate(
-  neuronId: number,
+  neuronUuid: string,
   impact: number,
   type: DiscoveryChangeType = "remove-low-impact",
 ): DiscoveryCandidate {
@@ -31,7 +31,7 @@ function makeRemovalCandidate(
       expectedErrorReduction: 0.01,
       description: `Remove neuron impact: ${impact}`,
       removalCandidate: {
-        neuronId,
+        neuronUuid,
         totalError: 1.0,
         impact,
         reason: "low-impact",
@@ -41,7 +41,7 @@ function makeRemovalCandidate(
 }
 
 function makeHarmfulNeuronCandidate(
-  neuronId: number,
+  neuronUuid: string,
   impact: number,
 ): DiscoveryCandidate {
   return {
@@ -51,7 +51,7 @@ function makeHarmfulNeuronCandidate(
       expectedErrorReduction: 0.01,
       description: `Remove harmful neuron impact: ${impact}`,
       harmfulNeuronCandidate: {
-        neuronId,
+        neuronUuid,
         errorMagnitude: impact,
         expectedCreatureScoreGain: 0.01,
         sampleCount: 100,
@@ -73,13 +73,13 @@ Deno.test("filterCandidatesForEvaluation: novel removal candidates preferred ove
 
   // 2 novel (1, 2) and 2 already-successful (3, 4)
   const candidates: DiscoveryCandidate[] = [
-    makeRemovalCandidate(1, 0.001),
-    makeRemovalCandidate(2, 0.002),
-    makeRemovalCandidate(3, 0.001),
-    makeRemovalCandidate(4, 0.002),
+    makeRemovalCandidate("hidden-1", 0.001),
+    makeRemovalCandidate("hidden-2", 0.002),
+    makeRemovalCandidate("hidden-3", 0.001),
+    makeRemovalCandidate("hidden-4", 0.002),
   ];
 
-  const successfulIds = new Set([3, 4]);
+  const successfulIds = new Set(["hidden-3", "hidden-4"]);
 
   const { filtered } = filterCandidatesForEvaluation(candidates, 1, config, {
     successCacheDir: "/tmp/success-cache",
@@ -96,12 +96,12 @@ Deno.test("filterCandidatesForEvaluation: novel removal candidates preferred ove
 
   assertEquals(removalFiltered.length, 2);
   const selectedIds = removalFiltered.map(
-    (c) => c.change.removalCandidate?.neuronId,
+    (c) => c.change.removalCandidate?.neuronUuid,
   );
-  assert(selectedIds.includes(1));
-  assert(selectedIds.includes(2));
-  assert(!selectedIds.includes(3));
-  assert(!selectedIds.includes(4));
+  assert(selectedIds.includes("hidden-1"));
+  assert(selectedIds.includes("hidden-2"));
+  assert(!selectedIds.includes("hidden-3"));
+  assert(!selectedIds.includes("hidden-4"));
 });
 
 Deno.test("filterCandidatesForEvaluation: already-successful candidates used as fallback when insufficient novel candidates", () => {
@@ -116,12 +116,12 @@ Deno.test("filterCandidatesForEvaluation: already-successful candidates used as 
 
   // 1 novel (1) and 2 already-successful (2, 3)
   const candidates: DiscoveryCandidate[] = [
-    makeRemovalCandidate(1, 0.001),
-    makeRemovalCandidate(2, 0.001),
-    makeRemovalCandidate(3, 0.001),
+    makeRemovalCandidate("hidden-1", 0.001),
+    makeRemovalCandidate("hidden-2", 0.001),
+    makeRemovalCandidate("hidden-3", 0.001),
   ];
 
-  const successfulIds = new Set([2, 3]);
+  const successfulIds = new Set(["hidden-2", "hidden-3"]);
 
   const { filtered } = filterCandidatesForEvaluation(candidates, 1, config, {
     successCacheDir: "/tmp/success-cache",
@@ -150,9 +150,9 @@ Deno.test("filterCandidatesForEvaluation: behaviour unchanged when no success ca
   });
 
   const candidates: DiscoveryCandidate[] = [
-    makeRemovalCandidate(1, 0.001),
-    makeRemovalCandidate(2, 0.002),
-    makeRemovalCandidate(3, 0.001),
+    makeRemovalCandidate("hidden-1", 0.001),
+    makeRemovalCandidate("hidden-2", 0.002),
+    makeRemovalCandidate("hidden-3", 0.001),
   ];
 
   // No successCacheDir provided - should behave like before
@@ -180,13 +180,13 @@ Deno.test("filterCandidatesForEvaluation: diagnostics include novel vs already-s
   });
 
   const candidates: DiscoveryCandidate[] = [
-    makeRemovalCandidate(1, 0.001),
-    makeRemovalCandidate(2, 0.002),
-    makeRemovalCandidate(3, 0.001),
-    makeRemovalCandidate(4, 0.002),
+    makeRemovalCandidate("hidden-1", 0.001),
+    makeRemovalCandidate("hidden-2", 0.002),
+    makeRemovalCandidate("hidden-3", 0.001),
+    makeRemovalCandidate("hidden-4", 0.002),
   ];
 
-  const successfulIds = new Set([3, 4]);
+  const successfulIds = new Set(["hidden-3", "hidden-4"]);
 
   const { diagnostics } = filterCandidatesForEvaluation(
     candidates,
@@ -215,13 +215,13 @@ Deno.test("filterCandidatesForEvaluation: harmful neuron candidates also deprior
   });
 
   const candidates: DiscoveryCandidate[] = [
-    makeRemovalCandidate(1, 0.001),
-    makeHarmfulNeuronCandidate(2, 0.001),
-    makeHarmfulNeuronCandidate(3, 0.001),
+    makeRemovalCandidate("hidden-1", 0.001),
+    makeHarmfulNeuronCandidate("hidden-2", 0.001),
+    makeHarmfulNeuronCandidate("hidden-3", 0.001),
   ];
 
   // neuron 3 is already successful
-  const successfulIds = new Set([3]);
+  const successfulIds = new Set(["hidden-3"]);
 
   const { filtered } = filterCandidatesForEvaluation(candidates, 1, config, {
     successCacheDir: "/tmp/success-cache",
@@ -239,12 +239,12 @@ Deno.test("filterCandidatesForEvaluation: harmful neuron candidates also deprior
   // Should prefer neuron 1 and 2 (novel) over 3 (already successful)
   const selectedIds = removalFiltered.map(
     (c) =>
-      c.change.removalCandidate?.neuronId ??
-        c.change.harmfulNeuronCandidate?.neuronId,
+      c.change.removalCandidate?.neuronUuid ??
+        c.change.harmfulNeuronCandidate?.neuronUuid,
   );
-  assert(selectedIds.includes(1));
-  assert(selectedIds.includes(2));
-  assert(!selectedIds.includes(3));
+  assert(selectedIds.includes("hidden-1"));
+  assert(selectedIds.includes("hidden-2"));
+  assert(!selectedIds.includes("hidden-3"));
 });
 
 Deno.test("filterCandidatesForEvaluation: no diagnostics novelCount when no successCacheDir", () => {
@@ -258,8 +258,8 @@ Deno.test("filterCandidatesForEvaluation: no diagnostics novelCount when no succ
   });
 
   const candidates: DiscoveryCandidate[] = [
-    makeRemovalCandidate(1, 0.001),
-    makeRemovalCandidate(2, 0.002),
+    makeRemovalCandidate("hidden-1", 0.001),
+    makeRemovalCandidate("hidden-2", 0.002),
   ];
 
   const { diagnostics } = filterCandidatesForEvaluation(

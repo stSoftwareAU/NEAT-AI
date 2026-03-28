@@ -67,8 +67,8 @@ Deno.test({
     };
 
     internals.discoveries = [{
-      fromNeuronId: 5000,
-      toNeuronId: -1,
+      fromNeuronUuid: "hidden-0",
+      toNeuronUuid: "output-0",
       weight: 0.5,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -77,8 +77,8 @@ Deno.test({
       totalCount: 1,
     }];
     internals.neuronDiscoveries = [{
-      fromNeuronId: 5000,
-      toNeuronId: -1,
+      fromNeuronUuid: "hidden-0",
+      toNeuronUuid: "output-0",
       incomingWeight: 0.5,
       outgoingWeight: 0.75,
       squash: IDENTITY.NAME,

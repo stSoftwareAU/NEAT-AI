@@ -45,8 +45,8 @@ Deno.test(
 
     // Simulate discovery result with helpful synapses
     const helpfulSynapses = [{
-      fromNeuronId: 0,
-      toNeuronId: -1,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "output-0",
       weight: 0.8,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0.1,
@@ -103,8 +103,8 @@ Deno.test(
 
     // Simulate discovery result with harmful synapse to remove
     const harmfulSynapse = {
-      fromNeuronId: 1,
-      toNeuronId: -1,
+      fromNeuronUuid: "input-1",
+      toNeuronUuid: "output-0",
       weight: -0.25,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0.1,

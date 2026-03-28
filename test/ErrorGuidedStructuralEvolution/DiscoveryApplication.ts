@@ -11,6 +11,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
+import { creatureToRustFormat } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import {
   addHelpfulNeurons,
   addHelpfulSynapses,
@@ -37,28 +38,28 @@ function makeTestCreature(): Creature {
     neurons: [
       {
         type: "hidden",
-        id: 5000,
+        uuid: "hidden-0",
         squash: IDENTITY.NAME,
         bias: 0.1,
       },
       {
         type: "hidden",
-        id: 5001,
+        uuid: "hidden-1",
         squash: IDENTITY.NAME,
         bias: 0.2,
       },
       {
         type: "output",
-        id: -1,
+        uuid: "output-0",
         squash: IDENTITY.NAME,
         bias: 0,
       },
     ],
     synapses: [
-      { fromId: 0, toId: 5000, weight: 0.5 },
-      { fromId: 1, toId: 5001, weight: 0.3 },
-      { fromId: 5000, toId: -1, weight: 0.75 },
-      { fromId: 5001, toId: -1, weight: 0.25 },
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+      { fromUUID: "input-1", toUUID: "hidden-1", weight: 0.3 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.75 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.25 },
     ],
   };
 
@@ -93,11 +94,10 @@ Deno.test("removeSynapse removes an existing synapse", async () => {
   await initWasmForTests();
   const creature = makeTestCreature();
 
-  // hidden-1 (uuid "hidden-1") → id 1775329650, which connects to output -1
-  const hiddenOneId = creature.neurons.find((n) => n.type === "hidden")!.id;
+  // First hidden (hidden-0) connects to output-0
   const candidate: CandidateSynapse = {
-    fromNeuronId: hiddenOneId,
-    toNeuronId: -1,
+    fromNeuronUuid: "hidden-0",
+    toNeuronUuid: "output-0",
     weight: 0.25,
     targetNeuronImpact: 1.0,
     expectedCreatureErrorReduction: 0.01,
@@ -120,12 +120,9 @@ Deno.test("removeSynapse returns null for non-existent synapse", async () => {
   const creature = makeTestCreature();
 
   // A synapse between two hidden neurons doesn't exist in this creature
-  const hiddenIds = creature.neurons.filter((n) => n.type === "hidden").map((
-    n,
-  ) => n.id);
   const candidate: CandidateSynapse = {
-    fromNeuronId: hiddenIds[0],
-    toNeuronId: hiddenIds[1], // This synapse doesn't exist
+    fromNeuronUuid: "hidden-0",
+    toNeuronUuid: "hidden-1", // This synapse doesn't exist
     weight: 0.5,
     targetNeuronImpact: 1.0,
     expectedCreatureErrorReduction: 0.01,
@@ -149,12 +146,10 @@ Deno.test("addHelpfulSynapses adds a new synapse", async () => {
   await initWasmForTests();
   const creature = makeTestCreature();
 
-  // hidden-1 (second hidden) is not yet connected from input-1
-  const secondHiddenId =
-    creature.neurons.filter((n) => n.type === "hidden")[1].id;
+  // input-0 only reaches hidden-0; add input-0 -> hidden-1
   const candidate: CandidateSynapse = {
-    fromNeuronId: 0,
-    toNeuronId: secondHiddenId, // New connection
+    fromNeuronUuid: "input-0",
+    toNeuronUuid: "hidden-1", // New connection
     weight: 0.4,
     targetNeuronImpact: 0.8,
     expectedCreatureErrorReduction: 0.02,
@@ -176,10 +171,9 @@ Deno.test("addHelpfulSynapses skips already existing synapse", async () => {
   const creature = makeTestCreature();
 
   // input-0 -> hidden-0 already exists
-  const firstHiddenId = creature.neurons.find((n) => n.type === "hidden")!.id;
   const candidate: CandidateSynapse = {
-    fromNeuronId: 0,
-    toNeuronId: firstHiddenId, // Already exists
+    fromNeuronUuid: "input-0",
+    toNeuronUuid: "hidden-0", // Already exists
     weight: 0.5,
     targetNeuronImpact: 1.0,
     expectedCreatureErrorReduction: 0.01,
@@ -205,7 +199,7 @@ Deno.test("changeSquash modifies neuron squash function", async () => {
 
   const firstHiddenId = creature.neurons.find((n) => n.type === "hidden")!.id;
   const candidate: CandidateSquash = {
-    neuronId: firstHiddenId,
+    neuronUuid: "hidden-0",
     previousSquash: IDENTITY.NAME,
     squash: LOGISTIC.NAME,
     expectedCreatureScoreGain: 0.03,
@@ -233,8 +227,8 @@ Deno.test("addHelpfulNeurons adds a new neuron with synapses", async () => {
   const originalNeuronCount = creature.neurons.length;
 
   const candidate: CandidateNeuron = {
-    fromNeuronId: 0,
-    toNeuronId: -1,
+    fromNeuronUuid: "input-0",
+    toNeuronUuid: "output-0",
     incomingWeight: 0.5,
     outgoingWeight: 0.3,
     squash: IDENTITY.NAME,
@@ -254,6 +248,63 @@ Deno.test("addHelpfulNeurons adds a new neuron with synapses", async () => {
   );
 });
 
+Deno.test("addHelpfulNeurons assigns stable uuid endpoints for Rust export", async () => {
+  await initWasmForTests();
+  const creature = makeTestCreature();
+
+  const candidate: CandidateNeuron = {
+    fromNeuronUuid: "input-0",
+    toNeuronUuid: "output-0",
+    incomingWeight: 0.5,
+    outgoingWeight: 0.3,
+    squash: IDENTITY.NAME,
+    bias: 0.1,
+    targetNeuronImpact: 1.0,
+    expectedCreatureErrorReduction: 0.02,
+    expectedCreatureScoreGain: 0.02,
+    improvedCount: 8,
+    totalCount: 10,
+  };
+
+  const result = addHelpfulNeurons("test-id", creature, [candidate]);
+  assert(result !== undefined, "should return a modified creature");
+
+  const exported = result.exportJSON();
+  const newNeuron = exported.neurons.find((neuron) =>
+    neuron.type === "hidden" && neuron.uuid !== "hidden-0" &&
+    neuron.uuid !== "hidden-1"
+  );
+  assert(newNeuron, "added hidden neuron should have a uuid");
+  assert(
+    typeof newNeuron.uuid === "string" && newNeuron.uuid.length > 0,
+    "added hidden neuron uuid should be non-empty",
+  );
+
+  const incoming = exported.synapses.find((synapse) =>
+    synapse.fromUUID === "input-0" && synapse.toUUID === newNeuron.uuid
+  );
+  assert(incoming, "incoming synapse should include both UUID endpoints");
+
+  const outgoing = exported.synapses.find((synapse) =>
+    synapse.fromUUID === newNeuron.uuid && synapse.toUUID === "output-0"
+  );
+  assert(outgoing, "outgoing synapse should include both UUID endpoints");
+
+  const rustCreature = creatureToRustFormat(exported);
+  assert(
+    rustCreature.synapses.some((synapse) =>
+      synapse.from_uuid === "input-0" && synapse.to_uuid === newNeuron.uuid
+    ),
+    "Rust export should preserve the incoming synapse UUID endpoints",
+  );
+  assert(
+    rustCreature.synapses.some((synapse) =>
+      synapse.from_uuid === newNeuron.uuid && synapse.to_uuid === "output-0"
+    ),
+    "Rust export should preserve the outgoing synapse UUID endpoints",
+  );
+});
+
 Deno.test("removeHarmfulNeuron returns undefined for undefined candidate", async () => {
   await initWasmForTests();
   const creature = makeTestCreature();
@@ -268,7 +319,7 @@ Deno.test("removeHarmfulNeuron removes a hidden neuron", async () => {
   const secondHiddenId =
     creature.neurons.filter((n) => n.type === "hidden")[1].id;
   const candidate: CandidateHarmfulNeuron = {
-    neuronId: secondHiddenId,
+    neuronUuid: "hidden-1",
     errorMagnitude: 0.5,
     expectedCreatureScoreGain: 0.05,
     sampleCount: 100,
@@ -292,7 +343,7 @@ Deno.test("removeHarmfulNeuron refuses to remove output neurons", async () => {
   const creature = makeTestCreature();
 
   const candidate: CandidateHarmfulNeuron = {
-    neuronId: -1,
+    neuronUuid: "output-0",
     errorMagnitude: 0.5,
     expectedCreatureScoreGain: 0.05,
     sampleCount: 100,

@@ -68,16 +68,16 @@ Deno.test("SuccessCache: recordSuccessSync captures rustRequest fields for many 
         type: "add-neurons",
         description: "all-fields",
         neuronDetails: {
-          fromNeuronId: 0,
-          toNeuronId: -1,
+          fromNeuronUuid: "input-0",
+          toNeuronUuid: "output-0",
           incomingWeight: 0.1,
           outgoingWeight: 0.2,
           bias: 0.01,
           squash: "IDENTITY",
         },
         neuronCandidate: {
-          fromNeuronId: 0,
-          toNeuronId: -1,
+          fromNeuronUuid: "input-0",
+          toNeuronUuid: "output-0",
           incomingWeight: 0.1,
           outgoingWeight: 0.2,
           bias: 0.01,
@@ -92,18 +92,22 @@ Deno.test("SuccessCache: recordSuccessSync captures rustRequest fields for many 
           type: "coordinated_structural",
           expectedCreatureScoreGain: 0.01,
           operations: [
-            { type: "removeSynapse", fromNeuronId: 6000, toNeuronId: 6001 },
+            {
+              type: "removeSynapse",
+              fromNeuronUuid: "input-0",
+              toNeuronUuid: "output-0",
+            },
             {
               type: "addSynapse",
-              fromNeuronId: 6000,
-              toNeuronId: 6001,
+              fromNeuronUuid: "input-0",
+              toNeuronUuid: "output-0",
               weight: 0.2,
             },
           ],
         },
         synapseCandidate: {
-          fromNeuronId: 0,
-          toNeuronId: -1,
+          fromNeuronUuid: "input-0",
+          toNeuronUuid: "output-0",
           weight: 0.5,
           targetNeuronImpact: 1,
           expectedCreatureErrorReduction: 0.01,
@@ -112,7 +116,7 @@ Deno.test("SuccessCache: recordSuccessSync captures rustRequest fields for many 
           totalCount: 1,
         },
         squashCandidate: {
-          neuronId: -1,
+          neuronUuid: "output-0",
           previousSquash: "IDENTITY",
           squash: "TANH",
           expectedCreatureScoreGain: 0.01,
@@ -120,21 +124,21 @@ Deno.test("SuccessCache: recordSuccessSync captures rustRequest fields for many 
           currentError: 1.0,
         },
         removalCandidate: {
-          neuronId: 7000,
+          neuronUuid: "hidden-7000",
           totalError: 1,
           impact: 0.0001,
           reason: "test",
         },
         harmfulNeuronCandidate: {
-          neuronId: 7001,
+          neuronUuid: "hidden-7001",
           errorMagnitude: 1,
           expectedCreatureScoreGain: 0.01,
           sampleCount: 1,
           averageActivation: 0,
         },
         harmfulSynapseCandidate: {
-          fromNeuronId: 6002,
-          toNeuronId: 6003,
+          fromNeuronUuid: "hidden-6002",
+          toNeuronUuid: "hidden-6003",
           weight: 0.1,
           targetNeuronImpact: 1,
           expectedCreatureErrorReduction: 0.01,
@@ -142,7 +146,10 @@ Deno.test("SuccessCache: recordSuccessSync captures rustRequest fields for many 
           improvedCount: 1,
           totalCount: 1,
         },
-        synapseDetails: { fromNeuronId: 6002, toNeuronId: 6003 },
+        synapseDetails: {
+          fromNeuronUuid: "hidden-6002",
+          toNeuronUuid: "hidden-6003",
+        },
       },
     };
 
@@ -161,6 +168,7 @@ Deno.test("SuccessCache: recordSuccessSync captures rustRequest fields for many 
 
     const entries = listSuccessEntriesSync(cacheDir);
     assertEquals(entries.length, 1);
+    assertEquals(entries[0].wireSchemaVersion, 2);
     const rr = entries[0].rustRequest as Record<string, unknown>;
     assertEquals(typeof rr.neuronDetails, "object");
     assertEquals(typeof rr.neuronCandidate, "object");
@@ -171,6 +179,13 @@ Deno.test("SuccessCache: recordSuccessSync captures rustRequest fields for many 
     assertEquals(typeof rr.harmfulNeuronCandidate, "object");
     assertEquals(typeof rr.harmfulSynapseCandidate, "object");
     assertEquals(typeof rr.synapseDetails, "object");
+    const json = JSON.stringify(rr);
+    assertEquals(json.includes("NeuronId"), false);
+    assertEquals(json.includes('"neuronId"'), false);
+    assertEquals(json.includes('"fromId"'), false);
+    assertEquals(json.includes('"toId"'), false);
+    assertEquals(json.includes('"fromNeuronId"'), false);
+    assertEquals(json.includes('"toNeuronId"'), false);
   } finally {
     closeRustLibrary();
     try {

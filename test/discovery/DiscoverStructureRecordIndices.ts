@@ -103,6 +103,16 @@ Deno.test("DiscoverStructure preserves record indices for single binary chunk", 
       rawIndices,
       "record indices should retain their absolute offsets",
     );
+    assertEquals(
+      input.creature.synapses[0].from_uuid,
+      "input-0",
+      "Rust payload should preserve wire UUIDs for synapse sources",
+    );
+    assertEquals(
+      input.creature.synapses[0].to_uuid,
+      "hidden-1",
+      "Rust payload should preserve wire UUIDs for synapse targets",
+    );
   } finally {
     await structure.cleanUp();
   }

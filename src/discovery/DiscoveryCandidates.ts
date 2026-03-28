@@ -89,10 +89,10 @@ export type DiscoveryChangeType =
 export interface DiscoveredNeuronDetails {
   /** Short ID of the newly added hidden neuron (from creature after adding). */
   addedNeuronShortID?: string;
-  /** Source neuron ID. */
-  fromNeuronId: number;
-  /** Target neuron ID. */
-  toNeuronId: number;
+  /** Stable wire-format source endpoint. */
+  fromNeuronUuid: string;
+  /** Stable wire-format target endpoint. */
+  toNeuronUuid: string;
   /** Incoming weight (source -> new neuron). */
   incomingWeight: number;
   /** Outgoing weight (new neuron -> target). */
@@ -105,10 +105,10 @@ export interface DiscoveredNeuronDetails {
 
 /** Details of a synapse removal for caching/logging. */
 export interface SynapseRemovalDetails {
-  /** Source neuron ID. */
-  fromNeuronId: number;
-  /** Target neuron ID. */
-  toNeuronId: number;
+  /** Stable wire-format source endpoint. */
+  fromNeuronUuid: string;
+  /** Stable wire-format target endpoint. */
+  toNeuronUuid: string;
 }
 
 export interface DiscoveryCandidateChange {

@@ -26,12 +26,14 @@ function makeTestCreature(): Creature {
     neurons: [
       {
         type: "hidden",
+        uuid: "validate-fix-h0",
         id: 5000,
         squash: IDENTITY.NAME,
         bias: 0.1,
       },
       {
         type: "hidden",
+        uuid: "validate-fix-h1",
         id: 5001,
         squash: IDENTITY.NAME,
         bias: 0.2,
@@ -70,10 +72,9 @@ Deno.test({
     const creature = makeTestCreature();
     const originalUUID = CreatureUtil.makeUUID(creature);
 
-    const firstHiddenId = creature.neurons.find((n) => n.type === "hidden")!.id;
     const synapseToRemove: CandidateSynapse = {
-      fromNeuronId: firstHiddenId,
-      toNeuronId: -1,
+      fromNeuronUuid: "validate-fix-h0",
+      toNeuronUuid: "output-0",
       weight: 0.75,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -110,12 +111,9 @@ Deno.test({
   fn: () => {
     const creature = makeTestCreature();
 
-    const secondHiddenId = creature.neurons.filter((n) =>
-      n.type === "hidden"
-    )[1].id;
     const synapseToAdd: CandidateSynapse = {
-      fromNeuronId: 0,
-      toNeuronId: secondHiddenId,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "validate-fix-h1",
       weight: 0.4,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -149,11 +147,8 @@ Deno.test({
   fn: () => {
     const creature = makeTestCreature();
 
-    const secondHiddenId = creature.neurons.filter((n) =>
-      n.type === "hidden"
-    )[1].id;
     const removalCandidate: RemovalCandidate = {
-      neuronId: secondHiddenId,
+      neuronUuid: "validate-fix-h1",
       totalError: 0.001,
       impact: 0.0001,
       reason: "low-impact",
@@ -192,8 +187,8 @@ Deno.test({
       // Try to add a synapse that already exists (shouldn't cause validation issue)
       // But this test ensures the infrastructure works
       const synapseToAdd: CandidateSynapse = {
-        fromNeuronId: 0,
-        toNeuronId: 5001,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "validate-fix-h1",
         weight: 0.4,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -243,19 +238,16 @@ Deno.test({
     try {
       const creature = makeTestCreature();
 
-      // hidden-1 (second) appears after hidden-0 (first) in the neuron list.
-      // fromNeuronId must be before toNeuronId — this ordering is invalid.
-      const hiddenIds = creature.neurons.filter((n) => n.type === "hidden").map(
-        (n) => n.id,
-      );
+      // validate-fix-h1 (second) appears after validate-fix-h0 (first) in the neuron list.
+      // Source endpoint must be before target in evaluation order — this pairing is invalid.
       const result = DiscoverStructure.addHelpfulNeurons(
         "test-ordering-id",
         creature,
         [{
           // This ordering is invalid for our forward-pass evaluation because
-          // hidden-1 appears after hidden-0 in the neuron list.
-          fromNeuronId: hiddenIds[1],
-          toNeuronId: hiddenIds[0],
+          // validate-fix-h1 appears after validate-fix-h0 in the neuron list.
+          fromNeuronUuid: "validate-fix-h1",
+          toNeuronUuid: "validate-fix-h0",
           incomingWeight: 0.5,
           outgoingWeight: 0.5,
           squash: IDENTITY.NAME,
@@ -321,12 +313,6 @@ Deno.test({
 
     try {
       const creature = makeTestCreature();
-      const firstHiddenId = creature.neurons.find((n) =>
-        n.type === "hidden"
-      )!.id;
-      const secondHiddenId = creature.neurons.filter((n) =>
-        n.type === "hidden"
-      )[1].id;
 
       // Test each method accepts discoveryFailureCacheDir without error
 
@@ -335,8 +321,8 @@ Deno.test({
         "test-1",
         creature,
         {
-          fromNeuronId: firstHiddenId,
-          toNeuronId: -1,
+          fromNeuronUuid: "validate-fix-h0",
+          toNeuronUuid: "output-0",
           weight: 0.75,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -352,8 +338,8 @@ Deno.test({
         "test-2",
         creature,
         [{
-          fromNeuronId: 1,
-          toNeuronId: firstHiddenId,
+          fromNeuronUuid: "input-1",
+          toNeuronUuid: "validate-fix-h0",
           weight: 0.3,
           targetNeuronImpact: 1.0,
           expectedCreatureErrorReduction: 0,
@@ -369,8 +355,8 @@ Deno.test({
         "test-3",
         creature,
         [{
-          fromNeuronId: 0,
-          toNeuronId: -1,
+          fromNeuronUuid: "input-0",
+          toNeuronUuid: "output-0",
           incomingWeight: 0.5,
           outgoingWeight: 0.5,
           squash: IDENTITY.NAME,
@@ -389,7 +375,7 @@ Deno.test({
         "test-4",
         creature,
         [{
-          neuronId: firstHiddenId,
+          neuronUuid: "validate-fix-h0",
           previousSquash: IDENTITY.NAME,
           squash: "TANH",
           expectedCreatureScoreGain: 0.05,
@@ -404,7 +390,7 @@ Deno.test({
         "test-5",
         creature,
         {
-          neuronId: secondHiddenId,
+          neuronUuid: "validate-fix-h1",
           errorMagnitude: 1e11,
           expectedCreatureScoreGain: 0.05,
           sampleCount: 100,
@@ -418,7 +404,7 @@ Deno.test({
         "test-6",
         creature,
         {
-          neuronId: secondHiddenId,
+          neuronUuid: "validate-fix-h1",
           totalError: 0.001,
           impact: 0.0001,
           reason: "low-impact",

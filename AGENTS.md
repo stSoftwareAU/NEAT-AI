@@ -111,6 +111,19 @@ scripts/                # Utility scripts
   integer-keyed surfaces for lineage, export, or user-visible JSON without a
   benchmark in `bench/` and a short note in the PR.
 
+- **Discovery/cache/FFI wire contract:** any JSON that crosses a library, app,
+  worker/cache boundary, or Rust FFI boundary must use **UUIDs only** for neuron
+  and synapse identity. This includes discovery candidates, success/failure
+  cache `rustRequest` payloads, diagnostics written to disk, and replay inputs.
+  Do **not** persist or emit `neuronId`, `fromNeuronId`, `toNeuronId`,
+  `insertBeforeNeuronId`, `fromId`, or `toId` in these wire payloads. Resolve
+  UUIDs to runtime integers only at the last internal application step.
+
+- **No legacy fallback on wire formats:** when reading discovery cache or other
+  persisted wire payloads, reject or skip numeric-id-only entries instead of
+  silently accepting them. Backward compatibility must not reintroduce runtime
+  ids into external contracts.
+
 - **Reference benchmarks** (evidence for keeping internal integer maps):
   `bench/ParallelBreeding.ts`, `bench/GeneticCompatibilitySetIntersection.ts`,
   and WASM activation/serialisation paths tied to Issue #1958.

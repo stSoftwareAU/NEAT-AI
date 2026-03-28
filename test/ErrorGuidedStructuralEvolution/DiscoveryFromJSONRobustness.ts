@@ -37,8 +37,8 @@ import { initWasmForTests } from "../_initWasm.ts";
 /**
  * Creates a minimal valid creature for testing.
  *
- * Structure: input(0) -> hidden(1000000) -> output(-1)
- *            input(1) -> hidden(1000001) -> output(-1)
+ * Structure: input(0) -> hidden(1000000, uuid discovery-test-h0) -> output(-1)
+ *            input(1) -> hidden(1000001, uuid discovery-test-h1) -> output(-1)
  */
 function makeTestCreature(): Creature {
   const exportJSON: CreatureExport = {
@@ -47,12 +47,14 @@ function makeTestCreature(): Creature {
     neurons: [
       {
         type: "hidden",
+        uuid: "discovery-test-h0",
         id: 1000000,
         squash: IDENTITY.NAME,
         bias: 0.1,
       },
       {
         type: "hidden",
+        uuid: "discovery-test-h1",
         id: 1000001,
         squash: IDENTITY.NAME,
         bias: 0.2,
@@ -92,8 +94,8 @@ Deno.test(
     const creature = makeTestCreature();
 
     const candidate: CandidateSynapse = {
-      fromNeuronId: 9999999,
-      toNeuronId: -1,
+      fromNeuronUuid: "no-such-neuron-uuid",
+      toNeuronUuid: "output-0",
       weight: 0.5,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0.01,
@@ -118,8 +120,8 @@ Deno.test(
     const creature = makeTestCreature();
 
     const candidate: CandidateSynapse = {
-      fromNeuronId: 0,
-      toNeuronId: 9999999,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "no-such-neuron-uuid",
       weight: 0.5,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0.01,
@@ -144,8 +146,8 @@ Deno.test(
     const creature = makeTestCreature();
 
     const candidate: CandidateNeuron = {
-      fromNeuronId: 9999999,
-      toNeuronId: -1,
+      fromNeuronUuid: "no-such-neuron-uuid",
+      toNeuronUuid: "output-0",
       squash: IDENTITY.NAME,
       bias: 0.1,
       incomingWeight: 0.5,
@@ -173,8 +175,8 @@ Deno.test(
     const creature = makeTestCreature();
 
     const candidate: CandidateSynapse = {
-      fromNeuronId: 9999999,
-      toNeuronId: -1,
+      fromNeuronUuid: "no-such-neuron-uuid",
+      toNeuronUuid: "output-0",
       weight: 0.5,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0.01,
@@ -199,7 +201,7 @@ Deno.test(
     const creature = makeTestCreature();
 
     const candidate: CandidateHarmfulNeuron = {
-      neuronId: 9999999,
+      neuronUuid: "no-such-neuron-uuid",
       errorMagnitude: 0.5,
       averageActivation: 0.1,
       sampleCount: 10,
@@ -222,7 +224,7 @@ Deno.test(
     const creature = makeTestCreature();
 
     const candidate: CandidateSquash = {
-      neuronId: 9999999,
+      neuronUuid: "no-such-neuron-uuid",
       previousSquash: IDENTITY.NAME,
       squash: "LOGISTIC",
       expectedCreatureScoreGain: 0.01,
@@ -246,7 +248,7 @@ Deno.test(
     const creature = makeTestCreature();
 
     const candidate = {
-      neuronId: 9999999,
+      neuronUuid: "no-such-neuron-uuid",
       impact: 0.001,
       totalError: 0.01,
       reason: "low_impact",
@@ -323,8 +325,8 @@ Deno.test(
 
     const candidates: CandidateSynapse[] = [
       {
-        fromNeuronId: 9999999,
-        toNeuronId: -1,
+        fromNeuronUuid: "no-such-neuron-uuid",
+        toNeuronUuid: "output-0",
         weight: 0.5,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0.01,
@@ -333,8 +335,8 @@ Deno.test(
         totalCount: 10,
       },
       {
-        fromNeuronId: 0,
-        toNeuronId: 9999999,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "no-such-neuron-uuid",
         weight: 0.5,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0.01,
@@ -361,8 +363,8 @@ Deno.test(
 
     const candidates: CandidateNeuron[] = [
       {
-        fromNeuronId: 9999999,
-        toNeuronId: -1,
+        fromNeuronUuid: "no-such-neuron-uuid",
+        toNeuronUuid: "output-0",
         squash: IDENTITY.NAME,
         bias: 0.1,
         incomingWeight: 0.5,
@@ -394,8 +396,8 @@ Deno.test(
 
     // Remove the synapse from input(0) -> hidden(1000000)
     const candidate: CandidateSynapse = {
-      fromNeuronId: 0,
-      toNeuronId: 1000000,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "discovery-test-h0",
       weight: 0.5,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0.01,
@@ -427,8 +429,8 @@ Deno.test(
 
     // Add a synapse from input(1) -> hidden(1000000)
     const candidate: CandidateSynapse = {
-      fromNeuronId: 1,
-      toNeuronId: 1000000,
+      fromNeuronUuid: "input-1",
+      toNeuronUuid: "discovery-test-h0",
       weight: 0.4,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0.01,
@@ -458,7 +460,7 @@ Deno.test(
     const creature = makeTestCreature();
 
     const candidate: CandidateHarmfulNeuron = {
-      neuronId: 1000000,
+      neuronUuid: "discovery-test-h0",
       errorMagnitude: 1e11,
       averageActivation: 0.1,
       sampleCount: 100,
@@ -505,7 +507,7 @@ Deno.test(
     const creature = makeTestCreature();
 
     const candidate = {
-      neuronId: 1000001,
+      neuronUuid: "discovery-test-h1",
       totalError: 0.001,
       impact: 0.001,
       reason: "low_impact",
@@ -537,8 +539,8 @@ Deno.test(
     const creature = makeTestCreature();
 
     const candidate: CandidateNeuron = {
-      fromNeuronId: 0,
-      toNeuronId: -1,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "output-0",
       squash: IDENTITY.NAME,
       bias: 0.1,
       incomingWeight: 0.5,
@@ -572,7 +574,7 @@ Deno.test(
     const creature = makeTestCreature();
 
     const candidate: CandidateSquash = {
-      neuronId: 1000000,
+      neuronUuid: "discovery-test-h0",
       previousSquash: IDENTITY.NAME,
       squash: "LOGISTIC",
       expectedCreatureScoreGain: 0.01,

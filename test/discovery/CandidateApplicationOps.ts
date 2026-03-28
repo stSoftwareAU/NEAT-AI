@@ -245,7 +245,7 @@ Deno.test("applyChangeSquash - changes squash for target neuron", () => {
       type: "change-squash",
       description: "test",
       squashCandidate: {
-        neuronId: 1775329650,
+        neuronUuid: "hidden-1",
         previousSquash: "IDENTITY",
         squash: "TANH",
         expectedCreatureScoreGain: 0.05,
@@ -287,7 +287,7 @@ Deno.test("applyChangeSquash - returns original creature when squash already mat
       type: "change-squash",
       description: "test",
       squashCandidate: {
-        neuronId: 1775329650,
+        neuronUuid: "hidden-1",
         previousSquash: "IDENTITY",
         squash: "IDENTITY", // Same as current
         expectedCreatureScoreGain: 0.05,

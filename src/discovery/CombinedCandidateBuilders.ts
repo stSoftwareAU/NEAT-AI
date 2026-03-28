@@ -13,6 +13,10 @@ import type {
   CandidateSynapse,
 } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import {
+  buildWireToRuntimeIdMap,
+  resolveSingleNeuronReference,
+} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import type { Creature } from "../Creature.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { shortID } from "./CandidateDescriptions.ts";
@@ -163,15 +167,17 @@ export function buildCombinedSquashCandidates(
   );
 
   if (changedSquashCreature) {
+    const wireToId = buildWireToRuntimeIdMap(baseCreature);
     const changes = (candidateSquashes || []).map((c) => {
-      const neuron = baseCreature.neurons.find((n) => n.id === c.neuronId);
+      const neuronId = resolveSingleNeuronReference(wireToId, c.neuronUuid);
+      const neuron = baseCreature.neurons.find((n) => n.id === neuronId);
       const oldSquash = neuron?.squash;
       const improvementValue = getExpectedSquash(c);
       const improvement = improvementValue !== undefined
         ? ` expected: ${(improvementValue * 100).toFixed(1)}%`
         : "";
       return `${
-        shortID(String(c.neuronId))
+        shortID(c.neuronUuid)
       } (${oldSquash} -> ${c.squash}${improvement})`;
     });
 

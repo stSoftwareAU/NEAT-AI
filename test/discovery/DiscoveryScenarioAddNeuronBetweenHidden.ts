@@ -20,7 +20,6 @@
  */
 import { assert, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../src/Creature.ts";
 import {
   assertCrippleDegraded,
   assertDiscoveryTypesFound,
@@ -212,28 +211,13 @@ Deno.test({
   name:
     "DiscoveryScenario: add neuron between hidden - discovery finds add-neurons candidate",
   fn() {
-    // Build the crippled creature to resolve actual neuron IDs (hash-based, not sequential)
-    const tmpCrippled = Creature.fromJSON(CRIPPLED_CREATURE);
-    const crippledExport = tmpCrippled.exportJSON();
-    const hiddenANeuron = crippledExport.neurons.find(
-      (n) => n.type === "hidden" && n.squash === "RELU" && n.bias === 0,
-    );
-    // hidden-C is the second hidden RELU neuron (receives from hidden-A)
-    const hiddenCNeuron = crippledExport.neurons.find(
-      (n) => n.type === "hidden" && n.id !== hiddenANeuron!.id,
-    );
-    assert(hiddenANeuron, "Should find hidden-A neuron in crippled creature");
-    assert(hiddenCNeuron, "Should find hidden-C neuron in crippled creature");
-    const hiddenAId = hiddenANeuron.id!;
-    const hiddenCId = hiddenCNeuron.id!;
-
     const mockDiscoveryResult = {
       ID: "test-add-neuron-between-hidden",
       addHelpfulSynapses: undefined,
       addHelpfulNeurons: [
         {
-          fromNeuronId: hiddenAId,
-          toNeuronId: hiddenCId,
+          fromNeuronUuid: "hidden-A",
+          toNeuronUuid: "hidden-C",
           incomingWeight: 0.7,
           outgoingWeight: 0.9,
           squash: "TANH",

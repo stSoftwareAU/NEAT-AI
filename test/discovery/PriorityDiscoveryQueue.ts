@@ -21,10 +21,13 @@ import {
   size,
   updateSuccessRate,
 } from "../../src/discovery/PriorityDiscoveryQueue.ts";
+import { DISCOVERY_WIRE_SCHEMA_VERSION } from "../../src/discovery/DiscoveryWireFormat.ts";
 import type { SuccessCacheEntry } from "../../src/discovery/SuccessCache.ts";
 
 function makeEntry(overrides: Partial<SuccessCacheEntry>): SuccessCacheEntry {
   return {
+    wireSchemaVersion: overrides.wireSchemaVersion ??
+      DISCOVERY_WIRE_SCHEMA_VERSION,
     key: overrides.key ?? "k",
     changeType: overrides.changeType ?? "add-synapses",
     description: overrides.description,

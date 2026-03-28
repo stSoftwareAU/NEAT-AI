@@ -19,11 +19,6 @@ import type { DiscoveryRunnerWorker } from "../../src/discovery/DiscoveryRunner.
 import { DiscoveryRunner } from "../../src/discovery/DiscoveryRunner.ts";
 import { shortID } from "../../src/discovery/DiscoveryCandidates.ts";
 
-// Integer IDs for hidden neurons used in these tests (deterministicIdFromUuid).
-const NEURON_ID_1 = 1434298466; // "3e979317-989f-4c5c-8272-02fd85be94a8"
-const NEURON_ID_2 = 1606939036; // "abc12345-def6-7890-ghij-klmnopqrstuv"
-const NEURON_ID_3 = 1140940814; // "test1234-5678-90ab-cdef-ghijklmnopqr"
-
 function makeOptions(overrides: Partial<NeatOptions> = {}): NeatOptions {
   return {
     iterations: 1,
@@ -105,9 +100,7 @@ Deno.test(
   "Discovery message uses shortID for remove-low-impact neuron UUID",
   async () => {
     const neuronUUID = "3e979317-989f-4c5c-8272-02fd85be94a8";
-    // After integer ID migration, the neuron's integer ID is NEURON_ID_1.
-    // shortID(String(NEURON_ID_1)) returns the full number (no dashes, < 16 chars).
-    const expectedShortID = shortID(String(NEURON_ID_1));
+    const expectedShortID = shortID(neuronUUID);
     const baseCreature = makeCreatureWithRemovableNeuron(neuronUUID);
     const baseNeuronCount = baseCreature.exportJSON().neurons.length;
 
@@ -119,7 +112,7 @@ Deno.test(
       removeHarmfulNeurons: undefined,
       removalCandidates: [
         {
-          neuronId: NEURON_ID_1,
+          neuronUuid: neuronUUID,
           totalError: 0.1,
           impact: 1e-13,
           reason: "low-impact",
@@ -140,7 +133,7 @@ Deno.test(
       options: makeOptions(),
     });
 
-    // The description in evaluations should use the integer neuron ID
+    // The description in evaluations should use shortID(neuronUuid)
     const removalEval = result.evaluations?.find(
       (e) => e.changeType === "remove-low-impact" && e.kind === "candidate",
     );
@@ -148,7 +141,7 @@ Deno.test(
     assert(removalEval, "Should have a remove-low-impact evaluation");
     assert(
       removalEval.description?.includes(expectedShortID),
-      `Description should contain neuron ID '${expectedShortID}', got: ${removalEval.description}`,
+      `Description should contain neuron short id '${expectedShortID}', got: ${removalEval.description}`,
     );
     assertEquals(
       removalEval.description?.includes(neuronUUID),
@@ -173,7 +166,7 @@ Deno.test(
       removeHarmfulNeurons: undefined,
       removalCandidates: [
         {
-          neuronId: NEURON_ID_2,
+          neuronUuid: neuronUUID,
           totalError: 0.1,
           impact: 1e-14,
           reason: "low-impact",
@@ -221,7 +214,7 @@ Deno.test(
       removeHarmfulNeurons: undefined,
       removalCandidates: [
         {
-          neuronId: NEURON_ID_3,
+          neuronUuid: neuronUUID,
           totalError: 0.1,
           impact: 1e-14,
           reason: "low-impact",

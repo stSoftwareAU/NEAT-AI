@@ -50,8 +50,10 @@ export interface NeuronStats {
  * so TypeScript should NOT apply additional scaling.
  */
 export interface CandidateSynapse {
-  fromNeuronId: number;
-  toNeuronId: number;
+  /** Stable wire-format source endpoint (`input-N` / `output-N` / hidden uuid). */
+  fromNeuronUuid: string;
+  /** Stable wire-format destination endpoint. */
+  toNeuronUuid: string;
   weight: number;
   targetNeuronImpact: number;
   expectedCreatureErrorReduction: number;
@@ -76,7 +78,7 @@ export interface CandidateSynapse {
  * existing neurons rather than adding new connections.
  */
 export interface CandidateSquash {
-  neuronId: number;
+  neuronUuid: string;
   previousSquash: string;
   squash: string;
   expectedCreatureScoreGain: number;
@@ -101,8 +103,10 @@ export interface CandidateSquash {
  * so TypeScript should NOT apply additional scaling.
  */
 export interface CandidateNeuron {
-  fromNeuronId: number;
-  toNeuronId: number;
+  /** Stable wire-format source endpoint (`input-N` / `output-N` / hidden uuid). */
+  fromNeuronUuid: string;
+  /** Stable wire-format destination endpoint. */
+  toNeuronUuid: string;
   incomingWeight: number;
   outgoingWeight: number;
   squash: string;
@@ -127,7 +131,7 @@ export interface CandidateNeuron {
  * - expectedCreatureScoreGain: expected score improvement from removal
  */
 export interface CandidateHarmfulNeuron {
-  neuronId: number;
+  neuronUuid: string;
   errorMagnitude: number;
   expectedCreatureScoreGain: number;
   sampleCount: number;

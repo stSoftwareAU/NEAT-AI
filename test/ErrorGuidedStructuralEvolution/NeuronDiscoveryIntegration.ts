@@ -28,6 +28,17 @@ import { TANH } from "../../src/methods/activations/types/TANH.ts";
 import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
 
+function runtimeIdForUuid(creature: Creature, uuid: string): number {
+  const id = creature.exportJSON().neurons.find((neuron) =>
+    neuron.uuid === uuid
+  )
+    ?.id;
+  if (typeof id !== "number") {
+    throw new Error(`Missing runtime id for ${uuid}`);
+  }
+  return id;
+}
+
 // =============================================================================
 // Test Scenarios
 // =============================================================================
@@ -298,9 +309,10 @@ Deno.test({
       assert(flushSuccess, "Flush should succeed");
 
       discoverStructure.extendTimeoutForAnalysis(5);
+      const output0Id = runtimeIdForUuid(crippledCreature, "output-0");
 
       const candidates = await discoverStructure.analyzeMissingNeurons([
-        "output-0" as unknown as number,
+        output0Id,
       ]);
 
       if (candidates && candidates.length > 0) {
@@ -345,16 +357,18 @@ Deno.test({
 
       for (const outputUUID of ["output-0", "output-1"]) {
         discoverStructure.extendTimeoutForAnalysis(5);
-        // @ts-ignore: test with legacy string neuron IDs
+        const outputId = runtimeIdForUuid(crippledCreature, outputUUID);
         // deno-lint-ignore no-await-in-loop
-        await discoverStructure.analyzeMissingNeurons([outputUUID]);
+        await discoverStructure.analyzeMissingNeurons([outputId]);
       }
 
       // Combined analysis
       discoverStructure.extendTimeoutForAnalysis(5);
+      const output0Id = runtimeIdForUuid(crippledCreature, "output-0");
+      const output1Id = runtimeIdForUuid(crippledCreature, "output-1");
       const allCandidates = await discoverStructure.analyzeMissingNeurons([
-        "output-0" as unknown as number,
-        "output-1" as unknown as number,
+        output0Id,
+        output1Id,
       ]);
 
       if (allCandidates && allCandidates.length > 0) {
@@ -398,8 +412,9 @@ Deno.test({
 
       discoverStructure.extendTimeoutForAnalysis(10);
 
-      const focusNeurons = ["output-0", "output-1", "output-2"];
-      // @ts-ignore: test with legacy string IDs
+      const focusNeurons = ["output-0", "output-1", "output-2"].map((uuid) =>
+        runtimeIdForUuid(crippledCreature, uuid)
+      );
       await discoverStructure.analyzeMissingNeurons(focusNeurons);
     } finally {
       await discoverStructure.cleanUp();
@@ -432,13 +447,12 @@ Deno.test({
       discoverStructure.flushRustRecording();
 
       discoverStructure.extendTimeoutForAnalysis(10);
+      const output0Id = runtimeIdForUuid(crippledCreature, "output-0");
+      const output1Id = runtimeIdForUuid(crippledCreature, "output-1");
 
       // This is what DiscoverDirectory uses in production
       const bundle = discoverStructure.collectRustAnalysisCandidates(
-        // @ts-ignore: test with legacy string neuron IDs
-        ["output-0" as unknown as number, "output-1" as unknown as number],
-        // @ts-ignore: test with string IDs
-        // @ts-ignore: test with string IDs
+        [output0Id, output1Id],
       );
 
       if (bundle && bundle.helpfulNeurons && bundle.helpfulNeurons.length > 0) {

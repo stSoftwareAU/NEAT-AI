@@ -45,14 +45,14 @@ function makeCoordinatedCandidate(): CoordinatedStructuralCandidate {
       // Remove direct bypass.
       {
         type: "removeSynapse",
-        fromNeuronId: 0,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "output-0",
       },
       // Re-weight the input->hidden path.
       {
         type: "addSynapse",
-        fromNeuronId: 0,
-        toNeuronId: 5000,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
         weight: 0.9,
       },
     ],

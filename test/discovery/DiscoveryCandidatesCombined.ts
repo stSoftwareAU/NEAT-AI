@@ -2,11 +2,8 @@ import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 
-// Integer IDs for neurons in the baseline creature (explicit ids in fixture):
-// hidden-1 → 5001, hidden-2 → 5002
-// output-0 → -1, output-1 → -2
+// Integer ID for hidden-1 in the baseline creature (explicit id in fixture).
 const ID_HIDDEN_1 = 5001;
-const ID_HIDDEN_2 = 5002;
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CandidateHarmfulNeuron,
@@ -72,8 +69,8 @@ Deno.test(
   () => {
     const base = makeBaselineCreature();
     const helpfulSynapses: CandidateSynapse[] = [{
-      fromNeuronId: ID_HIDDEN_2,
-      toNeuronId: -1,
+      fromNeuronUuid: "hidden-2",
+      toNeuronUuid: "output-0",
       weight: 0.9,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -82,8 +79,8 @@ Deno.test(
       totalCount: 5,
     }];
     const removeCandidate: CandidateSynapse = {
-      fromNeuronId: 0,
-      toNeuronId: ID_HIDDEN_1,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "hidden-1",
       weight: 0.1,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -92,8 +89,8 @@ Deno.test(
       totalCount: 6,
     };
     const neuronCandidate: CandidateNeuron = {
-      fromNeuronId: ID_HIDDEN_1,
-      toNeuronId: -1,
+      fromNeuronUuid: "hidden-1",
+      toNeuronUuid: "output-0",
       incomingWeight: 0.33,
       outgoingWeight: -0.22,
       squash: TANH.NAME,
@@ -105,7 +102,7 @@ Deno.test(
       totalCount: 8,
     };
     const squashCandidate: CandidateSquash = {
-      neuronId: ID_HIDDEN_1,
+      neuronUuid: "hidden-1",
       previousSquash: IDENTITY.NAME,
       squash: Mish.NAME,
       expectedCreatureScoreGain: 0.21,
@@ -128,8 +125,8 @@ Deno.test(
     const exported = comboAll.creature.exportJSON();
 
     const harmfulStillExists = exported.synapses.some((synapse) =>
-      synapse.fromId === removeCandidate.fromNeuronId &&
-      synapse.toId === removeCandidate.toNeuronId
+      synapse.fromUUID === removeCandidate.fromNeuronUuid &&
+      synapse.toUUID === removeCandidate.toNeuronUuid
     );
     assertEquals(
       harmfulStillExists,
@@ -138,8 +135,8 @@ Deno.test(
     );
 
     const helpfulSynapseExists = exported.synapses.some((synapse) =>
-      synapse.fromId === helpfulSynapses[0].fromNeuronId &&
-      synapse.toId === helpfulSynapses[0].toNeuronId &&
+      synapse.fromUUID === helpfulSynapses[0].fromNeuronUuid &&
+      synapse.toUUID === helpfulSynapses[0].toNeuronUuid &&
       Math.abs(synapse.weight - helpfulSynapses[0].weight) < 1e-6
     );
     assert(
@@ -158,7 +155,7 @@ Deno.test(
     );
 
     const incomingDiscoverySynapse = exported.synapses.find((synapse) =>
-      synapse.fromId === neuronCandidate.fromNeuronId &&
+      synapse.fromUUID === neuronCandidate.fromNeuronUuid &&
       Math.abs(synapse.weight - neuronCandidate.incomingWeight) < 1e-6
     );
     assert(
@@ -168,7 +165,7 @@ Deno.test(
     const discoveredNeuronUUID = incomingDiscoverySynapse!.toId;
     const outgoingDiscoverySynapse = exported.synapses.find((synapse) =>
       synapse.fromId === discoveredNeuronUUID &&
-      synapse.toId === neuronCandidate.toNeuronId &&
+      synapse.toUUID === neuronCandidate.toNeuronUuid &&
       Math.abs(synapse.weight - neuronCandidate.outgoingWeight) < 1e-6
     );
     assert(
@@ -191,7 +188,7 @@ Deno.test(
   () => {
     const base = makeBaselineCreature();
     const harmfulNeuron: CandidateHarmfulNeuron = {
-      neuronId: ID_HIDDEN_1,
+      neuronUuid: "hidden-1",
       errorMagnitude: 1.5e11, // Above 1e10 threshold
       expectedCreatureScoreGain: 0.85,
       sampleCount: 100,
@@ -214,7 +211,7 @@ Deno.test(
 
     // Verify the harmful neuron is removed
     const harmfulNeuronStillExists = exported.neurons.some((neuron) =>
-      neuron.id === harmfulNeuron.neuronId
+      neuron.uuid === harmfulNeuron.neuronUuid
     );
     assertEquals(
       harmfulNeuronStillExists,
@@ -224,8 +221,8 @@ Deno.test(
 
     // Verify all synapses connected to the removed neuron are gone
     const synapsesToRemovedNeuron = exported.synapses.filter((synapse) =>
-      synapse.toId === harmfulNeuron.neuronId ||
-      synapse.fromId === harmfulNeuron.neuronId
+      synapse.toUUID === harmfulNeuron.neuronUuid ||
+      synapse.fromUUID === harmfulNeuron.neuronUuid
     );
     assertEquals(
       synapsesToRemovedNeuron.length,
@@ -266,7 +263,7 @@ Deno.test(
     );
     assert(
       removeNeuronCandidate.change.description?.includes(
-        String(harmfulNeuron.neuronId),
+        harmfulNeuron.neuronUuid,
       ),
       "Description should include the neuron UUID",
     );
@@ -306,7 +303,7 @@ Deno.test(
     CreatureUtil.makeUUID(testCreature);
 
     const harmfulNeuron: CandidateHarmfulNeuron = {
-      neuronId: ID_HIDDEN_1,
+      neuronUuid: "hidden-1",
       errorMagnitude: 1.5e11,
       expectedCreatureScoreGain: 0.85,
       sampleCount: 100,
@@ -376,8 +373,8 @@ Deno.test(
   () => {
     const base = makeBaselineCreature();
     const helpfulSynapses: CandidateSynapse[] = [{
-      fromNeuronId: 2,
-      toNeuronId: ID_HIDDEN_2,
+      fromNeuronUuid: "input-2",
+      toNeuronUuid: "hidden-2",
       weight: 0.88,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -386,8 +383,8 @@ Deno.test(
       totalCount: 8,
     }];
     const removeSynapse: CandidateSynapse = {
-      fromNeuronId: 0,
-      toNeuronId: ID_HIDDEN_1,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "hidden-1",
       weight: -0.5,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -412,8 +409,8 @@ Deno.test(
 
     // Verify harmful synapse is removed
     const harmfulSynapseStillExists = exported.synapses.some((synapse) =>
-      synapse.fromId === removeSynapse.fromNeuronId &&
-      synapse.toId === removeSynapse.toNeuronId
+      synapse.fromUUID === removeSynapse.fromNeuronUuid &&
+      synapse.toUUID === removeSynapse.toNeuronUuid
     );
     assertEquals(
       harmfulSynapseStillExists,
@@ -423,8 +420,8 @@ Deno.test(
 
     // Verify helpful synapse is added
     const helpfulSynapseExists = exported.synapses.some((synapse) =>
-      synapse.fromId === helpfulSynapses[0].fromNeuronId &&
-      synapse.toId === helpfulSynapses[0].toNeuronId &&
+      synapse.fromUUID === helpfulSynapses[0].fromNeuronUuid &&
+      synapse.toUUID === helpfulSynapses[0].toNeuronUuid &&
       Math.abs(synapse.weight - helpfulSynapses[0].weight) < 1e-6
     );
     assert(
@@ -458,8 +455,8 @@ Deno.test(
   () => {
     const base = makeBaselineCreature();
     const helpfulSynapses: CandidateSynapse[] = [{
-      fromNeuronId: 3,
-      toNeuronId: ID_HIDDEN_2,
+      fromNeuronUuid: "input-3",
+      toNeuronUuid: "hidden-2",
       weight: 0.77,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -468,7 +465,7 @@ Deno.test(
       totalCount: 7,
     }];
     const squashChanges: CandidateSquash[] = [{
-      neuronId: ID_HIDDEN_1,
+      neuronUuid: "hidden-1",
       previousSquash: IDENTITY.NAME,
       squash: TANH.NAME,
       expectedCreatureScoreGain: 0.35,
@@ -492,8 +489,8 @@ Deno.test(
 
     // Verify helpful synapse is added
     const helpfulSynapseExists = exported.synapses.some((synapse) =>
-      synapse.fromId === helpfulSynapses[0].fromNeuronId &&
-      synapse.toId === helpfulSynapses[0].toNeuronId &&
+      synapse.fromUUID === helpfulSynapses[0].fromNeuronUuid &&
+      synapse.toUUID === helpfulSynapses[0].toNeuronUuid &&
       Math.abs(synapse.weight - helpfulSynapses[0].weight) < 1e-6
     );
     assert(

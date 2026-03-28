@@ -22,28 +22,27 @@ export type CoordinatedStructuralOperation =
 
 export interface CoordinatedRemoveSynapseOperation {
   type: "removeSynapse";
-  fromNeuronId: number;
-  toNeuronId: number;
+  fromNeuronUuid: string;
+  toNeuronUuid: string;
 }
 
 export interface CoordinatedAddSynapseOperation {
   type: "addSynapse";
-  fromNeuronId: number;
-  toNeuronId: number;
+  fromNeuronUuid: string;
+  toNeuronUuid: string;
   weight: number;
 }
 
 export interface CoordinatedSetWeightOperation {
   type: "setWeight";
-  fromNeuronId: number;
-  toNeuronId: number;
+  fromNeuronUuid: string;
+  toNeuronUuid: string;
   weight: number;
 }
 
 export interface CoordinatedAddNeuronOperation {
   type: "addNeuron";
-  /** Deterministic id emitted by Rust so replays remain stable. */
-  neuronId: number;
+  neuronUuid: string;
   /** Usually "hidden". Kept explicit to support future use-cases. */
   neuronType: "hidden" | "output";
   squash: string;
@@ -51,27 +50,27 @@ export interface CoordinatedAddNeuronOperation {
   /**
    * Optional placement hint for forward-only creatures.
    *
-   * If set, the neuron will be inserted immediately before this neuron id in
+   * If set, the neuron will be inserted immediately before this neuron uuid in
    * the `neurons[]` array so a subsequent `addSynapse(newNeuron -> target)` can
    * satisfy forward-only ordering.
    */
-  insertBeforeNeuronId?: number;
+  insertBeforeNeuronUuid?: string;
 }
 
 export interface CoordinatedRemoveNeuronOperation {
   type: "removeNeuron";
-  neuronId: number;
+  neuronUuid: string;
 }
 
 export interface CoordinatedChangeSquashOperation {
   type: "changeSquash";
-  neuronId: number;
+  neuronUuid: string;
   squash: string;
 }
 
 export interface CoordinatedSetBiasOperation {
   type: "setBias";
-  neuronId: number;
+  neuronUuid: string;
   bias: number;
 }
 

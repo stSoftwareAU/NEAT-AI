@@ -3,10 +3,8 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { DiscoveryReplayRunner } from "../../src/discovery/DiscoveryReplayRunner.ts";
+import { DISCOVERY_WIRE_SCHEMA_VERSION } from "../../src/discovery/DiscoveryWireFormat.ts";
 import type { SuccessCacheEntry } from "../../src/discovery/SuccessCache.ts";
-
-// Integer ID for hidden-0 neuron (explicit id in fixture)
-const ID_HIDDEN_0 = 5000;
 
 Deno.test(
   "DiscoveryReplayRunner skips coordinated-structural entries that already appear applied",
@@ -27,6 +25,7 @@ Deno.test(
     base.uuid = "base";
 
     const coordinatedEntry: SuccessCacheEntry = {
+      wireSchemaVersion: DISCOVERY_WIRE_SCHEMA_VERSION,
       key: "coordinated-structural_deadbeef",
       changeType: "coordinated-structural",
       originalScore: 0.5,
@@ -37,16 +36,17 @@ Deno.test(
       timestamp: new Date().toISOString(),
       rustRequest: {
         coordinatedStructuralCandidate: {
+          type: "coordinated_structural",
           operations: [
             {
               type: "removeSynapse",
-              fromNeuronId: 0,
-              toNeuronId: -1,
+              fromNeuronUuid: "input-0",
+              toNeuronUuid: "output-0",
             },
             {
               type: "addSynapse",
-              fromNeuronId: 0,
-              toNeuronId: -1,
+              fromNeuronUuid: "input-0",
+              toNeuronUuid: "output-0",
               weight: 0.02,
             },
           ],
@@ -117,6 +117,7 @@ Deno.test(
     base.uuid = "base";
 
     const coordinatedEntry: SuccessCacheEntry = {
+      wireSchemaVersion: DISCOVERY_WIRE_SCHEMA_VERSION,
       key: "coordinated-structural_setweight",
       changeType: "coordinated-structural",
       originalScore: 0.5,
@@ -127,11 +128,12 @@ Deno.test(
       timestamp: new Date().toISOString(),
       rustRequest: {
         coordinatedStructuralCandidate: {
+          type: "coordinated_structural",
           operations: [
             {
               type: "setWeight",
-              fromNeuronId: 0,
-              toNeuronId: ID_HIDDEN_0,
+              fromNeuronUuid: "input-0",
+              toNeuronUuid: "hidden-0",
               weight: 0.006,
             },
           ],
@@ -203,6 +205,7 @@ Deno.test(
     base.uuid = "base";
 
     const coordinatedEntry: SuccessCacheEntry = {
+      wireSchemaVersion: DISCOVERY_WIRE_SCHEMA_VERSION,
       key: "coordinated-structural_remove_setweight",
       changeType: "coordinated-structural",
       originalScore: 0.5,
@@ -213,16 +216,17 @@ Deno.test(
       timestamp: new Date().toISOString(),
       rustRequest: {
         coordinatedStructuralCandidate: {
+          type: "coordinated_structural",
           operations: [
             {
               type: "removeSynapse",
-              fromNeuronId: 0,
-              toNeuronId: ID_HIDDEN_0,
+              fromNeuronUuid: "input-0",
+              toNeuronUuid: "hidden-0",
             },
             {
               type: "setWeight",
-              fromNeuronId: 0,
-              toNeuronId: ID_HIDDEN_0,
+              fromNeuronUuid: "input-0",
+              toNeuronUuid: "hidden-0",
               weight: 0.006,
             },
           ],

@@ -171,9 +171,6 @@ Deno.test({
   name:
     "DiscoveryScenario: change squash TANH→IDENTITY - discovery finds change-squash candidate",
   fn() {
-    // Neuron hash IDs in the crippled creature (from exportJSON)
-    const hiddenAId = 1775329634;
-
     const mockDiscoveryResult = {
       ID: "test-change-squash-tanh-to-identity",
       addHelpfulSynapses: undefined,
@@ -184,7 +181,7 @@ Deno.test({
       removalCandidates: undefined,
       candidateSquashes: [
         {
-          neuronId: hiddenAId,
+          neuronUuid: "hidden-A",
           previousSquash: "IDENTITY",
           squash: "TANH",
           expectedCreatureScoreGain: 0.5,

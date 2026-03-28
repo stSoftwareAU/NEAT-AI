@@ -18,6 +18,7 @@ import type {
   CandidateSquash,
   DiscoverRecord,
 } from "./DiscoverStructureTypes.ts";
+import { buildRuntimeIdToWireMap } from "./DiscoveryWireIdentity.ts";
 
 /** Module-level MSE instance — the class is stateless so one suffices. */
 const mse = new MSE();
@@ -72,12 +73,15 @@ export function findCandidateSquash(
     details?: unknown,
   ) => void,
 ): CandidateSquash | undefined {
+  const idToWire = buildRuntimeIdToWireMap(creature);
   const rawValues: number[] = [];
   const currentActivations: number[] = [];
   const idealActivations: number[] = [];
   const neuronErrors: number[] = [];
 
   const neuron = creature.neurons.find((neuron) => neuron.id === neuronId)!;
+  const neuronUuid = idToWire.get(neuronId);
+  assert(neuronUuid, `Missing wire uuid for neuron ${neuronId}`);
   const currentSquash = neuron.squash;
   assert(currentSquash, "Squash function not found");
   const currentSquashMethod = Activations.find(
@@ -291,7 +295,7 @@ export function findCandidateSquash(
       neuronErrors.length = 0;
 
       return {
-        neuronId,
+        neuronUuid,
         previousSquash: currentSquash,
         squash: bestSquash,
         expectedCreatureScoreGain: expectedCreatureScoreGain,
@@ -327,13 +331,14 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
   ) => void,
 ): Promise<CandidateHarmfulNeuron[] | undefined> {
   if (focusList.length === 0) return undefined;
+  const idToWire = buildRuntimeIdToWireMap(creature);
 
   const MAX_REASONABLE_SQUASH_ERROR = 1e10;
 
   const candidatePromises = focusList.map(async (neuronId) => {
     try {
       const records = await loadNeuronRecordsFn(
-        `${tempDir}/${neuronId}`,
+        `${tempDir}/${idToWire.get(neuronId) ?? neuronId}`,
       );
       if (!records || records.length === 0) return undefined;
 
@@ -391,6 +396,8 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
       );
 
       if (baselineActivationError > MAX_REASONABLE_SQUASH_ERROR) {
+        const neuronUuid = idToWire.get(neuronId);
+        assert(neuronUuid, `Missing wire uuid for neuron ${neuronId}`);
         const errorLog = Math.log10(baselineActivationError);
         const thresholdLog = Math.log10(MAX_REASONABLE_SQUASH_ERROR);
         const excessMagnitude = errorLog - thresholdLog;
@@ -400,7 +407,7 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
         );
 
         return {
-          neuronId,
+          neuronUuid,
           errorMagnitude: baselineActivationError,
           expectedCreatureScoreGain: expectedCreatureScoreGain,
           sampleCount: records.length,
@@ -443,7 +450,7 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
     candidates.slice(0, 5).forEach((candidate) => {
       logFn(
         "info",
-        `  - ${candidate.neuronId}: error=${
+        `  - ${candidate.neuronUuid}: error=${
           candidate.errorMagnitude.toExponential(2)
         }, expected creature score gain=${
           (candidate.expectedCreatureScoreGain * 100).toFixed(1)
