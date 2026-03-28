@@ -7,6 +7,7 @@ import {
   logMemoryUsage,
   type MemoryCheckResult,
   type MemoryUsageProvider,
+  resetMemoryPressureLogCountersForTests,
 } from "../../src/NEAT/MemoryMonitor.ts";
 import {
   DEFAULT_MEMORY_CONFIG,
@@ -89,6 +90,7 @@ Deno.test("determinePressureLevel uses custom thresholds", () => {
 Deno.test("applyWarningResponse halves activation cache cap", () => {
   const originalCap = getMaxCachedWasmCreatureActivations();
   try {
+    resetMemoryPressureLogCountersForTests();
     setMaxCachedWasmCreatureActivations(100);
     const logger = createTestLogger();
     applyWarningResponse(logger);
@@ -108,6 +110,7 @@ Deno.test("applyCriticalResponse clears caches aggressively", () => {
   const originalActivationCap = getMaxCachedWasmCreatureActivations();
   const originalCompilationCap = getWasmCompilationCacheMaxSize();
   try {
+    resetMemoryPressureLogCountersForTests();
     setMaxCachedWasmCreatureActivations(200);
     setWasmCompilationCacheSize(50);
     const logger = createTestLogger();
@@ -126,6 +129,25 @@ Deno.test("applyCriticalResponse clears caches aggressively", () => {
     setWasmCompilationCacheSize(originalCompilationCap);
   }
 });
+
+Deno.test(
+  "applyWarningResponse at minimum cap does not claim a false cap reduction",
+  () => {
+    const originalCap = getMaxCachedWasmCreatureActivations();
+    try {
+      resetMemoryPressureLogCountersForTests();
+      setMaxCachedWasmCreatureActivations(1);
+      const logger = createTestLogger();
+      applyWarningResponse(logger);
+
+      assertEquals(logger.messages.length, 1);
+      assertEquals(logger.messages[0].includes("already at"), true);
+      assertEquals(logger.messages[0].includes("from 1 to 1"), false);
+    } finally {
+      setMaxCachedWasmCreatureActivations(originalCap);
+    }
+  },
+);
 
 Deno.test("checkMemoryAndEvict does nothing when below warning threshold", () => {
   const originalCap = getMaxCachedWasmCreatureActivations();

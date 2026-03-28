@@ -25,7 +25,10 @@ import type {
   RemovalCandidate,
 } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import { getLogger } from "../utils/Logger.ts";
-import { shortID } from "./CandidateDescriptions.ts";
+import {
+  describeSingleCoordinatedStructuralOperation,
+  shortID,
+} from "./CandidateDescriptions.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type { Creature } from "../Creature.ts";
 import { persistentlyRemoveHarmfulSynapse } from "./CombinedCandidates.ts";
@@ -331,10 +334,15 @@ export function buildCoordinatedStructuralCandidates(
         creature: next,
         change: {
           type: "coordinated-structural",
-          description:
-            `🧩 Coordinated structural (${coordinated.operations.length} op${
-              coordinated.operations.length === 1 ? "" : "s"
-            })`,
+          description: (() => {
+            const ops = coordinated.operations;
+            const single = ops.length === 1 ? ops[0] : undefined;
+            if (single) {
+              return describeSingleCoordinatedStructuralOperation(single);
+            }
+            const n = ops.length;
+            return `🧩 Coordinated structural (${n} op${n === 1 ? "" : "s"})`;
+          })(),
           expectedErrorReduction: getExpectedCoordinated(coordinated),
           coordinatedStructuralCandidate: coordinated,
         },
