@@ -15,6 +15,12 @@ import {
   DEFAULT_BIAS_REGULARISATION_CONFIG,
   type RequiredBiasRegularisationConfig,
 } from "../../src/config/BiasRegularisationConfig.ts";
+import {
+  createSeededRng,
+  getRandomNumberGenerator,
+  setRandomNumberGenerator,
+} from "../../src/utils/RandomNumberGenerator.ts";
+import { withRngTestLock } from "../_rngTestLock.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -90,45 +96,57 @@ Deno.test("ModBias - respects maxBiasChange hard limit", () => {
   }
 });
 
-Deno.test("ModBias - L2 regularisation biases towards smaller biases", () => {
-  // Test that with strong L2 regularisation, biases tend towards smaller values
-  const config: RequiredBiasRegularisationConfig = {
-    ...DEFAULT_BIAS_REGULARISATION_CONFIG,
-    enabled: true,
-    l2Strength: 0.8, // Strong regularisation
-    maxAbsoluteBias: 1000,
-    maxBiasChange: 1000,
-    preferSmallChanges: false, // Disable to isolate L2 effect
-  };
+Deno.test("ModBias - L2 regularisation biases towards smaller biases", async () => {
+  await withRngTestLock(() => {
+    const previousRng = getRandomNumberGenerator();
+    try {
+      // Isolated RNG: parallel tests were consuming the global generator and
+      // made the toward/away proportion flaky (AGENTS.md: no timing in tests).
+      setRandomNumberGenerator(createSeededRng(1_416_003));
 
-  // Start with a large positive bias
-  const creature = createTestCreature(50);
-  const modBias = new ModBias(creature, config);
+      // Test that with strong L2 regularisation, biases tend towards smaller values
+      const config: RequiredBiasRegularisationConfig = {
+        ...DEFAULT_BIAS_REGULARISATION_CONFIG,
+        enabled: true,
+        l2Strength: 0.8, // Strong regularisation
+        maxAbsoluteBias: 1000,
+        maxBiasChange: 1000,
+        preferSmallChanges: false, // Disable to isolate L2 effect
+      };
 
-  // Track how many times the bias moves towards zero vs away from zero
-  let towardsZero = 0;
-  let awayFromZero = 0;
+      // Start with a large positive bias
+      const creature = createTestCreature(50);
+      const modBias = new ModBias(creature, config);
 
-  for (let i = 0; i < 500; i++) {
-    const beforeBias = creature.neurons[creature.input].bias;
-    const beforeMagnitude = Math.abs(beforeBias);
-    modBias.mutate();
-    const afterBias = creature.neurons[creature.input].bias;
-    const afterMagnitude = Math.abs(afterBias);
+      // Track how many times the bias moves towards zero vs away from zero
+      let towardsZero = 0;
+      let awayFromZero = 0;
 
-    if (afterMagnitude < beforeMagnitude) {
-      towardsZero++;
-    } else if (afterMagnitude > beforeMagnitude) {
-      awayFromZero++;
+      const trials = 1_200;
+      for (let i = 0; i < trials; i++) {
+        const beforeBias = creature.neurons[creature.input].bias;
+        const beforeMagnitude = Math.abs(beforeBias);
+        modBias.mutate();
+        const afterBias = creature.neurons[creature.input].bias;
+        const afterMagnitude = Math.abs(afterBias);
+
+        if (afterMagnitude < beforeMagnitude) {
+          towardsZero++;
+        } else if (afterMagnitude > beforeMagnitude) {
+          awayFromZero++;
+        }
+      }
+
+      // With strong L2 regularisation, should move towards zero more often
+      assert(
+        towardsZero > awayFromZero * 0.8,
+        `L2 regularisation should bias towards smaller biases. ` +
+          `TowardsZero: ${towardsZero}, AwayFromZero: ${awayFromZero}`,
+      );
+    } finally {
+      setRandomNumberGenerator(previousRng);
     }
-  }
-
-  // With strong L2 regularisation, should move towards zero more often
-  assert(
-    towardsZero > awayFromZero * 0.8,
-    `L2 regularisation should bias towards smaller biases. ` +
-      `TowardsZero: ${towardsZero}, AwayFromZero: ${awayFromZero}`,
-  );
+  });
 });
 
 Deno.test("ModBias - preferSmallChanges reduces mutation magnitude", () => {
