@@ -2,6 +2,7 @@ import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import { pruneOrphanMemeticReferences } from "../compact/CompactUtils.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { CreatureExport } from "../../mod.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
@@ -581,6 +582,12 @@ export function fineTuneImprovement(
 
     if (!candidate.memetic && memetic) {
       candidate.memetic = memetic;
+    }
+    pruneOrphanMemeticReferences(candidate);
+    if (forwardOnly) {
+      creatureValidate(candidate, { forwardOnly: true });
+    } else {
+      creatureValidate(candidate);
     }
 
     const candidateUUID = CreatureUtil.makeUUID(candidate);

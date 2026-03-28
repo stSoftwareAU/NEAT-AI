@@ -138,3 +138,48 @@ Deno.test("many", () => {
     "We should have made 7 changes, was: " + fineTuned.length,
   );
 });
+
+Deno.test("fine tune prunes restored memetic after fix removes zero synapse", () => {
+  const previousFittest = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      {
+        type: "output" as const,
+        uuid: "output-0",
+        bias: 0,
+        squash: "IDENTITY",
+      },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "output-0", weight: 0 },
+      { fromUUID: "input-1", toUUID: "output-0", weight: 1 },
+    ],
+  }, true);
+  const fittest = Creature.fromJSON(previousFittest.exportJSON(), true);
+
+  previousFittest.score = 0.1;
+  fittest.score = 0.2;
+  fittest.neurons[fittest.input].bias = 0.25;
+  fittest.memetic = {
+    generation: 1,
+    score: 0.1,
+    biases: {},
+    weights: {
+      0: [{ toId: -1, weight: 0.75 }],
+    },
+  };
+
+  const fineTuned = fineTuneImprovement(
+    fittest,
+    previousFittest,
+    false,
+    4,
+  );
+
+  assert(fineTuned.length > 0, "Expected at least one fine-tuned candidate");
+
+  for (const candidate of fineTuned) {
+    candidate.exportJSON();
+  }
+});
