@@ -74,9 +74,10 @@ Deno.test(
     assertEquals(reconstructed.neurons.length, creature.neurons.length);
     assertEquals(reconstructed.synapses.length, creature.synapses.length);
 
-    // Verify neuron IDs match
+    // Verify neuron biases match (IDs are runtime-assigned and not preserved
+    // by exportJSON since Issue #2054)
     for (let i = 0; i < creature.neurons.length; i++) {
-      assertEquals(reconstructed.neurons[i].id, creature.neurons[i].id);
+      assertEquals(reconstructed.neurons[i].bias, creature.neurons[i].bias);
     }
 
     // Verify synapse weights match
@@ -108,9 +109,10 @@ Deno.test(
     assertEquals(reExported.neurons.length, exported.neurons.length);
     assertEquals(reExported.synapses.length, exported.synapses.length);
 
-    // Compare each neuron
+    // Compare each neuron (uuid is stable; id is omitted by exportJSON since
+    // Issue #2054 and may be mutated by fromJSON on the shared object)
     for (let i = 0; i < exported.neurons.length; i++) {
-      assertEquals(reExported.neurons[i].id, exported.neurons[i].id);
+      assertEquals(reExported.neurons[i].uuid, exported.neurons[i].uuid);
       assertEquals(reExported.neurons[i].bias, exported.neurons[i].bias);
       assertEquals(reExported.neurons[i].type, exported.neurons[i].type);
       assertEquals(reExported.neurons[i].squash, exported.neurons[i].squash);
