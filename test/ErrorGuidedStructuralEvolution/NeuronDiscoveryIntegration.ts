@@ -29,7 +29,7 @@ import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
 
 function runtimeIdForUuid(creature: Creature, uuid: string): number {
-  const id = creature.exportJSON().neurons.find((neuron) =>
+  const id = creature.exportInternalJSON().neurons.find((neuron) =>
     neuron.uuid === uuid
   )
     ?.id;

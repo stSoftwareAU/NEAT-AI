@@ -72,7 +72,7 @@ Deno.test(
         { fromUUID: "hidden-target", toUUID: "output-0", weight: 0.5 },
       ],
     });
-    const hiddenId = creature.exportJSON().neurons.find((neuron) =>
+    const hiddenId = creature.exportInternalJSON().neurons.find((neuron) =>
       neuron.uuid === "hidden-target"
     )?.id;
     assertEquals(typeof hiddenId, "number");

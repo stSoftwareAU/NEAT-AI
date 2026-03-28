@@ -43,7 +43,7 @@ function makeCreature(): Creature {
 }
 
 function output0Id(creature: Creature): number {
-  const id = creature.exportJSON().neurons.find((neuron) =>
+  const id = creature.exportInternalJSON().neurons.find((neuron) =>
     neuron.uuid === "output-0"
   )?.id;
   assertExists(id, "output-0 should have a runtime id");
