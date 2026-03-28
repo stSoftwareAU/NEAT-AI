@@ -374,19 +374,6 @@ export class Offspring {
     // and memetic updates by avoiding linear scans.
     offspring.prebuildInwardIndexIfLarge();
 
-    offspring.clearState();
-
-    delete offspring.uuid;
-    const childUUID = CreatureUtil.makeUUID(offspring);
-
-    assert(childUUID, "Failed to make UUID for offspring");
-    assert(mother.uuid, "Failed to make UUID for mother");
-    assert(father.uuid, "Failed to make UUID for father");
-    /* No point returning clones */
-    if (childUUID === mother.uuid || childUUID === father.uuid) {
-      return undefined;
-    }
-
     if (fixAliases) {
       const fixed = offspring.exportJSON();
       for (const n of fixed.neurons) {
@@ -403,6 +390,20 @@ export class Offspring {
       }
 
       offspring.loadFrom(fixed, false);
+    }
+
+    Offspring.ensureUniqueNeuronUuids(offspring);
+    offspring.clearState();
+
+    delete offspring.uuid;
+    const childUUID = CreatureUtil.makeUUID(offspring);
+
+    assert(childUUID, "Failed to make UUID for offspring");
+    assert(mother.uuid, "Failed to make UUID for mother");
+    assert(father.uuid, "Failed to make UUID for father");
+    /* No point returning clones */
+    if (childUUID === mother.uuid || childUUID === father.uuid) {
+      return undefined;
     }
 
     if (mother.memetic) {
@@ -543,6 +544,20 @@ export class Offspring {
       if (connections.length === 0) {
         node.type = "constant";
       }
+    }
+  }
+
+  private static ensureUniqueNeuronUuids(creature: Creature): void {
+    const seen = new Set<string>();
+    for (const neuron of creature.neurons) {
+      if (neuron.type !== "hidden" && neuron.type !== "constant") continue;
+      const uuid = neuron.uuid;
+      if (!uuid) continue;
+      if (!seen.has(uuid)) {
+        seen.add(uuid);
+        continue;
+      }
+      neuron.uuid = crypto.randomUUID();
     }
   }
 

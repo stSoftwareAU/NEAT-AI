@@ -1,11 +1,13 @@
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
+import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { CreatureExport } from "../../mod.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { assert } from "@std/assert";
+import type { ValidationError } from "../errors/ValidationError.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
 import {
   DEFAULT_ANCESTRY_DEPTH,
@@ -25,6 +27,7 @@ import {
   DEFAULT_QUANTUM_STEP_CONFIG,
   type RequiredQuantumStepConfig,
 } from "../config/QuantumStepConfig.ts";
+import { getLogger } from "../utils/Logger.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 export const MIN_STEP = DEFAULT_QUANTUM_STEP_CONFIG.minStep;
@@ -555,17 +558,36 @@ export function fineTuneImprovement(
   UUIDs.add(fittestUUID);
 
   const fineTuned: Creature[] = [];
-  const compactNetwork = fittest.compact(feedbackLoop);
-  if (compactNetwork) {
-    const compactUUID = CreatureUtil.makeUUID(compactNetwork);
-
-    if (!UUIDs.has(compactUUID)) {
-      UUIDs.add(compactUUID);
-      fineTuned.push(compactNetwork);
+  const acceptCandidate = (candidate: Creature | null | undefined): void => {
+    if (!candidate) return;
+    try {
+      if (forwardOnly) {
+        candidate.fix({ forwardOnly: true });
+        creatureValidate(candidate, { forwardOnly: true });
+      } else {
+        candidate.fix();
+        creatureValidate(candidate);
+      }
+    } catch (error) {
+      const validation = error as ValidationError;
+      getLogger().warn(
+        `[FineTune] Discarding invalid candidate after tuning: ${
+          validation.reason ?? validation.name
+        } - ${validation.message}`,
+      );
+      return;
     }
-  }
 
+    const candidateUUID = CreatureUtil.makeUUID(candidate);
+    if (!UUIDs.has(candidateUUID)) {
+      UUIDs.add(candidateUUID);
+      fineTuned.push(candidate);
+    }
+  };
+
+  const compactNetwork = fittest.compact(feedbackLoop);
   const forwardOnly = feedbackLoop !== true;
+  acceptCandidate(compactNetwork);
   const resultSame = tuneRandomize(
     fittest,
     previousFittest,
@@ -573,13 +595,7 @@ export function fineTuneImprovement(
     effectiveBacktrack,
     quantumStepConfig,
   );
-  if (resultSame.tuned) {
-    const randomUUID = CreatureUtil.makeUUID(resultSame.tuned);
-    if (!UUIDs.has(randomUUID)) {
-      UUIDs.add(randomUUID);
-      fineTuned.push(resultSame.tuned);
-    }
-  }
+  acceptCandidate(resultSame.tuned);
 
   for (
     let attempt = 0;
@@ -593,13 +609,7 @@ export function fineTuneImprovement(
       effectiveBacktrack,
       quantumStepConfig,
     );
-    if (resultRandomize.tuned) {
-      const randomUUID = CreatureUtil.makeUUID(resultRandomize.tuned);
-      if (!UUIDs.has(randomUUID)) {
-        UUIDs.add(randomUUID);
-        fineTuned.push(resultRandomize.tuned);
-      }
-    }
+    acceptCandidate(resultRandomize.tuned);
   }
 
   return fineTuned;
