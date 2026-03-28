@@ -99,11 +99,11 @@ scripts/                # Utility scripts
 
 - **Stable identity** (anything that crosses generations, disks, or species
   boundaries): use **UUID strings only** — `neuron.uuid` for hidden/constant,
-  canonical `input-N` / `output-N` in synapse endpoints.
-  `creature.exportJSON()` is the canonical **external** export: UUID-only, no
-  numeric `id` / `fromId` / `toId` (Issue #2054). `exportSnapshotJSON()` is
-  equivalent. **Genetic compatibility** uses `getHiddenNeuronWireKeys()` (wire
-  labels), not integer ids.
+  canonical `input-N` / `output-N` in synapse endpoints. `creature.exportJSON()`
+  is the canonical **external** export: UUID-only, no numeric `id` / `fromId` /
+  `toId` (Issue #2054). `exportSnapshotJSON()` is equivalent. **Genetic
+  compatibility** uses `getHiddenNeuronWireKeys()` (wire labels), not integer
+  ids.
 
 - **Runtime integer `id`** (`src/architecture/NeuronId.ts`): allowed **only
   in-memory** for hot paths (WASM, `Map<number, …>`, internal breeding
