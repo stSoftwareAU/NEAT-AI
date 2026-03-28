@@ -3,6 +3,7 @@ import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { compactUnused } from "../../src/compact/CompactUnused.ts";
 import { Creature } from "../../src/Creature.ts";
+import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
@@ -97,7 +98,10 @@ Deno.test("compactUnused - preserves constant neuron ordering and behaviour", ()
   }
 
   const config = createBackPropagationConfig();
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(
+    exportJSONWithRuntimeIds(creature),
+    config,
+  );
   for (let i = data.length; i--;) {
     const actual = creature.activateAndTrace(
       new Float32Array(data[i]),

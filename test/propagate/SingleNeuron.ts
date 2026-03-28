@@ -146,7 +146,10 @@ Deno.test("single hidden neuron: converges within tolerance after 2 training sam
       batchSize: 1, // Disable mini-batching for deterministic behaviour
     });
 
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportJSON(),
+      config,
+    );
     for (let i = 0; i < 2; i++) {
       creature.activateAndTrace(new Float32Array(inA), false, sparseConfig);
 
@@ -219,7 +222,10 @@ Deno.test("single hidden neuron: converges tightly after 1000 repeated samples",
 
     const inA = [-1, 0, 1];
     const expectedA = makeOutput(inA);
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportJSON(),
+      config,
+    );
     for (let i = 0; i < 1000; i++) {
       creature.activateAndTrace(new Float32Array(inA), false, sparseConfig);
 

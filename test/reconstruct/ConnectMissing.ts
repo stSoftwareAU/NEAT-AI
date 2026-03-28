@@ -22,15 +22,17 @@ Deno.test("randomConnectMissing - connects all inputs when some are missing", ()
   assertEquals(exported3.input, 20);
 
   // Verify every input has at least one synapse connected.
-  // Input neurons have IDs 0..(input-1) (non-negative integers).
+  // Input neurons use canonical wire UUIDs: input-0 .. input-(n-1).
   const connectedInputs = new Set<number>();
   for (const synapse of exported3.synapses) {
-    if (
-      synapse.fromId !== undefined &&
-      synapse.fromId >= 0 &&
-      synapse.fromId < exported3.input
-    ) {
-      connectedInputs.add(synapse.fromId);
+    if (synapse.fromUUID?.startsWith("input-")) {
+      const inputIndex = Number(synapse.fromUUID.slice("input-".length));
+      if (
+        !Number.isNaN(inputIndex) && inputIndex >= 0 &&
+        inputIndex < exported3.input
+      ) {
+        connectedInputs.add(inputIndex);
+      }
     }
   }
 

@@ -74,12 +74,12 @@ Deno.test("compactCreature: bypass COMPLEMENT feeding IDENTITY output (safe alge
 
   // hidden-0 should be gone
   assertEquals(
-    exported.neurons.some((n) => n.id === 1775329651),
+    exported.neurons.some((n) => n.uuid === "hidden-0"),
     false,
     "Expected COMPLEMENT neuron to be removed",
   );
 
-  const out = exported.neurons.find((n) => n.id === -1);
+  const out = exported.neurons.find((n) => n.uuid === "output-0");
   assert(out);
 
   // Bias: bOut + wHidden*(1 - bHidden) = 0.1 + 1.5*(1 - 0.25) = 1.225
@@ -87,15 +87,15 @@ Deno.test("compactCreature: bypass COMPLEMENT feeding IDENTITY output (safe alge
 
   const wByFrom = new Map(
     exported.synapses
-      .filter((s) => s.toId === -1)
-      .map((s) => [s.fromId, s.weight] as const),
+      .filter((s) => s.toUUID === "output-0")
+      .map((s) => [s.fromUUID, s.weight] as const),
   );
 
   // input-0 weight: -wHidden*w0 = -1.5*0.5 = -0.75
-  assertAlmostEquals(wByFrom.get(0) ?? NaN, -0.75, 1e-12);
+  assertAlmostEquals(wByFrom.get("input-0") ?? NaN, -0.75, 1e-12);
 
   // input-1 weight: (-wHidden*w1) + wDirect = (-1.5*-2) + 0.25 = 3.25
-  assertAlmostEquals(wByFrom.get(1) ?? NaN, 3.25, 1e-12);
+  assertAlmostEquals(wByFrom.get("input-1") ?? NaN, 3.25, 1e-12);
 
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, creature.input);
@@ -185,13 +185,13 @@ Deno.test("compactCreature: bypass COMPLEMENT feeding multiple IDENTITY outputs 
   const exported = compacted.exportJSON();
 
   assertEquals(
-    exported.neurons.some((n) => n.id === 1775329651),
+    exported.neurons.some((n) => n.uuid === "hidden-0"),
     false,
     "Expected COMPLEMENT neuron to be removed",
   );
 
-  const out0 = exported.neurons.find((n) => n.id === -1);
-  const out1 = exported.neurons.find((n) => n.id === -2);
+  const out0 = exported.neurons.find((n) => n.uuid === "output-0");
+  const out1 = exported.neurons.find((n) => n.uuid === "output-1");
   assert(out0);
   assert(out1);
 
@@ -203,26 +203,26 @@ Deno.test("compactCreature: bypass COMPLEMENT feeding multiple IDENTITY outputs 
 
   const wToOut0 = new Map(
     exported.synapses
-      .filter((s) => s.toId === -1)
-      .map((s) => [s.fromId, s.weight] as const),
+      .filter((s) => s.toUUID === "output-0")
+      .map((s) => [s.fromUUID, s.weight] as const),
   );
   const wToOut1 = new Map(
     exported.synapses
-      .filter((s) => s.toId === -2)
-      .map((s) => [s.fromId, s.weight] as const),
+      .filter((s) => s.toUUID === "output-1")
+      .map((s) => [s.fromUUID, s.weight] as const),
   );
 
   // output-0:
   // input-0 weight: -1.5*0.5 = -0.75
   // input-1 weight: (-1.5*-2) + 0.25 = 3.25
-  assertAlmostEquals(wToOut0.get(0) ?? NaN, -0.75, 1e-12);
-  assertAlmostEquals(wToOut0.get(1) ?? NaN, 3.25, 1e-12);
+  assertAlmostEquals(wToOut0.get("input-0") ?? NaN, -0.75, 1e-12);
+  assertAlmostEquals(wToOut0.get("input-1") ?? NaN, 3.25, 1e-12);
 
   // output-1:
   // input-0 weight: -(-0.4)*0.5 = 0.2
   // input-1 weight: -(-0.4)*(-2) = -0.8
-  assertAlmostEquals(wToOut1.get(0) ?? NaN, 0.2, 1e-12);
-  assertAlmostEquals(wToOut1.get(1) ?? NaN, -0.8, 1e-12);
+  assertAlmostEquals(wToOut1.get("input-0") ?? NaN, 0.2, 1e-12);
+  assertAlmostEquals(wToOut1.get("input-1") ?? NaN, -0.8, 1e-12);
 
   for (let p = 0; p < 12; p++) {
     const data = makeData(p, creature.input);

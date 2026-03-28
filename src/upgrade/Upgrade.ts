@@ -1,5 +1,6 @@
 import { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import { exportJSONWithRuntimeIds } from "../architecture/PopulateRuntimeIdsFromCreature.ts";
 import type { ValidationError } from "../errors/ValidationError.ts";
 import { writeDiagnostics } from "../utils/Diagnostics.ts";
 import { getLogger } from "../utils/Logger.ts";
@@ -255,7 +256,7 @@ export function upgrade(creature: Creature): Creature {
 
   // Upgrade from 1.x → 2.x, then try 4.x
   if (majorVersion === 1) {
-    const v2 = upgradeTwo(creature.exportJSON());
+    const v2 = upgradeTwo(exportJSONWithRuntimeIds(creature));
     const upgraded = Creature.fromJSON(v2);
     return tryUpgradeToFour(upgraded);
   }
@@ -263,7 +264,7 @@ export function upgrade(creature: Creature): Creature {
   // Version 0 or unknown - set to 1.0.0 first, then upgrade to 2.x, then try 4.x
   // This handles undefined versions, invalid formats, and "0.x" versions
   if (majorVersion === 0) {
-    const json = creature.exportJSON();
+    const json = exportJSONWithRuntimeIds(creature);
     json.semanticVersion = "1.0.0"; // Set to 1.0.0 so upgradeTwo can process it
     const v2 = upgradeTwo(json);
     const upgraded = Creature.fromJSON(v2);

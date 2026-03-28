@@ -17,6 +17,7 @@ import type {
   RustParallelAnalysisResult,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { creatureToRustFormat } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { buildWireToRuntimeIdMap } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import { TopologyError } from "../../src/errors/TopologyError.ts";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
@@ -43,9 +44,7 @@ function makeCreature(): Creature {
 }
 
 function output0Id(creature: Creature): number {
-  const id = creature.exportJSON().neurons.find((neuron) =>
-    neuron.uuid === "output-0"
-  )?.id;
+  const id = buildWireToRuntimeIdMap(creature).get("output-0");
   assertExists(id, "output-0 should have a runtime id");
   return id;
 }

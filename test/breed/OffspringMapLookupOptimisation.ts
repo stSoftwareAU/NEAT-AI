@@ -3,6 +3,7 @@ import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
 
 /**
  * Test to verify that the Map-based neuron lookup optimization in Offspring.breed()
@@ -241,7 +242,7 @@ Deno.test("Offspring.breed -breeding creatures with shared chain maintains neuro
 
       // Verify all synapses reference valid neurons
       const neuronIds = new Set(child.neurons.map((n) => n.id));
-      const exported = child.exportJSON();
+      const exported = exportJSONWithRuntimeIds(child);
 
       for (const synapse of exported.synapses) {
         assertEquals(

@@ -18,8 +18,8 @@ import type {
 /**
  * Converts a creature export to the Rust format expected by the discovery module.
  *
- * Public `exportJSON()` already carries stable wire UUIDs alongside resolved
- * integer ids. Rust discovery accepts UUID-based wire identities only.
+ * Public `exportJSON()` carries stable wire UUIDs only. Rust discovery accepts
+ * UUID-based wire identities only.
  */
 export function creatureToRustFormat(
   creature: CreatureExport,

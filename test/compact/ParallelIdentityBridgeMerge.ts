@@ -79,21 +79,21 @@ Deno.test("parallel IDENTITY merge: weight calculation is correct", () => {
 
   // Inbound synapses to the kept neuron
   const inboundToKept = exported.synapses.filter(
-    (s) => s.toId === kept.id,
+    (s) => s.toUUID === kept.uuid,
   );
   assertEquals(inboundToKept.length, 2, "Should have 2 inbound synapses");
 
   const wByFrom = new Map(
-    inboundToKept.map((s) => [s.fromId, s.weight] as const),
+    inboundToKept.map((s) => [s.fromUUID, s.weight] as const),
   );
   // input-0 weight: 2.0 * 0.5 = 1.0
-  assertAlmostEquals(wByFrom.get(0) ?? NaN, 1.0, 1e-12);
+  assertAlmostEquals(wByFrom.get("input-0") ?? NaN, 1.0, 1e-12);
   // input-1 weight: 1.5 * 0.3 = 0.45
-  assertAlmostEquals(wByFrom.get(1) ?? NaN, 0.45, 1e-12);
+  assertAlmostEquals(wByFrom.get("input-1") ?? NaN, 0.45, 1e-12);
 
   // Outbound synapse from kept to output
   const outboundFromKept = exported.synapses.filter(
-    (s) => s.fromId === kept.id,
+    (s) => s.fromUUID === kept.uuid,
   );
   assertEquals(outboundFromKept.length, 1, "Should have 1 outbound synapse");
   assertAlmostEquals(

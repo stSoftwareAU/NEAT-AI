@@ -48,29 +48,31 @@ export function discover(mum: Creature, child: Creature) {
     weights: {},
   };
 
-  const mumExport = mum.exportJSON();
-  const childExport = child.exportJSON();
-
-  for (let i = mumExport.neurons.length; i--;) {
-    const mumNeuron = mumExport.neurons[i];
-    const childNeuron = childExport.neurons[i];
+  for (let i = mum.neurons.length; i--;) {
+    const mumNeuron = mum.neurons[i];
+    const childNeuron = child.neurons[i];
 
     if (mumNeuron.bias !== childNeuron.bias) {
-      memetic.biases[mumNeuron.id!] = mumNeuron.bias;
+      memetic.biases[mumNeuron.id] = mumNeuron.bias;
     }
   }
 
-  for (let i = mumExport.synapses.length; i--;) {
-    const mumSynapse = mumExport.synapses[i];
-    const childSynapse = childExport.synapses[i];
+  for (let i = mum.synapses.length; i--;) {
+    const mumSynapse = mum.synapses[i];
+    const childSynapse = child.synapses[i];
+    const fromId = mum.neurons[mumSynapse.from]?.id;
+    const toId = mum.neurons[mumSynapse.to]?.id;
+    if (fromId === undefined || toId === undefined) {
+      return;
+    }
 
     if (mumSynapse.weight !== childSynapse.weight) {
-      if (!memetic.weights[mumSynapse.fromId!]) {
-        memetic.weights[mumSynapse.fromId!] = [];
+      if (!memetic.weights[fromId]) {
+        memetic.weights[fromId] = [];
       }
 
-      memetic.weights[mumSynapse.fromId!].push({
-        toId: mumSynapse.toId!,
+      memetic.weights[fromId].push({
+        toId,
         weight: mumSynapse.weight,
       });
     }

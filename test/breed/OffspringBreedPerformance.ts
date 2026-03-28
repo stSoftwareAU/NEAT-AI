@@ -268,7 +268,9 @@ Deno.test("Offspring.breed() - activation equivalence with original implementati
         const output1 = offspring.activate(input.slice() as Float32Array);
 
         // Create a clone of offspring using JSON method
-        const offspringClone = Creature.fromJSON(offspring.exportJSON());
+        const offspringClone = Creature.fromJSON(
+          offspring.exportJSON(),
+        );
         offspringClone.clearState();
         const output2 = offspringClone.activate(input.slice() as Float32Array);
 

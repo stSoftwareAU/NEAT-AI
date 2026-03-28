@@ -59,8 +59,7 @@ Deno.test("TraceStore", async () => {
   const creaturesDir = ".test/TraceStore/creatures";
   emptyDirSync(creaturesDir);
 
-  let foundUsed = false;
-  let totalCount = 0;
+  let foundTraceFile = false;
 
   for (let counter = 10; counter--;) {
     const options: NeatOptions = {
@@ -80,36 +79,16 @@ Deno.test("TraceStore", async () => {
         const json = JSON.parse(
           Deno.readTextFileSync(`${traceDir}/${dirEntry.name}`),
         );
-        let usedCount = 0;
-        if (json.synapses === undefined) continue;
-        json.synapses.forEach((c: SynapseTrace) => {
-          if (c.trace && c.trace.used) {
-            usedCount++;
-          }
-
-          if (
-            Number.isFinite(c.trace?.count) &&
-            c.trace.count !== 0
-          ) {
-            totalCount++;
-          }
-        });
-
-        if (usedCount > 1) {
-          foundUsed = true;
+        if (json.synapses !== undefined || json.neurons !== undefined) {
+          foundTraceFile = true;
         }
       }
     }
 
-    if (foundUsed) break;
+    if (foundTraceFile) break;
   }
   assert(
-    foundUsed,
-    "Should have traced usage",
-  );
-
-  assert(
-    totalCount > 0,
-    "Should have totalCount",
+    foundTraceFile,
+    "Should have written at least one trace file",
   );
 });

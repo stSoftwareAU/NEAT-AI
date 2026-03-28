@@ -57,7 +57,10 @@ Deno.test(
       disableRandomSamples: true,
       generations: 0,
     });
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportJSON(),
+      config,
+    );
     creature.activateAndTrace(new Float32Array([1]), false, sparseConfig);
 
     // Current output is ~2. Request a *far* negative target so the value-space
@@ -145,7 +148,10 @@ Deno.test(
       disableRandomSamples: true,
       generations: 0,
     });
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportJSON(),
+      config,
+    );
     creature.activateAndTrace(new Float32Array([1]), false, sparseConfig);
 
     // Same idea for ReLU6: force a large negative target so naive attribution

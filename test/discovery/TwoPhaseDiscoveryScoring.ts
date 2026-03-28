@@ -11,14 +11,12 @@
 
 import { assert, assertEquals, assertExists } from "@std/assert";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import type { Creature } from "../../src/Creature.ts";
 import type { DiscoveryRunnerWorker } from "../../src/discovery/DiscoveryRunner.ts";
 import { DiscoveryRunner } from "../../src/discovery/DiscoveryRunner.ts";
 import { makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
-
-// Integer ID for hidden-1 in makeBaseCreature (explicit id in fixture).
-const HIDDEN_1_ID = 5001; // "hidden-1"
 
 class FakeWorker implements DiscoveryRunnerWorker {
   #discoverResult: DiscoverResult;
@@ -135,19 +133,20 @@ Deno.test(
 
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
+      normaliseCreatureExport(json);
       const synapses = json.synapses;
       const neurons = json.neurons;
 
       // Check for helpful synapse
       const hasHelpfulSynapse = synapses.some((synapse) =>
-        synapse.fromId === 1 &&
-        synapse.toId === HIDDEN_1_ID &&
+        synapse.fromUUID === "input-1" &&
+        synapse.toUUID === "hidden-1" &&
         Math.abs(synapse.weight - helpfulSynapse.weight) < 1e-6
       );
 
       // Check for helpful neuron (look for a new hidden neuron with TANH squash)
       const incomingDiscoverySynapse = synapses.find((synapse) =>
-        synapse.fromId === HIDDEN_1_ID &&
+        synapse.fromUUID === "hidden-1" &&
         Math.abs(synapse.weight - helpfulNeuron.incomingWeight) < 1e-6
       );
       const discoveredNeuronUUID = incomingDiscoverySynapse?.toId;
@@ -159,7 +158,7 @@ Deno.test(
       );
 
       // Check for unhelpful squash (hidden-1 changed to STEP)
-      const hidden1 = neurons.find((neuron) => neuron.id === HIDDEN_1_ID);
+      const hidden1 = neurons.find((neuron) => neuron.uuid === "hidden-1");
       const hasUnhelpfulSquash = hidden1?.squash === "STEP";
 
       // Assign errors based on what changes are present:
@@ -266,9 +265,10 @@ Deno.test(
 
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
+      normaliseCreatureExport(json);
       const hasHelpful = json.synapses.some((synapse) =>
-        synapse.fromId === 1 &&
-        synapse.toId === HIDDEN_1_ID &&
+        synapse.fromUUID === "input-1" &&
+        synapse.toUUID === "hidden-1" &&
         Math.abs(synapse.weight - helpfulSynapse.weight) < 1e-6
       );
       return hasHelpful ? 0.4 : 0.5;
@@ -340,19 +340,20 @@ Deno.test(
 
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
+      normaliseCreatureExport(json);
       const synapses = json.synapses;
       const neurons = json.neurons;
 
       // Check for synapse (improves)
       const hasHelpfulSynapse = synapses.some((synapse) =>
-        synapse.fromId === 1 &&
-        synapse.toId === HIDDEN_1_ID &&
+        synapse.fromUUID === "input-1" &&
+        synapse.toUUID === "hidden-1" &&
         Math.abs(synapse.weight - helpfulSynapse.weight) < 1e-6
       );
 
       // Check for neuron (doesn't improve, makes it worse)
       const incomingDiscoverySynapse = synapses.find((synapse) =>
-        synapse.fromId === HIDDEN_1_ID &&
+        synapse.fromUUID === "hidden-1" &&
         Math.abs(synapse.weight - unhelpfulNeuron.incomingWeight) < 1e-6
       );
       const discoveredNeuronUUID = incomingDiscoverySynapse?.toId;
@@ -445,14 +446,15 @@ Deno.test(
 
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
+      normaliseCreatureExport(json);
 
       const hasHelpfulSynapse = json.synapses.some((synapse) =>
-        synapse.fromId === 1 &&
-        synapse.toId === HIDDEN_1_ID &&
+        synapse.fromUUID === "input-1" &&
+        synapse.toUUID === "hidden-1" &&
         Math.abs(synapse.weight - helpfulSynapse.weight) < 1e-6
       );
 
-      const hidden1 = json.neurons.find((neuron) => neuron.id === HIDDEN_1_ID);
+      const hidden1 = json.neurons.find((neuron) => neuron.uuid === "hidden-1");
       const hasHelpfulSquash = hidden1?.squash === "TANH";
 
       // Combined is best

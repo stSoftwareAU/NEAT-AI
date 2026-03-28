@@ -65,7 +65,9 @@ export function retry(
     const tmpCreature = possibleRetryPopulation[randomIndx];
 
     const restoredCreature = restoreSource(tmpCreature);
-    assert(restoredCreature);
+    if (!restoredCreature) {
+      return [];
+    }
 
     let fittest: Creature;
     let previous: Creature;

@@ -80,7 +80,10 @@ Deno.test("NeatConstruction: initialises population from creatures option", asyn
     const creature1 = new Creature(2, 1, { layers: [{ count: 3 }] });
     const creature2 = new Creature(2, 1, { layers: [{ count: 4 }] });
     const options: NeatOptions = {
-      creatures: [creature1.exportJSON(), creature2.exportJSON()],
+      creatures: [
+        creature1.exportJSON(),
+        creature2.exportJSON(),
+      ],
       populationSize: 10,
     };
 

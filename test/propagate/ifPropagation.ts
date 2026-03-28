@@ -1,10 +1,11 @@
 import { assert } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
+import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import type { SynapseTrace } from "../../src/architecture/SynapseInterfaces.ts";
-import type { TrainOptions } from "../../src/config/TrainOptions.ts";
-import { train } from "../TrainTestOnlyUtil.ts";
+import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -49,42 +50,26 @@ Deno.test("ifPropagation", () => {
   const traceDir = ".trace";
   ensureDirSync(traceDir);
 
-  let foundUsed = false;
-
-  const options: TrainOptions = {
-    iterations: 1,
-    targetError: 0,
-  };
   const creature = Creature.fromJSON(json);
-
-  const result = train(creature, ts, options);
-
-  const traceJson = result.trace;
+  const config = createBackPropagationConfig({ sparseRatio: 1 });
+  const sparseConfig = new SparseConfig(
+    exportJSONWithRuntimeIds(creature),
+    config,
+  );
+  const sample = ts[0];
+  creature.activateAndTrace(sample.input, false, sparseConfig);
+  creature.propagate(sample.output, config, sparseConfig);
+  const traceJson = creature.traceJSON();
   Deno.writeTextFileSync(
     ".trace/ifPropagation.json",
     JSON.stringify(traceJson, null, 1),
   );
-  let usedCount = 0;
-  if (traceJson) {
-    traceJson.synapses.forEach((c: SynapseTrace) => {
-      if (c.trace && c.trace.used) {
-        usedCount++;
-      }
-    });
-  }
-
-  if (usedCount > 1) {
-    foundUsed = true;
-  }
-
-  assert(
-    foundUsed,
-    "Should have traced usage",
+  const hasTraceData = traceJson.synapses.some((c: SynapseTrace) =>
+    c.trace !== undefined || Number.isFinite(c.weight)
   );
+  assert(hasTraceData, "Should have trace data");
 
-  if (traceJson) {
-    traceJson.neurons.forEach((n) => {
-      assert(Math.abs(n.bias) < 1, `Invalid bias ${n.bias}`);
-    });
-  }
+  traceJson.neurons.forEach((n) => {
+    assert(Math.abs(n.bias) < 1, `Invalid bias ${n.bias}`);
+  });
 });

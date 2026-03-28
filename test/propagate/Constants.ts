@@ -58,7 +58,10 @@ Deno.test("backprop converges single sample to constant-weighted target", () => 
       learningRate: 1,
       batchSize: 1, // Disable mini-batching for deterministic behaviour
     });
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportJSON(),
+      config,
+    );
     const inA = [-1, 1, 0];
     const outA1 = creature.activate(new Float32Array(inA));
     const outA2 = creature.activateAndTrace(
@@ -130,7 +133,10 @@ Deno.test("backprop converges repeated identical samples to constant target", ()
       maximumBiasAdjustmentScale: 20,
       learningRate: 1,
     });
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportJSON(),
+      config,
+    );
     for (let i = 0; i < 1_000; i++) {
       const input = [-0.5, 0, 0.5];
       creature.activateAndTrace(new Float32Array(input), false, sparseConfig);
@@ -279,7 +285,10 @@ Deno.test("backprop converges over many generations with random training samples
         ...config,
         generations: generations,
       });
-      const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+      const sparseConfig = new SparseConfig(
+        creature.exportJSON(),
+        config,
+      );
       for (let loops = 10; loops--;) {
         for (let indx = 0; indx < observations.length; indx++) {
           const input = observations[indx];

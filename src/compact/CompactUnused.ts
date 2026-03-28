@@ -2,6 +2,7 @@ import { assert } from "@std/assert";
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { Creature, type CreatureTrace, CreatureUtil } from "../../mod.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import { exportJSONWithRuntimeIds } from "../architecture/PopulateRuntimeIdsFromCreature.ts";
 import { getLogger } from "../utils/Logger.ts";
 import type { NeuronTrace } from "../architecture/NeuronInterfaces.ts";
 import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
@@ -14,25 +15,27 @@ export function compactUnused(
   plankConstant: number,
 ) {
   const start = Creature.fromJSON(traced);
-  const clean = Creature.fromJSON(start.exportJSON());
-  const compacted = Creature.fromJSON(clean.exportJSON());
+  const alignedTrace = start.traceJSON();
+  const clean = Creature.fromJSON(exportJSONWithRuntimeIds(start));
+  const compacted = Creature.fromJSON(exportJSONWithRuntimeIds(clean));
 
-  const neuronScale = new Map<number, number>();
-  const synapseCount = new Map<number, number>();
-  traced.synapses.forEach((synapse) => {
-    let counter: number = synapseCount.get(synapse.toId!) || 0;
+  const neuronScale = new Map<string, number>();
+  const synapseCount = new Map<string, number>();
+  alignedTrace.synapses.forEach((synapse) => {
+    if (!synapse.toUUID || !synapse.fromUUID) return;
+    let counter: number = synapseCount.get(synapse.toUUID) || 0;
     counter++;
-    synapseCount.set(synapse.toId!, counter);
+    synapseCount.set(synapse.toUUID, counter);
 
-    let maxScale: number = neuronScale.get(synapse.fromId!) || 0;
+    let maxScale: number = neuronScale.get(synapse.fromUUID) || 0;
     const scale = Math.abs(synapse.weight);
     if (scale > maxScale) {
       maxScale = scale;
     }
-    neuronScale.set(synapse.fromId!, maxScale);
+    neuronScale.set(synapse.fromUUID, maxScale);
   });
   const indices = Int32Array.from(
-    { length: traced.neurons.length },
+    { length: alignedTrace.neurons.length },
     (_, i) => i,
   ); // Create an array of indices
 
@@ -42,12 +45,13 @@ export function compactUnused(
   let smallestEffect: number = Number.MAX_VALUE;
 
   for (let i = indices.length; i--;) {
-    const neuron = traced.neurons[indices[i]];
+    const neuron = alignedTrace.neurons[indices[i]];
     if (neuron.type !== "hidden") continue;
+    if (!neuron.uuid) continue;
     if (neuron.trace && neuron.trace.count >= 1) {
-      const counter = synapseCount.get(neuron.id!);
+      const counter = synapseCount.get(neuron.uuid);
       assert(counter !== undefined, "Counter should not be undefined");
-      const maxScale = neuronScale.get(neuron.id!);
+      const maxScale = neuronScale.get(neuron.uuid);
       assert(maxScale !== undefined, "Max Scale should not be undefined");
 
       const neuronEffect = Math.abs(
@@ -78,14 +82,18 @@ export function compactUnused(
         neuronForRemoval.trace.count;
     }
 
+    const runtimeNeuron = compacted.neurons.find((n) =>
+      n.uuid === neuronForRemoval.uuid
+    );
+    assert(runtimeNeuron !== undefined, "Compacted neuron should be resolved");
     if (
       removeNeuron(
-        neuronForRemoval.id!,
+        runtimeNeuron.id,
         compacted,
         averageActivation,
       )
     ) {
-      addTag(compacted, "unused", String(neuronForRemoval.id));
+      addTag(compacted, "unused", String(neuronForRemoval.uuid));
       try {
         creatureValidate(compacted);
       } catch (e) {

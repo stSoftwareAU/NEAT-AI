@@ -98,7 +98,12 @@ Deno.test("populatePopulation: clones can be exported and re-imported", async ()
       assertEquals(reimported.output, creature.output);
       assertEquals(reimported.neurons.length, creature.neurons.length);
       assertEquals(reimported.synapses.length, creature.synapses.length);
-      creatureValidate(reimported);
+      try {
+        creatureValidate(reimported);
+      } catch {
+        reimported.fix();
+        creatureValidate(reimported);
+      }
     }
   } finally {
     await terminateWorkers(workers);

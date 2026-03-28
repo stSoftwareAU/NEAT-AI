@@ -1,4 +1,9 @@
-import { assertAlmostEquals, assertEquals, assertNotEquals } from "@std/assert";
+import {
+  assert,
+  assertAlmostEquals,
+  assertEquals,
+  assertNotEquals,
+} from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../src/Creature.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
@@ -105,6 +110,26 @@ Deno.test("shallowClone - mutable state copying", () => {
 
   const tagValue = getTag(clone, "test-tag");
   assertEquals(tagValue, "test-value", "Tags should be copied");
+});
+
+Deno.test("shallowClone - memetic weights object is not shared with original", () => {
+  const original = new Creature(2, 1);
+  original.memetic = {
+    generation: 1,
+    weights: { 0: [{ toId: -1, weight: 0.5 }] },
+    biases: {},
+    score: 0,
+  };
+
+  const clone = original.shallowClone();
+  assert(clone.memetic?.weights[0]);
+  clone.memetic!.weights[0]![0]!.weight = 99;
+
+  assertEquals(
+    original.memetic!.weights[0]![0]!.weight,
+    0.5,
+    "nested memetic must be deep-copied so clone mutations cannot strand parent",
+  );
 });
 
 Deno.test("shallowClone - independence from original (neuron modification)", () => {
@@ -367,15 +392,23 @@ Deno.test("shallowClone - structural equivalence with fromJSON", () => {
     const shallowNeuron = shallowClone.neurons[i];
     const jsonNeuron = jsonClone.neurons[i];
     assertEquals(
-      shallowNeuron.id,
-      jsonNeuron.id,
-      `Neuron ${i} UUID mismatch`,
-    );
-    assertEquals(
       shallowNeuron.type,
       jsonNeuron.type,
       `Neuron ${i} type mismatch`,
     );
+    if (shallowNeuron.type === "hidden" || shallowNeuron.type === "constant") {
+      assertEquals(
+        shallowNeuron.uuid,
+        jsonNeuron.uuid,
+        `Neuron ${i} UUID mismatch`,
+      );
+    } else {
+      assertEquals(
+        shallowNeuron.id,
+        jsonNeuron.id,
+        `Neuron ${i} id mismatch`,
+      );
+    }
     if (shallowNeuron.type !== "input") {
       assertEquals(
         shallowNeuron.bias,

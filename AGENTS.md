@@ -99,17 +99,19 @@ scripts/                # Utility scripts
 
 - **Stable identity** (anything that crosses generations, disks, or species
   boundaries): use **UUID strings only** — `neuron.uuid` for hidden/constant,
-  canonical `input-N` / `output-N` in synapse endpoints, and
-  `creature.exportSnapshotJSON()` (wire-only; no numeric `id` / `fromId` /
-  `toId`). `creature.exportJSON()` is the canonical export **with** resolved ids
-  for round-trip and internal use. **Genetic compatibility** uses
-  `getHiddenNeuronWireKeys()` (wire labels), not integer ids.
+  canonical `input-N` / `output-N` in synapse endpoints. `creature.exportJSON()`
+  is the canonical **external** export: UUID-only, no numeric `id` / `fromId` /
+  `toId` (Issue #2054). `exportSnapshotJSON()` is equivalent. **Genetic
+  compatibility** uses `getHiddenNeuronWireKeys()` (wire labels), not integer
+  ids.
 
 - **Runtime integer `id`** (`src/architecture/NeuronId.ts`): allowed **only
   in-memory** for hot paths (WASM, `Map<number, …>`, internal breeding
-  traversal) where **profiling** shows a material win. Do **not** introduce new
-  integer-keyed surfaces for lineage, export, or user-visible JSON without a
-  benchmark in `bench/` and a short note in the PR.
+  traversal) where **profiling** shows a material win. Internal code that needs
+  integer IDs in serialised form should use `exportJSON()` from
+  `CreatureSerialization.ts`. Do **not** introduce new integer-keyed surfaces
+  for lineage, export, or user-visible JSON without a benchmark in `bench/` and
+  a short note in the PR.
 
 - **Discovery/cache/FFI wire contract:** any JSON that crosses a library, app,
   worker/cache boundary, or Rust FFI boundary must use **UUIDs only** for neuron

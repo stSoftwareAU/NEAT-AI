@@ -378,30 +378,10 @@ export function createCompatibleFatherFromCreatures(
   const fatherNeurons = father.neurons;
   const fatherSynapses = father.synapses;
 
-  // Create a set of all IDs in the mother's neurons
-  const motherIds = new Set<number>();
-  for (const neuron of motherNeurons) {
-    motherIds.add(neuron.id);
-  }
-
   // Create a set of all IDs in the father's neurons
   const fatherIds = new Set<number>();
   for (const neuron of fatherNeurons) {
     fatherIds.add(neuron.id);
-  }
-
-  // Optimisation: If all father's neurons' IDs are in the mother, return the father as-is
-  // We still need to export in this case, but we can skip the compatibility calculations
-  let allFatherInMother = true;
-  for (const neuron of fatherNeurons) {
-    if (!motherIds.has(neuron.id)) {
-      allFatherInMother = false;
-      break;
-    }
-  }
-
-  if (allFatherInMother) {
-    return father.exportJSON();
   }
 
   const usedFatherIds = new Set<number>();

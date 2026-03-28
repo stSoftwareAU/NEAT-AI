@@ -12,6 +12,7 @@
  */
 
 import { assert, assertExists } from "@std/assert";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../src/Creature.ts";
 import { combineImprovements } from "../../src/intelligentDesign/ImproveSquash.ts";
 import { makeDataDir } from "../../src/architecture/DataSet.ts";
@@ -57,6 +58,7 @@ Deno.test({
       // improvements across them.
       const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
       const exported = creature.exportJSON();
+      normaliseCreatureExport(exported);
 
       const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
       assert(
@@ -133,6 +135,7 @@ Deno.test({
 
       const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
       const exported = creature.exportJSON();
+      normaliseCreatureExport(exported);
 
       const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
       assert(

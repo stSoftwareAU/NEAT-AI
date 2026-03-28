@@ -16,6 +16,7 @@ export type OutgoingSynapsesMap = ReadonlyMap<number, SynapseExport[]>;
 export function buildOutgoingSynapsesMap(
   creature: CreatureExport,
 ): OutgoingSynapsesMap {
+  normaliseCreatureExport(creature);
   const map = new Map<number, SynapseExport[]>();
   for (const synapse of creature.synapses) {
     let list = map.get(synapse.fromId!);

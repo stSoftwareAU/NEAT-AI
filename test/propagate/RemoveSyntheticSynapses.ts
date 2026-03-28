@@ -112,7 +112,7 @@ Deno.test("removeSyntheticSynapses - compact handles orphaned hidden neuron (con
   const creature = Creature.fromJSON(json);
 
   // Manually add a synthetic synapse from input-0 to h2
-  const h2Idx = creature.neurons.findIndex((n) => n.id === 1003274);
+  const h2Idx = creature.neurons.findIndex((n) => n.uuid === "h2");
   creature.connect(0, h2Idx, 0); // zero-weight synthetic
   const syntheticKeys = new Set<string>([`0-${h2Idx}`]);
 
@@ -120,10 +120,17 @@ Deno.test("removeSyntheticSynapses - compact handles orphaned hidden neuron (con
 
   assertEquals(result.removed, 1);
 
-  // h2 should now be a constant neuron (compact handles orphan conversion)
-  const h2 = creature.neurons.find((n) => n.id === 1003274);
-  assertNotEquals(h2, undefined);
-  assertEquals(h2!.type, "constant");
+  // The orphaned hidden should be replaced by a constant neuron that preserves
+  // the original outward path to output-0.
+  const constantNeuron = creature.neurons.find((n) => n.type === "constant");
+  assertNotEquals(constantNeuron, undefined);
+  assertEquals(
+    creature.synapses.some((s) =>
+      creature.neurons[s.from].type === "constant" &&
+      creature.neurons[s.to].uuid === "output-0"
+    ),
+    true,
+  );
 });
 
 Deno.test("removeSyntheticSynapses - compact handles orphaned neuron removal (no outward connections)", () => {

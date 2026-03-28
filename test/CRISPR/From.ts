@@ -25,12 +25,14 @@ Deno.test("FromUUID", () => {
   );
   let foundFromToA = false;
   let foundFromToB = false;
-  exported.synapses.forEach((synapse) => {
-    if (synapse.fromId === 299 && synapse.toId === -1) {
+  creatureB.synapses.forEach((synapse) => {
+    const fromId = creatureB.neurons[synapse.from]?.id;
+    const toId = creatureB.neurons[synapse.to]?.id;
+    if (fromId === 299 && toId === -1) {
       foundFromToA = true;
       assertAlmostEquals(synapse.weight, 0.123);
     }
-    if (synapse.fromId === 123 && synapse.toId === -1) {
+    if (fromId === 123 && toId === -1) {
       foundFromToB = true;
       assertAlmostEquals(synapse.weight, 0.456);
     }

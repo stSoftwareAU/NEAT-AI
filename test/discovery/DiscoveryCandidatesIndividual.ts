@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
 import { getTag, type TagsInterface } from "@stsoftware/tags/mod";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
@@ -121,6 +122,7 @@ Deno.test(
     const findDedicatedCandidate = (target: CandidateSynapse) => {
       return addSynapseCandidates.find((candidate) => {
         const exported = candidate.creature.exportJSON();
+        normaliseCreatureExport(exported);
         const hasTarget = exported.synapses.some((synapse) =>
           synapse.fromUUID === target.fromNeuronUuid &&
           synapse.toUUID === target.toNeuronUuid &&
@@ -142,6 +144,7 @@ Deno.test(
     const first = findDedicatedCandidate(synapses[0]);
     assert(first, "Expected candidate dedicated to first helpful synapse");
     const firstExport = first.creature.exportJSON();
+    normaliseCreatureExport(firstExport);
     const firstSynapse = firstExport.synapses.find((synapse) =>
       synapse.fromUUID === synapses[0].fromNeuronUuid &&
       synapse.toUUID === synapses[0].toNeuronUuid &&
@@ -156,6 +159,7 @@ Deno.test(
     const second = findDedicatedCandidate(synapses[1]);
     assert(second, "Expected candidate dedicated to second helpful synapse");
     const secondExport = second.creature.exportJSON();
+    normaliseCreatureExport(secondExport);
     const secondSynapse = secondExport.synapses.find((synapse) =>
       synapse.fromUUID === synapses[1].fromNeuronUuid &&
       synapse.toUUID === synapses[1].toNeuronUuid &&
@@ -211,6 +215,7 @@ Deno.test(
     for (const suggestion of squashes) {
       const dedicated = squashCandidates.find((candidate) => {
         const exported = candidate.creature.exportJSON();
+        normaliseCreatureExport(exported);
         const targetNeuron = exported.neurons.find((neuron) =>
           neuron.uuid === suggestion.neuronUuid
         );
@@ -324,6 +329,7 @@ Deno.test(
     const candidates = buildDiscoveryCandidates(base, discovery);
     const comboBest = findCandidate(candidates, "combo-best-of-category");
     const exported = comboBest.creature.exportJSON();
+    normaliseCreatureExport(exported);
 
     const hasBestSynapse = exported.synapses.some((synapse) =>
       synapse.fromUUID === synapses[1].fromNeuronUuid &&
@@ -423,6 +429,7 @@ Deno.test(
     const candidates = buildDiscoveryCandidates(base, discovery);
     const comboBest = findCandidate(candidates, "combo-best-of-category");
     const exported = comboBest.creature.exportJSON();
+    normaliseCreatureExport(exported);
 
     // Verify the most harmful neuron (first in sorted array) is removed
     const harmfulNeuronStillExists = exported.neurons.some((neuron) =>
@@ -476,6 +483,7 @@ Deno.test("buildDiscoveryCandidates includes helpful neuron suggestions", () => 
   const candidates = buildDiscoveryCandidates(base, discovery);
   const addedNeuron = findCandidate(candidates, "add-neurons");
   const exported = addedNeuron.creature.exportJSON();
+  normaliseCreatureExport(exported);
 
   // Discovered neurons have the "discovered" tag set by addHelpfulNeurons.
   const discoveryNeuron = exported.neurons.find((neuron) =>

@@ -62,6 +62,7 @@ Deno.test(
   () => {
     const base = makeRemovalTestCreature();
     const baseJSON = base.exportJSON();
+    normaliseCreatureExport(baseJSON);
 
     // Verify base has A, B, C, D hidden neurons
     const baseHidden = baseJSON.neurons.filter((n) => n.type === "hidden");
@@ -170,6 +171,7 @@ Deno.test(
     );
 
     const comboJSON = combo.creature.exportJSON();
+    normaliseCreatureExport(comboJSON);
     const hiddenNeurons = comboJSON.neurons.filter((n) => n.type === "hidden");
     const neuronIds = hiddenNeurons.map((n) => n.id);
 
@@ -224,6 +226,7 @@ Deno.test(
   () => {
     const base = makeRemovalTestCreature();
     const baseJSON = base.exportJSON();
+    normaliseCreatureExport(baseJSON);
 
     // Create add-synapses candidate
     const addSynapseJson = structuredClone(baseJSON);
@@ -303,6 +306,7 @@ Deno.test(
   () => {
     const base = makeRemovalTestCreature();
     const baseJSON = base.exportJSON();
+    normaliseCreatureExport(baseJSON);
 
     // Create multiple candidates of different types
     const candidates: DiscoveryCandidate[] = [];
@@ -435,6 +439,7 @@ Deno.test(
 
     const base = makeRemovalTestCreature();
     const baseJSON = base.exportJSON();
+    normaliseCreatureExport(baseJSON);
 
     // Verify base structure contains input-1 -> hidden-B synapse (fromId=1, toId=ID_HIDDEN_B)
     const baseSynapses = baseJSON.synapses.map((s) => `${s.fromId}->${s.toId}`);
@@ -512,6 +517,7 @@ Deno.test(
     assertExists(combo, "Should have a combo-successful candidate");
 
     const comboJSON = combo.creature.exportJSON();
+    normaliseCreatureExport(comboJSON);
     const comboSynapses = comboJSON.synapses.map((s) =>
       `${s.fromId}->${s.toId}`
     );

@@ -913,11 +913,12 @@ export class Creature implements CreatureInternal {
     return this.neurons.length;
   }
 
+  /** External export: UUID-only, no runtime integer IDs (Issue #2054). */
   exportJSON(): CreatureExport {
     return serialisation.exportJSON(this);
   }
 
-  /** Wire-only snapshot; omits runtime integer ids (see {@link exportSnapshotJSON}). */
+  /** Wire-only snapshot; equivalent to {@link exportJSON} since Issue #2054. */
   exportSnapshotJSON(): CreatureExport {
     return serialisation.exportSnapshotJSON(this);
   }

@@ -21,16 +21,19 @@ import { editParentByIndex } from "../../src/breed/EditParentByIndex.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 
 /**
- * Creates a creature with specified hidden neuron IDs for controlled testing.
+ * Creates a creature with specified hidden neuron UUID suffixes for controlled testing.
  */
 function createCreatureWithHidden(
   hiddenIds: number[],
   inputCount: number,
   outputCount: number,
 ): Creature {
+  const hiddenUuid = (id: number) => `hidden-${id}`;
+  const outputUuid = (index: number) => `output-${index}`;
+
   const neurons: NeuronExport[] = hiddenIds.map((id) => ({
     type: "hidden" as const,
-    id: id,
+    uuid: hiddenUuid(id),
     squash: "LOGISTIC",
     bias: 0.1,
   }));
@@ -38,7 +41,7 @@ function createCreatureWithHidden(
   for (let i = 0; i < outputCount; i++) {
     neurons.push({
       type: "output",
-      id: -(i + 1),
+      uuid: outputUuid(i),
       squash: "IDENTITY",
       bias: 0,
     });
@@ -50,8 +53,8 @@ function createCreatureWithHidden(
   if (hiddenIds.length > 0) {
     for (let i = 0; i < inputCount; i++) {
       synapses.push({
-        fromId: i,
-        toId: hiddenIds[0],
+        fromUUID: `input-${i}`,
+        toUUID: hiddenUuid(hiddenIds[0]),
         weight: 0.5,
       });
     }
@@ -59,8 +62,8 @@ function createCreatureWithHidden(
     // Chain hidden neurons
     for (let i = 0; i < hiddenIds.length - 1; i++) {
       synapses.push({
-        fromId: hiddenIds[i],
-        toId: hiddenIds[i + 1],
+        fromUUID: hiddenUuid(hiddenIds[i]),
+        toUUID: hiddenUuid(hiddenIds[i + 1]),
         weight: 0.3,
       });
     }
@@ -69,8 +72,8 @@ function createCreatureWithHidden(
     const lastHidden = hiddenIds[hiddenIds.length - 1];
     for (let i = 0; i < outputCount; i++) {
       synapses.push({
-        fromId: lastHidden,
-        toId: -(i + 1),
+        fromUUID: hiddenUuid(lastHidden),
+        toUUID: outputUuid(i),
         weight: 0.8,
       });
     }
@@ -79,8 +82,8 @@ function createCreatureWithHidden(
     for (let i = 0; i < inputCount; i++) {
       for (let j = 0; j < outputCount; j++) {
         synapses.push({
-          fromId: i,
-          toId: -(j + 1),
+          fromUUID: `input-${i}`,
+          toUUID: outputUuid(j),
           weight: 0.5,
         });
       }
@@ -186,9 +189,9 @@ Deno.test(
     );
     assert(hiddenNeurons.length > 0, "Should have hidden neurons");
     assertEquals(
-      hiddenNeurons[0].id,
-      sharedId,
-      "Shared hidden neuron ID should be preserved",
+      hiddenNeurons[0].uuid,
+      `hidden-${sharedId}`,
+      "Shared hidden neuron UUID should be preserved",
     );
   },
 );
@@ -218,13 +221,13 @@ Deno.test(
         assert(alias, "Grafted neuron should have an alias tag");
         assertEquals(
           alias,
-          String(6040),
-          "Alias should reference the original target ID",
+          "hidden-6040",
+          "Alias should reference the original target UUID",
         );
         assertEquals(
-          neuron.id,
-          5040,
-          "ID should be remapped to parent's hidden neuron ID",
+          neuron.uuid,
+          "hidden-5040",
+          "UUID should be remapped to parent's hidden neuron UUID",
         );
       }
     }
@@ -246,13 +249,13 @@ Deno.test(
     // The target's "target-syn1" should now be "parent-syn1"
     for (const synapse of childExport.synapses) {
       assertNotEquals(
-        synapse.fromId,
-        6050,
+        synapse.fromUUID,
+        "hidden-6050",
         "Synapses should not reference the old target UUID in fromUUID",
       );
       assertNotEquals(
-        synapse.toId,
-        6050,
+        synapse.toUUID,
+        "hidden-6050",
         "Synapses should not reference the old target UUID in toUUID",
       );
     }
@@ -295,12 +298,16 @@ Deno.test(
       n.type === "hidden"
     );
 
-    // All hidden neurons should have been remapped to parent IDs
-    const parentIds = new Set([5061, 5062, 5063]);
+    // All hidden neurons should have been remapped to parent UUIDs
+    const parentIds = new Set([
+      "hidden-5061",
+      "hidden-5062",
+      "hidden-5063",
+    ]);
     for (const neuron of hiddenNeurons) {
       assert(
-        parentIds.has(neuron.id!),
-        `Hidden neuron ID ${neuron.id} should have been remapped to a parent ID`,
+        parentIds.has(neuron.uuid!),
+        `Hidden neuron UUID ${neuron.uuid} should have been remapped to a parent UUID`,
       );
     }
   },
@@ -329,22 +336,22 @@ Deno.test(
     const childExport = child.exportJSON();
     const hiddenIds = childExport.neurons
       .filter((n) => n.type === "hidden")
-      .map((n) => n.id);
+      .map((n) => n.uuid);
 
     // 8888 should be preserved
     assert(
-      hiddenIds.includes(8888),
-      "Shared neuron ID should be preserved",
+      hiddenIds.includes("hidden-8888"),
+      "Shared neuron UUID should be preserved",
     );
 
     // 6070 should have been remapped to 5070
     assert(
-      !hiddenIds.includes(6070),
+      !hiddenIds.includes("hidden-6070"),
       "Non-matching target neuron should have been remapped",
     );
     assert(
-      hiddenIds.includes(5070),
-      "Should be remapped to parent's non-matching neuron ID",
+      hiddenIds.includes("hidden-5070"),
+      "Should be remapped to parent's non-matching neuron UUID",
     );
   },
 );

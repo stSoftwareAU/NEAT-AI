@@ -8,7 +8,7 @@ import type { RequiredHyperparameterEvolutionConfig } from "../config/Hyperparam
 import { DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG } from "../config/HyperparameterConfig.ts";
 import { crossoverHyperparameters } from "../NEAT/HyperparameterEvolution.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
-import type { ValidationError } from "../errors/ValidationError.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import {
   getMajorVersion,
@@ -374,6 +374,25 @@ export class Offspring {
     // and memetic updates by avoiding linear scans.
     offspring.prebuildInwardIndexIfLarge();
 
+    if (fixAliases) {
+      const fixed = offspring.exportJSON();
+      for (const n of fixed.neurons) {
+        const alias = getTag(n, "alias");
+        if (alias && typeof n.uuid === "string") {
+          removeTag(n, "alias");
+          const oldUuid = n.uuid;
+          n.uuid = alias;
+          fixed.synapses.forEach((s) => {
+            if (s.fromUUID === oldUuid) s.fromUUID = alias;
+            if (s.toUUID === oldUuid) s.toUUID = alias;
+          });
+        }
+      }
+
+      offspring.loadFrom(fixed, false);
+    }
+
+    Offspring.ensureUniqueNeuronUuids(offspring);
     offspring.clearState();
 
     delete offspring.uuid;
@@ -385,27 +404,6 @@ export class Offspring {
     /* No point returning clones */
     if (childUUID === mother.uuid || childUUID === father.uuid) {
       return undefined;
-    }
-
-    if (fixAliases) {
-      const fixed = offspring.exportJSON();
-      for (const n of fixed.neurons) {
-        const alias = getTag(n, "alias");
-        if (alias) {
-          removeTag(n, "alias");
-          const oldId = n.id;
-          const aliasId = Number.parseInt(alias);
-          if (Number.isFinite(aliasId)) {
-            (n as { id: number }).id = aliasId;
-            fixed.synapses.forEach((s) => {
-              if (s.fromId === oldId) s.fromId = aliasId;
-              if (s.toId === oldId) s.toId = aliasId;
-            });
-          }
-        }
-      }
-
-      offspring.loadFrom(fixed, false);
     }
 
     if (mother.memetic) {
@@ -505,7 +503,9 @@ export class Offspring {
       return offspring;
     } catch (e) {
       const error = e as Error;
-      const errorName = error.name ? error.name : "ERROR";
+      const errorName = e instanceof ValidationError
+        ? e.reason
+        : (error.name ? error.name : "ERROR");
       switch (errorName) {
         case "RECURSIVE_CONNECTION":
           return undefined;
@@ -544,6 +544,20 @@ export class Offspring {
       if (connections.length === 0) {
         node.type = "constant";
       }
+    }
+  }
+
+  private static ensureUniqueNeuronUuids(creature: Creature): void {
+    const seen = new Set<string>();
+    for (const neuron of creature.neurons) {
+      if (neuron.type !== "hidden" && neuron.type !== "constant") continue;
+      const uuid = neuron.uuid;
+      if (!uuid) continue;
+      if (!seen.has(uuid)) {
+        seen.add(uuid);
+        continue;
+      }
+      neuron.uuid = crypto.randomUUID();
     }
   }
 

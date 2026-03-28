@@ -58,6 +58,7 @@ Deno.test(
   () => {
     const base = makeBaseCreature();
     const baseJSON = base.exportJSON();
+    normaliseCreatureExport(baseJSON);
 
     // Removal candidate: remove hidden-B
     const removeBJson = structuredClone(baseJSON);
@@ -156,6 +157,7 @@ Deno.test(
   () => {
     const base = makeBaseCreature();
     const baseJSON = base.exportJSON();
+    normaliseCreatureExport(baseJSON);
 
     // Create two removal candidates of the same type
     const removeBJson = structuredClone(baseJSON);

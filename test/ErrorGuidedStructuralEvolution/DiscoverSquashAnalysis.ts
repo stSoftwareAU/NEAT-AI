@@ -1,5 +1,6 @@
 import { assertAlmostEquals, assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
+import { buildWireToRuntimeIdMap } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import {
   analyzeSelectedNeuronsForHarmfulRemoval,
   calculateSquashError,
@@ -72,9 +73,7 @@ Deno.test(
         { fromUUID: "hidden-target", toUUID: "output-0", weight: 0.5 },
       ],
     });
-    const hiddenId = creature.exportJSON().neurons.find((neuron) =>
-      neuron.uuid === "hidden-target"
-    )?.id;
+    const hiddenId = buildWireToRuntimeIdMap(creature).get("hidden-target");
     assertEquals(typeof hiddenId, "number");
 
     let loadedPath: string | undefined;

@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import type { Creature } from "../../src/Creature.ts";
@@ -182,6 +183,7 @@ Deno.test({
       const computeError = (creature: Creature) => {
         // Count evaluations (excluding original which has no candidate)
         const json = creature.exportJSON();
+        normaliseCreatureExport(json);
         const hasTestSynapse = json.synapses.some((s) =>
           s.fromUUID === "input-1" && s.toUUID === "hidden-1" &&
           Math.abs(s.weight - 0.45) < 1e-6
@@ -256,12 +258,21 @@ Deno.test({
     const cacheDir = `${tempDir}/failure-cache`;
 
     try {
-      // Use 2 SQUASH changes - these create single candidates with stable cache keys
-      // (no generated UUIDs). Both improve individually but their combined fails.
-      // Base creature has hidden-1 with IDENTITY squash.
+      // Use one add-synapse and one squash change. Both improve individually,
+      // but their phase-2 combination is worse and should be cached as a failed
+      // combined candidate on the first run.
       const discoveryResult: DiscoverResult = {
         ID: "PHASE2_CACHE_TEST",
-        addHelpfulSynapses: undefined,
+        addHelpfulSynapses: [{
+          fromNeuronUuid: "input-0",
+          toNeuronUuid: "output-0",
+          weight: 0.6,
+          targetNeuronImpact: 1.0,
+          expectedCreatureErrorReduction: 0,
+          expectedCreatureScoreGain: 0.3,
+          improvedCount: 5,
+          totalCount: 7,
+        }],
         addHelpfulNeurons: undefined,
         removeHarmfulSynapse: undefined,
         removeHarmfulNeurons: undefined,
@@ -270,15 +281,7 @@ Deno.test({
           {
             neuronUuid: "hidden-1",
             previousSquash: "IDENTITY",
-            squash: "TANH", // Change hidden-1's squash to TANH
-            expectedCreatureScoreGain: 0.3,
-            improvedError: 0.4,
-            currentError: 0.5,
-          },
-          {
-            neuronUuid: "output-0",
-            previousSquash: "IDENTITY",
-            squash: "LOGISTIC", // Change output's squash to LOGISTIC
+            squash: "TANH",
             expectedCreatureScoreGain: 0.3,
             improvedError: 0.4,
             currentError: 0.5,
@@ -290,24 +293,22 @@ Deno.test({
 
       const computeError = (creature: Creature) => {
         const json = creature.exportJSON();
+        normaliseCreatureExport(json);
 
-        // Check for TANH on hidden-1
+        const hasHelpfulSynapse = json.synapses.some((s) =>
+          s.fromUUID === "input-0" && s.toUUID === "output-0" &&
+          Math.abs(s.weight - 0.6) < 1e-6
+        );
         const hasTanh = json.neurons.some((n) =>
           n.uuid === "hidden-1" && n.squash === "TANH"
         );
-        // Check for LOGISTIC on output-0
-        const hasLogistic = json.neurons.some((n) =>
-          n.uuid === "output-0" && n.squash === "LOGISTIC"
-        );
 
-        // Track combined candidate evaluations (both squash changes present)
-        if (hasTanh && hasLogistic) {
+        if (hasHelpfulSynapse && hasTanh) {
           phase2EvaluationCount++;
           return 0.6; // Combined candidate is worse
         }
 
-        // Individual squash changes improve
-        if (hasTanh || hasLogistic) {
+        if (hasHelpfulSynapse || hasTanh) {
           return 0.4; // Individual candidates improve
         }
 
@@ -391,6 +392,7 @@ Deno.test({
       // The candidate will improve things
       const computeError = (creature: Creature) => {
         const json = creature.exportJSON();
+        normaliseCreatureExport(json);
         const hasTestSynapse = json.synapses.some((s) =>
           s.fromUUID === "input-1" && s.toUUID === "hidden-1" &&
           Math.abs(s.weight - 0.45) < 1e-6

@@ -107,7 +107,10 @@ function testConvergence(squashName: string) {
       batchSize: 1,
     });
 
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportJSON(),
+      config,
+    );
 
     // Train for several iterations
     for (let i = 0; i < 200; i++) {

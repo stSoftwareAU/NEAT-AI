@@ -131,7 +131,9 @@ Deno.test("DiscoveryRunner records evaluation summaries and archives candidates"
   };
 
   const baseCreature = makeBaseCreature();
-  const candidateCreature = Creature.fromJSON(baseCreature.exportJSON());
+  const candidateCreature = Creature.fromJSON(
+    baseCreature.exportJSON(),
+  );
   CreatureUtil.makeUUID(candidateCreature);
 
   const computeError = (creature: Creature) =>

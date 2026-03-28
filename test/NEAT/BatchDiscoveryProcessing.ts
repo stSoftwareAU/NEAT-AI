@@ -68,8 +68,8 @@ Deno.test(
     const exportedJSON = modifiedCreature.exportJSON();
     const hasNewSynapse = exportedJSON.synapses.some(
       (s) =>
-        s.fromId === 0 &&
-        s.toId === -1 &&
+        s.fromUUID === "input-0" &&
+        s.toUUID === "output-0" &&
         Math.abs(s.weight - 0.8) < 1e-6,
     );
     assertEquals(hasNewSynapse, true, "Should have the new synapse added");
@@ -79,8 +79,8 @@ Deno.test(
     const originalExport = baseCreature.exportJSON();
     const originalHasNewSynapse = originalExport.synapses.some(
       (s) =>
-        s.fromId === 0 &&
-        s.toId === -1 &&
+        s.fromUUID === "input-0" &&
+        s.toUUID === "output-0" &&
         Math.abs(s.weight - 0.8) < 1e-6,
     );
     assertEquals(
@@ -126,8 +126,8 @@ Deno.test(
     const exportedJSON = modifiedCreature.exportJSON();
     const synapseStillExists = exportedJSON.synapses.some(
       (s) =>
-        s.fromId === 1 &&
-        s.toId === -1,
+        s.fromUUID === "input-1" &&
+        s.toUUID === "output-0",
     );
     assertEquals(synapseStillExists, false, "Synapse should be removed");
 

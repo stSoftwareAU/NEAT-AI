@@ -559,7 +559,8 @@ Deno.test({
 
 Deno.test("from-to", () => {
   const creature = new Creature(1000, 10);
-  const startJson = Creature.fromJSON(creature.exportJSON()).exportJSON();
+  const startJson = Creature.fromJSON(creature.exportJSON())
+    .exportJSON();
   const startTxt = JSON.stringify(startJson, null, 1);
   let fromTotalMS = 0;
   let toTotalMS = 0;

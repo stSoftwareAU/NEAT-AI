@@ -48,6 +48,7 @@ function makeCreature() {
     ],
     input: 3,
     output: 2,
+    semanticVersion: "2.0.0",
   };
   const creature = Creature.fromJSON(json);
   creature.validate();
@@ -56,16 +57,14 @@ function makeCreature() {
 }
 
 /**
- * Finds neuron IDs for the two hidden neurons in the creature created by makeCreature().
- * Returns { hidden3Id, hidden4Id } corresponding to "hidden-3" (Cosine) and "hidden-4" (HARD_TANH).
+ * Finds runtime neuron ids for the two hidden neurons in the supplied creature.
  */
-function getHiddenIds(): { hidden3Id: number; hidden4Id: number } {
-  const creature = makeCreature();
-  const exported = creature.exportJSON();
-  const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
-  // hidden-3 (Cosine) and hidden-4 (HARD_TANH)
-  const cosineNeuron = hiddenNeurons.find((n) => n.squash === "Cosine");
-  const hardTanhNeuron = hiddenNeurons.find((n) => n.squash === "HARD_TANH");
+function getHiddenIds(
+  creature: Creature = makeCreature(),
+): { hidden3Id: number; hidden4Id: number } {
+  const hiddenNeurons = creature.neurons.filter((n) => n.type === "hidden");
+  const cosineNeuron = hiddenNeurons.find((n) => n.uuid === "hidden-3");
+  const hardTanhNeuron = hiddenNeurons.find((n) => n.uuid === "hidden-4");
   assertExists(cosineNeuron?.id, "hidden-3 (Cosine) neuron must have an id");
   assertExists(
     hardTanhNeuron?.id,
@@ -75,10 +74,9 @@ function getHiddenIds(): { hidden3Id: number; hidden4Id: number } {
 }
 
 Deno.test("MemeticInterface should include ancestry history", () => {
-  const { hidden3Id } = getHiddenIds();
-  const INPUT_0_ID = 0;
-
   const creature = makeCreature();
+  const { hidden3Id } = getHiddenIds(creature);
+  const INPUT_0_ID = 0;
   creature.score = -0.1;
 
   const memetic: MemeticInterface = {
@@ -173,10 +171,9 @@ Deno.test("fineTuneImprovement should build ancestry history", () => {
 });
 
 Deno.test("ancestry should be preserved during breeding", () => {
-  const { hidden3Id } = getHiddenIds();
-  const INPUT_0_ID = 0;
-
   const mum = makeCreature();
+  const { hidden3Id } = getHiddenIds(mum);
+  const INPUT_0_ID = 0;
   mum.score = -0.1;
   mum.memetic = {
     generation: 2,

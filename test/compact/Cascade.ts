@@ -2,6 +2,7 @@ import { assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature, type CreatureExport } from "../../mod.ts";
 import { compactUnused } from "../../src/compact/CompactUnused.ts";
+import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
@@ -68,7 +69,10 @@ Deno.test("compactUnused - behaviour preserved with cascading Cosine/CLIPPED rem
     }
 
     const config = createBackPropagationConfig();
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      exportJSONWithRuntimeIds(creature),
+      config,
+    );
     for (let i = data.length; i--;) {
       const actual = creature.activateAndTrace(
         new Float32Array(data[i]),

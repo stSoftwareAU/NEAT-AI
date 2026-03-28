@@ -13,6 +13,7 @@
 import { assert } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { buildWireToRuntimeIdMap } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import {
@@ -29,10 +30,7 @@ import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
 
 function runtimeIdForUuid(creature: Creature, uuid: string): number {
-  const id = creature.exportJSON().neurons.find((neuron) =>
-    neuron.uuid === uuid
-  )
-    ?.id;
+  const id = buildWireToRuntimeIdMap(creature).get(uuid);
   if (typeof id !== "number") {
     throw new Error(`Missing runtime id for ${uuid}`);
   }

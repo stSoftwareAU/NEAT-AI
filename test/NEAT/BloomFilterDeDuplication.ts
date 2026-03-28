@@ -113,7 +113,9 @@ Deno.test("BloomFilterDeDuplication - large population", () => {
   // Add explicit duplicates of some existing creatures
   for (let i = 0; i < 30; i++) {
     const sourceIndex = i % 50;
-    const clone = Creature.fromJSON(uniqueCreatures[sourceIndex].exportJSON());
+    const clone = Creature.fromJSON(
+      uniqueCreatures[sourceIndex].exportJSON(),
+    );
     population.push(clone);
   }
 

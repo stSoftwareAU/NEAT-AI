@@ -25,7 +25,10 @@ Deno.test("calculatePathsToOutput returns all downstream neurons from chosen set
 
   const chosenSet = new Set<number>([hidden3.id, output1.id]);
 
-  const paths = calculatePathsToOutput(chosenSet, creature.exportJSON());
+  const paths = calculatePathsToOutput(
+    chosenSet,
+    creature.exportJSON(),
+  );
 
   const expectedPaths = new Set<number>([
     hidden3.id,

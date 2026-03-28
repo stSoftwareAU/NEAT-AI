@@ -1,5 +1,6 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
+import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
@@ -36,7 +37,7 @@ Deno.test("TraceAggregateMINIMUM", () => {
   creature.activate(input);
 
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    exportJSONWithRuntimeIds(creature),
     createBackPropagationConfig({ sparseRatio: 1 }),
   );
   const aOut = creature.activateAndTrace(input, false, sparseConfig);
@@ -89,7 +90,7 @@ Deno.test("TraceAggregateMAXIMUM", () => {
   creature.activate(input);
 
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    exportJSONWithRuntimeIds(creature),
     createBackPropagationConfig({
       sparseRatio: 1,
     }),
@@ -145,7 +146,7 @@ Deno.test("TraceAggregateIF", () => {
   creature.activate(input);
 
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    exportJSONWithRuntimeIds(creature),
     createBackPropagationConfig({ sparseRatio: 1 }),
   );
 

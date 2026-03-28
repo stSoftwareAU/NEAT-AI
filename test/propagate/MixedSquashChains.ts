@@ -11,6 +11,7 @@
 import { assert } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
@@ -414,9 +415,9 @@ Deno.test("Gradient magnitude: error at first hidden layer is non-trivial and fi
 
     // After update, the first hidden neuron's bias or inbound weight
     // should have changed (indicating gradient reached it).
-    const exportedJson = creature.exportJSON();
+    const exportedJson = exportJSONWithRuntimeIds(creature);
     const firstSynapse = exportedJson.synapses.find(
-      (s) => s.toId === 1003272,
+      (s) => s.toUUID === "h0",
     );
     assert(
       firstSynapse !== undefined,

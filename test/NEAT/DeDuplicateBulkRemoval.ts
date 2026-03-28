@@ -56,7 +56,9 @@ Deno.test("DeDuplicator bulk removal preserves unique creatures", () => {
   // Add many duplicates of the first few creatures (well beyond population size)
   for (let i = 0; i < 30; i++) {
     const sourceIndex = i % 5;
-    creatures.push(Creature.fromJSON(creatures[sourceIndex].exportJSON()));
+    creatures.push(
+      Creature.fromJSON(creatures[sourceIndex].exportJSON()),
+    );
   }
 
   assertEquals(creatures.length, 45);

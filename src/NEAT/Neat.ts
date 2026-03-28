@@ -361,6 +361,8 @@ export class Neat {
       const clonedCreature = creature.shallowClone();
       const creatures = [clonedCreature];
       mutator.mutate(creatures);
+      creatures[0].fix();
+      creatureValidate(creatures[0]);
       this.population.push(creatures[0]);
     }
 

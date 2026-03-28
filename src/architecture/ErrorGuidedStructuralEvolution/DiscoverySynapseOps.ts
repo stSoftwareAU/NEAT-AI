@@ -75,8 +75,7 @@ export function removeSynapse(
   const creatureUUID = CreatureUtil.makeUUID(creature);
   const exportJSON = creature.exportJSON();
   exportJSON.synapses = exportJSON.synapses.filter((s) => {
-    return s.fromId !== resolved.fromId ||
-      s.toId !== resolved.toId;
+    return s.fromUUID !== fromLabel || s.toUUID !== toLabel;
   });
 
   // Integrity check: after filtering synapses, verify no dangling references
@@ -160,8 +159,8 @@ export function addHelpfulSynapses(
       return;
     }
     const foundSynapse = exportJSON.synapses.find((synapse) => {
-      return synapse.fromId === resolved.fromId &&
-        synapse.toId === resolved.toId;
+      return synapse.fromUUID === fromLabel &&
+        synapse.toUUID === toLabel;
     });
 
     if (foundSynapse) {
@@ -171,21 +170,18 @@ export function addHelpfulSynapses(
       return;
     }
 
-    const foundFromNeuron = exportJSON.neurons.find((neuron) => {
-      return neuron.id === resolved.fromId;
-    });
-    if (!foundFromNeuron) {
-      if (resolved.fromId >= creature.input) {
-        getLogger().warn(
-          `[Discovery ${ID}] Source neuron ${fromLabel} not found, skipping synapse`,
-        );
-        return;
-      }
+    const sourceExists = resolved.fromId < creature.input ||
+      creature.neurons.some((neuron) => neuron.id === resolved.fromId);
+    if (!sourceExists) {
+      getLogger().warn(
+        `[Discovery ${ID}] Source neuron ${fromLabel} not found, skipping synapse`,
+      );
+      return;
     }
     const foundToNeuron = exportJSON.neurons.find((neuron) => {
       /** may have converted a hidden neuron to a constant */
       if (neuron.type !== "hidden" && neuron.type !== "output") return false;
-      return neuron.id === resolved.toId;
+      return neuron.uuid === toLabel;
     });
     if (!foundToNeuron) {
       getLogger().warn(
@@ -195,8 +191,6 @@ export function addHelpfulSynapses(
     }
 
     const addSynapse = {
-      fromId: resolved.fromId,
-      toId: resolved.toId,
       fromUUID: bestCandidate.fromNeuronUuid,
       toUUID: bestCandidate.toNeuronUuid,
       weight: bestCandidate.weight,

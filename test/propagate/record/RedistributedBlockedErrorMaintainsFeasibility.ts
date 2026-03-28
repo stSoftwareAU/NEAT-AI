@@ -75,7 +75,10 @@ Deno.test(
       disableRandomSamples: true,
       generations: 0,
     });
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportJSON(),
+      config,
+    );
     creature.activateAndTrace(new Float32Array([1]), false, sparseConfig);
 
     // Current output is ~1.101. Request 0 so record-time error is negative.

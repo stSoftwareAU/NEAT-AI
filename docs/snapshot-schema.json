@@ -73,7 +73,7 @@
         },
         "id": {
           "type": "integer",
-          "description": "Integer neuron ID (Issue #1958). Input neurons: inputIndex (0, 1, 2, ...). Output neurons: -(outputIndex + 1) (-1, -2, ...). Hidden/constant: positive integer. Optional for backward compatibility with legacy UUID-only data; new exports always include this field."
+          "description": "Runtime integer neuron ID (Issue #1958). Not present in external exports (Issue #2054); use uuid instead. Only present in internal JSON for backward compatibility when loading legacy data."
         },
         "bias": {
           "type": "number",
@@ -112,11 +112,11 @@
         },
         "fromId": {
           "type": "integer",
-          "description": "Integer ID of the source neuron (Issue #1958). Optional for backward compatibility; new exports always include this field."
+          "description": "Runtime integer ID of the source neuron (Issue #1958). Not present in external exports (Issue #2054); use fromUUID instead. Only present in internal JSON or legacy data."
         },
         "toId": {
           "type": "integer",
-          "description": "Integer ID of the destination neuron (Issue #1958). Optional for backward compatibility; new exports always include this field."
+          "description": "Runtime integer ID of the destination neuron (Issue #1958). Not present in external exports (Issue #2054); use toUUID instead. Only present in internal JSON or legacy data."
         },
         "weight": {
           "type": "number",

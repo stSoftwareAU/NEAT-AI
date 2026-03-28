@@ -537,7 +537,9 @@ export class Mutator {
         const error = e as ValidationError;
         if (
           error.reason === "SELF_CONNECTION" ||
-          error.reason === "RECURSIVE_SYNAPSE"
+          error.reason === "RECURSIVE_SYNAPSE" ||
+          error.reason === "NO_INWARD_CONNECTIONS" ||
+          error.reason === "NO_OUTWARD_CONNECTIONS"
         ) {
           const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(
             creature.semanticVersion,
@@ -554,7 +556,7 @@ export class Mutator {
               }) -> ${s.to} (${creature.neurons[s.to]?.ID?.() ?? "?"})`
             );
           getLogger().error(
-            `[Mutator] Forward-only violation after mutation. This indicates a bug: ` +
+            `[Mutator] Repairable validation failure after mutation. This indicates a bug: ` +
               `creature is marked forwardOnly=${
                 creature.forwardOnly === true
               } and/or feedbackLoop=${this.config.feedbackLoop}. ` +
@@ -565,7 +567,11 @@ export class Mutator {
           // Forward-only 4.x is a hard guarantee. We must crash fast (even on
           // unattended machines) so we can locate the logic that introduced a
           // recurrent connection into a supposedly forward-only creature.
-          if (major >= 4) {
+          if (
+            major >= 4 &&
+            (error.reason === "SELF_CONNECTION" ||
+              error.reason === "RECURSIVE_SYNAPSE")
+          ) {
             throw new TopologyError(
               `[Mutator] CRITICAL: forward-only 4.x creature became invalid after mutation: ` +
                 `${error.name} - ${error.message}. ` +

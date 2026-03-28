@@ -87,7 +87,7 @@ Deno.test("memetic preserved", () => {
       const childExport = child.exportJSON();
       console.log(JSON.stringify(childExport, null, 2));
       const synapse = childExport.synapses.find((s) =>
-        s.fromId === 2 && s.toId === -2
+        s.fromUUID === "input-2" && s.toUUID === "output-1"
       );
 
       assert(synapse, "Synapse should exist");

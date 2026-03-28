@@ -168,7 +168,9 @@ export class DeDuplicator {
             return;
           }
         }
-        const tmpCreature = Creature.fromJSON(creatures[index].exportJSON());
+        const tmpCreature = Creature.fromJSON(
+          creatures[index].exportJSON(),
+        );
         this.mutator.mutate([tmpCreature]);
         const key3 = CreatureUtil.makeUUID(tmpCreature);
 

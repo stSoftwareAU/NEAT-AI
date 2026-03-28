@@ -16,7 +16,7 @@ export class SubConnection extends AbstractMutationOperator {
     // Export the creature to JSON for clean manipulation
     // Use the builder directly to avoid validation (creature may be in an intermediate state)
     const builder = new CreatureExportBuilder(this.creature);
-    const exportJSON = builder.build();
+    const exportJSON = builder.build(true);
     normaliseCreatureExport(exportJSON);
 
     // List of possible connections that can be removed (forward connections only)

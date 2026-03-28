@@ -1,6 +1,7 @@
 import type { CreatureExport } from "../CreatureInterfaces.ts";
 import { CreatureUtil } from "../CreatureUtils.ts";
 import { nextNeuronId } from "../NeuronId.ts";
+import { populateRuntimeIdsFromCreature } from "../PopulateRuntimeIdsFromCreature.ts";
 import { Creature } from "../../Creature.ts";
 import {
   cleanupMemeticForRemovedNeuron,
@@ -64,6 +65,7 @@ export function applyCoordinatedStructuralCandidate(
   candidate: CoordinatedStructuralCandidate,
 ): Creature {
   const base: CreatureExport = creature.exportJSON();
+  populateRuntimeIdsFromCreature(creature, base);
   const next: CreatureExport = JSON.parse(
     JSON.stringify(base),
   ) as CreatureExport;

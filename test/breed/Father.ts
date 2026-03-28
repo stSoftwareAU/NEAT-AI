@@ -430,5 +430,8 @@ Deno.test("Genetic Integrity - No Matching Neurons", () => {
   const fatherActual = createCompatibleFather(nonMatchingMother, father);
 
   Creature.fromJSON(fatherActual).validate();
-  assertEquals(fatherActual, fatherExpected);
+  assertEquals(
+    stripNumericIdsFromCreatureExport(fatherActual),
+    stripNumericIdsFromCreatureExport(fatherExpected),
+  );
 });
