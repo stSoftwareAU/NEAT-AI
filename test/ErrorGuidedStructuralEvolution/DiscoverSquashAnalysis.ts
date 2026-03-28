@@ -1,8 +1,4 @@
-import {
-  assertAlmostEquals,
-  assertEquals,
-  assertThrows,
-} from "@std/assert";
+import { assertAlmostEquals, assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import {
   analyzeSelectedNeuronsForHarmfulRemoval,
@@ -85,13 +81,13 @@ Deno.test(
     const result = await analyzeSelectedNeuronsForHarmfulRemoval(
       creature,
       [hiddenId!],
-      async (neuronIdentifier: string) => {
+      (neuronIdentifier: string) => {
         loadedPath = neuronIdentifier;
-        return [{
+        return Promise.resolve([{
           value: 1,
           activation: 1,
           errors: [1e11],
-        }];
+        }]);
       },
       "/tmp/discovery",
       false,
