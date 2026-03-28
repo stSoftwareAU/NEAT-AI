@@ -398,6 +398,8 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
       );
 
       if (baselineActivationError > MAX_REASONABLE_SQUASH_ERROR) {
+        const neuronUuid = idToWire.get(neuronId);
+        assert(neuronUuid, `Missing wire uuid for neuron ${neuronId}`);
         const errorLog = Math.log10(baselineActivationError);
         const thresholdLog = Math.log10(MAX_REASONABLE_SQUASH_ERROR);
         const excessMagnitude = errorLog - thresholdLog;
