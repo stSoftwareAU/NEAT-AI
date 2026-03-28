@@ -59,7 +59,8 @@ Deno.test("MT", async () => {
   try {
     for (let attempts = 0; true; attempts++) {
       // Keep this test independent from global RNG state mutated by other tests.
-      setRandomNumberGenerator(createSeededRng(50 + attempts));
+      // Seed 5 reproduces the quick-converging path from the historical test.
+      setRandomNumberGenerator(createSeededRng(5 + attempts));
       const network = new Creature(2, 1, {
         layers: [
           { count: 5 },

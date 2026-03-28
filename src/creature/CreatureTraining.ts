@@ -402,7 +402,7 @@ export async function evolveDir(
         `Score (absolute) less than error (score=${fittestScore}, error=${error})`,
       );
       bestScore = fittestScore;
-      bestCreature = CreatureClass.fromJSON(fittest.exportJSON());
+      bestCreature = CreatureClass.fromJSON(exportJSONWithRuntimeIds(fittest));
       bestCreature.uuid = fittest.uuid;
       bestCreature.score = bestScore;
     }

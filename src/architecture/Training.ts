@@ -20,7 +20,6 @@ import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 import { exportJSONWithRuntimeIds } from "./PopulateRuntimeIdsFromCreature.ts";
 import { BufferPool } from "../utils/BufferPool.ts";
 import type { CreatureExport, CreatureTrace } from "./CreatureInterfaces.ts";
-import { exportJSON } from "../creature/CreatureSerialization.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import {
   trainWithPredictiveCoding,
@@ -674,7 +673,7 @@ function trainDirBinary(
         creature.clearState();
 
         // Update bestCreatureJSON to reflect the cleaned creature.
-        bestCreatureJSON = exportJSON(creature);
+        bestCreatureJSON = exportJSONWithRuntimeIds(creature);
 
         // Filter bestTraceJSON to match the cleaned creature structure.
         // Build a set of remaining synapse keys and neuron UUIDs.

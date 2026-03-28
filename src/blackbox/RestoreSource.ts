@@ -2,6 +2,7 @@ import { assert } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../mod.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
+import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 
 /**
  * Restores a creature from its memetic source data.
@@ -26,7 +27,7 @@ import type { Approach } from "../NEAT/LogApproach.ts";
 export function restoreSource(creature: Creature): Creature | undefined {
   if (!creature.memetic) return;
 
-  const restoredCreature = creature.exportJSON();
+  const restoredCreature = new CreatureExportBuilder(creature).build(true);
   const memetic = creature.memetic;
   const idToWire = new Map<number, string>();
 

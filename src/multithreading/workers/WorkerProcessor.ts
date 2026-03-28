@@ -10,6 +10,7 @@ import { Costs } from "../../Costs.ts";
 import type { CostInterface } from "../../costs/CostInterface.ts";
 import type { RequiredOutputRange } from "../../config/OutputRangeConfig.ts";
 import { Creature } from "../../Creature.ts";
+import { exportJSONWithRuntimeIds } from "../../architecture/PopulateRuntimeIdsFromCreature.ts";
 import { writeDiagnostics } from "../../utils/Diagnostics.ts";
 import {
   getCachedWasmActivationCount,
@@ -287,7 +288,7 @@ export class WorkerProcessor {
           this.cost,
         );
         creatureValidate(creature);
-        const json = JSON.stringify(creature.exportJSON());
+        const json = JSON.stringify(exportJSONWithRuntimeIds(creature));
 
         const response = {
           taskID: data.taskID,

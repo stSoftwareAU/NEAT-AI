@@ -1,6 +1,7 @@
 import type { Creature } from "../Creature.ts";
 import type { CreatureExport } from "./CreatureInterfaces.ts";
 import { neuronUuid } from "../neuron/NeuronSerialization.ts";
+import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 
 /**
  * Populate a local `CreatureExport` clone with the live creature's runtime ids.
@@ -48,7 +49,5 @@ export function populateRuntimeIdsFromCreature(
 }
 
 export function exportJSONWithRuntimeIds(creature: Creature): CreatureExport {
-  const exported = creature.exportJSON();
-  populateRuntimeIdsFromCreature(creature, exported);
-  return exported;
+  return new CreatureExportBuilder(creature).build(true);
 }

@@ -12,6 +12,7 @@ import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { exportJSONWithRuntimeIds } from "../architecture/PopulateRuntimeIdsFromCreature.ts";
 import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { calculate as calculateScore } from "../architecture/Score.ts";
 import { fineTuneImprovement } from "../blackbox/FineTune.ts";
@@ -265,7 +266,7 @@ export function scheduleTraining(
     if (backtracked.length > 0 || forward.length > 0) {
       const untrainedError = getTag(trainedCreature, "untrained-error");
       if (backtracked.length > 0) {
-        const backtrackedCreature = backtracked[0].exportJSON();
+        const backtrackedCreature = exportJSONWithRuntimeIds(backtracked[0]);
         addTag(backtrackedCreature, "trainID", r.train.ID);
         addTag(backtrackedCreature, "trainVariant", "overshot");
         if (untrainedError) {
@@ -274,7 +275,7 @@ export function scheduleTraining(
         r.train.backtracked = JSON.stringify(backtrackedCreature);
       }
       if (forward.length > 0) {
-        const forwardCreature = forward[0].exportJSON();
+        const forwardCreature = exportJSONWithRuntimeIds(forward[0]);
         addTag(forwardCreature, "trainID", r.train.ID);
         addTag(forwardCreature, "trainVariant", "undershot");
         if (untrainedError) {
@@ -321,7 +322,7 @@ export function scheduleTraining(
       duration: 0,
       train: {
         ID: uuid,
-        creature: JSON.stringify(creature.exportJSON()),
+        creature: JSON.stringify(exportJSONWithRuntimeIds(creature)),
         error: Number.POSITIVE_INFINITY,
         trace: "",
       },
