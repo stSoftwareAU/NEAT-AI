@@ -27,7 +27,9 @@ function wireUuidForId(base: Creature, neuronId: number): string {
   if (neuronId >= 0 && neuronId < base.input) {
     return `input-${neuronId}`;
   }
-  const neuron = base.exportJSON().neurons.find((n) => n.id === neuronId);
+  const neuron = base.exportInternalJSON().neurons.find((n) =>
+    n.id === neuronId
+  );
   if (!neuron?.uuid) {
     throw new Error(`Neuron ${neuronId} is missing wire uuid`);
   }

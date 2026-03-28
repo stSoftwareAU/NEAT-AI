@@ -42,7 +42,7 @@ export function removeHarmfulNeuron(
   if (!harmfulNeuron) return undefined;
 
   const creatureUUID = CreatureUtil.makeUUID(creature);
-  const exportJSON = creature.exportJSON();
+  const exportJSON = creature.exportInternalJSON();
   const wireToId = buildWireToRuntimeIdMap(creature);
   const harmfulNeuronId = resolveSingleNeuronReference(
     wireToId,
@@ -191,7 +191,7 @@ export function removeLowImpactNeuron(
   if (!removalCandidate) return undefined;
 
   const creatureUUID = CreatureUtil.makeUUID(creature);
-  const exportJSON = creature.exportJSON();
+  const exportJSON = creature.exportInternalJSON();
   const wireToId = buildWireToRuntimeIdMap(creature);
   const removalNeuronId = resolveSingleNeuronReference(
     wireToId,

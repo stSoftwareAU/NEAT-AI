@@ -16,7 +16,7 @@ export function buildWireToRuntimeIdMap(
   for (let i = 0; i < creature.input; i++) {
     wireToId.set(`input-${i}`, i);
   }
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   for (const neuron of exported.neurons) {
     if (typeof neuron.uuid !== "string" || neuron.id === undefined) continue;
     wireToId.set(neuron.uuid, neuron.id);
@@ -31,7 +31,7 @@ export function buildRuntimeIdToWireMap(
   for (let i = 0; i < creature.input; i++) {
     idToWire.set(i, `input-${i}`);
   }
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   for (const neuron of exported.neurons) {
     if (typeof neuron.uuid !== "string" || neuron.id === undefined) continue;
     idToWire.set(neuron.id, neuron.uuid);

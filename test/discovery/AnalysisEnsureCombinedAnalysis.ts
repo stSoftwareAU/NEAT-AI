@@ -37,7 +37,7 @@ function makeCreature(): Creature {
 }
 
 function runtimeIdForUuid(creature: Creature, uuid: string): number {
-  const id = creature.exportJSON().neurons.find((neuron) =>
+  const id = creature.exportInternalJSON().neurons.find((neuron) =>
     neuron.uuid === uuid
   )
     ?.id;

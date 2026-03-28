@@ -73,7 +73,7 @@ export function removeSynapse(
   }
 
   const creatureUUID = CreatureUtil.makeUUID(creature);
-  const exportJSON = creature.exportJSON();
+  const exportJSON = creature.exportInternalJSON();
   exportJSON.synapses = exportJSON.synapses.filter((s) => {
     return s.fromId !== resolved.fromId ||
       s.toId !== resolved.toId;
@@ -144,7 +144,7 @@ export function addHelpfulSynapses(
 ): Creature | undefined {
   if (!helpfulSynapses || helpfulSynapses.length === 0) return;
   const creatureUUID = CreatureUtil.makeUUID(creature);
-  const exportJSON = creature.exportJSON();
+  const exportJSON = creature.exportInternalJSON();
   const wireToId = buildWireToRuntimeIdMap(creature);
 
   const appliedSynapses: CandidateSynapse[] = [];

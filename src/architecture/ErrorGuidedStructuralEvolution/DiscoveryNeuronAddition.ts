@@ -44,7 +44,7 @@ export function addHelpfulNeurons(
 ): Creature | undefined {
   if (!helpfulNeurons || helpfulNeurons.length === 0) return;
   const creatureUUID = CreatureUtil.makeUUID(creature);
-  const exportJSON = creature.exportJSON();
+  const exportJSON = creature.exportInternalJSON();
   const wireToId = buildWireToRuntimeIdMap(creature);
 
   const existingNeuronIds = new Set(
@@ -309,7 +309,7 @@ export function changeSquash(
 ): Creature | undefined {
   if (!helpfulSquashes || helpfulSquashes.length === 0) return;
   const creatureUUID = CreatureUtil.makeUUID(creature);
-  const exportJSON = creature.exportJSON();
+  const exportJSON = creature.exportInternalJSON();
   const wireToId = buildWireToRuntimeIdMap(creature);
 
   const appliedSquashes: CandidateSquash[] = [];
