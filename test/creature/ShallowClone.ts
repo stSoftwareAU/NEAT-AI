@@ -1,4 +1,9 @@
-import { assertAlmostEquals, assertEquals, assertNotEquals } from "@std/assert";
+import {
+  assert,
+  assertAlmostEquals,
+  assertEquals,
+  assertNotEquals,
+} from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../src/Creature.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
@@ -105,6 +110,26 @@ Deno.test("shallowClone - mutable state copying", () => {
 
   const tagValue = getTag(clone, "test-tag");
   assertEquals(tagValue, "test-value", "Tags should be copied");
+});
+
+Deno.test("shallowClone - memetic weights object is not shared with original", () => {
+  const original = new Creature(2, 1);
+  original.memetic = {
+    generation: 1,
+    weights: { 0: [{ toId: -1, weight: 0.5 }] },
+    biases: {},
+    score: 0,
+  };
+
+  const clone = original.shallowClone();
+  assert(clone.memetic?.weights[0]);
+  clone.memetic!.weights[0]![0]!.weight = 99;
+
+  assertEquals(
+    original.memetic!.weights[0]![0]!.weight,
+    0.5,
+    "nested memetic must be deep-copied so clone mutations cannot strand parent",
+  );
 });
 
 Deno.test("shallowClone - independence from original (neuron modification)", () => {
