@@ -284,12 +284,6 @@ Deno.test({
   name:
     "DiscoveryScenario: coordinated structural - discovery finds coordinated-structural candidate",
   fn() {
-    // Neuron indices in the crippled creature:
-    // 0 = input-0, 1 = input-1, 2 = hidden-A, 3 = hidden-B, 4 = hidden-C, 5 = output-0
-    const hiddenAId = 2;
-    const hiddenBId = 3;
-    const hiddenCId = 4;
-
     const mockDiscoveryResult = {
       ID: "test-coordinated-structural",
       addHelpfulSynapses: undefined,
@@ -302,14 +296,14 @@ Deno.test({
             // Restore hidden-A's bias from 0.0 back to 0.3
             {
               type: "setBias" as const,
-              neuronId: hiddenAId,
+              neuronUuid: "hidden-A",
               bias: 0.3,
             },
             // Restore the hidden-B → hidden-C weight from 0.05 back to 0.8
             {
               type: "setWeight" as const,
-              fromNeuronId: hiddenBId,
-              toNeuronId: hiddenCId,
+              fromNeuronUuid: "hidden-B",
+              toNeuronUuid: "hidden-C",
               weight: 0.8,
             },
           ],

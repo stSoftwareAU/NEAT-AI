@@ -18,12 +18,7 @@ import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { Mish } from "../../src/methods/activations/types/Mish.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 
-// Integer IDs for neurons in makeBaselineCreature (deterministicIdFromUuid).
-// Input neurons: id = inputIndex (0..3), output neurons: id = -(index+1) (-1, -2).
-const HIDDEN_1_ID = 1775329650; // "hidden-1"
 const HIDDEN_2_ID = 1775329649; // "hidden-2"
-const OUTPUT_0_ID = -1; // "output-0"
-const OUTPUT_1_ID = -2; // "output-1"
 
 function makeBaselineCreature(): Creature {
   const creature = Creature.fromJSON({

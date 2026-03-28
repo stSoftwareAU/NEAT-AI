@@ -19,11 +19,6 @@ import { buildDiscoveryCandidates } from "../../src/discovery/DiscoveryCandidate
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 
-// Integer IDs for neurons used in these tests (explicit ids in fixture):
-// hidden-A → 6000, hidden-B → 6001, output-0 → -1
-const ID_HIDDEN_A = 6000;
-const ID_HIDDEN_B = 6001;
-
 /**
  * Creates a valid creature with a specific structure where we can test
  * synapse addition without triggering fix() random connection behaviour.

@@ -1,6 +1,7 @@
 import { assertEquals, assertExists } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { DiscoveryReplayRunner } from "../../src/discovery/DiscoveryReplayRunner.ts";
+import { DISCOVERY_WIRE_SCHEMA_VERSION } from "../../src/discovery/DiscoveryWireFormat.ts";
 import type { SuccessCacheEntry } from "../../src/discovery/SuccessCache.ts";
 import {
   archiveSuccessByKeySync,
@@ -11,6 +12,8 @@ import { makeForwardOnlyCreature as makeBaseCreature } from "../fixtures/SimpleC
 
 function makeEntry(overrides: Partial<SuccessCacheEntry>): SuccessCacheEntry {
   return {
+    wireSchemaVersion: overrides.wireSchemaVersion ??
+      DISCOVERY_WIRE_SCHEMA_VERSION,
     key: overrides.key ?? "k",
     changeType: overrides.changeType ?? "add-synapses",
     description: overrides.description,

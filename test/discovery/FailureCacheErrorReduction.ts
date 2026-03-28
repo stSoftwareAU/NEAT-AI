@@ -244,15 +244,9 @@ Deno.test("recordFailure omits actualErrorReduction when candidateError is Infin
 });
 
 Deno.test("extractTargetNeuronInfo finds neuron using UUID wire fields for add-synapses", () => {
-  // Post-migration: extractTargetNeuronInfo extracts the integer neuron ID from
-  // the description using regex /-> (\d+)/ and looks up the neuron by that integer ID.
-  // deterministicIdFromUuid("3e979317-989f-4c5c-8272-02fd85be94a8") = 1434298466
-
   const fullTargetUUID = "3e979317-989f-4c5c-8272-02fd85be94a8";
-  // Expected integer ID for the target neuron
-  const TARGET_ID = 1434298466;
 
-  // Create creature with UUID (will get integer ID via deterministicIdFromUuid)
+  // Create a creature whose discovery payload addresses the target by wire UUID.
   const creature = Creature.fromJSON({
     input: 2,
     output: 1,
@@ -268,12 +262,11 @@ Deno.test("extractTargetNeuronInfo finds neuron using UUID wire fields for add-s
   creature.validate();
   CreatureUtil.makeUUID(creature);
 
-  // Create add-synapses candidate with integer IDs in description (post-migration format)
   const candidate: DiscoveryCandidate = {
     creature,
     change: {
       type: "add-synapses",
-      description: `🔗 Added helpful synapse 0 -> ${TARGET_ID}`,
+      description: `🔗 Added helpful synapse input-0 -> ${fullTargetUUID}`,
       synapseCandidate: {
         fromNeuronUuid: "input-0",
         toNeuronUuid: fullTargetUUID,

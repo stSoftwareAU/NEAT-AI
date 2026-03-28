@@ -61,8 +61,8 @@ Deno.test({
     )!.id;
 
     const candidates = [{
-      fromNeuronId: 0,
-      toNeuronId: hiddenTargetId,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "hidden-target",
       squash: IDENTITY.NAME,
       bias: 0,
       incomingWeight: 1,
@@ -128,8 +128,8 @@ Deno.test({
     creature.validate();
 
     const candidates = [{
-      fromNeuronId: 0,
-      toNeuronId: -2,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "output-1",
       squash: IDENTITY.NAME,
       bias: 0,
       incomingWeight: 1,
@@ -191,8 +191,8 @@ Deno.test({
     CreatureUtil.makeUUID(creature);
 
     const candidates = [{
-      fromNeuronId: 0,
-      toNeuronId: -1,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "output-0",
       squash: TANH.NAME,
       bias: 0.1,
       incomingWeight: 0.5,

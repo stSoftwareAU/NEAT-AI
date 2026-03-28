@@ -23,8 +23,8 @@ Deno.test("Discovery addHelpfulSynapses tags new synapses and tags survive expor
 
   const discoveryID = "abcd1234";
   const candidate: CandidateSynapse = {
-    fromNeuronId: 1,
-    toNeuronId: -1,
+    fromNeuronUuid: "input-1",
+    toNeuronUuid: "output-0",
     weight: 0.25,
     targetNeuronImpact: 1,
     expectedCreatureErrorReduction: 0,
@@ -42,7 +42,9 @@ Deno.test("Discovery addHelpfulSynapses tags new synapses and tags survive expor
   assert(updated);
 
   const exported = updated.exportJSON();
-  const added = exported.synapses.find((s) => s.fromId === 1 && s.toId === -1);
+  const added = exported.synapses.find(
+    (s) => s.fromUUID === "input-1" && s.toUUID === "output-0",
+  );
   assert(added, "Expected the helpful synapse to be added");
 
   // Tag names are strings and values are persisted via JSON.
@@ -53,8 +55,8 @@ Deno.test("Discovery addHelpfulSynapses tags new synapses and tags survive expor
 
   // Round-trip import/export preserves tags.
   const roundTripped = Creature.fromJSON(exported, true).exportJSON();
-  const added2 = roundTripped.synapses.find((s) =>
-    s.fromId === 1 && s.toId === -1
+  const added2 = roundTripped.synapses.find(
+    (s) => s.fromUUID === "input-1" && s.toUUID === "output-0",
   );
   assert(added2);
   assertEquals(getTag(added2, "discovered"), "synapse");

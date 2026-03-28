@@ -16,17 +16,6 @@ import {
   type DiscoveryCandidate,
 } from "../../src/discovery/DiscoveryCandidates.ts";
 
-// Integer IDs for neurons in makeTestCreature (deterministicIdFromUuid).
-// Input neurons: id = inputIndex (0, 1, 2)
-// Output neuron: id = -1
-const HIDDEN_A_ID = 1775329634; // "hidden-A"
-const HIDDEN_B_ID = 1775329633; // "hidden-B"
-const HIDDEN_C_ID = 1775329632; // "hidden-C"
-const HIDDEN_D_ID = 1775329631; // "hidden-D"
-const INPUT_0_ID = 0;
-const INPUT_1_ID = 1;
-const INPUT_2_ID = 2;
-
 /**
  * Creates a base creature with known structure for combination testing.
  */
@@ -57,15 +46,15 @@ function makeTestCreature() {
 }
 
 /**
- * Creates a change-squash candidate for the given neuron integer ID.
+ * Creates a change-squash candidate for the given hidden neuron wire UUID.
  */
 function makeSquashCandidate(
   baseJSON: ReturnType<Creature["exportJSON"]>,
-  neuronId: number,
+  neuronUuid: string,
   newSquash: string,
 ): DiscoveryCandidate {
   const json = structuredClone(baseJSON);
-  const neuron = json.neurons.find((n) => n.id === neuronId);
+  const neuron = json.neurons.find((n) => n.uuid === neuronUuid);
   if (neuron) neuron.squash = newSquash;
   const creature = Creature.fromJSON(json);
   delete creature.uuid;
@@ -75,9 +64,9 @@ function makeSquashCandidate(
     creature,
     change: {
       type: "change-squash",
-      description: `Changed ${neuronId} to ${newSquash}`,
+      description: `Changed ${neuronUuid} to ${newSquash}`,
       squashCandidate: {
-        neuronId,
+        neuronUuid,
         previousSquash: "IDENTITY",
         squash: newSquash,
         expectedCreatureScoreGain: 0.1,
@@ -89,16 +78,20 @@ function makeSquashCandidate(
 }
 
 /**
- * Creates an add-synapses candidate using integer neuron IDs.
+ * Creates an add-synapses candidate using wire UUID endpoints.
  */
 function makeAddSynapseCandidate(
   baseJSON: ReturnType<Creature["exportJSON"]>,
-  fromId: number,
-  toId: number,
+  fromNeuronUuid: string,
+  toNeuronUuid: string,
   weight: number,
 ): DiscoveryCandidate {
   const json = structuredClone(baseJSON);
-  json.synapses.push({ fromId, toId, weight });
+  json.synapses.push({
+    fromUUID: fromNeuronUuid,
+    toUUID: toNeuronUuid,
+    weight,
+  });
   const creature = Creature.fromJSON(json);
   delete creature.uuid;
   creature.fix();
@@ -107,10 +100,10 @@ function makeAddSynapseCandidate(
     creature,
     change: {
       type: "add-synapses",
-      description: `Added synapse ${fromId} -> ${toId}`,
+      description: `Added synapse ${fromNeuronUuid} -> ${toNeuronUuid}`,
       synapseCandidate: {
-        fromNeuronId: fromId,
-        toNeuronId: toId,
+        fromNeuronUuid,
+        toNeuronUuid,
         weight,
         targetNeuronImpact: 1.0,
         expectedCreatureErrorReduction: 0,
@@ -130,9 +123,9 @@ Deno.test(
 
     // Create 3 successful candidates (different types to avoid slot conflicts)
     const candidates: DiscoveryCandidate[] = [
-      makeSquashCandidate(baseJSON, HIDDEN_A_ID, "TANH"),
-      makeSquashCandidate(baseJSON, HIDDEN_B_ID, "Mish"),
-      makeAddSynapseCandidate(baseJSON, INPUT_0_ID, HIDDEN_B_ID, 0.35),
+      makeSquashCandidate(baseJSON, "hidden-A", "TANH"),
+      makeSquashCandidate(baseJSON, "hidden-B", "Mish"),
+      makeAddSynapseCandidate(baseJSON, "input-0", "hidden-B", 0.35),
     ];
 
     const combined = buildCombinedFromSuccessful(
@@ -164,10 +157,10 @@ Deno.test(
 
     // Create 4 successful candidates of different types/slots
     const candidates: DiscoveryCandidate[] = [
-      makeSquashCandidate(baseJSON, HIDDEN_A_ID, "TANH"),
-      makeSquashCandidate(baseJSON, HIDDEN_B_ID, "Mish"),
-      makeSquashCandidate(baseJSON, HIDDEN_C_ID, "TANH"),
-      makeAddSynapseCandidate(baseJSON, INPUT_0_ID, HIDDEN_B_ID, 0.35),
+      makeSquashCandidate(baseJSON, "hidden-A", "TANH"),
+      makeSquashCandidate(baseJSON, "hidden-B", "Mish"),
+      makeSquashCandidate(baseJSON, "hidden-C", "TANH"),
+      makeAddSynapseCandidate(baseJSON, "input-0", "hidden-B", 0.35),
     ];
 
     const combined = buildCombinedFromSuccessful(
@@ -208,11 +201,11 @@ Deno.test(
 
     // Create 5 successful candidates of different types/slots
     const candidates: DiscoveryCandidate[] = [
-      makeSquashCandidate(baseJSON, HIDDEN_A_ID, "TANH"),
-      makeSquashCandidate(baseJSON, HIDDEN_B_ID, "Mish"),
-      makeSquashCandidate(baseJSON, HIDDEN_C_ID, "TANH"),
-      makeSquashCandidate(baseJSON, HIDDEN_D_ID, "Mish"),
-      makeAddSynapseCandidate(baseJSON, INPUT_0_ID, HIDDEN_B_ID, 0.35),
+      makeSquashCandidate(baseJSON, "hidden-A", "TANH"),
+      makeSquashCandidate(baseJSON, "hidden-B", "Mish"),
+      makeSquashCandidate(baseJSON, "hidden-C", "TANH"),
+      makeSquashCandidate(baseJSON, "hidden-D", "Mish"),
+      makeAddSynapseCandidate(baseJSON, "input-0", "hidden-B", 0.35),
     ];
 
     const combined = buildCombinedFromSuccessful(
@@ -245,9 +238,9 @@ Deno.test(
 
     // Create 3 candidates - leave-one-out of size 2 should not duplicate pairwise
     const candidates: DiscoveryCandidate[] = [
-      makeSquashCandidate(baseJSON, HIDDEN_A_ID, "TANH"),
-      makeSquashCandidate(baseJSON, HIDDEN_B_ID, "Mish"),
-      makeAddSynapseCandidate(baseJSON, INPUT_0_ID, HIDDEN_B_ID, 0.35),
+      makeSquashCandidate(baseJSON, "hidden-A", "TANH"),
+      makeSquashCandidate(baseJSON, "hidden-B", "Mish"),
+      makeAddSynapseCandidate(baseJSON, "input-0", "hidden-B", 0.35),
     ];
 
     const combined = buildCombinedFromSuccessful(
@@ -277,21 +270,21 @@ Deno.test(
     const candidates: DiscoveryCandidate[] = [];
 
     // 4 squash candidates (A,B,C,D with TANH)
-    candidates.push(makeSquashCandidate(baseJSON, HIDDEN_A_ID, "TANH"));
-    candidates.push(makeSquashCandidate(baseJSON, HIDDEN_B_ID, "Mish"));
-    candidates.push(makeSquashCandidate(baseJSON, HIDDEN_C_ID, "TANH"));
-    candidates.push(makeSquashCandidate(baseJSON, HIDDEN_D_ID, "Mish"));
+    candidates.push(makeSquashCandidate(baseJSON, "hidden-A", "TANH"));
+    candidates.push(makeSquashCandidate(baseJSON, "hidden-B", "Mish"));
+    candidates.push(makeSquashCandidate(baseJSON, "hidden-C", "TANH"));
+    candidates.push(makeSquashCandidate(baseJSON, "hidden-D", "Mish"));
 
     // 8 add-synapse candidates with unique from->to pairs
-    const synapsePairs: [number, number, number][] = [
-      [INPUT_0_ID, HIDDEN_C_ID, 0.31],
-      [INPUT_0_ID, HIDDEN_D_ID, 0.32],
-      [INPUT_1_ID, HIDDEN_A_ID, 0.33],
-      [INPUT_1_ID, HIDDEN_C_ID, 0.34],
-      [INPUT_1_ID, HIDDEN_D_ID, 0.35],
-      [INPUT_2_ID, HIDDEN_A_ID, 0.36],
-      [INPUT_2_ID, HIDDEN_B_ID, 0.37],
-      [INPUT_2_ID, HIDDEN_D_ID, 0.38],
+    const synapsePairs: [string, string, number][] = [
+      ["input-0", "hidden-C", 0.31],
+      ["input-0", "hidden-D", 0.32],
+      ["input-1", "hidden-A", 0.33],
+      ["input-1", "hidden-C", 0.34],
+      ["input-1", "hidden-D", 0.35],
+      ["input-2", "hidden-A", 0.36],
+      ["input-2", "hidden-B", 0.37],
+      ["input-2", "hidden-D", 0.38],
     ];
 
     for (const [from, to, weight] of synapsePairs) {
@@ -336,10 +329,10 @@ Deno.test(
     // Create 4 squash candidates on different neurons - each will change the squash
     // function. This allows us to verify that leave-one-out excludes exactly one.
     const candidates: DiscoveryCandidate[] = [
-      makeSquashCandidate(baseJSON, HIDDEN_A_ID, "TANH"),
-      makeSquashCandidate(baseJSON, HIDDEN_B_ID, "Mish"),
-      makeSquashCandidate(baseJSON, HIDDEN_C_ID, "TANH"),
-      makeAddSynapseCandidate(baseJSON, INPUT_0_ID, HIDDEN_B_ID, 0.35),
+      makeSquashCandidate(baseJSON, "hidden-A", "TANH"),
+      makeSquashCandidate(baseJSON, "hidden-B", "Mish"),
+      makeSquashCandidate(baseJSON, "hidden-C", "TANH"),
+      makeAddSynapseCandidate(baseJSON, "input-0", "hidden-B", 0.35),
     ];
 
     const combined = buildCombinedFromSuccessful(

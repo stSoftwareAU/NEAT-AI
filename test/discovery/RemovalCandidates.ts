@@ -37,13 +37,11 @@ Deno.test("removeLowImpactNeuron applies bias compensation for outgoing synapses
     ],
   });
 
-  // neuron-X ID from deterministicIdFromUuid("neuron-X")
-  const NEURON_X_ID = 1338473150;
-  // neuron-T ID from deterministicIdFromUuid("neuron-T")
-  const NEURON_T_ID = 1338473146;
+  const NEURON_X_ID = 1338473150; // deterministicIdFromUuid("neuron-X") — exportJSON assertions
+  const NEURON_T_ID = 1338473146; // deterministicIdFromUuid("neuron-T")
 
   const candidate: RemovalCandidate = {
-    neuronId: NEURON_X_ID,
+    neuronUuid: "neuron-X",
     totalError: 5.0,
     impact: 0.001,
     reason: "Test",
@@ -100,11 +98,8 @@ Deno.test("removeLowImpactNeuron makes no bias changes when removed neuron has n
     ],
   });
 
-  // hidden-orphan ID from deterministicIdFromUuid("hidden-orphan")
-  const HIDDEN_ORPHAN_ID = 718497845;
-
   const candidate: RemovalCandidate = {
-    neuronId: HIDDEN_ORPHAN_ID,
+    neuronUuid: "hidden-orphan",
     totalError: 5.0,
     impact: 0.001, // Very low impact (0.1%)
     reason: "High error but very low impact - far from outputs",
@@ -150,7 +145,7 @@ Deno.test("removeLowImpactNeuron returns undefined for non-existent neuron", () 
   });
 
   const candidate: RemovalCandidate = {
-    neuronId: 7001,
+    neuronUuid: "no-such-hidden-neuron",
     totalError: 5.0,
     impact: 0.001,
     reason: "Test",
@@ -178,7 +173,7 @@ Deno.test("removeLowImpactNeuron returns undefined for output neurons", () => {
   });
 
   const candidate: RemovalCandidate = {
-    neuronId: -1,
+    neuronUuid: "output-0",
     totalError: 5.0,
     impact: 0.001,
     reason: "Test",
@@ -219,8 +214,7 @@ Deno.test("buildDiscoveryCandidates creates removal candidates for low-impact ne
     removeHarmfulNeurons: undefined,
     removalCandidates: [
       {
-        // hidden-low-impact ID from deterministicIdFromUuid("hidden-low-impact")
-        neuronId: 628712542,
+        neuronUuid: "hidden-low-impact",
         totalError: 5.0,
         impact: 0.005, // 0.5% impact
         reason: "High error (5.0000) but very low impact (0.005000)",
@@ -284,8 +278,7 @@ Deno.test("buildDiscoveryCandidates creates removal candidate with undefined exp
     removeHarmfulNeurons: undefined,
     removalCandidates: [
       {
-        // hidden-low-impact ID from deterministicIdFromUuid("hidden-low-impact")
-        neuronId: 628712542,
+        neuronUuid: "hidden-low-impact",
         totalError: 1.0,
         impact: 1e-10, // Impact below costOfGrowth
         reason: "Impact below costOfGrowth",
@@ -358,8 +351,7 @@ Deno.test("removal candidates should have undefined expectedErrorReduction to pa
     removeHarmfulNeurons: undefined,
     removalCandidates: [
       {
-        // hidden-low-impact ID from deterministicIdFromUuid("hidden-low-impact")
-        neuronId: 628712542,
+        neuronUuid: "hidden-low-impact",
         totalError: 1.0,
         impact: 1e-10,
         reason: "Impact below costOfGrowth",
@@ -394,9 +386,8 @@ Deno.test("buildDiscoveryCandidates uses crippled-removal.json for near-zero wei
   const baseCreature = Creature.fromJSON(creatureJSON);
 
   // Simulate what Rust would return - neuron with near-zero weight synapses
-  // has impact below costOfGrowth
-  // candidate-for-removal explicit ID from fixture
-  const CANDIDATE_FOR_REMOVAL_ID = 7002;
+  // has impact below costOfGrowth (uuid matches test/data/crippled-removal.json)
+  const CANDIDATE_FOR_REMOVAL_UUID = "candidate-for-removal";
 
   const discovery: DiscoverResult = {
     ID: "crippled-removal-test",
@@ -406,7 +397,7 @@ Deno.test("buildDiscoveryCandidates uses crippled-removal.json for near-zero wei
     removeHarmfulNeurons: undefined,
     removalCandidates: [
       {
-        neuronId: CANDIDATE_FOR_REMOVAL_ID,
+        neuronUuid: CANDIDATE_FOR_REMOVAL_UUID,
         totalError: 0.001,
         impact: 1e-24, // Near-zero impact due to 1e-12 weight synapses
         reason: "Impact below costOfGrowth",
@@ -429,9 +420,9 @@ Deno.test("buildDiscoveryCandidates uses crippled-removal.json for near-zero wei
 
   const candidate = removalCandidates[0];
 
-  // Verify the neuron was removed
+  // Verify the neuron was removed (wire uuid from fixture)
   const removedNeuronExists = candidate.creature.neurons.some(
-    (n) => n.id === CANDIDATE_FOR_REMOVAL_ID,
+    (n) => n.uuid === CANDIDATE_FOR_REMOVAL_UUID,
   );
   assertEquals(
     removedNeuronExists,
@@ -521,7 +512,7 @@ Deno.test("combined removal candidate should be created when some removals fail"
     ],
   });
 
-  // Deterministic IDs from deterministicIdFromUuid
+  // Runtime ids for exportJSON() assertions on the combined candidate creature
   const NEURON_B_ID = 444159902; // "neuron-B-target-of-A"
   const NEURON_A_ID = 1683794003; // "neuron-A-connects-only-to-B"
   const NEURON_C_ID = 443133526; // "neuron-C-independent"
@@ -534,23 +525,20 @@ Deno.test("combined removal candidate should be created when some removals fail"
     removeHarmfulSynapse: undefined,
     removeHarmfulNeurons: undefined,
     removalCandidates: [
-      // B is removed first - this orphans A
       {
-        neuronId: NEURON_B_ID,
+        neuronUuid: "neuron-B-target-of-A",
         totalError: 0.001,
         impact: 1e-10,
         reason: "Low impact",
       },
-      // A is removed second - should fail because it was already removed by orphan cleanup
       {
-        neuronId: NEURON_A_ID,
+        neuronUuid: "neuron-A-connects-only-to-B",
         totalError: 0.001,
         impact: 1e-10,
         reason: "Low impact",
       },
-      // C is independent and should still be removed
       {
-        neuronId: NEURON_C_ID,
+        neuronUuid: "neuron-C-independent",
         totalError: 0.001,
         impact: 1e-10,
         reason: "Low impact",
@@ -619,9 +607,6 @@ Deno.test("combined removal candidate should be created when some removals fail"
  * "Memetic from UUID {uuid} has no valid neuron."
  */
 Deno.test("removeLowImpactNeuron cleans up memetic data for removed neuron", () => {
-  // hidden-with-memetic ID from deterministicIdFromUuid("hidden-with-memetic")
-  const HIDDEN_WITH_MEMETIC_ID = 1207081178;
-
   // Create a creature with memetic data that references the neuron we'll remove
   const creatureExport = {
     input: 2,
@@ -671,7 +656,7 @@ Deno.test("removeLowImpactNeuron cleans up memetic data for removed neuron", () 
   const creature = Creature.fromJSON(creatureExport as any);
 
   const candidate: RemovalCandidate = {
-    neuronId: HIDDEN_WITH_MEMETIC_ID,
+    neuronUuid: "hidden-with-memetic",
     totalError: 5.0,
     impact: 0.001, // Very low impact (0.1%)
     reason: "High error but very low impact - far from outputs",

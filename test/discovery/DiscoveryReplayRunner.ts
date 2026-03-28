@@ -1,11 +1,14 @@
 import { assertEquals, assertExists } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { DiscoveryReplayRunner } from "../../src/discovery/DiscoveryReplayRunner.ts";
+import { DISCOVERY_WIRE_SCHEMA_VERSION } from "../../src/discovery/DiscoveryWireFormat.ts";
 import type { SuccessCacheEntry } from "../../src/discovery/SuccessCache.ts";
 import { makeForwardOnlyCreature as makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
 function makeEntry(overrides: Partial<SuccessCacheEntry>): SuccessCacheEntry {
   return {
+    wireSchemaVersion: overrides.wireSchemaVersion ??
+      DISCOVERY_WIRE_SCHEMA_VERSION,
     key: overrides.key ?? "k",
     changeType: overrides.changeType ?? "add-synapses",
     description: overrides.description,
@@ -42,13 +45,17 @@ Deno.test("DiscoveryReplayRunner prunes stale successes and prefers best combo",
 
   const alreadyApplied = makeEntry({
     key: "k4",
-    changeType: "remove-neuron",
+    changeType: "add-synapses",
     rustRequest: {
-      harmfulNeuronCandidate: {
-        neuronId: 7000,
-        errorMagnitude: 0,
+      synapseCandidate: {
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
+        weight: 0.2,
+        targetNeuronImpact: 1,
+        expectedCreatureErrorReduction: 0,
         expectedCreatureScoreGain: 0,
-        sampleCount: 0,
+        improvedCount: 1,
+        totalCount: 1,
       },
     },
   });

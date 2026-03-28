@@ -1,8 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-
-// Integer ID for hidden-low-impact neuron (from UUID hash of "hidden-low-impact")
-const ID_HIDDEN_LOW_IMPACT = 628712542;
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
@@ -113,7 +110,7 @@ Deno.test(
       removeHarmfulNeurons: undefined,
       removalCandidates: [
         {
-          neuronId: ID_HIDDEN_LOW_IMPACT,
+          neuronUuid: "hidden-low-impact",
           totalError: 5.0,
           impact: 0.001, // Very low impact (0.1%)
           reason: "High error but very low impact - candidate for removal",
@@ -127,7 +124,7 @@ Deno.test(
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
       const hasHiddenNeuron = json.neurons.some(
-        (n) => n.id === ID_HIDDEN_LOW_IMPACT,
+        (n) => n.uuid === "hidden-low-impact",
       );
       // Removal may slightly increase error, but improves score via complexity reduction
       return hasHiddenNeuron ? baselineError : baselineError + 0.001;

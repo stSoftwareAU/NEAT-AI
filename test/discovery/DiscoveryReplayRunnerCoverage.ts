@@ -10,6 +10,7 @@ import type { CoordinatedStructuralCandidate } from "../../src/architecture/Erro
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 import { DiscoveryReplayRunner } from "../../src/discovery/DiscoveryReplayRunner.ts";
+import { DISCOVERY_WIRE_SCHEMA_VERSION } from "../../src/discovery/DiscoveryWireFormat.ts";
 import type { SuccessCacheEntry } from "../../src/discovery/SuccessCache.ts";
 
 // Integer IDs for neurons used in these tests (from UUID hashing):
@@ -25,6 +26,7 @@ function makeEntry(
   rustRequest: Record<string, unknown>,
 ): SuccessCacheEntry {
   return {
+    wireSchemaVersion: DISCOVERY_WIRE_SCHEMA_VERSION,
     key,
     changeType,
     description: key,
@@ -55,8 +57,8 @@ Deno.test("DiscoveryReplayRunner: default applyEntry replays singles, then all-s
   creature.uuid = "base";
 
   const addSynapse: CandidateSynapse = {
-    fromNeuronId: 0,
-    toNeuronId: -1,
+    fromNeuronUuid: "input-0",
+    toNeuronUuid: "output-0",
     weight: 0.5,
     targetNeuronImpact: 1,
     expectedCreatureErrorReduction: 0.01,
@@ -67,7 +69,7 @@ Deno.test("DiscoveryReplayRunner: default applyEntry replays singles, then all-s
   };
 
   const changeSquash: CandidateSquash = {
-    neuronId: ID_HIDDEN_0,
+    neuronUuid: "hidden-0",
     previousSquash: IDENTITY.NAME,
     squash: TANH.NAME,
     expectedCreatureScoreGain: 0.01,
@@ -148,8 +150,8 @@ Deno.test("DiscoveryReplayRunner: skips already-applied add-synapses candidates"
   creature.uuid = "base";
 
   const addSynapse: CandidateSynapse = {
-    fromNeuronId: 0,
-    toNeuronId: -1,
+    fromNeuronUuid: "input-0",
+    toNeuronUuid: "output-0",
     weight: 0.5,
     targetNeuronImpact: 1,
     expectedCreatureErrorReduction: 0.01,
@@ -202,7 +204,7 @@ Deno.test("DiscoveryReplayRunner: prunes stale candidates (remove-low-impact + r
   creature.uuid = "base";
 
   const removal: RemovalCandidate = {
-    neuronId: ID_NEURON_X,
+    neuronUuid: "neuron-X",
     totalError: 1,
     impact: 0.0001,
     reason: "test",
@@ -210,8 +212,8 @@ Deno.test("DiscoveryReplayRunner: prunes stale candidates (remove-low-impact + r
   };
 
   const removeSynapseDetails = {
-    fromNeuronId: ID_NEURON_T,
-    toNeuronId: -1,
+    fromNeuronUuid: "neuron-T",
+    toNeuronUuid: "output-0",
   };
 
   const eRemoval = makeEntry("low-impact", "remove-low-impact", {
@@ -269,8 +271,8 @@ Deno.test("DiscoveryReplayRunner: add-neurons already-applied detection matches 
   creature.uuid = "base";
 
   const neuronDetails = {
-    fromNeuronId: 0,
-    toNeuronId: -1,
+    fromNeuronUuid: "input-0",
+    toNeuronUuid: "output-0",
     incomingWeight: 0.12,
     outgoingWeight: 0.34,
     bias: 0.001,
@@ -278,8 +280,8 @@ Deno.test("DiscoveryReplayRunner: add-neurons already-applied detection matches 
   };
 
   const neuronCandidate: CandidateNeuron = {
-    fromNeuronId: 0,
-    toNeuronId: -1,
+    fromNeuronUuid: "input-0",
+    toNeuronUuid: "output-0",
     incomingWeight: 0.12,
     outgoingWeight: 0.34,
     squash: IDENTITY.NAME,
@@ -337,13 +339,13 @@ Deno.test("DiscoveryReplayRunner: coordinated-structural candidate can be replay
     operations: [
       {
         type: "removeSynapse",
-        fromNeuronId: 0,
-        toNeuronId: ID_HIDDEN_0,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
       },
       {
         type: "addSynapse",
-        fromNeuronId: 0,
-        toNeuronId: ID_HIDDEN_0,
+        fromNeuronUuid: "input-0",
+        toNeuronUuid: "hidden-0",
         weight: 0.9,
       },
     ],

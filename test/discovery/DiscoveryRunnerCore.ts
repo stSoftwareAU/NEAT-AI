@@ -131,8 +131,8 @@ Deno.test("DiscoveryRunner returns best improvement with informative message", a
   const discoveryResult: DiscoverResult = {
     ID: "DISCOVER",
     addHelpfulSynapses: [{
-      fromNeuronId: 5001,
-      toNeuronId: -1,
+      fromNeuronUuid: "input-1",
+      toNeuronUuid: "hidden-1",
       weight: 0.7,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -142,8 +142,8 @@ Deno.test("DiscoveryRunner returns best improvement with informative message", a
     }],
     coordinatedStructuralCandidates: undefined,
     removeHarmfulSynapse: {
-      fromNeuronId: 1,
-      toNeuronId: -1,
+      fromNeuronUuid: "input-1",
+      toNeuronUuid: "output-0",
       weight: -0.25,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -152,7 +152,7 @@ Deno.test("DiscoveryRunner returns best improvement with informative message", a
       totalCount: 7,
     },
     candidateSquashes: [{
-      neuronId: 5001,
+      neuronUuid: "hidden-1",
       previousSquash: "IDENTITY",
       squash: "TANH",
       expectedCreatureScoreGain: 0.3,
@@ -167,15 +167,15 @@ Deno.test("DiscoveryRunner returns best improvement with informative message", a
   const computeError = (creature: Creature) => {
     const json = creature.exportJSON();
     const synapses = json.synapses;
-    const hidden1Squash = json.neurons.find((n) => n.id === 5001)
+    const hidden1Squash = json.neurons.find((n) => n.uuid === "hidden-1")
       ?.squash;
 
     const hasHelpful = synapses.some((synapse) =>
-      synapse.fromId === 5001 && synapse.toId === -1 &&
+      synapse.fromUUID === "input-1" && synapse.toUUID === "hidden-1" &&
       Math.abs(synapse.weight - 0.7) < 1e-6
     );
     const removedHarmful = synapses.every((synapse) =>
-      !(synapse.fromId === 1 && synapse.toId === -1)
+      !(synapse.fromUUID === "input-1" && synapse.toUUID === "output-0")
     );
     const changedSquash = hidden1Squash === "TANH";
 
@@ -248,13 +248,13 @@ Deno.test("DiscoveryRunner evaluates coordinated-structural candidates as a sing
     operations: [
       {
         type: "removeSynapse",
-        fromNeuronId: 1,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-1",
+        toNeuronUuid: "output-0",
       },
       {
         type: "addSynapse",
-        fromNeuronId: 1,
-        toNeuronId: -1,
+        fromNeuronUuid: "input-1",
+        toNeuronUuid: "output-0",
         weight: 0.75,
       },
     ],
@@ -274,7 +274,9 @@ Deno.test("DiscoveryRunner evaluates coordinated-structural candidates as a sing
   let sawCoordinatedEvaluation = false;
   const worker = new FakeWorker(discoveryResult, (creature) => {
     const exported = creature.exportJSON();
-    const syn = exported.synapses.find((s) => s.fromId === 1 && s.toId === -1);
+    const syn = exported.synapses.find((s) =>
+      s.fromUUID === "input-1" && s.toUUID === "output-0"
+    );
 
     if (syn && Math.abs(syn.weight - 0.75) < 1e-12) {
       sawCoordinatedEvaluation = true;
@@ -303,8 +305,8 @@ Deno.test(
   "DiscoveryRunner considers combined multi-category candidate when selecting best result",
   async () => {
     const helpfulSynapse = {
-      fromNeuronId: 1,
-      toNeuronId: 5001,
+      fromNeuronUuid: "input-1",
+      toNeuronUuid: "hidden-1",
       weight: 0.45,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -313,8 +315,8 @@ Deno.test(
       totalCount: 6,
     };
     const harmfulSynapse = {
-      fromNeuronId: 1,
-      toNeuronId: -1,
+      fromNeuronUuid: "input-1",
+      toNeuronUuid: "output-0",
       weight: -0.25,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -323,8 +325,8 @@ Deno.test(
       totalCount: 5,
     };
     const neuronCandidate = {
-      fromNeuronId: 0,
-      toNeuronId: 5001,
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "hidden-1",
       incomingWeight: 0.4,
       outgoingWeight: -0.3,
       squash: "TANH",
@@ -336,11 +338,9 @@ Deno.test(
       totalCount: 7,
     };
     const squashCandidate = {
-      neuronId: 5001,
+      neuronUuid: "hidden-1",
       previousSquash: "IDENTITY",
       squash: "ELU",
-      targetNeuronImpact: 1.0,
-      expectedCreatureErrorReduction: 0,
       expectedCreatureScoreGain: 0.18,
       improvedError: 0.03,
       currentError: 0.07,
@@ -362,34 +362,34 @@ Deno.test(
       const neurons = json.neurons;
 
       const hasHelpfulSynapse = synapses.some((synapse) =>
-        synapse.fromId === helpfulSynapse.fromNeuronId &&
-        synapse.toId === helpfulSynapse.toNeuronId &&
+        synapse.fromUUID === helpfulSynapse.fromNeuronUuid &&
+        synapse.toUUID === helpfulSynapse.toNeuronUuid &&
         Math.abs(synapse.weight - helpfulSynapse.weight) < 1e-6
       );
       const harmfulSynapsePresent = synapses.some((synapse) =>
-        synapse.fromId === harmfulSynapse.fromNeuronId &&
-        synapse.toId === harmfulSynapse.toNeuronId
+        synapse.fromUUID === harmfulSynapse.fromNeuronUuid &&
+        synapse.toUUID === harmfulSynapse.toNeuronUuid
       );
       const hidden1 = neurons.find((neuron) =>
-        neuron.id === squashCandidate.neuronId
+        neuron.uuid === squashCandidate.neuronUuid
       );
       const squashUpdated = hidden1?.squash === squashCandidate.squash;
 
       const incomingDiscoverySynapse = synapses.find((synapse) =>
-        synapse.fromId === neuronCandidate.fromNeuronId &&
+        synapse.fromUUID === neuronCandidate.fromNeuronUuid &&
         Math.abs(synapse.weight - neuronCandidate.incomingWeight) < 1e-6
       );
-      const discoveredNeuronUUID = incomingDiscoverySynapse?.toId;
+      const discoveredNeuronWire = incomingDiscoverySynapse?.toUUID;
       const outgoingDiscoverySynapse = synapses.find((synapse) =>
-        discoveredNeuronUUID &&
-        synapse.fromId === discoveredNeuronUUID &&
-        synapse.toId === neuronCandidate.toNeuronId &&
+        discoveredNeuronWire &&
+        synapse.fromUUID === discoveredNeuronWire &&
+        synapse.toUUID === neuronCandidate.toNeuronUuid &&
         Math.abs(synapse.weight - neuronCandidate.outgoingWeight) < 1e-6
       );
       const hasDiscoveredNeuron = Boolean(
-        discoveredNeuronUUID &&
+        discoveredNeuronWire &&
           outgoingDiscoverySynapse &&
-          neurons.some((neuron) => neuron.id === discoveredNeuronUUID),
+          neurons.some((neuron) => neuron.uuid === discoveredNeuronWire),
       );
 
       if (

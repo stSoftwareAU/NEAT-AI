@@ -1,13 +1,6 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
+import { dirname } from "@std/path/dirname";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-
-// Integer IDs for neurons:
-// makeDenseOutputCreature() has no explicit IDs, so hidden-1 uses deterministic hash 1775329650
-// makeBaseCreature() has explicit id: 5001 for hidden-1
-// positive-test-hidden uses deterministic hash 293051313
-const ID_DENSE_HIDDEN_1 = 1775329650;
-const ID_BASE_HIDDEN_1 = 5001;
-const ID_POSITIVE_TEST_HIDDEN = 293051313;
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
@@ -126,8 +119,9 @@ function makeOptions(overrides: NeatOptions = {}): NeatOptions {
 }
 
 Deno.test("DiscoveryRunner records evaluation summaries and archives candidates", async () => {
+  const discoveryId = `archive-test-${crypto.randomUUID()}`;
   const discoveryResult: DiscoverResult = {
-    ID: "ARCHIVE_TEST",
+    ID: discoveryId,
     addHelpfulSynapses: undefined,
     addHelpfulNeurons: undefined,
     removeHarmfulSynapse: undefined,
@@ -143,8 +137,7 @@ Deno.test("DiscoveryRunner records evaluation summaries and archives candidates"
   const computeError = (creature: Creature) =>
     creature === candidateCreature ? 0.25 : 0.5;
 
-  const tempDir = await Deno.makeTempDir();
-  const previousCwd = Deno.cwd();
+  let archiveDir: string | undefined;
 
   const runner = new DiscoveryRunner({
     rustDiscoveryEnabled: () => true,
@@ -164,8 +157,6 @@ Deno.test("DiscoveryRunner records evaluation summaries and archives candidates"
   });
 
   try {
-    Deno.chdir(tempDir);
-
     const result = await runner.discoverDir({
       creature: baseCreature,
       dataDir: "/tmp/data",
@@ -192,14 +183,18 @@ Deno.test("DiscoveryRunner records evaluation summaries and archives candidates"
 
     assert(result.candidateArchiveDir);
     assert(candidateEval.archivePath);
+    archiveDir = result.candidateArchiveDir;
 
     const summaryPath = `${result.candidateArchiveDir}/summary.json`;
     const summary = JSON.parse(await Deno.readTextFile(summaryPath));
     assert(Array.isArray(summary));
     assertEquals(summary.length, 2);
   } finally {
-    Deno.chdir(previousCwd);
-    await Deno.remove(tempDir, { recursive: true });
+    if (archiveDir) {
+      await Deno.remove(archiveDir, { recursive: true }).catch(() => {});
+      const discoveryDir = dirname(archiveDir);
+      await Deno.remove(discoveryDir, { recursive: true }).catch(() => {});
+    }
   }
 });
 
@@ -207,8 +202,8 @@ Deno.test("DiscoveryRunner evaluates synapse candidates correctly", async () => 
   const discoveryResult: DiscoverResult = {
     ID: "SYNAPSE_EVAL_TEST",
     addHelpfulSynapses: [{
-      fromNeuronId: 1,
-      toNeuronId: ID_DENSE_HIDDEN_1,
+      fromNeuronUuid: "input-1",
+      toNeuronUuid: "hidden-1",
       weight: 0.45,
       targetNeuronImpact: 1.0,
       expectedCreatureErrorReduction: 0,
@@ -228,7 +223,7 @@ Deno.test("DiscoveryRunner evaluates synapse candidates correctly", async () => 
     (creature: Creature) => {
       const json = creature.exportJSON();
       const hasHelpful = json.synapses.some((synapse) =>
-        synapse.fromId === 1 && synapse.toId === ID_DENSE_HIDDEN_1 &&
+        synapse.fromUUID === "input-1" && synapse.toUUID === "hidden-1" &&
         Math.abs(synapse.weight - 0.45) < 1e-6
       );
       return hasHelpful ? 0.99 : 1.0;
@@ -271,8 +266,8 @@ Deno.test("DiscoveryRunner evaluates neuron candidates correctly", async () => {
   const errorReduction = baseError * (expectedImprovementPct / 100);
 
   const neuronCandidate = {
-    fromNeuronId: ID_DENSE_HIDDEN_1,
-    toNeuronId: -1,
+    fromNeuronUuid: "hidden-1",
+    toNeuronUuid: "output-0",
     incomingWeight: 0.45,
     outgoingWeight: -0.3,
     squash: "TANH",
@@ -300,7 +295,7 @@ Deno.test("DiscoveryRunner evaluates neuron candidates correctly", async () => {
       const json = creature.exportJSON();
       // Check for the added neuron by finding its incoming synapse
       const incomingSynapse = json.synapses.find((synapse) =>
-        synapse.fromId === neuronCandidate.fromNeuronId &&
+        synapse.fromUUID === neuronCandidate.fromNeuronUuid &&
         Math.abs(synapse.weight - neuronCandidate.incomingWeight) < 1e-6
       );
       const hasNeuron = incomingSynapse !== undefined;
@@ -393,8 +388,8 @@ Deno.test(
 
     const baseCreature = makeBaseCreature();
     const extraSynapse = {
-      fromId: 0,
-      toId: -1,
+      fromUUID: "input-0" as const,
+      toUUID: "output-0" as const,
       weight: 0.05,
     };
 
@@ -406,8 +401,8 @@ Deno.test(
     ): DiscoveryCandidate[] => {
       const json = cloneExport();
       json.synapses.push({
-        fromId: extraSynapse.fromId,
-        toId: extraSynapse.toId,
+        fromUUID: extraSynapse.fromUUID,
+        toUUID: extraSynapse.toUUID,
         weight: extraSynapse.weight,
       });
       const candidate = Creature.fromJSON(json);
@@ -426,8 +421,8 @@ Deno.test(
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
       const hasExtraSynapse = json.synapses.some((synapse) =>
-        synapse.fromId === extraSynapse.fromId &&
-        synapse.toId === extraSynapse.toId &&
+        synapse.fromUUID === extraSynapse.fromUUID &&
+        synapse.toUUID === extraSynapse.toUUID &&
         Math.abs(synapse.weight - extraSynapse.weight) < 1e-9
       );
       return hasExtraSynapse ? 0.4 : 0.5;
@@ -480,18 +475,18 @@ Deno.test(
       const outputOffset = json.neurons.length - outputCount;
       json.neurons.splice(outputOffset, 0, {
         type: "hidden",
-        id: ID_POSITIVE_TEST_HIDDEN,
+        uuid: "positive-test-hidden",
         squash: "IDENTITY",
         bias: 0,
       });
       json.synapses.push({
-        fromId: 0,
-        toId: ID_POSITIVE_TEST_HIDDEN,
+        fromUUID: "input-0",
+        toUUID: "positive-test-hidden",
         weight: 0.2,
       });
       json.synapses.push({
-        fromId: ID_POSITIVE_TEST_HIDDEN,
-        toId: -1,
+        fromUUID: "positive-test-hidden",
+        toUUID: "output-0",
         weight: -0.2,
       });
       const candidate = Creature.fromJSON(json);
@@ -510,7 +505,7 @@ Deno.test(
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
       const hasNewNeuron = json.neurons.some((neuron) =>
-        neuron.id === ID_POSITIVE_TEST_HIDDEN
+        neuron.uuid === "positive-test-hidden"
       );
       return hasNewNeuron ? 0.3 : 0.5;
     };
@@ -622,7 +617,7 @@ Deno.test(
     ): DiscoveryCandidate[] => {
       const json = cloneCreatureJSON(baseCreature);
       json.synapses = json.synapses.map((synapse) =>
-        synapse.fromId === ID_BASE_HIDDEN_1 && synapse.toId === -1
+        synapse.fromUUID === "hidden-1" && synapse.toUUID === "output-0"
           ? { ...synapse, weight: synapse.weight + tinyDelta }
           : synapse
       );
@@ -643,7 +638,7 @@ Deno.test(
     const computeError = (creature: Creature) => {
       const json = creature.exportJSON();
       const hasTinyUpdate = json.synapses.some((synapse) =>
-        synapse.fromId === ID_BASE_HIDDEN_1 && synapse.toId === -1 &&
+        synapse.fromUUID === "hidden-1" && synapse.toUUID === "output-0" &&
         Math.abs(synapse.weight - (0.5 + tinyDelta)) < 1e-10
       );
       return hasTinyUpdate ? baselineError - tinyDelta : baselineError;

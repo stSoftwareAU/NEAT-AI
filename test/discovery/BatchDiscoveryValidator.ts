@@ -27,10 +27,6 @@ import { makeDataDir } from "../../src/architecture/DataSet.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { TANH } from "../../src/methods/activations/types/TANH.ts";
 
-// Integer IDs for neurons in makeBaselineCreature (deterministicIdFromUuid).
-// Input neurons use index (0..3), output neurons use -(index+1) (-1, -2).
-const HIDDEN_1_ID = 1775329650; // "hidden-1"
-const HIDDEN_2_ID = 1775329649; // "hidden-2"
 const _OUTPUT_0_ID = -1; // "output-0" (reserved for future tests)
 
 function makeBaselineCreature(): Creature {
