@@ -221,7 +221,7 @@ Deno.test("filterCandidatesForEvaluation: harmful neuron candidates also deprior
   ];
 
   // neuron 3 is already successful
-  const successfulIds = new Set([3]);
+  const successfulIds = new Set(["hidden-3"]);
 
   const { filtered } = filterCandidatesForEvaluation(candidates, 1, config, {
     successCacheDir: "/tmp/success-cache",
@@ -239,12 +239,12 @@ Deno.test("filterCandidatesForEvaluation: harmful neuron candidates also deprior
   // Should prefer neuron 1 and 2 (novel) over 3 (already successful)
   const selectedIds = removalFiltered.map(
     (c) =>
-      c.change.removalCandidate?.neuronId ??
-        c.change.harmfulNeuronCandidate?.neuronId,
+      c.change.removalCandidate?.neuronUuid ??
+        c.change.harmfulNeuronCandidate?.neuronUuid,
   );
-  assert(selectedIds.includes(1));
-  assert(selectedIds.includes(2));
-  assert(!selectedIds.includes(3));
+  assert(selectedIds.includes("hidden-1"));
+  assert(selectedIds.includes("hidden-2"));
+  assert(!selectedIds.includes("hidden-3"));
 });
 
 Deno.test("filterCandidatesForEvaluation: no diagnostics novelCount when no successCacheDir", () => {
@@ -258,8 +258,8 @@ Deno.test("filterCandidatesForEvaluation: no diagnostics novelCount when no succ
   });
 
   const candidates: DiscoveryCandidate[] = [
-    makeRemovalCandidate(1, 0.001),
-    makeRemovalCandidate(2, 0.002),
+    makeRemovalCandidate("hidden-1", 0.001),
+    makeRemovalCandidate("hidden-2", 0.002),
   ];
 
   const { diagnostics } = filterCandidatesForEvaluation(
