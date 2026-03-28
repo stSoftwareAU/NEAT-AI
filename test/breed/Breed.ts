@@ -137,7 +137,7 @@ Deno.test(
 
     assert(offspring, "Should produce offspring");
     // Offspring should be exportable and re-importable without error
-    const exported = offspring.exportInternalJSON();
+    const exported = offspring.exportJSON();
     const reimported = Creature.fromJSON(exported);
     creatureValidate(reimported);
     assertEquals(reimported.input, offspring.input);

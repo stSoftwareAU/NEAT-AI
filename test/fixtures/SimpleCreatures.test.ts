@@ -18,7 +18,7 @@ Deno.test("makeSimpleCreature returns a valid 2-input, 1-output creature", () =>
   assertEquals(creature.input, 2, "should have 2 inputs");
   assertEquals(creature.output, 1, "should have 1 output");
 
-  const json = creature.exportInternalJSON();
+  const json = creature.exportJSON();
   const hiddenNeurons = json.neurons.filter((n) => n.type === "hidden");
   const outputNeurons = json.neurons.filter((n) => n.type === "output");
   assertEquals(hiddenNeurons.length, 1, "should have 1 hidden neuron");
@@ -43,12 +43,12 @@ Deno.test("makeBaseCreature returns a valid 2-input, 1-output creature with 3 sy
   assertEquals(creature.input, 2, "should have 2 inputs");
   assertEquals(creature.output, 1, "should have 1 output");
 
-  const json = creature.exportInternalJSON();
+  const json = creature.exportJSON();
   assertEquals(json.synapses.length, 3, "should have 3 synapses");
 
   // Verify the direct input-1 → output-0 connection exists
   const directSynapse = json.synapses.find(
-    (s) => s.fromId === 1 && s.toId === -1,
+    (s) => s.fromUUID === "input-1" && s.toUUID === "output-0",
   );
   assert(directSynapse, "should have a direct input-1 → output-0 synapse");
   assertEquals(directSynapse.weight, -0.25);
@@ -62,7 +62,7 @@ Deno.test("makeForwardOnlyCreature returns a valid 1-input, 1-output forward-onl
   assertEquals(creature.input, 1, "should have 1 input");
   assertEquals(creature.output, 1, "should have 1 output");
 
-  const json = creature.exportInternalJSON();
+  const json = creature.exportJSON();
   const hiddenNeurons = json.neurons.filter((n) => n.type === "hidden");
   assertEquals(hiddenNeurons.length, 1, "should have 1 hidden neuron");
   assertEquals(

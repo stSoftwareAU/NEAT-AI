@@ -26,7 +26,7 @@ Deno.test("MAXIMUM activation: training reduces error after bias and weight pert
       assertAlmostEquals(item.output[1], result[1], 0.00001);
     });
 
-    const exportJSON = creatureA.exportInternalJSON();
+    const exportJSON = creatureA.exportJSON();
 
     exportJSON.neurons.forEach((node, indx) => {
       node.bias = node.bias +

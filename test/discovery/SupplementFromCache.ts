@@ -9,6 +9,7 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { buildRuntimeIdToWireMap } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import {
   supplementFromCache,
 } from "../../src/discovery/SupplementFromCache.ts";
@@ -27,11 +28,9 @@ function wireUuidForId(base: Creature, neuronId: number): string {
   if (neuronId >= 0 && neuronId < base.input) {
     return `input-${neuronId}`;
   }
-  const neuron = base.exportJSON().neurons.find((n) => n.id === neuronId);
-  if (!neuron?.uuid) {
-    throw new Error(`Neuron ${neuronId} is missing wire uuid`);
-  }
-  return neuron.uuid;
+  const wireUuid = buildRuntimeIdToWireMap(base).get(neuronId);
+  if (!wireUuid) throw new Error(`Neuron ${neuronId} is missing wire uuid`);
+  return wireUuid;
 }
 
 /** Helper to create a candidate creature with a squash change applied. */
@@ -40,8 +39,10 @@ function makeSquashCandidate(
   neuronId: number,
   squash: string,
 ): DiscoveryCandidate {
-  const json = base.exportInternalJSON();
-  const neuron = json.neurons.find((n) => n.id === neuronId);
+  const json = base.exportJSON();
+  const neuron = json.neurons.find((n) =>
+    n.uuid === wireUuidForId(base, neuronId)
+  );
   if (!neuron) throw new Error(`Neuron ${neuronId} not found`);
   neuron.squash = squash;
   const modified = Creature.fromJSON(json);
@@ -71,8 +72,12 @@ function makeAddSynapseCandidate(
   toId: number,
   weight: number,
 ): DiscoveryCandidate {
-  const json = base.exportInternalJSON();
-  json.synapses.push({ fromId, toId, weight });
+  const json = base.exportJSON();
+  json.synapses.push({
+    fromUUID: wireUuidForId(base, fromId),
+    toUUID: wireUuidForId(base, toId),
+    weight,
+  });
   const modified = Creature.fromJSON(json);
   modified.validate();
   CreatureUtil.makeUUID(modified);

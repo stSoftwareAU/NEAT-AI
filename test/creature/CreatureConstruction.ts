@@ -96,7 +96,7 @@ Deno.test("Fresh construction round-trips through JSON", () => {
   });
   creatureValidate(creature);
 
-  const json = creature.exportInternalJSON();
+  const json = creature.exportJSON();
   const restored = Creature.fromJSON(json);
   creatureValidate(restored);
 

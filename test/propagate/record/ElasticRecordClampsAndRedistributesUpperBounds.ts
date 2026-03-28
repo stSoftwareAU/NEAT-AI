@@ -40,7 +40,7 @@ Deno.test(
       generations: 0,
     });
     const sparseConfig = new SparseConfig(
-      creature.exportInternalJSON(),
+      creature.exportJSON(),
       config,
     );
     creature.activateAndTrace(new Float32Array([1]), false, sparseConfig);

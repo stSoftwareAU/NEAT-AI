@@ -17,7 +17,7 @@ Deno.test("bias-only backpropagation converges with all-IDENTITY squash function
 
   const cleanError = calculateError(cleanCreature, td);
   assertAlmostEquals(cleanError, 0, 0.00001, `cleanError: ${cleanError}`);
-  const exportJSON = cleanCreature.exportInternalJSON();
+  const exportJSON = cleanCreature.exportJSON();
 
   Deno.writeTextFileSync(
     `${directory}/A-clean.json`,
@@ -43,7 +43,7 @@ Deno.test("bias-only backpropagation converges with all-IDENTITY squash function
 
     Deno.writeTextFileSync(
       `${directory}/C${i}--start.json`,
-      JSON.stringify(modifiedCreature.exportInternalJSON(), null, 1),
+      JSON.stringify(modifiedCreature.exportJSON(), null, 1),
     );
     const results = train(modifiedCreature, td, {
       targetError: 0.01,
@@ -65,7 +65,7 @@ Deno.test("bias-only backpropagation converges with all-IDENTITY squash function
     );
     Deno.writeTextFileSync(
       `${directory}/C${i}-end.json`,
-      JSON.stringify(modifiedCreature.exportInternalJSON(), null, 1),
+      JSON.stringify(modifiedCreature.exportJSON(), null, 1),
     );
     if (results.compact) Creature.fromJSON(results.compact).validate();
     if (results.error > lastError) {

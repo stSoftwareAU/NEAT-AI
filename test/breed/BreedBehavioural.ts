@@ -181,7 +181,7 @@ Deno.test("Breed: offspring can be exported and re-imported without error", () =
   assert(offspring, "Should produce offspring");
 
   // Round-trip through JSON should produce identical creature
-  const exported = offspring.exportInternalJSON();
+  const exported = offspring.exportJSON();
   const reimported = Creature.fromJSON(exported);
   creatureValidate(reimported);
   assertEquals(reimported.input, offspring.input);

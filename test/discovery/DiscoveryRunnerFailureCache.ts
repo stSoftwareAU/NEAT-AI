@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import type { Creature } from "../../src/Creature.ts";
@@ -181,7 +182,8 @@ Deno.test({
       let evaluationCount = 0;
       const computeError = (creature: Creature) => {
         // Count evaluations (excluding original which has no candidate)
-        const json = creature.exportInternalJSON();
+        const json = creature.exportJSON();
+        normaliseCreatureExport(json);
         const hasTestSynapse = json.synapses.some((s) =>
           s.fromUUID === "input-1" && s.toUUID === "hidden-1" &&
           Math.abs(s.weight - 0.45) < 1e-6
@@ -289,7 +291,8 @@ Deno.test({
       let phase2EvaluationCount = 0;
 
       const computeError = (creature: Creature) => {
-        const json = creature.exportInternalJSON();
+        const json = creature.exportJSON();
+        normaliseCreatureExport(json);
 
         // Check for TANH on hidden-1
         const hasTanh = json.neurons.some((n) =>
@@ -390,7 +393,8 @@ Deno.test({
 
       // The candidate will improve things
       const computeError = (creature: Creature) => {
-        const json = creature.exportInternalJSON();
+        const json = creature.exportJSON();
+        normaliseCreatureExport(json);
         const hasTestSynapse = json.synapses.some((s) =>
           s.fromUUID === "input-1" && s.toUUID === "hidden-1" &&
           Math.abs(s.weight - 0.45) < 1e-6

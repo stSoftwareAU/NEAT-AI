@@ -113,7 +113,7 @@ Deno.test("DiscoveryReplayRunner archives obsolete entries instead of deleting",
     archiveEntry: (_dir, entry) =>
       archived.push({ key: entry.key, changeType: entry.changeType }),
     applyEntry: (current, entry) => {
-      const clone = Creature.fromJSON(current.exportInternalJSON());
+      const clone = Creature.fromJSON(current.exportJSON());
       clone.uuid = `${current.uuid ?? "base"}-${entry.key}`;
       return clone;
     },

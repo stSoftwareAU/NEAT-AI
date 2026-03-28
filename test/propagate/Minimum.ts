@@ -33,7 +33,7 @@ Deno.test("MINIMUM activation: training reduces error after bias and weight pert
       assertAlmostEquals(item.output[1], result[1], 0.00001);
     });
 
-    const exportJSON = creature.exportInternalJSON();
+    const exportJSON = creature.exportJSON();
 
     exportJSON.neurons.forEach((neuron, indx) => {
       neuron.bias = neuron.bias +

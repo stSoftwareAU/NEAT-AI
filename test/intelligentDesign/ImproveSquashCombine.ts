@@ -6,6 +6,7 @@
  */
 
 import { assertEquals, assertExists } from "@std/assert";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../src/Creature.ts";
 import { combineImprovements } from "../../src/intelligentDesign/ImproveSquash.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
@@ -22,7 +23,7 @@ function cleanup() {
 
 Deno.test("combineImprovements returns original creature when no improvements exist", async () => {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
-  const exported = creature.exportInternalJSON();
+  const exported = creature.exportJSON();
 
   const result = await combineImprovements(exported, new Map(), ".", 1.0);
   assertEquals(result.creature, exported);
@@ -35,7 +36,7 @@ Deno.test("combineImprovements returns the single improvement file contents", as
     await Deno.mkdir(TEST_DIR, { recursive: true });
 
     const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
-    const exported = creature.exportInternalJSON();
+    const exported = creature.exportJSON();
 
     const path = `${TEST_DIR}/one.json`;
     await Deno.writeTextFile(path, JSON.stringify(exported, null, 1));
@@ -72,7 +73,8 @@ Deno.test("combineImprovements returns combined creature when combined score bea
     await Deno.mkdir(TEST_DIR, { recursive: true });
 
     const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
-    const exported = creature.exportInternalJSON();
+    const exported = creature.exportJSON();
+    normaliseCreatureExport(exported);
     const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
     assertEquals(hiddenNeurons.length > 1, true);
     const firstHidden = hiddenNeurons[0];
@@ -132,7 +134,8 @@ Deno.test("combineImprovements falls back to best individual when marriage fails
     await Deno.mkdir(TEST_DIR, { recursive: true });
 
     const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
-    const exported = creature.exportInternalJSON();
+    const exported = creature.exportJSON();
+    normaliseCreatureExport(exported);
     const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
     assertEquals(hiddenNeurons.length > 1, true);
     const firstHidden = hiddenNeurons[0];

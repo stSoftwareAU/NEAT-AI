@@ -17,7 +17,7 @@ Deno.test("bias-only backprop: error does not regress across training iterations
 
   const cleanError = calculateError(cleanCreature, td);
   assertAlmostEquals(cleanError, 0, 0.00001, `cleanError: ${cleanError}`);
-  const exportJSON = cleanCreature.exportInternalJSON();
+  const exportJSON = cleanCreature.exportJSON();
 
   Deno.writeTextFileSync(
     `${directory}/A-clean.json`,
@@ -39,7 +39,7 @@ Deno.test("bias-only backprop: error does not regress across training iterations
   for (let i = 0; i < 10; i++) {
     Deno.writeTextFileSync(
       `${directory}/C${i}--start.json`,
-      JSON.stringify(modifiedCreature.exportInternalJSON(), null, 1),
+      JSON.stringify(modifiedCreature.exportJSON(), null, 1),
     );
     const results = train(modifiedCreature, td, {
       targetError: 0.01,
@@ -61,7 +61,7 @@ Deno.test("bias-only backprop: error does not regress across training iterations
     );
     Deno.writeTextFileSync(
       `${directory}/C${i}-end.json`,
-      JSON.stringify(modifiedCreature.exportInternalJSON(), null, 1),
+      JSON.stringify(modifiedCreature.exportJSON(), null, 1),
     );
     if (results.compact) Creature.fromJSON(results.compact).validate();
     if (results.error > lastError) {

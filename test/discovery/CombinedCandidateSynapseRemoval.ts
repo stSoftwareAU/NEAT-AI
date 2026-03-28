@@ -6,6 +6,7 @@
  */
 
 import { assert, assertEquals, assertExists } from "@std/assert";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import { Creature } from "../../src/Creature.ts";
 import {
@@ -48,7 +49,8 @@ Deno.test(
     // Bug: When appliedTypes contains only "remove-synapse", isRemovalOnly is true
     // and the function returns "Pruned N low-impact neurons" instead of "Removed N synapses"
     const base = makeSynapseRemovalTestCreature();
-    const baseJSON = base.exportInternalJSON();
+    const baseJSON = base.exportJSON();
+    normaliseCreatureExport(baseJSON);
 
     // Create remove-synapse candidate 1: Remove hidden-A -> hidden-B synapse
     const removeSynapse1Json = structuredClone(baseJSON);

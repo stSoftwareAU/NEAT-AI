@@ -76,7 +76,7 @@ Deno.test(
     );
 
     // Verify the candidate has the harmful synapse removed
-    const exported = removeSynapseCandidate.creature.exportInternalJSON();
+    const exported = removeSynapseCandidate.creature.exportJSON();
     const harmfulStillExists = exported.synapses.some((synapse) =>
       synapse.fromUUID === harmfulSynapse.fromNeuronUuid &&
       synapse.toUUID === harmfulSynapse.toNeuronUuid
@@ -137,7 +137,7 @@ Deno.test(
     );
 
     // Verify the synapse is actually removed
-    const exported = result.exportInternalJSON();
+    const exported = result.exportJSON();
     const synapseStillExists = exported.synapses.some((synapse) =>
       synapse.fromUUID === existingSynapse.fromNeuronUuid &&
       synapse.toUUID === existingSynapse.toNeuronUuid
@@ -170,7 +170,7 @@ Deno.test(
     };
 
     // Verify synapse doesn't exist
-    const exported = base.exportInternalJSON();
+    const exported = base.exportJSON();
     const exists = exported.synapses.some((synapse) =>
       synapse.fromUUID === nonExistentSynapse.fromNeuronUuid &&
       synapse.toUUID === nonExistentSynapse.toNeuronUuid

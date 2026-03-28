@@ -241,7 +241,7 @@ Deno.test("Offspring.breed -breeding creatures with shared chain maintains neuro
 
       // Verify all synapses reference valid neurons
       const neuronIds = new Set(child.neurons.map((n) => n.id));
-      const exported = child.exportInternalJSON();
+      const exported = child.exportJSON();
 
       for (const synapse of exported.synapses) {
         assertEquals(

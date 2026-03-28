@@ -167,7 +167,7 @@ Deno.test("tune", () => {
   const fineTuned = fineTuneImprovement(fittest, previousFittest, false);
 
   fineTuned.forEach((n) => {
-    const en = n.exportInternalJSON();
+    const en = n.exportJSON();
 
     en.neurons.forEach((node) => {
       if (node.id === 1555827657) {

@@ -56,14 +56,14 @@ Deno.test(
 Deno.test(
   "performance-guide - shallowClone produces equivalent creature to JSON round-trip",
   () => {
-    // Documented: shallowClone() replaces Creature.fromJSON(creature.exportInternalJSON())
+    // Documented: shallowClone() replaces Creature.fromJSON(creature.exportJSON())
     // for in-process cloning. Verify both produce equivalent results.
     const original = new Creature(3, 2, {
       layers: [{ count: 4, squash: "IDENTITY" }],
     });
 
     // JSON round-trip clone (the old approach)
-    const jsonClone = Creature.fromJSON(original.exportInternalJSON());
+    const jsonClone = Creature.fromJSON(original.exportJSON());
 
     // shallowClone (the optimised approach)
     const shallow = original.shallowClone();
@@ -135,7 +135,7 @@ Deno.test(
     });
 
     // Export before mutation
-    const beforeJSON = creature.exportInternalJSON();
+    const beforeJSON = creature.exportJSON();
     assert(
       beforeJSON.neurons.length > 0,
       "Should have neurons before mutation",

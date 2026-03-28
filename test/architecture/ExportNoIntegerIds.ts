@@ -6,14 +6,11 @@
  * runtime integer neuron/synapse IDs. These are internal implementation
  * details that can change between generations and are not stable across
  * machines. External consumers should use UUID fields only.
- *
- * Internal code that needs integer IDs should use exportInternalJSON().
  */
 
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { exportInternalJSON } from "../../src/creature/CreatureSerialization.ts";
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -168,47 +165,6 @@ Deno.test(
         synapse.toId,
         undefined,
         `exportSnapshotJSON must not include toId`,
-      );
-    }
-  },
-);
-
-// ---------------------------------------------------------------------------
-// exportInternalJSON MUST include integer IDs (for internal use)
-// ---------------------------------------------------------------------------
-
-Deno.test(
-  "exportInternalJSON neurons must include integer id field",
-  () => {
-    const creature = Creature.fromJSON(makeTestCreature());
-    const internal = exportInternalJSON(creature);
-
-    for (const neuron of internal.neurons) {
-      assertEquals(
-        typeof neuron.id,
-        "number",
-        `exportInternalJSON must include integer id on neuron '${neuron.uuid}'`,
-      );
-    }
-  },
-);
-
-Deno.test(
-  "exportInternalJSON synapses must include fromId/toId fields",
-  () => {
-    const creature = Creature.fromJSON(makeTestCreature());
-    const internal = exportInternalJSON(creature);
-
-    for (const synapse of internal.synapses) {
-      assertEquals(
-        typeof synapse.fromId,
-        "number",
-        `exportInternalJSON must include fromId`,
-      );
-      assertEquals(
-        typeof synapse.toId,
-        "number",
-        `exportInternalJSON must include toId`,
       );
     }
   },

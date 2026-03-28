@@ -8,6 +8,7 @@ import type {
   CoordinatedRemoveSynapseOperation,
   CoordinatedSetWeightOperation,
 } from "./CoordinatedStructuralCandidate.ts";
+import { neuronUuid } from "../../neuron/NeuronSerialization.ts";
 
 export function buildWireToRuntimeIdMap(
   creature: Creature,
@@ -16,10 +17,9 @@ export function buildWireToRuntimeIdMap(
   for (let i = 0; i < creature.input; i++) {
     wireToId.set(`input-${i}`, i);
   }
-  const exported = creature.exportJSON();
-  for (const neuron of exported.neurons) {
-    if (typeof neuron.uuid !== "string" || neuron.id === undefined) continue;
-    wireToId.set(neuron.uuid, neuron.id);
+  for (const neuron of creature.neurons) {
+    if (neuron.type === "input") continue;
+    wireToId.set(neuronUuid(neuron), neuron.id);
   }
   return wireToId;
 }
@@ -31,10 +31,9 @@ export function buildRuntimeIdToWireMap(
   for (let i = 0; i < creature.input; i++) {
     idToWire.set(i, `input-${i}`);
   }
-  const exported = creature.exportJSON();
-  for (const neuron of exported.neurons) {
-    if (typeof neuron.uuid !== "string" || neuron.id === undefined) continue;
-    idToWire.set(neuron.id, neuron.uuid);
+  for (const neuron of creature.neurons) {
+    if (neuron.type === "input") continue;
+    idToWire.set(neuron.id, neuronUuid(neuron));
   }
   return idToWire;
 }

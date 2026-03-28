@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 import type { CoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import { applyCoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
@@ -56,9 +57,10 @@ Deno.test(
     };
 
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-    const exported = mutated.exportInternalJSON();
+    const exported = mutated.exportJSON();
+    normaliseCreatureExport(exported);
 
-    assertEquals(exported.neurons.some((n) => n.id === HIDDEN_0_ID), false);
+    assertEquals(exported.neurons.some((n) => n.uuid === "hidden-0"), false);
     assertEquals(exported.memetic, undefined);
     assertEquals(exported.semanticVersion, "3.2.1");
   },

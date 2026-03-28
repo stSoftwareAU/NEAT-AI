@@ -56,7 +56,7 @@ Deno.test("DeDuplicate", () => {
     ],
     score: -0.1111,
   };
-  const n0 = Creature.fromJSON(creature).exportInternalJSON();
+  const n0 = Creature.fromJSON(creature).exportJSON();
 
   const n1 = Creature.fromJSON(n0);
   const UUID1 = CreatureUtil.makeUUID(n1);

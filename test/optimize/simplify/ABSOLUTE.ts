@@ -114,7 +114,7 @@ Deno.test("simplify - ABSOLUTE squash with mixed activation chain preserves beha
   };
   const complex = Creature.fromJSON(json);
   complex.validate();
-  const exportCreature = complex.exportInternalJSON();
+  const exportCreature = complex.exportJSON();
   Deno.writeTextFileSync(
     `${directory}/complex.json`,
     JSON.stringify(exportCreature, null, 1),
@@ -123,7 +123,7 @@ Deno.test("simplify - ABSOLUTE squash with mixed activation chain preserves beha
   assert(simplifiedCreature);
   Deno.writeTextFileSync(
     `${directory}/simplified.json`,
-    JSON.stringify(simplifiedCreature.exportInternalJSON(), null, 1),
+    JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
 
   for (let p = 0; p < 12; p++) {

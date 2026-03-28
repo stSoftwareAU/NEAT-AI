@@ -59,7 +59,7 @@ export function createSeededPopulation(
   const remainingSlots = populationSize - seedCount;
   for (let i = 0; i < remainingSlots; i++) {
     const creature = new Creature(inputCount, outputCount, { layers });
-    population.push(creature.exportInternalJSON());
+    population.push(creature.exportJSON());
   }
 
   return population;

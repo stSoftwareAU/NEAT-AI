@@ -27,7 +27,7 @@ Deno.test(
     });
 
     // Create a trace with real activation data
-    const json = creature.exportInternalJSON();
+    const json = creature.exportJSON();
     const bpConfig = createBackPropagationConfig({});
     const sparseConfig = new SparseConfig(json, bpConfig);
     creature.activateAndTrace(
@@ -72,7 +72,7 @@ Deno.test(
     });
 
     // Create a trace with real activation data
-    const json = creature.exportInternalJSON();
+    const json = creature.exportJSON();
     const bpConfig = createBackPropagationConfig({});
     const sparseConfig = new SparseConfig(json, bpConfig);
     creature.activateAndTrace(
@@ -116,7 +116,7 @@ Deno.test(
       layers: [{ count: 2 }],
     });
 
-    const json = creature.exportInternalJSON();
+    const json = creature.exportJSON();
     const bpConfig = createBackPropagationConfig({});
     const sparseConfig = new SparseConfig(json, bpConfig);
     creature.activateAndTrace(
@@ -160,7 +160,7 @@ Deno.test(
       layers: [{ count: 2 }],
     });
 
-    const json = creature.exportInternalJSON();
+    const json = creature.exportJSON();
     const bpConfig = createBackPropagationConfig({});
     const sparseConfig = new SparseConfig(json, bpConfig);
     creature.activateAndTrace(

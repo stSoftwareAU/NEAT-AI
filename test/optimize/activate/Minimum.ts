@@ -23,7 +23,7 @@ Deno.test("activate - MINIMUM squash selects lowest weighted input", () => {
   };
   const creature = Creature.fromJSON(json);
 
-  const exportCreature = creature.exportInternalJSON();
+  const exportCreature = creature.exportJSON();
   Deno.writeTextFileSync(
     `${directory}/creature.json`,
     JSON.stringify(exportCreature, null, 1),

@@ -108,7 +108,7 @@ function testConvergence(squashName: string) {
     });
 
     const sparseConfig = new SparseConfig(
-      creature.exportInternalJSON(),
+      creature.exportJSON(),
       config,
     );
 

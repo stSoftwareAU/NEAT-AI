@@ -153,7 +153,7 @@ export class WorkerHandler
       const data: RequestData = {
         taskID: this.taskID++,
         score: {
-          creature: JSON.stringify(creature.exportInternalJSON(), null, 1),
+          creature: JSON.stringify(creature.exportJSON(), null, 1),
           uuid: uuid,
           dataDir: dataDir,
           options: options,

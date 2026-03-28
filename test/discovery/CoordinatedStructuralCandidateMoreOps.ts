@@ -47,7 +47,8 @@ Deno.test(
     };
 
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-    const exported = mutated.exportInternalJSON();
+    const exported = mutated.exportJSON();
+    normaliseCreatureExport(exported);
 
     const neuron = exported.neurons.find((n) => n.id === ID_HIDDEN_0);
     assertEquals(neuron?.squash, TANH.NAME);
@@ -104,7 +105,8 @@ Deno.test(
     };
 
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-    const exported = mutated.exportInternalJSON();
+    const exported = mutated.exportJSON();
+    normaliseCreatureExport(exported);
 
     // New hidden neuron should be inserted before output (-1)
     assertEquals(exported.neurons.length, base.neurons.length + 1);
@@ -161,7 +163,8 @@ Deno.test(
     };
 
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-    const exported = mutated.exportInternalJSON();
+    const exported = mutated.exportJSON();
+    normaliseCreatureExport(exported);
 
     assertEquals(
       exported.neurons.find((n) => n.id === ID_HIDDEN_0)?.squash,
@@ -204,7 +207,8 @@ Deno.test(
     };
 
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-    const exported = mutated.exportInternalJSON();
+    const exported = mutated.exportJSON();
+    normaliseCreatureExport(exported);
 
     assertEquals(
       exported.neurons.find((n) => n.id === ID_HIDDEN_0)?.bias,
@@ -246,7 +250,8 @@ Deno.test(
     };
 
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-    const exported = mutated.exportInternalJSON();
+    const exported = mutated.exportJSON();
+    normaliseCreatureExport(exported);
 
     assertEquals(exported.neurons.length, base.neurons.length);
     assertEquals(exported.synapses.length, base.synapses.length);

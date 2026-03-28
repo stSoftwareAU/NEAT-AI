@@ -64,7 +64,7 @@ Deno.test("forwardOnlyGuaranteed - preserved through fromJSON", () => {
     layers: [{ count: 2 }],
   });
 
-  const json = creature.exportInternalJSON();
+  const json = creature.exportJSON();
   const restored = Creature.fromJSON(json);
 
   assertEquals(
@@ -95,7 +95,7 @@ Deno.test("forwardOnlyGuaranteed - false preserved through fromJSON", () => {
     layers: [{ count: 2 }],
   });
 
-  const json = creature.exportInternalJSON();
+  const json = creature.exportJSON();
   const restored = Creature.fromJSON(json);
 
   assertEquals(

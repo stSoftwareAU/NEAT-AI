@@ -50,7 +50,7 @@ function createTestCreature(
  * Create a clone of a creature with the same topology but different weights.
  */
 function cloneWithDifferentWeights(creature: Creature): Creature {
-  const json = creature.exportInternalJSON();
+  const json = creature.exportJSON();
   // Modify all weights
   for (const synapse of json.synapses) {
     synapse.weight = synapse.weight * 2 + 0.1;

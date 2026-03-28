@@ -37,10 +37,7 @@ function makeCreature(): Creature {
 }
 
 function runtimeIdForUuid(creature: Creature, uuid: string): number {
-  const id = creature.exportJSON().neurons.find((neuron) =>
-    neuron.uuid === uuid
-  )
-    ?.id;
+  const id = creature.neurons.find((neuron) => neuron.uuid === uuid)?.id;
   if (typeof id !== "number") {
     throw new Error(`Missing runtime id for ${uuid}`);
   }

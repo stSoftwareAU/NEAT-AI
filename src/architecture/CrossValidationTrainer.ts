@@ -151,7 +151,7 @@ export function trainWithCrossValidation(
     );
   }
 
-  const creatureJSON = creature.exportInternalJSON();
+  const creatureJSON = creature.exportJSON();
   let bestValidationError = Infinity;
   let bestFoldResult: ReturnType<typeof trainDirSingleFold> | undefined;
   let bestFoldCreatureJSON: ReturnType<Creature["exportJSON"]> | undefined;
@@ -209,7 +209,7 @@ export function trainWithCrossValidation(
       if (validationError < bestValidationError) {
         bestValidationError = validationError;
         bestFoldResult = foldResult;
-        bestFoldCreatureJSON = foldCreature.exportInternalJSON();
+        bestFoldCreatureJSON = foldCreature.exportJSON();
       }
     }
   } finally {

@@ -10,7 +10,7 @@ Deno.test("propagate skips synapse accumulation when output already matches targ
   });
 
   const creature = makeCreature();
-  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const expected = creature.activateAndTrace(
     new Float32Array([1, 2, 3]),

@@ -2,6 +2,7 @@ import { assertEquals, assertExists } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import type { CoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import { applyCoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
@@ -46,7 +47,8 @@ Deno.test(
     };
 
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-    const exported = mutated.exportInternalJSON();
+    const exported = mutated.exportJSON();
+    normaliseCreatureExport(exported);
     const synapse = exported.synapses.find((s) =>
       s.fromId === 0 && s.toId === -1
     );

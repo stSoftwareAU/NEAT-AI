@@ -515,7 +515,7 @@ function debugWrite(creature: Creature) {
       creature.DEBUG = false;
       let payload: unknown;
       try {
-        payload = creature.exportInternalJSON();
+        payload = creature.exportJSON();
       } catch (exportErr) {
         // Invalid or partially corrupted creatures may not serialise; do not
         // mask the original ValidationError from creatureValidate().

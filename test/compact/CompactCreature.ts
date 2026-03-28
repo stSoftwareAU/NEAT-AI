@@ -42,7 +42,7 @@ Deno.test("compactCreature - removes dead hidden neuron", () => {
   const result = compactCreature(creature, false);
 
   assert(result !== undefined, "Should compact dead neuron");
-  const neurons = result!.exportInternalJSON().neurons;
+  const neurons = result!.exportJSON().neurons;
   const uuids = neurons.map((n) => n.uuid);
   assert(!uuids.includes("dead-h"), "Dead neuron should be removed");
 });
@@ -129,7 +129,7 @@ Deno.test("compactCreature - removes zero-weight synapses", () => {
     result !== undefined,
     "Should compact creature with zero-weight synapse",
   );
-  const synapses = result.exportInternalJSON().synapses;
+  const synapses = result.exportJSON().synapses;
   const zeroWeightSynapses = synapses.filter((s) => s.weight === 0);
   assertEquals(
     zeroWeightSynapses.length,

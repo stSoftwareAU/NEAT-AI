@@ -57,7 +57,8 @@ Deno.test(
   "buildCombinedFromSuccessful: mixed removal and non-removal candidates produce correct combinations",
   () => {
     const base = makeBaseCreature();
-    const baseJSON = base.exportInternalJSON();
+    const baseJSON = base.exportJSON();
+    normaliseCreatureExport(baseJSON);
 
     // Removal candidate: remove hidden-B
     const removeBJson = structuredClone(baseJSON);
@@ -155,7 +156,8 @@ Deno.test(
   "buildCombinedFromSuccessful: appliedTypes tracks unique types correctly",
   () => {
     const base = makeBaseCreature();
-    const baseJSON = base.exportInternalJSON();
+    const baseJSON = base.exportJSON();
+    normaliseCreatureExport(baseJSON);
 
     // Create two removal candidates of the same type
     const removeBJson = structuredClone(baseJSON);

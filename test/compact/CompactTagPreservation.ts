@@ -9,7 +9,7 @@ import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatur
 
 /** Public export omits integer ids; tests that assert on fromId/toId normalise first. */
 function exportNormalised(creature: Creature): CreatureExport {
-  const e = creature.exportInternalJSON();
+  const e = creature.exportJSON();
   normaliseCreatureExport(e);
   return e;
 }
@@ -59,7 +59,7 @@ Deno.test("compact: COMPLEMENT bypass preserves synapse tags on new synapses", (
   assert(compacted, "COMPLEMENT neuron should be bypassed");
 
   // Assert: The new direct synapse should have merged tags from both original synapses
-  const exported = compacted.exportInternalJSON();
+  const exported = compacted.exportJSON();
   const directSynapse = exported.synapses.find(
     (s) => s.fromUUID === "input-0" && s.toUUID === "output-0",
   );
@@ -120,7 +120,7 @@ Deno.test("compact: COMPLEMENT bypass merges tags when adding to existing synaps
   assert(compacted, "COMPLEMENT neuron should be bypassed");
 
   // Assert: Existing synapse should have merged tags
-  const exported = compacted.exportInternalJSON();
+  const exported = compacted.exportJSON();
   const directSynapse = exported.synapses.find(
     (s) => s.fromUUID === "input-0" && s.toUUID === "output-0",
   );
@@ -192,7 +192,7 @@ Deno.test("compact: IDENTITY chain merge preserves synapse tags", () => {
 
   // Assert: The merged synapse should carry tags from
   // both the inConn and outConn that were merged.
-  const exported = compacted.exportInternalJSON();
+  const exported = compacted.exportJSON();
   const mergedSynapse = exported.synapses.find(
     (s) => s.fromUUID === "hidden-0" && s.toUUID === "output-0",
   );

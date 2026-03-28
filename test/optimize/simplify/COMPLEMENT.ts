@@ -32,13 +32,13 @@ Deno.test("simplify - COMPLEMENT neuron produces behaviour-equivalent IDENTITY w
 
   Deno.writeTextFileSync(
     `${directory}/complex.json`,
-    JSON.stringify(complex.exportInternalJSON(), null, 1),
+    JSON.stringify(complex.exportJSON(), null, 1),
   );
 
   const simplifiedCreature = simplify(complex);
   assert(simplifiedCreature);
 
-  const simplifiedExport = simplifiedCreature.exportInternalJSON();
+  const simplifiedExport = simplifiedCreature.exportJSON();
   Deno.writeTextFileSync(
     `${directory}/simplified.json`,
     JSON.stringify(simplifiedExport, null, 1),

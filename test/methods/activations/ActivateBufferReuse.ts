@@ -67,7 +67,7 @@ Deno.test("activateAndTrace(): returns new array by default", () => {
   });
 
   const sparseConfig = new SparseConfig(
-    creature.exportInternalJSON(),
+    creature.exportJSON(),
     createBackPropagationConfig({}),
   );
 

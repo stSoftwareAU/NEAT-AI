@@ -388,20 +388,17 @@ export class Offspring {
     }
 
     if (fixAliases) {
-      const fixed = offspring.exportInternalJSON();
+      const fixed = offspring.exportJSON();
       for (const n of fixed.neurons) {
         const alias = getTag(n, "alias");
-        if (alias) {
+        if (alias && typeof n.uuid === "string") {
           removeTag(n, "alias");
-          const oldId = n.id;
-          const aliasId = Number.parseInt(alias);
-          if (Number.isFinite(aliasId)) {
-            (n as { id: number }).id = aliasId;
-            fixed.synapses.forEach((s) => {
-              if (s.fromId === oldId) s.fromId = aliasId;
-              if (s.toId === oldId) s.toId = aliasId;
-            });
-          }
+          const oldUuid = n.uuid;
+          n.uuid = alias;
+          fixed.synapses.forEach((s) => {
+            if (s.fromUUID === oldUuid) s.fromUUID = alias;
+            if (s.toUUID === oldUuid) s.toUUID = alias;
+          });
         }
       }
 
@@ -526,9 +523,9 @@ export class Offspring {
           writeDiagnostics({
             error,
             prefix: "offspring",
-            mother: mother.exportInternalJSON(),
-            father: father.exportInternalJSON(),
-            offspring: offspring.exportInternalJSON(),
+            mother: mother.exportJSON(),
+            father: father.exportJSON(),
+            offspring: offspring.exportJSON(),
           });
           throw e;
       }

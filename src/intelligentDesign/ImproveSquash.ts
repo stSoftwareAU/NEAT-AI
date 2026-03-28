@@ -10,6 +10,7 @@
 import { assert } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { NeatOptions } from "../config/NeatOptions.ts";
 import { Creature } from "../Creature.ts";
@@ -176,7 +177,7 @@ export function makeModifiedCreatureWithPrevious(
   nextSquash: string,
 ): { creature: Creature; previousSquash: string } {
   // Important: operate on a deep clone of the supplied export rather than
-  // round-tripping through `Creature.fromJSON(...).exportInternalJSON()`.
+  // round-tripping through `Creature.fromJSON(...).exportJSON()`.
   //
   // The round-trip can normalise/upgrade JSON (or reorder/omit fields) which
   // makes UUID-based lookups brittle in callers that hold UUIDs from the
@@ -184,6 +185,7 @@ export function makeModifiedCreatureWithPrevious(
   const tmpJson: CreatureExport = typeof structuredClone === "function"
     ? structuredClone(creatureExport)
     : JSON.parse(JSON.stringify(creatureExport));
+  normaliseCreatureExport(tmpJson);
 
   const neuronData = tmpJson.neurons.find((n: NeuronExport) =>
     n.id === neuronId
@@ -261,12 +263,16 @@ export async function scanForSquashImprovements(
     remove,
     removeSync,
   } = options;
+  const workingCreature: CreatureExport = typeof structuredClone === "function"
+    ? structuredClone(creature)
+    : JSON.parse(JSON.stringify(creature));
+  normaliseCreatureExport(workingCreature);
 
   const start = Date.now();
   const deadlineMs = start + timeoutMs;
 
   // Get neurons to test
-  const neuronList: NeuronExport[] = creature.neurons.filter(
+  const neuronList: NeuronExport[] = workingCreature.neurons.filter(
     (n: NeuronExport) => n.type === "hidden" && n.squash !== targetSquash,
   );
 
@@ -401,7 +407,7 @@ export async function scanForSquashImprovements(
         const { creature: modifiedCreature, previousSquash } =
           makeModifiedCreatureWithPrevious(
             neuronId,
-            creature,
+            workingCreature,
             targetSquash,
           );
 
@@ -453,7 +459,8 @@ export async function scanForSquashImprovements(
 
                 const altCreatureExport = Creature.fromJSON(
                   JSON.parse(res.score.creature),
-                ).exportInternalJSON();
+                ).exportJSON();
+                normaliseCreatureExport(altCreatureExport);
                 const { creature: altCreature } =
                   makeModifiedCreatureWithPrevious(
                     neuronId,
@@ -666,11 +673,12 @@ export async function combineImprovements(
 
   // Try combining all improvements
   // As with `makeModifiedCreatureWithPrevious()`, avoid round-tripping through
-  // `Creature.fromJSON(...).exportInternalJSON()` before applying UUID-based edits.
+  // `Creature.fromJSON(...).exportJSON()` before applying UUID-based edits.
   // Deep clone the export and apply changes directly, then score via fromJSON.
   const finalJson: CreatureExport = typeof structuredClone === "function"
     ? structuredClone(originalCreature)
     : JSON.parse(JSON.stringify(originalCreature));
+  normaliseCreatureExport(finalJson);
 
   for (const [uuid, improvement] of improvements) {
     const neuron = finalJson.neurons.find((n: NeuronExport) => n.id === uuid);
@@ -693,7 +701,7 @@ export async function combineImprovements(
       result.score.toPrecision(6)
     } improved by ${(result.score - bestScore).toPrecision(3)}`;
 
-    const exported = finalCreature.exportInternalJSON();
+    const exported = finalCreature.exportJSON();
     addTag(exported, "score", `${result.score}`);
     addTag(exported, "error", `${result.error}`);
     addTag(exported, "intelligentDesign", message);

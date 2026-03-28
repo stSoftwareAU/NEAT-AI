@@ -24,7 +24,7 @@ Deno.test("Maximum", () => {
   };
   const creature = Creature.fromJSON(json);
   const sparseConfig = new SparseConfig(
-    creature.exportInternalJSON(),
+    creature.exportJSON(),
     createBackPropagationConfig({}),
   );
   for (let p = 0; p < 1000; p++) {

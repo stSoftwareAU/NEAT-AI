@@ -64,7 +64,7 @@ Deno.test(
       limitBiasScale: 1_000_000,
     });
     const sparseConfig = new SparseConfig(
-      creature.exportInternalJSON(),
+      creature.exportJSON(),
       config,
     );
 

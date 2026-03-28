@@ -1,7 +1,6 @@
 import { assert } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../mod.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
 
 /**
@@ -27,20 +26,34 @@ import type { Approach } from "../NEAT/LogApproach.ts";
 export function restoreSource(creature: Creature): Creature | undefined {
   if (!creature.memetic) return;
 
-  const restoredCreature = creature.exportInternalJSON();
+  const restoredCreature = creature.exportJSON();
   const memetic = creature.memetic;
+  const idToWire = new Map<number, string>();
+
+  for (let i = 0; i < creature.input; i++) {
+    idToWire.set(i, `input-${i}`);
+  }
+  let outputIndex = 0;
+  creature.neurons.forEach((neuron) => {
+    if (neuron.type === "input") return;
+    if (neuron.type === "output") {
+      idToWire.set(neuron.id, `output-${outputIndex}`);
+      outputIndex++;
+      return;
+    }
+    idToWire.set(neuron.id, neuron.uuid ?? `legacy-neuron-${neuron.id}`);
+  });
 
   // Restore biases from memetic
   for (const neuronId in memetic.biases) {
     const bias = memetic.biases[neuronId];
-    const neuron = restoredCreature.neurons.find((n) =>
-      n.id === Number(neuronId)
-    );
+    const neuronUuid = idToWire.get(Number(neuronId));
+    if (!neuronUuid) {
+      return undefined;
+    }
+    const neuron = restoredCreature.neurons.find((n) => n.uuid === neuronUuid);
     if (!neuron) {
-      throw new ValidationError(
-        `Neuron with UUID ${neuronId} not found in the creature.`,
-        "OTHER",
-      );
+      return undefined;
     }
     neuron.bias = bias;
   }
@@ -48,22 +61,30 @@ export function restoreSource(creature: Creature): Creature | undefined {
   // Restore weights from memetic
   for (const fromId in memetic.weights) {
     const weightArray = memetic.weights[fromId];
-    weightArray.forEach((weightObj) => {
+    const fromUUID = idToWire.get(Number(fromId));
+    if (!fromUUID) {
+      return undefined;
+    }
+    for (const weightObj of weightArray) {
+      const toUUID = idToWire.get(weightObj.toId);
+      if (!toUUID) {
+        return undefined;
+      }
       let synapse = restoredCreature.synapses.find((s) =>
-        s.fromId === Number(fromId) && s.toId === weightObj.toId
+        s.fromUUID === fromUUID && s.toUUID === toUUID
       );
       assert(Number.isFinite(weightObj.weight), "weight must be a number");
       if (!synapse) {
         synapse = {
-          fromId: Number(fromId),
-          toId: weightObj.toId,
+          fromUUID,
+          toUUID,
           weight: weightObj.weight,
         };
         restoredCreature.synapses.push(synapse);
       } else {
         synapse.weight = weightObj.weight;
       }
-    });
+    }
   }
   addTag(restoredCreature, "restored", memetic.generation.toString());
   addTag(restoredCreature, "approach", "fine" as Approach);

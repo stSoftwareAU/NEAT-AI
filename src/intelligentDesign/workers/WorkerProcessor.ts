@@ -48,7 +48,7 @@ export class WorkerProcessor {
       const adjustedCreature = Creature.fromJSON(json);
       adjustedCreature.fix();
       const result = await adjustedCreature.scoreDir(dataDir, options);
-      const exported = adjustedCreature.exportInternalJSON();
+      const exported = adjustedCreature.exportJSON();
       addTag(exported, "score", `${result.score}`);
       addTag(exported, "error", `${result.error}`);
 

@@ -6,6 +6,7 @@ import {
   DEFAULT_RUST_FLUSH_RECORDS,
   DiscoverStructure,
 } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { buildWireToRuntimeIdMap } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { Creature } from "../../src/Creature.ts";
 import { ABSOLUTE } from "../../src/methods/activations/types/ABSOLUTE.ts";
@@ -116,15 +117,16 @@ Deno.test({
      * Create a "crippled" version by changing the squash function of a neuron
      * and adding a synapse to cause random noise.
      */
-    const exportedJSON = targetCreature.exportInternalJSON();
-    // hidden-3 UUID generates id 1775329648 - find by type and original squash (LeakyReLU)
+    const exportedJSON = targetCreature.exportJSON();
+    const wireToId = buildWireToRuntimeIdMap(targetCreature);
+    // Find hidden-3 by type and original squash (LeakyReLU)
     const hidden3 = exportedJSON.neurons.find((neuron) =>
       neuron.type === "hidden" && neuron.squash === LeakyReLU.NAME
     )!;
     hidden3.squash = TANH.NAME; // Change the squash function
     exportedJSON.synapses.push({
-      fromId: 44,
-      toId: hidden3.id!,
+      fromUUID: "input-44",
+      toUUID: hidden3.uuid!,
       weight: 0.000_001,
     });
 
@@ -151,8 +153,8 @@ Deno.test({
       throw new Error("Rust recording flush failed");
     }
 
-    // hidden-3 UUID generates id 1775329648
-    const hidden3Id = hidden3.id!;
+    const hidden3Id = wireToId.get(hidden3.uuid!);
+    assert(hidden3Id !== undefined, "hidden-3 should resolve to a runtime id");
     const candidateSquashes = await discoverStructure
       .analyzeSelectedNeuronsSquashes([
         hidden3Id,
@@ -170,10 +172,10 @@ Deno.test({
     );
     assert(betterCreature, "Should have discovered a better creature");
     betterCreature.validate();
-    const betterCreatureJSON = betterCreature.exportInternalJSON();
+    const betterCreatureJSON = betterCreature.exportJSON();
 
     const adjustedSquash = betterCreatureJSON.neurons.find((neuron) =>
-      neuron.id === hidden3Id
+      neuron.uuid === hidden3.uuid
     )!
       .squash;
 

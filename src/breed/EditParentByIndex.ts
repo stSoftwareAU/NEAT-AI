@@ -6,38 +6,50 @@ export function editParentByIndex(
   parent: Creature,
   target: Creature,
 ): Creature {
-  const parentExport = parent.exportInternalJSON();
-  const targetExport = target.exportInternalJSON();
+  const parentExport = parent.exportJSON();
+  const targetExport = target.exportJSON();
 
-  const targetSet = new Set<number>();
-  targetExport.neurons.forEach((n) => targetSet.add(n.id!));
+  const targetSet = new Set<string>();
+  targetExport.neurons.forEach((n) => {
+    if (typeof n.uuid === "string") {
+      targetSet.add(n.uuid);
+    }
+  });
 
   let parentIndx = 0;
 
-  const parentNeuronSet = new Set<number>();
-  parent.neurons.forEach((n) => parentNeuronSet.add(n.id));
+  const parentNeuronSet = new Set<string>();
+  parentExport.neurons.forEach((n) => {
+    if (n.type === "hidden" && typeof n.uuid === "string") {
+      parentNeuronSet.add(n.uuid);
+    }
+  });
 
   for (let index = 0; index < targetExport.neurons.length; index++) {
     const targetNeuron = targetExport.neurons[index];
     if (targetNeuron.type === "hidden") {
-      if (!parentNeuronSet.has(targetNeuron.id!)) {
-        const currentId = targetNeuron.id!;
+      const targetUuid = targetNeuron.uuid;
+      if (
+        typeof targetUuid === "string" && !parentNeuronSet.has(targetUuid)
+      ) {
         while (parentIndx < parentExport.neurons.length) {
           const parentNeuron = parentExport.neurons[parentIndx];
           parentIndx++;
           if (
-            parentNeuron.type === "hidden" && !targetSet.has(parentNeuron.id!)
+            parentNeuron.type === "hidden" &&
+            typeof parentNeuron.uuid === "string" &&
+            !targetSet.has(parentNeuron.uuid)
           ) {
-            (targetNeuron as { id: number }).id = parentNeuron.id!;
-            targetSet.add(parentNeuron.id!);
-            addTag(targetNeuron, "alias", String(currentId));
+            targetNeuron.uuid = parentNeuron.uuid;
+            targetSet.add(parentNeuron.uuid);
+            addTag(targetNeuron, "alias", targetUuid);
             addTag(targetNeuron, "approach", "graft");
             targetExport.synapses.forEach((synapse) => {
-              if (synapse.fromId === currentId) {
-                synapse.fromId = parentNeuron.id;
+              if (synapse.fromUUID === targetUuid) {
+                synapse.fromUUID = parentNeuron.uuid;
               }
-              if (synapse.toId === currentId) {
-                synapse.toId = parentNeuron.id;
+              if (synapse.toUUID === targetUuid) {
+                synapse.toUUID = parentNeuron.uuid;
               }
             });
             break;

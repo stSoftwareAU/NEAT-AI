@@ -91,7 +91,7 @@ Deno.test("train-XOR", async () => {
       // deno-lint-ignore no-sync-fn-in-async-fn
       Deno.writeTextFileSync(
         `.trace/start.json`,
-        JSON.stringify(network.exportInternalJSON(), null, 1),
+        JSON.stringify(network.exportJSON(), null, 1),
       );
     }
 

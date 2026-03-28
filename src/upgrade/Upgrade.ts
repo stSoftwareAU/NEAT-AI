@@ -113,7 +113,7 @@ function validateFourX(creature: Creature): void {
       writeDiagnostics({
         error,
         prefix: "upgrade-4x-repair",
-        creature: creature.exportInternalJSON(),
+        creature: creature.exportJSON(),
         context: {
           semanticVersion: creature.semanticVersion,
           uuid: creature.uuid,
@@ -162,7 +162,7 @@ function validateFourX(creature: Creature): void {
     writeDiagnostics({
       error,
       prefix: "upgrade-4x",
-      creature: creature.exportInternalJSON(),
+      creature: creature.exportJSON(),
       context: {
         semanticVersion: creature.semanticVersion,
         uuid: creature.uuid,
@@ -255,7 +255,7 @@ export function upgrade(creature: Creature): Creature {
 
   // Upgrade from 1.x → 2.x, then try 4.x
   if (majorVersion === 1) {
-    const v2 = upgradeTwo(creature.exportInternalJSON());
+    const v2 = upgradeTwo(creature.exportJSON());
     const upgraded = Creature.fromJSON(v2);
     return tryUpgradeToFour(upgraded);
   }
@@ -263,7 +263,7 @@ export function upgrade(creature: Creature): Creature {
   // Version 0 or unknown - set to 1.0.0 first, then upgrade to 2.x, then try 4.x
   // This handles undefined versions, invalid formats, and "0.x" versions
   if (majorVersion === 0) {
-    const json = creature.exportInternalJSON();
+    const json = creature.exportJSON();
     json.semanticVersion = "1.0.0"; // Set to 1.0.0 so upgradeTwo can process it
     const v2 = upgradeTwo(json);
     const upgraded = Creature.fromJSON(v2);

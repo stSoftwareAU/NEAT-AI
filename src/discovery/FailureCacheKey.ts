@@ -9,7 +9,7 @@
 
 import { join } from "@std/path/join";
 import { crypto as stdCrypto } from "@std/crypto";
-import { exportInternalJSON } from "../creature/CreatureSerialization.ts";
+import { exportJSON } from "../creature/CreatureSerialization.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import { DISCOVERY_WIRE_SCHEMA_VERSION } from "./DiscoveryWireFormat.ts";
@@ -211,44 +211,38 @@ function stableShortHash(value: string): string {
  * Builds a structural signature from the creature's neurons and synapses.
  * Uses exponents for weights/biases to group similar structures together.
  *
- * Includes both hidden and output neurons (sorted by ID for determinism).
+ * Includes both hidden and output neurons (sorted by UUID for determinism).
  * Input neurons are excluded as they have no squash/bias.
  */
 function buildStructuralSignature(candidate: DiscoveryCandidate): string {
-  const exported = exportInternalJSON(candidate.creature);
+  const exported = exportJSON(candidate.creature);
   const sigParts: string[] = [];
 
-  // Include neuron signatures (ID, squash, bias exponent)
-  // Filter to hidden and output neurons, then sort by ID for determinism
+  // Include neuron signatures (UUID, squash, bias exponent)
+  // Filter to hidden and output neurons, then sort by UUID for determinism
   const relevantNeurons = exported.neurons
     .filter((n) => n.type === "hidden" || n.type === "output")
-    .sort((a, b) => (a as { id: number }).id - (b as { id: number }).id);
+    .sort((a, b) => (a.uuid ?? "").localeCompare(b.uuid ?? ""));
 
   for (const neuron of relevantNeurons) {
     sigParts.push(
-      `n:${(neuron as { id: number }).id}:${neuron.squash}:${
-        formatWeight(neuron.bias)
-      }`,
+      `n:${neuron.uuid ?? "?"}:${neuron.squash}:${formatWeight(neuron.bias)}`,
     );
   }
 
-  // Include synapse signatures (from->to, weight exponent)
+  // Include synapse signatures (from->to UUIDs, weight exponent)
   // Sort for determinism
   const sortedSynapses = [...exported.synapses].sort((a, b) => {
-    const keyA = `${(a as { fromId: number }).fromId}->${
-      (a as { toId: number }).toId
-    }`;
-    const keyB = `${(b as { fromId: number }).fromId}->${
-      (b as { toId: number }).toId
-    }`;
+    const keyA = `${a.fromUUID ?? "?"}->${a.toUUID ?? "?"}`;
+    const keyB = `${b.fromUUID ?? "?"}->${b.toUUID ?? "?"}`;
     return keyA.localeCompare(keyB);
   });
 
   for (const synapse of sortedSynapses) {
     sigParts.push(
-      `s:${(synapse as { fromId: number }).fromId}->${
-        (synapse as { toId: number }).toId
-      }:${formatWeight(synapse.weight)}`,
+      `s:${synapse.fromUUID ?? "?"}->${synapse.toUUID ?? "?"}:${
+        formatWeight(synapse.weight)
+      }`,
     );
   }
 

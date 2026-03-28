@@ -81,7 +81,7 @@ Deno.test("NeatBehavioural: evolve improves fitness over generations for XOR", a
   try {
     const seedCreature = new Creature(2, 1, { layers: [{ count: 4 }] });
     const options: NeatOptions = {
-      creatures: [seedCreature.exportInternalJSON()],
+      creatures: [seedCreature.exportJSON()],
       populationSize: 30,
     };
 
@@ -161,8 +161,8 @@ Deno.test("NeatBehavioural: cloned creatures are grouped in the same species", (
 
   // Create two creatures from the same blueprint (same squash distribution)
   const original = new Creature(2, 1, { layers: [{ count: 4 }] });
-  const creature1 = Creature.fromJSON(original.exportInternalJSON());
-  const creature2 = Creature.fromJSON(original.exportInternalJSON());
+  const creature1 = Creature.fromJSON(original.exportJSON());
+  const creature2 = Creature.fromJSON(original.exportJSON());
   CreatureUtil.makeUUID(creature1);
   CreatureUtil.makeUUID(creature2);
 
@@ -224,7 +224,7 @@ Deno.test("NeatBehavioural: elitism preserves top performers between generations
   try {
     const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const options: NeatOptions = {
-      creatures: [seedCreature.exportInternalJSON()],
+      creatures: [seedCreature.exportJSON()],
       populationSize: 20,
       elitism: 4,
     };
@@ -260,7 +260,7 @@ Deno.test("NeatBehavioural: population size stays within configured bounds", asy
     const popSize = 25;
     const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const options: NeatOptions = {
-      creatures: [seedCreature.exportInternalJSON()],
+      creatures: [seedCreature.exportJSON()],
       populationSize: popSize,
     };
 
@@ -299,7 +299,7 @@ Deno.test("NeatBehavioural: populatePopulation creates correct population size",
       semanticVersion: "2.0.0",
     });
     const options: NeatOptions = {
-      creatures: [seedCreature.exportInternalJSON()],
+      creatures: [seedCreature.exportJSON()],
       populationSize: popSize,
     };
 
@@ -329,7 +329,7 @@ Deno.test("NeatBehavioural: population contains valid creatures after evolution"
   try {
     const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const options: NeatOptions = {
-      creatures: [seedCreature.exportInternalJSON()],
+      creatures: [seedCreature.exportJSON()],
       populationSize: 12,
     };
 

@@ -55,7 +55,7 @@ Deno.test("Public API: Creature constructor creates valid network", () => {
 
 Deno.test("Public API: Creature.fromJSON round-trips", () => {
   const original = new Creature(3, 2);
-  const json: CreatureExport = original.exportInternalJSON();
+  const json: CreatureExport = original.exportJSON();
   assertEquals(json.input, 3);
   assertEquals(json.output, 2);
   assert(Array.isArray(json.neurons), "Should have neurons array");

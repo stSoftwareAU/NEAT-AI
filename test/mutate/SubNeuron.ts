@@ -79,7 +79,7 @@ Deno.test("SubNeuron - should handle cascade removal of orphaned neurons", () =>
 
   let cascadeOccurred = false;
   for (let i = 0; i < 50; i++) {
-    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
+    const testCreature = Creature.fromJSON(creature.exportJSON());
     const hiddenCountBefore = testCreature.neurons.filter((n) =>
       n.type === "hidden"
     ).length;

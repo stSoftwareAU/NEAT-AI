@@ -41,7 +41,7 @@ Deno.test("DiscoveryReplayRunner: verifiedImprovement shortens creature uuid to 
   const runner = new DiscoveryReplayRunner({
     listEntries: (_dir) => [entry],
     applyEntry: (current, e) => {
-      const clone = Creature.fromJSON(current.exportInternalJSON());
+      const clone = Creature.fromJSON(current.exportJSON());
       clone.uuid = `${current.uuid}-${e.key}`;
       return clone;
     },

@@ -96,7 +96,7 @@ Deno.test("simplify - Cosine squash with varied biases preserves behaviour", () 
   };
   const complex = Creature.fromJSON(json);
 
-  const exportCreature = complex.exportInternalJSON();
+  const exportCreature = complex.exportJSON();
   Deno.writeTextFileSync(
     `${directory}/complex.json`,
     JSON.stringify(exportCreature, null, 1),
@@ -105,7 +105,7 @@ Deno.test("simplify - Cosine squash with varied biases preserves behaviour", () 
   assert(simplifiedCreature);
   Deno.writeTextFileSync(
     `${directory}/simplified.json`,
-    JSON.stringify(simplifiedCreature.exportInternalJSON(), null, 1),
+    JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
 
   assertNotEquals(

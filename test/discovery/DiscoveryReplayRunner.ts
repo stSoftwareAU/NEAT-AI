@@ -67,7 +67,7 @@ Deno.test("DiscoveryReplayRunner prunes stale successes and prefers best combo",
     archiveEntry: (_dir, entry) =>
       archived.push({ key: entry.key, changeType: entry.changeType }),
     applyEntry: (current, entry) => {
-      const clone = Creature.fromJSON(current.exportInternalJSON());
+      const clone = Creature.fromJSON(current.exportJSON());
       clone.uuid = `${current.uuid ?? "base"}-${entry.key}`;
       return clone;
     },
@@ -132,7 +132,7 @@ Deno.test("DiscoveryReplayRunner returns timedOut when timeout occurs before eva
     listEntries: (_dir) => [e1],
     archiveEntry: () => {},
     applyEntry: (current, entry) => {
-      const clone = Creature.fromJSON(current.exportInternalJSON());
+      const clone = Creature.fromJSON(current.exportJSON());
       clone.uuid = `${current.uuid ?? "base"}-${entry.key}`;
       return clone;
     },
@@ -176,7 +176,7 @@ Deno.test("DiscoveryReplayRunner completes normally with sufficient timeout", as
     listEntries: (_dir) => [e1],
     archiveEntry: () => {},
     applyEntry: (current, entry) => {
-      const clone = Creature.fromJSON(current.exportInternalJSON());
+      const clone = Creature.fromJSON(current.exportJSON());
       clone.uuid = `${current.uuid ?? "base"}-${entry.key}`;
       return clone;
     },
@@ -223,7 +223,7 @@ Deno.test("DiscoveryReplayRunner works without timeout (undefined)", async () =>
     listEntries: (_dir) => [e1],
     archiveEntry: () => {},
     applyEntry: (current, entry) => {
-      const clone = Creature.fromJSON(current.exportInternalJSON());
+      const clone = Creature.fromJSON(current.exportJSON());
       clone.uuid = `${current.uuid ?? "base"}-${entry.key}`;
       return clone;
     },

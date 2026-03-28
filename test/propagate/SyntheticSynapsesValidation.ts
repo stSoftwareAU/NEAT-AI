@@ -92,7 +92,7 @@ function trainCreature(
   syntheticSynapses: boolean,
   iterations: number,
 ) {
-  const clone = Creature.fromJSON(creature.exportInternalJSON());
+  const clone = Creature.fromJSON(creature.exportJSON());
   clone.validate();
 
   const options: TrainOptions = {

@@ -53,7 +53,7 @@ Deno.test("evolve: returns fittest creature with valid score", async () => {
   try {
     const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const options: NeatOptions = {
-      creatures: [seedCreature.exportInternalJSON()],
+      creatures: [seedCreature.exportJSON()],
       populationSize: 10,
     };
 
@@ -83,7 +83,7 @@ Deno.test("evolve: returns plateau detection status", async () => {
   try {
     const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const options: NeatOptions = {
-      creatures: [seedCreature.exportInternalJSON()],
+      creatures: [seedCreature.exportJSON()],
       populationSize: 10,
     };
 
@@ -120,7 +120,7 @@ Deno.test("evolve: returns average score", async () => {
   try {
     const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const options: NeatOptions = {
-      creatures: [seedCreature.exportInternalJSON()],
+      creatures: [seedCreature.exportJSON()],
       populationSize: 10,
     };
 
@@ -147,7 +147,7 @@ Deno.test("evolve: population is repopulated after evolution", async () => {
     const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const popSize = 15;
     const options: NeatOptions = {
-      creatures: [seedCreature.exportInternalJSON()],
+      creatures: [seedCreature.exportJSON()],
       populationSize: popSize,
     };
 
@@ -173,7 +173,7 @@ Deno.test("evolve: fittest creature has UUID", async () => {
   try {
     const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const options: NeatOptions = {
-      creatures: [seedCreature.exportInternalJSON()],
+      creatures: [seedCreature.exportJSON()],
       populationSize: 10,
     };
 
@@ -202,7 +202,7 @@ Deno.test("evolve: multiple generations improve or maintain fitness", async () =
   try {
     const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const options: NeatOptions = {
-      creatures: [seedCreature.exportInternalJSON()],
+      creatures: [seedCreature.exportJSON()],
       populationSize: 15,
     };
 
@@ -235,7 +235,7 @@ Deno.test("evolve: plateau detector records fitness each generation", async () =
   try {
     const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const options: NeatOptions = {
-      creatures: [seedCreature.exportInternalJSON()],
+      creatures: [seedCreature.exportJSON()],
       populationSize: 10,
     };
 
@@ -274,7 +274,7 @@ Deno.test("evolve: elitism preserves best creatures", async () => {
   try {
     const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const options: NeatOptions = {
-      creatures: [seedCreature.exportInternalJSON()],
+      creatures: [seedCreature.exportJSON()],
       populationSize: 10,
       elitism: 3,
     };

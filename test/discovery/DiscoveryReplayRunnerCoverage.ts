@@ -91,7 +91,7 @@ Deno.test("DiscoveryReplayRunner: default applyEntry replays singles, then all-s
     archiveEntry: (_dir, entry) => archived.push(entry.key),
     // Use the default applyEntryUsingRustRequest by not overriding applyEntry.
     evaluateError: (c) => {
-      const exported = c.exportInternalJSON();
+      const exported = c.exportJSON();
       const hasDirect = exported.synapses.some((s) =>
         s.fromId === 0 && s.toId === -1
       );
@@ -229,7 +229,7 @@ Deno.test("DiscoveryReplayRunner: prunes stale candidates (remove-low-impact + r
     archiveEntry: (_dir, entry) => archived.push(entry.key),
     evaluateError: (c) => {
       // If we removed neuron-X or removed neuron-T->output-0, call it worse.
-      const exported = c.exportInternalJSON();
+      const exported = c.exportJSON();
       const hasX = c.neurons.some((n) => n.id === ID_NEURON_X);
       const hasTSyn = exported.synapses.some((s) =>
         s.fromId === ID_NEURON_T && s.toId === -1
@@ -358,7 +358,7 @@ Deno.test("DiscoveryReplayRunner: coordinated-structural candidate can be replay
   const runner = new DiscoveryReplayRunner({
     listEntries: () => [entry],
     evaluateError: (c) => {
-      const exported = c.exportInternalJSON();
+      const exported = c.exportJSON();
       const updated = exported.synapses.find((s) =>
         s.fromId === 0 && s.toId === ID_HIDDEN_0
       );

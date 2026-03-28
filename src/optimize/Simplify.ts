@@ -17,7 +17,8 @@ import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 export function simplify(creature: Creature): Creature | undefined {
   const complexUUID = CreatureUtil.makeUUID(creature);
-  let exported = creature.exportInternalJSON();
+  let exported = creature.exportJSON();
+  normaliseCreatureExport(exported);
 
   exported = simplifyComplementToIdentity(exported);
   const neuronsMap = new Map<number, NeuronExport>();

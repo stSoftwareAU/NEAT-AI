@@ -130,7 +130,7 @@ Deno.test("fix - clears UUID when structure changes", async () => {
   creatureValidate(creature);
 
   // Record original UUID
-  const json = creature.exportInternalJSON();
+  const json = creature.exportJSON();
   const original = Creature.fromJSON(json);
   const originalUUID = original.uuid;
 

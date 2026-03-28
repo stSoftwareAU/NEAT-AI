@@ -9,8 +9,6 @@
 import { assert, assertEquals, assertExists } from "@std/assert";
 import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 
-// Integer ID for hidden-1 neuron in makeBaseCreature() (explicit id in fixture)
-const ID_HIDDEN_1 = 5001;
 import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import { Creature } from "../../src/Creature.ts";
@@ -83,9 +81,9 @@ Deno.test({
 
       // Record a squash change in the success cache (simulates a previous
       // discovery run that found changing squash to TANH improved score).
-      const cacheJson = base.exportInternalJSON();
+      const cacheJson = base.exportJSON();
       const cacheNeuron = cacheJson.neurons.find(
-        (n) => n.id === ID_HIDDEN_1,
+        (n) => n.uuid === "hidden-1",
       );
       if (!cacheNeuron) throw new Error("hidden-1 not found");
       cacheNeuron.squash = "TANH";
@@ -139,13 +137,13 @@ Deno.test({
       };
 
       const computeError = (creature: Creature) => {
-        const json = creature.exportInternalJSON();
+        const json = creature.exportJSON();
         const synapses = json.synapses;
-        const hidden1Squash = json.neurons.find((n) => n.id === ID_HIDDEN_1)
+        const hidden1Squash = json.neurons.find((n) => n.uuid === "hidden-1")
           ?.squash;
 
         const hasHelpful = synapses.some((synapse) =>
-          synapse.fromId === 0 && synapse.toId === -1 &&
+          synapse.fromUUID === "input-0" && synapse.toUUID === "output-0" &&
           Math.abs(synapse.weight - 0.6) < 1e-6
         );
         const changedSquash = hidden1Squash === "TANH";
@@ -237,15 +235,15 @@ Deno.test({
     };
 
     const computeError = (creature: Creature) => {
-      const json = creature.exportInternalJSON();
+      const json = creature.exportJSON();
       const synapses = json.synapses;
 
       const hasHelpful = synapses.some((synapse) =>
-        synapse.fromId === 0 && synapse.toId === -1 &&
+        synapse.fromUUID === "input-0" && synapse.toUUID === "output-0" &&
         Math.abs(synapse.weight - 0.6) < 1e-6
       );
       const removedHarmful = synapses.every((synapse) =>
-        !(synapse.fromId === 1 && synapse.toId === -1)
+        !(synapse.fromUUID === "input-1" && synapse.toUUID === "output-0")
       );
 
       // Combo

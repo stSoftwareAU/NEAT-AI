@@ -535,7 +535,7 @@ export class CRISPR {
       // return the original creature. The JSON is logged rather than written
       // to the working directory so core logic has no file-system side effects.
       const creatureJSON = JSON.stringify(
-        modifiedCreature.exportInternalJSON(),
+        modifiedCreature.exportJSON(),
         null,
         1,
       );

@@ -13,7 +13,7 @@ Deno.test("chooseNeurons selects approximately sparseRatio fraction of eligible 
   const config = createBackPropagationConfig({
     sparseRatio: 0.05,
   });
-  const result = chooseNeurons(creature.exportInternalJSON(), config);
+  const result = chooseNeurons(creature.exportJSON(), config);
 
   const validNeurons = creature.neurons.filter((neuron) =>
     neuron.type === "hidden" || neuron.type === "output"

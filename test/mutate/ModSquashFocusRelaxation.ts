@@ -34,7 +34,7 @@ Deno.test("ModSquash - relaxes focus list after several failed attempts", () => 
 
   let changed = false;
   for (let trial = 0; trial < 50; trial++) {
-    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
+    const testCreature = Creature.fromJSON(creature.exportJSON());
     const mutator = new ModActivation(testCreature);
     changed = mutator.mutate(impossibleFocusList);
     if (changed) {
@@ -74,7 +74,7 @@ Deno.test("ModSquash - prefers focused neurons when available", () => {
 
   let changed = false;
   for (let trial = 0; trial < 50; trial++) {
-    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
+    const testCreature = Creature.fromJSON(creature.exportJSON());
     const mutator = new ModActivation(testCreature);
     changed = mutator.mutate(focusList);
     if (changed) {
@@ -108,7 +108,7 @@ Deno.test("ModSquash - skips constant neurons", () => {
 
   // The output neuron can be mutated, but the constant cannot
   for (let i = 0; i < 100; i++) {
-    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
+    const testCreature = Creature.fromJSON(creature.exportJSON());
     const testMutator = new ModActivation(testCreature);
     testMutator.mutate();
     const constantNeuron = testCreature.neurons.find((n) =>

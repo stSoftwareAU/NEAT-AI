@@ -108,7 +108,7 @@ scripts/                # Utility scripts
 - **Runtime integer `id`** (`src/architecture/NeuronId.ts`): allowed **only
   in-memory** for hot paths (WASM, `Map<number, …>`, internal breeding
   traversal) where **profiling** shows a material win. Internal code that needs
-  integer IDs in serialised form should use `exportInternalJSON()` from
+  integer IDs in serialised form should use `exportJSON()` from
   `CreatureSerialization.ts`. Do **not** introduce new integer-keyed surfaces
   for lineage, export, or user-visible JSON without a benchmark in `bench/` and
   a short note in the PR.

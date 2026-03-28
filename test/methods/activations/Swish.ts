@@ -20,7 +20,7 @@ Deno.test("Swish", () => {
   };
   const creature = Creature.fromJSON(json);
   const sparseConfig = new SparseConfig(
-    creature.exportInternalJSON(),
+    creature.exportJSON(),
     createBackPropagationConfig({}),
   );
   const activation = new Swish();

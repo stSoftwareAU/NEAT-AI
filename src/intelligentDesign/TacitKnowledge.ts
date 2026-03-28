@@ -10,6 +10,7 @@
 import { assert } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import { Creature } from "../Creature.ts";
 import { getLogger } from "../utils/Logger.ts";
@@ -74,7 +75,10 @@ export function makeModifiedCreature(
   creatureExport: CreatureExport,
   nextSquash: string,
 ): Creature {
-  const tmpJson = Creature.fromJSON(creatureExport).exportInternalJSON();
+  const tmpJson = typeof structuredClone === "function"
+    ? structuredClone(creatureExport)
+    : JSON.parse(JSON.stringify(creatureExport));
+  normaliseCreatureExport(tmpJson);
   const neuronData = tmpJson.neurons.find((n: NeuronExport) =>
     n.id === neuronId
   );
@@ -107,8 +111,12 @@ export function makeModifiedCreature(
 export function getValidNeuronSquashes(
   creatureExport: CreatureExport,
 ): Map<number, string> {
+  const tmpJson = typeof structuredClone === "function"
+    ? structuredClone(creatureExport)
+    : JSON.parse(JSON.stringify(creatureExport));
+  normaliseCreatureExport(tmpJson);
   const validNeuronUUIDs = new Map<number, string>();
-  creatureExport.neurons.forEach((n: NeuronExport) => {
+  tmpJson.neurons.forEach((n: NeuronExport) => {
     if (n.type === "hidden" && n.id && n.squash) {
       validNeuronUUIDs.set(n.id, n.squash);
     }
@@ -195,7 +203,11 @@ export function getNeuronsToTest(
   creatureExport: CreatureExport,
   combinedKnowledge: TacitKnowledgeMap,
 ): NeuronExport[] {
-  return creatureExport.neurons.filter(
+  const tmpJson = typeof structuredClone === "function"
+    ? structuredClone(creatureExport)
+    : JSON.parse(JSON.stringify(creatureExport));
+  normaliseCreatureExport(tmpJson);
+  return tmpJson.neurons.filter(
     (n: NeuronExport) =>
       n.type === "hidden" &&
       combinedKnowledge[n.id!] &&
@@ -221,7 +233,10 @@ export async function applyNeuronChanges(
   dataDir: string,
   options: object,
 ): Promise<{ creature: CreatureExport; score: number; error: number }> {
-  const finalJson = Creature.fromJSON(creatureExport).exportInternalJSON();
+  const finalJson = typeof structuredClone === "function"
+    ? structuredClone(creatureExport)
+    : JSON.parse(JSON.stringify(creatureExport));
+  normaliseCreatureExport(finalJson);
 
   for (const uuid of neuronSquashMap.keys()) {
     const neuron = finalJson.neurons.find((n: NeuronExport) => n.id === uuid);
@@ -245,7 +260,7 @@ export async function applyNeuronChanges(
   finalCreature.fix();
   const result = await finalCreature.scoreDir(dataDir, options);
 
-  const exported = finalCreature.exportInternalJSON();
+  const exported = finalCreature.exportJSON();
   addTag(exported, "score", `${result.score}`);
   addTag(exported, "error", `${result.error}`);
 

@@ -10,7 +10,7 @@
 import { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
-import { exportInternalJSON } from "../creature/CreatureSerialization.ts";
+import { exportJSON } from "../creature/CreatureSerialization.ts";
 import { nextNeuronId } from "../architecture/NeuronId.ts";
 import type {
   CheckpointInterface,
@@ -47,7 +47,7 @@ export function exportCheckpoint(
   creature: Creature,
   options?: CheckpointExportOptions,
 ): CheckpointInterface {
-  const creatureExport = exportInternalJSON(creature);
+  const creatureExport = exportJSON(creature);
 
   // Collect input IDs
   const sourceInputIds: number[] = [];

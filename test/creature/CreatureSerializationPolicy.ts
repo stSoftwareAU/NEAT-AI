@@ -31,7 +31,7 @@ Deno.test({
 
     const source = new Creature(2, 1, { layers: [{ count: 2 }] });
     source.DEBUG = false;
-    const json = source.exportInternalJSON();
+    const json = source.exportJSON();
 
     const roundTrip = Creature.fromJSON(json);
     assertEquals(roundTrip.input, source.input);

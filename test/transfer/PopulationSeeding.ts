@@ -26,7 +26,7 @@ Deno.test("createSeededPopulation - seeds included in population", async () => {
     inputCount: 2,
     outputCount: 1,
     populationSize: 10,
-    seeds: [seed1.exportInternalJSON(), seed2.exportInternalJSON()],
+    seeds: [seed1.exportJSON(), seed2.exportJSON()],
   });
 
   assertEquals(population.length, 10, "Population should match target size");
@@ -47,7 +47,7 @@ Deno.test("createSeededPopulation - random creatures fill remaining slots", asyn
     inputCount: 3,
     outputCount: 2,
     populationSize: 5,
-    seeds: [seed.exportInternalJSON()],
+    seeds: [seed.exportJSON()],
   });
 
   assertEquals(population.length, 5, "Population should match target size");
@@ -69,7 +69,7 @@ Deno.test("createSeededPopulation - more seeds than population size caps at popu
   const seeds = [];
   for (let i = 0; i < 15; i++) {
     const seed = new Creature(2, 1);
-    seeds.push(seed.exportInternalJSON());
+    seeds.push(seed.exportJSON());
   }
 
   const population = createSeededPopulation({
@@ -117,7 +117,7 @@ Deno.test("createSeededPopulation - with layer configuration", async () => {
     inputCount: 2,
     outputCount: 1,
     populationSize: 5,
-    seeds: [seed.exportInternalJSON()],
+    seeds: [seed.exportJSON()],
     layers: [{ count: 3, squash: "LOGISTIC" }],
   });
 
@@ -152,7 +152,7 @@ Deno.test("seeded population creatures can be activated", async () => {
     inputCount: 2,
     outputCount: 1,
     populationSize: 3,
-    seeds: [seed.exportInternalJSON()],
+    seeds: [seed.exportJSON()],
   });
 
   // All creatures in the population should be activatable

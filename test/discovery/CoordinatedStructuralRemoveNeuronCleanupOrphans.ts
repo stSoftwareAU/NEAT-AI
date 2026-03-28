@@ -46,7 +46,7 @@ Deno.test(
     // triggering fix({ forwardOnly: true }) which bumps semanticVersion 3.x.x -> 4.0.0.
     assertEquals(mutated.semanticVersion, "3.9.0");
 
-    const exported = mutated.exportInternalJSON();
+    const exported = mutated.exportJSON();
     assertEquals(exported.neurons.some((n) => n.id === 1775329602), false);
     assertEquals(exported.neurons.some((n) => n.id === 1775329601), false);
     assertEquals(

@@ -41,7 +41,7 @@ Deno.test("record: prefers plastic paths over saturated ArcTan parents", () => {
     disableRandomSamples: true,
     generations: 0,
   });
-  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   const _output = creature.activateAndTrace(
     new Float32Array([1]),
     false,

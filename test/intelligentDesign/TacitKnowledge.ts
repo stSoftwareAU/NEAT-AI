@@ -47,15 +47,14 @@ const testCreatureJson: CreatureInternal = {
 
 Deno.test("getValidNeuronSquashes returns map of hidden neurons", () => {
   const creature = Creature.fromJSON(testCreatureJson);
-  const exported = creature.exportInternalJSON();
+  const exported = creature.exportJSON();
   const validNeurons = getValidNeuronSquashes(exported);
 
-  // Look up the actual IDs from the exported creature
-  const hidden1 = exported.neurons.find(
-    (n) => n.type === "hidden" && n.squash === "TANH",
+  const hidden1 = creature.neurons.find(
+    (n) => n.type === "hidden" && n.uuid === "neuron-hidden-1",
   );
-  const hidden2 = exported.neurons.find(
-    (n) => n.type === "hidden" && n.squash === "GELU",
+  const hidden2 = creature.neurons.find(
+    (n) => n.type === "hidden" && n.uuid === "neuron-hidden-2",
   );
   assertExists(hidden1?.id);
   assertExists(hidden2?.id);
@@ -119,14 +118,13 @@ Deno.test("cleanKnowledge removes entries for non-existent neurons", () => {
 
 Deno.test("getNeuronsToTest returns neurons with different squash than knowledge", () => {
   const creature = Creature.fromJSON(testCreatureJson);
-  const exported = creature.exportInternalJSON();
+  const exported = creature.exportJSON();
 
-  // Get actual IDs from the exported creature
-  const hidden1 = exported.neurons.find(
-    (n) => n.type === "hidden" && n.squash === "TANH",
+  const hidden1 = creature.neurons.find(
+    (n) => n.type === "hidden" && n.uuid === "neuron-hidden-1",
   );
-  const hidden2 = exported.neurons.find(
-    (n) => n.type === "hidden" && n.squash === "GELU",
+  const hidden2 = creature.neurons.find(
+    (n) => n.type === "hidden" && n.uuid === "neuron-hidden-2",
   );
   assertExists(hidden1?.id);
   assertExists(hidden2?.id);
@@ -145,14 +143,13 @@ Deno.test("getNeuronsToTest returns neurons with different squash than knowledge
 
 Deno.test("getNeuronsToTest returns empty when knowledge matches current squash", () => {
   const creature = Creature.fromJSON(testCreatureJson);
-  const exported = creature.exportInternalJSON();
+  const exported = creature.exportJSON();
 
-  // Get actual IDs from the exported creature
-  const hidden1 = exported.neurons.find(
-    (n) => n.type === "hidden" && n.squash === "TANH",
+  const hidden1 = creature.neurons.find(
+    (n) => n.type === "hidden" && n.uuid === "neuron-hidden-1",
   );
-  const hidden2 = exported.neurons.find(
-    (n) => n.type === "hidden" && n.squash === "GELU",
+  const hidden2 = creature.neurons.find(
+    (n) => n.type === "hidden" && n.uuid === "neuron-hidden-2",
   );
   assertExists(hidden1?.id);
   assertExists(hidden2?.id);
@@ -170,11 +167,10 @@ Deno.test("getNeuronsToTest returns empty when knowledge matches current squash"
 
 Deno.test("makeModifiedCreature changes neuron squash and adds tag", () => {
   const creature = Creature.fromJSON(testCreatureJson);
-  const exported = creature.exportInternalJSON();
+  const exported = creature.exportJSON();
 
-  // Get the actual ID for neuron-hidden-1 (TANH)
-  const hidden1 = exported.neurons.find(
-    (n) => n.type === "hidden" && n.squash === "TANH",
+  const hidden1 = creature.neurons.find(
+    (n) => n.type === "hidden" && n.uuid === "neuron-hidden-1",
   );
   assertExists(hidden1?.id);
 
@@ -185,11 +181,10 @@ Deno.test("makeModifiedCreature changes neuron squash and adds tag", () => {
     exported,
     newSquash,
   );
-  const modifiedExport = modified.exportInternalJSON();
+  const modifiedExport = modified.exportJSON();
 
-  // Find the modified neuron by its ID
   const modifiedNeuron = modifiedExport.neurons.find(
-    (n) => n.id === hidden1.id,
+    (n) => n.uuid === "neuron-hidden-1",
   );
   assertExists(modifiedNeuron);
 

@@ -1,5 +1,6 @@
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { CreatureExport } from "../../mod.ts";
@@ -226,8 +227,10 @@ function tuneRandomize(
 ) {
   const effectiveForwardOnly = forwardOnly ?? false;
   const effectiveBacktrack = backtrack ?? false;
-  const previousJSON = previousFittest.exportInternalJSON();
-  const fittestJSON = fittest.exportInternalJSON();
+  const previousJSON = structuredClone(previousFittest.exportJSON());
+  const fittestJSON = structuredClone(fittest.exportJSON());
+  normaliseCreatureExport(previousJSON);
+  normaliseCreatureExport(fittestJSON);
 
   let memetic: MemeticInterface;
   let existingMemetic: MemeticInterface | undefined;

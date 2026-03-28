@@ -99,9 +99,6 @@ function buildCreatureExportJSON(
  * (`uuid`, `fromUUID`, `toUUID`) which are stable across generations and
  * machines.
  *
- * Internal code that requires integer IDs should use
- * {@link exportInternalJSON} instead.
- *
  * **Hot-path policy (do not regress):** do **not** add unconditional
  * `creatureValidate` here. Full validation on every export destroys throughput
  * in evolution/training. Invariants should be enforced where structures are
@@ -113,21 +110,6 @@ export function exportJSON(creature: Creature): CreatureExport {
     creatureValidate(creature);
   }
   return buildCreatureExportJSON(creature, false);
-}
-
-/**
- * Internal creature JSON: includes runtime integer `id` on neurons and
- * `fromId`/`toId` on synapses alongside stable UUID fields.
- *
- * Issue #2054: This format is for internal hot paths only (evolution,
- * training, discovery, checkpointing). External consumers must use
- * {@link exportJSON} which produces UUID-only output.
- */
-export function exportInternalJSON(creature: Creature): CreatureExport {
-  if (creature.DEBUG) {
-    creatureValidate(creature);
-  }
-  return buildCreatureExportJSON(creature, true);
 }
 
 /**
@@ -143,10 +125,9 @@ export function exportSnapshotJSON(creature: Creature): CreatureExport {
 
 /**
  * Convert the creature to a trace JSON object.
- * Uses internal format (with integer IDs) since trace consumers need them.
  */
 export function traceJSON(creature: Creature): CreatureTrace {
-  const exportCreature = exportInternalJSON(creature);
+  const exportCreature = exportJSON(creature);
 
   const state = creature.state;
   let exportIndex = 0;

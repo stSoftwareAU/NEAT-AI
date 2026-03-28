@@ -21,6 +21,7 @@ import {
   buildWireToRuntimeIdMap,
   resolveCandidateSynapseEndpoints,
 } from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { cleanupMemeticForRemovedSynapse } from "../compact/CompactUtils.ts";
 import { Creature } from "../Creature.ts";
 import type { DiscoverResult } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
@@ -279,7 +280,8 @@ export function persistentlyRemoveHarmfulSynapse(
   const maxAttempts = 10; // Prevent infinite loops
 
   while (attempts < maxAttempts) {
-    const exportJSON = currentCreature.exportInternalJSON();
+    const exportJSON = currentCreature.exportJSON();
+    normaliseCreatureExport(exportJSON);
     const originalCount = exportJSON.synapses.length;
     exportJSON.synapses = exportJSON.synapses.filter((synapse) =>
       !(synapse.fromId === removalId.fromId &&
@@ -301,7 +303,8 @@ export function persistentlyRemoveHarmfulSynapse(
       validateAndFixCreatureSync(updated, "remove-synapse");
 
       // Verify it's still removed after fix()
-      const verifyJSON = updated.exportInternalJSON();
+      const verifyJSON = updated.exportJSON();
+      normaliseCreatureExport(verifyJSON);
       const stillExists = verifyJSON.synapses.some((synapse) =>
         synapse.fromId === removalId.fromId &&
         synapse.toId === removalId.toId

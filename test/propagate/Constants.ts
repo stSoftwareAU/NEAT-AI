@@ -47,7 +47,7 @@ Deno.test("backprop converges single sample to constant-weighted target", () => 
 
     Deno.writeTextFileSync(
       ".trace/0.json",
-      JSON.stringify(creature.exportInternalJSON(), null, 1),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
 
     const config = createBackPropagationConfig({
@@ -59,7 +59,7 @@ Deno.test("backprop converges single sample to constant-weighted target", () => 
       batchSize: 1, // Disable mini-batching for deterministic behaviour
     });
     const sparseConfig = new SparseConfig(
-      creature.exportInternalJSON(),
+      creature.exportJSON(),
       config,
     );
     const inA = [-1, 1, 0];
@@ -92,7 +92,7 @@ Deno.test("backprop converges single sample to constant-weighted target", () => 
 
     Deno.writeTextFileSync(
       ".trace/2.json",
-      JSON.stringify(creature.exportInternalJSON(), null, 1),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
 
     if (diff < 0.001 || attempts > 100) {
@@ -123,7 +123,7 @@ Deno.test("backprop converges repeated identical samples to constant target", ()
 
     Deno.writeTextFileSync(
       ".trace/0-clean.json",
-      JSON.stringify(creature.exportInternalJSON(), null, 1),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
     const config = createBackPropagationConfig({
       disableRandomSamples: true,
@@ -134,7 +134,7 @@ Deno.test("backprop converges repeated identical samples to constant target", ()
       learningRate: 1,
     });
     const sparseConfig = new SparseConfig(
-      creature.exportInternalJSON(),
+      creature.exportJSON(),
       config,
     );
     for (let i = 0; i < 1_000; i++) {
@@ -166,7 +166,7 @@ Deno.test("backprop converges repeated identical samples to constant target", ()
 
     Deno.writeTextFileSync(
       ".trace/3-updated.json",
-      JSON.stringify(creature.exportInternalJSON(), null, 1),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
 
     if (diff < 0.5 || attempts > 100) {
@@ -195,7 +195,7 @@ Deno.test("backprop learns constant-weighted mapping from few known samples", ()
 
   Deno.writeTextFileSync(
     ".trace/0.json",
-    JSON.stringify(creature.exportInternalJSON(), null, 1),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const inputs = [
@@ -210,7 +210,7 @@ Deno.test("backprop learns constant-weighted mapping from few known samples", ()
     maximumBiasAdjustmentScale: 20,
     learningRate: 0.05,
   });
-  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let loops = 100; loops--;) {
     for (let indx = 0; indx < inputs.length; indx++) {
       const input = inputs[indx];
@@ -239,7 +239,7 @@ Deno.test("backprop learns constant-weighted mapping from few known samples", ()
 
   Deno.writeTextFileSync(
     ".trace/3.json",
-    JSON.stringify(creature.exportInternalJSON(), null, 1),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   assertAlmostEquals(
@@ -265,7 +265,7 @@ Deno.test("backprop converges over many generations with random training samples
     // deno-lint-ignore no-await-in-loop -- retry loop: each attempt depends on previous
     await Deno.writeTextFile(
       `${traceDir}/0-start.json`,
-      JSON.stringify(creature.exportInternalJSON(), null, 1),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
 
     const observations = makeInputs();
@@ -286,7 +286,7 @@ Deno.test("backprop converges over many generations with random training samples
         generations: generations,
       });
       const sparseConfig = new SparseConfig(
-        creature.exportInternalJSON(),
+        creature.exportJSON(),
         config,
       );
       for (let loops = 10; loops--;) {
@@ -317,7 +317,7 @@ Deno.test("backprop converges over many generations with random training samples
     // deno-lint-ignore no-await-in-loop -- retry loop: each attempt depends on previous
     await Deno.writeTextFile(
       `${traceDir}/2-end.json`,
-      JSON.stringify(creature.exportInternalJSON(), null, 1),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
 
     if (attempt > 121) break;

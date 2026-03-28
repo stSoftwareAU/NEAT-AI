@@ -56,7 +56,7 @@ Deno.test("BackpropBuffers - multi-level training produces correct results", asy
   ];
 
   // Perturb weights slightly so training has something to learn
-  const json = Creature.fromJSON(creatureJson).exportInternalJSON();
+  const json = Creature.fromJSON(creatureJson).exportJSON();
   for (const s of json.synapses) {
     s.weight += 0.02;
   }
@@ -122,7 +122,7 @@ Deno.test("BackpropBuffers - training with wider network exercises buffer reuse"
   }
 
   // Perturb and retrain
-  const json = creature.exportInternalJSON();
+  const json = creature.exportJSON();
   for (const s of json.synapses) {
     s.weight += 0.03;
   }

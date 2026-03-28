@@ -14,8 +14,8 @@ export function compactUnused(
   plankConstant: number,
 ) {
   const start = Creature.fromJSON(traced);
-  const clean = Creature.fromJSON(start.exportInternalJSON());
-  const compacted = Creature.fromJSON(clean.exportInternalJSON());
+  const clean = Creature.fromJSON(start.exportJSON());
+  const compacted = Creature.fromJSON(clean.exportJSON());
 
   const neuronScale = new Map<number, number>();
   const synapseCount = new Map<number, number>();

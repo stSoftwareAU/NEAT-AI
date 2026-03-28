@@ -11,7 +11,7 @@ function loadCreature(name: string): CreatureExport {
 
   creature.validate();
 
-  return creature.exportInternalJSON();
+  return creature.exportJSON();
 }
 function loadExpected(sample: number): CreatureExport {
   const creature = loadCreature(`expected-${sample}`);

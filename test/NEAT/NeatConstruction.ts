@@ -59,7 +59,7 @@ Deno.test("NeatConstruction: creates instance with correct input/output", async 
   try {
     const creature = new Creature(3, 2, { layers: [{ count: 4 }] });
     const options: NeatOptions = {
-      creatures: [creature.exportInternalJSON()],
+      creatures: [creature.exportJSON()],
       populationSize: 10,
     };
 
@@ -81,8 +81,8 @@ Deno.test("NeatConstruction: initialises population from creatures option", asyn
     const creature2 = new Creature(2, 1, { layers: [{ count: 4 }] });
     const options: NeatOptions = {
       creatures: [
-        creature1.exportInternalJSON(),
-        creature2.exportInternalJSON(),
+        creature1.exportJSON(),
+        creature2.exportJSON(),
       ],
       populationSize: 10,
     };

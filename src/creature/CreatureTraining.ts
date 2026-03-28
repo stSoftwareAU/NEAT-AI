@@ -188,7 +188,7 @@ export function traceDir(
   let error = 0;
   let count = 0;
   const backPropConfig = createBackPropagationConfig(config);
-  const creatureJSON = creature.exportInternalJSON();
+  const creatureJSON = creature.exportJSON();
   const outgoingSynapsesMap = buildOutgoingSynapsesMap(creatureJSON);
   const sparseConfig = new SparseConfig(
     creatureJSON,
@@ -272,7 +272,7 @@ function writeCreatures(neat: Neat, dir: string): void {
   let counter = 1;
   emptyDirSync(dir);
   neat.population.forEach((c) => {
-    const json = c.exportInternalJSON();
+    const json = c.exportJSON();
     const txt = JSON.stringify(json, null, 1);
     const filePath = dir + "/" + counter + ".json";
     Deno.writeTextFileSync(filePath, txt);
@@ -401,7 +401,7 @@ export async function evolveDir(
         `Score (absolute) less than error (score=${fittestScore}, error=${error})`,
       );
       bestScore = fittestScore;
-      bestCreature = CreatureClass.fromJSON(fittest.exportInternalJSON());
+      bestCreature = CreatureClass.fromJSON(fittest.exportJSON());
       bestCreature.uuid = fittest.uuid;
       bestCreature.score = bestScore;
     }

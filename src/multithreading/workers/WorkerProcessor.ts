@@ -287,7 +287,7 @@ export class WorkerProcessor {
           this.cost,
         );
         creatureValidate(creature);
-        const json = JSON.stringify(creature.exportInternalJSON());
+        const json = JSON.stringify(creature.exportJSON());
 
         const response = {
           taskID: data.taskID,
@@ -406,7 +406,7 @@ export class WorkerProcessor {
         });
 
         if (offspring) {
-          const offspringJson = JSON.stringify(offspring.exportInternalJSON());
+          const offspringJson = JSON.stringify(offspring.exportJSON());
           return {
             taskID: data.taskID,
             duration: Date.now() - start,

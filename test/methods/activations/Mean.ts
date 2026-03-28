@@ -27,10 +27,10 @@ Deno.test("Mean", () => {
   creature.validate();
   Deno.writeTextFileSync(
     `${testDir}/fixed.json`,
-    JSON.stringify(creature.exportInternalJSON(), null, 1),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
   const sparseConfig = new SparseConfig(
-    creature.exportInternalJSON(),
+    creature.exportJSON(),
     createBackPropagationConfig({}),
   );
   for (let p = 0; p < 1000; p++) {

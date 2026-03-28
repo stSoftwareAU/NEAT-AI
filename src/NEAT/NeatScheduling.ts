@@ -128,7 +128,7 @@ export function scheduleDiscovery(
       addTag(improvedCreature, "approach", "discovered");
       addTag(improvedCreature, "discoveryID", uuid);
 
-      r.discover.improvedCreature = improvedCreature.exportInternalJSON();
+      r.discover.improvedCreature = improvedCreature.exportJSON();
 
       if (neat.config.verbose) {
         getLogger().info(
@@ -265,7 +265,7 @@ export function scheduleTraining(
     if (backtracked.length > 0 || forward.length > 0) {
       const untrainedError = getTag(trainedCreature, "untrained-error");
       if (backtracked.length > 0) {
-        const backtrackedCreature = backtracked[0].exportInternalJSON();
+        const backtrackedCreature = backtracked[0].exportJSON();
         addTag(backtrackedCreature, "trainID", r.train.ID);
         addTag(backtrackedCreature, "trainVariant", "overshot");
         if (untrainedError) {
@@ -274,7 +274,7 @@ export function scheduleTraining(
         r.train.backtracked = JSON.stringify(backtrackedCreature);
       }
       if (forward.length > 0) {
-        const forwardCreature = forward[0].exportInternalJSON();
+        const forwardCreature = forward[0].exportJSON();
         addTag(forwardCreature, "trainID", r.train.ID);
         addTag(forwardCreature, "trainVariant", "undershot");
         if (untrainedError) {
@@ -321,7 +321,7 @@ export function scheduleTraining(
       duration: 0,
       train: {
         ID: uuid,
-        creature: JSON.stringify(creature.exportInternalJSON()),
+        creature: JSON.stringify(creature.exportJSON()),
         error: Number.POSITIVE_INFINITY,
         trace: "",
       },

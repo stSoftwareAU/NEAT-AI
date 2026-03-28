@@ -15,7 +15,7 @@ Deno.test("chooseNeurons: error-guided selection prefers high-error neurons", ()
     sparseRatio: 0.05,
   });
 
-  const creatureJSON = creature.exportInternalJSON();
+  const creatureJSON = creature.exportJSON();
 
   // Build neuron error data: assign high error to a few specific neurons
   const neuronErrors = new Map<number, NeuronStateInterface>();
@@ -84,7 +84,7 @@ Deno.test("chooseNeurons: works without neuron errors (backward compatible)", ()
   });
 
   // Call without neuronErrors parameter — should still work
-  const result = chooseNeurons(creature.exportInternalJSON(), config);
+  const result = chooseNeurons(creature.exportJSON(), config);
 
   const validNeurons = creature.neurons.filter((neuron) =>
     neuron.type === "hidden" || neuron.type === "output"
@@ -112,7 +112,7 @@ Deno.test("chooseNeurons: sparseRatio 1 returns all neurons regardless of errors
   // Even with neuron errors, sparseRatio=1 should select all
   const neuronErrors = new Map<number, NeuronStateInterface>();
   const result = chooseNeurons(
-    creature.exportInternalJSON(),
+    creature.exportJSON(),
     config,
     neuronErrors,
   );

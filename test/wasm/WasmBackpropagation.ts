@@ -226,7 +226,7 @@ Deno.test({
       plankConstant: 1e-7,
     });
     const sparseConfig = new SparseConfig(
-      creature.exportInternalJSON(),
+      creature.exportJSON(),
       config,
     );
 
@@ -302,11 +302,11 @@ Deno.test({
       plankConstant: 1e-7,
     });
     const sparseConfig1 = new SparseConfig(
-      creature1.exportInternalJSON(),
+      creature1.exportJSON(),
       config,
     );
     const sparseConfig2 = new SparseConfig(
-      creature2.exportInternalJSON(),
+      creature2.exportJSON(),
       config,
     );
 
@@ -455,7 +455,7 @@ Deno.test({
       plankConstant: 1e-7,
     });
     const sparseConfig = new SparseConfig(
-      creature.exportInternalJSON(),
+      creature.exportJSON(),
       config,
     );
 

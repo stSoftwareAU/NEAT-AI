@@ -402,7 +402,7 @@ Deno.test(
     n1.fix();
     n1.validate();
 
-    const n2 = Creature.fromJSON(n1.exportInternalJSON());
+    const n2 = Creature.fromJSON(n1.exportJSON());
 
     n2.validate();
     const addNeuron = new AddNeuron(n2);
@@ -592,23 +592,19 @@ Deno.test(
 function checkChild(child: Creature) {
   child.validate();
 
-  const json = child.exportInternalJSON();
+  const json = child.exportJSON();
 
-  // IDs are deterministic integers derived from UUID strings:
-  // A0 → 1002063, A1 → 1002064
-  // B → 1000066
-  // C0 → 1002125, C1 → 1002126
   let aBranchFound = false;
   let bBranchFound = false;
   let cBranchFound = false;
   json.neurons.forEach((n) => {
-    if (n.id === 1002063 || n.id === 1002064) {
+    if (n.uuid === "A0" || n.uuid === "A1") {
       aBranchFound = true;
     }
-    if (n.id === 1000066) {
+    if (n.uuid === "B") {
       bBranchFound = true;
     }
-    if (n.id === 1002125 || n.id === 1002126) {
+    if (n.uuid === "C0" || n.uuid === "C1") {
       cBranchFound = true;
     }
   });

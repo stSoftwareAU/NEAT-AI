@@ -79,7 +79,7 @@ export class CreatureUtil {
     const holdDebug = creature.DEBUG;
     try {
       creature.DEBUG = false;
-      const json = creature.exportInternalJSON();
+      const json = creature.exportJSON();
 
       // Sort by stable wire-format uuid (integer ids are not exported)
       json.neurons.sort((a, b) => (a.uuid ?? "").localeCompare(b.uuid ?? ""));
@@ -148,7 +148,7 @@ export class CreatureUtil {
     const holdDebug = creature.DEBUG;
     try {
       creature.DEBUG = false;
-      const json = creature.exportInternalJSON();
+      const json = creature.exportJSON();
 
       const topologyNeurons = json.neurons.map((n) => ({
         uuid: n.uuid,

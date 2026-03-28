@@ -81,7 +81,7 @@ function makeTestCreature(): Creature {
  * Asserts that a creature has no dangling synapse references.
  */
 function assertCreatureIntegrity(creature: Creature, context: string): void {
-  const exported = creature.exportInternalJSON();
+  const exported = creature.exportJSON();
   assertValidSynapseReferences(exported, context);
 }
 
@@ -412,7 +412,7 @@ Deno.test(
       assertCreatureIntegrity(result, "removeSynapse valid output");
 
       // The removed synapse should no longer exist
-      const exported = result.exportInternalJSON();
+      const exported = result.exportJSON();
       const hasSynapse = exported.synapses.some(
         (s) => s.fromId === 0 && s.toId === 1000000,
       );
@@ -445,9 +445,9 @@ Deno.test(
     assertCreatureIntegrity(result, "addHelpfulSynapses valid output");
 
     // The new synapse should exist
-    const exported = result.exportInternalJSON();
+    const exported = result.exportJSON();
     const hasNewSynapse = exported.synapses.some(
-      (s) => s.fromId === 1 && s.toId === 1000000,
+      (s) => s.fromUUID === "input-1" && s.toUUID === "discovery-test-h0",
     );
     assertEquals(hasNewSynapse, true, "New synapse should exist in output");
   },
@@ -473,9 +473,9 @@ Deno.test(
       assertCreatureIntegrity(result, "removeHarmfulNeuron valid output");
 
       // The removed neuron should not exist as hidden
-      const exported = result.exportInternalJSON();
+      const exported = result.exportJSON();
       const hasNeuron = exported.neurons.some(
-        (n) => n.id === 1000000 && n.type === "hidden",
+        (n) => n.uuid === "discovery-test-h0" && n.type === "hidden",
       );
       assertEquals(
         hasNeuron,
@@ -486,13 +486,13 @@ Deno.test(
       // No synapse should reference the removed neuron
       for (const synapse of exported.synapses) {
         assertNotEquals(
-          synapse.fromId,
-          1000000,
+          synapse.fromUUID,
+          "discovery-test-h0",
           "No synapse should source from removed neuron",
         );
         assertNotEquals(
-          synapse.toId,
-          1000000,
+          synapse.toUUID,
+          "discovery-test-h0",
           "No synapse should target removed neuron",
         );
       }
@@ -519,9 +519,9 @@ Deno.test(
     if (result !== undefined) {
       assertCreatureIntegrity(result, "removeLowImpactNeuron valid output");
 
-      const exported = result.exportInternalJSON();
+      const exported = result.exportJSON();
       const hasNeuron = exported.neurons.some(
-        (n) => n.id === 1000001 && n.type === "hidden",
+        (n) => n.uuid === "discovery-test-h1" && n.type === "hidden",
       );
       assertEquals(
         hasNeuron,
@@ -558,8 +558,8 @@ Deno.test(
     assertCreatureIntegrity(result, "addHelpfulNeurons valid output");
 
     // The result should have more neurons than the original
-    const originalNeuronCount = creature.exportInternalJSON().neurons.length;
-    const resultNeuronCount = result.exportInternalJSON().neurons.length;
+    const originalNeuronCount = creature.exportJSON().neurons.length;
+    const resultNeuronCount = result.exportJSON().neurons.length;
     assert(
       resultNeuronCount > originalNeuronCount,
       "Result should have more neurons than original",
@@ -588,8 +588,8 @@ Deno.test(
     assertCreatureIntegrity(result, "changeSquash valid output");
 
     // Verify the squash was actually changed
-    const exported = result.exportInternalJSON();
-    const neuron = exported.neurons.find((n) => n.id === 1000000);
+    const exported = result.exportJSON();
+    const neuron = exported.neurons.find((n) => n.uuid === "discovery-test-h0");
     assertEquals(neuron?.squash, "LOGISTIC", "Squash should be changed");
   },
 );

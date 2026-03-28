@@ -247,14 +247,14 @@ Deno.test(
     // Create some valid candidates
     const validCandidates: DiscoveryCandidate[] = [
       {
-        creature: Creature.fromJSON(base.exportInternalJSON()),
+        creature: Creature.fromJSON(base.exportJSON()),
         change: {
           type: "change-squash",
           description: "Test valid squash change",
         },
       },
       {
-        creature: Creature.fromJSON(base.exportInternalJSON()),
+        creature: Creature.fromJSON(base.exportJSON()),
         change: {
           type: "change-squash",
           description: "Test valid squash change 2",

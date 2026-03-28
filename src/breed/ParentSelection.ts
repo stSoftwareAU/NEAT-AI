@@ -129,11 +129,11 @@ export function findFather(
   } catch (e) {
     Deno.writeTextFileSync(
       "./.source_mother.json",
-      JSON.stringify(mum.exportInternalJSON(), null, 1),
+      JSON.stringify(mum.exportJSON(), null, 1),
     );
     Deno.writeTextFileSync(
       "./.source_father.json",
-      JSON.stringify(father.exportInternalJSON(), null, 1),
+      JSON.stringify(father.exportJSON(), null, 1),
     );
 
     Deno.writeTextFileSync(

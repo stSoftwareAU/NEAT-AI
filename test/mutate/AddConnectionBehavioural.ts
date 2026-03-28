@@ -165,7 +165,7 @@ Deno.test("AddConnection: respects forward-only constraint", () => {
   // Run many mutations — all must maintain forward-only invariant
   for (let i = 0; i < 50; i++) {
     // Clone to reset between iterations
-    const clone = Creature.fromJSON(creature.exportInternalJSON());
+    const clone = Creature.fromJSON(creature.exportJSON());
     clone.forwardOnly = true;
     const addConnClone = new AddConnection(clone);
 

@@ -56,7 +56,7 @@ Deno.test("SinglePassDeDuplication - produces same uniqueness as two-pass", () =
   const neat = new Neat(2, 1, { populationSize: 50 }, []);
 
   // Create the exported creature
-  const exportedCreature = Creature.fromJSON(creature).exportInternalJSON();
+  const exportedCreature = Creature.fromJSON(creature).exportJSON();
 
   // Simulate different population sources with duplicates
   const elitists: Creature[] = [];
@@ -163,7 +163,7 @@ Deno.test("SinglePassDeDuplication - catches cross-source duplicates", () => {
 
   const neat = new Neat(2, 1, { populationSize: 30 }, []);
 
-  const exportedCreature = Creature.fromJSON(creature).exportInternalJSON();
+  const exportedCreature = Creature.fromJSON(creature).exportJSON();
 
   // Create populations where the same creature appears in multiple sources
   const elitists: Creature[] = [Creature.fromJSON(exportedCreature)];

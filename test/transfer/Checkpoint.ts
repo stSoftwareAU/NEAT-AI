@@ -220,7 +220,7 @@ Deno.test("round-trip - frozen flags survive export/import", async () => {
   }
 
   // Export and re-import
-  const json = creature.exportInternalJSON();
+  const json = creature.exportJSON();
   const reimported = Creature.fromJSON(json, true);
 
   // Check frozen flags preserved
@@ -330,7 +330,7 @@ Deno.test("frozen weights are preserved during backpropagation", async () => {
   }
 
   // Run backpropagation
-  const json = creature.exportInternalJSON();
+  const json = creature.exportJSON();
   const bpConfig = createBackPropagationConfig({});
   const sparseConfig = new SparseConfig(json, bpConfig);
 
@@ -364,7 +364,7 @@ Deno.test("frozen biases are preserved during backpropagation", async () => {
   }
 
   // Run backpropagation
-  const json = creature.exportInternalJSON();
+  const json = creature.exportJSON();
   const bpConfig = createBackPropagationConfig({});
   const sparseConfig = new SparseConfig(json, bpConfig);
 
@@ -392,7 +392,7 @@ Deno.test("transfer learning - train on task A, fine-tune on task B", async () =
   });
 
   // Simulate training by doing a few propagation steps
-  const jsonA = creatureA.exportInternalJSON();
+  const jsonA = creatureA.exportJSON();
   const bpConfig = createBackPropagationConfig({});
   const sparseConfig = new SparseConfig(jsonA, bpConfig);
 
@@ -431,7 +431,7 @@ Deno.test("transfer learning - train on task A, fine-tune on task B", async () =
   assert(frozenHiddenCount > 0, "Should have frozen hidden neurons");
 
   // Task B: OR gate - train with output weights unfrozen
-  const jsonB = creatureB.exportInternalJSON();
+  const jsonB = creatureB.exportJSON();
   const sparseConfigB = new SparseConfig(jsonB, bpConfig);
 
   const orData = [
@@ -472,7 +472,7 @@ Deno.test("non-frozen weights change during backpropagation", async () => {
     }
   }
 
-  const json = creature.exportInternalJSON();
+  const json = creature.exportJSON();
   const bpConfig = createBackPropagationConfig({});
   const sparseConfig = new SparseConfig(json, bpConfig);
 

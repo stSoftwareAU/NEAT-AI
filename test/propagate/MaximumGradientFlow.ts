@@ -89,7 +89,7 @@ Deno.test("MAXIMUM: non-winner connections close to winner receive gradient", ()
   }
 
   // Record original weights using the known integer IDs
-  const exportBefore = creature.exportInternalJSON();
+  const exportBefore = creature.exportJSON();
   // Winner upstream key: input-0 (id=0) -> hidden-a (gradient flows through winner)
   const winnerUpstreamKey = `0->${HIDDEN_A}`;
   // Runner-up leak key: hidden-b -> output (partial gradient on the connection to MAXIMUM)
@@ -111,7 +111,7 @@ Deno.test("MAXIMUM: non-winner connections close to winner receive gradient", ()
     disableRandomSamples: true,
   });
 
-  const exportAfter = trainedCreature.exportInternalJSON();
+  const exportAfter = trainedCreature.exportJSON();
   const weightsAfter = new Map<string, number>();
   for (const s of exportAfter.synapses) {
     weightsAfter.set(`${s.fromId}->${s.toId}`, s.weight);
@@ -208,7 +208,7 @@ Deno.test("MAXIMUM: convergence with close runner-up connections", () => {
     }
 
     // Perturb the weights
-    const exportJSON = creatureA.exportInternalJSON();
+    const exportJSON = creatureA.exportJSON();
     exportJSON.synapses.forEach((s, indx) => {
       s.weight += (indx % 2 === 0 ? 1 : -1) * 0.15;
     });

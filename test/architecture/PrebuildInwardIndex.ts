@@ -200,7 +200,7 @@ Deno.test("prebuildInwardIndexIfLarge() does not build index for small creatures
 Deno.test("Creature.fromJSON() prebuilds inward index for large creatures", () => {
   // Create a large creature and export it
   const original = createLargeCreature(30, 10, [100, 80, 50]);
-  const json = original.exportInternalJSON();
+  const json = original.exportJSON();
 
   assertEquals(
     json.synapses.length >= 1000,
@@ -222,7 +222,7 @@ Deno.test("Creature.fromJSON() prebuilds inward index for large creatures", () =
 Deno.test("Creature.fromJSON() does not prebuild inward index for small creatures", () => {
   // Create a small creature and export it
   const original = createSmallCreature();
-  const json = original.exportInternalJSON();
+  const json = original.exportJSON();
 
   assertEquals(
     json.synapses.length < 1000,
@@ -244,7 +244,7 @@ Deno.test("Creature.fromJSON() does not prebuild inward index for small creature
 Deno.test("loadFrom() prebuilds inward index for large creatures", () => {
   // Create a large creature and export it
   const original = createLargeCreature(30, 10, [100, 80, 50]);
-  const json = original.exportInternalJSON();
+  const json = original.exportJSON();
 
   assertEquals(
     json.synapses.length >= 1000,

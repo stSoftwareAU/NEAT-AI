@@ -55,11 +55,6 @@ Deno.test({
     });
     creature.validate();
 
-    // Look up the actual integer ID assigned to the hidden neuron
-    const hiddenTargetId = creature.neurons.find((n) =>
-      n.type === "hidden"
-    )!.id;
-
     const candidates = [{
       fromNeuronUuid: "input-0",
       toNeuronUuid: "hidden-target",
@@ -81,17 +76,16 @@ Deno.test({
     );
     assertExists(improved, "Should create improved creature");
 
-    const exportJSON = improved.exportInternalJSON();
-    // Find the original target neuron by its known integer ID
+    const exportJSON = improved.exportJSON();
     const targetIndex = exportJSON.neurons.findIndex((n) =>
-      n.id === hiddenTargetId
+      n.uuid === "hidden-target"
     );
     assert(targetIndex >= 0, "Target neuron should exist");
 
     // The newly added discovery neuron is the hidden neuron inserted before the target.
-    // It should have a different id from the original target and appear before it.
+    // It should have a different uuid from the original target and appear before it.
     const discoveryIndex = exportJSON.neurons.findIndex((n, i) =>
-      i < targetIndex && n.type === "hidden" && n.id !== hiddenTargetId
+      i < targetIndex && n.type === "hidden" && n.uuid !== "hidden-target"
     );
     assert(discoveryIndex >= 0, "Should include a discovered neuron");
     assert(
@@ -148,15 +142,15 @@ Deno.test({
     );
     assertExists(improved, "Should create improved creature");
 
-    const exportJSON = improved.exportInternalJSON();
+    const exportJSON = improved.exportJSON();
     const firstOutputIndex = exportJSON.neurons.findIndex((n) =>
       n.type === "output"
     );
     assert(firstOutputIndex >= 0, "Expected outputs to exist");
 
-    // The newly discovered neuron is a hidden neuron with id >= 1_000_000
+    // The newly discovered neuron is the only hidden neuron in the output export.
     const discoveryIndex = exportJSON.neurons.findIndex((n) =>
-      n.type === "hidden" && n.id !== undefined && n.id >= 1_000_000
+      n.type === "hidden"
     );
     assert(discoveryIndex >= 0, "Should include a discovered neuron");
 

@@ -6,6 +6,7 @@
  */
 
 import { assertEquals, assertExists } from "@std/assert";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../src/Creature.ts";
 import { applyNeuronChanges } from "../../src/intelligentDesign/TacitKnowledge.ts";
 
@@ -17,7 +18,8 @@ Deno.test("applyNeuronChanges updates neuron squashes, tags changes, and tags sc
     };
 
     const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
-    const exported = creature.exportInternalJSON();
+    const exported = creature.exportJSON();
+    normaliseCreatureExport(exported);
     const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
     assertEquals(hiddenNeurons.length > 0, true);
 
@@ -40,11 +42,12 @@ Deno.test("applyNeuronChanges updates neuron squashes, tags changes, and tags sc
     neuronSquashMap.set(second.id, { squash: "GELU", score: 2, error: 1 }); // unchanged
 
     const result = await applyNeuronChanges(exported, neuronSquashMap, ".", {});
+    normaliseCreatureExport(result.creature);
 
     assertEquals(result.score, 9.9);
     assertEquals(result.error, 0.01);
 
-    const updated = result.creature.neurons.find((n) => n.id === first.id);
+    const updated = result.creature.neurons.find((n) => n.uuid === first.uuid);
     assertExists(updated);
     assertEquals(updated.squash, "Swish");
 

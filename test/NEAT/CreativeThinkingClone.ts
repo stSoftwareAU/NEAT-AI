@@ -16,7 +16,7 @@ import { AddConnection } from "../../src/mutate/AddConnection.ts";
  * The creative thinking process in Neat.evolve() creates a clone of the fittest
  * creature to add random connections. Previously this used expensive JSON
  * serialisation/deserialisation:
- *   const creativeThinking = Creature.fromJSON(n.exportInternalJSON());
+ *   const creativeThinking = Creature.fromJSON(n.exportJSON());
  *
  * This has been optimised to use shallowClone():
  *   const creativeThinking = n.shallowClone();
@@ -44,7 +44,7 @@ Deno.test("CreativeThinkingClone: shallowClone produces equivalent structure to 
 
   // Create both types of clones
   const shallowClone = original.shallowClone();
-  const jsonClone = Creature.fromJSON(original.exportInternalJSON());
+  const jsonClone = Creature.fromJSON(original.exportJSON());
 
   // Verify structural equivalence
   assertEquals(
@@ -228,7 +228,7 @@ Deno.test("CreativeThinkingClone: full creative thinking workflow preserves orig
   };
 
   // Record original state
-  const originalJSON = JSON.stringify(fittest.exportInternalJSON());
+  const originalJSON = JSON.stringify(fittest.exportJSON());
   const originalUUID = fittest.uuid;
   const originalScore = fittest.score;
   const originalMemeticGeneration = fittest.memetic?.generation;
@@ -279,7 +279,7 @@ Deno.test("CreativeThinkingClone: full creative thinking workflow preserves orig
     "Fittest memetic generation should be unchanged",
   );
   assertEquals(
-    JSON.stringify(fittest.exportInternalJSON()),
+    JSON.stringify(fittest.exportJSON()),
     originalJSON,
     "Fittest export should be unchanged",
   );

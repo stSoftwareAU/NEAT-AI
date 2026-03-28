@@ -124,7 +124,7 @@ Deno.test("EarlyDeDuplication - bred population is de-duplicated", () => {
 
   // Create many duplicate creatures (simulating what breeding might produce)
   // First, export the creature to JSON to get stable UUIDs
-  const exportedCreature = Creature.fromJSON(creature).exportInternalJSON();
+  const exportedCreature = Creature.fromJSON(creature).exportJSON();
 
   const duplicateCreatures: Creature[] = [];
 

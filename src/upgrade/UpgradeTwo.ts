@@ -5,6 +5,7 @@ import type {
   CreatureExport,
   CreatureInternal,
 } from "../architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { nextNeuronId } from "../architecture/NeuronId.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
@@ -32,6 +33,7 @@ export function upgradeTwo(
     return json as CreatureInternal;
   }
   const exported = json as CreatureExport;
+  normaliseCreatureExport(exported);
 
   const updated = removeHYPOT(exported);
   const updated2 = removeHYPOTv2(updated);
@@ -120,7 +122,9 @@ function removeHYPOT(json: CreatureExport) {
     getLogger().info("Creature is not valid", e);
     tempCreature.fix();
   }
-  return tempCreature.exportInternalJSON();
+  const exported = tempCreature.exportJSON();
+  normaliseCreatureExport(exported);
+  return exported;
 }
 
 function removeHYPOTv2(json: CreatureExport) {
@@ -176,5 +180,7 @@ function removeHYPOTv2(json: CreatureExport) {
     tempCreature.fix();
   }
 
-  return tempCreature.exportInternalJSON();
+  const exported = tempCreature.exportJSON();
+  normaliseCreatureExport(exported);
+  return exported;
 }

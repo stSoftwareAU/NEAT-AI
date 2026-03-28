@@ -27,7 +27,7 @@ Deno.test("ModBias - should modify bias of a neuron", () => {
   // Run mutations until we get a change (randomised neuron selection)
   let changed = false;
   for (let i = 0; i < 50; i++) {
-    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
+    const testCreature = Creature.fromJSON(creature.exportJSON());
     const mutator = new ModBias(testCreature);
     changed = mutator.mutate();
     if (changed) {
@@ -75,7 +75,7 @@ Deno.test("ModBias - should skip constant neurons", () => {
     creature.neurons.find((n) => n.type === "constant")!.bias;
 
   for (let i = 0; i < 100; i++) {
-    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
+    const testCreature = Creature.fromJSON(creature.exportJSON());
     const mutator = new ModBias(testCreature);
     mutator.mutate();
     const constantNeuron = testCreature.neurons.find((n) =>
@@ -141,7 +141,7 @@ Deno.test("ModBias - focus list targets specific neurons", () => {
   const biasBefore3 = creature.neurons[3].bias;
   let changed = false;
   for (let i = 0; i < 50; i++) {
-    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
+    const testCreature = Creature.fromJSON(creature.exportJSON());
     const mutator = new ModBias(testCreature);
     if (mutator.mutate([2])) {
       changed = true;
@@ -175,7 +175,7 @@ Deno.test("ModBias - handles creature with only output neurons", () => {
 
   let biasChanged = false;
   for (let i = 0; i < 50; i++) {
-    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
+    const testCreature = Creature.fromJSON(creature.exportJSON());
     const mutator = new ModBias(testCreature);
     if (mutator.mutate()) {
       const newBias = testCreature.neurons[testCreature.input].bias;

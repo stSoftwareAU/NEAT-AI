@@ -48,7 +48,7 @@ export function addHelpfulNeurons(
   const wireToId = buildWireToRuntimeIdMap(creature);
 
   const existingNeuronIds = new Set(
-    exportJSON.neurons.map((neuron) => neuron.id),
+    creature.neurons.map((neuron) => neuron.id),
   );
   // Input neurons are not in exportJSON.neurons but are valid source neurons
   for (let i = 0; i < creature.input; i++) {
@@ -71,7 +71,7 @@ export function addHelpfulNeurons(
 
     const targetNeuron = exportJSON.neurons.find((neuron) => {
       if (neuron.type !== "hidden" && neuron.type !== "output") return false;
-      return neuron.id === resolved.toId;
+      return neuron.uuid === candidate.toNeuronUuid;
     });
     if (!targetNeuron) return;
 
@@ -83,8 +83,12 @@ export function addHelpfulNeurons(
     // (activation looks like zero at that stage).
     const fromIndex = resolved.fromId < creature.input
       ? -1
-      : exportJSON.neurons.findIndex((n) => n.id === resolved.fromId);
-    const toIndex = exportJSON.neurons.findIndex((n) => n.id === resolved.toId);
+      : exportJSON.neurons.findIndex((n) =>
+        n.uuid === candidate.fromNeuronUuid
+      );
+    const toIndex = exportJSON.neurons.findIndex((n) =>
+      n.uuid === candidate.toNeuronUuid
+    );
 
     if (fromIndex >= 0 && toIndex >= 0 && fromIndex >= toIndex) {
       const summary =
@@ -107,7 +111,7 @@ export function addHelpfulNeurons(
             targetIndex: toIndex,
             candidate,
             neuronOrder: exportJSON.neurons.map((n) => ({
-              id: n.id,
+              uuid: n.uuid,
               type: n.type,
             })),
           },
@@ -121,7 +125,6 @@ export function addHelpfulNeurons(
     const newNeuronUuid = crypto.randomUUID();
     const newNeuron = {
       type: "hidden" as const,
-      id: newNeuronId,
       uuid: newNeuronUuid,
       squash: candidate.squash,
       bias: candidate.bias,
@@ -164,7 +167,7 @@ export function addHelpfulNeurons(
       neuron.type === "output"
     );
     const targetIndex = exportJSON.neurons.findIndex((neuron) =>
-      neuron.id === resolved.toId
+      neuron.uuid === candidate.toNeuronUuid
     );
 
     if (targetNeuron.type === "output") {
@@ -187,8 +190,6 @@ export function addHelpfulNeurons(
     appliedCandidates.push(candidate);
 
     const incomingSynapse = {
-      fromId: resolved.fromId,
-      toId: newNeuronId,
       fromUUID: candidate.fromNeuronUuid,
       toUUID: newNeuronUuid,
       weight: candidate.incomingWeight,
@@ -205,8 +206,6 @@ export function addHelpfulNeurons(
     exportJSON.synapses.push(incomingSynapse);
 
     const outgoingSynapse = {
-      fromId: newNeuronId,
-      toId: resolved.toId,
       fromUUID: newNeuronUuid,
       toUUID: candidate.toNeuronUuid,
       weight: candidate.outgoingWeight,
@@ -321,7 +320,7 @@ export function changeSquash(
     );
     if (neuronId === undefined) return;
     const foundNeuron = exportJSON.neurons.find((neuron) => {
-      return neuron.id === neuronId;
+      return neuron.uuid === bestCandidate.neuronUuid;
     });
 
     if (!foundNeuron) return;

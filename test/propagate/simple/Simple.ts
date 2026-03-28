@@ -30,7 +30,7 @@ Deno.test("simple backpropagation converges after bias and weight perturbation",
 
   const cleanError = calculateError(cleanCreature, td);
   assertAlmostEquals(cleanError, 0, 0.00001, `cleanError: ${cleanError}`);
-  const exportJSON = cleanCreature.exportInternalJSON();
+  const exportJSON = cleanCreature.exportJSON();
 
   Deno.writeTextFileSync(
     `${directory}/A-clean.json`,
@@ -56,7 +56,7 @@ Deno.test("simple backpropagation converges after bias and weight perturbation",
   for (let i = 0; i < 10; i++) {
     Deno.writeTextFileSync(
       `${directory}/C${i}--start.json`,
-      JSON.stringify(modifiedCreature.exportInternalJSON(), null, 1),
+      JSON.stringify(modifiedCreature.exportJSON(), null, 1),
     );
     const results = train(modifiedCreature, td, {
       targetError: 0.01,
@@ -77,7 +77,7 @@ Deno.test("simple backpropagation converges after bias and weight perturbation",
     );
     Deno.writeTextFileSync(
       `${directory}/C${i}-end.json`,
-      JSON.stringify(modifiedCreature.exportInternalJSON(), null, 1),
+      JSON.stringify(modifiedCreature.exportJSON(), null, 1),
     );
     if (results.compact) Creature.fromJSON(results.compact).validate();
     if (results.error > lastError) {

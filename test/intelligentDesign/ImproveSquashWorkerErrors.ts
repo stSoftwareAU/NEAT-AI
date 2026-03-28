@@ -10,13 +10,15 @@
  */
 
 import { assertEquals, assertExists } from "@std/assert";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../src/Creature.ts";
 import { scanForSquashImprovements } from "../../src/intelligentDesign/ImproveSquash.ts";
 import type { ResponseData } from "../../src/intelligentDesign/workers/ResponseData.ts";
 
 function makeSingleHiddenCreatureExport() {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
-  const exported = creature.exportInternalJSON();
+  const exported = creature.exportJSON();
+  normaliseCreatureExport(exported);
   const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
   assertEquals(hiddenNeurons.length > 0, true);
 

@@ -51,7 +51,7 @@ Deno.test("NearZeroWeightClamping - gradient reaches hidden neuron through near-
     batchSize: 1,
     trainingMutationRate: 1,
   });
-  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([1.0]);
   const target = new Float32Array([0.5]);
@@ -108,7 +108,7 @@ Deno.test("NearZeroWeightClamping - hidden bias updates through near-zero outbou
     batchSize: 1,
     trainingMutationRate: 1,
   });
-  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([1.0]);
   const target = new Float32Array([0.5]);
@@ -179,7 +179,7 @@ Deno.test("NearZeroWeightClamping - gradient flows through deep near-zero chain"
     batchSize: 1,
     trainingMutationRate: 1,
   });
-  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([1.0]);
   const target = new Float32Array([0.5]);
@@ -227,7 +227,7 @@ Deno.test("NearZeroWeightClamping - no gradient explosion from clamped targets",
     batchSize: 1,
     trainingMutationRate: 1,
   });
-  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   const input = new Float32Array([1.0]);
   const target = new Float32Array([0.5]);
@@ -299,7 +299,7 @@ Deno.test("NearZeroWeightClamping - large creature finite values with near-zero 
     batchSize: 1,
     trainingMutationRate: 1,
   });
-  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   // Use first training sample.
   const sample = tdJSON[0];

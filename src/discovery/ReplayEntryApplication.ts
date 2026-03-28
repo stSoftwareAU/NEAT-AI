@@ -32,6 +32,7 @@ import {
 import type { Creature } from "../Creature.ts";
 import { formatWeight } from "./FailureCache.ts";
 import type { SuccessCacheEntry } from "./SuccessCache.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 
 function getRustRequest(entry: SuccessCacheEntry): Record<string, unknown> {
   return (entry.rustRequest as Record<string, unknown>) ?? {};
@@ -52,7 +53,8 @@ function isSynapsePresent(
   fromId: number,
   toId: number,
 ): boolean {
-  const exported = creature.exportInternalJSON();
+  const exported = creature.exportJSON();
+  normaliseCreatureExport(exported);
   return exported.synapses.some((s) => s.fromId === fromId && s.toId === toId);
 }
 
@@ -246,7 +248,8 @@ export function isAlreadyApplied(
       return false;
     }
 
-    const exported = creature.exportInternalJSON();
+    const exported = creature.exportJSON();
+    normaliseCreatureExport(exported);
     for (const [key, expected] of expectedByEdge.entries()) {
       const [fromIdStr, toIdStr] = key.split("\0");
       const fromId = Number(fromIdStr);
@@ -305,7 +308,8 @@ export function isAlreadyApplied(
     const biasExp = formatWeight(bias);
 
     // Find a hidden neuron with matching squash + bias magnitude that links from->hidden->to
-    const exported = creature.exportInternalJSON();
+    const exported = creature.exportJSON();
+    normaliseCreatureExport(exported);
     for (const neuron of creature.neurons) {
       if (neuron.type !== "hidden") continue;
       if (neuron.squash !== squash) continue;

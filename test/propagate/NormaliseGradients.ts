@@ -81,7 +81,7 @@ Deno.test("NormaliseGradients - reduces gradient magnification for high fan-out"
     normaliseGradients: false,
   });
   const sumSparse = new SparseConfig(
-    sumCreature.exportInternalJSON(),
+    sumCreature.exportJSON(),
     sumConfig,
   );
 
@@ -98,7 +98,7 @@ Deno.test("NormaliseGradients - reduces gradient magnification for high fan-out"
     normaliseGradients: true,
   });
   const normSparse = new SparseConfig(
-    normCreature.exportInternalJSON(),
+    normCreature.exportJSON(),
     normConfig,
   );
 
@@ -171,7 +171,7 @@ Deno.test("NormaliseGradients - single downstream unaffected", () => {
     normaliseGradients: false,
   });
   const sumSparse = new SparseConfig(
-    sumCreature.exportInternalJSON(),
+    sumCreature.exportJSON(),
     sumConfig,
   );
   sumCreature.activateAndTrace(input, false, sumSparse);
@@ -186,7 +186,7 @@ Deno.test("NormaliseGradients - single downstream unaffected", () => {
     normaliseGradients: true,
   });
   const normSparse = new SparseConfig(
-    normCreature.exportInternalJSON(),
+    normCreature.exportJSON(),
     normConfig,
   );
   normCreature.activateAndTrace(input, false, normSparse);
@@ -267,7 +267,7 @@ Deno.test("NormaliseGradients - improves convergence for skewed topology", () =>
     normaliseGradients: false,
   });
   const sumSparse = new SparseConfig(
-    sumCreature.exportInternalJSON(),
+    sumCreature.exportJSON(),
     sumConfig,
   );
 
@@ -296,7 +296,7 @@ Deno.test("NormaliseGradients - improves convergence for skewed topology", () =>
     normaliseGradients: true,
   });
   const normSparse = new SparseConfig(
-    normCreature.exportInternalJSON(),
+    normCreature.exportJSON(),
     normConfig,
   );
 

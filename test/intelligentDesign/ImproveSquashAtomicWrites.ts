@@ -8,6 +8,7 @@
 
 import { assertEquals, assertExists } from "@std/assert";
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../src/Creature.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import {
@@ -48,7 +49,8 @@ class FakeWorker {
   ): Promise<ResponseData> {
     this.call++;
     const score = 1 + this.call; // 2 then 3
-    const exported = creature.exportInternalJSON();
+    const exported = creature.exportJSON();
+    normaliseCreatureExport(exported);
 
     return Promise.resolve({
       taskID: this.call,
@@ -73,7 +75,8 @@ Deno.test("scanForSquashImprovements uses injected safe writers (async + sync pa
   const removes: string[] = [];
 
   const worker = new FakeWorker();
-  const creature = Creature.fromJSON(testCreatureJson).exportInternalJSON();
+  const creature = Creature.fromJSON(testCreatureJson).exportJSON();
+  normaliseCreatureExport(creature);
 
   const result = await scanForSquashImprovements({
     creature,
@@ -109,7 +112,7 @@ Deno.test("scanForSquashImprovements uses injected safe writers (async + sync pa
   // Final improvement path should be the alternative squash.
   // Get the actual hidden neuron ID from the test creature.
   const atomicCreature = Creature.fromJSON(testCreatureJson);
-  const atomicHidden = atomicCreature.exportInternalJSON().neurons.find(
+  const atomicHidden = atomicCreature.neurons.find(
     (n) => n.type === "hidden",
   );
   assertExists(atomicHidden?.id, "Hidden neuron must have an id");

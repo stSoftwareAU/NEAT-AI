@@ -169,7 +169,7 @@ export class DeDuplicator {
           }
         }
         const tmpCreature = Creature.fromJSON(
-          creatures[index].exportInternalJSON(),
+          creatures[index].exportJSON(),
         );
         this.mutator.mutate([tmpCreature]);
         const key3 = CreatureUtil.makeUUID(tmpCreature);

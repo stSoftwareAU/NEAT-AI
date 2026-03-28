@@ -538,7 +538,7 @@ export class DiscoveryRunner {
           score: result.score,
           scoreDelta,
           message,
-          creature: candidate.creature.exportInternalJSON(),
+          creature: candidate.creature.exportJSON(),
         };
       };
 

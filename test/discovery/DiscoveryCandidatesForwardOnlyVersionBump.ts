@@ -14,7 +14,7 @@ Deno.test(
     base.semanticVersion = "2.0.0";
     base.validate({ forwardOnly: true });
 
-    const baseJSON = base.exportInternalJSON();
+    const baseJSON = base.exportJSON();
 
     const hidden = baseJSON.neurons.find((n) => n.type === "hidden");
     const output = baseJSON.neurons.find((n) => n.type === "output");

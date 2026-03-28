@@ -418,7 +418,7 @@ export class WorkerHandler
     const data: RequestData = {
       taskID: this.taskID++,
       evaluate: {
-        creature: JSON.stringify(creature.exportInternalJSON()),
+        creature: JSON.stringify(creature.exportJSON()),
         feedbackLoop,
       },
     };
@@ -427,7 +427,7 @@ export class WorkerHandler
   }
 
   train(creature: Creature, options: TrainOptions) {
-    const json = creature.exportInternalJSON();
+    const json = creature.exportJSON();
 
     delete json.tags;
 
@@ -462,7 +462,7 @@ export class WorkerHandler
   }
 
   discover(creature: Creature, config: NeatConfig) {
-    const json = creature.exportInternalJSON();
+    const json = creature.exportJSON();
 
     // Strip non-cloneable properties so postMessage structured clone succeeds.
     // Workers use getLogger() and getRandomNumberGenerator() set during init.
@@ -543,8 +543,8 @@ export class WorkerHandler
     geneticCompatibilityThreshold: number,
     forwardOnly: boolean,
   ) {
-    const motherJson = mother.exportInternalJSON();
-    const fatherJson = father.exportInternalJSON();
+    const motherJson = mother.exportJSON();
+    const fatherJson = father.exportJSON();
 
     const data: RequestData = {
       taskID: this.taskID++,

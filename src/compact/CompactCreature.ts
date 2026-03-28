@@ -113,7 +113,7 @@ export function compactCreature(
 ): Creature | undefined {
   const holdDebug = creature.DEBUG;
   creature.DEBUG = false;
-  const startExport = creature.exportInternalJSON();
+  const startExport = creature.exportJSON();
   creature.DEBUG = holdDebug;
   // Public export omits integer ids; compaction logic expects fromId/toId on synapses.
   normaliseCreatureExport(startExport);

@@ -14,7 +14,7 @@ import {
   applyCoordinatedStructuralCandidate,
 } from "../architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
 import type { Creature } from "../Creature.ts";
-import { exportInternalJSON } from "../creature/CreatureSerialization.ts";
+import { exportJSON } from "../creature/CreatureSerialization.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 import { getMajorVersion } from "../upgrade/Upgrade.ts";
 import { getLogger } from "../utils/Logger.ts";
@@ -29,6 +29,7 @@ import {
   applyRemoveNeuron,
   applyRemoveSynapse,
 } from "./CandidateApplicationOps.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 
 /**
  * Upgrade 2.x/3.x creatures to 4.x once forward-only validity is confirmed.
@@ -167,9 +168,12 @@ export function applyChangeToCreature(
   baseCreature: Creature,
 ): Creature | undefined {
   const changeType = candidate.change.type;
-  const candidateJSON = exportInternalJSON(candidate.creature);
-  const creatureJSON = exportInternalJSON(creature);
-  const baseJSON = exportInternalJSON(baseCreature);
+  const candidateJSON = exportJSON(candidate.creature);
+  const creatureJSON = exportJSON(creature);
+  const baseJSON = exportJSON(baseCreature);
+  normaliseCreatureExport(candidateJSON);
+  normaliseCreatureExport(creatureJSON);
+  normaliseCreatureExport(baseJSON);
   const enforceForwardOnly = shouldEnforceForwardOnly(creature);
   const idToIndex = enforceForwardOnly
     ? buildIdToIndexMap(creatureJSON)

@@ -8,13 +8,15 @@
  */
 
 import { assertEquals, assertExists } from "@std/assert";
+import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../src/Creature.ts";
 import { scanForSquashImprovements } from "../../src/intelligentDesign/ImproveSquash.ts";
 import type { ResponseData } from "../../src/intelligentDesign/workers/ResponseData.ts";
 
 function makeSingleHiddenCreatureExport() {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
-  const exported = creature.exportInternalJSON();
+  const exported = creature.exportJSON();
+  normaliseCreatureExport(exported);
   const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
   assertEquals(hiddenNeurons.length > 0, true);
 
@@ -34,7 +36,8 @@ Deno.test("scanForSquashImprovements: alternative improvement message reports ta
 
   const fakeWorker = {
     score(creature: Creature, uuid: string): Promise<ResponseData> {
-      const json = creature.exportInternalJSON();
+      const json = creature.exportJSON();
+      normaliseCreatureExport(json);
       // Look up the target neuron by its numeric ID (uuid is the string form)
       const neuronId = Number(uuid);
       const neuron = json.neurons.find((n) => n.id === neuronId);

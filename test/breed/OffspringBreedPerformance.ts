@@ -12,8 +12,8 @@ import { initWasmForTests } from "../_initWasm.ts";
  * Issue #1095: Performance - Avoid JSON clone in Offspring.breed() parent preparation
  *
  * The breed() method previously used:
- *   const mother = upgrade(Creature.fromJSON(mum.exportInternalJSON()));
- *   let father = upgrade(Creature.fromJSON(dad.exportInternalJSON()));
+ *   const mother = upgrade(Creature.fromJSON(mum.exportJSON()));
+ *   let father = upgrade(Creature.fromJSON(dad.exportJSON()));
  *
  * This creates full JSON clones which is slow for large creatures.
  *
@@ -88,8 +88,8 @@ Deno.test("Offspring.breed() - parent creatures are not modified during breeding
   dad.score = 0.85;
 
   // Record original state
-  const mumJSON = JSON.stringify(mum.exportInternalJSON());
-  const dadJSON = JSON.stringify(dad.exportInternalJSON());
+  const mumJSON = JSON.stringify(mum.exportJSON());
+  const dadJSON = JSON.stringify(dad.exportJSON());
   const mumBiases = mum.neurons.map((n) => n.bias);
   const dadBiases = dad.neurons.map((n) => n.bias);
   const mumWeights = mum.synapses.map((s) => s.weight);
@@ -152,12 +152,12 @@ Deno.test("Offspring.breed() - parent creatures are not modified during breeding
   }
 
   assertEquals(
-    JSON.stringify(mum.exportInternalJSON()),
+    JSON.stringify(mum.exportJSON()),
     mumJSON,
     "Mum export JSON was modified",
   );
   assertEquals(
-    JSON.stringify(dad.exportInternalJSON()),
+    JSON.stringify(dad.exportJSON()),
     dadJSON,
     "Dad export JSON was modified",
   );
@@ -269,7 +269,7 @@ Deno.test("Offspring.breed() - activation equivalence with original implementati
 
         // Create a clone of offspring using JSON method
         const offspringClone = Creature.fromJSON(
-          offspring.exportInternalJSON(),
+          offspring.exportJSON(),
         );
         offspringClone.clearState();
         const output2 = offspringClone.activate(input.slice() as Float32Array);

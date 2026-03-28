@@ -158,7 +158,7 @@ Deno.test("simplify - constant neurons folded into multi-squash network preservi
   };
   const complex = Creature.fromJSON(json);
 
-  const exportCreature = complex.exportInternalJSON();
+  const exportCreature = complex.exportJSON();
   Deno.writeTextFileSync(
     `${directory}/complex.json`,
     JSON.stringify(exportCreature, null, 1),
@@ -167,7 +167,7 @@ Deno.test("simplify - constant neurons folded into multi-squash network preservi
   assert(simplifiedCreature);
   Deno.writeTextFileSync(
     `${directory}/simplified.json`,
-    JSON.stringify(simplifiedCreature.exportInternalJSON(), null, 1),
+    JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
 
   assertNotEquals(
@@ -254,7 +254,7 @@ Deno.test("simplify - constant neuron folded into LOGISTIC hidden layers preserv
 
   const complex = Creature.fromJSON(json);
   complex.validate();
-  const exportCreature = complex.exportInternalJSON();
+  const exportCreature = complex.exportJSON();
   Deno.writeTextFileSync(
     `${directory}/complex.json`,
     JSON.stringify(exportCreature, null, 1),
@@ -264,7 +264,7 @@ Deno.test("simplify - constant neuron folded into LOGISTIC hidden layers preserv
 
   Deno.writeTextFileSync(
     `${directory}/simplified.json`,
-    JSON.stringify(simplifiedCreature.exportInternalJSON(), null, 1),
+    JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
   simplifiedCreature.validate();
 
@@ -358,7 +358,7 @@ Deno.test("simplify - multiple minimal-weight constants folded preserving behavi
 
   const complex = Creature.fromJSON(json);
   complex.validate();
-  const exportCreature = complex.exportInternalJSON();
+  const exportCreature = complex.exportJSON();
   Deno.writeTextFileSync(
     `${directory}/complex.json`,
     JSON.stringify(exportCreature, null, 1),
@@ -368,7 +368,7 @@ Deno.test("simplify - multiple minimal-weight constants folded preserving behavi
 
   Deno.writeTextFileSync(
     `${directory}/simplified.json`,
-    JSON.stringify(simplifiedCreature.exportInternalJSON(), null, 1),
+    JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
   simplifiedCreature.validate();
 
@@ -436,7 +436,7 @@ Deno.test("simplify - simple constant propagation to IDENTITY outputs preserving
 
   const complex = Creature.fromJSON(json);
   complex.validate();
-  const exportCreature = complex.exportInternalJSON();
+  const exportCreature = complex.exportJSON();
   Deno.writeTextFileSync(
     `${directory}/complex.json`,
     JSON.stringify(exportCreature, null, 1),
@@ -446,7 +446,7 @@ Deno.test("simplify - simple constant propagation to IDENTITY outputs preserving
 
   Deno.writeTextFileSync(
     `${directory}/simplified.json`,
-    JSON.stringify(simplifiedCreature.exportInternalJSON(), null, 1),
+    JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
   simplifiedCreature.validate();
 

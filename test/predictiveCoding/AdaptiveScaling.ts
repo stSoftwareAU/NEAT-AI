@@ -339,7 +339,7 @@ Deno.test("PC training with default config + adaptive scaling reduces error on 3
     };
 
     // Baseline: zero learning rate = no weight updates.
-    const baselineCreature = Creature.fromJSON(creature.exportInternalJSON());
+    const baselineCreature = Creature.fromJSON(creature.exportJSON());
     const baseline = trainWithPredictiveCoding(
       baselineCreature,
       [dataSetDir + "/0.bin"],

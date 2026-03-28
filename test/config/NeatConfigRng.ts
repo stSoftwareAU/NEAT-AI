@@ -79,7 +79,7 @@ Deno.test("NeatConfig: different seeds produce different config defaults", () =>
 
 Deno.test("Mutation: same seed produces identical mutation results", () => {
   const creatureJson = new Creature(3, 1, { layers: [{ count: 4 }] })
-    .exportInternalJSON();
+    .exportJSON();
 
   function mutateWithSeed(seed: number): string {
     const config = createNeatConfig({
@@ -96,7 +96,7 @@ Deno.test("Mutation: same seed produces identical mutation results", () => {
       mutator.mutateCreature(creature, Mutation.MOD_WEIGHT);
     }
 
-    return JSON.stringify(creature.exportInternalJSON());
+    return JSON.stringify(creature.exportJSON());
   }
 
   const result1 = mutateWithSeed(42);
@@ -110,7 +110,7 @@ Deno.test("Mutation: same seed produces identical mutation results", () => {
 
 Deno.test("Mutation: different seeds produce different results", () => {
   const creatureJson = new Creature(3, 1, { layers: [{ count: 4 }] })
-    .exportInternalJSON();
+    .exportJSON();
 
   function mutateWithSeed(seed: number): string {
     const config = createNeatConfig({
@@ -127,7 +127,7 @@ Deno.test("Mutation: different seeds produce different results", () => {
       mutator.mutateCreature(creature, Mutation.MOD_WEIGHT);
     }
 
-    return JSON.stringify(creature.exportInternalJSON());
+    return JSON.stringify(creature.exportJSON());
   }
 
   const result1 = mutateWithSeed(42);
@@ -141,7 +141,7 @@ Deno.test("Mutation: different seeds produce different results", () => {
 
 Deno.test("Mutation: MOD_BIAS reproducible with seed", () => {
   const creatureJson = new Creature(2, 1, { layers: [{ count: 3 }] })
-    .exportInternalJSON();
+    .exportJSON();
 
   function mutateWithSeed(seed: number): string {
     const config = createNeatConfig({
@@ -158,7 +158,7 @@ Deno.test("Mutation: MOD_BIAS reproducible with seed", () => {
       mutator.mutateCreature(creature, Mutation.MOD_BIAS);
     }
 
-    return JSON.stringify(creature.exportInternalJSON());
+    return JSON.stringify(creature.exportJSON());
   }
 
   assertEquals(

@@ -54,7 +54,7 @@ Deno.test("Focus selection accounts for squashing function bounds on downstream 
     disableRandomSamples: true,
     generations: 0,
   });
-  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   creature.activateAndTrace(
     new Float32Array([0.1, 1000000]),
     false,
@@ -151,7 +151,7 @@ Deno.test("Focus selection correctly weights neurons by squash-bounded impact", 
     disableRandomSamples: true,
     generations: 0,
   });
-  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   creature.activateAndTrace(new Float32Array([5.0, 5.0]), false, sparseConfig);
 
   // Create DiscoverStructure to access impact calculation

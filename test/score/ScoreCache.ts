@@ -298,7 +298,7 @@ Deno.test("ScoreCache: loadFrom should clear score cache", () => {
 
   // Create another creature and load from it
   const otherCreature = createSimpleCreature();
-  const json = otherCreature.exportInternalJSON();
+  const json = otherCreature.exportJSON();
 
   creature.loadFrom(json, false);
 

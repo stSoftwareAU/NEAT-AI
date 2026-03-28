@@ -84,25 +84,25 @@ async function evolveSet(
     if (Math.abs(nt0 - nt1) > 0.0001) {
       Deno.writeTextFileSync(
         ".start.json",
-        JSON.stringify(lastCreature.exportInternalJSON(), null, 1),
+        JSON.stringify(lastCreature.exportJSON(), null, 1),
       );
       const nt2 = lastCreature.activate(input)[0];
 
       Deno.writeTextFileSync(
         ".end.json",
-        JSON.stringify(lastCreature.exportInternalJSON(), null, 1),
+        JSON.stringify(lastCreature.exportJSON(), null, 1),
       );
 
-      const n0 = Creature.fromJSON(lastCreature.exportInternalJSON()).activate(
+      const n0 = Creature.fromJSON(lastCreature.exportJSON()).activate(
         input,
       )[0];
 
       lastCreature.clearCache();
       const c1 = lastCreature.activate(input)[0];
-      const n1 = Creature.fromJSON(lastCreature.exportInternalJSON()).activate(
+      const n1 = Creature.fromJSON(lastCreature.exportJSON()).activate(
         input,
       )[0];
-      const creature2 = Creature.fromJSON(lastCreature.exportInternalJSON());
+      const creature2 = Creature.fromJSON(lastCreature.exportJSON());
       const n2 = creature2.activate(input)[0];
       const n2b = creature2.activate(input)[0];
       assertAlmostEquals(
@@ -115,7 +115,7 @@ async function evolveSet(
       );
     }
     const sparseConfig = new SparseConfig(
-      lastCreature.exportInternalJSON(),
+      lastCreature.exportJSON(),
       createBackPropagationConfig({}),
     );
 
@@ -186,7 +186,7 @@ function trainSet(
       `Error is: ${results.error}, required: ${error}`,
     );
     const sparseConfig = new SparseConfig(
-      creature.exportInternalJSON(),
+      creature.exportJSON(),
       createBackPropagationConfig({}),
     );
 
@@ -252,7 +252,7 @@ Deno.test("evolve XORgate", async () => {
   // deno-lint-ignore no-sync-fn-in-async-fn
   Deno.writeTextFileSync(
     ".evolve/XOR.json",
-    JSON.stringify(creature.exportInternalJSON(), null, 1),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 });
 
@@ -438,7 +438,7 @@ Deno.test("NARX Sequence", async () => {
     });
 
     if (result.error <= targetError){
-      console.info( creature.exportInternalJSON());
+      console.info( creature.exportJSON());
       break;
     }
     console.info(
@@ -552,15 +552,15 @@ Deno.test({
     // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".evolve/SHIFT.json",
-      JSON.stringify(creature.exportInternalJSON(), null, 1),
+      JSON.stringify(creature.exportJSON(), null, 1),
     );
   },
 });
 
 Deno.test("from-to", () => {
   const creature = new Creature(1000, 10);
-  const startJson = Creature.fromJSON(creature.exportInternalJSON())
-    .exportInternalJSON();
+  const startJson = Creature.fromJSON(creature.exportJSON())
+    .exportJSON();
   const startTxt = JSON.stringify(startJson, null, 1);
   let fromTotalMS = 0;
   let toTotalMS = 0;
@@ -579,7 +579,7 @@ Deno.test("from-to", () => {
     fromTotalMS += fromMS;
 
     performance.mark("to-start");
-    currentJson = currentCreature.exportInternalJSON();
+    currentJson = currentCreature.exportJSON();
     performance.mark("to-end");
     const toMS = performance.measure("", "to-start", "to-end").duration;
     toMinMS = toMinMS > toMS ? toMS : toMinMS;

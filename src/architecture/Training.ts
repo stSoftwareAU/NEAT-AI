@@ -19,7 +19,7 @@ import { buildOutgoingSynapsesMap } from "../propagate/sparse/CalculatePathsToOu
 import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
 import { BufferPool } from "../utils/BufferPool.ts";
 import type { CreatureExport, CreatureTrace } from "./CreatureInterfaces.ts";
-import { exportInternalJSON } from "../creature/CreatureSerialization.ts";
+import { exportJSON } from "../creature/CreatureSerialization.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import {
   trainWithPredictiveCoding,
@@ -191,7 +191,7 @@ function trainDirPredictiveCoding(
   const feedbackLoop = options.feedbackLoop ?? false;
   let compact = compactUnused(creature.traceJSON(), 1e-7);
   if (!compact) {
-    compact = Creature.fromJSON(creature.exportInternalJSON()).compact(
+    compact = Creature.fromJSON(creature.exportJSON()).compact(
       feedbackLoop,
     );
   }
@@ -203,7 +203,7 @@ function trainDirPredictiveCoding(
   addTag(trace, "pc-inference-steps", String(pcResult.averageInferenceSteps));
   addTag(trace, "pc-changed", String(pcResult.changed));
 
-  const compactExport = compact ? compact.exportInternalJSON() : undefined;
+  const compactExport = compact ? compact.exportJSON() : undefined;
   if (compactExport) {
     addTag(compactExport, "approach", "predictive-coding");
     addTag(compactExport, "pc-energy", String(pcResult.averageEnergy));
@@ -348,7 +348,7 @@ function trainDirBinary(
   let bestError: number | undefined = undefined;
   let previousIterationError: number | undefined = undefined;
   let trainingFailures = 0;
-  let bestCreatureJSON = exportInternalJSON(creature);
+  let bestCreatureJSON = exportJSON(creature);
   let bestTraceJSON = creature.traceJSON();
   let lastTraceJSON = bestTraceJSON;
   let knownSampleCount = -1;
@@ -638,7 +638,7 @@ function trainDirBinary(
       if (bestError === undefined || bestError > error) {
         bestTraceJSON = lastTraceJSON;
       }
-      bestCreatureJSON = exportInternalJSON(creature);
+      bestCreatureJSON = exportJSON(creature);
       bestError = error;
 
       creature.applyLearnings(iterationConfig, sparseConfig);
@@ -673,7 +673,7 @@ function trainDirBinary(
         creature.clearState();
 
         // Update bestCreatureJSON to reflect the cleaned creature.
-        bestCreatureJSON = exportInternalJSON(creature);
+        bestCreatureJSON = exportJSON(creature);
 
         // Filter bestTraceJSON to match the cleaned creature structure.
         // Build a set of remaining synapse keys and neuron UUIDs.
@@ -740,7 +740,7 @@ function trainDirBinary(
         iteration: iteration,
         error: bestError,
         trace: bestTraceJSON,
-        compact: compact ? compact.exportInternalJSON() : undefined,
+        compact: compact ? compact.exportJSON() : undefined,
       };
     }
   }

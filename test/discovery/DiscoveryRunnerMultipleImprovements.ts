@@ -117,7 +117,7 @@ Deno.test(
 
     // All candidate types improve; each has a different error
     const computeError = (creature: Creature) => {
-      const json = creature.exportInternalJSON();
+      const json = creature.exportJSON();
       const synapses = json.synapses;
       const hidden1Squash = json.neurons.find((n) => n.uuid === HIDDEN_1_UUID)
         ?.squash;
@@ -229,7 +229,7 @@ Deno.test(
     };
 
     const computeError = (creature: Creature) => {
-      const json = creature.exportInternalJSON();
+      const json = creature.exportJSON();
       const synapses = json.synapses;
 
       const hasHelpful = synapses.some((synapse) =>
@@ -322,7 +322,7 @@ Deno.test(
 
     // Both candidates improve
     const computeError = (creature: Creature) => {
-      const json = creature.exportInternalJSON();
+      const json = creature.exportJSON();
       const synapses = json.synapses;
       const hidden1Squash = json.neurons.find((n) => n.uuid === HIDDEN_1_UUID)
         ?.squash;
@@ -412,7 +412,7 @@ Deno.test(
 
     // All three single candidates improve
     const computeError = (creature: Creature) => {
-      const json = creature.exportInternalJSON();
+      const json = creature.exportJSON();
       const synapses = json.synapses;
       const hidden1Squash = json.neurons.find((n) => n.uuid === HIDDEN_1_UUID)
         ?.squash;

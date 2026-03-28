@@ -63,7 +63,7 @@ Deno.test("removeLowImpactNeuron applies bias compensation for outgoing synapses
     "Removed neuron should not exist",
   );
   assertEquals(
-    result.exportInternalJSON().synapses.some((s) =>
+    result.exportJSON().synapses.some((s) =>
       s.fromId === NEURON_X_ID || s.toId === NEURON_X_ID
     ),
     false,
@@ -582,7 +582,7 @@ Deno.test("combined removal candidate should be created when some removals fail"
   );
 
   // Verify the combined candidate removed B and C (A may also be removed as an orphan).
-  const combinedExport = combinedRemovalCandidate.creature.exportInternalJSON();
+  const combinedExport = combinedRemovalCandidate.creature.exportJSON();
   for (
     const [label, removedId] of [
       ["neuron-B-target-of-A", NEURON_B_ID],

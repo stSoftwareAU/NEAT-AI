@@ -88,7 +88,7 @@ Deno.test("compactUnused - preserves constant neuron ordering and behaviour", ()
 
   Deno.writeTextFileSync(
     `${traceDir}/0-start.json`,
-    JSON.stringify(creature.exportInternalJSON(), null, 1),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const outputs: Float32Array[] = new Array(data.length);
@@ -97,7 +97,7 @@ Deno.test("compactUnused - preserves constant neuron ordering and behaviour", ()
   }
 
   const config = createBackPropagationConfig();
-  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = data.length; i--;) {
     const actual = creature.activateAndTrace(
       new Float32Array(data[i]),
@@ -135,7 +135,7 @@ Deno.test("compactUnused - preserves constant neuron ordering and behaviour", ()
   compacted.validate();
   Deno.writeTextFileSync(
     `${traceDir}/2-compacted.json`,
-    JSON.stringify(compacted.exportInternalJSON(), null, 1),
+    JSON.stringify(compacted.exportJSON(), null, 1),
   );
 
   for (let i = data.length; i--;) {
@@ -189,7 +189,7 @@ Deno.test("compactUnused - preserves constant neuron ordering and behaviour", ()
   if (compacted2) {
     Deno.writeTextFileSync(
       `${traceDir}/4-compacted.json`,
-      JSON.stringify(compacted2.exportInternalJSON(), null, 1),
+      JSON.stringify(compacted2.exportJSON(), null, 1),
     );
 
     for (let i = data.length; i--;) {

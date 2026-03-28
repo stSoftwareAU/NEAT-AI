@@ -46,7 +46,7 @@ function checkMutation(method: { name: string }) {
   creatureValidate(creature);
   const originalOutput = [];
   const sparseConfig = new SparseConfig(
-    creature.exportInternalJSON(),
+    creature.exportJSON(),
     createBackPropagationConfig({}),
   );
   for (let i = 0; i <= 10; i++) {
@@ -60,12 +60,12 @@ function checkMutation(method: { name: string }) {
     }
   }
 
-  const json1 = JSON.stringify(creature.exportInternalJSON(), null, 1);
+  const json1 = JSON.stringify(creature.exportJSON(), null, 1);
   for (let i = 12; i--;) {
     if (mutator.mutateCreature(creature, method)) break;
   }
   mutator.repairAfterMutation(creature);
-  const json2 = JSON.stringify(creature.exportInternalJSON(), null, 1);
+  const json2 = JSON.stringify(creature.exportJSON(), null, 1);
 
   if (json1 === json2) {
     Deno.writeTextFileSync(
@@ -114,7 +114,7 @@ function checkMutation(method: { name: string }) {
 
 function testEquality(original: Creature, copied: Creature) {
   const sparseConfig = new SparseConfig(
-    original.exportInternalJSON(),
+    original.exportJSON(),
     createBackPropagationConfig({}),
   );
 
@@ -270,14 +270,14 @@ Deno.test("from/toJSON equivalency", () => {
     },
   );
 
-  copy = Creature.fromJSON(original.exportInternalJSON());
+  copy = Creature.fromJSON(original.exportJSON());
   testEquality(original, copy);
 
   original = new Creature(
     Math.floor(Math.random() * 5 + 1),
     Math.floor(Math.random() * 5 + 1),
   );
-  copy = Creature.fromJSON(original.exportInternalJSON());
+  copy = Creature.fromJSON(original.exportJSON());
   testEquality(original, copy);
 
   original = new Creature(
@@ -290,6 +290,6 @@ Deno.test("from/toJSON equivalency", () => {
     },
   );
 
-  copy = Creature.fromJSON(original.exportInternalJSON());
+  copy = Creature.fromJSON(original.exportJSON());
   testEquality(original, copy);
 });

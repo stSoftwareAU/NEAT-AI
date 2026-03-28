@@ -92,7 +92,7 @@ Deno.test(
     creature.validate();
 
     // Find neuron IDs dynamically after normalisation.
-    const exportedInit = creature.exportInternalJSON();
+    const exportedInit = creature.exportJSON();
     const hiddenANeuron = exportedInit.neurons.find(
       (n) =>
         n.type === "hidden" &&
@@ -120,7 +120,7 @@ Deno.test(
       });
     }
 
-    const exportBefore = creature.exportInternalJSON();
+    const exportBefore = creature.exportJSON();
     const weightsBefore = new Map<string, number>();
     for (const s of exportBefore.synapses) {
       const key = `${s.fromId}->${s.toId}:${s.type ?? "default"}`;
@@ -135,7 +135,7 @@ Deno.test(
       disableRandomSamples: true,
     });
 
-    const exportAfter = trainedCreature.exportInternalJSON();
+    const exportAfter = trainedCreature.exportJSON();
     const weightsAfter = new Map<string, number>();
     for (const s of exportAfter.synapses) {
       const key = `${s.fromId}->${s.toId}:${s.type ?? "default"}`;
@@ -270,7 +270,7 @@ Deno.test("IF: convergence with activation-weighted error distribution", async (
       });
     }
 
-    const exportJSON = creatureA.exportInternalJSON();
+    const exportJSON = creatureA.exportJSON();
     exportJSON.synapses.forEach((s, indx) => {
       if (s.type === "positive" || s.type === "negative") {
         s.weight += (indx % 2 === 0 ? 1 : -1) * 0.2;

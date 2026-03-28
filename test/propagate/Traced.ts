@@ -28,15 +28,15 @@ Deno.test("Traced: applyLearnings modifies creature weights from trace data", ()
   const creature = Creature.fromJSON(json);
   creature.validate();
 
-  const beforeJSON = JSON.stringify(creature.exportInternalJSON());
+  const beforeJSON = JSON.stringify(creature.exportJSON());
 
   const config = createBackPropagationConfig();
-  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   creature.applyLearnings(config, sparseConfig);
   creature.validate();
 
-  const afterJSON = JSON.stringify(creature.exportInternalJSON());
+  const afterJSON = JSON.stringify(creature.exportJSON());
 
   assertNotEquals(
     beforeJSON,

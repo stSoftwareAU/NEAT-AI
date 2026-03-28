@@ -18,8 +18,8 @@ Deno.test("WorkerProcessor.process returns score payload and tags exported creat
     };
 
     const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
-    const exported = creature.exportInternalJSON();
-    const hidden = exported.neurons.find((n) => n.type === "hidden");
+    const exported = creature.exportJSON();
+    const hidden = creature.neurons.find((n) => n.type === "hidden");
     assertExists(hidden);
     assertExists(hidden.id, "Hidden neuron must have a numeric id");
 

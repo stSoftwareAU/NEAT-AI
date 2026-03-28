@@ -298,7 +298,7 @@ Deno.test("Creature.propagate - handles extreme activation values without crashi
   const config = createBackPropagationConfig({
     learningRate: 0.1,
   });
-  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
 
   // Set up initial activations
   const input = new Float32Array([0.5, 0.5]);

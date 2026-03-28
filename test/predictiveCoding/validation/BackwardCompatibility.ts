@@ -58,7 +58,7 @@ Deno.test(
     runInference(creature, input, config);
 
     // Serialise to JSON.
-    const json = creature.exportInternalJSON();
+    const json = creature.exportJSON();
 
     // Deserialise from JSON.
     const restored = Creature.fromJSON(json);
@@ -125,7 +125,7 @@ Deno.test(
     runInference(creature, input, config);
 
     // Serialise and restore.
-    const json = creature.exportInternalJSON();
+    const json = creature.exportJSON();
     const restored = Creature.fromJSON(json);
 
     // Verify squash functions are preserved.

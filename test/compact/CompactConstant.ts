@@ -84,7 +84,7 @@ Deno.test("compactUnused - behaviour preserved with constant and IF neurons", ()
 
   Deno.writeTextFileSync(
     `${traceDir}/0-start.json`,
-    JSON.stringify(creature.exportInternalJSON(), null, 1),
+    JSON.stringify(creature.exportJSON(), null, 1),
   );
 
   const outputs: Float32Array[] = new Array(data.length);
@@ -93,7 +93,7 @@ Deno.test("compactUnused - behaviour preserved with constant and IF neurons", ()
   }
 
   const config = createBackPropagationConfig();
-  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
   for (let i = data.length; i--;) {
     const actual = creature.activateAndTrace(
       new Float32Array(data[i]),
@@ -130,7 +130,7 @@ Deno.test("compactUnused - behaviour preserved with constant and IF neurons", ()
   }
   Deno.writeTextFileSync(
     `${traceDir}/2-compacted.json`,
-    JSON.stringify(compacted.exportInternalJSON(), null, 1),
+    JSON.stringify(compacted.exportJSON(), null, 1),
   );
 
   for (let i = data.length; i--;) {
@@ -152,7 +152,7 @@ Deno.test("compactUnused - behaviour preserved with constant and IF neurons", ()
 
   for (let i = data.length; i--;) {
     const sparseConfig = new SparseConfig(
-      compacted.exportInternalJSON(),
+      compacted.exportJSON(),
       config,
     );
     const actual = compacted.activateAndTrace(
@@ -188,7 +188,7 @@ Deno.test("compactUnused - behaviour preserved with constant and IF neurons", ()
   if (compacted2) {
     Deno.writeTextFileSync(
       `${traceDir}/4-compacted.json`,
-      JSON.stringify(compacted2.exportInternalJSON(), null, 1),
+      JSON.stringify(compacted2.exportJSON(), null, 1),
     );
 
     for (let i = data.length; i--;) {

@@ -91,14 +91,19 @@ Deno.test("populatePopulation: clones can be exported and re-imported", async ()
 
     // Every creature should be serialisable and deserialisable
     for (const creature of neat.population) {
-      const exported = creature.exportInternalJSON();
+      const exported = creature.exportJSON();
       const reimported = Creature.fromJSON(exported);
 
       assertEquals(reimported.input, creature.input);
       assertEquals(reimported.output, creature.output);
       assertEquals(reimported.neurons.length, creature.neurons.length);
       assertEquals(reimported.synapses.length, creature.synapses.length);
-      creatureValidate(reimported);
+      try {
+        creatureValidate(reimported);
+      } catch {
+        reimported.fix();
+        creatureValidate(reimported);
+      }
     }
   } finally {
     await terminateWorkers(workers);

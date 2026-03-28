@@ -57,7 +57,7 @@ Deno.test("simplify - IDENTITY hidden neuron folded into downstream TANH output"
   };
   const complex = Creature.fromJSON(json);
 
-  const exportCreature = complex.exportInternalJSON();
+  const exportCreature = complex.exportJSON();
   Deno.writeTextFileSync(
     `${directory}/complex.json`,
     JSON.stringify(exportCreature, null, 1),
@@ -66,15 +66,15 @@ Deno.test("simplify - IDENTITY hidden neuron folded into downstream TANH output"
   assert(simplifiedCreature);
   Deno.writeTextFileSync(
     `${directory}/simplified.json`,
-    JSON.stringify(simplifiedCreature.exportInternalJSON(), null, 1),
+    JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
 
   const sparseComplexConfig = new SparseConfig(
-    complex.exportInternalJSON(),
+    complex.exportJSON(),
     createBackPropagationConfig({}),
   );
   const sparseSimplifiedConfig = new SparseConfig(
-    simplifiedCreature.exportInternalJSON(),
+    simplifiedCreature.exportJSON(),
     createBackPropagationConfig({}),
   );
   for (let p = 0; p < 12; p++) {
@@ -121,7 +121,7 @@ Deno.test("simplify - simple IDENTITY chain folded into single output neuron", (
   };
   const complex = Creature.fromJSON(json);
 
-  const exportCreature = complex.exportInternalJSON();
+  const exportCreature = complex.exportJSON();
   Deno.writeTextFileSync(
     `${directory}/complex.json`,
     JSON.stringify(exportCreature, null, 1),
@@ -130,15 +130,15 @@ Deno.test("simplify - simple IDENTITY chain folded into single output neuron", (
   assert(simplifiedCreature);
   Deno.writeTextFileSync(
     `${directory}/simplified.json`,
-    JSON.stringify(simplifiedCreature.exportInternalJSON(), null, 1),
+    JSON.stringify(simplifiedCreature.exportJSON(), null, 1),
   );
 
   const sparseComplexConfig = new SparseConfig(
-    complex.exportInternalJSON(),
+    complex.exportJSON(),
     createBackPropagationConfig({}),
   );
   const sparseSimplifiedConfig = new SparseConfig(
-    simplifiedCreature.exportInternalJSON(),
+    simplifiedCreature.exportJSON(),
     createBackPropagationConfig({}),
   );
   for (let p = 0; p < 12; p++) {
@@ -195,7 +195,7 @@ Deno.test("simplify - IDENTITY into MAXIMUM output is not simplified (aggregate 
   );
 
   // Verify the original creature still produces valid output after attempted simplify
-  const exported = creature.exportInternalJSON();
+  const exported = creature.exportJSON();
   assertEquals(
     exported.neurons.length,
     2,

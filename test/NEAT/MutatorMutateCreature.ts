@@ -223,7 +223,7 @@ Deno.test("MutatorMutateCreature: creature remains valid after mutation", () => 
   ];
 
   for (const mutation of mutations) {
-    const clone = Creature.fromJSON(creature.exportInternalJSON());
+    const clone = Creature.fromJSON(creature.exportJSON());
     CreatureUtil.makeUUID(clone);
 
     mutator.mutateCreature(clone, mutation);

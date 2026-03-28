@@ -1,4 +1,5 @@
 import { Creature } from "../../mod.ts";
+import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { AddConnection } from "../mutate/AddConnection.ts";
 
@@ -14,7 +15,8 @@ import { AddConnection } from "../mutate/AddConnection.ts";
  * @returns The modified creature with missing connections added
  */
 export function randomConnectMissing(creature: Creature): Creature {
-  const exported = creature.exportInternalJSON();
+  const exported = creature.exportJSON();
+  normaliseCreatureExport(exported);
   const inputMissing = new Set<number>();
   for (let i = 0; i < exported.input; i++) {
     inputMissing.add(i);

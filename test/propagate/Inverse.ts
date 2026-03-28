@@ -127,7 +127,7 @@ Deno.test("INVERSE activation: backprop converges towards original weights and b
     assertAlmostEquals(item.output[1], result[1], 0.00001);
   });
 
-  const exportJSON = creatureA.exportInternalJSON();
+  const exportJSON = creatureA.exportJSON();
 
   Deno.writeTextFileSync(
     ".trace/1-clean.json",
@@ -159,7 +159,7 @@ Deno.test("INVERSE activation: backprop converges towards original weights and b
 
     Deno.writeTextFileSync(
       ".trace/3-first.json",
-      JSON.stringify(creatureB.exportInternalJSON(), null, 1),
+      JSON.stringify(creatureB.exportJSON(), null, 1),
     );
 
     const result2 = train(creatureB, ts, {
@@ -170,7 +170,7 @@ Deno.test("INVERSE activation: backprop converges towards original weights and b
 
     Deno.writeTextFileSync(
       ".trace/4-last.json",
-      JSON.stringify(creatureB.exportInternalJSON(), null, 1),
+      JSON.stringify(creatureB.exportJSON(), null, 1),
     );
 
     if (result1.error <= result2.error && attempts < 12) continue;
