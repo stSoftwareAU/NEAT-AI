@@ -3,6 +3,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
+import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 
 /**
@@ -89,7 +90,7 @@ Deno.test("MAXIMUM: non-winner connections close to winner receive gradient", ()
   }
 
   // Record original weights using the known integer IDs
-  const exportBefore = creature.exportJSON();
+  const exportBefore = exportJSONWithRuntimeIds(creature);
   // Winner upstream key: input-0 (id=0) -> hidden-a (gradient flows through winner)
   const winnerUpstreamKey = `0->${HIDDEN_A}`;
   // Runner-up leak key: hidden-b -> output (partial gradient on the connection to MAXIMUM)
@@ -111,7 +112,7 @@ Deno.test("MAXIMUM: non-winner connections close to winner receive gradient", ()
     disableRandomSamples: true,
   });
 
-  const exportAfter = trainedCreature.exportJSON();
+  const exportAfter = exportJSONWithRuntimeIds(trainedCreature);
   const weightsAfter = new Map<string, number>();
   for (const s of exportAfter.synapses) {
     weightsAfter.set(`${s.fromId}->${s.toId}`, s.weight);
@@ -208,7 +209,7 @@ Deno.test("MAXIMUM: convergence with close runner-up connections", () => {
     }
 
     // Perturb the weights
-    const exportJSON = creatureA.exportJSON();
+    const exportJSON = exportJSONWithRuntimeIds(creatureA);
     exportJSON.synapses.forEach((s, indx) => {
       s.weight += (indx % 2 === 0 ? 1 : -1) * 0.15;
     });

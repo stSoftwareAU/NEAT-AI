@@ -29,6 +29,7 @@ import {
 import { propagateTopological } from "../propagate/TopologicalBackpropagation.ts";
 import { buildOutgoingSynapsesMap } from "../propagate/sparse/CalculatePathsToOutput.ts";
 import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
+import { exportJSONWithRuntimeIds } from "../architecture/PopulateRuntimeIdsFromCreature.ts";
 import { BufferPool } from "../utils/BufferPool.ts";
 import {
   type DiscoveryDirResult,
@@ -188,7 +189,7 @@ export function traceDir(
   let error = 0;
   let count = 0;
   const backPropConfig = createBackPropagationConfig(config);
-  const creatureJSON = creature.exportJSON();
+  const creatureJSON = exportJSONWithRuntimeIds(creature);
   const outgoingSynapsesMap = buildOutgoingSynapsesMap(creatureJSON);
   const sparseConfig = new SparseConfig(
     creatureJSON,

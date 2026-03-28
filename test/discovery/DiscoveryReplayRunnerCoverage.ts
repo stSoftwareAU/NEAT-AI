@@ -13,13 +13,6 @@ import { DiscoveryReplayRunner } from "../../src/discovery/DiscoveryReplayRunner
 import { DISCOVERY_WIRE_SCHEMA_VERSION } from "../../src/discovery/DiscoveryWireFormat.ts";
 import type { SuccessCacheEntry } from "../../src/discovery/SuccessCache.ts";
 
-// Integer IDs for neurons used in these tests (from UUID hashing):
-// hidden-0 → 1775329651
-// neuron-X → 1338473150, neuron-T → 1338473146
-const ID_HIDDEN_0 = 1775329651;
-const ID_NEURON_X = 1338473150;
-const ID_NEURON_T = 1338473146;
-
 function makeEntry(
   key: string,
   changeType: string,
@@ -93,9 +86,9 @@ Deno.test("DiscoveryReplayRunner: default applyEntry replays singles, then all-s
     evaluateError: (c) => {
       const exported = c.exportJSON();
       const hasDirect = exported.synapses.some((s) =>
-        s.fromId === 0 && s.toId === -1
+        s.fromUUID === "input-0" && s.toUUID === "output-0"
       );
-      const hidden0 = c.neurons.find((n) => n.id === ID_HIDDEN_0);
+      const hidden0 = exported.neurons.find((n) => n.uuid === "hidden-0");
       const hasTanh = hidden0?.squash === TANH.NAME;
 
       // Baseline: 0.5
@@ -230,9 +223,9 @@ Deno.test("DiscoveryReplayRunner: prunes stale candidates (remove-low-impact + r
     evaluateError: (c) => {
       // If we removed neuron-X or removed neuron-T->output-0, call it worse.
       const exported = c.exportJSON();
-      const hasX = c.neurons.some((n) => n.id === ID_NEURON_X);
+      const hasX = exported.neurons.some((n) => n.uuid === "neuron-X");
       const hasTSyn = exported.synapses.some((s) =>
-        s.fromId === ID_NEURON_T && s.toId === -1
+        s.fromUUID === "neuron-T" && s.toUUID === "output-0"
       );
       const score = hasX && hasTSyn ? 0.5 : 0.4;
       return Promise.resolve({ error: 0, score });
@@ -357,10 +350,11 @@ Deno.test("DiscoveryReplayRunner: coordinated-structural candidate can be replay
 
   const runner = new DiscoveryReplayRunner({
     listEntries: () => [entry],
+    archiveEntry: () => {},
     evaluateError: (c) => {
       const exported = c.exportJSON();
       const updated = exported.synapses.find((s) =>
-        s.fromId === 0 && s.toId === ID_HIDDEN_0
+        s.fromUUID === "input-0" && s.toUUID === "hidden-0"
       );
       const score = updated && Math.abs(updated.weight - 0.9) < 1e-12
         ? 0.6

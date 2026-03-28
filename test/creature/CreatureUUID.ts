@@ -137,7 +137,7 @@ Deno.test("ignoreTags", () => {
 
   /** Manually update when export identity / makeUUID canonicalisation changes. */
   assert(
-    uuid2 === "00b0b465-8e33-5f97-a8c4-197df7a2c289",
+    uuid2 === "b08e3db1-f508-5106-b5c6-dfec158a1334",
     "Wrong UUID was: " + uuid2,
   );
 });

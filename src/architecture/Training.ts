@@ -17,6 +17,7 @@ import {
 } from "../propagate/BackPropagation.ts";
 import { buildOutgoingSynapsesMap } from "../propagate/sparse/CalculatePathsToOutput.ts";
 import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
+import { exportJSONWithRuntimeIds } from "./PopulateRuntimeIdsFromCreature.ts";
 import { BufferPool } from "../utils/BufferPool.ts";
 import type { CreatureExport, CreatureTrace } from "./CreatureInterfaces.ts";
 import { exportJSON } from "../creature/CreatureSerialization.ts";
@@ -348,7 +349,7 @@ function trainDirBinary(
   let bestError: number | undefined = undefined;
   let previousIterationError: number | undefined = undefined;
   let trainingFailures = 0;
-  let bestCreatureJSON = exportJSON(creature);
+  let bestCreatureJSON = exportJSONWithRuntimeIds(creature);
   let bestTraceJSON = creature.traceJSON();
   let lastTraceJSON = bestTraceJSON;
   let knownSampleCount = -1;
@@ -638,7 +639,7 @@ function trainDirBinary(
       if (bestError === undefined || bestError > error) {
         bestTraceJSON = lastTraceJSON;
       }
-      bestCreatureJSON = exportJSON(creature);
+      bestCreatureJSON = exportJSONWithRuntimeIds(creature);
       bestError = error;
 
       creature.applyLearnings(iterationConfig, sparseConfig);

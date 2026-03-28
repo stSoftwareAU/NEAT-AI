@@ -271,11 +271,6 @@ export function loadFrom(
   json: CreatureInternal | CreatureExport,
   validate: boolean,
 ): void {
-  // Issue #1958: Ensure legacy CreatureExport JSON has integer IDs populated.
-  // This writes back id/fromId/toId to the source JSON so that any
-  // subsequent use of the same object (e.g. SparseConfig) works correctly.
-  normaliseCreatureExport(json as CreatureExport);
-
   creature.uuid = (json as CreatureInternal).uuid;
   if (json.semanticVersion) {
     creature.semanticVersion = json.semanticVersion;

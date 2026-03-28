@@ -3,6 +3,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
 import { Costs } from "../../src/Costs.ts";
 import { Creature } from "../../src/Creature.ts";
+import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 
 /**
@@ -82,7 +83,7 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
   }
 
   // Record original weights
-  const exportBefore = creature.exportJSON();
+  const exportBefore = exportJSONWithRuntimeIds(creature);
   // With weight 0.95, hidden-b produces the minimum value (winner).
   // Winner upstream key: input-1 (id=1) -> hidden-b (gradient flows through winner)
   const winnerUpstreamKey = `1->${HIDDEN_B}`;
@@ -105,7 +106,7 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
     disableRandomSamples: true,
   });
 
-  const exportAfter = trainedCreature.exportJSON();
+  const exportAfter = exportJSONWithRuntimeIds(trainedCreature);
   const weightsAfter = new Map<string, number>();
   for (const s of exportAfter.synapses) {
     weightsAfter.set(`${s.fromId}->${s.toId}`, s.weight);
@@ -198,7 +199,7 @@ Deno.test("MINIMUM: convergence with close runner-up connections", () => {
       });
     }
 
-    const exportJSON = creatureA.exportJSON();
+    const exportJSON = exportJSONWithRuntimeIds(creatureA);
     exportJSON.synapses.forEach((s, indx) => {
       s.weight += (indx % 2 === 0 ? 1 : -1) * 0.15;
     });

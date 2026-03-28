@@ -133,7 +133,7 @@ Deno.test("compactCreature: preserves neuron tags through compaction", () => {
 
   // Assert - the tagged neuron should survive and retain its tags
   const exported = compacted.exportJSON();
-  const taggedNeuron = exported.neurons.find((n) => n.id === 5000);
+  const taggedNeuron = exported.neurons.find((n) => n.uuid === "hidden-0");
   assert(taggedNeuron, "Tagged neuron should survive compaction");
   assert(taggedNeuron.tags, "Neuron tags should be preserved");
   assertEquals(taggedNeuron.tags.length, 1);
@@ -185,7 +185,7 @@ Deno.test("compactCreature: preserves synapse tags through compaction", () => {
   // Assert - tagged synapse should be preserved
   const exported = compacted.exportJSON();
   const taggedSynapse = exported.synapses.find(
-    (s) => s.fromId === 0,
+    (s) => s.fromUUID === "input-0" && s.toUUID === "hidden-0",
   );
   assert(taggedSynapse, "Input synapse should exist after compaction");
   assert(taggedSynapse.tags, "Synapse tags should be preserved");
@@ -236,7 +236,7 @@ Deno.test("compactCreature: preserves synapse types through compaction", () => {
   // Assert - synapse type should be preserved
   const exported = compacted.exportJSON();
   const inputSynapse = exported.synapses.find(
-    (s) => s.fromId === 0,
+    (s) => s.fromUUID === "input-0" && s.toUUID === "hidden-0",
   );
   assert(inputSynapse, "Input synapse should exist after compaction");
   assertEquals(

@@ -367,15 +367,23 @@ Deno.test("shallowClone - structural equivalence with fromJSON", () => {
     const shallowNeuron = shallowClone.neurons[i];
     const jsonNeuron = jsonClone.neurons[i];
     assertEquals(
-      shallowNeuron.id,
-      jsonNeuron.id,
-      `Neuron ${i} UUID mismatch`,
-    );
-    assertEquals(
       shallowNeuron.type,
       jsonNeuron.type,
       `Neuron ${i} type mismatch`,
     );
+    if (shallowNeuron.type === "hidden" || shallowNeuron.type === "constant") {
+      assertEquals(
+        shallowNeuron.uuid,
+        jsonNeuron.uuid,
+        `Neuron ${i} UUID mismatch`,
+      );
+    } else {
+      assertEquals(
+        shallowNeuron.id,
+        jsonNeuron.id,
+        `Neuron ${i} id mismatch`,
+      );
+    }
     if (shallowNeuron.type !== "input") {
       assertEquals(
         shallowNeuron.bias,

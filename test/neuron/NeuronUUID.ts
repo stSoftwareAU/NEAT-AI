@@ -1,6 +1,7 @@
 import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
+import { stripNumericIdsFromCreatureExport } from "../../src/creature/CreatureSerialization.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -59,8 +60,8 @@ Deno.test("generateUUID", () => {
 
   const j1 = n1.exportJSON();
   const n2 = Creature.fromJSON(j1);
-
-  for (let i = 0; i < n1.neurons.length; i++) {
-    assertEquals(n1.neurons[i].id, n2.neurons[i].id);
-  }
+  assertEquals(
+    stripNumericIdsFromCreatureExport(n2.exportJSON()),
+    stripNumericIdsFromCreatureExport(j1),
+  );
 });

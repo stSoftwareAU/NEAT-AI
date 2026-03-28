@@ -1,6 +1,7 @@
 import { assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature, type CreatureExport } from "../../mod.ts";
+import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 
@@ -83,7 +84,10 @@ Deno.test("propagation does not alter activations when output already matches ta
   }
 
   const config = createBackPropagationConfig();
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(
+    exportJSONWithRuntimeIds(creature),
+    config,
+  );
   for (let i = data.length; i--;) {
     const actual = creature.activateAndTrace(
       new Float32Array(data[i]),
@@ -114,7 +118,8 @@ Deno.test("propagation does not alter activations when output already matches ta
     JSON.stringify(traced, null, 1),
   );
 
-  const info = traced.neurons.find((n) => n.id === 831355858)?.trace;
+  const hidden3bId = creature.neurons.find((n) => n.uuid === "hidden-3b")?.id;
+  const info = traced.neurons.find((n) => n.id === hidden3bId)?.trace;
 
   if (!info) {
     fail("hidden-3b should have a trace");

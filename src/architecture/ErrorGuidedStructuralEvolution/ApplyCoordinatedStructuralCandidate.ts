@@ -1,6 +1,7 @@
 import type { CreatureExport } from "../CreatureInterfaces.ts";
 import { CreatureUtil } from "../CreatureUtils.ts";
 import { nextNeuronId } from "../NeuronId.ts";
+import { populateRuntimeIdsFromCreature } from "../PopulateRuntimeIdsFromCreature.ts";
 import { Creature } from "../../Creature.ts";
 import {
   cleanupMemeticForRemovedNeuron,
@@ -43,34 +44,6 @@ function canAddForwardOnlySynapse(
     return false;
   }
   return from < to;
-}
-
-function populateRuntimeIdsFromCreature(
-  creature: Creature,
-  exported: CreatureExport,
-): void {
-  const wireToId = buildWireToRuntimeIdMap(creature);
-  for (const neuron of exported.neurons) {
-    if (!neuron.uuid) continue;
-    const runtimeId = wireToId.get(neuron.uuid);
-    if (runtimeId !== undefined) {
-      (neuron as { id?: number }).id = runtimeId;
-    }
-  }
-  for (const synapse of exported.synapses) {
-    if (synapse.fromUUID) {
-      const fromId = wireToId.get(synapse.fromUUID);
-      if (fromId !== undefined) {
-        synapse.fromId = fromId;
-      }
-    }
-    if (synapse.toUUID) {
-      const toId = wireToId.get(synapse.toUUID);
-      if (toId !== undefined) {
-        synapse.toId = toId;
-      }
-    }
-  }
 }
 
 /**
