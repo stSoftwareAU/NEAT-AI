@@ -27,6 +27,7 @@ import type {
   SynapseInternal,
   SynapseTrace,
 } from "../architecture/SynapseInterfaces.ts";
+import type { MemeticInterface } from "../blackbox/MemeticInterface.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { upgradeOne } from "../upgrade/UpgradeOne.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
@@ -527,7 +528,13 @@ export function shallowClone(
   clone.DEBUG = creature.DEBUG;
 
   if (creature.memetic) {
-    clone.memetic = { ...creature.memetic };
+    // Deep clone nested weights/biases/ancestry. A shallow copy shares those
+    // objects with the source so mutating the clone's synapses can leave stale
+    // memetic entries that still match the parent — DEBUG export then fails
+    // memetic-vs-synapse validation (e.g. XOR-evolve with global DEBUG).
+    clone.memetic = JSON.parse(
+      JSON.stringify(creature.memetic),
+    ) as MemeticInterface;
   }
 
   // Issue #1863: Copy per-creature evolvable hyperparameters
