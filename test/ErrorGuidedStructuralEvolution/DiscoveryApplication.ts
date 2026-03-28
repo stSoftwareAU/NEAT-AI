@@ -11,6 +11,7 @@ import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.t
 import { Creature } from "../../src/Creature.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
+import { creatureToRustFormat } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import {
   addHelpfulNeurons,
   addHelpfulSynapses,
@@ -244,6 +245,63 @@ Deno.test("addHelpfulNeurons adds a new neuron with synapses", async () => {
   assert(
     result!.neurons.length > originalNeuronCount,
     "should have more neurons",
+  );
+});
+
+Deno.test("addHelpfulNeurons assigns stable uuid endpoints for Rust export", async () => {
+  await initWasmForTests();
+  const creature = makeTestCreature();
+
+  const candidate: CandidateNeuron = {
+    fromNeuronUuid: "input-0",
+    toNeuronUuid: "output-0",
+    incomingWeight: 0.5,
+    outgoingWeight: 0.3,
+    squash: IDENTITY.NAME,
+    bias: 0.1,
+    targetNeuronImpact: 1.0,
+    expectedCreatureErrorReduction: 0.02,
+    expectedCreatureScoreGain: 0.02,
+    improvedCount: 8,
+    totalCount: 10,
+  };
+
+  const result = addHelpfulNeurons("test-id", creature, [candidate]);
+  assert(result !== undefined, "should return a modified creature");
+
+  const exported = result.exportJSON();
+  const newNeuron = exported.neurons.find((neuron) =>
+    neuron.type === "hidden" && neuron.uuid !== "hidden-0" &&
+    neuron.uuid !== "hidden-1"
+  );
+  assert(newNeuron, "added hidden neuron should have a uuid");
+  assert(
+    typeof newNeuron.uuid === "string" && newNeuron.uuid.length > 0,
+    "added hidden neuron uuid should be non-empty",
+  );
+
+  const incoming = exported.synapses.find((synapse) =>
+    synapse.fromUUID === "input-0" && synapse.toUUID === newNeuron.uuid
+  );
+  assert(incoming, "incoming synapse should include both UUID endpoints");
+
+  const outgoing = exported.synapses.find((synapse) =>
+    synapse.fromUUID === newNeuron.uuid && synapse.toUUID === "output-0"
+  );
+  assert(outgoing, "outgoing synapse should include both UUID endpoints");
+
+  const rustCreature = creatureToRustFormat(exported);
+  assert(
+    rustCreature.synapses.some((synapse) =>
+      synapse.from_uuid === "input-0" && synapse.to_uuid === newNeuron.uuid
+    ),
+    "Rust export should preserve the incoming synapse UUID endpoints",
+  );
+  assert(
+    rustCreature.synapses.some((synapse) =>
+      synapse.from_uuid === newNeuron.uuid && synapse.to_uuid === "output-0"
+    ),
+    "Rust export should preserve the outgoing synapse UUID endpoints",
   );
 });
 

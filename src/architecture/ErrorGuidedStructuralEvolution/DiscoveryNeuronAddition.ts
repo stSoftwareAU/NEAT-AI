@@ -118,9 +118,11 @@ export function addHelpfulNeurons(
     }
 
     const newNeuronId = nextNeuronId();
+    const newNeuronUuid = crypto.randomUUID();
     const newNeuron = {
       type: "hidden" as const,
       id: newNeuronId,
+      uuid: newNeuronUuid,
       squash: candidate.squash,
       bias: candidate.bias,
     };
@@ -188,6 +190,7 @@ export function addHelpfulNeurons(
       fromId: resolved.fromId,
       toId: newNeuronId,
       fromUUID: candidate.fromNeuronUuid,
+      toUUID: newNeuronUuid,
       weight: candidate.incomingWeight,
     };
     addTag(incomingSynapse as TagsInterface, "discoveryID", ID);
@@ -204,6 +207,7 @@ export function addHelpfulNeurons(
     const outgoingSynapse = {
       fromId: newNeuronId,
       toId: resolved.toId,
+      fromUUID: newNeuronUuid,
       toUUID: candidate.toNeuronUuid,
       weight: candidate.outgoingWeight,
     };
