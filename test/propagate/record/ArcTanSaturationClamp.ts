@@ -33,7 +33,7 @@ Deno.test("Creature.record: ArcTan saturation does not produce astronomical erro
     disableRandomSamples: true,
     generations: 0,
   });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
 
   // Activate once so record() has a current activation/value to compare against.
   creature.activateAndTrace(new Float32Array([1]), false, sparseConfig);

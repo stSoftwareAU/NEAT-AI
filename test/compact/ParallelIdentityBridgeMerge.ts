@@ -27,7 +27,7 @@ Deno.test("parallel IDENTITY merge: two bridge neurons to same target are merged
   assert(compacted, "Expected compaction to occur");
   compacted.validate();
 
-  const exported = compacted.exportJSON();
+  const exported = compacted.exportInternalJSON();
   const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
 
   // At least one bridge neuron should be removed
@@ -69,7 +69,7 @@ Deno.test("parallel IDENTITY merge: weight calculation is correct", () => {
   assert(compacted, "Expected compaction to occur");
   compacted.validate();
 
-  const exported = compacted.exportJSON();
+  const exported = compacted.exportInternalJSON();
   const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
   assertEquals(hiddenNeurons.length, 1, "One hidden neuron should remain");
 
@@ -131,7 +131,7 @@ Deno.test("parallel IDENTITY merge: bias contributions are correctly absorbed", 
   assert(compacted, "Expected compaction to occur");
   compacted.validate();
 
-  const exported = compacted.exportJSON();
+  const exported = compacted.exportInternalJSON();
   const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
   assertEquals(hiddenNeurons.length, 1, "One hidden neuron should remain");
 
@@ -194,7 +194,7 @@ Deno.test("parallel IDENTITY merge: does not merge non-IDENTITY squash neurons",
   // The parallel IDENTITY merge should not fire for LOGISTIC.
   // Other passes may compact, but both hidden neurons should remain.
   if (compacted) {
-    const exported = compacted.exportJSON();
+    const exported = compacted.exportInternalJSON();
     const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
     assertEquals(
       hiddenNeurons.length,
@@ -257,7 +257,7 @@ Deno.test("parallel IDENTITY merge: preserves forward-only topology", () => {
   compacted.validate();
   assertEquals(compacted.forwardOnly, true);
 
-  const exported = compacted.exportJSON();
+  const exported = compacted.exportInternalJSON();
   const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
   assert(
     hiddenNeurons.length < 2,
@@ -292,7 +292,7 @@ Deno.test("parallel IDENTITY merge: three bridge neurons merged correctly", () =
   assert(compacted, "Expected compaction to occur");
   compacted.validate();
 
-  const exported = compacted.exportJSON();
+  const exported = compacted.exportInternalJSON();
   const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
 
   // Only one pass runs at a time, so we may have removed 2 of 3.

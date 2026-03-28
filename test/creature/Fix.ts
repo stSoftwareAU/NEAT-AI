@@ -45,8 +45,8 @@ Deno.test("fix: is idempotent - second fix does not change creature", () => {
 
   network.validate();
 
-  const preFixJSON = network.exportJSON();
+  const preFixJSON = network.exportInternalJSON();
   network.fix();
-  const postFixJSON = network.exportJSON();
+  const postFixJSON = network.exportInternalJSON();
   assertEquals(preFixJSON, postFixJSON);
 });

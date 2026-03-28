@@ -78,12 +78,12 @@ Deno.test("single hidden neuron: converges toward target with 100 repeated sampl
 
   Deno.writeTextFileSync(
     `${traceDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
 
   const input = [-1, 0, 1];
   const expected = makeOutput(input);
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
   for (let i = 0; i < 100; i++) {
     creature.activateAndTrace(new Float32Array(input), false, sparseConfig);
 
@@ -101,7 +101,7 @@ Deno.test("single hidden neuron: converges toward target with 100 repeated sampl
 
   Deno.writeTextFileSync(
     `${traceDir}/2-done.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
 
   // Issue #1651: Tolerance increased from 0.7 to 0.9 because gradient
@@ -146,7 +146,10 @@ Deno.test("single hidden neuron: converges within tolerance after 2 training sam
       batchSize: 1, // Disable mini-batching for deterministic behaviour
     });
 
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportInternalJSON(),
+      config,
+    );
     for (let i = 0; i < 2; i++) {
       creature.activateAndTrace(new Float32Array(inA), false, sparseConfig);
 
@@ -165,7 +168,7 @@ Deno.test("single hidden neuron: converges within tolerance after 2 training sam
 
     Deno.writeTextFileSync(
       `${traceDir}/2-done.json`,
-      JSON.stringify(creature.exportJSON(), null, 1),
+      JSON.stringify(creature.exportInternalJSON(), null, 1),
     );
 
     // Issue #1641: Tolerance increased from 0.5 to 0.7 because topological
@@ -219,7 +222,10 @@ Deno.test("single hidden neuron: converges tightly after 1000 repeated samples",
 
     const inA = [-1, 0, 1];
     const expectedA = makeOutput(inA);
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportInternalJSON(),
+      config,
+    );
     for (let i = 0; i < 1000; i++) {
       creature.activateAndTrace(new Float32Array(inA), false, sparseConfig);
 
@@ -238,7 +244,7 @@ Deno.test("single hidden neuron: converges tightly after 1000 repeated samples",
 
     Deno.writeTextFileSync(
       ".trace/4-done.json",
-      JSON.stringify(creature.exportJSON(), null, 1),
+      JSON.stringify(creature.exportInternalJSON(), null, 1),
     );
 
     if (
@@ -297,7 +303,7 @@ Deno.test("single hidden neuron: learns mapping from 1000 random training sample
     learningRate: 0.1,
     generations: 0,
   });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
   for (let i = 0; i < 1_000; i++) {
     const inC = [
       Math.random() * 2 - 1,
@@ -312,7 +318,7 @@ Deno.test("single hidden neuron: learns mapping from 1000 random training sample
 
   Deno.writeTextFileSync(
     `${traceDir}/4-done.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
 
   // Measure error after training - it should have improved

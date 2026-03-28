@@ -229,7 +229,7 @@ Deno.test("propagate still produces correct results with cached squash types", (
     generations: 0,
     learningRate: 1,
   });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
 
   // Activate and propagate to verify correctness is preserved
   const input = new Float32Array([0.5, -0.3]);

@@ -58,7 +58,7 @@ Deno.test("Trace - exportJSON round-trip preserves memetic data", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
-  const creature2 = Creature.fromJSON(creature.exportJSON());
+  const creature2 = Creature.fromJSON(creature.exportInternalJSON());
   checkMemetic(creature2);
 });
 
@@ -67,15 +67,15 @@ Deno.test("Trace - applyLearnings modifies creature and remains valid", () => {
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
   creature.validate();
-  const jsonBefore = creature.exportJSON();
+  const jsonBefore = creature.exportInternalJSON();
 
   const config = createBackPropagationConfig({
     learningRate: 0.02,
   });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
   creature.applyLearnings(config, sparseConfig);
   creature.validate();
-  const jsonAfter = creature.exportJSON();
+  const jsonAfter = creature.exportInternalJSON();
 
   // Verify neuron count is preserved (synapses may be pruned)
   assertEquals(jsonAfter.neurons.length, jsonBefore.neurons.length);

@@ -94,7 +94,7 @@ Deno.test("memetic preserved", () => {
 
   assertEquals(previousUUID, restoredUUID);
 
-  const exportJSON = tunedCreature.exportJSON();
+  const exportJSON = tunedCreature.exportInternalJSON();
   const importedCreature = Creature.fromJSON(exportJSON);
 
   assert(importedCreature.memetic);

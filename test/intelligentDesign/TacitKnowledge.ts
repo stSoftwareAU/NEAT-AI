@@ -47,7 +47,7 @@ const testCreatureJson: CreatureInternal = {
 
 Deno.test("getValidNeuronSquashes returns map of hidden neurons", () => {
   const creature = Creature.fromJSON(testCreatureJson);
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   const validNeurons = getValidNeuronSquashes(exported);
 
   // Look up the actual IDs from the exported creature
@@ -119,7 +119,7 @@ Deno.test("cleanKnowledge removes entries for non-existent neurons", () => {
 
 Deno.test("getNeuronsToTest returns neurons with different squash than knowledge", () => {
   const creature = Creature.fromJSON(testCreatureJson);
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
 
   // Get actual IDs from the exported creature
   const hidden1 = exported.neurons.find(
@@ -145,7 +145,7 @@ Deno.test("getNeuronsToTest returns neurons with different squash than knowledge
 
 Deno.test("getNeuronsToTest returns empty when knowledge matches current squash", () => {
   const creature = Creature.fromJSON(testCreatureJson);
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
 
   // Get actual IDs from the exported creature
   const hidden1 = exported.neurons.find(
@@ -170,7 +170,7 @@ Deno.test("getNeuronsToTest returns empty when knowledge matches current squash"
 
 Deno.test("makeModifiedCreature changes neuron squash and adds tag", () => {
   const creature = Creature.fromJSON(testCreatureJson);
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
 
   // Get the actual ID for neuron-hidden-1 (TANH)
   const hidden1 = exported.neurons.find(
@@ -185,7 +185,7 @@ Deno.test("makeModifiedCreature changes neuron squash and adds tag", () => {
     exported,
     newSquash,
   );
-  const modifiedExport = modified.exportJSON();
+  const modifiedExport = modified.exportInternalJSON();
 
   // Find the modified neuron by its ID
   const modifiedNeuron = modifiedExport.neurons.find(

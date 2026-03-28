@@ -24,7 +24,7 @@ function setupCreature() {
 Deno.test("Score: Calculation with given parameters", () => {
   const creature = setupCreature();
   const score = calculate(creature, 0.603, 0.000_000_1);
-  const upgradeExport = upgradeTwo(creature.exportJSON());
+  const upgradeExport = upgradeTwo(creature.exportInternalJSON());
   const upgradeCreature = Creature.fromJSON(upgradeExport);
   const upgradedScore = calculate(upgradeCreature, 0.603, 0.000_000_1);
   if (upgradedScore < score) {

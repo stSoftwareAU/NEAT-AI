@@ -402,7 +402,7 @@ Deno.test(
     n1.fix();
     n1.validate();
 
-    const n2 = Creature.fromJSON(n1.exportJSON());
+    const n2 = Creature.fromJSON(n1.exportInternalJSON());
 
     n2.validate();
     const addNeuron = new AddNeuron(n2);
@@ -592,7 +592,7 @@ Deno.test(
 function checkChild(child: Creature) {
   child.validate();
 
-  const json = child.exportJSON();
+  const json = child.exportInternalJSON();
 
   // IDs are deterministic integers derived from UUID strings:
   // A0 → 1002063, A1 → 1002064

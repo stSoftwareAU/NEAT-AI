@@ -74,7 +74,7 @@ export function makeModifiedCreature(
   creatureExport: CreatureExport,
   nextSquash: string,
 ): Creature {
-  const tmpJson = Creature.fromJSON(creatureExport).exportJSON();
+  const tmpJson = Creature.fromJSON(creatureExport).exportInternalJSON();
   const neuronData = tmpJson.neurons.find((n: NeuronExport) =>
     n.id === neuronId
   );
@@ -221,7 +221,7 @@ export async function applyNeuronChanges(
   dataDir: string,
   options: object,
 ): Promise<{ creature: CreatureExport; score: number; error: number }> {
-  const finalJson = Creature.fromJSON(creatureExport).exportJSON();
+  const finalJson = Creature.fromJSON(creatureExport).exportInternalJSON();
 
   for (const uuid of neuronSquashMap.keys()) {
     const neuron = finalJson.neurons.find((n: NeuronExport) => n.id === uuid);
@@ -245,7 +245,7 @@ export async function applyNeuronChanges(
   finalCreature.fix();
   const result = await finalCreature.scoreDir(dataDir, options);
 
-  const exported = finalCreature.exportJSON();
+  const exported = finalCreature.exportInternalJSON();
   addTag(exported, "score", `${result.score}`);
   addTag(exported, "error", `${result.error}`);
 

@@ -6,6 +6,9 @@
  * to drop or rename a field, the test name and assertion message make it
  * immediately obvious that an external interface contract is being broken.
  *
+ * Issue #2054: exportJSON() no longer includes runtime integer IDs (`id`,
+ * `fromId`, `toId`). External consumers must use UUID fields only.
+ *
  * Each external interface field has a named assertion test so that breakage
  * is caught by the test suite before it reaches consumers.
  */
@@ -81,14 +84,14 @@ Deno.test(
 );
 
 Deno.test(
-  "Neuron export must include id field as a number",
+  "Neuron export must NOT include integer id field (Issue #2054)",
   () => {
     const exported = exportContractCreature();
     for (const neuron of exported.neurons) {
       assertEquals(
-        typeof neuron.id,
-        "number",
-        `Neuron contract violated: neuron of type '${neuron.type}' is missing id number field`,
+        neuron.id,
+        undefined,
+        `Neuron contract violated: neuron of type '${neuron.type}' must not include runtime integer id (Issue #2054)`,
       );
     }
   },
@@ -184,28 +187,28 @@ Deno.test(
 );
 
 Deno.test(
-  "Synapse export must include fromId field as a number",
+  "Synapse export must NOT include fromId field (Issue #2054)",
   () => {
     const exported = exportContractCreature();
     for (const synapse of exported.synapses) {
       assertEquals(
-        typeof synapse.fromId,
-        "number",
-        `Synapse contract violated: synapse from '${synapse.fromUUID}' is missing fromId number field`,
+        synapse.fromId,
+        undefined,
+        `Synapse contract violated: synapse from '${synapse.fromUUID}' must not include runtime fromId (Issue #2054)`,
       );
     }
   },
 );
 
 Deno.test(
-  "Synapse export must include toId field as a number",
+  "Synapse export must NOT include toId field (Issue #2054)",
   () => {
     const exported = exportContractCreature();
     for (const synapse of exported.synapses) {
       assertEquals(
-        typeof synapse.toId,
-        "number",
-        `Synapse contract violated: synapse to '${synapse.toUUID}' is missing toId number field`,
+        synapse.toId,
+        undefined,
+        `Synapse contract violated: synapse to '${synapse.toUUID}' must not include runtime toId (Issue #2054)`,
       );
     }
   },
@@ -272,43 +275,29 @@ Deno.test(
 );
 
 Deno.test(
-  "New consumer using only integer ID fields can consume exportJSON output",
+  "External consumer cannot rely on integer IDs in exportJSON (Issue #2054)",
   () => {
     const exported = exportContractCreature();
 
-    // Simulate a new consumer that only uses integer ID fields
-    const neuronIds = new Set<number>();
-
-    // Add implicit input neuron IDs (0, 1, ..., input-1)
-    for (let i = 0; i < exported.input; i++) {
-      neuronIds.add(i);
-    }
-
+    // External consumers must use UUID-based fields, not integer IDs
     for (const neuron of exported.neurons) {
-      assert(
-        typeof neuron.id === "number",
-        "New consumer contract: neuron must have integer id",
+      assertEquals(
+        neuron.id,
+        undefined,
+        "External consumer contract: neuron must NOT have integer id",
       );
-      neuronIds.add(neuron.id!);
     }
 
-    // New consumer uses fromId/toId to reconstruct the graph
     for (const synapse of exported.synapses) {
-      assert(
-        typeof synapse.fromId === "number",
-        "New consumer contract: synapse must have fromId",
+      assertEquals(
+        synapse.fromId,
+        undefined,
+        "External consumer contract: synapse must NOT have fromId",
       );
-      assert(
-        typeof synapse.toId === "number",
-        "New consumer contract: synapse must have toId",
-      );
-      assert(
-        neuronIds.has(synapse.fromId!),
-        `New consumer contract: fromId ${synapse.fromId} must reference a known neuron`,
-      );
-      assert(
-        neuronIds.has(synapse.toId!),
-        `New consumer contract: toId ${synapse.toId} must reference a known neuron`,
+      assertEquals(
+        synapse.toId,
+        undefined,
+        "External consumer contract: synapse must NOT have toId",
       );
     }
   },
@@ -338,11 +327,6 @@ Deno.test(
         n1.uuid,
         n2.uuid,
         `Round-trip contract: neuron ${i} uuid must be preserved`,
-      );
-      assertEquals(
-        n1.id,
-        n2.id,
-        `Round-trip contract: neuron ${i} id must be preserved`,
       );
       assertEquals(
         n1.type,
@@ -381,16 +365,6 @@ Deno.test(
         `Round-trip contract: synapse ${i} toUUID must be preserved`,
       );
       assertEquals(
-        s1.fromId,
-        s2.fromId,
-        `Round-trip contract: synapse ${i} fromId must be preserved`,
-      );
-      assertEquals(
-        s1.toId,
-        s2.toId,
-        `Round-trip contract: synapse ${i} toId must be preserved`,
-      );
-      assertEquals(
         s1.weight,
         s2.weight,
         `Round-trip contract: synapse ${i} weight must be preserved`,
@@ -427,11 +401,6 @@ Deno.test(
         exportedA.neurons[i].uuid,
         exportedB.neurons[i].uuid,
         `Distributed identity contract: neuron ${i} uuid must be deterministic across machines`,
-      );
-      assertEquals(
-        exportedA.neurons[i].id,
-        exportedB.neurons[i].id,
-        `Distributed identity contract: neuron ${i} id must be deterministic across machines`,
       );
     }
 
@@ -484,11 +453,6 @@ Deno.test(
         `Cross-machine round-trip: neuron ${i} uuid must match`,
       );
       assertEquals(
-        exportedA.neurons[i].id,
-        exportedB.neurons[i].id,
-        `Cross-machine round-trip: neuron ${i} id must match`,
-      );
-      assertEquals(
         exportedA.neurons[i].type,
         exportedB.neurons[i].type,
         `Cross-machine round-trip: neuron ${i} type must match`,
@@ -510,16 +474,6 @@ Deno.test(
         exportedA.synapses[i].toUUID,
         exportedB.synapses[i].toUUID,
         `Cross-machine round-trip: synapse ${i} toUUID must match`,
-      );
-      assertEquals(
-        exportedA.synapses[i].fromId,
-        exportedB.synapses[i].fromId,
-        `Cross-machine round-trip: synapse ${i} fromId must match`,
-      );
-      assertEquals(
-        exportedA.synapses[i].toId,
-        exportedB.synapses[i].toId,
-        `Cross-machine round-trip: synapse ${i} toId must match`,
       );
       assertEquals(
         exportedA.synapses[i].weight,

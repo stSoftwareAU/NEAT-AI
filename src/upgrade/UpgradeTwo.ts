@@ -120,7 +120,7 @@ function removeHYPOT(json: CreatureExport) {
     getLogger().info("Creature is not valid", e);
     tempCreature.fix();
   }
-  return tempCreature.exportJSON();
+  return tempCreature.exportInternalJSON();
 }
 
 function removeHYPOTv2(json: CreatureExport) {
@@ -176,5 +176,5 @@ function removeHYPOTv2(json: CreatureExport) {
     tempCreature.fix();
   }
 
-  return tempCreature.exportJSON();
+  return tempCreature.exportInternalJSON();
 }

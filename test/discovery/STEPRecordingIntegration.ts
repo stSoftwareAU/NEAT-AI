@@ -19,7 +19,7 @@ function traceAllConfig(creature: Creature): SparseConfig {
     disableRandomSamples: true,
     generations: 0,
   });
-  return new SparseConfig(creature.exportJSON(), config);
+  return new SparseConfig(creature.exportInternalJSON(), config);
 }
 
 // Integer ID for "step-hidden" neuron (deterministicIdFromUuid("step-hidden")).

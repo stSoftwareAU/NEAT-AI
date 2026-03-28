@@ -9,7 +9,7 @@ Deno.test("forwardOnly flag survives export/import", () => {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
   creature.forwardOnly = true;
 
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   assertEquals(exported.forwardOnly, true, "forwardOnly should survive export");
 
   const loaded = Creature.fromJSON(exported);

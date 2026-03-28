@@ -176,7 +176,7 @@ export function makeModifiedCreatureWithPrevious(
   nextSquash: string,
 ): { creature: Creature; previousSquash: string } {
   // Important: operate on a deep clone of the supplied export rather than
-  // round-tripping through `Creature.fromJSON(...).exportJSON()`.
+  // round-tripping through `Creature.fromJSON(...).exportInternalJSON()`.
   //
   // The round-trip can normalise/upgrade JSON (or reorder/omit fields) which
   // makes UUID-based lookups brittle in callers that hold UUIDs from the
@@ -453,7 +453,7 @@ export async function scanForSquashImprovements(
 
                 const altCreatureExport = Creature.fromJSON(
                   JSON.parse(res.score.creature),
-                ).exportJSON();
+                ).exportInternalJSON();
                 const { creature: altCreature } =
                   makeModifiedCreatureWithPrevious(
                     neuronId,
@@ -666,7 +666,7 @@ export async function combineImprovements(
 
   // Try combining all improvements
   // As with `makeModifiedCreatureWithPrevious()`, avoid round-tripping through
-  // `Creature.fromJSON(...).exportJSON()` before applying UUID-based edits.
+  // `Creature.fromJSON(...).exportInternalJSON()` before applying UUID-based edits.
   // Deep clone the export and apply changes directly, then score via fromJSON.
   const finalJson: CreatureExport = typeof structuredClone === "function"
     ? structuredClone(originalCreature)
@@ -693,7 +693,7 @@ export async function combineImprovements(
       result.score.toPrecision(6)
     } improved by ${(result.score - bestScore).toPrecision(3)}`;
 
-    const exported = finalCreature.exportJSON();
+    const exported = finalCreature.exportInternalJSON();
     addTag(exported, "score", `${result.score}`);
     addTag(exported, "error", `${result.error}`);
     addTag(exported, "intelligentDesign", message);

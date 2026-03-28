@@ -43,7 +43,7 @@ export function memeticUpdate(
     }
   }
 
-  const parentExport = parent.exportJSON();
+  const parentExport = parent.exportInternalJSON();
 
   const weightsMap = new Map<number, Map<number, number>>();
 
@@ -58,7 +58,7 @@ export function memeticUpdate(
     foundSet.add(`${synapse.fromId!}-${synapse.toId!}`);
   }
 
-  const childExport = child.exportJSON();
+  const childExport = child.exportInternalJSON();
 
   for (const synapse of childExport.synapses) {
     foundSet.delete(`${synapse.fromId!}-${synapse.toId!}`);

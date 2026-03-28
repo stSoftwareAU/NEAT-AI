@@ -8,7 +8,7 @@ import { assert, assertEquals, assertNotStrictEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import {
-  exportJSON,
+  exportInternalJSON,
   fromJSON,
   loadFrom,
   shallowClone,
@@ -20,21 +20,21 @@ import { initWasmForTests } from "../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("exportJSON - produces valid CreatureExport", async () => {
+Deno.test("exportInternalJSON - produces valid CreatureExport", async () => {
   await initWasmForTests();
   const creature = new Creature(2, 1, {
     layers: [{ count: 2 }],
   });
   creatureValidate(creature);
 
-  const json = exportJSON(creature);
+  const json = exportInternalJSON(creature);
   assertEquals(json.input, 2);
   assertEquals(json.output, 1);
   assert(json.neurons.length > 0, "Should have neurons");
   assert(json.synapses.length > 0, "Should have synapses");
 
   // Verify same result via facade
-  const facadeJson = creature.exportJSON();
+  const facadeJson = creature.exportInternalJSON();
   assertEquals(
     JSON.stringify(json),
     JSON.stringify(facadeJson),
@@ -48,7 +48,7 @@ Deno.test("traceJSON - includes trace data after activation", async () => {
     layers: [{ count: 2 }],
   });
 
-  const json = creature.exportJSON();
+  const json = creature.exportInternalJSON();
   const bpConfig = createBackPropagationConfig({});
   const sparseConfig = new SparseConfig(json, bpConfig);
 
@@ -70,7 +70,7 @@ Deno.test("fromJSON - round-trips correctly", async () => {
   });
   creatureValidate(original);
 
-  const json = original.exportJSON();
+  const json = original.exportInternalJSON();
   const restored = fromJSON(json, true, Creature);
 
   assertEquals(restored.input, original.input);
@@ -85,7 +85,7 @@ Deno.test("fromJSON - via Creature.fromJSON static method", async () => {
   const original = new Creature(2, 1, {
     layers: [{ count: 2 }],
   });
-  const json = original.exportJSON();
+  const json = original.exportInternalJSON();
 
   const restored = Creature.fromJSON(json, true);
   assertEquals(restored.input, 2);
@@ -109,7 +109,7 @@ Deno.test("loadFrom - replaces creature content", async () => {
   });
   const target = new Creature(2, 1, { lazyInitialization: true });
 
-  const json = source.exportJSON();
+  const json = source.exportInternalJSON();
   loadFrom(target, json, true);
 
   assertEquals(target.neurons.length, source.neurons.length);

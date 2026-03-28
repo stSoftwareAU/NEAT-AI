@@ -54,7 +54,8 @@ Deno.test("makeElitists: selects single best creature from population", () => {
 
   assert(
     elitists.length === 1,
-    "Should always find one " + JSON.stringify(elitists[0]?.exportJSON()),
+    "Should always find one " +
+      JSON.stringify(elitists[0]?.exportInternalJSON()),
   );
   assert(elitists[0].score === 3, `Wrong elitism score ${elitists[0].score}`);
 });

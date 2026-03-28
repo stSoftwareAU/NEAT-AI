@@ -38,7 +38,7 @@ Deno.test("IF activation: training reduces error after weight perturbation", asy
       assertAlmostEquals(item.output[1], result[1], 0.00001);
     });
 
-    const exportJSON = creatureA.exportJSON();
+    const exportJSON = creatureA.exportInternalJSON();
 
     await Deno.writeTextFile(
       ".trace/A-clean.json",
@@ -77,7 +77,7 @@ Deno.test("IF activation: training reduces error after weight perturbation", asy
 
     await Deno.writeTextFile(
       ".trace/C-creature.json",
-      JSON.stringify(creatureC.exportJSON(), null, 1),
+      JSON.stringify(creatureC.exportInternalJSON(), null, 1),
     );
 
     const errorC = calculateError(creatureC, ts);
@@ -138,7 +138,7 @@ Deno.test("IF activation: training reduces error and recovers bias after perturb
       assertAlmostEquals(item.output[1], result[1], 0.00001);
     });
 
-    const exportJSON = creatureA.exportJSON();
+    const exportJSON = creatureA.exportInternalJSON();
 
     await Deno.writeTextFile(
       ".trace/A-clean.json",
@@ -178,7 +178,7 @@ Deno.test("IF activation: training reduces error and recovers bias after perturb
 
     await Deno.writeTextFile(
       ".trace/C-creature.json",
-      JSON.stringify(creatureC.exportJSON(), null, 1),
+      JSON.stringify(creatureC.exportInternalJSON(), null, 1),
     );
 
     const errorC = calculateError(creatureC, ts);

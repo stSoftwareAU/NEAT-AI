@@ -455,7 +455,7 @@ Deno.test("syntheticSynapses with well-connected IDENTITY network trains without
   }
 
   // Perturb biases to create an error signal.
-  const exportJSON = creature.exportJSON();
+  const exportJSON = creature.exportInternalJSON();
   exportJSON.neurons.forEach((neuron, indx) => {
     neuron.bias += (indx % 2 === 0 ? 1 : -1) * 0.1;
   });

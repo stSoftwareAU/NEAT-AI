@@ -414,7 +414,7 @@ Deno.test("Gradient magnitude: error at first hidden layer is non-trivial and fi
 
     // After update, the first hidden neuron's bias or inbound weight
     // should have changed (indicating gradient reached it).
-    const exportedJson = creature.exportJSON();
+    const exportedJson = creature.exportInternalJSON();
     const firstSynapse = exportedJson.synapses.find(
       (s) => s.toId === 1003272,
     );
@@ -547,7 +547,7 @@ Deno.test("Safe zone: mixed squash types compose correctly through connections",
   );
 
   // All upstream weights should remain finite after mixed safe zone composition.
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   for (const synapse of exported.synapses) {
     assert(
       Number.isFinite(synapse.weight),

@@ -22,7 +22,7 @@ Deno.test("buildSynapseMap - correctness verification", () => {
     sparseRatio: 0.05,
   });
 
-  const creatureExport = creature.exportJSON();
+  const creatureExport = creature.exportInternalJSON();
 
   // Run the function multiple times to ensure consistent results
   const results: Set<string>[] = [];

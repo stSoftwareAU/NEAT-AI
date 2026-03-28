@@ -111,7 +111,7 @@ Deno.test("booleanXOR", async () => {
   }
   assert(results.error <= 0.04, "Error rate was: " + results.error);
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    creature.exportInternalJSON(),
     createBackPropagationConfig({}),
   );
   const value =

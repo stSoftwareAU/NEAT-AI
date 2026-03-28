@@ -82,7 +82,7 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
   }
 
   // Record original weights
-  const exportBefore = creature.exportJSON();
+  const exportBefore = creature.exportInternalJSON();
   // With weight 0.95, hidden-b produces the minimum value (winner).
   // Winner upstream key: input-1 (id=1) -> hidden-b (gradient flows through winner)
   const winnerUpstreamKey = `1->${HIDDEN_B}`;
@@ -105,7 +105,7 @@ Deno.test("MINIMUM: non-winner connections close to winner receive gradient", ()
     disableRandomSamples: true,
   });
 
-  const exportAfter = trainedCreature.exportJSON();
+  const exportAfter = trainedCreature.exportInternalJSON();
   const weightsAfter = new Map<string, number>();
   for (const s of exportAfter.synapses) {
     weightsAfter.set(`${s.fromId}->${s.toId}`, s.weight);
@@ -198,7 +198,7 @@ Deno.test("MINIMUM: convergence with close runner-up connections", () => {
       });
     }
 
-    const exportJSON = creatureA.exportJSON();
+    const exportJSON = creatureA.exportInternalJSON();
     exportJSON.synapses.forEach((s, indx) => {
       s.weight += (indx % 2 === 0 ? 1 : -1) * 0.15;
     });

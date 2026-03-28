@@ -13,7 +13,7 @@ function cloneCreatureJSON(
   creature: Creature,
 ): ReturnType<Creature["exportJSON"]> {
   return JSON.parse(
-    JSON.stringify(creature.exportJSON()),
+    JSON.stringify(creature.exportInternalJSON()),
   ) as ReturnType<Creature["exportJSON"]>;
 }
 
@@ -122,7 +122,7 @@ Deno.test(
     // Error function - removal should improve score via complexity reduction
     const baselineError = 0.5;
     const computeError = (creature: Creature) => {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
       const hasHiddenNeuron = json.neurons.some(
         (n) => n.uuid === "hidden-low-impact",
       );

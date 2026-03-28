@@ -84,7 +84,7 @@ Deno.test("memetic preserved", () => {
     if (child !== undefined) {
       assert(child.memetic, "Child should have kept memetic");
 
-      const childExport = child.exportJSON();
+      const childExport = child.exportInternalJSON();
       console.log(JSON.stringify(childExport, null, 2));
       const synapse = childExport.synapses.find((s) =>
         s.fromId === 2 && s.toId === -2

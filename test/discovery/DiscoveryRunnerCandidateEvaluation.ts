@@ -56,7 +56,7 @@ function cloneCreatureJSON(
   creature: Creature,
 ): ReturnType<Creature["exportJSON"]> {
   return JSON.parse(
-    JSON.stringify(creature.exportJSON()),
+    JSON.stringify(creature.exportInternalJSON()),
   ) as ReturnType<Creature["exportJSON"]>;
 }
 
@@ -131,7 +131,9 @@ Deno.test("DiscoveryRunner records evaluation summaries and archives candidates"
   };
 
   const baseCreature = makeBaseCreature();
-  const candidateCreature = Creature.fromJSON(baseCreature.exportJSON());
+  const candidateCreature = Creature.fromJSON(
+    baseCreature.exportInternalJSON(),
+  );
   CreatureUtil.makeUUID(candidateCreature);
 
   const computeError = (creature: Creature) =>
@@ -221,7 +223,7 @@ Deno.test("DiscoveryRunner evaluates synapse candidates correctly", async () => 
   const worker = new FakeWorker(
     discoveryResult,
     (creature: Creature) => {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
       const hasHelpful = json.synapses.some((synapse) =>
         synapse.fromUUID === "input-1" && synapse.toUUID === "hidden-1" &&
         Math.abs(synapse.weight - 0.45) < 1e-6
@@ -292,7 +294,7 @@ Deno.test("DiscoveryRunner evaluates neuron candidates correctly", async () => {
   const worker = new FakeWorker(
     discoveryResult,
     (creature: Creature) => {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
       // Check for the added neuron by finding its incoming synapse
       const incomingSynapse = json.synapses.find((synapse) =>
         synapse.fromUUID === neuronCandidate.fromNeuronUuid &&
@@ -419,7 +421,7 @@ Deno.test(
     };
 
     const computeError = (creature: Creature) => {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
       const hasExtraSynapse = json.synapses.some((synapse) =>
         synapse.fromUUID === extraSynapse.fromUUID &&
         synapse.toUUID === extraSynapse.toUUID &&
@@ -503,7 +505,7 @@ Deno.test(
     };
 
     const computeError = (creature: Creature) => {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
       const hasNewNeuron = json.neurons.some((neuron) =>
         neuron.uuid === "positive-test-hidden"
       );
@@ -636,7 +638,7 @@ Deno.test(
 
     const baselineError = 0.5;
     const computeError = (creature: Creature) => {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
       const hasTinyUpdate = json.synapses.some((synapse) =>
         synapse.fromUUID === "hidden-1" && synapse.toUUID === "output-0" &&
         Math.abs(synapse.weight - (0.5 + tinyDelta)) < 1e-10

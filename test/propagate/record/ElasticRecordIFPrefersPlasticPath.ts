@@ -57,7 +57,7 @@ Deno.test("record(IF): prefers plastic positive-branch paths over saturated ArcT
     disableRandomSamples: true,
     generations: 0,
   });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
   creature.activateAndTrace(new Float32Array([1, 1]), false, sparseConfig);
 
   const discoverMap = creature.record(new Float32Array([0]));

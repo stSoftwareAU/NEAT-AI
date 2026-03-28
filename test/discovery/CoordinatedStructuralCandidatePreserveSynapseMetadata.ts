@@ -46,7 +46,7 @@ Deno.test(
     };
 
     const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-    const exported = mutated.exportJSON();
+    const exported = mutated.exportInternalJSON();
     const synapse = exported.synapses.find((s) =>
       s.fromId === 0 && s.toId === -1
     );

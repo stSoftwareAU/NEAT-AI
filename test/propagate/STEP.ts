@@ -54,7 +54,7 @@ Deno.test("STEP activation: backprop adjusts TANH neuron bias while STEP neuron 
 
   await Deno.writeTextFile(
     `${testDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
 
   if (!existsSync(`${testDir}/input.json`)) {
@@ -84,7 +84,7 @@ Deno.test("STEP activation: backprop adjusts TANH neuron bias while STEP neuron 
 
   const config = createBackPropagationConfig({ learningRate: 1 });
 
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
   for (let loop = 0; loop < 100; loop++) {
     for (let i = inputs.length; i--;) {
       creature.activateAndTrace(
@@ -106,7 +106,7 @@ Deno.test("STEP activation: backprop adjusts TANH neuron bias while STEP neuron 
 
   await Deno.writeTextFile(
     `${testDir}/2-end.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
 
   assertAlmostEquals(stepNeuron.bias, 1, 0.7);

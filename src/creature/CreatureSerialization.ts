@@ -75,50 +75,78 @@ export function stripNumericIdsFromCreatureExport(
 }
 
 /**
- * Builds canonical export JSON from the live creature graph (no validation).
- * This is the serialisation hot path used by evolution and training.
+ * Builds creature export JSON from the live creature graph (no validation).
+ *
+ * @param includeIds When true, includes runtime integer IDs for internal use.
  */
-function buildCreatureExportJSON(creature: Creature): CreatureExport {
+function buildCreatureExportJSON(
+  creature: Creature,
+  includeIds: boolean,
+): CreatureExport {
   const builder = new CreatureExportBuilder(creature);
-  const json = builder.build() as CreatureExport;
-  if (json.memetic) {
+  const json = builder.build(includeIds) as CreatureExport;
+  if (includeIds && json.memetic) {
     normaliseCreatureExport(json);
   }
   return json;
 }
 
 /**
- * Canonical creature JSON: wire UUIDs plus resolved runtime `id` / `fromId` /
- * `toId` from {@link CreatureExportBuilder} (single pass). Memetic payloads
- * still run through {@link normaliseCreatureExport} when present.
+ * External creature JSON: wire UUIDs only, no runtime integer IDs.
+ *
+ * Issue #2054: The external export format omits `id` on neurons and
+ * `fromId`/`toId` on synapses. External consumers should use UUID fields
+ * (`uuid`, `fromUUID`, `toUUID`) which are stable across generations and
+ * machines.
+ *
+ * Internal code that requires integer IDs should use
+ * {@link exportInternalJSON} instead.
  *
  * **Hot-path policy (do not regress):** do **not** add unconditional
  * `creatureValidate` here. Full validation on every export destroys throughput
  * in evolution/training. Invariants should be enforced where structures are
  * produced (mutation, breed, discovery) and in tests; use `creature.DEBUG`
- * to opt into validation on export during development. Invalid graphs for
- * `validate` unit tests are built in those tests — not via export.
+ * to opt into validation on export during development.
  */
 export function exportJSON(creature: Creature): CreatureExport {
   if (creature.DEBUG) {
     creatureValidate(creature);
   }
-  return buildCreatureExportJSON(creature);
+  return buildCreatureExportJSON(creature, false);
 }
 
 /**
- * Wire-only snapshot JSON: same topology as {@link exportJSON} but omits
- * numeric neuron and synapse ids (stable uuid endpoints only).
+ * Internal creature JSON: includes runtime integer `id` on neurons and
+ * `fromId`/`toId` on synapses alongside stable UUID fields.
+ *
+ * Issue #2054: This format is for internal hot paths only (evolution,
+ * training, discovery, checkpointing). External consumers must use
+ * {@link exportJSON} which produces UUID-only output.
+ */
+export function exportInternalJSON(creature: Creature): CreatureExport {
+  if (creature.DEBUG) {
+    creatureValidate(creature);
+  }
+  return buildCreatureExportJSON(creature, true);
+}
+
+/**
+ * Wire-only snapshot JSON: same as {@link exportJSON} — omits runtime
+ * integer neuron and synapse IDs (stable UUID endpoints only).
+ *
+ * Since Issue #2054, {@link exportJSON} already omits integer IDs, so this
+ * method is equivalent. Retained for backward compatibility.
  */
 export function exportSnapshotJSON(creature: Creature): CreatureExport {
-  return stripNumericIdsFromCreatureExport(exportJSON(creature));
+  return exportJSON(creature);
 }
 
 /**
  * Convert the creature to a trace JSON object.
+ * Uses internal format (with integer IDs) since trace consumers need them.
  */
 export function traceJSON(creature: Creature): CreatureTrace {
-  const exportCreature = exportJSON(creature);
+  const exportCreature = exportInternalJSON(creature);
 
   const state = creature.state;
   let exportIndex = 0;

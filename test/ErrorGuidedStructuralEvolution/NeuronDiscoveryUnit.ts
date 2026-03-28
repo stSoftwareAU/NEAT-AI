@@ -81,7 +81,7 @@ Deno.test({
     );
     assertExists(improved, "Should create improved creature");
 
-    const exportJSON = improved.exportJSON();
+    const exportJSON = improved.exportInternalJSON();
     // Find the original target neuron by its known integer ID
     const targetIndex = exportJSON.neurons.findIndex((n) =>
       n.id === hiddenTargetId
@@ -148,7 +148,7 @@ Deno.test({
     );
     assertExists(improved, "Should create improved creature");
 
-    const exportJSON = improved.exportJSON();
+    const exportJSON = improved.exportInternalJSON();
     const firstOutputIndex = exportJSON.neurons.findIndex((n) =>
       n.type === "output"
     );

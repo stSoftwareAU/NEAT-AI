@@ -66,5 +66,5 @@ Deno.test("Offspring: two 4.x parents always produce a 4.x forward-only child", 
   assertEquals(child.semanticVersion, "4.0.0");
 
   // Sanity: upgrade should continue to accept the child.
-  upgrade(Creature.fromJSON(child.exportJSON()));
+  upgrade(Creature.fromJSON(child.exportInternalJSON()));
 });

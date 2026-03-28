@@ -115,7 +115,7 @@ Deno.test("MutatorShallowClone: shallowClone produces structurally equivalent cr
   const creature = new Creature(5, 3, { layers: [{ count: 10 }] });
   creature.score = 0.42;
 
-  const jsonClone = Creature.fromJSON(creature.exportJSON());
+  const jsonClone = Creature.fromJSON(creature.exportInternalJSON());
   jsonClone.score = creature.score;
 
   const shallowCloneResult = creature.shallowClone();

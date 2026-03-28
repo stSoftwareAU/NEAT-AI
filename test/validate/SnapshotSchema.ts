@@ -288,7 +288,7 @@ Deno.test("schema - frozen neuron export fields match schema", async () => {
   };
 
   const creature = Creature.fromJSON(json);
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
 
   const neuronDef = resolveRef(schema, "#/$defs/neuron");
   for (const n of exported.neurons) {
@@ -333,7 +333,7 @@ Deno.test("schema - export with hyperparameters matches schema", async () => {
     l2RegularisationStrength: 0,
   };
 
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   checkFieldsAllowed(
     exported as unknown as Record<string, unknown>,
     schema,

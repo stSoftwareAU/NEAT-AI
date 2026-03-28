@@ -25,7 +25,7 @@ Deno.test("No squash", () => {
   creature.fix();
   creature.validate();
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    creature.exportInternalJSON(),
     createBackPropagationConfig({}),
   );
   const value = creature.activate(new Float32Array([Math.random()]))[0];
@@ -68,7 +68,7 @@ Deno.test("Constants", () => {
   }
 
   creature.validate();
-  Creature.fromJSON(creature.exportJSON());
+  Creature.fromJSON(creature.exportInternalJSON());
   assert(
     Math.abs(creature.neurons[1].bias) - 0.5 <
       0.00001,

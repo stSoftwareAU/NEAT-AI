@@ -10,7 +10,7 @@ Deno.test("keep", () => {
   addTag(n, "hello", "world");
 
   assert(getTag(n, "hello") === "world", "Expecting a value.");
-  const json = n.exportJSON();
+  const json = n.exportInternalJSON();
 
   const n2 = Creature.fromJSON(json);
 

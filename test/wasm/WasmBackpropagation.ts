@@ -225,7 +225,10 @@ Deno.test({
       generations: 0,
       plankConstant: 1e-7,
     });
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportInternalJSON(),
+      config,
+    );
 
     // Run training iterations
     for (const data of trainingData) {
@@ -298,8 +301,14 @@ Deno.test({
       generations: 0,
       plankConstant: 1e-7,
     });
-    const sparseConfig1 = new SparseConfig(creature1.exportJSON(), config);
-    const sparseConfig2 = new SparseConfig(creature2.exportJSON(), config);
+    const sparseConfig1 = new SparseConfig(
+      creature1.exportInternalJSON(),
+      config,
+    );
+    const sparseConfig2 = new SparseConfig(
+      creature2.exportInternalJSON(),
+      config,
+    );
 
     // Run one epoch on each
     for (const data of trainingData) {
@@ -445,7 +454,10 @@ Deno.test({
       generations: 0,
       plankConstant: 1e-7,
     });
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportInternalJSON(),
+      config,
+    );
 
     for (const data of trainingData) {
       creature.activateAndTrace(data.input, false, sparseConfig);

@@ -140,7 +140,7 @@ export function recordEvaluationSummaries(
     }
   };
 
-  const originalExport = baseCreature.exportJSON();
+  const originalExport = baseCreature.exportInternalJSON();
 
   for (const evaluation of evaluationResults) {
     const changeType = evaluation.candidate?.change.type;
@@ -154,7 +154,7 @@ export function recordEvaluationSummaries(
     let archivePath: string | undefined;
     const exportPayload = evaluation.kind === "original"
       ? originalExport
-      : evaluation.candidate?.creature.exportJSON();
+      : evaluation.candidate?.creature.exportInternalJSON();
 
     if (exportPayload) {
       const label = evaluation.kind === "original"

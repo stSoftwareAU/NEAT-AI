@@ -52,7 +52,7 @@ function isSynapsePresent(
   fromId: number,
   toId: number,
 ): boolean {
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   return exported.synapses.some((s) => s.fromId === fromId && s.toId === toId);
 }
 
@@ -246,7 +246,7 @@ export function isAlreadyApplied(
       return false;
     }
 
-    const exported = creature.exportJSON();
+    const exported = creature.exportInternalJSON();
     for (const [key, expected] of expectedByEdge.entries()) {
       const [fromIdStr, toIdStr] = key.split("\0");
       const fromId = Number(fromIdStr);
@@ -305,7 +305,7 @@ export function isAlreadyApplied(
     const biasExp = formatWeight(bias);
 
     // Find a hidden neuron with matching squash + bias magnitude that links from->hidden->to
-    const exported = creature.exportJSON();
+    const exported = creature.exportInternalJSON();
     for (const neuron of creature.neurons) {
       if (neuron.type !== "hidden") continue;
       if (neuron.squash !== squash) continue;

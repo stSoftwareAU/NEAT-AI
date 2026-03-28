@@ -14,7 +14,7 @@ Deno.test("HYPOT upgrade removes deprecated squash and produces valid creature",
 
   start.validate();
 
-  const upgraded = Creature.fromJSON(upgradeTwo(start.exportJSON()));
+  const upgraded = Creature.fromJSON(upgradeTwo(start.exportInternalJSON()));
 
   upgraded.validate();
 

@@ -1,5 +1,6 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../../mod.ts";
+import { exportInternalJSON } from "../creature/CreatureSerialization.ts";
 import type { MemeticInterface } from "./MemeticInterface.ts";
 
 export function discover(mum: Creature, child: Creature) {
@@ -48,8 +49,8 @@ export function discover(mum: Creature, child: Creature) {
     weights: {},
   };
 
-  const mumExport = mum.exportJSON();
-  const childExport = child.exportJSON();
+  const mumExport = exportInternalJSON(mum);
+  const childExport = exportInternalJSON(child);
 
   for (let i = mumExport.neurons.length; i--;) {
     const mumNeuron = mumExport.neurons[i];

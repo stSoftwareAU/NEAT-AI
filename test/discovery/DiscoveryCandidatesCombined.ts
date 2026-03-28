@@ -122,7 +122,7 @@ Deno.test(
 
     const candidates = buildDiscoveryCandidates(base, discovery);
     const comboAll = findCandidate(candidates, "combo-all");
-    const exported = comboAll.creature.exportJSON();
+    const exported = comboAll.creature.exportInternalJSON();
 
     const harmfulStillExists = exported.synapses.some((synapse) =>
       synapse.fromUUID === removeCandidate.fromNeuronUuid &&
@@ -207,7 +207,7 @@ Deno.test(
 
     const candidates = buildDiscoveryCandidates(base, discovery);
     const removeNeuronCandidate = findCandidate(candidates, "remove-neuron");
-    const exported = removeNeuronCandidate.creature.exportJSON();
+    const exported = removeNeuronCandidate.creature.exportInternalJSON();
 
     // Verify the harmful neuron is removed
     const harmfulNeuronStillExists = exported.neurons.some((neuron) =>
@@ -317,7 +317,7 @@ Deno.test(
       harmfulNeuron,
     );
     assert(result, "Should return a modified creature");
-    const exported = result.exportJSON();
+    const exported = result.exportInternalJSON();
     const output0 = exported.neurons.find((n) => n.id === -1);
     assert(output0, "Output neuron 0 should exist");
 
@@ -405,7 +405,7 @@ Deno.test(
 
     const candidates = buildDiscoveryCandidates(base, discovery);
     const comboAddRemove = findCandidate(candidates, "combo-add-remove");
-    const exported = comboAddRemove.creature.exportJSON();
+    const exported = comboAddRemove.creature.exportInternalJSON();
 
     // Verify harmful synapse is removed
     const harmfulSynapseStillExists = exported.synapses.some((synapse) =>
@@ -485,7 +485,7 @@ Deno.test(
 
     const candidates = buildDiscoveryCandidates(base, discovery);
     const comboAddChange = findCandidate(candidates, "combo-add-change");
-    const exported = comboAddChange.creature.exportJSON();
+    const exported = comboAddChange.creature.exportInternalJSON();
 
     // Verify helpful synapse is added
     const helpfulSynapseExists = exported.synapses.some((synapse) =>

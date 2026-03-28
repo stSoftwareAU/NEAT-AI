@@ -21,7 +21,7 @@ Deno.test("activate - MAXIMUM squash selects highest weighted input", () => {
   };
   const creature = Creature.fromJSON(json);
 
-  const exportCreature = creature.exportJSON();
+  const exportCreature = creature.exportInternalJSON();
   Deno.writeTextFileSync(
     `${directory}/creature.json`,
     JSON.stringify(exportCreature, null, 1),

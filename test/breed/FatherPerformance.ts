@@ -147,8 +147,8 @@ Deno.test("createCompatibleFatherFromCreatures - produces functionally equivalen
 
   // Get result from original function (using exports)
   const originalResult = createCompatibleFather(
-    mother.exportJSON(),
-    father.exportJSON(),
+    mother.exportInternalJSON(),
+    father.exportInternalJSON(),
   );
 
   // Get result from optimised function (using Creature objects directly)
@@ -231,8 +231,8 @@ Deno.test("createCompatibleFatherFromCreatures - produces valid results at scale
   // Verify both functions produce valid results at scale
   for (let i = 0; i < iterations; i++) {
     const originalResult = createCompatibleFather(
-      mother.exportJSON(),
-      father.exportJSON(),
+      mother.exportInternalJSON(),
+      father.exportInternalJSON(),
     );
     const optimisedResult = createCompatibleFatherFromCreatures(mother, father);
 

@@ -80,7 +80,7 @@ class FakeWorker implements DiscoveryRunnerWorker {
     _feedbackLoop: boolean,
   ): Promise<Awaited<ReturnType<DiscoveryRunnerWorker["evaluate"]>>> {
     const error = this.#computeError(creature);
-    const json = creature.exportJSON();
+    const json = creature.exportInternalJSON();
     // Removal candidates get better scores (lower error after complexity adjustment)
     const isRemoval = json.neurons.length < this.#baseNeuronCount;
     const adjustedError = isRemoval ? error * 0.8 : error;
@@ -102,7 +102,7 @@ Deno.test(
     const neuronUUID = "3e979317-989f-4c5c-8272-02fd85be94a8";
     const expectedShortID = shortID(neuronUUID);
     const baseCreature = makeCreatureWithRemovableNeuron(neuronUUID);
-    const baseNeuronCount = baseCreature.exportJSON().neurons.length;
+    const baseNeuronCount = baseCreature.exportInternalJSON().neurons.length;
 
     const discoveryResult: DiscoverResult = {
       ID: "MSG-FORMAT-TEST",
@@ -156,7 +156,7 @@ Deno.test(
   async () => {
     const neuronUUID = "abc12345-def6-7890-ghij-klmnopqrstuv";
     const baseCreature = makeCreatureWithRemovableNeuron(neuronUUID);
-    const baseNeuronCount = baseCreature.exportJSON().neurons.length;
+    const baseNeuronCount = baseCreature.exportInternalJSON().neurons.length;
 
     const discoveryResult: DiscoverResult = {
       ID: "NO-DUPLICATE-TEST",
@@ -204,7 +204,7 @@ Deno.test(
   async () => {
     const neuronUUID = "test1234-5678-90ab-cdef-ghijklmnopqr";
     const baseCreature = makeCreatureWithRemovableNeuron(neuronUUID);
-    const baseNeuronCount = baseCreature.exportJSON().neurons.length;
+    const baseNeuronCount = baseCreature.exportInternalJSON().neurons.length;
 
     const discoveryResult: DiscoverResult = {
       ID: "NO-CREATURE-ID-TEST",

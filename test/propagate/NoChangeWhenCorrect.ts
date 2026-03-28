@@ -83,7 +83,7 @@ Deno.test("propagation does not alter activations when output already matches ta
   }
 
   const config = createBackPropagationConfig();
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
   for (let i = data.length; i--;) {
     const actual = creature.activateAndTrace(
       new Float32Array(data[i]),

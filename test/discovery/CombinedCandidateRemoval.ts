@@ -61,7 +61,7 @@ Deno.test(
   "buildCombinedFromSuccessful: multiple remove-low-impact candidates are all applied",
   () => {
     const base = makeRemovalTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Verify base has A, B, C, D hidden neurons
     const baseHidden = baseJSON.neurons.filter((n) => n.type === "hidden");
@@ -169,7 +169,7 @@ Deno.test(
       "Should have a combo-successful candidate combining all removals",
     );
 
-    const comboJSON = combo.creature.exportJSON();
+    const comboJSON = combo.creature.exportInternalJSON();
     const hiddenNeurons = comboJSON.neurons.filter((n) => n.type === "hidden");
     const neuronIds = hiddenNeurons.map((n) => n.id);
 
@@ -223,7 +223,7 @@ Deno.test(
   "buildCombinedFromSuccessful: descriptions use proper grammar for commit messages",
   () => {
     const base = makeRemovalTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Create add-synapses candidate
     const addSynapseJson = structuredClone(baseJSON);
@@ -302,7 +302,7 @@ Deno.test(
   "buildCombinedFromSuccessful: uses unique emojis for different combination types",
   () => {
     const base = makeRemovalTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Create multiple candidates of different types
     const candidates: DiscoveryCandidate[] = [];
@@ -434,7 +434,7 @@ Deno.test(
     // Bug: remainingNeurons set was missing input neurons, causing these synapses to be dropped.
 
     const base = makeRemovalTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Verify base structure contains input-1 -> hidden-B synapse (fromId=1, toId=ID_HIDDEN_B)
     const baseSynapses = baseJSON.synapses.map((s) => `${s.fromId}->${s.toId}`);
@@ -511,7 +511,7 @@ Deno.test(
     const combo = combined.find((c) => c.change.type === "combo-successful");
     assertExists(combo, "Should have a combo-successful candidate");
 
-    const comboJSON = combo.creature.exportJSON();
+    const comboJSON = combo.creature.exportInternalJSON();
     const comboSynapses = comboJSON.synapses.map((s) =>
       `${s.fromId}->${s.toId}`
     );

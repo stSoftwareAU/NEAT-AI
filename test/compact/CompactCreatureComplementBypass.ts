@@ -70,7 +70,7 @@ Deno.test("compactCreature: bypass COMPLEMENT feeding IDENTITY output (safe alge
   assert(compacted, "Expected compaction to occur");
   compacted.validate();
 
-  const exported = compacted.exportJSON();
+  const exported = compacted.exportInternalJSON();
 
   // hidden-0 should be gone
   assertEquals(
@@ -182,7 +182,7 @@ Deno.test("compactCreature: bypass COMPLEMENT feeding multiple IDENTITY outputs 
   assert(compacted, "Expected compaction to occur");
   compacted.validate();
 
-  const exported = compacted.exportJSON();
+  const exported = compacted.exportInternalJSON();
 
   assertEquals(
     exported.neurons.some((n) => n.id === 1775329651),

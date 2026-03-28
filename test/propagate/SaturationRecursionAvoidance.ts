@@ -63,7 +63,10 @@ Deno.test(
       limitWeightScale: 1_000_000,
       limitBiasScale: 1_000_000,
     });
-    const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+    const sparseConfig = new SparseConfig(
+      creature.exportInternalJSON(),
+      config,
+    );
 
     // Trace so hintValue (rawInput) is available for safe-zone logic.
     const actual = creature.activateAndTrace(

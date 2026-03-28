@@ -9,8 +9,7 @@
 
 import { join } from "@std/path/join";
 import { crypto as stdCrypto } from "@std/crypto";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
+import { exportInternalJSON } from "../creature/CreatureSerialization.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import { DISCOVERY_WIRE_SCHEMA_VERSION } from "./DiscoveryWireFormat.ts";
@@ -216,10 +215,7 @@ function stableShortHash(value: string): string {
  * Input neurons are excluded as they have no squash/bias.
  */
 function buildStructuralSignature(candidate: DiscoveryCandidate): string {
-  const exported = structuredClone(
-    candidate.creature.exportJSON(),
-  ) as CreatureExport;
-  normaliseCreatureExport(exported);
+  const exported = exportInternalJSON(candidate.creature);
   const sigParts: string[] = [];
 
   // Include neuron signatures (ID, squash, bias exponent)

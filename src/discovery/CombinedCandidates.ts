@@ -279,7 +279,7 @@ export function persistentlyRemoveHarmfulSynapse(
   const maxAttempts = 10; // Prevent infinite loops
 
   while (attempts < maxAttempts) {
-    const exportJSON = currentCreature.exportJSON();
+    const exportJSON = currentCreature.exportInternalJSON();
     const originalCount = exportJSON.synapses.length;
     exportJSON.synapses = exportJSON.synapses.filter((synapse) =>
       !(synapse.fromId === removalId.fromId &&
@@ -301,7 +301,7 @@ export function persistentlyRemoveHarmfulSynapse(
       validateAndFixCreatureSync(updated, "remove-synapse");
 
       // Verify it's still removed after fix()
-      const verifyJSON = updated.exportJSON();
+      const verifyJSON = updated.exportInternalJSON();
       const stillExists = verifyJSON.synapses.some((synapse) =>
         synapse.fromId === removalId.fromId &&
         synapse.toId === removalId.toId

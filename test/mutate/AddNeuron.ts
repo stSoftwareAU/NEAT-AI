@@ -73,7 +73,7 @@ Deno.test("AddNeuron - should handle focus list", () => {
 
   // Run multiple times with focus list that might not include all neurons
   for (let i = 0; i < 20; i++) {
-    const testCreature = Creature.fromJSON(creature.exportJSON());
+    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
     const addNeuron = new AddNeuron(testCreature);
 
     // Use a restrictive focus list - might force the fallback path
@@ -119,7 +119,7 @@ Deno.test("AddNeuron - should skip constant neurons when inserting", () => {
 
   // Run multiple mutations to hit the constant-skipping logic
   for (let i = 0; i < 30; i++) {
-    const testCreature = Creature.fromJSON(creature.exportJSON());
+    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
     const addNeuron = new AddNeuron(testCreature);
     addNeuron.mutate();
 
@@ -239,7 +239,7 @@ Deno.test("AddNeuron - should create outward connection when needed", () => {
 
   // Multiple attempts to hit various edge cases
   for (let i = 0; i < 20; i++) {
-    const testCreature = Creature.fromJSON(creature.exportJSON());
+    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
     const addNeuron = new AddNeuron(testCreature);
     const changed = addNeuron.mutate();
 
@@ -284,7 +284,7 @@ Deno.test("AddNeuron - should handle network with many constant neurons", () => 
 
   // Run multiple times to exercise constant-skipping paths
   for (let i = 0; i < 30; i++) {
-    const testCreature = Creature.fromJSON(creature.exportJSON());
+    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
     const addNeuron = new AddNeuron(testCreature);
     addNeuron.mutate();
 
@@ -309,7 +309,7 @@ Deno.test("AddNeuron - should not connect to constant neurons", () => {
   creatureValidate(creature);
 
   for (let i = 0; i < 20; i++) {
-    const testCreature = Creature.fromJSON(creature.exportJSON());
+    const testCreature = Creature.fromJSON(creature.exportInternalJSON());
     const addNeuron = new AddNeuron(testCreature);
     addNeuron.mutate();
 

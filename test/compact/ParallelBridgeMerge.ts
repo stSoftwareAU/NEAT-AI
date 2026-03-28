@@ -336,7 +336,7 @@ Deno.test("parallel bridge merge: COMPLEMENT merge preserves structure via compa
   assert(compacted, "Expected compaction to occur");
   compacted.validate();
 
-  const exported = compacted.exportJSON();
+  const exported = compacted.exportInternalJSON();
 
   // The COMPLEMENT bypass or parallel merge should have reduced the network.
   // Verify the structure is valid and has fewer hidden neurons.

@@ -119,7 +119,7 @@ Deno.test(
   "buildCombinedFromSuccessful: generates leave-one-out combinations for 3+ candidates",
   () => {
     const base = makeTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Create 3 successful candidates (different types to avoid slot conflicts)
     const candidates: DiscoveryCandidate[] = [
@@ -153,7 +153,7 @@ Deno.test(
   "buildCombinedFromSuccessful: generates leave-one-out combinations for 4 candidates",
   () => {
     const base = makeTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Create 4 successful candidates of different types/slots
     const candidates: DiscoveryCandidate[] = [
@@ -197,7 +197,7 @@ Deno.test(
   "buildCombinedFromSuccessful: leave-one-out with 5 candidates produces size-4 subsets",
   () => {
     const base = makeTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Create 5 successful candidates of different types/slots
     const candidates: DiscoveryCandidate[] = [
@@ -234,7 +234,7 @@ Deno.test(
   "buildCombinedFromSuccessful: leave-one-out avoids duplicate with all-combined",
   () => {
     const base = makeTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Create 3 candidates - leave-one-out of size 2 should not duplicate pairwise
     const candidates: DiscoveryCandidate[] = [
@@ -262,7 +262,7 @@ Deno.test(
   "buildCombinedFromSuccessful: extended pairwise sampling for > 10 candidates",
   () => {
     const base = makeTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Create 12 candidates (more than the 10-candidate pairwise limit).
     // Use squash changes for the 4 hidden neurons and add-synapse candidates
@@ -324,7 +324,7 @@ Deno.test(
   "buildCombinedFromSuccessful: leave-one-out combinations each exclude exactly one candidate",
   () => {
     const base = makeTestCreature();
-    const baseJSON = base.exportJSON();
+    const baseJSON = base.exportInternalJSON();
 
     // Create 4 squash candidates on different neurons - each will change the squash
     // function. This allows us to verify that leave-one-out excludes exactly one.

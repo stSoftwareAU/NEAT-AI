@@ -13,7 +13,14 @@ export class CreatureExportBuilder {
     this.creature = creature;
   }
 
-  build(): CreatureExport {
+  /**
+   * Build the creature export JSON.
+   *
+   * @param includeIds When true, includes runtime integer `id` on neurons
+   *   and `fromId`/`toId` on synapses. External consumers should use the
+   *   default (false) which produces UUID-only output (Issue #2054).
+   */
+  build(includeIds = false): CreatureExport {
     const creature = this.creature;
     const neurons = creature.neurons;
     const synapses = creature.synapses;
@@ -45,20 +52,23 @@ export class CreatureExportBuilder {
       }
 
       uuidMap.set(i, neuronUuid(neuron));
-      const tojson = neuron.exportJSON() as NeuronExport & { id: number };
-      tojson.id = neuron.id;
+      const tojson = neuron.exportJSON() as NeuronExport & { id?: number };
+      if (includeIds) {
+        tojson.id = neuron.id;
+      }
 
       json.neurons[i - input] = tojson;
     }
 
     for (let i = synapsesLength; i--;) {
       const syn = synapses[i];
-      const synExport = syn.exportJSON(idMap, uuidMap) as SynapseExport & {
-        fromId: number;
-        toId: number;
-      };
-      synExport.fromId = idMap.get(syn.from)!;
-      synExport.toId = idMap.get(syn.to)!;
+      const synExport = syn.exportJSON(idMap, uuidMap);
+      if (includeIds) {
+        (synExport as SynapseExport & { fromId: number; toId: number })
+          .fromId = idMap.get(syn.from)!;
+        (synExport as SynapseExport & { fromId: number; toId: number })
+          .toId = idMap.get(syn.to)!;
+      }
 
       json.synapses[i] = synExport;
     }

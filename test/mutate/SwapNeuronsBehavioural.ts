@@ -156,7 +156,7 @@ Deno.test("SwapNeurons: can be exported and re-imported after swap", () => {
   }
 
   // Round-trip through JSON
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   const reimported = Creature.fromJSON(exported);
   creatureValidate(reimported);
   assertEquals(reimported.input, creature.input);

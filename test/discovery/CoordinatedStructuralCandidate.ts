@@ -74,7 +74,7 @@ Deno.test("applyCoordinatedStructuralCandidate: remove/remove/add updates synaps
   };
 
   const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-  const exported = mutated.exportJSON();
+  const exported = mutated.exportInternalJSON();
 
   // Noisy input->output removed.
   assertEquals(
@@ -123,10 +123,10 @@ Deno.test("applyCoordinatedStructuralCandidate: applying twice is safe (idempote
   const once = applyCoordinatedStructuralCandidate(creature, candidate);
   const twice = applyCoordinatedStructuralCandidate(once, candidate);
 
-  const syn1 = once.exportJSON().synapses.find((s) =>
+  const syn1 = once.exportInternalJSON().synapses.find((s) =>
     s.fromId === 0 && s.toId === ID_HIDDEN_0
   );
-  const syn2 = twice.exportJSON().synapses.find((s) =>
+  const syn2 = twice.exportInternalJSON().synapses.find((s) =>
     s.fromId === 0 && s.toId === ID_HIDDEN_0
   );
 
@@ -170,7 +170,7 @@ Deno.test("applyCoordinatedStructuralCandidate: removeSynapse deletes memetic wh
   };
 
   const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-  const after = mutated.exportJSON();
+  const after = mutated.exportInternalJSON();
   assertEquals(after.memetic, undefined);
 });
 
@@ -193,7 +193,7 @@ Deno.test("applyCoordinatedStructuralCandidate: forward-only rejects back-connec
   };
 
   const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-  const exported = mutated.exportJSON();
+  const exported = mutated.exportInternalJSON();
   assertEquals(
     exported.synapses.some((s) => s.fromId === -1 && s.toId === ID_HIDDEN_0),
     false,
@@ -270,7 +270,7 @@ Deno.test("applyCoordinatedStructuralCandidate: addNeuron can insert before a ta
   };
 
   const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-  const exported = mutated.exportJSON();
+  const exported = mutated.exportInternalJSON();
 
   // Neuron should exist and appear before output-0 in forward-only ordering.
   // The actual id assigned may differ from the requested newNeuronId (it gets a UUID-based id).
@@ -318,7 +318,7 @@ Deno.test("applyCoordinatedStructuralCandidate: removeNeuron deletes neuron and 
   };
 
   const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-  const exported = mutated.exportJSON();
+  const exported = mutated.exportInternalJSON();
 
   assertEquals(exported.neurons.some((n) => n.id === ID_HIDDEN_0), false);
   assertEquals(
@@ -363,7 +363,7 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight updates existing synap
   };
 
   const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-  const exported = mutated.exportJSON();
+  const exported = mutated.exportInternalJSON();
 
   const updated = exported.synapses.find((s) =>
     s.fromId === 0 && s.toId === ID_HIDDEN_0
@@ -399,10 +399,10 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight is idempotent (applyin
   const once = applyCoordinatedStructuralCandidate(creature, candidate);
   const twice = applyCoordinatedStructuralCandidate(once, candidate);
 
-  const syn1 = once.exportJSON().synapses.find((s) =>
+  const syn1 = once.exportInternalJSON().synapses.find((s) =>
     s.fromId === 0 && s.toId === ID_HIDDEN_0
   );
-  const syn2 = twice.exportJSON().synapses.find((s) =>
+  const syn2 = twice.exportInternalJSON().synapses.find((s) =>
     s.fromId === 0 && s.toId === ID_HIDDEN_0
   );
 
@@ -430,7 +430,7 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight is no-op if synapse do
   };
 
   const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-  const exported = mutated.exportJSON();
+  const exported = mutated.exportInternalJSON();
 
   // Synapse should not exist (wasn't in original).
   assertEquals(
@@ -489,7 +489,7 @@ Deno.test("applyCoordinatedStructuralCandidate: setWeight preserves synapse meta
   };
 
   const mutated = applyCoordinatedStructuralCandidate(creature, candidate);
-  const exported = mutated.exportJSON();
+  const exported = mutated.exportInternalJSON();
 
   const updated = exported.synapses.find((s) =>
     s.fromId === 0 && s.toId === ID_HIDDEN_0

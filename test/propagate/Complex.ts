@@ -30,7 +30,7 @@ Deno.test("backprop preserves outputs within tolerance on complex multi-hidden-l
 
   Deno.writeTextFileSync(
     `${testDir}/0-start.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
 
   const generated = makeInputs(creature);
@@ -51,7 +51,7 @@ Deno.test("backprop preserves outputs within tolerance on complex multi-hidden-l
   }
 
   const config = createBackPropagationConfig();
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
   for (let i = 0; i < inputs.length; i++) {
     const input = new Float32Array(inputs[i]);
     creature.activateAndTrace(input, false, sparseConfig);
@@ -69,7 +69,7 @@ Deno.test("backprop preserves outputs within tolerance on complex multi-hidden-l
 
   Deno.writeTextFileSync(
     `${testDir}/2-end.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
 
   for (let i = 0; i < inputs.length; i++) {

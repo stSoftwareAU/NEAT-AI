@@ -388,7 +388,7 @@ export class Offspring {
     }
 
     if (fixAliases) {
-      const fixed = offspring.exportJSON();
+      const fixed = offspring.exportInternalJSON();
       for (const n of fixed.neurons) {
         const alias = getTag(n, "alias");
         if (alias) {
@@ -526,9 +526,9 @@ export class Offspring {
           writeDiagnostics({
             error,
             prefix: "offspring",
-            mother: mother.exportJSON(),
-            father: father.exportJSON(),
-            offspring: offspring.exportJSON(),
+            mother: mother.exportInternalJSON(),
+            father: father.exportInternalJSON(),
+            offspring: offspring.exportInternalJSON(),
           });
           throw e;
       }

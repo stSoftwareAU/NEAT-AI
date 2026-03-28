@@ -125,7 +125,7 @@ Deno.test("multi-hidden-layer IDENTITY network: training improves error with ran
     assertAlmostEquals(item.output[1], result[1], 0.00001);
   });
 
-  const internalJSON = creatureA.exportJSON();
+  const internalJSON = creatureA.exportInternalJSON();
 
   Deno.writeTextFileSync(
     ".trace/1-clean.json",
@@ -164,7 +164,7 @@ Deno.test("multi-hidden-layer IDENTITY network: training improves error with ran
 
     Deno.writeTextFileSync(
       ".trace/3-first.json",
-      JSON.stringify(creatureB.exportJSON(), null, 1),
+      JSON.stringify(creatureB.exportInternalJSON(), null, 1),
     );
 
     const result2 = train(creatureB, dataSet, {
@@ -174,7 +174,7 @@ Deno.test("multi-hidden-layer IDENTITY network: training improves error with ran
 
     Deno.writeTextFileSync(
       ".trace/4-last.json",
-      JSON.stringify(creatureB.exportJSON(), null, 1),
+      JSON.stringify(creatureB.exportInternalJSON(), null, 1),
     );
 
     if (result2.error < 0.0001) break;
@@ -340,7 +340,7 @@ Deno.test("multi-hidden-layer IDENTITY network: training improves error with kno
     assertAlmostEquals(item.output[1], result[1], 0.00001);
   });
 
-  const internalJSON = creatureA.exportJSON();
+  const internalJSON = creatureA.exportInternalJSON();
 
   // deno-lint-ignore no-sync-fn-in-async-fn
   Deno.writeTextFileSync(
@@ -382,7 +382,7 @@ Deno.test("multi-hidden-layer IDENTITY network: training improves error with kno
     // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/3-first.json",
-      JSON.stringify(creatureB.exportJSON(), null, 1),
+      JSON.stringify(creatureB.exportInternalJSON(), null, 1),
     );
 
     const result2 = train(creatureB, dataSet, {
@@ -393,7 +393,7 @@ Deno.test("multi-hidden-layer IDENTITY network: training improves error with kno
     // deno-lint-ignore no-sync-fn-in-async-fn
     Deno.writeTextFileSync(
       ".trace/4-last.json",
-      JSON.stringify(creatureB.exportJSON(), null, 1),
+      JSON.stringify(creatureB.exportInternalJSON(), null, 1),
     );
 
     // deno-lint-ignore no-sync-fn-in-async-fn

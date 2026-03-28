@@ -52,7 +52,7 @@ Deno.test("useUUIDinsteadOfPosition", () => {
   };
 
   const n1 = Creature.fromJSON(creature);
-  const exported = n1.exportJSON();
+  const exported = n1.exportInternalJSON();
 
   exported.neurons.forEach((n) => {
     const indx = (n as { index?: number }).index;

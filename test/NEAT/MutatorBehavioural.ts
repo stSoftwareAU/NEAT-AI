@@ -394,7 +394,7 @@ Deno.test("MutatorBehavioural: mutation amount controls mutations per creature",
 
   for (let t = 0; t < trials; t++) {
     const c1 = new Creature(3, 2, { layers: [{ count: 6 }] });
-    const c5 = Creature.fromJSON(c1.exportJSON());
+    const c5 = Creature.fromJSON(c1.exportInternalJSON());
     const originalNeurons = c1.neurons.length;
     const originalSynapses = c1.synapses.length;
     CreatureUtil.makeUUID(c1);

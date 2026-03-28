@@ -17,7 +17,7 @@ import type { ResponseData } from "../../src/intelligentDesign/workers/ResponseD
 
 function makeDeterministicCreatureExport() {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   const hiddenNeurons = exported.neurons.filter((n) => n.type === "hidden");
   assertEquals(hiddenNeurons.length > 0, true);
 
@@ -45,7 +45,7 @@ Deno.test("scanForSquashImprovements records improvement then upgrades via alter
 
   const fakeWorker = {
     score(creature: Creature, uuid: string): Promise<ResponseData> {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
       // Look up the target neuron by its numeric ID (uuid is the string form)
       const neuronId = Number(uuid);
       const neuron = json.neurons.find((n) => n.id === neuronId);
@@ -123,7 +123,7 @@ Deno.test("scanForSquashImprovements terminates workers if a file write fails", 
   let terminated = 0;
   const fakeWorker = {
     score(creature: Creature, uuid: string): Promise<ResponseData> {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
       return Promise.resolve({
         taskID: 1,
         duration: 1,
@@ -166,7 +166,7 @@ Deno.test("scanForSquashImprovements reports timedOut when task remains pending 
   let terminated = 0;
   const fakeWorker = {
     score(creature: Creature, uuid: string): Promise<ResponseData> {
-      const json = creature.exportJSON();
+      const json = creature.exportInternalJSON();
       return new Promise((resolve) => {
         setTimeout(() => {
           resolve({

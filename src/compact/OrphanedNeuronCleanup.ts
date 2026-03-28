@@ -315,7 +315,7 @@ export function cleanupOrphanedNeuronsInCreature(
 ): CleanupOrphanedResult {
   // Use the builder directly to bypass validation (creature may be in an intermediate state)
   const builder = new CreatureExportBuilder(creature);
-  const exportJSON = builder.build();
+  const exportJSON = builder.build(true);
 
   const result = cleanupOrphanedNeurons(exportJSON);
 

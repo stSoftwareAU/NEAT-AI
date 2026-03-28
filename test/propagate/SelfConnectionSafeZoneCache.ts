@@ -61,7 +61,10 @@ Deno.test(
         limitWeightScale: 1_000_000,
         limitBiasScale: 1_000_000,
       });
-      const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+      const sparseConfig = new SparseConfig(
+        creature.exportInternalJSON(),
+        config,
+      );
 
       const actual = creature.activateAndTrace(
         new Float32Array([0]),

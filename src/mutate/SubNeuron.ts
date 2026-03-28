@@ -16,8 +16,9 @@ export class SubNeuron extends AbstractMutationOperator {
     // Export the creature to JSON for clean manipulation
     // Use the builder directly to avoid validation (creature may be in an intermediate state)
     const builder = new CreatureExportBuilder(this.creature);
-    const exportJSON = builder.build();
-    // Builder emits stable uuid endpoints only; populate runtime ids for editing.
+    const exportJSON = builder.build(true);
+    // Builder includes runtime integer ids when includeIds=true; normalise
+    // memetic data so it uses consistent id keys.
     normaliseCreatureExport(exportJSON);
 
     // Filter to only hidden and constant neurons (removable)

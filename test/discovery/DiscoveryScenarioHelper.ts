@@ -101,7 +101,7 @@ export function traceAllConfig(creature: Creature): SparseConfig {
     disableRandomSamples: true,
     generations: 0,
   });
-  return new SparseConfig(creature.exportJSON(), config);
+  return new SparseConfig(creature.exportInternalJSON(), config);
 }
 
 /**

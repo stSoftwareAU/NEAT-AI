@@ -46,13 +46,13 @@ Deno.test("PI: repeated propagate-update cycles converge to PI*input target", ()
   });
   Deno.writeTextFileSync(
     `${traceDir}/0.json`,
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
 
   const inA = [-1, 1, 0];
   let outA2: Float32Array = new Float32Array(0);
   const expectedA = makeOutput(inA);
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
   for (let i = 0; i < 2; i++) {
     outA2 = creature.activateAndTrace(
       new Float32Array(inA),
@@ -85,12 +85,12 @@ Deno.test("PI: single propagate-update cycle moves output towards PI*input targe
   });
   Deno.writeTextFileSync(
     ".trace/0.json",
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
 
   const inA = [-1, 1, 0];
   const outA1 = creature.activate(new Float32Array(inA));
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
   let outA2: Float32Array = new Float32Array(0);
   const expectedA = makeOutput(inA);
   outA2 = creature.activateAndTrace(new Float32Array(inA), false, sparseConfig);
@@ -114,7 +114,7 @@ Deno.test("PI: single propagate-update cycle moves output towards PI*input targe
 
   Deno.writeTextFileSync(
     ".trace/2.json",
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
 
   assertAlmostEquals(
@@ -145,10 +145,10 @@ Deno.test("PI: converges toward PI*input after 1000 random training samples", ()
 
   Deno.writeTextFileSync(
     ".trace/0.json",
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
 
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
+  const sparseConfig = new SparseConfig(creature.exportInternalJSON(), config);
   for (let i = 0; i < 1_000; i++) {
     const inC = [
       Math.random() * 2 - 1,
@@ -177,7 +177,7 @@ Deno.test("PI: converges toward PI*input after 1000 random training samples", ()
 
   Deno.writeTextFileSync(
     ".trace/3.json",
-    JSON.stringify(creature.exportJSON(), null, 1),
+    JSON.stringify(creature.exportInternalJSON(), null, 1),
   );
 
   assertAlmostEquals(

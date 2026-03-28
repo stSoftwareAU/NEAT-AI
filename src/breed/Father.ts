@@ -401,7 +401,7 @@ export function createCompatibleFatherFromCreatures(
   }
 
   if (allFatherInMother) {
-    return father.exportJSON();
+    return father.exportInternalJSON();
   }
 
   const usedFatherIds = new Set<number>();

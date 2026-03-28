@@ -33,10 +33,10 @@ Deno.test("if-bias", () => {
   };
   const creature = Creature.fromJSON(json);
   const sparseConfig = new SparseConfig(
-    creature.exportJSON(),
+    creature.exportInternalJSON(),
     createBackPropagationConfig({}),
   );
-  const tmpJSON = JSON.stringify(creature.exportJSON(), null, 1);
+  const tmpJSON = JSON.stringify(creature.exportInternalJSON(), null, 1);
 
   console.log(tmpJSON);
 
@@ -75,12 +75,12 @@ Deno.test("if/Else", () => {
     output: 1,
   };
   const network1 = Creature.fromJSON(json);
-  const tmpJSON = JSON.stringify(network1.exportJSON(), null, 1);
+  const tmpJSON = JSON.stringify(network1.exportInternalJSON(), null, 1);
 
   console.log(tmpJSON);
   const creature2 = Creature.fromJSON(JSON.parse(tmpJSON));
   const sparseConfig = new SparseConfig(
-    creature2.exportJSON(),
+    creature2.exportInternalJSON(),
     createBackPropagationConfig({}),
   );
   for (let p = 0; p < 1000; p++) {
@@ -140,7 +140,7 @@ Deno.test("if-fix", () => {
     subConnection.mutate();
   }
   creature.fix();
-  const creature2 = Creature.fromJSON(creature.exportJSON());
+  const creature2 = Creature.fromJSON(creature.exportInternalJSON());
   creature2.validate();
 
   const toList = creature.inwardConnections(5);

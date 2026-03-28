@@ -47,7 +47,7 @@ Deno.test("Hyperparameter serialisation - export and import preserves values", (
     l2RegularisationStrength: 0.04,
   };
 
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   assert(exported.hyperparameters, "Exported JSON should have hyperparameters");
   assertEquals(exported.hyperparameters!.learningRate, 0.05);
   assertEquals(exported.hyperparameters!.addNeuronRate, 0.15);
@@ -67,7 +67,7 @@ Deno.test("Hyperparameter serialisation - export and import preserves values", (
 
 Deno.test("Hyperparameter serialisation - absent when not set", () => {
   const creature = new Creature(2, 1);
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   assertEquals(exported.hyperparameters, undefined);
 });
 

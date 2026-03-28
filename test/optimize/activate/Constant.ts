@@ -24,7 +24,7 @@ Deno.test("activate - constant neuron contributes correct value to IDENTITY outp
   };
   const creature = Creature.fromJSON(json);
 
-  const exportCreature = creature.exportJSON();
+  const exportCreature = creature.exportInternalJSON();
   Deno.writeTextFileSync(
     `${directory}/creature.json`,
     JSON.stringify(exportCreature, null, 1),
@@ -79,7 +79,7 @@ Deno.test("activate - constant neuron contributes correct value to MAXIMUM outpu
   };
   const creature = Creature.fromJSON(json);
 
-  const exportCreature = creature.exportJSON();
+  const exportCreature = creature.exportInternalJSON();
   Deno.writeTextFileSync(
     `${directory}/creature.json`,
     JSON.stringify(exportCreature, null, 1),

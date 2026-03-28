@@ -81,7 +81,7 @@ function makeTestCreature(): Creature {
  * Asserts that a creature has no dangling synapse references.
  */
 function assertCreatureIntegrity(creature: Creature, context: string): void {
-  const exported = creature.exportJSON();
+  const exported = creature.exportInternalJSON();
   assertValidSynapseReferences(exported, context);
 }
 
@@ -412,7 +412,7 @@ Deno.test(
       assertCreatureIntegrity(result, "removeSynapse valid output");
 
       // The removed synapse should no longer exist
-      const exported = result.exportJSON();
+      const exported = result.exportInternalJSON();
       const hasSynapse = exported.synapses.some(
         (s) => s.fromId === 0 && s.toId === 1000000,
       );
@@ -445,7 +445,7 @@ Deno.test(
     assertCreatureIntegrity(result, "addHelpfulSynapses valid output");
 
     // The new synapse should exist
-    const exported = result.exportJSON();
+    const exported = result.exportInternalJSON();
     const hasNewSynapse = exported.synapses.some(
       (s) => s.fromId === 1 && s.toId === 1000000,
     );
@@ -473,7 +473,7 @@ Deno.test(
       assertCreatureIntegrity(result, "removeHarmfulNeuron valid output");
 
       // The removed neuron should not exist as hidden
-      const exported = result.exportJSON();
+      const exported = result.exportInternalJSON();
       const hasNeuron = exported.neurons.some(
         (n) => n.id === 1000000 && n.type === "hidden",
       );
@@ -519,7 +519,7 @@ Deno.test(
     if (result !== undefined) {
       assertCreatureIntegrity(result, "removeLowImpactNeuron valid output");
 
-      const exported = result.exportJSON();
+      const exported = result.exportInternalJSON();
       const hasNeuron = exported.neurons.some(
         (n) => n.id === 1000001 && n.type === "hidden",
       );
@@ -558,8 +558,8 @@ Deno.test(
     assertCreatureIntegrity(result, "addHelpfulNeurons valid output");
 
     // The result should have more neurons than the original
-    const originalNeuronCount = creature.exportJSON().neurons.length;
-    const resultNeuronCount = result.exportJSON().neurons.length;
+    const originalNeuronCount = creature.exportInternalJSON().neurons.length;
+    const resultNeuronCount = result.exportInternalJSON().neurons.length;
     assert(
       resultNeuronCount > originalNeuronCount,
       "Result should have more neurons than original",
@@ -588,7 +588,7 @@ Deno.test(
     assertCreatureIntegrity(result, "changeSquash valid output");
 
     // Verify the squash was actually changed
-    const exported = result.exportJSON();
+    const exported = result.exportInternalJSON();
     const neuron = exported.neurons.find((n) => n.id === 1000000);
     assertEquals(neuron?.squash, "LOGISTIC", "Squash should be changed");
   },
