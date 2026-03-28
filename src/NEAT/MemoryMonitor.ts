@@ -70,14 +70,35 @@ export function applyWarningResponse(logger: Logger): void {
   const evictCount = Math.max(1, Math.floor(currentCap / 4));
   evictOldestWasmCreatureActivations(evictCount);
 
-  logger.warn(
-    `[MemoryMonitor] Warning-level response: reduced activation cache cap ` +
-      `from ${currentCap} to ${reducedCap}, evicted ${evictCount} entries`,
-  );
+  _warningResponseLogCount++;
+  if (_warningResponseLogCount % 10 !== 1) return;
+
+  if (reducedCap < currentCap) {
+    logger.warn(
+      `[MemoryMonitor] Warning-level response: reduced activation cache cap ` +
+        `from ${currentCap} to ${reducedCap}, evicted ${evictCount} entr${
+          evictCount === 1 ? "y" : "ies"
+        }`,
+    );
+  } else {
+    logger.warn(
+      `[MemoryMonitor] Warning-level response: activation cache cap already at ` +
+        `minimum (${currentCap}); evicted ${evictCount} oldest entr${
+          evictCount === 1 ? "y" : "ies"
+        }`,
+    );
+  }
 }
 
-/** Call count for critical response; used to throttle log noise when stuck at critical. */
+/** Call counts for pressure responses; throttle log noise when thresholds stay exceeded (Issue #2070). */
 let _criticalResponseLogCount = 0;
+let _warningResponseLogCount = 0;
+
+/** Reset pressure-response log counters (for tests; module state is shared across a worker). */
+export function resetMemoryPressureLogCountersForTests(): void {
+  _criticalResponseLogCount = 0;
+  _warningResponseLogCount = 0;
+}
 
 /**
  * Apply the critical-level response: aggressively clear all non-essential

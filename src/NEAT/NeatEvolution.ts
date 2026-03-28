@@ -352,9 +352,13 @@ export async function evolve(
     getLogger(),
   );
   if (memoryResult.evicted) {
-    if (memoryResult.pressureLevel !== "critical") {
-      logMemoryUsage(memoryResult, getLogger());
-    } else {
+    if (memoryResult.pressureLevel === "warning") {
+      neat.memoryWarningEvictionCount = (neat.memoryWarningEvictionCount ?? 0) +
+        1;
+      if (neat.memoryWarningEvictionCount % 10 === 1) {
+        logMemoryUsage(memoryResult, getLogger());
+      }
+    } else if (memoryResult.pressureLevel === "critical") {
       neat.memoryCriticalEvictionCount =
         (neat.memoryCriticalEvictionCount ?? 0) + 1;
       if (neat.memoryCriticalEvictionCount % 10 === 1) {

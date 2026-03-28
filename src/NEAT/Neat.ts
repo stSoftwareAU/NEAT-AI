@@ -97,6 +97,9 @@ export class Neat {
   /** Count of critical-level evictions; used to throttle memory log noise (Issue #1565). */
   memoryCriticalEvictionCount?: number;
 
+  /** Count of warning-level evictions; used to throttle memory log noise (Issue #2070). */
+  memoryWarningEvictionCount?: number;
+
   // Scheduling state - accessed by extracted scheduling/evolution modules
   doNotStartMore = false;
   private cleanUpDelayCount = 0;
