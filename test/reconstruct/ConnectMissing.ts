@@ -27,8 +27,10 @@ Deno.test("randomConnectMissing - connects all inputs when some are missing", ()
   for (const synapse of exported3.synapses) {
     if (synapse.fromUUID?.startsWith("input-")) {
       const inputIndex = Number(synapse.fromUUID.slice("input-".length));
-      if (!Number.isNaN(inputIndex) && inputIndex >= 0 &&
-        inputIndex < exported3.input) {
+      if (
+        !Number.isNaN(inputIndex) && inputIndex >= 0 &&
+        inputIndex < exported3.input
+      ) {
         connectedInputs.add(inputIndex);
       }
     }

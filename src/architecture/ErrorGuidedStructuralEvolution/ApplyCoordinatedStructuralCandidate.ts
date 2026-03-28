@@ -54,7 +54,7 @@ function populateRuntimeIdsFromCreature(
     if (!neuron.uuid) continue;
     const runtimeId = wireToId.get(neuron.uuid);
     if (runtimeId !== undefined) {
-      neuron.id = runtimeId;
+      (neuron as { id?: number }).id = runtimeId;
     }
   }
   for (const synapse of exported.synapses) {

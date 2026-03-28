@@ -15,10 +15,6 @@ import {
   cleanupMemeticForRemovedSynapse,
 } from "../compact/CompactUtils.ts";
 import { Creature } from "../Creature.ts";
-import {
-  buildWireToRuntimeIdMap,
-  resolveSingleNeuronReference,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import type {
   DiscoveryCandidate,
   DiscoveryChangeType,
@@ -198,17 +194,12 @@ export function applyChangeSquash(
   candidate: DiscoveryCandidate,
 ): Creature | undefined {
   // Apply ONLY the intended squash change for this candidate.
-  const targetId = candidate.change.squashCandidate
-    ? resolveSingleNeuronReference(
-      buildWireToRuntimeIdMap(creature),
-      candidate.change.squashCandidate.neuronUuid,
-    )
-    : undefined;
+  const targetUuid = candidate.change.squashCandidate?.neuronUuid;
   const targetSquash = candidate.change.squashCandidate?.squash;
-  if (targetId !== null && targetId !== undefined && targetSquash) {
+  if (targetUuid && targetSquash) {
     let changed = false;
     for (const neuron of creatureJSON.neurons) {
-      if (neuron.id !== targetId) continue;
+      if (neuron.uuid !== targetUuid) continue;
       if (neuron.squash !== targetSquash) {
         neuron.squash = targetSquash;
         changed = true;
