@@ -7,12 +7,49 @@
  * Extracted from DiscoveryCandidates.ts as part of #1473.
  */
 
+import type { CoordinatedStructuralOperation } from "../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+
 /** Returns the last 8 characters of a UUID or the full ID if short. */
 export function shortID(id: string): string {
   if (id.length > 15 && id.includes("-")) {
     return id.slice(-8);
   }
   return id;
+}
+
+/**
+ * User-facing line when a coordinated-structural candidate applies exactly one
+ * operation — matches the specificity of other discovery candidate descriptions.
+ */
+export function describeSingleCoordinatedStructuralOperation(
+  op: CoordinatedStructuralOperation,
+): string {
+  switch (op.type) {
+    case "removeSynapse":
+      return `✂️ Removed synapse ${shortID(String(op.fromNeuronId))} -> ${
+        shortID(String(op.toNeuronId))
+      }`;
+    case "addSynapse":
+      return `🔗 Added synapse ${shortID(String(op.fromNeuronId))} -> ${
+        shortID(String(op.toNeuronId))
+      }`;
+    case "setWeight":
+      return `⚙️ Set synapse weight ${shortID(String(op.fromNeuronId))} -> ${
+        shortID(String(op.toNeuronId))
+      }`;
+    case "addNeuron":
+      return `💡 Added neuron ${shortID(String(op.neuronId))} (${op.squash})`;
+    case "removeNeuron":
+      return `🗑️ Removed neuron ${shortID(String(op.neuronId))}`;
+    case "changeSquash":
+      return `🎨 Changed activation for ${
+        shortID(String(op.neuronId))
+      } -> ${op.squash}`;
+    case "setBias":
+      return `📐 Set neuron bias ${shortID(String(op.neuronId))}`;
+    default:
+      return "🧩 Structural change";
+  }
 }
 
 /**
@@ -25,6 +62,11 @@ export function shortID(id: string): string {
  * - 🪶 Remove low-impact neuron
  * - 💀 Remove harmful neuron
  * - ✂️ Remove harmful synapse
+ *
+ * **Coordinated structural (single operation from Rust):**
+ * - ✂️ Remove synapse, 🔗 Add synapse, ⚙️ Set synapse weight
+ * - 💡 Add neuron, 🗑️ Remove neuron
+ * - 🎨 Change activation, 📐 Set neuron bias
  *
  * **Combination Candidates:**
  * - ✂️ Pruning only (multiple removals)
