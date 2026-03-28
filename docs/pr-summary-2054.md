@@ -4,8 +4,8 @@ Closes #2054
 
 ## Problem
 
-`exportJSON()` included runtime integer IDs (`id` on neurons, `fromId`/`toId`
-on synapses) in the external JSON format. These IDs are internal implementation
+`exportJSON()` included runtime integer IDs (`id` on neurons, `fromId`/`toId` on
+synapses) in the external JSON format. These IDs are internal implementation
 details that change across generations, machines, and serialisation round-trips.
 External consumers relying on them would break silently.
 
