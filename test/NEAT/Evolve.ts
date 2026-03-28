@@ -3,6 +3,10 @@ import { Creature } from "../../src/Creature.ts";
 import { Mutation } from "../../src/NEAT/Mutation.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import {
+  createSeededRng,
+  setRandomNumberGenerator,
+} from "../../src/utils/RandomNumberGenerator.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -19,6 +23,8 @@ Deno.test("AND", async () => {
   let bestError = Number.POSITIVE_INFINITY;
   let results = { error: 1 };
   for (let attempt = 0; attempt < 20; attempt++) {
+    // Keep this test independent from global RNG state mutated by other tests.
+    setRandomNumberGenerator(createSeededRng(200 + attempt));
     const creature = new Creature(2, 1);
     // deno-lint-ignore no-await-in-loop
     results = await creature.evolveDataSet(trainingSet, {
@@ -51,6 +57,7 @@ Deno.test("evolve-MT", async () => {
     { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
   ];
 
+  setRandomNumberGenerator(createSeededRng(300));
   const creature = new Creature(2, 1);
 
   const results = await creature.evolveDataSet(trainingSet, {
@@ -76,6 +83,8 @@ Deno.test("XOR-evolve", async () => {
   let bestError = Number.POSITIVE_INFINITY;
   let results = { error: 0 };
   for (let attempt = 0; attempt < 100; attempt++) {
+    // Keep this test independent from global RNG state mutated by other tests.
+    setRandomNumberGenerator(createSeededRng(400 + attempt));
     const creature = new Creature(2, 1);
     // deno-lint-ignore no-await-in-loop
     results = await creature.evolveDataSet(trainingSet, {
@@ -108,6 +117,8 @@ Deno.test("booleanXOR", async () => {
   let creature = new Creature(2, 1);
   let results = { error: 1 };
   for (let attempt = 0; attempt < 300; attempt++) {
+    // Keep this test independent from global RNG state mutated by other tests.
+    setRandomNumberGenerator(createSeededRng(500 + attempt));
     // deno-lint-ignore no-await-in-loop
     results = await creature.evolveDataSet(trainingSet, {
       mutation: Mutation.FFW,
@@ -142,6 +153,8 @@ Deno.test("XNOR - evolve", async () => {
   ];
 
   for (let attempt = 0; true; attempt++) {
+    // Keep this test independent from global RNG state mutated by other tests.
+    setRandomNumberGenerator(createSeededRng(600 + attempt));
     const creature = new Creature(2, 1);
     // deno-lint-ignore no-await-in-loop
     const results = await creature.evolveDataSet(trainingSet, {

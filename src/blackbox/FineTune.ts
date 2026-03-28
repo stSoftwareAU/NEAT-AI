@@ -1,7 +1,6 @@
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { CreatureExport } from "../../mod.ts";
@@ -27,6 +26,7 @@ import {
   DEFAULT_QUANTUM_STEP_CONFIG,
   type RequiredQuantumStepConfig,
 } from "../config/QuantumStepConfig.ts";
+import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
@@ -230,10 +230,8 @@ function tuneRandomize(
 ) {
   const effectiveForwardOnly = forwardOnly ?? false;
   const effectiveBacktrack = backtrack ?? false;
-  const previousJSON = structuredClone(previousFittest.exportJSON());
-  const fittestJSON = structuredClone(fittest.exportJSON());
-  normaliseCreatureExport(previousJSON);
-  normaliseCreatureExport(fittestJSON);
+  const previousJSON = new CreatureExportBuilder(previousFittest).build(true);
+  const fittestJSON = new CreatureExportBuilder(fittest).build(true);
 
   let memetic: MemeticInterface;
   let existingMemetic: MemeticInterface | undefined;
@@ -560,6 +558,9 @@ export function fineTuneImprovement(
   const fineTuned: Creature[] = [];
   const acceptCandidate = (candidate: Creature | null | undefined): void => {
     if (!candidate) return;
+    const memetic = candidate.memetic
+      ? JSON.parse(JSON.stringify(candidate.memetic))
+      : undefined;
     try {
       if (forwardOnly) {
         candidate.fix({ forwardOnly: true });
@@ -576,6 +577,10 @@ export function fineTuneImprovement(
         } - ${validation.message}`,
       );
       return;
+    }
+
+    if (!candidate.memetic && memetic) {
+      candidate.memetic = memetic;
     }
 
     const candidateUUID = CreatureUtil.makeUUID(candidate);
