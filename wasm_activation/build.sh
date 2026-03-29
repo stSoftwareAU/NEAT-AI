@@ -128,6 +128,10 @@ compute_fingerprint() {
 FINGERPRINT="$(compute_fingerprint || echo "")"
 if [[ -n "$FINGERPRINT" ]]; then
     echo "$FINGERPRINT" > pkg/build-fingerprint
+    # Also write to the hidden path for backwards compatibility with
+    # .github/workflows/wasm-build.yml which still references .build-fingerprint.
+    # Remove this line once the workflow is updated to use build-fingerprint.
+    echo "$FINGERPRINT" > pkg/.build-fingerprint
 fi
 
 # wasm-bindgen/wasm-pack occasionally emits duplicate `export const <name>` entries
@@ -179,6 +183,7 @@ cat > pkg/.gitignore <<'EOF'
 !wasm_activation_bg.wasm
 !wasm_activation_bg.wasm.d.ts
 !build-fingerprint
+!.build-fingerprint
 
 # If wasm-pack emits snippets/, keep them too.
 !snippets/
