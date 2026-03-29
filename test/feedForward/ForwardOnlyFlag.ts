@@ -63,10 +63,13 @@ Deno.test(
       a.from === b.from ? a.to - b.to : a.from - b.from
     );
 
-    assertThrows(
+    // Invalid 4.x parent is rejected in prepareCreatureForBreeding → validateFourX
+    // (Issue #2086) before offspring build; that path rethrows ValidationError.
+    const err = assertThrows(
       () => Offspring.breed(loadedMum, dad, { forwardOnly: true }),
       ValidationError,
     );
+    assertEquals((err as ValidationError).reason, "SELF_CONNECTION");
   },
 );
 
