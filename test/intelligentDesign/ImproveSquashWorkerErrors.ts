@@ -1,6 +1,8 @@
 /**
  * Regression coverage: worker scoring failures must not be silently ignored.
  *
+ * Issue #2085: scan internals use neuron UUID (string), not integer id.
+ *
  * When workers return `ResponseData.error` (with `score` undefined), scans must:
  * - report failed attempts via `failed` / `errors`
  * - ensure `tested` counts only successful scoring operations
@@ -24,13 +26,13 @@ function makeSingleHiddenCreatureExport() {
 
   // Ensure we only scan a single neuron for deterministic counts.
   const first = hiddenNeurons[0];
-  assertExists(first.id);
+  assertExists(first.uuid);
   for (const n of hiddenNeurons) {
     n.squash = "GELU";
   }
   first.squash = "TANH";
 
-  return { exported, hiddenUUID: first.id };
+  return { exported, hiddenUUID: first.uuid };
 }
 
 Deno.test("scanForSquashImprovements surfaces worker errors and does not inflate tested count", async () => {
@@ -77,7 +79,7 @@ Deno.test("scanForSquashImprovements surfaces worker errors and does not inflate
   assertEquals(result.tested, 0);
 
   assertEquals(result.errors.length, 1);
-  assertEquals(result.errors[0].uuid, String(hiddenUUID));
+  assertEquals(result.errors[0].uuid, hiddenUUID);
   assertEquals(result.errors[0].stage, "target");
   assertEquals(result.errors[0].message.includes("does not exist"), true);
 

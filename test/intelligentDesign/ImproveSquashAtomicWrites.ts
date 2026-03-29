@@ -110,12 +110,12 @@ Deno.test("scanForSquashImprovements uses injected safe writers (async + sync pa
   assertEquals(removes[0], writesAsync[0].path);
 
   // Final improvement path should be the alternative squash.
-  // Get the actual hidden neuron ID from the test creature.
+  // Get the actual hidden neuron UUID from the test creature.
   const atomicCreature = Creature.fromJSON(testCreatureJson);
   const atomicHidden = atomicCreature.neurons.find(
     (n) => n.type === "hidden",
   );
-  assertExists(atomicHidden?.id, "Hidden neuron must have an id");
-  const improvement = result.improvements.get(atomicHidden.id);
+  assertExists(atomicHidden?.uuid, "Hidden neuron must have a UUID");
+  const improvement = result.improvements.get(atomicHidden.uuid);
   assertEquals(improvement?.path, writesSync[0].path);
 });

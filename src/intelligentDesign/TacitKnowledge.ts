@@ -18,7 +18,7 @@ import { getLogger } from "../utils/Logger.ts";
 /**
  * Tacit knowledge is a mapping from neuron UUID to squash function name.
  */
-export type TacitKnowledgeMap = Record<number, string>;
+export type TacitKnowledgeMap = Record<string, string>;
 
 /**
  * Result from applying tacit knowledge to a creature.
@@ -65,13 +65,13 @@ export interface ApplyTacitKnowledgeOptions {
 /**
  * Creates a modified creature with a neuron's squash function changed.
  *
- * @param neuronId - The UUID of the neuron to modify
+ * @param neuronUuid - The UUID of the neuron to modify
  * @param creatureExport - The creature export to modify
  * @param nextSquash - The new squash function to apply
  * @returns The modified creature
  */
 export function makeModifiedCreature(
-  neuronId: number,
+  neuronUuid: string,
   creatureExport: CreatureExport,
   nextSquash: string,
 ): Creature {
@@ -80,15 +80,18 @@ export function makeModifiedCreature(
     : JSON.parse(JSON.stringify(creatureExport));
   normaliseCreatureExport(tmpJson);
   const neuronData = tmpJson.neurons.find((n: NeuronExport) =>
-    n.id === neuronId
+    n.uuid === neuronUuid
   );
-  assert(neuronData, "Neuron not found in the creature JSON");
+  assert(
+    neuronData,
+    `Neuron with UUID ${neuronUuid} not found in the creature JSON`,
+  );
   const previousSquash = neuronData.squash;
   assert(previousSquash, "Previous squash should be defined");
 
   if (neuronData.squash === nextSquash) {
     getLogger().warn(
-      `${String(neuronData.id)} Squash already set to ${nextSquash}`,
+      `${neuronUuid} Squash already set to ${nextSquash}`,
     );
   }
 
@@ -110,15 +113,15 @@ export function makeModifiedCreature(
  */
 export function getValidNeuronSquashes(
   creatureExport: CreatureExport,
-): Map<number, string> {
+): Map<string, string> {
   const tmpJson = typeof structuredClone === "function"
     ? structuredClone(creatureExport)
     : JSON.parse(JSON.stringify(creatureExport));
   normaliseCreatureExport(tmpJson);
-  const validNeuronUUIDs = new Map<number, string>();
+  const validNeuronUUIDs = new Map<string, string>();
   tmpJson.neurons.forEach((n: NeuronExport) => {
-    if (n.type === "hidden" && n.id && n.squash) {
-      validNeuronUUIDs.set(n.id, n.squash);
+    if (n.type === "hidden" && n.uuid && n.squash) {
+      validNeuronUUIDs.set(n.uuid, n.squash);
     }
   });
   return validNeuronUUIDs;
@@ -134,7 +137,7 @@ export function getValidNeuronSquashes(
  * @returns Cleaned knowledge maps
  */
 export function cleanKnowledge(
-  validNeuronUUIDs: Map<number, string>,
+  validNeuronUUIDs: Map<string, string>,
   localKnowledge: TacitKnowledgeMap,
   hiveKnowledge: TacitKnowledgeMap,
 ): { localKnowledge: TacitKnowledgeMap; hiveKnowledge: TacitKnowledgeMap } {
@@ -143,29 +146,29 @@ export function cleanKnowledge(
 
   // Remove invalid entries from local knowledge
   for (const key of Object.keys(cleanedLocal)) {
-    if (!validNeuronUUIDs.has(Number(key))) {
-      delete cleanedLocal[Number(key)];
+    if (!validNeuronUUIDs.has(key)) {
+      delete cleanedLocal[key];
     }
   }
 
   // Remove invalid entries from hive knowledge
   for (const key of Object.keys(cleanedHive)) {
-    const creatureSquash = validNeuronUUIDs.get(Number(key));
+    const creatureSquash = validNeuronUUIDs.get(key);
     if (!creatureSquash) {
       getLogger().warn(
         `Removing invalid hive knowledge for ${key}: not found in the creature.`,
       );
-      delete cleanedHive[Number(key)];
+      delete cleanedHive[key];
     }
   }
 
   // Add missing neurons to hive knowledge
-  validNeuronUUIDs.forEach((squash, id) => {
-    if (!cleanedHive[id]) {
+  validNeuronUUIDs.forEach((squash, uuid) => {
+    if (!cleanedHive[uuid]) {
       getLogger().warn(
-        `No hive knowledge for ${id} with squash ${squash}, adding.`,
+        `No hive knowledge for ${uuid} with squash ${squash}, adding.`,
       );
-      cleanedHive[id] = squash;
+      cleanedHive[uuid] = squash;
     }
   });
 
@@ -210,8 +213,9 @@ export function getNeuronsToTest(
   return tmpJson.neurons.filter(
     (n: NeuronExport) =>
       n.type === "hidden" &&
-      combinedKnowledge[n.id!] &&
-      n.squash !== combinedKnowledge[n.id!],
+      n.uuid &&
+      combinedKnowledge[n.uuid] &&
+      n.squash !== combinedKnowledge[n.uuid],
   );
 }
 
@@ -227,7 +231,7 @@ export function getNeuronsToTest(
 export async function applyNeuronChanges(
   creatureExport: CreatureExport,
   neuronSquashMap: Map<
-    number,
+    string,
     { squash: string; score: number; error: number }
   >,
   dataDir: string,
@@ -239,8 +243,8 @@ export async function applyNeuronChanges(
   normaliseCreatureExport(finalJson);
 
   for (const uuid of neuronSquashMap.keys()) {
-    const neuron = finalJson.neurons.find((n: NeuronExport) => n.id === uuid);
-    assert(neuron, "Neuron not found in the final JSON");
+    const neuron = finalJson.neurons.find((n: NeuronExport) => n.uuid === uuid);
+    assert(neuron, `Neuron with UUID ${uuid} not found in the final JSON`);
     const { squash } = neuronSquashMap.get(uuid)!;
 
     if (neuron.squash === squash) {

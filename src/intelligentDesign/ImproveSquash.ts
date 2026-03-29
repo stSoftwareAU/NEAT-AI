@@ -120,7 +120,7 @@ export interface ImproveSquashOptions {
  */
 export interface ImproveSquashResult {
   /** Map of neuron UUID to best squash info */
-  improvements: Map<number, BestNeuronSquash>;
+  improvements: Map<string, BestNeuronSquash>;
   /**
    * Number of successful scoring operations.
    *
@@ -166,13 +166,13 @@ export interface ImproveSquashResult {
 /**
  * Creates a modified creature with a neuron's squash function changed.
  *
- * @param neuronId - The UUID of the neuron to modify
+ * @param neuronUuid - The UUID of the neuron to modify
  * @param creatureExport - The creature export to modify
  * @param nextSquash - The new squash function to apply
  * @returns Object containing the modified creature and the previous squash
  */
 export function makeModifiedCreatureWithPrevious(
-  neuronId: number,
+  neuronUuid: string,
   creatureExport: CreatureExport,
   nextSquash: string,
 ): { creature: Creature; previousSquash: string } {
@@ -188,15 +188,18 @@ export function makeModifiedCreatureWithPrevious(
   normaliseCreatureExport(tmpJson);
 
   const neuronData = tmpJson.neurons.find((n: NeuronExport) =>
-    n.id === neuronId
+    n.uuid === neuronUuid
   );
-  assert(neuronData, "Neuron not found in the creature JSON");
+  assert(
+    neuronData,
+    `Neuron with UUID ${neuronUuid} not found in the creature JSON`,
+  );
   const previousSquash = neuronData.squash;
   assert(previousSquash, "Previous squash should be defined");
 
   if (neuronData.squash === nextSquash) {
     getLogger().warn(
-      `${neuronData.id} Squash should be different from ${nextSquash}`,
+      `${neuronUuid} Squash should be different from ${nextSquash}`,
     );
   }
 
@@ -339,7 +342,7 @@ export async function scanForSquashImprovements(
   const errorSamples: ImproveSquashResult["errors"] = [];
   const maxErrorSamples = 25;
 
-  const bestNeuronSquashMap = new Map<number, BestNeuronSquash>();
+  const bestNeuronSquashMap = new Map<string, BestNeuronSquash>();
   const workerTasksSet = new Set<Promise<unknown>>();
   const alternativeTaskSet = new Set<Promise<void>>();
 
@@ -392,7 +395,7 @@ export async function scanForSquashImprovements(
       if (targetSquash === neuron.squash) {
         getLogger().info(
           `Neuron ${
-            String(neuron.id)
+            neuron.uuid ?? String(neuron.id)
           } already has squash ${targetSquash}, skipping.`,
         );
         continue;
@@ -401,12 +404,12 @@ export async function scanForSquashImprovements(
       const p = (async () => {
         if (bestNeuronSquashMap.size >= maxImprovements) return;
 
-        const neuronId = neuron.id;
-        assert(neuronId, "Neuron ID should be defined");
+        const neuronUuid = neuron.uuid;
+        assert(neuronUuid, "Neuron UUID should be defined");
 
         const { creature: modifiedCreature, previousSquash } =
           makeModifiedCreatureWithPrevious(
-            neuronId,
+            neuronUuid,
             workingCreature,
             targetSquash,
           );
@@ -416,7 +419,7 @@ export async function scanForSquashImprovements(
 
         const res = await worker.score(
           modifiedCreature,
-          String(neuronId),
+          neuronUuid,
           dataDir,
           neatOptions,
         );
@@ -440,7 +443,7 @@ export async function scanForSquashImprovements(
             const path = `${outputDir}/${targetSquash}_${shortId}.json`;
 
             await writeTextFile(path, res.score.creature);
-            bestNeuronSquashMap.set(Number(res.score.uuid), {
+            bestNeuronSquashMap.set(res.score.uuid, {
               squash: targetSquash,
               score: res.score.score,
               path: path,
@@ -463,7 +466,7 @@ export async function scanForSquashImprovements(
                 normaliseCreatureExport(altCreatureExport);
                 const { creature: altCreature } =
                   makeModifiedCreatureWithPrevious(
-                    neuronId,
+                    neuronUuid,
                     altCreatureExport,
                     altSquash,
                   );
@@ -473,7 +476,7 @@ export async function scanForSquashImprovements(
 
                 const alternativeTask = altWorker.score(
                   altCreature,
-                  String(neuronId),
+                  neuronUuid,
                   dataDir,
                   neatOptions,
                 ).then(async (alternativeRes) => {
@@ -481,7 +484,7 @@ export async function scanForSquashImprovements(
                   if (alternativeRes?.score) {
                     tested++;
                     const currentNeuronBest = bestNeuronSquashMap.get(
-                      neuronId,
+                      neuronUuid,
                     );
                     assert(
                       currentNeuronBest,
@@ -510,7 +513,7 @@ export async function scanForSquashImprovements(
                         alternativeRes.score.creature,
                       );
                       bestNeuronSquashMap.set(
-                        Number(alternativeRes.score.uuid),
+                        alternativeRes.score.uuid,
                         {
                           squash: altSquash,
                           score: alternativeRes.score.score,
@@ -533,7 +536,7 @@ export async function scanForSquashImprovements(
                       : undefined;
                     if (errorSamples.length < maxErrorSamples) {
                       errorSamples.push({
-                        uuid: String(neuronId),
+                        uuid: neuronUuid,
                         squash: altSquash,
                         stage: "alternative",
                         message: err?.message ??
@@ -563,7 +566,7 @@ export async function scanForSquashImprovements(
             : undefined;
           if (errorSamples.length < maxErrorSamples) {
             errorSamples.push({
-              uuid: String(neuronId),
+              uuid: neuronUuid,
               squash: targetSquash,
               stage: "target",
               message: err?.message ??
@@ -638,7 +641,7 @@ export async function scanForSquashImprovements(
  */
 export async function combineImprovements(
   originalCreature: CreatureExport,
-  improvements: Map<number, BestNeuronSquash>,
+  improvements: Map<string, BestNeuronSquash>,
   dataDir: string,
   bestScore: number,
   options: NeatOptions = {},
@@ -681,7 +684,7 @@ export async function combineImprovements(
   normaliseCreatureExport(finalJson);
 
   for (const [uuid, improvement] of improvements) {
-    const neuron = finalJson.neurons.find((n: NeuronExport) => n.id === uuid);
+    const neuron = finalJson.neurons.find((n: NeuronExport) => n.uuid === uuid);
     assert(neuron, "Neuron not found in the final JSON");
     const previousSquash = neuron.squash;
     neuron.squash = improvement.squash;
