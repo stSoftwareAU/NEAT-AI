@@ -70,12 +70,17 @@ export function makeRandomConnection(
 }
 
 /**
- * Fix the structure of the creature.
+ * Repair the creature into a structurally valid shape.
  *
- * Removes recurrent connections if requested, merges duplicate synapses,
- * removes zero-weight synapses (except last output inbound), removes
- * disconnected hidden neurons, sorts synapses, and bumps semantic version
- * to 4.0.0 when forced forward-only.
+ * Can remove recurrent synapses (when requested), merge duplicate synapses,
+ * drop zero-weight synapses (with a guard for the last output inbound),
+ * remove disconnected hidden neurons, run orphan cleanup, prune stale memetic
+ * references, and bump semantic version to 4.0.0 when forced forward-only.
+ *
+ * Prefer **not** calling this on hot evolution paths when the genome is already
+ * valid: structural edits and memetic clearing can **reduce fitness** relative
+ * to the pre-repair network. Use it when correctness recovery matters more than
+ * preserving the exact trained weights/topology.
  */
 export function fix(
   creature: Creature,

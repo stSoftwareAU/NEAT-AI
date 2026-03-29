@@ -161,6 +161,6 @@ Deno.test("Breeding with forwardOnly=false sets child forwardOnly=false when par
   }
   assert(child, "Expected child");
   assertEquals(child.forwardOnly, false);
-  assertEquals(child.semanticVersion, "2.0.0");
+  assertEquals(child.semanticVersion, "4.0.0");
   child.validate();
 });

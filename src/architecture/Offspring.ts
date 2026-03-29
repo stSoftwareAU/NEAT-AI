@@ -12,7 +12,7 @@ import { ValidationError } from "../errors/ValidationError.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import {
   getMajorVersion,
-  upgrade,
+  prepareCreatureForBreeding,
   upgradeSemanticVersionIfForwardOnlyConfirmed,
 } from "../upgrade/Upgrade.ts";
 import { writeDiagnostics } from "../utils/Diagnostics.ts";
@@ -59,9 +59,9 @@ export class Offspring {
     // for parent preparation. shallowClone() is 3-4x faster as it:
     // - Creates new Creature with copied neuron/synapse arrays
     // - Avoids JSON string creation and parsing overhead
-    const mother = upgrade(mum.shallowClone());
+    const mother = prepareCreatureForBreeding(mum.shallowClone());
     CreatureUtil.makeUUID(mother);
-    let father = upgrade(dad.shallowClone());
+    let father = prepareCreatureForBreeding(dad.shallowClone());
     CreatureUtil.makeUUID(father);
     assert(
       mother.input === father.input && mother.output === father.output,
@@ -92,9 +92,6 @@ export class Offspring {
       fatherNeuronMap.set(neuron.id, neuron);
     }
 
-    // Determine offspring semantic version based on BOTH parents.
-    // Only start at 4.x if BOTH parents are 4.x (forward-only guaranteed).
-    // Otherwise start at the lower version - validation will upgrade if appropriate.
     const motherMajor = getMajorVersion(mother.semanticVersion);
     const fatherMajor = getMajorVersion(father.semanticVersion);
     const bothParentsFourX = motherMajor >= 4 && fatherMajor >= 4;
@@ -103,18 +100,11 @@ export class Offspring {
       (options.forwardOnly === undefined &&
         (mother.forwardOnly === true || father.forwardOnly === true));
 
-    const offspringVersion = shouldBeForwardOnly
-      ? ((motherMajor >= 4 && fatherMajor >= 4)
-        ? mother.semanticVersion
-        : (motherMajor < fatherMajor
-          ? mother.semanticVersion
-          : father.semanticVersion))
-      : "2.0.0";
-
-    // Initialize offspring
+    // Initialise offspring in explicit topology mode; semantic version is always
+    // current for newly bred genomes (legacy upgrade applies to parents only).
     const offspring = new Creature(mother.input, mother.output, {
       lazyInitialization: true,
-      semanticVersion: offspringVersion,
+      feedbackEnabled: !shouldBeForwardOnly,
     });
     offspring.synapses = [];
     offspring.neurons = [];
@@ -439,16 +429,11 @@ export class Offspring {
       if (
         options.forwardOnly === false && !bothParentsFourX
       ) {
-        // Feedback/memory mode explicitly requested. Ensure we do not create a
-        // semanticVersion 4.x creature (4.x is a hard "forward-only" invariant).
         offspring.forwardOnly = false;
-        offspring.semanticVersion = "2.0.0";
       } else if (shouldBeForwardOnly) {
         if (options.forwardOnly === false && bothParentsFourX) {
-          // Two 4.x parents are a hard forward-only invariant. If a caller requests
-          // feedback/memory mode here, it's a misuse of the API. We override it to
-          // keep invariants stable and avoid producing a "4.x but not forwardOnly"
-          // creature that later fails upgrade/validation.
+          // Two forward-only 4.x parents cannot produce a feedback child; keep
+          // the forward-only invariant.
           getLogger().warn(
             `[Offspring] feedbackLoop/memory mode requested but both parents are 4.x; forcing forwardOnly child`,
           );

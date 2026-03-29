@@ -61,8 +61,20 @@ import type {
   DiscoveryReplayRunnerLike,
 } from "./discovery/DiscoveryReplayRunner.ts";
 import { CreatureUtil } from "./architecture/CreatureUtils.ts";
+import {
+  upgradeSemanticVersionIfForwardOnlyConfirmed,
+} from "./upgrade/Upgrade.ts";
 
 interface CreatureOptions {
+  /**
+   * When true, the creature allows recurrent/feedback topology (self- and
+   * backward connections). Default false = strictly forward-only.
+   */
+  feedbackEnabled?: boolean;
+  /**
+   * Internal: `fromJSON`, `shallowClone`, and legacy tests. Normal
+   * `new Creature(i, o)` always uses {@link CURRENT_CREATURE_SEMANTIC_VERSION}.
+   */
   semanticVersion?: string;
   lazyInitialization?: boolean;
   layers?: { squash?: string; count: number }[];
@@ -72,13 +84,15 @@ interface CreatureOptions {
 }
 
 /**
- * Freshly constructed creatures are modern 2.x genomes by default.
- *
- * They are not legacy payloads, so they should not enter the 0.x/1.x upgrade
- * path. We only promote them to 4.x once forward-only validity is explicitly
- * confirmed by mutate/breed/discovery flows.
+ * Semantic version for creatures created without a persisted payload (normal
+ * constructor). Both forward-only and feedback-enabled fresh creatures use 4.x;
+ * {@link Creature.forwardOnly} selects the topology mode.
  */
-export const DEFAULT_NEW_CREATURE_SEMANTIC_VERSION = "2.0.0";
+export const CURRENT_CREATURE_SEMANTIC_VERSION = "4.0.0";
+
+/** @deprecated Use {@link CURRENT_CREATURE_SEMANTIC_VERSION}. */
+export const DEFAULT_NEW_CREATURE_SEMANTIC_VERSION =
+  CURRENT_CREATURE_SEMANTIC_VERSION;
 
 /**
  * Cached score components to avoid recalculating on every score calculation.
@@ -199,16 +213,40 @@ export class Creature implements CreatureInternal {
 
     this.tags = undefined;
     this.score = undefined;
-    this.semanticVersion = options.semanticVersion ??
-      DEFAULT_NEW_CREATURE_SEMANTIC_VERSION;
+
+    const lazy = options.lazyInitialization === true;
+    if (lazy && options.semanticVersion !== undefined) {
+      this.semanticVersion = options.semanticVersion;
+    } else if (!lazy && options.semanticVersion !== undefined) {
+      this.semanticVersion = options.semanticVersion;
+    } else {
+      this.semanticVersion = CURRENT_CREATURE_SEMANTIC_VERSION;
+    }
+
     const major = Number.parseInt(
       this.semanticVersion.split(".")[0] ?? "0",
       10,
     );
     this.cachedMajorVersion = Number.isFinite(major) ? major : 0;
-    this.forwardOnly = this.cachedMajorVersion >= 4 ? true : undefined;
 
-    if (!options.lazyInitialization) {
+    if (lazy) {
+      if (options.semanticVersion !== undefined) {
+        // `loadFrom` / clone copy will set the real flag for 4.x feedback genomes.
+        this.forwardOnly = this.cachedMajorVersion >= 4 ? true : undefined;
+      } else {
+        this.forwardOnly = options.feedbackEnabled === true ? false : true;
+      }
+    } else if (options.semanticVersion !== undefined) {
+      if (this.cachedMajorVersion >= 4) {
+        this.forwardOnly = options.feedbackEnabled === true ? false : true;
+      } else {
+        this.forwardOnly = options.feedbackEnabled === true ? false : undefined;
+      }
+    } else {
+      this.forwardOnly = options.feedbackEnabled === true ? false : true;
+    }
+
+    if (!lazy) {
       this.initialize(options);
 
       if (this.DEBUG) {
@@ -542,6 +580,49 @@ export class Creature implements CreatureInternal {
     forwardOnly?: boolean;
   }) {
     creatureValidate(this, options);
+  }
+
+  /**
+   * Switch to strictly forward-only topology. This is the only supported way
+   * to enable feed-forward guarantees after construction (mutate/breed must not
+   * flip modes implicitly).
+   *
+   * @param options.repair When true (default), removes recurrent edges via
+   *   `fix({ forwardOnly: true })` before validating. That repair can remove
+   *   neurons or synapses and clear memetic state — avoid when the creature is
+   *   already forward-only valid (fitness cost).
+   */
+  setForwardOnlyTopology(options: { repair?: boolean } = {}): void {
+    const repair = options.repair !== false;
+    if (repair) {
+      this.fix({ forwardOnly: true });
+    }
+    creatureValidate(this, { forwardOnly: true });
+    this.forwardOnly = true;
+    this.clearCache();
+    upgradeSemanticVersionIfForwardOnlyConfirmed(this);
+    if (this.cachedMajorVersion < 4) {
+      this.semanticVersion = CURRENT_CREATURE_SEMANTIC_VERSION;
+      this.cachedMajorVersion = 4;
+    }
+  }
+
+  /**
+   * Switch to feedback-enabled (recurrent-capable) topology. Does not add
+   * recurrent edges — only marks the creature so mutation and activation may
+   * use memory/feedback paths.
+   */
+  setFeedbackEnabledTopology(_options: { repair?: boolean } = {}): void {
+    // Validate before mutating flags or version so a failed check cannot leave
+    // a partially updated creature (e.g. 4.x + forwardOnly false without passing
+    // structural validation).
+    creatureValidate(this);
+    this.forwardOnly = false;
+    if (this.cachedMajorVersion < 4) {
+      this.semanticVersion = CURRENT_CREATURE_SEMANTIC_VERSION;
+      this.cachedMajorVersion = 4;
+    }
+    this.clearCache();
   }
 
   // ── Topology ───────────────────────────────────────────────────────────
@@ -905,6 +986,13 @@ export class Creature implements CreatureInternal {
     return mutation.makeRandomConnection(this, indx);
   }
 
+  /**
+   * Structural repair: normalise synapses and topology so validation can pass.
+   *
+   * Delegates to `fix()` in `CreatureMutation.ts`. Prefer avoiding unnecessary
+   * calls during evolution when the creature is already valid, because repairs
+   * can remove trained edges or neurons and drop memetic lineage, lowering fitness.
+   */
   fix(options?: {
     forwardOnly?: boolean;
     removeBackConnections?: boolean;

@@ -14,18 +14,19 @@ import { initWasmForTests } from "../_initWasm.ts";
 
 /* Functions used in the testing process */
 function checkMutation(method: { name: string }) {
+  const memoryMutation = method.name === Mutation.ADD_BACK_CONN.name ||
+    method.name === Mutation.SUB_BACK_CONN.name ||
+    method.name === Mutation.ADD_SELF_CONN.name ||
+    method.name === Mutation.SUB_SELF_CONN.name;
   const creature = new Creature(2, 2, {
     layers: [
       { count: 4 },
       { count: 4 },
       { count: 4 },
     ],
+    ...(memoryMutation ? { feedbackEnabled: true } : {}),
   });
   creatureValidate(creature);
-  const memoryMutation = method.name === Mutation.ADD_BACK_CONN.name ||
-    method.name === Mutation.SUB_BACK_CONN.name ||
-    method.name === Mutation.ADD_SELF_CONN.name ||
-    method.name === Mutation.SUB_SELF_CONN.name;
   const mutator = new Mutator(createNeatConfig({
     // Forward-only is the default. Enable feedbackLoop only when testing memory mutations.
     feedbackLoop: memoryMutation ? true : false,

@@ -10,11 +10,8 @@ import { upgradeTwo } from "./UpgradeTwo.ts";
 /**
  * The current major version.
  *
- * Version 4.x indicates the creature has been validated as strictly forward-only
- * (no recurrent connections). Once at 4.x, the creature must remain forward-only
- * and any violation is an error condition.
- *
- * Creatures with forwardOnly: false (explicitly allowing feedback loops) stay at 2.x.
+ * Version 4.x is the modern on-wire genome format. Forward-only vs feedback is
+ * expressed by `Creature.forwardOnly`, not by staying on 2.x.
  */
 export const SEMANTIC_MAJOR_VERSION = 4;
 
@@ -88,6 +85,20 @@ function validateFourX(creature: Creature): void {
   // Breeding/memetics can leave weight rows pointing at removed neurons; prune
   // before validate so MEMETIC is not misclassified as an unrepaired bug (#2077).
   pruneOrphanMemeticReferences(creature);
+
+  if (creature.forwardOnly === false) {
+    try {
+      creatureValidate(creature);
+      return;
+    } catch (e) {
+      const error = e as ValidationError;
+      getLogger().error(
+        `[upgrade] CRITICAL: 4.x feedback-enabled creature failed validation: ` +
+          `${error.name} - ${error.message}.`,
+      );
+      throw e;
+    }
+  }
 
   try {
     creatureValidate(creature, { forwardOnly: true });
@@ -183,19 +194,23 @@ function validateFourX(creature: Creature): void {
 }
 
 /**
- * Attempts to upgrade a 2.x/3.x creature to 4.x if it's validated as forward-only.
- *
- * Version 4.x is assigned when:
- * - forwardOnly === true AND the creature passes forward-only validation
- *
- * Creatures with forwardOnly: false or undefined stay at their current major:
- * - forwardOnly: false = explicitly allows feedback loops
- * - forwardOnly: undefined = status not yet determined
- *
- * @param creature - The creature to potentially upgrade
- * @returns The upgraded creature (at version 4.x) or unchanged creature
+ * Attempts to upgrade a 2.x/3.x creature to 4.x once topology validates for the
+ * current mode (forward-only vs feedback-enabled).
  */
 function tryUpgradeToFour(creature: Creature): Creature {
+  if (creature.forwardOnly === false) {
+    try {
+      pruneOrphanMemeticReferences(creature);
+      creatureValidate(creature);
+      creature.semanticVersion = "4.0.0";
+    } catch (_error) {
+      getLogger().warn(
+        `[upgrade] Feedback-enabled creature failed validation before 4.x promotion`,
+      );
+    }
+    return creature;
+  }
+
   // forwardOnly === true - validate it's actually forward-only before upgrading
   if (creature.forwardOnly === true) {
     try {
@@ -222,9 +237,7 @@ function tryUpgradeToFour(creature: Creature): Creature {
     return creature;
   }
 
-  // forwardOnly is false or undefined - stay at 2.x
-  // - false: explicitly allows feedback loops
-  // - undefined: status not yet determined, will be set during mutate/breed/fix
+  // forwardOnly undefined - stay at 2.x until status is determined
   return creature;
 }
 
@@ -233,18 +246,32 @@ function tryUpgradeToFour(creature: Creature): Creature {
  *
  * Upgrade path:
  * - 0.x/1.x/undefined → 2.x (format migration via upgradeTwo)
- * - 2.x/3.x → 4.x (if forwardOnly: true and validated as forward-only)
+ * - 2.x/3.x → 4.x (when validated for the creature's forwardOnly mode)
  * - 3.x → validated to warn (legacy only; never thrown in production)
- * - 4.x+ → validated to ensure still forward-only (throws if not)
+ * - 4.x+ → validated (forward-only when `forwardOnly !== false`)
  *
  * @param creature - The creature to upgrade
  * @returns The upgraded creature
  * @throws {Error} If a 3.x creature has self/back connections
  */
+/**
+ * Prepare a shallow-cloned parent for breeding: run the full legacy `upgrade()`
+ * pipeline only when the genome is pre-4.x. Modern 4.x parents are validated
+ * in-place (no format migration).
+ */
+export function prepareCreatureForBreeding(creature: Creature): Creature {
+  const majorVersion = getMajorVersion(creature.semanticVersion);
+  if (majorVersion >= 4) {
+    validateFourX(creature);
+    return creature;
+  }
+  return upgrade(creature);
+}
+
 export function upgrade(creature: Creature): Creature {
   const majorVersion = getMajorVersion(creature.semanticVersion);
 
-  // Already at version 4.x or higher - enforce forward-only invariant.
+  // Already at version 4.x or higher - validate topology for the current mode.
   if (majorVersion >= 4) {
     validateFourX(creature);
     return creature;

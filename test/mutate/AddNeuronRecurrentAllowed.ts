@@ -7,14 +7,17 @@ import { pickOutwardTargetNeuronIndex } from "../../src/mutate/AddNeuron.ts";
  * when a creature is **not** marked as forward-only.
  */
 Deno.test("AddNeuron: recurring targets are allowed when creature is not forward-only", () => {
-  const creature = new Creature(2, 1, { layers: [{ count: 1 }] });
+  const creature = new Creature(2, 1, {
+    layers: [{ count: 1 }],
+    feedbackEnabled: true,
+  });
 
-  // Default validation allows recurrent connections.
+  // Feedback-enabled construction allows recurrent topology.
   creature.validate();
 
-  // In recurrent-capable mode (forwardOnly is undefined), it is valid to target
+  // In recurrent-capable mode (forwardOnly === false), it is valid to target
   // the same neuron index (self-loop).
-  assertEquals(creature.forwardOnly, undefined);
+  assertEquals(creature.forwardOnly, false);
   assertEquals(
     pickOutwardTargetNeuronIndex(creature, 2, 2),
     2,

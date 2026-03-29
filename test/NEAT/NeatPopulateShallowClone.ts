@@ -15,9 +15,9 @@ import {
  *
  * Issue #1474: Reduce serialisation overhead in evolution loop.
  *
- * Seeds use semanticVersion 2.0.0 so upgrade() does not promote parents to 4.x
- * before Offspring.breed; mutated 0.x genomes can hit validateFourX and fail
- * under de-duplication breeding (same as NeatBehavioural populatePopulation).
+ * Seeds use explicit 4.x forward-only semantics; breeding uses
+ * `prepareCreatureForBreeding` so parents are not run through the legacy
+ * upgrade pipeline when already modern.
  */
 
 function createTestDataDir(input: number, output: number): string {
@@ -58,7 +58,6 @@ Deno.test("populatePopulation: clones validate correctly", async () => {
     const neat = new Neat(5, 3, options, workers);
     const seedCreature = new Creature(5, 3, {
       layers: [{ count: 8 }, { count: 4 }],
-      semanticVersion: "2.0.0",
     });
 
     neat.populatePopulation(seedCreature);
@@ -84,7 +83,6 @@ Deno.test("populatePopulation: clones can be exported and re-imported", async ()
     const neat = new Neat(3, 2, options, workers);
     const seedCreature = new Creature(3, 2, {
       layers: [{ count: 5 }],
-      semanticVersion: "2.0.0",
     });
 
     neat.populatePopulation(seedCreature);
@@ -122,7 +120,6 @@ Deno.test("populatePopulation: clones are independent of seed creature", async (
     const neat = new Neat(3, 2, options, workers);
     const seedCreature = new Creature(3, 2, {
       layers: [{ count: 4 }],
-      semanticVersion: "2.0.0",
     });
 
     neat.populatePopulation(seedCreature);
