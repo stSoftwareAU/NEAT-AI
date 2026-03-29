@@ -4,9 +4,7 @@ import { assert, assertEquals } from "@std/assert";
  * Tests that the WASM build fingerprint file follows repository conventions.
  *
  * Issue #2072: Hidden files (dotfiles) should not be checked into git.
- * The canonical build fingerprint uses a non-hidden filename. A hidden
- * copy (.build-fingerprint) is also written for backwards compatibility
- * with .github/workflows/wasm-build.yml until the workflow is updated.
+ * The canonical build fingerprint is `pkg/build-fingerprint` (non-hidden).
  */
 
 Deno.test({
@@ -24,17 +22,14 @@ Deno.test({
 });
 
 Deno.test({
-  name:
-    "build.sh also writes hidden .build-fingerprint for workflow compatibility",
+  name: "build.sh does not write hidden pkg/.build-fingerprint",
   permissions: { read: true },
   fn: async () => {
     const buildScript = await Deno.readTextFile("wasm_activation/build.sh");
 
-    // The build script should also write to .build-fingerprint for backwards
-    // compatibility with the CI workflow that still references the hidden name.
     assert(
-      buildScript.includes("pkg/.build-fingerprint"),
-      "build.sh should write .build-fingerprint for workflow compatibility",
+      !buildScript.includes("pkg/.build-fingerprint"),
+      "build.sh must not write a hidden fingerprint file",
     );
   },
 });
@@ -55,7 +50,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: "pkg/.gitignore allows .build-fingerprint for workflow compatibility",
+  name: "pkg/.gitignore does not un-ignore hidden .build-fingerprint",
   permissions: { read: true },
   fn: async () => {
     const gitignore = await Deno.readTextFile(
@@ -63,8 +58,8 @@ Deno.test({
     );
 
     assert(
-      gitignore.includes("!.build-fingerprint"),
-      "pkg/.gitignore should allow .build-fingerprint for workflow compatibility",
+      !gitignore.includes("!.build-fingerprint"),
+      "pkg/.gitignore must not whitelist a hidden fingerprint file",
     );
   },
 });

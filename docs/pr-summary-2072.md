@@ -5,12 +5,6 @@ Renamed `wasm_activation/pkg/.build-fingerprint` to `build-fingerprint`
 files. The root `.gitignore` ignores all dotfiles (`.*`), so checked-in files
 should not use a dot prefix. Closes #2072.
 
-**Note:** `.github/workflows/wasm-build.yml` also references the old
-`.build-fingerprint` filename but cannot be updated in this PR (requires the
-`workflow` OAuth scope). The workflow will safely trigger a WASM rebuild on the
-next run since it won't find the old fingerprint file. A follow-up update to the
-workflow file is needed.
-
 ## Changes
 
 - Renamed `wasm_activation/pkg/.build-fingerprint` to
@@ -18,13 +12,13 @@ workflow file is needed.
 - Updated `wasm_activation/build.sh` to write the fingerprint to the non-hidden
   filename
 - Updated `wasm_activation/pkg/.gitignore` to allow the non-hidden filename
+- Updated `.github/workflows/wasm-build.yml` to read `build-fingerprint`
+- Removed tracked `wasm_activation/pkg/.build-fingerprint`
 - Added `test/scripts/BuildFingerprint.ts` with tests verifying the convention
 
 ## Test Plan
 
-- Added `test/scripts/BuildFingerprint.ts` with 4 tests:
-  - Verifies `build.sh` references `pkg/build-fingerprint` (non-hidden)
-  - Verifies `pkg/.gitignore` allows `build-fingerprint` (non-hidden)
-  - Verifies the hidden `.build-fingerprint` file does not exist
-  - Verifies the fingerprint file contains a valid SHA-256 hash
-- All 5085 existing tests continue to pass
+- Added `test/scripts/BuildFingerprint.ts` with tests that verify `build.sh` and
+  `pkg/.gitignore` use only the non-hidden fingerprint path, and that the hash
+  file is valid when present
+- All existing tests continue to pass
