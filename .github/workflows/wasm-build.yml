@@ -80,8 +80,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           expected="${{ steps.wasm_fingerprint.outputs.fingerprint }}"
-          if [[ -f "wasm_activation/pkg/.build-fingerprint" ]]; then
-            current="$(cat wasm_activation/pkg/.build-fingerprint | tr -d '\n\r')"
+          if [[ -f "wasm_activation/pkg/build-fingerprint" ]]; then
+            current="$(cat wasm_activation/pkg/build-fingerprint | tr -d '\n\r')"
           else
             current=""
           fi
