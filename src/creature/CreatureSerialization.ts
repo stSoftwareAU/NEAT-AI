@@ -396,10 +396,10 @@ export function loadFrom(
       );
     }
 
-    // Forward-only genomes must never contain recurrent edges in memory: if
-    // `json.forwardOnly === true`, reject self-loops and backward links here
-    // (same rule as `Creature.connect`). Repair corrupt snapshots offline
-    // (omit `forwardOnly`, use `mergeDuplicateSynapses`, then re-export) — Issue #2086.
+    // Forward-only genomes must never contain recurrent edges on the wire or after load:
+    // if `json.forwardOnly === true`, reject self-loops and backward links here (same rule
+    // as `Creature.connect`). Prevention is at export/source — do not emit `forwardOnly: true`
+    // with recurrent synapses; repair tooling must rewrite exports before distribution — Issue #2086.
 
     rejectRecurrentSynapseIfForwardOnlyCreature(creature, from!, to!);
 

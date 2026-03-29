@@ -11,6 +11,7 @@
  */
 
 import { assert, assertEquals, assertExists } from "@std/assert";
+import { Synapse } from "../../src/architecture/Synapse.ts";
 import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
 import { Creature } from "../../src/Creature.ts";
 import {
@@ -301,17 +302,21 @@ Deno.test(
     const baseJSON = base.exportJSON();
     normaliseCreatureExport(baseJSON);
 
-    // Candidate A: adds a *back* connection (hidden-C -> hidden-A). This is illegal in forward-only mode.
-    // This simulates a Rust hint that is fine in recurrent mode, but must be rejected/filtered in 4.x.
-    const addBackSynapseJSON = structuredClone(baseJSON);
-    addBackSynapseJSON.synapses.push({
-      fromId: ID_HIDDEN_C,
-      toId: ID_HIDDEN_A,
-      weight: 0.123,
-    });
-    addBackSynapseJSON.forwardOnly = undefined;
-    const addBackSynapseCreature = Creature.fromJSON(addBackSynapseJSON);
+    // Candidate A: adds a *back* connection (hidden-C -> hidden-A). Illegal for forward-only;
+    // simulates a bad hint delivered on a creature that still claims forward-only (in-memory only).
+    const addBackSynapseCreature = Creature.fromJSON(structuredClone(baseJSON));
     delete addBackSynapseCreature.uuid;
+    const idxC = addBackSynapseCreature.neurons.findIndex((n) =>
+      n.uuid === "hidden-C"
+    );
+    const idxA = addBackSynapseCreature.neurons.findIndex((n) =>
+      n.uuid === "hidden-A"
+    );
+    assert(idxC >= 0 && idxA >= 0, "Expected hidden-A and hidden-C in base");
+    addBackSynapseCreature.synapses.push(new Synapse(idxC, idxA, 0.123));
+    addBackSynapseCreature.synapses.sort((a, b) =>
+      a.from === b.from ? a.to - b.to : a.from - b.from
+    );
     CreatureUtil.makeUUID(addBackSynapseCreature);
 
     const addBackSynapseCandidate: DiscoveryCandidate = {
@@ -398,7 +403,8 @@ Deno.test(
       { fromId: ID_HIDDEN_C, toId: ID_HIDDEN_D, weight: 0.123 },
     );
     normaliseCreatureExport(addNeuronsJSON);
-    addNeuronsJSON.forwardOnly = undefined;
+    // Wire truthfully marks this candidate as non-forward-only (recurrent edge present).
+    addNeuronsJSON.forwardOnly = false;
 
     const addNeuronsCreature = Creature.fromJSON(addNeuronsJSON);
     delete addNeuronsCreature.uuid;

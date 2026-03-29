@@ -5,6 +5,7 @@
  * Issue #2013: TDD tests covering edge cases in CompactCreature.ts
  */
 import { assert, assertAlmostEquals } from "@std/assert";
+import { Synapse } from "../../src/architecture/Synapse.ts";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { compactCreature } from "../../src/compact/CompactCreature.ts";
@@ -125,10 +126,11 @@ Deno.test("compactCreature integrity: backward synapse removal creating orphans"
   // Forward-only creature where a hidden neuron's only inbound synapse is
   // backward (source index > target index). Removing it should leave
   // the hidden neuron orphaned, which should then be cleaned up.
-  // Backward edge cannot be imported with `forwardOnly: true` (Issue #2086); load then flag.
+  // Valid forward-only import; backward edge injected in-memory (loadFrom forbids it on wire).
   const json: CreatureExport = {
     input: 2,
     output: 1,
+    forwardOnly: true,
     neurons: [
       // h1 appears first — it gets input
       { type: "hidden", uuid: "h1", squash: "LOGISTIC", bias: 0.1 },
@@ -140,13 +142,16 @@ Deno.test("compactCreature integrity: backward synapse removal creating orphans"
       { fromUUID: "input-0", toUUID: "h1", weight: 0.5 },
       { fromUUID: "h1", toUUID: "h2", weight: 0.4 },
       { fromUUID: "h2", toUUID: "output-0", weight: 0.6 },
-      // backward synapse: h2 -> h1 (h2 is at higher index than h1)
-      { fromUUID: "h2", toUUID: "h1", weight: 0.3 },
       { fromUUID: "h1", toUUID: "output-0", weight: 0.7 },
     ],
   };
   const creature = Creature.fromJSON(json);
-  creature.forwardOnly = true;
+  const h1 = creature.neurons.find((n) => n.uuid === "h1")!;
+  const h2 = creature.neurons.find((n) => n.uuid === "h2")!;
+  creature.synapses.push(new Synapse(h2.index, h1.index, 0.3));
+  creature.synapses.sort((a, b) =>
+    a.from === b.from ? a.to - b.to : a.from - b.from
+  );
   const result = compactCreature(creature, false);
 
   assert(
