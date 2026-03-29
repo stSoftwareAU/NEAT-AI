@@ -52,13 +52,13 @@ Deno.test("CRISPR: rejects backward synapse injection for 4.x forward-only creat
   // under forward-only validation.
   mutated.validate({ forwardOnly: true });
 
-  const synapseKeys = mutated.exportJSON().synapses.map((s) =>
-    `${s.fromId}->${s.toId}`
+  const hasOutputToHidden = mutated.exportJSON().synapses.some(
+    (s) => s.fromUUID === "output-0" && s.toUUID === "hidden-0",
   );
   assertEquals(
-    synapseKeys.includes("-1->5000"),
+    hasOutputToHidden,
     false,
-    "Backward synapse should not be present",
+    "Backward synapse output-0 -> hidden-0 should not be present",
   );
 
   // Test hygiene: CRISPR writes a debug file on validation failures. Remove it

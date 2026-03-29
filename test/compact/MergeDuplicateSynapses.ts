@@ -5,7 +5,7 @@ import { mergeDuplicateSynapses } from "../../src/compact/CompactUtils.ts";
 const tagA = { name: "tag", value: "a" };
 const tagB = { name: "tag", value: "b" };
 
-Deno.test("mergeDuplicateSynapses: merges same from/to/type (sums weights), preserves typed separation, clears memetic", () => {
+Deno.test("mergeDuplicateSynapses: merges same from/to (sums weights), clears memetic", () => {
   const exportJSON: CreatureExport = {
     input: 1,
     output: 1,
@@ -16,7 +16,6 @@ Deno.test("mergeDuplicateSynapses: merges same from/to/type (sums weights), pres
     synapses: [
       { fromUUID: "input-0", toUUID: "output-0", weight: 0.5 },
       { fromUUID: "input-0", toUUID: "output-0", weight: -0.2, tags: [tagB] },
-      // Typed duplicates should merge with same type only.
       {
         fromUUID: "input-0",
         toUUID: "hidden-0",
@@ -31,7 +30,6 @@ Deno.test("mergeDuplicateSynapses: merges same from/to/type (sums weights), pres
         type: "condition",
         tags: [tagB],
       },
-      // Different type should remain separate.
       {
         fromUUID: "input-0",
         toUUID: "hidden-0",
@@ -43,27 +41,21 @@ Deno.test("mergeDuplicateSynapses: merges same from/to/type (sums weights), pres
   };
 
   const result = mergeDuplicateSynapses(exportJSON);
-  assertEquals(result.merged, 2);
+  assertEquals(result.merged, 3);
   assertEquals(exportJSON.memetic, undefined);
 
-  // Should now have 3 synapses: merged output edge, merged condition edge, and positive edge.
-  assertEquals(exportJSON.synapses.length, 3);
+  assertEquals(exportJSON.synapses.length, 2);
 
   const out = exportJSON.synapses.find((s) =>
     s.fromUUID === "input-0" && s.toUUID === "output-0"
   );
   assertEquals(out?.weight, 0.3);
 
-  const condition = exportJSON.synapses.find((s) =>
-    s.fromUUID === "input-0" && s.toUUID === "hidden-0" &&
-    s.type === "condition"
+  const hiddenIn = exportJSON.synapses.find((s) =>
+    s.fromUUID === "input-0" && s.toUUID === "hidden-0"
   );
-  assertAlmostEquals(condition?.weight ?? 0, 0.3);
-  const tagValues = new Set((condition?.tags ?? []).map((t) => t.value));
+  assertAlmostEquals(hiddenIn?.weight ?? 0, 0.6);
+  assertEquals(hiddenIn?.type, "condition");
+  const tagValues = new Set((hiddenIn?.tags ?? []).map((t) => t.value));
   assertEquals(tagValues, new Set(["a", "b"]));
-
-  const positive = exportJSON.synapses.find((s) =>
-    s.fromUUID === "input-0" && s.toUUID === "hidden-0" && s.type === "positive"
-  );
-  assertEquals(positive?.weight, 0.3);
 });

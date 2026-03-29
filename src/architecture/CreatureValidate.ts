@@ -2,6 +2,7 @@ import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
+import { neuronWireLabelForDiagnostics } from "../neuron/NeuronSerialization.ts";
 import { DIAGNOSTICS_DIR } from "../utils/Diagnostics.ts";
 import { TypedTopology } from "./TypedTopology.ts";
 import {
@@ -217,7 +218,9 @@ export function creatureValidate(
         if (fromList.length === 0) {
           debugWrite(creature);
           throw new ValidationError(
-            `constants neuron ${neuron.ID()} has no outward connections`,
+            `constants neuron ${
+              neuronWireLabelForDiagnostics(neuron, indx)
+            } has no outward connections`,
             "NO_OUTWARD_CONNECTIONS",
           );
         }
@@ -228,7 +231,9 @@ export function creatureValidate(
         const toList = creature.inwardConnections(indx);
         if (toList.length === 0) {
           throw new ValidationError(
-            `hidden neuron ${neuron.ID()} has no inward connections`,
+            `hidden neuron ${
+              neuronWireLabelForDiagnostics(neuron, indx)
+            } has no inward connections`,
             "NO_INWARD_CONNECTIONS",
           );
         }
@@ -236,7 +241,9 @@ export function creatureValidate(
         if (fromList.length === 0) {
           debugWrite(creature);
           throw new ValidationError(
-            `hidden neuron ${neuron.ID()} has no outward connections`,
+            `hidden neuron ${
+              neuronWireLabelForDiagnostics(neuron, indx)
+            } has no outward connections`,
             "NO_OUTWARD_CONNECTIONS",
           );
         }
@@ -313,10 +320,12 @@ export function creatureValidate(
 
     if (forwardOnly && c.from === c.to) {
       debugWrite(creature);
+      const fromL = neuronWireLabelForDiagnostics(
+        creature.neurons[c.from],
+        c.from,
+      );
       throw new ValidationError(
-        `${indx}) Self connection synapse ${c.from} (${
-          creature.neurons[c.from].ID()
-        }) -> ${c.to} (${creature.neurons[c.to].ID()})`,
+        `${indx}) Self connection synapse ${fromL} -> ${fromL}`,
         "SELF_CONNECTION",
       );
     }
@@ -335,8 +344,16 @@ export function creatureValidate(
           "SORT_FAILURE",
         );
       } else if (c.to === lastTo) {
+        const fromL = neuronWireLabelForDiagnostics(
+          creature.neurons[c.from],
+          c.from,
+        );
+        const toL = neuronWireLabelForDiagnostics(
+          creature.neurons[c.to],
+          c.to,
+        );
         throw new TopologyError(
-          indx + ") duplicate self connection synapse " + c.from + "->" + c.to,
+          `${indx}) duplicate synapse ${fromL} -> ${toL}`,
           "INVALID_CONNECTION",
         );
       }
@@ -346,10 +363,16 @@ export function creatureValidate(
       /** Recursive synapses rejected only when explicitly disallowed (feedbackLoop === false) */
       if (feedbackLoop === false) {
         debugWrite(creature);
+        const fromL = neuronWireLabelForDiagnostics(
+          creature.neurons[c.from],
+          c.from,
+        );
+        const toL = neuronWireLabelForDiagnostics(
+          creature.neurons[c.to],
+          c.to,
+        );
         throw new ValidationError(
-          `${indx}) Recursive synapse ${c.from} (${
-            creature.neurons[c.from].ID()
-          }) -> ${c.to} (${creature.neurons[c.to].ID()})`,
+          `${indx}) Recursive synapse ${fromL} -> ${toL}`,
           "RECURSIVE_SYNAPSE",
         );
       }

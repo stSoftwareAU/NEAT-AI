@@ -1,8 +1,9 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { Synapse } from "../../src/architecture/Synapse.ts";
 import { Offspring } from "../../src/architecture/Offspring.ts";
+import { ValidationError } from "../../src/errors/ValidationError.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
 Deno.test("forwardOnly flag survives export/import", () => {
@@ -16,64 +17,61 @@ Deno.test("forwardOnly flag survives export/import", () => {
   assertEquals(loaded.forwardOnly, true);
 });
 
-Deno.test("Breeding honours forwardOnly flag (child becomes forward-only)", () => {
-  const mumJson: CreatureExport = {
-    input: 2,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0 },
-      { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
-      { fromUUID: "input-1", toUUID: "hidden-0", weight: -0.2 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 1.0 },
-    ],
-  };
-  const dadJson: CreatureExport = {
-    input: 2,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0.1 },
-      { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.1 },
-      { fromUUID: "input-1", toUUID: "hidden-0", weight: 0.3 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.7 },
-      // Extra connection so crossover can create a non-clone child.
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0.2 },
-    ],
-  };
+Deno.test(
+  "Breeding forward-only throws when mother has illegal self-connection (#2086)",
+  () => {
+    const mumJson: CreatureExport = {
+      input: 2,
+      output: 1,
+      semanticVersion: "4.0.0",
+      forwardOnly: true,
+      neurons: [
+        { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0 },
+        { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0 },
+      ],
+      synapses: [
+        { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+        { fromUUID: "input-1", toUUID: "hidden-0", weight: -0.2 },
+        { fromUUID: "hidden-0", toUUID: "output-0", weight: 1.0 },
+      ],
+    };
+    const dadJson: CreatureExport = {
+      input: 2,
+      output: 1,
+      semanticVersion: "4.0.0",
+      forwardOnly: true,
+      neurons: [
+        { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0.1 },
+        { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0 },
+      ],
+      synapses: [
+        { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.1 },
+        { fromUUID: "input-1", toUUID: "hidden-0", weight: 0.3 },
+        { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.7 },
+        // Extra connection so crossover can create a non-clone child.
+        { fromUUID: "input-0", toUUID: "output-0", weight: 0.2 },
+      ],
+    };
 
-  const loadedMum = Creature.fromJSON(mumJson);
-  const dad = Creature.fromJSON(dadJson);
+    const loadedMum = Creature.fromJSON(mumJson);
+    const dad = Creature.fromJSON(dadJson);
 
-  // Inject a legacy self connection into mum to simulate older populations.
-  const hiddenIndex = loadedMum.input;
-  loadedMum.synapses.push(new Synapse(hiddenIndex, hiddenIndex, 0.25));
-  loadedMum.synapses.sort((a, b) =>
-    a.from === b.from ? a.to - b.to : a.from - b.from
-  );
-
-  let child: Creature | undefined;
-  for (let attempt = 0; attempt < 50; attempt++) {
-    child = Offspring.breed(loadedMum, dad, { forwardOnly: true });
-    if (child) break;
-  }
-  assert(child, "Expected child");
-  assertEquals(child.forwardOnly, true);
-
-  // Ensure no self/back connections remain.
-  child.synapses.forEach((s) => {
-    assert(
-      s.from < s.to,
-      `Expected forward-only synapse, got ${s.from}->${s.to}`,
+    // Inject a legacy self connection into mum to simulate older populations.
+    const hiddenIndex = loadedMum.input;
+    loadedMum.synapses.push(new Synapse(hiddenIndex, hiddenIndex, 0.25));
+    loadedMum.synapses.sort((a, b) =>
+      a.from === b.from ? a.to - b.to : a.from - b.from
     );
-  });
-});
+
+    // Invalid 4.x parent is rejected in prepareCreatureForBreeding → validateFourX
+    // (Issue #2086) before offspring build; that path rethrows ValidationError.
+    const err = assertThrows(
+      () => Offspring.breed(loadedMum, dad, { forwardOnly: true }),
+      ValidationError,
+    );
+    assertEquals((err as ValidationError).reason, "SELF_CONNECTION");
+  },
+);
 
 Deno.test("Breeding inherits forwardOnly by default (when a parent is forward-only)", () => {
   const mumJson: CreatureExport = {

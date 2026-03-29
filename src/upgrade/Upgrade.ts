@@ -74,12 +74,12 @@ function validateThreeX(creature: Creature): void {
  * For 4.x, forward-only is a hard invariant: any recurrent connection is an error,
  * regardless of whether the `forwardOnly` flag is set.
  *
- * If validation fails, this indicates a BUG in our breeding/mutation/discovery logic.
- * We attempt to repair the creature first (removing recurrent connections), and if
- * successful, log a warning and continue. This allows production workflows to continue
- * while still flagging the underlying bug for investigation.
+ * If validation fails, we log diagnostics and **throw**. Automatic `creature.fix()`
+ * is not used (Issue #2086 follow-up): repair mutates topology/weights and destroys
+ * trained fitness while masking breeding/export bugs.
  *
- * See https://github.com/stSoftwareAU/NEAT-AI/issues/956
+ * See https://github.com/stSoftwareAU/NEAT-AI/issues/956 for historical repair
+ * behaviour and https://github.com/stSoftwareAU/NEAT-AI/issues/2086.
  */
 function validateFourX(creature: Creature): void {
   // Breeding/memetics can leave weight rows pointing at removed neurons; prune
@@ -107,67 +107,8 @@ function validateFourX(creature: Creature): void {
   } catch (e) {
     const error = e as ValidationError;
 
-    // Check if this is a repairable validation error.
-    // Structural issues (disconnected neurons) and forward-only violations
-    // (self/recursive connections) can occur after mutation or breeding.
-    // creature.fix() handles both by removing invalid connections/neurons.
-    const repairableReasons: ReadonlySet<string> = new Set([
-      "SELF_CONNECTION",
-      "RECURSIVE_SYNAPSE",
-      "NO_INWARD_CONNECTIONS",
-      "NO_OUTWARD_CONNECTIONS",
-    ]);
-
-    if (error.reason && repairableReasons.has(error.reason)) {
-      getLogger().warn(
-        `[upgrade] WARNING: 4.x creature (UUID: ${
-          creature.uuid ?? "unknown"
-        }) failed validation: ` +
-          `${error.reason} - ${error.message}. ` +
-          `This indicates a bug in our code. Attempting repair...`,
-      );
-
-      writeDiagnostics({
-        error,
-        prefix: "upgrade-4x-repair",
-        creature: creature.exportJSON(),
-        context: {
-          semanticVersion: creature.semanticVersion,
-          uuid: creature.uuid,
-          forwardOnly: creature.forwardOnly,
-          neuronCount: creature.neurons.length,
-          synapseCount: creature.synapses.length,
-        },
-      });
-
-      // Attempt to repair the creature by fixing structural issues.
-      try {
-        creature.fix({ forwardOnly: true });
-        creatureValidate(creature, { forwardOnly: true });
-        creature.forwardOnly = true;
-
-        getLogger().warn(
-          `[upgrade] Successfully repaired 4.x creature (UUID: ${
-            creature.uuid ?? "unknown"
-          }). ` +
-            `Please investigate the source of the ${error.reason} issue.`,
-        );
-        return;
-      } catch (fixError) {
-        // Repair failed - fall through to throw the original error.
-        getLogger().error(
-          `[upgrade] CRITICAL: Failed to repair 4.x creature (UUID: ${
-            creature.uuid ?? "unknown"
-          }). ` +
-            `Fix error: ${
-              fixError instanceof Error ? fixError.message : fixError
-            }`,
-        );
-      }
-    }
-
-    // 4.x forward-only is a hard invariant. Any failure that cannot be repaired
-    // indicates a serious bug that must be investigated.
+    // 4.x forward-only is a hard invariant. Do not call creature.fix() here:
+    // repair is non-deterministic for fitness and masked production bugs (#2086).
     getLogger().error(
       `[upgrade] CRITICAL: 4.x creature (UUID: ${
         creature.uuid ?? "unknown"
@@ -218,17 +159,7 @@ function tryUpgradeToFour(creature: Creature): Creature {
       creatureValidate(creature, { forwardOnly: true });
       creature.semanticVersion = "4.0.0";
     } catch (_error) {
-      // Creature claims to be forward-only but failed validation.
-      // Attempt repair first; if repair fails, clear the flag and stay at current version.
-      try {
-        pruneOrphanMemeticReferences(creature);
-        creature.fix({ forwardOnly: true });
-        creatureValidate(creature, { forwardOnly: true });
-        creature.semanticVersion = "4.0.0";
-        return creature;
-      } catch (_fixError) {
-        // Fall through to clearing the flag below.
-      }
+      // Do not call fix() here — same rationale as validateFourX (#2086 follow-up).
       getLogger().warn(
         `[upgrade] Creature claims forwardOnly but failed validation; clearing flag`,
       );

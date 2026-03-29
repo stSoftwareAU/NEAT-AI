@@ -1,4 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
+import { Synapse } from "../../src/architecture/Synapse.ts";
 import { Creature } from "../../src/Creature.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { Mutator } from "../../src/NEAT/Mutator.ts";
@@ -7,6 +8,7 @@ import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
 Deno.test("Forward-only: self-connection is repaired on mutate", () => {
+  // Import stays valid forward-only wire; simulate in-memory corruption (e.g. buggy op), then repair.
   const json: CreatureExport = {
     input: 2,
     output: 1,
@@ -17,13 +19,17 @@ Deno.test("Forward-only: self-connection is repaired on mutate", () => {
     ],
     synapses: [
       { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
-      { fromUUID: "hidden-0", toUUID: "hidden-0", weight: 0.25 }, // illegal self connection
       { fromUUID: "hidden-0", toUUID: "output-0", weight: 1.0 },
     ],
   };
 
   const creature = Creature.fromJSON(json);
   assertEquals(creature.forwardOnly, true);
+  const hidden = creature.neurons.find((n) => n.uuid === "hidden-0")!;
+  creature.synapses.push(new Synapse(hidden.index, hidden.index, 0.25));
+  creature.synapses.sort((a, b) =>
+    a.from === b.from ? a.to - b.to : a.from - b.from
+  );
 
   const mutator = new Mutator(
     createNeatConfig({

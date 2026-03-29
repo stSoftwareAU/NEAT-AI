@@ -43,6 +43,7 @@ import type { WasmCreatureActivation } from "./wasm/mod.ts";
 import { getRandomNumberGenerator } from "./utils/RandomNumberGenerator.ts";
 import { ActivationError } from "./errors/ActivationError.ts";
 import { TopologyError } from "./errors/TopologyError.ts";
+import { rejectRecurrentSynapseIfForwardOnlyCreature } from "./architecture/ForwardOnlySynapseGuard.ts";
 import { TypedTopology } from "./architecture/TypedTopology.ts";
 
 // Extracted modules
@@ -707,6 +708,7 @@ export class Creature implements CreatureInternal {
     weight: number,
     type?: "positive" | "negative" | "condition",
   ): Synapse {
+    rejectRecurrentSynapseIfForwardOnlyCreature(this, from, to);
     const connection = new Synapse(from, to, weight, type);
 
     let location = -1;
@@ -756,6 +758,10 @@ export class Creature implements CreatureInternal {
     }>,
   ): void {
     if (connections.length === 0) return;
+
+    for (const conn of connections) {
+      rejectRecurrentSynapseIfForwardOnlyCreature(this, conn.from, conn.to);
+    }
 
     const batchSet = new Set<string>();
     for (const conn of connections) {

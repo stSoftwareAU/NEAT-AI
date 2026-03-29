@@ -364,6 +364,13 @@ export class Offspring {
     // and memetic updates by avoiding linear scans.
     offspring.prebuildInwardIndexIfLarge();
 
+    // Issue #2086 / GRQ logs: `exportJSON()` is UUID-only (#2054). If two hidden
+    // neurons still share a `uuid`, `loadFrom()` maps that uuid to a single index
+    // and silently mis-wires synapses. Graft (`fixAliases`) round-trips through
+    // export+load — dedupe UUIDs *before* that path (regression vs integer-id alias
+    // rewrite, ~Mar 2026).
+    Offspring.ensureUniqueNeuronUuids(offspring);
+
     if (fixAliases) {
       const fixed = offspring.exportJSON();
       for (const n of fixed.neurons) {
@@ -382,7 +389,6 @@ export class Offspring {
       offspring.loadFrom(fixed, false);
     }
 
-    Offspring.ensureUniqueNeuronUuids(offspring);
     offspring.clearState();
 
     delete offspring.uuid;
@@ -458,27 +464,23 @@ export class Offspring {
                 }) -> ${s.to} (${offspring.neurons[s.to]?.ID?.() ?? "?"})`
               );
 
-            // If BOTH parents are 4.x, this is a bug in the breeding logic
-            if (bothParentsFourX) {
-              throw new TopologyError(
-                `[Offspring] CRITICAL: Both parents are 4.x but offspring has recurrent connections. ` +
-                  `This is a bug in the breeding logic that must be fixed. ` +
-                  `Mother: ${mother.uuid} (${mother.semanticVersion}), ` +
-                  `Father: ${father.uuid} (${father.semanticVersion}). ` +
-                  `Error=${error.name}: ${error.message}. ` +
-                  `Violations: ${violations.join(" | ")}`,
-                "INVALID_CONNECTION",
-              );
-            }
-
-            // If either parent is 2.x, fixing is expected and OK
-            getLogger().warn(
-              `[Offspring] Forward-only violation after breed() with 2.x parent. ` +
-                `Fixing offspring. Error=${error.name}: ${error.message}. ` +
-                `Violations(sample up to 10): ${violations.join(" | ")}`,
+            offspring.DEBUG = false;
+            writeDiagnostics({
+              error,
+              prefix: "offspring-forward-only-violation",
+              mother: mother.exportJSON(),
+              father: father.exportJSON(),
+              offspring: offspring.exportJSON(),
+            });
+            throw new TopologyError(
+              `[Offspring] CRITICAL: forward-only offspring has recurrent connections after breed — ` +
+                `do not use fix() to mask this (fitness-destroying). ` +
+                `Mother: ${mother.uuid} (${mother.semanticVersion}), ` +
+                `Father: ${father.uuid} (${father.semanticVersion}). ` +
+                `Error=${error.name}: ${error.message}. ` +
+                `Violations: ${violations.join(" | ")}`,
+              "INVALID_CONNECTION",
             );
-            offspring.fix({ forwardOnly: true });
-            upgradeSemanticVersionIfForwardOnlyConfirmed(offspring);
           } else {
             throw e;
           }
@@ -498,9 +500,20 @@ export class Offspring {
           return undefined;
         case "NO_INWARD_CONNECTIONS":
         case "IF_CONDITIONS":
-          offspring.fix();
-          creatureValidate(offspring);
-          return offspring;
+          offspring.DEBUG = false;
+          writeDiagnostics({
+            error,
+            prefix: "offspring-invalid-after-breed",
+            mother: mother.exportJSON(),
+            father: father.exportJSON(),
+            offspring: offspring.exportJSON(),
+          });
+          throw new TopologyError(
+            `[Offspring] CRITICAL: invalid offspring after breed (${errorName}) — ` +
+              `fix() is not applied here (it would distort fitness). ` +
+              `Original: ${error.message}`,
+            "INVALID_CONNECTION",
+          );
         case "MEMETIC":
           delete offspring.memetic;
           offspring.validate();
