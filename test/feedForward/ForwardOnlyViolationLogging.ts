@@ -53,7 +53,7 @@ Deno.test("Forward-only: self-connection is repaired on mutate", () => {
   }
 });
 
-Deno.test("FeedbackLoop enabled clears forwardOnly flag", () => {
+Deno.test("FeedbackLoop enabled does not clear forwardOnly on mutate", () => {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
   creature.forwardOnly = true;
 
@@ -68,5 +68,5 @@ Deno.test("FeedbackLoop enabled clears forwardOnly flag", () => {
   );
 
   mutator.mutateCreature(creature, Mutation.MOD_WEIGHT);
-  assertEquals(creature.forwardOnly, undefined);
+  assertEquals(creature.forwardOnly, true);
 });

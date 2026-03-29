@@ -6,7 +6,10 @@
  * structurally valid creatures identical to the original approach.
  */
 import { assertEquals, assertGreater } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import {
+  Creature,
+  CURRENT_CREATURE_SEMANTIC_VERSION,
+} from "../../src/Creature.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 
 Deno.test("Fresh construction produces valid creature (no layers)", () => {
@@ -15,10 +18,21 @@ Deno.test("Fresh construction produces valid creature (no layers)", () => {
 
   assertEquals(creature.input, 3);
   assertEquals(creature.output, 2);
-  assertEquals(creature.semanticVersion, "2.0.0");
+  assertEquals(creature.semanticVersion, CURRENT_CREATURE_SEMANTIC_VERSION);
+  assertEquals(creature.forwardOnly, true);
   assertEquals(creature.neurons.length, 5);
   // 3 inputs * 2 outputs = 6 connections
   assertEquals(creature.synapses.length, 6);
+});
+
+Deno.test("Fresh construction feedbackEnabled yields 4.x and forwardOnly false", () => {
+  const creature = new Creature(2, 1, {
+    layers: [{ count: 2 }],
+    feedbackEnabled: true,
+  });
+  creatureValidate(creature);
+  assertEquals(creature.semanticVersion, CURRENT_CREATURE_SEMANTIC_VERSION);
+  assertEquals(creature.forwardOnly, false);
 });
 
 Deno.test("Fresh construction produces valid creature (with layers)", () => {

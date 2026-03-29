@@ -49,6 +49,16 @@ export class Mutator {
   private config: NeatConfig;
 
   /**
+   * Topology is forward-only for mutation gating when explicitly marked or when
+   * legacy 4.x exports omitted `forwardOnly` (treat as forward-only).
+   */
+  private isMutationTopologyForwardOnly(creature: Creature): boolean {
+    if (creature.forwardOnly === true) return true;
+    if (creature.forwardOnly === false) return false;
+    return getMajorVersion(creature.semanticVersion) >= 4;
+  }
+
+  /**
    * Cache for valid mutation candidates.
    * Key format: "neurons|synapses|input|output|forwardOnly"
    * Issue #1028: Avoid repeated filtering in selectMutationMethod().
@@ -403,8 +413,7 @@ export class Mutator {
    * Issue #1037: Implements adaptive mutation rate based on creature size.
    */
   public selectMutationMethod(creature: Creature) {
-    const majorVersion = getMajorVersion(creature.semanticVersion);
-    const forwardOnly = majorVersion >= 4 || creature.forwardOnly === true;
+    const forwardOnly = this.isMutationTopologyForwardOnly(creature);
 
     // Check cache for pre-filtered candidates (Issue #1028)
     const cacheKey = this.getMutationCacheKey(creature, forwardOnly);
@@ -501,16 +510,9 @@ export class Mutator {
    * after every individual mutation.
    */
   public repairAfterMutation(creature: Creature): void {
-    // Forward-only mode: if the creature is marked forward-only or the run is
-    // not using feedback loops, ensure mutations can't accidentally keep
-    // recurrent connections.
-    //
-    // semanticVersion 4.x is a hard forward-only invariant, even if
-    // creature.forwardOnly is missing (legacy state/export).
-    const majorVersion = getMajorVersion(creature.semanticVersion);
-    const enforceForwardOnly = this.config.feedbackLoop !== true ||
-      creature.forwardOnly === true ||
-      majorVersion >= 4;
+    const topologyForwardOnly = this.isMutationTopologyForwardOnly(creature);
+    const enforceForwardOnly = topologyForwardOnly ||
+      (this.config.feedbackLoop !== true && creature.forwardOnly !== false);
 
     // Issue #1583: When batching multiple mutations, intermediate states may
     // include self/back connections. Use forwardOnly fix to clean these up
@@ -525,14 +527,8 @@ export class Mutator {
       try {
         creature.validate({ forwardOnly: true });
 
-        // In forward-only runs, most creatures should already be valid. Once we
-        // confirm that (via validation), mark + upgrade without requiring a fix().
-        if (this.config.feedbackLoop !== true || majorVersion >= 4) {
-          creature.forwardOnly = true;
-        }
-        if (creature.forwardOnly === true) {
-          upgradeSemanticVersionIfForwardOnlyConfirmed(creature);
-        }
+        creature.forwardOnly = true;
+        upgradeSemanticVersionIfForwardOnlyConfirmed(creature);
       } catch (e) {
         const error = e as ValidationError;
         if (
@@ -569,6 +565,7 @@ export class Mutator {
           // recurrent connection into a supposedly forward-only creature.
           if (
             major >= 4 &&
+            topologyForwardOnly &&
             (error.reason === "SELF_CONNECTION" ||
               error.reason === "RECURSIVE_SYNAPSE")
           ) {
@@ -609,10 +606,8 @@ export class Mutator {
             creature.fix({ forwardOnly: true });
             creature.validate({ forwardOnly: true });
           }
-          if (this.config.feedbackLoop !== true) {
+          if (enforceForwardOnly) {
             creature.forwardOnly = true;
-          }
-          if (creature.forwardOnly === true) {
             upgradeSemanticVersionIfForwardOnlyConfirmed(creature);
           }
         } else {
@@ -646,22 +641,6 @@ export class Mutator {
   ): boolean {
     assert(method.name, "Mutate name is required");
     const startUUID = CreatureUtil.makeUUID(creature);
-
-    // If the caller enables feedback loops, forward-only constraints no longer apply.
-    // Clear the flag so subsequent mutation/breeding can introduce memory connections.
-    // However, semanticVersion 4.x is a hard forward-only invariant and must never
-    // be cleared/relaxed.
-    const majorVersion = getMajorVersion(creature.semanticVersion);
-    if (
-      this.config.feedbackLoop === true &&
-      creature.forwardOnly === true &&
-      majorVersion < 4
-    ) {
-      getLogger().warn(
-        `[Mutator] feedbackLoop=true requested for forwardOnly creature (${startUUID}); clearing creature.forwardOnly flag`,
-      );
-      creature.forwardOnly = undefined;
-    }
 
     // Issue #1103: Use cached mutator instances via getMutatorInstance().
     // This avoids recreating mutation class instances for each mutation call,

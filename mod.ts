@@ -25,7 +25,7 @@
  *
  * @see {@link module:src/Creature}
  */
-export { Creature } from "./src/Creature.ts";
+export { Creature, CURRENT_CREATURE_SEMANTIC_VERSION } from "./src/Creature.ts";
 export { exportSnapshotJSON } from "./src/creature/CreatureSerialization.ts";
 
 /**

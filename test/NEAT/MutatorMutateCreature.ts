@@ -233,7 +233,7 @@ Deno.test("MutatorMutateCreature: creature remains valid after mutation", () => 
   }
 });
 
-Deno.test("MutatorMutateCreature: feedbackLoop=true with forwardOnly pre-4.x clears forwardOnly", () => {
+Deno.test("MutatorMutateCreature: mutator does not clear forwardOnly when feedbackLoop=true", () => {
   const config = createConfig({
     feedbackLoop: true,
     disableRandomSamples: true,
@@ -247,10 +247,10 @@ Deno.test("MutatorMutateCreature: feedbackLoop=true with forwardOnly pre-4.x cle
 
   mutator.mutateCreature(creature, Mutation.MOD_WEIGHT);
 
-  // For pre-4.x creatures with feedbackLoop=true, forwardOnly should be cleared
+  // Topology mode switches only via Creature.setFeedbackEnabledTopology /
+  // setForwardOnlyTopology — mutator must not flip flags implicitly.
   assertEquals(
     creature.forwardOnly,
-    undefined,
-    "forwardOnly should be cleared for pre-4.x with feedbackLoop=true",
+    true,
   );
 });

@@ -33,17 +33,17 @@ Deno.test("forwardOnlyGuaranteed - v3 creature is false", () => {
   );
 });
 
-Deno.test("forwardOnlyGuaranteed - default version is false", () => {
+Deno.test("forwardOnlyGuaranteed - default fresh creature is true", () => {
   const creature = new Creature(2, 1, {
     layers: [{ count: 2 }],
   });
 
   assertEquals(
     creature.forwardOnlyGuaranteed,
-    false,
-    "Default v2.0.0 creature should have forwardOnlyGuaranteed=false",
+    true,
+    "Default fresh creature is 4.x forward-only",
   );
-  assertEquals(creature.semanticVersion, "2.0.0");
+  assertEquals(creature.semanticVersion, "4.0.0");
 });
 
 Deno.test("forwardOnlyGuaranteed - v5 forward-only creature is true", () => {
