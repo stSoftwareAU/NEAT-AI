@@ -40,15 +40,13 @@ Deno.test("pruneOrphanMemeticReferences removes stale bias keys", () => {
     weights: {},
   };
 
-  let threw = false;
-  try {
-    creatureValidate(creature);
-  } catch {
-    threw = true;
-  }
+  // creatureValidate now silently prunes stale memetic entries rather than
+  // throwing, so we verify that pruneOrphanMemeticReferences also handles
+  // the cleanup correctly on a fresh creature with stale data.
+  const staleBefore = creature.memetic?.biases[1_998_066_541];
   assert(
-    threw,
-    "validate should fail before prune with orphan memetic bias key",
+    staleBefore !== undefined,
+    "stale bias key should exist before prune",
   );
 
   pruneOrphanMemeticReferences(creature);
