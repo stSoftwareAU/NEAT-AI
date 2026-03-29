@@ -49,6 +49,22 @@ Deno.test("CreatureModeSplit: setFeedbackEnabledTopology allows validate without
   creatureValidate(c);
 });
 
+Deno.test(
+  "CreatureModeSplit: setFeedbackEnabledTopology does not mutate flags when validation fails",
+  () => {
+    const c = new Creature(2, 1, { layers: [{ count: 2 }] });
+    const versionBefore = c.semanticVersion;
+    const forwardOnlyBefore = c.forwardOnly;
+    const majorBefore = c.cachedMajorVersion;
+    c.synapses.length = 0;
+    c.clearCache();
+    assertThrows(() => c.setFeedbackEnabledTopology(), ValidationError);
+    assertEquals(c.forwardOnly, forwardOnlyBefore);
+    assertEquals(c.semanticVersion, versionBefore);
+    assertEquals(c.cachedMajorVersion, majorBefore);
+  },
+);
+
 Deno.test("CreatureModeSplit: forward-only mutator cannot select recurrent ops", () => {
   const config = createNeatConfig({
     populationSize: 4,

@@ -588,7 +588,9 @@ export class Creature implements CreatureInternal {
    * flip modes implicitly).
    *
    * @param options.repair When true (default), removes recurrent edges via
-   *   `fix({ forwardOnly: true })` before validating.
+   *   `fix({ forwardOnly: true })` before validating. That repair can remove
+   *   neurons or synapses and clear memetic state — avoid when the creature is
+   *   already forward-only valid (fitness cost).
    */
   setForwardOnlyTopology(options: { repair?: boolean } = {}): void {
     const repair = options.repair !== false;
@@ -611,12 +613,15 @@ export class Creature implements CreatureInternal {
    * use memory/feedback paths.
    */
   setFeedbackEnabledTopology(_options: { repair?: boolean } = {}): void {
+    // Validate before mutating flags or version so a failed check cannot leave
+    // a partially updated creature (e.g. 4.x + forwardOnly false without passing
+    // structural validation).
+    creatureValidate(this);
     this.forwardOnly = false;
     if (this.cachedMajorVersion < 4) {
       this.semanticVersion = CURRENT_CREATURE_SEMANTIC_VERSION;
       this.cachedMajorVersion = 4;
     }
-    creatureValidate(this);
     this.clearCache();
   }
 
@@ -981,6 +986,13 @@ export class Creature implements CreatureInternal {
     return mutation.makeRandomConnection(this, indx);
   }
 
+  /**
+   * Structural repair: normalise synapses and topology so validation can pass.
+   *
+   * Delegates to `fix()` in `CreatureMutation.ts`. Prefer avoiding unnecessary
+   * calls during evolution when the creature is already valid, because repairs
+   * can remove trained edges or neurons and drop memetic lineage, lowering fitness.
+   */
   fix(options?: {
     forwardOnly?: boolean;
     removeBackConnections?: boolean;
