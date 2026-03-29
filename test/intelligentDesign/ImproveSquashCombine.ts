@@ -1,6 +1,8 @@
 /**
  * Tests for `combineImprovements()`.
  *
+ * Issue #2085: improvements map is keyed by neuron UUID (string), not integer id.
+ *
  * We stub `Creature.scoreDir()` to avoid dependence on dataset files while still
  * exercising the combination and fallback logic.
  */
@@ -41,13 +43,13 @@ Deno.test("combineImprovements returns the single improvement file contents", as
     const path = `${TEST_DIR}/one.json`;
     await Deno.writeTextFile(path, JSON.stringify(exported, null, 1));
 
-    // Use a dummy numeric neuron ID for this single-improvement test.
-    const dummyNeuronId = 999001;
+    // Use a dummy UUID for this single-improvement test.
+    const dummyNeuronUuid = "dummy-uuid-999001";
     const improvements = new Map<
-      number,
+      string,
       { squash: string; score: number; path: string; message: string }
     >();
-    improvements.set(dummyNeuronId, {
+    improvements.set(dummyNeuronUuid, {
       squash: "GELU",
       score: 2,
       path,
@@ -79,8 +81,8 @@ Deno.test("combineImprovements returns combined creature when combined score bea
     assertEquals(hiddenNeurons.length > 1, true);
     const firstHidden = hiddenNeurons[0];
     const secondHidden = hiddenNeurons[1];
-    assertExists(firstHidden.id);
-    assertExists(secondHidden.id);
+    assertExists(firstHidden.uuid);
+    assertExists(secondHidden.uuid);
 
     const pathA = `${TEST_DIR}/a.json`;
     const pathB = `${TEST_DIR}/b.json`;
@@ -88,17 +90,17 @@ Deno.test("combineImprovements returns combined creature when combined score bea
     await Deno.writeTextFile(pathB, JSON.stringify(exported, null, 1));
 
     const improvements = new Map<
-      number,
+      string,
       { squash: string; score: number; path: string; message: string }
     >();
-    improvements.set(firstHidden.id, {
+    improvements.set(firstHidden.uuid, {
       squash: "GELU",
       score: 3,
       path: pathA,
       message: "A",
     });
-    // Use a second neuron ID to force the "combine" path (size > 1).
-    improvements.set(secondHidden.id, {
+    // Use a second neuron UUID to force the "combine" path (size > 1).
+    improvements.set(secondHidden.uuid, {
       squash: "Swish",
       score: 4,
       path: pathB,
@@ -140,8 +142,8 @@ Deno.test("combineImprovements falls back to best individual when marriage fails
     assertEquals(hiddenNeurons.length > 1, true);
     const firstHidden = hiddenNeurons[0];
     const secondHidden = hiddenNeurons[1];
-    assertExists(firstHidden.id);
-    assertExists(secondHidden.id);
+    assertExists(firstHidden.uuid);
+    assertExists(secondHidden.uuid);
 
     const pathA = `${TEST_DIR}/best.json`;
     const pathB = `${TEST_DIR}/worst.json`;
@@ -149,16 +151,16 @@ Deno.test("combineImprovements falls back to best individual when marriage fails
     await Deno.writeTextFile(pathB, JSON.stringify(exported, null, 1));
 
     const improvements = new Map<
-      number,
+      string,
       { squash: string; score: number; path: string; message: string }
     >();
-    improvements.set(firstHidden.id, {
+    improvements.set(firstHidden.uuid, {
       squash: "GELU",
       score: 6,
       path: pathA,
       message: "best",
     });
-    improvements.set(secondHidden.id, {
+    improvements.set(secondHidden.uuid, {
       squash: "Swish",
       score: 5,
       path: pathB,

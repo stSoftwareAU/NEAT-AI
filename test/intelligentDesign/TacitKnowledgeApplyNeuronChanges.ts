@@ -1,6 +1,8 @@
 /**
  * Tests for `applyNeuronChanges()`.
  *
+ * Issue #2085: neuronSquashMap is keyed by UUID string, not integer id.
+ *
  * We stub `Creature.scoreDir()` to avoid needing a dataset on disk while still
  * validating that neuron squashes and tags are applied correctly.
  */
@@ -10,7 +12,7 @@ import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatur
 import { Creature } from "../../src/Creature.ts";
 import { applyNeuronChanges } from "../../src/intelligentDesign/TacitKnowledge.ts";
 
-Deno.test("applyNeuronChanges updates neuron squashes, tags changes, and tags score/error", async () => {
+Deno.test("applyNeuronChanges uses UUID keys for neuron lookup", async () => {
   const originalScoreDir = Creature.prototype.scoreDir;
   try {
     Creature.prototype.scoreDir = function () {
@@ -27,19 +29,19 @@ Deno.test("applyNeuronChanges updates neuron squashes, tags changes, and tags sc
     const second = hiddenNeurons.length > 1
       ? hiddenNeurons[1]
       : hiddenNeurons[0];
-    assertExists(first.id);
-    assertExists(second.id);
+    assertExists(first.uuid);
+    assertExists(second.uuid);
 
     // Ensure one change and one no-op to cover the "continue" branch.
     first.squash = "TANH";
     second.squash = "GELU";
 
     const neuronSquashMap = new Map<
-      number,
+      string,
       { squash: string; score: number; error: number }
     >();
-    neuronSquashMap.set(first.id, { squash: "Swish", score: 2, error: 1 });
-    neuronSquashMap.set(second.id, { squash: "GELU", score: 2, error: 1 }); // unchanged
+    neuronSquashMap.set(first.uuid, { squash: "Swish", score: 2, error: 1 });
+    neuronSquashMap.set(second.uuid, { squash: "GELU", score: 2, error: 1 }); // unchanged
 
     const result = await applyNeuronChanges(exported, neuronSquashMap, ".", {});
     normaliseCreatureExport(result.creature);

@@ -1,5 +1,7 @@
 /**
  * Tests for squash improvement utilities.
+ *
+ * Issue #2085: makeModifiedCreatureWithPrevious accepts UUID string.
  */
 
 import { assertEquals, assertNotEquals } from "@std/assert";
@@ -63,16 +65,15 @@ Deno.test("shuffle handles single element", () => {
   assertEquals(arr, [42]);
 });
 
-Deno.test("makeModifiedCreatureWithPrevious returns creature and previous squash", () => {
+Deno.test("makeModifiedCreatureWithPrevious accepts UUID string and returns creature and previous squash", () => {
   const creature = Creature.fromJSON(testCreatureJson);
   const exported = creature.exportJSON();
-  const hiddenId = creature.neurons.find((n) => n.type === "hidden")!.id;
 
   const originalSquash = "TANH";
   const newSquash = "Swish";
 
   const result = makeModifiedCreatureWithPrevious(
-    hiddenId,
+    "neuron-hidden-1",
     exported,
     newSquash,
   );
@@ -95,9 +96,8 @@ Deno.test("makeModifiedCreatureWithPrevious adds intelligentDesign tag", () => {
   const originalSquash = "TANH";
   const newSquash = "GELU";
 
-  const hiddenId2 = creature.neurons.find((n) => n.type === "hidden")!.id;
   const result = makeModifiedCreatureWithPrevious(
-    hiddenId2,
+    "neuron-hidden-1",
     exported,
     newSquash,
   );

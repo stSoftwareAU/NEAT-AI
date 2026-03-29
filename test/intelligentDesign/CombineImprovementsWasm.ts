@@ -6,9 +6,7 @@
  * path (not stubbed) to confirm that WASM is initialised before
  * requireWasmOrThrow() is called.
  *
- * The original bug occurred when combineImprovements() called scoreDir() which
- * called evaluateDir() which called requireWasmOrThrow() without first ensuring
- * WASM was initialised.
+ * Issue #2085: improvements map is keyed by neuron UUID (string), not integer id.
  */
 
 import { assert, assertExists } from "@std/assert";
@@ -67,8 +65,8 @@ Deno.test({
       );
       const firstHidden = hiddenNeurons[0];
       const secondHidden = hiddenNeurons[1];
-      assertExists(firstHidden.id, "First hidden neuron should have UUID");
-      assertExists(secondHidden.id, "Second hidden neuron should have UUID");
+      assertExists(firstHidden.uuid, "First hidden neuron should have UUID");
+      assertExists(secondHidden.uuid, "Second hidden neuron should have UUID");
 
       // Write improvement files (the creature JSON that would be loaded for
       // the single-improvement fallback path).
@@ -81,14 +79,14 @@ Deno.test({
       const dataSet = makeSimpleDataSet();
       dataSetDir = makeDataDir(dataSet, dataSet.length);
 
-      const improvements = new Map<number, BestNeuronSquash>();
-      improvements.set(firstHidden.id, {
+      const improvements = new Map<string, BestNeuronSquash>();
+      improvements.set(firstHidden.uuid, {
         squash: "GELU",
         score: -Infinity,
         path: pathA,
         message: "A: LOGISTIC -> GELU",
       });
-      improvements.set(secondHidden.id, {
+      improvements.set(secondHidden.uuid, {
         squash: "Swish",
         score: -Infinity,
         path: pathB,
@@ -144,8 +142,8 @@ Deno.test({
       );
       const firstHidden = hiddenNeurons[0];
       const secondHidden = hiddenNeurons[1];
-      assertExists(firstHidden.id);
-      assertExists(secondHidden.id);
+      assertExists(firstHidden.uuid);
+      assertExists(secondHidden.uuid);
 
       const pathA = `${TEST_DIR}/best.json`;
       const pathB = `${TEST_DIR}/worst.json`;
@@ -156,14 +154,14 @@ Deno.test({
       const dataSet = makeSimpleDataSet();
       dataSetDir = makeDataDir(dataSet, dataSet.length);
 
-      const improvements = new Map<number, BestNeuronSquash>();
-      improvements.set(firstHidden.id, {
+      const improvements = new Map<string, BestNeuronSquash>();
+      improvements.set(firstHidden.uuid, {
         squash: "GELU",
         score: Infinity, // Force fallback — combined score cannot beat Infinity
         path: pathA,
         message: "best",
       });
-      improvements.set(secondHidden.id, {
+      improvements.set(secondHidden.uuid, {
         squash: "Swish",
         score: Infinity - 1,
         path: pathB,

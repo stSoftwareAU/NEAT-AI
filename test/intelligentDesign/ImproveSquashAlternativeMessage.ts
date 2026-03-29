@@ -2,6 +2,8 @@
  * Regression coverage: alternative squash improvements must report the correct
  * transformation in their message.
  *
+ * Issue #2085: scan internals use neuron UUID (string), not integer id.
+ *
  * The alternative candidate is evaluated starting from the already-upgraded
  * `targetSquash` creature (built from `res.score.creature`). The message must
  * therefore report `targetSquash -> altSquash` (not `originalSquash -> altSquash`).
@@ -22,13 +24,13 @@ function makeSingleHiddenCreatureExport() {
 
   // Ensure we only scan a single neuron deterministically.
   const first = hiddenNeurons[0];
-  assertExists(first.id);
+  assertExists(first.uuid);
   for (const n of hiddenNeurons) {
     n.squash = "GELU";
   }
   first.squash = "TANH";
 
-  return { exported, hiddenUUID: first.id };
+  return { exported, hiddenUUID: first.uuid };
 }
 
 Deno.test("scanForSquashImprovements: alternative improvement message reports targetSquash -> altSquash", async () => {
@@ -38,9 +40,8 @@ Deno.test("scanForSquashImprovements: alternative improvement message reports ta
     score(creature: Creature, uuid: string): Promise<ResponseData> {
       const json = creature.exportJSON();
       normaliseCreatureExport(json);
-      // Look up the target neuron by its numeric ID (uuid is the string form)
-      const neuronId = Number(uuid);
-      const neuron = json.neurons.find((n) => n.id === neuronId);
+      // Look up the target neuron by its UUID
+      const neuron = json.neurons.find((n) => n.uuid === uuid);
       const squash = neuron?.squash;
 
       // Ensure targetSquash is a mild improvement, and altSquash is the best.

@@ -1,6 +1,8 @@
 /**
  * Coverage tests for `scanForSquashImprovements()`.
  *
+ * Issue #2085: scan internals use neuron UUID (string), not integer id.
+ *
  * These tests use the built-in dependency injection hooks to avoid:
  * - spawning real workers
  * - writing to disk
@@ -27,13 +29,13 @@ function makeDeterministicCreatureExport() {
   // - one hidden neuron starts as TANH (to be scanned)
   // - all other hidden neurons are already GELU (filtered out)
   const first = hiddenNeurons[0];
-  assertExists(first.id);
+  assertExists(first.uuid);
   for (const n of hiddenNeurons) {
     n.squash = "GELU";
   }
   first.squash = "TANH";
 
-  return { exported, hiddenUUID: first.id };
+  return { exported, hiddenUUID: first.uuid };
 }
 
 Deno.test("scanForSquashImprovements records improvement then upgrades via alternative squash", async () => {
@@ -49,9 +51,8 @@ Deno.test("scanForSquashImprovements records improvement then upgrades via alter
     score(creature: Creature, uuid: string): Promise<ResponseData> {
       const json = creature.exportJSON();
       normaliseCreatureExport(json);
-      // Look up the target neuron by its numeric ID (uuid is the string form)
-      const neuronId = Number(uuid);
-      const neuron = json.neurons.find((n) => n.id === neuronId);
+      // Look up the target neuron by its UUID
+      const neuron = json.neurons.find((n) => n.uuid === uuid);
       const squash = neuron?.squash;
 
       const score = squash === "Swish" ? 2.0 : squash === "GELU" ? 1.5 : 0.5;
