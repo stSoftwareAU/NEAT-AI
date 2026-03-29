@@ -1,8 +1,9 @@
 import { assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
+import { mergeDuplicateSynapses } from "../../src/compact/CompactUtils.ts";
 
-Deno.test("fix(): when merging duplicate synapses, de-duplicates tags by {name,value}", () => {
+Deno.test("mergeDuplicateSynapses: de-duplicates tags by {name,value} on merged row", () => {
   const tag1 = { name: "source", value: "unit-test" };
   const tag2 = { name: "source", value: "unit-test" };
 
@@ -31,6 +32,7 @@ Deno.test("fix(): when merging duplicate synapses, de-duplicates tags by {name,v
     ],
   };
 
+  mergeDuplicateSynapses(json);
   const creature = Creature.fromJSON(json, false);
   creature.fix();
 

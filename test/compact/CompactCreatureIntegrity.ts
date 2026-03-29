@@ -125,10 +125,10 @@ Deno.test("compactCreature integrity: backward synapse removal creating orphans"
   // Forward-only creature where a hidden neuron's only inbound synapse is
   // backward (source index > target index). Removing it should leave
   // the hidden neuron orphaned, which should then be cleaned up.
+  // Backward edge cannot be imported with `forwardOnly: true` (Issue #2086); load then flag.
   const json: CreatureExport = {
     input: 2,
     output: 1,
-    forwardOnly: true,
     neurons: [
       // h1 appears first — it gets input
       { type: "hidden", uuid: "h1", squash: "LOGISTIC", bias: 0.1 },
@@ -146,6 +146,7 @@ Deno.test("compactCreature integrity: backward synapse removal creating orphans"
     ],
   };
   const creature = Creature.fromJSON(json);
+  creature.forwardOnly = true;
   const result = compactCreature(creature, false);
 
   assert(

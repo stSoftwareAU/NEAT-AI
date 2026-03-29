@@ -14,6 +14,7 @@ export type ValidationErrorName =
   | "IF_CONDITIONS"
   | "RECURSIVE_SYNAPSE"
   | "SELF_CONNECTION"
+  | "DUPLICATE_SYNAPSE"
   | "MEMETIC";
 
 export class ValidationError extends Error {

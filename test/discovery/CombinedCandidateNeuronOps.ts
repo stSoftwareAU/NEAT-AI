@@ -309,6 +309,7 @@ Deno.test(
       toId: ID_HIDDEN_A,
       weight: 0.123,
     });
+    addBackSynapseJSON.forwardOnly = undefined;
     const addBackSynapseCreature = Creature.fromJSON(addBackSynapseJSON);
     delete addBackSynapseCreature.uuid;
     CreatureUtil.makeUUID(addBackSynapseCreature);
@@ -397,6 +398,7 @@ Deno.test(
       { fromId: ID_HIDDEN_C, toId: ID_HIDDEN_D, weight: 0.123 },
     );
     normaliseCreatureExport(addNeuronsJSON);
+    addNeuronsJSON.forwardOnly = undefined;
 
     const addNeuronsCreature = Creature.fromJSON(addNeuronsJSON);
     delete addNeuronsCreature.uuid;

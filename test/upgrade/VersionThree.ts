@@ -1,4 +1,5 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
+import { ValidationError } from "../../src/errors/ValidationError.ts";
 import { Creature } from "../../mod.ts";
 import { SEMANTIC_MAJOR_VERSION, upgrade } from "../../src/upgrade/Upgrade.ts";
 
@@ -186,43 +187,22 @@ Deno.test("upgrade should validate and not modify valid 4.x creatures", () => {
 });
 
 /**
- * Test for https://github.com/stSoftwareAU/NEAT-AI/issues/956
- *
- * A 4.x creature with recurrent connections should be repaired automatically.
- * This allows production workflows to continue whilst logging a warning for
- * investigation. The recurrent connections are removed during repair.
+ * Issue #956 historically allowed automatic repair; Issue #2086 follow-up
+ * removes silent `fix()` from `upgrade()` so corrupt genomes fail fast.
  */
-Deno.test("upgrade should repair corrupted 4.x creatures with recurrent connections", () => {
+Deno.test("upgrade should throw on corrupted 4.x creatures with recurrent connections", () => {
   const creature = new Creature(2, 1, {
     layers: [{ count: 2 }],
     semanticVersion: "4.0.0",
   });
   creature.forwardOnly = true;
 
-  const hiddenNeuron = creature.neurons[creature.input]; // First hidden neuron
-  // Inject a recurrent self-loop. `connect()` guards against adding recurrent
-  // links when `forwardOnly` is set, so temporarily clear the flag to simulate
-  // a corrupted persisted creature.
+  const hiddenNeuron = creature.neurons[creature.input];
   creature.forwardOnly = undefined;
   creature.connect(hiddenNeuron.index, hiddenNeuron.index, 0.5);
   creature.forwardOnly = true;
 
-  // Act: upgrading a corrupted 4.x creature should repair it.
-  const upgraded = upgrade(creature);
-
-  // Assert: creature should now be valid and still 4.x.
-  upgraded.validate({ forwardOnly: true });
-  assertEquals(upgraded.forwardOnly, true);
-  const major = parseInt(upgraded.semanticVersion?.split(".")[0] ?? "0", 10);
-  assertEquals(major, 4);
-
-  // The self connection should have been removed.
-  const hasSelfConnection = upgraded.synapses.some((s) => s.from === s.to);
-  assertEquals(
-    hasSelfConnection,
-    false,
-    "Self connections should be removed",
-  );
+  assertThrows(() => upgrade(creature), ValidationError);
 });
 
 Deno.test("upgrade should validate and not modify future 10.x creatures", () => {

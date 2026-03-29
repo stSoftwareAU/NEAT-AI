@@ -4,7 +4,7 @@ import { Neuron } from "../architecture/Neuron.ts";
 import { nextNeuronId, outputNeuronId } from "../architecture/NeuronId.ts";
 import type { Creature } from "../Creature.ts";
 import { CrisprError } from "../errors/CrisprError.ts";
-import type { ValidationError } from "../errors/ValidationError.ts";
+import { TopologyError } from "../errors/TopologyError.ts";
 import {
   getMajorVersion,
   upgradeSemanticVersionIfForwardOnlyConfirmed,
@@ -492,6 +492,10 @@ export class CRISPR {
         getLogger().warn(`CRISPR ${dna.id}: ${e.code} — ${e.message}`);
         return this.creature;
       }
+      if (e instanceof TopologyError && e.reason === "INVALID_CONNECTION") {
+        getLogger().warn(`CRISPR ${dna.id}: INVALID_CONNECTION — ${e.message}`);
+        return this.creature;
+      }
       throw e;
     }
 
@@ -502,21 +506,9 @@ export class CRISPR {
       if (enforceForwardOnly) {
         // Forward-only is a hard invariant for semanticVersion 4.x (and for any
         // creature explicitly marked as forward-only). CRISPR must never be able
-        // to introduce recurrent connections into such creatures.
-        try {
-          modifiedCreature.validate({ forwardOnly: true });
-        } catch (e) {
-          const error = e as ValidationError;
-          if (
-            error.reason === "SELF_CONNECTION" ||
-            error.reason === "RECURSIVE_SYNAPSE"
-          ) {
-            modifiedCreature.fix({ forwardOnly: true });
-            modifiedCreature.validate({ forwardOnly: true });
-          } else {
-            throw e;
-          }
-        }
+        // to introduce recurrent connections into such creatures. Do not call
+        // fix() here — reject the DNA and return the original (Issue #2086).
+        modifiedCreature.validate({ forwardOnly: true });
         modifiedCreature.forwardOnly = true;
         upgradeSemanticVersionIfForwardOnlyConfirmed(modifiedCreature);
       } else {

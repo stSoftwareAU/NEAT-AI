@@ -39,6 +39,26 @@ export function neuronUuid(neuron: Neuron): string {
 }
 
 /**
+ * Wire-style label for validation logs and operator-facing errors (GRQ / Issue #1958).
+ * Matches export endpoints (`input-N`, `output-N`, hidden `uuid`) — not runtime integer ids.
+ */
+export function neuronWireLabelForDiagnostics(
+  neuron: Neuron,
+  arrayIndex: number,
+): string {
+  if (neuron.type === "input") {
+    return `input-${arrayIndex}`;
+  }
+  if (isOutputNeuronId(neuron.id)) {
+    return `output-${outputIndexFromId(neuron.id)}`;
+  }
+  if (neuron.uuid) {
+    return neuron.uuid;
+  }
+  return `missing-uuid@index-${arrayIndex}`;
+}
+
+/**
  * Converts the neuron to a JSON export object.
  * Wire format uses stable `uuid` only; integer `id` is internal (Issue #1958).
  */

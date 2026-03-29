@@ -50,33 +50,38 @@ Deno.test("mergeDuplicateSynapses - no duplicates returns zero merges", () => {
   assertEquals(exported.synapses.length, 2);
 });
 
-Deno.test("mergeDuplicateSynapses - typed synapses are distinct", () => {
-  const exported: CreatureExport = {
-    input: 2,
-    output: 1,
-    neurons: [
-      { type: "output", uuid: "output-0", id: -1, squash: "IF", bias: 0 },
-    ],
-    synapses: [
-      {
-        fromId: 0,
-        toId: -1,
-        weight: 0.3,
-        type: "condition",
-      },
-      {
-        fromId: 0,
-        toId: -1,
-        weight: 0.5,
-        type: "positive",
-      },
-    ],
-  };
+Deno.test(
+  "mergeDuplicateSynapses - same from/to merges even when type differs (Issue #2086)",
+  () => {
+    const exported: CreatureExport = {
+      input: 2,
+      output: 1,
+      neurons: [
+        { type: "output", uuid: "output-0", id: -1, squash: "IF", bias: 0 },
+      ],
+      synapses: [
+        {
+          fromId: 0,
+          toId: -1,
+          weight: 0.3,
+          type: "condition",
+        },
+        {
+          fromId: 0,
+          toId: -1,
+          weight: 0.5,
+          type: "positive",
+        },
+      ],
+    };
 
-  const result = mergeDuplicateSynapses(exported);
-  assertEquals(result.merged, 0);
-  assertEquals(exported.synapses.length, 2);
-});
+    const result = mergeDuplicateSynapses(exported);
+    assertEquals(result.merged, 1);
+    assertEquals(exported.synapses.length, 1);
+    assertEquals(exported.synapses[0].weight, 0.8);
+    assertEquals(exported.synapses[0].type, "condition");
+  },
+);
 
 Deno.test("mergeDuplicateSynapses - deletes memetic when merging occurs", () => {
   const exported: CreatureExport = {

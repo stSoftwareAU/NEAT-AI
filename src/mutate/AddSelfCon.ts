@@ -6,6 +6,10 @@ export class AddSelfCon extends AbstractMutationOperator {
   protected performMutation(focusList?: number[]): boolean {
     const creature = this.creature;
 
+    if (creature.forwardOnly === true) {
+      return false;
+    }
+
     // Check which neurons aren't self connected yet
     const possible = [];
     for (

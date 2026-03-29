@@ -7,9 +7,12 @@
  * (e.g. ' + "' from a broken template literal migration).
  */
 
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { Synapse } from "../../src/architecture/Synapse.ts";
+import { TopologyError } from "../../src/errors/TopologyError.ts";
+import type { ValidationError } from "../../src/errors/ValidationError.ts";
 
 Deno.test("creatureValidate - output UUID mismatch produces clean message", () => {
   const creature = new Creature(2, 1, {
@@ -127,3 +130,147 @@ Deno.test("creatureValidate - input after max inputs produces clean message", ()
     `) input neuron after the maximum input neurons`,
   );
 });
+
+Deno.test(
+  "creatureValidate - duplicate synapse message uses wire labels (GRQ-3 / Issue #1958)",
+  () => {
+    const creature = new Creature(2, 1, { layers: [{ count: 1 }] });
+    const hiddenIndex = creature.input;
+    const hidden = creature.neurons[hiddenIndex];
+    assertExists(hidden.uuid);
+
+    creature.synapses.push(new Synapse(0, hiddenIndex, 0.11));
+    creature.synapses.sort((a, b) =>
+      a.from === b.from ? a.to - b.to : a.from - b.from
+    );
+
+    let caught: Error | undefined;
+    try {
+      creatureValidate(creature);
+    } catch (e) {
+      caught = e as Error;
+    }
+    assertExists(caught);
+    assertEquals(caught instanceof TopologyError, true);
+    assertStringIncludes(caught.message, "duplicate synapse");
+    assertStringIncludes(caught.message, "input-0");
+    assertStringIncludes(caught.message, hidden.uuid);
+    assertEquals(
+      caught.message.includes(String(hidden.id)),
+      false,
+      `message must not leak runtime neuron id: ${caught.message}`,
+    );
+  },
+);
+
+Deno.test(
+  "creatureValidate - self-connection (forwardOnly) message uses wire labels only",
+  () => {
+    const creature = new Creature(2, 1, { layers: [{ count: 1 }] });
+    const hiddenIndex = creature.input;
+    const hidden = creature.neurons[hiddenIndex];
+    assertExists(hidden.uuid);
+
+    creature.synapses.push(new Synapse(hiddenIndex, hiddenIndex, 0.5));
+    creature.synapses.sort((a, b) =>
+      a.from === b.from ? a.to - b.to : a.from - b.from
+    );
+
+    let caught: ValidationError | undefined;
+    try {
+      creatureValidate(creature, { forwardOnly: true });
+    } catch (e) {
+      caught = e as ValidationError;
+    }
+    assertExists(caught);
+    assertEquals(caught.reason, "SELF_CONNECTION");
+    assertStringIncludes(caught.message, hidden.uuid);
+    assertEquals(
+      caught.message.includes(String(hidden.id)),
+      false,
+      `message must not leak runtime neuron id: ${caught.message}`,
+    );
+  },
+);
+
+Deno.test(
+  "creatureValidate - recursive synapse message uses wire labels (forwardOnly)",
+  () => {
+    const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
+    const h0 = creature.input;
+    const h1 = creature.input + 1;
+    const n0 = creature.neurons[h0];
+    const n1 = creature.neurons[h1];
+    assertExists(n0.uuid);
+    assertExists(n1.uuid);
+
+    creature.synapses.push(new Synapse(h1, h0, 0.25));
+    creature.synapses.sort((a, b) =>
+      a.from === b.from ? a.to - b.to : a.from - b.from
+    );
+
+    let caught: ValidationError | undefined;
+    try {
+      creatureValidate(creature, { forwardOnly: true });
+    } catch (e) {
+      caught = e as ValidationError;
+    }
+    assertExists(caught);
+    assertEquals(caught.reason, "RECURSIVE_SYNAPSE");
+    assertStringIncludes(caught.message, n1.uuid);
+    assertStringIncludes(caught.message, n0.uuid);
+    assertEquals(
+      caught.message.includes(String(n0.id)),
+      false,
+      `message must not leak runtime neuron id: ${caught.message}`,
+    );
+    assertEquals(
+      caught.message.includes(String(n1.id)),
+      false,
+      `message must not leak runtime neuron id: ${caught.message}`,
+    );
+  },
+);
+
+Deno.test(
+  "creatureValidate - NO_INWARD hidden message uses wire uuid (GRQ-3)",
+  () => {
+    const json: CreatureExport = {
+      input: 2,
+      output: 1,
+      neurons: [
+        {
+          type: "hidden",
+          uuid: "orphan-hidden-grq3",
+          bias: 0,
+          squash: "IDENTITY",
+        },
+        { type: "output", uuid: "output-0", bias: 0, squash: "IDENTITY" },
+      ],
+      synapses: [
+        { fromUUID: "orphan-hidden-grq3", toUUID: "output-0", weight: 0.5 },
+        { fromUUID: "input-0", toUUID: "output-0", weight: 0.5 },
+      ],
+    };
+    const creature = Creature.fromJSON(json);
+    const hidden = creature.neurons.find((n) =>
+      n.uuid === "orphan-hidden-grq3"
+    );
+    assertExists(hidden);
+
+    let caught: Error | undefined;
+    try {
+      creatureValidate(creature);
+    } catch (e) {
+      caught = e as Error;
+    }
+    assertExists(caught);
+    assertStringIncludes(caught.message, "orphan-hidden-grq3");
+    assertStringIncludes(caught.message, "no inward connections");
+    assertEquals(
+      caught.message.includes(String(hidden.id)),
+      false,
+      `message must not leak runtime neuron id: ${caught.message}`,
+    );
+  },
+);

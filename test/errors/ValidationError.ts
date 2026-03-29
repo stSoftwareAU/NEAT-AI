@@ -63,6 +63,15 @@ Deno.test("ValidationError - SELF_CONNECTION reason", () => {
   assertEquals(error.reason, "SELF_CONNECTION");
 });
 
+Deno.test("ValidationError - DUPLICATE_SYNAPSE reason", () => {
+  const error = new ValidationError(
+    "duplicate synapse endpoints",
+    "DUPLICATE_SYNAPSE",
+  );
+  assertEquals(error.name, "ValidationError");
+  assertEquals(error.reason, "DUPLICATE_SYNAPSE");
+});
+
 Deno.test("ValidationError - MEMETIC reason", () => {
   const error = new ValidationError("memetic validation failed", "MEMETIC");
   assertEquals(error.name, "ValidationError");
@@ -92,6 +101,7 @@ Deno.test("ValidationError - all reasons are valid", () => {
     "IF_CONDITIONS",
     "RECURSIVE_SYNAPSE",
     "SELF_CONNECTION",
+    "DUPLICATE_SYNAPSE",
     "MEMETIC",
   ];
 

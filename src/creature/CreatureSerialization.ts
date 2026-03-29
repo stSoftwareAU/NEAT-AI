@@ -28,6 +28,7 @@ import type {
   SynapseTrace,
 } from "../architecture/SynapseInterfaces.ts";
 import type { MemeticInterface } from "../blackbox/MemeticInterface.ts";
+import { rejectRecurrentSynapseIfForwardOnlyCreature } from "../architecture/ForwardOnlySynapseGuard.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { upgradeOne } from "../upgrade/UpgradeOne.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
@@ -394,6 +395,13 @@ export function loadFrom(
         }`,
       );
     }
+
+    // Forward-only genomes must never contain recurrent edges in memory: if
+    // `json.forwardOnly === true`, reject self-loops and backward links here
+    // (same rule as `Creature.connect`). Repair corrupt snapshots offline
+    // (omit `forwardOnly`, use `mergeDuplicateSynapses`, then re-export) — Issue #2086.
+
+    rejectRecurrentSynapseIfForwardOnlyCreature(creature, from!, to!);
 
     if (isSorted) {
       if (from > lastFrom) {

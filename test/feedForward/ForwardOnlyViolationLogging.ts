@@ -7,10 +7,10 @@ import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
 Deno.test("Forward-only: self-connection is repaired on mutate", () => {
+  // Corrupt snapshot: self-loop cannot load with `forwardOnly: true` (Issue #2086).
   const json: CreatureExport = {
     input: 2,
     output: 1,
-    forwardOnly: true,
     neurons: [
       { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0 },
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0 },
@@ -23,6 +23,7 @@ Deno.test("Forward-only: self-connection is repaired on mutate", () => {
   };
 
   const creature = Creature.fromJSON(json);
+  creature.forwardOnly = true;
   assertEquals(creature.forwardOnly, true);
 
   const mutator = new Mutator(

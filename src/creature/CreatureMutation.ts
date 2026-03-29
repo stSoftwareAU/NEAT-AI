@@ -15,7 +15,8 @@ import {
   removeHiddenNeuron,
 } from "../compact/CompactUtils.ts";
 import { cleanupOrphanedNeuronsInCreature } from "../compact/OrphanedNeuronCleanup.ts";
-import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
+import { neuronWireLabelForDiagnostics } from "../neuron/NeuronSerialization.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
@@ -72,7 +73,7 @@ export function makeRandomConnection(
 /**
  * Repair the creature into a structurally valid shape.
  *
- * Can remove recurrent synapses (when requested), merge duplicate synapses,
+ * Can remove recurrent synapses (when requested),
  * drop zero-weight synapses (with a guard for the last output inbound),
  * remove disconnected hidden neurons, run orphan cleanup, prune stale memetic
  * references, and bump semantic version to 4.0.0 when forced forward-only.
@@ -81,6 +82,10 @@ export function makeRandomConnection(
  * valid: structural edits and memetic clearing can **reduce fitness** relative
  * to the pre-repair network. Use it when correctness recovery matters more than
  * preserving the exact trained weights/topology.
+ *
+ * Duplicate synapse rows (same runtime `from`/`to` indices) are a hard error.
+ * For legacy JSON with duplicate endpoints, run `mergeDuplicateSynapses()` on the
+ * export object in `SynapsePruning.ts` before `Creature.fromJSON`, then `fix()`.
  */
 export function fix(
   creature: Creature,
@@ -103,44 +108,49 @@ export function fix(
   const maxTo = creature.neurons.length - 1;
   const minTo = creature.input;
 
-  // Merge duplicate synapses (same from/to/type) by summing weights.
-  const merged = new Map<string, Synapse>();
+  const seenEndpoints = new Set<string>();
+  for (const s of creature.synapses) {
+    const key = `${s.from}->${s.to}`;
+    if (seenEndpoints.has(key)) {
+      const fromL = neuronWireLabelForDiagnostics(
+        creature.neurons[s.from],
+        s.from,
+      );
+      const toL = neuronWireLabelForDiagnostics(creature.neurons[s.to], s.to);
+      throw new ValidationError(
+        `Duplicate synapse endpoints ${fromL} -> ${toL}; ` +
+          `fix() does not merge rows — call mergeDuplicateSynapses() on export JSON first if you must coalesce legacy data.`,
+        "DUPLICATE_SYNAPSE",
+      );
+    }
+    seenEndpoints.add(key);
+  }
+
+  const tmpList: Synapse[] = [];
   const inboundCountsByTo = new Map<number, number>();
 
-  creature.synapses.forEach((synapse) => {
-    if (removeSelfConnections && synapse.from === synapse.to) return;
-    if (removeBackConnections && synapse.from > synapse.to) return;
+  for (const synapse of creature.synapses) {
+    if (removeSelfConnections && synapse.from === synapse.to) continue;
+    if (removeBackConnections && synapse.from > synapse.to) continue;
 
     if (synapse.to > maxTo) {
       getLogger().debug("Ignoring connection to above max", maxTo, synapse);
-      return;
+      continue;
     }
     if (synapse.to < minTo) {
       getLogger().debug("Ignoring connection to below min", minTo, synapse);
-      return;
+      continue;
     }
 
-    const typeKey = synapse.type ?? "";
-    const key = `${synapse.from}->${synapse.to}:${typeKey}`;
-
-    const existing = merged.get(key);
-    if (existing) {
-      existing.weight += synapse.weight;
-      if (synapse.tags?.length) {
-        existing.tags = mergeTagsByNameValue(existing.tags, synapse.tags);
-      }
-      return;
-    }
-
-    merged.set(key, synapse as Synapse);
+    tmpList.push(synapse);
     inboundCountsByTo.set(
       synapse.to,
       (inboundCountsByTo.get(synapse.to) ?? 0) + 1,
     );
-  });
+  }
 
   const tmpSynapses: Synapse[] = [];
-  for (const synapse of merged.values()) {
+  for (const synapse of tmpList) {
     if (synapse.weight !== 0 && Number.isFinite(synapse.weight)) {
       tmpSynapses.push(synapse);
       continue;

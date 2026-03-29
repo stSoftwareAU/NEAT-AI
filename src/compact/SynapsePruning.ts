@@ -1,6 +1,7 @@
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
+import { unifySynapseTypeForMerge } from "../utils/SynapseTypeUnify.ts";
 
 export interface PruneZeroWeightSynapsesResult {
   removedSynapses: number;
@@ -11,13 +12,12 @@ export interface MergeDuplicateSynapsesResult {
 }
 
 /**
- * Merge duplicate synapses (same from/to/type) by summing weights and removing
- * duplicates.
+ * Merge duplicate synapses (same from/to) by summing weights and removing
+ * duplicates. `type` is unified with {@link unifySynapseTypeForMerge}.
  *
- * This is behaviour-preserving for forward passes.
- *
- * Note: we treat `type` as part of synapse identity. A synapse with a `type`
- * (eg IF condition/positive/negative) is not equivalent to an untyped synapse.
+ * Use on **export JSON** before `Creature.fromJSON` when ingesting legacy data;
+ * `creatureValidate` and `Creature.fix()` treat duplicate (from,to) rows as an
+ * error — they do not merge them (Issue #2086).
  *
  * @param creatureExport - The CreatureExport to update (modified in place).
  * @returns Count of duplicates merged (number of removed synapses).
@@ -31,8 +31,7 @@ export function mergeDuplicateSynapses(
   let mergedCount = 0;
 
   for (const synapse of creatureExport.synapses) {
-    const typeKey = synapse.type ?? "";
-    const key = `${synapse.fromId}->${synapse.toId}:${typeKey}`;
+    const key = `${synapse.fromId}->${synapse.toId}`;
     const existingIndex = seen.get(key);
     if (existingIndex === undefined) {
       seen.set(key, mergedSynapses.length);
@@ -42,6 +41,11 @@ export function mergeDuplicateSynapses(
 
     mergedSynapses[existingIndex].weight += synapse.weight;
     mergedCount++;
+
+    mergedSynapses[existingIndex].type = unifySynapseTypeForMerge(
+      mergedSynapses[existingIndex].type,
+      synapse.type,
+    );
 
     // Best-effort tag merge.
     if (synapse.tags?.length) {
