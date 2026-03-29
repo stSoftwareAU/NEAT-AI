@@ -9,7 +9,8 @@ graph snapshot is not yet ready for the head SHA. Closes #2083.
 The dependency-review-action was producing warnings like "No snapshots were
 found for the head SHA" and recommending enabling `retry-on-snapshot-warnings`.
 The fix uncomments the already-present (but disabled) configuration option so
-the action retries until the snapshot is available instead of emitting a warning.
+the action retries until the snapshot is available instead of emitting a
+warning.
 
 ## Test Plan
 
