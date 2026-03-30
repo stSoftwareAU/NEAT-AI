@@ -175,7 +175,7 @@ fi
 
 if [ "$RUN_FMT" = true ]; then
   progress "Formatting code..."
-  deno fmt src test bench mod.ts docs
+  deno fmt
 fi
 
 if [ "$RUN_LINT" = true ]; then

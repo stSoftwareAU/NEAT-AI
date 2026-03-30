@@ -86,6 +86,8 @@
   },
   "lock": false,
   "exclude": [
-    ".analysis"
+    ".analysis",
+    "wasm_activation/pkg",
+    "wasm_activation/target"
   ]
 }
