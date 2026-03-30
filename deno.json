@@ -87,6 +87,7 @@
   "lock": false,
   "exclude": [
     ".analysis",
+    ".coverage",
     "wasm_activation/pkg",
     "wasm_activation/target"
   ]
