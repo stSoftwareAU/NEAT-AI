@@ -156,19 +156,39 @@
         }
       }
     },
+    "memeticWeightWireRow": {
+      "type": "object",
+      "description": "Canonical wire memetic weight: same endpoints as a synapse, no numeric neuron keys.",
+      "required": ["fromUUID", "toUUID", "weight"],
+      "additionalProperties": false,
+      "properties": {
+        "fromUUID": {
+          "type": "string",
+          "description": "Source neuron wire identity (input-N, output-N, or hidden/constant uuid)."
+        },
+        "toUUID": {
+          "type": "string",
+          "description": "Target neuron wire identity."
+        },
+        "weight": {
+          "type": "number",
+          "description": "Synapse weight at this generation."
+        }
+      }
+    },
     "memeticWeight": {
       "type": "object",
-      "description": "A single weight record in the memetic evolution state.",
+      "description": "Legacy in-memory shape: target only, grouped under a map keyed by source runtime id (internal JSON only).",
       "required": ["weight"],
       "additionalProperties": false,
       "properties": {
         "toUUID": {
           "type": "string",
-          "description": "UUID of the destination neuron for this weight. Present in legacy exports."
+          "description": "Destination neuron wire identity when nested under a UUID-keyed map."
         },
         "toId": {
           "type": "integer",
-          "description": "Integer ID of the destination neuron (Issue #1958). Present in new exports."
+          "description": "Runtime destination id (internal round-trips only)."
         },
         "weight": {
           "type": "number",
@@ -189,7 +209,7 @@
         },
         "weights": {
           "$ref": "#/$defs/memeticWeights",
-          "description": "Weight state at this generation, keyed by source neuron UUID or integer ID."
+          "description": "Weight state at this generation (wire array or legacy map)."
         },
         "biases": {
           "$ref": "#/$defs/memeticBiases",
@@ -202,18 +222,15 @@
       }
     },
     "memeticWeights": {
-      "type": "object",
-      "description": "Map of source neuron identifier to an array of weight records. Keys may be UUID strings (legacy) or integer ID strings (new format). In JSON, all keys are strings regardless of whether the ID is conceptually numeric.",
-      "additionalProperties": {
-        "type": "array",
-        "items": {
-          "$ref": "#/$defs/memeticWeight"
-        }
+      "type": "array",
+      "description": "Canonical export: list of { fromUUID, toUUID, weight }. Legacy persisted files may still use an object map of source key → rows with toUUID/toId.",
+      "items": {
+        "$ref": "#/$defs/memeticWeightWireRow"
       }
     },
     "memeticBiases": {
       "type": "object",
-      "description": "Map of neuron identifier to its bias value at a given generation. Keys may be UUID strings (legacy) or integer ID strings (new format). In JSON, all keys are strings regardless of whether the ID is conceptually numeric.",
+      "description": "Map of neuron wire identity to bias at a given generation. External exportJSON uses canonical UUID keys; bare integer string keys are legacy internal snapshots only.",
       "additionalProperties": {
         "type": "number"
       }
@@ -231,11 +248,11 @@
         },
         "weights": {
           "$ref": "#/$defs/memeticWeights",
-          "description": "Current weight state, keyed by source neuron UUID or integer ID."
+          "description": "Current weight state as wire rows (canonical export)."
         },
         "biases": {
           "$ref": "#/$defs/memeticBiases",
-          "description": "Current bias state, keyed by neuron UUID or integer ID."
+          "description": "Current bias state, keyed by neuron wire UUID (canonical export)."
         },
         "score": {
           "type": "number",

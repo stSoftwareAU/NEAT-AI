@@ -30,6 +30,7 @@ import type {
   SynapseTrace,
 } from "@architecture/SynapseInterfaces.ts";
 import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
+import { convertMemeticExportToWireJson } from "@creature/MemeticWireExport.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { cleanupOrphanedNeuronsInCreature } from "@compact/OrphanedNeuronCleanup.ts";
@@ -94,6 +95,8 @@ function buildCreatureExportJSON(
   const json = builder.build(includeIds) as CreatureExport;
   if (includeIds && json.memetic) {
     normaliseCreatureExport(json);
+  } else if (!includeIds && json.memetic) {
+    json.memetic = convertMemeticExportToWireJson(creature, json.memetic);
   }
   return json;
 }
@@ -104,7 +107,9 @@ function buildCreatureExportJSON(
  * Issue #2054: The external export format omits `id` on neurons and
  * `fromId`/`toId` on synapses. External consumers should use UUID fields
  * (`uuid`, `fromUUID`, `toUUID`) which are stable across generations and
- * machines.
+ * machines. When `memetic` is present, `biases` keys use wire identities;
+ * `weights` is an array of `{ fromUUID, toUUID, weight }` (no numeric neuron
+ * keys).
  *
  * **Hot-path policy (do not regress):** do **not** add unconditional
  * `creatureValidate` here. Full validation on every export destroys throughput
@@ -167,9 +172,9 @@ export function traceJSON(creature: Creature): CreatureTrace {
 }
 
 /**
- * Converts UUID-keyed memetic data to use runtime integer neuron IDs.
- * Memetic biases/weights use UUID strings as keys in the wire format;
- * internally the runtime indexes by integer neuron ID.
+ * Converts wire memetic JSON to runtime integer neuron IDs.
+ * Wire exports use string bias keys and a `weights` array of
+ * `{ fromUUID, toUUID, weight }`; legacy object maps are still accepted.
  */
 function convertMemeticToIntIds(
   // deno-lint-ignore no-explicit-any
@@ -200,7 +205,9 @@ function convertMemeticToIntIds(
       }
     }
   }
-  if (!hasUuidKeys && memetic.weights) {
+  const weightsAreWireArray = Array.isArray(memetic.weights);
+
+  if (!hasUuidKeys && memetic.weights && !weightsAreWireArray) {
     for (const key in memetic.weights) {
       if (needsConversion(key)) {
         hasUuidKeys = true;
@@ -209,7 +216,7 @@ function convertMemeticToIntIds(
     }
   }
 
-  if (!hasUuidKeys) return memetic;
+  if (!hasUuidKeys && !weightsAreWireArray) return memetic;
 
   // Deep clone to avoid mutating the original JSON
   // deno-lint-ignore no-explicit-any
@@ -232,30 +239,52 @@ function convertMemeticToIntIds(
     result.biases = newBiases;
   }
 
-  // Convert weights keys and toUUID/toId inside weight entries
+  // Convert weights: wire array { fromUUID, toUUID, weight } or UUID-keyed map
   if (result.weights) {
     // deno-lint-ignore no-explicit-any
     const newWeights: Record<number, any[]> = {};
-    for (const key in result.weights) {
-      const intId = uuidToIntId.get(key);
-      const numericKey = intId !== undefined ? intId : Number(key);
-      if (isNaN(numericKey)) continue;
-
-      // deno-lint-ignore no-explicit-any
-      const entries = result.weights[key].map((entry: any) => {
-        const newEntry = { ...entry };
-        if (typeof newEntry.toUUID === "string") {
-          const toIntId = uuidToIntId.get(newEntry.toUUID);
-          if (toIntId !== undefined) {
-            newEntry.toId = toIntId;
-            delete newEntry.toUUID;
-          }
+    if (Array.isArray(result.weights)) {
+      for (const row of result.weights) {
+        if (
+          row === null || row === undefined || typeof row.weight !== "number"
+        ) {
+          continue;
         }
-        return newEntry;
-      });
-      newWeights[numericKey] = entries;
+        const fu = row.fromUUID;
+        const tu = row.toUUID;
+        if (typeof fu !== "string" || typeof tu !== "string") continue;
+        const fromInt = uuidToIntId.get(fu);
+        const toInt = uuidToIntId.get(tu);
+        if (fromInt === undefined || toInt === undefined) continue;
+        if (!newWeights[fromInt]) newWeights[fromInt] = [];
+        newWeights[fromInt].push({ toId: toInt, weight: row.weight });
+      }
+      result.weights = newWeights;
+    } else {
+      for (const key in result.weights) {
+        const intId = uuidToIntId.get(key);
+        const numericKey = intId !== undefined ? intId : Number(key);
+        if (isNaN(numericKey)) continue;
+
+        // deno-lint-ignore no-explicit-any
+        const entries = result.weights[key].map((entry: any) => {
+          const newEntry = { ...entry };
+          if (typeof newEntry.fromUUID === "string") {
+            delete newEntry.fromUUID;
+          }
+          if (typeof newEntry.toUUID === "string") {
+            const toIntId = uuidToIntId.get(newEntry.toUUID);
+            if (toIntId !== undefined) {
+              newEntry.toId = toIntId;
+              delete newEntry.toUUID;
+            }
+          }
+          return newEntry;
+        });
+        newWeights[numericKey] = entries;
+      }
+      result.weights = newWeights;
     }
-    result.weights = newWeights;
   }
 
   // Convert ancestry if present

@@ -1,6 +1,7 @@
 import { assert, assertEquals, assertExists } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "@creature";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import { fineTuneImprovement } from "@blackbox/FineTune.ts";
 import { Offspring } from "@architecture/Offspring.ts";
 import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
@@ -116,6 +117,89 @@ Deno.test("MemeticInterface should include ancestry history", () => {
     exported.memetic.ancestry[0].generation,
     1,
     "First ancestor generation should be 1",
+  );
+
+  const assertWireMemeticSnapshot = (snap: unknown) => {
+    const s = snap as {
+      weights: { fromUUID: string; toUUID: string; weight: number }[];
+      biases: Record<string, number>;
+    };
+    assert(
+      Array.isArray(s.weights),
+      "exportJSON memetic weights must be a wire array",
+    );
+    for (const e of s.weights) {
+      assertExists(e.fromUUID, "memetic weight row must include fromUUID");
+      assertExists(e.toUUID, "memetic weight row must include toUUID");
+      assert(
+        !/^\d+$/.test(e.fromUUID),
+        `fromUUID must not be a bare integer string: ${e.fromUUID}`,
+      );
+      assert(
+        !/^\d+$/.test(e.toUUID),
+        `toUUID must not be a bare integer string: ${e.toUUID}`,
+      );
+    }
+    for (const bk of Object.keys(s.biases)) {
+      assert(
+        !/^\d+$/.test(bk),
+        `exportJSON memetic bias keys must be wire UUIDs, not bare integers: ${bk}`,
+      );
+    }
+  };
+  assertWireMemeticSnapshot(exported.memetic);
+  assertWireMemeticSnapshot(exported.memetic.ancestry[0]);
+});
+
+Deno.test("exportJSONWithRuntimeIds keeps memetic weights as wire array", () => {
+  const creature = makeCreature();
+  const { hidden3Id } = getHiddenIds(creature);
+  creature.memetic = {
+    generation: 1,
+    weights: { 0: [{ toId: hidden3Id, weight: -0.2 }] },
+    biases: { [hidden3Id]: 2.8 },
+    score: -0.1,
+  };
+  const json = exportJSONWithRuntimeIds(creature);
+  assertExists(json.memetic);
+  assert(Array.isArray(json.memetic.weights));
+  assertEquals(json.memetic.weights.length, 1);
+  assertEquals(json.memetic.weights[0].fromUUID, "input-0");
+});
+
+Deno.test("exportJSON memetic round-trip restores integer memetic for fine-tune", () => {
+  const creature = makeCreature();
+  const { hidden3Id } = getHiddenIds(creature);
+  const INPUT_0_ID = 0;
+  creature.memetic = {
+    generation: 1,
+    weights: {
+      [INPUT_0_ID]: [{ toId: hidden3Id, weight: -0.2 }],
+    },
+    biases: { [hidden3Id]: 2.8 },
+    score: -0.15,
+    ancestry: [
+      {
+        generation: 0,
+        weights: {
+          [INPUT_0_ID]: [{ toId: hidden3Id, weight: -0.3 }],
+        },
+        biases: { [hidden3Id]: 2.7 },
+        score: -0.2,
+      },
+    ],
+  };
+
+  const wire = creature.exportJSON();
+  const roundTrip = Creature.fromJSON(wire, false);
+  roundTrip.validate();
+
+  const { hidden3Id: hidAfter } = getHiddenIds(roundTrip);
+  const m = roundTrip.memetic!;
+  const mom = calculateTrajectoryMomentum(m, 0, hidAfter, false);
+  assertExists(
+    mom,
+    "trajectory momentum should work after UUID export round-trip",
   );
 });
 

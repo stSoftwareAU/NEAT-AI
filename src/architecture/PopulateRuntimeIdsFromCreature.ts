@@ -1,4 +1,5 @@
 import type { Creature } from "@creature";
+import { convertMemeticExportToWireJson } from "@creature/MemeticWireExport.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { neuronUuid } from "@neuron/NeuronSerialization.ts";
 import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
@@ -49,5 +50,9 @@ export function populateRuntimeIdsFromCreature(
 }
 
 export function exportJSONWithRuntimeIds(creature: Creature): CreatureExport {
-  return new CreatureExportBuilder(creature).build(true);
+  const json = new CreatureExportBuilder(creature).build(true);
+  if (json.memetic) {
+    json.memetic = convertMemeticExportToWireJson(creature, json.memetic);
+  }
+  return json;
 }

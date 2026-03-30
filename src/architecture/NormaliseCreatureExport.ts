@@ -136,15 +136,34 @@ function normaliseMemeticData(
   uuidToId: Map<string, number>,
 ): void {
   if (memetic.weights) {
-    memetic.weights = convertMapKeys(memetic.weights, uuidToId);
-    // Also convert toUUID → toId in weight entries
-    for (const key of Object.keys(memetic.weights)) {
-      const entries = memetic.weights[key];
-      if (Array.isArray(entries)) {
-        for (const entry of entries) {
-          if (entry.toUUID !== undefined && entry.toId === undefined) {
-            const id = uuidToId.get(entry.toUUID);
-            if (id !== undefined) entry.toId = id;
+    if (Array.isArray(memetic.weights)) {
+      // deno-lint-ignore no-explicit-any
+      const acc: Record<number, any[]> = {};
+      for (const row of memetic.weights) {
+        if (!row || typeof row !== "object") continue;
+        // deno-lint-ignore no-explicit-any
+        const r = row as any;
+        if (typeof r.fromUUID !== "string" || typeof r.toUUID !== "string") {
+          continue;
+        }
+        const fromId = uuidToId.get(r.fromUUID);
+        const toId = uuidToId.get(r.toUUID);
+        if (fromId === undefined || toId === undefined) continue;
+        if (!acc[fromId]) acc[fromId] = [];
+        acc[fromId].push({ toId, weight: r.weight });
+      }
+      memetic.weights = acc;
+    } else {
+      memetic.weights = convertMapKeys(memetic.weights, uuidToId);
+      // Also convert toUUID → toId in weight entries
+      for (const key of Object.keys(memetic.weights)) {
+        const entries = memetic.weights[key];
+        if (Array.isArray(entries)) {
+          for (const entry of entries) {
+            if (entry.toUUID !== undefined && entry.toId === undefined) {
+              const id = uuidToId.get(entry.toUUID);
+              if (id !== undefined) entry.toId = id;
+            }
           }
         }
       }
