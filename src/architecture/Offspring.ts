@@ -19,6 +19,7 @@ import { Neuron } from "./Neuron.ts";
 import { outputIndexFromId, outputNeuronId } from "./NeuronId.ts";
 import { Synapse as SynapseClass } from "./Synapse.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
+import { normaliseComputationalNeuronOrder } from "./NormaliseComputationalNeuronOrder.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 
 class OffspringError extends Error {
@@ -435,6 +436,8 @@ export class Offspring {
     if (offspring.memetic) {
       pruneOrphanMemeticReferences(offspring);
     }
+
+    normaliseComputationalNeuronOrder(offspring);
 
     if (shouldBeForwardOnly) {
       if (options.forwardOnly === false) {

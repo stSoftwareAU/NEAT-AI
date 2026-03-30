@@ -14,6 +14,7 @@ import {
   pruneOrphanMemeticReferences,
   removeHiddenNeuron,
 } from "../compact/CompactUtils.ts";
+import { normaliseComputationalNeuronOrder } from "../architecture/NormaliseComputationalNeuronOrder.ts";
 import { cleanupOrphanedNeuronsInCreature } from "../compact/OrphanedNeuronCleanup.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 import { neuronWireLabelForDiagnostics } from "../neuron/NeuronSerialization.ts";
@@ -260,6 +261,8 @@ export function fix(
   // Memetic can still reference removed neurons/synapses after partial repairs;
   // strict validate (e.g. Neat.populatePopulation) would throw MEMETIC otherwise.
   pruneOrphanMemeticReferences(creature);
+
+  normaliseComputationalNeuronOrder(creature);
 
   if (forwardOnly) {
     creature.forwardOnly = true;
