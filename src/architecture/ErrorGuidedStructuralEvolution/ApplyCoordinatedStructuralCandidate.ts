@@ -180,7 +180,7 @@ export function applyCoordinatedStructuralCandidate(
         for (const e of removedEdges) {
           cleanupMemeticForRemovedSynapse(next, e.fromId, e.toId);
         }
-        cleanupMemeticForRemovedNeuron(next, neuronId);
+        cleanupMemeticForRemovedNeuron(next, op.neuronUuid);
         wireToId.delete(op.neuronUuid);
         continue;
       }

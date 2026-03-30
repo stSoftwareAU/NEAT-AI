@@ -330,9 +330,14 @@ export function applyRemoveNeuron(
     (s) => !toRemove.has(s.fromId) && !toRemove.has(s.toId),
   );
 
-  // Clean up memetic data for removed neurons
+  // Clean up memetic data for removed neurons (use wire uuid: neuron rows are
+  // already stripped from creatureJSON, so runtime id → wire lookup would fail).
   for (const neuronId of toRemove) {
-    cleanupMemeticForRemovedNeuron(creatureJSON, neuronId!);
+    const removed = baseJSON.neurons.find((n) => n.id === neuronId);
+    cleanupMemeticForRemovedNeuron(
+      creatureJSON,
+      removed?.uuid ?? neuronId!,
+    );
   }
 
   // Build set of remaining neuron IDs for synapse validation

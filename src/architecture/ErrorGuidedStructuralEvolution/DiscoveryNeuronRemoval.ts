@@ -125,7 +125,7 @@ export function removeHarmfulNeuron(
 
   // Clean up memetic only when the removed neuron is referenced (issue #912;
   // matches SubNeuron / other mutation operators).
-  cleanupMemeticForRemovedNeuron(simplifiedExport, harmfulNeuronId);
+  cleanupMemeticForRemovedNeuron(simplifiedExport, harmfulNeuronLabel);
 
   // Clean up any neurons that have become orphaned (no outward connections)
   // This prevents validation failures when neurons that only connected to
@@ -277,7 +277,7 @@ export function removeLowImpactNeuron(
     "removeLowImpactNeuron after removal",
   );
 
-  cleanupMemeticForRemovedNeuron(simplifiedExport, removalNeuronId);
+  cleanupMemeticForRemovedNeuron(simplifiedExport, removalLabel);
 
   // Clean up any neurons that have become orphaned (no outward connections)
   // This prevents validation failures when neurons that only connected to

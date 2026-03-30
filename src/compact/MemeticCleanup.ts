@@ -5,11 +5,32 @@ import type {
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 /**
+ * Resolves a runtime neuron id to a wire label using `CreatureExport` metadata.
+ * Returns undefined when `id` fields are absent on neurons (pure wire JSON).
+ */
+function runtimeNeuronIdToWireLabel(
+  exp: CreatureExport,
+  id: number,
+): string | undefined {
+  const inCount = exp.input ?? 0;
+  for (let i = 0; i < inCount; i++) {
+    if (i === id) return `input-${i}`;
+  }
+  for (const n of exp.neurons) {
+    const nid = (n as { id?: number }).id;
+    if (nid === id && typeof n.uuid === "string") {
+      return n.uuid;
+    }
+  }
+  return undefined;
+}
+
+/**
  * Deletes memetic data if the removed synapse is referenced in it.
  *
  * @param creatureExport - The CreatureExport to clean up (modified in place).
- * @param fromId - The source neuron UUID of the removed synapse.
- * @param toId - The target neuron UUID of the removed synapse.
+ * @param fromId - Runtime source neuron id (legacy map) or resolvable via export ids for wire-array memetic.
+ * @param toId - Runtime target neuron id.
  */
 export function cleanupMemeticForRemovedSynapse(
   creatureExport: CreatureExport,
@@ -19,8 +40,26 @@ export function cleanupMemeticForRemovedSynapse(
   const memetic = creatureExport.memetic;
   if (!memetic?.weights) return;
 
-  const weights = memetic.weights[fromId];
-  if (weights?.some((w) => w.toId === toId)) {
+  // deno-lint-ignore no-explicit-any
+  const w = memetic.weights as any;
+  if (Array.isArray(w)) {
+    const fromLabel = runtimeNeuronIdToWireLabel(creatureExport, fromId);
+    const toLabel = runtimeNeuronIdToWireLabel(creatureExport, toId);
+    if (
+      fromLabel &&
+      toLabel &&
+      w.some(
+        (row: { fromUUID: string; toUUID: string }) =>
+          row.fromUUID === fromLabel && row.toUUID === toLabel,
+      )
+    ) {
+      delete creatureExport.memetic;
+    }
+    return;
+  }
+
+  const weights = w[fromId];
+  if (weights?.some((entry: { toId: number }) => entry.toId === toId)) {
     delete creatureExport.memetic;
   }
 }
@@ -29,30 +68,54 @@ export function cleanupMemeticForRemovedSynapse(
  * Deletes memetic data if the removed neuron is referenced in it.
  *
  * @param creatureExport - The CreatureExport to clean up (modified in place).
- * @param neuronId - The UUID of the neuron that was removed.
+ * @param neuronRef - Runtime id for legacy memetic maps, or wire `uuid` / `input-N` when memetic uses array weights or string bias keys (e.g. after `exportJSON()`).
  */
 export function cleanupMemeticForRemovedNeuron(
   creatureExport: CreatureExport,
-  neuronId: number,
+  neuronRef: number | string,
 ): void {
   const memetic = creatureExport.memetic;
   if (!memetic) return;
 
-  // Check if neuron is in weights (as source or target) or biases
-  if (memetic.weights) {
-    if (memetic.weights[neuronId]) {
+  const wireLabel = typeof neuronRef === "string"
+    ? neuronRef
+    : runtimeNeuronIdToWireLabel(creatureExport, neuronRef);
+
+  // deno-lint-ignore no-explicit-any
+  const weightsAny = memetic.weights as any;
+  if (Array.isArray(weightsAny)) {
+    if (
+      wireLabel &&
+      weightsAny.some(
+        (row: { fromUUID?: string; toUUID?: string }) =>
+          row.fromUUID === wireLabel || row.toUUID === wireLabel,
+      )
+    ) {
       delete creatureExport.memetic;
       return;
     }
-    for (const weights of Object.values(memetic.weights)) {
-      if (weights?.some((w: { toId: number }) => w.toId === neuronId)) {
+  } else if (memetic.weights && typeof neuronRef === "number") {
+    if (weightsAny[neuronRef]) {
+      delete creatureExport.memetic;
+      return;
+    }
+    for (const entries of Object.values(weightsAny)) {
+      if (
+        Array.isArray(entries) &&
+        entries.some((entry: { toId: number }) => entry.toId === neuronRef)
+      ) {
         delete creatureExport.memetic;
         return;
       }
     }
   }
 
-  if (memetic.biases?.[neuronId] !== undefined) {
+  const biases = memetic.biases as Record<string, number> | undefined;
+  if (wireLabel !== undefined && biases?.[wireLabel] !== undefined) {
+    delete creatureExport.memetic;
+    return;
+  }
+  if (typeof neuronRef === "number" && biases?.[neuronRef] !== undefined) {
     delete creatureExport.memetic;
   }
 }
