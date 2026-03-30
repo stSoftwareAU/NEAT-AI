@@ -1,4 +1,5 @@
 import { moveConstantNeuronIntoPrefix } from "../architecture/NormaliseComputationalNeuronOrder.ts";
+import { repairInvalidIfNeuronsInCreature } from "../architecture/RepairInvalidIfNeurons.ts";
 import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
@@ -89,44 +90,6 @@ export class SubNeuron extends AbstractMutationOperator {
    * connection types. Fix them on the live creature.
    */
   #cleanupInvalidIfNeurons(): void {
-    const creature = this.creature;
-    let changed: boolean;
-    do {
-      changed = false;
-      for (
-        let i = creature.neurons.length - 1;
-        i >= creature.input;
-        i--
-      ) {
-        const neuron = creature.neurons[i];
-        if (neuron.squash !== "IF") continue;
-
-        const inward = creature.inwardConnections(i);
-        let hasCondition = false;
-        let hasPositive = false;
-        let hasNegative = false;
-
-        for (const syn of inward) {
-          const synapseType = syn.type ?? "positive";
-          if (synapseType === "condition") hasCondition = true;
-          else if (synapseType === "positive") hasPositive = true;
-          else if (synapseType === "negative") hasNegative = true;
-        }
-
-        if (!hasCondition || !hasPositive || !hasNegative) {
-          if (neuron.type === "output") {
-            neuron.setSquash("IDENTITY");
-            for (const syn of inward) {
-              if (syn.type) {
-                delete syn.type;
-              }
-            }
-          } else {
-            removeHiddenNeuron(creature, i);
-            changed = true;
-          }
-        }
-      }
-    } while (changed);
+    repairInvalidIfNeuronsInCreature(this.creature);
   }
 }

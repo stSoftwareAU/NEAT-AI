@@ -14,6 +14,7 @@ import type {
   CreatureTrace,
 } from "../architecture/CreatureInterfaces.ts";
 import { normaliseComputationalNeuronOrder } from "../architecture/NormaliseComputationalNeuronOrder.ts";
+import { repairInvalidIfNeuronsInCreature } from "../architecture/RepairInvalidIfNeurons.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import {
@@ -518,6 +519,8 @@ export function loadFrom(
       repairNoInwardForValidate)
   ) {
     cleanupOrphanedNeuronsInCreature(creature);
+    pruneOrphanMemeticReferences(creature);
+    repairInvalidIfNeuronsInCreature(creature);
     pruneOrphanMemeticReferences(creature);
   }
 
