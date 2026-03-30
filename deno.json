@@ -92,9 +92,6 @@
     "junit.xml",
     "test-errors.log",
     "wasm_activation/pkg",
-    "wasm_activation/target",
-    "junit-raw.xml",
-    "junit.xml",
-    "test-errors.log"
+    "wasm_activation/target"
   ]
 }
