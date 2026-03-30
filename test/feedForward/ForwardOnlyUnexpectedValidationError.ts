@@ -4,11 +4,15 @@ import { Mutator } from "@neat/Mutator.ts";
 import { Mutation } from "@neat/Mutation.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 
-Deno.test("Forward-only: unexpected validation errors are re-thrown during mutation", () => {
+/**
+ * repairAfterMutation() calls fix() only — not validate() (Issue #1583).
+ * Unexpected errors thrown by fix() must still propagate to the caller.
+ */
+Deno.test("Forward-only: unexpected fix errors are re-thrown from repairAfterMutation", () => {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
   assert(creature.synapses.length > 0, "Test requires at least one synapse");
 
-  // Force forward-only validation path (feedbackLoop unset/false).
+  // Force forward-only path (feedbackLoop unset/false).
   const mutator = new Mutator(
     createNeatConfig({
       feedbackLoop: false,
@@ -19,16 +23,15 @@ Deno.test("Forward-only: unexpected validation errors are re-thrown during mutat
     }),
   );
 
-  // Inject a validation failure that is NOT SELF_CONNECTION or RECURSIVE_SYNAPSE.
-  // This simulates any other structural failure (e.g. NO_INWARD_CONNECTIONS, MEMETIC).
-  (creature as unknown as { validate: () => void }).validate = () => {
-    const err = new Error("Injected validation error");
+  mutator.mutateCreature(creature, Mutation.MOD_WEIGHT);
+
+  // Inject an unexpected error into fix() — repairAfterMutation() calls
+  // creature.fix({ forwardOnly: true }) so the error should propagate.
+  creature.fix = () => {
+    const err = new Error("Injected fix error");
     err.name = "MEMETIC";
     throw err;
   };
-
-  // Issue #1583: fix/validate is now in repairAfterMutation(), not mutateCreature().
-  mutator.mutateCreature(creature, Mutation.MOD_WEIGHT);
 
   let thrown: Error | undefined;
   try {
@@ -39,5 +42,5 @@ Deno.test("Forward-only: unexpected validation errors are re-thrown during mutat
 
   assert(thrown, "Expected repairAfterMutation() to throw");
   assertEquals(thrown.name, "MEMETIC");
-  assertEquals(thrown.message, "Injected validation error");
+  assertEquals(thrown.message, "Injected fix error");
 });
