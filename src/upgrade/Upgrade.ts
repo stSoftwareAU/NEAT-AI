@@ -1,4 +1,5 @@
 import { Creature } from "../Creature.ts";
+import { repairInvalidIfNeuronsInCreature } from "../architecture/RepairInvalidIfNeurons.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { pruneOrphanMemeticReferences } from "../compact/CompactUtils.ts";
 import { exportJSONWithRuntimeIds } from "../architecture/PopulateRuntimeIdsFromCreature.ts";
@@ -77,6 +78,21 @@ function validateFourX(creature: Creature): void {
       return;
     } catch (e) {
       const error = e as ValidationError;
+      if (error.reason === "IF_CONDITIONS") {
+        repairInvalidIfNeuronsInCreature(creature);
+        pruneOrphanMemeticReferences(creature);
+        try {
+          creatureValidate(creature);
+          return;
+        } catch (e2) {
+          const followUp = e2 as ValidationError;
+          getLogger().error(
+            `[upgrade] CRITICAL: 4.x feedback-enabled creature still invalid after IF repair: ` +
+              `${followUp.name} - ${followUp.message}.`,
+          );
+          throw followUp;
+        }
+      }
       getLogger().error(
         `[upgrade] CRITICAL: 4.x feedback-enabled creature failed validation: ` +
           `${error.name} - ${error.message}.`,
@@ -94,9 +110,13 @@ function validateFourX(creature: Creature): void {
 
     if (
       error.reason === "NO_INWARD_CONNECTIONS" ||
-      error.reason === "NO_OUTWARD_CONNECTIONS"
+      error.reason === "NO_OUTWARD_CONNECTIONS" ||
+      error.reason === "IF_CONDITIONS"
     ) {
       try {
+        if (error.reason === "IF_CONDITIONS") {
+          repairInvalidIfNeuronsInCreature(creature);
+        }
         creature.fix({ forwardOnly: true });
         creatureValidate(creature, { forwardOnly: true });
         creature.forwardOnly = true;
@@ -106,7 +126,7 @@ function validateFourX(creature: Creature): void {
         getLogger().error(
           `[upgrade] CRITICAL: 4.x creature (UUID: ${
             creature.uuid ?? "unknown"
-          }) still invalid after NO_INWARD/NO_OUTWARD repair: ` +
+          }) still invalid after structural repair (NO_INWARD/NO_OUTWARD/IF): ` +
             `${followUp.name} - ${followUp.message}.`,
         );
         writeDiagnostics({

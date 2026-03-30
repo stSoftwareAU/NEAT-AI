@@ -177,11 +177,12 @@ export function creatureValidate(
 
       for (let i = toList.length; i--;) {
         const c = toList[i];
-        if (c.type === "condition") {
+        const synapseType = c.type ?? "positive";
+        if (synapseType === "condition") {
           foundCondition = true;
-        } else if (c.type === "negative") {
+        } else if (synapseType === "negative") {
           foundNegative = true;
-        } else if (c.type === "positive") {
+        } else if (synapseType === "positive") {
           foundPositive = true;
         }
       }

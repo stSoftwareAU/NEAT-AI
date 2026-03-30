@@ -14,6 +14,7 @@ import {
   pruneOrphanMemeticReferences,
   removeHiddenNeuron,
 } from "../compact/CompactUtils.ts";
+import { repairInvalidIfNeuronsInCreature } from "../architecture/RepairInvalidIfNeurons.ts";
 import { cleanupOrphanedNeuronsInCreature } from "../compact/OrphanedNeuronCleanup.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 import { neuronWireLabelForDiagnostics } from "../neuron/NeuronSerialization.ts";
@@ -256,6 +257,10 @@ export function fix(
   // connections but no valid inbound source. Reuse the canonical orphan cleanup
   // pass here so fix() repairs those before validation retries.
   cleanupOrphanedNeuronsInCreature(creature);
+
+  // Forward-only strip / connection removal can leave IF neurons without the
+  // three required inward roles; downgrade before validate (worker breeding).
+  repairInvalidIfNeuronsInCreature(creature);
 
   // Memetic can still reference removed neurons/synapses after partial repairs;
   // strict validate (e.g. Neat.populatePopulation) would throw MEMETIC otherwise.
