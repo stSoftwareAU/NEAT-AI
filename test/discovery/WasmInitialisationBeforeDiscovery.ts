@@ -6,13 +6,10 @@
  * initialise WASM before using discovery features.
  */
 import { assert } from "@std/assert";
-import {
-  initWasmActivation,
-  isWasmActivationAvailable,
-} from "../../src/wasm/mod.ts";
+import { initWasmActivation, isWasmActivationAvailable } from "@wasm/mod.ts";
 import {
   ensureWasmActivationForDiscovery,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
 
 /**
  * Tests that WASM gets initialised when not already available

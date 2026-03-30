@@ -7,10 +7,10 @@
  */
 
 import { assertEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { generateSyntheticSynapses } from "../../src/propagate/SyntheticSynapses.ts";
-import { removeSyntheticSynapses } from "../../src/propagate/RemoveSyntheticSynapses.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { generateSyntheticSynapses } from "@propagate/SyntheticSynapses.ts";
+import { removeSyntheticSynapses } from "@propagate/RemoveSyntheticSynapses.ts";
 
 Deno.test("removeSyntheticSynapses - removes all near-zero synthetic synapses", () => {
   // 2 inputs, 2 hidden, 1 output — sparse initial wiring

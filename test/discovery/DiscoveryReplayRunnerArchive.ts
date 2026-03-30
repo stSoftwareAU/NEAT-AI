@@ -1,12 +1,12 @@
 import { assertEquals, assertExists } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { DiscoveryReplayRunner } from "../../src/discovery/DiscoveryReplayRunner.ts";
-import { DISCOVERY_WIRE_SCHEMA_VERSION } from "../../src/discovery/DiscoveryWireFormat.ts";
-import type { SuccessCacheEntry } from "../../src/discovery/SuccessCache.ts";
+import { Creature } from "@creature";
+import { DiscoveryReplayRunner } from "@discovery/DiscoveryReplayRunner.ts";
+import { DISCOVERY_WIRE_SCHEMA_VERSION } from "@discovery/DiscoveryWireFormat.ts";
+import type { SuccessCacheEntry } from "@discovery/SuccessCache.ts";
 import {
   archiveSuccessByKeySync,
   getObsoleteDir,
-} from "../../src/discovery/SuccessCache.ts";
+} from "@discovery/SuccessCache.ts";
 import { join } from "@std/path/join";
 import { makeForwardOnlyCreature as makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 

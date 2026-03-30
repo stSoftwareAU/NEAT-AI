@@ -4,9 +4,9 @@
  * attempts, consistent with ModBias behaviour.
  */
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { ModActivation } from "../../src/mutate/ModSquash.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { Creature } from "@creature";
+import { ModActivation } from "@mutate/ModSquash.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 
 Deno.test("ModSquash - relaxes focus list after several failed attempts", () => {
   const creature = Creature.fromJSON({

@@ -8,19 +8,19 @@
  */
 
 import { assert } from "@std/assert";
-import { getLogger } from "../utils/Logger.ts";
-import { calculate as calculateScore } from "../architecture/Score.ts";
-import type { Creature } from "../Creature.ts";
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
-import type { DiscoveryRunnerWorker } from "./DiscoveryRunnerTypes.ts";
-import type { RequiredDiscoveryCacheConfig } from "../config/DiscoveryCacheConfig.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { calculate as calculateScore } from "@architecture/Score.ts";
+import type { Creature } from "@creature";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
+import type { DiscoveryRunnerWorker } from "@discovery/DiscoveryRunnerTypes.ts";
+import type { RequiredDiscoveryCacheConfig } from "@config/DiscoveryCacheConfig.ts";
 import {
   logCacheStatistics,
   pruneCacheSync,
   pruneObsoleteSync,
-} from "./DiscoveryCacheEviction.ts";
-import { recordFailureSync } from "./FailureCache.ts";
-import { getObsoleteDir, recordSuccessSync } from "./SuccessCache.ts";
+} from "@discovery/DiscoveryCacheEviction.ts";
+import { recordFailureSync } from "@discovery/FailureCache.ts";
+import { getObsoleteDir, recordSuccessSync } from "@discovery/SuccessCache.ts";
 
 export interface EvaluationTaskInput {
   kind: "original" | "candidate";

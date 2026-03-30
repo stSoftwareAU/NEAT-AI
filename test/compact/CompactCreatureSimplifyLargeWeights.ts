@@ -1,9 +1,9 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { compactCreature } from "../../src/compact/CompactCreature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { ABSOLUTE } from "../../src/methods/activations/types/ABSOLUTE.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { Creature } from "@creature";
+import { compactCreature } from "@compact/CompactCreature.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { ABSOLUTE } from "@methods/activations/types/ABSOLUTE.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 function maxAbsWeightAndBias(creature: Creature): number {
   let max = 0;

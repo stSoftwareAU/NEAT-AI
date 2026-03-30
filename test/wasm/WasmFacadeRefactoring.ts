@@ -13,7 +13,7 @@ import {
   assertEquals,
   assertExists,
 } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   type FusedErrorDistributionResult,
   initWasmActivation,
@@ -30,7 +30,7 @@ import {
   type WasmTraceEntry,
   type WasmTraceResult,
   wasmUnSquash,
-} from "../../src/wasm/mod.ts";
+} from "@wasm/mod.ts";
 
 // Ensure WASM is loaded
 await initWasmActivation();

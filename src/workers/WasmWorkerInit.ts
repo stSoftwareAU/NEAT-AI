@@ -10,12 +10,12 @@
  * @module
  */
 
-import { WasmError } from "../errors/WasmError.ts";
+import { WasmError } from "@errors/WasmError.ts";
 import {
   initWasmActivationSync,
   isWasmActivationAvailable,
-} from "../wasm/mod.ts";
-import type { WasmActivationInitPayload } from "./WasmActivationPayload.ts";
+} from "@wasm/mod.ts";
+import type { WasmActivationInitPayload } from "@workers/WasmActivationPayload.ts";
 
 /**
  * Initialises WASM activation from a parent-supplied payload.

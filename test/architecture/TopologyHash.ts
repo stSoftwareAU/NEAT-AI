@@ -9,9 +9,9 @@
  * - Discovery result caching
  */
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

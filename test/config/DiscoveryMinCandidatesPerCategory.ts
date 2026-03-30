@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY } from "../../src/config/NeatConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY } from "@config/NeatConfig.ts";
 
 Deno.test("DiscoveryMinCandidatesPerCategory - defaults are applied", () => {
   const config = createNeatConfig({});

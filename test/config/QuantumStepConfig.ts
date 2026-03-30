@@ -4,8 +4,8 @@ import {
   assertLessOrEqual,
   assertThrows,
 } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { DEFAULT_QUANTUM_STEP_CONFIG } from "../../src/config/QuantumStepConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { DEFAULT_QUANTUM_STEP_CONFIG } from "@config/QuantumStepConfig.ts";
 
 Deno.test("QuantumStepConfig - defaults applied when not specified", () => {
   const config = createNeatConfig({});

@@ -6,7 +6,7 @@ import {
 import {
   BackpropBuffers,
   type BackpropBufferSet,
-} from "../../src/propagate/BackpropBuffers.ts";
+} from "@propagate/BackpropBuffers.ts";
 
 Deno.test("BackpropBuffers - acquire returns buffer with sufficient capacity", () => {
   const pool = new BackpropBuffers(10);

@@ -1,8 +1,8 @@
 import { assertEquals, fail } from "@std/assert";
 import { Creature } from "../../mod.ts";
-import { HYPOTv2 } from "../../src/deprecated/HYPOTv2.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { upgradeTwo } from "../../src/upgrade/UpgradeTwo.ts";
+import { HYPOTv2 } from "@deprecated/HYPOTv2.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { upgradeTwo } from "@upgrade/UpgradeTwo.ts";
 
 Deno.test("HYPOTv2-small upgrade preserves activation within tolerance", () => {
   const start = new Creature(3, 1, {

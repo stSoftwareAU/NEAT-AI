@@ -9,15 +9,15 @@
  */
 
 import { assert, assertAlmostEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
 import {
   initWasmActivation,
   isWasmActivationAvailable,
   WasmCreatureActivation,
-} from "../../src/wasm/mod.ts";
-import { compileCreatureToWasm } from "../../src/wasm/CompileToWasm.ts";
-import { Costs } from "../../src/Costs.ts";
+} from "@wasm/mod.ts";
+import { compileCreatureToWasm } from "@wasm/CompileToWasm.ts";
+import { Costs } from "@costs";
 
 // Tolerance for f32 vs f64 precision differences
 const TOLERANCE = 1e-4;

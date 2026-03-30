@@ -3,7 +3,7 @@ import {
   hasApplyLearnings,
   isFixableActivation,
   isNodeActivation,
-} from "../../src/neuron/NeuronActivation.ts";
+} from "@neuron/NeuronActivation.ts";
 
 Deno.test("isNodeActivation - returns true when activateAndTrace is defined", () => {
   const activation = {

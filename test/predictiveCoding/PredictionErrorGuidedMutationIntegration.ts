@@ -6,15 +6,15 @@
  * and that mutations are guided towards high-error regions.
  */
 import { assert, assertEquals, assertGreater } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   computeMutationBias,
   neuronBiasToIndexWeights,
   selectWeightedIndex,
-} from "../../src/predictiveCoding/PredictionErrorGuidedMutation.ts";
-import { computePredictionErrors } from "../../src/predictiveCoding/PredictionErrorComputation.ts";
-import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
-import { AddConnection } from "../../src/mutate/AddConnection.ts";
+} from "@predictiveCoding/PredictionErrorGuidedMutation.ts";
+import { computePredictionErrors } from "@predictiveCoding/PredictionErrorComputation.ts";
+import { AddNeuron } from "@mutate/AddNeuron.ts";
+import { AddConnection } from "@mutate/AddConnection.ts";
 
 /**
  * Helper: creates a creature with multiple hidden neurons for integration tests.

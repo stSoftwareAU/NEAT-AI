@@ -7,8 +7,8 @@
 import type {
   RustNeuronDiagnostic,
   RustSynapseDiagnostic,
-} from "./RustDiscovery.ts";
-import { logDiscovery } from "./DiscoverLoggingCore.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { logDiscovery } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverLoggingCore.ts";
 
 /**
  * Formats a RustSynapseDiagnostic for logging.

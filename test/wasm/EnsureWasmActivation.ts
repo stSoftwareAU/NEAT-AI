@@ -10,11 +10,11 @@
  */
 
 import { assert, assertAlmostEquals } from "@std/assert";
-import { ensureWasmActivation } from "../../src/wasm/EnsureWasmActivation.ts";
+import { ensureWasmActivation } from "@wasm/EnsureWasmActivation.ts";
 import {
   getSquashFn,
   isWasmActivationAvailable,
-} from "../../src/wasm/WasmModuleLoader.ts";
+} from "@wasm/WasmModuleLoader.ts";
 
 // ---------------------------------------------------------------------------
 // Success path tests

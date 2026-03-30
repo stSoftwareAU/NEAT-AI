@@ -13,14 +13,17 @@ export type {
   BaseRequestData,
   BaseResponseData,
   WorkerInterface,
-} from "./WorkerInterface.ts";
-export { getInitTimeoutMs, WorkerHandlerBase } from "./WorkerHandlerBase.ts";
-export type { WasmActivationInitPayload } from "./WasmActivationPayload.ts";
+} from "@workers/WorkerInterface.ts";
+export {
+  getInitTimeoutMs,
+  WorkerHandlerBase,
+} from "@workers/WorkerHandlerBase.ts";
+export type { WasmActivationInitPayload } from "@workers/WasmActivationPayload.ts";
 export {
   fetchWasmForWorkers,
   isWasmActivationPayloadAvailable,
   loadWasmActivationInitPayload,
   loadWasmActivationInitPayloadAsync,
-} from "./WasmActivationPayload.ts";
-export { initialiseWasmActivationFromPayload } from "./WasmWorkerInit.ts";
-export { setupWorkerMessageLoop } from "./workerEntryPoint.ts";
+} from "@workers/WasmActivationPayload.ts";
+export { initialiseWasmActivationFromPayload } from "@workers/WasmWorkerInit.ts";
+export { setupWorkerMessageLoop } from "@workers/workerEntryPoint.ts";

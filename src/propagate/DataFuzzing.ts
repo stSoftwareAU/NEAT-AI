@@ -9,7 +9,7 @@
  * Tikhonov Regularisation", Neural Computation.
  */
 
-import type { RandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import type { RandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Apply noise in-place to a Float32Array buffer.

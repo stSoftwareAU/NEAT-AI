@@ -1,5 +1,5 @@
 import { assertEquals, assertExists } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 /**
  * Tests for discoveryCacheDir option in NeatOptions (Issue #997).

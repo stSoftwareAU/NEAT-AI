@@ -1,6 +1,6 @@
-import { Synapse } from "../architecture/Synapse.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 
 export class AddBackCon extends AbstractMutationOperator {
   protected performMutation(focusList?: number[]): boolean {

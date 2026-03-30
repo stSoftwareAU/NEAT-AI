@@ -8,8 +8,8 @@
  */
 
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
-import { Activations } from "../../../src/methods/activations/Activations.ts";
-import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
 
 /** Helper to get an activation with squash available. */
 function findActivation(name: string): ActivationInterface {

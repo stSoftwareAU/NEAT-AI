@@ -13,23 +13,23 @@
  * available, falls back to calling the individual WASM or TypeScript functions.
  */
 
-import type { TypedTopology } from "../architecture/TypedTopology.ts";
-import type { BackPropagationConfig } from "../propagate/BackPropagation.ts";
-import type { SynapseState } from "../propagate/SynapseState.ts";
+import type { TypedTopology } from "@architecture/TypedTopology.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
+import type { SynapseState } from "@propagate/SynapseState.ts";
 import {
   getCalculateBiasBatch4WayFn,
   getCalculateWeightBatch4WayFn,
   getValidateTopologyBatchFn,
-} from "./WasmModuleLoader.ts";
+} from "@wasm/WasmModuleLoader.ts";
 import {
   wasmCalculateBias,
   wasmCalculateWeight,
-} from "./WasmStandaloneFunctions.ts";
+} from "@wasm/WasmStandaloneFunctions.ts";
 import {
   TOPOLOGY_VALID,
   type TopologyValidationResult,
   validateTopology,
-} from "./WasmTopologyOps.ts";
+} from "@wasm/WasmTopologyOps.ts";
 
 // ---------------------------------------------------------------------------
 // Pre-allocated buffers for batch packing

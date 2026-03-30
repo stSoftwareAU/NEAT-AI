@@ -12,15 +12,15 @@
  *   deno run --allow-read --allow-env --allow-write bench/CosineAnnealingWarmRestart.ts
  */
 
-import { Creature } from "../src/Creature.ts";
-import type { CreatureExport } from "../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type {
   BackPropagationArguments,
   BackPropagationConfig,
   BackPropagationOptions,
-} from "../src/propagate/BackPropagation.ts";
-import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
+} from "@propagate/BackPropagation.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 const TRAINING_ITERATIONS = 500;
 const TRIALS = 20;

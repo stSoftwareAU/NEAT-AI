@@ -1,15 +1,15 @@
 import { assert, assertEquals, assertGreater } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import type { NeatOptions } from "../../src/config/NeatOptions.ts";
-import { Neat } from "../../src/NEAT/Neat.ts";
-import { Genus } from "../../src/NEAT/Genus.ts";
-import { Species } from "../../src/NEAT/Species.ts";
-import { WorkerHandler } from "../../src/multithreading/workers/WorkerHandler.ts";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { NeatOptions } from "@config/NeatOptions.ts";
+import { Neat } from "@neat/Neat.ts";
+import { Genus } from "@neat/Genus.ts";
+import { Species } from "@neat/Species.ts";
+import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
-} from "../../src/architecture/DataSet.ts";
+} from "@architecture/DataSet.ts";
 
 /**
  * Behavioural tests for the core NEAT algorithm (Neat.ts).

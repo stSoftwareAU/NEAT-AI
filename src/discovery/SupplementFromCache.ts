@@ -13,29 +13,29 @@ import type {
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { RemovalCandidate } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import type { CoordinatedStructuralCandidate } from "../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
-import type { Creature } from "../Creature.ts";
-import { getLogger } from "../utils/Logger.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { RemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type { CoordinatedStructuralCandidate } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+import type { Creature } from "@creature";
+import { getLogger } from "@utils/Logger.ts";
 import {
   buildWireToRuntimeIdMap,
   resolveWireToRuntimeId,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
-import { buildCacheKey } from "./FailureCacheKey.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { buildCacheKey } from "@discovery/FailureCacheKey.ts";
 import type {
   DiscoveryCandidate,
   DiscoveryCandidateChange,
   DiscoveryChangeType,
-} from "./DiscoveryCandidates.ts";
+} from "@discovery/DiscoveryCandidates.ts";
 import {
   applyEntryUsingRustRequest,
   isAlreadyApplied,
-} from "./ReplayEntryApplication.ts";
+} from "@discovery/ReplayEntryApplication.ts";
 import {
   listSuccessEntriesSync,
   type SuccessCacheEntry,
-} from "./SuccessCache.ts";
+} from "@discovery/SuccessCache.ts";
 
 /** Maximum number of cache entries to supplement with by default. */
 const DEFAULT_MAX_SUPPLEMENTS = 5;

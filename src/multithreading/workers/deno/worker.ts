@@ -1,7 +1,10 @@
-import type { RequestData, ResponseData } from "../WorkerHandler.ts";
+import type {
+  RequestData,
+  ResponseData,
+} from "@multithreading/workers/WorkerHandler.ts";
 import { setSkipWasmAutoInit } from "@globalAccessors";
-import { setupWorkerMessageLoop } from "../../../workers/workerEntryPoint.ts";
-import { toError, toErrorMessage } from "../../../utils/ErrorSerialisation.ts";
+import { setupWorkerMessageLoop } from "@workers/workerEntryPoint.ts";
+import { toError, toErrorMessage } from "@utils/ErrorSerialisation.ts";
 
 // Issue #1263: WASM activation is mandatory. For the library's internal worker
 // system, workers receive the WASM payload from the parent during init, so we

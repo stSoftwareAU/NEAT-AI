@@ -12,8 +12,8 @@
  * Closes #1389
  */
 import { assert, assertAlmostEquals } from "@std/assert";
-import { Activations } from "../../../src/methods/activations/Activations.ts";
-import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
 
 /**
  * All standard (non-aggregate, non-deprecated) squash function names.

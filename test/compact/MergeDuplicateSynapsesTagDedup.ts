@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { mergeDuplicateSynapses } from "../../src/compact/CompactUtils.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { mergeDuplicateSynapses } from "@compact/CompactUtils.ts";
 
 Deno.test("mergeDuplicateSynapses: de-duplicates tags by {name,value} (not reference equality)", () => {
   // Two distinct objects with identical {name,value}.

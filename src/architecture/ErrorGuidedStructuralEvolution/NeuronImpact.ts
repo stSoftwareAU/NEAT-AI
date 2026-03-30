@@ -6,10 +6,10 @@
  * Calculates how much each neuron contributes to output error,
  * considering weight paths, activation derivatives, and downstream propagation.
  */
-import type { Creature } from "../../Creature.ts";
-import { CreatureErrorImpactEstimator } from "../../discovery/NeuronErrorImpactEstimator.ts";
-import { TopologyError } from "../../errors/TopologyError.ts";
-import type { NeuronImpactInfo } from "./DiscoverStructureTypes.ts";
+import type { Creature } from "@creature";
+import { CreatureErrorImpactEstimator } from "@discovery/NeuronErrorImpactEstimator.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import type { NeuronImpactInfo } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 
 /**
  * Calculates the impact of a neuron on the network outputs.

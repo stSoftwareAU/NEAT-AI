@@ -1,7 +1,7 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { compactCreature } from "../../src/compact/CompactCreature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import { compactCreature } from "@compact/CompactCreature.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 Deno.test("parallel IDENTITY merge: two bridge neurons to same target are merged", () => {
   // input-0 -> h0 (IDENTITY, bias=0, w_in=0.5) -> output-0 (w_out=2.0)

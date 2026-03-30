@@ -10,14 +10,14 @@
 
 import { bold, cyan, green, yellow } from "@std/fmt/colors";
 import { join } from "@std/path/join";
-import type { Creature } from "../Creature.ts";
-import { getLogger } from "../utils/Logger.ts";
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
+import type { Creature } from "@creature";
+import { getLogger } from "@utils/Logger.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 import type {
   DiscoveredNeuronDetails,
   DiscoveryChangeType,
-} from "./DiscoveryCandidates.ts";
-import { formatErrorDelta } from "./DiscoveryFormatting.ts";
+} from "@discovery/DiscoveryCandidates.ts";
+import { formatErrorDelta } from "@discovery/DiscoveryFormatting.ts";
 
 export interface DiscoveryEvaluationSummary {
   kind: "original" | "candidate";

@@ -11,8 +11,8 @@
  * Neural Networks from Overfitting", https://arxiv.org/abs/1207.0580
  */
 
-import type { Creature } from "../Creature.ts";
-import type { RandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import type { Creature } from "@creature";
+import type { RandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Apply inverted dropout to hidden neuron activations during training.

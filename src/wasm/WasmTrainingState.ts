@@ -28,9 +28,9 @@
  * ```
  */
 
-import type { BackPropagationConfig } from "../propagate/BackPropagation.ts";
-import type { NeuronState } from "../architecture/CreatureState.ts";
-import type { SynapseState } from "../propagate/SynapseState.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
+import type { NeuronState } from "@architecture/CreatureState.ts";
+import type { SynapseState } from "@propagate/SynapseState.ts";
 import {
   getAccumulateBiasPersistent4WayFn,
   getAccumulateBiasPersistent8WayFn,
@@ -43,7 +43,7 @@ import {
   getReadNeuronStateFn,
   getReadSynapseStateFn,
   getResetTrainingStateFn,
-} from "./WasmModuleLoader.ts";
+} from "@wasm/WasmModuleLoader.ts";
 
 // Pre-allocated reusable buffers to avoid per-call Float64Array allocations.
 const _pBuf4a = new Float64Array(4);

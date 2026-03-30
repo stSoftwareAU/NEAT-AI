@@ -3,7 +3,7 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { alternativeSquashes } from "../../src/intelligentDesign/AlternativeSquashes.ts";
+import { alternativeSquashes } from "@intelligentDesign/AlternativeSquashes.ts";
 
 Deno.test("alternativeSquashes contains expected tier 1 functions", () => {
   const tier1 = ["GELU", "Swish", "LeakyReLU", "Mish", "SELU", "ELU", "TANH"];

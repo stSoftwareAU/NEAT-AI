@@ -1,9 +1,9 @@
-import { moveConstantNeuronIntoPrefix } from "../architecture/NormaliseComputationalNeuronOrder.ts";
-import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { moveConstantNeuronIntoPrefix } from "@architecture/NormaliseComputationalNeuronOrder.ts";
+import { removeHiddenNeuron } from "@compact/CompactUtils.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 export class SubSelfCon extends AbstractMutationOperator {
   protected performMutation(focusList?: number[]): boolean {

@@ -17,12 +17,12 @@ import {
   assertExists,
   assertStringIncludes,
 } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   compileCreatureToWasm,
   getCompiledCreatureStats,
   SynapseTypeCode,
-} from "../../src/wasm/CompileToWasm.ts";
+} from "@wasm/CompileToWasm.ts";
 
 // ---------------------------------------------------------------------------
 // Binary layout tests

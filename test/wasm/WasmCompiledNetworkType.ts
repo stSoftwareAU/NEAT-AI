@@ -12,17 +12,14 @@ import {
   assertEquals,
   assertExists,
 } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import {
-  initWasmActivation,
-  WasmCreatureActivation,
-} from "../../src/wasm/mod.ts";
+import { Creature } from "@creature";
+import { initWasmActivation, WasmCreatureActivation } from "@wasm/mod.ts";
 import type {
   WasmCompiledNetwork,
   WasmCompiledNetworkConstructor,
-} from "../../src/wasm/mod.ts";
-import { getCompiledNetworkClass } from "../../src/wasm/WasmModuleLoader.ts";
-import { compileCreatureToWasm } from "../../src/wasm/CompileToWasm.ts";
+} from "@wasm/mod.ts";
+import { getCompiledNetworkClass } from "@wasm/WasmModuleLoader.ts";
+import { compileCreatureToWasm } from "@wasm/CompileToWasm.ts";
 
 await initWasmActivation();
 

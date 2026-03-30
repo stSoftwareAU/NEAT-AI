@@ -52,10 +52,10 @@
  */
 
 // Alternative squash functions
-export { alternativeSquashes } from "./AlternativeSquashes.ts";
+export { alternativeSquashes } from "@intelligentDesign/AlternativeSquashes.ts";
 
 // Best neuron squash type
-export type { BestNeuronSquash } from "./BestNeuronSquash.ts";
+export type { BestNeuronSquash } from "@intelligentDesign/BestNeuronSquash.ts";
 
 // Safe write utilities
 export {
@@ -63,7 +63,7 @@ export {
   safeWriteJsonSync,
   safeWriteText,
   safeWriteTextSync,
-} from "./SafeWrite.ts";
+} from "@intelligentDesign/SafeWrite.ts";
 
 // Tacit knowledge utilities
 export {
@@ -73,12 +73,12 @@ export {
   getNeuronsToTest,
   getValidNeuronSquashes,
   makeModifiedCreature,
-} from "./TacitKnowledge.ts";
+} from "@intelligentDesign/TacitKnowledge.ts";
 export type {
   ApplyTacitKnowledgeOptions,
   TacitKnowledgeMap,
   TacitKnowledgeResult,
-} from "./TacitKnowledge.ts";
+} from "@intelligentDesign/TacitKnowledge.ts";
 
 // Squash improvement utilities
 export {
@@ -86,14 +86,17 @@ export {
   makeModifiedCreatureWithPrevious,
   scanForSquashImprovements,
   shuffle,
-} from "./ImproveSquash.ts";
+} from "@intelligentDesign/ImproveSquash.ts";
 export type {
   ImproveSquashOptions,
   ImproveSquashResult,
-} from "./ImproveSquash.ts";
+} from "@intelligentDesign/ImproveSquash.ts";
 
 // Worker utilities
-export { WorkerHandler } from "./workers/WorkerHandler.ts";
-export type { RequestData, WorkerInterface } from "./workers/WorkerHandler.ts";
-export { WorkerProcessor } from "./workers/WorkerProcessor.ts";
-export type { ResponseData } from "./workers/ResponseData.ts";
+export { WorkerHandler } from "@intelligentDesign/workers/WorkerHandler.ts";
+export type {
+  RequestData,
+  WorkerInterface,
+} from "@intelligentDesign/workers/WorkerHandler.ts";
+export { WorkerProcessor } from "@intelligentDesign/workers/WorkerProcessor.ts";
+export type { ResponseData } from "@intelligentDesign/workers/ResponseData.ts";

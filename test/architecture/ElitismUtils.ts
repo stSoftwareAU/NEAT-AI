@@ -7,12 +7,12 @@
 
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   logVerbose,
   makeElitists,
   sortCreaturesByScore,
-} from "../../src/architecture/ElitismUtils.ts";
+} from "@architecture/ElitismUtils.ts";
 
 /**
  * Helper to create a scored creature.

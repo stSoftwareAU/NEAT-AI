@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import type { SparseConfigLike } from "../../../src/propagate/sparse/SparseConfigLike.ts";
+import type { SparseConfigLike } from "@propagate/sparse/SparseConfigLike.ts";
 
 Deno.test("Duck-typed SparseConfigLike trace-all object", () => {
   // This is the pattern used by DiscoverStructure - a trace-all stub

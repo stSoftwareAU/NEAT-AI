@@ -9,86 +9,86 @@
 import {
   DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS,
   type RequiredAdaptiveMutationThresholds,
-} from "./AdaptiveMutationThresholds.ts";
+} from "@config/AdaptiveMutationThresholds.ts";
 import {
   DEFAULT_BIAS_REGULARISATION_CONFIG,
   type RequiredBiasRegularisationConfig,
-} from "./BiasRegularisationConfig.ts";
+} from "@config/BiasRegularisationConfig.ts";
 import {
   DEFAULT_DISCOVERY_CACHE_CONFIG,
   type RequiredDiscoveryCacheConfig,
-} from "./DiscoveryCacheConfig.ts";
+} from "@config/DiscoveryCacheConfig.ts";
 import {
   DEFAULT_DISK_SPACE_CONFIG,
   type RequiredDiskSpaceConfig,
-} from "./DiskSpaceConfig.ts";
-import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
+} from "@config/DiskSpaceConfig.ts";
+import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
 import {
   DEFAULT_ENSEMBLE_DIVERSITY_CONFIG,
   type RequiredEnsembleDiversityConfig,
-} from "./EnsembleDiversityConfig.ts";
+} from "@config/EnsembleDiversityConfig.ts";
 import {
   DEFAULT_FINE_TUNE_POPULATION_CONFIG,
   type RequiredFineTunePopulationConfig,
-} from "./FineTunePopulationConfig.ts";
+} from "@config/FineTunePopulationConfig.ts";
 import {
   DEFAULT_MEMORY_CONFIG,
   type RequiredMemoryConfig,
-} from "./MemoryConfig.ts";
-import { parseNumber } from "./ParseOptions.ts";
+} from "@config/MemoryConfig.ts";
+import { parseNumber } from "@config/ParseOptions.ts";
 import {
   DEFAULT_PREDICTIVE_CODING_CONFIG,
   type RequiredPredictiveCodingConfig,
-} from "./PredictiveCodingConfig.ts";
+} from "@config/PredictiveCodingConfig.ts";
 import {
   DEFAULT_QUANTUM_STEP_CONFIG,
   type RequiredQuantumStepConfig,
-} from "./QuantumStepConfig.ts";
+} from "@config/QuantumStepConfig.ts";
 import {
   DEFAULT_STABILITY_ADAPTATION_CONFIG,
   type RequiredStabilityAdaptationConfig,
-} from "./StabilityAdaptationConfig.ts";
+} from "@config/StabilityAdaptationConfig.ts";
 import {
   DEFAULT_WASM_CACHE_CONFIG,
   type RequiredWasmCacheConfig,
-} from "./WasmCacheConfig.ts";
+} from "@config/WasmCacheConfig.ts";
 import {
   DEFAULT_WEIGHT_REGULARISATION_CONFIG,
   type RequiredWeightRegularisationConfig,
-} from "./WeightRegularisationConfig.ts";
+} from "@config/WeightRegularisationConfig.ts";
 import {
   DEFAULT_WORKER_THREAD_CAP_CONFIG,
   type RequiredWorkerThreadCapConfig,
-} from "./WorkerThreadCapConfig.ts";
+} from "@config/WorkerThreadCapConfig.ts";
 import {
   DEFAULT_PLATEAU_DETECTION,
   type RequiredPlateauDetectionConfig,
-} from "../NEAT/PlateauDetector.ts";
-import { DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY } from "./NeatConfig.ts";
+} from "@neat/PlateauDetector.ts";
+import { DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY } from "@config/NeatConfig.ts";
 import {
   DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,
   type RequiredHyperparameterEvolutionConfig,
-} from "./HyperparameterConfig.ts";
+} from "@config/HyperparameterConfig.ts";
 import {
   DEFAULT_ADAPTIVE_POPULATION_CONFIG,
   type RequiredAdaptivePopulationConfig,
-} from "./AdaptivePopulationConfig.ts";
+} from "@config/AdaptivePopulationConfig.ts";
 import {
   DEFAULT_CROSS_VALIDATION_CONFIG,
   type RequiredCrossValidationConfig,
-} from "./CrossValidationConfig.ts";
+} from "@config/CrossValidationConfig.ts";
 import {
   DEFAULT_DATA_FUZZING_CONFIG,
   type RequiredDataFuzzingConfig,
-} from "./DataFuzzingConfig.ts";
+} from "@config/DataFuzzingConfig.ts";
 import {
   DEFAULT_DATA_QUANTISATION_CONFIG,
   type RequiredDataQuantisationConfig,
-} from "./DataQuantisationConfig.ts";
+} from "@config/DataQuantisationConfig.ts";
 import {
   DEFAULT_PARALLEL_EVALUATION_CONFIG,
   type RequiredParallelEvaluationConfig,
-} from "./ParallelEvaluationConfig.ts";
+} from "@config/ParallelEvaluationConfig.ts";
 
 /** Parse worker thread cap configuration (Issue #1569). */
 export function parseWorkerThreadCap(

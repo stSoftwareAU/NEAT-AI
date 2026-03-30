@@ -1,25 +1,28 @@
 import { assert } from "@std/assert";
 import { addTags, getTag, removeTag } from "@stsoftware/tags/mod";
-import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
-import { editParentByIndex } from "../breed/EditParentByIndex.ts";
-import { geneticCompatibility } from "../breed/GeneticCompatibility.ts";
-import { Creature } from "../Creature.ts";
-import type { RequiredHyperparameterEvolutionConfig } from "../config/HyperparameterConfig.ts";
-import { DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG } from "../config/HyperparameterConfig.ts";
-import { crossoverHyperparameters } from "../NEAT/HyperparameterEvolution.ts";
-import { TopologyError } from "../errors/TopologyError.ts";
-import { neuronWireLabelForDiagnostics } from "../neuron/NeuronSerialization.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import { prepareCreatureForBreeding } from "../upgrade/Upgrade.ts";
-import { writeDiagnostics } from "../utils/Diagnostics.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { pruneOrphanMemeticReferences } from "../compact/CompactUtils.ts";
-import { CreatureUtil } from "./CreatureUtils.ts";
-import { Neuron } from "./Neuron.ts";
-import { outputIndexFromId, outputNeuronId } from "./NeuronId.ts";
-import { Synapse as SynapseClass } from "./Synapse.ts";
-import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
-import { creatureValidate } from "./CreatureValidate.ts";
+import { memeticUpdate } from "@blackbox/MemeticUpdate.ts";
+import { editParentByIndex } from "@breed/EditParentByIndex.ts";
+import { geneticCompatibility } from "@breed/GeneticCompatibility.ts";
+import { Creature } from "@creature";
+import type { RequiredHyperparameterEvolutionConfig } from "@config/HyperparameterConfig.ts";
+import { DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG } from "@config/HyperparameterConfig.ts";
+import { crossoverHyperparameters } from "@neat/HyperparameterEvolution.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import { neuronWireLabelForDiagnostics } from "@neuron/NeuronSerialization.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { prepareCreatureForBreeding } from "@upgrade/Upgrade.ts";
+import { writeDiagnostics } from "@utils/Diagnostics.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { pruneOrphanMemeticReferences } from "@compact/CompactUtils.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { Neuron } from "@architecture/Neuron.ts";
+import { outputIndexFromId, outputNeuronId } from "@architecture/NeuronId.ts";
+import { Synapse as SynapseClass } from "@architecture/Synapse.ts";
+import type {
+  SynapseExport,
+  SynapseInternal,
+} from "@architecture/SynapseInterfaces.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {

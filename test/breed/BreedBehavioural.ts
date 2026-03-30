@@ -10,8 +10,8 @@
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature, type CreatureExport, CreatureUtil } from "../../mod.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 
 /**
  * Creates a creature with known structure and a unique hidden neuron.

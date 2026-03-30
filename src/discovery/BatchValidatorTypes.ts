@@ -10,12 +10,12 @@
 import type {
   DiscoveryCandidate,
   DiscoveryChangeType,
-} from "./DiscoveryCandidates.ts";
+} from "@discovery/DiscoveryCandidates.ts";
 import type {
   EnhancedBrittlenessOptions,
   EnhancedHoldoutOptions,
   EnhancedValidationResult,
-} from "./EnhancedDiscoveryValidator.ts";
+} from "@discovery/EnhancedDiscoveryValidator.ts";
 
 /**
  * Result of a batch validation for a single candidate.

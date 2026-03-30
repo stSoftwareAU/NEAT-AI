@@ -4,8 +4,8 @@
  * enforced by review: do not add full `creatureValidate` on every export/import.
  */
 import { assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { exportJSON } from "../../src/creature/CreatureSerialization.ts";
+import { Creature } from "@creature";
+import { exportJSON } from "@creature/CreatureSerialization.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 Deno.test({

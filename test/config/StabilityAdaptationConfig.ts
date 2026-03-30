@@ -1,8 +1,8 @@
 import { assertEquals } from "@std/assert";
 import {
   DEFAULT_STABILITY_ADAPTATION_CONFIG,
-} from "../../src/config/StabilityAdaptationConfig.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+} from "@config/StabilityAdaptationConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 Deno.test("StabilityAdaptationConfig - defaults are applied", () => {
   const config = createNeatConfig({});

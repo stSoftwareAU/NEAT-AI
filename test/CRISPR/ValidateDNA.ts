@@ -1,5 +1,5 @@
 import { assertThrows } from "@std/assert";
-import { validateDNA } from "../../src/reconstruct/validateDNA.ts";
+import { validateDNA } from "@reconstruct/validateDNA.ts";
 
 Deno.test("validateDNA - missing id throws descriptive error", () => {
   assertThrows(

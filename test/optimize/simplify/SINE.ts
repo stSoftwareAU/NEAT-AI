@@ -1,8 +1,8 @@
 import { assert, assertAlmostEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../../src/Creature.ts";
-import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { SINE } from "../../../src/methods/activations/types/SINE.ts";
-import { simplify } from "../../../src/optimize/Simplify.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { SINE } from "@methods/activations/types/SINE.ts";
+import { simplify } from "@optimize/Simplify.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
 Deno.test("simplify - SINE squash with varied biases preserves behaviour", () => {

@@ -17,33 +17,33 @@
  */
 
 import { assert } from "@std/assert";
-import type { Creature } from "../Creature.ts";
-import type { CostInterface } from "../costs/CostInterface.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
-import type { RequiredPredictiveCodingConfig } from "../config/PredictiveCodingConfig.ts";
-import { runInference } from "./PredictiveCodingInference.ts";
+import type { Creature } from "@creature";
+import type { CostInterface } from "@costs/CostInterface.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import type { RequiredPredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
+import { runInference } from "@predictiveCoding/PredictiveCodingInference.ts";
 import {
   applyHebbianUpdate,
   type BiasGradient,
   computeWeightGradients,
   type SynapseGradient,
   type WeightGradients,
-} from "./PredictiveCodingLearning.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import { computeEffectiveConfig } from "./AdaptiveScaling.ts";
+} from "@predictiveCoding/PredictiveCodingLearning.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { computeEffectiveConfig } from "@predictiveCoding/AdaptiveScaling.ts";
 import {
   type DataFuzzingConfig,
   DEFAULT_DATA_FUZZING_CONFIG,
   type RequiredDataFuzzingConfig,
-} from "../config/DataFuzzingConfig.ts";
+} from "@config/DataFuzzingConfig.ts";
 import {
   type DataQuantisationConfig,
   DEFAULT_DATA_QUANTISATION_CONFIG,
   type RequiredDataQuantisationConfig,
-} from "../config/DataQuantisationConfig.ts";
-import { applyNoise } from "../propagate/DataFuzzing.ts";
-import { quantiseBuffer } from "../propagate/DataQuantisation.ts";
+} from "@config/DataQuantisationConfig.ts";
+import { applyNoise } from "@propagate/DataFuzzing.ts";
+import { quantiseBuffer } from "@propagate/DataQuantisation.ts";
 
 /**
  * Result from Predictive Coding training.

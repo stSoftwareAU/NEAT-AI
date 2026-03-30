@@ -11,8 +11,8 @@
  */
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Creature, type CreatureExport, CreatureUtil } from "../../mod.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { ModActivation } from "../../src/mutate/ModSquash.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { ModActivation } from "@mutate/ModSquash.ts";
 
 /**
  * Creates a creature with multiple neurons using distinct squash functions.

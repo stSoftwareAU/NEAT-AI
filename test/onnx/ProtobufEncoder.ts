@@ -6,7 +6,7 @@
  */
 
 import { assertEquals } from "@std/assert";
-import { ProtobufWriter } from "../../src/onnx/ProtobufEncoder.ts";
+import { ProtobufWriter } from "@onnx/ProtobufEncoder.ts";
 
 Deno.test("ProtobufWriter encodes single-byte varint", () => {
   const w = new ProtobufWriter();

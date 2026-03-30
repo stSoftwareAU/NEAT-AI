@@ -1,9 +1,6 @@
 import { assertEquals, assertGreater, assertLessOrEqual } from "@std/assert";
-import {
-  calculateEffectiveStep,
-  quantumAdjust,
-} from "../../src/blackbox/FineTune.ts";
-import { DEFAULT_QUANTUM_STEP_CONFIG } from "../../src/config/QuantumStepConfig.ts";
+import { calculateEffectiveStep, quantumAdjust } from "@blackbox/FineTune.ts";
+import { DEFAULT_QUANTUM_STEP_CONFIG } from "@config/QuantumStepConfig.ts";
 
 Deno.test("calculateEffectiveStep - returns minStep when error is zero", () => {
   const config = DEFAULT_QUANTUM_STEP_CONFIG;

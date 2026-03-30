@@ -8,19 +8,19 @@
  *   deno bench --allow-read --allow-env --allow-ffi bench/BatchDiscoveryValidation.ts
  */
 
-import { Creature } from "../src/Creature.ts";
-import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
-import type { DiscoverResult } from "../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { buildDiscoveryCandidates } from "../src/discovery/DiscoveryCandidates.ts";
-import { validateAfterDiscoveryOrThrow } from "../src/discovery/DiscoveryPostValidate.ts";
-import { BatchDiscoveryValidator } from "../src/discovery/BatchDiscoveryValidator.ts";
-import { TANH } from "../src/methods/activations/types/TANH.ts";
-import { Mish } from "../src/methods/activations/types/Mish.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { buildDiscoveryCandidates } from "@discovery/DiscoveryCandidates.ts";
+import { validateAfterDiscoveryOrThrow } from "@discovery/DiscoveryPostValidate.ts";
+import { BatchDiscoveryValidator } from "@discovery/BatchDiscoveryValidator.ts";
+import { TANH } from "@methods/activations/types/TANH.ts";
+import { Mish } from "@methods/activations/types/Mish.ts";
 
 console.log("\n" + "=".repeat(70));
 console.log("Issue #1291: Batch Discovery Candidate Validation Benchmark");

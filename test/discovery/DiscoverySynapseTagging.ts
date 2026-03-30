@@ -1,11 +1,11 @@
 import { assert, assertEquals } from "@std/assert";
 import { getTag } from "@stsoftware/tags/mod";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import {
   type CandidateSynapse,
   DiscoverStructure,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { Creature } from "../../src/Creature.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { Creature } from "@creature";
 
 Deno.test("Discovery addHelpfulSynapses tags new synapses and tags survive export/import", () => {
   const base: CreatureExport = {

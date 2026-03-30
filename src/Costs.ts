@@ -3,14 +3,14 @@
  ** https://en.wikipedia.org/wiki/Loss_function
  *******************************************************************************/
 
-import type { CostInterface } from "./costs/CostInterface.ts";
-import { ValidationError } from "./errors/ValidationError.ts";
-import { CrossEntropy } from "./costs/CrossEntropy.ts";
-import { HINGE } from "./costs/HINGE.ts";
-import { MAE } from "./costs/MAE.ts";
-import { MAPE } from "./costs/MAPE.ts";
-import { MSE } from "./costs/MSE.ts";
-import { MSLE } from "./costs/MSLE.ts";
+import type { CostInterface } from "@costs/CostInterface.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import { CrossEntropy } from "@costs/CrossEntropy.ts";
+import { HINGE } from "@costs/HINGE.ts";
+import { MAE } from "@costs/MAE.ts";
+import { MAPE } from "@costs/MAPE.ts";
+import { MSE } from "@costs/MSE.ts";
+import { MSLE } from "@costs/MSLE.ts";
 
 /**
  * Built-in cost names supported by this library.

@@ -5,10 +5,10 @@
  * recording, analysis, focus selection, and application phases.
  */
 
-import type { RustRecordBatchStats } from "./RustDiscovery.ts";
+import type { RustRecordBatchStats } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import type {
   CoordinatedStructuralCandidate,
-} from "./CoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 
 export interface DiscoverRecord {
   activation: number;

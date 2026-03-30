@@ -6,7 +6,7 @@
  * across workers.
  */
 import { assertEquals, assertExists, assertGreater } from "@std/assert";
-import { WorkStealingQueue } from "../../src/multithreading/WorkStealingQueue.ts";
+import { WorkStealingQueue } from "@multithreading/WorkStealingQueue.ts";
 
 // Test task interface for testing
 interface TestTask {

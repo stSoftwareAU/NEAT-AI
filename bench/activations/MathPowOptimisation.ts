@@ -5,9 +5,9 @@
  * Measures squash, unSquash, and derivative performance for each
  * affected activation function.
  */
-import { GAUSSIAN } from "../../src/methods/activations/types/GAUSSIAN.ts";
-import { ISRU } from "../../src/methods/activations/types/ISRU.ts";
-import { GELU } from "../../src/methods/activations/types/GELU.ts";
+import { GAUSSIAN } from "@methods/activations/types/GAUSSIAN.ts";
+import { ISRU } from "@methods/activations/types/ISRU.ts";
+import { GELU } from "@methods/activations/types/GELU.ts";
 
 // Pre-generate test data to avoid measuring random number generation
 const testValues: number[] = [];

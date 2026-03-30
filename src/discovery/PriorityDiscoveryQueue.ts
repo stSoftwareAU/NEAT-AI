@@ -16,7 +16,7 @@
  * queue instances rather than modifying the original.
  */
 
-import type { SuccessCacheEntry } from "./SuccessCache.ts";
+import type { SuccessCacheEntry } from "@discovery/SuccessCache.ts";
 
 /** A candidate with its calculated priority and expected improvement. */
 export interface PrioritisedCandidate {

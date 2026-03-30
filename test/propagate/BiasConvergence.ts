@@ -12,14 +12,14 @@ import { assertAlmostEquals, assertGreater, assertLess } from "@std/assert";
 import {
   type BackPropagationConfig,
   createBackPropagationConfig,
-} from "../../src/propagate/BackPropagation.ts";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+} from "@propagate/BackPropagation.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import {
   accumulateBias,
   adjustedBias,
   calculateBias,
-} from "../../src/propagate/Bias.ts";
+} from "@propagate/Bias.ts";
 
 // ---------------------------------------------------------------------------
 // Helper

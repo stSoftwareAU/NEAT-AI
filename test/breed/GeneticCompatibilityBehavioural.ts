@@ -11,7 +11,7 @@
  */
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature, type CreatureExport, CreatureUtil } from "../../mod.ts";
-import { geneticCompatibility } from "../../src/breed/GeneticCompatibility.ts";
+import { geneticCompatibility } from "@breed/GeneticCompatibility.ts";
 
 /**
  * Creates a creature with the specified hidden neuron UUIDs.

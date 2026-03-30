@@ -1,7 +1,7 @@
-import type { Neuron } from "../architecture/Neuron.ts";
-import type { Synapse } from "../architecture/Synapse.ts";
-import type { DiscoverRecord } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { distributeElasticError } from "./ElasticDistribution.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
+import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { distributeElasticError } from "@propagate/ElasticDistribution.ts";
 
 /**
  * Recording-time elasticity helpers.

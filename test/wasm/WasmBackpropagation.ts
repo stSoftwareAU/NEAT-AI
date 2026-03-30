@@ -10,11 +10,11 @@
  */
 
 import { assert, assertAlmostEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { Activations } from "../../src/methods/activations/Activations.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { Creature } from "@creature";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import {
   calculateError,
   initWasmActivation,
@@ -23,7 +23,7 @@ import {
   safeZoneAdjustment,
   squash,
   unSquash,
-} from "../../src/wasm/mod.ts";
+} from "@wasm/mod.ts";
 
 // Tolerance for floating point comparisons (WASM uses f32, JS uses f64)
 const TOLERANCE = 1e-5;

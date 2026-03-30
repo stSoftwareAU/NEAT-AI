@@ -2,7 +2,7 @@ import { assert, assertEquals } from "@std/assert";
 import {
   calculateDiscoveryTimeout,
   DEFAULT_DISCOVERY_TIMEOUT_BOUNDS,
-} from "../../src/discovery/DiscoveryTimeout.ts";
+} from "@discovery/DiscoveryTimeout.ts";
 
 Deno.test("calculateDiscoveryTimeout - minimal creature returns near-minimum timeout", () => {
   const timeout = calculateDiscoveryTimeout({

@@ -1,15 +1,13 @@
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CandidateSynapse,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import {
-  buildDiscoveryCandidates,
-} from "../../src/discovery/DiscoveryCandidates.ts";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { buildDiscoveryCandidates } from "@discovery/DiscoveryCandidates.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 
 function makeBaselineCreature(): Creature {
   const json: Parameters<typeof normaliseCreatureExport>[0] = {

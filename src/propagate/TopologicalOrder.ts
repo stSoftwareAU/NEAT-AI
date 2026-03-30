@@ -13,7 +13,7 @@
  * are appended at the end of the order.
  */
 
-import type { Creature } from "../Creature.ts";
+import type { Creature } from "@creature";
 
 /**
  * Compute reverse topological order of non-input neurons.

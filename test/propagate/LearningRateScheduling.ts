@@ -18,7 +18,7 @@ import {
 import {
   calculateLearningRate,
   createBackPropagationConfig,
-} from "../../src/propagate/BackPropagation.ts";
+} from "@propagate/BackPropagation.ts";
 
 // ---------------------------------------------------------------------------
 // Sensible default learning rate

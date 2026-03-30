@@ -1,5 +1,5 @@
 import type { TagsInterface } from "@stsoftware/tags/mod";
-import type { NeuronStateInterface } from "./CreatureState.ts";
+import type { NeuronStateInterface } from "@architecture/CreatureState.ts";
 
 interface NeuronAbstract extends TagsInterface {
   /**

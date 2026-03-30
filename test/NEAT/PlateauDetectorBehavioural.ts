@@ -2,7 +2,7 @@ import { assert, assertEquals, assertGreater } from "@std/assert";
 import {
   DEFAULT_PLATEAU_DETECTION,
   PlateauDetector,
-} from "../../src/NEAT/PlateauDetector.ts";
+} from "@neat/PlateauDetector.ts";
 
 /**
  * Behavioural tests for plateau detection (PlateauDetector.ts).

@@ -5,7 +5,7 @@
  * and lifecycle management using direct (MockWorker) mode.
  */
 import { assertEquals, assertExists } from "@std/assert";
-import { WorkerHandler } from "../../src/multithreading/workers/WorkerHandler.ts";
+import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 
 Deno.test("WorkerHandler: constructs in direct mode and initialises", async () => {
   const handler = new WorkerHandler(

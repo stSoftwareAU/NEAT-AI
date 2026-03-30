@@ -3,8 +3,8 @@
  */
 
 import { assertEquals } from "@std/assert";
-import { DEFAULT_DISCOVERY_CACHE_CONFIG } from "../../src/config/DiscoveryCacheConfig.ts";
-import { parseDiscoveryCache } from "../../src/config/NeatConfigParsers.ts";
+import { DEFAULT_DISCOVERY_CACHE_CONFIG } from "@config/DiscoveryCacheConfig.ts";
+import { parseDiscoveryCache } from "@config/NeatConfigParsers.ts";
 
 Deno.test("parseDiscoveryCache returns defaults when no overrides", () => {
   const config = parseDiscoveryCache(undefined);

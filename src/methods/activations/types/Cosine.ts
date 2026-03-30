@@ -11,9 +11,9 @@
 import { assert } from "@std/assert";
 import type { SimplifyBiasInterface } from "@optimize/SimplifyBiasInterface.ts";
 import { ActivationRange } from "@propagate/ActivationRange.ts";
-import type { ActivationInterface } from "../ActivationInterface.ts";
-import type { UnSquashInterface } from "../UnSquashInterface.ts";
-import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import type { UnSquashInterface } from "@methods/activations/UnSquashInterface.ts";
+import { ERROR_EPSILON } from "@methods/activations/AbstractActivationInterface.ts";
 import { ErrorHelper } from "@propagate/ErrorHelper.ts";
 
 export class Cosine

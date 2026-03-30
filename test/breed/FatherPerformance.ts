@@ -10,11 +10,11 @@
  */
 import { assertEquals, assertExists } from "@std/assert";
 import { Creature } from "../../mod.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import {
   createCompatibleFather,
   createCompatibleFatherFromCreatures,
-} from "../../src/breed/Father.ts";
+} from "@breed/Father.ts";
 
 /**
  * Creates a creature with many neurons and synapses to simulate a large creature.

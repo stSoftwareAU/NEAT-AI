@@ -11,12 +11,12 @@
  *   deno bench --allow-read bench/WasmCreatureActivationLRU.ts
  */
 
-import { Creature } from "../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   evictOldestWasmCreatureActivations,
   noteWasmCreatureActivationUse,
   setMaxCachedWasmCreatureActivations,
-} from "../src/wasm/WasmCreatureActivationLRU.ts";
+} from "@wasm/WasmCreatureActivationLRU.ts";
 
 /** Create a minimal creature for benchmarking. */
 function createMinimalCreature(): Creature {

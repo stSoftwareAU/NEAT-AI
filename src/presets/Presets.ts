@@ -16,7 +16,7 @@
  * with your own overrides to build the configuration you need.
  */
 
-import type { NeatOptions } from "../config/NeatOptions.ts";
+import type { NeatOptions } from "@config/NeatOptions.ts";
 
 /**
  * Quick Start preset — small population, fast iterations, good for

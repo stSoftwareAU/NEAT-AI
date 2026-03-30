@@ -9,10 +9,10 @@
 
 import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
-import { TopologyError } from "../../src/errors/TopologyError.ts";
-import type { ValidationError } from "../../src/errors/ValidationError.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import type { ValidationError } from "@errors/ValidationError.ts";
 
 Deno.test("creatureValidate - output UUID mismatch produces clean message", () => {
   const creature = new Creature(2, 1, {

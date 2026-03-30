@@ -1,10 +1,10 @@
 import { assertEquals } from "@std/assert";
-import { emitTrainingEvent } from "../../src/NEAT/TrainingEventEmitter.ts";
+import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 import type {
   SpeciesAdjustedEvent,
   TrainingEvent,
   TrainingEventCallback,
-} from "../../src/config/TrainingEvent.ts";
+} from "@config/TrainingEvent.ts";
 
 /**
  * Unit tests for TrainingEventEmitter.ts — safe event emission.

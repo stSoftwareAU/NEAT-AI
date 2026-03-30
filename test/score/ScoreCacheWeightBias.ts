@@ -1,7 +1,7 @@
 import { assertEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { calculate } from "../../src/architecture/Score.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { Creature } from "@creature";
+import { calculate } from "@architecture/Score.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 /**
  * Test suite for caching weight/bias statistics in score calculation.

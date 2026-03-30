@@ -1,4 +1,4 @@
-import type { DataRecordInterface } from "../DataSet.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 
 /**
  * Submits a buffered discovery recording batch in a non-destructive way.

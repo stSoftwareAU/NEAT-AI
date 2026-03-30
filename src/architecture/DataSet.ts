@@ -1,4 +1,4 @@
-import { ValidationError } from "../errors/ValidationError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 
 export interface DataRecordInterface {
   input: Float32Array;

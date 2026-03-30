@@ -10,12 +10,12 @@
  * Tests follow TDD - written first before implementation.
  */
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   BrittlenessScorer,
   type BrittlenessScorerOptions,
   perturbInput,
-} from "../../src/discovery/BrittlenessScorer.ts";
+} from "@discovery/BrittlenessScorer.ts";
 
 function makeSimpleCreature(): Creature {
   const creature = Creature.fromJSON({

@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { Creature } from "@creature";
+import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 
 /**
  * Regression coverage: discovery must respect forward-only invariants.

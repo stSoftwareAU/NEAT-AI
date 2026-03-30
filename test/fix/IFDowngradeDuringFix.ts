@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { IF } from "../../src/methods/activations/aggregate/IF.ts";
+import { Creature } from "@creature";
+import { IF } from "@methods/activations/aggregate/IF.ts";
 
 Deno.test("fix/IFDowngradeDuringFix - IF.fix should downgrade when 3rd inbound cannot be created", () => {
   // Arrange: in a tiny 2->2 creature, each output has exactly 2 inbound connections

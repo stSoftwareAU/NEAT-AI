@@ -8,15 +8,15 @@
 
 import { assertEquals, assertNotEquals } from "@std/assert";
 import { getTag } from "@stsoftware/tags/mod";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   type DataRecordInterface,
   makeDataDir,
-} from "../../src/architecture/DataSet.ts";
-import { trainDir } from "../../src/architecture/Training.ts";
-import { Costs } from "../../src/Costs.ts";
-import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../../src/config/PredictiveCodingConfig.ts";
-import type { TrainOptions } from "../../src/config/TrainOptions.ts";
+} from "@architecture/DataSet.ts";
+import { trainDir } from "@architecture/Training.ts";
+import { Costs } from "@costs";
+import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "@config/PredictiveCodingConfig.ts";
+import type { TrainOptions } from "@config/TrainOptions.ts";
 
 /** Helper: creates a simple creature and data directory for XOR-like data. */
 function makeTestFixture() {

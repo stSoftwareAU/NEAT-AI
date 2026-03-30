@@ -10,8 +10,11 @@
  * @module
  */
 
-import type { BaseRequestData, BaseResponseData } from "./WorkerInterface.ts";
-import { getInitTimeoutMs } from "./WorkerHandlerBase.ts";
+import type {
+  BaseRequestData,
+  BaseResponseData,
+} from "@workers/WorkerInterface.ts";
+import { getInitTimeoutMs } from "@workers/WorkerHandlerBase.ts";
 
 /**
  * A processor that can handle worker requests.

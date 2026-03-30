@@ -2,13 +2,13 @@ import { assert, assertEquals } from "@std/assert";
 import {
   DEFAULT_EVOLVABLE_HYPERPARAMETERS,
   DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,
-} from "../../src/config/HyperparameterConfig.ts";
+} from "@config/HyperparameterConfig.ts";
 import {
   computeSpeciesDiversity,
   createDefaultHyperparameters,
   crossoverHyperparameters,
   mutateHyperparameters,
-} from "../../src/NEAT/HyperparameterEvolution.ts";
+} from "@neat/HyperparameterEvolution.ts";
 
 const enabledConfig = {
   ...DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,

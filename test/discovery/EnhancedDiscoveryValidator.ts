@@ -9,16 +9,14 @@
  * Tests follow TDD - written first before implementation.
  */
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
-import type {
-  DiscoveryCandidate,
-} from "../../src/discovery/DiscoveryCandidates.ts";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { makeDataDir } from "@architecture/DataSet.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 import {
   EnhancedDiscoveryValidator,
   type EnhancedValidationOptions,
-} from "../../src/discovery/EnhancedDiscoveryValidator.ts";
+} from "@discovery/EnhancedDiscoveryValidator.ts";
 
 function makeBaselineCreature(): Creature {
   const creature = Creature.fromJSON({

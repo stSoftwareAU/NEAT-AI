@@ -1,4 +1,7 @@
-import type { MutationInterface, MutationType } from "./MutationInterface.ts";
+import type {
+  MutationInterface,
+  MutationType,
+} from "@neat/MutationInterface.ts";
 
 /**
  * Mutation strategies used in genetic algorithms.

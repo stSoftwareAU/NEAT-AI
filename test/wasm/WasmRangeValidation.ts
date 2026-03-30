@@ -8,14 +8,14 @@
  */
 
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { Activations } from "../../src/methods/activations/Activations.ts";
-import { initWasmActivation } from "../../src/wasm/WasmModuleLoader.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import { initWasmActivation } from "@wasm/WasmModuleLoader.ts";
 import {
   wasmGetRange,
   wasmLimitRange,
   wasmValidateRange,
-} from "../../src/wasm/WasmStandaloneFunctions.ts";
-import { SquashType } from "../../src/wasm/SquashType.ts";
+} from "@wasm/WasmStandaloneFunctions.ts";
+import { SquashType } from "@wasm/SquashType.ts";
 
 // Initialise WASM module before tests
 await initWasmActivation();

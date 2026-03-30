@@ -5,7 +5,7 @@
  */
 
 import { assertEquals, assertNotEquals } from "@std/assert";
-import { Selection } from "../../src/methods/Selection.ts";
+import { Selection } from "@methods/Selection.ts";
 
 Deno.test("FITNESS_PROPORTIONATE has correct name", () => {
   assertEquals(Selection.FITNESS_PROPORTIONATE.name, "FITNESS_PROPORTIONATE");

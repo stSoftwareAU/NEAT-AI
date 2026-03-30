@@ -9,10 +9,10 @@
  * direct membership in the focus list.
  */
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { SubConnection } from "../../src/mutate/SubConnection.ts";
-import { SubNeuron } from "../../src/mutate/SubNeuron.ts";
+import { Creature } from "@creature";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import { SubConnection } from "@mutate/SubConnection.ts";
+import { SubNeuron } from "@mutate/SubNeuron.ts";
 
 /**
  * Creates a longer chain network: input(0) -> hidden1(1) -> hidden2(2) -> output(3)

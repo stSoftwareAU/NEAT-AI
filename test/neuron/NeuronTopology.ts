@@ -1,9 +1,9 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { fix, mutate } from "../../src/neuron/NeuronTopology.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
-import { TopologyError } from "../../src/errors/TopologyError.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { fix, mutate } from "@neuron/NeuronTopology.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 
 /** Helper: creates a creature with a hidden neuron for topology tests. */
 function makeTopologyCreature(): Creature {

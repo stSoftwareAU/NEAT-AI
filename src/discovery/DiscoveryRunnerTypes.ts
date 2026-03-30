@@ -7,15 +7,15 @@
  * Extracted from DiscoveryRunner.ts as part of #1598.
  */
 
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import type { DiscoverResult } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import type { WasmCacheConfig } from "../config/WasmCacheConfig.ts";
-import type { CostName } from "../Costs.ts";
-import type { Creature } from "../Creature.ts";
-import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
-import type { NeatOptions } from "../config/NeatOptions.ts";
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
-import type { DiscoveryEvaluationSummary } from "./DiscoveryEvaluationSummary.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type { WasmCacheConfig } from "@config/WasmCacheConfig.ts";
+import type { CostName } from "@costs";
+import type { Creature } from "@creature";
+import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
+import type { NeatOptions } from "@config/NeatOptions.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
+import type { DiscoveryEvaluationSummary } from "@discovery/DiscoveryEvaluationSummary.ts";
 
 export interface DiscoveryRunnerWorker {
   discover(

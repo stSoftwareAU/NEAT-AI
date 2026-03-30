@@ -7,12 +7,12 @@
  */
 
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import { ensureWasmActivation } from "../../src/wasm/EnsureWasmActivation.ts";
+import { ensureWasmActivation } from "@wasm/EnsureWasmActivation.ts";
 import {
   distributeElasticError,
   type ElasticLink,
-} from "../../src/propagate/ElasticDistribution.ts";
-import { wasmDistributeElasticError } from "../../src/wasm/WasmStandaloneFunctions.ts";
+} from "@propagate/ElasticDistribution.ts";
+import { wasmDistributeElasticError } from "@wasm/WasmStandaloneFunctions.ts";
 
 await ensureWasmActivation();
 

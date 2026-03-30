@@ -8,7 +8,7 @@ import { assertEquals } from "@std/assert";
 import {
   dedupeTagsByNameValue,
   mergeTagsByNameValue,
-} from "../../src/utils/TagUtils.ts";
+} from "@utils/TagUtils.ts";
 
 // --- dedupeTagsByNameValue ---
 

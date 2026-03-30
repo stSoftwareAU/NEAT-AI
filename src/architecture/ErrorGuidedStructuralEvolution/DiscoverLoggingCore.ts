@@ -4,15 +4,15 @@
  * Provides the central logging function with discovery ID prefix,
  * focus selection details, analysis status logging, and utility formatters.
  */
-import { getLogger } from "../../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 import type {
   FocusSelectionSummary,
   NeuronScanStats,
-} from "./DiscoverStructureTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 import type {
   RustNeuronDiagnostic,
   RustSynapseDiagnostic,
-} from "./RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 /**
  * Core logging function with discovery ID prefix.
@@ -209,11 +209,11 @@ export function formatMillis(duration: number): string {
 import {
   formatNeuronDiagnostic,
   formatSynapseDiagnostic,
-} from "./DiscoverDiagnosticFormatting.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDiagnosticFormatting.ts";
 import {
   describeNeuronDiagnosticReason,
   describeSynapseDiagnosticReason,
-} from "./DiscoverDiagnosticFormatting.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDiagnosticFormatting.ts";
 
 /**
  * Comprehensive diagnostic logging with statistics.

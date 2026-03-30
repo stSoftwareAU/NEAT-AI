@@ -1,5 +1,5 @@
 import { assertEquals, fail } from "@std/assert";
-import { CrossEntropy } from "../../src/costs/CrossEntropy.ts";
+import { CrossEntropy } from "@costs/CrossEntropy.ts";
 
 Deno.test("CrossEntropy - getName returns CROSS_ENTROPY", () => {
   const ce = new CrossEntropy();

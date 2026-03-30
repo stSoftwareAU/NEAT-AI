@@ -1,6 +1,6 @@
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { Creature } from "../../src/Creature.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { Creature } from "@creature";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

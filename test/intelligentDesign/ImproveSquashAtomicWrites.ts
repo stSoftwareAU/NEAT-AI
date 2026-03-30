@@ -7,14 +7,12 @@
  */
 
 import { assertEquals, assertExists } from "@std/assert";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
-import { Creature } from "../../src/Creature.ts";
-import type { NeatOptions } from "../../src/config/NeatOptions.ts";
-import {
-  scanForSquashImprovements,
-} from "../../src/intelligentDesign/ImproveSquash.ts";
-import type { ResponseData } from "../../src/intelligentDesign/workers/ResponseData.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { Creature } from "@creature";
+import type { NeatOptions } from "@config/NeatOptions.ts";
+import { scanForSquashImprovements } from "@intelligentDesign/ImproveSquash.ts";
+import type { ResponseData } from "@intelligentDesign/workers/ResponseData.ts";
 
 const testCreatureJson: CreatureInternal = {
   neurons: [

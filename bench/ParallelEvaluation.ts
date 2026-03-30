@@ -9,11 +9,11 @@
  * Run with:
  *   deno bench --allow-read --allow-write --allow-env --allow-ffi bench/ParallelEvaluation.ts
  */
-import { Creature } from "../src/Creature.ts";
-import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
-import { Fitness } from "../src/architecture/Fitness.ts";
-import type { RequiredParallelEvaluationConfig } from "../src/config/ParallelEvaluationConfig.ts";
-import type { WorkerHandler } from "../src/multithreading/workers/WorkerHandler.ts";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { Fitness } from "@architecture/Fitness.ts";
+import type { RequiredParallelEvaluationConfig } from "@config/ParallelEvaluationConfig.ts";
+import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 
 /**
  * Mock worker handler for benchmarking the overhead of topology

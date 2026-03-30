@@ -5,19 +5,19 @@
  * under 500 lines and each module focused on a single responsibility.
  */
 
-import type { Neuron } from "../architecture/Neuron.ts";
-import type { DiscoverRecord } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { TopologyError } from "../errors/TopologyError.ts";
-import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
-import { getLogger } from "../utils/Logger.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
+import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
+import { getLogger } from "@utils/Logger.ts";
 import {
   buildRecordElasticLinks,
   constrainAndRedistributeRecordShares,
   distributeRecordError,
-} from "../propagate/RecordElasticity.ts";
+} from "@propagate/RecordElasticity.ts";
 import {
   calculateError as wasmCalculateError,
-} from "../wasm/ActivationMethods.ts";
+} from "@wasm/ActivationMethods.ts";
 
 /**
  * Record the error for the neuron, used for structural discovery.

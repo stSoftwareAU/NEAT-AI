@@ -1,4 +1,4 @@
-import { Creature } from "../src/Creature.ts";
+import { Creature } from "@creature";
 
 /**
  * v0.121.5

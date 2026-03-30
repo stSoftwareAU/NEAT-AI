@@ -1,21 +1,21 @@
 import { assertEquals, assertThrows } from "@std/assert";
-import { ActivationError } from "../../../src/errors/ActivationError.ts";
-import { Activations } from "../../../src/methods/activations/Activations.ts";
-import { ArcTan } from "../../../src/methods/activations/types/ArcTan.ts";
-import { COMPLEMENT } from "../../../src/methods/activations/types/COMPLEMENT.ts";
-import { HARD_TANH } from "../../../src/methods/activations/types/HARD_TANH.ts";
-import { LeakyReLU } from "../../../src/methods/activations/types/LeakyReLU.ts";
-import { LOGISTIC } from "../../../src/methods/activations/types/LOGISTIC.ts";
-import { LogSigmoid } from "../../../src/methods/activations/types/LogSigmoid.ts";
-import { Mish } from "../../../src/methods/activations/types/Mish.ts";
-import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
-import { ReLU6 } from "../../../src/methods/activations/types/ReLU6.ts";
-import { SINE } from "../../../src/methods/activations/types/SINE.ts";
-import { SOFTSIGN } from "../../../src/methods/activations/types/SOFTSIGN.ts";
-import { Softplus } from "../../../src/methods/activations/types/Softplus.ts";
-import { STEP } from "../../../src/methods/activations/types/STEP.ts";
-import { TAN } from "../../../src/methods/activations/types/TAN.ts";
-import { TANH } from "../../../src/methods/activations/types/TANH.ts";
+import { ActivationError } from "@errors/ActivationError.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import { ArcTan } from "@methods/activations/types/ArcTan.ts";
+import { COMPLEMENT } from "@methods/activations/types/COMPLEMENT.ts";
+import { HARD_TANH } from "@methods/activations/types/HARD_TANH.ts";
+import { LeakyReLU } from "@methods/activations/types/LeakyReLU.ts";
+import { LOGISTIC } from "@methods/activations/types/LOGISTIC.ts";
+import { LogSigmoid } from "@methods/activations/types/LogSigmoid.ts";
+import { Mish } from "@methods/activations/types/Mish.ts";
+import { ReLU } from "@methods/activations/types/ReLU.ts";
+import { ReLU6 } from "@methods/activations/types/ReLU6.ts";
+import { SINE } from "@methods/activations/types/SINE.ts";
+import { SOFTSIGN } from "@methods/activations/types/SOFTSIGN.ts";
+import { Softplus } from "@methods/activations/types/Softplus.ts";
+import { STEP } from "@methods/activations/types/STEP.ts";
+import { TAN } from "@methods/activations/types/TAN.ts";
+import { TANH } from "@methods/activations/types/TANH.ts";
 
 // Tests verifying that activation functions throw ActivationError instead of
 // generic Error for non-finite inputs.

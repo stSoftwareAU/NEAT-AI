@@ -1,4 +1,4 @@
-import { Costs } from "../src/Costs.ts";
+import { Costs } from "@costs";
 
 const samples: number[] = [];
 for (let i = 0; i < 1000; i++) {

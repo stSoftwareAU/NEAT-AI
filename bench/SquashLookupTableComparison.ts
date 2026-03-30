@@ -5,7 +5,7 @@
  *
  * Run with: deno bench --allow-read bench/SquashLookupTableComparison.ts
  */
-import { Creature } from "../src/Creature.ts";
+import { Creature } from "@creature";
 
 // Create test creature with many squash functions
 const creature = Creature.fromJSON({

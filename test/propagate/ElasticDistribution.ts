@@ -10,7 +10,7 @@ import { assertAlmostEquals, assertEquals, assertGreater } from "@std/assert";
 import {
   distributeElasticError,
   type ElasticLink,
-} from "../../src/propagate/ElasticDistribution.ts";
+} from "@propagate/ElasticDistribution.ts";
 
 // ---------------------------------------------------------------------------
 // Error conservation — total distributed error sums to original

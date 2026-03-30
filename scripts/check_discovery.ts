@@ -1,7 +1,7 @@
 import {
   assertRustDiscoveryAvailable,
   closeRustLibrary,
-} from "../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 /**
  * Ensures the Rust discovery library can be located and loaded.

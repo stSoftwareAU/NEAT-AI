@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
-import { pruneZeroWeightSynapses } from "../../src/compact/CompactUtils.ts";
+import { pruneZeroWeightSynapses } from "@compact/CompactUtils.ts";
 
 Deno.test("pruneZeroWeightSynapses: keeps typed synapses, protects IF targets, and never disconnects outputs", () => {
   const exportJSON: CreatureExport = {

@@ -1,6 +1,6 @@
 import { assertThrows } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { assertValidSynapseReferences } from "../../src/architecture/AssertValidSynapseReferences.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
 
 Deno.test("assertValidSynapseReferences - valid export passes", () => {
   const exported: CreatureExport = {

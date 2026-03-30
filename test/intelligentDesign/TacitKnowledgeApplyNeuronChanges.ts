@@ -8,9 +8,9 @@
  */
 
 import { assertEquals, assertExists } from "@std/assert";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
-import { Creature } from "../../src/Creature.ts";
-import { applyNeuronChanges } from "../../src/intelligentDesign/TacitKnowledge.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { Creature } from "@creature";
+import { applyNeuronChanges } from "@intelligentDesign/TacitKnowledge.ts";
 
 Deno.test("applyNeuronChanges uses UUID keys for neuron lookup", async () => {
   const originalScoreDir = Creature.prototype.scoreDir;

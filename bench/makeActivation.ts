@@ -1,5 +1,5 @@
-import { Creature } from "../src/Creature.ts";
-import { CreatureState } from "../src/architecture/CreatureState.ts";
+import { Creature } from "@creature";
+import { CreatureState } from "@architecture/CreatureState.ts";
 
 const tmp: number[] = [];
 for (let i = 0; i < 1000; i++) {

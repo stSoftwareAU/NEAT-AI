@@ -5,10 +5,10 @@
  * validation failures to disk for later debugging.
  */
 
-import type { Creature } from "../../Creature.ts";
+import type { Creature } from "@creature";
 import { ensureDirSync } from "@std/fs";
 import { join } from "@std/path";
-import { getLogger } from "../../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Validates a creature and attempts to fix it if validation fails.

@@ -10,14 +10,14 @@
  *   deno run -A bench/sparse/PathToOutputCache.ts
  */
 
-import { Creature } from "../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { Creature } from "@creature";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
 import {
   buildOutgoingSynapsesMap,
   calculatePathsToOutput,
-} from "../../src/propagate/sparse/CalculatePathsToOutput.ts";
-import { chooseNeurons } from "../../src/propagate/sparse/ChooseNeurons.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+} from "@propagate/sparse/CalculatePathsToOutput.ts";
+import { chooseNeurons } from "@propagate/sparse/ChooseNeurons.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 function formatDuration(ms: number): string {
   if (ms < 1) {

@@ -5,11 +5,11 @@
  * focused sub-modules to maintain backwards compatibility.
  */
 
-export { listViableNeurons } from "./FocusSelectionRanking.ts";
+export { listViableNeurons } from "@architecture/ErrorGuidedStructuralEvolution/FocusSelectionRanking.ts";
 
 export {
   focusSelectionKey,
   selectNeuronsWeightedByError,
   updateFocusSelectionSummary,
   writeFocusSelectionAnalysis,
-} from "./FocusSelectionWeighting.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/FocusSelectionWeighting.ts";

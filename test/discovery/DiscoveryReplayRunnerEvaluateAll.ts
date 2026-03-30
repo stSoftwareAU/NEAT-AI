@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
-import type { WorkerHandler } from "../../src/multithreading/workers/WorkerHandler.ts";
-import { Creature } from "../../src/Creature.ts";
-import { evaluateAll } from "../../src/discovery/DiscoveryReplayRunner.ts";
+import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
+import { Creature } from "@creature";
+import { evaluateAll } from "@discovery/DiscoveryReplayRunner.ts";
 
 Deno.test("DiscoveryReplayRunner.evaluateAll: distributes evaluation across workers", async () => {
   const makeWorker = (error: number) =>

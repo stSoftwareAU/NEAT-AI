@@ -12,17 +12,17 @@
  *   non-essential caches, attempt GC if available.
  */
 
-import type { RequiredMemoryConfig } from "../config/MemoryConfig.ts";
+import type { RequiredMemoryConfig } from "@config/MemoryConfig.ts";
 import {
   evictOldestWasmCreatureActivations,
   getMaxCachedWasmCreatureActivations,
   setMaxCachedWasmCreatureActivations,
-} from "../wasm/WasmCreatureActivationLRU.ts";
+} from "@wasm/WasmCreatureActivationLRU.ts";
 import {
   clearWasmCompilationCache,
   setWasmCompilationCacheSize,
-} from "../wasm/WasmCompilationCache.ts";
-import type { Logger } from "../utils/Logger.ts";
+} from "@wasm/WasmCompilationCache.ts";
+import type { Logger } from "@utils/Logger.ts";
 
 /**
  * Pressure level determined by heap usage relative to configured thresholds.

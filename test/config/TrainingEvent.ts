@@ -5,12 +5,12 @@
  * correctly structured events during evolution.
  */
 import { assert, assertEquals, assertGreater } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
+import { Creature } from "@creature";
+import { Mutation } from "@neat/Mutation.ts";
 import type {
   GenerationCompleteEvent,
   TrainingEvent,
-} from "../../src/config/TrainingEvent.ts";
+} from "@config/TrainingEvent.ts";
 
 Deno.test("TrainingEvent - generation_complete events are emitted", async () => {
   const events: TrainingEvent[] = [];

@@ -6,12 +6,12 @@
  * for discovery to find successful candidates.
  */
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../src/Creature.ts";
-import { BIPOLAR } from "../../src/methods/activations/types/BIPOLAR.ts";
-import { STEP } from "../../src/methods/activations/types/STEP.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import { BIPOLAR } from "@methods/activations/types/BIPOLAR.ts";
+import { STEP } from "@methods/activations/types/STEP.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 function traceAllConfig(creature: Creature): SparseConfig {
   const config = createBackPropagationConfig({

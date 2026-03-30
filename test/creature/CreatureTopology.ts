@@ -4,8 +4,8 @@
  */
 
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { Creature } from "@creature";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import {
   binarySearchSynapse,
   findInsertionPoint,
@@ -18,7 +18,7 @@ import {
   prebuildInwardIndex,
   selfConnection,
   type TopologyCaches,
-} from "../../src/creature/CreatureTopology.ts";
+} from "@creature/CreatureTopology.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

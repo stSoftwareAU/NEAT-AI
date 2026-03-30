@@ -1,9 +1,6 @@
 import { assertIsError, assertThrows } from "@std/assert";
-import { ConfigurationError } from "../../src/errors/ConfigurationError.ts";
-import {
-  parseDiscoverySampleRate,
-  parseNumber,
-} from "../../src/config/ParseOptions.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
+import { parseDiscoverySampleRate, parseNumber } from "@config/ParseOptions.ts";
 
 Deno.test("parseNumber throws ConfigurationError for non-numeric string", () => {
   const error = assertThrows(

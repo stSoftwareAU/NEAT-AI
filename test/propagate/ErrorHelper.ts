@@ -6,7 +6,7 @@
  * as part of Issue #1766 (propagation module test audit).
  */
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import { ErrorHelper } from "../../src/propagate/ErrorHelper.ts";
+import { ErrorHelper } from "@propagate/ErrorHelper.ts";
 
 // ---------------------------------------------------------------------------
 // Non-finite handling

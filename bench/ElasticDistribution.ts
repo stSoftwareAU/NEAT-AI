@@ -12,12 +12,9 @@
  *   deno bench --allow-read --allow-env bench/ElasticDistribution.ts
  */
 
-import {
-  initWasmActivation,
-  isWasmActivationAvailable,
-} from "../src/wasm/mod.ts";
-import { distributeElasticError } from "../src/propagate/ElasticDistribution.ts";
-import { wasmDistributeElasticError } from "../src/wasm/WasmStandaloneFunctions.ts";
+import { initWasmActivation, isWasmActivationAvailable } from "@wasm/mod.ts";
+import { distributeElasticError } from "@propagate/ElasticDistribution.ts";
+import { wasmDistributeElasticError } from "@wasm/WasmStandaloneFunctions.ts";
 
 // Initialise WASM
 const wasmInitialised = await initWasmActivation();

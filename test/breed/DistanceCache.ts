@@ -5,10 +5,10 @@
  * are correctly cached and retrieved, and that LRU eviction works.
  */
 import { assertEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { geneticCompatibility } from "../../src/breed/GeneticCompatibility.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { geneticCompatibility } from "@breed/GeneticCompatibility.ts";
 import {
   clearDistanceCache,
   getCachedDistance,
@@ -16,7 +16,7 @@ import {
   getDistanceCacheStats,
   setCachedDistance,
   setDistanceCacheMaxSize,
-} from "../../src/breed/DistanceCache.ts";
+} from "@breed/DistanceCache.ts";
 
 function makeCreature(prefix: string, hiddenCount: number): Creature {
   const neurons: CreatureExport["neurons"] = [];

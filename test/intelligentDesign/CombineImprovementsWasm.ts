@@ -10,12 +10,12 @@
  */
 
 import { assert, assertExists } from "@std/assert";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
-import { Creature } from "../../src/Creature.ts";
-import { combineImprovements } from "../../src/intelligentDesign/ImproveSquash.ts";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import type { BestNeuronSquash } from "../../src/intelligentDesign/BestNeuronSquash.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { Creature } from "@creature";
+import { combineImprovements } from "@intelligentDesign/ImproveSquash.ts";
+import { makeDataDir } from "@architecture/DataSet.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import type { BestNeuronSquash } from "@intelligentDesign/BestNeuronSquash.ts";
 
 const TEST_DIR = ".test-combine-improvements-wasm";
 

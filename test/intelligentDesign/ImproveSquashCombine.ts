@@ -8,10 +8,10 @@
  */
 
 import { assertEquals, assertExists } from "@std/assert";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
-import { Creature } from "../../src/Creature.ts";
-import { combineImprovements } from "../../src/intelligentDesign/ImproveSquash.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { Creature } from "@creature";
+import { combineImprovements } from "@intelligentDesign/ImproveSquash.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 const TEST_DIR = ".test-intelligent-design-combine";
 

@@ -1,12 +1,12 @@
 import { assertRejects, assertThrows } from "@std/assert";
-import { ConfigurationError } from "../../src/errors/ConfigurationError.ts";
-import { DiscoveryError } from "../../src/errors/DiscoveryError.ts";
-import { TopologyError } from "../../src/errors/TopologyError.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
-import { DiscoveryRunner } from "../../src/discovery/DiscoveryRunner.ts";
-import { buildCacheKey } from "../../src/discovery/FailureCacheKey.ts";
-import { HoldoutValidator } from "../../src/discovery/HoldoutValidator.ts";
-import { DiscoveryReplayRunner } from "../../src/discovery/DiscoveryReplayRunner.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
+import { DiscoveryError } from "@errors/DiscoveryError.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import { DiscoveryRunner } from "@discovery/DiscoveryRunner.ts";
+import { buildCacheKey } from "@discovery/FailureCacheKey.ts";
+import { HoldoutValidator } from "@discovery/HoldoutValidator.ts";
+import { DiscoveryReplayRunner } from "@discovery/DiscoveryReplayRunner.ts";
 import { makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
 Deno.test("DiscoveryRunner throws DiscoveryError when Rust library is unavailable", async () => {

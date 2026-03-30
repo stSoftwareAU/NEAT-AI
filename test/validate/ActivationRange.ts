@@ -1,5 +1,5 @@
 import { assert, assertEquals, fail } from "@std/assert";
-import { Activations } from "../../src/methods/activations/Activations.ts";
+import { Activations } from "@methods/activations/Activations.ts";
 
 Deno.test("ActivationRange validate rejects out-of-range and non-finite values", () => {
   const range = Activations.find("CLIPPED").range;

@@ -1,16 +1,16 @@
 import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
-import type { Creature } from "../Creature.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import { assertValidSynapseReferences } from "../architecture/AssertValidSynapseReferences.ts";
-import { normaliseComputationalNeuronOrderInExport } from "../architecture/NormaliseComputationalNeuronOrder.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
-import { allocateStructuralNeuronIdForCreature } from "../architecture/NeuronId.ts";
-import { Neuron } from "../architecture/Neuron.ts";
-import type { Synapse } from "../architecture/Synapse.ts";
-import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import { Activations } from "../methods/activations/Activations.ts";
+import type { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
+import { normaliseComputationalNeuronOrderInExport } from "@architecture/NormaliseComputationalNeuronOrder.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { allocateStructuralNeuronIdForCreature } from "@architecture/NeuronId.ts";
+import { Neuron } from "@architecture/Neuron.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
+import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
 
 /**
  * Up to three compact-unused unity constants (slots 0..2). Resolved by this tag

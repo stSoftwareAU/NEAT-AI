@@ -1,4 +1,4 @@
-import { TopologyError } from "../errors/TopologyError.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 
 /**
  * Rejects synapse endpoints that would make a forward-only creature recurrent.

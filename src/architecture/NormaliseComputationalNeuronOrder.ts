@@ -5,8 +5,8 @@
  */
 
 import { assert } from "@std/assert";
-import type { CreatureExport } from "./CreatureInterfaces.ts";
-import type { Creature } from "../Creature.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type { Creature } from "@creature";
 
 /**
  * Moves one neuron to a target index, remapping synapse endpoints and

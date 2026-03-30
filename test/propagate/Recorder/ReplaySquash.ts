@@ -1,6 +1,6 @@
-import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
-import { Activations } from "../../../src/methods/activations/Activations.ts";
-import type { ActivationRange } from "../../../src/propagate/ActivationRange.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import type { ActivationRange } from "@propagate/ActivationRange.ts";
 
 /**
  * Replay the exact activation values during backpropagation.

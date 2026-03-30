@@ -1,14 +1,14 @@
 import { assert, assertEquals, fail } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { Neuron } from "../../src/architecture/Neuron.ts";
+import { Neuron } from "@architecture/Neuron.ts";
 import {
   inputNeuronId,
   nextNeuronId,
   outputNeuronId,
-} from "../../src/architecture/NeuronId.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
-import type { ValidationError } from "../../src/errors/ValidationError.ts";
+} from "@architecture/NeuronId.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import type { ValidationError } from "@errors/ValidationError.ts";
 
 Deno.test("validate rejects mismatched neuron count", () => {
   const creature = new Creature(10, 2);

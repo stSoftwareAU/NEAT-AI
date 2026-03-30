@@ -9,12 +9,12 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { Creature } from "../../src/Creature.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { Creature } from "@creature";
 import {
   buildCombinedFromSuccessful,
   type DiscoveryCandidate,
-} from "../../src/discovery/DiscoveryCandidates.ts";
+} from "@discovery/DiscoveryCandidates.ts";
 
 /**
  * Creates a base creature with known structure for combination testing.

@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
+import { fineTuneImprovement } from "@blackbox/FineTune.ts";
 
 const baseCreatureJSON: CreatureExport = {
   neurons: [

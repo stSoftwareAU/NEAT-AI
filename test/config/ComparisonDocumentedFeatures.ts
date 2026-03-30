@@ -4,7 +4,7 @@
  * with the actual implementation.
  */
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 Deno.test(
   "COMPARISON documented features - weight regularisation config is accessible",

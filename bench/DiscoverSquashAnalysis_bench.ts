@@ -1,4 +1,4 @@
-import { calculateSquashError } from "../src/architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts";
+import { calculateSquashError } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts";
 
 const sizes = [100, 1000, 10000];
 

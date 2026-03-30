@@ -19,8 +19,8 @@
  * - Are capped per target neuron to prevent memory/time blowup
  */
 
-import type { Creature } from "../Creature.ts";
-import { computeLayerAssignments } from "./LayerAssignment.ts";
+import type { Creature } from "@creature";
+import { computeLayerAssignments } from "@propagate/LayerAssignment.ts";
 
 /**
  * Maximum synthetic synapses per target neuron per layer pair.

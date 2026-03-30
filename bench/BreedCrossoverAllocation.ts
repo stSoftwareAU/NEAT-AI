@@ -13,9 +13,9 @@
  * Run with:
  *   deno bench --allow-read --allow-write bench/BreedCrossoverAllocation.ts
  */
-import { Creature } from "../src/Creature.ts";
-import { Offspring } from "../src/architecture/Offspring.ts";
-import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
+import { Creature } from "@creature";
+import { Offspring } from "@architecture/Offspring.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 
 // === Small creatures (~20 neurons) ===
 const smallMum = new Creature(5, 3, {

@@ -5,9 +5,9 @@
  * factory under 500 lines and validation logic focused.
  */
 
-import { ConfigurationError } from "../errors/ConfigurationError.ts";
-import { getLogger } from "../utils/Logger.ts";
-import type { NeatArguments } from "./NeatArguments.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
+import { getLogger } from "@utils/Logger.ts";
+import type { NeatArguments } from "@config/NeatArguments.ts";
 
 /**
  * Validates cross-field relationships in the NEAT configuration.

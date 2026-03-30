@@ -10,10 +10,10 @@
  */
 
 import { assertEquals, assertExists } from "@std/assert";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
-import { Creature } from "../../src/Creature.ts";
-import { scanForSquashImprovements } from "../../src/intelligentDesign/ImproveSquash.ts";
-import type { ResponseData } from "../../src/intelligentDesign/workers/ResponseData.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { Creature } from "@creature";
+import { scanForSquashImprovements } from "@intelligentDesign/ImproveSquash.ts";
+import type { ResponseData } from "@intelligentDesign/workers/ResponseData.ts";
 
 function makeSingleHiddenCreatureExport() {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });

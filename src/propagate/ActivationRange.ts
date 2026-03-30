@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { ActivationError } from "../errors/ActivationError.ts";
+import { ActivationError } from "@errors/ActivationError.ts";
 
 /** Correct the target activation to a possible activation */
 type NormalizeFunction = (targetActivation: number) => number;

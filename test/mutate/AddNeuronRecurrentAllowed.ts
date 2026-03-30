@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { pickOutwardTargetNeuronIndex } from "../../src/mutate/AddNeuron.ts";
+import { Creature } from "@creature";
+import { pickOutwardTargetNeuronIndex } from "@mutate/AddNeuron.ts";
 
 /**
  * Regression coverage: recurring connections (including self-loops) are valid

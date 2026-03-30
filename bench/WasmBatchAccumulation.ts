@@ -9,25 +9,20 @@
  *   deno bench --allow-read --allow-env bench/WasmBatchAccumulation.ts
  */
 
-import { NeuronState } from "../src/architecture/CreatureState.ts";
-import {
-  createBackPropagationConfig,
-} from "../src/propagate/BackPropagation.ts";
-import { SynapseState } from "../src/propagate/SynapseState.ts";
+import { NeuronState } from "@architecture/CreatureState.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SynapseState } from "@propagate/SynapseState.ts";
 import {
   accumulateWeight,
   accumulateWeightBatch4Way,
   accumulateWeightBatch8Way,
-} from "../src/propagate/Weight.ts";
+} from "@propagate/Weight.ts";
 import {
   accumulateBias,
   accumulateBiasBatch4Way,
   accumulateBiasBatch8Way,
-} from "../src/propagate/Bias.ts";
-import {
-  initWasmActivation,
-  isWasmActivationAvailable,
-} from "../src/wasm/mod.ts";
+} from "@propagate/Bias.ts";
+import { initWasmActivation, isWasmActivationAvailable } from "@wasm/mod.ts";
 
 // Initialise WASM
 const wasmInitialised = await initWasmActivation();

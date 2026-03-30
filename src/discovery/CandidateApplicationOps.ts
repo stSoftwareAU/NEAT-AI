@@ -8,21 +8,21 @@
  * Extracted from CandidateApplication.ts as part of #1598.
  */
 
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import {
   cleanupMemeticForRemovedNeuron,
   cleanupMemeticForRemovedSynapse,
-} from "../compact/CompactUtils.ts";
-import { Creature } from "../Creature.ts";
+} from "@compact/CompactUtils.ts";
+import { Creature } from "@creature";
 import type {
   DiscoveryCandidate,
   DiscoveryChangeType,
-} from "./DiscoveryCandidates.ts";
+} from "@discovery/DiscoveryCandidates.ts";
 import {
   buildIdToIndexMap,
   validateAndFixCreatureSync,
-} from "./CandidateApplication.ts";
+} from "@discovery/CandidateApplication.ts";
 
 export function applyAddSynapses(
   creatureJSON: CreatureExport,

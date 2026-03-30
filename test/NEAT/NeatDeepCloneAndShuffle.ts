@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
-import { Neat } from "../../src/NEAT/Neat.ts";
+import { Neat } from "@neat/Neat.ts";
 
 /**
  * Unit tests for Neat.deepCloneAndShuffle static method.

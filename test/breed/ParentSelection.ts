@@ -11,10 +11,10 @@ import {
   CreatureUtil,
   Selection,
 } from "../../mod.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Genus } from "../../src/NEAT/Genus.ts";
-import { findFather, selectParent } from "../../src/breed/ParentSelection.ts";
-import { FitnessRanking } from "../../src/breed/FitnessRanking.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { Genus } from "@neat/Genus.ts";
+import { findFather, selectParent } from "@breed/ParentSelection.ts";
+import { FitnessRanking } from "@breed/FitnessRanking.ts";
 
 function createScoredCreature(score: number): Creature {
   const hiddenUUID = crypto.randomUUID();

@@ -1,12 +1,12 @@
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { NeatOptions } from "../../src/config/NeatOptions.ts";
-import { Neat } from "../../src/NEAT/Neat.ts";
-import { WorkerHandler } from "../../src/multithreading/workers/WorkerHandler.ts";
+import { Creature } from "@creature";
+import type { NeatOptions } from "@config/NeatOptions.ts";
+import { Neat } from "@neat/Neat.ts";
+import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
-} from "../../src/architecture/DataSet.ts";
+} from "@architecture/DataSet.ts";
 
 /**
  * Unit tests for Neat class construction and initialisation.

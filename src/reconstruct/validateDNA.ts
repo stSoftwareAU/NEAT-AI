@@ -1,5 +1,5 @@
-import { CrisprError } from "../errors/CrisprError.ts";
-import type { CrisprInterface } from "./CRISPR.ts";
+import { CrisprError } from "@errors/CrisprError.ts";
+import type { CrisprInterface } from "@reconstruct/CRISPR.ts";
 
 /**
  * Validates a CRISPR DNA object at runtime, ensuring all required fields

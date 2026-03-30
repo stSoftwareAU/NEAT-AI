@@ -9,8 +9,8 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { TypedTopology } from "../../src/architecture/TypedTopology.ts";
+import { Creature } from "@creature";
+import { TypedTopology } from "@architecture/TypedTopology.ts";
 import {
   TOPOLOGY_BACKWARD_CONNECTION,
   TOPOLOGY_DUPLICATE_CONNECTION,
@@ -20,17 +20,17 @@ import {
   TOPOLOGY_VALID,
   validateTopology,
   validateTopologyTS,
-} from "../../src/wasm/WasmTopologyOps.ts";
+} from "@wasm/WasmTopologyOps.ts";
 import {
   scanAvailableConnections,
   scanAvailableConnectionsTS,
-} from "../../src/wasm/WasmTopologyOps.ts";
+} from "@wasm/WasmTopologyOps.ts";
 import {
   computeReverseTopologicalOrder as wasmComputeOrder,
   computeReverseTopologicalOrderTS,
-} from "../../src/wasm/WasmTopologyOps.ts";
-import { computeReverseTopologicalOrder } from "../../src/propagate/TopologicalOrder.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+} from "@wasm/WasmTopologyOps.ts";
+import { computeReverseTopologicalOrder } from "@propagate/TopologicalOrder.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -1,6 +1,6 @@
 import { Creature } from "../../mod.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { Synapse } from "@architecture/Synapse.ts";
 
 /**
  * Creates a creature with a recursive (backward) synapse for testing.

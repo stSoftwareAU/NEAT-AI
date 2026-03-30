@@ -7,11 +7,11 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../src/Creature.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
-import { creatureToRustFormat } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { LOGISTIC } from "@methods/activations/types/LOGISTIC.ts";
+import { creatureToRustFormat } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import {
   addHelpfulNeurons,
   addHelpfulSynapses,
@@ -22,13 +22,13 @@ import {
   removeSynapse,
   resetRemovalDiagnostics,
   validateAndFixIfNeeded,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoveryApplication.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryApplication.ts";
 import type {
   CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 function makeTestCreature(): Creature {

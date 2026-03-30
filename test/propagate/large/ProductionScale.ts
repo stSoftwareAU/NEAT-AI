@@ -12,7 +12,7 @@
  */
 
 import { assert, assertGreater, assertLess } from "@std/assert";
-import { Creature } from "../../../src/Creature.ts";
+import { Creature } from "@creature";
 import { train } from "../../TrainTestOnlyUtil.ts";
 import {
   AGGREGATE_SQUASHES,

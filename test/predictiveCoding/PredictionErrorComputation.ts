@@ -3,13 +3,13 @@
  * Issue #1554: Predictive Coding inference engine.
  */
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   computePrediction,
   computePredictionErrors,
   computeTotalEnergy,
-} from "../../src/predictiveCoding/PredictionErrorComputation.ts";
-import type { PredictionNodeState } from "../../src/architecture/PredictionNodeState.ts";
+} from "@predictiveCoding/PredictionErrorComputation.ts";
+import type { PredictionNodeState } from "@architecture/PredictionNodeState.ts";
 
 /**
  * Helper: creates a simple 2-input, 1-hidden, 1-output creature.

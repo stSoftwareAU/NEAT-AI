@@ -13,8 +13,8 @@ import {
   finalizeRustFlushDiagnostics,
   observeRustTrainingRecord,
   truncateForLogValue,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustFlushDiagnostics.ts";
-import type { RustRecordInput } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustFlushDiagnostics.ts";
+import type { RustRecordInput } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 Deno.test("truncateForLogValue leaves short strings unchanged", () => {
   assertEquals(truncateForLogValue("hello", 120), "hello");

@@ -28,28 +28,28 @@
  * creatures from the start, following patterns from `src/mutate` classes.
  */
 
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import type {
   CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type {
   DiscoverResult,
   RemovalCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CoordinatedStructuralCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
-import type { Creature } from "../Creature.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+import type { Creature } from "@creature";
 
 // Re-export from focused modules for backwards compatibility
-export { shortID } from "./CandidateDescriptions.ts";
+export { shortID } from "@discovery/CandidateDescriptions.ts";
 export {
   buildCombinedFromSuccessful,
   pruneSuccessfulCandidatesForCombos,
-} from "./CombinedCandidates.ts";
+} from "@discovery/CombinedCandidates.ts";
 
 import {
   buildCoordinatedStructuralCandidates,
@@ -59,8 +59,8 @@ import {
   buildSingleNeuronCandidates,
   buildSingleSquashCandidates,
   buildSingleSynapseCandidates,
-} from "./CandidateCreation.ts";
-import { buildCacheInformedRemovalCandidates } from "./CacheInformedRemovalCandidates.ts";
+} from "@discovery/CandidateCreation.ts";
+import { buildCacheInformedRemovalCandidates } from "@discovery/CacheInformedRemovalCandidates.ts";
 import {
   buildBestOfCategoryCandidate,
   buildCombinedCandidate,
@@ -68,7 +68,7 @@ import {
   buildCombinedSquashCandidates,
   buildCombinedSynapseCandidate,
   persistentlyRemoveHarmfulSynapse,
-} from "./CombinedCandidates.ts";
+} from "@discovery/CombinedCandidates.ts";
 
 export type DiscoveryChangeType =
   | "add-synapses"

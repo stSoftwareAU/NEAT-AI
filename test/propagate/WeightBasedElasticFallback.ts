@@ -1,5 +1,5 @@
 import { assertAlmostEquals } from "@std/assert";
-import { distributeElasticError } from "../../src/propagate/ElasticDistribution.ts";
+import { distributeElasticError } from "@propagate/ElasticDistribution.ts";
 
 Deno.test("distributeElasticError: weight-based fallback prefers larger weights when activations are zero", () => {
   const error = 10;

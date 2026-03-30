@@ -1,11 +1,11 @@
 import { assertAlmostEquals, assertEquals, assertThrows } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { buildWireToRuntimeIdMap } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { Creature } from "@creature";
+import { buildWireToRuntimeIdMap } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import {
   analyzeSelectedNeuronsForHarmfulRemoval,
   calculateSquashError,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts";
-import { TopologyError } from "../../src/errors/TopologyError.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 
 Deno.test("calculateSquashError - returns zero for identical arrays", () => {
   const ideal = [1.0, 2.0, 3.0];

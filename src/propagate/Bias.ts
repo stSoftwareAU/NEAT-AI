@@ -1,7 +1,7 @@
-import type { NeuronState } from "../architecture/CreatureState.ts";
-import type { Neuron } from "../architecture/Neuron.ts";
-import { wasmCalculateBias } from "../wasm/WasmStandaloneFunctions.ts";
-import type { BackPropagationConfig } from "./BackPropagation.ts";
+import type { NeuronState } from "@architecture/CreatureState.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
+import { wasmCalculateBias } from "@wasm/WasmStandaloneFunctions.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
 
 /**
  * Accumulates bias adjustments for a neuron during backpropagation.

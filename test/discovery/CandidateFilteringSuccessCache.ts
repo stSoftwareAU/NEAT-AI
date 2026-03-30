@@ -8,12 +8,12 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import type { NeatOptions } from "../../src/config/NeatOptions.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import type { Creature } from "../../src/Creature.ts";
-import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
-import type { DiscoveryChangeType } from "../../src/discovery/DiscoveryCandidates.ts";
-import { filterCandidatesForEvaluation } from "../../src/discovery/CandidateFiltering.ts";
+import type { NeatOptions } from "@config/NeatOptions.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import type { Creature } from "@creature";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
+import type { DiscoveryChangeType } from "@discovery/DiscoveryCandidates.ts";
+import { filterCandidatesForEvaluation } from "@discovery/CandidateFiltering.ts";
 
 function makeConfig(overrides: NeatOptions = {}) {
   return createNeatConfig(overrides);

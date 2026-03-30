@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertIsError, assertThrows } from "@std/assert";
-import { WasmError, type WasmErrorReason } from "../../src/errors/WasmError.ts";
+import { WasmError, type WasmErrorReason } from "@errors/WasmError.ts";
 
 Deno.test("WasmError - COMPILATION_FAILED reason", () => {
   const error = new WasmError(

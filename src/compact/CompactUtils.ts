@@ -15,27 +15,27 @@ export {
   COMPACT_UNITY_SLOT_TAG,
   createConstantOne,
   removeHiddenNeuron,
-} from "./OrphanedNeuronCleanup.ts";
-export type { CleanupOrphanedResult } from "./OrphanedNeuronCleanup.ts";
+} from "@compact/OrphanedNeuronCleanup.ts";
+export type { CleanupOrphanedResult } from "@compact/OrphanedNeuronCleanup.ts";
 
 export {
   mergeDuplicateSynapses,
   mergeDuplicateSynapsesInCreature,
   pruneZeroWeightSynapses,
-} from "./SynapsePruning.ts";
+} from "@compact/SynapsePruning.ts";
 export type {
   MergeDuplicateSynapsesResult,
   PruneZeroWeightSynapsesResult,
-} from "./SynapsePruning.ts";
+} from "@compact/SynapsePruning.ts";
 
 export {
   pruneDeadSubgraphs,
   pruneDeadSubgraphsInCreature,
-} from "./DeadSubgraphPruning.ts";
-export type { PruneDeadSubgraphsResult } from "./DeadSubgraphPruning.ts";
+} from "@compact/DeadSubgraphPruning.ts";
+export type { PruneDeadSubgraphsResult } from "@compact/DeadSubgraphPruning.ts";
 
 export {
   cleanupMemeticForRemovedNeuron,
   cleanupMemeticForRemovedSynapse,
   pruneOrphanMemeticReferences,
-} from "./MemeticCleanup.ts";
+} from "@compact/MemeticCleanup.ts";

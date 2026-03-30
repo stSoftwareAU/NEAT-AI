@@ -6,14 +6,14 @@
  * whose outputs fall outside the specified ranges.
  */
 import { assert } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { Fitness } from "../../src/architecture/Fitness.ts";
-import { WorkerHandler } from "../../src/multithreading/workers/WorkerHandler.ts";
+import { Creature } from "@creature";
+import { Fitness } from "@architecture/Fitness.ts";
+import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
-} from "../../src/architecture/DataSet.ts";
-import type { RequiredOutputRange } from "../../src/config/OutputRangeConfig.ts";
+} from "@architecture/DataSet.ts";
+import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 
 /**
  * Creates a training dataset where outputs are tightly clustered in

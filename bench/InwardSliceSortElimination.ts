@@ -7,8 +7,8 @@
  *
  * Run with: deno bench --allow-read bench/InwardSliceSortElimination.ts
  */
-import { Creature } from "../src/Creature.ts";
-import type { Synapse } from "../src/architecture/Synapse.ts";
+import { Creature } from "@creature";
+import type { Synapse } from "@architecture/Synapse.ts";
 
 const creatureFile = Deno.args[0] || "test/data/traced.json";
 const creature = Creature.fromJSON(

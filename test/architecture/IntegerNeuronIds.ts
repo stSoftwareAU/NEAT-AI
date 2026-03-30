@@ -6,17 +6,17 @@
  * with the new integer ID scheme.
  */
 import { assertEquals, assertNotEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
-import { Creature } from "../../src/Creature.ts";
-import { exportSnapshotJSON } from "../../src/creature/CreatureSerialization.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { Creature } from "@creature";
+import { exportSnapshotJSON } from "@creature/CreatureSerialization.ts";
 import {
   inputNeuronId,
   isOutputNeuronId,
   nextNeuronId,
   outputIndexFromId,
   outputNeuronId,
-} from "../../src/architecture/NeuronId.ts";
+} from "@architecture/NeuronId.ts";
 
 Deno.test("Input neurons have integer IDs matching their index", () => {
   const creature = new Creature(3, 2);

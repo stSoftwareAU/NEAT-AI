@@ -1,62 +1,62 @@
 import { assertExists } from "@std/assert";
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 import { format } from "@std/fmt/duration";
-import { ConfigurationError } from "../errors/ConfigurationError.ts";
-import { DiscoveryError } from "../errors/DiscoveryError.ts";
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import type { DiscoverResult } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
-import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
-import type { Creature } from "../Creature.ts";
-import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
+import { DiscoveryError } from "@errors/DiscoveryError.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { isRustDiscoveryEnabled } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { createNeatConfig, type NeatConfig } from "@config/NeatConfig.ts";
+import type { Creature } from "@creature";
+import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import {
   filterCandidatesForEvaluation,
   logFilteringDiagnostics,
-} from "./CandidateFiltering.ts";
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
+} from "@discovery/CandidateFiltering.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 import {
   buildCombinedFromSuccessful,
   buildDiscoveryCandidates,
   type BuildDiscoveryCandidatesOptions,
   type DiscoveryChangeType,
   pruneSuccessfulCandidatesForCombos,
-} from "./DiscoveryCandidates.ts";
+} from "@discovery/DiscoveryCandidates.ts";
 import {
   aggregateDiscoveryDiagnostics,
   logDiscoveryDiagnostics,
   persistDiagnostics,
-} from "./DiscoveryDiagnostics.ts";
+} from "@discovery/DiscoveryDiagnostics.ts";
 import {
   logEvaluationSummary,
   recordEvaluationSummaries,
-} from "./DiscoveryEvaluationSummary.ts";
+} from "@discovery/DiscoveryEvaluationSummary.ts";
 import {
   cacheEvaluationResults,
   evaluateDiscoveryTasks,
-} from "./DiscoveryRunnerEvaluation.ts";
+} from "@discovery/DiscoveryRunnerEvaluation.ts";
 import type {
   DiscoveryDirInput,
   DiscoveryDirResult,
   DiscoveryRunnerDeps,
   DiscoveryRunnerWorker,
   DiscoveryRunnerWorkerFactory,
-} from "./DiscoveryRunnerTypes.ts";
-import { preFlightDiskSpaceCheck } from "./DiskSpaceMonitor.ts";
-import { isCandidateCachedSync } from "./FailureCache.ts";
-import { supplementFromCache } from "./SupplementFromCache.ts";
+} from "@discovery/DiscoveryRunnerTypes.ts";
+import { preFlightDiskSpaceCheck } from "@discovery/DiskSpaceMonitor.ts";
+import { isCandidateCachedSync } from "@discovery/FailureCache.ts";
+import { supplementFromCache } from "@discovery/SupplementFromCache.ts";
 
 // Re-export types and functions that external consumers import from this module.
-export type { DiscoveryEvaluationSummary } from "./DiscoveryEvaluationSummary.ts";
+export type { DiscoveryEvaluationSummary } from "@discovery/DiscoveryEvaluationSummary.ts";
 export {
   formatErrorDelta,
   formatPercentWithSignificantDigits,
-} from "./DiscoveryFormatting.ts";
+} from "@discovery/DiscoveryFormatting.ts";
 export {
   filterCandidatesForEvaluation,
   type FilterCandidatesForEvaluationDeps,
   type FilterCandidatesForEvaluationDiagnostics,
   weightedSampleWithoutReplacement,
-} from "./CandidateFiltering.ts";
+} from "@discovery/CandidateFiltering.ts";
 export type {
   DiscoveryDirInput,
   DiscoveryDirResult,
@@ -66,7 +66,7 @@ export type {
   DiscoveryRunnerWorker,
   DiscoveryRunnerWorkerFactory,
   DiscoveryRunnerWorkerFactoryArgs,
-} from "./DiscoveryRunnerTypes.ts";
+} from "@discovery/DiscoveryRunnerTypes.ts";
 
 const DEFAULT_WORKER_FACTORY: DiscoveryRunnerWorkerFactory = (args) =>
   new WorkerHandler(

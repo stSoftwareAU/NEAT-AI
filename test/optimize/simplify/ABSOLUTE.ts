@@ -1,12 +1,12 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../../mod.ts";
-import { ABSOLUTE } from "../../../src/methods/activations/types/ABSOLUTE.ts";
-import { Exponential } from "../../../src/methods/activations/types/Exponential.ts";
-import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
-import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
-import { STEP } from "../../../src/methods/activations/types/STEP.ts";
-import { simplify } from "../../../src/optimize/Simplify.ts";
-import { ReLU6 } from "../../../src/methods/activations/types/ReLU6.ts";
+import { ABSOLUTE } from "@methods/activations/types/ABSOLUTE.ts";
+import { Exponential } from "@methods/activations/types/Exponential.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { ReLU } from "@methods/activations/types/ReLU.ts";
+import { STEP } from "@methods/activations/types/STEP.ts";
+import { simplify } from "@optimize/Simplify.ts";
+import { ReLU6 } from "@methods/activations/types/ReLU6.ts";
 
 Deno.test("simplify - ABSOLUTE squash with mixed activation chain preserves behaviour", () => {
   const directory = ".test/optimize/simplify/ABSOLUTE";

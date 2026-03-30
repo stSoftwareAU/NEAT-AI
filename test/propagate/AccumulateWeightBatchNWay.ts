@@ -6,16 +6,14 @@
  */
 
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import {
-  createBackPropagationConfig,
-} from "../../src/propagate/BackPropagation.ts";
-import { SynapseState } from "../../src/propagate/SynapseState.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SynapseState } from "@propagate/SynapseState.ts";
 import {
   accumulateWeight,
   accumulateWeightBatch4Way,
   accumulateWeightBatch8Way,
   accumulateWeightBatchNWay,
-} from "../../src/propagate/Weight.ts";
+} from "@propagate/Weight.ts";
 
 /**
  * Test that accumulateWeightBatchNWay with batchSize=4 matches accumulateWeightBatch4Way.

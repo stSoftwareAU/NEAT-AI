@@ -1,8 +1,8 @@
 import { ActivationError } from "@errors/ActivationError.ts";
 import { ActivationRange } from "@propagate/ActivationRange.ts";
 import { ErrorHelper } from "@propagate/ErrorHelper.ts";
-import type { ActivationInterface } from "../ActivationInterface.ts";
-import type { UnSquashInterface } from "../UnSquashInterface.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import type { UnSquashInterface } from "@methods/activations/UnSquashInterface.ts";
 
 /**
  * ReLU6 Activation Function

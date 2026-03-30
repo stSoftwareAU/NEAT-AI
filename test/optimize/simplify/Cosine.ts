@@ -1,8 +1,8 @@
 import { assert, assertAlmostEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../../src/Creature.ts";
-import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { simplify } from "../../../src/optimize/Simplify.ts";
-import { Cosine } from "../../../src/methods/activations/types/Cosine.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { simplify } from "@optimize/Simplify.ts";
+import { Cosine } from "@methods/activations/types/Cosine.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
 Deno.test("simplify - Cosine squash with varied biases preserves behaviour", () => {

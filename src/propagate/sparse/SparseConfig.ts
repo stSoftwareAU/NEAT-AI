@@ -1,10 +1,10 @@
-import type { CreatureExport } from "../../architecture/CreatureInterfaces.ts";
-import type { NeuronStateInterface } from "../../architecture/CreatureState.ts";
-import type { BackPropagationConfig } from "../BackPropagation.ts";
-import type { OutgoingSynapsesMap } from "./CalculatePathsToOutput.ts";
-import { calculatePathsToOutput } from "./CalculatePathsToOutput.ts";
-import { chooseNeurons } from "./ChooseNeurons.ts";
-import type { SparseConfigLike } from "./SparseConfigLike.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type { NeuronStateInterface } from "@architecture/CreatureState.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
+import type { OutgoingSynapsesMap } from "@propagate/sparse/CalculatePathsToOutput.ts";
+import { calculatePathsToOutput } from "@propagate/sparse/CalculatePathsToOutput.ts";
+import { chooseNeurons } from "@propagate/sparse/ChooseNeurons.ts";
+import type { SparseConfigLike } from "@propagate/sparse/SparseConfigLike.ts";
 
 export class SparseConfig implements SparseConfigLike {
   private selectedNeurons: Readonly<Set<number>>;

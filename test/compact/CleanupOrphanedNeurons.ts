@@ -1,11 +1,11 @@
 import { assertAlmostEquals, assertEquals, assertThrows } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { cleanupOrphanedNeurons } from "../../src/compact/CompactUtils.ts";
-import { cleanupOrphanedNeuronsInCreature } from "../../src/compact/OrphanedNeuronCleanup.ts";
-import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
-import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { cleanupOrphanedNeurons } from "@compact/CompactUtils.ts";
+import { cleanupOrphanedNeuronsInCreature } from "@compact/OrphanedNeuronCleanup.ts";
+import { LOGISTIC } from "@methods/activations/types/LOGISTIC.ts";
+import { TANH } from "@methods/activations/types/TANH.ts";
 
 Deno.test("cleanupOrphanedNeurons - should remove hidden neuron with no outward connections", () => {
   // Create a creature export with a hidden neuron that has no outward connections

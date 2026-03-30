@@ -19,14 +19,14 @@
 import { assertEquals, assertExists } from "@std/assert";
 import { stub } from "@std/testing/mock";
 import { addTag, getTag } from "@stsoftware/tags/mod";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import type { DiscoveryReplayDirResult } from "../../src/discovery/DiscoveryReplayRunner.ts";
-import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { Neat } from "../../src/NEAT/Neat.ts";
-import { validateAfterDiscoveryOrThrow } from "../../src/discovery/DiscoveryPostValidate.ts";
-import type { NeatOptions } from "../../src/config/NeatOptions.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type { DiscoveryReplayDirResult } from "@discovery/DiscoveryReplayRunner.ts";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { Neat } from "@neat/Neat.ts";
+import { validateAfterDiscoveryOrThrow } from "@discovery/DiscoveryPostValidate.ts";
+import type { NeatOptions } from "@config/NeatOptions.ts";
 
 /**
  * Creates a base creature for testing.

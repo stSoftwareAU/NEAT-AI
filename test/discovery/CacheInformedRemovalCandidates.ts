@@ -13,10 +13,10 @@
 
 import { assert, assertEquals } from "@std/assert";
 import { join } from "@std/path/join";
-import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { buildCacheInformedRemovalCandidates } from "../../src/discovery/CacheInformedRemovalCandidates.ts";
-import { DISCOVERY_WIRE_SCHEMA_VERSION } from "../../src/discovery/DiscoveryWireFormat.ts";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { buildCacheInformedRemovalCandidates } from "@discovery/CacheInformedRemovalCandidates.ts";
+import { DISCOVERY_WIRE_SCHEMA_VERSION } from "@discovery/DiscoveryWireFormat.ts";
 
 const HIDDEN_1_UUID = "hidden-1";
 const HIDDEN_2_UUID = "hidden-2";

@@ -10,9 +10,9 @@
  * Run with:
  *   deno bench --allow-read --allow-write bench/GeneticCompatibilitySetIntersection.ts
  */
-import { Creature } from "../src/Creature.ts";
-import type { CreatureExport } from "../src/architecture/CreatureInterfaces.ts";
-import { geneticCompatibility } from "../src/breed/GeneticCompatibility.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { geneticCompatibility } from "@breed/GeneticCompatibility.ts";
 
 /**
  * Creates a creature with many hidden neurons for benchmarking Set intersection.

@@ -4,15 +4,15 @@
  * based on locally available pre-synaptic activity and post-synaptic error.
  */
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { runInference } from "../../src/predictiveCoding/PredictiveCodingInference.ts";
-import type { RequiredPredictiveCodingConfig } from "../../src/config/PredictiveCodingConfig.ts";
-import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../../src/config/PredictiveCodingConfig.ts";
+import { Creature } from "@creature";
+import { runInference } from "@predictiveCoding/PredictiveCodingInference.ts";
+import type { RequiredPredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
+import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "@config/PredictiveCodingConfig.ts";
 import {
   applyHebbianUpdate,
   computeWeightGradients,
-} from "../../src/predictiveCoding/PredictiveCodingLearning.ts";
-import type { WeightGradients } from "../../src/predictiveCoding/PredictiveCodingLearning.ts";
+} from "@predictiveCoding/PredictiveCodingLearning.ts";
+import type { WeightGradients } from "@predictiveCoding/PredictiveCodingLearning.ts";
 
 /**
  * Helper: default config with customisable overrides.

@@ -15,7 +15,7 @@ import {
   forceCleanAllDiscoveryDirs,
   isDirectoryOrphaned,
   removeDiscoveryLockFile,
-} from "../../src/discovery/DiscoveryCleanup.ts";
+} from "@discovery/DiscoveryCleanup.ts";
 
 /** Helper to create a temporary base directory for tests. */
 function makeTempBase(): string {

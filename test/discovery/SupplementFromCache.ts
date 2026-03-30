@@ -7,14 +7,12 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { buildRuntimeIdToWireMap } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
-import {
-  supplementFromCache,
-} from "../../src/discovery/SupplementFromCache.ts";
-import { recordSuccessSync } from "../../src/discovery/SuccessCache.ts";
-import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { buildRuntimeIdToWireMap } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { supplementFromCache } from "@discovery/SupplementFromCache.ts";
+import { recordSuccessSync } from "@discovery/SuccessCache.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 import { makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
 // Integer ID for hidden-1 neuron in makeBaseCreature() (explicit id in fixture)

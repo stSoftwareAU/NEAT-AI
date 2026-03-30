@@ -1,7 +1,7 @@
 import { assertEquals, fail } from "@std/assert";
 import { Creature } from "../../mod.ts";
-import { HYPOT } from "../../src/deprecated/HYPOT.ts";
-import { upgradeTwo } from "../../src/upgrade/UpgradeTwo.ts";
+import { HYPOT } from "@deprecated/HYPOT.ts";
+import { upgradeTwo } from "@upgrade/UpgradeTwo.ts";
 
 Deno.test("HYPOT upgrade removes deprecated squash and produces valid creature", () => {
   const start = new Creature(1000, 10, {

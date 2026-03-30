@@ -4,18 +4,13 @@
  * that high config.generations values do not overwhelm the gradient signal.
  */
 import { assertEquals, assertGreater, assertLess } from "@std/assert";
-import type { CreatureTrace } from "../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../src/Creature.ts";
-import {
-  createBackPropagationConfig,
-} from "../../src/propagate/BackPropagation.ts";
-import { accumulateBias, calculateBias } from "../../src/propagate/Bias.ts";
-import { SynapseState } from "../../src/propagate/SynapseState.ts";
-import {
-  accumulateWeight,
-  calculateWeight,
-} from "../../src/propagate/Weight.ts";
-import type { Synapse } from "../../src/architecture/Synapse.ts";
+import type { CreatureTrace } from "@architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { accumulateBias, calculateBias } from "@propagate/Bias.ts";
+import { SynapseState } from "@propagate/SynapseState.ts";
+import { accumulateWeight, calculateWeight } from "@propagate/Weight.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
 
 // ---------------------------------------------------------------------------
 // Helper

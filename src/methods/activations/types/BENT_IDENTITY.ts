@@ -1,9 +1,12 @@
 import { ActivationRange } from "@propagate/ActivationRange.ts";
 import { ErrorHelper } from "@propagate/ErrorHelper.ts";
-import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
-import type { ActivationInterface } from "../ActivationInterface.ts";
-import { NR_MAX_ITERATIONS, NR_TOLERANCE } from "../NewtonRaphsonConstants.ts";
-import type { UnSquashInterface } from "../UnSquashInterface.ts";
+import { ERROR_EPSILON } from "@methods/activations/AbstractActivationInterface.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import {
+  NR_MAX_ITERATIONS,
+  NR_TOLERANCE,
+} from "@methods/activations/NewtonRaphsonConstants.ts";
+import type { UnSquashInterface } from "@methods/activations/UnSquashInterface.ts";
 
 /**
  * Bent Identity (BENT_IDENTITY) activation function.

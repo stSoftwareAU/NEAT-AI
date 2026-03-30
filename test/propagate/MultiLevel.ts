@@ -1,8 +1,8 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import { Creature } from "../../src/Creature.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import { Creature } from "@creature";
 import { train } from "../TrainTestOnlyUtil.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 

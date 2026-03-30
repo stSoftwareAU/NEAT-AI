@@ -7,7 +7,7 @@
  * building candidates.
  */
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import {
   assertCrippleDegraded,
   assertRecordingCaptured,
@@ -15,7 +15,7 @@ import {
   runDiscoveryScenario,
   traceAllConfig,
 } from "./DiscoveryScenarioHelper.ts";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fixtures: a trivial "whole" creature and a "crippled" variant

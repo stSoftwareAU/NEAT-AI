@@ -1,21 +1,21 @@
 import { assert, fail } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import {
   DEFAULT_RUST_FLUSH_RECORDS,
   DiscoverStructure,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { buildWireToRuntimeIdMap } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
-import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
-import { Creature } from "../../src/Creature.ts";
-import { ABSOLUTE } from "../../src/methods/activations/types/ABSOLUTE.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
-import { Mish } from "../../src/methods/activations/types/Mish.ts";
-import { ReLU } from "../../src/methods/activations/types/ReLU.ts";
-import { ReLU6 } from "../../src/methods/activations/types/ReLU6.ts";
-import { TANH } from "../../src/methods/activations/types/TANH.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { buildWireToRuntimeIdMap } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { isRustDiscoveryEnabled } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { Creature } from "@creature";
+import { ABSOLUTE } from "@methods/activations/types/ABSOLUTE.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { LeakyReLU } from "@methods/activations/types/LeakyReLU.ts";
+import { Mish } from "@methods/activations/types/Mish.ts";
+import { ReLU } from "@methods/activations/types/ReLU.ts";
+import { ReLU6 } from "@methods/activations/types/ReLU6.ts";
+import { TANH } from "@methods/activations/types/TANH.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 function makeCreature() {

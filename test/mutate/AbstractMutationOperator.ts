@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { AbstractMutationOperator } from "../../src/mutate/AbstractMutationOperator.ts";
+import { Creature } from "@creature";
+import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 
 /** Concrete subclass for testing the abstract base class. */
 class TestMutationOperator extends AbstractMutationOperator {

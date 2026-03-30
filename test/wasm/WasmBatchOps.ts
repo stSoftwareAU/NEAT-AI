@@ -8,21 +8,21 @@
  */
 
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { TypedTopology } from "../../src/architecture/TypedTopology.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { Creature } from "@creature";
+import { TypedTopology } from "@architecture/TypedTopology.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   calculateBiasBatch4Way,
   calculateWeightBatch4Way,
   validateTopologyBatch,
-} from "../../src/wasm/WasmBatchOps.ts";
-import { TOPOLOGY_VALID } from "../../src/wasm/WasmTopologyOps.ts";
+} from "@wasm/WasmBatchOps.ts";
+import { TOPOLOGY_VALID } from "@wasm/WasmTopologyOps.ts";
 import {
   wasmCalculateBias,
   wasmCalculateWeight,
-} from "../../src/wasm/WasmStandaloneFunctions.ts";
-import { SynapseState } from "../../src/propagate/SynapseState.ts";
-import type { BackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+} from "@wasm/WasmStandaloneFunctions.ts";
+import { SynapseState } from "@propagate/SynapseState.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers

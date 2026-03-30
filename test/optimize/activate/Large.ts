@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../../src/Creature.ts";
+import { Creature } from "@creature";
 
 Deno.test("large network activation produces finite deterministic output", () => {
   const creature = Creature.fromJSON(

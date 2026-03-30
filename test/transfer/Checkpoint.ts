@@ -10,14 +10,11 @@
  */
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import {
-  exportCheckpoint,
-  importCheckpoint,
-} from "../../src/transfer/Checkpoint.ts";
+import { Creature } from "@creature";
+import { exportCheckpoint, importCheckpoint } from "@transfer/Checkpoint.ts";
 import { initWasmForTests } from "../_initWasm.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

@@ -5,10 +5,10 @@
  * as the creature's topology changes through connect/disconnect/mutation.
  */
 import { assertEquals, assertGreater } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { AddConnection } from "../../src/mutate/AddConnection.ts";
-import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
+import { Creature } from "@creature";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { AddConnection } from "@mutate/AddConnection.ts";
+import { AddNeuron } from "@mutate/AddNeuron.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

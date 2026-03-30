@@ -11,17 +11,17 @@ import {
   assertGreater,
   assertLess,
 } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { applyDropout } from "../../src/propagate/Dropout.ts";
+import { Creature } from "@creature";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { applyDropout } from "@propagate/Dropout.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 import {
   createSeededRng,
   getRandomNumberGenerator,
   setRandomNumberGenerator,
-} from "../../src/utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
 
 await initWasmForTests();
 

@@ -1,8 +1,8 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
+import { Creature } from "@creature";
+import { fineTuneImprovement } from "@blackbox/FineTune.ts";
 import { type CreatureExport, CreatureUtil } from "../../mod.ts";
-import { restoreSource } from "../../src/blackbox/RestoreSource.ts";
+import { restoreSource } from "@blackbox/RestoreSource.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

@@ -6,15 +6,15 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { getCacheStats } from "../../src/cache/getCacheStats.ts";
+import { Creature } from "@creature";
+import { getCacheStats } from "@cache/getCacheStats.ts";
 import {
   clearDistanceCache,
   getCachedDistance,
   getDistanceCacheStats,
   setCachedDistance,
   setDistanceCacheMaxSize,
-} from "../../src/breed/DistanceCache.ts";
+} from "@breed/DistanceCache.ts";
 import {
   disposeAllCachedWasmActivations,
   getMaxCachedWasmCreatureActivations,
@@ -22,7 +22,7 @@ import {
   noteWasmCreatureActivationUse,
   resetWasmActivationLruStats,
   setMaxCachedWasmCreatureActivations,
-} from "../../src/wasm/WasmCreatureActivationLRU.ts";
+} from "@wasm/WasmCreatureActivationLRU.ts";
 
 // ---------------------------------------------------------------------------
 // CacheStats interface shape

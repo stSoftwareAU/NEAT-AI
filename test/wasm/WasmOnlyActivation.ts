@@ -10,13 +10,13 @@
  */
 
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { Activations } from "../../src/methods/activations/Activations.ts";
+import { Activations } from "@methods/activations/Activations.ts";
 import {
   calculateError,
   safeZoneAdjustment,
   squash,
   unSquash,
-} from "../../src/wasm/ActivationMethods.ts";
+} from "@wasm/ActivationMethods.ts";
 
 /**
  * All standard (non-aggregate) activation names that must work via WASM.

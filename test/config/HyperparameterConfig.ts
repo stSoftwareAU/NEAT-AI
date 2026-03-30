@@ -2,8 +2,8 @@ import { assertEquals, assertNotEquals } from "@std/assert";
 import {
   DEFAULT_EVOLVABLE_HYPERPARAMETERS,
   DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,
-} from "../../src/config/HyperparameterConfig.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+} from "@config/HyperparameterConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 Deno.test("HyperparameterEvolutionConfig - defaults are applied", () => {
   const config = createNeatConfig({});

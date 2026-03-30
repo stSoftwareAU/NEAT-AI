@@ -1,6 +1,6 @@
 import { assertAlmostEquals, assertEquals, fail } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
+import { Creature } from "@creature";
+import { fineTuneImprovement } from "@blackbox/FineTune.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

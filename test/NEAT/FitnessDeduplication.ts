@@ -5,11 +5,11 @@
  * they should only be evaluated once and the score should be shared.
  */
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { Fitness } from "../../src/architecture/Fitness.ts";
-import type { WorkerHandler } from "../../src/multithreading/workers/WorkerHandler.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { Fitness } from "@architecture/Fitness.ts";
+import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

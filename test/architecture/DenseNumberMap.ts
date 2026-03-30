@@ -8,7 +8,7 @@
  */
 
 import { assertEquals, assertStrictEquals } from "@std/assert";
-import { DenseNumberMap } from "../../src/architecture/DenseNumberMap.ts";
+import { DenseNumberMap } from "@architecture/DenseNumberMap.ts";
 
 Deno.test("DenseNumberMap - default construction creates empty map", () => {
   const map = new DenseNumberMap();

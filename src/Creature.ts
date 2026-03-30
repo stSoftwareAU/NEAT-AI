@@ -12,56 +12,56 @@
 
 import { assert } from "@std/assert";
 import type { TagInterface } from "@stsoftware/tags/mod";
-import { getGlobalDebug } from "./globalAccessors.ts";
+import { getGlobalDebug } from "@globalAccessors";
 import type {
   CreatureExport,
   CreatureInternal,
   CreatureTrace,
-} from "./architecture/CreatureInterfaces.ts";
-import { CreatureState } from "./architecture/CreatureState.ts";
-import { creatureValidate } from "./architecture/CreatureValidate.ts";
-import type { DataRecordInterface } from "./architecture/DataSet.ts";
-import type { DiscoverRecord } from "./architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { Neuron } from "./architecture/Neuron.ts";
+} from "@architecture/CreatureInterfaces.ts";
+import { CreatureState } from "@architecture/CreatureState.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { Neuron } from "@architecture/Neuron.ts";
 import {
   inputNeuronId,
   nextNeuronId,
   outputNeuronId,
-} from "./architecture/NeuronId.ts";
-import { Synapse } from "./architecture/Synapse.ts";
-import type { SynapseInternal } from "./architecture/SynapseInterfaces.ts";
-import type { MemeticInterface } from "./blackbox/MemeticInterface.ts";
-import type { EvolvableHyperparameters } from "./config/HyperparameterConfig.ts";
-import { compactCreature } from "./compact/CompactCreature.ts";
-import type { NeatOptions } from "./config/NeatOptions.ts";
-import type { CostInterface } from "./costs/CostInterface.ts";
-import { Activations } from "./methods/activations/Activations.ts";
-import type { BackPropagationConfig } from "./propagate/BackPropagation.ts";
-import type { SparseConfig } from "./propagate/sparse/SparseConfig.ts";
-import type { SparseConfigLike } from "./propagate/sparse/SparseConfigLike.ts";
-import type { WasmCreatureActivation } from "./wasm/mod.ts";
-import { getRandomNumberGenerator } from "./utils/RandomNumberGenerator.ts";
-import { ActivationError } from "./errors/ActivationError.ts";
-import { TopologyError } from "./errors/TopologyError.ts";
-import { rejectRecurrentSynapseIfForwardOnlyCreature } from "./architecture/ForwardOnlySynapseGuard.ts";
-import { TypedTopology } from "./architecture/TypedTopology.ts";
+} from "@architecture/NeuronId.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import type { SynapseInternal } from "@architecture/SynapseInterfaces.ts";
+import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
+import type { EvolvableHyperparameters } from "@config/HyperparameterConfig.ts";
+import { compactCreature } from "@compact/CompactCreature.ts";
+import type { NeatOptions } from "@config/NeatOptions.ts";
+import type { CostInterface } from "@costs/CostInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
+import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import type { SparseConfigLike } from "@propagate/sparse/SparseConfigLike.ts";
+import type { WasmCreatureActivation } from "@wasm/mod.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { ActivationError } from "@errors/ActivationError.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import { rejectRecurrentSynapseIfForwardOnlyCreature } from "@architecture/ForwardOnlySynapseGuard.ts";
+import { TypedTopology } from "@architecture/TypedTopology.ts";
 
 // Extracted modules
-import * as activation from "./creature/CreatureActivation.ts";
-import * as topology from "./creature/CreatureTopology.ts";
-import type { TopologyCaches } from "./creature/CreatureTopology.ts";
-import * as training from "./creature/CreatureTraining.ts";
-import * as serialisation from "./creature/CreatureSerialization.ts";
-import * as mutation from "./creature/CreatureMutation.ts";
+import * as activation from "@creature/CreatureActivation.ts";
+import * as topology from "@creature/CreatureTopology.ts";
+import type { TopologyCaches } from "@creature/CreatureTopology.ts";
+import * as training from "@creature/CreatureTraining.ts";
+import * as serialisation from "@creature/CreatureSerialization.ts";
+import * as mutation from "@creature/CreatureMutation.ts";
 import type {
   DiscoveryDirResult,
   DiscoveryRunnerLike,
-} from "./discovery/DiscoveryRunner.ts";
+} from "@discovery/DiscoveryRunner.ts";
 import type {
   DiscoveryReplayDirResult,
   DiscoveryReplayRunnerLike,
-} from "./discovery/DiscoveryReplayRunner.ts";
-import { CreatureUtil } from "./architecture/CreatureUtils.ts";
+} from "@discovery/DiscoveryReplayRunner.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 interface CreatureOptions {
   /**

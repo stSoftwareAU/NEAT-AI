@@ -6,13 +6,13 @@
  */
 
 import { removeTag } from "@stsoftware/tags/mod";
-import type { Neuron } from "../architecture/Neuron.ts";
-import { Synapse } from "../architecture/Synapse.ts";
-import { TopologyError } from "../errors/TopologyError.ts";
-import { Activations } from "../methods/activations/Activations.ts";
-import { Mutation } from "../NEAT/Mutation.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import { isFixableActivation } from "./NeuronActivation.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { isFixableActivation } from "@neuron/NeuronActivation.ts";
 
 /**
  * Ensures this neuron has valid topology (connections, outward links).

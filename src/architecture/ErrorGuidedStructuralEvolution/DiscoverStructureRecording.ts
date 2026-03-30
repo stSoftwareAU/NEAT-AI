@@ -7,30 +7,30 @@
 
 import { assert } from "@std/assert";
 import { dirname } from "@std/path";
-import { DiscoveryError } from "../../errors/DiscoveryError.ts";
+import { DiscoveryError } from "@errors/DiscoveryError.ts";
 import {
   creatureToRustFormat,
   type RustRecordBatchStats,
   type RustRecordInput,
-} from "./RustDiscovery.ts";
-import type { DataRecordInterface } from "../DataSet.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import type {
   RustFlushAggregation,
   RustFlushDiagnostics,
-} from "./DiscoverStructureTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 import {
   computeRustFlushMetrics as computeRustFlushMetricsImpl,
   createRustFlushAggregation as createRustFlushAggregationImpl,
   finalizeRustFlushDiagnostics as finalizeRustFlushDiagnosticsImpl,
   observeRustTrainingRecord as observeRustTrainingRecordImpl,
-} from "./RustFlushDiagnostics.ts";
-import { getLogger } from "../../utils/Logger.ts";
-import { DiscoverStructureBase } from "./DiscoverStructureBase.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustFlushDiagnostics.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { DiscoverStructureBase } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureBase.ts";
 import {
   checkDiskSpace,
   logDiscoveryDiskUsage,
-} from "../../discovery/DiskSpaceMonitor.ts";
-import { neuronUuid } from "../../neuron/NeuronSerialization.ts";
+} from "@discovery/DiskSpaceMonitor.ts";
+import { neuronUuid } from "@neuron/NeuronSerialization.ts";
 
 /**
  * Adds recording, chunk management, and flush methods to the

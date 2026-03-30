@@ -10,7 +10,7 @@ import {
   isWasmActivationPayloadAvailable,
   loadWasmActivationInitPayload,
   loadWasmActivationInitPayloadAsync,
-} from "../../src/workers/WasmActivationPayload.ts";
+} from "@workers/WasmActivationPayload.ts";
 
 Deno.test("WasmActivationPayload: isWasmActivationPayloadAvailable returns boolean", () => {
   const result = isWasmActivationPayloadAvailable();

@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 
 /**
  * Regression coverage: `Creature.makeRandomConnection()` is used at runtime by

@@ -19,9 +19,9 @@ import {
   isWasmActivationAvailable,
   wasmCalculateError,
   wasmSafeZoneAdjustmentBatch,
-} from "../src/wasm/mod.ts";
-import { distributeElasticError } from "../src/propagate/ElasticDistribution.ts";
-import { wasmFusedErrorDistribution } from "../src/wasm/WasmStandaloneFunctions.ts";
+} from "@wasm/mod.ts";
+import { distributeElasticError } from "@propagate/ElasticDistribution.ts";
+import { wasmFusedErrorDistribution } from "@wasm/WasmStandaloneFunctions.ts";
 
 // Initialise WASM
 const wasmInitialised = await initWasmActivation();

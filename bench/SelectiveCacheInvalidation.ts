@@ -9,9 +9,9 @@
  *   deno run -A bench/SelectiveCacheInvalidation.ts
  */
 
-import { Creature } from "../src/Creature.ts";
-import { IDENTITY } from "../src/methods/activations/types/IDENTITY.ts";
-import { AddConnection } from "../src/mutate/AddConnection.ts";
+import { Creature } from "@creature";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { AddConnection } from "@mutate/AddConnection.ts";
 
 function createLargeCreature(): Creature {
   const creature = new Creature(50, 5, {

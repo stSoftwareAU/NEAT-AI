@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
 
 Deno.test("optimization/LearningRateRandomization - randomises strategy when not specified", () => {
   // Test that different calls can produce different strategies (with high probability)

@@ -1,4 +1,4 @@
-import { initWasmActivation } from "../src/wasm/mod.ts";
+import { initWasmActivation } from "@wasm/mod.ts";
 
 /**
  * Initialise WASM activation for test suites that require it.

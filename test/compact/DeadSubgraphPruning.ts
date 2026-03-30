@@ -1,7 +1,7 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
-import { Creature } from "../../src/Creature.ts";
-import { pruneDeadSubgraphsInCreature } from "../../src/compact/CompactUtils.ts";
+import { Creature } from "@creature";
+import { pruneDeadSubgraphsInCreature } from "@compact/CompactUtils.ts";
 
 function mulberry32(seed: number) {
   let t = seed >>> 0;

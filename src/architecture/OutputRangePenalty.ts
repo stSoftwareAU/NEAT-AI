@@ -6,7 +6,7 @@
  * penalty proportional to the excess.
  */
 
-import type { RequiredOutputRange } from "../config/OutputRangeConfig.ts";
+import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 
 /**
  * Calculates the output range penalty for a single activation record.

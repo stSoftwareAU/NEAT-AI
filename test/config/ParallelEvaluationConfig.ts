@@ -5,8 +5,8 @@
  * defaults are applied, and CLI coercion works correctly.
  */
 import { assertEquals, assertThrows } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { DEFAULT_PARALLEL_EVALUATION_CONFIG } from "../../src/config/ParallelEvaluationConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { DEFAULT_PARALLEL_EVALUATION_CONFIG } from "@config/ParallelEvaluationConfig.ts";
 
 Deno.test("ParallelEvaluationConfig - default values are sensible", () => {
   assertEquals(

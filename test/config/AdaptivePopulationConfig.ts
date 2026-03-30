@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
-import { DEFAULT_ADAPTIVE_POPULATION_CONFIG } from "../../src/config/AdaptivePopulationConfig.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { DEFAULT_ADAPTIVE_POPULATION_CONFIG } from "@config/AdaptivePopulationConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 Deno.test("AdaptivePopulationConfig - defaults are applied", () => {
   const config = createNeatConfig({});

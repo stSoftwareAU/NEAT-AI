@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from "@std/assert";
-import { DEFAULT_CROSS_VALIDATION_CONFIG } from "../../src/config/CrossValidationConfig.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { DEFAULT_CROSS_VALIDATION_CONFIG } from "@config/CrossValidationConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 Deno.test("CrossValidationConfig - defaults are applied", () => {
   const config = createNeatConfig({});

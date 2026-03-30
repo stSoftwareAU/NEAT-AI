@@ -13,14 +13,11 @@ import {
   assertThrows,
 } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
-import type { ValidationError } from "../../src/errors/ValidationError.ts";
-import {
-  initWasmActivation,
-  isWasmActivationAvailable,
-} from "../../src/wasm/mod.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import type { ValidationError } from "@errors/ValidationError.ts";
+import { initWasmActivation, isWasmActivationAvailable } from "@wasm/mod.ts";
 
 // ---------------------------------------------------------------------------
 // Section: WASM Troubleshooting

@@ -1,5 +1,5 @@
-import type { Neuron } from "../architecture/Neuron.ts";
-import type { Synapse } from "../architecture/Synapse.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
 
 /**
  * Builds a string representation of a synapse's contribution for inline activation.

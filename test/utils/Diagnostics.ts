@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
-import { writeDiagnostics } from "../../src/utils/Diagnostics.ts";
+import { writeDiagnostics } from "@utils/Diagnostics.ts";
 
 const TEST_DIR = ".diagnostics";
 

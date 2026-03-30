@@ -19,7 +19,7 @@ import {
   createBackPropagationConfig,
   type ErrorFeedback,
   limitValue,
-} from "../../src/propagate/BackPropagation.ts";
+} from "@propagate/BackPropagation.ts";
 
 // ---------------------------------------------------------------------------
 // createBackPropagationConfig - frozen and defaults

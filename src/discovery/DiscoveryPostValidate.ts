@@ -1,13 +1,13 @@
-import type { Creature } from "../Creature.ts";
-import { creatureValidate } from "../architecture/CreatureValidate.ts";
-import { DiscoveryError } from "../errors/DiscoveryError.ts";
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
+import type { Creature } from "@creature";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { DiscoveryError } from "@errors/DiscoveryError.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 import {
   BatchDiscoveryValidator,
   type BatchValidationResult,
   type BatchValidationStats,
   type BatchValidatorOptions,
-} from "./BatchDiscoveryValidator.ts";
+} from "@discovery/BatchDiscoveryValidator.ts";
 
 /**
  * Validate a creature immediately after applying discovery changes.

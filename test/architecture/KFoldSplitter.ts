@@ -2,8 +2,8 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import {
   cleanupFoldSplits,
   createKFoldSplits,
-} from "../../src/architecture/KFoldSplitter.ts";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
+} from "@architecture/KFoldSplitter.ts";
+import { makeDataDir } from "@architecture/DataSet.ts";
 
 /**
  * Helper: creates a simple dataset with the given number of records.

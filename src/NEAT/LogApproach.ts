@@ -2,8 +2,8 @@ import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../mod.ts";
 import { blue, bold, cyan } from "@std/fmt/colors";
 import { assert } from "@std/assert";
-import { ValidationError } from "../errors/ValidationError.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 // Define a union type for the possible approaches
 export type Approach =

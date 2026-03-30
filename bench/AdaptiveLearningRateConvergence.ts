@@ -9,15 +9,15 @@
  *   deno run --allow-read --allow-env --allow-write bench/AdaptiveLearningRateConvergence.ts
  */
 
-import { Creature } from "../src/Creature.ts";
-import type { CreatureExport } from "../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import {
   type BackPropagationOptions,
   calculateLearningRate,
   createBackPropagationConfig,
   type ErrorFeedback,
-} from "../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
+} from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 // Simple target: input 0.5 -> output 0.3
 const INPUT = new Float32Array([0.5]);

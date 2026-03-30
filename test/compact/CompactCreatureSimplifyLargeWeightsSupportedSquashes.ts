@@ -1,16 +1,16 @@
 import { assert, assertAlmostEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { compactCreature } from "../../src/compact/CompactCreature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { IF } from "../../src/methods/activations/aggregate/IF.ts";
-import { MAXIMUM } from "../../src/methods/activations/aggregate/MAXIMUM.ts";
-import { MINIMUM } from "../../src/methods/activations/aggregate/MINIMUM.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
-import { ReLU } from "../../src/methods/activations/types/ReLU.ts";
-import { HYPOT } from "../../src/deprecated/HYPOT.ts";
-import { HYPOTv2 } from "../../src/deprecated/HYPOTv2.ts";
-import { MEAN } from "../../src/deprecated/MEAN.ts";
+import { Creature } from "@creature";
+import { compactCreature } from "@compact/CompactCreature.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { IF } from "@methods/activations/aggregate/IF.ts";
+import { MAXIMUM } from "@methods/activations/aggregate/MAXIMUM.ts";
+import { MINIMUM } from "@methods/activations/aggregate/MINIMUM.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { LeakyReLU } from "@methods/activations/types/LeakyReLU.ts";
+import { ReLU } from "@methods/activations/types/ReLU.ts";
+import { HYPOT } from "@deprecated/HYPOT.ts";
+import { HYPOTv2 } from "@deprecated/HYPOTv2.ts";
+import { MEAN } from "@deprecated/MEAN.ts";
 
 function maxAbsWeightAndBias(creature: Creature): number {
   let max = 0;

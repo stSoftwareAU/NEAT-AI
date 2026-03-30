@@ -4,14 +4,14 @@
  */
 
 import { assert, assertEquals, assertThrows } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { Creature } from "@creature";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import {
   disposeWasm,
   getUnsupportedWasmSquashFunctions,
   isWasmEligible,
   requireWasmOrThrow,
-} from "../../src/creature/CreatureActivation.ts";
+} from "@creature/CreatureActivation.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

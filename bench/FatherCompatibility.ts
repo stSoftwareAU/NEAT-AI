@@ -10,12 +10,12 @@
  * Run with:
  *   deno bench --allow-read --allow-write bench/FatherCompatibility.ts
  */
-import { Creature } from "../src/Creature.ts";
-import type { CreatureExport } from "../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import {
   createCompatibleFather,
   createCompatibleFatherFromCreatures,
-} from "../src/breed/Father.ts";
+} from "@breed/Father.ts";
 
 /**
  * Creates a creature with many neurons and synapses to simulate a large creature.

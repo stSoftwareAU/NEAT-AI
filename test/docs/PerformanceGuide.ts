@@ -8,10 +8,7 @@
 
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../mod.ts";
-import {
-  initWasmActivation,
-  isWasmActivationAvailable,
-} from "../../src/wasm/mod.ts";
+import { initWasmActivation, isWasmActivationAvailable } from "@wasm/mod.ts";
 
 // ---------------------------------------------------------------------------
 // Section: WASM activation works for numerical operations

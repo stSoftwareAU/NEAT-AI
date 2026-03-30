@@ -13,14 +13,14 @@
  */
 
 import { assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   disposeAllCachedWasmActivations,
   getCachedWasmActivationCount,
   getMaxCachedWasmCreatureActivations,
   setMaxCachedWasmCreatureActivations,
-} from "../../src/wasm/WasmCreatureActivationLRU.ts";
-import { ensureWasmActivation } from "../../src/wasm/mod.ts";
+} from "@wasm/WasmCreatureActivationLRU.ts";
+import { ensureWasmActivation } from "@wasm/mod.ts";
 
 /**
  * Create a simple creature suitable for WASM activation.

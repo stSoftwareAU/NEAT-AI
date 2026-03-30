@@ -1,8 +1,8 @@
 import { assert } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import { AddNeuron } from "@mutate/AddNeuron.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

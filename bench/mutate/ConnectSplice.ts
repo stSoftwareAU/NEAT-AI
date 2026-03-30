@@ -11,9 +11,9 @@
  *   deno run -A bench/mutate/ConnectSplice.ts
  */
 
-import { Creature } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
+import { Creature } from "@creature";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { AddNeuron } from "@mutate/AddNeuron.ts";
 
 function formatDuration(ms: number): string {
   if (ms < 1) {

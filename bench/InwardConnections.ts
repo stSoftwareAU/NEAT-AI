@@ -30,7 +30,7 @@
  * - Repeated partial invalidations are 30x faster
  * - For bulk lookups, use prebuildInwardIndex() or bulkLoadInwardConnections()
  */
-import { Creature } from "../src/Creature.ts";
+import { Creature } from "@creature";
 
 const creatureFile = Deno.args[0] || "test/data/traced.json";
 const creature = Creature.fromJSON(

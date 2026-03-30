@@ -1,4 +1,4 @@
-import type { ActivationRange } from "../../propagate/ActivationRange.ts";
+import type { ActivationRange } from "@propagate/ActivationRange.ts";
 
 /**
  * Smallest meaningful difference between target and actual activation.

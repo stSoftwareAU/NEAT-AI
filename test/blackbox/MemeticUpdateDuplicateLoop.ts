@@ -5,8 +5,8 @@
  */
 import { assert, assertEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { memeticUpdate } from "../../src/blackbox/MemeticUpdate.ts";
-import type { MemeticInterface } from "../../src/blackbox/MemeticInterface.ts";
+import { memeticUpdate } from "@blackbox/MemeticUpdate.ts";
+import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
 
 function createTestCreature(): CreatureExport {
   return {

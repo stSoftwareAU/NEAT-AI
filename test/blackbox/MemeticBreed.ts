@@ -1,7 +1,7 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
-import { Creature } from "../../src/Creature.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
+import { Creature } from "@creature";
+import { Offspring } from "@architecture/Offspring.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

@@ -2,7 +2,7 @@ import { assert } from "@std/assert";
 import type {
   CreatureExport,
   CreatureInternal,
-} from "../architecture/CreatureInterfaces.ts";
+} from "@architecture/CreatureInterfaces.ts";
 
 export function upgradeOne(json: CreatureInternal | CreatureExport) {
   assert(

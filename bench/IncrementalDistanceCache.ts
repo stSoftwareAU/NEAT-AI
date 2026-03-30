@@ -12,14 +12,14 @@
  * Run with:
  *   deno bench --allow-read --allow-write bench/IncrementalDistanceCache.ts
  */
-import { Creature } from "../src/Creature.ts";
-import type { CreatureExport } from "../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   clearDistanceCache,
   getDistanceCacheStats,
-} from "../src/breed/DistanceCache.ts";
-import { geneticCompatibility } from "../src/breed/GeneticCompatibility.ts";
+} from "@breed/DistanceCache.ts";
+import { geneticCompatibility } from "@breed/GeneticCompatibility.ts";
 
 /**
  * Creates a creature with a specified number of hidden neurons.

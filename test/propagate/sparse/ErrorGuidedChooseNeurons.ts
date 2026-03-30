@@ -1,9 +1,9 @@
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../../src/Creature.ts";
-import { exportJSONWithRuntimeIds } from "../../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
-import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
-import { chooseNeurons } from "../../../src/propagate/sparse/ChooseNeurons.ts";
-import type { NeuronStateInterface } from "../../../src/architecture/CreatureState.ts";
+import { Creature } from "@creature";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { chooseNeurons } from "@propagate/sparse/ChooseNeurons.ts";
+import type { NeuronStateInterface } from "@architecture/CreatureState.ts";
 
 Deno.test("chooseNeurons: error-guided selection prefers high-error neurons", () => {
   const creature = Creature.fromJSON(

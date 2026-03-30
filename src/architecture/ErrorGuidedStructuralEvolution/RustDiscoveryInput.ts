@@ -5,15 +5,15 @@
  * for recording batches.
  */
 
-import type { CreatureExport } from "../../architecture/CreatureInterfaces.ts";
-import { normaliseCreatureExport } from "../../architecture/NormaliseCreatureExport.ts";
-import { DiscoveryError } from "../../errors/DiscoveryError.ts";
-import { TopologyError } from "../../errors/TopologyError.ts";
-import { getLogger } from "../../utils/Logger.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { DiscoveryError } from "@errors/DiscoveryError.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import { getLogger } from "@utils/Logger.ts";
 import type {
   RustRecordBatchStats,
   RustRecordInput,
-} from "./RustDiscoveryTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryTypes.ts";
 
 /**
  * Converts a creature export to the Rust format expected by the discovery module.

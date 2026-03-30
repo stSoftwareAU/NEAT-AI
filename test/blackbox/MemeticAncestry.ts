@@ -1,13 +1,13 @@
 import { assert, assertEquals, assertExists } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
-import { Creature } from "../../src/Creature.ts";
-import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
-import type { MemeticInterface } from "../../src/blackbox/MemeticInterface.ts";
+import { Creature } from "@creature";
+import { fineTuneImprovement } from "@blackbox/FineTune.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
 import {
   analyseWeightTrajectory,
   calculateTrajectoryMomentum,
-} from "../../src/blackbox/MemeticTrajectory.ts";
+} from "@blackbox/MemeticTrajectory.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

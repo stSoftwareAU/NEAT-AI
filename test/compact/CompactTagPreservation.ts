@@ -1,11 +1,11 @@
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { compactCreature } from "../../src/compact/CompactCreature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { cleanupOrphanedNeurons } from "../../src/compact/OrphanedNeuronCleanup.ts";
-import { mergeParallelIdentityBridges } from "../../src/compact/ParallelIdentityMerge.ts";
-import { mergeParallelBridges } from "../../src/compact/ParallelBridgeMerge.ts";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+import { Creature } from "@creature";
+import { compactCreature } from "@compact/CompactCreature.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { cleanupOrphanedNeurons } from "@compact/OrphanedNeuronCleanup.ts";
+import { mergeParallelIdentityBridges } from "@compact/ParallelIdentityMerge.ts";
+import { mergeParallelBridges } from "@compact/ParallelBridgeMerge.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 
 /** Public export omits integer ids; tests that assert on fromId/toId normalise first. */
 function exportNormalised(creature: Creature): CreatureExport {

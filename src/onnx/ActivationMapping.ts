@@ -13,8 +13,8 @@
  * Uses Australian English spelling throughout.
  */
 
-import type { OnnxAttribute, OnnxNode } from "./OnnxModel.ts";
-import { OnnxAttributeType } from "./OnnxModel.ts";
+import type { OnnxAttribute, OnnxNode } from "@onnx/OnnxModel.ts";
+import { OnnxAttributeType } from "@onnx/OnnxModel.ts";
 
 /** Result of mapping an activation: one or more ONNX nodes. */
 export interface ActivationMapping {

@@ -1,12 +1,12 @@
 import { assert, assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import {
   cleanupMemeticForRemovedNeuron,
   cleanupMemeticForRemovedSynapse,
   mergeDuplicateSynapses,
   pruneDeadSubgraphs,
   pruneZeroWeightSynapses,
-} from "../../src/compact/CompactUtils.ts";
+} from "@compact/CompactUtils.ts";
 
 Deno.test("mergeDuplicateSynapses - sums weights of duplicate synapses", () => {
   const exported: CreatureExport = {

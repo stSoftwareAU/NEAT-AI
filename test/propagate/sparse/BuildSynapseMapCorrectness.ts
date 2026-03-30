@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
-import { Creature } from "../../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
-import { chooseNeurons } from "../../../src/propagate/sparse/ChooseNeurons.ts";
+import { Creature } from "@creature";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { chooseNeurons } from "@propagate/sparse/ChooseNeurons.ts";
 
 // NOTE: Performance benchmark tests have been moved to bench/sparse/BuildSynapseMap.ts
 // Unit tests should only verify correctness, not performance timings.

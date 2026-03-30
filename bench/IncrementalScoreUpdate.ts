@@ -9,13 +9,13 @@
  *   deno run -A bench/IncrementalScoreUpdate.ts
  */
 
-import { Creature } from "../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   calculate,
   updateScoreForBiasChange,
   updateScoreForWeightChange,
-} from "../src/architecture/Score.ts";
-import { IDENTITY } from "../src/methods/activations/types/IDENTITY.ts";
+} from "@architecture/Score.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 function createLargeCreature(): Creature {
   // Create a creature similar to what might exist in production

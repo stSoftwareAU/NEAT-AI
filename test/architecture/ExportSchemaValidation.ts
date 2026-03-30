@@ -11,8 +11,8 @@
  */
 
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 /** Load the snapshot schema once. */
 const schemaText = await Deno.readTextFile(

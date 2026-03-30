@@ -1,10 +1,10 @@
 import { assertEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { calculate } from "../../src/architecture/Score.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
-import { Neuron } from "../../src/architecture/Neuron.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { IF } from "../../src/methods/activations/aggregate/IF.ts";
+import { Creature } from "@creature";
+import { calculate } from "@architecture/Score.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import { Neuron } from "@architecture/Neuron.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { IF } from "@methods/activations/aggregate/IF.ts";
 
 /**
  * Test suite for score component caching in Creature objects.

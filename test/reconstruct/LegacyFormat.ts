@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { Upgrade } from "../../src/reconstruct/Upgrade.ts";
+import { Creature } from "@creature";
+import { Upgrade } from "@reconstruct/Upgrade.ts";
 
 Deno.test("Creature.fromJSON normalises legacy nodes to neurons", () => {
   // Legacy format used "nodes" instead of "neurons"

@@ -1,7 +1,7 @@
 import { assertThrows } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
-import { validateAfterDiscoveryOrThrow } from "../../src/discovery/DiscoveryPostValidate.ts";
+import { Creature } from "@creature";
+import { Synapse } from "@architecture/Synapse.ts";
+import { validateAfterDiscoveryOrThrow } from "@discovery/DiscoveryPostValidate.ts";
 
 // cspell:ignore TESTDISC
 

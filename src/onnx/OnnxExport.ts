@@ -14,12 +14,12 @@
  * Uses Australian English spelling throughout.
  */
 
-import type { Creature } from "../Creature.ts";
+import type { Creature } from "@creature";
 import {
   buildActivationNodes,
   isAggregateFunction,
   isSquashSupported,
-} from "./ActivationMapping.ts";
+} from "@onnx/ActivationMapping.ts";
 import {
   createOnnxModel,
   encodeOnnxModel,
@@ -28,7 +28,7 @@ import {
   type OnnxNode,
   type OnnxTensor,
   type OnnxValueInfo,
-} from "./OnnxModel.ts";
+} from "@onnx/OnnxModel.ts";
 
 /** Options for ONNX export. */
 export interface OnnxExportOptions {

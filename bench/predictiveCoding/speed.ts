@@ -10,14 +10,14 @@
  *   deno bench --allow-read --allow-write --allow-env --allow-ffi bench/predictiveCoding/speed.ts
  */
 
-import { Creature } from "../../src/Creature.ts";
-import { runInference } from "../../src/predictiveCoding/PredictiveCodingInference.ts";
+import { Creature } from "@creature";
+import { runInference } from "@predictiveCoding/PredictiveCodingInference.ts";
 import {
   applyHebbianUpdate,
   computeWeightGradients,
-} from "../../src/predictiveCoding/PredictiveCodingLearning.ts";
-import type { RequiredPredictiveCodingConfig } from "../../src/config/PredictiveCodingConfig.ts";
-import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../../src/config/PredictiveCodingConfig.ts";
+} from "@predictiveCoding/PredictiveCodingLearning.ts";
+import type { RequiredPredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
+import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "@config/PredictiveCodingConfig.ts";
 
 function makeConfig(
   overrides: Partial<RequiredPredictiveCodingConfig> = {},

@@ -6,14 +6,14 @@
  * Handles loading neuron records from Parquet files (via Rust FFI) and
  * binary files, with retry logic for file descriptor limits.
  */
-import { getLogger } from "../../utils/Logger.ts";
-import { DiscoveryError } from "../../errors/DiscoveryError.ts";
-import { TopologyError } from "../../errors/TopologyError.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { DiscoveryError } from "@errors/DiscoveryError.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 import type {
   BinaryRecordIndices,
   DiscoverRecord,
-} from "./DiscoverStructureTypes.ts";
-import type { DiscoverStructureDeps } from "./DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
+import type { DiscoverStructureDeps } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 
 /**
  * Opens a file with exponential backoff retry for "Too many open files" errors.

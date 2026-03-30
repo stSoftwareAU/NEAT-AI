@@ -7,13 +7,13 @@
  * Tests follow TDD - written first before implementation.
  */
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
+import { Creature } from "@creature";
+import { makeDataDir } from "@architecture/DataSet.ts";
 import {
   HoldoutValidator,
   type HoldoutValidatorOptions,
   splitDataForHoldout,
-} from "../../src/discovery/HoldoutValidator.ts";
+} from "@discovery/HoldoutValidator.ts";
 
 function makeSimpleCreature(): Creature {
   const creature = Creature.fromJSON({

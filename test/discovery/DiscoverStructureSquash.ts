@@ -1,15 +1,15 @@
 import { assert, assertAlmostEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   type CandidateSquash,
   type DiscoverRecord,
   DiscoverStructure,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { ActivationInterface } from "../../src/methods/activations/ActivationInterface.ts";
-import { Activations } from "../../src/methods/activations/Activations.ts";
-import { STEP } from "../../src/methods/activations/types/STEP.ts";
-import { ActivationRange } from "../../src/propagate/ActivationRange.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import { STEP } from "@methods/activations/types/STEP.ts";
+import { ActivationRange } from "@propagate/ActivationRange.ts";
 
 // Integer IDs computed from deterministic UUID hash.
 const ID_HIDDEN_STEP = 891010353; // "hidden-step"

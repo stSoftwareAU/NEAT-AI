@@ -3,11 +3,11 @@ import type {
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "./DiscoverStructure.ts";
-import type { RustRemovalCandidate } from "./RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { RustRemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import type {
   CoordinatedStructuralCandidate,
-} from "./CoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 
 /**
  * Candidate for removal based on low-impact + high-error analysis.

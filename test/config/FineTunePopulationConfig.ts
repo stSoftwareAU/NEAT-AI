@@ -4,8 +4,8 @@ import {
   assertLessOrEqual,
   assertThrows,
 } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { DEFAULT_FINE_TUNE_POPULATION_CONFIG } from "../../src/config/FineTunePopulationConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { DEFAULT_FINE_TUNE_POPULATION_CONFIG } from "@config/FineTunePopulationConfig.ts";
 
 Deno.test(
   "FineTunePopulationConfig - defaults applied when not specified",

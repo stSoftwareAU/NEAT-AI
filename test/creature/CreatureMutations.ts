@@ -1,18 +1,18 @@
 import { assert, assertEquals, fail } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
-import { Creature } from "../../src/Creature.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { Creature } from "@creature";
+import { Mutation } from "@neat/Mutation.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import {
   createSeededRng,
   getRandomNumberGenerator,
   setRandomNumberGenerator,
-} from "../../src/utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

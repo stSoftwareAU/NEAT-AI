@@ -13,12 +13,12 @@ import {
   assertGreater,
   assertLess,
 } from "@std/assert";
-import { NeuronState } from "../../src/architecture/CreatureState.ts";
-import { accumulateBias } from "../../src/propagate/Bias.ts";
+import { NeuronState } from "@architecture/CreatureState.ts";
+import { accumulateBias } from "@propagate/Bias.ts";
 import {
   type BackPropagationConfig,
   createBackPropagationConfig,
-} from "../../src/propagate/BackPropagation.ts";
+} from "@propagate/BackPropagation.ts";
 
 function makeConfig(
   overrides?: Partial<BackPropagationConfig>,

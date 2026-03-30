@@ -10,9 +10,9 @@
  * Run with:
  *   deno bench --allow-read bench/WorkStealingPool.ts
  */
-import { WorkStealingQueue } from "../src/multithreading/WorkStealingQueue.ts";
-import { WorkerPool } from "../src/multithreading/WorkerPool.ts";
-import type { WorkerHandler } from "../src/multithreading/workers/WorkerHandler.ts";
+import { WorkStealingQueue } from "@multithreading/WorkStealingQueue.ts";
+import { WorkerPool } from "@multithreading/WorkerPool.ts";
+import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 
 // Test task interface
 interface TestTask {

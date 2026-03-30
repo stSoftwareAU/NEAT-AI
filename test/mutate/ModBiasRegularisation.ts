@@ -9,12 +9,12 @@
  * 5. Regularisation is configurable and can be disabled
  */
 import { assert, assertEquals, assertLess } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { ModBias } from "../../src/mutate/ModBias.ts";
+import { Creature } from "@creature";
+import { ModBias } from "@mutate/ModBias.ts";
 import {
   DEFAULT_BIAS_REGULARISATION_CONFIG,
   type RequiredBiasRegularisationConfig,
-} from "../../src/config/BiasRegularisationConfig.ts";
+} from "@config/BiasRegularisationConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

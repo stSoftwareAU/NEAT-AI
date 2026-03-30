@@ -5,8 +5,8 @@
  * Issue #1694
  */
 import { assertIsError, assertThrows } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { TopologyError } from "../../src/errors/TopologyError.ts";
+import { Creature } from "@creature";
+import { TopologyError } from "@errors/TopologyError.ts";
 
 Deno.test("Neuron activateNeuron - throws TopologyError for unimplemented", () => {
   const creature = new Creature(2, 1);

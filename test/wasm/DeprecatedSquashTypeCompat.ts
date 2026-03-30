@@ -9,9 +9,9 @@
  * @module
  */
 import { assertEquals, assertNotEquals } from "@std/assert";
-import { getSquashType, SquashType } from "../../src/wasm/SquashType.ts";
-import { Activations } from "../../src/methods/activations/Activations.ts";
-import { Creature } from "../../src/Creature.ts";
+import { getSquashType, SquashType } from "@wasm/SquashType.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import { Creature } from "@creature";
 
 Deno.test("Deprecated squash types resolve to correct enum values", () => {
   // These must remain mapped for backwards compatibility with serialised creatures

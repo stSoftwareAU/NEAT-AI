@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { prepareCreatureForBreeding } from "../../src/upgrade/Upgrade.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { prepareCreatureForBreeding } from "@upgrade/Upgrade.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 Deno.test(

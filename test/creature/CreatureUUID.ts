@@ -1,16 +1,16 @@
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import type {
   CreatureExport,
   CreatureInternal,
-} from "../../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { Neat } from "../../src/NEAT/Neat.ts";
-import { DeDuplicator } from "../../src/architecture/DeDuplicator.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
-import { Breed } from "../../src/breed/Breed.ts";
-import { Genus } from "../../src/NEAT/Genus.ts";
-import { ModBias } from "../../src/mutate/ModBias.ts";
+} from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { Neat } from "@neat/Neat.ts";
+import { DeDuplicator } from "@architecture/DeDuplicator.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { Breed } from "@breed/Breed.ts";
+import { Genus } from "@neat/Genus.ts";
+import { ModBias } from "@mutate/ModBias.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

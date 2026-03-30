@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 
 Deno.test("fix(): keeps the last zero-weight inbound synapse to an output (structure safety)", () => {
   const json: CreatureExport = {

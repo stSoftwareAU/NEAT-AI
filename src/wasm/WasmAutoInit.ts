@@ -12,11 +12,11 @@
  * the parent and set a global flag to skip auto-init.
  */
 
-import { getSkipWasmAutoInit } from "../globalAccessors.ts";
+import { getSkipWasmAutoInit } from "@globalAccessors";
 import {
   initWasmActivation,
   isWasmActivationAvailable,
-} from "./WasmModuleLoader.ts";
+} from "@wasm/WasmModuleLoader.ts";
 
 /**
  * Detect whether we are running in a Worker scope.

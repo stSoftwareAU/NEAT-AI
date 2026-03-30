@@ -1,4 +1,4 @@
-import type { CostInterface } from "./CostInterface.ts";
+import type { CostInterface } from "@costs/CostInterface.ts";
 
 /**
  * Mean Absolute Error (MAE) cost function.

@@ -2,44 +2,47 @@ import { assert } from "@std/assert";
 import { blue, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
-import type { CostInterface } from "../costs/CostInterface.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
-import { Creature } from "../Creature.ts";
-import { compactUnused } from "../compact/CompactUnused.ts";
-import type { TrainOptions } from "../config/TrainOptions.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import type { CostInterface } from "@costs/CostInterface.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import { Creature } from "@creature";
+import { compactUnused } from "@compact/CompactUnused.ts";
+import type { TrainOptions } from "@config/TrainOptions.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import {
   type BackPropagationArguments,
   calculateLearningRate,
   createBackPropagationConfig,
   type ErrorFeedback,
-} from "../propagate/BackPropagation.ts";
-import { buildOutgoingSynapsesMap } from "../propagate/sparse/CalculatePathsToOutput.ts";
-import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
-import { exportJSONWithRuntimeIds } from "./PopulateRuntimeIdsFromCreature.ts";
-import { BufferPool } from "../utils/BufferPool.ts";
-import type { CreatureExport, CreatureTrace } from "./CreatureInterfaces.ts";
-import { CreatureUtil } from "./CreatureUtils.ts";
+} from "@propagate/BackPropagation.ts";
+import { buildOutgoingSynapsesMap } from "@propagate/sparse/CalculatePathsToOutput.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { BufferPool } from "@utils/BufferPool.ts";
+import type {
+  CreatureExport,
+  CreatureTrace,
+} from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   trainWithPredictiveCoding,
-} from "../predictiveCoding/PredictiveCodingTrainer.ts";
+} from "@predictiveCoding/PredictiveCodingTrainer.ts";
 import { addTag } from "@stsoftware/tags/mod";
-import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../config/PredictiveCodingConfig.ts";
-import { applyDropout } from "../propagate/Dropout.ts";
-import { applyNoise } from "../propagate/DataFuzzing.ts";
-import { quantiseBuffer } from "../propagate/DataQuantisation.ts";
+import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "@config/PredictiveCodingConfig.ts";
+import { applyDropout } from "@propagate/Dropout.ts";
+import { applyNoise } from "@propagate/DataFuzzing.ts";
+import { quantiseBuffer } from "@propagate/DataQuantisation.ts";
 import {
   DEFAULT_DATA_FUZZING_CONFIG,
   type RequiredDataFuzzingConfig,
-} from "../config/DataFuzzingConfig.ts";
+} from "@config/DataFuzzingConfig.ts";
 import {
   DEFAULT_DATA_QUANTISATION_CONFIG,
   type RequiredDataQuantisationConfig,
-} from "../config/DataQuantisationConfig.ts";
-import { trainWithCrossValidation } from "./CrossValidationTrainer.ts";
-import { generateSyntheticSynapses } from "../propagate/SyntheticSynapses.ts";
-import { removeSyntheticSynapses } from "../propagate/RemoveSyntheticSynapses.ts";
+} from "@config/DataQuantisationConfig.ts";
+import { trainWithCrossValidation } from "@architecture/CrossValidationTrainer.ts";
+import { generateSyntheticSynapses } from "@propagate/SyntheticSynapses.ts";
+import { removeSyntheticSynapses } from "@propagate/RemoveSyntheticSynapses.ts";
 
 /** Resolve canonical wire UUIDs to runtime ids for an export that includes both (internal snapshot). */
 function wireToRuntimeIdFromExport(json: CreatureExport): Map<string, number> {

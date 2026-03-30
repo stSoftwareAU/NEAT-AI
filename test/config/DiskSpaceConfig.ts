@@ -7,8 +7,8 @@
  */
 
 import { assertEquals, assertThrows } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { parseDiskSpaceConfig } from "../../src/config/NeatConfigParsers.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { parseDiskSpaceConfig } from "@config/NeatConfigParsers.ts";
 
 // ── Default values ──────────────────────────────────────────────────
 

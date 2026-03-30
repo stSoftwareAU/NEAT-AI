@@ -1,5 +1,5 @@
 import { assertEquals, assertThrows } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 Deno.test("NeatOptions - empty options produces config with known defaults", () => {
   const config = createNeatConfig({});

@@ -3,7 +3,7 @@ import {
   BUILT_IN_COST_NAMES,
   type BuiltInCostName,
   type CostName,
-} from "../../src/Costs.ts";
+} from "@costs";
 
 Deno.test("BUILT_IN_COST_NAMES - should stay in sync with supported costs", () => {
   assertEquals(BUILT_IN_COST_NAMES, [

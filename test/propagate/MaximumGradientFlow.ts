@@ -1,9 +1,9 @@
 import { assert } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import { Costs } from "../../src/Costs.ts";
-import { Creature } from "../../src/Creature.ts";
-import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import { Costs } from "@costs";
+import { Creature } from "@creature";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 
 /**

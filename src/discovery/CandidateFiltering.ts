@@ -8,12 +8,12 @@
  * Extracted from DiscoveryRunner.ts as part of #1598.
  */
 
-import type { NeatConfig } from "../config/NeatConfig.ts";
-import { getLogger } from "../utils/Logger.ts";
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
-import type { DiscoveryChangeType } from "./DiscoveryCandidates.ts";
-import { isCandidateCachedSync } from "./FailureCache.ts";
-import { getSuccessfulRemovalNeuronIds } from "./SuccessCache.ts";
+import type { NeatConfig } from "@config/NeatConfig.ts";
+import { getLogger } from "@utils/Logger.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
+import type { DiscoveryChangeType } from "@discovery/DiscoveryCandidates.ts";
+import { isCandidateCachedSync } from "@discovery/FailureCache.ts";
+import { getSuccessfulRemovalNeuronIds } from "@discovery/SuccessCache.ts";
 
 export interface FilterCandidatesForEvaluationDeps {
   /**

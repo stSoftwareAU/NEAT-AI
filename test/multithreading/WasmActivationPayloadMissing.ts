@@ -9,7 +9,7 @@ import { assertEquals, assertExists } from "@std/assert";
 import {
   isWasmActivationPayloadAvailable,
   loadWasmActivationInitPayload,
-} from "../../src/multithreading/workers/WorkerHandler.ts";
+} from "@multithreading/workers/WorkerHandler.ts";
 
 Deno.test("isWasmActivationPayloadAvailable reports availability for canonical location", () => {
   const available = isWasmActivationPayloadAvailable();

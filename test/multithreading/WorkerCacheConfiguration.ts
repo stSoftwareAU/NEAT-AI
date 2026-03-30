@@ -11,8 +11,8 @@ import { assertEquals, assertExists } from "@std/assert";
 import type {
   RequestData,
   ResponseData,
-} from "../../src/multithreading/workers/WorkerHandler.ts";
-import { WorkerProcessor } from "../../src/multithreading/workers/WorkerProcessor.ts";
+} from "@multithreading/workers/WorkerHandler.ts";
+import { WorkerProcessor } from "@multithreading/workers/WorkerProcessor.ts";
 
 Deno.test("configure-cache RequestData is structured-clone safe", () => {
   const data: RequestData = {

@@ -1,14 +1,14 @@
 import { assert, assertAlmostEquals } from "@std/assert";
-import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
-import type { NeuronTrace } from "../../../src/architecture/NeuronInterfaces.ts";
-import { Costs } from "../../../src/Costs.ts";
-import { Creature } from "../../../src/Creature.ts";
-import { exportJSONWithRuntimeIds } from "../../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
-import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
-import { Activations } from "../../../src/methods/activations/Activations.ts";
-import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
-import { upgrade } from "../../../src/upgrade/Upgrade.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import type { NeuronTrace } from "@architecture/NeuronInterfaces.ts";
+import { Costs } from "@costs";
+import { Creature } from "@creature";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import { upgrade } from "@upgrade/Upgrade.ts";
 import { ReplaySquash } from "./ReplaySquash.ts";
 import { initWasmForTests } from "../../_initWasm.ts";
 

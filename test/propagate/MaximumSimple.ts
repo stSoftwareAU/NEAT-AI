@@ -1,11 +1,11 @@
 import { assert } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
-import { Costs } from "../../src/Costs.ts";
-import { Creature } from "../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import { Costs } from "@costs";
+import { Creature } from "@creature";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

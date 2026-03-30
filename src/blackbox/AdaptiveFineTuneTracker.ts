@@ -1,4 +1,4 @@
-import type { RequiredFineTunePopulationConfig } from "../config/FineTunePopulationConfig.ts";
+import type { RequiredFineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
 
 /**
  * Tracks the success rate of fine-tuning across generations and calculates

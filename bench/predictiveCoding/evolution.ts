@@ -9,14 +9,14 @@
  *   deno bench --allow-read --allow-write --allow-env --allow-ffi bench/predictiveCoding/evolution.ts
  */
 
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   type DataRecordInterface,
   makeDataDir,
-} from "../../src/architecture/DataSet.ts";
-import { trainWithPredictiveCoding } from "../../src/predictiveCoding/PredictiveCodingTrainer.ts";
-import { Costs } from "../../src/Costs.ts";
-import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../../src/config/PredictiveCodingConfig.ts";
+} from "@architecture/DataSet.ts";
+import { trainWithPredictiveCoding } from "@predictiveCoding/PredictiveCodingTrainer.ts";
+import { Costs } from "@costs";
+import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "@config/PredictiveCodingConfig.ts";
 
 // ── Training Data ────────────────────────────────────────────────────
 

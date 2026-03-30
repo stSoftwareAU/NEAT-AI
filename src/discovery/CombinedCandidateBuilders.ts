@@ -11,20 +11,20 @@ import type {
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   buildWireToRuntimeIdMap,
   resolveSingleNeuronReference,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
-import type { Creature } from "../Creature.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { shortID } from "./CandidateDescriptions.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import type { Creature } from "@creature";
+import { getLogger } from "@utils/Logger.ts";
+import { shortID } from "@discovery/CandidateDescriptions.ts";
 import {
   mapScaledSummaryEntries,
   summariseExpectedImprovement,
-} from "./CandidateScoring.ts";
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
+} from "@discovery/CandidateScoring.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 
 /**
  * Build a combined "all neurons" candidate by applying all neuron suggestions at once.

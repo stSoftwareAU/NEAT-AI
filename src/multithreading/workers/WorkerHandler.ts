@@ -1,43 +1,43 @@
 import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
-import type { CostName } from "../../Costs.ts";
-import type { Creature } from "../../Creature.ts";
-import type { CreatureExport } from "../../architecture/CreatureInterfaces.ts";
+import type { CostName } from "@costs";
+import type { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type {
   CoordinatedStructuralCandidate,
-} from "../../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
-import type { RemovalCandidate } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+import type { RemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { NeatConfig } from "../../config/NeatConfig.ts";
-import type { RequiredOutputRange } from "../../config/OutputRangeConfig.ts";
-import type { TrainOptions } from "../../config/TrainOptions.ts";
-import type { WasmCacheConfig } from "../../config/WasmCacheConfig.ts";
-import { getLogger } from "../../utils/Logger.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { NeatConfig } from "@config/NeatConfig.ts";
+import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
+import type { TrainOptions } from "@config/TrainOptions.ts";
+import type { WasmCacheConfig } from "@config/WasmCacheConfig.ts";
+import { getLogger } from "@utils/Logger.ts";
 import {
   getInitTimeoutMs,
   WorkerHandlerBase,
-} from "../../workers/WorkerHandlerBase.ts";
-import type { WorkerInterface } from "../../workers/WorkerInterface.ts";
+} from "@workers/WorkerHandlerBase.ts";
+import type { WorkerInterface } from "@workers/WorkerInterface.ts";
 import {
   loadWasmActivationInitPayloadAsync,
-} from "../../workers/WasmActivationPayload.ts";
-import { MockWorker } from "./MockWorker.ts";
+} from "@workers/WasmActivationPayload.ts";
+import { MockWorker } from "@multithreading/workers/MockWorker.ts";
 
 // Re-export shared types for backwards compatibility.
 export type {
   WasmActivationInitPayload,
-} from "../../workers/WasmActivationPayload.ts";
+} from "@workers/WasmActivationPayload.ts";
 export {
   fetchWasmForWorkers,
   isWasmActivationPayloadAvailable,
   loadWasmActivationInitPayload,
   loadWasmActivationInitPayloadAsync,
-} from "../../workers/WasmActivationPayload.ts";
+} from "@workers/WasmActivationPayload.ts";
 
 /**
  * Data structure for requests sent to workers.
@@ -274,7 +274,7 @@ export interface ResponseData {
 }
 
 // Re-export WorkerInterface for backwards compatibility.
-export type { WorkerInterface } from "../../workers/WorkerInterface.ts";
+export type { WorkerInterface } from "@workers/WorkerInterface.ts";
 
 /**
  * Manages communication with worker threads for parallel processing.

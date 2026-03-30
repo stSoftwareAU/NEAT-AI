@@ -14,7 +14,7 @@ import {
   calculateLearningRate,
   createBackPropagationConfig,
   type ErrorFeedback,
-} from "../../src/propagate/BackPropagation.ts";
+} from "@propagate/BackPropagation.ts";
 
 // ---------------------------------------------------------------------------
 // Magnitude scaling: large error produces higher learning rate

@@ -18,19 +18,19 @@
  *   deno bench --allow-read --allow-env --allow-write --allow-ffi bench/TopologicalBackpropProfile.ts
  */
 
-import { Creature } from "../src/Creature.ts";
-import type { CreatureExport } from "../src/architecture/CreatureInterfaces.ts";
-import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
-import { computeReverseTopologicalOrder } from "../src/propagate/TopologicalOrder.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import { computeReverseTopologicalOrder } from "@propagate/TopologicalOrder.ts";
 import {
   fusedErrorDistribution,
   squash as wasmSquash,
-} from "../src/wasm/ActivationMethods.ts";
-import { adjustedActivation } from "../src/neuron/NeuronPropagation.ts";
-import { adjustedBias } from "../src/propagate/Bias.ts";
-import { adjustedWeight } from "../src/propagate/Weight.ts";
-import { BackpropBuffers } from "../src/propagate/BackpropBuffers.ts";
+} from "@wasm/ActivationMethods.ts";
+import { adjustedActivation } from "@neuron/NeuronPropagation.ts";
+import { adjustedBias } from "@propagate/Bias.ts";
+import { adjustedWeight } from "@propagate/Weight.ts";
+import { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
 
 // Seeded random for reproducibility
 function seededRandom(seed: number) {

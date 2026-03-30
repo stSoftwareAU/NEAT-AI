@@ -8,15 +8,15 @@
 import { assert } from "@std/assert";
 import { blue, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
-import type { NeatConfig } from "../../config/NeatConfig.ts";
-import { CreatureUtil } from "../CreatureUtils.ts";
-import type { DataRecordInterface } from "../DataSet.ts";
-import type { DiscoverStructure } from "./DiscoverStructure.ts";
-import type { DiscoveryPerformanceStats } from "./DiscoveryPerformance.ts";
-import { shouldLogDiscovery } from "./DiscoveryPerformance.ts";
-import type { PhaseDiagnostics } from "./PhaseDiagnostics.ts";
-import { submitDiscoveryRecordBatch } from "./SubmitDiscoveryRecordBatch.ts";
-import { getLogger } from "../../utils/Logger.ts";
+import type { NeatConfig } from "@config/NeatConfig.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import type { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { DiscoveryPerformanceStats } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryPerformance.ts";
+import { shouldLogDiscovery } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryPerformance.ts";
+import type { PhaseDiagnostics } from "@architecture/ErrorGuidedStructuralEvolution/PhaseDiagnostics.ts";
+import { submitDiscoveryRecordBatch } from "@architecture/ErrorGuidedStructuralEvolution/SubmitDiscoveryRecordBatch.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Context describing the DataRecorder state needed by processFile.

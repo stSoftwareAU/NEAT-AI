@@ -1,7 +1,7 @@
 import type {
   MemeticAncestorSnapshot,
   MemeticInterface,
-} from "./MemeticInterface.ts";
+} from "@blackbox/MemeticInterface.ts";
 
 /**
  * Result of analysing the trajectory of a weight or bias over multiple generations.

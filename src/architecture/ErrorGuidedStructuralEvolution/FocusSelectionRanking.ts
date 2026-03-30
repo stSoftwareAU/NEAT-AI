@@ -5,19 +5,19 @@
  * GPU-accelerated ranking when available, with fallback to local
  * recorded error aggregation.
  */
-import type { Creature } from "../../Creature.ts";
-import { getLogger } from "../../utils/Logger.ts";
+import type { Creature } from "@creature";
+import { getLogger } from "@utils/Logger.ts";
 import type {
   NeuronErrorInfo,
   NeuronScanStats,
-} from "./DiscoverStructureTypes.ts";
-import { fromRustRemovalCandidate } from "./DiscoverResult.ts";
-import type { RemovalCandidate } from "./DiscoverResult.ts";
-import { creatureToRustFormat } from "./RustDiscovery.ts";
-import type { DiscoverStructureDeps } from "./DiscoverStructure.ts";
-import { formatMillis } from "./DiscoverLogging.ts";
-import { buildWireToRuntimeIdMap } from "./DiscoveryWireIdentity.ts";
-import { TopologyError } from "../../errors/TopologyError.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
+import { fromRustRemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type { RemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { creatureToRustFormat } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import type { DiscoverStructureDeps } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { formatMillis } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverLogging.ts";
+import { buildWireToRuntimeIdMap } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 
 /**
  * Lists neurons sorted by their total error, using Rust focus ranking with fallback.

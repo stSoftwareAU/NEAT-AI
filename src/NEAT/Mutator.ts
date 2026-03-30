@@ -1,32 +1,32 @@
 import { assert } from "@std/assert";
 import { removeTag } from "@stsoftware/tags/mod";
 import { type Creature, CreatureUtil, Mutation } from "../../mod.ts";
-import { discover } from "../blackbox/Discover.ts";
-import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
-import type { NeatConfig } from "../config/NeatConfig.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
-import { AddBackCon } from "../mutate/AddBackCon.ts";
-import { AddConnection } from "../mutate/AddConnection.ts";
-import { AddNeuron } from "../mutate/AddNeuron.ts";
-import { AddSelfCon } from "../mutate/AddSelfCon.ts";
-import { ModBias } from "../mutate/ModBias.ts";
-import { ModActivation as ModSquash } from "../mutate/ModSquash.ts";
-import { ModWeight } from "../mutate/ModWeight.ts";
-import type { RadioactiveInterface } from "../mutate/RadioactiveInterface.ts";
-import { computeMutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
-import type { MutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
-import { SubBackCon } from "../mutate/SubBackCon.ts";
-import { SubConnection } from "../mutate/SubConnection.ts";
-import { SubNeuron } from "../mutate/SubNeuron.ts";
-import { SubSelfCon } from "../mutate/SubSelfCon.ts";
-import { SwapNeurons } from "../mutate/SwapNeurons.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import { DEFAULT_EVOLVABLE_HYPERPARAMETERS } from "../config/HyperparameterConfig.ts";
+import { discover } from "@blackbox/Discover.ts";
+import { memeticUpdate } from "@blackbox/MemeticUpdate.ts";
+import type { NeatConfig } from "@config/NeatConfig.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import { AddBackCon } from "@mutate/AddBackCon.ts";
+import { AddConnection } from "@mutate/AddConnection.ts";
+import { AddNeuron } from "@mutate/AddNeuron.ts";
+import { AddSelfCon } from "@mutate/AddSelfCon.ts";
+import { ModBias } from "@mutate/ModBias.ts";
+import { ModActivation as ModSquash } from "@mutate/ModSquash.ts";
+import { ModWeight } from "@mutate/ModWeight.ts";
+import type { RadioactiveInterface } from "@mutate/RadioactiveInterface.ts";
+import { computeMutationBias } from "@predictiveCoding/PredictionErrorGuidedMutation.ts";
+import type { MutationBias } from "@predictiveCoding/PredictionErrorGuidedMutation.ts";
+import { SubBackCon } from "@mutate/SubBackCon.ts";
+import { SubConnection } from "@mutate/SubConnection.ts";
+import { SubNeuron } from "@mutate/SubNeuron.ts";
+import { SubSelfCon } from "@mutate/SubSelfCon.ts";
+import { SwapNeurons } from "@mutate/SwapNeurons.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { DEFAULT_EVOLVABLE_HYPERPARAMETERS } from "@config/HyperparameterConfig.ts";
 import {
   createDefaultHyperparameters,
   mutateHyperparameters,
-} from "./HyperparameterEvolution.ts";
+} from "@neat/HyperparameterEvolution.ts";
 
 /**
  * Cache entry for valid mutation candidates.

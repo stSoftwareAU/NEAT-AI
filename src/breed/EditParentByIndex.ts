@@ -1,6 +1,6 @@
 import { addTag } from "@stsoftware/tags/mod";
-import { Creature } from "../Creature.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
+import { Creature } from "@creature";
+import { ValidationError } from "@errors/ValidationError.ts";
 
 export function editParentByIndex(
   parent: Creature,

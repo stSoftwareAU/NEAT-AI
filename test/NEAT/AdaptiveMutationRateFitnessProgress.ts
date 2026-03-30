@@ -17,11 +17,11 @@
  * Issue #1012 extends #1039 to also reduce mutation rate during improvement.
  */
 import { assertEquals, assertThrows } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 import {
   DEFAULT_PLATEAU_DETECTION,
   PlateauDetector,
-} from "../../src/NEAT/PlateauDetector.ts";
+} from "@neat/PlateauDetector.ts";
 
 // ============================================================================
 // Configuration Tests for Improvement-Based Mutation Rate Reduction

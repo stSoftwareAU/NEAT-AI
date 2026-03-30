@@ -15,7 +15,7 @@ import {
   isRustGpuAvailable,
   isRustLibraryAvailable,
   shouldSkipRustDiscoveryTests,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 const KNOWN_BACKENDS = ["metal", "vulkan", "dx12", "gl"];
 

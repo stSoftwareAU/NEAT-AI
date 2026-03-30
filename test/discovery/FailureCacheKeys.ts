@@ -3,11 +3,11 @@ import {
   buildCacheKey,
   extractExponent,
   formatWeight,
-} from "../../src/discovery/FailureCache.ts";
-import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
-import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import type { CoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+} from "@discovery/FailureCache.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { CoordinatedStructuralCandidate } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import { makeSimpleCreature } from "../fixtures/SimpleCreatures.ts";
 
 function makeCandidate(

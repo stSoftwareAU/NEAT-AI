@@ -6,9 +6,9 @@
  */
 
 import { assertEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { generateSyntheticSynapses } from "../../src/propagate/SyntheticSynapses.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { generateSyntheticSynapses } from "@propagate/SyntheticSynapses.ts";
 
 Deno.test("SyntheticSynapses - simple chain adds missing connections", () => {
   // Input(0) → H1(1) → Output(2)

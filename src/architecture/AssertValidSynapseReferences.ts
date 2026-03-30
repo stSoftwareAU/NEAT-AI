@@ -8,7 +8,7 @@
  * @module AssertValidSynapseReferences
  */
 
-import type { CreatureExport } from "./CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 /**
  * Asserts that every synapse in the CreatureExport references neurons that

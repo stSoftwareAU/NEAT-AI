@@ -1,15 +1,15 @@
-import type { DiscoverRecord } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { Neuron } from "../architecture/Neuron.ts";
-import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
-import { ActivationRange } from "../propagate/ActivationRange.ts";
+import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
+import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
+import { ActivationRange } from "@propagate/ActivationRange.ts";
 import {
   type BackPropagationConfig,
   limitValue,
   toValue,
-} from "../propagate/BackPropagation.ts";
-import { accumulateBias, adjustedBias } from "../propagate/Bias.ts";
-import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
-import { accumulateWeight, adjustedWeight } from "../propagate/Weight.ts";
+} from "@propagate/BackPropagation.ts";
+import { accumulateBias, adjustedBias } from "@propagate/Bias.ts";
+import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import { accumulateWeight, adjustedWeight } from "@propagate/Weight.ts";
 
 /**
  * @deprecated No longer used. A normal neural network can mimic the behavior of this activation.

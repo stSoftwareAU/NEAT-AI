@@ -9,25 +9,25 @@
  */
 
 import { assertEquals } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 import {
   DEFAULT_COST_OF_GROWTH,
   DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY,
   DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES,
   DEFAULT_DISCOVERY_SAMPLE_RATE,
-} from "../../src/config/NeatConfig.ts";
-import { DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS } from "../../src/config/AdaptiveMutationThresholds.ts";
-import { DEFAULT_ENSEMBLE_DIVERSITY_CONFIG } from "../../src/config/EnsembleDiversityConfig.ts";
-import { DEFAULT_QUANTUM_STEP_CONFIG } from "../../src/config/QuantumStepConfig.ts";
-import { DEFAULT_STABILITY_ADAPTATION_CONFIG } from "../../src/config/StabilityAdaptationConfig.ts";
-import { DEFAULT_WEIGHT_REGULARISATION_CONFIG } from "../../src/config/WeightRegularisationConfig.ts";
-import { DEFAULT_BIAS_REGULARISATION_CONFIG } from "../../src/config/BiasRegularisationConfig.ts";
-import { DEFAULT_FINE_TUNE_POPULATION_CONFIG } from "../../src/config/FineTunePopulationConfig.ts";
-import { DEFAULT_PLATEAU_DETECTION } from "../../src/NEAT/PlateauDetector.ts";
+} from "@config/NeatConfig.ts";
+import { DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS } from "@config/AdaptiveMutationThresholds.ts";
+import { DEFAULT_ENSEMBLE_DIVERSITY_CONFIG } from "@config/EnsembleDiversityConfig.ts";
+import { DEFAULT_QUANTUM_STEP_CONFIG } from "@config/QuantumStepConfig.ts";
+import { DEFAULT_STABILITY_ADAPTATION_CONFIG } from "@config/StabilityAdaptationConfig.ts";
+import { DEFAULT_WEIGHT_REGULARISATION_CONFIG } from "@config/WeightRegularisationConfig.ts";
+import { DEFAULT_BIAS_REGULARISATION_CONFIG } from "@config/BiasRegularisationConfig.ts";
+import { DEFAULT_FINE_TUNE_POPULATION_CONFIG } from "@config/FineTunePopulationConfig.ts";
+import { DEFAULT_PLATEAU_DETECTION } from "@neat/PlateauDetector.ts";
 import {
   DEFAULT_RUST_FLUSH_BYTES,
   DEFAULT_RUST_FLUSH_RECORDS,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/constants.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/constants.ts";
 
 Deno.test("Configuration guide - core evolution defaults match code", () => {
   const config = createNeatConfig({});

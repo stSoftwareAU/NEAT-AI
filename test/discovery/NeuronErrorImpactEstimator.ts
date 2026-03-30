@@ -1,6 +1,6 @@
 import { assertAlmostEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { CreatureErrorImpactEstimator } from "../../src/discovery/NeuronErrorImpactEstimator.ts";
+import { Creature } from "@creature";
+import { CreatureErrorImpactEstimator } from "@discovery/NeuronErrorImpactEstimator.ts";
 
 // Integer IDs for neurons (deterministicIdFromUuid or fixed scheme).
 // Input neurons: id = inputIndex (0, 1, ...)

@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import type { NeatOptions } from "../../mod.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 /**
  * Type-level tests for `NeatOptions.costName`.

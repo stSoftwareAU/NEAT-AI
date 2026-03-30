@@ -1,11 +1,11 @@
 import { assert, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   createSeededRng,
   getRandomNumberGenerator,
   setRandomNumberGenerator,
-} from "../../src/utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 import { withRngTestLock } from "../_rngTestLock.ts";

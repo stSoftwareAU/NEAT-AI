@@ -9,8 +9,8 @@ export {
   calculateDiscoveryCandidateSummaryCounts,
   ensureWasmActivationForDiscovery,
   recordDirectory,
-} from "./DataRecorder.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DataRecorder.ts";
 
-export type { DiscoveryPerformanceSummarySnapshot } from "./DiscoveryPerformance.ts";
+export type { DiscoveryPerformanceSummarySnapshot } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryPerformance.ts";
 
-export { formatDiscoveryPerformanceSummary } from "./DiscoveryPerformance.ts";
+export { formatDiscoveryPerformanceSummary } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryPerformance.ts";

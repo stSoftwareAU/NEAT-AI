@@ -12,7 +12,7 @@ import {
   updateScoreForBiasChange,
   updateScoreForWeightChange,
   valuePenalty,
-} from "../../src/architecture/Score.ts";
+} from "@architecture/Score.ts";
 
 /**
  * Helper to create a simple creature with specified weights and biases.

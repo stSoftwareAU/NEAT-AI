@@ -12,7 +12,7 @@
  * - Better cache locality with TypedArrays due to contiguous memory layout
  */
 
-import { DenseNumberMap } from "../src/architecture/DenseNumberMap.ts";
+import { DenseNumberMap } from "@architecture/DenseNumberMap.ts";
 
 const NEURON_COUNTS = [100, 1000, 10000];
 const ITERATIONS = 10000;

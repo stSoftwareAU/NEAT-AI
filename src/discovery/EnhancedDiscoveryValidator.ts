@@ -12,20 +12,20 @@
  * - Edge cases not represented in validation data
  */
 
-import type { Creature } from "../Creature.ts";
-import { getLogger } from "../utils/Logger.ts";
-import type { DataRecordInterface } from "../architecture/DataSet.ts";
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
+import type { Creature } from "@creature";
+import { getLogger } from "@utils/Logger.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 import {
   type HoldoutValidationResult,
   type HoldoutValidatorOptions,
   splitDataForHoldout,
-} from "./HoldoutValidator.ts";
+} from "@discovery/HoldoutValidator.ts";
 import {
   type BrittlenessResult,
   BrittlenessScorer,
   type BrittlenessScorerOptions,
-} from "./BrittlenessScorer.ts";
+} from "@discovery/BrittlenessScorer.ts";
 
 /**
  * Options for holdout validation in enhanced validator.
