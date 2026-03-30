@@ -8,6 +8,7 @@ import type { RequiredHyperparameterEvolutionConfig } from "../config/Hyperparam
 import { DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG } from "../config/HyperparameterConfig.ts";
 import { crossoverHyperparameters } from "../NEAT/HyperparameterEvolution.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
+import { neuronWireLabelForDiagnostics } from "../neuron/NeuronSerialization.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { prepareCreatureForBreeding } from "../upgrade/Upgrade.ts";
 import { writeDiagnostics } from "../utils/Diagnostics.ts";
@@ -16,7 +17,9 @@ import { pruneOrphanMemeticReferences } from "../compact/CompactUtils.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
 import { Neuron } from "./Neuron.ts";
 import { outputIndexFromId, outputNeuronId } from "./NeuronId.ts";
+import { Synapse as SynapseClass } from "./Synapse.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
+import { creatureValidate } from "./CreatureValidate.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {
@@ -38,7 +41,12 @@ export interface ConnectionRef {
 
 export class Offspring {
   /**
-   * Create an offspring from two parent networks
+   * Create an offspring from two parent networks.
+   *
+   * Forward-only: parent edges that become backward after {@link sortNeurons}
+   * are omitted from the batch, then {@link repairForwardOnlyComputationalInbounds}
+   * restores wire-aligned inbounds from parents where possible. The child is
+   * rejected with diagnostics if it still fails `creatureValidate`.
    */
   static breed(
     mum: Creature,
@@ -301,29 +309,30 @@ export class Offspring {
           const toIndx = indxMap.get(toId);
 
           if (fromIndx !== undefined && toIndx !== undefined) {
-            if (fromIndx <= toIndx) {
-              const toType = offspring.neurons[toIndx].type;
-              if (toType === "hidden" || toType === "output") {
-                const key = fromIndx * neuronCount + toIndx;
-                if (!connectionSet.has(key)) {
-                  connectionSet.add(key);
-                  batchConnections.push({
-                    from: fromIndx,
-                    to: toIndx,
-                    weight: synapse.weight,
-                    type: synapse.type,
-                    tags: synapse.tags,
-                  });
-                }
-              } else {
-                throw new TopologyError(
-                  `Can't connect to ${toType} neuron at indx=${toIndx} of type ${toType}!`,
-                  "INVALID_CONNECTION",
-                );
+            // After sortNeurons, a parent edge that was forward in the parent can
+            // map to fromIndx > toIndx in the child. Skip it for forward-only
+            // offspring; repairForwardOnlyComputationalInbounds restores a valid
+            // forward inbound from the same parent neuron when possible.
+            if (shouldBeForwardOnly && fromIndx >= toIndx) {
+              continue;
+            }
+
+            const toType = offspring.neurons[toIndx].type;
+            if (toType === "hidden" || toType === "output") {
+              const key = fromIndx * neuronCount + toIndx;
+              if (!connectionSet.has(key)) {
+                connectionSet.add(key);
+                batchConnections.push({
+                  from: fromIndx,
+                  to: toIndx,
+                  weight: synapse.weight,
+                  type: synapse.type,
+                  tags: synapse.tags,
+                });
               }
             } else {
               throw new TopologyError(
-                `${neuron.ID()} fromIndx=${fromIndx} > toIndx=${toIndx}`,
+                `Can't connect to ${toType} neuron at indx=${toIndx} of type ${toType}!`,
                 "INVALID_CONNECTION",
               );
             }
@@ -415,6 +424,14 @@ export class Offspring {
         : undefined;
     }
 
+    if (shouldBeForwardOnly) {
+      Offspring.repairForwardOnlyComputationalInbounds(
+        offspring,
+        mother,
+        father,
+      );
+    }
+
     if (offspring.memetic) {
       pruneOrphanMemeticReferences(offspring);
     }
@@ -459,9 +476,96 @@ export class Offspring {
           );
         }
       }
+
+      try {
+        creatureValidate(offspring, { forwardOnly: true });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        offspring.DEBUG = false;
+        writeDiagnostics({
+          error: e instanceof Error ? e : new Error(msg),
+          prefix: "offspring-breed-validation",
+          mother: mother.exportJSON(),
+          father: father.exportJSON(),
+          offspring: offspring.exportJSON(),
+        });
+        throw new TopologyError(
+          `[Offspring] Forward-only offspring failed creatureValidate after breed: ${msg}`,
+          "INVALID_CONNECTION",
+        );
+      }
     }
 
     return offspring;
+  }
+
+  private static findParentNeuronIndexByWireLabel(
+    parent: Creature,
+    label: string,
+  ): number | undefined {
+    for (let i = 0; i < parent.neurons.length; i++) {
+      if (neuronWireLabelForDiagnostics(parent.neurons[i], i) === label) {
+        return i;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * After skipping parent edges that would be backward in the child ordering,
+   * restore at least one forward inbound for each hidden/output by reusing a
+   * mappable parent synapse (wire-label aligned), or a last-resort edge from
+   * the first input.
+   */
+  private static repairForwardOnlyComputationalInbounds(
+    offspring: Creature,
+    mother: Creature,
+    father: Creature,
+  ): void {
+    const labelToOffspringIndex = new Map<string, number>();
+    for (let i = 0; i < offspring.neurons.length; i++) {
+      labelToOffspringIndex.set(
+        neuronWireLabelForDiagnostics(offspring.neurons[i], i),
+        i,
+      );
+    }
+
+    for (let i = offspring.input; i < offspring.neurons.length; i++) {
+      const node = offspring.neurons[i];
+      if (node.type !== "hidden" && node.type !== "output") continue;
+      if (offspring.inwardConnections(i).length > 0) continue;
+
+      const label = neuronWireLabelForDiagnostics(node, i);
+
+      let linked = false;
+      for (const parent of [mother, father]) {
+        const pIdx = Offspring.findParentNeuronIndexByWireLabel(parent, label);
+        if (pIdx === undefined) continue;
+
+        for (const syn of parent.inwardConnections(pIdx)) {
+          const fromLabel = neuronWireLabelForDiagnostics(
+            parent.neurons[syn.from],
+            syn.from,
+          );
+          const fromI = labelToOffspringIndex.get(fromLabel);
+          if (
+            fromI !== undefined && fromI < i &&
+            offspring.getSynapse(fromI, i) === null
+          ) {
+            offspring.connect(fromI, i, syn.weight, syn.type);
+            linked = true;
+            break;
+          }
+        }
+        if (linked) break;
+      }
+
+      if (!linked && i > 0 && offspring.getSynapse(0, i) === null) {
+        offspring.connect(0, i, SynapseClass.randomWeight());
+      }
+    }
+
+    offspring.clearCache();
   }
 
   private static fixType(node: Neuron, connections: SynapseInternal[]) {

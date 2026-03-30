@@ -1029,10 +1029,10 @@ export class Creature implements CreatureInternal {
    * preserve exact topology and memetic state — {@link Creature.fix} can prune
    * edges and clear memetic lineage when repairs run.
    *
-   * `loadFrom` already logs and strips recurrent synapses that contradict
-   * `forwardOnly: true`; {@link Creature.fix} then normalises orphans, memetic
-   * keys, and forward-only edges so the full topology check in
-   * `creatureValidate()` succeeds.
+   * `loadFrom` logs and strips recurrent synapses that contradict
+   * `forwardOnly: true`. When any strip occurred, it also runs orphan cleanup
+   * so stranded hiddens are not left invalid; {@link Creature.fix} and
+   * `creatureValidate()` then complete normalisation for this ingest path.
    */
   static fromPersistedJSON(
     json: CreatureInternal | CreatureExport,

@@ -1,4 +1,5 @@
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import type { Synapse } from "../architecture/Synapse.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
 import { unifySynapseTypeForMerge } from "../utils/SynapseTypeUnify.ts";
@@ -15,9 +16,11 @@ export interface MergeDuplicateSynapsesResult {
  * Merge duplicate synapses (same from/to) by summing weights and removing
  * duplicates. `type` is unified with {@link unifySynapseTypeForMerge}.
  *
- * Use on **export JSON** before `Creature.fromJSON` when ingesting legacy data;
- * `creatureValidate` and `Creature.fix()` treat duplicate (from,to) rows as an
- * error — they do not merge them (Issue #2086).
+ * Use on **export JSON** when ingesting legacy data outside `loadFrom`, or as
+ * an idempotent pre-pass before `Creature.fromJSON`. `loadFrom` also merges
+ * duplicate runtime synapses for forward-only creatures (Issue #2086 /
+ * GRQ-25). `creatureValidate` and `Creature.fix()` still treat duplicate rows as
+ * an error if they reach a live creature without merging.
  *
  * @param creatureExport - The CreatureExport to update (modified in place).
  * @returns Count of duplicates merged (number of removed synapses).
@@ -149,4 +152,56 @@ export function pruneZeroWeightSynapses(
   }
 
   return { removedSynapses: removed };
+}
+
+/**
+ * Merge duplicate synapse rows that share the same runtime neuron indices
+ * (`from` / `to`), summing weights and unifying `type` / tags — same semantics
+ * as {@link mergeDuplicateSynapses} on export JSON (Issue #2086).
+ *
+ * Used by `loadFrom` when ingesting corrupt forward-only wire payloads so
+ * `fix()`'s duplicate check is not required before validation.
+ */
+export type SynapseMergeHost = {
+  synapses: Synapse[];
+  clearCache(): void;
+};
+
+export function mergeDuplicateSynapsesInCreature(
+  host: SynapseMergeHost,
+): number {
+  const list = host.synapses;
+  if (list.length < 2) return 0;
+
+  const seen = new Map<string, number>();
+  const mergedSynapses: Synapse[] = [];
+  let mergedCount = 0;
+
+  for (const synapse of list) {
+    const key = `${synapse.from}->${synapse.to}`;
+    const existingIndex = seen.get(key);
+    if (existingIndex === undefined) {
+      seen.set(key, mergedSynapses.length);
+      mergedSynapses.push(synapse);
+      continue;
+    }
+
+    const existing = mergedSynapses[existingIndex];
+    existing.weight += synapse.weight;
+    existing.type = unifySynapseTypeForMerge(existing.type, synapse.type);
+    if (synapse.tags?.length) {
+      existing.tags = mergeTagsByNameValue(existing.tags, synapse.tags);
+    }
+    mergedCount++;
+  }
+
+  if (mergedCount > 0) {
+    mergedSynapses.sort((a, b) =>
+      a.from !== b.from ? a.from - b.from : a.to - b.to
+    );
+    host.synapses = mergedSynapses;
+    host.clearCache();
+  }
+
+  return mergedCount;
 }

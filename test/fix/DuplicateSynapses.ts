@@ -1,5 +1,6 @@
 import { assertAlmostEquals, assertEquals, assertThrows } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
+import { Synapse } from "../../src/architecture/Synapse.ts";
 import { mergeDuplicateSynapses } from "../../src/compact/CompactUtils.ts";
 import { ValidationError } from "../../src/errors/ValidationError.ts";
 import { initWasmForTests } from "../_initWasm.ts";
@@ -14,14 +15,13 @@ function mulberry32(seed: number) {
   };
 }
 
-function makeCreature(): Creature {
+function makeCreatureWithDuplicateRows(): Creature {
   const json: CreatureExport = {
     neurons: [
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.25 },
     ],
     synapses: [
-      { fromUUID: "input-0", toId: -1, weight: 0.5 },
-      { fromUUID: "input-0", toId: -1, weight: -0.1 },
+      { fromUUID: "input-0", toUUID: "output-0", weight: 0.5 },
     ],
     input: 1,
     output: 1,
@@ -29,12 +29,14 @@ function makeCreature(): Creature {
 
   const creature = Creature.fromJSON(json, false);
   (creature as unknown as { memetic?: unknown }).memetic = { note: "test" };
+  const s = creature.synapses[0];
+  creature.synapses.push(new Synapse(s.from, s.to, -0.1));
   return creature;
 }
 
 Deno.test("fix(): throws DUPLICATE_SYNAPSE when duplicate (from,to) rows exist", async () => {
   await initWasmForTests();
-  const creature = makeCreature();
+  const creature = makeCreatureWithDuplicateRows();
 
   const err = assertThrows(
     () => creature.fix(),

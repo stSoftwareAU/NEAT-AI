@@ -30,6 +30,9 @@ import type {
 import type { MemeticInterface } from "../blackbox/MemeticInterface.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
+import { cleanupOrphanedNeuronsInCreature } from "../compact/OrphanedNeuronCleanup.ts";
+import { pruneOrphanMemeticReferences } from "../compact/MemeticCleanup.ts";
+import { mergeDuplicateSynapsesInCreature } from "../compact/SynapsePruning.ts";
 import { upgradeOne } from "../upgrade/UpgradeOne.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 
@@ -264,6 +267,23 @@ function convertMemeticToIntIds(
   return result;
 }
 
+function forwardOnlyHiddenLacksInbound(creature: Creature): boolean {
+  const inboundTo = new Set<number>();
+  for (const s of creature.synapses) {
+    inboundTo.add(s.to);
+  }
+  for (
+    let i = creature.input;
+    i < creature.neurons.length - creature.output;
+    i++
+  ) {
+    if (creature.neurons[i].type === "hidden" && !inboundTo.has(i)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Load the creature from a JSON object.
  */
@@ -448,7 +468,11 @@ export function loadFrom(
     creature.synapses.length = validSynapseCount;
   }
 
-  if (json.memetic && uuidToIndex.size > 0) {
+  const mergedDuplicateSynapses = mergeDuplicateSynapsesInCreature(creature);
+
+  if (mergedDuplicateSynapses > 0) {
+    creature.memetic = undefined;
+  } else if (json.memetic && uuidToIndex.size > 0) {
     creature.memetic = convertMemeticToIntIds(
       json.memetic,
       creature,
@@ -471,6 +495,30 @@ export function loadFrom(
   }
 
   creature.prebuildInwardIndexIfLarge();
+
+  // Forward-only ingest: merge duplicate (from,to) rows (Issue #2086 / GRQ-25),
+  // then repair when recurrent synapses were stripped (GRQ-12), duplicates were
+  // merged in loadFrom, or `validate` is true and a hidden has no inbound
+  // (GRQ-24/25 after offline `mergeDuplicateSynapses`, and strict ingest).
+  //
+  // When `validate` is false we do not repair NO_INWARD-only graphs so callers
+  // (e.g. discovery replay) can load intentional intermediate topologies.
+  //
+  // We avoid full fix() here so persisted creature.uuid does not force-clear
+  // memetic (fix()'s topology-hash comparison).
+  const stripOccurred = isForwardOnly && validSynapseCount < synapseCount;
+  const repairNoInwardForValidate = validate &&
+    creature.forwardOnly === true &&
+    forwardOnlyHiddenLacksInbound(creature);
+  if (
+    creature.forwardOnly === true &&
+    (mergedDuplicateSynapses > 0 ||
+      stripOccurred ||
+      repairNoInwardForValidate)
+  ) {
+    cleanupOrphanedNeuronsInCreature(creature);
+    pruneOrphanMemeticReferences(creature);
+  }
 
   if (validate) {
     creatureValidate(creature);
