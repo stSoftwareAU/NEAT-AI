@@ -82,6 +82,8 @@ export function creatureValidate(
   };
 
   let outputIndx = 0;
+  /** In the computational slice (after inputs, before outputs), hiddens must not precede constants. */
+  let computationalSeenHidden = false;
   const neuronIds = new Set<number>();
   creature.neurons.forEach((neuron, indx) => {
     const id = neuron.id;
@@ -139,6 +141,25 @@ export function creatureValidate(
         "OTHER",
       );
     }
+
+    const inComputationalSlice = indx >= creature.input &&
+      indx < creature.neurons.length - creature.output;
+    if (inComputationalSlice) {
+      if (neuron.type === "constant" && computationalSeenHidden) {
+        debugWrite(creature);
+        throw new ValidationError(
+          `${
+            neuronWireLabelForDiagnostics(neuron, indx)
+          }) type constant after hidden neuron; ` +
+            `required order is input, constant, hidden, output`,
+          "NEURON_ORDER",
+        );
+      }
+      if (neuron.type === "hidden") {
+        computationalSeenHidden = true;
+      }
+    }
+
     neuronIds.add(id);
 
     if (neuron.squash === "IF" && indx > 2) {

@@ -9,6 +9,7 @@
 
 export type ValidationErrorName =
   | "OTHER"
+  | "NEURON_ORDER"
   | "NO_OUTWARD_CONNECTIONS"
   | "NO_INWARD_CONNECTIONS"
   | "IF_CONDITIONS"

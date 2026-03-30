@@ -10,11 +10,10 @@ import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
 function makeCreature() {
   const json: CreatureExport = {
     neurons: [
+      { type: "constant", uuid: "first-one", bias: 1 },
       { type: "hidden", uuid: "hidden-3", squash: "CLIPPED", bias: 2.5 },
       { type: "hidden", uuid: "hidden-3b", squash: "INVERSE", bias: -0.1 },
       { type: "hidden", uuid: "hidden-4", squash: "IF", bias: 0 },
-
-      { type: "constant", uuid: "first-one", bias: 1 },
 
       {
         type: "output",

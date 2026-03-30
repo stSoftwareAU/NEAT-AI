@@ -777,6 +777,12 @@ export class Offspring {
          * This will ensure that the order of the nodes is the same as the order of the nodes in the mother and father networks.
          * This is important for the crossover function to work correctly.
          */
+        if (a.type === "constant" && b.type === "hidden") {
+          return -1;
+        }
+        if (a.type === "hidden" && b.type === "constant") {
+          return 1;
+        }
         return aIndx - bIndx;
       }
     });

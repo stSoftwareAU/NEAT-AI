@@ -1,4 +1,4 @@
-import { assert, fail } from "@std/assert";
+import { assert, assertEquals, fail } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { Synapse } from "../../src/architecture/Synapse.ts";
@@ -48,6 +48,71 @@ Deno.test("validate rejects negative output count", () => {
     );
   }
 });
+
+Deno.test(
+  "validate rejects constant after hidden (required: input, constant, hidden, output)",
+  () => {
+    const tmp: CreatureExport = {
+      neurons: [
+        { type: "hidden", uuid: "h1", squash: "IDENTITY", bias: 0 },
+        { type: "constant", uuid: "c1", bias: 1 },
+        {
+          type: "output",
+          squash: "IDENTITY",
+          uuid: "output-0",
+          bias: 0,
+        },
+      ],
+      synapses: [
+        { fromUUID: "input-0", toUUID: "h1", weight: 1 },
+        { fromUUID: "h1", toUUID: "output-0", weight: 1 },
+        { fromUUID: "c1", toUUID: "output-0", weight: 0.5 },
+      ],
+      input: 1,
+      output: 1,
+    };
+
+    const creature = Creature.fromJSON(tmp);
+    try {
+      creatureValidate(creature);
+      fail("Expected error");
+    } catch (e) {
+      const error = e as ValidationError;
+      assertEquals(error.reason, "NEURON_ORDER");
+      assert(
+        error.message.includes("constant after hidden"),
+        `message: ${error.message}`,
+      );
+    }
+  },
+);
+
+Deno.test(
+  "validate accepts computational order: constants then hiddens then outputs",
+  () => {
+    const tmp: CreatureExport = {
+      neurons: [
+        { type: "constant", uuid: "c1", bias: 1 },
+        { type: "hidden", uuid: "h1", squash: "IDENTITY", bias: 0 },
+        {
+          type: "output",
+          squash: "IDENTITY",
+          uuid: "output-0",
+          bias: 0,
+        },
+      ],
+      synapses: [
+        { fromUUID: "c1", toUUID: "output-0", weight: 0.5 },
+        { fromUUID: "input-0", toUUID: "h1", weight: 1 },
+        { fromUUID: "h1", toUUID: "output-0", weight: 1 },
+      ],
+      input: 1,
+      output: 1,
+    };
+
+    creatureValidate(Creature.fromJSON(tmp));
+  },
+);
 
 Deno.test("validate rejects hidden neuron after output neuron", () => {
   const tmp: CreatureExport = {

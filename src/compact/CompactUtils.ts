@@ -12,6 +12,7 @@
 export {
   cleanupOrphanedNeurons,
   cleanupOrphanedNeuronsInCreature,
+  COMPACT_UNITY_SLOT_TAG,
   createConstantOne,
   removeHiddenNeuron,
 } from "./OrphanedNeuronCleanup.ts";

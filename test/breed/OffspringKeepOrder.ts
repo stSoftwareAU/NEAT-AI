@@ -114,15 +114,22 @@ Deno.test("Offspring.breed preserves valid neuron ordering", () => {
     child.validate();
     successCount++;
 
-    // Verify input neurons come first, then hidden, then output
-    let lastType: "input" | "hidden" | "output" = "input";
+    // input → constants (optional) → hiddens → outputs (matches creatureValidate)
+    let lastType: "input" | "constant" | "hidden" | "output" = "input";
     for (const neuron of child.neurons) {
       if (neuron.type === "input") {
         assertEquals(lastType, "input", "Input neurons must come first");
+      } else if (neuron.type === "constant") {
+        assert(
+          lastType === "input" || lastType === "constant",
+          "Constants must follow inputs and precede hiddens",
+        );
+        lastType = "constant";
       } else if (neuron.type === "hidden") {
         assert(
-          lastType === "input" || lastType === "hidden",
-          "Hidden neurons must come after inputs",
+          lastType === "input" || lastType === "constant" ||
+            lastType === "hidden",
+          "Hidden neurons must come after inputs and constants",
         );
         lastType = "hidden";
       } else if (neuron.type === "output") {

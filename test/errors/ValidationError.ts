@@ -18,6 +18,15 @@ Deno.test("ValidationError - OTHER reason", () => {
   assertEquals(error.reason, "OTHER");
 });
 
+Deno.test("ValidationError - NEURON_ORDER reason", () => {
+  const error = new ValidationError(
+    "constant after hidden neuron",
+    "NEURON_ORDER",
+  );
+  assertEquals(error.name, "ValidationError");
+  assertEquals(error.reason, "NEURON_ORDER");
+});
+
 Deno.test("ValidationError - NO_OUTWARD_CONNECTIONS reason", () => {
   const error = new ValidationError(
     "neuron has no outward connections",
@@ -96,6 +105,7 @@ Deno.test("ValidationError - can be caught selectively", () => {
 Deno.test("ValidationError - all reasons are valid", () => {
   const reasons: ValidationErrorName[] = [
     "OTHER",
+    "NEURON_ORDER",
     "NO_OUTWARD_CONNECTIONS",
     "NO_INWARD_CONNECTIONS",
     "IF_CONDITIONS",
