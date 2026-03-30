@@ -1,9 +1,9 @@
 import { assert } from "@std/assert";
 import { blue, bold, green, red, white, yellow } from "@std/fmt/colors";
 import { addTag, getTag } from "@stsoftware/tags/mod";
-import type { Creature } from "../Creature.ts";
-import type { Approach } from "../NEAT/LogApproach.ts";
-import { getLogger } from "../utils/Logger.ts";
+import type { Creature } from "@creature";
+import type { Approach } from "@neat/LogApproach.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 interface ElitistsResults {
   elitists: Creature[];

@@ -21,15 +21,15 @@ import {
   assertExists,
   assertNotEquals,
 } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   clearWasmCompilationCache,
   getOrCompileWasmModule,
   getWasmCompilationCacheStats,
   invalidateWasmCache,
   setWasmCompilationCacheSize,
-} from "../../src/wasm/WasmCompilationCache.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+} from "@wasm/WasmCompilationCache.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 /**
  * Create a simple test creature with the given number of hidden neurons.

@@ -12,7 +12,7 @@
  *
  * Run with: deno bench --allow-read bench/SquashLookupTable.ts
  */
-import { Creature } from "../src/Creature.ts";
+import { Creature } from "@creature";
 
 // Configuration matching acceptance criteria
 const INPUT_COUNT = 2000; // 2000 observations

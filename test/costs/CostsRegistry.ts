@@ -1,6 +1,6 @@
 import { assert, assertEquals, fail } from "@std/assert";
-import { Costs } from "../../src/Costs.ts";
-import type { CostInterface } from "../../src/costs/CostInterface.ts";
+import { Costs } from "@costs";
+import type { CostInterface } from "@costs/CostInterface.ts";
 
 Deno.test("Costs.find - returns MSE instance", () => {
   const cost = Costs.find("MSE");

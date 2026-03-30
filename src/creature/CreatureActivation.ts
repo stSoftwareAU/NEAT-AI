@@ -6,14 +6,14 @@
  */
 
 import { assert, fail } from "@std/assert";
-import { calculateOutputRangePenalty } from "../architecture/OutputRangePenalty.ts";
-import { dataFiles } from "../architecture/Training.ts";
-import type { RequiredOutputRange } from "../config/OutputRangeConfig.ts";
-import type { CostInterface } from "../costs/CostInterface.ts";
-import type { Creature } from "../Creature.ts";
-import { WasmError } from "../errors/WasmError.ts";
-import type { SparseConfigLike } from "../propagate/sparse/SparseConfigLike.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { calculateOutputRangePenalty } from "@architecture/OutputRangePenalty.ts";
+import { dataFiles } from "@architecture/Training.ts";
+import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
+import type { CostInterface } from "@costs/CostInterface.ts";
+import type { Creature } from "@creature";
+import { WasmError } from "@errors/WasmError.ts";
+import type { SparseConfigLike } from "@propagate/sparse/SparseConfigLike.ts";
+import { getLogger } from "@utils/Logger.ts";
 import {
   clearWasmCompilationCache,
   compileCreatureToWasm,
@@ -22,12 +22,12 @@ import {
   isWasmActivationAvailable,
   resolveWasmSquashName,
   WasmCreatureActivation,
-} from "../wasm/mod.ts";
+} from "@wasm/mod.ts";
 import {
   deregisterWasmCreatureActivation,
   evictOldestWasmCreatureActivations,
   noteWasmCreatureActivationUse,
-} from "../wasm/WasmCreatureActivationLRU.ts";
+} from "@wasm/WasmCreatureActivationLRU.ts";
 
 /**
  * Verify WASM is available and the creature is eligible.

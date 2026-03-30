@@ -19,13 +19,13 @@ import type {
   RustRecordFailureStage,
   RustRecordInput,
   RustRecordResult,
-} from "./RustDiscoveryTypes.ts";
-import { computeRustRecordStats } from "./RustDiscoveryInput.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryTypes.ts";
+import { computeRustRecordStats } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryInput.ts";
 import {
   getRustLibSymbols,
   isRustLibraryAvailable,
   readCString,
-} from "./RustDiscoveryLibrary.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts";
 
 /**
  * Reads discovery records from a Parquet file for a specific neuron.

@@ -11,7 +11,7 @@ import {
   DEFAULT_COST_OF_GROWTH,
   DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES,
   DEFAULT_DISCOVERY_SAMPLE_RATE,
-} from "../../src/config/NeatConfig.ts";
+} from "@config/NeatConfig.ts";
 
 Deno.test("NeatConfigParseOptions - trainingSampleRate accepts number", () => {
   const config = createNeatConfig({ trainingSampleRate: 0.5 });

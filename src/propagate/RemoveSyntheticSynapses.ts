@@ -9,7 +9,7 @@
  * (these become permanent connections).
  */
 
-import type { Creature } from "../Creature.ts";
+import type { Creature } from "@creature";
 
 /** Default threshold: same as the backpropagation plankConstant. */
 const DEFAULT_THRESHOLD = 0.000_000_1;

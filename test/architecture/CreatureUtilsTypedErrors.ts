@@ -5,8 +5,8 @@
  * Issue #1694
  */
 import { assertIsError, assertThrows } from "@std/assert";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 
 Deno.test("CreatureUtil.makeUUID - throws ValidationError for invalid creature", () => {
   // deno-lint-ignore no-explicit-any

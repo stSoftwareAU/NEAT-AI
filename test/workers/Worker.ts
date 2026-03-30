@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
-import { WorkerHandler } from "../../src/multithreading/workers/WorkerHandler.ts";
+import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

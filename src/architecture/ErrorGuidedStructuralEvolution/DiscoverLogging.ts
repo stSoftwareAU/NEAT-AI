@@ -14,7 +14,7 @@ export {
   logRustAnalysisUnavailable,
   logRustDiagnostics,
   logRustNoImprovement,
-} from "./DiscoverLoggingCore.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverLoggingCore.ts";
 
 export {
   describeNeuronDiagnosticReason,
@@ -24,4 +24,4 @@ export {
   logHarmfulSynapse,
   logHelpfulNeuron,
   logHelpfulSynapse,
-} from "./DiscoverDiagnosticFormatting.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDiagnosticFormatting.ts";

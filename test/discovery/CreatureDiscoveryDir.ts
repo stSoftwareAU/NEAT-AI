@@ -1,9 +1,9 @@
 import { assertEquals, assertStrictEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import type {
   DiscoveryDirInput,
   DiscoveryDirResult,
-} from "../../src/discovery/DiscoveryRunner.ts";
+} from "@discovery/DiscoveryRunner.ts";
 
 function makeCreature() {
   const creature = Creature.fromJSON({

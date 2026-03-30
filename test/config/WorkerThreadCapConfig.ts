@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { DEFAULT_WORKER_THREAD_CAP_CONFIG } from "../../src/config/WorkerThreadCapConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { DEFAULT_WORKER_THREAD_CAP_CONFIG } from "@config/WorkerThreadCapConfig.ts";
 
 Deno.test("WorkerThreadCapConfig - default values are sensible", () => {
   assertEquals(DEFAULT_WORKER_THREAD_CAP_CONFIG.maxMemoryMB, 0);

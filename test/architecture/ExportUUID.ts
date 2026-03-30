@@ -5,11 +5,11 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Neuron } from "../../src/architecture/Neuron.ts";
-import { Creature } from "../../src/Creature.ts";
-import { exportSnapshotJSON } from "../../src/creature/CreatureSerialization.ts";
-import { neuronUuid } from "../../src/neuron/NeuronSerialization.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Neuron } from "@architecture/Neuron.ts";
+import { Creature } from "@creature";
+import { exportSnapshotJSON } from "@creature/CreatureSerialization.ts";
+import { neuronUuid } from "@neuron/NeuronSerialization.ts";
 
 /** Helper: creates a creature from legacy UUID-format JSON. */
 function makeLegacyCreature(): CreatureExport {

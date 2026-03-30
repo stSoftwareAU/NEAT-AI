@@ -1,8 +1,8 @@
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { DiscoveryReplayRunner } from "../../src/discovery/DiscoveryReplayRunner.ts";
-import { DISCOVERY_WIRE_SCHEMA_VERSION } from "../../src/discovery/DiscoveryWireFormat.ts";
-import type { SuccessCacheEntry } from "../../src/discovery/SuccessCache.ts";
+import { Creature } from "@creature";
+import { DiscoveryReplayRunner } from "@discovery/DiscoveryReplayRunner.ts";
+import { DISCOVERY_WIRE_SCHEMA_VERSION } from "@discovery/DiscoveryWireFormat.ts";
+import type { SuccessCacheEntry } from "@discovery/SuccessCache.ts";
 import { makeForwardOnlyCreature as makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
 function makeEntry(overrides: Partial<SuccessCacheEntry>): SuccessCacheEntry {

@@ -1,8 +1,8 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { compactCreature } from "../../src/compact/CompactCreature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { mergeParallelBridges } from "../../src/compact/ParallelBridgeMerge.ts";
+import { Creature } from "@creature";
+import { compactCreature } from "@compact/CompactCreature.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { mergeParallelBridges } from "@compact/ParallelBridgeMerge.ts";
 
 /**
  * Tests for parallel bridge neuron merging extended to COMPLEMENT squash

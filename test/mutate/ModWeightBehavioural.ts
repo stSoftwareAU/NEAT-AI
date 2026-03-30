@@ -10,8 +10,8 @@
  */
 import { assert, assertEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { ModWeight } from "../../src/mutate/ModWeight.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { ModWeight } from "@mutate/ModWeight.ts";
 
 /**
  * Creates a creature with multiple synapses for weight mutation testing.

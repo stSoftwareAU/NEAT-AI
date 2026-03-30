@@ -1,9 +1,9 @@
 import { assert } from "@std/assert";
 import { ActivationRange } from "@propagate/ActivationRange.ts";
 import { ErrorHelper } from "@propagate/ErrorHelper.ts";
-import { ERROR_EPSILON } from "../AbstractActivationInterface.ts";
-import type { ActivationInterface } from "../ActivationInterface.ts";
-import type { UnSquashInterface } from "../UnSquashInterface.ts";
+import { ERROR_EPSILON } from "@methods/activations/AbstractActivationInterface.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import type { UnSquashInterface } from "@methods/activations/UnSquashInterface.ts";
 class BipolarRange extends ActivationRange {
   constructor() {
     super("BIPOLAR", -1, 1);

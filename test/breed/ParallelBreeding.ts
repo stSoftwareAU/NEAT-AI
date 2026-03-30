@@ -10,14 +10,14 @@
  * 3. Worker-based breeding uses iterative (non-recursive) processing
  */
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { Genus } from "../../src/NEAT/Genus.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { ParallelBreeding } from "../../src/breed/ParallelBreeding.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
-import type { WorkerHandler } from "../../src/multithreading/workers/WorkerHandler.ts";
+import { Creature } from "@creature";
+import { Genus } from "@neat/Genus.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { ParallelBreeding } from "@breed/ParallelBreeding.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

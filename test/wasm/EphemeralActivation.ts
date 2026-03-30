@@ -11,13 +11,13 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   getCachedWasmActivationCount,
   getMaxCachedWasmCreatureActivations,
   setMaxCachedWasmCreatureActivations,
-} from "../../src/wasm/WasmCreatureActivationLRU.ts";
-import { activateEphemeral } from "../../src/creature/CreatureActivation.ts";
+} from "@wasm/WasmCreatureActivationLRU.ts";
+import { activateEphemeral } from "@creature/CreatureActivation.ts";
 
 /**
  * Create a deterministic creature for testing.

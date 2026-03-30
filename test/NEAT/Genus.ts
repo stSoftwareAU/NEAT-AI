@@ -5,10 +5,10 @@ import {
   CreatureUtil,
   Mutation,
 } from "../../mod.ts";
-import { Genus } from "../../src/NEAT/Genus.ts";
-import { Species } from "../../src/NEAT/Species.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { Genus } from "@neat/Genus.ts";
+import { Species } from "@neat/Species.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 const baseCreatureJSON: CreatureExport = {
   neurons: [

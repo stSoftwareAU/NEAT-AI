@@ -2,10 +2,10 @@
  * Tests for output range configuration parsing and validation (Issue #1620).
  */
 import { assertEquals, assertThrows } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 import {
   DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT,
-} from "../../src/config/OutputRangeConfig.ts";
+} from "@config/OutputRangeConfig.ts";
 
 Deno.test("OutputRangeConfig - defaults to empty array when not specified", () => {
   const config = createNeatConfig({});

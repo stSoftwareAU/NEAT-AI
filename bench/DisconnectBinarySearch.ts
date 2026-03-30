@@ -27,8 +27,8 @@
  *   1000 disconnects on 10k synapses: ~Y ms
  */
 
-import { Creature } from "../src/Creature.ts";
-import { IDENTITY } from "../src/methods/activations/types/IDENTITY.ts";
+import { Creature } from "@creature";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 /**
  * Creates a creature with a specified approximate number of synapses.

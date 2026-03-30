@@ -1,8 +1,8 @@
 import { assert } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import type { Neuron } from "../../src/architecture/Neuron.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("projection", () => {

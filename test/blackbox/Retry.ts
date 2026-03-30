@@ -1,8 +1,8 @@
 import { assert, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
-import { Creature } from "../../src/Creature.ts";
-import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
-import { retry } from "../../src/blackbox/Retry.ts";
+import { Creature } from "@creature";
+import { fineTuneImprovement } from "@blackbox/FineTune.ts";
+import { retry } from "@blackbox/Retry.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

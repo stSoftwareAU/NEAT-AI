@@ -17,7 +17,7 @@
  *   deno bench --allow-read --allow-env bench/PreComputedSquashTypes.ts
  */
 
-import { getSquashType, SquashType } from "../src/wasm/SquashType.ts";
+import { getSquashType, SquashType } from "@wasm/SquashType.ts";
 
 const SQUASH_NAMES = [
   "ReLU",

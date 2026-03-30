@@ -10,7 +10,7 @@
  * - Recurrent connections (back-edges) and self-loops are ignored
  */
 
-import type { Creature } from "../Creature.ts";
+import type { Creature } from "@creature";
 
 /**
  * Compute layer assignments for all neurons in a creature.

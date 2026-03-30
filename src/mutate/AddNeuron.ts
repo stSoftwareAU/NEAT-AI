@@ -1,18 +1,18 @@
 import { assert } from "@std/assert";
 import { CreatureUtil } from "../../mod.ts";
-import type { Creature } from "../Creature.ts";
-import { Neuron } from "../architecture/Neuron.ts";
-import { nextNeuronId } from "../architecture/NeuronId.ts";
-import { TopologyError } from "../errors/TopologyError.ts";
-import type { MutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
+import type { Creature } from "@creature";
+import { Neuron } from "@architecture/Neuron.ts";
+import { nextNeuronId } from "@architecture/NeuronId.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import type { MutationBias } from "@predictiveCoding/PredictionErrorGuidedMutation.ts";
 import {
   neuronBiasToIndexWeights,
   selectWeightedIndex,
-} from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
-import { Synapse } from "../architecture/Synapse.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
-import { getLogger } from "../utils/Logger.ts";
+} from "@predictiveCoding/PredictionErrorGuidedMutation.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Selects a suitable outward connection target for a newly inserted neuron.

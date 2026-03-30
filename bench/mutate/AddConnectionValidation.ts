@@ -1,5 +1,5 @@
-import { Creature } from "../../src/Creature.ts";
-import { AddConnection } from "../../src/mutate/AddConnection.ts";
+import { Creature } from "@creature";
+import { AddConnection } from "@mutate/AddConnection.ts";
 
 /**
  * Benchmark for Issue #1584: Remove redundant validation in AddConnection.

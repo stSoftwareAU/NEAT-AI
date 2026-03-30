@@ -13,16 +13,16 @@ import {
   assertGreater,
   assertLess,
 } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { computeEffectiveConfig } from "../../src/predictiveCoding/AdaptiveScaling.ts";
-import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../../src/config/PredictiveCodingConfig.ts";
+import { Creature } from "@creature";
+import { computeEffectiveConfig } from "@predictiveCoding/AdaptiveScaling.ts";
+import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "@config/PredictiveCodingConfig.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
-} from "../../src/architecture/DataSet.ts";
-import { trainWithPredictiveCoding } from "../../src/predictiveCoding/PredictiveCodingTrainer.ts";
-import { Costs } from "../../src/Costs.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+} from "@architecture/DataSet.ts";
+import { trainWithPredictiveCoding } from "@predictiveCoding/PredictiveCodingTrainer.ts";
+import { Costs } from "@costs";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 // -----------------------------------------------------------------------
 // Test: Small network returns config unchanged

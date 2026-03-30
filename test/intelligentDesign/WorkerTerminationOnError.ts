@@ -11,9 +11,9 @@
  */
 
 import { assertEquals, assertRejects } from "@std/assert";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../src/Creature.ts";
-import { scanForSquashImprovements } from "../../src/intelligentDesign/ImproveSquash.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import { scanForSquashImprovements } from "@intelligentDesign/ImproveSquash.ts";
 
 class FakeWorker {
   terminated = false;

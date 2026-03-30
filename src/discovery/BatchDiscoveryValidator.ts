@@ -12,17 +12,17 @@
  * Type definitions and grouping logic extracted to BatchValidatorTypes.ts.
  */
 
-import type { Creature } from "../Creature.ts";
-import { creatureValidate } from "../architecture/CreatureValidate.ts";
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
-import { EnhancedDiscoveryValidator } from "./EnhancedDiscoveryValidator.ts";
+import type { Creature } from "@creature";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
+import { EnhancedDiscoveryValidator } from "@discovery/EnhancedDiscoveryValidator.ts";
 import {
   type BatchValidationResult,
   type BatchValidationStats,
   type BatchValidatorOptions,
   groupCandidatesByType,
   type ValidationCacheEntry,
-} from "./BatchValidatorTypes.ts";
+} from "@discovery/BatchValidatorTypes.ts";
 
 // Re-export for backward compatibility.
 export type {
@@ -31,8 +31,8 @@ export type {
   BatchValidatorOptions,
   GroupedCandidates,
   ValidationCacheEntry,
-} from "./BatchValidatorTypes.ts";
-export { groupCandidatesByType } from "./BatchValidatorTypes.ts";
+} from "@discovery/BatchValidatorTypes.ts";
+export { groupCandidatesByType } from "@discovery/BatchValidatorTypes.ts";
 
 /**
  * Batch Discovery Validator

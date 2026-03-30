@@ -1,5 +1,5 @@
 import { Mutation } from "../../mod.ts";
-import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
+import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 
 export class ModActivation extends AbstractMutationOperator {
   protected performMutation(focusList?: number[]): boolean {

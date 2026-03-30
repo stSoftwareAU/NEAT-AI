@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import type { ConnectionRef } from "../../src/architecture/Offspring.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
+import type { ConnectionRef } from "@architecture/Offspring.ts";
+import { Offspring } from "@architecture/Offspring.ts";
 
 function makeMum() {
   const json: CreatureExport = {

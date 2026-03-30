@@ -1,21 +1,21 @@
 import { assertEquals } from "@std/assert";
 import type {
   CoordinatedStructuralCandidate,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import type {
   DiscoverResult,
   RemovalCandidate,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   buildDiscoverResponsePayload,
   clearDiscoverResultForGC,
-} from "../../src/multithreading/workers/WorkerProcessor.ts";
+} from "@multithreading/workers/WorkerProcessor.ts";
 
 Deno.test("WorkerProcessor: discover response includes coordinated structural candidates", () => {
   const coordinated: CoordinatedStructuralCandidate = {

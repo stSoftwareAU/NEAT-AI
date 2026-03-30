@@ -43,13 +43,13 @@ export type {
   RustSynapseDiagnostic,
   RustSynapseDiagnosticDetail,
   RustSynapseDiagnosticReason,
-} from "./RustDiscoveryTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryTypes.ts";
 
 // Input conversion
 export {
   computeRustRecordStats,
   creatureToRustFormat,
-} from "./RustDiscoveryInput.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryInput.ts";
 
 // Library management and availability
 export {
@@ -66,9 +66,9 @@ export {
   loadRustLibrary,
   rustLibraryExists,
   shouldSkipRustDiscoveryTests,
-} from "./RustDiscoveryLibrary.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts";
 
-export type { GpuBackendInfo } from "./RustDiscoveryLibrary.ts";
+export type { GpuBackendInfo } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts";
 
 // FFI operations
 export {
@@ -77,4 +77,4 @@ export {
   rankFocusNeurons,
   readDiscoveryRecords,
   recordDiscovery,
-} from "./RustDiscoveryOperations.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryOperations.ts";

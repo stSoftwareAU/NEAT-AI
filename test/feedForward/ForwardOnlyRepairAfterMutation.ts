@@ -1,8 +1,8 @@
 import { assert } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { Creature } from "@creature";
+import { Mutator } from "@neat/Mutator.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 /**
  * repairAfterMutation() runs fix() only — it does not call creature.validate().

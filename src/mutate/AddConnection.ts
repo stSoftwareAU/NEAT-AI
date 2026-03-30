@@ -1,15 +1,15 @@
 import { assert } from "@std/assert";
-import type { ConnectionOptions } from "../ConnectionOptions.ts";
-import type { Neuron } from "../architecture/Neuron.ts";
-import { TopologyError } from "../errors/TopologyError.ts";
-import type { MutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
+import type { ConnectionOptions } from "@connectionOptions";
+import type { Neuron } from "@architecture/Neuron.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import type { MutationBias } from "@predictiveCoding/PredictionErrorGuidedMutation.ts";
 import {
   neuronBiasToIndexWeights,
   selectWeightedIndex,
-} from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
-import { Synapse } from "../architecture/Synapse.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
+} from "@predictiveCoding/PredictionErrorGuidedMutation.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 
 /**
  * Maximum number of rejection sampling attempts before falling back to

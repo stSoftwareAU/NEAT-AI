@@ -1,8 +1,8 @@
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { pruneOrphanMemeticReferences } from "../../src/compact/MemeticCleanup.ts";
-import { fix } from "../../src/creature/CreatureMutation.ts";
+import { Creature } from "@creature";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { pruneOrphanMemeticReferences } from "@compact/MemeticCleanup.ts";
+import { fix } from "@creature/CreatureMutation.ts";
 
 Deno.test("pruneOrphanMemeticReferences removes stale bias keys", () => {
   const json = {

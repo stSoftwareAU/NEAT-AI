@@ -1,6 +1,6 @@
 import { assertEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { Creature } from "@creature";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 /**
  * Test suite for binary search optimisation in disconnect() method.

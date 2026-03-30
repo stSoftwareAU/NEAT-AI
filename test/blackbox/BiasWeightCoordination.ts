@@ -2,7 +2,7 @@ import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import {
   coordinateBiasWeightAdjustments,
   type NeuronAdjustmentPlan,
-} from "../../src/blackbox/BiasWeightCoordination.ts";
+} from "@blackbox/BiasWeightCoordination.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

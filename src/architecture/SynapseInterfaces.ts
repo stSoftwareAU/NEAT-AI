@@ -1,5 +1,5 @@
 import type { TagInterface } from "@stsoftware/tags/mod";
-import type { SynapseState } from "../propagate/SynapseState.ts";
+import type { SynapseState } from "@propagate/SynapseState.ts";
 
 interface SynapseCommon {
   weight: number;

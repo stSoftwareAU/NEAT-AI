@@ -1,8 +1,8 @@
 import { assert, assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { mergeParallelIdentityBridges } from "../../src/compact/ParallelIdentityMerge.ts";
-import { mergeParallelBridges } from "../../src/compact/ParallelBridgeMerge.ts";
-import { assertValidSynapseReferences } from "../../src/architecture/AssertValidSynapseReferences.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { mergeParallelIdentityBridges } from "@compact/ParallelIdentityMerge.ts";
+import { mergeParallelBridges } from "@compact/ParallelBridgeMerge.ts";
+import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
 
 /**
  * Corner-case tests for parallel merge operations (issue #2014).

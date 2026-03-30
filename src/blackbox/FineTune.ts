@@ -1,32 +1,32 @@
 import { assert } from "@std/assert";
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import type { CreatureExport } from "../../mod.ts";
-import { Creature } from "../Creature.ts";
-import type { Approach } from "../NEAT/LogApproach.ts";
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
-import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
-import { pruneOrphanMemeticReferences } from "../compact/CompactUtils.ts";
+import { Creature } from "@creature";
+import type { Approach } from "@neat/LogApproach.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
+import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
+import { pruneOrphanMemeticReferences } from "@compact/CompactUtils.ts";
 import {
   DEFAULT_QUANTUM_STEP_CONFIG,
   type RequiredQuantumStepConfig,
-} from "../config/QuantumStepConfig.ts";
-import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+} from "@config/QuantumStepConfig.ts";
+import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import {
   coordinateBiasWeightAdjustments,
   type NeuronAdjustmentPlan,
   type SynapseAdjustmentPlan,
-} from "./BiasWeightCoordination.ts";
+} from "@blackbox/BiasWeightCoordination.ts";
 import {
   DEFAULT_ANCESTRY_DEPTH,
   type MemeticInterface,
-} from "./MemeticInterface.ts";
+} from "@blackbox/MemeticInterface.ts";
 import {
   addToAncestry,
   calculateTrajectoryMomentum,
   createAncestorSnapshot,
-} from "./MemeticTrajectory.ts";
+} from "@blackbox/MemeticTrajectory.ts";
 
 export const MIN_STEP = DEFAULT_QUANTUM_STEP_CONFIG.minStep;
 

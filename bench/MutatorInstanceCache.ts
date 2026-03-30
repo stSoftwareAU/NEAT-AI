@@ -1,7 +1,7 @@
-import { createNeatConfig } from "../src/config/NeatConfig.ts";
-import { Creature } from "../src/Creature.ts";
-import { Mutator } from "../src/NEAT/Mutator.ts";
-import { Mutation } from "../src/NEAT/Mutation.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { Creature } from "@creature";
+import { Mutator } from "@neat/Mutator.ts";
+import { Mutation } from "@neat/Mutation.ts";
 
 /**
  * Benchmark for mutation class instance caching performance.

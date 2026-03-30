@@ -1,5 +1,5 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import { MSE } from "../../src/costs/MSE.ts";
+import { MSE } from "@costs/MSE.ts";
 
 Deno.test("MSE - getName returns MSE", () => {
   const mse = new MSE();

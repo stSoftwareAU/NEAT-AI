@@ -6,19 +6,19 @@
  */
 
 import { addTags } from "@stsoftware/tags/mod";
-import type { Creature } from "../Creature.ts";
-import { Neuron } from "../architecture/Neuron.ts";
+import type { Creature } from "@creature";
+import { Neuron } from "@architecture/Neuron.ts";
 import {
   ensureIdAbove,
   isOutputNeuronId,
   nextNeuronId,
   outputIndexFromId,
-} from "../architecture/NeuronId.ts";
+} from "@architecture/NeuronId.ts";
 import type {
   NeuronExport,
   NeuronInternal,
-} from "../architecture/NeuronInterfaces.ts";
-import { TopologyError } from "../errors/TopologyError.ts";
+} from "@architecture/NeuronInterfaces.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 
 /**
  * UUID string used in exports and synapse endpoints.

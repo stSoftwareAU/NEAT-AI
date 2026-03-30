@@ -13,29 +13,29 @@ import {
   type CandidateSquash,
   type CandidateSynapse,
   DiscoverStructure,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type {
   CoordinatedStructuralCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import {
   applyCoordinatedStructuralCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
 import type {
   DiscoverResult,
   RemovalCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import { getLogger } from "../utils/Logger.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { getLogger } from "@utils/Logger.ts";
 import {
   describeSingleCoordinatedStructuralOperation,
   shortID,
-} from "./CandidateDescriptions.ts";
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
-import type { Creature } from "../Creature.ts";
-import { persistentlyRemoveHarmfulSynapse } from "./CombinedCandidates.ts";
+} from "@discovery/CandidateDescriptions.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
+import type { Creature } from "@creature";
+import { persistentlyRemoveHarmfulSynapse } from "@discovery/CombinedCandidates.ts";
 import {
   buildWireToRuntimeIdMap,
   resolveSingleNeuronReference,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 
 // Re-export RemovalCandidate so callers don't need a separate import
 export type { RemovalCandidate };

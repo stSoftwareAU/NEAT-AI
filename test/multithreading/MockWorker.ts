@@ -6,11 +6,11 @@
  * and termination.
  */
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { MockWorker } from "../../src/multithreading/workers/MockWorker.ts";
+import { MockWorker } from "@multithreading/workers/MockWorker.ts";
 import type {
   RequestData,
   ResponseData,
-} from "../../src/multithreading/workers/WorkerHandler.ts";
+} from "@multithreading/workers/WorkerHandler.ts";
 
 /**
  * Helper that sends a message to a MockWorker and waits for the response.

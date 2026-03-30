@@ -1,11 +1,11 @@
 import { assert } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../mod.ts";
-import type { RequiredQuantumStepConfig } from "../config/QuantumStepConfig.ts";
-import type { Approach } from "../NEAT/LogApproach.ts";
-import { fineTuneImprovement } from "./FineTune.ts";
-import { restoreSource } from "./RestoreSource.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import type { RequiredQuantumStepConfig } from "@config/QuantumStepConfig.ts";
+import type { Approach } from "@neat/LogApproach.ts";
+import { fineTuneImprovement } from "@blackbox/FineTune.ts";
+import { restoreSource } from "@blackbox/RestoreSource.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 export type Filter = "NONE" | "FORWARD" | "BACKWARDS";
 

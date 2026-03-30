@@ -6,13 +6,13 @@
  */
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { Creature } from "../../src/Creature.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { Creature } from "@creature";
 import {
   buildCombinedFromSuccessful,
   type DiscoveryCandidate,
-} from "../../src/discovery/DiscoveryCandidates.ts";
+} from "@discovery/DiscoveryCandidates.ts";
 
 /**
  * Creates a test creature with multiple synapses suitable for removal testing.

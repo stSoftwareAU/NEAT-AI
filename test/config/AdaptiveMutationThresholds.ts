@@ -1,8 +1,8 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import {
   DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS,
-} from "../../src/config/AdaptiveMutationThresholds.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+} from "@config/AdaptiveMutationThresholds.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 Deno.test("AdaptiveMutationThresholds - defaults are applied", () => {
   const config = createNeatConfig({});

@@ -10,7 +10,7 @@ import {
   safeWriteJsonSync,
   safeWriteText,
   safeWriteTextSync,
-} from "../../src/intelligentDesign/SafeWrite.ts";
+} from "@intelligentDesign/SafeWrite.ts";
 
 const TEST_DIR = ".test-safe-write";
 

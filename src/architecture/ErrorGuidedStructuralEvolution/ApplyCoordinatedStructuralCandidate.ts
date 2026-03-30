@@ -1,21 +1,21 @@
-import type { CreatureExport } from "../CreatureInterfaces.ts";
-import { CreatureUtil } from "../CreatureUtils.ts";
-import { nextNeuronId } from "../NeuronId.ts";
-import { populateRuntimeIdsFromCreature } from "../PopulateRuntimeIdsFromCreature.ts";
-import { Creature } from "../../Creature.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { nextNeuronId } from "@architecture/NeuronId.ts";
+import { populateRuntimeIdsFromCreature } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { Creature } from "@creature";
 import {
   cleanupMemeticForRemovedNeuron,
   cleanupMemeticForRemovedSynapse,
   cleanupOrphanedNeurons,
-} from "../../compact/CompactUtils.ts";
+} from "@compact/CompactUtils.ts";
 import type {
   CoordinatedStructuralCandidate,
   CoordinatedStructuralOperation,
-} from "./CoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import {
   buildWireToRuntimeIdMap,
   resolveCoordinatedEdgeEndpoints,
-} from "./DiscoveryWireIdentity.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 
 function buildIdToIndexMap(creature: CreatureExport): Map<number, number> {
   const idToIndex = new Map<number, number>();

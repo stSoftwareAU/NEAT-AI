@@ -12,11 +12,11 @@
  * - Type constraints (compile-time validation)
  */
 import { assertEquals, assertExists } from "@std/assert";
-import { MockWorker } from "../../src/multithreading/workers/MockWorker.ts";
+import { MockWorker } from "@multithreading/workers/MockWorker.ts";
 import type {
   RequestData,
   ResponseData,
-} from "../../src/multithreading/workers/WorkerHandler.ts";
+} from "@multithreading/workers/WorkerHandler.ts";
 
 /**
  * Helper to send a message to MockWorker and collect the response.

@@ -1,5 +1,5 @@
 import { assertEquals, fail } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 Deno.test("NEAT/NeatConfigCoverage - discoveryMinCandidatesPerCategory validation (negative addSynapses)", () => {
   try {

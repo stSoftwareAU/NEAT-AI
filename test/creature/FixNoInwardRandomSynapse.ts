@@ -1,7 +1,7 @@
 import { assertEquals, assertThrows } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 /**

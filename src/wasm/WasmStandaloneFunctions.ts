@@ -9,10 +9,10 @@
  * WASM function pointer obtained via WasmModuleLoader.
  */
 
-import { WasmError } from "../errors/WasmError.ts";
-import type { BackPropagationConfig } from "../propagate/BackPropagation.ts";
-import type { NeuronState } from "../architecture/CreatureState.ts";
-import type { SynapseState } from "../propagate/SynapseState.ts";
+import { WasmError } from "@errors/WasmError.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
+import type { NeuronState } from "@architecture/CreatureState.ts";
+import type { SynapseState } from "@propagate/SynapseState.ts";
 import {
   getAccumulateBiasBatch4WayFn,
   getAccumulateBiasBatch8WayFn,
@@ -36,7 +36,7 @@ import {
   getUnsquashFn,
   getValidateRangeFn,
   getVersionFn,
-} from "./WasmModuleLoader.ts";
+} from "@wasm/WasmModuleLoader.ts";
 
 /**
  * Issue #1377 - Result from fused backward pass error distribution.

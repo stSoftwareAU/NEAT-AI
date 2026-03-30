@@ -1,7 +1,10 @@
 import { assert } from "@std/assert";
 import type { TagInterface } from "@stsoftware/tags/mod";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import type {
+  SynapseExport,
+  SynapseInternal,
+} from "@architecture/SynapseInterfaces.ts";
 
 /**
  * Represents a synapse (connection) between two neurons in a neural network.

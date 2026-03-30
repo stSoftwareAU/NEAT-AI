@@ -6,7 +6,7 @@
  * as part of Issue #1766 (propagation module test audit).
  */
 import { assertAlmostEquals, assertEquals, assertThrows } from "@std/assert";
-import { ActivationRange } from "../../src/propagate/ActivationRange.ts";
+import { ActivationRange } from "@propagate/ActivationRange.ts";
 
 // ---------------------------------------------------------------------------
 // Constructor - range creation

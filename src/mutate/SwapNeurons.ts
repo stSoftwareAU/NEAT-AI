@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
+import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 
 export class SwapNeurons extends AbstractMutationOperator {
   protected performMutation(focusList?: number[]): boolean {

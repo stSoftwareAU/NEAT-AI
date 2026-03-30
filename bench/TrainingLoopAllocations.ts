@@ -9,9 +9,9 @@
  *   deno bench --allow-read --allow-env --allow-write bench/TrainingLoopAllocations.ts
  */
 
-import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
-import type { BackPropagationArguments } from "../src/propagate/BackPropagation.ts";
-import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import type { BackPropagationArguments } from "@propagate/BackPropagation.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 // ============================================================================
 // 1. BackPropagationConfig: frozen copy vs mutable update

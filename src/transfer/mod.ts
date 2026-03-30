@@ -11,15 +11,15 @@
 export type {
   CheckpointInterface,
   CheckpointMetadata,
-} from "./CheckpointInterface.ts";
+} from "@transfer/CheckpointInterface.ts";
 
-export { exportCheckpoint, importCheckpoint } from "./Checkpoint.ts";
+export { exportCheckpoint, importCheckpoint } from "@transfer/Checkpoint.ts";
 
 export type {
   CheckpointExportOptions,
   CheckpointImportOptions,
-} from "./Checkpoint.ts";
+} from "@transfer/Checkpoint.ts";
 
-export { createSeededPopulation } from "./PopulationSeeding.ts";
+export { createSeededPopulation } from "@transfer/PopulationSeeding.ts";
 
-export type { PopulationSeedingOptions } from "./PopulationSeeding.ts";
+export type { PopulationSeedingOptions } from "@transfer/PopulationSeeding.ts";

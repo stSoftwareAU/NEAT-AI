@@ -6,21 +6,21 @@
  * Manages the cache for combined Rust parallel analysis results,
  * handling cache key generation, cache lookup, and cache population.
  */
-import type { Creature } from "../../Creature.ts";
-import { CreatureErrorImpactEstimator } from "../../discovery/NeuronErrorImpactEstimator.ts";
+import type { Creature } from "@creature";
+import { CreatureErrorImpactEstimator } from "@discovery/NeuronErrorImpactEstimator.ts";
 import type {
   RustAnalyzeAllResult,
   RustAnalyzeNeuronsResult,
   RustAnalyzeSynapsesResult,
   RustParallelAnalysisInput,
   RustParallelAnalysisResult,
-} from "./RustDiscovery.ts";
-import { creatureToRustFormat } from "./RustDiscovery.ts";
-import type { DiscoverStructureDeps } from "./DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { creatureToRustFormat } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import type { DiscoverStructureDeps } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   buildRuntimeIdToWireMap,
   resolveRuntimeIdToWireUuid,
-} from "./DiscoveryWireIdentity.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 
 /**
  * Cached combined analysis result.

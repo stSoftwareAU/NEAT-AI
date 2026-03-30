@@ -1,4 +1,4 @@
-import { GELU } from "../../src/methods/activations/types/GELU.ts";
+import { GELU } from "@methods/activations/types/GELU.ts";
 
 // Benchmark for GELU unSquash with random values
 Deno.bench("GELU unSquash with random values", () => {

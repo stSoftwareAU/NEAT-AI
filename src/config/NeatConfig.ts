@@ -6,34 +6,34 @@
  * cross-field validation to NeatConfigValidation.ts.
  */
 
-import type { NeatOptionsInput } from "./NeatOptions.ts";
-import { getGlobalDebug } from "../globalAccessors.ts";
+import type { NeatOptionsInput } from "@config/NeatOptions.ts";
+import { getGlobalDebug } from "@globalAccessors";
 import {
   DEFAULT_RUST_FLUSH_BYTES,
   DEFAULT_RUST_FLUSH_RECORDS,
-} from "../architecture/ErrorGuidedStructuralEvolution/constants.ts";
-import { Selection, type SelectionInterface } from "../methods/Selection.ts";
-import { Mutation } from "../NEAT/Mutation.ts";
-import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
-import type { NeatArguments } from "./NeatArguments.ts";
-import { parseDiscoverySampleRate, parseNumber } from "./ParseOptions.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/constants.ts";
+import { Selection, type SelectionInterface } from "@methods/Selection.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
+import type { NeatArguments } from "@config/NeatArguments.ts";
+import { parseDiscoverySampleRate, parseNumber } from "@config/ParseOptions.ts";
 import {
   createConsoleLogger,
   getLogger,
   type Logger,
   setLogger,
-} from "../utils/Logger.ts";
+} from "@utils/Logger.ts";
 import {
   createSeededRng,
   createUnseededRng,
   type RandomNumberGenerator,
   setRandomNumberGenerator,
-} from "../utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
 
 import {
   DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT,
   type RequiredOutputRange,
-} from "./OutputRangeConfig.ts";
+} from "@config/OutputRangeConfig.ts";
 
 // Extracted sub-config parsers
 import {
@@ -58,10 +58,10 @@ import {
   parseWasmCache,
   parseWeightRegularisation,
   parseWorkerThreadCap,
-} from "./NeatConfigParsers.ts";
+} from "@config/NeatConfigParsers.ts";
 
 // Extracted cross-field validation
-import { validateNeatConfig } from "./NeatConfigValidation.ts";
+import { validateNeatConfig } from "@config/NeatConfigValidation.ts";
 
 /**
  * Default cost of growth value used when not specified in options.

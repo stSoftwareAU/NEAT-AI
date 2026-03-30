@@ -7,16 +7,16 @@
  */
 
 import { assert, assertGreater, assertLess } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   type DataRecordInterface,
   makeDataDir,
-} from "../../src/architecture/DataSet.ts";
-import { trainDir } from "../../src/architecture/Training.ts";
-import { Costs } from "../../src/Costs.ts";
-import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../../src/config/PredictiveCodingConfig.ts";
-import { trainWithPredictiveCoding } from "../../src/predictiveCoding/PredictiveCodingTrainer.ts";
-import type { TrainOptions } from "../../src/config/TrainOptions.ts";
+} from "@architecture/DataSet.ts";
+import { trainDir } from "@architecture/Training.ts";
+import { Costs } from "@costs";
+import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "@config/PredictiveCodingConfig.ts";
+import { trainWithPredictiveCoding } from "@predictiveCoding/PredictiveCodingTrainer.ts";
+import type { TrainOptions } from "@config/TrainOptions.ts";
 
 Deno.test("PC trainer returns finite error for simple dataset", () => {
   const creature = new Creature(2, 1, {

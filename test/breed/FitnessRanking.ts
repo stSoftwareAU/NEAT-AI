@@ -1,10 +1,10 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature, CreatureUtil } from "../../mod.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { FitnessRanking } from "../../src/breed/FitnessRanking.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
-import { Selection } from "../../src/methods/Selection.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import { FitnessRanking } from "@breed/FitnessRanking.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import { Selection } from "@methods/Selection.ts";
 
 /**
  * Helper function to create Creature instances from CreatureInternal data.

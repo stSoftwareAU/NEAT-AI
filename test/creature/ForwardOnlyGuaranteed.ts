@@ -4,7 +4,7 @@
  */
 
 import { assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 
 Deno.test("forwardOnlyGuaranteed - forward-only creature is true", () => {
   const creature = new Creature(2, 1, {

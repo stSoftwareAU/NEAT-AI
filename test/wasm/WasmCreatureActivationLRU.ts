@@ -17,7 +17,7 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   deregisterWasmCreatureActivation,
   disposeAllCachedWasmActivations,
@@ -26,7 +26,7 @@ import {
   getMaxCachedWasmCreatureActivations,
   noteWasmCreatureActivationUse,
   setMaxCachedWasmCreatureActivations,
-} from "../../src/wasm/WasmCreatureActivationLRU.ts";
+} from "@wasm/WasmCreatureActivationLRU.ts";
 
 /**
  * Create a minimal creature for LRU testing.

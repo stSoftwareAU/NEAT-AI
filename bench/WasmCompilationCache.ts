@@ -18,7 +18,7 @@
  *   deno bench --allow-all bench/WasmCompilationCache.ts
  */
 
-import { Creature } from "../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   clearWasmCompilationCache,
   compileCreatureToWasm,
@@ -27,8 +27,8 @@ import {
   initWasmActivation,
   isWasmActivationAvailable,
   WasmCreatureActivation,
-} from "../src/wasm/mod.ts";
-import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
+} from "@wasm/mod.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 /**
  * Clone a creature with different weights (preserves neuron UUIDs).

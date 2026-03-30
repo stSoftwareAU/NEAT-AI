@@ -9,8 +9,8 @@ import type {
   BaseRequestData,
   BaseResponseData,
   WorkerInterface,
-} from "../../src/workers/WorkerInterface.ts";
-import { WorkerHandlerBase } from "../../src/workers/WorkerHandlerBase.ts";
+} from "@workers/WorkerInterface.ts";
+import { WorkerHandlerBase } from "@workers/WorkerHandlerBase.ts";
 
 /** Minimal request type for testing. */
 interface TestRequest extends BaseRequestData {

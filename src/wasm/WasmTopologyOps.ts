@@ -9,14 +9,14 @@
  * falls back to an equivalent TypeScript implementation.
  */
 
-import type { TypedTopology } from "../architecture/TypedTopology.ts";
+import type { TypedTopology } from "@architecture/TypedTopology.ts";
 import {
   getComputeReverseTopologicalOrderFn,
   getDetectCyclesFn,
   getScanAvailableConnectionsFn,
   getValidateStructuralIntegrityFn,
   getValidateTopologyFn,
-} from "./WasmModuleLoader.ts";
+} from "@wasm/WasmModuleLoader.ts";
 
 // ---------------------------------------------------------------------------
 // Constants — topology validation error codes (must match Rust topology_ops.rs)

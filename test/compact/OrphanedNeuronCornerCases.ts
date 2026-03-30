@@ -1,11 +1,11 @@
 import { assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { cleanupOrphanedNeurons } from "../../src/compact/CompactUtils.ts";
-import { assertValidSynapseReferences } from "../../src/architecture/AssertValidSynapseReferences.ts";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
-import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { cleanupOrphanedNeurons } from "@compact/CompactUtils.ts";
+import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { LOGISTIC } from "@methods/activations/types/LOGISTIC.ts";
 
 Deno.test("cleanupOrphanedNeurons - deep cascade: A→B→C→D all removed when A is sole source", () => {
   // Chain: input→A→B→C→D, plus input→output.

@@ -12,19 +12,19 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
-import { AddConnection } from "../../src/mutate/AddConnection.ts";
-import { ModWeight } from "../../src/mutate/ModWeight.ts";
-import { ModBias } from "../../src/mutate/ModBias.ts";
-import { ModActivation } from "../../src/mutate/ModSquash.ts";
-import { SubConnection } from "../../src/mutate/SubConnection.ts";
-import { SwapNeurons } from "../../src/mutate/SwapNeurons.ts";
+import { Creature } from "@creature";
+import { Offspring } from "@architecture/Offspring.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { AddNeuron } from "@mutate/AddNeuron.ts";
+import { AddConnection } from "@mutate/AddConnection.ts";
+import { ModWeight } from "@mutate/ModWeight.ts";
+import { ModBias } from "@mutate/ModBias.ts";
+import { ModActivation } from "@mutate/ModSquash.ts";
+import { SubConnection } from "@mutate/SubConnection.ts";
+import { SwapNeurons } from "@mutate/SwapNeurons.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

@@ -2,35 +2,35 @@ import type { CrisprInterface } from "../../mod.ts";
 import type {
   CreatureExport,
   CreatureInternal,
-} from "../architecture/CreatureInterfaces.ts";
-import type { CostName } from "../Costs.ts";
-import type { SelectionInterface } from "../methods/Selection.ts";
-import type { MutationInterface } from "../NEAT/MutationInterface.ts";
-import type { RequiredPlateauDetectionConfig } from "../NEAT/PlateauDetector.ts";
-import type { RequiredAdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
-import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
-import type { RequiredEnsembleDiversityConfig } from "./EnsembleDiversityConfig.ts";
-import type { RequiredFineTunePopulationConfig } from "./FineTunePopulationConfig.ts";
-import type { RequiredStabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
-import type { RequiredQuantumStepConfig } from "./QuantumStepConfig.ts";
-import type { RequiredBiasRegularisationConfig } from "./BiasRegularisationConfig.ts";
-import type { Logger } from "../utils/Logger.ts";
-import type { RandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import type { TrainingEventCallback } from "./TrainingEvent.ts";
-import type { RequiredPredictiveCodingConfig } from "./PredictiveCodingConfig.ts";
-import type { RequiredMemoryConfig } from "./MemoryConfig.ts";
-import type { RequiredWasmCacheConfig } from "./WasmCacheConfig.ts";
-import type { RequiredWeightRegularisationConfig } from "./WeightRegularisationConfig.ts";
-import type { RequiredOutputRange } from "./OutputRangeConfig.ts";
-import type { RequiredDiscoveryCacheConfig } from "./DiscoveryCacheConfig.ts";
-import type { RequiredDiskSpaceConfig } from "./DiskSpaceConfig.ts";
-import type { RequiredWorkerThreadCapConfig } from "./WorkerThreadCapConfig.ts";
-import type { RequiredHyperparameterEvolutionConfig } from "./HyperparameterConfig.ts";
-import type { RequiredAdaptivePopulationConfig } from "./AdaptivePopulationConfig.ts";
-import type { RequiredCrossValidationConfig } from "./CrossValidationConfig.ts";
-import type { RequiredDataFuzzingConfig } from "./DataFuzzingConfig.ts";
-import type { RequiredDataQuantisationConfig } from "./DataQuantisationConfig.ts";
-import type { RequiredParallelEvaluationConfig } from "./ParallelEvaluationConfig.ts";
+} from "@architecture/CreatureInterfaces.ts";
+import type { CostName } from "@costs";
+import type { SelectionInterface } from "@methods/Selection.ts";
+import type { MutationInterface } from "@neat/MutationInterface.ts";
+import type { RequiredPlateauDetectionConfig } from "@neat/PlateauDetector.ts";
+import type { RequiredAdaptiveMutationThresholds } from "@config/AdaptiveMutationThresholds.ts";
+import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
+import type { RequiredEnsembleDiversityConfig } from "@config/EnsembleDiversityConfig.ts";
+import type { RequiredFineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
+import type { RequiredStabilityAdaptationConfig } from "@config/StabilityAdaptationConfig.ts";
+import type { RequiredQuantumStepConfig } from "@config/QuantumStepConfig.ts";
+import type { RequiredBiasRegularisationConfig } from "@config/BiasRegularisationConfig.ts";
+import type { Logger } from "@utils/Logger.ts";
+import type { RandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import type { TrainingEventCallback } from "@config/TrainingEvent.ts";
+import type { RequiredPredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
+import type { RequiredMemoryConfig } from "@config/MemoryConfig.ts";
+import type { RequiredWasmCacheConfig } from "@config/WasmCacheConfig.ts";
+import type { RequiredWeightRegularisationConfig } from "@config/WeightRegularisationConfig.ts";
+import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
+import type { RequiredDiscoveryCacheConfig } from "@config/DiscoveryCacheConfig.ts";
+import type { RequiredDiskSpaceConfig } from "@config/DiskSpaceConfig.ts";
+import type { RequiredWorkerThreadCapConfig } from "@config/WorkerThreadCapConfig.ts";
+import type { RequiredHyperparameterEvolutionConfig } from "@config/HyperparameterConfig.ts";
+import type { RequiredAdaptivePopulationConfig } from "@config/AdaptivePopulationConfig.ts";
+import type { RequiredCrossValidationConfig } from "@config/CrossValidationConfig.ts";
+import type { RequiredDataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
+import type { RequiredDataQuantisationConfig } from "@config/DataQuantisationConfig.ts";
+import type { RequiredParallelEvaluationConfig } from "@config/ParallelEvaluationConfig.ts";
 
 /**
  * Concrete, fully-populated configuration shape used internally after defaults

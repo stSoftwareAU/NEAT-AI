@@ -10,9 +10,9 @@
  * where non-cloneable data is sent to workers.
  */
 import { assert, assertExists, assertThrows } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import type { NeatConfig } from "../../src/config/NeatConfig.ts";
-import type { RequestData } from "../../src/multithreading/workers/WorkerHandler.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import type { NeatConfig } from "@config/NeatConfig.ts";
+import type { RequestData } from "@multithreading/workers/WorkerHandler.ts";
 
 /**
  * Strips non-cloneable properties from a NeatConfig, mirroring the

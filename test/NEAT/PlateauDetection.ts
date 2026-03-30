@@ -9,12 +9,12 @@
  * 3. Stagnation response (mutation rate adjustment)
  */
 import { assert, assertEquals, assertGreater, assertThrows } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 import {
   DEFAULT_PLATEAU_DETECTION,
   detectPlateau,
   PlateauDetector,
-} from "../../src/NEAT/PlateauDetector.ts";
+} from "@neat/PlateauDetector.ts";
 
 // ============================================================================
 // Configuration Tests

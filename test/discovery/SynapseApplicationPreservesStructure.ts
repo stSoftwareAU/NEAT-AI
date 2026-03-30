@@ -9,15 +9,15 @@
  * after applying the candidate.
  */
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import type { CandidateSynapse } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { buildDiscoveryCandidates } from "../../src/discovery/DiscoveryCandidates.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type { CandidateSynapse } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { buildDiscoveryCandidates } from "@discovery/DiscoveryCandidates.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 
 /**
  * Creates a valid creature with a specific structure where we can test

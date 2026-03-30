@@ -9,13 +9,13 @@
  */
 
 import { assertExists } from "@std/assert";
-import { calculate as calculateScore } from "../architecture/Score.ts";
-import type { WasmCacheConfig } from "../config/WasmCacheConfig.ts";
-import type { CostName } from "../Costs.ts";
-import type { Creature } from "../Creature.ts";
-import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
-import { getLogger } from "../utils/Logger.ts";
-import type { SuccessCacheEntry } from "./SuccessCache.ts";
+import { calculate as calculateScore } from "@architecture/Score.ts";
+import type { WasmCacheConfig } from "@config/WasmCacheConfig.ts";
+import type { CostName } from "@costs";
+import type { Creature } from "@creature";
+import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
+import { getLogger } from "@utils/Logger.ts";
+import type { SuccessCacheEntry } from "@discovery/SuccessCache.ts";
 
 type EvaluationTask = {
   kind: "original" | "single" | "combo";

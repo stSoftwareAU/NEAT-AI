@@ -4,11 +4,11 @@
  * Issue #1957: Replace JS object topology with typed arrays.
  */
 import { assertEquals, assertInstanceOf } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { TypedTopology } from "../../src/architecture/TypedTopology.ts";
-import { getSquashType, SquashType } from "../../src/wasm/SquashType.ts";
-import { SynapseTypeCode } from "../../src/wasm/CompileToWasm.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { Creature } from "@creature";
+import { TypedTopology } from "@architecture/TypedTopology.ts";
+import { getSquashType, SquashType } from "@wasm/SquashType.ts";
+import { SynapseTypeCode } from "@wasm/CompileToWasm.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 /** Helper: create a simple 2-input, 1-hidden, 1-output creature. */
 function makeTestCreature(): Creature {

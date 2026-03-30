@@ -15,12 +15,9 @@
 
 import { assert } from "@std/assert";
 import { Costs, Creature } from "../../mod.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { calculate as calculateScore } from "../../src/architecture/Score.ts";
-import {
-  initWasmActivation,
-  isWasmActivationAvailable,
-} from "../../src/wasm/mod.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import { calculate as calculateScore } from "@architecture/Score.ts";
+import { initWasmActivation, isWasmActivationAvailable } from "@wasm/mod.ts";
 
 function seededRandom(seed: number): () => number {
   let s = seed >>> 0;

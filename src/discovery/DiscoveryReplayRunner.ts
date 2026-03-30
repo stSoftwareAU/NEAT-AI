@@ -10,12 +10,12 @@
  * - DiscoveryReplayRunnerTypes.ts (interface definitions)
  */
 
-import type { CostName } from "../Costs.ts";
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import { createNeatConfig } from "../config/NeatConfig.ts";
-import type { Creature } from "../Creature.ts";
-import { ConfigurationError } from "../errors/ConfigurationError.ts";
-import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
+import type { CostName } from "@costs";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import type { Creature } from "@creature";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
+import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import {
   calculatePriority,
   dequeueAll,
@@ -23,14 +23,14 @@ import {
   makeEmptyQueue,
   type PriorityDiscoveryQueue,
   updateSuccessRate,
-} from "./PriorityDiscoveryQueue.ts";
+} from "@discovery/PriorityDiscoveryQueue.ts";
 import {
   archiveSuccessByKeySync,
   listSuccessEntriesSync,
   type SuccessCacheEntry,
-} from "./SuccessCache.ts";
-import { applyEntryUsingRustRequest } from "./ReplayEntryApplication.ts";
-import { isAlreadyApplied } from "./ReplayEntryApplication.ts";
+} from "@discovery/SuccessCache.ts";
+import { applyEntryUsingRustRequest } from "@discovery/ReplayEntryApplication.ts";
+import { isAlreadyApplied } from "@discovery/ReplayEntryApplication.ts";
 import {
   buildComboIndices,
   describeCombo,
@@ -40,7 +40,7 @@ import {
   parseClaimedTagNumber,
   scoreMeaningfullyDifferent,
   setupWorkerPool,
-} from "./ReplayHelpers.ts";
+} from "@discovery/ReplayHelpers.ts";
 import type {
   DiscoveryReplayDiagnostics,
   DiscoveryReplayDirInput,
@@ -48,7 +48,7 @@ import type {
   DiscoveryReplayEvaluationSummary,
   DiscoveryReplayRunnerDeps,
   DiscoveryReplayRunnerLike,
-} from "./DiscoveryReplayRunnerTypes.ts";
+} from "@discovery/DiscoveryReplayRunnerTypes.ts";
 
 // Re-export for backward compatibility.
 export type {
@@ -58,8 +58,8 @@ export type {
   DiscoveryReplayEvaluationSummary,
   DiscoveryReplayRunnerDeps,
   DiscoveryReplayRunnerLike,
-} from "./DiscoveryReplayRunnerTypes.ts";
-export { evaluateAll } from "./ReplayHelpers.ts";
+} from "@discovery/DiscoveryReplayRunnerTypes.ts";
+export { evaluateAll } from "@discovery/ReplayHelpers.ts";
 
 export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
   #deps: {

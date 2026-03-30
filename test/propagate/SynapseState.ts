@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { SynapseState } from "../../src/propagate/SynapseState.ts";
+import { SynapseState } from "@propagate/SynapseState.ts";
 
 Deno.test("SynapseState - initialises all counters to zero and optional fields to undefined", () => {
   const ss = new SynapseState();

@@ -1,11 +1,11 @@
 /**
  * @see docs/snapshot-schema.json for the JSON schema describing the export format.
  */
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
-import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
-import type { Creature } from "../Creature.ts";
-import { neuronUuid } from "../neuron/NeuronSerialization.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
+import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
+import type { Creature } from "@creature";
+import { neuronUuid } from "@neuron/NeuronSerialization.ts";
 
 export class CreatureExportBuilder {
   private readonly creature: Creature;

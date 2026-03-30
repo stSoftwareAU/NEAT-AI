@@ -1,8 +1,8 @@
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
-import { trainDir } from "../../src/architecture/Training.ts";
-import { Costs } from "../../src/Costs.ts";
+import { Creature } from "@creature";
+import { makeDataDir } from "@architecture/DataSet.ts";
+import { trainDir } from "@architecture/Training.ts";
+import { Costs } from "@costs";
 
 /**
  * Creates an AND gate training dataset.

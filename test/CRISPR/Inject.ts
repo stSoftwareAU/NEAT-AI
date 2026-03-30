@@ -6,7 +6,7 @@ import {
   type CrisprInterface,
   type NeatOptions,
 } from "../../mod.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 
 Deno.test("CRISPR inject", async () => {
   for (let attempt = 0; true; attempt++) {

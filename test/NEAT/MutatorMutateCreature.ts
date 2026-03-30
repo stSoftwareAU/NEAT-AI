@@ -4,13 +4,13 @@ import {
   assertNotEquals,
   assertThrows,
 } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import { Mutator } from "@neat/Mutator.ts";
 
 /**
  * Unit tests for Mutator.mutateCreature method.

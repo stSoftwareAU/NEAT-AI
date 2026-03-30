@@ -1,5 +1,5 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import { HINGE } from "../../src/costs/HINGE.ts";
+import { HINGE } from "@costs/HINGE.ts";
 
 Deno.test("HINGE - getName returns HINGE", () => {
   const hinge = new HINGE();

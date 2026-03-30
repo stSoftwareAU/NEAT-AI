@@ -2,7 +2,7 @@ import { assert, assertEquals, assertIsError, assertThrows } from "@std/assert";
 import {
   TopologyError,
   type TopologyErrorReason,
-} from "../../src/errors/TopologyError.ts";
+} from "@errors/TopologyError.ts";
 
 Deno.test("TopologyError - INVALID_NEURON_TYPE reason", () => {
   const error = new TopologyError(

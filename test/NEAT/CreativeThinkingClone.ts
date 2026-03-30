@@ -4,9 +4,9 @@ import {
   assertEquals,
   assertNotEquals,
 } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { AddConnection } from "../../src/mutate/AddConnection.ts";
+import { Creature } from "@creature";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { AddConnection } from "@mutate/AddConnection.ts";
 
 /**
  * Test suite for creative thinking creature creation optimisation.

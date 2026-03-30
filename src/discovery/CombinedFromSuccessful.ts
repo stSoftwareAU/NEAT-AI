@@ -7,14 +7,14 @@
  * Extracted from CombinedCandidates.ts as part of #1598.
  */
 
-import type { Creature } from "../Creature.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { applyChangeToCreature } from "./CandidateApplication.ts";
-import { buildCombinationDescription } from "./CandidateDescriptions.ts";
+import type { Creature } from "@creature";
+import { getLogger } from "@utils/Logger.ts";
+import { applyChangeToCreature } from "@discovery/CandidateApplication.ts";
+import { buildCombinationDescription } from "@discovery/CandidateDescriptions.ts";
 import type {
   DiscoveryCandidate,
   ScoredDiscoveryCandidate,
-} from "./DiscoveryCandidates.ts";
+} from "@discovery/DiscoveryCandidates.ts";
 
 /**
  * Build combined creatures from successful single candidates.

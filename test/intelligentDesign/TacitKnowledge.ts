@@ -6,16 +6,16 @@
  */
 
 import { assertEquals, assertExists } from "@std/assert";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../src/Creature.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
 import {
   cleanKnowledge,
   combineKnowledge,
   getNeuronsToTest,
   getValidNeuronSquashes,
   makeModifiedCreature,
-} from "../../src/intelligentDesign/TacitKnowledge.ts";
-import type { TacitKnowledgeMap } from "../../src/intelligentDesign/TacitKnowledge.ts";
+} from "@intelligentDesign/TacitKnowledge.ts";
+import type { TacitKnowledgeMap } from "@intelligentDesign/TacitKnowledge.ts";
 
 // Test creature with hidden neurons
 const testCreatureJson: CreatureInternal = {

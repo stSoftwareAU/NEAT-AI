@@ -11,20 +11,20 @@
  * neuron, and index `j` across synapse arrays refers to the same synapse.
  */
 
-import type { Creature } from "../Creature.ts";
-import { getSquashType } from "../wasm/SquashType.ts";
-import { getSynapseTypeCode } from "../wasm/CompileToWasm.ts";
+import type { Creature } from "@creature";
+import { getSquashType } from "@wasm/SquashType.ts";
+import { getSynapseTypeCode } from "@wasm/CompileToWasm.ts";
 import type {
   StructuralValidationResult,
   TopologyValidationResult,
-} from "../wasm/WasmTopologyOps.ts";
+} from "@wasm/WasmTopologyOps.ts";
 import {
   computeReverseTopologicalOrder as wasmComputeOrder,
   detectCycles as wasmDetectCycles,
   scanAvailableConnections as wasmScanAvailable,
   validateStructuralIntegrity as wasmValidateStructural,
   validateTopology as wasmValidate,
-} from "../wasm/WasmTopologyOps.ts";
+} from "@wasm/WasmTopologyOps.ts";
 
 /**
  * Immutable typed array snapshot of a creature's topology.

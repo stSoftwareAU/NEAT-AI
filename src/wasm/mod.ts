@@ -14,21 +14,21 @@ export {
   compileCreatureToWasm,
   type CompiledCreatureData,
   getCompiledCreatureStats,
-} from "./CompileToWasm.ts";
+} from "@wasm/CompileToWasm.ts";
 
 export {
   getSquashType,
   resolveWasmSquashName,
   SQUASH_NAME_TO_TYPE,
   SquashType,
-} from "./SquashType.ts";
+} from "@wasm/SquashType.ts";
 
 // Issue #1405 - Module loading, init, and availability from WasmModuleLoader
 export {
   initWasmActivation,
   initWasmActivationSync,
   isWasmActivationAvailable,
-} from "./WasmModuleLoader.ts";
+} from "@wasm/WasmModuleLoader.ts";
 
 // Issue #1405 - Standalone WASM functions from WasmStandaloneFunctions
 export {
@@ -51,26 +51,26 @@ export {
   wasmUnSquash,
   wasmValidateRange,
   wasmVersion,
-} from "./WasmStandaloneFunctions.ts";
+} from "@wasm/WasmStandaloneFunctions.ts";
 
 // Issue #1475 - Typed interface for WASM compiled network
 export type {
   WasmCompiledNetwork,
   WasmCompiledNetworkConstructor,
-} from "./WasmCompiledNetwork.ts";
+} from "@wasm/WasmCompiledNetwork.ts";
 
 // Issue #1405 - WasmCreatureActivation class and trace types from WasmActivation
 export {
   WasmCreatureActivation,
   type WasmTraceEntry,
   type WasmTraceResult,
-} from "./WasmActivation.ts";
+} from "@wasm/WasmActivation.ts";
 
 // Issue #1405 - Auto-init and worker scope detection from WasmAutoInit
-export { isProbablyWorkerScope } from "./WasmAutoInit.ts";
+export { isProbablyWorkerScope } from "@wasm/WasmAutoInit.ts";
 
 // Issue #1247 - Shared WASM activation initialisation helper
-export { ensureWasmActivation } from "./EnsureWasmActivation.ts";
+export { ensureWasmActivation } from "@wasm/EnsureWasmActivation.ts";
 
 // Issue #1143 - Unified wrapper functions for WASM/JS activation methods
 // Issue #1241 - Removed shouldUseWasmBackprop/resetWasmBackpropFlag (WASM is unconditional)
@@ -82,7 +82,7 @@ export {
   safeZoneAdjustmentBatch,
   squash,
   unSquash,
-} from "./ActivationMethods.ts";
+} from "@wasm/ActivationMethods.ts";
 
 // Issue #1301 - WASM compilation caching for creatures with identical topologies
 export {
@@ -93,7 +93,7 @@ export {
   invalidateWasmCache,
   setWasmCompilationCacheSize,
   type WasmCacheStats,
-} from "./WasmCompilationCache.ts";
+} from "@wasm/WasmCompilationCache.ts";
 
 // Issue #1522 - Persistent training state in WASM linear memory
 export {
@@ -112,14 +112,14 @@ export {
   wasmAccumulateBiasPersistent8Way,
   wasmAccumulateWeightPersistent4Way,
   wasmAccumulateWeightPersistent8Way,
-} from "./WasmTrainingState.ts";
+} from "@wasm/WasmTrainingState.ts";
 
 // Issue #1960 - Batch APIs for amortising WASM boundary crossing
 export {
   calculateBiasBatch4Way,
   calculateWeightBatch4Way,
   validateTopologyBatch,
-} from "./WasmBatchOps.ts";
+} from "@wasm/WasmBatchOps.ts";
 
 // Issue #1338 - Bound cached WASM activations under memory pressure
 // Issue #1504 - Added getCachedWasmActivationCount for cache diagnostics
@@ -131,4 +131,4 @@ export {
   getWasmActivationLruStats,
   resetWasmActivationLruStats,
   setMaxCachedWasmCreatureActivations,
-} from "./WasmCreatureActivationLRU.ts";
+} from "@wasm/WasmCreatureActivationLRU.ts";

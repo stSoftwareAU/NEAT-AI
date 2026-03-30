@@ -1,8 +1,8 @@
-import type { DiscoverRecord } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { Neuron } from "../../architecture/Neuron.ts";
-import type { BackPropagationConfig } from "../../propagate/BackPropagation.ts";
-import type { SparseConfig } from "../../propagate/sparse/SparseConfig.ts";
-import type { AbstractActivationInterface } from "./AbstractActivationInterface.ts";
+import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
+import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import type { AbstractActivationInterface } from "@methods/activations/AbstractActivationInterface.ts";
 
 export interface NeuronActivationInterface extends AbstractActivationInterface {
   activateAndTrace(neuron: Neuron): number;

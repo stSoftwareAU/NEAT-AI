@@ -8,7 +8,7 @@
  * Run with:
  *   deno bench --allow-read --allow-write bench/AdaptiveDiscoveryTimeout.ts
  */
-import { calculateDiscoveryTimeout } from "../src/discovery/DiscoveryTimeout.ts";
+import { calculateDiscoveryTimeout } from "@discovery/DiscoveryTimeout.ts";
 
 Deno.bench(
   "calculateDiscoveryTimeout - minimal creature (3 neurons, 2 synapses)",

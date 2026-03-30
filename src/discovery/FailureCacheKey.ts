@@ -9,10 +9,10 @@
 
 import { join } from "@std/path/join";
 import { crypto as stdCrypto } from "@std/crypto";
-import { exportJSON } from "../creature/CreatureSerialization.ts";
-import { TopologyError } from "../errors/TopologyError.ts";
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
-import { DISCOVERY_WIRE_SCHEMA_VERSION } from "./DiscoveryWireFormat.ts";
+import { exportJSON } from "@creature/CreatureSerialization.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
+import { DISCOVERY_WIRE_SCHEMA_VERSION } from "@discovery/DiscoveryWireFormat.ts";
 
 /**
  * Extracts the exponent from a number's scientific notation.

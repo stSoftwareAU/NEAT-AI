@@ -16,18 +16,18 @@
  */
 
 import { assert } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { Creature } from "../../src/Creature.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { Creature } from "@creature";
 import {
   buildDiscoveryCandidates,
   type DiscoveryCandidate,
   type DiscoveryChangeType,
-} from "../../src/discovery/DiscoveryCandidates.ts";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import type { DiscoverRecord } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+} from "@discovery/DiscoveryCandidates.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 /** A single input/output sample for deterministic testing. */
 export interface TestSample {

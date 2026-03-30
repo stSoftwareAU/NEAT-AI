@@ -5,8 +5,8 @@
  * capabilities for better load distribution.
  */
 import { assertEquals, assertExists, assertGreater } from "@std/assert";
-import { WorkerPool } from "../../src/multithreading/WorkerPool.ts";
-import type { WorkerHandler } from "../../src/multithreading/workers/WorkerHandler.ts";
+import { WorkerPool } from "@multithreading/WorkerPool.ts";
+import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 
 /**
  * Mock worker handler for testing purposes.

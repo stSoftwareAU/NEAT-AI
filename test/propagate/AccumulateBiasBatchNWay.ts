@@ -6,16 +6,14 @@
  */
 
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import { NeuronState } from "../../src/architecture/CreatureState.ts";
-import {
-  createBackPropagationConfig,
-} from "../../src/propagate/BackPropagation.ts";
+import { NeuronState } from "@architecture/CreatureState.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
 import {
   accumulateBias,
   accumulateBiasBatch4Way,
   accumulateBiasBatch8Way,
   accumulateBiasBatchNWay,
-} from "../../src/propagate/Bias.ts";
+} from "@propagate/Bias.ts";
 
 /**
  * Test that accumulateBiasBatchNWay with batchSize=4 matches accumulateBiasBatch4Way.

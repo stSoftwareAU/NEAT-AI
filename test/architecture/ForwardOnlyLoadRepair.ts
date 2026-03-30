@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../src/Creature.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
 
 /**
  * Issue #2090: Forward-only creatures loaded from disk/worker transfer may

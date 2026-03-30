@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { buildCombinedFromSuccessful } from "../../src/discovery/DiscoveryCandidates.ts";
-import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
+import { Creature } from "@creature";
+import { buildCombinedFromSuccessful } from "@discovery/DiscoveryCandidates.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 
 // cspell:ignore TESTDISC
 

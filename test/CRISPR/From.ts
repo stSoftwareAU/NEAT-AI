@@ -1,7 +1,7 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { getTag } from "@stsoftware/tags/mod";
-import { Creature } from "../../src/Creature.ts";
-import { CRISPR } from "../../src/reconstruct/CRISPR.ts";
+import { Creature } from "@creature";
+import { CRISPR } from "@reconstruct/CRISPR.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

@@ -1,8 +1,8 @@
 // deno-lint-ignore-file no-await-in-loop -- test writes iteration/trace files sequentially
 import { assert } from "@std/assert";
-import type { DataRecordInterface } from "../../../src/architecture/DataSet.ts";
-import { Costs } from "../../../src/Costs.ts";
-import { Creature } from "../../../src/Creature.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import { Costs } from "@costs";
+import { Creature } from "@creature";
 import { train } from "../../TrainTestOnlyUtil.ts";
 import { initWasmForTests } from "../../_initWasm.ts";
 

@@ -7,15 +7,15 @@
  * 3. Handle UUID mapping between different input/output configurations
  */
 
-import { Creature } from "../Creature.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
-import { exportJSON } from "../creature/CreatureSerialization.ts";
-import { nextNeuronId } from "../architecture/NeuronId.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { exportJSON } from "@creature/CreatureSerialization.ts";
+import { nextNeuronId } from "@architecture/NeuronId.ts";
 import type {
   CheckpointInterface,
   CheckpointMetadata,
-} from "./CheckpointInterface.ts";
+} from "@transfer/CheckpointInterface.ts";
 
 /**
  * Options for exporting a creature as a checkpoint.

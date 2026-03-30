@@ -1,12 +1,12 @@
 import { assert } from "@std/assert";
-import type { Creature } from "../Creature.ts";
-import type { Synapse } from "../architecture/Synapse.ts";
+import type { Creature } from "@creature";
+import type { Synapse } from "@architecture/Synapse.ts";
 import {
   DEFAULT_WEIGHT_REGULARISATION_CONFIG,
   type RequiredWeightRegularisationConfig,
-} from "../config/WeightRegularisationConfig.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
+} from "@config/WeightRegularisationConfig.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 
 /**
  * Mutation operator that modifies synapse weights.

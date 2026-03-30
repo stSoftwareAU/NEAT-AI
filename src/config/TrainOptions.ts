@@ -1,8 +1,8 @@
-import type { BackPropagationArguments } from "../propagate/BackPropagation.ts";
-import type { CrossValidationConfig } from "./CrossValidationConfig.ts";
-import type { DataFuzzingConfig } from "./DataFuzzingConfig.ts";
-import type { DataQuantisationConfig } from "./DataQuantisationConfig.ts";
-import type { PredictiveCodingConfig } from "./PredictiveCodingConfig.ts";
+import type { BackPropagationArguments } from "@propagate/BackPropagation.ts";
+import type { CrossValidationConfig } from "@config/CrossValidationConfig.ts";
+import type { DataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
+import type { DataQuantisationConfig } from "@config/DataQuantisationConfig.ts";
+import type { PredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
 
 export interface TrainArguments extends BackPropagationArguments {
   /** If set to n, will output the training status every n iterations (log : 1 will log every iteration) */

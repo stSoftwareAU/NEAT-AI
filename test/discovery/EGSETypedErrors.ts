@@ -1,9 +1,9 @@
 import { assertThrows } from "@std/assert";
-import { TopologyError } from "../../src/errors/TopologyError.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 import {
   calculateSquashError,
   findCandidateSquash,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts";
 import { makeSimpleCreature } from "../fixtures/SimpleCreatures.ts";
 
 // Integer ID for hidden-1 in makeSimpleCreature (explicit id in fixture).

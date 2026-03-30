@@ -2,7 +2,7 @@ import { assert, assertEquals, assertIsError, assertThrows } from "@std/assert";
 import {
   DiscoveryError,
   type DiscoveryErrorReason,
-} from "../../src/errors/DiscoveryError.ts";
+} from "@errors/DiscoveryError.ts";
 
 Deno.test("DiscoveryError - LIBRARY_NOT_FOUND reason", () => {
   const error = new DiscoveryError(

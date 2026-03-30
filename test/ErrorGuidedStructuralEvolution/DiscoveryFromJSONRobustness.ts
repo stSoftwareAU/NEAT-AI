@@ -10,10 +10,10 @@
  */
 
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { assertValidSynapseReferences } from "../../src/architecture/AssertValidSynapseReferences.ts";
-import { Creature } from "../../src/Creature.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
+import { Creature } from "@creature";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import {
   addHelpfulNeurons,
   addHelpfulSynapses,
@@ -21,17 +21,17 @@ import {
   removeHarmfulNeuron,
   removeLowImpactNeuron,
   removeSynapse,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoveryApplication.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryApplication.ts";
 import type {
   CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 import {
   buildSingleNeuronCandidates,
   buildSingleSynapseCandidates,
-} from "../../src/discovery/CandidateCreation.ts";
+} from "@discovery/CandidateCreation.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 /**

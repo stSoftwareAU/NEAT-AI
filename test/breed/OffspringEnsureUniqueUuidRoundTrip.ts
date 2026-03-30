@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import { Creature } from "../../mod.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
+import { Offspring } from "@architecture/Offspring.ts";
 
 /** Test access to private static used in graft path (#2086). */
 function ensureUniqueNeuronUuidsForTest(creature: Creature): void {

@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { TrainOptions } from "../../src/config/TrainOptions.ts";
+import { Creature } from "@creature";
+import type { TrainOptions } from "@config/TrainOptions.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 
 Deno.test("optimization/SparseSelection - sparse training reduces error across different topologies", () => {

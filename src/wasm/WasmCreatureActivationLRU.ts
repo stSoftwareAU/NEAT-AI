@@ -18,8 +18,8 @@
  * move-to-head, and tail eviction — replacing the previous O(n) linear scan.
  */
 
-import type { CacheStats } from "../cache/CacheStats.ts";
-import type { Creature } from "../Creature.ts";
+import type { CacheStats } from "@cache/CacheStats.ts";
+import type { Creature } from "@creature";
 
 /** A node in the doubly-linked LRU list. */
 interface LruNode {

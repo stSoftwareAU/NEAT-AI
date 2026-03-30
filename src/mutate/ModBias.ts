@@ -1,11 +1,11 @@
 import { assert } from "@std/assert";
-import type { Creature } from "../Creature.ts";
+import type { Creature } from "@creature";
 import {
   DEFAULT_BIAS_REGULARISATION_CONFIG,
   type RequiredBiasRegularisationConfig,
-} from "../config/BiasRegularisationConfig.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
+} from "@config/BiasRegularisationConfig.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 
 /**
  * Mutation operator that modifies neuron biases.

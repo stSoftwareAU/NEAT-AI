@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { NeatOptions } from "../../src/config/NeatOptions.ts";
+import { Creature } from "@creature";
+import type { NeatOptions } from "@config/NeatOptions.ts";
 import { emptyDirSync, ensureDirSync } from "@std/fs";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

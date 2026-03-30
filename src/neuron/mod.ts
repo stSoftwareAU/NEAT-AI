@@ -18,17 +18,21 @@ export {
   isNodeActivation,
   makeFunction,
   prepare,
-} from "./NeuronActivation.ts";
+} from "@neuron/NeuronActivation.ts";
 
 export {
   adjustedActivation,
   propagate,
   propagateUpdate,
   rawAdjustedActivation,
-} from "./NeuronPropagation.ts";
+} from "@neuron/NeuronPropagation.ts";
 
-export { record } from "./NeuronRecord.ts";
+export { record } from "@neuron/NeuronRecord.ts";
 
-export { fix, mutate } from "./NeuronTopology.ts";
+export { fix, mutate } from "@neuron/NeuronTopology.ts";
 
-export { exportJSON, fromJSON, internalJSON } from "./NeuronSerialization.ts";
+export {
+  exportJSON,
+  fromJSON,
+  internalJSON,
+} from "@neuron/NeuronSerialization.ts";

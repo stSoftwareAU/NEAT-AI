@@ -7,12 +7,12 @@
  */
 
 import { assert, assertEquals, assertGreater, assertThrows } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { checkOnnxCompatibility, exportToOnnx } from "../../src/onnx/mod.ts";
+import { Creature } from "@creature";
+import { checkOnnxCompatibility, exportToOnnx } from "@onnx/mod.ts";
 import {
   isAggregateFunction,
   isSquashSupported,
-} from "../../src/onnx/ActivationMapping.ts";
+} from "@onnx/ActivationMapping.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

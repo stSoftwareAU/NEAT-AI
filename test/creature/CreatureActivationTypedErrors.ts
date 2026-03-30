@@ -5,9 +5,9 @@
  * Issue #1694
  */
 import { assertEquals, assertIsError } from "@std/assert";
-import { requireWasmOrThrow } from "../../src/creature/CreatureActivation.ts";
-import { Creature } from "../../src/Creature.ts";
-import { WasmError } from "../../src/errors/WasmError.ts";
+import { requireWasmOrThrow } from "@creature/CreatureActivation.ts";
+import { Creature } from "@creature";
+import { WasmError } from "@errors/WasmError.ts";
 
 Deno.test("requireWasmOrThrow - does not throw for WASM-eligible creature", () => {
   const creature = new Creature(2, 1);

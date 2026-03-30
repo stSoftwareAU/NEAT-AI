@@ -4,7 +4,7 @@
  * Issue #1698: Validates environment-based timeout configuration.
  */
 import { assertEquals } from "@std/assert";
-import { getInitTimeoutMs } from "../../src/workers/WorkerHandlerBase.ts";
+import { getInitTimeoutMs } from "@workers/WorkerHandlerBase.ts";
 
 Deno.test("getInitTimeoutMs: returns default 60000 when env not set", () => {
   const original = Deno.env.get("NEAT_AI_WORKER_INIT_TIMEOUT_MS");

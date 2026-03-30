@@ -6,14 +6,14 @@
  * for monitoring and debugging.
  */
 
-import type { RustRecordInput } from "./RustDiscovery.ts";
+import type { RustRecordInput } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import type {
   RustFlushAggregation,
   RustFlushDiagnostics,
   RustFlushMetrics,
-} from "./DiscoverStructureTypes.ts";
-import { DiscoveryError } from "../../errors/DiscoveryError.ts";
-import { getLogger } from "../../utils/Logger.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
+import { DiscoveryError } from "@errors/DiscoveryError.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Truncates a string for log output.

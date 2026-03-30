@@ -5,13 +5,10 @@ import {
   assertGreater,
   assertLess,
 } from "@std/assert";
-import {
-  accumulateWeight,
-  calculateWeight,
-} from "../../src/propagate/Weight.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SynapseState } from "../../src/propagate/SynapseState.ts";
-import type { Synapse } from "../../src/architecture/Synapse.ts";
+import { accumulateWeight, calculateWeight } from "@propagate/Weight.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SynapseState } from "@propagate/SynapseState.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
 
 function makeConfig(
   overrides?: Record<string, unknown>,

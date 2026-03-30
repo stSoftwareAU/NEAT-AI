@@ -15,11 +15,11 @@
  */
 
 import { assert } from "@std/assert";
-import { Mish } from "../../../src/methods/activations/types/Mish.ts";
-import { Swish } from "../../../src/methods/activations/types/Swish.ts";
-import { GELU } from "../../../src/methods/activations/types/GELU.ts";
-import { ELU } from "../../../src/methods/activations/types/ELU.ts";
-import { SELU } from "../../../src/methods/activations/types/SELU.ts";
+import { Mish } from "@methods/activations/types/Mish.ts";
+import { Swish } from "@methods/activations/types/Swish.ts";
+import { GELU } from "@methods/activations/types/GELU.ts";
+import { ELU } from "@methods/activations/types/ELU.ts";
+import { SELU } from "@methods/activations/types/SELU.ts";
 
 /**
  * Helper: asserts error is finite, non-zero, and not at the clamp limit.

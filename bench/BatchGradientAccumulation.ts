@@ -12,21 +12,19 @@
  *   deno bench --allow-read --allow-env bench/BatchGradientAccumulation.ts
  */
 
-import { NeuronState } from "../src/architecture/CreatureState.ts";
-import {
-  createBackPropagationConfig,
-} from "../src/propagate/BackPropagation.ts";
+import { NeuronState } from "@architecture/CreatureState.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
 import {
   accumulateBias,
   accumulateBiasBatch4Way,
   accumulateBiasBatch8Way,
-} from "../src/propagate/Bias.ts";
-import { SynapseState } from "../src/propagate/SynapseState.ts";
+} from "@propagate/Bias.ts";
+import { SynapseState } from "@propagate/SynapseState.ts";
 import {
   accumulateWeight,
   accumulateWeightBatch4Way,
   accumulateWeightBatch8Way,
-} from "../src/propagate/Weight.ts";
+} from "@propagate/Weight.ts";
 
 console.log("\n" + "=".repeat(70));
 console.log("Issue #1214: Batch Gradient Accumulation Performance Benchmark");

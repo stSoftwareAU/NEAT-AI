@@ -8,10 +8,7 @@
  */
 
 import { assert } from "@std/assert";
-import {
-  isWasmActivationAvailable,
-  isWasmSquashSupported,
-} from "../../src/wasm/mod.ts";
+import { isWasmActivationAvailable, isWasmSquashSupported } from "@wasm/mod.ts";
 
 Deno.test({
   name: "No WASM feature flags: WASM activation is unconditionally available",

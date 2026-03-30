@@ -5,17 +5,17 @@
  * under 500 lines and each module focused on a single responsibility.
  */
 
-import type { Neuron } from "../architecture/Neuron.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import type { ApplyLearningsInterface } from "../methods/activations/ApplyLearningsInterface.ts";
-import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
-import type { NeuronFixableInterface } from "../methods/activations/NeuronFixableInterface.ts";
-import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
-import type { MakeActivationFunctionInterface } from "../optimize/MakeActivationFunctionInterface.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import type { ApplyLearningsInterface } from "@methods/activations/ApplyLearningsInterface.ts";
+import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
+import type { NeuronFixableInterface } from "@methods/activations/NeuronFixableInterface.ts";
+import type { UnSquashInterface } from "@methods/activations/UnSquashInterface.ts";
+import type { MakeActivationFunctionInterface } from "@optimize/MakeActivationFunctionInterface.ts";
 import {
   findActivationFunction,
   type FunctionCache,
-} from "../optimize/FunctionCache.ts";
+} from "@optimize/FunctionCache.ts";
 
 /**
  * Type guard: checks if an activation implements NeuronActivationInterface.

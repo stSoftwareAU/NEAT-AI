@@ -5,8 +5,8 @@
  * when a focus list is provided, and handles edge cases properly.
  */
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { ModWeight } from "../../src/mutate/ModWeight.ts";
+import { Creature } from "@creature";
+import { ModWeight } from "@mutate/ModWeight.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

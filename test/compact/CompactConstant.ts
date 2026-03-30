@@ -1,11 +1,11 @@
 import { assertAlmostEquals, fail } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
-import { Creature } from "../../src/Creature.ts";
-import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { compactUnused } from "../../src/compact/CompactUnused.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { Creature } from "@creature";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { compactUnused } from "@compact/CompactUnused.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 function makeCreature() {
   const json: CreatureExport = {

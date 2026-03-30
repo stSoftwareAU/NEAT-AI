@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { NeuronState } from "../../src/architecture/CreatureState.ts";
+import { NeuronState } from "@architecture/CreatureState.ts";
 
 Deno.test("NeuronState - reset clears PC fields back to undefined", () => {
   const state = new NeuronState();

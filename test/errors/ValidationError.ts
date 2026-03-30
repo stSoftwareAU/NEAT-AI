@@ -8,7 +8,7 @@ import { assert, assertEquals, assertIsError, assertThrows } from "@std/assert";
 import {
   ValidationError,
   type ValidationErrorName,
-} from "../../src/errors/ValidationError.ts";
+} from "@errors/ValidationError.ts";
 
 Deno.test("ValidationError - OTHER reason", () => {
   const error = new ValidationError("something went wrong", "OTHER");

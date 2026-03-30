@@ -17,7 +17,7 @@ import {
   closeRustLibrary,
   getDiscoveryVersion,
   isRustDiscoveryEnabled,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 // ---------------------------------------------------------------------------
 // FFI cleanup: get_version repeated calls

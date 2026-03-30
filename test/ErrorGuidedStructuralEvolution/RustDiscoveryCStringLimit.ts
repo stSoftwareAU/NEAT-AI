@@ -4,11 +4,11 @@ import { join } from "@std/path/join";
 import {
   closeRustLibrary,
   readDiscoveryRecords,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import type {
   RustReadInput,
   RustReadResult,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 const hasFfiPermission = (() => {
   try {

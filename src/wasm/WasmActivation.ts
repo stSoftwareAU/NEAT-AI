@@ -11,11 +11,11 @@
  * obtained from WasmModuleLoader.
  */
 
-import type { Creature } from "../Creature.ts";
-import { WasmError } from "../errors/WasmError.ts";
-import { getLogger } from "../utils/Logger.ts";
-import type { CompiledCreatureData } from "./CompileToWasm.ts";
-import type { WasmCompiledNetwork } from "./WasmCompiledNetwork.ts";
+import type { Creature } from "@creature";
+import { WasmError } from "@errors/WasmError.ts";
+import { getLogger } from "@utils/Logger.ts";
+import type { CompiledCreatureData } from "@wasm/CompileToWasm.ts";
+import type { WasmCompiledNetwork } from "@wasm/WasmCompiledNetwork.ts";
 import {
   getCompiledNetworkClass,
   getCrossEntropySumBatchPackedFn,
@@ -24,7 +24,7 @@ import {
   getMapeSumBatchPackedFn,
   getMseSumBatchPackedFn,
   getMsleSumBatchPackedFn,
-} from "./WasmModuleLoader.ts";
+} from "@wasm/WasmModuleLoader.ts";
 
 /**
  * Trace entry from WASM activation

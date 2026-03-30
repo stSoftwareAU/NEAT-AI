@@ -12,7 +12,7 @@ import {
   logCacheStatistics,
   pruneCacheSync,
   pruneObsoleteSync,
-} from "../../src/discovery/DiscoveryCacheEviction.ts";
+} from "@discovery/DiscoveryCacheEviction.ts";
 
 /** Helper to write a fake cache entry file. */
 function writeCacheEntry(

@@ -9,9 +9,9 @@
  */
 
 import { assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { TypedTopology } from "../../src/architecture/TypedTopology.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { Creature } from "@creature";
+import { TypedTopology } from "@architecture/TypedTopology.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   detectCycles,
   detectCyclesTS,
@@ -26,7 +26,7 @@ import {
   STRUCTURAL_VALID,
   validateStructuralIntegrity,
   validateStructuralIntegrityTS,
-} from "../../src/wasm/WasmTopologyOps.ts";
+} from "@wasm/WasmTopologyOps.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers

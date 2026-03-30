@@ -13,13 +13,13 @@
  * - Performance gaps between discovery and holdout data
  */
 
-import type { Creature } from "../Creature.ts";
-import type { DataRecordInterface } from "../architecture/DataSet.ts";
-import { Costs } from "../Costs.ts";
+import type { Creature } from "@creature";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import { Costs } from "@costs";
 import {
   createSeededRng,
   getRandomNumberGenerator,
-} from "../utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Options for holdout validation.

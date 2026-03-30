@@ -1,8 +1,8 @@
 import { assertAlmostEquals, assertEquals, assertThrows } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
-import { mergeDuplicateSynapses } from "../../src/compact/CompactUtils.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import { mergeDuplicateSynapses } from "@compact/CompactUtils.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 function mulberry32(seed: number) {

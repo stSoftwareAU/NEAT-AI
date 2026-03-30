@@ -1,5 +1,5 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import { MSLE } from "../../src/costs/MSLE.ts";
+import { MSLE } from "@costs/MSLE.ts";
 
 Deno.test("MSLE - getName returns MSLE", () => {
   const msle = new MSLE();

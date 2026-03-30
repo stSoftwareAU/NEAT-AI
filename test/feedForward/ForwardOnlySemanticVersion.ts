@@ -1,11 +1,11 @@
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { Creature } from "@creature";
+import { Mutator } from "@neat/Mutator.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 Deno.test("Forward-only: breeding produces a 4.x forward-only child", () => {
   const mumJson: CreatureExport = {

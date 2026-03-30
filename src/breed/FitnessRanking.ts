@@ -1,8 +1,8 @@
 import { assert } from "@std/assert";
 import { getTag } from "@stsoftware/tags/mod";
-import type { Creature } from "../Creature.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import type { Creature } from "@creature";
+import { ValidationError } from "@errors/ValidationError.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Pre-computed fitness ranking data for a population.

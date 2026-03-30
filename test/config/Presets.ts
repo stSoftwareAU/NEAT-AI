@@ -6,14 +6,14 @@
  * user overrides via spread syntax.
  */
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 import {
   DISCOVERY_FOCUSED_PRESET,
   LARGE_NETWORK_PRESET,
   MEMORY_CONSTRAINED_PRESET,
   QUICK_START_PRESET,
-} from "../../src/presets/Presets.ts";
-import type { NeatOptions } from "../../src/config/NeatOptions.ts";
+} from "@presets/Presets.ts";
+import type { NeatOptions } from "@config/NeatOptions.ts";
 
 // ─── Quick Start preset ───────────────────────────────────────────
 

@@ -1,13 +1,13 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { Fitness } from "../../src/architecture/Fitness.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { WorkerHandler } from "../../src/multithreading/workers/WorkerHandler.ts";
+import { Fitness } from "@architecture/Fitness.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
-} from "../../src/architecture/DataSet.ts";
+} from "@architecture/DataSet.ts";
 
 Deno.test("Creature with constant output achieves perfect score on matching dataset", async () => {
   const directory = ".test/optimize/simplify/TAN";

@@ -8,10 +8,7 @@
  */
 
 import { assertEquals } from "@std/assert";
-import {
-  parseDiscoverySampleRate,
-  parseNumber,
-} from "../../src/config/ParseOptions.ts";
+import { parseDiscoverySampleRate, parseNumber } from "@config/ParseOptions.ts";
 
 // --- parseNumber tests ---
 

@@ -1,13 +1,13 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import {
   exportJSON,
   fromJSON,
   internalJSON,
-} from "../../src/neuron/NeuronSerialization.ts";
-import { TopologyError } from "../../src/errors/TopologyError.ts";
+} from "@neuron/NeuronSerialization.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 
 /** Helper: creates a simple creature for testing neuron serialisation. */
 function makeTestCreature(): Creature {

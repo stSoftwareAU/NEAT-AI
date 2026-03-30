@@ -1,13 +1,13 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../../mod.ts";
-import { Offspring } from "../architecture/Offspring.ts";
-import { discover } from "../blackbox/Discover.ts";
-import type { NeatConfig } from "../config/NeatConfig.ts";
-import type { NeatOptions } from "../config/NeatOptions.ts";
-import type { Genus } from "../NEAT/Genus.ts";
-import { FitnessRanking } from "./FitnessRanking.ts";
-import { findFather, selectParent } from "./ParentSelection.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import { discover } from "@blackbox/Discover.ts";
+import type { NeatConfig } from "@config/NeatConfig.ts";
+import type { NeatOptions } from "@config/NeatOptions.ts";
+import type { Genus } from "@neat/Genus.ts";
+import { FitnessRanking } from "@breed/FitnessRanking.ts";
+import { findFather, selectParent } from "@breed/ParentSelection.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Handles breeding operations between creatures in a NEAT population.

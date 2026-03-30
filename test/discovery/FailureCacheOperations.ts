@@ -5,11 +5,11 @@ import {
   isCandidateCachedSync,
   recordFailure,
   recordFailureSync,
-} from "../../src/discovery/FailureCache.ts";
-import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
-import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { closeRustLibrary } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@discovery/FailureCache.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { closeRustLibrary } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { makeSimpleCreature } from "../fixtures/SimpleCreatures.ts";
 
 function makeCandidate(

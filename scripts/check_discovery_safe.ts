@@ -1,7 +1,7 @@
 import {
   isRustLibraryAvailable,
   rustLibraryExists,
-} from "../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 /**
  * Discovery check that verifies the library is available.

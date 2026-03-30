@@ -14,15 +14,15 @@
  *   deno bench --allow-read bench/ActivateIntoPerformance.ts
  */
 
-import { Creature } from "../src/Creature.ts";
-import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
 import {
   compileCreatureToWasm,
   getCompiledCreatureStats,
   initWasmActivation,
   isWasmActivationAvailable,
   WasmCreatureActivation,
-} from "../src/wasm/mod.ts";
+} from "@wasm/mod.ts";
 
 // Iterations per benchmark run - simulates production scoring workload
 const ITERATIONS = 10000;

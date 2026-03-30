@@ -11,16 +11,16 @@
  */
 
 import { assert } from "@std/assert";
-import { SquashType, wasmSafeZoneAdjustment } from "../../src/wasm/mod.ts";
-import { STEP } from "../../src/methods/activations/types/STEP.ts";
-import { ABSOLUTE } from "../../src/methods/activations/types/ABSOLUTE.ts";
-import { SQUARE } from "../../src/methods/activations/types/SQUARE.ts";
-import { Cube } from "../../src/methods/activations/types/Cube.ts";
-import { SQRT } from "../../src/methods/activations/types/SQRT.ts";
-import { StdInverse } from "../../src/methods/activations/types/StdInverse.ts";
-import { Exponential } from "../../src/methods/activations/types/Exponential.ts";
-import { LogSigmoid } from "../../src/methods/activations/types/LogSigmoid.ts";
-import { ISRU } from "../../src/methods/activations/types/ISRU.ts";
+import { SquashType, wasmSafeZoneAdjustment } from "@wasm/mod.ts";
+import { STEP } from "@methods/activations/types/STEP.ts";
+import { ABSOLUTE } from "@methods/activations/types/ABSOLUTE.ts";
+import { SQUARE } from "@methods/activations/types/SQUARE.ts";
+import { Cube } from "@methods/activations/types/Cube.ts";
+import { SQRT } from "@methods/activations/types/SQRT.ts";
+import { StdInverse } from "@methods/activations/types/StdInverse.ts";
+import { Exponential } from "@methods/activations/types/Exponential.ts";
+import { LogSigmoid } from "@methods/activations/types/LogSigmoid.ts";
+import { ISRU } from "@methods/activations/types/ISRU.ts";
 
 // Tolerance for floating point comparisons
 // WASM uses f32, JS uses f64, so we need some tolerance

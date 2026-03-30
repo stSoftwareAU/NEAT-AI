@@ -1,8 +1,8 @@
-import type { CreatureState } from "../architecture/CreatureState.ts";
-import type { Synapse } from "../architecture/Synapse.ts";
-import { wasmCalculateWeight } from "../wasm/WasmStandaloneFunctions.ts";
-import type { BackPropagationConfig } from "./BackPropagation.ts";
-import type { SynapseState } from "./SynapseState.ts";
+import type { CreatureState } from "@architecture/CreatureState.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
+import { wasmCalculateWeight } from "@wasm/WasmStandaloneFunctions.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
+import type { SynapseState } from "@propagate/SynapseState.ts";
 
 /**
  * Accumulates weight adjustments for a synapse during backpropagation.

@@ -1,5 +1,5 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import { Creature } from "../../../src/Creature.ts";
+import { Creature } from "@creature";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

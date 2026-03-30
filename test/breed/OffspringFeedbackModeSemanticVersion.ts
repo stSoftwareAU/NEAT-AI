@@ -1,9 +1,9 @@
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { upgrade } from "../../src/upgrade/Upgrade.ts";
+import { Creature } from "@creature";
+import { Offspring } from "@architecture/Offspring.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { upgrade } from "@upgrade/Upgrade.ts";
 
 /**
  * Regression test for issue #952 (24-Dec-2025).

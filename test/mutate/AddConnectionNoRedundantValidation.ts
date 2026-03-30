@@ -4,10 +4,10 @@
  */
 import { assert } from "@std/assert";
 import { Creature } from "../../mod.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import { Mutator } from "@neat/Mutator.ts";
 
 Deno.test(
   "Mutator: full mutation batch produces valid forward-only creatures",

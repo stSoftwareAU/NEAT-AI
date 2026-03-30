@@ -7,7 +7,7 @@
  * Reference: https://github.com/onnx/onnx/blob/main/onnx/onnx.proto
  */
 
-import { ProtobufWriter } from "./ProtobufEncoder.ts";
+import { ProtobufWriter } from "@onnx/ProtobufEncoder.ts";
 
 // ONNX IR version 9 (opset 19 compatible)
 const ONNX_IR_VERSION = 9;

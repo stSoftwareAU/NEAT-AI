@@ -7,13 +7,13 @@
  */
 
 import { assert, assertExists } from "@std/assert";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { Creature } from "../../src/Creature.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { Creature } from "@creature";
 import {
   buildCombinedFromSuccessful,
   type DiscoveryCandidate,
-} from "../../src/discovery/DiscoveryCandidates.ts";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+} from "@discovery/DiscoveryCandidates.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 
 // Integer IDs for neurons used in these tests (from UUID hashing):
 // hidden-A = 1775329634, hidden-B = 1775329633, hidden-C = 1775329632

@@ -9,8 +9,8 @@
  */
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { stub } from "@std/testing/mock";
-import type { DiscoveryReplayDirResult } from "../../src/discovery/DiscoveryReplayRunner.ts";
-import { Neat } from "../../src/NEAT/Neat.ts";
+import type { DiscoveryReplayDirResult } from "@discovery/DiscoveryReplayRunner.ts";
+import { Neat } from "@neat/Neat.ts";
 import { makeForwardOnlyCreature as makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
 /**

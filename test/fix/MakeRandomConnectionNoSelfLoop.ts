@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
 import { stub } from "@std/testing/mock";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 
 /**
  * Regression coverage: `makeRandomConnection()` is used by `Creature.fix()` to

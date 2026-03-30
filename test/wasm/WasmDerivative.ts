@@ -13,41 +13,41 @@ import {
   isWasmActivationAvailable,
   SquashType,
   wasmDerivative,
-} from "../../src/wasm/mod.ts";
+} from "@wasm/mod.ts";
 
 // Import JS activation implementations for comparison
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { ReLU } from "../../src/methods/activations/types/ReLU.ts";
-import { ReLU6 } from "../../src/methods/activations/types/ReLU6.ts";
-import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
-import { SELU } from "../../src/methods/activations/types/SELU.ts";
-import { ELU } from "../../src/methods/activations/types/ELU.ts";
-import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
-import { TANH } from "../../src/methods/activations/types/TANH.ts";
-import { HARD_TANH } from "../../src/methods/activations/types/HARD_TANH.ts";
-import { SOFTSIGN } from "../../src/methods/activations/types/SOFTSIGN.ts";
-import { Softplus } from "../../src/methods/activations/types/Softplus.ts";
-import { Swish } from "../../src/methods/activations/types/Swish.ts";
-import { Mish } from "../../src/methods/activations/types/Mish.ts";
-import { GELU } from "../../src/methods/activations/types/GELU.ts";
-import { SINE } from "../../src/methods/activations/types/SINE.ts";
-import { Cosine } from "../../src/methods/activations/types/Cosine.ts";
-import { TAN } from "../../src/methods/activations/types/TAN.ts";
-import { ArcTan } from "../../src/methods/activations/types/ArcTan.ts";
-import { GAUSSIAN } from "../../src/methods/activations/types/GAUSSIAN.ts";
-import { BENT_IDENTITY } from "../../src/methods/activations/types/BENT_IDENTITY.ts";
-import { BIPOLAR_SIGMOID } from "../../src/methods/activations/types/BIPOLAR_SIGMOID.ts";
-import { BIPOLAR } from "../../src/methods/activations/types/BIPOLAR.ts";
-import { STEP } from "../../src/methods/activations/types/STEP.ts";
-import { COMPLEMENT } from "../../src/methods/activations/types/COMPLEMENT.ts";
-import { ABSOLUTE } from "../../src/methods/activations/types/ABSOLUTE.ts";
-import { SQUARE } from "../../src/methods/activations/types/SQUARE.ts";
-import { Cube } from "../../src/methods/activations/types/Cube.ts";
-import { SQRT } from "../../src/methods/activations/types/SQRT.ts";
-import { StdInverse } from "../../src/methods/activations/types/StdInverse.ts";
-import { Exponential } from "../../src/methods/activations/types/Exponential.ts";
-import { LogSigmoid } from "../../src/methods/activations/types/LogSigmoid.ts";
-import { ISRU } from "../../src/methods/activations/types/ISRU.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { ReLU } from "@methods/activations/types/ReLU.ts";
+import { ReLU6 } from "@methods/activations/types/ReLU6.ts";
+import { LeakyReLU } from "@methods/activations/types/LeakyReLU.ts";
+import { SELU } from "@methods/activations/types/SELU.ts";
+import { ELU } from "@methods/activations/types/ELU.ts";
+import { LOGISTIC } from "@methods/activations/types/LOGISTIC.ts";
+import { TANH } from "@methods/activations/types/TANH.ts";
+import { HARD_TANH } from "@methods/activations/types/HARD_TANH.ts";
+import { SOFTSIGN } from "@methods/activations/types/SOFTSIGN.ts";
+import { Softplus } from "@methods/activations/types/Softplus.ts";
+import { Swish } from "@methods/activations/types/Swish.ts";
+import { Mish } from "@methods/activations/types/Mish.ts";
+import { GELU } from "@methods/activations/types/GELU.ts";
+import { SINE } from "@methods/activations/types/SINE.ts";
+import { Cosine } from "@methods/activations/types/Cosine.ts";
+import { TAN } from "@methods/activations/types/TAN.ts";
+import { ArcTan } from "@methods/activations/types/ArcTan.ts";
+import { GAUSSIAN } from "@methods/activations/types/GAUSSIAN.ts";
+import { BENT_IDENTITY } from "@methods/activations/types/BENT_IDENTITY.ts";
+import { BIPOLAR_SIGMOID } from "@methods/activations/types/BIPOLAR_SIGMOID.ts";
+import { BIPOLAR } from "@methods/activations/types/BIPOLAR.ts";
+import { STEP } from "@methods/activations/types/STEP.ts";
+import { COMPLEMENT } from "@methods/activations/types/COMPLEMENT.ts";
+import { ABSOLUTE } from "@methods/activations/types/ABSOLUTE.ts";
+import { SQUARE } from "@methods/activations/types/SQUARE.ts";
+import { Cube } from "@methods/activations/types/Cube.ts";
+import { SQRT } from "@methods/activations/types/SQRT.ts";
+import { StdInverse } from "@methods/activations/types/StdInverse.ts";
+import { Exponential } from "@methods/activations/types/Exponential.ts";
+import { LogSigmoid } from "@methods/activations/types/LogSigmoid.ts";
+import { ISRU } from "@methods/activations/types/ISRU.ts";
 
 // Tolerance for floating point comparisons
 // WASM uses f32, JS uses f64, so we need some tolerance

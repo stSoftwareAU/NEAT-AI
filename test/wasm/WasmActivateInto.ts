@@ -9,14 +9,14 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
 import {
   compileCreatureToWasm,
   initWasmActivation,
   isWasmActivationAvailable,
   WasmCreatureActivation,
-} from "../../src/wasm/mod.ts";
+} from "@wasm/mod.ts";
 
 // Tolerance for floating point comparisons
 // WASM uses f32, JS uses f64, so we need some tolerance

@@ -1,7 +1,7 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { CreatureState } from "../../src/architecture/CreatureState.ts";
-import { DenseNumberMap } from "../../src/architecture/DenseNumberMap.ts";
+import { Creature } from "@creature";
+import { CreatureState } from "@architecture/CreatureState.ts";
+import { DenseNumberMap } from "@architecture/DenseNumberMap.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

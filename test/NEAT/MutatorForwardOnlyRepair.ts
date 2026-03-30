@@ -1,9 +1,9 @@
 import { assertEquals } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import { Mutator } from "@neat/Mutator.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 Deno.test(

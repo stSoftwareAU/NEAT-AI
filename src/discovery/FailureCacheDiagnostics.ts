@@ -7,10 +7,10 @@
  * Extracted from FailureCache.ts as part of #1598.
  */
 
-import type { Creature } from "../Creature.ts";
-import { buildRuntimeIdToWireMap } from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
-import { getLogger } from "../utils/Logger.ts";
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
+import type { Creature } from "@creature";
+import { buildRuntimeIdToWireMap } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { getLogger } from "@utils/Logger.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 import type {
   ActualCreatureChange,
   ActualNeuronState,
@@ -18,7 +18,7 @@ import type {
   FailureMetadata,
   PredictionDetails,
   TargetNeuronInfo,
-} from "./FailureCacheTypes.ts";
+} from "@discovery/FailureCacheTypes.ts";
 
 /** Check if prediction tracing is enabled */
 export function isPredictionTracingEnabled(): boolean {

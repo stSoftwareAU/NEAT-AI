@@ -19,7 +19,7 @@ export {
   getUnsupportedWasmSquashFunctions,
   isWasmEligible,
   requireWasmOrThrow,
-} from "./CreatureActivation.ts";
+} from "@creature/CreatureActivation.ts";
 
 export {
   binarySearchSynapse,
@@ -41,8 +41,8 @@ export {
   prebuildInwardIndex,
   prebuildInwardIndexIfLarge,
   selfConnection,
-} from "./CreatureTopology.ts";
-export type { TopologyCaches } from "./CreatureTopology.ts";
+} from "@creature/CreatureTopology.ts";
+export type { TopologyCaches } from "@creature/CreatureTopology.ts";
 
 export {
   applyLearnings,
@@ -55,7 +55,7 @@ export {
   record,
   scoreDir,
   traceDir,
-} from "./CreatureTraining.ts";
+} from "@creature/CreatureTraining.ts";
 
 export {
   exportJSON,
@@ -63,6 +63,6 @@ export {
   loadFrom,
   shallowClone,
   traceJSON,
-} from "./CreatureSerialization.ts";
+} from "@creature/CreatureSerialization.ts";
 
-export { fix, makeRandomConnection } from "./CreatureMutation.ts";
+export { fix, makeRandomConnection } from "@creature/CreatureMutation.ts";

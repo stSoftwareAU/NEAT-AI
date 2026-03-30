@@ -1,8 +1,8 @@
 import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import { assertEquals, assertFalse } from "@std/assert";
-import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
+import { AddNeuron } from "@mutate/AddNeuron.ts";
 
 function makeCreature() {
   const json: CreatureExport = {

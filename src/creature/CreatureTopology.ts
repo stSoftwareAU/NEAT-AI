@@ -5,8 +5,8 @@
  * under 500 lines and each module focused on a single responsibility.
  */
 
-import type { Creature } from "../Creature.ts";
-import type { Synapse } from "../architecture/Synapse.ts";
+import type { Creature } from "@creature";
+import type { Synapse } from "@architecture/Synapse.ts";
 
 /**
  * Internal state for topology caches and indices.

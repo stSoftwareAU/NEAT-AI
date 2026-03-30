@@ -18,7 +18,7 @@ import {
   isWasmActivationAvailable,
   wasmSafeZoneAdjustment,
   wasmSafeZoneAdjustmentBatch,
-} from "../src/wasm/mod.ts";
+} from "@wasm/mod.ts";
 
 // Initialise WASM
 const wasmInitialised = await initWasmActivation();

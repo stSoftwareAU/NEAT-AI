@@ -19,8 +19,8 @@
  *     - f64: weight (matches JS number precision)
  */
 
-import type { Creature } from "../Creature.ts";
-import { getSquashType } from "./SquashType.ts";
+import type { Creature } from "@creature";
+import { getSquashType } from "@wasm/SquashType.ts";
 
 /**
  * Synapse type enum for WASM - must match Rust SynapseType

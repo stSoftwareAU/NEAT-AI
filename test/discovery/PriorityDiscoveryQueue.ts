@@ -20,9 +20,9 @@ import {
   peek,
   size,
   updateSuccessRate,
-} from "../../src/discovery/PriorityDiscoveryQueue.ts";
-import { DISCOVERY_WIRE_SCHEMA_VERSION } from "../../src/discovery/DiscoveryWireFormat.ts";
-import type { SuccessCacheEntry } from "../../src/discovery/SuccessCache.ts";
+} from "@discovery/PriorityDiscoveryQueue.ts";
+import { DISCOVERY_WIRE_SCHEMA_VERSION } from "@discovery/DiscoveryWireFormat.ts";
+import type { SuccessCacheEntry } from "@discovery/SuccessCache.ts";
 
 function makeEntry(overrides: Partial<SuccessCacheEntry>): SuccessCacheEntry {
   return {

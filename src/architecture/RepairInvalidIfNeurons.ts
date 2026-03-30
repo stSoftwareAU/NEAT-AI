@@ -6,7 +6,7 @@
  * after recurrent strip).
  */
 
-import type { Creature } from "../Creature.ts";
+import type { Creature } from "@creature";
 
 function ifNeuronStructurallyInvalid(
   creature: Creature,

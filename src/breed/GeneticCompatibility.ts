@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../../mod.ts";
-import { getCachedDistance, setCachedDistance } from "./DistanceCache.ts";
+import { getCachedDistance, setCachedDistance } from "@breed/DistanceCache.ts";
 
 /**
  * Calculates the genetic compatibility between two creatures for breeding.

@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import { submitDiscoveryRecordBatch } from "../../src/architecture/ErrorGuidedStructuralEvolution/SubmitDiscoveryRecordBatch.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import { submitDiscoveryRecordBatch } from "@architecture/ErrorGuidedStructuralEvolution/SubmitDiscoveryRecordBatch.ts";
 
 Deno.test(
   "submitDiscoveryRecordBatch: preserves buffers when record() returns false (avoids splice data loss)",

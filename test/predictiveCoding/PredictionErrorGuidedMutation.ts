@@ -11,11 +11,11 @@ import {
   assertEquals,
   assertGreater,
 } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   computeMutationBias,
   selectWeightedIndex,
-} from "../../src/predictiveCoding/PredictionErrorGuidedMutation.ts";
+} from "@predictiveCoding/PredictionErrorGuidedMutation.ts";
 
 /**
  * Helper: creates a simple 2-input, 2-hidden, 1-output creature.

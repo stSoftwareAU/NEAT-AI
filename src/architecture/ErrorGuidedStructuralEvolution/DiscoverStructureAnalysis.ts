@@ -13,12 +13,12 @@ import type {
   CandidateSquash,
   CandidateSynapse,
   DiscoverRecord,
-} from "./DiscoverStructureTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 import type {
   RustAnalyzeAllResult,
   RustCandidateNeuron,
   RustCandidateSynapse,
-} from "./RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import {
   collectRustAnalysisCandidates as collectRustAnalysisCandidatesImpl,
   filterTopNeuronCandidates,
@@ -29,23 +29,23 @@ import {
   tryRustHelpfulSynapses,
   upsertDiscovery,
   upsertNeuronDiscovery,
-} from "./DiscoverAnalysis.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverAnalysis.ts";
 import {
   ensureRustCombinedAnalysis as ensureRustCombinedAnalysisImpl,
   readRustCombinedAnalysis as readRustCombinedAnalysisImpl,
-} from "./RustAnalysisCache.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustAnalysisCache.ts";
 import {
   analyzeSelectedNeuronsForHarmfulRemoval as analyzeHarmfulNeuronsImpl,
   findCandidateSquash as findCandidateSquashImpl,
-} from "./DiscoverSquashAnalysis.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts";
 import { assert } from "@std/assert";
-import type { NeuronErrorInfo } from "./DiscoverStructureTypes.ts";
+import type { NeuronErrorInfo } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 import {
   focusSelectionKey,
   listViableNeurons,
   selectNeuronsWeightedByError as selectNeuronsWeightedByErrorImpl,
   updateFocusSelectionSummary,
-} from "./FocusSelection.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/FocusSelection.ts";
 import {
   formatMillis,
   logAnalysisSkipped,
@@ -55,12 +55,12 @@ import {
   logHelpfulSynapse,
   logRustAnalysisUnavailable as logRustAnalysisUnavailableImpl,
   logRustNoImprovement as logRustNoImprovementImpl,
-} from "./DiscoverLogging.ts";
-import { DiscoverStructureRecording } from "./DiscoverStructureRecording.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverLogging.ts";
+import { DiscoverStructureRecording } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureRecording.ts";
 import {
   buildRuntimeIdToWireMap,
   resolveRuntimeIdToWireUuid,
-} from "./DiscoveryWireIdentity.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 
 /**
  * Adds analysis methods to the DiscoverStructure coordinator.

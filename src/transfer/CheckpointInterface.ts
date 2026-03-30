@@ -5,7 +5,7 @@
  * and metadata so it can be reused as a seed for a different but related task.
  */
 
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 /**
  * Metadata about the source task and training history of a checkpoint.

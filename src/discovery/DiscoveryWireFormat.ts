@@ -1,24 +1,24 @@
-import { TopologyError } from "../errors/TopologyError.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 import type {
   CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { RemovalCandidate } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { RemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CoordinatedStructuralCandidate,
   CoordinatedStructuralOperation,
-} from "../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import {
   buildRuntimeIdToWireMap,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
-import type { Creature } from "../Creature.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import type { Creature } from "@creature";
 import type {
   DiscoveredNeuronDetails,
   DiscoveryCandidate,
   SynapseRemovalDetails,
-} from "./DiscoveryCandidates.ts";
+} from "@discovery/DiscoveryCandidates.ts";
 
 export const DISCOVERY_WIRE_SCHEMA_VERSION = 2;
 

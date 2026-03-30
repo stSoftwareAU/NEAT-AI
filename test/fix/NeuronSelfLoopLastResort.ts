@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 
 Deno.test("Neuron.fix(): in recurrent mode, self-loop is only used as a last resort (no forward targets)", () => {
   const json: CreatureExport = {

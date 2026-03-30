@@ -1,6 +1,6 @@
 import { assert, fail } from "@std/assert";
 import { Creature } from "../../mod.ts";
-import type { ValidationError } from "../../src/errors/ValidationError.ts";
+import type { ValidationError } from "@errors/ValidationError.ts";
 
 /**
  * Verify that creatureValidate produces a meaningful error message

@@ -5,12 +5,12 @@
  */
 
 import { assertEquals, assertNotEquals } from "@std/assert";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../src/Creature.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
 import {
   makeModifiedCreatureWithPrevious,
   shuffle,
-} from "../../src/intelligentDesign/ImproveSquash.ts";
+} from "@intelligentDesign/ImproveSquash.ts";
 
 // Test creature with hidden neurons
 const testCreatureJson: CreatureInternal = {

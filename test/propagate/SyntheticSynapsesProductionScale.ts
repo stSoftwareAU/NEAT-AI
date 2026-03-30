@@ -11,12 +11,12 @@
  */
 
 import { assert, assertEquals, assertGreater, assertLess } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   DEFAULT_MAX_SYNTHETIC_PER_TARGET,
   generateSyntheticSynapses,
-} from "../../src/propagate/SyntheticSynapses.ts";
-import { removeSyntheticSynapses } from "../../src/propagate/RemoveSyntheticSynapses.ts";
+} from "@propagate/SyntheticSynapses.ts";
+import { removeSyntheticSynapses } from "@propagate/RemoveSyntheticSynapses.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 import {
   createSeededRng,

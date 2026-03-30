@@ -12,11 +12,11 @@
  * - Inconsistent behaviour across input ranges
  */
 
-import type { Creature } from "../Creature.ts";
+import type { Creature } from "@creature";
 import {
   createSeededRng,
   getRandomNumberGenerator,
-} from "../utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Options for brittleness scoring.

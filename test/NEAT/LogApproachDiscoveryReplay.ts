@@ -6,7 +6,7 @@
 import { assert } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { type Approach, logApproach } from "../../src/NEAT/LogApproach.ts";
+import { type Approach, logApproach } from "@neat/LogApproach.ts";
 
 function createTestCreature(
   score: number,

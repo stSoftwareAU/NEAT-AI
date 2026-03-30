@@ -1,11 +1,11 @@
 import { assertEquals, assertExists } from "@std/assert";
-import type { Creature } from "../../src/Creature.ts";
-import type { DiscoveryReplayDirResult } from "../../src/discovery/DiscoveryReplayRunner.ts";
+import type { Creature } from "@creature";
+import type { DiscoveryReplayDirResult } from "@discovery/DiscoveryReplayRunner.ts";
 import {
   DiscoveryReplayQueue,
   type DiscoveryReplayQueueDeps,
-} from "../../src/NEAT/DiscoveryReplayQueue.ts";
-import type { NeatOptions } from "../../src/config/NeatOptions.ts";
+} from "@neat/DiscoveryReplayQueue.ts";
+import type { NeatOptions } from "@config/NeatOptions.ts";
 import { makeForwardOnlyCreature as makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
 /**

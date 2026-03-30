@@ -1,10 +1,10 @@
 import { assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../../src/Creature.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
 import {
   buildOutgoingSynapsesMap,
   calculatePathsToOutput,
-} from "../../../src/propagate/sparse/CalculatePathsToOutput.ts";
+} from "@propagate/sparse/CalculatePathsToOutput.ts";
 
 Deno.test("buildOutgoingSynapsesMap groups synapses by fromId", () => {
   const creature = makeCreature();

@@ -4,7 +4,7 @@
  * shared utility in src/methods/activations/SquashUtils.ts.
  */
 import { assertEquals } from "@std/assert";
-import { isAggregationSquash } from "../../src/methods/activations/SquashUtils.ts";
+import { isAggregationSquash } from "@methods/activations/SquashUtils.ts";
 
 Deno.test("isAggregationSquash - returns true for aggregation squashes", () => {
   const aggregationSquashes = ["MAXIMUM", "MINIMUM", "IF", "HYPOT", "HYPOTv2"];

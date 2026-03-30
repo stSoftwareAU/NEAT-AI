@@ -8,7 +8,7 @@
  * Run with:
  *   deno bench --allow-read --allow-write bench/FocusClosureBFS.ts
  */
-import { Creature } from "../src/Creature.ts";
+import { Creature } from "@creature";
 
 // Create test creatures of various sizes
 const smallCreature = new Creature(10, 5, { layers: [{ count: 10 }] });

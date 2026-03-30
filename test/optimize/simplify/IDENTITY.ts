@@ -1,11 +1,11 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { Creature } from "../../../src/Creature.ts";
-import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
-import { simplify } from "../../../src/optimize/Simplify.ts";
-import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
-import { MAXIMUM } from "../../../src/methods/activations/aggregate/MAXIMUM.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { simplify } from "@optimize/Simplify.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import { MAXIMUM } from "@methods/activations/aggregate/MAXIMUM.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
 Deno.test("simplify - IDENTITY hidden neuron folded into downstream TANH output", () => {

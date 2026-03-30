@@ -7,15 +7,15 @@
  */
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 
-import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
-import type { NeatOptions } from "../../src/config/NeatOptions.ts";
-import { Creature } from "../../src/Creature.ts";
-import type { DiscoveryRunnerWorker } from "../../src/discovery/DiscoveryRunner.ts";
-import { DiscoveryRunner } from "../../src/discovery/DiscoveryRunner.ts";
-import { recordSuccessSync } from "../../src/discovery/SuccessCache.ts";
-import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
+import { DEFAULT_COST_OF_GROWTH } from "@config/NeatConfig.ts";
+import type { NeatOptions } from "@config/NeatOptions.ts";
+import { Creature } from "@creature";
+import type { DiscoveryRunnerWorker } from "@discovery/DiscoveryRunner.ts";
+import { DiscoveryRunner } from "@discovery/DiscoveryRunner.ts";
+import { recordSuccessSync } from "@discovery/SuccessCache.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 import { makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
 class FakeWorker implements DiscoveryRunnerWorker {

@@ -1,10 +1,10 @@
 import { assert, assertEquals } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
-import { DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG } from "../../src/config/HyperparameterConfig.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import { DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG } from "@config/HyperparameterConfig.ts";
 
 /** Helper: create a breedable parent creature with a hidden neuron. */
 function createParent(

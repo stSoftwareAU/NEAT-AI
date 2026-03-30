@@ -9,8 +9,8 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { isProbablyWorkerScope } from "../../src/wasm/WasmAutoInit.ts";
-import { isWasmActivationAvailable } from "../../src/wasm/WasmModuleLoader.ts";
+import { isProbablyWorkerScope } from "@wasm/WasmAutoInit.ts";
+import { isWasmActivationAvailable } from "@wasm/WasmModuleLoader.ts";
 
 // ---------------------------------------------------------------------------
 // Auto-initialisation verification

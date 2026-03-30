@@ -1,7 +1,7 @@
 import { assertEquals, assertExists, assertThrows } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../src/Creature.ts";
-import { TopologyError } from "../../src/errors/TopologyError.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import { TopologyError } from "@errors/TopologyError.ts";
 
 Deno.test("forward-only: connect() rejects self-connection", () => {
   const creature = new Creature(2, 1, { layers: [{ count: 1 }] });

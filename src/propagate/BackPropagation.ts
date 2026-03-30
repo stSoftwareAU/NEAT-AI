@@ -1,10 +1,10 @@
-import type { Neuron } from "../architecture/Neuron.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
 // Issue #1143 - WASM backpropagation integration
 import {
   squash as wasmSquash,
   unSquash as wasmUnSquash,
-} from "../wasm/ActivationMethods.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+} from "@wasm/ActivationMethods.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 export type BackPropagationArguments = {
   disableRandomSamples: boolean;

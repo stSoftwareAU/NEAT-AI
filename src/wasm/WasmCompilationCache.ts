@@ -22,12 +22,12 @@
  * redundant structure analysis for creatures with the same topology.
  */
 
-import type { Creature } from "../Creature.ts";
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import { getSquashType } from "./SquashType.ts";
-import type { CompiledCreatureData } from "./CompileToWasm.ts";
-import { WasmCreatureActivation } from "./WasmActivation.ts";
-import { isWasmActivationAvailable } from "./WasmModuleLoader.ts";
+import type { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { getSquashType } from "@wasm/SquashType.ts";
+import type { CompiledCreatureData } from "@wasm/CompileToWasm.ts";
+import { WasmCreatureActivation } from "@wasm/WasmActivation.ts";
+import { isWasmActivationAvailable } from "@wasm/WasmModuleLoader.ts";
 
 /**
  * Synapse type enum for WASM - must match Rust SynapseType

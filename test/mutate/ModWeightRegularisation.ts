@@ -9,12 +9,12 @@
  * 5. Regularisation is configurable and can be disabled
  */
 import { assert, assertEquals, assertLess } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { ModWeight } from "../../src/mutate/ModWeight.ts";
+import { Creature } from "@creature";
+import { ModWeight } from "@mutate/ModWeight.ts";
 import {
   DEFAULT_WEIGHT_REGULARISATION_CONFIG,
   type RequiredWeightRegularisationConfig,
-} from "../../src/config/WeightRegularisationConfig.ts";
+} from "@config/WeightRegularisationConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

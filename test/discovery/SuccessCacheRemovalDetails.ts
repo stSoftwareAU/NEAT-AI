@@ -3,7 +3,7 @@ import { join } from "@std/path/join";
 import {
   getSuccessfulRemovalDetails,
   type SuccessfulRemovalDetail,
-} from "../../src/discovery/SuccessCache.ts";
+} from "@discovery/SuccessCache.ts";
 
 Deno.test("getSuccessfulRemovalDetails returns empty array for non-existent directory", () => {
   const result = getSuccessfulRemovalDetails("/tmp/does-not-exist-neat-ai");

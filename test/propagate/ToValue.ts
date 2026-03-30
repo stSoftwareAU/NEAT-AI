@@ -1,8 +1,8 @@
 import { assertAlmostEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { toActivation, toValue } from "../../src/propagate/BackPropagation.ts";
-import type { ActivationInterface } from "../../src/methods/activations/ActivationInterface.ts";
-import { Activations } from "../../src/methods/activations/Activations.ts";
+import { toActivation, toValue } from "@propagate/BackPropagation.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
 
 function makeCreature() {
   const json: CreatureExport = {

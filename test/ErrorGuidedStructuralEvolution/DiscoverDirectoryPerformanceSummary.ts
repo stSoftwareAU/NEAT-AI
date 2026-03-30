@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { formatDiscoveryPerformanceSummary } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
+import { formatDiscoveryPerformanceSummary } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
 
 Deno.test("formatDiscoveryPerformanceSummary includes coordinated structural candidate counts", () => {
   const rendered = formatDiscoveryPerformanceSummary(

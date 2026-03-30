@@ -2,8 +2,8 @@ import { assertAlmostEquals, assertEquals } from "@std/assert";
 import {
   hasSimplifyBias,
   hasUnSquash,
-} from "../../../src/methods/activations/TypeGuards.ts";
-import { Activations } from "../../../src/methods/activations/Activations.ts";
+} from "@methods/activations/TypeGuards.ts";
+import { Activations } from "@methods/activations/Activations.ts";
 
 Deno.test("hasUnSquash returns true for StdInverse", () => {
   const stdInverse = Activations.find("StdInverse");

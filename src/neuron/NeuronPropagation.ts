@@ -5,32 +5,32 @@
  * under 500 lines and each module focused on a single responsibility.
  */
 
-import type { Neuron } from "../architecture/Neuron.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
 import {
   type BackPropagationConfig,
   toValue,
-} from "../propagate/BackPropagation.ts";
+} from "@propagate/BackPropagation.ts";
 import {
   accumulateBias,
   adjustedBias,
   calculateBias,
-} from "../propagate/Bias.ts";
-import { distributeElasticError } from "../propagate/ElasticDistribution.ts";
-import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
+} from "@propagate/Bias.ts";
+import { distributeElasticError } from "@propagate/ElasticDistribution.ts";
+import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import {
   accumulateWeight,
   adjustedWeight,
   calculateWeight,
-} from "../propagate/Weight.ts";
-import { coordinateBackpropUpdates } from "../propagate/BackpropCoordination.ts";
-import { noChangePropagate } from "../architecture/NoChangePropagate.ts";
+} from "@propagate/Weight.ts";
+import { coordinateBackpropUpdates } from "@propagate/BackpropCoordination.ts";
+import { noChangePropagate } from "@architecture/NoChangePropagate.ts";
 import {
   fusedErrorDistribution,
   squash as wasmSquash,
-} from "../wasm/ActivationMethods.ts";
-import { SquashType } from "../wasm/SquashType.ts";
+} from "@wasm/ActivationMethods.ts";
+import { SquashType } from "@wasm/SquashType.ts";
 
 /**
  * Update weights and bias using backpropagation results.

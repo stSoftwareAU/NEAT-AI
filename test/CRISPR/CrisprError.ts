@@ -3,11 +3,11 @@
  * CrisprError with appropriate codes instead of generic AssertionError.
  */
 import { assert, assertEquals, assertThrows } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { CRISPR } from "../../src/reconstruct/CRISPR.ts";
-import type { CrisprInterface } from "../../src/reconstruct/CRISPR.ts";
-import { CrisprError } from "../../src/errors/CrisprError.ts";
+import { Creature } from "@creature";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import { CRISPR } from "@reconstruct/CRISPR.ts";
+import type { CrisprInterface } from "@reconstruct/CRISPR.ts";
+import { CrisprError } from "@errors/CrisprError.ts";
 
 /** Minimal creature for testing. */
 function makeCreature(): Creature {

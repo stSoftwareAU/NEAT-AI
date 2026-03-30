@@ -7,25 +7,25 @@
 
 import { addTag, removeTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
-import { Creature } from "../../Creature.ts";
-import { nextNeuronId } from "../../architecture/NeuronId.ts";
-import type { Approach } from "../../NEAT/LogApproach.ts";
-import { memeticUpdate } from "../../blackbox/MemeticUpdate.ts";
+import { Creature } from "@creature";
+import { nextNeuronId } from "@architecture/NeuronId.ts";
+import type { Approach } from "@neat/LogApproach.ts";
+import { memeticUpdate } from "@blackbox/MemeticUpdate.ts";
 import type {
   CandidateNeuron,
   CandidateSquash,
-} from "./DiscoverStructureTypes.ts";
-import { getLogger } from "../../utils/Logger.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
+import { getLogger } from "@utils/Logger.ts";
 import {
   recordDiscoveryIssue,
   validateAndFixIfNeeded,
-} from "./DiscoveryValidation.ts";
-import { assertValidSynapseReferences } from "../../architecture/AssertValidSynapseReferences.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryValidation.ts";
+import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
 import {
   buildWireToRuntimeIdMap,
   resolveCandidateNeuronEndpoints,
   resolveSingleNeuronReference,
-} from "./DiscoveryWireIdentity.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 
 /**
  * Adds new neurons to the creature if they improve performance.

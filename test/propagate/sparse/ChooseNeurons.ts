@@ -1,7 +1,7 @@
 import { assertAlmostEquals } from "@std/assert";
-import { Creature } from "../../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
-import { chooseNeurons } from "../../../src/propagate/sparse/ChooseNeurons.ts";
+import { Creature } from "@creature";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { chooseNeurons } from "@propagate/sparse/ChooseNeurons.ts";
 
 Deno.test("chooseNeurons selects approximately sparseRatio fraction of eligible neurons", () => {
   const creature = Creature.fromJSON(

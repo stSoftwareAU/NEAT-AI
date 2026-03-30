@@ -9,14 +9,12 @@
  * the caps so that each worker keeps a bounded working set.
  */
 
-import { resetHiddenNeuronIdCounterForTesting } from "../src/architecture/NeuronId.ts";
-import { resetGlobalRandomNumberGeneratorForTesting } from "../src/utils/RandomNumberGenerator.ts";
+import { resetHiddenNeuronIdCounterForTesting } from "@architecture/NeuronId.ts";
+import { resetGlobalRandomNumberGeneratorForTesting } from "@utils/RandomNumberGenerator.ts";
 import {
   setMaxCachedWasmCreatureActivations,
-} from "../src/wasm/WasmCreatureActivationLRU.ts";
-import {
-  setWasmCompilationCacheSize,
-} from "../src/wasm/WasmCompilationCache.ts";
+} from "@wasm/WasmCreatureActivationLRU.ts";
+import { setWasmCompilationCacheSize } from "@wasm/WasmCompilationCache.ts";
 
 // Keep at most 16 compiled WASM activations per worker (down from 512).
 // Evolution runs override this via WasmCacheConfig, so production is unaffected.

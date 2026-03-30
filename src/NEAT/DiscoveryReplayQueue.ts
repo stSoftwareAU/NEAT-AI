@@ -1,11 +1,11 @@
-import type { Creature } from "../Creature.ts";
-import type { NeatOptions } from "../config/NeatOptions.ts";
+import type { Creature } from "@creature";
+import type { NeatOptions } from "@config/NeatOptions.ts";
 import {
   type DiscoveryReplayDirResult,
   DiscoveryReplayRunner,
-} from "../discovery/DiscoveryReplayRunner.ts";
-import { createNeatConfig } from "../config/NeatConfig.ts";
-import { getLogger } from "../utils/Logger.ts";
+} from "@discovery/DiscoveryReplayRunner.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 // Re-export for use by Neat.ts (Issue #1150)
 export type { DiscoveryReplayDirResult };

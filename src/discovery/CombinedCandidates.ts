@@ -16,31 +16,31 @@ import {
   type CandidateSquash,
   type CandidateSynapse,
   DiscoverStructure,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   buildWireToRuntimeIdMap,
   resolveCandidateSynapseEndpoints,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
-import { cleanupMemeticForRemovedSynapse } from "../compact/CompactUtils.ts";
-import { Creature } from "../Creature.ts";
-import type { DiscoverResult } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import { validateAndFixCreatureSync } from "./CandidateApplication.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { cleanupMemeticForRemovedSynapse } from "@compact/CompactUtils.ts";
+import { Creature } from "@creature";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { validateAndFixCreatureSync } from "@discovery/CandidateApplication.ts";
 import type {
   DiscoveryCandidate,
   DiscoveryChangeType,
-} from "./DiscoveryCandidates.ts";
+} from "@discovery/DiscoveryCandidates.ts";
 
 // Re-export for backward compatibility.
 export {
   buildCombinedNeuronCandidate,
   buildCombinedSquashCandidates,
   buildCombinedSynapseCandidate,
-} from "./CombinedCandidateBuilders.ts";
+} from "@discovery/CombinedCandidateBuilders.ts";
 export {
   buildCombinedFromSuccessful,
   pruneSuccessfulCandidatesForCombos,
-} from "./CombinedFromSuccessful.ts";
+} from "@discovery/CombinedFromSuccessful.ts";
 
 export interface CombinedSelection {
   addHelpfulSynapses?: CandidateSynapse[];

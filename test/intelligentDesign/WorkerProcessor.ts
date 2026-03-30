@@ -6,9 +6,9 @@
  */
 
 import { assertEquals, assertExists, assertRejects } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { WorkerProcessor } from "../../src/intelligentDesign/workers/WorkerProcessor.ts";
-import type { RequestData } from "../../src/intelligentDesign/workers/WorkerHandler.ts";
+import { Creature } from "@creature";
+import { WorkerProcessor } from "@intelligentDesign/workers/WorkerProcessor.ts";
+import type { RequestData } from "@intelligentDesign/workers/WorkerHandler.ts";
 
 Deno.test("WorkerProcessor.process returns score payload and tags exported creature", async () => {
   const originalScoreDir = Creature.prototype.scoreDir;

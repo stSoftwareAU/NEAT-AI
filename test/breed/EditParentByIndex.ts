@@ -17,8 +17,8 @@ import {
   CreatureUtil,
   type NeuronExport,
 } from "../../mod.ts";
-import { editParentByIndex } from "../../src/breed/EditParentByIndex.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { editParentByIndex } from "@breed/EditParentByIndex.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 
 /**
  * Creates a creature with specified hidden neuron UUID suffixes for controlled testing.

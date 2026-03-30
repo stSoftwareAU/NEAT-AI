@@ -25,8 +25,8 @@
  *
  * @see {@link module:src/Creature}
  */
-export { Creature, CURRENT_CREATURE_SEMANTIC_VERSION } from "./src/Creature.ts";
-export { exportSnapshotJSON } from "./src/creature/CreatureSerialization.ts";
+export { Creature, CURRENT_CREATURE_SEMANTIC_VERSION } from "@creature";
+export { exportSnapshotJSON } from "@creature/CreatureSerialization.ts";
 
 /**
  * Creature Interfaces
@@ -38,7 +38,7 @@ export { exportSnapshotJSON } from "./src/creature/CreatureSerialization.ts";
 export type {
   CreatureExport,
   CreatureTrace,
-} from "./src/architecture/CreatureInterfaces.ts";
+} from "@architecture/CreatureInterfaces.ts";
 
 /**
  * Creature Utilities
@@ -47,7 +47,7 @@ export type {
  *
  * @see {@link module:src/architecture/CreatureUtils}
  */
-export { CreatureUtil } from "./src/architecture/CreatureUtils.ts";
+export { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 /**
  * NEAT Options
@@ -56,10 +56,7 @@ export { CreatureUtil } from "./src/architecture/CreatureUtils.ts";
  *
  * @see {@link module:src/config/NeatOptions}
  */
-export type {
-  NeatOptions,
-  NeatOptionsInput,
-} from "./src/config/NeatOptions.ts";
+export type { NeatOptions, NeatOptionsInput } from "@config/NeatOptions.ts";
 
 /**
  * Output Range Constraints
@@ -73,9 +70,9 @@ export type {
 export type {
   OutputRange,
   RequiredOutputRange,
-} from "./src/config/OutputRangeConfig.ts";
-export { DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT } from "./src/config/OutputRangeConfig.ts";
-export { calculateOutputRangePenalty } from "./src/architecture/OutputRangePenalty.ts";
+} from "@config/OutputRangeConfig.ts";
+export { DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT } from "@config/OutputRangeConfig.ts";
+export { calculateOutputRangePenalty } from "@architecture/OutputRangePenalty.ts";
 
 /**
  * Hyperparameter Evolution
@@ -90,11 +87,11 @@ export type {
   HyperparameterEvolutionConfig,
   RequiredEvolvableHyperparameters,
   RequiredHyperparameterEvolutionConfig,
-} from "./src/config/HyperparameterConfig.ts";
+} from "@config/HyperparameterConfig.ts";
 export {
   DEFAULT_EVOLVABLE_HYPERPARAMETERS,
   DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,
-} from "./src/config/HyperparameterConfig.ts";
+} from "@config/HyperparameterConfig.ts";
 
 /**
  * Adaptive Population Sizing
@@ -107,8 +104,8 @@ export {
 export type {
   AdaptivePopulationConfig,
   RequiredAdaptivePopulationConfig,
-} from "./src/config/AdaptivePopulationConfig.ts";
-export { DEFAULT_ADAPTIVE_POPULATION_CONFIG } from "./src/config/AdaptivePopulationConfig.ts";
+} from "@config/AdaptivePopulationConfig.ts";
+export { DEFAULT_ADAPTIVE_POPULATION_CONFIG } from "@config/AdaptivePopulationConfig.ts";
 
 /**
  * Parallel Batch Creature Evaluation
@@ -122,8 +119,8 @@ export { DEFAULT_ADAPTIVE_POPULATION_CONFIG } from "./src/config/AdaptivePopulat
 export type {
   ParallelEvaluationConfig,
   RequiredParallelEvaluationConfig,
-} from "./src/config/ParallelEvaluationConfig.ts";
-export { DEFAULT_PARALLEL_EVALUATION_CONFIG } from "./src/config/ParallelEvaluationConfig.ts";
+} from "@config/ParallelEvaluationConfig.ts";
+export { DEFAULT_PARALLEL_EVALUATION_CONFIG } from "@config/ParallelEvaluationConfig.ts";
 
 /**
  * Data Fuzzing (Noise Injection)
@@ -136,8 +133,8 @@ export { DEFAULT_PARALLEL_EVALUATION_CONFIG } from "./src/config/ParallelEvaluat
 export type {
   DataFuzzingConfig,
   RequiredDataFuzzingConfig,
-} from "./src/config/DataFuzzingConfig.ts";
-export { DEFAULT_DATA_FUZZING_CONFIG } from "./src/config/DataFuzzingConfig.ts";
+} from "@config/DataFuzzingConfig.ts";
+export { DEFAULT_DATA_FUZZING_CONFIG } from "@config/DataFuzzingConfig.ts";
 
 /**
  * Cost Interface
@@ -147,7 +144,7 @@ export { DEFAULT_DATA_FUZZING_CONFIG } from "./src/config/DataFuzzingConfig.ts";
  *
  * @see {@link module:src/costs/CostInterface}
  */
-export type { CostInterface } from "./src/costs/CostInterface.ts";
+export type { CostInterface } from "@costs/CostInterface.ts";
 
 /**
  * Costs Class
@@ -156,7 +153,7 @@ export type { CostInterface } from "./src/costs/CostInterface.ts";
  *
  * @see {@link module:src/Costs}
  */
-export { Costs } from "./src/Costs.ts";
+export { Costs } from "@costs";
 
 /**
  * Selection Class
@@ -165,7 +162,7 @@ export { Costs } from "./src/Costs.ts";
  *
  * @see {@link module:src/methods/Selection}
  */
-export { Selection } from "./src/methods/Selection.ts";
+export { Selection } from "@methods/Selection.ts";
 
 /**
  * Mutation Class
@@ -174,7 +171,7 @@ export { Selection } from "./src/methods/Selection.ts";
  *
  * @see {@link module:src/methods/Mutation}
  */
-export { Mutation } from "./src/NEAT/Mutation.ts";
+export { Mutation } from "@neat/Mutation.ts";
 
 /**
  * CRISPR Class
@@ -183,10 +180,10 @@ export { Mutation } from "./src/NEAT/Mutation.ts";
  *
  * @see {@link module:src/reconstruct/CRISPR}
  */
-export { CRISPR, type CrisprInterface } from "./src/reconstruct/CRISPR.ts";
-export { CrisprError } from "./src/errors/CrisprError.ts";
-export type { CrisprErrorCode } from "./src/errors/CrisprError.ts";
-export { validateDNA } from "./src/reconstruct/validateDNA.ts";
+export { CRISPR, type CrisprInterface } from "@reconstruct/CRISPR.ts";
+export { CrisprError } from "@errors/CrisprError.ts";
+export type { CrisprErrorCode } from "@errors/CrisprError.ts";
+export { validateDNA } from "@reconstruct/validateDNA.ts";
 
 /**
  * Upgrade Class
@@ -195,13 +192,13 @@ export { validateDNA } from "./src/reconstruct/validateDNA.ts";
  *
  * @see {@link module:src/reconstruct/Upgrade}
  */
-export { Upgrade } from "./src/reconstruct/Upgrade.ts";
+export { Upgrade } from "@reconstruct/Upgrade.ts";
 
 /**
  * Connects missing neurons in the creature's brain.
  * @see {@link module:src/reconstruct/ConnectMissing}
  */
-export { randomConnectMissing } from "./src/reconstruct/ConnectMissing.ts";
+export { randomConnectMissing } from "@reconstruct/ConnectMissing.ts";
 
 /**
  * Typed Array Topology
@@ -211,17 +208,17 @@ export { randomConnectMissing } from "./src/reconstruct/ConnectMissing.ts";
  *
  * @see {@link module:src/architecture/TypedTopology}
  */
-export { TypedTopology } from "./src/architecture/TypedTopology.ts";
+export { TypedTopology } from "@architecture/TypedTopology.ts";
 
 /**
  * Neuron Class
  */
-export { type NeuronExport } from "./src/architecture/NeuronInterfaces.ts";
+export { type NeuronExport } from "@architecture/NeuronInterfaces.ts";
 
 /**
  * Synapse Class
  */
-export { type SynapseExport } from "./src/architecture/SynapseInterfaces.ts";
+export { type SynapseExport } from "@architecture/SynapseInterfaces.ts";
 
 /**
  * Normalise Legacy CreatureExport
@@ -234,12 +231,12 @@ export { type SynapseExport } from "./src/architecture/SynapseInterfaces.ts";
 export {
   normaliseCreatureExport,
   normalised,
-} from "./src/architecture/NormaliseCreatureExport.ts";
+} from "@architecture/NormaliseCreatureExport.ts";
 
 /**
  * Upgrade to version 2.0.0
  */
-export { upgradeTwo } from "./src/upgrade/UpgradeTwo.ts";
+export { upgradeTwo } from "@upgrade/UpgradeTwo.ts";
 
 /**
  * Discovery formatting utilities
@@ -253,14 +250,14 @@ export { upgradeTwo } from "./src/upgrade/UpgradeTwo.ts";
 export {
   formatErrorDelta,
   formatPercentWithSignificantDigits,
-} from "./src/discovery/DiscoveryRunner.ts";
+} from "@discovery/DiscoveryRunner.ts";
 
 /**
  * Discovery evaluation summary type
  *
  * @see {@link module:src/discovery/DiscoveryRunner}
  */
-export type { DiscoveryEvaluationSummary } from "./src/discovery/DiscoveryRunner.ts";
+export type { DiscoveryEvaluationSummary } from "@discovery/DiscoveryRunner.ts";
 
 /**
  * Discovery cleanup utilities for orphaned temp directory management.
@@ -271,7 +268,7 @@ export type { DiscoveryEvaluationSummary } from "./src/discovery/DiscoveryRunner
 export {
   cleanOrphanedDiscoveryDirs,
   forceCleanAllDiscoveryDirs,
-} from "./src/discovery/DiscoveryCleanup.ts";
+} from "@discovery/DiscoveryCleanup.ts";
 
 /**
  * Disk Space Monitoring
@@ -286,19 +283,19 @@ export {
   logDiscoveryDiskUsage,
   measureDirectorySize,
   preFlightDiskSpaceCheck,
-} from "./src/discovery/DiskSpaceMonitor.ts";
+} from "@discovery/DiskSpaceMonitor.ts";
 
 export type {
   DirectorySizeResult,
   DiskSpaceCheckResult,
-} from "./src/discovery/DiskSpaceMonitor.ts";
+} from "@discovery/DiskSpaceMonitor.ts";
 
 export type {
   DiskSpaceConfig,
   RequiredDiskSpaceConfig,
-} from "./src/config/DiskSpaceConfig.ts";
+} from "@config/DiskSpaceConfig.ts";
 
-export { DEFAULT_DISK_SPACE_CONFIG } from "./src/config/DiskSpaceConfig.ts";
+export { DEFAULT_DISK_SPACE_CONFIG } from "@config/DiskSpaceConfig.ts";
 
 /**
  * Intelligent Design Module
@@ -323,11 +320,11 @@ export {
   scanForSquashImprovements,
   shuffle,
   WorkerHandler as IntelligentDesignWorkerHandler,
-} from "./src/intelligentDesign/mod.ts";
+} from "@intelligentDesign/mod.ts";
 export type {
   BestNeuronSquash,
   TacitKnowledgeMap,
-} from "./src/intelligentDesign/mod.ts";
+} from "@intelligentDesign/mod.ts";
 
 /**
  * Plateau Detection Module
@@ -342,11 +339,11 @@ export {
   DEFAULT_PLATEAU_DETECTION,
   detectPlateau,
   PlateauDetector,
-} from "./src/NEAT/PlateauDetector.ts";
+} from "@neat/PlateauDetector.ts";
 export type {
   PlateauDetectionConfig,
   RequiredPlateauDetectionConfig,
-} from "./src/NEAT/PlateauDetector.ts";
+} from "@neat/PlateauDetector.ts";
 
 /**
  * WASM Cache Control
@@ -366,7 +363,7 @@ export {
   getWasmActivationLruStats,
   resetWasmActivationLruStats,
   setMaxCachedWasmCreatureActivations,
-} from "./src/wasm/WasmCreatureActivationLRU.ts";
+} from "@wasm/WasmCreatureActivationLRU.ts";
 
 /**
  * Cache Diagnostics
@@ -379,8 +376,8 @@ export {
  * @see {@link module:src/cache/CacheStats}
  * @see {@link module:src/cache/getCacheStats}
  */
-export type { CacheStats } from "./src/cache/CacheStats.ts";
-export { getCacheStats } from "./src/cache/getCacheStats.ts";
+export type { CacheStats } from "@cache/CacheStats.ts";
+export { getCacheStats } from "@cache/getCacheStats.ts";
 
 /**
  * WASM preload for workers (Issue #1285)
@@ -389,7 +386,7 @@ export { getCacheStats } from "./src/cache/getCacheStats.ts";
  * so WASM is fetched once and cached; workers then receive the cached payload
  * instead of each fetching separately.
  */
-export { fetchWasmForWorkers } from "./src/multithreading/workers/WorkerHandler.ts";
+export { fetchWasmForWorkers } from "@multithreading/workers/WorkerHandler.ts";
 
 /**
  * Structured Logger
@@ -404,8 +401,8 @@ export {
   getLogger,
   setLogger,
   SILENT_LOGGER,
-} from "./src/utils/Logger.ts";
-export type { Logger, LogLevel } from "./src/utils/Logger.ts";
+} from "@utils/Logger.ts";
+export type { Logger, LogLevel } from "@utils/Logger.ts";
 
 /**
  * Random Number Generator
@@ -421,8 +418,8 @@ export {
   createUnseededRng,
   getRandomNumberGenerator,
   setRandomNumberGenerator,
-} from "./src/utils/RandomNumberGenerator.ts";
-export type { RandomNumberGenerator } from "./src/utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
+export type { RandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Structured Training Events
@@ -442,7 +439,7 @@ export type {
   SpeciesAdjustedEvent,
   TrainingEvent,
   TrainingEventCallback,
-} from "./src/config/TrainingEvent.ts";
+} from "@config/TrainingEvent.ts";
 
 /**
  * Configuration Presets
@@ -465,7 +462,7 @@ export {
   LARGE_NETWORK_PRESET,
   MEMORY_CONSTRAINED_PRESET,
   QUICK_START_PRESET,
-} from "./src/presets/Presets.ts";
+} from "@presets/Presets.ts";
 
 /**
  * Transfer Learning Module
@@ -482,14 +479,14 @@ export {
   createSeededPopulation,
   exportCheckpoint,
   importCheckpoint,
-} from "./src/transfer/mod.ts";
+} from "@transfer/mod.ts";
 export type {
   CheckpointExportOptions,
   CheckpointImportOptions,
   CheckpointInterface,
   CheckpointMetadata,
   PopulationSeedingOptions,
-} from "./src/transfer/mod.ts";
+} from "@transfer/mod.ts";
 
 /**
  * ONNX Export Module
@@ -504,8 +501,5 @@ export {
   checkOnnxCompatibility,
   exportToOnnx,
   isSquashSupported,
-} from "./src/onnx/mod.ts";
-export type {
-  OnnxCompatibilityResult,
-  OnnxExportOptions,
-} from "./src/onnx/mod.ts";
+} from "@onnx/mod.ts";
+export type { OnnxCompatibilityResult, OnnxExportOptions } from "@onnx/mod.ts";

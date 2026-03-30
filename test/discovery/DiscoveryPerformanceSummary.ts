@@ -1,7 +1,7 @@
 import { assert, assertStringIncludes } from "@std/assert";
 import {
   formatDiscoveryPerformanceSummary,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
 
 Deno.test("Discovery performance summary omits unrecorded (zero) phase timings", () => {
   const text = formatDiscoveryPerformanceSummary(

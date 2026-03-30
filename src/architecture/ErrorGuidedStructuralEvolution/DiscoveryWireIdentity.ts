@@ -1,14 +1,14 @@
-import type { Creature } from "../../Creature.ts";
+import type { Creature } from "@creature";
 import type {
   CandidateNeuron,
   CandidateSynapse,
-} from "./DiscoverStructureTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 import type {
   CoordinatedAddSynapseOperation,
   CoordinatedRemoveSynapseOperation,
   CoordinatedSetWeightOperation,
-} from "./CoordinatedStructuralCandidate.ts";
-import { neuronUuid } from "../../neuron/NeuronSerialization.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+import { neuronUuid } from "@neuron/NeuronSerialization.ts";
 
 export function buildWireToRuntimeIdMap(
   creature: Creature,

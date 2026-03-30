@@ -24,7 +24,7 @@ import {
   getVersionFn,
   initWasmActivation,
   isWasmActivationAvailable,
-} from "../../src/wasm/WasmModuleLoader.ts";
+} from "@wasm/WasmModuleLoader.ts";
 
 // Ensure WASM is initialised before running function pointer tests.
 await initWasmActivation();

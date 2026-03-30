@@ -12,13 +12,13 @@
  * syntheticSynapses: true to verify end-to-end behaviour.
  */
 import { assert, assertNotEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { trainDir } from "../../src/architecture/Training.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
-import { Costs } from "../../src/Costs.ts";
-import type { TrainOptions } from "../../src/config/TrainOptions.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { trainDir } from "@architecture/Training.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import { makeDataDir } from "@architecture/DataSet.ts";
+import { Costs } from "@costs";
+import type { TrainOptions } from "@config/TrainOptions.ts";
 
 /** Builds a simple creature: 2 inputs -> 1 hidden -> 1 output. */
 function makeSimpleCreature(): Creature {

@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../../mod.ts";
-import type { MemeticInterface } from "./MemeticInterface.ts";
+import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
 
 export function discover(mum: Creature, child: Creature) {
   assert(child.memetic === undefined, "Child must NOT have memetic");

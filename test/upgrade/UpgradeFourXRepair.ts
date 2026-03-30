@@ -1,8 +1,8 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
-import { upgrade } from "../../src/upgrade/Upgrade.ts";
+import { Creature } from "@creature";
+import { Synapse } from "@architecture/Synapse.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import { upgrade } from "@upgrade/Upgrade.ts";
 
 Deno.test(
   "upgrade(): prunes stale memetic weight toIds before validating 4.x creature",

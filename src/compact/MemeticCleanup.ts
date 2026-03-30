@@ -1,8 +1,8 @@
 import type {
   MemeticAncestorSnapshot,
   MemeticInterface,
-} from "../blackbox/MemeticInterface.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+} from "@blackbox/MemeticInterface.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 /**
  * Deletes memetic data if the removed synapse is referenced in it.

@@ -9,9 +9,9 @@ import type {
   EvolvableHyperparameters,
   RequiredEvolvableHyperparameters,
   RequiredHyperparameterEvolutionConfig,
-} from "../config/HyperparameterConfig.ts";
-import { DEFAULT_EVOLVABLE_HYPERPARAMETERS } from "../config/HyperparameterConfig.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+} from "@config/HyperparameterConfig.ts";
+import { DEFAULT_EVOLVABLE_HYPERPARAMETERS } from "@config/HyperparameterConfig.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Clamp a value within [min, max].

@@ -1,14 +1,14 @@
 import { assert } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import { Costs } from "../../src/Costs.ts";
-import { Creature } from "../../src/Creature.ts";
-import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import { Costs } from "@costs";
+import { Creature } from "@creature";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import {
   createSeededRng,
   getRandomNumberGenerator,
   setRandomNumberGenerator,
-} from "../../src/utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 import { withRngTestLock } from "../_rngTestLock.ts";

@@ -2,7 +2,7 @@ import { assert, assertEquals, assertIsError, assertThrows } from "@std/assert";
 import {
   ActivationError,
   type ActivationErrorReason,
-} from "../../src/errors/ActivationError.ts";
+} from "@errors/ActivationError.ts";
 
 Deno.test("ActivationError - NON_FINITE_INPUT reason", () => {
   const error = new ActivationError(

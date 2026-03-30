@@ -15,8 +15,8 @@
  * Run with:
  *   deno bench --allow-read --allow-write bench/MutatorClone.ts
  */
-import { Creature } from "../src/Creature.ts";
-import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
+import { Creature } from "@creature";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 
 // Create creatures of varying sizes to test performance scaling
 const smallCreature = new Creature(10, 5, {

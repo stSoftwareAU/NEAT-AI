@@ -15,15 +15,15 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import type {
   CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import {
   buildHarmfulNeuronRemovalCandidate,
   buildHarmfulSynapseRemovalCandidates,
@@ -31,7 +31,7 @@ import {
   buildSingleNeuronCandidates,
   buildSingleSquashCandidates,
   buildSingleSynapseCandidates,
-} from "../../src/discovery/CandidateCreation.ts";
+} from "@discovery/CandidateCreation.ts";
 
 /**
  * Creates a baseline creature for candidate creation tests.

@@ -1,8 +1,8 @@
 import { assertEquals } from "@std/assert";
 import {
   DEFAULT_WEIGHT_REGULARISATION_CONFIG,
-} from "../../src/config/WeightRegularisationConfig.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+} from "@config/WeightRegularisationConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 Deno.test("WeightRegularisationConfig - defaults are applied", () => {
   const config = createNeatConfig({});

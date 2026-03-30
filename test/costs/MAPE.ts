@@ -1,5 +1,5 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import { MAPE } from "../../src/costs/MAPE.ts";
+import { MAPE } from "@costs/MAPE.ts";
 
 Deno.test("MAPE - getName returns MAPE", () => {
   const mape = new MAPE();

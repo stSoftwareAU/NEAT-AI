@@ -10,8 +10,8 @@
  * Run with:
  *   deno bench --allow-read --allow-write bench/CreatureConstruction.ts
  */
-import { Creature } from "../src/Creature.ts";
-import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
+import { Creature } from "@creature";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 
 // Pre-build creatures for fromJSON benchmarks
 const smallCreature = new Creature(5, 3, {

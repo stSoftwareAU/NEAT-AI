@@ -11,19 +11,19 @@
  * success cache data.
  */
 
-import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   buildWireToRuntimeIdMap,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
-import type { Creature } from "../Creature.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { createSeededRng } from "../utils/RandomNumberGenerator.ts";
-import { shortID } from "./CandidateDescriptions.ts";
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import type { Creature } from "@creature";
+import { getLogger } from "@utils/Logger.ts";
+import { createSeededRng } from "@utils/RandomNumberGenerator.ts";
+import { shortID } from "@discovery/CandidateDescriptions.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 import {
   getSuccessfulRemovalDetails,
   type SuccessfulRemovalDetail,
-} from "./SuccessCache.ts";
+} from "@discovery/SuccessCache.ts";
 
 /** Maximum number of pair combinations to generate. */
 const MAX_PAIR_CANDIDATES = 10;

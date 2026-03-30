@@ -4,13 +4,10 @@
  */
 
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import {
-  fix,
-  makeRandomConnection,
-} from "../../src/creature/CreatureMutation.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { fix, makeRandomConnection } from "@creature/CreatureMutation.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

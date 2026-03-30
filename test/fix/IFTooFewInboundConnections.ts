@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 Deno.test("fix/IFTooFewInboundConnections - should downgrade IF rather than throwing", () => {
   // Arrange: output neuron uses IF, but this tiny topology cannot supply 3 inbound

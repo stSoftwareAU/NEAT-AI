@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
-import { computeAdaptivePopulationSize } from "../../src/NEAT/AdaptivePopulationSizer.ts";
-import { DEFAULT_ADAPTIVE_POPULATION_CONFIG } from "../../src/config/AdaptivePopulationConfig.ts";
+import { computeAdaptivePopulationSize } from "@neat/AdaptivePopulationSizer.ts";
+import { DEFAULT_ADAPTIVE_POPULATION_CONFIG } from "@config/AdaptivePopulationConfig.ts";
 
 const enabledConfig = {
   ...DEFAULT_ADAPTIVE_POPULATION_CONFIG,

@@ -4,8 +4,8 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert";
 import {
   calculateOutputRangePenalty,
-} from "../../src/architecture/OutputRangePenalty.ts";
-import type { RequiredOutputRange } from "../../src/config/OutputRangeConfig.ts";
+} from "@architecture/OutputRangePenalty.ts";
+import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 
 Deno.test("OutputRangePenalty - no penalty for in-range outputs", () => {
   const ranges: RequiredOutputRange[] = [

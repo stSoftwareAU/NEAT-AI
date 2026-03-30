@@ -1,7 +1,7 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { compactCreature } from "../../src/compact/CompactCreature.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { compactCreature } from "@compact/CompactCreature.ts";
 
 Deno.test("compactCreature - returns undefined when no compaction occurs", () => {
   const json: CreatureExport = {

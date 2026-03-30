@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
-import { CRISPR, type CrisprInterface } from "../../src/reconstruct/CRISPR.ts";
+import { CRISPR, type CrisprInterface } from "@reconstruct/CRISPR.ts";
 Deno.test("editAliases", () => {
   const abcId = 1096354;
   const xyzId = 1119193;

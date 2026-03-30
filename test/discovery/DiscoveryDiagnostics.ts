@@ -7,13 +7,13 @@
  * Part of #1735.
  */
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import type { EvaluationTaskResult } from "../../src/discovery/DiscoveryRunnerEvaluation.ts";
-import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
+import type { EvaluationTaskResult } from "@discovery/DiscoveryRunnerEvaluation.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 import {
   aggregateDiscoveryDiagnostics,
   type DiscoveryDiagnosticsEntry,
   formatDiagnosticsTable,
-} from "../../src/discovery/DiscoveryDiagnostics.ts";
+} from "@discovery/DiscoveryDiagnostics.ts";
 import { makeSimpleCreature } from "../fixtures/SimpleCreatures.ts";
 
 /** Helper to build a minimal candidate with a given changeType. */

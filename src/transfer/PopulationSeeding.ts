@@ -6,8 +6,8 @@
  * starting points for evolution on a new task.
  */
 
-import { Creature } from "../Creature.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 /**
  * Options for creating a seeded population.

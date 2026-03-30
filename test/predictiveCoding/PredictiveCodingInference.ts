@@ -3,10 +3,10 @@
  * Issue #1554: Predictive Coding inference engine.
  */
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { runInference } from "../../src/predictiveCoding/PredictiveCodingInference.ts";
-import type { RequiredPredictiveCodingConfig } from "../../src/config/PredictiveCodingConfig.ts";
-import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../../src/config/PredictiveCodingConfig.ts";
+import { Creature } from "@creature";
+import { runInference } from "@predictiveCoding/PredictiveCodingInference.ts";
+import type { RequiredPredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
+import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "@config/PredictiveCodingConfig.ts";
 
 /**
  * Helper: creates a simple 2-input, 1-hidden, 1-output creature with IDENTITY squash.

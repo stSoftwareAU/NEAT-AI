@@ -1,6 +1,6 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 
 function mulberry32(seed: number) {
   let t = seed >>> 0;

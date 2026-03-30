@@ -8,9 +8,9 @@
  */
 
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../src/Creature.ts";
-import { removeNeuron } from "../../src/compact/CompactUnused.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import { removeNeuron } from "@compact/CompactUnused.ts";
 
 Deno.test("removeNeuron - normal bias adjustment succeeds", () => {
   // IDENTITY squash has no propagate method, so removeNeuron uses the

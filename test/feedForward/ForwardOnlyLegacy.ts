@@ -1,9 +1,9 @@
 import { assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { Creature } from "@creature";
+import { Synapse } from "@architecture/Synapse.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 Deno.test("Forward-only: mutated creatures remove legacy self/back connections", () => {
   // feedbackLoop is unset/false => forward-only mutation selection.

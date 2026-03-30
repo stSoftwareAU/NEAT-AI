@@ -11,8 +11,8 @@
  * Run with:
  *   deno bench --allow-read --allow-write bench/FocusCachePreservation.ts
  */
-import { Creature } from "../src/Creature.ts";
-import { AddNeuron } from "../src/mutate/AddNeuron.ts";
+import { Creature } from "@creature";
+import { AddNeuron } from "@mutate/AddNeuron.ts";
 
 // Create test creatures of various sizes
 const smallCreature = new Creature(10, 5, { layers: [{ count: 10 }] });

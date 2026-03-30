@@ -1,8 +1,8 @@
 import { assertEquals } from "@std/assert";
 import {
   DEFAULT_ENSEMBLE_DIVERSITY_CONFIG,
-} from "../../src/config/EnsembleDiversityConfig.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+} from "@config/EnsembleDiversityConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 Deno.test("EnsembleDiversityConfig - defaults are applied", () => {
   const config = createNeatConfig({});

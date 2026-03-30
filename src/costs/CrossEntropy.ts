@@ -1,5 +1,5 @@
 import { fail } from "@std/assert";
-import type { CostInterface } from "./CostInterface.ts";
+import type { CostInterface } from "@costs/CostInterface.ts";
 
 /**
  * Cross Entropy cost function for classification problems.

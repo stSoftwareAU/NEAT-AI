@@ -1,6 +1,6 @@
-import type { CreatureExport } from "../../architecture/CreatureInterfaces.ts";
-import { normaliseCreatureExport } from "../../architecture/NormaliseCreatureExport.ts";
-import type { SynapseExport } from "../../architecture/SynapseInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
 
 /** Outgoing synapse map: fromId -> synapses originating from that neuron. */
 export type OutgoingSynapsesMap = ReadonlyMap<number, SynapseExport[]>;

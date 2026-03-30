@@ -24,7 +24,7 @@ import {
   DEFAULT_BLOOM_FILTER_SIZE,
   DEFAULT_HASH_COUNT,
   DJB2_INITIAL_HASH,
-} from "../../src/utils/BloomFilter.ts";
+} from "@utils/BloomFilter.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

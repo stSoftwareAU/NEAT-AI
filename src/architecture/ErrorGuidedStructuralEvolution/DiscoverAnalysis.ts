@@ -9,12 +9,12 @@
 import type {
   CoordinatedStructuralCandidate,
   CoordinatedStructuralOperation,
-} from "./CoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import type {
   CandidateAnalysisBundle,
   CandidateNeuron,
   CandidateSynapse,
-} from "./DiscoverStructureTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 import type {
   RustAnalyzeAllResult,
   RustCandidateNeuron,
@@ -23,7 +23,7 @@ import type {
   RustCoordinatedStructuralOperation,
   RustNeuronDiagnostic,
   RustSynapseDiagnostic,
-} from "./RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 /**
  * Maps a RustCandidateSynapse to CandidateSynapse.

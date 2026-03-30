@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from "@std/assert";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { DEFAULT_WASM_CACHE_CONFIG } from "../../src/config/WasmCacheConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { DEFAULT_WASM_CACHE_CONFIG } from "@config/WasmCacheConfig.ts";
 
 Deno.test("WasmCacheConfig - default maxCachedActivations scales with populationSize", () => {
   const config = createNeatConfig({ populationSize: 100 });

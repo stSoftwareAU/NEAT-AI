@@ -1,11 +1,11 @@
 import { assert } from "@std/assert";
 import { format } from "@std/fmt/duration";
-import type { Breed } from "../breed/Breed.ts";
-import { Creature } from "../Creature.ts";
-import type { Mutator } from "../NEAT/Mutator.ts";
-import { BloomFilter } from "../utils/BloomFilter.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { CreatureUtil } from "./CreatureUtils.ts";
+import type { Breed } from "@breed/Breed.ts";
+import { Creature } from "@creature";
+import type { Mutator } from "@neat/Mutator.ts";
+import { BloomFilter } from "@utils/BloomFilter.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 /**
  * DeDuplicator - Removes duplicate creatures from a population.

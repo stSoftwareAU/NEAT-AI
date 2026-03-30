@@ -5,8 +5,8 @@
  * metrics and convergence progress.
  */
 
-import type { RequiredAdaptivePopulationConfig } from "../config/AdaptivePopulationConfig.ts";
-import { computeSpeciesDiversity } from "./HyperparameterEvolution.ts";
+import type { RequiredAdaptivePopulationConfig } from "@config/AdaptivePopulationConfig.ts";
+import { computeSpeciesDiversity } from "@neat/HyperparameterEvolution.ts";
 
 /**
  * Computes the effective population size based on diversity and convergence.

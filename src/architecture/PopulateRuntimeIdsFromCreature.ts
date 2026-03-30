@@ -1,7 +1,7 @@
-import type { Creature } from "../Creature.ts";
-import type { CreatureExport } from "./CreatureInterfaces.ts";
-import { neuronUuid } from "../neuron/NeuronSerialization.ts";
-import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
+import type { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { neuronUuid } from "@neuron/NeuronSerialization.ts";
+import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
 
 /**
  * Populate a local `CreatureExport` clone with the live creature's runtime ids.

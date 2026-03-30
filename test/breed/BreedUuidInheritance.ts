@@ -7,10 +7,10 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 function hiddenAndConstantWireUuids(creature: Creature): Set<string> {
   const out = new Set<string>();

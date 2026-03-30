@@ -1,8 +1,8 @@
-import type { CreatureExport } from "../../architecture/CreatureInterfaces.ts";
-import { normaliseCreatureExport } from "../../architecture/NormaliseCreatureExport.ts";
-import type { NeuronStateInterface } from "../../architecture/CreatureState.ts";
-import type { BackPropagationConfig } from "../BackPropagation.ts";
-import { getRandomNumberGenerator } from "../../utils/RandomNumberGenerator.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import type { NeuronStateInterface } from "@architecture/CreatureState.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Selects neurons for sparse backpropagation training.

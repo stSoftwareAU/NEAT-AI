@@ -8,33 +8,33 @@
  */
 
 import { ensureDirSync } from "@std/fs";
-import { Creature } from "../Creature.ts";
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import { DeDuplicator } from "../architecture/DeDuplicator.ts";
-import { Fitness } from "../architecture/Fitness.ts";
-import { AdaptiveFineTuneTracker } from "../blackbox/AdaptiveFineTuneTracker.ts";
-import { Breed } from "../breed/Breed.ts";
-import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
-import type { NeatOptions } from "../config/NeatOptions.ts";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { DeDuplicator } from "@architecture/DeDuplicator.ts";
+import { Fitness } from "@architecture/Fitness.ts";
+import { AdaptiveFineTuneTracker } from "@blackbox/AdaptiveFineTuneTracker.ts";
+import { Breed } from "@breed/Breed.ts";
+import { createNeatConfig, type NeatConfig } from "@config/NeatConfig.ts";
+import type { NeatOptions } from "@config/NeatOptions.ts";
 import type {
   ResponseData,
   WorkerHandler,
-} from "../multithreading/workers/WorkerHandler.ts";
-import { WorkerPool } from "../multithreading/WorkerPool.ts";
-import type { CrisprInterface } from "../reconstruct/CRISPR.ts";
-import { Genus } from "./Genus.ts";
-import { Mutator } from "./Mutator.ts";
-import { PlateauDetector } from "./PlateauDetector.ts";
+} from "@multithreading/workers/WorkerHandler.ts";
+import { WorkerPool } from "@multithreading/WorkerPool.ts";
+import type { CrisprInterface } from "@reconstruct/CRISPR.ts";
+import { Genus } from "@neat/Genus.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { PlateauDetector } from "@neat/PlateauDetector.ts";
 import {
   type DiscoveryReplayDirResult,
   DiscoveryReplayQueue,
-} from "./DiscoveryReplayQueue.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+} from "@neat/DiscoveryReplayQueue.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 // Extracted modules
-import * as evolution from "./NeatEvolution.ts";
-import * as scheduling from "./NeatScheduling.ts";
+import * as evolution from "@neat/NeatEvolution.ts";
+import * as scheduling from "@neat/NeatScheduling.ts";
 
 /**
  * NEAT (NeuroEvolution of Augmenting Topologies) implementation.

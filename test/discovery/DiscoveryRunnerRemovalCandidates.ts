@@ -1,12 +1,12 @@
 import { assert, assertEquals } from "@std/assert";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
-import type { NeatOptions } from "../../src/config/NeatOptions.ts";
-import { Creature } from "../../src/Creature.ts";
-import type { DiscoveryRunnerWorker } from "../../src/discovery/DiscoveryRunner.ts";
-import { DiscoveryRunner } from "../../src/discovery/DiscoveryRunner.ts";
-import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { DEFAULT_COST_OF_GROWTH } from "@config/NeatConfig.ts";
+import type { NeatOptions } from "@config/NeatOptions.ts";
+import { Creature } from "@creature";
+import type { DiscoveryRunnerWorker } from "@discovery/DiscoveryRunner.ts";
+import { DiscoveryRunner } from "@discovery/DiscoveryRunner.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 import { makeBaseCreature } from "../fixtures/SimpleCreatures.ts";
 
 function cloneCreatureJSON(

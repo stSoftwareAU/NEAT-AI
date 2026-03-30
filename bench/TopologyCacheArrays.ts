@@ -7,7 +7,7 @@
  *
  * Run with: deno bench --allow-read bench/TopologyCacheArrays.ts
  */
-import { Creature } from "../src/Creature.ts";
+import { Creature } from "@creature";
 
 const creatureFile = Deno.args[0] || "test/data/traced.json";
 const creature = Creature.fromJSON(

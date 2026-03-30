@@ -9,12 +9,12 @@
 
 import { assert } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
-import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
-import { Creature } from "../Creature.ts";
-import { validateOrDiagnose } from "../utils/Diagnostics.ts";
-import { getLogger } from "../utils/Logger.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
+import { Creature } from "@creature";
+import { validateOrDiagnose } from "@utils/Diagnostics.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Tacit knowledge is a mapping from neuron UUID to squash function name.

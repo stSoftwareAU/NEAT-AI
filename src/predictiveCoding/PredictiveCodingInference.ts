@@ -19,17 +19,17 @@
  * inward/outward connection accessors rather than strict layers.
  */
 
-import type { Creature } from "../Creature.ts";
-import type { RequiredPredictiveCodingConfig } from "../config/PredictiveCodingConfig.ts";
-import type { PredictionNodeState } from "../architecture/PredictionNodeState.ts";
+import type { Creature } from "@creature";
+import type { RequiredPredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
+import type { PredictionNodeState } from "@architecture/PredictionNodeState.ts";
 import {
   computePrediction,
   computePredictionErrors,
   computeTotalEnergy,
-} from "./PredictionErrorComputation.ts";
-import { Activations } from "../methods/activations/Activations.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import { computeEffectiveConfig } from "./AdaptiveScaling.ts";
+} from "@predictiveCoding/PredictionErrorComputation.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import { computeEffectiveConfig } from "@predictiveCoding/AdaptiveScaling.ts";
 
 /**
  * Result returned by the inference settling loop.

@@ -7,13 +7,13 @@
  * determine whether their cache configuration is well-tuned.
  */
 
-import type { CacheStats } from "./CacheStats.ts";
-import { getDistanceCacheStats } from "../breed/DistanceCache.ts";
-import { getWasmActivationLruStats } from "../wasm/WasmCreatureActivationLRU.ts";
+import type { CacheStats } from "@cache/CacheStats.ts";
+import { getDistanceCacheStats } from "@breed/DistanceCache.ts";
+import { getWasmActivationLruStats } from "@wasm/WasmCreatureActivationLRU.ts";
 import {
   getWasmCompilationCacheMaxSize,
   getWasmCompilationCacheStats,
-} from "../wasm/WasmCompilationCache.ts";
+} from "@wasm/WasmCompilationCache.ts";
 
 /**
  * Return diagnostic statistics for all instrumented caches.

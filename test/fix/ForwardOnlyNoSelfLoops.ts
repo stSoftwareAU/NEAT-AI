@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 
 Deno.test("fix({ forwardOnly:true }): never creates self-loops; removes neurons with no forward targets", () => {
   const json: CreatureExport = {

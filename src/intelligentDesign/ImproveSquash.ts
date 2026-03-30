@@ -9,18 +9,21 @@
 
 import { assert } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
-import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
-import type { NeatOptions } from "../config/NeatOptions.ts";
-import { Creature } from "../Creature.ts";
-import { validateOrDiagnose } from "../utils/Diagnostics.ts";
-import { alternativeSquashes } from "./AlternativeSquashes.ts";
-import type { BestNeuronSquash } from "./BestNeuronSquash.ts";
-import { safeWriteText, safeWriteTextSync } from "./SafeWrite.ts";
-import { WorkerHandler } from "./workers/WorkerHandler.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
+import type { NeatOptions } from "@config/NeatOptions.ts";
+import { Creature } from "@creature";
+import { validateOrDiagnose } from "@utils/Diagnostics.ts";
+import { alternativeSquashes } from "@intelligentDesign/AlternativeSquashes.ts";
+import type { BestNeuronSquash } from "@intelligentDesign/BestNeuronSquash.ts";
+import {
+  safeWriteText,
+  safeWriteTextSync,
+} from "@intelligentDesign/SafeWrite.ts";
+import { WorkerHandler } from "@intelligentDesign/workers/WorkerHandler.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 function remainingTimeMs(deadlineMs: number): number {
   return Math.max(0, deadlineMs - Date.now());

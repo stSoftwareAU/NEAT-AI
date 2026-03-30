@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from "@std/assert";
-import { CrisprError } from "../../src/errors/CrisprError.ts";
-import { validateDNA } from "../../src/reconstruct/validateDNA.ts";
+import { CrisprError } from "@errors/CrisprError.ts";
+import { validateDNA } from "@reconstruct/validateDNA.ts";
 
 // These tests verify that validateDNA throws CrisprError (not generic Error)
 // with correct error codes. Full error message coverage is in test/CRISPR/ValidateDNA.ts.

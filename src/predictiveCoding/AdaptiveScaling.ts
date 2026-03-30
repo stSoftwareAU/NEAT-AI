@@ -17,8 +17,8 @@
  * preserving default behaviour for small networks (≤10 hidden neurons).
  */
 
-import type { Creature } from "../Creature.ts";
-import type { RequiredPredictiveCodingConfig } from "../config/PredictiveCodingConfig.ts";
+import type { Creature } from "@creature";
+import type { RequiredPredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
 
 /**
  * Threshold below which no adaptive scaling is applied.

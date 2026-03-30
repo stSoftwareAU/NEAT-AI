@@ -1,5 +1,5 @@
 import { assertAlmostEquals } from "@std/assert";
-import { TAN } from "../../../src/methods/activations/types/TAN.ts";
+import { TAN } from "@methods/activations/types/TAN.ts";
 
 // Squash and unSquash behaviour is covered by:
 //   test/methods/activations/EdgeCases.ts (squash at x=0)

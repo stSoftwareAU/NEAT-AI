@@ -1,7 +1,7 @@
-import type { Creature } from "../Creature.ts";
-import type { MutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
+import type { Creature } from "@creature";
+import type { MutationBias } from "@predictiveCoding/PredictionErrorGuidedMutation.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import type { RadioactiveInterface } from "@mutate/RadioactiveInterface.ts";
 
 /**
  * Abstract base class for mutation operators.

@@ -5,13 +5,13 @@
  * Tests cover: breed, mutate, blackbox, NEAT, Costs, Simplify, and RNG modules.
  */
 import { assertThrows } from "@std/assert";
-import { FitnessRanking } from "../../src/breed/FitnessRanking.ts";
-import { Costs } from "../../src/Costs.ts";
+import { FitnessRanking } from "@breed/FitnessRanking.ts";
+import { Costs } from "@costs";
 import {
   createSeededRng,
   createUnseededRng,
-} from "../../src/utils/RandomNumberGenerator.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
+} from "@utils/RandomNumberGenerator.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 
 // ── FitnessRanking ──────────────────────────────────────────────────────────
 

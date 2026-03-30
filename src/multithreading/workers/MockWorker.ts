@@ -1,9 +1,12 @@
-import type { WorkerInterface } from "../../workers/WorkerInterface.ts";
-import type { RequestData, ResponseData } from "./WorkerHandler.ts";
+import type { WorkerInterface } from "@workers/WorkerInterface.ts";
+import type {
+  RequestData,
+  ResponseData,
+} from "@multithreading/workers/WorkerHandler.ts";
 
-import { WorkerProcessor } from "./WorkerProcessor.ts";
-import { getLogger } from "../../utils/Logger.ts";
-import { toError, toErrorMessage } from "../../utils/ErrorSerialisation.ts";
+import { WorkerProcessor } from "@multithreading/workers/WorkerProcessor.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { toError, toErrorMessage } from "@utils/ErrorSerialisation.ts";
 
 export class MockWorker implements WorkerInterface<RequestData> {
   private callBack: EventListener | null = null;

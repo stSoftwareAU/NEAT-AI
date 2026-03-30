@@ -6,8 +6,8 @@
  *
  * @example
  * ```ts
- * import { Creature } from "../Creature.ts";
- * import { exportToOnnx, checkOnnxCompatibility } from "./mod.ts";
+ * import { Creature } from "@creature";
+ * import { exportToOnnx, checkOnnxCompatibility } from "@onnx/mod.ts";
  *
  * const creature = new Creature(2, 1, { layers: [{ count: 3, squash: "TANH" }] });
  * // ... train the creature ...
@@ -20,17 +20,17 @@
  * ```
  */
 
-export { checkOnnxCompatibility, exportToOnnx } from "./OnnxExport.ts";
+export { checkOnnxCompatibility, exportToOnnx } from "@onnx/OnnxExport.ts";
 
 export type {
   OnnxCompatibilityResult,
   OnnxExportOptions,
-} from "./OnnxExport.ts";
+} from "@onnx/OnnxExport.ts";
 
 export {
   buildActivationNodes,
   isAggregateFunction,
   isSquashSupported,
-} from "./ActivationMapping.ts";
+} from "@onnx/ActivationMapping.ts";
 
-export type { ActivationMapping } from "./ActivationMapping.ts";
+export type { ActivationMapping } from "@onnx/ActivationMapping.ts";

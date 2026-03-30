@@ -5,8 +5,8 @@
  * Issue #1694
  */
 import { assertIsError, assertThrows } from "@std/assert";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
+import { makeDataDir } from "@architecture/DataSet.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 
 Deno.test("makeDataDir - throws ValidationError for zero partitionBreak", () => {
   const err = assertThrows(() => makeDataDir([], 0));

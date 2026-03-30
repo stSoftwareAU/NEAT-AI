@@ -26,8 +26,8 @@
  * const stolen = pool.stealWork(idleWorker);
  * ```
  */
-import type { WorkerHandler } from "./workers/WorkerHandler.ts";
-import { WorkStealingQueue } from "./WorkStealingQueue.ts";
+import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
+import { WorkStealingQueue } from "@multithreading/WorkStealingQueue.ts";
 
 /**
  * Statistics about the worker pool state.

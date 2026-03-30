@@ -16,10 +16,10 @@ import {
   CreatureUtil,
   Selection,
 } from "../../mod.ts";
-import { Breed } from "../../src/breed/Breed.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Genus } from "../../src/NEAT/Genus.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { Breed } from "@breed/Breed.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { Genus } from "@neat/Genus.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 
 /**
  * Creates a scored creature with a hidden neuron for use in breeding tests.

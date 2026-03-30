@@ -1,9 +1,9 @@
 import { assert, assertAlmostEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Costs } from "../../src/Costs.ts";
-import { Creature } from "../../src/Creature.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Costs } from "@costs";
+import { Creature } from "@creature";
 import { train } from "../TrainTestOnlyUtil.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 
 Deno.test("MAXIMUM activation: training reduces error after bias and weight perturbation", () => {
   const creatureA = makeCreature();

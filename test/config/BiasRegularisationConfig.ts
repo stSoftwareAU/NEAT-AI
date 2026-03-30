@@ -1,8 +1,8 @@
 import { assertEquals } from "@std/assert";
 import {
   DEFAULT_BIAS_REGULARISATION_CONFIG,
-} from "../../src/config/BiasRegularisationConfig.ts";
-import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+} from "@config/BiasRegularisationConfig.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 Deno.test("BiasRegularisationConfig - defaults are applied", () => {
   const config = createNeatConfig({});

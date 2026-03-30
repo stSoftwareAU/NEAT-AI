@@ -7,23 +7,23 @@
  */
 
 import { assert } from "@std/assert";
-import type { Creature } from "../../Creature.ts";
-import type { NeatOptions } from "../../config/NeatOptions.ts";
-import type { ResponseData } from "./ResponseData.ts";
-import { MockWorker } from "./MockWorker.ts";
+import type { Creature } from "@creature";
+import type { NeatOptions } from "@config/NeatOptions.ts";
+import type { ResponseData } from "@intelligentDesign/workers/ResponseData.ts";
+import { MockWorker } from "@intelligentDesign/workers/MockWorker.ts";
 import {
   getInitTimeoutMs,
   WorkerHandlerBase,
-} from "../../workers/WorkerHandlerBase.ts";
-import type { WorkerInterface } from "../../workers/WorkerInterface.ts";
+} from "@workers/WorkerHandlerBase.ts";
+import type { WorkerInterface } from "@workers/WorkerInterface.ts";
 import {
   loadWasmActivationInitPayloadAsync,
-} from "../../workers/WasmActivationPayload.ts";
+} from "@workers/WasmActivationPayload.ts";
 
 // Re-export shared type for backwards compatibility.
 export type {
   WasmActivationInitPayload,
-} from "../../workers/WasmActivationPayload.ts";
+} from "@workers/WasmActivationPayload.ts";
 
 /**
  * Data structure for requests sent to scoring workers.
@@ -50,7 +50,7 @@ export interface RequestData {
 }
 
 // Re-export WorkerInterface for backwards compatibility.
-export type { WorkerInterface } from "../../workers/WorkerInterface.ts";
+export type { WorkerInterface } from "@workers/WorkerInterface.ts";
 
 /**
  * Manages communication with worker threads for parallel scoring operations.

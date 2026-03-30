@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { createCompatibleFather } from "../../src/breed/Father.ts";
-import { stripNumericIdsFromCreatureExport } from "../../src/creature/CreatureSerialization.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { createCompatibleFather } from "@breed/Father.ts";
+import { stripNumericIdsFromCreatureExport } from "@creature/CreatureSerialization.ts";
 import { Creature } from "../../mod.ts";
 
 function loadCreature(name: string): CreatureExport {

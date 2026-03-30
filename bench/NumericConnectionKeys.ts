@@ -8,7 +8,7 @@
  * Run with:
  *   deno bench --allow-read --allow-write bench/NumericConnectionKeys.ts
  */
-import { Creature } from "../src/Creature.ts";
+import { Creature } from "@creature";
 
 // Build creatures of various sizes
 function buildCreature(targetNeurons: number): Creature {

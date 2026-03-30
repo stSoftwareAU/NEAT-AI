@@ -1,9 +1,9 @@
 import { assert, assertEquals, fail } from "@std/assert";
-import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../../src/Creature.ts";
-import { exportJSONWithRuntimeIds } from "../../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
-import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
-import { chooseNeurons } from "../../../src/propagate/sparse/ChooseNeurons.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { chooseNeurons } from "@propagate/sparse/ChooseNeurons.ts";
 
 Deno.test("chooseNeurons - clustering with sparseRatio < 1", () => {
   const creature = makeCreature();

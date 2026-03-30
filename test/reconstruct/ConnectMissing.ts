@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Creature, CreatureUtil } from "../../mod.ts";
-import { randomConnectMissing } from "../../src/reconstruct/ConnectMissing.ts";
+import { randomConnectMissing } from "@reconstruct/ConnectMissing.ts";
 
 Deno.test("randomConnectMissing - connects all inputs when some are missing", () => {
   const creature = new Creature(10, 3);

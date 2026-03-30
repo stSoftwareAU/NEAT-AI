@@ -11,9 +11,9 @@
  * Run with:
  *   deno bench --allow-read --allow-write bench/AvailableConnectionsCache.ts
  */
-import { Creature } from "../src/Creature.ts";
-import { AddConnection } from "../src/mutate/AddConnection.ts";
-import { AddNeuron } from "../src/mutate/AddNeuron.ts";
+import { Creature } from "@creature";
+import { AddConnection } from "@mutate/AddConnection.ts";
+import { AddNeuron } from "@mutate/AddNeuron.ts";
 
 // Create test creatures of various sizes
 const smallCreature = new Creature(10, 5);

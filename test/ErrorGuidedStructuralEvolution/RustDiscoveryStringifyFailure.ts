@@ -4,8 +4,8 @@ import { join } from "@std/path/join";
 import {
   closeRustLibrary,
   recordDiscovery,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
-import type { RustRecordInput } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import type { RustRecordInput } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 Deno.test("recordDiscovery handles stringify failure before encoding", () => {
   closeRustLibrary();

@@ -9,7 +9,7 @@
  */
 import { assert } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
-import { mergeDuplicateSynapses } from "../../src/compact/CompactUtils.ts";
+import { mergeDuplicateSynapses } from "@compact/CompactUtils.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 Deno.test(

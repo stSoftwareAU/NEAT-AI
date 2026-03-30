@@ -12,10 +12,10 @@
  * Run with:
  *   deno bench --allow-read --allow-write bench/PrebuildInwardIndex.ts
  */
-import { Creature } from "../src/Creature.ts";
-import { Offspring } from "../src/architecture/Offspring.ts";
-import { Mutator } from "../src/NEAT/Mutator.ts";
-import { createNeatConfig } from "../src/config/NeatConfig.ts";
+import { Creature } from "@creature";
+import { Offspring } from "@architecture/Offspring.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 // Create parent creatures for breeding benchmarks
 const largeMum = new Creature(30, 10, {

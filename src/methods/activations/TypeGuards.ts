@@ -7,9 +7,9 @@
  * @module
  */
 
-import type { AbstractActivationInterface } from "./AbstractActivationInterface.ts";
-import type { UnSquashInterface } from "./UnSquashInterface.ts";
-import type { SimplifyBiasInterface } from "../../optimize/SimplifyBiasInterface.ts";
+import type { AbstractActivationInterface } from "@methods/activations/AbstractActivationInterface.ts";
+import type { UnSquashInterface } from "@methods/activations/UnSquashInterface.ts";
+import type { SimplifyBiasInterface } from "@optimize/SimplifyBiasInterface.ts";
 
 /** Check whether an activation implements the `unSquash()` method. */
 export function hasUnSquash(

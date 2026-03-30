@@ -1,9 +1,9 @@
 import { assert } from "@std/assert";
-import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../../src/Creature.ts";
-import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
-import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 Deno.test("record: avoids attributing error to tiny-weight links", () => {
   // If record attribution pushes value-space error into a link with an extremely

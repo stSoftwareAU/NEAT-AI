@@ -10,11 +10,8 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import {
-  CreatureState,
-  NeuronState,
-} from "../../src/architecture/CreatureState.ts";
+import { Creature } from "@creature";
+import { CreatureState, NeuronState } from "@architecture/CreatureState.ts";
 
 Deno.test("CreatureState flat array - node() returns NeuronState with defaults for all indices", () => {
   const creature = new Creature(2, 1, {

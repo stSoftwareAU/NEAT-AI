@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
+import { Creature } from "@creature";
+import { AddNeuron } from "@mutate/AddNeuron.ts";
 
 /**
  * Regression coverage: forward-only creatures must not gain recurrent connections

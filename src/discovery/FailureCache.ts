@@ -13,36 +13,36 @@
  */
 
 import { dirname } from "@std/path/dirname";
-import { getDiscoveryVersion } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
-import { getLogger } from "../utils/Logger.ts";
-import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
-import type { Creature } from "../Creature.ts";
+import { getDiscoveryVersion } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { getLogger } from "@utils/Logger.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
+import type { Creature } from "@creature";
 import {
   extractActualCreatureChanges,
   extractPredictionDetails,
   extractTargetNeuronInfo,
   logPredictionTrace,
-} from "./FailureCacheDiagnostics.ts";
-import { buildCacheKey, getCacheFilePath } from "./FailureCacheKey.ts";
-import type { FailureMetadata } from "./FailureCacheTypes.ts";
+} from "@discovery/FailureCacheDiagnostics.ts";
+import { buildCacheKey, getCacheFilePath } from "@discovery/FailureCacheKey.ts";
+import type { FailureMetadata } from "@discovery/FailureCacheTypes.ts";
 import {
   buildDiscoveryWireRequest,
   DISCOVERY_WIRE_SCHEMA_VERSION,
-} from "./DiscoveryWireFormat.ts";
+} from "@discovery/DiscoveryWireFormat.ts";
 
 // Re-export for backward compatibility.
-export { isPredictionTracingEnabled } from "./FailureCacheDiagnostics.ts";
+export { isPredictionTracingEnabled } from "@discovery/FailureCacheDiagnostics.ts";
 export {
   extractActualCreatureChanges,
   extractPredictionDetails,
   extractTargetNeuronInfo,
   logPredictionTrace,
-} from "./FailureCacheDiagnostics.ts";
+} from "@discovery/FailureCacheDiagnostics.ts";
 export {
   buildCacheKey,
   extractExponent,
   formatWeight,
-} from "./FailureCacheKey.ts";
+} from "@discovery/FailureCacheKey.ts";
 export type {
   ActualCreatureChange,
   ActualNeuronState,
@@ -51,7 +51,7 @@ export type {
   PredictionDetails,
   SampleDiagnostic,
   TargetNeuronInfo,
-} from "./FailureCacheTypes.ts";
+} from "@discovery/FailureCacheTypes.ts";
 
 /**
  * Checks if a discovery candidate is already cached as a failure.

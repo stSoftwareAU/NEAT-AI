@@ -6,12 +6,12 @@
  */
 
 import { assert, assertLess } from "@std/assert";
-import { trainDir } from "../../src/architecture/Training.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
-import { Creature } from "../../src/Creature.ts";
-import { Costs } from "../../src/Costs.ts";
-import type { TrainOptions } from "../../src/config/TrainOptions.ts";
+import { trainDir } from "@architecture/Training.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import { makeDataDir } from "@architecture/DataSet.ts";
+import { Creature } from "@creature";
+import { Costs } from "@costs";
+import type { TrainOptions } from "@config/TrainOptions.ts";
 
 function makeXorDataSet(): DataRecordInterface[] {
   return [

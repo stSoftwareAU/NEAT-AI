@@ -12,10 +12,10 @@
  */
 
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { Activations } from "../../../src/methods/activations/Activations.ts";
-import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
-import type { UnSquashInterface } from "../../../src/methods/activations/UnSquashInterface.ts";
-import { hasUnSquash } from "../../../src/methods/activations/TypeGuards.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import type { UnSquashInterface } from "@methods/activations/UnSquashInterface.ts";
+import { hasUnSquash } from "@methods/activations/TypeGuards.ts";
 
 /**
  * Activations with straightforward invertibility where

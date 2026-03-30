@@ -4,8 +4,8 @@ import {
   assertGreaterOrEqual,
   assertLessOrEqual,
 } from "@std/assert";
-import { AdaptiveFineTuneTracker } from "../../src/blackbox/AdaptiveFineTuneTracker.ts";
-import { DEFAULT_FINE_TUNE_POPULATION_CONFIG } from "../../src/config/FineTunePopulationConfig.ts";
+import { AdaptiveFineTuneTracker } from "@blackbox/AdaptiveFineTuneTracker.ts";
+import { DEFAULT_FINE_TUNE_POPULATION_CONFIG } from "@config/FineTunePopulationConfig.ts";
 
 Deno.test(
   "AdaptiveFineTuneTracker - success rate is NaN with no outcomes",

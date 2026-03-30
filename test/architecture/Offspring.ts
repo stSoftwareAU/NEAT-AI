@@ -8,9 +8,9 @@
 
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../mod.ts";
-import type { ConnectionRef } from "../../src/architecture/Offspring.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
-import type { SynapseInternal } from "../../src/architecture/SynapseInterfaces.ts";
+import type { ConnectionRef } from "@architecture/Offspring.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import type { SynapseInternal } from "@architecture/SynapseInterfaces.ts";
 
 // --- Offspring.breed tests ---
 

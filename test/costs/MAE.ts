@@ -1,5 +1,5 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import { MAE } from "../../src/costs/MAE.ts";
+import { MAE } from "@costs/MAE.ts";
 
 Deno.test("MAE - getName returns MAE", () => {
   const mae = new MAE();

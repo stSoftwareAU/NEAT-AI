@@ -16,7 +16,7 @@ import {
   SquashType,
   wasmSafeZoneAdjustment,
   wasmSafeZoneAdjustmentBatch,
-} from "../../src/wasm/mod.ts";
+} from "@wasm/mod.ts";
 
 // f32 tolerance for WASM comparisons
 const TOLERANCE = 1e-6;

@@ -4,7 +4,7 @@ import {
   getSkipWasmAutoInit,
   setGlobalDebug,
   setSkipWasmAutoInit,
-} from "../../src/globalAccessors.ts";
+} from "@globalAccessors";
 
 Deno.test("getGlobalDebug / setGlobalDebug round-trips correctly", () => {
   const original = getGlobalDebug();

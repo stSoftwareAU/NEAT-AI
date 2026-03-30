@@ -7,8 +7,8 @@
  */
 
 import { assertEquals, assertNotEquals } from "@std/assert";
-import { Creature } from "../../src/Creature.ts";
-import { FindTunePopulation } from "../../src/blackbox/FineTunePopulation.ts";
+import { Creature } from "@creature";
+import { FindTunePopulation } from "@blackbox/FineTunePopulation.ts";
 
 /** Build a minimal creature for testing. Each has a unique bias to differentiate. */
 function makeTestCreature(id: number): Creature {

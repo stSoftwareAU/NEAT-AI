@@ -6,7 +6,7 @@
  *
  * Run with: deno bench --allow-read bench/SquashLookupTableDetailed.ts
  */
-import { Creature } from "../src/Creature.ts";
+import { Creature } from "@creature";
 
 // Load the traced.json test creature (has mixed squash functions)
 const tracedCreature = Creature.fromJSON(

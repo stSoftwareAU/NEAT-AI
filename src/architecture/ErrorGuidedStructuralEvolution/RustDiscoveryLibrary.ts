@@ -8,13 +8,13 @@
 import { assert } from "@std/assert";
 import { fromFileUrl } from "@std/path/from-file-url";
 import { join } from "@std/path/join";
-import { DiscoveryError } from "../../errors/DiscoveryError.ts";
-import { getLogger } from "../../utils/Logger.ts";
+import { DiscoveryError } from "@errors/DiscoveryError.ts";
+import { getLogger } from "@utils/Logger.ts";
 import type {
   RustCheckGpuResult,
   RustGetVersionResult,
   RustLibrarySearchOptions,
-} from "./RustDiscoveryTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryTypes.ts";
 
 const MAX_C_STRING_BYTES = 128 * 1024 * 1024; // 128 MiB guard for FFI strings
 

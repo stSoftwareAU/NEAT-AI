@@ -10,7 +10,7 @@
  * distance(A, B) and distance(B, A) share a single entry.
  */
 
-import type { CacheStats } from "../cache/CacheStats.ts";
+import type { CacheStats } from "@cache/CacheStats.ts";
 
 const DEFAULT_MAX_SIZE = 10_000;
 

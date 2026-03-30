@@ -2,12 +2,12 @@ import { assert } from "@std/assert";
 import {
   type DataRecordInterface,
   makeDataDir,
-} from "../src/architecture/DataSet.ts";
-import { trainDir } from "../src/architecture/Training.ts";
-import { Costs } from "../src/Costs.ts";
-import type { CostInterface } from "../src/costs/CostInterface.ts";
-import type { TrainOptions } from "../src/config/TrainOptions.ts";
-import type { Creature } from "../src/Creature.ts";
+} from "@architecture/DataSet.ts";
+import { trainDir } from "@architecture/Training.ts";
+import { Costs } from "@costs";
+import type { CostInterface } from "@costs/CostInterface.ts";
+import type { TrainOptions } from "@config/TrainOptions.ts";
+import type { Creature } from "@creature";
 
 /**
  * Train the given set to this network

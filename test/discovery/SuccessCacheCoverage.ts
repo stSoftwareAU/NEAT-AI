@@ -1,13 +1,13 @@
 import { assertEquals } from "@std/assert";
 import { join } from "@std/path/join";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 import {
   deleteSuccessByKeySync,
   listSuccessEntriesSync,
   recordSuccessSync,
-} from "../../src/discovery/SuccessCache.ts";
-import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
-import { closeRustLibrary } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@discovery/SuccessCache.ts";
+import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
+import { closeRustLibrary } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 Deno.test("SuccessCache: listSuccessEntriesSync returns [] for missing directory and skips corrupt JSON", async () => {
   const missing = join(await Deno.makeTempDir(), "does-not-exist");

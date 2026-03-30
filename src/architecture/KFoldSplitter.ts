@@ -7,7 +7,7 @@
  * evaluation during evolution.
  */
 
-import { ValidationError } from "../errors/ValidationError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 
 /**
  * Describes a single fold split with training and validation data directories.

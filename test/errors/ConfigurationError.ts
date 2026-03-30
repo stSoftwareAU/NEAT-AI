@@ -2,7 +2,7 @@ import { assert, assertEquals, assertIsError, assertThrows } from "@std/assert";
 import {
   ConfigurationError,
   type ConfigurationErrorReason,
-} from "../../src/errors/ConfigurationError.ts";
+} from "@errors/ConfigurationError.ts";
 
 Deno.test("ConfigurationError - INVALID_TYPE reason", () => {
   const error = new ConfigurationError(

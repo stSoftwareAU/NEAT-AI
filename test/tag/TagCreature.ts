@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
-import { Creature } from "../../src/Creature.ts";
+import { Creature } from "@creature";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

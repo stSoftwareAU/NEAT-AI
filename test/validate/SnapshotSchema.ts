@@ -7,9 +7,9 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Creature } from "../../src/Creature.ts";
-import { exportSnapshotJSON } from "../../src/creature/CreatureSerialization.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import { exportSnapshotJSON } from "@creature/CreatureSerialization.ts";
 
 // deno-lint-ignore no-explicit-any
 type SchemaObject = Record<string, any>;

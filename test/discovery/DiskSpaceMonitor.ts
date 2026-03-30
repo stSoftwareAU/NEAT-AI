@@ -19,7 +19,7 @@ import {
   logDiscoveryDiskUsage,
   measureDirectorySize,
   preFlightDiskSpaceCheck,
-} from "../../src/discovery/DiskSpaceMonitor.ts";
+} from "@discovery/DiskSpaceMonitor.ts";
 
 // ── getAvailableDiskSpaceMB ─────────────────────────────────────────
 
