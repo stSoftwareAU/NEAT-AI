@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 Deno.test(
   "fineTuneImprovement (forward-only) must not introduce backward synapses when copying missing synapses between different neuron orderings",

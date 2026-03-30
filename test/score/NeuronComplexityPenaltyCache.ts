@@ -1,10 +1,10 @@
 import { assertEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { calculate } from "../../src/architecture/Score.ts";
-import { Activations } from "../../src/methods/activations/Activations.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { IF } from "../../src/methods/activations/aggregate/IF.ts";
-import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { calculate } from "@architecture/Score.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { IF } from "@methods/activations/aggregate/IF.ts";
+import { TANH } from "@methods/activations/types/TANH.ts";
 
 /**
  * Test suite for neuron-level complexity penalty caching.

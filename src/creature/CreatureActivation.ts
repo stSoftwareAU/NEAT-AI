@@ -7,8 +7,8 @@
 
 import { assert, fail } from "@std/assert";
 import type { Creature } from "../Creature.ts";
-import { WasmError } from "../errors/WasmError.ts";
-import type { SparseConfigLike } from "../propagate/sparse/SparseConfigLike.ts";
+import { WasmError } from "@errors/WasmError.ts";
+import type { SparseConfigLike } from "@propagate/sparse/SparseConfigLike.ts";
 import {
   compileCreatureToWasm,
   type CompiledCreatureData,
@@ -24,9 +24,9 @@ import {
 } from "../wasm/WasmCreatureActivationLRU.ts";
 import type { CostInterface } from "../costs/CostInterface.ts";
 import type { RequiredOutputRange } from "../config/OutputRangeConfig.ts";
-import { calculateOutputRangePenalty } from "../architecture/OutputRangePenalty.ts";
-import { dataFiles } from "../architecture/Training.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { calculateOutputRangePenalty } from "@architecture/OutputRangePenalty.ts";
+import { dataFiles } from "@architecture/Training.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Verify WASM is available and the creature is eligible.

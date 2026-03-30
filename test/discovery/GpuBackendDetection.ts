@@ -9,8 +9,8 @@ import {
   getGpuBackendInfo,
   isRustGpuAvailable,
   rustLibraryExists,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
-import type { GpuBackendInfo } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import type { GpuBackendInfo } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 Deno.test({
   name: "getGpuBackendInfo returns structured result",

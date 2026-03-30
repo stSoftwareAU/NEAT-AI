@@ -11,10 +11,10 @@
  * WASM must always be available and all squash functions must be defined in WASM.
  */
 
-import { WasmError } from "../errors/WasmError.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import { Activations } from "../methods/activations/Activations.ts";
-import { hasUnSquash } from "../methods/activations/TypeGuards.ts";
+import { WasmError } from "@errors/WasmError.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import { hasUnSquash } from "@methods/activations/TypeGuards.ts";
 import { getSquashType, resolveWasmSquashName } from "./SquashType.ts";
 // Side-effect import: ensures WASM is loaded when this module is first evaluated.
 // Without this, direct imports of ActivationMethods.ts (bypassing mod.ts) would

@@ -1,10 +1,10 @@
 import { assertEquals } from "@std/assert";
 import { join } from "@std/path/join";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { recordDirectory } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
-import type { DiscoverStructureDeps } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { recordDirectory } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
+import type { DiscoverStructureDeps } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type {
   RustMergeParquetInput,
   RustMergeParquetResult,
@@ -12,7 +12,7 @@ import type {
   RustReadResult,
   RustRecordInput,
   RustRecordResult,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 Deno.test("Discovery flushes Rust recording in configured chunks", async () => {

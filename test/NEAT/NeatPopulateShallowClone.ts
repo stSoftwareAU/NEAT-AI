@@ -1,13 +1,13 @@
 import { assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
-import { Neat } from "../../src/NEAT/Neat.ts";
+import { Neat } from "@neat/Neat.ts";
 import { WorkerHandler } from "../../src/multithreading/workers/WorkerHandler.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
-} from "../../src/architecture/DataSet.ts";
+} from "@architecture/DataSet.ts";
 
 /**
  * Tests verifying that populatePopulation produces valid creatures

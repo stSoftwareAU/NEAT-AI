@@ -13,22 +13,25 @@
  */
 
 import type { Creature } from "../Creature.ts";
-import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
-import { type BackPropagationConfig, toValue } from "./BackPropagation.ts";
-import { accumulateBias, adjustedBias } from "./Bias.ts";
-import { distributeElasticError } from "./ElasticDistribution.ts";
-import type { SparseConfig } from "./sparse/SparseConfig.ts";
-import { accumulateWeight, adjustedWeight } from "./Weight.ts";
-import { noChangePropagate } from "../architecture/NoChangePropagate.ts";
+import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
+import {
+  type BackPropagationConfig,
+  toValue,
+} from "@propagate/BackPropagation.ts";
+import { accumulateBias, adjustedBias } from "@propagate/Bias.ts";
+import { distributeElasticError } from "@propagate/ElasticDistribution.ts";
+import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import { accumulateWeight, adjustedWeight } from "@propagate/Weight.ts";
+import { noChangePropagate } from "@architecture/NoChangePropagate.ts";
 import {
   fusedErrorDistribution,
   squash as wasmSquash,
 } from "../wasm/ActivationMethods.ts";
 import { SquashType } from "../wasm/SquashType.ts";
 import { adjustedActivation } from "../neuron/NeuronPropagation.ts";
-import { BackpropBuffers } from "./BackpropBuffers.ts";
-import { computeReverseTopologicalOrder } from "./TopologicalOrder.ts";
-import { wasmTopologicalBackprop } from "./WasmTopologicalBackprop.ts";
+import { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
+import { computeReverseTopologicalOrder } from "@propagate/TopologicalOrder.ts";
+import { wasmTopologicalBackprop } from "@propagate/WasmTopologicalBackprop.ts";
 
 /**
  * Propagate expected values backward through the network using

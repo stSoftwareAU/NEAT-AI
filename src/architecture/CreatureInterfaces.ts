@@ -3,12 +3,12 @@ import type {
   SynapseExport,
   SynapseInternal,
   SynapseTrace,
-} from "./SynapseInterfaces.ts";
+} from "@architecture/SynapseInterfaces.ts";
 import type {
   NeuronExport,
   NeuronInternal,
   NeuronTrace,
-} from "./NeuronInterfaces.ts";
+} from "@architecture/NeuronInterfaces.ts";
 import type { MemeticInterface } from "../blackbox/MemeticInterface.ts";
 import type { EvolvableHyperparameters } from "../config/HyperparameterConfig.ts";
 

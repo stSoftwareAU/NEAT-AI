@@ -2,7 +2,7 @@ import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../src/Creature.ts";
 import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
-import type { Approach } from "../../src/NEAT/LogApproach.ts";
+import type { Approach } from "@neat/LogApproach.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

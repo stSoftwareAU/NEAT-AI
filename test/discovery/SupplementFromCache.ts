@@ -8,8 +8,8 @@
 
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { buildRuntimeIdToWireMap } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { buildRuntimeIdToWireMap } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import {
   supplementFromCache,
 } from "../../src/discovery/SupplementFromCache.ts";

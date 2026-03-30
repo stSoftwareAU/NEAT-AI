@@ -14,7 +14,7 @@
  */
 
 import { join } from "@std/path/join";
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /** Metadata about a single cached file used for eviction decisions. */
 interface CacheFileInfo {

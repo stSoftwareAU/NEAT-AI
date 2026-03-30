@@ -14,7 +14,7 @@ import {
   DEFAULT_PLATEAU_DETECTION,
   detectPlateau,
   PlateauDetector,
-} from "../../src/NEAT/PlateauDetector.ts";
+} from "@neat/PlateauDetector.ts";
 
 // ============================================================================
 // Configuration Tests

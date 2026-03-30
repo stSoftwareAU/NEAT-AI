@@ -11,10 +11,10 @@
  */
 
 import type { CostName } from "../Costs.ts";
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { createNeatConfig } from "../config/NeatConfig.ts";
 import type { Creature } from "../Creature.ts";
-import { ConfigurationError } from "../errors/ConfigurationError.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
 import {
   calculatePriority,

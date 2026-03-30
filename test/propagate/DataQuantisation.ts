@@ -10,7 +10,7 @@ import {
   assertGreaterOrEqual,
   assertLessOrEqual,
 } from "@std/assert";
-import { quantiseBuffer } from "../../src/propagate/DataQuantisation.ts";
+import { quantiseBuffer } from "@propagate/DataQuantisation.ts";
 import { DEFAULT_DATA_QUANTISATION_CONFIG } from "../../src/config/DataQuantisationConfig.ts";
 import { parseDataQuantisation } from "../../src/config/NeatConfigParsers.ts";
 

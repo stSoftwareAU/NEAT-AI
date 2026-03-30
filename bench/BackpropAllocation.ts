@@ -16,7 +16,7 @@ import {
   isWasmActivationAvailable,
 } from "../src/wasm/mod.ts";
 import { wasmFusedErrorDistribution } from "../src/wasm/WasmStandaloneFunctions.ts";
-import { BackpropBuffers } from "../src/propagate/BackpropBuffers.ts";
+import { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
 
 // Initialise WASM
 const wasmInitialised = await initWasmActivation();

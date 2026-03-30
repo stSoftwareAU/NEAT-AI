@@ -9,9 +9,9 @@
 import { assert } from "@std/assert";
 import { Creature, Selection } from "../../mod.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
-import type { Genus } from "../NEAT/Genus.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import type { Genus } from "@neat/Genus.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { calculateAdaptiveTournamentSize } from "./AdaptiveTournamentSize.ts";
 import { createCompatibleFatherFromCreatures } from "./Father.ts";
 import { FitnessRanking } from "./FitnessRanking.ts";

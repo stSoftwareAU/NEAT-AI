@@ -8,13 +8,13 @@
  */
 import { assert } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import type {
   RustCandidateNeuron,
   RustCandidateSynapse,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 function makeCreature(): Creature {

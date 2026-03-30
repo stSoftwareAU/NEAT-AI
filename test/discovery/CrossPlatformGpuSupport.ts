@@ -9,19 +9,19 @@ import {
   buildCombinedAnalysisKey,
   convertParallelAnalysisResult,
   ensureRustCombinedAnalysis,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustAnalysisCache.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustAnalysisCache.ts";
 import type {
   GpuBackendInfo,
   RustCheckGpuResult,
   RustParallelAnalysisInput,
   RustParallelAnalysisResult,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
-import { creatureToRustFormat } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
-import { buildWireToRuntimeIdMap } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
-import { TopologyError } from "../../src/errors/TopologyError.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { creatureToRustFormat } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { buildWireToRuntimeIdMap } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 function makeCreature(): Creature {

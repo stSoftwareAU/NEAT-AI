@@ -19,7 +19,7 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
 import type { CostInterface } from "../costs/CostInterface.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import type { RequiredPredictiveCodingConfig } from "../config/PredictiveCodingConfig.ts";
 import { runInference } from "./PredictiveCodingInference.ts";
 import {
@@ -29,8 +29,8 @@ import {
   type SynapseGradient,
   type WeightGradients,
 } from "./PredictiveCodingLearning.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { computeEffectiveConfig } from "./AdaptiveScaling.ts";
 import {
   type DataFuzzingConfig,
@@ -42,8 +42,8 @@ import {
   DEFAULT_DATA_QUANTISATION_CONFIG,
   type RequiredDataQuantisationConfig,
 } from "../config/DataQuantisationConfig.ts";
-import { applyNoise } from "../propagate/DataFuzzing.ts";
-import { quantiseBuffer } from "../propagate/DataQuantisation.ts";
+import { applyNoise } from "@propagate/DataFuzzing.ts";
+import { quantiseBuffer } from "@propagate/DataQuantisation.ts";
 
 /**
  * Result from Predictive Coding training.

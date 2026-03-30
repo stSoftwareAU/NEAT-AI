@@ -12,7 +12,7 @@
  * Closes #1389
  */
 import { assert } from "@std/assert";
-import { Activations } from "../../src/methods/activations/Activations.ts";
+import { Activations } from "@methods/activations/Activations.ts";
 
 /**
  * All standard squash function names (non-aggregate, non-deprecated).

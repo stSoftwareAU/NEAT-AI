@@ -12,12 +12,12 @@
  *   deno bench --allow-read --allow-write bench/ParallelBreeding.ts
  */
 import { Creature } from "../src/Creature.ts";
-import { Genus } from "../src/NEAT/Genus.ts";
+import { Genus } from "@neat/Genus.ts";
 import { Breed } from "../src/breed/Breed.ts";
 import { ParallelBreeding } from "../src/breed/ParallelBreeding.ts";
 import { createNeatConfig } from "../src/config/NeatConfig.ts";
-import type { CreatureExport } from "../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 /**
  * Creates a test creature with specified parameters.

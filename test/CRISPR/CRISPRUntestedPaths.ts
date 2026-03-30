@@ -12,9 +12,9 @@ import {
 } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
 import { CRISPR, type CrisprInterface } from "../../src/reconstruct/CRISPR.ts";
-import { Neat } from "../../src/NEAT/Neat.ts";
+import { Neat } from "@neat/Neat.ts";
 
 /**
  * Creates a minimal creature with 2 inputs, 1 hidden neuron, and 1 output.

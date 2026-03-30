@@ -6,8 +6,8 @@
  */
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { Creature } from "../../src/Creature.ts";
 import {
   buildCombinedFromSuccessful,

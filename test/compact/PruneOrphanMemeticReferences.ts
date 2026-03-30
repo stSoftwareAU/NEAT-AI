@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { pruneOrphanMemeticReferences } from "../../src/compact/MemeticCleanup.ts";
 import { fix } from "../../src/creature/CreatureMutation.ts";
 

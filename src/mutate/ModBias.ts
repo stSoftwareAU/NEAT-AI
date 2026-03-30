@@ -4,7 +4,7 @@ import {
   DEFAULT_BIAS_REGULARISATION_CONFIG,
   type RequiredBiasRegularisationConfig,
 } from "../config/BiasRegularisationConfig.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
 /**

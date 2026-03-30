@@ -14,7 +14,7 @@
  * `getRandomNumberGenerator().random()`.
  */
 
-import { ValidationError } from "../errors/ValidationError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 
 /**
  * Random number generator interface.

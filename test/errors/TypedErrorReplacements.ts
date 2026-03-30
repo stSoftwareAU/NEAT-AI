@@ -10,8 +10,8 @@ import { Costs } from "../../src/Costs.ts";
 import {
   createSeededRng,
   createUnseededRng,
-} from "../../src/utils/RandomNumberGenerator.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
+} from "@utils/RandomNumberGenerator.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 
 // ── FitnessRanking ──────────────────────────────────────────────────────────
 

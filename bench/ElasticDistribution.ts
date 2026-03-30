@@ -16,7 +16,7 @@ import {
   initWasmActivation,
   isWasmActivationAvailable,
 } from "../src/wasm/mod.ts";
-import { distributeElasticError } from "../src/propagate/ElasticDistribution.ts";
+import { distributeElasticError } from "@propagate/ElasticDistribution.ts";
 import { wasmDistributeElasticError } from "../src/wasm/WasmStandaloneFunctions.ts";
 
 // Initialise WASM

@@ -6,7 +6,7 @@
  */
 import { assert, assertEquals, assertGreater } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
+import { Mutation } from "@neat/Mutation.ts";
 import type {
   GenerationCompleteEvent,
   TrainingEvent,

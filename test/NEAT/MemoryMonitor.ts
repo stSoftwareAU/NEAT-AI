@@ -8,7 +8,7 @@ import {
   type MemoryCheckResult,
   type MemoryUsageProvider,
   resetMemoryPressureLogCountersForTests,
-} from "../../src/NEAT/MemoryMonitor.ts";
+} from "@neat/MemoryMonitor.ts";
 import {
   DEFAULT_MEMORY_CONFIG,
   type RequiredMemoryConfig,
@@ -21,7 +21,7 @@ import {
   getWasmCompilationCacheMaxSize,
   setWasmCompilationCacheSize,
 } from "../../src/wasm/WasmCompilationCache.ts";
-import type { Logger } from "../../src/utils/Logger.ts";
+import type { Logger } from "@utils/Logger.ts";
 
 /** Silent logger that captures messages for assertions. */
 function createTestLogger(): Logger & { messages: string[] } {

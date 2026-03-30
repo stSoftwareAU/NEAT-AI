@@ -7,7 +7,7 @@
  * Extracted from DiscoveryCandidates.ts as part of #1473.
  */
 
-import type { CoordinatedStructuralOperation } from "../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+import type { CoordinatedStructuralOperation } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 
 /** Returns the last 8 characters of a UUID or the full ID if short. */
 export function shortID(id: string): string {

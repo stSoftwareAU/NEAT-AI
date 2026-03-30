@@ -9,7 +9,7 @@ import {
   computePredictionErrors,
   computeTotalEnergy,
 } from "../../src/predictiveCoding/PredictionErrorComputation.ts";
-import type { PredictionNodeState } from "../../src/architecture/PredictionNodeState.ts";
+import type { PredictionNodeState } from "@architecture/PredictionNodeState.ts";
 
 /**
  * Helper: creates a simple 2-input, 1-hidden, 1-output creature.

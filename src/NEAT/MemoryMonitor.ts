@@ -22,7 +22,7 @@ import {
   clearWasmCompilationCache,
   setWasmCompilationCacheSize,
 } from "../wasm/WasmCompilationCache.ts";
-import type { Logger } from "../utils/Logger.ts";
+import type { Logger } from "@utils/Logger.ts";
 
 /**
  * Pressure level determined by heap usage relative to configured thresholds.

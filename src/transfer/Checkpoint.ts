@@ -8,10 +8,10 @@
  */
 
 import { Creature } from "../Creature.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { exportJSON } from "../creature/CreatureSerialization.ts";
-import { nextNeuronId } from "../architecture/NeuronId.ts";
+import { nextNeuronId } from "@architecture/NeuronId.ts";
 import type {
   CheckpointInterface,
   CheckpointMetadata,

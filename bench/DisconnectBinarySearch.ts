@@ -28,7 +28,7 @@
  */
 
 import { Creature } from "../src/Creature.ts";
-import { IDENTITY } from "../src/methods/activations/types/IDENTITY.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 /**
  * Creates a creature with a specified approximate number of synapses.

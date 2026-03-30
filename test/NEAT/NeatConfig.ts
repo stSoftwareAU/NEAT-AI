@@ -5,7 +5,7 @@ import {
   MAX_ANALYSIS_TIMEOUT_MINUTES,
   MIN_ANALYSIS_TIMEOUT_MINUTES,
 } from "../../src/config/NeatConfig.ts";
-import { DEFAULT_RUST_FLUSH_BYTES } from "../../src/architecture/ErrorGuidedStructuralEvolution/constants.ts";
+import { DEFAULT_RUST_FLUSH_BYTES } from "@architecture/ErrorGuidedStructuralEvolution/constants.ts";
 import { Selection } from "../../mod.ts";
 
 Deno.test("NeatConfig debug", () => {

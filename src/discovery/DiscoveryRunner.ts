@@ -1,11 +1,11 @@
 import { assertExists } from "@std/assert";
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 import { format } from "@std/fmt/duration";
-import { ConfigurationError } from "../errors/ConfigurationError.ts";
-import { DiscoveryError } from "../errors/DiscoveryError.ts";
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import type { DiscoverResult } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
+import { DiscoveryError } from "@errors/DiscoveryError.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { isRustDiscoveryEnabled } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
 import type { Creature } from "../Creature.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";

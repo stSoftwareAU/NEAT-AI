@@ -5,7 +5,7 @@ import {
   DiscoveryReplayRunner,
 } from "../discovery/DiscoveryReplayRunner.ts";
 import { createNeatConfig } from "../config/NeatConfig.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 // Re-export for use by Neat.ts (Issue #1150)
 export type { DiscoveryReplayDirResult };

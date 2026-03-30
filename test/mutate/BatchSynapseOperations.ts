@@ -9,7 +9,7 @@
  */
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

@@ -1,17 +1,17 @@
 import { assert } from "@std/assert";
 import { type Creature, CreatureUtil } from "../../mod.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
-import type { Genus } from "../NEAT/Genus.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import type { Genus } from "@neat/Genus.ts";
 import { fineTuneImprovement } from "./FineTune.ts";
-import { Species } from "../NEAT/Species.ts";
-import type { Neat } from "../NEAT/Neat.ts";
-import { logApproach } from "../NEAT/LogApproach.ts";
+import { Species } from "@neat/Species.ts";
+import type { Neat } from "@neat/Neat.ts";
+import { logApproach } from "@neat/LogApproach.ts";
 import { restoreSource } from "./RestoreSource.ts";
 import type { AdaptiveFineTuneTracker } from "./AdaptiveFineTuneTracker.ts";
 
 import { retry } from "./Retry.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 export class FindTunePopulation {
   private neat: Neat;

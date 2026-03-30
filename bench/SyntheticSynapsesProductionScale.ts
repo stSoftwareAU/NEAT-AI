@@ -10,8 +10,8 @@
  *   deno bench --allow-read --allow-write bench/SyntheticSynapsesProductionScale.ts
  */
 import { Creature } from "../src/Creature.ts";
-import { generateSyntheticSynapses } from "../src/propagate/SyntheticSynapses.ts";
-import { removeSyntheticSynapses } from "../src/propagate/RemoveSyntheticSynapses.ts";
+import { generateSyntheticSynapses } from "@propagate/SyntheticSynapses.ts";
+import { removeSyntheticSynapses } from "@propagate/RemoveSyntheticSynapses.ts";
 import {
   createSeededRng,
   generateProductionCreature,

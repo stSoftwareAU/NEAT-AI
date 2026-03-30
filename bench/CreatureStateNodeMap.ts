@@ -13,7 +13,7 @@
  */
 
 import { Creature } from "../src/Creature.ts";
-import { CreatureState } from "../src/architecture/CreatureState.ts";
+import { CreatureState } from "@architecture/CreatureState.ts";
 
 const NEURON_COUNTS = [100, 500, 1000];
 const ITERATIONS = 5000;

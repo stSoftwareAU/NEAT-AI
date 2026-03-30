@@ -7,7 +7,7 @@
  */
 import { assertEquals, assertThrows } from "@std/assert";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { ConfigurationError } from "../../src/errors/ConfigurationError.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
 
 // --- mutationRate validation ---
 

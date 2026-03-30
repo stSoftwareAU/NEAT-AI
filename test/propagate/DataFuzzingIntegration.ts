@@ -7,14 +7,14 @@
  */
 import { assert, assertGreater } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 import {
   createSeededRng,
   getRandomNumberGenerator,
   setRandomNumberGenerator,
-} from "../../src/utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
 
 await initWasmForTests();
 

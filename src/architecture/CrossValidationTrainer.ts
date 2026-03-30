@@ -12,14 +12,14 @@ import { blue, yellow } from "@std/fmt/colors";
 import type { CostInterface } from "../costs/CostInterface.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
 import { Creature } from "../Creature.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { CreatureUtil } from "./CreatureUtils.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   cleanupFoldSplits,
   createKFoldSplits,
   type FoldSplit,
-} from "./KFoldSplitter.ts";
-import { trainDirSingleFold } from "./Training.ts";
+} from "@architecture/KFoldSplitter.ts";
+import { trainDirSingleFold } from "@architecture/Training.ts";
 
 /**
  * Result from cross-validation training.

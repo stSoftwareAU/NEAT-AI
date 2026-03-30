@@ -1,11 +1,11 @@
 import { assert } from "@std/assert";
 import { assertEquals } from "@std/assert/equals";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import type { CoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type { CoordinatedStructuralCandidate } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import { Creature } from "../../src/Creature.ts";
 import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
 import { buildCacheKey } from "../../src/discovery/FailureCache.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 function makeCreature(): Creature {
   const base: CreatureExport = {

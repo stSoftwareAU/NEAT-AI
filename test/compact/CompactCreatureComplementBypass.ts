@@ -1,10 +1,10 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { compactCreature } from "../../src/compact/CompactCreature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { COMPLEMENT } from "../../src/methods/activations/types/COMPLEMENT.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { MAXIMUM } from "../../src/methods/activations/aggregate/MAXIMUM.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { COMPLEMENT } from "@methods/activations/types/COMPLEMENT.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { MAXIMUM } from "@methods/activations/aggregate/MAXIMUM.ts";
 
 function makeData(p: number, input: number): Float32Array {
   const data = new Float32Array(input);

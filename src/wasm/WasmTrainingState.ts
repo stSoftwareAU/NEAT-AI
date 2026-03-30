@@ -28,9 +28,9 @@
  * ```
  */
 
-import type { BackPropagationConfig } from "../propagate/BackPropagation.ts";
-import type { NeuronState } from "../architecture/CreatureState.ts";
-import type { SynapseState } from "../propagate/SynapseState.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
+import type { NeuronState } from "@architecture/CreatureState.ts";
+import type { SynapseState } from "@propagate/SynapseState.ts";
 import {
   getAccumulateBiasPersistent4WayFn,
   getAccumulateBiasPersistent8WayFn,

@@ -8,7 +8,7 @@
  */
 
 import type { Creature } from "../Creature.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 import { applyChangeToCreature } from "./CandidateApplication.ts";
 import { buildCombinationDescription } from "./CandidateDescriptions.ts";
 import type {

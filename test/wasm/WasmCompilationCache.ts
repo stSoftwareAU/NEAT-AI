@@ -29,7 +29,7 @@ import {
   invalidateWasmCache,
   setWasmCompilationCacheSize,
 } from "../../src/wasm/WasmCompilationCache.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 /**
  * Create a simple test creature with the given number of hidden neurons.

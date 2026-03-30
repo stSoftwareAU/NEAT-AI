@@ -6,8 +6,8 @@
  */
 import { assertEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { geneticCompatibility } from "../../src/breed/GeneticCompatibility.ts";
 import {
   clearDistanceCache,

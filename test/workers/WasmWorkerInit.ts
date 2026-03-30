@@ -10,7 +10,7 @@
  * behaviour and the error types used.
  */
 import { assertEquals, assertIsError } from "@std/assert";
-import { WasmError } from "../../src/errors/WasmError.ts";
+import { WasmError } from "@errors/WasmError.ts";
 import { initialiseWasmActivationFromPayload } from "../../src/workers/WasmWorkerInit.ts";
 
 Deno.test("WasmWorkerInit: returns without error when payload missing and WASM not required", async () => {

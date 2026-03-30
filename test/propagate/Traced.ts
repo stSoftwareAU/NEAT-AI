@@ -1,9 +1,9 @@
 import { assert, assertNotEquals } from "@std/assert";
 import { Creature } from "../../mod.ts";
-import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
 import { compactUnused } from "../../src/compact/CompactUnused.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 Deno.test("Traced: compactUnused removes unused neurons from traced creature", () => {
   const json = JSON.parse(Deno.readTextFileSync("./test/data/traced.json"));

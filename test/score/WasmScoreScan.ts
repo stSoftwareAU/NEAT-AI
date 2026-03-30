@@ -7,16 +7,16 @@
 
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { calculate } from "../../src/architecture/Score.ts";
+import { calculate } from "@architecture/Score.ts";
 import {
   wasmComputeScoreComponents,
   wasmScanMaxBias,
   wasmScanMaxWeight,
 } from "../../src/wasm/WasmStandaloneFunctions.ts";
 import { ensureWasmActivation } from "../../src/wasm/EnsureWasmActivation.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
-import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { LOGISTIC } from "@methods/activations/types/LOGISTIC.ts";
+import { TANH } from "@methods/activations/types/TANH.ts";
 
 Deno.test("WasmScoreScan - compute_score_components available", async () => {
   await ensureWasmActivation();

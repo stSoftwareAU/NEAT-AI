@@ -8,7 +8,7 @@
  */
 import { assertEquals, assertGreater } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
+import { Mutation } from "@neat/Mutation.ts";
 
 Deno.test("PlateauDetection Integration - evolve returns plateau status", async () => {
   // Simple XOR dataset - known to potentially cause stagnation

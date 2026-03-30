@@ -9,7 +9,7 @@
  * distinguish between active and orphaned directories.
  */
 
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /** Name of the lock file placed in each discovery temp directory. */
 const LOCK_FILE_NAME = ".discovery.lock";

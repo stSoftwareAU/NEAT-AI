@@ -1,8 +1,8 @@
 import { assertEquals, assertNotEquals } from "@std/assert";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { Creature } from "../../src/Creature.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { Mutation } from "@neat/Mutation.ts";
 
 /**
  * Tests for caching valid mutation candidates between selection calls.

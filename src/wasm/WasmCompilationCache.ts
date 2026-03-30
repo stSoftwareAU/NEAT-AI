@@ -23,7 +23,7 @@
  */
 
 import type { Creature } from "../Creature.ts";
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { getSquashType } from "./SquashType.ts";
 import type { CompiledCreatureData } from "./CompileToWasm.ts";
 import { WasmCreatureActivation } from "./WasmActivation.ts";

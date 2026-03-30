@@ -11,13 +11,13 @@
  * success cache data.
  */
 
-import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   buildWireToRuntimeIdMap,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import type { Creature } from "../Creature.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { createSeededRng } from "../utils/RandomNumberGenerator.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { createSeededRng } from "@utils/RandomNumberGenerator.ts";
 import { shortID } from "./CandidateDescriptions.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import {

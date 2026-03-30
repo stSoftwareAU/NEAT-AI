@@ -1,9 +1,9 @@
 import { assertEquals, assertExists } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 
 /**
  * Test to verify that the Map-based neuron lookup optimization in Offspring.breed()

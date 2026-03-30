@@ -12,7 +12,7 @@ import type { Creature } from "../../src/Creature.ts";
 import {
   DiscoveryReplayQueue,
   type DiscoveryReplayQueueDeps,
-} from "../../src/NEAT/DiscoveryReplayQueue.ts";
+} from "@neat/DiscoveryReplayQueue.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import type { DiscoveryReplayDirResult } from "../../src/discovery/DiscoveryReplayRunner.ts";
 import { makeForwardOnlyCreature as makeBaseCreature } from "../fixtures/SimpleCreatures.ts";

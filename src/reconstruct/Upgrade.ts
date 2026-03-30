@@ -1,8 +1,8 @@
 import { assert } from "@std/assert";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { Creature } from "../Creature.ts";
-import { creatureValidate } from "../architecture/CreatureValidate.ts";
-import { outputNeuronId } from "../architecture/NeuronId.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { outputNeuronId } from "@architecture/NeuronId.ts";
 import type { CrisprInterface } from "./CRISPR.ts";
 
 /**

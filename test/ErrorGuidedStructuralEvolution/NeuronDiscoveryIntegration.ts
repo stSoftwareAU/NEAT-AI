@@ -12,22 +12,22 @@
  */
 import { assert } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { buildWireToRuntimeIdMap } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { buildWireToRuntimeIdMap } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import {
   DEFAULT_RUST_FLUSH_RECORDS,
   DiscoverStructure,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   shouldSkipRustDiscoveryTests,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { initWasmForTests } from "../_initWasm.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { TANH } from "../../src/methods/activations/types/TANH.ts";
-import { LeakyReLU } from "../../src/methods/activations/types/LeakyReLU.ts";
-import { Mish } from "../../src/methods/activations/types/Mish.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { TANH } from "@methods/activations/types/TANH.ts";
+import { LeakyReLU } from "@methods/activations/types/LeakyReLU.ts";
+import { Mish } from "@methods/activations/types/Mish.ts";
 
 function runtimeIdForUuid(creature: Creature, uuid: string): number {
   const id = buildWireToRuntimeIdMap(creature).get(uuid);

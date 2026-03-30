@@ -6,7 +6,7 @@
  */
 
 import type { Creature } from "../Creature.ts";
-import type { Synapse } from "../architecture/Synapse.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
 
 /**
  * Internal state for topology caches and indices.

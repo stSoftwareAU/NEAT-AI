@@ -5,8 +5,8 @@
  * Issue #1694
  */
 import { assertIsError } from "@std/assert";
-import { Fitness } from "../../src/architecture/Fitness.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
+import { Fitness } from "@architecture/Fitness.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { Creature } from "../../src/Creature.ts";
 
 Deno.test("Fitness calculate - throws ValidationError for invalid worker response", async () => {

@@ -1,8 +1,8 @@
 import { assert } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../mod.ts";
-import type { Approach } from "../NEAT/LogApproach.ts";
-import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
+import type { Approach } from "@neat/LogApproach.ts";
+import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
 
 /**
  * Restores a creature from its memetic source data.

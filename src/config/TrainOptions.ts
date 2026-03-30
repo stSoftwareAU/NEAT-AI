@@ -1,4 +1,4 @@
-import type { BackPropagationArguments } from "../propagate/BackPropagation.ts";
+import type { BackPropagationArguments } from "@propagate/BackPropagation.ts";
 import type { CrossValidationConfig } from "./CrossValidationConfig.ts";
 import type { DataFuzzingConfig } from "./DataFuzzingConfig.ts";
 import type { DataQuantisationConfig } from "./DataQuantisationConfig.ts";

@@ -11,9 +11,9 @@
 
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { Mutation } from "@neat/Mutation.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
 import { AddConnection } from "../../src/mutate/AddConnection.ts";

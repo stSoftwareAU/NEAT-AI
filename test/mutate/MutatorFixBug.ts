@@ -1,8 +1,8 @@
 import { assertEquals } from "@std/assert";
 import { Creature, CreatureUtil, Mutation } from "../../mod.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
+import { Mutator } from "@neat/Mutator.ts";
 
 /**
  * Test for bug: fix() called unconditionally causes incorrect return value.

@@ -14,12 +14,12 @@
  */
 
 import type { Creature } from "../Creature.ts";
-import type { DataRecordInterface } from "../architecture/DataSet.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { Costs } from "../Costs.ts";
 import {
   createSeededRng,
   getRandomNumberGenerator,
-} from "../utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Options for holdout validation.

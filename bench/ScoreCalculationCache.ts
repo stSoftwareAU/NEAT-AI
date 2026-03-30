@@ -10,8 +10,8 @@
  */
 
 import { Creature } from "../src/Creature.ts";
-import { calculate } from "../src/architecture/Score.ts";
-import { IDENTITY } from "../src/methods/activations/types/IDENTITY.ts";
+import { calculate } from "@architecture/Score.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 function createLargeCreature(): Creature {
   // Create a creature similar to the one mentioned in the issue

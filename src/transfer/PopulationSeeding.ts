@@ -7,7 +7,7 @@
  */
 
 import { Creature } from "../Creature.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 /**
  * Options for creating a seeded population.

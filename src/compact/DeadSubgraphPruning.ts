@@ -1,7 +1,7 @@
 import type { Creature } from "../Creature.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
-import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
 
 export interface PruneDeadSubgraphsResult {
   removedNeurons: number;

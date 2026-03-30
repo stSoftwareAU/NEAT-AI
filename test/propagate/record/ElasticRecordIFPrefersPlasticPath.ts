@@ -1,11 +1,11 @@
 import { assert } from "@std/assert";
-import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { Creature } from "../../../src/Creature.ts";
-import { ArcTan } from "../../../src/methods/activations/types/ArcTan.ts";
-import { IF } from "../../../src/methods/activations/aggregate/IF.ts";
-import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
-import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
+import { ArcTan } from "@methods/activations/types/ArcTan.ts";
+import { IF } from "@methods/activations/aggregate/IF.ts";
+import { ReLU } from "@methods/activations/types/ReLU.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 Deno.test("record(IF): prefers plastic positive-branch paths over saturated ArcTan parents", () => {
   // IF output chooses positive branch when condition > 0.

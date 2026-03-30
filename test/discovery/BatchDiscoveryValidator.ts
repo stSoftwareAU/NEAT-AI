@@ -7,12 +7,12 @@
  */
 import { assert, assertEquals, assertExists } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CandidateNeuron,
   CandidateSynapse,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   buildDiscoveryCandidates,
   type DiscoveryCandidate,
@@ -23,9 +23,9 @@ import {
   groupCandidatesByType,
   validateDiscoveryCandidatesBatchWithEnhanced,
 } from "../../src/discovery/BatchDiscoveryValidator.ts";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { makeDataDir } from "@architecture/DataSet.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { TANH } from "@methods/activations/types/TANH.ts";
 
 const _OUTPUT_0_ID = -1; // "output-0" (reserved for future tests)
 

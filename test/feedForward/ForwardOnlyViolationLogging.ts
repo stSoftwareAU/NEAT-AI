@@ -1,11 +1,11 @@
 import { assert, assertEquals } from "@std/assert";
-import { Synapse } from "../../src/architecture/Synapse.ts";
+import { Synapse } from "@architecture/Synapse.ts";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { Mutation } from "@neat/Mutation.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 Deno.test("Forward-only: self-connection is repaired on mutate", () => {
   // Import stays valid forward-only wire; simulate in-memory corruption (e.g. buggy op), then repair.

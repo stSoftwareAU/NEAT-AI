@@ -1,8 +1,8 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
-import type { BackpropBuffers } from "../propagate/BackpropBuffers.ts";
-import { SynapseState } from "../propagate/SynapseState.ts";
-import { DenseNumberMap } from "./DenseNumberMap.ts";
+import type { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
+import { SynapseState } from "@propagate/SynapseState.ts";
+import { DenseNumberMap } from "@architecture/DenseNumberMap.ts";
 
 export interface NeuronStateInterface {
   count: number;

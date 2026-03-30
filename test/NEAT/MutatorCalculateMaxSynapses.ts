@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
+import { Mutator } from "@neat/Mutator.ts";
 
 /**
  * Unit tests for Mutator.calculateMaxSynapses method.

@@ -9,11 +9,11 @@
 import { assert, assertEquals, assertGreater } from "@std/assert";
 import { getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { CrisprInterface } from "../../src/reconstruct/CRISPR.ts";
 import { CRISPR } from "../../src/reconstruct/CRISPR.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 /**

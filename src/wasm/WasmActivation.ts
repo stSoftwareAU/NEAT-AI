@@ -12,8 +12,8 @@
  */
 
 import type { Creature } from "../Creature.ts";
-import { WasmError } from "../errors/WasmError.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { WasmError } from "@errors/WasmError.ts";
+import { getLogger } from "@utils/Logger.ts";
 import type { CompiledCreatureData } from "./CompileToWasm.ts";
 import type { WasmCompiledNetwork } from "./WasmCompiledNetwork.ts";
 import {

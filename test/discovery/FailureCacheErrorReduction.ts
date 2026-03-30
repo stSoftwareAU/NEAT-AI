@@ -6,17 +6,17 @@ import {
 } from "../../src/discovery/FailureCache.ts";
 import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   closeRustLibrary,
   getDiscoveryVersion,
   shouldSkipRustDiscoveryTests,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
-import type { RemovalCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import type { RemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CandidateHarmfulNeuron,
   CandidateSynapse,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { makeSimpleCreature } from "../fixtures/SimpleCreatures.ts";
 
 function makeCandidate(

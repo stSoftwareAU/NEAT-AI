@@ -28,7 +28,7 @@ import {
   isWasmActivationAvailable,
   WasmCreatureActivation,
 } from "../src/wasm/mod.ts";
-import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 /**
  * Clone a creature with different weights (preserves neuron UUIDs).

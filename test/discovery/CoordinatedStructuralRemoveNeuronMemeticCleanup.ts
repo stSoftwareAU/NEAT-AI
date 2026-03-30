@@ -1,9 +1,9 @@
 import { assertEquals } from "@std/assert";
-import type { CoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
-import { applyCoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+import type { CoordinatedStructuralCandidate } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+import { applyCoordinatedStructuralCandidate } from "@architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../src/Creature.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 // Integer ID for hidden-0 (explicit id in fixture).
 const HIDDEN_0_ID = 5000; // "hidden-0"

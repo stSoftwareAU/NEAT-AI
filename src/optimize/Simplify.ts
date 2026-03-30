@@ -1,20 +1,20 @@
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { type CreatureExport, CreatureUtil } from "../../mod.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
-import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
-import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
+import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
 import { Creature } from "../Creature.ts";
-import { TopologyError } from "../errors/TopologyError.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import { Activations } from "../methods/activations/Activations.ts";
-import { isAggregationSquash } from "../methods/activations/SquashUtils.ts";
-import { validateOrDiagnose } from "../utils/Diagnostics.ts";
-import { ABSOLUTE } from "../methods/activations/types/ABSOLUTE.ts";
-import { COMPLEMENT } from "../methods/activations/types/COMPLEMENT.ts";
-import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
-import { ReLU } from "../methods/activations/types/ReLU.ts";
-import { hasSimplifyBias } from "../methods/activations/TypeGuards.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import { isAggregationSquash } from "@methods/activations/SquashUtils.ts";
+import { validateOrDiagnose } from "@utils/Diagnostics.ts";
+import { ABSOLUTE } from "@methods/activations/types/ABSOLUTE.ts";
+import { COMPLEMENT } from "@methods/activations/types/COMPLEMENT.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { ReLU } from "@methods/activations/types/ReLU.ts";
+import { hasSimplifyBias } from "@methods/activations/TypeGuards.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 export function simplify(creature: Creature): Creature | undefined {
   const complexUUID = CreatureUtil.makeUUID(creature);

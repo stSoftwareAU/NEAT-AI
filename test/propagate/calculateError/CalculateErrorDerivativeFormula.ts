@@ -14,8 +14,8 @@
  */
 
 import { assert, assertAlmostEquals } from "@std/assert";
-import { Activations } from "../../../src/methods/activations/Activations.ts";
-import type { ActivationInterface } from "../../../src/methods/activations/ActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
 
 /**
  * Activations that use the derivative formula: error = rawError / slope.

@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
 import type { CachedScoreComponents, Creature } from "../Creature.ts";
 import { SEMANTIC_MAJOR_VERSION } from "../upgrade/Upgrade.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 import {
   wasmComputeScoreComponents,
   wasmScanMaxBias,

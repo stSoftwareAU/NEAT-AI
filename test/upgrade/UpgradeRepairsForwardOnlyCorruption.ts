@@ -1,7 +1,7 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { upgrade } from "../../src/upgrade/Upgrade.ts";
 
 /**

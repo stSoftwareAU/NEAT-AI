@@ -38,7 +38,7 @@ export { exportSnapshotJSON } from "./src/creature/CreatureSerialization.ts";
 export type {
   CreatureExport,
   CreatureTrace,
-} from "./src/architecture/CreatureInterfaces.ts";
+} from "@architecture/CreatureInterfaces.ts";
 
 /**
  * Creature Utilities
@@ -47,7 +47,7 @@ export type {
  *
  * @see {@link module:src/architecture/CreatureUtils}
  */
-export { CreatureUtil } from "./src/architecture/CreatureUtils.ts";
+export { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 /**
  * NEAT Options
@@ -75,7 +75,7 @@ export type {
   RequiredOutputRange,
 } from "./src/config/OutputRangeConfig.ts";
 export { DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT } from "./src/config/OutputRangeConfig.ts";
-export { calculateOutputRangePenalty } from "./src/architecture/OutputRangePenalty.ts";
+export { calculateOutputRangePenalty } from "@architecture/OutputRangePenalty.ts";
 
 /**
  * Hyperparameter Evolution
@@ -165,7 +165,7 @@ export { Costs } from "./src/Costs.ts";
  *
  * @see {@link module:src/methods/Selection}
  */
-export { Selection } from "./src/methods/Selection.ts";
+export { Selection } from "@methods/Selection.ts";
 
 /**
  * Mutation Class
@@ -174,7 +174,7 @@ export { Selection } from "./src/methods/Selection.ts";
  *
  * @see {@link module:src/methods/Mutation}
  */
-export { Mutation } from "./src/NEAT/Mutation.ts";
+export { Mutation } from "@neat/Mutation.ts";
 
 /**
  * CRISPR Class
@@ -184,8 +184,8 @@ export { Mutation } from "./src/NEAT/Mutation.ts";
  * @see {@link module:src/reconstruct/CRISPR}
  */
 export { CRISPR, type CrisprInterface } from "./src/reconstruct/CRISPR.ts";
-export { CrisprError } from "./src/errors/CrisprError.ts";
-export type { CrisprErrorCode } from "./src/errors/CrisprError.ts";
+export { CrisprError } from "@errors/CrisprError.ts";
+export type { CrisprErrorCode } from "@errors/CrisprError.ts";
 export { validateDNA } from "./src/reconstruct/validateDNA.ts";
 
 /**
@@ -211,17 +211,17 @@ export { randomConnectMissing } from "./src/reconstruct/ConnectMissing.ts";
  *
  * @see {@link module:src/architecture/TypedTopology}
  */
-export { TypedTopology } from "./src/architecture/TypedTopology.ts";
+export { TypedTopology } from "@architecture/TypedTopology.ts";
 
 /**
  * Neuron Class
  */
-export { type NeuronExport } from "./src/architecture/NeuronInterfaces.ts";
+export { type NeuronExport } from "@architecture/NeuronInterfaces.ts";
 
 /**
  * Synapse Class
  */
-export { type SynapseExport } from "./src/architecture/SynapseInterfaces.ts";
+export { type SynapseExport } from "@architecture/SynapseInterfaces.ts";
 
 /**
  * Normalise Legacy CreatureExport
@@ -234,7 +234,7 @@ export { type SynapseExport } from "./src/architecture/SynapseInterfaces.ts";
 export {
   normaliseCreatureExport,
   normalised,
-} from "./src/architecture/NormaliseCreatureExport.ts";
+} from "@architecture/NormaliseCreatureExport.ts";
 
 /**
  * Upgrade to version 2.0.0
@@ -342,11 +342,11 @@ export {
   DEFAULT_PLATEAU_DETECTION,
   detectPlateau,
   PlateauDetector,
-} from "./src/NEAT/PlateauDetector.ts";
+} from "@neat/PlateauDetector.ts";
 export type {
   PlateauDetectionConfig,
   RequiredPlateauDetectionConfig,
-} from "./src/NEAT/PlateauDetector.ts";
+} from "@neat/PlateauDetector.ts";
 
 /**
  * WASM Cache Control
@@ -404,8 +404,8 @@ export {
   getLogger,
   setLogger,
   SILENT_LOGGER,
-} from "./src/utils/Logger.ts";
-export type { Logger, LogLevel } from "./src/utils/Logger.ts";
+} from "@utils/Logger.ts";
+export type { Logger, LogLevel } from "@utils/Logger.ts";
 
 /**
  * Random Number Generator
@@ -421,8 +421,8 @@ export {
   createUnseededRng,
   getRandomNumberGenerator,
   setRandomNumberGenerator,
-} from "./src/utils/RandomNumberGenerator.ts";
-export type { RandomNumberGenerator } from "./src/utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
+export type { RandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Structured Training Events

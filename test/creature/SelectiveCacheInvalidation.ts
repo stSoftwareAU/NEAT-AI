@@ -9,9 +9,9 @@
  */
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { calculate } from "../../src/architecture/Score.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { calculate } from "@architecture/Score.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

@@ -6,7 +6,7 @@
  * happen once in createNeatConfig. NeatConfig is always valid after creation.
  */
 
-import { ConfigurationError } from "../errors/ConfigurationError.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
 
 export interface NumberConstraints {
   /** Minimum value (inclusive). */

@@ -1,8 +1,8 @@
 import { assertEquals } from "@std/assert";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { Creature } from "../../src/Creature.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import { Mutator } from "@neat/Mutator.ts";
 
 Deno.test(
   "Mutator: forward-only run fixes injected SELF_CONNECTION",

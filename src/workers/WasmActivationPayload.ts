@@ -8,7 +8,7 @@
  * @module
  */
 
-import { WasmError } from "../errors/WasmError.ts";
+import { WasmError } from "@errors/WasmError.ts";
 
 /**
  * Payload for bootstrapping WASM activation inside a worker.

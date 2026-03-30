@@ -10,7 +10,7 @@
 
 import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
 import {
   initWasmActivation,
   isWasmActivationAvailable,

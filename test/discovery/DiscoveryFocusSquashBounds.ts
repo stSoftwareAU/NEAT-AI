@@ -1,9 +1,9 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 // Integer IDs for hidden neurons (deterministicIdFromUuid).
 const HIDDEN_DIRECT_ID = 1041673428; // "hidden-direct"

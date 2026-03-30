@@ -12,23 +12,23 @@ import { format } from "@std/fmt/duration";
 import type { Creature } from "../../Creature.ts";
 import type { NeatConfig } from "../../config/NeatConfig.ts";
 import { ensureWasmActivation } from "../../wasm/mod.ts";
-import { CreatureUtil } from "../CreatureUtils.ts";
-import type { DiscoverResult } from "./DiscoverResult.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import {
   DiscoverStructure,
   type DiscoverStructureDeps,
   type DiscoverStructureOptions,
-} from "./DiscoverStructure.ts";
-import { isRustDiscoveryEnabled } from "./RustDiscovery.ts";
-import { PhaseDiagnostics } from "./PhaseDiagnostics.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { isRustDiscoveryEnabled } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { PhaseDiagnostics } from "@architecture/ErrorGuidedStructuralEvolution/PhaseDiagnostics.ts";
 import {
   DiscoveryPerformanceStats,
   shouldLogDiscovery,
-} from "./DiscoveryPerformance.ts";
-import { runRecordingPhase } from "./DataRecorderRecording.ts";
-import { runAnalysisLoop } from "./DataRecorderAnalysis.ts";
-import { getLogger } from "../../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../../utils/RandomNumberGenerator.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryPerformance.ts";
+import { runRecordingPhase } from "@architecture/ErrorGuidedStructuralEvolution/DataRecorderRecording.ts";
+import { runAnalysisLoop } from "@architecture/ErrorGuidedStructuralEvolution/DataRecorderAnalysis.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Issue #1219 - Ensures WASM activation is initialised before discovery recording.

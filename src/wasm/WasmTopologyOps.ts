@@ -9,7 +9,7 @@
  * falls back to an equivalent TypeScript implementation.
  */
 
-import type { TypedTopology } from "../architecture/TypedTopology.ts";
+import type { TypedTopology } from "@architecture/TypedTopology.ts";
 import {
   getComputeReverseTopologicalOrderFn,
   getDetectCyclesFn,

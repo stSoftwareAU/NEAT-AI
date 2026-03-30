@@ -5,7 +5,7 @@
  * Issue #1116 - WASM prototype for creature activation
  * Issue #1125 - Added aggregate functions (IF, MINIMUM, MAXIMUM)
  */
-import { Activations } from "../methods/activations/Activations.ts";
+import { Activations } from "@methods/activations/Activations.ts";
 
 export enum SquashType {
   Identity = 0,

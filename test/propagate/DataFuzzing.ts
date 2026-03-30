@@ -12,8 +12,8 @@ import {
   assertLess,
   assertNotEquals,
 } from "@std/assert";
-import { applyNoise } from "../../src/propagate/DataFuzzing.ts";
-import { createSeededRng } from "../../src/utils/RandomNumberGenerator.ts";
+import { applyNoise } from "@propagate/DataFuzzing.ts";
+import { createSeededRng } from "@utils/RandomNumberGenerator.ts";
 import { DEFAULT_DATA_FUZZING_CONFIG } from "../../src/config/DataFuzzingConfig.ts";
 import { parseDataFuzzing } from "../../src/config/NeatConfigParsers.ts";
 

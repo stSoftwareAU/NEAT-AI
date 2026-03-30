@@ -1,6 +1,6 @@
 import { assertLess } from "@std/assert";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { Creature } from "../../src/Creature.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 import { initWasmForTests } from "../_initWasm.ts";

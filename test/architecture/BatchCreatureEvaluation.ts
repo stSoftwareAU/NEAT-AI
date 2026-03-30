@@ -9,8 +9,8 @@
  */
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { Fitness } from "../../src/architecture/Fitness.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { Fitness } from "@architecture/Fitness.ts";
 import type { WorkerHandler } from "../../src/multithreading/workers/WorkerHandler.ts";
 import {
   DEFAULT_PARALLEL_EVALUATION_CONFIG,

@@ -1,7 +1,7 @@
 import { assertIsError, assertThrows } from "@std/assert";
-import { TopologyError } from "../../src/errors/TopologyError.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 import { Creature } from "../../src/Creature.ts";
-import { Neuron } from "../../src/architecture/Neuron.ts";
+import { Neuron } from "@architecture/Neuron.ts";
 
 Deno.test("Neuron constructor throws TopologyError for invalid type", () => {
   const creature = new Creature(2, 1);

@@ -4,8 +4,8 @@ import {
   calculate,
   updateScoreForBiasChange,
   updateScoreForWeightChange,
-} from "../../src/architecture/Score.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+} from "@architecture/Score.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 /**
  * Test suite for incremental score update optimisation.

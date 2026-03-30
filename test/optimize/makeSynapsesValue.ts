@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { makeSynapsesValue } from "../../src/optimize/makeSynapsesValue.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { makeSynapsesValue } from "@optimize/makeSynapsesValue.ts";
 
 /** Helper: creates a creature for testing makeSynapsesValue. */
 function makeTestCreature(): Creature {

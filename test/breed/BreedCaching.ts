@@ -19,8 +19,8 @@ import { Breed } from "../../src/breed/Breed.ts";
 import { FitnessRanking } from "../../src/breed/FitnessRanking.ts";
 import { ParallelBreeding } from "../../src/breed/ParallelBreeding.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Genus } from "../../src/NEAT/Genus.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { Genus } from "@neat/Genus.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 
 /**
  * Creates a scored creature with a hidden neuron for use in breeding tests.

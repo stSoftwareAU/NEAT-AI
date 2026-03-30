@@ -15,8 +15,8 @@
  */
 
 import { Creature } from "../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { chooseNeurons } from "../../src/propagate/sparse/ChooseNeurons.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { chooseNeurons } from "@propagate/sparse/ChooseNeurons.ts";
 
 function formatDuration(ms: number): string {
   if (ms < 1) {

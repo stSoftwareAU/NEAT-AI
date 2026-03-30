@@ -1,5 +1,5 @@
 import { assertIsError, assertThrows } from "@std/assert";
-import { ConfigurationError } from "../../src/errors/ConfigurationError.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import {
   parseDiscoverySampleRate,
   parseNumber,

@@ -8,7 +8,7 @@
  * Part of #1735.
  */
 
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 import type { EvaluationTaskResult } from "./DiscoveryRunnerEvaluation.ts";
 
 /** Per-changeType diagnostics entry. */

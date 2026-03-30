@@ -10,8 +10,8 @@
  */
 import { assert, assertEquals, assertExists } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { makeDataDir } from "@architecture/DataSet.ts";
 import type {
   DiscoveryCandidate,
 } from "../../src/discovery/DiscoveryCandidates.ts";

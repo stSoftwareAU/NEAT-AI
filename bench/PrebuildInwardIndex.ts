@@ -13,8 +13,8 @@
  *   deno bench --allow-read --allow-write bench/PrebuildInwardIndex.ts
  */
 import { Creature } from "../src/Creature.ts";
-import { Offspring } from "../src/architecture/Offspring.ts";
-import { Mutator } from "../src/NEAT/Mutator.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import { Mutator } from "@neat/Mutator.ts";
 import { createNeatConfig } from "../src/config/NeatConfig.ts";
 
 // Create parent creatures for breeding benchmarks

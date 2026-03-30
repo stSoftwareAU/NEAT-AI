@@ -11,7 +11,7 @@
  */
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature, CreatureUtil } from "../mod.ts";
-import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
 import { FitnessRanking } from "../src/breed/FitnessRanking.ts";
 import { calculateAdaptiveTournamentSize } from "../src/breed/AdaptiveTournamentSize.ts";
 

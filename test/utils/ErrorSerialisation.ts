@@ -1,5 +1,5 @@
 import { assertEquals, assertInstanceOf } from "@std/assert";
-import { toError, toErrorMessage } from "../../src/utils/ErrorSerialisation.ts";
+import { toError, toErrorMessage } from "@utils/ErrorSerialisation.ts";
 
 Deno.test("toErrorMessage extracts message from Error instance", () => {
   const error = new Error("something went wrong");

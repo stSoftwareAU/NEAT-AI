@@ -14,15 +14,15 @@
  */
 import { assert, assertEquals, assertExists } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   DiscoverStructure,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   shouldSkipRustDiscoveryTests,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { TANH } from "../../src/methods/activations/types/TANH.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { TANH } from "@methods/activations/types/TANH.ts";
 
 /**
  * Regression test: discovered neuron must be inserted before a hidden target.

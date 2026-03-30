@@ -1,6 +1,6 @@
 import type { Creature } from "../Creature.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import { getLogger } from "./Logger.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 export const DIAGNOSTICS_DIR = ".diagnostics";
 

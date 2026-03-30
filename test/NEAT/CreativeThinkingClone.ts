@@ -5,7 +5,7 @@ import {
   assertNotEquals,
 } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { AddConnection } from "../../src/mutate/AddConnection.ts";
 
 /**

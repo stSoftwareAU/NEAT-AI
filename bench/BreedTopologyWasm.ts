@@ -18,8 +18,8 @@
  *   deno bench --allow-read --allow-write bench/BreedTopologyWasm.ts
  */
 import { Creature } from "../src/Creature.ts";
-import { Offspring } from "../src/architecture/Offspring.ts";
-import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 
 // === Small creatures (~20 neurons) ===
 const smallMum = new Creature(5, 3, {

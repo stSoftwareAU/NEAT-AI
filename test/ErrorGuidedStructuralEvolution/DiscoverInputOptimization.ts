@@ -1,19 +1,19 @@
 import { assert, assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
-import { recordDirectory } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import { makeDataDir } from "@architecture/DataSet.ts";
+import { recordDirectory } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import {
   DEFAULT_RUST_FLUSH_RECORDS,
   type DiscoverRecord,
   DiscoverStructure,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { Creature } from "../../src/Creature.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { TANH } from "../../src/methods/activations/types/TANH.ts";
-import { isRustDiscoveryEnabled } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { TANH } from "@methods/activations/types/TANH.ts";
+import { isRustDiscoveryEnabled } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 /**

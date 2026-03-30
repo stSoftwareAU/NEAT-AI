@@ -1,4 +1,4 @@
-import { CrisprError } from "../errors/CrisprError.ts";
+import { CrisprError } from "@errors/CrisprError.ts";
 import type { CrisprInterface } from "./CRISPR.ts";
 
 /**

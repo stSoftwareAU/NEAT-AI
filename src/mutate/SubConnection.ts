@@ -1,7 +1,7 @@
 import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import type { Synapse } from "../architecture/Synapse.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
 export class SubConnection extends AbstractMutationOperator {

@@ -1,11 +1,11 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { Breed } from "../../src/breed/Breed.ts";
-import { Genus } from "../../src/NEAT/Genus.ts";
-import { Neat } from "../../src/NEAT/Neat.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
+import { Genus } from "@neat/Genus.ts";
+import { Neat } from "@neat/Neat.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { Offspring } from "@architecture/Offspring.ts";
 import { AddNeuron } from "../../src/mutate/AddNeuron.ts";
 import { AddConnection } from "../../src/mutate/AddConnection.ts";
 

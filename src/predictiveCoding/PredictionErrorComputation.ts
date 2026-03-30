@@ -12,9 +12,9 @@
  */
 
 import type { Creature } from "../Creature.ts";
-import type { PredictionNodeState } from "../architecture/PredictionNodeState.ts";
-import { Activations } from "../methods/activations/Activations.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import type { PredictionNodeState } from "@architecture/PredictionNodeState.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
 
 /**
  * Computes the top-down prediction for a single neuron.

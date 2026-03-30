@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { findRustLibraryFromOptions } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { findRustLibraryFromOptions } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 function expectedLibraryExtension(): string {
   switch (Deno.build.os) {

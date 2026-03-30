@@ -10,7 +10,7 @@ import type {
   TrainingEvent,
   TrainingEventCallback,
 } from "../config/TrainingEvent.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Safely emits a training event to the callback.

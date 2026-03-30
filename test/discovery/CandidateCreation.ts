@@ -16,14 +16,14 @@
 
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import type {
   CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import {
   buildHarmfulNeuronRemovalCandidate,
   buildHarmfulSynapseRemovalCandidates,

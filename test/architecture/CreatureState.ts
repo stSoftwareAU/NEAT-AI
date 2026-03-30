@@ -8,11 +8,8 @@
 
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import {
-  CreatureState,
-  NeuronState,
-} from "../../src/architecture/CreatureState.ts";
-import { SynapseState } from "../../src/propagate/SynapseState.ts";
+import { CreatureState, NeuronState } from "@architecture/CreatureState.ts";
+import { SynapseState } from "@propagate/SynapseState.ts";
 
 // --- NeuronState tests ---
 

@@ -11,14 +11,14 @@ import type {
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   buildWireToRuntimeIdMap,
   resolveSingleNeuronReference,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import type { Creature } from "../Creature.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 import { shortID } from "./CandidateDescriptions.ts";
 import {
   mapScaledSummaryEntries,

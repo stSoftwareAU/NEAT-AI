@@ -8,8 +8,8 @@
  */
 
 import type { Creature } from "../Creature.ts";
-import { buildRuntimeIdToWireMap } from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { buildRuntimeIdToWireMap } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { getLogger } from "@utils/Logger.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type {
   ActualCreatureChange,

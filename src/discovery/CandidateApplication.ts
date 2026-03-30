@@ -12,11 +12,11 @@
 
 import {
   applyCoordinatedStructuralCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
 import type { Creature } from "../Creature.ts";
 import { exportJSON } from "../creature/CreatureSerialization.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import { getLogger } from "@utils/Logger.ts";
 import type {
   DiscoveryCandidate,
   DiscoveryChangeType,
@@ -28,7 +28,7 @@ import {
   applyRemoveNeuron,
   applyRemoveSynapse,
 } from "./CandidateApplicationOps.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 
 function shouldEnforceForwardOnly(creature: Creature): boolean {
   return creature.forwardOnly === true;

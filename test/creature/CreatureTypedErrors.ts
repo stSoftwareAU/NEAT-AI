@@ -6,8 +6,8 @@
  */
 import { assertIsError, assertThrows } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { ActivationError } from "../../src/errors/ActivationError.ts";
-import { TopologyError } from "../../src/errors/TopologyError.ts";
+import { ActivationError } from "@errors/ActivationError.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 
 Deno.test("Creature activate - throws ActivationError for NaN input", () => {
   const creature = new Creature(2, 1);

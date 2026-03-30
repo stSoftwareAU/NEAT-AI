@@ -10,8 +10,8 @@
  *
  * When a CreatureExport already has integer IDs, this is a no-op.
  */
-import type { CreatureExport } from "./CreatureInterfaces.ts";
-import { ensureIdAbove, outputNeuronId } from "./NeuronId.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { ensureIdAbove, outputNeuronId } from "@architecture/NeuronId.ts";
 
 /**
  * Deterministic integer ID from a UUID string.

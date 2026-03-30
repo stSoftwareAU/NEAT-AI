@@ -7,8 +7,8 @@
 
 import { assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { computeReverseTopologicalOrder } from "../../src/propagate/TopologicalOrder.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { computeReverseTopologicalOrder } from "@propagate/TopologicalOrder.ts";
 
 Deno.test("TopologicalOrder - simple chain produces output-first order", () => {
   // A → H1 → H2 → O

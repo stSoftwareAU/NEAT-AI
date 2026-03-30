@@ -15,8 +15,8 @@ import {
   calculate,
   updateScoreForBiasChange,
   updateScoreForWeightChange,
-} from "../src/architecture/Score.ts";
-import { IDENTITY } from "../src/methods/activations/types/IDENTITY.ts";
+} from "@architecture/Score.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 function createLargeCreature(): Creature {
   const creature = new Creature(50, 5, {

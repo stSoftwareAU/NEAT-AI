@@ -8,7 +8,7 @@
 import { blue, yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import type { NeatConfig } from "../../config/NeatConfig.ts";
-import { getLogger } from "../../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Returns whether discovery logging is enabled for the given config.

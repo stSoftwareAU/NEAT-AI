@@ -1,8 +1,8 @@
 import { assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { Upgrade } from "../../src/reconstruct/Upgrade.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

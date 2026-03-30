@@ -10,9 +10,9 @@
 
 import { assert } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 Deno.test("NearZeroWeightGradient - clamped gradient propagates through near-zero weight with TANH", () => {
   // Network: Input → Hidden (TANH, weight=1e-10) → Output (IDENTITY)

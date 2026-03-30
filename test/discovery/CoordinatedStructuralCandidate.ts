@@ -1,10 +1,10 @@
 import { assertEquals, assertExists } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import type { CoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
-import { applyCoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type { CoordinatedStructuralCandidate } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+import { applyCoordinatedStructuralCandidate } from "@architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
 import { Creature } from "../../src/Creature.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 
 // Integer IDs for neurons used in these tests (from UUID hashing):
 // hidden-0 = 1775329651, output-0 = -1

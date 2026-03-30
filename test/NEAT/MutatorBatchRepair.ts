@@ -1,10 +1,10 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import { Mutator } from "@neat/Mutator.ts";
 
 /**
  * Tests for Issue #1583: Batch fix() and validate() calls.

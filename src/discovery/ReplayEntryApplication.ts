@@ -13,23 +13,23 @@ import type {
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { RemovalCandidate } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { RemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CoordinatedStructuralCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import {
   applyCoordinatedStructuralCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
 import {
   buildWireToRuntimeIdMap,
   resolveCandidateNeuronEndpoints,
   resolveCandidateSynapseEndpoints,
   resolveCoordinatedEdgeEndpoints,
   resolveWireToRuntimeId,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
-import { exportJSONWithRuntimeIds } from "../architecture/PopulateRuntimeIdsFromCreature.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import type { Creature } from "../Creature.ts";
 import { formatWeight } from "./FailureCache.ts";
 import type { SuccessCacheEntry } from "./SuccessCache.ts";

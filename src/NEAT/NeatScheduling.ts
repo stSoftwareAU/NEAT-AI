@@ -10,18 +10,18 @@ import { blue } from "@std/fmt/colors";
 import { ensureDirSync } from "@std/fs";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import { DiscoverStructure } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { exportJSONWithRuntimeIds } from "../architecture/PopulateRuntimeIdsFromCreature.ts";
-import { isRustDiscoveryEnabled } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
-import { calculate as calculateScore } from "../architecture/Score.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { isRustDiscoveryEnabled } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { calculate as calculateScore } from "@architecture/Score.ts";
 import { fineTuneImprovement } from "../blackbox/FineTune.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
 import type { TrainOptions } from "../config/TrainOptions.ts";
 import { calculateDiscoveryTimeout } from "../discovery/DiscoveryTimeout.ts";
-import type { DiscoveryReplayDirResult } from "./DiscoveryReplayQueue.ts";
-import { getLogger } from "../utils/Logger.ts";
-import type { Neat } from "./Neat.ts";
+import type { DiscoveryReplayDirResult } from "@neat/DiscoveryReplayQueue.ts";
+import { getLogger } from "@utils/Logger.ts";
+import type { Neat } from "@neat/Neat.ts";
 
 /**
  * Schedules structural discovery for a creature on a worker.

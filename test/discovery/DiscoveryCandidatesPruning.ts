@@ -1,14 +1,14 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import {
   buildDiscoveryCandidates,
   pruneSuccessfulCandidatesForCombos,
 } from "../../src/discovery/DiscoveryCandidates.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { Mish } from "../../src/methods/activations/types/Mish.ts";
-import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { Mish } from "@methods/activations/types/Mish.ts";
+import { TANH } from "@methods/activations/types/TANH.ts";
 
 function makeBaselineCreature(): Creature {
   const creature = Creature.fromJSON({

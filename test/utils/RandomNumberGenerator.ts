@@ -4,14 +4,14 @@ import {
   assertNotEquals,
   assertThrows,
 } from "@std/assert";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import {
   createSeededRng,
   createUnseededRng,
   getRandomNumberGenerator,
   type RandomNumberGenerator,
   setRandomNumberGenerator,
-} from "../../src/utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
 
 Deno.test("SeededRng: same seed produces same sequence", () => {
   const rng1 = createSeededRng(42);

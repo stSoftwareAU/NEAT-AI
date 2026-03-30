@@ -17,7 +17,7 @@ import type {
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "./DiscoverStructureTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 import {
   addHelpfulNeurons as addHelpfulNeuronsImpl,
   addHelpfulSynapses as addHelpfulSynapsesImpl,
@@ -29,13 +29,13 @@ import {
   removeSynapse as removeSynapseImpl,
   resetRemovalDiagnostics as resetRemovalDiagnosticsImpl,
   validateAndFixIfNeeded as validateAndFixIfNeededImpl,
-} from "./DiscoveryApplication.ts";
-import { DiscoverStructureAnalysis } from "./DiscoverStructureAnalysis.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryApplication.ts";
+import { DiscoverStructureAnalysis } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureAnalysis.ts";
 
 export {
   DEFAULT_RUST_FLUSH_BYTES,
   DEFAULT_RUST_FLUSH_RECORDS,
-} from "./constants.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/constants.ts";
 
 // Re-export all types from DiscoverStructureTypes for backward compatibility
 export type {
@@ -56,15 +56,15 @@ export type {
   RustFlushAggregation,
   RustFlushDiagnostics,
   RustFlushMetrics,
-} from "./DiscoverStructureTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 export type {
   FocusNeuronCandidate,
   FocusSelectionAnalysis,
   FocusSelectionMode,
   FocusSelectionSummary,
-} from "./DiscoverStructureTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 
-export type { DiscoverStructureDeps } from "./DiscoverStructureBase.ts";
+export type { DiscoverStructureDeps } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureBase.ts";
 
 /**
  * Implements Error-Driven Structural Discovery, analysing neuron activations and errors

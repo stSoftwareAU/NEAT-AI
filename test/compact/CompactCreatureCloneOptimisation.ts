@@ -1,9 +1,9 @@
 import { assert, assertEquals, assertNotStrictEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { compactCreature } from "../../src/compact/CompactCreature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { LOGISTIC } from "../../src/methods/activations/types/LOGISTIC.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { LOGISTIC } from "@methods/activations/types/LOGISTIC.ts";
 
 /**
  * Tests that compaction produces behaviour-equivalent results without

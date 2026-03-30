@@ -8,15 +8,15 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   type CandidateSynapse,
   DiscoverStructure,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { RemovalCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { RemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import { Creature } from "../../src/Creature.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { join } from "@std/path";
 
 function makeTestCreature(): Creature {

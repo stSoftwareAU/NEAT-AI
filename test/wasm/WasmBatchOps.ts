@@ -9,8 +9,8 @@
 
 import { assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { TypedTopology } from "../../src/architecture/TypedTopology.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { TypedTopology } from "@architecture/TypedTopology.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   calculateBiasBatch4Way,
   calculateWeightBatch4Way,
@@ -21,8 +21,8 @@ import {
   wasmCalculateBias,
   wasmCalculateWeight,
 } from "../../src/wasm/WasmStandaloneFunctions.ts";
-import { SynapseState } from "../../src/propagate/SynapseState.ts";
-import type { BackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { SynapseState } from "@propagate/SynapseState.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers

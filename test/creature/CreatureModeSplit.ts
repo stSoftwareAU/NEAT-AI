@@ -6,11 +6,11 @@ import {
   Creature,
   CURRENT_CREATURE_SEMANTIC_VERSION,
 } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import { Mutator } from "@neat/Mutator.ts";
 import { upgrade } from "../../src/upgrade/Upgrade.ts";
 
 Deno.test("CreatureModeSplit: fresh forward-only is 4.0.0", () => {

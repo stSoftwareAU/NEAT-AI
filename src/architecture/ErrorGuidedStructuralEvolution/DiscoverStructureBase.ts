@@ -10,7 +10,7 @@ import { assert } from "@std/assert";
 import type { Creature } from "../../Creature.ts";
 import { isWasmActivationAvailable } from "../../wasm/mod.ts";
 import type { CreatureErrorImpactEstimator } from "../../discovery/NeuronErrorImpactEstimator.ts";
-import type { DataRecordInterface } from "../DataSet.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import {
   analyzeParallel,
   isRustDiscoveryEnabled,
@@ -19,11 +19,11 @@ import {
   rankFocusNeurons,
   readDiscoveryRecords,
   recordDiscovery,
-} from "./RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import {
   DEFAULT_RUST_FLUSH_BYTES,
   DEFAULT_RUST_FLUSH_RECORDS,
-} from "./constants.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/constants.ts";
 import { emptyDirSync, ensureDirSync } from "@std/fs";
 import {
   cleanOrphanedDiscoveryDirs,
@@ -37,21 +37,24 @@ import type {
   FocusSelectionSummary,
   NeuronImpactInfo,
   NeuronScanStats,
-} from "./DiscoverStructureTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 import {
   truncateForLogValue as truncateForLogValueImpl,
-} from "./RustFlushDiagnostics.ts";
-import { getLogger } from "../../utils/Logger.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustFlushDiagnostics.ts";
+import { getLogger } from "@utils/Logger.ts";
 import { logDiscoveryDiskUsage } from "../../discovery/DiskSpaceMonitor.ts";
 
-import { logDiscovery } from "./DiscoverLogging.ts";
-import { loadNeuronRecords } from "./DiscoverDataLoading.ts";
-import { calculateNeuronImpact, listNeuronsByImpact } from "./NeuronImpact.ts";
-import type { CombinedAnalysisCache } from "./RustAnalysisCache.ts";
+import { logDiscovery } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverLogging.ts";
+import { loadNeuronRecords } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDataLoading.ts";
+import {
+  calculateNeuronImpact,
+  listNeuronsByImpact,
+} from "@architecture/ErrorGuidedStructuralEvolution/NeuronImpact.ts";
+import type { CombinedAnalysisCache } from "@architecture/ErrorGuidedStructuralEvolution/RustAnalysisCache.ts";
 import type {
   CandidateNeuron,
   CandidateSynapse,
-} from "./DiscoverStructureTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 
 export interface DiscoverStructureDeps {
   isRustDiscoveryEnabled: typeof isRustDiscoveryEnabled;

@@ -8,16 +8,12 @@
  */
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import {
-  generateSyntheticSynapses,
-} from "../../src/propagate/SyntheticSynapses.ts";
-import {
-  removeSyntheticSynapses,
-} from "../../src/propagate/RemoveSyntheticSynapses.ts";
-import { trainDir } from "../../src/architecture/Training.ts";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { generateSyntheticSynapses } from "@propagate/SyntheticSynapses.ts";
+import { removeSyntheticSynapses } from "@propagate/RemoveSyntheticSynapses.ts";
+import { trainDir } from "@architecture/Training.ts";
+import { makeDataDir } from "@architecture/DataSet.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { Costs } from "../../src/Costs.ts";
 
 /** Builds a creature with an IF neuron that has condition/positive/negative connections. */

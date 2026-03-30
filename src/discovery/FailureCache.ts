@@ -13,8 +13,8 @@
  */
 
 import { dirname } from "@std/path/dirname";
-import { getDiscoveryVersion } from "../architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { getDiscoveryVersion } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { getLogger } from "@utils/Logger.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type { Creature } from "../Creature.ts";
 import {

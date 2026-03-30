@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
 import { scanForSquashImprovements } from "../../src/intelligentDesign/ImproveSquash.ts";
 

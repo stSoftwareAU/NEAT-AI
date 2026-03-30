@@ -1,11 +1,11 @@
 import { addTag, getTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { CreatureUtil, Upgrade } from "../../mod.ts";
-import { Neuron } from "../architecture/Neuron.ts";
-import { nextNeuronId, outputNeuronId } from "../architecture/NeuronId.ts";
+import { Neuron } from "@architecture/Neuron.ts";
+import { nextNeuronId, outputNeuronId } from "@architecture/NeuronId.ts";
 import type { Creature } from "../Creature.ts";
-import { CrisprError } from "../errors/CrisprError.ts";
-import { TopologyError } from "../errors/TopologyError.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { CrisprError } from "@errors/CrisprError.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import { getLogger } from "@utils/Logger.ts";
 import { validateDNA } from "./validateDNA.ts";
 
 /**

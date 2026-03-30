@@ -5,10 +5,10 @@
  */
 import { assertEquals, assertInstanceOf } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { TypedTopology } from "../../src/architecture/TypedTopology.ts";
+import { TypedTopology } from "@architecture/TypedTopology.ts";
 import { getSquashType, SquashType } from "../../src/wasm/SquashType.ts";
 import { SynapseTypeCode } from "../../src/wasm/CompileToWasm.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 /** Helper: create a simple 2-input, 1-hidden, 1-output creature. */
 function makeTestCreature(): Creature {

@@ -13,15 +13,15 @@ import type {
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { RemovalCandidate } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import type { CoordinatedStructuralCandidate } from "../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { RemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type { CoordinatedStructuralCandidate } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import type { Creature } from "../Creature.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 import {
   buildWireToRuntimeIdMap,
   resolveWireToRuntimeId,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import { buildCacheKey } from "./FailureCacheKey.ts";
 import type {
   DiscoveryCandidate,

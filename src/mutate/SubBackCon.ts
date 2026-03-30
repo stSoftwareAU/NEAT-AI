@@ -1,8 +1,8 @@
 import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 export class SubBackCon extends AbstractMutationOperator {
   protected performMutation(focusList?: number[]): boolean {

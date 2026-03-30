@@ -16,7 +16,7 @@ import {
   assertNotStrictEquals,
   assertStrictEquals,
 } from "@std/assert";
-import { BufferPool } from "../../src/utils/BufferPool.ts";
+import { BufferPool } from "@utils/BufferPool.ts";
 
 /**
  * Test that a newly created pool starts empty.

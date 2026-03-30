@@ -1,11 +1,11 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
-import type { Synapse } from "../architecture/Synapse.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
 import {
   DEFAULT_WEIGHT_REGULARISATION_CONFIG,
   type RequiredWeightRegularisationConfig,
 } from "../config/WeightRegularisationConfig.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
 /**

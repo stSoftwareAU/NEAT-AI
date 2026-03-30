@@ -8,7 +8,7 @@
  */
 
 import { assertEquals, assertExists } from "@std/assert";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../src/Creature.ts";
 import { applyNeuronChanges } from "../../src/intelligentDesign/TacitKnowledge.ts";
 

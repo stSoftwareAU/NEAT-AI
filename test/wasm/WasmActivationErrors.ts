@@ -7,7 +7,7 @@
 
 import { assertEquals, assertIsError, assertThrows } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { WasmError } from "../../src/errors/WasmError.ts";
+import { WasmError } from "@errors/WasmError.ts";
 import { WasmCreatureActivation } from "../../src/wasm/WasmActivation.ts";
 import { compileCreatureToWasm } from "../../src/wasm/CompileToWasm.ts";
 import { initWasmActivation } from "../../src/wasm/WasmModuleLoader.ts";

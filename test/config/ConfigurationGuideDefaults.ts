@@ -23,11 +23,11 @@ import { DEFAULT_STABILITY_ADAPTATION_CONFIG } from "../../src/config/StabilityA
 import { DEFAULT_WEIGHT_REGULARISATION_CONFIG } from "../../src/config/WeightRegularisationConfig.ts";
 import { DEFAULT_BIAS_REGULARISATION_CONFIG } from "../../src/config/BiasRegularisationConfig.ts";
 import { DEFAULT_FINE_TUNE_POPULATION_CONFIG } from "../../src/config/FineTunePopulationConfig.ts";
-import { DEFAULT_PLATEAU_DETECTION } from "../../src/NEAT/PlateauDetector.ts";
+import { DEFAULT_PLATEAU_DETECTION } from "@neat/PlateauDetector.ts";
 import {
   DEFAULT_RUST_FLUSH_BYTES,
   DEFAULT_RUST_FLUSH_RECORDS,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/constants.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/constants.ts";
 
 Deno.test("Configuration guide - core evolution defaults match code", () => {
   const config = createNeatConfig({});

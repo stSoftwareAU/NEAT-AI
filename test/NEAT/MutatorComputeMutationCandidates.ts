@@ -1,8 +1,8 @@
 import { assert } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import { Mutator } from "@neat/Mutator.ts";
 
 /**
  * Unit tests for Mutator mutation candidate computation.

@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import {
   calculateDiscoveryCandidateSummaryCounts,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
 
 Deno.test("Discovery candidate summary reports raw Rust counts (no implied combos)", () => {
   const counts = calculateDiscoveryCandidateSummaryCounts({

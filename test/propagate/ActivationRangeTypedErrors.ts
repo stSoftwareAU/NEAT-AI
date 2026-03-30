@@ -5,8 +5,8 @@
  * Issue #1694
  */
 import { assertEquals, assertIsError, assertThrows } from "@std/assert";
-import { ActivationRange } from "../../src/propagate/ActivationRange.ts";
-import { ActivationError } from "../../src/errors/ActivationError.ts";
+import { ActivationRange } from "@propagate/ActivationRange.ts";
+import { ActivationError } from "@errors/ActivationError.ts";
 
 Deno.test("ActivationRange validate - throws ActivationError for out-of-range value", () => {
   const range = new ActivationRange("TANH", -1, 1);

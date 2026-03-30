@@ -1,11 +1,11 @@
 import { assert } from "@std/assert";
-import { assertValidSynapseReferences } from "../architecture/AssertValidSynapseReferences.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
-import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
-import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
-import { isParallelMergeableSquash } from "../methods/activations/SquashUtils.ts";
-import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
+import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
+import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
+import { isParallelMergeableSquash } from "@methods/activations/SquashUtils.ts";
+import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
 
 /**
  * Result of the parallel bridge neuron merge pass.

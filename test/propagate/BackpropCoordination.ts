@@ -1,5 +1,5 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { coordinateBackpropUpdates } from "../../src/propagate/BackpropCoordination.ts";
+import { coordinateBackpropUpdates } from "@propagate/BackpropCoordination.ts";
 
 Deno.test(
   "coordinateBackpropUpdates - no changes passes through",

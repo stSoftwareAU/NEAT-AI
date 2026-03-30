@@ -6,7 +6,7 @@
  */
 import { assert } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
+import { Mutation } from "@neat/Mutation.ts";
 
 const simpleDataSet = [
   { input: new Float32Array([0, 0]), output: new Float32Array([0]) },

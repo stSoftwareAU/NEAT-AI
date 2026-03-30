@@ -15,9 +15,9 @@
  */
 
 import { Creature } from "../src/Creature.ts";
-import type { CreatureExport } from "../src/architecture/CreatureInterfaces.ts";
-import { createBackPropagationConfig } from "../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../src/propagate/sparse/SparseConfig.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 // Seeded random for reproducibility
 function seededRandom(seed: number) {

@@ -9,10 +9,10 @@
 import { assertEquals, assertExists } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { ResponseData } from "../../src/multithreading/workers/WorkerHandler.ts";
-import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 
 /**
  * Creates a base creature for testing.

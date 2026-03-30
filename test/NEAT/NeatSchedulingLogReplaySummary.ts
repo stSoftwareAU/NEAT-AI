@@ -1,6 +1,6 @@
-import { logReplaySummary } from "../../src/NEAT/NeatScheduling.ts";
+import { logReplaySummary } from "@neat/NeatScheduling.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import type { DiscoveryReplayDirResult } from "../../src/NEAT/DiscoveryReplayQueue.ts";
+import type { DiscoveryReplayDirResult } from "@neat/DiscoveryReplayQueue.ts";
 
 /**
  * Unit tests for NeatScheduling.logReplaySummary() — replay result logging.

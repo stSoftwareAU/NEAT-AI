@@ -7,10 +7,10 @@
  */
 
 import { Creature } from "../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { chooseNeurons } from "../../src/propagate/sparse/ChooseNeurons.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import type { SynapseExport } from "../../src/architecture/SynapseInterfaces.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { chooseNeurons } from "@propagate/sparse/ChooseNeurons.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
 
 function formatDuration(ms: number): string {
   if (ms < 1) {

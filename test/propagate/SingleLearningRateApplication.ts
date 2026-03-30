@@ -7,26 +7,24 @@
  * adjustment, not 0.25 * delta (which would indicate double application).
  */
 import { assertAlmostEquals } from "@std/assert";
-import {
-  createBackPropagationConfig,
-} from "../../src/propagate/BackPropagation.ts";
-import { SynapseState } from "../../src/propagate/SynapseState.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SynapseState } from "@propagate/SynapseState.ts";
 import {
   accumulateWeight,
   accumulateWeightBatch4Way,
   accumulateWeightBatch8Way,
   calculateWeight,
-} from "../../src/propagate/Weight.ts";
-import { NeuronState } from "../../src/architecture/CreatureState.ts";
+} from "@propagate/Weight.ts";
+import { NeuronState } from "@architecture/CreatureState.ts";
 import {
   accumulateBias,
   accumulateBiasBatch4Way,
   accumulateBiasBatch8Way,
   calculateBias,
-} from "../../src/propagate/Bias.ts";
-import type { Synapse } from "../../src/architecture/Synapse.ts";
-import type { Neuron } from "../../src/architecture/Neuron.ts";
-import type { CreatureState } from "../../src/architecture/CreatureState.ts";
+} from "@propagate/Bias.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
+import type { CreatureState } from "@architecture/CreatureState.ts";
 
 function fakeSynapse(weight: number): Synapse {
   return { weight, from: 0, to: 1 } as Synapse;

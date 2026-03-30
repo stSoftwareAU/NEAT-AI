@@ -9,11 +9,11 @@
 
 import { assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { NeuronState } from "../../src/architecture/CreatureState.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { accumulateBias } from "../../src/propagate/Bias.ts";
-import { accumulateWeight } from "../../src/propagate/Weight.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { NeuronState } from "@architecture/CreatureState.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { accumulateBias } from "@propagate/Bias.ts";
+import { accumulateWeight } from "@propagate/Weight.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 /**
  * Tests for accumulateBias finite value protection.

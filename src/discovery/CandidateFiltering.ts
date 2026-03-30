@@ -9,7 +9,7 @@
  */
 
 import type { NeatConfig } from "../config/NeatConfig.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type { DiscoveryChangeType } from "./DiscoveryCandidates.ts";
 import { isCandidateCachedSync } from "./FailureCache.ts";

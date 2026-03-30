@@ -9,7 +9,7 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
 import { mergeDuplicateSynapses } from "../../src/compact/CompactUtils.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 Deno.test(

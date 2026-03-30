@@ -9,10 +9,10 @@
  * WASM function pointer obtained via WasmModuleLoader.
  */
 
-import { WasmError } from "../errors/WasmError.ts";
-import type { BackPropagationConfig } from "../propagate/BackPropagation.ts";
-import type { NeuronState } from "../architecture/CreatureState.ts";
-import type { SynapseState } from "../propagate/SynapseState.ts";
+import { WasmError } from "@errors/WasmError.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
+import type { NeuronState } from "@architecture/CreatureState.ts";
+import type { SynapseState } from "@propagate/SynapseState.ts";
 import {
   getAccumulateBiasBatch4WayFn,
   getAccumulateBiasBatch8WayFn,

@@ -8,14 +8,14 @@
 
 import { assertEquals, assertExists } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
-import { DiscoverStructure } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { RemovalCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { RemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import {
   buildCombinedFromSuccessful,
   buildDiscoveryCandidates,
 } from "../../src/discovery/DiscoveryCandidates.ts";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 
 Deno.test("removeLowImpactNeuron applies bias compensation for outgoing synapses", () => {
   // X -> T removes average contribution of (w * meanActivation(X)) from T's pre-activation sum,

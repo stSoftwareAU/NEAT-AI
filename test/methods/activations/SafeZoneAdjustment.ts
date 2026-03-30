@@ -12,8 +12,8 @@
  */
 
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { Activations } from "../../../src/methods/activations/Activations.ts";
-import type { AbstractActivationInterface } from "../../../src/methods/activations/AbstractActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import type { AbstractActivationInterface } from "@methods/activations/AbstractActivationInterface.ts";
 
 function hasSafeZone(
   activation: AbstractActivationInterface,

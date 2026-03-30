@@ -9,8 +9,8 @@ import { assert, assertGreater } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { isWasmActivationAvailable } from "../../src/wasm/mod.ts";
 import { ensureWasmActivation } from "../../src/wasm/EnsureWasmActivation.ts";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import { makeDataDir } from "@architecture/DataSet.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 
 /**
  * Tests that ensureWasmActivation initialises WASM when not already available

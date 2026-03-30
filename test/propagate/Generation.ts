@@ -1,11 +1,9 @@
 import { assert, assertAlmostEquals } from "@std/assert";
-import type { CreatureTrace } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureTrace } from "@architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
-import {
-  createBackPropagationConfig,
-} from "../../src/propagate/BackPropagation.ts";
-import { calculateBias } from "../../src/propagate/Bias.ts";
-import { calculateWeight } from "../../src/propagate/Weight.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { calculateBias } from "@propagate/Bias.ts";
+import { calculateWeight } from "@propagate/Weight.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

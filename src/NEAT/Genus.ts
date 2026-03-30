@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../../mod.ts";
-import { Species } from "./Species.ts";
+import { Species } from "@neat/Species.ts";
 
 export class Genus {
   readonly speciesMap: Map<string, Species>;

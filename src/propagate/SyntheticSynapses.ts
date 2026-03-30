@@ -20,7 +20,7 @@
  */
 
 import type { Creature } from "../Creature.ts";
-import { computeLayerAssignments } from "./LayerAssignment.ts";
+import { computeLayerAssignments } from "@propagate/LayerAssignment.ts";
 
 /**
  * Maximum synthetic synapses per target neuron per layer pair.

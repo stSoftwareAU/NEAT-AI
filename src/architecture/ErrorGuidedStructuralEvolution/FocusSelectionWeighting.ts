@@ -6,8 +6,8 @@
  * summary and analysis utilities.
  */
 import { assert } from "@std/assert";
-import { getLogger } from "../../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../../utils/RandomNumberGenerator.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import type {
   FocusNeuronCandidate,
   FocusSelectionAnalysis,
@@ -15,7 +15,7 @@ import type {
   FocusSelectionSummary,
   LowImpactNeuron,
   NeuronErrorInfo,
-} from "./DiscoverStructureTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 
 /**
  * Generates a cache key for focus selection.

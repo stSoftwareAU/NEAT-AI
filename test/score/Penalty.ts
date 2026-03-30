@@ -1,6 +1,6 @@
 import { assert, assertAlmostEquals, fail } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { calculate, valuePenalty } from "../../src/architecture/Score.ts";
+import { calculate, valuePenalty } from "@architecture/Score.ts";
 import { upgradeTwo } from "../../mod.ts";
 
 function setupCreature() {

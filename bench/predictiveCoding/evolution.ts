@@ -13,7 +13,7 @@ import { Creature } from "../../src/Creature.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
-} from "../../src/architecture/DataSet.ts";
+} from "@architecture/DataSet.ts";
 import { trainWithPredictiveCoding } from "../../src/predictiveCoding/PredictiveCodingTrainer.ts";
 import { Costs } from "../../src/Costs.ts";
 import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../../src/config/PredictiveCodingConfig.ts";

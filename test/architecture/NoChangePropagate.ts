@@ -16,8 +16,8 @@ import {
   assertLessOrEqual,
 } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { noChangePropagate } from "../../src/architecture/NoChangePropagate.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+import { noChangePropagate } from "@architecture/NoChangePropagate.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
 
 /**
  * Create a simple creature with IDENTITY squash (standard path).

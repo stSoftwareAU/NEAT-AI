@@ -1,5 +1,5 @@
-import { Activations } from "../src/methods/activations/Activations.ts";
-import type { UnSquashInterface } from "../src/methods/activations/UnSquashInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import type { UnSquashInterface } from "@methods/activations/UnSquashInterface.ts";
 
 const TEST_INPUTS = [0, 0.5, -0.5, 5, -5, 1e-8, -1e-8];
 

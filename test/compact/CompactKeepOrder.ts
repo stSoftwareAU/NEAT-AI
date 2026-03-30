@@ -3,9 +3,9 @@ import { ensureDirSync } from "@std/fs";
 import type { CreatureExport } from "../../mod.ts";
 import { compactUnused } from "../../src/compact/CompactUnused.ts";
 import { Creature } from "../../src/Creature.ts";
-import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 function makeCreature() {
   const json: CreatureExport = {

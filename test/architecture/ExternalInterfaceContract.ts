@@ -14,7 +14,7 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
 
 // ---------------------------------------------------------------------------

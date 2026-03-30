@@ -9,7 +9,7 @@ import {
   buildDiscoverResponsePayload,
   clearDiscoverResultForGC,
 } from "../../src/multithreading/workers/WorkerProcessor.ts";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 
 function makeMinimalDiscoverResult(): DiscoverResult {
   return {

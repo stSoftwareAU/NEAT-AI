@@ -28,20 +28,20 @@
  * creatures from the start, following patterns from `src/mutate` classes.
  */
 
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import type {
   CandidateHarmfulNeuron,
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type {
   DiscoverResult,
   RemovalCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CoordinatedStructuralCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import type { Creature } from "../Creature.ts";
 
 // Re-export from focused modules for backwards compatibility

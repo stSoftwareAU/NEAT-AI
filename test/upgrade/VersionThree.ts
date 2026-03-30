@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { Creature } from "../../mod.ts";
 import { SEMANTIC_MAJOR_VERSION, upgrade } from "../../src/upgrade/Upgrade.ts";
 

@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { Creature } from "../../../src/Creature.ts";
-import { calculatePathsToOutput } from "../../../src/propagate/sparse/CalculatePathsToOutput.ts";
+import { calculatePathsToOutput } from "@propagate/sparse/CalculatePathsToOutput.ts";
 
 Deno.test("calculatePathsToOutput returns all downstream neurons from chosen set to outputs", () => {
   const creature = makeCreature();

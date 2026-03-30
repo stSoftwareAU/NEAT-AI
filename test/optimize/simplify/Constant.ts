@@ -1,14 +1,14 @@
 import { assert, assertAlmostEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
-import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { MINIMUM } from "../../../src/methods/activations/aggregate/MINIMUM.ts";
-import { Cosine } from "../../../src/methods/activations/types/Cosine.ts";
-import { Exponential } from "../../../src/methods/activations/types/Exponential.ts";
-import { GAUSSIAN } from "../../../src/methods/activations/types/GAUSSIAN.ts";
-import { GELU } from "../../../src/methods/activations/types/GELU.ts";
-import { LogSigmoid } from "../../../src/methods/activations/types/LogSigmoid.ts";
-import { ReLU } from "../../../src/methods/activations/types/ReLU.ts";
-import { simplify } from "../../../src/optimize/Simplify.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { MINIMUM } from "@methods/activations/aggregate/MINIMUM.ts";
+import { Cosine } from "@methods/activations/types/Cosine.ts";
+import { Exponential } from "@methods/activations/types/Exponential.ts";
+import { GAUSSIAN } from "@methods/activations/types/GAUSSIAN.ts";
+import { GELU } from "@methods/activations/types/GELU.ts";
+import { LogSigmoid } from "@methods/activations/types/LogSigmoid.ts";
+import { ReLU } from "@methods/activations/types/ReLU.ts";
+import { simplify } from "@optimize/Simplify.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
 Deno.test("simplify - constant neurons folded into multi-squash network preserving behaviour", () => {

@@ -9,13 +9,13 @@
  */
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "../src/Creature.ts";
-import type { CreatureExport } from "../src/architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { Breed } from "../src/breed/Breed.ts";
 import { ParallelBreeding } from "../src/breed/ParallelBreeding.ts";
 import { createNeatConfig } from "../src/config/NeatConfig.ts";
-import { Selection } from "../src/methods/Selection.ts";
-import { Genus } from "../src/NEAT/Genus.ts";
+import { Selection } from "@methods/Selection.ts";
+import { Genus } from "@neat/Genus.ts";
 
 /**
  * Creates a scored test creature with a given number of hidden neurons.

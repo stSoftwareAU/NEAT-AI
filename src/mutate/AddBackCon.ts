@@ -1,5 +1,5 @@
-import { Synapse } from "../architecture/Synapse.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
 export class AddBackCon extends AbstractMutationOperator {

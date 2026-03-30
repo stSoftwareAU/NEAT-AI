@@ -13,7 +13,7 @@
  */
 
 import type { Creature } from "../Creature.ts";
-import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import { EnhancedDiscoveryValidator } from "./EnhancedDiscoveryValidator.ts";
 import {

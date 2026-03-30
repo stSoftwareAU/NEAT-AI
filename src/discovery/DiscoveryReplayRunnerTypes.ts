@@ -7,7 +7,7 @@
  * Extracted from DiscoveryReplayRunner.ts as part of #1598.
  */
 
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { Creature } from "../Creature.ts";
 import type { NeatOptions } from "../config/NeatOptions.ts";
 import type { SuccessCacheEntry } from "./SuccessCache.ts";

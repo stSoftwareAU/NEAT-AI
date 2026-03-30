@@ -11,9 +11,9 @@
  */
 import { assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import { Mutator } from "@neat/Mutator.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

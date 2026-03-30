@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { Creature } from "../../src/Creature.ts";
 
 Deno.test("Custom cost function is called during evolution", async () => {

@@ -10,29 +10,29 @@ import { blue } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
 import { addTag, getTag, removeTag } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import { DeDuplicator } from "../architecture/DeDuplicator.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { DeDuplicator } from "@architecture/DeDuplicator.ts";
 import {
   makeElitists,
   sortCreaturesByScore,
-} from "../architecture/ElitismUtils.ts";
+} from "@architecture/ElitismUtils.ts";
 import { FindTunePopulation } from "../blackbox/FineTunePopulation.ts";
 import { Breed } from "../breed/Breed.ts";
 import { ParallelBreeding } from "../breed/ParallelBreeding.ts";
 import { validateAfterDiscoveryOrThrow } from "../discovery/DiscoveryPostValidate.ts";
 import { AddConnection } from "../mutate/AddConnection.ts";
-import { Genus } from "./Genus.ts";
-import type { Approach } from "./LogApproach.ts";
-import { checkMemoryAndEvict, logMemoryUsage } from "./MemoryMonitor.ts";
-import { Mutator } from "./Mutator.ts";
+import { Genus } from "@neat/Genus.ts";
+import type { Approach } from "@neat/LogApproach.ts";
+import { checkMemoryAndEvict, logMemoryUsage } from "@neat/MemoryMonitor.ts";
+import { Mutator } from "@neat/Mutator.ts";
 import { CRISPR } from "../reconstruct/CRISPR.ts";
-import { simplify } from "../optimize/Simplify.ts";
-import { validateOrDiagnose } from "../utils/Diagnostics.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import type { Neat } from "./Neat.ts";
-import { logReplaySummary } from "./NeatScheduling.ts";
-import { emitTrainingEvent } from "./TrainingEventEmitter.ts";
+import { simplify } from "@optimize/Simplify.ts";
+import { validateOrDiagnose } from "@utils/Diagnostics.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import type { Neat } from "@neat/Neat.ts";
+import { logReplaySummary } from "@neat/NeatScheduling.ts";
+import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 
 /**
  * Evaluates, selects, breeds and mutates the population.

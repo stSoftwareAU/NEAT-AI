@@ -3,10 +3,10 @@ import { Creature, type CreatureExport } from "../../mod.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
-} from "../../src/architecture/DataSet.ts";
+} from "@architecture/DataSet.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Mish } from "../../src/methods/activations/types/Mish.ts";
-import { TANH } from "../../src/methods/activations/types/TANH.ts";
+import { Mish } from "@methods/activations/types/Mish.ts";
+import { TANH } from "@methods/activations/types/TANH.ts";
 
 Deno.test("TraceDir", () => {
   // const directory = ".test/TraceDir";

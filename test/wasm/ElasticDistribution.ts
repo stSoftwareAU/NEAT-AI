@@ -11,7 +11,7 @@ import { ensureWasmActivation } from "../../src/wasm/EnsureWasmActivation.ts";
 import {
   distributeElasticError,
   type ElasticLink,
-} from "../../src/propagate/ElasticDistribution.ts";
+} from "@propagate/ElasticDistribution.ts";
 import { wasmDistributeElasticError } from "../../src/wasm/WasmStandaloneFunctions.ts";
 
 await ensureWasmActivation();

@@ -10,8 +10,8 @@
 
 import { assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { TypedTopology } from "../../src/architecture/TypedTopology.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { TypedTopology } from "@architecture/TypedTopology.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   detectCycles,
   detectCyclesTS,

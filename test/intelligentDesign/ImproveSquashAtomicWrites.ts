@@ -7,8 +7,8 @@
  */
 
 import { assertEquals, assertExists } from "@std/assert";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../src/Creature.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import {

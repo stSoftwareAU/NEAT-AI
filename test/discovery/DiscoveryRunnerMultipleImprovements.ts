@@ -9,7 +9,7 @@
  */
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import type { Creature } from "../../src/Creature.ts";

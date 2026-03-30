@@ -7,8 +7,8 @@
  */
 import { assertEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { getSquashType, SquashType } from "../../src/wasm/SquashType.ts";
 
 Deno.test("cachedSquashType returns correct type for each neuron", () => {

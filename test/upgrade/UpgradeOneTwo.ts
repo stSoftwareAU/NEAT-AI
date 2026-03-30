@@ -2,8 +2,8 @@ import { assert, assertEquals, fail } from "@std/assert";
 import { upgradeOne } from "../../src/upgrade/UpgradeOne.ts";
 import { upgradeTwo } from "../../src/upgrade/UpgradeTwo.ts";
 import { Creature } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

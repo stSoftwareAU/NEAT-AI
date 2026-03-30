@@ -3,7 +3,7 @@ import {
   closeRustLibrary,
   isRustDiscoveryEnabled,
   shouldSkipRustDiscoveryTests,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 /**
  * Verifies that shouldSkipRustDiscoveryTests() works without requiring the

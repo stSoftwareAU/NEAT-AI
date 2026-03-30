@@ -12,8 +12,8 @@
  */
 
 import type { Creature } from "../Creature.ts";
-import { TopologyError } from "../errors/TopologyError.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Mutation bias computed from Predictive Coding prediction errors.

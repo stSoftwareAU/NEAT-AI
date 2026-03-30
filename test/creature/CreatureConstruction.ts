@@ -10,7 +10,7 @@ import {
   Creature,
   CURRENT_CREATURE_SEMANTIC_VERSION,
 } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 
 Deno.test("Fresh construction produces valid creature (no layers)", () => {
   const creature = new Creature(3, 2);

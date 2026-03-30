@@ -11,7 +11,7 @@
  *   deno bench --allow-read --allow-write bench/FatherCompatibility.ts
  */
 import { Creature } from "../src/Creature.ts";
-import type { CreatureExport } from "../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import {
   createCompatibleFather,
   createCompatibleFatherFromCreatures,

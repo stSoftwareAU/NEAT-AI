@@ -4,8 +4,8 @@ import { Creature } from "../../src/Creature.ts";
 import type {
   CreatureExport,
   CreatureInternal,
-} from "../../src/architecture/CreatureInterfaces.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+} from "@architecture/CreatureInterfaces.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 Deno.test("compact - removes hidden neurons with no reachable output path", () => {
   const json: CreatureInternal = {

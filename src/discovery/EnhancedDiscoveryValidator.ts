@@ -13,8 +13,8 @@
  */
 
 import type { Creature } from "../Creature.ts";
-import { getLogger } from "../utils/Logger.ts";
-import type { DataRecordInterface } from "../architecture/DataSet.ts";
+import { getLogger } from "@utils/Logger.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import {
   type HoldoutValidationResult,

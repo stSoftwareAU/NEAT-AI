@@ -1,12 +1,12 @@
-import type { Logger, LogLevel } from "../utils/Logger.ts";
-import type { RandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import type { Logger, LogLevel } from "@utils/Logger.ts";
+import type { RandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import type { TrainingEventCallback } from "./TrainingEvent.ts";
 import type { AdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { EnsembleDiversityConfig } from "./EnsembleDiversityConfig.ts";
 import type { FineTunePopulationConfig } from "./FineTunePopulationConfig.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
-import type { PlateauDetectionConfig } from "../NEAT/PlateauDetector.ts";
+import type { PlateauDetectionConfig } from "@neat/PlateauDetector.ts";
 import type { PredictiveCodingConfig } from "./PredictiveCodingConfig.ts";
 import type { QuantumStepConfig } from "./QuantumStepConfig.ts";
 import type { StabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";

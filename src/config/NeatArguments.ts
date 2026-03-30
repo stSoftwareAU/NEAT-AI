@@ -2,11 +2,11 @@ import type { CrisprInterface } from "../../mod.ts";
 import type {
   CreatureExport,
   CreatureInternal,
-} from "../architecture/CreatureInterfaces.ts";
+} from "@architecture/CreatureInterfaces.ts";
 import type { CostName } from "../Costs.ts";
-import type { SelectionInterface } from "../methods/Selection.ts";
-import type { MutationInterface } from "../NEAT/MutationInterface.ts";
-import type { RequiredPlateauDetectionConfig } from "../NEAT/PlateauDetector.ts";
+import type { SelectionInterface } from "@methods/Selection.ts";
+import type { MutationInterface } from "@neat/MutationInterface.ts";
+import type { RequiredPlateauDetectionConfig } from "@neat/PlateauDetector.ts";
 import type { RequiredAdaptiveMutationThresholds } from "./AdaptiveMutationThresholds.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { RequiredEnsembleDiversityConfig } from "./EnsembleDiversityConfig.ts";
@@ -14,8 +14,8 @@ import type { RequiredFineTunePopulationConfig } from "./FineTunePopulationConfi
 import type { RequiredStabilityAdaptationConfig } from "./StabilityAdaptationConfig.ts";
 import type { RequiredQuantumStepConfig } from "./QuantumStepConfig.ts";
 import type { RequiredBiasRegularisationConfig } from "./BiasRegularisationConfig.ts";
-import type { Logger } from "../utils/Logger.ts";
-import type { RandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import type { Logger } from "@utils/Logger.ts";
+import type { RandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import type { TrainingEventCallback } from "./TrainingEvent.ts";
 import type { RequiredPredictiveCodingConfig } from "./PredictiveCodingConfig.ts";
 import type { RequiredMemoryConfig } from "./MemoryConfig.ts";

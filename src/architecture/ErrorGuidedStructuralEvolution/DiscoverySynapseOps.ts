@@ -7,16 +7,16 @@ import { addTag, removeTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { cleanupOrphanedNeurons } from "../../compact/CompactUtils.ts";
 import { Creature } from "../../Creature.ts";
-import type { Approach } from "../../NEAT/LogApproach.ts";
+import type { Approach } from "@neat/LogApproach.ts";
 import { memeticUpdate } from "../../blackbox/MemeticUpdate.ts";
-import type { CandidateSynapse } from "./DiscoverStructureTypes.ts";
-import { getLogger } from "../../utils/Logger.ts";
-import { validateAndFixIfNeeded } from "./DiscoveryValidation.ts";
-import { assertValidSynapseReferences } from "../../architecture/AssertValidSynapseReferences.ts";
+import type { CandidateSynapse } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { validateAndFixIfNeeded } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryValidation.ts";
+import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
 import {
   buildWireToRuntimeIdMap,
   resolveCandidateSynapseEndpoints,
-} from "./DiscoveryWireIdentity.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 
 /**
  * Removes a synapse from the creature if it is determined to be harmful.

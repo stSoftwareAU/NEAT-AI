@@ -7,8 +7,8 @@
 
 import { assertEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { computeLayerAssignments } from "../../src/propagate/LayerAssignment.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { computeLayerAssignments } from "@propagate/LayerAssignment.ts";
 
 Deno.test("LayerAssignment - simple chain assigns correct layers", () => {
   // Input → H1 → H2 → Output

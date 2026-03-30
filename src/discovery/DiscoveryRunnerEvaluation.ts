@@ -8,8 +8,8 @@
  */
 
 import { assert } from "@std/assert";
-import { getLogger } from "../utils/Logger.ts";
-import { calculate as calculateScore } from "../architecture/Score.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { calculate as calculateScore } from "@architecture/Score.ts";
 import type { Creature } from "../Creature.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type { DiscoveryRunnerWorker } from "./DiscoveryRunnerTypes.ts";

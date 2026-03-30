@@ -1,7 +1,7 @@
 import { assert, assertAlmostEquals } from "@std/assert";
-import { trainDir } from "../../src/architecture/Training.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
+import { trainDir } from "@architecture/Training.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import { makeDataDir } from "@architecture/DataSet.ts";
 import type { CostInterface } from "../../src/costs/CostInterface.ts";
 import { Creature } from "../../src/Creature.ts";
 import type { TrainOptions } from "../../src/config/TrainOptions.ts";

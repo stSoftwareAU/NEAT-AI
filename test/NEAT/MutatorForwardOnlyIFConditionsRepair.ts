@@ -1,8 +1,8 @@
 import { assert } from "@std/assert";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { Creature } from "../../src/Creature.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 Deno.test(
   "Mutator: forward-only repair must also satisfy IF_CONDITIONS after removing recurrent links",

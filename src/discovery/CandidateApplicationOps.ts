@@ -8,8 +8,8 @@
  * Extracted from CandidateApplication.ts as part of #1598.
  */
 
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import {
   cleanupMemeticForRemovedNeuron,
   cleanupMemeticForRemovedSynapse,

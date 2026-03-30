@@ -9,16 +9,16 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../../Creature.ts";
 import { MSE } from "../../costs/MSE.ts";
-import { TopologyError } from "../../errors/TopologyError.ts";
-import type { ActivationInterface } from "../../methods/activations/ActivationInterface.ts";
-import { Activations } from "../../methods/activations/Activations.ts";
-import { getRandomNumberGenerator } from "../../utils/RandomNumberGenerator.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import type {
   CandidateHarmfulNeuron,
   CandidateSquash,
   DiscoverRecord,
-} from "./DiscoverStructureTypes.ts";
-import { buildRuntimeIdToWireMap } from "./DiscoveryWireIdentity.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
+import { buildRuntimeIdToWireMap } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 
 /** Module-level MSE instance — the class is stateless so one suffices. */
 const mse = new MSE();

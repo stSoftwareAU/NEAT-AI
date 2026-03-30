@@ -6,7 +6,7 @@
  * is insufficient, rather than failing with opaque I/O errors.
  */
 
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /** Result of a disk space check. */
 export interface DiskSpaceCheckResult {

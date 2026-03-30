@@ -1,8 +1,8 @@
 import { assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { createCompatibleFather } from "../../src/breed/Father.ts";
-import type { NeuronExport } from "../../src/architecture/NeuronInterfaces.ts";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { stripNumericIdsFromCreatureExport } from "../../src/creature/CreatureSerialization.ts";
 import { Creature } from "../../mod.ts";
 

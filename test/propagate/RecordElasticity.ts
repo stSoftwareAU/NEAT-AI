@@ -9,9 +9,9 @@
  */
 import { assertAlmostEquals, assertEquals, assertGreater } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import type { Neuron } from "../../src/architecture/Neuron.ts";
-import type { Synapse } from "../../src/architecture/Synapse.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
 import {
   buildRecordElasticLinks,
   constrainAndRedistributeRecordShares,
@@ -19,9 +19,9 @@ import {
   getOrComputeRecordValue,
   type RecordElasticLink,
   recordTargetFeasibilityFactor,
-} from "../../src/propagate/RecordElasticity.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
+} from "@propagate/RecordElasticity.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers

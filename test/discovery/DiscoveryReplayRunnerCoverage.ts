@@ -4,11 +4,11 @@ import type {
   CandidateNeuron,
   CandidateSquash,
   CandidateSynapse,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { RemovalCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import type { CoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { TANH } from "../../src/methods/activations/types/TANH.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { RemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type { CoordinatedStructuralCandidate } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { TANH } from "@methods/activations/types/TANH.ts";
 import { DiscoveryReplayRunner } from "../../src/discovery/DiscoveryReplayRunner.ts";
 import { DISCOVERY_WIRE_SCHEMA_VERSION } from "../../src/discovery/DiscoveryWireFormat.ts";
 import type { SuccessCacheEntry } from "../../src/discovery/SuccessCache.ts";

@@ -7,9 +7,9 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
 import {
   applyAddNeurons,
@@ -19,7 +19,7 @@ import {
   applyRemoveSynapse,
 } from "../../src/discovery/CandidateApplicationOps.ts";
 import { buildIdToIndexMap } from "../../src/discovery/CandidateApplication.ts";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 
 // Integer IDs for the neurons used in these tests (derived from UUID hashing)
 // hidden-1 → 1775329650, hidden-new → 29715267, output-0 → -1

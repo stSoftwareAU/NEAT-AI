@@ -5,11 +5,11 @@
  * Issue #2013: TDD tests covering edge cases in CompactCreature.ts
  */
 import { assert, assertAlmostEquals } from "@std/assert";
-import { Synapse } from "../../src/architecture/Synapse.ts";
+import { Synapse } from "@architecture/Synapse.ts";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { compactCreature } from "../../src/compact/CompactCreature.ts";
-import { assertValidSynapseReferences } from "../../src/architecture/AssertValidSynapseReferences.ts";
+import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
 
 /**
  * Helper: validate that the result creature (if compacted) has no dangling

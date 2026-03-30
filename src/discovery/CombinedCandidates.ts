@@ -16,15 +16,15 @@ import {
   type CandidateSquash,
   type CandidateSynapse,
   DiscoverStructure,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   buildWireToRuntimeIdMap,
   resolveCandidateSynapseEndpoints,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { cleanupMemeticForRemovedSynapse } from "../compact/CompactUtils.ts";
 import { Creature } from "../Creature.ts";
-import type { DiscoverResult } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import { validateAndFixCreatureSync } from "./CandidateApplication.ts";
 import type {
   DiscoveryCandidate,

@@ -11,7 +11,7 @@
 import { bold, cyan, green, yellow } from "@std/fmt/colors";
 import { join } from "@std/path/join";
 import type { Creature } from "../Creature.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import type {
   DiscoveredNeuronDetails,

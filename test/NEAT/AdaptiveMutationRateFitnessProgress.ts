@@ -21,7 +21,7 @@ import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import {
   DEFAULT_PLATEAU_DETECTION,
   PlateauDetector,
-} from "../../src/NEAT/PlateauDetector.ts";
+} from "@neat/PlateauDetector.ts";
 
 // ============================================================================
 // Configuration Tests for Improvement-Based Mutation Rate Reduction

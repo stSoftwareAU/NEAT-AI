@@ -10,8 +10,8 @@
  *   deno bench --allow-read --allow-write --allow-env --allow-ffi bench/ParallelEvaluation.ts
  */
 import { Creature } from "../src/Creature.ts";
-import { CreatureUtil } from "../src/architecture/CreatureUtils.ts";
-import { Fitness } from "../src/architecture/Fitness.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { Fitness } from "@architecture/Fitness.ts";
 import type { RequiredParallelEvaluationConfig } from "../src/config/ParallelEvaluationConfig.ts";
 import type { WorkerHandler } from "../src/multithreading/workers/WorkerHandler.ts";
 

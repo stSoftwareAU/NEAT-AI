@@ -1,10 +1,10 @@
 import { assertAlmostEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
-import { ArcTan } from "../../src/methods/activations/types/ArcTan.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { ArcTan } from "@methods/activations/types/ArcTan.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 Deno.test(
   "backprop: saturated ArcTan parent diverts error to feasible direct path (no forced upstream activation)",

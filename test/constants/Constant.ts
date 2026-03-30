@@ -1,10 +1,10 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
 import { AddConnection } from "../../src/mutate/AddConnection.ts";
 import { ModBias } from "../../src/mutate/ModBias.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

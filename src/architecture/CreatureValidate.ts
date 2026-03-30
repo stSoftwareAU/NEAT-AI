@@ -1,10 +1,10 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
-import { TopologyError } from "../errors/TopologyError.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { neuronWireLabelForDiagnostics } from "../neuron/NeuronSerialization.ts";
-import { DIAGNOSTICS_DIR } from "../utils/Diagnostics.ts";
-import { TypedTopology } from "./TypedTopology.ts";
+import { DIAGNOSTICS_DIR } from "@utils/Diagnostics.ts";
+import { TypedTopology } from "@architecture/TypedTopology.ts";
 import {
   STRUCTURAL_BIAS_NOT_FINITE,
   STRUCTURAL_CONSTANT_HAS_INWARD,

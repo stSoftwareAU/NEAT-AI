@@ -8,7 +8,7 @@
  */
 import { assert, assertEquals, assertExists } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { makeDataDir } from "../../src/architecture/DataSet.ts";
+import { makeDataDir } from "@architecture/DataSet.ts";
 import {
   HoldoutValidator,
   type HoldoutValidatorOptions,

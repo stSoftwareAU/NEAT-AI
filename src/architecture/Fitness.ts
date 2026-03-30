@@ -4,10 +4,10 @@ import {
   DEFAULT_PARALLEL_EVALUATION_CONFIG,
   type RequiredParallelEvaluationConfig,
 } from "../config/ParallelEvaluationConfig.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
-import { CreatureUtil } from "./CreatureUtils.ts";
-import { calculate as calculateScore } from "./Score.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { calculate as calculateScore } from "@architecture/Score.ts";
 
 /**
  * Evaluates fitness scores for a population of creatures.

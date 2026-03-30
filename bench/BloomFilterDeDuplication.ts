@@ -16,12 +16,12 @@
  */
 import { Creature } from "../src/Creature.ts";
 import { Breed } from "../src/breed/Breed.ts";
-import { Genus } from "../src/NEAT/Genus.ts";
-import { Mutator } from "../src/NEAT/Mutator.ts";
-import { DeDuplicator } from "../src/architecture/DeDuplicator.ts";
+import { Genus } from "@neat/Genus.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { DeDuplicator } from "@architecture/DeDuplicator.ts";
 import { createNeatConfig } from "../src/config/NeatConfig.ts";
-import { BloomFilter } from "../src/utils/BloomFilter.ts";
-import type { CreatureInternal } from "../src/architecture/CreatureInterfaces.ts";
+import { BloomFilter } from "@utils/BloomFilter.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
 
 // Create base configuration
 const config = createNeatConfig({

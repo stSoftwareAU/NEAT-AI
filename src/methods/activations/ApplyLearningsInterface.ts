@@ -1,5 +1,5 @@
-import type { AbstractActivationInterface } from "./AbstractActivationInterface.ts";
-import type { Neuron } from "../../architecture/Neuron.ts";
+import type { AbstractActivationInterface } from "@methods/activations/AbstractActivationInterface.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
 
 /** Apply any learnings from the training */
 export interface ApplyLearningsInterface extends AbstractActivationInterface {

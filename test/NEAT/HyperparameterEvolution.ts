@@ -8,7 +8,7 @@ import {
   createDefaultHyperparameters,
   crossoverHyperparameters,
   mutateHyperparameters,
-} from "../../src/NEAT/HyperparameterEvolution.ts";
+} from "@neat/HyperparameterEvolution.ts";
 
 const enabledConfig = {
   ...DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,

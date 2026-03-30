@@ -1,13 +1,10 @@
 import type { Creature } from "../Creature.ts";
-import type { Neuron } from "../architecture/Neuron.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { stripNumericIdsFromCreatureExport } from "../creature/CreatureSerialization.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
-import {
-  isOutputNeuronId,
-  outputIndexFromId,
-} from "../architecture/NeuronId.ts";
-import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { isOutputNeuronId, outputIndexFromId } from "@architecture/NeuronId.ts";
+import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
 import { neuronUuid } from "../neuron/NeuronSerialization.ts";
 
 /**

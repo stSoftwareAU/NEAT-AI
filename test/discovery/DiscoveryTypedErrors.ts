@@ -1,8 +1,8 @@
 import { assertRejects, assertThrows } from "@std/assert";
-import { ConfigurationError } from "../../src/errors/ConfigurationError.ts";
-import { DiscoveryError } from "../../src/errors/DiscoveryError.ts";
-import { TopologyError } from "../../src/errors/TopologyError.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
+import { DiscoveryError } from "@errors/DiscoveryError.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { DiscoveryRunner } from "../../src/discovery/DiscoveryRunner.ts";
 import { buildCacheKey } from "../../src/discovery/FailureCacheKey.ts";
 import { HoldoutValidator } from "../../src/discovery/HoldoutValidator.ts";

@@ -10,8 +10,8 @@
  */
 
 import { assert, assertEquals, assertExists } from "@std/assert";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import type { Creature } from "../../src/Creature.ts";
 import type { DiscoveryRunnerWorker } from "../../src/discovery/DiscoveryRunner.ts";

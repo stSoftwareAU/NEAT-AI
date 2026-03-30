@@ -12,7 +12,7 @@ import {
   logVerbose,
   makeElitists,
   sortCreaturesByScore,
-} from "../../src/architecture/ElitismUtils.ts";
+} from "@architecture/ElitismUtils.ts";
 
 /**
  * Helper to create a scored creature.

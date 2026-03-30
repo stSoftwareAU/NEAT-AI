@@ -4,7 +4,7 @@
  *******************************************************************************/
 
 import type { CostInterface } from "./costs/CostInterface.ts";
-import { ValidationError } from "./errors/ValidationError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { CrossEntropy } from "./costs/CrossEntropy.ts";
 import { HINGE } from "./costs/HINGE.ts";
 import { MAE } from "./costs/MAE.ts";

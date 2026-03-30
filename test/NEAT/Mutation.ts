@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
+import { Mutation } from "@neat/Mutation.ts";
 
 /**
  * Unit tests for Mutation.ts — mutation strategy definitions.

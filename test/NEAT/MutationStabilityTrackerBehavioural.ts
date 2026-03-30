@@ -2,7 +2,7 @@ import { assert, assertEquals, assertGreater, assertLess } from "@std/assert";
 import {
   MutationOutcome,
   MutationStabilityTracker,
-} from "../../src/NEAT/MutationStabilityTracker.ts";
+} from "@neat/MutationStabilityTracker.ts";
 
 /**
  * Behavioural tests for mutation stability tracking (MutationStabilityTracker.ts).

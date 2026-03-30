@@ -10,7 +10,7 @@
  */
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
 import { SubConnection } from "../../src/mutate/SubConnection.ts";
 import { SubNeuron } from "../../src/mutate/SubNeuron.ts";
 

@@ -63,7 +63,7 @@ import {
 import {
   DEFAULT_PLATEAU_DETECTION,
   type RequiredPlateauDetectionConfig,
-} from "../NEAT/PlateauDetector.ts";
+} from "@neat/PlateauDetector.ts";
 import { DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY } from "./NeatConfig.ts";
 import {
   DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,

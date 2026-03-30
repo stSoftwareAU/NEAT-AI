@@ -1,8 +1,8 @@
 import { assert, assertAlmostEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
-import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { simplify } from "../../../src/optimize/Simplify.ts";
-import { TAN } from "../../../src/methods/activations/types/TAN.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { simplify } from "@optimize/Simplify.ts";
+import { TAN } from "@methods/activations/types/TAN.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
 Deno.test("simplify - TAN squash with varied biases preserves behaviour", () => {

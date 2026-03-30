@@ -7,18 +7,18 @@
 
 import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
-import type { Synapse } from "../architecture/Synapse.ts";
-import { Synapse as SynapseClass } from "../architecture/Synapse.ts";
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
+import { Synapse as SynapseClass } from "@architecture/Synapse.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   pruneOrphanMemeticReferences,
   removeHiddenNeuron,
 } from "../compact/CompactUtils.ts";
 import { cleanupOrphanedNeuronsInCreature } from "../compact/OrphanedNeuronCleanup.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { neuronWireLabelForDiagnostics } from "../neuron/NeuronSerialization.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Create a random connection for the neuron at the given index.

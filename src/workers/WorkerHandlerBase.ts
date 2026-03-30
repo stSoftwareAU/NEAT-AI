@@ -16,7 +16,7 @@ import type {
   BaseResponseData,
   WorkerInterface,
 } from "./WorkerInterface.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 interface WorkerEventListener<THandler> {
   (worker: THandler): void;

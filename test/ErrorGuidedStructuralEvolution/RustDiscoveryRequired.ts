@@ -2,7 +2,7 @@ import {
   assertRustDiscoveryAvailable,
   closeRustLibrary,
   shouldSkipRustDiscoveryTests,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 Deno.test({
   name: "rust discovery library must be available when FFI tests run",

@@ -10,7 +10,7 @@
  * @module
  */
 
-import { WasmError } from "../errors/WasmError.ts";
+import { WasmError } from "@errors/WasmError.ts";
 import {
   initWasmActivationSync,
   isWasmActivationAvailable,

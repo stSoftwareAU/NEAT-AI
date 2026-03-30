@@ -1,7 +1,7 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { dirname } from "@std/path/dirname";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import { DEFAULT_COST_OF_GROWTH } from "../../src/config/NeatConfig.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import { Creature } from "../../src/Creature.ts";

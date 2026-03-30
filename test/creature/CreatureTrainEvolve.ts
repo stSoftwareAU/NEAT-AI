@@ -1,20 +1,20 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import type { TrainOptions } from "../../src/config/TrainOptions.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
 import {
   createSeededRng,
   getRandomNumberGenerator,
   setRandomNumberGenerator,
-} from "../../src/utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

@@ -1,10 +1,10 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
-import { ValidationError } from "../../src/errors/ValidationError.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 Deno.test("forwardOnly flag survives export/import", () => {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });

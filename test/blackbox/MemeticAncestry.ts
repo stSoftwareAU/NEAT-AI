@@ -2,7 +2,7 @@ import { assert, assertEquals, assertExists } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
 import { fineTuneImprovement } from "../../src/blackbox/FineTune.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
+import { Offspring } from "@architecture/Offspring.ts";
 import type { MemeticInterface } from "../../src/blackbox/MemeticInterface.ts";
 import {
   analyseWeightTrajectory,

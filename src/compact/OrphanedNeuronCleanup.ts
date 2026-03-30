@@ -1,13 +1,13 @@
 import { assert } from "@std/assert";
 import type { Creature } from "../Creature.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import { assertValidSynapseReferences } from "../architecture/AssertValidSynapseReferences.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
-import { Neuron } from "../architecture/Neuron.ts";
-import type { Synapse } from "../architecture/Synapse.ts";
-import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import { Activations } from "../methods/activations/Activations.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { Neuron } from "@architecture/Neuron.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
+import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
 
 /**
  * Result of cleaning up orphaned neurons.

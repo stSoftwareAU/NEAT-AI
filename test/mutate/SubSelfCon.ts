@@ -1,7 +1,7 @@
 import { assert, assertEquals, assertFalse } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { SubSelfCon } from "../../src/mutate/SubSelfCon.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

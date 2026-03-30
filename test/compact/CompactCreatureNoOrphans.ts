@@ -1,8 +1,8 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { compactCreature } from "../../src/compact/CompactCreature.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
-import { Neuron } from "../../src/architecture/Neuron.ts";
+import { Synapse } from "@architecture/Synapse.ts";
+import { Neuron } from "@architecture/Neuron.ts";
 
 /**
  * Regression test for https://github.com/stSoftwareAU/NEAT-AI/issues/956

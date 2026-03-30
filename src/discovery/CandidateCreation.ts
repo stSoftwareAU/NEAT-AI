@@ -13,18 +13,18 @@ import {
   type CandidateSquash,
   type CandidateSynapse,
   DiscoverStructure,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type {
   CoordinatedStructuralCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import {
   applyCoordinatedStructuralCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
 import type {
   DiscoverResult,
   RemovalCandidate,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import { getLogger } from "../utils/Logger.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { getLogger } from "@utils/Logger.ts";
 import {
   describeSingleCoordinatedStructuralOperation,
   shortID,
@@ -35,7 +35,7 @@ import { persistentlyRemoveHarmfulSynapse } from "./CombinedCandidates.ts";
 import {
   buildWireToRuntimeIdMap,
   resolveSingleNeuronReference,
-} from "../architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 
 // Re-export RemovalCandidate so callers don't need a separate import
 export type { RemovalCandidate };

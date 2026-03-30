@@ -1,7 +1,7 @@
-import { generate as generateV5Sync } from "./SyncV5.ts";
+import { generate as generateV5Sync } from "@architecture/SyncV5.ts";
 import type { Creature } from "../Creature.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Utility class for Creature-related operations.

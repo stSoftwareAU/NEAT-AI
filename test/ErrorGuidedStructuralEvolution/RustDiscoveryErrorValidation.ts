@@ -9,7 +9,7 @@ import { assertEquals, assertThrows } from "@std/assert";
 import {
   computeRustRecordStats,
   type RustRecordInput,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 Deno.test({
   name:

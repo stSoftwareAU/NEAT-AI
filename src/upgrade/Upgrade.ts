@@ -1,10 +1,10 @@
 import { Creature } from "../Creature.ts";
-import { creatureValidate } from "../architecture/CreatureValidate.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { pruneOrphanMemeticReferences } from "../compact/CompactUtils.ts";
-import { exportJSONWithRuntimeIds } from "../architecture/PopulateRuntimeIdsFromCreature.ts";
-import type { ValidationError } from "../errors/ValidationError.ts";
-import { writeDiagnostics } from "../utils/Diagnostics.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import type { ValidationError } from "@errors/ValidationError.ts";
+import { writeDiagnostics } from "@utils/Diagnostics.ts";
+import { getLogger } from "@utils/Logger.ts";
 import { upgradeTwo } from "./UpgradeTwo.ts";
 
 /**

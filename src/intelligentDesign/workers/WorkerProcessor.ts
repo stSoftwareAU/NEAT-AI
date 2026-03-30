@@ -8,7 +8,7 @@
 
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../Creature.ts";
-import { validateOrDiagnose } from "../../utils/Diagnostics.ts";
+import { validateOrDiagnose } from "@utils/Diagnostics.ts";
 import { initialiseWasmActivationFromPayload } from "../../workers/WasmWorkerInit.ts";
 import type { RequestData } from "./WorkerHandler.ts";
 import type { ResponseData } from "./ResponseData.ts";

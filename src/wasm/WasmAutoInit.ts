@@ -12,7 +12,7 @@
  * the parent and set a global flag to skip auto-init.
  */
 
-import { getSkipWasmAutoInit } from "../globalAccessors.ts";
+import { getSkipWasmAutoInit } from "@globalAccessors";
 import {
   initWasmActivation,
   isWasmActivationAvailable,

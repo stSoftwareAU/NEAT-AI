@@ -5,7 +5,7 @@ import {
   type Logger,
   setLogger,
   SILENT_LOGGER,
-} from "../../src/utils/Logger.ts";
+} from "@utils/Logger.ts";
 
 Deno.test("createConsoleLogger: default level filters debug", () => {
   const captured: { level: string; args: unknown[] }[] = [];

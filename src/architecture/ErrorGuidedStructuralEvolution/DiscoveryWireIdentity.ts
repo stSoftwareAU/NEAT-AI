@@ -2,12 +2,12 @@ import type { Creature } from "../../Creature.ts";
 import type {
   CandidateNeuron,
   CandidateSynapse,
-} from "./DiscoverStructureTypes.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 import type {
   CoordinatedAddSynapseOperation,
   CoordinatedRemoveSynapseOperation,
   CoordinatedSetWeightOperation,
-} from "./CoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import { neuronUuid } from "../../neuron/NeuronSerialization.ts";
 
 export function buildWireToRuntimeIdMap(

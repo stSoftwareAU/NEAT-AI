@@ -1,10 +1,10 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
 import { Costs } from "../../src/Costs.ts";
-import type { DataRecordInterface } from "../../src/architecture/DataSet.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { train } from "../TrainTestOnlyUtil.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 const NODE_ID = "identity-6";
 function makeCreature() {

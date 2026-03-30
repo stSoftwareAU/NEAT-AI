@@ -1,12 +1,12 @@
 import { assert } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
-import { DeDuplicator } from "../../src/architecture/DeDuplicator.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { DeDuplicator } from "@architecture/DeDuplicator.ts";
 import { Breed } from "../../src/breed/Breed.ts";
 import { Creature } from "../../src/Creature.ts";
-import { Genus } from "../../src/NEAT/Genus.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
-import { Neat } from "../../src/NEAT/Neat.ts";
+import { Genus } from "@neat/Genus.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { Neat } from "@neat/Neat.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

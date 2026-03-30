@@ -1,7 +1,7 @@
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
-import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
-import { unifySynapseTypeForMerge } from "../utils/SynapseTypeUnify.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
+import { unifySynapseTypeForMerge } from "@utils/SynapseTypeUnify.ts";
 
 export interface PruneZeroWeightSynapsesResult {
   removedSynapses: number;

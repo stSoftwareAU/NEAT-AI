@@ -19,10 +19,10 @@ import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../../src/config/PredictiveCod
 import {
   type DataRecordInterface,
   makeDataDir,
-} from "../../src/architecture/DataSet.ts";
+} from "@architecture/DataSet.ts";
 import { trainWithPredictiveCoding } from "../../src/predictiveCoding/PredictiveCodingTrainer.ts";
 import { Costs } from "../../src/Costs.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 // -----------------------------------------------------------------------
 // Test: Small network returns config unchanged

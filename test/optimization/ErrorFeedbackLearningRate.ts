@@ -2,7 +2,7 @@ import { assert, assertAlmostEquals } from "@std/assert";
 import {
   calculateLearningRate,
   createBackPropagationConfig,
-} from "../../src/propagate/BackPropagation.ts";
+} from "@propagate/BackPropagation.ts";
 
 Deno.test("optimization/ErrorFeedback - adaptive rate increases when error stagnates", () => {
   const config = createBackPropagationConfig({

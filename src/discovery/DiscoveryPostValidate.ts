@@ -1,6 +1,6 @@
 import type { Creature } from "../Creature.ts";
-import { creatureValidate } from "../architecture/CreatureValidate.ts";
-import { DiscoveryError } from "../errors/DiscoveryError.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { DiscoveryError } from "@errors/DiscoveryError.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import {
   BatchDiscoveryValidator,

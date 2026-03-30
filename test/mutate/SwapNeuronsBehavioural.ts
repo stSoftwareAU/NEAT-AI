@@ -10,7 +10,7 @@
  */
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Creature, type CreatureExport, CreatureUtil } from "../../mod.ts";
-import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { SwapNeurons } from "../../src/mutate/SwapNeurons.ts";
 
 /**

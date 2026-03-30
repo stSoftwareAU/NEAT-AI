@@ -5,7 +5,7 @@ import {
   type Logger,
   setLogger,
   SILENT_LOGGER,
-} from "../../src/utils/Logger.ts";
+} from "@utils/Logger.ts";
 
 Deno.test("LoggerConfig - default logger is created and callable", () => {
   const config = createNeatConfig({});

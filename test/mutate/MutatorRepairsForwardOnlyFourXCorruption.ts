@@ -1,10 +1,10 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 import { AddConnection } from "../../src/mutate/AddConnection.ts";
-import { Synapse } from "../../src/architecture/Synapse.ts";
+import { Synapse } from "@architecture/Synapse.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import { Mutator } from "@neat/Mutator.ts";
 
 /**
  * Regression coverage for https://github.com/stSoftwareAU/NEAT-AI/issues/955

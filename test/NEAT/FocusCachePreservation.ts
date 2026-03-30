@@ -10,9 +10,9 @@
  */
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
+import { Mutator } from "@neat/Mutator.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
+import { Mutation } from "@neat/Mutation.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

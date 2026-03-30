@@ -1,5 +1,5 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { mergeDuplicateSynapses } from "../../src/compact/CompactUtils.ts";
 
 const tagA = { name: "tag", value: "a" };

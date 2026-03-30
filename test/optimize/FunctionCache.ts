@@ -2,7 +2,7 @@ import { assertEquals, assertNotEquals } from "@std/assert";
 import {
   findActivationFunction,
   type FunctionCache,
-} from "../../src/optimize/FunctionCache.ts";
+} from "@optimize/FunctionCache.ts";
 
 Deno.test("findActivationFunction - returns undefined on first call (cache miss)", () => {
   const cache: FunctionCache = { key: "" };

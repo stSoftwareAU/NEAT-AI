@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { CRISPR, type CrisprInterface } from "../../src/reconstruct/CRISPR.ts";
 
 /**

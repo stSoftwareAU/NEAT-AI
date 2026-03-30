@@ -24,8 +24,8 @@
 import type { Creature } from "../Creature.ts";
 import type { RequiredPredictiveCodingConfig } from "../config/PredictiveCodingConfig.ts";
 import type { InferenceResult } from "./PredictiveCodingInference.ts";
-import { Activations } from "../methods/activations/Activations.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
 
 /** Minimum weight magnitude (plank constant). */
 const PLANK = 1e-7;

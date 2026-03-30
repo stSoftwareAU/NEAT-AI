@@ -10,7 +10,7 @@
  * WasmCreatureActivation.
  */
 
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 import type { WasmCompiledNetworkConstructor } from "./WasmCompiledNetwork.ts";
 
 // deno-lint-ignore no-explicit-any

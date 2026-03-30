@@ -1,9 +1,9 @@
 import { assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { Creature } from "../../../src/Creature.ts";
-import { createBackPropagationConfig } from "../../../src/propagate/BackPropagation.ts";
-import { buildOutgoingSynapsesMap } from "../../../src/propagate/sparse/CalculatePathsToOutput.ts";
-import { SparseConfig } from "../../../src/propagate/sparse/SparseConfig.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { buildOutgoingSynapsesMap } from "@propagate/sparse/CalculatePathsToOutput.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 Deno.test("SparseConfig with cached outgoing map produces consistent results", () => {
   const creature = makeCreature();

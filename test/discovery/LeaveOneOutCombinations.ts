@@ -9,7 +9,7 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { Creature } from "../../src/Creature.ts";
 import {
   buildCombinedFromSuccessful,

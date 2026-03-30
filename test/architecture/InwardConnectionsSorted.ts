@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
 
 /**
  * Test: Inward connections are returned sorted by `from` index.

@@ -9,17 +9,15 @@
  * Closes #1440
  */
 import { assertAlmostEquals, assertGreater, assertLess } from "@std/assert";
-import {
-  createBackPropagationConfig,
-} from "../../src/propagate/BackPropagation.ts";
-import { SynapseState } from "../../src/propagate/SynapseState.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SynapseState } from "@propagate/SynapseState.ts";
 import {
   accumulateWeight,
   adjustedWeight,
   calculateWeight,
-} from "../../src/propagate/Weight.ts";
-import type { CreatureState } from "../../src/architecture/CreatureState.ts";
-import type { Synapse } from "../../src/architecture/Synapse.ts";
+} from "@propagate/Weight.ts";
+import type { CreatureState } from "@architecture/CreatureState.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
 
 // ---------------------------------------------------------------------------
 // Helper

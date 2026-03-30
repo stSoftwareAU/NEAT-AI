@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { emitTrainingEvent } from "../../src/NEAT/TrainingEventEmitter.ts";
+import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 import type {
   SpeciesAdjustedEvent,
   TrainingEvent,

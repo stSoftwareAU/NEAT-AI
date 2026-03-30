@@ -7,13 +7,13 @@
  */
 
 import type { NeatOptionsInput } from "./NeatOptions.ts";
-import { getGlobalDebug } from "../globalAccessors.ts";
+import { getGlobalDebug } from "@globalAccessors";
 import {
   DEFAULT_RUST_FLUSH_BYTES,
   DEFAULT_RUST_FLUSH_RECORDS,
-} from "../architecture/ErrorGuidedStructuralEvolution/constants.ts";
-import { Selection, type SelectionInterface } from "../methods/Selection.ts";
-import { Mutation } from "../NEAT/Mutation.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/constants.ts";
+import { Selection, type SelectionInterface } from "@methods/Selection.ts";
+import { Mutation } from "@neat/Mutation.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "./DiscoveryMinCandidatesPerCategory.ts";
 import type { NeatArguments } from "./NeatArguments.ts";
 import { parseDiscoverySampleRate, parseNumber } from "./ParseOptions.ts";
@@ -22,13 +22,13 @@ import {
   getLogger,
   type Logger,
   setLogger,
-} from "../utils/Logger.ts";
+} from "@utils/Logger.ts";
 import {
   createSeededRng,
   createUnseededRng,
   type RandomNumberGenerator,
   setRandomNumberGenerator,
-} from "../utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
 
 import {
   DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT,

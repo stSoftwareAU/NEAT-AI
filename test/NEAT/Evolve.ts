@@ -1,13 +1,13 @@
 import { assert, fail } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { Mutation } from "@neat/Mutation.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import {
   createSeededRng,
   getRandomNumberGenerator,
   setRandomNumberGenerator,
-} from "../../src/utils/RandomNumberGenerator.ts";
+} from "@utils/RandomNumberGenerator.ts";
 import { withRngTestLock } from "../_rngTestLock.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;

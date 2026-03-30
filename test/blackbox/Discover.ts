@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { discover } from "../../src/blackbox/Discover.ts";
 import { Creature } from "../../src/Creature.ts";
 

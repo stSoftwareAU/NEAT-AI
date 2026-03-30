@@ -2,7 +2,7 @@ import { assertAlmostEquals } from "@std/assert";
 import {
   calculateLearningRate,
   createBackPropagationConfig,
-} from "../../src/propagate/BackPropagation.ts";
+} from "@propagate/BackPropagation.ts";
 
 Deno.test("optimization/AdaptiveVsDecay - adaptive decays slower than pure decay at the same iteration", () => {
   const configDecay = createBackPropagationConfig({

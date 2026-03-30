@@ -12,17 +12,20 @@
 
 import type { TagsInterface } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
-import { TopologyError } from "../errors/TopologyError.ts";
-import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
-import { Activations } from "../methods/activations/Activations.ts";
-import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
-import type { UnSquashInterface } from "../methods/activations/UnSquashInterface.ts";
-import type { FunctionCache } from "../optimize/FunctionCache.ts";
-import type { BackPropagationConfig } from "../propagate/BackPropagation.ts";
-import type { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
+import type { UnSquashInterface } from "@methods/activations/UnSquashInterface.ts";
+import type { FunctionCache } from "@optimize/FunctionCache.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
+import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { getSquashType } from "../wasm/SquashType.ts";
-import type { DiscoverRecord } from "./ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { NeuronExport, NeuronInternal } from "./NeuronInterfaces.ts";
+import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type {
+  NeuronExport,
+  NeuronInternal,
+} from "@architecture/NeuronInterfaces.ts";
 
 // Extracted modules
 import * as activation from "../neuron/NeuronActivation.ts";

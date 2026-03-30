@@ -13,7 +13,7 @@
  */
 
 import { assertEquals, assertExists, assertRejects } from "@std/assert";
-import { normaliseCreatureExport } from "../../src/architecture/NormaliseCreatureExport.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { Creature } from "../../src/Creature.ts";
 import { scanForSquashImprovements } from "../../src/intelligentDesign/ImproveSquash.ts";
 import type { ResponseData } from "../../src/intelligentDesign/workers/ResponseData.ts";

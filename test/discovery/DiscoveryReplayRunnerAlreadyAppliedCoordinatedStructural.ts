@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { DiscoveryReplayRunner } from "../../src/discovery/DiscoveryReplayRunner.ts";
 import { DISCOVERY_WIRE_SCHEMA_VERSION } from "../../src/discovery/DiscoveryWireFormat.ts";
 import type { SuccessCacheEntry } from "../../src/discovery/SuccessCache.ts";

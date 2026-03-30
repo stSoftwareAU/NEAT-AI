@@ -11,26 +11,26 @@ import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
 import { getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
-import { TopologyError } from "../errors/TopologyError.ts";
-import type { DataRecordInterface } from "../architecture/DataSet.ts";
-import { makeDataDir } from "../architecture/DataSet.ts";
-import type { DiscoverRecord } from "../architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { calculate as calculateScore } from "../architecture/Score.ts";
-import { dataFiles } from "../architecture/Training.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import { makeDataDir } from "@architecture/DataSet.ts";
+import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { calculate as calculateScore } from "@architecture/Score.ts";
+import { dataFiles } from "@architecture/Training.ts";
 import { createNeatConfig } from "../config/NeatConfig.ts";
 import type { NeatOptions } from "../config/NeatOptions.ts";
 import { Costs } from "../Costs.ts";
 import { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
-import { Neat } from "../NEAT/Neat.ts";
+import { Neat } from "@neat/Neat.ts";
 import {
   type BackPropagationConfig,
   createBackPropagationConfig,
-} from "../propagate/BackPropagation.ts";
-import { propagateTopological } from "../propagate/TopologicalBackpropagation.ts";
-import { buildOutgoingSynapsesMap } from "../propagate/sparse/CalculatePathsToOutput.ts";
-import { SparseConfig } from "../propagate/sparse/SparseConfig.ts";
-import { exportJSONWithRuntimeIds } from "../architecture/PopulateRuntimeIdsFromCreature.ts";
-import { BufferPool } from "../utils/BufferPool.ts";
+} from "@propagate/BackPropagation.ts";
+import { propagateTopological } from "@propagate/TopologicalBackpropagation.ts";
+import { buildOutgoingSynapsesMap } from "@propagate/sparse/CalculatePathsToOutput.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { BufferPool } from "@utils/BufferPool.ts";
 import {
   type DiscoveryDirResult,
   DiscoveryRunner,
@@ -41,11 +41,11 @@ import {
   DiscoveryReplayRunner,
   type DiscoveryReplayRunnerLike,
 } from "../discovery/DiscoveryReplayRunner.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { setMaxCachedWasmCreatureActivations } from "../wasm/WasmCreatureActivationLRU.ts";
 import { setWasmCompilationCacheSize } from "../wasm/WasmCompilationCache.ts";
-import { emitTrainingEvent } from "../NEAT/TrainingEventEmitter.ts";
+import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 
 /**
  * Propagate expected values backward through the network for all output neurons.

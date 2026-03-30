@@ -10,7 +10,7 @@
  */
 
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
-import { Activations } from "../../src/methods/activations/Activations.ts";
+import { Activations } from "@methods/activations/Activations.ts";
 import {
   calculateError,
   safeZoneAdjustment,

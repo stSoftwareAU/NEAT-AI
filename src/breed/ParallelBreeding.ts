@@ -1,12 +1,12 @@
 import { Creature } from "../../mod.ts";
-import { Offspring } from "../architecture/Offspring.ts";
+import { Offspring } from "@architecture/Offspring.ts";
 import { discover } from "../blackbox/Discover.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
 import type { WorkerHandler } from "../multithreading/workers/WorkerHandler.ts";
-import type { Genus } from "../NEAT/Genus.ts";
+import type { Genus } from "@neat/Genus.ts";
 import { FitnessRanking } from "./FitnessRanking.ts";
 import { findFather, selectParent } from "./ParentSelection.ts";
-import { getLogger } from "../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Represents a parent pair for breeding.

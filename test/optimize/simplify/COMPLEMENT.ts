@@ -1,9 +1,9 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "../../../src/Creature.ts";
-import type { CreatureExport } from "../../../src/architecture/CreatureInterfaces.ts";
-import { COMPLEMENT } from "../../../src/methods/activations/types/COMPLEMENT.ts";
-import { IDENTITY } from "../../../src/methods/activations/types/IDENTITY.ts";
-import { simplify } from "../../../src/optimize/Simplify.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { COMPLEMENT } from "@methods/activations/types/COMPLEMENT.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { simplify } from "@optimize/Simplify.ts";
 import { makeData } from "./ABSOLUTE.ts";
 
 Deno.test("simplify - COMPLEMENT neuron produces behaviour-equivalent IDENTITY with negated weights", () => {

@@ -1,13 +1,13 @@
 import { assertEquals } from "@std/assert";
 import { join } from "@std/path/join";
-import type { DiscoverResult } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import type {
   CandidateSynapse,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { CandidateNeuron } from "../../src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { CandidateNeuron } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { buildDiscoveryCandidates } from "../../src/discovery/DiscoveryCandidates.ts";
 import { buildCacheKey } from "../../src/discovery/FailureCache.ts";
-import { closeRustLibrary } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { closeRustLibrary } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import {
   deleteSuccessSync,
   getSuccessfulRemovalNeuronIds,

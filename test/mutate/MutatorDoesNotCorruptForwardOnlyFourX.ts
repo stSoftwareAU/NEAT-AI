@@ -1,6 +1,6 @@
 import { Creature, Mutation } from "../../mod.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
+import { Mutator } from "@neat/Mutator.ts";
 import { assertThrows } from "@std/assert";
 
 Deno.test("Mutator: selectMutationMethod must not infinite-loop when only disallowed mutations are configured", () => {

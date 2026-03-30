@@ -1,5 +1,5 @@
 import type { Creature } from "../Creature.ts";
-import { generate as generateV5Sync } from "../architecture/SyncV5.ts";
+import { generate as generateV5Sync } from "@architecture/SyncV5.ts";
 
 /**
  * Architecture information for species classification.

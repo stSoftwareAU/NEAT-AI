@@ -1,14 +1,14 @@
 import { assert } from "@std/assert";
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { Creature, type CreatureTrace, CreatureUtil } from "../../mod.ts";
-import { exportJSONWithRuntimeIds } from "../architecture/PopulateRuntimeIdsFromCreature.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { validateOrDiagnose } from "../utils/Diagnostics.ts";
-import type { NeuronTrace } from "../architecture/NeuronInterfaces.ts";
-import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
-import type { Approach } from "../NEAT/LogApproach.ts";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { validateOrDiagnose } from "@utils/Diagnostics.ts";
+import type { NeuronTrace } from "@architecture/NeuronInterfaces.ts";
+import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
+import type { Approach } from "@neat/LogApproach.ts";
 import { createConstantOne, removeHiddenNeuron } from "./CompactUtils.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 export function compactUnused(
   traced: CreatureTrace,

@@ -15,9 +15,9 @@ import { getOrComputeRecordValue } from "@propagate/RecordElasticity.ts";
 import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import type { SynapseState } from "@propagate/SynapseState.ts";
 import { accumulateWeight, adjustedWeight } from "@propagate/Weight.ts";
-import type { ApplyLearningsInterface } from "../ApplyLearningsInterface.ts";
-import type { NeuronActivationInterface } from "../NeuronActivationInterface.ts";
-import { IDENTITY } from "../types/IDENTITY.ts";
+import type { ApplyLearningsInterface } from "@methods/activations/ApplyLearningsInterface.ts";
+import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 export class MAXIMUM
   implements

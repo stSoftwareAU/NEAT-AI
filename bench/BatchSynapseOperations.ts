@@ -15,7 +15,7 @@
  *   deno bench --allow-read --allow-write bench/BatchSynapseOperations.ts
  */
 import { Creature } from "../src/Creature.ts";
-import { creatureValidate } from "../src/architecture/CreatureValidate.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { AddNeuron } from "../src/mutate/AddNeuron.ts";
 
 // Helper to create test creatures with available connections

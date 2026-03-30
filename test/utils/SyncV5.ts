@@ -1,5 +1,5 @@
 import { generate as generateV5 } from "@std/uuid/v5";
-import { generate as generateV5Sync } from "../../src/architecture/SyncV5.ts";
+import { generate as generateV5Sync } from "@architecture/SyncV5.ts";
 import { assertEquals } from "@std/assert";
 
 Deno.test("SyncV5", async () => {

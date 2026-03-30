@@ -13,9 +13,9 @@
  * available, falls back to calling the individual WASM or TypeScript functions.
  */
 
-import type { TypedTopology } from "../architecture/TypedTopology.ts";
-import type { BackPropagationConfig } from "../propagate/BackPropagation.ts";
-import type { SynapseState } from "../propagate/SynapseState.ts";
+import type { TypedTopology } from "@architecture/TypedTopology.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
+import type { SynapseState } from "@propagate/SynapseState.ts";
 import {
   getCalculateBiasBatch4WayFn,
   getCalculateWeightBatch4WayFn,

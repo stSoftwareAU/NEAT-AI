@@ -13,8 +13,8 @@ import { Creature } from "../../src/Creature.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
-} from "../../src/architecture/DataSet.ts";
-import { trainDir } from "../../src/architecture/Training.ts";
+} from "@architecture/DataSet.ts";
+import { trainDir } from "@architecture/Training.ts";
 import { Costs } from "../../src/Costs.ts";
 import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "../../src/config/PredictiveCodingConfig.ts";
 import type { TrainOptions } from "../../src/config/TrainOptions.ts";

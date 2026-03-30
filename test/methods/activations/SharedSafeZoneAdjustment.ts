@@ -8,7 +8,7 @@
  */
 
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import { safeZoneAdjustment } from "../../../src/methods/activations/SafeZoneAdjustment.ts";
+import { safeZoneAdjustment } from "@methods/activations/SafeZoneAdjustment.ts";
 
 // --- Non-finite input ---
 

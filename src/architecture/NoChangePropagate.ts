@@ -1,6 +1,6 @@
-import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
-import type { BackPropagationConfig } from "../propagate/BackPropagation.ts";
-import type { Neuron } from "./Neuron.ts";
+import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
 
 export function noChangePropagate(
   neuron: Neuron,

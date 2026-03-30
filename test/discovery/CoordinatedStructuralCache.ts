@@ -1,10 +1,10 @@
 import { assertEquals } from "@std/assert";
 import { join } from "@std/path/join";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type {
   CoordinatedStructuralCandidate,
-} from "../../src/architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
-import { applyCoordinatedStructuralCandidate } from "../../src/architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+import { applyCoordinatedStructuralCandidate } from "@architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
 import { Creature } from "../../src/Creature.ts";
 import type { DiscoveryCandidate } from "../../src/discovery/DiscoveryCandidates.ts";
 import {
@@ -16,8 +16,8 @@ import {
   listSuccessEntriesSync,
   recordSuccessSync,
 } from "../../src/discovery/SuccessCache.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
-import { closeRustLibrary } from "../../src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { closeRustLibrary } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 
 function makeBaseCreature(): Creature {
   const base: CreatureExport = {

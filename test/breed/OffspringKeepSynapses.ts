@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../../src/Creature.ts";
-import { Offspring } from "../../src/architecture/Offspring.ts";
+import { Offspring } from "@architecture/Offspring.ts";
 
 function makeMum() {
   const json: CreatureExport = {

@@ -1,5 +1,5 @@
 import { assertEquals, assertThrows } from "@std/assert";
-import { CrisprError } from "../../src/errors/CrisprError.ts";
+import { CrisprError } from "@errors/CrisprError.ts";
 import { validateDNA } from "../../src/reconstruct/validateDNA.ts";
 
 // These tests verify that validateDNA throws CrisprError (not generic Error)

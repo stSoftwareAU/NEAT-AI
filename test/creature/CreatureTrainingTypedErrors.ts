@@ -5,7 +5,7 @@
  * Issue #1694
  */
 import { assertEquals, assertIsError } from "@std/assert";
-import { TopologyError } from "../../src/errors/TopologyError.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 
 Deno.test("TopologyError EXCESSIVE_ERRORS - has correct reason and message", () => {
   const err = new TopologyError(

@@ -1,4 +1,4 @@
-import type { AbstractActivationInterface } from "./AbstractActivationInterface.ts";
+import type { AbstractActivationInterface } from "@methods/activations/AbstractActivationInterface.ts";
 
 interface SquashAndDeriveResult {
   activation: number;

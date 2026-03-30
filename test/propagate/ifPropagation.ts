@@ -1,11 +1,11 @@
 import { assert } from "@std/assert";
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../../src/Creature.ts";
-import { exportJSONWithRuntimeIds } from "../../src/architecture/PopulateRuntimeIdsFromCreature.ts";
-import type { CreatureInternal } from "../../src/architecture/CreatureInterfaces.ts";
-import type { SynapseTrace } from "../../src/architecture/SynapseInterfaces.ts";
-import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
-import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
+import type { SynapseTrace } from "@architecture/SynapseInterfaces.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 

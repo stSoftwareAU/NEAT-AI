@@ -6,15 +6,13 @@
  */
 
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import { NeuronState } from "../../src/architecture/CreatureState.ts";
-import {
-  createBackPropagationConfig,
-} from "../../src/propagate/BackPropagation.ts";
+import { NeuronState } from "@architecture/CreatureState.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
 import {
   accumulateBias,
   accumulateBiasBatch4Way,
   accumulateBiasBatch8Way,
-} from "../../src/propagate/Bias.ts";
+} from "@propagate/Bias.ts";
 
 /**
  * Test that batch 4-way accumulation produces the same results as

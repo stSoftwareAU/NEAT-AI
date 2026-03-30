@@ -1,10 +1,10 @@
 import { assert } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
-import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
-import { Mutator } from "../../src/NEAT/Mutator.ts";
-import { Mutation } from "../../src/NEAT/Mutation.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { Mutation } from "@neat/Mutation.ts";
 
 /**
  * Regression test (26-Dec-2025).

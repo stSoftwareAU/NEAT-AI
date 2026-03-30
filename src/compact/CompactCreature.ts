@@ -2,34 +2,34 @@ import { assert } from "@std/assert";
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import type { TagInterface } from "@stsoftware/tags/mod";
 import { Creature } from "../Creature.ts";
-import type { Approach } from "../NEAT/LogApproach.ts";
-import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
-import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
-import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
-import { valuePenalty } from "../architecture/Score.ts";
-import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
-import { LOGISTIC } from "../methods/activations/types/LOGISTIC.ts";
-import { COMPLEMENT } from "../methods/activations/types/COMPLEMENT.ts";
-import { ABSOLUTE } from "../methods/activations/types/ABSOLUTE.ts";
-import { ReLU } from "../methods/activations/types/ReLU.ts";
-import { LeakyReLU } from "../methods/activations/types/LeakyReLU.ts";
+import type { Approach } from "@neat/LogApproach.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
+import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
+import { valuePenalty } from "@architecture/Score.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { LOGISTIC } from "@methods/activations/types/LOGISTIC.ts";
+import { COMPLEMENT } from "@methods/activations/types/COMPLEMENT.ts";
+import { ABSOLUTE } from "@methods/activations/types/ABSOLUTE.ts";
+import { ReLU } from "@methods/activations/types/ReLU.ts";
+import { LeakyReLU } from "@methods/activations/types/LeakyReLU.ts";
 import { HYPOT } from "../deprecated/HYPOT.ts";
 import { HYPOTv2 } from "../deprecated/HYPOTv2.ts";
 import { MEAN } from "../deprecated/MEAN.ts";
-import { isAggregationSquash } from "../methods/activations/SquashUtils.ts";
-import { IF } from "../methods/activations/aggregate/IF.ts";
-import { MAXIMUM } from "../methods/activations/aggregate/MAXIMUM.ts";
-import { MINIMUM } from "../methods/activations/aggregate/MINIMUM.ts";
+import { isAggregationSquash } from "@methods/activations/SquashUtils.ts";
+import { IF } from "@methods/activations/aggregate/IF.ts";
+import { MAXIMUM } from "@methods/activations/aggregate/MAXIMUM.ts";
+import { MINIMUM } from "@methods/activations/aggregate/MINIMUM.ts";
 import {
   cleanupOrphanedNeurons,
   pruneDeadSubgraphs,
   pruneZeroWeightSynapses,
 } from "./CompactUtils.ts";
-import { assertValidSynapseReferences } from "../architecture/AssertValidSynapseReferences.ts";
+import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
 import { mergeParallelIdentityBridges } from "./ParallelIdentityMerge.ts";
 import { mergeParallelBridges } from "./ParallelBridgeMerge.ts";
-import { mergeTagsByNameValue } from "../utils/TagUtils.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
+import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 
 /**
  * Creates a shallow clone of a CreatureExport, copying neurons and synapses

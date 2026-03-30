@@ -14,7 +14,7 @@
  *   deno bench --allow-read bench/BufferPoolPerformance.ts
  */
 
-import { BufferPool } from "../src/utils/BufferPool.ts";
+import { BufferPool } from "@utils/BufferPool.ts";
 
 // Iterations per benchmark run - simulates hot loop workload
 const ITERATIONS = 100_000;

@@ -7,14 +7,14 @@
  */
 
 import type { Creature } from "../Creature.ts";
-import type { NeuronActivationInterface } from "../methods/activations/NeuronActivationInterface.ts";
-import type { BackPropagationConfig } from "./BackPropagation.ts";
-import { adjustedBias } from "./Bias.ts";
-import type { SparseConfig } from "./sparse/SparseConfig.ts";
-import { adjustedWeight } from "./Weight.ts";
+import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
+import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { adjustedBias } from "@propagate/Bias.ts";
+import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import { adjustedWeight } from "@propagate/Weight.ts";
 import { adjustedActivation } from "../neuron/NeuronPropagation.ts";
-import { BackpropBuffers } from "./BackpropBuffers.ts";
-import { computeReverseTopologicalOrder } from "./TopologicalOrder.ts";
+import { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
+import { computeReverseTopologicalOrder } from "@propagate/TopologicalOrder.ts";
 import { wasmPropagateTopological } from "../wasm/WasmStandaloneFunctions.ts";
 import { getPropagateTopologicalFn } from "../wasm/WasmModuleLoader.ts";
 
