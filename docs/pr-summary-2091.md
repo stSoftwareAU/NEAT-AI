@@ -15,6 +15,7 @@ The following import map aliases were applied:
 - `@utils/` for `src/utils/`
 
 Files modified:
+
 - `src/NEAT/Mutator.ts` — 3 imports remapped
 - `src/NEAT/Neat.ts` — 5 imports remapped
 - `src/architecture/Offspring.ts` — 5 imports remapped
