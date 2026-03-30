@@ -6,10 +6,16 @@
  */
 
 import { assert, fail } from "@std/assert";
+import { calculateOutputRangePenalty } from "../architecture/OutputRangePenalty.ts";
+import { dataFiles } from "../architecture/Training.ts";
+import type { RequiredOutputRange } from "../config/OutputRangeConfig.ts";
+import type { CostInterface } from "../costs/CostInterface.ts";
 import type { Creature } from "../Creature.ts";
 import { WasmError } from "../errors/WasmError.ts";
 import type { SparseConfigLike } from "../propagate/sparse/SparseConfigLike.ts";
+import { getLogger } from "../utils/Logger.ts";
 import {
+  clearWasmCompilationCache,
   compileCreatureToWasm,
   type CompiledCreatureData,
   getOrCompileWasmModule,
@@ -22,11 +28,6 @@ import {
   evictOldestWasmCreatureActivations,
   noteWasmCreatureActivationUse,
 } from "../wasm/WasmCreatureActivationLRU.ts";
-import type { CostInterface } from "../costs/CostInterface.ts";
-import type { RequiredOutputRange } from "../config/OutputRangeConfig.ts";
-import { calculateOutputRangePenalty } from "../architecture/OutputRangePenalty.ts";
-import { dataFiles } from "../architecture/Training.ts";
-import { getLogger } from "../utils/Logger.ts";
 
 /**
  * Verify WASM is available and the creature is eligible.
@@ -131,6 +132,15 @@ export function activateWasm(
     // Issue #1338: Under memory pressure, evict old cached WASM activations and retry.
     if (!creature.cachedWasmActivation) {
       evictOldestWasmCreatureActivations(64);
+      creature.cachedWasmActivation = getOrCompileWasmModule(creature) ??
+        undefined;
+    }
+
+    // MemoryMonitor may clear the compilation cache under heap pressure while
+    // leaving this creature without a cached module — flush compiled modules
+    // and retry once (full parallel test runs can hit this path).
+    if (!creature.cachedWasmActivation) {
+      clearWasmCompilationCache();
       creature.cachedWasmActivation = getOrCompileWasmModule(creature) ??
         undefined;
     }
