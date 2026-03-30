@@ -10,6 +10,7 @@ touched, causing CI to detect changes, commit them, and potentially trigger
 unnecessary WASM rebuilds.
 
 **Fix:**
+
 1. Added `wasm_activation/pkg` and `wasm_activation/target` to `deno.json`'s
    `exclude` list so generated WASM files are never formatted, linted, or
    type-checked by either local or CI runs.
