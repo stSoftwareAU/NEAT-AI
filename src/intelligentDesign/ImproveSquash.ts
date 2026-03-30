@@ -14,6 +14,7 @@ import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { NeatOptions } from "../config/NeatOptions.ts";
 import { Creature } from "../Creature.ts";
+import { validateOrDiagnose } from "../utils/Diagnostics.ts";
 import { alternativeSquashes } from "./AlternativeSquashes.ts";
 import type { BestNeuronSquash } from "./BestNeuronSquash.ts";
 import { safeWriteText, safeWriteTextSync } from "./SafeWrite.ts";
@@ -696,7 +697,11 @@ export async function combineImprovements(
   }
 
   const finalCreature = Creature.fromJSON(finalJson);
-  finalCreature.fix();
+  validateOrDiagnose(
+    finalCreature,
+    "intelligentDesign-improveSquash",
+    finalCreature.forwardOnly ? { forwardOnly: true } : undefined,
+  );
   const result = await finalCreature.scoreDir(dataDir, options);
 
   if (result.score > bestIndividualScore) {

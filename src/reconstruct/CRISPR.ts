@@ -5,10 +5,6 @@ import { nextNeuronId, outputNeuronId } from "../architecture/NeuronId.ts";
 import type { Creature } from "../Creature.ts";
 import { CrisprError } from "../errors/CrisprError.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
-import {
-  getMajorVersion,
-  upgradeSemanticVersionIfForwardOnlyConfirmed,
-} from "../upgrade/Upgrade.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { validateDNA } from "./validateDNA.ts";
 
@@ -453,8 +449,7 @@ export class CRISPR {
     let alreadyProcessed = false;
 
     const uuid = CreatureUtil.makeUUID(this.creature);
-    const enforceForwardOnly = this.creature.forwardOnly === true ||
-      getMajorVersion(this.creature.semanticVersion) >= 4;
+    const enforceForwardOnly = this.creature.forwardOnly === true;
     this.creature.neurons.forEach((neuron) => {
       if (neuron.id === undefined) {
         throw new CrisprError("missing id", "MISSING_UUID");
@@ -510,7 +505,6 @@ export class CRISPR {
         // fix() here — reject the DNA and return the original (Issue #2086).
         modifiedCreature.validate({ forwardOnly: true });
         modifiedCreature.forwardOnly = true;
-        upgradeSemanticVersionIfForwardOnlyConfirmed(modifiedCreature);
       } else {
         modifiedCreature.validate();
       }

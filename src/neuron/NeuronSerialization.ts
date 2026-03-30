@@ -127,8 +127,8 @@ export function internalJSON(
 }
 
 /**
- * Generates a deterministic integer ID from a legacy UUID string.
- * Uses a simple hash to ensure the same UUID always produces the same ID.
+ * Generates a deterministic runtime integer ID from a UUID string.
+ * Used when loading JSON that has UUIDs but no pre-assigned integer IDs.
  * IDs are in the range [1_000_000, 2_000_000_000) to avoid collisions
  * with input neuron IDs (0+) and output neuron IDs (negative).
  */
@@ -144,7 +144,8 @@ function deterministicIdFromUuid(uuid: string): number {
 
 /**
  * Convert a JSON object to a Neuron instance.
- * Issue #1958: Uses integer neuron IDs instead of UUID strings.
+ * Assigns a runtime integer ID from `json.id`, or derives one deterministically
+ * from `json.uuid` when no integer ID is present.
  */
 export function fromJSON(
   json: NeuronExport | NeuronInternal,
@@ -155,11 +156,22 @@ export function fromJSON(
     id = json.id;
     ensureIdAbove(id);
   } else if (json.uuid) {
-    // Legacy format: generate deterministic ID from UUID string
     id = deterministicIdFromUuid(json.uuid);
     ensureIdAbove(id);
   } else {
     id = nextNeuronId();
+  }
+
+  let uuid: string | undefined;
+  if (typeof json.uuid === "string") {
+    uuid = json.uuid;
+  } else if (
+    json.id !== undefined &&
+    (json.type === "hidden" || json.type === "constant")
+  ) {
+    // Legacy snapshots that only stored integer ids: tie a stable label to that id
+    // so the same file always re-imports with the same uuid string.
+    uuid = `legacy-neuron-${json.id}`;
   }
 
   const neuron = new Neuron(
@@ -168,18 +180,8 @@ export function fromJSON(
     json.bias ? json.bias : 0,
     creature,
     json.squash,
+    uuid,
   );
-
-  if (typeof json.uuid === "string") {
-    neuron.uuid = json.uuid;
-  } else if (
-    json.id !== undefined &&
-    (json.type === "hidden" || json.type === "constant")
-  ) {
-    // Legacy snapshots that only stored integer ids: tie a stable label to that id
-    // so the same file always re-imports with the same uuid string.
-    neuron.uuid = `legacy-neuron-${json.id}`;
-  }
 
   if (json.frozen) {
     neuron.frozen = true;

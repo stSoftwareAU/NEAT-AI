@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
 
-Deno.test("fix({ forwardOnly: true }) removes back + self connections", () => {
+Deno.test("fix({ forwardOnly: true }) removes back + self connections and preserves semanticVersion", () => {
   const json: CreatureExport = {
     semanticVersion: "2.1.7",
     neurons: [
@@ -28,8 +28,8 @@ Deno.test("fix({ forwardOnly: true }) removes back + self connections", () => {
   creature.fix({ forwardOnly: true });
   creature.validate({ forwardOnly: true });
 
-  // Once forward-only is confirmed, bump to 4.x.x.
-  assertEquals(creature.semanticVersion, "4.0.0");
+  // Upgrade is load-from-disk only; fix() must not bump semanticVersion.
+  assertEquals(creature.semanticVersion, "2.1.7");
 
   // Ensure structure is now strictly forward-only.
   creature.synapses.forEach((s) => {

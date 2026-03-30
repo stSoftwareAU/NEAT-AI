@@ -7,12 +7,11 @@ import { Offspring } from "../../src/architecture/Offspring.ts";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { IDENTITY } from "../../src/methods/activations/types/IDENTITY.ts";
 
-Deno.test("Forward-only: breeding upgrades semanticVersion 2.x.x → 4.0.0 when validation passes", () => {
+Deno.test("Forward-only: breeding produces a 4.x forward-only child", () => {
   const mumJson: CreatureExport = {
     input: 2,
     output: 1,
     forwardOnly: true,
-    semanticVersion: "2.9.9",
     neurons: [
       { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0 },
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0 },
@@ -27,7 +26,6 @@ Deno.test("Forward-only: breeding upgrades semanticVersion 2.x.x → 4.0.0 when 
     input: 2,
     output: 1,
     forwardOnly: true,
-    semanticVersion: "2.9.9",
     neurons: [
       { type: "hidden", uuid: "hidden-0", squash: IDENTITY.NAME, bias: 0.1 },
       { type: "output", uuid: "output-0", squash: IDENTITY.NAME, bias: 0.2 },
@@ -36,7 +34,6 @@ Deno.test("Forward-only: breeding upgrades semanticVersion 2.x.x → 4.0.0 when 
       { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.1 },
       { fromUUID: "input-1", toUUID: "hidden-0", weight: 0.3 },
       { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.7 },
-      // Extra connection so crossover can create a non-clone child.
       { fromUUID: "input-0", toUUID: "output-0", weight: 0.2 },
     ],
   };
@@ -53,16 +50,14 @@ Deno.test("Forward-only: breeding upgrades semanticVersion 2.x.x → 4.0.0 when 
   }
   assert(child, "Expected child");
 
-  // The child is confirmed forward-only via validate({ forwardOnly: true }) inside breed().
   assertEquals(child.forwardOnly, true);
   assertEquals(child.semanticVersion, "4.0.0");
 });
 
-Deno.test("Forward-only: mutation upgrades semanticVersion 2.x.x → 4.0.0 when validation passes", () => {
+Deno.test("Forward-only: mutation preserves forwardOnly and semanticVersion", () => {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
-  creature.forwardOnly = true;
-  creature.semanticVersion = "2.9.9";
-  creature.validate({ forwardOnly: true });
+  assertEquals(creature.forwardOnly, true);
+  assertEquals(creature.semanticVersion, "4.0.0");
 
   const mutator = new Mutator(
     createNeatConfig({
@@ -77,7 +72,6 @@ Deno.test("Forward-only: mutation upgrades semanticVersion 2.x.x → 4.0.0 when 
   let mutated = false;
   for (let attempt = 0; attempt < 50; attempt++) {
     if (mutator.mutateCreature(creature, Mutation.MOD_WEIGHT)) {
-      // Issue #1583: fix/validate batched — call repair after mutation.
       mutator.repairAfterMutation(creature);
       mutated = true;
       break;
@@ -90,7 +84,6 @@ Deno.test("Forward-only: mutation upgrades semanticVersion 2.x.x → 4.0.0 when 
 
 Deno.test("Forward-only: semanticVersion is never downgraded (e.g. 4.1.2 stays 4.1.2)", () => {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
-  creature.forwardOnly = true;
   creature.semanticVersion = "4.1.2";
   creature.validate({ forwardOnly: true });
 
@@ -107,7 +100,6 @@ Deno.test("Forward-only: semanticVersion is never downgraded (e.g. 4.1.2 stays 4
   let mutated = false;
   for (let attempt = 0; attempt < 50; attempt++) {
     if (mutator.mutateCreature(creature, Mutation.MOD_WEIGHT)) {
-      // Issue #1583: fix/validate batched — call repair after mutation.
       mutator.repairAfterMutation(creature);
       mutated = true;
       break;

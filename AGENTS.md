@@ -95,15 +95,62 @@ scripts/                # Utility scripts
 - `deno.json` - Deno configuration, dependencies, lint rules
 - `quality.sh` - Pre-commit quality gate (lint, format, type-check, test)
 
+### 🧬 Neuron UUID stability (CRITICAL INVARIANT)
+
+> [!CAUTION]
+> **A neuron's UUID is assigned once at creation and MUST NEVER change for the
+> lifetime of that neuron.** This is not a nice-to-have — it is the foundation
+> of how distributed evolution works. Violating this invariant silently corrupts
+> breeding across the entire fleet. See
+> `test/creature/NeuronUuidStability.ts` for the quality gate test.
+
+**Why this matters:** In production, ~20 machines independently evolve
+populations for hours, periodically pushing their fittest creatures to a shared
+GitHub repository. Other machines pull those creatures and breed them with their
+own population. Breeding aligns neurons between parents **by matching UUIDs** —
+not by array position, not by integer index. If a mutation, compaction, or any
+other operation silently changes a neuron's UUID, cross-machine breeding
+produces garbage offspring. The creatures look valid but their topology is
+meaninglessly scrambled.
+
+**The rules:**
+
+1. **A neuron's `uuid` is immutable once assigned.** No mutation operator,
+   compaction pass, breeding step, discovery application, or serialisation
+   round-trip may change an existing neuron's UUID. Inserting a new neuron
+   between existing ones does not change the UUIDs of those existing neurons.
+
+2. **New neurons get a new UUID at creation** (via `crypto.randomUUID()`).
+   That UUID then follows rule 1 for the rest of the neuron's life.
+
+3. **Numeric integer IDs (`id`, `fromId`, `toId`) are internal-only
+   implementation details.** They MUST NOT appear in any JSON that crosses a
+   process, machine, disk, cache, or FFI boundary. They are ephemeral values
+   derived at runtime — never persisted, never used for identity. Issue #2090
+   proved that hash-colliding integer IDs silently corrupt forward-only
+   creatures.
+
+4. **`creature.exportJSON()` is UUID-only.** No `id`, `fromId`, or `toId`
+   fields. This is the canonical external format. `exportSnapshotJSON()` is
+   equivalent. Any code path that adds numeric IDs to an export that leaves the
+   process is a bug.
+
+5. **`loadFrom` resolves synapses by UUID first** (Issue #2090). Integer IDs
+   are a fallback only for internal round-trips where UUIDs may not be present.
+
+6. **Genetic compatibility** uses `getHiddenNeuronWireKeys()` (UUID-based wire
+   labels), not integer ids.
+
+7. **Quality gate test** (`test/creature/NeuronUuidStability.ts`): builds a
+   creature, records all neuron UUIDs, runs multiple generations of mutation
+   and breeding, then asserts that every surviving original neuron still has
+   its original UUID. This test MUST pass before any commit.
+
 ### Neuron identity: wire UUID vs runtime integer `id` (Issue #1958)
 
 - **Stable identity** (anything that crosses generations, disks, or species
   boundaries): use **UUID strings only** — `neuron.uuid` for hidden/constant,
-  canonical `input-N` / `output-N` in synapse endpoints. `creature.exportJSON()`
-  is the canonical **external** export: UUID-only, no numeric `id` / `fromId` /
-  `toId` (Issue #2054). `exportSnapshotJSON()` is equivalent. **Genetic
-  compatibility** uses `getHiddenNeuronWireKeys()` (wire labels), not integer
-  ids.
+  canonical `input-N` / `output-N` in synapse endpoints.
 
 - **Runtime integer `id`** (`src/architecture/NeuronId.ts`): allowed **only
   in-memory** for hot paths (WASM, `Map<number, …>`, internal breeding
@@ -144,6 +191,43 @@ scripts/                # Utility scripts
   alignment does not depend on neuron array position. When genetic compatibility
   is below threshold, `editParentByIndex` may still reassign ids by **scan
   order** — that path is a deliberate fallback for badly mismatched topologies.
+
+### 🔢 Semantic version is immutable after upgrade (CRITICAL INVARIANT)
+
+> [!CAUTION]
+> **Once a creature is upgraded to 4.x, its `semanticVersion` MUST be preserved
+> through every operation for the rest of its life.** Upgrade is a one-time
+> load-from-disk check — it should never fire again. If any pipeline step
+> (mutation, breeding, compaction, discovery, export/import) drops or resets the
+> semantic version, that is a bug.
+
+**Why this matters:** The entire population has been 4.x for a long time. There
+is no path to downgrade. There is no need to re-upgrade. The scattered
+`bumpToFourIfForwardOnlyConfirmed` / `upgradeSemanticVersionIfForwardOnlyConfirmed`
+helper calls that previously existed throughout the pipeline were dead code for
+4.x creatures and have been removed.
+
+**The rules:**
+
+1. **Upgrade happens once, at load from disk** (`Creature.fromJSON` /
+   `upgrade()`). After that, `semanticVersion` is carried through unchanged.
+
+2. **No version bumping in breed, mutate, compact, or discovery.** These
+   operations must not modify `semanticVersion`. The `Creature` constructor
+   defaults to `CURRENT_CREATURE_SEMANTIC_VERSION` (`"4.0.0"`), so newly
+   created creatures (including offspring) are automatically 4.x.
+
+3. **`exportJSON()` includes `semanticVersion`** and `fromJSON()` restores it.
+   A round-trip must preserve the exact version string.
+
+4. **Pre-4.x creatures reaching the pipeline are a critical error.** If
+   `prepareCreatureForBreeding` encounters a pre-4.x creature, it logs a `🚨`
+   alarm and runs the legacy upgrade as a safety net — but this should never
+   happen in practice.
+
+5. **Quality gate test** (`test/creature/SemanticVersionStability.ts`):
+   verifies that `semanticVersion` survives mutation, breeding, compaction,
+   and export/import round-trips. This test MUST pass before any commit.
 
 ## 📝 Coding Conventions
 

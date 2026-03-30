@@ -109,7 +109,7 @@ Deno.test("fix - via Creature facade", async () => {
   creatureValidate(creature);
 });
 
-Deno.test("fix - with forwardOnly sets semanticVersion to 4.0.0", async () => {
+Deno.test("fix - with forwardOnly preserves semanticVersion", async () => {
   await initWasmForTests();
   const creature = new Creature(2, 1, {
     layers: [{ count: 2 }],
@@ -118,7 +118,11 @@ Deno.test("fix - with forwardOnly sets semanticVersion to 4.0.0", async () => {
 
   assertEquals(creature.semanticVersion, "3.0.0");
   fix(creature, { forwardOnly: true });
-  assertEquals(creature.semanticVersion, "4.0.0");
+  assertEquals(
+    creature.semanticVersion,
+    "3.0.0",
+    "Upgrade is load-from-disk only; fix() must not bump semanticVersion",
+  );
   assertEquals(creature.forwardOnly, true);
 });
 

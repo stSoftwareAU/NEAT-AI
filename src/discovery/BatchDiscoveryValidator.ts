@@ -14,7 +14,6 @@
 
 import type { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
-import { getMajorVersion } from "../upgrade/Upgrade.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import { EnhancedDiscoveryValidator } from "./EnhancedDiscoveryValidator.ts";
 import {
@@ -254,7 +253,6 @@ export class BatchDiscoveryValidator {
       if (forwardOnly) {
         creatureValidate(creature, { forwardOnly: true });
         creature.forwardOnly = true;
-        this.#bumpToFourIfForwardOnlyConfirmed(creature);
       } else if (this.#options.feedbackLoop) {
         creatureValidate(creature);
       } else {
@@ -287,42 +285,12 @@ export class BatchDiscoveryValidator {
     }
   }
 
-  /**
-   * Determine whether forward-only validation should be enforced.
-   */
   #shouldEnforceForwardOnly(
     baseCreature: Creature,
     candidateCreature: Creature,
   ): boolean {
-    const baseMajor = getMajorVersion(baseCreature.semanticVersion);
-    const candidateMajor = getMajorVersion(candidateCreature.semanticVersion);
-
-    if (baseMajor >= 4 || candidateMajor >= 4) {
-      return true;
-    }
-
-    if (
-      baseCreature.forwardOnly === true ||
-      candidateCreature.forwardOnly === true
-    ) {
-      return true;
-    }
-
-    if (this.#options.feedbackLoop !== true) {
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Upgrade 2.x/3.x creatures to 4.x once forward-only validity is confirmed.
-   */
-  #bumpToFourIfForwardOnlyConfirmed(creature: Creature): void {
-    const major = getMajorVersion(creature.semanticVersion);
-    if (major === 2 || major === 3) {
-      creature.semanticVersion = "4.0.0";
-    }
+    return baseCreature.forwardOnly === true ||
+      candidateCreature.forwardOnly === true;
   }
 
   /**

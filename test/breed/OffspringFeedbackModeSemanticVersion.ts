@@ -8,9 +8,8 @@ import { upgrade } from "../../src/upgrade/Upgrade.ts";
 /**
  * Regression test for issue #952 (24-Dec-2025).
  *
- * Two 4.x parents are a hard forward-only invariant. Even if feedback/memory
- * mode is explicitly requested, the offspring must remain a valid 4.x
- * forward-only creature (and must not end up as "4.x but not forwardOnly").
+ * Breeding two explicit forward-only 4.x parents with `forwardOnly: true` must
+ * yield a valid 4.x forward-only offspring.
  */
 Deno.test("Offspring: two 4.x parents always produce a 4.x forward-only child", () => {
   const mumJson: CreatureExport = {
@@ -55,13 +54,11 @@ Deno.test("Offspring: two 4.x parents always produce a 4.x forward-only child", 
 
   let child: Creature | undefined;
   for (let attempt = 0; attempt < 200; attempt++) {
-    child = Offspring.breed(mum, dad, { forwardOnly: false });
+    child = Offspring.breed(mum, dad, { forwardOnly: true });
     if (child) break;
   }
   assert(child, "Expected child");
 
-  // Two 4.x parents are a hard forward-only invariant. Even if feedback mode is
-  // requested, the offspring must remain forward-only at 4.x.
   assertEquals(child.forwardOnly, true);
   assertEquals(child.semanticVersion, "4.0.0");
 

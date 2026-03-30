@@ -36,6 +36,7 @@ Deno.test("Offspring.breed produces valid offspring from simple creature", () =>
     }, { "weight": 0.96864643541, "from": 0, "to": 2 }],
     "input": 2,
     "output": 1,
+    "forwardOnly": true,
     tags: [
       { name: "error", value: "0.5" },
     ],
@@ -137,6 +138,7 @@ Deno.test("Offspring.breed preserves output neuron types during crossover", () =
     ],
     "input": 2,
     "output": 2,
+    "forwardOnly": false,
   });
 
   a.fix();
@@ -152,7 +154,7 @@ Deno.test("Offspring.breed preserves output neuron types during crossover", () =
   b.validate();
 
   for (let i = 0; i < 100; i++) {
-    const child = Offspring.breed(a, b);
+    const child = Offspring.breed(a, b, { forwardOnly: false });
     if (!child) continue;
     const n = child.neurons[child.neurons.length - 2];
     assertEquals(n.type, "output");
@@ -197,6 +199,7 @@ function check() {
         squash: "MINIMUM",
       },
     ],
+    forwardOnly: true,
     synapses: [
       {
         weight: -0.1,
@@ -256,7 +259,7 @@ function check() {
     addNeuron.mutate();
   }
 
-  const n3 = Offspring.breed(n1, n2);
+  const n3 = Offspring.breed(n1, n2, { forwardOnly: true });
 
   if (n3) {
     const outputUUID = creature.neurons[2].id;
@@ -396,6 +399,7 @@ Deno.test(
       ],
       input: 5,
       output: 8,
+      forwardOnly: true,
     };
 
     const n1 = Creature.fromJSON(creature);
@@ -415,13 +419,13 @@ Deno.test(
     n2.validate();
 
     for (let i = 0; i < 20; i++) {
-      const child = Offspring.breed(n1, n2);
+      const child = Offspring.breed(n1, n2, { forwardOnly: true });
       if (!child) continue;
       child.validate();
     }
 
     for (let i = 0; i < 20; i++) {
-      const child = Offspring.breed(n2, n1);
+      const child = Offspring.breed(n2, n1, { forwardOnly: true });
       if (!child) continue;
       child.validate();
     }

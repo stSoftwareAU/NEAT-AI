@@ -20,7 +20,7 @@ function deterministicIdFromUuid(uuid: string): number {
 }
 
 /**
- * Resolve a legacy UUID string to an integer neuron ID.
+ * Resolve a UUID string to a runtime integer neuron ID.
  * Handles `input-X`, `output-X`, and arbitrary UUID strings.
  */
 function resolveUuid(
@@ -95,7 +95,7 @@ export class Upgrade {
     // Ensure mode is set to "insert" or "append"
     if (dnaClean.mode !== "insert") dnaClean.mode = "append";
 
-    // Issue #1958: Convert legacy UUID fields to integer IDs
+    // Resolve UUID fields to runtime integer IDs for internal processing
     const neuronUuidMap = new Map<string, number>();
     if (dnaClean.neurons) {
       for (const neuron of dnaClean.neurons) {

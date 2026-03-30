@@ -10,11 +10,7 @@ import { crossoverHyperparameters } from "../NEAT/HyperparameterEvolution.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
 import { ValidationError } from "../errors/ValidationError.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
-import {
-  getMajorVersion,
-  prepareCreatureForBreeding,
-  upgradeSemanticVersionIfForwardOnlyConfirmed,
-} from "../upgrade/Upgrade.ts";
+import { prepareCreatureForBreeding } from "../upgrade/Upgrade.ts";
 import { writeDiagnostics } from "../utils/Diagnostics.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
@@ -92,11 +88,7 @@ export class Offspring {
       fatherNeuronMap.set(neuron.id, neuron);
     }
 
-    const motherMajor = getMajorVersion(mother.semanticVersion);
-    const fatherMajor = getMajorVersion(father.semanticVersion);
-    const bothParentsFourX = motherMajor >= 4 && fatherMajor >= 4;
-    const shouldBeForwardOnly = bothParentsFourX ||
-      options.forwardOnly === true ||
+    const shouldBeForwardOnly = options.forwardOnly === true ||
       (options.forwardOnly === undefined &&
         (mother.forwardOnly === true || father.forwardOnly === true));
 
@@ -268,13 +260,8 @@ export class Offspring {
         neuron.bias,
         offspring,
         neuron.squash,
+        neuron.uuid,
       );
-
-      // Hidden/constant: keep parent stable uuid; constructor already assigned a
-      // random uuid if parent had none (new lineage).
-      if (neuron.type === "hidden" || neuron.type === "constant") {
-        newNode.uuid = neuron.uuid ?? newNode.uuid;
-      }
 
       addTags(newNode, neuron);
 
@@ -432,22 +419,15 @@ export class Offspring {
     try {
       creatureValidate(offspring);
 
-      if (
-        options.forwardOnly === false && !bothParentsFourX
-      ) {
-        offspring.forwardOnly = false;
-      } else if (shouldBeForwardOnly) {
-        if (options.forwardOnly === false && bothParentsFourX) {
-          // Two forward-only 4.x parents cannot produce a feedback child; keep
-          // the forward-only invariant.
+      if (shouldBeForwardOnly) {
+        if (options.forwardOnly === false) {
           getLogger().warn(
-            `[Offspring] feedbackLoop/memory mode requested but both parents are 4.x; forcing forwardOnly child`,
+            `[Offspring] feedbackLoop/memory mode requested but parents are forward-only; forcing forwardOnly child`,
           );
         }
         offspring.forwardOnly = true;
         try {
           offspring.validate({ forwardOnly: true });
-          upgradeSemanticVersionIfForwardOnlyConfirmed(offspring);
         } catch (e) {
           const error = e as ValidationError;
           if (

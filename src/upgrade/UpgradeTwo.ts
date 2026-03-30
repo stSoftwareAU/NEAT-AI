@@ -46,12 +46,26 @@ export function upgradeTwo(
   } as CreatureExport;
 }
 
+function buildIdToUuid(json: CreatureExport): Map<number, string> {
+  const map = new Map<number, string>();
+  for (let i = 0; i < json.input; i++) {
+    map.set(i, `input-${i}`);
+  }
+  for (const neuron of json.neurons) {
+    if (neuron.id !== undefined && neuron.uuid) {
+      map.set(neuron.id, neuron.uuid);
+    }
+  }
+  return map;
+}
+
 function removeHYPOT(json: CreatureExport) {
   const neurons = json.neurons;
   const synapses = json.synapses;
   let changed = false;
   const neuronsLength = neurons.length;
   const synapsesLength = synapses.length;
+  const idToUuid = buildIdToUuid(json);
   for (let i = 0; i < neuronsLength; i++) {
     const neuron = neurons[i];
     if (neuron.squash === "HYPOT") {
@@ -60,27 +74,35 @@ function removeHYPOT(json: CreatureExport) {
       for (let j = 0; j < synapsesLength; j++) {
         const synapse = synapses[j];
         if (synapse.toId === neuron.id) {
+          const newUuid = crypto.randomUUID();
           const newNeuron: NeuronExport = {
             type: "hidden",
             id: nextNeuronId(),
+            uuid: newUuid,
             squash: SQUARE.NAME,
             bias: 0,
           };
+          idToUuid.set(newNeuron.id!, newUuid);
 
           neurons.splice(i, 0, newNeuron);
           synapse.toId = newNeuron.id;
+          synapse.toUUID = newUuid;
           const newSynapse: SynapseExport = {
             fromId: newNeuron.id,
+            fromUUID: newUuid,
             toId: neuron.id,
+            toUUID: idToUuid.get(neuron.id!),
             weight: 1,
           };
           synapses.push(newSynapse);
         }
       }
 
+      const identityUuid = crypto.randomUUID();
       const identityNeuron: NeuronExport = {
         type: "hidden",
         id: nextNeuronId(),
+        uuid: identityUuid,
         squash: IDENTITY.NAME,
         bias: neuron.bias,
         tags: [
@@ -90,6 +112,7 @@ function removeHYPOT(json: CreatureExport) {
           },
         ],
       };
+      idToUuid.set(identityNeuron.id!, identityUuid);
       neurons.splice(i + 1, 0, identityNeuron);
       neuron.squash = SQRT.NAME;
       neuron.bias = 0;
@@ -97,12 +120,15 @@ function removeHYPOT(json: CreatureExport) {
         const synapse = synapses[j];
         if (synapse.fromId === neuron.id) {
           synapse.fromId = identityNeuron.id;
+          synapse.fromUUID = identityUuid;
         }
       }
 
       const identitySynapse: SynapseExport = {
         fromId: neuron.id,
+        fromUUID: idToUuid.get(neuron.id!),
         toId: identityNeuron.id,
+        toUUID: identityUuid,
         weight: 1,
       };
       synapses.push(identitySynapse);
@@ -132,6 +158,7 @@ function removeHYPOTv2(json: CreatureExport) {
   let changed = false;
   const neuronsLength = neurons.length;
   const synapsesLength = synapses.length;
+  const idToUuid = buildIdToUuid(json);
   for (let i = 0; i < neuronsLength; i++) {
     const neuron = neurons[i];
     if (neuron.squash === "HYPOTv2") {
@@ -140,18 +167,24 @@ function removeHYPOTv2(json: CreatureExport) {
       for (let j = 0; j < synapsesLength; j++) {
         const synapse = synapses[j];
         if (synapse.toId === neuron.id) {
+          const newUuid = crypto.randomUUID();
           const newNeuron: NeuronExport = {
             type: "hidden",
             id: nextNeuronId(),
+            uuid: newUuid,
             squash: SQUARE.NAME,
             bias: neuron.bias,
           };
+          idToUuid.set(newNeuron.id!, newUuid);
 
           neurons.splice(i, 0, newNeuron);
           synapse.toId = newNeuron.id;
+          synapse.toUUID = newUuid;
           const newSynapse: SynapseExport = {
             fromId: newNeuron.id,
+            fromUUID: newUuid,
             toId: neuron.id,
+            toUUID: idToUuid.get(neuron.id!),
             weight: 1,
           };
           synapses.push(newSynapse);

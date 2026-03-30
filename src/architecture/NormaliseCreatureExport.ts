@@ -46,7 +46,7 @@ function isResolvedIds(json: CreatureExport): boolean {
  * Mutates the input object in place. Safe to call multiple times
  * (idempotent).
  *
- * @param json - A CreatureExport that may use legacy UUID fields
+ * @param json - A CreatureExport that uses UUID fields for neuron/synapse identity
  */
 export function normaliseCreatureExport(json: CreatureExport): void {
   // Round-trip from exportJSON (no memetic): ids already attached in builder — skip.

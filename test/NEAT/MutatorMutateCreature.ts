@@ -241,8 +241,7 @@ Deno.test("MutatorMutateCreature: mutator does not clear forwardOnly when feedba
   const mutator = new Mutator(config);
 
   const creature = new Creature(3, 2, { layers: [{ count: 4 }] });
-  creature.forwardOnly = true;
-  creature.semanticVersion = "3.0.0";
+  assertEquals(creature.forwardOnly, true);
   CreatureUtil.makeUUID(creature);
 
   mutator.mutateCreature(creature, Mutation.MOD_WEIGHT);

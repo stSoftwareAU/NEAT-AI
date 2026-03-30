@@ -8,6 +8,7 @@ import { TopologyError } from "../errors/TopologyError.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
 import { isAggregationSquash } from "../methods/activations/SquashUtils.ts";
+import { validateOrDiagnose } from "../utils/Diagnostics.ts";
 import { ABSOLUTE } from "../methods/activations/types/ABSOLUTE.ts";
 import { COMPLEMENT } from "../methods/activations/types/COMPLEMENT.ts";
 import { IDENTITY } from "../methods/activations/types/IDENTITY.ts";
@@ -92,6 +93,13 @@ export function simplify(creature: Creature): Creature | undefined {
   if (complexUUID === simplifiedUUID) {
     return undefined;
   }
+
+  validateOrDiagnose(
+    simplifiedCreature,
+    "simplify",
+    creature.forwardOnly ? { forwardOnly: true } : undefined,
+  );
+
   delete simplifiedCreature.memetic;
 
   return simplifiedCreature;
@@ -285,6 +293,17 @@ export function removeNeuron(
     fromMap.set(synapse.toId!, synapse);
   });
 
+  // Issue #2090: Build id→uuid lookup so new bypass synapses carry UUIDs.
+  const idToUuid = new Map<number, string>();
+  for (const neuron of simplifiedExport.neurons) {
+    if (neuron.id !== undefined && neuron.uuid) {
+      idToUuid.set(neuron.id, neuron.uuid);
+    }
+  }
+  for (let i = 0; i < exported.input; i++) {
+    idToUuid.set(i, `input-${i}`);
+  }
+
   simplifiedExport.synapses.forEach((outerSynapse) => {
     if (outerSynapse.toId === identityId) {
       simplifiedExport.synapses.forEach((innerSynapse) => {
@@ -299,7 +318,11 @@ export function removeNeuron(
             newSynapses.push({
               weight: adjustedWeight,
               fromId: outerSynapse.fromId!,
+              fromUUID: outerSynapse.fromUUID ??
+                idToUuid.get(outerSynapse.fromId!),
               toId: innerSynapse.toId!,
+              toUUID: innerSynapse.toUUID ??
+                idToUuid.get(innerSynapse.toId!),
             });
           } else {
             duplicate.weight = adjustedWeight + duplicate.weight;

@@ -47,7 +47,7 @@ export interface ParallelBridgeMergeResult {
 export function mergeParallelBridges(
   exported: CreatureExport,
 ): ParallelBridgeMergeResult {
-  // Ensure integer id/fromId/toId fields are populated (supports legacy UUID format).
+  // Ensure runtime integer id/fromId/toId fields are populated from UUIDs.
   normaliseCreatureExport(exported);
 
   // Build connection maps.

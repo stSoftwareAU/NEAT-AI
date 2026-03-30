@@ -1,4 +1,6 @@
+import type { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
+import { getLogger } from "./Logger.ts";
 
 export const DIAGNOSTICS_DIR = ".diagnostics";
 
@@ -101,5 +103,77 @@ export function writeDiagnostics(options: DiagnosticsOptions): void {
       `${DIAGNOSTICS_DIR}/${filePrefix}context-${timestamp}.json`,
       JSON.stringify(context, null, 2),
     );
+  }
+}
+
+/**
+ * Validates a creature after a pipeline operation (breed/mutate/compact/discovery).
+ *
+ * On the happy path (valid creature) this is a fast structural check.
+ * If validation fails, this is treated as a **bug** in our code — the creature
+ * and error are dumped to `.diagnostics/` so the root cause can be fixed,
+ * and `fix()` is called as a last resort to avoid a hard crash.
+ *
+ * The 🚨 emoji in the log line is detected by ../GRQ-health as an error.
+ *
+ * @param creature - The creature to validate
+ * @param operation - Which pipeline stage produced this creature (e.g. "breed", "mutate")
+ * @param options - Optional validate options (e.g. `{ forwardOnly: true }`)
+ */
+export function validateOrDiagnose(
+  creature: Creature,
+  operation: string,
+  options?: { forwardOnly?: boolean },
+): void {
+  try {
+    creature.validate(options);
+  } catch (error) {
+    let creatureExport: CreatureExport | string;
+    try {
+      creature.DEBUG = false;
+      creatureExport = creature.exportJSON();
+    } catch {
+      creatureExport = "(export failed — creature too corrupted to serialise)";
+    }
+
+    const errorMsg = error instanceof Error
+      ? `${error.name}: ${error.message}`
+      : String(error);
+
+    getLogger().error(
+      `🚨 [${operation}] CRITICAL: creature failed validation after ${operation}. ` +
+        `${errorMsg}. ` +
+        `This is a bug in our code that must be fixed (not the creature).`,
+    );
+
+    writeDiagnostics({
+      error,
+      prefix: operation,
+      creature: creatureExport,
+      context: {
+        operation,
+        forwardOnly: creature.forwardOnly,
+        uuid: creature.uuid,
+        semanticVersion: creature.semanticVersion,
+        neuronCount: creature.neurons?.length,
+        synapseCount: creature.synapses?.length,
+      },
+    });
+
+    if (options?.forwardOnly) {
+      creature.fix({ forwardOnly: true });
+    } else {
+      creature.fix();
+    }
+
+    try {
+      creature.validate(options);
+    } catch (fixError) {
+      getLogger().error(
+        `🚨 [${operation}] fix() failed to repair creature. ` +
+          `Error: ${fixError}. The creature is unrecoverable.`,
+      );
+      throw fixError;
+    }
   }
 }

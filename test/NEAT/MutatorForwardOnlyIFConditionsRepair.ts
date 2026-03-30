@@ -12,7 +12,7 @@ Deno.test(
     });
     const mutator = new Mutator(config);
 
-    // Arrange: a pre-4.x forward-only creature where an IF neuron has 3 inbound
+    // Arrange: a forward-only creature where an IF neuron has 3 inbound
     // connections, but one is a back-connection (output -> hidden). Removing the
     // back-connection would leave only 2 inbound connections, triggering
     // IF_CONDITIONS unless repair adds a replacement forward connection.
@@ -51,7 +51,6 @@ Deno.test(
 
     const creature = Creature.fromJSON(tmp);
     creature.forwardOnly = true;
-    creature.semanticVersion = "2.0.0";
 
     // Act: run a harmless mutation, then repair (Issue #1583: fix/validate batched).
     mutator.mutateCreature(creature, { name: "MOD_WEIGHT" }, undefined);

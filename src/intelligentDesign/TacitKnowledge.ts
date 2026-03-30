@@ -13,6 +13,7 @@ import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import { Creature } from "../Creature.ts";
+import { validateOrDiagnose } from "../utils/Diagnostics.ts";
 import { getLogger } from "../utils/Logger.ts";
 
 /**
@@ -261,7 +262,11 @@ export async function applyNeuronChanges(
   }
 
   const finalCreature = Creature.fromJSON(finalJson);
-  finalCreature.fix();
+  validateOrDiagnose(
+    finalCreature,
+    "intelligentDesign-tacitKnowledge",
+    finalCreature.forwardOnly ? { forwardOnly: true } : undefined,
+  );
   const result = await finalCreature.scoreDir(dataDir, options);
 
   const exported = finalCreature.exportJSON();

@@ -1,13 +1,12 @@
 /**
- * Tests for cached forwardOnlyGuaranteed property.
- * Issue #1535: Cache forwardOnlyGuaranteed flag instead of parsing
- * semanticVersion per activation.
+ * Tests for {@link Creature.forwardOnlyGuaranteed}: mirrors
+ * {@link Creature.forwardOnly} === true (topology mode, not semantic version).
  */
 
 import { assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
 
-Deno.test("forwardOnlyGuaranteed - v4 forward-only creature is true", () => {
+Deno.test("forwardOnlyGuaranteed - forward-only creature is true", () => {
   const creature = new Creature(2, 1, {
     semanticVersion: "4.0.0",
     layers: [{ count: 2 }],
@@ -16,20 +15,21 @@ Deno.test("forwardOnlyGuaranteed - v4 forward-only creature is true", () => {
   assertEquals(
     creature.forwardOnlyGuaranteed,
     true,
-    "v4+ forward-only creature should have forwardOnlyGuaranteed=true",
+    "forward-only creature should have forwardOnlyGuaranteed=true",
   );
 });
 
-Deno.test("forwardOnlyGuaranteed - v3 creature is false", () => {
+Deno.test("forwardOnlyGuaranteed - feedback-enabled creature is false", () => {
   const creature = new Creature(2, 1, {
     semanticVersion: "3.9.0",
+    feedbackEnabled: true,
     layers: [{ count: 2 }],
   });
 
   assertEquals(
     creature.forwardOnlyGuaranteed,
     false,
-    "v3 creature should have forwardOnlyGuaranteed=false",
+    "feedback-enabled creature should have forwardOnlyGuaranteed=false",
   );
 });
 
@@ -41,12 +41,12 @@ Deno.test("forwardOnlyGuaranteed - default fresh creature is true", () => {
   assertEquals(
     creature.forwardOnlyGuaranteed,
     true,
-    "Default fresh creature is 4.x forward-only",
+    "Default fresh creature is forward-only",
   );
   assertEquals(creature.semanticVersion, "4.0.0");
 });
 
-Deno.test("forwardOnlyGuaranteed - v5 forward-only creature is true", () => {
+Deno.test("forwardOnlyGuaranteed - high semantic version forward-only is true", () => {
   const creature = new Creature(2, 1, {
     semanticVersion: "5.1.0",
     layers: [{ count: 2 }],
@@ -55,7 +55,7 @@ Deno.test("forwardOnlyGuaranteed - v5 forward-only creature is true", () => {
   assertEquals(
     creature.forwardOnlyGuaranteed,
     true,
-    "v5+ forward-only creature should have forwardOnlyGuaranteed=true",
+    "forwardOnlyGuaranteed follows forwardOnly, not version string",
   );
 });
 
@@ -71,7 +71,7 @@ Deno.test("forwardOnlyGuaranteed - preserved through fromJSON", () => {
   assertEquals(
     restored.forwardOnlyGuaranteed,
     true,
-    "forwardOnlyGuaranteed should survive JSON round-trip for v4+ creature",
+    "forwardOnlyGuaranteed should survive JSON round-trip for forward-only creature",
   );
 });
 
@@ -86,13 +86,14 @@ Deno.test("forwardOnlyGuaranteed - preserved through shallowClone", () => {
   assertEquals(
     clone.forwardOnlyGuaranteed,
     true,
-    "forwardOnlyGuaranteed should survive shallowClone for v4+ creature",
+    "forwardOnlyGuaranteed should survive shallowClone for forward-only creature",
   );
 });
 
 Deno.test("forwardOnlyGuaranteed - false preserved through fromJSON", () => {
   const creature = new Creature(2, 1, {
-    semanticVersion: "3.0.0",
+    semanticVersion: "4.0.0",
+    feedbackEnabled: true,
     layers: [{ count: 2 }],
   });
 
@@ -108,7 +109,8 @@ Deno.test("forwardOnlyGuaranteed - false preserved through fromJSON", () => {
 
 Deno.test("forwardOnlyGuaranteed - false preserved through shallowClone", () => {
   const creature = new Creature(2, 1, {
-    semanticVersion: "3.0.0",
+    semanticVersion: "4.0.0",
+    feedbackEnabled: true,
     layers: [{ count: 2 }],
   });
 
@@ -121,7 +123,7 @@ Deno.test("forwardOnlyGuaranteed - false preserved through shallowClone", () => 
   );
 });
 
-Deno.test("forwardOnlyGuaranteed - invalid version returns false", () => {
+Deno.test("forwardOnlyGuaranteed - invalid semantic version still true when forward-only", () => {
   const creature = new Creature(2, 1, {
     semanticVersion: "abc.1.0",
     layers: [{ count: 2 }],
@@ -129,7 +131,7 @@ Deno.test("forwardOnlyGuaranteed - invalid version returns false", () => {
 
   assertEquals(
     creature.forwardOnlyGuaranteed,
-    false,
-    "Invalid semantic version should result in forwardOnlyGuaranteed=false",
+    true,
+    "Invalid semantic version does not override forward-only topology",
   );
 });

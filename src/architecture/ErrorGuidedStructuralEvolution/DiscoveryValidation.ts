@@ -33,23 +33,11 @@ export function validateAndFixIfNeeded(
 ): { success: boolean; fixWasCalled: boolean; validationError?: Error } {
   const enforceForwardOnly = originalCreature.forwardOnly === true;
 
-  const bumpToFourIfForwardOnlyConfirmed = () => {
-    const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(creature.semanticVersion);
-    if (!match) return;
-    const major = Number.parseInt(match[1], 10);
-    if (Number.isNaN(major)) return;
-    // Backwards compatibility: never downgrade.
-    if (major === 2 || major === 3) {
-      creature.semanticVersion = "4.0.0";
-    }
-  };
-
   // First attempt validation
   try {
     if (enforceForwardOnly) {
       creature.validate({ forwardOnly: true });
       creature.forwardOnly = true;
-      bumpToFourIfForwardOnlyConfirmed();
     } else {
       creature.validate();
     }
@@ -88,7 +76,6 @@ export function validateAndFixIfNeeded(
       if (enforceForwardOnly) {
         creature.validate({ forwardOnly: true });
         creature.forwardOnly = true;
-        bumpToFourIfForwardOnlyConfirmed();
       } else {
         creature.validate();
       }

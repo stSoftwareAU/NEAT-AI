@@ -10,6 +10,7 @@ Deno.test("HYPOT upgrade removes deprecated squash and produces valid creature",
       { count: 3, squash: HYPOT.NAME },
     ],
     semanticVersion: "1.0.0",
+    feedbackEnabled: true,
   });
 
   start.validate();

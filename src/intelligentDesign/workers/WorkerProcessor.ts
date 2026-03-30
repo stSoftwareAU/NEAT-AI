@@ -8,6 +8,7 @@
 
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../Creature.ts";
+import { validateOrDiagnose } from "../../utils/Diagnostics.ts";
 import { initialiseWasmActivationFromPayload } from "../../workers/WasmWorkerInit.ts";
 import type { RequestData } from "./WorkerHandler.ts";
 import type { ResponseData } from "./ResponseData.ts";
@@ -46,7 +47,11 @@ export class WorkerProcessor {
       const { uuid, creature, dataDir, options } = data.score;
       const json = JSON.parse(creature);
       const adjustedCreature = Creature.fromJSON(json);
-      adjustedCreature.fix();
+      validateOrDiagnose(
+        adjustedCreature,
+        "intelligentDesign-worker",
+        adjustedCreature.forwardOnly ? { forwardOnly: true } : undefined,
+      );
       const result = await adjustedCreature.scoreDir(dataDir, options);
       const exported = adjustedCreature.exportJSON();
       addTag(exported, "score", `${result.score}`);
