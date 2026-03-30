@@ -9,9 +9,9 @@
 
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../Creature.ts";
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import { DeDuplicator } from "../architecture/DeDuplicator.ts";
-import { Fitness } from "../architecture/Fitness.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { DeDuplicator } from "@architecture/DeDuplicator.ts";
+import { Fitness } from "@architecture/Fitness.ts";
 import { AdaptiveFineTuneTracker } from "../blackbox/AdaptiveFineTuneTracker.ts";
 import { Breed } from "../breed/Breed.ts";
 import { createNeatConfig, type NeatConfig } from "../config/NeatConfig.ts";
@@ -29,8 +29,8 @@ import {
   type DiscoveryReplayDirResult,
   DiscoveryReplayQueue,
 } from "./DiscoveryReplayQueue.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 // Extracted modules
 import * as evolution from "./NeatEvolution.ts";

@@ -4,7 +4,7 @@ import { type Creature, CreatureUtil, Mutation } from "../../mod.ts";
 import { discover } from "../blackbox/Discover.ts";
 import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { AddBackCon } from "../mutate/AddBackCon.ts";
 import { AddConnection } from "../mutate/AddConnection.ts";
 import { AddNeuron } from "../mutate/AddNeuron.ts";
@@ -20,8 +20,8 @@ import { SubConnection } from "../mutate/SubConnection.ts";
 import { SubNeuron } from "../mutate/SubNeuron.ts";
 import { SubSelfCon } from "../mutate/SubSelfCon.ts";
 import { SwapNeurons } from "../mutate/SwapNeurons.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { DEFAULT_EVOLVABLE_HYPERPARAMETERS } from "../config/HyperparameterConfig.ts";
 import {
   createDefaultHyperparameters,

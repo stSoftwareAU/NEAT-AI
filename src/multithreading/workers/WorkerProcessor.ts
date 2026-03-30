@@ -1,16 +1,16 @@
 import { assert } from "@std/assert";
-import { recordDirectory } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
-import { toErrorMessage } from "../../utils/ErrorSerialisation.ts";
+import { recordDirectory } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
+import { toErrorMessage } from "@utils/ErrorSerialisation.ts";
 import type {
   DiscoverResult,
-} from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import { trainDir } from "../../architecture/Training.ts";
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { trainDir } from "@architecture/Training.ts";
 import { Costs } from "../../Costs.ts";
 import type { CostInterface } from "../../costs/CostInterface.ts";
 import type { RequiredOutputRange } from "../../config/OutputRangeConfig.ts";
 import { Creature } from "../../Creature.ts";
-import { exportJSONWithRuntimeIds } from "../../architecture/PopulateRuntimeIdsFromCreature.ts";
-import { writeDiagnostics } from "../../utils/Diagnostics.ts";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { writeDiagnostics } from "@utils/Diagnostics.ts";
 import {
   getCachedWasmActivationCount,
   getMaxCachedWasmCreatureActivations,
@@ -21,7 +21,7 @@ import {
 } from "../../wasm/mod.ts";
 import { initialiseWasmActivationFromPayload } from "../../workers/WasmWorkerInit.ts";
 import type { RequestData, ResponseData } from "./WorkerHandler.ts";
-import { getLogger } from "../../utils/Logger.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 type DiscoverResponsePayload = NonNullable<ResponseData["discover"]>;
 

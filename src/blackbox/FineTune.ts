@@ -2,17 +2,17 @@ import { assert } from "@std/assert";
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "../Creature.ts";
-import type { Approach } from "../NEAT/LogApproach.ts";
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
-import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
+import type { Approach } from "@neat/LogApproach.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
+import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
 import { pruneOrphanMemeticReferences } from "../compact/CompactUtils.ts";
 import {
   DEFAULT_QUANTUM_STEP_CONFIG,
   type RequiredQuantumStepConfig,
 } from "../config/QuantumStepConfig.ts";
-import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import {
   coordinateBiasWeightAdjustments,
   type NeuronAdjustmentPlan,

@@ -12,26 +12,26 @@ import type {
   CreatureExport,
   CreatureInternal,
   CreatureTrace,
-} from "../architecture/CreatureInterfaces.ts";
-import { creatureValidate } from "../architecture/CreatureValidate.ts";
-import { Neuron } from "../architecture/Neuron.ts";
+} from "@architecture/CreatureInterfaces.ts";
+import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { Neuron } from "@architecture/Neuron.ts";
 import {
   ensureIdAbove,
   inputNeuronId,
   outputNeuronId,
-} from "../architecture/NeuronId.ts";
-import type { NeuronTrace } from "../architecture/NeuronInterfaces.ts";
-import { Synapse } from "../architecture/Synapse.ts";
+} from "@architecture/NeuronId.ts";
+import type { NeuronTrace } from "@architecture/NeuronInterfaces.ts";
+import { Synapse } from "@architecture/Synapse.ts";
 import type {
   SynapseExport,
   SynapseInternal,
   SynapseTrace,
-} from "../architecture/SynapseInterfaces.ts";
+} from "@architecture/SynapseInterfaces.ts";
 import type { MemeticInterface } from "../blackbox/MemeticInterface.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
+import { getLogger } from "@utils/Logger.ts";
+import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { upgradeOne } from "../upgrade/UpgradeOne.ts";
-import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
+import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
 
 /** Keys that must never be copied from untrusted data to prevent prototype pollution. */
 const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
