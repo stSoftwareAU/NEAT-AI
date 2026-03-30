@@ -1015,6 +1015,34 @@ export class Creature implements CreatureInternal {
     return serialisation.fromJSON(json, validate, Creature) as Creature;
   }
 
+  /**
+   * Load a creature from persisted JSON (disk, git, worker wire payload from an
+   * untrusted store) and apply {@link Creature.fix} plus a single structural
+   * validation pass.
+   *
+   * Applications such as GRQ should call this once when ingesting a genome file
+   * or repo checkout, then pass the instance into evolution or training. After
+   * that, the library assumes the instance stays valid: internal pipelines do not
+   * re-run full structural validation on every step (use {@link Creature.DEBUG}
+   * or {@link Creature.validate} while diagnosing bugs). Prefer
+   * {@link Creature.fromJSON} for trusted in-process round-trips where you must
+   * preserve exact topology and memetic state — {@link Creature.fix} can prune
+   * edges and clear memetic lineage when repairs run.
+   *
+   * `loadFrom` already logs and strips recurrent synapses that contradict
+   * `forwardOnly: true`; {@link Creature.fix} then normalises orphans, memetic
+   * keys, and forward-only edges so the full topology check in
+   * `creatureValidate()` succeeds.
+   */
+  static fromPersistedJSON(
+    json: CreatureInternal | CreatureExport,
+  ): Creature {
+    const creature = serialisation.fromJSON(json, false, Creature) as Creature;
+    creature.fix({ forwardOnly: creature.forwardOnly });
+    creatureValidate(creature, { forwardOnly: creature.forwardOnly });
+    return creature;
+  }
+
   shallowClone(): Creature {
     return serialisation.shallowClone(this, Creature) as Creature;
   }

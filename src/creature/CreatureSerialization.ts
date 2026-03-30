@@ -28,7 +28,7 @@ import type {
   SynapseTrace,
 } from "../architecture/SynapseInterfaces.ts";
 import type { MemeticInterface } from "../blackbox/MemeticInterface.ts";
-import { rejectRecurrentSynapseIfForwardOnlyCreature } from "../architecture/ForwardOnlySynapseGuard.ts";
+import { getLogger } from "../utils/Logger.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { upgradeOne } from "../upgrade/UpgradeOne.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
@@ -353,6 +353,8 @@ export function loadFrom(
   let isSorted = true;
   let lastFrom = -1;
   let lastTo = -1;
+  const isForwardOnly = creature.forwardOnly === true;
+  let validSynapseCount = 0;
   for (let i = 0; i < synapseCount; i++) {
     const synapse = synapses[i];
     const se = synapse as SynapseExport;
@@ -397,12 +399,17 @@ export function loadFrom(
       );
     }
 
-    // Forward-only genomes must never contain recurrent edges on the wire or after load:
-    // if `json.forwardOnly === true`, reject self-loops and backward links here (same rule
-    // as `Creature.connect`). Prevention is at export/source — do not emit `forwardOnly: true`
-    // with recurrent synapses; repair tooling must rewrite exports before distribution — Issue #2086.
-
-    rejectRecurrentSynapseIfForwardOnlyCreature(creature, from!, to!);
+    if (isForwardOnly && from! >= to!) {
+      getLogger().error(
+        `🚨 [loadFrom] Stripping recurrent synapse ${from}->${to} ` +
+          `(fromUUID=${rawSyn.fromUUID ?? se.fromId}, toUUID=${
+            rawSyn.toUUID ?? se.toId
+          }) ` +
+          `from forward-only creature (UUID: ${creature.uuid ?? "unknown"}). ` +
+          `This indicates upstream corruption.`,
+      );
+      continue;
+    }
 
     if (isSorted) {
       if (from > lastFrom) {
@@ -415,7 +422,7 @@ export function loadFrom(
     }
 
     const tmpSynapse = new Synapse(from!, to!, synapse.weight, synapse.type);
-    creature.synapses[i] = tmpSynapse;
+    creature.synapses[validSynapseCount++] = tmpSynapse;
 
     if (synapse.frozen) {
       tmpSynapse.frozen = true;
@@ -436,6 +443,9 @@ export function loadFrom(
       >;
       safeAssignProperties(target, source);
     }
+  }
+  if (validSynapseCount < synapseCount) {
+    creature.synapses.length = validSynapseCount;
   }
 
   if (json.memetic && uuidToIndex.size > 0) {

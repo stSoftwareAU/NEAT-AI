@@ -35,22 +35,9 @@ export class SubNeuron extends AbstractMutationOperator {
       return false;
     }
 
-    const incomingConnections = creature.inwardConnections(selectedIndx);
-    const outgoingConnections = creature.outwardConnections(selectedIndx);
-
-    const sourcesToCheck = new Set<number>();
-    for (const conn of incomingConnections) {
-      sourcesToCheck.add(conn.from);
-    }
-
-    const targetsToCheck = new Set<number>();
-    for (const conn of outgoingConnections) {
-      targetsToCheck.add(conn.to);
-    }
-
     removeHiddenNeuron(creature, selectedIndx);
 
-    this.#cascadeCleanup(selectedIndx, sourcesToCheck, targetsToCheck);
+    this.#cascadeCleanup();
     this.#cleanupInvalidIfNeurons();
 
     delete creature.memetic;
@@ -58,77 +45,36 @@ export class SubNeuron extends AbstractMutationOperator {
   }
 
   /**
-   * After removing a neuron, check its former neighbours:
-   * - Sources that lost all outward connections → remove
-   * - Targets that lost all inward connections → convert to constant or remove
+   * After removing a neuron, scan all hidden/constant neurons for orphans:
+   * - No outward connections → remove
+   * - Hidden with outward but no inward → convert to constant
    *
-   * Runs iteratively until no more changes (handles cascading orphans).
+   * Iterates backwards (high-to-low index) so removals don't invalidate
+   * unprocessed indices. Repeats until stable.
    */
-  #cascadeCleanup(
-    removedIndx: number,
-    sourcesToCheck: Set<number>,
-    targetsToCheck: Set<number>,
-  ): void {
+  #cascadeCleanup(): void {
     const creature = this.creature;
     let changed = true;
     while (changed) {
       changed = false;
-
-      const adjustIndex = (idx: number) => idx > removedIndx ? idx - 1 : idx;
-
-      const adjustedSources = [...sourcesToCheck].map(adjustIndex);
-      const adjustedTargets = [...targetsToCheck].map(adjustIndex);
-
-      const toRemove: number[] = [];
-
-      for (const srcIndx of adjustedSources) {
-        if (srcIndx < 0 || srcIndx >= creature.neurons.length) continue;
-        const n = creature.neurons[srcIndx];
+      for (let i = creature.neurons.length - 1; i >= creature.input; i--) {
+        const n = creature.neurons[i];
         if (n.type !== "hidden" && n.type !== "constant") continue;
-        if (creature.outwardConnections(srcIndx).length === 0) {
-          toRemove.push(srcIndx);
+
+        if (creature.outwardConnections(i).length === 0) {
+          removeHiddenNeuron(creature, i);
+          changed = true;
+          continue;
         }
-      }
 
-      for (const tgtIndx of adjustedTargets) {
-        if (tgtIndx < 0 || tgtIndx >= creature.neurons.length) continue;
-        const n = creature.neurons[tgtIndx];
-        if (n.type !== "hidden") continue;
-
-        const inward = creature.inwardConnections(tgtIndx);
-        if (inward.length === 0) {
-          const outward = creature.outwardConnections(tgtIndx);
-          if (outward.length === 0) {
-            if (!toRemove.includes(tgtIndx)) toRemove.push(tgtIndx);
-          } else {
-            const squash = n.findSquash();
-            const activation = squash as ActivationInterface;
-            if ("squash" in activation) {
-              n.bias = (activation as ActivationInterface).squash(n.bias);
-            }
-            n.type = "constant";
-            n.setSquash(undefined);
+        if (n.type === "hidden" && creature.inwardConnections(i).length === 0) {
+          const squash = n.findSquash();
+          const activation = squash as ActivationInterface;
+          if ("squash" in activation) {
+            n.bias = (activation as ActivationInterface).squash(n.bias);
           }
-        }
-      }
-
-      toRemove.sort((a, b) => b - a);
-      for (const idx of toRemove) {
-        const n = creature.neurons[idx];
-        if (n.type === "hidden" || n.type === "constant") {
-          const newSources = new Set<number>();
-          for (const conn of creature.inwardConnections(idx)) {
-            newSources.add(conn.from);
-          }
-          const newTargets = new Set<number>();
-          for (const conn of creature.outwardConnections(idx)) {
-            newTargets.add(conn.to);
-          }
-
-          removeHiddenNeuron(creature, idx);
-          removedIndx = idx;
-          sourcesToCheck = newSources;
-          targetsToCheck = newTargets;
+          n.type = "constant";
+          n.setSquash(undefined);
           changed = true;
         }
       }

@@ -1,7 +1,6 @@
 import { assert } from "@std/assert";
 import { removeTag } from "@stsoftware/tags/mod";
 import { type Creature, CreatureUtil, Mutation } from "../../mod.ts";
-import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { discover } from "../blackbox/Discover.ts";
 import { memeticUpdate } from "../blackbox/MemeticUpdate.ts";
 import type { NeatConfig } from "../config/NeatConfig.ts";
@@ -199,9 +198,10 @@ export class Mutator {
           }
         }
 
-        // Issue #1583: Run fix() and validate() once after the entire mutation
-        // loop rather than per-mutation, avoiding redundant topology cache
-        // rebuilds and graph traversal.
+        // Issue #1583: Run fix() once after the entire mutation loop rather than
+        // per-mutation. Mutations must keep the creature valid; we do not run full
+        // structural validation on every batch (use Creature.DEBUG / validate() when
+        // diagnosing bugs).
         if (changed) {
           this.repairAfterMutation(creature);
         }
@@ -210,10 +210,6 @@ export class Mutator {
         // This optimises subsequent inward connection lookups by avoiding
         // linear scans before the lazy index build threshold is reached.
         creature.prebuildInwardIndexIfLarge();
-
-        if (this.config.debug) {
-          creatureValidate(creature);
-        }
 
         if (changed) {
           removeTag(creature, "approach");
@@ -494,9 +490,10 @@ export class Mutator {
    * validation. Call this once after applying one or more mutations via
    * mutateCreature().
    *
-   * Issue #1583: Extracted from mutateCreature() so that fix() and validate()
-   * can be batched — called once after the entire mutation loop rather than
-   * after every individual mutation.
+   * Issue #1583: Extracted from mutateCreature() so that fix() can be batched —
+   * called once after the entire mutation loop rather than after every individual
+   * mutation. Structural validation is not run here; mutations must preserve a
+   * valid creature.
    */
   public repairAfterMutation(creature: Creature): void {
     const enforceForwardOnly = creature.forwardOnly === true ||
@@ -504,7 +501,6 @@ export class Mutator {
 
     if (enforceForwardOnly) {
       creature.fix({ forwardOnly: true });
-      creature.validate({ forwardOnly: true });
       creature.forwardOnly = true;
     } else {
       creature.fix();
@@ -514,9 +510,8 @@ export class Mutator {
   /**
    * Mutate the creature using a specific method.
    *
-   * Issue #1583: No longer calls fix() or validate() internally. Callers
-   * must call repairAfterMutation() after one or more mutations to ensure
-   * the creature is structurally valid.
+   * Issue #1583: No longer calls fix() internally. Callers must call
+   * repairAfterMutation() after one or more mutations to normalise topology.
    *
    * @param {Object} method - The mutation method.
    * @param {string} method.name - The name of the mutation method.
@@ -553,9 +548,6 @@ export class Mutator {
       delete creature.uuid;
       creature.state.preparedNeurons = false;
     }
-
-    // Issue #1583: DEBUG validation deferred to repairAfterMutation() / mutate()
-    // since the creature is in an intermediate (unfixed) state here.
 
     const endUUID = CreatureUtil.makeUUID(creature);
     if (startUUID === endUUID) {

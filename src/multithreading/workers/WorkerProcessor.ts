@@ -1,5 +1,4 @@
 import { assert } from "@std/assert";
-import { creatureValidate } from "../../architecture/CreatureValidate.ts";
 import { recordDirectory } from "../../architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
 import { toErrorMessage } from "../../utils/ErrorSerialisation.ts";
 import type {
@@ -280,14 +279,12 @@ export class WorkerProcessor {
         assert(this.dataSetDir, "No data dir");
         assert(this.cost, "No cost");
 
-        creatureValidate(creature);
         const result = trainDir(
           creature,
           this.dataSetDir,
           data.train.options,
           this.cost,
         );
-        creatureValidate(creature);
         const json = JSON.stringify(exportJSONWithRuntimeIds(creature));
 
         const response = {
@@ -339,8 +336,6 @@ export class WorkerProcessor {
         );
 
         assert(this.dataSetDir, "No data dir");
-
-        creatureValidate(creature);
 
         if (data.discover.config.log) {
           getLogger().info(
