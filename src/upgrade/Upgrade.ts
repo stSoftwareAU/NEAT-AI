@@ -1,6 +1,7 @@
 import { Creature } from "../Creature.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { pruneOrphanMemeticReferences } from "../compact/CompactUtils.ts";
+import { cleanupOrphanedNeuronsInCreature } from "../compact/OrphanedNeuronCleanup.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import type { ValidationError } from "@errors/ValidationError.ts";
 import { writeDiagnostics } from "@utils/Diagnostics.ts";
@@ -160,6 +161,11 @@ function tryUpgradeToFour(creature: Creature): Creature {
  * All creatures are 4.x — the upgrade is a one-time load-from-disk operation.
  */
 export function prepareCreatureForBreeding(creature: Creature): Creature {
+  // Remove constant/hidden neurons with no outward connections before validation.
+  // These are dead weight that cannot influence outputs and arise naturally when
+  // breeding or mutation drops the last outward synapse from a constant neuron.
+  cleanupOrphanedNeuronsInCreature(creature);
+
   validateFourX(creature);
   return creature;
 }
