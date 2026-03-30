@@ -1,10 +1,11 @@
 ## Summary
 
-Replaced 2802 relative import paths across 901 files with their import map aliases
-defined in `deno.json`. This eliminates all Deno language server
+Replaced 2802 relative import paths across 901 files with their import map
+aliases defined in `deno.json`. This eliminates all Deno language server
 `import-map-remap` warnings ("The import specifier can be remapped to ...").
 
 The following import map aliases were applied:
+
 - `@architecture/` for `src/architecture/`
 - `@errors/` for `src/errors/`
 - `@methods/` for `src/methods/`
