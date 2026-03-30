@@ -19,7 +19,6 @@ import { Neuron } from "./Neuron.ts";
 import { outputIndexFromId, outputNeuronId } from "./NeuronId.ts";
 import { Synapse as SynapseClass } from "./Synapse.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
-import { normaliseComputationalNeuronOrder } from "./NormaliseComputationalNeuronOrder.ts";
 import { creatureValidate } from "./CreatureValidate.ts";
 
 class OffspringError extends Error {
@@ -437,8 +436,6 @@ export class Offspring {
       pruneOrphanMemeticReferences(offspring);
     }
 
-    normaliseComputationalNeuronOrder(offspring);
-
     if (shouldBeForwardOnly) {
       if (options.forwardOnly === false) {
         getLogger().warn(
@@ -685,6 +682,9 @@ export class Offspring {
       if (indxA === indxB) {
         throw new TopologyError(`Duplicate index ${indxA}`, "DUPLICATE_UUID");
       }
+
+      if (a.type === "constant" && b.type === "hidden") return -1;
+      if (a.type === "hidden" && b.type === "constant") return 1;
 
       return indxA - indxB;
     });

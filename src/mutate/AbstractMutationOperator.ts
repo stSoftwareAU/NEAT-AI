@@ -1,5 +1,4 @@
 import type { Creature } from "../Creature.ts";
-import { normaliseComputationalNeuronOrder } from "../architecture/NormaliseComputationalNeuronOrder.ts";
 import type { MutationBias } from "../predictiveCoding/PredictionErrorGuidedMutation.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import type { RadioactiveInterface } from "./RadioactiveInterface.ts";
@@ -30,9 +29,7 @@ export abstract class AbstractMutationOperator implements RadioactiveInterface {
    * selection to concentrate structural changes on high-error regions.
    */
   public mutate(focusList?: number[], mutationBias?: MutationBias): boolean {
-    const changed = this.performMutation(focusList, mutationBias);
-    normaliseComputationalNeuronOrder(this.creature);
-    return changed;
+    return this.performMutation(focusList, mutationBias);
   }
 
   /**

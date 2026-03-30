@@ -1,3 +1,4 @@
+import { moveConstantNeuronIntoPrefix } from "../architecture/NormaliseComputationalNeuronOrder.ts";
 import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
@@ -75,7 +76,9 @@ export class SubNeuron extends AbstractMutationOperator {
           }
           n.type = "constant";
           n.setSquash(undefined);
+          moveConstantNeuronIntoPrefix(creature, i);
           changed = true;
+          break;
         }
       }
     }

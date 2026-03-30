@@ -1,5 +1,6 @@
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { type CreatureExport, CreatureUtil } from "../../mod.ts";
+import { normaliseComputationalNeuronOrderInExport } from "../architecture/NormaliseComputationalNeuronOrder.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
@@ -252,6 +253,7 @@ function simplifyConstants(exported: CreatureExport) {
     }
   }
 
+  normaliseComputationalNeuronOrderInExport(exported);
   return exported;
 }
 

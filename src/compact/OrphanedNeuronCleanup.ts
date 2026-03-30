@@ -3,6 +3,7 @@ import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { assertValidSynapseReferences } from "../architecture/AssertValidSynapseReferences.ts";
+import { normaliseComputationalNeuronOrderInExport } from "../architecture/NormaliseComputationalNeuronOrder.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import { allocateStructuralNeuronIdForCreature } from "../architecture/NeuronId.ts";
 import { Neuron } from "../architecture/Neuron.ts";
@@ -302,6 +303,8 @@ export function cleanupOrphanedNeurons(
       "cleanupOrphanedNeurons iteration",
     );
   } while (changedThisPass);
+
+  normaliseComputationalNeuronOrderInExport(creatureExport);
 
   // Delete memetic if any neurons were removed (structure changed)
   if (allRemovedIds.size > 0) {
