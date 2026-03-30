@@ -88,6 +88,9 @@
   "exclude": [
     ".analysis",
     ".coverage",
+    "junit-raw.xml",
+    "junit.xml",
+    "test-errors.log",
     "wasm_activation/pkg",
     "wasm_activation/target"
   ]
