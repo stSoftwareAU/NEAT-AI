@@ -1,5 +1,11 @@
-import { assert, fail } from "@std/assert";
+import { assert, assertEquals, fail } from "@std/assert";
 import { Creature, type CreatureExport } from "../../mod.ts";
+import { Neuron } from "../../src/architecture/Neuron.ts";
+import {
+  inputNeuronId,
+  nextNeuronId,
+  outputNeuronId,
+} from "../../src/architecture/NeuronId.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { Synapse } from "../../src/architecture/Synapse.ts";
 import type { ValidationError } from "../../src/errors/ValidationError.ts";
@@ -48,6 +54,93 @@ Deno.test("validate rejects negative output count", () => {
     );
   }
 });
+
+Deno.test(
+  "validate rejects constant after hidden (required: input, constant, hidden, output)",
+  () => {
+    // `loadFrom` always canonicalises order; build in-memory to exercise
+    // creatureValidate in isolation.
+    const creature = new Creature(1, 1, {
+      lazyInitialization: true,
+      feedbackEnabled: true,
+    });
+    creature.forwardOnly = false;
+
+    const in0 = new Neuron(inputNeuronId(0), "input", 0, creature);
+    in0.index = 0;
+    const hiddenN = new Neuron(
+      nextNeuronId(),
+      "hidden",
+      0,
+      creature,
+      "IDENTITY",
+    );
+    hiddenN.uuid = "h1";
+    hiddenN.index = 1;
+    const constN = new Neuron(nextNeuronId(), "constant", 1, creature);
+    constN.uuid = "c1";
+    constN.index = 2;
+    const outN = new Neuron(
+      outputNeuronId(0),
+      "output",
+      0,
+      creature,
+      "IDENTITY",
+    );
+    outN.uuid = "output-0";
+    outN.index = 3;
+
+    creature.neurons = [in0, hiddenN, constN, outN];
+    creature.synapses = [
+      new Synapse(0, 1, 1),
+      new Synapse(1, 3, 1),
+      new Synapse(2, 3, 0.5),
+    ];
+    creature.synapses.sort((a, b) =>
+      a.from !== b.from ? a.from - b.from : a.to - b.to
+    );
+    creature.clearCache();
+
+    try {
+      creatureValidate(creature);
+      fail("Expected error");
+    } catch (e) {
+      const error = e as ValidationError;
+      assertEquals(error.reason, "NEURON_ORDER");
+      assert(
+        error.message.includes("constant after hidden"),
+        `message: ${error.message}`,
+      );
+    }
+  },
+);
+
+Deno.test(
+  "validate accepts computational order: constants then hiddens then outputs",
+  () => {
+    const tmp: CreatureExport = {
+      neurons: [
+        { type: "constant", uuid: "c1", bias: 1 },
+        { type: "hidden", uuid: "h1", squash: "IDENTITY", bias: 0 },
+        {
+          type: "output",
+          squash: "IDENTITY",
+          uuid: "output-0",
+          bias: 0,
+        },
+      ],
+      synapses: [
+        { fromUUID: "c1", toUUID: "output-0", weight: 0.5 },
+        { fromUUID: "input-0", toUUID: "h1", weight: 1 },
+        { fromUUID: "h1", toUUID: "output-0", weight: 1 },
+      ],
+      input: 1,
+      output: 1,
+    };
+
+    creatureValidate(Creature.fromJSON(tmp));
+  },
+);
 
 Deno.test("validate rejects hidden neuron after output neuron", () => {
   const tmp: CreatureExport = {

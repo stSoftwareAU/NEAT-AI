@@ -4,10 +4,12 @@
  * Public exports identify neurons by stable uuid strings only; integer ids are internal.
  */
 
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
+import { Neuron } from "../../src/architecture/Neuron.ts";
 import { Creature } from "../../src/Creature.ts";
 import { exportSnapshotJSON } from "../../src/creature/CreatureSerialization.ts";
+import { neuronUuid } from "../../src/neuron/NeuronSerialization.ts";
 
 /** Helper: creates a creature from legacy UUID-format JSON. */
 function makeLegacyCreature(): CreatureExport {
@@ -281,6 +283,22 @@ Deno.test(
         );
       }
     }
+  },
+);
+
+/**
+ * Legacy compact-unused unity constants used id -1000 (decoded as output index
+ * 999 under the output-id formula). They are not output slots — wire labels
+ * must use the constant's stable uuid.
+ */
+Deno.test(
+  "neuronUuid - constant with legacy unity id -1000 is not wire-labelled as output-999",
+  () => {
+    const creature = new Creature(1, 1, { layers: [{ count: 1 }] });
+    const constant = new Neuron(-1000, "constant", 1, creature, undefined);
+    assert(constant.uuid);
+    assertEquals(neuronUuid(constant), constant.uuid);
+    assertEquals(constant.uuid.startsWith("output-"), false);
   },
 );
 

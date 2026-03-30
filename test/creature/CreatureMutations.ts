@@ -8,12 +8,39 @@ import { Offspring } from "../../src/architecture/Offspring.ts";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 import { SparseConfig } from "../../src/propagate/sparse/SparseConfig.ts";
+import {
+  createSeededRng,
+  getRandomNumberGenerator,
+  setRandomNumberGenerator,
+} from "../../src/utils/RandomNumberGenerator.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
+/** Stable seed per mutation name so parallel full-suite runs do not exhaust RNG state. */
+function rngSeedForMutationTest(methodName: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < methodName.length; i++) {
+    h ^= methodName.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
 /* Functions used in the testing process */
 function checkMutation(method: { name: string }) {
+  const rngBefore = getRandomNumberGenerator();
+  setRandomNumberGenerator(
+    createSeededRng(rngSeedForMutationTest(method.name)),
+  );
+  try {
+    checkMutationBody(method);
+  } finally {
+    setRandomNumberGenerator(rngBefore);
+  }
+}
+
+function checkMutationBody(method: { name: string }) {
   const memoryMutation = method.name === Mutation.ADD_BACK_CONN.name ||
     method.name === Mutation.SUB_BACK_CONN.name ||
     method.name === Mutation.ADD_SELF_CONN.name ||

@@ -5,6 +5,7 @@
 
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
+import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import {
   fix,
@@ -107,6 +108,30 @@ Deno.test("fix - via Creature facade", async () => {
 
   creature.fix();
   creatureValidate(creature);
+});
+
+Deno.test("fix - removes constant with no outward connections", async () => {
+  await initWasmForTests();
+  const json: CreatureExport = {
+    semanticVersion: "4.0.0",
+    forwardOnly: true,
+    input: 1,
+    output: 1,
+    neurons: [
+      { type: "constant", uuid: "floating-const", bias: 0.5 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "output-0", weight: 1 },
+    ],
+  };
+  const creature = Creature.fromJSON(json, false);
+  fix(creature, { forwardOnly: true });
+  creatureValidate(creature, { forwardOnly: true });
+  assertEquals(
+    creature.neurons.some((n) => n.type === "constant"),
+    false,
+  );
 });
 
 Deno.test("fix - with forwardOnly preserves semanticVersion", async () => {

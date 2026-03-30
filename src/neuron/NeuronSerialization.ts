@@ -24,9 +24,12 @@ import { TopologyError } from "../errors/TopologyError.ts";
  * UUID string used in exports and synapse endpoints.
  * - Output neurons: canonical "output-N" (N = output index)
  * - Hidden/constant: stable `neuron.uuid` (set at creation or loaded from JSON)
+ *
+ * Use `type === "output"` for the output-N mapping, not `id < 0` alone: any
+ * non-output neuron must not be mislabelled from a stray negative runtime id.
  */
 export function neuronUuid(neuron: Neuron): string {
-  if (isOutputNeuronId(neuron.id)) {
+  if (neuron.type === "output" && isOutputNeuronId(neuron.id)) {
     return `output-${outputIndexFromId(neuron.id)}`;
   }
   if (neuron.uuid) {
@@ -49,11 +52,14 @@ export function neuronWireLabelForDiagnostics(
   if (neuron.type === "input") {
     return `input-${arrayIndex}`;
   }
-  if (isOutputNeuronId(neuron.id)) {
+  if (neuron.type === "output" && isOutputNeuronId(neuron.id)) {
     return `output-${outputIndexFromId(neuron.id)}`;
   }
   if (neuron.uuid) {
     return neuron.uuid;
+  }
+  if (isOutputNeuronId(neuron.id)) {
+    return `non-output-negative-id-${neuron.id}@index-${arrayIndex}`;
   }
   return `missing-uuid@index-${arrayIndex}`;
 }

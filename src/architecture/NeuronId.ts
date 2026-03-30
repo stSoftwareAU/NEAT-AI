@@ -43,6 +43,30 @@ export function ensureIdAbove(id: number): void {
 }
 
 /**
+ * Allocates an integer id for a new hidden or constant on the given creature.
+ *
+ * Chooses max(largest structural id on this graph, process counter) + 1, so
+ * the new id is unique on the creature and stays consistent with
+ * {@link nextNeuronId} for later inserts. Wire identity remains UUID-based;
+ * this is only the in-memory handle (Issue #1958).
+ */
+export function allocateStructuralNeuronIdForCreature(creature: {
+  neurons: readonly { id: number }[];
+}): number {
+  const MIN_HIDDEN = 1_000_000;
+  let maxOnCreature = MIN_HIDDEN - 1;
+  for (const n of creature.neurons) {
+    if (n.id >= MIN_HIDDEN && n.id > maxOnCreature) {
+      maxOnCreature = n.id;
+    }
+  }
+  const fromCreature = Math.max(maxOnCreature + 1, MIN_HIDDEN);
+  const id = Math.max(fromCreature, _nextId);
+  _nextId = id + 1;
+  return id;
+}
+
+/**
  * Resets the hidden-neuron ID counter to its initial value (1_000_000).
  *
  * Used by the test preload so parallel workers do not inherit a monotonic

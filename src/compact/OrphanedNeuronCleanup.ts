@@ -1,13 +1,37 @@
 import { assert } from "@std/assert";
+import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../Creature.ts";
 import type { CreatureExport } from "../architecture/CreatureInterfaces.ts";
 import { assertValidSynapseReferences } from "../architecture/AssertValidSynapseReferences.ts";
+import { normaliseComputationalNeuronOrderInExport } from "../architecture/NormaliseComputationalNeuronOrder.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
+import { allocateStructuralNeuronIdForCreature } from "../architecture/NeuronId.ts";
 import { Neuron } from "../architecture/Neuron.ts";
 import type { Synapse } from "../architecture/Synapse.ts";
 import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
 import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
 import { Activations } from "../methods/activations/Activations.ts";
+
+/**
+ * Up to three compact-unused unity constants (slots 0..2). Resolved by this tag
+ * on the neuron; new neurons use {@link allocateStructuralNeuronIdForCreature}
+ * and {@link crypto.randomUUID} — not negative runtime ids (which collided with
+ * output encoding).
+ */
+export const COMPACT_UNITY_SLOT_TAG = "compact-unity-slot";
+
+/**
+ * Index for inserting a new computational constant: after all inputs and
+ * existing constants, before the first hidden or output block.
+ */
+function indexToInsertComputationalConstant(creature: Creature): number {
+  const end = creature.neurons.length - creature.output;
+  let i = creature.input;
+  while (i < end && creature.neurons[i]!.type === "constant") {
+    i++;
+  }
+  return i;
+}
 
 /**
  * Result of cleaning up orphaned neurons.
@@ -20,63 +44,61 @@ export interface CleanupOrphanedResult {
 }
 
 export function createConstantOne(creature: Creature, count: number) {
-  let id;
-  switch (count) {
-    case 1:
-      id = -1001;
-      break;
-    case 2:
-      id = -1002;
-      break;
-    default:
-      id = -1000;
-  }
-  let firstHiddenIndx = -1;
-  let foundConstant;
+  assert(count >= 0 && count <= 2, `Unity slot must be 0..2, got: ${count}`);
+  const slotKey = String(count);
+  const legacyId = count === 0 ? -1000 : count === 1 ? -1001 : -1002;
+
+  const matchesUnitySlot = (n: Neuron): boolean => {
+    if (n.type !== "constant") return false;
+    if (getTag(n, COMPACT_UNITY_SLOT_TAG) === slotKey) return true;
+    return n.id === legacyId;
+  };
+
+  let foundConstant: Neuron | undefined;
   for (let indx = creature.input; indx < creature.neurons.length; indx++) {
     const n = creature.neurons[indx];
-    if (firstHiddenIndx === -1) {
-      if (n.type === "hidden") {
-        firstHiddenIndx = n.index;
-      }
-    }
-    if (n.id === id) {
+    if (matchesUnitySlot(n)) {
       assert(n.type === "constant", "Must be a constant");
       foundConstant = n;
       foundConstant.bias = 1;
-      if (firstHiddenIndx === -1) {
-        firstHiddenIndx = foundConstant.index;
-      }
-
+      addTag(foundConstant, COMPACT_UNITY_SLOT_TAG, slotKey);
       break;
     }
   }
 
+  const insertAt = indexToInsertComputationalConstant(creature);
+
+  const wireUuid = crypto.randomUUID();
   const constantOne = new Neuron(
-    id,
+    allocateStructuralNeuronIdForCreature(creature),
     "constant",
     1,
     creature,
     undefined,
+    wireUuid,
   );
-  constantOne.index = firstHiddenIndx;
-  const left = creature.neurons.slice(0, firstHiddenIndx);
-  const right = creature.neurons.slice(firstHiddenIndx);
+  addTag(constantOne, COMPACT_UNITY_SLOT_TAG, slotKey);
+  constantOne.index = insertAt;
+  const left = creature.neurons.slice(0, insertAt);
+  const right = creature.neurons.slice(insertAt);
   right.forEach((n) => {
     n.index++;
   });
   creature.neurons = [...left, constantOne, ...right];
 
   creature.synapses.forEach((c) => {
-    if (c.from >= firstHiddenIndx) c.from++;
-    if (c.to >= firstHiddenIndx) c.to++;
+    if (c.from >= insertAt) c.from++;
+    if (c.to >= insertAt) c.to++;
   });
 
   if (foundConstant) {
     let firstIndx = -1;
     for (let indx = creature.input; indx < creature.neurons.length; indx++) {
       const n = creature.neurons[indx];
-      if (n.id === id) {
+      if (
+        n.type === "constant" &&
+        getTag(n, COMPACT_UNITY_SLOT_TAG) === slotKey
+      ) {
         if (firstIndx === -1) {
           firstIndx = n.index;
         } else {
@@ -281,6 +303,8 @@ export function cleanupOrphanedNeurons(
       "cleanupOrphanedNeurons iteration",
     );
   } while (changedThisPass);
+
+  normaliseComputationalNeuronOrderInExport(creatureExport);
 
   // Delete memetic if any neurons were removed (structure changed)
   if (allRemovedIds.size > 0) {
