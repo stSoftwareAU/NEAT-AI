@@ -1,12 +1,24 @@
 ## Summary
 
-Replaced all relative import paths with import map aliases defined in `deno.json` to eliminate "The import specifier can be remapped" (`deno(import-map-remap)`) warnings. Closes #2091.
+Replaced all relative import paths with import map aliases defined in
+`deno.json` to eliminate "The import specifier can be remapped"
+(`deno(import-map-remap)`) warnings. Closes #2091.
 
 **What changed:**
 
-1. **`deno.json`** — Added import map entries for all `src/` subdirectories (`@blackbox/`, `@breed/`, `@cache/`, `@compact/`, `@config/`, `@costs/`, `@creature/`, `@deprecated/`, `@discovery/`, `@intelligentDesign/`, `@multithreading/`, `@mutate/`, `@neuron/`, `@onnx/`, `@predictiveCoding/`, `@presets/`, `@reconstruct/`, `@transfer/`, `@upgrade/`, `@wasm/`, `@workers/`) and top-level files (`@connectionOptions`, `@costs`, `@creature`), joining the existing aliases (`@architecture/`, `@errors/`, `@methods/`, `@neat/`, `@optimize/`, `@propagate/`, `@utils/`, `@globalAccessors`).
+1. **`deno.json`** — Added import map entries for all `src/` subdirectories
+   (`@blackbox/`, `@breed/`, `@cache/`, `@compact/`, `@config/`, `@costs/`,
+   `@creature/`, `@deprecated/`, `@discovery/`, `@intelligentDesign/`,
+   `@multithreading/`, `@mutate/`, `@neuron/`, `@onnx/`, `@predictiveCoding/`,
+   `@presets/`, `@reconstruct/`, `@transfer/`, `@upgrade/`, `@wasm/`,
+   `@workers/`) and top-level files (`@connectionOptions`, `@costs`,
+   `@creature`), joining the existing aliases (`@architecture/`, `@errors/`,
+   `@methods/`, `@neat/`, `@optimize/`, `@propagate/`, `@utils/`,
+   `@globalAccessors`).
 
-2. **1115 files** across `src/`, `test/`, and `bench/` — Replaced ~4900 relative import specifiers (e.g., `../architecture/Neuron.ts`) with their import map equivalents (e.g., `@architecture/Neuron.ts`).
+2. **1115 files** across `src/`, `test/`, and `bench/` — Replaced ~4900 relative
+   import specifiers (e.g., `../architecture/Neuron.ts`) with their import map
+   equivalents (e.g., `@architecture/Neuron.ts`).
 
 ## Evidence
 
