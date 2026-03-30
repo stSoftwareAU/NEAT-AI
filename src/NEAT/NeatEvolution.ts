@@ -27,6 +27,7 @@ import { checkMemoryAndEvict, logMemoryUsage } from "./MemoryMonitor.ts";
 import { Mutator } from "./Mutator.ts";
 import { CRISPR } from "../reconstruct/CRISPR.ts";
 import { simplify } from "../optimize/Simplify.ts";
+import { validateOrDiagnose } from "../utils/Diagnostics.ts";
 import { getLogger } from "../utils/Logger.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import type { Neat } from "./Neat.ts";
@@ -260,6 +261,11 @@ export async function evolve(
     }
 
     assert(!creativeThinking.memetic);
+    validateOrDiagnose(
+      creativeThinking,
+      "creativeThinking",
+      creativeThinking.forwardOnly ? { forwardOnly: true } : undefined,
+    );
     newPopulation.push(creativeThinking);
   }
 

@@ -1,11 +1,11 @@
-import { assert } from "@std/assert";
+import { assertEquals } from "@std/assert";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
 import { Creature } from "../../src/Creature.ts";
 import { Synapse } from "../../src/architecture/Synapse.ts";
 import { Mutator } from "../../src/NEAT/Mutator.ts";
 
 Deno.test(
-  "Mutator: in forward-only runs, fixes SELF_CONNECTION for pre-4.x creatures and upgrades to 4.x",
+  "Mutator: forward-only run fixes injected SELF_CONNECTION",
   () => {
     const config = createNeatConfig({
       feedbackLoop: false,
@@ -13,10 +13,8 @@ Deno.test(
     const mutator = new Mutator(config);
 
     const creature = new Creature(2, 1, { layers: [{ count: 1 }] });
-    creature.forwardOnly = true;
-    creature.semanticVersion = "2.0.0";
+    assertEquals(creature.forwardOnly, true);
 
-    // Inject corruption: self-loop on first hidden neuron.
     const hiddenIndex = creature.input;
     creature.synapses.push(new Synapse(hiddenIndex, hiddenIndex, 0.123));
     creature.synapses.sort((
@@ -24,15 +22,9 @@ Deno.test(
       b,
     ) => (a.from === b.from ? a.to - b.to : a.from - b.from));
 
-    // Trigger the forward-only validation path by running a harmless mutation,
-    // then repair (Issue #1583: fix/validate batched).
     mutator.mutateCreature(creature, { name: "MOD_WEIGHT" }, undefined);
     mutator.repairAfterMutation(creature);
 
     creature.validate({ forwardOnly: true });
-    assert(
-      creature.semanticVersion.startsWith("4."),
-      `Expected creature to be upgraded to 4.x, got ${creature.semanticVersion}`,
-    );
   },
 );

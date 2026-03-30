@@ -167,7 +167,6 @@ Deno.test(
 
     const creature2 = new Creature(3, 2, { layers: [{ count: 2 }] });
     creature2.forwardOnly = true;
-    creature2.semanticVersion = "3.0.0"; // Keep at v3 so forwardOnly is respected
 
     // Both should return valid mutations for their respective constraints
     for (let i = 0; i < 50; i++) {

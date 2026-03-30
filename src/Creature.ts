@@ -62,9 +62,6 @@ import type {
   DiscoveryReplayRunnerLike,
 } from "./discovery/DiscoveryReplayRunner.ts";
 import { CreatureUtil } from "./architecture/CreatureUtils.ts";
-import {
-  upgradeSemanticVersionIfForwardOnlyConfirmed,
-} from "./upgrade/Upgrade.ts";
 
 interface CreatureOptions {
   /**
@@ -193,13 +190,8 @@ export class Creature implements CreatureInternal {
 
   DEBUG: boolean = getGlobalDebug();
 
-  /**
-   * Whether this creature is guaranteed forward-only based on its
-   * semantic version (major >= 4) and forwardOnly flag.
-   * Issue #1535: Cached derivation avoids re-parsing semanticVersion per activation.
-   */
   get forwardOnlyGuaranteed(): boolean {
-    return this.cachedMajorVersion >= 4 && this.forwardOnly === true;
+    return this.forwardOnly === true;
   }
 
   constructor(
@@ -230,19 +222,9 @@ export class Creature implements CreatureInternal {
     );
     this.cachedMajorVersion = Number.isFinite(major) ? major : 0;
 
-    if (lazy) {
-      if (options.semanticVersion !== undefined) {
-        // `loadFrom` / clone copy will set the real flag for 4.x feedback genomes.
-        this.forwardOnly = this.cachedMajorVersion >= 4 ? true : undefined;
-      } else {
-        this.forwardOnly = options.feedbackEnabled === true ? false : true;
-      }
-    } else if (options.semanticVersion !== undefined) {
-      if (this.cachedMajorVersion >= 4) {
-        this.forwardOnly = options.feedbackEnabled === true ? false : true;
-      } else {
-        this.forwardOnly = options.feedbackEnabled === true ? false : undefined;
-      }
+    if (lazy && options.semanticVersion !== undefined) {
+      // `loadFrom` will set the real flag from the JSON.
+      this.forwardOnly = true;
     } else {
       this.forwardOnly = options.feedbackEnabled === true ? false : true;
     }
@@ -601,11 +583,6 @@ export class Creature implements CreatureInternal {
     creatureValidate(this, { forwardOnly: true });
     this.forwardOnly = true;
     this.clearCache();
-    upgradeSemanticVersionIfForwardOnlyConfirmed(this);
-    if (this.cachedMajorVersion < 4) {
-      this.semanticVersion = CURRENT_CREATURE_SEMANTIC_VERSION;
-      this.cachedMajorVersion = 4;
-    }
   }
 
   /**
@@ -619,10 +596,6 @@ export class Creature implements CreatureInternal {
     // structural validation).
     creatureValidate(this);
     this.forwardOnly = false;
-    if (this.cachedMajorVersion < 4) {
-      this.semanticVersion = CURRENT_CREATURE_SEMANTIC_VERSION;
-      this.cachedMajorVersion = 4;
-    }
     this.clearCache();
   }
 

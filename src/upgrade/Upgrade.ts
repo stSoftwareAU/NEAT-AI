@@ -27,24 +27,6 @@ export function getMajorVersion(version: string | undefined): number {
 }
 
 /**
- * Once forward-only has been confirmed by the caller, bump legacy 2.x.x/3.x.x
- * creatures to 4.0.0.
- *
- * Backwards compatibility: never downgrade (e.g. 4.1.2 stays 4.1.2).
- */
-export function upgradeSemanticVersionIfForwardOnlyConfirmed(
-  creature: { semanticVersion?: string },
-): void {
-  const version = creature.semanticVersion;
-  const match = version ? /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(version) : null;
-  if (!match) return;
-  const major = Number.parseInt(match[1], 10);
-  if (major === 2 || major === 3) {
-    creature.semanticVersion = "4.0.0";
-  }
-}
-
-/**
  * Validates that a 3.x creature is still forward-only.
  * If the creature has recurrent connections, logs a warning but does NOT modify
  * the creature. Fixing should only happen on offspring, not on parents during
@@ -173,32 +155,22 @@ function tryUpgradeToFour(creature: Creature): Creature {
 }
 
 /**
- * Upgrades a creature's format to the latest compatible version.
+ * Prepare a shallow-cloned parent for breeding.
  *
- * Upgrade path:
- * - 0.x/1.x/undefined → 2.x (format migration via upgradeTwo)
- * - 2.x/3.x → 4.x (when validated for the creature's forwardOnly mode)
- * - 3.x → validated to warn (legacy only; never thrown in production)
- * - 4.x+ → validated (forward-only when `forwardOnly !== false`)
- *
- * @param creature - The creature to upgrade
- * @returns The upgraded creature
- * @throws {Error} If a 3.x creature has self/back connections
- */
-/**
- * Prepare a shallow-cloned parent for breeding: run the full legacy `upgrade()`
- * pipeline only when the genome is pre-4.x. Modern 4.x parents are validated
- * in-place (no format migration).
+ * All creatures are 4.x — the upgrade is a one-time load-from-disk operation.
  */
 export function prepareCreatureForBreeding(creature: Creature): Creature {
-  const majorVersion = getMajorVersion(creature.semanticVersion);
-  if (majorVersion >= 4) {
-    validateFourX(creature);
-    return creature;
-  }
-  return upgrade(creature);
+  validateFourX(creature);
+  return creature;
 }
 
+/**
+ * Legacy upgrade pipeline — load-from-disk only.
+ *
+ * Upgrades a creature from pre-4.x formats to the current version. This should
+ * only ever fire for very old files loaded from disk. In normal operation all
+ * creatures are already 4.x and this function is a no-op.
+ */
 export function upgrade(creature: Creature): Creature {
   const majorVersion = getMajorVersion(creature.semanticVersion);
 

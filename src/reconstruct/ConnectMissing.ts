@@ -2,6 +2,7 @@ import { Creature } from "../../mod.ts";
 import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
 import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { AddConnection } from "../mutate/AddConnection.ts";
+import { validateOrDiagnose } from "../utils/Diagnostics.ts";
 
 /**
  * Connects missing neurons in the creature's brain by adding connections
@@ -34,6 +35,12 @@ export function randomConnectMissing(creature: Creature): Creature {
   for (const missing of inputMissing) {
     mutator.mutate([missing], { weightScale: 0.1 });
   }
+
+  validateOrDiagnose(
+    tmpCreature,
+    "connectMissing",
+    tmpCreature.forwardOnly ? { forwardOnly: true } : undefined,
+  );
 
   return tmpCreature;
 }

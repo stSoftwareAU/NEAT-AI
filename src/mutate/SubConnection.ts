@@ -1,92 +1,30 @@
-import {
-  cleanupMemeticForRemovedSynapse,
-  cleanupOrphanedNeurons,
-} from "../compact/CompactUtils.ts";
-import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
-import { normaliseCreatureExport } from "../architecture/NormaliseCreatureExport.ts";
-import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
+import { removeHiddenNeuron } from "../compact/CompactUtils.ts";
+import type { ActivationInterface } from "../methods/activations/ActivationInterface.ts";
+import type { Synapse } from "../architecture/Synapse.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "./AbstractMutationOperator.ts";
 
 export class SubConnection extends AbstractMutationOperator {
   /**
    * Subtract a connection from the network.
+   * Operates directly on the creature's arrays — no export/import cycle.
    */
   protected performMutation(focusList?: number[]): boolean {
-    // Export the creature to JSON for clean manipulation
-    // Use the builder directly to avoid validation (creature may be in an intermediate state)
-    const builder = new CreatureExportBuilder(this.creature);
-    const exportJSON = builder.build(true);
-    normaliseCreatureExport(exportJSON);
+    const creature = this.creature;
+    const rng = getRandomNumberGenerator();
 
-    // List of possible connections that can be removed (forward connections only)
-    const possible: { fromId: number; toId: number }[] = [];
+    const possible: Synapse[] = [];
 
-    // Build neuron index map for focus checking
-    const neuronIndexMap = new Map<number, number>();
-    let idx = 0;
-    // Input neurons first (implicit, not in export)
-    for (let i = 0; i < this.creature.input; i++) {
-      neuronIndexMap.set(i, idx++);
-    }
-    // Then exported neurons
-    for (const neuron of exportJSON.neurons) {
-      neuronIndexMap.set(neuron.id!, idx++);
-    }
+    for (const conn of creature.synapses) {
+      if (conn.to <= conn.from) continue;
 
-    // Build a set of IF neuron UUIDs and count their connection types,
-    // so we don't remove a connection that would leave an IF neuron invalid.
-    const ifNeuronIds = new Set<number>();
-    for (const neuron of exportJSON.neurons) {
-      if (neuron.squash === "IF") {
-        ifNeuronIds.add(neuron.id!);
-      }
-    }
+      if (this.#wouldBreakIfNeuron(conn)) continue;
 
-    // Count connection types per IF neuron
-    const ifConnectionCounts = new Map<
-      number,
-      { condition: number; positive: number; negative: number }
-    >();
-    if (ifNeuronIds.size > 0) {
-      for (const uuid of ifNeuronIds) {
-        ifConnectionCounts.set(uuid, {
-          condition: 0,
-          positive: 0,
-          negative: 0,
-        });
-      }
-      for (const synapse of exportJSON.synapses) {
-        const counts = ifConnectionCounts.get(synapse.toId!);
-        if (counts) {
-          const synapseType = synapse.type ?? "positive";
-          if (synapseType === "condition") counts.condition++;
-          else if (synapseType === "negative") counts.negative++;
-          else counts.positive++;
-        }
-      }
-    }
-
-    for (const synapse of exportJSON.synapses) {
-      const fromIdx = neuronIndexMap.get(synapse.fromId!);
-      const toIdx = neuronIndexMap.get(synapse.toId!);
-
-      // Only consider forward connections (to > from)
-      if (fromIdx !== undefined && toIdx !== undefined && toIdx > fromIdx) {
-        // Skip if removing this connection would break an IF neuron's invariants
-        if (this.wouldBreakIfNeuron(synapse, ifConnectionCounts)) {
-          continue;
-        }
-
-        // Check focus list using transitive focus checking
-        // A neuron is in focus if it's directly in the focus list OR if any of
-        // its upstream connected neurons are in focus
-        const inFocus = this.creature.inFocus(fromIdx, focusList) ||
-          this.creature.inFocus(toIdx, focusList);
-
-        if (inFocus) {
-          possible.push({ fromId: synapse.fromId!, toId: synapse.toId! });
-        }
+      if (
+        creature.inFocus(conn.to, focusList) ||
+        creature.inFocus(conn.from, focusList)
+      ) {
+        possible.push(conn);
       }
     }
 
@@ -94,52 +32,69 @@ export class SubConnection extends AbstractMutationOperator {
       return false;
     }
 
-    // Select a random connection to remove
-    const randomConn = possible[
-      Math.floor(getRandomNumberGenerator().random() * possible.length)
-    ];
+    const randomConn = possible[Math.floor(rng.random() * possible.length)];
+    const fromIndx = randomConn.from;
+    const toIndx = randomConn.to;
 
-    // Remove the selected synapse
-    exportJSON.synapses = exportJSON.synapses.filter(
-      (s) => s.fromId !== randomConn.fromId || s.toId !== randomConn.toId,
-    );
+    creature.disconnect(fromIndx, toIndx);
 
-    // Clean up memetic data for the removed synapse
-    cleanupMemeticForRemovedSynapse(
-      exportJSON,
-      randomConn.fromId,
-      randomConn.toId,
-    );
+    const inwardList = creature.inwardConnections(toIndx);
 
-    // Clean up any neurons that have become orphaned after synapse removal.
-    // This handles both:
-    // - Converting hidden neurons with no inward connections to constants
-    // - Removing hidden/constant neurons with no outward connections
-    cleanupOrphanedNeurons(exportJSON);
+    if (inwardList.length === 0) {
+      const neuron = creature.neurons[toIndx];
+      if (neuron.type === "hidden") {
+        const outwardList = creature.outwardConnections(toIndx);
+        if (outwardList.length === 0) {
+          removeHiddenNeuron(creature, toIndx);
+        } else {
+          const squash = neuron.findSquash();
+          const activation = squash as ActivationInterface;
+          if (activation.squash) {
+            neuron.bias = activation.squash(neuron.bias);
+          }
+          neuron.type = "constant";
+          neuron.setSquash(undefined);
+        }
+      }
+    }
 
-    // Reload the creature from the modified export
-    // Note: We pass false for validation to match the old in-place mutation behavior.
-    // Validation is handled elsewhere (e.g., by the caller or by fix() if needed).
-    this.creature.loadFrom(exportJSON, false);
+    const fromOutwardList = creature.outwardConnections(fromIndx);
+    if (fromOutwardList.length === 0) {
+      const fromNeuron = creature.neurons[fromIndx];
+      if (fromNeuron.type === "hidden" || fromNeuron.type === "constant") {
+        removeHiddenNeuron(creature, fromIndx);
+      }
+    }
 
+    delete creature.memetic;
     return true;
   }
 
-  /** Check if removing a synapse would leave an IF neuron without required connections. */
-  private wouldBreakIfNeuron(
-    synapse: SynapseExport,
-    ifConnectionCounts: Map<
-      number,
-      { condition: number; positive: number; negative: number }
-    >,
-  ): boolean {
-    const counts = ifConnectionCounts.get(synapse.toId!);
-    if (!counts) return false;
+  /**
+   * Check if removing a synapse would leave an IF neuron without required
+   * connection types (condition, positive, negative).
+   */
+  #wouldBreakIfNeuron(synapse: Synapse): boolean {
+    const creature = this.creature;
+    const targetNeuron = creature.neurons[synapse.to];
+    if (targetNeuron.squash !== "IF") return false;
+
+    const inward = creature.inwardConnections(synapse.to);
+    let conditionCount = 0;
+    let positiveCount = 0;
+    let negativeCount = 0;
+
+    for (const conn of inward) {
+      const synapseType = conn.type ?? "positive";
+      if (synapseType === "condition") conditionCount++;
+      else if (synapseType === "positive") positiveCount++;
+      else if (synapseType === "negative") negativeCount++;
+    }
 
     const synapseType = synapse.type ?? "positive";
-    if (synapseType === "condition" && counts.condition <= 1) return true;
-    if (synapseType === "positive" && counts.positive <= 1) return true;
-    if (synapseType === "negative" && counts.negative <= 1) return true;
+    if (synapseType === "condition" && conditionCount <= 1) return true;
+    if (synapseType === "positive" && positiveCount <= 1) return true;
+    if (synapseType === "negative" && negativeCount <= 1) return true;
 
     return false;
   }

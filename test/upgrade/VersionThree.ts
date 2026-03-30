@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 import { ValidationError } from "../../src/errors/ValidationError.ts";
 import { Creature } from "../../mod.ts";
 import { SEMANTIC_MAJOR_VERSION, upgrade } from "../../src/upgrade/Upgrade.ts";
@@ -13,6 +13,9 @@ import { SEMANTIC_MAJOR_VERSION, upgrade } from "../../src/upgrade/Upgrade.ts";
  * - forwardOnly: true + validated = upgrade to 4.x
  * - forwardOnly: false = stay at 2.x (explicitly allows feedback loops)
  * - forwardOnly: undefined = stay at 2.x (status not yet determined)
+ *
+ * `new Creature(..., { semanticVersion: "2.x" })` defaults forwardOnly to true;
+ * tests that mean “legacy indeterminate” set `creature.forwardOnly = undefined`.
  */
 
 Deno.test("SEMANTIC_MAJOR_VERSION should be 4", () => {
@@ -30,7 +33,7 @@ Deno.test("upgrade should not modify 2.x creatures with undefined forwardOnly", 
     layers: [{ count: 2 }],
     semanticVersion: "2.0.0",
   });
-  // forwardOnly is undefined by default
+  creature.forwardOnly = undefined;
 
   const upgraded = upgrade(creature);
 
@@ -46,6 +49,7 @@ Deno.test("upgrade should not modify 2.x.x creatures with patch versions and und
     layers: [{ count: 2 }],
     semanticVersion: "2.1.5",
   });
+  creature.forwardOnly = undefined;
 
   const upgraded = upgrade(creature);
 
@@ -142,6 +146,7 @@ Deno.test("upgrade should log warning but not modify 3.x creature with self-conn
     layers: [{ count: 2 }],
     semanticVersion: "3.0.0",
   });
+  creature.forwardOnly = false;
 
   // Add a self-connection (synapse where from === to)
   const hiddenNeuron = creature.neurons[creature.input]; // First hidden neuron
@@ -202,7 +207,12 @@ Deno.test("upgrade should throw on corrupted 4.x creatures with recurrent connec
   creature.connect(hiddenNeuron.index, hiddenNeuron.index, 0.5);
   creature.forwardOnly = true;
 
-  assertThrows(() => upgrade(creature), ValidationError);
+  const err = assertThrows(() => upgrade(creature));
+  assert(
+    err instanceof ValidationError ||
+      (err instanceof Error && err.name === "NotCapable"),
+    `expected forward-only validation failure, got ${err}`,
+  );
 });
 
 Deno.test("upgrade should validate and not modify future 10.x creatures", () => {
@@ -227,6 +237,7 @@ Deno.test("upgrade should upgrade 1.x creatures to 2.x when forwardOnly undefine
     layers: [{ count: 2 }],
     semanticVersion: "1.0.0",
   });
+  creature.forwardOnly = undefined;
 
   const upgraded = upgrade(creature);
 
@@ -260,6 +271,7 @@ Deno.test("upgrade should handle 0.x creatures by upgrading to 2.x when forwardO
     layers: [{ count: 2 }],
     semanticVersion: "0.1.0",
   });
+  creature.forwardOnly = undefined;
 
   const upgraded = upgrade(creature);
 

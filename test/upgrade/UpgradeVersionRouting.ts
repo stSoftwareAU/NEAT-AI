@@ -1,10 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "../../src/Creature.ts";
-import {
-  getMajorVersion,
-  upgrade,
-  upgradeSemanticVersionIfForwardOnlyConfirmed,
-} from "../../src/upgrade/Upgrade.ts";
+import { getMajorVersion, upgrade } from "../../src/upgrade/Upgrade.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
@@ -21,30 +17,6 @@ Deno.test("getMajorVersion - returns 0 for undefined or invalid", () => {
   assertEquals(getMajorVersion(undefined), 0);
   assertEquals(getMajorVersion(""), 0);
   assertEquals(getMajorVersion("abc"), 0);
-});
-
-Deno.test("upgradeSemanticVersionIfForwardOnlyConfirmed - upgrades 2.x to 4.0.0", () => {
-  const creature = { semanticVersion: "2.0.0" };
-  upgradeSemanticVersionIfForwardOnlyConfirmed(creature);
-  assertEquals(creature.semanticVersion, "4.0.0");
-});
-
-Deno.test("upgradeSemanticVersionIfForwardOnlyConfirmed - upgrades 3.x to 4.0.0", () => {
-  const creature = { semanticVersion: "3.1.0" };
-  upgradeSemanticVersionIfForwardOnlyConfirmed(creature);
-  assertEquals(creature.semanticVersion, "4.0.0");
-});
-
-Deno.test("upgradeSemanticVersionIfForwardOnlyConfirmed - does not downgrade 4.x", () => {
-  const creature = { semanticVersion: "4.1.2" };
-  upgradeSemanticVersionIfForwardOnlyConfirmed(creature);
-  assertEquals(creature.semanticVersion, "4.1.2");
-});
-
-Deno.test("upgradeSemanticVersionIfForwardOnlyConfirmed - does not change undefined", () => {
-  const creature = { semanticVersion: undefined };
-  upgradeSemanticVersionIfForwardOnlyConfirmed(creature);
-  assertEquals(creature.semanticVersion, undefined);
 });
 
 Deno.test("upgrade - 2.x with forwardOnly true upgrades to 4.x", () => {

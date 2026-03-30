@@ -233,13 +233,6 @@ export function fix(
 
   if (forwardOnly) {
     creature.forwardOnly = true;
-    const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(creature.semanticVersion);
-    if (match) {
-      const major = Number.parseInt(match[1], 10);
-      if (major === 2 || major === 3) {
-        creature.semanticVersion = "4.0.0";
-      }
-    }
   }
 
   const tmpDebug = creature.DEBUG;

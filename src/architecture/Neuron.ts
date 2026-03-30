@@ -102,6 +102,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
     bias: number,
     creature: Creature,
     squash?: string,
+    uuid?: string,
   ) {
     this.id = id;
     this.type = type;
@@ -134,10 +135,9 @@ export class Neuron implements TagsInterface, NeuronInternal {
     this.creature = creature;
     this.index = -1;
 
-    // Stable wire-format identity: hidden/constant neurons get a random UUID at
-    // birth and keep it across breeding/cloning (Issue #1958 follow-up: integer
-    // `id` is runtime-only and must not define export identity).
-    if (type === "hidden" || type === "constant") {
+    if (uuid) {
+      this.uuid = uuid;
+    } else if (type === "hidden" || type === "constant") {
       this.uuid = crypto.randomUUID();
     }
   }

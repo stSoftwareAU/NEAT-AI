@@ -1,7 +1,6 @@
 import type { Creature } from "../Creature.ts";
 import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { DiscoveryError } from "../errors/DiscoveryError.ts";
-import { getMajorVersion } from "../upgrade/Upgrade.ts";
 import type { DiscoveryCandidate } from "./DiscoveryCandidates.ts";
 import {
   BatchDiscoveryValidator,
@@ -13,29 +12,17 @@ import {
 /**
  * Validate a creature immediately after applying discovery changes.
  *
- * Goal: fail fast near the discovery logic that introduced corruption, rather than
- * surfacing later during unrelated phases (e.g. breeding calling upgrade()).
+ * Fail fast near the discovery logic that introduced corruption, rather than
+ * surfacing later during unrelated phases (e.g. breeding).
  *
- * Forward-only is enforced when:
- * - the run is configured as forward-only (feedbackLoop !== true), OR
- * - the base creature is explicitly forwardOnly, OR
- * - the base creature is 4.x+ (4.x is a hard forward-only invariant).
- *
- * Notes (Australian English):
- * - This function is intentionally strict; any failure indicates a bug in our code,
- *   not a "bad creature".
- * - We include a small sample of recurrent violations to improve triage.
+ * Forward-only is enforced when the discovered creature is marked forwardOnly.
+ * All creatures are 4.x; the forwardOnly flag is the source of truth.
  */
 export function validateAfterDiscoveryOrThrow(args: {
-  /** The base creature the discovery change was applied to (usually the fittest). */
   baseCreature: Creature;
-  /** The resulting creature after discovery modification. */
   discoveredCreature: Creature;
-  /** Discovery session ID (for log correlation). */
   discoveryID: string;
-  /** Human-readable operation label (e.g. "addHelpfulSynapses", "removeSynapse"). */
   operation: string;
-  /** The config feedbackLoop flag for the current run. */
   feedbackLoop: boolean | undefined;
 }): void {
   const {
@@ -43,55 +30,23 @@ export function validateAfterDiscoveryOrThrow(args: {
     discoveredCreature,
     discoveryID,
     operation,
-    feedbackLoop,
   } = args;
 
-  const baseMajor = getMajorVersion(baseCreature.semanticVersion);
-  const discoveredMajor = getMajorVersion(discoveredCreature.semanticVersion);
-
-  // 4.x+ is a hard forward-only invariant. If either the base or the discovered
-  // creature is already 4.x+, we must fail fast (no silent repair).
-  const isHardForwardOnlyInvariant = baseMajor >= 4 || discoveredMajor >= 4;
-
-  // Pre-4.x: it's valid for a creature to temporarily contain recurrent links even
-  // in a forward-only run; we repair it (fix+re-validate), then bump to 4.x once
-  // forward-only is confirmed.
-  const shouldAttemptForwardOnlyRepair = !isHardForwardOnlyInvariant &&
-    (feedbackLoop !== true || baseCreature.forwardOnly === true ||
-      discoveredCreature.forwardOnly === true);
+  const enforceForwardOnly = baseCreature.forwardOnly === true ||
+    discoveredCreature.forwardOnly === true;
 
   try {
-    if (isHardForwardOnlyInvariant) {
+    if (enforceForwardOnly) {
       creatureValidate(discoveredCreature, { forwardOnly: true });
       discoveredCreature.forwardOnly = true;
-      bumpToFourIfForwardOnlyConfirmed(discoveredCreature);
-      return;
+    } else {
+      creatureValidate(discoveredCreature);
     }
-
-    if (shouldAttemptForwardOnlyRepair) {
-      try {
-        creatureValidate(discoveredCreature, { forwardOnly: true });
-        discoveredCreature.forwardOnly = true;
-        bumpToFourIfForwardOnlyConfirmed(discoveredCreature);
-        return;
-      } catch (_preFourValidationError) {
-        // Try to repair the transient corruption, then validate again.
-        discoveredCreature.fix({ forwardOnly: true });
-        creatureValidate(discoveredCreature, { forwardOnly: true });
-        discoveredCreature.forwardOnly = true;
-        bumpToFourIfForwardOnlyConfirmed(discoveredCreature);
-        return;
-      }
-    }
-
-    // Recurrent mode (or forward-only not requested): just ensure general validity.
-    creatureValidate(discoveredCreature);
   } catch (e) {
     const error = e as Error;
-    const violations =
-      (isHardForwardOnlyInvariant || shouldAttemptForwardOnlyRepair)
-        ? sampleForwardOnlyViolations(discoveredCreature, 10)
-        : [];
+    const violations = enforceForwardOnly
+      ? sampleForwardOnlyViolations(discoveredCreature, 10)
+      : [];
 
     const detail = violations.length > 0
       ? ` Violations(sample up to 10): ${violations.join(" | ")}`
@@ -108,18 +63,10 @@ export function validateAfterDiscoveryOrThrow(args: {
           discoveredCreature.uuid ?? "unknown"
         } (v${discoveredCreature.semanticVersion}, forwardOnly=${
           discoveredCreature.forwardOnly === true
-        }), ` +
-        `hardInvariant=${isHardForwardOnlyInvariant}, attemptedRepair=${shouldAttemptForwardOnlyRepair}. ` +
+        }). ` +
         `Error=${error.name}: ${error.message}.${detail}`,
       "INVALID_CREATURE",
     );
-  }
-}
-
-function bumpToFourIfForwardOnlyConfirmed(creature: Creature): void {
-  const major = getMajorVersion(creature.semanticVersion);
-  if (major === 2 || major === 3) {
-    creature.semanticVersion = "4.0.0";
   }
 }
 

@@ -70,6 +70,7 @@ function createLargeCreature(
     synapses,
     input: 2,
     output: 1,
+    forwardOnly: true,
   });
 
   creature.validate();
@@ -87,8 +88,8 @@ function createParentsWithSharedNeurons(): {
   const motherJson: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "shared-a", squash: "IDENTITY", bias: 0.1 },
-      { type: "hidden", uuid: "shared-b", squash: "IDENTITY", bias: 0.2 },
       { type: "hidden", uuid: "mother-only-a", squash: "IDENTITY", bias: 0.3 },
+      { type: "hidden", uuid: "shared-b", squash: "IDENTITY", bias: 0.2 },
       { type: "hidden", uuid: "mother-only-b", squash: "IDENTITY", bias: 0.4 },
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
     ],
@@ -101,13 +102,14 @@ function createParentsWithSharedNeurons(): {
     ],
     input: 2,
     output: 1,
+    forwardOnly: true,
   };
 
   const fatherJson: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "shared-a", squash: "IDENTITY", bias: 0.15 },
-      { type: "hidden", uuid: "shared-b", squash: "IDENTITY", bias: 0.25 },
       { type: "hidden", uuid: "father-only-a", squash: "IDENTITY", bias: 0.35 },
+      { type: "hidden", uuid: "shared-b", squash: "IDENTITY", bias: 0.25 },
       { type: "hidden", uuid: "father-only-b", squash: "IDENTITY", bias: 0.45 },
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.05 },
     ],
@@ -120,6 +122,7 @@ function createParentsWithSharedNeurons(): {
     ],
     input: 2,
     output: 1,
+    forwardOnly: true,
   };
 
   const mother = Creature.fromJSON(motherJson);
@@ -152,7 +155,7 @@ Deno.test("Offspring.breed -correctly finds neurons from either parent", () => {
 
   let successfulBreeds = 0;
   for (let i = 0; i < 20; i++) {
-    const child = Offspring.breed(mother, father);
+    const child = Offspring.breed(mother, father, { forwardOnly: true });
     if (child) {
       child.validate();
       successfulBreeds++;
