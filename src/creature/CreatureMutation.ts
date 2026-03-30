@@ -71,6 +71,32 @@ export function makeRandomConnection(
 }
 
 /**
+ * Ensures every hidden and output neuron has at least one inbound synapse by
+ * adding a single random forward connection where missing (GRQ-12 class:
+ * corrupt genomes where stripping left a computational neuron with no inputs).
+ */
+function ensureInboundConnectionsWithRandomSynapses(creature: Creature): void {
+  const maxPasses = Math.max(4, creature.neurons.length * 2);
+  for (let pass = 0; pass < maxPasses; pass++) {
+    creature.clearCache();
+    let anyAdded = false;
+    for (let indx = creature.input; indx < creature.neurons.length; indx++) {
+      const neuron = creature.neurons[indx];
+      if (neuron.type !== "hidden" && neuron.type !== "output") continue;
+      if (creature.inwardConnections(indx).length > 0) continue;
+      const syn = makeRandomConnection(creature, indx);
+      if (syn !== null) {
+        anyAdded = true;
+        creature.synapses.sort((a, b) =>
+          a.from !== b.from ? a.from - b.from : a.to - b.to
+        );
+      }
+    }
+    if (!anyAdded) break;
+  }
+}
+
+/**
  * Repair the creature into a structurally valid shape.
  *
  * Can remove recurrent synapses (when requested),
@@ -221,6 +247,10 @@ export function fix(
   creature.neurons.forEach((neuron) => {
     neuron.fix();
   });
+
+  // Add random inbound edges before orphan cleanup so hiddens with outward
+  // edges but no inputs stay hiddens (uuid-stable) instead of becoming constants.
+  ensureInboundConnectionsWithRandomSynapses(creature);
 
   // Some mutation/breed paths can still strand a hidden neuron with outward
   // connections but no valid inbound source. Reuse the canonical orphan cleanup

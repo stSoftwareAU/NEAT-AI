@@ -56,9 +56,10 @@ function validateThreeX(creature: Creature): void {
  * For 4.x, forward-only is a hard invariant: any recurrent connection is an error,
  * regardless of whether the `forwardOnly` flag is set.
  *
- * If validation fails, we log diagnostics and **throw**. Automatic `creature.fix()`
- * is not used (Issue #2086 follow-up): repair mutates topology/weights and destroys
- * trained fitness while masking breeding/export bugs.
+ * If validation fails, we log diagnostics and **throw**, except for
+ * `NO_INWARD_CONNECTIONS` on forward-only creatures: we run `creature.fix()`
+ * once (adds random inbound synapses) and retry — GRQ-12 class corrupt genomes
+ * after recurrent strip. Other failures still throw (Issue #2086).
  *
  * See https://github.com/stSoftwareAU/NEAT-AI/issues/956 for historical repair
  * behaviour and https://github.com/stSoftwareAU/NEAT-AI/issues/2086.
@@ -89,8 +90,37 @@ function validateFourX(creature: Creature): void {
   } catch (e) {
     const error = e as ValidationError;
 
-    // 4.x forward-only is a hard invariant. Do not call creature.fix() here:
-    // repair is non-deterministic for fitness and masked production bugs (#2086).
+    if (error.reason === "NO_INWARD_CONNECTIONS") {
+      try {
+        creature.fix({ forwardOnly: true });
+        creatureValidate(creature, { forwardOnly: true });
+        creature.forwardOnly = true;
+        return;
+      } catch (e2) {
+        const followUp = e2 as ValidationError;
+        getLogger().error(
+          `[upgrade] CRITICAL: 4.x creature (UUID: ${
+            creature.uuid ?? "unknown"
+          }) still invalid after NO_INWARD repair: ` +
+            `${followUp.name} - ${followUp.message}.`,
+        );
+        writeDiagnostics({
+          error: followUp,
+          prefix: "upgrade-4x",
+          creature: creature.exportJSON(),
+          context: {
+            semanticVersion: creature.semanticVersion,
+            uuid: creature.uuid,
+            forwardOnly: creature.forwardOnly,
+            neuronCount: creature.neurons.length,
+            synapseCount: creature.synapses.length,
+            afterNoInwardRepair: true,
+          },
+        });
+        throw followUp;
+      }
+    }
+
     getLogger().error(
       `[upgrade] CRITICAL: 4.x creature (UUID: ${
         creature.uuid ?? "unknown"

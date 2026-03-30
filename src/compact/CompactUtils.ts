@@ -19,6 +19,7 @@ export type { CleanupOrphanedResult } from "./OrphanedNeuronCleanup.ts";
 
 export {
   mergeDuplicateSynapses,
+  mergeDuplicateSynapsesInCreature,
   pruneZeroWeightSynapses,
 } from "./SynapsePruning.ts";
 export type {

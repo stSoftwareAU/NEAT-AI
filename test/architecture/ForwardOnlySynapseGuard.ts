@@ -57,12 +57,13 @@ Deno.test(
       synapses: [
         { fromUUID: "input-0", toUUID: "h0", weight: 0.1 },
         { fromUUID: "h0", toUUID: "h1", weight: 0.1 },
+        { fromUUID: "h1", toUUID: "output-0", weight: 0.2 },
         { fromUUID: "h1", toUUID: "h0", weight: 0.5 },
       ],
     };
 
     const creature = Creature.fromJSON(json, false);
-    assertEquals(creature.synapses.length, 2);
+    assertEquals(creature.synapses.length, 3);
     for (const s of creature.synapses) {
       if (s.from >= s.to) {
         throw new Error(`Unexpected recurrent synapse: ${s.from}->${s.to}`);
