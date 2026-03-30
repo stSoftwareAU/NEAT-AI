@@ -95,7 +95,7 @@ function buildCreatureExportJSON(
   const json = builder.build(includeIds) as CreatureExport;
   if (includeIds && json.memetic) {
     normaliseCreatureExport(json);
-  } else if (!includeIds && json.memetic) {
+  } else if (json.memetic) {
     json.memetic = convertMemeticExportToWireJson(creature, json.memetic);
   }
   return json;
