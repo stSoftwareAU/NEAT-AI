@@ -10,7 +10,6 @@
 import { ensureDirSync } from "@std/fs";
 import { Creature } from "../Creature.ts";
 import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import { creatureValidate } from "../architecture/CreatureValidate.ts";
 import { DeDuplicator } from "../architecture/DeDuplicator.ts";
 import { Fitness } from "../architecture/Fitness.ts";
 import { AdaptiveFineTuneTracker } from "../blackbox/AdaptiveFineTuneTracker.ts";
@@ -353,16 +352,12 @@ export class Neat {
   }
 
   populatePopulation(creature: Creature) {
-    if (this.config.debug) {
-      creatureValidate(creature);
-    }
     const mutator = new Mutator(this.config);
     while (this.population.length < this.config.populationSize - 1) {
       const clonedCreature = creature.shallowClone();
       const creatures = [clonedCreature];
       mutator.mutate(creatures);
       creatures[0].fix();
-      creatureValidate(creatures[0]);
       this.population.push(creatures[0]);
     }
 

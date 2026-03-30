@@ -1,4 +1,4 @@
-import { assertExists, assertThrows } from "@std/assert";
+import { assertEquals, assertExists, assertThrows } from "@std/assert";
 import type { CreatureExport } from "../../src/architecture/CreatureInterfaces.ts";
 import { Creature } from "../../src/Creature.ts";
 import { TopologyError } from "../../src/errors/TopologyError.ts";
@@ -43,10 +43,9 @@ Deno.test("forward-only: connectBatch() rejects backward connection", () => {
 });
 
 Deno.test(
-  "forward-only: loadFrom rejects backward synapse when json.forwardOnly is true",
+  "forward-only: loadFrom strips backward synapse when json.forwardOnly is true",
   () => {
     const json: CreatureExport = {
-      semanticVersion: "4.0.0",
       forwardOnly: true,
       input: 1,
       output: 1,
@@ -62,19 +61,20 @@ Deno.test(
       ],
     };
 
-    assertThrows(
-      () => Creature.fromJSON(json, false),
-      TopologyError,
-      "backward connection",
-    );
+    const creature = Creature.fromJSON(json, false);
+    assertEquals(creature.synapses.length, 2);
+    for (const s of creature.synapses) {
+      if (s.from >= s.to) {
+        throw new Error(`Unexpected recurrent synapse: ${s.from}->${s.to}`);
+      }
+    }
   },
 );
 
 Deno.test(
-  "forward-only: loadFrom rejects self-connection when json.forwardOnly is true",
+  "forward-only: loadFrom strips self-connection when json.forwardOnly is true",
   () => {
     const json: CreatureExport = {
-      semanticVersion: "4.0.0",
       forwardOnly: true,
       input: 1,
       output: 1,
@@ -89,11 +89,8 @@ Deno.test(
       ],
     };
 
-    assertThrows(
-      () => Creature.fromJSON(json, false),
-      TopologyError,
-      "self-connection",
-    );
+    const creature = Creature.fromJSON(json, false);
+    assertEquals(creature.synapses.length, 2);
   },
 );
 

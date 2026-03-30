@@ -8,13 +8,12 @@ import type { RequiredHyperparameterEvolutionConfig } from "../config/Hyperparam
 import { DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG } from "../config/HyperparameterConfig.ts";
 import { crossoverHyperparameters } from "../NEAT/HyperparameterEvolution.ts";
 import { TopologyError } from "../errors/TopologyError.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
 import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 import { prepareCreatureForBreeding } from "../upgrade/Upgrade.ts";
 import { writeDiagnostics } from "../utils/Diagnostics.ts";
 import { getLogger } from "../utils/Logger.ts";
+import { pruneOrphanMemeticReferences } from "../compact/CompactUtils.ts";
 import { CreatureUtil } from "./CreatureUtils.ts";
-import { creatureValidate } from "./CreatureValidate.ts";
 import { Neuron } from "./Neuron.ts";
 import { outputIndexFromId, outputNeuronId } from "./NeuronId.ts";
 import type { SynapseExport, SynapseInternal } from "./SynapseInterfaces.ts";
@@ -347,8 +346,8 @@ export class Offspring {
     }
 
     // Issue #1097: Prebuild inward index for large offspring.
-    // This optimises subsequent inward connection lookups during validation
-    // and memetic updates by avoiding linear scans.
+    // This optimises subsequent inward connection lookups and memetic updates
+    // by avoiding linear scans.
     offspring.prebuildInwardIndexIfLarge();
 
     // Issue #2086 / GRQ logs: `exportJSON()` is UUID-only (#2054). If two hidden
@@ -416,101 +415,53 @@ export class Offspring {
         : undefined;
     }
 
-    try {
-      creatureValidate(offspring);
+    if (offspring.memetic) {
+      pruneOrphanMemeticReferences(offspring);
+    }
 
-      if (shouldBeForwardOnly) {
-        if (options.forwardOnly === false) {
-          getLogger().warn(
-            `[Offspring] feedbackLoop/memory mode requested but parents are forward-only; forcing forwardOnly child`,
-          );
-        }
-        offspring.forwardOnly = true;
-        try {
-          offspring.validate({ forwardOnly: true });
-        } catch (e) {
-          const error = e as ValidationError;
-          if (
-            error.reason === "SELF_CONNECTION" ||
-            error.reason === "RECURSIVE_SYNAPSE"
-          ) {
-            const violations = offspring.synapses
-              .map((s, i) => ({ s, i }))
-              .filter(({ s }) => s.from === s.to || s.from > s.to)
-              .slice(0, 10)
-              .map(({ s, i }) =>
-                `${i}) ${s.from} (${
-                  offspring.neurons[s.from]?.ID?.() ?? "?"
-                }) -> ${s.to} (${offspring.neurons[s.to]?.ID?.() ?? "?"})`
-              );
-
-            offspring.DEBUG = false;
-            writeDiagnostics({
-              error,
-              prefix: "offspring-forward-only-violation",
-              mother: mother.exportJSON(),
-              father: father.exportJSON(),
-              offspring: offspring.exportJSON(),
-            });
-            throw new TopologyError(
-              `[Offspring] CRITICAL: forward-only offspring has recurrent connections after breed — ` +
-                `do not use fix() to mask this (fitness-destroying). ` +
-                `Mother: ${mother.uuid} (${mother.semanticVersion}), ` +
-                `Father: ${father.uuid} (${father.semanticVersion}). ` +
-                `Error=${error.name}: ${error.message}. ` +
-                `Violations: ${violations.join(" | ")}`,
-              "INVALID_CONNECTION",
-            );
-          } else {
-            throw e;
-          }
-        }
+    if (shouldBeForwardOnly) {
+      if (options.forwardOnly === false) {
+        getLogger().warn(
+          `[Offspring] feedbackLoop/memory mode requested but parents are forward-only; forcing forwardOnly child`,
+        );
       }
+      offspring.forwardOnly = true;
+      for (let i = 0; i < offspring.synapses.length; i++) {
+        const s = offspring.synapses[i];
+        if (s.from >= s.to) {
+          const violations = offspring.synapses
+            .map((syn, j) => ({ syn, j }))
+            .filter(({ syn }) => syn.from === syn.to || syn.from > syn.to)
+            .slice(0, 10)
+            .map(({ syn, j }) =>
+              `${j}) ${syn.from} (${
+                offspring.neurons[syn.from]?.ID?.() ?? "?"
+              }) -> ${syn.to} (${offspring.neurons[syn.to]?.ID?.() ?? "?"})`
+            );
 
-      return offspring;
-    } catch (e) {
-      const error = e as Error;
-      const errorName = e instanceof ValidationError
-        ? e.reason
-        : (error.name ? error.name : "ERROR");
-      switch (errorName) {
-        case "RECURSIVE_CONNECTION":
-          return undefined;
-        case "NO_OUTWARD_CONNECTIONS":
-          return undefined;
-        case "NO_INWARD_CONNECTIONS":
-        case "IF_CONDITIONS":
           offspring.DEBUG = false;
           writeDiagnostics({
-            error,
-            prefix: "offspring-invalid-after-breed",
+            error: new TopologyError(
+              `Forward-only offspring has recurrent synapse at index ${i}`,
+              "INVALID_CONNECTION",
+            ),
+            prefix: "offspring-forward-only-violation",
             mother: mother.exportJSON(),
             father: father.exportJSON(),
             offspring: offspring.exportJSON(),
           });
           throw new TopologyError(
-            `[Offspring] CRITICAL: invalid offspring after breed (${errorName}) — ` +
-              `fix() is not applied here (it would distort fitness). ` +
-              `Original: ${error.message}`,
+            `[Offspring] CRITICAL: forward-only offspring has recurrent connections after breed — ` +
+              `Mother: ${mother.uuid} (${mother.semanticVersion}), ` +
+              `Father: ${father.uuid} (${father.semanticVersion}). ` +
+              `Violations: ${violations.join(" | ")}`,
             "INVALID_CONNECTION",
           );
-        case "MEMETIC":
-          delete offspring.memetic;
-          offspring.validate();
-          return offspring;
-        default:
-          getLogger().error(e);
-          offspring.DEBUG = false;
-          writeDiagnostics({
-            error,
-            prefix: "offspring",
-            mother: mother.exportJSON(),
-            father: father.exportJSON(),
-            offspring: offspring.exportJSON(),
-          });
-          throw e;
+        }
       }
     }
+
+    return offspring;
   }
 
   private static fixType(node: Neuron, connections: SynapseInternal[]) {

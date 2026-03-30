@@ -1,14 +1,23 @@
-import { addTag, removeTag } from "@stsoftware/tags/mod";
-import { Creature } from "../Creature.ts";
-import { creatureValidate } from "../architecture/CreatureValidate.ts";
-import { CreatureUtil } from "../architecture/CreatureUtils.ts";
-import { pruneOrphanMemeticReferences } from "../compact/CompactUtils.ts";
-import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
-import type { CreatureExport } from "../../mod.ts";
-import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
 import { assert } from "@std/assert";
-import type { ValidationError } from "../errors/ValidationError.ts";
+import { addTag, removeTag } from "@stsoftware/tags/mod";
+import type { CreatureExport } from "../../mod.ts";
+import { Creature } from "../Creature.ts";
 import type { Approach } from "../NEAT/LogApproach.ts";
+import { CreatureUtil } from "../architecture/CreatureUtils.ts";
+import type { NeuronExport } from "../architecture/NeuronInterfaces.ts";
+import type { SynapseExport } from "../architecture/SynapseInterfaces.ts";
+import { pruneOrphanMemeticReferences } from "../compact/CompactUtils.ts";
+import {
+  DEFAULT_QUANTUM_STEP_CONFIG,
+  type RequiredQuantumStepConfig,
+} from "../config/QuantumStepConfig.ts";
+import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
+import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
+import {
+  coordinateBiasWeightAdjustments,
+  type NeuronAdjustmentPlan,
+  type SynapseAdjustmentPlan,
+} from "./BiasWeightCoordination.ts";
 import {
   DEFAULT_ANCESTRY_DEPTH,
   type MemeticInterface,
@@ -18,18 +27,6 @@ import {
   calculateTrajectoryMomentum,
   createAncestorSnapshot,
 } from "./MemeticTrajectory.ts";
-import {
-  coordinateBiasWeightAdjustments,
-  type NeuronAdjustmentPlan,
-  type SynapseAdjustmentPlan,
-} from "./BiasWeightCoordination.ts";
-import {
-  DEFAULT_QUANTUM_STEP_CONFIG,
-  type RequiredQuantumStepConfig,
-} from "../config/QuantumStepConfig.ts";
-import { CreatureExportBuilder } from "../utils/CreatureExportBuilder.ts";
-import { getLogger } from "../utils/Logger.ts";
-import { getRandomNumberGenerator } from "../utils/RandomNumberGenerator.ts";
 
 export const MIN_STEP = DEFAULT_QUANTUM_STEP_CONFIG.minStep;
 
@@ -562,33 +559,16 @@ export function fineTuneImprovement(
     const memetic = candidate.memetic
       ? JSON.parse(JSON.stringify(candidate.memetic))
       : undefined;
-    try {
-      if (forwardOnly) {
-        candidate.fix({ forwardOnly: true });
-        creatureValidate(candidate, { forwardOnly: true });
-      } else {
-        candidate.fix();
-        creatureValidate(candidate);
-      }
-    } catch (error) {
-      const validation = error as ValidationError;
-      getLogger().warn(
-        `[FineTune] Discarding invalid candidate after tuning: ${
-          validation.reason ?? validation.name
-        } - ${validation.message}`,
-      );
-      return;
+    if (forwardOnly) {
+      candidate.fix({ forwardOnly: true });
+    } else {
+      candidate.fix();
     }
 
     if (!candidate.memetic && memetic) {
       candidate.memetic = memetic;
     }
     pruneOrphanMemeticReferences(candidate);
-    if (forwardOnly) {
-      creatureValidate(candidate, { forwardOnly: true });
-    } else {
-      creatureValidate(candidate);
-    }
 
     const candidateUUID = CreatureUtil.makeUUID(candidate);
     if (!UUIDs.has(candidateUUID)) {

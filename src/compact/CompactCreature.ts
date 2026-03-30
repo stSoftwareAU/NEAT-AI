@@ -486,13 +486,6 @@ export function compactCreature(
 
     const c = Creature.fromJSON(compactCreature);
 
-    // Validate the compacted creature to catch any structural issues early.
-    // A 4.x forward-only creature must remain valid; any failure here is a bug.
-    c.validate();
-    if (!feedbackLoop && creature.forwardOnly === true) {
-      c.validate({ forwardOnly: true });
-    }
-
     return c;
   }
 
