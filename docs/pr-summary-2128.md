@@ -10,20 +10,25 @@ is now being re-implemented individually against the current Develop branch
 
 ## Actions taken
 
-- Closed PR #2063 ("Milestone: Performance Improvements") with explanatory comment
-- Closed PR #2064 ("Merge milestone 'Performance Improvements' to Develop (#2062)") with explanatory comment
-- Closed issue #2062 ("Merge milestone 'Performance Improvements' to Develop") with explanatory comment
+- Closed PR #2063 ("Milestone: Performance Improvements") with explanatory
+  comment
+- Closed PR #2064 ("Merge milestone 'Performance Improvements' to Develop
+  (#2062)") with explanatory comment
+- Closed issue #2062 ("Merge milestone 'Performance Improvements' to Develop")
+  with explanatory comment
 - Deleted branch `milestone/performance-improvements`
 - Deleted branch `issue-2062-merge-milestone-performance-improvements-to-develo`
 
 ## Evidence
 
 All items verified as closed/deleted via `gh` CLI:
+
 - PR #2063: CLOSED
 - PR #2064: CLOSED
 - Issue #2062: CLOSED
 - Branch `milestone/performance-improvements`: 404 (deleted)
-- Branch `issue-2062-merge-milestone-performance-improvements-to-develo`: 404 (deleted)
+- Branch `issue-2062-merge-milestone-performance-improvements-to-develo`: 404
+  (deleted)
 
 ## Test Plan
 
