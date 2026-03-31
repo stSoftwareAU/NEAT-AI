@@ -1,9 +1,10 @@
 ## Summary
 
 GRQ v1 model `USDGBP.json.unfixable` contains unresolved git merge/stash
-conflict markers (`<<<<<<< Updated upstream` / `=======` / `>>>>>>> Stashed
-changes`), causing `JSON.parse()` to fail with a `JSONParseError` before any
-creature loading or `fix()` can run.
+conflict markers (`<<<<<<< Updated upstream` / `=======` /
+`>>>>>>> Stashed
+changes`), causing `JSON.parse()` to fail with a
+`JSONParseError` before any creature loading or `fix()` can run.
 
 This PR adds:
 
