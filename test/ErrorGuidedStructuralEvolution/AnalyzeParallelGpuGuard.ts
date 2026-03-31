@@ -85,6 +85,40 @@ Deno.test({
 });
 
 Deno.test({
+  name:
+    "analyzeParallel with requireGpu=false returns structured Rust error when GPU unavailable (Issue #2116)",
+  ignore: !isRustLibraryAvailable() || isRustGpuAvailable(),
+  sanitizeResources: false,
+  fn: () => {
+    // Issue #2116: When requireGpu is false and GPU is unavailable, the Rust
+    // FFI layer should return a structured error with errorKind "GpuPermanent"
+    // instead of panicking via assert!.
+    const input = buildStubInput({ requireGpu: false });
+    const result = analyzeParallel(input);
+
+    // The TypeScript guard allows this through (requireGpu === false),
+    // so the call reaches the Rust layer which returns a structured error.
+    if (result !== null) {
+      assertEquals(
+        result.success,
+        false,
+        "Should fail because GPU is unavailable",
+      );
+      assertEquals(
+        typeof result.error,
+        "string",
+        "Error message should be present from Rust layer",
+      );
+      assertEquals(
+        result.errorKind,
+        "GpuPermanent",
+        "Rust should classify GPU unavailability as GpuPermanent",
+      );
+    }
+  },
+});
+
+Deno.test({
   name: "analyzeParallel returns null when library is unavailable",
   ignore: isRustLibraryAvailable(),
   fn: () => {
