@@ -38,7 +38,7 @@ Deno.test("Custom cost function with weighted outputs", async () => {
   const customCost = new CustomWeightedCost([3.0, 1.0]);
 
   // Create a simple dataset file for testing
-  const datasetDir = "./test/custom_cost_data";
+  const datasetDir = ".test/custom-cost";
   try {
     await Deno.mkdir(datasetDir, { recursive: true });
     await Deno.writeTextFile(`${datasetDir}/train.csv`, "0.1,0.5,0.2\n");
