@@ -23,6 +23,7 @@ import type {
 import { computeRustRecordStats } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryInput.ts";
 import {
   getRustLibSymbols,
+  isRustGpuAvailable,
   isRustLibraryAvailable,
   readCString,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts";
@@ -284,6 +285,17 @@ export function analyzeParallel(
 ): RustParallelAnalysisResult | null {
   if (!isRustLibraryAvailable()) {
     return null;
+  }
+
+  // Guard: when GPU is unavailable and the caller has not opted into CPU-only
+  // analysis (requireGpu !== false), bail out gracefully instead of letting
+  // the Rust assert! panic the thread (Issue #2115).
+  if (input.requireGpu !== false && !isRustGpuAvailable()) {
+    return {
+      success: false,
+      error:
+        "Rust synapse/neuron analysis unavailable (GPU adapter not available)",
+    };
   }
 
   const symbols = getRustLibSymbols();
