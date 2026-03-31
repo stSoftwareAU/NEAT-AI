@@ -268,6 +268,8 @@ export interface RustParallelAnalysisResult {
   neuronDiagnostics?: RustNeuronDiagnostic[];
   neuronGpuUsed?: boolean;
   error?: string;
+  /** Typed error classification from Rust (Issue #2116). */
+  errorKind?: string;
 }
 
 /**
