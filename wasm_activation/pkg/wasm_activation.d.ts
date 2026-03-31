@@ -1057,6 +1057,19 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly __wbg_predictivecodingengine_free: (a: number, b: number) => void;
+    readonly predictivecodingengine_infer_batch_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
+    readonly predictivecodingengine_infer_wasm: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+    readonly predictivecodingengine_new: (a: number, b: number) => [number, number, number];
+    readonly predictivecodingengine_num_inputs: (a: number) => number;
+    readonly predictivecodingengine_num_neurons: (a: number) => number;
+    readonly predictivecodingengine_num_outputs: (a: number) => number;
+    readonly cross_entropy_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly hinge_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly mae_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly mape_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly mse_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly msle_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
     readonly compilednetwork_activate: (a: number, b: number, c: number, d: number) => [number, number];
     readonly compilednetwork_activate_and_trace: (a: number, b: number, c: number, d: number) => [number, number];
@@ -1068,12 +1081,6 @@ export interface InitOutput {
     readonly compilednetwork_num_neurons: (a: number) => number;
     readonly compilednetwork_num_synapses: (a: number) => number;
     readonly compilednetwork_reset_state: (a: number) => void;
-    readonly cross_entropy_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly hinge_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly mae_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly mape_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly mse_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly msle_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly calculate_error: (a: number, b: number, c: number, d: number) => number;
     readonly calculate_error_batch_4way: (a: number, b: any, c: any, d: any) => any;
     readonly derivative: (a: number, b: number) => number;
@@ -1088,13 +1095,6 @@ export interface InitOutput {
     readonly validate_range: (a: number, b: number) => number;
     readonly version: () => [number, number];
     readonly propagate_topological: (a: number, b: number) => [number, number];
-    readonly __wbg_predictivecodingengine_free: (a: number, b: number) => void;
-    readonly predictivecodingengine_infer_batch_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
-    readonly predictivecodingengine_infer_wasm: (a: number, b: number, c: number, d: number, e: number) => [number, number];
-    readonly predictivecodingengine_new: (a: number, b: number) => [number, number, number];
-    readonly predictivecodingengine_num_inputs: (a: number) => number;
-    readonly predictivecodingengine_num_neurons: (a: number) => number;
-    readonly predictivecodingengine_num_outputs: (a: number) => number;
     readonly compute_score_components: (a: number, b: number, c: number, d: number) => any;
     readonly scan_max_bias: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
     readonly scan_max_weight: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
