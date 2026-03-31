@@ -12,6 +12,7 @@ import {
   removeHiddenNeuron,
 } from "@compact/CompactUtils.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { cleanupOrphanedNeuronsInCreature } from "@compact/OrphanedNeuronCleanup.ts";
 
 export function compactUnused(
   traced: CreatureTrace,
@@ -97,6 +98,11 @@ export function compactUnused(
       )
     ) {
       addTag(compacted, "unused", String(neuronForRemoval.uuid));
+
+      // Issue #2117: Clean up neurons orphaned by the removal (e.g. feeder
+      // neurons whose only outward connection went through the removed neuron).
+      cleanupOrphanedNeuronsInCreature(compacted);
+
       validateOrDiagnose(
         compacted,
         "compactUnused",
