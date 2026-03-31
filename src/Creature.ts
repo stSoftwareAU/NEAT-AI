@@ -45,6 +45,7 @@ import { ActivationError } from "@errors/ActivationError.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
 import { rejectRecurrentSynapseIfForwardOnlyCreature } from "@architecture/ForwardOnlySynapseGuard.ts";
 import { TypedTopology } from "@architecture/TypedTopology.ts";
+import { stripMergeConflictMarkers } from "@utils/MergeConflictCleaner.ts";
 
 // Extracted modules
 import * as activation from "@creature/CreatureActivation.ts";
@@ -1041,6 +1042,22 @@ export class Creature implements CreatureInternal {
     creature.fix({ forwardOnly: creature.forwardOnly });
     creatureValidate(creature, { forwardOnly: creature.forwardOnly });
     return creature;
+  }
+
+  /**
+   * Load a creature from raw JSON text that may contain git merge conflict
+   * markers (`<<<<<<< ... ======= ... >>>>>>>`). Conflict markers are resolved
+   * by keeping the "theirs" side, then the cleaned text is parsed and fed
+   * through {@link Creature.fromPersistedJSON}.
+   *
+   * This is the recommended entry point for loading model files from disk or
+   * git checkouts that may have been left with unresolved merge/stash conflicts
+   * (see Issue #2103).
+   */
+  static fromPersistedText(text: string): Creature {
+    const cleaned = stripMergeConflictMarkers(text);
+    const json = JSON.parse(cleaned) as CreatureExport;
+    return Creature.fromPersistedJSON(json);
   }
 
   shallowClone(): Creature {
