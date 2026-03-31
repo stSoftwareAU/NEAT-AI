@@ -27,6 +27,7 @@
  */
 export { Creature, CURRENT_CREATURE_SEMANTIC_VERSION } from "@creature";
 export { exportSnapshotJSON } from "@creature/CreatureSerialization.ts";
+export { stripMergeConflictMarkers } from "@utils/MergeConflictCleaner.ts";
 
 /**
  * Creature Interfaces
