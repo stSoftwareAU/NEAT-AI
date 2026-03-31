@@ -26,6 +26,7 @@ import type { WorkerInterface } from "@workers/WorkerInterface.ts";
 import {
   loadWasmActivationInitPayloadAsync,
 } from "@workers/WasmActivationPayload.ts";
+import { isWasmActivationAvailable } from "@wasm/mod.ts";
 import { MockWorker } from "@multithreading/workers/MockWorker.ts";
 
 // Re-export shared types for backwards compatibility.
@@ -368,7 +369,23 @@ export class WorkerHandler
 
     // Now perform async initialisation.
     (async () => {
-      const wasmPayload = await loadWasmActivationInitPayloadAsync();
+      // Issue #2112: Gracefully handle WASM payload load failure.
+      // For direct/mock workers the main thread's WASM is shared, so
+      // a missing payload is non-fatal when WASM is already loaded.
+      let wasmPayload:
+        | import("../../workers/WasmActivationPayload.ts").WasmActivationInitPayload
+        | undefined;
+      try {
+        wasmPayload = await loadWasmActivationInitPayloadAsync();
+      } catch (wasmErr) {
+        if (direct && isWasmActivationAvailable()) {
+          getLogger().warn(
+            "[WorkerHandler] WASM payload load failed but WASM is available in the main thread; proceeding without payload for direct worker.",
+          );
+        } else {
+          throw wasmErr;
+        }
+      }
       const data: RequestData = {
         taskID: this.taskID++,
         initialize: {
