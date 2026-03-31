@@ -17,7 +17,8 @@ is now being re-implemented individually against the current Develop branch
 - Closed issue #2062 ("Merge milestone 'Performance Improvements' to Develop")
   with explanatory comment
 - Deleted branch `milestone/performance-improvements`
-- Deleted branch `issue-2062-merge-milestone-performance-improvements-to-develop`
+- Deleted branch
+  `issue-2062-merge-milestone-performance-improvements-to-develop`
 
 ## Evidence
 
