@@ -153,10 +153,8 @@ Deno.bench({
 Deno.bench({
   name: "AFTER: direct for loop (weight) - large (555)",
   fn() {
-    let _idx = -1;
     for (let i = 0; i < lgSynapses.length; i++) {
       if (lgSynapses[i].weight === 99.0) {
-        _idx = i;
         break;
       }
     }
