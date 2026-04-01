@@ -113,31 +113,67 @@ function calculatePenalty(max: number, avg: number): number {
   return penalty;
 }
 
+// Issue #2126: Module-level pooled buffers for extractWeights/extractBiases.
+// Buffers grow as needed (never shrink) and return subarray views, avoiding
+// per-call Float64Array allocations in the score update hot path.
+let _weightPool = new Float64Array(0);
+let _biasPool = new Float64Array(0);
+
 /**
  * Extracts flat Float64Array of synapse weights from a creature.
  * Issue #1521: Helper for WASM score scan functions.
+ * Issue #2126: Uses pooled buffer to avoid per-call allocations.
  */
 function extractWeights(creature: Creature): Float64Array {
   const synapses = creature.synapses;
-  const weights = new Float64Array(synapses.length);
-  for (let i = 0, len = synapses.length; i < len; i++) {
-    weights[i] = synapses[i].weight;
+  const len = synapses.length;
+  if (_weightPool.length < len) {
+    _weightPool = new Float64Array(len);
   }
-  return weights;
+  for (let i = 0; i < len; i++) {
+    _weightPool[i] = synapses[i].weight;
+  }
+  return _weightPool.subarray(0, len);
 }
 
 /**
  * Extracts flat Float64Array of non-input neuron biases from a creature.
  * Issue #1521: Helper for WASM score scan functions.
+ * Issue #2126: Uses pooled buffer to avoid per-call allocations.
  */
 function extractBiases(creature: Creature): Float64Array {
   const neurons = creature.neurons;
   const numBiases = neurons.length - creature.input;
-  const biases = new Float64Array(numBiases);
-  for (let i = 0; i < numBiases; i++) {
-    biases[i] = neurons[creature.input + i].bias;
+  if (_biasPool.length < numBiases) {
+    _biasPool = new Float64Array(numBiases);
   }
-  return biases;
+  for (let i = 0; i < numBiases; i++) {
+    _biasPool[i] = neurons[creature.input + i].bias;
+  }
+  return _biasPool.subarray(0, numBiases);
+}
+
+/**
+ * Returns the current capacity of the pooled weight and bias buffers.
+ * Issue #2126: Exported for testing pool growth and reuse behaviour.
+ */
+export function getPoolCapacities(): {
+  weightCapacity: number;
+  biasCapacity: number;
+} {
+  return {
+    weightCapacity: _weightPool.length,
+    biasCapacity: _biasPool.length,
+  };
+}
+
+/**
+ * Resets the pooled buffers to zero capacity.
+ * Issue #2126: Exported for testing pool growth behaviour.
+ */
+export function resetPoolBuffers(): void {
+  _weightPool = new Float64Array(0);
+  _biasPool = new Float64Array(0);
 }
 
 /**
