@@ -19,9 +19,9 @@ copy and pre-computing topology hashes. Closes #2123.
 
 **Grouping disabled (array copy elimination):**
 
-| Population | Before ([...array]) | After (direct) | Speedup  |
-| ---------- | ------------------- | -------------- | -------- |
-| 100        | 21.7 ns             | 3.7 ns         | **5.9x** |
+| Population | Before ([...array]) | After (direct) | Speedup   |
+| ---------- | ------------------- | -------------- | --------- |
+| 100        | 21.7 ns             | 3.7 ns         | **5.9x**  |
 | 500        | 78.2 ns             | 3.8 ns         | **20.8x** |
 | 1000       | 177.6 ns            | 4.2 ns         | **42.2x** |
 
