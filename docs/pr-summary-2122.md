@@ -6,9 +6,9 @@ creation overhead on the hot path. Closes #2122.
 
 ### Changes
 
-1. **`scanMaxForBiasChange()`**: Replaced `neurons.slice(creature.input).findIndex(...)`
-   with a direct `for` loop starting at `creature.input`. Eliminates O(n) array
-   allocation on every call.
+1. **`scanMaxForBiasChange()`**: Replaced
+   `neurons.slice(creature.input).findIndex(...)` with a direct `for` loop
+   starting at `creature.input`. Eliminates O(n) array allocation on every call.
 
 2. **`scanMaxForWeightChange()`**: Replaced `synapses.findIndex(...)` with a
    direct `for` loop. Eliminates closure creation overhead.
@@ -19,11 +19,11 @@ creation overhead on the hot path. Closes #2122.
 
 **`slice().findIndex()` → direct `for` loop (bias scan index finding):**
 
-| Size | Before (slice+findIndex) | After (for loop) | Improvement |
-|------|--------------------------|-------------------|-------------|
-| Small (105) | 68.9 ns | 54.1 ns | **21%** |
-| Medium (255) | 164.5 ns | 133.9 ns | **19%** |
-| Large (555) | 371.6 ns | 295.9 ns | **20%** |
+| Size         | Before (slice+findIndex) | After (for loop) | Improvement |
+| ------------ | ------------------------ | ---------------- | ----------- |
+| Small (105)  | 68.9 ns                  | 54.1 ns          | **21%**     |
+| Medium (255) | 164.5 ns                 | 133.9 ns         | **19%**     |
+| Large (555)  | 371.6 ns                 | 295.9 ns         | **20%**     |
 
 The `.slice()` allocation is the primary cost — `findIndex()` alone for weight
 scanning shows comparable performance to a direct `for` loop due to V8 closure
