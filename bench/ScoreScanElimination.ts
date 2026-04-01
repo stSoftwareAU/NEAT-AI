@@ -140,6 +140,7 @@ Deno.bench({
         break;
       }
     }
+    void _offset;
   },
 });
 
