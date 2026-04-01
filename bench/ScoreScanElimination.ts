@@ -51,10 +51,8 @@ Deno.bench({
 Deno.bench({
   name: "AFTER: direct for loop - small (105)",
   fn() {
-    let _offset = -1;
     for (let i = smallInputCount; i < smallNeurons.length; i++) {
       if (smallNeurons[i].bias === 99.0) {
-        _offset = i - smallInputCount;
         break;
       }
     }
@@ -71,10 +69,8 @@ Deno.bench({
 Deno.bench({
   name: "AFTER: direct for loop (weight) - small (105)",
   fn() {
-    let _idx = -1;
     for (let i = 0; i < smallSynapses.length; i++) {
       if (smallSynapses[i].weight === 99.0) {
-        _idx = i;
         break;
       }
     }
