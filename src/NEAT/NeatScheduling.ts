@@ -240,7 +240,7 @@ export function scheduleTraining(
       );
       trainingImprovement = false;
     }
-    const trainedCreature = Creature.fromJSON(JSON.parse(r.train.creature));
+    const trainedCreature = Creature.fromJSON(r.train.creature);
     trainedCreature.score = calculateScore(
       trainedCreature,
       r.train.error,
@@ -272,7 +272,7 @@ export function scheduleTraining(
         if (untrainedError) {
           addTag(backtrackedCreature, "untrained-error", untrainedError);
         }
-        r.train.backtracked = JSON.stringify(backtrackedCreature);
+        r.train.backtracked = backtrackedCreature;
       }
       if (forward.length > 0) {
         const forwardCreature = exportJSONWithRuntimeIds(forward[0]);
@@ -281,7 +281,7 @@ export function scheduleTraining(
         if (untrainedError) {
           addTag(forwardCreature, "untrained-error", untrainedError);
         }
-        r.train.forward = JSON.stringify(forwardCreature);
+        r.train.forward = forwardCreature;
       }
     } else if (trainingImprovement === false) {
       getLogger().warn(
@@ -297,7 +297,7 @@ export function scheduleTraining(
     if (neat.config.traceStore) {
       if (r.train.trace) {
         const traceNetwork = Creature.fromJSON(
-          JSON.parse(r.train.trace),
+          r.train.trace,
         );
         CreatureUtil.makeUUID(traceNetwork);
         ensureDirSync(neat.config.traceStore);
@@ -322,9 +322,14 @@ export function scheduleTraining(
       duration: 0,
       train: {
         ID: uuid,
-        creature: JSON.stringify(exportJSONWithRuntimeIds(creature)),
+        creature: exportJSONWithRuntimeIds(creature),
         error: Number.POSITIVE_INFINITY,
-        trace: "",
+        trace: {
+          input: creature.input,
+          output: creature.output,
+          neurons: [],
+          synapses: [],
+        },
       },
     });
   });
