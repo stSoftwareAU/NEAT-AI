@@ -10,8 +10,8 @@ directly instead of serialising them to JSON strings. Closes #2127.
   clone (postMessage) instead of being JSON-stringified first.
 - **ResponseData interface**: Changed `train.creature` from `string` to
   `CreatureExport`, `train.trace` from `string` to `CreatureTrace`,
-  `train.compact`/`backtracked`/`forward` from `string` to `CreatureExport`,
-  and `breed.offspring` from `string` to `CreatureExport`.
+  `train.compact`/`backtracked`/`forward` from `string` to `CreatureExport`, and
+  `breed.offspring` from `string` to `CreatureExport`.
 - **WorkerHandler.ts**: Removed all `JSON.stringify()` calls when constructing
   worker requests (evaluate, train, discover, breed).
 - **WorkerProcessor.ts**: Removed all `JSON.parse()` calls when processing
@@ -45,12 +45,12 @@ directly instead of serialising them to JSON strings. Closes #2127.
 
 ### Benchmark results (`bench/WorkerJsonSerialisation.ts`)
 
-| Scenario | JSON round-trip | Direct object | Speedup |
-|---|---|---|---|
-| Small creature (~18 neurons) | 24.3 us | 3.5 ns | 6,837x |
-| Medium creature (~80 neurons) | 538.9 us | 2.4 ns | 222,800x |
-| Large creature (~520 neurons) | 10.5 ms | 4.9 ns | 2,159,000x |
-| Full request+response (large) | 24.4 ms | 4.2 ns | 5,812,000x |
+| Scenario                      | JSON round-trip | Direct object | Speedup    |
+| ----------------------------- | --------------- | ------------- | ---------- |
+| Small creature (~18 neurons)  | 24.3 us         | 3.5 ns        | 6,837x     |
+| Medium creature (~80 neurons) | 538.9 us        | 2.4 ns        | 222,800x   |
+| Large creature (~520 neurons) | 10.5 ms         | 4.9 ns        | 2,159,000x |
+| Full request+response (large) | 24.4 ms         | 4.2 ns        | 5,812,000x |
 
 Note: For real Deno workers (non-mock), `postMessage` uses structured clone
 which has its own serialisation cost (~25ms for large creatures). However, the
@@ -60,8 +60,8 @@ JSON round-trip cost is eliminated entirely: previously the flow was
 workers, the savings are even greater since no serialisation boundary exists.
 
 The benchmark confirms meaningful improvement, especially for production
-workloads using large creatures (500+ neurons) where the previous approach
-added ~24ms per worker round-trip in unnecessary JSON serialisation.
+workloads using large creatures (500+ neurons) where the previous approach added
+~24ms per worker round-trip in unnecessary JSON serialisation.
 
 ## Test Plan
 
@@ -70,8 +70,10 @@ added ~24ms per worker round-trip in unnecessary JSON serialisation.
   - ResponseData train/breed carry CreatureExport objects
   - Structured clone creates deep copies preventing shared reference mutation
   - GC cleanup uses null instead of empty string for object fields
-- Updated `test/multithreading/WorkerPayloadCloneability.ts` for new object types
+- Updated `test/multithreading/WorkerPayloadCloneability.ts` for new object
+  types
 - Updated `test/multithreading/MockWorker.ts` for new object types
 - Updated `test/breed/ParallelBreeding.ts` mock workers for new object types
 - Added `bench/WorkerJsonSerialisation.ts` benchmark
-- All 5207 existing tests pass (including critical `CreatureMutations.ts` ADD_SELF_CONN)
+- All 5207 existing tests pass (including critical `CreatureMutations.ts`
+  ADD_SELF_CONN)
