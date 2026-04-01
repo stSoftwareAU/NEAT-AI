@@ -83,16 +83,18 @@ export class Fitness {
     // This improves WASM compilation cache hit rates because workers pull
     // from the front of the queue, so same-topology creatures flow to the
     // same worker via the work-stealing pattern.
-    let queue: Creature[];
+    // Issue #2123: Avoid unnecessary array copy. When grouping is disabled,
+    // use uniqueQueue directly. When enabled, pre-compute hashes into a Map
+    // for O(1) lookups during sort instead of O(n log n) hash computations.
+    const queue: Creature[] = uniqueQueue;
     if (this.evalConfig.topologyGrouping) {
-      queue = [...uniqueQueue];
+      const hashCache = new Map<Creature, string>();
+      for (const creature of queue) {
+        hashCache.set(creature, CreatureUtil.getTopologyHash(creature));
+      }
       queue.sort((a, b) => {
-        const hashA = CreatureUtil.getTopologyHash(a);
-        const hashB = CreatureUtil.getTopologyHash(b);
-        return hashA.localeCompare(hashB);
+        return hashCache.get(a)!.localeCompare(hashCache.get(b)!);
       });
-    } else {
-      queue = [...uniqueQueue];
     }
 
     // Issue #1289: Work-stealing pattern - each worker continuously pulls
