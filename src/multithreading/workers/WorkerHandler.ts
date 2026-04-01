@@ -443,7 +443,13 @@ export class WorkerHandler
       },
     };
 
-    return this.makePromiseDeferred(data);
+    return this.makePromiseDeferred(data, () => {
+      // Clear large creature data after structured clone completes.
+      // The worker now has its own deep copy; the main thread no longer
+      // needs the original export, so release it to reduce GC pressure.
+      // @ts-ignore - clearing to help GC after structured clone
+      data.evaluate!.creature = null;
+    });
   }
 
   train(creature: Creature, options: TrainOptions) {
@@ -470,7 +476,11 @@ export class WorkerHandler
       },
     };
 
-    return this.makePromiseDeferred(data);
+    return this.makePromiseDeferred(data, () => {
+      // Clear large creature data after structured clone completes.
+      // @ts-ignore - clearing to help GC after structured clone
+      data.train!.creature = null;
+    });
   }
 
   discover(creature: Creature, config: NeatConfig) {
@@ -492,7 +502,11 @@ export class WorkerHandler
       `[WorkerHandler] Posting discovery request to worker (taskID: ${data.taskID})`,
     );
 
-    return this.makePromiseDeferred(data);
+    return this.makePromiseDeferred(data, () => {
+      // Clear large creature data after structured clone completes.
+      // @ts-ignore - clearing to help GC after structured clone
+      data.discover!.creature = null;
+    });
   }
 
   /**
@@ -557,6 +571,12 @@ export class WorkerHandler
       },
     };
 
-    return this.makePromiseDeferred(data);
+    return this.makePromiseDeferred(data, () => {
+      // Clear large creature data after structured clone completes.
+      // @ts-ignore - clearing to help GC after structured clone
+      data.breed!.mother = null;
+      // @ts-ignore - clearing to help GC after structured clone
+      data.breed!.father = null;
+    });
   }
 }
