@@ -40,9 +40,9 @@ setupWorkerMessageLoop<RequestData, ResponseData>(
     } else if (data.train) {
       errorResponse.train = {
         ID: "error",
-        creature: "",
+        creature: { input: 0, output: 0, neurons: [], synapses: [] },
         error: Number.POSITIVE_INFINITY,
-        trace: "",
+        trace: { input: 0, output: 0, neurons: [], synapses: [] },
       };
     } else if (data.discover) {
       errorResponse.discover = {

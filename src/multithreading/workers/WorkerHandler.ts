@@ -2,7 +2,10 @@ import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { CostName } from "@costs";
 import type { Creature } from "@creature";
-import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type {
+  CreatureExport,
+  CreatureTrace,
+} from "@architecture/CreatureInterfaces.ts";
 import type {
   CoordinatedStructuralCandidate,
 } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
@@ -95,15 +98,15 @@ export interface RequestData {
   };
   /** Creature evaluation request */
   evaluate?: {
-    /** JSON string representation of the creature */
-    creature: string;
+    /** Creature export object (passed directly, no JSON serialisation) */
+    creature: CreatureExport;
     /** Whether to use feedback loop evaluation */
     feedbackLoop: boolean;
   };
   /** Creature training request */
   train?: {
-    /** JSON string representation of the creature */
-    creature: string;
+    /** Creature export object (passed directly, no JSON serialisation) */
+    creature: CreatureExport;
     /** Training configuration options */
     options: TrainOptions;
   };
@@ -116,8 +119,8 @@ export interface RequestData {
   };
   /** Creature discovery request */
   discover?: {
-    /** JSON string representation of the creature */
-    creature: string;
+    /** Creature export object (passed directly, no JSON serialisation) */
+    creature: CreatureExport;
     /** NEAT configuration (frozen, concrete values) */
     config: NeatConfig;
   };
@@ -138,10 +141,10 @@ export interface RequestData {
   requestCacheStats?: boolean;
   /** Creature breeding request (Issue #1026) */
   breed?: {
-    /** JSON string representation of the mother creature */
-    mother: string;
-    /** JSON string representation of the father creature */
-    father: string;
+    /** Mother creature export object (passed directly, no JSON serialisation) */
+    mother: CreatureExport;
+    /** Father creature export object (passed directly, no JSON serialisation) */
+    father: CreatureExport;
     /** Genetic compatibility threshold for crossover */
     geneticCompatibilityThreshold: number;
     /** Whether to create forward-only offspring */
@@ -192,18 +195,18 @@ export interface ResponseData {
   train?: {
     /** Unique identifier for the training session */
     ID: string;
-    /** JSON string representation of the trained creature */
-    creature: string;
+    /** Trained creature export object (passed directly, no JSON serialisation) */
+    creature: CreatureExport;
     /** Error value after training */
     error: number;
-    /** JSON string representation of the trace data */
-    trace: string;
+    /** Trace data object (passed directly, no JSON serialisation) */
+    trace: CreatureTrace;
     /** Optional compact creature representation */
-    compact?: string;
+    compact?: CreatureExport;
     /** Optional backtracked creature representation */
-    backtracked?: string;
+    backtracked?: CreatureExport;
     /** Optional forward creature representation */
-    forward?: string;
+    forward?: CreatureExport;
   };
   /** Echo response */
   echo?: {
@@ -267,8 +270,8 @@ export interface ResponseData {
   };
   /** Breeding response (Issue #1026) */
   breed?: {
-    /** JSON string representation of the offspring creature (undefined if breeding failed) */
-    offspring?: string;
+    /** Offspring creature export object (undefined if breeding failed) */
+    offspring?: CreatureExport;
     /** Whether breeding succeeded */
     success: boolean;
   };
@@ -435,12 +438,18 @@ export class WorkerHandler
     const data: RequestData = {
       taskID: this.taskID++,
       evaluate: {
-        creature: JSON.stringify(creature.exportJSON()),
+        creature: creature.exportJSON(),
         feedbackLoop,
       },
     };
 
-    return this.makePromiseDeferred(data);
+    return this.makePromiseDeferred(data, () => {
+      // Clear large creature data after structured clone completes.
+      // The worker now has its own deep copy; the main thread no longer
+      // needs the original export, so release it to reduce GC pressure.
+      // @ts-ignore - clearing to help GC after structured clone
+      data.evaluate!.creature = null;
+    });
   }
 
   train(creature: Creature, options: TrainOptions) {
@@ -462,25 +471,19 @@ export class WorkerHandler
     const data: RequestData = {
       taskID: this.taskID++,
       train: {
-        creature: JSON.stringify(json),
+        creature: json,
         options: options,
       },
     };
 
-    // Immediately clear the large JSON object to help GC
-    // @ts-ignore - clearing to help GC
-    json.tags = null;
-    // @ts-ignore - clearing to help GC
-    json.neurons = null;
-    // @ts-ignore - clearing to help GC
-    json.synapses = null;
-
-    return this.makePromiseDeferred(data);
+    return this.makePromiseDeferred(data, () => {
+      // Clear large creature data after structured clone completes.
+      // @ts-ignore - clearing to help GC after structured clone
+      data.train!.creature = null;
+    });
   }
 
   discover(creature: Creature, config: NeatConfig) {
-    const json = creature.exportJSON();
-
     // Strip non-cloneable properties so postMessage structured clone succeeds.
     // Workers use getLogger() and getRandomNumberGenerator() set during init.
     const configForWorker = { ...config } as Record<string, unknown>;
@@ -490,22 +493,20 @@ export class WorkerHandler
     const data: RequestData = {
       taskID: this.taskID++,
       discover: {
-        creature: JSON.stringify(json),
+        creature: creature.exportJSON(),
         config: configForWorker as NeatConfig,
       },
     };
-
-    // Immediately clear the large JSON object to help GC
-    // @ts-ignore - clearing to help GC
-    json.neurons = null;
-    // @ts-ignore - clearing to help GC
-    json.synapses = null;
 
     getLogger().info(
       `[WorkerHandler] Posting discovery request to worker (taskID: ${data.taskID})`,
     );
 
-    return this.makePromiseDeferred(data);
+    return this.makePromiseDeferred(data, () => {
+      // Clear large creature data after structured clone completes.
+      // @ts-ignore - clearing to help GC after structured clone
+      data.discover!.creature = null;
+    });
   }
 
   /**
@@ -560,29 +561,22 @@ export class WorkerHandler
     geneticCompatibilityThreshold: number,
     forwardOnly: boolean,
   ) {
-    const motherJson = mother.exportJSON();
-    const fatherJson = father.exportJSON();
-
     const data: RequestData = {
       taskID: this.taskID++,
       breed: {
-        mother: JSON.stringify(motherJson),
-        father: JSON.stringify(fatherJson),
+        mother: mother.exportJSON(),
+        father: father.exportJSON(),
         geneticCompatibilityThreshold,
         forwardOnly,
       },
     };
 
-    // Immediately clear large JSON objects to help GC
-    // @ts-ignore - clearing to help GC
-    motherJson.neurons = null;
-    // @ts-ignore - clearing to help GC
-    motherJson.synapses = null;
-    // @ts-ignore - clearing to help GC
-    fatherJson.neurons = null;
-    // @ts-ignore - clearing to help GC
-    fatherJson.synapses = null;
-
-    return this.makePromiseDeferred(data);
+    return this.makePromiseDeferred(data, () => {
+      // Clear large creature data after structured clone completes.
+      // @ts-ignore - clearing to help GC after structured clone
+      data.breed!.mother = null;
+      // @ts-ignore - clearing to help GC after structured clone
+      data.breed!.father = null;
+    });
   }
 }

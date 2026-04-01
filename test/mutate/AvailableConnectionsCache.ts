@@ -280,7 +280,32 @@ Deno.test("AvailableConnections: excludes constant neurons from targets", () => 
 });
 
 Deno.test("AvailableConnections: more connections available after AddNeuron mutation", () => {
-  const creature = new Creature(2, 1);
+  // Use a deterministic topology so available connection counts are predictable
+  const json = {
+    input: 3,
+    output: 1,
+    neurons: [
+      {
+        type: "hidden" as const,
+        uuid: "hidden-1",
+        bias: 0,
+        squash: "IDENTITY",
+      },
+      {
+        type: "output" as const,
+        uuid: "output-0",
+        bias: 0,
+        squash: "IDENTITY",
+      },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-1", weight: 1 },
+      { fromUUID: "input-1", toUUID: "hidden-1", weight: 1 },
+      { fromUUID: "hidden-1", toUUID: "output-0", weight: 1 },
+    ],
+  };
+
+  const creature = Creature.fromJSON(json, true);
   creatureValidate(creature);
 
   // Get initial available connections
@@ -288,7 +313,8 @@ Deno.test("AvailableConnections: more connections available after AddNeuron muta
 
   // Add a neuron (should invalidate cache due to structure change)
   const addNeuron = new AddNeuron(creature);
-  addNeuron.mutate();
+  const mutated = addNeuron.mutate();
+  assertEquals(mutated, true, "AddNeuron mutation should succeed");
 
   // Available connections should reflect the new topology
   const available2 = creature.getAvailableConnections();

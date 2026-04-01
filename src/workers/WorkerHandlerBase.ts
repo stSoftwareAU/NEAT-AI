@@ -250,9 +250,15 @@ export abstract class WorkerHandlerBase<
    * The actual message is posted only after `this.ready` resolves.
    *
    * @param data - The request data to send
+   * @param afterPost - Optional callback invoked after postMessage completes
+   *   the structured clone. Use this to null large request fields that are no
+   *   longer needed, reducing memory pressure while the response is in flight.
    * @returns Promise resolving to the worker's response
    */
-  protected makePromiseDeferred(data: TRequest): Promise<TResponse> {
+  protected makePromiseDeferred(
+    data: TRequest,
+    afterPost?: () => void,
+  ): Promise<TResponse> {
     this.busyCount++;
 
     const p = new Promise<TResponse>((resolve, reject) => {
@@ -269,6 +275,7 @@ export abstract class WorkerHandlerBase<
 
       this.ready.then(() => {
         this.worker.postMessage(data);
+        afterPost?.();
       }).catch((err) => {
         this.callbacks.delete(data.taskID);
         this.busyCount--;
