@@ -114,8 +114,10 @@ function calculatePenalty(max: number, avg: number): number {
 }
 
 // Issue #2126: Module-level pooled buffers for extractWeights/extractBiases.
-// Buffers grow as needed (never shrink) and return subarray views, avoiding
-// per-call Float64Array allocations in the score update hot path.
+// Buffers grow as needed and return subarray views, avoiding per-call
+// Float64Array allocations in the score update hot path.
+// PR #2138: Pools now downsize when oversized (4x threshold) to prevent
+// unbounded memory retention during coverage collection.
 let _weightPool = new Float64Array(0);
 let _biasPool = new Float64Array(0);
 
@@ -127,7 +129,7 @@ let _biasPool = new Float64Array(0);
 function extractWeights(creature: Creature): Float64Array {
   const synapses = creature.synapses;
   const len = synapses.length;
-  if (_weightPool.length < len) {
+  if (_weightPool.length < len || _weightPool.length > len * 4) {
     _weightPool = new Float64Array(len);
   }
   for (let i = 0; i < len; i++) {
@@ -144,7 +146,7 @@ function extractWeights(creature: Creature): Float64Array {
 function extractBiases(creature: Creature): Float64Array {
   const neurons = creature.neurons;
   const numBiases = neurons.length - creature.input;
-  if (_biasPool.length < numBiases) {
+  if (_biasPool.length < numBiases || _biasPool.length > numBiases * 4) {
     _biasPool = new Float64Array(numBiases);
   }
   for (let i = 0; i < numBiases; i++) {

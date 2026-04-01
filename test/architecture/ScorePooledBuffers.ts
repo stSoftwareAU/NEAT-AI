@@ -68,15 +68,15 @@ Deno.test("pooled buffers - grow when creature size increases", () => {
   );
   assert(
     afterLarge.weightCapacity >= afterSmall.weightCapacity,
-    "Weight pool should never shrink",
+    "Weight pool should grow for larger creature",
   );
   assert(
     afterLarge.biasCapacity >= afterSmall.biasCapacity,
-    "Bias pool should never shrink",
+    "Bias pool should grow for larger creature",
   );
 });
 
-Deno.test("pooled buffers - do not shrink when creature size decreases", () => {
+Deno.test("pooled buffers - retain capacity for moderately smaller creatures", () => {
   resetPoolBuffers();
 
   // Use a large creature first
@@ -84,21 +84,47 @@ Deno.test("pooled buffers - do not shrink when creature size decreases", () => {
   calculate(large, 0.1, 0.001);
   const afterLarge = getPoolCapacities();
 
-  // Now use a smaller creature — pools should NOT shrink
-  const small = makeCreature(2);
-  delete small.cachedScoreComponents;
-  calculate(small, 0.1, 0.001);
-  const afterSmall = getPoolCapacities();
+  // Use a moderately smaller creature — pools should retain capacity
+  // (only downsize when pool exceeds 4x the required size)
+  const medium = makeCreature(5);
+  delete medium.cachedScoreComponents;
+  calculate(medium, 0.1, 0.001);
+  const afterMedium = getPoolCapacities();
 
   assertEquals(
-    afterSmall.weightCapacity,
+    afterMedium.weightCapacity,
     afterLarge.weightCapacity,
-    "Weight pool should not shrink for smaller creature",
+    "Weight pool should retain capacity for moderately smaller creature",
   );
   assertEquals(
-    afterSmall.biasCapacity,
+    afterMedium.biasCapacity,
     afterLarge.biasCapacity,
-    "Bias pool should not shrink for smaller creature",
+    "Bias pool should retain capacity for moderately smaller creature",
+  );
+});
+
+Deno.test("pooled buffers - downsize when significantly oversized", () => {
+  resetPoolBuffers();
+
+  // Use a very large creature first to grow the pools
+  const large = makeCreature(20);
+  calculate(large, 0.1, 0.001);
+  const afterLarge = getPoolCapacities();
+  assert(afterLarge.weightCapacity > 0, "Weight pool should have capacity");
+
+  // Use a much smaller creature — pools should downsize (>4x ratio)
+  const tiny = makeCreature(2);
+  delete tiny.cachedScoreComponents;
+  calculate(tiny, 0.1, 0.001);
+  const afterTiny = getPoolCapacities();
+
+  assert(
+    afterTiny.weightCapacity < afterLarge.weightCapacity,
+    "Weight pool should downsize when significantly oversized",
+  );
+  assert(
+    afterTiny.weightCapacity >= tiny.synapses.length,
+    "Downsized weight pool should still accommodate current creature",
   );
 });
 
