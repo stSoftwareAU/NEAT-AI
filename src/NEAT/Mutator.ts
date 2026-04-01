@@ -37,6 +37,8 @@ interface MutationCacheEntry {
   candidates: ReadonlyArray<{ name: string }>;
   /** Count of weight/bias mutations in candidates (for weighted selection). */
   weightBiasCount: number;
+  /** Issue #2125: Pre-computed non-expansion candidates for large creature selection. */
+  nonExpansionCandidates: ReadonlyArray<{ name: string }>;
 }
 
 export class Mutator {
@@ -346,7 +348,14 @@ export class Mutator {
       }
     }
 
-    return { candidates, weightBiasCount };
+    // Issue #2125: Pre-compute non-expansion candidates once per cache key.
+    // This avoids repeated .filter() calls in selectMutationMethod() for large
+    // creatures, reducing per-call array allocations and GC pressure.
+    const nonExpansionCandidates = candidates.filter((c) =>
+      !this.isTopologyExpansionMutation(c.name)
+    );
+
+    return { candidates, weightBiasCount, nonExpansionCandidates };
   }
 
   /**
@@ -468,12 +477,11 @@ export class Mutator {
     }
 
     // For large creatures, further filter to exclude topology expansion mutations
-    // unless we explicitly pass the topology weight check above
+    // unless we explicitly pass the topology weight check above.
+    // Issue #2125: Use pre-computed nonExpansionCandidates from cache instead of
+    // filtering on every call.
     if (neuronCount >= large && largeTopologyWeight < 1.0) {
-      // Build list of non-expansion candidates
-      const nonExpansionCandidates = candidates.filter((c) =>
-        !this.isTopologyExpansionMutation(c.name)
-      );
+      const { nonExpansionCandidates } = cacheEntry;
       if (nonExpansionCandidates.length > 0) {
         return nonExpansionCandidates[
           Math.floor(rng.random() * nonExpansionCandidates.length)
