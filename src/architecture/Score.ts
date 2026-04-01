@@ -511,7 +511,14 @@ function scanMaxForWeightChange(
 ): MaxScanResult {
   // Issue #1521: Try WASM scan
   const synapses = creature.synapses;
-  const excludeIdx = synapses.findIndex((s) => s.weight === oldWeight);
+  // Issue #2122: Direct for loop instead of .findIndex() to avoid closure overhead
+  let excludeIdx = -1;
+  for (let i = 0, len = synapses.length; i < len; i++) {
+    if (synapses[i].weight === oldWeight) {
+      excludeIdx = i;
+      break;
+    }
+  }
   if (excludeIdx >= 0) {
     const weights = extractWeights(creature);
     const biases = extractBiases(creature);
@@ -578,9 +585,15 @@ function scanMaxForBiasChange(
 ): MaxScanResult {
   // Issue #1521: Try WASM scan
   const neurons = creature.neurons;
-  const biasOffset = neurons.slice(creature.input).findIndex((n) =>
-    n.bias === oldBias
-  );
+  // Issue #2122: Direct for loop instead of .slice().findIndex() to avoid
+  // O(n) array allocation and closure overhead
+  let biasOffset = -1;
+  for (let i = creature.input, len = neurons.length; i < len; i++) {
+    if (neurons[i].bias === oldBias) {
+      biasOffset = i - creature.input;
+      break;
+    }
+  }
   if (biasOffset >= 0) {
     const weights = extractWeights(creature);
     const biases = extractBiases(creature);
