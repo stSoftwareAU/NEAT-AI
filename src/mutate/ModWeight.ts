@@ -46,20 +46,32 @@ export class ModWeight extends AbstractMutationOperator {
       // No focus - use all non-frozen connections
       relevantConnections = this.creature.synapses.filter((s) => !s.frozen);
     } else {
-      // Collect synapses connected to focused neurons using indexed lookups
-      // This is O(focusList.length * (log n + k)) instead of O(synapses * focusList)
-      const seen = new Set<Synapse>();
+      // Single-pass: build result directly, deduplicate via Set<number>,
+      // and check frozen status inline. Eliminates 2 intermediate allocations
+      // (Set<Synapse> → Array.from → .filter) per mutation call. (Issue #2124)
+      const seen = new Set<number>();
+      const neuronCount = this.creature.neurons.length;
+      relevantConnections = [];
       for (const focusIndex of focusList) {
-        // Get outward connections from focus neuron
         for (const syn of this.creature.outwardConnections(focusIndex)) {
-          seen.add(syn);
+          if (!syn.frozen) {
+            const key = syn.from * neuronCount + syn.to;
+            if (!seen.has(key)) {
+              seen.add(key);
+              relevantConnections.push(syn);
+            }
+          }
         }
-        // Get inward connections to focus neuron
         for (const syn of this.creature.inwardConnections(focusIndex)) {
-          seen.add(syn);
+          if (!syn.frozen) {
+            const key = syn.from * neuronCount + syn.to;
+            if (!seen.has(key)) {
+              seen.add(key);
+              relevantConnections.push(syn);
+            }
+          }
         }
       }
-      relevantConnections = Array.from(seen).filter((s) => !s.frozen);
     }
 
     let changed = false;
