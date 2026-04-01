@@ -91,10 +91,8 @@ Deno.bench({
 Deno.bench({
   name: "AFTER: direct for loop - medium (255)",
   fn() {
-    let _offset = -1;
     for (let i = smallInputCount; i < medNeurons.length; i++) {
       if (medNeurons[i].bias === 99.0) {
-        _offset = i - smallInputCount;
         break;
       }
     }
