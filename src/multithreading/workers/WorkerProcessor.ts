@@ -237,9 +237,9 @@ export class WorkerProcessor {
 
       let creature: Creature | null = null;
       try {
-        creature = Creature.fromJSON(JSON.parse(data.evaluate.creature));
-        /* release some memory*/
-        data.evaluate.creature = "";
+        creature = Creature.fromJSON(data.evaluate.creature);
+        // @ts-ignore - clearing to help GC
+        data.evaluate.creature = null;
         const result = await creature.evaluateDir(
           this.dataSetDir,
           this.cost,
@@ -273,11 +273,11 @@ export class WorkerProcessor {
       let creature: Creature | null = null;
       try {
         creature = Creature.fromJSON(
-          JSON.parse(data.train.creature),
+          data.train.creature,
           data.debug,
         );
-        /* release some memory*/
-        data.train.creature = "";
+        // @ts-ignore - clearing to help GC
+        data.train.creature = null;
 
         assert(this.dataSetDir, "No data dir");
         assert(this.cost, "No cost");
@@ -288,19 +288,16 @@ export class WorkerProcessor {
           data.train.options,
           this.cost,
         );
-        const json = JSON.stringify(exportJSONWithRuntimeIds(creature));
 
         const response = {
           taskID: data.taskID,
           duration: Date.now() - start,
           train: {
             ID: result.ID,
-            creature: json,
+            creature: exportJSONWithRuntimeIds(creature),
             error: result.error,
-            trace: JSON.stringify(result.trace),
-            compact: result.compact
-              ? JSON.stringify(result.compact)
-              : undefined,
+            trace: result.trace,
+            compact: result.compact,
           },
         };
 
@@ -334,7 +331,7 @@ export class WorkerProcessor {
       let creature: Creature | null = null;
       try {
         creature = Creature.fromJSON(
-          JSON.parse(data.discover.creature),
+          data.discover.creature,
           data.debug,
         );
 
@@ -386,12 +383,14 @@ export class WorkerProcessor {
       let offspring: Creature | undefined = undefined;
 
       try {
-        mother = Creature.fromJSON(JSON.parse(data.breed.mother), data.debug);
-        father = Creature.fromJSON(JSON.parse(data.breed.father), data.debug);
+        mother = Creature.fromJSON(data.breed.mother, data.debug);
+        father = Creature.fromJSON(data.breed.father, data.debug);
 
         // Release memory from request data
-        data.breed.mother = "";
-        data.breed.father = "";
+        // @ts-ignore - clearing to help GC
+        data.breed.mother = null;
+        // @ts-ignore - clearing to help GC
+        data.breed.father = null;
 
         // Import Offspring dynamically to avoid circular dependencies
         const { Offspring } = await import(
@@ -405,12 +404,11 @@ export class WorkerProcessor {
         });
 
         if (offspring) {
-          const offspringJson = JSON.stringify(offspring.exportJSON());
           return {
             taskID: data.taskID,
             duration: Date.now() - start,
             breed: {
-              offspring: offspringJson,
+              offspring: offspring.exportJSON(),
               success: true,
             },
           };
