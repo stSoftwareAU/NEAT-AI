@@ -1,9 +1,8 @@
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { Synapse } from "@architecture/Synapse.ts";
 import { Offspring } from "@architecture/Offspring.ts";
-import { ValidationError } from "@errors/ValidationError.ts";
 import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 
 Deno.test("forwardOnly flag survives export/import", () => {
@@ -17,8 +16,13 @@ Deno.test("forwardOnly flag survives export/import", () => {
   assertEquals(loaded.forwardOnly, true);
 });
 
+/**
+ * Issue #2139: Self-connection synapses in forward-only creatures are now
+ * repaired (removed) during prepareCreatureForBreeding. Breeding should
+ * succeed after the self-connection is cleaned up.
+ */
 Deno.test(
-  "Breeding forward-only throws when mother has illegal self-connection (#2086)",
+  "Breeding forward-only repairs mother with legacy self-connection (#2139)",
   () => {
     const mumJson: CreatureExport = {
       input: 2,
@@ -56,20 +60,25 @@ Deno.test(
     const loadedMum = Creature.fromJSON(mumJson);
     const dad = Creature.fromJSON(dadJson);
 
-    // Inject a legacy self connection into mum to simulate older populations.
+    // Inject a legacy self-connection into mum to simulate older populations.
     const hiddenIndex = loadedMum.input;
     loadedMum.synapses.push(new Synapse(hiddenIndex, hiddenIndex, 0.25));
     loadedMum.synapses.sort((a, b) =>
       a.from === b.from ? a.to - b.to : a.from - b.from
     );
 
-    // Invalid 4.x parent is rejected in prepareCreatureForBreeding → validateFourX
-    // (Issue #2086) before offspring build; that path rethrows ValidationError.
-    const err = assertThrows(
-      () => Offspring.breed(loadedMum, dad, { forwardOnly: true }),
-      ValidationError,
-    );
-    assertEquals((err as ValidationError).reason, "SELF_CONNECTION");
+    // prepareCreatureForBreeding repairs the self-connection; breeding proceeds.
+    const offspring = Offspring.breed(loadedMum, dad, { forwardOnly: true });
+    // Offspring may be undefined if crossover produces an invalid topology,
+    // but it must not throw due to the self-connection.
+    if (offspring) {
+      const selfConns = offspring.synapses.filter((s) => s.from === s.to);
+      assertEquals(
+        selfConns.length,
+        0,
+        "offspring must not have self-connections",
+      );
+    }
   },
 );
 

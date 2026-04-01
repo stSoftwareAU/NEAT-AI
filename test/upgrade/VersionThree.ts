@@ -1,5 +1,4 @@
-import { assert, assertEquals, assertThrows } from "@std/assert";
-import { ValidationError } from "@errors/ValidationError.ts";
+import { assertEquals } from "@std/assert";
 import { Creature } from "../../mod.ts";
 import { SEMANTIC_MAJOR_VERSION, upgrade } from "@upgrade/Upgrade.ts";
 
@@ -192,10 +191,11 @@ Deno.test("upgrade should validate and not modify valid 4.x creatures", () => {
 });
 
 /**
- * Issue #956 historically allowed automatic repair; Issue #2086 follow-up
- * removes silent `fix()` from `upgrade()` so corrupt genomes fail fast.
+ * Issue #2139: Self-connection synapses in forward-only creatures are now
+ * repaired (removed) instead of crashing. Old creatures loaded from disk
+ * can have self-loops that must be cleaned up gracefully.
  */
-Deno.test("upgrade should throw on corrupted 4.x creatures with recurrent connections", () => {
+Deno.test("upgrade should repair self-connection in 4.x forward-only creature", () => {
   const creature = new Creature(2, 1, {
     layers: [{ count: 2 }],
     semanticVersion: "4.0.0",
@@ -207,12 +207,10 @@ Deno.test("upgrade should throw on corrupted 4.x creatures with recurrent connec
   creature.connect(hiddenNeuron.index, hiddenNeuron.index, 0.5);
   creature.forwardOnly = true;
 
-  const err = assertThrows(() => upgrade(creature));
-  assert(
-    err instanceof ValidationError ||
-      (err instanceof Error && err.name === "NotCapable"),
-    `expected forward-only validation failure, got ${err}`,
-  );
+  const upgraded = upgrade(creature);
+  const selfConns = upgraded.synapses.filter((s) => s.from === s.to);
+  assertEquals(selfConns.length, 0, "self-connections must be removed");
+  assertEquals(upgraded.forwardOnly, true);
 });
 
 Deno.test("upgrade should validate and not modify future 10.x creatures", () => {

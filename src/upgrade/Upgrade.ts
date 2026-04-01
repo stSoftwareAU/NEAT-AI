@@ -58,11 +58,12 @@ function validateThreeX(creature: Creature): void {
  * regardless of whether the `forwardOnly` flag is set.
  *
  * If validation fails, we log diagnostics and **throw**, except for
- * `NO_INWARD_CONNECTIONS` and `NO_OUTWARD_CONNECTIONS` on forward-only creatures:
- * we run `creature.fix()` once (random inbound synapses, orphan/constant cleanup,
- * etc.) and retry — GRQ-12 class corrupt genomes after recurrent strip, and
- * stranded constants/hiddens with no outward edges. Other failures still throw
- * (Issue #2086).
+ * `NO_INWARD_CONNECTIONS`, `NO_OUTWARD_CONNECTIONS`, `IF_CONDITIONS`, and
+ * `SELF_CONNECTION` on forward-only creatures: we run `creature.fix()` once
+ * (random inbound synapses, orphan/constant cleanup, self-connection removal,
+ * etc.) and retry — GRQ-12 class corrupt genomes after recurrent strip,
+ * stranded constants/hiddens with no outward edges, and old v1.x/v2.x creatures
+ * with self-loops (Issue #2139). Other failures still throw (Issue #2086).
  *
  * See https://github.com/stSoftwareAU/NEAT-AI/issues/956 for historical repair
  * behaviour and https://github.com/stSoftwareAU/NEAT-AI/issues/2086.
@@ -111,7 +112,8 @@ function validateFourX(creature: Creature): void {
     if (
       error.reason === "NO_INWARD_CONNECTIONS" ||
       error.reason === "NO_OUTWARD_CONNECTIONS" ||
-      error.reason === "IF_CONDITIONS"
+      error.reason === "IF_CONDITIONS" ||
+      error.reason === "SELF_CONNECTION"
     ) {
       try {
         if (error.reason === "IF_CONDITIONS") {
@@ -126,7 +128,7 @@ function validateFourX(creature: Creature): void {
         getLogger().error(
           `[upgrade] CRITICAL: 4.x creature (UUID: ${
             creature.uuid ?? "unknown"
-          }) still invalid after structural repair (NO_INWARD/NO_OUTWARD/IF): ` +
+          }) still invalid after structural repair (NO_INWARD/NO_OUTWARD/IF/SELF_CONNECTION): ` +
             `${followUp.name} - ${followUp.message}.`,
         );
         writeDiagnostics({
