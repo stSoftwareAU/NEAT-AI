@@ -58,7 +58,12 @@ Deno.test("upgrade(): throws on corrupted 4.x creature with back connection", ()
   assertEquals(err.reason, "RECURSIVE_SYNAPSE");
 });
 
-Deno.test("upgrade(): throws on corrupted 4.x creature with self connection", () => {
+/**
+ * Issue #2139: Self-connection synapses in forward-only creatures are now
+ * repaired (removed) instead of crashing. Old v1.x/v2.x creatures loaded
+ * from disk can have self-loops that must be cleaned up gracefully.
+ */
+Deno.test("upgrade(): repairs self-connection in 4.x forward-only creature", () => {
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
   creature.semanticVersion = "4.0.0";
   creature.forwardOnly = true;
@@ -71,9 +76,8 @@ Deno.test("upgrade(): throws on corrupted 4.x creature with self connection", ()
     b,
   ) => (a.from === b.from ? a.to - b.to : a.from - b.from));
 
-  const err = assertThrows(
-    () => upgrade(creature),
-    ValidationError,
-  ) as ValidationError;
-  assertEquals(err.reason, "SELF_CONNECTION");
+  const upgraded = upgrade(creature);
+  const selfConns = upgraded.synapses.filter((s) => s.from === s.to);
+  assertEquals(selfConns.length, 0, "self-connections must be removed");
+  assertEquals(upgraded.forwardOnly, true);
 });
