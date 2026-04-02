@@ -49,7 +49,7 @@ function output0Id(creature: Creature): number {
   return id;
 }
 
-Deno.test("requireGpu is false in ensureRustCombinedAnalysis (cross-platform)", async () => {
+Deno.test("requireGpu is omitted in ensureRustCombinedAnalysis so GPU guard is active (Issue #2142)", async () => {
   await initWasmForTests();
   const creature = makeCreature();
   const focusId = output0Id(creature);
@@ -88,8 +88,8 @@ Deno.test("requireGpu is false in ensureRustCombinedAnalysis (cross-platform)", 
   assertExists(capturedInput, "analyzeParallel should have been called");
   assertEquals(
     capturedInput!.requireGpu,
-    false,
-    "requireGpu should be false for cross-platform CPU fallback support",
+    undefined,
+    "requireGpu should be omitted so the GPU guard in analyzeParallel() can block calls when GPU is unavailable (Issue #2142)",
   );
   assertExists(result.result, "Result should be returned");
 });
@@ -259,11 +259,12 @@ Deno.test("GpuBackendInfo type represents CPU-fallback state", () => {
   assertEquals(info.backendName, undefined);
 });
 
-Deno.test("discovery enabled without GPU: analysis uses CPU fallback", async () => {
+Deno.test("discovery enabled: analysis called with requireGpu omitted (Issue #2142)", async () => {
   await initWasmForTests();
   const creature = makeCreature();
   const focusId = output0Id(creature);
   let analysisCalled = false;
+  let capturedRequireGpu: boolean | undefined;
 
   const result = ensureRustCombinedAnalysis(
     creature,
@@ -278,11 +279,7 @@ Deno.test("discovery enabled without GPU: analysis uses CPU fallback", async () 
       }),
       analyzeParallel: (input: RustParallelAnalysisInput) => {
         analysisCalled = true;
-        assertEquals(
-          input.requireGpu,
-          false,
-          "Should not require GPU (allows CPU fallback)",
-        );
+        capturedRequireGpu = input.requireGpu;
         return {
           success: true,
           synapseGpuUsed: false,
@@ -302,8 +299,13 @@ Deno.test("discovery enabled without GPU: analysis uses CPU fallback", async () 
     () => {},
   );
 
-  assertEquals(analysisCalled, true, "Analysis should proceed without GPU");
-  assertExists(result.result, "Should return result from CPU fallback");
+  assertEquals(analysisCalled, true, "Analysis should be called");
+  assertEquals(
+    capturedRequireGpu,
+    undefined,
+    "requireGpu should be omitted so the GPU guard can protect the FFI call (Issue #2142)",
+  );
+  assertExists(result.result, "Should return analysis result");
 });
 
 Deno.test("ensureRustCombinedAnalysis skips unresolved focus neurons", async () => {
