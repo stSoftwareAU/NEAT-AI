@@ -15,36 +15,29 @@ source "$SCRIPT_DIR/../scripts/rustlib.sh"
 
 echo "Building WASM activation module..."
 
-# Function to check and update wasm-pack to the latest version
+# Pin wasm-pack to last version compatible with Rust stable (1.87).
+# wasm-pack 0.14.0 pulls dependencies requiring Rust 1.88+.
+WASM_PACK_VERSION="0.13.1"
+
+# Function to check and install/update wasm-pack to the pinned version
 check_and_update_wasm_pack() {
     if ! command -v wasm-pack &> /dev/null; then
-        echo "wasm-pack not found. Installing latest version..."
-        cargo install wasm-pack
+        echo "wasm-pack not found. Installing v${WASM_PACK_VERSION}..."
+        cargo install wasm-pack --version "$WASM_PACK_VERSION" --locked
         return
     fi
-
-    echo "Checking for wasm-pack updates..."
 
     # Get the currently installed version
     local current_version
     current_version=$(wasm-pack --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "0.0.0")
 
-    # Get the latest version from crates.io
-    local latest_version
-    latest_version=$(cargo search wasm-pack --limit 1 2>/dev/null | grep -oE '"[0-9]+\.[0-9]+\.[0-9]+"' | tr -d '"' || echo "")
-
-    if [ -z "$latest_version" ]; then
-        echo "Could not determine latest wasm-pack version. Using current installation."
-        return
-    fi
-
     echo "Current wasm-pack version: $current_version"
-    echo "Latest wasm-pack version:  $latest_version"
+    echo "Required wasm-pack version: $WASM_PACK_VERSION"
 
     # Compare versions and update if needed
-    if [ "$current_version" != "$latest_version" ]; then
-        echo "Updating wasm-pack from $current_version to $latest_version..."
-        cargo install wasm-pack --force
+    if [ "$current_version" != "$WASM_PACK_VERSION" ]; then
+        echo "Updating wasm-pack from $current_version to $WASM_PACK_VERSION..."
+        cargo install wasm-pack --version "$WASM_PACK_VERSION" --force --locked
         echo "wasm-pack updated successfully."
     else
         echo "wasm-pack is already up to date."
@@ -69,8 +62,38 @@ check_and_update_wasm_pack
 # target" when Cargo builds host crates (build scripts, procedural macros).
 export RUSTFLAGS="-D warnings"
 
+# Pre-install wasm-bindgen-cli with --locked so wasm-pack doesn't attempt an
+# unlocked install that may pull incompatible transitive deps (e.g. time >=0.3.47
+# requiring Rust 1.88+).
+ensure_wasm_bindgen_cli() {
+    local wb_version
+    wb_version=$(sed -n 's/^wasm-bindgen = "[=~^]*\([0-9][0-9.]*\)".*/\1/p' Cargo.toml | head -1)
+    if [ -z "$wb_version" ]; then
+        return
+    fi
+
+    # wasm-pack caches wasm-bindgen-cli here; if the binary exists it skips install.
+    local cache_root=""
+    if [[ "$OSTYPE" == darwin* ]]; then
+        cache_root="$HOME/Library/Caches/.wasm-pack"
+    else
+        cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/.wasm-pack"
+    fi
+    local cache_dir="$cache_root/.wasm-bindgen-cargo-install-$wb_version"
+    local bin_path="$cache_dir/bin/wasm-bindgen"
+
+    if [[ -x "$bin_path" ]]; then
+        echo "wasm-bindgen-cli $wb_version already cached."
+        return
+    fi
+
+    echo "Pre-installing wasm-bindgen-cli $wb_version (--locked)..."
+    cargo install wasm-bindgen-cli --version "$wb_version" --locked --root "$cache_dir"
+}
+
 # Build the WASM module with wasm-pack (preferred) or cargo
 if command -v wasm-pack &> /dev/null; then
+    ensure_wasm_bindgen_cli
     echo "Using wasm-pack for build (with SIMD enabled)..."
     wasm-pack build --target web --release --out-dir pkg
 else
@@ -79,7 +102,7 @@ else
     # Ensure wasm-bindgen-cli is installed
     if ! command -v wasm-bindgen &> /dev/null; then
         echo "Installing wasm-bindgen-cli..."
-        cargo install wasm-bindgen-cli
+        cargo install wasm-bindgen-cli --locked
     fi
 
     # Build with cargo
