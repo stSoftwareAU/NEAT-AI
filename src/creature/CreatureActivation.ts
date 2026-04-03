@@ -5,7 +5,7 @@
  * under 500 lines and each module focused on a single responsibility.
  */
 
-import { assert, fail } from "@std/assert";
+import { assert } from "@std/assert";
 import { calculateOutputRangePenalty } from "@architecture/OutputRangePenalty.ts";
 import { dataFiles } from "@architecture/Training.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
@@ -146,8 +146,9 @@ export function activateWasm(
     }
 
     if (!creature.cachedWasmActivation) {
-      fail(
+      throw new WasmError(
         "WASM activation was selected but failed to instantiate CompiledNetwork",
+        "ACTIVATION_FAILED",
       );
     }
 
@@ -157,7 +158,21 @@ export function activateWasm(
   }
 
   noteWasmCreatureActivationUse(creature);
-  return creature.cachedWasmActivation.activateWithState(input, feedbackLoop);
+
+  // Issue #2146: Wrap the WASM call so that a RuntimeError (unreachable trap)
+  // surfaces as a typed WasmError instead of crashing the worker.
+  try {
+    return creature.cachedWasmActivation.activateWithState(input, feedbackLoop);
+  } catch (error) {
+    creature.cachedWasmActivation = undefined;
+    if (error instanceof WasmError) throw error;
+    throw new WasmError(
+      `WASM activation failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      "ACTIVATION_FAILED",
+    );
+  }
 }
 
 /**
@@ -238,9 +253,17 @@ export function activateAndTraceWasm(
         undefined;
     }
 
+    // Issue #2146: Flush compiled modules and retry once (matches activateWasm).
     if (!creature.cachedWasmActivation) {
-      fail(
+      clearWasmCompilationCache();
+      creature.cachedWasmActivation = getOrCompileWasmModule(creature) ??
+        undefined;
+    }
+
+    if (!creature.cachedWasmActivation) {
+      throw new WasmError(
         "WASM activateAndTrace was selected but failed to instantiate CompiledNetwork",
+        "ACTIVATION_FAILED",
       );
     }
   }
@@ -250,10 +273,24 @@ export function activateAndTraceWasm(
   prepareNeurons(creature);
   creature.state.makeActivation(input, feedbackLoop);
 
-  const wasmResult = creature.cachedWasmActivation.activateAndTraceWithFeedback(
-    input,
-    feedbackLoop,
-  );
+  // Issue #2146: Wrap the WASM call so that a RuntimeError (unreachable trap)
+  // surfaces as a typed WasmError instead of crashing the worker.
+  let wasmResult;
+  try {
+    wasmResult = creature.cachedWasmActivation.activateAndTraceWithFeedback(
+      input,
+      feedbackLoop,
+    );
+  } catch (error) {
+    creature.cachedWasmActivation = undefined;
+    if (error instanceof WasmError) throw error;
+    throw new WasmError(
+      `WASM activateAndTrace failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      "ACTIVATION_FAILED",
+    );
+  }
 
   const neurons = creature.neurons;
   for (let i = 0; i < wasmResult.activations.length; i++) {
@@ -395,8 +432,9 @@ export async function evaluateDir(
         undefined;
     }
     if (!creature.cachedWasmActivation) {
-      fail(
+      throw new WasmError(
         "WASM activation was selected but failed to instantiate CompiledNetwork",
+        "ACTIVATION_FAILED",
       );
     }
     creature.cachedWasmActivation.setNeedsResetWhenStateless(
