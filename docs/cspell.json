@@ -2,7 +2,7 @@
   "version": "0.2",
   "language": "en-GB",
   "ignorePaths": [
-    "wasm_activation/pkg/**"
+    "../wasm_activation/pkg/**"
   ],
   "words": [
     "ACSC",
@@ -279,6 +279,7 @@
     "unassertable",
     "unlabeled",
     "uniques",
+    "unrecoverably",
     "Unregularised",
     "unnormalised",
     "unregularised",
