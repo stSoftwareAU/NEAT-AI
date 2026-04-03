@@ -1,12 +1,12 @@
 ## Summary
 
 Replace unrecoverable `AssertionError` (from `fail()`) with typed `WasmError`
-when WASM activation instantiation fails. Previously, when a creature's
-topology caused `RuntimeError: unreachable` during WASM compilation or
-activation, the code called `fail()` which threw an `AssertionError` that
-crashed the entire worker process. Now the error surfaces as a catchable
-`WasmError` with reason `ACTIVATION_FAILED`, allowing callers to handle
-the failure gracefully. Closes #2146.
+when WASM activation instantiation fails. Previously, when a creature's topology
+caused `RuntimeError: unreachable` during WASM compilation or activation, the
+code called `fail()` which threw an `AssertionError` that crashed the entire
+worker process. Now the error surfaces as a catchable `WasmError` with reason
+`ACTIVATION_FAILED`, allowing callers to handle the failure gracefully. Closes
+#2146.
 
 ### Changes
 
@@ -20,11 +20,13 @@ the failure gracefully. Closes #2146.
   - Removed unused `fail` import from `@std/assert`.
 
 ## Evidence
+
 - Tests verify that both `activateWasm` and `activateAndTraceWasm` throw
-  `WasmError` (not `AssertionError`) with reason `ACTIVATION_FAILED` when
-  WASM instantiation fails due to corrupted creature topology.
+  `WasmError` (not `AssertionError`) with reason `ACTIVATION_FAILED` when WASM
+  instantiation fails due to corrupted creature topology.
 
 ## Test Plan
+
 - Added `test/wasm/WasmInstantiationFailure.ts` with two tests:
   - `activateWasm throws WasmError not AssertionError on instantiation failure`
   - `activateAndTraceWasm throws WasmError not AssertionError on instantiation failure`
