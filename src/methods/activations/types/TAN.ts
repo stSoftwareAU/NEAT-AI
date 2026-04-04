@@ -20,10 +20,13 @@ export class TAN
   public mutationProbability = 2;
   public static readonly NAME = "TAN";
 
+  /** Output clamp to prevent numerical overflow near asymptotes (#2151). */
+  private static readonly OUTPUT_CLAMP = 1000;
+
   public readonly range: ActivationRange = new ActivationRange(
     TAN.NAME,
-    -Number.MAX_SAFE_INTEGER,
-    Number.MAX_SAFE_INTEGER,
+    -TAN.OUTPUT_CLAMP,
+    TAN.OUTPUT_CLAMP,
   );
 
   getName(): string {
@@ -36,7 +39,8 @@ export class TAN
 
   squash(x: number): number {
     const result = Math.tan(x);
-    return Number.isFinite(result) ? result : 0;
+    if (!Number.isFinite(result)) return 0;
+    return this.range.limit(result, x);
   }
 
   unSquash(activation: number, hint?: number): number {

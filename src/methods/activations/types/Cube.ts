@@ -18,13 +18,16 @@ export class Cube implements ActivationInterface, UnSquashInterface {
   public mutationProbability = 13;
   public static NAME = "Cube";
 
+  /** Output clamp to prevent numerical overflow (#2151). */
+  private static readonly OUTPUT_CLAMP = 1e6;
+
   // Safe maximum input value to prevent overflow when cubing
-  private static readonly MAX_INPUT = Math.cbrt(Number.MAX_SAFE_INTEGER);
+  private static readonly MAX_INPUT = Math.cbrt(Cube.OUTPUT_CLAMP);
 
   public readonly range: ActivationRange = new ActivationRange(
     Cube.NAME,
-    Number.MIN_SAFE_INTEGER,
-    Number.MAX_SAFE_INTEGER,
+    -Cube.OUTPUT_CLAMP,
+    Cube.OUTPUT_CLAMP,
   );
 
   // Function to estimate the input from the activation value (inverse of the cube function).
@@ -41,7 +44,7 @@ export class Cube implements ActivationInterface, UnSquashInterface {
   squash(x: number) {
     // Clip the input to the safe maximum range to avoid overflow
     const clippedX = Math.max(-Cube.MAX_INPUT, Math.min(x, Cube.MAX_INPUT));
-    return clippedX ** 3;
+    return this.range.limit(clippedX ** 3, x);
   }
 
   derivative(x: number): number {
