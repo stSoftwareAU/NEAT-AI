@@ -146,6 +146,22 @@ export function addHelpfulSynapses(
   const exportJSON = creature.exportJSON();
   const wireToId = buildWireToRuntimeIdMap(creature);
 
+  // Build UUID-to-index map for forward-only guard (Issue #2150).
+  // Input neurons occupy indices 0..input-1; exported neurons follow sequentially.
+  const uuidToIndexMap = new Map<string, number>();
+  if (exportJSON.forwardOnly === true) {
+    const inputCount = exportJSON.input ?? 0;
+    for (let i = 0; i < inputCount; i++) {
+      uuidToIndexMap.set(`input-${i}`, i);
+    }
+    for (let i = 0; i < exportJSON.neurons.length; i++) {
+      const uuid = exportJSON.neurons[i].uuid;
+      if (uuid) {
+        uuidToIndexMap.set(uuid, inputCount + i);
+      }
+    }
+  }
+
   const appliedSynapses: CandidateSynapse[] = [];
 
   helpfulSynapses.forEach((bestCandidate) => {
@@ -188,6 +204,20 @@ export function addHelpfulSynapses(
         `[Discovery ${ID}] Target neuron ${toLabel} not found or is not hidden/output, skipping synapse`,
       );
       return;
+    }
+
+    // Forward-only guard: reject self-loops and backward synapses (Issue #2150)
+    if (exportJSON.forwardOnly === true) {
+      const fromIndex = uuidToIndexMap.get(fromLabel);
+      const toIndex = uuidToIndexMap.get(toLabel);
+      if (
+        fromIndex === undefined || toIndex === undefined || fromIndex >= toIndex
+      ) {
+        getLogger().warn(
+          `[Discovery ${ID}] Skipping synapse ${fromLabel} -> ${toLabel}: violates forward-only constraint (fromIndex=${fromIndex}, toIndex=${toIndex})`,
+        );
+        return;
+      }
     }
 
     const addSynapse = {
