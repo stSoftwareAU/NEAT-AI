@@ -54,6 +54,24 @@ export function addHelpfulNeurons(
   for (let i = 0; i < creature.input; i++) {
     existingNeuronIds.add(i);
   }
+
+  // Build UUID-to-index map for forward-only guard (Issue #2152).
+  // Input neurons occupy indices 0..input-1; exported neurons follow sequentially.
+  const isForwardOnly = exportJSON.forwardOnly === true;
+  const uuidToIndexMap = new Map<string, number>();
+  if (isForwardOnly) {
+    const inputCount = exportJSON.input ?? 0;
+    for (let i = 0; i < inputCount; i++) {
+      uuidToIndexMap.set(`input-${i}`, i);
+    }
+    for (let i = 0; i < exportJSON.neurons.length; i++) {
+      const uuid = exportJSON.neurons[i].uuid;
+      if (uuid) {
+        uuidToIndexMap.set(uuid, inputCount + i);
+      }
+    }
+  }
+
   const processedKeys = new Set<string>();
   const addedNeuronIds: number[] = [];
   const appliedCandidates: CandidateNeuron[] = [];
@@ -119,6 +137,41 @@ export function addHelpfulNeurons(
         );
       }
       return;
+    }
+
+    // Forward-only guard: reject candidates whose incoming or outgoing synapse
+    // would create a backward connection (Issue #2152).
+    // Uses UUID-based index map instead of runtime IDs to avoid mis-resolution.
+    if (isForwardOnly) {
+      const fromIdx = uuidToIndexMap.get(candidate.fromNeuronUuid);
+      const toIdx = uuidToIndexMap.get(candidate.toNeuronUuid);
+      if (
+        fromIdx === undefined || toIdx === undefined || fromIdx >= toIdx
+      ) {
+        getLogger().warn(
+          `[Discovery ${ID}] addHelpfulNeurons: Skipping candidate ${candidate.fromNeuronUuid} -> ${candidate.toNeuronUuid}: violates forward-only constraint (fromIdx=${fromIdx}, toIdx=${toIdx})`,
+        );
+
+        if (discoveryFailureCacheDir) {
+          recordDiscoveryIssue(
+            creature,
+            ID,
+            "add-neurons",
+            "forward-only",
+            {
+              message:
+                `Forward-only constraint violated (fromIdx=${fromIdx}, toIdx=${toIdx})`,
+              fromNeuronUuid: candidate.fromNeuronUuid,
+              toNeuronUuid: candidate.toNeuronUuid,
+              fromIdx,
+              toIdx,
+              candidate,
+            },
+            discoveryFailureCacheDir,
+          );
+        }
+        return;
+      }
     }
 
     const newNeuronId = nextNeuronId();
@@ -188,6 +241,48 @@ export function addHelpfulNeurons(
     existingNeuronIds.add(newNeuronId);
     addedNeuronIds.push(newNeuronId);
     appliedCandidates.push(candidate);
+
+    // Rebuild UUID-to-index map after insertion so subsequent candidates
+    // see correct indices (Issue #2152).
+    if (isForwardOnly) {
+      const inputCount = exportJSON.input ?? 0;
+      uuidToIndexMap.clear();
+      for (let i = 0; i < inputCount; i++) {
+        uuidToIndexMap.set(`input-${i}`, i);
+      }
+      for (let i = 0; i < exportJSON.neurons.length; i++) {
+        const uuid = exportJSON.neurons[i].uuid;
+        if (uuid) {
+          uuidToIndexMap.set(uuid, inputCount + i);
+        }
+      }
+    }
+
+    // Post-insertion forward-only verification: confirm the new neuron sits
+    // between its incoming source and outgoing target (Issue #2152).
+    if (isForwardOnly) {
+      const fromIdx = uuidToIndexMap.get(candidate.fromNeuronUuid);
+      const newIdx = uuidToIndexMap.get(newNeuronUuid);
+      const toIdx = uuidToIndexMap.get(candidate.toNeuronUuid);
+      if (
+        fromIdx === undefined || newIdx === undefined ||
+        toIdx === undefined || fromIdx >= newIdx || newIdx >= toIdx
+      ) {
+        getLogger().warn(
+          `[Discovery ${ID}] addHelpfulNeurons: Removing inserted neuron ${newNeuronUuid}: position violates forward-only (from=${fromIdx}, new=${newIdx}, to=${toIdx})`,
+        );
+        // Remove the incorrectly positioned neuron
+        const removeIdx = exportJSON.neurons.findIndex((n) =>
+          n.uuid === newNeuronUuid
+        );
+        if (removeIdx >= 0) {
+          exportJSON.neurons.splice(removeIdx, 1);
+        }
+        addedNeuronIds.pop();
+        appliedCandidates.pop();
+        return;
+      }
+    }
 
     const incomingSynapse = {
       fromUUID: candidate.fromNeuronUuid,
