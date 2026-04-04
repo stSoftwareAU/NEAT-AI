@@ -30,13 +30,16 @@ export class SQUARE implements ActivationInterface {
   public static NAME = "SQUARE";
   public mutationProbability = 1;
 
+  /** Output clamp to prevent numerical overflow (#2151). */
+  private static readonly OUTPUT_CLAMP = 1e6;
+
   /**
-   * The output range is from 0 to +∞.
+   * The output range is from 0 to OUTPUT_CLAMP.
    */
   public readonly range = new ActivationRange(
     SQUARE.NAME,
     0,
-    Number.MAX_SAFE_INTEGER,
+    SQUARE.OUTPUT_CLAMP,
   );
 
   getName(): string {

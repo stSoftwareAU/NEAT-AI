@@ -22,6 +22,11 @@ pub const JS_MAX_SAFE_INTEGER: f32 = 9_007_199_254_740_992.0;
 // Softsign approaches but never reaches +/-1
 pub const SOFTSIGN_LIMIT: f32 = 0.99;
 
+// Output clamps for unbounded activations (#2151)
+pub const TAN_OUTPUT_CLAMP: f64 = 1000.0;
+pub const SQUARE_OUTPUT_CLAMP: f64 = 1e6;
+pub const CUBE_OUTPUT_CLAMP: f64 = 1e6;
+
 /// Squash function identifiers - must match TypeScript enum
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -179,7 +184,14 @@ pub fn apply_squash(squash_type: SquashType, x: f32) -> f32 {
         }
         SquashType::Sine => x.sin(),
         SquashType::Cosine => ((x as f64).cos()) as f32,
-        SquashType::Tan => ((x as f64).tan()) as f32,
+        SquashType::Tan => {
+            let result = (x as f64).tan();
+            if !result.is_finite() {
+                0.0
+            } else {
+                result.clamp(-TAN_OUTPUT_CLAMP, TAN_OUTPUT_CLAMP) as f32
+            }
+        }
         SquashType::ArcTan => x.atan(),
         SquashType::Gaussian => (-x * x).exp(),
         SquashType::BentIdentity => ((x * x + 1.0).sqrt() - 1.0) / 2.0 + x,
@@ -202,11 +214,11 @@ pub fn apply_squash(squash_type: SquashType, x: f32) -> f32 {
         SquashType::Absolute => x.abs(),
         SquashType::Square => {
             let xf = x as f64;
-            (xf * xf) as f32
+            (xf * xf).min(SQUARE_OUTPUT_CLAMP) as f32
         }
         SquashType::Cube => {
             let xf = x as f64;
-            (xf * xf * xf) as f32
+            (xf * xf * xf).clamp(-CUBE_OUTPUT_CLAMP, CUBE_OUTPUT_CLAMP) as f32
         }
         SquashType::Sqrt => {
             if x >= 0.0 {
@@ -329,7 +341,14 @@ pub fn apply_squash_f64(squash_type: SquashType, x: f64) -> f64 {
         }
         SquashType::Sine => x.sin(),
         SquashType::Cosine => x.cos(),
-        SquashType::Tan => x.tan(),
+        SquashType::Tan => {
+            let result = x.tan();
+            if !result.is_finite() {
+                0.0
+            } else {
+                result.clamp(-TAN_OUTPUT_CLAMP, TAN_OUTPUT_CLAMP)
+            }
+        }
         SquashType::ArcTan => x.atan(),
         SquashType::Gaussian => (-x * x).exp(),
         SquashType::BentIdentity => ((x * x + 1.0).sqrt() - 1.0) / 2.0 + x,
@@ -350,8 +369,8 @@ pub fn apply_squash_f64(squash_type: SquashType, x: f64) -> f64 {
         }
         SquashType::Complement => 1.0 - x,
         SquashType::Absolute => x.abs(),
-        SquashType::Square => x * x,
-        SquashType::Cube => x * x * x,
+        SquashType::Square => (x * x).min(SQUARE_OUTPUT_CLAMP),
+        SquashType::Cube => (x * x * x).clamp(-CUBE_OUTPUT_CLAMP, CUBE_OUTPUT_CLAMP),
         SquashType::Sqrt => {
             if x >= 0.0 {
                 x.sqrt()
@@ -425,5 +444,60 @@ mod tests {
     fn test_logistic() {
         let result = apply_squash(SquashType::Logistic, 0.0);
         assert!((result - 0.5).abs() < 1e-6);
+    }
+
+    // --- Output clamping tests (#2151) ---
+
+    #[test]
+    fn test_tan_clamped_f32() {
+        // Near asymptote: should be clamped to ±1000
+        let near_pi_half = std::f32::consts::FRAC_PI_2 - 1e-7;
+        let result = apply_squash(SquashType::Tan, near_pi_half);
+        assert!(result.is_finite(), "TAN f32 near asymptote not finite");
+        assert!(result.abs() <= 1000.0, "TAN f32 near asymptote exceeded 1000: {}", result);
+    }
+
+    #[test]
+    fn test_tan_clamped_f64() {
+        let near_pi_half = std::f64::consts::FRAC_PI_2 - 1e-15;
+        let result = apply_squash_f64(SquashType::Tan, near_pi_half);
+        assert!(result.is_finite(), "TAN f64 near asymptote not finite");
+        assert!(result.abs() <= 1000.0, "TAN f64 near asymptote exceeded 1000: {}", result);
+    }
+
+    #[test]
+    fn test_square_clamped_f32() {
+        let result = apply_squash(SquashType::Square, 1e15);
+        assert!(result.is_finite(), "SQUARE f32 large input not finite");
+        assert!(result <= 1e6, "SQUARE f32 exceeded 1e6: {}", result);
+    }
+
+    #[test]
+    fn test_square_clamped_f64() {
+        let result = apply_squash_f64(SquashType::Square, 1e30);
+        assert!(result.is_finite(), "SQUARE f64 large input not finite");
+        assert!(result <= 1e6, "SQUARE f64 exceeded 1e6: {}", result);
+    }
+
+    #[test]
+    fn test_cube_clamped_f32() {
+        let result = apply_squash(SquashType::Cube, 1e10);
+        assert!(result.is_finite(), "CUBE f32 large positive not finite");
+        assert!(result <= 1e6, "CUBE f32 positive exceeded 1e6: {}", result);
+
+        let result_neg = apply_squash(SquashType::Cube, -1e10);
+        assert!(result_neg.is_finite(), "CUBE f32 large negative not finite");
+        assert!(result_neg >= -1e6, "CUBE f32 negative below -1e6: {}", result_neg);
+    }
+
+    #[test]
+    fn test_cube_clamped_f64() {
+        let result = apply_squash_f64(SquashType::Cube, 1e30);
+        assert!(result.is_finite(), "CUBE f64 large positive not finite");
+        assert!(result <= 1e6, "CUBE f64 positive exceeded 1e6: {}", result);
+
+        let result_neg = apply_squash_f64(SquashType::Cube, -1e30);
+        assert!(result_neg.is_finite(), "CUBE f64 large negative not finite");
+        assert!(result_neg >= -1e6, "CUBE f64 negative below -1e6: {}", result_neg);
     }
 }
