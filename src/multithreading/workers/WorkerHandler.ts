@@ -476,10 +476,14 @@ export class WorkerHandler
       },
     };
 
+    // Issue #2161: Track train as a long-running task.
+    this.incrementLongRunningTaskCount();
     return this.makePromiseDeferred(data, () => {
       // Clear large creature data after structured clone completes.
       // @ts-ignore - clearing to help GC after structured clone
       data.train!.creature = null;
+    }).finally(() => {
+      this.decrementLongRunningTaskCount();
     });
   }
 
@@ -502,10 +506,14 @@ export class WorkerHandler
       `[WorkerHandler] Posting discovery request to worker (taskID: ${data.taskID})`,
     );
 
+    // Issue #2161: Track discover as a long-running task.
+    this.incrementLongRunningTaskCount();
     return this.makePromiseDeferred(data, () => {
       // Clear large creature data after structured clone completes.
       // @ts-ignore - clearing to help GC after structured clone
       data.discover!.creature = null;
+    }).finally(() => {
+      this.decrementLongRunningTaskCount();
     });
   }
 
