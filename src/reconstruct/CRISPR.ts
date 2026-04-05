@@ -32,6 +32,12 @@ export interface CrisprInterface extends TagsInterface {
     id?: number;
 
     /**
+     * Stable UUID for the neuron. Used by UUID-based alias resolution
+     * to map human-readable labels to actual neuron UUIDs.
+     */
+    uuid?: string;
+
+    /**
      * Index position of the neuron in the network.
      */
     index?: number;
@@ -72,9 +78,14 @@ export interface CrisprInterface extends TagsInterface {
     fromRelative?: number;
 
     /**
-     * UUID of the source neuron.
+     * Runtime ID of the source neuron.
      */
     fromId?: number;
+
+    /**
+     * Stable wire-format source endpoint UUID (matches neuron `uuid` / `input-N` / `output-N`).
+     */
+    fromUUID?: string;
 
     /**
      * Index of the destination neuron.
@@ -87,9 +98,14 @@ export interface CrisprInterface extends TagsInterface {
     toRelative?: number;
 
     /**
-     * UUID of the destination neuron.
+     * Runtime ID of the destination neuron.
      */
     toId?: number;
+
+    /**
+     * Stable wire-format destination endpoint UUID.
+     */
+    toUUID?: string;
 
     /**
      * Weight of the synapse.
@@ -129,37 +145,77 @@ export class CRISPR {
 
   /**
    * Static method to edit aliases in the CRISPR DNA.
+   *
+   * Supports two alias map types:
+   * - `Record<number, number>`: remaps numeric `neuron.id`, `synapse.fromId`, and `synapse.toId`
+   * - `Record<string, string>`: remaps UUID-based `neuron.uuid`, `synapse.fromUUID`, and `synapse.toUUID`
+   *
    * @param dna - The CRISPR DNA to edit.
    * @param aliases - A record of aliases to replace in the DNA.
    * @returns The edited CRISPR DNA.
    */
   static editAliases(
     dna: CrisprInterface,
-    aliases: Record<number, number>,
+    aliases: Record<number, number> | Record<string, string>,
   ): CrisprInterface {
     const crispr: CrisprInterface = JSON.parse(JSON.stringify(dna));
 
-    for (const key in aliases) {
-      const numericKey = Number(key);
-      const value = aliases[numericKey];
+    const firstKey = Object.keys(aliases)[0];
+    if (firstKey === undefined) {
+      return crispr;
+    }
 
-      if (crispr.neurons) {
-        crispr.neurons.forEach((neuron) => {
-          if (neuron.id === numericKey) {
-            neuron.id = value;
-          }
-        });
+    const isNumeric = !isNaN(Number(firstKey)) &&
+      typeof aliases[firstKey as keyof typeof aliases] === "number";
+
+    if (isNumeric) {
+      const numericAliases = aliases as Record<number, number>;
+      for (const key in numericAliases) {
+        const numericKey = Number(key);
+        const value = numericAliases[numericKey];
+
+        if (crispr.neurons) {
+          crispr.neurons.forEach((neuron) => {
+            if (neuron.id === numericKey) {
+              neuron.id = value;
+            }
+          });
+        }
+
+        if (crispr.synapses) {
+          crispr.synapses.forEach((synapse) => {
+            if (synapse.fromId === numericKey) {
+              synapse.fromId = value;
+            }
+            if (synapse.toId === numericKey) {
+              synapse.toId = value;
+            }
+          });
+        }
       }
+    } else {
+      const uuidAliases = aliases as Record<string, string>;
+      for (const label in uuidAliases) {
+        const resolvedUuid = uuidAliases[label];
 
-      if (crispr.synapses) {
-        crispr.synapses.forEach((synapse) => {
-          if (synapse.fromId === numericKey) {
-            synapse.fromId = value;
-          }
-          if (synapse.toId === numericKey) {
-            synapse.toId = value;
-          }
-        });
+        if (crispr.neurons) {
+          crispr.neurons.forEach((neuron) => {
+            if (neuron.uuid === label) {
+              neuron.uuid = resolvedUuid;
+            }
+          });
+        }
+
+        if (crispr.synapses) {
+          crispr.synapses.forEach((synapse) => {
+            if (synapse.fromUUID === label) {
+              synapse.fromUUID = resolvedUuid;
+            }
+            if (synapse.toUUID === label) {
+              synapse.toUUID = resolvedUuid;
+            }
+          });
+        }
       }
     }
 
