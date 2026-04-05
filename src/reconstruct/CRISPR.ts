@@ -167,6 +167,57 @@ export class CRISPR {
   }
 
   /**
+   * Pre-flight check that verifies all UUID references in the DNA can be
+   * resolved against the target creature (plus any neurons the DNA itself
+   * defines). Throws a single CrisprError listing every unresolvable UUID
+   * so the caller gets a complete diagnostic rather than failing on the
+   * first miss partway through creature modification.
+   *
+   * @param dna - The validated and upgraded CRISPR DNA to check.
+   * @throws {CrisprError} with code MISSING_UUID if any fromId/toId
+   *   references cannot be resolved.
+   */
+  private checkDNACompatibility(dna: CrisprInterface): void {
+    const knownIds = new Set<number>();
+
+    // Collect IDs from the creature's neurons.
+    for (const neuron of this.creature.neurons) {
+      if (neuron.id !== undefined) {
+        knownIds.add(neuron.id);
+      }
+    }
+
+    // Include neuron IDs defined in the DNA itself — the DNA may reference
+    // neurons it creates.
+    if (dna.neurons) {
+      for (const neuron of dna.neurons) {
+        if (neuron.id !== undefined) {
+          knownIds.add(neuron.id);
+        }
+      }
+    }
+
+    // Scan all synapse fromId/toId references for missing UUIDs.
+    const missingIds = new Set<number>();
+    for (const synapse of dna.synapses) {
+      if (synapse.fromId !== undefined && !knownIds.has(synapse.fromId)) {
+        missingIds.add(synapse.fromId);
+      }
+      if (synapse.toId !== undefined && !knownIds.has(synapse.toId)) {
+        missingIds.add(synapse.toId);
+      }
+    }
+
+    if (missingIds.size > 0) {
+      const sorted = [...missingIds].sort((a, b) => a - b);
+      throw new CrisprError(
+        `Unresolvable UUID references: ${sorted.join(", ")}`,
+        "MISSING_UUID",
+      );
+    }
+  }
+
+  /**
    * Append new neurons and synapses to the creature based on the provided DNA.
    * @param dna - The CRISPR DNA specifying the neurons and synapses to append.
    * @returns The modified creature.
@@ -489,6 +540,10 @@ export class CRISPR {
     const dnaClean = Upgrade.CRISPR(dna);
     let modifiedCreature: Creature;
     try {
+      // Pre-flight: reject DNA with unresolvable UUID references before any
+      // creature cloning or modification takes place (Issue #2155).
+      this.checkDNACompatibility(dnaClean);
+
       if (dnaClean.mode === "insert") {
         modifiedCreature = this.insert(dnaClean);
       } else {
