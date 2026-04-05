@@ -27,5 +27,5 @@ non-finite). Closes #2154.
     genuine invalid index path
   - `append throws INVALID_CONNECTION for non-finite to index` - verifies
     genuine invalid index path
-  - Updated integration tests (`cleaveDNA` path) to reflect `MISSING_UUID`
-    error code
+  - Updated integration tests (`cleaveDNA` path) to reflect `MISSING_UUID` error
+    code
