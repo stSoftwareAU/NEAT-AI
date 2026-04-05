@@ -265,6 +265,18 @@ export class CRISPR {
         ? s.toRelative + adjustIndx
         : undefined;
 
+      if (s.fromId !== undefined && from === undefined) {
+        throw new CrisprError(
+          `Invalid connection (from): ${JSON.stringify(s)}`,
+          "MISSING_UUID",
+        );
+      }
+      if (s.toId !== undefined && to === undefined) {
+        throw new CrisprError(
+          `Invalid connection (to): ${JSON.stringify(s)}`,
+          "MISSING_UUID",
+        );
+      }
       if (from === undefined || !Number.isFinite(from) || from < 0) {
         throw new CrisprError(
           `Invalid connection (from): ${from}`,

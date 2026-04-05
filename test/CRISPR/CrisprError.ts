@@ -87,11 +87,11 @@ Deno.test("CrisprError - insert with missing toUUID returns original creature", 
   assertEquals(result.output, creature.output);
 });
 
-Deno.test("CrisprError - append with invalid from connection returns original creature", () => {
+Deno.test("CrisprError - append with missing fromId UUID returns original creature", () => {
   const creature = makeCreature();
   const crispr = new CRISPR(creature);
   const dna: CrisprInterface = {
-    id: "test-invalid-from",
+    id: "test-missing-from-uuid",
     mode: "append",
     neurons: [
       { type: "output", squash: "IDENTITY", bias: 0 },
@@ -101,17 +101,17 @@ Deno.test("CrisprError - append with invalid from connection returns original cr
     ],
   };
 
-  // The fromUUID doesn't resolve, so cleaveDNA should catch and return original
+  // The fromId UUID doesn't resolve, so cleaveDNA should catch MISSING_UUID and return original
   const result = crispr.cleaveDNA(dna);
   assertEquals(result.input, creature.input);
   assertEquals(result.output, creature.output);
 });
 
-Deno.test("CrisprError - append with invalid to connection returns original creature", () => {
+Deno.test("CrisprError - append with missing toId UUID returns original creature", () => {
   const creature = makeCreature();
   const crispr = new CRISPR(creature);
   const dna: CrisprInterface = {
-    id: "test-invalid-to",
+    id: "test-missing-to-uuid",
     mode: "append",
     neurons: [
       { type: "output", squash: "IDENTITY", bias: 0 },
@@ -259,11 +259,11 @@ Deno.test("CrisprError - insert throws MISSING_UUID when toUUID not found", () =
   assertEquals(error.code, "MISSING_UUID");
 });
 
-Deno.test("CrisprError - append throws INVALID_CONNECTION for unresolvable from", () => {
+Deno.test("CrisprError - append throws MISSING_UUID when fromId not found", () => {
   const creature = makeCreature();
   const crispr = new TestCRISPR(creature);
   const dna: CrisprInterface = {
-    id: "test-append-invalid-from",
+    id: "test-append-missing-from-uuid",
     mode: "append",
     neurons: [
       { type: "output", squash: "IDENTITY", bias: 0 },
@@ -278,20 +278,68 @@ Deno.test("CrisprError - append throws INVALID_CONNECTION for unresolvable from"
     CrisprError,
     "Invalid connection (from)",
   );
-  assertEquals(error.code, "INVALID_CONNECTION");
+  assertEquals(error.code, "MISSING_UUID");
+  // Error message should include synapse JSON for debugging
+  assert(error.message.includes(JSON.stringify(dna.synapses[0])));
 });
 
-Deno.test("CrisprError - append throws INVALID_CONNECTION for unresolvable to", () => {
+Deno.test("CrisprError - append throws MISSING_UUID when toId not found", () => {
   const creature = makeCreature();
   const crispr = new TestCRISPR(creature);
   const dna: CrisprInterface = {
-    id: "test-append-invalid-to",
+    id: "test-append-missing-to-uuid",
     mode: "append",
     neurons: [
       { type: "output", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
       { from: 0, toId: 1928511767, weight: 0.5 },
+    ],
+  };
+
+  const error = assertThrows(
+    () => crispr.testAppend(dna),
+    CrisprError,
+    "Invalid connection (to)",
+  );
+  assertEquals(error.code, "MISSING_UUID");
+  // Error message should include synapse JSON for debugging
+  assert(error.message.includes(JSON.stringify(dna.synapses[0])));
+});
+
+Deno.test("CrisprError - append throws INVALID_CONNECTION for negative from index", () => {
+  const creature = makeCreature();
+  const crispr = new TestCRISPR(creature);
+  const dna: CrisprInterface = {
+    id: "test-append-negative-from",
+    mode: "append",
+    neurons: [
+      { type: "output", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { from: -1, to: 0, weight: 0.5 },
+    ],
+  };
+
+  const error = assertThrows(
+    () => crispr.testAppend(dna),
+    CrisprError,
+    "Invalid connection (from)",
+  );
+  assertEquals(error.code, "INVALID_CONNECTION");
+});
+
+Deno.test("CrisprError - append throws INVALID_CONNECTION for non-finite to index", () => {
+  const creature = makeCreature();
+  const crispr = new TestCRISPR(creature);
+  const dna: CrisprInterface = {
+    id: "test-append-nonfinite-to",
+    mode: "append",
+    neurons: [
+      { type: "output", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { from: 0, to: Infinity, weight: 0.5 },
     ],
   };
 
