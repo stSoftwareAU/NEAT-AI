@@ -29,6 +29,10 @@ class OrderTrackingWorker {
     return false;
   }
 
+  isRunningLongTask(): boolean {
+    return false;
+  }
+
   async evaluate(
     creature: Creature,
     _feedbackLoop: boolean,

@@ -8,6 +8,7 @@ import { ValidationError } from "@errors/ValidationError.ts";
 import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { calculate as calculateScore } from "@architecture/Score.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Evaluates fitness scores for a population of creatures.
@@ -104,9 +105,34 @@ export class Fitness {
 
     // Issue #1862: Cap the number of concurrent workers if configured.
     const maxConcurrent = this.evalConfig.maxConcurrentEvaluations;
-    const activeWorkers = maxConcurrent > 0
+    const cappedWorkers = maxConcurrent > 0
       ? this.workers.slice(0, maxConcurrent)
       : this.workers;
+
+    // Issue #2162: Exclude workers running long tasks (discovery/training)
+    // so that Promise.all does not stall waiting for them.
+    const availableWorkers = cappedWorkers.filter(
+      (w) => !w.isRunningLongTask(),
+    );
+
+    // Guard: if ALL workers are busy, fall back to using all of them
+    // to avoid deadlock — at least one worker must evaluate.
+    const activeWorkers = availableWorkers.length > 0
+      ? availableWorkers
+      : cappedWorkers;
+
+    if (availableWorkers.length < cappedWorkers.length) {
+      const excluded = cappedWorkers.length - activeWorkers.length;
+      if (excluded > 0) {
+        getLogger().debug(
+          `Fitness: excluded ${excluded} worker(s) running long tasks`,
+        );
+      } else {
+        getLogger().debug(
+          "Fitness: all workers running long tasks, using all as fallback",
+        );
+      }
+    }
 
     const processNext = async (worker: WorkerHandler): Promise<void> => {
       if (front >= queue.length) return;

@@ -33,6 +33,10 @@ class MockWorkerHandler {
     return this.busyCount > 0;
   }
 
+  isRunningLongTask(): boolean {
+    return false;
+  }
+
   addIdleListener(_callback: (worker: MockWorkerHandler) => void): void {
     // Not used in these tests
   }

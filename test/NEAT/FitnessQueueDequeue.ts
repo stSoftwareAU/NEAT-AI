@@ -21,6 +21,10 @@ import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 class MockQueueWorker {
   public evaluatedUUIDs: string[] = [];
 
+  isRunningLongTask(): boolean {
+    return false;
+  }
+
   async evaluate(
     creature: Creature,
     _feedbackLoop: boolean,

@@ -16,6 +16,7 @@ Deno.test("Fitness calculate - throws ValidationError for invalid worker respons
   // Create a mock worker that returns an invalid response
   const mockWorker = {
     evaluate: () => Promise.resolve({ evaluate: undefined }),
+    isRunningLongTask: () => false,
   };
 
   const fitness = new Fitness(
