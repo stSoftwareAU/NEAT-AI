@@ -26,6 +26,7 @@ import type { Approach } from "@neat/LogApproach.ts";
 import { checkMemoryAndEvict, logMemoryUsage } from "@neat/MemoryMonitor.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { CRISPR } from "@reconstruct/CRISPR.ts";
+import { CrisprError } from "@errors/CrisprError.ts";
 import { simplify } from "@optimize/Simplify.ts";
 import { validateOrDiagnose } from "@utils/Diagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
@@ -230,7 +231,18 @@ export async function evolve(
       checked++;
 
       const crispr = new CRISPR(currentBase);
-      const enhanced = crispr.cleaveDNA(dna);
+      let enhanced: Creature;
+      try {
+        enhanced = crispr.cleaveDNA(dna);
+      } catch (error) {
+        if (error instanceof CrisprError) {
+          getLogger().warn(
+            `Skipping invalid CRISPR '${dna.id}': ${error.message}`,
+          );
+          continue;
+        }
+        throw error;
+      }
       if (enhanced.uuid !== currentBase.uuid) {
         dnaPopulation.push(enhanced);
         currentBase = enhanced;
