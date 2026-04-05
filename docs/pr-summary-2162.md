@@ -4,7 +4,8 @@ Exclude workers running long-running tasks (discovery/training) from the fitness
 evaluation pool in `Fitness.calculate()`. When a worker has an active long task,
 `Promise.all` would stall waiting for it while other workers sat idle. Now only
 available workers participate, and work-stealing distributes all creatures among
-them. If all workers are busy, falls back to using all workers to avoid deadlock.
+them. If all workers are busy, falls back to using all workers to avoid
+deadlock.
 
 Closes #2162
 
