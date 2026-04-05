@@ -158,5 +158,24 @@ function validateSynapse(
         "INVALID_DNA",
       );
     }
+  } else {
+    // Append mode: each synapse must have at least one resolvable source and target reference
+    const hasSource = s.from !== undefined || s.fromId !== undefined ||
+      s.fromRelative !== undefined;
+    if (!hasSource) {
+      throw new CrisprError(
+        `Synapse at index ${index}: append-mode synapse must have at least one source reference ('from', 'fromId', or 'fromRelative')`,
+        "INVALID_DNA",
+      );
+    }
+
+    const hasTarget = s.to !== undefined || s.toId !== undefined ||
+      s.toRelative !== undefined;
+    if (!hasTarget) {
+      throw new CrisprError(
+        `Synapse at index ${index}: append-mode synapse must have at least one target reference ('to', 'toId', or 'toRelative')`,
+        "INVALID_DNA",
+      );
+    }
   }
 }
