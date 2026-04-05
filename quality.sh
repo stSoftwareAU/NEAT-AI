@@ -215,13 +215,14 @@ if [ "$RUN_DISCOVERY" = true ]; then
   # # is intentionally loaded and kept in memory for performance (not a leak)
 
   echo "Verifying discovery library availability..."
-  if ! deno run \
+  exit_code=0
+  deno run \
     --allow-read \
     --allow-env \
     --allow-ffi \
     --config ./deno.json \
-    scripts/check_discovery_safe.ts 2>&1; then
-    exit_code=$?
+    scripts/check_discovery_safe.ts 2>&1 || exit_code=$?
+  if [ $exit_code -ne 0 ]; then
     if [ $exit_code -eq 137 ] || [ $exit_code -eq 9 ]; then
       echo ""
       echo "❌ Discovery library crashed on load (Killed: 9 or exit code 137)"
@@ -239,10 +240,14 @@ if [ "$RUN_DISCOVERY" = true ]; then
       echo "      otool -L ~/.cargo/lib/libneat_ai_discovery.dylib"
       echo "   3. Rebuild the library:"
       echo "      cd ../NEAT-AI-Discovery && ./scripts/runlib.sh"
-    else
+      exit 1
+    elif [[ -d ../NEAT-AI-Discovery ]]; then
       echo "❌ Discovery checks failed (exit code: $exit_code)"
+      exit 1
+    else
+      echo "⚠️  Discovery library not found and NEAT-AI-Discovery project is not available."
+      echo "   Skipping verification. To enable, clone NEAT-AI-Discovery next to this repo."
     fi
-    exit 1
   fi
 fi
 
