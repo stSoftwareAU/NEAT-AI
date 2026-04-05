@@ -40,10 +40,11 @@ Deno.test("validateDNA - invalid mode throws descriptive error", () => {
 });
 
 Deno.test("validateDNA - missing mode defaults to append (no throw)", () => {
-  // Undefined mode defaults to "append" matching Upgrade.CRISPR behaviour
+  // Undefined mode defaults to "append" matching Upgrade.CRISPR behaviour.
+  // Synapse must include valid source/target references for append-mode validation.
   const result = validateDNA({
     id: "test-dna",
-    synapses: [{ weight: 1 }],
+    synapses: [{ from: 0, to: 1, weight: 1 }],
   });
   if (!result.id) {
     throw new Error("Expected validated DNA to be returned");
@@ -243,6 +244,80 @@ Deno.test("validateDNA - accepts legacy 'nodes' and 'connections' fields", () =>
   if (!result.id) {
     throw new Error("Expected validated DNA to be returned");
   }
+});
+
+Deno.test("validateDNA - append-mode synapse missing all source references throws", () => {
+  assertThrows(
+    () =>
+      validateDNA({
+        id: "test-dna",
+        mode: "append",
+        synapses: [{ to: 1, weight: 0.5 }],
+      }),
+    Error,
+    "must have at least one source reference",
+  );
+});
+
+Deno.test("validateDNA - append-mode synapse missing all target references throws", () => {
+  assertThrows(
+    () =>
+      validateDNA({
+        id: "test-dna",
+        mode: "append",
+        synapses: [{ from: 0, weight: 0.5 }],
+      }),
+    Error,
+    "must have at least one target reference",
+  );
+});
+
+Deno.test("validateDNA - append-mode synapse with no references at all throws", () => {
+  assertThrows(
+    () =>
+      validateDNA({
+        id: "test-dna",
+        mode: "append",
+        synapses: [{ weight: 0.5 }],
+      }),
+    Error,
+    "must have at least one source reference",
+  );
+});
+
+Deno.test("validateDNA - append-mode synapse with fromRelative/toRelative passes", () => {
+  const result = validateDNA({
+    id: "test-dna",
+    mode: "append",
+    synapses: [{ fromRelative: -1, toRelative: 0, weight: 0.5 }],
+  });
+  if (!result.id) {
+    throw new Error("Expected validated DNA to be returned");
+  }
+});
+
+Deno.test("validateDNA - append-mode synapse with fromId/toId passes", () => {
+  const result = validateDNA({
+    id: "test-dna",
+    mode: "append",
+    synapses: [{ fromId: 0, toId: 1, weight: 0.5 }],
+  });
+  if (!result.id) {
+    throw new Error("Expected validated DNA to be returned");
+  }
+});
+
+Deno.test("validateDNA - default mode synapse missing source reference throws", () => {
+  // When mode is omitted it defaults to "append", so the same validation applies
+  assertThrows(
+    () =>
+      validateDNA({
+        id: "test-dna",
+        synapses: [{ to: 1, weight: 0.5 }],
+      }),
+    Error,
+    "must have at least one source reference",
+  );
 });
 
 Deno.test("validateDNA - null input throws", () => {
