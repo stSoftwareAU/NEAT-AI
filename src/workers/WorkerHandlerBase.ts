@@ -62,6 +62,13 @@ export abstract class WorkerHandlerBase<
   protected workerID = ++globalWorkerID;
   /** Number of currently executing tasks */
   private busyCount = 0;
+  /**
+   * Number of currently in-flight long-running tasks (e.g. discover, train).
+   *
+   * Issue #2161: Allows callers to distinguish workers occupied with
+   * long-running operations from those doing quick evaluations.
+   */
+  private longRunningTaskCount = 0;
   /** Map of task IDs to their callback functions */
   private callbacks = new Map<number, CallableFunction>();
   /** Listeners to notify when worker becomes idle */
@@ -196,6 +203,39 @@ export abstract class WorkerHandlerBase<
    */
   isBusy(): boolean {
     return this.busyCount > 0;
+  }
+
+  /**
+   * Checks whether the worker is currently running a long-running task
+   * (e.g. discover or train).
+   *
+   * Issue #2161: Callers like Fitness.calculate() can use this to skip
+   * workers occupied with long tasks and route work elsewhere.
+   *
+   * @returns True if one or more long-running tasks are in flight
+   */
+  isRunningLongTask(): boolean {
+    return this.longRunningTaskCount > 0;
+  }
+
+  /**
+   * Increments the long-running task counter.
+   *
+   * Subclasses should call this before dispatching a long-running
+   * operation (discover, train).
+   */
+  protected incrementLongRunningTaskCount(): void {
+    this.longRunningTaskCount++;
+  }
+
+  /**
+   * Decrements the long-running task counter.
+   *
+   * Subclasses should call this when a long-running operation completes
+   * (success or error).
+   */
+  protected decrementLongRunningTaskCount(): void {
+    this.longRunningTaskCount--;
   }
 
   /**

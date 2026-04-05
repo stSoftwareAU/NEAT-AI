@@ -270,17 +270,39 @@ export function activateAndTraceWasm(
 
   noteWasmCreatureActivationUse(creature);
 
-  prepareNeurons(creature);
-  creature.state.makeActivation(input, feedbackLoop);
-
-  // Issue #2146: Wrap the WASM call so that a RuntimeError (unreachable trap)
-  // surfaces as a typed WasmError instead of crashing the worker.
-  let wasmResult;
+  // Issue #2146: Wrap the entire activation path so that any error from
+  // preparation, the WASM call itself, or post-processing surfaces as a
+  // typed WasmError instead of crashing the worker with an unhandled
+  // TypeError or RuntimeError.
   try {
-    wasmResult = creature.cachedWasmActivation.activateAndTraceWithFeedback(
-      input,
-      feedbackLoop,
-    );
+    prepareNeurons(creature);
+    creature.state.makeActivation(input, feedbackLoop);
+
+    const wasmResult = creature.cachedWasmActivation
+      .activateAndTraceWithFeedback(
+        input,
+        feedbackLoop,
+      );
+
+    const neurons = creature.neurons;
+    for (let i = 0; i < wasmResult.activations.length; i++) {
+      const neuronIdx = creature.input + i;
+      if (neuronIdx < neurons.length) {
+        creature.state.activations[neuronIdx] = wasmResult.activations[i];
+      }
+    }
+
+    applyWasmTraceData(creature, wasmResult.traceEntries, sparseConfig);
+
+    for (let i = creature.input; i < neurons.length; i++) {
+      const n = neurons[i];
+      if (sparseConfig.propagateNeeded(n.id)) {
+        creature.state.node(n.index).hintValue =
+          wasmResult.hintValues[i - creature.input];
+      }
+    }
+
+    return wasmResult.outputs;
   } catch (error) {
     creature.cachedWasmActivation = undefined;
     if (error instanceof WasmError) throw error;
@@ -291,26 +313,6 @@ export function activateAndTraceWasm(
       "ACTIVATION_FAILED",
     );
   }
-
-  const neurons = creature.neurons;
-  for (let i = 0; i < wasmResult.activations.length; i++) {
-    const neuronIdx = creature.input + i;
-    if (neuronIdx < neurons.length) {
-      creature.state.activations[neuronIdx] = wasmResult.activations[i];
-    }
-  }
-
-  applyWasmTraceData(creature, wasmResult.traceEntries, sparseConfig);
-
-  for (let i = creature.input; i < neurons.length; i++) {
-    const n = neurons[i];
-    if (sparseConfig.propagateNeeded(n.id)) {
-      creature.state.node(n.index).hintValue =
-        wasmResult.hintValues[i - creature.input];
-    }
-  }
-
-  return wasmResult.outputs;
 }
 
 /**
