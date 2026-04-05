@@ -2,16 +2,17 @@
 
 Add UUID-based alias support to `CRISPR.editAliases()`. The method now accepts
 both numeric ID alias maps (`Record<number, number>`) and UUID-based alias maps
-(`Record<string, string>`), resolving labels in `neuron.uuid`, `synapse.fromUUID`,
-and `synapse.toUUID` fields. This allows GRQ and other consumers to use the
-standard NEAT-AI API for UUID alias resolution instead of maintaining custom
-workarounds. Closes #2156.
+(`Record<string, string>`), resolving labels in `neuron.uuid`,
+`synapse.fromUUID`, and `synapse.toUUID` fields. This allows GRQ and other
+consumers to use the standard NEAT-AI API for UUID alias resolution instead of
+maintaining custom workarounds. Closes #2156.
 
 ### Changes
 
 - **`src/reconstruct/CRISPR.ts`**: Extended `CrisprInterface` with `uuid` field
   on neurons and `fromUUID`/`toUUID` fields on synapses. Updated `editAliases()`
-  to detect alias map type and resolve UUID-based aliases against the new fields.
+  to detect alias map type and resolve UUID-based aliases against the new
+  fields.
 - **`test/CRISPR/UuidAliases.ts`**: New test file with 6 tests covering UUID
   alias resolution for `fromUUID`, `toUUID`, `neuron.uuid`, no-op behaviour,
   backward compatibility with numeric aliases, and immutability of original DNA.
