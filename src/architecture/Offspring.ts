@@ -13,6 +13,7 @@ import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { prepareCreatureForBreeding } from "@upgrade/Upgrade.ts";
 import { writeDiagnostics } from "@utils/Diagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { inputWeightCrossover } from "@breed/InputWeightCrossover.ts";
 import { pruneOrphanMemeticReferences } from "@compact/CompactUtils.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { Neuron } from "@architecture/Neuron.ts";
@@ -56,6 +57,7 @@ export class Offspring {
     dad: Creature,
     options: {
       geneticCompatibilityThreshold?: number;
+      interSpeciesCrossoverThreshold?: number;
       forwardOnly?: boolean;
       hyperparameterEvolution?: RequiredHyperparameterEvolutionConfig;
     } = {},
@@ -75,6 +77,53 @@ export class Offspring {
     );
 
     const compatibility = geneticCompatibility(mother, father);
+
+    // Issue #2175: When compatibility is very low (below interSpeciesCrossoverThreshold),
+    // use input-weight crossover which preserves the mother's topology and blends
+    // input/output weights. This produces more meaningful offspring than the standard
+    // neuron-grafting approach for genetically incompatible creatures.
+    const interSpeciesThreshold = options.interSpeciesCrossoverThreshold ?? 0;
+    if (
+      interSpeciesThreshold > 0 &&
+      compatibility < interSpeciesThreshold &&
+      options.geneticCompatibilityThreshold &&
+      compatibility < options.geneticCompatibilityThreshold
+    ) {
+      const child = inputWeightCrossover(mother, father);
+      if (child) {
+        // Memetic update (same as standard crossover path)
+        if (mother.memetic) {
+          child.memetic = memeticUpdate(mother, child);
+        } else if (father.memetic) {
+          child.memetic = memeticUpdate(father, child);
+        }
+
+        // Hyperparameter crossover (same as standard crossover path)
+        const hpConfig = options.hyperparameterEvolution ??
+          DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG;
+        if (hpConfig.enabled) {
+          child.hyperparameters = crossoverHyperparameters(
+            mum.hyperparameters,
+            dad.hyperparameters,
+            hpConfig,
+          );
+        } else if (mum.hyperparameters || dad.hyperparameters) {
+          child.hyperparameters = mum.hyperparameters
+            ? { ...mum.hyperparameters }
+            : dad.hyperparameters
+            ? { ...dad.hyperparameters }
+            : undefined;
+        }
+
+        if (child.memetic) {
+          pruneOrphanMemeticReferences(child);
+        }
+
+        return child;
+      }
+      // Fall through to standard crossover if input-weight crossover fails
+    }
+
     let fixAliases = false;
     if (
       options.geneticCompatibilityThreshold &&

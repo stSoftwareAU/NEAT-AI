@@ -119,6 +119,7 @@ export class Breed {
       dad,
       {
         geneticCompatibilityThreshold: config.geneticCompatibilityThreshold,
+        interSpeciesCrossoverThreshold: config.interSpeciesCrossoverThreshold,
         forwardOnly: config.feedbackLoop !== true,
         hyperparameterEvolution: config.hyperparameterEvolution,
       },

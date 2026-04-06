@@ -106,6 +106,19 @@ export function validateNeatConfig(config: NeatArguments): void {
     );
   }
 
+  // Issue #2175: Inter-species crossover threshold must not exceed genetic compatibility threshold
+  if (
+    config.interSpeciesCrossoverThreshold >
+      config.geneticCompatibilityThreshold
+  ) {
+    throw new ConfigurationError(
+      `interSpeciesCrossoverThreshold must be <= geneticCompatibilityThreshold. ` +
+        `interSpeciesCrossoverThreshold: ${config.interSpeciesCrossoverThreshold}, ` +
+        `geneticCompatibilityThreshold: ${config.geneticCompatibilityThreshold}`,
+      "CROSS_FIELD_VALIDATION",
+    );
+  }
+
   // Feedback loop validation
   if (config.feedbackLoop === true && config.disableRandomSamples === false) {
     throw new ConfigurationError(

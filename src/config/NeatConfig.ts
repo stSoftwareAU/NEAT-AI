@@ -348,6 +348,12 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       0.3,
       { min: 0, max: 1 },
     ),
+    interSpeciesCrossoverThreshold: parseNumber(
+      "Inter-species Crossover Threshold",
+      opts.interSpeciesCrossoverThreshold,
+      0.1,
+      { min: 0, max: 1 },
+    ),
     discoverySampleRate: parseDiscoverySampleRate(
       opts.discoverySampleRate,
       DEFAULT_DISCOVERY_SAMPLE_RATE,

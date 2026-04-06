@@ -199,6 +199,23 @@ export interface NeatArguments {
   geneticCompatibilityThreshold: number;
 
   /**
+   * Threshold below which the input-weight crossover strategy is used
+   * instead of standard neuron-level crossover (Issue #2175).
+   *
+   * When genetic compatibility between two parents falls below this value,
+   * the offspring preserves the mother's full topology and blends
+   * input/output connection weights from both parents. This produces
+   * more meaningful gene transfer for genetically incompatible creatures
+   * (e.g., creatures from different islands with no shared neuron UUIDs).
+   *
+   * Standard crossover (via editParentByIndex) is used for compatibility
+   * values between this threshold and geneticCompatibilityThreshold.
+   *
+   * Range 0..1 where 0 disables input-weight crossover. Default: 0.1.
+   */
+  interSpeciesCrossoverThreshold: number;
+
+  /**
    * Discovery sample rate: the fraction of training records sampled for structural analysis.
    * Defaults to 0.2 (20%) — increased from 0.05 in #1386 for better statistical coverage.
    * Set to -1 to disable discovery entirely.
