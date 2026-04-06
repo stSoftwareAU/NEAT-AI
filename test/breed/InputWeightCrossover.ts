@@ -6,12 +6,13 @@
  * input/output connection weights using the mother's topology as
  * the base, rather than the standard neuron-level crossover.
  */
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 import { Creature, type CreatureExport, CreatureUtil } from "../../mod.ts";
 import { Offspring } from "@architecture/Offspring.ts";
 import { geneticCompatibility } from "@breed/GeneticCompatibility.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { inputWeightCrossover } from "@breed/InputWeightCrossover.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -478,6 +479,80 @@ Deno.test(
       if (offspring) break;
     }
 
+    if (offspring) {
+      creatureValidate(offspring);
+    }
+  },
+);
+
+Deno.test(
+  "interSpeciesCrossoverThreshold config defaults to 0.1",
+  () => {
+    const config = createNeatConfig({ seed: 42 });
+    assertEquals(
+      config.interSpeciesCrossoverThreshold,
+      0.1,
+      "interSpeciesCrossoverThreshold should default to 0.1",
+    );
+  },
+);
+
+Deno.test(
+  "interSpeciesCrossoverThreshold must not exceed geneticCompatibilityThreshold",
+  () => {
+    assertThrows(
+      () =>
+        createNeatConfig({
+          seed: 42,
+          interSpeciesCrossoverThreshold: 0.5,
+          geneticCompatibilityThreshold: 0.3,
+        }),
+      Error,
+      "interSpeciesCrossoverThreshold must be <= geneticCompatibilityThreshold",
+    );
+  },
+);
+
+Deno.test(
+  "inputWeightCrossover gracefully handles creatures with no hidden neurons",
+  () => {
+    // Creatures with no hidden neurons — direct input-to-output.
+    // Since there are no hidden neurons to align, the offspring would be a
+    // clone of the mother. The function should return undefined (rejected clone).
+    const motherJson: CreatureExport = {
+      input: 2,
+      output: 1,
+      neurons: [
+        { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      ],
+      synapses: [
+        { fromUUID: "input-0", toUUID: "output-0", weight: 0.5 },
+        { fromUUID: "input-1", toUUID: "output-0", weight: -0.3 },
+      ],
+    };
+
+    const fatherJson: CreatureExport = {
+      input: 2,
+      output: 1,
+      neurons: [
+        { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+      ],
+      synapses: [
+        { fromUUID: "input-0", toUUID: "output-0", weight: -0.2 },
+        { fromUUID: "input-1", toUUID: "output-0", weight: 0.8 },
+      ],
+    };
+
+    const mum = Creature.fromJSON(motherJson);
+    CreatureUtil.makeUUID(mum);
+
+    const dad = Creature.fromJSON(fatherJson);
+    CreatureUtil.makeUUID(dad);
+
+    // With no hidden neurons, input-weight crossover cannot produce meaningful
+    // blending — the offspring is a clone so the function returns undefined.
+    // This is expected; such creatures fall through to standard crossover.
+    const offspring = inputWeightCrossover(mum, dad);
     if (offspring) {
       creatureValidate(offspring);
     }

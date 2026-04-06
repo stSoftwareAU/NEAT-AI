@@ -89,7 +89,39 @@ export class Offspring {
       options.geneticCompatibilityThreshold &&
       compatibility < options.geneticCompatibilityThreshold
     ) {
-      return inputWeightCrossover(mother, father);
+      const child = inputWeightCrossover(mother, father);
+      if (child) {
+        // Memetic update (same as standard crossover path)
+        if (mother.memetic) {
+          child.memetic = memeticUpdate(mother, child);
+        } else if (father.memetic) {
+          child.memetic = memeticUpdate(father, child);
+        }
+
+        // Hyperparameter crossover (same as standard crossover path)
+        const hpConfig = options.hyperparameterEvolution ??
+          DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG;
+        if (hpConfig.enabled) {
+          child.hyperparameters = crossoverHyperparameters(
+            mum.hyperparameters,
+            dad.hyperparameters,
+            hpConfig,
+          );
+        } else if (mum.hyperparameters || dad.hyperparameters) {
+          child.hyperparameters = mum.hyperparameters
+            ? { ...mum.hyperparameters }
+            : dad.hyperparameters
+            ? { ...dad.hyperparameters }
+            : undefined;
+        }
+
+        if (child.memetic) {
+          pruneOrphanMemeticReferences(child);
+        }
+
+        return child;
+      }
+      // Fall through to standard crossover if input-weight crossover fails
     }
 
     let fixAliases = false;

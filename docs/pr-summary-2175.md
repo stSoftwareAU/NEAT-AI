@@ -21,20 +21,24 @@ newcomers breeding with the general population). Closes #2175.
   (default 0.1).
 - **`src/config/NeatOptions.ts`**: Added to numeric option keys for CLI
   coercion.
+- **`src/config/NeatConfigValidation.ts`**: Added cross-field validation
+  ensuring `interSpeciesCrossoverThreshold` does not exceed
+  `geneticCompatibilityThreshold`.
 - **`src/architecture/Offspring.ts`**: Early-return path in `breed()` that
   routes to `inputWeightCrossover()` when compatibility is below the
-  inter-species threshold.
+  inter-species threshold, with memetic update, hyperparameter crossover, and
+  orphan pruning applied to the offspring (matching the standard crossover path).
 - **`src/breed/Breed.ts`**: Passes `interSpeciesCrossoverThreshold` from config
   to `Offspring.breed()`.
 
 ## Evidence
 
-All 5310 existing tests pass with 0 failures. No regression for compatible or
+All existing tests pass with 0 failures. No regression for compatible or
 partially compatible breeding pairs.
 
 ## Test Plan
 
-- Added `test/breed/InputWeightCrossover.ts` with 10 tests:
+- Added `test/breed/InputWeightCrossover.ts` with 13 tests:
   - Verifies incompatible parents have zero genetic compatibility
   - Verifies offspring preserves mother's topology (neuron count and UUIDs)
   - Verifies input connection weights are blended from both parents
@@ -45,3 +49,6 @@ partially compatible breeding pairs.
   - Verifies large input space (50 inputs, simulating GRQ-25-1/Europa scale)
   - Verifies mother-biased blending produces weights closer to mother
   - Verifies fully compatible creatures breed normally (no regression)
+  - Verifies `interSpeciesCrossoverThreshold` config defaults to 0.1
+  - Verifies config validation rejects threshold exceeding compatibility
+  - Verifies graceful handling of creatures with no hidden neurons
