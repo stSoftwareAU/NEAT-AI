@@ -14,6 +14,7 @@ import { prepareCreatureForBreeding } from "@upgrade/Upgrade.ts";
 import { writeDiagnostics } from "@utils/Diagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { inputWeightCrossover } from "@breed/InputWeightCrossover.ts";
+import { subgraphTransplant } from "@breed/SubgraphTransplant.ts";
 import { pruneOrphanMemeticReferences } from "@compact/CompactUtils.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { Neuron } from "@architecture/Neuron.ts";
@@ -78,10 +79,10 @@ export class Offspring {
 
     const compatibility = geneticCompatibility(mother, father);
 
-    // Issue #2175: When compatibility is very low (below interSpeciesCrossoverThreshold),
-    // use input-weight crossover which preserves the mother's topology and blends
-    // input/output weights. This produces more meaningful offspring than the standard
-    // neuron-grafting approach for genetically incompatible creatures.
+    // Issue #2175/#2177: When compatibility is very low (below
+    // interSpeciesCrossoverThreshold), use specialised inter-species breeding.
+    // Randomly selects between input-weight crossover (Issue #2175) and subgraph
+    // transplantation (Issue #2177), falling back to the other if the first fails.
     const interSpeciesThreshold = options.interSpeciesCrossoverThreshold ?? 0;
     if (
       interSpeciesThreshold > 0 &&
@@ -89,7 +90,16 @@ export class Offspring {
       options.geneticCompatibilityThreshold &&
       compatibility < options.geneticCompatibilityThreshold
     ) {
-      const child = inputWeightCrossover(mother, father);
+      let child: Creature | undefined;
+      if (rng.random() < 0.5) {
+        // Try subgraph transplantation first, fall back to input-weight crossover
+        child = subgraphTransplant(mother, father);
+        if (!child) child = inputWeightCrossover(mother, father);
+      } else {
+        // Try input-weight crossover first, fall back to subgraph transplantation
+        child = inputWeightCrossover(mother, father);
+        if (!child) child = subgraphTransplant(mother, father);
+      }
       if (child) {
         // Memetic update (same as standard crossover path)
         if (mother.memetic) {
