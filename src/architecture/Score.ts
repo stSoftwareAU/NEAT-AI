@@ -135,7 +135,11 @@ function extractWeights(creature: Creature): Float64Array {
   for (let i = 0; i < len; i++) {
     _weightPool[i] = synapses[i].weight;
   }
-  return _weightPool.subarray(0, len);
+  // Use slice (not subarray) when pool is oversized so WASM receives a
+  // correctly-sized buffer — subarray views can expose the full underlying
+  // ArrayBuffer to wasm-bindgen, causing stale data and incorrect counts.
+  if (_weightPool.length === len) return _weightPool;
+  return _weightPool.slice(0, len);
 }
 
 /**
@@ -152,7 +156,11 @@ function extractBiases(creature: Creature): Float64Array {
   for (let i = 0; i < numBiases; i++) {
     _biasPool[i] = neurons[creature.input + i].bias;
   }
-  return _biasPool.subarray(0, numBiases);
+  // Use slice (not subarray) when pool is oversized so WASM receives a
+  // correctly-sized buffer — subarray views can expose the full underlying
+  // ArrayBuffer to wasm-bindgen, causing stale data and incorrect counts.
+  if (_biasPool.length === numBiases) return _biasPool;
+  return _biasPool.slice(0, numBiases);
 }
 
 /**
