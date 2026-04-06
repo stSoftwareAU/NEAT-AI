@@ -237,7 +237,7 @@ export async function evolve(
       } catch (error) {
         if (error instanceof CrisprError) {
           getLogger().warn(
-            `Skipping invalid CRISPR '${dna.id}': ${error.message}`,
+            `Skipping invalid CRISPR '${dna.id}' (${error.code}): ${error.message}`,
           );
           continue;
         }

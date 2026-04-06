@@ -74,7 +74,9 @@ function validateNeuron(
 ): void {
   if (neuron === null || typeof neuron !== "object") {
     throw new CrisprError(
-      `Neuron at index ${index} must be a non-null object`,
+      `Neuron at index ${index} must be a non-null object — neuron: ${
+        JSON.stringify(neuron)
+      }`,
       "INVALID_DNA",
     );
   }
@@ -85,28 +87,34 @@ function validateNeuron(
     throw new CrisprError(
       `Neuron at index ${index}: 'type' must be "output" or "hidden", got: ${
         JSON.stringify(n.type)
-      }`,
+      } — neuron: ${JSON.stringify(n)}`,
       "INVALID_DNA",
     );
   }
 
   if (mode === "insert" && n.type === "output") {
     throw new CrisprError(
-      `Neuron at index ${index}: insert-mode DNA must not contain output neurons`,
+      `Neuron at index ${index}: insert-mode DNA must not contain output neurons — neuron: ${
+        JSON.stringify(n)
+      }`,
       "INVALID_DNA",
     );
   }
 
   if (typeof n.squash !== "string" || n.squash.trim().length === 0) {
     throw new CrisprError(
-      `Neuron at index ${index}: 'squash' must be a non-empty string`,
+      `Neuron at index ${index}: 'squash' must be a non-empty string — neuron: ${
+        JSON.stringify(n)
+      }`,
       "INVALID_DNA",
     );
   }
 
   if (typeof n.bias !== "number" || !Number.isFinite(n.bias)) {
     throw new CrisprError(
-      `Neuron at index ${index}: 'bias' must be a finite number`,
+      `Neuron at index ${index}: 'bias' must be a finite number — neuron: ${
+        JSON.stringify(n)
+      }`,
       "INVALID_DNA",
     );
   }
@@ -119,7 +127,9 @@ function validateSynapse(
 ): void {
   if (synapse === null || typeof synapse !== "object") {
     throw new CrisprError(
-      `Synapse at index ${index} must be a non-null object`,
+      `Synapse at index ${index} must be a non-null object — synapse: ${
+        JSON.stringify(synapse)
+      }`,
       "INVALID_DNA",
     );
   }
@@ -128,7 +138,9 @@ function validateSynapse(
 
   if (typeof s.weight !== "number" || !Number.isFinite(s.weight)) {
     throw new CrisprError(
-      `Synapse at index ${index}: 'weight' must be a finite number`,
+      `Synapse at index ${index}: 'weight' must be a finite number — synapse: ${
+        JSON.stringify(s)
+      }`,
       "INVALID_DNA",
     );
   }
@@ -136,25 +148,33 @@ function validateSynapse(
   if (mode === "insert") {
     if (s.from !== undefined) {
       throw new CrisprError(
-        `Synapse at index ${index}: insert-mode DNA must not use 'from' (static index); use 'fromId' instead`,
+        `Synapse at index ${index}: insert-mode DNA must not use 'from' (static index); use 'fromId' instead — synapse: ${
+          JSON.stringify(s)
+        }`,
         "INVALID_DNA",
       );
     }
     if (s.to !== undefined) {
       throw new CrisprError(
-        `Synapse at index ${index}: insert-mode DNA must not use 'to' (static index); use 'toId' instead`,
+        `Synapse at index ${index}: insert-mode DNA must not use 'to' (static index); use 'toId' instead — synapse: ${
+          JSON.stringify(s)
+        }`,
         "INVALID_DNA",
       );
     }
     if (s.fromRelative !== undefined) {
       throw new CrisprError(
-        `Synapse at index ${index}: insert-mode DNA must not use 'fromRelative'; use 'fromId' instead`,
+        `Synapse at index ${index}: insert-mode DNA must not use 'fromRelative'; use 'fromId' instead — synapse: ${
+          JSON.stringify(s)
+        }`,
         "INVALID_DNA",
       );
     }
     if (s.toRelative !== undefined) {
       throw new CrisprError(
-        `Synapse at index ${index}: insert-mode DNA must not use 'toRelative'; use 'toId' instead`,
+        `Synapse at index ${index}: insert-mode DNA must not use 'toRelative'; use 'toId' instead — synapse: ${
+          JSON.stringify(s)
+        }`,
         "INVALID_DNA",
       );
     }
@@ -164,7 +184,9 @@ function validateSynapse(
       s.fromRelative !== undefined;
     if (!hasSource) {
       throw new CrisprError(
-        `Synapse at index ${index}: append-mode synapse must have at least one source reference ('from', 'fromId', or 'fromRelative')`,
+        `Synapse at index ${index}: append-mode synapse must have at least one source reference ('from', 'fromId', or 'fromRelative') — synapse: ${
+          JSON.stringify(s)
+        }`,
         "INVALID_DNA",
       );
     }
@@ -173,7 +195,9 @@ function validateSynapse(
       s.toRelative !== undefined;
     if (!hasTarget) {
       throw new CrisprError(
-        `Synapse at index ${index}: append-mode synapse must have at least one target reference ('to', 'toId', or 'toRelative')`,
+        `Synapse at index ${index}: append-mode synapse must have at least one target reference ('to', 'toId', or 'toRelative') — synapse: ${
+          JSON.stringify(s)
+        }`,
         "INVALID_DNA",
       );
     }
