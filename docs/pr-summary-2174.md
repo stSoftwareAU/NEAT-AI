@@ -27,7 +27,8 @@ mapping for neurons with no meaningful input connections. Closes #2174.
 
 - `test/breed/NeuronSimilarity.ts` — 11 unit tests for the similarity module:
   - Input weight vector construction
-  - Cosine similarity: identical, orthogonal, opposite, empty, proportional vectors
+  - Cosine similarity: identical, orthogonal, opposite, empty, proportional
+    vectors
   - Similarity alignment: correct matching, orthogonal fallback, empty lists,
     asymmetric neuron counts
 - `test/breed/EditParentByIndexSimilarity.ts` — 3 integration tests:
