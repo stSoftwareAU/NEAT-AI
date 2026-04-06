@@ -15,6 +15,7 @@ import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { calculateAdaptiveTournamentSize } from "@breed/AdaptiveTournamentSize.ts";
 import { createCompatibleFatherFromCreatures } from "@breed/Father.ts";
 import { FitnessRanking } from "@breed/FitnessRanking.ts";
+import { geneticCompatibility } from "@breed/GeneticCompatibility.ts";
 
 /**
  * Selects a parent from a pre-computed fitness ranking based on the selection strategy.
@@ -112,9 +113,11 @@ export function findFather(
     return undefined;
   }
 
-  // Create a new FitnessRanking for the filtered father population
-  const fatherRanking = new FitnessRanking(possibleFathers);
-  const father = selectParent(fatherRanking, config);
+  // Issue #2173: Diversity-driven breeding. When diversityBreedingRate triggers,
+  // select the most genetically distant father instead of a fitness-biased one.
+  // This ensures newcomers from isolated islands (e.g., Europa) periodically
+  // breed with fitter creatures despite having low initial fitness.
+  const father = selectFatherFromCandidates(mum, possibleFathers, config);
   assert(father !== undefined, "Father is undefined");
 
   // Issue #1034: Avoid JSON exports in parent selection compatibility check.
@@ -142,4 +145,62 @@ export function findFather(
     );
     throw e;
   }
+}
+
+/**
+ * Selects a father from candidate creatures, optionally using diversity-driven
+ * selection (Issue #2173).
+ *
+ * When `config.diversityBreedingRate` triggers (random check), the most
+ * genetically distant creature from the mother is selected. Otherwise,
+ * standard fitness-biased selection is used via FitnessRanking.
+ *
+ * @param mum - The mother creature
+ * @param candidates - Array of potential father creatures
+ * @param config - NEAT configuration
+ * @returns The selected father creature
+ */
+function selectFatherFromCandidates(
+  mum: Creature,
+  candidates: Creature[],
+  config: NeatConfig,
+): Creature {
+  if (
+    config.diversityBreedingRate > 0 &&
+    config.diversityBreedingRate > getRandomNumberGenerator().random()
+  ) {
+    return selectMostDiverseFather(mum, candidates);
+  }
+
+  const fatherRanking = new FitnessRanking(candidates);
+  return selectParent(fatherRanking, config);
+}
+
+/**
+ * Selects the most genetically distant creature from the mother (Issue #2173).
+ *
+ * Iterates through all candidates and picks the one with the lowest genetic
+ * compatibility score (i.e., maximum genetic distance). This ensures
+ * newcomers from isolated populations breed with established creatures.
+ *
+ * @param mum - The mother creature
+ * @param candidates - Array of potential father creatures
+ * @returns The most genetically distant creature from the mother
+ */
+export function selectMostDiverseFather(
+  mum: Creature,
+  candidates: Creature[],
+): Creature {
+  let mostDiverse = candidates[0];
+  let lowestCompatibility = 1;
+
+  for (const candidate of candidates) {
+    const compatibility = geneticCompatibility(mum, candidate);
+    if (compatibility < lowestCompatibility) {
+      lowestCompatibility = compatibility;
+      mostDiverse = candidate;
+    }
+  }
+
+  return mostDiverse;
 }

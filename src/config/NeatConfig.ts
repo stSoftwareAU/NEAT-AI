@@ -329,6 +329,12 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       ),
       0,
     ),
+    diversityBreedingRate: parseNumber(
+      "Diversity breeding rate",
+      opts.diversityBreedingRate,
+      0,
+      { min: 0, max: 1 },
+    ),
     CRISPRs: options.CRISPRs || [],
     maxCRISPRsPerGeneration: parseNumber(
       "Max CRISPRs per generation",

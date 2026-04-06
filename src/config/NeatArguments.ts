@@ -183,6 +183,18 @@ export interface NeatArguments {
   /** The ratio of breeding over all the creatures versus within the species */
   globalBreedingRate: number;
 
+  /**
+   * Rate at which diversity-driven breeding occurs (Issue #2173).
+   *
+   * When triggered, the father is selected by maximum genetic distance from the
+   * mother rather than by fitness. This ensures genetically diverse newcomers
+   * (e.g., from Europa islands) periodically breed with fitter creatures.
+   *
+   * Range 0..1 where 0 disables diversity breeding and 1 always selects the
+   * most genetically distant father. Defaults to 0 for backward compatibility.
+   */
+  diversityBreedingRate: number;
+
   /** The threshold for genetic compatibility between two creatures */
   geneticCompatibilityThreshold: number;
 

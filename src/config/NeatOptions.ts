@@ -55,6 +55,7 @@ type NumericOptionKeys =
   | "maximumWeightAdjustmentScale"
   | "sparseRatio"
   | "globalBreedingRate"
+  | "diversityBreedingRate"
   | "geneticCompatibilityThreshold"
   | "discoverySampleRate"
   | "discoveryRecordTimeOutMinutes"
