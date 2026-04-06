@@ -1,31 +1,36 @@
 ## Summary
 
-Add an input-weight crossover strategy for genetically incompatible creatures. When two
-parents have zero shared neuron UUIDs (genetic compatibility below the new
-`interSpeciesCrossoverThreshold`, default 0.1), the standard neuron-grafting crossover
-is replaced with a strategy that preserves the mother's full topology and blends
-input/output connection weights from both parents. This produces more meaningful
-gene transfer for creatures from different islands (e.g., Europa newcomers breeding
-with the general population). Closes #2175.
+Add an input-weight crossover strategy for genetically incompatible creatures.
+When two parents have zero shared neuron UUIDs (genetic compatibility below the
+new `interSpeciesCrossoverThreshold`, default 0.1), the standard neuron-grafting
+crossover is replaced with a strategy that preserves the mother's full topology
+and blends input/output connection weights from both parents. This produces more
+meaningful gene transfer for creatures from different islands (e.g., Europa
+newcomers breeding with the general population). Closes #2175.
 
 ## Changes
 
-- **`src/breed/InputWeightCrossover.ts`** (new): Implements the input-weight crossover
-  strategy — clones the mother's topology, aligns father neurons via cosine similarity,
-  blends input and output connection weights with a mother-biased factor (alpha 0.6-0.9),
-  and optionally adds father's unique input connections at reduced weight.
-- **`src/config/NeatArguments.ts`**: Added `interSpeciesCrossoverThreshold` field.
-- **`src/config/NeatConfig.ts`**: Parses `interSpeciesCrossoverThreshold` (default 0.1).
-- **`src/config/NeatOptions.ts`**: Added to numeric option keys for CLI coercion.
-- **`src/architecture/Offspring.ts`**: Early-return path in `breed()` that routes to
-  `inputWeightCrossover()` when compatibility is below the inter-species threshold.
-- **`src/breed/Breed.ts`**: Passes `interSpeciesCrossoverThreshold` from config to
-  `Offspring.breed()`.
+- **`src/breed/InputWeightCrossover.ts`** (new): Implements the input-weight
+  crossover strategy — clones the mother's topology, aligns father neurons via
+  cosine similarity, blends input and output connection weights with a
+  mother-biased factor (alpha 0.6-0.9), and optionally adds father's unique
+  input connections at reduced weight.
+- **`src/config/NeatArguments.ts`**: Added `interSpeciesCrossoverThreshold`
+  field.
+- **`src/config/NeatConfig.ts`**: Parses `interSpeciesCrossoverThreshold`
+  (default 0.1).
+- **`src/config/NeatOptions.ts`**: Added to numeric option keys for CLI
+  coercion.
+- **`src/architecture/Offspring.ts`**: Early-return path in `breed()` that
+  routes to `inputWeightCrossover()` when compatibility is below the
+  inter-species threshold.
+- **`src/breed/Breed.ts`**: Passes `interSpeciesCrossoverThreshold` from config
+  to `Offspring.breed()`.
 
 ## Evidence
 
-All 5310 existing tests pass with 0 failures. No regression for compatible or partially
-compatible breeding pairs.
+All 5310 existing tests pass with 0 failures. No regression for compatible or
+partially compatible breeding pairs.
 
 ## Test Plan
 
