@@ -17,12 +17,14 @@ functional roles are aligned. Neurons without meaningful input connections
 (e.g., deep hidden neurons) fall back to the original sequential mapping.
 
 ### New files
+
 - `src/breed/NeuronAlignment.ts` — input-weight vector construction, cosine
   similarity computation, and greedy similarity-based alignment algorithm
 - `test/breed/NeuronAlignment.ts` — 14 tests covering unit and integration
   scenarios
 
 ### Modified files
+
 - `src/breed/EditParentByIndex.ts` — integrated similarity-based alignment
   before the sequential fallback
 
@@ -30,6 +32,7 @@ functional roles are aligned. Neurons without meaningful input connections
 
 All 5300 existing tests pass, confirming no regressions. The new tests
 specifically verify that:
+
 - Neurons with reversed functional order are correctly aligned by similarity
   (not sequential position)
 - Asymmetric creature sizes are handled correctly
