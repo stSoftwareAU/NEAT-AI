@@ -190,8 +190,10 @@ Deno.test("pooled buffers - correct results after pool growth", () => {
   const largeScore = calculate(large, 0.1, 0.001);
 
   // Go back to small creature — uses subarray of larger pool
-  const small2 = makeCreature(2);
-  const small2Score = calculate(small2, 0.1, 0.001);
+  // Reuse the same creature instance (with cache cleared) to verify that
+  // pooled buffer growth does not corrupt extraction results.
+  delete small.cachedScoreComponents;
+  const small2Score = calculate(small, 0.1, 0.001);
 
   assertEquals(
     smallScore,
