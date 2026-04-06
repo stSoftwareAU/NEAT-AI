@@ -27,7 +27,8 @@ newcomers breeding with the general population). Closes #2175.
 - **`src/architecture/Offspring.ts`**: Early-return path in `breed()` that
   routes to `inputWeightCrossover()` when compatibility is below the
   inter-species threshold, with memetic update, hyperparameter crossover, and
-  orphan pruning applied to the offspring (matching the standard crossover path).
+  orphan pruning applied to the offspring (matching the standard crossover
+  path).
 - **`src/breed/Breed.ts`**: Passes `interSpeciesCrossoverThreshold` from config
   to `Offspring.breed()`.
 
