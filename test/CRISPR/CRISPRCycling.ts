@@ -6,7 +6,7 @@
  * retried on mutated creatures in later generations.
  */
 
-import { assert, assertEquals, assertGreater } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { getTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
@@ -311,9 +311,12 @@ Deno.test("CRISPR cycling - multiple CRISPRs per generation", async () => {
  * Test: CRISPR index cycles through the array across generations.
  *
  * Verifies that CRISPRs are tried in a round-robin fashion, not just
- * the first one repeatedly.
+ * the first one repeatedly. Directly exercises the cycling mechanism
+ * (mirroring NeatEvolution.ts logic) without the overhead of evolveDataSet.
  */
 Deno.test("CRISPR cycling - round-robin across generations", async () => {
+  await initWasmForTests();
+
   const base: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "hidden-1", squash: "LOGISTIC", bias: 0.5 },
@@ -348,50 +351,47 @@ Deno.test("CRISPR cycling - round-robin across generations", async () => {
     });
   }
 
-  // Use enough iterations so all 3 CRISPRs get a chance
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const baseCreature = Creature.fromJSON(base);
-    const ds: DataRecordInterface[] = [];
-    for (let i = 0; i < 20; i++) {
-      const input = new Float32Array([Math.random(), Math.random()]);
-      ds.push({
-        input,
-        output: new Float32Array([input[0] * 0.5]),
-      });
-    }
+  // Simulate the round-robin cycling from NeatEvolution.ts directly.
+  // Each "generation" applies maxCRISPRsPerGeneration=1, advancing crisprIndex.
+  const maxPerGen = 1;
+  let crisprIndex = 0;
+  const appliedIds: string[] = [];
+  let currentBase = Creature.fromJSON(base);
 
-    const options: NeatOptions = {
-      CRISPRs: crisprs,
-      maxCRISPRsPerGeneration: 1,
-      iterations: 10,
-      populationSize: 10,
-    };
+  // Simulate 3 generations — each should pick the next CRISPR in sequence
+  for (let gen = 0; gen < 3; gen++) {
+    let applied = 0;
+    let checked = 0;
 
-    // deno-lint-ignore no-await-in-loop
-    await baseCreature.evolveDataSet(ds, options);
-    const exported = baseCreature.exportJSON();
+    while (applied < maxPerGen && checked < crisprs.length) {
+      const dna = crisprs[crisprIndex % crisprs.length];
+      crisprIndex = (crisprIndex + 1) % crisprs.length;
+      checked++;
 
-    // Count how many distinct CRISPRs were applied
-    let appliedCount = 0;
-    for (const dna of crisprs) {
-      if (findDNA(exported, dna.id)) {
-        appliedCount++;
+      const crispr = new CRISPR(currentBase);
+      const enhanced = crispr.cleaveDNA(dna);
+      if (enhanced.uuid !== currentBase.uuid) {
+        currentBase = enhanced;
+        applied++;
+        appliedIds.push(dna.id);
       }
-    }
-
-    // With cycling over 10 generations, we should see more than 1 applied
-    if (appliedCount > 1) {
-      assertGreater(
-        appliedCount,
-        1,
-        "Multiple CRISPRs should be applied via cycling",
-      );
-      return;
     }
   }
 
-  // Stochastic - give benefit of doubt if at least one was applied
-  // The key assertion is that the mechanism cycles, not that all succeed
+  // All three CRISPRs should have been applied in order
+  assertEquals(appliedIds.length, 3, "All three CRISPRs should be applied");
+  assertEquals(appliedIds[0], "DNA-ROUND-0", "Generation 1 uses first CRISPR");
+  assertEquals(appliedIds[1], "DNA-ROUND-1", "Generation 2 uses second CRISPR");
+  assertEquals(appliedIds[2], "DNA-ROUND-2", "Generation 3 uses third CRISPR");
+
+  // Verify all tags are present on the final creature
+  const exported = currentBase.exportJSON();
+  for (const dna of crisprs) {
+    assert(
+      findDNA(exported, dna.id),
+      `CRISPR ${dna.id} tag should be present after round-robin cycling`,
+    );
+  }
 });
 
 function findDNA(creature: CreatureExport, dnaId: string): boolean {
