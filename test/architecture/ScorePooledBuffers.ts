@@ -21,6 +21,7 @@ import {
 function makeCreature(hiddenCount: number): Creature {
   const creature = new Creature(2, 1, {
     layers: [{ count: hiddenCount, squash: "IDENTITY" }],
+    outputLayer: { squash: "IDENTITY" },
   });
   // Set distinct weights so extraction correctness is verifiable
   for (let i = 0; i < creature.synapses.length; i++) {
