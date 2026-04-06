@@ -8,7 +8,6 @@ import {
   assertEquals,
   assertExists,
   assertNotEquals,
-  assertThrows,
 } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
@@ -192,7 +191,7 @@ Deno.test(
 // ---------------------------------------------------------------------------
 
 Deno.test(
-  "cleaveDNA - insert with output neurons throws validation error",
+  "cleaveDNA - insert with output neurons skips invalid DNA (warn, return original)",
   () => {
     const h1Id = getH1Id();
     const creature = makeCreature();
@@ -209,13 +208,11 @@ Deno.test(
       ],
     };
 
-    // validateDNA rejects insert-mode DNA containing output neurons with a
-    // clear error message before insert() is ever called.
-    assertThrows(
-      () => crispr.cleaveDNA(dna),
-      Error,
-      "insert-mode DNA must not contain output neurons",
-    );
+    // validateDNA rejects insert-mode DNA containing output neurons before
+    // insert(); cleaveDNA logs and returns the unmodified clone (#2167).
+    const result = crispr.cleaveDNA(dna);
+    assertEquals(result.input, creature.input);
+    assertEquals(result.output, creature.output);
   },
 );
 

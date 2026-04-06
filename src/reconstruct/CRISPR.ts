@@ -8,6 +8,24 @@ import { TopologyError } from "@errors/TopologyError.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { validateDNA } from "@reconstruct/validateDNA.ts";
 
+function formatCrisprDnaIdForLog(dna: unknown): string {
+  if (dna !== null && typeof dna === "object" && "id" in dna) {
+    const id = (dna as Record<string, unknown>).id;
+    if (typeof id === "string" && id.trim().length > 0) return id;
+  }
+  return "<missing-or-invalid id>";
+}
+
+function warnSkippedCrisprDNA(
+  dna: unknown,
+  code: string,
+  message: string,
+): void {
+  getLogger().warn(
+    `CRISPR '${formatCrisprDnaIdForLog(dna)}' skipped (${code}): ${message}`,
+  );
+}
+
 /**
  * Interface representing the structure of the CRISPR modification data.
  */
@@ -563,7 +581,15 @@ export class CRISPR {
    * @returns The modified creature or undefined if no modifications were applied.
    */
   cleaveDNA(dna: CrisprInterface): Creature {
-    validateDNA(dna);
+    try {
+      validateDNA(dna);
+    } catch (e) {
+      if (e instanceof CrisprError) {
+        warnSkippedCrisprDNA(dna, e.code, e.message);
+        return this.creature;
+      }
+      throw e;
+    }
 
     let alreadyProcessed = false;
 
@@ -607,11 +633,11 @@ export class CRISPR {
       }
     } catch (e) {
       if (e instanceof CrisprError) {
-        getLogger().warn(`CRISPR ${dna.id}: ${e.code} — ${e.message}`);
+        warnSkippedCrisprDNA(dna, e.code, e.message);
         return this.creature;
       }
       if (e instanceof TopologyError && e.reason === "INVALID_CONNECTION") {
-        getLogger().warn(`CRISPR ${dna.id}: INVALID_CONNECTION — ${e.message}`);
+        warnSkippedCrisprDNA(dna, "INVALID_CONNECTION", e.message);
         return this.creature;
       }
       throw e;
@@ -633,10 +659,7 @@ export class CRISPR {
       }
     } catch (e) {
       if (e instanceof CrisprError) {
-        // Expected operational errors — log and return the original creature.
-        getLogger().warn(
-          `CRISPR ${dna.id}: ${e.code} — ${e.message}`,
-        );
+        warnSkippedCrisprDNA(dna, e.code, e.message);
         return this.creature;
       }
 
@@ -649,7 +672,7 @@ export class CRISPR {
         1,
       );
       getLogger().warn(
-        `CRISPR ${dna.id}: unexpected error during validation.\n` +
+        `CRISPR '${dna.id}' skipped: unexpected error during validation.\n` +
           `Creature JSON:\n${creatureJSON}`,
         e,
       );
