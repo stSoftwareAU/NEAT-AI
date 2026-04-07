@@ -586,8 +586,11 @@ export class Creature implements CreatureInternal {
     activation.disposeWasm(this);
   }
 
-  compact(feedbackLoop: boolean): Creature | undefined {
-    return compactCreature(this, feedbackLoop);
+  compact(
+    feedbackLoop: boolean,
+    mcmcTemperature?: number,
+  ): Creature | undefined {
+    return compactCreature(this, feedbackLoop, mcmcTemperature);
   }
 
   validate(options?: {

@@ -105,11 +105,15 @@ function cloneCreatureExport(source: CreatureExport): CreatureExport {
  *
  * @param creature - The creature to compact
  * @param feedbackLoop - Whether to use a feedback loop during compaction
+ * @param mcmcTemperature - Issue #2200: Optional MCMC temperature for probabilistic
+ *   weight rescaling acceptance. When provided, worsening rescalings may be accepted
+ *   with probability exp(-delta / temperature) instead of greedy rejection.
  * @returns A new compacted creature or undefined if no compaction occurred
  */
 export function compactCreature(
   creature: Creature,
   feedbackLoop: boolean,
+  mcmcTemperature?: number,
 ): Creature | undefined {
   const holdDebug = creature.DEBUG;
   creature.DEBUG = false;
@@ -433,7 +437,10 @@ export function compactCreature(
   //
   // This can turn a "huge inbound / tiny outbound" pair into two moderate values,
   // reducing the score penalty (which is based on max/avg abs weights and biases).
-  const simplifiedLargeWeights = simplifyLargeWeights(compactCreature);
+  const simplifiedLargeWeights = simplifyLargeWeights(
+    compactCreature,
+    mcmcTemperature,
+  );
   if (simplifiedLargeWeights) {
     didCompact = true;
   }
@@ -492,7 +499,15 @@ export function compactCreature(
   return undefined;
 }
 
-function simplifyLargeWeights(exported: CreatureExport): boolean {
+/**
+ * Issue #2200: When mcmcTemperature is provided, worsening rescalings are
+ * accepted with probability exp(-delta / temperature) rather than being
+ * greedily rejected. This allows escaping local optima in weight space.
+ */
+function simplifyLargeWeights(
+  exported: CreatureExport,
+  mcmcTemperature?: number,
+): boolean {
   // Supported squashes are those that are scale-homogeneous in our implementation:
   //
   // For any k > 0: f(kx) = k f(x)
@@ -573,10 +588,26 @@ function simplifyLargeWeights(exported: CreatureExport): boolean {
 
       const nextPenalty = calculateWeightBiasPenalty(exported);
       if (nextPenalty + 1e-15 < bestPenalty) {
+        // Clear improvement: always accept
         bestPenalty = nextPenalty;
         changed = true;
+      } else if (
+        mcmcTemperature !== undefined && mcmcTemperature > 0
+      ) {
+        // Issue #2200: M-H probabilistic acceptance for worsening rescalings.
+        // This allows escaping local optima in weight space during compaction.
+        const deltaPenalty = nextPenalty - bestPenalty;
+        const acceptProb = Math.exp(-deltaPenalty / mcmcTemperature);
+        if (Math.random() < acceptProb) {
+          bestPenalty = nextPenalty;
+          changed = true;
+        } else {
+          neuron.bias = oldBias;
+          inConns.forEach((s, i) => s.weight = oldInWeights[i]);
+          outConns.forEach((s, i) => s.weight = oldOutWeights[i]);
+        }
       } else {
-        // No improvement; revert.
+        // No improvement; revert (greedy).
         neuron.bias = oldBias;
         inConns.forEach((s, i) => s.weight = oldInWeights[i]);
         outConns.forEach((s, i) => s.weight = oldOutWeights[i]);
