@@ -21,8 +21,8 @@ Part of #2197.
 - **`NeatConfig.ts`**: Wired `parseMcmc()` into `createNeatConfig()`.
 - **`NeatConfigValidation.ts`**: Added cross-field validation ensuring
   `minTemperature <= initialTemperature`.
-- **`ParseOptions.ts`**: Added `maxExclusive` support to `NumberConstraints`
-  and `parseNumber()` for strict upper-bound validation (0 < coolingRate < 1).
+- **`ParseOptions.ts`**: Added `maxExclusive` support to `NumberConstraints` and
+  `parseNumber()` for strict upper-bound validation (0 < coolingRate < 1).
 
 ## Evidence
 
