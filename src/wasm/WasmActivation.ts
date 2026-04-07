@@ -490,6 +490,29 @@ export class WasmCreatureActivation {
   }
 
   /**
+   * Issue #2207: Call a standalone WASM batch function that borrows the
+   * CompiledNetwork. If the function traps, invalidate this activation.
+   */
+  private callBatchFn(
+    fn: (
+      network: WasmCompiledNetwork,
+      records: Float32Array,
+      inputSize: number,
+      numOutputs: number,
+      forwardOnly: boolean,
+    ) => number,
+    records: Float32Array,
+    inputSize: number,
+    forwardOnly: boolean,
+  ): number {
+    try {
+      return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
+    } catch (error) {
+      this.invalidateAfterWasmPanic(error);
+    }
+  }
+
+  /**
    * Compute sum(MSE) across packed [inputs..., targets...] records in WASM.
    */
   mseSumBatchPacked(
@@ -507,11 +530,7 @@ export class WasmCreatureActivation {
     if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    try {
-      return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
-    } catch (error) {
-      this.invalidateAfterWasmPanic(error);
-    }
+    return this.callBatchFn(fn, records, inputSize, forwardOnly);
   }
 
   /**
@@ -532,11 +551,7 @@ export class WasmCreatureActivation {
     if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    try {
-      return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
-    } catch (error) {
-      this.invalidateAfterWasmPanic(error);
-    }
+    return this.callBatchFn(fn, records, inputSize, forwardOnly);
   }
 
   /**
@@ -557,11 +572,7 @@ export class WasmCreatureActivation {
     if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    try {
-      return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
-    } catch (error) {
-      this.invalidateAfterWasmPanic(error);
-    }
+    return this.callBatchFn(fn, records, inputSize, forwardOnly);
   }
 
   /**
@@ -582,11 +593,7 @@ export class WasmCreatureActivation {
     if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    try {
-      return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
-    } catch (error) {
-      this.invalidateAfterWasmPanic(error);
-    }
+    return this.callBatchFn(fn, records, inputSize, forwardOnly);
   }
 
   /**
@@ -607,11 +614,7 @@ export class WasmCreatureActivation {
     if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    try {
-      return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
-    } catch (error) {
-      this.invalidateAfterWasmPanic(error);
-    }
+    return this.callBatchFn(fn, records, inputSize, forwardOnly);
   }
 
   /**
@@ -632,11 +635,7 @@ export class WasmCreatureActivation {
     if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    try {
-      return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
-    } catch (error) {
-      this.invalidateAfterWasmPanic(error);
-    }
+    return this.callBatchFn(fn, records, inputSize, forwardOnly);
   }
 
   get neurons(): number {
