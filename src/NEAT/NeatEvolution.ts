@@ -330,15 +330,21 @@ export async function evolve(
   }
 
   // Issue #2200: Pass MCMC temperature to the mutator when enabled.
+  // Issue #2201: Pass diagnostics for acceptance rate tracking.
   // Temperature is cooled once per generation after mutation.
   const mcmcTemperature = neat.config.mcmc.enabled
     ? neat.mcmcState.getTemperature()
     : undefined;
+  const mcmcDiagnostics = neat.config.mcmc.enabled
+    ? neat.mcmcState.diagnostics
+    : undefined;
 
-  const mutator = new Mutator(mutatorConfig, mcmcTemperature);
+  const mutator = new Mutator(mutatorConfig, mcmcTemperature, mcmcDiagnostics);
   mutator.mutate(newPopulation);
 
-  // Issue #2200: Cool the MCMC temperature after each generation
+  // Issue #2200: Cool the MCMC temperature after each generation.
+  // Issue #2201: cool() now also finalises generation diagnostics
+  // and applies adaptive temperature tuning.
   if (neat.config.mcmc.enabled) {
     neat.mcmcState.cool(neat.config.verbose);
   }
