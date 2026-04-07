@@ -84,6 +84,20 @@ export class WasmCreatureActivation {
   }
 
   /**
+   * Issue #2207: Invalidate this activation after a WASM panic.
+   *
+   * When WASM traps (RuntimeError: unreachable), the Rust borrow counter
+   * may not be decremented, leaving the CompiledNetwork in a permanently
+   * borrowed state. Mark the activation as freed so no further operations
+   * are attempted, and release the JS reference for GC.
+   */
+  private invalidateAfterWasmPanic(error: unknown): never {
+    this.network = undefined as unknown as WasmCompiledNetwork;
+    this.freed = true;
+    throw error;
+  }
+
+  /**
    * Configure whether stateless activation must reset internal state.
    *
    * When `needsResetWhenStateless=false`, `feedbackLoop=false` activations will
@@ -154,7 +168,11 @@ export class WasmCreatureActivation {
         "ACTIVATION_FAILED",
       );
     }
-    return this.network.activate(input, this.numOutputs);
+    try {
+      return this.network.activate(input, this.numOutputs);
+    } catch (error) {
+      this.invalidateAfterWasmPanic(error);
+    }
   }
 
   /**
@@ -180,7 +198,11 @@ export class WasmCreatureActivation {
     if (typeof this.network.activate_view !== "function") {
       return this.activate(input);
     }
-    return this.network.activate_view(input, this.numOutputs);
+    try {
+      return this.network.activate_view(input, this.numOutputs);
+    } catch (error) {
+      this.invalidateAfterWasmPanic(error);
+    }
   }
 
   /**
@@ -206,7 +228,11 @@ export class WasmCreatureActivation {
         "ACTIVATION_FAILED",
       );
     }
-    this.network.activate_into(input, output);
+    try {
+      this.network.activate_into(input, output);
+    } catch (error) {
+      this.invalidateAfterWasmPanic(error);
+    }
   }
 
   /**
@@ -283,8 +309,14 @@ export class WasmCreatureActivation {
       );
     }
 
-    const result = this.network.activate_and_trace(input, this.numOutputs);
-    const numNonInputs = this.network.num_neurons - this.numInputs;
+    let result: Float32Array;
+    let numNonInputs: number;
+    try {
+      result = this.network.activate_and_trace(input, this.numOutputs);
+      numNonInputs = this.network.num_neurons - this.numInputs;
+    } catch (error) {
+      this.invalidateAfterWasmPanic(error);
+    }
 
     const outputs = new Float32Array(this.numOutputs);
     outputs.set(result.subarray(0, this.numOutputs));
@@ -366,11 +398,16 @@ export class WasmCreatureActivation {
       packedInput.set(inputs[i], i * this.numInputs);
     }
 
-    const result = this.network.activate_and_trace_batch_4way(
-      packedInput,
-      this.numInputs,
-      this.numOutputs,
-    );
+    let result: Float32Array;
+    try {
+      result = this.network.activate_and_trace_batch_4way(
+        packedInput,
+        this.numInputs,
+        this.numOutputs,
+      );
+    } catch (error) {
+      this.invalidateAfterWasmPanic(error);
+    }
 
     const len0 = result[0] as number;
     const len1 = result[1] as number;
@@ -453,6 +490,29 @@ export class WasmCreatureActivation {
   }
 
   /**
+   * Issue #2207: Call a standalone WASM batch function that borrows the
+   * CompiledNetwork. If the function traps, invalidate this activation.
+   */
+  private callBatchFn(
+    fn: (
+      network: WasmCompiledNetwork,
+      records: Float32Array,
+      inputSize: number,
+      numOutputs: number,
+      forwardOnly: boolean,
+    ) => number,
+    records: Float32Array,
+    inputSize: number,
+    forwardOnly: boolean,
+  ): number {
+    try {
+      return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
+    } catch (error) {
+      this.invalidateAfterWasmPanic(error);
+    }
+  }
+
+  /**
    * Compute sum(MSE) across packed [inputs..., targets...] records in WASM.
    */
   mseSumBatchPacked(
@@ -470,7 +530,7 @@ export class WasmCreatureActivation {
     if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
+    return this.callBatchFn(fn, records, inputSize, forwardOnly);
   }
 
   /**
@@ -491,7 +551,7 @@ export class WasmCreatureActivation {
     if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
+    return this.callBatchFn(fn, records, inputSize, forwardOnly);
   }
 
   /**
@@ -512,7 +572,7 @@ export class WasmCreatureActivation {
     if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
+    return this.callBatchFn(fn, records, inputSize, forwardOnly);
   }
 
   /**
@@ -533,7 +593,7 @@ export class WasmCreatureActivation {
     if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
+    return this.callBatchFn(fn, records, inputSize, forwardOnly);
   }
 
   /**
@@ -554,7 +614,7 @@ export class WasmCreatureActivation {
     if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
+    return this.callBatchFn(fn, records, inputSize, forwardOnly);
   }
 
   /**
@@ -575,7 +635,7 @@ export class WasmCreatureActivation {
     if (!fn) {
       throw new WasmError("WASM module not initialised", "MODULE_NOT_LOADED");
     }
-    return fn(this.network, records, inputSize, this.numOutputs, forwardOnly);
+    return this.callBatchFn(fn, records, inputSize, forwardOnly);
   }
 
   get neurons(): number {
@@ -599,7 +659,18 @@ export class WasmCreatureActivation {
   free(): void {
     if (this.freed) return;
     if (this.network) {
-      this.network.free();
+      try {
+        this.network.free();
+      } catch (_error) {
+        // Issue #2207: If a WASM function panicked (e.g. RuntimeError:
+        // unreachable), the Rust borrow may still be active, causing
+        // "attempted to take ownership of Rust value while it was borrowed"
+        // when calling free(). We must still mark the activation as freed
+        // and release the JS reference so GC can reclaim the memory.
+        getLogger().warn(
+          "WASM CompiledNetwork.free() failed (possible ownership conflict after WASM panic); releasing JS reference.",
+        );
+      }
     }
     // Issue #1581: Nullify the WASM network reference so the underlying
     // WebAssembly.Instance and its linear memory ArrayBuffer become eligible
