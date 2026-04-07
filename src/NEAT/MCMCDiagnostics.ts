@@ -30,19 +30,6 @@ export interface MCMCGenerationStats {
 }
 
 /**
- * Adjustment rate for adaptive temperature tuning.
- * Small value for stability (Issue #2201).
- */
-const ADJUSTMENT_RATE = 0.02;
-
-/**
- * Tolerance band around the target acceptance rate.
- * No adjustment is made when the smoothed rate is within
- * targetAcceptanceRate ± TOLERANCE.
- */
-const TOLERANCE = 0.05;
-
-/**
  * Default rolling window size (number of generations).
  */
 const DEFAULT_WINDOW_SIZE = 10;
@@ -157,12 +144,15 @@ export class MCMCDiagnostics {
     const target = this.config.targetAcceptanceRate;
     let adjusted = currentTemperature;
 
-    if (smoothedRate > target + TOLERANCE) {
+    const tolerance = this.config.toleranceRate;
+    const adjustment = this.config.adjustmentRate;
+
+    if (smoothedRate > target + tolerance) {
       // Acceptance too high → decrease temperature (be more selective)
-      adjusted = currentTemperature * (1 - ADJUSTMENT_RATE);
-    } else if (smoothedRate < target - TOLERANCE) {
+      adjusted = currentTemperature * (1 - adjustment);
+    } else if (smoothedRate < target - tolerance) {
       // Acceptance too low → increase temperature (accept more)
-      adjusted = currentTemperature * (1 + ADJUSTMENT_RATE);
+      adjusted = currentTemperature * (1 + adjustment);
     }
 
     // Clamp between bounds
@@ -170,5 +160,15 @@ export class MCMCDiagnostics {
       this.config.minTemperature,
       Math.min(this.config.initialTemperature, adjusted),
     );
+  }
+
+  /**
+   * Resets all diagnostics state.
+   * Useful for restarts or testing.
+   */
+  reset(): void {
+    this.currentAccepted = 0;
+    this.currentRejected = 0;
+    this.rateHistory.length = 0;
   }
 }

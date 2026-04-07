@@ -35,6 +35,18 @@ export interface MCMCConfig {
 
   /** Optimal acceptance rate for high-dimensional MCMC (default: 0.234). */
   targetAcceptanceRate?: number;
+
+  /**
+   * Issue #2201: Rate at which temperature is adjusted toward the target
+   * acceptance rate each generation. Small values provide stability (default: 0.02).
+   */
+  adjustmentRate?: number;
+
+  /**
+   * Issue #2201: Tolerance band around the target acceptance rate within
+   * which no temperature adjustment occurs (default: 0.05).
+   */
+  toleranceRate?: number;
 }
 
 /**
@@ -51,4 +63,6 @@ export const DEFAULT_MCMC_CONFIG: RequiredMCMCConfig = {
   minTemperature: 0.01,
   coolingRate: 0.995,
   targetAcceptanceRate: 0.234,
+  adjustmentRate: 0.02,
+  toleranceRate: 0.05,
 };

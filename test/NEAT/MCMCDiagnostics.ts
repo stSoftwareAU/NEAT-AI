@@ -286,6 +286,24 @@ Deno.test("MCMCDiagnostics: finaliseGeneration resets current generation counts"
   assertEquals(stats.acceptanceRate, 0);
 });
 
+// ── Reset ───────────────────────────────────────────────────────────
+
+Deno.test("MCMCDiagnostics: reset clears all state", () => {
+  const diag = createDiagnostics();
+
+  diag.recordDecision(true);
+  diag.recordDecision(false);
+  diag.finaliseGeneration();
+
+  diag.reset();
+
+  assertEquals(diag.getAcceptanceRate(), 0);
+  assertEquals(diag.getSmoothedAcceptanceRate(), 0);
+  const stats = diag.getGenerationStats();
+  assertEquals(stats.proposedCount, 0);
+  assertEquals(stats.acceptedCount, 0);
+});
+
 // ── Multiple adaptive adjustments converge ───────────────────────────
 
 Deno.test("MCMCDiagnostics: repeated adaptive tuning converges temperature", () => {

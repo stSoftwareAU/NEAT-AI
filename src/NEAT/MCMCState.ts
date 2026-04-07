@@ -34,6 +34,16 @@ export class MCMCState {
   }
 
   /**
+   * Issue #2201: Sets the temperature directly, used by adaptive
+   * temperature tuning or external callers.
+   *
+   * @param temperature - The new temperature value
+   */
+  setTemperature(temperature: number): void {
+    this.currentTemperature = temperature;
+  }
+
+  /**
    * Cools the temperature by one generation step and applies adaptive tuning.
    *
    * Issue #2201: After exponential cooling, adaptive tuning adjusts the
