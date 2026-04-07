@@ -7,6 +7,7 @@
 import { assert } from "@std/assert";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { Creature } from "@creature";
+import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOnlySynapseGuard.ts";
 
 /**
  * Moves one neuron to a target index, remapping synapse endpoints and
@@ -39,6 +40,9 @@ export function moveNeuronToIndex(
     neuron.index = i;
   });
   creature.clearCache();
+
+  // Issue #2191: Verify forward-only topology after bulk index remap
+  assertForwardOnlyTopologyAfterBulkRemap(creature, "moveNeuronToIndex");
 }
 
 /**
@@ -155,4 +159,10 @@ export function normaliseComputationalNeuronOrder(creature: Creature): void {
     n.index = i;
   });
   creature.clearCache();
+
+  // Issue #2191: Verify forward-only topology after bulk index remap
+  assertForwardOnlyTopologyAfterBulkRemap(
+    creature,
+    "normaliseComputationalNeuronOrder",
+  );
 }

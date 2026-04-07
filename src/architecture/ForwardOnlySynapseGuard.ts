@@ -1,4 +1,5 @@
 import { TopologyError } from "@errors/TopologyError.ts";
+import type { Creature } from "@creature";
 
 /**
  * Rejects synapse endpoints that would make a forward-only creature recurrent.
@@ -24,5 +25,36 @@ export function rejectRecurrentSynapseIfForwardOnlyCreature(
       `Forward-only topology forbids backward connection ${from}->${to}`,
       "INVALID_CONNECTION",
     );
+  }
+}
+
+/**
+ * Debug-gated forward-only topology assertion for bulk index remapping
+ * operations. Verifies all synapses still satisfy `from < to` after the
+ * specified operation has modified synapse indices.
+ *
+ * Issue #2191: Bulk index remapping (insertNeuron, removeHiddenNeuron,
+ * normaliseComputationalNeuronOrder, breeding) should preserve forward-only
+ * ordering. This assertion catches violations early during development.
+ *
+ * @param creature The creature whose topology to verify
+ * @param operation Human-readable name of the operation that just ran
+ */
+export function assertForwardOnlyTopologyAfterBulkRemap(
+  creature: Creature,
+  operation: string,
+): void {
+  if (!creature.DEBUG) return;
+  if (!creature.forwardOnly) return;
+
+  for (let i = 0; i < creature.synapses.length; i++) {
+    const s = creature.synapses[i];
+    if (s.from >= s.to) {
+      throw new TopologyError(
+        `[${operation}] Synapse ${i} violates forward-only topology after ` +
+          `bulk index remap: from ${s.from} must be < to ${s.to}`,
+        "INVALID_CONNECTION",
+      );
+    }
   }
 }
