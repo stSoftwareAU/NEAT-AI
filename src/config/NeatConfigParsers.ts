@@ -70,6 +70,10 @@ import {
   type RequiredHyperparameterEvolutionConfig,
 } from "@config/HyperparameterConfig.ts";
 import {
+  DEFAULT_MCMC_CONFIG,
+  type RequiredMCMCConfig,
+} from "@config/MCMCConfig.ts";
+import {
   DEFAULT_ADAPTIVE_POPULATION_CONFIG,
   type RequiredAdaptivePopulationConfig,
 } from "@config/AdaptivePopulationConfig.ts";
@@ -774,6 +778,42 @@ export function parseDataFuzzing(
     ),
     noiseType,
   } as RequiredDataFuzzingConfig;
+}
+
+/** Parse MCMC acceptance configuration (Issue #2199). */
+export function parseMcmc(
+  overrides: Record<string, unknown> | undefined,
+): RequiredMCMCConfig {
+  const d = DEFAULT_MCMC_CONFIG;
+  return {
+    enabled: typeof overrides?.enabled === "boolean"
+      ? overrides.enabled
+      : d.enabled,
+    initialTemperature: parseNumber(
+      "MCMC initialTemperature",
+      overrides?.initialTemperature,
+      d.initialTemperature,
+      { minExclusive: 0 },
+    ),
+    minTemperature: parseNumber(
+      "MCMC minTemperature",
+      overrides?.minTemperature,
+      d.minTemperature,
+      { minExclusive: 0 },
+    ),
+    coolingRate: parseNumber(
+      "MCMC coolingRate",
+      overrides?.coolingRate,
+      d.coolingRate,
+      { minExclusive: 0, maxExclusive: 1 },
+    ),
+    targetAcceptanceRate: parseNumber(
+      "MCMC targetAcceptanceRate",
+      overrides?.targetAcceptanceRate,
+      d.targetAcceptanceRate,
+      { minExclusive: 0, maxExclusive: 1 },
+    ),
+  } as RequiredMCMCConfig;
 }
 
 /** Parse data quantisation configuration (Issue #1901). */

@@ -15,6 +15,8 @@ export interface NumberConstraints {
   minExclusive?: number;
   /** Maximum value (inclusive). */
   max?: number;
+  /** Maximum value (exclusive). Use when value must be strictly less than X. */
+  maxExclusive?: number;
   /** Require integer value. */
   integer?: boolean;
 }
@@ -104,6 +106,15 @@ export function parseNumber(
       : `at most ${constraints.max}`;
     throw new ConfigurationError(
       `${fieldName} must be ${rangeMsg}, got: ${num}`,
+      "OUT_OF_RANGE",
+    );
+  }
+
+  if (
+    constraints?.maxExclusive !== undefined && num >= constraints.maxExclusive
+  ) {
+    throw new ConfigurationError(
+      `${fieldName} must be less than ${constraints.maxExclusive}, got: ${num}`,
       "OUT_OF_RANGE",
     );
   }

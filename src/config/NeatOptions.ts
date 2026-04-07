@@ -19,6 +19,7 @@ import type { WeightRegularisationConfig } from "@config/WeightRegularisationCon
 import type { OutputRange } from "@config/OutputRangeConfig.ts";
 import type { WorkerThreadCapConfig } from "@config/WorkerThreadCapConfig.ts";
 import type { HyperparameterEvolutionConfig } from "@config/HyperparameterConfig.ts";
+import type { MCMCConfig } from "@config/MCMCConfig.ts";
 import type { AdaptivePopulationConfig } from "@config/AdaptivePopulationConfig.ts";
 import type { CrossValidationConfig } from "@config/CrossValidationConfig.ts";
 import type { DataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
@@ -100,6 +101,7 @@ export type NeatOptions =
     | "memory"
     | "workerThreadCap"
     | "hyperparameterEvolution"
+    | "mcmc"
     | "adaptivePopulation"
     | "crossValidation"
     | "dataFuzzing"
@@ -143,6 +145,8 @@ export type NeatOptions =
     workerThreadCap?: WorkerThreadCapConfig;
     /** Partial overrides for hyperparameter evolution configuration (defaults applied if not specified) */
     hyperparameterEvolution?: HyperparameterEvolutionConfig;
+    /** Partial overrides for MCMC acceptance configuration (defaults applied if not specified) */
+    mcmc?: MCMCConfig;
     /** Partial overrides for adaptive population sizing configuration (defaults applied if not specified) */
     adaptivePopulation?: AdaptivePopulationConfig;
     /** Partial overrides for cross-validation configuration (defaults applied if not specified) */
@@ -240,6 +244,7 @@ export type NeatOptionsInput =
     | "memory"
     | "workerThreadCap"
     | "hyperparameterEvolution"
+    | "mcmc"
     | "adaptivePopulation"
     | "crossValidation"
     | "dataFuzzing"
@@ -276,6 +281,8 @@ export type NeatOptionsInput =
     memory?: CoerceNumeric<MemoryConfig>;
     workerThreadCap?: CoerceNumeric<WorkerThreadCapConfig>;
     hyperparameterEvolution?: CoerceNumeric<HyperparameterEvolutionConfig>;
+    /** MCMC acceptance configuration (Issue #2199). Numeric fields coerced from CLI. */
+    mcmc?: CoerceNumeric<MCMCConfig>;
     adaptivePopulation?: CoerceNumeric<AdaptivePopulationConfig>;
     /** Cross-validation configuration (Issue #1865). Numeric fields coerced from CLI. */
     crossValidation?: CoerceNumeric<CrossValidationConfig>;
