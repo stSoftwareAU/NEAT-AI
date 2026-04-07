@@ -7,12 +7,12 @@ smoothed rate, and adaptive temperature tuning that adjusts MCMC temperature
 toward the target acceptance rate (~23.4%, Roberts et al. 1997). When the
 smoothed acceptance rate drifts outside a configurable tolerance band, the
 temperature is nudged up (if too few mutations accepted) or down (if too many
-accepted). Complements PlateauDetector: plateau detection adjusts *how much*
-mutation happens, while MCMC temperature adjusts *which mutations stick*.
+accepted). Complements PlateauDetector: plateau detection adjusts _how much_
+mutation happens, while MCMC temperature adjusts _which mutations stick_.
 
 Makes `adjustmentRate` and `toleranceRate` configurable via `MCMCConfig`
-(instead of hardcoded constants) following the established config pattern.
-Adds `reset()` to `MCMCDiagnostics` and `setTemperature()` to `MCMCState`.
+(instead of hardcoded constants) following the established config pattern. Adds
+`reset()` to `MCMCDiagnostics` and `setTemperature()` to `MCMCState`.
 
 ### Changes
 
@@ -34,7 +34,8 @@ All 5422 tests pass. `./quality.sh --skip-discovery --skip-wasm` passes cleanly.
 - **`test/NEAT/MCMCDiagnostics.ts`** (1 new test):
   - `reset()` clears all diagnostics state
 - **`test/NEAT/MCMCState.ts`** (1 new test):
-  - `setTemperature()` updates temperature and subsequent cooling applies correctly
+  - `setTemperature()` updates temperature and subsequent cooling applies
+    correctly
 - **`test/config/MCMCConfig.ts`** (6 new tests):
   - Defaults include `adjustmentRate` and `toleranceRate`
   - `adjustmentRate` validation (must be > 0 and < 1)
