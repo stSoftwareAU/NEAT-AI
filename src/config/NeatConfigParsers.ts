@@ -813,6 +813,18 @@ export function parseMcmc(
       d.targetAcceptanceRate,
       { minExclusive: 0, maxExclusive: 1 },
     ),
+    adjustmentRate: parseNumber(
+      "MCMC adjustmentRate",
+      overrides?.adjustmentRate,
+      d.adjustmentRate,
+      { minExclusive: 0, maxExclusive: 1 },
+    ),
+    toleranceRate: parseNumber(
+      "MCMC toleranceRate",
+      overrides?.toleranceRate,
+      d.toleranceRate,
+      { minExclusive: 0, maxExclusive: 1 },
+    ),
   } as RequiredMCMCConfig;
 }
 

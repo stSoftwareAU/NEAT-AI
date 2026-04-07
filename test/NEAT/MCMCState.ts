@@ -57,6 +57,23 @@ Deno.test("MCMCState: reset restores initial temperature", () => {
   assertEquals(state.getTemperature(), 5.0);
 });
 
+Deno.test("MCMCState: setTemperature updates temperature directly", () => {
+  const config: RequiredMCMCConfig = {
+    ...DEFAULT_MCMC_CONFIG,
+    initialTemperature: 1.0,
+    coolingRate: 0.995,
+    minTemperature: 0.01,
+  };
+  const state = new MCMCState(config);
+
+  state.setTemperature(0.75);
+  assertEquals(state.getTemperature(), 0.75);
+
+  // Cooling should apply from the new temperature
+  state.cool();
+  assertAlmostEquals(state.getTemperature(), 0.75 * 0.995, 1e-6);
+});
+
 Deno.test("MCMCState: multiple generations of cooling follow schedule", () => {
   const config: RequiredMCMCConfig = {
     ...DEFAULT_MCMC_CONFIG,

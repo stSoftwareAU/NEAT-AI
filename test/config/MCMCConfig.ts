@@ -15,6 +15,8 @@ Deno.test("MCMCConfig - defaults applied when not specified", () => {
     config.mcmc.targetAcceptanceRate,
     DEFAULT_MCMC_CONFIG.targetAcceptanceRate,
   );
+  assertEquals(config.mcmc.adjustmentRate, DEFAULT_MCMC_CONFIG.adjustmentRate);
+  assertEquals(config.mcmc.toleranceRate, DEFAULT_MCMC_CONFIG.toleranceRate);
 });
 
 Deno.test("MCMCConfig - enabled defaults to false (non-breaking)", () => {
@@ -195,4 +197,72 @@ Deno.test("MCMCConfig - minTemperature must be <= initialTemperature", () => {
     Error,
     "minTemperature",
   );
+});
+
+// Issue #2201: Tests for adjustmentRate and toleranceRate
+
+Deno.test("MCMCConfig - adjustmentRate must be > 0", () => {
+  assertThrows(
+    () =>
+      createNeatConfig({
+        mcmc: { adjustmentRate: 0 },
+      }),
+    Error,
+    "adjustmentRate",
+  );
+});
+
+Deno.test("MCMCConfig - adjustmentRate must be < 1", () => {
+  assertThrows(
+    () =>
+      createNeatConfig({
+        mcmc: { adjustmentRate: 1 },
+      }),
+    Error,
+    "adjustmentRate",
+  );
+});
+
+Deno.test("MCMCConfig - toleranceRate must be > 0", () => {
+  assertThrows(
+    () =>
+      createNeatConfig({
+        mcmc: { toleranceRate: 0 },
+      }),
+    Error,
+    "toleranceRate",
+  );
+});
+
+Deno.test("MCMCConfig - toleranceRate must be < 1", () => {
+  assertThrows(
+    () =>
+      createNeatConfig({
+        mcmc: { toleranceRate: 1 },
+      }),
+    Error,
+    "toleranceRate",
+  );
+});
+
+Deno.test("MCMCConfig - custom adjustmentRate and toleranceRate override defaults", () => {
+  const config = createNeatConfig({
+    mcmc: {
+      adjustmentRate: 0.05,
+      toleranceRate: 0.1,
+    },
+  });
+  assertEquals(config.mcmc.adjustmentRate, 0.05);
+  assertEquals(config.mcmc.toleranceRate, 0.1);
+});
+
+Deno.test("MCMCConfig - string adjustmentRate and toleranceRate coerced from CLI", () => {
+  const config = createNeatConfig({
+    mcmc: {
+      adjustmentRate: "0.03" as unknown as number,
+      toleranceRate: "0.08" as unknown as number,
+    },
+  });
+  assertEquals(config.mcmc.adjustmentRate, 0.03);
+  assertEquals(config.mcmc.toleranceRate, 0.08);
 });

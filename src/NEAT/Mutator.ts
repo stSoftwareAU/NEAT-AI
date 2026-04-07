@@ -32,6 +32,7 @@ import {
   isTopologyMutation,
   metropolisHastingsAccept,
 } from "@neat/MetropolisHastings.ts";
+import type { MCMCDiagnostics } from "@neat/MCMCDiagnostics.ts";
 
 /**
  * Cache entry for valid mutation candidates.
@@ -55,6 +56,11 @@ export class Mutator {
    * unconditionally (preserving existing behaviour).
    */
   private mcmcTemperature?: number;
+
+  /**
+   * Issue #2201: Optional diagnostics tracker for recording M-H acceptance decisions.
+   */
+  private mcmcDiagnostics?: MCMCDiagnostics;
 
   private isMutationTopologyForwardOnly(creature: Creature): boolean {
     return creature.forwardOnly === true;
@@ -81,10 +87,16 @@ export class Mutator {
   /**
    * @param config - The NEAT configuration
    * @param mcmcTemperature - Issue #2200: Optional current temperature for M-H acceptance
+   * @param mcmcDiagnostics - Issue #2201: Optional diagnostics for recording M-H decisions
    */
-  constructor(config: NeatConfig, mcmcTemperature?: number) {
+  constructor(
+    config: NeatConfig,
+    mcmcTemperature?: number,
+    mcmcDiagnostics?: MCMCDiagnostics,
+  ) {
     this.config = config;
     this.mcmcTemperature = mcmcTemperature;
+    this.mcmcDiagnostics = mcmcDiagnostics;
   }
 
   /**
@@ -260,13 +272,16 @@ export class Mutator {
           );
           const deltaCost = postMutationPenalty - preMutationPenalty;
 
-          if (
-            !metropolisHastingsAccept(
-              deltaCost,
-              this.mcmcTemperature!,
-              rng.random(),
-            )
-          ) {
+          const accepted = metropolisHastingsAccept(
+            deltaCost,
+            this.mcmcTemperature!,
+            rng.random(),
+          );
+
+          // Issue #2201: Record the M-H decision for diagnostics
+          this.mcmcDiagnostics?.recordDecision(accepted);
+
+          if (!accepted) {
             // Rejected: revert creature to pre-mutation snapshot
             this.revertCreature(creature, mcmcSnapshot);
             changed = false;
