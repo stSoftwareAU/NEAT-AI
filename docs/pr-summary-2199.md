@@ -26,8 +26,8 @@ Part of #2197.
 
 ## Evidence
 
-All tests pass including 16 new MCMC config tests. `./quality.sh` passes
-cleanly (lint, format, type-check, all tests).
+All tests pass including 16 new MCMC config tests. `./quality.sh` passes cleanly
+(lint, format, type-check, all tests).
 
 ## Test Plan
 
