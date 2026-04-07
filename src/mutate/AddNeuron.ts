@@ -13,6 +13,7 @@ import { Synapse } from "@architecture/Synapse.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOnlySynapseGuard.ts";
 
 /**
  * Selects a suitable outward connection target for a newly inserted neuron.
@@ -316,6 +317,9 @@ export class AddNeuron extends AbstractMutationOperator {
 
     // Clear cache to force rebuild with updated indices
     this.creature.clearCache();
+
+    // Issue #2191: Verify forward-only topology after bulk index remap
+    assertForwardOnlyTopologyAfterBulkRemap(this.creature, "insertNeuron");
   }
 
   /**
