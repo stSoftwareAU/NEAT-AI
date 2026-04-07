@@ -232,8 +232,42 @@ export class Creature implements CreatureInternal {
     if (!lazy) {
       this.initialize(options);
 
+      // Issue #2190: Always validate forward-only topology after initialisation,
+      // not just in DEBUG builds. This is a lightweight check that verifies
+      // all synapses satisfy `from < to`.
+      this.assertForwardOnlyTopology();
+
       if (this.DEBUG) {
         creatureValidate(this);
+      }
+    }
+  }
+
+  // ── Forward-only topology assertion ─────────────────────────────────
+
+  /**
+   * Lightweight assertion that all synapses satisfy `from < to` in
+   * forward-only creatures. Runs unconditionally (not gated by DEBUG)
+   * after initialisation to catch topology violations early.
+   *
+   * Issue #2190: Production builds previously skipped validation of
+   * freshly created creatures. This targeted check replaces the full
+   * `creatureValidate()` on the hot path.
+   *
+   * @throws {TopologyError} if any synapse has `from >= to` in a
+   *   forward-only creature.
+   */
+  assertForwardOnlyTopology(): void {
+    if (!this.forwardOnly) return;
+
+    for (let i = 0; i < this.synapses.length; i++) {
+      const s = this.synapses[i];
+      if (s.from >= s.to) {
+        throw new TopologyError(
+          `Synapse ${i} violates forward-only topology: ` +
+            `from ${s.from} must be < to ${s.to} (from < to)`,
+          "INVALID_CONNECTION",
+        );
       }
     }
   }
