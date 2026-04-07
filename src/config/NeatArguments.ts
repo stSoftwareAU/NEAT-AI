@@ -30,6 +30,7 @@ import type { RequiredAdaptivePopulationConfig } from "@config/AdaptivePopulatio
 import type { RequiredCrossValidationConfig } from "@config/CrossValidationConfig.ts";
 import type { RequiredDataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
 import type { RequiredDataQuantisationConfig } from "@config/DataQuantisationConfig.ts";
+import type { RequiredMCMCConfig } from "@config/MCMCConfig.ts";
 import type { RequiredParallelEvaluationConfig } from "@config/ParallelEvaluationConfig.ts";
 
 /**
@@ -723,6 +724,16 @@ export interface NeatArguments {
    * Deterministic complement to fuzzing (#1900).
    */
   dataQuantisation: RequiredDataQuantisationConfig;
+
+  /**
+   * MCMC acceptance criterion configuration.
+   *
+   * Issue #2199: Temperature-based Metropolis-Hastings acceptance
+   * for mutations. When enabled, worse-fitness moves are accepted
+   * with decreasing probability as temperature cools, allowing
+   * escape from local optima.
+   */
+  mcmc: RequiredMCMCConfig;
 
   /**
    * Parallel batch creature evaluation configuration.

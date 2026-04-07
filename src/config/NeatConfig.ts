@@ -49,6 +49,7 @@ import {
   parseEnsembleDiversity,
   parseFineTunePopulation,
   parseHyperparameterEvolution,
+  parseMcmc,
   parseMemoryConfig,
   parseParallelEvaluation,
   parsePlateauDetection,
@@ -537,6 +538,10 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     ),
     fineTunePopulation: parseFineTunePopulation(
       opts.fineTunePopulation as Record<string, unknown> | undefined,
+    ),
+    // Issue #2199: Parse MCMC acceptance configuration
+    mcmc: parseMcmc(
+      opts.mcmc as Record<string, unknown> | undefined,
     ),
     // Issue #1863: Parse hyperparameter evolution and adaptive population configs
     hyperparameterEvolution: parseHyperparameterEvolution(

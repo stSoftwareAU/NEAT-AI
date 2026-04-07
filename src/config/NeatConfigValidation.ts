@@ -119,6 +119,16 @@ export function validateNeatConfig(config: NeatArguments): void {
     );
   }
 
+  // Issue #2199: MCMC cross-field validation — minTemperature must not exceed initialTemperature
+  if (config.mcmc.minTemperature > config.mcmc.initialTemperature) {
+    throw new ConfigurationError(
+      `MCMC minTemperature must be <= initialTemperature. ` +
+        `minTemperature: ${config.mcmc.minTemperature}, ` +
+        `initialTemperature: ${config.mcmc.initialTemperature}`,
+      "CROSS_FIELD_VALIDATION",
+    );
+  }
+
   // Feedback loop validation
   if (config.feedbackLoop === true && config.disableRandomSamples === false) {
     throw new ConfigurationError(
