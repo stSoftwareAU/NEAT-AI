@@ -35,5 +35,6 @@ type-check) passes cleanly.
   7. Memetic data references valid neurons after breeding
   8. Asymmetric neuron counts: many-neuron father, few-neuron mother
   9. Asymmetric neuron counts: few-neuron father, many-neuron mother
-  10. Multiple consecutive breedings produce valid, varied offspring without state corruption
+  10. Multiple consecutive breedings produce valid, varied offspring without
+      state corruption
   11. Multiple consecutive breedings in reverse direction
