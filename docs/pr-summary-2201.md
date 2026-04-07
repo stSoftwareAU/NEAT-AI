@@ -3,9 +3,10 @@
 Add MCMC acceptance rate tracking and adaptive temperature tuning. Closes #2201.
 
 Creates `MCMCDiagnostics` to track per-generation Metropolis-Hastings acceptance
-statistics (proposed/accepted/rejected counts and acceptance rate) with a rolling
-window for smoothed rates. Implements adaptive temperature tuning that adjusts
-temperature toward the target acceptance rate (~23.4%, Roberts et al. 1997):
+statistics (proposed/accepted/rejected counts and acceptance rate) with a
+rolling window for smoothed rates. Implements adaptive temperature tuning that
+adjusts temperature toward the target acceptance rate (~23.4%, Roberts et al.
+1997):
 
 - Acceptance rate too high: decrease temperature (be more selective)
 - Acceptance rate too low: increase temperature (accept more)
