@@ -25,6 +25,7 @@ import type {
   SynapseInternal,
 } from "@architecture/SynapseInterfaces.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOnlySynapseGuard.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {
@@ -405,6 +406,9 @@ export class Offspring {
 
     // Batch connect all synapses with single cache invalidation
     offspring.connectBatch(batchConnections);
+
+    // Issue #2191: Verify forward-only topology after breeding index remap
+    assertForwardOnlyTopologyAfterBulkRemap(offspring, "Offspring.breed");
 
     // Apply tags to the created synapses
     for (const conn of batchConnections) {

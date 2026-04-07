@@ -8,6 +8,7 @@ import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.t
 import { allocateStructuralNeuronIdForCreature } from "@architecture/NeuronId.ts";
 import { Neuron } from "@architecture/Neuron.ts";
 import type { Synapse } from "@architecture/Synapse.ts";
+import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOnlySynapseGuard.ts";
 import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
 import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
 import { Activations } from "@methods/activations/Activations.ts";
@@ -177,6 +178,9 @@ export function removeHiddenNeuron(creature: Creature, indx: number) {
   });
 
   creature.clearCache();
+
+  // Issue #2191: Verify forward-only topology after bulk index remap
+  assertForwardOnlyTopologyAfterBulkRemap(creature, "removeHiddenNeuron");
 }
 
 /**
