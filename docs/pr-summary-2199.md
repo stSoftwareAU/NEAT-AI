@@ -26,12 +26,12 @@ Part of #2197.
 
 ## Evidence
 
-All 5375 tests pass including 15 new MCMC config tests. `./quality.sh` passes
+All tests pass including 16 new MCMC config tests. `./quality.sh` passes
 cleanly (lint, format, type-check, all tests).
 
 ## Test Plan
 
-- Added `test/config/MCMCConfig.ts` with 15 tests covering:
+- Added `test/config/MCMCConfig.ts` with 16 tests covering:
   - Default config values applied when not specified
   - `enabled` defaults to `false` (non-breaking)
   - Custom values override defaults
@@ -39,6 +39,6 @@ cleanly (lint, format, type-check, all tests).
   - CLI string values coerced to numbers
   - `initialTemperature > 0` validation (zero and negative rejected)
   - `minTemperature > 0` validation (zero and negative rejected)
-  - `coolingRate` must be in `(0, 1)` (zero, one, and >1 rejected)
+  - `coolingRate` must be in `(0, 1)` (zero, negative, one, and >1 rejected)
   - `targetAcceptanceRate` must be in `(0, 1)` (zero and one rejected)
   - Cross-field: `minTemperature <= initialTemperature`
