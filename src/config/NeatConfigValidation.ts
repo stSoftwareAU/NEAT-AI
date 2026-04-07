@@ -181,6 +181,16 @@ export function validateNeatConfig(config: NeatArguments): void {
     }
   }
 
+  // Issue #2199: MCMC cross-field validation
+  if (config.mcmc.minTemperature > config.mcmc.initialTemperature) {
+    throw new ConfigurationError(
+      `MCMC minTemperature must be <= initialTemperature. ` +
+        `minTemperature: ${config.mcmc.minTemperature}, ` +
+        `initialTemperature: ${config.mcmc.initialTemperature}`,
+      "CROSS_FIELD_VALIDATION",
+    );
+  }
+
   // Discovery focus neuron UUID validation
   if (!Array.isArray(config.discoveryFocusNeuronUUIDs)) {
     throw new ConfigurationError(

@@ -150,6 +150,17 @@ Deno.test("MCMCConfig - coolingRate >= 1 rejected", () => {
   );
 });
 
+Deno.test("MCMCConfig - negative coolingRate rejected", () => {
+  assertThrows(
+    () =>
+      createNeatConfig({
+        mcmc: { coolingRate: -0.5 },
+      }),
+    Error,
+    "coolingRate",
+  );
+});
+
 Deno.test("MCMCConfig - targetAcceptanceRate must be > 0", () => {
   assertThrows(
     () =>
