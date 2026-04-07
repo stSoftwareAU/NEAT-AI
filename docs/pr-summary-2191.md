@@ -1,16 +1,19 @@
 ## Summary
 
 Add DEBUG-gated forward-only topology assertions after all four bulk index
-remapping operations to catch `from >= to` synapse violations early. Closes #2191.
+remapping operations to catch `from >= to` synapse violations early. Closes
+#2191.
 
 The new shared helper `assertForwardOnlyTopologyAfterBulkRemap()` in
 `ForwardOnlySynapseGuard.ts` checks all synapses satisfy `from < to` and
 includes the operation name in any error message for diagnosis.
 
 Operations protected:
+
 - `insertNeuron()` in `AddNeuron.ts`
 - `removeHiddenNeuron()` in `OrphanedNeuronCleanup.ts`
-- `moveNeuronToIndex()` and `normaliseComputationalNeuronOrder()` in `NormaliseComputationalNeuronOrder.ts`
+- `moveNeuronToIndex()` and `normaliseComputationalNeuronOrder()` in
+  `NormaliseComputationalNeuronOrder.ts`
 - `Offspring.breed()` in `Offspring.ts`
 
 ## Evidence
