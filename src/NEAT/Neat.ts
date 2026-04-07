@@ -24,6 +24,7 @@ import { WorkerPool } from "@multithreading/WorkerPool.ts";
 import type { CrisprInterface } from "@reconstruct/CRISPR.ts";
 import { Genus } from "@neat/Genus.ts";
 import { Mutator } from "@neat/Mutator.ts";
+import { MCMCState } from "@neat/MCMCState.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
 import {
   type DiscoveryReplayDirResult,
@@ -75,6 +76,9 @@ export class Neat {
   crisprIndex = 0;
   /** Plateau detector for fitness stagnation detection (Issue #1039) */
   readonly plateauDetector: PlateauDetector;
+
+  /** Issue #2200: MCMC temperature state for Metropolis-Hastings acceptance */
+  readonly mcmcState: MCMCState;
 
   /** Adaptive fine-tune population tracker (Issue #1323) */
   readonly fineTuneTracker: AdaptiveFineTuneTracker;
@@ -144,6 +148,9 @@ export class Neat {
     this.CRISPRs = Neat.deepCloneAndShuffle(this.config.CRISPRs);
 
     this.plateauDetector = new PlateauDetector(this.config.plateauDetection);
+
+    // Issue #2200: Initialise MCMC temperature state
+    this.mcmcState = new MCMCState(this.config.mcmc);
 
     this.fineTuneTracker = new AdaptiveFineTuneTracker(
       this.config.fineTunePopulation,

@@ -27,6 +27,11 @@ import {
   createDefaultHyperparameters,
   mutateHyperparameters,
 } from "@neat/HyperparameterEvolution.ts";
+import {
+  computeCreatureWeightBiasPenalty,
+  isTopologyMutation,
+  metropolisHastingsAccept,
+} from "@neat/MetropolisHastings.ts";
 
 /**
  * Cache entry for valid mutation candidates.
@@ -43,6 +48,13 @@ interface MutationCacheEntry {
 
 export class Mutator {
   private config: NeatConfig;
+
+  /**
+   * Issue #2200: Current MCMC temperature for Metropolis-Hastings acceptance.
+   * When undefined or when mcmc.enabled is false, all mutations are accepted
+   * unconditionally (preserving existing behaviour).
+   */
+  private mcmcTemperature?: number;
 
   private isMutationTopologyForwardOnly(creature: Creature): boolean {
     return creature.forwardOnly === true;
@@ -66,8 +78,13 @@ export class Mutator {
     Map<string, RadioactiveInterface>
   >();
 
-  constructor(config: NeatConfig) {
+  /**
+   * @param config - The NEAT configuration
+   * @param mcmcTemperature - Issue #2200: Optional current temperature for M-H acceptance
+   */
+  constructor(config: NeatConfig, mcmcTemperature?: number) {
     this.config = config;
+    this.mcmcTemperature = mcmcTemperature;
   }
 
   /**
@@ -152,6 +169,9 @@ export class Mutator {
    */
   mutate(creatures: Creature[]): void {
     const rng = getRandomNumberGenerator();
+    const mcmcEnabled = this.config.mcmc.enabled &&
+      this.mcmcTemperature !== undefined;
+
     for (let i = creatures.length; i--;) {
       if (rng.random() <= this.config.mutationRate) {
         const creature = creatures[i];
@@ -161,7 +181,22 @@ export class Mutator {
           // for a 2-3x performance improvement during evolution.
           original = creature.shallowClone();
         }
+
+        // Issue #2200: MCMC snapshot — needed even when there's no
+        // score/memetic, so we can revert on M-H rejection.
+        let mcmcSnapshot: Creature | undefined;
+        let preMutationPenalty: number | undefined;
+        if (mcmcEnabled) {
+          mcmcSnapshot = original ?? creature.shallowClone();
+          preMutationPenalty = computeCreatureWeightBiasPenalty(creature);
+        }
+
         let changed = false;
+
+        // Issue #2200: Track whether any topology mutations were applied.
+        // Topology mutations are always accepted; M-H only applies to
+        // weight/bias-only mutation batches.
+        let hasTopologyMutation = false;
 
         // Issue #1100: Track focus list across mutations to preserve focus cache.
         // Only clear focus cache when the focus list changes between mutations.
@@ -197,6 +232,10 @@ export class Mutator {
           );
           if (flag) {
             changed = true;
+            // Issue #2200: Track topology mutations for M-H gating
+            if (isTopologyMutation(mutationMethod.name)) {
+              hasTopologyMutation = true;
+            }
           }
         }
 
@@ -206,6 +245,40 @@ export class Mutator {
         // diagnosing bugs).
         if (changed) {
           this.repairAfterMutation(creature);
+        }
+
+        // Issue #2200: Metropolis-Hastings acceptance criterion.
+        // For weight/bias-only mutations, compare pre/post penalty and
+        // probabilistically accept or reject. Topology mutations are always
+        // accepted since they are discrete structural changes.
+        if (
+          changed && mcmcEnabled && mcmcSnapshot &&
+          preMutationPenalty !== undefined && !hasTopologyMutation
+        ) {
+          const postMutationPenalty = computeCreatureWeightBiasPenalty(
+            creature,
+          );
+          const deltaCost = postMutationPenalty - preMutationPenalty;
+
+          if (
+            !metropolisHastingsAccept(
+              deltaCost,
+              this.mcmcTemperature!,
+              rng.random(),
+            )
+          ) {
+            // Rejected: revert creature to pre-mutation snapshot
+            this.revertCreature(creature, mcmcSnapshot);
+            changed = false;
+
+            if (this.config.verbose) {
+              getLogger().info(
+                `[MCMC] Mutation rejected (δ=${deltaCost.toFixed(6)}, T=${
+                  this.mcmcTemperature!.toFixed(6)
+                })`,
+              );
+            }
+          }
         }
 
         // Issue #1097: Prebuild inward index for large creatures after mutation batch.
@@ -250,6 +323,34 @@ export class Mutator {
         }
       }
     }
+  }
+
+  /**
+   * Issue #2200: Reverts a creature to its pre-mutation snapshot state.
+   * Restores neurons, synapses, and key properties from the original.
+   */
+  private revertCreature(creature: Creature, original: Creature): void {
+    // Restore neurons array
+    creature.neurons.length = 0;
+    for (const neuron of original.neurons) {
+      creature.neurons.push(neuron);
+    }
+
+    // Restore synapses array
+    creature.synapses.length = 0;
+    for (const synapse of original.synapses) {
+      creature.synapses.push(synapse);
+    }
+
+    // Restore key properties
+    creature.score = original.score;
+    creature.memetic = original.memetic;
+    creature.uuid = original.uuid;
+    creature.forwardOnly = original.forwardOnly;
+    creature.hyperparameters = original.hyperparameters;
+
+    creature.clearState();
+    creature.state.preparedNeurons = false;
   }
 
   /**

@@ -329,8 +329,19 @@ export async function evolve(
     }
   }
 
-  const mutator = new Mutator(mutatorConfig);
+  // Issue #2200: Pass MCMC temperature to the mutator when enabled.
+  // Temperature is cooled once per generation after mutation.
+  const mcmcTemperature = neat.config.mcmc.enabled
+    ? neat.mcmcState.getTemperature()
+    : undefined;
+
+  const mutator = new Mutator(mutatorConfig, mcmcTemperature);
   mutator.mutate(newPopulation);
+
+  // Issue #2200: Cool the MCMC temperature after each generation
+  if (neat.config.mcmc.enabled) {
+    neat.mcmcState.cool(neat.config.verbose);
+  }
 
   // Issue #1099: Single-pass de-duplication
   const deDuplicator = new DeDuplicator(breed, mutator);
