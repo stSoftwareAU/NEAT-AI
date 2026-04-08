@@ -499,29 +499,40 @@ export async function evaluateDir(
           const slice = batchArray.subarray(0, floatsRead);
           const wasm = creature.cachedWasmActivation!;
 
-          switch (costName) {
-            case "MSE":
-              error += wasm.mseSumBatchPacked(slice, creature.input, true);
-              break;
-            case "MAE":
-              error += wasm.maeSumBatchPacked(slice, creature.input, true);
-              break;
-            case "CROSS_ENTROPY":
-              error += wasm.crossEntropySumBatchPacked(
-                slice,
-                creature.input,
-                true,
-              );
-              break;
-            case "MAPE":
-              error += wasm.mapeSumBatchPacked(slice, creature.input, true);
-              break;
-            case "MSLE":
-              error += wasm.msleSumBatchPacked(slice, creature.input, true);
-              break;
-            case "HINGE":
-              error += wasm.hingeSumBatchPacked(slice, creature.input, true);
-              break;
+          // Issue #2214: Wrap fused WASM batch calls in try-catch so that
+          // a WASM panic (RuntimeError: unreachable) during scoring returns
+          // a fallback error value instead of crashing the worker.
+          try {
+            switch (costName) {
+              case "MSE":
+                error += wasm.mseSumBatchPacked(slice, creature.input, true);
+                break;
+              case "MAE":
+                error += wasm.maeSumBatchPacked(slice, creature.input, true);
+                break;
+              case "CROSS_ENTROPY":
+                error += wasm.crossEntropySumBatchPacked(
+                  slice,
+                  creature.input,
+                  true,
+                );
+                break;
+              case "MAPE":
+                error += wasm.mapeSumBatchPacked(slice, creature.input, true);
+                break;
+              case "MSLE":
+                error += wasm.msleSumBatchPacked(slice, creature.input, true);
+                break;
+              case "HINGE":
+                error += wasm.hingeSumBatchPacked(slice, creature.input, true);
+                break;
+            }
+          } catch (wasmError) {
+            getLogger().warn(
+              `WASM batch scoring failed for creature ` +
+                `${creature.uuid?.substring(0, 8) ?? "unknown"}: ${wasmError}`,
+            );
+            return { error: Number.MAX_SAFE_INTEGER };
           }
           count += recordsRead;
           continue;
