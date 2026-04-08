@@ -30,6 +30,7 @@ import { Costs, Creature, Mutation, Selection } from "@stsoftware/neat-ai";
 16. [Transfer Learning](#16-transfer-learning)
 17. [ONNX Export](#17-onnx-export)
 18. [Synthetic Synapses](#18-synthetic-synapses)
+19. [MCMC Acceptance Criterion](#19-mcmc-acceptance-criterion)
 
 ---
 
@@ -1365,6 +1366,74 @@ indices in that layer.
 - Hidden neurons → layer based on longest path from inputs
 - Output neurons → always placed in the final layer
 - Recurrent connections and self-loops are ignored
+
+---
+
+## 19. 🎲 MCMC Acceptance Criterion
+
+Issue #2199: Markov Chain Monte Carlo (MCMC) temperature-based acceptance for
+the Metropolis-Hastings criterion. Instead of unconditionally accepting all
+mutations, MCMC acceptance allows worse-fitness moves with a probability that
+decreases as temperature cools, enabling the population to escape local optima
+early and converge later.
+
+```typescript
+import { DEFAULT_MCMC_CONFIG } from "@stsoftware/neat-ai";
+
+import type { MCMCConfig, RequiredMCMCConfig } from "@stsoftware/neat-ai";
+```
+
+### Configuration
+
+Pass as `mcmc` in `NeatOptions`:
+
+```typescript
+const options: NeatOptions = {
+  mcmc: {
+    enabled: true,
+    initialTemperature: 1.0,
+    coolingRate: 0.995,
+  },
+};
+```
+
+### `MCMCConfig`
+
+| Field                  | Type      | Default | Description                                                         |
+| ---------------------- | --------- | ------- | ------------------------------------------------------------------- |
+| `enabled`              | `boolean` | `false` | Whether MCMC acceptance is active                                   |
+| `initialTemperature`   | `number`  | `1.0`   | Starting temperature for Metropolis-Hastings acceptance             |
+| `minTemperature`       | `number`  | `0.01`  | Floor temperature to prevent acceptance probability reaching zero   |
+| `coolingRate`          | `number`  | `0.995` | Multiplicative cooling factor applied per generation                |
+| `targetAcceptanceRate` | `number`  | `0.234` | Optimal acceptance rate for high-dimensional MCMC                   |
+| `adjustmentRate`       | `number`  | `0.02`  | Rate at which temperature adapts toward the target acceptance rate  |
+| `toleranceRate`        | `number`  | `0.05`  | Tolerance band around target rate within which no adjustment occurs |
+
+### `DEFAULT_MCMC_CONFIG`
+
+Pre-populated `RequiredMCMCConfig` with all defaults. Spread it and override
+individual fields:
+
+```typescript
+const myConfig: MCMCConfig = {
+  ...DEFAULT_MCMC_CONFIG,
+  enabled: true,
+  coolingRate: 0.99, // faster cooling
+};
+```
+
+### Acceptance Behaviour
+
+- **Improving mutations** (lower cost) are always accepted
+- **Worsening mutations** are accepted with probability
+  `exp(-deltaCost / temperature)`
+- **Topology mutations** (add/remove node or connection, swap nodes, change
+  squash) are always accepted unconditionally
+- **Adaptive tuning** (Issue #2201): temperature automatically adjusts toward
+  the target acceptance rate each generation
+
+For configuration details, see
+[Configuration Guide — MCMC](CONFIGURATION_GUIDE.md#mcmc-acceptance-criterion).
 
 ---
 

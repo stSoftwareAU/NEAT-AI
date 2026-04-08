@@ -113,7 +113,25 @@ For project terminology, coding conventions, and development guidelines, see
     inference pipelines, bridging the gap between neuroevolution and production
     deployment.
 
-20. **Synthetic Synapse Training**: Temporarily densifies inter-layer
+20. **MCMC Mutation Acceptance**: Uses the
+    [Metropolis-Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)
+    criterion for mutation acceptance. Instead of unconditionally accepting all
+    mutations, worse-fitness moves are accepted with a probability that
+    decreases as temperature cools — enabling the population to escape local
+    optima early and converge later. Includes adaptive temperature tuning toward
+    the theoretically optimal acceptance rate (~23.4%, Roberts et al. 1997).
+    Opt-in via `mcmc: { enabled: true }` in the configuration.
+
+21. **Advanced Breeding Strategies**: Multiple breeding strategies for
+    genetically incompatible creatures, including input-weight cosine similarity
+    for neuron alignment, subgraph transplantation for horizontal gene transfer,
+    and diversity-driven breeding for cross-population pairing. These strategies
+    preserve genetic diversity while enabling meaningful crossover between
+    structurally different creatures, inspired by
+    [horizontal gene transfer](https://en.wikipedia.org/wiki/Horizontal_gene_transfer)
+    in biology.
+
+22. **Synthetic Synapse Training**: Temporarily densifies inter-layer
     connectivity during backpropagation by adding zero-weight synapses between
     adjacent topological layers. After training, near-zero synapses are pruned
     and only the useful connections are retained — addressing NEAT's inherent
