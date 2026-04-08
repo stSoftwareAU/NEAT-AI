@@ -1,8 +1,9 @@
 ## Summary
 
-Updated all documentation to reflect recent improvements, primarily covering
-the MCMC acceptance criterion (Issues #2199–#2202), advanced breeding strategies
-(Issues #2175–#2183), and WASM panic recovery (Issues #2207, #2212). Closes #2210.
+Updated all documentation to reflect recent improvements, primarily covering the
+MCMC acceptance criterion (Issues #2199–#2202), advanced breeding strategies
+(Issues #2175–#2183), and WASM panic recovery (Issues #2207, #2212). Closes
+#2210.
 
 ### Changes
 
