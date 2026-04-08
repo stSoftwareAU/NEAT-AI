@@ -64,14 +64,26 @@ export async function evolve(
 
   neat.writeScores(neat.population);
 
-  // The population is already sorted in the desired order
+  // The population is already sorted in the desired order.
+  // Issue #2214: Creatures that suffered a WASM panic during evaluation
+  // receive -Infinity scores (set by Fitness.ts, Issue #2211). These
+  // creatures are excluded from the genus so natural selection removes
+  // them, but they remain in the population array so elitism and
+  // breeding still have a full-size pool to work with.
   for (const creature of neat.population) {
     assert(creature.uuid, "UUID missing");
-    assert(creature.score, "Score missing");
     assert(
-      Number.isFinite(creature.score),
-      `Score: ${creature.score} is not finite`,
+      creature.score !== undefined && creature.score !== null,
+      "Score missing",
     );
+
+    if (!Number.isFinite(creature.score)) {
+      getLogger().warn(
+        `Creature ${creature.uuid.substring(0, 8)} has non-finite score ` +
+          `(${creature.score}), excluding from genus`,
+      );
+      continue;
+    }
     genus.addCreature(creature);
   }
   if (neat.population.length === 0) {
