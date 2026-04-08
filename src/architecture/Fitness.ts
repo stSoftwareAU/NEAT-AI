@@ -145,9 +145,25 @@ export class Fitness {
 
       const error = responseData.evaluate.error;
       delete responseData.evaluate;
-      addTag(creature, "error", error.toString());
 
-      creature.score = calculateScore(creature, error, this.growth);
+      // Issue #2211: When a worker encounters a WASM panic (RuntimeError:
+      // unreachable), it returns POSITIVE_INFINITY as the error value.
+      // Rather than crashing the entire evolution with an assertion failure
+      // in Score.calculate(), assign the worst possible score so natural
+      // selection removes the creature gracefully.
+      if (!Number.isFinite(error) || error < 0) {
+        if (responseData.error) {
+          getLogger().warn(
+            `Worker error for creature ${creature.uuid ?? "unknown"}: ` +
+              `${responseData.error.name}: ${responseData.error.message}`,
+          );
+        }
+        addTag(creature, "error", "Infinity");
+        creature.score = -Infinity;
+      } else {
+        addTag(creature, "error", error.toString());
+        creature.score = calculateScore(creature, error, this.growth);
+      }
       addTag(creature, "score", creature.score.toString());
 
       // Issue #1016: Copy score and tags to duplicate creatures
