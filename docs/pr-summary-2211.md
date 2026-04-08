@@ -7,15 +7,16 @@ memory pressure at 95.9% heap), it returns `POSITIVE_INFINITY` as the evaluation
 error value. Previously, `Score.calculate()` would crash with
 `AssertionError: Error is not finite`, terminating the entire evolution process.
 
-Now `Fitness.processNext()` detects non-finite or negative error values and assigns
-`-Infinity` score to the affected creature, allowing natural selection to remove it
-gracefully without crashing. Worker error details are logged as warnings for
-diagnostics.
+Now `Fitness.processNext()` detects non-finite or negative error values and
+assigns `-Infinity` score to the affected creature, allowing natural selection
+to remove it gracefully without crashing. Worker error details are logged as
+warnings for diagnostics.
 
 ## Evidence
 
 The fix handles the exact crash path observed in the production log
 (`GRQ-12-nigel.log`):
+
 1. `[MemoryMonitor] Critical-level response: cleared all WASM caches`
 2. `RuntimeError: unreachable` in `mse_sum_batch_packed`
 3. Previously: `AssertionError: Error is not finite` (process crash)
