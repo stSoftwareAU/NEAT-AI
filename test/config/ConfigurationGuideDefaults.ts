@@ -28,6 +28,7 @@ import {
   DEFAULT_RUST_FLUSH_BYTES,
   DEFAULT_RUST_FLUSH_RECORDS,
 } from "@architecture/ErrorGuidedStructuralEvolution/constants.ts";
+import { DEFAULT_MCMC_CONFIG } from "@config/MCMCConfig.ts";
 
 Deno.test("Configuration guide - core evolution defaults match code", () => {
   const config = createNeatConfig({});
@@ -160,6 +161,17 @@ Deno.test("Configuration guide - fine-tune population defaults match code", () =
   assertEquals(defaults.maxPopulationFraction, 0.4);
   assertEquals(defaults.basePopulationFraction, 0.2);
   assertEquals(defaults.successRateWindow, 10);
+});
+
+Deno.test("Configuration guide - MCMC defaults match code", () => {
+  const defaults = DEFAULT_MCMC_CONFIG;
+  assertEquals(defaults.enabled, false);
+  assertEquals(defaults.initialTemperature, 1.0);
+  assertEquals(defaults.minTemperature, 0.01);
+  assertEquals(defaults.coolingRate, 0.995);
+  assertEquals(defaults.targetAcceptanceRate, 0.234);
+  assertEquals(defaults.adjustmentRate, 0.02);
+  assertEquals(defaults.toleranceRate, 0.05);
 });
 
 Deno.test("Configuration guide - discovery replay defaults match code", () => {

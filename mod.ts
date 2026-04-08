@@ -94,6 +94,20 @@ export {
 } from "@config/HyperparameterConfig.ts";
 
 /**
+ * MCMC Acceptance Criterion
+ *
+ * Issue #2199: Markov Chain Monte Carlo (MCMC) temperature-based acceptance
+ * for Metropolis-Hastings mutation acceptance. Instead of unconditionally
+ * accepting all mutations, MCMC acceptance allows worse-fitness moves with
+ * a probability that decreases as temperature cools, enabling the population
+ * to escape local optima early and converge later.
+ *
+ * @see {@link module:src/config/MCMCConfig}
+ */
+export type { MCMCConfig, RequiredMCMCConfig } from "@config/MCMCConfig.ts";
+export { DEFAULT_MCMC_CONFIG } from "@config/MCMCConfig.ts";
+
+/**
  * Adaptive Population Sizing
  *
  * Issue #1863: Automatically adjust population size based on

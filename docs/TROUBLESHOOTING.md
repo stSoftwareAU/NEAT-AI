@@ -648,6 +648,36 @@ and/or `--allow-net` permissions.
   ```
 - Reduce parallel creature count or population size.
 
+### 💥 WASM Panic Recovery
+
+**Symptoms:**
+
+- `RuntimeError: unreachable` thrown from within WASM activation
+- Subsequent activation or dispose calls fail with ownership errors
+
+**Cause:** A WASM panic (e.g., from an assertion failure in the Rust activation
+code) leaves the WASM instance in an unrecoverable state. Prior to Issue #2207
+and #2212, attempting to dispose a creature after a WASM panic would throw a
+second error, and fitness evaluation would propagate the panic as an
+unrecoverable crash.
+
+**Current behaviour (Issue #2207, #2212):**
+
+- **Fitness evaluation** now catches WASM panics gracefully and assigns the
+  worst possible fitness score to the affected creature, allowing evolution to
+  continue with the rest of the population.
+- **Disposal after panic** detects the corrupted WASM state and skips the normal
+  disposal path, preventing secondary errors from masking the original panic.
+- **Logging** records the panic details so the root cause can be investigated.
+
+**What you should do:**
+
+- If panics are frequent, check for numerical overflow in your training data or
+  extreme weight/bias values. Enable weight and bias regularisation to prevent
+  extreme values.
+- WASM panics are non-deterministic in multi-threaded workloads — a single panic
+  does not indicate a systematic problem.
+
 ---
 
 ## 🦀 Discovery Library

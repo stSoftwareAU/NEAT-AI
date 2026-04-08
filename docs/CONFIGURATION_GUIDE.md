@@ -37,6 +37,7 @@ CLI arguments or environment variables without pre-parsing.
 - [Data Fuzzing](#data-fuzzing)
 - [Cross-Validation](#cross-validation)
 - [Hyperparameter Evolution](#hyperparameter-evolution)
+- [MCMC Acceptance Criterion](#mcmc-acceptance-criterion)
 - [Adaptive Population Sizing](#adaptive-population-sizing)
 - [Parallel Evaluation](#parallel-evaluation)
 - [Logging and Reproducibility](#logging-and-reproducibility)
@@ -1021,6 +1022,66 @@ Each creature evolves these values within the configured bounds:
 | `weightPerturbationScale`  | `1.0`   | Weight perturbation magnitude scaling factor       |
 | `l1RegularisationStrength` | `0`     | L1 regularisation strength for backpropagation     |
 | `l2RegularisationStrength` | `0`     | L2 regularisation strength for backpropagation     |
+
+---
+
+## 🎲 MCMC Acceptance Criterion
+
+Issue #2199: Markov Chain Monte Carlo (MCMC) acceptance applies the
+[Metropolis-Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)
+criterion to mutation acceptance. Instead of unconditionally accepting all
+mutations, worse-fitness moves are accepted with a probability that decreases as
+temperature cools. This enables the population to escape local optima early in
+evolution and converge to precise solutions later.
+
+The acceptance probability follows:
+
+```
+P(accept) = min(1, exp(-deltaCost / temperature))
+```
+
+Temperature follows an exponential cooling schedule with adaptive tuning (Issue
+#2201) that adjusts temperature toward the theoretically optimal acceptance rate
+of ~23.4% (Roberts et al. 1997).
+
+Pass as `mcmc` in options.
+
+```ts
+const config = createNeatConfig({
+  mcmc: {
+    enabled: true,
+    initialTemperature: 1.0,
+    coolingRate: 0.995,
+  },
+});
+```
+
+| Option                 | Type      | Default | Description                                                         |
+| ---------------------- | --------- | ------- | ------------------------------------------------------------------- |
+| `enabled`              | `boolean` | `false` | Whether MCMC acceptance is active                                   |
+| `initialTemperature`   | `number`  | `1.0`   | Starting temperature for Metropolis-Hastings acceptance             |
+| `minTemperature`       | `number`  | `0.01`  | Floor temperature to prevent acceptance probability reaching zero   |
+| `coolingRate`          | `number`  | `0.995` | Multiplicative cooling factor applied per generation                |
+| `targetAcceptanceRate` | `number`  | `0.234` | Optimal acceptance rate for high-dimensional MCMC                   |
+| `adjustmentRate`       | `number`  | `0.02`  | Rate at which temperature adapts toward the target acceptance rate  |
+| `toleranceRate`        | `number`  | `0.05`  | Tolerance band around target rate within which no adjustment occurs |
+
+**How it works:**
+
+- **Improving mutations** (lower cost) are always accepted
+- **Worsening mutations** are accepted with probability
+  `exp(-deltaCost / temperature)`
+- **Topology mutations** (add/remove nodes or connections) are always accepted
+  unconditionally, since discrete structural changes do not lend themselves to
+  continuous cost comparison
+- **Adaptive tuning** (Issue #2201): after each generation, the smoothed
+  acceptance rate is compared to the target. If acceptance is too high the
+  temperature decreases; if too low it increases
+
+> [!TIP]
+> MCMC works well alongside plateau detection. Plateau detection adjusts _how
+> much_ mutation happens, while MCMC temperature adjusts _which mutations
+> stick_. Enable both for robust exploration-exploitation balance.
 
 ---
 

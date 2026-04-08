@@ -40,6 +40,16 @@ machine-learning idea:
 - **Layer assignment** is the topological ordering of neurons into discrete
   layers based on longest-path distance from input neurons, used by synthetic
   synapse generation to determine which neuron pairs are in adjacent layers.
+- **MCMC acceptance** refers to the
+  [Metropolis-Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)
+  criterion applied to mutation acceptance. Instead of accepting all mutations
+  unconditionally, worsening mutations are accepted with a temperature-dependent
+  probability, enabling escape from local optima early and convergence later.
+- **Horizontal gene transfer** describes the subgraph transplantation breeding
+  strategy that copies connected subgraphs between genetically incompatible
+  creatures, inspired by
+  [horizontal gene transfer](https://en.wikipedia.org/wiki/Horizontal_gene_transfer)
+  in microbiology.
 
 If you spot another fun label, expect it to be backed by a reference to the
 standard term the first time it appears.
