@@ -9,16 +9,10 @@
  */
 
 import type {
-  CandidateHarmfulNeuron,
   CandidateNeuron,
-  CandidateSquash,
   CandidateSynapse,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import type { RemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import type {
-  CoordinatedStructuralCandidate,
-} from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import {
   applyCoordinatedStructuralCandidate,
 } from "@architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
@@ -31,11 +25,12 @@ import {
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import type { Creature } from "@creature";
+import type { DiscoveryWireRequest } from "@discovery/DiscoveryWireFormat.ts";
 import { formatWeight } from "@discovery/FailureCache.ts";
 import type { SuccessCacheEntry } from "@discovery/SuccessCache.ts";
 
-function getRustRequest(entry: SuccessCacheEntry): Record<string, unknown> {
-  return (entry.rustRequest as Record<string, unknown>) ?? {};
+function getRustRequest(entry: SuccessCacheEntry): DiscoveryWireRequest {
+  return entry.rustRequest ?? {};
 }
 
 function safeNumber(value: unknown): number | undefined {
@@ -109,7 +104,7 @@ export function isAlreadyApplied(
 
   // Fast-path: structural removals.
   if (type === "remove-low-impact") {
-    const c = req.removalCandidate as RemovalCandidate | undefined;
+    const c = req.removalCandidate;
     if (!c?.neuronUuid) return false;
     const neuronId = resolveWireToRuntimeId(
       buildWireToRuntimeIdMap(creature),
@@ -120,7 +115,7 @@ export function isAlreadyApplied(
       : false;
   }
   if (type === "remove-neuron") {
-    const c = req.harmfulNeuronCandidate as CandidateHarmfulNeuron | undefined;
+    const c = req.harmfulNeuronCandidate;
     if (!c?.neuronUuid) return false;
     const neuronId = resolveWireToRuntimeId(
       buildWireToRuntimeIdMap(creature),
@@ -131,7 +126,7 @@ export function isAlreadyApplied(
       : false;
   }
   if (type === "remove-synapse") {
-    const c = req.harmfulSynapseCandidate as CandidateSynapse | undefined;
+    const c = req.harmfulSynapseCandidate;
     const wireToId = buildWireToRuntimeIdMap(creature);
     const candidateEndpoints = c
       ? resolveCandidateSynapseEndpoints(wireToId, c)
@@ -143,10 +138,7 @@ export function isAlreadyApplied(
         candidateEndpoints.toId,
       );
     }
-    const details = req.synapseDetails as {
-      fromNeuronUuid?: string;
-      toNeuronUuid?: string;
-    } | undefined;
+    const details = req.synapseDetails;
     const detailEndpoints = resolveSynapseDetailsEndpoints(creature, details);
     if (detailEndpoints) {
       return !isSynapsePresent(
@@ -159,7 +151,7 @@ export function isAlreadyApplied(
   }
 
   if (type === "add-synapses") {
-    const c = req.synapseCandidate as CandidateSynapse | undefined;
+    const c = req.synapseCandidate;
     if (!c) return false;
     const endpoints = resolveCandidateSynapseEndpoints(
       buildWireToRuntimeIdMap(creature),
@@ -170,7 +162,7 @@ export function isAlreadyApplied(
   }
 
   if (type === "change-squash") {
-    const c = req.squashCandidate as CandidateSquash | undefined;
+    const c = req.squashCandidate;
     if (!c?.neuronUuid) {
       return false;
     }
@@ -189,9 +181,7 @@ export function isAlreadyApplied(
   // trivially "already applied" (eg remove/remove/add sequences).
   // We treat them as already applied only when we can verify every operation.
   if (type === "coordinated-structural") {
-    const spec = req.coordinatedStructuralCandidate as
-      | CoordinatedStructuralCandidate
-      | undefined;
+    const spec = req.coordinatedStructuralCandidate;
     const ops = spec?.operations;
     if (!Array.isArray(ops) || ops.length === 0) return false;
 
@@ -271,18 +261,11 @@ export function isAlreadyApplied(
 
   if (type === "add-neurons") {
     // Approximate match using the same exponent-bucketing approach as the cache key.
-    const details = req.neuronDetails as {
-      fromNeuronUuid?: string;
-      toNeuronUuid?: string;
-      incomingWeight?: number;
-      outgoingWeight?: number;
-      bias?: number;
-      squash?: string;
-    } | undefined;
+    const details = req.neuronDetails;
     const endpoints = details
       ? resolveCandidateNeuronEndpoints(
         buildWireToRuntimeIdMap(creature),
-        details as CandidateNeuron,
+        details as unknown as CandidateNeuron,
       )
       : undefined;
     const fromId = endpoints?.fromId;
@@ -345,14 +328,12 @@ export function applyEntryUsingRustRequest(
 
   switch (entry.changeType) {
     case "coordinated-structural": {
-      const coordinated = req.coordinatedStructuralCandidate as
-        | CoordinatedStructuralCandidate
-        | undefined;
+      const coordinated = req.coordinatedStructuralCandidate;
       if (!coordinated) return undefined;
       return applyCoordinatedStructuralCandidate(baseCreature, coordinated);
     }
     case "add-synapses": {
-      const synapse = req.synapseCandidate as CandidateSynapse | undefined;
+      const synapse = req.synapseCandidate;
       if (!synapse) return undefined;
       return DiscoverStructure.addHelpfulSynapses(
         discoveryID,
@@ -361,7 +342,7 @@ export function applyEntryUsingRustRequest(
       );
     }
     case "add-neurons": {
-      const neuron = req.neuronCandidate as CandidateNeuron | undefined;
+      const neuron = req.neuronCandidate;
       if (!neuron) return undefined;
       return DiscoverStructure.addHelpfulNeurons(
         discoveryID,
@@ -370,7 +351,7 @@ export function applyEntryUsingRustRequest(
       );
     }
     case "change-squash": {
-      const squash = req.squashCandidate as CandidateSquash | undefined;
+      const squash = req.squashCandidate;
       if (!squash) return undefined;
       return DiscoverStructure.changeSquash(
         discoveryID,
@@ -379,15 +360,8 @@ export function applyEntryUsingRustRequest(
       );
     }
     case "remove-synapse": {
-      const synapse =
-        (req.harmfulSynapseCandidate as CandidateSynapse | undefined) ??
-          (req.synapseCandidate as CandidateSynapse | undefined);
-      const details = req.synapseDetails as
-        | {
-          fromNeuronUuid?: string;
-          toNeuronUuid?: string;
-        }
-        | undefined;
+      const synapse = req.harmfulSynapseCandidate ?? req.synapseCandidate;
+      const details = req.synapseDetails;
       const resolved = synapse ??
         (details &&
             details.fromNeuronUuid &&
@@ -412,9 +386,7 @@ export function applyEntryUsingRustRequest(
       return removed ?? undefined;
     }
     case "remove-neuron": {
-      const neuron = req.harmfulNeuronCandidate as
-        | CandidateHarmfulNeuron
-        | undefined;
+      const neuron = req.harmfulNeuronCandidate;
       if (!neuron) return undefined;
       const removed = DiscoverStructure.removeHarmfulNeuron(
         discoveryID,
@@ -424,7 +396,7 @@ export function applyEntryUsingRustRequest(
       return removed ?? undefined;
     }
     case "remove-low-impact": {
-      const c = req.removalCandidate as RemovalCandidate | undefined;
+      const c = req.removalCandidate;
       if (!c) return undefined;
       const removed = DiscoverStructure.removeLowImpactNeuron(
         discoveryID,

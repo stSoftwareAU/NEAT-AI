@@ -30,8 +30,14 @@ import type {
   SynapseTrace,
 } from "@architecture/SynapseInterfaces.ts";
 import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
+import {
+  isMemeticWireData,
+  type MemeticWeightEntryWire,
+  type MemeticWireData,
+} from "@blackbox/MemeticWireData.ts";
 import { convertMemeticExportToWireJson } from "@creature/MemeticWireExport.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { isRecord } from "@utils/TypeGuards.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { cleanupOrphanedNeuronsInCreature } from "@compact/OrphanedNeuronCleanup.ts";
 import { pruneOrphanMemeticReferences } from "@compact/MemeticCleanup.ts";
@@ -177,11 +183,10 @@ export function traceJSON(creature: Creature): CreatureTrace {
  * `{ fromUUID, toUUID, weight }`; legacy object maps are still accepted.
  */
 function convertMemeticToIntIds(
-  // deno-lint-ignore no-explicit-any
-  memetic: any,
+  memetic: MemeticWireData,
   creature: Creature,
   uuidToIndex: Map<string, number>,
-): typeof memetic {
+): MemeticInterface | MemeticWireData {
   if (!memetic) return memetic;
 
   const uuidToIntId = new Map<string, number>();
@@ -198,7 +203,7 @@ function convertMemeticToIntIds(
   // Check if any keys need conversion
   let hasUuidKeys = false;
   if (memetic.biases) {
-    for (const key in memetic.biases) {
+    for (const key of Object.keys(memetic.biases)) {
       if (needsConversion(key)) {
         hasUuidKeys = true;
         break;
@@ -207,8 +212,14 @@ function convertMemeticToIntIds(
   }
   const weightsAreWireArray = Array.isArray(memetic.weights);
 
-  if (!hasUuidKeys && memetic.weights && !weightsAreWireArray) {
-    for (const key in memetic.weights) {
+  if (
+    !hasUuidKeys && memetic.weights && !weightsAreWireArray
+  ) {
+    for (
+      const key of Object.keys(
+        memetic.weights as Record<string, MemeticWeightEntryWire[]>,
+      )
+    ) {
       if (needsConversion(key)) {
         hasUuidKeys = true;
         break;
@@ -218,14 +229,15 @@ function convertMemeticToIntIds(
 
   if (!hasUuidKeys && !weightsAreWireArray) return memetic;
 
-  // Deep clone to avoid mutating the original JSON
-  // deno-lint-ignore no-explicit-any
-  const result: any = JSON.parse(JSON.stringify(memetic));
+  // Deep clone to avoid mutating the original JSON, then validate
+  const parsed: unknown = JSON.parse(JSON.stringify(memetic));
+  if (!isMemeticWireData(parsed)) return memetic;
+  const result: MemeticWireData = parsed;
 
   // Convert biases keys
   if (result.biases) {
     const newBiases: Record<number, number> = {};
-    for (const key in result.biases) {
+    for (const key of Object.keys(result.biases)) {
       const intId = uuidToIntId.get(key);
       if (intId !== undefined) {
         newBiases[intId] = result.biases[key];
@@ -236,13 +248,12 @@ function convertMemeticToIntIds(
         }
       }
     }
-    result.biases = newBiases;
+    (result as unknown as Record<string, unknown>).biases = newBiases;
   }
 
   // Convert weights: wire array { fromUUID, toUUID, weight } or UUID-keyed map
   if (result.weights) {
-    // deno-lint-ignore no-explicit-any
-    const newWeights: Record<number, any[]> = {};
+    const newWeights: Record<number, MemeticWeightEntryWire[]> = {};
     if (Array.isArray(result.weights)) {
       for (const row of result.weights) {
         if (
@@ -259,39 +270,44 @@ function convertMemeticToIntIds(
         if (!newWeights[fromInt]) newWeights[fromInt] = [];
         newWeights[fromInt].push({ toId: toInt, weight: row.weight });
       }
-      result.weights = newWeights;
+      (result as unknown as Record<string, unknown>).weights = newWeights;
     } else {
-      for (const key in result.weights) {
+      const weightMap = result.weights as Record<
+        string,
+        MemeticWeightEntryWire[]
+      >;
+      for (const key of Object.keys(weightMap)) {
         const intId = uuidToIntId.get(key);
         const numericKey = intId !== undefined ? intId : Number(key);
         if (isNaN(numericKey)) continue;
 
-        // deno-lint-ignore no-explicit-any
-        const entries = result.weights[key].map((entry: any) => {
-          const newEntry = { ...entry };
-          if (typeof newEntry.fromUUID === "string") {
-            delete newEntry.fromUUID;
-          }
-          if (typeof newEntry.toUUID === "string") {
-            const toIntId = uuidToIntId.get(newEntry.toUUID);
-            if (toIntId !== undefined) {
-              newEntry.toId = toIntId;
-              delete newEntry.toUUID;
+        const entries = weightMap[key].map(
+          (entry: MemeticWeightEntryWire) => {
+            const newEntry: MemeticWeightEntryWire = { ...entry };
+            if (typeof newEntry.toUUID === "string") {
+              const toIntId = uuidToIntId.get(newEntry.toUUID);
+              if (toIntId !== undefined) {
+                newEntry.toId = toIntId;
+                delete newEntry.toUUID;
+              }
             }
-          }
-          return newEntry;
-        });
+            return newEntry;
+          },
+        );
         newWeights[numericKey] = entries;
       }
-      result.weights = newWeights;
+      (result as unknown as Record<string, unknown>).weights = newWeights;
     }
   }
 
   // Convert ancestry if present
   if (result.ancestry && Array.isArray(result.ancestry)) {
-    // deno-lint-ignore no-explicit-any
-    result.ancestry = result.ancestry.map((ancestor: any) => {
-      return convertMemeticToIntIds(ancestor, creature, uuidToIndex);
+    result.ancestry = result.ancestry.map((ancestor: MemeticWireData) => {
+      return convertMemeticToIntIds(
+        ancestor,
+        creature,
+        uuidToIndex,
+      ) as MemeticWireData;
     });
   }
 
@@ -370,17 +386,14 @@ export function loadFrom(
     const jn = neurons[i];
     if (jn.type === "input") continue;
 
-    // deno-lint-ignore no-explicit-any
-    const raw = jn as any;
-
     if (jn.type === "output") {
       const outId = outputNeuronId(outputIndex++);
       (jn as { id: number }).id = outId;
-      if (typeof raw.uuid === "string") {
-        uuidToIndex.set(raw.uuid, pos);
+      if (typeof jn.uuid === "string") {
+        uuidToIndex.set(jn.uuid, pos);
       }
-    } else if (typeof raw.uuid === "string") {
-      uuidToIndex.set(raw.uuid, pos);
+    } else if (typeof jn.uuid === "string") {
+      uuidToIndex.set(jn.uuid, pos);
     }
 
     const n = Neuron.fromJSON(jn, creature);
@@ -388,12 +401,11 @@ export function loadFrom(
     ensureIdAbove(n.id);
 
     if ((jn as NeuronTrace).trace) {
-      const target = state.node(n.index) as unknown as Record<string, unknown>;
-      const source = (jn as NeuronTrace).trace as unknown as Record<
-        string,
-        unknown
-      >;
-      safeAssignProperties(target, source);
+      const target = state.node(n.index);
+      const source = (jn as NeuronTrace).trace;
+      if (isRecord(target) && isRecord(source)) {
+        safeAssignProperties(target, source);
+      }
     }
 
     numericIdToIndex.set(n.id, pos);
@@ -409,12 +421,10 @@ export function loadFrom(
   for (let i = 0; i < synapseCount; i++) {
     const synapse = synapses[i];
     const se = synapse as SynapseExport;
-    // deno-lint-ignore no-explicit-any
-    const rawSyn = synapse as any;
 
     let from: number | undefined;
-    if (typeof rawSyn.fromUUID === "string") {
-      from = uuidToIndex.get(rawSyn.fromUUID);
+    if (typeof se.fromUUID === "string") {
+      from = uuidToIndex.get(se.fromUUID);
     }
     if (from === undefined && se.fromId !== undefined) {
       from = numericIdToIndex.get(se.fromId);
@@ -425,15 +435,15 @@ export function loadFrom(
 
     if (from === undefined) {
       fail(
-        `FROM is undefined: fromId ${se.fromId}, fromUUID ${rawSyn.fromUUID}, index ${
+        `FROM is undefined: fromId ${se.fromId}, fromUUID ${se.fromUUID}, index ${
           (synapse as SynapseInternal).from
         }, synapse[${i}/${synapseCount}], uuidToIndex size ${uuidToIndex.size}`,
       );
     }
 
     let to: number | undefined;
-    if (typeof rawSyn.toUUID === "string") {
-      to = uuidToIndex.get(rawSyn.toUUID);
+    if (typeof se.toUUID === "string") {
+      to = uuidToIndex.get(se.toUUID);
     }
     if (to === undefined && se.toId !== undefined) {
       to = numericIdToIndex.get(se.toId);
@@ -453,8 +463,8 @@ export function loadFrom(
     if (isForwardOnly && from! >= to!) {
       getLogger().error(
         `🚨 [loadFrom] Stripping recurrent synapse ${from}->${to} ` +
-          `(fromUUID=${rawSyn.fromUUID ?? se.fromId}, toUUID=${
-            rawSyn.toUUID ?? se.toId
+          `(fromUUID=${se.fromUUID ?? se.fromId}, toUUID=${
+            se.toUUID ?? se.toId
           }) ` +
           `from forward-only creature (UUID: ${creature.uuid ?? "unknown"}). ` +
           `This indicates upstream corruption.`,
@@ -484,15 +494,11 @@ export function loadFrom(
     }
 
     if ((synapse as SynapseTrace).trace) {
-      const target = state.connection(
-        tmpSynapse.from,
-        tmpSynapse.to,
-      ) as unknown as Record<string, unknown>;
-      const source = (synapse as SynapseTrace).trace as unknown as Record<
-        string,
-        unknown
-      >;
-      safeAssignProperties(target, source);
+      const target = state.connection(tmpSynapse.from, tmpSynapse.to);
+      const source = (synapse as SynapseTrace).trace;
+      if (isRecord(target) && isRecord(source)) {
+        safeAssignProperties(target, source);
+      }
     }
   }
   if (validSynapseCount < synapseCount) {
@@ -505,10 +511,10 @@ export function loadFrom(
     creature.memetic = undefined;
   } else if (json.memetic && uuidToIndex.size > 0) {
     creature.memetic = convertMemeticToIntIds(
-      json.memetic,
+      json.memetic as unknown as MemeticWireData,
       creature,
       uuidToIndex,
-    );
+    ) as MemeticInterface;
   } else {
     creature.memetic = json.memetic;
   }

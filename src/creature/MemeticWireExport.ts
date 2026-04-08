@@ -1,5 +1,6 @@
 import type { Creature } from "../Creature.ts";
 import type { MemeticInterface } from "../blackbox/MemeticInterface.ts";
+import type { MemeticWireData } from "../blackbox/MemeticWireData.ts";
 import { neuronUuid } from "../neuron/NeuronSerialization.ts";
 
 /**
@@ -31,8 +32,7 @@ export type MemeticWeightWireRow = {
  * weights as an array of synapse-shaped rows (no numeric neuron keys).
  */
 export function convertMemeticSnapshotToWireJson(
-  // deno-lint-ignore no-explicit-any
-  node: any,
+  node: MemeticWireData,
   idToUuid: Map<number, string>,
 ): void {
   if (
@@ -73,18 +73,24 @@ export function convertMemeticSnapshotToWireJson(
         rows.push({ fromUUID: fromU, toUUID: toU, weight: e.weight });
       }
     }
-    node.weights = rows;
+    (node as unknown as Record<string, unknown>).weights = rows;
     return;
   }
 
-  for (const k of Object.keys(node.weights)) {
+  const weightMap = node.weights as Record<
+    string,
+    Array<
+      { weight?: number; fromUUID?: string; toUUID?: string; toId?: number }
+    >
+  >;
+  for (const k of Object.keys(weightMap)) {
     const asNum = Number(k);
     const fromKey = Number.isFinite(asNum) && `${asNum}` === k
       ? idToUuid.get(asNum)
       : k;
     if (typeof fromKey !== "string") continue;
 
-    const arr = node.weights[k];
+    const arr = weightMap[k];
     if (!Array.isArray(arr)) continue;
 
     for (const e of arr) {
@@ -101,7 +107,7 @@ export function convertMemeticSnapshotToWireJson(
       rows.push({ fromUUID: fromKey, toUUID: toU, weight: e.weight });
     }
   }
-  node.weights = rows;
+  (node as unknown as Record<string, unknown>).weights = rows;
 }
 
 /**
@@ -112,13 +118,12 @@ export function convertMemeticExportToWireJson(
   memetic: MemeticInterface,
 ): MemeticInterface {
   const idToUuid = buildNeuronIdToWireUuidMap(creature);
-  // deno-lint-ignore no-explicit-any
-  const raw = JSON.parse(JSON.stringify(memetic)) as any;
+  const raw = JSON.parse(JSON.stringify(memetic)) as MemeticWireData;
   convertMemeticSnapshotToWireJson(raw, idToUuid);
   if (Array.isArray(raw.ancestry)) {
     for (const snap of raw.ancestry) {
       convertMemeticSnapshotToWireJson(snap, idToUuid);
     }
   }
-  return raw as MemeticInterface;
+  return raw as unknown as MemeticInterface;
 }
