@@ -12,6 +12,7 @@
  */
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { ensureIdAbove, outputNeuronId } from "@architecture/NeuronId.ts";
+import type { MemeticWireData } from "@blackbox/MemeticWireData.ts";
 
 /**
  * Deterministic integer ID from a UUID string.
@@ -68,9 +69,6 @@ export function normaliseCreatureExport(json: CreatureExport): void {
   // Assign integer IDs to neurons
   let outputIndex = 0;
   for (const neuron of json.neurons) {
-    // deno-lint-ignore no-explicit-any
-    const rawNeuron = neuron as any;
-
     if (neuron.type === "output") {
       const correctId = outputNeuronId(outputIndex);
       if (neuron.id !== undefined && neuron.id !== correctId) {
@@ -78,40 +76,37 @@ export function normaliseCreatureExport(json: CreatureExport): void {
         idRemap.set(neuron.id, correctId);
       }
       (neuron as { id: number }).id = correctId;
-      if (rawNeuron.uuid) {
-        uuidToId.set(rawNeuron.uuid, correctId);
+      if (neuron.uuid) {
+        uuidToId.set(neuron.uuid, correctId);
       }
       outputIndex++;
     } else {
       // Hidden or constant neuron
       if (neuron.id === undefined) {
-        if (rawNeuron.uuid) {
-          const id = deterministicIdFromUuid(rawNeuron.uuid);
+        if (neuron.uuid) {
+          const id = deterministicIdFromUuid(neuron.uuid);
           (neuron as { id: number }).id = id;
           ensureIdAbove(id);
         }
       }
-      if (rawNeuron.uuid) {
-        uuidToId.set(rawNeuron.uuid, neuron.id!);
+      if (neuron.uuid) {
+        uuidToId.set(neuron.uuid, neuron.id!);
       }
     }
   }
 
   // Assign fromId / toId to synapses
   for (const synapse of json.synapses) {
-    // deno-lint-ignore no-explicit-any
-    const rawSynapse = synapse as any;
-
-    if (synapse.fromId === undefined && rawSynapse.fromUUID) {
-      const id = uuidToId.get(rawSynapse.fromUUID);
+    if (synapse.fromId === undefined && synapse.fromUUID) {
+      const id = uuidToId.get(synapse.fromUUID);
       if (id !== undefined) {
         (synapse as { fromId: number }).fromId = id;
       }
     } else if (synapse.fromId !== undefined && idRemap.has(synapse.fromId)) {
       (synapse as { fromId: number }).fromId = idRemap.get(synapse.fromId)!;
     }
-    if (synapse.toId === undefined && rawSynapse.toUUID) {
-      const id = uuidToId.get(rawSynapse.toUUID);
+    if (synapse.toId === undefined && synapse.toUUID) {
+      const id = uuidToId.get(synapse.toUUID);
       if (id !== undefined) {
         (synapse as { toId: number }).toId = id;
       }
@@ -122,7 +117,10 @@ export function normaliseCreatureExport(json: CreatureExport): void {
 
   // Normalise memetic data: convert string UUID keys to integer IDs
   if (json.memetic) {
-    normaliseMemeticData(json.memetic, uuidToId);
+    normaliseMemeticData(
+      json.memetic as unknown as MemeticWireData,
+      uuidToId,
+    );
   }
 }
 
@@ -131,46 +129,52 @@ export function normaliseCreatureExport(json: CreatureExport): void {
  * Handles weights, biases, and ancestry snapshots.
  */
 function normaliseMemeticData(
-  // deno-lint-ignore no-explicit-any
-  memetic: any,
+  memetic: MemeticWireData,
   uuidToId: Map<string, number>,
 ): void {
   if (memetic.weights) {
     if (Array.isArray(memetic.weights)) {
-      // deno-lint-ignore no-explicit-any
-      const acc: Record<number, any[]> = {};
+      const acc: Record<number, { toId: number; weight: number }[]> = {};
       for (const row of memetic.weights) {
         if (!row || typeof row !== "object") continue;
-        // deno-lint-ignore no-explicit-any
-        const r = row as any;
-        if (typeof r.fromUUID !== "string" || typeof r.toUUID !== "string") {
+        if (
+          typeof row.fromUUID !== "string" || typeof row.toUUID !== "string"
+        ) {
           continue;
         }
-        const fromId = uuidToId.get(r.fromUUID);
-        const toId = uuidToId.get(r.toUUID);
+        const fromId = uuidToId.get(row.fromUUID);
+        const toId = uuidToId.get(row.toUUID);
         if (fromId === undefined || toId === undefined) continue;
         if (!acc[fromId]) acc[fromId] = [];
-        acc[fromId].push({ toId, weight: r.weight });
+        acc[fromId].push({ toId, weight: row.weight });
       }
-      memetic.weights = acc;
+      (memetic as unknown as Record<string, unknown>).weights = acc;
     } else {
-      memetic.weights = convertMapKeys(memetic.weights, uuidToId);
+      const weightMap = memetic.weights as Record<string, unknown>;
+      const converted = convertMapKeys(weightMap, uuidToId);
       // Also convert toUUID → toId in weight entries
-      for (const key of Object.keys(memetic.weights)) {
-        const entries = memetic.weights[key];
+      for (const numKey of Object.keys(converted)) {
+        const entries = converted[Number(numKey)];
         if (Array.isArray(entries)) {
           for (const entry of entries) {
-            if (entry.toUUID !== undefined && entry.toId === undefined) {
+            if (
+              typeof entry === "object" && entry !== null &&
+              entry.toUUID !== undefined && entry.toId === undefined
+            ) {
               const id = uuidToId.get(entry.toUUID);
               if (id !== undefined) entry.toId = id;
             }
           }
         }
       }
+      (memetic as unknown as Record<string, unknown>).weights = converted;
     }
   }
   if (memetic.biases) {
-    memetic.biases = convertMapKeys(memetic.biases, uuidToId);
+    (memetic as unknown as Record<string, unknown>).biases = convertMapKeys(
+      memetic.biases as Record<string, unknown>,
+      uuidToId,
+    );
   }
   // Normalise ancestry snapshots
   if (Array.isArray(memetic.ancestry)) {
