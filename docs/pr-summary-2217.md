@@ -8,8 +8,8 @@ proper typed interfaces and runtime validation guards. Closes #2217.
 - **`src/blackbox/MemeticWireData.ts`** (new): Wire-format `MemeticWireData`
   interface with `isMemeticWireData()` runtime type guard for JSON-parsed
   memetic data.
-- **`src/utils/TypeGuards.ts`** (new): Shared `isRecord()` / `asRecord()`
-  guards replacing double-casts (`as unknown as Record<string, unknown>`).
+- **`src/utils/TypeGuards.ts`** (new): Shared `isRecord()` / `asRecord()` guards
+  replacing double-casts (`as unknown as Record<string, unknown>`).
 - **`src/creature/CreatureSerialization.ts`**: Replaced `memetic: any` parameter
   with `MemeticWireData`; replaced `JSON.parse` result `any` with validated
   `MemeticWireData`; removed `as any` for neuron/synapse UUID access (using
