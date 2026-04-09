@@ -45,6 +45,37 @@ export interface ConnectionRef {
   synapses: SynapseInternal[];
 }
 
+/**
+ * Compute the dependency-aware sort index for a neuron based on its inward
+ * synapses. Returns the adjusted index (≥ 0) when all non-input dependencies
+ * are resolved in `childMap`, or -1 when at least one dependency is still
+ * unresolved.
+ */
+export function computeNeuronDependencyIndex(
+  baseIndex: number,
+  ref: ConnectionRef | undefined,
+  childMap: Map<number, number>,
+): number {
+  if (!ref) return baseIndex;
+
+  let indx = baseIndex;
+  const parentNeurons = ref.parent.neurons;
+  for (const synapse of ref.synapses) {
+    if (indx < 0) break;
+
+    const fromNeuron = parentNeurons[synapse.from];
+    if (fromNeuron.type === "input") continue;
+
+    const dependantIndx = childMap.get(fromNeuron.id);
+    if (dependantIndx === undefined) {
+      indx = -1;
+    } else if (dependantIndx >= indx) {
+      indx = dependantIndx + 1;
+    }
+  }
+  return indx;
+}
+
 export class Offspring {
   /**
    * Create an offspring from two parent networks.
@@ -779,22 +810,7 @@ export class Offspring {
               );
             }
             const ref = connectionsMap.get(nId);
-            if (ref) {
-              const parentNeurons = ref.parent.neurons;
-              for (const synapse of ref.synapses) {
-                if (indx >= 0) {
-                  const fromNeuron = parentNeurons[synapse.from];
-                  if (fromNeuron.type !== "input") {
-                    const dependantIndx = childMap.get(fromNeuron.id);
-                    if (dependantIndx === undefined) {
-                      indx = -1;
-                    } else if (dependantIndx >= indx) {
-                      indx = dependantIndx + 1;
-                    }
-                  }
-                }
-              }
-            }
+            indx = computeNeuronDependencyIndex(indx, ref, childMap);
             if (indx >= 0) {
               if (usedIndx.has(indx)) {
                 childMap.forEach((childIndx, nid) => {
