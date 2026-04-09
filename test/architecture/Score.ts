@@ -374,7 +374,7 @@ Deno.test("updateScoreForBiasChange - throws for non-finite bias", () => {
   assertThrows(
     () => updateScoreForBiasChange(creature, 0.1, 0.001, 0.5, NaN),
     Error,
-    "not finite",
+    "is NaN",
   );
 });
 
