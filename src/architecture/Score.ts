@@ -3,6 +3,10 @@ import type { CachedScoreComponents, Creature } from "@creature";
 import { SEMANTIC_MAJOR_VERSION } from "@upgrade/Upgrade.ts";
 import { getLogger } from "@utils/Logger.ts";
 import {
+  assertFiniteNonNegative,
+  assertFiniteNumber,
+} from "@utils/NumericValidation.ts";
+import {
   wasmComputeScoreComponents,
   wasmScanMaxBias,
   wasmScanMaxWeight,
@@ -35,22 +39,20 @@ export function calculate(
   error: number,
   growthCost: number,
 ): number {
-  assert(!Number.isNaN(error), `Error is NaN`);
-  assert(Number.isFinite(error), `Error is not finite`);
-  assert(error >= 0, `Error: ${error} is negative`);
+  assertFiniteNonNegative(error, "Error");
 
   // Get cached weight/bias statistics (Issue #1011)
   const cached = computeAndCacheScoreComponents(creature);
   const max = cached.maxWeightBias;
   const avg = cached.avgWeightBias;
 
-  assert(Number.isFinite(max), `Max: ${max} is not finite`);
-  assert(Number.isFinite(avg), `Avg: ${avg} is not finite`);
+  assertFiniteNumber(max, "Max");
+  assertFiniteNumber(avg, "Avg");
   const penalty = calculatePenalty(max, avg);
-  assert(Number.isFinite(penalty), `Penalty: ${penalty} is not finite`);
+  assertFiniteNumber(penalty, "Penalty");
   const score = calculateScore(error, creature, penalty, growthCost);
 
-  assert(Number.isFinite(score), `Score: ${score} is not finite`);
+  assertFiniteNumber(score, "Score");
   return score;
 }
 
@@ -100,11 +102,7 @@ export function valuePenalty(value: number): number {
 function calculatePenalty(max: number, avg: number): number {
   const penalty = (valuePenalty(max) + valuePenalty(avg)) / 2;
 
-  assert(
-    Number.isFinite(penalty),
-    `Penalty: ${penalty} is not finite`,
-  );
-  assert(penalty >= 0, `Penalty: ${penalty} is negative`);
+  assertFiniteNonNegative(penalty, "Penalty");
   assert(
     penalty < 1,
     `Penalty: ${penalty} is greater than or equal to 1`,
@@ -244,10 +242,7 @@ function computeAndCacheScoreComponents(
     const synapses = creature.synapses;
     for (let i = 0, len = synapses.length; i < len; i++) {
       const synapse = synapses[i];
-      assert(
-        Number.isFinite(synapse.weight),
-        `Weight: ${synapse.weight} is not finite`,
-      );
+      assertFiniteNumber(synapse.weight, "Weight");
       const w = Math.abs(synapse.weight);
       if (w > maxWeightBias) {
         secondMaxWeightBias = maxWeightBias;
@@ -262,10 +257,7 @@ function computeAndCacheScoreComponents(
     // Iterate over non-input neurons to gather bias statistics
     for (let indx = creature.input; indx < endIndex; indx++) {
       const neuron = neurons[indx];
-      assert(
-        Number.isFinite(neuron.bias),
-        `Bias: ${neuron.bias} is not finite`,
-      );
+      assertFiniteNumber(neuron.bias, "Bias");
       const b = Math.abs(neuron.bias);
       if (b > maxWeightBias) {
         secondMaxWeightBias = maxWeightBias;
@@ -290,8 +282,8 @@ function computeAndCacheScoreComponents(
     totalWeightBias = Number.MAX_SAFE_INTEGER;
   }
 
-  assert(maxWeightBias >= 0, `Max: ${maxWeightBias} is negative`);
-  assert(totalWeightBias >= 0, `Total: ${totalWeightBias} is negative`);
+  assertFiniteNonNegative(maxWeightBias, "Max");
+  assertFiniteNonNegative(totalWeightBias, "Total");
 
   const avgWeightBias = countWeightBias > 0
     ? totalWeightBias / countWeightBias
@@ -365,11 +357,9 @@ export function updateScoreForWeightChange(
   oldWeight: number,
   newWeight: number,
 ): number {
-  assert(!Number.isNaN(error), `Error is NaN`);
-  assert(Number.isFinite(error), `Error is not finite`);
-  assert(error >= 0, `Error: ${error} is negative`);
-  assert(Number.isFinite(oldWeight), `Old weight is not finite`);
-  assert(Number.isFinite(newWeight), `New weight is not finite`);
+  assertFiniteNonNegative(error, "Error");
+  assertFiniteNumber(oldWeight, "Old weight");
+  assertFiniteNumber(newWeight, "New weight");
 
   // Ensure we have cached values; if not, compute them
   if (!creature.cachedScoreComponents) {
@@ -459,11 +449,9 @@ export function updateScoreForBiasChange(
   oldBias: number,
   newBias: number,
 ): number {
-  assert(!Number.isNaN(error), `Error is NaN`);
-  assert(Number.isFinite(error), `Error is not finite`);
-  assert(error >= 0, `Error: ${error} is negative`);
-  assert(Number.isFinite(oldBias), `Old bias is not finite`);
-  assert(Number.isFinite(newBias), `New bias is not finite`);
+  assertFiniteNonNegative(error, "Error");
+  assertFiniteNumber(oldBias, "Old bias");
+  assertFiniteNumber(newBias, "New bias");
 
   // Ensure we have cached values; if not, compute them
   if (!creature.cachedScoreComponents) {
