@@ -89,6 +89,11 @@ export function simplify(creature: Creature): Creature | undefined {
     }
   });
 
+  // Issue #2233: Delete memetic from the export before reconstructing the
+  // creature. Simplification may remove synapses or neurons, leaving stale
+  // memetic references that fail validation.
+  delete simplified.memetic;
+
   const simplifiedCreature = Creature.fromJSON(simplified);
   const simplifiedUUID = CreatureUtil.makeUUID(simplifiedCreature);
   if (complexUUID === simplifiedUUID) {
@@ -100,8 +105,6 @@ export function simplify(creature: Creature): Creature | undefined {
     "simplify",
     creature.forwardOnly ? { forwardOnly: true } : undefined,
   );
-
-  delete simplifiedCreature.memetic;
 
   return simplifiedCreature;
 }
