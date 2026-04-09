@@ -27,8 +27,8 @@ Added documentation for the following recent improvements:
 
 ### PR Summary Archival
 
-Moved 112 PR summary files from `docs/` to `docs/archive/pr-summaries/` to
-keep the docs directory clean.
+Moved 112 PR summary files from `docs/` to `docs/archive/pr-summaries/` to keep
+the docs directory clean.
 
 ## Evidence
 
