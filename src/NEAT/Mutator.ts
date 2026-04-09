@@ -135,45 +135,53 @@ export class Mutator {
   }
 
   /**
-   * Factory method that creates the correct mutation operator for a given method name.
+   * Issue #2220: Static factory map replacing the switch statement in createOperator().
+   * Maps mutation method names to factory functions that instantiate the correct operator.
+   * This follows the Open/Closed Principle — adding a new mutation type only requires
+   * a new map entry, not modifying a switch statement.
+   */
+  private static readonly operatorFactories = new Map<
+    string,
+    (creature: Creature, config: NeatConfig) => RadioactiveInterface
+  >([
+    [Mutation.ADD_NODE.name, (c, _cfg) => new AddNeuron(c)],
+    [Mutation.SUB_NODE.name, (c, _cfg) => new SubNeuron(c)],
+    [Mutation.ADD_CONN.name, (c, _cfg) => new AddConnection(c)],
+    [Mutation.SUB_CONN.name, (c, _cfg) => new SubConnection(c)],
+    // Issue #1309: Pass weight regularisation config to ModWeight
+    [
+      Mutation.MOD_WEIGHT.name,
+      (c, cfg) => new ModWeight(c, cfg.weightRegularisation),
+    ],
+    // Issue #1416: Pass bias regularisation config to ModBias
+    [
+      Mutation.MOD_BIAS.name,
+      (c, cfg) => new ModBias(c, cfg.biasRegularisation),
+    ],
+    [Mutation.MOD_SQUASH.name, (c, _cfg) => new ModSquash(c)],
+    [Mutation.ADD_SELF_CONN.name, (c, _cfg) => new AddSelfCon(c)],
+    [Mutation.SUB_SELF_CONN.name, (c, _cfg) => new SubSelfCon(c)],
+    [Mutation.ADD_BACK_CONN.name, (c, _cfg) => new AddBackCon(c)],
+    [Mutation.SUB_BACK_CONN.name, (c, _cfg) => new SubBackCon(c)],
+    [Mutation.SWAP_NODES.name, (c, _cfg) => new SwapNeurons(c)],
+  ]);
+
+  /**
+   * Issue #2220: Factory method that creates the correct mutation operator
+   * for a given method name using the static factory map.
    */
   private createOperator(
     creature: Creature,
     methodName: string,
   ): RadioactiveInterface {
-    switch (methodName) {
-      case Mutation.ADD_NODE.name:
-        return new AddNeuron(creature);
-      case Mutation.SUB_NODE.name:
-        return new SubNeuron(creature);
-      case Mutation.ADD_CONN.name:
-        return new AddConnection(creature);
-      case Mutation.SUB_CONN.name:
-        return new SubConnection(creature);
-      case Mutation.MOD_WEIGHT.name:
-        // Issue #1309: Pass weight regularisation config to ModWeight
-        return new ModWeight(creature, this.config.weightRegularisation);
-      case Mutation.MOD_BIAS.name:
-        // Issue #1416: Pass bias regularisation config to ModBias
-        return new ModBias(creature, this.config.biasRegularisation);
-      case Mutation.MOD_SQUASH.name:
-        return new ModSquash(creature);
-      case Mutation.ADD_SELF_CONN.name:
-        return new AddSelfCon(creature);
-      case Mutation.SUB_SELF_CONN.name:
-        return new SubSelfCon(creature);
-      case Mutation.ADD_BACK_CONN.name:
-        return new AddBackCon(creature);
-      case Mutation.SUB_BACK_CONN.name:
-        return new SubBackCon(creature);
-      case Mutation.SWAP_NODES.name:
-        return new SwapNeurons(creature);
-      default:
-        throw new ValidationError(
-          "unknown mutation method: " + methodName,
-          "OTHER",
-        );
+    const factory = Mutator.operatorFactories.get(methodName);
+    if (!factory) {
+      throw new ValidationError(
+        `Unknown mutation method: ${methodName}`,
+        "OTHER",
+      );
     }
+    return factory(creature, this.config);
   }
 
   /**
