@@ -23,28 +23,7 @@ function getStringFromWasm0(ptr, len) {
     return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
 }
 
-let cachedFloat32ArrayMemory0 = null;
-
-function getFloat32ArrayMemory0() {
-    if (cachedFloat32ArrayMemory0 === null || cachedFloat32ArrayMemory0.byteLength === 0) {
-        cachedFloat32ArrayMemory0 = new Float32Array(wasm.memory.buffer);
-    }
-    return cachedFloat32ArrayMemory0;
-}
-
 let WASM_VECTOR_LEN = 0;
-
-function passArrayF32ToWasm0(arg, malloc) {
-    const ptr = malloc(arg.length * 4, 4) >>> 0;
-    getFloat32ArrayMemory0().set(arg, ptr / 4);
-    WASM_VECTOR_LEN = arg.length;
-    return ptr;
-}
-
-function getArrayF32FromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    return getFloat32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
-}
 
 function passArray8ToWasm0(arg, malloc) {
     const ptr = malloc(arg.length * 1, 1) >>> 0;
@@ -59,26 +38,49 @@ function takeFromExternrefTable0(idx) {
     return value;
 }
 
+let cachedFloat32ArrayMemory0 = null;
+
+function getFloat32ArrayMemory0() {
+    if (cachedFloat32ArrayMemory0 === null || cachedFloat32ArrayMemory0.byteLength === 0) {
+        cachedFloat32ArrayMemory0 = new Float32Array(wasm.memory.buffer);
+    }
+    return cachedFloat32ArrayMemory0;
+}
+
+function passArrayF32ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 4, 4) >>> 0;
+    getFloat32ArrayMemory0().set(arg, ptr / 4);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
+
+function getArrayF32FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getFloat32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+
 function _assertClass(instance, klass) {
     if (!(instance instanceof klass)) {
         throw new Error(`expected instance of ${klass.name}`);
     }
 }
 /**
- * Fused activate + Cross Entropy calculation for batch scoring.
+ * Fused activate + MSE (Mean Squared Error) calculation for batch scoring.
  *
- * Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
- * Output values are clamped to [1e-15, 1-1e-15] to prevent log(0).
+ * This is a scoring fast-path designed to minimise JS/WASM boundary crossings:
+ * - Each record is laid out as: [inputs..., targets...]
+ * - `input_size` must match the number of input floats in each record.
+ * - `num_outputs` must match the number of target/output floats in each record.
  *
- * # Arguments
- * * `network` - The compiled network to activate
- * * `records` - Packed array of `[inputs..., targets...]` records
- * * `input_size` - Number of inputs per record
- * * `num_outputs` - Number of outputs per record
- * * `forward_only` - If true, skip reset_state() (for forward-only networks)
+ * Returns the **sum** of per-record MSE values (not averaged over records).
  *
- * # Returns
- * Sum of per-record Cross Entropy errors (divide by record count for mean)
+ * When `forward_only=true`, we skip clearing `network.activations` between records
+ * because v4+ forward-only creatures guarantee there are no recurrent/back edges.
+ * When `forward_only=false`, we must call `reset_state()` each record to preserve
+ * stateless semantics (`feedbackLoop=false`) and avoid state leakage.
+ *
+ * Issue #118x - Fuse activate + MSE for scoring performance.
+ * Issue #1202 - Use 4-record SIMD batching for forward-only networks.
  * @param {CompiledNetwork} network
  * @param {Float32Array} records
  * @param {number} input_size
@@ -86,11 +88,11 @@ function _assertClass(instance, klass) {
  * @param {boolean} forward_only
  * @returns {number}
  */
-export function cross_entropy_sum_batch_packed(network, records, input_size, num_outputs, forward_only) {
+export function mse_sum_batch_packed(network, records, input_size, num_outputs, forward_only) {
     _assertClass(network, CompiledNetwork);
     const ptr0 = passArrayF32ToWasm0(records, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.cross_entropy_sum_batch_packed(network.__wbg_ptr, ptr0, len0, input_size, num_outputs, forward_only);
+    const ret = wasm.mse_sum_batch_packed(network.__wbg_ptr, ptr0, len0, input_size, num_outputs, forward_only);
     return ret;
 }
 
@@ -127,22 +129,20 @@ export function mae_sum_batch_packed(network, records, input_size, num_outputs, 
 }
 
 /**
- * Fused activate + MSE (Mean Squared Error) calculation for batch scoring.
+ * Fused activate + Cross Entropy calculation for batch scoring.
  *
- * This is a scoring fast-path designed to minimise JS/WASM boundary crossings:
- * - Each record is laid out as: [inputs..., targets...]
- * - `input_size` must match the number of input floats in each record.
- * - `num_outputs` must match the number of target/output floats in each record.
+ * Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
+ * Output values are clamped to [1e-15, 1-1e-15] to prevent log(0).
  *
- * Returns the **sum** of per-record MSE values (not averaged over records).
+ * # Arguments
+ * * `network` - The compiled network to activate
+ * * `records` - Packed array of `[inputs..., targets...]` records
+ * * `input_size` - Number of inputs per record
+ * * `num_outputs` - Number of outputs per record
+ * * `forward_only` - If true, skip reset_state() (for forward-only networks)
  *
- * When `forward_only=true`, we skip clearing `network.activations` between records
- * because v4+ forward-only creatures guarantee there are no recurrent/back edges.
- * When `forward_only=false`, we must call `reset_state()` each record to preserve
- * stateless semantics (`feedbackLoop=false`) and avoid state leakage.
- *
- * Issue #118x - Fuse activate + MSE for scoring performance.
- * Issue #1202 - Use 4-record SIMD batching for forward-only networks.
+ * # Returns
+ * Sum of per-record Cross Entropy errors (divide by record count for mean)
  * @param {CompiledNetwork} network
  * @param {Float32Array} records
  * @param {number} input_size
@@ -150,11 +150,40 @@ export function mae_sum_batch_packed(network, records, input_size, num_outputs, 
  * @param {boolean} forward_only
  * @returns {number}
  */
-export function mse_sum_batch_packed(network, records, input_size, num_outputs, forward_only) {
+export function cross_entropy_sum_batch_packed(network, records, input_size, num_outputs, forward_only) {
     _assertClass(network, CompiledNetwork);
     const ptr0 = passArrayF32ToWasm0(records, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.mse_sum_batch_packed(network.__wbg_ptr, ptr0, len0, input_size, num_outputs, forward_only);
+    const ret = wasm.cross_entropy_sum_batch_packed(network.__wbg_ptr, ptr0, len0, input_size, num_outputs, forward_only);
+    return ret;
+}
+
+/**
+ * Fused activate + MAPE (Mean Absolute Percentage Error) calculation for batch scoring.
+ *
+ * MAPE formula per record: (1/n) * Σ|(output - target) / max(target, ε)|
+ *
+ * # Arguments
+ * * `network` - The compiled network to activate
+ * * `records` - Packed array of `[inputs..., targets...]` records
+ * * `input_size` - Number of inputs per record
+ * * `num_outputs` - Number of outputs per record
+ * * `forward_only` - If true, skip reset_state() (for forward-only networks)
+ *
+ * # Returns
+ * Sum of per-record MAPE errors (divide by record count for mean)
+ * @param {CompiledNetwork} network
+ * @param {Float32Array} records
+ * @param {number} input_size
+ * @param {number} num_outputs
+ * @param {boolean} forward_only
+ * @returns {number}
+ */
+export function mape_sum_batch_packed(network, records, input_size, num_outputs, forward_only) {
+    _assertClass(network, CompiledNetwork);
+    const ptr0 = passArrayF32ToWasm0(records, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.mape_sum_batch_packed(network.__wbg_ptr, ptr0, len0, input_size, num_outputs, forward_only);
     return ret;
 }
 
@@ -219,87 +248,6 @@ export function hinge_sum_batch_packed(network, records, input_size, num_outputs
 }
 
 /**
- * Fused activate + MAPE (Mean Absolute Percentage Error) calculation for batch scoring.
- *
- * MAPE formula per record: (1/n) * Σ|(output - target) / max(target, ε)|
- *
- * # Arguments
- * * `network` - The compiled network to activate
- * * `records` - Packed array of `[inputs..., targets...]` records
- * * `input_size` - Number of inputs per record
- * * `num_outputs` - Number of outputs per record
- * * `forward_only` - If true, skip reset_state() (for forward-only networks)
- *
- * # Returns
- * Sum of per-record MAPE errors (divide by record count for mean)
- * @param {CompiledNetwork} network
- * @param {Float32Array} records
- * @param {number} input_size
- * @param {number} num_outputs
- * @param {boolean} forward_only
- * @returns {number}
- */
-export function mape_sum_batch_packed(network, records, input_size, num_outputs, forward_only) {
-    _assertClass(network, CompiledNetwork);
-    const ptr0 = passArrayF32ToWasm0(records, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.mape_sum_batch_packed(network.__wbg_ptr, ptr0, len0, input_size, num_outputs, forward_only);
-    return ret;
-}
-
-/**
- * Validate that an activation value is within the valid range
- * Issue #1142 - WASM Migration Phase 10
- *
- * Returns true if the activation is within the valid range for the
- * specified activation function, false otherwise.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `activation` - The activation value to validate
- * @param {number} squash_type
- * @param {number} activation
- * @returns {boolean}
- */
-export function validate_range(squash_type, activation) {
-    const ret = wasm.validate_range(squash_type, activation);
-    return ret !== 0;
-}
-
-/**
- * Issue #1376 - Batch safe zone adjustment for backward pass inner loop.
- *
- * Processes multiple safe zone adjustments in a single WASM call, eliminating
- * per-synapse boundary crossing overhead (~8.7ns each).
- *
- * # Arguments
- * * `squash_types` - Packed u8 array of squash type enum values
- * * `raw_inputs` - Float32Array of pre-squash values for upstream neurons
- * * `error` - The provisional error per link (same for all synapses)
- * * `weights` - Float32Array of synapse weights
- *
- * # Returns
- * Float32Array of safe zone factors (0.0 to 1.0), one per synapse
- * @param {Uint8Array} squash_types
- * @param {Float32Array} raw_inputs
- * @param {number} error
- * @param {Float32Array} weights
- * @returns {Float32Array}
- */
-export function safe_zone_adjustment_batch(squash_types, raw_inputs, error, weights) {
-    const ptr0 = passArray8ToWasm0(squash_types, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF32ToWasm0(raw_inputs, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArrayF32ToWasm0(weights, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    const ret = wasm.safe_zone_adjustment_batch(ptr0, len0, ptr1, len1, error, ptr2, len2);
-    var v4 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
-    return v4;
-}
-
-/**
  * Standalone squash function for testing
  * @param {number} squash_type
  * @param {number} value
@@ -307,90 +255,6 @@ export function safe_zone_adjustment_batch(squash_types, raw_inputs, error, weig
  */
 export function squash(squash_type, value) {
     const ret = wasm.squash(squash_type, value);
-    return ret;
-}
-
-/**
- * Issue #1213 - Batch derivative computation for 4 values simultaneously.
- *
- * Returns a Float32Array with 4 derivative values computed in parallel using SIMD.
- * This provides significant performance improvements during backpropagation.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `x0, x1, x2, x3` - The 4 input values to compute derivatives for
- * @param {number} squash_type
- * @param {number} x0
- * @param {number} x1
- * @param {number} x2
- * @param {number} x3
- * @returns {Float32Array}
- */
-export function derivative_batch_4way(squash_type, x0, x1, x2, x3) {
-    const ret = wasm.derivative_batch_4way(squash_type, x0, x1, x2, x3);
-    return ret;
-}
-
-/**
- * Issue #1377 - Fused backward pass error distribution.
- *
- * Combines calculateError + safeZoneAdjustment + elastic error distribution
- * into a single WASM call, eliminating S+1 boundary crossings per neuron.
- *
- * # Arguments
- * * `neuron_squash_type` - The SquashType of the neuron being propagated through
- * * `neuron_activation` - The neuron's current output (after squash)
- * * `neuron_target_activation` - The desired output for this neuron
- * * `neuron_hint_value` - The pre-squash value for this neuron
- * * `upstream_squash_types` - Packed u8 array of upstream neuron squash types
- * * `upstream_hint_values` - Float32Array of upstream pre-squash values
- * * `upstream_activations` - Float32Array of upstream neuron activations
- * * `synapse_weights` - Float32Array of inbound synapse weights
- *
- * # Returns
- * Float32Array with layout: [error, safeZone_0..N, perLinkError_0..N]
- * Total length: 1 + 2*N where N is the number of synapses.
- * @param {number} neuron_squash_type
- * @param {number} neuron_activation
- * @param {number} neuron_target_activation
- * @param {number} neuron_hint_value
- * @param {Uint8Array} upstream_squash_types
- * @param {Float32Array} upstream_hint_values
- * @param {Float32Array} upstream_activations
- * @param {Float32Array} synapse_weights
- * @returns {Float32Array}
- */
-export function fused_error_distribution(neuron_squash_type, neuron_activation, neuron_target_activation, neuron_hint_value, upstream_squash_types, upstream_hint_values, upstream_activations, synapse_weights) {
-    const ptr0 = passArray8ToWasm0(upstream_squash_types, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF32ToWasm0(upstream_hint_values, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArrayF32ToWasm0(upstream_activations, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    const ptr3 = passArrayF32ToWasm0(synapse_weights, wasm.__wbindgen_malloc);
-    const len3 = WASM_VECTOR_LEN;
-    const ret = wasm.fused_error_distribution(neuron_squash_type, neuron_activation, neuron_target_activation, neuron_hint_value, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
-    var v5 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
-    return v5;
-}
-
-/**
- * Clamp a value to the valid range for an activation function
- * Issue #1142 - WASM Migration Phase 10
- *
- * Returns the value clamped to the valid range for the specified
- * activation function. Infinity values are clamped to the bounds.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `value` - The value to clamp
- * @param {number} squash_type
- * @param {number} value
- * @returns {number}
- */
-export function limit_range(squash_type, value) {
-    const ret = wasm.limit_range(squash_type, value);
     return ret;
 }
 
@@ -404,23 +268,6 @@ export function limit_range(squash_type, value) {
 export function derivative(squash_type, value) {
     const ret = wasm.derivative(squash_type, value);
     return ret;
-}
-
-/**
- * Version information
- * @returns {string}
- */
-export function version() {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.version();
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
 }
 
 /**
@@ -468,42 +315,80 @@ export function safe_zone_adjustment(squash_type, raw_input, error, weight) {
 }
 
 /**
- * Issue #1213 - Batch error calculation for 4 records simultaneously.
+ * Issue #1376 - Batch safe zone adjustment for backward pass inner loop.
  *
- * Returns a Float32Array with 4 error values computed for backpropagation.
- * This provides significant performance improvements during mini-batch training.
+ * Processes multiple safe zone adjustments in a single WASM call, eliminating
+ * per-synapse boundary crossing overhead (~8.7ns each).
  *
  * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `current_activations` - Float32Array of 4 current activation values
- * * `target_activations` - Float32Array of 4 target activation values
- * * `current_values` - Float32Array of 4 pre-squash values (hints for unSquash)
- * @param {number} squash_type
- * @param {Float32Array} current_activations
- * @param {Float32Array} target_activations
- * @param {Float32Array} current_values
+ * * `squash_types` - Packed u8 array of squash type enum values
+ * * `raw_inputs` - Float32Array of pre-squash values for upstream neurons
+ * * `error` - The provisional error per link (same for all synapses)
+ * * `weights` - Float32Array of synapse weights
+ *
+ * # Returns
+ * Float32Array of safe zone factors (0.0 to 1.0), one per synapse
+ * @param {Uint8Array} squash_types
+ * @param {Float32Array} raw_inputs
+ * @param {number} error
+ * @param {Float32Array} weights
  * @returns {Float32Array}
  */
-export function calculate_error_batch_4way(squash_type, current_activations, target_activations, current_values) {
-    const ret = wasm.calculate_error_batch_4way(squash_type, current_activations, target_activations, current_values);
-    return ret;
+export function safe_zone_adjustment_batch(squash_types, raw_inputs, error, weights) {
+    const ptr0 = passArray8ToWasm0(squash_types, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF32ToWasm0(raw_inputs, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArrayF32ToWasm0(weights, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.safe_zone_adjustment_batch(ptr0, len0, ptr1, len1, error, ptr2, len2);
+    var v4 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v4;
 }
 
 /**
- * Get the range (low, high) for an activation function
- * Issue #1142 - WASM Migration Phase 10
+ * Issue #1377 - Fused backward pass error distribution.
  *
- * Returns a Float32Array with two elements: [low, high]
- * representing the valid output range for the activation function.
+ * Combines calculateError + safeZoneAdjustment + elastic error distribution
+ * into a single WASM call, eliminating S+1 boundary crossings per neuron.
  *
  * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * @param {number} squash_type
+ * * `neuron_squash_type` - The SquashType of the neuron being propagated through
+ * * `neuron_activation` - The neuron's current output (after squash)
+ * * `neuron_target_activation` - The desired output for this neuron
+ * * `neuron_hint_value` - The pre-squash value for this neuron
+ * * `upstream_squash_types` - Packed u8 array of upstream neuron squash types
+ * * `upstream_hint_values` - Float32Array of upstream pre-squash values
+ * * `upstream_activations` - Float32Array of upstream neuron activations
+ * * `synapse_weights` - Float32Array of inbound synapse weights
+ *
+ * # Returns
+ * Float32Array with layout: [error, safeZone_0..N, perLinkError_0..N]
+ * Total length: 1 + 2*N where N is the number of synapses.
+ * @param {number} neuron_squash_type
+ * @param {number} neuron_activation
+ * @param {number} neuron_target_activation
+ * @param {number} neuron_hint_value
+ * @param {Uint8Array} upstream_squash_types
+ * @param {Float32Array} upstream_hint_values
+ * @param {Float32Array} upstream_activations
+ * @param {Float32Array} synapse_weights
  * @returns {Float32Array}
  */
-export function get_range(squash_type) {
-    const ret = wasm.get_range(squash_type);
-    return ret;
+export function fused_error_distribution(neuron_squash_type, neuron_activation, neuron_target_activation, neuron_hint_value, upstream_squash_types, upstream_hint_values, upstream_activations, synapse_weights) {
+    const ptr0 = passArray8ToWasm0(upstream_squash_types, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF32ToWasm0(upstream_hint_values, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArrayF32ToWasm0(upstream_activations, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArrayF32ToWasm0(synapse_weights, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.fused_error_distribution(neuron_squash_type, neuron_activation, neuron_target_activation, neuron_hint_value, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    var v5 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v5;
 }
 
 /**
@@ -526,6 +411,121 @@ export function get_range(squash_type) {
 export function calculate_error(squash_type, current_activation, target_activation, current_value) {
     const ret = wasm.calculate_error(squash_type, current_activation, target_activation, current_value);
     return ret;
+}
+
+/**
+ * Get the range (low, high) for an activation function
+ * Issue #1142 - WASM Migration Phase 10
+ *
+ * Returns a Float32Array with two elements: [low, high]
+ * representing the valid output range for the activation function.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * @param {number} squash_type
+ * @returns {Float32Array}
+ */
+export function get_range(squash_type) {
+    const ret = wasm.get_range(squash_type);
+    return ret;
+}
+
+/**
+ * Validate that an activation value is within the valid range
+ * Issue #1142 - WASM Migration Phase 10
+ *
+ * Returns true if the activation is within the valid range for the
+ * specified activation function, false otherwise.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `activation` - The activation value to validate
+ * @param {number} squash_type
+ * @param {number} activation
+ * @returns {boolean}
+ */
+export function validate_range(squash_type, activation) {
+    const ret = wasm.validate_range(squash_type, activation);
+    return ret !== 0;
+}
+
+/**
+ * Clamp a value to the valid range for an activation function
+ * Issue #1142 - WASM Migration Phase 10
+ *
+ * Returns the value clamped to the valid range for the specified
+ * activation function. Infinity values are clamped to the bounds.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `value` - The value to clamp
+ * @param {number} squash_type
+ * @param {number} value
+ * @returns {number}
+ */
+export function limit_range(squash_type, value) {
+    const ret = wasm.limit_range(squash_type, value);
+    return ret;
+}
+
+/**
+ * Issue #1213 - Batch derivative computation for 4 values simultaneously.
+ *
+ * Returns a Float32Array with 4 derivative values computed in parallel using SIMD.
+ * This provides significant performance improvements during backpropagation.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `x0, x1, x2, x3` - The 4 input values to compute derivatives for
+ * @param {number} squash_type
+ * @param {number} x0
+ * @param {number} x1
+ * @param {number} x2
+ * @param {number} x3
+ * @returns {Float32Array}
+ */
+export function derivative_batch_4way(squash_type, x0, x1, x2, x3) {
+    const ret = wasm.derivative_batch_4way(squash_type, x0, x1, x2, x3);
+    return ret;
+}
+
+/**
+ * Issue #1213 - Batch error calculation for 4 records simultaneously.
+ *
+ * Returns a Float32Array with 4 error values computed for backpropagation.
+ * This provides significant performance improvements during mini-batch training.
+ *
+ * # Arguments
+ * * `squash_type` - The SquashType enum value (u8)
+ * * `current_activations` - Float32Array of 4 current activation values
+ * * `target_activations` - Float32Array of 4 target activation values
+ * * `current_values` - Float32Array of 4 pre-squash values (hints for unSquash)
+ * @param {number} squash_type
+ * @param {Float32Array} current_activations
+ * @param {Float32Array} target_activations
+ * @param {Float32Array} current_values
+ * @returns {Float32Array}
+ */
+export function calculate_error_batch_4way(squash_type, current_activations, target_activations, current_values) {
+    const ret = wasm.calculate_error_batch_4way(squash_type, current_activations, target_activations, current_values);
+    return ret;
+}
+
+/**
+ * Version information
+ * @returns {string}
+ */
+export function version() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.version();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
 }
 
 let cachedFloat64ArrayMemory0 = null;
@@ -647,10 +647,98 @@ function passArray32ToWasm0(arg, malloc) {
     return ptr;
 }
 
+let cachedInt32ArrayMemory0 = null;
+
+function getInt32ArrayMemory0() {
+    if (cachedInt32ArrayMemory0 === null || cachedInt32ArrayMemory0.byteLength === 0) {
+        cachedInt32ArrayMemory0 = new Int32Array(wasm.memory.buffer);
+    }
+    return cachedInt32ArrayMemory0;
+}
+
+function getArrayI32FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getInt32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+/**
+ * Issue #1959 - Validate topology synapse ordering and forward-only constraints.
+ *
+ * Checks that synapses are sorted (ascending from, then ascending to within
+ * the same from), contain no self-connections, and contain no backward
+ * connections (from > to).
+ *
+ * Operates directly on typed arrays from TypedTopology without custom
+ * binary serialisation — wasm-bindgen passes the arrays as slices.
+ *
+ * # Arguments
+ * * `from_indices` - Uint32Array of source neuron indices per synapse
+ * * `to_indices` - Uint32Array of destination neuron indices per synapse
+ *
+ * # Returns
+ * Int32Array of length 2: `[error_code, synapse_index]`
+ * - error_code 0 = valid topology
+ * - error_code 1 = self-connection at synapse_index
+ * - error_code 2 = backward connection at synapse_index
+ * - error_code 3 = from indices not sorted at synapse_index
+ * - error_code 4 = to indices not sorted within same from at synapse_index
+ * - error_code 5 = duplicate connection at synapse_index
+ * @param {Uint32Array} from_indices
+ * @param {Uint32Array} to_indices
+ * @returns {Int32Array}
+ */
+export function validate_topology(from_indices, to_indices) {
+    const ptr0 = passArray32ToWasm0(from_indices, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray32ToWasm0(to_indices, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.validate_topology(ptr0, len0, ptr1, len1);
+    var v3 = getArrayI32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v3;
+}
+
 function getArrayU32FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
 }
+/**
+ * Issue #1959 - Scan for available forward-only connection slots.
+ *
+ * Computes all `(from, to)` pairs where `from < to`, `to >= num_inputs`,
+ * the target neuron is not constant, and no connection already exists.
+ *
+ * Uses a flat boolean array for O(1) connection existence checks,
+ * which is more cache-friendly than a hash set for WASM linear memory.
+ *
+ * # Arguments
+ * * `from_indices` - Uint32Array of existing synapse source indices
+ * * `to_indices` - Uint32Array of existing synapse destination indices
+ * * `is_constant` - Uint8Array flag per neuron (1 = constant, 0 = not)
+ * * `num_neurons` - Total number of neurons
+ * * `num_inputs` - Number of input neurons
+ *
+ * # Returns
+ * Uint32Array of flattened `[from, to, from, to, ...]` pairs
+ * @param {Uint32Array} from_indices
+ * @param {Uint32Array} to_indices
+ * @param {Uint8Array} is_constant
+ * @param {number} num_neurons
+ * @param {number} num_inputs
+ * @returns {Uint32Array}
+ */
+export function scan_available_connections(from_indices, to_indices, is_constant, num_neurons, num_inputs) {
+    const ptr0 = passArray32ToWasm0(from_indices, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray32ToWasm0(to_indices, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(is_constant, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.scan_available_connections(ptr0, len0, ptr1, len1, ptr2, len2, num_neurons, num_inputs);
+    var v4 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v4;
+}
+
 /**
  * Issue #1959 - Compute reverse topological order for backpropagation.
  *
@@ -687,34 +775,36 @@ export function compute_reverse_topological_order(from_indices, to_indices, num_
 }
 
 /**
- * Issue #1961 — Detect whether the topology contains cycles among non-input neurons.
+ * Issue #1960 - Batch topology validation for multiple creatures.
  *
- * Uses Kahn's algorithm: if after processing all zero-in-degree neurons
- * some non-input neurons remain unprocessed, a cycle exists.
- *
- * Self-loops are explicitly detected as cycles.
+ * Validates multiple topologies in a single WASM call to amortise boundary
+ * crossing overhead. Each topology's from/to indices are concatenated, with
+ * a lengths array specifying where each topology's data ends.
  *
  * # Arguments
- * * `from_indices` - Synapse source indices
- * * `to_indices` - Synapse destination indices
- * * `num_neurons` - Total number of neurons
- * * `num_inputs` - Number of input neurons
+ * * `all_from_indices` - Concatenated from indices for all topologies
+ * * `all_to_indices` - Concatenated to indices for all topologies
+ * * `lengths` - Number of synapses per topology (used to split the arrays)
  *
  * # Returns
- * 0 if acyclic, 1 if cycles detected
- * @param {Uint32Array} from_indices
- * @param {Uint32Array} to_indices
- * @param {number} num_neurons
- * @param {number} num_inputs
- * @returns {number}
+ * Int32Array of length 2×N (N = number of topologies):
+ *   `[error_code_0, synapse_index_0, error_code_1, synapse_index_1, ...]`
+ * @param {Uint32Array} all_from_indices
+ * @param {Uint32Array} all_to_indices
+ * @param {Uint32Array} lengths
+ * @returns {Int32Array}
  */
-export function detect_cycles(from_indices, to_indices, num_neurons, num_inputs) {
-    const ptr0 = passArray32ToWasm0(from_indices, wasm.__wbindgen_malloc);
+export function validate_topology_batch(all_from_indices, all_to_indices, lengths) {
+    const ptr0 = passArray32ToWasm0(all_from_indices, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArray32ToWasm0(to_indices, wasm.__wbindgen_malloc);
+    const ptr1 = passArray32ToWasm0(all_to_indices, wasm.__wbindgen_malloc);
     const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.detect_cycles(ptr0, len0, ptr1, len1, num_neurons, num_inputs);
-    return ret >>> 0;
+    const ptr2 = passArray32ToWasm0(lengths, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.validate_topology_batch(ptr0, len0, ptr1, len1, ptr2, len2);
+    var v4 = getArrayI32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v4;
 }
 
 function passArrayF64ToWasm0(arg, malloc) {
@@ -722,20 +812,6 @@ function passArrayF64ToWasm0(arg, malloc) {
     getFloat64ArrayMemory0().set(arg, ptr / 8);
     WASM_VECTOR_LEN = arg.length;
     return ptr;
-}
-
-let cachedInt32ArrayMemory0 = null;
-
-function getInt32ArrayMemory0() {
-    if (cachedInt32ArrayMemory0 === null || cachedInt32ArrayMemory0.byteLength === 0) {
-        cachedInt32ArrayMemory0 = new Int32Array(wasm.memory.buffer);
-    }
-    return cachedInt32ArrayMemory0;
-}
-
-function getArrayI32FromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    return getInt32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
 }
 /**
  * Issue #1961 — Validate structural integrity of a typed topology.
@@ -790,111 +866,60 @@ export function validate_structural_integrity(from_indices, to_indices, is_const
 }
 
 /**
- * Issue #1959 - Validate topology synapse ordering and forward-only constraints.
+ * Issue #1961 — Detect whether the topology contains cycles among non-input neurons.
  *
- * Checks that synapses are sorted (ascending from, then ascending to within
- * the same from), contain no self-connections, and contain no backward
- * connections (from > to).
+ * Uses Kahn's algorithm: if after processing all zero-in-degree neurons
+ * some non-input neurons remain unprocessed, a cycle exists.
  *
- * Operates directly on typed arrays from TypedTopology without custom
- * binary serialisation — wasm-bindgen passes the arrays as slices.
+ * Self-loops are explicitly detected as cycles.
  *
  * # Arguments
- * * `from_indices` - Uint32Array of source neuron indices per synapse
- * * `to_indices` - Uint32Array of destination neuron indices per synapse
- *
- * # Returns
- * Int32Array of length 2: `[error_code, synapse_index]`
- * - error_code 0 = valid topology
- * - error_code 1 = self-connection at synapse_index
- * - error_code 2 = backward connection at synapse_index
- * - error_code 3 = from indices not sorted at synapse_index
- * - error_code 4 = to indices not sorted within same from at synapse_index
- * - error_code 5 = duplicate connection at synapse_index
- * @param {Uint32Array} from_indices
- * @param {Uint32Array} to_indices
- * @returns {Int32Array}
- */
-export function validate_topology(from_indices, to_indices) {
-    const ptr0 = passArray32ToWasm0(from_indices, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArray32ToWasm0(to_indices, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.validate_topology(ptr0, len0, ptr1, len1);
-    var v3 = getArrayI32FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
-    return v3;
-}
-
-/**
- * Issue #1959 - Scan for available forward-only connection slots.
- *
- * Computes all `(from, to)` pairs where `from < to`, `to >= num_inputs`,
- * the target neuron is not constant, and no connection already exists.
- *
- * Uses a flat boolean array for O(1) connection existence checks,
- * which is more cache-friendly than a hash set for WASM linear memory.
- *
- * # Arguments
- * * `from_indices` - Uint32Array of existing synapse source indices
- * * `to_indices` - Uint32Array of existing synapse destination indices
- * * `is_constant` - Uint8Array flag per neuron (1 = constant, 0 = not)
+ * * `from_indices` - Synapse source indices
+ * * `to_indices` - Synapse destination indices
  * * `num_neurons` - Total number of neurons
  * * `num_inputs` - Number of input neurons
  *
  * # Returns
- * Uint32Array of flattened `[from, to, from, to, ...]` pairs
+ * 0 if acyclic, 1 if cycles detected
  * @param {Uint32Array} from_indices
  * @param {Uint32Array} to_indices
- * @param {Uint8Array} is_constant
  * @param {number} num_neurons
  * @param {number} num_inputs
- * @returns {Uint32Array}
+ * @returns {number}
  */
-export function scan_available_connections(from_indices, to_indices, is_constant, num_neurons, num_inputs) {
+export function detect_cycles(from_indices, to_indices, num_neurons, num_inputs) {
     const ptr0 = passArray32ToWasm0(from_indices, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
     const ptr1 = passArray32ToWasm0(to_indices, wasm.__wbindgen_malloc);
     const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArray8ToWasm0(is_constant, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    const ret = wasm.scan_available_connections(ptr0, len0, ptr1, len1, ptr2, len2, num_neurons, num_inputs);
-    var v4 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
-    return v4;
+    const ret = wasm.detect_cycles(ptr0, len0, ptr1, len1, num_neurons, num_inputs);
+    return ret >>> 0;
 }
 
 /**
- * Issue #1960 - Batch topology validation for multiple creatures.
+ * Batch-compute abs-sum, max, and second-max over weight and bias arrays.
  *
- * Validates multiple topologies in a single WASM call to amortise boundary
- * crossing overhead. Each topology's from/to indices are concatenated, with
- * a lengths array specifying where each topology's data ends.
+ * Returns a `Float64Array` with 4 elements:
+ *   [total_abs, count, max_abs, second_max_abs]
+ *
+ * The caller provides flat arrays of synapse weights and non-input neuron
+ * biases. This replaces the inner loops of `computeAndCacheScoreComponents`
+ * in `Score.ts`.
  *
  * # Arguments
- * * `all_from_indices` - Concatenated from indices for all topologies
- * * `all_to_indices` - Concatenated to indices for all topologies
- * * `lengths` - Number of synapses per topology (used to split the arrays)
- *
- * # Returns
- * Int32Array of length 2×N (N = number of topologies):
- *   `[error_code_0, synapse_index_0, error_code_1, synapse_index_1, ...]`
- * @param {Uint32Array} all_from_indices
- * @param {Uint32Array} all_to_indices
- * @param {Uint32Array} lengths
- * @returns {Int32Array}
+ * * `weights` - flat f64 array of synapse weights
+ * * `biases` - flat f64 array of non-input neuron biases
+ * @param {Float64Array} weights
+ * @param {Float64Array} biases
+ * @returns {Float64Array}
  */
-export function validate_topology_batch(all_from_indices, all_to_indices, lengths) {
-    const ptr0 = passArray32ToWasm0(all_from_indices, wasm.__wbindgen_malloc);
+export function compute_score_components(weights, biases) {
+    const ptr0 = passArrayF64ToWasm0(weights, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArray32ToWasm0(all_to_indices, wasm.__wbindgen_malloc);
+    const ptr1 = passArrayF64ToWasm0(biases, wasm.__wbindgen_malloc);
     const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArray32ToWasm0(lengths, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    const ret = wasm.validate_topology_batch(ptr0, len0, ptr1, len1, ptr2, len2);
-    var v4 = getArrayI32FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
-    return v4;
+    const ret = wasm.compute_score_components(ptr0, len0, ptr1, len1);
+    return ret;
 }
 
 /**
@@ -921,32 +946,6 @@ export function scan_max_weight(weights, biases, exclude_idx, new_weight) {
     const ptr1 = passArrayF64ToWasm0(biases, wasm.__wbindgen_malloc);
     const len1 = WASM_VECTOR_LEN;
     const ret = wasm.scan_max_weight(ptr0, len0, ptr1, len1, exclude_idx, new_weight);
-    return ret;
-}
-
-/**
- * Batch-compute abs-sum, max, and second-max over weight and bias arrays.
- *
- * Returns a `Float64Array` with 4 elements:
- *   [total_abs, count, max_abs, second_max_abs]
- *
- * The caller provides flat arrays of synapse weights and non-input neuron
- * biases. This replaces the inner loops of `computeAndCacheScoreComponents`
- * in `Score.ts`.
- *
- * # Arguments
- * * `weights` - flat f64 array of synapse weights
- * * `biases` - flat f64 array of non-input neuron biases
- * @param {Float64Array} weights
- * @param {Float64Array} biases
- * @returns {Float64Array}
- */
-export function compute_score_components(weights, biases) {
-    const ptr0 = passArrayF64ToWasm0(weights, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(biases, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.compute_score_components(ptr0, len0, ptr1, len1);
     return ret;
 }
 
@@ -978,24 +977,38 @@ export function scan_max_bias(weights, biases, exclude_idx, new_bias) {
 }
 
 /**
- * Accumulate bias adjustments for 8 neurons into persistent state.
- * @param {number} start_index
- * @param {Float64Array} target_pre_activations
- * @param {Float64Array} pre_activations
- * @param {Float64Array} current_biases
- * @param {number} plank_constant
- * @param {number} learning_rate
- * @param {number} max_bias_adj_scale
- * @param {number} limit_bias_scale
+ * Initialise persistent training state for an epoch.
+ *
+ * Allocates and zeroes the synapse and neuron state arrays in WASM linear
+ * memory. Call this once at the start of each training epoch.
+ *
+ * # Arguments
+ * * `num_synapses` - Number of synapses in the network
+ * * `num_neurons` - Number of neurons in the network
+ * @param {number} num_synapses
+ * @param {number} num_neurons
  */
-export function accumulate_bias_persistent_8way(start_index, target_pre_activations, pre_activations, current_biases, plank_constant, learning_rate, max_bias_adj_scale, limit_bias_scale) {
-    const ptr0 = passArrayF64ToWasm0(target_pre_activations, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(pre_activations, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArrayF64ToWasm0(current_biases, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    wasm.accumulate_bias_persistent_8way(start_index, ptr0, len0, ptr1, len1, ptr2, len2, plank_constant, learning_rate, max_bias_adj_scale, limit_bias_scale);
+export function init_training_state(num_synapses, num_neurons) {
+    wasm.init_training_state(num_synapses, num_neurons);
+}
+
+/**
+ * Reset all training state to zero without deallocating.
+ *
+ * More efficient than `init_training_state` when the network size
+ * hasn't changed — avoids reallocation.
+ */
+export function reset_training_state() {
+    wasm.reset_training_state();
+}
+
+/**
+ * Free all training state memory.
+ *
+ * Call this when training is complete to release WASM linear memory.
+ */
+export function free_training_state() {
+    wasm.free_training_state();
 }
 
 /**
@@ -1016,6 +1029,21 @@ export function read_synapse_state(index) {
 }
 
 /**
+ * Read the persistent state for a single neuron.
+ *
+ * Returns a packed f64 array with 3 values:
+ *   [count, totalBias, totalAdjustedBias]
+ * @param {number} index
+ * @returns {Float64Array}
+ */
+export function read_neuron_state(index) {
+    const ret = wasm.read_neuron_state(index);
+    var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v1;
+}
+
+/**
  * Read all synapse state as a bulk f64 array.
  *
  * Returns the entire synapse state buffer (num_synapses × 7 values).
@@ -1027,6 +1055,55 @@ export function read_all_synapse_state() {
     var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v1;
+}
+
+/**
+ * Read all neuron state as a bulk f64 array.
+ *
+ * Returns the entire neuron state buffer (num_neurons × 3 values).
+ * More efficient than calling `read_neuron_state` per neuron.
+ * @returns {Float64Array}
+ */
+export function read_all_neuron_state() {
+    const ret = wasm.read_all_neuron_state();
+    var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v1;
+}
+
+/**
+ * Accumulate weight adjustments for 4 synapses into persistent state.
+ *
+ * Same arithmetic as `accumulate_weight_batch_4way`, but results are
+ * accumulated directly into the persistent state buffer rather than
+ * being returned to JavaScript.
+ *
+ * # Arguments
+ * * `start_index` - Index of the first synapse in the state buffer
+ * * `current_weights` - 4 current synapse weights
+ * * `target_values` - 4 target values for weight calculation
+ * * `activations` - 4 activation values from source neurons
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate for weight adjustment
+ * * `max_weight_adj_scale` - Maximum weight adjustment scale
+ * * `limit_weight_scale` - Global weight scale limit
+ * @param {number} start_index
+ * @param {Float64Array} current_weights
+ * @param {Float64Array} target_values
+ * @param {Float64Array} activations
+ * @param {number} plank_constant
+ * @param {number} learning_rate
+ * @param {number} max_weight_adj_scale
+ * @param {number} limit_weight_scale
+ */
+export function accumulate_weight_persistent_4way(start_index, current_weights, target_values, activations, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale) {
+    const ptr0 = passArrayF64ToWasm0(current_weights, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF64ToWasm0(target_values, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArrayF64ToWasm0(activations, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    wasm.accumulate_weight_persistent_4way(start_index, ptr0, len0, ptr1, len1, ptr2, len2, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale);
 }
 
 /**
@@ -1085,33 +1162,24 @@ export function accumulate_bias_persistent_4way(start_index, target_pre_activati
 }
 
 /**
- * Read all neuron state as a bulk f64 array.
- *
- * Returns the entire neuron state buffer (num_neurons × 3 values).
- * More efficient than calling `read_neuron_state` per neuron.
- * @returns {Float64Array}
+ * Accumulate bias adjustments for 8 neurons into persistent state.
+ * @param {number} start_index
+ * @param {Float64Array} target_pre_activations
+ * @param {Float64Array} pre_activations
+ * @param {Float64Array} current_biases
+ * @param {number} plank_constant
+ * @param {number} learning_rate
+ * @param {number} max_bias_adj_scale
+ * @param {number} limit_bias_scale
  */
-export function read_all_neuron_state() {
-    const ret = wasm.read_all_neuron_state();
-    var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v1;
-}
-
-/**
- * Initialise persistent training state for an epoch.
- *
- * Allocates and zeroes the synapse and neuron state arrays in WASM linear
- * memory. Call this once at the start of each training epoch.
- *
- * # Arguments
- * * `num_synapses` - Number of synapses in the network
- * * `num_neurons` - Number of neurons in the network
- * @param {number} num_synapses
- * @param {number} num_neurons
- */
-export function init_training_state(num_synapses, num_neurons) {
-    wasm.init_training_state(num_synapses, num_neurons);
+export function accumulate_bias_persistent_8way(start_index, target_pre_activations, pre_activations, current_biases, plank_constant, learning_rate, max_bias_adj_scale, limit_bias_scale) {
+    const ptr0 = passArrayF64ToWasm0(target_pre_activations, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF64ToWasm0(pre_activations, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArrayF64ToWasm0(current_biases, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    wasm.accumulate_bias_persistent_8way(start_index, ptr0, len0, ptr1, len1, ptr2, len2, plank_constant, learning_rate, max_bias_adj_scale, limit_bias_scale);
 }
 
 /**
@@ -1130,75 +1198,6 @@ export function get_training_state_num_synapses() {
 export function get_training_state_num_neurons() {
     const ret = wasm.get_training_state_num_neurons();
     return ret >>> 0;
-}
-
-/**
- * Free all training state memory.
- *
- * Call this when training is complete to release WASM linear memory.
- */
-export function free_training_state() {
-    wasm.free_training_state();
-}
-
-/**
- * Accumulate weight adjustments for 4 synapses into persistent state.
- *
- * Same arithmetic as `accumulate_weight_batch_4way`, but results are
- * accumulated directly into the persistent state buffer rather than
- * being returned to JavaScript.
- *
- * # Arguments
- * * `start_index` - Index of the first synapse in the state buffer
- * * `current_weights` - 4 current synapse weights
- * * `target_values` - 4 target values for weight calculation
- * * `activations` - 4 activation values from source neurons
- * * `plank_constant` - Minimum unit threshold
- * * `learning_rate` - Learning rate for weight adjustment
- * * `max_weight_adj_scale` - Maximum weight adjustment scale
- * * `limit_weight_scale` - Global weight scale limit
- * @param {number} start_index
- * @param {Float64Array} current_weights
- * @param {Float64Array} target_values
- * @param {Float64Array} activations
- * @param {number} plank_constant
- * @param {number} learning_rate
- * @param {number} max_weight_adj_scale
- * @param {number} limit_weight_scale
- */
-export function accumulate_weight_persistent_4way(start_index, current_weights, target_values, activations, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale) {
-    const ptr0 = passArrayF64ToWasm0(current_weights, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(target_values, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArrayF64ToWasm0(activations, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    wasm.accumulate_weight_persistent_4way(start_index, ptr0, len0, ptr1, len1, ptr2, len2, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale);
-}
-
-/**
- * Reset all training state to zero without deallocating.
- *
- * More efficient than `init_training_state` when the network size
- * hasn't changed — avoids reallocation.
- */
-export function reset_training_state() {
-    wasm.reset_training_state();
-}
-
-/**
- * Read the persistent state for a single neuron.
- *
- * Returns a packed f64 array with 3 values:
- *   [count, totalBias, totalAdjustedBias]
- * @param {number} index
- * @returns {Float64Array}
- */
-export function read_neuron_state(index) {
-    const ret = wasm.read_neuron_state(index);
-    var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v1;
 }
 
 /**
@@ -1281,132 +1280,6 @@ export function accumulate_weight_batch_4way(current_weights, target_values, act
 }
 
 /**
- * Issue #1518 - Calculate the finalised bias after accumulation.
- *
- * Mirrors the TypeScript `calculateBias()` function.
- *
- * # Arguments
- * * `count` - Total accumulation count
- * * `total_adjusted_bias` - Sum of limited biases
- * * `current_bias` - The neuron's current bias
- * * `no_change` - Whether the neuron has flagged no change
- * * `generations` - Config generations value
- * * `plank_constant` - Minimum unit threshold
- * * `learning_rate` - Learning rate
- * * `max_bias_adj_scale` - Maximum bias adjustment scale
- * * `limit_bias_scale` - Global bias scale limit
- * * `l1_bias_decay` - L1 regularisation strength (Issue #1953)
- * * `l2_bias_decay` - L2 regularisation strength (Issue #1953)
- *
- * # Returns
- * The calculated bias
- * @param {number} count
- * @param {number} total_adjusted_bias
- * @param {number} current_bias
- * @param {boolean} no_change
- * @param {number} generations
- * @param {number} plank_constant
- * @param {number} learning_rate
- * @param {number} max_bias_adj_scale
- * @param {number} limit_bias_scale
- * @param {number} l1_bias_decay
- * @param {number} l2_bias_decay
- * @returns {number}
- */
-export function calculate_bias(count, total_adjusted_bias, current_bias, no_change, generations, plank_constant, learning_rate, max_bias_adj_scale, limit_bias_scale, l1_bias_decay, l2_bias_decay) {
-    const ret = wasm.calculate_bias(count, total_adjusted_bias, current_bias, no_change, generations, plank_constant, learning_rate, max_bias_adj_scale, limit_bias_scale, l1_bias_decay, l2_bias_decay);
-    return ret;
-}
-
-/**
- * Issue #1518 - Calculate the finalised weight after accumulation.
- *
- * Mirrors the TypeScript `calculateWeight()` function. Performs the
- * weighted averaging with positive/negative tracking and generation-based
- * inertia.
- *
- * # Arguments
- * * `count` - Total accumulation count
- * * `total_positive_activation` - Sum of positive activations
- * * `total_negative_activation` - Sum of |negative activations|
- * * `count_positive` - Number of positive activations
- * * `count_negative` - Number of negative activations
- * * `total_positive_adjusted_value` - Sum of limited weight × positive activation
- * * `total_negative_adjusted_value` - Sum of limited weight × negative activation
- * * `current_weight` - The synapse's current weight
- * * `generations` - Config generations value
- * * `plank_constant` - Minimum unit threshold
- * * `learning_rate` - Learning rate
- * * `max_weight_adj_scale` - Maximum weight adjustment scale
- * * `limit_weight_scale` - Global weight scale limit
- * * `l1_weight_decay` - L1 regularisation strength (Issue #1953)
- * * `l2_weight_decay` - L2 regularisation strength (Issue #1953)
- *
- * # Returns
- * The calculated average weight
- * @param {number} count
- * @param {number} total_positive_activation
- * @param {number} total_negative_activation
- * @param {number} count_positive
- * @param {number} count_negative
- * @param {number} total_positive_adjusted_value
- * @param {number} total_negative_adjusted_value
- * @param {number} current_weight
- * @param {number} generations
- * @param {number} plank_constant
- * @param {number} learning_rate
- * @param {number} max_weight_adj_scale
- * @param {number} limit_weight_scale
- * @param {number} l1_weight_decay
- * @param {number} l2_weight_decay
- * @returns {number}
- */
-export function calculate_weight(count, total_positive_activation, total_negative_activation, count_positive, count_negative, total_positive_adjusted_value, total_negative_adjusted_value, current_weight, generations, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale, l1_weight_decay, l2_weight_decay) {
-    const ret = wasm.calculate_weight(count, total_positive_activation, total_negative_activation, count_positive, count_negative, total_positive_adjusted_value, total_negative_adjusted_value, current_weight, generations, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale, l1_weight_decay, l2_weight_decay);
-    return ret;
-}
-
-/**
- * Issue #1960 - Batch calculate_weight for 4 synapses in a single WASM call.
- *
- * Amortises boundary crossing overhead by processing 4 weight calculations
- * at once. Each synapse provides 8 state values (count through currentWeight)
- * packed into a single Float64Array, plus shared config scalars.
- *
- * # Arguments
- * * `packed_state` - 32 f64 values: 8 per synapse ×4
- *   Per synapse: [count, totalPosAct, totalNegAct, countPos, countNeg,
- *                 totalPosAdj, totalNegAdj, currentWeight]
- * * `generations` - Config generations value
- * * `plank_constant` - Minimum unit threshold
- * * `learning_rate` - Learning rate
- * * `max_weight_adj_scale` - Maximum weight adjustment scale
- * * `limit_weight_scale` - Global weight scale limit
- * * `l1_weight_decay` - L1 regularisation strength
- * * `l2_weight_decay` - L2 regularisation strength
- *
- * # Returns
- * Float64Array with 4 calculated weights
- * @param {Float64Array} packed_state
- * @param {number} generations
- * @param {number} plank_constant
- * @param {number} learning_rate
- * @param {number} max_weight_adj_scale
- * @param {number} limit_weight_scale
- * @param {number} l1_weight_decay
- * @param {number} l2_weight_decay
- * @returns {Float64Array}
- */
-export function calculate_weight_batch_4way(packed_state, generations, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale, l1_weight_decay, l2_weight_decay) {
-    const ptr0 = passArrayF64ToWasm0(packed_state, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.calculate_weight_batch_4way(ptr0, len0, generations, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale, l1_weight_decay, l2_weight_decay);
-    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v2;
-}
-
-/**
  * Issue #1518 - Batch weight accumulation for 8 synapses.
  *
  * Same as 4-way but processes 8 synapses. Returns 56 f64 values.
@@ -1474,6 +1347,158 @@ export function accumulate_bias_batch_4way(target_pre_activations, pre_activatio
 }
 
 /**
+ * Issue #1518 - Batch bias accumulation for 8 neurons.
+ *
+ * Same as 4-way but processes 8 neurons. Returns 24 f64 values.
+ * @param {Float64Array} target_pre_activations
+ * @param {Float64Array} pre_activations
+ * @param {Float64Array} current_biases
+ * @param {number} plank_constant
+ * @param {number} learning_rate
+ * @param {number} max_bias_adj_scale
+ * @param {number} limit_bias_scale
+ * @returns {Float64Array}
+ */
+export function accumulate_bias_batch_8way(target_pre_activations, pre_activations, current_biases, plank_constant, learning_rate, max_bias_adj_scale, limit_bias_scale) {
+    const ptr0 = passArrayF64ToWasm0(target_pre_activations, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF64ToWasm0(pre_activations, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArrayF64ToWasm0(current_biases, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.accumulate_bias_batch_8way(ptr0, len0, ptr1, len1, ptr2, len2, plank_constant, learning_rate, max_bias_adj_scale, limit_bias_scale);
+    var v4 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v4;
+}
+
+/**
+ * Issue #1518 - Calculate the finalised weight after accumulation.
+ *
+ * Mirrors the TypeScript `calculateWeight()` function. Performs the
+ * weighted averaging with positive/negative tracking and generation-based
+ * inertia.
+ *
+ * # Arguments
+ * * `count` - Total accumulation count
+ * * `total_positive_activation` - Sum of positive activations
+ * * `total_negative_activation` - Sum of |negative activations|
+ * * `count_positive` - Number of positive activations
+ * * `count_negative` - Number of negative activations
+ * * `total_positive_adjusted_value` - Sum of limited weight × positive activation
+ * * `total_negative_adjusted_value` - Sum of limited weight × negative activation
+ * * `current_weight` - The synapse's current weight
+ * * `generations` - Config generations value
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate
+ * * `max_weight_adj_scale` - Maximum weight adjustment scale
+ * * `limit_weight_scale` - Global weight scale limit
+ * * `l1_weight_decay` - L1 regularisation strength (Issue #1953)
+ * * `l2_weight_decay` - L2 regularisation strength (Issue #1953)
+ *
+ * # Returns
+ * The calculated average weight
+ * @param {number} count
+ * @param {number} total_positive_activation
+ * @param {number} total_negative_activation
+ * @param {number} count_positive
+ * @param {number} count_negative
+ * @param {number} total_positive_adjusted_value
+ * @param {number} total_negative_adjusted_value
+ * @param {number} current_weight
+ * @param {number} generations
+ * @param {number} plank_constant
+ * @param {number} learning_rate
+ * @param {number} max_weight_adj_scale
+ * @param {number} limit_weight_scale
+ * @param {number} l1_weight_decay
+ * @param {number} l2_weight_decay
+ * @returns {number}
+ */
+export function calculate_weight(count, total_positive_activation, total_negative_activation, count_positive, count_negative, total_positive_adjusted_value, total_negative_adjusted_value, current_weight, generations, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale, l1_weight_decay, l2_weight_decay) {
+    const ret = wasm.calculate_weight(count, total_positive_activation, total_negative_activation, count_positive, count_negative, total_positive_adjusted_value, total_negative_adjusted_value, current_weight, generations, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale, l1_weight_decay, l2_weight_decay);
+    return ret;
+}
+
+/**
+ * Issue #1518 - Calculate the finalised bias after accumulation.
+ *
+ * Mirrors the TypeScript `calculateBias()` function.
+ *
+ * # Arguments
+ * * `count` - Total accumulation count
+ * * `total_adjusted_bias` - Sum of limited biases
+ * * `current_bias` - The neuron's current bias
+ * * `no_change` - Whether the neuron has flagged no change
+ * * `generations` - Config generations value
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate
+ * * `max_bias_adj_scale` - Maximum bias adjustment scale
+ * * `limit_bias_scale` - Global bias scale limit
+ * * `l1_bias_decay` - L1 regularisation strength (Issue #1953)
+ * * `l2_bias_decay` - L2 regularisation strength (Issue #1953)
+ *
+ * # Returns
+ * The calculated bias
+ * @param {number} count
+ * @param {number} total_adjusted_bias
+ * @param {number} current_bias
+ * @param {boolean} no_change
+ * @param {number} generations
+ * @param {number} plank_constant
+ * @param {number} learning_rate
+ * @param {number} max_bias_adj_scale
+ * @param {number} limit_bias_scale
+ * @param {number} l1_bias_decay
+ * @param {number} l2_bias_decay
+ * @returns {number}
+ */
+export function calculate_bias(count, total_adjusted_bias, current_bias, no_change, generations, plank_constant, learning_rate, max_bias_adj_scale, limit_bias_scale, l1_bias_decay, l2_bias_decay) {
+    const ret = wasm.calculate_bias(count, total_adjusted_bias, current_bias, no_change, generations, plank_constant, learning_rate, max_bias_adj_scale, limit_bias_scale, l1_bias_decay, l2_bias_decay);
+    return ret;
+}
+
+/**
+ * Issue #1960 - Batch calculate_weight for 4 synapses in a single WASM call.
+ *
+ * Amortises boundary crossing overhead by processing 4 weight calculations
+ * at once. Each synapse provides 8 state values (count through currentWeight)
+ * packed into a single Float64Array, plus shared config scalars.
+ *
+ * # Arguments
+ * * `packed_state` - 32 f64 values: 8 per synapse ×4
+ *   Per synapse: [count, totalPosAct, totalNegAct, countPos, countNeg,
+ *                 totalPosAdj, totalNegAdj, currentWeight]
+ * * `generations` - Config generations value
+ * * `plank_constant` - Minimum unit threshold
+ * * `learning_rate` - Learning rate
+ * * `max_weight_adj_scale` - Maximum weight adjustment scale
+ * * `limit_weight_scale` - Global weight scale limit
+ * * `l1_weight_decay` - L1 regularisation strength
+ * * `l2_weight_decay` - L2 regularisation strength
+ *
+ * # Returns
+ * Float64Array with 4 calculated weights
+ * @param {Float64Array} packed_state
+ * @param {number} generations
+ * @param {number} plank_constant
+ * @param {number} learning_rate
+ * @param {number} max_weight_adj_scale
+ * @param {number} limit_weight_scale
+ * @param {number} l1_weight_decay
+ * @param {number} l2_weight_decay
+ * @returns {Float64Array}
+ */
+export function calculate_weight_batch_4way(packed_state, generations, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale, l1_weight_decay, l2_weight_decay) {
+    const ptr0 = passArrayF64ToWasm0(packed_state, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.calculate_weight_batch_4way(ptr0, len0, generations, plank_constant, learning_rate, max_weight_adj_scale, limit_weight_scale, l1_weight_decay, l2_weight_decay);
+    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v2;
+}
+
+/**
  * Issue #1960 - Batch calculate_bias for 4 neurons in a single WASM call.
  *
  * Amortises boundary crossing overhead by processing 4 bias calculations
@@ -1517,32 +1542,6 @@ export function calculate_bias_batch_4way(packed_state, no_change_flags, generat
     return v3;
 }
 
-/**
- * Issue #1518 - Batch bias accumulation for 8 neurons.
- *
- * Same as 4-way but processes 8 neurons. Returns 24 f64 values.
- * @param {Float64Array} target_pre_activations
- * @param {Float64Array} pre_activations
- * @param {Float64Array} current_biases
- * @param {number} plank_constant
- * @param {number} learning_rate
- * @param {number} max_bias_adj_scale
- * @param {number} limit_bias_scale
- * @returns {Float64Array}
- */
-export function accumulate_bias_batch_8way(target_pre_activations, pre_activations, current_biases, plank_constant, learning_rate, max_bias_adj_scale, limit_bias_scale) {
-    const ptr0 = passArrayF64ToWasm0(target_pre_activations, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(pre_activations, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArrayF64ToWasm0(current_biases, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    const ret = wasm.accumulate_bias_batch_8way(ptr0, len0, ptr1, len1, ptr2, len2, plank_constant, learning_rate, max_bias_adj_scale, limit_bias_scale);
-    var v4 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v4;
-}
-
 const CompiledNetworkFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_compilednetwork_free(ptr >>> 0, 1));
@@ -1578,22 +1577,6 @@ export class CompiledNetwork {
         wasm.__wbg_compilednetwork_free(ptr, 0);
     }
     /**
-     * Get the number of input neurons
-     * @returns {number}
-     */
-    get num_inputs() {
-        const ret = wasm.compilednetwork_num_inputs(this.__wbg_ptr);
-        return ret >>> 0;
-    }
-    /**
-     * Get the number of neurons in the network
-     * @returns {number}
-     */
-    get num_neurons() {
-        const ret = wasm.compilednetwork_num_neurons(this.__wbg_ptr);
-        return ret >>> 0;
-    }
-    /**
      * Reset non-input activations to 0.0.
      *
      * This is important for parity with the JS implementation when
@@ -1605,12 +1588,68 @@ export class CompiledNetwork {
         wasm.compilednetwork_reset_state(this.__wbg_ptr);
     }
     /**
-     * Get the number of synapses in the network
-     * @returns {number}
+     * Create a new compiled network from serialised data
+     *
+     * Data format (all values little-endian):
+     * - u32: num_neurons
+     * - u32: num_inputs
+     * - For each non-input neuron:
+     *   - f32: bias
+     *   - u8: squash_type
+     *   - u8: is_constant (0 or 1)
+     *   - u16: num_synapses
+     *   - For each synapse:
+     *     - u16: from_index
+     *     - u8: synapse_type
+     *     - u8: padding
+     *     - f64: weight
+     * @param {Uint8Array} data
      */
-    get num_synapses() {
-        const ret = wasm.compilednetwork_num_synapses(this.__wbg_ptr);
-        return ret >>> 0;
+    constructor(data) {
+        const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.compilednetwork_new(ptr0, len0);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        CompiledNetworkFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * Activate the network with the given input values
+     * Returns the output values
+     * Issue #1175 - Uses typed structs for better cache locality
+     * Issue #1177 - Inlines common squash functions to avoid function call overhead
+     * @param {Float32Array} input
+     * @param {number} num_outputs
+     * @returns {Float32Array}
+     */
+    activate(input, num_outputs) {
+        const ptr0 = passArrayF32ToWasm0(input, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.compilednetwork_activate(this.__wbg_ptr, ptr0, len0, num_outputs);
+        var v2 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v2;
+    }
+    /**
+     * Activate the network and return a zero-copy Float32Array view over WASM memory.
+     *
+     * IMPORTANT: The returned Float32Array aliases the network's internal activation buffer.
+     * It will be overwritten by subsequent activations of the same network instance.
+     *
+     * This is intended for high-throughput scoring where the caller consumes outputs
+     * immediately and does not retain references across calls.
+     * @param {Float32Array} input
+     * @param {number} num_outputs
+     * @returns {Float32Array}
+     */
+    activate_view(input, num_outputs) {
+        const ptr0 = passArrayF32ToWasm0(input, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.compilednetwork_activate_view(this.__wbg_ptr, ptr0, len0, num_outputs);
+        return ret;
     }
     /**
      * Activate the network with the given input values, writing to a pre-allocated output buffer
@@ -1637,22 +1676,28 @@ export class CompiledNetwork {
         wasm.compilednetwork_activate_into(this.__wbg_ptr, ptr0, len0, ptr1, len1, output);
     }
     /**
-     * Activate the network and return a zero-copy Float32Array view over WASM memory.
-     *
-     * IMPORTANT: The returned Float32Array aliases the network's internal activation buffer.
-     * It will be overwritten by subsequent activations of the same network instance.
-     *
-     * This is intended for high-throughput scoring where the caller consumes outputs
-     * immediately and does not retain references across calls.
-     * @param {Float32Array} input
-     * @param {number} num_outputs
-     * @returns {Float32Array}
+     * Get the number of neurons in the network
+     * @returns {number}
      */
-    activate_view(input, num_outputs) {
-        const ptr0 = passArrayF32ToWasm0(input, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.compilednetwork_activate_view(this.__wbg_ptr, ptr0, len0, num_outputs);
-        return ret;
+    get num_neurons() {
+        const ret = wasm.compilednetwork_num_neurons(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Get the number of input neurons
+     * @returns {number}
+     */
+    get num_inputs() {
+        const ret = wasm.compilednetwork_num_inputs(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Get the number of synapses in the network
+     * @returns {number}
+     */
+    get num_synapses() {
+        const ret = wasm.compilednetwork_num_synapses(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Activate the network with tracing for backpropagation support
@@ -1717,52 +1762,6 @@ export class CompiledNetwork {
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v2;
     }
-    /**
-     * Create a new compiled network from serialised data
-     *
-     * Data format (all values little-endian):
-     * - u32: num_neurons
-     * - u32: num_inputs
-     * - For each non-input neuron:
-     *   - f32: bias
-     *   - u8: squash_type
-     *   - u8: is_constant (0 or 1)
-     *   - u16: num_synapses
-     *   - For each synapse:
-     *     - u16: from_index
-     *     - u8: synapse_type
-     *     - u8: padding
-     *     - f64: weight
-     * @param {Uint8Array} data
-     */
-    constructor(data) {
-        const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.compilednetwork_new(ptr0, len0);
-        if (ret[2]) {
-            throw takeFromExternrefTable0(ret[1]);
-        }
-        this.__wbg_ptr = ret[0] >>> 0;
-        CompiledNetworkFinalization.register(this, this.__wbg_ptr, this);
-        return this;
-    }
-    /**
-     * Activate the network with the given input values
-     * Returns the output values
-     * Issue #1175 - Uses typed structs for better cache locality
-     * Issue #1177 - Inlines common squash functions to avoid function call overhead
-     * @param {Float32Array} input
-     * @param {number} num_outputs
-     * @returns {Float32Array}
-     */
-    activate(input, num_outputs) {
-        const ptr0 = passArrayF32ToWasm0(input, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.compilednetwork_activate(this.__wbg_ptr, ptr0, len0, num_outputs);
-        var v2 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
-        return v2;
-    }
 }
 
 const PredictiveCodingEngineFinalization = (typeof FinalizationRegistry === 'undefined')
@@ -1787,6 +1786,37 @@ export class PredictiveCodingEngine {
     free() {
         const ptr = this.__destroy_into_raw();
         wasm.__wbg_predictivecodingengine_free(ptr, 0);
+    }
+    /**
+     * Creates a new PredictiveCodingEngine from serialised topology data.
+     *
+     * Data format (all values little-endian):
+     * - u32: num_inputs
+     * - u32: num_outputs
+     * - u32: num_neurons_total (including inputs)
+     * - u32: inference_steps
+     * - f32: inference_rate
+     * - f32: energy_threshold
+     * - For each non-input neuron:
+     *   - f32: bias
+     *   - u8: squash_type
+     *   - u8: is_hidden (1 = hidden, 0 = output)
+     *   - u16: num_connections
+     *   - For each connection:
+     *     - u16: from_index
+     *     - f32: weight (as 4 bytes, little-endian)
+     * @param {Uint8Array} data
+     */
+    constructor(data) {
+        const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.predictivecodingengine_new(ptr0, len0);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        PredictiveCodingEngineFinalization.register(this, this.__wbg_ptr, this);
+        return this;
     }
     /**
      * Runs inference and returns a packed result array.
@@ -1820,30 +1850,6 @@ export class PredictiveCodingEngine {
         return v3;
     }
     /**
-     * Get the number of input neurons.
-     * @returns {number}
-     */
-    get num_inputs() {
-        const ret = wasm.predictivecodingengine_num_inputs(this.__wbg_ptr);
-        return ret >>> 0;
-    }
-    /**
-     * Get the number of neurons in the engine.
-     * @returns {number}
-     */
-    get num_neurons() {
-        const ret = wasm.predictivecodingengine_num_neurons(this.__wbg_ptr);
-        return ret >>> 0;
-    }
-    /**
-     * Get the number of output neurons.
-     * @returns {number}
-     */
-    get num_outputs() {
-        const ret = wasm.predictivecodingengine_num_outputs(this.__wbg_ptr);
-        return ret >>> 0;
-    }
-    /**
      * Runs inference on a batch of samples.
      *
      * Input format: packed Float32Array [input0..., input1..., ...]
@@ -1871,35 +1877,28 @@ export class PredictiveCodingEngine {
         return v3;
     }
     /**
-     * Creates a new PredictiveCodingEngine from serialised topology data.
-     *
-     * Data format (all values little-endian):
-     * - u32: num_inputs
-     * - u32: num_outputs
-     * - u32: num_neurons_total (including inputs)
-     * - u32: inference_steps
-     * - f32: inference_rate
-     * - f32: energy_threshold
-     * - For each non-input neuron:
-     *   - f32: bias
-     *   - u8: squash_type
-     *   - u8: is_hidden (1 = hidden, 0 = output)
-     *   - u16: num_connections
-     *   - For each connection:
-     *     - u16: from_index
-     *     - f32: weight (as 4 bytes, little-endian)
-     * @param {Uint8Array} data
+     * Get the number of neurons in the engine.
+     * @returns {number}
      */
-    constructor(data) {
-        const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.predictivecodingengine_new(ptr0, len0);
-        if (ret[2]) {
-            throw takeFromExternrefTable0(ret[1]);
-        }
-        this.__wbg_ptr = ret[0] >>> 0;
-        PredictiveCodingEngineFinalization.register(this, this.__wbg_ptr, this);
-        return this;
+    get num_neurons() {
+        const ret = wasm.predictivecodingengine_num_neurons(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Get the number of input neurons.
+     * @returns {number}
+     */
+    get num_inputs() {
+        const ret = wasm.predictivecodingengine_num_inputs(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Get the number of output neurons.
+     * @returns {number}
+     */
+    get num_outputs() {
+        const ret = wasm.predictivecodingengine_num_outputs(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Computes weight and bias gradients from settled inference state.
