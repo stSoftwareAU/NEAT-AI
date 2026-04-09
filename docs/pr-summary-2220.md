@@ -1,26 +1,34 @@
 ## Summary
 
 Replace the 12-case switch statement in `Mutator.createOperator()` with a static
-`Map<string, factory>` lookup, following the Open/Closed Principle. Adding a new
-mutation type now requires only a new map entry rather than modifying a switch
-block. All 12 mutation operators are correctly instantiated via the map, error
-handling for unknown methods is preserved (with capitalised message for
-consistency), and all existing tests pass unchanged. Closes #2220.
+`Map`-based factory lookup. This improves adherence to the Open/Closed Principle
+— adding a new mutation type now requires only a single map entry instead of
+modifying the switch. Closes #2220.
+
+## Changes
+
+- **`src/NEAT/Mutator.ts`**: Added `private static readonly operatorFactories`
+  map containing all 12 mutation operator factory functions. Replaced the
+  switch-based `createOperator()` with a map lookup that throws
+  `ValidationError` for unknown methods.
+- **`test/NEAT/MutatorMutateCreature.ts`**: Updated error message assertion to
+  match the capitalised "Unknown mutation method" format.
+- **`test/NEAT/MutatorOperatorFactory.ts`**: New test file verifying all
+  operators instantiate correctly via the factory map, unknown methods throw
+  `ValidationError`, and caching behaviour is preserved.
 
 ## Evidence
 
-- All 5512 existing tests pass with zero failures
-- `./quality.sh` passes cleanly
-- No behavioural change: the factory map produces identical operator instances
-  to the previous switch statement
+All 98 existing Mutator tests pass unchanged (except the error message casing
+fix). No behavioural change — the factory map produces identical operator
+instances.
 
 ## Test Plan
 
-- Added `test/NEAT/MutatorOperatorFactory.ts` with 5 tests:
-  - Verifies all 12 mutation operators are instantiated with correct types
-  - Verifies unknown method names throw `ValidationError`
-  - Verifies operator caching per creature works correctly
-  - Verifies different creatures get separate operator instances
-  - Verifies all `Mutation.ALL` entries are covered by the factory
-- Updated `test/NEAT/MutatorMutateCreature.ts` to match capitalised error
-  message
+- `test/NEAT/MutatorOperatorFactory.ts` — 5 new tests:
+  - All FFW operators instantiate via factory
+  - All ALL operators (including recurrent) instantiate via factory
+  - Unknown method throws `ValidationError`
+  - Cached instances are reused for same creature
+  - Different creatures get different instances
+- All existing `test/NEAT/Mutator*.ts` and `test/mutate/Mutator*.ts` tests pass
