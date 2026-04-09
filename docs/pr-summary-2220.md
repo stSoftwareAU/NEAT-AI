@@ -22,4 +22,5 @@ consistency), and all existing tests pass unchanged. Closes #2220.
   - Verifies operator caching per creature works correctly
   - Verifies different creatures get separate operator instances
   - Verifies all `Mutation.ALL` entries are covered by the factory
-- Updated `test/NEAT/MutatorMutateCreature.ts` to match capitalised error message
+- Updated `test/NEAT/MutatorMutateCreature.ts` to match capitalised error
+  message
