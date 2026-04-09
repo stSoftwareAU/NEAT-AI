@@ -156,7 +156,7 @@ Deno.test("MutatorMutateCreature: throws ValidationError on unknown mutation met
   assertThrows(
     () => mutator.mutateCreature(creature, { name: "UNKNOWN_MUTATION" }),
     ValidationError,
-    "unknown mutation method",
+    "Unknown mutation method",
   );
 });
 
