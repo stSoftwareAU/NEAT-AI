@@ -6,6 +6,39 @@ import {
 } from "@wasm/ActivationMethods.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
+// Issue #2219: Named constants for backpropagation configuration defaults
+// and adaptive learning rate thresholds.
+
+/** Maximum range for random generation selection (1 to this value). */
+export const MAX_RANDOM_GENERATIONS = 10;
+
+/** Default limit scale for bias values. */
+export const DEFAULT_BIAS_LIMIT_SCALE = 10_000;
+
+/** Default limit scale for weight values. */
+export const DEFAULT_WEIGHT_LIMIT_SCALE = 100_000;
+
+/** Default decay factor for learning rate decay/warm_restart strategies. */
+export const LEARNING_RATE_DECAY_FACTOR = 0.95;
+
+/** Default coordination factor for bias-weight update coordination. */
+export const COORDINATION_FACTOR = 0.2;
+
+/** Error ratio threshold below which improvement is considered significant. */
+export const ERROR_IMPROVEMENT_THRESHOLD = 0.95;
+
+/** Error ratio threshold below which stagnation is detected. */
+export const ERROR_STAGNATION_THRESHOLD = 1.0;
+
+/** Learning rate multiplier when error is improving significantly. */
+export const IMPROVEMENT_BOOST_FACTOR = 1.1;
+
+/** Learning rate multiplier when error is stagnating. */
+export const STAGNATION_BOOST_FACTOR = 1.3;
+
+/** Minimum error adjustment factor when error worsens. */
+export const MIN_ERROR_ADJUSTMENT = 0.5;
+
 export type BackPropagationArguments = {
   disableRandomSamples: boolean;
 
@@ -143,7 +176,8 @@ export function createBackPropagationConfig(
     // Issue #1436: Reduce default range from 1-100 to 1-10 to avoid
     // excessive generational dampening that slows training convergence.
     generations: Math.max(
-      options?.generations ?? Math.floor(rng.random() * 10) + 1,
+      options?.generations ??
+        Math.floor(rng.random() * MAX_RANDOM_GENERATIONS) + 1,
       0,
     ),
 
@@ -157,9 +191,15 @@ export function createBackPropagationConfig(
       0,
     ),
 
-    limitBiasScale: Math.max(options?.limitBiasScale ?? 10_000, 1),
+    limitBiasScale: Math.max(
+      options?.limitBiasScale ?? DEFAULT_BIAS_LIMIT_SCALE,
+      1,
+    ),
 
-    limitWeightScale: Math.max(options?.limitWeightScale ?? 100_000, 1),
+    limitWeightScale: Math.max(
+      options?.limitWeightScale ?? DEFAULT_WEIGHT_LIMIT_SCALE,
+      1,
+    ),
 
     // Issue #1437: Use a sensible fixed default (0.01) instead of random()^3
     // which was heavily biased towards tiny values (mean ~0.05).
@@ -205,7 +245,7 @@ export function createBackPropagationConfig(
     ),
     learningRateDecay: Math.min(
       Math.max(
-        options?.learningRateDecay ?? 0.95,
+        options?.learningRateDecay ?? LEARNING_RATE_DECAY_FACTOR,
         0.1,
       ),
       1,
@@ -213,7 +253,7 @@ export function createBackPropagationConfig(
     warmRestartPeriod: Math.max(options?.warmRestartPeriod ?? 10, 2),
     biasWeightCoordinationFactor: Math.min(
       Math.max(
-        options?.biasWeightCoordinationFactor ?? 0.2,
+        options?.biasWeightCoordinationFactor ?? COORDINATION_FACTOR,
         0,
       ),
       1,
@@ -292,16 +332,19 @@ export function calculateLearningRate(
         const errorRatio = errorFeedback.currentError /
           errorFeedback.previousError;
 
-        if (errorRatio < 0.95) {
+        if (errorRatio < ERROR_IMPROVEMENT_THRESHOLD) {
           // Good improvement: maintain or slightly boost the rate
-          errorAdjustment = 1.1;
-        } else if (errorRatio < 1.0) {
+          errorAdjustment = IMPROVEMENT_BOOST_FACTOR;
+        } else if (errorRatio < ERROR_STAGNATION_THRESHOLD) {
           // Stagnation: increase rate to escape plateau
-          errorAdjustment = 1.3;
+          errorAdjustment = STAGNATION_BOOST_FACTOR;
         } else {
           // Error worsened: reduce the rate to avoid overshooting.
-          // The worse the ratio, the more we reduce (down to 0.5x).
-          errorAdjustment = Math.max(0.5, 1.0 / errorRatio);
+          // The worse the ratio, the more we reduce (down to MIN_ERROR_ADJUSTMENT).
+          errorAdjustment = Math.max(
+            MIN_ERROR_ADJUSTMENT,
+            ERROR_STAGNATION_THRESHOLD / errorRatio,
+          );
         }
 
         // Issue #1480: Error-magnitude scaling.
