@@ -22,8 +22,8 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
 1. [What We've Implemented](#what-weve-implemented)
 2. [Architectural Comparison](#architectural-comparison)
 3. [Training Paradigms](#training-paradigms)
-4. [Ecosystem Comparison: What We've Built vs Standard Libraries](#ecosystem-comparison-what-weve-built-vs-standard-libraries)
-5. [Our Unique Approaches](#our-unique-approaches)
+4. [Our Unique Approaches](#our-unique-approaches)
+5. [Ecosystem Comparison: What We've Built vs Standard Libraries](#ecosystem-comparison-what-weve-built-vs-standard-libraries)
 6. [Pros and Cons Analysis](#pros-and-cons-analysis)
 7. [Shortcomings and Future Work](#shortcomings-and-future-work)
 8. [References and Further Reading](#references-and-further-reading)
@@ -87,6 +87,21 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
 - ✅ **Gradient Accumulation Normalisation**: Optional sqrt-scaling for gradient
   accumulation in high fan-out neurons, preventing neurons with many downstream
   connections from receiving disproportionately large error signals.
+- ✅ **Synthetic Synapse Training**: Temporarily densifies inter-layer
+  connectivity during backpropagation by adding zero-weight synapses between
+  adjacent topological layers. After training, near-zero synapses are pruned and
+  only useful connections are retained — addressing NEAT's inherent weakness of
+  sparse connectivity compared to conventional
+  [dense layers](https://en.wikipedia.org/wiki/Dense_layer). Opt-in via
+  `syntheticSynapses: true` in the training configuration.
+- ✅ **MCMC Mutation Acceptance**: Uses the
+  [Metropolis-Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)
+  criterion for mutation acceptance. Instead of unconditionally accepting all
+  mutations, worse-fitness moves are accepted with a probability that decreases
+  as temperature cools — enabling the population to escape local optima early
+  and converge later. Includes adaptive temperature tuning toward the
+  theoretically optimal acceptance rate (~23.4%, Roberts et al. 1997). Opt-in
+  via `mcmc: { enabled: true }`.
 
 ### ✨ Unique Features
 
@@ -155,6 +170,31 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
 - ✅ **Parallel Batch Creature Evaluation**: Topology-aware grouping clusters
   same-structure creatures in the evaluation queue to maximise WASM compilation
   cache hits across workers, with configurable concurrency limits.
+- ✅ **MCMC Mutation Acceptance**: Implements the
+  [Metropolis-Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)
+  criterion for mutation acceptance with adaptive temperature tuning toward the
+  theoretically optimal acceptance rate (~23.4%). Enables escape from local
+  optima early in evolution while promoting convergence later.
+- ✅ **Advanced Breeding Strategies**: Multiple breeding strategies for
+  genetically incompatible creatures, including input-weight cosine similarity
+  for neuron alignment, subgraph transplantation for
+  [horizontal gene transfer](https://en.wikipedia.org/wiki/Horizontal_gene_transfer),
+  and diversity-driven breeding for cross-population pairing.
+- ✅ **Synthetic Synapse Training**: Temporarily densifies inter-layer
+  connectivity during backpropagation by adding zero-weight synapses between
+  adjacent topological layers, then prunes near-zero connections after training
+  — addressing NEAT's inherent sparse connectivity weakness.
+- ✅ **WASM Panic Recovery**: Graceful handling of WASM unreachable panics
+  during evolution. Creatures that trigger WASM traps are excluded from the
+  population without crashing the worker or evolution loop, enabling robust
+  long-running training.
+- ✅ **Forward-Only Topology Enforcement**: Unconditional topology validation
+  after creature initialisation, with DEBUG-gated assertions after bulk neuron
+  remapping operations, ensuring backward synapses cannot silently corrupt
+  forward-only creatures.
+- ✅ **Numerical Stability**: Unbounded activation functions (TAN, SQUARE, CUBE)
+  are clamped to finite ranges in both TypeScript and Rust WASM implementations,
+  preventing numerical overflow from producing extreme scores.
 
 ## 🏗️ Architectural Comparison
 
@@ -357,6 +397,13 @@ graph LR
 - **Cross-Validation**: K-fold validation for robust fitness estimation
 - **Transfer Learning**: Checkpoint export/import with weight freezing for
   fine-tuning on related tasks
+- **MCMC Mutation Acceptance**: Metropolis-Hastings criterion with adaptive
+  temperature tuning for accepting/rejecting mutations
+- **Synthetic Synapses**: Temporary dense inter-layer connectivity during
+  backpropagation, pruned after training
+- **Advanced Breeding**: Input-weight crossover, subgraph transplantation
+  (horizontal gene transfer), diversity-driven breeding, and cosine similarity
+  neuron alignment for genetically incompatible creatures
 
 **Strengths**:
 
@@ -574,6 +621,92 @@ search independently. Our caching layer allows the discovery pipeline to learn
 from its own history, building on previous successes and avoiding repeated
 failures.
 
+### 9. 🎲 MCMC Mutation Acceptance
+
+**What It Is**: A
+[Metropolis-Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)
+acceptance criterion applied to creature mutations, replacing unconditional
+acceptance of all mutations.
+
+**How It Works**:
+
+1. After a mutation, the new creature's fitness is compared to its parent
+2. Improving mutations are always accepted
+3. Worsening mutations are accepted with probability
+   `exp(−Δfitness / temperature)`, where temperature follows an exponential
+   cooling schedule
+4. Adaptive temperature tuning adjusts the temperature toward the theoretically
+   optimal acceptance rate (~23.4%, Roberts et al. 1997) based on a
+   rolling-window of recent acceptance decisions
+
+**Why It's Unique**: Standard NEAT implementations accept all mutations
+unconditionally or use simple fitness-based filtering. MCMC acceptance enables
+the population to explore broadly early in evolution (high temperature) and
+converge on good solutions later (low temperature), borrowing from the
+well-studied Markov chain Monte Carlo framework.
+
+**Configuration**: Opt-in via `mcmc: { enabled: true }` with configurable
+initial temperature, cooling rate, and adaptive tuning parameters
+(`adjustmentRate`, `toleranceRate`).
+
+**Reference**: See Feature #20 in [README.md](./README.md)
+
+### 10. 🧬 Advanced Breeding Strategies
+
+**What It Is**: Multiple breeding strategies for genetically incompatible
+creatures that go beyond standard NEAT crossover.
+
+**How It Works**:
+
+- **Input-Weight Crossover**: Preserves the mother's topology and blends
+  input/output connection weights from both parents, enabling meaningful
+  crossover even when topologies are structurally incompatible
+- **Cosine Similarity Alignment**: Aligns neurons between incompatible parents
+  using input-weight cosine similarity rather than sequential mapping, matching
+  neurons by functional role rather than array position
+- **Subgraph Transplantation**: Extracts self-contained clusters of 2–5
+  connected neurons from one parent and transplants them (with new UUIDs) into
+  another, inspired by
+  [horizontal gene transfer](https://en.wikipedia.org/wiki/Horizontal_gene_transfer)
+  in microbiology
+- **Diversity-Driven Breeding**: Periodically breeds the fittest creatures with
+  genetically distant newcomers (e.g., from separate islands) to inject
+  diversity into stagnating populations
+
+**Why It's Unique**: Most NEAT implementations fall back to simple fitness-based
+selection when parents are incompatible. Our approach preserves meaningful
+genetic information across species boundaries, enabling the evolutionary
+benefits of cross-island migration without sacrificing structural integrity.
+
+**Reference**: See Feature #21 in [README.md](./README.md)
+
+### 11. 🔗 Synthetic Synapse Training
+
+**What It Is**: Temporary dense inter-layer connectivity during backpropagation
+that addresses NEAT's inherent sparse connectivity weakness.
+
+**How It Works**:
+
+1. Before backpropagation, zero-weight synapses are added between all neuron
+   pairs in adjacent topological layers (determined by layer assignment)
+2. Backpropagation runs with this temporarily densified connectivity, giving
+   gradient descent a richer search space
+3. After training, near-zero synapses are pruned and only connections that
+   developed meaningful weights are retained
+
+**Why It's Unique**: NEAT networks are naturally sparse — they start minimal and
+grow only through mutation. This sparsity can limit backpropagation's
+effectiveness because gradient descent can only optimise existing connections.
+Synthetic synapses provide a temporary
+[layer densification](https://en.wikipedia.org/wiki/Dense_layer) step that lets
+gradient descent discover useful connections that evolution hasn't found yet,
+without permanently inflating the network.
+
+**Configuration**: Opt-in via `syntheticSynapses: true` in the training
+configuration.
+
+**Reference**: See Feature #22 in [README.md](./README.md)
+
 ## 🔬 Ecosystem Comparison: What We've Built vs Standard Libraries
 
 ### 📚 Standard ML Libraries (TensorFlow, PyTorch, etc.)
@@ -602,6 +735,11 @@ failures.
 - **Unique Activations**: IF, MAX, MIN and other non-standard functions
 - **Genetic Operations**: Speciation, crossover, mutation with historical
   marking
+- **MCMC Acceptance**: Metropolis-Hastings mutation acceptance with adaptive
+  temperature
+- **Synthetic Synapses**: Temporary dense connectivity for gradient descent
+- **Advanced Breeding**: Multiple strategies for incompatible parent crossover
+- **WASM Resilience**: Graceful panic recovery in long-running evolution
 
 **Key Differences**:
 
@@ -657,6 +795,18 @@ failures.
     training, neuron pruning, and cost-of-growth penalty
 12. **Self-Tuning Hyperparameters**: Per-creature evolvable learning rate,
     mutation rates, and regularisation strength
+13. **MCMC Exploration/Exploitation**: Metropolis-Hastings acceptance enables
+    broad exploration early and convergence later, with adaptive temperature
+    tuning
+14. **Resilient Long-Running Training**: Graceful WASM panic recovery and
+    forward-only topology enforcement enable robust multi-day training runs
+    without manual intervention
+15. **Advanced Inter-Species Breeding**: Multiple strategies (input-weight
+    crossover, subgraph transplantation, diversity-driven breeding) preserve
+    genetic diversity while enabling meaningful crossover between structurally
+    different creatures
+16. **Synthetic Synapse Training**: Temporary layer densification gives gradient
+    descent a richer search space without permanently inflating the network
 
 ### 🧬 NEAT (Our Implementation) - Cons
 
@@ -1141,6 +1291,24 @@ support exists via the `feedbackLoop` configuration.
 - [Hybrid Evolutionary Algorithms](https://www.springer.com/gp/book/9783540732194) -
   Raidl (2008)
 
+### 🎲 Markov Chain Monte Carlo
+
+- [Metropolis-Hastings Algorithm](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm) -
+  Wikipedia overview
+- [Optimal Scaling of MCMC](https://projecteuclid.org/journals/annals-of-applied-probability/volume-7/issue-1/Weak-convergence-and-optimal-scaling-of-random-walk-Metropolis-algorithms/10.1214/aoap/1034625254.full) -
+  Roberts, Gelman & Gilks (1997) — optimal acceptance rate theory
+- [MCMC in Machine Learning](https://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo) -
+  Wikipedia overview
+
+### 🧬 Horizontal Gene Transfer and Breeding
+
+- [Horizontal Gene Transfer](https://en.wikipedia.org/wiki/Horizontal_gene_transfer) -
+  Wikipedia overview
+- [Island Model Evolution](https://en.wikipedia.org/wiki/Island_model) -
+  Wikipedia overview
+- [Cosine Similarity](https://en.wikipedia.org/wiki/Cosine_similarity) - Used
+  for neuron alignment in inter-species breeding
+
 ### ⚡ GPU Acceleration
 
 - [Metal Performance Shaders](https://developer.apple.com/metal/Metal-Performance-Shaders-Framework/) -
@@ -1176,8 +1344,13 @@ cross-platform GPU acceleration, memetic evolution, error-guided discovery with
 intelligent caching, predictive coding, per-creature hyperparameter
 self-adaptation, comprehensive regularisation (dropout, L1/L2 weight & bias
 decay), transfer learning via checkpoint export/import, ONNX format export,
-k-fold cross-validation, and parallel batch creature evaluation. Remaining gaps
-in unsupervised learning and attention mechanisms represent opportunities for
+k-fold cross-validation, parallel batch creature evaluation, MCMC mutation
+acceptance with adaptive temperature tuning, synthetic synapse training for
+temporary layer densification, advanced inter-species breeding strategies
+(input-weight crossover, subgraph transplantation, diversity-driven breeding),
+graceful WASM panic recovery for resilient long-running training, and
+forward-only topology enforcement for structural integrity. Remaining gaps in
+unsupervised learning and attention mechanisms represent opportunities for
 future development.
 
 The choice between NEAT and traditional neural networks depends on:
@@ -1199,5 +1372,6 @@ The choice between NEAT and traditional neural networks depends on:
 Our implementation bridges these worlds, making NEAT more practical while
 preserving its unique advantages. The hybrid approach of evolution +
 backpropagation, combined with memetic learning, error-guided discovery,
-transfer learning, and ONNX interoperability, creates a powerful alternative to
+transfer learning, ONNX interoperability, MCMC acceptance, synthetic synapse
+training, and advanced inter-species breeding, creates a powerful alternative to
 purely gradient-based methods.
