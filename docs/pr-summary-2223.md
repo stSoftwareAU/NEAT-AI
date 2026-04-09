@@ -1,12 +1,17 @@
 ## Summary
 
-Extract `computeNeuronDependencyIndex()` helper from `Offspring.sortNeurons()` to reduce nesting depth from 8+ levels to 4. The new function encapsulates the synapse iteration logic that determines a neuron's dependency-aware sort index. No behavioural change — all existing breeding/offspring tests pass. Closes #2223.
+Extract `computeNeuronDependencyIndex()` helper from `Offspring.sortNeurons()`
+to reduce nesting depth from 8+ levels to 4. The new function encapsulates the
+synapse iteration logic that determines a neuron's dependency-aware sort index.
+No behavioural change — all existing breeding/offspring tests pass. Closes
+#2223.
 
 ## Evidence
 
 - `./quality.sh` passes cleanly: 5684 tests passed, 0 failed
 - Existing `OffspringSortNeurons.ts` test continues to pass unchanged
-- New `ComputeNeuronDependencyIndex.ts` tests verify the extracted function in isolation
+- New `ComputeNeuronDependencyIndex.ts` tests verify the extracted function in
+  isolation
 
 ## Test Plan
 
