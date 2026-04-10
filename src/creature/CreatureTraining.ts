@@ -475,6 +475,13 @@ export async function evolveDir(
       if (neat.finishUp(iterations, endTimeMS, start, generation)) {
         break;
       }
+
+      // Issue #2240: Lightweight wait for in-flight tasks instead of running
+      // full evolve() cycles. This avoids wasting worker resources on fitness
+      // evaluation, breeding, and mutation while simply waiting for discovery
+      // or training to finish.
+      // deno-lint-ignore no-await-in-loop
+      await neat.awaitInFlightTasks();
     }
 
     if (

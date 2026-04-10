@@ -288,7 +288,13 @@ export class Neat {
     }
 
     if (this.trainingInProgress.size > 0) {
-      getLogger().info("Waiting for training to complete");
+      const trainingUUIDs = Array.from(this.trainingInProgress.keys()).map(
+        (uuid) => uuid.substring(Math.max(0, uuid.length - 8)),
+      );
+      getLogger().info(
+        `[Neat] Waiting for ${this.trainingInProgress.size} training task(s) ` +
+          `to complete - In progress: ${trainingUUIDs.join(", ")}`,
+      );
       return false;
     }
 
@@ -308,6 +314,50 @@ export class Neat {
       return false;
     }
     return true;
+  }
+
+  /**
+   * Issue #2240: Lightweight wait for in-flight discovery and training tasks.
+   *
+   * Instead of running full evolve() cycles while waiting for async tasks
+   * to complete during the finish-up phase, this method awaits the actual
+   * promises using Promise.race with a timeout. This avoids wasting worker
+   * resources on unnecessary fitness evaluation, breeding, and mutation.
+   *
+   * @param timeoutMs - Maximum time to wait before returning (default 30s)
+   */
+  async awaitInFlightTasks(timeoutMs = 30_000): Promise<void> {
+    const inFlightPromises: Promise<void>[] = [
+      ...this.discoveryInProgress.values(),
+      ...this.trainingInProgress.values(),
+    ];
+
+    if (inFlightPromises.length === 0) {
+      return;
+    }
+
+    const discoveryCount = this.discoveryInProgress.size;
+    const trainingCount = this.trainingInProgress.size;
+    getLogger().info(
+      `[Neat] Awaiting ${inFlightPromises.length} in-flight task(s) ` +
+        `(${discoveryCount} discovery, ${trainingCount} training) ` +
+        `with ${timeoutMs}ms timeout`,
+    );
+
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<void>((resolve) => {
+      timeoutId = setTimeout(resolve, timeoutMs);
+    });
+
+    try {
+      // Wait until at least one task completes or timeout expires
+      await Promise.race([
+        Promise.race(inFlightPromises.map((p) => p.catch(() => {}))),
+        timeoutPromise,
+      ]);
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   // --- Delegated methods ---
