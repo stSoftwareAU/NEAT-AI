@@ -57,7 +57,10 @@ All 5698 tests pass (0 failed, 3 ignored) after changes.
 - `test/architecture/FitnessFastPoolEvaluation.ts` — new test verifying:
   - Fast-pool workers evaluate all creatures without filtering
   - Evaluation completes promptly when heavy-pool workers are occupied elsewhere
-  - Workers without `isRunningLongTask()` work correctly (method no longer called)
-- `test/architecture/FitnessExcludeBusyWorkers.ts` — updated to verify fast-pool behaviour
-- `test/architecture/FitnessBusyWorkerWait.ts` — updated to verify fast-pool behaviour
+  - Workers without `isRunningLongTask()` work correctly (method no longer
+    called)
+- `test/architecture/FitnessExcludeBusyWorkers.ts` — updated to verify fast-pool
+  behaviour
+- `test/architecture/FitnessBusyWorkerWait.ts` — updated to verify fast-pool
+  behaviour
 - All existing fitness evaluation tests continue to pass
