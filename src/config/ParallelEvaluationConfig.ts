@@ -44,6 +44,21 @@ export interface ParallelEvaluationConfig {
    * Defaults to true.
    */
   topologyGrouping?: boolean;
+
+  /**
+   * Maximum milliseconds to wait for a busy worker to finish its
+   * long-running task before falling back to using all workers.
+   *
+   * Issue #2241: When all workers are occupied with long tasks
+   * (discovery/training), the fitness evaluator polls at short
+   * intervals for any worker to become free. If none becomes
+   * available within this duration, it falls back to the full
+   * worker pool.
+   *
+   * Set to 0 to disable the wait and fall back immediately.
+   * Defaults to 5000 (5 seconds).
+   */
+  busyWorkerWaitMs?: number;
 }
 
 /**
@@ -63,4 +78,5 @@ export const DEFAULT_PARALLEL_EVALUATION_CONFIG:
   RequiredParallelEvaluationConfig = {
     maxConcurrentEvaluations: 0,
     topologyGrouping: true,
+    busyWorkerWaitMs: 5_000,
   };
