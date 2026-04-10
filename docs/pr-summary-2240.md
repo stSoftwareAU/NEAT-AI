@@ -16,8 +16,8 @@ still pending, avoiding unnecessary full generation cycles.
 
 Additionally, `finishUp()` logging now clearly distinguishes between waiting for
 discovery tasks (with UUID details) and waiting for training tasks (with UUID
-details and task counts), making it easier to diagnose what the system is waiting
-for during the finish-up phase.
+details and task counts), making it easier to diagnose what the system is
+waiting for during the finish-up phase.
 
 ## Changes
 
@@ -25,14 +25,14 @@ for during the finish-up phase.
   `Promise.race` to efficiently wait for in-flight discovery/training promises.
   Updated training-in-progress logging to include task count and UUID details.
 - **`src/creature/CreatureTraining.ts`**: Modified the training loop to call
-  `awaitInFlightTasks()` when `finishUp()` returns false, replacing repeated full
-  `evolve()` cycles with a lightweight wait.
+  `awaitInFlightTasks()` when `finishUp()` returns false, replacing repeated
+  full `evolve()` cycles with a lightweight wait.
 
 ## Evidence
 
 - All 5696 existing tests pass with the changes
-- New tests verify `awaitInFlightTasks()` behaviour (immediate resolution,
-  task completion waiting, timeout respect, concurrent task handling)
+- New tests verify `awaitInFlightTasks()` behaviour (immediate resolution, task
+  completion waiting, timeout respect, concurrent task handling)
 
 ## Test Plan
 
