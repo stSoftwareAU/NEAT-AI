@@ -413,6 +413,7 @@ export async function evolveDir(
     generation++;
 
     // Issue #1615: Emit generation_complete event
+    // Issue #2239: Include per-phase timing diagnostics from evolve()
     const generationElapsedMs = now -
       (generation === 1 ? start : iterationStartMS);
     emitTrainingEvent(config.onTrainingEvent, {
@@ -423,6 +424,7 @@ export async function evolveDir(
       averageFitness: result.averageScore,
       populationSize: neat.population.length,
       elapsedMs: generationElapsedMs,
+      phaseTiming: result.phaseTiming,
     });
 
     // Issue #1615: Emit plateau_detected event when on plateau
