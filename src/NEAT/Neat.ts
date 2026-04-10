@@ -326,16 +326,7 @@ export class Neat {
 
   evolve(
     previousFittest?: Creature,
-  ): Promise<{
-    fittest: Creature;
-    averageScore: number;
-    plateau: {
-      onPlateau: boolean;
-      generationsOnPlateau: number;
-      improvementRate: number | null;
-      mutationMultiplier: number;
-    };
-  }> {
+  ): ReturnType<typeof evolution.evolve> {
     return evolution.evolve(this, previousFittest);
   }
 

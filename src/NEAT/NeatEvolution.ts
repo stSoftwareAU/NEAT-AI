@@ -31,6 +31,7 @@ import { simplify } from "@optimize/Simplify.ts";
 import { validateOrDiagnose } from "@utils/Diagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import type { GenerationPhaseTiming } from "@config/TrainingEvent.ts";
 import type { Neat } from "@neat/Neat.ts";
 import { logReplaySummary } from "@neat/NeatScheduling.ts";
 import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
@@ -54,10 +55,17 @@ export async function evolve(
     improvementRate: number | null;
     mutationMultiplier: number;
   };
+  phaseTiming: GenerationPhaseTiming;
 }> {
+  // Issue #2239: Per-generation timing diagnostics
+  const evolveStartMs = Date.now();
+
   neat.additionalGenerationCount--;
 
+  // Issue #2239: Time fitness evaluation phase
+  const fitnessStartMs = Date.now();
   await neat.fitness.calculate(neat.population);
+  const fitnessMs = Date.now() - fitnessStartMs;
   sortCreaturesByScore(neat.population);
 
   const genus = new Genus();
@@ -309,6 +317,8 @@ export async function evolve(
     newPopulation.length;
 
   // Issue #1026: Use parallel breeding for improved performance
+  // Issue #2239: Time parallel breeding phase
+  const breedingStartMs = Date.now();
   const parallelBreeding = new ParallelBreeding(
     genus,
     neat.config,
@@ -316,6 +326,7 @@ export async function evolve(
   );
   const offspringBatch = await parallelBreeding.breedBatch(newPopSize);
   newPopulation.push(...offspringBatch);
+  const breedingMs = Date.now() - breedingStartMs;
 
   const breed = new Breed(genus, neat.config);
 
@@ -364,7 +375,10 @@ export async function evolve(
   // Issue #1099: Single-pass de-duplication
   const deDuplicator = new DeDuplicator(breed, mutator);
 
+  // Issue #2239: Time result processing phase
+  const resultProcessingStartMs = Date.now();
   const trainedPopulation = processCompletedResults(neat, fittest, genus);
+  const resultProcessingMs = Date.now() - resultProcessingStartMs;
 
   /** make sure we do at least one more loop */
   if (trainedPopulation.length > 0 && neat.additionalGenerationCount <= 0) {
@@ -424,6 +438,23 @@ export async function evolve(
     });
   }
 
+  // Issue #2239: Compute total generation time and build phase timing
+  const totalMs = Date.now() - evolveStartMs;
+  const phaseTiming: GenerationPhaseTiming = {
+    fitnessMs,
+    breedingMs,
+    resultProcessingMs,
+    totalMs,
+  };
+
+  // Issue #2239: Log per-phase timing when verbose is enabled
+  if (neat.config.verbose) {
+    getLogger().info(
+      `[Timing] fitness=${fitnessMs}ms breeding=${breedingMs}ms ` +
+        `resultProcessing=${resultProcessingMs}ms total=${totalMs}ms`,
+    );
+  }
+
   return {
     fittest: fittest,
     averageScore: results.averageScore,
@@ -433,6 +464,7 @@ export async function evolve(
       improvementRate: neat.plateauDetector.getImprovementRate(),
       mutationMultiplier: neat.plateauDetector.getMutationMultiplier(),
     },
+    phaseTiming,
   };
 }
 

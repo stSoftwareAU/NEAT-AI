@@ -8,6 +8,23 @@
  */
 
 /**
+ * Per-phase timing breakdown for a single generation.
+ *
+ * Issue #2239: Lightweight timing diagnostics to identify slow phases
+ * in the evolution loop. Only populated when instrumentation is active.
+ */
+export interface GenerationPhaseTiming {
+  /** Time spent on fitness evaluation (neat.fitness.calculate) in ms. */
+  readonly fitnessMs: number;
+  /** Time spent on parallel breeding (parallelBreeding.breedBatch) in ms. */
+  readonly breedingMs: number;
+  /** Time spent processing completed training/discovery results in ms. */
+  readonly resultProcessingMs: number;
+  /** Total time for the entire evolve() call in ms. */
+  readonly totalMs: number;
+}
+
+/**
  * Emitted when a generation completes evaluation and selection.
  */
 export interface GenerationCompleteEvent {
@@ -24,6 +41,11 @@ export interface GenerationCompleteEvent {
   readonly populationSize: number;
   /** Time elapsed for this generation in milliseconds. */
   readonly elapsedMs: number;
+  /**
+   * Per-phase timing breakdown for this generation.
+   * Issue #2239: Identifies which phase of evolution consumed the most time.
+   */
+  readonly phaseTiming: GenerationPhaseTiming;
 }
 
 /**
