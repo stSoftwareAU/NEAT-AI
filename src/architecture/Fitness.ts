@@ -11,6 +11,13 @@ import { calculate as calculateScore } from "@architecture/Score.ts";
 import { getLogger } from "@utils/Logger.ts";
 
 /**
+ * Interval (ms) between polls when waiting for a busy worker to
+ * finish its long-running task. Kept short so tests remain fast
+ * and production latency is bounded.
+ */
+const POLL_INTERVAL_MS = 50;
+
+/**
  * Evaluates fitness scores for a population of creatures.
  *
  * Issue #1289: Uses a parallel work-stealing pattern to distribute creature
@@ -111,27 +118,33 @@ export class Fitness {
 
     // Issue #2162: Exclude workers running long tasks (discovery/training)
     // so that Promise.all does not stall waiting for them.
-    const availableWorkers = cappedWorkers.filter(
+    let availableWorkers = cappedWorkers.filter(
       (w) => !w.isRunningLongTask(),
     );
 
-    // Guard: if ALL workers are busy, fall back to using all of them
-    // to avoid deadlock — at least one worker must evaluate.
+    // Issue #2241: Bounded wait — when all workers are busy with long
+    // tasks, poll briefly for any worker to finish before falling back
+    // to using the full pool (which may stall on in-flight tasks).
+    if (
+      availableWorkers.length === 0 && this.evalConfig.busyWorkerWaitMs > 0
+    ) {
+      availableWorkers = await this.awaitAvailableWorkers(cappedWorkers);
+    }
+
+    // Guard: if ALL workers are still busy after the bounded wait,
+    // fall back to the full pool to avoid deadlock.
     const activeWorkers = availableWorkers.length > 0
       ? availableWorkers
       : cappedWorkers;
 
-    if (availableWorkers.length < cappedWorkers.length) {
-      const excluded = cappedWorkers.length - activeWorkers.length;
-      if (excluded > 0) {
-        getLogger().debug(
-          `Fitness: excluded ${excluded} worker(s) running long tasks`,
-        );
-      } else {
-        getLogger().debug(
-          "Fitness: all workers running long tasks, using all as fallback",
-        );
-      }
+    // Issue #2241: Log worker availability ratio at info level so
+    // the impact of long-running tasks on evaluation is visible.
+    const longTaskCount = cappedWorkers.length - availableWorkers.length;
+    if (longTaskCount > 0) {
+      getLogger().info(
+        `Fitness: using ${activeWorkers.length}/${cappedWorkers.length} workers, ` +
+          `${longTaskCount} running long tasks`,
+      );
     }
 
     const processNext = async (worker: WorkerHandler): Promise<void> => {
@@ -193,5 +206,31 @@ export class Fitness {
 
     // Start all active workers processing the queue concurrently
     await Promise.all(activeWorkers.map((worker) => processNext(worker)));
+  }
+
+  /**
+   * Polls the worker pool until at least one worker finishes its
+   * long-running task, or the configured timeout expires.
+   *
+   * Issue #2241: Extracted to its own method to satisfy the
+   * no-await-in-loop lint rule. Uses recursive tail-call style
+   * to avoid await-in-loop.
+   *
+   * @returns Workers that are no longer running long tasks (may be empty).
+   */
+  private awaitAvailableWorkers(
+    cappedWorkers: WorkerHandler[],
+  ): Promise<WorkerHandler[]> {
+    const deadline = Date.now() + this.evalConfig.busyWorkerWaitMs;
+
+    const poll = (): Promise<WorkerHandler[]> =>
+      new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
+        .then(() => {
+          const free = cappedWorkers.filter((w) => !w.isRunningLongTask());
+          if (free.length > 0 || Date.now() >= deadline) return free;
+          return poll();
+        });
+
+    return poll();
   }
 }

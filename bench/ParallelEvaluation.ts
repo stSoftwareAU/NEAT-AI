@@ -87,6 +87,7 @@ Deno.bench({
     const evalConfig: RequiredParallelEvaluationConfig = {
       maxConcurrentEvaluations: 0,
       topologyGrouping: false,
+      busyWorkerWaitMs: 0,
     };
     const fitness = new Fitness(workers, 0.0001, false, evalConfig);
     const population = createMixedPopulation(100, 5);
@@ -101,6 +102,7 @@ Deno.bench({
     const evalConfig: RequiredParallelEvaluationConfig = {
       maxConcurrentEvaluations: 0,
       topologyGrouping: true,
+      busyWorkerWaitMs: 0,
     };
     const fitness = new Fitness(workers, 0.0001, false, evalConfig);
     const population = createMixedPopulation(100, 5);
@@ -116,6 +118,7 @@ Deno.bench({
     const evalConfig: RequiredParallelEvaluationConfig = {
       maxConcurrentEvaluations: 0,
       topologyGrouping: false,
+      busyWorkerWaitMs: 0,
     };
     const fitness = new Fitness(workers, 0.0001, false, evalConfig);
     const population = createMixedPopulation(500, 10);
@@ -130,6 +133,7 @@ Deno.bench({
     const evalConfig: RequiredParallelEvaluationConfig = {
       maxConcurrentEvaluations: 0,
       topologyGrouping: true,
+      busyWorkerWaitMs: 0,
     };
     const fitness = new Fitness(workers, 0.0001, false, evalConfig);
     const population = createMixedPopulation(500, 10);

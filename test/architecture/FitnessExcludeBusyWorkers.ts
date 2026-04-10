@@ -91,10 +91,17 @@ Deno.test("Fitness falls back to all workers when all are running long tasks", a
   worker1.runningLongTask = true;
   worker2.runningLongTask = true;
 
+  // Issue #2241: busyWorkerWaitMs: 0 disables bounded wait so this test
+  // exercises the immediate fallback path without the polling delay.
   const fitness = new Fitness(
     [worker1, worker2] as unknown[] as WorkerHandler[],
     0.0001,
     false,
+    {
+      maxConcurrentEvaluations: 0,
+      topologyGrouping: true,
+      busyWorkerWaitMs: 0,
+    },
   );
 
   const population = [makeCreature(0.1), makeCreature(0.2)];
@@ -152,10 +159,17 @@ Deno.test("Fitness works with single worker running long task (fallback)", async
   const worker = new MockWorker();
   worker.runningLongTask = true;
 
+  // Issue #2241: busyWorkerWaitMs: 0 disables bounded wait so this test
+  // exercises the immediate fallback path without the polling delay.
   const fitness = new Fitness(
     [worker] as unknown[] as WorkerHandler[],
     0.0001,
     false,
+    {
+      maxConcurrentEvaluations: 0,
+      topologyGrouping: true,
+      busyWorkerWaitMs: 0,
+    },
   );
 
   const population = [makeCreature(0.1), makeCreature(0.2)];
