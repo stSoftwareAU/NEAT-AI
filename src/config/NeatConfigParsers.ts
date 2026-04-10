@@ -748,12 +748,6 @@ export function parseParallelEvaluation(
     topologyGrouping: typeof overrides?.topologyGrouping === "boolean"
       ? overrides.topologyGrouping
       : d.topologyGrouping,
-    busyWorkerWaitMs: parseNumber(
-      "Parallel evaluation busyWorkerWaitMs",
-      overrides?.busyWorkerWaitMs,
-      d.busyWorkerWaitMs,
-      { integer: true, min: 0 },
-    ),
   } satisfies RequiredParallelEvaluationConfig;
 }
 

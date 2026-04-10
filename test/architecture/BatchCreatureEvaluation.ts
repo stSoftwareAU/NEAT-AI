@@ -33,10 +33,6 @@ class MockWorkerHandler {
     return this.busyCount > 0;
   }
 
-  isRunningLongTask(): boolean {
-    return false;
-  }
-
   addIdleListener(_callback: (worker: MockWorkerHandler) => void): void {
     // Not used in these tests
   }
@@ -271,7 +267,6 @@ Deno.test("Fitness - maxConcurrentEvaluations limits active workers", async () =
   const evalConfig: RequiredParallelEvaluationConfig = {
     maxConcurrentEvaluations: 2,
     topologyGrouping: false,
-    busyWorkerWaitMs: 0,
   };
 
   const fitness = new Fitness(
@@ -314,7 +309,6 @@ Deno.test("Fitness - maxConcurrentEvaluations 0 uses all workers", async () => {
   const evalConfig: RequiredParallelEvaluationConfig = {
     maxConcurrentEvaluations: 0,
     topologyGrouping: true,
-    busyWorkerWaitMs: 0,
   };
 
   const fitness = new Fitness(
@@ -354,7 +348,6 @@ Deno.test("Fitness - batch evaluation produces identical results to sequential",
   const evalConfigGrouped: RequiredParallelEvaluationConfig = {
     maxConcurrentEvaluations: 0,
     topologyGrouping: true,
-    busyWorkerWaitMs: 0,
   };
   const fitnessGrouped = new Fitness(
     [worker1 as unknown as WorkerHandler],
@@ -368,7 +361,6 @@ Deno.test("Fitness - batch evaluation produces identical results to sequential",
   const evalConfigUngrouped: RequiredParallelEvaluationConfig = {
     maxConcurrentEvaluations: 0,
     topologyGrouping: false,
-    busyWorkerWaitMs: 0,
   };
   const fitnessUngrouped = new Fitness(
     [worker2 as unknown as WorkerHandler],
@@ -426,7 +418,6 @@ Deno.test("Fitness - topology grouping with deduplication", async () => {
   const evalConfig: RequiredParallelEvaluationConfig = {
     maxConcurrentEvaluations: 0,
     topologyGrouping: true,
-    busyWorkerWaitMs: 0,
   };
 
   const fitness = new Fitness(
