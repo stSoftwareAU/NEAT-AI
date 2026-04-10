@@ -30,7 +30,6 @@ Deno.test("Fitness calculate - WASM panic returns -Infinity score instead of cra
         },
         evaluate: { error: Number.POSITIVE_INFINITY },
       }),
-    isRunningLongTask: () => false,
   };
 
   const fitness = new Fitness(
@@ -59,7 +58,6 @@ Deno.test("Fitness calculate - NaN error returns -Infinity score instead of cras
         duration: 10,
         evaluate: { error: Number.NaN },
       }),
-    isRunningLongTask: () => false,
   };
 
   const fitness = new Fitness(
@@ -85,7 +83,6 @@ Deno.test("Fitness calculate - negative error returns -Infinity score instead of
         duration: 10,
         evaluate: { error: -1 },
       }),
-    isRunningLongTask: () => false,
   };
 
   const fitness = new Fitness(
@@ -111,7 +108,6 @@ Deno.test("Fitness calculate - valid error still scores normally", async () => {
         duration: 10,
         evaluate: { error: 0.5 },
       }),
-    isRunningLongTask: () => false,
   };
 
   const fitness = new Fitness(

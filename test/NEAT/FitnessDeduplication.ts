@@ -30,10 +30,6 @@ class MockWorkerHandler {
     return this.busy;
   }
 
-  isRunningLongTask(): boolean {
-    return false;
-  }
-
   async evaluate(
     creature: Creature,
     _feedbackLoop: boolean,

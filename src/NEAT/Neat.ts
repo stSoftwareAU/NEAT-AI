@@ -117,11 +117,22 @@ export class Neat {
   lastDiscoveryDurationMS = 0;
   readonly MIN_DISCOVERY_TIME_MINUTES = 2;
 
+  /**
+   * @param input - Number of input neurons
+   * @param output - Number of output neurons
+   * @param options - NEAT configuration options
+   * @param workers - All workers (used for discovery, training, breeding)
+   * @param fastWorkers - Issue #2245: Workers dedicated to fitness evaluation
+   *   (fast pool). These workers never run discovery or training, so fitness
+   *   evaluation never stalls waiting for a long-running task. When omitted,
+   *   falls back to using all workers for backward compatibility.
+   */
   constructor(
     input: number,
     output: number,
     options: NeatOptions,
     workers: WorkerHandler[],
+    fastWorkers?: WorkerHandler[],
   ) {
     this.input = input;
     this.output = output;
@@ -129,8 +140,11 @@ export class Neat {
 
     this.config = createNeatConfig(options);
 
+    // Issue #2245: Use fast-pool workers for fitness evaluation when available.
+    // Fast-pool workers are dedicated to evaluation and never run discovery
+    // or training, eliminating the need for isRunningLongTask() filtering.
     this.fitness = new Fitness(
-      this.workers,
+      fastWorkers ?? this.workers,
       this.config.costOfGrowth,
       this.config.feedbackLoop,
       this.config.parallelEvaluation,

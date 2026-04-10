@@ -1,17 +1,22 @@
 /**
- * Tests for excluding discovery/training-busy workers from fitness evaluation.
+ * Tests for fast-pool fitness evaluation (replaces busy-worker exclusion tests).
  *
- * Issue #2162: Workers running long-running tasks (discovery or training)
- * should be excluded from the active evaluation pool so that
- * Promise.all does not stall waiting for them.
+ * Issue #2245: The reactive `isRunningLongTask()` filtering has been replaced
+ * by a structural fix — fitness evaluation now only receives fast-pool workers
+ * that are dedicated to evaluation and never run discovery or training.
+ *
+ * BUSINESS LOGIC CHANGE: These tests previously verified that Fitness
+ * dynamically excluded workers running long tasks (Issue #2162). That
+ * filtering logic has been removed because the fast-pool architecture
+ * makes it unnecessary. Tests now verify that Fitness works correctly
+ * with its dedicated worker pool.
  *
  * Verifies:
- * - Workers with active long tasks are excluded from evaluation
- * - Fallback to all workers when every worker is busy (no deadlock)
- * - Normal operation when no workers have long tasks
- * - Single-worker configurations still work correctly
+ * - Fitness uses all provided (fast-pool) workers for evaluation
+ * - Single-worker configurations work correctly
+ * - All creatures receive scores after evaluation
  */
-import { assertEquals, assertGreater } from "@std/assert";
+import { assert, assertEquals, assertGreater } from "@std/assert";
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { Fitness } from "@architecture/Fitness.ts";
@@ -20,15 +25,12 @@ import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 /**
- * Mock worker that tracks evaluations and supports isRunningLongTask().
+ * Mock worker that tracks evaluations.
+ * Issue #2245: No longer needs isRunningLongTask() since Fitness
+ * no longer calls it — fast-pool workers are always available.
  */
 class MockWorker {
   public evaluationCount = 0;
-  public runningLongTask = false;
-
-  isRunningLongTask(): boolean {
-    return this.runningLongTask;
-  }
 
   async evaluate(
     _creature: Creature,
@@ -57,13 +59,13 @@ function makeCreature(bias: number): Creature {
   return Creature.fromJSON(data);
 }
 
-Deno.test("Fitness excludes workers running long tasks from evaluation", async () => {
-  const availableWorker = new MockWorker();
-  const busyWorker = new MockWorker();
-  busyWorker.runningLongTask = true;
+Deno.test("Fitness uses all fast-pool workers for evaluation", async () => {
+  const worker1 = new MockWorker();
+  const worker2 = new MockWorker();
 
+  // Issue #2245: Fitness receives only fast-pool workers
   const fitness = new Fitness(
-    [availableWorker, busyWorker] as unknown[] as WorkerHandler[],
+    [worker1, worker2] as unknown[] as WorkerHandler[],
     0.0001,
     false,
   );
@@ -72,52 +74,21 @@ Deno.test("Fitness excludes workers running long tasks from evaluation", async (
 
   await fitness.calculate(population);
 
-  // The available worker should have handled all evaluations
-  assertGreater(
-    availableWorker.evaluationCount,
-    0,
-    "Available worker should have evaluated creatures",
-  );
-  assertEquals(
-    busyWorker.evaluationCount,
-    0,
-    "Busy worker should not have evaluated any creatures",
-  );
-});
-
-Deno.test("Fitness falls back to all workers when all are running long tasks", async () => {
-  const worker1 = new MockWorker();
-  const worker2 = new MockWorker();
-  worker1.runningLongTask = true;
-  worker2.runningLongTask = true;
-
-  // Issue #2241: busyWorkerWaitMs: 0 disables bounded wait so this test
-  // exercises the immediate fallback path without the polling delay.
-  const fitness = new Fitness(
-    [worker1, worker2] as unknown[] as WorkerHandler[],
-    0.0001,
-    false,
-    {
-      maxConcurrentEvaluations: 0,
-      topologyGrouping: true,
-      busyWorkerWaitMs: 0,
-    },
-  );
-
-  const population = [makeCreature(0.1), makeCreature(0.2)];
-
-  await fitness.calculate(population);
-
-  // Both workers should have participated (fallback — no deadlock)
+  // Both workers should have participated
   const totalEvaluations = worker1.evaluationCount + worker2.evaluationCount;
   assertEquals(
     totalEvaluations,
-    2,
-    "All creatures should be evaluated even when all workers are busy",
+    3,
+    "All creatures should be evaluated across fast-pool workers",
+  );
+  assertGreater(
+    worker1.evaluationCount,
+    0,
+    "Worker 1 should have evaluated some creatures",
   );
 });
 
-Deno.test("Fitness uses all workers normally when none are running long tasks", async () => {
+Deno.test("Fitness distributes work across all fast-pool workers", async () => {
   const worker1 = new MockWorker();
   const worker2 = new MockWorker();
 
@@ -155,21 +126,13 @@ Deno.test("Fitness uses all workers normally when none are running long tasks", 
   );
 });
 
-Deno.test("Fitness works with single worker running long task (fallback)", async () => {
+Deno.test("Fitness works with single fast-pool worker", async () => {
   const worker = new MockWorker();
-  worker.runningLongTask = true;
 
-  // Issue #2241: busyWorkerWaitMs: 0 disables bounded wait so this test
-  // exercises the immediate fallback path without the polling delay.
   const fitness = new Fitness(
     [worker] as unknown[] as WorkerHandler[],
     0.0001,
     false,
-    {
-      maxConcurrentEvaluations: 0,
-      topologyGrouping: true,
-      busyWorkerWaitMs: 0,
-    },
   );
 
   const population = [makeCreature(0.1), makeCreature(0.2)];
@@ -179,11 +142,11 @@ Deno.test("Fitness works with single worker running long task (fallback)", async
   assertEquals(
     worker.evaluationCount,
     2,
-    "Single busy worker should still evaluate all creatures (fallback)",
+    "Single fast-pool worker should evaluate all creatures",
   );
 });
 
-Deno.test("Fitness works with single worker not running long task", async () => {
+Deno.test("Fitness assigns scores to all creatures after evaluation", async () => {
   const worker = new MockWorker();
 
   const fitness = new Fitness(
@@ -192,13 +155,14 @@ Deno.test("Fitness works with single worker not running long task", async () => 
     false,
   );
 
-  const population = [makeCreature(0.1), makeCreature(0.2)];
+  const population = [makeCreature(0.1), makeCreature(0.2), makeCreature(0.3)];
 
   await fitness.calculate(population);
 
-  assertEquals(
-    worker.evaluationCount,
-    2,
-    "Single available worker should evaluate all creatures",
-  );
+  for (const creature of population) {
+    assert(
+      creature.score !== undefined && typeof creature.score === "number",
+      "Every creature should have a numeric score after evaluation",
+    );
+  }
 });
