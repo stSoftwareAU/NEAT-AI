@@ -187,7 +187,7 @@ export class Neat {
     this.discoveryReplayQueue = new DiscoveryReplayQueue();
 
     const fastHandlers = fastWorkers ?? this.workers;
-    const partitioned = fastWorkers != null &&
+    const partitioned = fastWorkers !== undefined &&
       fastWorkers.length < this.workers.length;
     const heavyHandlers = partitioned
       ? this.workers.slice(fastWorkers!.length)
