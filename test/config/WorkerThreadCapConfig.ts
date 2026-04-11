@@ -1,5 +1,8 @@
 import { assertEquals, assertThrows } from "@std/assert";
-import { createNeatConfig } from "@config/NeatConfig.ts";
+import {
+  createNeatConfig,
+  DEFAULT_HEAVY_TASK_WORKER_COUNT,
+} from "@config/NeatConfig.ts";
 import { DEFAULT_WORKER_THREAD_CAP_CONFIG } from "@config/WorkerThreadCapConfig.ts";
 
 Deno.test("WorkerThreadCapConfig - default values are sensible", () => {
@@ -142,8 +145,9 @@ Deno.test("WorkerThreadCapConfig - backwards compatible when not set", () => {
   const config = createNeatConfig({});
   assertEquals(config.workerThreadCap.maxMemoryMB, 0);
   assertEquals(config.workerThreadCap.estimatedMemoryPerWorkerMB, 2048);
-  // threads should be hardware concurrency (default), not capped
-  const expected = Math.max(1, navigator.hardwareConcurrency ?? 1);
+  // threads default = cores + heavy partition so fast pool saturates CPUs
+  const expected = Math.max(1, navigator.hardwareConcurrency ?? 1) +
+    DEFAULT_HEAVY_TASK_WORKER_COUNT;
   assertEquals(config.threads, expected);
 });
 

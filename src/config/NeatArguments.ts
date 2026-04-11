@@ -134,7 +134,13 @@ export interface NeatArguments {
   /** Target population size for the NEAT algorithm. Default is 50. */
   populationSize: number;
 
-  /** Number of worker threads to use for parallel processing. 1 or more */
+  /**
+   * Number of worker threads to use for parallel processing (min: 1).
+   *
+   * Issue #2244: Default is `navigator.hardwareConcurrency +` default
+   * `heavyTaskWorkerCount` so the fast pool has at least one worker per logical
+   * CPU when partitioning applies.
+   */
   threads: number;
 
   /**
@@ -146,7 +152,8 @@ export interface NeatArguments {
    *
    * Must be >= 1 and < threads when threads > 2.
    * When threads <= 2, partitioning is disabled and all workers are shared.
-   * Defaults to 2 (one for discovery, one for training).
+   * Defaults to `2` (`DEFAULT_HEAVY_TASK_WORKER_COUNT` in `NeatConfig.ts`),
+   * kept in sync with the default thread count offset in `createNeatConfig`.
    */
   heavyTaskWorkerCount: number;
 

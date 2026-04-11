@@ -114,6 +114,14 @@ export const DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY: Required<
 };
 
 /**
+ * Default workers reserved for discovery and training (Issue #2243).
+ *
+ * Issue #2244: Default total `threads` is `hardwareConcurrency +` this value
+ * so the fast pool (fitness) has at least one worker per logical CPU by default.
+ */
+export const DEFAULT_HEAVY_TASK_WORKER_COUNT = 2;
+
+/**
  * Interface for NEAT training options.
  * Provides a read-only configuration object for the NEAT algorithm.
  */
@@ -152,7 +160,8 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     }
   }
 
-  const defaultThreads = Math.max(1, navigator.hardwareConcurrency ?? 1);
+  const coreCount = Math.max(1, navigator.hardwareConcurrency ?? 1);
+  const defaultThreads = coreCount + DEFAULT_HEAVY_TASK_WORKER_COUNT;
   let threads = parseNumber("Threads", opts.threads, defaultThreads, {
     integer: true,
     min: 1,
@@ -302,7 +311,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     heavyTaskWorkerCount: parseNumber(
       "Heavy Task Worker Count",
       opts.heavyTaskWorkerCount,
-      2,
+      DEFAULT_HEAVY_TASK_WORKER_COUNT,
       { integer: true, min: 1 },
     ),
 

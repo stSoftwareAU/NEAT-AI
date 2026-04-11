@@ -218,10 +218,50 @@ Deno.test("NeatConstruction: worker pool is initialised", async () => {
       neat.workerPool !== undefined,
       "Worker pool should be initialised",
     );
+    assert(neat.fastWorkerPool !== undefined);
+    assert(neat.heavyWorkerPool !== undefined);
+    assert(neat.workerPool === neat.fastWorkerPool);
   } finally {
     await terminateWorkers(workers);
   }
 });
+
+/** Minimal stub for Neat pool sizing tests (Issue #2244). */
+function mockWorkerHandler(): WorkerHandler {
+  return { isBusy: () => false } as unknown as WorkerHandler;
+}
+
+Deno.test(
+  "NeatConstruction: partitioned fast and heavy worker pools (Issue #2244)",
+  () => {
+    const workers = [
+      mockWorkerHandler(),
+      mockWorkerHandler(),
+      mockWorkerHandler(),
+      mockWorkerHandler(),
+    ];
+    const fastWorkers = workers.slice(0, 2);
+    const neat = new Neat(2, 1, { populationSize: 10 }, workers, fastWorkers);
+
+    assertEquals(neat.fastWorkerPool.getWorkerCount(), 2);
+    assertEquals(neat.heavyWorkerPool.getWorkerCount(), 2);
+    assert(neat.workerPool === neat.fastWorkerPool);
+    assert(neat.fastWorkerPool !== neat.heavyWorkerPool);
+  },
+);
+
+Deno.test(
+  "NeatConstruction: unpartitioned pools share one WorkerPool instance (Issue #2244)",
+  () => {
+    const workers = [mockWorkerHandler(), mockWorkerHandler()];
+    const neat = new Neat(2, 1, { populationSize: 10 }, workers);
+
+    assertEquals(neat.fastWorkerPool.getWorkerCount(), 2);
+    assertEquals(neat.heavyWorkerPool.getWorkerCount(), 2);
+    assert(neat.workerPool === neat.fastWorkerPool);
+    assert(neat.heavyWorkerPool === neat.fastWorkerPool);
+  },
+);
 
 Deno.test("NeatConstruction: timeout is set when timeoutMinutes provided", async () => {
   const dataDir = createTestDataDir(2, 1);
