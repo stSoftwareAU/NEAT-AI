@@ -1,9 +1,18 @@
 import { assertEquals, assertThrows } from "@std/assert";
-import { createNeatConfig } from "@config/NeatConfig.ts";
+import {
+  createNeatConfig,
+  DEFAULT_HEAVY_TASK_WORKER_COUNT,
+} from "@config/NeatConfig.ts";
 
 Deno.test("heavyTaskWorkerCount - defaults to 2", () => {
   const config = createNeatConfig({ threads: 8 });
-  assertEquals(config.heavyTaskWorkerCount, 2);
+  assertEquals(config.heavyTaskWorkerCount, DEFAULT_HEAVY_TASK_WORKER_COUNT);
+});
+
+Deno.test("threads default is cores + default heavy (Issue #2244)", () => {
+  const config = createNeatConfig({});
+  const cores = Math.max(1, navigator.hardwareConcurrency ?? 1);
+  assertEquals(config.threads, cores + DEFAULT_HEAVY_TASK_WORKER_COUNT);
 });
 
 Deno.test("heavyTaskWorkerCount - user can override", () => {

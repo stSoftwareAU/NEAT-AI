@@ -90,7 +90,20 @@ export class Neat {
   readonly discoveryReplayQueue: DiscoveryReplayQueue;
 
   /**
-   * Worker pool with work-stealing queues for better load balancing (Issue #1290).
+   * Fast worker pool (Issue #2244): same handlers as fitness evaluation.
+   * Discovery and training use {@link Neat.heavyWorkerPool} only.
+   */
+  readonly fastWorkerPool: WorkerPool;
+
+  /**
+   * Heavy worker pool (Issue #2244): discovery and training scheduling only.
+   * When not partitioned (e.g. `threads <= 2`), this is the same instance as
+   * {@link Neat.fastWorkerPool}.
+   */
+  readonly heavyWorkerPool: WorkerPool;
+
+  /**
+   * Alias of {@link Neat.fastWorkerPool} for backwards compatibility (Issue #2244).
    */
   readonly workerPool: WorkerPool;
 
@@ -121,11 +134,12 @@ export class Neat {
    * @param input - Number of input neurons
    * @param output - Number of output neurons
    * @param options - NEAT configuration options
-   * @param workers - All workers (used for discovery, training, breeding)
-   * @param fastWorkers - Issue #2245: Workers dedicated to fitness evaluation
-   *   (fast pool). These workers never run discovery or training, so fitness
-   *   evaluation never stalls waiting for a long-running task. When omitted,
-   *   falls back to using all workers for backward compatibility.
+   * @param workers - All workers (breeding, and ordered `[fast..., heavy...]`
+   *   when `fastWorkers` is provided — heavy suffix must match
+   *   `workers.slice(fastWorkers.length)`).
+   * @param fastWorkers - Issue #2244/#2245: Prefix of `workers` dedicated to
+   *   fitness evaluation. Heavy handlers are `workers.slice(fastWorkers.length)`.
+   *   When omitted, all workers serve both roles (single shared pool).
    */
   constructor(
     input: number,
@@ -172,7 +186,18 @@ export class Neat {
 
     this.discoveryReplayQueue = new DiscoveryReplayQueue();
 
-    this.workerPool = new WorkerPool(this.workers);
+    const fastHandlers = fastWorkers ?? this.workers;
+    const partitioned = fastWorkers != null &&
+      fastWorkers.length < this.workers.length;
+    const heavyHandlers = partitioned
+      ? this.workers.slice(fastWorkers!.length)
+      : fastHandlers;
+
+    this.fastWorkerPool = new WorkerPool(fastHandlers);
+    this.heavyWorkerPool = partitioned
+      ? new WorkerPool(heavyHandlers)
+      : this.fastWorkerPool;
+    this.workerPool = this.fastWorkerPool;
   }
 
   setDataDir(dataDir: string): void {

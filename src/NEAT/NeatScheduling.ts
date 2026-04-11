@@ -56,8 +56,8 @@ export function scheduleDiscovery(
 
   const uuid = CreatureUtil.makeUUID(creature);
 
-  // Issue #1290: Use work-stealing pool for smarter worker selection
-  const w = neat.workerPool.selectWorker();
+  // Issue #2244: Heavy pool only — never steal fast (fitness) workers.
+  const w = neat.heavyWorkerPool.selectWorker();
   if (!w) {
     getLogger().warn("[Neat] No workers available for discovery");
     return;
@@ -192,8 +192,8 @@ export function scheduleTraining(
     }
   }
 
-  // Issue #1290: Use work-stealing pool for smarter worker selection
-  const w = neat.workerPool.selectWorker();
+  // Issue #2244: Heavy pool only — never steal fast (fitness) workers.
+  const w = neat.heavyWorkerPool.selectWorker();
   if (!w) {
     getLogger().warn("[Neat] No workers available for training");
     return;
