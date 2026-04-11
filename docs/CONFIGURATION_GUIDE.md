@@ -33,6 +33,7 @@ CLI arguments or environment variables without pre-parsing.
 - [Quantum Step](#quantum-step)
 - [Fine-Tune Population](#fine-tune-population)
 - [Worker Thread Cap](#worker-thread-cap)
+- [Worker Pool Partitioning](#worker-pool-partitioning)
 - [Output Range Constraints](#output-range-constraints)
 - [Data Fuzzing](#data-fuzzing)
 - [Cross-Validation](#cross-validation)
@@ -171,32 +172,33 @@ const config = createNeatConfig({
 
 ### 🧬 Core Evolution
 
-| Option                            | Type       | Default                         | Description                                                  |
-| --------------------------------- | ---------- | ------------------------------- | ------------------------------------------------------------ |
-| `costName`                        | `CostName` | `"MSE"`                         | Cost/fitness function name                                   |
-| `populationSize`                  | `integer`  | `50`                            | Target population size (min: 2)                              |
-| `iterations`                      | `integer`  | `MAX_SAFE_INTEGER`              | Maximum generations to evolve                                |
-| `targetError`                     | `number`   | `0.05`                          | Stop when error falls below this (0–1)                       |
-| `mutationRate`                    | `number`   | `0.3`                           | Probability of mutating a gene (>0.001)                      |
-| `mutationAmount`                  | `integer`  | `1`                             | Number of changes per gene during mutation (min: 1)          |
-| `elitism`                         | `integer`  | `1`                             | Top-performing individuals retained each generation (min: 1) |
-| `costOfGrowth`                    | `number`   | `0.0000001`                     | Penalty per structural addition (min: 0)                     |
-| `trainingSampleRate`              | `number`   | `1`                             | Fraction of data used for training (0.0001–1)                |
-| `trainPerGen`                     | `integer`  | `1`                             | Training sessions per generation (min: 0)                    |
-| `trainingBatchSize`               | `integer`  | `100`                           | Observations per training batch (min: 1)                     |
-| `dataSetPartitionBreak`           | `integer`  | `2000`                          | Records per dataset file (min: 1)                            |
-| `maxConns`                        | `integer`  | `MAX_SAFE_INTEGER`              | Maximum connections (min: 1)                                 |
-| `maximumNumberOfNodes`            | `integer`  | `MAX_SAFE_INTEGER`              | Maximum neurons (min: 1)                                     |
-| `timeoutMinutes`                  | `integer`  | `0`                             | Maximum training time in minutes (0 = unlimited)             |
-| `threads`                         | `integer`  | `navigator.hardwareConcurrency` | Worker threads (min: 1)                                      |
-| `feedbackLoop`                    | `boolean`  | `false`                         | Enable recurrent connections                                 |
-| `debug`                           | `boolean`  | `false`                         | Enable debug mode (slower)                                   |
-| `verbose`                         | `boolean`  | `false`                         | Enable verbose logging                                       |
-| `creativeThinkingConnectionCount` | `integer`  | `1`                             | New links during creative thinking phase                     |
-| `geneticCompatibilityThreshold`   | `number`   | `0.3`                           | Speciation distance threshold (0–1)                          |
-| `sparseRatio`                     | `number`   | `random * random`               | Fraction of neurons selected for sparse activation (0–1)     |
-| `globalBreedingRate`              | `number`   | `random`                        | Ratio of cross-species vs within-species breeding (0–1)      |
-| `maxCRISPRsPerGeneration`         | `integer`  | `1`                             | Maximum CRISPRs applied per generation (min: 1)              |
+| Option                            | Type       | Default                         | Description                                                                                                                       |
+| --------------------------------- | ---------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `costName`                        | `CostName` | `"MSE"`                         | Cost/fitness function name                                                                                                        |
+| `populationSize`                  | `integer`  | `50`                            | Target population size (min: 2)                                                                                                   |
+| `iterations`                      | `integer`  | `MAX_SAFE_INTEGER`              | Maximum generations to evolve                                                                                                     |
+| `targetError`                     | `number`   | `0.05`                          | Stop when error falls below this (0–1)                                                                                            |
+| `mutationRate`                    | `number`   | `0.3`                           | Probability of mutating a gene (>0.001)                                                                                           |
+| `mutationAmount`                  | `integer`  | `1`                             | Number of changes per gene during mutation (min: 1)                                                                               |
+| `elitism`                         | `integer`  | `1`                             | Top-performing individuals retained each generation (min: 1)                                                                      |
+| `costOfGrowth`                    | `number`   | `0.0000001`                     | Penalty per structural addition (min: 0)                                                                                          |
+| `trainingSampleRate`              | `number`   | `1`                             | Fraction of data used for training (0.0001–1)                                                                                     |
+| `trainPerGen`                     | `integer`  | `1`                             | Training sessions per generation (min: 0)                                                                                         |
+| `trainingBatchSize`               | `integer`  | `100`                           | Observations per training batch (min: 1)                                                                                          |
+| `dataSetPartitionBreak`           | `integer`  | `2000`                          | Records per dataset file (min: 1)                                                                                                 |
+| `maxConns`                        | `integer`  | `MAX_SAFE_INTEGER`              | Maximum connections (min: 1)                                                                                                      |
+| `maximumNumberOfNodes`            | `integer`  | `MAX_SAFE_INTEGER`              | Maximum neurons (min: 1)                                                                                                          |
+| `timeoutMinutes`                  | `integer`  | `0`                             | Maximum training time in minutes (0 = unlimited)                                                                                  |
+| `threads`                         | `integer`  | `navigator.hardwareConcurrency` | Worker threads (min: 1)                                                                                                           |
+| `heavyTaskWorkerCount`            | `integer`  | `2`                             | Workers for heavy tasks (discovery/training); must be >= 1 and < threads when threads > 2. Partitioning disabled when threads ≤ 2 |
+| `feedbackLoop`                    | `boolean`  | `false`                         | Enable recurrent connections                                                                                                      |
+| `debug`                           | `boolean`  | `false`                         | Enable debug mode (slower)                                                                                                        |
+| `verbose`                         | `boolean`  | `false`                         | Enable verbose logging                                                                                                            |
+| `creativeThinkingConnectionCount` | `integer`  | `1`                             | New links during creative thinking phase                                                                                          |
+| `geneticCompatibilityThreshold`   | `number`   | `0.3`                           | Speciation distance threshold (0–1)                                                                                               |
+| `sparseRatio`                     | `number`   | `random * random`               | Fraction of neurons selected for sparse activation (0–1)                                                                          |
+| `globalBreedingRate`              | `number`   | `random`                        | Ratio of cross-species vs within-species breeding (0–1)                                                                           |
+| `maxCRISPRsPerGeneration`         | `integer`  | `1`                             | Maximum CRISPRs applied per generation (min: 1)                                                                                   |
 
 ### 🎲 Data Fuzzing & Training Robustness
 
@@ -865,6 +867,33 @@ When `maxMemoryMB > 0`, the effective thread count is:
 `min(threads, max(1, floor(maxMemoryMB / estimatedMemoryPerWorkerMB)))`.
 
 A warning is logged when the thread count is capped.
+
+---
+
+## ⚡ Worker Pool Partitioning
+
+Issue #2243: Control how workers are split between fast tasks (fitness
+evaluation/scoring) and heavy tasks (discovery, training, recording).
+
+```ts
+const config = createNeatConfig({
+  threads: 8,
+  heavyTaskWorkerCount: 2, // 2 heavy workers, 6 fast workers
+});
+```
+
+| Field                  | Default | Min | Description                                 |
+| ---------------------- | ------- | --- | ------------------------------------------- |
+| `heavyTaskWorkerCount` | 2       | 1   | Workers dedicated to discovery and training |
+
+Fast workers (`threads - heavyTaskWorkerCount`) handle fitness evaluation
+exclusively and are never blocked by long-running discovery or training tasks.
+
+**Partitioning is disabled when `threads <= 2`** — all workers share both roles
+because there are too few workers to partition meaningfully.
+
+**Validation (when `threads > 2`):** `heavyTaskWorkerCount` must be `< threads`
+so at least one worker remains available for fast tasks.
 
 ---
 

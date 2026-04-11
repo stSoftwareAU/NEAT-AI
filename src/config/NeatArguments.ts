@@ -137,6 +137,19 @@ export interface NeatArguments {
   /** Number of worker threads to use for parallel processing. 1 or more */
   threads: number;
 
+  /**
+   * Number of workers dedicated to heavy tasks (discovery, training, recording).
+   *
+   * Issue #2243: Controls the partition between fast (fitness evaluation) and
+   * heavy (discovery/training) worker pools. The remaining workers
+   * (`threads - heavyTaskWorkerCount`) are dedicated to fast tasks.
+   *
+   * Must be >= 1 and < threads when threads > 2.
+   * When threads <= 2, partitioning is disabled and all workers are shared.
+   * Defaults to 2 (one for discovery, one for training).
+   */
+  heavyTaskWorkerCount: number;
+
   /** Selection method to use for choosing individuals for the next generation. */
   selection: SelectionInterface;
 
