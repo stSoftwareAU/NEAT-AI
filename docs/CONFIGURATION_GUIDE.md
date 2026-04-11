@@ -257,6 +257,7 @@ const config = createNeatConfig({
 | `discoveryRustFlushBytes`           | `number`  | `~50 MiB` | Payload size threshold before flushing                              |
 | `discoveryMaxNeurons`               | `integer` | `6`       | Maximum neurons analysed per discovery iteration                    |
 | `discoveryDrainEveryNBatches`       | `integer` | `10`      | Drain promise chains every N batches                                |
+| `maxConcurrentDiscoveries`          | `integer` | `1`       | Maximum concurrent discovery operations (pipelined scheduling)      |
 | `discoveryMinCandidatesPerCategory` | `object`  | see below | Minimum candidates to evaluate per discovery category               |
 
 ### 🐛 Discovery Debug Options
@@ -508,6 +509,16 @@ cost of longer recording time.
 Maximum minutes allocated to the recording phase before discovery advances to
 analysis. At approximately 700 records/sec, 5 minutes allows recording around
 210,000 samples.
+
+### `maxConcurrentDiscoveries`
+
+**Default: 1** | Type: integer | Min: 1
+
+Maximum number of discovery operations that can run concurrently. When set to 1
+(the default), behaviour is identical to the original single-discovery guard.
+Setting to 2–3 allows pipelined discovery: when a new fittest creature is found,
+its discovery can start immediately without waiting for the previous one to
+complete. Each concurrent discovery runs on a separate heavy worker.
 
 ### `discoveryAnalysisTimeoutMinutes`
 

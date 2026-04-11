@@ -52,7 +52,9 @@ export function scheduleDiscovery(
 
   if (neat.doNotStartMore) return;
 
-  if (neat.discoveryInProgress.size > 0) return;
+  if (
+    neat.discoveryInProgress.size >= neat.config.maxConcurrentDiscoveries
+  ) return;
 
   const uuid = CreatureUtil.makeUUID(creature);
 
