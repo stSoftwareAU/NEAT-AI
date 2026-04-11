@@ -299,6 +299,13 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     ),
     threads,
 
+    heavyTaskWorkerCount: parseNumber(
+      "Heavy Task Worker Count",
+      opts.heavyTaskWorkerCount,
+      2,
+      { integer: true, min: 1 },
+    ),
+
     maximumBiasAdjustmentScale: parseNumber(
       "Maximum Bias Adjustment Scale",
       opts.maximumBiasAdjustmentScale,

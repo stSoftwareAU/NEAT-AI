@@ -129,6 +129,18 @@ export function validateNeatConfig(config: NeatArguments): void {
     );
   }
 
+  // Issue #2243: heavyTaskWorkerCount must leave at least one worker for fast tasks
+  if (
+    config.threads > 2 &&
+    config.heavyTaskWorkerCount >= config.threads
+  ) {
+    throw new ConfigurationError(
+      `heavyTaskWorkerCount must be less than threads when threads > 2. ` +
+        `heavyTaskWorkerCount: ${config.heavyTaskWorkerCount}, threads: ${config.threads}`,
+      "CROSS_FIELD_VALIDATION",
+    );
+  }
+
   // Feedback loop validation
   if (config.feedbackLoop === true && config.disableRandomSamples === false) {
     throw new ConfigurationError(

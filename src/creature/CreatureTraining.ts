@@ -360,12 +360,10 @@ export async function evolveDir(
     workers.push(w);
   }
 
-  // Issue #2245: Partition workers into fast (evaluation) and heavy
-  // (discovery/training) pools. When there are 3+ workers, reserve one
-  // for heavy tasks and dedicate the rest to fitness evaluation. When
-  // there are only 1-2 workers, all workers serve both roles (shared pool).
-  const fastWorkers = workers.length >= 3
-    ? workers.slice(0, workers.length - 1)
+  // Issue #2243: Partition workers into fast (evaluation) and heavy
+  // (discovery/training) pools using the configured heavyTaskWorkerCount.
+  const fastWorkers = workers.length > config.heavyTaskWorkerCount
+    ? workers.slice(0, workers.length - config.heavyTaskWorkerCount)
     : undefined;
 
   const neat = new Neat(
