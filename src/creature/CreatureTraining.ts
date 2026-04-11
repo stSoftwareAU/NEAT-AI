@@ -419,6 +419,17 @@ export async function evolveDir(
 
     generation++;
 
+    // Issue #2251: Time checkpoint write so it flows through onTrainingEvent
+    let phaseTiming = result.phaseTiming;
+    if (config.checkpointEveryGeneration && config.creatureStore) {
+      const checkpointStart = Date.now();
+      writeCreatures(neat, config.creatureStore);
+      phaseTiming = {
+        ...result.phaseTiming,
+        checkpointWriteMs: Date.now() - checkpointStart,
+      };
+    }
+
     // Issue #1615: Emit generation_complete event
     // Issue #2239: Include per-phase timing diagnostics from evolve()
     const generationElapsedMs = now -
@@ -431,7 +442,7 @@ export async function evolveDir(
       averageFitness: result.averageScore,
       populationSize: neat.population.length,
       elapsedMs: generationElapsedMs,
-      phaseTiming: result.phaseTiming,
+      phaseTiming,
     });
 
     // Issue #1615: Emit plateau_detected event when on plateau
@@ -489,12 +500,6 @@ export async function evolveDir(
       // or training to finish.
       // deno-lint-ignore no-await-in-loop
       await neat.awaitInFlightTasks();
-    }
-
-    if (
-      config.checkpointEveryGeneration && config.creatureStore
-    ) {
-      writeCreatures(neat, config.creatureStore);
     }
   }
 

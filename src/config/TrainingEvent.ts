@@ -22,6 +22,11 @@ export interface GenerationPhaseTiming {
   readonly resultProcessingMs: number;
   /** Total time for the entire evolve() call in ms. */
   readonly totalMs: number;
+  /**
+   * Time spent writing checkpoint files (writeCreatures) in ms.
+   * Issue #2251: Present only when a checkpoint ran that generation.
+   */
+  readonly checkpointWriteMs?: number;
 }
 
 /**
