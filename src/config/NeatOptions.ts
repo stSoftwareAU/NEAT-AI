@@ -75,7 +75,8 @@ type NumericOptionKeys =
   | "discoveryReplayTimeoutMinutes"
   | "discoveryReplayMinTimeMinutes"
   | "maxCRISPRsPerGeneration"
-  | "heavyTaskWorkerCount";
+  | "heavyTaskWorkerCount"
+  | "maxConcurrentDiscoveries";
 
 /**
  * Options for NEAT configuration.

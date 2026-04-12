@@ -555,6 +555,12 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     fineTunePopulation: parseFineTunePopulation(
       opts.fineTunePopulation as Record<string, unknown> | undefined,
     ),
+    maxConcurrentDiscoveries: parseNumber(
+      "Max Concurrent Discoveries",
+      opts.maxConcurrentDiscoveries,
+      1,
+      { integer: true, min: 1 },
+    ),
     // Issue #2199: Parse MCMC acceptance configuration
     mcmc: parseMcmc(
       opts.mcmc as Record<string, unknown> | undefined,

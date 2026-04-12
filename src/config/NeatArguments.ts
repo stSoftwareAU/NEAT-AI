@@ -746,6 +746,17 @@ export interface NeatArguments {
   dataQuantisation: RequiredDataQuantisationConfig;
 
   /**
+   * Maximum number of concurrent discovery operations (Issue #2238).
+   *
+   * Replaces the binary guard that prevented scheduling any new discovery
+   * while one was already running. Since discoveries are independent, they
+   * can safely run in parallel on separate workers.
+   *
+   * Defaults to 1 for backward compatibility.
+   */
+  maxConcurrentDiscoveries: number;
+
+  /**
    * MCMC acceptance criterion configuration.
    *
    * Issue #2199: Temperature-based Metropolis-Hastings acceptance
