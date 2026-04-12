@@ -1,17 +1,30 @@
 ## Summary
 
-Add proactive pre-fitness memory monitoring to reduce GC pressure during fitness evaluation. Closes #2263.
+Add proactive pre-fitness memory monitoring to reduce GC pressure during fitness
+evaluation. Closes #2263.
 
-Previously, heap memory was only checked **after** the fitness, breeding, and result processing phases. If heap pressure built up during the previous generation, the next fitness phase started under memory pressure, triggering reactive per-creature eviction attempts inside `CreatureActivation.ts` (the 3-tier retry pattern with `evictOldestWasmCreatureActivations(64)`).
+Previously, heap memory was only checked **after** the fitness, breeding, and
+result processing phases. If heap pressure built up during the previous
+generation, the next fitness phase started under memory pressure, triggering
+reactive per-creature eviction attempts inside `CreatureActivation.ts` (the
+3-tier retry pattern with `evictOldestWasmCreatureActivations(64)`).
 
-This change adds a `checkMemoryAndEvict()` call **before** the fitness evaluation phase, proactively clearing WASM caches when the heap is under pressure. This gives the fitness phase more memory headroom and reduces scattered GC pauses during `fitnessMs`.
+This change adds a `checkMemoryAndEvict()` call **before** the fitness
+evaluation phase, proactively clearing WASM caches when the heap is under
+pressure. This gives the fitness phase more memory headroom and reduces
+scattered GC pauses during `fitnessMs`.
 
 ### Changes
 
-- **`src/NEAT/NeatEvolution.ts`**: Added pre-fitness `checkMemoryAndEvict()` call with `memory_pressure` event emission. Both pre- and post-fitness eviction times are accumulated into `memoryEvictionMs`.
-- **`src/config/TrainingEvent.ts`**: Added optional `memoryEvictionMs` field to `GenerationPhaseTiming` for tracking memory monitoring overhead.
-- **`bench/PreFitnessMemoryEviction.ts`**: New benchmark comparing reactive-only vs proactive eviction under constrained cache scenarios.
-- **`test/NEAT/PreFitnessMemoryEviction.ts`**: 7 tests verifying pre-fitness eviction behaviour at normal, warning, and critical pressure levels.
+- **`src/NEAT/NeatEvolution.ts`**: Added pre-fitness `checkMemoryAndEvict()`
+  call with `memory_pressure` event emission. Both pre- and post-fitness
+  eviction times are accumulated into `memoryEvictionMs`.
+- **`src/config/TrainingEvent.ts`**: Added optional `memoryEvictionMs` field to
+  `GenerationPhaseTiming` for tracking memory monitoring overhead.
+- **`bench/PreFitnessMemoryEviction.ts`**: New benchmark comparing reactive-only
+  vs proactive eviction under constrained cache scenarios.
+- **`test/NEAT/PreFitnessMemoryEviction.ts`**: 7 tests verifying pre-fitness
+  eviction behaviour at normal, warning, and critical pressure levels.
 
 ## Evidence
 
@@ -32,9 +45,13 @@ group cache-stats
 ```
 
 Key findings:
-- **4% improvement** in single-generation fitness evaluation with proactive eviction
-- **Adequate cache sizing** (100 entries) is **1.79x faster** than constrained (5 entries), validating that cache sizing is critical
-- Multi-generation sustained pressure is within noise (~2%), as both approaches reach the same equilibrium
+
+- **4% improvement** in single-generation fitness evaluation with proactive
+  eviction
+- **Adequate cache sizing** (100 entries) is **1.79x faster** than constrained
+  (5 entries), validating that cache sizing is critical
+- Multi-generation sustained pressure is within noise (~2%), as both approaches
+  reach the same equilibrium
 
 ### Test Results
 
