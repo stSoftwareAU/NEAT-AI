@@ -23,6 +23,11 @@ export interface GenerationPhaseTiming {
   /** Total time for the entire evolve() call in ms. */
   readonly totalMs: number;
   /**
+   * Time spent on proactive memory monitoring and cache eviction in ms.
+   * Issue #2263: Pre-fitness eviction reduces GC pressure during fitness.
+   */
+  readonly memoryEvictionMs?: number;
+  /**
    * Time spent writing checkpoint files (writeCreatures) in ms.
    * Issue #2251: Present only when a checkpoint ran that generation.
    */

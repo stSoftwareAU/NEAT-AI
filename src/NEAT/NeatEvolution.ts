@@ -62,6 +62,27 @@ export async function evolve(
 
   neat.additionalGenerationCount--;
 
+  // Issue #2263: Proactive pre-fitness memory monitoring.
+  // Check heap pressure BEFORE the fitness phase so that WASM caches are
+  // evicted proactively rather than reactively per-creature inside
+  // CreatureActivation.ts. This reduces GC pauses during fitnessMs.
+  const preFitnessMemoryStartMs = Date.now();
+  const preFitnessMemory = checkMemoryAndEvict(
+    neat.config.memory,
+    getLogger(),
+  );
+  const preFitnessMemoryMs = Date.now() - preFitnessMemoryStartMs;
+  if (preFitnessMemory.evicted) {
+    emitTrainingEvent(neat.config.onTrainingEvent, {
+      kind: "memory_pressure",
+      timestamp: new Date().toISOString(),
+      heapUsed: preFitnessMemory.heapUsed,
+      heapLimit: preFitnessMemory.heapTotal,
+      evicted: true,
+      pressureLevel: preFitnessMemory.pressureLevel as "warning" | "critical",
+    });
+  }
+
   // Issue #2239: Time fitness evaluation phase
   const fitnessStartMs = Date.now();
   await neat.fitness.calculate(neat.population);
@@ -407,7 +428,8 @@ export async function evolve(
     }
   }
 
-  // Issue #1565: Proactive heap memory monitoring
+  // Issue #1565: Post-evolution heap memory monitoring
+  const postFitnessMemoryStartMs = Date.now();
   const memoryResult = checkMemoryAndEvict(
     neat.config.memory,
     getLogger(),
@@ -438,6 +460,10 @@ export async function evolve(
     });
   }
 
+  // Issue #2263: Accumulate total memory eviction time (pre + post fitness).
+  const postFitnessMemoryMs = Date.now() - postFitnessMemoryStartMs;
+  const memoryEvictionMs = preFitnessMemoryMs + postFitnessMemoryMs;
+
   // Issue #2239: Compute total generation time and build phase timing
   const totalMs = Date.now() - evolveStartMs;
   const phaseTiming: GenerationPhaseTiming = {
@@ -445,13 +471,17 @@ export async function evolve(
     breedingMs,
     resultProcessingMs,
     totalMs,
+    memoryEvictionMs: memoryEvictionMs > 0 ? memoryEvictionMs : undefined,
   };
 
   // Issue #2239: Log per-phase timing when verbose is enabled
   if (neat.config.verbose) {
+    const memTag = memoryEvictionMs > 0
+      ? ` memoryEviction=${memoryEvictionMs}ms`
+      : "";
     getLogger().info(
       `[Timing] fitness=${fitnessMs}ms breeding=${breedingMs}ms ` +
-        `resultProcessing=${resultProcessingMs}ms total=${totalMs}ms`,
+        `resultProcessing=${resultProcessingMs}ms${memTag} total=${totalMs}ms`,
     );
   }
 
