@@ -1,8 +1,13 @@
 ## Summary
 
-Add `bench/RealWorkerDatasetEvaluation.ts` — a benchmark harness that exercises the full production fitness evaluation path using real `WorkerHandler` instances, WASM activation scoring, and on-disk binary datasets. Closes #2261.
+Add `bench/RealWorkerDatasetEvaluation.ts` — a benchmark harness that exercises
+the full production fitness evaluation path using real `WorkerHandler`
+instances, WASM activation scoring, and on-disk binary datasets. Closes #2261.
 
-Unlike `bench/ParallelFitnessEvaluation.ts` (which uses mock workers), this harness measures actual `evaluateDir` wall time through the real worker pipeline, making it suitable for detecting fitness evaluation performance regressions.
+Unlike `bench/ParallelFitnessEvaluation.ts` (which uses mock workers), this
+harness measures actual `evaluateDir` wall time through the real worker
+pipeline, making it suitable for detecting fitness evaluation performance
+regressions.
 
 ### How to run
 
@@ -13,12 +18,12 @@ deno bench --allow-read --allow-write --allow-env --allow-net --allow-ffi \
 
 ### What it benchmarks
 
-| Group | Topology | Workers | Purpose |
-|---|---|---|---|
-| small topology | 2 hidden, 4 synapses | 1, 2 | Minimal network baseline |
-| medium topology | 10 hidden, 25 synapses | 1, 2 | Typical early evolution |
-| large topology | 30 hidden, 90 synapses | 1, 2 | Mature topology |
-| mixed population | 10 creatures (4 small + 4 medium + 2 large) | 1, 2 | Production-like batch |
+| Group            | Topology                                    | Workers | Purpose                  |
+| ---------------- | ------------------------------------------- | ------- | ------------------------ |
+| small topology   | 2 hidden, 4 synapses                        | 1, 2    | Minimal network baseline |
+| medium topology  | 10 hidden, 25 synapses                      | 1, 2    | Typical early evolution  |
+| large topology   | 30 hidden, 90 synapses                      | 1, 2    | Mature topology          |
+| mixed population | 10 creatures (4 small + 4 medium + 2 large) | 1, 2    | Production-like batch    |
 
 Dataset: 500 records (3 inputs, 2 outputs) across 5 partition files.
 
@@ -44,7 +49,8 @@ group mixed population
 
 ## Evidence
 
-This is a benchmark infrastructure change (no UI). Evidence is the successful benchmark run output above showing all groups complete with timing data.
+This is a benchmark infrastructure change (no UI). Evidence is the successful
+benchmark run output above showing all groups complete with timing data.
 
 ## Test Plan
 
