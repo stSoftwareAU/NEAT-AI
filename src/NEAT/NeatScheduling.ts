@@ -87,8 +87,11 @@ export function scheduleDiscovery(
   }
 
   // Issue #1538: Use lightweight frozen override instead of full createNeatConfig()
+  // `onTrainingEvent` is a main-thread callback and cannot cross `Worker.postMessage`.
+  const { onTrainingEvent: _omitTrainingEvent, ...configSansCallback } = neat
+    .config as NeatConfig & { onTrainingEvent?: unknown };
   const discoveryConfig: NeatConfig = Object.freeze({
-    ...neat.config,
+    ...configSansCallback,
     discoveryRecordTimeOutMinutes: effectiveTimeout,
   });
 

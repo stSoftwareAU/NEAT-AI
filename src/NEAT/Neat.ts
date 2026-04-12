@@ -59,6 +59,13 @@ export class Neat {
   readonly config: NeatConfig;
   /** Array of worker handlers for parallel processing */
   readonly workers: WorkerHandler[];
+  /**
+   * Handlers used for fitness evaluation and parallel breeding (Issue #2244).
+   * When the pool is partitioned, this is the fast prefix only — the same
+   * threads that never run discovery or training — so breeding does not queue
+   * behind long-running heavy work.
+   */
+  readonly fastWorkerHandlers: WorkerHandler[];
   /** Fitness evaluation system */
   readonly fitness: Fitness;
 
@@ -134,9 +141,11 @@ export class Neat {
    * @param input - Number of input neurons
    * @param output - Number of output neurons
    * @param options - NEAT configuration options
-   * @param workers - All workers (breeding, and ordered `[fast..., heavy...]`
-   *   when `fastWorkers` is provided — heavy suffix must match
-   *   `workers.slice(fastWorkers.length)`).
+   * @param workers - All workers, ordered `[fast..., heavy...]` when
+   *   `fastWorkers` is provided — heavy suffix must match
+   *   `workers.slice(fastWorkers.length)`. Parallel breeding uses only
+   *   {@link Neat.fastWorkerHandlers} (same as fitness) so it never queues
+   *   behind discovery or training on heavy threads.
    * @param fastWorkers - Issue #2244/#2245: Prefix of `workers` dedicated to
    *   fitness evaluation. Heavy handlers are `workers.slice(fastWorkers.length)`.
    *   When omitted, all workers serve both roles (single shared pool).
@@ -154,11 +163,14 @@ export class Neat {
 
     this.config = createNeatConfig(options);
 
+    const fastHandlers = fastWorkers ?? this.workers;
+    this.fastWorkerHandlers = fastHandlers;
+
     // Issue #2245: Use fast-pool workers for fitness evaluation when available.
     // Fast-pool workers are dedicated to evaluation and never run discovery
     // or training, eliminating the need for isRunningLongTask() filtering.
     this.fitness = new Fitness(
-      fastWorkers ?? this.workers,
+      fastHandlers,
       this.config.costOfGrowth,
       this.config.feedbackLoop,
       this.config.parallelEvaluation,
@@ -186,7 +198,6 @@ export class Neat {
 
     this.discoveryReplayQueue = new DiscoveryReplayQueue();
 
-    const fastHandlers = fastWorkers ?? this.workers;
     const partitioned = fastWorkers !== undefined &&
       fastWorkers.length < this.workers.length;
     const heavyHandlers = partitioned
