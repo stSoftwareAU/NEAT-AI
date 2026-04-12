@@ -247,6 +247,8 @@ Deno.test(
     assertEquals(neat.heavyWorkerPool.getWorkerCount(), 2);
     assert(neat.workerPool === neat.fastWorkerPool);
     assert(neat.fastWorkerPool !== neat.heavyWorkerPool);
+    assert(neat.fastWorkerHandlers === fastWorkers);
+    assertEquals(neat.fastWorkerHandlers.length, 2);
   },
 );
 
@@ -260,6 +262,7 @@ Deno.test(
     assertEquals(neat.heavyWorkerPool.getWorkerCount(), 2);
     assert(neat.workerPool === neat.fastWorkerPool);
     assert(neat.heavyWorkerPool === neat.fastWorkerPool);
+    assert(neat.fastWorkerHandlers === workers);
   },
 );
 
