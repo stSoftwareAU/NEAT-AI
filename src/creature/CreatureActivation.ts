@@ -396,6 +396,8 @@ function applyWasmTraceData(
  * Supports fused WASM scoring for forward-only creatures.
  *
  * Issue #1229: WASM is required by default with no fallback.
+ * Issue #2260: Accepts optional pre-cached file list to avoid repeated
+ * directory scans in long-lived workers.
  */
 export async function evaluateDir(
   creature: Creature,
@@ -403,9 +405,10 @@ export async function evaluateDir(
   cost: CostInterface,
   feedbackLoop: boolean,
   outputRanges?: ReadonlyArray<RequiredOutputRange>,
+  cachedFiles?: string[],
 ): Promise<{ error: number }> {
-  const dataResult = dataFiles(dataDir);
-  assert(dataResult.files.length > 0, "No data files found");
+  const files = cachedFiles ?? dataFiles(dataDir).files;
+  assert(files.length > 0, "No data files found");
 
   // Issue #1247: Auto-initialise WASM before scoring if not yet available.
   const { ensureWasmActivation } = await import("../wasm/mod.ts");
@@ -477,8 +480,8 @@ export async function evaluateDir(
       costName as typeof supportedFusedCosts[number],
     );
 
-  for (let fileIndx = dataResult.files.length; fileIndx--;) {
-    const filePath = dataResult.files[fileIndx];
+  for (let fileIndx = files.length; fileIndx--;) {
+    const filePath = files[fileIndx];
     // deno-lint-ignore no-sync-fn-in-async-fn -- Intentional: synchronous I/O for batch processing performance.
     const file = Deno.openSync(filePath, { read: true });
 
