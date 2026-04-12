@@ -999,6 +999,7 @@ export class Creature implements CreatureInternal {
     outputRanges?: ReadonlyArray<
       import("./config/OutputRangeConfig.ts").RequiredOutputRange
     >,
+    cachedFiles?: string[],
   ): Promise<{ error: number }> {
     return activation.evaluateDir(
       this,
@@ -1006,6 +1007,7 @@ export class Creature implements CreatureInternal {
       cost,
       feedbackLoop,
       outputRanges,
+      cachedFiles,
     );
   }
 

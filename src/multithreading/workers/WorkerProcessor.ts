@@ -25,6 +25,7 @@ import type {
   ResponseData,
 } from "@multithreading/workers/WorkerHandler.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { DatasetFileListCache } from "@architecture/DatasetFileListCache.ts";
 
 type DiscoverResponsePayload = NonNullable<ResponseData["discover"]>;
 
@@ -104,6 +105,9 @@ export class WorkerProcessor {
   private outputRanges?: ReadonlyArray<RequiredOutputRange>;
 
   private wasmInitAttempted = false;
+
+  /** Issue #2260: Cache dataset file list across evaluate calls. */
+  private readonly datasetFileCache = new DatasetFileListCache();
 
   /**
    * Loads a custom cost function from a file path using dynamic import.
@@ -240,11 +244,14 @@ export class WorkerProcessor {
         creature = Creature.fromJSON(data.evaluate.creature);
         // @ts-ignore - clearing to help GC
         data.evaluate.creature = null;
+        // Issue #2260: Use cached file list to avoid repeated directory scans.
+        const cachedFiles = this.datasetFileCache.getFiles(this.dataSetDir);
         const result = await creature.evaluateDir(
           this.dataSetDir,
           this.cost,
           data.evaluate.feedbackLoop,
           this.outputRanges,
+          cachedFiles,
         );
 
         return {
