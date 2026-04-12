@@ -77,6 +77,7 @@ Deno.test("CRISPR cycling - CRISPRs survive across generations", async () => {
     CRISPRs: crisprs,
     iterations: 3,
     populationSize: 10,
+    threads: 1,
   };
 
   await baseCreature.evolveDataSet(ds, options);
@@ -215,6 +216,7 @@ Deno.test("CRISPR cycling - default maxCRISPRsPerGeneration is 1", async () => {
     CRISPRs: [dna1, dna2],
     iterations: 1,
     populationSize: 10,
+    threads: 1,
     // maxCRISPRsPerGeneration not set - should default to 1
   };
 
