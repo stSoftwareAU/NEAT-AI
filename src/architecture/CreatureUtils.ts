@@ -157,56 +157,48 @@ export class CreatureUtil {
     const synapsesLength = synapses.length;
     const inputCount = creature.input;
 
-    // Build index-to-UUID map (same mapping as CreatureExportBuilder).
-    const uuidMap = new Map<number, string>();
-    for (let i = 0; i < neuronsLength; i++) {
-      const neuron = neurons[i];
-      if (neuron.type === "input") {
-        uuidMap.set(i, `input-${i}`);
-      } else {
-        uuidMap.set(i, neuronUuid(neuron));
+    // Issue #2258: Reuse cached neuron topology key and UUID lookup array
+    // when only connections have changed (neurons unchanged).
+    let neuronKey = creature._cachedNeuronTopologyKey;
+    let uuids = creature._cachedUuidLookup;
+
+    if (neuronKey === undefined || uuids === undefined) {
+      // Build index-to-UUID lookup array (faster than Map).
+      uuids = new Array<string>(neuronsLength);
+      for (let i = 0; i < neuronsLength; i++) {
+        const neuron = neurons[i];
+        if (neuron.type === "input") {
+          uuids[i] = `input-${i}`;
+        } else {
+          uuids[i] = neuronUuid(neuron);
+        }
       }
+
+      // Build sorted neuron topology key strings (non-input only).
+      const neuronKeys = new Array<string>(neuronsLength - inputCount);
+      for (let i = inputCount; i < neuronsLength; i++) {
+        const neuron = neurons[i];
+        neuronKeys[i - inputCount] = uuids[i] + "\t" + neuron.type + "\t" +
+          (neuron.squash || "");
+      }
+      neuronKeys.sort();
+      neuronKey = neuronKeys.join("\n");
+
+      // Cache for reuse across connection-only changes.
+      creature._cachedNeuronTopologyKey = neuronKey;
+      creature._cachedUuidLookup = uuids;
     }
 
-    // Build minimal topology neuron data (non-input only).
-    const topologyNeurons = new Array<
-      { uuid: string; type: string; squash: string }
-    >(neuronsLength - inputCount);
-    for (let i = inputCount; i < neuronsLength; i++) {
-      const neuron = neurons[i];
-      topologyNeurons[i - inputCount] = {
-        uuid: uuidMap.get(i)!,
-        type: neuron.type,
-        squash: neuron.squash || "",
-      };
-    }
-
-    topologyNeurons.sort((a, b) => (a.uuid ?? "").localeCompare(b.uuid ?? ""));
-
-    // Build minimal topology synapse data.
-    const topologySynapses = new Array<
-      { fromUUID: string | undefined; toUUID: string | undefined }
-    >(synapsesLength);
+    // Build sorted synapse topology key strings.
+    const synapseKeys = new Array<string>(synapsesLength);
     for (let i = 0; i < synapsesLength; i++) {
       const synapse = synapses[i];
-      topologySynapses[i] = {
-        fromUUID: uuidMap.get(synapse.from),
-        toUUID: uuidMap.get(synapse.to),
-      };
+      synapseKeys[i] = uuids[synapse.from] + "\t" + uuids[synapse.to];
     }
+    synapseKeys.sort();
 
-    topologySynapses.sort((a, b) => {
-      const fc = (a.fromUUID ?? "").localeCompare(b.fromUUID ?? "");
-      if (fc !== 0) return fc;
-      return (a.toUUID ?? "").localeCompare(b.toUUID ?? "");
-    });
-
-    const topologyData = {
-      neurons: topologyNeurons,
-      synapses: topologySynapses,
-    };
-
-    const txt = JSON.stringify(topologyData);
+    // Combine neuron and synapse keys, then hash.
+    const txt = neuronKey + "\n\n" + synapseKeys.join("\n");
     const utf8 = CreatureUtil.TE.encode(txt);
     const hash: string = generateV5Sync(
       CreatureUtil.TOPOLOGY_NAMESPACE,

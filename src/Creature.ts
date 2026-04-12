@@ -169,6 +169,16 @@ export class Creature implements CreatureInternal {
   public topologyHash?: string;
 
   /**
+   * Issue #2258: Cached neuron topology key and UUID lookup array.
+   * Stable across connection-only structural changes; cleared only
+   * when neurons are added or removed.
+   * @internal
+   */
+  _cachedNeuronTopologyKey?: string;
+  /** @internal */
+  _cachedUuidLookup?: string[];
+
+  /**
    * Cached parsed major version number from semanticVersion.
    * Issue #1535: Avoids re-parsing the version string on every activation.
    * @internal
@@ -308,6 +318,9 @@ export class Creature implements CreatureInternal {
       this._topoCaches.hiddenNeuronWireKeys = null;
       this._topoCaches.availableConnectionsCache = null;
       this.topologyHash = undefined;
+      // Issue #2258: Full invalidation clears neuron topology caches too.
+      this._cachedNeuronTopologyKey = undefined;
+      this._cachedUuidLookup = undefined;
     } else {
       // Connection-only invalidation: preserves hidden neuron identity caches.
       this._topoCaches.cacheTo[to] = undefined;
