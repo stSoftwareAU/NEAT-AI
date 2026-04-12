@@ -319,12 +319,24 @@ export function scheduleTraining(
 
     neat.trainingInProgress.delete(uuid);
 
+    let creatureExport: ReturnType<typeof exportJSONWithRuntimeIds>;
+    try {
+      creatureExport = exportJSONWithRuntimeIds(creature);
+    } catch {
+      creatureExport = {
+        neurons: [],
+        synapses: [],
+        input: creature.input,
+        output: creature.output,
+      };
+    }
+
     neat.trainingComplete.push({
       taskID: 0,
       duration: 0,
       train: {
         ID: uuid,
-        creature: exportJSONWithRuntimeIds(creature),
+        creature: creatureExport,
         error: Number.POSITIVE_INFINITY,
         trace: {
           input: creature.input,
