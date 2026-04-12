@@ -1,6 +1,7 @@
 import { generate as generateV5Sync } from "@architecture/SyncV5.ts";
 import type { Creature } from "@creature";
 import { ValidationError } from "@errors/ValidationError.ts";
+import { neuronUuid } from "@neuron/NeuronSerialization.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 /**
@@ -116,12 +117,17 @@ export class CreatureUtil {
    * ignoring weights and biases. This enables identification of creatures with
    * identical structure regardless of their learned parameters.
    *
+   * Issue #1016: Performance optimisation for evaluation deduplication.
+   * Issue #2257: Computes the hash directly from the creature's internal
+   * neuron and synapse arrays, avoiding a full `exportJSON()` call. This
+   * eliminates one of the two redundant exports that previously occurred
+   * per creature during fitness evaluation (topology sort + worker
+   * postMessage).
+   *
    * The hash is based on:
    * - Neuron UUIDs, types, and squash functions
    * - Synapse connection patterns (fromUUID -> toUUID pairs)
    * - NOT weights, biases, or tags
-   *
-   * Issue #1016: Performance optimisation for evaluation deduplication.
    *
    * @param creature - The creature for which to generate the topology hash
    * @returns The generated topology hash string
@@ -145,48 +151,69 @@ export class CreatureUtil {
       );
     }
 
-    const holdDebug = creature.DEBUG;
-    try {
-      creature.DEBUG = false;
-      const json = creature.exportJSON();
+    const neurons = creature.neurons;
+    const synapses = creature.synapses;
+    const neuronsLength = neurons.length;
+    const synapsesLength = synapses.length;
+    const inputCount = creature.input;
 
-      const topologyNeurons = json.neurons.map((n) => ({
-        uuid: n.uuid,
-        type: n.type,
-        squash: n.squash || "",
-      }));
-
-      topologyNeurons.sort((a, b) =>
-        (a.uuid ?? "").localeCompare(b.uuid ?? "")
-      );
-
-      const topologySynapses = json.synapses.map((s) => ({
-        fromUUID: s.fromUUID,
-        toUUID: s.toUUID,
-      }));
-
-      topologySynapses.sort((a, b) => {
-        const fc = (a.fromUUID ?? "").localeCompare(b.fromUUID ?? "");
-        if (fc !== 0) return fc;
-        return (a.toUUID ?? "").localeCompare(b.toUUID ?? "");
-      });
-
-      const topologyData = {
-        neurons: topologyNeurons,
-        synapses: topologySynapses,
-      };
-
-      const txt = JSON.stringify(topologyData);
-      const utf8 = CreatureUtil.TE.encode(txt);
-      const hash: string = generateV5Sync(
-        CreatureUtil.TOPOLOGY_NAMESPACE,
-        utf8,
-      );
-
-      creature.topologyHash = hash;
-      return hash;
-    } finally {
-      creature.DEBUG = holdDebug;
+    // Build index-to-UUID map (same mapping as CreatureExportBuilder).
+    const uuidMap = new Map<number, string>();
+    for (let i = 0; i < neuronsLength; i++) {
+      const neuron = neurons[i];
+      if (neuron.type === "input") {
+        uuidMap.set(i, `input-${i}`);
+      } else {
+        uuidMap.set(i, neuronUuid(neuron));
+      }
     }
+
+    // Build minimal topology neuron data (non-input only).
+    const topologyNeurons = new Array<
+      { uuid: string; type: string; squash: string }
+    >(neuronsLength - inputCount);
+    for (let i = inputCount; i < neuronsLength; i++) {
+      const neuron = neurons[i];
+      topologyNeurons[i - inputCount] = {
+        uuid: uuidMap.get(i)!,
+        type: neuron.type,
+        squash: neuron.squash || "",
+      };
+    }
+
+    topologyNeurons.sort((a, b) => (a.uuid ?? "").localeCompare(b.uuid ?? ""));
+
+    // Build minimal topology synapse data.
+    const topologySynapses = new Array<
+      { fromUUID: string | undefined; toUUID: string | undefined }
+    >(synapsesLength);
+    for (let i = 0; i < synapsesLength; i++) {
+      const synapse = synapses[i];
+      topologySynapses[i] = {
+        fromUUID: uuidMap.get(synapse.from),
+        toUUID: uuidMap.get(synapse.to),
+      };
+    }
+
+    topologySynapses.sort((a, b) => {
+      const fc = (a.fromUUID ?? "").localeCompare(b.fromUUID ?? "");
+      if (fc !== 0) return fc;
+      return (a.toUUID ?? "").localeCompare(b.toUUID ?? "");
+    });
+
+    const topologyData = {
+      neurons: topologyNeurons,
+      synapses: topologySynapses,
+    };
+
+    const txt = JSON.stringify(topologyData);
+    const utf8 = CreatureUtil.TE.encode(txt);
+    const hash: string = generateV5Sync(
+      CreatureUtil.TOPOLOGY_NAMESPACE,
+      utf8,
+    );
+
+    creature.topologyHash = hash;
+    return hash;
   }
 }
