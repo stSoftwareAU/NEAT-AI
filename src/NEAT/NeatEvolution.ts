@@ -322,7 +322,7 @@ export async function evolve(
   const parallelBreeding = new ParallelBreeding(
     genus,
     neat.config,
-    neat.workers,
+    neat.fastWorkerHandlers,
   );
   const offspringBatch = await parallelBreeding.breedBatch(newPopSize);
   newPopulation.push(...offspringBatch);
