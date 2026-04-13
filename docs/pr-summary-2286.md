@@ -2,8 +2,8 @@
 
 Optimise the de-duplication phase by replacing synchronous per-duplicate
 `previousExperiment()` file I/O with batched async operations, adding
-per-generation caching, and capping the replacement breeding retry loop.
-Closes #2286.
+per-generation caching, and capping the replacement breeding retry loop. Closes
+#2286.
 
 ### Changes
 
@@ -21,8 +21,8 @@ Closes #2286.
   preserving population size.
 - **Warning on cap**: A warning is logged when the retry cap is hit, surfacing
   de-duplication pressure issues.
-- **Configurable**: New `maxDedupRetries` option in `NeatArguments`/`NeatConfig`/
-  `NeatOptions` (integer, min 1, default 16).
+- **Configurable**: New `maxDedupRetries` option in
+  `NeatArguments`/`NeatConfig`/ `NeatOptions` (integer, min 1, default 16).
 - **Bug fix**: Removed pre-existing duplicate `createdDirs` declaration in
   `Neat.ts`.
 
