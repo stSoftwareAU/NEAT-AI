@@ -10,7 +10,7 @@ import { CreatureUtil } from "../../mod.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("DeDuplicate", () => {
+Deno.test("DeDuplicate", async () => {
   const creature: CreatureInternal = {
     neurons: [
       {
@@ -76,7 +76,7 @@ Deno.test("DeDuplicate", () => {
 
   const breed = new Breed(genus, neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);
-  deDuplicator.perform(list);
+  await deDuplicator.perform(list);
 
   const uniques = new Set<string>();
   for (let i = 0; i < list.length; i++) {

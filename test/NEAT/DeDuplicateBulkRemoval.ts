@@ -29,7 +29,7 @@ const baseCreature: CreatureInternal = {
   output: 1,
 };
 
-Deno.test("DeDuplicator bulk removal preserves unique creatures", () => {
+Deno.test("DeDuplicator bulk removal preserves unique creatures", async () => {
   const config = createNeatConfig({
     populationSize: 10,
     elitism: 2,
@@ -68,7 +68,7 @@ Deno.test("DeDuplicator bulk removal preserves unique creatures", () => {
   const mutator = new Mutator(config);
   const deDuplicator = new DeDuplicator(breed, mutator);
 
-  deDuplicator.perform(creatures);
+  await deDuplicator.perform(creatures);
 
   // All remaining creatures should be unique
   const remainingUUIDs = new Set<string>();
@@ -88,7 +88,7 @@ Deno.test("DeDuplicator bulk removal preserves unique creatures", () => {
   );
 });
 
-Deno.test("DeDuplicator bulk removal handles all-duplicates correctly", () => {
+Deno.test("DeDuplicator bulk removal handles all-duplicates correctly", async () => {
   const config = createNeatConfig({
     populationSize: 5,
     elitism: 1,
@@ -109,7 +109,7 @@ Deno.test("DeDuplicator bulk removal handles all-duplicates correctly", () => {
   const mutator = new Mutator(config);
   const deDuplicator = new DeDuplicator(breed, mutator);
 
-  deDuplicator.perform(creatures);
+  await deDuplicator.perform(creatures);
 
   // Should have reduced the population significantly
   assert(
@@ -129,7 +129,7 @@ Deno.test("DeDuplicator bulk removal handles all-duplicates correctly", () => {
   }
 });
 
-Deno.test("DeDuplicator preserves array order for non-removed elements", () => {
+Deno.test("DeDuplicator preserves array order for non-removed elements", async () => {
   const config = createNeatConfig({
     populationSize: 5,
     elitism: 1,
@@ -157,7 +157,7 @@ Deno.test("DeDuplicator preserves array order for non-removed elements", () => {
   const mutator = new Mutator(config);
   const deDuplicator = new DeDuplicator(breed, mutator);
 
-  deDuplicator.perform(creatures);
+  await deDuplicator.perform(creatures);
 
   // The first 5 unique creatures should still be present
   const remainingUUIDs = new Set<string>();

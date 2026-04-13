@@ -58,7 +58,7 @@ Deno.test("evolve: returns fittest creature with valid score", async () => {
     };
 
     const neat = new Neat(2, 1, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     const result = await neat.evolve();
 
@@ -88,7 +88,7 @@ Deno.test("evolve: returns plateau detection status", async () => {
     };
 
     const neat = new Neat(2, 1, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     const result = await neat.evolve();
 
@@ -125,7 +125,7 @@ Deno.test("evolve: returns average score", async () => {
     };
 
     const neat = new Neat(2, 1, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     const result = await neat.evolve();
 
@@ -152,7 +152,7 @@ Deno.test("evolve: population is repopulated after evolution", async () => {
     };
 
     const neat = new Neat(2, 1, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     await neat.evolve();
 
@@ -178,7 +178,7 @@ Deno.test("evolve: fittest creature has UUID", async () => {
     };
 
     const neat = new Neat(2, 1, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     const result = await neat.evolve();
 
@@ -207,7 +207,7 @@ Deno.test("evolve: multiple generations improve or maintain fitness", async () =
     };
 
     const neat = new Neat(2, 1, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     // Run first generation
     const result1 = await neat.evolve();
@@ -240,7 +240,7 @@ Deno.test("evolve: plateau detector records fitness each generation", async () =
     };
 
     const neat = new Neat(2, 1, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     // Initially no generations recorded
     assertEquals(
@@ -280,7 +280,7 @@ Deno.test("evolve: elitism preserves best creatures", async () => {
     };
 
     const neat = new Neat(2, 1, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     const result = await neat.evolve();
 
