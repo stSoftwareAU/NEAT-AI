@@ -1,11 +1,11 @@
 ## Summary
 
-Systematically evaluated 7 operations in the evolveDir pipeline against the
-WASM migration decision framework from PERFORMANCE_RESEARCH.md. All evaluations
+Systematically evaluated 7 operations in the evolveDir pipeline against the WASM
+migration decision framework from PERFORMANCE_RESEARCH.md. All evaluations
 yielded negative results — no new WASM migration opportunities were identified.
-Additionally assessed WASM-resident creature state feasibility and found it
-not recommended at this time due to unfavourable effort-to-benefit ratio.
-Closes #2278.
+Additionally assessed WASM-resident creature state feasibility and found it not
+recommended at this time due to unfavourable effort-to-benefit ratio. Closes
+#2278.
 
 ### Key Findings
 
@@ -28,6 +28,7 @@ Closes #2278.
 ### Negative Result Documentation
 
 All findings are documented in `docs/PERFORMANCE_RESEARCH.md` with:
+
 - Per-operation decision framework evaluation tables
 - Benchmark data (timings from Apple M2 Ultra, Deno 2.7.12)
 - WASM-resident creature state feasibility assessment with estimated effort,
@@ -41,19 +42,19 @@ changes were made.
 
 **Benchmark results** (Apple M2 Ultra, Deno 2.7.12):
 
-| Operation | Time | WASM Candidate? |
-|-----------|------|-----------------|
-| Breed (small, 20n) | ~382 µs | NO — serialisation wall |
-| Breed (medium, 80n) | ~6.0 ms | NO — serialisation wall |
-| JS Cost MSE (10 out) | ~419 ns | ALREADY IN WASM |
-| JS Cost MSE (100 out) | ~609 ns | ALREADY IN WASM |
-| Compatibility (cache hit) | ~70 ns | NO — below WASM boundary cost |
+| Operation                  | Time    | WASM Candidate?                      |
+| -------------------------- | ------- | ------------------------------------ |
+| Breed (small, 20n)         | ~382 µs | NO — serialisation wall              |
+| Breed (medium, 80n)        | ~6.0 ms | NO — serialisation wall              |
+| JS Cost MSE (10 out)       | ~419 ns | ALREADY IN WASM                      |
+| JS Cost MSE (100 out)      | ~609 ns | ALREADY IN WASM                      |
+| Compatibility (cache hit)  | ~70 ns  | NO — below WASM boundary cost        |
 | Compatibility (cache miss) | ~277 µs | NO — creature construction dominated |
-| Weight modification | ~21 µs | NO — trivially fast (clone overhead) |
-| UUID computation | ~21 µs | NO — string hashing |
-| Speciation key | ~50 µs | NO — negligible phase |
-| WASM activation (small) | ~724 ns | Already in WASM (baseline) |
-| WASM activation (medium) | ~3.6 µs | Already in WASM (baseline) |
+| Weight modification        | ~21 µs  | NO — trivially fast (clone overhead) |
+| UUID computation           | ~21 µs  | NO — string hashing                  |
+| Speciation key             | ~50 µs  | NO — negligible phase                |
+| WASM activation (small)    | ~724 ns | Already in WASM (baseline)           |
+| WASM activation (medium)   | ~3.6 µs | Already in WASM (baseline)           |
 
 ## Test Plan
 
