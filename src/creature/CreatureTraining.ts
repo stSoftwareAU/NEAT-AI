@@ -409,8 +409,12 @@ export async function evolveDir(
         `Score (absolute) less than error (score=${fittestScore}, error=${error})`,
       );
       bestScore = fittestScore;
-      bestCreature = CreatureClass.fromJSON(exportJSONWithRuntimeIds(fittest));
-      bestCreature.uuid = fittest.uuid;
+      // Issue #2276: Use shallowClone() instead of exportJSONWithRuntimeIds +
+      // fromJSON round-trip. shallowClone() is 2.4–3.5x faster (Issue #1586)
+      // and preserves all necessary state including runtime IDs and UUIDs.
+      bestCreature = fittest.shallowClone() as InstanceType<
+        typeof CreatureClass
+      >;
       bestCreature.score = bestScore;
     }
 
