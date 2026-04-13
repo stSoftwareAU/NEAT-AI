@@ -10,7 +10,7 @@ import { Neat } from "@neat/Neat.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("previous", () => {
+Deno.test("previous", async () => {
   const creature = Creature.fromJSON({
     "neurons": [{
       "bias": 0,
@@ -45,7 +45,8 @@ Deno.test("previous", () => {
   const neat = new Neat(1, 1, { experimentStore: ".testExperiments" }, []);
 
   const p = [Creature.fromJSON(creature)];
-  neat.writeScores(p);
+  // Issue #2275: writeScores is now async
+  await neat.writeScores(p);
 
   const flag = previousExperiment(creature, neat);
 
