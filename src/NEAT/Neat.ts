@@ -449,6 +449,11 @@ export class Neat {
     const createdDirs = new Set<string>();
     const writes: Promise<void>[] = [];
 
+    // Issue #2279: Cache created directories to avoid redundant ensureDirSync()
+    // calls. Many creatures share the same 3-character UUID prefix directory,
+    // so a Set tracks which directories have already been created this batch.
+    const createdDirs = new Set<string>();
+
     for (const creature of creatures) {
       const name = CreatureUtil.makeUUID(creature);
       const dirPath = baseStorePath + name.substring(0, 3);
