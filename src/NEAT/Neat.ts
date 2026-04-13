@@ -437,10 +437,19 @@ export class Neat {
 
     const baseStorePath = this.config.experimentStore + "/score/";
 
+    // Issue #2279: Cache created directories to avoid redundant ensureDirSync()
+    // calls. Many creatures share the same 3-character UUID prefix directory,
+    // so a Set tracks which directories have already been created this batch.
+    const createdDirs = new Set<string>();
+
     for (const creature of creatures) {
       const name = CreatureUtil.makeUUID(creature);
       const dirPath = baseStorePath + name.substring(0, 3);
-      ensureDirSync(dirPath);
+
+      if (!createdDirs.has(dirPath)) {
+        ensureDirSync(dirPath);
+        createdDirs.add(dirPath);
+      }
 
       const filePath = `${dirPath}/${name.substring(3)}.txt`;
       const scoreText = `${creature.score}`;
