@@ -279,6 +279,266 @@ When considering a performance optimisation, use this checklist:
 > same investigation. See the four linked issues above as examples of
 > well-documented negative results.
 
+## 🔄 evolveDir Hotspot WASM Migration Evaluation (Issue #2278)
+
+A systematic evaluation of every remaining evolveDir hotspot against the WASM
+migration decision framework, conducted after TypedTopology (#1957), Batch API
+(#1960), and worker pool separation (#2243) were implemented.
+
+### Profiling Baseline (from Issue #2274)
+
+Per-generation phase breakdown on Apple M2 Ultra, Deno 2.7.12:
+
+| Phase          | % of Generation Time | Character                |
+| -------------- | -------------------- | ------------------------ |
+| Breeding       | 50–60%               | Graph manipulation       |
+| Fitness        | 13–19%               | Already WASM-accelerated |
+| Mutation       | 4–10%                | Trivially fast per-op    |
+| De-duplication | 6–9%                 | Bloom filter + Set ops   |
+| Speciation     | <1%                  | Architecture bucketing   |
+
+### Operation 1: Breeding / Crossover (50–60%)
+
+| Criterion             | Result                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------ |
+| Tight numerical loop? | ✗ NO — graph manipulation with Map lookups, Set intersections, connectivity fingerprinting |
+| Typed array data?     | ✗ NO — `Map<number, Neuron>`, `ConnectionRef`, `Set<number>`, UUID strings                 |
+| >10 µs per call?      | ✓ YES — ~382 µs (small, 20 neurons), ~6.0 ms (medium, 80 neurons)                          |
+| Caching layer?        | ✗ NO (deferred ConnectionRef avoids allocation but not computation)                        |
+
+**Verdict: NOT a WASM candidate.** The serialisation wall applies directly.
+Investigation #1632 confirmed that converting `Map<string, Neuron>` objects to
+flat `Uint32Array` consumed 99%+ of end-to-end time. Breeding involves:
+
+- Building `Map<number, Neuron>` lookups for both parents
+- Set-based connection deduplication (`Set<number>`)
+- Dependency resolution loops with Map.get() on each neuron
+- UUID-based neuron matching across parents
+- Neuron sorting by dependency index
+
+None of these are numerical loops. The data lives in polymorphic JS objects that
+require expensive serialisation for WASM transfer.
+
+### Operation 2: Fitness Evaluation — Cost Functions (13–19%)
+
+| Criterion             | Result                                             |
+| --------------------- | -------------------------------------------------- |
+| Tight numerical loop? | ✓ YES — per-element arithmetic over output arrays  |
+| Typed array data?     | ✓ YES — `Float32Array` inputs and outputs          |
+| >10 µs per call?      | ✗ NO — ~419 ns (10 outputs), ~609 ns (100 outputs) |
+| Caching layer?        | ✗ NO                                               |
+
+**Verdict: ALREADY IN WASM.** The fused batch loss functions
+(`mseSumBatchPacked`, `maeSumBatchPacked`, `crossEntropySumBatchPacked`,
+`mapeSumBatchPacked`, `msleSumBatchPacked`, `hingeSumBatchPacked`) in
+`wasm_activation/src/loss.rs` are used for all forward-only creatures via
+`evaluateDir()`. The JS cost functions in `src/costs/` serve only as fallback
+for unsupported cost types or non-forward-only topologies.
+
+Benchmark confirms JS cost functions are trivially fast (<1 µs even for 100
+outputs), well below the WASM boundary crossing threshold. The WASM batch loss
+functions amortise boundary crossing across multiple records, making them
+efficient for the real hot path.
+
+### Operation 3: Genetic Compatibility (used across breeding & speciation)
+
+| Criterion             | Result                                                                           |
+| --------------------- | -------------------------------------------------------------------------------- |
+| Tight numerical loop? | ✗ NO — `Set<string>` intersection on neuron wire keys                            |
+| Typed array data?     | ✗ NO — `Set<string>` of UUID wire keys                                           |
+| >10 µs per call?      | ✗ NO — cache hits at ~70 ns, misses at ~277 µs (creature construction dominated) |
+| Caching layer?        | ✓ YES — LRU distance cache (10K entries, Issue #1293)                            |
+
+**Verdict: NOT a WASM candidate.** Cache-dominated path. At ~70 ns per cache
+hit, this is already 1.4–7x faster than WASM boundary crossing overhead
+(~100–500 ns). The cache miss path is dominated by creature construction and
+`getHiddenNeuronWireKeys()`, not by numerical computation.
+
+### Operation 4: Mutation — ModWeight / ModBias (4–10%)
+
+| Criterion             | Result                                                                                                                |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Tight numerical loop? | ✗ NO — O(1) scalar arithmetic per mutation                                                                            |
+| Typed array data?     | ✗ NO — individual `Neuron` and `Synapse` objects                                                                      |
+| >10 µs per call?      | ✓ YES — ~21 µs (but dominated by `Creature.fromJSON` clone overhead in benchmarks; real in-place mutation is ~1–2 µs) |
+| Caching layer?        | ✗ NO                                                                                                                  |
+
+**Verdict: NOT a WASM candidate.** Individual mutation operations (ModWeight,
+ModBias, ModSquash) perform O(1) scalar arithmetic — adding a delta to a single
+weight or bias value. The actual computation is trivially fast (~1–2 µs). The
+measured ~21 µs includes creature cloning overhead from `Creature.fromJSON()`,
+which is itself a serialisation operation unrelated to the mutation computation.
+
+Structural mutations (AddConnection, AddNeuron, SubNeuron) involve graph
+topology changes with Map lookups and array splicing — the serialisation wall
+applies to these just as it does to breeding.
+
+### Operation 5: De-duplication — Bloom Filter + Set (6–9%)
+
+| Criterion             | Result                                                     |
+| --------------------- | ---------------------------------------------------------- |
+| Tight numerical loop? | ✗ NO — Bloom filter hash checks + `Set<string>` membership |
+| Typed array data?     | ✗ NO — UUID strings                                        |
+| >10 µs per call?      | ✓ YES — ~21 µs for UUID computation per creature           |
+| Caching layer?        | ✓ Bloom filter IS the fast rejection path                  |
+
+**Verdict: NOT a WASM candidate.** De-duplication involves:
+
+1. Computing a deterministic UUID from creature structure (~21 µs per creature)
+2. Bloom filter pre-check (`mayContain()`) for fast rejection
+3. Exact `Set.has()` confirmation on Bloom filter positives
+4. Replacement breeding for confirmed duplicates
+
+The Bloom filter already provides fast O(1) rejection for the common case
+(unique creatures). The UUID computation is a hash over the creature's topology
+— a string-based operation, not a numerical loop.
+
+### Operation 6: Speciation — Genus Assignment (<1%)
+
+| Criterion             | Result                                                                   |
+| --------------------- | ------------------------------------------------------------------------ |
+| Tight numerical loop? | ✗ NO — architecture bucketing with string concatenation                  |
+| Typed array data?     | ✗ NO — neuron objects, string keys                                       |
+| >10 µs per call?      | ✓ YES — ~50 µs for architecture key computation (includes topology hash) |
+| Caching layer?        | ✓ YES — topology hash is cached on creature                              |
+
+**Verdict: NOT a WASM candidate.** Speciation consumes <1% of generation time.
+Even if WASM could accelerate it, the potential savings are negligible in
+absolute terms (<0.6 ms per generation at the largest measured configuration).
+
+### Operation 7: WASM Activation (baseline comparison)
+
+For reference, WASM-accelerated forward pass timings:
+
+| Creature Size | Time per Activation |
+| ------------- | ------------------- |
+| Small (20n)   | ~724 ns             |
+| Medium (80n)  | ~3.6 µs             |
+
+These demonstrate the kind of operation that benefits from WASM: tight numerical
+loops over typed arrays where computation dominates boundary crossing cost.
+
+### Summary: No New WASM Migration Opportunities
+
+All seven evaluated operations fall into one of three categories:
+
+1. **Already in WASM** (Operation 2 — fitness/loss functions): No action needed.
+2. **Blocked by the serialisation wall** (Operations 1, 4, 5, 6):
+   Graph-structure manipulation with `Map`/`Set`/UUID data that requires
+   expensive marshalling.
+3. **Cache-dominated** (Operation 3): LRU cache hits at 70 ns, already below
+   WASM boundary crossing cost.
+
+The remaining hotspot (breeding at 50–60%) is fundamentally constrained by the
+same serialisation wall documented in investigations #1630–#1633. The
+implementation of TypedTopology (#1957) and Batch API (#1960) did not change
+this conclusion — breeding still operates on `Map<number, Neuron>` and
+`Set<number>` data structures that live in JavaScript heap space.
+
+## 🏠 WASM-Resident Creature State Feasibility Assessment
+
+### What is WASM-Resident Creature State?
+
+Rather than serialising creature data to WASM for each operation (the current
+approach), WASM-resident state would keep the neural network topology
+**permanently** in WASM linear memory. Operations would manipulate the WASM-side
+data directly, eliminating per-operation serialisation overhead entirely.
+
+### Estimated Benefit
+
+Based on the profiling data:
+
+- **Breeding (50–60%):** If creature state lived in WASM, parent topology data
+  would already be in WASM-accessible format. However, breeding operations
+  (crossover, dependency resolution, neuron matching) require complex graph
+  traversal that is not easily expressed in Rust without reimplementing the
+  entire breeding algorithm. Estimated benefit: **20–40% reduction** in breeding
+  time (eliminating Map construction overhead), but only if the full breeding
+  algorithm is also ported to Rust.
+
+- **Fitness (13–19%):** Already WASM-accelerated via compiled networks. WASM-
+  resident state could eliminate the `compileCreatureToWasm()` step (~5–20 µs
+  per creature), saving **<1%** of total generation time.
+
+- **Mutation (4–10%):** Individual mutations would operate directly on WASM
+  memory instead of JS objects. Estimated benefit: **negligible** — mutations
+  are already O(1) scalar operations.
+
+- **Total estimated benefit:** 10–25% generation time reduction, but only if
+  breeding is fully reimplemented in Rust/WASM.
+
+### Architectural Changes Required
+
+1. **Dual-format topology representation:**
+   - WASM-side: indexed arrays (`Uint32Array` for connectivity, `Float64Array`
+     for weights/biases) in WASM linear memory
+   - JS-side: thin proxy objects that read/write WASM memory directly
+   - Synchronisation protocol for mutations that change topology structure
+
+2. **Breeding algorithm in Rust:**
+   - Port `Offspring.breed()` including neuron matching, dependency resolution,
+     and connection deduplication
+   - Handle UUID-based neuron identity matching across parents
+   - Support both standard crossover and inter-species breeding paths
+
+3. **Mutation operators in Rust:**
+   - Port all 12 mutation operators to operate on WASM-resident data
+   - Maintain the same MCMC acceptance/rejection semantics
+   - Preserve focus-list and prediction-error-guided mutation support
+
+4. **Memory management:**
+   - WASM linear memory allocation/deallocation for creature lifecycle
+   - Handle population-scale memory (150+ creatures × variable topology)
+   - Coordinate with V8 garbage collection for proxy objects
+
+### Estimated Effort
+
+- **Phase 1** (WASM-resident topology): 4–6 weeks
+  - Implement indexed array representation in WASM linear memory
+  - Create JS proxy layer for read/write access
+  - Port `compileCreatureToWasm()` to work with resident state
+
+- **Phase 2** (Breeding in Rust): 6–10 weeks
+  - Port standard crossover with UUID matching
+  - Port inter-species breeding (InputWeightCrossover, SubgraphTransplant)
+  - Port father compatibility adjustment (createCompatibleFather)
+  - Handle all edge cases (forward-only constraints, IF neurons, etc.)
+
+- **Phase 3** (Mutation in Rust): 3–4 weeks
+  - Port 12 mutation operators
+  - Maintain MCMC semantics and focus-list support
+
+**Total: ~13–20 weeks of focused development.**
+
+### Recommendation
+
+**Not recommended at this time.** The effort-to-benefit ratio is unfavourable:
+
+1. **The benefit is uncertain.** The 20–40% breeding speedup estimate assumes
+   that Rust graph traversal would be significantly faster than V8's optimised
+   hash tables — this is not guaranteed given V8's highly optimised Map
+   implementation.
+
+2. **The risk is high.** Reimplementing the entire breeding/mutation pipeline in
+   Rust introduces a large surface area for correctness bugs, especially around
+   UUID identity preservation and forward-only topology constraints.
+
+3. **Better alternatives exist.** TypeScript-level algorithmic improvements
+   (batching, redundant work elimination, better cloning) have consistently
+   delivered 10–50% gains with 1–2 week implementation effort.
+
+4. **Prerequisites are incomplete.** Full TypedTopology coverage (#1957) is
+   needed before WASM-resident state is practical. Many code paths still use
+   `Map<string, Neuron>` rather than indexed arrays.
+
+**Future trigger conditions:**
+
+- If TypedTopology coverage reaches >90% of breeding/mutation paths
+- If a production workload demonstrates that breeding time is the critical
+  bottleneck limiting evolution quality (not just wall-clock time)
+- If SharedArrayBuffer support improves to allow zero-copy sharing between JS
+  and WASM for topology data
+
 ## 📚 See Also
 
 - [Performance Tuning](./PERFORMANCE_TUNING.md) — Operational tuning guide for

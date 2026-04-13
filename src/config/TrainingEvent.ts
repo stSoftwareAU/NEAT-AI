@@ -32,6 +32,31 @@ export interface GenerationPhaseTiming {
    * Issue #2251: Present only when a checkpoint ran that generation.
    */
   readonly checkpointWriteMs?: number;
+  /**
+   * Time spent writing score files to the experiment store in ms.
+   * Issue #2274: Per-creature synchronous file I/O every generation.
+   */
+  readonly writeScoresMs?: number;
+  /**
+   * Time spent mutating the offspring population in ms.
+   * Issue #2274: Sequential iteration over newPopulation in Mutator.mutate().
+   */
+  readonly mutationMs?: number;
+  /**
+   * Time spent on single-pass de-duplication of the combined population in ms.
+   * Issue #2274: Bloom filter + Set-based dedup with optional replacement breeding.
+   */
+  readonly deduplicationMs?: number;
+  /**
+   * Time spent on speciation (Genus.addCreature) in ms.
+   * Issue #2274: Assigns each creature to a species for breeding selection.
+   */
+  readonly speciationMs?: number;
+  /**
+   * Time spent sorting creatures by score in ms.
+   * Issue #2274: O(n log n) sort after fitness evaluation.
+   */
+  readonly sortMs?: number;
 }
 
 /**
