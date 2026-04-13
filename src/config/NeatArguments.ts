@@ -113,6 +113,16 @@ export interface NeatArguments {
   /** Percentage of the top-performing individuals to retain for the next generation. */
   elitism: number;
 
+  /**
+   * Maximum number of retries when replacing a duplicate creature during
+   * de-duplication. If exceeded, the mutated duplicate is accepted as-is
+   * and a warning is logged. Default is 16.
+   *
+   * Issue #2286: Caps the previously unbounded retry loop (up to 48+
+   * attempts) to reduce de-duplication cost at larger population sizes.
+   */
+  maxDedupRetries: number;
+
   /** Maximum number of minutes to run the training loop before exiting. */
   timeoutMinutes: number;
 

@@ -21,7 +21,7 @@ import { CreatureUtil } from "../../mod.ts";
  * The implementation uses forEach instead of map since the return value is not used,
  * which avoids unnecessary array allocation.
  */
-Deno.test("ForEachSideEffects - DeDuplicator applies side effects to all creatures", () => {
+Deno.test("ForEachSideEffects - DeDuplicator applies side effects to all creatures", async () => {
   const creature: CreatureInternal = {
     neurons: [
       {
@@ -77,7 +77,7 @@ Deno.test("ForEachSideEffects - DeDuplicator applies side effects to all creatur
   assertEquals(genusSizeBefore, 0, "Genus should be empty before perform()");
 
   // Perform de-duplication (which applies side effects via forEach)
-  deDuplicator.perform(creatures);
+  await deDuplicator.perform(creatures);
 
   // Verify side effect 1: All creatures should have UUIDs assigned
   for (const c of creatures) {
@@ -104,7 +104,7 @@ Deno.test("ForEachSideEffects - DeDuplicator applies side effects to all creatur
  * This verifies that switching from map to forEach doesn't affect
  * the order of processing or skip any elements.
  */
-Deno.test("ForEachSideEffects - all creatures processed in sequence", () => {
+Deno.test("ForEachSideEffects - all creatures processed in sequence", async () => {
   const creature: CreatureInternal = {
     neurons: [
       {
@@ -140,7 +140,7 @@ Deno.test("ForEachSideEffects - all creatures processed in sequence", () => {
   }
 
   // Perform de-duplication
-  deDuplicator.perform(creatures);
+  await deDuplicator.perform(creatures);
 
   // All 10 unique creatures should be processed
   assertEquals(

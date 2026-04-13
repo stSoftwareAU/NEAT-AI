@@ -91,7 +91,7 @@ Deno.test(
       };
 
       const neat = new Neat(2, 1, options, workers);
-      neat.populatePopulation(seedCreature);
+      await neat.populatePopulation(seedCreature);
 
       // Activate all creatures to ensure they have cached WASM state
       const testInput = new Float32Array([0.5, 0.5]);
@@ -165,7 +165,7 @@ Deno.test(
       };
 
       const neat = new Neat(2, 1, options, workers);
-      neat.populatePopulation(seedCreature);
+      await neat.populatePopulation(seedCreature);
 
       await neat.evolve();
 
@@ -201,7 +201,7 @@ Deno.test(
       };
 
       const neat = new Neat(2, 1, options, workers);
-      neat.populatePopulation(seedCreature);
+      await neat.populatePopulation(seedCreature);
 
       // Activate all creatures to create WASM state
       const testInput = new Float32Array([0.5, 0.5]);
@@ -247,7 +247,7 @@ Deno.test(
       };
 
       const neat = new Neat(2, 1, options, workers);
-      neat.populatePopulation(seedCreature);
+      await neat.populatePopulation(seedCreature);
 
       // Run 3 sequential generations, verifying disposal each time.
       // Each generation depends on the previous, so we run them sequentially.

@@ -279,7 +279,7 @@ Deno.bench({
 // De-duplication benchmarks
 // ============================================================
 
-function benchDeDuplication(base: Creature, size: number): void {
+async function benchDeDuplication(base: Creature, size: number): Promise<void> {
   const config = createNeatConfig({
     populationSize: size,
     mutation: Mutation.FFW,
@@ -307,54 +307,54 @@ function benchDeDuplication(base: Creature, size: number): void {
     genus.addCreature(creature);
   }
 
-  deDuplicator.perform(population);
+  await deDuplicator.perform(population);
 }
 
 Deno.bench({
   name: "DeDuplication: Small creature, pop=50",
   group: "De-duplication",
   baseline: true,
-  fn() {
-    benchDeDuplication(smallCreature, SMALL_POP);
+  async fn() {
+    await benchDeDuplication(smallCreature, SMALL_POP);
   },
 });
 
 Deno.bench({
   name: "DeDuplication: Small creature, pop=150",
   group: "De-duplication",
-  fn() {
-    benchDeDuplication(smallCreature, LARGE_POP);
+  async fn() {
+    await benchDeDuplication(smallCreature, LARGE_POP);
   },
 });
 
 Deno.bench({
   name: "DeDuplication: Medium creature, pop=50",
   group: "De-duplication",
-  fn() {
-    benchDeDuplication(mediumCreature, SMALL_POP);
+  async fn() {
+    await benchDeDuplication(mediumCreature, SMALL_POP);
   },
 });
 
 Deno.bench({
   name: "DeDuplication: Medium creature, pop=150",
   group: "De-duplication",
-  fn() {
-    benchDeDuplication(mediumCreature, LARGE_POP);
+  async fn() {
+    await benchDeDuplication(mediumCreature, LARGE_POP);
   },
 });
 
 Deno.bench({
   name: "DeDuplication: Large creature, pop=50",
   group: "De-duplication",
-  fn() {
-    benchDeDuplication(largeCreature, SMALL_POP);
+  async fn() {
+    await benchDeDuplication(largeCreature, SMALL_POP);
   },
 });
 
 Deno.bench({
   name: "DeDuplication: Large creature, pop=150",
   group: "De-duplication",
-  fn() {
-    benchDeDuplication(largeCreature, LARGE_POP);
+  async fn() {
+    await benchDeDuplication(largeCreature, LARGE_POP);
   },
 });

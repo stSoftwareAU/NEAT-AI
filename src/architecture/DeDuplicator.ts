@@ -23,6 +23,11 @@ import { CreatureUtil } from "@architecture/CreatureUtils.ts";
  * without needing to hash and probe the Set's internal data structure.
  *
  * The filter is cleared each generation to maintain optimal performance.
+ *
+ * Issue #2286: previousExperiment() uses async file I/O with batched checks
+ * and per-generation caching to avoid blocking the event loop and redundant
+ * filesystem lookups. Replacement breeding retries are capped at a configurable
+ * maximum (default 16).
  */
 export class DeDuplicator {
   private breed: Breed;
@@ -34,6 +39,13 @@ export class DeDuplicator {
    * avoiding Set.has() overhead for definitely-unique UUIDs.
    */
   private bloomFilter: BloomFilter;
+
+  /**
+   * Issue #2286: Per-generation cache for previousExperiment() results.
+   * Avoids redundant filesystem lookups for the same UUID within a single
+   * de-duplication pass.
+   */
+  private previousExperimentCache: Map<string, boolean> = new Map();
 
   constructor(breed: Breed, mutator: Mutator) {
     this.breed = breed;
@@ -48,13 +60,16 @@ export class DeDuplicator {
     this.bloomFilter = BloomFilter.create(expectedItems, 0.01);
   }
 
-  public perform(creatures: Creature[]) {
+  public async perform(creatures: Creature[]) {
     const start = Date.now();
     let previousExperimentMS = 0;
     this.logPopulationSize(creatures);
 
     // Issue #1292: Clear Bloom filter for this generation
     this.bloomFilter.clear();
+
+    // Issue #2286: Clear previousExperiment cache for this generation
+    this.previousExperimentCache.clear();
 
     // First pass: compute UUIDs and add to genus
     for (const creature of creatures) {
@@ -65,6 +80,13 @@ export class DeDuplicator {
     // Second pass: Detect and handle duplicates
     const unique = new Set<string>();
     const toRemove: number[] = [];
+
+    // Issue #2286: Batch async previousExperiment() checks for non-duplicate
+    // creatures. Collect candidates first, then check in parallel.
+    const candidatesForPreviousExperiment: {
+      index: number;
+      uuid: string;
+    }[] = [];
 
     for (let indx = 0; indx < creatures.length; indx++) {
       const creature = creatures[indx];
@@ -84,9 +106,7 @@ export class DeDuplicator {
 
       if (!duplicate) {
         if (indx > this.breed.options.elitism!) {
-          const startPreviousExperiment = Date.now();
-          duplicate = this.previousExperiment(UUID);
-          previousExperimentMS += Date.now() - startPreviousExperiment;
+          candidatesForPreviousExperiment.push({ index: indx, uuid: UUID });
         }
         unique.add(UUID);
       }
@@ -105,7 +125,49 @@ export class DeDuplicator {
           }
           toRemove.push(indx);
         } else {
-          this.replaceDuplicateCreature(creatures, indx, unique);
+          // Sequential: modifies shared creatures array and unique set in-place
+          // deno-lint-ignore no-await-in-loop
+          await this.replaceDuplicateCreature(creatures, indx, unique);
+        }
+      }
+    }
+
+    // Issue #2286: Batch async previousExperiment() checks using Promise.allSettled()
+    if (candidatesForPreviousExperiment.length > 0) {
+      const startPreviousExperiment = Date.now();
+      const results = await Promise.allSettled(
+        candidatesForPreviousExperiment.map(async ({ uuid }) => {
+          return {
+            uuid,
+            found: await this.previousExperiment(uuid),
+          };
+        }),
+      );
+
+      previousExperimentMS += Date.now() - startPreviousExperiment;
+
+      // Process results: mark previously-seen creatures as duplicates
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        if (result.status === "fulfilled" && result.value.found) {
+          const { index } = candidatesForPreviousExperiment[i];
+          if (
+            creatures.length - toRemove.length >
+              this.breed.options.populationSize!
+          ) {
+            if (this.breed.options.debug || this.breed.options.verbose) {
+              getLogger().debug(
+                `Culling previous-experiment creature at ${
+                  index - toRemove.length
+                } of ${creatures.length - toRemove.length}`,
+              );
+            }
+            toRemove.push(index);
+          } else {
+            // Sequential: modifies shared creatures array and unique set in-place
+            // deno-lint-ignore no-await-in-loop
+            await this.replaceDuplicateCreature(creatures, index, unique);
+          }
         }
       }
     }
@@ -137,14 +199,16 @@ export class DeDuplicator {
     }
   }
 
-  private replaceDuplicateCreature(
+  private async replaceDuplicateCreature(
     creatures: Creature[],
     index: number,
     unique: Set<string>,
   ) {
     const globalBreedingRate = this.breed.options.globalBreedingRate;
+    // Issue #2286: Cap replacement retries at configurable maximum (default 16)
+    const maxRetries = this.breed.options.maxDedupRetries ?? 16;
     try {
-      for (let attempts = 0; true; attempts++) {
+      for (let attempts = 0; attempts < maxRetries; attempts++) {
         if (attempts === 12) {
           this.breed.options.globalBreedingRate = 1;
         }
@@ -158,7 +222,9 @@ export class DeDuplicator {
           let duplicate2 = mayBeDuplicate2 ? unique.has(key2) : false;
 
           if (!duplicate2 && index > this.breed.options.elitism!) {
-            duplicate2 = this.previousExperiment(key2);
+            // Sequential: each retry iteration depends on the result
+            // deno-lint-ignore no-await-in-loop
+            duplicate2 = await this.previousExperiment(key2);
           }
           if (!duplicate2) {
             unique.add(key2);
@@ -179,7 +245,9 @@ export class DeDuplicator {
         let duplicate3 = mayBeDuplicate3 ? unique.has(key3) : false;
 
         if (!duplicate3 && index > this.breed.options.elitism!) {
-          duplicate3 = this.previousExperiment(key3);
+          // Sequential: each retry iteration depends on the result
+          // deno-lint-ignore no-await-in-loop
+          duplicate3 = await this.previousExperiment(key3);
         }
         if (!duplicate3) {
           this.breed.genus.addCreature(tmpCreature);
@@ -187,14 +255,23 @@ export class DeDuplicator {
           unique.add(key3);
           this.bloomFilter.add(key3);
           return;
-        } else if (attempts > 48) {
-          getLogger().error(
-            `Can't deDuplicate creature at ${index} of ${creatures.length}`,
-          );
-          creatures.splice(index, 1);
-          return;
         }
       }
+
+      // Issue #2286: Retry cap reached — accept the last mutated creature
+      // rather than continuing the expensive loop or splicing the creature out.
+      getLogger().warn(
+        `De-duplication retry cap (${maxRetries}) reached for creature at index ${index} of ${creatures.length}. Accepting mutated duplicate.`,
+      );
+      const fallbackCreature = Creature.fromJSON(
+        creatures[index].exportJSON(),
+      );
+      this.mutator.mutate([fallbackCreature]);
+      const fallbackKey = CreatureUtil.makeUUID(fallbackCreature);
+      this.breed.genus.addCreature(fallbackCreature);
+      creatures[index] = fallbackCreature;
+      unique.add(fallbackKey);
+      this.bloomFilter.add(fallbackKey);
     } finally {
       this.breed.options.globalBreedingRate = globalBreedingRate;
     }
@@ -211,16 +288,30 @@ export class DeDuplicator {
     }
   }
 
-  previousExperiment(key: string): boolean {
+  /**
+   * Check whether a creature with the given UUID key was seen in a
+   * previous experiment. Uses async file I/O and per-generation caching
+   * (Issue #2286) to avoid blocking the event loop and redundant lookups.
+   */
+  async previousExperiment(key: string): Promise<boolean> {
     if (this.breed.options.experimentStore) {
+      // Issue #2286: Check per-generation cache first
+      const cached = this.previousExperimentCache.get(key);
+      if (cached !== undefined) {
+        return cached;
+      }
+
       const filePath = `${this.breed.options.experimentStore}/score/${
         key.substring(0, 3)
       }/${key.substring(3)}.txt`;
       try {
-        Deno.statSync(filePath);
+        // Issue #2286: Use async Deno.stat() instead of synchronous Deno.statSync()
+        await Deno.stat(filePath);
+        this.previousExperimentCache.set(key, true);
         return true;
       } catch (error) {
         if (error instanceof Deno.errors.NotFound) {
+          this.previousExperimentCache.set(key, false);
           return false;
         } else {
           throw error;

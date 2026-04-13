@@ -75,6 +75,7 @@ type NumericOptionKeys =
   | "discoveryReplayTimeoutMinutes"
   | "discoveryReplayMinTimeMinutes"
   | "maxCRISPRsPerGeneration"
+  | "maxDedupRetries"
   | "heavyTaskWorkerCount"
   | "maxConcurrentDiscoveries";
 

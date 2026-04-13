@@ -166,7 +166,7 @@ Deno.bench({
   name: "DeDuplicator with Bloom filter (10% duplicates, 100 creatures)",
   group: "De-duplication with Bloom filter",
   baseline: true,
-  fn() {
+  async fn() {
     const population = createPopulationWithDuplicates(0.1, 100);
 
     const genus = new Genus();
@@ -174,14 +174,14 @@ Deno.bench({
     const mutator = new Mutator(config);
     const deDuplicator = new DeDuplicator(breed, mutator);
 
-    deDuplicator.perform(population);
+    await deDuplicator.perform(population);
   },
 });
 
 Deno.bench({
   name: "DeDuplicator with Bloom filter (30% duplicates, 100 creatures)",
   group: "De-duplication with Bloom filter",
-  fn() {
+  async fn() {
     const population = createPopulationWithDuplicates(0.3, 100);
 
     const genus = new Genus();
@@ -189,7 +189,7 @@ Deno.bench({
     const mutator = new Mutator(config);
     const deDuplicator = new DeDuplicator(breed, mutator);
 
-    deDuplicator.perform(population);
+    await deDuplicator.perform(population);
   },
 });
 
@@ -203,7 +203,7 @@ Deno.bench({
   name: "DeDuplicator with Bloom filter (5% duplicates, 500 creatures)",
   group: "Large population de-duplication",
   baseline: true,
-  fn() {
+  async fn() {
     const largeConfig = createNeatConfig({
       populationSize: 500,
       elitism: 10,
@@ -217,14 +217,14 @@ Deno.bench({
     const mutator = new Mutator(largeConfig);
     const deDuplicator = new DeDuplicator(breed, mutator);
 
-    deDuplicator.perform(population);
+    await deDuplicator.perform(population);
   },
 });
 
 Deno.bench({
   name: "DeDuplicator with Bloom filter (20% duplicates, 500 creatures)",
   group: "Large population de-duplication",
-  fn() {
+  async fn() {
     const largeConfig = createNeatConfig({
       populationSize: 500,
       elitism: 10,
@@ -238,7 +238,7 @@ Deno.bench({
     const mutator = new Mutator(largeConfig);
     const deDuplicator = new DeDuplicator(breed, mutator);
 
-    deDuplicator.perform(population);
+    await deDuplicator.perform(population);
   },
 });
 

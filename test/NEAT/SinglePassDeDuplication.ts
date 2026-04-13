@@ -16,7 +16,7 @@ import { CreatureUtil } from "../../mod.ts";
  * This test verifies that single-pass de-duplication (at the end after combining
  * all population sources) produces the same result as two-pass de-duplication.
  */
-Deno.test("SinglePassDeDuplication - produces same uniqueness as two-pass", () => {
+Deno.test("SinglePassDeDuplication - produces same uniqueness as two-pass", async () => {
   const creature: CreatureInternal = {
     neurons: [
       {
@@ -120,7 +120,7 @@ Deno.test("SinglePassDeDuplication - produces same uniqueness as two-pass", () =
   const breed = new Breed(genus, neat.config);
   const mutator = new Mutator(neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);
-  deDuplicator.perform(combinedPopulation);
+  await deDuplicator.perform(combinedPopulation);
 
   // Verify no duplicates remain
   const uuidsAfter = new Set<string>();
@@ -140,7 +140,7 @@ Deno.test("SinglePassDeDuplication - produces same uniqueness as two-pass", () =
  * The key benefit of single-pass is that it catches duplicates between different
  * population sources (elitists, trained, new, DNA) in one operation.
  */
-Deno.test("SinglePassDeDuplication - catches cross-source duplicates", () => {
+Deno.test("SinglePassDeDuplication - catches cross-source duplicates", async () => {
   const creature: CreatureInternal = {
     neurons: [
       {
@@ -230,7 +230,7 @@ Deno.test("SinglePassDeDuplication - catches cross-source duplicates", () => {
   const breed = new Breed(genus, neat.config);
   const mutator = new Mutator(neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);
-  deDuplicator.perform(combinedPopulation);
+  await deDuplicator.perform(combinedPopulation);
 
   // Verify no duplicates remain
   const uuidsAfter = new Set<string>();

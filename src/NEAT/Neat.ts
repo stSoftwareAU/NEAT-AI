@@ -446,7 +446,6 @@ export class Neat {
     }
 
     const baseStorePath = this.config.experimentStore + "/score/";
-    const createdDirs = new Set<string>();
     const writes: Promise<void>[] = [];
 
     // Issue #2279: Cache created directories to avoid redundant ensureDirSync()
@@ -472,7 +471,7 @@ export class Neat {
     await Promise.all(writes);
   }
 
-  populatePopulation(creature: Creature) {
+  async populatePopulation(creature: Creature) {
     const mutator = new Mutator(this.config);
     while (this.population.length < this.config.populationSize - 1) {
       const clonedCreature = creature.shallowClone();
@@ -493,6 +492,6 @@ export class Neat {
 
     const breed = new Breed(genus, this.config);
     const deDuplicator = new DeDuplicator(breed, mutator);
-    deDuplicator.perform(this.population);
+    await deDuplicator.perform(this.population);
   }
 }

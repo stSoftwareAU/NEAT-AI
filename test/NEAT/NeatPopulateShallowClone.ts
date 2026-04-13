@@ -60,7 +60,7 @@ Deno.test("populatePopulation: clones validate correctly", async () => {
       layers: [{ count: 8 }, { count: 4 }],
     });
 
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     // Every creature in the population should pass validation
     for (let i = 0; i < neat.population.length; i++) {
@@ -85,7 +85,7 @@ Deno.test("populatePopulation: clones can be exported and re-imported", async ()
       layers: [{ count: 5 }],
     });
 
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     // Every creature should be serialisable and deserialisable
     for (const creature of neat.population) {
@@ -122,7 +122,7 @@ Deno.test("populatePopulation: clones are independent of seed creature", async (
       layers: [{ count: 4 }],
     });
 
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     // Modify the seed creature's bias — clones should be unaffected
     const originalBiases = neat.population.slice(1).map((c) => {
