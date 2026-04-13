@@ -3,7 +3,7 @@
  *
  * Issue #2274: Verifies that the generation_complete training event
  * includes the new per-phase timing fields: writeScoresMs, mutationMs,
- * deDuplicationMs, speciationMs, and sortMs.
+ * deduplicationMs, speciationMs, and sortMs.
  */
 import { assert, assertEquals, assertGreater } from "@std/assert";
 import { Creature } from "@creature";
@@ -61,13 +61,13 @@ Deno.test("EvolvePhaseTiming: new phase fields are present in phaseTiming", asyn
       );
     }
 
-    // Issue #2274: deDuplicationMs should be a non-negative number when present
-    if (timing.deDuplicationMs !== undefined) {
-      assertEquals(typeof timing.deDuplicationMs, "number");
+    // Issue #2274: deduplicationMs should be a non-negative number when present
+    if (timing.deduplicationMs !== undefined) {
+      assertEquals(typeof timing.deduplicationMs, "number");
       assertGreater(
-        timing.deDuplicationMs,
+        timing.deduplicationMs,
         -1,
-        "deDuplicationMs should be non-negative",
+        "deduplicationMs should be non-negative",
       );
     }
 
@@ -105,7 +105,7 @@ Deno.test("EvolvePhaseTiming: new phase fields are present in phaseTiming", asyn
     const measuredPhases = timing.fitnessMs + timing.breedingMs +
       timing.resultProcessingMs +
       (timing.mutationMs ?? 0) +
-      (timing.deDuplicationMs ?? 0) +
+      (timing.deduplicationMs ?? 0) +
       (timing.speciationMs ?? 0) +
       (timing.sortMs ?? 0) +
       (timing.writeScoresMs ?? 0) +
@@ -127,7 +127,7 @@ Deno.test("EvolvePhaseTiming: new timing fields are optional in GenerationPhaseT
   };
   assertEquals(timingWithout.writeScoresMs, undefined);
   assertEquals(timingWithout.mutationMs, undefined);
-  assertEquals(timingWithout.deDuplicationMs, undefined);
+  assertEquals(timingWithout.deduplicationMs, undefined);
   assertEquals(timingWithout.speciationMs, undefined);
   assertEquals(timingWithout.sortMs, undefined);
 
@@ -139,13 +139,13 @@ Deno.test("EvolvePhaseTiming: new timing fields are optional in GenerationPhaseT
     totalMs: 200,
     writeScoresMs: 5,
     mutationMs: 10,
-    deDuplicationMs: 8,
+    deduplicationMs: 8,
     speciationMs: 3,
     sortMs: 2,
   };
   assertEquals(timingWith.writeScoresMs, 5);
   assertEquals(timingWith.mutationMs, 10);
-  assertEquals(timingWith.deDuplicationMs, 8);
+  assertEquals(timingWith.deduplicationMs, 8);
   assertEquals(timingWith.speciationMs, 3);
   assertEquals(timingWith.sortMs, 2);
 });
@@ -188,7 +188,7 @@ Deno.test("EvolvePhaseTiming: all timing fields are numbers or undefined", async
     const optionalFields: (keyof GenerationPhaseTiming)[] = [
       "writeScoresMs",
       "mutationMs",
-      "deDuplicationMs",
+      "deduplicationMs",
       "speciationMs",
       "sortMs",
       "memoryEvictionMs",

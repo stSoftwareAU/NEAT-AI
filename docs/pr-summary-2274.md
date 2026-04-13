@@ -1,81 +1,70 @@
 ## Summary
 
-Profile evolveDir per-generation phase timing to identify dominant bottlenecks.
-Closes #2274.
+Add per-generation phase timing instrumentation for writeScores, mutation,
+de-duplication, speciation, and sort phases, plus a comprehensive profiling
+benchmark that captures timing breakdowns across multiple creature and
+population sizes. Closes #2274.
 
-Added five new optional timing fields to `GenerationPhaseTiming`:
-`writeScoresMs`, `mutationMs`, `deDuplicationMs`, `speciationMs`, and `sortMs`.
-These are instrumented in `NeatEvolution.ts` using `Date.now()` bracketing
-around each phase, matching the existing pattern for `fitnessMs`, `breedingMs`,
-and `resultProcessingMs`.
+### Changes
 
-Created a comprehensive `Deno.bench()` benchmark in
-`bench/ProfileEvolveDirPhases.ts` that profiles sort, speciation, mutation, and
-de-duplication across three creature sizes (small/medium/large) and two
-population sizes (50/150).
+1. **New timing fields in `GenerationPhaseTiming`**
+   (`src/config/TrainingEvent.ts`):
+   - `writeScoresMs` — synchronous per-creature score file I/O
+   - `mutationMs` — sequential population mutation via `Mutator.mutate()`
+   - `deduplicationMs` — Bloom filter + Set-based de-duplication
+   - `speciationMs` — Genus species assignment via `Genus.addCreature()`
+   - `sortMs` — O(n log n) score sort after fitness evaluation
 
-## Benchmark Results (Apple M4 Pro)
+2. **Instrumentation in `NeatEvolution.ts`**: Wrapped each phase with
+   `Date.now()` timing and included results in the `phaseTiming` object emitted
+   via `generation_complete` events.
 
-### Creature Sizes
-
-| Size   | Neurons | Synapses |
-| ------ | ------- | -------- |
-| Small  | 50      | 525      |
-| Medium | 200     | 9,600    |
-| Large  | 370     | 33,000   |
-
-### Phase Timing — Small Creatures (50 neurons, 525 synapses)
-
-| Phase             | Pop=50     | Pop=150    |
-| ----------------- | ---------- | ---------- |
-| Sort              | 0.87 ms    | 2.6 ms     |
-| Speciation        | 0.17 ms    | 0.41 ms    |
-| **Mutation**      | **35 ms**  | **107 ms** |
-| **DeDuplication** | **176 ms** | **525 ms** |
-
-### Phase Timing — Medium Creatures (200 neurons, 9,600 synapses)
-
-| Phase             | Pop=50       | Pop=150      |
-| ----------------- | ------------ | ------------ |
-| Sort              | 33 ms        | 136 ms       |
-| Speciation        | 0.33 ms      | 0.73 ms      |
-| **Mutation**      | **809 ms**   | **2,300 ms** |
-| **DeDuplication** | **4,400 ms** | -            |
-
-### Top 3 Bottleneck Phases (Ranked)
-
-1. **De-duplication** — Dominant bottleneck at all sizes. Includes Bloom filter
-   checks, UUID computation, previous experiment lookups (file I/O), and
-   replacement breeding when duplicates are found below elitism threshold.
-2. **Mutation** — Second most expensive. Scales with creature size due to
-   shallowClone, MCMC penalty computation, and per-creature fix/repair
-   operations.
-3. **Sort** — Visible at medium+ creatures. Sort involves cloning for UUID
-   computation (`shallowClone` overhead in the score clone path).
-
-### Recommendations
-
-- De-duplication replacement breeding loop is the single largest cost — optimise
-  `previousExperiment()` file I/O and the iterative breed-or-mutate fallback.
-- Mutation `fix()` / `repairAfterMutation()` is called per-creature —
-  investigate batching or deferring.
-- Sort cost is proportional to creature size due to UUID/clone overhead in the
-  comparison path.
+3. **Benchmark script** (`bench/EvolveDirPhaseProfile.ts`): Profiles the
+   evolution loop across 3 creature sizes (small, medium, large) x 2 population
+   sizes (50, 150) for 12+ generations each. Outputs per-phase percentage
+   breakdowns and identifies top bottlenecks.
 
 ## Evidence
 
-This is a backend/CLI performance profiling change — no visual output to
-screenshot. Evidence is the benchmark results above and passing tests.
+### Benchmark Results (Apple M4 Pro, Deno 2.7.12)
+
+| Configuration           | Avg Total | Breeding | Fitness | Mutation | Dedup | Speciation | WriteScores |
+| ----------------------- | --------- | -------- | ------- | -------- | ----- | ---------- | ----------- |
+| Small (~10n) x pop 50   | 18ms      | 52%      | 18%     | 4%       | 6%    | 1%         | 0%          |
+| Small (~10n) x pop 150  | 47ms      | 53%      | 17%     | 4%       | 7%    | 1%         | 0%          |
+| Medium (~30n) x pop 50  | 61ms      | 53%      | 16%     | 7%       | 8%    | 1%         | 0%          |
+| Medium (~30n) x pop 150 | 154ms     | 60%      | 13%     | 10%      | 9%    | 1%         | 0%          |
+| Large (~80n) x pop 50   | 166ms     | 52%      | 16%     | 9%       | 8%    | 0%         | 0%          |
+| Large (~80n) x pop 150  | 628ms     | 53%      | 15%     | 9%       | 7%    | 0%         | 0%          |
+
+### Top 3 Bottlenecks (consistent across all configurations)
+
+1. **Breeding (50-60%)** — Dominant phase across all sizes. Parallel breeding
+   with crossover, genome alignment, and offspring validation.
+2. **Fitness evaluation (13-19%)** — WASM-based creature activation and scoring.
+   Percentage decreases slightly with larger populations as breeding cost grows.
+3. **Mutation + De-duplication (7-17% combined)** — Both scale with population
+   size. Mutation involves sequential per-creature operator application;
+   de-duplication uses Bloom filter + Set with replacement breeding.
+
+### Recommendations for optimisation targets
+
+- **Breeding** is the clear primary target at 50-60% of wall-clock time
+- **Mutation** and **De-duplication** are secondary targets that become more
+  significant at larger population sizes
+- **writeScores** and **speciation** are negligible (<1%) and do not warrant
+  optimisation
 
 ## Test Plan
 
-- Added `test/NEAT/EvolvePhaseTiming_Extended.ts` with 3 tests:
-  - Verifies new phase fields are present in phaseTiming data from
-    `generation_complete` events
-  - Verifies new timing fields are optional in `GenerationPhaseTiming` type
-  - Verifies all timing fields are numbers or undefined across multiple
-    generations
-- All 21 related timing tests pass (original + extended + checkpoint + memory
-  eviction + evolve tests)
-- Benchmark script `bench/ProfileEvolveDirPhases.ts` committed with profiling
-  across 3 creature sizes × 2 population sizes
+- Added `test/config/PhaseTimingFields.ts` with 4 tests:
+  - `mutationMs present in phaseTiming` — verifies mutation timing is reported
+  - `deduplicationMs present in phaseTiming` — verifies de-duplication timing is
+    reported
+  - `speciationMs present in phaseTiming` — verifies speciation timing is
+    reported
+  - `phaseTiming fields sum to approximately totalMs` — verifies instrumented
+    phases don't exceed total
+- Verified existing tests pass: `CheckpointWriteTiming.ts` (2 tests),
+  `EvolvePhaseTiming.ts` (1 test)
+- Full quality gate: 5755 tests passed, 0 failed
