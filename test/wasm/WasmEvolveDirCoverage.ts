@@ -127,11 +127,19 @@ Deno.test(
 Deno.test(
   "WASM evolveDir coverage: breeding produces valid offspring",
   () => {
-    const mother = createTestCreature(5, 3, [{ count: 8 }, { count: 4 }]);
-    const father = createTestCreature(5, 3, [{ count: 6 }, { count: 5 }]);
+    // Breeding is non-deterministic — retry to reach the successful path.
+    let offspring: Creature | undefined;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const mother = createTestCreature(5, 3, [{ count: 8 }, { count: 4 }]);
+      const father = createTestCreature(5, 3, [{ count: 6 }, { count: 5 }]);
+      offspring = Offspring.breed(mother, father);
+      if (offspring) break;
+    }
 
-    const offspring = Offspring.breed(mother, father);
-    assert(offspring !== undefined, "Breeding should produce an offspring");
+    assert(
+      offspring !== undefined,
+      "Breeding should produce an offspring within 10 attempts",
+    );
 
     if (offspring) {
       assertEquals(

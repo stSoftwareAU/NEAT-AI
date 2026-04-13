@@ -280,6 +280,7 @@
     "wbindgen",
     "wgpu",
     "writable",
+    "writescores",
     "xaxis",
     "xoshiro",
     "yaxis",

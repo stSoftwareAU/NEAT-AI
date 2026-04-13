@@ -147,12 +147,17 @@ export class ParallelBreeding {
     const results: (Creature | undefined)[] = new Array(parentPairs.length);
     let resultIndex = 0;
 
+    // Issue #2279: Use index pointer instead of Array.shift() for O(1) dequeue.
+    // Array.shift() is O(n) per removal (re-indexes all remaining elements),
+    // making the work-stealing loop O(n²). An index pointer is O(1) per dequeue.
+    let queueFront = 0;
+
     // Work-stealing pattern: each worker iteratively processes tasks from the queue
     const processQueue = async (
       worker: WorkerHandler,
     ): Promise<void> => {
-      while (queue.length > 0) {
-        const pair = queue.shift();
+      while (queueFront < queue.length) {
+        const pair = queue[queueFront++];
         if (!pair) break;
 
         const currentIndex = resultIndex++;
