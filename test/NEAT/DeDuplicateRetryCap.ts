@@ -143,11 +143,11 @@ Deno.test("DeDuplicator previousExperiment caches results", async () => {
   const mutator = new Mutator(config);
   const deDuplicator = new DeDuplicator(breed, mutator);
 
-  const testKey = "abc123def456";
+  const testUuid = "00000000-0000-4000-8000-000000000001";
 
-  // Call previousExperiment twice with the same key
-  const result1 = await deDuplicator.previousExperiment(testKey);
-  const result2 = await deDuplicator.previousExperiment(testKey);
+  // Call previousExperiment twice with the same UUID
+  const result1 = await deDuplicator.previousExperiment(testUuid);
+  const result2 = await deDuplicator.previousExperiment(testUuid);
 
   // Both should return false (no experiment store configured)
   assertFalse(
