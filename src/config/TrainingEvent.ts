@@ -32,6 +32,31 @@ export interface GenerationPhaseTiming {
    * Issue #2251: Present only when a checkpoint ran that generation.
    */
   readonly checkpointWriteMs?: number;
+  /**
+   * Time spent writing score files to the experiment store in ms.
+   * Issue #2274: Present only when experimentStore is configured.
+   */
+  readonly writeScoresMs?: number;
+  /**
+   * Time spent mutating the population in ms.
+   * Issue #2274: Covers the full Mutator.mutate() call over new offspring.
+   */
+  readonly mutationMs?: number;
+  /**
+   * Time spent on de-duplication (DeDuplicator.perform) in ms.
+   * Issue #2274: Bloom filter pre-check + Set-based dedup + replacements.
+   */
+  readonly deDuplicationMs?: number;
+  /**
+   * Time spent on speciation (Genus.addCreature loop) in ms.
+   * Issue #2274: Assigning creatures to species via topology hashing.
+   */
+  readonly speciationMs?: number;
+  /**
+   * Time spent sorting creatures by score in ms.
+   * Issue #2274: O(n log n) sort after fitness evaluation.
+   */
+  readonly sortMs?: number;
 }
 
 /**

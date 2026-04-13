@@ -87,11 +87,19 @@ export async function evolve(
   const fitnessStartMs = Date.now();
   await neat.fitness.calculate(neat.population);
   const fitnessMs = Date.now() - fitnessStartMs;
+
+  // Issue #2274: Time score sorting phase
+  const sortStartMs = Date.now();
   sortCreaturesByScore(neat.population);
+  const sortMs = Date.now() - sortStartMs;
 
+  // Issue #2274: Time speciation phase (Genus population)
+  const speciationStartMs = Date.now();
   const genus = new Genus();
-
+  // Issue #2274: Time writeScores phase (synchronous per-creature file I/O)
+  const writeScoresStartMs = Date.now();
   neat.writeScores(neat.population);
+  const writeScoresMs = Date.now() - writeScoresStartMs;
 
   // The population is already sorted in the desired order.
   // Issue #2214: Creatures that suffered a WASM panic during evaluation
@@ -118,6 +126,7 @@ export async function evolve(
   if (neat.population.length === 0) {
     getLogger().warn("All creatures died, using zombies");
   }
+  const speciationMs = Date.now() - speciationStartMs;
 
   // Issue #1615: Emit species_adjusted event
   emitTrainingEvent(neat.config.onTrainingEvent, {
@@ -384,7 +393,11 @@ export async function evolve(
     : undefined;
 
   const mutator = new Mutator(mutatorConfig, mcmcTemperature, mcmcDiagnostics);
+
+  // Issue #2274: Time mutation phase
+  const mutationStartMs = Date.now();
   mutator.mutate(newPopulation);
+  const mutationMs = Date.now() - mutationStartMs;
 
   // Issue #2200: Cool the MCMC temperature after each generation.
   // Issue #2201: cool() now also finalises generation diagnostics
@@ -418,7 +431,10 @@ export async function evolve(
   ]; // Keep pseudo sorted.
 
   // Issue #1099: Single-pass de-duplication on the combined population
+  // Issue #2274: Time de-duplication phase
+  const deDuplicationStartMs = Date.now();
   deDuplicator.perform(neat.population);
+  const deDuplicationMs = Date.now() - deDuplicationStartMs;
 
   // Issue #1568: Dispose old population creatures not carried forward
   const carriedForward = new Set(neat.population);
@@ -472,6 +488,12 @@ export async function evolve(
     resultProcessingMs,
     totalMs,
     memoryEvictionMs: memoryEvictionMs > 0 ? memoryEvictionMs : undefined,
+    // Issue #2274: New per-phase timing fields
+    writeScoresMs: writeScoresMs > 0 ? writeScoresMs : undefined,
+    mutationMs: mutationMs > 0 ? mutationMs : undefined,
+    deDuplicationMs: deDuplicationMs > 0 ? deDuplicationMs : undefined,
+    speciationMs: speciationMs > 0 ? speciationMs : undefined,
+    sortMs: sortMs > 0 ? sortMs : undefined,
   };
 
   // Issue #2239: Log per-phase timing when verbose is enabled
@@ -479,9 +501,18 @@ export async function evolve(
     const memTag = memoryEvictionMs > 0
       ? ` memoryEviction=${memoryEvictionMs}ms`
       : "";
+    // Issue #2274: Include new phase timings in verbose log
+    const extraPhases = [
+      sortMs > 0 ? `sort=${sortMs}ms` : "",
+      writeScoresMs > 0 ? `writeScores=${writeScoresMs}ms` : "",
+      speciationMs > 0 ? `speciation=${speciationMs}ms` : "",
+      mutationMs > 0 ? `mutation=${mutationMs}ms` : "",
+      deDuplicationMs > 0 ? `deDuplication=${deDuplicationMs}ms` : "",
+    ].filter((s) => s.length > 0).join(" ");
+    const extraTag = extraPhases.length > 0 ? ` ${extraPhases}` : "";
     getLogger().info(
       `[Timing] fitness=${fitnessMs}ms breeding=${breedingMs}ms ` +
-        `resultProcessing=${resultProcessingMs}ms${memTag} total=${totalMs}ms`,
+        `resultProcessing=${resultProcessingMs}ms${memTag}${extraTag} total=${totalMs}ms`,
     );
   }
 
