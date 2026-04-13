@@ -386,7 +386,7 @@ export async function evolveDir(
   );
 
   neat.setDataDir(dataSetDir);
-  neat.populatePopulation(creature);
+  await neat.populatePopulation(creature);
 
   let error = Infinity;
   let bestScore = -Infinity;

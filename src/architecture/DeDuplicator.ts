@@ -8,6 +8,15 @@ import { getLogger } from "@utils/Logger.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 /**
+ * Maximum number of replacement breeding retries per duplicate (Issue #2286).
+ * After this many attempts, accept the best mutated candidate rather than
+ * continuing the loop. A warning is logged when this cap is reached.
+ * Set to 16 as a balance between finding unique replacements and avoiding
+ * excessive looping (previously unbounded up to 48+ attempts).
+ */
+const DEFAULT_MAX_REPLACEMENT_RETRIES = 16;
+
+/**
  * DeDuplicator - Removes duplicate creatures from a population.
  *
  * Uses a Bloom filter (Issue #1292) as a fast first-pass check for duplicates,
@@ -22,6 +31,9 @@ import { CreatureUtil } from "@architecture/CreatureUtils.ts";
  * common case in healthy evolution), the Bloom filter quickly rejects non-duplicates
  * without needing to hash and probe the Set's internal data structure.
  *
+ * Issue #2286: previousExperiment() uses async file I/O with per-generation
+ * caching, and replacement breeding retries are capped.
+ *
  * The filter is cleared each generation to maintain optimal performance.
  */
 export class DeDuplicator {
@@ -35,9 +47,27 @@ export class DeDuplicator {
    */
   private bloomFilter: BloomFilter;
 
-  constructor(breed: Breed, mutator: Mutator) {
+  /**
+   * Per-generation cache for previousExperiment() results (Issue #2286).
+   * Avoids redundant filesystem lookups within the same deduplication pass.
+   */
+  private previousExperimentCache: Map<string, boolean>;
+
+  /**
+   * Maximum replacement breeding retries per duplicate (Issue #2286).
+   * Configurable to allow tuning for different population sizes.
+   */
+  private maxReplacementRetries: number;
+
+  constructor(
+    breed: Breed,
+    mutator: Mutator,
+    maxReplacementRetries: number = DEFAULT_MAX_REPLACEMENT_RETRIES,
+  ) {
     this.breed = breed;
     this.mutator = mutator;
+    this.maxReplacementRetries = maxReplacementRetries;
+    this.previousExperimentCache = new Map();
 
     // Create Bloom filter sized for expected population with <1% false positive rate
     // Using population size * 1.5 to account for temporary over-population
@@ -48,13 +78,16 @@ export class DeDuplicator {
     this.bloomFilter = BloomFilter.create(expectedItems, 0.01);
   }
 
-  public perform(creatures: Creature[]) {
+  public async perform(creatures: Creature[]) {
     const start = Date.now();
     let previousExperimentMS = 0;
     this.logPopulationSize(creatures);
 
     // Issue #1292: Clear Bloom filter for this generation
     this.bloomFilter.clear();
+
+    // Issue #2286: Clear per-generation cache
+    this.previousExperimentCache.clear();
 
     // First pass: compute UUIDs and add to genus
     for (const creature of creatures) {
@@ -63,8 +96,13 @@ export class DeDuplicator {
     }
 
     // Second pass: Detect and handle duplicates
+    // Issue #2286: Batch async previousExperiment() checks for candidates
     const unique = new Set<string>();
     const toRemove: number[] = [];
+
+    // Collect candidates that need previousExperiment() checks
+    const candidateIndices: number[] = [];
+    const candidateUUIDs: string[] = [];
 
     for (let indx = 0; indx < creatures.length; indx++) {
       const creature = creatures[indx];
@@ -72,21 +110,18 @@ export class DeDuplicator {
       assert(UUID, "No creature UUID");
 
       // Issue #1292: Use Bloom filter as fast pre-check
-      // If Bloom filter says "not present", skip Set.has() entirely
       let duplicate = false;
       if (this.bloomFilter.mayContain(UUID)) {
-        // Possible duplicate - confirm with exact Set check
         duplicate = unique.has(UUID);
       }
 
-      // Add to Bloom filter AFTER checking (to avoid self-match)
       this.bloomFilter.add(UUID);
 
       if (!duplicate) {
         if (indx > this.breed.options.elitism!) {
-          const startPreviousExperiment = Date.now();
-          duplicate = this.previousExperiment(UUID);
-          previousExperimentMS += Date.now() - startPreviousExperiment;
+          // Queue for batched async check instead of synchronous per-item
+          candidateIndices.push(indx);
+          candidateUUIDs.push(UUID);
         }
         unique.add(UUID);
       }
@@ -106,6 +141,35 @@ export class DeDuplicator {
           toRemove.push(indx);
         } else {
           this.replaceDuplicateCreature(creatures, indx, unique);
+        }
+      }
+    }
+
+    // Issue #2286: Batch async previousExperiment() checks
+    if (candidateUUIDs.length > 0) {
+      const startPreviousExperiment = Date.now();
+      const results = await this.batchPreviousExperiment(candidateUUIDs);
+      previousExperimentMS = Date.now() - startPreviousExperiment;
+
+      for (let i = 0; i < candidateIndices.length; i++) {
+        if (results[i]) {
+          const indx = candidateIndices[i];
+          // This UUID was seen in a previous experiment - it's a duplicate
+          if (
+            creatures.length - toRemove.length >
+              this.breed.options.populationSize!
+          ) {
+            if (this.breed.options.debug || this.breed.options.verbose) {
+              getLogger().debug(
+                `Culling previous-experiment duplicate at ${
+                  indx - toRemove.length
+                } of ${creatures.length - toRemove.length}`,
+              );
+            }
+            toRemove.push(indx);
+          } else {
+            this.replaceDuplicateCreature(creatures, indx, unique);
+          }
         }
       }
     }
@@ -137,6 +201,68 @@ export class DeDuplicator {
     }
   }
 
+  /**
+   * Batch check multiple UUIDs against previous experiments using async I/O
+   * (Issue #2286). Uses Promise.allSettled() for concurrent file stat checks
+   * and caches results to avoid redundant lookups.
+   */
+  private async batchPreviousExperiment(
+    keys: string[],
+  ): Promise<boolean[]> {
+    if (!this.breed.options.experimentStore) {
+      return new Array(keys.length).fill(false);
+    }
+
+    const results: boolean[] = new Array(keys.length);
+    const uncachedIndices: number[] = [];
+    const uncachedPromises: Promise<boolean>[] = [];
+
+    // Check cache first
+    for (let i = 0; i < keys.length; i++) {
+      const cached = this.previousExperimentCache.get(keys[i]);
+      if (cached !== undefined) {
+        results[i] = cached;
+      } else {
+        uncachedIndices.push(i);
+        uncachedPromises.push(this.asyncPreviousExperiment(keys[i]));
+      }
+    }
+
+    // Batch async checks for uncached keys
+    if (uncachedPromises.length > 0) {
+      const settled = await Promise.allSettled(uncachedPromises);
+      for (let j = 0; j < settled.length; j++) {
+        const result = settled[j];
+        const found = result.status === "fulfilled" ? result.value : false;
+        const idx = uncachedIndices[j];
+        results[idx] = found;
+        this.previousExperimentCache.set(keys[idx], found);
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Async file stat check for a single UUID (Issue #2286).
+   * Replaces synchronous Deno.statSync() with async Deno.stat().
+   */
+  private async asyncPreviousExperiment(key: string): Promise<boolean> {
+    const filePath = `${this.breed.options.experimentStore}/score/${
+      key.substring(0, 3)
+    }/${key.substring(3)}.txt`;
+    try {
+      await Deno.stat(filePath);
+      return true;
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        return false;
+      } else {
+        throw error;
+      }
+    }
+  }
+
   private replaceDuplicateCreature(
     creatures: Creature[],
     index: number,
@@ -145,8 +271,29 @@ export class DeDuplicator {
     const globalBreedingRate = this.breed.options.globalBreedingRate;
     try {
       for (let attempts = 0; true; attempts++) {
-        if (attempts === 12) {
+        // Boost breeding rate at half the retry cap to increase diversity
+        if (attempts === Math.floor(this.maxReplacementRetries / 2)) {
           this.breed.options.globalBreedingRate = 1;
+        }
+
+        // Issue #2286: Cap replacement retries to avoid excessive looping
+        if (attempts >= this.maxReplacementRetries) {
+          getLogger().warn(
+            `Replacement retry cap (${this.maxReplacementRetries}) reached ` +
+              `for creature at index ${index} of ${creatures.length}. ` +
+              `Accepting mutated duplicate to avoid excessive dedup pressure.`,
+          );
+          // Accept the last mutated creature rather than continuing
+          const fallback = Creature.fromJSON(
+            creatures[index].exportJSON(),
+          );
+          this.mutator.mutate([fallback]);
+          const fallbackKey = CreatureUtil.makeUUID(fallback);
+          this.breed.genus.addCreature(fallback);
+          creatures[index] = fallback;
+          unique.add(fallbackKey);
+          this.bloomFilter.add(fallbackKey);
+          return;
         }
         const child = this.breed.breed();
 
@@ -187,12 +334,6 @@ export class DeDuplicator {
           unique.add(key3);
           this.bloomFilter.add(key3);
           return;
-        } else if (attempts > 48) {
-          getLogger().error(
-            `Can't deDuplicate creature at ${index} of ${creatures.length}`,
-          );
-          creatures.splice(index, 1);
-          return;
         }
       }
     } finally {
@@ -211,16 +352,29 @@ export class DeDuplicator {
     }
   }
 
+  /**
+   * Synchronous previousExperiment check with per-generation caching
+   * (Issue #2286). Used in replacement breeding where async is not feasible.
+   * The cache is shared with the async batch path to avoid redundant lookups.
+   */
   previousExperiment(key: string): boolean {
+    // Check cache first (Issue #2286)
+    const cached = this.previousExperimentCache.get(key);
+    if (cached !== undefined) {
+      return cached;
+    }
+
     if (this.breed.options.experimentStore) {
       const filePath = `${this.breed.options.experimentStore}/score/${
         key.substring(0, 3)
       }/${key.substring(3)}.txt`;
       try {
         Deno.statSync(filePath);
+        this.previousExperimentCache.set(key, true);
         return true;
       } catch (error) {
         if (error instanceof Deno.errors.NotFound) {
+          this.previousExperimentCache.set(key, false);
           return false;
         } else {
           throw error;

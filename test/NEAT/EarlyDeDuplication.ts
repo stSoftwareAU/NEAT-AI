@@ -83,7 +83,7 @@ Deno.test("EarlyDeDuplication - duplicates removed before fitness evaluation", a
  * and verifies that early de-duplication removes them before they would
  * be evaluated.
  */
-Deno.test("EarlyDeDuplication - bred population is de-duplicated", () => {
+Deno.test("EarlyDeDuplication - bred population is de-duplicated", async () => {
   const creature: CreatureInternal = {
     neurons: [
       {
@@ -165,7 +165,7 @@ Deno.test("EarlyDeDuplication - bred population is de-duplicated", () => {
   const breed = new Breed(genus, neat.config);
   const mutator = new Mutator(neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);
-  deDuplicator.perform(duplicateCreatures);
+  await deDuplicator.perform(duplicateCreatures);
 
   // Verify no duplicates remain
   const uuidsAfter = new Set<string>();

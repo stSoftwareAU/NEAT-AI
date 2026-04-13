@@ -24,7 +24,7 @@ writes. Closes #2275.
 **writeScores** — async + cached dirs vs sync baseline:
 
 | Population | Sync (baseline) | Async + cached dirs | Speedup |
-|------------|-----------------|---------------------|---------|
+| ---------- | --------------- | ------------------- | ------- |
 | 100        | 4.8 ms          | 3.5 ms              | 1.38x   |
 | 300        | 16.2 ms         | 13.0 ms             | 1.25x   |
 | 500        | 26.5 ms         | 21.5 ms             | 1.23x   |
@@ -32,15 +32,15 @@ writes. Closes #2275.
 **Checkpoint writing** — async + compact JSON vs sync + pretty-print baseline:
 
 | Population | Sync + pretty (baseline) | Async + compact | Speedup |
-|------------|--------------------------|-----------------|---------|
+| ---------- | ------------------------ | --------------- | ------- |
 | 100        | 13.0 ms                  | 9.8 ms          | 1.32x   |
 | 300        | 48.4 ms                  | 31.4 ms         | 1.54x   |
 
 **JSON.stringify** — compact vs pretty-print:
 
 | Population | Pretty-print | Compact | Speedup |
-|------------|-------------|---------|---------|
-| 100        | 1.3 ms      | 540 µs  | 2.42x   |
+| ---------- | ------------ | ------- | ------- |
+| 100        | 1.3 ms       | 540 µs  | 2.42x   |
 
 All improvements exceed the >5% threshold specified in the issue.
 

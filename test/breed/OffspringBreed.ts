@@ -11,7 +11,7 @@ import { AddConnection } from "@mutate/AddConnection.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("Offspring.breed produces valid offspring from simple creature", () => {
+Deno.test("Offspring.breed produces valid offspring from simple creature", async () => {
   const creature = Creature.fromJSON({
     "neurons": [{
       "bias": 0,
@@ -53,13 +53,15 @@ Deno.test("Offspring.breed produces valid offspring from simple creature", () =>
 
   const breed = new Breed(genus, neat.config);
 
-  neat.populatePopulation(creature);
+  await neat.populatePopulation(creature);
   genus.addCreature(creature);
+  const populatePromises: Promise<void>[] = [];
   for (let i = 0; i < neat.config.populationSize; i++) {
     const kid = breed.breed();
     if (!kid) continue;
-    neat.populatePopulation(kid as Creature);
+    populatePromises.push(neat.populatePopulation(kid as Creature));
   }
+  await Promise.all(populatePromises);
 });
 
 Deno.test("Offspring.breed preserves output neuron types during crossover", () => {

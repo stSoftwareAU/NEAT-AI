@@ -204,7 +204,7 @@ Deno.test("keepUUID", () => {
   );
 });
 
-Deno.test("generateUUID", () => {
+Deno.test("generateUUID", async () => {
   const creature: CreatureInternal = {
     neurons: [
       {
@@ -259,14 +259,14 @@ Deno.test("generateUUID", () => {
 
   const breed = new Breed(genus, neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);
-  deDuplicator.perform([n1]);
+  await deDuplicator.perform([n1]);
 
   const uuid1 = n1.uuid;
   assert(n1.uuid, "deDuplicate should create UUIDs: " + n1.uuid);
 
   const modBias = new ModBias(n1);
   modBias.mutate();
-  deDuplicator.perform([n1]);
+  await deDuplicator.perform([n1]);
 
   assertNotEquals(
     uuid1,

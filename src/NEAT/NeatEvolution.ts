@@ -434,7 +434,7 @@ export async function evolve(
   // Issue #1099: Single-pass de-duplication on the combined population
   // Issue #2274: Time de-duplication phase
   const deduplicationStartMs = Date.now();
-  deDuplicator.perform(neat.population);
+  await deDuplicator.perform(neat.population);
   const deduplicationMs = Date.now() - deduplicationStartMs;
 
   // Issue #1568: Dispose old population creatures not carried forward
