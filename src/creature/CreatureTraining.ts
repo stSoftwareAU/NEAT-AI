@@ -167,7 +167,11 @@ export function applyLearnings(
     delete creature.uuid;
     delete creature.memetic;
     creature.state.preparedNeurons = false;
-    creature.fix();
+    // Issue #2302: Respect the creature's forward-only flag so self-connections
+    // (if present from legacy data) are removed during training repair.
+    creature.fix(
+      creature.forwardOnly === true ? { forwardOnly: true } : undefined,
+    );
   }
 
   return changed;
