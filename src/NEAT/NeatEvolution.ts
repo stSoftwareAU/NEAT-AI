@@ -35,6 +35,7 @@ import type { GenerationPhaseTiming } from "@config/TrainingEvent.ts";
 import type { Neat } from "@neat/Neat.ts";
 import { logReplaySummary } from "@neat/NeatScheduling.ts";
 import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
+import { preWarmWasmCache } from "@wasm/WasmCachePreWarmer.ts";
 
 /**
  * Evaluates, selects, breeds and mutates the population.
@@ -448,6 +449,22 @@ export async function evolve(
     }
   }
 
+  // Issue #2287: Pre-warm WASM compilation cache before the next generation's
+  // fitness evaluation. Pre-computes topology hashes on all unevaluated
+  // creatures and pre-compiles WASM templates for unique topologies.
+  const preWarmStartMs = Date.now();
+  const preWarmResult = preWarmWasmCache(neat.population);
+  const preWarmMs = Date.now() - preWarmStartMs;
+
+  if (neat.config.verbose && preWarmResult.newTemplatesCompiled > 0) {
+    getLogger().info(
+      `[PreWarm] ${preWarmResult.newTemplatesCompiled} new templates, ` +
+        `${preWarmResult.cachedTemplates} cached, ` +
+        `${preWarmResult.uniqueTopologies} unique topologies ` +
+        `(${preWarmMs}ms)`,
+    );
+  }
+
   // Issue #1565: Post-evolution heap memory monitoring
   const postFitnessMemoryStartMs = Date.now();
   const memoryResult = checkMemoryAndEvict(
@@ -501,6 +518,8 @@ export async function evolve(
     sortMs,
     // Issue #2284: Breeding sub-phase breakdown (non-worker path only)
     breedingSubPhases,
+    // Issue #2287: WASM cache pre-warming time
+    preWarmMs: preWarmMs > 0 ? preWarmMs : undefined,
   };
 
   // Issue #2239: Log per-phase timing when verbose is enabled
@@ -508,9 +527,10 @@ export async function evolve(
     const memTag = memoryEvictionMs > 0
       ? ` memoryEviction=${memoryEvictionMs}ms`
       : "";
+    const preWarmTag = preWarmMs > 0 ? ` preWarm=${preWarmMs}ms` : "";
     getLogger().info(
       `[Timing] fitness=${fitnessMs}ms breeding=${breedingMs}ms ` +
-        `resultProcessing=${resultProcessingMs}ms${memTag}` +
+        `resultProcessing=${resultProcessingMs}ms${memTag}${preWarmTag}` +
         ` sort=${sortMs}ms writeScores=${writeScoresMs}ms` +
         ` mutation=${mutationMs}ms deduplication=${deduplicationMs}ms` +
         ` speciation=${speciationMs}ms total=${totalMs}ms`,

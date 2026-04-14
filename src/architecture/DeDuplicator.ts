@@ -59,10 +59,15 @@ export class DeDuplicator {
    */
   private previousExperimentCache: Map<string, boolean> = new Map();
 
+  /**
+   * Issue #2286: Maximum replacement breeding retries per duplicate.
+   */
+  private readonly maxReplacementRetries: number;
+
   constructor(breed: Breed, mutator: Mutator) {
     this.breed = breed;
     this.mutator = mutator;
-    this.maxReplacementRetries = maxReplacementRetries;
+    this.maxReplacementRetries = DEFAULT_MAX_REPLACEMENT_RETRIES;
     this.previousExperimentCache = new Map();
 
     // Create Bloom filter sized for expected population with <1% false positive rate
@@ -179,35 +184,6 @@ export class DeDuplicator {
             // Sequential: modifies shared creatures array and unique set in-place
             // deno-lint-ignore no-await-in-loop
             await this.replaceDuplicateCreature(creatures, index, unique);
-          }
-        }
-      }
-    }
-
-    // Issue #2286: Batch async previousExperiment() checks
-    if (candidateUUIDs.length > 0) {
-      const startPreviousExperiment = Date.now();
-      const results = await this.batchPreviousExperiment(candidateUUIDs);
-      previousExperimentMS = Date.now() - startPreviousExperiment;
-
-      for (let i = 0; i < candidateIndices.length; i++) {
-        if (results[i]) {
-          const indx = candidateIndices[i];
-          // This UUID was seen in a previous experiment - it's a duplicate
-          if (
-            creatures.length - toRemove.length >
-              this.breed.options.populationSize!
-          ) {
-            if (this.breed.options.debug || this.breed.options.verbose) {
-              getLogger().debug(
-                `Culling previous-experiment duplicate at ${
-                  indx - toRemove.length
-                } of ${creatures.length - toRemove.length}`,
-              );
-            }
-            toRemove.push(indx);
-          } else {
-            this.replaceDuplicateCreature(creatures, indx, unique);
           }
         }
       }
