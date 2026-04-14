@@ -540,7 +540,9 @@ export function fineTuneImprovement(
   if (previousFittest === null) {
     return [];
   }
-  assert(fittest.score);
+  if (!Number.isFinite(fittest.score)) {
+    return [];
+  }
 
   if (
     fittest.score === previousFittest.score ||
