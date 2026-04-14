@@ -477,7 +477,13 @@ export class Neat {
       const clonedCreature = creature.shallowClone();
       const creatures = [clonedCreature];
       mutator.mutate(creatures);
-      creatures[0].fix();
+      // Issue #2302: Pass forwardOnly so self-connections are removed from
+      // unmutated clones of forward-only creatures (fix() without the flag
+      // preserves self-loops, which later crash prepareCreatureForBreeding).
+      const isForwardOnly = creatures[0].forwardOnly === true ||
+        (this.config.feedbackLoop !== true &&
+          creatures[0].forwardOnly !== false);
+      creatures[0].fix(isForwardOnly ? { forwardOnly: true } : undefined);
       this.population.push(creatures[0]);
     }
 
