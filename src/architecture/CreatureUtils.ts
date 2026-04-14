@@ -124,7 +124,12 @@ export class CreatureUtil {
    * per creature during fitness evaluation (topology sort + worker
    * postMessage).
    *
+   * Issue #2301: Include `creature.input` in the hash so that creatures
+   * with different input counts produce distinct hashes, preventing
+   * WASM compilation cache collisions after Upgrade.correct().
+   *
    * The hash is based on:
+   * - Input count (`creature.input`)
    * - Neuron UUIDs, types, and squash functions
    * - Synapse connection patterns (fromUUID -> toUUID pairs)
    * - NOT weights, biases, or tags
@@ -197,8 +202,11 @@ export class CreatureUtil {
     }
     synapseKeys.sort();
 
-    // Combine neuron and synapse keys, then hash.
-    const txt = neuronKey + "\n\n" + synapseKeys.join("\n");
+    // Issue #2301: Include the input count so that creatures with different
+    // input counts (e.g. after Upgrade.correct()) produce distinct hashes.
+    // Without this, the WASM compilation cache can serve a template compiled
+    // for a different numInputs, causing activation errors.
+    const txt = inputCount + "\n" + neuronKey + "\n\n" + synapseKeys.join("\n");
     const utf8 = CreatureUtil.TE.encode(txt);
     const hash: string = generateV5Sync(
       CreatureUtil.TOPOLOGY_NAMESPACE,
