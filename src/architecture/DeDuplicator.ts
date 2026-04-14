@@ -292,7 +292,9 @@ export class DeDuplicator {
           unique.add(fallbackKey);
           this.bloomFilter.add(fallbackKey);
           getLogger().warn(
-            `De-duplication retry cap (${maxRetries}) reached for creature at index ${index} of ${creatures.length}. Accepted unique fallback on attempt ${fb + 1}.`,
+            `De-duplication retry cap (${maxRetries}) reached for creature at index ${index} of ${creatures.length}. Accepted unique fallback on attempt ${
+              fb + 1
+            }.`,
           );
           return true;
         }
