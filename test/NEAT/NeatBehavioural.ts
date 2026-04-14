@@ -86,7 +86,7 @@ Deno.test("NeatBehavioural: evolve improves fitness over generations for XOR", a
     };
 
     const neat = new Neat(2, 1, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     // Run multiple generations sequentially (each depends on the previous)
     const result1 = await neat.evolve();
@@ -230,7 +230,7 @@ Deno.test("NeatBehavioural: elitism preserves top performers between generations
     };
 
     const neat = new Neat(2, 1, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     const result1 = await neat.evolve();
     const gen1BestScore = result1.fittest.score!;
@@ -265,7 +265,7 @@ Deno.test("NeatBehavioural: population size stays within configured bounds", asy
     };
 
     const neat = new Neat(2, 1, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     assertEquals(
       neat.population.length,
@@ -304,7 +304,7 @@ Deno.test("NeatBehavioural: populatePopulation creates correct population size",
     };
 
     const neat = new Neat(3, 2, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     assertEquals(
       neat.population.length,
@@ -334,7 +334,7 @@ Deno.test("NeatBehavioural: population contains valid creatures after evolution"
     };
 
     const neat = new Neat(2, 1, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     await neat.evolve();
 

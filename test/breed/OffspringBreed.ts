@@ -11,7 +11,7 @@ import { AddConnection } from "@mutate/AddConnection.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("Offspring.breed produces valid offspring from simple creature", () => {
+Deno.test("Offspring.breed produces valid offspring from simple creature", async () => {
   const creature = Creature.fromJSON({
     "neurons": [{
       "bias": 0,
@@ -53,12 +53,13 @@ Deno.test("Offspring.breed produces valid offspring from simple creature", () =>
 
   const breed = new Breed(genus, neat.config);
 
-  neat.populatePopulation(creature);
+  await neat.populatePopulation(creature);
   genus.addCreature(creature);
   for (let i = 0; i < neat.config.populationSize; i++) {
     const kid = breed.breed();
     if (!kid) continue;
-    neat.populatePopulation(kid as Creature);
+    // deno-lint-ignore no-await-in-loop
+    await neat.populatePopulation(kid as Creature);
   }
 });
 

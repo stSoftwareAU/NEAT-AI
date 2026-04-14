@@ -1,0 +1,10 @@
+[allowlist]
+  description = "Allowlist for known false positives"
+
+  # test/NEAT/DeDuplicateRetryCap.ts previously used a variable named
+  # `testKey` with a short placeholder string during initial development.
+  # This is not a real secret — the value was a test fixture and was later
+  # renamed to `testUuid` with a proper UUID. Suppressed via commit allowlist.
+  commits = [
+    "c5b6232772733ed219563dd0b341241eee2fc8c8",
+  ]

@@ -103,7 +103,7 @@ function createPopulationWithDuplicates(
 Deno.bench({
   name: "Two-pass de-duplication (old)",
   group: "De-duplication frequency",
-  fn() {
+  async fn() {
     // Simulate different population sources
     const elitists = createPopulationWithDuplicates(0, 5);
     const trainedPopulation = createPopulationWithDuplicates(0.1, 10);
@@ -117,7 +117,7 @@ Deno.bench({
     const deDuplicator = new DeDuplicator(breed, mutator);
 
     // First pass: de-duplicate newPopulation only
-    deDuplicator.perform(newPopulation);
+    await deDuplicator.perform(newPopulation);
 
     // Combine all sources
     const combined = [
@@ -129,7 +129,7 @@ Deno.bench({
     ];
 
     // Second pass: de-duplicate combined population
-    deDuplicator.perform(combined);
+    await deDuplicator.perform(combined);
   },
 });
 
@@ -143,7 +143,7 @@ Deno.bench({
   name: "Single-pass de-duplication (new)",
   group: "De-duplication frequency",
   baseline: true,
-  fn() {
+  async fn() {
     // Simulate different population sources
     const elitists = createPopulationWithDuplicates(0, 5);
     const trainedPopulation = createPopulationWithDuplicates(0.1, 10);
@@ -166,7 +166,7 @@ Deno.bench({
     ];
 
     // Single de-duplication pass
-    deDuplicator.perform(combined);
+    await deDuplicator.perform(combined);
   },
 });
 
@@ -198,7 +198,7 @@ Deno.bench({
   name: "Single-pass with 50% duplicates (150 creatures)",
   group: "High duplicate scenarios",
   baseline: true,
-  fn() {
+  async fn() {
     const population = createPopulationWithDuplicates(0.5, 150);
 
     const genus = new Genus();
@@ -206,7 +206,7 @@ Deno.bench({
     const mutator = new Mutator(config);
     const deDuplicator = new DeDuplicator(breed, mutator);
 
-    deDuplicator.perform(population);
+    await deDuplicator.perform(population);
   },
 });
 
@@ -216,7 +216,7 @@ Deno.bench({
 Deno.bench({
   name: "Two-pass with 50% duplicates (150 creatures)",
   group: "High duplicate scenarios",
-  fn() {
+  async fn() {
     // Split into two groups to simulate two-pass
     const firstGroup = createPopulationWithDuplicates(0.5, 100);
     const secondGroup = createPopulationWithDuplicates(0.5, 50);
@@ -227,12 +227,12 @@ Deno.bench({
     const deDuplicator = new DeDuplicator(breed, mutator);
 
     // First pass
-    deDuplicator.perform(firstGroup);
+    await deDuplicator.perform(firstGroup);
 
     // Combine
     const combined = [...firstGroup, ...secondGroup];
 
     // Second pass
-    deDuplicator.perform(combined);
+    await deDuplicator.perform(combined);
   },
 });

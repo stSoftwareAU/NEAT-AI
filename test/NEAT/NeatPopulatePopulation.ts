@@ -57,7 +57,7 @@ Deno.test("populatePopulation: fills population to configured size", async () =>
     const neat = new Neat(3, 2, options, workers);
     const seedCreature = new Creature(3, 2, { layers: [{ count: 4 }] });
 
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     assertEquals(
       neat.population.length,
@@ -82,7 +82,7 @@ Deno.test("populatePopulation: seed creature is first in population", async () =
     const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const seedUUID = CreatureUtil.makeUUID(seedCreature);
 
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     assertEquals(
       neat.population[0],
@@ -111,7 +111,7 @@ Deno.test("populatePopulation: all creatures have UUIDs", async () => {
     const neat = new Neat(2, 1, options, workers);
     const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
 
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     for (let i = 0; i < neat.population.length; i++) {
       assert(
@@ -136,7 +136,7 @@ Deno.test("populatePopulation: creatures have correct input/output dimensions", 
     const neat = new Neat(4, 3, options, workers);
     const seedCreature = new Creature(4, 3, { layers: [{ count: 5 }] });
 
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     for (let i = 0; i < neat.population.length; i++) {
       const creature = neat.population[i];
@@ -168,7 +168,7 @@ Deno.test("populatePopulation: population has diversity (not all identical)", as
     const neat = new Neat(3, 2, options, workers);
     const seedCreature = new Creature(3, 2, { layers: [{ count: 5 }] });
 
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     // Collect unique UUIDs
     const uuids = new Set(neat.population.map((c) => c.uuid));
@@ -197,7 +197,7 @@ Deno.test("populatePopulation: works with existing population", async () => {
     assertEquals(neat.population.length, 1, "Should start with 1 creature");
 
     const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     assertEquals(
       neat.population.length,

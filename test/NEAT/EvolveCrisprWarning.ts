@@ -77,7 +77,7 @@ Deno.test(
       };
 
       const neat = new Neat(2, 1, options, workers);
-      neat.populatePopulation(seedCreature);
+      await neat.populatePopulation(seedCreature);
 
       // This should NOT throw — instead it should warn and continue
       const result = await neat.evolve();
@@ -143,7 +143,7 @@ Deno.test(
       };
 
       const neat = new Neat(2, 1, options, workers);
-      neat.populatePopulation(seedCreature);
+      await neat.populatePopulation(seedCreature);
 
       // Should complete without error, applying the valid CRISPR
       const result = await neat.evolve();

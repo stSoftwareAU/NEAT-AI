@@ -22,7 +22,7 @@ import { CreatureUtil } from "../../mod.ts";
  * Test that Bloom filter integration preserves correctness of de-duplication.
  * This is the fundamental guarantee: no false negatives (all duplicates must be found).
  */
-Deno.test("BloomFilterDeDuplication - no false negatives", () => {
+Deno.test("BloomFilterDeDuplication - no false negatives", async () => {
   const creature: CreatureInternal = {
     neurons: [
       { bias: 0.1, index: 2, type: "output", squash: "IDENTITY" },
@@ -58,7 +58,7 @@ Deno.test("BloomFilterDeDuplication - no false negatives", () => {
   const breed = new Breed(genus, neat.config);
   const mutator = new Mutator(neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);
-  deDuplicator.perform(population);
+  await deDuplicator.perform(population);
 
   // Verify no duplicates remain
   const uuids = new Set<string>();
@@ -77,7 +77,7 @@ Deno.test("BloomFilterDeDuplication - no false negatives", () => {
  * With larger populations, the Bloom filter becomes more effective
  * at reducing unnecessary Set lookups.
  */
-Deno.test("BloomFilterDeDuplication - large population", () => {
+Deno.test("BloomFilterDeDuplication - large population", async () => {
   const creature: CreatureInternal = {
     neurons: [
       { bias: 0, index: 3, type: "hidden", squash: "TANH" },
@@ -135,7 +135,7 @@ Deno.test("BloomFilterDeDuplication - large population", () => {
   const breed = new Breed(genus, neat.config);
   const mutator = new Mutator(neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);
-  deDuplicator.perform(population);
+  await deDuplicator.perform(population);
 
   // Verify no duplicates remain
   const uuids = new Set<string>();
@@ -153,7 +153,7 @@ Deno.test("BloomFilterDeDuplication - large population", () => {
 /**
  * Test that Bloom filter correctly handles empty and small populations.
  */
-Deno.test("BloomFilterDeDuplication - small population", () => {
+Deno.test("BloomFilterDeDuplication - small population", async () => {
   const creature: CreatureInternal = {
     neurons: [
       { bias: 0.1, index: 2, type: "output", squash: "IDENTITY" },
@@ -181,7 +181,7 @@ Deno.test("BloomFilterDeDuplication - small population", () => {
   const breed = new Breed(genus, neat.config);
   const mutator = new Mutator(neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);
-  deDuplicator.perform(population);
+  await deDuplicator.perform(population);
 
   // All creatures should remain (no duplicates)
   assertEquals(population.length, 3, "All unique creatures should remain");
@@ -190,7 +190,7 @@ Deno.test("BloomFilterDeDuplication - small population", () => {
 /**
  * Test that Bloom filter handles all-duplicate scenarios.
  */
-Deno.test("BloomFilterDeDuplication - all duplicates", () => {
+Deno.test("BloomFilterDeDuplication - all duplicates", async () => {
   const creature: CreatureInternal = {
     neurons: [
       { bias: 0.1, index: 2, type: "output", squash: "IDENTITY" },
@@ -216,7 +216,7 @@ Deno.test("BloomFilterDeDuplication - all duplicates", () => {
   const breed = new Breed(genus, neat.config);
   const mutator = new Mutator(neat.config);
   const deDuplicator = new DeDuplicator(breed, mutator);
-  deDuplicator.perform(population);
+  await deDuplicator.perform(population);
 
   // Verify no duplicates remain
   const uuids = new Set<string>();
@@ -237,7 +237,7 @@ Deno.test("BloomFilterDeDuplication - all duplicates", () => {
  * Test that the Bloom filter is properly cleared between calls.
  * Multiple perform() calls should not interfere with each other.
  */
-Deno.test("BloomFilterDeDuplication - multiple perform calls", () => {
+Deno.test("BloomFilterDeDuplication - multiple perform calls", async () => {
   const creature: CreatureInternal = {
     neurons: [
       { bias: 0.1, index: 2, type: "output", squash: "IDENTITY" },
@@ -264,7 +264,7 @@ Deno.test("BloomFilterDeDuplication - multiple perform calls", () => {
     modifiedJSON.neurons[0].bias = i * 0.1;
     population1.push(Creature.fromJSON(modifiedJSON));
   }
-  deDuplicator.perform(population1);
+  await deDuplicator.perform(population1);
   assertEquals(population1.length, 10, "First call: all unique");
 
   // Second perform call with same creatures (should still work)
@@ -274,7 +274,7 @@ Deno.test("BloomFilterDeDuplication - multiple perform calls", () => {
     modifiedJSON.neurons[0].bias = i * 0.1;
     population2.push(Creature.fromJSON(modifiedJSON));
   }
-  deDuplicator.perform(population2);
+  await deDuplicator.perform(population2);
   assertEquals(population2.length, 10, "Second call: Bloom filter was cleared");
 
   // Verify no duplicates in either population

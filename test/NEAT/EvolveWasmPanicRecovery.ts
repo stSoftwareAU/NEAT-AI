@@ -47,7 +47,7 @@ Deno.test("evolve: creatures with -Infinity score are excluded from genus withou
     };
 
     const neat = new Neat(2, 1, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     // Evaluate the population to get real scores.
     await neat.fitness.calculate(neat.population);
@@ -98,7 +98,7 @@ Deno.test("evolve: majority of creatures with -Infinity score still evolves", as
     };
 
     const neat = new Neat(2, 1, options, workers);
-    neat.populatePopulation(seedCreature);
+    await neat.populatePopulation(seedCreature);
 
     // Calculate real scores first so the population is valid.
     await neat.fitness.calculate(neat.population);
