@@ -816,53 +816,113 @@ export class Offspring {
       return indxA - indxB;
     });
 
-    const usedIndx = new Set<number>();
-    let missing = true;
-    for (let attempts = 0; missing && attempts < child.length; attempts++) {
-      missing = false;
-      for (const neuron of child) {
-        if (neuron.type !== "input" && neuron.type !== "output") {
-          const nId = neuron.id;
+    /*
+     * Issue #2285: Kahn's algorithm topological sort — O(V+E) replacement
+     * for the previous O(n²) iterative dependency resolution loop.
+     *
+     * Steps:
+     *   1. Collect non-input, non-output neuron IDs and their parent base indices.
+     *   2. Build a dependency graph (adjacency list + in-degree counts).
+     *   3. Process zero-in-degree neurons in parent-index order (Kahn's BFS).
+     *   4. Assign monotonically increasing sort indices into childMap.
+     */
+    const nonIOIds = new Set<number>();
+    const parentBaseIndex = new Map<number, number>();
 
-          if (!childMap.has(nId)) {
-            const firstIndx = firstMap.get(nId);
-            const secondIndx = secondMap.get(nId);
+    for (const neuron of child) {
+      if (neuron.type !== "input" && neuron.type !== "output") {
+        const nId = neuron.id;
+        nonIOIds.add(nId);
 
-            let indx = 0;
-            if (firstIndx !== undefined) {
-              indx = firstIndx;
-            } else if (secondIndx !== undefined) {
-              indx = secondIndx;
-            } else {
-              throw new TopologyError(
-                `Can't find ${nId} in father or mother creatures!`,
-                "MISSING_NEURON",
-              );
-            }
-            const ref = connectionsMap.get(nId);
-            indx = computeNeuronDependencyIndex(indx, ref, childMap);
-            if (indx >= 0) {
-              if (usedIndx.has(indx)) {
-                childMap.forEach((childIndx, nid) => {
-                  if (childIndx >= indx) {
-                    usedIndx.delete(childIndx);
-                    childIndx++;
-                    usedIndx.add(childIndx);
-                  }
-                  childMap.set(nid, childIndx);
-                });
-              }
-              usedIndx.add(indx);
-              childMap.set(nId, indx);
-            } else {
-              missing = true;
-            }
+        const firstIndx = firstMap.get(nId);
+        if (firstIndx !== undefined) {
+          parentBaseIndex.set(nId, firstIndx);
+        } else {
+          const secondIndx = secondMap.get(nId);
+          if (secondIndx !== undefined) {
+            parentBaseIndex.set(nId, secondIndx);
+          } else {
+            throw new TopologyError(
+              `Can't find ${nId} in father or mother creatures!`,
+              "MISSING_NEURON",
+            );
           }
         }
       }
     }
 
-    if (missing) {
+    // Build adjacency list (dependency → dependents) and in-degree counts.
+    // Use Sets for unique dependencies to avoid over-counting duplicate synapses.
+    const inDegree = new Map<number, number>();
+    const dependents = new Map<number, number[]>();
+    for (const nId of nonIOIds) {
+      inDegree.set(nId, 0);
+      dependents.set(nId, []);
+    }
+
+    for (const nId of nonIOIds) {
+      const ref = connectionsMap.get(nId);
+      if (!ref) continue;
+
+      const parentNeurons = ref.parent.neurons;
+      const seen = new Set<number>(); // deduplicate multi-synapse sources
+      for (const synapse of ref.synapses) {
+        const fromNeuron = parentNeurons[synapse.from];
+        if (fromNeuron.type === "input") continue;
+
+        const fromId = fromNeuron.id;
+        if (nonIOIds.has(fromId) && !seen.has(fromId)) {
+          seen.add(fromId);
+          inDegree.set(nId, (inDegree.get(nId) ?? 0) + 1);
+          dependents.get(fromId)!.push(nId);
+        }
+      }
+    }
+
+    // Seed the BFS queue with zero-in-degree neurons, sorted by parent index.
+    const queue: number[] = [];
+    for (const [nId, deg] of inDegree) {
+      if (deg === 0) queue.push(nId);
+    }
+    queue.sort(
+      (a, b) => (parentBaseIndex.get(a) ?? 0) - (parentBaseIndex.get(b) ?? 0),
+    );
+
+    // Start sort indices after all pre-seeded input indices to avoid
+    // conflicts in the final comparator (input vs hidden/constant).
+    let sortIndex = 0;
+    for (const idx of childMap.values()) {
+      if (idx >= sortIndex) sortIndex = idx + 1;
+    }
+    let processed = 0;
+
+    while (queue.length > 0) {
+      const nId = queue.shift()!;
+      childMap.set(nId, sortIndex++);
+      processed++;
+
+      const deps = dependents.get(nId)!;
+      if (deps.length > 0) {
+        const newlyReady: number[] = [];
+        for (const depId of deps) {
+          const newDeg = (inDegree.get(depId) ?? 1) - 1;
+          inDegree.set(depId, newDeg);
+          if (newDeg === 0) {
+            newlyReady.push(depId);
+          }
+        }
+        if (newlyReady.length > 0) {
+          // Insert into queue maintaining parent-index order.
+          for (const r of newlyReady) queue.push(r);
+          queue.sort(
+            (a, b) =>
+              (parentBaseIndex.get(a) ?? 0) - (parentBaseIndex.get(b) ?? 0),
+          );
+        }
+      }
+    }
+
+    if (processed !== nonIOIds.size) {
       throw new OffspringError("Can't find a solution to sort the nodes!");
     }
 
