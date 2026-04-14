@@ -263,7 +263,7 @@ export class DeDuplicator {
           creatures[index] = fallback;
           unique.add(fallbackKey);
           this.bloomFilter.add(fallbackKey);
-          return;
+          return true;
         }
         const child = this.breed.breed();
 
