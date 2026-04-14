@@ -539,6 +539,184 @@ Based on the profiling data:
 - If SharedArrayBuffer support improves to allow zero-copy sharing between JS
   and WASM for topology data
 
+## 🔬 SIMD Expansion Viability Investigation (Issue #2277)
+
+A systematic profiling of 5 candidate numerical operations against the WASM/SIMD
+decision framework to determine whether additional SIMD optimisations can
+increase throughput in the evolution pipeline.
+
+### Existing SIMD Coverage
+
+The current SIMD usage (`weighted_sum_simd()` in `wasm_activation/src/simd.rs`)
+targets the activation forward pass — dual-accumulator `f32x4` with relaxed
+fused multiply-add. This is the only operation in the codebase where:
+
+- The loop count is large enough (8+ synapses per neuron × many neurons)
+- The data is already in typed arrays (compiled network format)
+- The per-call time exceeds 10 µs (medium networks: ~3.2 µs per activation)
+- No caching layer short-circuits the computation
+
+### Profiling Results
+
+All benchmarks on Apple M2 Ultra, Deno 2.7.12 (aarch64-apple-darwin).
+
+#### Candidate 1: Loss/Cost Error Reduction
+
+Per-element error loops (MSE, MAE, CrossEntropy) over output neurons.
+
+| Operation    | Output Size | Time/iter |
+| ------------ | ----------- | --------- |
+| MSE          | 3 (typical) | 6.1 ns    |
+| MSE          | 10          | 9.8 ns    |
+| MSE          | 100         | 77.1 ns   |
+| MAE          | 100         | 75.5 ns   |
+| CrossEntropy | 100         | 1.4 µs    |
+
+| Criterion             | Result                                               |
+| --------------------- | ---------------------------------------------------- |
+| Tight numerical loop? | ✓ YES — per-element arithmetic over Float32Array     |
+| Typed array data?     | ✓ YES — Float32Array inputs and outputs              |
+| >10 µs per call?      | ✗ NO — 6 ns (3 outputs) to 1.4 µs (100 CrossEntropy) |
+| Caching layer?        | ✗ NO                                                 |
+
+**Verdict: NOT SIMD-viable.** Typical NEAT creatures have 1–10 outputs, giving
+loop counts of 1–10 elements — far too small for SIMD to amortise setup cost.
+Even the worst case (100-output CrossEntropy at 1.4 µs) is well below the 10 µs
+threshold. Additionally, the batch loss functions in `loss.rs` already use SIMD
+for the activation step — the per-output error reduction is a tiny fraction of
+the total batch scoring time.
+
+#### Candidate 2: Gradient Accumulation Arithmetic
+
+Weight/bias gradient sums during backpropagation.
+
+| Operation                 | Time/iter |
+| ------------------------- | --------- |
+| accumulateWeight (single) | 6.4 ns    |
+| accumulateWeightBatch4Way | 22.6 ns   |
+| accumulateWeightBatch8Way | 40.6 ns   |
+| accumulateBiasBatch4Way   | 45.7 ns   |
+| accumulateBiasBatch8Way   | 1.9 µs    |
+
+| Criterion             | Result                                                      |
+| --------------------- | ----------------------------------------------------------- |
+| Tight numerical loop? | ✗ PARTIAL — branchy per-item logic (is_finite, sign, plank) |
+| Typed array data?     | ✓ YES — f64 arrays passed to WASM                           |
+| >10 µs per call?      | ✗ NO — 6.4 ns (single) to 1.9 µs (8-way bias)               |
+| Caching layer?        | ✗ NO                                                        |
+
+**Verdict: NOT SIMD-viable.** Three factors disqualify SIMD:
+
+1. **Branchy logic**: Each item involves 6+ conditional paths (is_finite checks,
+   sign tests, plank_constant comparisons, positive/negative activation
+   tracking). SIMD requires uniform control flow across lanes.
+2. **f64 data type**: WASM SIMD provides `f64x2` (only 2-wide parallelism)
+   compared to `f32x4` (4-wide). The existing 4-way and 8-way batching already
+   achieves better parallelism through loop unrolling than `f64x2` could
+   provide.
+3. **Below threshold**: Even the largest batch (8-way bias at 1.9 µs) is well
+   below 10 µs.
+
+#### Candidate 3: Score Statistics Extraction
+
+Weight/bias magnitude scanning for penalty calculation in `Score.ts`.
+
+| Operation                     | Time/iter |
+| ----------------------------- | --------- |
+| WASM activation (20 hidden)   | 935.7 ns  |
+| WASM activation (80 hidden)   | 3.2 µs    |
+| Score calculate (cached path) | 106.0 ns  |
+
+| Criterion             | Result                                                  |
+| --------------------- | ------------------------------------------------------- |
+| Tight numerical loop? | ✓ YES — iterate synapses, compute abs, track max/sum    |
+| Typed array data?     | ✓ YES — compiled network data in WASM                   |
+| >10 µs per call?      | ✗ NO — 106 ns (cached) to 3.2 µs (medium activation)    |
+| Caching layer?        | ✓ YES — `CachedScoreComponents` prevents repeated scans |
+
+**Verdict: ALREADY IN WASM and cached.** The scan functions
+(`wasmScanMaxWeight`, `wasmScanMaxBias`, `wasmComputeScoreComponents`) are
+already implemented in Rust (`score_scan.rs`). Results are cached per creature
+via `CachedScoreComponents`. The cached path completes in 106 ns — adding SIMD
+to the Rust scan loops would save at most a few hundred nanoseconds on the
+uncached path, which fires once per creature per score recalculation.
+
+#### Candidate 4: Population Score Aggregation
+
+Average score and sorting of creature score arrays.
+
+| Operation                               | Time/iter |
+| --------------------------------------- | --------- |
+| Avg score — 50 creatures (typed array)  | 31.2 ns   |
+| Avg score — 150 creatures (typed array) | 111.0 ns  |
+| Avg score — 500 creatures (typed array) | 468.1 ns  |
+| Avg score — 50 creatures (JS objects)   | 36.2 ns   |
+| Avg score — 500 creatures (JS objects)  | 455.1 ns  |
+| Sort scores — 150 creatures             | 11.8 µs   |
+| Sort scores — 500 creatures             | 65.3 µs   |
+
+| Criterion             | Result                                                 |
+| --------------------- | ------------------------------------------------------ |
+| Tight numerical loop? | ✓ YES (sum) / ✗ NO (sort is comparison-based)          |
+| Typed array data?     | ✗ NO — scores live on JS Creature objects              |
+| >10 µs per call?      | ✗ NO (sum) / BORDERLINE (sort at 500 creatures: 65 µs) |
+| Caching layer?        | ✗ NO                                                   |
+
+**Verdict: NOT SIMD-viable.** The sum operation (31–468 ns) is trivially fast
+and well below threshold. Sorting (the only operation exceeding 10 µs at large
+population sizes) is comparison-based — not a SIMD-friendly pattern. More
+importantly, scores live on heterogeneous JS `Creature` objects, not typed
+arrays. Extracting them to a typed array would add allocation overhead that
+likely exceeds the SIMD benefit. V8's optimised `Array.sort()` already uses
+Timsort with JIT-compiled comparators.
+
+#### Candidate 5: Pairwise Genetic Distance
+
+Set<string> intersection on hidden neuron wire keys.
+
+| Operation                     | Time/iter |
+| ----------------------------- | --------- |
+| Set intersection — 20 neurons | 111.9 ns  |
+| Set intersection — 80 neurons | 401.0 ns  |
+
+| Criterion             | Result                                                     |
+| --------------------- | ---------------------------------------------------------- |
+| Tight numerical loop? | ✗ NO — `Set<string>.has()` is hash-based string comparison |
+| Typed array data?     | ✗ NO — `Set<string>` of UUID wire keys                     |
+| >10 µs per call?      | ✗ NO — 112–401 ns for the intersection itself              |
+| Caching layer?        | ✓ YES — LRU distance cache (10K entries, Issue #1293)      |
+
+**Verdict: NOT SIMD-viable.** This is a string-based Set intersection, not a
+numerical loop. Even the uncached intersection (401 ns for 80 neurons) is well
+below threshold. The LRU cache further reduces the effective cost with ~64% hit
+rate at typical population turnover.
+
+### Summary: No New SIMD Expansion Opportunities
+
+| Candidate                | Tight Loop | Typed Array | >10 µs | No Cache | SIMD Viable  |
+| ------------------------ | ---------- | ----------- | ------ | -------- | ------------ |
+| 1. Loss error reduction  | YES        | YES         | NO     | —        | ✗            |
+| 2. Gradient accumulation | PARTIAL    | YES         | NO     | —        | ✗            |
+| 3. Score statistics      | YES        | YES         | NO     | CACHED   | Already WASM |
+| 4. Population stats      | YES/NO     | NO          | NO     | —        | ✗            |
+| 5. Genetic distance      | NO         | NO          | NO     | CACHED   | ✗            |
+
+None of the 5 candidates qualify for SIMD expansion. The existing SIMD coverage
+(dual-accumulator weighted sum in the activation forward pass) remains the only
+operation where SIMD provides meaningful benefit. It is the only tight numerical
+loop over typed arrays that processes enough data per call for SIMD to amortise
+setup overhead.
+
+**Key insight:** The SIMD viability threshold (>10 µs per call) is the binding
+constraint. All candidate operations complete in nanoseconds to low
+microseconds. The operations that do exceed 10 µs in the evolution pipeline
+(breeding, sorting) are graph-structured or comparison-based — fundamentally
+incompatible with SIMD's data-parallel execution model.
+
+This is a negative result. It confirms that the current SIMD coverage is
+well-targeted and there are no additional SIMD expansion opportunities in the
+evolution pipeline at this time.
+
 ## 📚 See Also
 
 - [Performance Tuning](./PERFORMANCE_TUNING.md) — Operational tuning guide for
