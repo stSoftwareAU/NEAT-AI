@@ -2,56 +2,45 @@
 
 Optimise the de-duplication phase by replacing synchronous per-duplicate
 `previousExperiment()` file I/O with batched async operations, adding
-per-generation caching, and capping the replacement breeding retry loop.
-Closes #2286.
+per-generation caching, and capping the replacement breeding retry loop. Closes
+#2286.
 
-## Changes
+### Changes
 
-### Async batch `previousExperiment()` checks
-
-- `DeDuplicator.perform()` is now `async` and batches all `previousExperiment()`
-  checks using `Promise.allSettled()` for concurrent file stat operations
-- New `asyncPreviousExperiment()` method uses `Deno.stat()` instead of
-  `Deno.statSync()`, unblocking the event loop during duplicate detection
-- Per-generation `Map<string, boolean>` cache avoids redundant filesystem
-  lookups for the same UUID within a single deduplication pass
-- Cache is cleared at the start of each `perform()` call
-
-### Capped replacement retries
-
-- Replacement breeding retries now capped at a configurable maximum (default 16,
-  previously unbounded up to 48+ attempts)
-- Breeding rate boost (`globalBreedingRate = 1`) triggers at half the cap
-- When the cap is reached, a warning is logged and the last mutated creature is
-  accepted rather than continuing the loop
-- Constructor accepts optional `maxReplacementRetries` parameter for tuning
-
-### Other fixes
-
-- Fixed pre-existing duplicate `createdDirs` variable declaration in
-  `Neat.ts writeScores()`
-- Updated all callers of `perform()` and `populatePopulation()` to `await`
+- **Async `previousExperiment()`**: Replaced `Deno.statSync()` with async
+  `Deno.stat()` to avoid blocking the event loop during duplicate detection.
+- **Batched checks**: Non-duplicate candidates are collected during Pass 2 and
+  their `previousExperiment()` checks are run in parallel via
+  `Promise.allSettled()`.
+- **Per-generation cache**: A `Map<string, boolean>` caches
+  `previousExperiment()` results within each de-duplication pass, eliminating
+  redundant filesystem lookups for the same UUID.
+- **Capped retries**: The replacement breeding retry loop is now bounded by
+  `maxDedupRetries` (default 16, previously unbounded up to 48+). When the cap
+  is reached, the mutated duplicate is accepted rather than being spliced out,
+  preserving population size.
+- **Warning on cap**: A warning is logged when the retry cap is hit, surfacing
+  de-duplication pressure issues.
+- **Configurable**: New `maxDedupRetries` option in
+  `NeatArguments`/`NeatConfig`/ `NeatOptions` (integer, min 1, default 16).
+- **Bug fix**: Removed pre-existing duplicate `createdDirs` declaration in
+  `Neat.ts`.
 
 ## Evidence
 
-This is a backend performance optimisation with no visual output. Evidence is
-provided via test results:
+This is a backend performance optimisation with no UI changes. Evidence is
+provided by the test suite:
 
-- All 5782 existing tests pass (0 failures, 3 ignored)
-- New test file `test/NEAT/DeDuplicatorAsyncOptimisation.ts` verifies:
-  - `perform()` returns a Promise and resolves with unique population
-  - `previousExperiment()` cache returns consistent results
-  - Configurable retry cap is respected (tested with cap of 3)
-  - Default retry cap (16) handles many duplicates correctly
+- All 5782 existing tests pass (0 failed, 3 ignored).
+- New test file `test/NEAT/DeDuplicateRetryCap.ts` with 4 tests verifying:
+  - Retry cap preserves population size under duplication pressure
+  - Default `maxDedupRetries` is 16
+  - Async `perform()` produces unique creatures
+  - `previousExperiment()` caching behaviour
 
 ## Test Plan
 
-- Added `test/NEAT/DeDuplicatorAsyncOptimisation.ts` with 4 new tests
-- All existing de-duplication tests pass unchanged:
-  - `test/NEAT/DeDuplicate.ts`
-  - `test/NEAT/DeDuplicateBulkRemoval.ts`
-  - `test/NEAT/BloomFilterDeDuplication.ts`
-  - `test/NEAT/SinglePassDeDuplication.ts`
-  - `test/NEAT/EarlyDeDuplication.ts`
-- All `populatePopulation()` tests pass with async changes
-- Full quality gate (`quality.sh`) passes cleanly
+- Added `test/NEAT/DeDuplicateRetryCap.ts` (4 new tests)
+- Updated 27 existing files to use `await` with the now-async `perform()` and
+  `populatePopulation()` methods
+- All existing de-duplication tests continue to pass unchanged

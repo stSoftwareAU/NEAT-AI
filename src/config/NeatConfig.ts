@@ -353,6 +353,12 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       { min: 0, max: 1 },
     ),
     CRISPRs: options.CRISPRs || [],
+    maxDedupRetries: parseNumber(
+      "Max dedup retries",
+      opts.maxDedupRetries,
+      16,
+      { integer: true, min: 1 },
+    ),
     maxCRISPRsPerGeneration: parseNumber(
       "Max CRISPRs per generation",
       opts.maxCRISPRsPerGeneration,

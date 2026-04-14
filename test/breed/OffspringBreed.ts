@@ -59,7 +59,8 @@ Deno.test("Offspring.breed produces valid offspring from simple creature", async
   for (let i = 0; i < neat.config.populationSize; i++) {
     const kid = breed.breed();
     if (!kid) continue;
-    populatePromises.push(neat.populatePopulation(kid as Creature));
+    // deno-lint-ignore no-await-in-loop
+    await neat.populatePopulation(kid as Creature);
   }
   await Promise.all(populatePromises);
 });
