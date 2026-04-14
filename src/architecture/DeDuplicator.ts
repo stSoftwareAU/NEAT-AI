@@ -144,7 +144,15 @@ export class DeDuplicator {
         } else {
           // Sequential: modifies shared creatures array and unique set in-place
           // deno-lint-ignore no-await-in-loop
-          await this.replaceDuplicateCreature(creatures, indx, unique);
+          const replaced = await this.replaceDuplicateCreature(
+            creatures,
+            indx,
+            unique,
+          );
+          if (!replaced) {
+            // Could not find a unique replacement — cull this duplicate
+            toRemove.push(indx);
+          }
         }
       }
     }
@@ -183,7 +191,15 @@ export class DeDuplicator {
           } else {
             // Sequential: modifies shared creatures array and unique set in-place
             // deno-lint-ignore no-await-in-loop
-            await this.replaceDuplicateCreature(creatures, index, unique);
+            const replaced = await this.replaceDuplicateCreature(
+              creatures,
+              index,
+              unique,
+            );
+            if (!replaced) {
+              // Could not find a unique replacement — cull this duplicate
+              toRemove.push(index);
+            }
           }
         }
       }
@@ -220,7 +236,7 @@ export class DeDuplicator {
     creatures: Creature[],
     index: number,
     unique: Set<string>,
-  ) {
+  ): Promise<boolean> {
     const globalBreedingRate = this.breed.options.globalBreedingRate;
     // Issue #2286: Cap replacement retries at configurable maximum (default 16)
     const maxRetries = this.breed.options.maxDedupRetries ?? 16;
@@ -268,7 +284,7 @@ export class DeDuplicator {
             this.bloomFilter.add(key2);
             creatures[index] = child;
             this.breed.genus.addCreature(child);
-            return;
+            return true;
           }
         }
         const tmpCreature = Creature.fromJSON(
@@ -291,24 +307,41 @@ export class DeDuplicator {
           creatures[index] = tmpCreature;
           unique.add(key3);
           this.bloomFilter.add(key3);
-          return;
+          return true;
         }
       }
 
-      // Issue #2286: Retry cap reached — accept the last mutated creature
-      // rather than continuing the expensive loop or splicing the creature out.
+      // Retry cap reached — attempt additional fallback mutations to find a
+      // unique creature. If the fallback is also a duplicate, signal failure
+      // to the caller so it can cull this slot instead of leaving a duplicate
+      // in the population (fixes the flaky "no false negatives" CI failure).
+      const fallbackAttempts = 10;
+      for (let fb = 0; fb < fallbackAttempts; fb++) {
+        const fallbackCreature = Creature.fromJSON(
+          creatures[index].exportJSON(),
+        );
+        this.mutator.mutate([fallbackCreature]);
+        const fallbackKey = CreatureUtil.makeUUID(fallbackCreature);
+
+        if (!unique.has(fallbackKey)) {
+          this.breed.genus.addCreature(fallbackCreature);
+          creatures[index] = fallbackCreature;
+          unique.add(fallbackKey);
+          this.bloomFilter.add(fallbackKey);
+          getLogger().warn(
+            `De-duplication retry cap (${maxRetries}) reached for creature at index ${index} of ${creatures.length}. Accepted unique fallback on attempt ${
+              fb + 1
+            }.`,
+          );
+          return true;
+        }
+      }
+
+      // Could not produce a unique replacement — signal caller to cull this slot.
       getLogger().warn(
-        `De-duplication retry cap (${maxRetries}) reached for creature at index ${index} of ${creatures.length}. Accepting mutated duplicate.`,
+        `De-duplication retry cap (${maxRetries}) reached for creature at index ${index} of ${creatures.length}. Signalling cull.`,
       );
-      const fallbackCreature = Creature.fromJSON(
-        creatures[index].exportJSON(),
-      );
-      this.mutator.mutate([fallbackCreature]);
-      const fallbackKey = CreatureUtil.makeUUID(fallbackCreature);
-      this.breed.genus.addCreature(fallbackCreature);
-      creatures[index] = fallbackCreature;
-      unique.add(fallbackKey);
-      this.bloomFilter.add(fallbackKey);
+      return false;
     } finally {
       this.breed.options.globalBreedingRate = globalBreedingRate;
     }
