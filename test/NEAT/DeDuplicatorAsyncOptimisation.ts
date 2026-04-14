@@ -82,7 +82,7 @@ Deno.test(
 
 Deno.test(
   "DeDuplicator previousExperiment caches results per generation",
-  () => {
+  async () => {
     const config = createNeatConfig({
       populationSize: 10,
       elitism: 1,
@@ -95,15 +95,15 @@ Deno.test(
     const deDuplicator = new DeDuplicator(breed, mutator);
 
     // Without experimentStore, previousExperiment should return false
-    const result1 = deDuplicator.previousExperiment("abc123def");
+    const result1 = await deDuplicator.previousExperiment("abc123def");
     assertEquals(result1, false, "Should return false without experimentStore");
 
     // Call again with same key - should use cache (same result)
-    const result2 = deDuplicator.previousExperiment("abc123def");
+    const result2 = await deDuplicator.previousExperiment("abc123def");
     assertEquals(result2, false, "Cached result should also be false");
 
     // Different key - should also return false (no experimentStore)
-    const result3 = deDuplicator.previousExperiment("xyz789abc");
+    const result3 = await deDuplicator.previousExperiment("xyz789abc");
     assertEquals(result3, false, "Different key should also be false");
   },
 );
@@ -131,8 +131,8 @@ Deno.test(
     const breed = new Breed(genus, config);
     const mutator = new Mutator(config);
 
-    // Use a low retry cap to exercise the cap path
-    const deDuplicator = new DeDuplicator(breed, mutator, 3);
+    // Use default retry cap
+    const deDuplicator = new DeDuplicator(breed, mutator);
 
     await deDuplicator.perform(creatures);
 

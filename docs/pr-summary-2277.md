@@ -12,24 +12,24 @@ pass) remains the only operation where SIMD provides meaningful benefit.
 
 All benchmarks on Apple M2 Ultra, Deno 2.7.12 (aarch64-apple-darwin).
 
-| Candidate                | Operation              | Time/iter  | >10 µs? | SIMD Viable? |
-| ------------------------ | ---------------------- | ---------- | ------- | ------------ |
-| 1. Loss error reduction  | MSE — 3 outputs        | 6.1 ns     | NO      | ✗            |
-| 1. Loss error reduction  | MSE — 100 outputs      | 77.1 ns    | NO      | ✗            |
-| 1. Loss error reduction  | CrossEntropy — 100 out | 1.4 µs     | NO      | ✗            |
-| 2. Gradient accumulation | Single weight           | 6.4 ns     | NO      | ✗            |
-| 2. Gradient accumulation | Batch 4-way weight      | 22.6 ns    | NO      | ✗            |
-| 2. Gradient accumulation | Batch 8-way bias        | 1.9 µs     | NO      | ✗            |
-| 3. Score statistics      | WASM activation (20n)   | 935.7 ns   | NO      | Already WASM |
-| 3. Score statistics      | Score cached path       | 106.0 ns   | NO      | Already WASM |
-| 4. Population stats      | Avg 500 creatures       | 468.1 ns   | NO      | ✗            |
-| 4. Population stats      | Sort 500 creatures      | 65.3 µs    | YES     | ✗ (not numerical) |
-| 5. Genetic distance      | Set intersection (80n)  | 401.0 ns   | NO      | ✗            |
+| Candidate                | Operation              | Time/iter | >10 µs? | SIMD Viable?      |
+| ------------------------ | ---------------------- | --------- | ------- | ----------------- |
+| 1. Loss error reduction  | MSE — 3 outputs        | 6.1 ns    | NO      | ✗                 |
+| 1. Loss error reduction  | MSE — 100 outputs      | 77.1 ns   | NO      | ✗                 |
+| 1. Loss error reduction  | CrossEntropy — 100 out | 1.4 µs    | NO      | ✗                 |
+| 2. Gradient accumulation | Single weight          | 6.4 ns    | NO      | ✗                 |
+| 2. Gradient accumulation | Batch 4-way weight     | 22.6 ns   | NO      | ✗                 |
+| 2. Gradient accumulation | Batch 8-way bias       | 1.9 µs    | NO      | ✗                 |
+| 3. Score statistics      | WASM activation (20n)  | 935.7 ns  | NO      | Already WASM      |
+| 3. Score statistics      | Score cached path      | 106.0 ns  | NO      | Already WASM      |
+| 4. Population stats      | Avg 500 creatures      | 468.1 ns  | NO      | ✗                 |
+| 4. Population stats      | Sort 500 creatures     | 65.3 µs   | YES     | ✗ (not numerical) |
+| 5. Genetic distance      | Set intersection (80n) | 401.0 ns  | NO      | ✗                 |
 
 ### Why each candidate fails
 
-1. **Loss error reduction**: Output arrays are 1–10 elements (typical NEAT).
-   Too small for SIMD setup cost. Even 100 outputs complete in 77 ns.
+1. **Loss error reduction**: Output arrays are 1–10 elements (typical NEAT). Too
+   small for SIMD setup cost. Even 100 outputs complete in 77 ns.
 2. **Gradient accumulation**: Branchy per-item logic (6+ conditionals), f64 data
    (only 2-wide `f64x2`), and all batches complete in <2 µs.
 3. **Score statistics**: Already in WASM (`score_scan.rs`) and cached via

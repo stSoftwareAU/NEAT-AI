@@ -88,6 +88,12 @@ export interface GenerationPhaseTiming {
    * Issue #2284: Identifies which sub-operation within breeding is the hotspot.
    */
   readonly breedingSubPhases?: BreedingSubPhaseTiming;
+  /**
+   * Time spent pre-warming the WASM compilation cache in ms.
+   * Issue #2287: Pre-computes topology hashes and pre-compiles WASM templates
+   * for unique topologies before the next generation's fitness evaluation.
+   */
+  readonly preWarmMs?: number;
 }
 
 /**
