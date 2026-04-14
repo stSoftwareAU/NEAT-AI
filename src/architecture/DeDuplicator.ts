@@ -8,6 +8,15 @@ import { getLogger } from "@utils/Logger.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 /**
+ * Maximum number of replacement breeding retries per duplicate (Issue #2286).
+ * After this many attempts, accept the best mutated candidate rather than
+ * continuing the loop. A warning is logged when this cap is reached.
+ * Set to 16 as a balance between finding unique replacements and avoiding
+ * excessive looping (previously unbounded up to 48+ attempts).
+ */
+const DEFAULT_MAX_REPLACEMENT_RETRIES = 16;
+
+/**
  * DeDuplicator - Removes duplicate creatures from a population.
  *
  * Uses a Bloom filter (Issue #1292) as a fast first-pass check for duplicates,
@@ -21,6 +30,9 @@ import { CreatureUtil } from "@architecture/CreatureUtils.ts";
  * Performance benefit: When most creatures in a population are unique (the
  * common case in healthy evolution), the Bloom filter quickly rejects non-duplicates
  * without needing to hash and probe the Set's internal data structure.
+ *
+ * Issue #2286: previousExperiment() uses async file I/O with per-generation
+ * caching, and replacement breeding retries are capped.
  *
  * The filter is cleared each generation to maintain optimal performance.
  *
@@ -47,9 +59,16 @@ export class DeDuplicator {
    */
   private previousExperimentCache: Map<string, boolean> = new Map();
 
+  /**
+   * Issue #2286: Maximum replacement breeding retries per duplicate.
+   */
+  private readonly maxReplacementRetries: number;
+
   constructor(breed: Breed, mutator: Mutator) {
     this.breed = breed;
     this.mutator = mutator;
+    this.maxReplacementRetries = DEFAULT_MAX_REPLACEMENT_RETRIES;
+    this.previousExperimentCache = new Map();
 
     // Create Bloom filter sized for expected population with <1% false positive rate
     // Using population size * 1.5 to account for temporary over-population
@@ -78,6 +97,7 @@ export class DeDuplicator {
     }
 
     // Second pass: Detect and handle duplicates
+    // Issue #2286: Batch async previousExperiment() checks for candidates
     const unique = new Set<string>();
     const toRemove: number[] = [];
 
@@ -94,14 +114,11 @@ export class DeDuplicator {
       assert(UUID, "No creature UUID");
 
       // Issue #1292: Use Bloom filter as fast pre-check
-      // If Bloom filter says "not present", skip Set.has() entirely
       let duplicate = false;
       if (this.bloomFilter.mayContain(UUID)) {
-        // Possible duplicate - confirm with exact Set check
         duplicate = unique.has(UUID);
       }
 
-      // Add to Bloom filter AFTER checking (to avoid self-match)
       this.bloomFilter.add(UUID);
 
       if (!duplicate) {
@@ -227,6 +244,26 @@ export class DeDuplicator {
       for (let attempts = 0; attempts < maxRetries; attempts++) {
         if (attempts === 12) {
           this.breed.options.globalBreedingRate = 1;
+        }
+
+        // Issue #2286: Cap replacement retries to avoid excessive looping
+        if (attempts >= this.maxReplacementRetries) {
+          getLogger().warn(
+            `Replacement retry cap (${this.maxReplacementRetries}) reached ` +
+              `for creature at index ${index} of ${creatures.length}. ` +
+              `Accepting mutated duplicate to avoid excessive dedup pressure.`,
+          );
+          // Accept the last mutated creature rather than continuing
+          const fallback = Creature.fromJSON(
+            creatures[index].exportJSON(),
+          );
+          this.mutator.mutate([fallback]);
+          const fallbackKey = CreatureUtil.makeUUID(fallback);
+          this.breed.genus.addCreature(fallback);
+          creatures[index] = fallback;
+          unique.add(fallbackKey);
+          this.bloomFilter.add(fallbackKey);
+          return true;
         }
         const child = this.breed.breed();
 

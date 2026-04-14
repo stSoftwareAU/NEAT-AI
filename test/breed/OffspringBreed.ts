@@ -55,12 +55,14 @@ Deno.test("Offspring.breed produces valid offspring from simple creature", async
 
   await neat.populatePopulation(creature);
   genus.addCreature(creature);
+  const populatePromises: Promise<void>[] = [];
   for (let i = 0; i < neat.config.populationSize; i++) {
     const kid = breed.breed();
     if (!kid) continue;
     // deno-lint-ignore no-await-in-loop
     await neat.populatePopulation(kid as Creature);
   }
+  await Promise.all(populatePromises);
 });
 
 Deno.test("Offspring.breed preserves output neuron types during crossover", () => {

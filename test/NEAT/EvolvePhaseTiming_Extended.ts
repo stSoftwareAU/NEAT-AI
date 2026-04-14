@@ -101,6 +101,16 @@ Deno.test("EvolvePhaseTiming: new phase fields are present in phaseTiming", asyn
       );
     }
 
+    // Issue #2287: preWarmMs should be a non-negative number when present
+    if (timing.preWarmMs !== undefined) {
+      assertEquals(typeof timing.preWarmMs, "number");
+      assertGreater(
+        timing.preWarmMs,
+        -1,
+        "preWarmMs should be non-negative",
+      );
+    }
+
     // Total should still be >= sum of all measured phases
     const measuredPhases = timing.fitnessMs + timing.breedingMs +
       timing.resultProcessingMs +
@@ -109,7 +119,8 @@ Deno.test("EvolvePhaseTiming: new phase fields are present in phaseTiming", asyn
       (timing.speciationMs ?? 0) +
       (timing.sortMs ?? 0) +
       (timing.writeScoresMs ?? 0) +
-      (timing.memoryEvictionMs ?? 0);
+      (timing.memoryEvictionMs ?? 0) +
+      (timing.preWarmMs ?? 0);
     assert(
       timing.totalMs >= measuredPhases - 1, // allow 1ms rounding tolerance
       `totalMs (${timing.totalMs}) should be >= sum of measured phases (${measuredPhases})`,
@@ -193,6 +204,7 @@ Deno.test("EvolvePhaseTiming: all timing fields are numbers or undefined", async
       "sortMs",
       "memoryEvictionMs",
       "checkpointWriteMs",
+      "preWarmMs",
     ];
     for (const field of optionalFields) {
       const value = timing[field];

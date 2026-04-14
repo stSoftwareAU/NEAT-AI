@@ -8,6 +8,32 @@
  */
 
 /**
+ * Sub-phase timing breakdown within the breeding phase.
+ *
+ * Issue #2284: Finer-grained instrumentation within `ParallelBreeding`
+ * and `Offspring.breed()` to measure where time is spent within the
+ * dominant breeding bottleneck (50–60% of wall-clock time).
+ *
+ * Times are aggregated across all offspring produced in a generation.
+ */
+export interface BreedingSubPhaseTiming {
+  /** Time spent selecting parent pairs via FitnessRanking in ms. */
+  readonly parentSelectionMs: number;
+  /** Time spent computing genetic compatibility in ms. */
+  readonly geneticCompatibilityMs: number;
+  /** Time spent on genome alignment and crossover (neuron map building, population) in ms. */
+  readonly alignmentCrossoverMs: number;
+  /** Time spent in sortNeurons() dependency-aware ordering in ms. */
+  readonly sortNeuronsMs: number;
+  /** Time spent building batch connections with dedup in ms. */
+  readonly batchConnectionMs: number;
+  /** Time spent on post-breeding topology repair (forward-only, UUID uniqueness) in ms. */
+  readonly postBreedingRepairMs: number;
+  /** Number of offspring successfully produced. */
+  readonly offspringCount: number;
+}
+
+/**
  * Per-phase timing breakdown for a single generation.
  *
  * Issue #2239: Lightweight timing diagnostics to identify slow phases
@@ -57,6 +83,17 @@ export interface GenerationPhaseTiming {
    * Issue #2274: O(n log n) sort after fitness evaluation.
    */
   readonly sortMs?: number;
+  /**
+   * Sub-phase timing breakdown within the breeding phase.
+   * Issue #2284: Identifies which sub-operation within breeding is the hotspot.
+   */
+  readonly breedingSubPhases?: BreedingSubPhaseTiming;
+  /**
+   * Time spent pre-warming the WASM compilation cache in ms.
+   * Issue #2287: Pre-computes topology hashes and pre-compiles WASM templates
+   * for unique topologies before the next generation's fitness evaluation.
+   */
+  readonly preWarmMs?: number;
 }
 
 /**

@@ -509,6 +509,59 @@ class WasmCompilationCacheImpl {
   getMaxSize(): number {
     return this.maxSize;
   }
+
+  /**
+   * Ensure a topology template is cached for the given creature without
+   * creating a full WasmCreatureActivation. This is used for pre-warming
+   * the cache before fitness evaluation (Issue #2287).
+   *
+   * @param creature - The creature whose topology template should be cached
+   * @returns true if the template was already cached, false if it was newly built
+   */
+  ensureTemplate(creature: Creature): boolean {
+    if (!isWasmActivationAvailable()) {
+      return false;
+    }
+
+    const topologyHash = CreatureUtil.getTopologyHash(creature);
+
+    const existingNode = this.nodeByKey.get(topologyHash);
+    if (existingNode) {
+      this.moveToHead(existingNode);
+      return true;
+    }
+
+    // Build and cache the template without creating an activation
+    const template = this.buildTemplate(creature);
+
+    // Evict entries if cache is full — O(1) per eviction
+    while (this.nodeByKey.size >= this.maxSize) {
+      this.evictTail();
+    }
+
+    const newNode: LruNode = {
+      key: topologyHash,
+      template,
+      prev: null,
+      next: null,
+    };
+    this.nodeByKey.set(topologyHash, newNode);
+    this.moveToHead(newNode);
+    this.stats.size = this.nodeByKey.size;
+    this.stats.totalBytes += template.templateBuffer.length;
+
+    return false;
+  }
+
+  /**
+   * Check whether a topology template is already cached for the given hash.
+   *
+   * @param topologyHash - The topology hash to check
+   * @returns true if the template is cached
+   */
+  hasTemplate(topologyHash: string): boolean {
+    return this.nodeByKey.has(topologyHash);
+  }
 }
 
 /**
@@ -573,4 +626,26 @@ export function setWasmCompilationCacheSize(size: number): number {
  */
 export function getWasmCompilationCacheMaxSize(): number {
   return wasmCompilationCache.getMaxSize();
+}
+
+/**
+ * Ensure a topology template is cached for the given creature.
+ * Issue #2287: Pre-warms the compilation cache without creating a full
+ * WasmCreatureActivation, avoiding unnecessary weight compilation overhead.
+ *
+ * @param creature - The creature whose topology template should be cached
+ * @returns true if the template was already cached, false if newly built
+ */
+export function ensureWasmTemplate(creature: Creature): boolean {
+  return wasmCompilationCache.ensureTemplate(creature);
+}
+
+/**
+ * Check whether a topology template is already in the cache.
+ *
+ * @param topologyHash - The topology hash to check
+ * @returns true if the template is cached
+ */
+export function hasWasmTemplate(topologyHash: string): boolean {
+  return wasmCompilationCache.hasTemplate(topologyHash);
 }
