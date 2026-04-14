@@ -85,11 +85,14 @@ export {
 } from "@wasm/ActivationMethods.ts";
 
 // Issue #1301 - WASM compilation caching for creatures with identical topologies
+// Issue #2287 - Pre-warm cache support (ensureWasmTemplate, hasWasmTemplate)
 export {
   clearWasmCompilationCache,
+  ensureWasmTemplate,
   getOrCompileWasmModule,
   getWasmCompilationCacheMaxSize,
   getWasmCompilationCacheStats,
+  hasWasmTemplate,
   invalidateWasmCache,
   setWasmCompilationCacheSize,
   type WasmCacheStats,
@@ -132,3 +135,9 @@ export {
   resetWasmActivationLruStats,
   setMaxCachedWasmCreatureActivations,
 } from "@wasm/WasmCreatureActivationLRU.ts";
+
+// Issue #2287 - Pre-warm WASM compilation cache before fitness evaluation
+export {
+  type PreWarmResult,
+  preWarmWasmCache,
+} from "@wasm/WasmCachePreWarmer.ts";
