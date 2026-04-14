@@ -3,13 +3,14 @@
 Include `creature.input` in the topology hash computed by
 `CreatureUtil.getTopologyHash()`. Previously the hash was based only on neuron
 UUIDs/types/squash functions and synapse connection patterns, but **not** the
-input count. When `Upgrade.correct()` extended a creature's input count (e.g.
-5 → 12) without adding neurons or synapses, the topology hash remained
-identical, causing a WASM compilation cache collision — the module compiled for
-5 inputs was reused for the creature with 12 inputs, triggering
+input count. When `Upgrade.correct()` extended a creature's input count (e.g. 5
+→ 12) without adding neurons or synapses, the topology hash remained identical,
+causing a WASM compilation cache collision — the module compiled for 5 inputs
+was reused for the creature with 12 inputs, triggering
 `WasmError: Input length 12 does not match expected 5`.
 
 The fix prepends `inputCount` to the hash text:
+
 ```typescript
 const txt = inputCount + "\n" + neuronKey + "\n\n" + synapseKeys.join("\n");
 ```
@@ -22,8 +23,9 @@ This is a backend/logic fix with no visual output. Evidence is provided by the
 new and existing tests:
 
 - **4 new tests** in `test/architecture/TopologyHashInputCount.ts` verify that
-  different input counts produce different hashes, same input counts still match,
-  multiple input count pairs are all unique, and incremental caching still works.
+  different input counts produce different hashes, same input counts still
+  match, multiple input count pairs are all unique, and incremental caching
+  still works.
 - **15 existing topology hash tests** continue to pass (no regressions).
 - **Full quality gate** passed: 5841 tests passed, 0 failed, 3 ignored.
 
