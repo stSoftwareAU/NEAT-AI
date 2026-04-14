@@ -2,8 +2,10 @@ import { Creature } from "../../mod.ts";
 import { Offspring } from "@architecture/Offspring.ts";
 import { discover } from "@blackbox/Discover.ts";
 import type { NeatConfig } from "@config/NeatConfig.ts";
+import type { BreedingSubPhaseTiming } from "@config/TrainingEvent.ts";
 import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import type { Genus } from "@neat/Genus.ts";
+import { BreedingSubPhaseAccumulator } from "@breed/BreedingSubPhaseAccumulator.ts";
 import { FitnessRanking } from "@breed/FitnessRanking.ts";
 import { findFather, selectParent } from "@breed/ParentSelection.ts";
 import { getLogger } from "@utils/Logger.ts";
@@ -58,6 +60,12 @@ export class ParallelBreeding {
   private readonly workers?: WorkerHandler[];
 
   /**
+   * Issue #2284: Sub-phase timing from the most recent `breedBatch()` call.
+   * Only populated for non-worker breeding (main thread path).
+   */
+  lastBreedingSubPhases?: BreedingSubPhaseTiming;
+
+  /**
    * Creates a new ParallelBreeding instance.
    *
    * @param genus - The genus containing the population
@@ -83,13 +91,20 @@ export class ParallelBreeding {
    */
   async breedBatch(count: number): Promise<Creature[]> {
     if (count <= 0) {
+      this.lastBreedingSubPhases = undefined;
       return [];
     }
 
     const config = this.config;
 
+    // Issue #2284: Create sub-phase accumulator for timing instrumentation
+    const acc = new BreedingSubPhaseAccumulator();
+
     // Pre-compute fitness ranking once for the entire batch
     const populationRanking = new FitnessRanking(this.genus.population);
+
+    // Issue #2284: Time parent selection sub-phase
+    const selectionStartMs = Date.now();
 
     // Step 1: Select all parent pairs (main thread, fast)
     const parentPairs: ParentPair[] = [];
@@ -99,20 +114,26 @@ export class ParallelBreeding {
         parentPairs.push(pair);
       }
     }
+    acc.parentSelectionMs = Date.now() - selectionStartMs;
 
     // Step 2: Create offspring in parallel
     let results: (Creature | undefined)[];
 
     if (this.workers && this.workers.length > 0) {
       // Use worker pool for true parallelism
+      // Note: Sub-phase timing within workers is not captured because
+      // Offspring.breed() runs in a separate thread without accumulator access.
       results = await this.breedWithWorkers(parentPairs, config);
     } else {
       // Fallback to main thread with microtask scheduling
       const breedingPromises = parentPairs.map((pair) =>
-        this.breedSingle(pair.mother, pair.father, config)
+        this.breedSingle(pair.mother, pair.father, config, acc)
       );
       results = await Promise.all(breedingPromises);
     }
+
+    // Issue #2284: Freeze accumulated timing
+    this.lastBreedingSubPhases = acc.toTiming();
 
     // Step 3: Filter out failed breeding attempts (undefined results)
     const offspring: Creature[] = [];
@@ -244,6 +265,7 @@ export class ParallelBreeding {
     mother: Creature,
     father: Creature,
     config: NeatConfig,
+    acc?: BreedingSubPhaseAccumulator,
   ): Promise<Creature | undefined> {
     // Use queueMicrotask to yield to the event loop
     return new Promise((resolve) => {
@@ -257,6 +279,7 @@ export class ParallelBreeding {
                 config.geneticCompatibilityThreshold,
               forwardOnly: config.feedbackLoop !== true,
               hyperparameterEvolution: config.hyperparameterEvolution,
+              subPhaseAccumulator: acc,
             },
           );
 

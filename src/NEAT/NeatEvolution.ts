@@ -359,6 +359,9 @@ export async function evolve(
   newPopulation.push(...offspringBatch);
   const breedingMs = Date.now() - breedingStartMs;
 
+  // Issue #2284: Capture breeding sub-phase timing (non-worker path only)
+  const breedingSubPhases = parallelBreeding.lastBreedingSubPhases;
+
   const breed = new Breed(genus, neat.config);
 
   // Issue #1039: Apply plateau stagnation response - increase mutation rate
@@ -496,6 +499,8 @@ export async function evolve(
     deduplicationMs,
     speciationMs,
     sortMs,
+    // Issue #2284: Breeding sub-phase breakdown (non-worker path only)
+    breedingSubPhases,
   };
 
   // Issue #2239: Log per-phase timing when verbose is enabled

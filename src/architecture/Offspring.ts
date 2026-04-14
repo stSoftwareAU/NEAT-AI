@@ -16,6 +16,7 @@ import { getLogger } from "@utils/Logger.ts";
 import { inputWeightCrossover } from "@breed/InputWeightCrossover.ts";
 import { subgraphTransplant } from "@breed/SubgraphTransplant.ts";
 import { pruneOrphanMemeticReferences } from "@compact/CompactUtils.ts";
+import type { BreedingSubPhaseAccumulator } from "@breed/BreedingSubPhaseAccumulator.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { Neuron } from "@architecture/Neuron.ts";
 import { outputIndexFromId, outputNeuronId } from "@architecture/NeuronId.ts";
@@ -93,8 +94,11 @@ export class Offspring {
       interSpeciesCrossoverThreshold?: number;
       forwardOnly?: boolean;
       hyperparameterEvolution?: RequiredHyperparameterEvolutionConfig;
+      /** Issue #2284: Optional accumulator for sub-phase timing instrumentation. */
+      subPhaseAccumulator?: BreedingSubPhaseAccumulator;
     } = {},
   ): Creature | undefined {
+    const acc = options.subPhaseAccumulator;
     const rng = getRandomNumberGenerator();
     // Issue #1095: Use shallowClone() instead of JSON serialisation/deserialisation
     // for parent preparation. shallowClone() is 3-4x faster as it:
@@ -109,7 +113,10 @@ export class Offspring {
       "Parents aren't the same species",
     );
 
+    // Issue #2284: Time genetic compatibility sub-phase
+    const compatStartMs = acc ? Date.now() : 0;
     const compatibility = geneticCompatibility(mother, father);
+    if (acc) acc.geneticCompatibilityMs += Date.now() - compatStartMs;
 
     // Issue #2175/#2177: When compatibility is very low (below
     // interSpeciesCrossoverThreshold), use specialised inter-species breeding.
@@ -176,6 +183,9 @@ export class Offspring {
 
       fixAliases = true;
     }
+
+    // Issue #2284: Time alignment/crossover sub-phase (neuron maps → clone nodes)
+    const alignStartMs = acc ? Date.now() : 0;
 
     // Pre-build Maps for O(1) neuron lookup by integer ID.
     // This replaces O(n) linear .find() searches, improving breeding performance
@@ -336,6 +346,10 @@ export class Offspring {
       }
     }
 
+    // Issue #2284: End alignment/crossover, start sortNeurons sub-phase
+    if (acc) acc.alignmentCrossoverMs += Date.now() - alignStartMs;
+    const sortStartMs = acc ? Date.now() : 0;
+
     try {
       Offspring.sortNeurons(
         tmpNodes,
@@ -349,6 +363,9 @@ export class Offspring {
       }
       throw e;
     }
+
+    // Issue #2284: End sortNeurons sub-phase
+    if (acc) acc.sortNeuronsMs += Date.now() - sortStartMs;
 
     const tmpNodesLen = tmpNodes.length;
     offspring.neurons.length = tmpNodesLen;
@@ -370,6 +387,9 @@ export class Offspring {
       offspring.neurons[indx] = newNode;
       indxMap.set(neuron.id, indx);
     }
+
+    // Issue #2284: Time batch connection sub-phase
+    const batchStartMs = acc ? Date.now() : 0;
 
     // Issue #1102: Collect all connections first, then batch connect
     // This reduces cache invalidation overhead from O(n) to O(1)
@@ -450,6 +470,10 @@ export class Offspring {
         }
       }
     }
+
+    // Issue #2284: End batch connection, start post-breeding repair sub-phase
+    if (acc) acc.batchConnectionMs += Date.now() - batchStartMs;
+    const repairStartMs = acc ? Date.now() : 0;
 
     // Issue #1097: Prebuild inward index for large offspring.
     // This optimises subsequent inward connection lookups and memetic updates
@@ -591,6 +615,12 @@ export class Offspring {
           "INVALID_CONNECTION",
         );
       }
+    }
+
+    // Issue #2284: End post-breeding repair sub-phase, record successful offspring
+    if (acc) {
+      acc.postBreedingRepairMs += Date.now() - repairStartMs;
+      acc.offspringCount++;
     }
 
     return offspring;
