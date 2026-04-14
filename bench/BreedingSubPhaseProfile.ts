@@ -25,9 +25,7 @@
  */
 
 import { Creature } from "@creature";
-import { Offspring } from "@architecture/Offspring.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
-import { BreedingSubPhaseAccumulator } from "@breed/BreedingSubPhaseAccumulator.ts";
 import { ParallelBreeding } from "@breed/ParallelBreeding.ts";
 import { Genus } from "@neat/Genus.ts";
 import { createNeatConfig } from "@config/NeatConfig.ts";
@@ -297,7 +295,10 @@ for (const cfg of configurations) {
 
       const timings: BreedingSubPhaseTiming[] = [];
 
+      // Sequential batches are intentional — each batch must complete before
+      // the next to get accurate per-batch sub-phase timing data.
       for (let batch = 0; batch < cfg.breedingBatches; batch++) {
+        // deno-lint-ignore no-await-in-loop
         await parallelBreeding.breedBatch(cfg.batchSize);
         if (parallelBreeding.lastBreedingSubPhases) {
           timings.push(parallelBreeding.lastBreedingSubPhases);
