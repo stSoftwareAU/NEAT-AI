@@ -41,8 +41,8 @@ pre-compiled before fitness evaluation begins. Also fixes pre-existing bugs in
 
 ## Evidence
 
-This is a backend performance change with no visual output. Evidence is
-provided via test results:
+This is a backend performance change with no visual output. Evidence is provided
+via test results:
 
 - All 5823 tests pass (0 failures, 3 ignored).
 - 16 pre-warmer/template tests all passing.
