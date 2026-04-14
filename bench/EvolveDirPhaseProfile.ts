@@ -158,7 +158,19 @@ function printResultsTable(
     memoryEviction: [],
   };
 
+  // Issue #2284: Collect breeding sub-phase data
+  const breedingSubPhases: Record<string, number[]> = {
+    parentSelection: [],
+    geneticCompatibility: [],
+    alignmentCrossover: [],
+    sortNeurons: [],
+    batchConnection: [],
+    postBreedingRepair: [],
+  };
+  const offspringCounts: number[] = [];
+
   let totalMsSum = 0;
+  let totalBreedingMs = 0;
 
   for (const event of events) {
     const t = event.phaseTiming;
@@ -171,6 +183,19 @@ function printResultsTable(
     phases.writeScores.push(t.writeScoresMs ?? 0);
     phases.memoryEviction.push(t.memoryEvictionMs ?? 0);
     totalMsSum += t.totalMs;
+    totalBreedingMs += t.breedingMs;
+
+    // Issue #2284: Collect breeding sub-phase timing
+    if (t.breedingSubPhases) {
+      const bp = t.breedingSubPhases;
+      breedingSubPhases.parentSelection.push(bp.parentSelectionMs);
+      breedingSubPhases.geneticCompatibility.push(bp.geneticCompatibilityMs);
+      breedingSubPhases.alignmentCrossover.push(bp.alignmentCrossoverMs);
+      breedingSubPhases.sortNeurons.push(bp.sortNeuronsMs);
+      breedingSubPhases.batchConnection.push(bp.batchConnectionMs);
+      breedingSubPhases.postBreedingRepair.push(bp.postBreedingRepairMs);
+      offspringCounts.push(bp.offspringCount);
+    }
   }
 
   const stats: PhaseStats[] = [];
@@ -211,6 +236,71 @@ function printResultsTable(
     console.log(
       `    ${i + 1}. ${stats[i].name} — ${fmt(stats[i].pctOfTotal)}% of total`,
     );
+  }
+
+  // Issue #2284: Print breeding sub-phase breakdown
+  printBreedingSubPhases(breedingSubPhases, offspringCounts, totalBreedingMs);
+}
+
+/**
+ * Issue #2284: Print breeding sub-phase timing breakdown.
+ * Shows where time is spent within the breeding phase.
+ */
+function printBreedingSubPhases(
+  subPhases: Record<string, number[]>,
+  offspringCounts: number[],
+  totalBreedingMs: number,
+): void {
+  const hasData = Object.values(subPhases).some((v) => v.length > 0);
+  if (!hasData) {
+    console.log(
+      `\n  Breeding sub-phases: no data (workers may bypass instrumentation)`,
+    );
+    return;
+  }
+
+  const subStats: PhaseStats[] = [];
+  for (const [name, values] of Object.entries(subPhases)) {
+    subStats.push(computePhaseStats(name, values, totalBreedingMs));
+  }
+
+  // Sort by percentage descending
+  subStats.sort((a, b) => b.pctOfTotal - a.pctOfTotal);
+
+  const avgOffspring = offspringCounts.length > 0
+    ? offspringCounts.reduce((a, b) => a + b, 0) / offspringCounts.length
+    : 0;
+
+  console.log(`\n  ${"─".repeat(62)}`);
+  console.log(
+    `  Breeding sub-phases (avg ${fmt(avgOffspring, 0)} offspring/gen)`,
+  );
+  console.log(`  ${"─".repeat(62)}`);
+  console.log(
+    `  ${"Sub-phase".padEnd(22)} ${"Mean(ms)".padStart(10)} ${
+      "Min(ms)".padStart(10)
+    } ${"Max(ms)".padStart(10)} ${"% Breed".padStart(10)}`,
+  );
+  console.log(`  ${"─".repeat(62)}`);
+
+  for (const s of subStats) {
+    console.log(
+      `  ${s.name.padEnd(22)} ${fmt(s.meanMs).padStart(10)} ${
+        fmt(s.minMs).padStart(10)
+      } ${fmt(s.maxMs).padStart(10)} ${fmt(s.pctOfTotal).padStart(9)}%`,
+    );
+  }
+
+  // Identify top 2–3 breeding sub-phase hotspots
+  console.log(`\n  Top breeding hotspots:`);
+  for (let i = 0; i < Math.min(3, subStats.length); i++) {
+    if (subStats[i].pctOfTotal > 0) {
+      console.log(
+        `    ${i + 1}. ${subStats[i].name} — ${
+          fmt(subStats[i].pctOfTotal)
+        }% of breeding time`,
+      );
+    }
   }
 }
 
