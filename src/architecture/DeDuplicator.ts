@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
 import { format } from "@std/fmt/duration";
 import type { Breed } from "@breed/Breed.ts";
-import { Creature } from "@creature";
+import type { Creature } from "@creature";
 import type { Mutator } from "@neat/Mutator.ts";
 import { BloomFilter } from "@utils/BloomFilter.ts";
 import { getLogger } from "@utils/Logger.ts";
@@ -253,10 +253,9 @@ export class DeDuplicator {
               `for creature at index ${index} of ${creatures.length}. ` +
               `Accepting mutated duplicate to avoid excessive dedup pressure.`,
           );
-          // Accept the last mutated creature rather than continuing
-          const fallback = Creature.fromJSON(
-            creatures[index].exportJSON(),
-          );
+          // Issue #2308: Use shallowClone() instead of fromJSON(exportJSON())
+          // for a ~19x speed improvement per clone at production scale.
+          const fallback = creatures[index].shallowClone();
           this.mutator.mutate([fallback]);
           const fallbackKey = CreatureUtil.makeUUID(fallback);
           this.breed.genus.addCreature(fallback);
@@ -287,9 +286,9 @@ export class DeDuplicator {
             return true;
           }
         }
-        const tmpCreature = Creature.fromJSON(
-          creatures[index].exportJSON(),
-        );
+        // Issue #2308: Use shallowClone() instead of fromJSON(exportJSON())
+        // for a ~19x speed improvement per clone at production scale.
+        const tmpCreature = creatures[index].shallowClone();
         this.mutator.mutate([tmpCreature]);
         const key3 = CreatureUtil.makeUUID(tmpCreature);
 
@@ -317,9 +316,9 @@ export class DeDuplicator {
       // in the population (fixes the flaky "no false negatives" CI failure).
       const fallbackAttempts = 10;
       for (let fb = 0; fb < fallbackAttempts; fb++) {
-        const fallbackCreature = Creature.fromJSON(
-          creatures[index].exportJSON(),
-        );
+        // Issue #2308: Use shallowClone() instead of fromJSON(exportJSON())
+        // for a ~19x speed improvement per clone at production scale.
+        const fallbackCreature = creatures[index].shallowClone();
         this.mutator.mutate([fallbackCreature]);
         const fallbackKey = CreatureUtil.makeUUID(fallbackCreature);
 
