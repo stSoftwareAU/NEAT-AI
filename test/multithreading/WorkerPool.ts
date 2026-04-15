@@ -331,6 +331,64 @@ Deno.test("WorkerPool - findBusiestWorker returns undefined when all queues empt
   assertEquals(busiest, undefined);
 });
 
+Deno.test("WorkerPool - getActiveWorkerCount returns count of busy workers", () => {
+  const workers = [
+    new MockWorkerHandler(),
+    new MockWorkerHandler(),
+    new MockWorkerHandler(),
+    new MockWorkerHandler(),
+  ];
+  workers[0].setBusy(true);
+  workers[1].setBusy(false);
+  workers[2].setBusy(true);
+  workers[3].setBusy(true);
+
+  const pool = new WorkerPool(workers as unknown as WorkerHandler[]);
+
+  assertEquals(pool.getActiveWorkerCount(), 3);
+});
+
+Deno.test("WorkerPool - getActiveWorkerCount returns zero when all idle", () => {
+  const workers = [
+    new MockWorkerHandler(),
+    new MockWorkerHandler(),
+  ];
+
+  const pool = new WorkerPool(workers as unknown as WorkerHandler[]);
+
+  assertEquals(pool.getActiveWorkerCount(), 0);
+});
+
+Deno.test("WorkerPool - getActiveWorkerCount returns total when all busy", () => {
+  const workers = [
+    new MockWorkerHandler(),
+    new MockWorkerHandler(),
+    new MockWorkerHandler(),
+  ];
+  workers[0].setBusy(true);
+  workers[1].setBusy(true);
+  workers[2].setBusy(true);
+
+  const pool = new WorkerPool(workers as unknown as WorkerHandler[]);
+
+  assertEquals(pool.getActiveWorkerCount(), 3);
+});
+
+Deno.test("WorkerPool - getActiveWorkerCount consistent with getStats", () => {
+  const workers = [
+    new MockWorkerHandler(),
+    new MockWorkerHandler(),
+    new MockWorkerHandler(),
+  ];
+  workers[0].setBusy(true);
+  workers[2].setBusy(true);
+
+  const pool = new WorkerPool(workers as unknown as WorkerHandler[]);
+
+  const stats = pool.getStats();
+  assertEquals(pool.getActiveWorkerCount(), stats.busyWorkers);
+});
+
 Deno.test("WorkerPool - balances load across workers when all busy", () => {
   const workers = [
     new MockWorkerHandler(),

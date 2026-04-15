@@ -31,11 +31,81 @@ import { simplify } from "@optimize/Simplify.ts";
 import { validateOrDiagnose } from "@utils/Diagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
-import type { GenerationPhaseTiming } from "@config/TrainingEvent.ts";
+import type {
+  GenerationPhaseTiming,
+  PhaseWorkerUtilisation,
+  WorkerUtilisationSnapshot,
+} from "@config/TrainingEvent.ts";
 import type { Neat } from "@neat/Neat.ts";
 import { logReplaySummary } from "@neat/NeatScheduling.ts";
 import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 import { preWarmWasmCache } from "@wasm/WasmCachePreWarmer.ts";
+import type { WorkerPool } from "@multithreading/WorkerPool.ts";
+
+/**
+ * Captures a point-in-time worker utilisation snapshot from the fast and heavy
+ * worker pools.
+ *
+ * Issue #2312: Lightweight helper used at phase boundaries to record how many
+ * workers are active vs idle. Because a single snapshot cannot capture the
+ * full utilisation curve across a phase, this deliberately samples at the *end*
+ * of each phase — the point most indicative of sustained utilisation.
+ */
+function captureUtilisationSnapshot(
+  fastPool: WorkerPool,
+  heavyPool: WorkerPool,
+): WorkerUtilisationSnapshot {
+  const fastActive = fastPool.getActiveWorkerCount();
+  const fastTotal = fastPool.getWorkerCount();
+  const heavyActive = heavyPool.getActiveWorkerCount();
+  const heavyTotal = heavyPool.getWorkerCount();
+  return {
+    fastActive,
+    fastTotal,
+    fastUtilisationPct: fastTotal > 0
+      ? Math.round((fastActive / fastTotal) * 100)
+      : 0,
+    heavyActive,
+    heavyTotal,
+    heavyUtilisationPct: heavyTotal > 0
+      ? Math.round((heavyActive / heavyTotal) * 100)
+      : 0,
+  };
+}
+
+/**
+ * Computes an overall CPU utilisation estimate from per-phase snapshots
+ * weighted by their duration.
+ *
+ * Issue #2312: Each phase's utilisation is weighted by the fraction of total
+ * generation time it consumed. Phases with no snapshot are treated as 0%
+ * utilisation (main-thread-only work).
+ */
+function computeOverallCpuUtilisation(
+  phases: Array<{
+    durationMs: number;
+    snapshot?: WorkerUtilisationSnapshot;
+  }>,
+  totalMs: number,
+): number {
+  if (totalMs <= 0) return 0;
+
+  let weightedSum = 0;
+  for (const phase of phases) {
+    if (phase.snapshot && phase.durationMs > 0) {
+      const totalActive = phase.snapshot.fastActive +
+        phase.snapshot.heavyActive;
+      const totalWorkers = phase.snapshot.fastTotal +
+        phase.snapshot.heavyTotal;
+      const phaseUtilisation = totalWorkers > 0
+        ? totalActive / totalWorkers
+        : 0;
+      weightedSum += phaseUtilisation * phase.durationMs;
+    }
+    // Phases without snapshots contribute 0 (main-thread-only).
+  }
+  return Math.round((weightedSum / totalMs) * 100);
+}
 
 /**
  * Evaluates, selects, breeds and mutates the population.
@@ -84,20 +154,33 @@ export async function evolve(
     });
   }
 
+  // Issue #2312: Capture worker pool references for utilisation snapshots.
+  const fastPool = neat.fastWorkerPool;
+  const heavyPool = neat.heavyWorkerPool;
+
   // Issue #2239: Time fitness evaluation phase
   const fitnessStartMs = Date.now();
   await neat.fitness.calculate(neat.population);
   const fitnessMs = Date.now() - fitnessStartMs;
+  // Issue #2312: Snapshot after fitness — workers should be heavily utilised
+  const fitnessUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
 
   // Issue #2274: Time score sorting phase
   const sortStartMs = Date.now();
   sortCreaturesByScore(neat.population);
   const sortMs = Date.now() - sortStartMs;
+  // Issue #2312: Snapshot after sort — main thread only, all workers idle
+  const sortUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
 
   // Issue #2274: Time writeScores phase (synchronous per-creature file I/O)
   const writeScoresStartMs = Date.now();
   neat.writeScores(neat.population);
   const writeScoresMs = Date.now() - writeScoresStartMs;
+  // Issue #2312: Snapshot after writeScores — main thread I/O, workers idle
+  const writeScoresUtilisation = captureUtilisationSnapshot(
+    fastPool,
+    heavyPool,
+  );
 
   // Issue #2274: Time speciation phase (Genus.addCreature for each creature)
   const speciationStartMs = Date.now();
@@ -126,6 +209,11 @@ export async function evolve(
     genus.addCreature(creature);
   }
   const speciationMs = Date.now() - speciationStartMs;
+  // Issue #2312: Snapshot after speciation — main thread only
+  const speciationUtilisation = captureUtilisationSnapshot(
+    fastPool,
+    heavyPool,
+  );
   if (neat.population.length === 0) {
     getLogger().warn("All creatures died, using zombies");
   }
@@ -359,6 +447,8 @@ export async function evolve(
   const offspringBatch = await parallelBreeding.breedBatch(newPopSize);
   newPopulation.push(...offspringBatch);
   const breedingMs = Date.now() - breedingStartMs;
+  // Issue #2312: Snapshot after breeding — fast workers should be active
+  const breedingUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
 
   // Issue #2284: Capture breeding sub-phase timing (non-worker path only)
   const breedingSubPhases = parallelBreeding.lastBreedingSubPhases;
@@ -403,6 +493,8 @@ export async function evolve(
   const mutationStartMs = Date.now();
   mutator.mutate(newPopulation);
   const mutationMs = Date.now() - mutationStartMs;
+  // Issue #2312: Snapshot after mutation — main thread only
+  const mutationUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
 
   // Issue #2200: Cool the MCMC temperature after each generation.
   // Issue #2201: cool() now also finalises generation diagnostics
@@ -440,6 +532,11 @@ export async function evolve(
   const deduplicationStartMs = Date.now();
   await deDuplicator.perform(neat.population);
   const deduplicationMs = Date.now() - deduplicationStartMs;
+  // Issue #2312: Snapshot after deduplication
+  const deduplicationUtilisation = captureUtilisationSnapshot(
+    fastPool,
+    heavyPool,
+  );
 
   // Issue #1568: Dispose old population creatures not carried forward
   const carriedForward = new Set(neat.population);
@@ -455,6 +552,8 @@ export async function evolve(
   const preWarmStartMs = Date.now();
   const preWarmResult = preWarmWasmCache(neat.population);
   const preWarmMs = Date.now() - preWarmStartMs;
+  // Issue #2312: Snapshot after pre-warming — main thread only
+  const preWarmUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
 
   if (neat.config.verbose && preWarmResult.newTemplatesCompiled > 0) {
     getLogger().info(
@@ -503,6 +602,38 @@ export async function evolve(
 
   // Issue #2239: Compute total generation time and build phase timing
   const totalMs = Date.now() - evolveStartMs;
+
+  // Issue #2312: Build per-phase worker utilisation breakdown.
+  const phaseEntries: Array<{
+    durationMs: number;
+    snapshot?: WorkerUtilisationSnapshot;
+  }> = [
+    { durationMs: fitnessMs, snapshot: fitnessUtilisation },
+    { durationMs: sortMs, snapshot: sortUtilisation },
+    { durationMs: writeScoresMs, snapshot: writeScoresUtilisation },
+    { durationMs: speciationMs, snapshot: speciationUtilisation },
+    { durationMs: breedingMs, snapshot: breedingUtilisation },
+    { durationMs: mutationMs, snapshot: mutationUtilisation },
+    { durationMs: deduplicationMs, snapshot: deduplicationUtilisation },
+    { durationMs: preWarmMs, snapshot: preWarmUtilisation },
+    { durationMs: resultProcessingMs },
+  ];
+
+  const workerUtilisation: PhaseWorkerUtilisation = {
+    fitness: fitnessUtilisation,
+    breeding: breedingUtilisation,
+    sort: sortUtilisation,
+    writeScores: writeScoresUtilisation,
+    speciation: speciationUtilisation,
+    mutation: mutationUtilisation,
+    deduplication: deduplicationUtilisation,
+    preWarm: preWarmMs > 0 ? preWarmUtilisation : undefined,
+    overallCpuUtilisationPct: computeOverallCpuUtilisation(
+      phaseEntries,
+      totalMs,
+    ),
+  };
+
   const phaseTiming: GenerationPhaseTiming = {
     fitnessMs,
     breedingMs,
@@ -520,6 +651,8 @@ export async function evolve(
     breedingSubPhases,
     // Issue #2287: WASM cache pre-warming time
     preWarmMs: preWarmMs > 0 ? preWarmMs : undefined,
+    // Issue #2312: Per-phase worker utilisation
+    workerUtilisation,
   };
 
   // Issue #2239: Log per-phase timing when verbose is enabled
@@ -534,6 +667,12 @@ export async function evolve(
         ` sort=${sortMs}ms writeScores=${writeScoresMs}ms` +
         ` mutation=${mutationMs}ms deduplication=${deduplicationMs}ms` +
         ` speciation=${speciationMs}ms total=${totalMs}ms`,
+    );
+    // Issue #2312: Log worker utilisation summary
+    getLogger().info(
+      `[Utilisation] fitness=${fitnessUtilisation.fastUtilisationPct}%fast/${fitnessUtilisation.heavyUtilisationPct}%heavy` +
+        ` breeding=${breedingUtilisation.fastUtilisationPct}%fast/${breedingUtilisation.heavyUtilisationPct}%heavy` +
+        ` overall=${workerUtilisation.overallCpuUtilisationPct}%`,
     );
   }
 
