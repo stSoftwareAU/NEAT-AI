@@ -57,15 +57,20 @@ export function fix(neuron: Neuron): void {
   } else if (neuron.type === "output") {
     const toList = neuron.creature.inwardConnections(neuron.index);
     if (toList.length === 0) {
-      const fromIndx = Math.floor(
-        rng.random() *
-          (neuron.creature.nodeCount() - neuron.creature.outputCount()),
-      );
-      neuron.creature.connect(
-        fromIndx,
+      // Guard against stale neuron.index: cap maxSource at neuron.index so
+      // we never generate fromIndx >= neuron.index (self- or forward-connection).
+      const maxSource = Math.min(
         neuron.index,
-        Synapse.randomWeight(),
+        neuron.creature.nodeCount() - neuron.creature.outputCount(),
       );
+      if (maxSource > 0) {
+        const fromIndx = Math.floor(rng.random() * maxSource);
+        neuron.creature.connect(
+          fromIndx,
+          neuron.index,
+          Synapse.randomWeight(),
+        );
+      }
     }
   }
 
@@ -108,7 +113,12 @@ function ensureHiddenOutwardConnection(
     if (!candidate || candidate.type === "constant") {
       continue;
     }
-    if (!neuron.creature.getSynapse(neuron.index, candidate.index)) {
+    // Guard against stale indices: skip any candidate whose index equals
+    // neuron.index, which would produce an invalid self-connection.
+    if (
+      candidate.index !== neuron.index &&
+      !neuron.creature.getSynapse(neuron.index, candidate.index)
+    ) {
       candidates.push(candidate.index);
     }
   }
