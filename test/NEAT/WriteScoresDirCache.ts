@@ -14,7 +14,7 @@ import { Neat } from "@neat/Neat.ts";
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
 Deno.test("writeScores writes all creature scores to disk", async () => {
-  const tmpDir = Deno.makeTempDirSync({ prefix: "neat_test_writescores_" });
+  const tmpDir = await Deno.makeTempDir({ prefix: "neat_test_writescores_" });
 
   try {
     const neat = new Neat(2, 1, { experimentStore: tmpDir }, []);
@@ -30,7 +30,7 @@ Deno.test("writeScores writes all creature scores to disk", async () => {
     await neat.writeScores(creatures);
 
     // Verify all creatures had their scores written
-    for (const creature of creatures) {
+    const verifyPromises = creatures.map(async (creature) => {
       const name = CreatureUtil.makeUUID(creature);
       const dirPath = `${tmpDir}/score/${name.substring(0, 3)}`;
       const filePath = `${dirPath}/${name.substring(3)}.txt`;
@@ -40,21 +40,22 @@ Deno.test("writeScores writes all creature scores to disk", async () => {
         `Score file should exist for creature with UUID ${name}`,
       );
 
-      const content = Deno.readTextFileSync(filePath);
+      const content = await Deno.readTextFile(filePath);
       assertEquals(
         content,
         `${creature.score}`,
         "Score file content should match creature score",
       );
-    }
+    });
+    await Promise.all(verifyPromises);
   } finally {
     // Clean up
-    Deno.removeSync(tmpDir, { recursive: true });
+    await Deno.remove(tmpDir, { recursive: true });
   }
 });
 
 Deno.test("writeScores handles creatures sharing UUID prefix directories", async () => {
-  const tmpDir = Deno.makeTempDirSync({
+  const tmpDir = await Deno.makeTempDir({
     prefix: "neat_test_writescores_shared_",
   });
 
@@ -89,7 +90,7 @@ Deno.test("writeScores handles creatures sharing UUID prefix directories", async
 
     assertEquals(filesWritten, 50, "All 50 creatures should have score files");
   } finally {
-    Deno.removeSync(tmpDir, { recursive: true });
+    await Deno.remove(tmpDir, { recursive: true });
   }
 });
 
@@ -103,8 +104,8 @@ Deno.test("writeScores does nothing without experimentStore", () => {
   neat.writeScores([creature]);
 });
 
-Deno.test("writeScores handles empty creature list", () => {
-  const tmpDir = Deno.makeTempDirSync({
+Deno.test("writeScores handles empty creature list", async () => {
+  const tmpDir = await Deno.makeTempDir({
     prefix: "neat_test_writescores_empty_",
   });
 
@@ -117,6 +118,6 @@ Deno.test("writeScores handles empty creature list", () => {
     // Score directory should not have been created — the function should not crash
     assert(true, "Empty list should be handled gracefully");
   } finally {
-    Deno.removeSync(tmpDir, { recursive: true });
+    await Deno.remove(tmpDir, { recursive: true });
   }
 });
