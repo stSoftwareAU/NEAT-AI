@@ -265,7 +265,7 @@ const dedupPct = totalMsSum > 0
   ? (phaseSums["deduplication"] / totalMsSum) * 100
   : 0;
 
-const prodPcts: Record<string, number> = {
+const productionPct: Record<string, number> = {
   fitness: fitnessPct,
   breeding: breedingPct,
   mutation: mutationPct,
@@ -278,7 +278,7 @@ const prodPcts: Record<string, number> = {
 
 for (const phase of ["fitness", "breeding", "mutation", "deduplication"]) {
   const small = smallDataPct[phase] ?? 0;
-  const prod = prodPcts[phase] ?? 0;
+  const prod = productionPct[phase] ?? 0;
   const diff = prod - small;
   const arrow = diff > 2 ? "⬆️ up" : diff < -2 ? "⬇️ down" : "≈ same";
   console.log(
