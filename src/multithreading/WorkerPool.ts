@@ -89,6 +89,23 @@ export class WorkerPool<T = unknown> {
   }
 
   /**
+   * Returns the number of workers currently processing tasks.
+   *
+   * Issue #2312: Exposes active worker count for per-phase utilisation
+   * diagnostics. A worker is considered "active" when its `isBusy()` flag
+   * is true (i.e. it has one or more in-flight tasks).
+   */
+  getActiveWorkerCount(): number {
+    let active = 0;
+    for (const worker of this.workers) {
+      if (worker.isBusy()) {
+        active++;
+      }
+    }
+    return active;
+  }
+
+  /**
    * Selects the best worker for a new task.
    *
    * Selection strategy:

@@ -34,6 +34,55 @@ export interface BreedingSubPhaseTiming {
 }
 
 /**
+ * Snapshot of worker utilisation captured at a phase boundary.
+ *
+ * Issue #2312: Measures how many workers were active vs idle during each
+ * evolution phase, providing the data needed to understand low CPU usage
+ * in production clusters.
+ */
+export interface WorkerUtilisationSnapshot {
+  /** Number of fast-pool workers that were active (busy) during the phase. */
+  readonly fastActive: number;
+  /** Total number of fast-pool workers. */
+  readonly fastTotal: number;
+  /** Fast-pool utilisation as a percentage (0–100). */
+  readonly fastUtilisationPct: number;
+  /** Number of heavy-pool workers that were active (busy) during the phase. */
+  readonly heavyActive: number;
+  /** Total number of heavy-pool workers. */
+  readonly heavyTotal: number;
+  /** Heavy-pool utilisation as a percentage (0–100). */
+  readonly heavyUtilisationPct: number;
+}
+
+/**
+ * Per-phase worker utilisation breakdown for a single generation.
+ *
+ * Issue #2312: Records a utilisation snapshot at the start and end of each
+ * phase so callers can see which phases leave workers idle.
+ */
+export interface PhaseWorkerUtilisation {
+  /** Worker utilisation during the fitness evaluation phase. */
+  readonly fitness?: WorkerUtilisationSnapshot;
+  /** Worker utilisation during the breeding phase. */
+  readonly breeding?: WorkerUtilisationSnapshot;
+  /** Worker utilisation during the sort phase (main thread only). */
+  readonly sort?: WorkerUtilisationSnapshot;
+  /** Worker utilisation during the write-scores phase (main thread only). */
+  readonly writeScores?: WorkerUtilisationSnapshot;
+  /** Worker utilisation during the speciation phase (main thread only). */
+  readonly speciation?: WorkerUtilisationSnapshot;
+  /** Worker utilisation during the mutation phase (main thread only). */
+  readonly mutation?: WorkerUtilisationSnapshot;
+  /** Worker utilisation during the de-duplication phase. */
+  readonly deduplication?: WorkerUtilisationSnapshot;
+  /** Worker utilisation during the WASM pre-warming phase. */
+  readonly preWarm?: WorkerUtilisationSnapshot;
+  /** Overall estimated CPU utilisation for the generation (0–100). */
+  readonly overallCpuUtilisationPct?: number;
+}
+
+/**
  * Per-phase timing breakdown for a single generation.
  *
  * Issue #2239: Lightweight timing diagnostics to identify slow phases
@@ -94,6 +143,12 @@ export interface GenerationPhaseTiming {
    * for unique topologies before the next generation's fitness evaluation.
    */
   readonly preWarmMs?: number;
+  /**
+   * Per-phase worker utilisation breakdown.
+   * Issue #2312: Shows how many workers were active during each evolution phase,
+   * exposing where workers sit idle and guiding concurrency improvements.
+   */
+  readonly workerUtilisation?: PhaseWorkerUtilisation;
 }
 
 /**
