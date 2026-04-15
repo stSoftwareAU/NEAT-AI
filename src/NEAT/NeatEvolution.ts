@@ -172,15 +172,12 @@ export async function evolve(
   // Issue #2312: Snapshot after sort — main thread only, all workers idle
   const sortUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
 
-  // Issue #2274: Time writeScores phase (synchronous per-creature file I/O)
+  // Issue #2315: Start writeScores I/O in the background and overlap it with
+  // speciation. writeScores only writes files to disk; speciation only reads
+  // in-memory creature data. The two phases are independent, so running them
+  // concurrently hides the I/O latency behind useful CPU work.
   const writeScoresStartMs = Date.now();
-  neat.writeScores(neat.population);
-  const writeScoresMs = Date.now() - writeScoresStartMs;
-  // Issue #2312: Snapshot after writeScores — main thread I/O, workers idle
-  const writeScoresUtilisation = captureUtilisationSnapshot(
-    fastPool,
-    heavyPool,
-  );
+  const writeScoresPromise = neat.writeScores(neat.population);
 
   // Issue #2274: Time speciation phase (Genus.addCreature for each creature)
   const speciationStartMs = Date.now();
@@ -209,6 +206,16 @@ export async function evolve(
     genus.addCreature(creature);
   }
   const speciationMs = Date.now() - speciationStartMs;
+
+  // Issue #2315: Await writeScores to ensure all file writes complete before
+  // proceeding. Timing captures the full I/O cost (overlapped with speciation).
+  await writeScoresPromise;
+  const writeScoresMs = Date.now() - writeScoresStartMs;
+  // Issue #2312: Snapshot after writeScores+speciation — both now complete
+  const writeScoresUtilisation = captureUtilisationSnapshot(
+    fastPool,
+    heavyPool,
+  );
   // Issue #2312: Snapshot after speciation — main thread only
   const speciationUtilisation = captureUtilisationSnapshot(
     fastPool,
