@@ -13,7 +13,7 @@ import { Neat } from "@neat/Neat.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-Deno.test("writeScores writes all creature scores to disk", () => {
+Deno.test("writeScores writes all creature scores to disk", async () => {
   const tmpDir = Deno.makeTempDirSync({ prefix: "neat_test_writescores_" });
 
   try {
@@ -27,7 +27,7 @@ Deno.test("writeScores writes all creature scores to disk", () => {
       creatures.push(creature);
     }
 
-    neat.writeScores(creatures);
+    await neat.writeScores(creatures);
 
     // Verify all creatures had their scores written
     for (const creature of creatures) {
@@ -53,7 +53,7 @@ Deno.test("writeScores writes all creature scores to disk", () => {
   }
 });
 
-Deno.test("writeScores handles creatures sharing UUID prefix directories", () => {
+Deno.test("writeScores handles creatures sharing UUID prefix directories", async () => {
   const tmpDir = Deno.makeTempDirSync({
     prefix: "neat_test_writescores_shared_",
   });
@@ -70,7 +70,7 @@ Deno.test("writeScores handles creatures sharing UUID prefix directories", () =>
       creatures.push(creature);
     }
 
-    neat.writeScores(creatures);
+    await neat.writeScores(creatures);
 
     // Verify every creature's score was written
     let filesWritten = 0;
