@@ -237,6 +237,67 @@ Deno.test("getTopologyHash - caching works correctly", () => {
   assertEquals(hash1, hash2, "Cached topology hash should match");
 });
 
+Deno.test("getTopologyHash - different input count produces different hash (#2301)", () => {
+  // Two creatures with identical neurons, synapses, and output — but different
+  // input counts.  Before the fix the hash ignored creature.input, causing a
+  // WASM compilation cache collision when Upgrade.correct() extended inputs.
+  const base = {
+    neurons: [
+      { type: "hidden", uuid: "hidden-0", squash: "TANH", bias: 0.5 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.8 },
+    ],
+    output: 1,
+  };
+
+  const creature5 = Creature.fromJSON({ ...base, input: 5 } as CreatureExport);
+  const creature12 = Creature.fromJSON({
+    ...base,
+    input: 12,
+  } as CreatureExport);
+
+  const hash5 = CreatureUtil.getTopologyHash(creature5);
+  const hash12 = CreatureUtil.getTopologyHash(creature12);
+
+  assertNotEquals(
+    hash5,
+    hash12,
+    "Creatures with different input counts must produce different topology hashes",
+  );
+});
+
+Deno.test("getTopologyHash - same input count still matches (#2301)", () => {
+  // Ensure that two creatures with the same input count and identical topology
+  // still produce the same hash (no false negatives from the fix).
+  const spec: CreatureExport = {
+    neurons: [
+      { type: "hidden", uuid: "hidden-0", squash: "TANH", bias: 0.5 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.3 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.9 },
+    ],
+    input: 5,
+    output: 1,
+  };
+
+  const a = Creature.fromJSON(spec);
+  const b = Creature.fromJSON({
+    ...spec,
+    synapses: spec.synapses.map((s) => ({ ...s, weight: s.weight * 2 })),
+  });
+
+  assertEquals(
+    CreatureUtil.getTopologyHash(a),
+    CreatureUtil.getTopologyHash(b),
+    "Same topology and same input count must produce the same hash",
+  );
+});
+
 Deno.test("getTopologyHash - invalidated when structure changes", () => {
   const creature = Creature.fromJSON({
     neurons: [
