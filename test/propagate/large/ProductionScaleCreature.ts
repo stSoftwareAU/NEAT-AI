@@ -44,21 +44,65 @@ export const ALL_SQUASHES = Object.values(SQUASH_CATEGORIES).flat();
 export const AGGREGATE_SQUASHES = ["IF", "MAXIMUM", "MINIMUM"];
 
 /**
+ * Scale presets for creature generation.
+ *
+ * - `"default"`: ~1,000 neurons, ~18,000 synapses (original test scale).
+ * - `"grq-cluster"`: ~1,500 neurons, ~20,000 synapses (GRQ production scale,
+ *   matching dimensions from `performance.csv`). Issue #2306.
+ */
+export interface CreatureScaleOptions {
+  /**
+   * Predefined scale preset. Defaults to `"default"`.
+   * `"grq-cluster"` targets ~1,500 neurons and ~20,000 synapses.
+   */
+  scale?: "default" | "grq-cluster";
+}
+
+/** Internal configuration per scale preset. */
+interface ScaleConfig {
+  layers: number[];
+  /** Min inter-layer connections per neuron. */
+  interLayerMin: number;
+  /** Max inter-layer connections per neuron (exclusive offset from min). */
+  interLayerRange: number;
+}
+
+const SCALE_CONFIGS: Record<string, ScaleConfig> = {
+  "default": {
+    layers: [180, 220, 200, 160, 140, 100, 60],
+    interLayerMin: 15,
+    interLayerRange: 16,
+  },
+  "grq-cluster": {
+    layers: [250, 270, 240, 210, 170, 140, 100, 70, 40],
+    interLayerMin: 10,
+    interLayerRange: 12,
+  },
+};
+
+/**
  * Generate a production-scale creature deterministically.
  *
- * Target: ~1,000+ neurons, ~18,000+ synapses with diverse squash functions,
- * multiple layers, aggregate neurons, and some recurrent connections.
+ * Target depends on `options.scale`:
+ * - `"default"`: ~1,000+ neurons, ~18,000+ synapses
+ * - `"grq-cluster"`: ~1,500 neurons, ~20,000 synapses (issue #2306)
+ *
+ * Uses diverse squash functions, multiple layers, aggregate neurons,
+ * and skip connections for realistic topology depth.
  */
 export function generateProductionCreature(
   inputCount: number,
   outputCount: number,
   rng: () => number,
+  options?: CreatureScaleOptions,
 ): CreatureExport {
   const neurons: CreatureExport["neurons"] = [];
   const synapses: CreatureExport["synapses"] = [];
 
-  // Layer configuration: 7 layers with varying widths for depth
-  const layerWidths = [180, 220, 200, 160, 140, 100, 60];
+  // Layer configuration: varying widths for depth; preset selects scale
+  const scaleName = options?.scale ?? "default";
+  const scaleConfig = SCALE_CONFIGS[scaleName] ?? SCALE_CONFIGS["default"];
+  const layerWidths = scaleConfig.layers;
   // Track UUIDs per layer for connectivity
   const layerUuids: string[][] = [];
 
@@ -174,8 +218,9 @@ export function generateProductionCreature(
       if (neuronDef?.squash === "IF") {
         wireIfNeuron(toUuid, prevLayer, 5 + Math.floor(rng() * 10));
       } else {
-        // Each neuron gets 15-30 connections from previous layer
-        const connCount = 15 + Math.floor(rng() * 16);
+        // Each neuron gets connections from previous layer (scale-dependent)
+        const connCount = scaleConfig.interLayerMin +
+          Math.floor(rng() * scaleConfig.interLayerRange);
         for (let c = 0; c < connCount; c++) {
           const fromIdx = Math.floor(rng() * prevLayer.length);
           addSynapse(prevLayer[fromIdx], toUuid, (rng() - 0.5) * 2);
