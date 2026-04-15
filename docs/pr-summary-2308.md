@@ -25,23 +25,23 @@ object allocations and the full JSON serialisation overhead.
 ### Optimisation 2: DeDuplicator `shallowClone()` (18.1x speedup per clone)
 
 The `DeDuplicator.replaceDuplicateCreature()` retry loop previously used
-`Creature.fromJSON(creature.exportJSON())` to create clones before mutation.
-At production scale, this took **4.7 ms** per clone. The retry loop runs up to
-16 times per duplicate, with an additional 10-attempt fallback loop.
+`Creature.fromJSON(creature.exportJSON())` to create clones before mutation. At
+production scale, this took **4.7 ms** per clone. The retry loop runs up to 16
+times per duplicate, with an additional 10-attempt fallback loop.
 
-Replaced with `creature.shallowClone()` at **0.26 ms** per clone — an
-**18.1x speedup**. This was already the established pattern elsewhere in the
-codebase (Mutator, Offspring, NeatEvolution) but had not been applied to the
+Replaced with `creature.shallowClone()` at **0.26 ms** per clone — an **18.1x
+speedup**. This was already the established pattern elsewhere in the codebase
+(Mutator, Offspring, NeatEvolution) but had not been applied to the
 DeDuplicator.
 
 ## Evidence
 
 Benchmark results from `bench/MakeUuidOptimisation.ts` on Apple M4, Deno 2.7.12:
 
-| Operation | Before | After | Speedup |
-|-----------|--------|-------|---------|
-| `makeUUID()` (1500N/20000S) | 18.2 ms | 4.5 ms | **4.0x** |
-| DeDuplicator clone (per clone) | 4.7 ms | 0.26 ms | **18.1x** |
+| Operation                      | Before  | After   | Speedup   |
+| ------------------------------ | ------- | ------- | --------- |
+| `makeUUID()` (1500N/20000S)    | 18.2 ms | 4.5 ms  | **4.0x**  |
+| DeDuplicator clone (per clone) | 4.7 ms  | 0.26 ms | **18.1x** |
 
 No UI changes — this is a backend performance optimisation.
 
@@ -61,5 +61,5 @@ No UI changes — this is a backend performance optimisation.
   - shallowClone creates structurally independent copy
 
 - All 5,865 existing tests pass with 0 failures
-- Updated golden UUID value in `test/creature/CreatureUUID.ts` (expected
-  change from algorithm update)
+- Updated golden UUID value in `test/creature/CreatureUUID.ts` (expected change
+  from algorithm update)
