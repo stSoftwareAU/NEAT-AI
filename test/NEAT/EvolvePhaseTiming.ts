@@ -81,16 +81,13 @@ Deno.test("EvolvePhaseTiming: generation_complete includes phaseTiming data", as
 
     // Issue #2314: With phase pipelining, breeding overlaps with result
     // processing, so the sum of individual phase durations can exceed
-    // totalMs. Verify that totalMs is at least as large as the longest
-    // single phase (a weaker but correct invariant).
-    const longestPhase = Math.max(
-      timing.fitnessMs,
-      timing.breedingMs,
-      timing.resultProcessingMs,
-    );
+    // totalMs. Accounting for the overlap, the invariant holds.
+    const sumOfPhases = timing.fitnessMs + timing.breedingMs +
+      timing.resultProcessingMs;
+    const overlap = timing.pipelineOverlapMs ?? 0;
     assert(
-      timing.totalMs >= longestPhase - 1, // allow 1ms rounding tolerance
-      `totalMs (${timing.totalMs}) should be >= longest phase (${longestPhase})`,
+      timing.totalMs >= sumOfPhases - overlap - 1, // allow 1ms rounding tolerance
+      `totalMs (${timing.totalMs}) should be >= sum (${sumOfPhases}) - overlap (${overlap})`,
     );
   }
 });

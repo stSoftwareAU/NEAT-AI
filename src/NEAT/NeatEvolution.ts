@@ -668,6 +668,12 @@ export async function evolve(
     ),
   };
 
+  // Issue #2314: Compute pipeline overlap. Breeding overlaps with result
+  // processing (and plateau/MCMC config), and dedup overlaps with pre-warming.
+  // The overlap is the sum of the shorter phases that ran concurrently with
+  // longer ones, representing wall-clock time saved by the pipelining.
+  const pipelineOverlapMs = resultProcessingMs + preWarmMs;
+
   const phaseTiming: GenerationPhaseTiming = {
     fitnessMs,
     breedingMs,
@@ -685,6 +691,8 @@ export async function evolve(
     breedingSubPhases,
     // Issue #2287: WASM cache pre-warming time
     preWarmMs: preWarmMs > 0 ? preWarmMs : undefined,
+    // Issue #2314: Pipeline overlap from concurrent phases
+    pipelineOverlapMs: pipelineOverlapMs > 0 ? pipelineOverlapMs : undefined,
     // Issue #2312: Per-phase worker utilisation
     workerUtilisation,
   };
@@ -695,9 +703,13 @@ export async function evolve(
       ? ` memoryEviction=${memoryEvictionMs}ms`
       : "";
     const preWarmTag = preWarmMs > 0 ? ` preWarm=${preWarmMs}ms` : "";
+    const overlapTag = pipelineOverlapMs > 0
+      ? ` pipelineOverlap=${pipelineOverlapMs}ms`
+      : "";
     getLogger().info(
       `[Timing] fitness=${fitnessMs}ms breeding=${breedingMs}ms ` +
         `resultProcessing=${resultProcessingMs}ms${memTag}${preWarmTag}` +
+        `${overlapTag}` +
         ` sort=${sortMs}ms writeScores=${writeScoresMs}ms` +
         ` mutation=${mutationMs}ms deduplication=${deduplicationMs}ms` +
         ` speciation=${speciationMs}ms total=${totalMs}ms`,

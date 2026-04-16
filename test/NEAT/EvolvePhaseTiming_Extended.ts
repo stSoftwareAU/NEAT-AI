@@ -111,29 +111,33 @@ Deno.test("EvolvePhaseTiming: new phase fields are present in phaseTiming", asyn
       );
     }
 
+    // Issue #2314: pipelineOverlapMs should be a non-negative number when present
+    if (timing.pipelineOverlapMs !== undefined) {
+      assertEquals(typeof timing.pipelineOverlapMs, "number");
+      assertGreater(
+        timing.pipelineOverlapMs,
+        -1,
+        "pipelineOverlapMs should be non-negative",
+      );
+    }
+
     // Issue #2314: With phase pipelining, overlapped phases (breeding +
     // result processing, dedup + pre-warming) mean the sum of individual
-    // phase durations can exceed totalMs. Verify that totalMs is positive
-    // and at least as large as the longest single phase.
+    // phase durations can exceed totalMs. Accounting for the overlap, the
+    // invariant totalMs >= sum - overlap should hold.
+    const measuredPhases = timing.fitnessMs + timing.breedingMs +
+      timing.resultProcessingMs +
+      (timing.mutationMs ?? 0) +
+      (timing.deduplicationMs ?? 0) +
+      (timing.speciationMs ?? 0) +
+      (timing.sortMs ?? 0) +
+      (timing.writeScoresMs ?? 0) +
+      (timing.memoryEvictionMs ?? 0) +
+      (timing.preWarmMs ?? 0);
+    const overlap = timing.pipelineOverlapMs ?? 0;
     assert(
-      timing.totalMs > 0,
-      `totalMs (${timing.totalMs}) should be positive`,
-    );
-    const longestPhase = Math.max(
-      timing.fitnessMs,
-      timing.breedingMs,
-      timing.resultProcessingMs,
-      timing.mutationMs ?? 0,
-      timing.deduplicationMs ?? 0,
-      timing.speciationMs ?? 0,
-      timing.sortMs ?? 0,
-      timing.writeScoresMs ?? 0,
-      timing.memoryEvictionMs ?? 0,
-      timing.preWarmMs ?? 0,
-    );
-    assert(
-      timing.totalMs >= longestPhase - 1, // allow 1ms rounding tolerance
-      `totalMs (${timing.totalMs}) should be >= longest phase (${longestPhase})`,
+      timing.totalMs >= measuredPhases - overlap - 1, // allow 1ms rounding tolerance
+      `totalMs (${timing.totalMs}) should be >= sum (${measuredPhases}) - overlap (${overlap})`,
     );
   }
 });
@@ -215,6 +219,7 @@ Deno.test("EvolvePhaseTiming: all timing fields are numbers or undefined", async
       "memoryEvictionMs",
       "checkpointWriteMs",
       "preWarmMs",
+      "pipelineOverlapMs",
     ];
     for (const field of optionalFields) {
       const value = timing[field];

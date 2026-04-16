@@ -144,6 +144,13 @@ export interface GenerationPhaseTiming {
    */
   readonly preWarmMs?: number;
   /**
+   * Wall-clock time saved by overlapping independent phases in ms.
+   * Issue #2314: When phases run concurrently (breeding + result processing,
+   * dedup + pre-warming), individual phase durations sum to more than totalMs.
+   * This field captures the overlap so consumers can reconcile the difference.
+   */
+  readonly pipelineOverlapMs?: number;
+  /**
    * Per-phase worker utilisation breakdown.
    * Issue #2312: Shows how many workers were active during each evolution phase,
    * exposing where workers sit idle and guiding concurrency improvements.

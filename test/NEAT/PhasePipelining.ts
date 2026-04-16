@@ -9,11 +9,12 @@
  * These tests exercise real evolution to confirm that the pipelined ordering
  * does not introduce data races or generation correctness issues.
  */
-import { assert, assertGreater } from "@std/assert";
+import { assert, assertEquals, assertGreater } from "@std/assert";
 import { Creature } from "@creature";
 import { Mutation } from "@neat/Mutation.ts";
 import type {
   GenerationCompleteEvent,
+  GenerationPhaseTiming,
   TrainingEvent,
 } from "@config/TrainingEvent.ts";
 
@@ -167,4 +168,83 @@ Deno.test("PhasePipelining: population maintains correct size after pipelined ph
     lastPopulationSize <= populationSize + 5,
     `Population size (${lastPopulationSize}) should not greatly exceed configured size (${populationSize})`,
   );
+});
+
+Deno.test("PhasePipelining: pipelineOverlapMs reports overlap and maintains timing invariant", async () => {
+  const timings: GenerationPhaseTiming[] = [];
+
+  const trainingSet = [
+    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
+    { input: new Float32Array([1, 0]), output: new Float32Array([1]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([0]) },
+  ];
+
+  const creature = new Creature(2, 1);
+
+  await creature.evolveDataSet(trainingSet, {
+    mutation: Mutation.FFW,
+    iterations: 5,
+    targetError: 0.001,
+    populationSize: 20,
+    threads: 1,
+    onTrainingEvent: (event: TrainingEvent) => {
+      if (event.kind === "generation_complete") {
+        timings.push(event.phaseTiming);
+      }
+    },
+  });
+
+  assertGreater(timings.length, 0, "Should capture at least one timing");
+
+  for (const timing of timings) {
+    // pipelineOverlapMs should be a non-negative number or undefined
+    if (timing.pipelineOverlapMs !== undefined) {
+      assertEquals(typeof timing.pipelineOverlapMs, "number");
+      assertGreater(
+        timing.pipelineOverlapMs,
+        -1,
+        "pipelineOverlapMs should be non-negative",
+      );
+    }
+
+    // Issue #2314: The timing invariant totalMs >= sum - overlap must hold.
+    // With pipelining, individual phase sums can exceed totalMs by the
+    // overlap amount (because overlapped phases double-count wall-clock time).
+    const measuredPhases = timing.fitnessMs + timing.breedingMs +
+      timing.resultProcessingMs +
+      (timing.mutationMs ?? 0) +
+      (timing.deduplicationMs ?? 0) +
+      (timing.speciationMs ?? 0) +
+      (timing.sortMs ?? 0) +
+      (timing.writeScoresMs ?? 0) +
+      (timing.memoryEvictionMs ?? 0) +
+      (timing.preWarmMs ?? 0);
+    const overlap = timing.pipelineOverlapMs ?? 0;
+    assert(
+      timing.totalMs >= measuredPhases - overlap - 1,
+      `totalMs (${timing.totalMs}) should be >= sum (${measuredPhases}) - overlap (${overlap})`,
+    );
+  }
+});
+
+Deno.test("PhasePipelining: pipelineOverlapMs type is optional in GenerationPhaseTiming", () => {
+  // Verify backward compatibility — the type accepts objects without pipelineOverlapMs
+  const timingWithout: GenerationPhaseTiming = {
+    fitnessMs: 100,
+    breedingMs: 50,
+    resultProcessingMs: 20,
+    totalMs: 170,
+  };
+  assertEquals(timingWithout.pipelineOverlapMs, undefined);
+
+  // Verify the type accepts objects with pipelineOverlapMs
+  const timingWith: GenerationPhaseTiming = {
+    fitnessMs: 100,
+    breedingMs: 50,
+    resultProcessingMs: 20,
+    totalMs: 155,
+    pipelineOverlapMs: 15,
+  };
+  assertEquals(timingWith.pipelineOverlapMs, 15);
 });
