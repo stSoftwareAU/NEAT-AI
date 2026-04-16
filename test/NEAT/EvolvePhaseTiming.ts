@@ -79,13 +79,18 @@ Deno.test("EvolvePhaseTiming: generation_complete includes phaseTiming data", as
       "totalMs should be non-negative",
     );
 
-    // Total should be at least as large as the sum of measured phases
-    // (there are unmeasured phases in between, so total >= sum)
-    const sumOfPhases = timing.fitnessMs + timing.breedingMs +
-      timing.resultProcessingMs;
+    // Issue #2314: With phase pipelining, breeding overlaps with result
+    // processing, so the sum of individual phase durations can exceed
+    // totalMs. Verify that totalMs is at least as large as the longest
+    // single phase (a weaker but correct invariant).
+    const longestPhase = Math.max(
+      timing.fitnessMs,
+      timing.breedingMs,
+      timing.resultProcessingMs,
+    );
     assert(
-      timing.totalMs >= sumOfPhases - 1, // allow 1ms rounding tolerance
-      `totalMs (${timing.totalMs}) should be >= sum of phases (${sumOfPhases})`,
+      timing.totalMs >= longestPhase - 1, // allow 1ms rounding tolerance
+      `totalMs (${timing.totalMs}) should be >= longest phase (${longestPhase})`,
     );
   }
 });

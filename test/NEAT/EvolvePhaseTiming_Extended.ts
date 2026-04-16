@@ -111,19 +111,29 @@ Deno.test("EvolvePhaseTiming: new phase fields are present in phaseTiming", asyn
       );
     }
 
-    // Total should still be >= sum of all measured phases
-    const measuredPhases = timing.fitnessMs + timing.breedingMs +
-      timing.resultProcessingMs +
-      (timing.mutationMs ?? 0) +
-      (timing.deduplicationMs ?? 0) +
-      (timing.speciationMs ?? 0) +
-      (timing.sortMs ?? 0) +
-      (timing.writeScoresMs ?? 0) +
-      (timing.memoryEvictionMs ?? 0) +
-      (timing.preWarmMs ?? 0);
+    // Issue #2314: With phase pipelining, overlapped phases (breeding +
+    // result processing, dedup + pre-warming) mean the sum of individual
+    // phase durations can exceed totalMs. Verify that totalMs is positive
+    // and at least as large as the longest single phase.
     assert(
-      timing.totalMs >= measuredPhases - 1, // allow 1ms rounding tolerance
-      `totalMs (${timing.totalMs}) should be >= sum of measured phases (${measuredPhases})`,
+      timing.totalMs > 0,
+      `totalMs (${timing.totalMs}) should be positive`,
+    );
+    const longestPhase = Math.max(
+      timing.fitnessMs,
+      timing.breedingMs,
+      timing.resultProcessingMs,
+      timing.mutationMs ?? 0,
+      timing.deduplicationMs ?? 0,
+      timing.speciationMs ?? 0,
+      timing.sortMs ?? 0,
+      timing.writeScoresMs ?? 0,
+      timing.memoryEvictionMs ?? 0,
+      timing.preWarmMs ?? 0,
+    );
+    assert(
+      timing.totalMs >= longestPhase - 1, // allow 1ms rounding tolerance
+      `totalMs (${timing.totalMs}) should be >= longest phase (${longestPhase})`,
     );
   }
 });
