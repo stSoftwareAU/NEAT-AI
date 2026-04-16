@@ -52,7 +52,8 @@ experiment stores, the dedup I/O overlap becomes more significant as
   - Population size maintained after pipelined phases
   - `pipelineOverlapMs` reports overlap and maintains timing invariant
   - `pipelineOverlapMs` type is optional in GenerationPhaseTiming
-- Updated `test/NEAT/EvolvePhaseTiming.ts` — totalMs assertion accounts for overlap
+- Updated `test/NEAT/EvolvePhaseTiming.ts` — totalMs assertion accounts for
+  overlap
 - Updated `test/NEAT/EvolvePhaseTiming_Extended.ts` — added pipelineOverlapMs
   validation and updated totalMs invariant to use overlap
 - Added `bench/PhasePipelining.ts` for phase timing measurement
