@@ -18,15 +18,17 @@ Two phase overlaps implemented:
    is safe because duplicate creatures share topology with existing population
    members, producing no extra WASM template compilations.
 
-Phase timing test assertions updated to account for overlapped phases where the
-sum of individual durations can exceed `totalMs`.
+Added `pipelineOverlapMs` field to `GenerationPhaseTiming` that reports the
+wall-clock time saved by running phases concurrently. This enables the stronger
+timing invariant `totalMs >= sum - pipelineOverlapMs` and provides production
+observability into pipeline effectiveness.
 
 ## Evidence
 
 This is a backend/performance change with no UI. Evidence is from test results
 and benchmarks.
 
-**All tests pass**: 5880 passed | 0 failed | 3 ignored (quality.sh clean)
+**All tests pass**: 5882 passed | 0 failed | 3 ignored (quality.sh clean)
 
 **Benchmark results** (`deno bench bench/PhasePipelining.ts`):
 
@@ -44,13 +46,14 @@ experiment stores, the dedup I/O overlap becomes more significant as
 
 ## Test Plan
 
-- Added `test/NEAT/PhasePipelining.ts` with 3 tests:
+- Added `test/NEAT/PhasePipelining.ts` with 5 tests:
   - Single-threaded evolution correctness with overlapped phases
   - Multi-threaded evolution correctness with pipelining
   - Population size maintained after pipelined phases
-- Updated `test/NEAT/EvolvePhaseTiming.ts` — relaxed totalMs assertion for
-  overlapped phases
-- Updated `test/NEAT/EvolvePhaseTiming_Extended.ts` — relaxed totalMs assertion
-  for overlapped phases
+  - `pipelineOverlapMs` reports overlap and maintains timing invariant
+  - `pipelineOverlapMs` type is optional in GenerationPhaseTiming
+- Updated `test/NEAT/EvolvePhaseTiming.ts` — totalMs assertion accounts for overlap
+- Updated `test/NEAT/EvolvePhaseTiming_Extended.ts` — added pipelineOverlapMs
+  validation and updated totalMs invariant to use overlap
 - Added `bench/PhasePipelining.ts` for phase timing measurement
-- All existing 5880 tests continue to pass
+- All 5882 tests pass
