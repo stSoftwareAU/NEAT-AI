@@ -1,4 +1,3 @@
-import { assert } from "@std/assert";
 import type { Creature } from "../../mod.ts";
 import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
 
@@ -6,7 +5,9 @@ export function memeticUpdate(
   parent: Creature,
   child: Creature,
 ): MemeticInterface | undefined {
-  assert(parent.memetic);
+  // Guard: if the parent has no memetic there is nothing to propagate.
+  // Return undefined so callers fall through to discover() instead of crashing.
+  if (!parent.memetic) return undefined;
   if (parent.neurons.length !== child.neurons.length) {
     return undefined;
   }
