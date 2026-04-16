@@ -79,13 +79,15 @@ Deno.test("EvolvePhaseTiming: generation_complete includes phaseTiming data", as
       "totalMs should be non-negative",
     );
 
-    // Total should be at least as large as the sum of measured phases
-    // (there are unmeasured phases in between, so total >= sum)
+    // Issue #2314: With phase pipelining, breeding overlaps with result
+    // processing, so the sum of individual phase durations can exceed
+    // totalMs. Accounting for the overlap, the invariant holds.
     const sumOfPhases = timing.fitnessMs + timing.breedingMs +
       timing.resultProcessingMs;
+    const overlap = timing.pipelineOverlapMs ?? 0;
     assert(
-      timing.totalMs >= sumOfPhases - 1, // allow 1ms rounding tolerance
-      `totalMs (${timing.totalMs}) should be >= sum of phases (${sumOfPhases})`,
+      timing.totalMs >= sumOfPhases - overlap - 1, // allow 1ms rounding tolerance
+      `totalMs (${timing.totalMs}) should be >= sum (${sumOfPhases}) - overlap (${overlap})`,
     );
   }
 });

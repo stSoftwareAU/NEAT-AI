@@ -451,17 +451,23 @@ export async function evolve(
     neat.config,
     neat.fastWorkerHandlers,
   );
-  const offspringBatch = await parallelBreeding.breedBatch(newPopSize);
-  newPopulation.push(...offspringBatch);
-  const breedingMs = Date.now() - breedingStartMs;
-  // Issue #2312: Snapshot after breeding — fast workers should be active
-  const breedingUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
 
-  // Issue #2284: Capture breeding sub-phase timing (non-worker path only)
-  const breedingSubPhases = parallelBreeding.lastBreedingSubPhases;
+  // Issue #2314: Start breeding as a non-blocking promise so that main-thread
+  // work (result processing, plateau detection, MCMC configuration) can run
+  // while workers breed. These phases are independent: result processing reads
+  // completed task queues from the previous generation; plateau/MCMC reads
+  // neat-level state that breeding does not modify.
+  const breedingPromise = parallelBreeding.breedBatch(newPopSize);
 
   const breed = new Breed(genus, neat.config);
 
+  // Issue #2314: Process completed results while workers breed.
+  // Issue #2239: Time result processing phase
+  const resultProcessingStartMs = Date.now();
+  const trainedPopulation = processCompletedResults(neat, fittest, genus);
+  const resultProcessingMs = Date.now() - resultProcessingStartMs;
+
+  // Issue #2314: Compute plateau and MCMC configuration while workers breed.
   // Issue #1039: Apply plateau stagnation response - increase mutation rate
   const mutationMultiplier = neat.plateauDetector.getMutationMultiplier();
   let mutatorConfig = neat.config;
@@ -496,6 +502,21 @@ export async function evolve(
 
   const mutator = new Mutator(mutatorConfig, mcmcTemperature, mcmcDiagnostics);
 
+  // Issue #1099: Single-pass de-duplication (constructed early so it is ready
+  // when needed after mutation, without waiting for breeding to complete).
+  const deDuplicator = new DeDuplicator(breed, mutator);
+
+  // Issue #2314: Await breeding results now that all overlapped main-thread
+  // work is complete.
+  const offspringBatch = await breedingPromise;
+  newPopulation.push(...offspringBatch);
+  const breedingMs = Date.now() - breedingStartMs;
+  // Issue #2312: Snapshot after breeding — fast workers should be active
+  const breedingUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
+
+  // Issue #2284: Capture breeding sub-phase timing (non-worker path only)
+  const breedingSubPhases = parallelBreeding.lastBreedingSubPhases;
+
   // Issue #2274: Time mutation phase
   const mutationStartMs = Date.now();
   mutator.mutate(newPopulation);
@@ -509,14 +530,6 @@ export async function evolve(
   if (neat.config.mcmc.enabled) {
     neat.mcmcState.cool(neat.config.verbose);
   }
-
-  // Issue #1099: Single-pass de-duplication
-  const deDuplicator = new DeDuplicator(breed, mutator);
-
-  // Issue #2239: Time result processing phase
-  const resultProcessingStartMs = Date.now();
-  const trainedPopulation = processCompletedResults(neat, fittest, genus);
-  const resultProcessingMs = Date.now() - resultProcessingStartMs;
 
   /** make sure we do at least one more loop */
   if (trainedPopulation.length > 0 && neat.additionalGenerationCount <= 0) {
@@ -536,8 +549,31 @@ export async function evolve(
 
   // Issue #1099: Single-pass de-duplication on the combined population
   // Issue #2274: Time de-duplication phase
+  // Issue #2314: Start dedup as a non-blocking promise and overlap it with
+  // WASM pre-warming. Dedup's async I/O (previousExperiment file checks via
+  // Deno.stat) yields to the event loop, letting pre-warming run during those
+  // pauses. Pre-warming on the pre-dedup population is safe because:
+  //   • Duplicate creatures share the same topology as another creature already
+  //     in the population, so no extra WASM templates are compiled for them.
+  //   • Replacement creatures from dedup are small mutations of existing
+  //     topologies and often share the same WASM template.
+  //   • At worst, a few replacement templates are compiled lazily during
+  //     fitness — a harmless cache overshoot.
   const deduplicationStartMs = Date.now();
-  await deDuplicator.perform(neat.population);
+  const dedupPromise = deDuplicator.perform(neat.population);
+
+  // Issue #2287: Pre-warm WASM compilation cache before the next generation's
+  // fitness evaluation. Pre-computes topology hashes on all unevaluated
+  // creatures and pre-compiles WASM templates for unique topologies.
+  // Issue #2314: Runs concurrently with dedup I/O to hide latency.
+  const preWarmStartMs = Date.now();
+  const preWarmResult = preWarmWasmCache(neat.population);
+  const preWarmMs = Date.now() - preWarmStartMs;
+  // Issue #2312: Snapshot after pre-warming — main thread only
+  const preWarmUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
+
+  // Issue #2314: Await dedup completion after pre-warming finishes.
+  await dedupPromise;
   const deduplicationMs = Date.now() - deduplicationStartMs;
   // Issue #2312: Snapshot after deduplication
   const deduplicationUtilisation = captureUtilisationSnapshot(
@@ -552,15 +588,6 @@ export async function evolve(
       creature.dispose();
     }
   }
-
-  // Issue #2287: Pre-warm WASM compilation cache before the next generation's
-  // fitness evaluation. Pre-computes topology hashes on all unevaluated
-  // creatures and pre-compiles WASM templates for unique topologies.
-  const preWarmStartMs = Date.now();
-  const preWarmResult = preWarmWasmCache(neat.population);
-  const preWarmMs = Date.now() - preWarmStartMs;
-  // Issue #2312: Snapshot after pre-warming — main thread only
-  const preWarmUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
 
   if (neat.config.verbose && preWarmResult.newTemplatesCompiled > 0) {
     getLogger().info(
@@ -641,6 +668,12 @@ export async function evolve(
     ),
   };
 
+  // Issue #2314: Compute pipeline overlap. Breeding overlaps with result
+  // processing (and plateau/MCMC config), and dedup overlaps with pre-warming.
+  // The overlap is the sum of the shorter phases that ran concurrently with
+  // longer ones, representing wall-clock time saved by the pipelining.
+  const pipelineOverlapMs = resultProcessingMs + preWarmMs;
+
   const phaseTiming: GenerationPhaseTiming = {
     fitnessMs,
     breedingMs,
@@ -658,6 +691,8 @@ export async function evolve(
     breedingSubPhases,
     // Issue #2287: WASM cache pre-warming time
     preWarmMs: preWarmMs > 0 ? preWarmMs : undefined,
+    // Issue #2314: Pipeline overlap from concurrent phases
+    pipelineOverlapMs: pipelineOverlapMs > 0 ? pipelineOverlapMs : undefined,
     // Issue #2312: Per-phase worker utilisation
     workerUtilisation,
   };
@@ -668,9 +703,13 @@ export async function evolve(
       ? ` memoryEviction=${memoryEvictionMs}ms`
       : "";
     const preWarmTag = preWarmMs > 0 ? ` preWarm=${preWarmMs}ms` : "";
+    const overlapTag = pipelineOverlapMs > 0
+      ? ` pipelineOverlap=${pipelineOverlapMs}ms`
+      : "";
     getLogger().info(
       `[Timing] fitness=${fitnessMs}ms breeding=${breedingMs}ms ` +
         `resultProcessing=${resultProcessingMs}ms${memTag}${preWarmTag}` +
+        `${overlapTag}` +
         ` sort=${sortMs}ms writeScores=${writeScoresMs}ms` +
         ` mutation=${mutationMs}ms deduplication=${deduplicationMs}ms` +
         ` speciation=${speciationMs}ms total=${totalMs}ms`,

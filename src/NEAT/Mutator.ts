@@ -336,7 +336,14 @@ export class Mutator {
           delete creature.uuid;
           creature.state.preparedNeurons = false;
           if (original) {
-            const memetic = memeticUpdate(original, creature);
+            // Issue #2322: Only call memeticUpdate when original has a memetic.
+            // shallowClone() (Issue #2308) copies score onto the clone, which
+            // causes `original` to be set even when there is no memetic. Calling
+            // memeticUpdate with an undefined memetic violates its precondition
+            // (assert(parent.memetic)) and throws an AssertionError.
+            const memetic = original.memetic
+              ? memeticUpdate(original, creature)
+              : undefined;
             if (memetic) {
               creature.memetic = memetic;
             } else {

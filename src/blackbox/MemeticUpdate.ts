@@ -1,4 +1,3 @@
-import { assert } from "@std/assert";
 import type { Creature } from "../../mod.ts";
 import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
 
@@ -6,7 +5,12 @@ export function memeticUpdate(
   parent: Creature,
   child: Creature,
 ): MemeticInterface | undefined {
-  assert(parent.memetic);
+  // Guard: if the parent has no memetic there is nothing to propagate.
+  // This can happen when a creature has a score but was never fine-tuned
+  // (e.g. CRISPR-injected creatures that inherit the fittest score but have
+  // their memetic explicitly cleared in cleaveDNA). Return undefined so the
+  // caller falls back to discover().
+  if (!parent.memetic) return undefined;
   if (parent.neurons.length !== child.neurons.length) {
     return undefined;
   }

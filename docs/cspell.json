@@ -192,6 +192,8 @@
     "passthrough",
     "Pcts",
     "pipefail",
+    "pipelining",
+    "Pipelining",
     "Plotly",
     "popover",
     "pred",
