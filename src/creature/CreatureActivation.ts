@@ -392,12 +392,54 @@ function applyWasmTraceData(
 }
 
 /**
+ * Score a batch of records using the fused WASM path.
+ *
+ * Issue #2331: Extracted from evaluateDir to keep the pipelined loop
+ * body concise.
+ */
+function scoreFusedBatch(
+  wasm: WasmCreatureActivation,
+  costName: string,
+  slice: Float32Array,
+  inputCount: number,
+  creatureUuid: string | undefined,
+): number | null {
+  try {
+    switch (costName) {
+      case "MSE":
+        return wasm.mseSumBatchPacked(slice, inputCount, true);
+      case "MAE":
+        return wasm.maeSumBatchPacked(slice, inputCount, true);
+      case "CROSS_ENTROPY":
+        return wasm.crossEntropySumBatchPacked(slice, inputCount, true);
+      case "MAPE":
+        return wasm.mapeSumBatchPacked(slice, inputCount, true);
+      case "MSLE":
+        return wasm.msleSumBatchPacked(slice, inputCount, true);
+      case "HINGE":
+        return wasm.hingeSumBatchPacked(slice, inputCount, true);
+      default:
+        return null;
+    }
+  } catch (wasmError) {
+    getLogger().warn(
+      `WASM batch scoring failed for creature ` +
+        `${creatureUuid?.substring(0, 8) ?? "unknown"}: ${wasmError}`,
+    );
+    return null;
+  }
+}
+
+/**
  * Evaluate a dataset directory and return the average error.
  * Supports fused WASM scoring for forward-only creatures.
  *
  * Issue #1229: WASM is required by default with no fallback.
  * Issue #2260: Accepts optional pre-cached file list to avoid repeated
  * directory scans in long-lived workers.
+ * Issue #2331: Pipelined double-buffered async I/O overlaps disk reads
+ * with WASM scoring, and pre-opens the next file while scoring the
+ * current one. Deterministic scoring order is preserved.
  */
 export async function evaluateDir(
   creature: Creature,
@@ -459,8 +501,17 @@ export async function evaluateDir(
   );
   const BYTES_PER_BATCH = BYTES_PER_RECORD * BATCH_SIZE;
 
-  const batchBuffer = new Uint8Array(BYTES_PER_BATCH);
-  const batchArray = new Float32Array(batchBuffer.buffer);
+  // Issue #2331: Double-buffer for pipelined I/O — while WASM scores one
+  // buffer, async I/O reads the next batch into the other buffer. This
+  // overlaps disk latency with CPU-bound WASM scoring.
+  const buffers = [
+    new Uint8Array(BYTES_PER_BATCH),
+    new Uint8Array(BYTES_PER_BATCH),
+  ];
+  const arrays = [
+    new Float32Array(buffers[0].buffer),
+    new Float32Array(buffers[1].buffer),
+  ];
 
   const supportedFusedCosts = [
     "MSE",
@@ -480,90 +531,123 @@ export async function evaluateDir(
       costName as typeof supportedFusedCosts[number],
     );
 
-  for (let fileIndx = files.length; fileIndx--;) {
-    const filePath = files[fileIndx];
-    // deno-lint-ignore no-sync-fn-in-async-fn -- Intentional: synchronous I/O for batch processing performance.
-    const file = Deno.openSync(filePath, { read: true });
+  // Issue #2331: Pre-open the next file while scoring the current file to
+  // overlap file-open syscall latency with WASM scoring.
+  let nextFilePromise: Promise<Deno.FsFile> | null = null;
 
-    try {
-      while (true) {
-        const bytesRead = file.readSync(batchBuffer);
-        if (bytesRead === null) break;
-        assert(bytesRead > 0, "Invalid number of bytes read");
-
-        const recordsRead = Math.floor(bytesRead / BYTES_PER_RECORD);
-        assert(
-          bytesRead % BYTES_PER_RECORD === 0,
-          "Invalid number of bytes read",
-        );
-
-        if (useFusedWasm) {
-          const floatsRead = recordsRead * valuesCount;
-          const slice = batchArray.subarray(0, floatsRead);
-          const wasm = creature.cachedWasmActivation!;
-
-          // Issue #2214: Wrap fused WASM batch calls in try-catch so that
-          // a WASM panic (RuntimeError: unreachable) during scoring returns
-          // a fallback error value instead of crashing the worker.
-          try {
-            switch (costName) {
-              case "MSE":
-                error += wasm.mseSumBatchPacked(slice, creature.input, true);
-                break;
-              case "MAE":
-                error += wasm.maeSumBatchPacked(slice, creature.input, true);
-                break;
-              case "CROSS_ENTROPY":
-                error += wasm.crossEntropySumBatchPacked(
-                  slice,
-                  creature.input,
-                  true,
-                );
-                break;
-              case "MAPE":
-                error += wasm.mapeSumBatchPacked(slice, creature.input, true);
-                break;
-              case "MSLE":
-                error += wasm.msleSumBatchPacked(slice, creature.input, true);
-                break;
-              case "HINGE":
-                error += wasm.hingeSumBatchPacked(slice, creature.input, true);
-                break;
-            }
-          } catch (wasmError) {
-            getLogger().warn(
-              `WASM batch scoring failed for creature ` +
-                `${creature.uuid?.substring(0, 8) ?? "unknown"}: ${wasmError}`,
-            );
-            return { error: Number.MAX_SAFE_INTEGER };
-          }
-          count += recordsRead;
-          continue;
-        }
-
-        for (let recordIndex = 0; recordIndex < recordsRead; recordIndex++) {
-          const offset = recordIndex * valuesCount;
-          const inputEnd = offset + creature.input;
-          const observations = batchArray.subarray(offset, inputEnd);
-          const target = batchArray.subarray(inputEnd, offset + valuesCount);
-
-          creature.cachedWasmActivation!.activateIntoWithFeedback(
-            observations,
-            outputBuffer,
-            effectiveFeedbackLoop,
-          );
-          error += cost.calculate(target, outputBuffer);
-
-          // Issue #1620: Additive penalty for out-of-range outputs.
-          if (hasOutputRanges) {
-            error += calculateOutputRangePenalty(outputBuffer, outputRanges!);
-          }
-
-          count++;
-        }
+  try {
+    for (let fileIndx = files.length; fileIndx--;) {
+      // Use the pre-opened file handle if available, otherwise open now.
+      // The awaits below are intentional: pipelined I/O must resolve
+      // the file handle sequentially before processing each file.
+      let file: Deno.FsFile;
+      if (nextFilePromise) {
+        // deno-lint-ignore no-await-in-loop
+        file = await nextFilePromise;
+      } else {
+        // deno-lint-ignore no-await-in-loop
+        file = await Deno.open(files[fileIndx], { read: true });
       }
-    } finally {
-      file.close();
+      nextFilePromise = null;
+
+      // Pre-open the next file while we process this one.
+      if (fileIndx > 0) {
+        nextFilePromise = Deno.open(files[fileIndx - 1], { read: true });
+      }
+
+      try {
+        // Issue #2331: Double-buffered read loop. Start reading into buffer 0,
+        // then alternate: while WASM scores buffer N, read into buffer 1-N.
+        let bufIdx = 0;
+        let readPromise: Promise<number | null> = file.read(buffers[bufIdx]);
+
+        while (true) {
+          // deno-lint-ignore no-await-in-loop -- Intentional: pipelined reads.
+          const bytesRead = await readPromise;
+          if (bytesRead === null) break;
+          assert(bytesRead > 0, "Invalid number of bytes read");
+
+          const recordsRead = Math.floor(bytesRead / BYTES_PER_RECORD);
+          assert(
+            bytesRead % BYTES_PER_RECORD === 0,
+            "Invalid number of bytes read",
+          );
+
+          // Capture a reference to the buffer we just filled.
+          const scoreIdx = bufIdx;
+
+          // Flip to the other buffer and start prefetching the next batch.
+          // The OS begins the read immediately; WASM scoring below runs
+          // concurrently with the kernel I/O.
+          bufIdx = 1 - bufIdx;
+          readPromise = file.read(buffers[bufIdx]);
+
+          // Score the filled buffer synchronously while the next read proceeds.
+          if (useFusedWasm) {
+            const floatsRead = recordsRead * valuesCount;
+            const slice = arrays[scoreIdx].subarray(0, floatsRead);
+
+            // Issue #2214: Wrap fused WASM batch calls in try-catch so that
+            // a WASM panic (RuntimeError: unreachable) during scoring returns
+            // a fallback error value instead of crashing the worker.
+            const batchError = scoreFusedBatch(
+              creature.cachedWasmActivation!,
+              costName,
+              slice,
+              creature.input,
+              creature.uuid,
+            );
+            if (batchError === null) {
+              return { error: Number.MAX_SAFE_INTEGER };
+            }
+            error += batchError;
+            count += recordsRead;
+            continue;
+          }
+
+          const scoreArray = arrays[scoreIdx];
+          for (
+            let recordIndex = 0;
+            recordIndex < recordsRead;
+            recordIndex++
+          ) {
+            const offset = recordIndex * valuesCount;
+            const inputEnd = offset + creature.input;
+            const observations = scoreArray.subarray(offset, inputEnd);
+            const target = scoreArray.subarray(
+              inputEnd,
+              offset + valuesCount,
+            );
+
+            creature.cachedWasmActivation!.activateIntoWithFeedback(
+              observations,
+              outputBuffer,
+              effectiveFeedbackLoop,
+            );
+            error += cost.calculate(target, outputBuffer);
+
+            // Issue #1620: Additive penalty for out-of-range outputs.
+            if (hasOutputRanges) {
+              error += calculateOutputRangePenalty(outputBuffer, outputRanges!);
+            }
+
+            count++;
+          }
+        }
+      } finally {
+        file.close();
+      }
+    }
+  } finally {
+    // Issue #2331: Clean up any pre-opened file handle that was not consumed
+    // (e.g., if an error occurred during scoring).
+    if (nextFilePromise) {
+      try {
+        const pendingFile = await nextFilePromise;
+        pendingFile.close();
+      } catch {
+        // Best-effort cleanup — the file may never have opened.
+      }
     }
   }
 
