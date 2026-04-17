@@ -1,0 +1,34 @@
+## CI Fix: BreedingTimingSplit timing invariant restored
+
+The failing test was:
+
+> `BreedingTimingSplit: timing invariant holds with new fields included`
+> `AssertionError: totalMs (52) should be >= sum (56) - overlap (0)`
+
+### Root cause
+
+Issue #2315 introduced concurrent writeScores I/O with speciation (commit `e7c26b9a`), but `pipelineOverlapMs` in `NeatEvolution.ts` was never updated to account for this new overlap. The formula only tracked two of the three concurrent phase pairs:
+
+1. ✅ Breeding ↔ result processing → `resultProcessingMs`
+2. ❌ **WriteScores I/O ↔ speciation → `speciationMs` was missing**
+3. ✅ Dedup I/O ↔ WASM pre-warming → `preWarmMs`
+
+Because `speciationMs` runs inside the `writeScoresMs` measurement window (speciation executes while the async writeScores promise is in-flight), both durations are counted individually but only one wall-clock window elapses. Without subtracting `speciationMs` from the expected total, the sum of phases exceeded `totalMs` by ~4 ms on CI — beyond the existing 1 ms tolerance.
+
+### Fix
+
+Updated `pipelineOverlapMs` in `src/NEAT/NeatEvolution.ts`:
+
+```typescript
+// Before
+const pipelineOverlapMs = resultProcessingMs + preWarmMs;
+
+// After
+const pipelineOverlapMs = resultProcessingMs + speciationMs + preWarmMs;
+```
+
+The comment was also expanded to document all three concurrent phase pairs.
+
+### Verification
+
+All 4 `BreedingTimingSplit` tests pass, plus 24 tests across `EvolvePhaseTiming`, `EvolvePhaseTiming_Extended`, `ThroughputMetrics`, and `PhasePipelining` — 0 regressions.
