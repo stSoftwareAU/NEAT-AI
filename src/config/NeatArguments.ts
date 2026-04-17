@@ -767,6 +767,20 @@ export interface NeatArguments {
   maxConcurrentDiscoveries: number;
 
   /**
+   * Allow idle fast workers to be borrowed for heavy tasks (discovery/training)
+   * when the heavy pool is saturated, and vice versa.
+   *
+   * Issue #2329: When the heavy pool is fully occupied and the fast pool has
+   * idle workers, those idle fast workers can temporarily run discovery or
+   * training tasks. This reduces idle CPU time and increases generations per
+   * hour on high-core machines.
+   *
+   * Set to `false` to restore the strict pool separation from Issue #2244.
+   * Defaults to `true`.
+   */
+  allowPoolBorrowing: boolean;
+
+  /**
    * MCMC acceptance criterion configuration.
    *
    * Issue #2199: Temperature-based Metropolis-Hastings acceptance

@@ -567,6 +567,9 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       1,
       { integer: true, min: 1 },
     ),
+    // Issue #2329: Allow idle fast workers to be borrowed for heavy tasks
+    allowPoolBorrowing: options.allowPoolBorrowing !== false,
+
     // Issue #2199: Parse MCMC acceptance configuration
     mcmc: parseMcmc(
       opts.mcmc as Record<string, unknown> | undefined,

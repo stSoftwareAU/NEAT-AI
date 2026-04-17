@@ -228,6 +228,48 @@ const config = createNeatConfig({
 });
 ```
 
+### Heavy Task Worker Count (`heavyTaskWorkerCount`)
+
+| Parameter              | Default | Description                                 |
+| ---------------------- | ------- | ------------------------------------------- |
+| `heavyTaskWorkerCount` | `2`     | Workers reserved for discovery and training |
+
+The remaining workers (`threads - heavyTaskWorkerCount`) form the **fast pool**
+used for fitness evaluation and breeding. The heavy pool runs long-running
+discovery and memetic training tasks.
+
+**Recommendations**:
+
+- **Default of 2 is good for most workloads**. Increasing this helps when
+  `trainPerGen` is high or multiple concurrent discoveries are configured.
+- On machines with many cores (24+), consider `3–4` heavy workers if discovery
+  or training queues frequently stall.
+
+### Cross-Pool Borrowing (`allowPoolBorrowing`)
+
+| Parameter            | Default | Description                                              |
+| -------------------- | ------- | -------------------------------------------------------- |
+| `allowPoolBorrowing` | `true`  | Allow idle workers to be borrowed across pool boundaries |
+
+When enabled, idle fast workers can temporarily run heavy tasks (discovery,
+training) when the heavy pool is saturated, and vice versa (idle heavy workers
+already assist with fitness and breeding). This maximises CPU utilisation on
+high-core machines where one pool finishes before the other.
+
+**Recommendations**:
+
+- **Leave enabled** (the default) for maximum throughput.
+- Set to `false` to restore strict pool separation if you observe contention
+  between fast and heavy tasks.
+
+```typescript
+const config = createNeatConfig({
+  threads: 26,
+  heavyTaskWorkerCount: 2,
+  allowPoolBorrowing: true, // default — idle fast workers help heavy tasks
+});
+```
+
 ---
 
 ## 🧩 Memory Management
