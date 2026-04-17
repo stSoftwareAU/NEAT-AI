@@ -20,12 +20,12 @@ evaluation and breeding.
 
 ### Solution
 
-- **Connected adaptive population sizer** to the evolution loop — it now
-  adjusts `effectivePopulationSize` each generation based on species diversity
-  and convergence state.
+- **Connected adaptive population sizer** to the evolution loop — it now adjusts
+  `effectivePopulationSize` each generation based on species diversity and
+  convergence state.
 - **Added `minCreaturesPerWorker`** config (default: 3) that sets a floor of
-  `workerCount × minCreaturesPerWorker` — on a 34-thread machine this ensures
-  at least 102 creatures, giving every worker multiple creatures to evaluate.
+  `workerCount × minCreaturesPerWorker` — on a 34-thread machine this ensures at
+  least 102 creatures, giving every worker multiple creatures to evaluate.
 - **Added `effectivePopulationSize`** state field to `Neat` class, initialised
   from `config.populationSize` and updated each generation.
 - **Added `PopulationResizedEvent`** training event emitted when the effective
@@ -70,7 +70,8 @@ group convergence-simulation
 The computation is negligible (~4ns) relative to generation times of hundreds of
 milliseconds.
 
-- **Full quality gate**: 5892 tests passed, 0 failed, with `quality.sh --skip-discovery --skip-wasm`
+- **Full quality gate**: 5892 tests passed, 0 failed, with
+  `quality.sh --skip-discovery --skip-wasm`
 
 ## Test Plan
 
