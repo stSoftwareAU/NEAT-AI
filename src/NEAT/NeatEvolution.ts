@@ -519,9 +519,20 @@ export async function evolve(
   // while workers breed. These phases are independent: result processing reads
   // completed task queues from the previous generation; plateau/MCMC reads
   // neat-level state that breeding does not modify.
-  const breedingPromise = parallelBreeding.breedBatch(newPopSize);
+  // Issue #2323: Wrap the promise to capture when workers actually complete,
+  // distinguishing pure breeding duration from wall-clock breedingMs.
+  let breedingWorkerEndMs = 0;
+  const rawBreedingPromise = parallelBreeding.breedBatch(newPopSize);
+  const breedingPromise = rawBreedingPromise.then((result) => {
+    breedingWorkerEndMs = Date.now();
+    return result;
+  });
 
   const breed = new Breed(genus, neat.config);
+
+  // Issue #2323: Start timing main-thread overlap work (runs concurrently
+  // with worker breeding).
+  const overlapStartMs = Date.now();
 
   // Issue #2314: Process completed results while workers breed.
   // Issue #2239: Time result processing phase
@@ -568,11 +579,20 @@ export async function evolve(
   // when needed after mutation, without waiting for breeding to complete).
   const deDuplicator = new DeDuplicator(breed, mutator);
 
+  // Issue #2323: End main-thread overlap measurement before awaiting workers.
+  const mainThreadOverlapMs = Date.now() - overlapStartMs;
+
   // Issue #2314: Await breeding results now that all overlapped main-thread
   // work is complete.
   const offspringBatch = await breedingPromise;
   newPopulation.push(...offspringBatch);
   const breedingMs = Date.now() - breedingStartMs;
+  // Issue #2323: Compute pure worker breeding duration. If the .then()
+  // callback has not fired yet (breedingWorkerEndMs is still 0), the worker
+  // completed synchronously with the await — use the current time.
+  const breedingWorkerMs =
+    (breedingWorkerEndMs > 0 ? breedingWorkerEndMs : Date.now()) -
+    breedingStartMs;
   // Issue #2312: Snapshot after breeding — fast workers should be active
   const breedingUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
 
@@ -739,6 +759,9 @@ export async function evolve(
   const phaseTiming: GenerationPhaseTiming = {
     fitnessMs,
     breedingMs,
+    // Issue #2323: Split breeding timing into worker vs main-thread overlap
+    breedingWorkerMs,
+    mainThreadOverlapMs,
     resultProcessingMs,
     totalMs,
     memoryEvictionMs: memoryEvictionMs > 0 ? memoryEvictionMs : undefined,
@@ -769,8 +792,10 @@ export async function evolve(
       ? ` pipelineOverlap=${pipelineOverlapMs}ms`
       : "";
     getLogger().info(
-      `[Timing] fitness=${fitnessMs}ms breeding=${breedingMs}ms ` +
-        `resultProcessing=${resultProcessingMs}ms${memTag}${preWarmTag}` +
+      `[Timing] fitness=${fitnessMs}ms breeding=${breedingMs}ms` +
+        ` breedingWorker=${breedingWorkerMs}ms` +
+        ` mainThreadOverlap=${mainThreadOverlapMs}ms` +
+        ` resultProcessing=${resultProcessingMs}ms${memTag}${preWarmTag}` +
         `${overlapTag}` +
         ` sort=${sortMs}ms writeScores=${writeScoresMs}ms` +
         ` mutation=${mutationMs}ms deduplication=${deduplicationMs}ms` +
