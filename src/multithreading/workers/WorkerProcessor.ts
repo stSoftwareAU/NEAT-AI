@@ -5,6 +5,7 @@ import type {
   DiscoverResult,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import { trainDir } from "@architecture/Training.ts";
+import { BreedingSubPhaseAccumulator } from "@breed/BreedingSubPhaseAccumulator.ts";
 import { Costs } from "@costs";
 import type { CostInterface } from "@costs/CostInterface.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
@@ -404,10 +405,14 @@ export class WorkerProcessor {
           "../../architecture/Offspring.ts"
         );
 
+        // Issue #2324: Capture sub-phase timing in worker breeding
+        const acc = new BreedingSubPhaseAccumulator();
+
         offspring = Offspring.breed(mother, father, {
           geneticCompatibilityThreshold:
             data.breed.geneticCompatibilityThreshold,
           forwardOnly: data.breed.forwardOnly,
+          subPhaseAccumulator: acc,
         });
 
         if (offspring) {
@@ -417,6 +422,7 @@ export class WorkerProcessor {
             breed: {
               offspring: offspring.exportJSON(),
               success: true,
+              subPhaseTiming: acc.toTiming(),
             },
           };
         } else {

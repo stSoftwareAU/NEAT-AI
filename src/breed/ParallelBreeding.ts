@@ -121,9 +121,9 @@ export class ParallelBreeding {
 
     if (this.workers && this.workers.length > 0) {
       // Use worker pool for true parallelism
-      // Note: Sub-phase timing within workers is not captured because
-      // Offspring.breed() runs in a separate thread without accumulator access.
-      results = await this.breedWithWorkers(parentPairs, config);
+      // Issue #2324: Workers now capture sub-phase timing and return it
+      // in the response. The main thread aggregates these into the accumulator.
+      results = await this.breedWithWorkers(parentPairs, config, acc);
     } else {
       // Fallback to main thread with microtask scheduling
       const breedingPromises = parentPairs.map((pair) =>
@@ -154,14 +154,18 @@ export class ParallelBreeding {
    *
    * Issue #1585: Replaced recursive processNext with while loop to avoid
    * stack overflow and reduce memory usage for large populations.
+   * Issue #2324: Accepts an accumulator to aggregate sub-phase timing
+   * returned from worker breeding responses.
    *
    * @param parentPairs - Array of parent pairs to breed
    * @param config - NEAT configuration
+   * @param acc - Accumulator for aggregating worker sub-phase timing
    * @returns Array of offspring creatures (undefined for failures)
    */
   private async breedWithWorkers(
     parentPairs: ParentPair[],
     config: NeatConfig,
+    acc: BreedingSubPhaseAccumulator,
   ): Promise<(Creature | undefined)[]> {
     const workers = this.workers!;
     const queue = [...parentPairs];
@@ -202,6 +206,17 @@ export class ParallelBreeding {
             // Apply memetic discovery on the main thread
             if (child && !child.memetic) {
               discover(pair.mother, child);
+            }
+
+            // Issue #2324: Aggregate sub-phase timing from worker response
+            if (response.breed.subPhaseTiming) {
+              const t = response.breed.subPhaseTiming;
+              acc.geneticCompatibilityMs += t.geneticCompatibilityMs;
+              acc.alignmentCrossoverMs += t.alignmentCrossoverMs;
+              acc.sortNeuronsMs += t.sortNeuronsMs;
+              acc.batchConnectionMs += t.batchConnectionMs;
+              acc.postBreedingRepairMs += t.postBreedingRepairMs;
+              acc.offspringCount += t.offspringCount;
             }
 
             results[currentIndex] = child;
