@@ -6,8 +6,8 @@ where idle heavy workers already assist fitness and breeding. Closes #2329.
 
 When `allowPoolBorrowing` is enabled (the default), `scheduleDiscovery()` and
 `scheduleTraining()` fall back to idle fast-pool workers when no heavy worker is
-available. This reduces wasted CPU time on high-core machines where the fast pool
-finishes fitness/breeding quickly but the heavy pool is still processing
+available. This reduces wasted CPU time on high-core machines where the fast
+pool finishes fitness/breeding quickly but the heavy pool is still processing
 long-running discovery or training tasks.
 
 The feature can be disabled via `allowPoolBorrowing: false` for a clear rollback
@@ -26,9 +26,9 @@ path, restoring the strict pool separation from Issue #2244.
 ## Evidence
 
 This is a backend scheduling change with no UI. The implementation is validated
-via unit tests that exercise the pool borrowing logic directly. The 1 flaky
-test failure (`PhasePipelining`) is a pre-existing timing issue unrelated to
-this change (passes in isolation).
+via unit tests that exercise the pool borrowing logic directly. The 1 flaky test
+failure (`PhasePipelining`) is a pre-existing timing issue unrelated to this
+change (passes in isolation).
 
 ## Test Plan
 
