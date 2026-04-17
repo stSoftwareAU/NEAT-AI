@@ -35,6 +35,7 @@ import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 // Extracted modules
 import * as evolution from "@neat/NeatEvolution.ts";
+import type { EvolveResult } from "@neat/NeatEvolution.ts";
 import * as scheduling from "@neat/NeatScheduling.ts";
 
 /**
@@ -439,7 +440,7 @@ export class Neat {
 
   evolve(
     previousFittest?: Creature,
-  ): ReturnType<typeof evolution.evolve> {
+  ): Promise<EvolveResult> {
     return evolution.evolve(this, previousFittest);
   }
 
