@@ -13,7 +13,7 @@ import type { GenerationThroughputMetrics } from "@config/TrainingEvent.ts";
 /**
  * Inputs required to build a throughput metrics payload for a single
  * generation. All fields are either raw wall-clock durations or cumulative
- * counters that have been computed as deltas over the generation window.
+ * counters with deltas computed over the generation window.
  */
 export interface ThroughputMetricsInput {
   /** Total wall-clock duration of the generation in ms. */
