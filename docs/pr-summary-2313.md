@@ -1,13 +1,25 @@
 ## Summary
 
-Implement dynamic worker pool membership so idle heavy workers can temporarily assist fitness evaluation and breeding phases. When heavy workers have no pending discovery or training tasks, they are borrowed by the fast pool for the duration of fitness evaluation and breeding, then naturally returned before any heavy task is scheduled. Closes #2313.
+Implement dynamic worker pool membership so idle heavy workers can temporarily
+assist fitness evaluation and breeding phases. When heavy workers have no
+pending discovery or training tasks, they are borrowed by the fast pool for the
+duration of fitness evaluation and breeding, then naturally returned before any
+heavy task is scheduled. Closes #2313.
 
 ## Changes
 
-- **`WorkerPool.getIdleWorkers()`**: New method returning workers that are not busy and have no queued tasks, used to identify heavy workers available for temporary loan.
-- **`Fitness.calculate()` — `additionalWorkers` parameter**: Accepts extra workers (idle heavy-pool) to combine with the dedicated fast-pool workers for a single evaluation pass.
-- **`NeatEvolution.evolve()`**: Before fitness evaluation and breeding, queries the heavy pool for idle workers and passes them as additional capacity. Verbose logging reports when heavy workers are borrowed.
-- **Benchmark**: 200-creature population, 8 fast + 2 idle heavy workers vs 8 fast only → **1.44× faster** (44% improvement in fitness evaluation throughput).
+- **`WorkerPool.getIdleWorkers()`**: New method returning workers that are not
+  busy and have no queued tasks, used to identify heavy workers available for
+  temporary loan.
+- **`Fitness.calculate()` — `additionalWorkers` parameter**: Accepts extra
+  workers (idle heavy-pool) to combine with the dedicated fast-pool workers for
+  a single evaluation pass.
+- **`NeatEvolution.evolve()`**: Before fitness evaluation and breeding, queries
+  the heavy pool for idle workers and passes them as additional capacity.
+  Verbose logging reports when heavy workers are borrowed.
+- **Benchmark**: 200-creature population, 8 fast + 2 idle heavy workers vs 8
+  fast only → **1.44× faster** (44% improvement in fitness evaluation
+  throughput).
 
 ## Evidence — Benchmark Results
 
@@ -20,7 +32,9 @@ summary
   Baseline is 1.44x slower than dynamic pooling
 ```
 
-No race conditions: heavy tasks (discovery/training) are scheduled in the evolution loop AFTER fitness and breeding complete, so borrowed heavy workers are naturally returned before any heavy task begins.
+No race conditions: heavy tasks (discovery/training) are scheduled in the
+evolution loop AFTER fitness and breeding complete, so borrowed heavy workers
+are naturally returned before any heavy task begins.
 
 ## Test Plan
 
