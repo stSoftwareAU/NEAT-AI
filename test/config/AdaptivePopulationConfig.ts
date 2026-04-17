@@ -20,6 +20,10 @@ Deno.test("AdaptivePopulationConfig - defaults are applied", () => {
     config.adaptivePopulation.adjustmentRate,
     DEFAULT_ADAPTIVE_POPULATION_CONFIG.adjustmentRate,
   );
+  assertEquals(
+    config.adaptivePopulation.minCreaturesPerWorker,
+    DEFAULT_ADAPTIVE_POPULATION_CONFIG.minCreaturesPerWorker,
+  );
 });
 
 Deno.test("AdaptivePopulationConfig - custom values override defaults", () => {
@@ -29,12 +33,14 @@ Deno.test("AdaptivePopulationConfig - custom values override defaults", () => {
       minPopulationFraction: 0.3,
       maxPopulationFraction: 3.0,
       adjustmentRate: 0.2,
+      minCreaturesPerWorker: 5,
     },
   });
   assertEquals(config.adaptivePopulation.enabled, true);
   assertEquals(config.adaptivePopulation.minPopulationFraction, 0.3);
   assertEquals(config.adaptivePopulation.maxPopulationFraction, 3.0);
   assertEquals(config.adaptivePopulation.adjustmentRate, 0.2);
+  assertEquals(config.adaptivePopulation.minCreaturesPerWorker, 5);
 });
 
 Deno.test("AdaptivePopulationConfig - disabled by default", () => {
@@ -46,7 +52,23 @@ Deno.test("AdaptivePopulationConfig - string coercion for CLI", () => {
   const config = createNeatConfig({
     adaptivePopulation: {
       adjustmentRate: "0.15" as unknown as number,
+      minCreaturesPerWorker: "4" as unknown as number,
     },
   });
   assertEquals(config.adaptivePopulation.adjustmentRate, 0.15);
+  assertEquals(config.adaptivePopulation.minCreaturesPerWorker, 4);
+});
+
+Deno.test("AdaptivePopulationConfig - minCreaturesPerWorker defaults to 3", () => {
+  const config = createNeatConfig({});
+  assertEquals(config.adaptivePopulation.minCreaturesPerWorker, 3);
+});
+
+Deno.test("AdaptivePopulationConfig - minCreaturesPerWorker can be 0 to disable floor", () => {
+  const config = createNeatConfig({
+    adaptivePopulation: {
+      minCreaturesPerWorker: 0,
+    },
+  });
+  assertEquals(config.adaptivePopulation.minCreaturesPerWorker, 0);
 });

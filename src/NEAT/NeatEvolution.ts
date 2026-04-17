@@ -41,6 +41,7 @@ import { logReplaySummary } from "@neat/NeatScheduling.ts";
 import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 import { preWarmWasmCache } from "@wasm/WasmCachePreWarmer.ts";
 import type { WorkerPool } from "@multithreading/WorkerPool.ts";
+import { computeAdaptivePopulationSize } from "@neat/AdaptivePopulationSizer.ts";
 
 /**
  * Captures a point-in-time worker utilisation snapshot from the fast and heavy
@@ -435,7 +436,68 @@ export async function evolve(
     genus,
   );
 
-  const newPopSize = neat.config.populationSize -
+  // Issue #2316: Compute effective population size via adaptive sizing.
+  // When adaptive sizing is disabled, this returns the base config value.
+  const adaptiveConfig = neat.config.adaptivePopulation;
+  const previousEffectiveSize = neat.effectivePopulationSize;
+  let effectivePopSize = computeAdaptivePopulationSize(
+    neat.config.populationSize,
+    previousEffectiveSize,
+    genus.speciesMap.size,
+    neat.plateauDetector.isOnPlateau(),
+    adaptiveConfig,
+  );
+
+  // Issue #2316: Apply worker-aware floor to ensure enough creatures per
+  // worker for good CPU utilisation. On machines with many cores (e.g. 32),
+  // a population of 50 means each worker gets ~1.5 creatures — too few for
+  // even work distribution when evaluation times vary.
+  if (adaptiveConfig.enabled && adaptiveConfig.minCreaturesPerWorker > 0) {
+    const workerCount = neat.fastWorkerHandlers.length;
+    const workerFloor = workerCount * adaptiveConfig.minCreaturesPerWorker;
+    effectivePopSize = Math.max(effectivePopSize, workerFloor);
+  }
+
+  neat.effectivePopulationSize = effectivePopSize;
+
+  // Issue #2316: Emit population_resized event and log when size changes.
+  if (effectivePopSize !== previousEffectiveSize) {
+    const diversityBased = effectivePopSize !==
+      neat.config.populationSize;
+    const workerFloorApplied = adaptiveConfig.enabled &&
+      adaptiveConfig.minCreaturesPerWorker > 0 &&
+      effectivePopSize >=
+        neat.fastWorkerHandlers.length *
+          adaptiveConfig.minCreaturesPerWorker;
+
+    const reason = diversityBased && workerFloorApplied
+      ? "combined" as const
+      : workerFloorApplied
+      ? "worker_floor" as const
+      : effectivePopSize > previousEffectiveSize
+      ? "low_diversity" as const
+      : "high_diversity_plateau" as const;
+
+    emitTrainingEvent(neat.config.onTrainingEvent, {
+      kind: "population_resized",
+      timestamp: new Date().toISOString(),
+      previousSize: previousEffectiveSize,
+      newSize: effectivePopSize,
+      baseSize: neat.config.populationSize,
+      reason,
+    });
+
+    if (neat.config.verbose) {
+      getLogger().info(
+        `[Adaptive] Population size ${previousEffectiveSize} → ${effectivePopSize} ` +
+          `(base: ${neat.config.populationSize}, reason: ${reason}, ` +
+          `species: ${genus.speciesMap.size}, ` +
+          `workers: ${neat.fastWorkerHandlers.length})`,
+      );
+    }
+  }
+
+  const newPopSize = effectivePopSize -
     elitists.length -
     dnaPopulation.length -
     neat.trainingComplete.length -

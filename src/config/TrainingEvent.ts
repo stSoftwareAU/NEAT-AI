@@ -247,6 +247,37 @@ export interface SpeciesAdjustedEvent {
 }
 
 /**
+ * Emitted when adaptive population sizing adjusts the effective population size.
+ *
+ * Issue #2316: Reports population size changes driven by diversity-based
+ * adaptive sizing and/or the worker-aware minimum floor. Only emitted when
+ * the effective size actually changes from the previous generation.
+ */
+export interface PopulationResizedEvent {
+  readonly kind: "population_resized";
+  /** ISO-8601 timestamp when the event was emitted. */
+  readonly timestamp: string;
+  /** The previous effective population size. */
+  readonly previousSize: number;
+  /** The new effective population size. */
+  readonly newSize: number;
+  /** The configured base population size. */
+  readonly baseSize: number;
+  /**
+   * The reason for the size change:
+   * - "low_diversity": population grew because diversity was below threshold.
+   * - "high_diversity_plateau": population shrank due to high diversity + plateau.
+   * - "worker_floor": population increased to meet the worker-aware minimum.
+   * - "combined": multiple factors contributed to the change.
+   */
+  readonly reason:
+    | "low_diversity"
+    | "high_diversity_plateau"
+    | "worker_floor"
+    | "combined";
+}
+
+/**
  * Discriminated union of all training lifecycle events.
  *
  * Use the `kind` field to narrow the type:
@@ -268,7 +299,8 @@ export type TrainingEvent =
   | PlateauDetectedEvent
   | DiscoveryCompleteEvent
   | MemoryPressureEvent
-  | SpeciesAdjustedEvent;
+  | SpeciesAdjustedEvent
+  | PopulationResizedEvent;
 
 /**
  * Callback type for receiving structured training lifecycle events.

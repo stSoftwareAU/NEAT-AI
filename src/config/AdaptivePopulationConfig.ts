@@ -3,6 +3,9 @@
  *
  * Issue #1863: Automatically adjust population size based on
  * diversity metrics and convergence progress.
+ *
+ * Issue #2316: Added worker-aware minimum floor to ensure enough
+ * creatures per worker for good CPU utilisation at production scale.
  */
 
 /**
@@ -43,6 +46,22 @@ export interface AdaptivePopulationConfig {
    * Range: 0..1. Default: 0.1 (10% per generation).
    */
   adjustmentRate?: number;
+
+  /**
+   * Minimum number of creatures per worker thread.
+   *
+   * Issue #2316: When adaptive population sizing is enabled, the effective
+   * population size will never drop below `workerCount * minCreaturesPerWorker`.
+   * This ensures enough parallel work to keep all workers busy during fitness
+   * evaluation, preventing idle workers on machines with many cores.
+   *
+   * On a 32-core machine (34 threads), a default of 3 means population won't
+   * drop below 102, ensuring each worker always has multiple creatures to
+   * evaluate.
+   *
+   * Default: 3. Set to 0 to disable the worker-aware floor.
+   */
+  minCreaturesPerWorker?: number;
 }
 
 /**
@@ -63,4 +82,5 @@ export const DEFAULT_ADAPTIVE_POPULATION_CONFIG:
     lowDiversityThreshold: 0.3,
     highDiversityThreshold: 0.8,
     adjustmentRate: 0.1,
+    minCreaturesPerWorker: 3,
   };
