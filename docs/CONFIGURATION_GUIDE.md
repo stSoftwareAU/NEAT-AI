@@ -223,6 +223,7 @@ const config = createNeatConfig({
 | `adaptivePopulation.enabled`                | `boolean` | `false`  | Enable diversity-based population sizing           |
 | `adaptivePopulation.lowDiversityThreshold`  | `number`  | `0.3`    | Diversity below this grows population              |
 | `adaptivePopulation.highDiversityThreshold` | `number`  | `0.8`    | Diversity above this may shrink population         |
+| `adaptivePopulation.minCreaturesPerWorker`  | `number`  | `3`      | Worker-aware floor: min creatures per worker       |
 
 ### 🧪 Synthetic Synapses
 
@@ -1132,6 +1133,11 @@ metrics. When diversity drops below a threshold the population grows to
 encourage exploration. When diversity is high and fitness is stagnating, the
 population can shrink to focus resources on the most promising individuals.
 
+Issue #2316: Added worker-aware minimum floor to ensure enough creatures per
+worker for good CPU utilisation at production scale. On machines with many cores
+(e.g. 32-core production clusters), the default population of 50 means each
+worker gets only ~1.5 creatures — too few for even work distribution.
+
 Pass as `adaptivePopulation` in options.
 
 ```ts
@@ -1141,6 +1147,7 @@ const config = createNeatConfig({
     enabled: true,
     minPopulationFraction: 0.5, // never below 50 creatures
     maxPopulationFraction: 2.0, // can grow up to 200 creatures
+    minCreaturesPerWorker: 3, // ensure enough work per worker
   },
 });
 ```
@@ -1153,6 +1160,7 @@ const config = createNeatConfig({
 | `lowDiversityThreshold`  | `number`  | `0.3`   | Diversity level below which population grows (0–1)                        |
 | `highDiversityThreshold` | `number`  | `0.8`   | Diversity level above which population may shrink during stagnation (0–1) |
 | `adjustmentRate`         | `number`  | `0.1`   | Maximum population change per generation as a fraction (0–1)              |
+| `minCreaturesPerWorker`  | `number`  | `3`     | Worker-aware floor: minimum creatures per worker thread (0 to disable)    |
 
 ---
 
@@ -1391,6 +1399,7 @@ const config = createNeatConfig({
     enabled: true,
     lowDiversityThreshold: 0.3,
     highDiversityThreshold: 0.8,
+    minCreaturesPerWorker: 3, // ensure enough work per worker
   },
 });
 ```

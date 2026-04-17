@@ -114,6 +114,15 @@ export class Neat {
    */
   readonly workerPool: WorkerPool;
 
+  /**
+   * Current effective population size, adjusted by adaptive population sizing.
+   *
+   * Issue #2316: Tracks the population size across generations when adaptive
+   * sizing is enabled. Initialised to `config.populationSize` and updated
+   * each generation by `computeAdaptivePopulationSize()`.
+   */
+  effectivePopulationSize: number;
+
   /** Data directory for discovery replay (Issue #997) */
   dataDir?: string;
 
@@ -197,6 +206,10 @@ export class Neat {
     );
 
     this.discoveryReplayQueue = new DiscoveryReplayQueue();
+
+    // Issue #2316: Initialise effective population size from config.
+    // Updated each generation when adaptive population sizing is enabled.
+    this.effectivePopulationSize = this.config.populationSize;
 
     const partitioned = fastWorkers !== undefined &&
       fastWorkers.length < this.workers.length;

@@ -730,6 +730,12 @@ export function parseAdaptivePopulation(
       d.adjustmentRate,
       { minExclusive: 0, max: 1 },
     ),
+    minCreaturesPerWorker: parseNumber(
+      "Adaptive population minCreaturesPerWorker",
+      overrides?.minCreaturesPerWorker,
+      d.minCreaturesPerWorker,
+      { integer: true, min: 0 },
+    ),
   } as RequiredAdaptivePopulationConfig;
 }
 
