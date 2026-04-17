@@ -20,6 +20,7 @@ async function collectGenerationEvents(
   threads = 1,
   populationSize = 10,
   iterations = 3,
+  targetError = 0.001,
 ): Promise<GenerationCompleteEvent[]> {
   const events: GenerationCompleteEvent[] = [];
 
@@ -32,7 +33,7 @@ async function collectGenerationEvents(
   await creature.evolveDataSet(trainingSet, {
     mutation: Mutation.FFW,
     iterations,
-    targetError: 0.001,
+    targetError,
     populationSize,
     threads,
     onTrainingEvent: (event: TrainingEvent) => {
@@ -208,7 +209,10 @@ Deno.test("ThroughputMetrics - fastBusyMs is non-decreasing across generations f
   // The cumulative busy aggregator is reset per generation (delta), so we
   // cannot assert monotonicity of the delta itself — only that each delta
   // is non-negative.
-  const events = await collectGenerationEvents(1, 10, 5);
+  // Pass targetError=0 to prevent early stopping (only halts if error is
+  // exactly zero, which is effectively impossible), ensuring all iterations
+  // run and we receive multiple generation_complete events.
+  const events = await collectGenerationEvents(1, 10, 5, 0);
   assertGreater(events.length, 1);
 
   for (const event of events) {
