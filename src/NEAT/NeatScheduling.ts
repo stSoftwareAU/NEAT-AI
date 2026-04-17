@@ -58,18 +58,31 @@ export function scheduleDiscovery(
 
   const uuid = CreatureUtil.makeUUID(creature);
 
-  // Issue #2244: Heavy pool only — never steal fast (fitness) workers.
-  const w = neat.heavyWorkerPool.selectWorker();
+  // Issue #2244: Prefer heavy pool for discovery tasks.
+  // Issue #2329: When heavy pool is saturated and allowPoolBorrowing is
+  // enabled, borrow an idle fast worker to reduce idle CPU time.
+  let w = neat.heavyWorkerPool.selectWorker();
+  let borrowedFromFast = false;
+  if (!w && neat.config.allowPoolBorrowing) {
+    const idleFastWorkers = neat.fastWorkerPool !== neat.heavyWorkerPool
+      ? neat.fastWorkerPool.getIdleWorkers()
+      : [];
+    if (idleFastWorkers.length > 0) {
+      w = idleFastWorkers[0];
+      borrowedFromFast = true;
+    }
+  }
   if (!w) {
     getLogger().warn("[Neat] No workers available for discovery");
     return;
   }
 
   if (neat.config.verbose) {
+    const borrowTag = borrowedFromFast ? " (borrowed from fast pool)" : "";
     getLogger().info(
       `Discovery ${
         blue(uuid.substring(Math.max(0, uuid.length - 8)))
-      } scheduled`,
+      } scheduled${borrowTag}`,
     );
   }
 
@@ -197,18 +210,31 @@ export function scheduleTraining(
     }
   }
 
-  // Issue #2244: Heavy pool only — never steal fast (fitness) workers.
-  const w = neat.heavyWorkerPool.selectWorker();
+  // Issue #2244: Prefer heavy pool for training tasks.
+  // Issue #2329: When heavy pool is saturated and allowPoolBorrowing is
+  // enabled, borrow an idle fast worker to reduce idle CPU time.
+  let w = neat.heavyWorkerPool.selectWorker();
+  let borrowedFromFast = false;
+  if (!w && neat.config.allowPoolBorrowing) {
+    const idleFastWorkers = neat.fastWorkerPool !== neat.heavyWorkerPool
+      ? neat.fastWorkerPool.getIdleWorkers()
+      : [];
+    if (idleFastWorkers.length > 0) {
+      w = idleFastWorkers[0];
+      borrowedFromFast = true;
+    }
+  }
   if (!w) {
     getLogger().warn("[Neat] No workers available for training");
     return;
   }
 
   if (neat.config.verbose) {
+    const borrowTag = borrowedFromFast ? " (borrowed from fast pool)" : "";
     getLogger().info(
       `Training ${
         blue(uuid.substring(Math.max(0, uuid.length - 8)))
-      } scheduled`,
+      } scheduled${borrowTag}`,
     );
   }
 
