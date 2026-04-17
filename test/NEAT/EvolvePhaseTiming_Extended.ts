@@ -220,6 +220,9 @@ Deno.test("EvolvePhaseTiming: all timing fields are numbers or undefined", async
       "checkpointWriteMs",
       "preWarmMs",
       "pipelineOverlapMs",
+      // Issue #2323: Breeding timing split fields
+      "breedingWorkerMs",
+      "mainThreadOverlapMs",
     ];
     for (const field of optionalFields) {
       const value = timing[field];

@@ -93,6 +93,20 @@ export interface GenerationPhaseTiming {
   readonly fitnessMs: number;
   /** Time spent on parallel breeding (parallelBreeding.breedBatch) in ms. */
   readonly breedingMs: number;
+  /**
+   * Actual worker/breeding duration in ms, measured from when breedBatch()
+   * was called to when its promise resolved.
+   * Issue #2323: Distinguishes pure crossover/alignment cost from the
+   * wall-clock breedingMs which includes overlapped main-thread work.
+   */
+  readonly breedingWorkerMs?: number;
+  /**
+   * Main-thread work done concurrently with worker breeding in ms.
+   * Issue #2323: Captures result processing, plateau detection, MCMC
+   * configuration, and mutator/deduplicator setup that run while workers
+   * breed. This is the overlap duration before the breeding await.
+   */
+  readonly mainThreadOverlapMs?: number;
   /** Time spent processing completed training/discovery results in ms. */
   readonly resultProcessingMs: number;
   /** Total time for the entire evolve() call in ms. */
