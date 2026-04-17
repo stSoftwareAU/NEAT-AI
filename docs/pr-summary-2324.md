@@ -20,14 +20,15 @@ neuron sort, batch connections, post-breeding repair).
   aggregate sub-phase timing from each successful worker response back into the
   main-thread accumulator before freezing it into `lastBreedingSubPhases`.
 
-The aggregated timing flows into `generation_complete.phaseTiming.breedingSubPhases`
-unchanged, so existing consumers (benchmark/profile scripts) automatically gain
-worker-path sub-phase percentages.
+The aggregated timing flows into
+`generation_complete.phaseTiming.breedingSubPhases` unchanged, so existing
+consumers (benchmark/profile scripts) automatically gain worker-path sub-phase
+percentages.
 
 ## Evidence
 
-This is a backend/telemetry change with no UI. Evidence is provided via the
-test results below.
+This is a backend/telemetry change with no UI. Evidence is provided via the test
+results below.
 
 ## Test Plan
 
