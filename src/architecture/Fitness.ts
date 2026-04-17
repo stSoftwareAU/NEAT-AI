@@ -37,6 +37,16 @@ export class Fitness {
   private feedbackLoop: boolean;
   private evalConfig: RequiredParallelEvaluationConfig;
 
+  /**
+   * Peak pending-task depth observed on the fast pool during the most recent
+   * `calculate()` call.
+   *
+   * Issue #2330: Captured at fitness start — when the shared work-stealing
+   * queue has its maximum depth — so throughput diagnostics can report how
+   * deep the backlog became without adding overhead inside the hot loop.
+   */
+  lastQueueMaxDepth = 0;
+
   constructor(
     workers: WorkerHandler[],
     growth: number,
@@ -86,8 +96,15 @@ export class Fitness {
     }
 
     if (uniqueQueue.length === 0) {
+      this.lastQueueMaxDepth = 0;
       return;
     }
+
+    // Issue #2330: Record peak pending-task depth before workers drain the
+    // queue. The shared work-stealing queue starts at its maximum size and
+    // shrinks monotonically, so the initial `uniqueQueue.length` is the
+    // peak backlog for the fast pool during this fitness phase.
+    this.lastQueueMaxDepth = uniqueQueue.length;
 
     // Issue #1862: Sort by topology hash to cluster same-topology creatures.
     // This improves WASM compilation cache hit rates because workers pull

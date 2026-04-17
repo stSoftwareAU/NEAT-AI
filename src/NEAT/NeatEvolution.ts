@@ -33,11 +33,13 @@ import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import type {
   GenerationPhaseTiming,
+  GenerationThroughputMetrics,
   PhaseWorkerUtilisation,
   WorkerUtilisationSnapshot,
 } from "@config/TrainingEvent.ts";
 import type { Neat } from "@neat/Neat.ts";
 import { logReplaySummary } from "@neat/NeatScheduling.ts";
+import { computeThroughputMetrics } from "@neat/ThroughputMetrics.ts";
 import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 import { preWarmWasmCache } from "@wasm/WasmCachePreWarmer.ts";
 import type { WorkerPool } from "@multithreading/WorkerPool.ts";
@@ -109,16 +111,13 @@ function computeOverallCpuUtilisation(
 }
 
 /**
- * Evaluates, selects, breeds and mutates the population.
+ * The result returned by a single call to `evolve()`.
  *
- * @param neat - The Neat instance to evolve
- * @param previousFittest - The fittest creature from the previous generation
- * @returns Evolution results including fittest creature, average score, and plateau status
+ * Issue #2330: Named export so that `Neat.ts` can reference it explicitly,
+ * avoiding potential circular-type-resolution issues that arise from using
+ * `ReturnType<typeof evolution.evolve>` across a circular module boundary.
  */
-export async function evolve(
-  neat: Neat,
-  previousFittest?: Creature,
-): Promise<{
+export interface EvolveResult {
   fittest: Creature;
   averageScore: number;
   plateau: {
@@ -128,7 +127,21 @@ export async function evolve(
     mutationMultiplier: number;
   };
   phaseTiming: GenerationPhaseTiming;
-}> {
+  /** Compact throughput counters for this generation. Issue #2330. */
+  throughput: GenerationThroughputMetrics;
+}
+
+/**
+ * Evaluates, selects, breeds and mutates the population.
+ *
+ * @param neat - The Neat instance to evolve
+ * @param previousFittest - The fittest creature from the previous generation
+ * @returns Evolution results including fittest creature, average score, and plateau status
+ */
+export async function evolve(
+  neat: Neat,
+  previousFittest?: Creature,
+): Promise<EvolveResult> {
   // Issue #2239: Per-generation timing diagnostics
   const evolveStartMs = Date.now();
 
@@ -159,6 +172,19 @@ export async function evolve(
   const fastPool = neat.fastWorkerPool;
   const heavyPool = neat.heavyWorkerPool;
 
+  // Issue #2330: Snapshot cumulative worker busy time so we can derive the
+  // per-generation delta without per-task hooks in hot paths.
+  const fastBusyStartMs = fastPool.getTotalBusyMs();
+  const heavyBusyStartMs = heavyPool === fastPool
+    ? fastBusyStartMs
+    : heavyPool.getTotalBusyMs();
+
+  // Issue #2330: Track peak heavy-pool backlog across the generation. The
+  // backlog is the sum of in-flight discovery and training tasks, which are
+  // long-running and may persist across generations.
+  let heavyQueueMaxDepth = neat.discoveryInProgress.size +
+    neat.trainingInProgress.size;
+
   // Issue #2313: Borrow idle heavy workers for fitness evaluation.
   // Heavy workers that have no pending discovery or training tasks can
   // temporarily assist the fast pool, improving CPU utilisation. This is
@@ -180,6 +206,13 @@ export async function evolve(
   const fitnessMs = Date.now() - fitnessStartMs;
   // Issue #2312: Snapshot after fitness — workers should be heavily utilised
   const fitnessUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
+
+  // Issue #2330: Heavy pool may have picked up new discovery/training tasks
+  // scheduled from previous generations during fitness; refresh the peak.
+  heavyQueueMaxDepth = Math.max(
+    heavyQueueMaxDepth,
+    neat.discoveryInProgress.size + neat.trainingInProgress.size,
+  );
 
   // Issue #2274: Time score sorting phase
   const sortStartMs = Date.now();
@@ -812,6 +845,40 @@ export async function evolve(
     workerUtilisation,
   };
 
+  // Issue #2330: Compute per-generation throughput metrics. All inputs are
+  // cheap aggregates captured at phase/generation boundaries — there is no
+  // per-creature hook in the hot path.
+  const fastBusyEndMs = fastPool.getTotalBusyMs();
+  const heavyBusyEndMs = heavyPool === fastPool
+    ? fastBusyEndMs
+    : heavyPool.getTotalBusyMs();
+  const fastBusyDeltaMs = Math.max(0, fastBusyEndMs - fastBusyStartMs);
+  const heavyBusyDeltaMs = Math.max(0, heavyBusyEndMs - heavyBusyStartMs);
+
+  // Peak fast-pool backlog is the larger of fitness or breeding queues —
+  // both use the same handler set, so the max is representative of the pool.
+  const fastQueueMaxDepth = Math.max(
+    neat.fitness.lastQueueMaxDepth,
+    parallelBreeding.lastQueueMaxDepth,
+  );
+
+  // Final heavy-backlog sample after any late scheduling events.
+  heavyQueueMaxDepth = Math.max(
+    heavyQueueMaxDepth,
+    neat.discoveryInProgress.size + neat.trainingInProgress.size,
+  );
+
+  const throughput = computeThroughputMetrics({
+    wallClockMs: totalMs,
+    fitnessMs,
+    fastWorkerCount: fastPool.getWorkerCount(),
+    heavyWorkerCount: heavyPool.getWorkerCount(),
+    fastBusyMs: fastBusyDeltaMs,
+    heavyBusyMs: heavyBusyDeltaMs,
+    fastQueueMaxDepth,
+    heavyQueueMaxDepth,
+  });
+
   // Issue #2239: Log per-phase timing when verbose is enabled
   if (neat.config.verbose) {
     const memTag = memoryEvictionMs > 0
@@ -837,6 +904,16 @@ export async function evolve(
         ` breeding=${breedingUtilisation.fastUtilisationPct}%fast/${breedingUtilisation.heavyUtilisationPct}%heavy` +
         ` overall=${workerUtilisation.overallCpuUtilisationPct}%`,
     );
+    // Issue #2330: Log throughput summary
+    getLogger().info(
+      `[Throughput] wall=${throughput.wallClockMs}ms` +
+        ` nonFitness=${throughput.nonFitnessMs}ms` +
+        ` gensPerHour=${throughput.generationsPerHour.toFixed(1)}` +
+        ` fast=busy${throughput.fastBusyMs}ms/idle${throughput.fastIdleMs}ms` +
+        `/depth${throughput.fastQueueMaxDepth}/wait${throughput.fastWaitMs}ms` +
+        ` heavy=busy${throughput.heavyBusyMs}ms/idle${throughput.heavyIdleMs}ms` +
+        `/depth${throughput.heavyQueueMaxDepth}/wait${throughput.heavyWaitMs}ms`,
+    );
   }
 
   return {
@@ -849,6 +926,7 @@ export async function evolve(
       mutationMultiplier: neat.plateauDetector.getMutationMultiplier(),
     },
     phaseTiming,
+    throughput,
   };
 }
 
