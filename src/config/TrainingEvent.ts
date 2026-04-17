@@ -173,6 +173,94 @@ export interface GenerationPhaseTiming {
 }
 
 /**
+ * Compact throughput counters for a single generation.
+ *
+ * Issue #2330: Makes it possible to reason about *why* a generation is slow
+ * without relying on coarse external signals (host CPU %, load average). All
+ * fields are cheap aggregates — no per-creature logging in hot paths — so
+ * enabling them has negligible cost.
+ *
+ * Metric definitions (field-by-field):
+ *
+ * - `wallClockMs`: Total wall-clock duration of the generation in ms.
+ *   Matches `phaseTiming.totalMs` and is repeated here for convenience when
+ *   consumers work with a flat throughput object.
+ *
+ * - `nonFitnessMs`: Wall-clock milliseconds spent outside `fitnessMs`
+ *   (breeding, mutation, dedup, sort, writeScores, speciation, pre-warming,
+ *   checkpoint writes, etc.). Quantifies overhead beyond the actual
+ *   evaluation work. Equals `max(0, wallClockMs - fitnessMs)`.
+ *
+ * - `generationsPerHour`: Instantaneous throughput projected from this
+ *   generation, computed as `3_600_000 / wallClockMs` when `wallClockMs > 0`.
+ *   Useful for capacity planning and comparing tuning experiments.
+ *
+ * - `fastBusyMs`: Aggregate worker-milliseconds that fast-pool workers spent
+ *   executing tasks during this generation. Summed across all fast workers.
+ *
+ * - `fastIdleMs`: Approximate worker-milliseconds that fast-pool workers
+ *   were idle during this generation. Computed as
+ *   `max(0, fastWorkerCount × wallClockMs - fastBusyMs)`. High values
+ *   indicate the fast pool is under-utilised.
+ *
+ * - `fastQueueMaxDepth`: Peak observed number of pending tasks queued for
+ *   the fast pool during this generation. Captured at fitness-start and
+ *   breeding-start. A depth greater than `fastWorkerCount` means tasks had
+ *   to wait.
+ *
+ * - `fastWaitMs`: Approximate cumulative time that fast-pool tasks spent
+ *   waiting for a free worker in ms. Uses a FIFO uniform-task-duration
+ *   model: `fastWaitMs ≈ fastBusyMs × (depth - workers) / (2 × depth)`
+ *   when `depth > workers`, else 0. This is an *approximate* signal for
+ *   queue back-pressure, not an exact per-task measurement.
+ *
+ * - `heavyBusyMs`: Aggregate worker-milliseconds heavy-pool workers spent
+ *   executing tasks (discovery, training) during this generation.
+ *
+ * - `heavyIdleMs`: Approximate heavy-pool idle worker-milliseconds,
+ *   computed analogously to `fastIdleMs`. When the pool is not partitioned
+ *   (`threads <= 2`), the heavy and fast pools share workers, so these
+ *   counters may reflect the same underlying handlers.
+ *
+ * - `heavyQueueMaxDepth`: Peak observed backlog of heavy-pool tasks
+ *   (`discoveryInProgress.size + trainingInProgress.size`) during this
+ *   generation.
+ *
+ * - `heavyWaitMs`: Approximate cumulative heavy-pool task wait time in ms,
+ *   using the same FIFO model as `fastWaitMs`.
+ */
+export interface GenerationThroughputMetrics {
+  /** Total wall-clock duration of this generation in ms. */
+  readonly wallClockMs: number;
+  /**
+   * Wall-clock time spent outside the fitness phase (ms).
+   * Equals `max(0, wallClockMs - phaseTiming.fitnessMs)`.
+   */
+  readonly nonFitnessMs: number;
+  /**
+   * Instantaneous throughput projection: `3_600_000 / wallClockMs` when
+   * `wallClockMs > 0`, else `0`.
+   */
+  readonly generationsPerHour: number;
+  /** Aggregate worker-ms fast-pool workers were executing tasks. */
+  readonly fastBusyMs: number;
+  /** Approximate fast-pool idle worker-ms (capacity minus busy). */
+  readonly fastIdleMs: number;
+  /** Peak observed fast-pool pending-task count this generation. */
+  readonly fastQueueMaxDepth: number;
+  /** Approximate cumulative fast-pool task wait time (ms). */
+  readonly fastWaitMs: number;
+  /** Aggregate worker-ms heavy-pool workers were executing tasks. */
+  readonly heavyBusyMs: number;
+  /** Approximate heavy-pool idle worker-ms (capacity minus busy). */
+  readonly heavyIdleMs: number;
+  /** Peak observed heavy-pool in-flight task count this generation. */
+  readonly heavyQueueMaxDepth: number;
+  /** Approximate cumulative heavy-pool task wait time (ms). */
+  readonly heavyWaitMs: number;
+}
+
+/**
  * Emitted when a generation completes evaluation and selection.
  */
 export interface GenerationCompleteEvent {
@@ -194,6 +282,12 @@ export interface GenerationCompleteEvent {
    * Issue #2239: Identifies which phase of evolution consumed the most time.
    */
   readonly phaseTiming: GenerationPhaseTiming;
+  /**
+   * Compact throughput metrics for this generation.
+   * Issue #2330: Wall-clock, worker busy/idle, and approximate queue
+   * depth/wait counters that explain *why* a generation is fast or slow.
+   */
+  readonly throughput?: GenerationThroughputMetrics;
 }
 
 /**

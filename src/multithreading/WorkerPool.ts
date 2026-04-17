@@ -106,6 +106,23 @@ export class WorkerPool<T = unknown> {
   }
 
   /**
+   * Returns the aggregate cumulative busy time (ms) across all workers in
+   * the pool.
+   *
+   * Issue #2330: Callers snapshot this value at the start and end of each
+   * generation to compute per-generation busy/idle throughput metrics with
+   * zero per-task overhead. The underlying counter is maintained by
+   * `WorkerHandlerBase` via idle↔busy transitions.
+   */
+  getTotalBusyMs(): number {
+    let total = 0;
+    for (const worker of this.workers) {
+      total += worker.getCumulativeBusyMs();
+    }
+    return total;
+  }
+
+  /**
    * Selects the best worker for a new task.
    *
    * Selection strategy:

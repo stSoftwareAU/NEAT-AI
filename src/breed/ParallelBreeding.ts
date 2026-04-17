@@ -66,6 +66,17 @@ export class ParallelBreeding {
   lastBreedingSubPhases?: BreedingSubPhaseTiming;
 
   /**
+   * Peak pending parent-pair depth observed during the most recent
+   * `breedBatch()` call.
+   *
+   * Issue #2330: Captured immediately after parent-pair selection — the
+   * point at which the breeding queue has its maximum depth — so throughput
+   * diagnostics can report how deep the fast-pool breeding backlog became
+   * without inserting Date.now() calls in the per-pair worker loop.
+   */
+  lastQueueMaxDepth = 0;
+
+  /**
    * Creates a new ParallelBreeding instance.
    *
    * @param genus - The genus containing the population
@@ -92,6 +103,7 @@ export class ParallelBreeding {
   async breedBatch(count: number): Promise<Creature[]> {
     if (count <= 0) {
       this.lastBreedingSubPhases = undefined;
+      this.lastQueueMaxDepth = 0;
       return [];
     }
 
@@ -115,6 +127,10 @@ export class ParallelBreeding {
       }
     }
     acc.parentSelectionMs = Date.now() - selectionStartMs;
+
+    // Issue #2330: Parent pairs are enqueued in one go before workers start
+    // pulling, so the peak breeding backlog is `parentPairs.length`.
+    this.lastQueueMaxDepth = parentPairs.length;
 
     // Step 2: Create offspring in parallel
     let results: (Creature | undefined)[];

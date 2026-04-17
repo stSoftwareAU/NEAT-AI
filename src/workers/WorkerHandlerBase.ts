@@ -69,6 +69,23 @@ export abstract class WorkerHandlerBase<
    * long-running operations from those doing quick evaluations.
    */
   private longRunningTaskCount = 0;
+  /**
+   * Timestamp (ms since epoch) when this worker most recently transitioned
+   * from idle (busyCount === 0) to busy (busyCount > 0). Zero when idle.
+   *
+   * Issue #2330: Used to measure cumulative busy intervals so per-generation
+   * throughput metrics can report worker utilisation without per-task hooks
+   * in hot paths.
+   */
+  private busyStartMs = 0;
+  /**
+   * Cumulative milliseconds this worker has spent busy (i.e. with one or
+   * more in-flight tasks). Incremented only on busy→idle transitions.
+   *
+   * Issue #2330: Low-overhead aggregate used by `WorkerPool.getTotalBusyMs()`
+   * to drive the `generation_complete.throughput` counters.
+   */
+  private cumulativeBusyMs = 0;
   /** Map of task IDs to their callback functions */
   private callbacks = new Map<number, CallableFunction>();
   /** Listeners to notify when worker becomes idle */
@@ -258,16 +275,56 @@ export abstract class WorkerHandlerBase<
   }
 
   /**
+   * Records that a task has begun; if this is the first in-flight task,
+   * capture the busy-interval start timestamp.
+   *
+   * Issue #2330: Cheap transitions keep throughput accounting out of hot
+   * paths — only idle↔busy edges read the clock, not every task.
+   */
+  private onTaskStart(): void {
+    if (this.busyCount === 0) {
+      this.busyStartMs = Date.now();
+    }
+    this.busyCount++;
+  }
+
+  /**
+   * Records that a task has ended; if the worker just became idle, fold
+   * the elapsed interval into `cumulativeBusyMs`.
+   *
+   * Issue #2330: Called from both the success callback and the deferred
+   * reject path so failed tasks still contribute to busy accounting.
+   */
+  private onTaskEnd(): void {
+    this.busyCount--;
+    if (this.busyCount === 0 && this.busyStartMs > 0) {
+      this.cumulativeBusyMs += Date.now() - this.busyStartMs;
+      this.busyStartMs = 0;
+    }
+  }
+
+  /**
+   * Returns cumulative milliseconds this worker has spent busy since it
+   * was created.
+   *
+   * Issue #2330: Callers snapshot this at phase/generation boundaries and
+   * subtract to compute per-window busy time with zero per-task overhead.
+   */
+  getCumulativeBusyMs(): number {
+    return this.cumulativeBusyMs;
+  }
+
+  /**
    * Creates a promise for a request and posts it immediately.
    *
    * @param data - The request data to send
    * @returns Promise resolving to the worker's response
    */
   protected makePromise(data: TRequest): Promise<TResponse> {
-    this.busyCount++;
+    this.onTaskStart();
     const p = new Promise<TResponse>((resolve) => {
       const call = (result: TResponse) => {
-        this.busyCount--;
+        this.onTaskEnd();
         resolve(result);
 
         if (!this.isBusy()) {
@@ -299,11 +356,11 @@ export abstract class WorkerHandlerBase<
     data: TRequest,
     afterPost?: () => void,
   ): Promise<TResponse> {
-    this.busyCount++;
+    this.onTaskStart();
 
     const p = new Promise<TResponse>((resolve, reject) => {
       const call = (result: TResponse) => {
-        this.busyCount--;
+        this.onTaskEnd();
         resolve(result);
 
         if (!this.isBusy()) {
@@ -318,7 +375,7 @@ export abstract class WorkerHandlerBase<
         afterPost?.();
       }).catch((err) => {
         this.callbacks.delete(data.taskID);
-        this.busyCount--;
+        this.onTaskEnd();
 
         if (!this.isBusy()) {
           this.idleListeners.forEach((listener) => listener(this));

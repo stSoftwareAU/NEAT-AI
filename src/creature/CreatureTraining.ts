@@ -453,6 +453,8 @@ export async function evolveDir(
 
     // Issue #1615: Emit generation_complete event
     // Issue #2239: Include per-phase timing diagnostics from evolve()
+    // Issue #2330: Forward compact throughput counters (wall-clock, queue
+    // depths, approximate worker wait) on the same event.
     const generationElapsedMs = now -
       (generation === 1 ? start : iterationStartMS);
     emitTrainingEvent(config.onTrainingEvent, {
@@ -464,6 +466,7 @@ export async function evolveDir(
       populationSize: neat.population.length,
       elapsedMs: generationElapsedMs,
       phaseTiming,
+      throughput: result.throughput,
     });
 
     // Issue #1615: Emit plateau_detected event when on plateau
