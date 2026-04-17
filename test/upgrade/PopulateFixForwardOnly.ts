@@ -40,12 +40,17 @@ Deno.test(
 );
 
 Deno.test(
-  "fix() without forwardOnly does NOT remove self-connections (pre-fix behaviour)",
+  "fix() without forwardOnly does NOT remove self-connections on a recurrent creature",
   () => {
+    // Use a recurrent (non-forward-only) creature to verify that fix() without
+    // the forwardOnly option genuinely preserves self-connections.  A creature
+    // already marked forwardOnly=true will have self-connections stripped by
+    // loadFrom() regardless of the fix() option, so a non-forward-only creature
+    // is the correct subject for this assertion.
     const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
     creature.semanticVersion = "4.0.0";
-    creature.forwardOnly = true;
-    creatureValidate(creature, { forwardOnly: true });
+    // Leave forwardOnly unset (recurrent creature — self-connections are valid).
+    creatureValidate(creature);
 
     // Inject a self-connection.
     const hiddenIndex = creature.input;
@@ -54,7 +59,7 @@ Deno.test(
       (a, b) => (a.from === b.from ? a.to - b.to : a.from - b.from),
     );
 
-    // Clone and call fix() WITHOUT forwardOnly — self-connection survives.
+    // Clone and call fix() WITHOUT forwardOnly — self-connection must survive.
     const clone = creature.shallowClone();
     clone.fix();
 
@@ -62,7 +67,7 @@ Deno.test(
     assertEquals(
       selfConns.length,
       1,
-      "fix() without forwardOnly must preserve self-connections",
+      "fix() without forwardOnly must preserve self-connections on a recurrent creature",
     );
   },
 );
