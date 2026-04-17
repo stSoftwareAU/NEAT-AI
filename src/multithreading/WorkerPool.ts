@@ -360,6 +360,26 @@ export class WorkerPool<T = unknown> {
   }
 
   /**
+   * Returns the workers that are currently idle (not busy) and have no
+   * queued tasks.
+   *
+   * Issue #2313: Used to identify heavy-pool workers that can temporarily
+   * assist the fast pool during fitness evaluation and breeding phases.
+   */
+  getIdleWorkers(): WorkerHandler[] {
+    const idle: WorkerHandler[] = [];
+    for (const worker of this.workers) {
+      if (!worker.isBusy()) {
+        const queue = this.queues.get(worker);
+        if (!queue || queue.size() === 0) {
+          idle.push(worker);
+        }
+      }
+    }
+    return idle;
+  }
+
+  /**
    * Gets comprehensive statistics about the pool state.
    */
   getStats(): WorkerPoolStats {

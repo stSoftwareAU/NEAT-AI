@@ -59,9 +59,14 @@ export class Fitness {
    * WASM cache utilisation, and caps concurrent evaluations.
    *
    * @param population - Array of creatures to evaluate
+   * @param additionalWorkers - Issue #2313: Extra workers (e.g. idle heavy-pool
+   *   workers) temporarily assisting the fast pool for this evaluation only.
    * @returns Promise that resolves when all evaluations are complete
    */
-  async calculate(population: Creature[]): Promise<void> {
+  async calculate(
+    population: Creature[],
+    additionalWorkers?: WorkerHandler[],
+  ): Promise<void> {
     // Filter creatures that need evaluation (score is undefined)
     const needsEvaluation = population.filter((c) => c.score === undefined);
 
@@ -107,14 +112,20 @@ export class Fitness {
     // Issue #1481: Use index pointer instead of Array.shift() for O(1) dequeue.
     let front = 0;
 
+    // Issue #2313: Combine dedicated fast-pool workers with any idle
+    // heavy-pool workers temporarily assisting this evaluation.
+    const allWorkers = additionalWorkers && additionalWorkers.length > 0
+      ? [...this.workers, ...additionalWorkers]
+      : this.workers;
+
     // Issue #1862: Cap the number of concurrent workers if configured.
     // Issue #2245: Workers are now guaranteed to be from the fast pool
     // (dedicated to evaluation), so no isRunningLongTask() filtering
     // or busy-worker fallback is needed.
     const maxConcurrent = this.evalConfig.maxConcurrentEvaluations;
     const activeWorkers = maxConcurrent > 0
-      ? this.workers.slice(0, maxConcurrent)
-      : this.workers;
+      ? allWorkers.slice(0, maxConcurrent)
+      : allWorkers;
 
     const processNext = async (worker: WorkerHandler): Promise<void> => {
       if (front >= queue.length) return;

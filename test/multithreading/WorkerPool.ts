@@ -389,6 +389,57 @@ Deno.test("WorkerPool - getActiveWorkerCount consistent with getStats", () => {
   assertEquals(pool.getActiveWorkerCount(), stats.busyWorkers);
 });
 
+Deno.test("WorkerPool - getIdleWorkers returns workers not busy and with empty queues", () => {
+  const workers = [
+    new MockWorkerHandler(),
+    new MockWorkerHandler(),
+    new MockWorkerHandler(),
+    new MockWorkerHandler(),
+  ];
+  workers[0].setBusy(true); // busy
+  workers[1].setBusy(false); // idle, no queue
+  workers[2].setBusy(false); // idle, but will have queued tasks
+  workers[3].setBusy(false); // idle, no queue
+
+  const pool = new WorkerPool(workers as unknown as WorkerHandler[]);
+  // Queue a task to worker 2 — it's not busy but has pending work
+  pool.queueTask(workers[2] as unknown as WorkerHandler, { id: 1 });
+
+  const idle = pool.getIdleWorkers();
+
+  // Workers 1 and 3 are truly idle (not busy, no queued tasks)
+  assertEquals(idle.length, 2);
+  assertEquals(idle[0], workers[1] as unknown as WorkerHandler);
+  assertEquals(idle[1], workers[3] as unknown as WorkerHandler);
+});
+
+Deno.test("WorkerPool - getIdleWorkers returns empty array when all busy", () => {
+  const workers = [
+    new MockWorkerHandler(),
+    new MockWorkerHandler(),
+  ];
+  workers[0].setBusy(true);
+  workers[1].setBusy(true);
+
+  const pool = new WorkerPool(workers as unknown as WorkerHandler[]);
+
+  const idle = pool.getIdleWorkers();
+  assertEquals(idle.length, 0);
+});
+
+Deno.test("WorkerPool - getIdleWorkers returns all workers when all idle", () => {
+  const workers = [
+    new MockWorkerHandler(),
+    new MockWorkerHandler(),
+    new MockWorkerHandler(),
+  ];
+
+  const pool = new WorkerPool(workers as unknown as WorkerHandler[]);
+
+  const idle = pool.getIdleWorkers();
+  assertEquals(idle.length, 3);
+});
+
 Deno.test("WorkerPool - balances load across workers when all busy", () => {
   const workers = [
     new MockWorkerHandler(),

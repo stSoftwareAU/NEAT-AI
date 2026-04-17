@@ -159,9 +159,24 @@ export async function evolve(
   const fastPool = neat.fastWorkerPool;
   const heavyPool = neat.heavyWorkerPool;
 
+  // Issue #2313: Borrow idle heavy workers for fitness evaluation.
+  // Heavy workers that have no pending discovery or training tasks can
+  // temporarily assist the fast pool, improving CPU utilisation. This is
+  // safe because discovery/training are scheduled AFTER fitness completes,
+  // so borrowed workers are naturally returned before any heavy task begins.
+  const idleHeavyForFitness = (fastPool !== heavyPool)
+    ? heavyPool.getIdleWorkers()
+    : [];
+  if (idleHeavyForFitness.length > 0 && neat.config.verbose) {
+    getLogger().info(
+      `[DynamicPool] ${idleHeavyForFitness.length} idle heavy worker(s) ` +
+        `assisting fitness evaluation`,
+    );
+  }
+
   // Issue #2239: Time fitness evaluation phase
   const fitnessStartMs = Date.now();
-  await neat.fitness.calculate(neat.population);
+  await neat.fitness.calculate(neat.population, idleHeavyForFitness);
   const fitnessMs = Date.now() - fitnessStartMs;
   // Issue #2312: Snapshot after fitness — workers should be heavily utilised
   const fitnessUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
@@ -505,13 +520,28 @@ export async function evolve(
     fineTunedPopulation.length - 1 -
     newPopulation.length;
 
+  // Issue #2313: Borrow idle heavy workers for breeding, same rationale
+  // as fitness — heavy tasks are only scheduled after breeding completes.
+  const idleHeavyForBreeding = (fastPool !== heavyPool)
+    ? heavyPool.getIdleWorkers()
+    : [];
+  const breedingWorkers = idleHeavyForBreeding.length > 0
+    ? [...neat.fastWorkerHandlers, ...idleHeavyForBreeding]
+    : neat.fastWorkerHandlers;
+  if (idleHeavyForBreeding.length > 0 && neat.config.verbose) {
+    getLogger().info(
+      `[DynamicPool] ${idleHeavyForBreeding.length} idle heavy worker(s) ` +
+        `assisting breeding`,
+    );
+  }
+
   // Issue #1026: Use parallel breeding for improved performance
   // Issue #2239: Time parallel breeding phase
   const breedingStartMs = Date.now();
   const parallelBreeding = new ParallelBreeding(
     genus,
     neat.config,
-    neat.fastWorkerHandlers,
+    breedingWorkers,
   );
 
   // Issue #2314: Start breeding as a non-blocking promise so that main-thread
