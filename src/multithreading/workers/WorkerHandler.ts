@@ -16,6 +16,7 @@ import type {
   CandidateSquash,
   CandidateSynapse,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { BreedingSubPhaseTiming } from "@config/TrainingEvent.ts";
 import type { NeatConfig } from "@config/NeatConfig.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
@@ -274,6 +275,11 @@ export interface ResponseData {
     offspring?: CreatureExport;
     /** Whether breeding succeeded */
     success: boolean;
+    /**
+     * Issue #2324: Sub-phase timing from the worker's breeding operation.
+     * Only present when breeding succeeded and the worker captured timing.
+     */
+    subPhaseTiming?: BreedingSubPhaseTiming;
   };
 }
 
