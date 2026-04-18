@@ -204,12 +204,13 @@ Deno.test("ThroughputMetrics - heavy pool metrics present even when no heavy tas
   }
 });
 
-Deno.test("ThroughputMetrics - fastBusyMs is non-decreasing across generations for same instance", async () => {
+Deno.test("ThroughputMetrics - fastBusyMs is non-negative for each generation", async () => {
   // The cumulative busy aggregator is reset per generation (delta), so we
   // cannot assert monotonicity of the delta itself — only that each delta
-  // is non-negative.
+  // is non-negative. Training may converge in a single generation when
+  // targetError is set, so we only require at least one event.
   const events = await collectGenerationEvents(1, 10, 5);
-  assertGreater(events.length, 1);
+  assertGreater(events.length, 0);
 
   for (const event of events) {
     const throughput = event.throughput as GenerationThroughputMetrics;
