@@ -4,6 +4,7 @@
 logback.log
 !.gitignore
 coverage/
+target/
 !.github
 !.gitleaks.toml
 on/

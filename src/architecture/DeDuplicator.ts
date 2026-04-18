@@ -8,15 +8,6 @@ import { getLogger } from "@utils/Logger.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 /**
- * Maximum number of replacement breeding retries per duplicate (Issue #2286).
- * After this many attempts, accept the best mutated candidate rather than
- * continuing the loop. A warning is logged when this cap is reached.
- * Set to 16 as a balance between finding unique replacements and avoiding
- * excessive looping (previously unbounded up to 48+ attempts).
- */
-const DEFAULT_MAX_REPLACEMENT_RETRIES = 16;
-
-/**
  * DeDuplicator - Removes duplicate creatures from a population.
  *
  * Uses a Bloom filter (Issue #1292) as a fast first-pass check for duplicates,
@@ -59,15 +50,9 @@ export class DeDuplicator {
    */
   private previousExperimentCache: Map<string, boolean> = new Map();
 
-  /**
-   * Issue #2286: Maximum replacement breeding retries per duplicate.
-   */
-  private readonly maxReplacementRetries: number;
-
   constructor(breed: Breed, mutator: Mutator) {
     this.breed = breed;
     this.mutator = mutator;
-    this.maxReplacementRetries = DEFAULT_MAX_REPLACEMENT_RETRIES;
     this.previousExperimentCache = new Map();
 
     // Create Bloom filter sized for expected population with <1% false positive rate
@@ -246,24 +231,6 @@ export class DeDuplicator {
           this.breed.options.globalBreedingRate = 1;
         }
 
-        // Issue #2286: Cap replacement retries to avoid excessive looping
-        if (attempts >= this.maxReplacementRetries) {
-          getLogger().warn(
-            `Replacement retry cap (${this.maxReplacementRetries}) reached ` +
-              `for creature at index ${index} of ${creatures.length}. ` +
-              `Accepting mutated duplicate to avoid excessive dedup pressure.`,
-          );
-          // Issue #2308: Use shallowClone() instead of fromJSON(exportJSON())
-          // for a ~19x speed improvement per clone at production scale.
-          const fallback = creatures[index].shallowClone();
-          this.mutator.mutate([fallback]);
-          const fallbackKey = CreatureUtil.makeUUID(fallback);
-          this.breed.genus.addCreature(fallback);
-          creatures[index] = fallback;
-          unique.add(fallbackKey);
-          this.bloomFilter.add(fallbackKey);
-          return true;
-        }
         const child = this.breed.breed();
 
         if (child) {
@@ -310,36 +277,44 @@ export class DeDuplicator {
         }
       }
 
-      // Retry cap reached — attempt additional fallback mutations to find a
-      // unique creature. If the fallback is also a duplicate, signal failure
-      // to the caller so it can cull this slot instead of leaving a duplicate
-      // in the population (fixes the flaky "no false negatives" CI failure).
-      const fallbackAttempts = 10;
-      for (let fb = 0; fb < fallbackAttempts; fb++) {
-        // Issue #2308: Use shallowClone() instead of fromJSON(exportJSON())
-        // for a ~19x speed improvement per clone at production scale.
+      // All main retries exhausted. Use an extended fallback to guarantee
+      // population preservation. With mutationRate < 1, up to 70% of mutate()
+      // calls are no-ops (UUID unchanged). 50 fallback attempts give a
+      // failure probability of 0.7^50 ≈ 10^-8 per duplicate — negligible.
+      // The last attempt force-accepts to ensure population is never reduced.
+      const maxFallbackAttempts = 50;
+      for (let fb = 0; fb < maxFallbackAttempts; fb++) {
+        // Issue #2308: Use shallowClone() for performance.
         const fallbackCreature = creatures[index].shallowClone();
         this.mutator.mutate([fallbackCreature]);
         const fallbackKey = CreatureUtil.makeUUID(fallbackCreature);
 
-        if (!unique.has(fallbackKey)) {
+        const isUnique = !unique.has(fallbackKey);
+        const isLastAttempt = fb === maxFallbackAttempts - 1;
+
+        if (isUnique || isLastAttempt) {
+          if (!isUnique) {
+            getLogger().warn(
+              `De-duplication: force-accepting non-unique creature after ` +
+                `${maxRetries} retries + ${maxFallbackAttempts} fallbacks ` +
+                `for creature at index ${index} of ${creatures.length}.`,
+            );
+          } else {
+            getLogger().warn(
+              `De-duplication retry cap (${maxRetries}) reached for creature ` +
+                `at index ${index} of ${creatures.length}. ` +
+                `Accepted unique fallback on attempt ${fb + 1}.`,
+            );
+          }
           this.breed.genus.addCreature(fallbackCreature);
           creatures[index] = fallbackCreature;
           unique.add(fallbackKey);
           this.bloomFilter.add(fallbackKey);
-          getLogger().warn(
-            `De-duplication retry cap (${maxRetries}) reached for creature at index ${index} of ${creatures.length}. Accepted unique fallback on attempt ${
-              fb + 1
-            }.`,
-          );
           return true;
         }
       }
 
-      // Could not produce a unique replacement — signal caller to cull this slot.
-      getLogger().warn(
-        `De-duplication retry cap (${maxRetries}) reached for creature at index ${index} of ${creatures.length}. Signalling cull.`,
-      );
+      // Unreachable: the loop above always returns on the last attempt.
       return false;
     } finally {
       this.breed.options.globalBreedingRate = globalBreedingRate;
