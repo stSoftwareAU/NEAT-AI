@@ -218,10 +218,11 @@ export class Creature implements CreatureInternal {
     this.score = undefined;
 
     const lazy = options.lazyInitialization === true;
-    if (lazy && options.semanticVersion !== undefined) {
-      this.semanticVersion = options.semanticVersion;
-    } else if (!lazy && options.semanticVersion !== undefined) {
-      this.semanticVersion = options.semanticVersion;
+    // Issue #2349: treat empty string as missing — never allow an empty
+    // semanticVersion to propagate through the pipeline.
+    const providedVersion = options.semanticVersion || undefined;
+    if (providedVersion !== undefined) {
+      this.semanticVersion = providedVersion;
     } else {
       this.semanticVersion = CURRENT_CREATURE_SEMANTIC_VERSION;
     }

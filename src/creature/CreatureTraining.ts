@@ -11,6 +11,11 @@ import { format } from "@std/fmt/duration";
 import { emptyDirSync } from "@std/fs";
 import { getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "@creature";
+import { CURRENT_CREATURE_SEMANTIC_VERSION } from "@creature";
+import {
+  assertValidWriteableSemanticVersion,
+  isValidWriteableSemanticVersion,
+} from "@upgrade/SemanticVersionValidation.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { makeDataDir } from "@architecture/DataSet.ts";
@@ -287,7 +292,15 @@ async function writeCreatures(neat: Neat, dir: string): Promise<void> {
   const writes: Promise<void>[] = [];
   let counter = 1;
   for (const c of neat.population) {
+    // Issue #2349: never write a creature without a valid semanticVersion.
+    // If a creature somehow lost its version (empty, undefined, or pre-2.x),
+    // heal it to the current default rather than writing an invalid value
+    // that aborts downstream tools (GRQ worker).
+    if (!isValidWriteableSemanticVersion(c.semanticVersion)) {
+      c.semanticVersion = CURRENT_CREATURE_SEMANTIC_VERSION;
+    }
     const json = c.exportJSON();
+    assertValidWriteableSemanticVersion(json.semanticVersion);
     const txt = JSON.stringify(json);
     const filePath = dir + "/" + counter + ".json";
     writes.push(Deno.writeTextFile(filePath, txt));

@@ -582,14 +582,17 @@ export function fromJSON(
     ): Creature;
   },
 ): Creature {
-  const semanticVersion = json.semanticVersion ?? "0.0.1";
-  if (semanticVersion.startsWith("0.")) {
+  // Issue #2349: treat empty/falsy semanticVersion the same as missing.
+  // An empty version is NOT a genuine "0.x" legacy creature — it's a
+  // lost/corrupt version field. Only run upgradeOne for real 0.x versions.
+  const rawVersion = json.semanticVersion || undefined;
+  if (rawVersion && rawVersion.startsWith("0.")) {
     json = upgradeOne(json);
   }
 
   const creature = new CreatureClass(json.input, json.output, {
     lazyInitialization: true,
-    semanticVersion: json.semanticVersion,
+    semanticVersion: json.semanticVersion || undefined,
   });
 
   const raw = json as unknown as Record<string, unknown>;
