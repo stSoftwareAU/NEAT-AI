@@ -414,6 +414,24 @@ GPU-accelerated structural hints used by `discoveryDir()`.
 > skipped gracefully and discovery is disabled — no environment variable is
 > required.
 
+## 🦀 NEAT-AI-core Dependency Policy
+
+NEAT-AI consumes shared Rust computation from the external
+[NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) repository. The
+full policy is in
+[docs/CORE_DEPENDENCY_POLICY.md](docs/CORE_DEPENDENCY_POLICY.md); the key rules
+are:
+
+1. **Crate name:** `neat-core` (hyphenated). Not `neat_ai_core` or
+   `neat-ai-core`.
+2. **Pinning:** git dependency with `rev = "<full-40-char-SHA>"` in the root
+   `Cargo.toml`. Never use `branch` pinning.
+3. **Single source of truth:** workspace members use
+   `neat-core = { workspace = true }`.
+4. **Local dev:** use `.cargo/config.toml` path override (git-ignored).
+5. **Semver:** NEAT-AI-core tags follow `v<MAJOR>.<MINOR>.<PATCH>`. Patch bumps
+   need CI green; minor bumps need one review; major bumps need owner approval.
+
 ## 🔄 Feed-forward vs Recurrent Connections
 
 NEAT-AI supports two topology styles:
@@ -447,6 +465,8 @@ In our production workloads, the default is feed-forward/forward-only.
 - **docs/INTELLIGENT_DESIGN.md** - Intelligent Design squash optimisation guide
 - **docs/PREDICTIVE_CODING.md** - Predictive Coding architecture design
 - **docs/TS_RUST_MIGRATION.md** - TypeScript to Rust migration milestone roadmap
+- **docs/CORE_DEPENDENCY_POLICY.md** - NEAT-AI-core release, pinning, and semver
+  policy (ADR)
 - **docs/TROUBLESHOOTING.md** - Common issues and solutions
 - **docs/archive/pr-summaries/** - Archived PR summary files (historical)
 - **src/methods/activations/README.md** - Activation function strategy reference
