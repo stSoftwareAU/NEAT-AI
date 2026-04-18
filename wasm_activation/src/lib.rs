@@ -960,4 +960,60 @@ mod tests {
             apply_safe_zone_adjustment(SquashType::Relu, 1.0, 0.5, 1.0);
         assert!((result[0] - scalar).abs() < 1e-7);
     }
+
+    // Issue #2343 - Verify that neat-core external dependency resolves and
+    // its core types are compatible with the in-tree wasm_activation types.
+    #[test]
+    fn test_neat_core_dependency_resolves() {
+        // Confirm that the neat-core crate is reachable and its SquashType
+        // enum has the same discriminant mapping as the in-tree version.
+        let core_relu = neat_core::SquashType::from(1u8);
+        let local_relu = SquashType::from(1u8);
+        assert_eq!(core_relu as u8, local_relu as u8, "SquashType::Relu discriminant must match");
+
+        // Verify neat-core's squash function produces identical output.
+        let core_result = neat_core::apply_squash(core_relu, 1.0);
+        let local_result = apply_squash(local_relu, 1.0);
+        assert!(
+            (core_result - local_result).abs() < 1e-7,
+            "neat-core squash(Relu, 1.0) = {} must match local = {}",
+            core_result,
+            local_result
+        );
+    }
+
+    #[test]
+    fn test_neat_core_derivative_parity() {
+        // Verify derivative parity between neat-core and in-tree code.
+        let test_inputs = [0.0_f32, 1.0, -1.0, 0.5];
+        for &x in &test_inputs {
+            let core_d = neat_core::apply_derivative(neat_core::SquashType::Tanh, x);
+            let local_d = apply_derivative(SquashType::Tanh, x);
+            assert!(
+                (core_d - local_d).abs() < 1e-6,
+                "derivative(Tanh, {}) core={} local={}",
+                x,
+                core_d,
+                local_d
+            );
+        }
+    }
+
+    #[test]
+    fn test_neat_core_error_parity() {
+        // Verify calculateError parity between neat-core and in-tree code.
+        let core_err = neat_core::apply_calculate_error(
+            neat_core::SquashType::Identity,
+            0.5,
+            0.8,
+            0.5,
+        );
+        let local_err = apply_calculate_error(SquashType::Identity, 0.5, 0.8, 0.5);
+        assert!(
+            (core_err - local_err).abs() < 1e-5,
+            "calculateError(Identity) core={} local={}",
+            core_err,
+            local_err
+        );
+    }
 }
