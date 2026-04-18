@@ -4,7 +4,7 @@
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
-import type { Creature } from "@creature";
+import { type Creature, CURRENT_CREATURE_SEMANTIC_VERSION } from "@creature";
 import { neuronUuid } from "@neuron/NeuronSerialization.ts";
 
 export class CreatureExportBuilder {
@@ -29,8 +29,11 @@ export class CreatureExportBuilder {
     const output = creature.output;
     const neuronsLength = neurons.length;
     const synapsesLength = synapses.length;
+    // Issue #2349: defence in depth — never emit an empty semanticVersion.
+    const version = creature.semanticVersion ||
+      CURRENT_CREATURE_SEMANTIC_VERSION;
     const json: CreatureExport = {
-      semanticVersion: creature.semanticVersion,
+      semanticVersion: version,
       forwardOnly: creature.forwardOnly ? true : undefined,
       neurons: new Array<NeuronExport>(
         neuronsLength - input,
