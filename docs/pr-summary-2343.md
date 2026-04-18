@@ -11,11 +11,11 @@ in-tree. Closes #2343.
   `neat-core` declared in `[workspace.dependencies]`. Release profile settings
   moved here (Cargo ignores per-member profiles in workspaces).
 - **`wasm_activation/Cargo.toml`** — depends on `neat-core` via workspace;
-  `wasm-bindgen` bumped from `=0.2.100` → `0.2.118` and `js-sys` from
-  `=0.3.77` → `0.3.95` to resolve the version conflict with neat-core's
-  target-gated wasm-bindgen requirement.
-- **`.gitignore`** — added `target/` for the workspace-level Rust build
-  artefact directory.
+  `wasm-bindgen` bumped from `=0.2.100` → `0.2.118` and `js-sys` from `=0.3.77`
+  → `0.3.95` to resolve the version conflict with neat-core's target-gated
+  wasm-bindgen requirement.
+- **`.gitignore`** — added `target/` for the workspace-level Rust build artefact
+  directory.
 - **3 parity tests** — verify `SquashType` discriminant, `apply_squash`,
   `apply_derivative`, and `apply_calculate_error` produce identical results
   between neat-core and the in-tree wasm_activation implementations.
