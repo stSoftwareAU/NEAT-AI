@@ -9,25 +9,25 @@ into the workflows verbatim. Closes #2344.
 What landed:
 
 - `scripts/rust-ci-cache-key.sh` — emits a stable cache key that hashes
-  `wasm_activation/Cargo.toml`, `Cargo.lock` (when present), `build.sh`, and
-  the extracted git coordinates (`git` / `rev` / `tag` / `branch`) from both
+  `wasm_activation/Cargo.toml`, `Cargo.lock` (when present), `build.sh`, and the
+  extracted git coordinates (`git` / `rev` / `tag` / `branch`) from both
   manifests. A NEAT-AI-core `rev` bump in Cargo.toml busts the cache cleanly.
 - `scripts/rust-ci-git-auth.sh` — exports `CARGO_NET_GIT_FETCH_WITH_CLI=true`
   and, when `CARGO_GIT_TOKEN` (preferred) or `GITHUB_TOKEN` is set, installs a
   `git config --global url.*.insteadOf` rewrite so Cargo can fetch a private
   NEAT-AI-core. Safe no-op when no secret is supplied.
-- `docs/CI_EXTERNAL_NEAT_AI_CORE.md` — authentication guidance, cache-key
-  usage, and confirmation by direct inspection that `wasm-build.yml` only
-  builds the in-tree `wasm_activation` crate (§3).
+- `docs/CI_EXTERNAL_NEAT_AI_CORE.md` — authentication guidance, cache-key usage,
+  and confirmation by direct inspection that `wasm-build.yml` only builds the
+  in-tree `wasm_activation` crate (§3).
 
 Acceptance criteria from the issue:
 
 - [x] Git dependencies authenticate without manual secrets beyond what org
       policy already allows (`rust-ci-git-auth.sh`).
-- [x] Cache keys bust when the core git `rev` changes (`rust-ci-cache-key.sh`
-      + unit tests).
-- [x] WASM jobs only build in-tree `wasm_activation` and are not blocked by
-      the core split (documented in §3 of `CI_EXTERNAL_NEAT_AI_CORE.md`).
+- [x] Cache keys bust when the core git `rev` changes (`rust-ci-cache-key.sh` +
+      unit tests).
+- [x] WASM jobs only build in-tree `wasm_activation` and are not blocked by the
+      core split (documented in §3 of `CI_EXTERNAL_NEAT_AI_CORE.md`).
 
 ## Evidence
 
