@@ -22,8 +22,8 @@ approval requirements for bumping the core dependency. Closes #2342.
 
 This is a documentation/policy change with no runtime code modifications. The
 tests validate that `Cargo.toml` conforms to the documented policy (rev pinning,
-correct crate name, workspace inheritance). All 5961 tests pass, including the
-8 new policy tests.
+correct crate name, workspace inheritance). All 5961 tests pass, including the 8
+new policy tests.
 
 ## Test Plan
 
