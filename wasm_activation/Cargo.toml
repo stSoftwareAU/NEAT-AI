@@ -8,16 +8,10 @@ description = "WASM module for NEAT-AI creature activation - prototype for Issue
 crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = "=0.2.100"
-js-sys = "=0.3.77"
+wasm-bindgen = "0.2.118"
+js-sys = "0.3.95"
+neat-core = { workspace = true }
 
-[profile.release]
-opt-level = 3
-lto = true
 
-[profile.release.package."*"]
-opt-level = 3
-
-# Issue #1178 - WASM SIMD support
-# Note: SIMD is enabled via RUSTFLAGS in build.sh, not here.
-# This comment documents the SIMD feature requirement.
+# Profile settings are in the workspace root Cargo.toml.
+# Issue #1178 - WASM SIMD support: SIMD is enabled via RUSTFLAGS in build.sh.

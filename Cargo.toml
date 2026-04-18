@@ -1,0 +1,19 @@
+# Issue #2343 - Workspace layout for NEAT-AI.
+# Native shared Rust comes from the external NEAT-AI-core repository.
+# wasm_activation stays in-tree as the WASM entry point.
+[workspace]
+members = ["wasm_activation"]
+resolver = "2"
+
+# Pin neat-core to a known good revision of NEAT-AI-core.
+# Bump the `rev` when adopting new core features; the CI cache-key script
+# (scripts/rust-ci-cache-key.sh) hashes git coordinates automatically.
+[workspace.dependencies]
+neat-core = { git = "https://github.com/stSoftwareAU/NEAT-AI-core.git", rev = "36ac4ea34fcd4e89d9fad3d6fae9efc5f02c8959" }
+
+[profile.release]
+opt-level = 3
+lto = true
+
+[profile.release.package."*"]
+opt-level = 3
