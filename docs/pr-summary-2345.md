@@ -4,18 +4,17 @@ Add a parity gate that must pass before any in-tree duplicate native Rust is
 removed in favour of the external NEAT-AI-core crate. Closes #2345.
 
 - `scripts/parity-gate.sh` — focused three-step gate: core dependency policy,
-  `cargo test` in `wasm_activation` against the pinned `neat-core` rev, and
-  the Deno parity tests (`WasmJsScoreParity`, `MSE`). Supports `--dry-run`,
+  `cargo test` in `wasm_activation` against the pinned `neat-core` rev, and the
+  Deno parity tests (`WasmJsScoreParity`, `MSE`). Supports `--dry-run`,
   `--skip-rust`, `--skip-deno`, and `--help`.
-- `docs/PARITY_GATE.md` — release checklist and runbook (when to run, the
-  exact commands, expected artefacts, failure response, sign-off rules).
+- `docs/PARITY_GATE.md` — release checklist and runbook (when to run, the exact
+  commands, expected artefacts, failure response, sign-off rules).
 - `test/scripts/ParityGate.ts` — eight unit tests exercising the CLI (help,
-  dry-run plan, skip flags, unknown-option handling) and the runbook
-  invariants.
+  dry-run plan, skip flags, unknown-option handling) and the runbook invariants.
 - `scripts/rustlib.sh` — MSRV bumped from 1.82.0 to 1.88.0 because the pinned
-  `neat-core` uses `let` expressions in logical conjunctions (stabilised in
-  Rust 1.88). Without this, the Rust step of the gate fails to compile on
-  fresh machines, defeating the purpose of the gate.
+  `neat-core` uses `let` expressions in logical conjunctions (stabilised in Rust
+  1.88). Without this, the Rust step of the gate fails to compile on fresh
+  machines, defeating the purpose of the gate.
 - `AGENTS.md` — references `docs/PARITY_GATE.md` in the docs index and the
   NEAT-AI-core dependency-policy section.
 
@@ -47,14 +46,14 @@ test/score/WasmJsScoreParity.ts            2 passed
 test/costs/MSE.ts                          6 passed
 ```
 
-`./quality.sh --lint-only` and `./quality.sh --check-only` both pass after
-the changes.
+`./quality.sh --lint-only` and `./quality.sh --check-only` both pass after the
+changes.
 
 ## Test Plan
 
 - `test/scripts/ParityGate.ts` (new):
-  - Script exists and `--help` exits 0 with usage text covering the three
-    skip flags.
+  - Script exists and `--help` exits 0 with usage text covering the three skip
+    flags.
   - `--dry-run` lists all three steps and reports `Total: 3 step`.
   - `--dry-run --skip-rust` suppresses the Rust step and reports
     `Total: 2 step`.
@@ -67,5 +66,5 @@ the changes.
   - `AGENTS.md` references `docs/PARITY_GATE.md`.
 - Existing parity-relevant tests (unchanged, still passing):
   `test/scripts/CoreDependencyPolicy.ts`,
-  `test/scripts/RustlibVersionCompare.ts`,
-  `test/score/WasmJsScoreParity.ts`, `test/costs/MSE.ts`.
+  `test/scripts/RustlibVersionCompare.ts`, `test/score/WasmJsScoreParity.ts`,
+  `test/costs/MSE.ts`.
