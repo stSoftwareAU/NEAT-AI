@@ -198,9 +198,15 @@ Deno.test("BreedingTimingSplit: timing invariant holds with new fields included"
       (timing.memoryEvictionMs ?? 0) +
       (timing.preWarmMs ?? 0);
     const overlap = timing.pipelineOverlapMs ?? 0;
+    // Allow a 10ms tolerance to accommodate NTP clock adjustments and
+    // timer resolution jitter on CI systems. Date.now() is not guaranteed
+    // to be monotonic; a backward NTP adjustment between the last phase
+    // measurement and totalMs can make totalMs appear smaller than the
+    // sum of phases by a few milliseconds.
+    const clockJitterToleranceMs = 10;
     assert(
-      timing.totalMs >= measuredPhases - overlap - 1,
-      `totalMs (${timing.totalMs}) should be >= sum (${measuredPhases}) - overlap (${overlap})`,
+      timing.totalMs >= measuredPhases - overlap - clockJitterToleranceMs,
+      `totalMs (${timing.totalMs}) should be >= sum (${measuredPhases}) - overlap (${overlap}) - tolerance (${clockJitterToleranceMs})`,
     );
   }
 });
