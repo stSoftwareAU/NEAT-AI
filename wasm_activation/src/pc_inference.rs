@@ -20,7 +20,7 @@
 use wasm_bindgen::prelude::*;
 
 use crate::derivative::apply_derivative;
-use crate::squash::{apply_squash, SquashType};
+use crate::squash::{SquashType, apply_squash};
 
 /// Neuron definition for the predictive coding engine.
 /// Represents the topology of a single non-input neuron.
@@ -370,18 +370,12 @@ impl PredictiveCodingEngine {
             return Err(JsValue::from_str("Data too short for PC engine header"));
         }
 
-        let num_inputs =
-            u32::from_le_bytes([data[0], data[1], data[2], data[3]]) as usize;
-        let num_outputs =
-            u32::from_le_bytes([data[4], data[5], data[6], data[7]]) as usize;
-        let num_neurons_total =
-            u32::from_le_bytes([data[8], data[9], data[10], data[11]]) as usize;
-        let inference_steps =
-            u32::from_le_bytes([data[12], data[13], data[14], data[15]]);
-        let inference_rate =
-            f32::from_le_bytes([data[16], data[17], data[18], data[19]]);
-        let energy_threshold =
-            f32::from_le_bytes([data[20], data[21], data[22], data[23]]);
+        let num_inputs = u32::from_le_bytes([data[0], data[1], data[2], data[3]]) as usize;
+        let num_outputs = u32::from_le_bytes([data[4], data[5], data[6], data[7]]) as usize;
+        let num_neurons_total = u32::from_le_bytes([data[8], data[9], data[10], data[11]]) as usize;
+        let inference_steps = u32::from_le_bytes([data[12], data[13], data[14], data[15]]);
+        let inference_rate = f32::from_le_bytes([data[16], data[17], data[18], data[19]]);
+        let energy_threshold = f32::from_le_bytes([data[20], data[21], data[22], data[23]]);
 
         let num_non_inputs = num_neurons_total - num_inputs;
         let mut neurons = Vec::with_capacity(num_non_inputs);
@@ -401,8 +395,7 @@ impl PredictiveCodingEngine {
             ]);
             let squash_type = SquashType::from(data[offset + 4]);
             let is_hidden = data[offset + 5] != 0;
-            let num_conn =
-                u16::from_le_bytes([data[offset + 6], data[offset + 7]]) as usize;
+            let num_conn = u16::from_le_bytes([data[offset + 6], data[offset + 7]]) as usize;
             offset += 8;
 
             let conn_start = connections.len();
@@ -467,10 +460,8 @@ impl PredictiveCodingEngine {
 
         let num_non_inputs = self.neurons.len();
         let header_size = 6;
-        let total = header_size
-            + self.num_neurons
-            + num_non_inputs * 2
-            + result.energy_history.len();
+        let total =
+            header_size + self.num_neurons + num_non_inputs * 2 + result.energy_history.len();
         let mut packed = Vec::with_capacity(total);
 
         // Header
@@ -537,10 +528,8 @@ impl PredictiveCodingEngine {
 
             let num_non_inputs = self.neurons.len();
             let header_size = 6;
-            let record_len = header_size
-                + self.num_neurons
-                + num_non_inputs * 2
-                + result.energy_history.len();
+            let record_len =
+                header_size + self.num_neurons + num_non_inputs * 2 + result.energy_history.len();
             let mut record = Vec::with_capacity(record_len);
 
             record.push(result.steps_used as f32);
@@ -628,9 +617,18 @@ mod tests {
         ];
 
         let connections = vec![
-            PcConnection { from: 0, weight: 0.5 },
-            PcConnection { from: 1, weight: 0.3 },
-            PcConnection { from: 2, weight: 1.0 },
+            PcConnection {
+                from: 0,
+                weight: 0.5,
+            },
+            PcConnection {
+                from: 1,
+                weight: 0.3,
+            },
+            PcConnection {
+                from: 2,
+                weight: 1.0,
+            },
         ];
 
         PredictiveCodingEngine::new_from_parts(
@@ -678,15 +676,41 @@ mod tests {
         ];
 
         let connections = vec![
-            PcConnection { from: 0, weight: 0.5 },
-            PcConnection { from: 1, weight: -0.3 },
-            PcConnection { from: 0, weight: -0.4 },
-            PcConnection { from: 1, weight: 0.6 },
-            PcConnection { from: 2, weight: 1.0 },
-            PcConnection { from: 3, weight: -0.5 },
+            PcConnection {
+                from: 0,
+                weight: 0.5,
+            },
+            PcConnection {
+                from: 1,
+                weight: -0.3,
+            },
+            PcConnection {
+                from: 0,
+                weight: -0.4,
+            },
+            PcConnection {
+                from: 1,
+                weight: 0.6,
+            },
+            PcConnection {
+                from: 2,
+                weight: 1.0,
+            },
+            PcConnection {
+                from: 3,
+                weight: -0.5,
+            },
         ];
 
-        PredictiveCodingEngine::new_from_parts(2, 1, neurons, connections, inference_steps, inference_rate, energy_threshold)
+        PredictiveCodingEngine::new_from_parts(
+            2,
+            1,
+            neurons,
+            connections,
+            inference_steps,
+            inference_rate,
+            energy_threshold,
+        )
     }
 
     #[test]
@@ -698,10 +722,22 @@ mod tests {
         let result1 = engine.infer(&input, None);
         let result2 = engine.infer(&input, None);
 
-        assert_eq!(result1.latents, result2.latents, "Latents must be deterministic");
-        assert_eq!(result1.final_energy, result2.final_energy, "Energy must be deterministic");
-        assert_eq!(result1.steps_used, result2.steps_used, "Steps must be deterministic");
-        assert_eq!(result1.converged, result2.converged, "Convergence must be deterministic");
+        assert_eq!(
+            result1.latents, result2.latents,
+            "Latents must be deterministic"
+        );
+        assert_eq!(
+            result1.final_energy, result2.final_energy,
+            "Energy must be deterministic"
+        );
+        assert_eq!(
+            result1.steps_used, result2.steps_used,
+            "Steps must be deterministic"
+        );
+        assert_eq!(
+            result1.converged, result2.converged,
+            "Convergence must be deterministic"
+        );
     }
 
     #[test]
@@ -780,7 +816,11 @@ mod tests {
         assert!(result.converged, "Should converge with high threshold");
         // Initial energy is computed before any update, and convergence checked
         // at the start of each iteration, so steps_used should be 1.
-        assert!(result.steps_used <= 1, "Should stop early, got {} steps", result.steps_used);
+        assert!(
+            result.steps_used <= 1,
+            "Should stop early, got {} steps",
+            result.steps_used
+        );
     }
 
     #[test]
@@ -793,7 +833,11 @@ mod tests {
 
         assert_eq!(result.steps_used, 0, "Should use 0 steps");
         // Energy history should have only the initial energy.
-        assert_eq!(result.energy_history.len(), 1, "Should have initial energy only");
+        assert_eq!(
+            result.energy_history.len(),
+            1,
+            "Should have initial energy only"
+        );
     }
 
     #[test]
@@ -807,11 +851,13 @@ mod tests {
             conn_start: 0,
             conn_count: 1,
         }];
-        let connections = vec![PcConnection { from: 0, weight: 2.0 }];
+        let connections = vec![PcConnection {
+            from: 0,
+            weight: 2.0,
+        }];
 
-        let engine = PredictiveCodingEngine::new_from_parts(
-            1, 1, neurons, connections, 0, 0.05, 1e-6,
-        );
+        let engine =
+            PredictiveCodingEngine::new_from_parts(1, 1, neurons, connections, 0, 0.05, 1e-6);
 
         let input = [3.0f32];
         let result = engine.infer(&input, None);
@@ -952,13 +998,18 @@ mod tests {
                 },
             ];
             let connections = vec![
-                PcConnection { from: 0, weight: 1.0 },
-                PcConnection { from: 2, weight: 1.0 },
+                PcConnection {
+                    from: 0,
+                    weight: 1.0,
+                },
+                PcConnection {
+                    from: 2,
+                    weight: 1.0,
+                },
             ];
 
-            let engine = PredictiveCodingEngine::new_from_parts(
-                2, 1, neurons, connections, 20, 0.05, 1e-6,
-            );
+            let engine =
+                PredictiveCodingEngine::new_from_parts(2, 1, neurons, connections, 20, 0.05, 1e-6);
 
             let result = engine.infer(&[1.0, 0.5], None);
 
@@ -983,11 +1034,13 @@ mod tests {
             conn_start: 0,
             conn_count: 1,
         }];
-        let connections = vec![PcConnection { from: 0, weight: 1.0 }];
+        let connections = vec![PcConnection {
+            from: 0,
+            weight: 1.0,
+        }];
 
-        let engine = PredictiveCodingEngine::new_from_parts(
-            1, 1, neurons, connections, 50, 0.05, 1e-6,
-        );
+        let engine =
+            PredictiveCodingEngine::new_from_parts(1, 1, neurons, connections, 50, 0.05, 1e-6);
 
         let result = engine.infer(&[2.0], None);
 
@@ -1011,9 +1064,9 @@ mod tests {
         let mut data: Vec<u8> = Vec::new();
 
         // Header: num_inputs=2, num_outputs=1, num_neurons=4, steps=10, rate=0.05, threshold=1e-6
-        data.extend_from_slice(&2u32.to_le_bytes());  // num_inputs
-        data.extend_from_slice(&1u32.to_le_bytes());  // num_outputs
-        data.extend_from_slice(&4u32.to_le_bytes());  // num_neurons_total
+        data.extend_from_slice(&2u32.to_le_bytes()); // num_inputs
+        data.extend_from_slice(&1u32.to_le_bytes()); // num_outputs
+        data.extend_from_slice(&4u32.to_le_bytes()); // num_neurons_total
         data.extend_from_slice(&10u32.to_le_bytes()); // inference_steps
         data.extend_from_slice(&0.05f32.to_le_bytes()); // inference_rate
         data.extend_from_slice(&1e-6f32.to_le_bytes()); // energy_threshold

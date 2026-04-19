@@ -229,11 +229,7 @@ pub fn apply_squash(squash_type: SquashType, x: f32) -> f32 {
         }
         SquashType::StdInverse => {
             if x.abs() < 1e-10 {
-                if x >= 0.0 {
-                    1e10
-                } else {
-                    -1e10
-                }
+                if x >= 0.0 { 1e10 } else { -1e10 }
             } else {
                 1.0 / x
             }
@@ -384,19 +380,11 @@ pub fn apply_squash_f64(squash_type: SquashType, x: f64) -> f64 {
                 return 0.0;
             }
             let safe_x = if x.abs() < 1e-15 {
-                if x > 0.0 {
-                    1e-15
-                } else {
-                    -1e-15
-                }
+                if x > 0.0 { 1e-15 } else { -1e-15 }
             } else {
                 x
             };
-            if safe_x != 0.0 {
-                1.0 / safe_x
-            } else {
-                0.0
-            }
+            if safe_x != 0.0 { 1.0 / safe_x } else { 0.0 }
         }
         SquashType::Exponential => {
             if !x.is_finite() {
@@ -454,7 +442,11 @@ mod tests {
         let near_pi_half = std::f32::consts::FRAC_PI_2 - 1e-7;
         let result = apply_squash(SquashType::Tan, near_pi_half);
         assert!(result.is_finite(), "TAN f32 near asymptote not finite");
-        assert!(result.abs() <= 1000.0, "TAN f32 near asymptote exceeded 1000: {}", result);
+        assert!(
+            result.abs() <= 1000.0,
+            "TAN f32 near asymptote exceeded 1000: {}",
+            result
+        );
     }
 
     #[test]
@@ -462,7 +454,11 @@ mod tests {
         let near_pi_half = std::f64::consts::FRAC_PI_2 - 1e-15;
         let result = apply_squash_f64(SquashType::Tan, near_pi_half);
         assert!(result.is_finite(), "TAN f64 near asymptote not finite");
-        assert!(result.abs() <= 1000.0, "TAN f64 near asymptote exceeded 1000: {}", result);
+        assert!(
+            result.abs() <= 1000.0,
+            "TAN f64 near asymptote exceeded 1000: {}",
+            result
+        );
     }
 
     #[test]
@@ -487,7 +483,11 @@ mod tests {
 
         let result_neg = apply_squash(SquashType::Cube, -1e10);
         assert!(result_neg.is_finite(), "CUBE f32 large negative not finite");
-        assert!(result_neg >= -1e6, "CUBE f32 negative below -1e6: {}", result_neg);
+        assert!(
+            result_neg >= -1e6,
+            "CUBE f32 negative below -1e6: {}",
+            result_neg
+        );
     }
 
     #[test]
@@ -498,6 +498,10 @@ mod tests {
 
         let result_neg = apply_squash_f64(SquashType::Cube, -1e30);
         assert!(result_neg.is_finite(), "CUBE f64 large negative not finite");
-        assert!(result_neg >= -1e6, "CUBE f64 negative below -1e6: {}", result_neg);
+        assert!(
+            result_neg >= -1e6,
+            "CUBE f64 negative below -1e6: {}",
+            result_neg
+        );
     }
 }

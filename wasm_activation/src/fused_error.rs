@@ -74,12 +74,8 @@ pub fn apply_fused_error_distribution(
         } else {
             1.0
         };
-        let factor = apply_safe_zone_adjustment(
-            squash,
-            raw_input,
-            provisional_error_per_link,
-            weight,
-        );
+        let factor =
+            apply_safe_zone_adjustment(squash, raw_input, provisional_error_per_link, weight);
         safe_zone_factors.push(factor);
     }
 
@@ -191,7 +187,11 @@ mod tests {
         // Result layout: [error, safe0, safe1, share0, share1]
         assert_eq!(result.len(), 5);
         let error = result[0];
-        assert!((error - 0.3).abs() < 1e-5, "error should be ~0.3, got {}", error);
+        assert!(
+            (error - 0.3).abs() < 1e-5,
+            "error should be ~0.3, got {}",
+            error
+        );
 
         // Identity safe zones at moderate inputs should be 1.0
         let safe0 = result[1];
@@ -240,16 +240,8 @@ mod tests {
 
     #[test]
     fn test_fused_empty_synapses() {
-        let result = apply_fused_error_distribution(
-            SquashType::Identity,
-            0.5,
-            0.8,
-            0.5,
-            &[],
-            &[],
-            &[],
-            &[],
-        );
+        let result =
+            apply_fused_error_distribution(SquashType::Identity, 0.5, 0.8, 0.5, &[], &[], &[], &[]);
 
         assert_eq!(result.len(), 1);
         assert!((result[0] - 0.3).abs() < 1e-5);

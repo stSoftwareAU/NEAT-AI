@@ -12,7 +12,7 @@ use wasm_bindgen::prelude::*;
 use crate::accumulate::accumulate_weight_single;
 use crate::elastic_distribution::apply_distribute_elastic_error;
 use crate::fused_error::apply_fused_error_distribution;
-use crate::squash::{apply_squash, SquashType};
+use crate::squash::{SquashType, apply_squash};
 use crate::unsquash::apply_unsquash;
 /// Neuron type constants matching TypeScript.
 const NEURON_TYPE_INPUT: u8 = 0;
@@ -397,9 +397,8 @@ pub fn propagate_topological(data: &[u8]) -> Vec<f64> {
                 per_link_error = fused_result[1 + list_length..1 + 2 * list_length].to_vec();
             } else {
                 // Elastic error distribution fallback
-                let fallback_activations: Vec<f32> = (0..list_length)
-                    .map(|i| fused_activations[i])
-                    .collect();
+                let fallback_activations: Vec<f32> =
+                    (0..list_length).map(|i| fused_activations[i]).collect();
                 let fallback_safe: Vec<f32> = vec![1.0; list_length];
                 per_link_error = apply_distribute_elastic_error(
                     error,
@@ -444,13 +443,10 @@ pub fn propagate_topological(data: &[u8]) -> Vec<f64> {
 
                     if safe_zone_factor.is_finite() && safe_zone_factor > 0.0 {
                         // Clamp to from neuron's range
-                        let clamped_target = target_from_activation.clamp(
-                            from_neuron.range_low,
-                            from_neuron.range_high,
-                        );
+                        let clamped_target = target_from_activation
+                            .clamp(from_neuron.range_low, from_neuron.range_high);
                         if clamped_target.is_finite() && from_idx >= input_count {
-                            target_delta_sum[from_idx] +=
-                                (clamped_target - from_activation) as f64;
+                            target_delta_sum[from_idx] += (clamped_target - from_activation) as f64;
                             target_delta_count[from_idx] += 1;
                         }
                     }
@@ -469,7 +465,8 @@ pub fn propagate_topological(data: &[u8]) -> Vec<f64> {
                             0.0, // limit_weight_scale (unused)
                         );
 
-                    let sbase = neuron_count * neuron_result_stride + syn_idx * synapse_result_stride;
+                    let sbase =
+                        neuron_count * neuron_result_stride + syn_idx * synapse_result_stride;
                     result[sbase] += d_count;
                     result[sbase + 1] += d_pos_act;
                     result[sbase + 2] += d_neg_act;
@@ -489,11 +486,7 @@ pub fn propagate_topological(data: &[u8]) -> Vec<f64> {
 
         if update_needed {
             // Compute target value (unSquash)
-            let target_value = apply_unsquash(
-                squash_type,
-                target_activation,
-                neuron.hint_value,
-            );
+            let target_value = apply_unsquash(squash_type, target_activation, neuron.hint_value);
 
             // Accumulate bias
             let bias_delta = target_value as f64 - improved_value;
@@ -698,7 +691,11 @@ mod tests {
         // Synapse should have weight accumulation
         let sbase = 2 * 7; // neuron_count(2) * 7 + synapse 0 * 7
         let syn_count = result[sbase]; // countDelta
-        assert!(syn_count > 0.0, "synapse count should be > 0, got {}", syn_count);
+        assert!(
+            syn_count > 0.0,
+            "synapse count should be > 0, got {}",
+            syn_count
+        );
     }
 
     #[test]

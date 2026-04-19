@@ -3,7 +3,7 @@
 //! This module provides functions to get, validate, and limit activation ranges.
 //! Issue #1142 - WASM Migration Phase 10.
 
-use crate::squash::{SquashType, SELU_ALPHA, SELU_LAMBDA, SOFTSIGN_LIMIT};
+use crate::squash::{SELU_ALPHA, SELU_LAMBDA, SOFTSIGN_LIMIT, SquashType};
 
 // Special range constants based on TypeScript implementations
 // GELU minimum occurs around x approx -0.509 with value approx -0.17

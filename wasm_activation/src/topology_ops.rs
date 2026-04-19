@@ -674,25 +674,25 @@ mod tests {
     fn test_validate_topology_batch_multiple_valid() {
         // Two valid topologies concatenated
         let all_from = [0, 1, 2, 0, 2]; // topo1: [0,1,2], topo2: [0,2]
-        let all_to = [2, 2, 3, 2, 3];   // topo1: [2,2,3], topo2: [2,3]
+        let all_to = [2, 2, 3, 2, 3]; // topo1: [2,2,3], topo2: [2,3]
         let lengths = [3, 2];
 
         let result = validate_topology_batch(&all_from, &all_to, &lengths);
         assert_eq!(result.len(), 4);
-        assert_eq!(result[0], VALID);  // topo1 error_code
-        assert_eq!(result[2], VALID);  // topo2 error_code
+        assert_eq!(result[0], VALID); // topo1 error_code
+        assert_eq!(result[2], VALID); // topo2 error_code
     }
 
     #[test]
     fn test_validate_topology_batch_mixed_valid_invalid() {
         // First valid, second has backward connection
         let all_from = [0, 1, 2, 3]; // topo1: [0,1,2], topo2: [3]
-        let all_to = [2, 2, 3, 1];   // topo1: [2,2,3], topo2: [1] (backward!)
+        let all_to = [2, 2, 3, 1]; // topo1: [2,2,3], topo2: [1] (backward!)
         let lengths = [3, 1];
 
         let result = validate_topology_batch(&all_from, &all_to, &lengths);
         assert_eq!(result.len(), 4);
-        assert_eq!(result[0], VALID);              // topo1 valid
+        assert_eq!(result[0], VALID); // topo1 valid
         assert_eq!(result[2], BACKWARD_CONNECTION); // topo2 backward
     }
 

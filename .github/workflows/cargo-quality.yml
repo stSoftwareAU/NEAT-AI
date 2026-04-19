@@ -1,0 +1,50 @@
+# Issue #2360 - Cargo Format and Clippy workflow.
+# Runs rustfmt (format check) and clippy (-D warnings) on the Rust workspace
+# rooted at Cargo.toml, primarily covering wasm_activation. The workflow fails
+# the PR if rustfmt detects unformatted code or clippy reports any warning.
+name: Cargo Quality
+
+on:
+  pull_request:
+    branches:
+      - Develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: rustfmt & clippy
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: cargo-quality-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (stable + rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo (registry + git + target)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+            wasm_activation/target
+          key: ${{ runner.os }}-cargo-quality-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'wasm_activation/Cargo.toml', 'wasm_activation/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-quality-
+
+      - name: cargo fmt --check
+        run: cargo fmt --all --check
+
+      - name: cargo clippy -- -D warnings
+        run: cargo clippy --workspace -- -D warnings

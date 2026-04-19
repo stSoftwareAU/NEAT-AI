@@ -147,7 +147,10 @@ mod tests {
             conn_start: 0,
             conn_count: 1,
         }];
-        let connections = vec![PcConnection { from: 0, weight: 2.0 }];
+        let connections = vec![PcConnection {
+            from: 0,
+            weight: 2.0,
+        }];
 
         PredictiveCodingEngine::new_from_parts(1, 1, neurons, connections, 0, 0.05, 1e-6)
     }
@@ -194,7 +197,10 @@ mod tests {
             "Bias delta should be 0 when error is 0"
         );
         for (_, _, delta) in &result.weight_deltas {
-            assert!(delta.abs() < 1e-7, "Weight delta should be 0 when error is 0");
+            assert!(
+                delta.abs() < 1e-7,
+                "Weight delta should be 0 when error is 0"
+            );
         }
     }
 
@@ -208,7 +214,10 @@ mod tests {
             conn_start: 0,
             conn_count: 1,
         }];
-        let connections = vec![PcConnection { from: 0, weight: 1.0 }];
+        let connections = vec![PcConnection {
+            from: 0,
+            weight: 1.0,
+        }];
         let engine =
             PredictiveCodingEngine::new_from_parts(1, 1, neurons, connections, 0, 0.05, 1e-6);
 
@@ -248,7 +257,10 @@ mod tests {
             conn_start: 0,
             conn_count: 1,
         }];
-        let connections = vec![PcConnection { from: 0, weight: 1.0 }];
+        let connections = vec![PcConnection {
+            from: 0,
+            weight: 1.0,
+        }];
         let engine =
             PredictiveCodingEngine::new_from_parts(1, 1, neurons, connections, 0, 0.05, 1e-6);
 
@@ -295,9 +307,18 @@ mod tests {
             },
         ];
         let connections = vec![
-            PcConnection { from: 0, weight: 0.5 },
-            PcConnection { from: 1, weight: 0.3 },
-            PcConnection { from: 2, weight: 1.0 },
+            PcConnection {
+                from: 0,
+                weight: 0.5,
+            },
+            PcConnection {
+                from: 1,
+                weight: 0.3,
+            },
+            PcConnection {
+                from: 2,
+                weight: 1.0,
+            },
         ];
 
         let engine =

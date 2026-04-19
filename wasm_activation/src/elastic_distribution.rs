@@ -18,14 +18,9 @@ const PLANK_CONSTANT: f32 = 1e-12;
 #[cfg(target_arch = "wasm32")]
 #[target_feature(enable = "simd128", enable = "relaxed-simd")]
 #[inline]
-fn score_pass_simd(
-    activations: &[f32],
-    safe_zone_factors: &[f32],
-    scores: &mut [f32],
-) -> f32 {
+fn score_pass_simd(activations: &[f32], safe_zone_factors: &[f32], scores: &mut [f32]) -> f32 {
     use core::arch::wasm32::{
-        f32x4, f32x4_add, f32x4_extract_lane, f32x4_max, f32x4_min,
-        f32x4_mul, f32x4_splat,
+        f32x4, f32x4_add, f32x4_extract_lane, f32x4_max, f32x4_min, f32x4_mul, f32x4_splat,
     };
 
     let count = activations.len();
@@ -121,11 +116,7 @@ fn score_pass_simd(
 /// Scalar fallback scoring pass for non-WASM targets (testing).
 #[cfg(not(target_arch = "wasm32"))]
 #[inline]
-fn score_pass_simd(
-    activations: &[f32],
-    safe_zone_factors: &[f32],
-    scores: &mut [f32],
-) -> f32 {
+fn score_pass_simd(activations: &[f32], safe_zone_factors: &[f32], scores: &mut [f32]) -> f32 {
     let count = activations.len();
     let mut denom: f32 = 0.0;
 
@@ -379,38 +370,21 @@ mod tests {
 
     #[test]
     fn test_infinite_error_returns_zeros() {
-        let shares = apply_distribute_elastic_error(
-            f32::INFINITY,
-            &[1.0],
-            &[1.0],
-            &[1.0],
-            PLANK_CONSTANT,
-        );
+        let shares =
+            apply_distribute_elastic_error(f32::INFINITY, &[1.0], &[1.0], &[1.0], PLANK_CONSTANT);
         assert_eq!(shares.len(), 1);
         assert_eq!(shares[0], 0.0);
     }
 
     #[test]
     fn test_empty_links() {
-        let shares = apply_distribute_elastic_error(
-            10.0,
-            &[],
-            &[],
-            &[],
-            PLANK_CONSTANT,
-        );
+        let shares = apply_distribute_elastic_error(10.0, &[], &[], &[], PLANK_CONSTANT);
         assert!(shares.is_empty());
     }
 
     #[test]
     fn test_single_link() {
-        let shares = apply_distribute_elastic_error(
-            5.0,
-            &[3.0],
-            &[1.0],
-            &[1.0],
-            PLANK_CONSTANT,
-        );
+        let shares = apply_distribute_elastic_error(5.0, &[3.0], &[1.0], &[1.0], PLANK_CONSTANT);
         assert_eq!(shares.len(), 1);
         assert!((shares[0] - 5.0).abs() < 1e-5, "share={}", shares[0]);
     }
@@ -498,7 +472,9 @@ mod tests {
     fn test_error_conservation_many_links() {
         let count = 50;
         let activations: Vec<f32> = (0..count).map(|i| (i as f32 * 0.7).sin()).collect();
-        let safe_zones: Vec<f32> = (0..count).map(|i| ((i as f32 * 0.3).cos() + 1.0) / 2.0).collect();
+        let safe_zones: Vec<f32> = (0..count)
+            .map(|i| ((i as f32 * 0.3).cos() + 1.0) / 2.0)
+            .collect();
         let weights: Vec<f32> = (0..count).map(|i| (i as f32 * 0.5).sin()).collect();
         let error = 42.0;
 
@@ -511,12 +487,7 @@ mod tests {
         );
 
         let sum: f32 = shares.iter().sum();
-        assert!(
-            (sum - error).abs() < 1e-3,
-            "sum={}, error={}",
-            sum,
-            error
-        );
+        assert!((sum - error).abs() < 1e-3, "sum={}, error={}", sum, error);
     }
 
     #[test]
@@ -530,16 +501,8 @@ mod tests {
             PLANK_CONSTANT,
         );
         // Both |w|²=9, so equal split
-        assert!(
-            (shares[0] - 5.0).abs() < 1e-5,
-            "share0={}",
-            shares[0]
-        );
-        assert!(
-            (shares[1] - 5.0).abs() < 1e-5,
-            "share1={}",
-            shares[1]
-        );
+        assert!((shares[0] - 5.0).abs() < 1e-5, "share0={}", shares[0]);
+        assert!((shares[1] - 5.0).abs() < 1e-5, "share1={}", shares[1]);
     }
 
     #[test]
@@ -554,10 +517,6 @@ mod tests {
         );
         // Only link 1 has weight score (4), so it gets all
         assert!((shares[0]).abs() < 1e-5, "share0={}", shares[0]);
-        assert!(
-            (shares[1] - 10.0).abs() < 1e-5,
-            "share1={}",
-            shares[1]
-        );
+        assert!((shares[1] - 10.0).abs() < 1e-5, "share1={}", shares[1]);
     }
 }

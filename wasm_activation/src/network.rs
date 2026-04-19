@@ -11,7 +11,7 @@ use crate::simd::{
     weighted_sum_no_bias_simd, weighted_sum_of_squares_simd, weighted_sum_of_squares_v2_simd,
     weighted_sum_simd, weighted_sum_simd_4records,
 };
-use crate::squash::{apply_squash, SquashType};
+use crate::squash::{SquashType, apply_squash};
 use crate::synapse_type::SynapseType;
 
 /// Neuron data structure for cache-efficient access
@@ -841,8 +841,7 @@ impl CompiledNetwork {
         let mut act3 = vec![0.0f32; self.num_neurons];
 
         // Copy inputs for each record
-        act0[..effective_input_len]
-            .copy_from_slice(&inputs[..effective_input_len]);
+        act0[..effective_input_len].copy_from_slice(&inputs[..effective_input_len]);
         act1[..effective_input_len]
             .copy_from_slice(&inputs[input_size..input_size + effective_input_len]);
         act2[..effective_input_len]
@@ -1184,10 +1183,26 @@ impl CompiledNetwork {
         }
 
         let results = [
-            if min0 == f32::INFINITY { bias } else { min0 + bias },
-            if min1 == f32::INFINITY { bias } else { min1 + bias },
-            if min2 == f32::INFINITY { bias } else { min2 + bias },
-            if min3 == f32::INFINITY { bias } else { min3 + bias },
+            if min0 == f32::INFINITY {
+                bias
+            } else {
+                min0 + bias
+            },
+            if min1 == f32::INFINITY {
+                bias
+            } else {
+                min1 + bias
+            },
+            if min2 == f32::INFINITY {
+                bias
+            } else {
+                min2 + bias
+            },
+            if min3 == f32::INFINITY {
+                bias
+            } else {
+                min3 + bias
+            },
         ];
 
         let squash = SquashType::Minimum;
@@ -1271,10 +1286,26 @@ impl CompiledNetwork {
         }
 
         let results = [
-            if max0 == f32::NEG_INFINITY { bias } else { max0 + bias },
-            if max1 == f32::NEG_INFINITY { bias } else { max1 + bias },
-            if max2 == f32::NEG_INFINITY { bias } else { max2 + bias },
-            if max3 == f32::NEG_INFINITY { bias } else { max3 + bias },
+            if max0 == f32::NEG_INFINITY {
+                bias
+            } else {
+                max0 + bias
+            },
+            if max1 == f32::NEG_INFINITY {
+                bias
+            } else {
+                max1 + bias
+            },
+            if max2 == f32::NEG_INFINITY {
+                bias
+            } else {
+                max2 + bias
+            },
+            if max3 == f32::NEG_INFINITY {
+                bias
+            } else {
+                max3 + bias
+            },
         ];
 
         let squash = SquashType::Maximum;
@@ -1361,9 +1392,7 @@ impl CompiledNetwork {
         let hints = [hints0, hints1, hints2, hints3];
         let traces = [trace0, trace1, trace2, trace3];
 
-        for (i, ((act, hint), trace)) in
-            acts.into_iter().zip(hints).zip(traces).enumerate()
-        {
+        for (i, ((act, hint), trace)) in acts.into_iter().zip(hints).zip(traces).enumerate() {
             let branch = if cond[i] > 0.0 { 1.0f32 } else { 0.0f32 };
             let result = if cond[i] > 0.0 {
                 pos[i] + bias
@@ -1653,12 +1682,7 @@ mod tests {
             },
         ];
 
-        let inputs: [&[f32]; 4] = [
-            &[1.0, 2.0],
-            &[0.5, -1.0],
-            &[-2.0, 3.0],
-            &[0.0, 0.0],
-        ];
+        let inputs: [&[f32]; 4] = [&[1.0, 2.0], &[0.5, -1.0], &[-2.0, 3.0], &[0.0, 0.0]];
 
         // Run single-record activate_and_trace for each
         let mut single_results = Vec::new();
@@ -1734,12 +1758,7 @@ mod tests {
             },
         ];
 
-        let inputs: [&[f32]; 4] = [
-            &[1.0, 0.5],
-            &[-1.0, 2.0],
-            &[0.3, -0.3],
-            &[2.0, -1.0],
-        ];
+        let inputs: [&[f32]; 4] = [&[1.0, 0.5], &[-1.0, 2.0], &[0.3, -0.3], &[2.0, -1.0]];
 
         let mut single_results = Vec::new();
         for input in &inputs {
@@ -1783,24 +1802,19 @@ mod tests {
     #[test]
     fn test_batch_4way_minimum_aggregate() {
         // 2 inputs -> 1 MINIMUM neuron (output)
-        let synapses = vec![
-            make_synapse(0, 1.0),
-            make_synapse(1, 1.0),
-        ];
-        let neurons = vec![
-            NeuronData {
-                bias: 0.0,
-                start_synapse: 0,
-                num_synapses: 2,
-                squash_type: 32, // MINIMUM
-                is_constant: false,
-            },
-        ];
+        let synapses = vec![make_synapse(0, 1.0), make_synapse(1, 1.0)];
+        let neurons = vec![NeuronData {
+            bias: 0.0,
+            start_synapse: 0,
+            num_synapses: 2,
+            squash_type: 32, // MINIMUM
+            is_constant: false,
+        }];
 
         let inputs: [&[f32]; 4] = [
-            &[3.0, 1.0], // min = 1.0
+            &[3.0, 1.0],  // min = 1.0
             &[-1.0, 2.0], // min = -1.0
-            &[5.0, 5.0], // min = 5.0
+            &[5.0, 5.0],  // min = 5.0
             &[0.0, -3.0], // min = -3.0
         ];
 
@@ -1845,26 +1859,16 @@ mod tests {
     /// Test batch 4-way with MAXIMUM aggregate function
     #[test]
     fn test_batch_4way_maximum_aggregate() {
-        let synapses = vec![
-            make_synapse(0, 1.0),
-            make_synapse(1, 1.0),
-        ];
-        let neurons = vec![
-            NeuronData {
-                bias: 0.5,
-                start_synapse: 0,
-                num_synapses: 2,
-                squash_type: 33, // MAXIMUM
-                is_constant: false,
-            },
-        ];
+        let synapses = vec![make_synapse(0, 1.0), make_synapse(1, 1.0)];
+        let neurons = vec![NeuronData {
+            bias: 0.5,
+            start_synapse: 0,
+            num_synapses: 2,
+            squash_type: 33, // MAXIMUM
+            is_constant: false,
+        }];
 
-        let inputs: [&[f32]; 4] = [
-            &[3.0, 1.0],
-            &[-1.0, 2.0],
-            &[5.0, 5.0],
-            &[0.0, -3.0],
-        ];
+        let inputs: [&[f32]; 4] = [&[3.0, 1.0], &[-1.0, 2.0], &[5.0, 5.0], &[0.0, -3.0]];
 
         let mut single_results = Vec::new();
         for input in &inputs {
@@ -1910,19 +1914,17 @@ mod tests {
         // 3 inputs -> 1 IF neuron
         // synapse0: condition, synapse1: positive, synapse2: negative
         let synapses = vec![
-            make_synapse_typed(0, 1.0, 1),  // condition
-            make_synapse_typed(1, 1.0, 3),  // positive
-            make_synapse_typed(2, 1.0, 2),  // negative
+            make_synapse_typed(0, 1.0, 1), // condition
+            make_synapse_typed(1, 1.0, 3), // positive
+            make_synapse_typed(2, 1.0, 2), // negative
         ];
-        let neurons = vec![
-            NeuronData {
-                bias: 0.0,
-                start_synapse: 0,
-                num_synapses: 3,
-                squash_type: 34, // IF
-                is_constant: false,
-            },
-        ];
+        let neurons = vec![NeuronData {
+            bias: 0.0,
+            start_synapse: 0,
+            num_synapses: 3,
+            squash_type: 34, // IF
+            is_constant: false,
+        }];
 
         let inputs: [&[f32]; 4] = [
             &[1.0, 5.0, 10.0],  // condition>0 -> positive=5.0
@@ -1992,12 +1994,7 @@ mod tests {
             },
         ];
 
-        let inputs: [&[f32]; 4] = [
-            &[1.0, 2.0],
-            &[3.0, 4.0],
-            &[5.0, 6.0],
-            &[7.0, 8.0],
-        ];
+        let inputs: [&[f32]; 4] = [&[1.0, 2.0], &[3.0, 4.0], &[5.0, 6.0], &[7.0, 8.0]];
 
         let mut single_results = Vec::new();
         for input in &inputs {
@@ -2017,7 +2014,11 @@ mod tests {
             let batch_record = &batch_result[start..start + len];
             let single = &single_results[r];
 
-            assert_eq!(single.len(), batch_record.len(), "Record {r}: length mismatch");
+            assert_eq!(
+                single.len(),
+                batch_record.len(),
+                "Record {r}: length mismatch"
+            );
             for (j, (s, b)) in single.iter().zip(batch_record.iter()).enumerate() {
                 assert!(
                     (s - b).abs() < 1e-5,
@@ -2066,12 +2067,7 @@ mod tests {
             },
         ];
 
-        let inputs: [&[f32]; 4] = [
-            &[1.0, 2.0],
-            &[-1.0, 0.5],
-            &[3.0, -2.0],
-            &[0.0, 0.0],
-        ];
+        let inputs: [&[f32]; 4] = [&[1.0, 2.0], &[-1.0, 0.5], &[3.0, -2.0], &[0.0, 0.0]];
 
         let mut single_results = Vec::new();
         for input in &inputs {
@@ -2090,7 +2086,11 @@ mod tests {
             let batch_record = &batch_result[start..start + len];
             let single = &single_results[r];
 
-            assert_eq!(single.len(), batch_record.len(), "Record {r}: length mismatch");
+            assert_eq!(
+                single.len(),
+                batch_record.len(),
+                "Record {r}: length mismatch"
+            );
             for (j, (s, b)) in single.iter().zip(batch_record.iter()).enumerate() {
                 assert!(
                     (s - b).abs() < 1e-5,

@@ -15,3 +15,19 @@ neat-core = { workspace = true }
 
 # Profile settings are in the workspace root Cargo.toml.
 # Issue #1178 - WASM SIMD support: SIMD is enabled via RUSTFLAGS in build.sh.
+
+# Issue #2360 - Cargo Format and Clippy workflow.
+# Allow the clippy lints that currently fire across the existing wasm_activation
+# codebase. Adding the CI gate is intentionally decoupled from a full clippy
+# clean-up: the workflow will catch NEW occurrences of any other clippy lint in
+# future PRs, and these allows can be removed one at a time as the existing code
+# is refactored.
+[lints.clippy]
+too_many_arguments = "allow"
+needless_range_loop = "allow"
+manual_memcpy = "allow"
+same_item_push = "allow"
+neg_multiply = "allow"
+needless_late_init = "allow"
+missing_const_for_thread_local = "allow"
+doc_nested_refdefs = "allow"

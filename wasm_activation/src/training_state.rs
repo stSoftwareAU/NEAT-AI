@@ -385,13 +385,7 @@ mod tests {
         let targets = vec![2.0, -1.5, 0.8, 3.0];
         let acts = vec![1.0, 0.5, -0.8, 2.0];
 
-        accumulate_weight_persistent_4way(
-            0,
-            &weights,
-            &targets,
-            &acts,
-            1e-7, 1.0, 1.0, 100000.0,
-        );
+        accumulate_weight_persistent_4way(0, &weights, &targets, &acts, 1e-7, 1.0, 1.0, 100000.0);
 
         // Verify state was accumulated
         let s0 = read_synapse_state(0);
@@ -399,13 +393,7 @@ mod tests {
         assert!(s0[1] > 0.0, "positive activation should be tracked");
 
         // Second iteration should accumulate
-        accumulate_weight_persistent_4way(
-            0,
-            &weights,
-            &targets,
-            &acts,
-            1e-7, 1.0, 1.0, 100000.0,
-        );
+        accumulate_weight_persistent_4way(0, &weights, &targets, &acts, 1e-7, 1.0, 1.0, 100000.0);
 
         let s0_after = read_synapse_state(0);
         assert_eq!(s0_after[0], 2.0, "count should be 2 after second iteration");
@@ -421,17 +409,14 @@ mod tests {
         let pres = vec![1.0, -0.5, 0.2, 2.5];
         let biases = vec![0.5, -0.3, 1.2, 0.0];
 
-        accumulate_bias_persistent_4way(
-            0,
-            &target_pres,
-            &pres,
-            &biases,
-            1e-7, 1.0, 1.0, 10000.0,
-        );
+        accumulate_bias_persistent_4way(0, &target_pres, &pres, &biases, 1e-7, 1.0, 1.0, 10000.0);
 
         let n0 = read_neuron_state(0);
         assert_eq!(n0[0], 1.0, "count should be 1");
-        assert_eq!(n0[1], 1.5, "totalBias should be target_bias = 0.5 + (2.0 - 1.0) = 1.5");
+        assert_eq!(
+            n0[1], 1.5,
+            "totalBias should be target_bias = 0.5 + (2.0 - 1.0) = 1.5"
+        );
 
         free_training_state();
     }
@@ -464,7 +449,10 @@ mod tests {
                 assert!(
                     (persistent[f] - batch_result[batch_base + f]).abs() < 1e-10,
                     "Mismatch at synapse {} field {}: persistent={}, batch={}",
-                    i, f, persistent[f], batch_result[batch_base + f]
+                    i,
+                    f,
+                    persistent[f],
+                    batch_result[batch_base + f]
                 );
             }
         }
@@ -484,14 +472,18 @@ mod tests {
 
         // Batch approach
         let batch_result = crate::accumulate::accumulate_bias_batch_4way(
-            &target_pres, &pres, &biases, plank, lr, max_adj, limit,
+            &target_pres,
+            &pres,
+            &biases,
+            plank,
+            lr,
+            max_adj,
+            limit,
         );
 
         // Persistent approach
         init_training_state(0, 4);
-        accumulate_bias_persistent_4way(
-            0, &target_pres, &pres, &biases, plank, lr, max_adj, limit,
-        );
+        accumulate_bias_persistent_4way(0, &target_pres, &pres, &biases, plank, lr, max_adj, limit);
 
         for i in 0..4 {
             let persistent = read_neuron_state(i);
@@ -501,7 +493,10 @@ mod tests {
                 assert!(
                     (persistent[f] - batch_result[batch_base + f]).abs() < 1e-10,
                     "Mismatch at neuron {} field {}: persistent={}, batch={}",
-                    i, f, persistent[f], batch_result[batch_base + f]
+                    i,
+                    f,
+                    persistent[f],
+                    batch_result[batch_base + f]
                 );
             }
         }
@@ -576,9 +571,7 @@ mod tests {
         let targets = vec![2.0, -1.5, 0.8, 3.0, -2.0, 1.0, -0.5, 2.5];
         let acts = vec![1.0, 0.5, -0.8, 2.0, -1.5, 0.3, 0.9, -0.6];
 
-        accumulate_weight_persistent_8way(
-            0, &weights, &targets, &acts, 1e-7, 1.0, 1.0, 100000.0,
-        );
+        accumulate_weight_persistent_8way(0, &weights, &targets, &acts, 1e-7, 1.0, 1.0, 100000.0);
 
         // Compare with batch
         let batch = crate::accumulate::accumulate_weight_batch_8way(
@@ -592,7 +585,8 @@ mod tests {
                 assert!(
                     (persistent[f] - batch[batch_base + f]).abs() < 1e-10,
                     "8way mismatch at synapse {} field {}",
-                    i, f,
+                    i,
+                    f,
                 );
             }
         }

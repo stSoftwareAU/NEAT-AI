@@ -5,7 +5,7 @@
 //! Issue #1213 - Added SIMD batch derivative computation for backpropagation.
 
 use crate::squash::{
-    SquashType, GELU_COEFF, LEAKY_RELU_ALPHA, SELU_ALPHA, SELU_LAMBDA, SQRT_2_OVER_PI,
+    GELU_COEFF, LEAKY_RELU_ALPHA, SELU_ALPHA, SELU_LAMBDA, SQRT_2_OVER_PI, SquashType,
 };
 
 // Issue #1213 - WASM SIMD support for batch derivative computation
@@ -108,11 +108,7 @@ pub fn apply_derivative(squash_type: SquashType, x: f32) -> f32 {
         // f'(x) = 1 / (1 + exp(-x)) = sigmoid(x)
         SquashType::Softplus => {
             let d = 1.0 / (1.0 + (-x).exp());
-            if d.is_finite() {
-                d
-            } else {
-                0.0
-            }
+            if d.is_finite() { d } else { 0.0 }
         }
 
         // f(x) = x * sigmoid(x) = x / (1 + exp(-x))
@@ -144,11 +140,7 @@ pub fn apply_derivative(squash_type: SquashType, x: f32) -> f32 {
             let delta = 2.0 + 2.0 * e_x + e_2x;
             let raw = e_x * omega / (delta * delta);
 
-            if raw.is_finite() {
-                raw.max(0.0)
-            } else {
-                0.0
-            }
+            if raw.is_finite() { raw.max(0.0) } else { 0.0 }
         }
 
         // f(x) = 0.5 * x * (1 + tanh(sqrt(2/pi) * (x + 0.044715 * x^3)))
@@ -166,11 +158,7 @@ pub fn apply_derivative(squash_type: SquashType, x: f32) -> f32 {
                 * (1.0 + 3.0 * GELU_COEFF * x * x);
 
             let result = cdf + pdf;
-            if result.is_finite() {
-                result
-            } else {
-                0.0
-            }
+            if result.is_finite() { result } else { 0.0 }
         }
 
         // f(x) = sin(x), f'(x) = cos(x)
@@ -225,11 +213,7 @@ pub fn apply_derivative(squash_type: SquashType, x: f32) -> f32 {
         // since the derivative is undefined everywhere
         SquashType::Step => {
             let epsilon = 0.01;
-            if x.abs() < epsilon {
-                0.01
-            } else {
-                0.0
-            }
+            if x.abs() < epsilon { 0.01 } else { 0.0 }
         }
 
         // f(x) = 1 - x, f'(x) = -1
@@ -317,11 +301,7 @@ pub fn apply_derivative(squash_type: SquashType, x: f32) -> f32 {
         SquashType::Isru => {
             let x2 = x * x;
             let denom = 1.0 + x2;
-            if denom < 1e-12 {
-                0.0
-            } else {
-                denom.powf(-1.5)
-            }
+            if denom < 1e-12 { 0.0 } else { denom.powf(-1.5) }
         }
 
         // Aggregate functions don't have traditional derivatives

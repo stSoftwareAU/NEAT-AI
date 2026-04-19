@@ -5,7 +5,7 @@
 //! Issue #1139 - WASM Migration Phase 7.
 
 use crate::derivative::apply_derivative;
-use crate::squash::{apply_squash, SquashType, LEAKY_RELU_ALPHA, SELU_ALPHA, SELU_LAMBDA};
+use crate::squash::{LEAKY_RELU_ALPHA, SELU_ALPHA, SELU_LAMBDA, SquashType, apply_squash};
 
 /// Apply an inverse squash (unsquash) function to a value
 /// Issue #1139 - WASM Migration Phase 7: Implement unSquash() in Rust/WASM
@@ -48,17 +48,9 @@ pub fn apply_unsquash(squash_type: SquashType, activation: f32, hint: f32) -> f3
             if activation > 0.0 && activation < 6.0 {
                 activation
             } else if activation == 6.0 && hint.is_finite() {
-                if hint > 6.0 {
-                    hint
-                } else {
-                    6.0
-                }
+                if hint > 6.0 { hint } else { 6.0 }
             } else if activation == 0.0 && hint.is_finite() {
-                if hint < 0.0 {
-                    hint
-                } else {
-                    0.0
-                }
+                if hint < 0.0 { hint } else { 0.0 }
             } else {
                 0.0
             }
@@ -251,11 +243,7 @@ pub fn apply_unsquash(squash_type: SquashType, activation: f32, hint: f32) -> f3
                 guess = guess.clamp(-SAFE_LIMIT, SAFE_LIMIT);
             }
 
-            if guess.is_finite() {
-                guess
-            } else {
-                0.0
-            }
+            if guess.is_finite() { guess } else { 0.0 }
         }
 
         // f(x) = 0.5 * x * (1 + tanh(sqrt(2/pi) * (x + 0.044715 * x^3)))
@@ -420,11 +408,7 @@ pub fn apply_unsquash(squash_type: SquashType, activation: f32, hint: f32) -> f3
 
             let value = activation.tan();
             if !value.is_finite() {
-                if hint.is_finite() {
-                    hint
-                } else {
-                    0.0
-                }
+                if hint.is_finite() { hint } else { 0.0 }
             } else {
                 value
             }
@@ -512,11 +496,7 @@ pub fn apply_unsquash(squash_type: SquashType, activation: f32, hint: f32) -> f3
                     return hint;
                 }
             }
-            if activation >= 0.0 {
-                1.0
-            } else {
-                -1.0
-            }
+            if activation >= 0.0 { 1.0 } else { -1.0 }
         }
 
         // f(x) = x > 0 ? 1 : 0
@@ -613,8 +593,12 @@ pub fn apply_unsquash(squash_type: SquashType, activation: f32, hint: f32) -> f3
         }
 
         // Aggregate functions - return hint or activation
-        SquashType::Minimum | SquashType::Maximum | SquashType::If
-        | SquashType::Hypotenuse | SquashType::HypotenuseV2 | SquashType::Mean => {
+        SquashType::Minimum
+        | SquashType::Maximum
+        | SquashType::If
+        | SquashType::Hypotenuse
+        | SquashType::HypotenuseV2
+        | SquashType::Mean => {
             if hint.is_finite() {
                 hint
             } else {

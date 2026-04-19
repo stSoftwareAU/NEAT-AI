@@ -78,7 +78,12 @@ fn limit_weight(
     }
 
     if (target_weight - current_weight).abs() < plank_constant {
-        return apply_weight_regularisation(current_weight, learning_rate, l1_weight_decay, l2_weight_decay);
+        return apply_weight_regularisation(
+            current_weight,
+            learning_rate,
+            l1_weight_decay,
+            l2_weight_decay,
+        );
     }
 
     // Calculate and apply the difference with learning rate.
@@ -87,16 +92,29 @@ fn limit_weight(
 
     // Clamp the adjustment based on the configured max scale.
     if difference.abs() > max_weight_adj_scale {
-        limited_weight =
-            current_weight + if difference > 0.0 { max_weight_adj_scale } else { -max_weight_adj_scale };
+        limited_weight = current_weight
+            + if difference > 0.0 {
+                max_weight_adj_scale
+            } else {
+                -max_weight_adj_scale
+            };
     }
 
     // Enforce the global weight scale limit.
     if limited_weight.abs() > limit_weight_scale {
-        limited_weight = if limited_weight > 0.0 { limit_weight_scale } else { -limit_weight_scale };
+        limited_weight = if limited_weight > 0.0 {
+            limit_weight_scale
+        } else {
+            -limit_weight_scale
+        };
     }
 
-    apply_weight_regularisation(limited_weight, learning_rate, l1_weight_decay, l2_weight_decay)
+    apply_weight_regularisation(
+        limited_weight,
+        learning_rate,
+        l1_weight_decay,
+        l2_weight_decay,
+    )
 }
 
 /// Apply L1/L2 bias regularisation (bias decay).
@@ -153,7 +171,12 @@ fn limit_bias(
     }
 
     if (target_bias - current_bias).abs() < 0.000_000_001 {
-        return apply_bias_regularisation(current_bias, learning_rate, l1_bias_decay, l2_bias_decay);
+        return apply_bias_regularisation(
+            current_bias,
+            learning_rate,
+            l1_bias_decay,
+            l2_bias_decay,
+        );
     }
 
     let difference = learning_rate * (target_bias - current_bias);
@@ -253,7 +276,9 @@ pub(crate) fn accumulate_weight_single(
         }
     }
 
-    (1.0, d_pos_act, d_neg_act, d_cnt_pos, d_cnt_neg, d_pos_adj, d_neg_adj)
+    (
+        1.0, d_pos_act, d_neg_act, d_cnt_pos, d_cnt_neg, d_pos_adj, d_neg_adj,
+    )
 }
 
 /// Issue #1518 - Batch weight accumulation for 4 synapses.
@@ -555,8 +580,8 @@ pub fn calculate_weight(
     let total_generational_weight = current_weight * capped_generations;
 
     // Blend adjusted and generational weights.
-    let average_weight =
-        (synapse_average_weight_total + total_generational_weight) / (total_activation_count + capped_generations);
+    let average_weight = (synapse_average_weight_total + total_generational_weight)
+        / (total_activation_count + capped_generations);
 
     limit_weight(
         average_weight,
@@ -854,8 +879,7 @@ mod tests {
 
     #[test]
     fn test_accumulate_bias_single_non_finite_skipped() {
-        let (count, _, _) =
-            accumulate_bias_single(f64::NAN, 1.0, 0.5, 1e-7, 1.0, 1.0, 10000.0);
+        let (count, _, _) = accumulate_bias_single(f64::NAN, 1.0, 0.5, 1e-7, 1.0, 1.0, 10000.0);
         assert_eq!(count, 0.0);
     }
 
@@ -865,9 +889,8 @@ mod tests {
         let targets = vec![2.0, -1.5, 0.8, 3.0];
         let acts = vec![1.0, 0.5, -0.8, 2.0];
 
-        let result = accumulate_weight_batch_4way(
-            &weights, &targets, &acts, 1e-7, 1.0, 1.0, 100000.0,
-        );
+        let result =
+            accumulate_weight_batch_4way(&weights, &targets, &acts, 1e-7, 1.0, 1.0, 100000.0);
 
         assert_eq!(result.len(), 28);
         // First synapse: positive activation
@@ -881,9 +904,7 @@ mod tests {
         let pres = vec![1.0, -0.5, 0.2, 2.5];
         let biases = vec![0.5, -0.3, 1.2, 0.0];
 
-        let result = accumulate_bias_batch_4way(
-            &targets, &pres, &biases, 1e-7, 1.0, 1.0, 10000.0,
-        );
+        let result = accumulate_bias_batch_4way(&targets, &pres, &biases, 1e-7, 1.0, 1.0, 10000.0);
 
         assert_eq!(result.len(), 12);
         // First neuron: delta=1.0, target_bias=1.5
@@ -895,21 +916,21 @@ mod tests {
     fn test_calculate_weight_basic() {
         // With only positive activations
         let result = calculate_weight(
-            1.0,   // count
-            1.0,   // total_positive_activation
-            0.0,   // total_negative_activation
-            1.0,   // count_positive
-            0.0,   // count_negative
-            2.0,   // total_positive_adjusted_value (adjusted_weight * activation)
-            0.0,   // total_negative_adjusted_value
-            0.5,   // current_weight
-            0.0,   // generations
-            1e-7,  // plank_constant
-            1.0,   // learning_rate
-            1.0,   // max_weight_adj_scale
+            1.0,      // count
+            1.0,      // total_positive_activation
+            0.0,      // total_negative_activation
+            1.0,      // count_positive
+            0.0,      // count_negative
+            2.0,      // total_positive_adjusted_value (adjusted_weight * activation)
+            0.0,      // total_negative_adjusted_value
+            0.5,      // current_weight
+            0.0,      // generations
+            1e-7,     // plank_constant
+            1.0,      // learning_rate
+            1.0,      // max_weight_adj_scale
             100000.0, // limit_weight_scale
-            0.0,   // l1_weight_decay
-            0.0,   // l2_weight_decay
+            0.0,      // l1_weight_decay
+            0.0,      // l2_weight_decay
         );
 
         assert!(result.is_finite());
@@ -931,17 +952,17 @@ mod tests {
     #[test]
     fn test_calculate_bias_basic() {
         let result = calculate_bias(
-            1.0,   // count
-            1.5,   // total_adjusted_bias
-            0.5,   // current_bias
-            false, // no_change
-            0.0,   // generations
-            1e-7,  // plank_constant
-            1.0,   // learning_rate
-            1.0,   // max_bias_adj_scale
+            1.0,     // count
+            1.5,     // total_adjusted_bias
+            0.5,     // current_bias
+            false,   // no_change
+            0.0,     // generations
+            1e-7,    // plank_constant
+            1.0,     // learning_rate
+            1.0,     // max_bias_adj_scale
             10000.0, // limit_bias_scale
-            0.0,   // l1_bias_decay
-            0.0,   // l2_bias_decay
+            0.0,     // l1_bias_decay
+            0.0,     // l2_bias_decay
         );
 
         assert!(result.is_finite());
@@ -950,9 +971,8 @@ mod tests {
     #[test]
     fn test_calculate_bias_with_l2_decay() {
         // Issue #1953: calculate_bias should apply L2 regularisation
-        let without_decay = calculate_bias(
-            1.0, 1.5, 0.5, false, 0.0, 1e-7, 1.0, 1.0, 10000.0, 0.0, 0.0,
-        );
+        let without_decay =
+            calculate_bias(1.0, 1.5, 0.5, false, 0.0, 1e-7, 1.0, 1.0, 10000.0, 0.0, 0.0);
         let with_decay = calculate_bias(
             1.0, 1.5, 0.5, false, 0.0, 1e-7, 1.0, 1.0, 10000.0, 0.0, 0.01,
         );
@@ -969,9 +989,7 @@ mod tests {
 
     #[test]
     fn test_calculate_bias_zero_count() {
-        let result = calculate_bias(
-            0.0, 0.0, 0.5, false, 5.0, 1e-7, 1.0, 1.0, 10000.0, 0.0, 0.0,
-        );
+        let result = calculate_bias(0.0, 0.0, 0.5, false, 5.0, 1e-7, 1.0, 1.0, 10000.0, 0.0, 0.0);
         assert_eq!(result, 0.5); // Should return current_bias
     }
 }

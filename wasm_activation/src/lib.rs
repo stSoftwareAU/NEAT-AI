@@ -26,10 +26,10 @@ mod pc_inference;
 mod pc_learning;
 mod range;
 mod safe_zone;
+mod score_scan;
 mod simd;
 mod squash;
 mod synapse_type;
-mod score_scan;
 mod topological_backprop;
 mod topology_ops;
 mod training_state;
@@ -46,20 +46,18 @@ pub use elastic_distribution::distribute_elastic_error;
 
 // Re-export accumulation functions (Issue #1518, #1960)
 pub use accumulate::{
-    accumulate_bias_batch_4way, accumulate_bias_batch_8way,
-    accumulate_weight_batch_4way, accumulate_weight_batch_8way,
-    calculate_bias, calculate_bias_batch_4way,
-    calculate_weight, calculate_weight_batch_4way,
+    accumulate_bias_batch_4way, accumulate_bias_batch_8way, accumulate_weight_batch_4way,
+    accumulate_weight_batch_8way, calculate_bias, calculate_bias_batch_4way, calculate_weight,
+    calculate_weight_batch_4way,
 };
 
 // Re-export persistent training state functions (Issue #1522)
 pub use training_state::{
     accumulate_bias_persistent_4way, accumulate_bias_persistent_8way,
-    accumulate_weight_persistent_4way, accumulate_weight_persistent_8way,
-    free_training_state, get_training_state_num_neurons,
-    get_training_state_num_synapses, init_training_state,
-    read_all_neuron_state, read_all_synapse_state,
-    read_neuron_state, read_synapse_state, reset_training_state,
+    accumulate_weight_persistent_4way, accumulate_weight_persistent_8way, free_training_state,
+    get_training_state_num_neurons, get_training_state_num_synapses, init_training_state,
+    read_all_neuron_state, read_all_synapse_state, read_neuron_state, read_synapse_state,
+    reset_training_state,
 };
 
 // Re-export topological backpropagation (Issue #1954)
@@ -949,15 +947,10 @@ mod tests {
 
     #[test]
     fn test_safe_zone_batch_single() {
-        let result = apply_safe_zone_adjustment_batch(
-            &[SquashType::Relu as u8],
-            &[1.0],
-            0.5,
-            &[1.0],
-        );
+        let result =
+            apply_safe_zone_adjustment_batch(&[SquashType::Relu as u8], &[1.0], 0.5, &[1.0]);
         assert_eq!(result.len(), 1);
-        let scalar =
-            apply_safe_zone_adjustment(SquashType::Relu, 1.0, 0.5, 1.0);
+        let scalar = apply_safe_zone_adjustment(SquashType::Relu, 1.0, 0.5, 1.0);
         assert!((result[0] - scalar).abs() < 1e-7);
     }
 
@@ -969,7 +962,10 @@ mod tests {
         // enum has the same discriminant mapping as the in-tree version.
         let core_relu = neat_core::SquashType::from(1u8);
         let local_relu = SquashType::from(1u8);
-        assert_eq!(core_relu as u8, local_relu as u8, "SquashType::Relu discriminant must match");
+        assert_eq!(
+            core_relu as u8, local_relu as u8,
+            "SquashType::Relu discriminant must match"
+        );
 
         // Verify neat-core's squash function produces identical output.
         let core_result = neat_core::apply_squash(core_relu, 1.0);
@@ -1002,12 +998,8 @@ mod tests {
     #[test]
     fn test_neat_core_error_parity() {
         // Verify calculateError parity between neat-core and in-tree code.
-        let core_err = neat_core::apply_calculate_error(
-            neat_core::SquashType::Identity,
-            0.5,
-            0.8,
-            0.5,
-        );
+        let core_err =
+            neat_core::apply_calculate_error(neat_core::SquashType::Identity, 0.5, 0.8, 0.5);
         let local_err = apply_calculate_error(SquashType::Identity, 0.5, 0.8, 0.5);
         assert!(
             (core_err - local_err).abs() < 1e-5,

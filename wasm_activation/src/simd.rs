@@ -20,9 +20,7 @@ use crate::network::SynapseData;
 // SIMD intrinsics for vectorised synapse weight summation
 // Issue #1197 - Added f32x4_relaxed_madd for FMA optimisation
 #[cfg(target_arch = "wasm32")]
-use core::arch::wasm32::{
-    f32x4, f32x4_add, f32x4_extract_lane, f32x4_relaxed_madd, f32x4_splat,
-};
+use core::arch::wasm32::{f32x4, f32x4_add, f32x4_extract_lane, f32x4_relaxed_madd, f32x4_splat};
 
 /// Issue #1178 - SIMD-optimised weighted sum for standard activations
 /// Issue #1197 - Uses FMA (fused multiply-add) via relaxed-simd for better performance
@@ -626,7 +624,10 @@ mod tests {
         let synapses: Vec<SynapseData> = vec![];
         let activations: Vec<f32> = vec![1.0, 2.0, 3.0];
         let result = weighted_sum_simd(&synapses, &activations, 0, 0, 0.5);
-        assert!((result - 0.5).abs() < 1e-6, "Empty synapse range should return bias");
+        assert!(
+            (result - 0.5).abs() < 1e-6,
+            "Empty synapse range should return bias"
+        );
     }
 
     #[test]
@@ -635,7 +636,10 @@ mod tests {
         let activations = vec![0.0, 2.0, 0.0];
         let result = weighted_sum_simd(&synapses, &activations, 0, 1, 1.0);
         // Expected: 1.0 + 2.0 * 0.5 = 2.0
-        assert!((result - 2.0).abs() < 1e-6, "Single synapse result mismatch: {result}");
+        assert!(
+            (result - 2.0).abs() < 1e-6,
+            "Single synapse result mismatch: {result}"
+        );
     }
 
     #[test]
@@ -650,7 +654,10 @@ mod tests {
         let result = weighted_sum_simd(&synapses, &activations, 0, 3, 0.0);
         // Expected: 1*1 + 2*2 + 3*3 = 1 + 4 + 9 = 14
         let expected = naive_weighted_sum(&synapses, &activations, 0, 3, 0.0);
-        assert!((result - expected).abs() < 1e-5, "3 synapses: got {result}, expected {expected}");
+        assert!(
+            (result - expected).abs() < 1e-5,
+            "3 synapses: got {result}, expected {expected}"
+        );
     }
 
     #[test]
@@ -759,14 +766,14 @@ mod tests {
 
     #[test]
     fn test_weighted_sum_of_squares_basic() {
-        let synapses = vec![
-            make_synapse(0, 2.0),
-            make_synapse(1, 3.0),
-        ];
+        let synapses = vec![make_synapse(0, 2.0), make_synapse(1, 3.0)];
         let activations = vec![1.0, 2.0];
         let result = weighted_sum_of_squares_simd(&synapses, &activations, 0, 2);
         // (1*2)^2 + (2*3)^2 = 4 + 36 = 40
-        assert!((result - 40.0).abs() < 1e-4, "Sum of squares: got {result}, expected 40.0");
+        assert!(
+            (result - 40.0).abs() < 1e-4,
+            "Sum of squares: got {result}, expected 40.0"
+        );
     }
 
     #[test]
@@ -808,15 +815,15 @@ mod tests {
         let activations = vec![1.0, 1.0, 1.0, 1.0];
         let result = weighted_sum_no_bias_simd(&synapses, &activations, 0, 4);
         // 1*1 + 1*2 + 1*3 + 1*4 = 10
-        assert!((result - 10.0).abs() < 1e-5, "No bias sum: got {result}, expected 10.0");
+        assert!(
+            (result - 10.0).abs() < 1e-5,
+            "No bias sum: got {result}, expected 10.0"
+        );
     }
 
     #[test]
     fn test_weighted_sum_of_squares_v2_basic() {
-        let synapses = vec![
-            make_synapse(0, 1.0),
-            make_synapse(1, 2.0),
-        ];
+        let synapses = vec![make_synapse(0, 1.0), make_synapse(1, 2.0)];
         let activations = vec![1.0, 2.0];
         let bias = 0.5;
         let result = weighted_sum_of_squares_v2_simd(&synapses, &activations, 0, 2, bias);
@@ -829,9 +836,7 @@ mod tests {
 
     #[test]
     fn test_weighted_sum_of_squares_v2_simd_path() {
-        let synapses: Vec<SynapseData> = (0..5)
-            .map(|i| make_synapse(i, 1.0))
-            .collect();
+        let synapses: Vec<SynapseData> = (0..5).map(|i| make_synapse(i, 1.0)).collect();
         let activations: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let bias = -1.0;
         let result = weighted_sum_of_squares_v2_simd(&synapses, &activations, 0, 5, bias);
@@ -849,10 +854,7 @@ mod tests {
 
     #[test]
     fn test_4records_basic() {
-        let synapses = vec![
-            make_synapse(0, 1.0),
-            make_synapse(1, 2.0),
-        ];
+        let synapses = vec![make_synapse(0, 1.0), make_synapse(1, 2.0)];
         let act0 = vec![1.0, 2.0];
         let act1 = vec![3.0, 4.0];
         let act2 = vec![5.0, 6.0];
@@ -861,13 +863,25 @@ mod tests {
             weighted_sum_simd_4records(&synapses, &act0, &act1, &act2, &act3, 0, 2, 0.5);
 
         // Record 0: 0.5 + 1*1 + 2*2 = 5.5
-        assert!((r0 - 5.5).abs() < 1e-5, "4records r0: got {r0}, expected 5.5");
+        assert!(
+            (r0 - 5.5).abs() < 1e-5,
+            "4records r0: got {r0}, expected 5.5"
+        );
         // Record 1: 0.5 + 3*1 + 4*2 = 11.5
-        assert!((r1 - 11.5).abs() < 1e-5, "4records r1: got {r1}, expected 11.5");
+        assert!(
+            (r1 - 11.5).abs() < 1e-5,
+            "4records r1: got {r1}, expected 11.5"
+        );
         // Record 2: 0.5 + 5*1 + 6*2 = 17.5
-        assert!((r2 - 17.5).abs() < 1e-5, "4records r2: got {r2}, expected 17.5");
+        assert!(
+            (r2 - 17.5).abs() < 1e-5,
+            "4records r2: got {r2}, expected 17.5"
+        );
         // Record 3: 0.5 + 7*1 + 8*2 = 23.5
-        assert!((r3 - 23.5).abs() < 1e-5, "4records r3: got {r3}, expected 23.5");
+        assert!(
+            (r3 - 23.5).abs() < 1e-5,
+            "4records r3: got {r3}, expected 23.5"
+        );
     }
 
     #[test]
