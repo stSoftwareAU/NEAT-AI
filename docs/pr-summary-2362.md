@@ -13,8 +13,8 @@ Closes #2362.
 
 ## Evidence
 
-This is a CI/automation change with no UI surface, so no screenshot is
-attached. Evidence of correctness:
+This is a CI/automation change with no UI surface, so no screenshot is attached.
+Evidence of correctness:
 
 - `deno test --allow-read test/scripts/DenoOutdatedWorkflow.ts` passes all six
   cases against the new workflow file (file presence, schedule + dispatch
