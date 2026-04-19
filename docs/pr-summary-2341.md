@@ -11,15 +11,15 @@ overrides when needed") and the child issue #2347.
 
 ### Epic #2341 status
 
-| Child issue | Title | Status |
-|-------------|-------|--------|
-| #2342 | Release & pinning model | Closed |
-| #2343 | Cargo workspace / dependency wiring | Closed |
-| #2344 | CI & caches for external core | Closed |
-| #2345 | Parity gate before deletion | Closed |
-| #2346 | Remove in-tree native Rust | No duplicate exists — [commented](https://github.com/stSoftwareAU/NEAT-AI/issues/2346#issuecomment-4274852968) |
-| #2347 | Contributor docs for bumps & overrides | Addressed in this PR |
-| #2348 | Align NEAT-AI-scorer | PR #2356 in progress |
+| Child issue | Title                                  | Status                                                                                                         |
+| ----------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| #2342       | Release & pinning model                | Closed                                                                                                         |
+| #2343       | Cargo workspace / dependency wiring    | Closed                                                                                                         |
+| #2344       | CI & caches for external core          | Closed                                                                                                         |
+| #2345       | Parity gate before deletion            | Closed                                                                                                         |
+| #2346       | Remove in-tree native Rust             | No duplicate exists — [commented](https://github.com/stSoftwareAU/NEAT-AI/issues/2346#issuecomment-4274852968) |
+| #2347       | Contributor docs for bumps & overrides | Addressed in this PR                                                                                           |
+| #2348       | Align NEAT-AI-scorer                   | PR #2356 in progress                                                                                           |
 
 ## Evidence
 
