@@ -16,11 +16,12 @@ RUST_MSRV="${RUST_MSRV:-1.88.0}"
 # Returns 0 if v1 >= v2 (semver-style), 1 otherwise.
 _version_ge() {
   local v1="$1" v2="$2"
-  local IFS=.
   local i
   local -a a b
-  a=(${v1%%-*})  # strip any -pre suffix
-  b=(${v2%%-*})
+  # Split the version on '.' using read -ra to avoid word-splitting
+  # pitfalls flagged by ShellCheck SC2206.
+  IFS='.' read -ra a <<< "${v1%%-*}"  # strip any -pre suffix
+  IFS='.' read -ra b <<< "${v2%%-*}"
   for ((i=0; i<${#a[@]} || i<${#b[@]}; i++)); do
     local x=${a[i]:-0} y=${b[i]:-0}
     ((10#$x > 10#$y)) && return 0
