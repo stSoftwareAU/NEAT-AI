@@ -97,6 +97,72 @@ optional — tests and the core library work without it.
    deno run --allow-env --allow-ffi --allow-read scripts/check_discovery.ts
    ```
 
+## 🦀 NEAT-AI-core Dependency
+
+Shared native Rust computation lives in the external
+[NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) repository and is
+consumed as the `neat-core` crate. The `wasm_activation/` WASM entry point stays
+in this repo and depends on `neat-core` via the workspace.
+
+For the full pinning policy (semver rules, approval tiers, CI auth), see
+[docs/CORE_DEPENDENCY_POLICY.md](./docs/CORE_DEPENDENCY_POLICY.md).
+
+### Bumping the Pinned Core Version
+
+When you need a newer version of `neat-core`:
+
+1. Identify the target commit (or tag) on NEAT-AI-core's `Develop` branch.
+2. Update the `rev` in the **root** `Cargo.toml`:
+
+   ```toml
+   [workspace.dependencies]
+   neat-core = { git = "https://github.com/stSoftwareAU/NEAT-AI-core.git", rev = "<new-40-char-sha>" }
+   ```
+
+3. Refresh the lockfile:
+
+   ```bash
+   cargo update -p neat-core
+   ```
+
+4. Run `cargo test` in the workspace root and the full `./quality.sh` gate.
+5. Run the parity gate to verify no behavioural drift:
+
+   ```bash
+   ./scripts/parity-gate.sh
+   ```
+
+6. Commit with the tag (if any) in the message, e.g.
+   `bump neat-core to v0.2.0 (abc1234...)`.
+
+See [docs/PARITY_GATE.md](./docs/PARITY_GATE.md) for the full parity checklist
+that must pass before removing in-tree Rust or after any core bump.
+
+### Local Development Override
+
+When iterating on `neat-core` locally (e.g. testing a change before pushing to
+NEAT-AI-core), add a path override in `.cargo/config.toml` at the repository
+root:
+
+```toml
+# .cargo/config.toml  (DO NOT commit — git-ignored)
+[patch."https://github.com/stSoftwareAU/NEAT-AI-core.git"]
+neat-core = { path = "../NEAT-AI-core/neat-core" }
+```
+
+This tells Cargo to use your local clone instead of the pinned git revision.
+Remove the override before committing. The file is git-ignored by the `.*` rule,
+so it will not be accidentally committed.
+
+### Cross-Repository Links
+
+- **[NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core)** — shared Rust
+  computation (`neat-core` crate).
+- **[NEAT-AI-scorer](https://github.com/stSoftwareAU/NEAT-AI-scorer)** — scoring
+  tooling; should pin the same `neat-core` revision as this repo.
+- **[NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery)** —
+  GPU-accelerated structural analysis (optional FFI extension).
+
 ## 🔄 Development Workflow
 
 ### 1. 🌿 Create a Branch
