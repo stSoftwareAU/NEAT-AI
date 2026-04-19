@@ -11,7 +11,7 @@ NEAT-AI (this repo)
 ├── Cargo.toml          ← workspace root; pins neat-core rev
 ├── wasm_activation/    ← in-tree WASM crate (stays here)
 │   └── Cargo.toml      ← depends on neat-core via workspace
-└── (future members)    ← e.g. rust_scorer; share the same core pin
+└── (future members)    ← e.g. rust_scorer from NEAT-AI-scorer; share the same core pin
 ```
 
 `neat-core` is the shared computation library extracted from `wasm_activation`.
@@ -61,6 +61,33 @@ inherits the `GITHUB_TOKEN` credential from `actions/checkout`).
 
 See `scripts/rust-ci-git-auth.sh` (when available) for the helper that
 configures this automatically.
+
+## NEAT-AI-scorer Alignment
+
+Issue #2348 — [NEAT-AI-scorer](https://github.com/stSoftwareAU/NEAT-AI-scorer)
+(or equivalent scorer tooling) must pin the **same `neat-core` rev** as this
+repository to avoid version skew. When the two repositories compile against
+different snapshots of `neat-core`, shared types and scoring behaviour can
+silently diverge.
+
+### How to verify alignment
+
+After bumping `neat-core` here, confirm the scorer is aligned:
+
+```bash
+# Extract the rev from NEAT-AI:
+grep 'rev =' Cargo.toml
+
+# Compare against the scorer workspace:
+grep 'rev =' ../NEAT-AI-scorer/Cargo.toml
+```
+
+If the revisions differ, update the scorer `Cargo.toml` to match, run
+`cargo update -p neat-core` and `cargo test` in the scorer workspace, and commit
+the change as part of the same coordinated bump.
+
+See [docs/CORE_DEPENDENCY_POLICY.md](CORE_DEPENDENCY_POLICY.md) for the full
+pinning policy and downstream consumer alignment requirements.
 
 ## Cache Key Invalidation
 
