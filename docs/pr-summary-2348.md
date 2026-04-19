@@ -9,9 +9,9 @@ version skew. Closes #2348.
 - **`docs/CORE_DEPENDENCY_POLICY.md`** — added "Downstream Consumer Alignment
   (Scorer)" section with NEAT-AI-scorer requirements, verification checklist,
   and bench script guidance.
-- **`docs/EXTERNAL_NEAT_AI_CORE.md`** — added "NEAT-AI-scorer Alignment"
-  section with concrete verification commands; updated architecture diagram to
-  reference NEAT-AI-scorer by name.
+- **`docs/EXTERNAL_NEAT_AI_CORE.md`** — added "NEAT-AI-scorer Alignment" section
+  with concrete verification commands; updated architecture diagram to reference
+  NEAT-AI-scorer by name.
 - **`AGENTS.md`** — added rule 7 (scorer alignment) to the NEAT-AI-core
   dependency policy section.
 
@@ -26,6 +26,7 @@ version skew. Closes #2348.
 ## Evidence
 
 This is a documentation and policy change with no runtime code. Verified via:
+
 - All 5990 tests pass (0 failed) including new policy tests
 - Quality gate (`./quality.sh --skip-discovery --skip-wasm`) passes cleanly
 
