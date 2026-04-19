@@ -1,0 +1,47 @@
+# Deno Dependency Updates (Issue #2362)
+#
+# Runs `deno outdated --update --latest` on a weekly schedule (and on demand)
+# and opens a pull request with any version bumps via
+# peter-evans/create-pull-request. Keeps the dedicated automation that the
+# detection patterns expect under the `deno-outdated` name, complementing the
+# inline `deno outdated` step in `quality.yml` which only runs on PR.
+name: Deno Dependency Updates
+
+on:
+  schedule:
+    # 06:00 UTC every Monday — outside Australian business hours so any
+    # resulting PR is ready for review at the start of the week.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  outdated:
+    name: Run deno outdated and raise PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Update Deno dependencies
+        run: deno outdated --update --latest
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore: update Deno dependencies"
+          title: "chore: update Deno dependencies"
+          branch: chore/deno-outdated
+          delete-branch: true
+          body: |
+            Automated Deno dependency update via `deno outdated --update --latest`.
+
+            Raised by `.github/workflows/deno-outdated.yml` (Issue #2362).
