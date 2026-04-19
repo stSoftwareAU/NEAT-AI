@@ -219,6 +219,19 @@ For detailed documentation, see the [docs/](./docs/) directory:
 - **[Troubleshooting](./docs/TROUBLESHOOTING.md)**: Common issues and solutions
   for WASM, discovery, memory, CI, and configuration
 
+### 🦀 Rust & Dependencies
+
+- **[Core Dependency Policy](./docs/CORE_DEPENDENCY_POLICY.md)**: How NEAT-AI
+  pins and consumes the
+  [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) crate (semver,
+  rev pinning, approval tiers)
+- **[External NEAT-AI-core](./docs/EXTERNAL_NEAT_AI_CORE.md)**: Day-to-day
+  workflow for bumping the pinned revision and local path overrides
+- **[Parity Gate](./docs/PARITY_GATE.md)**: Pre-removal verification checklist
+  for the in-tree → external core migration
+- **[CI for External Core](./docs/CI_EXTERNAL_NEAT_AI_CORE.md)**: CI plumbing
+  for git authentication and Rust cache invalidation
+
 ### 🤝 For Contributors
 
 - **[AGENTS.md](./AGENTS.md)**: Coding conventions, terminology, and development
