@@ -434,6 +434,10 @@ are:
 6. **Parity gate:** before **removing** any in-tree duplicate native Rust (or
    after bumping the pinned `rev`), run `./scripts/parity-gate.sh` and include
    the output in the PR. See [docs/PARITY_GATE.md](docs/PARITY_GATE.md).
+7. **Scorer alignment:** downstream consumers such as
+   [NEAT-AI-scorer](https://github.com/stSoftwareAU/NEAT-AI-scorer) must pin the
+   **same `neat-core` rev** as this workspace. When bumping the rev here, verify
+   and update the scorer in the same coordinated change.
 
 ## 🔄 Feed-forward vs Recurrent Connections
 

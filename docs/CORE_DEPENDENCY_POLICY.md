@@ -115,6 +115,37 @@ Every tagged release must have a corresponding commit on the `Develop` branch.
 The `Develop` branch on NEAT-AI-core is protected; all changes reach it via pull
 request.
 
+## Downstream Consumer Alignment (Scorer)
+
+Issue #2348 — any downstream consumer of `neat-core` that shares types or
+behaviour with NEAT-AI **must** pin the **same `rev`** as the NEAT-AI workspace
+root `Cargo.toml`. This prevents version skew where two repositories compile
+against different snapshots of the shared crate.
+
+### NEAT-AI-scorer
+
+[NEAT-AI-scorer](https://github.com/stSoftwareAU/NEAT-AI-scorer) (or any future
+equivalent scorer tooling) is the primary downstream consumer. Its workspace
+`Cargo.toml` must:
+
+1. Use `neat-core` as the dependency name (not `neat_ai_core` or
+   `neat-ai-core`).
+2. Pin via `git` + `rev` to the **same 40-character SHA** used in NEAT-AI.
+3. Use `{ workspace = true }` for all workspace members that depend on
+   `neat-core`.
+
+### Verification checklist
+
+When bumping `neat-core` in NEAT-AI, also:
+
+1. **Check** the scorer workspace `Cargo.toml` — confirm the `rev` matches.
+2. **Update** the scorer `rev` in the same coordinated change if it has drifted.
+3. **Run** `cargo test` in the scorer workspace to verify parity.
+
+Bench scripts (e.g. `BENCH_RUST_SCORER`) and any tooling that references the
+crate layout must be updated to reflect the current workspace structure when new
+members are added or the scorer crate is restructured.
+
 ## Future: crates.io Publication
 
 If `neat-core` is published to [crates.io](https://crates.io/) in the future:
