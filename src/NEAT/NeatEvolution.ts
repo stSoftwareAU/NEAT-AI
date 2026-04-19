@@ -813,11 +813,15 @@ export async function evolve(
     ),
   };
 
-  // Issue #2314: Compute pipeline overlap. Breeding overlaps with result
-  // processing (and plateau/MCMC config), and dedup overlaps with pre-warming.
+  // Issue #2314: Compute pipeline overlap. Three concurrent phase pairs:
+  //   1. resultProcessingMs runs during breedingMs (worker breeding overlaps
+  //      main-thread result processing).
+  //   2. speciationMs runs during writeScoresMs (speciation is synchronous
+  //      while writeScores is async I/O — Issue #2315 pipeline).
+  //   3. preWarmMs runs during deduplicationMs (pre-warming overlaps dedup I/O).
   // The overlap is the sum of the shorter phases that ran concurrently with
   // longer ones, representing wall-clock time saved by the pipelining.
-  const pipelineOverlapMs = resultProcessingMs + preWarmMs;
+  const pipelineOverlapMs = resultProcessingMs + speciationMs + preWarmMs;
 
   const phaseTiming: GenerationPhaseTiming = {
     fitnessMs,
