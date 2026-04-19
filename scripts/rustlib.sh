@@ -8,7 +8,10 @@
 set -euo pipefail
 
 # Minimum rustc version required by the WASM build toolchain.
-RUST_MSRV="${RUST_MSRV:-1.82.0}"
+# Issue #2345 — the pinned NEAT-AI-core release uses `let` expressions in
+# logical conjunctions, stabilised in Rust 1.88. Builds on older toolchains
+# fail at compile time, which defeats the parity gate on fresh machines.
+RUST_MSRV="${RUST_MSRV:-1.88.0}"
 
 # Returns 0 if v1 >= v2 (semver-style), 1 otherwise.
 _version_ge() {

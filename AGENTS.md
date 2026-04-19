@@ -431,6 +431,9 @@ are:
 4. **Local dev:** use `.cargo/config.toml` path override (git-ignored).
 5. **Semver:** NEAT-AI-core tags follow `v<MAJOR>.<MINOR>.<PATCH>`. Patch bumps
    need CI green; minor bumps need one review; major bumps need owner approval.
+6. **Parity gate:** before **removing** any in-tree duplicate native Rust (or
+   after bumping the pinned `rev`), run `./scripts/parity-gate.sh` and include
+   the output in the PR. See [docs/PARITY_GATE.md](docs/PARITY_GATE.md).
 
 ## 🔄 Feed-forward vs Recurrent Connections
 
@@ -467,6 +470,8 @@ In our production workloads, the default is feed-forward/forward-only.
 - **docs/TS_RUST_MIGRATION.md** - TypeScript to Rust migration milestone roadmap
 - **docs/CORE_DEPENDENCY_POLICY.md** - NEAT-AI-core release, pinning, and semver
   policy (ADR)
+- **docs/PARITY_GATE.md** - Parity gate checklist (Issue #2345) that must pass
+  before removing in-tree duplicate native Rust
 - **docs/TROUBLESHOOTING.md** - Common issues and solutions
 - **docs/archive/pr-summaries/** - Archived PR summary files (historical)
 - **src/methods/activations/README.md** - Activation function strategy reference
