@@ -1,0 +1,289 @@
+
+[1/3] Core dependency policy check...
+running 8 tests from ./test/scripts/CoreDependencyPolicy.ts
+workspace Cargo.toml pins neat-core via git with a rev ... ok (0ms)
+workspace Cargo.toml rev is a valid 40-char hex SHA ... ok (0ms)
+wasm_activation uses workspace dependency for neat-core ... ok (0ms)
+workspace does not use branch pinning for neat-core ... ok (0ms)
+core dependency policy document exists ... ok (0ms)
+policy document covers required sections ... ok (0ms)
+AGENTS.md references the core dependency policy ... ok (0ms)
+workspace crate name matches policy (neat-core not neat_ai_core) ... ok (0ms)
+
+ok | 8 passed | 0 failed (3ms)
+
+
+[2/3] Rust tests in wasm_activation against pinned neat-core...
+   Compiling wasm_activation v0.1.0 (/Users/nigelleck/auto-issue-work/NEAT-AI/wasm_activation)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.16s
+     Running unittests src/lib.rs (/Users/nigelleck/auto-issue-work/NEAT-AI/target/debug/deps/wasm_activation-83d4c9d5c1ddb442)
+
+running 246 tests
+test accumulate::tests::test_accumulate_bias_single_non_finite_skipped ... ok
+test accumulate::tests::test_accumulate_weight_single_negative ... ok
+test accumulate::tests::test_accumulate_weight_single_positive ... ok
+test accumulate::tests::test_accumulate_bias_single_basic ... ok
+test accumulate::tests::test_accumulate_weight_single_non_finite_skipped ... ok
+test accumulate::tests::test_bias_l1_regularisation ... ok
+test accumulate::tests::test_bias_l2_regularisation ... ok
+test accumulate::tests::test_calculate_bias_basic ... ok
+test accumulate::tests::test_batch_4way_weight ... ok
+test accumulate::tests::test_batch_4way_bias ... ok
+test accumulate::tests::test_calculate_bias_no_change ... ok
+test accumulate::tests::test_calculate_bias_with_l2_decay ... ok
+test accumulate::tests::test_calculate_bias_zero_count ... ok
+test accumulate::tests::test_calculate_weight_basic ... ok
+test accumulate::tests::test_calculate_weight_with_l2_decay ... ok
+test accumulate::tests::test_limit_bias_basic ... ok
+test accumulate::tests::test_limit_weight_basic ... ok
+test accumulate::tests::test_limit_weight_clamping ... ok
+test accumulate::tests::test_weight_l1_regularisation ... ok
+test accumulate::tests::test_weight_l2_regularisation ... ok
+test derivative::tests::test_derivative_absolute ... ok
+test derivative::tests::test_derivative_aggregate_functions ... ok
+test derivative::tests::test_derivative_arctan ... ok
+test derivative::tests::test_derivative_complement ... ok
+test derivative::tests::test_derivative_cosine ... ok
+test derivative::tests::test_derivative_cube ... ok
+test derivative::tests::test_derivative_identity ... ok
+test derivative::tests::test_derivative_leaky_relu ... ok
+test derivative::tests::test_derivative_logistic ... ok
+test derivative::tests::test_derivative_relu ... ok
+test derivative::tests::test_derivative_simd_4way_absolute ... ok
+test derivative::tests::test_derivative_simd_4way_arctan ... ok
+test derivative::tests::test_derivative_simd_4way_complement ... ok
+test derivative::tests::test_derivative_simd_4way_cube ... ok
+test derivative::tests::test_derivative_simd_4way_hard_tanh ... ok
+test derivative::tests::test_derivative_simd_4way_identity ... ok
+test derivative::tests::test_derivative_simd_4way_leaky_relu ... ok
+test derivative::tests::test_derivative_simd_4way_logistic ... ok
+test derivative::tests::test_derivative_simd_4way_matches_scalar ... ok
+test derivative::tests::test_derivative_simd_4way_relu ... ok
+test derivative::tests::test_derivative_simd_4way_relu6 ... ok
+test derivative::tests::test_derivative_simd_4way_softsign ... ok
+test derivative::tests::test_derivative_simd_4way_square ... ok
+test derivative::tests::test_derivative_simd_4way_tanh ... ok
+test derivative::tests::test_derivative_sine ... ok
+test derivative::tests::test_derivative_square ... ok
+test derivative::tests::test_derivative_tanh ... ok
+test elastic_distribution::tests::test_empty_links ... ok
+test elastic_distribution::tests::test_equal_split_last_resort ... ok
+test elastic_distribution::tests::test_honours_safe_zone_factor ... ok
+test elastic_distribution::tests::test_infinite_error_returns_zeros ... ok
+test elastic_distribution::tests::test_error_conservation_many_links ... ok
+test elastic_distribution::tests::test_nan_activation_treated_as_zero ... ok
+test elastic_distribution::tests::test_nan_error_returns_zeros ... ok
+test elastic_distribution::tests::test_negative_error ... ok
+test elastic_distribution::tests::test_prefers_higher_activation ... ok
+test elastic_distribution::tests::test_safe_zone_clamped ... ok
+test elastic_distribution::tests::test_single_link ... ok
+test elastic_distribution::tests::test_weight_fallback_nan_weight ... ok
+test elastic_distribution::tests::test_weight_fallback_negative_weights ... ok
+test elastic_distribution::tests::test_weight_fallback_prefers_larger_weights ... ok
+test elastic_distribution::tests::test_zero_error ... ok
+test error::tests::test_calculate_error_absolute ... ok
+test error::tests::test_calculate_error_aggregate_functions ... ok
+test error::tests::test_calculate_error_batch_4way_clamping ... ok
+test error::tests::test_calculate_error_batch_4way_identity ... ok
+test error::tests::test_calculate_error_batch_4way_aggregate_functions ... ok
+test error::tests::test_calculate_error_batch_4way_complement ... ok
+test error::tests::test_calculate_error_batch_4way_relu_active ... ok
+test error::tests::test_calculate_error_batch_4way_tiny_error ... ok
+test error::tests::test_calculate_error_clamping ... ok
+test error::tests::test_calculate_error_complement ... ok
+test error::tests::test_calculate_error_identity ... ok
+test error::tests::test_calculate_error_batch_4way_matches_scalar ... ok
+test error::tests::test_calculate_error_relu ... ok
+test error::tests::test_calculate_error_tanh ... ok
+test fused_error::tests::test_fused_empty_synapses ... ok
+test fused_error::tests::test_fused_basic_identity ... ok
+test fused_error::tests::test_fused_zero_error ... ok
+test fused_error::tests::test_fused_single_synapse ... ok
+test network::tests::test_batch_4way_constant_neuron ... ok
+test network::tests::test_batch_4way_matches_single_relu ... ok
+test network::tests::test_batch_4way_if_aggregate ... ok
+test network::tests::test_batch_4way_matches_single_tanh_logistic ... ok
+test pc_inference::tests::test_batch_matches_sequential ... ok
+test network::tests::test_batch_4way_multi_layer ... ok
+test network::tests::test_batch_4way_minimum_aggregate ... ok
+test pc_inference::tests::test_deeper_network_settles ... ok
+test network::tests::test_batch_4way_maximum_aggregate ... ok
+test pc_inference::tests::test_deterministic_inference ... ok
+test pc_inference::tests::test_early_termination ... ok
+test pc_inference::tests::test_energy_history_length ... ok
+test pc_inference::tests::test_energy_convergence_with_targets ... ok
+test pc_inference::tests::test_energy_non_negative ... ok
+test pc_inference::tests::test_input_clamping ... ok
+test pc_inference::tests::test_no_hidden_neurons ... ok
+test pc_inference::tests::test_prediction_error_computation ... ok
+test pc_inference::tests::test_target_clamping ... ok
+test pc_inference::tests::test_various_squash_functions ... ok
+test pc_inference::tests::test_wasm_serialisation_roundtrip ... ok
+test pc_inference::tests::test_zero_steps ... ok
+test pc_learning::tests::test_gradient_identity_squash ... ok
+test pc_learning::tests::test_gradient_multiple_connections ... ok
+test pc_learning::tests::test_gradient_relu_squash ... ok
+test pc_learning::tests::test_gradient_tanh_squash ... ok
+test pc_learning::tests::test_gradient_zero_error ... ok
+test range::tests::test_get_range_bounded ... ok
+test range::tests::test_get_range_special_bounds ... ok
+test range::tests::test_get_range_unbounded ... ok
+test range::tests::test_limit_range_clamping ... ok
+test range::tests::test_range_aggregate_functions ... ok
+test range::tests::test_validate_range_invalid ... ok
+test range::tests::test_validate_range_valid ... ok
+test score_scan::tests::test_compute_components_basic ... ok
+test score_scan::tests::test_compute_components_empty_biases ... ok
+test score_scan::tests::test_compute_components_empty_weights ... ok
+test score_scan::tests::test_compute_components_many_elements ... ok
+test score_scan::tests::test_compute_components_single_element ... ok
+test score_scan::tests::test_scan_max_bias_exclude ... ok
+test score_scan::tests::test_scan_max_weight_exclude ... ok
+test score_scan::tests::test_scan_max_weight_new_is_largest ... ok
+test simd::tests::test_4records_basic ... ok
+test simd::tests::test_4records_empty ... ok
+test simd::tests::test_8records_basic ... ok
+test simd::tests::test_8records_empty ... ok
+test simd::tests::test_weighted_sum_eight_synapses ... ok
+test simd::tests::test_weighted_sum_empty ... ok
+test simd::tests::test_weighted_sum_exactly_four ... ok
+test simd::tests::test_weighted_sum_five_synapses ... ok
+test simd::tests::test_weighted_sum_large ... ok
+test simd::tests::test_weighted_sum_negative_weights_and_activations ... ok
+test simd::tests::test_weighted_sum_no_bias_basic ... ok
+test simd::tests::test_weighted_sum_no_bias_empty ... ok
+test simd::tests::test_weighted_sum_of_squares_basic ... ok
+test simd::tests::test_weighted_sum_of_squares_empty ... ok
+test simd::tests::test_weighted_sum_of_squares_simd_path ... ok
+test simd::tests::test_weighted_sum_of_squares_v2_basic ... ok
+test simd::tests::test_weighted_sum_of_squares_v2_simd_path ... ok
+test simd::tests::test_weighted_sum_single_synapse ... ok
+test simd::tests::test_weighted_sum_three_synapses ... ok
+test simd::tests::test_weighted_sum_with_offset ... ok
+test squash::tests::test_cube_clamped_f32 ... ok
+test squash::tests::test_cube_clamped_f64 ... ok
+test squash::tests::test_logistic ... ok
+test squash::tests::test_relu ... ok
+test squash::tests::test_square_clamped_f32 ... ok
+test squash::tests::test_square_clamped_f64 ... ok
+test squash::tests::test_tan_clamped_f32 ... ok
+test squash::tests::test_tan_clamped_f64 ... ok
+test squash::tests::test_tanh ... ok
+test tests::test_calculate_error_absolute ... ok
+test tests::test_calculate_error_aggregate_functions ... ok
+test tests::test_calculate_error_clamping ... ok
+test tests::test_calculate_error_complement ... ok
+test tests::test_calculate_error_identity ... ok
+test tests::test_calculate_error_relu ... ok
+test tests::test_calculate_error_tanh ... ok
+test tests::test_derivative_absolute ... ok
+test tests::test_derivative_aggregate_functions ... ok
+test tests::test_derivative_arctan ... ok
+test tests::test_derivative_complement ... ok
+test tests::test_derivative_cosine ... ok
+test tests::test_derivative_cube ... ok
+test tests::test_derivative_identity ... ok
+test tests::test_derivative_leaky_relu ... ok
+test tests::test_derivative_logistic ... ok
+test tests::test_derivative_relu ... ok
+test tests::test_derivative_sine ... ok
+test tests::test_derivative_square ... ok
+test tests::test_derivative_tanh ... ok
+test tests::test_get_range_bounded ... ok
+test tests::test_get_range_special_bounds ... ok
+test tests::test_get_range_unbounded ... ok
+test tests::test_limit_range_clamping ... ok
+test tests::test_logistic ... ok
+test tests::test_neat_core_dependency_resolves ... ok
+test tests::test_neat_core_derivative_parity ... ok
+test tests::test_neat_core_error_parity ... ok
+test tests::test_range_aggregate_functions ... ok
+test tests::test_relu ... ok
+test tests::test_safe_zone_batch_empty ... ok
+test tests::test_safe_zone_batch_matches_scalar ... ok
+test tests::test_safe_zone_batch_single ... ok
+test tests::test_tanh ... ok
+test tests::test_unsquash_aggregate_functions ... ok
+test tests::test_unsquash_complement ... ok
+test tests::test_unsquash_cube ... ok
+test tests::test_unsquash_identity ... ok
+test tests::test_unsquash_leaky_relu ... ok
+test tests::test_unsquash_logistic ... ok
+test tests::test_unsquash_relu ... ok
+test tests::test_unsquash_roundtrip ... ok
+test tests::test_unsquash_square ... ok
+test tests::test_unsquash_tanh ... ok
+test tests::test_validate_range_invalid ... ok
+test tests::test_validate_range_valid ... ok
+test topological_backprop::tests::test_no_error_produces_no_change ... ok
+test topological_backprop::tests::test_simple_identity_backprop ... ok
+test topology_ops::tests::test_detect_cycles_acyclic ... ok
+test topology_ops::tests::test_detect_cycles_empty ... ok
+test topology_ops::tests::test_detect_cycles_longer_cycle ... ok
+test topology_ops::tests::test_detect_cycles_self_loop ... ok
+test topology_ops::tests::test_detect_cycles_with_cycle ... ok
+test topology_ops::tests::test_reverse_topological_order_larger ... ok
+test topology_ops::tests::test_reverse_topological_order_simple ... ok
+test topology_ops::tests::test_scan_available_simple ... ok
+test topology_ops::tests::test_scan_skips_constant ... ok
+test topology_ops::tests::test_structural_bias_nan ... ok
+test topology_ops::tests::test_structural_bias_not_finite ... ok
+test topology_ops::tests::test_structural_constant_has_inward ... ok
+test topology_ops::tests::test_structural_hidden_no_inward ... ok
+test topology_ops::tests::test_structural_hidden_no_outward ... ok
+test topology_ops::tests::test_structural_if_missing_negative ... ok
+test topology_ops::tests::test_structural_if_too_few_inward ... ok
+test topology_ops::tests::test_structural_if_valid ... ok
+test topology_ops::tests::test_structural_synapse_targets_input ... ok
+test topology_ops::tests::test_structural_valid ... ok
+test topology_ops::tests::test_validate_backward_connection ... ok
+test topology_ops::tests::test_validate_duplicate ... ok
+test topology_ops::tests::test_validate_empty ... ok
+test topology_ops::tests::test_validate_self_connection ... ok
+test topology_ops::tests::test_validate_sort_error_from ... ok
+test topology_ops::tests::test_validate_sort_error_to ... ok
+test topology_ops::tests::test_validate_topology_batch_empty ... ok
+test topology_ops::tests::test_validate_topology_batch_mixed_valid_invalid ... ok
+test topology_ops::tests::test_validate_topology_batch_multiple_valid ... ok
+test topology_ops::tests::test_validate_valid_topology ... ok
+test training_state::tests::test_8way_persistent ... ok
+test training_state::tests::test_bias_accumulation_persistent ... ok
+test training_state::tests::test_bulk_read ... ok
+test training_state::tests::test_init_and_reset ... ok
+test training_state::tests::test_out_of_bounds_index ... ok
+test training_state::tests::test_persistent_bias_matches_batch ... ok
+test training_state::tests::test_persistent_matches_batch ... ok
+test training_state::tests::test_reset_zeroes_state ... ok
+test training_state::tests::test_weight_accumulation_persistent ... ok
+test unsquash::tests::test_unsquash_aggregate_functions ... ok
+test unsquash::tests::test_unsquash_complement ... ok
+test unsquash::tests::test_unsquash_cube ... ok
+test unsquash::tests::test_unsquash_identity ... ok
+test unsquash::tests::test_unsquash_leaky_relu ... ok
+test unsquash::tests::test_unsquash_logistic ... ok
+test unsquash::tests::test_unsquash_relu ... ok
+test unsquash::tests::test_unsquash_roundtrip ... ok
+test unsquash::tests::test_unsquash_square ... ok
+test unsquash::tests::test_unsquash_tanh ... ok
+
+test result: ok. 246 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+[3/3] Deno parity tests (WASM score parity + MSE cost)...
+Check test/score/WasmJsScoreParity.ts
+Check test/costs/MSE.ts
+running 2 tests from ./test/score/WasmJsScoreParity.ts
+WASM score parity: Module initialisation ... ok (0ms)
+WASM scoring: synthetic dataset is finite and roughly matches JS ... ok (10ms)
+running 6 tests from ./test/costs/MSE.ts
+MSE - getName returns MSE ... ok (0ms)
+MSE - zero error when target equals output ... ok (0ms)
+MSE - known calculation ... ok (0ms)
+MSE - single element ... ok (0ms)
+MSE - penalises large errors more heavily ... ok (0ms)
+MSE - symmetric ... ok (0ms)
+
+ok | 8 passed | 0 failed (37ms)
+
+
+✅ Parity gate passed (3 step(s)).
