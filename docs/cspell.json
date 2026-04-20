@@ -321,6 +321,11 @@
     "Δfitness",
     "Δscore",
     "Δweight",
-    "Σmax"
+    "Σmax",
+    "intree",
+    "INTREE",
+    "pathlib",
+    "rglob",
+    "splitlines"
   ]
 }
