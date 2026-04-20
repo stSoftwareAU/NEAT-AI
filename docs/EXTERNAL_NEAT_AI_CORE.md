@@ -8,90 +8,57 @@ and how contributors work with it locally.
 
 ```
 NEAT-AI (this repo)
-├── Cargo.toml          ← workspace root; pins neat-core rev
-├── wasm_activation/    ← in-tree WASM crate (stays here)
-│   └── Cargo.toml      ← depends on neat-core via workspace
-└── (future members)    ← e.g. rust_scorer from NEAT-AI-scorer; share the same core pin
+├── deno.json           ← pins neatCore.repo + neatCore.rev
+├── build.sh            ← fetches wasm_activation/pkg from pinned NEAT-AI-core rev
+└── wasm_activation/pkg ← vendored runtime artifacts consumed by TS loaders
 ```
 
-`neat-core` is the shared computation library extracted from `wasm_activation`.
-It lives in the NEAT-AI-core repository and is consumed here as a **git
-dependency pinned to a specific commit**.
-
-`wasm_activation` remains in this repository because it owns the WASM
-entry-point (`#[wasm_bindgen]` exports) and build tooling (`build.sh`,
-`wasm-pack`).
+`neat-core` implementation lives fully in NEAT-AI-core. This repository consumes
+prebuilt WASM artifacts by pinning a commit SHA in `deno.json` and syncing via
+`./build.sh`.
 
 ## Bumping the Core Version
 
 1. Identify the target commit or tag in NEAT-AI-core.
-2. Update `rev` in the root `Cargo.toml`:
+2. Update `deno.json`:
 
-   ```toml
-   [workspace.dependencies]
-   neat-core = { git = "https://github.com/stSoftwareAU/NEAT-AI-core.git", rev = "<new-sha>" }
+   ```json
+   "neatCore": {
+     "repo": "stSoftwareAU/NEAT-AI-core",
+     "rev": "<new-40-char-sha>"
+   }
    ```
 
-3. Run `cargo update -p neat-core` to refresh `Cargo.lock`.
-4. Run `cargo test` to verify parity.
-
-## Local Override for Development
-
-When iterating on `neat-core` locally (e.g. testing a change before pushing to
-NEAT-AI-core), add a **path override** in `.cargo/config.toml` at the repository
-root:
-
-```toml
-# .cargo/config.toml  (DO NOT commit — listed in .gitignore)
-[patch."https://github.com/stSoftwareAU/NEAT-AI-core.git"]
-neat-core = { path = "../NEAT-AI-core/neat-core" }
-```
-
-This tells Cargo to use your local clone instead of the pinned git revision.
-Remove the override before committing.
-
-> **Tip:** add `.cargo/config.toml` to your global gitignore or the repo
-> `.gitignore` so it is never accidentally committed.
-
-## CI Authentication
-
-For private or token-gated access to NEAT-AI-core on CI, set
-`CARGO_NET_GIT_FETCH_WITH_CLI=true` so Cargo uses the system `git` binary (which
-inherits the `GITHUB_TOKEN` credential from `actions/checkout`).
-
-See `scripts/rust-ci-git-auth.sh` (when available) for the helper that
-configures this automatically.
+3. Run `./build.sh` to refresh `wasm_activation/pkg`.
+4. Run `./scripts/parity-gate.sh` and `./quality.sh`.
 
 ## NEAT-AI-scorer Alignment
 
 Issue #2348 — [NEAT-AI-scorer](https://github.com/stSoftwareAU/NEAT-AI-scorer)
-(or equivalent scorer tooling) must pin the **same `neat-core` rev** as this
-repository to avoid version skew. When the two repositories compile against
-different snapshots of `neat-core`, shared types and scoring behaviour can
+(or equivalent scorer tooling) should use the **same NEAT-AI-core revision** as
+this repository to avoid version skew. When the two repositories compile against
+different snapshots of core logic, shared types and scoring behaviour can
 silently diverge.
 
 ### How to verify alignment
 
-After bumping `neat-core` here, confirm the scorer is aligned:
+After bumping `neatCore.rev` here, confirm the scorer is aligned:
 
 ```bash
 # Extract the rev from NEAT-AI:
-grep 'rev =' Cargo.toml
+deno eval 'const c = JSON.parse(Deno.readTextFileSync("deno.json")); console.log(c.neatCore.rev)'
 
 # Compare against the scorer workspace:
-grep 'rev =' ../NEAT-AI-scorer/Cargo.toml
+deno eval 'const c = JSON.parse(Deno.readTextFileSync("../NEAT-AI-scorer/deno.json")); console.log(c.neatCore.rev)'
 ```
 
-If the revisions differ, update the scorer `Cargo.toml` to match, run
-`cargo update -p neat-core` and `cargo test` in the scorer workspace, and commit
-the change as part of the same coordinated bump.
+If the revisions differ, update the scorer pin and rerun its tests in the same
+coordinated bump.
 
 See [docs/CORE_DEPENDENCY_POLICY.md](CORE_DEPENDENCY_POLICY.md) for the full
 pinning policy and downstream consumer alignment requirements.
 
-## Cache Key Invalidation
+## Sync Invariant
 
-The CI cache-key script (`scripts/rust-ci-cache-key.sh`, when available) hashes
-git coordinates (`git =`, `rev =`, `tag =`, `branch =`) from the workspace
-`Cargo.toml` so that a `rev` bump in `neat-core` automatically invalidates the
-Cargo cache.
+`wasm_activation/pkg/**` should change only in commits that also change
+`deno.json` `neatCore.rev`.

@@ -58,15 +58,13 @@ The WASM activation backend is **required** and ships pre-built in
 init or environment variables needed.
 
 > [!NOTE]
-> You only need to rebuild the WASM module from source if you are modifying the
-> Rust activation code itself. Most contributors can skip this step entirely.
+> `wasm_activation/pkg` is sourced from NEAT-AI-core and should be refreshed via
+> `./build.sh` after bumping the pin in `deno.json`.
 
-To rebuild WASM from source (requires
-[wasm-pack](https://rustwasm.github.io/wasm-pack/)):
+To refresh the pinned artifacts:
 
 ```bash
-cd wasm_activation
-wasm-pack build --target deno
+./build.sh
 ```
 
 ### 🦀 Rust Discovery Library (Optional)
@@ -101,63 +99,64 @@ optional — tests and the core library work without it.
 
 Shared native Rust computation lives in the external
 [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) repository and is
-consumed as the `neat-core` crate. The `wasm_activation/` WASM entry point stays
-in this repo and depends on `neat-core` via the workspace.
+consumed by tracking `neatCore.ref` (default `Develop`) in `deno.json` and
+syncing `wasm_activation/pkg` via `./build.sh`.
 
 For the full pinning policy (semver rules, approval tiers, CI auth), see
 [docs/CORE_DEPENDENCY_POLICY.md](./docs/CORE_DEPENDENCY_POLICY.md).
 
-### Bumping the Pinned Core Version
+### Using Latest Core in PRs
 
-When you need a newer version of `neat-core`:
+By default, NEAT-AI follows latest `Develop` from NEAT-AI-core:
 
-1. Identify the target commit (or tag) on NEAT-AI-core's `Develop` branch.
-2. Update the `rev` in the **root** `Cargo.toml`:
+1. Ensure `deno.json` has:
 
-   ```toml
-   [workspace.dependencies]
-   neat-core = { git = "https://github.com/stSoftwareAU/NEAT-AI-core.git", rev = "<new-40-char-sha>" }
+   ```json
+   "neatCore": { "repo": "stSoftwareAU/NEAT-AI-core", "ref": "Develop" }
    ```
 
-3. Refresh the lockfile:
+2. Refresh the WASM package:
 
    ```bash
-   cargo update -p neat-core
+   ./build.sh
    ```
 
-4. Run `cargo test` in the workspace root and the full `./quality.sh` gate.
+3. (Historical note for older branches) some workflows mention
+   `cargo update -p neat-core`; in this repository layout, use `./build.sh`
+   instead because Rust/Cargo is no longer built in-tree.
+4. Run the full `./quality.sh` gate.
 5. Run the parity gate to verify no behavioural drift:
 
    ```bash
    ./scripts/parity-gate.sh
    ```
 
-6. Commit with the tag (if any) in the message, e.g.
-   `bump neat-core to v0.2.0 (abc1234...)`.
+6. Commit the artifact refresh in your PR (approval controls rollout timing).
 
 See [docs/PARITY_GATE.md](./docs/PARITY_GATE.md) for the full parity checklist
 that must pass before removing in-tree Rust or after any core bump.
 
-### Local Development Override
+### Local Development Overrides
 
-When iterating on `neat-core` locally (e.g. testing a change before pushing to
-NEAT-AI-core), add a path override in `.cargo/config.toml` at the repository
-root:
+`build.sh` also supports local/experimental overrides without editing
+`deno.json`:
 
-```toml
-# .cargo/config.toml  (DO NOT commit — git-ignored)
-[patch."https://github.com/stSoftwareAU/NEAT-AI-core.git"]
-neat-core = { path = "../NEAT-AI-core/neat-core" }
+```bash
+NEAT_CORE_REPO=stSoftwareAU/NEAT-AI-core \
+NEAT_CORE_REV=<40-char-sha> \
+./build.sh
 ```
 
-This tells Cargo to use your local clone instead of the pinned git revision.
-Remove the override before committing. The file is git-ignored by the `.*` rule,
-so it will not be accidentally committed.
+If you maintain older Rust-enabled branches, local path overrides are typically
+done via `.cargo/config.toml` (path override). Do not commit that file.
+
+Do not commit temporary override scripts/config. Keep committed pinning in
+`deno.json` as the source of truth.
 
 ### Cross-Repository Links
 
 - **[NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core)** — shared Rust
-  computation (`neat-core` crate).
+  computation and WASM artifact source.
 - **[NEAT-AI-scorer](https://github.com/stSoftwareAU/NEAT-AI-scorer)** — scoring
   tooling; should pin the same `neat-core` revision as this repo.
 - **[NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery)** —

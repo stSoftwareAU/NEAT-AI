@@ -61,9 +61,9 @@ For project terminology, coding conventions, and development guidelines, see
 
 10. **Error-Guided Structural Evolution**: Dynamically identifies and creates
     new synapses by analysing neuron activations and errors. A dedicated Rust
-    module performs GPU-accelerated analysis and proposes structural candidates.
-    Discovery runs typically find improvements of 0.5-3% per run that accumulate
-    over many iterations.
+    extension performs GPU-accelerated analysis and proposes structural
+    candidates. Discovery runs typically find improvements of 0.5-3% per run
+    that accumulate over many iterations.
 
     > [!WARNING]
     > Relies entirely on the
@@ -219,18 +219,17 @@ For detailed documentation, see the [docs/](./docs/) directory:
 - **[Troubleshooting](./docs/TROUBLESHOOTING.md)**: Common issues and solutions
   for WASM, discovery, memory, CI, and configuration
 
-### 🦀 Rust & Dependencies
+### 🦀 Core Dependency
 
 - **[Core Dependency Policy](./docs/CORE_DEPENDENCY_POLICY.md)**: How NEAT-AI
-  pins and consumes the
-  [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) crate (semver,
-  rev pinning, approval tiers)
+  pins and consumes [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core)
+  via `deno.json` + `build.sh` (semver, rev pinning, approval tiers)
 - **[External NEAT-AI-core](./docs/EXTERNAL_NEAT_AI_CORE.md)**: Day-to-day
-  workflow for bumping the pinned revision and local path overrides
+  workflow for bumping the pinned revision and refreshing `wasm_activation/pkg`
 - **[Parity Gate](./docs/PARITY_GATE.md)**: Pre-removal verification checklist
-  for the in-tree → external core migration
+  for repin + artefact parity validation
 - **[CI for External Core](./docs/CI_EXTERNAL_NEAT_AI_CORE.md)**: CI plumbing
-  for git authentication and Rust cache invalidation
+  for `build.sh`-driven artifact sync
 
 ### 🤝 For Contributors
 

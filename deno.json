@@ -1,7 +1,11 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "2.12.28",
+  "version": "3.0.0",
+  "neatCore": {
+    "repo": "stSoftwareAU/NEAT-AI-core",
+    "ref": "Develop"
+  },
   "publish": {
     "include": [
       "README.md",
@@ -62,14 +66,12 @@
   },
   "fmt": {
     "exclude": [
-      "wasm_activation/pkg",
-      "wasm_activation/target"
+      "wasm_activation/pkg"
     ]
   },
   "lint": {
     "exclude": [
-      "wasm_activation/pkg",
-      "wasm_activation/target"
+      "wasm_activation/pkg"
     ],
     "rules": {
       "tags": [
@@ -100,7 +102,6 @@
     ".coverage",
     "junit-raw.xml",
     "junit.xml",
-    "test-errors.log",
-    "wasm_activation/target"
+    "test-errors.log"
   ]
 }

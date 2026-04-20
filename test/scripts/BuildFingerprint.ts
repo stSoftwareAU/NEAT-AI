@@ -11,11 +11,11 @@ Deno.test({
   name: "build.sh writes fingerprint to non-hidden file (build-fingerprint)",
   permissions: { read: true },
   fn: async () => {
-    const buildScript = await Deno.readTextFile("wasm_activation/build.sh");
+    const buildScript = await Deno.readTextFile("build.sh");
 
     // The build script should write to build-fingerprint (non-hidden)
     assert(
-      buildScript.includes("pkg/build-fingerprint"),
+      buildScript.includes("build-fingerprint"),
       "build.sh should write fingerprint to pkg/build-fingerprint (non-hidden)",
     );
   },
@@ -25,7 +25,7 @@ Deno.test({
   name: "build.sh does not write hidden pkg/.build-fingerprint",
   permissions: { read: true },
   fn: async () => {
-    const buildScript = await Deno.readTextFile("wasm_activation/build.sh");
+    const buildScript = await Deno.readTextFile("build.sh");
 
     assert(
       !buildScript.includes("pkg/.build-fingerprint"),

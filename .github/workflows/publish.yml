@@ -19,6 +19,9 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Sync WASM package from NEAT-AI-core
+        run: ./build.sh
+
       # Tokenless publish: package must be linked to this repo on JSR.
       # For runs triggered by bots (e.g. stservice): scope admin must disable
       # "Only allow publishing when triggered by a scope member" in scope settings.

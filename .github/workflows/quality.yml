@@ -168,6 +168,17 @@ jobs:
       - name: Update Deno
         run: deno outdated --update --latest
 
+      - name: Sync WASM package from NEAT-AI-core
+        run: ./build.sh
+
+      - name: Report WASM sync changes
+        run: |
+          set -Eeuo pipefail
+          changed="$(git diff --name-only)"
+          if echo "$changed" | grep -q '^wasm_activation/pkg/'; then
+            echo "ℹ️ wasm_activation/pkg changed after syncing latest NEAT-AI-core."
+          fi
+
       - name: Check
         run: |
           deno check
