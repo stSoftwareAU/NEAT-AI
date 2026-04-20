@@ -3,8 +3,8 @@ import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 /**
  * Tests for scripts/parity-gate.sh.
  *
- * Issue #2345 — parity gate that must pass before in-tree duplicate
- * native Rust is removed in favour of the external NEAT-AI-core crate.
+ * Issue #2345 — parity gate that verifies pinned NEAT-AI-core WASM
+ * artifacts and TS parity tests remain aligned.
  * The tests below exercise the CLI surface (help, dry-run, unknown
  * option handling, skip flags) and assert that the expected steps are
  * listed when the script is asked to describe its plan.
@@ -42,7 +42,7 @@ Deno.test("parity-gate.sh --help prints usage and exits 0", async () => {
   const { code, stdout } = await runScript(["--help"]);
   assertEquals(code, 0, "help must exit cleanly");
   assertStringIncludes(stdout, "Usage: scripts/parity-gate.sh");
-  assertStringIncludes(stdout, "--skip-rust");
+  assertStringIncludes(stdout, "--skip-sync");
   assertStringIncludes(stdout, "--skip-deno");
   assertStringIncludes(stdout, "--dry-run");
 });
@@ -53,20 +53,20 @@ Deno.test("parity-gate.sh --dry-run lists the three gate steps", async () => {
   // Each step label is authoritative — tests break if a step is
   // silently dropped from the gate.
   assertStringIncludes(stdout, "Core dependency policy");
-  assertStringIncludes(stdout, "Rust tests in wasm_activation");
+  assertStringIncludes(stdout, "WASM package sync");
   assertStringIncludes(stdout, "Deno parity tests");
   assertStringIncludes(stdout, "Total: 3 step");
 });
 
 Deno.test(
-  "parity-gate.sh --dry-run --skip-rust hides the Rust step",
+  "parity-gate.sh --dry-run --skip-sync hides the sync step",
   async () => {
-    const { code, stdout } = await runScript(["--dry-run", "--skip-rust"]);
+    const { code, stdout } = await runScript(["--dry-run", "--skip-sync"]);
     assertEquals(code, 0);
     assertEquals(
-      stdout.includes("Rust tests in wasm_activation"),
+      stdout.includes("WASM package sync"),
       false,
-      "rust step must be suppressed when --skip-rust is passed",
+      "sync step must be suppressed when --skip-sync is passed",
     );
     assertStringIncludes(stdout, "Core dependency policy");
     assertStringIncludes(stdout, "Deno parity tests");
@@ -90,7 +90,7 @@ Deno.test(
       false,
       "policy step must be suppressed when --skip-deno is passed",
     );
-    assertStringIncludes(stdout, "Rust tests in wasm_activation");
+    assertStringIncludes(stdout, "WASM package sync");
     assertStringIncludes(stdout, "Total: 1 step");
   },
 );
@@ -113,7 +113,7 @@ Deno.test("docs/PARITY_GATE.md exists and covers the required sections", async (
     "parity-gate.sh",
     "CoreDependencyPolicy",
     "WasmJsScoreParity",
-    "cargo test",
+    "build.sh",
     "Release checklist",
     "Failure response",
   ];

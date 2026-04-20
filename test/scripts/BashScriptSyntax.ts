@@ -59,37 +59,3 @@ Deno.test("all shell scripts pass bash -n syntax check", async () => {
     `Bash syntax errors in: ${failures.join(", ")}`,
   );
 });
-
-Deno.test("scripts/rustlib.sh exists and is sourceable", async () => {
-  const cmd = new Deno.Command("bash", {
-    args: ["-c", "source scripts/rustlib.sh"],
-    stdout: "piped",
-    stderr: "piped",
-  });
-  const { code, stderr } = await cmd.output();
-  const errOutput = new TextDecoder().decode(stderr);
-  assertEquals(
-    code,
-    0,
-    `scripts/rustlib.sh should be sourceable without errors: ${errOutput}`,
-  );
-});
-
-Deno.test("scripts/rustlib.sh exports require_rust_tools function", async () => {
-  const cmd = new Deno.Command("bash", {
-    args: [
-      "-c",
-      "source scripts/rustlib.sh && type require_rust_tools",
-    ],
-    stdout: "piped",
-    stderr: "piped",
-  });
-  const { code, stdout } = await cmd.output();
-  const output = new TextDecoder().decode(stdout).trim();
-  assertEquals(code, 0, "require_rust_tools should be a defined function");
-  const firstLine = output.split("\n")[0];
-  assert(
-    firstLine.includes("function"),
-    `Expected function declaration, got: ${firstLine}`,
-  );
-});

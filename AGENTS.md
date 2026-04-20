@@ -95,7 +95,7 @@ src/                    # Source code
 test/                   # Tests (mirrors src/ structure)
 bench/                  # Benchmarks
 docs/                   # Extended documentation
-wasm_activation/        # WASM activation module (Rust source + pkg)
+wasm_activation/pkg/    # Vendored WASM runtime artifacts from NEAT-AI-core
 scripts/                # Utility scripts
 ```
 
@@ -332,7 +332,7 @@ Before committing, run:
 
 > [!TIP]
 > Run `./quality.sh` before every commit. It covers linting, formatting,
-> type-checking, WASM build, and all tests in one step — no need to run them
+> type-checking, WASM sync, and all tests in one step — no need to run them
 > individually.
 
 This script runs the following steps by default:
@@ -343,7 +343,7 @@ This script runs the following steps by default:
 4. Checks bash script syntax
 5. Type-checks (`deno check`)
 6. Builds the Rust discovery library (if `../NEAT-AI-Discovery` exists)
-7. Builds the WASM activation module (Rust build + tests)
+7. Syncs `wasm_activation/pkg` from pinned NEAT-AI-core (`./build.sh`)
 8. Runs all tests in parallel with leak detection
 
 ### 🚩 Optional Flags
@@ -352,7 +352,7 @@ This script runs the following steps by default:
 ./quality.sh --help            # Show usage and step descriptions
 ./quality.sh --skip-tests      # Skip test execution
 ./quality.sh --skip-discovery  # Skip discovery library build and verification
-./quality.sh --skip-wasm       # Skip WASM activation module build
+./quality.sh --skip-wasm       # Skip WASM package sync step
 ./quality.sh --lint-only       # Only run formatting + linting (includes bash check)
 ./quality.sh --check-only      # Only run type-checking (deno check)
 ./quality.sh --dry-run         # Show which steps would run without executing them
@@ -363,8 +363,7 @@ Flags can be combined, e.g. `./quality.sh --skip-tests --skip-discovery`.
 ### 🚀 Deployment Checklist
 
 1. Run `./quality.sh` in both NEAT-AI and NEAT-AI-Discovery repositories
-2. Increment version in `deno.json` (NEAT-AI) or `Cargo.toml`
-   (NEAT-AI-Discovery)
+2. Increment version in `deno.json` (NEAT-AI) or NEAT-AI-Discovery metadata
 3. Verify all tests pass before committing
 
 ## ⚡ Activation / WASM
@@ -422,13 +421,11 @@ full policy is in
 [docs/CORE_DEPENDENCY_POLICY.md](docs/CORE_DEPENDENCY_POLICY.md); the key rules
 are:
 
-1. **Crate name:** `neat-core` (hyphenated). Not `neat_ai_core` or
-   `neat-ai-core`.
-2. **Pinning:** git dependency with `rev = "<full-40-char-SHA>"` in the root
-   `Cargo.toml`. Never use `branch` pinning.
-3. **Single source of truth:** workspace members use
-   `neat-core = { workspace = true }`.
-4. **Local dev:** use `.cargo/config.toml` path override (git-ignored).
+1. **Pinning:** `deno.json` contains `neatCore.repo` and immutable
+   `neatCore.rev` (full 40-char SHA). Never use branch pinning.
+2. **Single source of truth:** only `deno.json` controls the core revision.
+3. **Sync flow:** run `./build.sh` to refresh `wasm_activation/pkg` from pin.
+4. **Commit policy:** commit `deno.json` and `wasm_activation/pkg` together.
 5. **Semver:** NEAT-AI-core tags follow `v<MAJOR>.<MINOR>.<PATCH>`. Patch bumps
    need CI green; minor bumps need one review; major bumps need owner approval.
 6. **Parity gate:** before **removing** any in-tree duplicate native Rust (or
@@ -436,8 +433,8 @@ are:
    the output in the PR. See [docs/PARITY_GATE.md](docs/PARITY_GATE.md).
 7. **Scorer alignment:** downstream consumers such as
    [NEAT-AI-scorer](https://github.com/stSoftwareAU/NEAT-AI-scorer) must pin the
-   **same `neat-core` rev** as this workspace. When bumping the rev here, verify
-   and update the scorer in the same coordinated change.
+   **same core rev** as this workspace. When bumping the rev here, verify and
+   update the scorer in the same coordinated change.
 
 ## 🔄 Feed-forward vs Recurrent Connections
 

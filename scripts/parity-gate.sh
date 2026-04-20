@@ -1,25 +1,9 @@
 #!/usr/bin/env bash
-# Parity gate — verify NEAT-AI against the pinned NEAT-AI-core release
-# before any in-tree native Rust is removed.
-#
-# Issue #2345 — block removal of in-tree duplicate Rust until:
-#   1. The Rust test suite in `wasm_activation` passes against the
-#      `neat-core` dependency pinned in the root `Cargo.toml`.
-#   2. The TypeScript/Deno parity tests that exercise the native/WASM
-#      scoring path pass (currently `test/score/WasmJsScoreParity.ts`
-#      and `test/costs/MSE.ts`).
-#   3. The core dependency policy invariants still hold
-#      (`test/scripts/CoreDependencyPolicy.ts`).
-#
-# The gate is deliberately narrow: it exercises only the code paths that
-# could regress when switching from in-tree crates to the external
-# `neat-core`. The full `./quality.sh` gate remains the release-wide
-# check; this script is a focused pre-removal gate suitable for CI and
-# local sign-off.
+# Parity gate — verify NEAT-AI against the pinned NEAT-AI-core release.
 #
 # Usage:
 #   scripts/parity-gate.sh              # run every gate step
-#   scripts/parity-gate.sh --skip-rust  # skip Rust/cargo test (e.g. no toolchain)
+#   scripts/parity-gate.sh --skip-sync  # skip WASM package sync/build.sh step
 #   scripts/parity-gate.sh --skip-deno  # skip Deno parity tests
 #   scripts/parity-gate.sh --dry-run    # list the steps without running
 #   scripts/parity-gate.sh --help
@@ -33,10 +17,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Ensure common toolchain locations are on PATH (mirrors quality.sh).
-export PATH="$HOME/.deno/bin:$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.deno/bin:$PATH"
 
-SKIP_RUST=false
+SKIP_SYNC=false
 SKIP_DENO=false
 DRY_RUN=false
 
@@ -44,19 +27,18 @@ show_help() {
   cat <<'HELP'
 Usage: scripts/parity-gate.sh [OPTIONS]
 
-Verify NEAT-AI against the pinned NEAT-AI-core release before removing
-in-tree duplicate Rust. Runs a focused subset of the quality gate
-covering only the native-parity surface.
+Verify NEAT-AI against the pinned NEAT-AI-core release.
+Runs a focused subset of the quality gate for WASM parity.
 
 Options:
   --help, -h      Show this message and exit
-  --skip-rust     Skip the `cargo test` step in wasm_activation
+  --skip-sync     Skip the `./build.sh` WASM sync step
   --skip-deno     Skip the Deno parity and policy tests
   --dry-run       Print the steps that would run without executing them
 
 Steps (default, all enabled):
   [1/3] Core dependency policy (test/scripts/CoreDependencyPolicy.ts)
-  [2/3] Rust tests against pinned neat-core (cargo test in wasm_activation)
+  [2/3] Sync WASM package from pinned neatCore.rev (./build.sh)
   [3/3] TypeScript/Deno parity tests (WasmJsScoreParity + MSE)
 
 Exit codes:
@@ -71,8 +53,8 @@ for arg in "$@"; do
       show_help
       exit 0
       ;;
-    --skip-rust)
-      SKIP_RUST=true
+    --skip-sync)
+      SKIP_SYNC=true
       ;;
     --skip-deno)
       SKIP_DENO=true
@@ -89,11 +71,11 @@ for arg in "$@"; do
 done
 
 RUN_POLICY=true
-RUN_RUST=true
+RUN_SYNC=true
 RUN_DENO=true
 
-if [ "$SKIP_RUST" = true ]; then
-  RUN_RUST=false
+if [ "$SKIP_SYNC" = true ]; then
+  RUN_SYNC=false
 fi
 if [ "$SKIP_DENO" = true ]; then
   RUN_POLICY=false
@@ -102,7 +84,7 @@ fi
 
 TOTAL=0
 [ "$RUN_POLICY" = true ] && TOTAL=$((TOTAL + 1))
-[ "$RUN_RUST" = true ] && TOTAL=$((TOTAL + 1))
+[ "$RUN_SYNC" = true ] && TOTAL=$((TOTAL + 1))
 [ "$RUN_DENO" = true ] && TOTAL=$((TOTAL + 1))
 
 STEP=0
@@ -116,7 +98,7 @@ if [ "$DRY_RUN" = true ]; then
   echo "DRY RUN — the following parity-gate steps would execute:"
   echo ""
   [ "$RUN_POLICY" = true ] && progress "Core dependency policy check"
-  [ "$RUN_RUST" = true ] && progress "Rust tests in wasm_activation against pinned neat-core"
+  [ "$RUN_SYNC" = true ] && progress "WASM package sync from NEAT-AI-core pin"
   [ "$RUN_DENO" = true ] && progress "Deno parity tests (WASM/JS scoring + MSE)"
   echo ""
   echo "Total: $TOTAL step(s)"
@@ -132,14 +114,9 @@ if [ "$RUN_POLICY" = true ]; then
     test/scripts/CoreDependencyPolicy.ts
 fi
 
-if [ "$RUN_RUST" = true ]; then
-  progress "Rust tests in wasm_activation against pinned neat-core..."
-  # Fail fast on warnings so a dependency bump cannot smuggle in regressions.
-  export RUSTFLAGS="${RUSTFLAGS:--D warnings}"
-  (
-    cd wasm_activation
-    cargo test --lib --tests
-  )
+if [ "$RUN_SYNC" = true ]; then
+  progress "WASM package sync from NEAT-AI-core pin..."
+  ./build.sh
 fi
 
 if [ "$RUN_DENO" = true ]; then
