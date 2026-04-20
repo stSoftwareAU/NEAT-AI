@@ -476,6 +476,9 @@ In our production workloads, the default is feed-forward/forward-only.
   policy (ADR)
 - **docs/PARITY_GATE.md** - Parity gate checklist (Issue #2345) that must pass
   before removing in-tree duplicate native Rust
+- **docs/NEAT_AI_CORE_PARITY_AUDIT.md** - Parity audit (Issue #2367) mapping
+  every in-tree `neat-core/` pub item and test to its NEAT-AI-core equivalent at
+  the pinned rev
 - **docs/TROUBLESHOOTING.md** - Common issues and solutions
 - **docs/archive/pr-summaries/** - Archived PR summary files (historical)
 - **src/methods/activations/README.md** - Activation function strategy reference
