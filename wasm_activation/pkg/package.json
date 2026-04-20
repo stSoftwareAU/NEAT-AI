@@ -1,6 +1,7 @@
 {
-  "name": "neat_ai_core_wasm_wrapper",
+  "name": "wasm_activation",
   "type": "module",
+  "description": "WASM module for NEAT-AI creature activation - prototype for Issue #1116",
   "version": "0.1.0",
   "files": [
     "wasm_activation_bg.wasm",
