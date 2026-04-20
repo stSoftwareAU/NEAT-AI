@@ -4,13 +4,13 @@ import { assert, assertEquals } from "@std/assert";
  * Tests that deno.json conforms to the NEAT-AI-core
  * dependency pinning policy defined in docs/CORE_DEPENDENCY_POLICY.md.
  *
- * Issue #2342 — verifies repo+rev pinning and policy references.
+ * Issue #2342 — verifies repo+ref policy and documentation references.
  */
 
 const DENO_JSON = "deno.json";
 const POLICY_DOC = "docs/CORE_DEPENDENCY_POLICY.md";
 
-Deno.test("deno.json pins neatCore repo and rev", async () => {
+Deno.test("deno.json pins neatCore repo and ref", async () => {
   const json = JSON.parse(await Deno.readTextFile(DENO_JSON));
   const neatCore = json.neatCore;
   assert(neatCore, "deno.json must define neatCore");
@@ -20,9 +20,15 @@ Deno.test("deno.json pins neatCore repo and rev", async () => {
     "neatCore.repo must target stSoftwareAU/NEAT-AI-core",
   );
   assert(
-    typeof neatCore.rev === "string" && /^[0-9a-f]{40}$/.test(neatCore.rev),
-    "neatCore.rev must be a full 40-character hex SHA",
+    typeof neatCore.ref === "string" && neatCore.ref.length > 0,
+    "neatCore.ref must be a non-empty branch/tag/ref",
   );
+  if (typeof neatCore.rev === "string" && neatCore.rev.length > 0) {
+    assert(
+      /^[0-9a-f]{40}$/.test(neatCore.rev),
+      "neatCore.rev must be a full 40-character hex SHA when set",
+    );
+  }
 });
 
 Deno.test("core dependency policy document exists", async () => {
@@ -37,7 +43,7 @@ Deno.test("policy document covers required sections", async () => {
   const requiredTopics = [
     "semver",
     "deno.json",
-    "rev",
+    "ref",
     "build.sh",
     "approval",
   ];

@@ -99,36 +99,39 @@ optional — tests and the core library work without it.
 
 Shared native Rust computation lives in the external
 [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) repository and is
-consumed by pinning `neatCore.rev` in `deno.json` and syncing
-`wasm_activation/pkg` via `./build.sh`.
+consumed by tracking `neatCore.ref` (default `Develop`) in `deno.json` and
+syncing `wasm_activation/pkg` via `./build.sh`.
 
 For the full pinning policy (semver rules, approval tiers, CI auth), see
 [docs/CORE_DEPENDENCY_POLICY.md](./docs/CORE_DEPENDENCY_POLICY.md).
 
-### Bumping the Pinned Core Version
+### Using Latest Core in PRs
 
-When you need a newer version of NEAT-AI-core:
+By default, NEAT-AI follows latest `Develop` from NEAT-AI-core:
 
-1. Identify the target commit (or tag) on NEAT-AI-core's `Develop` branch.
-2. Update `deno.json` `neatCore.rev` to the new 40-char SHA.
-3. Refresh the WASM package:
+1. Ensure `deno.json` has:
+
+   ```json
+   "neatCore": { "repo": "stSoftwareAU/NEAT-AI-core", "ref": "Develop" }
+   ```
+
+2. Refresh the WASM package:
 
    ```bash
    ./build.sh
    ```
 
-4. (Historical note for older branches) some workflows mention
+3. (Historical note for older branches) some workflows mention
    `cargo update -p neat-core`; in this repository layout, use `./build.sh`
    instead because Rust/Cargo is no longer built in-tree.
-5. Run the full `./quality.sh` gate.
-6. Run the parity gate to verify no behavioural drift:
+4. Run the full `./quality.sh` gate.
+5. Run the parity gate to verify no behavioural drift:
 
    ```bash
    ./scripts/parity-gate.sh
    ```
 
-7. Commit the pin + artifact refresh with the tag (if any), e.g.
-   `bump neatCore rev to v0.2.0 (abc1234...)`.
+6. Commit the artifact refresh in your PR (approval controls rollout timing).
 
 See [docs/PARITY_GATE.md](./docs/PARITY_GATE.md) for the full parity checklist
 that must pass before removing in-tree Rust or after any core bump.

@@ -171,16 +171,12 @@ jobs:
       - name: Sync WASM package from NEAT-AI-core
         run: ./build.sh
 
-      - name: Verify WASM sync policy
+      - name: Report WASM sync changes
         run: |
           set -Eeuo pipefail
           changed="$(git diff --name-only)"
           if echo "$changed" | grep -q '^wasm_activation/pkg/'; then
-            if ! echo "$changed" | grep -q '^deno.json$'; then
-              echo "❌ wasm_activation/pkg changed without deno.json pin change." >&2
-              echo "Update deno.json neatCore.rev in the same PR when refreshing WASM artifacts." >&2
-              exit 1
-            fi
+            echo "ℹ️ wasm_activation/pkg changed after syncing latest NEAT-AI-core."
           fi
 
       - name: Check

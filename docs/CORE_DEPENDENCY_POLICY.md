@@ -6,35 +6,37 @@ in-repo Rust source.
 
 ## Decision Summary
 
-NEAT-AI pins NEAT-AI-core in `deno.json`:
+NEAT-AI tracks NEAT-AI-core in `deno.json`:
 
 ```json
 "neatCore": {
   "repo": "stSoftwareAU/NEAT-AI-core",
-  "rev": "<full-40-char-sha>"
+  "ref": "Develop"
 }
 ```
 
-`build.sh` is the single integration point. It downloads `repo@rev`, extracts
-`wasm_activation/pkg`, and writes `wasm_activation/pkg/neat_core_rev.txt`.
+`build.sh` is the single integration point. It resolves latest commit for
+`repo@ref`, downloads that archive, extracts `wasm_activation/pkg`, and writes
+`wasm_activation/pkg/neat_core_rev.txt`.
 
 ## Why This Model
 
-- Reproducible builds via immutable 40-char SHA.
+- Release control happens at PR approval and merge timing.
 - No Rust toolchain required in NEAT-AI CI or local contributor setup.
 - External API stays unchanged (`wasm_activation/pkg/**` is still published).
 
 ## Bumping NEAT-AI-core
 
-1. Update `deno.json` `neatCore.rev` to a new 40-char SHA.
-2. Run `./build.sh` to refresh `wasm_activation/pkg`.
+1. Keep `deno.json` `neatCore.ref` set to the desired tracked branch (typically
+   `Develop`).
+2. Run `./build.sh` to refresh `wasm_activation/pkg` from latest core commit.
 3. Run `./scripts/parity-gate.sh` and `./quality.sh`.
-4. Commit `deno.json` and the updated `wasm_activation/pkg/**` together.
+4. Commit updated `wasm_activation/pkg/**` in the PR.
 
 ## CI Policy
 
 - CI must run `./build.sh` before quality/test/publish.
-- `wasm_activation/pkg` changes are expected only when `deno.json` pin changes.
+- `wasm_activation/pkg` may change whenever NEAT-AI-core `ref` advances.
 - No Cargo, `rustc`, or `wasm-pack` steps run in this repo.
 
 ## Semver and Approvals
@@ -47,8 +49,8 @@ NEAT-AI-core tags continue to follow `v<MAJOR>.<MINOR>.<PATCH>`.
 
 ## Downstream Alignment (NEAT-AI-scorer)
 
-Downstream consumers should align to the same NEAT-AI-core SHA used by this
-repo’s `deno.json`.
+Downstream consumers should align to the same NEAT-AI-core branch/ref policy
+used by this repo’s `deno.json`.
 
 ## Related Documents
 
