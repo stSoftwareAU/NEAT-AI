@@ -1001,6 +1001,8 @@ export class Creature implements CreatureInternal {
       import("./config/OutputRangeConfig.ts").RequiredOutputRange
     >,
     cachedFiles?: string[],
+    rustScorer?:
+      import("./config/RustScorerConfig.ts").RequiredRustScorerConfig,
   ): Promise<{ error: number }> {
     return activation.evaluateDir(
       this,
@@ -1009,6 +1011,7 @@ export class Creature implements CreatureInternal {
       feedbackLoop,
       outputRanges,
       cachedFiles,
+      rustScorer,
     );
   }
 
