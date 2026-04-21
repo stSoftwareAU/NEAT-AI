@@ -79,7 +79,8 @@ type NumericOptionKeys =
   | "maxCRISPRsPerGeneration"
   | "maxDedupRetries"
   | "heavyTaskWorkerCount"
-  | "maxConcurrentDiscoveries";
+  | "maxConcurrentDiscoveries"
+  | "skipTrainingAfterConsecutiveRegressions";
 
 /**
  * Options for NEAT configuration.

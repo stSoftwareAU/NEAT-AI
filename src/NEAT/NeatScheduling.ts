@@ -199,6 +199,26 @@ export function scheduleTraining(
     }
   }
 
+  // Issue #2382: bypass training for creatures whose last N attempts all
+  // produced a higher error and no usable fine-tune variant. The heavy
+  // worker cost of another rollback is wasted on these creatures.
+  if (
+    neat.trainingRegressionTracker.shouldSkip(
+      uuid,
+      neat.config.skipTrainingAfterConsecutiveRegressions,
+    )
+  ) {
+    neat.trainingRegressionTracker.recordSkip();
+    if (neat.config.verbose) {
+      getLogger().info(
+        `Training ${
+          blue(uuid.substring(Math.max(0, uuid.length - 8)))
+        } skipped: ${neat.config.skipTrainingAfterConsecutiveRegressions} consecutive regressions`,
+      );
+    }
+    return;
+  }
+
   neat.alreadyScheduledMap.set(uuid, Date.now());
   if (neat.alreadyScheduledMap.size > 1000) {
     // Clean up by removing old entries
@@ -314,12 +334,19 @@ export function scheduleTraining(
         }
         r.train.forward = forwardCreature;
       }
+      // Issue #2382: a fine-tune variant recovered the loss — reset streak.
+      neat.trainingRegressionTracker.recordImprovement(uuid);
     } else if (trainingImprovement === false) {
       getLogger().warn(
         `Training ${
           blue(r.train.ID)
         } caused a higher error of ${r.train.error} from ${errorTx} and no tuning`,
       );
+      // Issue #2382: rollback with no fine-tune — count as a regression.
+      neat.trainingRegressionTracker.recordRegression(uuid);
+    } else {
+      // Training lowered the error and no fine-tune was needed.
+      neat.trainingRegressionTracker.recordImprovement(uuid);
     }
 
     neat.trainingComplete.push(r);

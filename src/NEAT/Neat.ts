@@ -26,6 +26,7 @@ import { Genus } from "@neat/Genus.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
+import { TrainingRegressionTracker } from "@neat/TrainingRegressionTracker.ts";
 import {
   type DiscoveryReplayDirResult,
   DiscoveryReplayQueue,
@@ -144,6 +145,13 @@ export class Neat {
   discoveryComplete: ResponseData[] = [];
   trainingComplete: ResponseData[] = [];
   alreadyScheduledMap = new Map<string, number>();
+  /**
+   * Issue #2382: tracks per-creature training regression history so
+   * {@link scheduleTraining} can skip creatures that have consecutively
+   * regressed instead of spending heavy worker cycles on another rollback.
+   */
+  readonly trainingRegressionTracker: TrainingRegressionTracker =
+    new TrainingRegressionTracker();
   lastDiscoveryDurationMS = 0;
   readonly MIN_DISCOVERY_TIME_MINUTES = 2;
 
