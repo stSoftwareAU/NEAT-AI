@@ -10,7 +10,7 @@ show_help() {
   cat <<'HELP'
 Usage: ./build.sh [OPTIONS]
 
-Sync/build wasm_activation/pkg from NEAT-AI-core.
+Verify wasm_activation/pkg matches deno.json neatCore.rev (vendored artifacts).
 
 Options:
   --clean       Delete wasm_activation/pkg before build
@@ -93,7 +93,6 @@ if ! [[ "$NEAT_CORE_REV" =~ ^[0-9a-f]{40}$ ]]; then
   NEAT_CORE_REV="$resolved_rev"
 fi
 
-ARCHIVE_URL="${NEAT_CORE_ARCHIVE_URL:-https://codeload.github.com/${NEAT_CORE_REPO}/tar.gz/${NEAT_CORE_REV}}"
 DEST_DIR="wasm_activation/pkg"
 required=(
   "wasm_activation.js"
@@ -123,99 +122,26 @@ if [ "$CLEAN" = true ]; then
   echo "Cleaning $DEST_DIR before build..."
   rm -rf "$DEST_DIR"
 elif [[ "$has_valid_pkg" == true ]]; then
+  wasm_bytes="$(wc -c <"$DEST_DIR/wasm_activation_bg.wasm" | tr -d ' ')"
+  # The previous wasm-pack wrapper path produced a ~30KiB stub with no
+  # CompiledNetwork bindings; a real pkg is two orders of magnitude larger.
+  if [[ "${wasm_bytes:-0}" -lt 131072 ]]; then
+    echo "ERROR: $DEST_DIR/wasm_activation_bg.wasm is too small (${wasm_bytes} bytes)." >&2
+    echo "This usually means a stub WASM replaced the vendored activation package." >&2
+    echo "Restore from git, e.g.: git checkout Develop -- $DEST_DIR/" >&2
+    exit 1
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    fingerprint_input="${NEAT_CORE_REPO}@${NEAT_CORE_REV}"
+    printf '%s' "$fingerprint_input" | shasum -a 256 | awk '{print $1}' \
+      > "$DEST_DIR/build-fingerprint"
+  fi
   echo "Skipping build: $DEST_DIR already matches ${NEAT_CORE_REPO}@${NEAT_CORE_REV}"
   exit 0
 fi
 
-tmpdir="$(mktemp -d -t .neat-ai-core-build.XXXXXX)"
-trap 'rm -rf "$tmpdir"' EXIT
-
-echo "Downloading NEAT-AI-core archive for ${NEAT_CORE_REPO}@${NEAT_CORE_REV}..."
-curl "${curl_args[@]}" "$ARCHIVE_URL" -o "$tmpdir/core.tar.gz"
-tar -xzf "$tmpdir/core.tar.gz" -C "$tmpdir"
-
-source_roots=("$tmpdir"/NEAT-AI-core-*)
-if [[ ${#source_roots[@]} -eq 0 || ! -d "${source_roots[0]}" ]]; then
-  echo "ERROR: Could not locate extracted NEAT-AI-core source directory." >&2
-  exit 1
-fi
-source_root="${source_roots[0]}"
-
-if [[ ! -f "$source_root/neat-core/Cargo.toml" ]]; then
-  echo "ERROR: NEAT-AI-core source is missing neat-core/Cargo.toml." >&2
-  echo "Cannot build WASM from Rust-only source without neat-core crate." >&2
-  exit 1
-fi
-
-echo "Building WASM from Rust-only NEAT-AI-core source..."
-if ! command -v wasm-pack >/dev/null 2>&1; then
-  if [[ "${NEAT_RUST_DISCOVERY_OPTIONAL:-false}" == "true" ]]; then
-    echo "WARNING: wasm-pack not found. Skipping WASM build (NEAT_RUST_DISCOVERY_OPTIONAL=true)." >&2
-    exit 0
-  fi
-  echo "ERROR: wasm-pack is required to build WASM from NEAT-AI-core Rust source." >&2
-  exit 1
-fi
-
-wrapper_dir="$tmpdir/neat-ai-core-wasm-wrapper"
-mkdir -p "$wrapper_dir/src"
-cat > "$wrapper_dir/Cargo.toml" <<EOF
-[package]
-name = "neat_ai_core_wasm_wrapper"
-version = "0.1.0"
-edition = "2021"
-
-[lib]
-crate-type = ["cdylib"]
-
-[dependencies]
-wasm-bindgen = "0.2.118"
-neat-core = { path = "$source_root/neat-core" }
-EOF
-
-cat > "$wrapper_dir/src/lib.rs" <<'EOF'
-use wasm_bindgen::prelude::*;
-
-#[wasm_bindgen]
-pub fn core_wasm_wrapper_ready() -> bool {
-    // Keep a direct reference so API mismatches fail at compile-time.
-    let _ = neat_core::SquashType::Identity;
-    true
-}
-EOF
-
-mkdir -p "$source_root/wasm_activation/pkg"
-(
-  cd "$wrapper_dir"
-  wasm-pack build --target web --release \
-    --out-dir "$source_root/wasm_activation/pkg" \
-    --out-name wasm_activation
-)
-
-pkg_matches=("$source_root"/wasm_activation/pkg)
-if [[ ${#pkg_matches[@]} -eq 0 || ! -d "${pkg_matches[0]}" ]]; then
-  echo "ERROR: WASM build did not produce wasm_activation/pkg in NEAT-AI-core source." >&2
-  exit 1
-fi
-src_pkg_dir="${pkg_matches[0]}"
-
-rm -rf "$DEST_DIR"
-mkdir -p "$DEST_DIR"
-cp -R "$src_pkg_dir"/. "$DEST_DIR"/
-
-for file in "${required[@]}"; do
-  if [[ ! -f "$DEST_DIR/$file" ]]; then
-    echo "ERROR: missing expected wasm artifact: $DEST_DIR/$file" >&2
-    exit 1
-  fi
-done
-
-printf '%s\n' "$NEAT_CORE_REV" > "$DEST_DIR/neat_core_rev.txt"
-# Keep compatibility with existing tests and tooling that assert this file exists.
-if command -v shasum >/dev/null 2>&1; then
-  fingerprint_input="${NEAT_CORE_REPO}@${NEAT_CORE_REV}"
-  printf '%s' "$fingerprint_input" | shasum -a 256 | awk '{print $1}' \
-    > "$DEST_DIR/build-fingerprint"
-fi
-
-echo "WASM pkg synced to $DEST_DIR from ${NEAT_CORE_REPO}@${NEAT_CORE_REV}"
+echo "ERROR: wasm_activation/pkg is missing or does not match pinned NEAT-AI-core revision." >&2
+echo "  Expected ${NEAT_CORE_REPO}@${NEAT_CORE_REV} (see deno.json neatCore.rev and $DEST_DIR/neat_core_rev.txt)." >&2
+echo "Automated rebuild was removed: the wasm-pack wrapper produced a non-functional stub." >&2
+echo "Restore the in-repo WASM package from git (same rev as neatCore.rev), then re-run ./build.sh." >&2
+exit 1

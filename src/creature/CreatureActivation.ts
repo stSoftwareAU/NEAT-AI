@@ -9,6 +9,7 @@ import { assert } from "@std/assert";
 import { calculateOutputRangePenalty } from "@architecture/OutputRangePenalty.ts";
 import { dataFiles } from "@architecture/Training.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
+import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { CostInterface } from "@costs/CostInterface.ts";
 import type { Creature } from "@creature";
 import { WasmError } from "@errors/WasmError.ts";
@@ -28,6 +29,7 @@ import {
   evictOldestWasmCreatureActivations,
   noteWasmCreatureActivationUse,
 } from "@wasm/WasmCreatureActivationLRU.ts";
+import { tryScoreWithRustScorer } from "../score/RustScorerBridge.ts";
 
 /**
  * Verify WASM is available and the creature is eligible.
@@ -406,6 +408,7 @@ export async function evaluateDir(
   feedbackLoop: boolean,
   outputRanges?: ReadonlyArray<RequiredOutputRange>,
   cachedFiles?: string[],
+  rustScorer?: RequiredRustScorerConfig,
 ): Promise<{ error: number }> {
   const files = cachedFiles ?? dataFiles(dataDir).files;
   assert(files.length > 0, "No data files found");
@@ -413,6 +416,13 @@ export async function evaluateDir(
   // Issue #1247: Auto-initialise WASM before scoring if not yet available.
   const { ensureWasmActivation } = await import("../wasm/mod.ts");
   await ensureWasmActivation();
+
+  const rustResult = await tryScoreWithRustScorer(
+    creature,
+    dataDir,
+    rustScorer,
+  );
+  if (rustResult) return { error: rustResult.error };
 
   requireWasmOrThrow(creature);
 

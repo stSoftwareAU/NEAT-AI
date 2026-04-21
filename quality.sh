@@ -9,6 +9,10 @@ SKIP_WASM=false
 LINT_ONLY=false
 CHECK_ONLY=false
 DRY_RUN=false
+WITH_RUST_SCORER=false
+TEST_BOTH_SCORERS=false
+RUST_SCORER_BINARY_PATH="${NEAT_AI_RUST_SCORER_BINARY_PATH:-rust_scorer}"
+RUST_SCORER_TIMEOUT_MS="${NEAT_AI_RUST_SCORER_TIMEOUT_MS:-0}"
 
 show_help() {
   cat <<'HELP'
@@ -22,6 +26,12 @@ Options:
   --skip-tests        Skip test execution
   --skip-discovery    Skip discovery library build and verification
   --skip-wasm         Skip WASM package sync from NEAT-AI-core
+  --with-rust-scorer  Enable external Rust scorer during test execution
+  --test-both-scorers Run tests twice: WASM-only then Rust scorer enabled
+  --rust-scorer-bin=PATH
+                      Path to rust_scorer binary (default: rust_scorer)
+  --rust-scorer-timeout-ms=MS
+                      Timeout for scorer process calls (default: 0)
   --lint-only         Only run formatting + linting (includes bash check)
   --check-only        Only run type-checking (deno check)
   --dry-run           Show which steps would run without executing them
@@ -38,6 +48,10 @@ for arg in "$@"; do
     --skip-tests) SKIP_TESTS=true ;;
     --skip-discovery) SKIP_DISCOVERY=true ;;
     --skip-wasm) SKIP_WASM=true ;;
+    --with-rust-scorer) WITH_RUST_SCORER=true ;;
+    --test-both-scorers) TEST_BOTH_SCORERS=true ;;
+    --rust-scorer-bin=*) RUST_SCORER_BINARY_PATH="${arg#*=}" ;;
+    --rust-scorer-timeout-ms=*) RUST_SCORER_TIMEOUT_MS="${arg#*=}" ;;
     --lint-only) LINT_ONLY=true ;;
     --check-only) CHECK_ONLY=true ;;
     --dry-run) DRY_RUN=true ;;
@@ -48,6 +62,11 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+if [ -z "$RUST_SCORER_BINARY_PATH" ]; then
+  echo "rust scorer binary path must not be empty" >&2
+  exit 1
+fi
 
 RUN_DEPS=true
 RUN_FMT=true
@@ -87,7 +106,13 @@ TOTAL=0
 [ "$RUN_TYPE_CHECK" = true ] && TOTAL=$((TOTAL + 1))
 [ "$RUN_DISCOVERY" = true ] && TOTAL=$((TOTAL + 1))
 [ "$RUN_WASM" = true ] && TOTAL=$((TOTAL + 1))
-[ "$RUN_TESTS" = true ] && TOTAL=$((TOTAL + 1))
+if [ "$RUN_TESTS" = true ]; then
+  if [ "$TEST_BOTH_SCORERS" = true ]; then
+    TOTAL=$((TOTAL + 2))
+  else
+    TOTAL=$((TOTAL + 1))
+  fi
+fi
 
 STEP=0
 progress() {
@@ -106,11 +131,51 @@ if [ "$DRY_RUN" = true ]; then
   [ "$RUN_TYPE_CHECK" = true ] && progress "Type-checking..."
   [ "$RUN_DISCOVERY" = true ] && progress "Building discovery library..."
   [ "$RUN_WASM" = true ] && progress "Syncing WASM package from NEAT-AI-core..."
-  [ "$RUN_TESTS" = true ] && progress "Running tests..."
+  if [ "$RUN_TESTS" = true ]; then
+    if [ "$TEST_BOTH_SCORERS" = true ]; then
+      progress "Running tests (WASM-only scorer mode)..."
+      progress "Running tests (Rust scorer mode)..."
+    elif [ "$WITH_RUST_SCORER" = true ]; then
+      progress "Running tests (Rust scorer mode)..."
+    else
+      progress "Running tests (WASM-only scorer mode)..."
+    fi
+  fi
   echo ""
   echo "Total: $TOTAL steps"
   exit 0
 fi
+
+run_test_suite() {
+  local scorer_mode="$1"
+  local -a env_args=(
+    "DENO_JOBS=${DENO_JOBS:-4}"
+    "NEAT_AI_DISCOVERY_DETERMINISTIC=1"
+  )
+
+  if [ "$scorer_mode" = "rust" ]; then
+    env_args+=(
+      "NEAT_AI_RUST_SCORER_ENABLED=1"
+      "NEAT_AI_RUST_SCORER_BINARY_PATH=$RUST_SCORER_BINARY_PATH"
+      "NEAT_AI_RUST_SCORER_TIMEOUT_MS=$RUST_SCORER_TIMEOUT_MS"
+    )
+  else
+    env_args+=("NEAT_AI_RUST_SCORER_ENABLED=0")
+  fi
+
+  env "${env_args[@]}" deno test \
+    --allow-read \
+    --allow-write \
+    --allow-net \
+    --allow-env \
+    --allow-run \
+    --trace-leaks \
+    --allow-ffi \
+    --v8-flags=--max-old-space-size=8192 \
+    --parallel \
+    --preload test/_preload.ts \
+    --config ./deno.json
+}
 
 if [ "$RUN_DEPS" = true ]; then
   progress "Updating dependencies..."
@@ -187,18 +252,16 @@ if [ "$RUN_WASM" = true ]; then
 fi
 
 if [ "$RUN_TESTS" = true ]; then
-  progress "Running tests..."
-  DENO_JOBS="${DENO_JOBS:-4}" \
-  NEAT_AI_DISCOVERY_DETERMINISTIC=1 deno test \
-    --allow-read \
-    --allow-write \
-    --allow-net \
-    --allow-env \
-    --allow-run \
-    --trace-leaks \
-    --allow-ffi \
-    --v8-flags=--max-old-space-size=8192 \
-    --parallel \
-    --preload test/_preload.ts \
-    --config ./deno.json
+  if [ "$TEST_BOTH_SCORERS" = true ]; then
+    progress "Running tests (WASM-only scorer mode)..."
+    run_test_suite "wasm"
+    progress "Running tests (Rust scorer mode)..."
+    run_test_suite "rust"
+  elif [ "$WITH_RUST_SCORER" = true ]; then
+    progress "Running tests (Rust scorer mode)..."
+    run_test_suite "rust"
+  else
+    progress "Running tests (WASM-only scorer mode)..."
+    run_test_suite "wasm"
+  fi
 fi
