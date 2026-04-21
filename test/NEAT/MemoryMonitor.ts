@@ -629,7 +629,9 @@ Deno.test("attemptProactiveGc returns false when gc is not exposed", () => {
   const globalAny = globalThis as { gc?: () => void };
   const originalGc = globalAny.gc;
   try {
-    delete (globalAny as { gc?: () => void }).gc;
+    // Cannot delete non-configurable properties (e.g. when --expose-gc is set).
+    // Setting to undefined satisfies typeof check in attemptProactiveGc.
+    (globalAny as Record<string, unknown>).gc = undefined;
     assertStrictEquals(attemptProactiveGc(), false);
   } finally {
     if (originalGc !== undefined) globalAny.gc = originalGc;
