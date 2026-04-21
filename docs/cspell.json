@@ -329,6 +329,7 @@
     "intree",
     "INTREE",
     "pathlib",
+    "preempt",
     "rglob",
     "splitlines",
     "stdlib"
