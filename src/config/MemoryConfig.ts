@@ -5,6 +5,11 @@
  * triggering reactive cache clearing. This config enables proactive monitoring
  * with graduated pressure responses (warning vs critical) to evict caches
  * before OOM occurs.
+ *
+ * Issue #2381: Adds adaptive critical-response backoff and a diagnostic
+ * retainer snapshot that fires when heap crosses `snapshotThreshold`, so we
+ * can identify *what* is holding memory rather than thrashing caches every
+ * few seconds.
  */
 
 /**
@@ -43,6 +48,66 @@ export interface MemoryConfig {
    * Defaults to 0.85 (85%).
    */
   criticalThreshold?: number;
+
+  /**
+   * Snapshot threshold as a fraction of heap total (0–1). Issue #2381.
+   *
+   * When heap usage exceeds this fraction, a diagnostic retainer snapshot
+   * is emitted (subject to `snapshotIntervalMs` throttling) showing counts
+   * and bytes per retainer type (WASM activation cache, compilation cache,
+   * heap MB, external bytes, rss).
+   *
+   * Defaults to 0.90 (90%).
+   */
+  snapshotThreshold?: number;
+
+  /**
+   * Minimum milliseconds between successive diagnostic snapshots. Issue #2381.
+   *
+   * Once a snapshot is emitted, further snapshots are throttled for at least
+   * this long so the log is not flooded when heap stays above the threshold.
+   *
+   * Defaults to 10_000 (10 seconds).
+   */
+  snapshotIntervalMs?: number;
+
+  /**
+   * Burst limit for critical responses before adaptive backoff kicks in.
+   * Issue #2381.
+   *
+   * If more than this many critical responses fire within
+   * `criticalBackoffWindowMs`, subsequent critical responses are suppressed
+   * for `criticalBackoffCooldownMs`. Defaults to 5.
+   */
+  criticalBackoffBurst?: number;
+
+  /**
+   * Rolling window (ms) for counting recent critical responses. Issue #2381.
+   * Defaults to 10_000 (10 seconds).
+   */
+  criticalBackoffWindowMs?: number;
+
+  /**
+   * Cooldown (ms) applied once the critical-response burst limit is hit.
+   * Issue #2381.
+   *
+   * During the cooldown the critical response (which aggressively clears
+   * caches) is skipped; diagnostic snapshots and heap logging continue.
+   * This stops the monitor from fighting the same fire every few seconds
+   * when heap is sustainably high and the caches are not the retainer.
+   *
+   * Defaults to 60_000 (60 seconds).
+   */
+  criticalBackoffCooldownMs?: number;
+
+  /**
+   * Whether to attempt proactive GC (`globalThis.gc?.()`) on critical
+   * pressure when available. Issue #2381.
+   *
+   * Only effective when the runtime was started with `--v8-flags=--expose-gc`.
+   * Defaults to false (so production behaviour is unchanged unless opted in).
+   */
+  proactiveGc?: boolean;
 }
 
 /**
@@ -57,4 +122,10 @@ export const DEFAULT_MEMORY_CONFIG: RequiredMemoryConfig = {
   enabled: true,
   warningThreshold: 0.70,
   criticalThreshold: 0.85,
+  snapshotThreshold: 0.90,
+  snapshotIntervalMs: 10_000,
+  criticalBackoffBurst: 5,
+  criticalBackoffWindowMs: 10_000,
+  criticalBackoffCooldownMs: 60_000,
+  proactiveGc: false,
 };

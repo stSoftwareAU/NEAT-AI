@@ -501,6 +501,39 @@ export function parseMemoryConfig(
       d.criticalThreshold,
       { min: 0, max: 1 },
     ),
+    snapshotThreshold: parseNumber(
+      "Memory snapshotThreshold",
+      overrides?.snapshotThreshold,
+      d.snapshotThreshold,
+      { min: 0, max: 1 },
+    ),
+    snapshotIntervalMs: parseNumber(
+      "Memory snapshotIntervalMs",
+      overrides?.snapshotIntervalMs,
+      d.snapshotIntervalMs,
+      { integer: true, min: 0 },
+    ),
+    criticalBackoffBurst: parseNumber(
+      "Memory criticalBackoffBurst",
+      overrides?.criticalBackoffBurst,
+      d.criticalBackoffBurst,
+      { integer: true, min: 1 },
+    ),
+    criticalBackoffWindowMs: parseNumber(
+      "Memory criticalBackoffWindowMs",
+      overrides?.criticalBackoffWindowMs,
+      d.criticalBackoffWindowMs,
+      { integer: true, min: 0 },
+    ),
+    criticalBackoffCooldownMs: parseNumber(
+      "Memory criticalBackoffCooldownMs",
+      overrides?.criticalBackoffCooldownMs,
+      d.criticalBackoffCooldownMs,
+      { integer: true, min: 0 },
+    ),
+    proactiveGc: overrides?.proactiveGc !== undefined
+      ? Boolean(overrides.proactiveGc)
+      : d.proactiveGc,
   } as RequiredMemoryConfig;
 }
 
