@@ -181,6 +181,15 @@ export interface NeatArguments {
 
   enableRepetitiveTraining: boolean;
 
+  /**
+   * Issue #2382: Skip scheduling training for a creature whose last N training
+   * attempts all produced a higher error and no usable fine-tune variant. A
+   * value of `0` disables the guard; the reference workload in #2382 logged
+   * 217 rollback events per run, so the default is `2` so a creature has to
+   * regress twice in a row before it is bypassed.
+   */
+  skipTrainingAfterConsecutiveRegressions: number;
+
   /** The number of training samples per batch. */
   trainingBatchSize: number;
 
