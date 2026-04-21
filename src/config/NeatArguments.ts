@@ -294,6 +294,29 @@ export interface NeatArguments {
    */
   discoveryMaxNeurons: number;
 
+  /**
+   * Maximum number of neurons submitted to the Rust combined analysis in a
+   * single FFI call. The analysis loop splits the focus list into chunks of
+   * at most this size so progress can be checkpointed and logged between
+   * chunks, and so a stall in Rust cannot consume the full analysis budget.
+   *
+   * Defaults to 2 (see Issue #2380). Set to 0 or a very large number to
+   * disable chunking and submit the whole focus list in a single call (the
+   * historical pre-#2380 behaviour).
+   */
+  discoveryAnalysisChunkSize: number;
+
+  /**
+   * Maximum milliseconds a single Rust combined-analysis chunk may take
+   * before the analysis loop stops submitting further chunks for this
+   * discovery cycle. Prevents one slow Rust call from consuming the full
+   * analysis budget when per-neuron throughput has effectively stalled
+   * (Issue #2380).
+   *
+   * Defaults to 120000 (2 minutes). Set to 0 to disable the stall guard.
+   */
+  discoveryAnalysisPerChunkMaxMs: number;
+
   /** Drain promise chains every N batches during discovery recording to prevent memory buildup. Default: 10 */
   discoveryDrainEveryNBatches: number;
 

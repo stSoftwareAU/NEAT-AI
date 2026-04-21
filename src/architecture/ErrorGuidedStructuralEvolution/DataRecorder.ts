@@ -351,6 +351,8 @@ class DataRecorder {
           config: this.config,
           discoveryMaxNeurons: this.discoveryMaxNeurons,
           costOfGrowth: this.config.costOfGrowth,
+          analysisChunkSize: this.config.discoveryAnalysisChunkSize,
+          perChunkMaxMs: this.config.discoveryAnalysisPerChunkMaxMs,
           getTimeoutTS: () => this.timeoutTS,
           refreshAnalysisTimeout: (ds) => this.refreshAnalysisTimeout(ds),
         },
