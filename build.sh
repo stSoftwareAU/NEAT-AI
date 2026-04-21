@@ -149,6 +149,10 @@ fi
 
 echo "Building WASM from Rust-only NEAT-AI-core source..."
 if ! command -v wasm-pack >/dev/null 2>&1; then
+  if [[ "${NEAT_RUST_DISCOVERY_OPTIONAL:-false}" == "true" ]]; then
+    echo "WARNING: wasm-pack not found. Skipping WASM build (NEAT_RUST_DISCOVERY_OPTIONAL=true)." >&2
+    exit 0
+  fi
   echo "ERROR: wasm-pack is required to build WASM from NEAT-AI-core Rust source." >&2
   exit 1
 fi
