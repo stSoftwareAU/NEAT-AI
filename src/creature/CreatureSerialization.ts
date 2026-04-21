@@ -38,6 +38,10 @@ import {
 import { convertMemeticExportToWireJson } from "@creature/MemeticWireExport.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { isRecord } from "@utils/TypeGuards.ts";
+import {
+  clampWeightBiasDetail,
+  MAX_SAFE_WEIGHT_BIAS,
+} from "@utils/WeightBiasClamp.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { cleanupOrphanedNeuronsInCreature } from "@compact/OrphanedNeuronCleanup.ts";
 import { pruneOrphanMemeticReferences } from "@compact/MemeticCleanup.ts";
@@ -381,6 +385,12 @@ export function loadFrom(
   let pos = json.input;
   let outputIndex = 0;
   const neurons = json.neurons;
+  // Issue #2378: track clamped magnitudes so we emit a single aggregated
+  // warn line per load, rather than one info line per overflow value.
+  let clampedBiasCount = 0;
+  let clampedWeightCount = 0;
+  let maxObservedBias = 0;
+  let maxObservedWeight = 0;
 
   for (let i = 0; i < neurons.length; i++) {
     const jn = neurons[i];
@@ -396,7 +406,23 @@ export function loadFrom(
       uuidToIndex.set(jn.uuid, pos);
     }
 
-    const n = Neuron.fromJSON(jn, creature);
+    // Issue #2378: defence-in-depth — clamp bias magnitude at load time
+    // so runaway values (up to ~1e+195 seen in production) cannot be
+    // carried across generations via persisted JSON. Clone before mutating
+    // so we never modify the caller's JSON object.
+    let jnForLoad = jn;
+    if (typeof jn.bias === "number") {
+      const biasDetail = clampWeightBiasDetail(jn.bias);
+      if (biasDetail.clamped) {
+        clampedBiasCount++;
+        if (Math.abs(jn.bias) > maxObservedBias) {
+          maxObservedBias = Math.abs(jn.bias);
+        }
+        jnForLoad = { ...jn, bias: biasDetail.value };
+      }
+    }
+
+    const n = Neuron.fromJSON(jnForLoad, creature);
     n.index = pos;
     ensureIdAbove(n.id);
 
@@ -482,7 +508,20 @@ export function loadFrom(
       lastTo = to;
     }
 
-    const tmpSynapse = new Synapse(from!, to!, synapse.weight, synapse.type);
+    // Issue #2378: defence-in-depth — clamp weight magnitude at load time.
+    let effectiveWeight = synapse.weight;
+    if (typeof effectiveWeight === "number") {
+      const weightDetail = clampWeightBiasDetail(effectiveWeight);
+      if (weightDetail.clamped) {
+        clampedWeightCount++;
+        if (Math.abs(effectiveWeight) > maxObservedWeight) {
+          maxObservedWeight = Math.abs(effectiveWeight);
+        }
+        effectiveWeight = weightDetail.value;
+      }
+    }
+
+    const tmpSynapse = new Synapse(from!, to!, effectiveWeight, synapse.type);
     creature.synapses[validSynapseCount++] = tmpSynapse;
 
     if (synapse.frozen) {
@@ -560,6 +599,19 @@ export function loadFrom(
   }
 
   normaliseComputationalNeuronOrder(creature);
+
+  // Issue #2378: if any weights or biases were clamped at load time, emit
+  // a single aggregated warn line with the creature UUID so the offending
+  // lineage can be traced in production logs (rather than thousands of
+  // per-value info lines in Score.ts).
+  if (clampedWeightCount > 0 || clampedBiasCount > 0) {
+    getLogger().warn(
+      "🚨 [loadFrom] Clamped overflowing weights/biases to " +
+        `±${MAX_SAFE_WEIGHT_BIAS} on creature ${creature.uuid ?? "unknown"}: ` +
+        `${clampedWeightCount} weight(s) (max |w|=${maxObservedWeight}), ` +
+        `${clampedBiasCount} bias(es) (max |b|=${maxObservedBias}).`,
+    );
+  }
 
   if (validate) {
     creatureValidate(creature);
