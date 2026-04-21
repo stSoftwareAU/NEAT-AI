@@ -46,6 +46,12 @@ export class DiscoveryPerformanceStats {
   harmfulSynapseAnalysisTime = 0;
   harmfulNeuronAnalysisTime = 0;
   squashAnalysisTime = 0;
+  /**
+   * Set to true when the analysis loop aborted early due to a throughput
+   * stall (a single Rust combined-analysis chunk exceeded the per-chunk
+   * budget). See Issue #2380.
+   */
+  analysisStalled = false;
 
   // Candidate counts (final arrays returned to the caller).
   // Note (29-Dec-2025): Counts are taken from the result arrays (not per-retry

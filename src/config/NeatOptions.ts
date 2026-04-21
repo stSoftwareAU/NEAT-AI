@@ -67,6 +67,8 @@ type NumericOptionKeys =
   | "discoveryRustFlushRecords"
   | "discoveryRustFlushBytes"
   | "discoveryMaxNeurons"
+  | "discoveryAnalysisChunkSize"
+  | "discoveryAnalysisPerChunkMaxMs"
   | "discoveryDrainEveryNBatches"
   | "discoveryReplayMaxSingles"
   | "discoveryReplayMaxPairwise"

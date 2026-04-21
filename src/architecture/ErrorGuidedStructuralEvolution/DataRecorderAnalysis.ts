@@ -29,10 +29,51 @@ export interface AnalysisLoopContext {
   readonly config: NeatConfig;
   readonly discoveryMaxNeurons: number;
   readonly costOfGrowth: number;
+  /**
+   * Maximum number of neurons submitted to one Rust combined-analysis FFI
+   * call. The analysis loop splits the focus list into chunks of at most this
+   * size. Values <= 0 or >= focus list length submit the whole list at once
+   * (Issue #2380).
+   */
+  readonly analysisChunkSize: number;
+  /**
+   * Maximum milliseconds a single Rust combined-analysis chunk may take
+   * before the analysis loop stops submitting further chunks and skips the
+   * remaining retry iterations for this discovery cycle (Issue #2380). Set
+   * to 0 to disable the stall guard.
+   */
+  readonly perChunkMaxMs: number;
   /** Current analysis deadline timestamp in ms. */
   getTimeoutTS(): number;
   /** Refresh the analysis timeout on the DiscoverStructure instance. */
   refreshAnalysisTimeout(discoverStructure: DiscoverStructure): void;
+  /**
+   * Optional clock injection for deterministic tests (Issue #2380). Defaults
+   * to Date.now. Production code should not set this.
+   */
+  readonly now?: () => number;
+}
+
+/**
+ * Split a focus list into chunks of at most `chunkSize` neurons.
+ *
+ * `chunkSize <= 0` returns a single chunk containing the whole list
+ * (chunking disabled). This is exported for tests (Issue #2380).
+ */
+export function chunkFocusList(
+  focusList: readonly number[],
+  chunkSize: number,
+): number[][] {
+  if (focusList.length === 0) return [];
+  if (!Number.isFinite(chunkSize) || chunkSize <= 0) {
+    return [Array.from(focusList)];
+  }
+  const size = Math.max(1, Math.floor(chunkSize));
+  const chunks: number[][] = [];
+  for (let i = 0; i < focusList.length; i += size) {
+    chunks.push(Array.from(focusList.slice(i, i + size)));
+  }
+  return chunks;
 }
 
 function classifyCandidateTag(
@@ -172,10 +213,12 @@ export async function runAnalysisLoop(
   const attemptedNeurons = new Set<number>();
   let retryAttempt = 0;
   const maxRetries = 10; // Reasonable limit to prevent infinite loops
+  const now = ctx.now ?? Date.now;
 
   // Retry loop: try different neurons if no candidates found and time remains
   // Sequential execution is intentional - we check results after each attempt
-  const analysisPhaseStartTime = Date.now();
+  const analysisPhaseStartTime = now();
+  let stalledFlag = false;
   while (retryAttempt <= maxRetries) {
     // Allow callers (especially tests) to explicitly skip the analysis phase by
     // setting discoveryMaxNeurons to 0. This keeps record/flush coverage (FFI)
@@ -190,14 +233,14 @@ export async function runAnalysisLoop(
       }
       break;
     }
-    const focusSelectStart = Date.now();
+    const focusSelectStart = now();
     // deno-lint-ignore no-await-in-loop
     const focusList = await discoverStructure.selectNeuronsWeightedByError(
       ctx.discoveryMaxNeurons,
       ctx.costOfGrowth,
       retryAttempt > 0 ? retryAttempt : undefined,
     );
-    perfStats.focusSelectionTime += Date.now() - focusSelectStart;
+    perfStats.focusSelectionTime += now() - focusSelectStart;
 
     // Filter out neurons we've already tried
     const newFocusList = focusList.filter((uuid) =>
@@ -205,7 +248,7 @@ export async function runAnalysisLoop(
     );
 
     if (shouldLogDiscovery(config)) {
-      const selectTime = Date.now() - focusSelectStart;
+      const selectTime = now() - focusSelectStart;
       const retryMsg = retryAttempt > 0
         ? ` (retry ${retryAttempt}, ${attemptedNeurons.size} already tried)`
         : "";
@@ -234,125 +277,176 @@ export async function runAnalysisLoop(
       break;
     }
 
-    const rustAnalysisStart = Date.now();
-    const combinedResult = discoverStructure.ensureRustCombinedAnalysis(
-      newFocusList,
-      true, // includeSynapse
-      true, // includeNeuron
-    );
-    const rustAnalysisTime = Date.now() - rustAnalysisStart;
-    perfStats.rustCombinedAnalysisTime += rustAnalysisTime;
-    if (combinedResult) {
-      ctx.refreshAnalysisTimeout(discoverStructure);
-    }
-
-    phaseDiagnostics.enterPhase("analysis_parallel");
-    let addHelpfulNeurons: CandidateNeuron[] | undefined;
-    let coordinatedStructuralCandidates:
-      | import("./CoordinatedStructuralCandidate.ts").CoordinatedStructuralCandidate[]
-      | undefined;
-    let addHelpfulSynapse: CandidateSynapse[] | undefined;
-    let removeHarmfulSynapse: CandidateSynapse | undefined;
-    let removeHarmfulNeurons: CandidateHarmfulNeuron[] | undefined;
-    let candidateSquashes: CandidateSquash[] | undefined;
-
-    const parallelStartTime = Date.now();
-    const candidateBundle = discoverStructure.collectRustAnalysisCandidates(
-      newFocusList,
-    );
-    const candidateCollectionTime = Date.now() - parallelStartTime;
-
-    if (candidateBundle) {
-      phaseDiagnostics.enterPhase("analysis_loop");
-      addHelpfulSynapse = candidateBundle.helpfulSynapses;
-      removeHarmfulSynapse = candidateBundle.harmfulSynapse;
-      addHelpfulNeurons = candidateBundle.helpfulNeurons;
-      coordinatedStructuralCandidates =
-        candidateBundle.coordinatedStructuralCandidates;
-      ctx.refreshAnalysisTimeout(discoverStructure);
-
-      if (shouldLogDiscovery(config)) {
-        const helpfulSynapseCount = addHelpfulSynapse?.length ?? 0;
-        const helpfulNeuronCount = addHelpfulNeurons?.length ?? 0;
-        const coordinatedCount = coordinatedStructuralCandidates?.length ?? 0;
-        const harmfulSynapseCount = removeHarmfulSynapse ? 1 : 0;
-        const fallbackSynapses = countFallbackCandidates(addHelpfulSynapse);
-        const fallbackNeurons = countFallbackCandidates(addHelpfulNeurons);
-
-        const synapseMeta = candidateBundle.synapseMetadata;
-        const neuronMeta = candidateBundle.neuronMetadata;
-        const synapseMetaText = synapseMeta
-          ? `, synapse meta: found=${synapseMeta.candidatesFound} returned=${synapseMeta.candidatesReturned}`
-          : "";
-        const neuronMetaText = neuronMeta
-          ? `, neuron meta: found=${neuronMeta.candidatesFound} returned=${neuronMeta.candidatesReturned}`
-          : "";
-
-        getLogger().info(
-          `Discovery ${blue(ID)} candidate collection ${
-            yellow(format(candidateCollectionTime, {
-              ignoreZero: true,
-            }))
-          } helpful synapses: ${helpfulSynapseCount} (fallback ${fallbackSynapses}), helpful neurons: ${helpfulNeuronCount} (fallback ${fallbackNeurons}), coordinated-structural: ${coordinatedCount}, harmful synapse removals: ${harmfulSynapseCount}${synapseMetaText}${neuronMetaText}`,
-        );
-
-        logAllCandidates(
-          ID,
-          addHelpfulSynapse,
-          addHelpfulNeurons,
-          removeHarmfulSynapse,
-          undefined,
-        );
-      }
-
-      const squashStartTime = Date.now();
-      // deno-lint-ignore no-await-in-loop
-      candidateSquashes = await discoverStructure
-        .analyzeSelectedNeuronsSquashes(newFocusList);
-      ctx.refreshAnalysisTimeout(discoverStructure);
-      const squashTime = Date.now() - squashStartTime;
-      perfStats.squashAnalysisTime += squashTime;
-      if (shouldLogDiscovery(config)) {
-        logSquashResults(ID, squashTime, candidateSquashes);
-      }
-    } else {
-      // deno-lint-ignore no-await-in-loop
-      const analysisResults = await runParallelAnalysis(
-        ctx,
-        discoverStructure,
-        perfStats,
-        phaseDiagnostics,
-        newFocusList,
+    // Chunk the focus list so each Rust combined-analysis FFI call is
+    // bounded in scope. This allows the loop to log per-chunk elapsed time,
+    // detect stalls, and bail out before the full analysis budget is burned
+    // on a single slow call (Issue #2380).
+    const chunks = chunkFocusList(newFocusList, ctx.analysisChunkSize);
+    let chunkIdx = 0;
+    let iterationStalled = false;
+    for (const chunk of chunks) {
+      chunkIdx++;
+      const chunkStart = now();
+      const combinedResult = discoverStructure.ensureRustCombinedAnalysis(
+        chunk,
+        true, // includeSynapse
+        true, // includeNeuron
       );
-      phaseDiagnostics.enterPhase("analysis_loop");
-      [
+      const chunkElapsed = now() - chunkStart;
+      perfStats.rustCombinedAnalysisTime += chunkElapsed;
+      if (combinedResult) {
+        ctx.refreshAnalysisTimeout(discoverStructure);
+      }
+
+      if (shouldLogDiscovery(config)) {
+        const gpuInfo = describeGpuUsage(combinedResult);
+        getLogger().info(
+          `Discovery ${
+            blue(ID)
+          } rust combined analysis chunk ${chunkIdx}/${chunks.length} (${chunk.length} neuron${
+            chunk.length === 1 ? "" : "s"
+          }) in ${
+            yellow(format(chunkElapsed, { ignoreZero: true }))
+          }${gpuInfo}`,
+        );
+      }
+
+      phaseDiagnostics.enterPhase("analysis_parallel");
+      let addHelpfulNeurons: CandidateNeuron[] | undefined;
+      let coordinatedStructuralCandidates:
+        | import("./CoordinatedStructuralCandidate.ts").CoordinatedStructuralCandidate[]
+        | undefined;
+      let addHelpfulSynapse: CandidateSynapse[] | undefined;
+      let removeHarmfulSynapse: CandidateSynapse | undefined;
+      let removeHarmfulNeurons: CandidateHarmfulNeuron[] | undefined;
+      let candidateSquashes: CandidateSquash[] | undefined;
+
+      const parallelStartTime = now();
+      const candidateBundle = discoverStructure.collectRustAnalysisCandidates(
+        chunk,
+      );
+      const candidateCollectionTime = now() - parallelStartTime;
+
+      if (candidateBundle) {
+        phaseDiagnostics.enterPhase("analysis_loop");
+        addHelpfulSynapse = candidateBundle.helpfulSynapses;
+        removeHarmfulSynapse = candidateBundle.harmfulSynapse;
+        addHelpfulNeurons = candidateBundle.helpfulNeurons;
+        coordinatedStructuralCandidates =
+          candidateBundle.coordinatedStructuralCandidates;
+        ctx.refreshAnalysisTimeout(discoverStructure);
+
+        if (shouldLogDiscovery(config)) {
+          const helpfulSynapseCount = addHelpfulSynapse?.length ?? 0;
+          const helpfulNeuronCount = addHelpfulNeurons?.length ?? 0;
+          const coordinatedCount = coordinatedStructuralCandidates?.length ?? 0;
+          const harmfulSynapseCount = removeHarmfulSynapse ? 1 : 0;
+          const fallbackSynapses = countFallbackCandidates(addHelpfulSynapse);
+          const fallbackNeurons = countFallbackCandidates(addHelpfulNeurons);
+
+          const synapseMeta = candidateBundle.synapseMetadata;
+          const neuronMeta = candidateBundle.neuronMetadata;
+          const synapseMetaText = synapseMeta
+            ? `, synapse meta: found=${synapseMeta.candidatesFound} returned=${synapseMeta.candidatesReturned}`
+            : "";
+          const neuronMetaText = neuronMeta
+            ? `, neuron meta: found=${neuronMeta.candidatesFound} returned=${neuronMeta.candidatesReturned}`
+            : "";
+
+          getLogger().info(
+            `Discovery ${blue(ID)} candidate collection ${
+              yellow(format(candidateCollectionTime, {
+                ignoreZero: true,
+              }))
+            } helpful synapses: ${helpfulSynapseCount} (fallback ${fallbackSynapses}), helpful neurons: ${helpfulNeuronCount} (fallback ${fallbackNeurons}), coordinated-structural: ${coordinatedCount}, harmful synapse removals: ${harmfulSynapseCount}${synapseMetaText}${neuronMetaText}`,
+          );
+
+          logAllCandidates(
+            ID,
+            addHelpfulSynapse,
+            addHelpfulNeurons,
+            removeHarmfulSynapse,
+            undefined,
+          );
+        }
+
+        const squashStartTime = now();
+        // deno-lint-ignore no-await-in-loop
+        candidateSquashes = await discoverStructure
+          .analyzeSelectedNeuronsSquashes(chunk);
+        ctx.refreshAnalysisTimeout(discoverStructure);
+        const squashTime = now() - squashStartTime;
+        perfStats.squashAnalysisTime += squashTime;
+        if (shouldLogDiscovery(config)) {
+          logSquashResults(ID, squashTime, candidateSquashes);
+        }
+      } else {
+        // deno-lint-ignore no-await-in-loop
+        const analysisResults = await runParallelAnalysis(
+          ctx,
+          discoverStructure,
+          perfStats,
+          phaseDiagnostics,
+          chunk,
+        );
+        phaseDiagnostics.enterPhase("analysis_loop");
+        [
+          addHelpfulNeurons,
+          addHelpfulSynapse,
+          removeHarmfulSynapse,
+          candidateSquashes,
+          removeHarmfulNeurons,
+        ] = analysisResults;
+
+        if (shouldLogDiscovery(config)) {
+          logAllCandidates(
+            ID,
+            addHelpfulSynapse,
+            addHelpfulNeurons,
+            removeHarmfulSynapse,
+            removeHarmfulNeurons,
+          );
+        }
+      }
+
+      accumulateResults(
+        discoverResult,
         addHelpfulNeurons,
+        coordinatedStructuralCandidates,
         addHelpfulSynapse,
         removeHarmfulSynapse,
         candidateSquashes,
         removeHarmfulNeurons,
-      ] = analysisResults;
+      );
 
-      if (shouldLogDiscovery(config)) {
-        logAllCandidates(
-          ID,
-          addHelpfulSynapse,
-          addHelpfulNeurons,
-          removeHarmfulSynapse,
-          removeHarmfulNeurons,
-        );
+      // Adaptive early-exit: if the Rust FFI chunk stalled beyond the
+      // per-chunk budget, stop submitting further chunks for this cycle
+      // (Issue #2380). Throughput is effectively zero so additional chunks
+      // would likely consume the rest of the budget without returning.
+      if (ctx.perChunkMaxMs > 0 && chunkElapsed >= ctx.perChunkMaxMs) {
+        if (shouldLogDiscovery(config)) {
+          getLogger().info(
+            `Discovery ${
+              blue(ID)
+            } rust combined analysis chunk ${chunkIdx}/${chunks.length} exceeded per-chunk budget ${
+              yellow(format(ctx.perChunkMaxMs, { ignoreZero: true }))
+            } (elapsed ${
+              yellow(format(chunkElapsed, { ignoreZero: true }))
+            }); aborting remaining chunks`,
+          );
+        }
+        iterationStalled = true;
+        break;
+      }
+
+      // Overall deadline check between chunks so we don't start a new chunk
+      // when there is effectively no budget remaining.
+      const chunkTimeRemaining = ctx.getTimeoutTS() - now();
+      if (chunkTimeRemaining <= 0) {
+        iterationStalled = true;
+        break;
       }
     }
-
-    accumulateResults(
-      discoverResult,
-      addHelpfulNeurons,
-      coordinatedStructuralCandidates,
-      addHelpfulSynapse,
-      removeHarmfulSynapse,
-      candidateSquashes,
-      removeHarmfulNeurons,
-    );
 
     // Check if we found any candidates
     const foundCandidates = Boolean(
@@ -371,7 +465,19 @@ export async function runAnalysisLoop(
       );
     }
 
-    const timeRemaining = ctx.getTimeoutTS() - Date.now();
+    if (iterationStalled) {
+      stalledFlag = true;
+      if (shouldLogDiscovery(config)) {
+        getLogger().info(
+          `Discovery ${
+            blue(ID)
+          } analysis throughput stalled after evaluating ${attemptedNeurons.size} neuron(s); aborting retry loop`,
+        );
+      }
+      break;
+    }
+
+    const timeRemaining = ctx.getTimeoutTS() - now();
     if (timeRemaining <= 0) {
       if (shouldLogDiscovery(config)) {
         getLogger().info(
@@ -393,7 +499,9 @@ export async function runAnalysisLoop(
       );
     }
   }
-  perfStats.analysisPhaseTime = Date.now() - analysisPhaseStartTime;
+  perfStats.analysisPhaseTime = now() - analysisPhaseStartTime;
+  // Surface throughput stall so callers can inspect after the loop returns.
+  perfStats.analysisStalled = stalledFlag;
 
   // Collect low-impact removal candidates from Rust focus ranking
   const removalCandidates = discoverStructure.getRemovalCandidates();
@@ -411,6 +519,29 @@ export async function runAnalysisLoop(
   }
 
   return discoverResult;
+}
+
+/**
+ * Renders a short suffix describing which scopes used the GPU for a combined
+ * analysis result. Used for per-chunk logging (Issue #2380).
+ */
+function describeGpuUsage(
+  combinedResult:
+    | import("./RustDiscovery.ts").RustAnalyzeAllResult
+    | undefined,
+): string {
+  if (!combinedResult) return "";
+  const synapseGpu = combinedResult.synapse?.gpuUsed;
+  const neuronGpu = combinedResult.neuron?.gpuUsed;
+  if (synapseGpu === undefined && neuronGpu === undefined) return "";
+  const parts: string[] = [];
+  if (synapseGpu !== undefined) {
+    parts.push(`synapse=${synapseGpu ? "gpu" : "cpu"}`);
+  }
+  if (neuronGpu !== undefined) {
+    parts.push(`neuron=${neuronGpu ? "gpu" : "cpu"}`);
+  }
+  return ` [${parts.join(" ")}]`;
 }
 
 function logSquashResults(

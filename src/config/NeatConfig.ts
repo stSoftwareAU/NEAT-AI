@@ -426,6 +426,18 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       6,
       { integer: true, min: 0 },
     ),
+    discoveryAnalysisChunkSize: parseNumber(
+      "Discovery analysis chunk size",
+      opts.discoveryAnalysisChunkSize,
+      2,
+      { integer: true, min: 0 },
+    ),
+    discoveryAnalysisPerChunkMaxMs: parseNumber(
+      "Discovery analysis per-chunk max milliseconds",
+      opts.discoveryAnalysisPerChunkMaxMs,
+      120_000,
+      { min: 0 },
+    ),
     discoveryDrainEveryNBatches: parseNumber(
       "Discovery drain every N batches",
       opts.discoveryDrainEveryNBatches,
