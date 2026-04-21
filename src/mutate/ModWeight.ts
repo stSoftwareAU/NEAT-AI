@@ -9,6 +9,20 @@ import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 
 /**
+ * Upper bound on the number of (synapse, modification) draws attempted by a
+ * single {@link ModWeight.performMutation} call before giving up.
+ *
+ * Issue #2383: Some draws cannot produce an observable weight change — for
+ * example when the chosen synapse is already clamped at `maxAbsoluteWeight`
+ * and the random modification has the same sign, or when the current weight
+ * magnitude is so large that `currentWeight + modification` rounds back to
+ * `currentWeight` under IEEE-754 precision. Rather than wasting the mutation
+ * slot and emitting noisy telemetry, we retry a bounded number of times with
+ * fresh random draws before returning false.
+ */
+export const MOD_WEIGHT_MAX_RETRIES = 8;
+
+/**
  * Mutation operator that modifies synapse weights.
  *
  * Issue #1309: Enhanced with weight regularisation to prevent extreme values
@@ -17,6 +31,12 @@ import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
  * - Hard limits on maximum weight change per mutation
  * - L2-style regularisation biasing towards smaller weights
  * - Small change preference reducing mutation magnitude
+ *
+ * Issue #2383: When a single draw would produce a silent no-op (clamped at
+ * the weight boundary, or rounded away by floating-point precision), the
+ * operator retries with a fresh synapse/modification up to a small budget
+ * before giving up. Any non-empty synapse set should almost always yield an
+ * observable change.
  */
 export class ModWeight extends AbstractMutationOperator {
   private config: RequiredWeightRegularisationConfig;
@@ -74,24 +94,32 @@ export class ModWeight extends AbstractMutationOperator {
       }
     }
 
-    let changed = false;
-    if (relevantConnections.length > 0) {
-      const indx = Math.floor(
-        getRandomNumberGenerator().random() * relevantConnections.length,
-      );
+    if (relevantConnections.length === 0) {
+      return false;
+    }
+
+    // Issue #2383: Retry on silent no-op. A single draw can fail to produce
+    // an observable weight change when the synapse is clamped at the weight
+    // boundary or when floating-point precision rounds the modification away.
+    // Retry with a fresh synapse and a fresh random modification up to a
+    // small budget before giving up. Even with a single synapse a retry can
+    // succeed because the fresh random draw may produce a modification in
+    // the opposite direction.
+    const rng = getRandomNumberGenerator();
+    for (let attempt = 0; attempt < MOD_WEIGHT_MAX_RETRIES; attempt++) {
+      const indx = Math.floor(rng.random() * relevantConnections.length);
       const connection = relevantConnections[indx];
 
-      // Calculate the new weight with regularisation
       const newWeight = this.calculateRegularisedWeight(connection.weight);
 
       if (newWeight !== connection.weight) {
         connection.weight = newWeight;
         assert(Number.isFinite(connection.weight), "weight must be a number");
-        changed = true;
+        return true;
       }
     }
 
-    return changed;
+    return false;
   }
 
   /**

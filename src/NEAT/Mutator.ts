@@ -675,8 +675,13 @@ export class Mutator {
 
     const changed = mutator.mutate(focusList, mutationBias);
 
-    if (!changed && (!focusList || focusList.length === 0)) {
-      getLogger().info(
+    // Issue #2383: Demote the "didn't mutate" diagnostic. An unfocused
+    // mutation that cannot produce a change (e.g. every draw is clamped at
+    // the boundary for ModWeight) is not a warning-worthy event — it is a
+    // best-effort operator returning false. Only surface it when the
+    // creature is being debugged.
+    if (!changed && (!focusList || focusList.length === 0) && creature.DEBUG) {
+      getLogger().debug(
         `${method.name} didn't mutate the creature. ${creature.input} observations, ${
           creature.neurons.length - creature.input - creature.output
         } neurons, ${creature.output} outputs, ${creature.synapses.length} synapses`,
@@ -690,9 +695,16 @@ export class Mutator {
 
     const endUUID = CreatureUtil.makeUUID(creature);
     if (startUUID === endUUID) {
-      getLogger().warn(
-        `UUID didn't change after ${method.name} mutation, changed: ${changed}`,
-      );
+      // Issue #2383: Only warn when the operator claimed a change but the
+      // UUID did not rotate — that indicates a real bug (a mutation that
+      // altered state without invalidating the UUID cache). When the
+      // operator returned false the UUID is expected to be stable, so no
+      // diagnostic is needed.
+      if (changed) {
+        getLogger().warn(
+          `UUID didn't change after ${method.name} mutation despite operator reporting a change`,
+        );
+      }
       return false;
     } else {
       return true;
