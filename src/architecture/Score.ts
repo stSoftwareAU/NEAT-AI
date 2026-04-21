@@ -272,14 +272,27 @@ function computeAndCacheScoreComponents(
 
   assert(countWeightBias > 0, "Count is 0");
 
-  // Handle overflow protection
-  if (maxWeightBias > Number.MAX_SAFE_INTEGER) {
-    getLogger().info("Max is too large", maxWeightBias);
-    maxWeightBias = Number.MAX_SAFE_INTEGER;
-  }
-  if (totalWeightBias > Number.MAX_SAFE_INTEGER) {
-    getLogger().info("Total is too large", totalWeightBias);
-    totalWeightBias = Number.MAX_SAFE_INTEGER;
+  // Handle overflow protection.
+  // Issue #2378: upgrade from info to warn and include the creature UUID
+  // so the offending lineage can be traced in production logs. Previously
+  // thousands of "Max is too large" info lines were emitted with no way to
+  // identify which creature produced them.
+  if (
+    maxWeightBias > Number.MAX_SAFE_INTEGER ||
+    totalWeightBias > Number.MAX_SAFE_INTEGER
+  ) {
+    getLogger().warn(
+      `🚨 [Score] Weight/bias magnitude overflow on creature ` +
+        `${creature.uuid ?? "unknown"}: ` +
+        `max=${maxWeightBias}, total=${totalWeightBias}. ` +
+        `Clamping to ±${Number.MAX_SAFE_INTEGER}.`,
+    );
+    if (maxWeightBias > Number.MAX_SAFE_INTEGER) {
+      maxWeightBias = Number.MAX_SAFE_INTEGER;
+    }
+    if (totalWeightBias > Number.MAX_SAFE_INTEGER) {
+      totalWeightBias = Number.MAX_SAFE_INTEGER;
+    }
   }
 
   assertFiniteNonNegative(maxWeightBias, "Max");

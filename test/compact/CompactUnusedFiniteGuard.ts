@@ -45,25 +45,34 @@ Deno.test("removeNeuron - normal bias adjustment succeeds", () => {
 });
 
 Deno.test("removeNeuron - returns false when bias addition overflows to Infinity", () => {
+  // Issue #2378 note: fromJSON now clamps weight/bias magnitudes at load
+  // time as a defence-in-depth. To test removeNeuron's overflow guard in
+  // isolation, we inject the extreme values directly on the live creature
+  // after load, bypassing the clamp.
   const json: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "hidden-0", squash: "IDENTITY", bias: 0 },
-      {
-        type: "output",
-        uuid: "output-0",
-        squash: "IDENTITY",
-        bias: Number.MAX_VALUE / 2,
-      },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
     ],
     synapses: [
       { fromUUID: "input-0", toUUID: "hidden-0", weight: 1.0 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: Number.MAX_VALUE },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 1.0 },
     ],
     input: 2,
     output: 1,
   };
   const creature = Creature.fromJSON(json);
-  const hiddenId = creature.neurons.find((n) => n.type === "hidden")!.id;
+  const hiddenNeuron = creature.neurons.find((n) => n.type === "hidden")!;
+  const hiddenId = hiddenNeuron.id;
+
+  // Inject the overflow-triggering values directly on the runtime creature.
+  // Synapse.from/.to are neuron indices, not runtime ids.
+  const outputNeuron = creature.neurons.find((n) => n.type === "output")!;
+  outputNeuron.bias = Number.MAX_VALUE / 2;
+  const outwardSynapse = creature.synapses.find((s) =>
+    s.from === hiddenNeuron.index && s.to === outputNeuron.index
+  )!;
+  outwardSynapse.weight = Number.MAX_VALUE;
 
   // activation=1 means adjustedBias = MAX_VALUE * 1 = MAX_VALUE
   // newBias = MAX_VALUE/2 + MAX_VALUE = Infinity
@@ -101,6 +110,10 @@ Deno.test("removeNeuron - multiple synapses: no partial bias corruption on failu
   // hidden-0 connects to TWO output neurons. The first adjustment
   // should succeed, but the second should fail. The function must
   // leave both biases unchanged.
+  //
+  // Issue #2378 note: fromJSON now clamps weight/bias magnitudes at load
+  // time; inject the extreme outward weight directly after load so this
+  // test exercises removeNeuron's guard rather than the load-time clamp.
   const json: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "hidden-0", squash: "IDENTITY", bias: 0 },
@@ -111,14 +124,22 @@ Deno.test("removeNeuron - multiple synapses: no partial bias corruption on failu
       { fromUUID: "input-0", toUUID: "hidden-0", weight: 1.0 },
       // First outward: small weight, will produce finite adjustment
       { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.5 },
-      // Second outward: extreme weight, will produce Infinity
-      { fromUUID: "hidden-0", toUUID: "output-1", weight: Number.MAX_VALUE },
+      // Second outward: placeholder; overwritten to MAX_VALUE below.
+      { fromUUID: "hidden-0", toUUID: "output-1", weight: 1.0 },
     ],
     input: 2,
     output: 2,
   };
   const creature = Creature.fromJSON(json);
-  const hiddenId = creature.neurons.find((n) => n.type === "hidden")!.id;
+  const hiddenNeuron = creature.neurons.find((n) => n.type === "hidden")!;
+  const hiddenId = hiddenNeuron.id;
+
+  // Inject the overflow-triggering weight after load (bypasses load clamp).
+  const output1 = creature.neurons.find((n) => n.id === -2)!;
+  const extremeSynapse = creature.synapses.find((s) =>
+    s.from === hiddenNeuron.index && s.to === output1.index
+  )!;
+  extremeSynapse.weight = Number.MAX_VALUE;
 
   const output0Before = creature.neurons.find((n) => n.id === -1)!.bias;
   const output1Before = creature.neurons.find((n) => n.id === -2)!.bias;

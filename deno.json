@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop"
@@ -17,14 +17,14 @@
   "imports": {
     "@std/assert": "jsr:@std/assert@1.0.19",
     "@std/bytes": "jsr:@std/bytes@1.0.6",
-    "@std/crypto": "jsr:@std/crypto@1.0.5",
+    "@std/crypto": "jsr:@std/crypto@1.1.0",
     "@std/csv": "jsr:@std/csv@1.0.6",
-    "@std/fmt": "jsr:@std/fmt@1.0.9",
+    "@std/fmt": "jsr:@std/fmt@1.0.10",
     "@std/fs": "jsr:@std/fs@1.0.23",
     "@std/path": "jsr:@std/path@1.1.4",
-    "@std/streams": "jsr:@std/streams@1.0.17",
-    "@std/uuid": "jsr:@std/uuid@1.1.0",
-    "@std/testing/mock": "jsr:@std/testing@1.0.17/mock",
+    "@std/streams": "jsr:@std/streams@1.1.0",
+    "@std/uuid": "jsr:@std/uuid@1.1.1",
+    "@std/testing/mock": "jsr:@std/testing@1.0.18/mock",
     "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.13",
     "@architecture/": "./src/architecture/",
     "@blackbox/": "./src/blackbox/",
