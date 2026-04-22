@@ -606,7 +606,7 @@ export function loadFrom(
   // per-value info lines in Score.ts).
   if (clampedWeightCount > 0 || clampedBiasCount > 0) {
     getLogger().warn(
-      "🚨 [loadFrom] Clamped overflowing weights/biases to " +
+      "🗜️ [loadFrom] Clamped overflowing weights/biases to " +
         `±${MAX_SAFE_WEIGHT_BIAS} on creature ${creature.uuid ?? "unknown"}: ` +
         `${clampedWeightCount} weight(s) (max |w|=${maxObservedWeight}), ` +
         `${clampedBiasCount} bias(es) (max |b|=${maxObservedBias}).`,
