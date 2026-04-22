@@ -282,7 +282,7 @@ function computeAndCacheScoreComponents(
     totalWeightBias > Number.MAX_SAFE_INTEGER
   ) {
     getLogger().warn(
-      `🚨 [Score] Weight/bias magnitude overflow on creature ` +
+      `🗜️ [Score] Weight/bias magnitude overflow on creature ` +
         `${creature.uuid ?? "unknown"}: ` +
         `max=${maxWeightBias}, total=${totalWeightBias}. ` +
         `Clamping to ±${Number.MAX_SAFE_INTEGER}.`,

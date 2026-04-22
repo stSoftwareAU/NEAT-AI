@@ -115,6 +115,10 @@ export function writeDiagnostics(options: DiagnosticsOptions): void {
  * and `fix()` is called as a last resort to avoid a hard crash.
  *
  * The 🚨 emoji in the log line is detected by ../GRQ-health as an error.
+ * Reserve 🚨 for genuine errors like this one (corruption, validation
+ * failure). Non-fatal warnings — e.g. clamping overflowing weights — use
+ * the 🗜️ clamp emoji instead so they do not trip the error monitor
+ * (Issue #2392).
  *
  * @param creature - The creature to validate
  * @param operation - Which pipeline stage produced this creature (e.g. "breed", "mutate")
