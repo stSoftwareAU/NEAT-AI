@@ -152,3 +152,69 @@ Deno.test("Rust scorer integration: uses scorer error when available", async () 
     __resetRustScorerBridgeForTests();
   }
 });
+
+Deno.test("Rust scorer integration: writes temp creature JSON in configured tmp dir", async () => {
+  await initWasmForTests();
+  __resetRustScorerBridgeForTests();
+
+  const tmpDir = await Deno.makeTempDir({ prefix: "rust-scorer-tmp-" });
+  const previousTmpDir = Deno.env.get("NEAT_AI_RUST_SCORER_TMP_DIR");
+  Deno.env.set("NEAT_AI_RUST_SCORER_TMP_DIR", tmpDir);
+
+  let seenCreaturePath: string | undefined;
+  __setRustScorerRunnerForTests((_command, args) => {
+    if (args.length === 1 && args[0] === "--help") {
+      return Promise.resolve({
+        success: true,
+        code: 0,
+        stdout: "usage",
+        stderr: "",
+      });
+    }
+    seenCreaturePath = args[0];
+    return Promise.resolve({
+      success: true,
+      code: 0,
+      stdout: '{"error":0.25}',
+      stderr: "",
+    });
+  });
+
+  const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
+  const dataDir = makeDataDir(buildDataSet(), 24);
+  try {
+    const result = await creature.evaluateDir(
+      dataDir,
+      Costs.find("MSE"),
+      false,
+      undefined,
+      undefined,
+      {
+        enabled: true,
+        binaryPath: "rust_scorer",
+        timeoutMs: 0,
+        env: {},
+      },
+    );
+    assertEquals(result.error, 0.25);
+    assert(seenCreaturePath !== undefined);
+    assert(
+      seenCreaturePath.startsWith(`${tmpDir}/`),
+      "scorer should receive temp creature file path inside configured tmp dir",
+    );
+    assertEquals(
+      await Deno.stat(seenCreaturePath).then(() => true).catch(() => false),
+      false,
+      "temp creature file should be cleaned up after scoring",
+    );
+  } finally {
+    await Deno.remove(dataDir, { recursive: true });
+    await Deno.remove(tmpDir, { recursive: true });
+    if (previousTmpDir === undefined) {
+      Deno.env.delete("NEAT_AI_RUST_SCORER_TMP_DIR");
+    } else {
+      Deno.env.set("NEAT_AI_RUST_SCORER_TMP_DIR", previousTmpDir);
+    }
+    __resetRustScorerBridgeForTests();
+  }
+});
