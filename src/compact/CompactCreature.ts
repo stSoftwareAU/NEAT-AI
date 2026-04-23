@@ -1,104 +1,26 @@
 import { assert } from "@std/assert";
 import { addTag, removeTag } from "@stsoftware/tags/mod";
-import type { TagInterface } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import type { Approach } from "@neat/LogApproach.ts";
-import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
-import { valuePenalty } from "@architecture/Score.ts";
 import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { LOGISTIC } from "@methods/activations/types/LOGISTIC.ts";
 import { COMPLEMENT } from "@methods/activations/types/COMPLEMENT.ts";
-import { ABSOLUTE } from "@methods/activations/types/ABSOLUTE.ts";
-import { ReLU } from "@methods/activations/types/ReLU.ts";
-import { LeakyReLU } from "@methods/activations/types/LeakyReLU.ts";
-import { HYPOT } from "@deprecated/HYPOT.ts";
-import { HYPOTv2 } from "@deprecated/HYPOTv2.ts";
-import { MEAN } from "@deprecated/MEAN.ts";
 import { isAggregationSquash } from "@methods/activations/SquashUtils.ts";
-import { IF } from "@methods/activations/aggregate/IF.ts";
-import { MAXIMUM } from "@methods/activations/aggregate/MAXIMUM.ts";
-import { MINIMUM } from "@methods/activations/aggregate/MINIMUM.ts";
 import {
   cleanupOrphanedNeurons,
+  cloneCreatureExport,
   pruneDeadSubgraphs,
   pruneZeroWeightSynapses,
 } from "@compact/CompactUtils.ts";
 import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
 import { mergeParallelIdentityBridges } from "@compact/ParallelIdentityMerge.ts";
 import { mergeParallelBridges } from "@compact/ParallelBridgeMerge.ts";
+import { simplifyLargeWeights } from "@compact/SimplifyLargeWeights.ts";
+import { removeBackwardSynapses } from "@compact/RemoveBackwardSynapses.ts";
 import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
-
-/**
- * Creates a shallow clone of a CreatureExport, copying neurons and synapses
- * as new objects to avoid mutation of the original.
- *
- * Issue #1015: This replaces the expensive JSON.parse(JSON.stringify())
- * pattern with direct property copy, which is significantly faster for
- * large networks (500KB+ with 619 neurons + 17,935 synapses).
- *
- * @param source - The CreatureExport to clone
- * @returns A new CreatureExport with independently copied neurons and synapses
- */
-function cloneCreatureExport(source: CreatureExport): CreatureExport {
-  // Clone neurons with shallow copy of each neuron object
-  const neurons: NeuronExport[] = source.neurons.map((n) => {
-    const cloned: NeuronExport = {
-      type: n.type,
-      bias: n.bias,
-    };
-    if (n.id !== undefined) (cloned as { id?: number }).id = n.id;
-    if (n.uuid !== undefined) (cloned as { uuid?: string }).uuid = n.uuid;
-    if (n.squash !== undefined) cloned.squash = n.squash;
-    if (n.tags !== undefined) {
-      cloned.tags = [...n.tags] as TagInterface[];
-    }
-    return cloned;
-  });
-
-  // Clone synapses with shallow copy of each synapse object
-  const synapses: SynapseExport[] = source.synapses.map((s) => {
-    const cloned: SynapseExport = {
-      weight: s.weight,
-    };
-    if (s.fromId !== undefined) {
-      (cloned as { fromId?: number }).fromId = s.fromId;
-    }
-    if (s.toId !== undefined) (cloned as { toId?: number }).toId = s.toId;
-    if (s.fromUUID !== undefined) cloned.fromUUID = s.fromUUID;
-    if (s.toUUID !== undefined) cloned.toUUID = s.toUUID;
-    if (s.type !== undefined) cloned.type = s.type;
-    if (s.tags !== undefined) {
-      cloned.tags = [...s.tags] as TagInterface[];
-    }
-    return cloned;
-  });
-
-  // Build the cloned creature export
-  const cloned: CreatureExport = {
-    input: source.input,
-    output: source.output,
-    neurons,
-    synapses,
-  };
-
-  // Copy optional top-level properties
-  if (source.forwardOnly !== undefined) cloned.forwardOnly = source.forwardOnly;
-  if (source.semanticVersion !== undefined) {
-    cloned.semanticVersion = source.semanticVersion;
-  }
-  if (source.memetic !== undefined) {
-    // Shallow copy of memetic - the nested structures are treated as immutable
-    cloned.memetic = { ...source.memetic };
-  }
-  if (source.tags !== undefined) {
-    cloned.tags = [...source.tags] as TagInterface[];
-  }
-
-  return cloned;
-}
 
 /**
  * Compacts a creature by removing redundant neurons and connections.
@@ -389,38 +311,8 @@ export function compactCreature(
 
   /** If not feedback loop, remove synapses that are going backwards */
   if (!feedbackLoop) {
-    // Create a map of neuron UUIDs to their indices for quick lookup
-    const neuronIndexMap = new Map<number, number>();
-    compactCreature.neurons.forEach((neuron, index) => {
-      neuronIndexMap.set(neuron.id!, index);
-    });
-
-    // Create a set of synapses to remove
-    const synapsesToRemove = new Set<SynapseExport>();
-
-    // Check each synapse
-    compactCreature.synapses.forEach((synapse) => {
-      const fromIndex = neuronIndexMap.get(synapse.fromId!);
-      const toIndex = neuronIndexMap.get(synapse.toId!);
-
-      // If the source neuron appears later in the array than the target neuron
-      if (
-        fromIndex !== undefined && toIndex !== undefined &&
-        fromIndex > toIndex
-      ) {
-        synapsesToRemove.add(synapse);
-      }
-    });
-
-    // Remove the identified synapses
-    compactCreature.synapses = compactCreature.synapses.filter(
-      (synapse) => !synapsesToRemove.has(synapse),
-    );
-    if (synapsesToRemove.size > 0) {
-      assertValidSynapseReferences(
-        compactCreature,
-        "after backward synapse removal",
-      );
+    const backwardResult = removeBackwardSynapses(compactCreature);
+    if (backwardResult.removedSynapses > 0) {
       didCompact = true;
     }
   }
@@ -497,162 +389,4 @@ export function compactCreature(
   }
 
   return undefined;
-}
-
-/**
- * Issue #2200: When mcmcTemperature is provided, worsening rescalings are
- * accepted with probability exp(-delta / temperature) rather than being
- * greedily rejected. This allows escaping local optima in weight space.
- */
-function simplifyLargeWeights(
-  exported: CreatureExport,
-  mcmcTemperature?: number,
-): boolean {
-  // Supported squashes are those that are scale-homogeneous in our implementation:
-  //
-  // For any k > 0: f(kx) = k f(x)
-  //
-  // This includes both "linear" squashes (ActivationInterface) and some
-  // aggregation squashes (NeuronActivationInterface) that remain homogeneous.
-  const candidateSquashes = new Set<string>([
-    ABSOLUTE.NAME,
-    IDENTITY.NAME,
-    ReLU.NAME,
-    LeakyReLU.NAME,
-    MAXIMUM.NAME,
-    MINIMUM.NAME,
-    IF.NAME,
-    HYPOT.NAME,
-    HYPOTv2.NAME,
-    MEAN.NAME,
-  ]);
-
-  // Only attempt rescaling when there is a meaningful imbalance (3+ orders of magnitude).
-  // The accept/reject gate below uses the same penalty logic as scoring, so this heuristic
-  // is purely a performance guard.
-  const IMBALANCE_RATIO = 1_000;
-
-  const inward = new Map<number, SynapseExport[]>();
-  const outward = new Map<number, SynapseExport[]>();
-  for (const s of exported.synapses) {
-    outward.set(s.fromId!, (outward.get(s.fromId!) ?? []).concat(s));
-    inward.set(s.toId!, (inward.get(s.toId!) ?? []).concat(s));
-  }
-
-  let changed = false;
-  let bestPenalty = calculateWeightBiasPenalty(exported);
-
-  for (const neuron of exported.neurons) {
-    if (neuron.type !== "hidden") continue;
-    if (!neuron.squash || !candidateSquashes.has(neuron.squash)) continue;
-
-    const inConns = inward.get(neuron.id!) ?? [];
-    const outConns = outward.get(neuron.id!) ?? [];
-    if (inConns.length === 0) continue;
-    if (outConns.length === 0) continue;
-
-    let maxIn = Math.abs(neuron.bias);
-    for (const s of inConns) maxIn = Math.max(maxIn, Math.abs(s.weight));
-
-    let maxOut = 0;
-    for (const s of outConns) maxOut = Math.max(maxOut, Math.abs(s.weight));
-
-    if (maxIn === 0 || maxOut === 0) continue;
-
-    const ratio = maxIn / maxOut;
-    if (ratio < 1 / IMBALANCE_RATIO || ratio > IMBALANCE_RATIO) {
-      // Choose c to equalise maxIn/c and maxOut*c, minimising their maximum.
-      const c = Math.sqrt(maxIn / maxOut);
-      if (!Number.isFinite(c) || c === 0 || c === 1) continue;
-
-      // Snapshot for revert.
-      const oldBias = neuron.bias;
-      const oldInWeights = inConns.map((s) => s.weight);
-      const oldOutWeights = outConns.map((s) => s.weight);
-
-      neuron.bias = neuron.bias / c;
-      for (const s of inConns) s.weight = s.weight / c;
-      for (const s of outConns) s.weight = s.weight * c;
-
-      // Reject if we introduced anything non-finite.
-      const allFinite = Number.isFinite(neuron.bias) &&
-        inConns.every((s) => Number.isFinite(s.weight)) &&
-        outConns.every((s) => Number.isFinite(s.weight));
-
-      if (!allFinite) {
-        neuron.bias = oldBias;
-        inConns.forEach((s, i) => s.weight = oldInWeights[i]);
-        outConns.forEach((s, i) => s.weight = oldOutWeights[i]);
-        continue;
-      }
-
-      const nextPenalty = calculateWeightBiasPenalty(exported);
-      if (nextPenalty + 1e-15 < bestPenalty) {
-        // Clear improvement: always accept
-        bestPenalty = nextPenalty;
-        changed = true;
-      } else if (
-        mcmcTemperature !== undefined && mcmcTemperature > 0
-      ) {
-        // Issue #2200: M-H probabilistic acceptance for worsening rescalings.
-        // This allows escaping local optima in weight space during compaction.
-        const deltaPenalty = nextPenalty - bestPenalty;
-        const acceptProb = Math.exp(-deltaPenalty / mcmcTemperature);
-        if (Math.random() < acceptProb) {
-          bestPenalty = nextPenalty;
-          changed = true;
-        } else {
-          neuron.bias = oldBias;
-          inConns.forEach((s, i) => s.weight = oldInWeights[i]);
-          outConns.forEach((s, i) => s.weight = oldOutWeights[i]);
-        }
-      } else {
-        // No improvement; revert (greedy).
-        neuron.bias = oldBias;
-        inConns.forEach((s, i) => s.weight = oldInWeights[i]);
-        outConns.forEach((s, i) => s.weight = oldOutWeights[i]);
-      }
-    }
-  }
-
-  if (changed) {
-    // Memetic values were tuned for the previous scale; treat them as stale.
-    delete exported.memetic;
-  }
-
-  return changed;
-}
-
-function calculateWeightBiasPenalty(exported: CreatureExport): number {
-  let max = 0;
-  let total = 0;
-  let count = 0;
-
-  for (const synapse of exported.synapses) {
-    const w = Math.abs(synapse.weight);
-    if (!Number.isFinite(w)) continue;
-    max = Math.max(max, w);
-    total += w;
-    count++;
-  }
-
-  // CreatureExport.neurons excludes inputs; bias is defined for all entries here.
-  for (const neuron of exported.neurons) {
-    const b = Math.abs(neuron.bias);
-    if (!Number.isFinite(b)) continue;
-    max = Math.max(max, b);
-    total += b;
-    count++;
-  }
-
-  // No weights/biases should never happen for a valid creature, but keep it safe.
-  if (count === 0) return 0;
-
-  // Mirror Score.calculateMaxOutOfBounds() safety: clamp to avoid tripping
-  // `valuePenalty()` asserts on absurd magnitudes.
-  if (max > Number.MAX_SAFE_INTEGER) max = Number.MAX_SAFE_INTEGER;
-  if (total > Number.MAX_SAFE_INTEGER) total = Number.MAX_SAFE_INTEGER;
-
-  const avg = total / count;
-  return (valuePenalty(max) + valuePenalty(avg)) / 2;
 }
