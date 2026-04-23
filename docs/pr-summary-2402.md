@@ -1,9 +1,9 @@
 ## Summary
 
-Added a `## 🌐 Related Repositories` section to `README.md` that lists all
-seven public NEAT-AI-* repositories with one-line descriptions and includes a
-Mermaid dependency diagram framed from NEAT-AI's perspective. The block follows
-the canonical structure described in stSoftwareAU/NEAT-AI-core#18 (all 7 repos,
+Added a `## 🌐 Related Repositories` section to `README.md` that lists all seven
+public NEAT-AI-* repositories with one-line descriptions and includes a Mermaid
+dependency diagram framed from NEAT-AI's perspective. The block follows the
+canonical structure described in stSoftwareAU/NEAT-AI-core#18 (all 7 repos,
 brief role descriptions, dependency-direction notes, and a Mermaid graph).
 Closes #2402.
 
@@ -11,9 +11,9 @@ Closes #2402.
 
 This is a documentation-only change. No code, types, or tests are affected.
 
-- `./quality.sh --lint-only < /dev/null` — passes (formatting + linting +
-  bash check). The new section was reformatted by `deno fmt` to align table
-  columns; structure and content are unchanged.
+- `./quality.sh --lint-only < /dev/null` — passes (formatting + linting + bash
+  check). The new section was reformatted by `deno fmt` to align table columns;
+  structure and content are unchanged.
 - README rendered correctly: section placed between `## 📚 Documentation` and
   `## 🤝 Contributions`, consistent with the existing top-level structure.
 
