@@ -42,6 +42,7 @@ import {
   truncateForLogValue as truncateForLogValueImpl,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustFlushDiagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { clearForGc } from "@utils/ReleasableRef.ts";
 import { logDiscoveryDiskUsage } from "@discovery/DiskSpaceMonitor.ts";
 
 import { logDiscovery } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverLogging.ts";
@@ -382,12 +383,9 @@ export class DiscoverStructureBase {
 
     this.selectedIndices = {};
 
-    // @ts-ignore - clearing to help GC
-    this.creature = null;
-    // @ts-ignore - clearing to help GC
-    this.discoveries = null;
-    // @ts-ignore - clearing to help GC
-    this.neuronDiscoveries = null;
+    clearForGc(this, "creature");
+    clearForGc(this, "discoveries");
+    clearForGc(this, "neuronDiscoveries");
 
     try {
       const { closeRustLibrary } = await import("./RustDiscovery.ts");

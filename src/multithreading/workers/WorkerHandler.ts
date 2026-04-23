@@ -22,6 +22,7 @@ import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
 import type { WasmCacheConfig } from "@config/WasmCacheConfig.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { clearForGc } from "@utils/ReleasableRef.ts";
 import {
   getInitTimeoutMs,
   WorkerHandlerBase,
@@ -453,8 +454,7 @@ export class WorkerHandler
       // Clear large creature data after structured clone completes.
       // The worker now has its own deep copy; the main thread no longer
       // needs the original export, so release it to reduce GC pressure.
-      // @ts-ignore - clearing to help GC after structured clone
-      data.evaluate!.creature = null;
+      clearForGc(data.evaluate!, "creature");
     });
   }
 
@@ -486,8 +486,7 @@ export class WorkerHandler
     this.incrementLongRunningTaskCount();
     return this.makePromiseDeferred(data, () => {
       // Clear large creature data after structured clone completes.
-      // @ts-ignore - clearing to help GC after structured clone
-      data.train!.creature = null;
+      clearForGc(data.train!, "creature");
     }).finally(() => {
       this.decrementLongRunningTaskCount();
     });
@@ -516,8 +515,7 @@ export class WorkerHandler
     this.incrementLongRunningTaskCount();
     return this.makePromiseDeferred(data, () => {
       // Clear large creature data after structured clone completes.
-      // @ts-ignore - clearing to help GC after structured clone
-      data.discover!.creature = null;
+      clearForGc(data.discover!, "creature");
     }).finally(() => {
       this.decrementLongRunningTaskCount();
     });
@@ -587,10 +585,8 @@ export class WorkerHandler
 
     return this.makePromiseDeferred(data, () => {
       // Clear large creature data after structured clone completes.
-      // @ts-ignore - clearing to help GC after structured clone
-      data.breed!.mother = null;
-      // @ts-ignore - clearing to help GC after structured clone
-      data.breed!.father = null;
+      clearForGc(data.breed!, "mother");
+      clearForGc(data.breed!, "father");
     });
   }
 }

@@ -25,6 +25,7 @@ import {
   observeRustTrainingRecord as observeRustTrainingRecordImpl,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustFlushDiagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { isReleased } from "@utils/ReleasableRef.ts";
 import { DiscoverStructureBase } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureBase.ts";
 import {
   checkDiskSpace,
@@ -204,8 +205,9 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
   }
 
   private writeRustParquetChunk(tempDir: string): string | null {
-    // @ts-ignore - creature can be null after cleanUp()
-    if (!this.creature) {
+    // Issue #2398: creature may have been released by cleanUp() — the
+    // field is typed as non-nullable but is cleared to null for GC.
+    if (isReleased(this, "creature")) {
       getLogger().warn(
         `⚠️  Discovery recording skipped: creature has been cleaned up.`,
       );

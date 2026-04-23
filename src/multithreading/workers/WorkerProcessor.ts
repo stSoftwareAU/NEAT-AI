@@ -26,6 +26,7 @@ import type {
   ResponseData,
 } from "@multithreading/workers/WorkerHandler.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { clearForGc } from "@utils/ReleasableRef.ts";
 import { DatasetFileListCache } from "@architecture/DatasetFileListCache.ts";
 
 type DiscoverResponsePayload = NonNullable<ResponseData["discover"]>;
@@ -71,30 +72,14 @@ export function buildDiscoverResponsePayload(
  * long-running discovery workers.
  */
 export function clearDiscoverResultForGC(result: DiscoverResult): void {
-  if (result.addHelpfulSynapses) {
-    // @ts-ignore - clearing to help GC
-    result.addHelpfulSynapses = null;
-  }
-  if (result.addHelpfulNeurons) {
-    // @ts-ignore - clearing to help GC
-    result.addHelpfulNeurons = null;
-  }
+  if (result.addHelpfulSynapses) clearForGc(result, "addHelpfulSynapses");
+  if (result.addHelpfulNeurons) clearForGc(result, "addHelpfulNeurons");
   if (result.coordinatedStructuralCandidates) {
-    // @ts-ignore - clearing to help GC
-    result.coordinatedStructuralCandidates = null;
+    clearForGc(result, "coordinatedStructuralCandidates");
   }
-  if (result.removeHarmfulNeurons) {
-    // @ts-ignore - clearing to help GC
-    result.removeHarmfulNeurons = null;
-  }
-  if (result.removalCandidates) {
-    // @ts-ignore - clearing to help GC
-    result.removalCandidates = null;
-  }
-  if (result.candidateSquashes) {
-    // @ts-ignore - clearing to help GC
-    result.candidateSquashes = null;
-  }
+  if (result.removeHarmfulNeurons) clearForGc(result, "removeHarmfulNeurons");
+  if (result.removalCandidates) clearForGc(result, "removalCandidates");
+  if (result.candidateSquashes) clearForGc(result, "candidateSquashes");
 }
 
 export class WorkerProcessor {
@@ -243,8 +228,7 @@ export class WorkerProcessor {
       let creature: Creature | null = null;
       try {
         creature = Creature.fromJSON(data.evaluate.creature);
-        // @ts-ignore - clearing to help GC
-        data.evaluate.creature = null;
+        clearForGc(data.evaluate, "creature");
         // Issue #2260: Use cached file list to avoid repeated directory scans.
         const cachedFiles = this.datasetFileCache.getFiles(this.dataSetDir);
         const result = await creature.evaluateDir(
@@ -284,8 +268,7 @@ export class WorkerProcessor {
           data.train.creature,
           data.debug,
         );
-        // @ts-ignore - clearing to help GC
-        data.train.creature = null;
+        clearForGc(data.train, "creature");
 
         assert(this.dataSetDir, "No data dir");
         assert(this.cost, "No cost");
@@ -310,14 +293,8 @@ export class WorkerProcessor {
         };
 
         // Immediately clear large objects to help GC
-        if (result.trace) {
-          // @ts-ignore - clearing to help GC
-          result.trace = null;
-        }
-        if (result.compact) {
-          // @ts-ignore - clearing to help GC
-          result.compact = null;
-        }
+        if (result.trace) clearForGc(result, "trace");
+        if (result.compact) clearForGc(result, "compact");
 
         return response;
       } finally {
@@ -395,10 +372,8 @@ export class WorkerProcessor {
         father = Creature.fromJSON(data.breed.father, data.debug);
 
         // Release memory from request data
-        // @ts-ignore - clearing to help GC
-        data.breed.mother = null;
-        // @ts-ignore - clearing to help GC
-        data.breed.father = null;
+        clearForGc(data.breed, "mother");
+        clearForGc(data.breed, "father");
 
         // Import Offspring dynamically to avoid circular dependencies
         const { Offspring } = await import(
