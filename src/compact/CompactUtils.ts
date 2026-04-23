@@ -7,7 +7,10 @@
  * - SynapsePruning.ts — duplicate and zero-weight synapse pruning
  * - DeadSubgraphPruning.ts — unreachable subgraph removal
  * - MemeticCleanup.ts — memetic data cleanup for removed structures
+ * - CloneCreatureExport.ts — fast shallow clone of a CreatureExport
  */
+
+export { cloneCreatureExport } from "@compact/CloneCreatureExport.ts";
 
 export {
   cleanupOrphanedNeurons,
