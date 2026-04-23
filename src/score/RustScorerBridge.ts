@@ -1,3 +1,4 @@
+import { join } from "@std/path";
 import type { Creature } from "@creature";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import { getLogger } from "@utils/Logger.ts";
@@ -131,6 +132,38 @@ async function defaultRunner(
 
 let runCommand: CommandRunner = defaultRunner;
 
+function getTmpDiagnostics(): string {
+  let context: string;
+  try {
+    // deno-lint-ignore no-explicit-any
+    context = typeof (globalThis as any).WorkerGlobalScope !== "undefined" &&
+        // deno-lint-ignore no-explicit-any
+        globalThis instanceof (globalThis as any).WorkerGlobalScope
+      ? "worker"
+      : "main";
+  } catch {
+    context = "unknown";
+  }
+  const env = {
+    TMPDIR: readEnvString("TMPDIR") ?? "<unset>",
+    TMP: readEnvString("TMP") ?? "<unset>",
+    TEMP: readEnvString("TEMP") ?? "<unset>",
+  };
+  return `context=${context}, TMPDIR=${env.TMPDIR}, TMP=${env.TMP}, TEMP=${env.TEMP}`;
+}
+
+async function getWritePermissionDiagnostics(path?: string): Promise<string> {
+  if (!path) return "writePerm=<no-path>";
+  try {
+    const status = await Deno.permissions.query({ name: "write", path });
+    return `writePerm(${path})=${status.state}`;
+  } catch (error) {
+    return `writePerm(${path})=<error:${
+      error instanceof Error ? error.message : String(error)
+    }>`;
+  }
+}
+
 function makeProbeKey(config: RequiredRustScorerConfig): string {
   const envKeys = Object.keys(config.env).sort();
   const envPairs = envKeys.map((k) => `${k}=${config.env[k]}`);
@@ -164,13 +197,25 @@ async function resolveProbeState(
   return state;
 }
 
-async function writeCreatureTempFile(creature: Creature): Promise<string> {
-  const tmpPath = await Deno.makeTempFile({
-    prefix: "neat-rust-scorer-",
-    suffix: ".json",
-  });
-  await Deno.writeTextFile(tmpPath, JSON.stringify(creature.exportJSON()));
-  return tmpPath;
+async function writeCreatureTempFile(
+  creature: Creature,
+  tmpDir?: string,
+): Promise<string> {
+  const baseDir = tmpDir ?? ".";
+  const fileName = `neat-rust-scorer-${crypto.randomUUID()}.json`;
+  const tmpPath = join(baseDir, fileName);
+  try {
+    // Ensure explicit scorer temp dirs are created in worker contexts.
+    await Deno.mkdir(baseDir, { recursive: true });
+    await Deno.writeTextFile(tmpPath, JSON.stringify(creature.exportJSON()));
+    return tmpPath;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    const perm = await getWritePermissionDiagnostics(baseDir);
+    throw new Error(
+      `failed to create/write rust scorer temp creature file: ${detail}; ${getTmpDiagnostics()}; ${perm}`,
+    );
+  }
 }
 
 export async function tryScoreWithRustScorer(
@@ -186,7 +231,8 @@ export async function tryScoreWithRustScorer(
 
   let creaturePath: string | undefined;
   try {
-    creaturePath = await writeCreatureTempFile(creature);
+    const tmpDir = readEnvString("NEAT_AI_RUST_SCORER_TMP_DIR") ?? dataDir;
+    creaturePath = await writeCreatureTempFile(creature, tmpDir);
     const result = await runCommand(
       config.binaryPath,
       [creaturePath, dataDir],
