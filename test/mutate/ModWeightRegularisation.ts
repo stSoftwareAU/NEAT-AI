@@ -101,8 +101,12 @@ Deno.test("ModWeight - L2 regularisation biases towards smaller weights", () => 
     preferSmallChanges: false, // Disable to isolate L2 effect
   };
 
-  // Start with a large positive weight
-  const creature = createTestCreature(50);
+  // Use a large positive weight so L2 pressure is strong and consistent.
+  // Reset before each mutation so the weight never drifts towards zero —
+  // once near zero the l2Pull is tiny and mutations become symmetric,
+  // which would dilute the bias count and cause a flaky result.
+  const initialWeight = 50;
+  const creature = createTestCreature(initialWeight);
   const modWeight = new ModWeight(creature, config);
 
   // Track how many times the weight moves towards zero vs away from zero
@@ -110,11 +114,10 @@ Deno.test("ModWeight - L2 regularisation biases towards smaller weights", () => 
   let awayFromZero = 0;
 
   for (let i = 0; i < 500; i++) {
-    const beforeWeight = creature.synapses[0].weight;
-    const beforeMagnitude = Math.abs(beforeWeight);
+    creature.synapses[0].weight = initialWeight; // Reset so L2 pressure is constant
+    const beforeMagnitude = initialWeight;
     modWeight.mutate();
-    const afterWeight = creature.synapses[0].weight;
-    const afterMagnitude = Math.abs(afterWeight);
+    const afterMagnitude = Math.abs(creature.synapses[0].weight);
 
     if (afterMagnitude < beforeMagnitude) {
       towardsZero++;
@@ -123,9 +126,10 @@ Deno.test("ModWeight - L2 regularisation biases towards smaller weights", () => 
     }
   }
 
-  // With strong L2 regularisation, should move towards zero more often
+  // With strong L2 regularisation and a large weight, most mutations should
+  // move towards zero. The l2Pull dominates the modification distribution.
   assert(
-    towardsZero > awayFromZero * 0.8,
+    towardsZero > awayFromZero,
     `L2 regularisation should bias towards smaller weights. ` +
       `TowardsZero: ${towardsZero}, AwayFromZero: ${awayFromZero}`,
   );
