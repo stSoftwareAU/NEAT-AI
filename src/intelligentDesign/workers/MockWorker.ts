@@ -13,6 +13,7 @@ import type { RequestData } from "@intelligentDesign/workers/WorkerHandler.ts";
 import type { ResponseData } from "@intelligentDesign/workers/ResponseData.ts";
 import { WorkerProcessor } from "@intelligentDesign/workers/WorkerProcessor.ts";
 import { toError } from "@utils/ErrorSerialisation.ts";
+import { clearForGc } from "@utils/ReleasableRef.ts";
 
 export class MockWorker implements WorkerInterface<RequestData> {
   private callBack: EventListener | null = null;
@@ -53,7 +54,6 @@ export class MockWorker implements WorkerInterface<RequestData> {
 
   terminate(): void {
     this.callBack = null;
-    // @ts-ignore - clearing processor reference
-    this.processor = null;
+    clearForGc(this, "processor");
   }
 }

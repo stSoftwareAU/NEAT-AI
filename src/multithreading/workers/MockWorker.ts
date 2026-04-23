@@ -7,6 +7,7 @@ import type {
 import { WorkerProcessor } from "@multithreading/workers/WorkerProcessor.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { toError, toErrorMessage } from "@utils/ErrorSerialisation.ts";
+import { clearForGc } from "@utils/ReleasableRef.ts";
 
 export class MockWorker implements WorkerInterface<RequestData> {
   private callBack: EventListener | null = null;
@@ -101,7 +102,6 @@ export class MockWorker implements WorkerInterface<RequestData> {
   terminate(): void {
     // Clean up references to prevent memory leaks
     this.callBack = null;
-    // @ts-ignore - clearing processor reference
-    this.processor = null;
+    clearForGc(this, "processor");
   }
 }

@@ -17,6 +17,7 @@ import type {
   RequestData,
   ResponseData,
 } from "@multithreading/workers/WorkerHandler.ts";
+import { clearForGc } from "@utils/ReleasableRef.ts";
 
 /**
  * Creates a small test creature for worker communication tests.
@@ -273,17 +274,12 @@ Deno.test("GC cleanup uses null instead of empty string for object fields", () =
     },
   };
 
-  // Simulate GC cleanup pattern used in NeatEvolution.ts
-  // @ts-ignore - clearing to help GC
-  response.train!.creature = null;
-  // @ts-ignore - clearing to help GC
-  response.train!.trace = null;
-  // @ts-ignore - clearing to help GC
-  response.train!.compact = null;
-  // @ts-ignore - clearing to help GC
-  response.train!.backtracked = null;
-  // @ts-ignore - clearing to help GC
-  response.train!.forward = null;
+  // Simulate GC cleanup pattern used in ProcessCompletedResults.ts
+  clearForGc(response.train!, "creature");
+  clearForGc(response.train!, "trace");
+  clearForGc(response.train!, "compact");
+  clearForGc(response.train!, "backtracked");
+  clearForGc(response.train!, "forward");
 
   // Verify fields are null (not empty string)
   // deno-lint-ignore no-explicit-any

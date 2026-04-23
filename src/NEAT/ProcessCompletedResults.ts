@@ -20,6 +20,7 @@ import type { Neat } from "@neat/Neat.ts";
 import { logReplaySummary } from "@neat/NeatScheduling.ts";
 import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { clearForGc } from "@utils/ReleasableRef.ts";
 
 /**
  * Process completed training, discovery, and replay results.
@@ -116,16 +117,11 @@ export function processCompletedResults(
     }
 
     // Immediately clear large objects to help GC
-    // @ts-ignore - clearing to help GC
-    r.train.creature = null;
-    // @ts-ignore - clearing to help GC
-    r.train.trace = null;
-    // @ts-ignore - clearing to help GC
-    r.train.compact = null;
-    // @ts-ignore - clearing to help GC
-    r.train.backtracked = null;
-    // @ts-ignore - clearing to help GC
-    r.train.forward = null;
+    clearForGc(r.train, "creature");
+    clearForGc(r.train, "trace");
+    clearForGc(r.train, "compact");
+    clearForGc(r.train, "backtracked");
+    clearForGc(r.train, "forward");
   }
   neat.trainingComplete.length = 0;
 
@@ -175,14 +171,10 @@ export function processCompletedResults(
       }
     }
 
-    // @ts-ignore - clearing to help GC
-    r.discover.addHelpfulSynapses = null;
-    // @ts-ignore - clearing to help GC
-    r.discover.removeHarmfulSynapse = null;
-    // @ts-ignore - clearing to help GC
-    r.discover.candidateSquashes = null;
-    // @ts-ignore - clearing to help GC
-    r.discover.improvedCreature = null;
+    clearForGc(r.discover, "addHelpfulSynapses");
+    clearForGc(r.discover, "removeHarmfulSynapse");
+    clearForGc(r.discover, "candidateSquashes");
+    clearForGc(r.discover, "improvedCreature");
   }
   neat.discoveryComplete.length = 0;
 
