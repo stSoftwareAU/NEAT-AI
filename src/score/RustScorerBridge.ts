@@ -1,4 +1,4 @@
-import { join } from "@std/path";
+import { join, resolve } from "@std/path";
 import type { Creature } from "@creature";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import { getLogger } from "@utils/Logger.ts";
@@ -17,7 +17,13 @@ type CommandRunner = (
   command: string,
   args: string[],
   options: {
-    env: Record<string, string>;
+    /**
+     * Environment variables to pass to the child process. When `undefined`,
+     * the child inherits the parent process environment. When provided, the
+     * mapping is passed verbatim to `Deno.Command` (callers are responsible
+     * for merging parent env if they want inheritance plus overrides).
+     */
+    env?: Record<string, string>;
     timeoutMs: number;
   },
 ) => Promise<{
@@ -30,6 +36,9 @@ type CommandRunner = (
 const probeCache = new Map<string, RustScorerProbeState>();
 
 let envRustScorerCache: RequiredRustScorerConfig | undefined;
+
+/** Maximum characters of stdout/stderr preserved in a warning log line. */
+const LOG_TRIM_LIMIT = 2000;
 
 function readEnvString(key: string): string | undefined {
   try {
@@ -56,6 +65,18 @@ function parseEnvTimeoutMs(): number {
   if (raw === undefined) return 0;
   const n = Number(raw);
   return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+}
+
+/**
+ * Trim untrusted child-process output for safe inclusion in a log line.
+ * Collapses whitespace and caps total length so large diagnostics do not
+ * overwhelm the log.
+ */
+function trimForLog(value: string, limit: number = LOG_TRIM_LIMIT): string {
+  if (!value) return "";
+  const collapsed = value.replace(/\s+/g, " ").trim();
+  if (collapsed.length <= limit) return collapsed;
+  return collapsed.slice(0, limit) + "…";
 }
 
 /**
@@ -90,11 +111,33 @@ function getEnvRustScorerConfig(): RequiredRustScorerConfig {
   return envRustScorerCache;
 }
 
+/**
+ * Build the env argument for a child process call.
+ *
+ * Returns `undefined` when no overrides are configured so the child inherits
+ * the parent environment verbatim (avoids the `env: {}` foot-gun where the
+ * child gets an empty environment). When overrides exist, merges them over
+ * the parent env snapshot.
+ */
+function buildChildEnv(
+  overrides: Record<string, string>,
+): Record<string, string> | undefined {
+  const keys = Object.keys(overrides);
+  if (keys.length === 0) return undefined;
+  let parent: Record<string, string> = {};
+  try {
+    parent = Deno.env.toObject();
+  } catch {
+    // Fall through with an empty parent snapshot; overrides still applied.
+  }
+  return { ...parent, ...overrides };
+}
+
 async function defaultRunner(
   command: string,
   args: string[],
   options: {
-    env: Record<string, string>;
+    env?: Record<string, string>;
     timeoutMs: number;
   },
 ): Promise<{
@@ -103,12 +146,12 @@ async function defaultRunner(
   stdout: string;
   stderr: string;
 }> {
-  const cmd = new Deno.Command(command, {
-    args,
-    env: options.env,
-    stdout: "piped",
-    stderr: "piped",
-  });
+  // Omit `env` from Deno.Command when the caller did not provide overrides so
+  // the child inherits the full parent environment (PATH, HOME, locale, etc.).
+  const cmdOptions: Deno.CommandOptions = options.env !== undefined
+    ? { args, env: options.env, stdout: "piped", stderr: "piped" }
+    : { args, stdout: "piped", stderr: "piped" };
+  const cmd = new Deno.Command(command, cmdOptions);
 
   const output = options.timeoutMs > 0
     ? await Promise.race([
@@ -180,7 +223,7 @@ async function resolveProbeState(
   let available = false;
   try {
     const probe = await runCommand(config.binaryPath, ["--help"], {
-      env: config.env,
+      env: buildChildEnv(config.env),
       timeoutMs: config.timeoutMs,
     });
     available = probe.success || probe.code === 0 || probe.code === 1;
@@ -208,7 +251,9 @@ async function writeCreatureTempFile(
     // Ensure explicit scorer temp dirs are created in worker contexts.
     await Deno.mkdir(baseDir, { recursive: true });
     await Deno.writeTextFile(tmpPath, JSON.stringify(creature.exportJSON()));
-    return tmpPath;
+    // Return an absolute path so callers can hand it to subprocesses that may
+    // run with a different cwd (e.g. worker pools).
+    return resolve(Deno.cwd(), tmpPath);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     const perm = await getWritePermissionDiagnostics(baseDir);
@@ -233,31 +278,66 @@ export async function tryScoreWithRustScorer(
   try {
     const tmpDir = readEnvString("NEAT_AI_RUST_SCORER_TMP_DIR") ?? dataDir;
     creaturePath = await writeCreatureTempFile(creature, tmpDir);
+    // rust_scorer resolves relative paths against its own process cwd, which
+    // may not match the Deno/worker cwd. Always hand it absolute paths.
+    const absoluteDataDir = resolve(Deno.cwd(), dataDir);
     const result = await runCommand(
       config.binaryPath,
-      [creaturePath, dataDir],
+      [creaturePath, absoluteDataDir],
       {
-        env: config.env,
+        env: buildChildEnv(config.env),
         timeoutMs: config.timeoutMs,
       },
     );
 
     if (!result.success) {
       if (!probe.warned) {
+        const stderrSnippet = trimForLog(result.stderr);
+        const suffix = stderrSnippet.length > 0
+          ? `; stderr: ${stderrSnippet}`
+          : "";
         getLogger().warn(
-          `[NEAT-AI] Rust scorer call failed (exit ${result.code}); falling back to WASM scoring.`,
+          `[NEAT-AI] Rust scorer call failed (exit ${result.code})${suffix}; falling back to WASM scoring.`,
         );
         probe.warned = true;
       }
       return undefined;
     }
 
-    const parsed = JSON.parse(result.stdout) as { error?: unknown };
+    let parsed: { error?: unknown };
+    try {
+      parsed = JSON.parse(result.stdout) as { error?: unknown };
+    } catch (parseError) {
+      if (!probe.warned) {
+        const stdoutSnippet = trimForLog(result.stdout);
+        const stderrSnippet = trimForLog(result.stderr);
+        const detail = parseError instanceof Error
+          ? parseError.message
+          : String(parseError);
+        const parts = [
+          `parse error: ${detail}`,
+          stdoutSnippet.length > 0 ? `stdout: ${stdoutSnippet}` : "",
+          stderrSnippet.length > 0 ? `stderr: ${stderrSnippet}` : "",
+        ].filter((p) => p.length > 0);
+        getLogger().warn(
+          `[NEAT-AI] Rust scorer returned invalid (non-JSON) output; ${
+            parts.join("; ")
+          }; falling back to WASM scoring.`,
+        );
+        probe.warned = true;
+      }
+      return undefined;
+    }
+
     const error = Number(parsed.error);
     if (!Number.isFinite(error)) {
       if (!probe.warned) {
+        const stderrSnippet = trimForLog(result.stderr);
+        const suffix = stderrSnippet.length > 0
+          ? `; stderr: ${stderrSnippet}`
+          : "";
         getLogger().warn(
-          "[NEAT-AI] Rust scorer returned invalid error; falling back to WASM scoring.",
+          `[NEAT-AI] Rust scorer returned invalid error${suffix}; falling back to WASM scoring.`,
         );
         probe.warned = true;
       }
