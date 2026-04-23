@@ -133,7 +133,7 @@ async function defaultRunner(
 let runCommand: CommandRunner = defaultRunner;
 
 function getTmpDiagnostics(): string {
-  let context = "unknown";
+  let context: string;
   try {
     // deno-lint-ignore no-explicit-any
     context = typeof (globalThis as any).WorkerGlobalScope !== "undefined" &&
