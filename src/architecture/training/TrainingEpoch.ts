@@ -66,8 +66,6 @@ export function runSingleEpoch(
       }
 
       for (const recordIndex of recordSet) {
-        if (trainingStopped) break;
-
         file.seekSync(
           recordIndex * setup.BYTES_PER_RECORD,
           Deno.SeekMode.Start,
