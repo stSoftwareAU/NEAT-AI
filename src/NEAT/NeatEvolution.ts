@@ -6,11 +6,8 @@
  */
 
 import { assert } from "@std/assert";
-import { blue } from "@std/fmt/colors";
-import { format } from "@std/fmt/duration";
-import { addTag, getTag, removeTag } from "@stsoftware/tags/mod";
-import { Creature } from "@creature";
-import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { addTag, getTag } from "@stsoftware/tags/mod";
+import type { Creature } from "@creature";
 import { DeDuplicator } from "@architecture/DeDuplicator.ts";
 import {
   makeElitists,
@@ -19,10 +16,8 @@ import {
 import { FindTunePopulation } from "@blackbox/FineTunePopulation.ts";
 import { Breed } from "@breed/Breed.ts";
 import { ParallelBreeding } from "@breed/ParallelBreeding.ts";
-import { validateAfterDiscoveryOrThrow } from "@discovery/DiscoveryPostValidate.ts";
 import { AddConnection } from "@mutate/AddConnection.ts";
 import { Genus } from "@neat/Genus.ts";
-import type { Approach } from "@neat/LogApproach.ts";
 import { checkMemoryAndEvict, logMemoryUsage } from "@neat/MemoryMonitor.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { CRISPR } from "@reconstruct/CRISPR.ts";
@@ -38,77 +33,15 @@ import type {
   WorkerUtilisationSnapshot,
 } from "@config/TrainingEvent.ts";
 import type { Neat } from "@neat/Neat.ts";
-import { logReplaySummary } from "@neat/NeatScheduling.ts";
 import { computeThroughputMetrics } from "@neat/ThroughputMetrics.ts";
 import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 import { preWarmWasmCache } from "@wasm/WasmCachePreWarmer.ts";
-import type { WorkerPool } from "@multithreading/WorkerPool.ts";
 import { computeAdaptivePopulationSize } from "@neat/AdaptivePopulationSizer.ts";
-
-/**
- * Captures a point-in-time worker utilisation snapshot from the fast and heavy
- * worker pools.
- *
- * Issue #2312: Lightweight helper used at phase boundaries to record how many
- * workers are active vs idle. Because a single snapshot cannot capture the
- * full utilisation curve across a phase, this deliberately samples at the *end*
- * of each phase — the point most indicative of sustained utilisation.
- */
-function captureUtilisationSnapshot(
-  fastPool: WorkerPool,
-  heavyPool: WorkerPool,
-): WorkerUtilisationSnapshot {
-  const fastActive = fastPool.getActiveWorkerCount();
-  const fastTotal = fastPool.getWorkerCount();
-  const heavyActive = heavyPool.getActiveWorkerCount();
-  const heavyTotal = heavyPool.getWorkerCount();
-  return {
-    fastActive,
-    fastTotal,
-    fastUtilisationPct: fastTotal > 0
-      ? Math.round((fastActive / fastTotal) * 100)
-      : 0,
-    heavyActive,
-    heavyTotal,
-    heavyUtilisationPct: heavyTotal > 0
-      ? Math.round((heavyActive / heavyTotal) * 100)
-      : 0,
-  };
-}
-
-/**
- * Computes an overall CPU utilisation estimate from per-phase snapshots
- * weighted by their duration.
- *
- * Issue #2312: Each phase's utilisation is weighted by the fraction of total
- * generation time it consumed. Phases with no snapshot are treated as 0%
- * utilisation (main-thread-only work).
- */
-function computeOverallCpuUtilisation(
-  phases: Array<{
-    durationMs: number;
-    snapshot?: WorkerUtilisationSnapshot;
-  }>,
-  totalMs: number,
-): number {
-  if (totalMs <= 0) return 0;
-
-  let weightedSum = 0;
-  for (const phase of phases) {
-    if (phase.snapshot && phase.durationMs > 0) {
-      const totalActive = phase.snapshot.fastActive +
-        phase.snapshot.heavyActive;
-      const totalWorkers = phase.snapshot.fastTotal +
-        phase.snapshot.heavyTotal;
-      const phaseUtilisation = totalWorkers > 0
-        ? totalActive / totalWorkers
-        : 0;
-      weightedSum += phaseUtilisation * phase.durationMs;
-    }
-    // Phases without snapshots contribute 0 (main-thread-only).
-  }
-  return Math.round((weightedSum / totalMs) * 100);
-}
+import {
+  captureUtilisationSnapshot,
+  computeOverallCpuUtilisation,
+} from "@neat/CpuUtilisation.ts";
+import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
 
 /**
  * The result returned by a single call to `evolve()`.
@@ -932,210 +865,4 @@ export async function evolve(
     phaseTiming,
     throughput,
   };
-}
-
-/**
- * Process completed training, discovery, and replay results.
- * Returns an array of creatures to add to the population.
- */
-function processCompletedResults(
-  neat: Neat,
-  fittest: Creature,
-  _genus: Genus,
-): Creature[] {
-  const trainedPopulation: Creature[] = [];
-
-  for (let i = neat.trainingComplete.length; i--;) {
-    const r = neat.trainingComplete[i];
-    assert(r.train, "No train found");
-    if (!Number.isFinite(r.train.error)) {
-      continue;
-    }
-
-    const json = r.train.creature;
-    if (neat.config.verbose) {
-      getLogger().info(
-        `Training ${blue(r.train.ID)} completed ${
-          r.duration ? "after " + format(r.duration, { ignoreZero: true }) : ""
-        }`,
-      );
-    }
-
-    // Issue #1913: Preserve PC approach tag from trace if present.
-    const traceJSON = r.train.trace ? r.train.trace : null;
-    const pcApproach = traceJSON ? getTag(traceJSON, "approach") : null;
-    const isPC = pcApproach === "predictive-coding";
-
-    addTag(
-      json,
-      "approach",
-      (isPC ? "predictive-coding" : "trained") as Approach,
-    );
-    if (isPC && traceJSON) {
-      const pcEnergy = getTag(traceJSON, "pc-energy");
-      const pcSteps = getTag(traceJSON, "pc-inference-steps");
-      const pcChanged = getTag(traceJSON, "pc-changed");
-      if (pcEnergy) addTag(json, "pc-energy", pcEnergy);
-      if (pcSteps) addTag(json, "pc-inference-steps", pcSteps);
-      if (pcChanged) addTag(json, "pc-changed", pcChanged);
-    }
-    delete json.memetic;
-    removeTag(json, "approach-logged");
-    addTag(json, "trainID", r.train.ID);
-    addTag(json, "trained", "YES");
-
-    trainedPopulation.push(Creature.fromJSON(json, neat.config.debug));
-    if (r.train.backtracked) {
-      trainedPopulation.push(
-        Creature.fromJSON(r.train.backtracked, neat.config.debug),
-      );
-    }
-    if (r.train.forward) {
-      trainedPopulation.push(
-        Creature.fromJSON(r.train.forward, neat.config.debug),
-      );
-    }
-    const compactJSON = r.train.compact ?? undefined;
-
-    if (compactJSON) {
-      if (neat.config.verbose) {
-        getLogger().info(
-          `Training ${blue(r.train.ID)} compacted`,
-        );
-      }
-
-      // Issue #1913: Preserve PC approach on compact variant too.
-      addTag(
-        compactJSON,
-        "approach",
-        (isPC ? "predictive-coding-compact" : "compact") as Approach,
-      );
-      if (isPC && traceJSON) {
-        const pcEnergy = getTag(traceJSON, "pc-energy");
-        const pcSteps = getTag(traceJSON, "pc-inference-steps");
-        const pcChanged = getTag(traceJSON, "pc-changed");
-        if (pcEnergy) addTag(compactJSON, "pc-energy", pcEnergy);
-        if (pcSteps) addTag(compactJSON, "pc-inference-steps", pcSteps);
-        if (pcChanged) addTag(compactJSON, "pc-changed", pcChanged);
-      }
-      delete compactJSON.memetic;
-      removeTag(compactJSON, "approach-logged");
-      addTag(compactJSON, "trainID", r.train.ID);
-      addTag(compactJSON, "trained", "YES");
-
-      trainedPopulation.push(
-        Creature.fromJSON(compactJSON, neat.config.debug),
-      );
-    }
-
-    // Immediately clear large objects to help GC
-    // @ts-ignore - clearing to help GC
-    r.train.creature = null;
-    // @ts-ignore - clearing to help GC
-    r.train.trace = null;
-    // @ts-ignore - clearing to help GC
-    r.train.compact = null;
-    // @ts-ignore - clearing to help GC
-    r.train.backtracked = null;
-    // @ts-ignore - clearing to help GC
-    r.train.forward = null;
-  }
-  neat.trainingComplete.length = 0;
-
-  // Issue #1020: Process discovery results
-  for (let i = neat.discoveryComplete.length; i--;) {
-    const r = neat.discoveryComplete[i];
-    assert(r.discover, "No discovery found");
-
-    // Issue #1615: Emit discovery_complete event
-    const outcome = r.discover.improvedCreature ? "improved" : "no_change";
-    emitTrainingEvent(neat.config.onTrainingEvent, {
-      kind: "discovery_complete",
-      timestamp: new Date().toISOString(),
-      outcome: outcome as "improved" | "no_change" | "timeout",
-      candidateCount: (r.discover.addHelpfulSynapses?.length ?? 0) +
-        (r.discover.removeHarmfulSynapse ? 1 : 0) +
-        (r.discover.candidateSquashes?.length ?? 0),
-      elapsedMs: r.duration ?? 0,
-    });
-
-    if (r.discover.improvedCreature) {
-      const discoveredCreature = Creature.fromJSON(
-        r.discover.improvedCreature,
-      );
-      CreatureUtil.makeUUID(discoveredCreature);
-
-      validateAfterDiscoveryOrThrow({
-        baseCreature: fittest,
-        discoveredCreature: discoveredCreature,
-        discoveryID: r.discover.ID,
-        operation: "discovered-creature-addition",
-        feedbackLoop: neat.config.feedbackLoop,
-      });
-
-      trainedPopulation.push(discoveredCreature);
-
-      if (neat.config.verbose) {
-        getLogger().info(
-          `[Neat] Added discovered creature ${
-            blue(discoveredCreature.uuid?.substring(0, 8) ?? "unknown")
-          } to population (from discovery ${
-            blue(
-              r.discover.ID.substring(Math.max(0, r.discover.ID.length - 8)),
-            )
-          })`,
-        );
-      }
-    }
-
-    // @ts-ignore - clearing to help GC
-    r.discover.addHelpfulSynapses = null;
-    // @ts-ignore - clearing to help GC
-    r.discover.removeHarmfulSynapse = null;
-    // @ts-ignore - clearing to help GC
-    r.discover.candidateSquashes = null;
-    // @ts-ignore - clearing to help GC
-    r.discover.improvedCreature = null;
-  }
-  neat.discoveryComplete.length = 0;
-
-  // Issue #997: Process completed background replay results
-  const replayResults = neat.discoveryReplayQueue.getCompletedResults();
-  for (const result of replayResults) {
-    logReplaySummary(neat.config, result);
-
-    if (result.improvement?.creature) {
-      const replayedCreature = Creature.fromJSON(
-        result.improvement.creature as Parameters<
-          typeof Creature.fromJSON
-        >[0],
-      );
-      CreatureUtil.makeUUID(replayedCreature);
-
-      addTag(replayedCreature, "approach", "discovery-replay");
-
-      validateAfterDiscoveryOrThrow({
-        baseCreature: fittest,
-        discoveredCreature: replayedCreature,
-        discoveryID: result.improvement.key ?? "replay",
-        operation: "discovery-replay-addition",
-        feedbackLoop: neat.config.feedbackLoop,
-      });
-
-      trainedPopulation.push(replayedCreature);
-
-      if (neat.config.verbose) {
-        getLogger().info(
-          `[Neat] Added replayed creature ${
-            blue(replayedCreature.uuid?.substring(0, 8) ?? "unknown")
-          } to population (score improvement: ${
-            result.improvement.scoreDelta?.toFixed(4) ?? "N/A"
-          })`,
-        );
-      }
-    }
-  }
-  neat.discoveryReplayQueue.clearCompletedResults();
-
-  return trainedPopulation;
 }
