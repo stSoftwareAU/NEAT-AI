@@ -27,6 +27,13 @@ export interface RustScorerConfig {
    * Optional environment variables to inject into scorer process.
    */
   env?: Record<string, string>;
+  /**
+   * Issue #2422: Use directory/batch mode — invoke `rust_scorer` once per
+   * generation with a creatures directory rather than once per creature.
+   *
+   * Default: true (when `enabled` is true).
+   */
+  batch?: boolean;
 }
 
 /**
@@ -37,4 +44,5 @@ export interface RequiredRustScorerConfig {
   binaryPath: string;
   timeoutMs: number;
   env: Record<string, string>;
+  batch: boolean;
 }
