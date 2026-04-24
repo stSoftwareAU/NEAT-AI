@@ -5,16 +5,17 @@ so operators can see whether NEAT-AI is benefiting from one-pass batch scoring
 across different hardware. Closes #2424.
 
 `Fitness.calculate()` now records the aggregate main-thread scorer wall time
-(`lastScorerMs`) and the unique-scored creature count (`lastScoredCreatureCount`)
-using a single `performance.now()` pair per scored creature — no per-creature
-logging in hot paths. `NeatEvolution` feeds those counters through
-`computeThroughputMetrics()`, which adds three fields to
+(`lastScorerMs`) and the unique-scored creature count
+(`lastScoredCreatureCount`) using a single `performance.now()` pair per scored
+creature — no per-creature logging in hot paths. `NeatEvolution` feeds those
+counters through `computeThroughputMetrics()`, which adds three fields to
 `GenerationThroughputMetrics`:
 
 - `scoredCreatureCount` — unique creatures that hit the scorer (cached
   duplicates resolved by UUID copy are excluded).
 - `scorerMs` — aggregate main-thread wall time spent in `calculateScore()`.
-- `creaturesPerSec` — derived throughput: `scoredCreatureCount × 1000 / fitnessMs`.
+- `creaturesPerSec` — derived throughput:
+  `scoredCreatureCount × 1000 / fitnessMs`.
 
 The existing `[Throughput]` verbose log line is extended with
 `scorer=<ms>/scored<N>/creaturesPerSec<rate>` so telemetry is visible in run
@@ -49,10 +50,10 @@ batch          100        65.10       1.357      100         1536.0
 
 The benchmark uses an in-process stub worker (fixed 1 ms evaluation latency) so
 it measures scheduling + scorer + telemetry paths directly. With no real WASM
-evaluation the speedups are small (≈1×); the point of the benchmark is to
-expose the three new telemetry fields in a reproducible matrix so the same
-numbers captured in production can be compared across hardware. The telemetry
-itself is what identifies whether batch mode helps on a given machine — the
+evaluation the speedups are small (≈1×); the point of the benchmark is to expose
+the three new telemetry fields in a reproducible matrix so the same numbers
+captured in production can be compared across hardware. The telemetry itself is
+what identifies whether batch mode helps on a given machine — the
 `creaturesPerSec` field is now emitted on every generation.
 
 Unit test output (all 42 fitness + throughput tests pass):
@@ -75,11 +76,11 @@ Full NEAT suite: `654 passed | 0 failed (2m31s)`.
 
 ## Test Plan
 
-- `test/architecture/FitnessScorerTelemetry.ts` (new) — verifies
-  `lastScorerMs` / `lastScoredCreatureCount` for unique, duplicate,
-  non-finite-error, and pre-scored populations.
-- `test/NEAT/ThroughputMetrics.ts` (extended) — five new cases for the
-  scorer fields: default zero, derived `creaturesPerSec`, zero-fitness guard,
+- `test/architecture/FitnessScorerTelemetry.ts` (new) — verifies `lastScorerMs`
+  / `lastScoredCreatureCount` for unique, duplicate, non-finite-error, and
+  pre-scored populations.
+- `test/NEAT/ThroughputMetrics.ts` (extended) — five new cases for the scorer
+  fields: default zero, derived `creaturesPerSec`, zero-fitness guard,
   negative-input clamping, and fractional count flooring.
 - `test/config/ThroughputMetrics.ts` (extended) — asserts `scoredCreatureCount`,
   `scorerMs`, and `creaturesPerSec` are present, finite, non-negative, and
