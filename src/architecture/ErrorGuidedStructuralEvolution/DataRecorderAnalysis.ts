@@ -22,6 +22,31 @@ import type { PhaseDiagnostics } from "@architecture/ErrorGuidedStructuralEvolut
 import { getLogger } from "@utils/Logger.ts";
 
 /**
+ * Signature for the parallel analysis driver. Exposed so tests can inject a
+ * stubbed implementation that never resolves (Issue #2420).
+ */
+export type ParallelAnalysisFn = (
+  ctx: AnalysisLoopContext,
+  discoverStructure: DiscoverStructure,
+  perfStats: DiscoveryPerformanceStats,
+  phaseDiagnostics: PhaseDiagnostics,
+  newFocusList: number[],
+) => Promise<[
+  CandidateNeuron[] | undefined,
+  CandidateSynapse[] | undefined,
+  CandidateSynapse | undefined,
+  CandidateSquash[] | undefined,
+  CandidateHarmfulNeuron[] | undefined,
+]>;
+
+/**
+ * Default grace in milliseconds added to `perChunkMaxMs` before the
+ * mid-flight timeout fires (Issue #2420). A small amount of slack avoids
+ * racing the budget in normal operation.
+ */
+export const DEFAULT_PER_CHUNK_GRACE_MS = 1_000;
+
+/**
  * Context required by the analysis loop, provided by the DataRecorder.
  */
 export interface AnalysisLoopContext {
@@ -43,6 +68,12 @@ export interface AnalysisLoopContext {
    * to 0 to disable the stall guard.
    */
   readonly perChunkMaxMs: number;
+  /**
+   * Optional grace added to `perChunkMaxMs` when constructing the mid-flight
+   * timeout race against `runParallelAnalysis` (Issue #2420). Defaults to
+   * {@link DEFAULT_PER_CHUNK_GRACE_MS}.
+   */
+  readonly perChunkGraceMs?: number;
   /** Current analysis deadline timestamp in ms. */
   getTimeoutTS(): number;
   /** Refresh the analysis timeout on the DiscoverStructure instance. */
@@ -52,6 +83,13 @@ export interface AnalysisLoopContext {
    * to Date.now. Production code should not set this.
    */
   readonly now?: () => number;
+  /**
+   * Optional override for the parallel analysis driver (Issue #2420). Tests
+   * can inject a stubbed implementation (e.g. one that never resolves) to
+   * exercise the mid-flight timeout path. Production code should not set
+   * this.
+   */
+  readonly runParallelAnalysis?: ParallelAnalysisFn;
 }
 
 /**
@@ -282,10 +320,41 @@ export async function runAnalysisLoop(
     // detect stalls, and bail out before the full analysis budget is burned
     // on a single slow call (Issue #2380).
     const chunks = chunkFocusList(newFocusList, ctx.analysisChunkSize);
+    // Defence-in-depth wall-clock cap for this analysis iteration: regardless
+    // of individual chunk behaviour, never spend more than
+    // `perChunkMaxMs * chunks.length` on chunk processing for one retry
+    // iteration (Issue #2420). Prevents a single slow FFI call from burning
+    // the entire discovery cycle before the per-chunk check fires.
+    const iterationStart = now();
+    const iterationCapMs = ctx.perChunkMaxMs > 0
+      ? ctx.perChunkMaxMs * chunks.length
+      : 0;
     let chunkIdx = 0;
     let iterationStalled = false;
     for (const chunk of chunks) {
       chunkIdx++;
+      // Defence-in-depth: check cumulative wall-clock before submitting each
+      // new chunk (Issue #2420). If earlier chunks have already burned the
+      // overall budget, stop — the per-chunk check below would only fire
+      // after yet another slow call returns.
+      if (iterationCapMs > 0) {
+        const iterationElapsed = now() - iterationStart;
+        if (iterationElapsed >= iterationCapMs) {
+          if (shouldLogDiscovery(config)) {
+            getLogger().info(
+              `Discovery ${
+                blue(ID)
+              } aborting remaining chunks before chunk ${chunkIdx}/${chunks.length}: iteration wall-clock ${
+                yellow(format(iterationElapsed, { ignoreZero: true }))
+              } exceeds cap ${
+                yellow(format(iterationCapMs, { ignoreZero: true }))
+              } (perChunkMaxMs * chunks)`,
+            );
+          }
+          iterationStalled = true;
+          break;
+        }
+      }
       const chunkStart = now();
       const combinedResult = discoverStructure.ensureRustCombinedAnalysis(
         chunk,
@@ -381,14 +450,92 @@ export async function runAnalysisLoop(
           logSquashResults(ID, squashTime, candidateSquashes);
         }
       } else {
-        // deno-lint-ignore no-await-in-loop
-        const analysisResults = await runParallelAnalysis(
-          ctx,
-          discoverStructure,
-          perfStats,
-          phaseDiagnostics,
-          chunk,
-        );
+        const analysisFn: ParallelAnalysisFn = ctx.runParallelAnalysis ??
+          runParallelAnalysis;
+        // Race the parallel analysis against the per-chunk budget so a
+        // hung driver cannot burn the whole analysis cycle. This gives up
+        // on the in-flight Promise but does not interrupt any synchronous
+        // Rust FFI already executing — the JS event loop is blocked until
+        // the FFI returns. The race is a structural defence for async
+        // drivers (and for tests) and ensures we stop submitting further
+        // chunks even when the stall guard below can't observe the chunk
+        // (Issue #2420).
+        const graceMs = ctx.perChunkGraceMs ?? DEFAULT_PER_CHUNK_GRACE_MS;
+        const budgetMs = ctx.perChunkMaxMs > 0
+          ? ctx.perChunkMaxMs + Math.max(0, graceMs)
+          : 0;
+        type AnalysisTuple = [
+          CandidateNeuron[] | undefined,
+          CandidateSynapse[] | undefined,
+          CandidateSynapse | undefined,
+          CandidateSquash[] | undefined,
+          CandidateHarmfulNeuron[] | undefined,
+        ];
+        type RaceResult =
+          | { kind: "ok"; value: AnalysisTuple }
+          | { kind: "timeout" };
+        let analysisResults: AnalysisTuple | undefined;
+        let timedOut = false;
+        if (budgetMs > 0) {
+          let timeoutHandle: number | undefined;
+          const timeoutPromise = new Promise<RaceResult>((resolve) => {
+            timeoutHandle = setTimeout(
+              () => resolve({ kind: "timeout" }),
+              budgetMs,
+            );
+          });
+          const analysisPromise = analysisFn(
+            ctx,
+            discoverStructure,
+            perfStats,
+            phaseDiagnostics,
+            chunk,
+          ).then<RaceResult>((value) => ({ kind: "ok", value }));
+          // Ensure unhandled rejection from a detached analysis promise is
+          // swallowed after a timeout — we intentionally stop awaiting it.
+          analysisPromise.catch(() => {});
+          // deno-lint-ignore no-await-in-loop
+          const raceResult = await Promise.race([
+            analysisPromise,
+            timeoutPromise,
+          ]);
+          if (timeoutHandle !== undefined) {
+            clearTimeout(timeoutHandle);
+          }
+          if (raceResult.kind === "timeout") {
+            timedOut = true;
+            if (shouldLogDiscovery(config)) {
+              getLogger().info(
+                `Discovery ${
+                  blue(ID)
+                } chunk ${chunkIdx}/${chunks.length} aborted mid-flight after ${
+                  yellow(format(budgetMs, { ignoreZero: true }))
+                } (Rust FFI exceeded per-chunk budget ${
+                  yellow(format(ctx.perChunkMaxMs, { ignoreZero: true }))
+                } + grace ${
+                  yellow(format(Math.max(0, graceMs), { ignoreZero: true }))
+                })`,
+              );
+            }
+          } else {
+            analysisResults = raceResult.value;
+          }
+        } else {
+          // deno-lint-ignore no-await-in-loop
+          analysisResults = await analysisFn(
+            ctx,
+            discoverStructure,
+            perfStats,
+            phaseDiagnostics,
+            chunk,
+          );
+        }
+
+        if (timedOut) {
+          iterationStalled = true;
+          break;
+        }
+
         phaseDiagnostics.enterPhase("analysis_loop");
         [
           addHelpfulNeurons,
@@ -396,7 +543,7 @@ export async function runAnalysisLoop(
           removeHarmfulSynapse,
           candidateSquashes,
           removeHarmfulNeurons,
-        ] = analysisResults;
+        ] = analysisResults!;
 
         if (shouldLogDiscovery(config)) {
           logAllCandidates(
