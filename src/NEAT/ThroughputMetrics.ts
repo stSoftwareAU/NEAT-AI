@@ -6,6 +6,12 @@
  * `NeatEvolution.evolve()`. Keeps the computation isolated from the
  * already-long evolution module so the formulas can be unit-tested and
  * reasoned about in one place.
+ *
+ * Issue #2424: Extended with scorer runtime telemetry — aggregate main-thread
+ * scorer wall time, unique-scored creature count, and the derived
+ * creatures/sec throughput. Captured as cheap counters inside `Fitness.ts`
+ * and fed through this helper so operators can compare batch-mode scoring
+ * against the per-creature baseline across different hardware.
  */
 
 import type { GenerationThroughputMetrics } from "@config/TrainingEvent.ts";
@@ -32,6 +38,16 @@ export interface ThroughputMetricsInput {
   readonly fastQueueMaxDepth: number;
   /** Peak in-flight task count observed on the heavy pool this generation. */
   readonly heavyQueueMaxDepth: number;
+  /**
+   * Number of unique creatures scored this generation (Issue #2424).
+   * Defaults to 0 when unavailable.
+   */
+  readonly scoredCreatureCount?: number;
+  /**
+   * Aggregate main-thread wall time spent inside `calculateScore()` during
+   * the fitness phase, in ms (Issue #2424). Defaults to 0.
+   */
+  readonly scorerMs?: number;
 }
 
 /**
@@ -122,6 +138,18 @@ export function computeThroughputMetrics(
     heavyWorkerCount,
   );
 
+  // Issue #2424: Scorer telemetry. `scoredCreatureCount` counts unique
+  // creatures that hit the main-thread scorer (duplicates resolved by UUID
+  // copy are excluded so throughput reflects real scorer work).
+  const scoredCreatureCount = Math.max(
+    0,
+    Math.floor(input.scoredCreatureCount ?? 0),
+  );
+  const scorerMs = Math.max(0, input.scorerMs ?? 0);
+  const creaturesPerSec = fitnessMs > 0 && scoredCreatureCount > 0
+    ? (scoredCreatureCount * 1000) / fitnessMs
+    : 0;
+
   return {
     wallClockMs,
     nonFitnessMs,
@@ -134,5 +162,8 @@ export function computeThroughputMetrics(
     heavyIdleMs,
     heavyQueueMaxDepth,
     heavyWaitMs,
+    scoredCreatureCount,
+    scorerMs,
+    creaturesPerSec,
   };
 }

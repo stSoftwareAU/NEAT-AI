@@ -228,6 +228,21 @@ export interface GenerationPhaseTiming {
  *
  * - `heavyWaitMs`: Approximate cumulative heavy-pool task wait time in ms,
  *   using the same FIFO model as `fastWaitMs`.
+ *
+ * - `scoredCreatureCount` (Issue #2424): Number of unique creatures that had
+ *   their fitness evaluated and score computed this generation. Excludes
+ *   cached duplicates (scored by UUID copy), because those do not exercise
+ *   the scorer hot path.
+ *
+ * - `scorerMs` (Issue #2424): Aggregate main-thread wall time in ms spent
+ *   inside `calculateScore()` during the fitness phase. This isolates the
+ *   scorer cost from worker evaluation and lets operators see whether the
+ *   main thread is the bottleneck across different hardware.
+ *
+ * - `creaturesPerSec` (Issue #2424): End-to-end scoring throughput in
+ *   creatures per second, derived from `scoredCreatureCount / fitnessMs`.
+ *   Zero when either counter is zero. This is the top-line metric that
+ *   lets callers compare batch mode gains across machines.
  */
 export interface GenerationThroughputMetrics {
   /** Total wall-clock duration of this generation in ms. */
@@ -258,6 +273,21 @@ export interface GenerationThroughputMetrics {
   readonly heavyQueueMaxDepth: number;
   /** Approximate cumulative heavy-pool task wait time (ms). */
   readonly heavyWaitMs: number;
+  /**
+   * Number of unique creatures scored this generation (Issue #2424).
+   * Excludes cached duplicates resolved via UUID copy.
+   */
+  readonly scoredCreatureCount: number;
+  /**
+   * Aggregate main-thread wall time spent inside `calculateScore()` during
+   * the fitness phase, in ms (Issue #2424).
+   */
+  readonly scorerMs: number;
+  /**
+   * End-to-end scoring throughput in creatures per second (Issue #2424).
+   * `scoredCreatureCount * 1000 / fitnessMs` when both are positive, else 0.
+   */
+  readonly creaturesPerSec: number;
 }
 
 /**

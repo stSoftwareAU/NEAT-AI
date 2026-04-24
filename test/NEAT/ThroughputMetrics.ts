@@ -134,3 +134,102 @@ Deno.test("computeThroughputMetrics - fitnessMs greater than totalMs produces ze
 
   assertEquals(metrics.nonFitnessMs, 0);
 });
+
+Deno.test("computeThroughputMetrics - scorer fields default to zero when not supplied (Issue #2424)", () => {
+  const metrics = computeThroughputMetrics({
+    wallClockMs: 1000,
+    fitnessMs: 600,
+    fastWorkerCount: 4,
+    heavyWorkerCount: 2,
+    fastBusyMs: 2000,
+    heavyBusyMs: 800,
+    fastQueueMaxDepth: 20,
+    heavyQueueMaxDepth: 3,
+  });
+
+  assertEquals(metrics.scoredCreatureCount, 0);
+  assertEquals(metrics.scorerMs, 0);
+  assertEquals(metrics.creaturesPerSec, 0);
+});
+
+Deno.test("computeThroughputMetrics - creaturesPerSec derived from count and fitnessMs (Issue #2424)", () => {
+  const metrics = computeThroughputMetrics({
+    wallClockMs: 1000,
+    fitnessMs: 500,
+    fastWorkerCount: 4,
+    heavyWorkerCount: 2,
+    fastBusyMs: 1000,
+    heavyBusyMs: 0,
+    fastQueueMaxDepth: 20,
+    heavyQueueMaxDepth: 0,
+    scoredCreatureCount: 50,
+    scorerMs: 12.5,
+  });
+
+  assertEquals(metrics.scoredCreatureCount, 50);
+  assertEquals(metrics.scorerMs, 12.5);
+  // 50 creatures / 0.5s = 100 creatures/sec
+  assertEquals(metrics.creaturesPerSec, 100);
+});
+
+Deno.test("computeThroughputMetrics - creaturesPerSec is zero when fitnessMs is zero (Issue #2424)", () => {
+  const metrics = computeThroughputMetrics({
+    wallClockMs: 100,
+    fitnessMs: 0,
+    fastWorkerCount: 4,
+    heavyWorkerCount: 2,
+    fastBusyMs: 0,
+    heavyBusyMs: 0,
+    fastQueueMaxDepth: 0,
+    heavyQueueMaxDepth: 0,
+    scoredCreatureCount: 10,
+    scorerMs: 5,
+  });
+
+  // Scored count is preserved even when fitnessMs is zero.
+  assertEquals(metrics.scoredCreatureCount, 10);
+  assertEquals(metrics.scorerMs, 5);
+  // Avoid infinity — zero fitnessMs yields zero throughput.
+  assertEquals(metrics.creaturesPerSec, 0);
+  assert(Number.isFinite(metrics.creaturesPerSec));
+});
+
+Deno.test("computeThroughputMetrics - clamps negative scorer inputs to zero (Issue #2424)", () => {
+  const metrics = computeThroughputMetrics({
+    wallClockMs: 1000,
+    fitnessMs: 500,
+    fastWorkerCount: 4,
+    heavyWorkerCount: 2,
+    fastBusyMs: 0,
+    heavyBusyMs: 0,
+    fastQueueMaxDepth: 0,
+    heavyQueueMaxDepth: 0,
+    scoredCreatureCount: -5,
+    scorerMs: -10,
+  });
+
+  assertEquals(metrics.scoredCreatureCount, 0);
+  assertEquals(metrics.scorerMs, 0);
+  assertEquals(metrics.creaturesPerSec, 0);
+});
+
+Deno.test("computeThroughputMetrics - creaturesPerSec floors count fractionally (Issue #2424)", () => {
+  const metrics = computeThroughputMetrics({
+    wallClockMs: 1000,
+    fitnessMs: 2000,
+    fastWorkerCount: 4,
+    heavyWorkerCount: 2,
+    fastBusyMs: 0,
+    heavyBusyMs: 0,
+    fastQueueMaxDepth: 0,
+    heavyQueueMaxDepth: 0,
+    scoredCreatureCount: 123.9,
+    scorerMs: 40.25,
+  });
+
+  // Floor fractional counts (UUID-uniqueness guarantees integers in practice).
+  assertEquals(metrics.scoredCreatureCount, 123);
+  assertEquals(metrics.scorerMs, 40.25);
+  // 123 / 2 = 61.5
+  assertEquals(metrics.creaturesPerSec, 61.5);
+});
