@@ -4,18 +4,20 @@ Proactively clamp weight/bias magnitudes at every in-memory write site so a
 runaway value can no longer compound through scoring, mutation decisions, and
 serialisation between saves. Closes #2421.
 
-Issue #2378/#2384 added a reactive clamp inside `CreatureSerialization.loadFrom`,
-but production logs showed values reaching `1.1559466326634707e+195` in memory
-before the next save/reload cycle. The load-time clamp is a safety net; this
-change makes the clamp a fence at the write sites themselves.
+Issue #2378/#2384 added a reactive clamp inside
+`CreatureSerialization.loadFrom`, but production logs showed values reaching
+`1.1559466326634707e+195` in memory before the next save/reload cycle. The
+load-time clamp is a safety net; this change makes the clamp a fence at the
+write sites themselves.
 
 ### What changed
 
-- New module `src/utils/OverflowGuardStats.ts` exposes `clampAndTrack(value,
-  source, context?)`. It wraps `clampWeightBiasDetail`, keeps a per-source
-  counter, and emits a single `debug` log line when clamping actually fires.
-  `getOverflowGuardStats()` / `resetOverflowGuardStats()` support per-run
-  telemetry and test isolation.
+- New module `src/utils/OverflowGuardStats.ts` exposes
+  `clampAndTrack(value,
+  source, context?)`. It wraps `clampWeightBiasDetail`,
+  keeps a per-source counter, and emits a single `debug` log line when clamping
+  actually fires. `getOverflowGuardStats()` / `resetOverflowGuardStats()`
+  support per-run telemetry and test isolation.
 - `src/mutate/ModWeight.ts`, `src/mutate/ModBias.ts`, `src/mutate/AddNeuron.ts`,
   and `src/mutate/AddConnection.ts` now route every weight/bias assignment
   through `clampAndTrack` — even when regularisation limits are set to
@@ -39,8 +41,8 @@ still-unfixed propagation bug upstream of the clamp.
 
 Backend-only change — no UI. Verified via tests:
 
-- `test/utils/OverflowGuardStats.ts` — 6 unit tests covering counter
-  increments, per-source isolation, reset, and defensive-copy semantics.
+- `test/utils/OverflowGuardStats.ts` — 6 unit tests covering counter increments,
+  per-source isolation, reset, and defensive-copy semantics.
 - `test/mutate/ProactiveWeightBiasClamp.ts` — 4 integration tests that:
   1. Seed a weight just below `MAX_SAFE_INTEGER`, set the regulariser's
      `maxAbsoluteWeight` to `Infinity`, and run 200 `ModWeight.mutate()` calls.
