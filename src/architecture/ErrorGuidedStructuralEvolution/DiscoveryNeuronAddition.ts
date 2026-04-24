@@ -26,6 +26,7 @@ import {
   resolveCandidateNeuronEndpoints,
   resolveSingleNeuronReference,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
 /**
  * Adds new neurons to the creature if they improve performance.
@@ -176,11 +177,27 @@ export function addHelpfulNeurons(
 
     const newNeuronId = nextNeuronId();
     const newNeuronUuid = crypto.randomUUID();
+    // Issue #2421: Clamp Rust-supplied bias/weights before applying them.
+    const clampedBias = clampAndTrack(
+      candidate.bias,
+      "rustFfi.bias",
+      "addHelpfulNeurons",
+    );
+    const clampedIncomingWeight = clampAndTrack(
+      candidate.incomingWeight,
+      "rustFfi.weight",
+      "addHelpfulNeurons/incoming",
+    );
+    const clampedOutgoingWeight = clampAndTrack(
+      candidate.outgoingWeight,
+      "rustFfi.weight",
+      "addHelpfulNeurons/outgoing",
+    );
     const newNeuron = {
       type: "hidden" as const,
       uuid: newNeuronUuid,
       squash: candidate.squash,
-      bias: candidate.bias,
+      bias: clampedBias,
     };
     addTag(newNeuron as TagsInterface, "discovered", candidate.squash);
     if (candidate.comment) {
@@ -287,7 +304,7 @@ export function addHelpfulNeurons(
     const incomingSynapse = {
       fromUUID: candidate.fromNeuronUuid,
       toUUID: newNeuronUuid,
-      weight: candidate.incomingWeight,
+      weight: clampedIncomingWeight,
     };
     addTag(incomingSynapse as TagsInterface, "discoveryID", ID);
     addTag(incomingSynapse as TagsInterface, "discovery", "beneficial");
@@ -303,7 +320,7 @@ export function addHelpfulNeurons(
     const outgoingSynapse = {
       fromUUID: newNeuronUuid,
       toUUID: candidate.toNeuronUuid,
-      weight: candidate.outgoingWeight,
+      weight: clampedOutgoingWeight,
     };
     addTag(outgoingSynapse as TagsInterface, "discoveryID", ID);
     addTag(outgoingSynapse as TagsInterface, "discovery", "beneficial");

@@ -16,6 +16,7 @@ import {
   buildWireToRuntimeIdMap,
   resolveCoordinatedEdgeEndpoints,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
 function buildIdToIndexMap(creature: CreatureExport): Map<number, number> {
   const idToIndex = new Map<number, number>();
@@ -99,6 +100,14 @@ export function applyCoordinatedStructuralCandidate(
         const existingIndex = next.neurons.findIndex((n) =>
           n.id === runtimeNeuronId
         );
+        // Issue #2421: Clamp any bias arriving from a Rust discovery result
+        // before it lands on a neuron. The Rust wire format is numeric and
+        // cannot be trusted to produce values inside the safe integer range.
+        const clampedBias = clampAndTrack(
+          op.bias,
+          "rustFfi.bias",
+          "coordinated/addNeuron",
+        );
         if (existingIndex >= 0) {
           // Some exports treat neuron entries as readonly, so replace the object.
           next.neurons[existingIndex] = {
@@ -107,7 +116,7 @@ export function applyCoordinatedStructuralCandidate(
             uuid: op.neuronUuid,
             type: op.neuronType,
             squash: op.squash,
-            bias: op.bias,
+            bias: clampedBias,
           };
           continue;
         }
@@ -117,7 +126,7 @@ export function applyCoordinatedStructuralCandidate(
           uuid: op.neuronUuid,
           type: op.neuronType,
           squash: op.squash,
-          bias: op.bias,
+          bias: clampedBias,
         };
         wireToId.set(op.neuronUuid, newNeuron.id);
 
@@ -195,7 +204,14 @@ export function applyCoordinatedStructuralCandidate(
       case "setBias": {
         const neuronId = wireToId.get(op.neuronUuid);
         const n = next.neurons.find((x) => x.id === neuronId);
-        if (n) n.bias = op.bias;
+        // Issue #2421: Clamp Rust-supplied bias before assignment.
+        if (n) {
+          n.bias = clampAndTrack(
+            op.bias,
+            "rustFfi.bias",
+            "coordinated/setBias",
+          );
+        }
         continue;
       }
 
@@ -260,11 +276,17 @@ export function applyCoordinatedStructuralCandidate(
           continue;
         }
 
+        // Issue #2421: Clamp the Rust-supplied weight before use.
+        const clampedAddWeight = clampAndTrack(
+          op.weight,
+          "rustFfi.weight",
+          "coordinated/addSynapse",
+        );
         const existing = next.synapses.find((s) =>
           s.fromId === endpoints.fromId && s.toId === endpoints.toId
         );
         if (existing) {
-          existing.weight = op.weight;
+          existing.weight = clampedAddWeight;
         } else {
           const meta = removedSynapseMeta.get(
             edgeKey(endpoints.fromId, endpoints.toId),
@@ -274,7 +296,7 @@ export function applyCoordinatedStructuralCandidate(
             toId: endpoints.toId,
             fromUUID: op.fromNeuronUuid,
             toUUID: op.toNeuronUuid,
-            weight: op.weight,
+            weight: clampedAddWeight,
             type: meta?.type,
             tags: meta?.tags ? meta.tags.map((t) => ({ ...t })) : undefined,
           });
@@ -291,7 +313,12 @@ export function applyCoordinatedStructuralCandidate(
           s.fromId === endpoints.fromId && s.toId === endpoints.toId
         );
         if (existing) {
-          existing.weight = op.weight;
+          // Issue #2421: Clamp Rust-supplied weight before assignment.
+          existing.weight = clampAndTrack(
+            op.weight,
+            "rustFfi.weight",
+            "coordinated/setWeight",
+          );
         }
         // No-op if synapse doesn't exist (idempotent).
         continue;

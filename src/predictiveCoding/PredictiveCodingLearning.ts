@@ -26,6 +26,7 @@ import type { RequiredPredictiveCodingConfig } from "@config/PredictiveCodingCon
 import type { InferenceResult } from "@predictiveCoding/PredictiveCodingInference.ts";
 import { Activations } from "@methods/activations/Activations.ts";
 import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
+import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
 /** Minimum weight magnitude (plank constant). */
 const PLANK = 1e-7;
@@ -208,12 +209,25 @@ export function applyHebbianUpdate(
       newWeight = 0;
     }
 
-    synapse.weight = newWeight;
+    // Issue #2421: Clamp proactively — with extreme prediction errors and a
+    // compounding learning rate the Hebbian update can drift far outside the
+    // safe range; reactive load-time clamping has been observed to fire on
+    // values as large as 1e+195.
+    synapse.weight = clampAndTrack(
+      newWeight,
+      "predictiveCoding.weight",
+      "applyHebbianUpdate",
+    );
   }
 
   // Apply bias updates.
   for (const bg of gradients.biasGradients) {
     const neuron = creature.neurons[bg.neuronIndex];
-    neuron.bias += bg.delta;
+    // Issue #2421: Clamp proactively to keep bias in the safe range.
+    neuron.bias = clampAndTrack(
+      neuron.bias + bg.delta,
+      "predictiveCoding.bias",
+      "applyHebbianUpdate",
+    );
   }
 }

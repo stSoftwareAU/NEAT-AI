@@ -17,6 +17,7 @@ import {
   buildWireToRuntimeIdMap,
   resolveCandidateSynapseEndpoints,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
 /**
  * Removes a synapse from the creature if it is determined to be harmful.
@@ -223,7 +224,13 @@ export function addHelpfulSynapses(
     const addSynapse = {
       fromUUID: bestCandidate.fromNeuronUuid,
       toUUID: bestCandidate.toNeuronUuid,
-      weight: bestCandidate.weight,
+      // Issue #2421: Clamp Rust-supplied weight before the synapse enters
+      // the graph.
+      weight: clampAndTrack(
+        bestCandidate.weight,
+        "rustFfi.weight",
+        "addHelpfulSynapses",
+      ),
     };
 
     // Tag the new synapse so it can be identified later and survives export/import.

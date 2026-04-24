@@ -7,6 +7,7 @@ import {
 } from "@config/WeightRegularisationConfig.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
+import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
 /**
  * Upper bound on the number of (synapse, modification) draws attempted by a
@@ -110,7 +111,14 @@ export class ModWeight extends AbstractMutationOperator {
       const indx = Math.floor(rng.random() * relevantConnections.length);
       const connection = relevantConnections[indx];
 
-      const newWeight = this.calculateRegularisedWeight(connection.weight);
+      // Issue #2421: Proactively clamp the computed weight before assignment
+      // so that a runaway value cannot escape this operator even if
+      // regularisation limits were misconfigured or disabled.
+      const newWeight = clampAndTrack(
+        this.calculateRegularisedWeight(connection.weight),
+        "mutation.weight",
+        "ModWeight",
+      );
 
       if (newWeight !== connection.weight) {
         connection.weight = newWeight;

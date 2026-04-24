@@ -19,6 +19,7 @@ import {
   buildWireToRuntimeIdMap,
   resolveSingleNeuronReference,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
 /**
  * Removes a harmful neuron from the creature efficiently.
@@ -99,9 +100,15 @@ export function removeHarmfulNeuron(
       (n) => n.uuid === neuronUuid,
     );
     if (downstreamNeuron) {
-      // Apply the accumulated adjustment: averageActivation * (sum of weights)
+      // Apply the accumulated adjustment: averageActivation * (sum of weights).
+      // Issue #2421: Clamp the new bias so a runaway weight×activation product
+      // cannot drag the downstream neuron outside the safe range.
       const totalAdjustment = averageActivation * totalWeight;
-      downstreamNeuron.bias = (downstreamNeuron.bias || 0) + totalAdjustment;
+      downstreamNeuron.bias = clampAndTrack(
+        (downstreamNeuron.bias || 0) + totalAdjustment,
+        "rustFfi.bias",
+        "removeHarmfulNeuron",
+      );
     }
   });
 
@@ -254,7 +261,13 @@ export function removeLowImpactNeuron(
           n.uuid === targetUuid
         );
         if (!target) continue;
-        target.bias = (target.bias ?? 0) + (weightSum * meanActivation);
+        // Issue #2421: Clamp the bias adjustment applied during discovery
+        // removal so runaway weight×activation products cannot escape.
+        target.bias = clampAndTrack(
+          (target.bias ?? 0) + (weightSum * meanActivation),
+          "rustFfi.bias",
+          "removeLowImpactNeuron",
+        );
       }
     }
   }

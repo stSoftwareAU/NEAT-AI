@@ -14,6 +14,7 @@ import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOnlySynapseGuard.ts";
+import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
 /**
  * Selects a suitable outward connection target for a newly inserted neuron.
@@ -61,10 +62,18 @@ export class AddNeuron extends AbstractMutationOperator {
     const startUUID = CreatureUtil.makeUUID(creature);
     delete creature.uuid;
     const forwardOnly = creature.forwardOnly === true;
+    // Issue #2421: Clamp the initial bias proactively. The `rng.random() * 0.2 - 0.1`
+    // range is already safe, but running the bias through the guard keeps
+    // every neuron-creation path consistent and makes telemetry meaningful.
+    const initialBias = clampAndTrack(
+      rng.random() * 0.2 - 0.1,
+      "mutation.bias",
+      "AddNeuron",
+    );
     const neuron = new Neuron(
       nextNeuronId(),
       "hidden",
-      rng.random() * 0.2 - 0.1,
+      initialBias,
       creature,
     );
 
@@ -108,7 +117,11 @@ export class AddNeuron extends AbstractMutationOperator {
       creature.connect(
         fromIndex,
         neuron.index,
-        Synapse.randomWeight(),
+        clampAndTrack(
+          Synapse.randomWeight(),
+          "mutation.synapse",
+          "AddNeuron",
+        ),
       );
     }
 
@@ -192,7 +205,11 @@ export class AddNeuron extends AbstractMutationOperator {
       creature.connect(
         neuron.index,
         targetNeuronIndex,
-        Synapse.randomWeight(),
+        clampAndTrack(
+          Synapse.randomWeight(),
+          "mutation.synapse",
+          "AddNeuron",
+        ),
       );
     }
 
@@ -218,7 +235,11 @@ export class AddNeuron extends AbstractMutationOperator {
             creature.connect(
               neuron.index,
               candidate.index,
-              Synapse.randomWeight(),
+              clampAndTrack(
+                Synapse.randomWeight(),
+                "mutation.synapse",
+                "AddNeuron",
+              ),
             );
             connectionCreated = true;
             break;
@@ -242,7 +263,11 @@ export class AddNeuron extends AbstractMutationOperator {
             creature.connect(
               neuron.index,
               neuron.index,
-              Synapse.randomWeight(),
+              clampAndTrack(
+                Synapse.randomWeight(),
+                "mutation.synapse",
+                "AddNeuron",
+              ),
             );
             creature.clearCache(neuron.index);
             outwardConnections = creature.outwardConnections(neuron.index);

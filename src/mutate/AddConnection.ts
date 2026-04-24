@@ -10,6 +10,7 @@ import {
 import { Synapse } from "@architecture/Synapse.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
+import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
 /**
  * Maximum number of rejection sampling attempts before falling back to
@@ -136,8 +137,14 @@ export class AddConnection extends AbstractMutationOperator {
         continue;
       }
 
-      // Valid pair found — create the connection.
-      const weight = Synapse.randomWeight(options.weightScale);
+      // Valid pair found — create the connection. Clamp proactively
+      // (Issue #2421); Synapse.randomWeight is already bounded but future
+      // callers may override `weightScale` to a large value.
+      const weight = clampAndTrack(
+        Synapse.randomWeight(options.weightScale),
+        "mutation.synapse",
+        "AddConnection",
+      );
       this.creature.connect(fromIndex, toIndex, weight);
       delete this.creature.memetic;
       return true;
@@ -207,7 +214,11 @@ export class AddConnection extends AbstractMutationOperator {
       );
     }
 
-    const weight = Synapse.randomWeight(options.weightScale);
+    const weight = clampAndTrack(
+      Synapse.randomWeight(options.weightScale),
+      "mutation.synapse",
+      "AddConnection",
+    );
     this.creature.connect(fromIndex, toIndex, weight);
     delete this.creature.memetic;
     return true;
