@@ -47,6 +47,28 @@ export class Fitness {
    */
   lastQueueMaxDepth = 0;
 
+  /**
+   * Aggregate main-thread wall time spent inside `calculateScore()` during
+   * the most recent `calculate()` call, in milliseconds.
+   *
+   * Issue #2424: Isolates the scorer cost from worker evaluation so
+   * throughput diagnostics can flag machines where the main thread is the
+   * bottleneck. Accumulates across every scored creature in the fitness loop
+   * using a single `performance.now()` pair per call — cheap enough to run
+   * unconditionally.
+   */
+  lastScorerMs = 0;
+
+  /**
+   * Number of unique creatures that had their score computed on the main
+   * thread during the most recent `calculate()` call.
+   *
+   * Issue #2424: Excludes cached duplicates (resolved by UUID copy) so the
+   * derived creatures/sec metric reflects real scorer work. A single
+   * counter increment per scored creature — no per-creature logging.
+   */
+  lastScoredCreatureCount = 0;
+
   constructor(
     workers: WorkerHandler[],
     growth: number,
@@ -97,6 +119,8 @@ export class Fitness {
 
     if (uniqueQueue.length === 0) {
       this.lastQueueMaxDepth = 0;
+      this.lastScorerMs = 0;
+      this.lastScoredCreatureCount = 0;
       return;
     }
 
@@ -105,6 +129,12 @@ export class Fitness {
     // shrinks monotonically, so the initial `uniqueQueue.length` is the
     // peak backlog for the fast pool during this fitness phase.
     this.lastQueueMaxDepth = uniqueQueue.length;
+
+    // Issue #2424: Reset scorer telemetry counters. Each worker's
+    // `processNext` will increment these after every `calculateScore()`
+    // call. Using bare numeric mutation keeps the hot path allocation-free.
+    let scorerMsAccum = 0;
+    let scoredCount = 0;
 
     // Issue #1862: Sort by topology hash to cluster same-topology creatures.
     // This improves WASM compilation cache hit rates because workers pull
@@ -172,7 +202,14 @@ export class Fitness {
         creature.score = -Infinity;
       } else {
         addTag(creature, "error", error.toString());
+        // Issue #2424: Time the main-thread scorer call. One
+        // `performance.now()` pair per creature is inexpensive compared
+        // to the scorer itself and gives operators the per-generation
+        // scorer wall time they need to tune batch mode.
+        const scoreStart = performance.now();
         creature.score = calculateScore(creature, error, this.growth);
+        scorerMsAccum += performance.now() - scoreStart;
+        scoredCount++;
       }
       addTag(creature, "score", creature.score.toString());
 
@@ -203,5 +240,9 @@ export class Fitness {
 
     // Start all active workers processing the queue concurrently
     await Promise.all(activeWorkers.map((worker) => processNext(worker)));
+
+    // Issue #2424: Publish scorer telemetry for throughput metrics assembly.
+    this.lastScorerMs = scorerMsAccum;
+    this.lastScoredCreatureCount = scoredCount;
   }
 }

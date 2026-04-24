@@ -8,6 +8,7 @@
     "/\\b[A-Z][A-Z0-9]*\\b/g"
   ],
   "words": [
+    "Accum",
     "Akerman",
     "Alammar",
     "analyzed",

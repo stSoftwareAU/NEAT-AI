@@ -1,0 +1,76 @@
+==============================================================================
+Scorer batch vs per-creature throughput (Issue #2424)
+==============================================================================
+Worker latency: 1ms  Repeats: 3  Topology variants: 5
+
+Mode           Pop  Fitness(ms)  Scorer(ms)   Scored  Creatures/sec
+-------------------------------------------------------------------
+per-creature    20        12.09       0.202       20         1653.8
+batch           20        12.10       0.191       20         1652.4
+per-creature    50        31.34       0.690       50         1595.6
+batch           50        35.31       0.818       50         1416.2
+per-creature   100        62.68       1.692      100         1595.5
+batch          100        66.34       1.306      100         1507.5
+
+Speedup (batch / per-creature):
+  pop= 20  fitnessMs: 12.09 → 12.10  (1.00×)  creatures/sec: 1653.8 → 1652.4  (1.00×)
+  pop= 50  fitnessMs: 31.34 → 35.31  (0.89×)  creatures/sec: 1595.6 → 1416.2  (0.89×)
+  pop=100  fitnessMs: 62.68 → 66.34  (0.94×)  creatures/sec: 1595.5 → 1507.5  (0.94×)
+
+JSON:
+{
+  "benchmark": "ScorerBatchThroughput",
+  "issue": 2424,
+  "workerLatencyMs": 1,
+  "repeats": 3,
+  "rows": [
+    {
+      "mode": "per-creature",
+      "populationSize": 20,
+      "fitnessMs": 12.093084000000005,
+      "scorerMs": 0.2020429999999891,
+      "scoredCount": 20,
+      "creaturesPerSec": 1653.837846491432
+    },
+    {
+      "mode": "batch",
+      "populationSize": 20,
+      "fitnessMs": 12.103542000000004,
+      "scorerMs": 0.19096000000004665,
+      "scoredCount": 20,
+      "creaturesPerSec": 1652.4088568453758
+    },
+    {
+      "mode": "per-creature",
+      "populationSize": 50,
+      "fitnessMs": 31.336916000000002,
+      "scorerMs": 0.690037999999987,
+      "scoredCount": 50,
+      "creaturesPerSec": 1595.5622435851694
+    },
+    {
+      "mode": "batch",
+      "populationSize": 50,
+      "fitnessMs": 35.305624999999964,
+      "scorerMs": 0.8180000000000405,
+      "scoredCount": 50,
+      "creaturesPerSec": 1416.2049248526275
+    },
+    {
+      "mode": "per-creature",
+      "populationSize": 100,
+      "fitnessMs": 62.677832999999964,
+      "scorerMs": 1.6917459999996254,
+      "scoredCount": 100,
+      "creaturesPerSec": 1595.4603918741104
+    },
+    {
+      "mode": "batch",
+      "populationSize": 100,
+      "fitnessMs": 66.33679200000006,
+      "scorerMs": 1.306043999999929,
+      "scoredCount": 100,
+      "creaturesPerSec": 1507.4590884648132
+    }
+  ]
+}

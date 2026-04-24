@@ -814,6 +814,9 @@ export async function evolve(
     heavyBusyMs: heavyBusyDeltaMs,
     fastQueueMaxDepth,
     heavyQueueMaxDepth,
+    // Issue #2424: Scorer runtime telemetry captured inside Fitness.calculate.
+    scoredCreatureCount: neat.fitness.lastScoredCreatureCount,
+    scorerMs: neat.fitness.lastScorerMs,
   });
 
   // Issue #2239: Log per-phase timing when verbose is enabled
@@ -842,6 +845,9 @@ export async function evolve(
         ` overall=${workerUtilisation.overallCpuUtilisationPct}%`,
     );
     // Issue #2330: Log throughput summary
+    // Issue #2424: Include scorer runtime telemetry (creatures/sec, scorer
+    // wall time, and unique-scored creature count) so operators can compare
+    // batch-mode scoring gains across different hardware.
     getLogger().info(
       `[Throughput] wall=${throughput.wallClockMs}ms` +
         ` nonFitness=${throughput.nonFitnessMs}ms` +
@@ -849,7 +855,10 @@ export async function evolve(
         ` fast=busy${throughput.fastBusyMs}ms/idle${throughput.fastIdleMs}ms` +
         `/depth${throughput.fastQueueMaxDepth}/wait${throughput.fastWaitMs}ms` +
         ` heavy=busy${throughput.heavyBusyMs}ms/idle${throughput.heavyIdleMs}ms` +
-        `/depth${throughput.heavyQueueMaxDepth}/wait${throughput.heavyWaitMs}ms`,
+        `/depth${throughput.heavyQueueMaxDepth}/wait${throughput.heavyWaitMs}ms` +
+        ` scorer=${throughput.scorerMs.toFixed(1)}ms` +
+        `/scored${throughput.scoredCreatureCount}` +
+        `/creaturesPerSec${throughput.creaturesPerSec.toFixed(1)}`,
     );
   }
 

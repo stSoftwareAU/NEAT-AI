@@ -77,6 +77,10 @@ Deno.test("ThroughputMetrics - all numeric fields are finite, non-negative numbe
     "heavyIdleMs",
     "heavyQueueMaxDepth",
     "heavyWaitMs",
+    // Issue #2424: Scorer runtime telemetry
+    "scoredCreatureCount",
+    "scorerMs",
+    "creaturesPerSec",
   ];
 
   for (const field of numericFields) {
@@ -223,6 +227,46 @@ Deno.test("ThroughputMetrics - fastBusyMs is non-negative for each generation", 
       `heavyBusyMs should be non-negative, got ${throughput.heavyBusyMs}`,
     );
   }
+});
+
+Deno.test("ThroughputMetrics - scorer fields reported per generation (Issue #2424)", async () => {
+  const populationSize = 15;
+  const events = await collectGenerationEvents(1, populationSize);
+  assertGreater(events.length, 0);
+
+  for (const event of events) {
+    const throughput = event.throughput as GenerationThroughputMetrics;
+    assert(
+      throughput.scoredCreatureCount >= 0,
+      `scoredCreatureCount should be non-negative, got ${throughput.scoredCreatureCount}`,
+    );
+    assert(
+      throughput.scoredCreatureCount <= populationSize,
+      `scoredCreatureCount should be <= population (${populationSize}), ` +
+        `got ${throughput.scoredCreatureCount}`,
+    );
+    assert(
+      throughput.scorerMs >= 0,
+      `scorerMs should be non-negative, got ${throughput.scorerMs}`,
+    );
+    assert(
+      throughput.creaturesPerSec >= 0,
+      `creaturesPerSec should be non-negative, got ${throughput.creaturesPerSec}`,
+    );
+    assert(
+      Number.isFinite(throughput.creaturesPerSec),
+      `creaturesPerSec should be finite, got ${throughput.creaturesPerSec}`,
+    );
+  }
+
+  // On the first generation every creature needs evaluation, so the scored
+  // count should be positive (unless everything hashes to an identical UUID,
+  // which is effectively impossible).
+  const first = events[0].throughput as GenerationThroughputMetrics;
+  assert(
+    first.scoredCreatureCount >= 1,
+    `first-generation scoredCreatureCount should be >= 1, got ${first.scoredCreatureCount}`,
+  );
 });
 
 Deno.test("ThroughputMetrics - callback still fires without throughput field access crashing", async () => {
