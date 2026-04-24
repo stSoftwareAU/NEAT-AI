@@ -26,6 +26,7 @@ import {
 } from "@propagate/Weight.ts";
 import { coordinateBackpropUpdates } from "@propagate/BackpropCoordination.ts";
 import { noChangePropagate } from "@architecture/NoChangePropagate.ts";
+import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 import {
   fusedErrorDistribution,
   squash as wasmSquash,
@@ -81,15 +82,33 @@ export function propagateUpdate(
       config.biasWeightCoordinationFactor,
     );
 
+    // Issue #2421: Clamp proactively after backprop computes candidates so
+    // runaway gradient magnitudes cannot escape a single training step.
     for (let i = 0; i < toList.length; i++) {
-      toList[i].weight = coordinated.weights[i];
+      toList[i].weight = clampAndTrack(
+        coordinated.weights[i],
+        "training.weight",
+        "propagateUpdate/coordinated",
+      );
     }
-    neuron.bias = coordinated.bias;
+    neuron.bias = clampAndTrack(
+      coordinated.bias,
+      "training.bias",
+      "propagateUpdate/coordinated",
+    );
   } else {
     for (let i = 0; i < toList.length; i++) {
-      toList[i].weight = candidateWeights[i];
+      toList[i].weight = clampAndTrack(
+        candidateWeights[i],
+        "training.weight",
+        "propagateUpdate",
+      );
     }
-    neuron.bias = candidateBias;
+    neuron.bias = clampAndTrack(
+      candidateBias,
+      "training.bias",
+      "propagateUpdate",
+    );
   }
 }
 

@@ -6,6 +6,7 @@ import {
 } from "@config/BiasRegularisationConfig.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
+import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
 /**
  * Mutation operator that modifies neuron biases.
@@ -48,8 +49,14 @@ export class ModBias extends AbstractMutationOperator {
 
     const oldBias = neuron.bias;
 
-    // Calculate the new bias with regularisation
-    const newBias = this.calculateRegularisedBias(oldBias);
+    // Calculate the new bias with regularisation, then clamp proactively
+    // (Issue #2421) so the assigned value cannot exceed the safe range even
+    // if `maxAbsoluteBias` was disabled or mis-set.
+    const newBias = clampAndTrack(
+      this.calculateRegularisedBias(oldBias),
+      "mutation.bias",
+      "ModBias",
+    );
 
     if (newBias !== oldBias) {
       neuron.bias = newBias;
