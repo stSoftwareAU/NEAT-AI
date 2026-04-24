@@ -235,6 +235,9 @@ export class Neat {
 
   setDataDir(dataDir: string): void {
     this.dataDir = dataDir;
+    // Issue #2422: Propagate to Fitness so batch rust scoring can spawn
+    // `rust_scorer` once per generation with the dataset directory.
+    this.fitness.setDataDir(dataDir);
   }
 
   static deepCloneAndShuffle<T>(arr: T[]): T[] {

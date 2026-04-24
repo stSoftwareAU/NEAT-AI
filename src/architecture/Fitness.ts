@@ -8,6 +8,9 @@ import { ValidationError } from "@errors/ValidationError.ts";
 import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { calculate as calculateScore } from "@architecture/Score.ts";
+import { tryBatchScoreWithRustScorer } from "../score/BatchRustScorerBridge.ts";
+import { getEnvRustScorerConfig } from "../score/RustScorerBridge.ts";
+import { BatchScorerError } from "../score/BatchScorerReconciler.ts";
 import { getLogger } from "@utils/Logger.ts";
 
 /**
@@ -69,16 +72,46 @@ export class Fitness {
    */
   lastScoredCreatureCount = 0;
 
+  /**
+   * Number of `rust_scorer` processes spawned during the most recent
+   * `calculate()` call.
+   *
+   * Issue #2422: In batch mode a generation with N creatures triggers
+   * exactly one scorer process. Zero means batch mode was disabled,
+   * unavailable, or fell back to the per-creature worker path.
+   */
+  lastBatchScorerInvocations = 0;
+
+  /**
+   * Data directory passed to the external `rust_scorer` binary in batch
+   * mode (Issue #2422). `undefined` disables batch scoring regardless of
+   * configuration, matching the behaviour of environments where no dataset
+   * is wired through to Fitness.
+   */
+  private dataDir: string | undefined;
+
   constructor(
     workers: WorkerHandler[],
     growth: number,
     feedbackLoop: boolean,
     evalConfig?: RequiredParallelEvaluationConfig,
+    dataDir?: string,
   ) {
     this.workers = workers;
     this.feedbackLoop = feedbackLoop;
     this.growth = growth;
     this.evalConfig = evalConfig ?? DEFAULT_PARALLEL_EVALUATION_CONFIG;
+    this.dataDir = dataDir;
+  }
+
+  /**
+   * Issue #2422: Provide the dataset directory so batch rust scoring can
+   * invoke the external `rust_scorer` binary with `(creatures_dir, data_dir)`
+   * arguments once per generation. Without a data directory, batch scoring
+   * is skipped and the per-creature worker path is used as before.
+   */
+  setDataDir(dataDir: string): void {
+    this.dataDir = dataDir;
   }
 
   /**
@@ -121,6 +154,7 @@ export class Fitness {
       this.lastQueueMaxDepth = 0;
       this.lastScorerMs = 0;
       this.lastScoredCreatureCount = 0;
+      this.lastBatchScorerInvocations = 0;
       return;
     }
 
@@ -135,6 +169,83 @@ export class Fitness {
     // call. Using bare numeric mutation keeps the hot path allocation-free.
     let scorerMsAccum = 0;
     let scoredCount = 0;
+    this.lastBatchScorerInvocations = 0;
+
+    // Issue #2422: When the external rust scorer is enabled in directory
+    // mode, invoke it once for the whole generation, map results back to
+    // creatures, and compute each creature's score on the main thread.
+    // This eliminates the per-creature `rust_scorer` process spawn on the
+    // worker side. Any reconciliation failure is logged and we fall back
+    // to the per-creature worker path so the generation still completes.
+    const rustScorerConfig = getEnvRustScorerConfig();
+    if (
+      rustScorerConfig.enabled && rustScorerConfig.batch && this.dataDir
+    ) {
+      try {
+        const batchRun = await tryBatchScoreWithRustScorer(
+          uniqueQueue,
+          this.dataDir,
+          rustScorerConfig,
+        );
+        this.lastBatchScorerInvocations = batchRun.invocations;
+        if (batchRun.results) {
+          for (const creature of uniqueQueue) {
+            const record = batchRun.results.get(creature);
+            if (!record) continue;
+            const error = record.error;
+            if (!Number.isFinite(error) || error < 0) {
+              addTag(creature, "error", "Infinity");
+              creature.score = -Infinity;
+            } else {
+              addTag(creature, "error", error.toString());
+              const scoreStart = performance.now();
+              creature.score = calculateScore(creature, error, this.growth);
+              scorerMsAccum += performance.now() - scoreStart;
+              scoredCount++;
+            }
+            addTag(creature, "score", creature.score.toString());
+
+            // Mirror the duplicate-fan-out from the per-creature path so
+            // population score invariants hold identically in batch mode.
+            const uuid = creature.uuid;
+            if (uuid) {
+              const dupes = duplicates.get(uuid);
+              if (dupes) {
+                const errorTag = getTag(creature, "error");
+                const scoreTag = getTag(creature, "score");
+                for (const duplicate of dupes) {
+                  if (duplicate !== creature) {
+                    duplicate.score = creature.score;
+                    if (errorTag) addTag(duplicate, "error", errorTag);
+                    if (scoreTag) addTag(duplicate, "score", scoreTag);
+                  }
+                }
+              }
+            }
+          }
+          this.lastScorerMs = scorerMsAccum;
+          this.lastScoredCreatureCount = scoredCount;
+          return;
+        }
+      } catch (err) {
+        // Surface batch reconciliation failures as explicit log errors per
+        // the acceptance criteria, then fall back to the per-creature path
+        // so the generation is not lost to a transient scorer issue.
+        const detail = err instanceof Error ? err.message : String(err);
+        if (err instanceof BatchScorerError) {
+          getLogger().error(
+            `[NEAT-AI] Batch rust scorer reconciliation failed ` +
+              `(${err.reason}): ${detail}; falling back to per-creature ` +
+              `scoring.`,
+          );
+        } else {
+          getLogger().error(
+            `[NEAT-AI] Batch rust scorer invocation failed: ${detail}; ` +
+              `falling back to per-creature scoring.`,
+          );
+        }
+      }
+    }
 
     // Issue #1862: Sort by topology hash to cluster same-topology creatures.
     // This improves WASM compilation cache hit rates because workers pull

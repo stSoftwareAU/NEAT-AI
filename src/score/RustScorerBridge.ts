@@ -2,38 +2,18 @@ import { join, resolve } from "@std/path";
 import type { Creature } from "@creature";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import { getLogger } from "@utils/Logger.ts";
+import {
+  __getBatchRunner,
+  __resetInternal,
+  __setRunnerInternal,
+  buildChildEnv,
+  type CommandRunner,
+  resolveProbeState,
+} from "./RustScorerBridgeInternal.ts";
 
 interface RustScorerResult {
   error: number;
 }
-
-interface RustScorerProbeState {
-  available: boolean;
-  binaryPath: string;
-  warned: boolean;
-}
-
-type CommandRunner = (
-  command: string,
-  args: string[],
-  options: {
-    /**
-     * Environment variables to pass to the child process. When `undefined`,
-     * the child inherits the parent process environment. When provided, the
-     * mapping is passed verbatim to `Deno.Command` (callers are responsible
-     * for merging parent env if they want inheritance plus overrides).
-     */
-    env?: Record<string, string>;
-    timeoutMs: number;
-  },
-) => Promise<{
-  success: boolean;
-  code: number;
-  stdout: string;
-  stderr: string;
-}>;
-
-const probeCache = new Map<string, RustScorerProbeState>();
 
 let envRustScorerCache: RequiredRustScorerConfig | undefined;
 
@@ -82,8 +62,11 @@ function trimForLog(value: string, limit: number = LOG_TRIM_LIMIT): string {
 /**
  * Lazily resolved scorer config from environment (NEAT_AI_RUST_SCORER_*).
  * Cached for the lifetime of the process unless reset by tests.
+ *
+ * Issue #2422: Exposed so that `Fitness.calculate` can drive batch scoring
+ * from the same env-derived config as the per-creature call site.
  */
-function getEnvRustScorerConfig(): RequiredRustScorerConfig {
+export function getEnvRustScorerConfig(): RequiredRustScorerConfig {
   if (envRustScorerCache !== undefined) return envRustScorerCache;
 
   const enabled = parseBoolLike(readEnvString("NEAT_AI_RUST_SCORER_ENABLED")) ??
@@ -107,73 +90,15 @@ function getEnvRustScorerConfig(): RequiredRustScorerConfig {
     }
   }
 
-  envRustScorerCache = { enabled, binaryPath, timeoutMs, env };
+  // Issue #2422: Directory/batch mode is preferred when the external scorer
+  // is enabled. Operators can opt out with NEAT_AI_RUST_SCORER_BATCH=false to
+  // fall back to per-creature invocations.
+  const batch = parseBoolLike(readEnvString("NEAT_AI_RUST_SCORER_BATCH")) ??
+    true;
+
+  envRustScorerCache = { enabled, binaryPath, timeoutMs, env, batch };
   return envRustScorerCache;
 }
-
-/**
- * Build the env argument for a child process call.
- *
- * Returns `undefined` when no overrides are configured so the child inherits
- * the parent environment verbatim (avoids the `env: {}` foot-gun where the
- * child gets an empty environment). When overrides exist, merges them over
- * the parent env snapshot.
- */
-function buildChildEnv(
-  overrides: Record<string, string>,
-): Record<string, string> | undefined {
-  const keys = Object.keys(overrides);
-  if (keys.length === 0) return undefined;
-  let parent: Record<string, string> = {};
-  try {
-    parent = Deno.env.toObject();
-  } catch {
-    // Fall through with an empty parent snapshot; overrides still applied.
-  }
-  return { ...parent, ...overrides };
-}
-
-async function defaultRunner(
-  command: string,
-  args: string[],
-  options: {
-    env?: Record<string, string>;
-    timeoutMs: number;
-  },
-): Promise<{
-  success: boolean;
-  code: number;
-  stdout: string;
-  stderr: string;
-}> {
-  // Omit `env` from Deno.Command when the caller did not provide overrides so
-  // the child inherits the full parent environment (PATH, HOME, locale, etc.).
-  const cmdOptions: Deno.CommandOptions = options.env !== undefined
-    ? { args, env: options.env, stdout: "piped", stderr: "piped" }
-    : { args, stdout: "piped", stderr: "piped" };
-  const cmd = new Deno.Command(command, cmdOptions);
-
-  const output = options.timeoutMs > 0
-    ? await Promise.race([
-      cmd.output(),
-      new Promise<never>((_, reject) => {
-        setTimeout(
-          () => reject(new Error("rust scorer timeout")),
-          options.timeoutMs,
-        );
-      }),
-    ])
-    : await cmd.output();
-
-  return {
-    success: output.success,
-    code: output.code,
-    stdout: new TextDecoder().decode(output.stdout),
-    stderr: new TextDecoder().decode(output.stderr),
-  };
-}
-
-let runCommand: CommandRunner = defaultRunner;
 
 function getTmpDiagnostics(): string {
   let context: string;
@@ -205,39 +130,6 @@ async function getWritePermissionDiagnostics(path?: string): Promise<string> {
       error instanceof Error ? error.message : String(error)
     }>`;
   }
-}
-
-function makeProbeKey(config: RequiredRustScorerConfig): string {
-  const envKeys = Object.keys(config.env).sort();
-  const envPairs = envKeys.map((k) => `${k}=${config.env[k]}`);
-  return `${config.binaryPath}|${config.timeoutMs}|${envPairs.join(",")}`;
-}
-
-async function resolveProbeState(
-  config: RequiredRustScorerConfig,
-): Promise<RustScorerProbeState> {
-  const key = makeProbeKey(config);
-  const cached = probeCache.get(key);
-  if (cached) return cached;
-
-  let available = false;
-  try {
-    const probe = await runCommand(config.binaryPath, ["--help"], {
-      env: buildChildEnv(config.env),
-      timeoutMs: config.timeoutMs,
-    });
-    available = probe.success || probe.code === 0 || probe.code === 1;
-  } catch {
-    available = false;
-  }
-
-  const state = {
-    available,
-    binaryPath: config.binaryPath,
-    warned: false,
-  };
-  probeCache.set(key, state);
-  return state;
 }
 
 async function writeCreatureTempFile(
@@ -281,7 +173,7 @@ export async function tryScoreWithRustScorer(
     // rust_scorer resolves relative paths against its own process cwd, which
     // may not match the Deno/worker cwd. Always hand it absolute paths.
     const absoluteDataDir = resolve(Deno.cwd(), dataDir);
-    const result = await runCommand(
+    const result = await __getBatchRunner()(
       config.binaryPath,
       [creaturePath, absoluteDataDir],
       {
@@ -366,11 +258,10 @@ export async function tryScoreWithRustScorer(
 }
 
 export function __resetRustScorerBridgeForTests(): void {
-  probeCache.clear();
+  __resetInternal();
   envRustScorerCache = undefined;
-  runCommand = defaultRunner;
 }
 
 export function __setRustScorerRunnerForTests(runner: CommandRunner): void {
-  runCommand = runner;
+  __setRunnerInternal(runner);
 }
