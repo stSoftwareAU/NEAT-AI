@@ -1,8 +1,8 @@
 ## Summary
 
 Adds strict reconciliation for batch scorer output so NEAT-AI never silently
-mis-scores a generation. Introduces `src/score/BatchScorerReconciler.ts` and
-the typed `BatchScorerError` so callers can parse a single-JSON batch scorer
+mis-scores a generation. Introduces `src/score/BatchScorerReconciler.ts` and the
+typed `BatchScorerError` so callers can parse a single-JSON batch scorer
 payload, verify the result key set exactly matches the expected creature
 filename stems, and validate every result carries finite numeric `score`,
 `error`, and non-negative integer `recordCount` fields. Any key mismatch or
@@ -23,8 +23,7 @@ issue's note — no process orchestration is changed.
 - `MALFORMED_RESULT` — one or more results failed numeric-field validation.
 
 `missingKeys`, `extraKeys`, and `malformedKeys` are populated on the error so
-callers can emit structured telemetry in addition to the human-readable
-message.
+callers can emit structured telemetry in addition to the human-readable message.
 
 ## Evidence
 
@@ -68,8 +67,7 @@ Full quality gate: `./quality.sh --skip-discovery --skip-wasm` →
   - **Mismatch path** — missing keys, extra keys, combined mismatch (both
     surfaced in the same message), and deduplication of expected stems.
   - **Malformed path** — non-object result, missing numeric field, NaN,
-    infinite, negative, and non-integer `recordCount`, array-typed result,
-    and a multi-creature malformed case that reports every offender in one
-    pass.
+    infinite, negative, and non-integer `recordCount`, array-typed result, and a
+    multi-creature malformed case that reports every offender in one pass.
   - **Error type** — `BatchScorerError.reason` is exposed for programmatic
     handling and `instanceof Error` holds.
