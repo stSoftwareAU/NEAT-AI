@@ -98,4 +98,10 @@ Deno.test("shellcheck workflow file exists and is well-formed", async () => {
     /severity:\s*warning/.test(body),
     "workflow must set severity: warning",
   );
+  // Must reference the upstream koalaman/shellcheck project so the workflow
+  // sync detector recognises the lint gate (Issue #2430).
+  assert(
+    body.includes("koalaman/shellcheck"),
+    "workflow must reference koalaman/shellcheck (the upstream tool)",
+  );
 });
