@@ -14,7 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run ShellCheck
+      # Runs koalaman/shellcheck (https://github.com/koalaman/shellcheck) via the
+      # ludeeus/action-shellcheck wrapper to lint shell scripts in the repository.
+      - name: Run ShellCheck (koalaman/shellcheck)
         uses: ludeeus/action-shellcheck@master
         with:
           scandir: .
