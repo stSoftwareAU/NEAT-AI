@@ -114,7 +114,9 @@ Deno.test("distributeRecordError - shares sum to original error", () => {
   ];
   const result = distributeRecordError(7.5, links);
   const sum = result.shares.reduce((a, b) => a + b, 0);
-  assertAlmostEquals(sum, 7.5, 1e-9, "Shares should sum to original error");
+  // Issue #2416 — distributeElasticError now runs in WASM (f32). Loosen the
+  // historical f64 tolerance to a realistic f32 sum bound.
+  assertAlmostEquals(sum, 7.5, 1e-5, "Shares should sum to original error");
 });
 
 Deno.test("distributeRecordError - negative error distributes correctly", () => {

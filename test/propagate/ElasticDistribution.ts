@@ -11,6 +11,15 @@ import {
   distributeElasticError,
   type ElasticLink,
 } from "@propagate/ElasticDistribution.ts";
+import { ensureWasmActivation } from "@wasm/EnsureWasmActivation.ts";
+
+// Issue #2416 — distributeElasticError now delegates to WASM. Ensure the
+// module is loaded before any test runs.
+await ensureWasmActivation();
+
+// Issue #2416 — the WASM implementation operates in f32, so loosen the
+// tolerance from the historical f64 value used by the TS implementation.
+const F32_TOLERANCE = 1e-5;
 
 // ---------------------------------------------------------------------------
 // Error conservation — total distributed error sums to original
@@ -26,7 +35,12 @@ Deno.test("ElasticDistribution conservation - two links sum to original error", 
   const shares = distributeElasticError(error, links);
   const sum = shares.reduce((a, b) => a + b, 0);
 
-  assertAlmostEquals(sum, error, 1e-9, "Shares should sum to original error");
+  assertAlmostEquals(
+    sum,
+    error,
+    F32_TOLERANCE,
+    "Shares should sum to original error",
+  );
 });
 
 Deno.test("ElasticDistribution conservation - many links sum to original error", () => {
@@ -42,7 +56,12 @@ Deno.test("ElasticDistribution conservation - many links sum to original error",
   const shares = distributeElasticError(error, links);
   const sum = shares.reduce((a, b) => a + b, 0);
 
-  assertAlmostEquals(sum, error, 1e-9, "Sum must equal original error");
+  assertAlmostEquals(
+    sum,
+    error,
+    F32_TOLERANCE,
+    "Sum must equal original error",
+  );
 });
 
 Deno.test("ElasticDistribution conservation - negative error is conserved", () => {
@@ -56,7 +75,12 @@ Deno.test("ElasticDistribution conservation - negative error is conserved", () =
   const shares = distributeElasticError(error, links);
   const sum = shares.reduce((a, b) => a + b, 0);
 
-  assertAlmostEquals(sum, error, 1e-9, "Negative error should be conserved");
+  assertAlmostEquals(
+    sum,
+    error,
+    F32_TOLERANCE,
+    "Negative error should be conserved",
+  );
 });
 
 Deno.test("ElasticDistribution conservation - single link gets all error", () => {
@@ -66,7 +90,12 @@ Deno.test("ElasticDistribution conservation - single link gets all error", () =>
   ]);
 
   assertEquals(shares.length, 1);
-  assertAlmostEquals(shares[0], error, 1e-9, "Single link gets all error");
+  assertAlmostEquals(
+    shares[0],
+    error,
+    F32_TOLERANCE,
+    "Single link gets all error",
+  );
 });
 
 Deno.test("ElasticDistribution conservation - weight fallback preserves total", () => {
@@ -81,7 +110,7 @@ Deno.test("ElasticDistribution conservation - weight fallback preserves total", 
   assertAlmostEquals(
     sum,
     error,
-    1e-9,
+    F32_TOLERANCE,
     "Weight fallback should conserve total error",
   );
 });
@@ -98,8 +127,8 @@ Deno.test("ElasticDistribution proportional - larger activation gets more error"
   ]);
 
   // activation²: 1 and 9, so shares: 1 and 9
-  assertAlmostEquals(shares[0], 1.0, 1e-9);
-  assertAlmostEquals(shares[1], 9.0, 1e-9);
+  assertAlmostEquals(shares[0], 1.0, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 9.0, F32_TOLERANCE);
 });
 
 Deno.test("ElasticDistribution proportional - negative activations use magnitude", () => {
@@ -110,8 +139,8 @@ Deno.test("ElasticDistribution proportional - negative activations use magnitude
   ]);
 
   // activation²: 1 and 9 (same as positive)
-  assertAlmostEquals(shares[0], 1.0, 1e-9);
-  assertAlmostEquals(shares[1], 9.0, 1e-9);
+  assertAlmostEquals(shares[0], 1.0, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 9.0, F32_TOLERANCE);
 });
 
 Deno.test("ElasticDistribution proportional - equal activations produce equal shares", () => {
@@ -122,9 +151,9 @@ Deno.test("ElasticDistribution proportional - equal activations produce equal sh
     { activation: 2.0, safeZoneFactor: 1.0 },
   ]);
 
-  assertAlmostEquals(shares[0], 4.0, 1e-9);
-  assertAlmostEquals(shares[1], 4.0, 1e-9);
-  assertAlmostEquals(shares[2], 4.0, 1e-9);
+  assertAlmostEquals(shares[0], 4.0, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 4.0, F32_TOLERANCE);
+  assertAlmostEquals(shares[2], 4.0, F32_TOLERANCE);
 });
 
 // ---------------------------------------------------------------------------
@@ -138,8 +167,8 @@ Deno.test("ElasticDistribution safe zone - zero factor blocks link completely", 
     { activation: 2, safeZoneFactor: 1 },
   ]);
 
-  assertAlmostEquals(shares[0], 0, 1e-12);
-  assertAlmostEquals(shares[1], error, 1e-12);
+  assertAlmostEquals(shares[0], 0, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], error, F32_TOLERANCE);
 });
 
 Deno.test("ElasticDistribution safe zone - low factor reduces share", () => {
@@ -153,7 +182,7 @@ Deno.test("ElasticDistribution safe zone - low factor reduces share", () => {
   assertAlmostEquals(
     shares[0] + shares[1],
     error,
-    1e-9,
+    F32_TOLERANCE,
     "Sum must match error",
   );
 });
@@ -165,8 +194,8 @@ Deno.test("ElasticDistribution safe zone - factor clamped to [0, 1]", () => {
     { activation: 1.0, safeZoneFactor: 1.0 },
   ]);
 
-  assertAlmostEquals(shares[0], 5.0, 1e-9);
-  assertAlmostEquals(shares[1], 5.0, 1e-9);
+  assertAlmostEquals(shares[0], 5.0, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 5.0, F32_TOLERANCE);
 });
 
 Deno.test("ElasticDistribution safe zone - negative factor treated as zero", () => {
@@ -176,8 +205,8 @@ Deno.test("ElasticDistribution safe zone - negative factor treated as zero", () 
     { activation: 1.0, safeZoneFactor: 1.0 },
   ]);
 
-  assertAlmostEquals(shares[0], 0, 1e-9);
-  assertAlmostEquals(shares[1], 10, 1e-9);
+  assertAlmostEquals(shares[0], 0, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 10, F32_TOLERANCE);
 });
 
 // ---------------------------------------------------------------------------
@@ -192,8 +221,8 @@ Deno.test("ElasticDistribution fallback - all scores zero falls back to equal sp
   ]);
 
   assertEquals(shares.length, 2);
-  assertAlmostEquals(shares[0], 5, 1e-12);
-  assertAlmostEquals(shares[1], 5, 1e-12);
+  assertAlmostEquals(shares[0], 5, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 5, F32_TOLERANCE);
 });
 
 Deno.test("ElasticDistribution fallback - weight-based when activations are zero", () => {
@@ -204,8 +233,8 @@ Deno.test("ElasticDistribution fallback - weight-based when activations are zero
   ]);
 
   // Weight-based fallback: scores 1²=1 and 3²=9
-  assertAlmostEquals(shares[0], 1, 1e-9);
-  assertAlmostEquals(shares[1], 9, 1e-9);
+  assertAlmostEquals(shares[0], 1, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 9, F32_TOLERANCE);
 });
 
 Deno.test("ElasticDistribution fallback - equal split when no weights or activations", () => {
@@ -217,10 +246,10 @@ Deno.test("ElasticDistribution fallback - equal split when no weights or activat
     { activation: 0, safeZoneFactor: 1 },
   ]);
 
-  assertAlmostEquals(shares[0], 2.5, 1e-9);
-  assertAlmostEquals(shares[1], 2.5, 1e-9);
-  assertAlmostEquals(shares[2], 2.5, 1e-9);
-  assertAlmostEquals(shares[3], 2.5, 1e-9);
+  assertAlmostEquals(shares[0], 2.5, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 2.5, F32_TOLERANCE);
+  assertAlmostEquals(shares[2], 2.5, F32_TOLERANCE);
+  assertAlmostEquals(shares[3], 2.5, F32_TOLERANCE);
 });
 
 // ---------------------------------------------------------------------------
@@ -233,8 +262,8 @@ Deno.test("ElasticDistribution edge - zero error distributes zeros", () => {
     { activation: 2.0, safeZoneFactor: 1.0 },
   ]);
 
-  assertAlmostEquals(shares[0], 0, 1e-12);
-  assertAlmostEquals(shares[1], 0, 1e-12);
+  assertAlmostEquals(shares[0], 0, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 0, F32_TOLERANCE);
 });
 
 Deno.test("ElasticDistribution edge - empty links returns empty array", () => {
@@ -257,8 +286,8 @@ Deno.test("ElasticDistribution edge - non-finite activation treated as zero scor
     { activation: 2.0, safeZoneFactor: 1.0 },
   ]);
 
-  assertAlmostEquals(shares[0], 0, 1e-9);
-  assertAlmostEquals(shares[1], error, 1e-9);
+  assertAlmostEquals(shares[0], 0, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], error, F32_TOLERANCE);
 });
 
 Deno.test("ElasticDistribution edge - non-finite safeZoneFactor treated as zero score", () => {
@@ -268,6 +297,6 @@ Deno.test("ElasticDistribution edge - non-finite safeZoneFactor treated as zero 
     { activation: 1.0, safeZoneFactor: 1.0 },
   ]);
 
-  assertAlmostEquals(shares[0], 0, 1e-9);
-  assertAlmostEquals(shares[1], error, 1e-9);
+  assertAlmostEquals(shares[0], 0, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], error, F32_TOLERANCE);
 });
