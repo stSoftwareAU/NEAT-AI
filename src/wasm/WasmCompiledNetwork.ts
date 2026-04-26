@@ -71,6 +71,22 @@ export interface WasmCompiledNetwork {
   // deno-lint-ignore camelcase
   reset_state(): void;
 
+  /**
+   * Issue #2417 — Export this network as a DOT (Graphviz) string.
+   *
+   * `num_outputs` is required because `CompiledNetwork` itself does not
+   * record the output count — outputs are the last `num_outputs` neurons
+   * by construction.
+   */
+  // deno-lint-ignore camelcase
+  to_dot(num_outputs: number): string;
+
+  /**
+   * Issue #2417 — Export this network as a topology JSON string.
+   */
+  // deno-lint-ignore camelcase
+  to_topology_json(num_outputs: number): string;
+
   /** Number of input neurons. */
   // deno-lint-ignore camelcase
   readonly num_inputs: number;

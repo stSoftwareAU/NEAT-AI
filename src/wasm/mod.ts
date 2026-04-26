@@ -141,3 +141,12 @@ export {
   type PreWarmResult,
   preWarmWasmCache,
 } from "@wasm/WasmCachePreWarmer.ts";
+
+// Issue #2417 - Topology DOT/JSON export delegating to NEAT-AI-core
+export {
+  exportTopologyDot,
+  exportTopologyJson,
+  type TopologyExportJson,
+  type TopologyExportNode,
+  type TopologyExportSynapse,
+} from "@wasm/WasmTopologyExport.ts";
