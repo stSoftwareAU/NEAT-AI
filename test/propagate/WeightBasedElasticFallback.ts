@@ -1,5 +1,14 @@
 import { assertAlmostEquals } from "@std/assert";
 import { distributeElasticError } from "@propagate/ElasticDistribution.ts";
+import { ensureWasmActivation } from "@wasm/EnsureWasmActivation.ts";
+
+// Issue #2416 — distributeElasticError now delegates to WASM. Ensure the
+// module is loaded before any test runs.
+await ensureWasmActivation();
+
+// Issue #2416 — the WASM implementation operates in f32, so loosen the
+// tolerance from the historical f64 value used by the TS implementation.
+const F32_TOLERANCE = 1e-5;
 
 Deno.test("distributeElasticError: weight-based fallback prefers larger weights when activations are zero", () => {
   const error = 10;
@@ -12,9 +21,9 @@ Deno.test("distributeElasticError: weight-based fallback prefers larger weights 
 
   // With weight-based fallback, scores are 1² and 3² = 1 and 9
   // So shares should be 10 * 1/10 = 1 and 10 * 9/10 = 9
-  assertAlmostEquals(shares[0], 1, 1e-12);
-  assertAlmostEquals(shares[1], 9, 1e-12);
-  assertAlmostEquals(shares[0] + shares[1], error, 1e-12);
+  assertAlmostEquals(shares[0], 1, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 9, F32_TOLERANCE);
+  assertAlmostEquals(shares[0] + shares[1], error, F32_TOLERANCE);
 });
 
 Deno.test("distributeElasticError: weight-based fallback with equal weights gives equal split", () => {
@@ -26,9 +35,9 @@ Deno.test("distributeElasticError: weight-based fallback with equal weights give
   ]);
 
   // Equal weights => equal shares
-  assertAlmostEquals(shares[0], 4, 1e-12);
-  assertAlmostEquals(shares[1], 4, 1e-12);
-  assertAlmostEquals(shares[2], 4, 1e-12);
+  assertAlmostEquals(shares[0], 4, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 4, F32_TOLERANCE);
+  assertAlmostEquals(shares[2], 4, F32_TOLERANCE);
 });
 
 Deno.test("distributeElasticError: weight-based fallback uses absolute weight", () => {
@@ -40,8 +49,8 @@ Deno.test("distributeElasticError: weight-based fallback uses absolute weight", 
   ]);
 
   // Scores: (-3)²=9 and 1²=1 => shares 9 and 1
-  assertAlmostEquals(shares[0], 9, 1e-12);
-  assertAlmostEquals(shares[1], 1, 1e-12);
+  assertAlmostEquals(shares[0], 9, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 1, F32_TOLERANCE);
 });
 
 Deno.test("distributeElasticError: falls back to equal split only when both activations and weights are zero", () => {
@@ -53,8 +62,8 @@ Deno.test("distributeElasticError: falls back to equal split only when both acti
   ]);
 
   // Should still equal-split when no weight info available
-  assertAlmostEquals(shares[0], 5, 1e-12);
-  assertAlmostEquals(shares[1], 5, 1e-12);
+  assertAlmostEquals(shares[0], 5, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 5, F32_TOLERANCE);
 });
 
 Deno.test("distributeElasticError: activation-based scoring takes priority over weight-based", () => {
@@ -67,8 +76,8 @@ Deno.test("distributeElasticError: activation-based scoring takes priority over 
 
   // Activation-based scores: 1²=1 and 2²=4
   // Shares: 2 and 8 (weights are irrelevant since activations are available)
-  assertAlmostEquals(shares[0], 2, 1e-12);
-  assertAlmostEquals(shares[1], 8, 1e-12);
+  assertAlmostEquals(shares[0], 2, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 8, F32_TOLERANCE);
 });
 
 Deno.test("distributeElasticError: weight-based fallback with all zero weights falls back to equal split", () => {
@@ -79,8 +88,8 @@ Deno.test("distributeElasticError: weight-based fallback with all zero weights f
   ]);
 
   // All weights zero => true equal split (last resort)
-  assertAlmostEquals(shares[0], 5, 1e-12);
-  assertAlmostEquals(shares[1], 5, 1e-12);
+  assertAlmostEquals(shares[0], 5, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 5, F32_TOLERANCE);
 });
 
 Deno.test("distributeElasticError: preserves backward compatibility without weight field", () => {
@@ -91,8 +100,8 @@ Deno.test("distributeElasticError: preserves backward compatibility without weig
     { activation: 2, safeZoneFactor: 1 },
   ]);
 
-  assertAlmostEquals(shares[0], 2, 1e-12);
-  assertAlmostEquals(shares[1], 8, 1e-12);
+  assertAlmostEquals(shares[0], 2, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 8, F32_TOLERANCE);
 });
 
 Deno.test("distributeElasticError: weight fallback with tiny activations below plankConstant", () => {
@@ -106,6 +115,6 @@ Deno.test("distributeElasticError: weight fallback with tiny activations below p
 
   // Activation scores are ~1e-30 (below plankConstant), so weight fallback kicks in
   // Weight scores: 1²=1, 2²=4 => shares 6/5*1=1.2 and 6/5*4=4.8
-  assertAlmostEquals(shares[0], 1.2, 1e-12);
-  assertAlmostEquals(shares[1], 4.8, 1e-12);
+  assertAlmostEquals(shares[0], 1.2, F32_TOLERANCE);
+  assertAlmostEquals(shares[1], 4.8, F32_TOLERANCE);
 });
