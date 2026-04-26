@@ -72,6 +72,11 @@ at the expected release URL.
 - CI runs `./quality.sh`, which calls `./build.sh --verify-only`. CI MUST NOT
   advance `deno.json` `neatCore.rev` automatically — bumps are explicit human
   (or worker) actions, mirroring the GRQ ← NEAT-AI flow.
+- The publish workflow (`.github/workflows/publish.yml`) also calls
+  `./build.sh --verify-only`. The default `GITHUB_TOKEN` cannot read commits in
+  `NEAT-AI-core`, so any attempt to resolve Develop HEAD from the publish job
+  will fail (issue #2439). Verify-only sidesteps that by trusting the rev
+  already pinned in `deno.json` and the vendored `wasm_activation/pkg`.
 - `wasm_activation/pkg` may change whenever a maintainer (or worker) runs
   `./build.sh` and commits the result.
 - No Cargo, `rustc`, or `wasm-pack` steps run in this repo.
