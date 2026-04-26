@@ -517,3 +517,23 @@ export {
   isSquashSupported,
 } from "@onnx/mod.ts";
 export type { OnnxCompatibilityResult, OnnxExportOptions } from "@onnx/mod.ts";
+
+/**
+ * Topology DOT / JSON export
+ *
+ * Issue #2417: Thin wrappers over the NEAT-AI-core `CompiledNetwork.to_dot`
+ * and `CompiledNetwork.to_topology_json` bindings. Returns Graphviz DOT or
+ * structured JSON for external tooling (renderers, snapshots, viewers)
+ * without re-implementing the formatter on the TS side.
+ *
+ * @see {@link module:src/wasm/WasmTopologyExport}
+ */
+export {
+  exportTopologyDot,
+  exportTopologyJson,
+} from "@wasm/WasmTopologyExport.ts";
+export type {
+  TopologyExportJson,
+  TopologyExportNode,
+  TopologyExportSynapse,
+} from "@wasm/WasmTopologyExport.ts";
