@@ -17,6 +17,7 @@ import { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
 import { TypedTopology } from "@architecture/TypedTopology.ts";
 import { wasmPropagateTopological } from "@wasm/WasmStandaloneFunctions.ts";
 import { getPropagateTopologicalFn } from "@wasm/WasmModuleLoader.ts";
+import { noChangePropagate } from "@architecture/NoChangePropagate.ts";
 
 /** Neuron type constants matching the Rust side. */
 const NEURON_TYPE_INPUT = 0;
@@ -35,7 +36,13 @@ const INWARD_MAP_STRIDE = 8;
 
 /**
  * Attempt to run topological backpropagation via WASM.
- * Returns true if WASM handled the propagation, false if TS fallback is needed.
+ *
+ * Issue #2416 — the TypeScript fallbacks have been removed; this shim now
+ * returns false only when the WASM module is genuinely unavailable. All
+ * other cases (batchSize === 1, no-error early-out, in-loop noChange paths)
+ * are handled by the canonical Rust implementation in
+ * `neat-core/src/topological_backprop.rs` and surfaced through the WASM
+ * result buffer.
  */
 export function wasmTopologicalBackprop(
   creature: Creature,
@@ -46,31 +53,6 @@ export function wasmTopologicalBackprop(
   // Early bail: avoid side effects if WASM is unavailable.
   if (!getPropagateTopologicalFn()) {
     return false;
-  }
-
-  // Guard: batchSize === 1 causes mid-loop weight/bias recalculation in the
-  // TS path (adjustedWeight/adjustedBias recompute after each accumulation).
-  // The WASM path uses pre-computed values and cannot replicate this.
-  if (config.batchSize === 1) {
-    return false;
-  }
-
-  // Quick check: if all outputs match expected (within plank constant),
-  // all neurons will be noChange. Bail early to avoid unnecessary
-  // serialisation and side effects from adjustedActivation calls.
-  {
-    let allOutputsMatch = true;
-    const lastOut = creature.neurons.length - creature.output;
-    for (let i = 0; i < creature.output; i++) {
-      const act = creature.state.activations[lastOut + i];
-      if (Math.abs(expected[i] - act) >= config.plankConstant) {
-        allOutputsMatch = false;
-        break;
-      }
-    }
-    if (allOutputsMatch) {
-      return false;
-    }
   }
 
   creature.state.cacheAdjustedActivation.clear();
@@ -314,18 +296,12 @@ export function wasmTopologicalBackprop(
   const synapseResultStride = 7;
   const state = creature.state;
 
-  // Pre-check: if any neuron hit the noChange path (NEG_INFINITY sentinel),
-  // fall back to TS entirely. The recursive noChangePropagate behaviour
-  // cannot be replicated in WASM.
-  for (let i = 0; i < neuronCount; i++) {
-    const nbase = i * neuronResultStride;
-    if (result[nbase + 1] === -Infinity) {
-      return false;
-    }
-  }
-
-  // Check if any neurons need TS fallback (IF/MAXIMUM/MINIMUM).
+  // Check if any neurons need the custom-propagate handler (IF/MAXIMUM/MINIMUM)
+  // and collect any neurons that hit the WASM-side noChange path so that the
+  // recursive parent-marking semantics of `noChangePropagate` can be applied
+  // afterwards in TS. Issue #2416.
   let needsTsFallback = false;
+  const noChangeNeurons: number[] = [];
 
   for (let i = 0; i < neuronCount; i++) {
     const nbase = i * neuronResultStride;
@@ -337,7 +313,8 @@ export function wasmTopologicalBackprop(
     const totalAdjBiasDelta = result[nbase + 5];
     const traceAct = result[nbase + 6];
 
-    // Check for special neuron sentinel (INFINITY = needs TS fallback).
+    // Check for special neuron sentinel (POSITIVE INFINITY = custom propagate
+    // method handled by handleSpecialNeuronFallback below).
     if (cachedAct === Infinity) {
       needsTsFallback = true;
       continue;
@@ -346,6 +323,16 @@ export function wasmTopologicalBackprop(
     if (totalErrorDelta > 0) {
       const ns = state.node(i);
       ns.totalErrorAbsolute += totalErrorDelta;
+    }
+
+    // NEGATIVE INFINITY signals the in-loop noChange path on the WASM side —
+    // the cached activation is intentionally absent for those neurons. Skip
+    // the cache write here; the recursive `noChangePropagate` pass below will
+    // populate the cache, the noChange flag, the trace, and bias accumulators
+    // exactly as the original TS implementation did.
+    if (cachedAct === -Infinity) {
+      noChangeNeurons.push(i);
+      continue;
     }
 
     if (!isNaN(cachedAct)) {
@@ -367,6 +354,19 @@ export function wasmTopologicalBackprop(
     if (!isNaN(traceAct)) {
       const ns = state.node(i);
       ns.traceActivation(traceAct);
+    }
+  }
+
+  // Apply `noChangePropagate` for every neuron that WASM flagged with the
+  // NEG_INFINITY sentinel. This walks upstream and marks dependent parents as
+  // noChange + records their trace activations — semantics that the WASM core
+  // intentionally delegates back to TS.
+  if (noChangeNeurons.length > 0) {
+    for (const neuronIndex of noChangeNeurons) {
+      const neuron = neurons[neuronIndex];
+      const activation = adjActivations[neuronIndex];
+      noChangePropagate(neuron, activation, config);
+      state.cacheAdjustedActivation.set(neuronIndex, activation);
     }
   }
 
