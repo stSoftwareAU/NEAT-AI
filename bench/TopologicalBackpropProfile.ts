@@ -22,7 +22,7 @@ import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
 import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
-import { computeReverseTopologicalOrder } from "@propagate/TopologicalOrder.ts";
+import { TypedTopology } from "@architecture/TypedTopology.ts";
 import {
   fusedErrorDistribution,
   squash as wasmSquash,
@@ -184,14 +184,14 @@ Deno.bench({
   group: "topo-order",
   baseline: true,
 }, () => {
-  computeReverseTopologicalOrder(mediumCreature);
+  TypedTopology.fromCreature(mediumCreature).computeReverseTopologicalOrder();
 });
 
 Deno.bench({
   name: `Topological order - large (${largeCreature.neurons.length}N)`,
   group: "topo-order",
 }, () => {
-  computeReverseTopologicalOrder(largeCreature);
+  TypedTopology.fromCreature(largeCreature).computeReverseTopologicalOrder();
 });
 
 // 2. State lookups and adjusted values (JS overhead)

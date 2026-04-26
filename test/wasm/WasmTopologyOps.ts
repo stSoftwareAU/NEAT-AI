@@ -5,31 +5,21 @@
  * Issue #1959: Migrate topology validation, connection availability
  * scanning, and neuron dependency analysis to WASM/Rust.
  *
- * Tests verify WASM results match the existing TypeScript implementations.
+ * Issue #2415: TS fallbacks were removed once NEAT-AI-core stabilised.
+ * These tests now exercise the WASM-backed API directly. Validation
+ * cases that previously used hand-built typed arrays now build a
+ * `TypedTopology` and rely on the production code path.
  */
 
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
 import { TypedTopology } from "@architecture/TypedTopology.ts";
 import {
-  TOPOLOGY_BACKWARD_CONNECTION,
-  TOPOLOGY_DUPLICATE_CONNECTION,
-  TOPOLOGY_SELF_CONNECTION,
-  TOPOLOGY_SORT_ERROR_FROM,
-  TOPOLOGY_SORT_ERROR_TO,
+  scanAvailableConnections,
   TOPOLOGY_VALID,
   validateTopology,
-  validateTopologyTS,
 } from "@wasm/WasmTopologyOps.ts";
-import {
-  scanAvailableConnections,
-  scanAvailableConnectionsTS,
-} from "@wasm/WasmTopologyOps.ts";
-import {
-  computeReverseTopologicalOrder as wasmComputeOrder,
-  computeReverseTopologicalOrderTS,
-} from "@wasm/WasmTopologyOps.ts";
-import { computeReverseTopologicalOrder } from "@propagate/TopologicalOrder.ts";
+import { computeReverseTopologicalOrder as wasmComputeOrder } from "@wasm/WasmTopologyOps.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 // ---------------------------------------------------------------------------
@@ -128,83 +118,24 @@ Deno.test("validateTopology: larger valid creature returns VALID", () => {
   assertEquals(result.valid, true);
 });
 
-Deno.test("validateTopology: detects self-connection", () => {
-  // Manually create typed arrays with a self-connection
-  const fromIndices = new Uint32Array([0, 2, 2]);
-  const toIndices = new Uint32Array([2, 2, 3]); // index 1: from=2, to=2 is self-loop
+Deno.test("validateTopology: empty creature is valid", () => {
+  const creature = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "output-0", weight: 0.3 },
+      { fromUUID: "input-1", toUUID: "output-0", weight: 0.4 },
+    ],
+  });
+  const topo = TypedTopology.fromCreature(creature);
 
-  const result = validateTopologyTS(fromIndices, toIndices);
-
-  assertEquals(result.errorCode, TOPOLOGY_SELF_CONNECTION);
-  assertEquals(result.valid, false);
-  assertEquals(result.synapseIndex, 1);
-});
-
-Deno.test("validateTopology: detects backward connection", () => {
-  const fromIndices = new Uint32Array([0, 3, 2]);
-  const toIndices = new Uint32Array([2, 1, 3]); // index 1: from=3 > to=1
-
-  const result = validateTopologyTS(fromIndices, toIndices);
-
-  assertEquals(result.errorCode, TOPOLOGY_BACKWARD_CONNECTION);
-  assertEquals(result.valid, false);
-  assertEquals(result.synapseIndex, 1);
-});
-
-Deno.test("validateTopology: detects sort error in from indices", () => {
-  // from indices not non-decreasing: [0, 2, 1]
-  const fromIndices = new Uint32Array([0, 2, 1]);
-  const toIndices = new Uint32Array([2, 3, 3]);
-
-  const result = validateTopologyTS(fromIndices, toIndices);
-
-  assertEquals(result.errorCode, TOPOLOGY_SORT_ERROR_FROM);
-  assertEquals(result.valid, false);
-  assertEquals(result.synapseIndex, 2);
-});
-
-Deno.test("validateTopology: detects sort error in to indices within same from", () => {
-  // Same from=0, to not increasing: [3, 2]
-  const fromIndices = new Uint32Array([0, 0]);
-  const toIndices = new Uint32Array([3, 2]);
-
-  const result = validateTopologyTS(fromIndices, toIndices);
-
-  assertEquals(result.errorCode, TOPOLOGY_SORT_ERROR_TO);
-  assertEquals(result.valid, false);
-  assertEquals(result.synapseIndex, 1);
-});
-
-Deno.test("validateTopology: detects duplicate connection", () => {
-  const fromIndices = new Uint32Array([0, 0]);
-  const toIndices = new Uint32Array([2, 2]);
-
-  const result = validateTopologyTS(fromIndices, toIndices);
-
-  assertEquals(result.errorCode, TOPOLOGY_DUPLICATE_CONNECTION);
-  assertEquals(result.valid, false);
-  assertEquals(result.synapseIndex, 1);
-});
-
-Deno.test("validateTopology: empty synapses are valid", () => {
-  const fromIndices = new Uint32Array(0);
-  const toIndices = new Uint32Array(0);
-
-  const result = validateTopologyTS(fromIndices, toIndices);
+  const result = validateTopology(topo);
 
   assertEquals(result.errorCode, TOPOLOGY_VALID);
   assertEquals(result.valid, true);
-});
-
-Deno.test("validateTopology: WASM and TS produce identical results for valid creature", () => {
-  const creature = makeLargerCreature();
-  const topo = TypedTopology.fromCreature(creature);
-
-  const tsResult = validateTopologyTS(topo.fromIndices, topo.toIndices);
-  const wasmResult = validateTopology(topo);
-
-  assertEquals(wasmResult.valid, tsResult.valid);
-  assertEquals(wasmResult.errorCode, tsResult.errorCode);
 });
 
 // ===========================================================================
@@ -273,36 +204,6 @@ Deno.test("scanAvailableConnections: excludes constant target neurons", () => {
   }
 });
 
-Deno.test("scanAvailableConnections: matches existing TS implementation", () => {
-  const creature = makeLargerCreature();
-  const topo = TypedTopology.fromCreature(creature);
-
-  // Get results from both implementations
-  const tsResult = scanAvailableConnectionsTS(
-    topo.fromIndices,
-    topo.toIndices,
-    topo.isConstant,
-    topo.numNeurons,
-    topo.numInputs,
-  );
-  const wasmResult = scanAvailableConnections(topo);
-
-  // Both should return the same connections (order should match too)
-  assertEquals(wasmResult.length, tsResult.length);
-  for (let i = 0; i < wasmResult.length; i++) {
-    assertEquals(
-      wasmResult[i][0],
-      tsResult[i][0],
-      `From mismatch at index ${i}`,
-    );
-    assertEquals(
-      wasmResult[i][1],
-      tsResult[i][1],
-      `To mismatch at index ${i}`,
-    );
-  }
-});
-
 Deno.test("scanAvailableConnections: matches CreatureTopology.computeAvailableConnections", () => {
   const creature = makeLargerCreature();
   const topo = TypedTopology.fromCreature(creature);
@@ -310,7 +211,7 @@ Deno.test("scanAvailableConnections: matches CreatureTopology.computeAvailableCo
   // Use the existing creature method
   const creatureAvailable = creature.getAvailableConnections();
 
-  // Use the WASM/TS topology ops
+  // Use the WASM topology ops
   const topoAvailable = scanAvailableConnections(topo);
 
   assertEquals(topoAvailable.length, creatureAvailable.length);
@@ -354,42 +255,37 @@ Deno.test("computeReverseTopologicalOrder: excludes input neurons", () => {
   }
 });
 
-Deno.test("computeReverseTopologicalOrder: matches existing TS implementation", () => {
-  const creature = makeLargerCreature();
+Deno.test("computeReverseTopologicalOrder: outputs appear before their producers", () => {
+  // Issue #1641: For a chain Input -> H1 -> H2 -> Output, the order must
+  // place the output first, then H2, then H1 — each producer after every
+  // downstream consumer.
+  const creature = Creature.fromJSON({
+    input: 1,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "h1", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h2", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "h1", weight: 1 },
+      { fromUUID: "h1", toUUID: "h2", weight: 1 },
+      { fromUUID: "h2", toUUID: "output-0", weight: 1 },
+    ],
+  });
+
   const topo = TypedTopology.fromCreature(creature);
+  const order = wasmComputeOrder(topo);
 
-  // Existing TS implementation
-  const tsOrder = computeReverseTopologicalOrder(creature);
+  const outputIdx = creature.neurons.findIndex((n) => n.type === "output");
+  const h1Idx = creature.neurons.findIndex((n) => n.uuid === "h1");
+  const h2Idx = creature.neurons.findIndex((n) => n.uuid === "h2");
 
-  // WASM topology ops implementation
-  const wasmOrder = wasmComputeOrder(topo);
-
-  assertEquals(wasmOrder.length, tsOrder.length);
-  for (let i = 0; i < wasmOrder.length; i++) {
-    assertEquals(
-      wasmOrder[i],
-      tsOrder[i],
-      `Order mismatch at position ${i}: WASM=${wasmOrder[i]} TS=${tsOrder[i]}`,
-    );
-  }
-});
-
-Deno.test("computeReverseTopologicalOrder: TS fallback matches for simple creature", () => {
-  const creature = makeSimpleCreature();
-  const topo = TypedTopology.fromCreature(creature);
-
-  const tsOrder = computeReverseTopologicalOrder(creature);
-  const fallback = computeReverseTopologicalOrderTS(
-    topo.fromIndices,
-    topo.toIndices,
-    topo.numNeurons,
-    topo.numInputs,
+  assertEquals(order[0], outputIdx, "Output neuron should be first");
+  assert(
+    order.indexOf(h2Idx) < order.indexOf(h1Idx),
+    "h2 (closer to output) should appear before h1",
   );
-
-  assertEquals(fallback.length, tsOrder.length);
-  for (let i = 0; i < fallback.length; i++) {
-    assertEquals(fallback[i], tsOrder[i]);
-  }
 });
 
 Deno.test("computeReverseTopologicalOrder: handles creature with constant neuron", () => {
@@ -439,4 +335,28 @@ Deno.test("computeReverseTopologicalOrder: empty creature returns only output", 
 
   assertEquals(order.length, 1);
   assertEquals(order[0], 2); // Output neuron at index 2 (after 2 inputs)
+});
+
+Deno.test("computeReverseTopologicalOrder: disconnected neurons still appear", () => {
+  // Issue #1641 behaviour: disconnected hidden neurons must still be
+  // included in the order so the backprop loop visits every neuron.
+  const creature = Creature.fromJSON({
+    input: 1,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "h1", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "h-disconnected", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "h1", weight: 1 },
+      { fromUUID: "h1", toUUID: "output-0", weight: 1 },
+      // h-disconnected has no connections
+    ],
+  });
+
+  const topo = TypedTopology.fromCreature(creature);
+  const order = wasmComputeOrder(topo);
+
+  assertEquals(order.length, 3, "Should include all 3 non-input neurons");
 });

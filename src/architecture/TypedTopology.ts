@@ -251,8 +251,8 @@ export class TypedTopology {
   /**
    * Validate forward-only topology constraints.
    *
-   * Issue #1959: Uses WASM when available, falls back to TypeScript.
-   * Checks synapse sorting, self-connections, and backward connections.
+   * Issue #1959/#2415: Delegates to NEAT-AI-core via WASM. Checks synapse
+   * sorting, self-connections, and backward connections.
    */
   validateForwardOnly(): TopologyValidationResult {
     return wasmValidate(this);
@@ -261,9 +261,9 @@ export class TypedTopology {
   /**
    * Scan for available forward-only connection slots.
    *
-   * Issue #1959: Uses WASM when available, falls back to TypeScript.
-   * Returns all (from, to) pairs where from < to, to >= numInputs,
-   * target is not constant, and no connection exists.
+   * Issue #1959/#2415: Delegates to NEAT-AI-core via WASM. Returns all
+   * (from, to) pairs where from < to, to >= numInputs, target is not
+   * constant, and no connection exists.
    */
   scanAvailableConnections(): [number, number][] {
     return wasmScanAvailable(this);
@@ -272,9 +272,9 @@ export class TypedTopology {
   /**
    * Compute reverse topological order for backpropagation.
    *
-   * Issue #1959: Uses WASM when available, falls back to TypeScript.
-   * Returns neuron indices with output neurons first, hidden neurons
-   * after their downstream consumers. Input neurons are excluded.
+   * Issue #1959/#2415: Delegates to NEAT-AI-core via WASM. Returns neuron
+   * indices with output neurons first, hidden neurons after their
+   * downstream consumers. Input neurons are excluded.
    */
   computeReverseTopologicalOrder(): number[] {
     return wasmComputeOrder(this);
@@ -283,9 +283,9 @@ export class TypedTopology {
   /**
    * Validate structural integrity of the topology.
    *
-   * Issue #1961: Uses WASM when available, falls back to TypeScript.
-   * Checks connection counts, bias finiteness, constant neuron
-   * constraints, hidden neuron connectivity, and IF neuron requirements.
+   * Issue #1961/#2415: Delegates to NEAT-AI-core via WASM. Checks
+   * connection counts, bias finiteness, constant neuron constraints,
+   * hidden neuron connectivity, and IF neuron requirements.
    */
   validateStructuralIntegrity(): StructuralValidationResult {
     return wasmValidateStructural(this);
@@ -294,8 +294,8 @@ export class TypedTopology {
   /**
    * Detect whether the topology contains cycles among non-input neurons.
    *
-   * Issue #1961: Uses WASM when available, falls back to TypeScript.
-   * Returns true if any cycle exists (including self-loops).
+   * Issue #1961/#2415: Delegates to NEAT-AI-core via WASM. Returns true
+   * if any cycle exists (including self-loops).
    */
   detectCycles(): boolean {
     return wasmDetectCycles(this);

@@ -305,8 +305,10 @@ have been migrated to WASM/Rust:
   algorithm for reverse topological order (backpropagation ordering)
 
 These operations accept typed arrays directly from `TypedTopology` via
-wasm-bindgen slice passing — no custom binary serialisation required. Each
-function has a TypeScript fallback so the system works without WASM.
+wasm-bindgen slice passing — no custom binary serialisation required. The WASM
+bundle is mandatory at runtime; missing-bundle errors fail fast with an
+actionable message (see Issue #2415 — TS fallbacks were removed once
+NEAT-AI-core stabilised).
 
 Convenience methods on `TypedTopology`:
 
@@ -316,9 +318,11 @@ Convenience methods on `TypedTopology`:
 
 Implementation files:
 
-- `wasm_activation/src/topology_ops.rs` — Rust WASM functions
-- `src/wasm/WasmTopologyOps.ts` — TypeScript wrappers with fallbacks
-- `test/wasm/WasmTopologyOps.ts` — 21 tests verifying WASM/TS equivalence
+- `wasm_activation/src/topology_ops.rs` — Rust WASM functions (vendored from the
+  pinned NEAT-AI-core revision)
+- `src/wasm/WasmTopologyOps.ts` — Thin TypeScript wrappers around the WASM
+  exports
+- `test/wasm/WasmTopologyOps.ts` — Behavioural tests over the WASM-backed API
 
 ---
 

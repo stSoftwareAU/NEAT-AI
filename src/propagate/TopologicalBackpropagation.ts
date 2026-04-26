@@ -30,7 +30,7 @@ import {
 import { SquashType } from "@wasm/SquashType.ts";
 import { adjustedActivation } from "@neuron/NeuronPropagation.ts";
 import { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
-import { computeReverseTopologicalOrder } from "@propagate/TopologicalOrder.ts";
+import { TypedTopology } from "@architecture/TypedTopology.ts";
 import { wasmTopologicalBackprop } from "@propagate/WasmTopologicalBackprop.ts";
 
 /**
@@ -68,7 +68,8 @@ export function propagateTopological(
   const inputCount = creature.input;
 
   // Get reverse topological order (outputs first, then hidden toward inputs).
-  const order = computeReverseTopologicalOrder(creature);
+  const order = TypedTopology.fromCreature(creature)
+    .computeReverseTopologicalOrder();
 
   // Accumulator: for each neuron, collect the sum of activation deltas
   // requested by all downstream connections.
