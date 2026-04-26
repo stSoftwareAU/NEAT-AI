@@ -52,10 +52,17 @@ Deno.test("MCMC disabled: all mutations accepted (existing behaviour preserved)"
 });
 
 Deno.test("MCMC enabled: creature reverted to snapshot on M-H rejection", () => {
-  // Use very low temperature so worsening mutations are almost always rejected
+  // Use very low temperature so worsening mutations are almost always rejected.
+  // Restrict to weight/bias mutations only — topology mutations (SUB_NODE etc.)
+  // bypass M-H unconditionally, making the revert check non-deterministic
+  // when a small creature has few hidden neurons to spare.
   const config = makeMCMCConfig(
     { initialTemperature: 1e-15, minTemperature: 1e-15 },
-    { mutationRate: 1.0, mutationAmount: 3 },
+    {
+      mutationRate: 1.0,
+      mutationAmount: 3,
+      mutation: [{ name: "MOD_WEIGHT" }, { name: "MOD_BIAS" }],
+    },
   );
 
   // Create a creature with moderate weights (no score/memetic to avoid snapshot complications)
@@ -67,14 +74,19 @@ Deno.test("MCMC enabled: creature reverted to snapshot on M-H rejection", () => 
     creature.neurons[i].bias = 0.1;
   }
 
+  const neuronCountBefore = creature.neurons.length;
+
   const mutator = new Mutator(config, 1e-15);
   const population = [creature];
   mutator.mutate(population);
 
-  // At near-zero temperature, worsening mutations should be rejected
-  // and the creature should be reverted. The creature should still be valid.
+  // At near-zero temperature, all weight/bias mutations should be rejected
+  // and the creature should be reverted to the snapshot.
   assert(population.length === 1, "Population size unchanged");
-  assert(creature.neurons.length >= 4, "Creature still has neurons");
+  assert(
+    creature.neurons.length === neuronCountBefore,
+    "Creature reverted: neuron count matches pre-mutation snapshot",
+  );
 });
 
 Deno.test("MCMC enabled: topology mutations always accepted regardless of temperature", () => {

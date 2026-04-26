@@ -19,8 +19,13 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Sync WASM package from NEAT-AI-core
-        run: ./build.sh
+      # Issue #2439: --verify-only matches CI policy in
+      # docs/CORE_DEPENDENCY_POLICY.md — CI must not resolve NEAT-AI-core
+      # HEAD or auto-advance neatCore.rev. The vendored wasm_activation/pkg
+      # is committed and pinned by deno.json neatCore.rev; verify it is in
+      # sync before publishing to JSR.
+      - name: Verify WASM package matches deno.json neatCore.rev
+        run: ./build.sh --verify-only
 
       # Tokenless publish: package must be linked to this repo on JSR.
       # For runs triggered by bots (e.g. stservice): scope admin must disable
