@@ -14,7 +14,7 @@ import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { adjustedWeight } from "@propagate/Weight.ts";
 import { adjustedActivation } from "@neuron/NeuronPropagation.ts";
 import { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
-import { computeReverseTopologicalOrder } from "@propagate/TopologicalOrder.ts";
+import { TypedTopology } from "@architecture/TypedTopology.ts";
 import { wasmPropagateTopological } from "@wasm/WasmStandaloneFunctions.ts";
 import { getPropagateTopologicalFn } from "@wasm/WasmModuleLoader.ts";
 
@@ -87,8 +87,9 @@ export function wasmTopologicalBackprop(
   const allSynapses = creature.synapses;
   const synapseCount = allSynapses.length;
 
-  // Get reverse topological order.
-  const order = computeReverseTopologicalOrder(creature);
+  // Get reverse topological order via the WASM-backed topology ops.
+  const order = TypedTopology.fromCreature(creature)
+    .computeReverseTopologicalOrder();
 
   // Build synapse lookup: (from, to) → synapse index.
   const synapseLookup = new Map<number, Map<number, number>>();

@@ -1,12 +1,14 @@
 /**
- * WasmTopologyOps.ts — Selective WASM residency for read-heavy topology operations.
+ * WasmTopologyOps.ts — WASM bridge for read-heavy topology operations.
  *
- * Issue #1959: Migrates topology validation, connection availability scanning,
- * and neuron dependency analysis to WASM/Rust. These are read-only operations
- * on typed array topology data that benefit from native code execution.
+ * Issue #1959/#1961 introduced these helpers as a thin TypeScript bridge over
+ * the Rust topology operations exported by NEAT-AI-core (see
+ * `neat-core/src/topology_ops.rs`). The WASM bundle is mandatory at runtime,
+ * so each function calls straight into the Rust implementation.
  *
- * Each function tries the WASM implementation first; if WASM is not available,
- * falls back to an equivalent TypeScript implementation.
+ * Issue #2415: The previous pure-TS fallbacks (`*TS` exports) were removed
+ * once core stabilised. The shared `TOPOLOGY_*` / `STRUCTURAL_*` constants
+ * remain alongside the WASM-backed exports.
  */
 
 import type { TypedTopology } from "@architecture/TypedTopology.ts";
@@ -61,14 +63,6 @@ export const STRUCTURAL_IF_MISSING_POSITIVE = 8;
 /** An IF neuron is missing a negative synapse. */
 export const STRUCTURAL_IF_MISSING_NEGATIVE = 9;
 
-/** Squash type code for IF (must match SquashType enum). */
-const IF_SQUASH_TYPE = 34;
-/** Synapse type codes (must match SynapseTypeCode enum). */
-const SYNAPSE_CONDITION = 1;
-const SYNAPSE_NEGATIVE = 2;
-const SYNAPSE_POSITIVE = 3;
-const SYNAPSE_STANDARD = 0;
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -93,97 +87,35 @@ export interface TopologyValidationResult {
   synapseIndex: number;
 }
 
+/** Throws a clear error when the WASM topology bundle is unavailable. */
+function requireWasm<T>(fn: T | null | undefined, name: string): T {
+  if (!fn) {
+    throw new Error(
+      `WasmTopologyOps.${name} requires the NEAT-AI-core WASM bundle, ` +
+        `but it could not be loaded. Run ./build.sh to refresh ` +
+        `wasm_activation/pkg from the pinned core revision.`,
+    );
+  }
+  return fn;
+}
+
 // ===========================================================================
 // 1. Topology Validation (Forward-Only Checks)
 // ===========================================================================
 
 /**
- * Validate synapse ordering and forward-only constraints.
- * Uses WASM when available, falls back to TypeScript.
+ * Validate synapse ordering and forward-only constraints via WASM.
  */
 export function validateTopology(
   topology: TypedTopology,
 ): TopologyValidationResult {
-  const wasmFn = getValidateTopologyFn();
-  if (wasmFn) {
-    const result = wasmFn(topology.fromIndices, topology.toIndices);
-    return {
-      valid: result[0] === TOPOLOGY_VALID,
-      errorCode: result[0],
-      synapseIndex: result[1],
-    };
-  }
-  return validateTopologyTS(topology.fromIndices, topology.toIndices);
-}
-
-/**
- * TypeScript fallback for topology validation.
- * Validates synapse sort order, self-connections, and backward connections.
- */
-export function validateTopologyTS(
-  fromIndices: Uint32Array,
-  toIndices: Uint32Array,
-): TopologyValidationResult {
-  const len = fromIndices.length;
-
-  let lastFrom = -1;
-  let lastTo = -1;
-
-  for (let i = 0; i < len; i++) {
-    const from = fromIndices[i];
-    const to = toIndices[i];
-
-    // Self-connection check
-    if (from === to) {
-      return {
-        valid: false,
-        errorCode: TOPOLOGY_SELF_CONNECTION,
-        synapseIndex: i,
-      };
-    }
-
-    // Backward connection check
-    if (from > to) {
-      return {
-        valid: false,
-        errorCode: TOPOLOGY_BACKWARD_CONNECTION,
-        synapseIndex: i,
-      };
-    }
-
-    // Sort order: from indices must be non-decreasing
-    if (from < lastFrom) {
-      return {
-        valid: false,
-        errorCode: TOPOLOGY_SORT_ERROR_FROM,
-        synapseIndex: i,
-      };
-    } else if (from > lastFrom) {
-      lastTo = -1;
-    }
-
-    // Within same from, to indices must be strictly increasing
-    if (from === lastFrom) {
-      if (to < lastTo) {
-        return {
-          valid: false,
-          errorCode: TOPOLOGY_SORT_ERROR_TO,
-          synapseIndex: i,
-        };
-      } else if (to === lastTo) {
-        return {
-          valid: false,
-          errorCode: TOPOLOGY_DUPLICATE_CONNECTION,
-          synapseIndex: i,
-        };
-      }
-    }
-
-    lastFrom = from;
-    lastTo = to;
-  }
-
-  return { valid: true, errorCode: TOPOLOGY_VALID, synapseIndex: 0 };
+  const wasmFn = requireWasm(getValidateTopologyFn(), "validateTopology");
+  const result = wasmFn(topology.fromIndices, topology.toIndices);
+  return {
+    valid: result[0] === TOPOLOGY_VALID,
+    errorCode: result[0],
+    synapseIndex: result[1],
+  };
 }
 
 // ===========================================================================
@@ -191,67 +123,28 @@ export function validateTopologyTS(
 // ===========================================================================
 
 /**
- * Scan for available forward-only connection slots.
- * Uses WASM when available, falls back to TypeScript.
+ * Scan for available forward-only connection slots via WASM.
  */
 export function scanAvailableConnections(
   topology: TypedTopology,
 ): [number, number][] {
-  const wasmFn = getScanAvailableConnectionsFn();
-  if (wasmFn) {
-    const flat = wasmFn(
-      topology.fromIndices,
-      topology.toIndices,
-      topology.isConstant,
-      topology.numNeurons,
-      topology.numInputs,
-    );
-    // Convert flat [from, to, from, to, ...] to pairs
-    const result: [number, number][] = [];
-    for (let i = 0; i < flat.length; i += 2) {
-      result.push([flat[i], flat[i + 1]]);
-    }
-    return result;
-  }
-  return scanAvailableConnectionsTS(
+  const wasmFn = requireWasm(
+    getScanAvailableConnectionsFn(),
+    "scanAvailableConnections",
+  );
+  const flat = wasmFn(
     topology.fromIndices,
     topology.toIndices,
     topology.isConstant,
     topology.numNeurons,
     topology.numInputs,
   );
-}
-
-/**
- * TypeScript fallback for available connection scanning.
- */
-export function scanAvailableConnectionsTS(
-  fromIndices: Uint32Array,
-  toIndices: Uint32Array,
-  isConstant: Uint8Array,
-  numNeurons: number,
-  numInputs: number,
-): [number, number][] {
-  // Build connection set for O(1) lookup
-  const connSet = new Set<number>();
-  for (let i = 0; i < fromIndices.length; i++) {
-    connSet.add(fromIndices[i] * numNeurons + toIndices[i]);
+  // Convert flat [from, to, from, to, ...] to pairs
+  const result: [number, number][] = [];
+  for (let i = 0; i < flat.length; i += 2) {
+    result.push([flat[i], flat[i + 1]]);
   }
-
-  const available: [number, number][] = [];
-
-  for (let fromIdx = 0; fromIdx < numNeurons; fromIdx++) {
-    const startTo = Math.max(fromIdx + 1, numInputs);
-    for (let toIdx = startTo; toIdx < numNeurons; toIdx++) {
-      if (isConstant[toIdx] === 1) continue;
-      const key = fromIdx * numNeurons + toIdx;
-      if (!connSet.has(key)) {
-        available.push([fromIdx, toIdx]);
-      }
-    }
-  }
-
-  return available;
+  return result;
 }
 
 // ===========================================================================
@@ -259,99 +152,22 @@ export function scanAvailableConnectionsTS(
 // ===========================================================================
 
 /**
- * Compute reverse topological order for backpropagation.
- * Uses WASM when available, falls back to TypeScript.
+ * Compute reverse topological order for backpropagation via WASM.
  */
 export function computeReverseTopologicalOrder(
   topology: TypedTopology,
 ): number[] {
-  const wasmFn = getComputeReverseTopologicalOrderFn();
-  if (wasmFn) {
-    const result = wasmFn(
-      topology.fromIndices,
-      topology.toIndices,
-      topology.numNeurons,
-      topology.numInputs,
-    );
-    return Array.from(result);
-  }
-  return computeReverseTopologicalOrderTS(
+  const wasmFn = requireWasm(
+    getComputeReverseTopologicalOrderFn(),
+    "computeReverseTopologicalOrder",
+  );
+  const result = wasmFn(
     topology.fromIndices,
     topology.toIndices,
     topology.numNeurons,
     topology.numInputs,
   );
-}
-
-/**
- * TypeScript fallback for reverse topological order computation.
- * Uses Kahn's algorithm on the forward connection graph.
- */
-export function computeReverseTopologicalOrderTS(
-  fromIndices: Uint32Array,
-  toIndices: Uint32Array,
-  numNeurons: number,
-  numInputs: number,
-): number[] {
-  // Count outgoing forward edges for each non-input neuron
-  const outDegree = new Int32Array(numNeurons);
-
-  for (let i = 0; i < fromIndices.length; i++) {
-    const from = fromIndices[i];
-    const to = toIndices[i];
-    if (from === to) continue; // Skip self-loops
-    if (from >= numInputs) {
-      outDegree[from]++;
-    }
-  }
-
-  // Build inward adjacency: for each neuron, which sources feed into it
-  const inward: number[][] = new Array(numNeurons);
-  for (let i = 0; i < numNeurons; i++) {
-    inward[i] = [];
-  }
-  for (let i = 0; i < fromIndices.length; i++) {
-    inward[toIndices[i]].push(fromIndices[i]);
-  }
-
-  // Start with neurons that have no outgoing forward edges
-  const queue: number[] = [];
-  for (let i = numInputs; i < numNeurons; i++) {
-    if (outDegree[i] === 0) {
-      queue.push(i);
-    }
-  }
-
-  const result: number[] = [];
-  const visited = new Uint8Array(numNeurons);
-  let head = 0;
-
-  while (head < queue.length) {
-    const idx = queue[head++];
-    if (visited[idx]) continue;
-    visited[idx] = 1;
-    result.push(idx);
-
-    for (const from of inward[idx]) {
-      if (from === idx) continue; // Skip self-loops
-      if (from < numInputs) continue; // Skip input neurons
-      if (visited[from]) continue;
-
-      outDegree[from]--;
-      if (outDegree[from] <= 0) {
-        queue.push(from);
-      }
-    }
-  }
-
-  // Handle remaining neurons in cycles
-  for (let i = numInputs; i < numNeurons; i++) {
-    if (!visited[i]) {
-      result.push(i);
-    }
-  }
-
-  return result;
+  return Array.from(result);
 }
 
 // ===========================================================================
@@ -359,8 +175,7 @@ export function computeReverseTopologicalOrderTS(
 // ===========================================================================
 
 /**
- * Validate structural integrity of a typed topology.
- * Uses WASM when available, falls back to TypeScript.
+ * Validate structural integrity of a typed topology via WASM.
  *
  * Checks:
  * - No synapse targets an input neuron
@@ -373,25 +188,11 @@ export function computeReverseTopologicalOrderTS(
 export function validateStructuralIntegrity(
   topology: TypedTopology,
 ): StructuralValidationResult {
-  const wasmFn = getValidateStructuralIntegrityFn();
-  if (wasmFn) {
-    const result = wasmFn(
-      topology.fromIndices,
-      topology.toIndices,
-      topology.isConstant,
-      topology.squashTypes,
-      topology.biases,
-      topology.numInputs,
-      topology.numOutputs,
-      topology.synapseTypes,
-    );
-    return {
-      valid: result[0] === STRUCTURAL_VALID,
-      errorCode: result[0],
-      neuronIndex: result[1],
-    };
-  }
-  return validateStructuralIntegrityTS(
+  const wasmFn = requireWasm(
+    getValidateStructuralIntegrityFn(),
+    "validateStructuralIntegrity",
+  );
+  const result = wasmFn(
     topology.fromIndices,
     topology.toIndices,
     topology.isConstant,
@@ -401,147 +202,11 @@ export function validateStructuralIntegrity(
     topology.numOutputs,
     topology.synapseTypes,
   );
-}
-
-/**
- * TypeScript fallback for structural integrity validation.
- * Issue #1961.
- */
-export function validateStructuralIntegrityTS(
-  fromIndices: Uint32Array,
-  toIndices: Uint32Array,
-  isConstant: Uint8Array,
-  squashTypes: Uint8Array,
-  biases: Float64Array,
-  numInputs: number,
-  numOutputs: number,
-  synapseTypes?: Uint8Array,
-): StructuralValidationResult {
-  const numNeurons = biases.length;
-  const numSynapses = fromIndices.length;
-
-  // Check no synapse targets an input neuron
-  for (let i = 0; i < numSynapses; i++) {
-    if (toIndices[i] < numInputs) {
-      return {
-        valid: false,
-        errorCode: STRUCTURAL_SYNAPSE_TARGETS_INPUT,
-        neuronIndex: toIndices[i],
-      };
-    }
-  }
-
-  // Count inward and outward connections per non-input neuron
-  const inwardCount = new Uint32Array(numNeurons);
-  const outwardCount = new Uint32Array(numNeurons);
-
-  for (let i = 0; i < numSynapses; i++) {
-    outwardCount[fromIndices[i]]++;
-    inwardCount[toIndices[i]]++;
-  }
-
-  // Validate each non-input neuron
-  const hiddenStart = numInputs;
-  const outputStart = numNeurons - numOutputs;
-
-  for (let i = hiddenStart; i < numNeurons; i++) {
-    const isOutput = i >= outputStart;
-    const isConst = isConstant[i] === 1;
-
-    // Check bias is finite for non-input neurons
-    if (!isConst) {
-      const bias = biases[i];
-      if (!Number.isFinite(bias)) {
-        return {
-          valid: false,
-          errorCode: STRUCTURAL_BIAS_NOT_FINITE,
-          neuronIndex: i,
-        };
-      }
-    }
-
-    // Constant neuron checks
-    if (isConst) {
-      if (inwardCount[i] > 0) {
-        return {
-          valid: false,
-          errorCode: STRUCTURAL_CONSTANT_HAS_INWARD,
-          neuronIndex: i,
-        };
-      }
-      continue;
-    }
-
-    // Hidden neuron checks (not output, not constant)
-    if (!isOutput) {
-      if (inwardCount[i] === 0) {
-        return {
-          valid: false,
-          errorCode: STRUCTURAL_HIDDEN_NO_INWARD,
-          neuronIndex: i,
-        };
-      }
-      if (outwardCount[i] === 0) {
-        return {
-          valid: false,
-          errorCode: STRUCTURAL_HIDDEN_NO_OUTWARD,
-          neuronIndex: i,
-        };
-      }
-    }
-
-    // IF neuron validation
-    if (squashTypes[i] === IF_SQUASH_TYPE) {
-      if (inwardCount[i] < 3) {
-        return {
-          valid: false,
-          errorCode: STRUCTURAL_IF_TOO_FEW_INWARD,
-          neuronIndex: i,
-        };
-      }
-
-      // Check for required synapse types among inward connections
-      if (synapseTypes) {
-        let hasCondition = false;
-        let hasPositive = false;
-        let hasNegative = false;
-
-        for (let s = 0; s < numSynapses; s++) {
-          if (toIndices[s] !== i) continue;
-          const st = synapseTypes[s];
-          if (st === SYNAPSE_CONDITION) hasCondition = true;
-          if (st === SYNAPSE_POSITIVE || st === SYNAPSE_STANDARD) {
-            hasPositive = true;
-          }
-          if (st === SYNAPSE_NEGATIVE) hasNegative = true;
-        }
-
-        if (!hasCondition) {
-          return {
-            valid: false,
-            errorCode: STRUCTURAL_IF_MISSING_CONDITION,
-            neuronIndex: i,
-          };
-        }
-        if (!hasPositive) {
-          return {
-            valid: false,
-            errorCode: STRUCTURAL_IF_MISSING_POSITIVE,
-            neuronIndex: i,
-          };
-        }
-        if (!hasNegative) {
-          return {
-            valid: false,
-            errorCode: STRUCTURAL_IF_MISSING_NEGATIVE,
-            neuronIndex: i,
-          };
-        }
-      }
-    }
-  }
-
-  return { valid: true, errorCode: STRUCTURAL_VALID, neuronIndex: 0 };
+  return {
+    valid: result[0] === STRUCTURAL_VALID,
+    errorCode: result[0],
+    neuronIndex: result[1],
+  };
 }
 
 // ===========================================================================
@@ -549,92 +214,17 @@ export function validateStructuralIntegrityTS(
 // ===========================================================================
 
 /**
- * Detect whether the topology contains cycles among non-input neurons.
- * Uses WASM when available, falls back to TypeScript.
+ * Detect whether the topology contains cycles among non-input neurons via WASM.
  *
  * A topology has a cycle if Kahn's algorithm cannot process all non-input
  * neurons — the remaining neurons form at least one cycle.
  */
 export function detectCycles(topology: TypedTopology): boolean {
-  const wasmFn = getDetectCyclesFn();
-  if (wasmFn) {
-    return wasmFn(
-      topology.fromIndices,
-      topology.toIndices,
-      topology.numNeurons,
-      topology.numInputs,
-    ) !== 0;
-  }
-  return detectCyclesTS(
+  const wasmFn = requireWasm(getDetectCyclesFn(), "detectCycles");
+  return wasmFn(
     topology.fromIndices,
     topology.toIndices,
     topology.numNeurons,
     topology.numInputs,
-  );
-}
-
-/**
- * TypeScript fallback for cycle detection using Kahn's algorithm.
- * Issue #1961.
- *
- * Returns true if any cycle exists among non-input neurons.
- */
-export function detectCyclesTS(
-  fromIndices: Uint32Array,
-  toIndices: Uint32Array,
-  numNeurons: number,
-  numInputs: number,
-): boolean {
-  // Build in-degree counts for non-input neurons.
-  // Only count edges from other non-input neurons — edges from inputs
-  // cannot participate in cycles, so they are excluded.
-  const inDegree = new Int32Array(numNeurons);
-
-  for (let i = 0; i < fromIndices.length; i++) {
-    const from = fromIndices[i];
-    const to = toIndices[i];
-    if (from === to) continue;
-    if (from >= numInputs && to >= numInputs) {
-      inDegree[to]++;
-    }
-  }
-
-  // Start with non-input neurons that have zero in-degree from non-input sources
-  const queue: number[] = [];
-  for (let i = numInputs; i < numNeurons; i++) {
-    if (inDegree[i] === 0) {
-      queue.push(i);
-    }
-  }
-
-  let processed = 0;
-  let head = 0;
-
-  while (head < queue.length) {
-    const idx = queue[head++];
-    processed++;
-
-    // For each outgoing edge from this neuron, decrement target's in-degree
-    for (let s = 0; s < fromIndices.length; s++) {
-      if (fromIndices[s] !== idx) continue;
-      const to = toIndices[s];
-      if (to === idx) continue;
-      if (to < numInputs) continue;
-
-      inDegree[to]--;
-      if (inDegree[to] === 0) {
-        queue.push(to);
-      }
-    }
-  }
-
-  // Check for self-loops explicitly
-  for (let i = 0; i < fromIndices.length; i++) {
-    if (fromIndices[i] === toIndices[i] && fromIndices[i] >= numInputs) {
-      return true;
-    }
-  }
-
-  const nonInputCount = numNeurons - numInputs;
-  return processed < nonInputCount;
+  ) !== 0;
 }
