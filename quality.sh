@@ -248,7 +248,10 @@ fi
 
 if [ "$RUN_WASM" = true ]; then
   progress "Syncing WASM package from NEAT-AI-core..."
-  ./build.sh
+  # Use --verify-only: CI must not auto-advance neatCore.rev. Bumping is
+  # an explicit ./build.sh invocation by a human or worker (see
+  # docs/CORE_DEPENDENCY_POLICY.md, issue #2433).
+  ./build.sh --verify-only
 fi
 
 if [ "$RUN_TESTS" = true ]; then

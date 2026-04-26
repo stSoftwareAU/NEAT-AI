@@ -21,7 +21,7 @@ jobs:
         uses: denoland/setup-deno@v2
 
       - name: Sync WASM package from NEAT-AI-core
-        run: ./build.sh
+        run: ./build.sh --verify-only
 
       - id: create_coverage_files
         name: Create coverage files

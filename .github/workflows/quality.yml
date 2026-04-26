@@ -169,7 +169,7 @@ jobs:
         run: deno outdated --update --latest
 
       - name: Sync WASM package from NEAT-AI-core
-        run: ./build.sh
+        run: ./build.sh --verify-only
 
       - name: Report WASM sync changes
         run: |
