@@ -262,6 +262,7 @@
     "SEMGREP",
     "Sepp",
     "serde",
+    "serialiser",
     "serialisable",
     "serialiser",
     "setweight",
