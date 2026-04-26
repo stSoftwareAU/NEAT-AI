@@ -1,10 +1,10 @@
 ## Summary
 
 Fixed the failing `publish` workflow by switching its WASM sync step from
-`./build.sh` to `./build.sh --verify-only`. The bare invocation tried to
-resolve `stSoftwareAU/NEAT-AI-core@Develop` HEAD via `gh api`, which fails
-in the publish job because the default `GITHUB_TOKEN` only has access to
-the current repo. The job logged:
+`./build.sh` to `./build.sh --verify-only`. The bare invocation tried to resolve
+`stSoftwareAU/NEAT-AI-core@Develop` HEAD via `gh api`, which fails in the
+publish job because the default `GITHUB_TOKEN` only has access to the current
+repo. The job logged:
 
 ```
 Resolving stSoftwareAU/NEAT-AI-core@Develop HEAD...
@@ -13,11 +13,11 @@ Ensure 'gh auth status' is authenticated, or pass --rev <SHA>.
 Error: Process completed with exit code 1.
 ```
 
-`--verify-only` matches the CI policy in `docs/CORE_DEPENDENCY_POLICY.md`
-("CI MUST NOT advance `deno.json` `neatCore.rev` automatically") and
-mirrors what `quality.yml` already does. The vendored
-`wasm_activation/pkg` is committed and pinned by `deno.json neatCore.rev`,
-so verifying that pin is sufficient before `npx jsr publish`.
+`--verify-only` matches the CI policy in `docs/CORE_DEPENDENCY_POLICY.md` ("CI
+MUST NOT advance `deno.json` `neatCore.rev` automatically") and mirrors what
+`quality.yml` already does. The vendored `wasm_activation/pkg` is committed and
+pinned by `deno.json neatCore.rev`, so verifying that pin is sufficient before
+`npx jsr publish`.
 
 Closes #2439.
 
@@ -50,6 +50,6 @@ flowchart LR
   - `publish.yml does not auto-advance neatCore.rev` — asserts no bare
     `./build.sh` invocation remains, preventing future regressions.
 - Existing `test/scripts/BuildScript.ts` tests continue to pass (notably
-  `build.sh --verify-only does not resolve HEAD over the network`, which
-  is exactly the property the publish job now relies on).
+  `build.sh --verify-only does not resolve HEAD over the network`, which is
+  exactly the property the publish job now relies on).
 - Existing `test/scripts/CoreDependencyPolicy.ts` tests continue to pass.
