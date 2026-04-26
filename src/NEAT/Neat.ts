@@ -300,6 +300,12 @@ export class Neat {
                   Math.floor(remainingTimeMS / avgTimePerGeneration),
                 );
                 maxWaitByTime = Math.floor(estimatedGenerations * 0.5);
+              } else {
+                // Issue #2432: wall-clock deadline already exceeded — keep the
+                // grace window tight (1 generation) so a stuck discovery does
+                // not silently extend the caller's --timeout into an
+                // unbounded generation-count wait.
+                maxWaitByTime = 1;
               }
             } else {
               maxWaitByTime = maxGenerationsIn5Minutes;
@@ -319,12 +325,15 @@ export class Neat {
               Math.floor(remainingTimeMS / 30000),
             );
             maxWaitByTime = Math.floor(estimatedGenerations * 0.5);
+          } else {
+            // Issue #2432: same wall-clock guard as above.
+            maxWaitByTime = 1;
           }
         }
 
-        this.maxDiscoveryWaitGenerations = Math.min(
-          maxWaitByIterations,
-          maxWaitByTime,
+        this.maxDiscoveryWaitGenerations = Math.max(
+          1,
+          Math.min(maxWaitByIterations, maxWaitByTime),
         );
         getLogger().info(
           `Discovery timeout set to ${this.maxDiscoveryWaitGenerations} generations (based on limiting factor)`,
@@ -333,12 +342,25 @@ export class Neat {
 
       this.discoveryWaitGenerations++;
 
-      if (this.discoveryWaitGenerations >= this.maxDiscoveryWaitGenerations) {
+      // Issue #2432: even after the generation-count wait was decided, the
+      // wall-clock deadline takes precedence. If the caller's --timeout has
+      // expired while we were waiting, do not let the generation count keep
+      // the loop alive.
+      const wallClockExpired = endTimeMS !== undefined && endTimeMS > 0 &&
+        Date.now() >= endTimeMS;
+
+      if (
+        wallClockExpired ||
+        this.discoveryWaitGenerations >= this.maxDiscoveryWaitGenerations
+      ) {
         const stuckUUIDs = Array.from(this.discoveryInProgress.keys()).map(
           (uuid) => uuid.substring(Math.max(0, uuid.length - 8)),
         );
+        const reason = wallClockExpired
+          ? "wall-clock deadline expired"
+          : `${this.discoveryWaitGenerations} generations`;
         getLogger().warn(
-          `[Neat] Discovery timeout reached after ${this.discoveryWaitGenerations} generations. Clearing stuck discoveries: ${
+          `[Neat] Discovery timeout reached after ${reason}. Clearing stuck discoveries: ${
             stuckUUIDs.join(", ")
           }`,
         );

@@ -77,3 +77,99 @@ export function calculateDiscoveryTimeout(
 
   return Math.min(maxTimeoutMinutes, Math.max(minTimeoutMinutes, timeout));
 }
+
+/**
+ * The minimum total wall-clock budget (recording + analysis) we allow
+ * for any single discovery, in minutes. Below this we still allocate
+ * ~half to recording and ~half to analysis so each phase has a chance
+ * to make progress, but the *total* never exceeds the caller's budget.
+ *
+ * Issue #2432.
+ */
+export const DISCOVERY_MIN_PHASE_MINUTES = 0.5; // 30 seconds
+
+export interface DiscoveryTimeoutAllocationInput {
+  /** Wall-clock minutes still available to the caller. */
+  wallClockMinutes: number;
+  /** Configured recording timeout cap (`config.discoveryRecordTimeOutMinutes`). */
+  configuredRecordMinutes: number;
+  /** Configured analysis timeout cap (`config.discoveryAnalysisTimeoutMinutes`). */
+  configuredAnalysisMinutes: number;
+  /** Adaptive ceiling for the recording phase derived from creature complexity. */
+  adaptiveRecordMinutes: number;
+}
+
+export interface DiscoveryTimeoutAllocation {
+  /** Effective recording-phase timeout in minutes. */
+  recordMinutes: number;
+  /** Effective analysis-phase timeout in minutes. */
+  analysisMinutes: number;
+  /** Total of recording + analysis (must not exceed wallClockMinutes). */
+  totalMinutes: number;
+}
+/**
+ * Allocates a single discovery's wall-clock budget between the recording
+ * and analysis phases so that the **total** never exceeds the caller's
+ * remaining wall-clock budget (Issue #2432).
+ *
+ * The previous behaviour was to allow recording to consume up to
+ * `wallClockMinutes` and **then** add `configuredAnalysisMinutes` (default
+ * 10) on top — which silently doubled, or worse, the caller's request.
+ *
+ * Allocation rules:
+ *  - Both phases get at least {@link DISCOVERY_MIN_PHASE_MINUTES} when the
+ *    wall-clock budget allows it.
+ *  - Recording is capped by {@link adaptiveRecordMinutes} and
+ *    {@link configuredRecordMinutes}.
+ *  - Analysis is capped by {@link configuredAnalysisMinutes}.
+ *  - The remaining slack (after recording is allocated) flows to analysis,
+ *    so the sum of `recordMinutes + analysisMinutes` is always ≤
+ *    `wallClockMinutes`.
+ */
+export function allocateDiscoveryTimeouts(
+  input: DiscoveryTimeoutAllocationInput,
+): DiscoveryTimeoutAllocation {
+  const wallClock = Math.max(0, input.wallClockMinutes);
+  const recordCap = Math.min(
+    Math.max(0, input.configuredRecordMinutes),
+    Math.max(0, input.adaptiveRecordMinutes),
+  );
+  const analysisCap = Math.max(0, input.configuredAnalysisMinutes);
+
+  // Degenerate budget: nothing to allocate.
+  if (wallClock <= 0) {
+    return { recordMinutes: 0, analysisMinutes: 0, totalMinutes: 0 };
+  }
+
+  const phaseMin = DISCOVERY_MIN_PHASE_MINUTES;
+
+  // When the wall-clock budget can't afford even one minimum-sized phase
+  // for each, split it 50/50 (still bounded by the configured/adaptive caps).
+  if (wallClock < phaseMin * 2) {
+    const half = wallClock / 2;
+    const recordMinutes = Math.min(recordCap, half);
+    const analysisMinutes = Math.min(analysisCap, wallClock - recordMinutes);
+    return {
+      recordMinutes,
+      analysisMinutes,
+      totalMinutes: recordMinutes + analysisMinutes,
+    };
+  }
+
+  // Reserve at least the minimum analysis slice so that recording never
+  // monopolises the entire budget.
+  const recordMinutes = Math.max(
+    phaseMin,
+    Math.min(recordCap, wallClock - phaseMin),
+  );
+  const analysisMinutes = Math.max(
+    phaseMin,
+    Math.min(analysisCap, wallClock - recordMinutes),
+  );
+
+  return {
+    recordMinutes,
+    analysisMinutes,
+    totalMinutes: recordMinutes + analysisMinutes,
+  };
+}
