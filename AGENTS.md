@@ -87,7 +87,7 @@ src/                    # Source code
   mutate/               # Mutation operators
   NEAT/                 # Core NEAT algorithm (selection, speciation)
   optimize/             # Optimisation passes
-  propagate/            # Backpropagation (elastic distribution)
+  propagate/            # Backpropagation (TS orchestration; topological loop and elastic distribution are WASM-only)
   reconstruct/          # Network reconstruction utilities
   upgrade/              # Version migration
   utils/                # Shared utilities
@@ -378,6 +378,30 @@ actionable error.
 > No manual WASM initialisation is required. The library handles this
 > automatically in all supported contexts.
 
+### WASM-only operations (no TS fallback)
+
+Several read-heavy and hot-path computations live exclusively in NEAT-AI-core
+(WASM) — there is **no TypeScript fallback**. If the WASM bundle cannot be
+loaded, these operations fail fast with an actionable error pointing at
+`./build.sh`.
+
+- **Topological helpers** (`src/wasm/WasmTopologyOps.ts`): `validateTopology`,
+  `scanAvailableConnections`, `computeReverseTopologicalOrder`,
+  `validateStructuralIntegrity`, `detectCycles`. Backed by
+  `neat-core/src/topology_ops.rs`. The previous `*TS` fallbacks were removed in
+  Issue #2415 once core stabilised.
+- **Topological backprop loop and elastic distribution**
+  (`src/propagate/WasmTopologicalBackprop.ts`,
+  `src/propagate/ElasticDistribution.ts`): the per-iteration backprop traversal
+  and elastic weight redistribution run inside core. The previous TypeScript
+  loop and elastic-distribution fallbacks were removed in Issue #2416.
+- **Topology export** (DOT / JSON): when available from core (Issue #2417), the
+  thin TS wrapper delegates formatting to core; there is no TS re-implementation
+  of the DOT or JSON formatter.
+
+If you add a new read-heavy or hot-path operation that lives in core, **do not
+re-implement a TypeScript fallback** — fail fast via `requireWasm(...)` instead.
+
 ## 🦀 Rust Discovery Module
 
 The Rust FFI extension shipped via
@@ -435,6 +459,14 @@ are:
    [NEAT-AI-scorer](https://github.com/stSoftwareAU/NEAT-AI-scorer) must pin the
    **same core rev** as this workspace. When bumping the rev here, verify and
    update the scorer in the same coordinated change.
+8. **No TS fallbacks for core-owned operations:** once an operation moves into
+   NEAT-AI-core (e.g. topology validation/scanning, reverse topological order,
+   structural integrity, cycle detection, the topological backprop loop, and
+   elastic weight distribution), the TypeScript side does **not** keep a
+   parallel implementation. Wrappers in `src/wasm/` and `src/propagate/` call
+   into WASM and fail fast if the bundle is unavailable. Do not reintroduce
+   `*TS` fallbacks for these operations — the parity gate is the only alignment
+   check, and a divergent TS implementation would silently mask drift.
 
 ## 🔄 Feed-forward vs Recurrent Connections
 

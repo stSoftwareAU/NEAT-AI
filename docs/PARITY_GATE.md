@@ -74,6 +74,15 @@ Runs the TypeScript-side tests that cross the native boundary:
 
 **Expected artefact:** `ok | N passed | 0 failed` in the Deno test summary.
 
+> [!NOTE]
+> After the topology / backprop / elastic-distribution TS fallbacks were removed
+> (Issues #2415, #2416), the parity gate's scope is unchanged. It still compares
+> the WASM scoring path (`WasmJsScoreParity.ts`) and MSE cost surface (`MSE.ts`)
+> against expected behaviour — these are the only TS-side surfaces that cross
+> the native boundary in a way that could drift independently. The removed
+> helpers had no remaining TS implementation to compare against, so excluding
+> them from the gate is correct.
+
 ## Release checklist
 
 Use this checklist for NEAT-AI-core repins:
