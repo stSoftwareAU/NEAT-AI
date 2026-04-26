@@ -18,7 +18,10 @@ import { calculate as calculateScore } from "@architecture/Score.ts";
 import { fineTuneImprovement } from "@blackbox/FineTune.ts";
 import type { NeatConfig } from "@config/NeatConfig.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
-import { calculateDiscoveryTimeout } from "@discovery/DiscoveryTimeout.ts";
+import {
+  allocateDiscoveryTimeouts,
+  calculateDiscoveryTimeout,
+} from "@discovery/DiscoveryTimeout.ts";
 import type { DiscoveryReplayDirResult } from "@neat/DiscoveryReplayQueue.ts";
 import { getLogger } from "@utils/Logger.ts";
 import type { Neat } from "@neat/Neat.ts";
@@ -91,13 +94,29 @@ export function scheduleDiscovery(
     neuronCount: creature.neurons.length,
     synapseCount: creature.synapses.length,
   });
-  const effectiveTimeout = Math.min(timeOutMinutes, adaptiveTimeout);
+
+  // Issue #2432: split the caller's wall-clock budget between recording and
+  // analysis so the *total* discovery time never exceeds `timeOutMinutes`.
+  // Previously the worker would run recording for `effectiveTimeout` minutes
+  // and *then* extend by a further `discoveryAnalysisTimeoutMinutes` (default
+  // 10m) on top — silently inflating the caller's `--timeout` request.
+  const allocation = allocateDiscoveryTimeouts({
+    wallClockMinutes: timeOutMinutes,
+    configuredRecordMinutes: neat.config.discoveryRecordTimeOutMinutes,
+    configuredAnalysisMinutes: neat.config.discoveryAnalysisTimeoutMinutes,
+    adaptiveRecordMinutes: adaptiveTimeout,
+  });
+  const effectiveTimeout = allocation.recordMinutes;
 
   if (neat.config.verbose) {
     getLogger().info(
       `[Neat] Adaptive discovery timeout: ${adaptiveTimeout.toFixed(2)}m ` +
         `(neurons=${creature.neurons.length}, synapses=${creature.synapses.length}), ` +
-        `effective=${effectiveTimeout.toFixed(2)}m`,
+        `effective=${effectiveTimeout.toFixed(2)}m, ` +
+        `analysis=${allocation.analysisMinutes.toFixed(2)}m, ` +
+        `total=${
+          allocation.totalMinutes.toFixed(2)
+        }m of ${timeOutMinutes}m budget`,
     );
   }
 
@@ -108,6 +127,9 @@ export function scheduleDiscovery(
   const discoveryConfig: NeatConfig = Object.freeze({
     ...configSansCallback,
     discoveryRecordTimeOutMinutes: effectiveTimeout,
+    // Issue #2432: clamp the analysis ceiling to the slack remaining after
+    // recording so record + analysis ≤ caller's wall-clock budget.
+    discoveryAnalysisTimeoutMinutes: allocation.analysisMinutes,
   });
 
   const taskStartTime = Date.now();

@@ -191,6 +191,46 @@ Deno.test("finishUp: returns false when additionalGenerationCount > 0", async ()
   }
 });
 
+// ============================================================================
+// Issue #2432: Wall-clock takes precedence over generation-count fallback
+// ============================================================================
+
+Deno.test("finishUp: clears stuck discoveries promptly when wall-clock deadline has passed", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    // Simulate a stuck discovery
+    neat.discoveryInProgress.set("expired-uuid", new Promise(() => {}));
+
+    // Wall-clock deadline already in the past (caller's --timeout exceeded)
+    const start = Date.now() - 10 * 60_000; // ran for 10 minutes
+    const endTimeMS = Date.now() - 60_000; // 1 minute past deadline
+    const iterations = 1000; // generous iteration cap — must NOT save the stuck discovery
+    const currentGeneration = 5;
+
+    // First call should bound the wait by wall-clock, NOT by the iteration
+    // count fallback (which was 20 generations historically).
+    let cleared = false;
+    for (let i = 0; i < 5; i++) {
+      neat.finishUp(iterations, endTimeMS, start, currentGeneration);
+      if (neat.discoveryInProgress.size === 0) {
+        cleared = true;
+        break;
+      }
+    }
+    assert(
+      cleared,
+      "Stuck discovery should be cleared within a few generations after wall-clock deadline expires",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
 Deno.test("finishUp: sets cleanup delay when work was in progress", async () => {
   const dataDir = createTestDataDir(2, 1);
   const workers = createTestWorkers(dataDir);
