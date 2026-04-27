@@ -37,7 +37,6 @@ async function runBump(
 Deno.test({
   name:
     "bump-deps.sh --help prints usage with internal/external/quarantine sections",
-  permissions: { run: true, read: true, env: true },
   fn: async () => {
     const result = await runBump(["--help"]);
     assertEquals(result.code, 0, `Expected exit 0; stderr=${result.stderr}`);
@@ -60,7 +59,6 @@ Deno.test({
 
 Deno.test({
   name: "bump-deps.sh -h prints usage and exits 0",
-  permissions: { run: true, read: true, env: true },
   fn: async () => {
     const result = await runBump(["-h"]);
     assertEquals(result.code, 0);
@@ -70,7 +68,6 @@ Deno.test({
 
 Deno.test({
   name: "bump-deps.sh rejects unknown flags",
-  permissions: { run: true, read: true, env: true },
   fn: async () => {
     const result = await runBump(["--no-such-flag"]);
     assert(result.code !== 0, "expected non-zero exit for unknown flag");
@@ -84,7 +81,6 @@ Deno.test({
 
 Deno.test({
   name: "bump-deps.sh rejects non-numeric --quarantine-hours",
-  permissions: { run: true, read: true, env: true },
   fn: async () => {
     const result = await runBump(["--quarantine-hours", "abc"]);
     assert(result.code !== 0, "expected non-zero exit for non-numeric value");
@@ -97,7 +93,6 @@ Deno.test({
 
 Deno.test({
   name: "bump-deps.sh requires a value for --quarantine-hours",
-  permissions: { run: true, read: true, env: true },
   fn: async () => {
     const result = await runBump(["--quarantine-hours"]);
     assert(result.code !== 0, "expected non-zero exit when value missing");
@@ -107,7 +102,6 @@ Deno.test({
 Deno.test({
   name:
     "bump-deps.sh --dry-run --no-internal --no-external is a true no-op (no deno.json mutation)",
-  permissions: { run: true, read: true, write: true, env: true },
   fn: async () => {
     const before = await Deno.readTextFile("deno.json");
     const result = await runBump([
@@ -133,7 +127,6 @@ Deno.test({
 
 Deno.test({
   name: "bump-deps.sh accepts VIBE_BUMP_QUARANTINE_HOURS env override",
-  permissions: { run: true, read: true, env: true, write: true },
   fn: async () => {
     const before = await Deno.readTextFile("deno.json");
     // Pass an absurdly large quarantine via env to prove the script reads
@@ -154,7 +147,6 @@ Deno.test({
 
 Deno.test({
   name: "bump-deps.sh exists and is executable",
-  permissions: { read: true },
   fn: async () => {
     const stat = await Deno.stat("bump-deps.sh");
     assert(stat.isFile, "bump-deps.sh must be a regular file");
