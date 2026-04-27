@@ -235,6 +235,94 @@ RELEASE_TAG="wasm-bundle-${TARGET_REV}"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
+# --- Wait for the per-commit Release to be published --------------------
+# Issue #2449: NEAT-AI-core's wasm-bundle.yml workflow takes ~30–60 s to
+# publish the `wasm-bundle-<SHA>` Release after a Develop merge. NEAT-AI
+# worker PRs raised inside that window otherwise fail immediately. Probe
+# the release with bounded retry; only retry on the "release not found"
+# / 404 path. Every other error (auth, network, malformed response)
+# fails fast.
+NEAT_CORE_BUNDLE_RETRIES="${NEAT_CORE_BUNDLE_RETRIES:-5}"
+NEAT_CORE_BUNDLE_RETRY_DELAY_SECONDS="${NEAT_CORE_BUNDLE_RETRY_DELAY_SECONDS:-30}"
+if ! [[ "$NEAT_CORE_BUNDLE_RETRIES" =~ ^[0-9]+$ ]] \
+  || [[ "$NEAT_CORE_BUNDLE_RETRIES" -lt 1 ]]; then
+  echo "ERROR: NEAT_CORE_BUNDLE_RETRIES must be a positive integer (got '${NEAT_CORE_BUNDLE_RETRIES}')." >&2
+  exit 1
+fi
+if ! [[ "$NEAT_CORE_BUNDLE_RETRY_DELAY_SECONDS" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: NEAT_CORE_BUNDLE_RETRY_DELAY_SECONDS must be a non-negative integer (got '${NEAT_CORE_BUNDLE_RETRY_DELAY_SECONDS}')." >&2
+  exit 1
+fi
+
+# Probe whether the release exists. Returns:
+#   0 — release published and accessible
+#   1 — release does not yet exist (404, retryable)
+#   2 — other error (auth, network, malformed) — caller must fail fast
+probe_release() {
+  local err_file="$tmp_dir/probe.err"
+  : > "$err_file"
+  if command -v gh >/dev/null 2>&1; then
+    if gh api "repos/${NEAT_CORE_REPO}/releases/tags/${RELEASE_TAG}" \
+      --silent >/dev/null 2>"$err_file"; then
+      return 0
+    fi
+    if grep -qiE 'HTTP 404|Not Found|release not found' "$err_file"; then
+      return 1
+    fi
+    cat "$err_file" >&2 || true
+    return 2
+  fi
+  # No gh — probe via curl against the GitHub REST API.
+  local probe_args=(-sS -o /dev/null -w '%{http_code}')
+  if [[ -n "${NEAT_CORE_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}" ]]; then
+    probe_args+=(-H "Authorization: Bearer ${NEAT_CORE_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}")
+  fi
+  local probe_url="https://api.github.com/repos/${NEAT_CORE_REPO}/releases/tags/${RELEASE_TAG}"
+  local status_code
+  status_code="$(curl "${probe_args[@]}" "$probe_url" 2>"$err_file" || echo 000)"
+  case "$status_code" in
+    200) return 0 ;;
+    404) return 1 ;;
+    *)
+      cat "$err_file" >&2 || true
+      echo "ERROR: HTTP ${status_code} probing ${probe_url}" >&2
+      return 2
+      ;;
+  esac
+}
+
+attempt=1
+while : ; do
+  set +e
+  probe_release
+  probe_rc=$?
+  set -e
+  case "$probe_rc" in
+    0) break ;;
+    1)
+      if [[ "$attempt" -ge "$NEAT_CORE_BUNDLE_RETRIES" ]]; then
+        total_wait=$((NEAT_CORE_BUNDLE_RETRIES * NEAT_CORE_BUNDLE_RETRY_DELAY_SECONDS))
+        echo "ERROR: Release ${RELEASE_TAG} did not appear after ${NEAT_CORE_BUNDLE_RETRIES} attempts (~${total_wait}s)." >&2
+        echo "  - Failure mode: the release never appeared (distinct from a missing asset on a published release)." >&2
+        echo "  - The NEAT-AI-core wasm-bundle.yml workflow may still be running, have failed, or never been triggered for ${TARGET_REV}." >&2
+        echo "  - Workflow runs: https://github.com/${NEAT_CORE_REPO}/actions/workflows/wasm-bundle.yml" >&2
+        echo "  - Tag URL:       https://github.com/${NEAT_CORE_REPO}/releases/tag/${RELEASE_TAG}" >&2
+        echo "  - Tune retries via NEAT_CORE_BUNDLE_RETRIES / NEAT_CORE_BUNDLE_RETRY_DELAY_SECONDS." >&2
+        exit 1
+      fi
+      echo "Release ${RELEASE_TAG} not yet published (attempt ${attempt}/${NEAT_CORE_BUNDLE_RETRIES}); retrying in ${NEAT_CORE_BUNDLE_RETRY_DELAY_SECONDS}s..." >&2
+      sleep "$NEAT_CORE_BUNDLE_RETRY_DELAY_SECONDS"
+      attempt=$((attempt + 1))
+      ;;
+    *)
+      echo "ERROR: Probe for release ${RELEASE_TAG} failed with a non-404 error (auth, network, or malformed response)." >&2
+      echo "  - This is a fail-fast condition; retries only fire on the 'release not found' path." >&2
+      echo "  - For private repos, set NEAT_CORE_GITHUB_TOKEN or GITHUB_TOKEN with read access." >&2
+      exit 1
+      ;;
+  esac
+done
+
 echo "Downloading ${ASSET_NAME} from ${NEAT_CORE_REPO} release ${RELEASE_TAG}..."
 download_ok=false
 if command -v gh >/dev/null 2>&1; then
@@ -259,8 +347,9 @@ if [[ "$download_ok" != true ]]; then
   asset_url="https://github.com/${NEAT_CORE_REPO}/releases/download/${RELEASE_TAG}/${ASSET_NAME}"
   if ! curl "${curl_args[@]}" -o "$tmp_dir/$ASSET_NAME" "$asset_url"; then
     echo "ERROR: Could not download ${ASSET_NAME} from ${NEAT_CORE_REPO} release ${RELEASE_TAG}." >&2
-    echo "  - Confirm the release exists: https://github.com/${NEAT_CORE_REPO}/releases/tag/${RELEASE_TAG}" >&2
-    echo "  - The per-commit Release is published by NEAT-AI-core CI; for very recent commits it may not be available yet." >&2
+    echo "  - Failure mode: the release exists but the asset is missing or unreadable." >&2
+    echo "  - The release-not-found propagation race is handled separately by NEAT_CORE_BUNDLE_RETRIES (default 5) — that retry already succeeded." >&2
+    echo "  - Confirm the asset is attached: https://github.com/${NEAT_CORE_REPO}/releases/tag/${RELEASE_TAG}" >&2
     echo "  - For private repos, set NEAT_CORE_GITHUB_TOKEN or GITHUB_TOKEN with read access." >&2
     exit 1
   fi
