@@ -48,6 +48,7 @@ import {
   parseDiskSpaceConfig,
   parseEnsembleDiversity,
   parseFineTunePopulation,
+  parseFitnessSharing,
   parseHyperparameterEvolution,
   parseMcmc,
   parseMemoryConfig,
@@ -623,6 +624,10 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     // Issue #2457: Parse squash effectiveness tracker configuration
     squashEffectiveness: parseSquashEffectiveness(
       opts.squashEffectiveness as Record<string, unknown> | undefined,
+    ),
+    // Issue #2453: Parse fitness sharing configuration
+    fitnessSharing: parseFitnessSharing(
+      opts.fitnessSharing as Record<string, unknown> | undefined,
     ),
     // Issue #1620: Parse and resolve output range constraints
     outputRanges: (() => {

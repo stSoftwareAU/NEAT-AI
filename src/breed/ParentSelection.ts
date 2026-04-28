@@ -18,6 +18,42 @@ import { FitnessRanking } from "@breed/FitnessRanking.ts";
 import { geneticCompatibility } from "@breed/GeneticCompatibility.ts";
 
 /**
+ * Issue #2453: Compute per-creature adjusted fitness for NEAT fitness
+ * sharing. Each creature's adjusted fitness is `rawScore / speciesSize`,
+ * so a lone member of a small species ranks higher than one of nine in
+ * a populous species, even when their raw scores are equal.
+ *
+ * Creatures whose UUID is not registered in the genus (e.g., creatures
+ * with non-finite scores excluded from speciation) are skipped — they
+ * fall back to raw fitness in the resulting ranking.
+ *
+ * @param genus - The genus containing the population
+ * @returns A map from creature UUID to adjusted fitness
+ */
+export function buildAdjustedFitnessMap(
+  genus: Genus,
+): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const creature of genus.population) {
+    if (!creature.uuid) continue;
+    const score = creature.score;
+    if (score === undefined || score === null || !Number.isFinite(score)) {
+      continue;
+    }
+    const speciesKey = genus.creatureToSpeciesMap.get(creature.uuid);
+    if (!speciesKey) continue;
+    const species = genus.speciesMap.get(speciesKey);
+    if (!species) continue;
+    // Prefer the cached size populated by Species.computeStatistics; fall
+    // back to the live creatures array if statistics have not run yet.
+    const size = species.size > 0 ? species.size : species.creatures.length;
+    if (size <= 0) continue;
+    map.set(creature.uuid, score / size);
+  }
+  return map;
+}
+
+/**
  * Selects a parent from a pre-computed fitness ranking based on the selection strategy.
  *
  * Uses the pre-computed FitnessRanking for O(1) or O(k) selection instead of

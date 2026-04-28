@@ -17,6 +17,7 @@ import { FindTunePopulation } from "@blackbox/FineTunePopulation.ts";
 import { Breed } from "@breed/Breed.ts";
 import { ParallelBreeding } from "@breed/ParallelBreeding.ts";
 import { AddConnection } from "@mutate/AddConnection.ts";
+import { allocateBreedingQuotas } from "@neat/BreedingQuotas.ts";
 import { Genus } from "@neat/Genus.ts";
 import { checkMemoryAndEvict, logMemoryUsage } from "@neat/MemoryMonitor.ts";
 import { Mutator } from "@neat/Mutator.ts";
@@ -535,7 +536,21 @@ export async function evolve(
   // Issue #2323: Wrap the promise to capture when workers actually complete,
   // distinguishing pure breeding duration from wall-clock breedingMs.
   let breedingWorkerEndMs = 0;
-  const rawBreedingPromise = parallelBreeding.breedBatch(newPopSize);
+  // Issue #2453: When fitness sharing is enabled, allocate per-species
+  // breeding quotas in proportion to summed adjusted fitness. The
+  // species_adjusted statistics computed earlier this generation are
+  // the inputs.
+  const speciesQuotas = neat.config.fitnessSharing.enabled && newPopSize > 0
+    ? allocateBreedingQuotas(
+      genus,
+      newPopSize,
+      neat.config.fitnessSharing.minSpeciesSlots,
+    )
+    : undefined;
+  const rawBreedingPromise = parallelBreeding.breedBatch(
+    newPopSize,
+    speciesQuotas,
+  );
   const breedingPromise = rawBreedingPromise.then((result) => {
     breedingWorkerEndMs = Date.now();
     return result;

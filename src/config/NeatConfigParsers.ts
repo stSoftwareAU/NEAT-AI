@@ -29,6 +29,7 @@ export {
   parseAdaptivePopulation,
   parseEnsembleDiversity,
   parseFineTunePopulation,
+  parseFitnessSharing,
 } from "@config/parsers/PopulationParsers.ts";
 export {
   parseCrossValidation,

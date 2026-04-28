@@ -43,9 +43,17 @@ export class FitnessRanking {
    * Creates a new FitnessRanking from a population.
    *
    * @param population - The population of creatures to rank
+   * @param adjustedScores - Optional UUID → adjusted fitness map
+   *   (Issue #2453). When provided, ranking and selection use these scores
+   *   instead of the creature's raw `score`. Used for NEAT fitness sharing
+   *   where adjusted fitness = rawFitness / speciesSize. Any creature
+   *   missing from the map falls back to its raw score.
    * @throws {Error} When population is empty
    */
-  constructor(population: Creature[]) {
+  constructor(
+    population: Creature[],
+    adjustedScores?: ReadonlyMap<string, number>,
+  ) {
     if (population.length === 0) {
       throw new ValidationError("Population cannot be empty", "OTHER");
     }
@@ -60,7 +68,11 @@ export class FitnessRanking {
     for (const creature of population) {
       assert(creature.uuid, "Creature UUID is undefined");
 
-      const score = this.extractScore(creature);
+      // Issue #2453: Prefer the supplied adjusted-fitness value when present.
+      const adjusted = adjustedScores?.get(creature.uuid);
+      const score = adjusted !== undefined && Number.isFinite(adjusted)
+        ? adjusted
+        : this.extractScore(creature);
       this.scoreMap.set(creature.uuid, score);
 
       if (lastScore < score) {
