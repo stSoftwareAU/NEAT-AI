@@ -1,8 +1,9 @@
 {
-  "name": "wasm_activation",
+  "name": "neat-core",
   "type": "module",
-  "description": "WASM module for NEAT-AI creature activation - prototype for Issue #1116",
-  "version": "0.1.0",
+  "description": "Shared computation library for NEAT-AI neural network operations. Optional wasm-bindgen on wasm32 only.",
+  "version": "0.1.18",
+  "license": "Apache-2.0",
   "files": [
     "wasm_activation_bg.wasm",
     "wasm_activation.js",
