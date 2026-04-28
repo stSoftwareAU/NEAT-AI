@@ -4,6 +4,9 @@
 /**
  * Compiled network data structure
  *
+ * `Clone` is supported so native tools (for example the NEAT-AI scorer) can run
+ * forward-only batch scoring on multiple threads, each with its own activation buffers.
+ *
  * Format (Issue #1125 - updated to support aggregate functions):
  * - Header: [num_neurons: u32, num_inputs: u32]
  * - Neuron data: For each neuron after inputs:
@@ -32,7 +35,7 @@ export class CompiledNetwork {
     /**
      * Activate the network with tracing for backpropagation support
      * Issue #1121 - WASM Migration Phase 4: activateAndTrace
-     * Issue #1173 - Pre-allocate Vec<f32> buffers in CompiledNetwork struct
+     * Issue #1173 - Pre-allocate `Vec<f32>` buffers in CompiledNetwork struct
      * Issue #1175 - Uses typed structs for better cache locality
      * Issue #1177 - Inlines common squash functions to avoid function call overhead
      *
@@ -67,7 +70,7 @@ export class CompiledNetwork {
      * * `num_outputs` - Number of output neurons
      *
      * # Returns
-     * Four Vec<f32>, one per record. Each has the same format as `activate_and_trace`:
+     * Four `Vec<f32>` values, one per record. Each has the same format as `activate_and_trace`:
      * [outputs..., activations..., hints..., trace_data...]
      */
     activate_and_trace_batch_4way(inputs: Float32Array, input_size: number, num_outputs: number): Float32Array;
@@ -88,13 +91,12 @@ export class CompiledNetwork {
      */
     activate_into(input: Float32Array, output: Float32Array): void;
     /**
-     * Activate the network and return a zero-copy Float32Array view over WASM memory.
+     * Activate the network and return a freshly allocated `Vec<f32>` of outputs.
      *
-     * IMPORTANT: The returned Float32Array aliases the network's internal activation buffer.
-     * It will be overwritten by subsequent activations of the same network instance.
-     *
-     * This is intended for high-throughput scoring where the caller consumes outputs
-     * immediately and does not retain references across calls.
+     * On WASM this surfaces as `activate_view`. The original wrapper crate
+     * returned a zero-copy view over the activations buffer; this safe variant
+     * returns a copy to keep the surface safe (no `unsafe` blocks). The JS
+     * signature is preserved so existing TS wrappers continue to compile.
      */
     activate_view(input: Float32Array, num_outputs: number): Float32Array;
     /**
@@ -125,6 +127,22 @@ export class CompiledNetwork {
      */
     reset_state(): void;
     /**
+     * Export this network as a DOT (Graphviz) string.
+     *
+     * See [`to_dot`] for format details and determinism guarantees.
+     *
+     * `num_outputs` is required because [`CompiledNetwork`] itself does not
+     * record the output count — outputs are the last `num_outputs` neurons
+     * by construction.
+     */
+    to_dot(num_outputs: number): string;
+    /**
+     * Export this network as a topology JSON string.
+     *
+     * See [`to_topology_json`] for format details and determinism guarantees.
+     */
+    to_topology_json(num_outputs: number): string;
+    /**
      * Get the number of input neurons
      */
     readonly num_inputs: number;
@@ -144,6 +162,9 @@ export class CompiledNetwork {
  * Holds the network topology and configuration for running the iterative
  * inference (settling) loop. The engine is constructed once from a creature's
  * topology and can be reused for multiple inference calls.
+ *
+ * Issue #36 — annotated with `#[wasm_bindgen]` on `wasm32` so the JS class
+ * surface used by NEAT-AI is reproduced by `wasm-pack` against this crate.
  */
 export class PredictiveCodingEngine {
     free(): void;
@@ -158,10 +179,10 @@ export class PredictiveCodingEngine {
      *
      * # Returns
      * Packed Float32Array:
-     * - [0]: num_non_inputs (number of bias deltas)
-     * - [1]: num_weight_entries (number of weight delta triples)
-     * - [2..2+num_non_inputs): bias deltas
-     * - [2+num_non_inputs..]: weight delta triples (neuron_rel_idx, conn_local_idx, delta)
+     * - \[0\]: num_non_inputs (number of bias deltas)
+     * - \[1\]: num_weight_entries (number of weight delta triples)
+     * - \[2..2+num_non_inputs\): bias deltas
+     * - \[2+num_non_inputs..\]: weight delta triples (neuron_rel_idx, conn_local_idx, delta)
      */
     compute_gradients_wasm(latents: Float32Array, errors: Float32Array, learning_rate: number): Float32Array;
     /**
@@ -183,16 +204,16 @@ export class PredictiveCodingEngine {
      * Optional targets: Float32Array of target values for output neurons.
      *
      * Result format (Float32Array):
-     * - [0]: steps_used (as f32)
-     * - [1]: final_energy
-     * - [2]: converged (1.0 = true, 0.0 = false)
-     * - [3]: num_neurons
-     * - [4]: num_non_inputs
-     * - [5]: energy_history_length
-     * - [6..6+num_neurons): latent values
-     * - [6+num_neurons..6+num_neurons+num_non_inputs): predictions
-     * - [6+num_neurons+num_non_inputs..6+num_neurons+2*num_non_inputs): errors
-     * - [remaining]: energy history
+     * - \[0\]: steps_used (as f32)
+     * - \[1\]: final_energy
+     * - \[2\]: converged (1.0 = true, 0.0 = false)
+     * - \[3\]: num_neurons
+     * - \[4\]: num_non_inputs
+     * - \[5\]: energy_history_length
+     * - \[6..6+num_neurons\): latent values
+     * - \[6+num_neurons..6+num_neurons+num_non_inputs\): predictions
+     * - \[6+num_neurons+num_non_inputs..6+num_neurons+2*num_non_inputs\): errors
+     * - Remaining indices: energy history
      */
     infer_wasm(input: Float32Array, targets?: Float32Array | null): Float32Array;
     /**
@@ -385,30 +406,14 @@ export function calculate_bias(count: number, total_adjusted_bias: number, curre
 export function calculate_bias_batch_4way(packed_state: Float64Array, no_change_flags: Uint8Array, generations: number, plank_constant: number, learning_rate: number, max_bias_adj_scale: number, limit_bias_scale: number, l1_bias_decay: number, l2_bias_decay: number): Float64Array;
 
 /**
- * Standalone calculate error function for testing
- * Issue #1141 - WASM Migration Phase 9
- *
- * Calculates the error in value-space for backpropagation.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `current_activation` - The neuron's current output (after squash)
- * * `target_activation` - The desired output
- * * `current_value` - The pre-squash value (hint for unSquash)
+ * JS `calculate_error(squash_type, current_activation, target_activation, current_value)`.
  */
 export function calculate_error(squash_type: number, current_activation: number, target_activation: number, current_value: number): number;
 
 /**
- * Issue #1213 - Batch error calculation for 4 records simultaneously.
+ * JS `calculate_error_batch_4way(squash_type, current_activations, target_activations, current_values)`.
  *
- * Returns a Float32Array with 4 error values computed for backpropagation.
- * This provides significant performance improvements during mini-batch training.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `current_activations` - Float32Array of 4 current activation values
- * * `target_activations` - Float32Array of 4 target activation values
- * * `current_values` - Float32Array of 4 pre-squash values (hints for unSquash)
+ * Inputs must each have length 4; the function reads the first 4 lanes.
  */
 export function calculate_error_batch_4way(squash_type: number, current_activations: Float32Array, target_activations: Float32Array, current_values: Float32Array): Float32Array;
 
@@ -449,9 +454,8 @@ export function calculate_weight(count: number, total_positive_activation: numbe
  * packed into a single Float64Array, plus shared config scalars.
  *
  * # Arguments
- * * `packed_state` - 32 f64 values: 8 per synapse ×4
- *   Per synapse: [count, totalPosAct, totalNegAct, countPos, countNeg,
- *                 totalPosAdj, totalNegAdj, currentWeight]
+ * * `packed_state` — 32 f64 values (8 per synapse × 4): for each synapse,
+ *   `[count, totalPosAct, totalNegAct, countPos, countNeg, totalPosAdj, totalNegAdj, currentWeight]`
  * * `generations` - Config generations value
  * * `plank_constant` - Minimum unit threshold
  * * `learning_rate` - Learning rate
@@ -466,39 +470,17 @@ export function calculate_weight(count: number, total_positive_activation: numbe
 export function calculate_weight_batch_4way(packed_state: Float64Array, generations: number, plank_constant: number, learning_rate: number, max_weight_adj_scale: number, limit_weight_scale: number, l1_weight_decay: number, l2_weight_decay: number): Float64Array;
 
 /**
- * Issue #1959 - Compute reverse topological order for backpropagation.
+ * Compute reverse topological order for backpropagation.
  *
  * Uses Kahn's algorithm on the forward connection graph. Returns neuron
- * indices ordered with output neurons first, hidden neurons after their
- * downstream consumers. Input and constant neurons are excluded.
- *
- * For recurrent networks with cycles, neurons remaining after the
- * topological sort are appended at the end.
- *
- * # Arguments
- * * `from_indices` - Uint32Array of synapse source indices
- * * `to_indices` - Uint32Array of synapse destination indices
- * * `num_neurons` - Total number of neurons
- * * `num_inputs` - Number of input neurons
- *
- * # Returns
- * Uint32Array of neuron indices in reverse topological order
+ * indices ordered with output neurons first, then hidden neurons after
+ * their downstream consumers. Input neurons are excluded. Neurons remaining
+ * in cycles are appended at the end.
  */
 export function compute_reverse_topological_order(from_indices: Uint32Array, to_indices: Uint32Array, num_neurons: number, num_inputs: number): Uint32Array;
 
 /**
- * Batch-compute abs-sum, max, and second-max over weight and bias arrays.
- *
- * Returns a `Float64Array` with 4 elements:
- *   [total_abs, count, max_abs, second_max_abs]
- *
- * The caller provides flat arrays of synapse weights and non-input neuron
- * biases. This replaces the inner loops of `computeAndCacheScoreComponents`
- * in `Score.ts`.
- *
- * # Arguments
- * * `weights` - flat f64 array of synapse weights
- * * `biases` - flat f64 array of non-input neuron biases
+ * JS `compute_score_components(weights, biases) -> Float64Array of length 4`.
  */
 export function compute_score_components(weights: Float64Array, biases: Float64Array): Float64Array;
 
@@ -521,39 +503,23 @@ export function compute_score_components(weights: Float64Array, biases: Float64A
 export function cross_entropy_sum_batch_packed(network: CompiledNetwork, records: Float32Array, input_size: number, num_outputs: number, forward_only: boolean): number;
 
 /**
- * Standalone derivative function for testing
- * Issue #1138 - WASM Migration Phase 6
+ * JS `derivative(squash_type, value)`.
  */
 export function derivative(squash_type: number, value: number): number;
 
 /**
- * Issue #1213 - Batch derivative computation for 4 values simultaneously.
- *
- * Returns a Float32Array with 4 derivative values computed in parallel using SIMD.
- * This provides significant performance improvements during backpropagation.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `x0, x1, x2, x3` - The 4 input values to compute derivatives for
+ * JS `derivative_batch_4way(squash_type, x0, x1, x2, x3) -> Float32Array`.
  */
 export function derivative_batch_4way(squash_type: number, x0: number, x1: number, x2: number, x3: number): Float32Array;
 
 /**
- * Issue #1961 — Detect whether the topology contains cycles among non-input neurons.
+ * Detect whether the topology contains cycles among non-input neurons.
  *
- * Uses Kahn's algorithm: if after processing all zero-in-degree neurons
- * some non-input neurons remain unprocessed, a cycle exists.
- *
- * Self-loops are explicitly detected as cycles.
- *
- * # Arguments
- * * `from_indices` - Synapse source indices
- * * `to_indices` - Synapse destination indices
- * * `num_neurons` - Total number of neurons
- * * `num_inputs` - Number of input neurons
+ * Uses Kahn's algorithm on non-input neurons. Self-loops are explicitly
+ * detected as cycles.
  *
  * # Returns
- * 0 if acyclic, 1 if cycles detected
+ * `0` if acyclic, `1` if a cycle is detected.
  */
 export function detect_cycles(from_indices: Uint32Array, to_indices: Uint32Array, num_neurons: number, num_inputs: number): number;
 
@@ -572,7 +538,7 @@ export function detect_cycles(from_indices: Uint32Array, to_indices: Uint32Array
  * * `plank_constant` - Threshold for floating-point comparisons
  *
  * # Returns
- * Vec<f32> of error shares, one per link. Sum equals `error`.
+ * `Vec<f32>` of error shares, one per link. Sum equals `error`.
  */
 export function distribute_elastic_error(error: number, activations: Float32Array, safe_zone_factors: Float32Array, weights: Float32Array, plank_constant: number): Float32Array;
 
@@ -584,36 +550,12 @@ export function distribute_elastic_error(error: number, activations: Float32Arra
 export function free_training_state(): void;
 
 /**
- * Issue #1377 - Fused backward pass error distribution.
- *
- * Combines calculateError + safeZoneAdjustment + elastic error distribution
- * into a single WASM call, eliminating S+1 boundary crossings per neuron.
- *
- * # Arguments
- * * `neuron_squash_type` - The SquashType of the neuron being propagated through
- * * `neuron_activation` - The neuron's current output (after squash)
- * * `neuron_target_activation` - The desired output for this neuron
- * * `neuron_hint_value` - The pre-squash value for this neuron
- * * `upstream_squash_types` - Packed u8 array of upstream neuron squash types
- * * `upstream_hint_values` - Float32Array of upstream pre-squash values
- * * `upstream_activations` - Float32Array of upstream neuron activations
- * * `synapse_weights` - Float32Array of inbound synapse weights
- *
- * # Returns
- * Float32Array with layout: [error, safeZone_0..N, perLinkError_0..N]
- * Total length: 1 + 2*N where N is the number of synapses.
+ * JS `fused_error_distribution(...)`.
  */
 export function fused_error_distribution(neuron_squash_type: number, neuron_activation: number, neuron_target_activation: number, neuron_hint_value: number, upstream_squash_types: Uint8Array, upstream_hint_values: Float32Array, upstream_activations: Float32Array, synapse_weights: Float32Array): Float32Array;
 
 /**
- * Get the range (low, high) for an activation function
- * Issue #1142 - WASM Migration Phase 10
- *
- * Returns a Float32Array with two elements: [low, high]
- * representing the valid output range for the activation function.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
+ * JS `get_range(squash_type) -> Float32Array of [low, high]`.
  */
 export function get_range(squash_type: number): Float32Array;
 
@@ -658,15 +600,7 @@ export function hinge_sum_batch_packed(network: CompiledNetwork, records: Float3
 export function init_training_state(num_synapses: number, num_neurons: number): void;
 
 /**
- * Clamp a value to the valid range for an activation function
- * Issue #1142 - WASM Migration Phase 10
- *
- * Returns the value clamped to the valid range for the specified
- * activation function. Infinity values are clamped to the bounds.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `value` - The value to clamp
+ * JS `limit_range(squash_type, value) -> number`.
  */
 export function limit_range(squash_type: number, value: number): number;
 
@@ -746,79 +680,10 @@ export function mse_sum_batch_packed(network: CompiledNetwork, records: Float32A
 export function msle_sum_batch_packed(network: CompiledNetwork, records: Float32Array, input_size: number, num_outputs: number, forward_only: boolean): number;
 
 /**
- * Issue #1954 - Run the full topological backpropagation loop in WASM.
+ * JS `propagate_topological(data: Uint8Array) -> Float64Array`.
  *
- * This replaces ~N per-neuron WASM calls with a single call that processes
- * all neurons in reverse topological order.
- *
- * # Binary input format (packed into `data`)
- *
- * ```text
- * Header (40 bytes):
- *   u32: neuronCount
- *   u32: inputCount
- *   u32: outputCount
- *   u32: synapseCount
- *   u32: orderLength
- *   u32: totalInwardEntries
- *   f64: plankConstant
- *   u8:  normaliseGradients (0 or 1)
- *   [3 bytes padding]
- *
- * Per neuron (neuronCount × 20 bytes):
- *   u8:  squashType
- *   u8:  neuronType (0=input, 1=hidden, 2=output, 3=constant)
- *   u8:  propagateNeeded (0 or 1)
- *   u8:  updateNeeded (0 or 1)
- *   f32: hintValue
- *   f32: rangeLow
- *   f32: rangeHigh
- *   f32: adjustedActivation
- *   f32: adjustedBias (for non-input neurons)
- *
- * Per synapse (synapseCount × 20 bytes):
- *   u32: from
- *   u32: to
- *   f32: originalWeight
- *   f32: adjustedWeight
- *   u8:  isSelfLoop (0 or 1)
- *   [3 bytes padding]
- *
- * Inward mapping (neuronCount × 8 bytes):
- *   u32: start index into inwardIndices
- *   u32: count of inward connections
- *
- * Inward indices (totalInwardEntries × 4 bytes):
- *   u32[]: synapse indices
- *
- * Reverse topological order (orderLength × 4 bytes):
- *   u32[]: neuron indices
- *
- * Expected outputs (outputCount × 4 bytes):
- *   f32[]: expected values
- * ```
- *
- * # Return format (packed f64 array)
- *
- * ```text
- * Section 1: Per-neuron results (neuronCount × 7 f64s):
- *   f64: totalErrorAbsoluteDelta
- *   f64: cachedActivation (NaN if not set)
- *   f64: noChange (1.0 = true, 0.0 = false)
- *   f64: biasCountDelta
- *   f64: totalBiasDelta
- *   f64: totalAdjustedBiasDelta
- *   f64: traceActivation (NaN if not traced)
- *
- * Section 2: Per-synapse results (synapseCount × 7 f64s):
- *   f64: countDelta
- *   f64: totalPositiveActivation
- *   f64: totalNegativeActivation
- *   f64: countPositiveActivations
- *   f64: countNegativeActivations
- *   f64: totalPositiveAdjustedValue
- *   f64: totalNegativeAdjustedValue
- * ```
+ * Decodes the byte-packed buffer, runs the reverse-topological backprop
+ * loop, and re-encodes the result with the TS↔WASM sentinel contract.
  */
 export function propagate_topological(data: Uint8Array): Float64Array;
 
@@ -865,191 +730,95 @@ export function read_synapse_state(index: number): Float64Array;
 export function reset_training_state(): void;
 
 /**
- * Standalone safe zone adjustment function for testing
- * Issue #1140 - WASM Migration Phase 8
- *
- * Returns a float from 0 (not safe) to 1 (fully safe) indicating how useful it is
- * to backpropagate through a neuron based on saturation levels.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `raw_input` - The raw input value before squashing
- * * `error` - The error value from backpropagation
- * * `weight` - The synapse weight (use NaN if not applicable)
+ * JS `safe_zone_adjustment(squash_type, raw_input, error, weight)`.
  */
 export function safe_zone_adjustment(squash_type: number, raw_input: number, error: number, weight: number): number;
 
 /**
- * Issue #1376 - Batch safe zone adjustment for backward pass inner loop.
- *
- * Processes multiple safe zone adjustments in a single WASM call, eliminating
- * per-synapse boundary crossing overhead (~8.7ns each).
- *
- * # Arguments
- * * `squash_types` - Packed u8 array of squash type enum values
- * * `raw_inputs` - Float32Array of pre-squash values for upstream neurons
- * * `error` - The provisional error per link (same for all synapses)
- * * `weights` - Float32Array of synapse weights
- *
- * # Returns
- * Float32Array of safe zone factors (0.0 to 1.0), one per synapse
+ * JS `safe_zone_adjustment_batch(squash_types, raw_inputs, error, weights)`.
  */
 export function safe_zone_adjustment_batch(squash_types: Uint8Array, raw_inputs: Float32Array, error: number, weights: Float32Array): Float32Array;
 
 /**
- * Issue #1959 - Scan for available forward-only connection slots.
+ * Scan for available forward-only connection slots.
  *
- * Computes all `(from, to)` pairs where `from < to`, `to >= num_inputs`,
- * the target neuron is not constant, and no connection already exists.
- *
- * Uses a flat boolean array for O(1) connection existence checks,
- * which is more cache-friendly than a hash set for WASM linear memory.
- *
- * # Arguments
- * * `from_indices` - Uint32Array of existing synapse source indices
- * * `to_indices` - Uint32Array of existing synapse destination indices
- * * `is_constant` - Uint8Array flag per neuron (1 = constant, 0 = not)
- * * `num_neurons` - Total number of neurons
- * * `num_inputs` - Number of input neurons
+ * Returns all `(from, to)` pairs where `from < to`, `to >= num_inputs`, the
+ * target neuron is not constant, and no connection already exists. Uses a
+ * flat boolean array for O(1) existence checks.
  *
  * # Returns
- * Uint32Array of flattened `[from, to, from, to, ...]` pairs
+ * Flattened `[from, to, from, to, ...]` pairs.
  */
 export function scan_available_connections(from_indices: Uint32Array, to_indices: Uint32Array, is_constant: Uint8Array, num_neurons: number, num_inputs: number): Uint32Array;
 
 /**
- * Scan all weights and biases to find the new max and second-max after a
- * bias change. The bias at `exclude_idx` is excluded (it is being
- * replaced); `new_bias` is included instead.
- *
- * Returns a `Float64Array` with 2 elements: [max, second_max].
- *
- * # Arguments
- * * `weights` - flat f64 array of all synapse weights
- * * `biases` - flat f64 array of all non-input neuron biases
- * * `exclude_idx` - index in `biases` to skip (the old bias)
- * * `new_bias` - the replacement bias value
+ * JS `scan_max_bias(weights, biases, exclude_idx, new_bias) -> Float64Array of [max, second_max]`.
  */
 export function scan_max_bias(weights: Float64Array, biases: Float64Array, exclude_idx: number, new_bias: number): Float64Array;
 
 /**
- * Scan all weights and biases to find the new max and second-max after a
- * weight change. The weight at `exclude_idx` is excluded (it is being
- * replaced); `new_weight` is included instead.
- *
- * Returns a `Float64Array` with 2 elements: [max, second_max].
- *
- * # Arguments
- * * `weights` - flat f64 array of all synapse weights
- * * `biases` - flat f64 array of all non-input neuron biases
- * * `exclude_idx` - index in `weights` to skip (the old weight)
- * * `new_weight` - the replacement weight value
+ * JS `scan_max_weight(weights, biases, exclude_idx, new_weight) -> Float64Array of [max, second_max]`.
  */
 export function scan_max_weight(weights: Float64Array, biases: Float64Array, exclude_idx: number, new_weight: number): Float64Array;
 
 /**
- * Standalone squash function for testing
+ * JS `squash(squash_type, value)` → `apply_squash(SquashType, f32)`.
  */
 export function squash(squash_type: number, value: number): number;
 
 /**
- * Standalone unsquash function for testing
- * Issue #1139 - WASM Migration Phase 7
- *
- * Computes the inverse of the specified activation function at the given activation value.
- * The hint parameter guides the inverse for ambiguous or non-invertible functions.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `activation` - The squashed activation value to invert
- * * `hint` - A hint value to guide the inverse (use NaN or pass the original input value)
+ * JS `unsquash(squash_type, activation, hint)`.
  */
 export function unsquash(squash_type: number, activation: number, hint: number): number;
 
 /**
- * Validate that an activation value is within the valid range
- * Issue #1142 - WASM Migration Phase 10
- *
- * Returns true if the activation is within the valid range for the
- * specified activation function, false otherwise.
- *
- * # Arguments
- * * `squash_type` - The SquashType enum value (u8)
- * * `activation` - The activation value to validate
+ * JS `validate_range(squash_type, activation) -> boolean`.
  */
 export function validate_range(squash_type: number, activation: number): boolean;
 
 /**
- * Issue #1961 — Validate structural integrity of a typed topology.
+ * Validate structural integrity of a typed topology.
  *
  * Checks:
- * - No synapse targets an input neuron
- * - Constant neurons have no inward connections
- * - Hidden neurons have at least 1 inward and 1 outward connection
- * - Non-input neuron biases are finite
- * - IF neurons have at least 3 inward connections with
- *   condition, positive (or standard), and negative synapse types
- *
- * # Arguments
- * * `from_indices` - Synapse source indices
- * * `to_indices` - Synapse destination indices
- * * `is_constant` - Per-neuron constant flag (1 = constant)
- * * `squash_types` - Per-neuron squash type code
- * * `biases` - Per-neuron bias values (f64)
- * * `num_inputs` - Number of input neurons
- * * `num_outputs` - Number of output neurons
- * * `synapse_types` - Per-synapse type code (condition/positive/negative/standard)
- *
- * # Returns
- * Int32Array of length 2: `[error_code, neuron_or_synapse_index]`
+ * - No synapse targets an input neuron.
+ * - Constant neurons have no inward connections.
+ * - Hidden neurons have at least 1 inward and 1 outward connection.
+ * - Non-input neuron biases are finite.
+ * - IF neurons have at least 3 inward connections with condition,
+ *   positive (or standard), and negative synapse types.
  */
 export function validate_structural_integrity(from_indices: Uint32Array, to_indices: Uint32Array, is_constant: Uint8Array, squash_types: Uint8Array, biases: Float64Array, num_inputs: number, num_outputs: number, synapse_types: Uint8Array): Int32Array;
 
 /**
- * Issue #1959 - Validate topology synapse ordering and forward-only constraints.
+ * Validate topology synapse ordering and forward-only constraints.
  *
- * Checks that synapses are sorted (ascending from, then ascending to within
- * the same from), contain no self-connections, and contain no backward
- * connections (from > to).
- *
- * Operates directly on typed arrays from TypedTopology without custom
- * binary serialisation — wasm-bindgen passes the arrays as slices.
+ * Checks that synapses are sorted (ascending `from`, then ascending `to`
+ * within the same `from`), contain no self-connections, and contain no
+ * backward connections (`from > to`).
  *
  * # Arguments
- * * `from_indices` - Uint32Array of source neuron indices per synapse
- * * `to_indices` - Uint32Array of destination neuron indices per synapse
+ * * `from_indices` - source neuron index per synapse
+ * * `to_indices` - destination neuron index per synapse
  *
  * # Returns
- * Int32Array of length 2: `[error_code, synapse_index]`
- * - error_code 0 = valid topology
- * - error_code 1 = self-connection at synapse_index
- * - error_code 2 = backward connection at synapse_index
- * - error_code 3 = from indices not sorted at synapse_index
- * - error_code 4 = to indices not sorted within same from at synapse_index
- * - error_code 5 = duplicate connection at synapse_index
+ * A two-element vector `[error_code, synapse_index]`.
  */
 export function validate_topology(from_indices: Uint32Array, to_indices: Uint32Array): Int32Array;
 
 /**
- * Issue #1960 - Batch topology validation for multiple creatures.
+ * Batch topology validation for multiple creatures.
  *
- * Validates multiple topologies in a single WASM call to amortise boundary
- * crossing overhead. Each topology's from/to indices are concatenated, with
- * a lengths array specifying where each topology's data ends.
- *
- * # Arguments
- * * `all_from_indices` - Concatenated from indices for all topologies
- * * `all_to_indices` - Concatenated to indices for all topologies
- * * `lengths` - Number of synapses per topology (used to split the arrays)
+ * Validates multiple topologies in a single call to amortise WASM boundary
+ * crossing. Each topology's `from`/`to` indices are concatenated; the
+ * `lengths` array specifies per-topology synapse counts.
  *
  * # Returns
- * Int32Array of length 2×N (N = number of topologies):
- *   `[error_code_0, synapse_index_0, error_code_1, synapse_index_1, ...]`
+ * `[error_code_0, synapse_index_0, error_code_1, synapse_index_1, ...]`.
  */
 export function validate_topology_batch(all_from_indices: Uint32Array, all_to_indices: Uint32Array, lengths: Uint32Array): Int32Array;
 
 /**
- * Version information
+ * JS `version() -> string` — returns the `neat-core` Cargo package version.
  */
 export function version(): string;
 
@@ -1058,75 +827,77 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
+    readonly __wbg_predictivecodingengine_free: (a: number, b: number) => void;
+    readonly accumulate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
+    readonly accumulate_bias_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
+    readonly accumulate_bias_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+    readonly accumulate_bias_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+    readonly accumulate_weight_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
+    readonly accumulate_weight_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
+    readonly accumulate_weight_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+    readonly accumulate_weight_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+    readonly calculate_bias: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => number;
+    readonly calculate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number];
+    readonly calculate_error: (a: number, b: number, c: number, d: number) => number;
+    readonly calculate_error_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
+    readonly calculate_weight: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number) => number;
+    readonly calculate_weight_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number];
     readonly compilednetwork_activate: (a: number, b: number, c: number, d: number) => [number, number];
     readonly compilednetwork_activate_and_trace: (a: number, b: number, c: number, d: number) => [number, number];
     readonly compilednetwork_activate_and_trace_batch_4way: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly compilednetwork_activate_into: (a: number, b: number, c: number, d: number, e: number, f: any) => void;
-    readonly compilednetwork_activate_view: (a: number, b: number, c: number, d: number) => any;
+    readonly compilednetwork_activate_view: (a: number, b: number, c: number, d: number) => [number, number];
     readonly compilednetwork_new: (a: number, b: number) => [number, number, number];
     readonly compilednetwork_num_inputs: (a: number) => number;
     readonly compilednetwork_num_neurons: (a: number) => number;
     readonly compilednetwork_num_synapses: (a: number) => number;
     readonly compilednetwork_reset_state: (a: number) => void;
+    readonly compilednetwork_to_dot: (a: number, b: number) => [number, number];
+    readonly compilednetwork_to_topology_json: (a: number, b: number) => [number, number];
+    readonly compute_reverse_topological_order: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
+    readonly compute_score_components: (a: number, b: number, c: number, d: number) => [number, number];
     readonly cross_entropy_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly derivative: (a: number, b: number) => number;
+    readonly derivative_batch_4way: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+    readonly detect_cycles: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly distribute_elastic_error: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
+    readonly free_training_state: () => void;
+    readonly fused_error_distribution: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => [number, number];
+    readonly get_range: (a: number) => [number, number];
+    readonly get_training_state_num_neurons: () => number;
+    readonly get_training_state_num_synapses: () => number;
     readonly hinge_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly init_training_state: (a: number, b: number) => void;
+    readonly limit_range: (a: number, b: number) => number;
     readonly mae_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly mape_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly mse_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly msle_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly calculate_error: (a: number, b: number, c: number, d: number) => number;
-    readonly calculate_error_batch_4way: (a: number, b: any, c: any, d: any) => any;
-    readonly derivative: (a: number, b: number) => number;
-    readonly derivative_batch_4way: (a: number, b: number, c: number, d: number, e: number) => any;
-    readonly fused_error_distribution: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => [number, number];
-    readonly get_range: (a: number) => any;
-    readonly limit_range: (a: number, b: number) => number;
-    readonly safe_zone_adjustment: (a: number, b: number, c: number, d: number) => number;
-    readonly safe_zone_adjustment_batch: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
-    readonly squash: (a: number, b: number) => number;
-    readonly unsquash: (a: number, b: number, c: number) => number;
-    readonly validate_range: (a: number, b: number) => number;
-    readonly version: () => [number, number];
-    readonly propagate_topological: (a: number, b: number) => [number, number];
-    readonly __wbg_predictivecodingengine_free: (a: number, b: number) => void;
+    readonly predictivecodingengine_compute_gradients_wasm: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly predictivecodingengine_infer_batch_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
     readonly predictivecodingengine_infer_wasm: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly predictivecodingengine_new: (a: number, b: number) => [number, number, number];
     readonly predictivecodingengine_num_inputs: (a: number) => number;
     readonly predictivecodingengine_num_neurons: (a: number) => number;
     readonly predictivecodingengine_num_outputs: (a: number) => number;
-    readonly compute_score_components: (a: number, b: number, c: number, d: number) => any;
-    readonly scan_max_bias: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
-    readonly scan_max_weight: (a: number, b: number, c: number, d: number, e: number, f: number) => any;
-    readonly compute_reverse_topological_order: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
-    readonly detect_cycles: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly scan_available_connections: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
-    readonly validate_structural_integrity: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number) => [number, number];
-    readonly validate_topology: (a: number, b: number, c: number, d: number) => [number, number];
-    readonly validate_topology_batch: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
-    readonly accumulate_bias_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
-    readonly accumulate_bias_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
-    readonly accumulate_weight_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
-    readonly accumulate_weight_persistent_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
-    readonly distribute_elastic_error: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
-    readonly free_training_state: () => void;
-    readonly get_training_state_num_neurons: () => number;
-    readonly get_training_state_num_synapses: () => number;
-    readonly init_training_state: (a: number, b: number) => void;
+    readonly propagate_topological: (a: number, b: number) => [number, number];
     readonly read_all_neuron_state: () => [number, number];
     readonly read_all_synapse_state: () => [number, number];
     readonly read_neuron_state: (a: number) => [number, number];
     readonly read_synapse_state: (a: number) => [number, number];
     readonly reset_training_state: () => void;
-    readonly accumulate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
-    readonly accumulate_bias_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
-    readonly accumulate_weight_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
-    readonly accumulate_weight_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
-    readonly calculate_bias: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => number;
-    readonly calculate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number];
-    readonly calculate_weight: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number) => number;
-    readonly calculate_weight_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number];
-    readonly predictivecodingengine_compute_gradients_wasm: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
+    readonly safe_zone_adjustment: (a: number, b: number, c: number, d: number) => number;
+    readonly safe_zone_adjustment_batch: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
+    readonly scan_available_connections: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
+    readonly scan_max_bias: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
+    readonly scan_max_weight: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
+    readonly squash: (a: number, b: number) => number;
+    readonly unsquash: (a: number, b: number, c: number) => number;
+    readonly validate_range: (a: number, b: number) => number;
+    readonly validate_structural_integrity: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number) => [number, number];
+    readonly validate_topology: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly validate_topology_batch: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
+    readonly version: () => [number, number];
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;

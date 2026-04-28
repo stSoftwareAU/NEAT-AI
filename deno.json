@@ -1,11 +1,11 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "3.1.30",
+  "version": "3.1.31",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop",
-    "rev": "36ac4ea34fcd4e89d9fad3d6fae9efc5f02c8959"
+    "rev": "925d4b7fb8381ad1e162e2b76f4c4d2ec11b52f3"
   },
   "publish": {
     "include": [

@@ -402,6 +402,28 @@ loaded, these operations fail fast with an actionable error pointing at
 If you add a new read-heavy or hot-path operation that lives in core, **do not
 re-implement a TypeScript fallback** — fail fast via `requireWasm(...)` instead.
 
+### WASM smoke audit gate in `bump-deps.sh` (Issue #2465)
+
+Because the WASM-only operations above have no TS fallback, a freshly bumped
+WASM bundle that traps at runtime (e.g. `RuntimeError: unreachable` inside
+`propagate_topological`) cannot be detected by `deno check` — the static
+type-check still passes. Issue #2460 demonstrated 120 silent test failures
+landing on `main` from exactly this class of regression.
+
+`bump-deps.sh` therefore runs a two-phase audit gate after the bumps:
+
+1. **WASM smoke gate** — a curated subset of `deno test` specs covering the
+   `propagate_topological`, `wasmTopologicalBackprop`, and
+   `compute_score_components` paths. The list is intentionally small so the
+   total wall-clock stays under ~120 seconds; the gate is hard-capped via
+   `$TIMEOUT_CMD` (`gtimeout` on macOS, `timeout` on Linux).
+2. **`deno check`** — the existing static type-check.
+
+Either gate failing fails the script with exit 1, and the Vibe Coder worker
+reverts per the VibeCoding#1613 contract. Use `--skip-smoke` only when running
+the full `./quality.sh` immediately afterwards (which exercises the same paths
+and more).
+
 ## 🦀 Rust Discovery Module
 
 The Rust FFI extension shipped via
