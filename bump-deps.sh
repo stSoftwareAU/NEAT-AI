@@ -135,6 +135,7 @@ Deno.writeTextFileSync(out, JSON.stringify(cfg.imports ?? {}, null, 2));
 compute_imports_diff() {
   # Print "key: before -> after" lines for any key whose value differs
   # between the JSON files at $1 (before) and $2 (after).
+  # shellcheck disable=SC2016 # JS template literals — must not be expanded by bash
   BUMP_DEPS_BEFORE_PATH="$1" BUMP_DEPS_AFTER_PATH="$2" deno eval '
 const beforePath = Deno.env.get("BUMP_DEPS_BEFORE_PATH");
 const afterPath = Deno.env.get("BUMP_DEPS_AFTER_PATH");

@@ -52,7 +52,6 @@ function patchFile(filePath: string): boolean {
   if (!preContent) return false;
 
   let content = preContent;
-  const original = content;
   const isCrisprTest = filePath.toLowerCase().includes("crispr");
 
   // ===== Method renames =====
@@ -151,7 +150,6 @@ function patchFile(filePath: string): boolean {
   // ===== Fix SynapseExport type usage in forEach =====
   content = content.replace(
     /\(synapse:\s*SynapseExport\)/g,
-    // deno-lint-ignore no-explicit-any
     "(synapse: Record<string, unknown>)",
   );
 
