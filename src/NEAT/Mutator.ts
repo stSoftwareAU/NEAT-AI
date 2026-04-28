@@ -33,6 +33,7 @@ import {
   metropolisHastingsAccept,
 } from "@neat/MetropolisHastings.ts";
 import type { MCMCDiagnostics } from "@neat/MCMCDiagnostics.ts";
+import { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
 
 /**
  * Cache entry for valid mutation candidates.
@@ -62,6 +63,16 @@ export class Mutator {
    */
   private mcmcDiagnostics?: MCMCDiagnostics;
 
+  /**
+   * Issue #2457: Per-role squash effectiveness tracker. Persists across
+   * generations within a run so ModSquash can bias toward squashes that
+   * historically improved fitness in similar roles. When omitted, the
+   * Mutator constructs an internal tracker from `config.squashEffectiveness`
+   * so single-population callers (e.g. `Neat.populatePopulation`) still
+   * benefit.
+   */
+  private readonly squashTracker: SquashEffectivenessTracker;
+
   private isMutationTopologyForwardOnly(creature: Creature): boolean {
     return creature.forwardOnly === true;
   }
@@ -88,15 +99,29 @@ export class Mutator {
    * @param config - The NEAT configuration
    * @param mcmcTemperature - Issue #2200: Optional current temperature for M-H acceptance
    * @param mcmcDiagnostics - Issue #2201: Optional diagnostics for recording M-H decisions
+   * @param squashTracker - Issue #2457: Optional shared per-role squash
+   *   effectiveness tracker. When omitted, an internal tracker is created
+   *   from `config.squashEffectiveness`.
    */
   constructor(
     config: NeatConfig,
     mcmcTemperature?: number,
     mcmcDiagnostics?: MCMCDiagnostics,
+    squashTracker?: SquashEffectivenessTracker,
   ) {
     this.config = config;
     this.mcmcTemperature = mcmcTemperature;
     this.mcmcDiagnostics = mcmcDiagnostics;
+    this.squashTracker = squashTracker ??
+      new SquashEffectivenessTracker(config.squashEffectiveness);
+  }
+
+  /**
+   * Issue #2457: Expose the tracker so the evolution loop can commit
+   * pending entries after fitness re-evaluation.
+   */
+  public getSquashEffectivenessTracker(): SquashEffectivenessTracker {
+    return this.squashTracker;
   }
 
   /**
@@ -158,6 +183,7 @@ export class Mutator {
       Mutation.MOD_BIAS.name,
       (c, cfg) => new ModBias(c, cfg.biasRegularisation),
     ],
+    // Issue #2457: ModSquash receives the per-role tracker via createOperator.
     [Mutation.MOD_SQUASH.name, (c, _cfg) => new ModSquash(c)],
     [Mutation.ADD_SELF_CONN.name, (c, _cfg) => new AddSelfCon(c)],
     [Mutation.SUB_SELF_CONN.name, (c, _cfg) => new SubSelfCon(c)],
@@ -174,6 +200,12 @@ export class Mutator {
     creature: Creature,
     methodName: string,
   ): RadioactiveInterface {
+    // Issue #2457: ModSquash needs the per-role effectiveness tracker, which
+    // is held on the Mutator instance and therefore cannot live on the
+    // static factory map.
+    if (methodName === Mutation.MOD_SQUASH.name) {
+      return new ModSquash(creature, this.squashTracker);
+    }
     const factory = Mutator.operatorFactories.get(methodName);
     if (!factory) {
       throw new ValidationError(

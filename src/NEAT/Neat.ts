@@ -27,6 +27,7 @@ import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
 import { TrainingRegressionTracker } from "@neat/TrainingRegressionTracker.ts";
+import { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
 import {
   type DiscoveryReplayDirResult,
   DiscoveryReplayQueue,
@@ -88,6 +89,15 @@ export class Neat {
 
   /** Issue #2200: MCMC temperature state for Metropolis-Hastings acceptance */
   readonly mcmcState: MCMCState;
+
+  /**
+   * Issue #2457: Per-role squash effectiveness tracker.
+   *
+   * Owned by Neat so the histogram (and pending commits) survive across
+   * generations. Passed into each Mutator constructed in `evolve()` so the
+   * same tracker drives ModSquash sampling for the entire run.
+   */
+  readonly squashEffectivenessTracker: SquashEffectivenessTracker;
 
   /** Adaptive fine-tune population tracker (Issue #1323) */
   readonly fineTuneTracker: AdaptiveFineTuneTracker;
@@ -209,6 +219,11 @@ export class Neat {
 
     // Issue #2200: Initialise MCMC temperature state
     this.mcmcState = new MCMCState(this.config.mcmc);
+
+    // Issue #2457: Initialise the per-role squash effectiveness tracker.
+    this.squashEffectivenessTracker = new SquashEffectivenessTracker(
+      this.config.squashEffectiveness,
+    );
 
     this.fineTuneTracker = new AdaptiveFineTuneTracker(
       this.config.fineTunePopulation,
@@ -519,7 +534,12 @@ export class Neat {
   }
 
   async populatePopulation(creature: Creature) {
-    const mutator = new Mutator(this.config);
+    const mutator = new Mutator(
+      this.config,
+      undefined,
+      undefined,
+      this.squashEffectivenessTracker,
+    );
     while (this.population.length < this.config.populationSize - 1) {
       const clonedCreature = creature.shallowClone();
       const creatures = [clonedCreature];

@@ -137,6 +137,15 @@ export async function evolve(
   const fitnessStartMs = Date.now();
   await neat.fitness.calculate(neat.population, idleHeavyForFitness);
   const fitnessMs = Date.now() - fitnessStartMs;
+
+  // Issue #2457: Commit any squash-mutation outcomes captured last generation
+  // now that the freshly evaluated fitness is available. Each creature is
+  // a no-op unless it is carrying a pending entry recorded by ModSquash.
+  if (neat.config.squashEffectiveness.enabled) {
+    for (const creature of neat.population) {
+      neat.squashEffectivenessTracker.commit(creature, creature.score);
+    }
+  }
   // Issue #2312: Snapshot after fitness — workers should be heavily utilised
   const fitnessUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
 
@@ -569,7 +578,14 @@ export async function evolve(
     ? neat.mcmcState.diagnostics
     : undefined;
 
-  const mutator = new Mutator(mutatorConfig, mcmcTemperature, mcmcDiagnostics);
+  const mutator = new Mutator(
+    mutatorConfig,
+    mcmcTemperature,
+    mcmcDiagnostics,
+    // Issue #2457: Reuse the run-wide squash effectiveness tracker so its
+    // histogram persists across generations.
+    neat.squashEffectivenessTracker,
+  );
 
   // Issue #1099: Single-pass de-duplication (constructed early so it is ready
   // when needed after mutation, without waiting for breeding to complete).

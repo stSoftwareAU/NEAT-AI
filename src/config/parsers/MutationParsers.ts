@@ -24,6 +24,10 @@ import {
   DEFAULT_PLATEAU_DETECTION,
   type RequiredPlateauDetectionConfig,
 } from "@neat/PlateauDetector.ts";
+import {
+  DEFAULT_SQUASH_EFFECTIVENESS_CONFIG,
+  type RequiredSquashEffectivenessConfig,
+} from "@config/SquashEffectivenessConfig.ts";
 
 /** Parse adaptive mutation thresholds. */
 export function parseAdaptiveMutationThresholds(
@@ -202,4 +206,52 @@ export function parseMcmc(
       { minExclusive: 0, maxExclusive: 1 },
     ),
   } as RequiredMCMCConfig;
+}
+
+/** Parse squash effectiveness tracker configuration (Issue #2457). */
+export function parseSquashEffectiveness(
+  overrides: Record<string, unknown> | undefined,
+): RequiredSquashEffectivenessConfig {
+  const d = DEFAULT_SQUASH_EFFECTIVENESS_CONFIG;
+  return {
+    enabled: typeof overrides?.enabled === "boolean"
+      ? overrides.enabled
+      : d.enabled,
+    minSamples: parseNumber(
+      "Squash effectiveness minSamples",
+      overrides?.minSamples,
+      d.minSamples,
+      { integer: true, min: 1 },
+    ),
+    explorationWeight: parseNumber(
+      "Squash effectiveness explorationWeight",
+      overrides?.explorationWeight,
+      d.explorationWeight,
+      { min: 0, max: 1 },
+    ),
+    emaAlpha: parseNumber(
+      "Squash effectiveness emaAlpha",
+      overrides?.emaAlpha,
+      d.emaAlpha,
+      { minExclusive: 0, max: 1 },
+    ),
+    boltzmannBeta: parseNumber(
+      "Squash effectiveness boltzmannBeta",
+      overrides?.boltzmannBeta,
+      d.boltzmannBeta,
+      { min: 0 },
+    ),
+    fanInLowThreshold: parseNumber(
+      "Squash effectiveness fanInLowThreshold",
+      overrides?.fanInLowThreshold,
+      d.fanInLowThreshold,
+      { integer: true, min: 1 },
+    ),
+    fanInHighThreshold: parseNumber(
+      "Squash effectiveness fanInHighThreshold",
+      overrides?.fanInHighThreshold,
+      d.fanInHighThreshold,
+      { integer: true, min: 2 },
+    ),
+  } as RequiredSquashEffectivenessConfig;
 }

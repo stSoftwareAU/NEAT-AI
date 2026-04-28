@@ -13,6 +13,7 @@ import type { RequiredEnsembleDiversityConfig } from "@config/EnsembleDiversityC
 import type { RequiredFineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
 import type { RequiredStabilityAdaptationConfig } from "@config/StabilityAdaptationConfig.ts";
 import type { RequiredQuantumStepConfig } from "@config/QuantumStepConfig.ts";
+import type { RequiredSquashEffectivenessConfig } from "@config/SquashEffectivenessConfig.ts";
 import type { RequiredBiasRegularisationConfig } from "@config/BiasRegularisationConfig.ts";
 import type { Logger } from "@utils/Logger.ts";
 import type { RandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
@@ -831,4 +832,21 @@ export interface NeatArguments {
    * maximise WASM compilation cache hits across workers.
    */
   parallelEvaluation: RequiredParallelEvaluationConfig;
+
+  /**
+   * Per-role squash effectiveness tracker configuration.
+   *
+   * Issue #2457: Biases squash-function mutation toward activations that
+   * have historically improved fitness in similar neuron roles. A "role"
+   * is a stable bucket derived from layer index (input-adjacent / mid /
+   * output-adjacent) plus fan-in bucket (low / medium / high).
+   *
+   * Configuration options:
+   * - enabled: Whether biased squash sampling is active (default: true)
+   * - minSamples: Minimum samples per role before the histogram is used
+   *   (default: 20)
+   * - explorationWeight: Fraction of biased draws kept uniform so under-
+   *   sampled squashes still get tried (default: 0.2)
+   */
+  squashEffectiveness: RequiredSquashEffectivenessConfig;
 }

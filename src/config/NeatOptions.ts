@@ -25,6 +25,7 @@ import type { CrossValidationConfig } from "@config/CrossValidationConfig.ts";
 import type { DataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
 import type { DataQuantisationConfig } from "@config/DataQuantisationConfig.ts";
 import type { ParallelEvaluationConfig } from "@config/ParallelEvaluationConfig.ts";
+import type { SquashEffectivenessConfig } from "@config/SquashEffectivenessConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
 export type CoerceNumeric<T> = T extends number ? number | string
@@ -113,6 +114,7 @@ export type NeatOptions =
     | "dataFuzzing"
     | "dataQuantisation"
     | "parallelEvaluation"
+    | "squashEffectiveness"
     | "outputRanges"
     | "logger"
     | "rng"
@@ -163,6 +165,8 @@ export type NeatOptions =
     dataQuantisation?: DataQuantisationConfig;
     /** Partial overrides for parallel evaluation configuration (defaults applied if not specified) */
     parallelEvaluation?: ParallelEvaluationConfig;
+    /** Partial overrides for squash effectiveness tracker configuration (defaults applied if not specified) */
+    squashEffectiveness?: SquashEffectivenessConfig;
     /**
      * Optional per-output range constraints (Issue #1620).
      *
@@ -256,6 +260,7 @@ export type NeatOptionsInput =
     | "dataFuzzing"
     | "dataQuantisation"
     | "parallelEvaluation"
+    | "squashEffectiveness"
     | "outputRanges"
     | "logger"
     | "logLevel"
@@ -298,6 +303,8 @@ export type NeatOptionsInput =
     dataQuantisation?: CoerceNumeric<DataQuantisationConfig>;
     /** Parallel evaluation configuration (Issue #1862). Numeric fields coerced from CLI. */
     parallelEvaluation?: CoerceNumeric<ParallelEvaluationConfig>;
+    /** Squash effectiveness tracker configuration (Issue #2457). Numeric fields coerced from CLI. */
+    squashEffectiveness?: CoerceNumeric<SquashEffectivenessConfig>;
     /** Per-output range constraints (Issue #1620). Numeric fields coerced from CLI. */
     outputRanges?: readonly CoerceNumeric<OutputRange>[];
     /** Custom logger instance (not coerced — functions cannot come from CLI). */
