@@ -6,7 +6,11 @@ import type { NeatConfig } from "@config/NeatConfig.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import type { Genus } from "@neat/Genus.ts";
 import { FitnessRanking } from "@breed/FitnessRanking.ts";
-import { findFather, selectParent } from "@breed/ParentSelection.ts";
+import {
+  buildAdjustedFitnessMap,
+  findFather,
+  selectParent,
+} from "@breed/ParentSelection.ts";
 import { getLogger } from "@utils/Logger.ts";
 
 /**
@@ -98,8 +102,14 @@ export class Breed {
   breed(populationRanking?: FitnessRanking): Creature | undefined {
     const config = this.getEffectiveConfig();
 
+    // Issue #2453: When fitness sharing is enabled, rank the population by
+    // adjusted fitness (raw / speciesSize) so small species are not starved
+    // by larger ones during mother selection.
+    const adjustedScores = config.fitnessSharing.enabled
+      ? buildAdjustedFitnessMap(this.genus)
+      : undefined;
     const ranking = populationRanking ??
-      new FitnessRanking(this.genus.population);
+      new FitnessRanking(this.genus.population, adjustedScores);
 
     const mum = selectParent(ranking, config);
 

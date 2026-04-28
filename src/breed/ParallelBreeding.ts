@@ -7,7 +7,11 @@ import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import type { Genus } from "@neat/Genus.ts";
 import { BreedingSubPhaseAccumulator } from "@breed/BreedingSubPhaseAccumulator.ts";
 import { FitnessRanking } from "@breed/FitnessRanking.ts";
-import { findFather, selectParent } from "@breed/ParentSelection.ts";
+import {
+  buildAdjustedFitnessMap,
+  findFather,
+  selectParent,
+} from "@breed/ParentSelection.ts";
 import { getLogger } from "@utils/Logger.ts";
 
 /**
@@ -98,9 +102,16 @@ export class ParallelBreeding {
    * 3. Filters out failed breeding attempts
    *
    * @param count - Number of offspring to attempt to breed
+   * @param speciesQuotas - Optional Issue #2453 quota map. When provided,
+   *   mothers are drawn from each species in proportion to its quota
+   *   (using a per-species FitnessRanking) instead of from a single global
+   *   ranking. The total of `speciesQuotas.values()` should equal `count`.
    * @returns Array of valid offspring creatures
    */
-  async breedBatch(count: number): Promise<Creature[]> {
+  async breedBatch(
+    count: number,
+    speciesQuotas?: ReadonlyMap<string, number>,
+  ): Promise<Creature[]> {
     if (count <= 0) {
       this.lastBreedingSubPhases = undefined;
       this.lastQueueMaxDepth = 0;
@@ -112,20 +123,29 @@ export class ParallelBreeding {
     // Issue #2284: Create sub-phase accumulator for timing instrumentation
     const acc = new BreedingSubPhaseAccumulator();
 
+    // Issue #2453: When fitness sharing is enabled, rank the global
+    // population by adjusted fitness so any global selection picks
+    // creatures with cross-species fairness baked in.
+    const adjustedScores = config.fitnessSharing.enabled
+      ? buildAdjustedFitnessMap(this.genus)
+      : undefined;
+
     // Pre-compute fitness ranking once for the entire batch
-    const populationRanking = new FitnessRanking(this.genus.population);
+    const populationRanking = new FitnessRanking(
+      this.genus.population,
+      adjustedScores,
+    );
 
     // Issue #2284: Time parent selection sub-phase
     const selectionStartMs = Date.now();
 
     // Step 1: Select all parent pairs (main thread, fast)
-    const parentPairs: ParentPair[] = [];
-    for (let i = 0; i < count; i++) {
-      const pair = this.selectParentPair(populationRanking, config);
-      if (pair) {
-        parentPairs.push(pair);
-      }
-    }
+    const parentPairs: ParentPair[] = this.selectParentPairs(
+      populationRanking,
+      config,
+      count,
+      speciesQuotas,
+    );
     acc.parentSelectionMs = Date.now() - selectionStartMs;
 
     // Issue #2330: Parent pairs are enqueued in one go before workers start
@@ -278,6 +298,67 @@ export class ParallelBreeding {
     }
 
     return { mother: mum, father: dad };
+  }
+
+  /**
+   * Issue #2453: Build the parent-pair list for the batch. When
+   * `speciesQuotas` is provided, mothers are drawn from each species in
+   * proportion to its quota using a per-species FitnessRanking; this is
+   * the fitness-sharing path. Otherwise the legacy global path runs.
+   *
+   * @param populationRanking - Pre-computed global ranking (used by legacy
+   *   path and as a fallback when a quota-target species is missing).
+   * @param config - NEAT configuration
+   * @param count - Total mothers requested
+   * @param speciesQuotas - Optional per-species quota map
+   * @returns Selected parent pairs (failed selections are silently skipped)
+   */
+  private selectParentPairs(
+    populationRanking: FitnessRanking,
+    config: NeatConfig,
+    count: number,
+    speciesQuotas?: ReadonlyMap<string, number>,
+  ): ParentPair[] {
+    const parentPairs: ParentPair[] = [];
+
+    if (!speciesQuotas || speciesQuotas.size === 0) {
+      for (let i = 0; i < count; i++) {
+        const pair = this.selectParentPair(populationRanking, config);
+        if (pair) parentPairs.push(pair);
+      }
+      return parentPairs;
+    }
+
+    // Per-species path: build one FitnessRanking per species so mothers
+    // are drawn from that species using the configured selection method.
+    // Within a species, every member's adjusted score is scaled by the
+    // same denominator (speciesSize), so the legacy raw-score ranking is
+    // already proportional to adjusted fitness.
+    let allocated = 0;
+    for (const [speciesKey, quota] of speciesQuotas) {
+      if (quota <= 0) continue;
+      allocated += quota;
+      const species = this.genus.speciesMap.get(speciesKey);
+      if (!species || species.creatures.length === 0) continue;
+      const speciesRanking = new FitnessRanking(species.creatures);
+      for (let i = 0; i < quota; i++) {
+        const mum = selectParent(speciesRanking, config);
+        if (!mum) continue;
+        const dad = findFather(mum, this.genus, config);
+        if (!dad) continue;
+        parentPairs.push({ mother: mum, father: dad });
+      }
+    }
+
+    // Top up using the global ranking if quotas under-allocated due to
+    // rounding or empty species (defence in depth — quotas should sum
+    // to count, but never exceed the requested batch).
+    for (let i = allocated; i < count; i++) {
+      const pair = this.selectParentPair(populationRanking, config);
+      if (pair) parentPairs.push(pair);
+    }
+
+    return parentPairs;
   }
 
   /**

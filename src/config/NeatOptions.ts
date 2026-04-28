@@ -5,6 +5,7 @@ import type { AdaptiveMutationThresholds } from "@config/AdaptiveMutationThresho
 import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
 import type { EnsembleDiversityConfig } from "@config/EnsembleDiversityConfig.ts";
 import type { FineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
+import type { FitnessSharingConfig } from "@config/FitnessSharingConfig.ts";
 import type { NeatArguments } from "@config/NeatArguments.ts";
 import type { PlateauDetectionConfig } from "@neat/PlateauDetector.ts";
 import type { PredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
@@ -115,6 +116,7 @@ export type NeatOptions =
     | "dataQuantisation"
     | "parallelEvaluation"
     | "squashEffectiveness"
+    | "fitnessSharing"
     | "outputRanges"
     | "logger"
     | "rng"
@@ -167,6 +169,8 @@ export type NeatOptions =
     parallelEvaluation?: ParallelEvaluationConfig;
     /** Partial overrides for squash effectiveness tracker configuration (defaults applied if not specified) */
     squashEffectiveness?: SquashEffectivenessConfig;
+    /** Partial overrides for fitness sharing configuration (Issue #2453, defaults applied if not specified) */
+    fitnessSharing?: FitnessSharingConfig;
     /**
      * Optional per-output range constraints (Issue #1620).
      *
@@ -261,6 +265,7 @@ export type NeatOptionsInput =
     | "dataQuantisation"
     | "parallelEvaluation"
     | "squashEffectiveness"
+    | "fitnessSharing"
     | "outputRanges"
     | "logger"
     | "logLevel"
@@ -305,6 +310,8 @@ export type NeatOptionsInput =
     parallelEvaluation?: CoerceNumeric<ParallelEvaluationConfig>;
     /** Squash effectiveness tracker configuration (Issue #2457). Numeric fields coerced from CLI. */
     squashEffectiveness?: CoerceNumeric<SquashEffectivenessConfig>;
+    /** Fitness sharing configuration (Issue #2453). Numeric fields coerced from CLI. */
+    fitnessSharing?: CoerceNumeric<FitnessSharingConfig>;
     /** Per-output range constraints (Issue #1620). Numeric fields coerced from CLI. */
     outputRanges?: readonly CoerceNumeric<OutputRange>[];
     /** Custom logger instance (not coerced — functions cannot come from CLI). */

@@ -11,6 +11,7 @@ import type { RequiredAdaptiveMutationThresholds } from "@config/AdaptiveMutatio
 import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
 import type { RequiredEnsembleDiversityConfig } from "@config/EnsembleDiversityConfig.ts";
 import type { RequiredFineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
+import type { RequiredFitnessSharingConfig } from "@config/FitnessSharingConfig.ts";
 import type { RequiredStabilityAdaptationConfig } from "@config/StabilityAdaptationConfig.ts";
 import type { RequiredQuantumStepConfig } from "@config/QuantumStepConfig.ts";
 import type { RequiredSquashEffectivenessConfig } from "@config/SquashEffectivenessConfig.ts";
@@ -849,4 +850,20 @@ export interface NeatArguments {
    *   sampled squashes still get tried (default: 0.2)
    */
   squashEffectiveness: RequiredSquashEffectivenessConfig;
+
+  /**
+   * NEAT fitness sharing configuration.
+   *
+   * Issue #2453: When `enabled`, parent selection ranks creatures by
+   * adjusted fitness (raw / speciesSize) and breeding slots are
+   * allocated to species in proportion to their summed adjusted fitness.
+   * `minSpeciesSlots` guarantees at least this many breeding slots to
+   * every non-empty species so a numerous species cannot starve a small
+   * but novel niche.
+   *
+   * Configuration options:
+   * - enabled: Whether fitness sharing is active (default: true)
+   * - minSpeciesSlots: Floor for per-species breeding slots (default: 1)
+   */
+  fitnessSharing: RequiredFitnessSharingConfig;
 }

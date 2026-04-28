@@ -19,6 +19,10 @@ import {
   DEFAULT_FINE_TUNE_POPULATION_CONFIG,
   type RequiredFineTunePopulationConfig,
 } from "@config/FineTunePopulationConfig.ts";
+import {
+  DEFAULT_FITNESS_SHARING_CONFIG,
+  type RequiredFitnessSharingConfig,
+} from "@config/FitnessSharingConfig.ts";
 import { parseNumber } from "@config/ParseOptions.ts";
 
 /** Parse fine-tune population configuration (Issue #1323). */
@@ -100,6 +104,24 @@ export function parseAdaptivePopulation(
       { integer: true, min: 0 },
     ),
   } as RequiredAdaptivePopulationConfig;
+}
+
+/** Parse fitness sharing configuration (Issue #2453). */
+export function parseFitnessSharing(
+  overrides: Record<string, unknown> | undefined,
+): RequiredFitnessSharingConfig {
+  const d = DEFAULT_FITNESS_SHARING_CONFIG;
+  return {
+    enabled: typeof overrides?.enabled === "boolean"
+      ? overrides.enabled
+      : d.enabled,
+    minSpeciesSlots: parseNumber(
+      "Fitness sharing minSpeciesSlots",
+      overrides?.minSpeciesSlots,
+      d.minSpeciesSlots,
+      { integer: true, min: 0 },
+    ),
+  } as RequiredFitnessSharingConfig;
 }
 
 /** Parse ensemble diversity configuration (Issue #1310). */
