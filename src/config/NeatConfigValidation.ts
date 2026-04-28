@@ -203,6 +203,19 @@ export function validateNeatConfig(config: NeatArguments): void {
     );
   }
 
+  // Issue #2454: Species stagnation extinctionWindow must exceed haltWindow
+  if (
+    config.speciesStagnation.extinctionWindow <=
+      config.speciesStagnation.haltWindow
+  ) {
+    throw new ConfigurationError(
+      `speciesStagnation.extinctionWindow must be greater than haltWindow. ` +
+        `extinctionWindow: ${config.speciesStagnation.extinctionWindow}, ` +
+        `haltWindow: ${config.speciesStagnation.haltWindow}`,
+      "CROSS_FIELD_VALIDATION",
+    );
+  }
+
   // Discovery focus neuron UUID validation
   if (!Array.isArray(config.discoveryFocusNeuronUUIDs)) {
     throw new ConfigurationError(

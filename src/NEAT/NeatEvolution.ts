@@ -18,6 +18,7 @@ import { Breed } from "@breed/Breed.ts";
 import { ParallelBreeding } from "@breed/ParallelBreeding.ts";
 import { AddConnection } from "@mutate/AddConnection.ts";
 import { allocateBreedingQuotas } from "@neat/BreedingQuotas.ts";
+import { applyStagnationToQuotas } from "@neat/SpeciesPlateauDetector.ts";
 import { Genus } from "@neat/Genus.ts";
 import { checkMemoryAndEvict, logMemoryUsage } from "@neat/MemoryMonitor.ts";
 import { Mutator } from "@neat/Mutator.ts";
@@ -222,6 +223,13 @@ export async function evolve(
   // so downstream consumers can see size, best/mean raw fitness, and
   // adjusted (fitness-shared) fitness for every species.
   genus.updateSpeciesStatistics();
+
+  // Issue #2454: Record per-species best fitness for stagnation
+  // detection. The detector is a no-op when
+  // `speciesStagnation.enabled` is false. Prune history for species
+  // that have disappeared so memory does not leak across long runs.
+  neat.speciesPlateauDetector.recordGeneration(genus);
+  neat.speciesPlateauDetector.pruneAbsent(genus.speciesMap.keys());
 
   // Issue #1615 / #2452: Emit species_adjusted event with per-species
   // summary for diversity-aware features and external observability.
@@ -540,13 +548,25 @@ export async function evolve(
   // breeding quotas in proportion to summed adjusted fitness. The
   // species_adjusted statistics computed earlier this generation are
   // the inputs.
-  const speciesQuotas = neat.config.fitnessSharing.enabled && newPopSize > 0
+  let speciesQuotas = neat.config.fitnessSharing.enabled && newPopSize > 0
     ? allocateBreedingQuotas(
       genus,
       newPopSize,
       neat.config.fitnessSharing.minSpeciesSlots,
     )
     : undefined;
+
+  // Issue #2454: Reduce or zero out breeding quotas for species that
+  // are flat across the configured windows; reclaimed slots are
+  // redistributed proportionally to species that are still
+  // progressing. The transformation preserves the total quota count
+  // so the breeding budget is unchanged.
+  if (speciesQuotas && neat.config.speciesStagnation.enabled) {
+    speciesQuotas = applyStagnationToQuotas(
+      speciesQuotas,
+      neat.speciesPlateauDetector,
+    );
+  }
   const rawBreedingPromise = parallelBreeding.breedBatch(
     newPopSize,
     speciesQuotas,

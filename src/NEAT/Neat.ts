@@ -26,6 +26,7 @@ import { Genus } from "@neat/Genus.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
+import { SpeciesPlateauDetector } from "@neat/SpeciesPlateauDetector.ts";
 import { TrainingRegressionTracker } from "@neat/TrainingRegressionTracker.ts";
 import { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
 import {
@@ -86,6 +87,14 @@ export class Neat {
   crisprIndex = 0;
   /** Plateau detector for fitness stagnation detection (Issue #1039) */
   readonly plateauDetector: PlateauDetector;
+
+  /**
+   * Per-species plateau detector for stagnant-species retirement
+   * (Issue #2454). Tracks each species' best raw fitness across
+   * generations so stalled species can be halved or dropped from
+   * breeding-quota allocation.
+   */
+  readonly speciesPlateauDetector: SpeciesPlateauDetector;
 
   /** Issue #2200: MCMC temperature state for Metropolis-Hastings acceptance */
   readonly mcmcState: MCMCState;
@@ -216,6 +225,12 @@ export class Neat {
     this.CRISPRs = Neat.deepCloneAndShuffle(this.config.CRISPRs);
 
     this.plateauDetector = new PlateauDetector(this.config.plateauDetection);
+
+    // Issue #2454: Per-species stagnation detector. The detector is a
+    // no-op when `speciesStagnation.enabled` is false.
+    this.speciesPlateauDetector = new SpeciesPlateauDetector(
+      this.config.speciesStagnation,
+    );
 
     // Issue #2200: Initialise MCMC temperature state
     this.mcmcState = new MCMCState(this.config.mcmc);

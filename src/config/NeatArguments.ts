@@ -12,6 +12,7 @@ import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCand
 import type { RequiredEnsembleDiversityConfig } from "@config/EnsembleDiversityConfig.ts";
 import type { RequiredFineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
 import type { RequiredFitnessSharingConfig } from "@config/FitnessSharingConfig.ts";
+import type { RequiredSpeciesStagnationConfig } from "@config/SpeciesStagnationConfig.ts";
 import type { RequiredStabilityAdaptationConfig } from "@config/StabilityAdaptationConfig.ts";
 import type { RequiredQuantumStepConfig } from "@config/QuantumStepConfig.ts";
 import type { RequiredSquashEffectivenessConfig } from "@config/SquashEffectivenessConfig.ts";
@@ -866,4 +867,21 @@ export interface NeatArguments {
    * - minSpeciesSlots: Floor for per-species breeding slots (default: 1)
    */
   fitnessSharing: RequiredFitnessSharingConfig;
+
+  /**
+   * Species stagnation detection and breeding-budget reclamation
+   * configuration.
+   *
+   * Issue #2454: Tracks per-species best raw fitness across generations.
+   * Species that fail to improve over `haltWindow` generations have their
+   * breeding share halved; species flat for `extinctionWindow` generations
+   * are dropped from the breeding pool entirely. Reclaimed slots are
+   * redistributed proportionally to the remaining species.
+   *
+   * Configuration options:
+   * - enabled: Whether species stagnation detection is active (default: true)
+   * - haltWindow: Generations before halving breeding share (default: 15)
+   * - extinctionWindow: Generations before zeroing breeding share (default: 25)
+   */
+  speciesStagnation: RequiredSpeciesStagnationConfig;
 }
