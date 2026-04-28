@@ -32,6 +32,18 @@ const NEURON_BUCKET_SIZE = 10;
  */
 const CONNECTIVITY_BUCKET_SIZE = 2;
 
+/**
+ * Per-species rolling statistics computed once per generation.
+ *
+ * Issue #2452: Foundational telemetry for fitness sharing. The species's
+ * adjusted fitness is the best raw fitness divided by species size — a
+ * single representative value suitable for downstream fitness-sharing
+ * selection. A species of size 1 therefore has adjusted fitness equal
+ * to its raw fitness.
+ *
+ * Statistics are reset to neutral values until {@link Species.computeStatistics}
+ * runs for the current generation.
+ */
 export class Species {
   private static TE = new TextEncoder();
   private static NAMESPACE_UUID = "1b671a64-40d5-491e-99b0-ac01ff1f5641";
@@ -41,6 +53,21 @@ export class Species {
 
   readonly speciesKey: string;
 
+  /**
+   * Issue #2452: Per-species rolling statistics. These are populated by
+   * {@link computeStatistics}, called once per generation as part of
+   * speciation, before parent selection runs.
+   */
+  size: number = 0;
+  bestRawFitness: number = -Infinity;
+  meanRawFitness: number = 0;
+  /**
+   * Adjusted (fitness-shared) fitness for this species: the best raw
+   * fitness divided by the species size. For a species of size 1, this
+   * equals the member's raw fitness.
+   */
+  adjustedFitness: number = -Infinity;
+
   constructor(speciesKey: string) {
     this.speciesKey = speciesKey;
     this.creatures = [];
@@ -49,6 +76,46 @@ export class Species {
   addCreature(creature: Creature) {
     this.lastCreature = creature;
     this.creatures.push(creature);
+  }
+
+  /**
+   * Issue #2452: Recompute per-species rolling statistics from the
+   * current member creatures. Members without a finite numeric score
+   * are skipped so that pre-fitness or panicked creatures do not poison
+   * the mean. Call this once per generation, after fitness evaluation
+   * and before parent selection runs.
+   */
+  computeStatistics(): void {
+    this.size = this.creatures.length;
+    if (this.size === 0) {
+      this.bestRawFitness = -Infinity;
+      this.meanRawFitness = 0;
+      this.adjustedFitness = -Infinity;
+      return;
+    }
+    let best = -Infinity;
+    let sum = 0;
+    let counted = 0;
+    for (const c of this.creatures) {
+      const score = c.score;
+      if (score === undefined || score === null || !Number.isFinite(score)) {
+        continue;
+      }
+      if (score > best) best = score;
+      sum += score;
+      counted++;
+    }
+    if (counted === 0) {
+      this.bestRawFitness = -Infinity;
+      this.meanRawFitness = 0;
+      this.adjustedFitness = -Infinity;
+      return;
+    }
+    this.bestRawFitness = best;
+    this.meanRawFitness = sum / counted;
+    // Adjusted = raw / speciesSize. By construction, size === 1 ⇒
+    // adjustedFitness === bestRawFitness === rawFitness of the sole member.
+    this.adjustedFitness = best / this.size;
   }
 
   /**

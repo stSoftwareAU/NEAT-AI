@@ -216,12 +216,20 @@ export async function evolve(
     getLogger().warn("All creatures died, using zombies");
   }
 
-  // Issue #1615: Emit species_adjusted event
+  // Issue #2452: Compute per-species rolling statistics once per
+  // generation, after fitness evaluation and before parent selection,
+  // so downstream consumers can see size, best/mean raw fitness, and
+  // adjusted (fitness-shared) fitness for every species.
+  genus.updateSpeciesStatistics();
+
+  // Issue #1615 / #2452: Emit species_adjusted event with per-species
+  // summary for diversity-aware features and external observability.
   emitTrainingEvent(neat.config.onTrainingEvent, {
     kind: "species_adjusted",
     timestamp: new Date().toISOString(),
     speciesCount: genus.speciesMap.size,
     compatibilityThreshold: neat.config.geneticCompatibilityThreshold,
+    speciesSummary: genus.speciesSummary(),
   });
 
   const numberOfElitists = neat.config.elitism > 1

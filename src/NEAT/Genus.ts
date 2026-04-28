@@ -2,6 +2,19 @@ import { assert } from "@std/assert";
 import type { Creature } from "../../mod.ts";
 import { Species } from "@neat/Species.ts";
 
+/**
+ * Per-species summary suitable for emitting on the training event payload.
+ * Issue #2452.
+ */
+export interface SpeciesSummary {
+  readonly speciesKey: string;
+  readonly size: number;
+  readonly bestRawFitness: number;
+  readonly meanRawFitness: number;
+  /** Adjusted (fitness-shared) fitness: bestRawFitness / size. */
+  readonly adjustedFitness: number;
+}
+
 export class Genus {
   readonly speciesMap: Map<string, Species>;
   readonly creatureToSpeciesMap: Map<string, string>;
@@ -71,6 +84,37 @@ export class Genus {
     assert(species);
 
     return species;
+  }
+
+  /**
+   * Issue #2452: Recompute per-species statistics across every species in
+   * this genus. Call once per generation, after fitness evaluation and
+   * before parent selection runs.
+   */
+  updateSpeciesStatistics(): void {
+    this.speciesMap.forEach((species) => {
+      species.computeStatistics();
+    });
+  }
+
+  /**
+   * Issue #2452: Build a stable, plain-data summary of every species for
+   * inclusion on the training event payload. Sorted by species key for
+   * deterministic ordering across calls.
+   */
+  speciesSummary(): SpeciesSummary[] {
+    const summary: SpeciesSummary[] = [];
+    this.speciesMap.forEach((species) => {
+      summary.push({
+        speciesKey: species.speciesKey,
+        size: species.size,
+        bestRawFitness: species.bestRawFitness,
+        meanRawFitness: species.meanRawFitness,
+        adjustedFitness: species.adjustedFitness,
+      });
+    });
+    summary.sort((a, b) => a.speciesKey.localeCompare(b.speciesKey));
+    return summary;
   }
 
   findClosestMatchingSpecies(creature: Creature): Species | null {

@@ -372,6 +372,28 @@ export interface MemoryPressureEvent {
 }
 
 /**
+ * Per-species summary emitted on the training event payload.
+ *
+ * Issue #2452: Foundational telemetry for fitness sharing. Each entry
+ * captures the rolling statistics for a single species.
+ */
+export interface SpeciesSummaryEntry {
+  /** Stable species key (UUID). */
+  readonly speciesKey: string;
+  /** Number of creatures currently in the species. */
+  readonly size: number;
+  /** Best raw fitness across the species's members. */
+  readonly bestRawFitness: number;
+  /** Arithmetic mean raw fitness across the species's members. */
+  readonly meanRawFitness: number;
+  /**
+   * Adjusted (fitness-shared) fitness: best raw fitness divided by
+   * species size. For a species of size 1, equals raw fitness.
+   */
+  readonly adjustedFitness: number;
+}
+
+/**
  * Emitted when species counts are adjusted during evolution.
  */
 export interface SpeciesAdjustedEvent {
@@ -382,6 +404,14 @@ export interface SpeciesAdjustedEvent {
   readonly speciesCount: number;
   /** The genetic compatibility threshold used for speciation. */
   readonly compatibilityThreshold: number;
+  /**
+   * Per-species rolling statistics computed once per generation as part
+   * of speciation. Issue #2452: foundational telemetry for fitness
+   * sharing, species stagnation tracking, and diversity-aware MCMC.
+   * Optional so that hand-constructed test events without statistics
+   * remain valid; production emits this for every speciation event.
+   */
+  readonly speciesSummary?: readonly SpeciesSummaryEntry[];
 }
 
 /**
