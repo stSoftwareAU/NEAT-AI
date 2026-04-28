@@ -1,14 +1,15 @@
+# Ignore everything by default (wasm-pack generated files are rebuilt by build.sh)
 *
-!.gitignore
 
-# Commit the built WASM artefacts so consumers (and CI on Develop) don't need Rust.
+# Un-ignore files that must be committed and published to JSR
+!.gitignore
+!build-fingerprint
+!neat_core_rev.txt
 !package.json
 !wasm_activation.js
 !wasm_activation.d.ts
 !wasm_activation_bg.wasm
 !wasm_activation_bg.wasm.d.ts
-!build-fingerprint
-!neat_core_rev.txt
 
 # If wasm-pack emits snippets/, keep them too.
 !snippets/
