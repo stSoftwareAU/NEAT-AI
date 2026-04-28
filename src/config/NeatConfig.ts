@@ -56,6 +56,7 @@ import {
   parsePlateauDetection,
   parsePredictiveCoding,
   parseQuantumStep,
+  parseSpeciesStagnation,
   parseSquashEffectiveness,
   parseStabilityAdaptation,
   parseWasmCache,
@@ -628,6 +629,10 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     // Issue #2453: Parse fitness sharing configuration
     fitnessSharing: parseFitnessSharing(
       opts.fitnessSharing as Record<string, unknown> | undefined,
+    ),
+    // Issue #2454: Parse species stagnation configuration
+    speciesStagnation: parseSpeciesStagnation(
+      opts.speciesStagnation as Record<string, unknown> | undefined,
     ),
     // Issue #1620: Parse and resolve output range constraints
     outputRanges: (() => {

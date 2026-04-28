@@ -6,6 +6,7 @@ import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCand
 import type { EnsembleDiversityConfig } from "@config/EnsembleDiversityConfig.ts";
 import type { FineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
 import type { FitnessSharingConfig } from "@config/FitnessSharingConfig.ts";
+import type { SpeciesStagnationConfig } from "@config/SpeciesStagnationConfig.ts";
 import type { NeatArguments } from "@config/NeatArguments.ts";
 import type { PlateauDetectionConfig } from "@neat/PlateauDetector.ts";
 import type { PredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
@@ -117,6 +118,7 @@ export type NeatOptions =
     | "parallelEvaluation"
     | "squashEffectiveness"
     | "fitnessSharing"
+    | "speciesStagnation"
     | "outputRanges"
     | "logger"
     | "rng"
@@ -171,6 +173,8 @@ export type NeatOptions =
     squashEffectiveness?: SquashEffectivenessConfig;
     /** Partial overrides for fitness sharing configuration (Issue #2453, defaults applied if not specified) */
     fitnessSharing?: FitnessSharingConfig;
+    /** Partial overrides for species stagnation configuration (Issue #2454, defaults applied if not specified) */
+    speciesStagnation?: SpeciesStagnationConfig;
     /**
      * Optional per-output range constraints (Issue #1620).
      *
@@ -266,6 +270,7 @@ export type NeatOptionsInput =
     | "parallelEvaluation"
     | "squashEffectiveness"
     | "fitnessSharing"
+    | "speciesStagnation"
     | "outputRanges"
     | "logger"
     | "logLevel"
@@ -312,6 +317,8 @@ export type NeatOptionsInput =
     squashEffectiveness?: CoerceNumeric<SquashEffectivenessConfig>;
     /** Fitness sharing configuration (Issue #2453). Numeric fields coerced from CLI. */
     fitnessSharing?: CoerceNumeric<FitnessSharingConfig>;
+    /** Species stagnation configuration (Issue #2454). Numeric fields coerced from CLI. */
+    speciesStagnation?: CoerceNumeric<SpeciesStagnationConfig>;
     /** Per-output range constraints (Issue #1620). Numeric fields coerced from CLI. */
     outputRanges?: readonly CoerceNumeric<OutputRange>[];
     /** Custom logger instance (not coerced — functions cannot come from CLI). */

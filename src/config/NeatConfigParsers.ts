@@ -30,6 +30,7 @@ export {
   parseEnsembleDiversity,
   parseFineTunePopulation,
   parseFitnessSharing,
+  parseSpeciesStagnation,
 } from "@config/parsers/PopulationParsers.ts";
 export {
   parseCrossValidation,

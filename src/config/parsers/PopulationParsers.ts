@@ -23,6 +23,10 @@ import {
   DEFAULT_FITNESS_SHARING_CONFIG,
   type RequiredFitnessSharingConfig,
 } from "@config/FitnessSharingConfig.ts";
+import {
+  DEFAULT_SPECIES_STAGNATION_CONFIG,
+  type RequiredSpeciesStagnationConfig,
+} from "@config/SpeciesStagnationConfig.ts";
 import { parseNumber } from "@config/ParseOptions.ts";
 
 /** Parse fine-tune population configuration (Issue #1323). */
@@ -122,6 +126,30 @@ export function parseFitnessSharing(
       { integer: true, min: 0 },
     ),
   } as RequiredFitnessSharingConfig;
+}
+
+/** Parse species stagnation configuration (Issue #2454). */
+export function parseSpeciesStagnation(
+  overrides: Record<string, unknown> | undefined,
+): RequiredSpeciesStagnationConfig {
+  const d = DEFAULT_SPECIES_STAGNATION_CONFIG;
+  return {
+    enabled: typeof overrides?.enabled === "boolean"
+      ? overrides.enabled
+      : d.enabled,
+    haltWindow: parseNumber(
+      "Species stagnation haltWindow",
+      overrides?.haltWindow,
+      d.haltWindow,
+      { integer: true, min: 1 },
+    ),
+    extinctionWindow: parseNumber(
+      "Species stagnation extinctionWindow",
+      overrides?.extinctionWindow,
+      d.extinctionWindow,
+      { integer: true, min: 1 },
+    ),
+  } as RequiredSpeciesStagnationConfig;
 }
 
 /** Parse ensemble diversity configuration (Issue #1310). */
