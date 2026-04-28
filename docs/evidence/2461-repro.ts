@@ -93,7 +93,11 @@ for (const input of inputs) {
   const inFloat = new Float32Array(input);
   const target = creature.activate(inFloat);
   creature.activateAndTrace(inFloat, false, sparseConfig);
-  creature.propagate(new Float32Array(Array.from(target)), config, sparseConfig);
+  creature.propagate(
+    new Float32Array(Array.from(target)),
+    config,
+    sparseConfig,
+  );
 }
 creature.propagateUpdate(config, sparseConfig);
 console.log("OK — propagate_topological returned without trapping");
