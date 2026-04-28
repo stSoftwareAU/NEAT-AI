@@ -266,7 +266,6 @@ if (files.length === 0) {
 
 let fixedPreCommit = 0;
 let fixedPatched = 0;
-let fixedHead = 0;
 let stillFailing = 0;
 const failedFiles: string[] = [];
 

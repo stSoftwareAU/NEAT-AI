@@ -91,6 +91,7 @@ if ! command -v deno >/dev/null 2>&1; then
 fi
 
 read_config() {
+  # shellcheck disable=SC2016 # JS template literals — must not be expanded by bash
   deno eval '
 const config = JSON.parse(Deno.readTextFileSync("deno.json"));
 const repo = config.neatCore?.repo;
