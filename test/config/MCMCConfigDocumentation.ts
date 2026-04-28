@@ -26,6 +26,11 @@ Deno.test("MCMC documentation - defaults match CONFIGURATION_GUIDE values", () =
   assertEquals(DEFAULT_MCMC_CONFIG.targetAcceptanceRate, 0.234);
   assertEquals(DEFAULT_MCMC_CONFIG.adjustmentRate, 0.02);
   assertEquals(DEFAULT_MCMC_CONFIG.toleranceRate, 0.05);
+  // Issue #2456: Diversity-aware MCMC defaults
+  assertEquals(DEFAULT_MCMC_CONFIG.diversityAwareMCMC.enabled, true);
+  assertEquals(DEFAULT_MCMC_CONFIG.diversityAwareMCMC.minSpecies, 4);
+  assertEquals(DEFAULT_MCMC_CONFIG.diversityAwareMCMC.crowdingThreshold, 0.85);
+  assertEquals(DEFAULT_MCMC_CONFIG.diversityAwareMCMC.reheatFactor, 1.5);
 });
 
 Deno.test("MCMC documentation - public API exports match internal defaults", () => {
@@ -57,10 +62,17 @@ Deno.test("MCMC documentation - RequiredMCMCConfig type is usable from public AP
     targetAcceptanceRate: 0.234,
     adjustmentRate: 0.02,
     toleranceRate: 0.05,
+    diversityAwareMCMC: {
+      enabled: true,
+      minSpecies: 4,
+      crowdingThreshold: 0.85,
+      reheatFactor: 1.5,
+    },
   };
   assertEquals(config.enabled, true);
   assertEquals(config.initialTemperature, 1.5);
   assertEquals(config.coolingRate, 0.99);
+  assertEquals(config.diversityAwareMCMC.minSpecies, 4);
 });
 
 Deno.test("MCMC documentation - internal and public types are compatible", () => {
