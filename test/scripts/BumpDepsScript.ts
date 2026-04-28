@@ -146,6 +146,58 @@ Deno.test({
 });
 
 Deno.test({
+  name: "bump-deps.sh --help documents the WASM smoke audit gate (Issue #2465)",
+  fn: async () => {
+    const result = await runBump(["--help"]);
+    assertEquals(result.code, 0, `stderr=${result.stderr}`);
+    assert(
+      /smoke/i.test(result.stdout),
+      `expected --help to mention the smoke gate; got: ${result.stdout}`,
+    );
+    assert(
+      /wasm/i.test(result.stdout),
+      `expected --help to mention WASM in the smoke gate; got: ${result.stdout}`,
+    );
+    assert(
+      result.stdout.includes("--skip-smoke"),
+      `expected --help to document --skip-smoke; got: ${result.stdout}`,
+    );
+  },
+});
+
+Deno.test({
+  name: "bump-deps.sh accepts --skip-smoke under --dry-run (Issue #2465)",
+  fn: async () => {
+    const before = await Deno.readTextFile("deno.json");
+    const result = await runBump([
+      "--dry-run",
+      "--no-internal",
+      "--no-external",
+      "--skip-smoke",
+    ]);
+    assertEquals(result.code, 0, `stderr=${result.stderr}`);
+    const after = await Deno.readTextFile("deno.json");
+    assertEquals(before, after, "dry-run must not mutate deno.json");
+  },
+});
+
+Deno.test({
+  name: "bump-deps.sh --dry-run announces the smoke audit gate (Issue #2465)",
+  fn: async () => {
+    const result = await runBump([
+      "--dry-run",
+      "--no-internal",
+      "--no-external",
+    ]);
+    assertEquals(result.code, 0, `stderr=${result.stderr}`);
+    assert(
+      /smoke/i.test(result.stdout),
+      `expected --dry-run output to mention smoke gate; got: ${result.stdout}`,
+    );
+  },
+});
+
+Deno.test({
   name: "bump-deps.sh exists and is executable",
   fn: async () => {
     const stat = await Deno.stat("bump-deps.sh");

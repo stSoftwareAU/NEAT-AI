@@ -19,10 +19,17 @@ cd "$SCRIPT_DIR"
 #   The quarantine dodges fast-flagged supply-chain attacks. Runs via
 #   `deno outdated --update --latest --minimum-dependency-age=<min>`.
 #
-# Audit gate:
-#   After bumping, runs `deno check` — any new type error attributable
-#   to the bump fails the script with a non-zero exit code. The worker
-#   then reverts per the VibeCoding#1613 contract.
+# Audit gate (two-phase, Issue #2465):
+#   1. WASM smoke tests — runs a small, fast subset of `deno test`
+#      specs that exercise the WASM `propagate_topological`,
+#      `wasmTopologicalBackprop`, and `compute_score_components` paths.
+#      This catches runtime traps (e.g. `RuntimeError: unreachable`) in
+#      a freshly bumped WASM bundle that `deno check` cannot detect,
+#      which was the root cause of Issue #2460's 120 silent failures.
+#   2. `deno check` — static type-check, catches type errors introduced
+#      by external dep bumps.
+#   Either gate failing fails the script with a non-zero exit code.
+#   The worker then reverts per the VibeCoding#1613 contract.
 #
 # Output:
 #   Prints a one-line summary of what was bumped (or "no bumps" when
@@ -31,15 +38,41 @@ cd "$SCRIPT_DIR"
 QUARANTINE_HOURS="${VIBE_BUMP_QUARANTINE_HOURS:-24}"
 SKIP_INTERNAL=false
 SKIP_EXTERNAL=false
+SKIP_SMOKE=false
 DRY_RUN=false
+
+# Resolve a portable timeout binary. macOS ships no native `timeout`; the
+# coreutils variant is named `gtimeout` there. Empty string means "no
+# timeout available" — in that case the smoke step still runs but cannot
+# be hard-capped, which is acceptable for a local developer machine.
+TIMEOUT_CMD="${TIMEOUT_CMD:-}"
+if [[ -z "$TIMEOUT_CMD" ]]; then
+  if command -v gtimeout >/dev/null 2>&1; then
+    TIMEOUT_CMD="gtimeout"
+  elif command -v timeout >/dev/null 2>&1; then
+    TIMEOUT_CMD="timeout"
+  fi
+fi
+
+# Curated WASM smoke specs (Issue #2465). Kept small so the gate stays
+# under ~120 seconds on a slow runner. Each entry must exercise the
+# WASM propagate_topological / wasmTopologicalBackprop /
+# compute_score_components hot paths so a trapping bundle fails here
+# instead of in main.
+WASM_SMOKE_SPECS=(
+  "test/propagate/WasmTopologicalBackprop.ts"
+  "test/propagate/SingleNeuron.ts"
+  "test/propagate/TopologicalBackpropagation.ts"
+)
+WASM_SMOKE_TIMEOUT_SECONDS="${BUMP_DEPS_SMOKE_TIMEOUT_SECONDS:-120}"
 
 show_help() {
   cat <<'HELP'
 Usage: ./bump-deps.sh [OPTIONS]
 
 Refresh NEAT-AI-core (internal) and Deno (external) dependencies for
-the Vibe Coder pre-PR worker hook, then run `deno check` as the audit
-gate.
+the Vibe Coder pre-PR worker hook, then run a two-phase audit gate:
+a fast WASM smoke test followed by `deno check`.
 
 Internal bump: advances deno.json neatCore.rev to NEAT-AI-core Develop
 HEAD by invoking ./build.sh. No quarantine for stSoftwareAU/* deps.
@@ -48,9 +81,19 @@ External bump: runs `deno outdated --update --latest` with
 `--minimum-dependency-age` set from VIBE_BUMP_QUARANTINE_HOURS
 (default 24h) to skip too-recent registry versions.
 
+Audit gate (Issue #2465):
+  1. WASM smoke tests — runs a small `deno test` subset against the
+     WASM topological backprop + scoring hot paths. Catches runtime
+     traps in a fresh WASM bundle that `deno check` cannot detect.
+     Capped at BUMP_DEPS_SMOKE_TIMEOUT_SECONDS (default 120s).
+  2. `deno check` — static type-check.
+
 Options:
   --no-internal             Skip the NEAT-AI-core neatCore.rev bump.
   --no-external             Skip the external Deno dep bump.
+  --skip-smoke              Skip the WASM smoke audit gate. Use only
+                            for hermetic dry-runs or when running the
+                            full quality gate immediately afterwards.
   --quarantine-hours <H>    Override VIBE_BUMP_QUARANTINE_HOURS.
                             Must be a non-negative integer (default 24).
   --dry-run                 Print what would be bumped without writing
@@ -59,9 +102,10 @@ Options:
   --help, -h                Show this help and exit.
 
 Exit codes:
-  0   No-op or successful bump; `deno check` is green.
-  1   Bump attempted but rejected (audit gate failed, invalid flag,
-      or upstream lookup failed). The worker should revert.
+  0   No-op or successful bump; both audit gates are green.
+  1   Bump attempted but rejected (smoke gate or `deno check` failed,
+      invalid flag, or upstream lookup failed). The worker should
+      revert.
 HELP
 }
 
@@ -73,6 +117,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-external)
       SKIP_EXTERNAL=true
+      shift
+      ;;
+    --skip-smoke)
+      SKIP_SMOKE=true
       shift
       ;;
     --quarantine-hours)
@@ -209,9 +257,56 @@ else
   fi
 fi
 
-# --- Audit gate: deno check ---------------------------------------------
+# --- Audit gate (1/2): WASM smoke tests (Issue #2465) -------------------
+# Catches runtime traps in a freshly bumped WASM bundle that `deno check`
+# cannot see (root cause of Issue #2460's 120 silent failures).
+if [[ "$DRY_RUN" == true ]]; then
+  if [[ "$SKIP_SMOKE" == true ]]; then
+    echo "[dry-run] would skip WASM smoke audit gate (--skip-smoke)"
+  else
+    echo "[dry-run] would run WASM smoke audit gate:" \
+         "${WASM_SMOKE_SPECS[*]}" \
+         "(timeout ${WASM_SMOKE_TIMEOUT_SECONDS}s)"
+  fi
+elif [[ "$SKIP_SMOKE" == true ]]; then
+  echo "Skipping WASM smoke audit gate (--skip-smoke)."
+else
+  echo "Audit gate (1/2): WASM smoke tests..."
+  smoke_log="$(mktemp)"
+  trap 'rm -f "$smoke_log"' EXIT
+  smoke_cmd=(deno test --config ./deno.json --allow-all
+    "${WASM_SMOKE_SPECS[@]}")
+  if [[ -n "$TIMEOUT_CMD" ]]; then
+    smoke_cmd=("$TIMEOUT_CMD" "$WASM_SMOKE_TIMEOUT_SECONDS" "${smoke_cmd[@]}")
+  fi
+  smoke_exit=0
+  "${smoke_cmd[@]}" </dev/null >"$smoke_log" 2>&1 || smoke_exit=$?
+  if [[ "$smoke_exit" -ne 0 ]]; then
+    cat "$smoke_log" >&2 || true
+    echo "" >&2
+    echo "ERROR: WASM smoke audit gate failed (exit ${smoke_exit})." >&2
+    echo "       Specs:" >&2
+    for spec in "${WASM_SMOKE_SPECS[@]}"; do
+      echo "         - $spec" >&2
+    done
+    if [[ "$smoke_exit" == 124 ]]; then
+      echo "       Smoke gate timed out after ${WASM_SMOKE_TIMEOUT_SECONDS}s." >&2
+    fi
+    if [[ -n "$EXTERNAL_DIFF" ]]; then
+      echo "Offending external bump(s):" >&2
+      printf '%s\n' "$EXTERNAL_DIFF" | sed 's/^/  /' >&2
+    fi
+    if [[ "$INTERNAL_BEFORE" != "$INTERNAL_AFTER" ]]; then
+      echo "Internal neatCore.rev advanced: ${INTERNAL_BEFORE:0:7} -> ${INTERNAL_AFTER:0:7}" >&2
+    fi
+    echo "Worker should revert per VibeCoding#1613." >&2
+    exit 1
+  fi
+fi
+
+# --- Audit gate (2/2): deno check ---------------------------------------
 if [[ "$DRY_RUN" != true ]]; then
-  echo "Audit gate: running 'deno check'..."
+  echo "Audit gate (2/2): running 'deno check'..."
   audit_log="$(mktemp)"
   trap 'rm -f "$audit_log"' EXIT
   if ! deno check >"$audit_log" 2>&1; then
