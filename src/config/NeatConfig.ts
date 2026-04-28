@@ -55,6 +55,7 @@ import {
   parsePlateauDetection,
   parsePredictiveCoding,
   parseQuantumStep,
+  parseSquashEffectiveness,
   parseStabilityAdaptation,
   parseWasmCache,
   parseWeightRegularisation,
@@ -618,6 +619,10 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     // Issue #1862: Parse parallel evaluation configuration
     parallelEvaluation: parseParallelEvaluation(
       opts.parallelEvaluation as Record<string, unknown> | undefined,
+    ),
+    // Issue #2457: Parse squash effectiveness tracker configuration
+    squashEffectiveness: parseSquashEffectiveness(
+      opts.squashEffectiveness as Record<string, unknown> | undefined,
     ),
     // Issue #1620: Parse and resolve output range constraints
     outputRanges: (() => {
