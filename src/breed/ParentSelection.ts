@@ -205,11 +205,60 @@ function selectFatherFromCandidates(
     config.diversityBreedingRate > 0 &&
     config.diversityBreedingRate > getRandomNumberGenerator().random()
   ) {
+    // Issue #2455: Apply the soft compatibility gate when enabled. The
+    // soft gate keeps cross-species exploration possible while
+    // concentrating most pairings on compatible parents — a hard
+    // "always pick lowest compat" filter empirically produces weak
+    // hybrids. Disabling the gate (or `power: 0`) reverts to the
+    // legacy lowest-compatibility pick exactly as before this issue.
+    const gate = config.compatibilityGating;
+    if (gate.enabled && gate.power > 0) {
+      return softCompatibilityGate(mum, candidates, gate.power, gate.maxDraws);
+    }
     return selectMostDiverseFather(mum, candidates);
   }
 
   const fatherRanking = new FitnessRanking(candidates);
   return selectParent(fatherRanking, config);
+}
+
+/**
+ * Soft compatibility-gated father selection (Issue #2455).
+ *
+ * Samples up to `maxDraws` candidates uniformly at random and accepts
+ * each with probability `compatibility ^ power`. Compatibility is in
+ * [0, 1], so higher powers concentrate selection on similar
+ * architectures while leaving a small probability mass for exploratory
+ * cross-species pairings. After `maxDraws` rejections the gate falls
+ * back to the lowest-compatibility candidate (the prior behaviour) so
+ * the call always returns a father.
+ *
+ * @param mum - The mother creature
+ * @param candidates - Array of potential father creatures
+ * @param power - Exponent applied to compatibility for acceptance probability
+ * @param maxDraws - Maximum number of probabilistic draws before fallback
+ * @returns The selected father creature
+ */
+export function softCompatibilityGate(
+  mum: Creature,
+  candidates: Creature[],
+  power: number,
+  maxDraws: number,
+): Creature {
+  const rng = getRandomNumberGenerator();
+  for (let i = 0; i < maxDraws; i++) {
+    const idx = Math.floor(rng.random() * candidates.length);
+    const candidate = candidates[idx];
+    const compatibility = geneticCompatibility(mum, candidate);
+    const acceptance = Math.pow(compatibility, power);
+    if (rng.random() < acceptance) {
+      return candidate;
+    }
+  }
+  // Bounded fallback: return the lowest-compatibility (most diverse)
+  // candidate. This preserves the historical exploratory pick while
+  // ensuring the loop always terminates.
+  return selectMostDiverseFather(mum, candidates);
 }
 
 /**

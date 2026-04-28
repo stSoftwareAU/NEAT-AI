@@ -8,6 +8,7 @@ import type { SelectionInterface } from "@methods/Selection.ts";
 import type { MutationInterface } from "@neat/MutationInterface.ts";
 import type { RequiredPlateauDetectionConfig } from "@neat/PlateauDetector.ts";
 import type { RequiredAdaptiveMutationThresholds } from "@config/AdaptiveMutationThresholds.ts";
+import type { RequiredCompatibilityGatingConfig } from "@config/CompatibilityGatingConfig.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
 import type { RequiredEnsembleDiversityConfig } from "@config/EnsembleDiversityConfig.ts";
 import type { RequiredFineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
@@ -884,4 +885,24 @@ export interface NeatArguments {
    * - extinctionWindow: Generations before zeroing breeding share (default: 25)
    */
   speciesStagnation: RequiredSpeciesStagnationConfig;
+
+  /**
+   * Soft compatibility-gated cross-species breeding probability
+   * (Issue #2455).
+   *
+   * Replaces the previous hard "lowest-compatibility father" pick on
+   * the diversity-driven breeding path with a soft gate that accepts
+   * each candidate with probability `compatibility ^ power`. Similar
+   * architectures dominate while rare exploratory hybrids still
+   * appear. After `maxDraws` rejections the gate falls back to the
+   * lowest-compatibility candidate so selection always terminates.
+   *
+   * Configuration options:
+   * - enabled: Whether the soft gate is active (default: true)
+   * - power: Compatibility power exponent (default: 1.5; 0 recovers
+   *   the prior lowest-compatibility behaviour)
+   * - maxDraws: Bounded number of probabilistic draws before
+   *   fallback (default: 3)
+   */
+  compatibilityGating: RequiredCompatibilityGatingConfig;
 }

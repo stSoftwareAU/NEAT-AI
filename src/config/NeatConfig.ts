@@ -40,6 +40,7 @@ import {
   parseAdaptiveMutationThresholds,
   parseAdaptivePopulation,
   parseBiasRegularisation,
+  parseCompatibilityGating,
   parseCrossValidation,
   parseDataFuzzing,
   parseDataQuantisation,
@@ -633,6 +634,10 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     // Issue #2454: Parse species stagnation configuration
     speciesStagnation: parseSpeciesStagnation(
       opts.speciesStagnation as Record<string, unknown> | undefined,
+    ),
+    // Issue #2455: Parse compatibility gating configuration
+    compatibilityGating: parseCompatibilityGating(
+      opts.compatibilityGating as Record<string, unknown> | undefined,
     ),
     // Issue #1620: Parse and resolve output range constraints
     outputRanges: (() => {
