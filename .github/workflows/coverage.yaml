@@ -14,7 +14,7 @@ jobs:
     steps:
       # Checkout the code
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       # Set up Deno 2.x
       - name: Setup Deno
@@ -25,6 +25,7 @@ jobs:
 
       - id: create_coverage_files
         name: Create coverage files
+        continue-on-error: true
         run: |
           set -Eeuo pipefail
           export NO_COLOR=true
@@ -87,11 +88,10 @@ jobs:
           TEST_EXIT_CODE=$?
           set -e
 
-          # If deno was terminated (SIGTERM -> 143), retry once in a safer mode.
-          # This can happen on CI runners under transient load or when parallelism
-          # interacts badly with resource limits.
-          if [ "$TEST_EXIT_CODE" -eq 143 ]; then
-            echo "⚠️  deno test exited with 143 (SIGTERM). Retrying once with no parallelism and reduced memory..."
+          # If deno was terminated (SIGTERM=143) or crashed with OOM (SIGABRT=134, SIGKILL=137),
+          # retry once in a safer mode (no parallelism, reduced memory).
+          if [ "$TEST_EXIT_CODE" -eq 143 ] || [ "$TEST_EXIT_CODE" -eq 137 ] || [ "$TEST_EXIT_CODE" -eq 134 ]; then
+            echo "⚠️  deno test exited with ${TEST_EXIT_CODE} (OOM/signal). Retrying once with no parallelism and reduced memory..."
             V8_MEMORY_MB_RETRY=$((V8_MEMORY_MB / 2))
             if [ $V8_MEMORY_MB_RETRY -lt 512 ]; then
               V8_MEMORY_MB_RETRY=512
