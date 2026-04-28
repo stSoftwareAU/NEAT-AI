@@ -27,6 +27,7 @@ export {
 } from "@config/parsers/MutationParsers.ts";
 export {
   parseAdaptivePopulation,
+  parseCompatibilityGating,
   parseEnsembleDiversity,
   parseFineTunePopulation,
   parseFitnessSharing,

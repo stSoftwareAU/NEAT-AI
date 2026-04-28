@@ -12,6 +12,10 @@ import {
   type RequiredAdaptivePopulationConfig,
 } from "@config/AdaptivePopulationConfig.ts";
 import {
+  DEFAULT_COMPATIBILITY_GATING_CONFIG,
+  type RequiredCompatibilityGatingConfig,
+} from "@config/CompatibilityGatingConfig.ts";
+import {
   DEFAULT_ENSEMBLE_DIVERSITY_CONFIG,
   type RequiredEnsembleDiversityConfig,
 } from "@config/EnsembleDiversityConfig.ts";
@@ -126,6 +130,30 @@ export function parseFitnessSharing(
       { integer: true, min: 0 },
     ),
   } as RequiredFitnessSharingConfig;
+}
+
+/** Parse compatibility gating configuration (Issue #2455). */
+export function parseCompatibilityGating(
+  overrides: Record<string, unknown> | undefined,
+): RequiredCompatibilityGatingConfig {
+  const d = DEFAULT_COMPATIBILITY_GATING_CONFIG;
+  return {
+    enabled: typeof overrides?.enabled === "boolean"
+      ? overrides.enabled
+      : d.enabled,
+    power: parseNumber(
+      "Compatibility gating power",
+      overrides?.power,
+      d.power,
+      { min: 0 },
+    ),
+    maxDraws: parseNumber(
+      "Compatibility gating maxDraws",
+      overrides?.maxDraws,
+      d.maxDraws,
+      { integer: true, min: 1 },
+    ),
+  } as RequiredCompatibilityGatingConfig;
 }
 
 /** Parse species stagnation configuration (Issue #2454). */
