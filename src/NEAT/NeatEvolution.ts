@@ -629,8 +629,15 @@ export async function evolve(
   // Issue #2200: Cool the MCMC temperature after each generation.
   // Issue #2201: cool() now also finalises generation diagnostics
   // and applies adaptive temperature tuning.
+  // Issue #2456: Pass the live diversity snapshot so cool() can reheat
+  // temperature when diversity collapses below threshold. The species
+  // count comes from the speciation pass run earlier this generation;
+  // mean within-species compatibility is reserved for a future telemetry
+  // signal (the diversity-aware reheat fires on either branch).
   if (neat.config.mcmc.enabled) {
-    neat.mcmcState.cool(neat.config.verbose);
+    neat.mcmcState.cool(neat.config.verbose, {
+      speciesCount: genus.speciesMap.size,
+    });
   }
 
   /** make sure we do at least one more loop */

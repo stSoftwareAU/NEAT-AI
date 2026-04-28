@@ -12,7 +12,9 @@ import {
   type RequiredAdaptiveMutationThresholds,
 } from "@config/AdaptiveMutationThresholds.ts";
 import {
+  DEFAULT_DIVERSITY_AWARE_MCMC_CONFIG,
   DEFAULT_MCMC_CONFIG,
+  type RequiredDiversityAwareMCMCConfig,
   type RequiredMCMCConfig,
 } from "@config/MCMCConfig.ts";
 import { parseNumber } from "@config/ParseOptions.ts";
@@ -205,7 +207,40 @@ export function parseMcmc(
       d.toleranceRate,
       { minExclusive: 0, maxExclusive: 1 },
     ),
+    diversityAwareMCMC: parseDiversityAwareMCMC(
+      overrides?.diversityAwareMCMC as Record<string, unknown> | undefined,
+    ),
   } as RequiredMCMCConfig;
+}
+
+/** Parse diversity-aware MCMC reheat configuration (Issue #2456). */
+export function parseDiversityAwareMCMC(
+  overrides: Record<string, unknown> | undefined,
+): RequiredDiversityAwareMCMCConfig {
+  const d = DEFAULT_DIVERSITY_AWARE_MCMC_CONFIG;
+  return {
+    enabled: typeof overrides?.enabled === "boolean"
+      ? overrides.enabled
+      : d.enabled,
+    minSpecies: parseNumber(
+      "Diversity-aware MCMC minSpecies",
+      overrides?.minSpecies,
+      d.minSpecies,
+      { integer: true, min: 0 },
+    ),
+    crowdingThreshold: parseNumber(
+      "Diversity-aware MCMC crowdingThreshold",
+      overrides?.crowdingThreshold,
+      d.crowdingThreshold,
+      { min: 0 },
+    ),
+    reheatFactor: parseNumber(
+      "Diversity-aware MCMC reheatFactor",
+      overrides?.reheatFactor,
+      d.reheatFactor,
+      { minExclusive: 1 },
+    ),
+  };
 }
 
 /** Parse squash effectiveness tracker configuration (Issue #2457). */

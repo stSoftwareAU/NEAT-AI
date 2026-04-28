@@ -104,8 +104,16 @@ export {
  *
  * @see {@link module:src/config/MCMCConfig}
  */
-export type { MCMCConfig, RequiredMCMCConfig } from "@config/MCMCConfig.ts";
-export { DEFAULT_MCMC_CONFIG } from "@config/MCMCConfig.ts";
+export type {
+  DiversityAwareMCMCConfig,
+  MCMCConfig,
+  RequiredDiversityAwareMCMCConfig,
+  RequiredMCMCConfig,
+} from "@config/MCMCConfig.ts";
+export {
+  DEFAULT_DIVERSITY_AWARE_MCMC_CONFIG,
+  DEFAULT_MCMC_CONFIG,
+} from "@config/MCMCConfig.ts";
 
 /**
  * Adaptive Population Sizing
