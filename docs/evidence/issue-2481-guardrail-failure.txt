@@ -1,0 +1,48 @@
+=== Scenario 1: src file contains @std/log import ===
+
+    [Diff] Actual / Expected
+
+
+-   [
+-     {
+-       file: "src/utils/__FakeStdLogProbe.ts",
+-       line: 2,
+-       text: 'import { getLogger } from "@std/log";',
+-     },
+-   ]
++   []
+
+  throw new AssertionError(message);
+        ^
+    at assertEquals (https://jsr.io/@std/assert/1.0.19/equals.ts:67:9)
+    at file:///Users/nigelleck/auto-issue-work/NEAT-AI/test/utils/NoStdLogDependency.ts:183:3
+
+ FAILURES 
+
+no source file imports @std/log => ./test/utils/NoStdLogDependency.ts:167:6
+
+FAILED | 7 passed | 1 failed (134ms)
+
+error: Test failed
+
+=== Scenario 2: deno.json imports include @std/log ===
+
+
+-   [
+-     'key "@std/log"',
+-     'value "jsr:@std/log@^0.224" (key "@std/log")',
+-   ]
++   []
+
+  throw new AssertionError(message);
+        ^
+    at assertEquals (https://jsr.io/@std/assert/1.0.19/equals.ts:67:9)
+    at file:///Users/nigelleck/auto-issue-work/NEAT-AI/test/utils/NoStdLogDependency.ts:125:3
+
+ FAILURES 
+
+deno.json imports do not include @std/log => ./test/utils/NoStdLogDependency.ts:110:6
+
+FAILED | 7 passed | 1 failed (137ms)
+
+error: Test failed
