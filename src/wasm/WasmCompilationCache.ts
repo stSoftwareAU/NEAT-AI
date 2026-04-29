@@ -26,8 +26,12 @@ import type { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { getSquashType } from "@wasm/SquashType.ts";
 import type { CompiledCreatureData } from "@wasm/CompileToWasm.ts";
-import { WasmCreatureActivation } from "@wasm/WasmActivation.ts";
+import {
+  getLastWasmCreateFailure,
+  WasmCreatureActivation,
+} from "@wasm/WasmActivation.ts";
 import { isWasmActivationAvailable } from "@wasm/WasmModuleLoader.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Synapse type enum for WASM - must match Rust SynapseType
@@ -129,6 +133,63 @@ export interface WasmCacheStats {
  * Chosen to balance memory usage with hit rate for typical populations.
  */
 const DEFAULT_MAX_CACHE_SIZE = 100;
+
+/**
+ * Maximum number of "failed compile" creatures we remember between dedup
+ * resets. Bounded so a long-running training run cannot leak unbounded uuids.
+ * Issue #2483.
+ */
+const MAX_FAILED_COMPILE_DEDUP_ENTRIES = 1024;
+
+/**
+ * Set of `creature.uuid` values for which we have already emitted a
+ * "failed to compile" log. Bounded by `MAX_FAILED_COMPILE_DEDUP_ENTRIES`.
+ * Issue #2483: prevents the 40-line `RuntimeError: unreachable` spam observed
+ * in GRQ-16.
+ */
+const failedCompileLoggedUuids = new Set<string>();
+
+/**
+ * Reset the dedup set used by `getOrCompileWasmModule` for failed-compile
+ * logging. Tests call this to assert exactly-one log emission per scenario.
+ * Issue #2483.
+ */
+export function resetFailedCompileDedup(): void {
+  failedCompileLoggedUuids.clear();
+}
+
+/**
+ * Log a single deduplicated entry recording that WASM compilation failed for
+ * `creature`. Subsequent calls for the same creature uuid are suppressed.
+ * The entry includes the creature uuid (or the topology hash when no uuid is
+ * yet assigned), neuron count, and the trap message captured by
+ * `WasmCreatureActivation.create`.
+ *
+ * Issue #2483: Replaces the 40-line `RuntimeError: unreachable` spam observed
+ * in GRQ-16 with a single line per offending creature so the surrounding
+ * worker can drop or repair it without re-logging on every retry.
+ */
+function logFailedCompileOnce(creature: Creature): void {
+  const dedupKey = creature.uuid ?? creature.topologyHash ??
+    CreatureUtil.getTopologyHash(creature);
+  if (failedCompileLoggedUuids.has(dedupKey)) {
+    return;
+  }
+  if (failedCompileLoggedUuids.size >= MAX_FAILED_COMPILE_DEDUP_ENTRIES) {
+    failedCompileLoggedUuids.clear();
+  }
+  failedCompileLoggedUuids.add(dedupKey);
+
+  const failure = getLastWasmCreateFailure();
+  const trapMessage = failure?.message ?? "unknown WASM compile failure";
+  getLogger().warn(
+    `WASM compile failed for creature ${
+      creature.uuid ?? "(no-uuid)"
+    } (neurons=${creature.neurons.length}, inputs=${creature.input}, ` +
+      `outputs=${creature.output}): ${trapMessage}. ` +
+      `Drop the creature or repair its topology before retrying.`,
+  );
+}
 
 /**
  * The WASM compilation cache singleton.
@@ -261,6 +322,7 @@ class WasmCompilationCacheImpl {
 
     // Check if we have a cached template
     const node = this.nodeByKey.get(topologyHash);
+    let activation: WasmCreatureActivation | null;
     if (node) {
       // Move to head (most recently used) — O(1)
       this.moveToHead(node);
@@ -268,33 +330,42 @@ class WasmCompilationCacheImpl {
 
       // Use cached template to quickly compile with creature's weights
       const compiled = this.compileFromTemplate(creature, node.template);
-      return WasmCreatureActivation.create(compiled);
+      activation = WasmCreatureActivation.create(compiled);
+    } else {
+      // Cache miss - build template and compile
+      this.stats.misses++;
+      const template = this.buildTemplate(creature);
+
+      // Evict entries if cache is full — O(1) per eviction
+      while (this.nodeByKey.size >= this.maxSize) {
+        this.evictTail();
+      }
+
+      // Add template to cache as new head node
+      const newNode: LruNode = {
+        key: topologyHash,
+        template,
+        prev: null,
+        next: null,
+      };
+      this.nodeByKey.set(topologyHash, newNode);
+      this.moveToHead(newNode);
+      this.stats.size = this.nodeByKey.size;
+      this.stats.totalBytes += template.templateBuffer.length;
+
+      // Compile with creature's weights
+      const compiled = this.compileFromTemplate(creature, template);
+      activation = WasmCreatureActivation.create(compiled);
     }
 
-    // Cache miss - build template and compile
-    this.stats.misses++;
-    const template = this.buildTemplate(creature);
-
-    // Evict entries if cache is full — O(1) per eviction
-    while (this.nodeByKey.size >= this.maxSize) {
-      this.evictTail();
+    // Issue #2483: Log once per offending creature uuid when WASM
+    // compilation fails. Avoids the 40-line `RuntimeError: unreachable`
+    // spam observed in GRQ-16 — one structured line per creature is
+    // enough for downstream tooling to drop or repair it.
+    if (activation === null) {
+      logFailedCompileOnce(creature);
     }
-
-    // Add template to cache as new head node
-    const newNode: LruNode = {
-      key: topologyHash,
-      template,
-      prev: null,
-      next: null,
-    };
-    this.nodeByKey.set(topologyHash, newNode);
-    this.moveToHead(newNode);
-    this.stats.size = this.nodeByKey.size;
-    this.stats.totalBytes += template.templateBuffer.length;
-
-    // Compile with creature's weights
-    const compiled = this.compileFromTemplate(creature, template);
-    return WasmCreatureActivation.create(compiled);
+    return activation;
   }
 
   /**

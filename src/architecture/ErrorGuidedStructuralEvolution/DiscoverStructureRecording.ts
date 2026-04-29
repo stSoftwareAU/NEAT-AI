@@ -8,6 +8,7 @@
 import { assert } from "@std/assert";
 import { dirname } from "@std/path";
 import { DiscoveryError } from "@errors/DiscoveryError.ts";
+import { WasmError } from "@errors/WasmError.ts";
 import {
   creatureToRustFormat,
   type RustRecordBatchStats,
@@ -159,6 +160,21 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
           }
         }
       } catch (error) {
+        // Issue #2483: A WASM compile/activate failure here means the
+        // creature is unfit for discovery — drop it gracefully instead
+        // of letting `RuntimeError: unreachable` bubble out of recording
+        // and kill the surrounding worker. The WasmCompilationCache has
+        // already logged once for this creature uuid.
+        if (error instanceof WasmError) {
+          getLogger().warn(
+            `Discovery ${this.discoveryID} dropping creature ${
+              this.creature.uuid ?? "(no-uuid)"
+            } at sample ${
+              i + 1
+            }/${trainingData.length} after WASM activation failed: ${error.message}`,
+          );
+          break;
+        }
         if (
           error instanceof Error && error.message.includes("Excessive record()")
         ) {
