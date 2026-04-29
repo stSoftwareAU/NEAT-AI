@@ -506,6 +506,14 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
 
   public async analyzeSelectedNeuronsSquashes(
     focusList: number[],
+    /**
+     * Issue #2483: Optional sink for neurons whose error magnitude exceeds
+     * `MAX_REASONABLE_SQUASH_ERROR`. When supplied, the squash analyser will
+     * push a `CandidateHarmfulNeuron` for each over-threshold neuron, so the
+     * surrounding pipeline routes them through `removeHarmfulNeuron`
+     * instead of merely logging "this neuron should be removed".
+     */
+    harmfulSink?: CandidateHarmfulNeuron[],
   ): Promise<CandidateSquash[] | undefined> {
     if (focusList.length === 0) return undefined;
 
@@ -553,6 +561,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
         (id, derivativeMap) => this.calculateNeuronImpact(id, derivativeMap),
         this.loggingEnabled,
         (level, message, details) => this.log(level, message, details),
+        harmfulSink,
       );
     });
 

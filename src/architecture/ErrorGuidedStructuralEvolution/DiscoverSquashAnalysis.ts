@@ -72,6 +72,14 @@ export function findCandidateSquash(
     message: string,
     details?: unknown,
   ) => void,
+  /**
+   * Issue #2483: Optional sink for neurons whose error magnitude exceeds
+   * `MAX_REASONABLE_SQUASH_ERROR`. When supplied, the squash analyser will
+   * push a `CandidateHarmfulNeuron` for the offending neuron so the
+   * surrounding pipeline actually removes it instead of merely logging
+   * "this neuron should be removed".
+   */
+  harmfulSink?: CandidateHarmfulNeuron[],
 ): CandidateSquash | undefined {
   const idToWire = buildRuntimeIdToWireMap(creature);
   const rawValues: number[] = [];
@@ -133,6 +141,39 @@ export function findCandidateSquash(
           `This neuron should be removed rather than having its activation function changed.`,
       );
     }
+
+    // Issue #2483: Promote the over-threshold neuron to a harmful-neuron
+    // candidate so the discovery pipeline actually removes it. Without this
+    // sink, the squash analysis path only logged the warning, leaving the
+    // bad neuron in place to break WASM compilation downstream.
+    if (harmfulSink) {
+      let activationSum = 0;
+      let activationCount = 0;
+      for (const activation of currentActivations) {
+        if (Number.isFinite(activation)) {
+          activationSum += activation;
+          activationCount++;
+        }
+      }
+      const averageActivation = activationCount > 0
+        ? activationSum / activationCount
+        : 0;
+      const errorLog = Math.log10(baselineError);
+      const thresholdLog = Math.log10(MAX_REASONABLE_SQUASH_ERROR);
+      const excessMagnitude = errorLog - thresholdLog;
+      const expectedCreatureScoreGain = Math.min(
+        0.5,
+        Math.max(0.1, 0.1 + (excessMagnitude / 10) * 0.4),
+      );
+      harmfulSink.push({
+        neuronUuid,
+        errorMagnitude: baselineError,
+        expectedCreatureScoreGain,
+        sampleCount: records.length,
+        averageActivation,
+      });
+    }
+
     // Clear arrays to help GC
     rawValues.length = 0;
     currentActivations.length = 0;

@@ -14,6 +14,7 @@ import { format } from "@std/fmt/duration";
 import type { CostInterface } from "@costs/CostInterface.ts";
 import type { Creature } from "@creature";
 import type { TrainOptions } from "@config/TrainOptions.ts";
+import { WasmError } from "@errors/WasmError.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { applyDropout } from "@propagate/Dropout.ts";
@@ -93,11 +94,29 @@ export function runSingleEpoch(
           rng,
         );
 
-        const output = creature.activateAndTrace(
-          setup.observationsBuffer,
-          setup.feedbackLoop,
-          state.sparseConfig,
-        );
+        // Issue #2483: A `WasmError` from `activateAndTrace` means WASM
+        // could not compile/instantiate this creature (e.g. `RuntimeError:
+        // unreachable` on a corrupted topology). Drop the creature
+        // gracefully — stop training without crashing the worker.
+        let output: Float32Array;
+        try {
+          output = creature.activateAndTrace(
+            setup.observationsBuffer,
+            setup.feedbackLoop,
+            state.sparseConfig,
+          );
+        } catch (error) {
+          if (error instanceof WasmError) {
+            getLogger().warn(
+              `Training ${blue(setup.ID)} dropping creature ${
+                creature.uuid ?? "(no-uuid)"
+              } (neurons=${creature.neurons.length}): WASM activation failed: ${error.message}`,
+            );
+            trainingStopped = true;
+            break;
+          }
+          throw error;
+        }
 
         // Issue #1860: Apply inverted dropout to hidden neuron activations.
         if (setup.iterationConfig.dropoutRate > 0) {

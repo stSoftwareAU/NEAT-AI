@@ -61,6 +61,35 @@ export interface WasmTraceResult {
 }
 
 /**
+ * Last `WasmCreatureActivation.create` failure recorded by the module.
+ *
+ * Issue #2483: Used by dedup-aware callers (see
+ * `WasmCompilationCache.compileWithDedupedLog`) so that a runtime trap inside
+ * the WASM constructor surfaces once per offending creature uuid rather than
+ * once per retry. Reading this value clears nothing — callers compare
+ * timestamps to confirm freshness.
+ */
+let lastCreateFailure: { message: string; timestamp: number } | null = null;
+
+/**
+ * Read the most recent `WasmCreatureActivation.create` failure (if any).
+ * Issue #2483.
+ */
+export function getLastWasmCreateFailure():
+  | { message: string; timestamp: number }
+  | null {
+  return lastCreateFailure;
+}
+
+/**
+ * Clear the most recent `WasmCreatureActivation.create` failure record.
+ * Issue #2483: Tests use this to assert exactly-one log emission per scenario.
+ */
+export function resetLastWasmCreateFailure(): void {
+  lastCreateFailure = null;
+}
+
+/**
  * WASM-based creature activation wrapper
  *
  * This class wraps a compiled network in WASM and provides an activate()
@@ -110,7 +139,14 @@ export class WasmCreatureActivation {
   }
 
   /**
-   * Create a WASM activation wrapper from a compiled creature
+   * Create a WASM activation wrapper from a compiled creature.
+   *
+   * Issue #2483: Returns `null` on `RuntimeError: unreachable` (and any other
+   * error from the WASM constructor). Logging is intentionally minimal here —
+   * a single error per failed call would spam 40+ lines for a single bad
+   * creature in training. Callers that have a `Creature` reference should use
+   * `compileCreatureWithDedupedLog` (in `WasmCompilationCache`) which logs once
+   * per offending creature uuid with neuron count and the trap message.
    */
   static create(compiled: CompiledCreatureData): WasmCreatureActivation | null {
     const CompiledNetwork = getCompiledNetworkClass();
@@ -127,7 +163,12 @@ export class WasmCreatureActivation {
         compiled.numOutputs,
       );
     } catch (error) {
-      getLogger().error("Failed to create WASM activation:", error);
+      // Issue #2483: Cache the most recent error so dedup-aware callers can
+      // surface it once per creature instead of logging here on every retry.
+      lastCreateFailure = {
+        message: error instanceof Error ? error.message : String(error),
+        timestamp: Date.now(),
+      };
       return null;
     }
   }

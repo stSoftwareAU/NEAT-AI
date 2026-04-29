@@ -440,9 +440,19 @@ export async function runAnalysisLoop(
         }
 
         const squashStartTime = now();
+        // Issue #2483: Drain harmful neurons that the squash analyser
+        // detects above MAX_REASONABLE_SQUASH_ERROR — they used to be only
+        // logged, leaving the bad neuron in place to break WASM
+        // compilation downstream. Now they feed into removeHarmfulNeurons.
+        const squashHarmfulSink: CandidateHarmfulNeuron[] = [];
         // deno-lint-ignore no-await-in-loop
         candidateSquashes = await discoverStructure
-          .analyzeSelectedNeuronsSquashes(chunk);
+          .analyzeSelectedNeuronsSquashes(chunk, squashHarmfulSink);
+        if (squashHarmfulSink.length > 0) {
+          removeHarmfulNeurons = removeHarmfulNeurons
+            ? [...removeHarmfulNeurons, ...squashHarmfulSink]
+            : squashHarmfulSink;
+        }
         ctx.refreshAnalysisTimeout(discoverStructure);
         const squashTime = now() - squashStartTime;
         perfStats.squashAnalysisTime += squashTime;

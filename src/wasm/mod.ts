@@ -86,6 +86,7 @@ export {
 
 // Issue #1301 - WASM compilation caching for creatures with identical topologies
 // Issue #2287 - Pre-warm cache support (ensureWasmTemplate, hasWasmTemplate)
+// Issue #2483 - Deduped logging for failed WASM compiles
 export {
   clearWasmCompilationCache,
   ensureWasmTemplate,
@@ -94,9 +95,16 @@ export {
   getWasmCompilationCacheStats,
   hasWasmTemplate,
   invalidateWasmCache,
+  resetFailedCompileDedup,
   setWasmCompilationCacheSize,
   type WasmCacheStats,
 } from "@wasm/WasmCompilationCache.ts";
+
+// Issue #2483 - Last-failure introspection for WasmCreatureActivation.create
+export {
+  getLastWasmCreateFailure,
+  resetLastWasmCreateFailure,
+} from "@wasm/WasmActivation.ts";
 
 // Issue #1522 - Persistent training state in WASM linear memory
 export {
