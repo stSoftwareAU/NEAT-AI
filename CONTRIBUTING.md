@@ -444,6 +444,16 @@ The project enforces these lint rules (configured in `deno.json`):
 
 For the complete set of conventions, see [AGENTS.md](./AGENTS.md).
 
+### 📝 Logging
+
+All internal logging MUST go through `getLogger()` from `src/utils/Logger.ts`.
+Do **not** add `@std/log` (`jsr:@std/log`) to `deno.json` or rely on it
+transitively — it is unstable on JSR and the in-tree `Logger` interface is
+already consumer-pluggable. See the
+[Logging Policy section in AGENTS.md](./AGENTS.md#-logging-policy) for the
+rationale, the audit command, and an example of injecting a custom `Logger` via
+`NeatOptions.logger` / `setLogger()`.
+
 ## 📁 Project Structure
 
 ```

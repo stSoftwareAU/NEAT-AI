@@ -265,6 +265,58 @@ documentation:
 - Prefer smaller, focused files over large monolithic ones (Single
   Responsibility Principle)
 
+### 📝 Logging Policy
+
+NEAT-AI uses its own pluggable `Logger` abstraction in `src/utils/Logger.ts`
+(introduced in #1398, which removed ~350 scattered `console.*` calls). The
+project deliberately does **not** depend on `@std/log`.
+
+**Rules:**
+
+1. **All internal logging MUST go through `getLogger()`** from
+   `src/utils/Logger.ts`. Do not add new `console.*` calls in production code
+   under `src/`.
+2. **`@std/log` (`jsr:@std/log`) MUST NOT be added to `deno.json`'s `imports`**
+   and MUST NOT appear as a transitive dependency. Rationale: `@std/log` is
+   marked **unstable** on JSR (see [jsr.io/@std/log](https://jsr.io/@std/log))
+   and the existing `Logger` interface is consumer-pluggable, so there is no
+   benefit to taking on an unstable dependency.
+3. **Consumers wanting structured / external logging integration** (pino,
+   winston, cloud logging) inject a custom `Logger` via `NeatOptions.logger` or
+   call `setLogger()` directly:
+
+   ```typescript
+   import { Neat } from "@stsoftware/neat-ai";
+   import { setLogger } from "@stsoftware/neat-ai/utils/Logger";
+
+   // Option A — inject via NeatOptions
+   const neat = new Neat(input, output, fitness, {
+     logger: {
+       debug: (...a) => myPino.debug({ args: a }),
+       info: (...a) => myPino.info({ args: a }),
+       warn: (...a) => myPino.warn({ args: a }),
+       error: (...a) => myPino.error({ args: a }),
+     },
+   });
+
+   // Option B — set globally
+   setLogger(myCustomLogger);
+   ```
+
+4. **Missing logging features** (e.g. structured key/value pairs, async sinks)
+   should be raised as a separate issue against `src/utils/Logger.ts`. Do not
+   reach for `@std/log` to fill the gap.
+
+#### Audit
+
+The current tree contains zero `@std/log` references. Confirm with:
+
+```bash
+grep -r '@std/log\|jsr:@std/log' src test mod.ts deno.json
+deno info --json mod.ts | grep -o '"specifier": "[^"]*"' | grep '@std/log' \
+  || echo 'no @std/log dependency'
+```
+
 ### 🧪 Testing
 
 #### Unit Tests vs Benchmarks
