@@ -192,6 +192,13 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
     focusList: number[],
     includeSynapse: boolean,
     includeNeuron: boolean,
+    /**
+     * Optional tighter per-chunk deadline (Issue #2501). Forwarded to Rust
+     * via `RustParallelAnalysisInput.analysisDeadlineMs` so the synchronous
+     * FFI call self-aborts close to the per-chunk budget instead of running
+     * for the full analysis window.
+     */
+    chunkDeadlineMs?: number,
   ): RustAnalyzeAllResult | undefined {
     const result = ensureRustCombinedAnalysisImpl(
       this.creature,
@@ -203,6 +210,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       includeSynapse,
       includeNeuron,
       (scope, fl, reason) => this.logRustAnalysisUnavailable(scope, fl, reason),
+      chunkDeadlineMs,
     );
     this.combinedRustAnalysis = result.cache;
     return result.result;

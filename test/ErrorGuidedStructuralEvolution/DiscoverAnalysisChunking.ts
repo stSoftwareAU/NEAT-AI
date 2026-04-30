@@ -94,18 +94,28 @@ interface SpyRunOptions {
   readonly perChunkMaxMs: number;
   readonly discoveryMaxNeurons?: number;
   readonly now?: () => number;
+  readonly perChunkGraceMs?: number;
+}
+
+interface CapturedCall {
+  readonly focusSize: number;
+  readonly analysisDeadlineMs: number | undefined;
+  readonly capturedAtMs: number;
 }
 
 async function runWithMockedAnalyzeParallel(
   options: SpyRunOptions,
 ): Promise<{
   capturedFocusSizes: number[];
+  capturedCalls: CapturedCall[];
   perfStats: DiscoveryPerformanceStats;
 }> {
   await initWasmForTests();
 
   const creature = makeTestCreature();
   const capturedFocusSizes: number[] = [];
+  const capturedCalls: CapturedCall[] = [];
+  const nowFn = options.now ?? Date.now;
 
   // Create a real on-disk "parquet" stand-in so the existence check in
   // loadNeuronRecords passes. The mocked readDiscoveryRecords returns an
@@ -125,6 +135,11 @@ async function runWithMockedAnalyzeParallel(
     }),
     analyzeParallel: (input) => {
       capturedFocusSizes.push(input.focusNeurons.length);
+      capturedCalls.push({
+        focusSize: input.focusNeurons.length,
+        analysisDeadlineMs: input.analysisDeadlineMs,
+        capturedAtMs: nowFn(),
+      });
       return options.analyzeParallel(input);
     },
     readDiscoveryRecords: () => ({ success: true, records: [] }),
@@ -161,6 +176,7 @@ async function runWithMockedAnalyzeParallel(
         costOfGrowth: 0,
         analysisChunkSize: options.analysisChunkSize,
         perChunkMaxMs: options.perChunkMaxMs,
+        perChunkGraceMs: options.perChunkGraceMs,
         now: options.now,
         getTimeoutTS: () => deadlineMs,
         refreshAnalysisTimeout: () => {},
@@ -178,7 +194,7 @@ async function runWithMockedAnalyzeParallel(
     }
   }
 
-  return { capturedFocusSizes, perfStats };
+  return { capturedFocusSizes, capturedCalls, perfStats };
 }
 
 Deno.test("chunkFocusList splits into fixed-size sublists", () => {
@@ -279,6 +295,84 @@ Deno.test("runAnalysisLoop aborts retries when a single chunk exceeds perChunkMa
     perfStats.analysisStalled,
     "performance stats should record analysisStalled=true when stall guard trips",
   );
+});
+
+Deno.test("runAnalysisLoop forwards a tight per-chunk deadline to Rust (Issue #2501)", async () => {
+  // Use a fake clock that does NOT advance, so the chunk start observed
+  // inside the loop equals the time captured when analyzeParallel is invoked.
+  // That lets us assert the deadline forwarded to Rust is exactly
+  // chunkStart + perChunkMaxMs + grace, regardless of how long the overall
+  // discovery analysis window is.
+  const fixedTick = 5_000_000;
+  const fakeNow = () => fixedTick;
+  const perChunkMaxMs = 120_000; // 2 minutes — same shape as the production bug
+  const perChunkGraceMs = 1_000;
+
+  const { capturedCalls } = await runWithMockedAnalyzeParallel({
+    analyzeParallel: () => ({
+      success: true,
+      helpfulNeurons: [],
+      helpfulSynapses: [],
+      harmfulSynapses: [],
+    }),
+    analysisChunkSize: 1,
+    perChunkMaxMs,
+    perChunkGraceMs,
+    discoveryMaxNeurons: 6,
+    now: fakeNow,
+  });
+
+  assert(
+    capturedCalls.length >= 1,
+    `expected at least one Rust analysis call, got ${capturedCalls.length}`,
+  );
+  for (const call of capturedCalls) {
+    assert(
+      call.analysisDeadlineMs !== undefined,
+      "Rust analysis input must carry an analysisDeadlineMs when perChunkMaxMs > 0",
+    );
+    const expected = call.capturedAtMs + perChunkMaxMs + perChunkGraceMs;
+    assertEquals(
+      call.analysisDeadlineMs,
+      expected,
+      `per-chunk deadline forwarded to Rust must equal chunkStart + perChunkMaxMs + grace; got ${call.analysisDeadlineMs}, expected ${expected}`,
+    );
+  }
+});
+
+Deno.test("runAnalysisLoop omits per-chunk deadline tightening when stall guard disabled (Issue #2501)", async () => {
+  const fixedTick = 5_000_000;
+  const fakeNow = () => fixedTick;
+  // 10-minute analysis window from the helper.
+  const overallDeadlineMs = fixedTick + 10 * 60 * 1000;
+
+  const { capturedCalls } = await runWithMockedAnalyzeParallel({
+    analyzeParallel: () => ({
+      success: true,
+      helpfulNeurons: [],
+      helpfulSynapses: [],
+      harmfulSynapses: [],
+    }),
+    analysisChunkSize: 2,
+    perChunkMaxMs: 0, // stall guard disabled
+    discoveryMaxNeurons: 6,
+    now: fakeNow,
+  });
+
+  assert(
+    capturedCalls.length >= 1,
+    "expected at least one Rust analysis call",
+  );
+  for (const call of capturedCalls) {
+    // With perChunkMaxMs=0, no chunk-level tightening is applied; the overall
+    // analysis deadline (or undefined) is forwarded to Rust unchanged.
+    if (call.analysisDeadlineMs !== undefined) {
+      assert(
+        call.analysisDeadlineMs >= overallDeadlineMs - 1_000,
+        `analysisDeadlineMs must not be tightened when perChunkMaxMs=0; got ${call.analysisDeadlineMs}, overall deadline ${overallDeadlineMs}`,
+      );
+    }
+  }
 });
 
 Deno.test("runAnalysisLoop does not mark analysisStalled when all chunks finish within budget", async () => {
