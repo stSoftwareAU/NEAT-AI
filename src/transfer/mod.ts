@@ -91,6 +91,28 @@ export type {
 } from "@transfer/KnowledgeDistillation.ts";
 
 /**
+ * Pruning template primitive (Issue #2495).
+ *
+ * Uses Europa as an oracle to identify production hidden neurons whose role
+ * is already covered by Europa's smaller equivalent — those candidates are
+ * removed validate-then-commit (only when removing them does not regress
+ * the recipient's score on the probe dataset beyond a configurable
+ * tolerance). Surviving recipient neurons keep their original `uuid` per
+ * the AGENTS.md UUID stability invariant. Europa is *not* mutated.
+ */
+export {
+  buildActivationFingerprints,
+  findRedundantHiddenNeurons,
+  fingerprintCorrelation,
+  pruningTemplate,
+  PruningTemplateStrategy,
+} from "@transfer/PruningTemplate.ts";
+export type {
+  PruningTemplateOptions,
+  PruningTemplateResult,
+} from "@transfer/PruningTemplate.ts";
+
+/**
  * Knob-tuning DNA-sharing primitive (Issue #2492).
  *
  * The cheapest of the four primitives in the parent issue (#2490): no
