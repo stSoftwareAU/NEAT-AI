@@ -1,0 +1,43 @@
+name: Markdown Lint
+
+on:
+  pull_request:
+    branches: ["*"]
+  push:
+    branches: [Develop, main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  markdownlint:
+    runs-on: ubuntu-latest
+    steps:
+      # actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      # actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "lts/*"
+      - name: Install markdownlint-cli2
+        run: npm install -g markdownlint-cli2
+      - name: Run markdownlint-cli2
+        run: markdownlint-cli2
+      # Optional: mirror the local check-mermaid quality gate when Deno
+      # and the worker module are available in the repo (Issue #1683).
+      - name: Detect Deno worker module
+        id: detect-deno
+        run: |
+          if [ -f worker/deno/mod.ts ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      # denoland/setup-deno@v2
+      - if: steps.detect-deno.outputs.present == 'true'
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
+        with:
+          deno-version: v2.x
+      - if: steps.detect-deno.outputs.present == 'true'
+        name: Validate Mermaid blocks
+        run: deno run --allow-read --allow-env=DEBUG,LOG_LEVEL,CONFIG_PATH,OUTPUT_JSON worker/deno/mod.ts check-mermaid
