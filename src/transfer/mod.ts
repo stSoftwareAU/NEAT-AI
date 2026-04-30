@@ -135,3 +135,20 @@ export type {
   DnaSharingMode,
   DnaSharingPresetValues,
 } from "@config/DnaSharingPreset.ts";
+
+/**
+ * Recommended DNA-sharing strategy from the bake-off (Issue #2496).
+ *
+ * After running the four primitives (#2492 – #2495) plus the `NoOpStrategy`
+ * baseline through `bench/DnaSharingBakeOff.ts` across seeds 1, 7, and 42,
+ * `PruningTemplateStrategy` was the only primitive that produced a strictly
+ * positive lift on every seed. The full result table lives in
+ * `docs/dna-sharing-bake-off-results.md`.
+ *
+ * The default `dnaSharingMode` (knob preset gated by #2492) is intentionally
+ * **not** flipped to `"aggressive"` — `KnobTuningStrategy("aggressive")`
+ * produced zero lift in the bake-off, and flipping the default would change
+ * behaviour for every existing `NeatOptions` user. Operators who want the
+ * winning primitive should invoke `PruningTemplateStrategy` explicitly.
+ */
+export const recommendedDnaSharingStrategy = "PruningTemplate" as const;
