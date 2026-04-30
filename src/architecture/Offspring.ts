@@ -235,6 +235,17 @@ export class Offspring {
       if (node.type !== "input") {
         if (rng.random() >= 0.5) {
           const connections = father.inwardConnections(node.index);
+          // Issue #2497: A father hidden neuron with no inward connections would
+          // be converted to `constant` by fixType. Taking it overrides the
+          // mother's connectionsMap entry (which may have had inward connections),
+          // severing those connections and leaving genuine constant neurons with
+          // no outward connections. Prefer the mother's version whenever the
+          // father's hidden neuron would be demoted to constant but the mother's
+          // version has proper inward connections.
+          if (node.type === "hidden" && connections.length === 0) {
+            const motherRef = connectionsMap.get(node.id);
+            if (motherRef && motherRef.synapses.length > 0) continue;
+          }
           Offspring.fixType(node, connections);
           neuronMap.set(node.id, node);
           connectionsMap.set(
