@@ -41,6 +41,7 @@ import {
   formatBakeOffMarkdown,
   KnobTuningStrategy,
   NoOpStrategy,
+  PruningTemplateStrategy,
   runBakeOff,
 } from "@transfer/mod.ts";
 
@@ -157,6 +158,14 @@ if (import.meta.main) {
         probe,
         minSize,
         densityFactor: 1.5,
+      }),
+      // Issue #2495: Pruning template uses Europa as an oracle to identify
+      // redundant production neurons. Validate-then-commit — the score
+      // gate guarantees a committed prune never regresses the recipient.
+      new PruningTemplateStrategy({
+        probe,
+        correlationThreshold: 0.95,
+        tolerance: 0,
       }),
     ],
   });
