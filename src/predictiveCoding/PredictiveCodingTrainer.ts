@@ -290,7 +290,7 @@ export function trainWithPredictiveCoding(
 
   // Restore best creature if last iteration was worse.
   const finalError = bestError ?? Infinity;
-  creature.loadFrom(bestCreatureJSON, false);
+  creature.loadFrom(bestCreatureJSON, false, "predictiveCoding:restoreBest");
 
   return {
     error: finalError,

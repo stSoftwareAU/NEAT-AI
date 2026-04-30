@@ -43,6 +43,7 @@ import {
   MAX_SAFE_WEIGHT_BIAS,
 } from "@utils/WeightBiasClamp.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { computeCreatureStructuralHash } from "@utils/CreatureStructuralHash.ts";
 import { cleanupOrphanedNeuronsInCreature } from "@compact/OrphanedNeuronCleanup.ts";
 import { pruneOrphanMemeticReferences } from "@compact/MemeticCleanup.ts";
 import { mergeDuplicateSynapsesInCreature } from "@compact/SynapsePruning.ts";
@@ -337,11 +338,18 @@ function forwardOnlyHiddenLacksInbound(creature: Creature): boolean {
 
 /**
  * Load the creature from a JSON object.
+ *
+ * @param source Optional tag describing the calling site (e.g.
+ *   `"breed"`, `"discovery"`, `"fromJSON"`). Included in any
+ *   `[loadFrom] Stripping recurrent synapse` warning so production
+ *   logs can identify the upstream pipeline that produced corrupt
+ *   JSON. See Issue #2500.
  */
 export function loadFrom(
   creature: Creature,
   json: CreatureInternal | CreatureExport,
   validate: boolean,
+  source: string = "loadFrom",
 ): void {
   creature.uuid = (json as CreatureInternal).uuid;
   if (json.semanticVersion) {
@@ -444,6 +452,16 @@ export function loadFrom(
   let lastTo = -1;
   const isForwardOnly = creature.forwardOnly === true;
   let validSynapseCount = 0;
+  // Issue #2500: lazily compute a structural hash on first strip so we
+  // always emit a usable identifier even when the creature has no UUID
+  // (CreatureExport JSON omits creature uuid).
+  let cachedStructuralHash: string | undefined;
+  const getStructuralHash = (): string => {
+    if (cachedStructuralHash === undefined) {
+      cachedStructuralHash = computeCreatureStructuralHash(json);
+    }
+    return cachedStructuralHash;
+  };
   for (let i = 0; i < synapseCount; i++) {
     const synapse = synapses[i];
     const se = synapse as SynapseExport;
@@ -487,12 +505,16 @@ export function loadFrom(
     }
 
     if (isForwardOnly && from! >= to!) {
+      // Issue #2500: include a usable identifier (uuid OR structural
+      // hash) and a `source=...` tag so corrupt-creature events from a
+      // single offending pipeline can be correlated across log lines.
+      const uuidLabel = creature.uuid ?? `hash:${getStructuralHash()}`;
       getLogger().error(
         `🚨 [loadFrom] Stripping recurrent synapse ${from}->${to} ` +
           `(fromUUID=${se.fromUUID ?? se.fromId}, toUUID=${
             se.toUUID ?? se.toId
           }) ` +
-          `from forward-only creature (UUID: ${creature.uuid ?? "unknown"}). ` +
+          `from forward-only creature (UUID: ${uuidLabel}, source=${source}). ` +
           `This indicates upstream corruption.`,
       );
       continue;
@@ -605,9 +627,10 @@ export function loadFrom(
   // lineage can be traced in production logs (rather than thousands of
   // per-value info lines in Score.ts).
   if (clampedWeightCount > 0 || clampedBiasCount > 0) {
+    const uuidLabel = creature.uuid ?? `hash:${getStructuralHash()}`;
     getLogger().warn(
       "🗜️ [loadFrom] Clamped overflowing weights/biases to " +
-        `±${MAX_SAFE_WEIGHT_BIAS} on creature ${creature.uuid ?? "unknown"}: ` +
+        `±${MAX_SAFE_WEIGHT_BIAS} on creature ${uuidLabel} (source=${source}): ` +
         `${clampedWeightCount} weight(s) (max |w|=${maxObservedWeight}), ` +
         `${clampedBiasCount} bias(es) (max |b|=${maxObservedBias}).`,
     );
@@ -633,6 +656,7 @@ export function fromJSON(
       options: { lazyInitialization: boolean; semanticVersion?: string },
     ): Creature;
   },
+  source: string = "fromJSON",
 ): Creature {
   // Issue #2349: treat empty/falsy semanticVersion the same as missing.
   // An empty version is NOT a genuine "0.x" legacy creature — it's a
@@ -656,7 +680,7 @@ export function fromJSON(
     raw.synapses = raw.connections;
     delete raw.connections;
   }
-  loadFrom(creature, json, validate);
+  loadFrom(creature, json, validate, source);
 
   return creature;
 }

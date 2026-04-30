@@ -351,7 +351,7 @@ export function cleanupOrphanedNeuronsInCreature(
     // This helper is used from repair paths (`fix()`), where the export may be
     // in an intermediate state until the caller finishes all repair steps.
     // Let the outer repair/validation flow perform the final strict validate.
-    creature.loadFrom(exportJSON, false);
+    creature.loadFrom(exportJSON, false, "compact:orphanCleanup");
   }
 
   return result;

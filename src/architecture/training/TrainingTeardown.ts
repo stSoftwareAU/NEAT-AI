@@ -168,7 +168,7 @@ export function finaliseTraining(
   let { bestCreatureJSON, bestTraceJSON } = loop;
 
   if (iterations > 1) {
-    creature.loadFrom(bestCreatureJSON, false); // If not called via the worker.
+    creature.loadFrom(bestCreatureJSON, false, "training:teardownRestore"); // If not called via the worker.
   }
 
   const pruned = pruneSyntheticSynapses(
