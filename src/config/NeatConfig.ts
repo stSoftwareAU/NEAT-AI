@@ -68,6 +68,12 @@ import {
 // Extracted cross-field validation
 import { validateNeatConfig } from "@config/NeatConfigValidation.ts";
 
+// Issue #2492: DNA-sharing knob preset
+import {
+  type DnaSharingMode,
+  getDnaSharingPreset,
+} from "@config/DnaSharingPreset.ts";
+
 /**
  * Default cost of growth value used when not specified in options.
  */
@@ -130,6 +136,35 @@ export const DEFAULT_HEAVY_TASK_WORKER_COUNT = 2;
  * Provides a read-only configuration object for the NEAT algorithm.
  */
 export type NeatConfig = Readonly<NeatArguments>;
+
+/**
+ * Merge per-knob defaults from a DNA-sharing preset into the user's
+ * `compatibilityGating` overrides (Issue #2492). Returns a new object
+ * where preset values fill in any field the user did not supply, so the
+ * downstream `parseCompatibilityGating` parser sees mode-aware defaults.
+ *
+ * Internal helper — exported only for unit testing the merge semantics.
+ */
+function mergeCompatibilityGatingDefaults(
+  userOverrides: Record<string, unknown> | undefined,
+  presetDefaults: { enabled: boolean; power: number; maxDraws: number },
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = {
+    enabled: presetDefaults.enabled,
+    power: presetDefaults.power,
+    maxDraws: presetDefaults.maxDraws,
+  };
+  if (userOverrides) {
+    if (userOverrides.enabled !== undefined) {
+      merged.enabled = userOverrides.enabled;
+    }
+    if (userOverrides.power !== undefined) merged.power = userOverrides.power;
+    if (userOverrides.maxDraws !== undefined) {
+      merged.maxDraws = userOverrides.maxDraws;
+    }
+  }
+  return merged;
+}
 
 /**
  * Creates a validated NEAT configuration from user options.
@@ -201,6 +236,15 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     50,
     { integer: true, min: 2 },
   );
+
+  // Issue #2492: Resolve the DNA-sharing knob preset before parsing the
+  // five inter-island knobs so the preset can supply mode-aware defaults.
+  // Explicit user values still win over the preset default — `parseNumber`
+  // only reaches the default when `opts.<knob>` is undefined.
+  const dnaSharingMode: DnaSharingMode = opts.dnaSharingMode === "aggressive"
+    ? "aggressive"
+    : "default";
+  const dnaPreset = getDnaSharingPreset(dnaSharingMode);
 
   const config: NeatArguments = {
     creativeThinkingConnectionCount: parseNumber(
@@ -363,7 +407,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     diversityBreedingRate: parseNumber(
       "Diversity breeding rate",
       opts.diversityBreedingRate,
-      0,
+      dnaPreset.diversityBreedingRate,
       { min: 0, max: 1 },
     ),
     CRISPRs: options.CRISPRs || [],
@@ -382,13 +426,13 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     geneticCompatibilityThreshold: parseNumber(
       "Genetic Compatibility Threshold",
       opts.geneticCompatibilityThreshold,
-      0.3,
+      dnaPreset.geneticCompatibilityThreshold,
       { min: 0, max: 1 },
     ),
     interSpeciesCrossoverThreshold: parseNumber(
       "Inter-species Crossover Threshold",
       opts.interSpeciesCrossoverThreshold,
-      0.1,
+      dnaPreset.interSpeciesCrossoverThreshold,
       { min: 0, max: 1 },
     ),
     discoverySampleRate: parseDiscoverySampleRate(
@@ -636,9 +680,18 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       opts.speciesStagnation as Record<string, unknown> | undefined,
     ),
     // Issue #2455: Parse compatibility gating configuration
+    // Issue #2492: Apply DNA-sharing preset defaults to any field the user
+    // did not set explicitly. The preset overrides only the *defaults*;
+    // user-supplied values still take precedence.
     compatibilityGating: parseCompatibilityGating(
-      opts.compatibilityGating as Record<string, unknown> | undefined,
+      mergeCompatibilityGatingDefaults(
+        opts.compatibilityGating as Record<string, unknown> | undefined,
+        dnaPreset.compatibilityGating,
+      ),
     ),
+
+    // Issue #2492: Knob-tuning preset for inter-island DNA sharing.
+    dnaSharingMode,
     // Issue #1620: Parse and resolve output range constraints
     outputRanges: (() => {
       const raw = options.outputRanges;

@@ -89,3 +89,27 @@ export type {
   KnowledgeDistillationOptions,
   TeacherCapture,
 } from "@transfer/KnowledgeDistillation.ts";
+
+/**
+ * Knob-tuning DNA-sharing primitive (Issue #2492).
+ *
+ * The cheapest of the four primitives in the parent issue (#2490): no
+ * structural surgery on the recipient, just stamps the
+ * `dnaSharingMode = "aggressive"` preset onto the recipient's tags so the
+ * next NEAT run on that creature picks up the aggressive defaults bundled
+ * in `src/config/DnaSharingPreset.ts`.
+ */
+export {
+  KNOB_TUNING_TAG_NAME,
+  KnobTuningStrategy,
+  readDnaSharingModeTag,
+} from "@transfer/KnobTuningStrategy.ts";
+export {
+  AGGRESSIVE_DNA_SHARING_PRESET,
+  DEFAULT_DNA_SHARING_PRESET,
+  getDnaSharingPreset,
+} from "@config/DnaSharingPreset.ts";
+export type {
+  DnaSharingMode,
+  DnaSharingPresetValues,
+} from "@config/DnaSharingPreset.ts";
