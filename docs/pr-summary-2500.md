@@ -2,42 +2,42 @@
 
 ## Summary
 
-Production logs were repeatedly emitting `🚨 [loadFrom] Stripping
+Production logs were repeatedly emitting
+`🚨 [loadFrom] Stripping
 recurrent synapse … from forward-only creature (UUID: unknown). This
-indicates upstream corruption.` 50 times in a single GRQ-3 run. The
-`UUID: unknown` text made it impossible to correlate corrupt-creature
-events or trace the upstream pipeline that produced them — a regression
-of GRQ#1497 / GRQ#1906.
+indicates upstream corruption.`
+50 times in a single GRQ-3 run. The `UUID: unknown` text made it impossible to
+correlate corrupt-creature events or trace the upstream pipeline that produced
+them — a regression of GRQ#1497 / GRQ#1906.
 
-The root cause is that `CreatureExport` JSON deliberately omits the
-creature `uuid` (it is wire-only), so `loadFrom` had no identifier to
-report when the synapse-strip warning fired.
+The root cause is that `CreatureExport` JSON deliberately omits the creature
+`uuid` (it is wire-only), so `loadFrom` had no identifier to report when the
+synapse-strip warning fired.
 
 This change makes the warning genuinely diagnostic:
 
-- **Stable identifier**: when `creature.uuid` is missing, `loadFrom`
-  computes a deterministic `hash:<8hex>` from the JSON payload (input/
-  output sizes, neuron uuids/types, sorted synapse `fromUUID->toUUID`
-  pairs). The same poisoned creature now produces the same hash on
-  every machine, so events can be correlated.
-- **`source=...` tag**: every caller of `loadFrom` now passes a short
-  string identifying the upstream pipeline (`breed:fixAliases`,
+- **Stable identifier**: when `creature.uuid` is missing, `loadFrom` computes a
+  deterministic `hash:<8hex>` from the JSON payload (input/ output sizes, neuron
+  uuids/types, sorted synapse `fromUUID->toUUID` pairs). The same poisoned
+  creature now produces the same hash on every machine, so events can be
+  correlated.
+- **`source=...` tag**: every caller of `loadFrom` now passes a short string
+  identifying the upstream pipeline (`breed:fixAliases`,
   `transfer:compactGraft`, `training:teardownRestore`,
-  `compact:deadSubgraphPruning`, `predictiveCoding:restoreBest`, etc.).
-  The tag is included in the strip warning so the offending pipeline
-  is visible from a single log line.
+  `compact:deadSubgraphPruning`, `predictiveCoding:restoreBest`, etc.). The tag
+  is included in the strip warning so the offending pipeline is visible from a
+  single log line.
 - **Assertion helper**: a new
-  `assertNoRecurrentSynapseOnForwardOnly(creature, source)` lets
-  pipelines that produce structures fail fast at the corruption
-  introduction point instead of leaving the silent-strip in `loadFrom`
-  as the only signal.
+  `assertNoRecurrentSynapseOnForwardOnly(creature, source)` lets pipelines that
+  produce structures fail fast at the corruption introduction point instead of
+  leaving the silent-strip in `loadFrom` as the only signal.
 
 Closes #2500.
 
 ## Evidence
 
-This is a backend / CLI change with no UI to screenshot. Behaviour is
-verified by three new test files (see Test Plan).
+This is a backend / CLI change with no UI to screenshot. Behaviour is verified
+by three new test files (see Test Plan).
 
 ```mermaid
 flowchart LR
@@ -64,30 +64,29 @@ Sample warning before and after:
 ## Test Plan
 
 - `test/utils/CreatureStructuralHash.ts` — verifies the hash is stable,
-  hex-only, insensitive to synapse order, and changes when topology /
-  input / output changes.
-- `test/creature/LoadFromObservability.ts` — verifies that
-  `loadFrom` warnings (a) never contain `UUID: unknown`, (b) always
-  contain a uuid or `hash:<8hex>` identifier, (c) reflect the caller's
-  `source=…` tag, and (d) assign the same hash to identical JSON twice.
+  hex-only, insensitive to synapse order, and changes when topology / input /
+  output changes.
+- `test/creature/LoadFromObservability.ts` — verifies that `loadFrom` warnings
+  (a) never contain `UUID: unknown`, (b) always contain a uuid or `hash:<8hex>`
+  identifier, (c) reflect the caller's `source=…` tag, and (d) assign the same
+  hash to identical JSON twice.
 - `test/architecture/ForwardOnlyAssertion.ts` — verifies the new
   `assertNoRecurrentSynapseOnForwardOnly` helper is a no-op for valid
-  forward-only creatures and throws a `TopologyError` (with `source`
-  tag) for self-loops and backward edges.
+  forward-only creatures and throws a `TopologyError` (with `source` tag) for
+  self-loops and backward edges.
 
 All 6335 tests pass via `./quality.sh --skip-discovery --skip-wasm`.
 
 ## Files changed
 
-- `src/utils/CreatureStructuralHash.ts` *(new)* — FNV-1a 32-bit hash
-  helper.
-- `src/architecture/ForwardOnlyAssertion.ts` *(new)* — corruption
+- `src/utils/CreatureStructuralHash.ts` _(new)_ — FNV-1a 32-bit hash helper.
+- `src/architecture/ForwardOnlyAssertion.ts` _(new)_ — corruption
   introduction-point assertion.
-- `src/creature/CreatureSerialization.ts` — `loadFrom` and `fromJSON`
-  accept an optional `source` parameter; strip and clamp warnings now
-  include uuid-or-hash and `source=…`.
-- `src/Creature.ts` — `Creature.loadFrom` and `Creature.fromJSON`
-  forward the new `source` parameter.
+- `src/creature/CreatureSerialization.ts` — `loadFrom` and `fromJSON` accept an
+  optional `source` parameter; strip and clamp warnings now include uuid-or-hash
+  and `source=…`.
+- `src/Creature.ts` — `Creature.loadFrom` and `Creature.fromJSON` forward the
+  new `source` parameter.
 - `src/architecture/Offspring.ts`, `src/transfer/CompactModuleGraft.ts`,
   `src/transfer/KnowledgeDistillation.ts`,
   `src/architecture/training/TrainingOutcome.ts`,
@@ -96,10 +95,9 @@ All 6335 tests pass via `./quality.sh --skip-discovery --skip-wasm`.
   `src/predictiveCoding/PredictiveCodingTrainer.ts`,
   `src/creature/CreatureTraining.ts`,
   `src/propagate/RemoveSyntheticSynapses.ts`,
-  `src/compact/DeadSubgraphPruning.ts`,
-  `src/compact/OrphanedNeuronCleanup.ts` — pass meaningful `source`
-  tags.
-- `test/utils/CreatureStructuralHash.ts` *(new)*,
-  `test/creature/LoadFromObservability.ts` *(new)*,
-  `test/architecture/ForwardOnlyAssertion.ts` *(new)* — coverage for
-  the new behaviour.
+  `src/compact/DeadSubgraphPruning.ts`, `src/compact/OrphanedNeuronCleanup.ts` —
+  pass meaningful `source` tags.
+- `test/utils/CreatureStructuralHash.ts` _(new)_,
+  `test/creature/LoadFromObservability.ts` _(new)_,
+  `test/architecture/ForwardOnlyAssertion.ts` _(new)_ — coverage for the new
+  behaviour.
