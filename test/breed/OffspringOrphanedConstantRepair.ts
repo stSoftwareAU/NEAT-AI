@@ -89,6 +89,9 @@ Deno.test(
     }
 
     assert(breedAttempts > 0, "Expected at least one breed attempt");
-    assert(validChildren > 0, "Expected at least one valid forward-only offspring");
+    assert(
+      validChildren > 0,
+      "Expected at least one valid forward-only offspring",
+    );
   },
 );
