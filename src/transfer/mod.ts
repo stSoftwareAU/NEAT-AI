@@ -48,3 +48,23 @@ export type {
   BakeOffRow,
   EvolveStep,
 } from "@transfer/DnaSharingBakeOff.ts";
+
+/**
+ * Compact sub-graph graft primitive (Issue #2493).
+ *
+ * Detects dense, high-activation modules in a small donor (Europa-style)
+ * and grafts them into a larger sparser recipient (production-style) at
+ * periodic import time. Donor neuron UUIDs are preserved verbatim so
+ * subsequent breeding can re-align by UUID.
+ */
+export {
+  compactModuleGraft,
+  CompactModuleGraftStrategy,
+  detectDenseModules,
+  scoreModulesByActivation,
+} from "@transfer/CompactModuleGraft.ts";
+export type {
+  CompactModuleGraftOptions,
+  DenseModule,
+  DenseModuleDetectionOptions,
+} from "@transfer/CompactModuleGraft.ts";

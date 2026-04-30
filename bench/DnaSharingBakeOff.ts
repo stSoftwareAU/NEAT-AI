@@ -37,6 +37,7 @@
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import {
+  CompactModuleGraftStrategy,
   formatBakeOffMarkdown,
   NoOpStrategy,
   runBakeOff,
@@ -127,6 +128,11 @@ function parseFlag(argv: string[], key: string, fallback: number): number {
 if (import.meta.main) {
   const generations = parseFlag(Deno.args, "generations", 1000);
   const seed = parseFlag(Deno.args, "seed", 42);
+  // Issue #2493: small fixtures rarely have a dense >=6-neuron module, so the
+  // bench takes a `--min-size` knob (default 2) to allow a meaningful row on
+  // small fixtures. Production Europa donors (266 hidden neurons) use the
+  // module's own default of 6 by passing `--min-size 6`.
+  const minSize = parseFlag(Deno.args, "min-size", 2);
 
   const [recipient, donor, probe] = await Promise.all([
     loadRecipient(),
@@ -140,7 +146,14 @@ if (import.meta.main) {
     probe,
     generations,
     seed,
-    strategies: [new NoOpStrategy()],
+    strategies: [
+      new NoOpStrategy(),
+      new CompactModuleGraftStrategy({
+        probe,
+        minSize,
+        densityFactor: 1.5,
+      }),
+    ],
   });
 
   console.log(
