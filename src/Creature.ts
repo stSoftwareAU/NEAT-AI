@@ -1060,15 +1060,25 @@ export class Creature implements CreatureInternal {
     return serialisation.traceJSON(this);
   }
 
-  loadFrom(json: CreatureInternal | CreatureExport, validate: boolean) {
-    serialisation.loadFrom(this, json, validate);
+  loadFrom(
+    json: CreatureInternal | CreatureExport,
+    validate: boolean,
+    source?: string,
+  ) {
+    serialisation.loadFrom(this, json, validate, source);
   }
 
   static fromJSON(
     json: CreatureInternal | CreatureExport,
-    validate = false,
+    validate?: boolean,
+    source?: string,
   ): Creature {
-    return serialisation.fromJSON(json, validate, Creature) as Creature;
+    return serialisation.fromJSON(
+      json,
+      validate ?? false,
+      Creature,
+      source,
+    ) as Creature;
   }
 
   /**

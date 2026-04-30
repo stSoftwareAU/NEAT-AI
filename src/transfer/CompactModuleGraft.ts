@@ -542,7 +542,7 @@ export class CompactModuleGraftStrategy implements DnaSharingStrategy {
   ): Promise<void> {
     const grafted = compactModuleGraft(recipient, donor, this.opts);
     if (grafted) {
-      recipient.loadFrom(grafted.exportJSON(), false);
+      recipient.loadFrom(grafted.exportJSON(), false, "transfer:compactGraft");
     }
     return Promise.resolve();
   }

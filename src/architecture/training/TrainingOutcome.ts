@@ -94,7 +94,7 @@ export function applyEpochOutcome(
         JSON.stringify(creature.traceJSON()),
       );
     }
-    creature.loadFrom(state.bestCreatureJSON, false);
+    creature.loadFrom(state.bestCreatureJSON, false, "training:outcomeRestore");
     return;
   }
 

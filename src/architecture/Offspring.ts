@@ -513,7 +513,7 @@ export class Offspring {
         }
       }
 
-      offspring.loadFrom(fixed, false);
+      offspring.loadFrom(fixed, false, "breed:fixAliases");
     }
 
     offspring.clearState();

@@ -69,7 +69,11 @@ export function removeSyntheticSynapses(
     // removal, orphan cleanup, and dead subgraph pruning (DRY).
     const compacted = creature.compact(false);
     if (compacted) {
-      creature.loadFrom(compacted.exportJSON(), false);
+      creature.loadFrom(
+        compacted.exportJSON(),
+        false,
+        "compact:removeSynthetic",
+      );
     }
   }
 

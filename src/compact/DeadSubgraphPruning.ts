@@ -113,7 +113,7 @@ export function pruneDeadSubgraphsInCreature(
 
   const result = pruneDeadSubgraphs(exportJSON);
   if (result.removedNeurons > 0 || result.removedSynapses > 0) {
-    creature.loadFrom(exportJSON, true);
+    creature.loadFrom(exportJSON, true, "compact:deadSubgraphPruning");
   }
 
   return result;

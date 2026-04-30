@@ -383,7 +383,11 @@ export class KnowledgeDistillationStrategy implements DnaSharingStrategy {
     };
     const distilled = knowledgeDistillation(recipient, donor, merged);
     if (distilled) {
-      recipient.loadFrom(distilled.exportJSON(), false);
+      recipient.loadFrom(
+        distilled.exportJSON(),
+        false,
+        "transfer:distillation",
+      );
     }
     return Promise.resolve();
   }

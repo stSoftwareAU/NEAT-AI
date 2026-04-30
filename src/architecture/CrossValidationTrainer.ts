@@ -222,7 +222,7 @@ export function trainWithCrossValidation(
 
   // Load the best-performing fold's weights into the original creature
   if (bestFoldCreatureJSON) {
-    creature.loadFrom(bestFoldCreatureJSON, false);
+    creature.loadFrom(bestFoldCreatureJSON, false, "training:crossValidation");
   }
 
   if (options.log) {

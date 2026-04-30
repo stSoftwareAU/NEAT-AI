@@ -552,7 +552,7 @@ export async function evolveDir(
   await neat.discoveryReplayQueue.waitForCompletion();
 
   if (bestCreature) {
-    creature.loadFrom(bestCreature, config.debug);
+    creature.loadFrom(bestCreature, config.debug, "training:restoreBest");
   }
 
   if (config.creatureStore) {
