@@ -235,6 +235,17 @@ export class Offspring {
       if (node.type !== "input") {
         if (rng.random() >= 0.5) {
           const connections = father.inwardConnections(node.index);
+          // Issue #2497: A father hidden neuron with no inward connections would
+          // be converted to `constant` by fixType. Taking it overrides the
+          // mother's connectionsMap entry (which may have had inward connections),
+          // severing those connections and leaving genuine constant neurons with
+          // no outward connections. Prefer the mother's version whenever the
+          // father's hidden neuron would be demoted to constant but the mother's
+          // version has proper inward connections.
+          if (node.type === "hidden" && connections.length === 0) {
+            const motherRef = connectionsMap.get(node.id);
+            if (motherRef && motherRef.synapses.length > 0) continue;
+          }
           Offspring.fixType(node, connections);
           neuronMap.set(node.id, node);
           connectionsMap.set(
@@ -551,6 +562,7 @@ export class Offspring {
         mother,
         father,
       );
+      Offspring.repairOrphanedConstants(offspring, mother, father);
     }
 
     if (offspring.memetic) {
@@ -689,6 +701,79 @@ export class Offspring {
 
       if (!linked && i > 0 && offspring.getSynapse(0, i) === null) {
         offspring.connect(0, i, SynapseClass.randomWeight());
+      }
+    }
+
+    offspring.clearCache();
+  }
+
+  /**
+   * Repairs constant neurons that have no outward connections after forward-only
+   * breeding. This mirrors {@link repairForwardOnlyComputationalInbounds} but
+   * addresses the symmetric failure: a constant neuron (no inward connections)
+   * whose outward connections were all dropped because they mapped to backward
+   * positions in the re-sorted offspring.
+   *
+   * For each orphaned constant:
+   * 1. Look up outward connections from the matched parent neuron (wire-label).
+   * 2. Add the first valid forward connection found.
+   * 3. Fall back to the first hidden/output neuron after this one.
+   */
+  private static repairOrphanedConstants(
+    offspring: Creature,
+    mother: Creature,
+    father: Creature,
+  ): void {
+    const labelToOffspringIndex = new Map<string, number>();
+    for (let i = 0; i < offspring.neurons.length; i++) {
+      labelToOffspringIndex.set(
+        neuronWireLabelForDiagnostics(offspring.neurons[i], i),
+        i,
+      );
+    }
+
+    for (let i = offspring.input; i < offspring.neurons.length; i++) {
+      const node = offspring.neurons[i];
+      if (node.type !== "constant") continue;
+      if (offspring.outwardConnections(i).length > 0) continue;
+
+      const label = neuronWireLabelForDiagnostics(node, i);
+
+      let linked = false;
+      for (const parent of [mother, father]) {
+        const pIdx = Offspring.findParentNeuronIndexByWireLabel(parent, label);
+        if (pIdx === undefined) continue;
+
+        for (const syn of parent.outwardConnections(pIdx)) {
+          const toLabel = neuronWireLabelForDiagnostics(
+            parent.neurons[syn.to],
+            syn.to,
+          );
+          const toI = labelToOffspringIndex.get(toLabel);
+          if (
+            toI !== undefined && toI > i &&
+            offspring.getSynapse(i, toI) === null
+          ) {
+            offspring.connect(i, toI, syn.weight, syn.type);
+            linked = true;
+            break;
+          }
+        }
+        if (linked) break;
+      }
+
+      // Fall back: connect to the first hidden/output neuron after this constant.
+      if (!linked) {
+        for (let j = i + 1; j < offspring.neurons.length; j++) {
+          const target = offspring.neurons[j];
+          if (
+            (target.type === "hidden" || target.type === "output") &&
+            offspring.getSynapse(i, j) === null
+          ) {
+            offspring.connect(i, j, SynapseClass.randomWeight());
+            break;
+          }
+        }
       }
     }
 
