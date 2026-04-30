@@ -9,9 +9,8 @@ step with what contributors run on their machines. Closes #2507.
 
 The optional Mermaid block validator from the suggested template is preserved
 behind a `detect-deno` guard — this repo has no `worker/deno/mod.ts` today, so
-the step skips itself, but if that module is ever vendored in, the workflow
-will automatically start running `deno run … check-mermaid` without further
-edits.
+the step skips itself, but if that module is ever vendored in, the workflow will
+automatically start running `deno run … check-mermaid` without further edits.
 
 ## Evidence
 
@@ -28,12 +27,14 @@ flowchart LR
     I --> G
 ```
 
-Local `markdownlint-cli2` run against the repo's 560 Markdown files — `0
-error(s)` — so the new workflow will pass the first time it runs on `Develop`.
+Local `markdownlint-cli2` run against the repo's 560 Markdown files —
+`0
+error(s)` — so the new workflow will pass the first time it runs on
+`Develop`.
 
 Tests added in `test/scripts/MarkdownLintWorkflow.ts` parse the workflow YAML
-and assert on its real shape (triggers, permissions, action SHAs, install +
-run steps, Mermaid gating). All 8 pass:
+and assert on its real shape (triggers, permissions, action SHAs, install + run
+steps, Mermaid gating). All 8 pass:
 
 ```text
 ok | 8 passed | 0 failed
