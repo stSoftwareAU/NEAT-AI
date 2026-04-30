@@ -85,6 +85,13 @@ export function ensureRustCombinedAnalysis(
     focusList: number[],
     reason: string,
   ) => void,
+  /**
+   * Optional tighter per-chunk deadline (Issue #2501). When set, the smaller
+   * of `chunkDeadlineMs` and `analysisDeadlineMs` is forwarded to Rust so a
+   * single chunk cannot burn more than its allotted budget plus grace, even
+   * when the overall analysis deadline is far in the future.
+   */
+  chunkDeadlineMs?: number,
 ): {
   result: RustAnalyzeAllResult | undefined;
   cache: CombinedAnalysisCache | undefined;
@@ -137,6 +144,18 @@ export function ensureRustCombinedAnalysis(
     );
   }
 
+  // Issue #2501: when a per-chunk deadline is supplied, give Rust the tighter
+  // of the two so the synchronous FFI call self-aborts close to the per-chunk
+  // budget instead of running for the full analysis window. JS cannot
+  // interrupt the blocking FFI, so the Rust-side deadline is the only path
+  // to bound a single chunk's wall-clock.
+  const effectiveDeadlineMs = chunkDeadlineMs !== undefined &&
+      Number.isFinite(chunkDeadlineMs)
+    ? (analysisDeadlineMs !== undefined && Number.isFinite(analysisDeadlineMs)
+      ? Math.min(analysisDeadlineMs, chunkDeadlineMs)
+      : chunkDeadlineMs)
+    : analysisDeadlineMs;
+
   const parallelInput: RustParallelAnalysisInput = {
     parquetFile: parquetFilePath,
     creature: rustCreature,
@@ -147,7 +166,7 @@ export function ensureRustCombinedAnalysis(
     maxNeuronCandidates: includeNeuron
       ? Math.max(25, focusList.length * 5)
       : undefined,
-    analysisDeadlineMs,
+    analysisDeadlineMs: effectiveDeadlineMs,
     focusNeuronErrorShares,
   };
 

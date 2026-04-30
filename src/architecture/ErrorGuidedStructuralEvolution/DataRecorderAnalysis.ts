@@ -356,10 +356,23 @@ export async function runAnalysisLoop(
         }
       }
       const chunkStart = now();
+      // Issue #2501: tighten the deadline forwarded to Rust per chunk so a
+      // single synchronous FFI call cannot burn far more than its budget.
+      // JS cannot interrupt the blocking FFI; the Rust-side deadline is the
+      // only mechanism that actually bounds a chunk's wall-clock. We add a
+      // small grace so well-behaved chunks finish without being clipped.
+      const chunkGraceMs = Math.max(
+        0,
+        ctx.perChunkGraceMs ?? DEFAULT_PER_CHUNK_GRACE_MS,
+      );
+      const chunkDeadlineMs = ctx.perChunkMaxMs > 0
+        ? chunkStart + ctx.perChunkMaxMs + chunkGraceMs
+        : undefined;
       const combinedResult = discoverStructure.ensureRustCombinedAnalysis(
         chunk,
         true, // includeSynapse
         true, // includeNeuron
+        chunkDeadlineMs,
       );
       const chunkElapsed = now() - chunkStart;
       perfStats.rustCombinedAnalysisTime += chunkElapsed;
