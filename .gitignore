@@ -3,6 +3,7 @@
 *~
 logback.log
 !.gitignore
+!.markdownlint-cli2.jsonc
 coverage/
 target/
 !.github

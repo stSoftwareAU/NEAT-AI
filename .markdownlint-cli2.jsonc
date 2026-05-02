@@ -1,0 +1,65 @@
+// markdownlint-cli2 configuration — drives both the local quality gate
+// (./quality.sh) and the CI workflow (.github/workflows/markdown-lint.yml).
+//
+// Globs select all Markdown files while excluding build artefacts.
+// Rules are tuned to what is enforceable across the existing file corpus
+// without requiring mass rewrites; more rules can be re-enabled as the
+// codebase is cleaned up incrementally.
+{
+  "globs": ["**/*.md", "!node_modules", "!.git"],
+  "config": {
+    // MD013 – line length: 80 chars is impractical for tables, URLs, and
+    // auto-generated bench reports. Disable rather than set a high limit so
+    // the rule does not produce spurious CI noise.
+    "MD013": false,
+
+    // MD041 – first-line heading: many files (bench results, PR summaries,
+    // docs fragments) legitimately omit an H1. Disable globally.
+    "MD041": false,
+
+    // MD040 – fenced-code-language: auto-generated content and bench output
+    // frequently omit language specifiers. Disable for now.
+    "MD040": false,
+
+    // MD051 – link-fragments: several existing files contain TOC links that
+    // reference headings whose anchors differ across renderers. Disable until
+    // the affected files are audited.
+    "MD051": false,
+
+    // MD018 – no-missing-space-atx: existing bench result files use bare
+    // issue-number headings (e.g. "#1952."). Disable for now.
+    "MD018": false,
+
+    // MD029 – ol-prefix: ordered-list numbering style. Many existing lists
+    // use "1." throughout (lazy numbering). Disable.
+    "MD029": false,
+
+    // MD031 – blanks-around-fences: some existing files omit blank lines
+    // around fenced blocks. Disable.
+    "MD031": false,
+
+    // MD026 – no-trailing-punctuation in headings. Existing files have
+    // headings ending with colons and periods. Disable.
+    "MD026": false,
+
+    // MD036 – no-emphasis-as-heading: several docs use bold/italic as section
+    // markers. Disable.
+    "MD036": false,
+
+    // MD034 – no-bare-urls: existing files contain bare URLs in prose.
+    // Disable.
+    "MD034": false,
+
+    // MD033 – no-inline-html: some docs use HTML elements (e.g. <details>).
+    // Disable.
+    "MD033": false,
+
+    // MD024 – no-duplicate-heading: changelog-style docs repeat headings like
+    // "Fixed" across versions. Disable.
+    "MD024": false,
+
+    // MD045 – no-alt-text: images without alt text. Keep enabled for
+    // accessibility; only 1 violation exists and it should be fixed.
+    "MD045": true
+  }
+}
