@@ -179,12 +179,15 @@ function validateSynapse(
       );
     }
   } else {
-    // Append mode: each synapse must have at least one resolvable source and target reference
+    // Append mode: each synapse must have at least one resolvable source and
+    // target reference. `fromUUID` / `toUUID` are accepted alongside the
+    // legacy numeric/relative fields — `Upgrade.CRISPR` resolves them to
+    // `fromId` / `toId` after this validation runs (Issue #2509).
     const hasSource = s.from !== undefined || s.fromId !== undefined ||
-      s.fromRelative !== undefined;
+      s.fromRelative !== undefined || typeof s.fromUUID === "string";
     if (!hasSource) {
       throw new CrisprError(
-        `Synapse at index ${index}: append-mode synapse must have at least one source reference ('from', 'fromId', or 'fromRelative') — synapse: ${
+        `Synapse at index ${index}: append-mode synapse must have at least one source reference ('from', 'fromId', 'fromRelative', or 'fromUUID') — synapse: ${
           JSON.stringify(s)
         }`,
         "INVALID_DNA",
@@ -192,10 +195,10 @@ function validateSynapse(
     }
 
     const hasTarget = s.to !== undefined || s.toId !== undefined ||
-      s.toRelative !== undefined;
+      s.toRelative !== undefined || typeof s.toUUID === "string";
     if (!hasTarget) {
       throw new CrisprError(
-        `Synapse at index ${index}: append-mode synapse must have at least one target reference ('to', 'toId', or 'toRelative') — synapse: ${
+        `Synapse at index ${index}: append-mode synapse must have at least one target reference ('to', 'toId', 'toRelative', or 'toUUID') — synapse: ${
           JSON.stringify(s)
         }`,
         "INVALID_DNA",

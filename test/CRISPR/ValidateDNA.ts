@@ -307,6 +307,66 @@ Deno.test("validateDNA - append-mode synapse with fromId/toId passes", () => {
   }
 });
 
+Deno.test("validateDNA - append-mode synapse with fromUUID/toUUID alone passes (Issue #2509)", () => {
+  // UUID-only synapses are valid — Upgrade.CRISPR resolves fromUUID/toUUID
+  // to fromId/toId after validateDNA runs, so validateDNA must recognise
+  // UUID-only references without requiring a placeholder fromRelative.
+  const result = validateDNA({
+    id: "test-dna",
+    mode: "append",
+    synapses: [{
+      fromUUID: "output-0",
+      toUUID: "5a47061e-9c90-4126-93ed-abdfd27a1dae",
+      weight: 0.5,
+    }],
+  });
+  if (!result.id) {
+    throw new Error("Expected validated DNA to be returned");
+  }
+});
+
+Deno.test("validateDNA - append-mode synapse with only fromUUID still requires a target reference", () => {
+  assertThrows(
+    () =>
+      validateDNA({
+        id: "test-dna",
+        mode: "append",
+        synapses: [{ fromUUID: "output-0", weight: 0.5 }],
+      }),
+    Error,
+    "must have at least one target reference",
+  );
+});
+
+Deno.test("validateDNA - append-mode synapse with only toUUID still requires a source reference", () => {
+  assertThrows(
+    () =>
+      validateDNA({
+        id: "test-dna",
+        mode: "append",
+        synapses: [{ toUUID: "output-0", weight: 0.5 }],
+      }),
+    Error,
+    "must have at least one source reference",
+  );
+});
+
+Deno.test("validateDNA - insert-mode synapse with fromUUID/toUUID still passes", () => {
+  // Regression: insert-mode already accepted UUID-only synapses; ensure
+  // adding UUID recognition to append-mode does not break insert-mode.
+  const result = validateDNA({
+    id: "test-insert",
+    mode: "insert",
+    neurons: [
+      { type: "hidden", squash: "LOGISTIC", bias: 0 },
+    ],
+    synapses: [{ fromUUID: "a", toUUID: "b", weight: 0.5 }],
+  });
+  if (!result.id) {
+    throw new Error("Expected validated DNA to be returned");
+  }
+});
+
 Deno.test("validateDNA - default mode synapse missing source reference throws", () => {
   // When mode is omitted it defaults to "append", so the same validation applies
   assertThrows(
