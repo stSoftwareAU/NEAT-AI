@@ -8,6 +8,41 @@ import { TopologyError } from "@errors/TopologyError.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { validateDNA } from "@reconstruct/validateDNA.ts";
 
+/**
+ * Recommended `index` for the first output neuron in append-mode CRISPR DNA
+ * (Issue #2509).
+ *
+ * `append()` computes `adjustIndx = firstNetworkOutputIndex - firstDnaOutputIndex +
+ * dna.neurons.length` so any `fromRelative` / `toRelative` value `R` resolves
+ * to network index `R + adjustIndx`. Picking a large, conventional anchor for
+ * `firstDnaOutputIndex` keeps `R` values readable: with the recommended
+ * `100000`, `fromRelative: 99999` reaches one slot below the first new
+ * neuron — i.e. the **last** previously-existing output that has just been
+ * demoted to hidden — and `fromRelative: 99998` reaches the second-last,
+ * and so on.
+ *
+ * Authors are free to use any anchor (`DNA-SANE.json` and `DNA-VOLUME.json`
+ * use `1000`), but new DNA should prefer `CRISPR_DEFAULT_FIRST_DNA_OUTPUT_INDEX`
+ * for consistency.
+ */
+export const CRISPR_DEFAULT_FIRST_DNA_OUTPUT_INDEX = 100_000;
+
+/**
+ * Convenience constant: `fromRelative` value that resolves to the demoted
+ * previous `output-0` neuron when the DNA uses the recommended
+ * `firstDnaOutputIndex = CRISPR_DEFAULT_FIRST_DNA_OUTPUT_INDEX` (Issue #2509).
+ *
+ * Equivalent to `CRISPR_DEFAULT_FIRST_DNA_OUTPUT_INDEX - 1`. To reference the
+ * second-last demoted output use `CRISPR_DEFAULT_FIRST_DNA_OUTPUT_INDEX - 2`,
+ * and so on.
+ *
+ * Use this in append-mode DNA where exactly one previous output is being
+ * demoted and you want the new `output-0` to read from it. See
+ * `docs/CRISPR_GUIDE.md` for the full append+demote pattern.
+ */
+export const FROM_RELATIVE_DEMOTED_OUTPUT =
+  CRISPR_DEFAULT_FIRST_DNA_OUTPUT_INDEX - 1;
+
 function formatCrisprDnaIdForLog(dna: unknown): string {
   if (dna !== null && typeof dna === "object" && "id" in dna) {
     const id = (dna as Record<string, unknown>).id;

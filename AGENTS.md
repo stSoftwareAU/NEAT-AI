@@ -561,6 +561,8 @@ In our production workloads, the default is feed-forward/forward-only.
 - **AGENTS.md** (this file) - Coding guidelines and development reference
 - **COMPARISON.md** - Comparison with other AI approaches
 - **docs/API_REFERENCE.md** - Comprehensive public API reference
+- **docs/CRISPR_GUIDE.md** - CRISPR conventions, append+demote pattern, and
+  validation rules
 - **docs/DISCOVERY_GUIDE.md** - Complete discovery workflow guide
 - **docs/DISCOVERY_ARCHITECTURE.md** - Discovery pipeline internal architecture
 - **docs/DISCOVERY_DIR.md** - Technical API reference for `discoveryDir()`

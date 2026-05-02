@@ -202,7 +202,12 @@ export { Mutation } from "@neat/Mutation.ts";
  *
  * @see {@link module:src/reconstruct/CRISPR}
  */
-export { CRISPR, type CrisprInterface } from "@reconstruct/CRISPR.ts";
+export {
+  CRISPR,
+  CRISPR_DEFAULT_FIRST_DNA_OUTPUT_INDEX,
+  type CrisprInterface,
+  FROM_RELATIVE_DEMOTED_OUTPUT,
+} from "@reconstruct/CRISPR.ts";
 export { CrisprError } from "@errors/CrisprError.ts";
 export type { CrisprErrorCode } from "@errors/CrisprError.ts";
 export { validateDNA } from "@reconstruct/validateDNA.ts";

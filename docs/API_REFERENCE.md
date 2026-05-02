@@ -118,10 +118,25 @@ const clone = Creature.fromJSON(json);
 Targeted genetic modifications inspired by CRISPR gene-editing technology.
 Allows hand-crafted injection of neurons and synapses.
 
+For the conventions, append+demote pattern, and full validation rules see
+[`docs/CRISPR_GUIDE.md`](CRISPR_GUIDE.md).
+
 ```typescript
-import { CRISPR } from "@stsoftware/neat-ai";
+import {
+  CRISPR,
+  CRISPR_DEFAULT_FIRST_DNA_OUTPUT_INDEX,
+  FROM_RELATIVE_DEMOTED_OUTPUT,
+  validateDNA,
+} from "@stsoftware/neat-ai";
 import type { CrisprInterface } from "@stsoftware/neat-ai";
 ```
+
+#### 📐 Constants
+
+| Constant                                | Value     | Description                                                                                     |
+| --------------------------------------- | --------- | ----------------------------------------------------------------------------------------------- |
+| `CRISPR_DEFAULT_FIRST_DNA_OUTPUT_INDEX` | `100_000` | Recommended `index` for the first output neuron in append-mode DNA.                             |
+| `FROM_RELATIVE_DEMOTED_OUTPUT`          | `99_999`  | `fromRelative` value that resolves to the demoted previous `output-0` under the default anchor. |
 
 #### 🏗️ Constructor
 
