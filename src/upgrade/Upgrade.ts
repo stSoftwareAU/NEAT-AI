@@ -1,4 +1,5 @@
 import { Creature } from "@creature";
+import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
 import { repairInvalidIfNeuronsInCreature } from "@architecture/RepairInvalidIfNeurons.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { pruneOrphanMemeticReferences } from "@compact/CompactUtils.ts";
@@ -134,7 +135,7 @@ function validateFourX(creature: Creature): void {
         writeDiagnostics({
           error: followUp,
           prefix: "upgrade-4x",
-          creature: creature.exportJSON(),
+          creature: exportJSONUnchecked(creature),
           context: {
             semanticVersion: creature.semanticVersion,
             uuid: creature.uuid,
@@ -159,7 +160,9 @@ function validateFourX(creature: Creature): void {
     writeDiagnostics({
       error,
       prefix: "upgrade-4x",
-      creature: creature.exportJSON(),
+      // Issue #2511: we are already on the validation-error path; avoid
+      // having the save-side assertion mask the original ValidationError.
+      creature: exportJSONUnchecked(creature),
       context: {
         semanticVersion: creature.semanticVersion,
         uuid: creature.uuid,

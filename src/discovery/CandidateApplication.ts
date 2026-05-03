@@ -14,7 +14,7 @@ import {
   applyCoordinatedStructuralCandidate,
 } from "@architecture/ErrorGuidedStructuralEvolution/ApplyCoordinatedStructuralCandidate.ts";
 import type { Creature } from "@creature";
-import { exportJSON } from "@creature/CreatureSerialization.ts";
+import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
 import { getLogger } from "@utils/Logger.ts";
 import type {
@@ -143,9 +143,13 @@ export function applyChangeToCreature(
   baseCreature: Creature,
 ): Creature | undefined {
   const changeType = candidate.change.type;
-  const candidateJSON = exportJSON(candidate.creature);
-  const creatureJSON = exportJSON(creature);
-  const baseJSON = exportJSON(baseCreature);
+  // Issue #2511: candidate creatures may carry intentionally illegal hints
+  // (e.g. backward synapses on a forward-only base) that the combiner is
+  // meant to filter. Use the unchecked export so the save-side assertion
+  // does not fire here — this is an internal clone, not a save.
+  const candidateJSON = exportJSONUnchecked(candidate.creature);
+  const creatureJSON = exportJSONUnchecked(creature);
+  const baseJSON = exportJSONUnchecked(baseCreature);
   normaliseCreatureExport(candidateJSON);
   normaliseCreatureExport(creatureJSON);
   normaliseCreatureExport(baseJSON);

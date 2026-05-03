@@ -1,5 +1,6 @@
 import type { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
 import { getLogger } from "@utils/Logger.ts";
 
 export const DIAGNOSTICS_DIR = ".diagnostics";
@@ -135,7 +136,11 @@ export function validateOrDiagnose(
     let creatureExport: CreatureExport | string;
     try {
       creature.DEBUG = false;
-      creatureExport = creature.exportJSON();
+      // Issue #2511: we are already on a validation-failure path. The
+      // save-side assertion in `exportJSON` would replace the upstream
+      // error with a TopologyError and hide the actual cause, so use
+      // the unchecked export here for diagnostic capture only.
+      creatureExport = exportJSONUnchecked(creature);
     } catch {
       creatureExport = "(export failed — creature too corrupted to serialise)";
     }
