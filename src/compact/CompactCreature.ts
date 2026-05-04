@@ -21,6 +21,7 @@ import { simplifyLargeWeights } from "@compact/SimplifyLargeWeights.ts";
 import { removeBackwardSynapses } from "@compact/RemoveBackwardSynapses.ts";
 import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
 
 /**
  * Compacts a creature by removing redundant neurons and connections.
@@ -39,7 +40,11 @@ export function compactCreature(
 ): Creature | undefined {
   const holdDebug = creature.DEBUG;
   creature.DEBUG = false;
-  const startExport = creature.exportJSON();
+  // Issue #2511: compaction may receive a forward-only creature with
+  // intentional backward synapses (Issue #956 test fixtures, GRQ-12
+  // post-strip recovery). Use the unchecked export so the save-side
+  // assertion does not fire here — this is an internal clone, not a save.
+  const startExport = exportJSONUnchecked(creature);
   creature.DEBUG = holdDebug;
   // Public export omits integer ids; compaction logic expects fromId/toId on synapses.
   normaliseCreatureExport(startExport);

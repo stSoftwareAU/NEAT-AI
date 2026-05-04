@@ -43,6 +43,7 @@ import {
   MAX_SAFE_WEIGHT_BIAS,
 } from "@utils/WeightBiasClamp.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import { assertNoRecurrentSynapseOnForwardOnly } from "@architecture/ForwardOnlyAssertion.ts";
 import { computeCreatureStructuralHash } from "@utils/CreatureStructuralHash.ts";
 import { cleanupOrphanedNeuronsInCreature } from "@compact/OrphanedNeuronCleanup.ts";
 import { pruneOrphanMemeticReferences } from "@compact/MemeticCleanup.ts";
@@ -127,11 +128,21 @@ function buildCreatureExportJSON(
  * in evolution/training. Invariants should be enforced where structures are
  * produced (mutation, breed, discovery) and in tests; use `creature.DEBUG`
  * to opt into validation on export during development.
+ *
+ * **Issue #2511 — save-side forward-only assertion:** when
+ * `creature.forwardOnly === true`, run a narrow O(N) sweep that throws
+ * {@link TopologyError} on any `from >= to` synapse before serialisation.
+ * This is the only check that fires unconditionally in this hot path —
+ * the rest of `creatureValidate` stays gated by `creature.DEBUG`. The
+ * goal is to capture the producing pipeline's stack frame so the
+ * upstream corruption that previously surfaced only as `loadFrom`
+ * `Stripping recurrent synapse` warnings can be traced to its source.
  */
 export function exportJSON(creature: Creature): CreatureExport {
   if (creature.DEBUG) {
     creatureValidate(creature);
   }
+  assertNoRecurrentSynapseOnForwardOnly(creature, "exportJSON");
   return buildCreatureExportJSON(creature, false);
 }
 
@@ -144,6 +155,32 @@ export function exportJSON(creature: Creature): CreatureExport {
  */
 export function exportSnapshotJSON(creature: Creature): CreatureExport {
   return exportJSON(creature);
+}
+
+/**
+ * Internal-only export that **bypasses** the Issue #2511 save-side
+ * forward-only assertion.
+ *
+ * Use this only in code paths that legitimately need to serialise a
+ * potentially-corrupt creature for further processing — never as a
+ * substitute for {@link exportJSON} on the user-facing save path.
+ * Examples that legitimately need this bypass:
+ *
+ *  - `compactCreature(...)`: the input may carry backward synapses on
+ *    purpose so compaction can strip them (Issue #956).
+ *  - `applyChangeToCreature(...)` (discovery): candidate creatures may
+ *    intentionally carry illegal hints that the combiner is meant to
+ *    filter; serialising the candidate is part of the filtering work,
+ *    not a save.
+ *  - Diagnostic write paths after a validation failure: we are already
+ *    on an error path and want to capture the offending creature for
+ *    triage; throwing again here would replace the upstream error.
+ *
+ * When in doubt, prefer {@link exportJSON} — the assertion is the only
+ * thing that names the producing pipeline when corruption escapes.
+ */
+export function exportJSONUnchecked(creature: Creature): CreatureExport {
+  return buildCreatureExportJSON(creature, false);
 }
 
 /**
@@ -508,12 +545,16 @@ export function loadFrom(
       // Issue #2500: include a usable identifier (uuid OR structural
       // hash) and a `source=...` tag so corrupt-creature events from a
       // single offending pipeline can be correlated across log lines.
+      // Issue #2511: include `depth=<to-from>` so self-loops (depth=0)
+      // and cross-loops (depth<0, e.g. output-0 -> hidden-3) are
+      // distinguishable at a glance in production logs.
       const uuidLabel = creature.uuid ?? `hash:${getStructuralHash()}`;
+      const depth = to - from;
       getLogger().error(
         `🚨 [loadFrom] Stripping recurrent synapse ${from}->${to} ` +
           `(fromUUID=${se.fromUUID ?? se.fromId}, toUUID=${
             se.toUUID ?? se.toId
-          }) ` +
+          }, depth=${depth}) ` +
           `from forward-only creature (UUID: ${uuidLabel}, source=${source}). ` +
           `This indicates upstream corruption.`,
       );

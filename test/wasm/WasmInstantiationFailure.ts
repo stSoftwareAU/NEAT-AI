@@ -10,6 +10,7 @@
 
 import { assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "@creature";
+import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
 import { WasmError } from "@errors/WasmError.ts";
 import {
   activateAndTraceWasm,
@@ -71,7 +72,12 @@ Deno.test(
   () => {
     const creature = createCorruptedCreature();
     const input = new Float32Array([0.5, 0.3]);
-    const json = creature.exportJSON();
+    // Issue #2511: the test deliberately corrupts synapse.from so the
+    // public exportJSON now refuses to serialise. This test cares about
+    // WASM instantiation failure surfacing as WasmError, not the
+    // save-side assertion — use the unchecked export so we still reach
+    // the WASM path.
+    const json = exportJSONUnchecked(creature);
     const bpConfig = createBackPropagationConfig({});
     const sparseConfig = new SparseConfig(json, bpConfig);
 
