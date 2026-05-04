@@ -113,7 +113,12 @@ export function pruneDeadSubgraphsInCreature(
 
   const result = pruneDeadSubgraphs(exportJSON);
   if (result.removedNeurons > 0 || result.removedSynapses > 0) {
-    creature.loadFrom(exportJSON, true, "compact:deadSubgraphPruning");
+    // Issue #2514: dead-subgraph pruning runs in compaction repair
+    // paths that may still hold transient recurrent edges before the
+    // outer flow finishes repairs. Opt out of the load-side throw.
+    creature.loadFrom(exportJSON, true, "compact:deadSubgraphPruning", {
+      throwOnRecurrent: "never",
+    });
   }
 
   return result;

@@ -331,7 +331,18 @@ export function applyCoordinatedStructuralCandidate(
   // fix() as a side effect, which can bump semanticVersion for forward-only creatures.
   cleanupOrphanedNeurons(next);
 
-  const updated = Creature.fromJSON(next);
+  // Issue #2514: coordinated structural candidates may still hold
+  // residual recurrent hints when ingested here; the validate/fix block
+  // below is the authority on what survives. Opt out of the load-side
+  // throw so that final repair pass still runs.
+  const updated = Creature.fromJSON(
+    next,
+    false,
+    "discovery:coordinatedStructural",
+    {
+      throwOnRecurrent: "never",
+    },
+  );
   delete updated.uuid;
   try {
     if (updated.forwardOnly === true) {

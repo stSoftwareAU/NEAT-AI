@@ -42,6 +42,16 @@ Deno.test("forward-only: connectBatch() rejects backward connection", () => {
   );
 });
 
+// Issue #2514: the load-side throw is now the default for forward-only
+// recurrent edges. The two strip-and-keep tests below intentionally
+// exercise the legacy strip path (which still must work for repair
+// tools), so they opt back into `throwOnRecurrent: "never"`. New
+// throw-default coverage lives in
+// `test/creature/LoadFromForwardOnlyThrow.ts`.
+const REPAIR_LOAD: { throwOnRecurrent: "never" } = {
+  throwOnRecurrent: "never",
+};
+
 Deno.test(
   "forward-only: loadFrom strips backward synapse when json.forwardOnly is true",
   () => {
@@ -62,7 +72,7 @@ Deno.test(
       ],
     };
 
-    const creature = Creature.fromJSON(json, false);
+    const creature = Creature.fromJSON(json, false, "fromJSON", REPAIR_LOAD);
     assertEquals(creature.synapses.length, 3);
     for (const s of creature.synapses) {
       if (s.from >= s.to) {
@@ -90,7 +100,7 @@ Deno.test(
       ],
     };
 
-    const creature = Creature.fromJSON(json, false);
+    const creature = Creature.fromJSON(json, false, "fromJSON", REPAIR_LOAD);
     assertEquals(creature.synapses.length, 2);
   },
 );

@@ -19,7 +19,16 @@ import { Creature } from "@creature";
  * repaired via merge + orphan cleanup in `loadFrom` (see test/fix/Grq25*.ts).
  * NO_INWARD-only repair runs when `validate` is true on load so discovery
  * replay can still use `fromJSON(..., false)` for intermediate topologies.
+ *
+ * Issue #2514: the load-side throw is now the default for forward-only
+ * recurrent edges. These tests intentionally exercise the legacy
+ * strip+repair path that keeps loading historic on-disk JSON safely, so
+ * they opt back into `throwOnRecurrent: "never"`. Coverage of the new
+ * throw default lives in `test/creature/LoadFromForwardOnlyThrow.ts`.
  */
+const REPAIR_LOAD: { throwOnRecurrent: "never" } = {
+  throwOnRecurrent: "never",
+};
 
 Deno.test(
   "forward-only: fromJSON strips self-connections instead of crashing",
@@ -40,7 +49,7 @@ Deno.test(
       ],
     };
 
-    const creature = Creature.fromJSON(json, false);
+    const creature = Creature.fromJSON(json, false, "fromJSON", REPAIR_LOAD);
 
     assertEquals(creature.forwardOnly, true);
     assertEquals(
@@ -78,7 +87,7 @@ Deno.test(
       },
     };
 
-    const creature = Creature.fromJSON(json, true);
+    const creature = Creature.fromJSON(json, true, "fromJSON", REPAIR_LOAD);
 
     assertEquals(creature.forwardOnly, true);
     assertEquals(
@@ -121,7 +130,7 @@ Deno.test(
       ],
     };
 
-    const creature = Creature.fromJSON(json, false);
+    const creature = Creature.fromJSON(json, false, "fromJSON", REPAIR_LOAD);
 
     assertEquals(creature.forwardOnly, true);
     assertEquals(
@@ -160,7 +169,7 @@ Deno.test(
       ],
     };
 
-    const creature = Creature.fromJSON(json, false);
+    const creature = Creature.fromJSON(json, false, "fromJSON", REPAIR_LOAD);
 
     assertEquals(creature.forwardOnly, true);
     assertEquals(

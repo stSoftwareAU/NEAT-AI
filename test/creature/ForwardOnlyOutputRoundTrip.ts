@@ -165,7 +165,12 @@ Deno.test("Issue #2511: loadFrom strip warning includes depth=<to-from>", async 
     captured.push(args.map(String).join(" "));
   };
   try {
-    Creature.fromJSON(json);
+    // Issue #2514: the load-side throw is the new default. Opt back
+    // into the legacy strip+warn path to keep exercising the depth
+    // label assertions below (this test is specifically about the
+    // warning emission, not about the throw default which has its
+    // own coverage in `LoadFromForwardOnlyThrow.ts`).
+    Creature.fromJSON(json, false, "fromJSON", { throwOnRecurrent: "never" });
   } finally {
     logger.error = originalError;
   }

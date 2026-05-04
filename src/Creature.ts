@@ -1064,20 +1064,23 @@ export class Creature implements CreatureInternal {
     json: CreatureInternal | CreatureExport,
     validate: boolean,
     source?: string,
+    options?: serialisation.LoadFromOptions,
   ) {
-    serialisation.loadFrom(this, json, validate, source);
+    serialisation.loadFrom(this, json, validate, source, options);
   }
 
   static fromJSON(
     json: CreatureInternal | CreatureExport,
     validate?: boolean,
     source?: string,
+    options?: serialisation.LoadFromOptions,
   ): Creature {
     return serialisation.fromJSON(
       json,
       validate ?? false,
       Creature,
       source,
+      options,
     ) as Creature;
   }
 
@@ -1099,11 +1102,24 @@ export class Creature implements CreatureInternal {
    * `forwardOnly: true`. When any strip occurred, it also runs orphan cleanup
    * so stranded hiddens are not left invalid; {@link Creature.fix} and
    * `creatureValidate()` then complete normalisation for this ingest path.
+   *
+   * Issue #2514: `loadFrom` now throws by default for forward-only
+   * recurrent edges so in-process producers can be traced. This
+   * persisted-disk path is one of the explicit repair tools that
+   * legitimately needs to load historically corrupt JSON, so it opts
+   * into `throwOnRecurrent: "never"` to keep the strip+warn behaviour
+   * for genuine on-disk genomes from older releases.
    */
   static fromPersistedJSON(
     json: CreatureInternal | CreatureExport,
   ): Creature {
-    const creature = serialisation.fromJSON(json, false, Creature) as Creature;
+    const creature = serialisation.fromJSON(
+      json,
+      false,
+      Creature,
+      "fromPersistedJSON",
+      { throwOnRecurrent: "never" },
+    ) as Creature;
     creature.fix({ forwardOnly: creature.forwardOnly });
     creatureValidate(creature, { forwardOnly: creature.forwardOnly });
     return creature;
