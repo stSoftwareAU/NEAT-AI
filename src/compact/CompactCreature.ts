@@ -388,7 +388,14 @@ export function compactCreature(
       "before Creature.fromJSON in compactCreature",
     );
 
-    const c = Creature.fromJSON(compactCreature);
+    // Issue #2514: compaction may carry residual backward synapses on
+    // a forward-only candidate so the load-side cleanup
+    // (`mergeDuplicateSynapses` + `cleanupOrphanedNeurons` etc.) can
+    // strip them. Opt out of the load-side throw so this repair path
+    // can keep ingesting corrupt input on purpose.
+    const c = Creature.fromJSON(compactCreature, false, "compactCreature", {
+      throwOnRecurrent: "never",
+    });
 
     return c;
   }

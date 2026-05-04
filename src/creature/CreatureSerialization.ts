@@ -44,6 +44,7 @@ import {
 } from "@utils/WeightBiasClamp.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { assertNoRecurrentSynapseOnForwardOnly } from "@architecture/ForwardOnlyAssertion.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 import { computeCreatureStructuralHash } from "@utils/CreatureStructuralHash.ts";
 import { cleanupOrphanedNeuronsInCreature } from "@compact/OrphanedNeuronCleanup.ts";
 import { pruneOrphanMemeticReferences } from "@compact/MemeticCleanup.ts";
@@ -374,20 +375,60 @@ function forwardOnlyHiddenLacksInbound(creature: Creature): boolean {
 }
 
 /**
+ * Strictness gate for the load-side recurrent-synapse check.
+ *
+ * Issue #2514: promoted from a silent strip+warn to a `TopologyError`
+ * throw by default for `forwardOnly` creatures so the producer's stack
+ * frame surfaces the corruption source instead of self-healing on every
+ * load.
+ *
+ *  - `"forwardOnly"` (default): throw `TopologyError` when the loaded
+ *    creature is `forwardOnly === true` and any synapse has
+ *    `from >= to`. Recurrent creatures are unaffected.
+ *  - `"always"`: throw `TopologyError` on any `from >= to` regardless
+ *    of `forwardOnly`. Use sparingly — most legitimate recurrent
+ *    creatures legitimately carry such edges.
+ *  - `"never"`: legacy strip-and-warn. Reserved for repair tools and
+ *    diagnostic paths that intentionally process corrupt input
+ *    (`compactCreature`, `applyChangeToCreature`, `Upgrade`,
+ *    Diagnostics).
+ */
+export type ThrowOnRecurrent = "always" | "forwardOnly" | "never";
+
+/** Optional second-tier configuration for {@link loadFrom}. */
+export interface LoadFromOptions {
+  /**
+   * Controls how the load-side recurrent-synapse gate behaves.
+   * Defaults to `"forwardOnly"` (Issue #2514).
+   */
+  throwOnRecurrent?: ThrowOnRecurrent;
+}
+
+/**
  * Load the creature from a JSON object.
  *
  * @param source Optional tag describing the calling site (e.g.
  *   `"breed"`, `"discovery"`, `"fromJSON"`). Included in any
- *   `[loadFrom] Stripping recurrent synapse` warning so production
- *   logs can identify the upstream pipeline that produced corrupt
- *   JSON. See Issue #2500.
+ *   `[loadFrom] Stripping recurrent synapse` warning or
+ *   `TopologyError` so production logs and stack traces can identify
+ *   the upstream pipeline that produced corrupt JSON. See Issue #2500
+ *   and #2514.
+ * @param options.throwOnRecurrent Strictness for the recurrent-synapse
+ *   gate. Defaults to `"forwardOnly"` — a forward-only creature with
+ *   any `from >= to` synapse throws {@link TopologyError} so the
+ *   producing pipeline's stack frame is preserved rather than silently
+ *   stripped (Issue #2514).
  */
 export function loadFrom(
   creature: Creature,
   json: CreatureInternal | CreatureExport,
   validate: boolean,
-  source: string = "loadFrom",
+  source?: string,
+  options?: LoadFromOptions,
 ): void {
+  const sourceTag = source ?? "loadFrom";
+  const throwOnRecurrent: ThrowOnRecurrent = options?.throwOnRecurrent ??
+    "forwardOnly";
   creature.uuid = (json as CreatureInternal).uuid;
   if (json.semanticVersion) {
     creature.semanticVersion = json.semanticVersion;
@@ -541,7 +582,12 @@ export function loadFrom(
       );
     }
 
-    if (isForwardOnly && from! >= to!) {
+    const recurrentGateFires = throwOnRecurrent === "always"
+      ? from! >= to!
+      : (throwOnRecurrent === "forwardOnly" && isForwardOnly && from! >= to!);
+    const stripGateFires = throwOnRecurrent === "never" && isForwardOnly &&
+      from! >= to!;
+    if (recurrentGateFires || stripGateFires) {
       // Issue #2500: include a usable identifier (uuid OR structural
       // hash) and a `source=...` tag so corrupt-creature events from a
       // single offending pipeline can be correlated across log lines.
@@ -550,12 +596,27 @@ export function loadFrom(
       // distinguishable at a glance in production logs.
       const uuidLabel = creature.uuid ?? `hash:${getStructuralHash()}`;
       const depth = to - from;
+      const fromIdLabel = se.fromUUID ?? se.fromId;
+      const toIdLabel = se.toUUID ?? se.toId;
+      if (recurrentGateFires) {
+        // Issue #2514: promote the silent strip to a TopologyError so
+        // the caller's stack frame surfaces the corruption source.
+        // `new Error().stack` is captured on the thrown error so logs
+        // can attribute the offending pipeline.
+        const message = `🚨 [loadFrom] Recurrent synapse ${from}->${to} ` +
+          `(fromUUID=${fromIdLabel}, toUUID=${toIdLabel}, depth=${depth}) ` +
+          `on forward-only creature (UUID: ${uuidLabel}, source=${sourceTag}). ` +
+          `This indicates upstream corruption (Issue #2514).`;
+        throw new TopologyError(message, "INVALID_CONNECTION");
+      }
+      // throwOnRecurrent === "never": legacy strip + warn path,
+      // reserved for repair tools that intentionally ingest corrupt
+      // input (compactCreature, applyChangeToCreature, Upgrade,
+      // Diagnostics).
       getLogger().error(
         `🚨 [loadFrom] Stripping recurrent synapse ${from}->${to} ` +
-          `(fromUUID=${se.fromUUID ?? se.fromId}, toUUID=${
-            se.toUUID ?? se.toId
-          }, depth=${depth}) ` +
-          `from forward-only creature (UUID: ${uuidLabel}, source=${source}). ` +
+          `(fromUUID=${fromIdLabel}, toUUID=${toIdLabel}, depth=${depth}) ` +
+          `from forward-only creature (UUID: ${uuidLabel}, source=${sourceTag}). ` +
           `This indicates upstream corruption.`,
       );
       continue;
@@ -671,7 +732,7 @@ export function loadFrom(
     const uuidLabel = creature.uuid ?? `hash:${getStructuralHash()}`;
     getLogger().warn(
       "🗜️ [loadFrom] Clamped overflowing weights/biases to " +
-        `±${MAX_SAFE_WEIGHT_BIAS} on creature ${uuidLabel} (source=${source}): ` +
+        `±${MAX_SAFE_WEIGHT_BIAS} on creature ${uuidLabel} (source=${sourceTag}): ` +
         `${clampedWeightCount} weight(s) (max |w|=${maxObservedWeight}), ` +
         `${clampedBiasCount} bias(es) (max |b|=${maxObservedBias}).`,
     );
@@ -697,8 +758,10 @@ export function fromJSON(
       options: { lazyInitialization: boolean; semanticVersion?: string },
     ): Creature;
   },
-  source: string = "fromJSON",
+  source?: string,
+  options?: LoadFromOptions,
 ): Creature {
+  const sourceTag = source ?? "fromJSON";
   // Issue #2349: treat empty/falsy semanticVersion the same as missing.
   // An empty version is NOT a genuine "0.x" legacy creature — it's a
   // lost/corrupt version field. Only run upgradeOne for real 0.x versions.
@@ -721,7 +784,7 @@ export function fromJSON(
     raw.synapses = raw.connections;
     delete raw.connections;
   }
-  loadFrom(creature, json, validate, source);
+  loadFrom(creature, json, validate, sourceTag, options);
 
   return creature;
 }

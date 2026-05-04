@@ -53,10 +53,15 @@ Deno.test("loadFrom strip warning: no longer says 'UUID: unknown'", async () => 
     captured.push(args.map(String).join(" "));
   };
   try {
+    // Issue #2514: the load-side throw is the new default. To keep
+    // exercising the legacy strip+warn path verified by this test,
+    // opt back into the legacy behaviour explicitly.
     const creature = fromJSON(
       makeForwardOnlyExportWithRecurrent(),
       false,
       Creature,
+      "fromJSON",
+      { throwOnRecurrent: "never" },
     );
     assert(creature, "fromJSON must still produce a creature");
   } finally {
@@ -95,11 +100,14 @@ Deno.test("loadFrom strip warning: source=... reflects caller tag", async () => 
   try {
     const target = new Creature(2, 1, { feedbackEnabled: false });
     target.forwardOnly = true;
+    // Issue #2514: opt into the legacy strip+warn path so the source
+    // tag assertion below continues to exercise warning emission.
     loadFrom(
       target,
       makeForwardOnlyExportWithRecurrent(),
       false,
       "unit-test:custom-source",
+      { throwOnRecurrent: "never" },
     );
   } finally {
     logger.error = original;
@@ -129,8 +137,11 @@ Deno.test("loadFrom strip warning: same JSON yields the same hash twice", async 
   try {
     const j1 = makeForwardOnlyExportWithRecurrent();
     const j2 = makeForwardOnlyExportWithRecurrent();
-    fromJSON(j1, false, Creature);
-    fromJSON(j2, false, Creature);
+    // Issue #2514: opt into the legacy strip+warn path so the
+    // structural-hash assertion below continues to exercise warning
+    // emission for identical JSON.
+    fromJSON(j1, false, Creature, "fromJSON", { throwOnRecurrent: "never" });
+    fromJSON(j2, false, Creature, "fromJSON", { throwOnRecurrent: "never" });
   } finally {
     logger.error = original;
   }

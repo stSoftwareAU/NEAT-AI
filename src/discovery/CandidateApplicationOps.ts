@@ -61,7 +61,18 @@ export function applyAddSynapses(
   if (newSynapses.length === 0) return undefined;
 
   creatureJSON.synapses.push(...newSynapses);
-  const result = Creature.fromJSON(creatureJSON);
+  // Issue #2514: candidate creatures may carry intentionally illegal
+  // hints (forward-only filter happens here, but also above on a
+  // best-effort basis). Opt out of the load-side throw so the
+  // combiner is still the place that decides what to keep.
+  const result = Creature.fromJSON(
+    creatureJSON,
+    false,
+    "discovery:addSynapses",
+    {
+      throwOnRecurrent: "never",
+    },
+  );
   delete result.uuid;
   validateAndFixCreatureSync(result, "add-synapses");
   CreatureUtil.makeUUID(result);
@@ -180,7 +191,17 @@ export function applyAddNeurons(
   );
   creatureJSON.synapses.push(...newSynapses);
 
-  const result = Creature.fromJSON(creatureJSON);
+  // Issue #2514: candidate creatures may still hold filtered-but-not-yet-pruned
+  // recurrent hints. Opt out of the load-side throw — the combiner is the
+  // authority on what survives.
+  const result = Creature.fromJSON(
+    creatureJSON,
+    false,
+    "discovery:addNeurons",
+    {
+      throwOnRecurrent: "never",
+    },
+  );
   delete result.uuid;
   validateAndFixCreatureSync(result, "add-neurons");
   CreatureUtil.makeUUID(result);
@@ -224,7 +245,16 @@ export function applyChangeSquash(
     if (!changed) return creature;
   }
 
-  const result = Creature.fromJSON(creatureJSON);
+  // Issue #2514: candidate creatures may still hold filtered-but-not-yet-pruned
+  // recurrent hints. Opt out of the load-side throw.
+  const result = Creature.fromJSON(
+    creatureJSON,
+    false,
+    "discovery:changeSquash",
+    {
+      throwOnRecurrent: "never",
+    },
+  );
   delete result.uuid;
   validateAndFixCreatureSync(result, "change-squash");
   CreatureUtil.makeUUID(result);
@@ -286,7 +316,16 @@ export function applyRemoveSynapse(
 
   creatureJSON.synapses.push(...toAdd);
 
-  const result = Creature.fromJSON(creatureJSON);
+  // Issue #2514: candidate creatures may still hold filtered-but-not-yet-pruned
+  // recurrent hints. Opt out of the load-side throw.
+  const result = Creature.fromJSON(
+    creatureJSON,
+    false,
+    "discovery:removeSynapse",
+    {
+      throwOnRecurrent: "never",
+    },
+  );
   delete result.uuid;
   validateAndFixCreatureSync(result, "remove-synapse");
   CreatureUtil.makeUUID(result);
@@ -373,7 +412,16 @@ export function applyRemoveNeuron(
 
   creatureJSON.synapses.push(...toAdd);
 
-  const result = Creature.fromJSON(creatureJSON);
+  // Issue #2514: candidate creatures may still hold filtered-but-not-yet-pruned
+  // recurrent hints. Opt out of the load-side throw.
+  const result = Creature.fromJSON(
+    creatureJSON,
+    false,
+    "discovery:removeNeuron",
+    {
+      throwOnRecurrent: "never",
+    },
+  );
   delete result.uuid;
   validateAndFixCreatureSync(result, changeType);
   CreatureUtil.makeUUID(result);

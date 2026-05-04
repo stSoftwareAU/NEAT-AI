@@ -254,7 +254,13 @@ export function upgrade(creature: Creature): Creature {
   // Upgrade from 1.x → 2.x, then try 4.x
   if (majorVersion === 1) {
     const v2 = upgradeTwo(exportJSONWithRuntimeIds(creature));
-    const upgraded = Creature.fromJSON(v2);
+    // Issue #2514: legacy 1.x creatures pre-date forward-only enforcement
+    // and may legitimately carry recurrent edges through the upgrade
+    // pipeline. Opt out of the load-side throw so the upgrader can finish
+    // its pass without aborting on still-to-be-fixed topology.
+    const upgraded = Creature.fromJSON(v2, false, "upgrade:oneToTwo", {
+      throwOnRecurrent: "never",
+    });
     return tryUpgradeToFour(upgraded);
   }
 
@@ -264,7 +270,10 @@ export function upgrade(creature: Creature): Creature {
     const json = exportJSONWithRuntimeIds(creature);
     json.semanticVersion = "1.0.0"; // Set to 1.0.0 so upgradeTwo can process it
     const v2 = upgradeTwo(json);
-    const upgraded = Creature.fromJSON(v2);
+    // Issue #2514: see above — same rationale for the v0 → v2 upgrade path.
+    const upgraded = Creature.fromJSON(v2, false, "upgrade:zeroToTwo", {
+      throwOnRecurrent: "never",
+    });
     return tryUpgradeToFour(upgraded);
   }
 

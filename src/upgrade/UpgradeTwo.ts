@@ -142,7 +142,12 @@ function removeHYPOT(json: CreatureExport) {
     return removeHYPOT(json);
   }
 
-  const tempCreature = Creature.fromJSON(json);
+  // Issue #2514: legacy upgrade JSON may carry residual recurrent edges
+  // before `fix()` runs. Opt out of the load-side throw so the upgrader
+  // can complete its repair pass.
+  const tempCreature = Creature.fromJSON(json, false, "upgrade:removeHYPOT", {
+    throwOnRecurrent: "never",
+  });
   try {
     tempCreature.validate();
   } catch (e) {
@@ -203,7 +208,12 @@ function removeHYPOTv2(json: CreatureExport) {
     return removeHYPOTv2(json);
   }
 
-  const tempCreature = Creature.fromJSON(json);
+  // Issue #2514: legacy upgrade JSON may carry residual recurrent edges
+  // before `fix()` runs. Opt out of the load-side throw so the upgrader
+  // can complete its repair pass.
+  const tempCreature = Creature.fromJSON(json, false, "upgrade:removeHYPOTv2", {
+    throwOnRecurrent: "never",
+  });
   try {
     tempCreature.validate();
   } catch (e) {
