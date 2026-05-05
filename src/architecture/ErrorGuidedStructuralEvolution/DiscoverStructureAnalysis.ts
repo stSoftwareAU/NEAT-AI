@@ -547,9 +547,15 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       return undefined;
     }
 
-    if (!this.parquetFilePath) {
-      // No discovery data recorded yet; skip squash analysis rather than
-      // throwing DiscoveryError downstream in loadNeuronRecords.
+    // Guard: consistent with analyzeSelectedNeurons, analyzeMissingNeurons,
+    // and analyzeSelectedNeuronsForRemoval — skip squash analysis when Parquet
+    // data is unavailable rather than letting loadNeuronRecords throw.
+    if (!this.parquetFilePath || !this.deps.isRustDiscoveryEnabled()) {
+      this.logRustAnalysisUnavailable(
+        "neuron",
+        focusList,
+        "Rust discovery unavailable",
+      );
       return undefined;
     }
 
