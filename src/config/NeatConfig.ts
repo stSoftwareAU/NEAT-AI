@@ -692,6 +692,10 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
 
     // Issue #2492: Knob-tuning preset for inter-island DNA sharing.
     dnaSharingMode,
+
+    // Issue #2523: Tolerate corrupt parents during breeding by default.
+    // Setting `false` restores legacy fail-fast behaviour.
+    tolerateCorruptParents: options.tolerateCorruptParents !== false,
     // Issue #1620: Parse and resolve output range constraints
     outputRanges: (() => {
       const raw = options.outputRanges;

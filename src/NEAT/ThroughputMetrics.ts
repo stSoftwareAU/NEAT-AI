@@ -48,6 +48,11 @@ export interface ThroughputMetricsInput {
    * the fitness phase, in ms (Issue #2424). Defaults to 0.
    */
   readonly scorerMs?: number;
+  /**
+   * Issue #2523: Number of corrupt parent candidates skipped during the
+   * breed phase of this generation. Defaults to 0.
+   */
+  readonly corruptParentSkips?: number;
 }
 
 /**
@@ -149,6 +154,10 @@ export function computeThroughputMetrics(
   const creaturesPerSec = fitnessMs > 0 && scoredCreatureCount > 0
     ? (scoredCreatureCount * 1000) / fitnessMs
     : 0;
+  const corruptParentSkips = Math.max(
+    0,
+    Math.floor(input.corruptParentSkips ?? 0),
+  );
 
   return {
     wallClockMs,
@@ -165,5 +174,6 @@ export function computeThroughputMetrics(
     scoredCreatureCount,
     scorerMs,
     creaturesPerSec,
+    corruptParentSkips,
   };
 }

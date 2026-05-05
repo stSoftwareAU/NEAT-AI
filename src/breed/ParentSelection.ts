@@ -9,13 +9,31 @@
 import { assert } from "@std/assert";
 import { Creature, Selection } from "../../mod.ts";
 import type { NeatConfig } from "@config/NeatConfig.ts";
+import { BreedExhaustionError } from "@errors/BreedExhaustionError.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
 import type { Genus } from "@neat/Genus.ts";
+import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { calculateAdaptiveTournamentSize } from "@breed/AdaptiveTournamentSize.ts";
 import { createCompatibleFatherFromCreatures } from "@breed/Father.ts";
 import { FitnessRanking } from "@breed/FitnessRanking.ts";
 import { geneticCompatibility } from "@breed/GeneticCompatibility.ts";
+
+/**
+ * Mutable accumulator for breeding loop diagnostics (Issue #2523).
+ *
+ * Callers (e.g., `Breed`, `ParallelBreeding`) construct one per batch
+ * and pass it to {@link findFather}; corrupt-parent skips are recorded
+ * here so they can be surfaced in the per-batch throughput summary.
+ */
+export interface BreedSelectionStats {
+  /** Total number of corrupt parent candidates skipped this batch. */
+  corruptParentSkips: number;
+}
+
+/** Maximum retries when skipping corrupt parents (Issue #2523). */
+const CORRUPT_PARENT_RETRY_CAP = 10;
 
 /**
  * Issue #2453: Compute per-creature adjusted fitness for NEAT fitness
@@ -104,15 +122,25 @@ export function selectParent(
  * efficient parent selection. Falls back through species-based selection,
  * closest species, and global population as needed.
  *
+ * Issue #2523: Wraps the per-candidate `Creature.fromJSON(...)` call in a
+ * `try/catch (TopologyError)` so a single corrupt parent is skipped, the
+ * loop tries the next-best candidate, and the run continues. After
+ * `min(CORRUPT_PARENT_RETRY_CAP, possibleFathers.length)` skips a
+ * recoverable {@link BreedExhaustionError} is raised. Setting
+ * `config.tolerateCorruptParents = false` restores legacy fail-fast.
+ * Non-`TopologyError` exceptions are always re-thrown unchanged.
+ *
  * @param mum - The mother creature
  * @param genus - The genus containing the population
  * @param config - NEAT configuration
+ * @param stats - Optional accumulator for `corruptParentSkips`
  * @returns A compatible father creature, or undefined if none found
  */
 export function findFather(
   mum: Creature,
   genus: Genus,
   config: NeatConfig,
+  stats?: BreedSelectionStats,
 ): Creature | undefined {
   assert(mum.uuid, "Mother UUID is undefined");
 
@@ -149,38 +177,79 @@ export function findFather(
     return undefined;
   }
 
-  // Issue #2173: Diversity-driven breeding. When diversityBreedingRate triggers,
-  // select the most genetically distant father instead of a fitness-biased one.
-  // This ensures newcomers from isolated islands (e.g., Europa) periodically
-  // breed with fitter creatures despite having low initial fitness.
-  const father = selectFatherFromCandidates(mum, possibleFathers, config);
-  assert(father !== undefined, "Father is undefined");
+  const tolerate = config.tolerateCorruptParents !== false;
+  const retryCap = Math.min(CORRUPT_PARENT_RETRY_CAP, possibleFathers.length);
+  let skips = 0;
+  // Track candidates we've already rejected as corrupt so later draws
+  // can avoid them. Identity by reference is enough — the candidate
+  // pool is stable for the duration of this call.
+  const skipped = new Set<Creature>();
 
-  // Issue #1034: Avoid JSON exports in parent selection compatibility check.
-  // Uses optimised function that works directly with Creature objects.
-  const fatherExport = createCompatibleFatherFromCreatures(mum, father);
-  try {
-    const compatibleFather = Creature.fromJSON(
-      fatherExport,
-    );
+  for (let attempt = 0; attempt <= retryCap; attempt++) {
+    const remaining = possibleFathers.filter((c) => !skipped.has(c));
+    if (remaining.length === 0) break;
 
-    return compatibleFather;
-  } catch (e) {
-    Deno.writeTextFileSync(
-      "./.source_mother.json",
-      JSON.stringify(mum.exportJSON(), null, 1),
-    );
-    Deno.writeTextFileSync(
-      "./.source_father.json",
-      JSON.stringify(father.exportJSON(), null, 1),
-    );
+    // Issue #2173: Diversity-driven breeding. When diversityBreedingRate triggers,
+    // select the most genetically distant father instead of a fitness-biased one.
+    // This ensures newcomers from isolated islands (e.g., Europa) periodically
+    // breed with fitter creatures despite having low initial fitness.
+    const father = selectFatherFromCandidates(mum, remaining, config);
+    assert(father !== undefined, "Father is undefined");
 
-    Deno.writeTextFileSync(
-      "./.invalid_father.json",
-      JSON.stringify(fatherExport, null, 1),
-    );
-    throw e;
+    // Issue #1034: Avoid JSON exports in parent selection compatibility check.
+    // Uses optimised function that works directly with Creature objects.
+    const fatherExport = createCompatibleFatherFromCreatures(mum, father);
+    try {
+      return Creature.fromJSON(fatherExport);
+    } catch (e) {
+      if (e instanceof TopologyError && tolerate) {
+        skips++;
+        if (stats) stats.corruptParentSkips++;
+        skipped.add(father);
+        const hash = (father as unknown as { hash?: string }).hash ??
+          father.uuid ?? "<unknown>";
+        getLogger().warn(
+          `[breed-skip-corrupt-parent] hash=${hash} reason=${e.reason} source=findFather`,
+        );
+        if (skips >= retryCap) {
+          throw new BreedExhaustionError(
+            `[breed-skip-corrupt-parent] retry cap reached (${skips} skips) for mother uuid=${mum.uuid}`,
+            "RETRY_CAP_EXHAUSTED",
+            skips,
+          );
+        }
+        continue;
+      }
+
+      // Legacy fail-fast path or non-TopologyError: persist diagnostics
+      // and re-throw unchanged.
+      try {
+        Deno.writeTextFileSync(
+          "./.source_mother.json",
+          JSON.stringify(mum.exportJSON(), null, 1),
+        );
+        Deno.writeTextFileSync(
+          "./.source_father.json",
+          JSON.stringify(father.exportJSON(), null, 1),
+        );
+        Deno.writeTextFileSync(
+          "./.invalid_father.json",
+          JSON.stringify(fatherExport, null, 1),
+        );
+      } catch {
+        // Diagnostics are best-effort; never let a write failure mask
+        // the original error.
+      }
+      throw e;
+    }
   }
+
+  // Every candidate skipped without hitting the cap (small pools).
+  throw new BreedExhaustionError(
+    `[breed-skip-corrupt-parent] all ${skips} candidates corrupt for mother uuid=${mum.uuid}`,
+    "ALL_CANDIDATES_CORRUPT",
+    skips,
+  );
 }
 
 /**

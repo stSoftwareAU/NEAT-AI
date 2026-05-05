@@ -4,9 +4,11 @@ import { Offspring } from "@architecture/Offspring.ts";
 import { discover } from "@blackbox/Discover.ts";
 import type { NeatConfig } from "@config/NeatConfig.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
+import { BreedExhaustionError } from "@errors/BreedExhaustionError.ts";
 import type { Genus } from "@neat/Genus.ts";
 import { FitnessRanking } from "@breed/FitnessRanking.ts";
 import {
+  type BreedSelectionStats,
   buildAdjustedFitnessMap,
   findFather,
   selectParent,
@@ -52,6 +54,12 @@ export class Breed {
    * on every call.
    */
   private readonly cachedConfig: NeatConfig;
+
+  /**
+   * Issue #2523: Number of corrupt parent candidates skipped during the
+   * most recent `breed()` call.
+   */
+  lastCorruptParentSkips = 0;
 
   /**
    * Creates a new Breed instance.
@@ -115,7 +123,23 @@ export class Breed {
 
     assert(mum, "Mother is undefined");
 
-    const dad = findFather(mum, this.genus, config);
+    // Issue #2523: track corrupt-parent skips so the throughput summary
+    // (and consumers calling this directly) can see producer corruption.
+    const stats: BreedSelectionStats = { corruptParentSkips: 0 };
+    let dad: Creature | undefined;
+    try {
+      dad = findFather(mum, this.genus, config, stats);
+    } catch (error) {
+      this.lastCorruptParentSkips = stats.corruptParentSkips;
+      if (error instanceof BreedExhaustionError) {
+        getLogger().warn(
+          `[breed-skip-corrupt-parent] batch_exhausted skips=${error.corruptParentSkips} reason=${error.reason}`,
+        );
+        return;
+      }
+      throw error;
+    }
+    this.lastCorruptParentSkips = stats.corruptParentSkips;
     if (!dad) {
       getLogger().warn(
         "No father found",

@@ -3,11 +3,13 @@ import { Offspring } from "@architecture/Offspring.ts";
 import { discover } from "@blackbox/Discover.ts";
 import type { NeatConfig } from "@config/NeatConfig.ts";
 import type { BreedingSubPhaseTiming } from "@config/TrainingEvent.ts";
+import { BreedExhaustionError } from "@errors/BreedExhaustionError.ts";
 import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import type { Genus } from "@neat/Genus.ts";
 import { BreedingSubPhaseAccumulator } from "@breed/BreedingSubPhaseAccumulator.ts";
 import { FitnessRanking } from "@breed/FitnessRanking.ts";
 import {
+  type BreedSelectionStats,
   buildAdjustedFitnessMap,
   findFather,
   selectParent,
@@ -81,6 +83,13 @@ export class ParallelBreeding {
   lastQueueMaxDepth = 0;
 
   /**
+   * Issue #2523: Number of corrupt parent candidates skipped during the
+   * most recent `breedBatch()` call. Surfaced in the per-batch
+   * throughput summary so operators can alert on producer corruption.
+   */
+  lastCorruptParentSkips = 0;
+
+  /**
    * Creates a new ParallelBreeding instance.
    *
    * @param genus - The genus containing the population
@@ -115,10 +124,13 @@ export class ParallelBreeding {
     if (count <= 0) {
       this.lastBreedingSubPhases = undefined;
       this.lastQueueMaxDepth = 0;
+      this.lastCorruptParentSkips = 0;
       return [];
     }
 
     const config = this.config;
+    // Issue #2523: Per-batch accumulator for corrupt-parent skips.
+    const stats: BreedSelectionStats = { corruptParentSkips: 0 };
 
     // Issue #2284: Create sub-phase accumulator for timing instrumentation
     const acc = new BreedingSubPhaseAccumulator();
@@ -145,8 +157,15 @@ export class ParallelBreeding {
       config,
       count,
       speciesQuotas,
+      stats,
     );
     acc.parentSelectionMs = Date.now() - selectionStartMs;
+    this.lastCorruptParentSkips = stats.corruptParentSkips;
+    if (stats.corruptParentSkips > 0) {
+      getLogger().warn(
+        `[ParallelBreeding] corruptParentSkips=${stats.corruptParentSkips} count=${count}`,
+      );
+    }
 
     // Issue #2330: Parent pairs are enqueued in one go before workers start
     // pulling, so the peak breeding backlog is `parentPairs.length`.
@@ -286,13 +305,24 @@ export class ParallelBreeding {
   private selectParentPair(
     populationRanking: FitnessRanking,
     config: NeatConfig,
+    stats?: BreedSelectionStats,
   ): ParentPair | undefined {
     const mum = selectParent(populationRanking, config);
     if (!mum) {
       return undefined;
     }
 
-    const dad = findFather(mum, this.genus, config);
+    let dad: Creature | undefined;
+    try {
+      dad = findFather(mum, this.genus, config, stats);
+    } catch (error) {
+      // Issue #2523: BreedExhaustionError is recoverable — skip this
+      // mother and let the batch continue. Anything else propagates.
+      if (error instanceof BreedExhaustionError) {
+        return undefined;
+      }
+      throw error;
+    }
     if (!dad) {
       return undefined;
     }
@@ -318,12 +348,13 @@ export class ParallelBreeding {
     config: NeatConfig,
     count: number,
     speciesQuotas?: ReadonlyMap<string, number>,
+    stats?: BreedSelectionStats,
   ): ParentPair[] {
     const parentPairs: ParentPair[] = [];
 
     if (!speciesQuotas || speciesQuotas.size === 0) {
       for (let i = 0; i < count; i++) {
-        const pair = this.selectParentPair(populationRanking, config);
+        const pair = this.selectParentPair(populationRanking, config, stats);
         if (pair) parentPairs.push(pair);
       }
       return parentPairs;
@@ -344,7 +375,15 @@ export class ParallelBreeding {
       for (let i = 0; i < quota; i++) {
         const mum = selectParent(speciesRanking, config);
         if (!mum) continue;
-        const dad = findFather(mum, this.genus, config);
+        let dad: Creature | undefined;
+        try {
+          dad = findFather(mum, this.genus, config, stats);
+        } catch (error) {
+          if (error instanceof BreedExhaustionError) {
+            continue;
+          }
+          throw error;
+        }
         if (!dad) continue;
         parentPairs.push({ mother: mum, father: dad });
       }
@@ -354,7 +393,7 @@ export class ParallelBreeding {
     // rounding or empty species (defence in depth — quotas should sum
     // to count, but never exceed the requested batch).
     for (let i = allocated; i < count; i++) {
-      const pair = this.selectParentPair(populationRanking, config);
+      const pair = this.selectParentPair(populationRanking, config, stats);
       if (pair) parentPairs.push(pair);
     }
 
