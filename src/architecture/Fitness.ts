@@ -11,6 +11,7 @@ import { calculate as calculateScore } from "@architecture/Score.ts";
 import { tryBatchScoreWithRustScorer } from "../score/BatchRustScorerBridge.ts";
 import { getEnvRustScorerConfig } from "../score/RustScorerBridge.ts";
 import { BatchScorerError } from "../score/BatchScorerReconciler.ts";
+import { buildBatchScorerDiagnostic } from "../score/BatchScorerDiagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
 
 /**
@@ -231,12 +232,25 @@ export class Fitness {
         // Surface batch reconciliation failures as explicit log errors per
         // the acceptance criteria, then fall back to the per-creature path
         // so the generation is not lost to a transient scorer issue.
+        // Issue #2518: enrich the log line with population composition
+        // counters and per-creature metadata for any UUID we can extract
+        // from the rust scorer's stderr or the typed error itself, so
+        // operators can trace the producer of the offending creature(s)
+        // without re-running the workload.
         const detail = err instanceof Error ? err.message : String(err);
+        const diagnostic = err instanceof Error
+          ? buildBatchScorerDiagnostic(err, uniqueQueue)
+          : undefined;
         if (err instanceof BatchScorerError) {
           getLogger().error(
             `[NEAT-AI] Batch rust scorer reconciliation failed ` +
-              `(${err.reason}): ${detail}; falling back to per-creature ` +
-              `scoring.`,
+              `(${err.reason}): ${detail}; ${diagnostic!.message}; ` +
+              `falling back to per-creature scoring.`,
+          );
+        } else if (diagnostic) {
+          getLogger().error(
+            `[NEAT-AI] Batch rust scorer invocation failed: ${detail}; ` +
+              `${diagnostic.message}; falling back to per-creature scoring.`,
           );
         } else {
           getLogger().error(
