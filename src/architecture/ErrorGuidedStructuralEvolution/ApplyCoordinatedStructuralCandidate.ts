@@ -1,5 +1,6 @@
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { assertNoRecurrentSynapseOnForwardOnly } from "@architecture/ForwardOnlyAssertion.ts";
 import { nextNeuronId } from "@architecture/NeuronId.ts";
 import { populateRuntimeIdsFromCreature } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import { Creature } from "@creature";
@@ -361,6 +362,15 @@ export function applyCoordinatedStructuralCandidate(
       updated.validate();
     }
   }
+
+  // Issue #2515: post-condition fail-fast — if this combiner ever leaves
+  // a forward-only base with a recurrent edge, throw a TopologyError that
+  // names this producer rather than letting the corruption surface only
+  // as a "Stripping recurrent synapse" warning at loadFrom time.
+  assertNoRecurrentSynapseOnForwardOnly(
+    updated,
+    "discovery:applyCoordinatedStructuralCandidate",
+  );
 
   CreatureUtil.makeUUID(updated);
   return updated;

@@ -10,6 +10,7 @@
 
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { assertNoRecurrentSynapseOnForwardOnly } from "@architecture/ForwardOnlyAssertion.ts";
 import {
   cleanupMemeticForRemovedNeuron,
   cleanupMemeticForRemovedSynapse,
@@ -75,6 +76,12 @@ export function applyAddSynapses(
   );
   delete result.uuid;
   validateAndFixCreatureSync(result, "add-synapses");
+  // Issue #2515: post-condition fail-fast — name the producer if a
+  // forward-only base ever leaves this combiner with a recurrent edge.
+  assertNoRecurrentSynapseOnForwardOnly(
+    result,
+    "discovery:applyAddSynapses",
+  );
   CreatureUtil.makeUUID(result);
   return result;
 }
@@ -204,6 +211,11 @@ export function applyAddNeurons(
   );
   delete result.uuid;
   validateAndFixCreatureSync(result, "add-neurons");
+  // Issue #2515: post-condition fail-fast — name the producer.
+  assertNoRecurrentSynapseOnForwardOnly(
+    result,
+    "discovery:applyAddNeurons",
+  );
   CreatureUtil.makeUUID(result);
   return result;
 }
@@ -257,6 +269,11 @@ export function applyChangeSquash(
   );
   delete result.uuid;
   validateAndFixCreatureSync(result, "change-squash");
+  // Issue #2515: post-condition fail-fast — name the producer.
+  assertNoRecurrentSynapseOnForwardOnly(
+    result,
+    "discovery:applyChangeSquash",
+  );
   CreatureUtil.makeUUID(result);
   return result;
 }
@@ -328,6 +345,11 @@ export function applyRemoveSynapse(
   );
   delete result.uuid;
   validateAndFixCreatureSync(result, "remove-synapse");
+  // Issue #2515: post-condition fail-fast — name the producer.
+  assertNoRecurrentSynapseOnForwardOnly(
+    result,
+    "discovery:applyRemoveSynapse",
+  );
   CreatureUtil.makeUUID(result);
   return result;
 }
@@ -424,6 +446,13 @@ export function applyRemoveNeuron(
   );
   delete result.uuid;
   validateAndFixCreatureSync(result, changeType);
+  // Issue #2515: post-condition fail-fast — name the producer.
+  // changeType differentiates remove-neuron / remove-low-impact /
+  // cache-informed-removal so the offending branch is identifiable.
+  assertNoRecurrentSynapseOnForwardOnly(
+    result,
+    `discovery:applyRemoveNeuron(${changeType})`,
+  );
   CreatureUtil.makeUUID(result);
   return result;
 }
