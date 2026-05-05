@@ -55,6 +55,9 @@ function buildDataSet(): DataRecordInterface[] {
 }
 
 function buildPopulation(count: number): Creature[] {
+  // Issue #2517: Mark creatures as forwardOnly so they are eligible for the
+  // batch path. The Fitness partition routes only forwardOnly=true creatures
+  // into the rust scorer batch directory; recurrent creatures bypass it.
   const base: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "hidden-0", squash: "TANH", bias: 0.5 },
@@ -66,6 +69,7 @@ function buildPopulation(count: number): Creature[] {
     ],
     input: 2,
     output: 1,
+    forwardOnly: true,
   };
   const creatures: Creature[] = [];
   for (let i = 0; i < count; i++) {

@@ -178,87 +178,125 @@ export class Fitness {
     // This eliminates the per-creature `rust_scorer` process spawn on the
     // worker side. Any reconciliation failure is logged and we fall back
     // to the per-creature worker path so the generation still completes.
+    //
+    // Issue #2517: The external `rust_scorer` rejects directory-mode
+    // batches that contain any `forwardOnly=false` creature. Partition the
+    // population so only the forwardOnly subset enters the batch path —
+    // recurrent creatures take the per-creature worker path directly. This
+    // prevents one "poison" creature from collapsing the whole batch and
+    // losing the once-per-generation performance benefit.
     const rustScorerConfig = getEnvRustScorerConfig();
-    if (
-      rustScorerConfig.enabled && rustScorerConfig.batch && this.dataDir
-    ) {
-      try {
-        const batchRun = await tryBatchScoreWithRustScorer(
-          uniqueQueue,
-          this.dataDir,
-          rustScorerConfig,
-        );
-        this.lastBatchScorerInvocations = batchRun.invocations;
-        if (batchRun.results) {
-          for (const creature of uniqueQueue) {
-            const record = batchRun.results.get(creature);
-            if (!record) continue;
-            const error = record.error;
-            if (!Number.isFinite(error) || error < 0) {
-              addTag(creature, "error", "Infinity");
-              creature.score = -Infinity;
-            } else {
-              addTag(creature, "error", error.toString());
-              const scoreStart = performance.now();
-              creature.score = calculateScore(creature, error, this.growth);
-              scorerMsAccum += performance.now() - scoreStart;
-              scoredCount++;
-            }
-            addTag(creature, "score", creature.score.toString());
+    const batchEnabled = rustScorerConfig.enabled && rustScorerConfig.batch &&
+      this.dataDir !== undefined;
 
-            // Mirror the duplicate-fan-out from the per-creature path so
-            // population score invariants hold identically in batch mode.
-            const uuid = creature.uuid;
-            if (uuid) {
-              const dupes = duplicates.get(uuid);
-              if (dupes) {
-                const errorTag = getTag(creature, "error");
-                const scoreTag = getTag(creature, "score");
-                for (const duplicate of dupes) {
-                  if (duplicate !== creature) {
-                    duplicate.score = creature.score;
-                    if (errorTag) addTag(duplicate, "error", errorTag);
-                    if (scoreTag) addTag(duplicate, "score", scoreTag);
+    // After any batch attempt (success, skip, or failure), this list
+    // holds the creatures still needing the per-creature worker path.
+    let creaturesForWorkerPath: Creature[] = uniqueQueue;
+
+    if (batchEnabled) {
+      const forwardOnlyCreatures: Creature[] = [];
+      const recurrentCreatures: Creature[] = [];
+      for (const creature of uniqueQueue) {
+        if (creature.forwardOnly === true) {
+          forwardOnlyCreatures.push(creature);
+        } else {
+          recurrentCreatures.push(creature);
+        }
+      }
+
+      // One INFO line per generation summarising the partition. Operators
+      // need this to see at a glance how often "poison" recurrent creatures
+      // shrink the batch — per-creature logging would be far too noisy.
+      getLogger().info(
+        `[NEAT-AI] Batch scorer partition: ${forwardOnlyCreatures.length} ` +
+          `forwardOnly batched, ${recurrentCreatures.length} recurrent ` +
+          `per-creature`,
+      );
+
+      if (forwardOnlyCreatures.length > 0) {
+        try {
+          const batchRun = await tryBatchScoreWithRustScorer(
+            forwardOnlyCreatures,
+            this.dataDir!,
+            rustScorerConfig,
+          );
+          this.lastBatchScorerInvocations = batchRun.invocations;
+          if (batchRun.results) {
+            for (const creature of forwardOnlyCreatures) {
+              const record = batchRun.results.get(creature);
+              if (!record) continue;
+              const error = record.error;
+              if (!Number.isFinite(error) || error < 0) {
+                addTag(creature, "error", "Infinity");
+                creature.score = -Infinity;
+              } else {
+                addTag(creature, "error", error.toString());
+                const scoreStart = performance.now();
+                creature.score = calculateScore(creature, error, this.growth);
+                scorerMsAccum += performance.now() - scoreStart;
+                scoredCount++;
+              }
+              addTag(creature, "score", creature.score.toString());
+
+              // Mirror the duplicate-fan-out from the per-creature path so
+              // population score invariants hold identically in batch mode.
+              const uuid = creature.uuid;
+              if (uuid) {
+                const dupes = duplicates.get(uuid);
+                if (dupes) {
+                  const errorTag = getTag(creature, "error");
+                  const scoreTag = getTag(creature, "score");
+                  for (const duplicate of dupes) {
+                    if (duplicate !== creature) {
+                      duplicate.score = creature.score;
+                      if (errorTag) addTag(duplicate, "error", errorTag);
+                      if (scoreTag) addTag(duplicate, "score", scoreTag);
+                    }
                   }
                 }
               }
             }
+            // Batch handled the forwardOnly subset — workers only need to
+            // score the recurrent remainder.
+            creaturesForWorkerPath = recurrentCreatures;
           }
-          this.lastScorerMs = scorerMsAccum;
-          this.lastScoredCreatureCount = scoredCount;
-          return;
-        }
-      } catch (err) {
-        // Surface batch reconciliation failures as explicit log errors per
-        // the acceptance criteria, then fall back to the per-creature path
-        // so the generation is not lost to a transient scorer issue.
-        // Issue #2518: enrich the log line with population composition
-        // counters and per-creature metadata for any UUID we can extract
-        // from the rust scorer's stderr or the typed error itself, so
-        // operators can trace the producer of the offending creature(s)
-        // without re-running the workload.
-        const detail = err instanceof Error ? err.message : String(err);
-        const diagnostic = err instanceof Error
-          ? buildBatchScorerDiagnostic(err, uniqueQueue)
-          : undefined;
-        if (err instanceof BatchScorerError) {
-          getLogger().error(
-            `[NEAT-AI] Batch rust scorer reconciliation failed ` +
-              `(${err.reason}): ${detail}; ${diagnostic!.message}; ` +
-              `falling back to per-creature scoring.`,
-          );
-        } else if (diagnostic) {
-          getLogger().error(
-            `[NEAT-AI] Batch rust scorer invocation failed: ${detail}; ` +
-              `${diagnostic.message}; falling back to per-creature scoring.`,
-          );
-        } else {
-          getLogger().error(
-            `[NEAT-AI] Batch rust scorer invocation failed: ${detail}; ` +
-              `falling back to per-creature scoring.`,
-          );
+        } catch (err) {
+          // Surface batch reconciliation failures as explicit log errors per
+          // the acceptance criteria, then fall back to the per-creature path
+          // so the generation is not lost to a transient scorer issue.
+          // Issue #2518: enrich the log line with population composition
+          // counters and per-creature metadata for any UUID we can extract
+          // from the rust scorer's stderr or the typed error itself, so
+          // operators can trace the producer of the offending creature(s)
+          // without re-running the workload.
+          const detail = err instanceof Error ? err.message : String(err);
+          const diagnostic = err instanceof Error
+            ? buildBatchScorerDiagnostic(err, forwardOnlyCreatures)
+            : undefined;
+          if (err instanceof BatchScorerError) {
+            getLogger().error(
+              `[NEAT-AI] Batch rust scorer reconciliation failed ` +
+                `(${err.reason}): ${detail}; ${diagnostic!.message}; ` +
+                `falling back to per-creature scoring.`,
+            );
+          } else if (diagnostic) {
+            getLogger().error(
+              `[NEAT-AI] Batch rust scorer invocation failed: ${detail}; ` +
+                `${diagnostic.message}; falling back to per-creature scoring.`,
+            );
+          } else {
+            getLogger().error(
+              `[NEAT-AI] Batch rust scorer invocation failed: ${detail}; ` +
+                `falling back to per-creature scoring.`,
+            );
+          }
+          // creaturesForWorkerPath stays at uniqueQueue so the worker path
+          // re-scores everything, including the forwardOnly creatures the
+          // batch attempt failed to score.
         }
       }
+      // forwardOnlyCreatures.length === 0 — no temp dir, no spawn. The
+      // worker path already covers every recurrent creature.
     }
 
     // Issue #1862: Sort by topology hash to cluster same-topology creatures.
@@ -266,9 +304,13 @@ export class Fitness {
     // from the front of the queue, so same-topology creatures flow to the
     // same worker via the work-stealing pattern.
     // Issue #2123: Avoid unnecessary array copy. When grouping is disabled,
-    // use uniqueQueue directly. When enabled, pre-compute hashes into a Map
-    // for O(1) lookups during sort instead of O(n log n) hash computations.
-    const queue: Creature[] = uniqueQueue;
+    // use the worker queue directly. When enabled, pre-compute hashes into a
+    // Map for O(1) lookups during sort instead of O(n log n) hash
+    // computations.
+    // Issue #2517: `creaturesForWorkerPath` excludes any creatures already
+    // scored by the batch path; it is identical to `uniqueQueue` whenever
+    // batch is disabled, the forwardOnly subset is empty, or batch failed.
+    const queue: Creature[] = creaturesForWorkerPath;
     if (this.evalConfig.topologyGrouping) {
       const hashCache = new Map<Creature, string>();
       for (const creature of queue) {

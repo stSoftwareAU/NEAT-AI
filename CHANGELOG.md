@@ -6,6 +6,32 @@ The format is loosely based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Issue #2517:** `Fitness.calculate` now partitions the unique creature queue
+  by `forwardOnly` before invoking the external `rust_scorer` in batch
+  (directory) mode. The scorer rejects directory inputs containing any
+  `forwardOnly=false` creature, so a single recurrent creature in a generation
+  previously poisoned the batch and forced a per-creature fallback for the whole
+  population — collapsing the once-per-generation performance benefit from Issue
+  #2422.
+
+  The new flow:
+
+  - Forward-only creatures take the batch path (one `rust_scorer` process per
+    generation, as before).
+  - Recurrent creatures take the per-creature worker path directly.
+  - When the forward-only subset is empty, the batch is skipped entirely (no
+    temp dir, no spawn).
+  - Scorer telemetry (`lastBatchScorerInvocations`, `lastScorerMs`,
+    `lastScoredCreatureCount`) aggregates across both paths so observability
+    remains accurate.
+  - One INFO log line per generation summarises the partition, e.g.
+    `Batch scorer partition: 49 forwardOnly batched, 1 recurrent
+    per-creature`.
+
 ## [3.2.0] - 2026-05-05
 
 ### Changed (breaking-by-default)
