@@ -3,13 +3,13 @@
 Enriches batch rust scorer failure log lines with structured diagnostics so the
 producer of a bad creature can be traced from a single log entry. When
 `tryBatchScoreWithRustScorer` fails, the `Fitness.calculate` catch block now
-extracts every offending creature UUID from the rust scorer's stderr (and
-from the typed `BatchScorerError`'s `missingKeys` / `extraKeys` /
-`malformedKeys`), cross-references each one against the in-memory population to
-attach the `source` tag, `forwardOnly` flag, and neuron / synapse counts, and
-emits one consolidated `error` line that also includes the population's
-`forwardOnly` composition. The per-creature detail list is capped at 10 entries
-with a `+N more` suffix to keep logs readable on large generations.
+extracts every offending creature UUID from the rust scorer's stderr (and from
+the typed `BatchScorerError`'s `missingKeys` / `extraKeys` / `malformedKeys`),
+cross-references each one against the in-memory population to attach the
+`source` tag, `forwardOnly` flag, and neuron / synapse counts, and emits one
+consolidated `error` line that also includes the population's `forwardOnly`
+composition. The per-creature detail list is capped at 10 entries with a
+`+N more` suffix to keep logs readable on large generations.
 
 Closes #2518.
 
@@ -33,8 +33,8 @@ Backend / CLI change — no UI to screenshot. Verified by:
     falling back to per-creature scoring.
   ```
 
-- Full `./quality.sh --skip-discovery --skip-wasm` run: **6414 passed, 0
-  failed, 4 ignored**.
+- Full `./quality.sh --skip-discovery --skip-wasm` run: **6414 passed, 0 failed,
+  4 ignored**.
 
 ```mermaid
 flowchart LR
@@ -67,20 +67,20 @@ Added `test/score/BatchScorerDiagnostics.ts` covering:
 - Composition is always emitted even when no offenders can be identified.
 
 Existing tests in `test/score/BatchRustScorerBridge.ts`,
-`test/score/BatchScorerReconciler.ts`, and
-`test/NEAT/FitnessBatchRustScorer.ts` continue to pass.
+`test/score/BatchScorerReconciler.ts`, and `test/NEAT/FitnessBatchRustScorer.ts`
+continue to pass.
 
 ## Pre-PR Security Self-Check
 
-- [x] Input validation: stderr regex anchors on the canonical UUID shape and
-  the `.json` extension; no shell or SQL surface introduced.
+- [x] Input validation: stderr regex anchors on the canonical UUID shape and the
+      `.json` extension; no shell or SQL surface introduced.
 - [x] Secrets: no credentials staged; only UUIDs, tags, and topology counts in
-  log output.
+      log output.
 - [x] Injection surface: none — diagnostics consume strings, not commands or
-  queries.
+      queries.
 - [x] Output encoding: log line is plain text emitted via the project `Logger`
-  abstraction.
+      abstraction.
 - [x] Authentication / authorisation: no new privileged operations.
 - [x] Error handling: enriched diagnostic does not leak file paths or stack
-  traces; falls back gracefully when stderr has no UUID reference.
+      traces; falls back gracefully when stderr has no UUID reference.
 - [x] Dependencies: no new third-party deps.
