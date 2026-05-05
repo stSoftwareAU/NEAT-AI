@@ -547,6 +547,12 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       return undefined;
     }
 
+    if (!this.parquetFilePath) {
+      // No discovery data recorded yet; skip squash analysis rather than
+      // throwing DiscoveryError downstream in loadNeuronRecords.
+      return undefined;
+    }
+
     const idToWire = buildRuntimeIdToWireMap(this.creature);
     const candidatePromises = focusList.map(async (neuronId) => {
       const wireUuid = resolveRuntimeIdToWireUuid(idToWire, neuronId);
