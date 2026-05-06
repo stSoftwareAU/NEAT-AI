@@ -47,6 +47,52 @@ export type ParallelAnalysisFn = (
 export const DEFAULT_PER_CHUNK_GRACE_MS = 1_000;
 
 /**
+ * Minimum number of completed chunks before the per-chunk stall guard may
+ * fire (Issue #2513). The first Rust FFI chunk pays for parquet loading,
+ * GPU initialisation, and module dispatch warm-up; a single overshoot here
+ * is expected, not a real stall. Allowing a slow first chunk to be
+ * amortised against a fast second chunk avoids tearing down the retry loop
+ * after evaluating only one chunk's worth of neurons.
+ */
+export const STALL_WARMUP_MIN_COMPLETED_CHUNKS = 2;
+
+/**
+ * Returns a one-line diagnostic of the current Deno heap / RSS state.
+ *
+ * Used to annotate the throughput-stall abort log so future occurrences
+ * can be correlated with memory pressure (Issue #2513). Falls back to an
+ * "unavailable" marker when `Deno.memoryUsage()` is not present (e.g.
+ * non-Deno test runners).
+ */
+export function formatStallMemoryDiagnostics(): string {
+  // Deno.memoryUsage may be unavailable when this module is loaded under a
+  // non-Deno runtime. Guard the lookup so the diagnostic stays a
+  // best-effort annotation rather than a hard dependency.
+  const memFn = (globalThis as { Deno?: { memoryUsage?: () => unknown } })
+    ?.Deno?.memoryUsage;
+  if (typeof memFn !== "function") {
+    return "heap=unavailable rss=unavailable";
+  }
+  try {
+    const mem = memFn() as {
+      rss?: number;
+      heapUsed?: number;
+      heapTotal?: number;
+      external?: number;
+    };
+    const mb = (b: number | undefined) =>
+      typeof b === "number" && Number.isFinite(b)
+        ? `${(b / (1024 * 1024)).toFixed(0)}MB`
+        : "?";
+    return `heap=${mb(mem.heapUsed)}/${mb(mem.heapTotal)} rss=${
+      mb(mem.rss)
+    } external=${mb(mem.external)}`;
+  } catch {
+    return "heap=unavailable rss=unavailable";
+  }
+}
+
+/**
  * Context required by the analysis loop, provided by the DataRecorder.
  */
 export interface AnalysisLoopContext {
@@ -325,19 +371,33 @@ export async function runAnalysisLoop(
     // `perChunkMaxMs * chunks.length` on chunk processing for one retry
     // iteration (Issue #2420). Prevents a single slow FFI call from burning
     // the entire discovery cycle before the per-chunk check fires.
-    const iterationStart = now();
-    const iterationCapMs = ctx.perChunkMaxMs > 0
+    let iterationStart = now();
+    let iterationCapMs = ctx.perChunkMaxMs > 0
       ? ctx.perChunkMaxMs * chunks.length
       : 0;
     let chunkIdx = 0;
     let iterationStalled = false;
+    // Track completed chunks and cumulative chunk time for the warm-up
+    // gate and rate-of-change check (Issue #2513). A "completed" chunk is
+    // one whose Rust FFI call returned (whether fast or slow) — chunks
+    // that timed out mid-flight are not counted, so a hung FFI on chunk 1
+    // still aborts via the timeout path.
+    let completedChunks = 0;
+    let totalChunkElapsedMs = 0;
     for (const chunk of chunks) {
       chunkIdx++;
       // Defence-in-depth: check cumulative wall-clock before submitting each
       // new chunk (Issue #2420). If earlier chunks have already burned the
       // overall budget, stop — the per-chunk check below would only fire
       // after yet another slow call returns.
-      if (iterationCapMs > 0) {
+      //
+      // Issue #2513: do not enforce the iteration cap during warm-up — a
+      // single slow warm-up chunk must not block subsequent chunks from
+      // running so the warm-up cost can be amortised.
+      if (
+        iterationCapMs > 0 &&
+        completedChunks >= STALL_WARMUP_MIN_COMPLETED_CHUNKS
+      ) {
         const iterationElapsed = now() - iterationStart;
         if (iterationElapsed >= iterationCapMs) {
           if (shouldLogDiscovery(config)) {
@@ -589,24 +649,84 @@ export async function runAnalysisLoop(
         removeHarmfulNeurons,
       );
 
+      // The chunk completed (the Rust FFI call returned). Record it for
+      // the warm-up gate and rate-of-change check (Issue #2513).
+      completedChunks++;
+      totalChunkElapsedMs += chunkElapsed;
+      // When the warm-up window has just closed, re-anchor the iteration
+      // wall-clock cap so warm-up time is not counted against subsequent
+      // chunks. The defence-in-depth cap then bounds only post-warm-up
+      // work (Issue #2513).
+      if (completedChunks === STALL_WARMUP_MIN_COMPLETED_CHUNKS) {
+        iterationStart = now();
+        iterationCapMs = ctx.perChunkMaxMs > 0
+          ? ctx.perChunkMaxMs * Math.max(1, chunks.length - completedChunks)
+          : 0;
+      }
+
       // Adaptive early-exit: if the Rust FFI chunk stalled beyond the
       // per-chunk budget, stop submitting further chunks for this cycle
       // (Issue #2380). Throughput is effectively zero so additional chunks
       // would likely consume the rest of the budget without returning.
+      //
+      // Issue #2513: defer the per-chunk stall guard until a warm-up
+      // budget has been spent (a minimum of two completed chunks) and
+      // confirm sustained slowness via a rate-of-change check on the
+      // average per-chunk elapsed. The first Rust FFI chunk pays for
+      // parquet loading, GPU initialisation, and module dispatch warm-up,
+      // so a single-chunk overshoot here is expected, not a real stall.
       if (ctx.perChunkMaxMs > 0 && chunkElapsed >= ctx.perChunkMaxMs) {
-        if (shouldLogDiscovery(config)) {
-          getLogger().info(
-            `Discovery ${
-              blue(ID)
-            } rust combined analysis chunk ${chunkIdx}/${chunks.length} exceeded per-chunk budget ${
-              yellow(format(ctx.perChunkMaxMs, { ignoreZero: true }))
-            } (elapsed ${
-              yellow(format(chunkElapsed, { ignoreZero: true }))
-            }); aborting remaining chunks`,
-          );
+        if (completedChunks < STALL_WARMUP_MIN_COMPLETED_CHUNKS) {
+          // Warm-up: record the overshoot but do not trip the stall guard.
+          if (shouldLogDiscovery(config)) {
+            getLogger().info(
+              `Discovery ${
+                blue(ID)
+              } rust combined analysis chunk ${chunkIdx}/${chunks.length} exceeded per-chunk budget ${
+                yellow(format(ctx.perChunkMaxMs, { ignoreZero: true }))
+              } (elapsed ${
+                yellow(format(chunkElapsed, { ignoreZero: true }))
+              }); within warm-up window (${completedChunks}/${STALL_WARMUP_MIN_COMPLETED_CHUNKS} chunks completed), continuing`,
+            );
+          }
+        } else {
+          // Past warm-up: rate-of-change check. Only trip if the average
+          // per-chunk elapsed across all completed chunks still exceeds the
+          // budget — a slow first chunk amortised by faster ones must not
+          // abort the loop.
+          const avgChunkMs = totalChunkElapsedMs / completedChunks;
+          if (avgChunkMs >= ctx.perChunkMaxMs) {
+            if (shouldLogDiscovery(config)) {
+              getLogger().info(
+                `Discovery ${
+                  blue(ID)
+                } rust combined analysis chunk ${chunkIdx}/${chunks.length} exceeded per-chunk budget ${
+                  yellow(format(ctx.perChunkMaxMs, { ignoreZero: true }))
+                } (elapsed ${
+                  yellow(format(chunkElapsed, { ignoreZero: true }))
+                }, avg ${
+                  yellow(format(avgChunkMs, { ignoreZero: true }))
+                } over ${completedChunks} chunks); aborting remaining chunks`,
+              );
+            }
+            iterationStalled = true;
+            break;
+          }
+          // Slow chunk amortised by earlier fast chunks — keep going.
+          if (shouldLogDiscovery(config)) {
+            getLogger().info(
+              `Discovery ${
+                blue(ID)
+              } rust combined analysis chunk ${chunkIdx}/${chunks.length} exceeded per-chunk budget ${
+                yellow(format(ctx.perChunkMaxMs, { ignoreZero: true }))
+              } (elapsed ${
+                yellow(format(chunkElapsed, { ignoreZero: true }))
+              }) but average ${
+                yellow(format(avgChunkMs, { ignoreZero: true }))
+              } over ${completedChunks} chunks remains within budget; continuing`,
+            );
+          }
         }
-        iterationStalled = true;
-        break;
       }
 
       // Overall deadline check between chunks so we don't start a new chunk
@@ -638,10 +758,12 @@ export async function runAnalysisLoop(
     if (iterationStalled) {
       stalledFlag = true;
       if (shouldLogDiscovery(config)) {
+        // Issue #2513: attach heap/RSS state to the abort log so future
+        // occurrences can be correlated with memory pressure.
         getLogger().info(
           `Discovery ${
             blue(ID)
-          } analysis throughput stalled after evaluating ${attemptedNeurons.size} neuron(s); aborting retry loop`,
+          } analysis throughput stalled after evaluating ${attemptedNeurons.size} neuron(s); aborting retry loop [${formatStallMemoryDiagnostics()}]`,
         );
       }
       break;
